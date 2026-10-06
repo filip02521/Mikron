@@ -46,7 +46,7 @@ import { DailyPanelExceptionsView } from "@/components/summary/DailyPanelExcepti
 import { OperationsPanelRefreshStrip } from "@/components/operations/OperationsUpdatesContext";
 import { BoardQuestionsAttentionNotice } from "@/components/department-board/BoardQuestionsAttentionNotice";
 import { DailyPanelVerificationBanner } from "@/components/summary/DailyPanelVerificationBanner";
-import { PageNoticeStack } from "@/components/ui/PageNoticeStack";
+import { PageAttentionGroup } from "@/components/ui/PageAttentionStrip";
 import {
   IconLayoutPanel,
 } from "@/components/icons/StrokeIcons";
@@ -453,23 +453,16 @@ export function SummaryWorkspace({
           }
         />
 
-        <PageNoticeStack spaceAfter={false}>
-          <BoardQuestionsAttentionNotice
-            edge="flush"
-            suppressPathHide
-            className={cn(
-              "border-b border-amber-200/65",
-              panelChromeInsetClass,
-              "px-3 py-2.5 sm:px-4"
-            )}
-          />
+        {/* Sygnały w jednej ramce z wcięciem — jak „Kolejka” i listy pod spodem. */}
+        <PageAttentionGroup className="mx-3 mb-1 mt-2.5 sm:mx-4 lg:mx-5">
+          <BoardQuestionsAttentionNotice edge="row" suppressPathHide />
           {panelView === "dzis" ? (
             <DailyPanelVerificationBanner
               count={verificationCount}
               onOpenModal={() => setVerificationModalOpen(true)}
             />
           ) : null}
-        </PageNoticeStack>
+        </PageAttentionGroup>
 
         <DailyPanelToolbar
           view={panelView}

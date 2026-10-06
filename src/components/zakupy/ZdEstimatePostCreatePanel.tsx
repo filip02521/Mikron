@@ -13,6 +13,13 @@ import {
   actionZdEstimateSupplierEta,
 } from "@/app/actions/zd-estimate";
 import { zdCreateEtaTile } from "@/lib/orders/zd-estimate-create-zd";
+import {
+  actionGmailStatus,
+  actionSendZdToSupplier,
+  actionZdSupplierEmailSent,
+  type GmailStatus,
+} from "@/app/actions/gmail";
+import type { SupplierOrderEmail } from "@/lib/google/gmail-connections";
 import { ZdEstimateCreateRequestsPreview } from "@/components/zakupy/ZdEstimateCreateRequestsPreview";
 import { SupplierDrawer } from "@/components/summary/SupplierDrawer";
 import {
@@ -110,6 +117,19 @@ export function ZdEstimatePostCreatePanel({
   const [mailOpen, setMailOpen] = useState(false);
   const [mailSubject, setMailSubject] = useState("");
   const [mailBody, setMailBody] = useState("");
+  const [mailTo, setMailTo] = useState("");
+  const [gmail, setGmail] = useState<GmailStatus | null>(null);
+  const [gmailSending, startGmailSend] = useTransition();
+  const [gmailError, setGmailError] = useState<{
+    message: string;
+    reconnect: boolean;
+    alreadySent: SupplierOrderEmail | null;
+    unknownRecipients: string[] | null;
+  } | null>(null);
+  /** Wysyłka tego ZD z OnTime sprzed otwarcia panelu (np. przed odświeżeniem strony). */
+  const [previousSend, setPreviousSend] = useState<SupplierOrderEmail | null>(null);
+  const [gmailSent, setGmailSent] = useState<{ to: string[]; from: string; file: string } | null>(null);
+  const toId = useId();
   const [glownePending, startGlowne] = useTransition();
   const [schedulePending, startSchedule] = useTransition();
   const [glowneError, setGlowneError] = useState<string | null>(null);
@@ -206,6 +226,51 @@ export function ZdEstimatePostCreatePanel({
         href: `/api/operations/supplier-forms/zd/${session.dokId}?supplierId=${encodeURIComponent(session.supplierId)}`,
       }
     : null;
+
+  // Status Gmaila przy otwarciu. Łączenie idzie w nowej karcie (panel po utworzeniu ZD żyje tylko
+  // w pamięci strony), więc po powrocie odświeżamy — ale tylko dopóki konto czeka na połączenie.
+  const gmailAwaitingConnect = gmail?.configured === true && !gmail.email;
+  useEffect(() => {
+    let cancelled = false;
+    void actionGmailStatus()
+      .then((res) => {
+        if (!cancelled) setGmail(res);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!gmailAwaitingConnect) return;
+    let cancelled = false;
+    const refresh = () =>
+      void actionGmailStatus()
+        .then((res) => {
+          if (!cancelled) setGmail(res);
+        })
+        .catch(() => undefined);
+    window.addEventListener("focus", refresh);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", refresh);
+    };
+  }, [gmailAwaitingConnect]);
+
+  useEffect(() => {
+    const dokId = session.dokId;
+    if (dokId == null || dokId <= 0 || previewOnly) return;
+    let cancelled = false;
+    void actionZdSupplierEmailSent(dokId)
+      .then((res) => {
+        if (!cancelled) setPreviousSend(res);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [session.dokId, previewOnly]);
 
   useEffect(() => {
     let cancelled = false;
@@ -365,8 +430,55 @@ export function ZdEstimatePostCreatePanel({
   const openMailComposer = () => {
     if (!mailtoSeed) return;
     setMailSubject(mailtoSeed.subject);
-    setMailBody(mailtoSeed.body);
+    const signature = gmail?.email ? gmail.signature.trim() : "";
+    setMailBody(signature ? `${mailtoSeed.body}\n${signature}` : mailtoSeed.body);
+    setMailTo(email ?? "");
+    setGmailError(null);
     setMailOpen(true);
+  };
+
+  const gmailEmail = gmail?.email ?? null;
+  const canGmailSend = Boolean(gmailEmail) && canAct && !previewOnly;
+  const gmailConnectHref = "/api/google/connect?returnTo=/ustawienia";
+
+  const sendViaGmail = (resend = false, allowUnknownRecipients = false) => {
+    if (!canGmailSend || session.dokId == null) return;
+    setGmailError(null);
+    startGmailSend(async () => {
+      try {
+        const res = await actionSendZdToSupplier({
+          dokId: session.dokId!,
+          supplierId: session.supplierId,
+          to: mailTo,
+          subject: mailSubject,
+          body: mailBody,
+          resend: resend || previousSend != null,
+          allowUnknownRecipients,
+        });
+        if (!res.ok) {
+          setGmailError({
+            message: res.message,
+            reconnect: Boolean(res.reconnect),
+            alreadySent: res.alreadySent ?? null,
+            unknownRecipients: res.unknownRecipients ?? null,
+          });
+          if (res.reconnect) setGmail((g) => (g ? { ...g, email: null } : g));
+          return;
+        }
+        setGmailSent({ to: res.to, from: res.from, file: res.attachmentName });
+        setMailOpen(false);
+      } catch (e) {
+        setGmailError({
+          message: userFacingErrorTextFromMessage(
+            e instanceof Error ? e.message : String(e),
+            "Nie udało się wysłać zamówienia."
+          ),
+          reconnect: false,
+          alreadySent: null,
+          unknownRecipients: null,
+        });
+      }
+    });
   };
 
   const composedHref =
@@ -750,7 +862,12 @@ export function ZdEstimatePostCreatePanel({
             <ol className="mt-3 space-y-3">
               <NextStep
                 n={1}
-                done={false}
+                done={gmailSent != null}
+                doneLabel={
+                  gmailSent
+                    ? `Wysłano z ${gmailSent.from} do ${gmailSent.to.join(", ")} · ${gmailSent.file}`
+                    : null
+                }
                 title="Wyślij zamówienie do dostawcy"
               >
                 {contactLoading ? (
@@ -761,6 +878,12 @@ export function ZdEstimatePostCreatePanel({
                   <p className="text-sm text-amber-900">{contactError}</p>
                 ) : (
                   <div className="space-y-2">
+                    {previousSend ? (
+                      <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-900 ring-1 ring-emerald-200/80">
+                        Wysłano już {formatSentAt(previousSend.sentAt)} z {previousSend.from} do{" "}
+                        {previousSend.to.join(", ")}. Ponowna wysyłka pójdzie jako kolejny mail.
+                      </p>
+                    ) : null}
                     {orderForm ? (
                       <div className="flex flex-col gap-2 rounded-md bg-slate-50 px-3 py-2.5 ring-1 ring-slate-200/80 sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-sm text-slate-700">
@@ -793,7 +916,24 @@ export function ZdEstimatePostCreatePanel({
                           ? ZD_ESTIMATE_UI.postCreateMailBodyCopyPl
                           : ZD_ESTIMATE_UI.postCreateMailBodyCopyEn}
                     </Button>
-                    {mailtoSeed ? (
+                    {mailtoSeed && canGmailSend ? (
+                      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                        <Button
+                          type="button"
+                          className="min-h-10 w-full sm:w-auto"
+                          onClick={openMailComposer}
+                        >
+                          <IconMail size={16} aria-hidden />
+                          {ZD_ESTIMATE_UI.postCreateGmailCta}
+                        </Button>
+                        <a
+                          href={mailtoSeed.href}
+                          className="inline-flex min-h-10 w-full items-center justify-center rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 sm:w-auto"
+                        >
+                          {ZD_ESTIMATE_UI.postCreateMailComposeOpen}
+                        </a>
+                      </div>
+                    ) : mailtoSeed ? (
                       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                         <a
                           href={mailtoSeed.href}
@@ -814,6 +954,19 @@ export function ZdEstimatePostCreatePanel({
                           {ZD_ESTIMATE_UI.postCreateMailComposeCta}
                         </Button>
                       </div>
+                    ) : null}
+                    {mailtoSeed && gmail?.configured && !gmailEmail && canAct && !previewOnly ? (
+                      <p className="text-sm text-slate-600">
+                        <a
+                          href={gmailConnectHref}
+                          target="_blank"
+                          rel="noopener"
+                          className="font-medium text-indigo-700 underline-offset-2 hover:underline"
+                        >
+                          {ZD_ESTIMATE_UI.postCreateGmailConnect}
+                        </a>{" "}
+                        {ZD_ESTIMATE_UI.postCreateGmailConnectHint}
+                      </p>
                     ) : null}
                     <SupplierContactActions
                       notes={notes}
@@ -1043,7 +1196,23 @@ export function ZdEstimatePostCreatePanel({
               >
                 Anuluj
               </Button>
-              {composedHref ? (
+              {canGmailSend ? (
+                <Button
+                  type="button"
+                  className="min-h-11 w-full sm:w-auto"
+                  disabled={gmailSending || !mailTo.trim() || !mailSubject.trim()}
+                  onClick={() => sendViaGmail()}
+                  aria-busy={gmailSending}
+                >
+                  {gmailSending ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Spinner className="size-4" /> Wysyłam…
+                    </span>
+                  ) : (
+                    ZD_ESTIMATE_UI.postCreateGmailSend
+                  )}
+                </Button>
+              ) : composedHref ? (
                 <a
                   href={composedHref}
                   className={cn(
@@ -1070,8 +1239,75 @@ export function ZdEstimatePostCreatePanel({
             <p className="text-xs font-medium text-slate-500">
               {ZD_ESTIMATE_UI.postCreateMailComposeTo}
             </p>
-            <p className="mt-1 text-sm font-medium text-slate-900">{email}</p>
+            {canGmailSend ? (
+              <input
+                id={toId}
+                aria-label={ZD_ESTIMATE_UI.postCreateMailComposeTo}
+                value={mailTo}
+                onChange={(e) => {
+                  setMailTo(e.target.value);
+                  // Potwierdzenie „spoza karty” dotyczyło poprzedniego adresu.
+                  setGmailError(null);
+                }}
+                className={cn(
+                  controlFocusClass,
+                  "mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
+                )}
+              />
+            ) : (
+              <p className="mt-1 text-sm font-medium text-slate-900">{email}</p>
+            )}
           </div>
+          {canGmailSend ? (
+            <p className="text-xs leading-relaxed text-slate-500">
+              Od: <span className="font-medium text-slate-700">{gmailEmail}</span> ·{" "}
+              {orderForm
+                ? `Załącznik: formularz ${session.supplierName} wypełniony tym ZD.`
+                : `Załącznik: PDF zamówienia z pozycji ZD (${location === "POLSKA" ? "PL" : "EN"}).`}
+            </p>
+          ) : null}
+          {gmailError?.unknownRecipients?.length ? (
+            <div className="space-y-2 rounded-md bg-amber-50 px-3 py-2.5 text-sm text-amber-950 ring-1 ring-amber-200" role="alert">
+              <p>
+                {gmailError.unknownRecipients.join(", ")} nie ma na karcie {session.supplierName}. Sprawdź adres —
+                zamówienie wyjdzie z Twojej skrzynki.
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                className="min-h-10"
+                disabled={gmailSending}
+                onClick={() => sendViaGmail(true, true)}
+              >
+                Wyślij mimo to
+              </Button>
+            </div>
+          ) : gmailError?.alreadySent ? (
+            <div className="space-y-2 rounded-md bg-amber-50 px-3 py-2.5 text-sm text-amber-950 ring-1 ring-amber-200" role="alert">
+              <p>
+                To ZD wysłano już {formatSentAt(gmailError.alreadySent.sentAt)} z {gmailError.alreadySent.from} do{" "}
+                {gmailError.alreadySent.to.join(", ")}. Wysłać jeszcze raz?
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                className="min-h-10"
+                disabled={gmailSending}
+                onClick={() => sendViaGmail(true)}
+              >
+                Wyślij ponownie
+              </Button>
+            </div>
+          ) : gmailError ? (
+            <p className="text-sm text-rose-800" role="alert">
+              {gmailError.message}{" "}
+              {gmailError.reconnect ? (
+                <a href={gmailConnectHref} target="_blank" rel="noopener" className="font-medium underline">
+                  {ZD_ESTIMATE_UI.postCreateGmailConnect}
+                </a>
+              ) : null}
+            </p>
+          ) : null}
           <div>
             <label
               htmlFor={subjectId}
@@ -1264,4 +1500,13 @@ function NextStep({
       </div>
     </li>
   );
+}
+
+function formatSentAt(iso: string): string {
+  return new Date(iso).toLocaleString("pl-PL", {
+    day: "numeric",
+    month: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }

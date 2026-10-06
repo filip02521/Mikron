@@ -4,7 +4,8 @@ import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 
 export type PageAttentionStripTone = "amber" | "violet";
-export type PageAttentionStripEdge = "inset" | "flush";
+/** inset = samodzielna ramka; flush = pas przez całą kartę; row = wiersz w grupie {@link PageAttentionGroup}. */
+export type PageAttentionStripEdge = "inset" | "flush" | "row";
 export type PageAttentionStripDensity = "comfortable" | "compact";
 
 const TONE_SHELL: Record<PageAttentionStripTone, string> = {
@@ -61,7 +62,7 @@ export function PageAttentionStrip({
       role={role}
       className={cn(
         "flex flex-wrap items-center justify-between gap-3",
-        TONE_SHELL[tone],
+        edge !== "row" && TONE_SHELL[tone],
         edge === "inset" && "rounded-md border",
         edge === "flush" && "rounded-none border border-x-0 border-t-0",
         compact ? "gap-2 px-2.5 py-2 sm:px-3" : "px-3 py-2.5 sm:px-4",
@@ -98,6 +99,37 @@ export function PageAttentionStrip({
   );
 }
 
+/**
+ * Kilka sygnałów naraz w karcie — jedna ramka z wcięciem jak inne bloki panelu,
+ * wiersze rozdzielone linią zamiast osobnych pasów. Pusta (wszystkie wiersze null) = ukryta.
+ */
+export function PageAttentionGroup({
+  tone = "amber",
+  children,
+  className,
+  "aria-label": ariaLabel = "Wymaga uwagi",
+}: {
+  tone?: PageAttentionStripTone;
+  children: ReactNode;
+  className?: string;
+  "aria-label"?: string;
+}) {
+  return (
+    <div
+      role="region"
+      aria-label={ariaLabel}
+      className={cn(
+        "overflow-hidden rounded-md border empty:hidden",
+        TONE_SHELL[tone],
+        tone === "amber" ? "divide-y divide-amber-200/60" : "divide-y divide-violet-200/60",
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
 type CtaCommon = {
   tone?: PageAttentionStripTone;
   density?: PageAttentionStripDensity;
@@ -126,6 +158,8 @@ export function PageAttentionStripCta({
   const compact = density === "compact";
   const classes = cn(
     "inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 text-xs font-medium transition",
+    // Odpowiedź na wciśnięcie od razu (pointer-down), nie dopiero po kliknięciu.
+    "motion-safe:active:scale-[0.97] motion-safe:active:duration-75",
     TONE_CTA[tone],
     compact ? "h-7" : "h-8",
     className

@@ -207,16 +207,31 @@ export type SubiektOrdersConfigStatus =
  * Nie spada cicho na `SUBIEKT_API_BASE_URL` — ORDERS musi być ustawione wprost.
  */
 export function resolveSubiektOrdersConfig(): SubiektOrdersConfigStatus {
+  return resolveOrdersHostConfig("SUBIEKT_API_ORDERS_BASE_URL", "Kreator ZD", "host kreatora ZD");
+}
+
+/**
+ * Host cen (Zakupy → Cenniki): `SUBIEKT_API_PRICES_BASE_URL`, te same porty co ORDERS.
+ * Osobna zmienna — zapis cen idzie na :5082, gdy kreator ZD czyta live :5080.
+ */
+export function resolveSubiektPricesConfig(): SubiektOrdersConfigStatus {
+  return resolveOrdersHostConfig("SUBIEKT_API_PRICES_BASE_URL", "Cenniki", "host cen");
+}
+
+function resolveOrdersHostConfig(
+  envVar: string,
+  featureLabel: string,
+  hostLabel: string
+): SubiektOrdersConfigStatus {
   const live = getSubiektConfig();
   const liveBaseUrl = live?.baseUrl ?? null;
-  const ordersRaw = trimOrUndefined(process.env.SUBIEKT_API_ORDERS_BASE_URL);
+  const ordersRaw = trimOrUndefined(process.env[envVar]);
 
   if (!ordersRaw) {
     return {
       ok: false,
       reason: "missing_orders_url",
-      message:
-        "Brak SUBIEKT_API_ORDERS_BASE_URL - ustaw host kreatora ZD (:5080 live / :5082 test).",
+      message: `Brak ${envVar} - ustaw ${hostLabel} (:5080 live / :5082 test).`,
       ordersBaseUrl: null,
       liveBaseUrl,
     };
@@ -227,7 +242,7 @@ export function resolveSubiektOrdersConfig(): SubiektOrdersConfigStatus {
     return {
       ok: false,
       reason: "invalid_orders_url",
-      message: "SUBIEKT_API_ORDERS_BASE_URL jest niepoprawnym URL.",
+      message: `${envVar} jest niepoprawnym URL.`,
       ordersBaseUrl: ordersRaw,
       liveBaseUrl,
     };
@@ -238,7 +253,7 @@ export function resolveSubiektOrdersConfig(): SubiektOrdersConfigStatus {
     return {
       ok: false,
       reason: "not_allowed_port",
-      message: `Kreator ZD wymaga portu :${SUBIEKT_ORDERS_LIVE_PORT} (live) lub :${SUBIEKT_ORDERS_TEST_PORT} (test) - teraz: ${
+      message: `${featureLabel} wymaga portu :${SUBIEKT_ORDERS_LIVE_PORT} (live) lub :${SUBIEKT_ORDERS_TEST_PORT} (test) - teraz: ${
         port != null ? `:${port}` : baseUrl
       }.`,
       ordersBaseUrl: baseUrl,

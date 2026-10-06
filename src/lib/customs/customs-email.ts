@@ -1,5 +1,7 @@
 /** Mail do agencji celnej — temat, HTML z treści tekstowej, walidacja adresów. Czysta logika. */
 
+import { plainTextEmailHtml } from "@/lib/email/plain-text-html";
+
 const EMAIL_RE = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]{2,}$/;
 
 /** „a@x.pl; b@y.pl, c@z.pl” → lista; błędne adresy osobno. */
@@ -26,22 +28,8 @@ export function customsEmailSubject(input: {
   return parts.join(" - ");
 }
 
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-/** Treść tekstowa maila jako prosty HTML (zachowane wiersze i odstępy akapitów). */
-export function customsEmailHtml(text: string): string {
-  const paragraphs = text
-    .split(/\n{2,}/)
-    .map((p) => `<p style="margin:0 0 12px">${escapeHtml(p).replace(/\n/g, "<br>")}</p>`)
-    .join("\n");
-  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#111">\n${paragraphs}\n</div>`;
-}
+/** Treść tekstowa maila jako prosty HTML — wspólny helper wysyłek. */
+export const customsEmailHtml = plainTextEmailHtml;
 
 /** Limit łącznego rozmiaru załączników (serwery pocztowe zwykle ~25 MB po base64). */
 export const CUSTOMS_EMAIL_MAX_ATTACHMENTS_BYTES = 18 * 1024 * 1024;

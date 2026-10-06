@@ -668,7 +668,8 @@ export type TransactionalEmailKind =
   | "board_reply"
   | "password_reset_otp"
   | "generic"
-  | "attachments";
+  | "attachments"
+  | "supplier_order";
 
 export type TransactionalEmailLogStatus = "sent" | "failed";
 

@@ -1,12 +1,13 @@
 # URL produkcji — Mikran LAN
 
-Aplikacja OnTime na serwerze **192.168.0.140:3000**, wewnętrzny DNS **http://ontime.mikran.pl**.
+Aplikacja OnTime na serwerze **192.168.0.140:3000**, wewnętrzny DNS — produkcja działa po **HTTPS: https://ontime.mikran.pl**
+(certyfikat Let's Encrypt; HTTPS jest wymagany m.in. przez logowanie Google przy wysyłce z Gmaila).
 
 ## `.env.local` (serwer produkcyjny)
 
 ```env
-APP_URL=http://ontime.mikran.pl:3000
-NEXT_PUBLIC_APP_URL=http://ontime.mikran.pl:3000
+APP_URL=https://ontime.mikran.pl
+NEXT_PUBLIC_APP_URL=https://ontime.mikran.pl
 APP_SERVER_HOST=192.168.0.140
 APP_PORT=3000
 LAN_DEV_HOST=ontime.mikran.pl
@@ -45,6 +46,7 @@ Lista wygenerowana z env: `npm run setup-check`
 | Reset hasła / zaproszenie (admin kopiuje link) | `resolveAppUrl()` → `/auth/confirm` → `/ustaw-haslo` |
 | Przycisk „Moje zamówienia” w mailu (SES SMTP) | `getAppUrl()` → `/moje` |
 | Ciasteczka sesji | ten sam host co w przeglądarce |
+| Powrót z logowania Google (Gmail) | `getAppUrl()` → `/api/google/callback` — musi zgadzać się z Google Cloud |
 
 Wcześniejszy błąd produkcji: `NEXT_PUBLIC_APP_URL=http://192.168.10.173:3000` (stary Mac dev) — Supabase przekierowywał na nieistniejący host.
 
