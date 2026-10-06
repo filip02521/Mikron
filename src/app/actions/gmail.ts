@@ -172,12 +172,8 @@ export async function actionSendZdToSupplier(input: {
       attachmentName: attachment.filename,
       gmailMessageId: sent.messageId,
     }).catch((e) => console.error("[gmail] supplier_order_emails", e));
-    // Nowy wpis w logu wysyłek (/admin/wysylki). Mail już wyszedł — błąd odświeżenia nie może udawać nieudanej wysyłki.
-    try {
-      revalidatePath("/admin/wysylki");
-    } catch (e) {
-      console.error("[gmail] revalidatePath", e);
-    }
+    // Nowy wpis w logu wysyłek (/admin/wysylki).
+    revalidatePath("/admin/wysylki");
     return {
       ok: true,
       from: sent.from,

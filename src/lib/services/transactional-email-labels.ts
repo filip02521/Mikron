@@ -10,4 +10,5 @@ export const TRANSACTIONAL_EMAIL_KIND_LABELS: Record<TransactionalEmailKind, str
   generic: "Inny",
   attachments: "Z załącznikami",
   supplier_order: "Zamówienie do dostawcy (Gmail)",
+  supplier_inquiry: "Zapytanie do dostawcy z tablicy (Gmail)",
 };

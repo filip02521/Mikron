@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import fontkit from "@pdf-lib/fontkit";
 import { PDFDocument, rgb, type PDFFont, type PDFPage } from "pdf-lib";
-import { MIKRAN_COMPANY } from "@/lib/company";
+import { CUSTOMS_IMPORTER } from "@/lib/customs/customs-clearance";
 
 export type ZdOrderPdfLine = { symbol: string | null; name: string; qty: number };
 
@@ -72,7 +72,7 @@ export async function renderZdOrderPdf(input: ZdOrderPdfInput): Promise<Uint8Arr
     { subset: true }
   );
   doc.setTitle(`${t.title} ${input.dokNr}`);
-  doc.setAuthor(MIKRAN_COMPANY.name);
+  doc.setAuthor(CUSTOMS_IMPORTER.name);
 
   const text = (page: PDFPage, s: string, x: number, y: number, size = 10, color = INK, f: PDFFont = font) =>
     page.drawText(s, { x, y, size, font: f, color });
@@ -98,10 +98,10 @@ export async function renderZdOrderPdf(input: ZdOrderPdfInput): Promise<Uint8Arr
   text(page, t.supplier, A4[0] / 2, y, 9, MUTED);
   y -= 14;
   const buyer = [
-    MIKRAN_COMPANY.name,
-    MIKRAN_COMPANY.street,
-    MIKRAN_COMPANY.postalCity,
-    `${t.vat}: PL${MIKRAN_COMPANY.nip}`,
+    CUSTOMS_IMPORTER.name,
+    CUSTOMS_IMPORTER.street,
+    CUSTOMS_IMPORTER.postalCity,
+    `${t.vat}: PL${CUSTOMS_IMPORTER.nip}`,
   ];
   const supplier = wrapText(input.supplierName, A4[0] / 2 - M, (s) => font.widthOfTextAtSize(s, 10));
   for (let i = 0; i < Math.max(buyer.length, supplier.length); i += 1) {

@@ -368,19 +368,12 @@ async function computeSupplierOrder(input: {
   let orderValue = 0;
   let unpricedCount = 0;
   let zdUnitsSum = 0;
-  const lineByTw = new Map(engine.result.pozycje.map((l) => [l.tw_Id, l]));
   const rows: StockWatchItemWrite[] = engine.result.pozycje.map((line) => {
     const tw = line.tw_Id;
     const pack = engine.packagingLookup.get(tw) ?? null;
     const unitPrice = unitPricePerPiece(prices.get(tw)?.priceNet ?? null, pack);
     const minStock = engine.minStockByTwId.get(tw) ?? null;
     const pairStock = pairStockPieces(line.pair);
-    // Paczka z pary: wszystkie ilości wiersza w sztukach (sztuki + paczki × przelicznik), jak dostępne.
-    const twin = pairStock && line.pair ? lineByTw.get(line.pair.twinTwId) : undefined;
-    const inPieces = (field: "tw_Stan" | "tw_StanRez" | "otwarteZkBezRez") =>
-      pairStock && line.pair
-        ? num(twin?.[field]) + num(line[field]) * line.pair.unitsPerPack
-        : num(line[field]);
     const availableQty = pairStock?.availableQty ?? num(line.dostepne);
     const openZdQty =
       pairStock?.openZdQty ??
@@ -425,11 +418,11 @@ async function computeSupplierOrder(input: {
       grtNazwa: line.grt_Nazwa || null,
       scopeMode: scope.mode,
       scopeId,
-      stockQty: inPieces("tw_Stan"),
-      reservedQty: inPieces("tw_StanRez"),
+      stockQty: num(line.tw_Stan),
+      reservedQty: num(line.tw_StanRez),
       availableQty,
       openZdQty: round(openZdQty, 3),
-      openZkUnreservedQty: inPieces("otwarteZkBezRez"),
+      openZkUnreservedQty: num(line.otwarteZkBezRez),
       salesPeriodQty: num(line.sprzedazOkres),
       salesPeriodDays: dniZapasu,
       velocityDaily: round(Math.max(0, num(line.sprzedazDziennie)), 4),

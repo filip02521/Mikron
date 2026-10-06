@@ -16,6 +16,7 @@ import {
   type DepartmentBoardThreadRow,
 } from "@/lib/data/department-board";
 import { notifyBoardQuestionReplyToSales } from "@/lib/department-board/notify-board-reply";
+import { resolveSupplierInquiries } from "@/lib/department-board/supplier-inquiry-db";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SalesNoteColor } from "@/types/database";
 import {
@@ -512,6 +513,13 @@ export async function actionReplyToQuestion(
     .eq("id", threadId);
 
   if (threadError) throw new Error(threadError.message);
+
+  // Odpowiedź zakupów kończy „Czeka na dostawcę” (zapytanie z tego wątku).
+  if (countsAsProcurementReply) {
+    await resolveSupplierInquiries(threadId).catch((e) =>
+      console.error("[tablica] resolve supplier_inquiry_emails", e)
+    );
+  }
 
   // Tylko odpowiedź zakupów → e-mail do handlowca (doprecyzowanie handlowca bez maila).
   // Await (nie after+void): wcześniej floating Promise w after() bywał ucinany po

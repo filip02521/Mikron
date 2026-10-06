@@ -31,6 +31,8 @@ import type { DepartmentBoardQuestion } from "@/lib/data/department-board-shared
 import { BoardQuestionProductContext } from "@/components/department-board/BoardQuestionProductContext";
 import { BoardThreadMessage } from "@/components/department-board/BoardThreadMessage";
 import { BoardReplyComposer } from "@/components/department-board/BoardReplyComposer";
+import { SupplierInquiryDialog } from "@/components/department-board/SupplierInquiryDialog";
+import { pendingSupplierInquiry } from "@/lib/department-board/supplier-inquiry";
 import { useBoardQuestionImages } from "@/components/department-board/useBoardQuestionImages";
 import {
   boardQuestionHasProduct,
@@ -98,6 +100,7 @@ export function QuestionThreadCard({
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [inlineReply, setInlineReply] = useState(false);
+  const [inquiryOpen, setInquiryOpen] = useState(false);
   const [locallySeen, setLocallySeen] = useState(!unseenReply);
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState(false);
@@ -124,6 +127,7 @@ export function QuestionThreadCard({
   const showUnseen = unseenReply && !locallySeen;
   const hasProduct = boardQuestionHasProduct(question);
   const stale = isStaleAnsweredQuestion(question);
+  const pendingInquiry = isClosed ? null : pendingSupplierInquiry(question.supplierInquiries);
   const threadPhotoCount =
     (question.attachments?.length ?? 0) +
     question.posts.reduce((sum, post) => sum + (post.attachments?.length ?? 0), 0);
@@ -285,7 +289,17 @@ export function QuestionThreadCard({
   }
 
   // Status w wierszu tylko gdy wymaga uwagi; resztę mówi filtr i pasek po lewej.
-  const statusLabel = isClosed ? null : isOpen ? "Bez odpowiedzi" : showUnseen ? "Nowa odpowiedź" : null;
+  const statusLabel = isClosed
+    ? null
+    : isOpen
+      ? pendingInquiry
+        ? "Czeka na dostawcę"
+        : "Bez odpowiedzi"
+      : showUnseen
+        ? "Nowa odpowiedź"
+        : pendingInquiry
+          ? "Czeka na dostawcę"
+          : null;
 
   const replyLabel = audience === "sales"
     ? "Twoja wiadomość"
@@ -467,7 +481,7 @@ export function QuestionThreadCard({
         />
 
         {question.posts.length === 0 ? (
-          audience === "sales" ? (
+          audience === "sales" && !pendingInquiry ? (
             <p className={boardAwaitingReplyClass}>Dział zakupów jeszcze nie odpowiedział.</p>
           ) : null
         ) : (
@@ -499,8 +513,38 @@ export function QuestionThreadCard({
           </div>
         )}
 
+        {pendingInquiry ? (
+          <p className={boardAwaitingReplyClass}>
+            {audience === "sales" ? "Zakupy zapytały dostawcę" : "Zapytanie wysłane do dostawcy"}{" "}
+            <span className="font-medium text-slate-700">{pendingInquiry.supplierName}</span> ·{" "}
+            {formatBoardDate(pendingInquiry.sentAt)}.{" "}
+            {audience === "sales" ? "Odpowiedź pojawi się w tym wątku." : "Odpowiedź przyjdzie na Twojego Gmaila — wpisz ją tutaj."}
+          </p>
+        ) : null}
+
         {canReply && !isClosed ? (
           <div className={boardReplyFormShellClass}>{replyComposer(`reply-${question.id}`)}</div>
+        ) : null}
+
+        {canReply && !isClosed && audience === "procurement" ? (
+          <div className="pt-1">
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={busy}
+              onClick={() => setInquiryOpen(true)}
+            >
+              Zapytaj dostawcę
+            </Button>
+          </div>
+        ) : null}
+
+        {inquiryOpen ? (
+          <SupplierInquiryDialog
+            threadId={question.id}
+            onClose={() => setInquiryOpen(false)}
+            onSent={() => onChanged?.()}
+          />
         ) : null}
 
         {error && !showInlineReplyForm && !(canReply && !isClosed) ? (
