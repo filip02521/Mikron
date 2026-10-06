@@ -14,12 +14,10 @@ const MAX_IMPORT_CHARS = 2_000_000;
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
-async function requireOcEditor() {
-  const user = await requireOperations("mutate");
+function assertOcEditor(user: { role: string }) {
   if (user.role !== "admin" && user.role !== "zakupy") {
     throw new Error("Kontrola OC jest dostępna dla działu zakupów.");
   }
-  return user;
 }
 
 function errorText(e: unknown, fallback: string): string {
@@ -28,7 +26,7 @@ function errorText(e: unknown, fallback: string): string {
 
 export async function actionImportOcChecks(json: string): Promise<Result<{ created: number; updated: number }>> {
   try {
-    await requireOcEditor();
+    assertOcEditor(await requireOperations("mutate"));
     if (!hasDatabaseConfig()) return { ok: false, error: "Brak konfiguracji bazy danych." };
     if (json.length > MAX_IMPORT_CHARS) return { ok: false, error: "Plik jest za duży." };
     const parsed = parseOcImport(json);
@@ -47,7 +45,8 @@ export async function actionSetOcCheckResolved(input: {
   note?: string;
 }): Promise<Result> {
   try {
-    const user = await requireOcEditor();
+    const user = await requireOperations("mutate");
+    assertOcEditor(user);
     const id = input.id.trim();
     if (!UUID_RE.test(id)) return { ok: false, error: "Nieprawidłowy identyfikator sprawy." };
     await setOcCheckResolved(createAdminClient(), {
