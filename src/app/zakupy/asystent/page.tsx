@@ -47,7 +47,7 @@ export default async function AsystentPage({
     try {
       checks = await loadOcChecks(createAdminClient());
     } catch {
-      loadError = "Nie udało się wczytać spraw kontroli OC. Sprawdź, czy migracja 172_oc_checks została uruchomiona.";
+      loadError = "Nie udało się wczytać spraw kontroli OC. Sprawdź, czy migracja 175_oc_checks została uruchomiona.";
     }
   }
   const groups = groupOcChecks(checks);

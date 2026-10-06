@@ -1,4 +1,4 @@
--- 172_oc_checks.sql
+-- 175_oc_checks.sql
 -- Kontrola potwierdzeń zamówień (OC) od dostawców względem ZD (plan: docs/plans/asystent-kontrola-oc.md).
 --
 -- oc_checks        — jedna sprawa: OC / pro-forma / PI dopasowane do ZD, status i decyzja działu.
