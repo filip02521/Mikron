@@ -250,6 +250,7 @@ describe("navForRole struktura zakupów", () => {
         "/zakupy/szacunek",
         "/zakupy/braki",
         "/zakupy/cenniki",
+        "/zakupy/asystent",
         "/zamowienia/nowe",
         "/historia",
       ]);
