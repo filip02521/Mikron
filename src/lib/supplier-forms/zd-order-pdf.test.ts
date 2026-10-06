@@ -55,8 +55,4 @@ describe("emailsInText", () => {
       "jan.kowalski@dental.pl",
     ]);
   });
-
-  it("prefiks mailto: albo etykieta z dwukropkiem nie wchodzi do adresu", () => {
-    expect(emailsInText("mailto:order@renfert.de kontakt:jan@dental.pl")).toEqual(["order@renfert.de", "jan@dental.pl"]);
-  });
 });

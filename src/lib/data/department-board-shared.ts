@@ -1,6 +1,7 @@
 /** Typy i hrefy tablicy działu — bezpieczne dla klienta (bez Supabase). */
 
 import { salesMojeAnnouncementHref } from "@/lib/department-board/moje-announcements-ui";
+import type { BoardSupplierInquiry } from "@/lib/department-board/supplier-inquiry";
 import type {
   DepartmentBoardPost,
   DepartmentBoardThread,
@@ -30,6 +31,8 @@ export type DepartmentBoardQuestion = DepartmentBoardThreadRow & {
   posts: DepartmentBoardPostRow[];
   /** Zdjęcia samego pytania (bez zdjęć z odpowiedzi — te są w `posts[].attachments`). */
   attachments: DepartmentBoardThreadAttachment[];
+  /** Maile „Zapytaj dostawcę” z tego wątku, najnowsze pierwsze (migracja 174). */
+  supplierInquiries?: BoardSupplierInquiry[];
 };
 
 export type DepartmentBoardData = {

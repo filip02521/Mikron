@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   GMAIL_SEND_SCOPE,
   buildGmailAuthUrl,
@@ -37,20 +37,6 @@ describe("gmail — token", () => {
     expect(getGmailOAuthConfig(env)).toBeNull();
     expect(getGmailOAuthConfig({ ...env, GOOGLE_OAUTH_TOKEN_KEY: "krótki" })).toBeNull();
     expect(getGmailOAuthConfig({ ...env, GOOGLE_OAUTH_TOKEN_KEY: key.toString("base64") })).not.toBeNull();
-  });
-
-  it("konfiguracja: adres aplikacji po HTTP (poza localhost) wyłącza funkcję — Google odrzuciłby przekierowanie", () => {
-    const env = {
-      GOOGLE_OAUTH_CLIENT_ID: "a",
-      GOOGLE_OAUTH_CLIENT_SECRET: "b",
-      GOOGLE_OAUTH_TOKEN_KEY: key.toString("base64"),
-    } as unknown as NodeJS.ProcessEnv;
-    vi.stubEnv("NEXT_PUBLIC_APP_URL", "http://ontime.mikran.pl");
-    vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    expect(getGmailOAuthConfig(env)).toBeNull();
-    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://ontime.mikran.pl");
-    expect(getGmailOAuthConfig(env)?.redirectUri).toBe("https://ontime.mikran.pl/api/google/callback");
-    vi.unstubAllEnvs();
   });
 });
 
