@@ -1177,6 +1177,10 @@ export const ZD_ESTIMATE_UI = {
   postCreateMailComposeHint:
     "Otworzy Twój program pocztowy (Outlook / Mail). Nadawca = Twoja skrzynka w tym programie - nie wysyłamy z serwera OnTime.",
   postCreateMailComposeOpen: "Otwórz w programie pocztowym",
+  postCreateGmailCta: "Wyślij z Gmaila…",
+  postCreateGmailSend: "Wyślij",
+  postCreateGmailConnect: "Połącz z Gmailem",
+  postCreateGmailConnectHint: "(nowa karta) — potem wyślesz zamówienie stąd, z załącznikiem, jednym kliknięciem.",
   postCreateMailComposeTo: "Do",
   postCreateMailComposeSubject: "Temat",
   postCreateMailComposeBody: "Treść",

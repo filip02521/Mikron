@@ -1,0 +1,557 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-05T17:14:51.116Z",
+  "title": "Design System: OnTime",
+  "extensions": {
+    "colorMeta": {
+      "petrol": {
+        "role": "primary",
+        "displayName": "Petrol",
+        "tonalRamp": [
+          "#113e45",
+          "#0f4b53",
+          "#0d5d67",
+          "#0f7380",
+          "#3ba4af",
+          "#74c2ca",
+          "#d4edef",
+          "#edf7f8"
+        ]
+      },
+      "petrol-deep": {
+        "role": "primary",
+        "displayName": "Petrol Deep",
+        "tonalRamp": [
+          "#113e45",
+          "#0f4b53",
+          "#0d5d67",
+          "#0f7380",
+          "#3ba4af",
+          "#74c2ca",
+          "#d4edef",
+          "#edf7f8"
+        ]
+      },
+      "petrol-pressed": {
+        "role": "primary",
+        "displayName": "Petrol Pressed",
+        "tonalRamp": [
+          "#113e45",
+          "#0f4b53",
+          "#0d5d67",
+          "#0f7380",
+          "#3ba4af",
+          "#74c2ca",
+          "#d4edef",
+          "#edf7f8"
+        ]
+      },
+      "petrol-tint": {
+        "role": "primary",
+        "displayName": "Petrol Tint",
+        "tonalRamp": [
+          "#113e45",
+          "#0f4b53",
+          "#0d5d67",
+          "#0f7380",
+          "#3ba4af",
+          "#74c2ca",
+          "#d4edef",
+          "#edf7f8"
+        ]
+      },
+      "petrol-mist": {
+        "role": "primary",
+        "displayName": "Petrol Mist",
+        "tonalRamp": [
+          "#113e45",
+          "#0f4b53",
+          "#0d5d67",
+          "#0f7380",
+          "#3ba4af",
+          "#74c2ca",
+          "#d4edef",
+          "#edf7f8"
+        ]
+      },
+      "graphite": {
+        "role": "neutral",
+        "displayName": "Grafit",
+        "tonalRamp": [
+          "#151920",
+          "#232830",
+          "#363c46",
+          "#4a515c",
+          "#8b939f",
+          "#c9ced6",
+          "#eef0f3",
+          "#f6f7f9"
+        ]
+      },
+      "graphite-soft": {
+        "role": "neutral",
+        "displayName": "Grafit Miękki",
+        "tonalRamp": [
+          "#151920",
+          "#232830",
+          "#363c46",
+          "#4a515c",
+          "#8b939f",
+          "#c9ced6",
+          "#eef0f3",
+          "#f6f7f9"
+        ]
+      },
+      "ink-secondary": {
+        "role": "neutral",
+        "displayName": "Atrament Drugi",
+        "tonalRamp": [
+          "#151920",
+          "#232830",
+          "#363c46",
+          "#4a515c",
+          "#8b939f",
+          "#c9ced6",
+          "#eef0f3",
+          "#f6f7f9"
+        ]
+      },
+      "ink-muted": {
+        "role": "neutral",
+        "displayName": "Atrament Przygaszony",
+        "tonalRamp": [
+          "#151920",
+          "#232830",
+          "#363c46",
+          "#4a515c",
+          "#8b939f",
+          "#c9ced6",
+          "#eef0f3",
+          "#f6f7f9"
+        ]
+      },
+      "ink-faint": {
+        "role": "neutral",
+        "displayName": "Atrament Blady",
+        "tonalRamp": [
+          "#151920",
+          "#232830",
+          "#363c46",
+          "#4a515c",
+          "#8b939f",
+          "#c9ced6",
+          "#eef0f3",
+          "#f6f7f9"
+        ]
+      },
+      "line-strong": {
+        "role": "neutral",
+        "displayName": "Linia Mocna",
+        "tonalRamp": [
+          "#151920",
+          "#232830",
+          "#363c46",
+          "#4a515c",
+          "#8b939f",
+          "#c9ced6",
+          "#eef0f3",
+          "#f6f7f9"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Linia",
+        "tonalRamp": [
+          "#151920",
+          "#232830",
+          "#363c46",
+          "#4a515c",
+          "#8b939f",
+          "#c9ced6",
+          "#eef0f3",
+          "#f6f7f9"
+        ]
+      },
+      "line-soft": {
+        "role": "neutral",
+        "displayName": "Linia Miękka",
+        "tonalRamp": [
+          "#151920",
+          "#232830",
+          "#363c46",
+          "#4a515c",
+          "#8b939f",
+          "#c9ced6",
+          "#eef0f3",
+          "#f6f7f9"
+        ]
+      },
+      "well": {
+        "role": "neutral",
+        "displayName": "Studnia",
+        "tonalRamp": [
+          "#151920",
+          "#232830",
+          "#363c46",
+          "#4a515c",
+          "#8b939f",
+          "#c9ced6",
+          "#eef0f3",
+          "#f6f7f9"
+        ]
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Płótno",
+        "tonalRamp": [
+          "#151920",
+          "#232830",
+          "#363c46",
+          "#4a515c",
+          "#8b939f",
+          "#c9ced6",
+          "#eef0f3",
+          "#f6f7f9"
+        ]
+      },
+      "card": {
+        "role": "neutral",
+        "displayName": "Karta",
+        "tonalRamp": [
+          "#151920",
+          "#232830",
+          "#363c46",
+          "#4a515c",
+          "#8b939f",
+          "#c9ced6",
+          "#eef0f3",
+          "#f6f7f9"
+        ]
+      },
+      "success-surface": {
+        "role": "status",
+        "displayName": "Gotowe — tło",
+        "tonalRamp": [
+          "#022c22",
+          "#064e3b",
+          "#065f46",
+          "#047857",
+          "#059669",
+          "#34d399",
+          "#a7f3d0",
+          "#ecfdf5"
+        ],
+        "canonical": "Tailwind emerald-50 (oklch)"
+      },
+      "success-ink": {
+        "role": "status",
+        "displayName": "Gotowe — tekst",
+        "tonalRamp": [
+          "#022c22",
+          "#064e3b",
+          "#065f46",
+          "#047857",
+          "#059669",
+          "#34d399",
+          "#a7f3d0",
+          "#ecfdf5"
+        ],
+        "canonical": "Tailwind emerald-800 (oklch)"
+      },
+      "attention": {
+        "role": "status",
+        "displayName": "Uwaga — sygnał",
+        "tonalRamp": [
+          "#451a03",
+          "#78350f",
+          "#92400e",
+          "#b45309",
+          "#d97706",
+          "#f59e0b",
+          "#fde68a",
+          "#fffbeb"
+        ],
+        "canonical": "#f59e0b (literal in globals.css)"
+      },
+      "attention-surface": {
+        "role": "status",
+        "displayName": "Uwaga — tło",
+        "tonalRamp": [
+          "#451a03",
+          "#78350f",
+          "#92400e",
+          "#b45309",
+          "#d97706",
+          "#f59e0b",
+          "#fde68a",
+          "#fffbeb"
+        ],
+        "canonical": "Tailwind amber-50 (oklch)"
+      },
+      "attention-ink": {
+        "role": "status",
+        "displayName": "Uwaga — tekst",
+        "tonalRamp": [
+          "#451a03",
+          "#78350f",
+          "#92400e",
+          "#b45309",
+          "#d97706",
+          "#f59e0b",
+          "#fde68a",
+          "#fffbeb"
+        ],
+        "canonical": "Tailwind amber-900 (oklch)"
+      },
+      "danger": {
+        "role": "status",
+        "displayName": "Błąd — przycisk",
+        "tonalRamp": [
+          "#450a0a",
+          "#7f1d1d",
+          "#991b1b",
+          "#b91c1c",
+          "#dc2626",
+          "#f87171",
+          "#fecaca",
+          "#fef2f2"
+        ],
+        "canonical": "Tailwind red-600 (oklch)"
+      },
+      "danger-surface": {
+        "role": "status",
+        "displayName": "Błąd — tło",
+        "tonalRamp": [
+          "#450a0a",
+          "#7f1d1d",
+          "#991b1b",
+          "#b91c1c",
+          "#dc2626",
+          "#f87171",
+          "#fecaca",
+          "#fef2f2"
+        ],
+        "canonical": "Tailwind red-50 (oklch)"
+      },
+      "danger-ink": {
+        "role": "status",
+        "displayName": "Błąd — tekst",
+        "tonalRamp": [
+          "#450a0a",
+          "#7f1d1d",
+          "#991b1b",
+          "#b91c1c",
+          "#dc2626",
+          "#f87171",
+          "#fecaca",
+          "#fef2f2"
+        ],
+        "canonical": "Tailwind red-700 (oklch)"
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Tytuł strony; 1.5rem na telefonie, 1.75rem od sm."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Tytuł karty / sekcji; 1.25rem od lg, wariant zwarty 1rem."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Tekst aplikacji; baza skaluje się z ustawieniem rozmiaru czcionki."
+      },
+      "body-dense": {
+        "displayName": "Body Dense",
+        "purpose": "Komórki tabel, podpowiedzi pod polami."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Etykiety pól formularza."
+      },
+      "overline": {
+        "displayName": "Overline",
+        "purpose": "Nagłówki kolumn tabel, wersaliki."
+      },
+      "code": {
+        "displayName": "Code",
+        "purpose": "Numery katalogowe i symbole."
+      }
+    },
+    "shadows": [
+      {
+        "name": "card",
+        "value": "0 1px 2px rgba(21,25,32,.05), 0 6px 20px -8px rgba(21,25,32,.12)",
+        "purpose": "Karty treści i modale (--shadow-card-elevated)."
+      },
+      {
+        "name": "rest",
+        "value": "0 1px 2px rgba(21,25,32,.06)",
+        "purpose": "Drobne kontrolki, aktywny segment (--shadow-card)."
+      },
+      {
+        "name": "lift",
+        "value": "0 4px 14px -4px rgba(21,25,32,.1)",
+        "purpose": "Elementy pływające (--shadow-elevated)."
+      },
+      {
+        "name": "brand",
+        "value": "0 4px 14px -6px rgba(15,115,128,.25)",
+        "purpose": "Tylko kafel ikony marki (--shadow-brand)."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state",
+        "value": "150ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Domyślne przejścia kolorów i tła (transition-colors)."
+      },
+      {
+        "name": "progress",
+        "value": "300ms ease-out",
+        "purpose": "Paski postępu (szerokość)."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "prefers-reduced-motion: reduce → bez animacji",
+        "purpose": "Animacje wyłączane w globals.css."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      },
+      {
+        "name": "2xl",
+        "value": "1536px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Jedna główna akcja ekranu: czasownik i liczba.",
+      "html": "<button class=\"ds-btn-primary\">Zapisz 421 cen</button>",
+      "css": ".ds-btn-primary{font-family:Geist, ui-sans-serif, system-ui, sans-serif;background:var(--primary,#0f7380);color:#fff;border:0;border-radius:.375rem;padding:.5rem 1rem;font-size:.875rem;font-weight:500;box-shadow:0 1px 2px rgba(21,25,32,.06);cursor:pointer;transition:background-color .15s}.ds-btn-primary:hover{background:#0d5d67}.ds-btn-primary:active{background:#0f4b53}.ds-btn-primary:focus-visible{outline:2px solid #0f7380;outline-offset:2px}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Akcja pomocnicza obok głównej.",
+      "html": "<button class=\"ds-btn-secondary\">Przejrzyj</button>",
+      "css": ".ds-btn-secondary{font-family:Geist, ui-sans-serif, system-ui, sans-serif;background:#fff;color:#363c46;border:1px solid #e1e4e9;border-radius:.375rem;padding:.5rem 1rem;font-size:.875rem;font-weight:500;box-shadow:0 1px 2px rgba(21,25,32,.06);cursor:pointer;transition:background-color .15s,border-color .15s}.ds-btn-secondary:hover{background:#f6f7f9;border-color:#c9ced6;color:#151920}.ds-btn-secondary:focus-visible{outline:2px solid #0f7380;outline-offset:2px}"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Akcja nieodwracalna lub zapis na produkcji (LIVE).",
+      "html": "<button class=\"ds-btn-danger\">Zapisz ceny na LIVE</button>",
+      "css": ".ds-btn-danger{font-family:Geist, ui-sans-serif, system-ui, sans-serif;background:#dc2626;color:#fff;border:0;border-radius:.375rem;padding:.5rem 1rem;font-size:.875rem;font-weight:500;cursor:pointer;transition:background-color .15s}.ds-btn-danger:hover{background:#b91c1c}.ds-btn-danger:focus-visible{outline:2px solid #0f7380;outline-offset:2px}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Pole formularza z etykietą i podpowiedzią.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Cecha dostawcy</span><input class=\"ds-input\" placeholder=\"Szukaj cechy…\"><span class=\"ds-field-hint\">Wpisz min. 2 litery.</span></label>",
+      "css": ".ds-field{display:block;font-family:Geist, ui-sans-serif, system-ui, sans-serif}.ds-field-label{display:block;margin-bottom:.375rem;font-size:.75rem;font-weight:600;letter-spacing:.025em;color:#4a515c}.ds-input{width:100%;min-height:2.5rem;border:1px solid #e1e4e9;border-radius:.375rem;background:#fff;padding:.625rem .875rem;font-size:.875rem;color:#151920;box-shadow:0 1px 2px rgba(21,25,32,.06);transition:border-color .15s,box-shadow .15s}.ds-input::placeholder{color:#8b939f}.ds-input:hover{border-color:#c9ced6}.ds-input:focus{outline:none;border-color:#188995;box-shadow:0 0 0 3px rgba(15,115,128,.15)}.ds-field-hint{display:block;margin-top:.375rem;font-size:.75rem;color:#626a76}"
+    },
+    {
+      "name": "Status Badges",
+      "kind": "chip",
+      "refersTo": "badge-warning",
+      "description": "Odznaki stanu — kolor znaczy tylko stan.",
+      "html": "<span class=\"ds-badge\">Bez zmian</span> <span class=\"ds-badge ds-badge--ok\">Zapisano</span> <span class=\"ds-badge ds-badge--warn\">Karton ÷20</span> <span class=\"ds-badge ds-badge--err\">Błąd zapisu</span>",
+      "css": ".ds-badge{display:inline-flex;align-items:center;border-radius:.375rem;padding:.125rem .375rem;font-family:Geist, ui-sans-serif, system-ui, sans-serif;font-size:.75rem;font-weight:500;background:#eef0f3;color:#363c46}.ds-badge--ok{background:#ecfdf5;color:#065f46}.ds-badge--warn{background:#fffbeb;color:#78350f}.ds-badge--err{background:#fef2f2;color:#991b1b}"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "nav",
+      "refersTo": "segmented-active",
+      "description": "Przełącznik widoków z licznikami; przewija się zamiast ucinać.",
+      "html": "<div class=\"ds-seg\" role=\"group\" aria-label=\"Widok\"><button class=\"ds-seg-btn\" aria-pressed=\"true\">Do zapisu <span>421</span></button><button class=\"ds-seg-btn\" aria-pressed=\"false\">Do przejrzenia <span>8</span></button><button class=\"ds-seg-btn\" aria-pressed=\"false\">Problemy <span>4</span></button></div>",
+      "css": ".ds-seg{display:inline-flex;gap:2px;border:1px solid #e1e4e9;border-radius:.375rem;background:#f6f7f9;padding:2px;font-family:Geist, ui-sans-serif, system-ui, sans-serif}.ds-seg-btn{border:0;background:transparent;border-radius:5px;padding:.375rem .75rem;font-size:.875rem;font-weight:500;color:#4a515c;white-space:nowrap;cursor:pointer;transition:background-color .15s,color .15s}.ds-seg-btn span{color:#626a76;font-variant-numeric:tabular-nums}.ds-seg-btn:hover{background:rgba(255,255,255,.7);color:#151920}.ds-seg-btn[aria-pressed=true]{background:#fff;color:#151920;box-shadow:0 1px 2px rgba(21,25,32,.06)}.ds-seg-btn:focus-visible{outline:2px solid #0f7380;outline-offset:2px}"
+    },
+    {
+      "name": "Data Table",
+      "kind": "custom",
+      "refersTo": "table-header",
+      "description": "Sygnaturowa tabela: wersalikowe nagłówki, zmiana ceny stara → nowa, hover z paskiem Petrol.",
+      "html": "<table class=\"ds-table\"><thead><tr><th>Numer</th><th>Towar</th><th>Kartotekowa netto</th></tr></thead><tbody><tr><td class=\"ds-code\">531664</td><td>Ips classic v neutral 20g</td><td class=\"ds-num\"><s>42,37</s> <b>43,07</b> <small>+1,7%</small></td></tr><tr><td class=\"ds-code\">531745</td><td>ProBase Hot Polymer 500g Pink V</td><td class=\"ds-num\"><s>110,24</s> <b>112,64</b> <small>+2,2%</small></td></tr></tbody></table>",
+      "css": ".ds-table{width:100%;border-collapse:collapse;font-family:Geist, ui-sans-serif, system-ui, sans-serif;font-size:.875rem;line-height:1.45;background:#fff}.ds-table th{padding:.875rem 1.25rem;background:#f6f7f9;border-bottom:1px solid #e1e4e9;text-align:left;font-size:.75rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#626a76;white-space:nowrap}.ds-table td{padding:1rem 1.25rem;border-bottom:1px solid #eef0f3;color:#4a515c}.ds-table tbody tr:hover td{background:#f6f7f9}.ds-table tbody tr:hover td:first-child{box-shadow:inset 3px 0 0 0 #0f7380}.ds-code{font-family:\"Geist Mono\",ui-monospace,monospace;font-size:.75rem}.ds-num{font-variant-numeric:tabular-nums;white-space:nowrap}.ds-num s{color:#626a76;text-decoration-color:#c9ced6}.ds-num b{color:#151920;font-weight:600}.ds-num small{color:#626a76;font-size:.75rem}"
+    },
+    {
+      "name": "Status Panel Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Karta „co teraz” na górze ekranu pracy.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-text\"><p class=\"ds-card-title\">421 cen do zapisu</p><p class=\"ds-card-desc\">Dodatkowo 8 pozycji czeka na Twoją decyzję — nie zapiszę ich bez zaznaczenia.</p></div><button class=\"ds-card-cta\">Zapisz 421 cen</button></div>",
+      "css": ".ds-card{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;border:1px solid #e1e4e9;border-radius:.625rem;background:#fff;padding:1rem 1.5rem;box-shadow:0 1px 2px rgba(21,25,32,.05),0 6px 20px -8px rgba(21,25,32,.12);font-family:Geist, ui-sans-serif, system-ui, sans-serif}.ds-card-text{flex:1;min-width:12rem}.ds-card-title{margin:0;font-size:1rem;font-weight:600;color:#151920}.ds-card-desc{margin:.125rem 0 0;font-size:.875rem;color:#4a515c}.ds-card-cta{background:#0f7380;color:#fff;border:0;border-radius:.375rem;padding:.5rem 1rem;font-size:.875rem;font-weight:500;cursor:pointer;transition:background-color .15s}.ds-card-cta:hover{background:#0d5d67}.ds-card-cta:focus-visible{outline:2px solid #0f7380;outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Pulpit dyspozytora",
+    "overview": "OnTime to stanowisko dyspozytora: spokojna, gęsta powierzchnia, na której wszystko jest pod ręką, a kolor pojawia się tylko tam, gdzie coś wymaga reakcji. Tło to chłodny grafit i jasne szarości. Na nim leżą białe karty z delikatnym cieniem, a jedyny akcent marki, Petrol, oznacza „tu działasz”: główną akcję, aktywną pozycję menu, zaznaczenie. Statusy mają osobny, stały słownik: zielony gotowe, bursztyn uwaga, czerwony błąd. Nie mieszają się z marką.\n\nGęstość jest zaletą. Tabele z setkami pozycji, liczby w kolumnach z cyframi o stałej szerokości i krótkie etykiety to normalna praca działu zakupów, magazynu i handlowców. Akcje są pewne i wyraźne: główny przycisk to pełny Petrol z jednoznacznym czasownikiem i liczbą („Zapisz 421 cen”). Nigdy nie konkuruje z drugim przyciskiem tej samej wagi.\n\nInterfejs nie ma motywu ciemnego w aplikacji. Ciemny gradient marki należy wyłącznie do ekranów logowania.",
+    "keyCharacteristics": [
+      "Grafit i szarości, jeden akcent Petrol, statusy tylko zielony / bursztyn / czerwony.",
+      "Białe karty na szarym płótnie, cienie miękkie i krótkie.",
+      "Gęste tabele, cyfry tabelaryczne, nagłówki kolumn wersalikami.",
+      "Główna akcja pełna i jednoznaczna, z liczbą w etykiecie.",
+      "Geist w całym interfejsie, Geist Mono dla kodów i numerów katalogowych."
+    ],
+    "rules": [
+      {
+        "name": "The One Accent Rule",
+        "body": "Petrol jest jedynym kolorem marki. Pozostałe rodziny barw Tailwinda (indigo, violet, blue, cyan, sky) są w `globals.css` przemapowane na Petrol lub grafit, dlatego nowa klasa `indigo-600` to nadal Petrol. Nie dodawaj drugiego akcentu.",
+        "section": "colors"
+      },
+      {
+        "name": "The Status Is Not Brand Rule",
+        "body": "Zielony, bursztyn i czerwony znaczą wyłącznie stan (gotowe, uwaga, błąd). Nigdy nie służą jako dekoracja ani akcent sekcji.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Numbers Rule",
+        "body": "Każda kolumna z kwotami, ilościami lub procentami używa cyfr o stałej szerokości (`tabular-nums`), żeby liczby dało się porównywać w pionie.",
+        "section": "typography"
+      },
+      {
+        "name": "The Quiet Lift Rule",
+        "body": "Cień zawsze ma przesunięcie i miękkie rozmycie, a jego krycie nie przekracza 0.12. Nie używaj kolorowych poświat ani twardych cieni bez rozmycia.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** używaj Petrol (#0f7380) tylko do akcji, zaznaczenia i fokusu, a nowe ekrany buduj na tokenach z `globals.css` i klasach z `ontime-theme.ts`.",
+      "**Do** dawaj jedną pełną główną akcję na ekran, z czasownikiem i liczbą w etykiecie.",
+      "**Do** stosuj `tabular-nums` w każdej kolumnie liczb i Geist Mono dla numerów katalogowych.",
+      "**Do** pokazuj stan pracy zdaniem („433 pozycje czekają na Twoją decyzję”) z poprawną polską odmianą liczebników.",
+      "**Do** przewijaj szerokie tabele i przełączniki w poziomie wewnątrz karty. Strona ma zawsze szerokość ekranu."
+    ],
+    "donts": [
+      "**Don't** dodawaj drugiego koloru akcentu ani nie używaj zieleni, bursztynu i czerwieni jako dekoracji.",
+      "**Don't** przenoś ciemnego gradientu logowania do aplikacji.",
+      "**Don't** dawaj cieni z kryciem powyżej 0.12, kolorowych poświat ani twardych cieni bez rozmycia.",
+      "**Don't** buduj ekranu pracy z rzędu kafelków z liczbami, jeśli te same liczby są już w zakładkach lub tabeli.",
+      "**Don't** ucinaj etykiet przełączników ani przycisków wielokropkiem."
+    ]
+  }
+}

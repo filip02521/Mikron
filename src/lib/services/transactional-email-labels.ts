@@ -9,4 +9,5 @@ export const TRANSACTIONAL_EMAIL_KIND_LABELS: Record<TransactionalEmailKind, str
   password_reset_otp: "Reset hasła (OTP)",
   generic: "Inny",
   attachments: "Z załącznikami",
+  supplier_order: "Zamówienie do dostawcy (Gmail)",
 };
