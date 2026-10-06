@@ -1,6 +1,6 @@
 # Plan: kontrola potwierdzeń zamówień (OC) w OnTime
 
-**Status:** propozycja.
+**Status:** C1 zrobione (tabele, lista spraw, import JSON). Kolejne etapy: propozycja.
 
 Dziś (etap D) jest strona `/zakupy/asystent` z linkami do raportów rutyn Claude w chmurze. Ten plan opisuje etap C: przeniesienie kontroli do OnTime.
 
@@ -80,6 +80,7 @@ UI /zakupy/asystent → lista spraw; przy ZD (historia, kreator) → znaczek „
    - Migracja tabel `oc_checks`, `oc_check_lines`, `gmail_sync_state`.
    - Ekran `/zakupy/asystent` z listą spraw: filtry „do ruchu”, „zgodne”, „wyjaśnione” oraz akcja „Wyjaśnione”.
    - Seed z danych rutyny w chmurze, żeby od razu było widać wartość.
+   - Format importu: `src/lib/oc-check/import.ts` (`{ checks: [...] }`, upsert po `source_key`; ponowny import nie zmienia decyzji „Wyjaśnione”).
 2. **C2, porównanie.** Moduł `src/lib/oc-check/compare.ts`, czysta funkcja `porównaj(zdLines, ocLines, packaging)` z testami na przypadkach z 05.10:
    - Polirapid: opakowanie zamiast sztuki,
    - Motyl: braki,
