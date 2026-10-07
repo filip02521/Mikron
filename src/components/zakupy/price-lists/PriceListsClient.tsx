@@ -2,18 +2,16 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
-import {
-  actionPreparePriceList,
-  actionSearchPriceCechy,
-  type PriceCechaOption,
-} from "@/app/actions/price-lists";
+import { useState, useTransition } from "react";
+import { actionPreparePriceList, actionSetPricesHost } from "@/app/actions/price-lists";
+import { PRICE_LIST_PROFILES } from "@/lib/price-lists/price-list";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
-import { Field, Input, Select } from "@/components/ui/Field";
+import { Field, Select } from "@/components/ui/Field";
 import { polishPlural } from "@/lib/email/polish-plural";
 import type { PriceListImport } from "@/lib/price-lists/data";
 
@@ -31,54 +29,57 @@ export function PriceListsClient({
   imports,
   host,
   hostError,
+  canSwitchHost,
 }: {
   imports: PriceListImport[];
   host: { label: string; isLive: boolean } | null;
   hostError: string | null;
+  canSwitchHost: boolean;
 }) {
   const router = useRouter();
-  // Cenniki tego samego dostawcy wracają — podstawiamy ostatnio użytą cechę.
-  const last = imports[0];
-  const [search, setSearch] = useState(last?.cechaName ?? "");
-  const [cechy, setCechy] = useState<PriceCechaOption[]>(last ? [{ id: last.cechaId, name: last.cechaName }] : []);
-  const [cechaId, setCechaId] = useState(last ? String(last.cechaId) : "");
+  const [profileId, setProfileId] = useState(PRICE_LIST_PROFILES[0]!.id);
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [confirmSwitch, setConfirmSwitch] = useState(false);
 
-  useEffect(() => {
-    if (!host || search.trim().length < 2 || search === last?.cechaName) return;
-    const t = setTimeout(async () => {
-      const res = await actionSearchPriceCechy(search).catch(() => null);
+  function switchHost() {
+    if (!host) return;
+    setError(null);
+    startTransition(async () => {
+      const res = await actionSetPricesHost(host.isLive ? "orders_test" : "live").catch(() => null);
+      setConfirmSwitch(false);
       if (!res || !res.ok) {
-        setError(res?.error ?? "Nie udało się pobrać cech z Subiekta.");
+        setError(res?.error ?? "Brak połączenia z serwerem. Odśwież stronę i spróbuj ponownie.");
         return;
       }
-      setError(null);
-      setCechy(res.cechy);
-      const exact = res.cechy.find((c) => c.name.toLowerCase() === search.trim().toLowerCase());
-      setCechaId(String((exact ?? res.cechy[0])?.id ?? ""));
-    }, 300);
-    return () => clearTimeout(t);
-  }, [search, host, last?.cechaName]);
+      router.refresh();
+    });
+  }
+  // Bieżący wpis = najświeższy (wgrany lub zaktualizowany) dla tej cechy i Subiekta; starsze to archiwum.
+  const currentIds = new Set(
+    [...imports]
+      .sort((x, y) => (y.updatedAt ?? y.createdAt).localeCompare(x.updatedAt ?? x.createdAt))
+      .filter((imp, i, all) => all.findIndex((o) => o.cechaId === imp.cechaId && o.hostKind === imp.hostKind) === i)
+      .map((imp) => imp.id)
+  );
 
-  const cecha = cechy.find((c) => String(c.id) === cechaId);
-  const blocker = !cecha ? "Wybierz cechę dostawcy." : !file ? "Wybierz plik cennika." : null;
+  const profile = PRICE_LIST_PROFILES.find((p) => p.id === profileId)!;
+  const blocker = !file ? "Wybierz plik cennika." : null;
 
   function submit() {
-    if (!cecha || !file) return;
+    if (!file) return;
     setError(null);
     const fd = new FormData();
     fd.set("file", file);
-    fd.set("cechaId", String(cecha.id));
-    fd.set("cechaName", cecha.name);
+    fd.set("profile", profile.id);
     startTransition(async () => {
       const res = await actionPreparePriceList(fd).catch(() => null);
       if (!res || !res.ok) {
         setError(res?.error ?? "Brak połączenia z serwerem (sesja mogła wygasnąć). Odśwież stronę i spróbuj ponownie.");
         return;
       }
-      router.push(`/zakupy/cenniki/${res.id}`);
+      router.push(`/zakupy/cenniki/${res.id}${res.updated ? "?zaktualizowano=1" : ""}`);
     });
   }
 
@@ -89,42 +90,34 @@ export function PriceListsClient({
         <Card>
           <CardHeader
             title="Nowy cennik"
-            description="Wybierz cechę dostawcy i wgraj cennik. Porównam ceny tylko dla towarów z tej cechy — w Subiekcie nic się nie zmieni, dopóki nie zatwierdzisz zapisu."
-            action={<HostBadge isLive={host.isLive} />}
+            description="Wybierz rodzaj cennika i wgraj plik od dostawcy. Porównam ceny tylko dla towarów jego cechy — w Subiekcie nic się nie zmieni, dopóki nie zatwierdzisz zapisu."
+            action={
+              <div className="flex items-center gap-2">
+                <HostBadge isLive={host.isLive} />
+                {canSwitchHost ? (
+                  <Button size="sm" variant="secondary" disabled={pending} onClick={() => setConfirmSwitch(true)}>
+                    {host.isLive ? "Przełącz na test :5082" : "Przełącz na LIVE :5080"}
+                  </Button>
+                ) : null}
+              </div>
+            }
           />
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
-              label="Cecha dostawcy w Subiekcie"
-              hint={cecha ? `Porównam tylko towary z cechą „${cecha.name}”.` : "Wpisz min. 2 litery, np. Ivoclar."}
+              label="Rodzaj cennika"
+              hint={`Porównam tylko towary z cechą „${profile.cechaName}”. Inne cenniki dodamy jako kolejne rodzaje.`}
             >
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Szukaj cechy…"
-                  aria-label="Szukaj cechy"
-                  disabled={pending}
-                  className="flex-1"
-                />
-                <Select
-                  value={cechaId}
-                  onChange={(e) => setCechaId(e.target.value)}
-                  disabled={pending || cechy.length === 0}
-                  aria-label="Wybrana cecha"
-                  className="flex-1"
-                >
-                  {cechy.length === 0 ? <option value="">-</option> : null}
-                  {cechy.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </Select>
-              </div>
+              <Select value={profileId} onChange={(e) => setProfileId(e.target.value)} disabled={pending} aria-label="Rodzaj cennika">
+                {PRICE_LIST_PROFILES.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </Select>
             </Field>
             <Field
               label="Plik cennika – Excel lub CSV"
-              hint="Kolumny rozpoznam po nagłówkach: numer katalogowy, cena zakupu (dealer) netto, cena detaliczna netto, upust % (nasza marża), VAT."
+              hint={`Oryginalny plik ${profile.label} z kolumnami: ${Object.values(profile.headers).join(", ")}. Plik w innym układzie odrzucę.`}
             >
               <input
                 type="file"
@@ -159,8 +152,8 @@ export function PriceListsClient({
               <thead>
                 <tr>
                   <th>Cennik</th>
-                  <th>Wgrano</th>
                   <th>Stan</th>
+                  <th>Wgrano</th>
                 </tr>
               </thead>
               <tbody>
@@ -179,12 +172,21 @@ export function PriceListsClient({
                         <span className="min-w-0 truncate">{imp.fileName}</span>
                       </div>
                     </td>
+                    <td className="text-sm">
+                      {currentIds.has(imp.id) ? (
+                        <ImportState counts={imp.counts} />
+                      ) : (
+                        <span className="text-slate-500">Zastąpiony nowszym</span>
+                      )}
+                    </td>
                     <td className="whitespace-nowrap">
                       {new Date(imp.createdAt).toLocaleString("pl-PL", { dateStyle: "short", timeStyle: "short" })}
                       <div className="text-xs text-slate-500">{imp.createdByName ?? ""}</div>
-                    </td>
-                    <td className="text-sm">
-                      <ImportState counts={imp.counts} />
+                      {imp.updatedAt ? (
+                        <div className="text-xs text-slate-500">
+                          zaktualizowano {new Date(imp.updatedAt).toLocaleString("pl-PL", { dateStyle: "short", timeStyle: "short" })} · {imp.uploadCount}×
+                        </div>
+                      ) : null}
                     </td>
                   </tr>
                 ))}
@@ -193,16 +195,31 @@ export function PriceListsClient({
           </TableScroll>
         )}
       </Card>
+      {host && canSwitchHost ? (
+        <ConfirmDialog
+          open={confirmSwitch}
+          title={host.isLive ? "Przełączyć cenniki na Subiekt testowy?" : "Przełączyć cenniki na LIVE?"}
+          summary={host.isLive ? "Test :5082 — produkcja bez zmian" : "LIVE :5080 — baza produkcyjna, zapis zmieni ceny widoczne dla handlowców"}
+          summaryTone={host.isLive ? "neutral" : "warning"}
+          danger={!host.isLive}
+          message="Dotyczy wszystkich użytkowników Cenników. Podglądy przygotowane na drugim Subiekcie nie dadzą się zapisać — trzeba wgrać cennik ponownie. Ustawienie zastępuje port z SUBIEKT_API_PRICES_BASE_URL."
+          confirmLabel={host.isLive ? "Przełącz na test" : "Przełącz na LIVE"}
+          pending={pending}
+          onCancel={() => setConfirmSwitch(false)}
+          onConfirm={switchHost}
+        />
+      ) : null}
     </div>
   );
 }
 
 /** Słowny stan cennika: co czeka, co zapisano, co wymaga uwagi. */
 function ImportState({ counts }: { counts: PriceListImport["counts"] }) {
-  const problems = counts.failed + counts.mismatch + counts.changed;
+  const problems = counts.failed + counts.mismatch + counts.changed + (counts.restore_failed ?? 0);
   const parts: React.ReactNode[] = [];
   if (counts.selectedPending) parts.push(<span key="p">{polishPlural(counts.selectedPending, "cena", "ceny", "cen")} do zapisu</span>);
-  if (counts.applied) parts.push(<span key="a" className="text-emerald-800">{counts.applied} zapisanych</span>);
+  if (counts.applied) parts.push(<span key="a" className="text-emerald-800">{polishPlural(counts.applied, "cena zmieniona", "ceny zmienione", "cen zmienionych")} w Subiekcie</span>);
+  if (counts.restored) parts.push(<span key="r">{polishPlural(counts.restored, "cena przywrócona", "ceny przywrócone", "cen przywróconych")}</span>);
   if (problems) parts.push(<span key="x" className="font-semibold text-red-700">{polishPlural(problems, "problem", "problemy", "problemów")}</span>);
   if (!parts.length) return <span className="text-slate-500">Nic do zapisania</span>;
   return (
