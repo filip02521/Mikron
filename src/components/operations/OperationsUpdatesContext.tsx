@@ -67,6 +67,7 @@ async function fetchVersion(): Promise<{
   operationsNotatki: number | null;
   /** Poczta dostawców (tylko admin i zakupy). */
   supplierMail?: number | null;
+  customsDhl?: number | null;
 }> {
   try {
     const res = await fetch("/api/operations/daily-panel-version", {
@@ -100,6 +101,7 @@ async function fetchVersion(): Promise<{
       realizacjaCount?: number;
       operationsNotatki?: number;
       supplierMail?: number;
+      customsDhl?: number;
     };
     return {
       version: body.version ?? null,
@@ -113,6 +115,7 @@ async function fetchVersion(): Promise<{
       operationsNotatki:
         typeof body.operationsNotatki === "number" ? body.operationsNotatki : null,
       supplierMail: typeof body.supplierMail === "number" ? body.supplierMail : null,
+      customsDhl: typeof body.customsDhl === "number" ? body.customsDhl : null,
     };
   } catch {
     return {
@@ -190,6 +193,7 @@ export function OperationsUpdatesProvider({
       if (data.realizacjaCount != null) patch.realizacja = data.realizacjaCount;
       if (data.operationsNotatki != null) patch.operationsNotatki = data.operationsNotatki;
       if (data.supplierMail != null) patch.supplierMail = data.supplierMail;
+      if (data.customsDhl != null) patch.customsDhl = data.customsDhl;
       if (Object.keys(patch).length > 0) patchNavBadges(patch);
     },
     [patchNavBadges]

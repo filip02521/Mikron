@@ -6,10 +6,9 @@ import { revalidatePath } from "next/cache";
 import { warsawDateKeyDaysAgo } from "@/lib/time/warsaw";
 import { requireOperations } from "@/lib/auth";
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
-import { getSubiektZd, searchSubiektZd } from "@/lib/subiekt/api";
+import { searchSubiektZd } from "@/lib/subiekt/api";
 import { fetchSupplierSubiektKhAliases } from "@/lib/data/supplier-subiekt-kh";
 import {
-  extractDocKhIds,
   zdListItemMatchesSupplierKhIds,
   type SubiektZdListItem,
 } from "@/lib/subiekt/zd-document-kh";
@@ -18,12 +17,7 @@ import {
   normalizeCnCode,
   type CustomsVatRate,
 } from "@/lib/customs/customs-clearance";
-import {
-  linesFromSubiektZd,
-  parseArticleCodesPaste,
-  parseInvoiceLinesPaste,
-  type CustomsInputLine,
-} from "@/lib/customs/customs-lines";
+import { parseArticleCodesPaste } from "@/lib/customs/customs-lines";
 import { CUSTOMS_AI_MIME, customsFileMime } from "@/lib/customs/customs-ai-input";
 import { createCnLookup, formatCnCode } from "@/lib/customs/cn-nomenclature";
 import { polishPozycjeLabel } from "@/lib/email/polish-plural";
@@ -35,12 +29,13 @@ import { CUSTOMS_EMAIL_MAX_ATTACHMENTS_BYTES, customsEmailSubject } from "@/lib/
 import { parseMailRecipients } from "@/lib/email/recipients";
 import { getGmailConnection, sendGmailAsUser } from "@/lib/google/gmail-connections";
 import { collectCustomsMailAttachments } from "@/lib/customs/customs-mail-attachments";
+import { createCustomsClearance, type CreateCustomsClearanceInput } from "@/lib/customs/customs-create";
+import { loadDhlReplyThread, markDhlReplied } from "@/lib/customs/dhl-data";
 import {
   cleanUuid,
   loadClearanceView,
   markClearanceSent,
   upsertCard,
-  type Db,
 } from "@/lib/customs/customs-data";
 
 const STORAGE_BUCKET = "customs-documents";
@@ -199,135 +194,16 @@ export async function actionListCustomsClearances(): Promise<CustomsClearanceLis
 
 // ─── Tworzenie ─────────────────────────────────────────────────────────────
 
-export type CreateCustomsClearanceInput = {
-  supplierId: string;
-  invoiceNumber: string;
-  invoiceDate: string | null;
-  currency: string;
-  shipmentDescription: string;
-  zdId: number | null;
-  pastedLines: string;
-  /** Z odczytu faktury przez AI (opcjonalnie). */
-  invoiceTotal?: number | null;
-  invoiceHsCode?: string | null;
-  countryOfOrigin?: string | null;
-};
-
-async function lastShipmentDescription(supabase: Db, supplierId: string): Promise<string> {
-  const { data } = await supabase
-    .from("customs_clearances")
-    .select("shipment_description")
-    .eq("supplier_id", supplierId)
-    .neq("shipment_description", "")
-    .order("created_at", { ascending: false })
-    .limit(1);
-  return ((data ?? [])[0] as { shipment_description?: string } | undefined)?.shipment_description ?? "";
-}
+export type { CreateCustomsClearanceInput } from "@/lib/customs/customs-create";
 
 export async function actionCreateCustomsClearance(
   input: CreateCustomsClearanceInput
 ): Promise<Result<{ id: string; warnings: string[] }>> {
   const user = await requireOperations("mutate");
   if (!hasSupabaseConfig()) return fail("Brak konfiguracji bazy.");
-  const supplierId = cleanUuid(input.supplierId);
-  if (!supplierId) return fail("Wybierz dostawcę.");
-  const supabase = createAdminClient();
-
-  const { data: supplier } = await supabase
-    .from("suppliers")
-    .select("id, location, subiekt_kh_id")
-    .eq("id", supplierId)
-    .single();
-  if (!supplier) return fail("Wybierz dostawcę.");
-  if ((supplier as { location: string }).location !== "IMPORT") {
-    return fail("Odprawy robimy tylko dla dostawców typu Import.");
-  }
-
-  const warnings: string[] = [];
-  let lines: CustomsInputLine[] = [];
-  let zdNumber: string | null = null;
-  let zdLines: CustomsInputLine[] = [];
-
-  if (input.zdId) {
-    try {
-      const doc = await getSubiektZd(input.zdId);
-      const khIds = new Set<number>();
-      const primary = Number((supplier as { subiekt_kh_id?: number | null }).subiekt_kh_id);
-      if (Number.isFinite(primary) && primary > 0) khIds.add(primary);
-      for (const alias of await fetchSupplierSubiektKhAliases(supplierId)) khIds.add(alias.subiektKhId);
-      if (khIds.size && !extractDocKhIds(doc).some((id) => khIds.has(id))) {
-        return fail(`${doc.dok_NrPelny ?? "To ZD"} nie należy do wybranego dostawcy.`);
-      }
-      zdNumber = doc.dok_NrPelny ?? `ZD ${doc.dok_Id}`;
-      zdLines = linesFromSubiektZd(doc);
-    } catch (e) {
-      console.error("[customs] ZD z Subiekta:", errorText(e, "brak połączenia"));
-      return fail("Subiekt jest niedostępny - nie wczytano ZD. Odznacz ZD i wgraj plik faktury albo wklej pozycje.");
-    }
-  }
-
-  if (input.pastedLines.trim()) {
-    const parsed = parseInvoiceLinesPaste(input.pastedLines);
-    warnings.push(...parsed.errors);
-    lines = parsed.lines;
-  } else {
-    lines = zdLines;
-  }
-  if (!lines.length) return fail("Brak pozycji - wybierz ZD albo wklej pozycje faktury.");
-
-  // Klucz karty: kod z faktury, a bez kodu — nazwa (UP3D, PioCreat, Saeshin „105L(BL):COLLET CHUCK”).
-  const keyOf = (l: CustomsInputLine) => customsArticleKey(l.supplierArticleCode, l.supplierName);
-  const zdQtyByCode = new Map<string, number>();
-  for (const l of zdLines) {
-    zdQtyByCode.set(keyOf(l), (zdQtyByCode.get(keyOf(l)) ?? 0) + l.quantity);
-  }
-
-  const shipmentDescription =
-    input.shipmentDescription.trim() || (await lastShipmentDescription(supabase, supplierId));
-
-  const { data: created, error } = await supabase
-    .from("customs_clearances")
-    .insert({
-      supplier_id: supplierId,
-      subiekt_zd_id: input.zdId,
-      zd_number: zdNumber,
-      invoice_number: input.invoiceNumber.trim().slice(0, 120),
-      invoice_date: input.invoiceDate || null,
-      currency: (input.currency.trim() || "EUR").toUpperCase().slice(0, 3),
-      shipment_description: shipmentDescription.slice(0, 300),
-      invoice_total: Number.isFinite(input.invoiceTotal) ? input.invoiceTotal : null,
-      invoice_hs_code: input.invoiceHsCode?.trim().slice(0, 40) || null,
-      country_of_origin: input.countryOfOrigin?.trim().slice(0, 80) || null,
-      created_by: user.id,
-    })
-    .select("id")
-    .single();
-  if (error || !created) return fail(error?.message ?? "Nie udało się utworzyć odprawy.");
-  const clearanceId = (created as { id: string }).id;
-
-  const { error: linesError } = await supabase.from("customs_clearance_lines").insert(
-    lines.map((l, i) => ({
-      clearance_id: clearanceId,
-      position: i + 1,
-      supplier_article_code: keyOf(l),
-      supplier_name: l.supplierName.slice(0, 500),
-      quantity: l.quantity,
-      unit_price: l.unitPrice,
-      amount: l.unitPrice != null ? Math.round(l.unitPrice * l.quantity * 100) / 100 : null,
-      subiekt_tw_id: l.subiektTwId,
-      // Kolumna z migracji 160 — wysyłana tylko, gdy faktura ma HS przy pozycjach.
-      ...(l.invoiceHsCode ? { invoice_hs_code: l.invoiceHsCode } : {}),
-      ...(l.invoiceGroup ? { invoice_group: l.invoiceGroup } : {}),
-      zd_quantity: input.zdId ? zdQtyByCode.get(keyOf(l)) ?? 0 : null,
-    }))
-  );
-  if (linesError) {
-    await supabase.from("customs_clearances").delete().eq("id", clearanceId);
-    return fail(linesError.message);
-  }
-
-  revalidateClearance();
-  return { ok: true, id: clearanceId, warnings };
+  const res = await createCustomsClearance(createAdminClient(), input, user.id);
+  if (res.ok) revalidateClearance();
+  return res;
 }
 
 // ─── Widok ─────────────────────────────────────────────────────────────────
@@ -815,7 +691,7 @@ export async function actionCustomsMailPreview(
       ok: true,
       preview: {
         from: conn?.email ?? null,
-        subject: customsEmailSubject(view),
+        subject: view.dhlReply?.subject ?? customsEmailSubject(view),
         attachments: files.map((f) => ({ name: f.filename, size: f.content.length, contentType: f.contentType })),
         totalBytes: files.reduce((n, f) => n + f.content.length, 0),
       },
@@ -863,12 +739,19 @@ export async function actionSendCustomsClearanceEmail(
     return fail("Załączniki przekraczają 18 MB - wyślij mail ręcznie z poczty.");
   }
 
+  // Odprawa z maila DHL: „Re:” w wątku prośby (DHL wymaga niezmienionego tematu); w Gmailu dołącza do
+  // wątku, gdy prośba przyszła do skrzynki nadawcy.
+  const dhl = await loadDhlReplyThread(id);
+  const conn = dhl?.gmailThreadId ? await getGmailConnection(user.id) : null;
   // Z Gmaila osoby, która prowadzi odprawę — mail jest w jej „Wysłanych”, odpowiedzi agencji wracają do niej.
   const res = await sendGmailAsUser({
     userId: user.id,
     to,
     cc,
-    subject: customsEmailSubject(view),
+    subject: dhl?.subject ?? customsEmailSubject(view),
+    inReplyTo: dhl?.inReplyTo ?? undefined,
+    gmailThreadId:
+      dhl?.gmailThreadId && conn && dhl.mailbox === conn.email.toLowerCase() ? dhl.gmailThreadId : undefined,
     text: view.emailText,
     attachments,
     kind: "attachments",
@@ -881,6 +764,7 @@ export async function actionSendCustomsClearanceEmail(
     );
   }
 
+  if (dhl) await markDhlReplied(dhl.shipmentId).catch(() => undefined);
   const error = await markClearanceSent(supabase, view, { agencyEmail: to.join(", "), messageId: res.messageId });
   if (error) return fail(`Mail wysłany, ale nie zapisano statusu: ${error}`);
   revalidateClearance(id);

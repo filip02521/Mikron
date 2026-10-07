@@ -53,6 +53,7 @@ export function MobileOperationsNav({
     operationsNotatki?: number;
     departmentBoardQuestions?: number;
     supplierMail?: number;
+    customsDhl?: number;
     teethQueue?: number;
     teethReceivePending?: number;
   };

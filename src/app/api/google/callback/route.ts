@@ -2,8 +2,13 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { getAppUrl } from "@/lib/env/app-config";
 import { exchangeGmailCode, getGmailOAuthConfig, revokeGmailToken } from "@/lib/google/gmail";
-import { saveGmailConnection } from "@/lib/google/gmail-connections";
-import { GMAIL_OAUTH_COOKIE, readGmailOAuthCookie } from "@/lib/google/gmail-oauth-cookie";
+import { saveGmailConnection, saveSharedMailbox } from "@/lib/google/gmail-connections";
+import {
+  GMAIL_OAUTH_COOKIE,
+  GMAIL_OAUTH_SHARED_COOKIE,
+  canConnectSharedMailbox,
+  readGmailOAuthCookie,
+} from "@/lib/google/gmail-oauth-cookie";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +20,14 @@ function problem(message: string, status = 400) {
   const response = new NextResponse(html, { status, headers: { "Content-Type": "text/html; charset=utf-8" } });
   // Stan jednorazowy — także po błędzie, żeby nie dało się go użyć ponownie.
   response.cookies.delete({ name: GMAIL_OAUTH_COOKIE, path: "/api/google" });
+  response.cookies.delete({ name: GMAIL_OAUTH_SHARED_COOKIE, path: "/api/google" });
   return response;
+}
+
+/** Ta sama domena co konto w OnTime — skrzynka wspólna firmy, nie prywatna. */
+function sameDomain(a: string, b: string): boolean {
+  const domain = (e: string) => e.trim().toLowerCase().split("@")[1] ?? "";
+  return Boolean(domain(a)) && domain(a) === domain(b);
 }
 
 /** Powrót z Google: sprawdza stan, konto (= konto w OnTime), zapisuje zaszyfrowany token. */
@@ -32,20 +44,35 @@ export async function GET(request: NextRequest) {
   const code = params.get("code");
   if (!code) return problem("Google nie zwrócił kodu autoryzacji.");
 
+  const shared = request.cookies.get(GMAIL_OAUTH_SHARED_COOKIE)?.value === params.get("state");
   try {
     const granted = await exchangeGmailCode(cfg, code);
-    if (granted.email !== user.email.trim().toLowerCase()) {
+    if (shared) {
+      if (!canConnectSharedMailbox(user.role)) {
+        await revokeGmailToken(granted.refreshToken);
+        return problem("Skrzynkę wspólną podłącza admin albo zakupy.", 403);
+      }
+      if (!sameDomain(granted.email, user.email) || granted.email === user.email.trim().toLowerCase()) {
+        await revokeGmailToken(granted.refreshToken);
+        return problem(
+          `Skrzynka wspólna musi być firmowa i inna niż Twoja (zalogowano w Google jako ${granted.email}).`
+        );
+      }
+      await saveSharedMailbox({ connectedBy: user.id, ...granted });
+    } else if (granted.email !== user.email.trim().toLowerCase()) {
       await revokeGmailToken(granted.refreshToken);
       return problem(
         `Zalogowano w Google jako ${granted.email}, a w OnTime jako ${user.email}. Połącz Gmaila tego samego konta.`
       );
+    } else {
+      await saveGmailConnection({ userId: user.id, ...granted });
     }
-    await saveGmailConnection({ userId: user.id, ...granted });
   } catch (e) {
     return problem(e instanceof Error ? e.message : "Nie udało się połączyć z Google.", 502);
   }
 
   const response = NextResponse.redirect(`${getAppUrl()}${cookie.returnTo}`);
   response.cookies.delete({ name: GMAIL_OAUTH_COOKIE, path: "/api/google" });
+  response.cookies.delete({ name: GMAIL_OAUTH_SHARED_COOKIE, path: "/api/google" });
   return response;
 }

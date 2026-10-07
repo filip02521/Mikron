@@ -1,4 +1,11 @@
 export const GMAIL_OAUTH_COOKIE = "ontime_gmail_oauth";
+/** Łączenie skrzynki wspólnej (office@) zamiast własnej — ustawiane i kasowane przy każdym starcie łączenia. */
+export const GMAIL_OAUTH_SHARED_COOKIE = "ontime_gmail_oauth_shared";
+
+/** Skrzynkę wspólną podłączają tylko admin i zakupy. */
+export function canConnectSharedMailbox(role: string): boolean {
+  return role === "admin" || role === "zakupy";
+}
 
 /** Powrót tylko na ścieżkę w OnTime — nigdy na obcą domenę (`//evil`, `https://…`). */
 export function safeReturnPath(raw: string | null | undefined): string {

@@ -89,7 +89,10 @@ export async function fetchAppShellMetrics(
         nowe: metrics.navBadge,
         departmentBoardQuestions: metrics.openBoardQuestionsCount,
         ...(role === "admin" || role === "zakupy"
-          ? { supplierMail: await import("@/lib/supplier-mail/data").then((m) => m.countSupplierMailNeedsAction()) }
+          ? {
+              supplierMail: await import("@/lib/supplier-mail/data").then((m) => m.countSupplierMailNeedsAction()),
+              customsDhl: await import("@/lib/customs/dhl-data").then((m) => m.countDhlShipmentsNeedingReply()),
+            }
           : {}),
       };
       operationsDailyPanelVersion = metrics.version;

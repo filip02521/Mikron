@@ -70,6 +70,47 @@ export async function saveGmailConnection(input: {
   );
 }
 
+/** Skrzynka wspólna (office@) — tylko odczyt maili DHL o odprawach; z niej nic nie wysyłamy. */
+export async function saveSharedMailbox(input: {
+  connectedBy: string;
+  email: string;
+  refreshToken: string;
+  scope: string;
+}): Promise<void> {
+  const cfg = getGmailOAuthConfig();
+  if (!cfg) throw new Error("Gmail nie jest skonfigurowany.");
+  await query(
+    `INSERT INTO public.google_shared_mailboxes (google_email, refresh_token_enc, scope, connected_by)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (google_email) DO UPDATE
+       SET refresh_token_enc = EXCLUDED.refresh_token_enc, scope = EXCLUDED.scope,
+           connected_by = EXCLUDED.connected_by, connected_at = now(), updated_at = now()`,
+    [input.email.toLowerCase(), encryptToken(cfg.tokenKey, input.refreshToken), input.scope, input.connectedBy]
+  );
+}
+
+export async function listSharedMailboxes(): Promise<{ email: string; connectedAt: string }[] | null> {
+  try {
+    const { rows } = await query<{ google_email: string; connected_at: Date }>(
+      `SELECT google_email, connected_at FROM public.google_shared_mailboxes ORDER BY google_email`
+    );
+    return rows.map((r) => ({ email: r.google_email, connectedAt: r.connected_at.toISOString() }));
+  } catch {
+    // Przed migracją 179.
+    return null;
+  }
+}
+
+/** Odłączenie skrzynki wspólnej: usunięcie wiersza i odwołanie tokenu w Google. */
+export async function deleteSharedMailbox(email: string): Promise<void> {
+  const cfg = getGmailOAuthConfig();
+  const { rows } = await query<{ refresh_token_enc: string }>(
+    `DELETE FROM public.google_shared_mailboxes WHERE google_email = $1 RETURNING refresh_token_enc`,
+    [email.trim().toLowerCase()]
+  );
+  if (cfg && rows[0]) await revokeGmailToken(decryptToken(cfg.tokenKey, rows[0].refresh_token_enc)).catch(() => undefined);
+}
+
 async function loadRefreshToken(userId: string): Promise<{ email: string; token: string } | null> {
   const cfg = getGmailOAuthConfig();
   if (!cfg) return null;

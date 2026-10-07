@@ -360,14 +360,32 @@ export function repliesFromThread(
     }));
 }
 
+/** Limit Gmaila (zapytania na minutę na użytkownika) i chwilowe 5xx — ponów zamiast gubić wiadomość. */
+const RETRY_DELAYS_MS = [2_000, 8_000, 20_000];
+
+export function isGmailRetryable(status: number, message: string): boolean {
+  return status === 429 || status >= 500 || (status === 403 && /quota|rate ?limit/i.test(message));
+}
+
 async function gmailGet<T>(accessToken: string, path: string): Promise<T | null> {
-  const res = await fetch(`${API_URL}${path}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
-  if (res.status === 404) return null;
-  if (res.status === 401) throw new GmailReconnectRequiredError();
-  const json = (await res.json().catch(() => ({}))) as T & { error?: { message?: string } };
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(`${API_URL}${path}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (res.status === 404) return null;
+    if (res.status === 401) throw new GmailReconnectRequiredError();
+    const json = (await res.json().catch(() => ({}))) as T & { error?: { message?: string } };
+    const delay = RETRY_DELAYS_MS[attempt];
+    if (!res.ok && delay != null && isGmailRetryable(res.status, json.error?.message ?? "")) {
+      await new Promise((r) => setTimeout(r, delay));
+      continue;
+    }
+    return gmailResult(res, json);
+  }
+}
+
+function gmailResult<T>(res: Response, json: T & { error?: { message?: string } }): T {
   // 403 „insufficient scopes” — zgoda tylko na wysyłkę; trzeba połączyć ponownie z odczytem.
   if (res.status === 403 && /scope/i.test(json.error?.message ?? "")) throw new GmailReconnectRequiredError();
   if (!res.ok) throw new Error(`Gmail nie oddał wiadomości: ${json.error?.message ?? res.status}`);
@@ -565,6 +583,8 @@ export type GmailMessageMeta = {
   snippet: string;
   kind: GmailReplyKind;
   from: string;
+  /** Nagłówki To i Cc razem — czy odpowiedź poszła na zewnątrz (np. do agencji), czy wewnątrz firmy. */
+  to: string;
   subject: string;
   rfcMessageId: string;
   attachments: GmailAttachmentRef[];
@@ -591,6 +611,7 @@ export async function getGmailMessageMeta(accessToken: string, id: string): Prom
     snippet: decodeSnippet(m.snippet ?? ""),
     kind: classifyReply(headers),
     from: header(headers, "From"),
+    to: [header(headers, "To"), header(headers, "Cc")].filter(Boolean).join(", "),
     subject: header(headers, "Subject"),
     rfcMessageId: header(headers, "Message-ID") || header(headers, "Message-Id"),
     attachments: attachmentRefs(m.payload),
@@ -608,14 +629,20 @@ export async function getGmailThreadId(accessToken: string, messageId: string): 
 }
 
 /** Pełna treść wiadomości bez cytatu (do podglądu w Poczcie dostawców). */
-export async function getGmailMessageText(accessToken: string, id: string): Promise<string | null> {
+export async function getGmailMessageText(
+  accessToken: string,
+  id: string,
+  /** full = z cytatem i przekazaną treścią (numer przesyłki bywa tylko w przekazanej części). */
+  opts: { full?: boolean } = {}
+): Promise<string | null> {
   const part = "filename,mimeType,body/data";
   const fields = `payload(${part},parts(${part},parts(${part},parts(${part}))))`;
   const m = await gmailGet<GmailThreadMessage>(
     accessToken,
     `/messages/${encodeURIComponent(id)}?format=full&fields=${encodeURIComponent(fields)}`
   );
-  return m ? stripQuotedReply(messagePlainText(m.payload)) : null;
+  if (!m) return null;
+  return opts.full ? messagePlainText(m.payload) : stripQuotedReply(messagePlainText(m.payload));
 }
 
 const SEND_MULTIPART_URL = "https://gmail.googleapis.com/upload/gmail/v1/users/me/messages/send?uploadType=multipart";
