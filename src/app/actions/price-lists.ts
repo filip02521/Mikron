@@ -1,19 +1,24 @@
 "use server";
 
 // Autoryzacja: podgląd i zaznaczanie — requireOperations(); zapis do Subiekta — tylko admin
-// (requireAdminForMutation). Zapis cen tylko na hoście SUBIEKT_API_PRICES_BASE_URL.
+// (requireAdminForMutation). Zapis cen na hoście SUBIEKT_API_PRICES_BASE_URL
+// albo na porcie wybranym przez admina (actionSetPricesHost).
 
 import { revalidatePath } from "next/cache";
 import { requireAdminForMutation, requireOperations } from "@/lib/auth";
 import { readSpreadsheetSheets, isSpreadsheetFile } from "@/lib/customs/customs-spreadsheet";
 import {
+  baseSymbol,
   comparePrices,
-  detectPriceListColumns,
-  firstHeaderRow,
+  foreignCurrency,
   normalizeSymbol,
   parsePriceListRows,
-  PRICE_LIST_COLUMN_LABEL,
+  pieceFactor,
   priceHardBlock,
+  priceListProfile,
+  profileColumns,
+  SAME,
+  stillAsPreviewed,
   type PriceListRow,
 } from "@/lib/price-lists/price-list";
 import {
@@ -21,6 +26,7 @@ import {
   fetchCechaVat,
   getPricesHost,
   hasExactPricesEndpoint,
+  PRICES_HOST_SETTING_KEY,
   readPrices,
   readPricesMany,
   searchPriceCechy,
@@ -28,22 +34,28 @@ import {
 } from "@/lib/price-lists/subiekt-prices";
 import {
   finishPriceItem,
+  finishRestoreItem,
   getPriceItems,
+  findSamePriceListImport,
   getPriceListImport,
   insertPriceListImport,
+  markPriceItemsOverride,
+  newerPriceListImport,
+  nextRestorable,
   nextSelectedPending,
   retryFailedPriceItems,
   setPriceItemsSelected,
+  updatePriceListImport,
   type NewPriceListItem,
 } from "@/lib/price-lists/data";
 import { tryAcquireLock, releaseLock } from "@/lib/services/locks";
+import { query } from "@/lib/db/pool";
 
 const CENNIKI_PATH = "/zakupy/cenniki";
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const DEFAULT_THRESHOLD_PCT = 5;
-/** ~1,5 s na pozycję (odczyt + zapis Sferą + odczyt) — partia mieści się w limicie żądania. */
-const APPLY_CHUNK = 20;
-const SAME = 0.005;
+/** Zapis SQL ~10 ms + 2 odczyty na pozycję; bez nowego endpointu Sfera ~1,5 s — 50 mieści się w limicie żądania. */
+const APPLY_CHUNK = 50;
 
 const zl = (v: number | null) => (v == null ? "brak" : v.toFixed(2).replace(".", ","));
 
@@ -53,43 +65,41 @@ function errorText(e: unknown, fallback: string): string {
   return e instanceof Error && e.message ? e.message : fallback;
 }
 
-export type PriceCechaOption = { id: number; name: string };
-
-export async function actionSearchPriceCechy(search: string): Promise<Result<{ cechy: PriceCechaOption[] }>> {
-  await requireOperations("read");
-  const host = getPricesHost();
-  if (!host.ok) return { ok: false, error: host.error };
-  try {
-    const rows = await searchPriceCechy(host.host.config, search);
-    return { ok: true, cechy: rows.map((c) => ({ id: c.ctw_Id, name: String(c.ctw_Nazwa ?? c.ctw_Id) })) };
-  } catch (e) {
-    return { ok: false, error: errorText(e, "Nie udało się pobrać cech z Subiekta.") };
-  }
-}
-
 /**
  * Wgrany cennik → porównanie z cenami towarów cechy dostawcy → zapis podglądu w bazie.
  * Nic nie zmienia w Subiekcie.
  */
-export async function actionPreparePriceList(formData: FormData): Promise<Result<{ id: string }>> {
+export async function actionPreparePriceList(formData: FormData): Promise<Result<{ id: string; updated: boolean }>> {
   const user = await requireOperations("mutate");
-  const host = getPricesHost();
+  const host = await getPricesHost();
   if (!host.ok) return { ok: false, error: host.error };
   const cfg = host.host.config;
 
   const file = formData.get("file");
-  const cechaId = Number(formData.get("cechaId"));
-  const cechaNameHint = String(formData.get("cechaName") ?? "").trim();
+  // Rodzaj cennika wybiera się z listy profili: stała cecha i stały układ kolumn danego dostawcy.
+  const profile = priceListProfile(String(formData.get("profile") ?? ""));
+  if (!profile) return { ok: false, error: "Wybierz rodzaj cennika." };
   if (!(file instanceof File) || file.size === 0) return { ok: false, error: "Wybierz plik cennika." };
   if (file.size > MAX_FILE_SIZE) return { ok: false, error: "Plik jest większy niż 10 MB." };
   if (!isSpreadsheetFile(file.name, file.type)) return { ok: false, error: "Cennik musi być plikiem Excel lub CSV." };
-  if (!Number.isInteger(cechaId) || cechaId <= 0 || !cechaNameHint) return { ok: false, error: "Wybierz cechę dostawcy." };
-  // Nazwa cechy z Subiektu, nie z formularza — do historii trafia to, co naprawdę porównano.
+  // Cecha z Subiekta po nazwie z profilu — do historii trafia to, co naprawdę porównano.
+  let cechaId: number;
   let cechaName: string;
   try {
-    const found = (await searchPriceCechy(cfg, cechaNameHint)).find((c) => c.ctw_Id === cechaId);
-    if (!found) return { ok: false, error: "Wybrana cecha nie istnieje w Subiekcie. Wybierz ją ponownie z listy." };
-    cechaName = String(found.ctw_Nazwa ?? found.ctw_Id);
+    const want = profile.cechaName.trim().toLowerCase();
+    const found = (await searchPriceCechy(cfg, profile.cechaName)).filter(
+      (c) => String(c.ctw_Nazwa ?? "").trim().toLowerCase() === want
+    );
+    if (found.length !== 1) {
+      return {
+        ok: false,
+        error: found.length
+          ? `W Subiekcie jest ${found.length} cech o nazwie „${profile.cechaName}” — nie wiem, której użyć. Zostaw jedną.`
+          : `W Subiekcie nie ma cechy „${profile.cechaName}”.`,
+      };
+    }
+    cechaId = found[0]!.ctw_Id;
+    cechaName = String(found[0]!.ctw_Nazwa);
   } catch (e) {
     return { ok: false, error: errorText(e, "Nie udało się sprawdzić cechy w Subiekcie.") };
   }
@@ -98,14 +108,22 @@ export async function actionPreparePriceList(formData: FormData): Promise<Result
   let columns;
   try {
     const sheets = await readSpreadsheetSheets(Buffer.from(await file.arrayBuffer()), file.name);
-    const sheet = sheets.find((s) => detectPriceListColumns(s));
-    columns = sheet ? detectPriceListColumns(sheet) : null;
-    if (!sheet || !columns) {
-      const headers = firstHeaderRow(sheets[0] ?? []);
+    const results = sheets.map((sh) => ({ sh, res: profileColumns(sh, profile) }));
+    const hit = results.find((r) => r.res.ok);
+    if (!hit || !hit.res.ok) {
+      const missing = results
+        .map((r) => (r.res.ok ? [] : r.res.missing))
+        .reduce((a, b) => (b.length < a.length ? b : a), Object.values(profile.headers));
       return {
         ok: false,
-        error: `Nie rozpoznano kolumn cennika. Potrzebne: ${PRICE_LIST_COLUMN_LABEL.symbol} i co najmniej jedna cena netto. Nagłówki w pliku: ${headers.join(" · ") || "brak"}.`,
+        error: `To nie jest cennik ${profile.label} w znanym układzie — brakuje kolumn: ${missing.join(", ")}. Wgraj oryginalny plik od dostawcy; inne cenniki dodamy jako osobne rodzaje.`,
       };
+    }
+    const sheet = hit.sh;
+    columns = hit.res.columns;
+    const currency = foreignCurrency(sheet, columns);
+    if (currency) {
+      return { ok: false, error: `Cennik jest w walucie ${currency}, a ceny w Subiekcie są w PLN. Wgraj cennik w złotówkach.` };
     }
     parsed = parsePriceListRows(sheet, columns);
   } catch (e) {
@@ -128,13 +146,32 @@ export async function actionPreparePriceList(formData: FormData): Promise<Result
       const s = normalizeSymbol(p.tw_Symbol);
       symbolCount.set(s, (symbolCount.get(s) ?? 0) + 1);
     }
-    const matched = products.filter((p) => bySymbol.has(normalizeSymbol(p.tw_Symbol)));
-    const prices = await readPricesMany(cfg, matched.map((p) => p.tw_Id));
+    // Dokładny symbol; inaczej karta sztuki („761302 1SZT.”) obok karty opakowania „761302” z cennika.
+    const byProductSymbol = new Map(products.map((p) => [normalizeSymbol(p.tw_Symbol), p]));
+    const matchFor = (p: (typeof products)[number]): { rows: PriceListRow[]; pieceFactor?: number } | null => {
+      const symbol = normalizeSymbol(p.tw_Symbol);
+      const exact = bySymbol.get(symbol);
+      if (exact) return { rows: exact };
+      const base = baseSymbol(symbol);
+      const pkg = base ? byProductSymbol.get(base) : undefined;
+      const rows = base ? bySymbol.get(base) : undefined;
+      if (!pkg || !rows) return null;
+      const factor = pieceFactor(String(pkg.tw_Nazwa ?? ""), String(p.tw_Nazwa ?? ""));
+      return factor ? { rows, pieceFactor: factor } : null;
+    };
+    const matches = new Map(products.map((p) => [p.tw_Id, matchFor(p)]));
+    const matched = products.filter((p) => matches.get(p.tw_Id));
+    const { prices, errors } = await readPricesMany(cfg, matched.map((p) => p.tw_Id));
+    const fatal = [...errors.values()].find((m) => m.startsWith("Poziom ceny"));
+    if (fatal || (matched.length > 0 && errors.size === matched.length)) {
+      return { ok: false, error: fatal ?? `Nie udało się odczytać cen z Subiekta: ${errors.values().next().value}` };
+    }
 
     const items: NewPriceListItem[] = products.map((p) => {
       const symbol = normalizeSymbol(p.tw_Symbol);
       const name = String(p.tw_Nazwa ?? "").trim();
-      const listRows = bySymbol.get(symbol);
+      const match = matches.get(p.tw_Id);
+      const listRows = match?.rows;
       const base = {
         twId: p.tw_Id,
         symbol,
@@ -159,13 +196,25 @@ export async function actionPreparePriceList(formData: FormData): Promise<Result
         };
       }
       const list = listRows[0]!;
-      const old = prices.get(p.tw_Id)!;
+      const old = prices.get(p.tw_Id);
       const cmp = comparePrices({
         list,
-        subiekt: { name, purchase: old.purchase, retail: old.retail, vat: base.vatSubiekt },
+        subiekt: {
+          name,
+          purchase: old?.purchase ?? null,
+          retail: old?.retail ?? null,
+          vat: base.vatSubiekt,
+          blocked: Number(p.tw_Zablokowany) === 1,
+        },
         thresholdPct: DEFAULT_THRESHOLD_PCT,
         duplicate: listRows.length > 1 || (symbolCount.get(symbol) ?? 0) > 1,
+        pieceFactor: match?.pieceFactor,
       });
+      // Bez odczytu nie wiemy, co nadpisujemy — pozycja zostaje odznaczona i zablokowana (priceHardBlock).
+      if (!old) {
+        cmp.flags = [...cmp.flags.filter((f) => f !== "unchanged" && f !== "old_zero" && f !== "suspicious"), "read_error"];
+        cmp.selected = false;
+      }
       return {
         ...base,
         listName: list.name || null,
@@ -173,8 +222,8 @@ export async function actionPreparePriceList(formData: FormData): Promise<Result
         packFactor: cmp.packFactor,
         vatList: list.vat,
         listDiscount: list.discount,
-        oldPurchase: old.purchase,
-        oldRetail: old.retail,
+        oldPurchase: old?.purchase ?? null,
+        oldRetail: old?.retail ?? null,
         newPurchase: cmp.newPurchase,
         newRetail: cmp.newRetail,
         flags: cmp.flags,
@@ -183,8 +232,8 @@ export async function actionPreparePriceList(formData: FormData): Promise<Result
       };
     });
 
-    const matchedSymbols = new Set(matched.map((p) => normalizeSymbol(p.tw_Symbol)));
-    const id = await insertPriceListImport({
+    const matchedSymbols = new Set(matched.map((p) => matches.get(p.tw_Id)!.rows[0]!.symbol));
+    const input = {
       createdBy: user.id,
       fileName: file.name,
       cechaId,
@@ -196,30 +245,54 @@ export async function actionPreparePriceList(formData: FormData): Promise<Result
       pricelistRows: parsed.rows.length,
       pricelistUnmatched: [...bySymbol.keys()].filter((s) => !matchedSymbols.has(s)).length,
       items,
-    });
+    };
+    // Ten sam cennik wgrany ponownie → aktualizacja wpisu (bez dublowania historii); zapis w toku blokuje.
+    const existing = await findSamePriceListImport(input);
+    if (existing) {
+      const lockKey = `price_list_apply_${existing}`;
+      if (!(await tryAcquireLock(lockKey, 180, user.id))) {
+        return { ok: false, error: "Trwa zapis tego cennika do Subiekta — wgraj go ponownie po zakończeniu." };
+      }
+      try {
+        await updatePriceListImport(existing, input);
+      } finally {
+        await releaseLock(lockKey);
+      }
+      revalidatePath(CENNIKI_PATH);
+      revalidatePath(`${CENNIKI_PATH}/${existing}`);
+      return { ok: true, id: existing, updated: true };
+    }
+    const id = await insertPriceListImport(input);
     revalidatePath(CENNIKI_PATH);
-    return { ok: true, id };
+    return { ok: true, id, updated: false };
   } catch (e) {
     return { ok: false, error: errorText(e, "Nie udało się porównać cennika z Subiektem.") };
   }
 }
 
+/**
+ * `override` (tylko administrator): pozycje zablokowane skalą zmiany zostają zaznaczone świadomie —
+ * np. stara cena w Subiekcie była błędna. Cena ≤ 0 i błąd odczytu dalej blokują.
+ */
 export async function actionSetPriceItemsSelected(
   importId: string,
   ids: number[],
-  selected: boolean
-): Promise<Result<{ skipped: { symbol: string; reason: string }[] }>> {
-  await requireOperations("mutate");
+  selected: boolean,
+  override = false
+): Promise<Result<{ skipped: { id: number; symbol: string; reason: string }[] }>> {
+  if (override) await requireAdminForMutation();
+  else await requireOperations("mutate");
   try {
     let valid = Array.isArray(ids) ? ids.filter(Number.isInteger) : [];
-    const skipped: { symbol: string; reason: string }[] = [];
+    const skipped: { id: number; symbol: string; reason: string }[] = [];
+    if (selected && override && valid.length) await markPriceItemsOverride(importId, valid);
     if (selected) {
       const blocked = new Set<number>();
       for (const item of await getPriceItems(importId, valid)) {
         const reason = priceHardBlock(item);
         if (reason) {
           blocked.add(item.id);
-          skipped.push({ symbol: item.symbol, reason });
+          skipped.push({ id: item.id, symbol: item.symbol, reason });
         }
       }
       valid = valid.filter((id) => !blocked.has(id));
@@ -251,7 +324,7 @@ export type ApplyChunkResult = Result<{ processed: number; remaining: number; ex
 export async function actionApplyPriceListChunk(importId: string): Promise<ApplyChunkResult> {
   // Masowy zapis do ERP — tylko administrator (podgląd i zaznaczanie zostają dla zakupów).
   const user = await requireAdminForMutation();
-  const host = getPricesHost();
+  const host = await getPricesHost();
   if (!host.ok) return { ok: false, error: host.error };
   const imp = await getPriceListImport(importId);
   if (!imp) return { ok: false, error: "Nie ma takiego cennika." };
@@ -260,6 +333,12 @@ export async function actionApplyPriceListChunk(importId: string): Promise<Apply
       ok: false,
       error: `Cennik przygotowano na innym Subiekcie (${imp.hostKind === "live" ? "LIVE" : "test"}), a OnTime wskazuje teraz ${host.host.label}. Wgraj cennik ponownie.`,
     };
+  }
+
+  // Starszy podgląd tej samej cechy nie może nadpisać tego, co pokazał nowszy.
+  const newer = await newerPriceListImport(imp);
+  if (newer) {
+    return { ok: false, error: "Jest nowszy cennik tej cechy — zapisuj z niego. Ten podgląd jest nieaktualny." };
   }
 
   const lockKey = `price_list_apply_${importId}`;
@@ -289,7 +368,7 @@ export async function actionApplyPriceListChunk(importId: string): Promise<Apply
         const now = await readPrices(cfg, item.twId);
         const differs = (a: number | null, b: number | null) =>
           a == null || b == null ? a !== b : Math.abs(a - b) >= SAME;
-        if (differs(now.purchase, expected.purchase) || differs(now.retail, expected.retail)) {
+        if (!stillAsPreviewed(now, expected, target)) {
           await finishPriceItem({
             id: item.id,
             status: "changed",
@@ -300,7 +379,7 @@ export async function actionApplyPriceListChunk(importId: string): Promise<Apply
           });
           continue;
         }
-        await writePrices(cfg, item.twId, target, expected, exact);
+        await writePrices(cfg, item.twId, target, now, exact);
         const after = await readPrices(cfg, item.twId);
         const off: string[] = [];
         if (target.purchase != null && differs(after.purchase, target.purchase)) {
@@ -308,7 +387,7 @@ export async function actionApplyPriceListChunk(importId: string): Promise<Apply
         }
         if (target.retail != null && differs(after.retail, target.retail)) {
           off.push(
-            `detaliczna ${zl(after.retail)} zamiast ${zl(target.retail)}${exact ? "" : " (API przelicza narzutem — czeka na PUT /products/{id}/prices)"}`
+            `detaliczna ${zl(after.retail)} zamiast ${zl(target.retail)}${exact ? "" : " (ten Subiekt nie ma jeszcze zapisu poziomu ceny — detaliczna z narzutu)"}`
           );
         }
         await finishPriceItem({
@@ -338,4 +417,109 @@ export async function actionApplyPriceListChunk(importId: string): Promise<Apply
     await releaseLock(lockKey);
     revalidatePath(`${CENNIKI_PATH}/${importId}`);
   }
+}
+
+export type RestoreResult = Result<{ processed: number; restored: number; remaining: number }>;
+
+/**
+ * Przywraca ceny z kopii sprzed cennika (backup_*) w pozycjach, które OnTime zapisał w Subiekcie.
+ * Bez `ids` — kolejna partia wszystkich zapisanych (klient woła do `remaining` = 0); z `ids` — tylko te.
+ * Przed zapisem: cena w Subiekcie musi być tą zapisaną przez OnTime (albo już kopią) — ręcznej zmiany
+ * po zapisie nie nadpisujemy. Po zapisie odczyt kontrolny i porównanie z kopią.
+ */
+export async function actionRestorePriceList(importId: string, ids?: number[]): Promise<RestoreResult> {
+  const user = await requireAdminForMutation();
+  const host = await getPricesHost();
+  if (!host.ok) return { ok: false, error: host.error };
+  const imp = await getPriceListImport(importId);
+  if (!imp) return { ok: false, error: "Nie ma takiego cennika." };
+  if (imp.hostKind !== host.host.hostKind) {
+    return { ok: false, error: `Kopia pochodzi z innego Subiekta (${imp.hostKind === "live" ? "LIVE" : "test"}) niż wskazuje teraz OnTime (${host.host.label}).` };
+  }
+  const cfg = host.host.config;
+  if (!(await hasExactPricesEndpoint(cfg))) {
+    return { ok: false, error: "Ten Subiekt nie ma zapisu poziomu ceny (PUT /price/catalog/levels) — detalicznej nie da się przywrócić dokładnie." };
+  }
+  const only = Array.isArray(ids) ? ids.filter(Number.isInteger).slice(0, APPLY_CHUNK) : undefined;
+  if (only && only.length === 0) return { ok: false, error: "Nie wskazano pozycji." };
+
+  const lockKey = `price_list_apply_${importId}`;
+  if (!(await tryAcquireLock(lockKey, 180, user.id))) {
+    return { ok: false, error: "Trwa zapis tego cennika (inna karta lub osoba)." };
+  }
+  let restored = 0;
+  try {
+    const items = await nextRestorable(importId, APPLY_CHUNK, only);
+    for (const item of items) {
+      const backup = { purchase: item.backupPurchase, retail: item.backupRetail };
+      const written = {
+        purchase: item.afterPurchase ?? item.newPurchase,
+        retail: item.afterRetail ?? item.newRetail,
+      };
+      const fail = (error: string) =>
+        finishRestoreItem({ id: item.id, status: "restore_failed", error, afterPurchase: null, afterRetail: null, restoredBy: user.id });
+      try {
+        const now = await readPrices(cfg, item.twId);
+        if (!stillAsPreviewed(now, written, backup)) {
+          await fail(
+            `Cena w Subiekcie zmieniła się po zapisie z cennika (teraz ${zl(now.purchase)} / ${zl(now.retail)}) — nie przywrócono, żeby nie nadpisać ręcznej zmiany.`
+          );
+          continue;
+        }
+        // Kopia bez ceny poziomu (null) — tego poziomu nie ruszamy.
+        await writePrices(cfg, item.twId, backup, now, true);
+        const after = await readPrices(cfg, item.twId);
+        const off: string[] = [];
+        const differs = (a: number | null, b: number | null) => b != null && (a == null || Math.abs(a - b) >= SAME);
+        if (differs(after.purchase, backup.purchase)) off.push(`kartotekowa ${zl(after.purchase)} zamiast ${zl(backup.purchase)}`);
+        if (differs(after.retail, backup.retail)) off.push(`detaliczna ${zl(after.retail)} zamiast ${zl(backup.retail)}`);
+        if (off.length) {
+          await finishRestoreItem({
+            id: item.id,
+            status: "restore_failed",
+            error: `Po przywróceniu: ${off.join("; ")}`,
+            afterPurchase: after.purchase,
+            afterRetail: after.retail,
+            restoredBy: user.id,
+          });
+          continue;
+        }
+        await finishRestoreItem({
+          id: item.id,
+          status: "restored",
+          error: null,
+          afterPurchase: after.purchase,
+          afterRetail: after.retail,
+          restoredBy: user.id,
+        });
+        restored++;
+      } catch (e) {
+        await fail(errorText(e, "Błąd zapisu w Subiekcie."));
+      }
+    }
+    const left = only ? null : await getPriceListImport(importId);
+    return { ok: true, processed: items.length, restored, remaining: left?.counts.restorable ?? 0 };
+  } catch (e) {
+    return { ok: false, error: errorText(e, "Przywracanie przerwane.") };
+  } finally {
+    await releaseLock(lockKey);
+    revalidatePath(`${CENNIKI_PATH}/${importId}`);
+  }
+}
+
+/** Przełącza host zapisu cen (test :5082 ↔ live :5080) bez zmiany env — tylko admin. */
+export async function actionSetPricesHost(kind: "live" | "orders_test"): Promise<Result> {
+  await requireAdminForMutation();
+  if (kind !== "live" && kind !== "orders_test") return { ok: false, error: "Nieznany host." };
+  try {
+    await query(
+      `INSERT INTO public.app_settings (key, value) VALUES ($1, $2::jsonb)
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+      [PRICES_HOST_SETTING_KEY, JSON.stringify({ kind })]
+    );
+  } catch (e) {
+    return { ok: false, error: errorText(e, "Nie udało się zapisać ustawienia.") };
+  }
+  revalidatePath(CENNIKI_PATH, "layout");
+  return { ok: true };
 }

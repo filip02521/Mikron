@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { requireOperations } from "@/lib/auth";
+import { isAdmin } from "@/lib/auth-roles";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PriceListsClient } from "@/components/zakupy/price-lists/PriceListsClient";
 import { listPriceListImports } from "@/lib/price-lists/data";
@@ -13,8 +14,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export default async function PriceListsPage() {
-  await requireOperations("read");
-  const host = getPricesHost();
+  const user = await requireOperations("read");
+  const host = await getPricesHost();
   const imports = await listPriceListImports();
 
   return (
@@ -24,6 +25,7 @@ export default async function PriceListsPage() {
         imports={imports}
         host={host.ok ? { label: host.host.label, isLive: host.host.hostKind === "live" } : null}
         hostError={host.ok ? null : host.error}
+        canSwitchHost={isAdmin(user.role)}
       />
     </div>
   );
