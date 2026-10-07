@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { plCoTydzien, plPozycja, plProsba, plWiersz, plZaznaczonaPozycja } from "@/lib/ui/polish-plurals";
+import { plCoTydzien, plPozycja, plProsba, plWiersz, plZaznaczonaPozycja, plDzienRoboczy } from "@/lib/ui/polish-plurals";
 
 describe("polish-plurals", () => {
   it("odmienia pozycja", () => {
@@ -39,5 +39,17 @@ describe("polish-plurals", () => {
     expect(plWiersz(5)).toBe("wierszy");
     expect(plWiersz(12)).toBe("wierszy");
     expect(plWiersz(22)).toBe("wiersze");
+  });
+});
+
+describe("plDzienRoboczy", () => {
+  it("odmienia", () => {
+    expect([1, 2, 5, 12, 22].map((n) => `${n} ${plDzienRoboczy(n)}`)).toEqual([
+      "1 dzień roboczy",
+      "2 dni robocze",
+      "5 dni roboczych",
+      "12 dni roboczych",
+      "22 dni robocze",
+    ]);
   });
 });

@@ -86,3 +86,15 @@ export function snapToBusinessDay(date: Date): Date {
   }
   return result;
 }
+
+/** Dni robocze w przedziale `YYYY-MM-DD`–`YYYY-MM-DD` włącznie z obiema datami (bez weekendów i świąt). */
+export function countBusinessDaysInclusive(startKey: string, endKey: string): number {
+  const cursor = new Date(startKey + "T00:00:00");
+  const end = new Date(endKey + "T00:00:00");
+  let count = 0;
+  while (cursor <= end) {
+    if (isBusinessDay(cursor)) count++;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return count;
+}
