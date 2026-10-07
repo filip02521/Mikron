@@ -422,13 +422,33 @@ function stripTags(s: string): string {
  */
 function htmlToText(html: string): string {
   let text = html;
-  let prev: string;
-  do {
-    prev = text;
-    text = text.replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, "").replace(/<blockquote\b[\s\S]*?<\/blockquote\s*>/gi, "");
-  } while (text !== prev);
+  for (const tag of ["script", "style", "blockquote"]) text = removeElements(text, tag);
   text = text.replace(/<br\s*\/?>/gi, "\n").replace(/<\/(p|div|tr|li|h[1-6])>/gi, "\n");
   return stripTags(decodeEntities(stripTags(text)));
+}
+
+/**
+ * Wycina całe elementy `<tag …>…</tag>` (z treścią) bez wyrażeń regularnych: od otwarcia do najbliższego
+ * zamknięcia. Niezamknięty element — wycina do końca tekstu (bezpieczniej niż zostawić skrypt jako tekst).
+ */
+function removeElements(html: string, tag: string): string {
+  const lower = html.toLowerCase();
+  const open = `<${tag}`;
+  const close = `</${tag}`;
+  let out = "";
+  let pos = 0;
+  for (;;) {
+    let start = lower.indexOf(open, pos);
+    // „<scripts>” albo „<stylex>” to nie ten element — szukamy dalej.
+    while (start !== -1 && /[a-z0-9-]/.test(lower[start + open.length] ?? "")) start = lower.indexOf(open, start + 1);
+    if (start === -1) return out + html.slice(pos);
+    out += html.slice(pos, start);
+    const end = lower.indexOf(close, start + open.length);
+    if (end === -1) return out;
+    const gt = lower.indexOf(">", end);
+    if (gt === -1) return out;
+    pos = gt + 1;
+  }
 }
 
 /** Pierwszy fragment danego typu w drzewie MIME (pomija załączniki z nazwą pliku). */

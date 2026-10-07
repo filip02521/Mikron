@@ -300,3 +300,14 @@ describe("gmail — HTML na tekst bez znaczników", () => {
     expect(text).toContain("OK");
   });
 });
+
+describe("gmail — wycinanie skryptów, stylów i cytatów z HTML", () => {
+  const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64url");
+  const text = (html: string) => messagePlainText({ mimeType: "text/html", body: { data: b64(html) } });
+  it("całe bloki z treścią; wielkość liter; podobne nazwy zostają; niezamknięty do końca", () => {
+    expect(text("<STYLE>p{color:red}</STYLE><p>A</p><Script type=x>alert(1)</sCript ><p>B</p>")).toBe("A\nB\n");
+    expect(text("<p>Odp.</p><blockquote>stary mail</blockquote><p>Koniec</p>")).toBe("Odp.\nKoniec\n");
+    expect(text("<scripts>zostaje</scripts>")).toBe("zostaje");
+    expect(text("<p>Tak</p><script>niezamknięty")).toBe("Tak\n");
+  });
+});
