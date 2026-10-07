@@ -597,6 +597,8 @@ export const salesTypography = {
   blockTitle: "text-sm font-semibold text-slate-900",
   sectionLabel: "text-[11px] font-semibold text-slate-600",
   sectionLabelAccent: "text-[11px] font-semibold text-emerald-900",
+  /** Nagłówek podsekcji listy (SectionListLabel) — wyżej niż meta wierszy. */
+  sectionTitle: "text-[13px] font-semibold leading-snug text-slate-800",
   sectionHint: "text-xs leading-relaxed text-slate-500",
   rowTitle: "text-sm font-semibold leading-snug text-slate-900",
   rowBody: "text-xs font-medium leading-snug text-slate-600",
@@ -610,21 +612,21 @@ export const salesTypography = {
 
 /** Etykieta „Uwagi” przy notatce handlowca — spójna w /moje i panelu dziennym. */
 export const salesRequestNoteLabelClass =
-  "inline-flex items-center rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-indigo-500 ring-1 ring-inset ring-indigo-200/70";
+  "inline-flex items-center rounded-md bg-indigo-50 px-1.5 py-0.5 text-[11px] font-medium leading-none text-indigo-700 ring-1 ring-inset ring-indigo-200/70";
 
 /** Etykieta wiadomości od zakupów przy anulowaniu — widoczna u handlowca. */
 export const procurementCancelNoteLabelClass =
-  "inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-amber-600 ring-1 ring-inset ring-amber-200/70";
+  "inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium leading-none text-amber-800 ring-1 ring-inset ring-amber-200/70";
 
 /** Etykieta klienta końcowego — ten sam układ co „Uwagi”, ton indigo. */
 export const salesClientLabelClass =
-  "inline-flex items-center rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-indigo-500 ring-1 ring-inset ring-indigo-200/70";
+  "inline-flex items-center rounded-md bg-indigo-50 px-1.5 py-0.5 text-[11px] font-medium leading-none text-indigo-700 ring-1 ring-inset ring-indigo-200/70";
 
 export const salesClientNameClass = "font-medium text-indigo-900";
 
 /** Etykieta powiązania ZK — fiolet jak w notatniku, ten sam układ co „Klient”. */
 export const salesZkLabelClass =
-  "inline-flex items-center rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-violet-600 ring-1 ring-inset ring-violet-200/70";
+  "inline-flex items-center rounded-md bg-violet-50 px-1.5 py-0.5 text-[11px] font-medium leading-none text-violet-700 ring-1 ring-inset ring-violet-200/70";
 
 export const salesZkNumberClass = "text-[11px] font-medium leading-none text-violet-900";
 
@@ -656,21 +658,21 @@ export const panelTypography = {
 /** Meta terminów dostawy / ZD na /moje — spokojna hierarchia jak PlannedOrderDateMeta. */
 export const deliveryMetaTypography = {
   caption:
-    "text-[11px] font-medium text-slate-400",
-  captionZd: "text-[11px] font-medium text-indigo-600/75",
-  captionAvailable: "text-[11px] font-medium text-sky-700/85",
-  captionOverdue: "text-[11px] font-medium text-amber-800/85",
+    "text-[11px] font-medium text-slate-500",
+  captionZd: "text-[11px] font-medium text-indigo-700",
+  captionAvailable: "text-[11px] font-medium text-sky-700",
+  captionOverdue: "text-[11px] font-medium text-amber-800",
   captionPending: "text-[11px] font-medium text-slate-500 normal-case tracking-normal",
   dateBadge:
-    "max-w-full whitespace-normal rounded-md bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-slate-700 ring-1 ring-inset ring-slate-200/80 tabular-nums",
+    "max-w-full whitespace-normal rounded-md bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium leading-none text-slate-700 ring-1 ring-inset ring-slate-200/80 tabular-nums",
   dateBadgeAvailable:
-    "max-w-full whitespace-normal rounded-md bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-sky-800 ring-1 ring-inset ring-sky-200/80 tabular-nums",
+    "max-w-full whitespace-normal rounded-md bg-sky-50 px-1.5 py-0.5 text-[11px] font-medium leading-none text-sky-800 ring-1 ring-inset ring-sky-200/80 tabular-nums",
   dateBadgeOverdue:
-    "max-w-full whitespace-normal rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-amber-800 ring-1 ring-inset ring-amber-200/80 tabular-nums",
+    "max-w-full whitespace-normal rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium leading-none text-amber-800 ring-1 ring-inset ring-amber-200/80 tabular-nums",
   statusBadge:
-    "max-w-full whitespace-normal rounded-md bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-slate-600 ring-1 ring-inset ring-slate-200/80",
+    "max-w-full whitespace-normal rounded-md bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium leading-none text-slate-600 ring-1 ring-inset ring-slate-200/80",
   statusBadgePending:
-    "max-w-full whitespace-normal rounded-md bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-slate-600 ring-1 ring-inset ring-slate-200/70",
+    "max-w-full whitespace-normal rounded-md bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium leading-none text-slate-600 ring-1 ring-inset ring-slate-200/70",
 } as const;
 
 /** Wypełnienie paska postępu */

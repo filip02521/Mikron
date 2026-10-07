@@ -48,7 +48,7 @@ export function MyOrderProductLaneBadge({
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium leading-none ring-1 ring-inset",
+        "inline-flex shrink-0 items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-medium leading-none ring-1 ring-inset",
         laneBadgeClass[laneKind],
         className
       )}

@@ -123,7 +123,7 @@ export function MyOrderArchiveSection({
         : `Odebrane i zakończone prośby z ostatnich ${ARCHIVE_RECENT_DAYS} dni`;
 
   return (
-    <div id="moje-ostatnio-zakonczone" className="mt-6 border-t border-slate-200/70 pt-5">
+    <div id="moje-ostatnio-zakonczone" className="scroll-mt-24 pt-3">
     <Card padding={false} className="border-slate-200/80 bg-white/70 shadow-sm shadow-slate-200/30">
       <CardHeader
         inset
@@ -189,7 +189,7 @@ export function MyOrderArchiveSection({
             </div>
           )}
           {visibleRows.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-slate-100 px-4 py-2 text-[10px] text-slate-500" aria-label="Znaczenie kolorów w archiwum">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-slate-100 px-4 py-2 text-[11px] text-slate-500" aria-label="Znaczenie kolorów w archiwum">
               <span className="inline-flex items-center gap-1.5">
                 <span className="h-3 w-1 shrink-0 rounded-full bg-emerald-300" aria-hidden />
                 <span>Zrealizowane</span>

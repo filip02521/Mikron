@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
+import { QtyStepButton } from "@/components/ui/QtyStepButton";
 import {
   groupTeethDetails,
   formatTeethGroupLabel,
@@ -107,9 +108,7 @@ export function TeethPartialCancelDialog({
               onConfirm(entries);
             }}
           >
-            {totalCancel > 0
-              ? `Wycofaj ${totalCancel} ${totalCancel === 1 ? "szt." : "szt."}`
-              : "Wycofaj"}
+            {totalCancel > 0 ? `Wycofaj ${totalCancel} szt.` : "Wycofaj"}
           </Button>
         </div>
       }
@@ -138,6 +137,7 @@ export function TeethPartialCancelDialog({
               const maxCancel = Math.max(0, g.count - delivered);
               const current = cancelQty[key] ?? 0;
               const disabled = maxCancel === 0;
+              const groupLabel = formatTeethGroupLabel(g, { includeCount: false });
 
               return (
                 <tr
@@ -148,7 +148,7 @@ export function TeethPartialCancelDialog({
                   )}
                 >
                   <td className="px-3 py-2.5 font-medium text-slate-800">
-                    {formatTeethGroupLabel(g, { includeCount: false })}
+                    {groupLabel}
                   </td>
                   <td className="px-3 py-2.5 text-center tabular-nums text-slate-600">
                     {g.count}
@@ -158,42 +158,39 @@ export function TeethPartialCancelDialog({
                   </td>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center justify-center gap-1">
-                      <button
-                        type="button"
-                        className="flex h-7 w-7 items-center justify-center rounded border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      <QtyStepButton
+                        direction="down"
+                        size="sm"
+                        label={`Mniej do wycofania: ${groupLabel}`}
                         disabled={pending || disabled || current <= 0}
-                        aria-label="Zmniejsz ilość do wycofania"
                         onClick={() =>
                           setCancelQty((prev) => ({
                             ...prev,
                             [key]: Math.max(0, current - 1),
                           }))
                         }
-                      >
-                        −
-                      </button>
+                      />
                       <span
                         className={cn(
                           "min-w-[2rem] text-center text-sm font-semibold tabular-nums",
-                          current > 0 ? "text-rose-700" : "text-slate-400",
+                          current > 0 ? "text-rose-700" : "text-slate-500",
                         )}
+                        aria-live="polite"
                       >
                         {current}
                       </span>
-                      <button
-                        type="button"
-                        className="flex h-7 w-7 items-center justify-center rounded border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      <QtyStepButton
+                        direction="up"
+                        size="sm"
+                        label={`Więcej do wycofania: ${groupLabel}`}
                         disabled={pending || disabled || current >= maxCancel}
-                        aria-label="Zwiększ ilość do wycofania"
                         onClick={() =>
                           setCancelQty((prev) => ({
                             ...prev,
                             [key]: Math.min(maxCancel, current + 1),
                           }))
                         }
-                      >
-                        +
-                      </button>
+                      />
                     </div>
                   </td>
                 </tr>

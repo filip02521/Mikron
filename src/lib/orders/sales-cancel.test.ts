@@ -92,8 +92,8 @@ describe("sales-cancel", () => {
   });
 
   it("salesCancelLineShortLabel i overflow - faza i rodzaj prośby", () => {
-    expect(salesCancelLineShortLabel("zamowienie")).toBe("Anuluj");
-    expect(salesCancelLineShortLabel("informacja")).toBe("Anuluj");
+    expect(salesCancelLineShortLabel("zamowienie")).toBe("Anuluj pozycję");
+    expect(salesCancelLineShortLabel("informacja")).toBe("Anuluj pozycję");
     expect(salesCancelSoleOverflowFullLabel("zamowienie")).toBe("Anuluj prośbę");
     expect(salesCancelSoleOverflowFullLabel("informacja")).toBe("Anuluj informację");
   });

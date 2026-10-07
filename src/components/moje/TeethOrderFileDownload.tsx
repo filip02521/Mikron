@@ -61,7 +61,7 @@ export function TeethOrderFileDownload({
         <span className="min-w-0 truncate">Pobierz zamówienie</span>
       </button>
       {error ? (
-        <span className="text-[10px] leading-snug text-red-600">{error}</span>
+        <span className="text-[11px] leading-snug text-red-600">{error}</span>
       ) : null}
     </div>
   );

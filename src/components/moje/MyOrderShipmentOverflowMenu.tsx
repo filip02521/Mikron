@@ -1,6 +1,10 @@
 "use client";
 
-import { OverflowMenu, OverflowMenuItem } from "@/components/ui/OverflowMenu";
+import {
+  OverflowMenu,
+  OverflowMenuItem,
+  OverflowMenuSeparator,
+} from "@/components/ui/OverflowMenu";
 import type { MyOrderListKind } from "@/lib/orders/my-order-row-layout";
 
 export type MyOrderShipmentOverflowMenuProps = {
@@ -71,6 +75,12 @@ export function MyOrderShipmentOverflowMenu({
   if (!hasAny) return null;
 
   const isInformacja = listKind === "informacja";
+  const hasSafe = canAssignClient || canEdit;
+  const hasDanger =
+    canCancel ||
+    Boolean(canPartialCancelRemainder && onPartialCancelRemainder) ||
+    Boolean(canPartialCancelQuick && onPartialCancelQuick) ||
+    Boolean(canPartialCancelCustom && onPartialCancelCustom);
 
   return (
     <OverflowMenu
@@ -93,6 +103,8 @@ export function MyOrderShipmentOverflowMenu({
           {isInformacja ? "Popraw informację" : "Popraw prośbę"}
         </OverflowMenuItem>
       ) : null}
+      {/* Akcje nieodwracalne osobno — nie tuż pod „Zmień klienta”. */}
+      {hasSafe && hasDanger ? <OverflowMenuSeparator /> : null}
       {canPartialCancelQuick && onPartialCancelQuick ? (
         <OverflowMenuItem danger disabled={disabled} onClick={onPartialCancelQuick}>
           {partialCancelQuickLabel ?? "Rezygnuj z reszty"}

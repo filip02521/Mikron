@@ -20,7 +20,7 @@ export function MyOrderLineCountMeta({
     <span
       className={cn(
         "inline-flex max-w-full items-center gap-1 rounded-md bg-indigo-50 px-1.5 py-0.5",
-        "text-[10px] font-semibold leading-none text-indigo-800",
+        "text-[11px] font-semibold leading-none text-indigo-800",
         "ring-1 ring-inset ring-indigo-200/75",
         className
       )}

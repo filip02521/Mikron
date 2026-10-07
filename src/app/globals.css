@@ -3555,8 +3555,13 @@ input[type="checkbox"].toggle-switch.toggle-indigo:checked {
 .modal-backdrop-enter {
   animation: modal-backdrop-enter 0.18s ease-out both;
 }
+/* Menu „⋮” rośnie od przycisku (transform-origin ustawia OverflowMenu). */
+.menu-pop-enter {
+  animation: modal-panel-enter 0.14s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
 @media (prefers-reduced-motion: reduce) {
-  .modal-panel-enter {
+  .modal-panel-enter,
+  .menu-pop-enter {
     animation-name: modal-backdrop-enter;
   }
 }
