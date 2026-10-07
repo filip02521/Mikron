@@ -6,8 +6,11 @@ Zakupy → Asystent → Poczta dostawców (synchronizacja, odpowiedź, przypomni
 
 ## 1. Baza (PostgreSQL, rola `ontime_migrator`)
 
-`npm run db:migrate` (używa `DATABASE_MIGRATE_URL`) — stosuje tylko brakujące pliki z `supabase/migrations`.
-Wymagane migracje tej funkcji:
+**Nocny deploy (`installer/nightly-deploy.ps1`) nie uruchamia migracji.** Po wdrożeniu kodu:
+**Administracja → Migracje bazy danych → zastosuj oczekujące** (albo `npm run db:migrate` z `DATABASE_MIGRATE_URL`).
+Stan na 2026-10-07: produkcja ma 172–176; po wdrożeniu pojawią się **177** i **178**.
+Kod działa też chwilę bez nich (Poczta pusta, ślad wysyłki zapisuje się bez wątku), ale migracje trzeba
+zastosować tego samego dnia. Wymagane migracje tej funkcji:
 
 | Plik | Co dodaje |
 | --- | --- |
@@ -22,6 +25,10 @@ Wymagane migracje tej funkcji:
 Po migracji: `npm run verify:deploy`.
 
 ## 2. Zmienne środowiskowe serwera (`.env`)
+
+**Uwaga:** od tej wersji także mail do agencji celnej (Odprawy) idzie z Gmaila osoby — bez zmiennych
+`GOOGLE_OAUTH_*` i bez połączonego Gmaila wysyłka do agencji się nie uda. Stan na 2026-10-07: w Ustawieniach na
+produkcji nie ma sekcji Gmail (zmienne nieustawione albo starsza wersja) — sprawdzić przed wdrożeniem.
 
 | Zmienna | Uwagi |
 | --- | --- |

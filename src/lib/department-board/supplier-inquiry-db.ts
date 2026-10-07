@@ -78,22 +78,24 @@ export async function recordSupplierInquiry(input: {
   /** Wątek Gmaila wysłanej wiadomości (migracja 178) — odpowiedzi dostawcy przypinają się po nim. */
   gmailThreadId?: string | null;
 }): Promise<void> {
-  await query(
-    `INSERT INTO public.supplier_inquiry_emails
-       (thread_id, supplier_id, supplier_name, sent_by, from_address, to_addresses, subject, gmail_message_id, gmail_thread_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-    [
-      input.threadId,
-      input.supplierId,
-      input.supplierName,
-      input.sentBy,
-      input.from,
-      input.to,
-      input.subject,
-      input.gmailMessageId,
-      input.gmailThreadId ?? null,
-    ]
-  );
+  const base = [input.threadId, input.supplierId, input.supplierName, input.sentBy, input.from, input.to, input.subject, input.gmailMessageId];
+  try {
+    await query(
+      `INSERT INTO public.supplier_inquiry_emails
+         (thread_id, supplier_id, supplier_name, sent_by, from_address, to_addresses, subject, gmail_message_id, gmail_thread_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [...base, input.gmailThreadId ?? null]
+    );
+  } catch (e) {
+    // Kod wdrożony przed migracją 178 (brak gmail_thread_id) — zapytanie i tak ma być „czeka na dostawcę”.
+    if (!(e instanceof Error && e.message.includes("gmail_thread_id") && /does not exist|nie istnieje/.test(e.message))) throw e;
+    await query(
+      `INSERT INTO public.supplier_inquiry_emails
+         (thread_id, supplier_id, supplier_name, sent_by, from_address, to_addresses, subject, gmail_message_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      base
+    );
+  }
 }
 
 /**

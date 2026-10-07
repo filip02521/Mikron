@@ -91,6 +91,12 @@ describe("poczta dostawców — przypinanie do sprawy", () => {
       caseId: "zd-70",
       linkedBy: "supplier",
     });
+    // Faktura bez numeru ZD nie jest odpowiedzią na ostatnie ZD (po wątku / numerze — tak).
+    expect(linkToCase({ threadId: "inny", text: "Rechnung 4711", supplierIds: ["renfert"], category: "invoice" }, cases)).toBeNull();
+    expect(linkToCase({ threadId: "inny", text: "Rechnung zu ZD 69/M/10/2026", supplierIds: ["renfert"], category: "invoice" }, cases)).toMatchObject({
+      caseId: "zd-69",
+      linkedBy: "document",
+    });
     // Kilku możliwych dostawców (wspólna domena) albo żaden — bez zgadywania.
     expect(linkToCase({ threadId: "inny", text: "Info", supplierIds: ["dreve", "dreve-eco"] }, cases)).toBeNull();
     expect(linkToCase({ threadId: "inny", text: "Info", supplierIds: ["kowalski"] }, cases)).toBeNull();

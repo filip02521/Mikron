@@ -204,22 +204,29 @@ export async function recordSupplierOrderEmail(input: {
   gmailMessageId: string;
   gmailThreadId?: string | null;
 }): Promise<void> {
-  await query(
-    `INSERT INTO public.supplier_order_emails
-       (subiekt_dok_id, dok_nr, supplier_id, sent_by, from_address, to_addresses, attachment_name, gmail_message_id, gmail_thread_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-    [
-      input.dokId,
-      input.dokNr,
-      input.supplierId,
-      input.sentBy,
-      input.from,
-      input.to,
-      input.attachmentName,
-      input.gmailMessageId,
-      input.gmailThreadId ?? null,
-    ]
-  );
+  const base = [input.dokId, input.dokNr, input.supplierId, input.sentBy, input.from, input.to, input.attachmentName, input.gmailMessageId];
+  try {
+    await query(
+      `INSERT INTO public.supplier_order_emails
+         (subiekt_dok_id, dok_nr, supplier_id, sent_by, from_address, to_addresses, attachment_name, gmail_message_id, gmail_thread_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [...base, input.gmailThreadId ?? null]
+    );
+  } catch (e) {
+    // Kod wdrożony przed migracją 178 (brak gmail_thread_id) — ślad wysyłki nie może przepaść.
+    if (!isMissingColumn(e, "gmail_thread_id")) throw e;
+    await query(
+      `INSERT INTO public.supplier_order_emails
+         (subiekt_dok_id, dok_nr, supplier_id, sent_by, from_address, to_addresses, attachment_name, gmail_message_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      base
+    );
+  }
+}
+
+/** Błąd „kolumna nie istnieje” (migracja jeszcze nie uruchomiona). */
+export function isMissingColumn(e: unknown, column: string): boolean {
+  return e instanceof Error && e.message.includes(column) && /does not exist|nie istnieje/.test(e.message);
 }
 
 // ─── Odpowiedzi dostawców w wątkach wysłanych maili ───────────────────────

@@ -163,7 +163,13 @@ export type CaseLink = { caseKind: "zd" | "inquiry"; caseId: string; linkedBy: "
  * ostatnie otwarte ZD jedynego pasującego dostawcy. Brak pewności → null (wiadomość bez sprawy).
  */
 export function linkToCase(
-  msg: { threadId: string; text: string; supplierIds: readonly string[] },
+  msg: {
+    threadId: string;
+    text: string;
+    supplierIds: readonly string[];
+    /** Zgadywanie po dostawcy tylko dla odpowiedzi / potwierdzeń — faktura nie „odpowiada” na ZD. */
+    category?: SupplierMailCategory;
+  },
   cases: readonly MailCase[]
 ): CaseLink | null {
   const byThread = cases.find((c) => c.threadId && c.threadId === msg.threadId);
@@ -181,6 +187,7 @@ export function linkToCase(
   if (byDocument) return { caseKind: byDocument.kind, caseId: byDocument.id, linkedBy: "document" };
 
   if (msg.supplierIds.length !== 1) return null;
+  if (msg.category && !categoryNeedsAction(msg.category)) return null;
   const latestOpenZd = cases
     .filter((c) => c.kind === "zd" && !c.resolved && c.supplierId === msg.supplierIds[0])
     .sort((a, b) => b.sentAt.localeCompare(a.sentAt))[0];
