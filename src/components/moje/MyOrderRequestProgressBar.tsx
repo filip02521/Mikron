@@ -14,7 +14,7 @@ const accentClass = {
     labelCurrent: "text-indigo-900",
     labelDone: "text-slate-700",
     labelUpcoming: "text-slate-500",
-    labelCancelled: "text-red-600/80",
+    labelCancelled: "text-red-700",
   },
   informacja: {
     done: "bg-violet-600 text-white",
@@ -27,7 +27,7 @@ const accentClass = {
     labelCurrent: "text-violet-900",
     labelDone: "text-violet-800/90",
     labelUpcoming: "text-violet-600",
-    labelCancelled: "text-red-600/80",
+    labelCancelled: "text-red-700",
   },
   archive: {
     done: "bg-slate-500 text-white",
@@ -40,7 +40,7 @@ const accentClass = {
     labelCurrent: "text-slate-700",
     labelDone: "text-slate-600",
     labelUpcoming: "text-slate-500",
-    labelCancelled: "text-red-600/80",
+    labelCancelled: "text-red-700",
   },
 } as const;
 
@@ -97,7 +97,7 @@ export function MyOrderRequestProgressBar({
                   <span
                     className={cn(
                       "text-[11px] tabular-nums leading-tight text-slate-500",
-                      step.state === "cancelled" && "text-red-400/70"
+                      step.state === "cancelled" && "text-red-600"
                     )}
                   >
                     {step.date}

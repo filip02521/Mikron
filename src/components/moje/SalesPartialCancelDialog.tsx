@@ -40,7 +40,12 @@ export function SalesPartialCancelDialog({
     setQty(next);
     setDraft(String(next));
   };
-  const draftValid = String(qty) === draft.trim();
+  // Liczbowo, nie tekstowo: „012” to nadal 12. Pusty albo spoza zakresu — przycisk wyłączony i komunikat pod polem.
+  const draftNum = Number(draft);
+  const draftValid = draft.trim() !== "" && draftNum === qty;
+  const draftOutOfRange =
+    draft.trim() !== "" &&
+    (!Number.isInteger(draftNum) || draftNum < 1 || draftNum > maxQty);
 
   const copy = salesPartialCancelConfirmCopy(phase, product, qty, maxQty, deliveredQty);
 
@@ -99,6 +104,7 @@ export function SalesPartialCancelDialog({
             value={draft}
             disabled={pending}
             aria-describedby={`${inputId}-max`}
+            aria-invalid={draftOutOfRange || undefined}
             onFocus={(e) => e.currentTarget.select()}
             onChange={(e) => {
               setDraft(e.target.value);
@@ -106,10 +112,14 @@ export function SalesPartialCancelDialog({
               if (Number.isInteger(n) && n >= 1 && n <= maxQty) setQty(n);
             }}
             onBlur={() => commit(Number(draft) || qty)}
-            className="w-20 rounded-md border border-transparent bg-transparent py-0.5 text-center text-2xl font-semibold tabular-nums text-slate-900 transition-colors [appearance:textfield] hover:border-slate-200 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            className="w-20 rounded-md border border-transparent bg-transparent py-0.5 text-center text-2xl font-semibold tabular-nums text-slate-900 transition-colors [appearance:textfield] hover:border-slate-200 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 aria-[invalid=true]:border-red-400 aria-[invalid=true]:focus:ring-red-500/20 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
-          <p id={`${inputId}-max`} className="text-[11px] text-slate-500">
-            z {maxQty} szt.
+          <p
+            id={`${inputId}-max`}
+            className={draftOutOfRange ? "text-[11px] font-medium text-red-700" : "text-[11px] text-slate-500"}
+            aria-live="polite"
+          >
+            {draftOutOfRange ? `Wpisz od 1 do ${maxQty}` : `z ${maxQty} szt.`}
           </p>
         </div>
         <QtyStepButton
