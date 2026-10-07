@@ -1,6 +1,7 @@
 "use client";
 
 import { SupplierOrderFormList } from "@/components/summary/SupplierOrderFormList";
+import { SupplierOrderReplies } from "@/components/summary/SupplierOrderReplies";
 import { findSupplierFormTemplate } from "@/lib/supplier-forms/templates";
 import {
   buildZdEstimateLaunchHref,
@@ -485,6 +486,16 @@ export function SupplierDrawer({
               ) : null}
             </dl>
           </DrawerSection>
+
+          {canPrepareZd && !preview ? (
+            <DrawerSection
+              title="Wysłane ZD"
+              hint="Odpowiedzi dostawcy z Gmaila na zamówienia wysłane z OnTime"
+              icon={<IconMail size={14} />}
+            >
+              <SupplierOrderReplies supplierId={supplier.id} />
+            </DrawerSection>
+          ) : null}
 
           {findSupplierFormTemplate(supplier.name) ? (
             <DrawerSection

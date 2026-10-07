@@ -45,6 +45,7 @@ import { DailyPanelActionsBar } from "@/components/summary/DailyPanelActionsBar"
 import { DailyPanelExceptionsView } from "@/components/summary/DailyPanelExceptionsView";
 import { OperationsPanelRefreshStrip } from "@/components/operations/OperationsUpdatesContext";
 import { BoardQuestionsAttentionNotice } from "@/components/department-board/BoardQuestionsAttentionNotice";
+import { SupplierMailBounceNotice } from "@/components/summary/SupplierMailBounceNotice";
 import { DailyPanelVerificationBanner } from "@/components/summary/DailyPanelVerificationBanner";
 import { PageAttentionGroup } from "@/components/ui/PageAttentionStrip";
 import {
@@ -456,6 +457,7 @@ export function SummaryWorkspace({
         {/* Sygnały w jednej ramce z wcięciem — jak „Kolejka” i listy pod spodem. */}
         <PageAttentionGroup className="mx-3 mb-1 mt-2.5 sm:mx-4 lg:mx-5">
           <BoardQuestionsAttentionNotice edge="row" suppressPathHide />
+          {canPrepareZd ? <SupplierMailBounceNotice edge="row" /> : null}
           {panelView === "dzis" ? (
             <DailyPanelVerificationBanner
               count={verificationCount}

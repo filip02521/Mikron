@@ -5,6 +5,7 @@ import {
   SubiektTimeoutError,
 } from "@/lib/subiekt/errors";
 import { SUBIEKT_PATHS } from "@/lib/subiekt/paths";
+import { matchSubiektUserByEmail, type SubiektUser } from "@/lib/subiekt/issuer";
 import { subiektQueryString } from "@/lib/subiekt/query";
 import type { SubiektConfig } from "@/lib/subiekt/config";
 import type {
@@ -417,6 +418,67 @@ export async function getSubiektOrdersZd(
     ordersConfigOrThrow()
   );
   return res.data;
+}
+
+const ISSUER_USERS_TTL_MS = 10 * 60_000;
+let issuerUsers: { at: number; key: string; users: SubiektUser[] } | null = null;
+
+/**
+ * uz_Id użytkownika Subiekta dla konta OnTime (po imieniu i nazwisku z e-maila) — trafia jako
+ * `personelId` przy tworzeniu ZD, żeby „Wystawił” był osobą, która tworzy dokument. null = brak pewnego dopasowania.
+ */
+export async function resolveSubiektIssuerId(email: string | null | undefined): Promise<number | null> {
+  const config = ordersConfigOrThrow();
+  if (!issuerUsers || issuerUsers.key !== config.baseUrl || Date.now() - issuerUsers.at > ISSUER_USERS_TTL_MS) {
+    const res = await subiektJson<{ data?: SubiektUser[] }>(`/uzytkownicy${subiektQueryString({ pageSize: 200 })}`, {}, config);
+    issuerUsers = { at: Date.now(), key: config.baseUrl, users: res.data ?? [] };
+  }
+  return matchSubiektUserByEmail(email, issuerUsers.users)?.uz_Id ?? null;
+}
+
+/** Wydruk ZD przez Sferę trwa ~20 s na live. */
+const ZD_PDF_TIMEOUT_MS = 90_000;
+const ZD_PDF_TTL_MS = 5 * 60_000;
+/**
+ * ponytail: pamięć w procesie (jeden serwer OnTime) — podgląd i wysyłka biorą ten sam plik bez drugiego
+ * wydruku. Zmiana ZD w Subiekcie po podglądzie dociera po 5 min; przy kilku instancjach — cache w bazie.
+ */
+const zdPdfCache = new Map<string, { at: number; bytes: Buffer }>();
+
+/**
+ * Wydruk ZD do PDF z Subiekta (`GET /documents/zd/{id}/pdf`, host ORDERS).
+ * `fresh` — pomija pamięć (ZD zmienione w Subiekcie albo zmieniony termin realizacji).
+ */
+export async function getSubiektOrdersZdPdf(id: number, opts: { fresh?: boolean } = {}): Promise<Buffer> {
+  const config = ordersConfigOrThrow();
+  const key = `${config.baseUrl}#${id}`;
+  const hit = zdPdfCache.get(key);
+  if (!opts.fresh && hit && Date.now() - hit.at < ZD_PDF_TTL_MS) return hit.bytes;
+  const res = await subiektFetch(`${SUBIEKT_PATHS.documentZd(id)}/pdf`, {}, { ...config, timeoutMs: ZD_PDF_TIMEOUT_MS });
+  const bytes = Buffer.from(await res.arrayBuffer());
+  if (!res.ok || bytes.subarray(0, 4).toString() !== "%PDF") {
+    throw new Error(`Subiekt nie wydrukował ZD do PDF (HTTP ${res.status}).`);
+  }
+  // Stare wydruki wylatują przy każdym nowym — pamięć nie rośnie bez końca.
+  for (const [k, v] of zdPdfCache) if (Date.now() - v.at >= ZD_PDF_TTL_MS) zdPdfCache.delete(k);
+  zdPdfCache.set(key, { at: Date.now(), bytes });
+  return bytes;
+}
+
+/**
+ * Termin realizacji ZD (`PUT /documents/zd/{id}` { terminRealizacji }, SQL na hoście ORDERS).
+ * Zwraca termin odczytany po zapisie (YYYY-MM-DD). Wydruk w pamięci przestaje być aktualny.
+ */
+export async function setSubiektOrdersZdTermin(id: number, dateKey: string): Promise<string | null> {
+  const config = ordersConfigOrThrow();
+  const res = await subiektJson<{ data?: SubiektDocument }>(
+    SUBIEKT_PATHS.documentZd(id),
+    { method: "PUT", body: JSON.stringify({ terminRealizacji: dateKey }) },
+    config
+  );
+  zdPdfCache.delete(`${config.baseUrl}#${id}`);
+  const after = String(res.data?.dok_TerminRealizacji ?? "").slice(0, 10);
+  return after || null;
 }
 
 /**

@@ -19,10 +19,11 @@ export const GEMINI_MAX_OUTPUT_TOKENS = 16384;
 export const GEMINI_RETRY_DELAYS_MS = [3000, 6000, 12000] as const;
 
 /** Kolejność prób — przy 503 przechodzimy na kolejny model. */
+// Zapasowe: aliasy „latest” — Google przestawia je na bieżące wersje (modele 2.0 wyłączono, 404).
 const DEFAULT_GEMINI_MODEL_CANDIDATES = [
   "gemini-2.5-flash",
-  "gemini-2.0-flash",
-  "gemini-2.0-flash-lite",
+  "gemini-flash-latest",
+  "gemini-flash-lite-latest",
 ] as const;
 
 export const OCR_RESPONSE_SCHEMA = {

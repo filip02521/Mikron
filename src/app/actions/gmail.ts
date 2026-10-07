@@ -1,6 +1,7 @@
 "use server";
 
 // Wysyłka z Gmaila zalogowanej osoby (OAuth gmail.send) — zawsze „jako ja”, nigdy w czyimś imieniu.
+// Odczyt (gmail.readonly) — wątki wysłanych ZD (karta dostawcy); maile od dostawców — Poczta dostawców (supplier-mail).
 import { revalidatePath } from "next/cache";
 import {
   getSessionUser,
@@ -8,7 +9,7 @@ import {
   requireZdEstimateAdmin,
   SESSION_REQUIRED_ERROR,
 } from "@/lib/auth";
-import { parseEmailList } from "@/lib/customs/customs-email";
+import { parseMailRecipients } from "@/lib/email/recipients";
 import { getGmailOAuthConfig } from "@/lib/google/gmail";
 import {
   EMAIL_SIGNATURE_MAX,
@@ -16,18 +17,21 @@ import {
   getEmailSignature,
   getGmailConnection,
   lastSupplierOrderEmail,
+  resolveAwaitingSupplier,
+  supplierOrderReplies,
+  type AwaitingSupplierKind,
+  type SupplierOrderReplies,
   recordSupplierOrderEmail,
   saveEmailSignature,
   sendGmailAsUser,
   type SupplierOrderEmail,
 } from "@/lib/google/gmail-connections";
-import { isZdSupplierAbroad } from "@/lib/orders/zd-estimate-post-create";
+import { setSubiektOrdersZdTermin } from "@/lib/subiekt/api";
 import { loadSupplierZd } from "@/lib/supplier-forms/prepare";
-import { renderSupplierForm } from "@/lib/supplier-forms/render";
 import { findSupplierFormTemplate } from "@/lib/supplier-forms/templates";
-import { renderZdOrderPdf, zdOrderPdfFileName } from "@/lib/supplier-forms/zd-order-pdf";
+import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
+import { buildZdMailAttachment } from "@/lib/supplier-forms/zd-mail-attachment";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
-import type { SupplierLocation } from "@/types/database";
 
 export type GmailStatus = { configured: boolean; email: string | null; signature: string };
 
@@ -50,6 +54,41 @@ export async function actionSaveEmailSignature(signature: string): Promise<{ ok:
   return { ok: true };
 }
 
+/** UUID (dostawca, wiersz wysyłki). */
+const SUPPLIER_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Karta dostawcy: ZD wysłane z OnTime i odpowiedzi dostawcy w ich wątkach Gmaila. */
+export async function actionSupplierOrderReplies(
+  supplierId: string
+): Promise<{ ok: true; items: SupplierOrderReplies[] } | { ok: false; message: string }> {
+  const user = await requireZdEstimateAdmin("read");
+  if (!getGmailOAuthConfig()) return { ok: true, items: [] };
+  if (!SUPPLIER_ID_RE.test(String(supplierId ?? ""))) return { ok: false, message: "Nieprawidłowy dostawca." };
+  try {
+    return { ok: true, items: await supplierOrderReplies(supplierId, user.id) };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się sprawdzić odpowiedzi dostawcy.") };
+  }
+}
+
+/** „Załatwione” — zdejmuje ZD / zapytanie z listy „Czeka na dostawcę” (np. potwierdzenie telefoniczne). */
+export async function actionResolveAwaitingSupplier(input: {
+  kind: AwaitingSupplierKind;
+  id: string;
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  const user = await requireZdEstimateAdmin("mutate");
+  if ((input?.kind !== "zd" && input?.kind !== "inquiry") || !SUPPLIER_ID_RE.test(String(input?.id ?? ""))) {
+    return { ok: false, message: "Nieprawidłowa pozycja." };
+  }
+  try {
+    const done = await resolveAwaitingSupplier(input.kind, input.id, user.id);
+    if (input.kind === "inquiry") revalidatePath("/zakupy/tablica");
+    return done ? { ok: true } : { ok: false, message: "Ta pozycja jest już zamknięta." };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się zamknąć pozycji.") };
+  }
+}
+
 /** Czy to ZD już poszło do dostawcy z OnTime (ostatnia wysyłka). */
 export async function actionZdSupplierEmailSent(dokId: number): Promise<SupplierOrderEmail | null> {
   await requireZdEstimateAdmin("read");
@@ -67,7 +106,7 @@ export async function actionDisconnectGmail(): Promise<{ ok: true }> {
 }
 
 export type SendZdToSupplierResult =
-  | { ok: true; from: string; to: string[]; attachmentName: string; sentAt: string }
+  | { ok: true; from: string; to: string[]; cc: string[]; attachmentName: string; sentAt: string }
   | {
       ok: false;
       message: string;
@@ -84,12 +123,14 @@ const sendingDokIds = new Set<number>();
 
 /**
  * ZD → mail do dostawcy z Gmaila użytkownika. Załącznik: formularz dostawcy (Wiedent, Sirona…)
- * albo PDF zamówienia z pozycji ZD (PL / EN wg lokalizacji dostawcy).
+ * albo wydruk ZD z Subiekta z terminem realizacji na dziś (nasz termin dostawy ustawia się po wysyłce).
  */
 export async function actionSendZdToSupplier(input: {
   dokId: number;
   supplierId: string;
   to: string;
+  /** Kopia (DW), adresy rozdzielone przecinkiem. */
+  cc?: string;
   subject: string;
   body: string;
   /** Świadome ponowne wysłanie ZD, które już poszło. */
@@ -98,15 +139,20 @@ export async function actionSendZdToSupplier(input: {
   allowUnknownRecipients?: boolean;
 }): Promise<SendZdToSupplierResult> {
   const user = await requireZdEstimateAdmin("mutate");
-  if (typeof input.to !== "string" || typeof input.subject !== "string" || typeof input.body !== "string") {
+  if (
+    typeof input.to !== "string" ||
+    typeof input.subject !== "string" ||
+    typeof input.body !== "string" ||
+    (input.cc !== undefined && typeof input.cc !== "string")
+  ) {
     return { ok: false, message: "Nieprawidłowe dane wiadomości." };
   }
   if (input.subject.length > SUBJECT_MAX || input.body.length > BODY_MAX) {
     return { ok: false, message: "Temat albo treść są za długie." };
   }
-  const { emails, invalid } = parseEmailList(input.to);
-  if (invalid.length) return { ok: false, message: `Błędny adres: ${invalid.join(", ")}` };
-  if (!emails.length) return { ok: false, message: "Podaj adres e-mail dostawcy." };
+  const recipients = parseMailRecipients(input.to, input.cc);
+  if (!recipients.ok) return recipients;
+  const { to: emails, cc } = recipients;
   const subject = input.subject.trim();
   if (!subject) return { ok: false, message: "Temat nie może być pusty." };
   const dokId = Math.trunc(Number(input.dokId));
@@ -114,6 +160,8 @@ export async function actionSendZdToSupplier(input: {
 
   if (sendingDokIds.has(dokId)) return { ok: false, message: "To zamówienie właśnie się wysyła." };
   sendingDokIds.add(dokId);
+  /** Termin sprzed wysyłki — wraca na ZD, gdy mail jednak nie wyszedł. */
+  let restoreTermin: string | null = null;
   try {
     if (!input.resend) {
       const previous = await lastSupplierOrderEmail(dokId);
@@ -133,34 +181,32 @@ export async function actionSendZdToSupplier(input: {
       };
     }
 
-    const template = findSupplierFormTemplate(zd.supplier.name);
-    const english = isZdSupplierAbroad(zd.supplier.location as SupplierLocation | null);
-    const attachment = template
-      ? await renderSupplierForm({
-          ok: true,
-          template,
-          lines: zd.lines,
-          date: zd.date,
-          dokNr: zd.dokNr,
-          supplierName: zd.supplier.name,
-        }).then((f) => ({ filename: f.fileName, content: Buffer.from(f.bytes), contentType: f.contentType }))
-      : {
-          filename: zdOrderPdfFileName(zd.dokNr, english),
-          content: Buffer.from(
-            await renderZdOrderPdf({ dokNr: zd.dokNr, date: zd.date, supplierName: zd.supplier.name, lines: zd.lines, english })
-          ),
-          contentType: "application/pdf",
-        };
+    // Dostawca dostaje wydruk z terminem realizacji = dziś; nasz termin dostawy ustawiamy dopiero po wysyłce.
+    let fresh = false;
+    if (!findSupplierFormTemplate(zd.supplier.name)) {
+      const today = todayDateKeyInWarsaw();
+      if (zd.termin !== today) {
+        await setSubiektOrdersZdTermin(dokId, today);
+        restoreTermin = zd.termin ?? null;
+        fresh = true;
+      }
+    }
+    const attachment = await buildZdMailAttachment(zd, dokId, { fresh });
 
     const sent = await sendGmailAsUser({
       userId: user.id,
       to: emails,
+      cc,
       subject,
       text: input.body,
       attachments: [attachment],
       kind: "supplier_order",
     });
-    if (!sent.ok) return sent;
+    if (!sent.ok) {
+      await restoreZdTermin(dokId, restoreTermin);
+      return sent;
+    }
+    restoreTermin = null;
     // Mail już wyszedł — błąd zapisu śladu nie może wyglądać jak nieudana wysyłka.
     await recordSupplierOrderEmail({
       dokId,
@@ -171,6 +217,7 @@ export async function actionSendZdToSupplier(input: {
       to: emails,
       attachmentName: attachment.filename,
       gmailMessageId: sent.messageId,
+      gmailThreadId: sent.threadId,
     }).catch((e) => console.error("[gmail] supplier_order_emails", e));
     // Nowy wpis w logu wysyłek (/admin/wysylki).
     revalidatePath("/admin/wysylki");
@@ -178,12 +225,20 @@ export async function actionSendZdToSupplier(input: {
       ok: true,
       from: sent.from,
       to: emails,
+      cc,
       attachmentName: attachment.filename,
       sentAt: new Date().toISOString(),
     };
   } catch (e) {
+    await restoreZdTermin(dokId, restoreTermin);
     return { ok: false, message: userFacingErrorText(e, "Nie udało się wysłać zamówienia.") };
   } finally {
     sendingDokIds.delete(dokId);
   }
+}
+
+/** Mail nie wyszedł — termin realizacji wraca do stanu sprzed wysyłki (best effort, błąd tylko w logu). */
+async function restoreZdTermin(dokId: number, termin: string | null): Promise<void> {
+  if (!termin) return;
+  await setSubiektOrdersZdTermin(dokId, termin).catch((e) => console.error("[gmail] przywrócenie terminu ZD", dokId, e));
 }

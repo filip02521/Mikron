@@ -92,4 +92,10 @@ describe("pendingSupplierInquiry", () => {
   it("najnowsze już z odpowiedzią → nie czeka", () => {
     expect(pendingSupplierInquiry([{ ...base, resolvedAt: "2026-10-05T12:00:00.000Z" }])).toBeNull();
   });
+
+  it("podpis z pożegnaniem zastępuje pożegnanie szkicu (bez podwójnego „Pozdrawiam”)", () => {
+    const en = buildSupplierInquiryDraft({ product, english: true, signature: "Pozdrawiam/Best Regards\n\nFilip" });
+    expect(en.body).toContain("Thank you in advance.\nPozdrawiam/Best Regards");
+    expect(en.body).not.toContain("Kind regards");
+  });
 });

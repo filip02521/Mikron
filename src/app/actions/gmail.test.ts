@@ -7,6 +7,8 @@ const m = vi.hoisted(() => ({
   recordSupplierOrderEmail: vi.fn(),
   loadSupplierZd: vi.fn(),
   renderSupplierForm: vi.fn(),
+  getSubiektOrdersZdPdf: vi.fn(),
+  setSubiektOrdersZdTermin: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -27,6 +29,11 @@ vi.mock("@/lib/google/gmail-connections", () => ({
 }));
 vi.mock("@/lib/supplier-forms/prepare", () => ({ loadSupplierZd: m.loadSupplierZd }));
 vi.mock("@/lib/supplier-forms/render", () => ({ renderSupplierForm: m.renderSupplierForm }));
+vi.mock("@/lib/subiekt/api", () => ({
+  getSubiektOrdersZdPdf: m.getSubiektOrdersZdPdf,
+  setSubiektOrdersZdTermin: m.setSubiektOrdersZdTermin,
+}));
+vi.mock("@/lib/time/warsaw", () => ({ todayDateKeyInWarsaw: () => "2026-10-07" }));
 
 import { actionSendZdToSupplier } from "@/app/actions/gmail";
 
@@ -52,16 +59,21 @@ beforeEach(() => {
   m.lastSupplierOrderEmail.mockResolvedValue(null);
   m.recordSupplierOrderEmail.mockResolvedValue(undefined);
   m.sendGmailAsUser.mockResolvedValue({ ok: true, from: "filip.naskret@mikran.com", messageId: "g-1" });
+  m.getSubiektOrdersZdPdf.mockResolvedValue(Buffer.from("%PDF-1.2 wydruk ZD z Subiekta"));
 });
 
 describe("actionSendZdToSupplier", () => {
-  it("dostawca z importu bez formularza → PDF EN z pozycji ZD, wysyłka jako zalogowany, ślad zapisany", async () => {
+  it("dostawca bez formularza (też z importu) → wydruk ZD z Subiekta, wysyłka jako zalogowany, ślad zapisany", async () => {
     m.loadSupplierZd.mockResolvedValue(zd("Shenzhen Upcera Dental", "IMPORT"));
-    const res = await actionSendZdToSupplier(input);
-    expect(res).toMatchObject({ ok: true, to: ["order@renfert.de"], attachmentName: "Purchase order ZD 45_M_10_2026.pdf" });
+    const res = await actionSendZdToSupplier({ ...input, cc: "Kierownik@mikran.com, order@renfert.de" });
+    expect(res).toMatchObject({ ok: true, to: ["order@renfert.de"], cc: ["kierownik@mikran.com"], attachmentName: "ZD 45-M-10-2026.pdf" });
+    // ZD bez terminu „dziś” → termin wraca na dziś i wydruk jest świeży (dostawca widzi dzisiejszą datę).
+    expect(m.setSubiektOrdersZdTermin).toHaveBeenCalledWith(1867748, "2026-10-07");
+    expect(m.getSubiektOrdersZdPdf).toHaveBeenCalledWith(1867748, { fresh: true });
     const sent = m.sendGmailAsUser.mock.calls[0]![0];
     expect(sent.userId).toBe("user-1");
     expect(sent.kind).toBe("supplier_order");
+    expect(sent.cc).toEqual(["kierownik@mikran.com"]);
     expect(sent.attachments[0].content.subarray(0, 4).toString()).toBe("%PDF");
     expect(m.recordSupplierOrderEmail).toHaveBeenCalledWith(
       expect.objectContaining({ dokId: 1867748, supplierId: "sup-1", sentBy: "user-1", gmailMessageId: "g-1" })
@@ -108,5 +120,54 @@ describe("actionSendZdToSupplier", () => {
     m.sendGmailAsUser.mockResolvedValue({ ok: false, message: "Połącz ponownie", reconnect: true });
     expect(await actionSendZdToSupplier(input)).toMatchObject({ ok: false, reconnect: true });
     expect(m.recordSupplierOrderEmail).not.toHaveBeenCalled();
+  });
+});
+
+describe("actionSendZdToSupplier — DW", () => {
+  it("błędny adres w DW zatrzymuje wysyłkę z komunikatem", async () => {
+    m.loadSupplierZd.mockResolvedValue(zd("Renfert", "IMPORT"));
+    const res = await actionSendZdToSupplier({ ...input, cc: "kierownik@" });
+    expect(res).toEqual({ ok: false, message: "Błędny adres w polu DW: kierownik@" });
+    expect(m.sendGmailAsUser).not.toHaveBeenCalled();
+  });
+});
+
+describe("actionSendZdToSupplier — termin na wydruku", () => {
+  it("ZD z terminem dziś → bez zmiany terminu, wydruk z pamięci", async () => {
+    m.loadSupplierZd.mockResolvedValue({ ...zd("Formlabs", "IMPORT"), termin: "2026-10-07" });
+    await actionSendZdToSupplier(input);
+    expect(m.setSubiektOrdersZdTermin).not.toHaveBeenCalled();
+    expect(m.getSubiektOrdersZdPdf).toHaveBeenCalledWith(1867748, { fresh: false });
+  });
+  it("dostawca z formularzem → termin ZD nie jest ruszany przed wysyłką", async () => {
+    m.loadSupplierZd.mockResolvedValue({ ...zd("Wiedent", "POLSKA"), termin: "2026-10-30" });
+    m.renderSupplierForm.mockResolvedValue({ bytes: new Uint8Array([1]), contentType: "application/pdf", fileName: "Wiedent.pdf" });
+    await actionSendZdToSupplier(input);
+    expect(m.setSubiektOrdersZdTermin).not.toHaveBeenCalled();
+  });
+});
+
+describe("actionSendZdToSupplier — nieudana wysyłka", () => {
+  it("Gmail odrzucił → termin wraca do daty sprzed wysyłki", async () => {
+    m.loadSupplierZd.mockResolvedValue({ ...zd("Shenzhen Upcera Dental", "IMPORT"), termin: "2026-10-20" });
+    m.setSubiektOrdersZdTermin.mockResolvedValue("2026-10-07");
+    m.sendGmailAsUser.mockResolvedValue({ ok: false, message: "Gmail nie wysłał wiadomości: 500" });
+    expect(await actionSendZdToSupplier(input)).toMatchObject({ ok: false });
+    expect(m.setSubiektOrdersZdTermin.mock.calls).toEqual([
+      [1867748, "2026-10-07"],
+      [1867748, "2026-10-20"],
+    ]);
+  });
+
+  it("błąd wydruku po zmianie terminu → termin wraca; udana wysyłka → nie wraca", async () => {
+    m.loadSupplierZd.mockResolvedValue({ ...zd("Shenzhen Upcera Dental", "IMPORT"), termin: "2026-10-20" });
+    m.setSubiektOrdersZdTermin.mockResolvedValue("2026-10-07");
+    m.getSubiektOrdersZdPdf.mockRejectedValueOnce(new Error("Subiekt nie wydrukował ZD do PDF (HTTP 500)."));
+    expect(await actionSendZdToSupplier(input)).toMatchObject({ ok: false });
+    expect(m.setSubiektOrdersZdTermin).toHaveBeenLastCalledWith(1867748, "2026-10-20");
+
+    m.setSubiektOrdersZdTermin.mockClear();
+    expect(await actionSendZdToSupplier(input)).toMatchObject({ ok: true });
+    expect(m.setSubiektOrdersZdTermin.mock.calls).toEqual([[1867748, "2026-10-07"]]);
   });
 });

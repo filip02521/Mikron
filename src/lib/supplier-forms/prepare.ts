@@ -1,4 +1,5 @@
 import { fetchSuppliersWithSchedules } from "@/lib/data/queries";
+import { emailsInText } from "@/lib/email/supplier-emails";
 import { resolveSupplierKhIdsForHistory } from "@/lib/orders/zd-order-engine";
 import { getSubiektOrdersZd } from "@/lib/subiekt/api";
 import type { SubiektDocumentLine } from "@/lib/subiekt/types";
@@ -27,6 +28,8 @@ export type SupplierZd = {
   dokNr: string;
   /** Data wystawienia ZD. */
   date: Date;
+  /** Termin realizacji w Subiekcie (YYYY-MM-DD), null = brak. */
+  termin?: string | null;
 };
 
 /**
@@ -85,6 +88,7 @@ export async function loadSupplierZd(input: {
     lines,
     date,
     dokNr: String(doc.dok_NrPelny ?? `ZD ${input.dokId}`),
+    termin: String(doc.dok_TerminRealizacji ?? "").slice(0, 10) || null,
   };
 }
 
@@ -107,8 +111,3 @@ export async function prepareSupplierFormForZd(input: {
   };
 }
 
-/** Adresy e-mail wyłuskane z dowolnego tekstu karty (małe litery, bez duplikatów). */
-export function emailsInText(text: string): string[] {
-  const found = text.toLowerCase().match(/[^\s@,;<>()"']+@[^\s@,;<>()"']+\.[a-z]{2,}/g) ?? [];
-  return [...new Set(found)];
-}

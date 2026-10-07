@@ -80,6 +80,10 @@ export function buildSupplierInquiryDraft(input: {
         "Z góry dziękujemy.",
         "Pozdrawiamy",
       ];
+  // Podpis z pożegnaniem („Pozdrawiam/Best Regards…”) zastępuje nasze — inaczej mail żegna się dwa razy.
+  if (signature && /^(pozdrawiam|pozdrawiamy|z powa[zż]aniem|kind regards|best regards|regards|thank you)/i.test(signature)) {
+    body.pop();
+  }
   if (signature) body.push(signature);
 
   return {

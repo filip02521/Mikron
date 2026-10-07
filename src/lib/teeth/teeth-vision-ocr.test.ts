@@ -27,8 +27,8 @@ describe("teeth-vision-ocr retry helpers", () => {
   it("zwraca domyślną kolejność modeli", () => {
     expect(geminiModelCandidates()).toEqual([
       "gemini-2.5-flash",
-      "gemini-2.0-flash",
-      "gemini-2.0-flash-lite",
+      "gemini-flash-latest",
+      "gemini-flash-lite-latest",
     ]);
   });
 });
