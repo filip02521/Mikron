@@ -439,6 +439,7 @@ export async function resolveSubiektIssuerId(email: string | null | undefined): 
 /** Wydruk ZD przez Sferę trwa ~20 s na live. */
 const ZD_PDF_TIMEOUT_MS = 90_000;
 const ZD_PDF_TTL_MS = 5 * 60_000;
+const ZD_PDF_FRESH_MIN_GAP_MS = 30_000;
 /**
  * ponytail: pamięć w procesie (jeden serwer OnTime) — podgląd i wysyłka biorą ten sam plik bez drugiego
  * wydruku. Zmiana ZD w Subiekcie po podglądzie dociera po 5 min; przy kilku instancjach — cache w bazie.
@@ -453,7 +454,9 @@ export async function getSubiektOrdersZdPdf(id: number, opts: { fresh?: boolean 
   const config = ordersConfigOrThrow();
   const key = `${config.baseUrl}#${id}`;
   const hit = zdPdfCache.get(key);
-  if (!opts.fresh && hit && Date.now() - hit.at < ZD_PDF_TTL_MS) return hit.bytes;
+  // fresh = świeży wydruk, ale nie częściej niż co 30 s na dokument (wydruk przez Sferę trwa ~20 s).
+  const maxAge = opts.fresh ? ZD_PDF_FRESH_MIN_GAP_MS : ZD_PDF_TTL_MS;
+  if (hit && Date.now() - hit.at < maxAge) return hit.bytes;
   const res = await subiektFetch(`${SUBIEKT_PATHS.documentZd(id)}/pdf`, {}, { ...config, timeoutMs: ZD_PDF_TIMEOUT_MS });
   const bytes = Buffer.from(await res.arrayBuffer());
   if (!res.ok || bytes.subarray(0, 4).toString() !== "%PDF") {

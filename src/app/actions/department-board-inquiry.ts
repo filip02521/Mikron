@@ -226,7 +226,12 @@ export async function actionSuggestBoardAnswerFromSupplier(input: {
   const thread = await loadQuestionThread(input?.threadId);
   if (!thread) return { ok: false, message: "Nie znaleziono pytania." };
   if (!isCustomsAiConfigured()) return { ok: false, message: "AI jest wyłączone na serwerze (brak klucza Gemini)." };
-  if (typeof input.inquiryId !== "string" || typeof input.replyId !== "string") {
+  if (
+    typeof input.inquiryId !== "string" ||
+    !/^[0-9a-f-]{36}$/i.test(input.inquiryId) ||
+    typeof input.replyId !== "string" ||
+    !/^[0-9a-f]{6,40}$/i.test(input.replyId)
+  ) {
     return { ok: false, message: "Nieprawidłowa odpowiedź dostawcy." };
   }
   let source;

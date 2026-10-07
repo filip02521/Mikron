@@ -36,6 +36,8 @@ const FIRST_SYNC_DAYS = 30;
 const OVERLAP_MS = 60 * 60_000;
 /** Częściej nie ma sensu (licznik w menu i tak odświeża się co kilkadziesiąt sekund). */
 export const SUPPLIER_MAIL_SYNC_EVERY_MS = 5 * 60_000;
+/** Najkrótszy odstęp przy „Sprawdź teraz”. */
+const FORCE_SYNC_MIN_GAP_MS = 60_000;
 const MAX_MESSAGES_PER_QUERY = 300;
 const META_CONCURRENCY = 6;
 
@@ -332,10 +334,10 @@ export function syncSupplierMail(opts: { force?: boolean } = {}): Promise<Suppli
       `SELECT mailbox, synced_at FROM public.supplier_mail_sync`
     );
     const lastSync = new Map(syncRows.map((r) => [r.mailbox, r.synced_at.getTime()]));
+    // „Sprawdź teraz” (force) skraca odstęp do minuty — nie znosi go (Gmail API ma limity).
+    const minGap = opts.force ? FORCE_SYNC_MIN_GAP_MS : SUPPLIER_MAIL_SYNC_EVERY_MS;
     const due = boxes.filter(
-      (b) =>
-        opts.force ||
-        Date.now() - Math.max(lastSync.get(b.email) ?? 0, lastAttempt.get(b.email) ?? 0) >= SUPPLIER_MAIL_SYNC_EVERY_MS
+      (b) => Date.now() - Math.max(lastSync.get(b.email) ?? 0, lastAttempt.get(b.email) ?? 0) >= minGap
     );
     if (!due.length) return result;
     const [{ rows: cards }, cases] = await Promise.all([
