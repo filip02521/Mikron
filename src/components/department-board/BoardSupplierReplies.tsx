@@ -1,5 +1,6 @@
 "use client";
 
+import { parseFromHeader } from "@/lib/supplier-mail/match";
 import { useCallback, useEffect, useState } from "react";
 import {
   actionBoardInquiryReplies,
@@ -19,9 +20,10 @@ const dateTime = new Intl.DateTimeFormat("pl-PL", {
   minute: "2-digit",
 });
 
-/** „Anna Schmidt <a@renfert.de>” → „Anna Schmidt”. */
+/** „Anna Schmidt <a@renfert.de>” → „Anna Schmidt” (bez nazwy — sam adres). */
 function senderName(from: string): string {
-  return from.replace(/<[^>]*>/, "").replace(/"/g, "").trim() || from.replace(/[<>]/g, "").trim();
+  const { email, name } = parseFromHeader(from);
+  return name || email || "Dostawca";
 }
 
 /**

@@ -1,5 +1,6 @@
 "use client";
 
+import { parseFromHeader } from "@/lib/supplier-mail/match";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { actionSupplierOrderReplies } from "@/app/actions/gmail";
@@ -18,10 +19,10 @@ const dateTime = new Intl.DateTimeFormat("pl-PL", {
 });
 const dateOnly = new Intl.DateTimeFormat("pl-PL", { timeZone: "Europe/Warsaw", day: "2-digit", month: "2-digit" });
 
-/** „Anna Schmidt <a@renfert.de>” → „Anna Schmidt”. */
+/** „Anna Schmidt <a@renfert.de>” → „Anna Schmidt” (bez nazwy — sam adres). */
 function senderName(from: string): string {
-  const name = from.replace(/<[^>]*>/, "").replace(/"/g, "").trim();
-  return name || from.replace(/[<>]/g, "").trim() || "Dostawca";
+  const { email, name } = parseFromHeader(from);
+  return name || email || "Dostawca";
 }
 
 /** Oznaczenie wiadomości, która nie jest odpowiedzią dostawcy (nie zamyka czekania). */

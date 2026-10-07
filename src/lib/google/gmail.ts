@@ -406,15 +406,29 @@ function decodeBase64Url(data: string): string {
   return Buffer.from(data, "base64url").toString("utf8");
 }
 
-/** HTML maila → zwykły tekst (bez skryptów i stylów; akapity i <br> jako nowe linie). */
+/** Usuwa znaczniki do skutku — zagnieżdżone / sklejone („<scr<script>ipt>”) nie zostają w tekście. */
+function stripTags(s: string): string {
+  let prev: string;
+  do {
+    prev = s;
+    s = s.replace(/<[^<>]*>/g, "");
+  } while (s !== prev);
+  return s;
+}
+
+/**
+ * HTML maila → zwykły tekst (bez skryptów i stylów; akapity i <br> jako nowe linie). Wynik jest tylko
+ * tekstem (React go escapuje), ale znaczniki usuwamy też po zamianie encji — „&lt;script&gt;” nie wraca.
+ */
 function htmlToText(html: string): string {
-  const text = html
-    .replace(/<(script|style)[\s\S]*?<\/\1>/gi, "")
-    .replace(/<blockquote[\s\S]*?<\/blockquote>/gi, "")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(p|div|tr|li|h[1-6])>/gi, "\n")
-    .replace(/<[^>]+>/g, "");
-  return decodeEntities(text);
+  let text = html;
+  let prev: string;
+  do {
+    prev = text;
+    text = text.replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, "").replace(/<blockquote\b[\s\S]*?<\/blockquote\s*>/gi, "");
+  } while (text !== prev);
+  text = text.replace(/<br\s*\/?>/gi, "\n").replace(/<\/(p|div|tr|li|h[1-6])>/gi, "\n");
+  return stripTags(decodeEntities(stripTags(text)));
 }
 
 /** Pierwszy fragment danego typu w drzewie MIME (pomija załączniki z nazwą pliku). */

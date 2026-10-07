@@ -287,3 +287,16 @@ describe("gmail — cytat polskiego Gmaila we fragmencie", () => {
     expect(r.snippet).toBe("Tak jest dostepny od reki cena netto 599 zł");
   });
 });
+
+describe("gmail — HTML na tekst bez znaczników", () => {
+  const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64url");
+  it("sklejone znaczniki i encje znaczników nie zostają w tekście", () => {
+    const text = messagePlainText({
+      mimeType: "text/html",
+      body: { data: b64("<p>Cena 10 zł</p><scr<script>ipt>alert(1)</script>&lt;script&gt;x&lt;/script&gt;<style>p{}</style>OK") },
+    });
+    expect(text).not.toMatch(/<\s*\/?\s*script/i);
+    expect(text).toContain("Cena 10 zł");
+    expect(text).toContain("OK");
+  });
+});
