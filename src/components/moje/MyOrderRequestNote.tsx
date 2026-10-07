@@ -31,17 +31,14 @@ export function MyOrderRequestNote({
     return (
       <div
         className={cn(
-          "relative overflow-hidden rounded-xl border border-indigo-200/90 bg-indigo-50/95 p-3 shadow-sm ring-1 ring-indigo-100/80 sm:p-3.5",
+          "rounded-lg border border-indigo-200/90 bg-indigo-50/80 p-3 sm:p-3.5",
           className
         )}
         role="status"
         aria-live="polite"
       >
-        <div
-          className="pointer-events-none absolute inset-y-0 left-0 w-1 bg-indigo-500"
-          aria-hidden
-        />
-        <div className="flex flex-wrap items-start justify-between gap-2 pl-2 sm:gap-3">
+        {/* Telefon: przycisk pod treścią na całą szerokość — obok ściskał tekst i etykietę. */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span
@@ -55,11 +52,11 @@ export function MyOrderRequestNote({
                 </svg>
                 Uwagi od działu zakupów
               </span>
-              <span className="inline-flex items-center rounded-md bg-indigo-600/10 px-2 py-0.5 text-[10px] font-semibold text-indigo-800 ring-1 ring-inset ring-indigo-200/70">
+              <span className="inline-flex items-center rounded-md bg-indigo-600/10 px-2 py-0.5 text-[11px] font-semibold text-indigo-800 ring-1 ring-inset ring-indigo-200/70">
                 Nowe
               </span>
             </div>
-            <p className={cn(salesTypography.rowMeta, "mt-1 text-indigo-900/75")}>
+            <p className={cn(salesTypography.rowMeta, "mt-1 text-indigo-900")}>
               {MOJE_COPY_DEPARTMENT} zaktualizował uwagi przy tej prośbie
             </p>
             <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-relaxed text-slate-900">
@@ -68,8 +65,7 @@ export function MyOrderRequestNote({
           </div>
           {onAcknowledge || tourPreview ? (
             <MyOrderAckButton
-              variant="segmentOutline"
-              className="shrink-0 border-indigo-200 text-indigo-900 hover:bg-indigo-50"
+              className="w-full justify-center text-indigo-800 sm:w-auto sm:shrink-0"
               disabled={acknowledgePending}
               preview={tourPreview && !onAcknowledge}
               title="Potwierdź, że przeczytałeś/aś uwagi"

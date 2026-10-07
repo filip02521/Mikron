@@ -88,7 +88,7 @@ export function DelegateSwitcher({
                         {initialsFromName(d.salesPersonName)}
                       </span>
                       <span>{d.salesPersonName}</span>
-                      <span className="text-[10px] font-normal text-slate-400">do {d.endDate}</span>
+                      <span className="text-[11px] font-normal text-slate-500">do {d.endDate}</span>
                     </span>
                   </Button>
                 </Link>
@@ -139,7 +139,7 @@ export function DelegateSwitcher({
                       {initialsFromName(d.salesPersonName)}
                     </span>
                     <span>{d.salesPersonName}</span>
-                    <span className="text-[10px] font-normal text-slate-400">do {d.endDate}</span>
+                    <span className="text-[11px] font-normal text-slate-500">do {d.endDate}</span>
                   </span>
                 </Button>
               </Link>

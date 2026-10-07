@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
+import { QtyStepButton } from "@/components/ui/QtyStepButton";
 import {
   salesPartialCancelConfirmCopy,
   type SalesCancelPhase,
@@ -30,6 +31,16 @@ export function SalesPartialCancelDialog({
   onCancel: () => void;
 }) {
   const [qty, setQty] = useState(defaultQty);
+  // Tekst pola osobno od liczby — pusty lub „0” w trakcie pisania nie skacze od razu do 1.
+  const [draft, setDraft] = useState(String(defaultQty));
+  const inputId = useId();
+  const clamp = (n: number) => Math.min(maxQty, Math.max(1, Math.trunc(n)));
+  const commit = (n: number) => {
+    const next = clamp(n);
+    setQty(next);
+    setDraft(String(next));
+  };
+  const draftValid = String(qty) === draft.trim();
 
   const copy = salesPartialCancelConfirmCopy(phase, product, qty, maxQty, deliveredQty);
 
@@ -59,7 +70,7 @@ export function SalesPartialCancelDialog({
             variant="danger"
             className="min-h-11 w-full sm:w-auto"
             onClick={() => onConfirm(qty)}
-            disabled={pending || qty < 1 || qty > maxQty}
+            disabled={pending || !draftValid || qty < 1 || qty > maxQty}
           >
             {copy.confirmLabel}
           </Button>
@@ -68,28 +79,45 @@ export function SalesPartialCancelDialog({
     >
       <p className="text-sm leading-relaxed text-slate-600">{copy.message}</p>
       <div className="mt-4 flex items-center justify-center gap-3">
-        <button
-          type="button"
-          className="flex h-11 w-11 items-center justify-center rounded-lg border border-slate-200 text-lg font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+        <QtyStepButton
+          direction="down"
+          label="Zmniejsz ilość"
           disabled={pending || qty <= 1}
-          aria-label="Zmniejsz ilość"
-          onClick={() => setQty((v) => Math.max(1, v - 1))}
-        >
-          −
-        </button>
-        <div className="min-w-[4.5rem] text-center">
-          <span className="text-2xl font-semibold tabular-nums text-slate-900">{qty}</span>
-          <p className="text-[11px] text-slate-500">z {maxQty} szt.</p>
+          onClick={() => commit(qty - 1)}
+        />
+        <div className="text-center">
+          <label htmlFor={inputId} className="sr-only">
+            Ilość do wycofania
+          </label>
+          <input
+            id={inputId}
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={maxQty}
+            step={1}
+            value={draft}
+            disabled={pending}
+            aria-describedby={`${inputId}-max`}
+            onFocus={(e) => e.currentTarget.select()}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              const n = Number(e.target.value);
+              if (Number.isInteger(n) && n >= 1 && n <= maxQty) setQty(n);
+            }}
+            onBlur={() => commit(Number(draft) || qty)}
+            className="w-20 rounded-md border border-transparent bg-transparent py-0.5 text-center text-2xl font-semibold tabular-nums text-slate-900 transition-colors [appearance:textfield] hover:border-slate-200 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          />
+          <p id={`${inputId}-max`} className="text-[11px] text-slate-500">
+            z {maxQty} szt.
+          </p>
         </div>
-        <button
-          type="button"
-          className="flex h-11 w-11 items-center justify-center rounded-lg border border-slate-200 text-lg font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+        <QtyStepButton
+          direction="up"
+          label="Zwiększ ilość"
           disabled={pending || qty >= maxQty}
-          aria-label="Zwiększ ilość"
-          onClick={() => setQty((v) => Math.min(maxQty, v + 1))}
-        >
-          +
-        </button>
+          onClick={() => commit(qty + 1)}
+        />
       </div>
     </ModalShell>
   );

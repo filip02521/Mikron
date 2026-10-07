@@ -172,7 +172,7 @@ export function ZdFulfillmentDateMeta({
               pendingConfirmation={primaryPending}
               inline={inline}
             />
-            <span className="max-w-full truncate text-[9px] font-medium text-slate-500">
+            <span className="max-w-full truncate text-[11px] font-medium text-slate-500">
               {primarySlot.dokNr}
             </span>
           </>
@@ -194,7 +194,7 @@ export function ZdFulfillmentDateMeta({
                   pendingConfirmation={slot.pendingConfirmation ?? pendingConfirmation}
                   inline={inline}
                 />
-                <span className="max-w-full truncate text-[9px] font-medium text-slate-500">
+                <span className="max-w-full truncate text-[11px] font-medium text-slate-500">
                   {slot.dokNr}
                 </span>
               </div>
@@ -203,7 +203,7 @@ export function ZdFulfillmentDateMeta({
         ) : primaryDisplay ? (
           <>
             <DeliveryDateMetaValue display={primaryDisplay} className="max-w-full" inline={inline} />
-            <span className="max-w-full truncate text-[9px] font-medium text-slate-500">
+            <span className="max-w-full truncate text-[11px] font-medium text-slate-500">
               {fulfillment.dokNr}
             </span>
           </>
@@ -213,7 +213,7 @@ export function ZdFulfillmentDateMeta({
         <p
           key={hint}
           className={cn(
-            "max-w-full text-right text-[10px] font-medium leading-snug text-indigo-900/85",
+            "max-w-full text-right font-medium leading-snug text-indigo-900",
             salesTypography.rowMeta
           )}
         >

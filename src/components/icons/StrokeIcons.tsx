@@ -745,6 +745,33 @@ export function IconMapPin(props: StrokeIconProps) {
   );
 }
 
+/** Plus (bez okręgu) — krokomierz ilości */
+export function IconPlus(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 5v14M5 12h14" />
+    </Svg>
+  );
+}
+
+/** Minus — krokomierz ilości */
+export function IconMinus(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M5 12h14" />
+    </Svg>
+  );
+}
+
+/** Ptaszek (bez okręgu) */
+export function IconCheck(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M20 6L9 17l-5-5" />
+    </Svg>
+  );
+}
+
 /** Zamknij / X */
 export function IconX(props: StrokeIconProps) {
   return (

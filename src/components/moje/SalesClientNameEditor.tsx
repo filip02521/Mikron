@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { SubiektClientNameField } from "@/components/subiekt/SubiektClientNameField";
 import {
@@ -26,6 +26,23 @@ export function SalesClientNameEditor({
   const [draftName, setDraftName] = useState(value ?? "");
   const [draftKhId, setDraftKhId] = useState<number | null>(clientKhId ?? null);
   const [saving, setSaving] = useState(false);
+  const inputId = useId();
+  const formRef = useRef<HTMLFormElement>(null);
+
+  /** Formularz znika — oddaj fokus przyciskowi „⋮” tej karty, żeby klawiatura nie wracała na początek strony. */
+  const close = () => {
+    formRef.current
+      ?.closest<HTMLElement>("[id^='moje-card-']")
+      ?.querySelector<HTMLElement>("[aria-haspopup='menu']")
+      ?.focus({ preventScroll: true });
+    setEditing(false);
+  };
+
+  const cancel = () => {
+    setDraftName(value ?? "");
+    setDraftKhId(clientKhId ?? null);
+    close();
+  };
 
   const display = value?.trim() || null;
 
@@ -33,7 +50,15 @@ export function SalesClientNameEditor({
 
   return (
     <form
+      ref={formRef}
       className="mt-1.5 space-y-2"
+      onKeyDown={(e) => {
+        // Escape z listy podpowiedzi zamyka najpierw listę (obsługuje pole); tu tylko gdy nic go nie przejęło.
+        if (e.key === "Escape" && !e.defaultPrevented && !saving) {
+          e.stopPropagation();
+          cancel();
+        }
+      }}
       onSubmit={async (e) => {
         e.preventDefault();
         setSaving(true);
@@ -43,15 +68,19 @@ export function SalesClientNameEditor({
             clientName: nextName,
             clientKhId: nextName ? draftKhId : null,
           });
-          setEditing(false);
+          close();
         } finally {
           setSaving(false);
         }
       }}
     >
       <div className="space-y-1">
-        <span className="block text-xs text-slate-500">Klient końcowy</span>
+        <label htmlFor={inputId} className="block text-xs font-medium text-slate-600">
+          Klient końcowy
+        </label>
         <SubiektClientNameField
+          inputId={inputId}
+          autoFocus={openOnMount}
           value={draftName}
           clientKhId={draftKhId}
           maxLength={MAX_CLIENT_NAME_LEN}
@@ -67,30 +96,21 @@ export function SalesClientNameEditor({
         <Button type="submit" disabled={disabled || saving} size="sm" className="min-h-9">
           {saving ? "Zapis…" : "Zapisz"}
         </Button>
-        <button
-          type="button"
-          disabled={saving}
-          className="min-h-9 rounded-md px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100"
-          onClick={() => {
-            setDraftName(value ?? "");
-            setDraftKhId(clientKhId ?? null);
-            setEditing(false);
-          }}
-        >
+        <Button type="button" variant="ghost" size="sm" disabled={saving} className="min-h-9" onClick={cancel}>
           Anuluj
-        </button>
+        </Button>
         {display ? (
           <button
             type="button"
             disabled={saving}
-            className="min-h-9 rounded-md px-2 py-1.5 text-xs text-red-700 hover:bg-red-50"
+            className="min-h-9 rounded-md px-2.5 py-1.5 text-xs text-red-700 transition-colors hover:bg-red-50 disabled:opacity-50"
             onClick={async () => {
               setSaving(true);
               try {
                 await onSave({ clientName: null, clientKhId: null });
                 setDraftName("");
                 setDraftKhId(null);
-                setEditing(false);
+                close();
               } finally {
                 setSaving(false);
               }

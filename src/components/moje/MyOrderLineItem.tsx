@@ -85,7 +85,7 @@ function CopyBadge({
             : `${title} - kliknij, aby skopiować`
       }
       className={cn(
-        "shrink-0 cursor-pointer rounded px-1 py-0.5 font-mono text-[10px] font-semibold transition-colors",
+        "shrink-0 cursor-pointer rounded px-1 py-0.5 font-mono text-[11px] font-semibold transition-colors",
         className,
         copied && "ring-2 ring-emerald-400",
         failed && "ring-2 ring-red-400"
@@ -133,7 +133,7 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
   acknowledgeLineTitle,
   onAcknowledgePickup,
   canCancelLine,
-  cancelLineLabel = "Anuluj",
+  cancelLineLabel,
   cancelLineAriaLabel,
   onCancelLine,
   onPartialCancelLine,
@@ -357,7 +357,7 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
           deliveredQuantity={line.deliveredQuantity}
           triggerSize="sm"
           triggerVariant="ghost"
-          triggerClassName="text-[10px] font-medium text-indigo-700 hover:text-indigo-900"
+          triggerClassName="text-[11px] font-medium text-indigo-700 hover:text-indigo-900"
         />
       ) : null}
       {line.teethOrderFileName ? (
@@ -373,7 +373,7 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
     badge ? (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold ring-1",
+        "inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-semibold ring-1",
         badge.className
       )}
     >
@@ -416,7 +416,7 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
             <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
             <span
               className={cn(
-                "shrink-0 tabular-nums font-semibold text-slate-400",
+                "shrink-0 tabular-nums font-semibold text-slate-500",
                 compact ? "text-xs" : "mr-1.5"
               )}
             >
@@ -433,7 +433,7 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
             {showPerLineLaneBadge ? (
               <MyOrderProductLaneBadge
                 laneKind={line.isTeeth ? "teeth" : "regular"}
-                className="px-1 py-0 text-[9px]"
+                className="px-1 py-0 text-[11px]"
               />
             ) : null}
             {lineQuantityLabel ? (
