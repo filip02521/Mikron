@@ -219,7 +219,11 @@ async function loadOpenCases(): Promise<CaseRow[]> {
 }
 
 function isMissingSchema(e: unknown): boolean {
-  return e instanceof Error && /supplier_mail_|gmail_thread_id|resolved_at/.test(e.message) && /does not exist|nie istnieje/.test(e.message);
+  return (
+    e instanceof Error &&
+    /supplier_mail_|gmail_thread_id|resolved_at|resolved_by|reminded_at/.test(e.message) &&
+    /does not exist|nie istnieje/.test(e.message)
+  );
 }
 
 /**
@@ -293,11 +297,32 @@ export async function loadSupplierMailView(): Promise<SupplierMailView> {
   }
 }
 
-/** Licznik w menu: rozmowy do reakcji + sprawy po terminie. Lekki (bez Gmaila). */
-export async function countSupplierMailNeedsAction(): Promise<number> {
+/**
+ * Licznik w menu: rozmowy do reakcji + sprawy po terminie — te same reguły co widok, ale bez wczytywania
+ * wiadomości (odświeżany co kilkadziesiąt sekund u każdej osoby z zakupów).
+ */
+export async function countSupplierMailNeedsAction(now: Date = new Date()): Promise<number> {
   try {
-    const view = await loadSupplierMailView();
-    return view.open.length + view.overdue.length;
+    const [open, cases] = await Promise.all([
+      query<{ n: number }>(
+        `SELECT count(DISTINCT mailbox || '|' || gmail_thread_id)::int AS n
+           FROM public.supplier_mail_messages
+          WHERE handled_at IS NULL
+            AND received_at > now() - make_interval(days => $1)
+            AND (kind = 'bounce' OR (kind = 'supplier' AND category IN ('reply', 'confirmation')))`,
+        [VIEW_DAYS]
+      ),
+      loadOpenCases(),
+    ]);
+    let overdue = 0;
+    if (cases.length) {
+      const { rows: linked } = await query<Pick<MailMessageRow, "case_kind" | "case_id" | "kind">>(
+        `SELECT case_kind, case_id, kind FROM public.supplier_mail_messages WHERE case_id = ANY($1::uuid[])`,
+        [cases.map((c) => c.id)]
+      );
+      overdue = waitingCases(cases, linked as MailMessageRow[], now).filter((w) => w.overdue).length;
+    }
+    return (open.rows[0]?.n ?? 0) + overdue;
   } catch {
     return 0;
   }

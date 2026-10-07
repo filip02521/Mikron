@@ -199,7 +199,7 @@ async function syncMailbox(
             const c = mailCases.find((x) => x.threadId && x.threadId === meta.threadId);
             return c ? { caseKind: c.kind, caseId: c.id, linkedBy: "thread" as const } : null;
           })()
-        : linkToCase({ threadId: meta.threadId, text, supplierIds }, mailCases);
+        : linkToCase({ threadId: meta.threadId, text, supplierIds, category }, mailCases);
     if (meta.kind === "bounce" && !link) continue;
     const linkedCase = link ? mailCases.find((c) => c.kind === link.caseKind && c.id === link.caseId) : undefined;
     const supplierId = linkedCase?.supplierId ?? zd?.supplierId ?? supplierIds[0] ?? null;
@@ -330,9 +330,16 @@ export function syncSupplierMail(opts: { force?: boolean } = {}): Promise<Suppli
     const result: SupplierMailSyncResult = { mailboxes: 0, inserted: 0, errors: [] };
     if (!getGmailOAuthConfig()) return result;
     const boxes = await loadMailboxes();
-    const { rows: syncRows } = await query<{ mailbox: string; synced_at: Date }>(
-      `SELECT mailbox, synced_at FROM public.supplier_mail_sync`
+    if (!boxes.length) return result;
+    // Przed migracją 178 nie ma tabel Poczty — bez błędu w logach co kilkanaście sekund.
+    const syncRes = await query<{ mailbox: string; synced_at: Date }>(`SELECT mailbox, synced_at FROM public.supplier_mail_sync`).catch(
+      (e: unknown) => {
+        if (e instanceof Error && /supplier_mail_sync/.test(e.message) && /does not exist|nie istnieje/.test(e.message)) return null;
+        throw e;
+      }
     );
+    if (!syncRes) return result;
+    const syncRows = syncRes.rows;
     const lastSync = new Map(syncRows.map((r) => [r.mailbox, r.synced_at.getTime()]));
     // „Sprawdź teraz” (force) skraca odstęp do minuty — nie znosi go (Gmail API ma limity).
     const minGap = opts.force ? FORCE_SYNC_MIN_GAP_MS : SUPPLIER_MAIL_SYNC_EVERY_MS;
