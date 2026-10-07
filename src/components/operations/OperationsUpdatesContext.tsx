@@ -65,6 +65,8 @@ async function fetchVersion(): Promise<{
   verificationCount: number | null;
   realizacjaCount: number | null;
   operationsNotatki: number | null;
+  /** Poczta dostawców (tylko admin i zakupy). */
+  supplierMail?: number | null;
 }> {
   try {
     const res = await fetch("/api/operations/daily-panel-version", {
@@ -97,6 +99,7 @@ async function fetchVersion(): Promise<{
       verificationCount?: number;
       realizacjaCount?: number;
       operationsNotatki?: number;
+      supplierMail?: number;
     };
     return {
       version: body.version ?? null,
@@ -109,6 +112,7 @@ async function fetchVersion(): Promise<{
         typeof body.realizacjaCount === "number" ? body.realizacjaCount : null,
       operationsNotatki:
         typeof body.operationsNotatki === "number" ? body.operationsNotatki : null,
+      supplierMail: typeof body.supplierMail === "number" ? body.supplierMail : null,
     };
   } catch {
     return {
@@ -185,6 +189,7 @@ export function OperationsUpdatesProvider({
       if (data.verificationCount != null) patch.weryfikacja = data.verificationCount;
       if (data.realizacjaCount != null) patch.realizacja = data.realizacjaCount;
       if (data.operationsNotatki != null) patch.operationsNotatki = data.operationsNotatki;
+      if (data.supplierMail != null) patch.supplierMail = data.supplierMail;
       if (Object.keys(patch).length > 0) patchNavBadges(patch);
     },
     [patchNavBadges]

@@ -5,7 +5,7 @@
 
 import { query } from "@/lib/db/pool";
 import { isZdSupplierAbroad } from "@/lib/orders/zd-estimate-post-create";
-import { emailsInText } from "@/lib/supplier-forms/prepare";
+import { emailsInText } from "@/lib/email/supplier-emails";
 import type { BoardSupplierInquiry } from "@/lib/department-board/supplier-inquiry";
 import type { SupplierLocation } from "@/types/database";
 
@@ -75,21 +75,40 @@ export async function recordSupplierInquiry(input: {
   to: string[];
   subject: string;
   gmailMessageId: string;
+  /** Wątek Gmaila wysłanej wiadomości (migracja 178) — odpowiedzi dostawcy przypinają się po nim. */
+  gmailThreadId?: string | null;
 }): Promise<void> {
   await query(
     `INSERT INTO public.supplier_inquiry_emails
-       (thread_id, supplier_id, supplier_name, sent_by, from_address, to_addresses, subject, gmail_message_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-    [input.threadId, input.supplierId, input.supplierName, input.sentBy, input.from, input.to, input.subject, input.gmailMessageId]
+       (thread_id, supplier_id, supplier_name, sent_by, from_address, to_addresses, subject, gmail_message_id, gmail_thread_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+    [
+      input.threadId,
+      input.supplierId,
+      input.supplierName,
+      input.sentBy,
+      input.from,
+      input.to,
+      input.subject,
+      input.gmailMessageId,
+      input.gmailThreadId ?? null,
+    ]
   );
 }
 
-/** Odpowiedź zakupów w wątku zamyka oczekiwanie na dostawcę. */
-export async function resolveSupplierInquiries(threadId: string): Promise<void> {
+/**
+ * Odpowiedź zakupów w wątku zamyka oczekiwanie na dostawcę. `onlyIds` — tylko te zapytania
+ * (np. te, na które dostawca odpisał); pominięte = wszystkie otwarte w wątku.
+ */
+export async function resolveSupplierInquiries(threadId: string, onlyIds?: readonly string[]): Promise<void> {
+  if (onlyIds && !onlyIds.length) return;
   try {
     await query(
-      `UPDATE public.supplier_inquiry_emails SET resolved_at = now() WHERE thread_id = $1 AND resolved_at IS NULL`,
-      [threadId]
+      onlyIds
+        ? `UPDATE public.supplier_inquiry_emails SET resolved_at = now()
+            WHERE thread_id = $1 AND resolved_at IS NULL AND id = ANY($2::uuid[])`
+        : `UPDATE public.supplier_inquiry_emails SET resolved_at = now() WHERE thread_id = $1 AND resolved_at IS NULL`,
+      onlyIds ? [threadId, [...onlyIds]] : [threadId]
     );
   } catch (e) {
     if (!isMissingTable(e)) throw e;

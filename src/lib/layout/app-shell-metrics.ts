@@ -88,6 +88,9 @@ export async function fetchAppShellMetrics(
         weryfikacja: metrics.verificationCount,
         nowe: metrics.navBadge,
         departmentBoardQuestions: metrics.openBoardQuestionsCount,
+        ...(role === "admin" || role === "zakupy"
+          ? { supplierMail: await import("@/lib/supplier-mail/data").then((m) => m.countSupplierMailNeedsAction()) }
+          : {}),
       };
       operationsDailyPanelVersion = metrics.version;
       operationsPinnedAnnouncements = pinnedAnnouncements;

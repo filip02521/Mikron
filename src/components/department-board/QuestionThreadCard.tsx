@@ -1,5 +1,8 @@
 "use client";
 
+import { actionResolveAwaitingSupplier } from "@/app/actions/gmail";
+import { BoardSupplierReplies } from "@/components/department-board/BoardSupplierReplies";
+import { businessDaysLabel, businessDaysSince } from "@/lib/suppliers/awaiting-supplier";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { Button } from "@/components/ui/Button";
@@ -220,6 +223,21 @@ export function QuestionThreadCard({
       onChanged?.();
     } catch (e) {
       setError(userFacingErrorText(e, "Nie udało się wysłać odpowiedzi."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Dostawca odpowiedział poza mailem — koniec czekania bez wpisu w wątku. */
+  async function endSupplierWait(inquiryId: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await actionResolveAwaitingSupplier({ kind: "inquiry", id: inquiryId });
+      if (!res.ok && !/już zamknięta/.test(res.message)) setError(res.message);
+      else onChanged?.();
+    } catch (e) {
+      setError(userFacingErrorText(e, "Nie udało się zakończyć czekania."));
     } finally {
       setBusy(false);
     }
@@ -513,12 +531,44 @@ export function QuestionThreadCard({
           </div>
         )}
 
+        {audience === "procurement" && !isClosed && question.supplierInquiries?.length ? (
+          <BoardSupplierReplies
+            threadId={question.id}
+            onUseAnswer={(text) => {
+              // Nie nadpisuje tego, co już ktoś zaczął pisać — dokleja pod spodem.
+              setReply((prev) => (prev.trim() ? `${prev.trimEnd()}\n\n${text}` : text));
+              // Pole odpowiedzi pod spodem — od razu do poprawki.
+              requestAnimationFrame(() => document.getElementById(`reply-${question.id}`)?.focus());
+            }}
+          />
+        ) : null}
+
         {pendingInquiry ? (
           <p className={boardAwaitingReplyClass}>
             {audience === "sales" ? "Zakupy zapytały dostawcę" : "Zapytanie wysłane do dostawcy"}{" "}
             <span className="font-medium text-slate-700">{pendingInquiry.supplierName}</span> ·{" "}
-            {formatBoardDate(pendingInquiry.sentAt)}.{" "}
-            {audience === "sales" ? "Odpowiedź pojawi się w tym wątku." : "Odpowiedź przyjdzie na Twojego Gmaila — wpisz ją tutaj."}
+            {formatBoardDate(pendingInquiry.sentAt)}
+            {businessDaysSince(new Date(pendingInquiry.sentAt)) > 0
+              ? ` (czeka ${businessDaysLabel(businessDaysSince(new Date(pendingInquiry.sentAt)))})`
+              : ""}
+            .{" "}
+            {audience === "sales"
+              ? "Odpowiedź pojawi się w tym wątku."
+              : "Gdy dostawca odpisze, jego mail pokaże się tutaj - Twoja odpowiedź handlowcowi zakończy czekanie."}
+            {audience === "procurement" && canReply ? (
+              <>
+                {" "}
+                <button
+                  type="button"
+                  className="font-medium text-indigo-700 underline decoration-indigo-300 underline-offset-2 hover:decoration-indigo-600 disabled:opacity-50"
+                  disabled={busy}
+                  onClick={() => void endSupplierWait(pendingInquiry.id)}
+                  title="Dostawca odpowiedział inną drogą (telefon, portal) - zapytanie znika z listy „Czeka na dostawcę”"
+                >
+                  Zakończ czekanie
+                </button>
+              </>
+            ) : null}
           </p>
         ) : null}
 

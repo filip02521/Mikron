@@ -212,6 +212,8 @@ export type NavBadges = {
   salesTablica?: number;
   operationsNotatki?: number;
   departmentBoardQuestions?: number;
+  /** Poczta dostawców: rozmowy do reakcji + sprawy po terminie (Asystent). */
+  supplierMail?: number;
   adminBugReports?: number;
   teethQueue?: number;
   teethVerification?: number;
@@ -389,7 +391,7 @@ function operationsTodayItems(
 }
 
 /** Zamawianie: Kreator ZD (admin + zakupy), formularz grupowy i archiwum zamówień. */
-function operationsOrderingItems(role: UserRole): NavItem[] {
+function operationsOrderingItems(role: UserRole, badges: Pick<NavBadges, "supplierMail"> = {}): NavItem[] {
   const items: NavItem[] = [];
   if (role === "admin" || role === "zakupy") {
     items.push({
@@ -425,11 +427,12 @@ function operationsOrderingItems(role: UserRole): NavItem[] {
       href: "/zakupy/asystent",
       label: "Asystent",
       mobileLabel: "Asystent",
-      description: "Przegląd skrzynki i kontrola potwierdzeń OC",
+      description: "Poczta dostawców, przegląd skrzynki i kontrola potwierdzeń OC",
       icon: "mail",
       tone: "slate",
       tier: "compact",
       mobileSlot: "overflow",
+      badge: badges.supplierMail,
     });
   }
   items.push(
@@ -708,7 +711,7 @@ function adminCatalogMailItems(): NavItem[] {
 function operationsNavGroups(role: UserRole, badges: NavBadges): NavGroup[] {
   const groups: NavGroup[] = [
     { title: NAV_SECTION_TODAY, items: operationsTodayItems(badges) },
-    { title: NAV_SECTION_ORDERING, items: operationsOrderingItems(role) },
+    { title: NAV_SECTION_ORDERING, items: operationsOrderingItems(role, badges) },
     { title: NAV_SECTION_TEAM, items: operationsTeamItems(badges) },
     {
       title: NAV_SECTION_SUPPLIERS,

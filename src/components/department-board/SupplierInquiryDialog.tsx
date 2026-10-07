@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useState } from "react";
+import { MailPreview } from "@/components/mail/MailPreview";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Spinner } from "@/components/ui/Spinner";
@@ -11,6 +12,7 @@ import {
   type SupplierInquiryPrep,
 } from "@/app/actions/department-board-inquiry";
 import { formatBoardDate } from "@/lib/department-board/format";
+import { parseMailRecipients } from "@/lib/email/recipients";
 import { cn } from "@/lib/cn";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
@@ -32,11 +34,12 @@ export function SupplierInquiryDialog({
   onClose: () => void;
   onSent: () => void;
 }) {
-  const ids = { supplier: useId(), to: useId(), subject: useId(), body: useId() };
+  const ids = { supplier: useId(), to: useId(), cc: useId(), subject: useId(), body: useId() };
   const [prep, setPrep] = useState<Prep | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [supplierId, setSupplierId] = useState("");
   const [to, setTo] = useState("");
+  const [cc, setCc] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
@@ -81,7 +84,9 @@ export function SupplierInquiryDialog({
       rest: prep.suppliers.filter((s) => !suggested.has(s.id)),
     };
   }, [prep]);
-  const canSend = Boolean(prep?.gmail.email) && Boolean(supplier) && to.trim() !== "" && subject.trim() !== "" && body.trim() !== "";
+  const recipients = parseMailRecipients(to, cc);
+  const canSend =
+    Boolean(prep?.gmail.email) && Boolean(supplier) && recipients.ok && subject.trim() !== "" && body.trim() !== "";
 
   async function send(opts: { resend?: boolean; allowUnknownRecipients?: boolean } = {}) {
     if (!supplier || sending) return;
@@ -90,7 +95,7 @@ export function SupplierInquiryDialog({
     setSending(true);
     setSendError(null);
     try {
-      const res = await actionSendSupplierInquiry({ threadId, supplierId: supplier.id, to, subject, body, ...flags });
+      const res = await actionSendSupplierInquiry({ threadId, supplierId: supplier.id, to, cc, subject, body, ...flags });
       if (res.ok) {
         onSent();
         onClose();
@@ -109,12 +114,12 @@ export function SupplierInquiryDialog({
       open
       onClose={() => !sending && onClose()}
       title="Zapytaj dostawcę"
-      titleHint="Mail o cenę, dostępność i czas realizacji wychodzi z Twojego Gmaila. Handlowiec od razu widzi w wątku, że czekacie na dostawcę — nie trzeba tego dopisywać. Odpowiedź dostawcy przyjdzie do Twojej skrzynki; wpisz ją w wątku, to zakończy oczekiwanie."
+      titleHint="Mail o cenę, dostępność i czas realizacji wychodzi z Twojego Gmaila. Handlowiec od razu widzi w wątku, że czekacie na dostawcę — nie trzeba tego dopisywać. Odpowiedź dostawcy pokaże się w tym wątku (z propozycją odpowiedzi dla handlowca); Twoja odpowiedź handlowcowi zakończy oczekiwanie."
       titleId={`supplier-inquiry-${threadId}`}
-      size="md"
+      size="full"
       tier="top"
       loadingMessage={!prep && !loadError ? "Przygotowuję zapytanie…" : null}
-      bodyClassName="space-y-4 px-5 py-5 sm:px-6"
+      bodyClassName="grid auto-rows-max gap-5 px-5 py-5 sm:px-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] md:items-start"
       footer={
         <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button type="button" variant="ghost" className="min-h-11 w-full sm:w-auto" disabled={sending} onClick={onClose}>
@@ -144,6 +149,7 @@ export function SupplierInquiryDialog({
         </p>
       ) : prep ? (
         <>
+          <div className="min-w-0 space-y-4">
           {!prep.gmail.configured ? (
             <p className="rounded-md bg-amber-50 px-3 py-2.5 text-sm text-amber-950 ring-1 ring-amber-200" role="alert">
               Wysyłka z Gmaila nie jest skonfigurowana na serwerze.
@@ -215,8 +221,22 @@ export function SupplierInquiryDialog({
                 )}
                 <p className="mt-1 text-xs text-slate-500">
                   {supplier.english ? "Szkic po angielsku (dostawca zagraniczny)." : "Szkic po polsku."}
-                  {prep.gmail.email ? <> Od: <span className="font-medium text-slate-700">{prep.gmail.email}</span></> : null}
                 </p>
+              </div>
+              <div>
+                <label htmlFor={ids.cc} className="text-xs font-medium text-slate-500">
+                  DW (kopia) <span className="font-normal">- opcjonalnie, adresy po przecinku</span>
+                </label>
+                <input
+                  id={ids.cc}
+                  type="text"
+                  inputMode="email"
+                  autoComplete="off"
+                  value={cc}
+                  onChange={(e) => setCc(e.target.value)}
+                  placeholder="np. kierownik@mikran.com"
+                  className={fieldClass}
+                />
               </div>
               <div>
                 <label htmlFor={ids.subject} className="text-xs font-medium text-slate-500">
@@ -277,6 +297,22 @@ export function SupplierInquiryDialog({
               ) : null}
             </p>
           ) : null}
+          </div>
+          {supplier ? (
+            <MailPreview
+              className="md:sticky md:top-0"
+              from={prep.gmail.email}
+              to={to}
+              cc={cc}
+              subject={subject}
+              text={body}
+              attachments={[]}
+            />
+          ) : (
+            <p className="rounded-[var(--radius-panel)] border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">
+              Wybierz dostawcę — tu zobaczysz wiadomość dokładnie tak, jak do niego wyjdzie.
+            </p>
+          )}
         </>
       ) : null}
     </ModalShell>

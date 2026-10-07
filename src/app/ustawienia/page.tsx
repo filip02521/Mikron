@@ -34,7 +34,11 @@ export default async function UstawieniaPage() {
 
         <AutoRefreshSettingsSection role={user.role} />
 
-        {showGmail ? <GmailSettingsSection connectedEmail={gmail?.email ?? null} signature={signature} /> : null}
+        {showGmail ? <GmailSettingsSection
+            connectedEmail={gmail?.email ?? null}
+            canReadReplies={gmail?.canReadReplies ?? false}
+            signature={signature}
+          /> : null}
 
         <AppearanceSettingsSection uniformBackground={user.uniformBackground} fontScale={user.fontScale} />
       </SettingsWorkspace>

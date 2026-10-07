@@ -17,6 +17,8 @@ import {
 } from "@/lib/data/department-board";
 import { notifyBoardQuestionReplyToSales } from "@/lib/department-board/notify-board-reply";
 import { resolveSupplierInquiries } from "@/lib/department-board/supplier-inquiry-db";
+import { inquiriesToResolveOnReply } from "@/lib/google/gmail-connections";
+import { markInquiryMailHandled } from "@/lib/supplier-mail/data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SalesNoteColor } from "@/types/database";
 import {
@@ -516,9 +518,14 @@ export async function actionReplyToQuestion(
 
   // Odpowiedź zakupów kończy „Czeka na dostawcę” (zapytanie z tego wątku).
   if (countsAsProcurementReply) {
-    await resolveSupplierInquiries(threadId).catch((e) =>
-      console.error("[tablica] resolve supplier_inquiry_emails", e)
-    );
+    // Tylko zapytania z odpowiedzią dostawcy — „zapytałem, dam znać” nie kończy czekania.
+    await inquiriesToResolveOnReply(threadId)
+      .then(async (ids) => {
+        await resolveSupplierInquiries(threadId, ids);
+        // Te same odpowiedzi dostawcy znikają z „Do reakcji” w Poczcie dostawców.
+        await markInquiryMailHandled(ids, user.id);
+      })
+      .catch((e) => console.error("[tablica] resolve supplier_inquiry_emails", e));
   }
 
   // Tylko odpowiedź zakupów → e-mail do handlowca (doprecyzowanie handlowca bez maila).

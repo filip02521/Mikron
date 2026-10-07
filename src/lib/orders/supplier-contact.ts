@@ -1,4 +1,5 @@
 import { orderMethodKind, orderMethodLabel, type OrderMethodKind } from "@/lib/display-labels";
+import { emailsInText } from "@/lib/email/supplier-emails";
 
 export type SupplierContactLink = {
   kind: "mailto" | "tel" | "url";
@@ -52,9 +53,9 @@ function extractTelHref(contact: string): string | null {
   return `tel:${digits}`;
 }
 
+/** Pierwszy adres dostawcy — bez loginów do portali i adresów Mikranu (`emailsInText`). */
 function extractFirstEmail(contact: string): string | null {
-  const match = contact.match(/[^\s,;]+@[^\s,;]+/);
-  return match ? match[0] : null;
+  return emailsInText(contact)[0] ?? null;
 }
 
 function displayUrlLabel(href: string): string {
