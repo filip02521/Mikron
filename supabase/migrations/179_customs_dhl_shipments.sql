@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS public.customs_dhl_shipments (
   extraction jsonb,
   supplier_id uuid REFERENCES public.suppliers(id) ON DELETE SET NULL,
   clearance_id uuid REFERENCES public.customs_clearances(id) ON DELETE SET NULL,
+  -- Blokada zakładania odprawy (podwójne kliknięcie, dwa przebiegi naraz); po 10 min wygasa.
+  claimed_at timestamptz,
   -- Etap: request (czeka na odpowiedź) → replied → confirmed → declared (ZCX91) → released (429).
   stage text NOT NULL DEFAULT 'request'
     CHECK (stage IN ('request', 'replied', 'confirmed', 'declared', 'released')),

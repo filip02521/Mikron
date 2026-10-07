@@ -384,8 +384,8 @@ async function createFromShipment(
 ): Promise<string | null> {
   // Blokada przed drugą odprawą dla tego samego AWB (dwa przebiegi synchronizacji naraz).
   const claim = await query(
-    `UPDATE public.customs_dhl_shipments SET supplier_id = $2, note = 'Zakładam odprawę…', updated_at = now()
-      WHERE id = $1 AND clearance_id IS NULL AND (note IS DISTINCT FROM 'Zakładam odprawę…' OR updated_at < now() - interval '10 minutes')`,
+    `UPDATE public.customs_dhl_shipments SET supplier_id = $2, claimed_at = now(), updated_at = now()
+      WHERE id = $1 AND clearance_id IS NULL AND (claimed_at IS NULL OR claimed_at < now() - interval '10 minutes')`,
     [s.id, supplierId]
   );
   if (!claim.rowCount) return null;
@@ -408,6 +408,7 @@ async function createFromShipment(
     userId
   );
   if (!created.ok) {
+    await query(`UPDATE public.customs_dhl_shipments SET claimed_at = NULL WHERE id = $1`, [s.id]);
     await setNote(s.id, `Nie udało się założyć odprawy: ${created.error}`.slice(0, 300));
     return null;
   }
@@ -436,7 +437,7 @@ async function createFromShipment(
       up.error ? null : invoiceFile.name,
     ]
   );
-  await query(`UPDATE public.customs_dhl_shipments SET clearance_id = $2, note = NULL, updated_at = now() WHERE id = $1`, [
+  await query(`UPDATE public.customs_dhl_shipments SET clearance_id = $2, note = NULL, claimed_at = NULL, updated_at = now() WHERE id = $1`, [
     s.id,
     clearanceId,
   ]);
@@ -463,9 +464,11 @@ export async function createDhlClearanceForSupplier(
   );
   const id = await prepareDhlClearance(shipmentId, userId);
   if (id) return { ok: true, id };
-  const { rows } = await query<{ note: string | null }>(`SELECT note FROM public.customs_dhl_shipments WHERE id = $1`, [
-    shipmentId,
-  ]);
+  const { rows } = await query<{ note: string | null; busy: boolean }>(
+    `SELECT note, claimed_at > now() - interval '10 minutes' AS busy FROM public.customs_dhl_shipments WHERE id = $1`,
+    [shipmentId]
+  );
+  if (rows[0]?.busy) return { ok: false, error: "Odprawa jest właśnie zakładana - odśwież stronę za chwilę." };
   return { ok: false, error: rows[0]?.note ?? "Nie udało się założyć odprawy." };
 }
 
