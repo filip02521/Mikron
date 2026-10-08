@@ -6,6 +6,8 @@ import {
   IconMessageSquare,
 } from "@/components/icons/StrokeIcons";
 import { BoardQuestionAttachmentsGallery } from "@/components/department-board/BoardQuestionAttachmentsGallery";
+import { BoardFileAttachments } from "@/components/department-board/BoardFileAttachments";
+import { isBoardImageAttachment } from "@/lib/department-board/attachments";
 import { formatBoardDate } from "@/lib/department-board/format";
 import {
   boardThreadAuthorNameClass,
@@ -49,6 +51,9 @@ export function BoardThreadMessage({
   className?: string;
 }) {
   const roleLabel = threadRoleLabel(tone, replyKind);
+  // Zdjęcia w galerii, pliki (np. oferta dostawcy w PDF) jako odnośniki.
+  const images = (attachments ?? []).filter((a) => isBoardImageAttachment(a.mime_type));
+  const files = (attachments ?? []).filter((a) => !isBoardImageAttachment(a.mime_type));
 
   return (
     <div className={cn(boardThreadMessageShellClass(tone), className)}>
@@ -65,9 +70,8 @@ export function BoardThreadMessage({
           {body.trim() ? (
             <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{body}</p>
           ) : null}
-          {attachments?.length ? (
-            <BoardQuestionAttachmentsGallery attachments={attachments} />
-          ) : null}
+          {images.length ? <BoardQuestionAttachmentsGallery attachments={images} /> : null}
+          {files.length ? <BoardFileAttachments attachments={files} /> : null}
         </div>
       </div>
     </div>

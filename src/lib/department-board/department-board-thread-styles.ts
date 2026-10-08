@@ -129,7 +129,15 @@ export const boardQuestionRowHeaderExpandedClass =
 
 export const boardQuestionUnseenDotClass = "h-2 w-2 shrink-0 rounded-full bg-indigo-500";
 
-export type BoardQuestionStatusTone = "attention" | "unseen" | "waiting" | "waiting-overdue";
+export type BoardQuestionStatusTone =
+  | "attention"
+  | "unseen"
+  | "waiting"
+  | "waiting-overdue"
+  /** Dostawca odpisał na zapytanie — ruch po stronie zakupów (przekazać handlowcowi). */
+  | "supplier-replied"
+  /** Mail do dostawcy wrócił. */
+  | "supplier-bounced";
 
 /**
  * Odznaka stanu w wierszu. Bursztyn = ruch po stronie zakupów; Petrol = nowa odpowiedź;
@@ -142,7 +150,11 @@ export function boardQuestionStatusBadgeClass(tone: BoardQuestionStatusTone): st
       ? "bg-amber-100 text-amber-900 ring-1 ring-amber-200/70"
       : tone === "unseen"
         ? "bg-indigo-100 text-indigo-900 ring-1 ring-indigo-200/70"
-        : tone === "waiting-overdue"
+        : tone === "supplier-replied"
+          ? "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200"
+          : tone === "supplier-bounced"
+            ? "bg-red-50 text-red-800 ring-1 ring-red-200"
+            : tone === "waiting-overdue"
           ? "bg-amber-50 text-amber-900 ring-1 ring-amber-300/70"
           : "bg-white text-slate-600 ring-1 ring-slate-300/80"
   );

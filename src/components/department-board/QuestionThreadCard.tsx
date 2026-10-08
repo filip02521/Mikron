@@ -37,7 +37,12 @@ import { BoardQuestionProductContext } from "@/components/department-board/Board
 import { BoardThreadMessage } from "@/components/department-board/BoardThreadMessage";
 import { BoardReplyComposer } from "@/components/department-board/BoardReplyComposer";
 import { SupplierInquiryDialog } from "@/components/department-board/SupplierInquiryDialog";
-import { pendingSupplierInquiry, supplierInquiryWait } from "@/lib/department-board/supplier-inquiry";
+import {
+  inquiryNeedsAttention,
+  pendingSupplierInquiry,
+  supplierInquiryWait,
+} from "@/lib/department-board/supplier-inquiry";
+import { isBoardImageAttachment } from "@/lib/department-board/attachments";
 import { useBoardQuestionImages } from "@/components/department-board/useBoardQuestionImages";
 import {
   boardQuestionHasProduct,
@@ -51,6 +56,7 @@ import {
   actionMarkQuestionThreadSeen,
   actionReopenQuestion,
   actionReplyToQuestion,
+  type BoardSupplierFileRef,
 } from "@/app/actions/department-board";
 import { isStaleAnsweredQuestion } from "@/lib/department-board/attention";
 import { askConfirm } from "@/components/ui/ConfirmHost";
@@ -61,11 +67,17 @@ function photoLabel(count: number): string {
 }
 
 /** Podgląd treści wpisu w zwiniętym wierszu — samo zdjęcie też coś mówi. */
-function postPreviewText(body: string, photoCount: number): string {
+function postPreviewText(body: string, photoCount: number, fileCount = 0): string {
   const text = body.trim();
-  if (!photoCount) return text;
-  const photos = `[${photoLabel(photoCount)}]`;
-  return text ? `${photos} ${text}` : photos;
+  const tags = [
+    photoCount ? `[${photoLabel(photoCount)}]` : null,
+    fileCount ? `[${fileCount === 1 ? "plik" : `pliki: ${fileCount}`}]` : null,
+  ].filter(Boolean);
+  return [...tags, text].filter(Boolean).join(" ");
+}
+
+function supplierFileKey(f: BoardSupplierFileRef): string {
+  return `${f.inquiryId}|${f.replyId}|${f.filename}`;
 }
 
 function procurementReplyLabel(indexAmongProcurement: number): string {
@@ -108,6 +120,8 @@ export function QuestionThreadCard({
   const [inquiryOpen, setInquiryOpen] = useState(false);
   const [locallySeen, setLocallySeen] = useState(!unseenReply);
   const [reply, setReply] = useState("");
+  /** Załączniki z maila dostawcy dołączone do odpowiedzi (plik pobiera serwer przy wysyłce). */
+  const [supplierFiles, setSupplierFiles] = useState<BoardSupplierFileRef[]>([]);
   const [busy, setBusy] = useState(false);
   const {
     images: replyImages,
@@ -133,12 +147,17 @@ export function QuestionThreadCard({
   const hasProduct = boardQuestionHasProduct(question);
   const stale = isStaleAnsweredQuestion(question);
   const pendingInquiry = isClosed ? null : pendingSupplierInquiry(question.supplierInquiries);
-  const inquiryWait = pendingInquiry ? supplierInquiryWait(pendingInquiry) : null;
+  // Odpowiedź dostawcy z Poczty (synchronizacja Gmaila w tle) — zakupy widzą ją na liście bez rozwijania.
+  const supplierAnswered =
+    isClosed || audience !== "procurement" ? null : (question.supplierInquiries ?? []).find(inquiryNeedsAttention) ?? null;
+  // Zakupy po odpowiedzi dostawcy już nie czekają; handlowiec dalej widzi „czeka na dostawcę”, dopóki zakupy nie odpiszą.
+  const inquiryWait =
+    pendingInquiry && !(pendingInquiry.replyAt && audience === "procurement") ? supplierInquiryWait(pendingInquiry) : null;
   // Przeterminowanie wymaga ruchu tylko od zakupów (przypomnienie) — handlowiec widzi spokojny stan.
   const inquiryOverdue = Boolean(inquiryWait?.overdue) && audience === "procurement";
-  const threadPhotoCount =
-    (question.attachments?.length ?? 0) +
-    question.posts.reduce((sum, post) => sum + (post.attachments?.length ?? 0), 0);
+  const threadPhotoCount = [...(question.attachments ?? []), ...question.posts.flatMap((post) => post.attachments ?? [])].filter(
+    (a) => isBoardImageAttachment(a.mime_type)
+  ).length;
 
   const latestActivityPost = useMemo(() => {
     if (question.posts.length === 0) return null;
@@ -160,7 +179,8 @@ export function QuestionThreadCard({
             ),
         text: postPreviewText(
           latestActivityPost.body,
-          latestActivityPost.attachments?.length ?? 0
+          (latestActivityPost.attachments ?? []).filter((a) => isBoardImageAttachment(a.mime_type)).length,
+          (latestActivityPost.attachments ?? []).filter((a) => !isBoardImageAttachment(a.mime_type)).length
         ),
       };
     }
@@ -221,8 +241,9 @@ export function QuestionThreadCard({
     setBusy(true);
     setError(null);
     try {
-      await actionReplyToQuestion(question.id, reply, replyImageFiles);
+      await actionReplyToQuestion(question.id, reply, replyImageFiles, supplierFiles);
       setReply("");
+      setSupplierFiles([]);
       clearReplyImages();
       setInlineReply(false);
       onChanged?.();
@@ -316,18 +337,24 @@ export function QuestionThreadCard({
   // `age` zostaje na telefonie, `label` chowa się wizualnie (nadal czytany przez czytnik ekranu).
   const status: { label: string; age?: string; tone: BoardQuestionStatusTone; title?: string } | null = isClosed
     ? null
-    : !isOpen && showUnseen
-      ? { label: "Nowa odpowiedź", tone: "unseen" }
-      : pendingInquiry && inquiryWait
-        ? {
-            label: inquiryOverdue ? "Przypomnij dostawcy" : "Czeka na dostawcę",
-            age: businessDaysLabel(inquiryWait.businessDays),
-            tone: inquiryOverdue ? "waiting-overdue" : "waiting",
-            title: `Zapytanie do: ${pendingInquiry.supplierName}, wysłane ${formatBoardDate(pendingInquiry.sentAt)}`,
-          }
-        : isOpen
-          ? { label: "Bez odpowiedzi", tone: "attention" }
-          : null;
+    : supplierAnswered
+      ? {
+          label: supplierAnswered.bounced ? "Mail do dostawcy nie doszedł" : "Dostawca odpisał",
+          tone: supplierAnswered.bounced ? "supplier-bounced" : "supplier-replied",
+          title: `${supplierAnswered.supplierName} · ${formatBoardDate(supplierAnswered.replyAt!)}`,
+        }
+      : !isOpen && showUnseen
+        ? { label: "Nowa odpowiedź", tone: "unseen" }
+        : pendingInquiry && inquiryWait
+          ? {
+              label: inquiryOverdue ? "Przypomnij dostawcy" : "Czeka na dostawcę",
+              age: businessDaysLabel(inquiryWait.businessDays),
+              tone: inquiryOverdue ? "waiting-overdue" : "waiting",
+              title: `Zapytanie do: ${pendingInquiry.supplierName}, wysłane ${formatBoardDate(pendingInquiry.sentAt)}`,
+            }
+          : isOpen
+            ? { label: "Bez odpowiedzi", tone: "attention" }
+            : null;
 
   const replyLabel = audience === "sales"
     ? "Twoja wiadomość"
@@ -351,6 +378,8 @@ export function QuestionThreadCard({
       busy={busy}
       onSubmit={() => void submitReply()}
       error={error}
+      extraFiles={supplierFiles.map((f) => ({ key: supplierFileKey(f), name: f.filename }))}
+      onRemoveExtraFile={(key) => setSupplierFiles((prev) => prev.filter((f) => supplierFileKey(f) !== key))}
     />
   );
   const expandLabel = `Pytanie: ${question.title}`;
@@ -553,6 +582,15 @@ export function QuestionThreadCard({
         {audience === "procurement" && !isClosed && question.supplierInquiries?.length ? (
           <BoardSupplierReplies
             threadId={question.id}
+            refreshKey={(question.supplierInquiries ?? []).map((i) => i.replyAt ?? "").join("|")}
+            attachedKeys={supplierFiles.map(supplierFileKey)}
+            onToggleFile={(file) =>
+              setSupplierFiles((prev) =>
+                prev.some((f) => supplierFileKey(f) === supplierFileKey(file))
+                  ? prev.filter((f) => supplierFileKey(f) !== supplierFileKey(file))
+                  : [...prev, file]
+              )
+            }
             onUseAnswer={(text) => {
               // Nie nadpisuje tego, co już ktoś zaczął pisać — dokleja pod spodem.
               setReply((prev) => (prev.trim() ? `${prev.trimEnd()}\n\n${text}` : text));
@@ -560,6 +598,15 @@ export function QuestionThreadCard({
               requestAnimationFrame(() => document.getElementById(`reply-${question.id}`)?.focus());
             }}
           />
+        ) : null}
+
+        {pendingInquiry?.replyAt && audience === "procurement" ? (
+          <p className={boardAwaitingReplyClass}>
+            {pendingInquiry.bounced ? "Mail do dostawcy" : "Dostawca"}{" "}
+            <span className="font-medium text-slate-700">{pendingInquiry.supplierName}</span>{" "}
+            {pendingInquiry.bounced ? "wrócił" : "odpisał"} {formatBoardDate(pendingInquiry.replyAt)} - odpowiedz handlowcowi,
+            żeby zamknąć sprawę.
+          </p>
         ) : null}
 
         {pendingInquiry && inquiryWait ? (

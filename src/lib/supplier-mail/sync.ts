@@ -13,6 +13,7 @@ import {
   getGmailThreadSentTimes,
   gmailAccessToken,
   listGmailMessageIds,
+  runAsGmailBackground,
   scopeCanReadReplies,
   type GmailMessageMeta,
 } from "@/lib/google/gmail";
@@ -369,7 +370,8 @@ export function syncSupplierMail(opts: { force?: boolean } = {}): Promise<Suppli
 
 function runSync(opts: { force?: boolean }): Promise<SupplierMailSyncResult> {
   if (running) return running;
-  running = (async () => {
+  // Praca w tle: ustępuje odczytom Gmaila, na które ktoś czeka (tablica, karta dostawcy).
+  running = runAsGmailBackground(async () => {
     const result: SupplierMailSyncResult = { mailboxes: 0, inserted: 0, errors: [] };
     if (!getGmailOAuthConfig()) return result;
     const boxes = await loadMailboxes();
@@ -411,7 +413,7 @@ function runSync(opts: { force?: boolean }): Promise<SupplierMailSyncResult> {
       if (!/customs_dhl_shipments/.test(message)) console.error("[odprawy] automat", e);
     });
     return result;
-  })().finally(() => {
+  }).finally(() => {
     running = null;
   });
   return running;

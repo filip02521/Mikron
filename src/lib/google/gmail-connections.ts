@@ -11,12 +11,15 @@ import { recordTransactionalEmailLog } from "@/lib/services/transactional-email-
 import { awaitingReplyStatus } from "@/lib/suppliers/awaiting-supplier";
 import type { TransactionalEmailKind } from "@/types/database";
 import {
+  GmailRateLimitedError,
   GmailReconnectRequiredError,
   buildMimeMessage,
   decryptToken,
   fetchGmailAttachment,
   fetchGmailReplies,
   findGmailMessageByRfcId,
+  getGmailMessageMeta,
+  getGmailThreadId,
   isGmailTransportError,
   scopeCanReadReplies,
   type GmailReply,
@@ -280,7 +283,8 @@ export type SentThreadRead = {
 } & (
   | { status: "read"; replies: GmailReply[] }
   /** Nie da się odczytać: nadawca bez połączenia z odczytem, wiadomość usunięta albo błąd Gmaila. */
-  | { status: "unavailable"; reason: string; reconnectSelf?: boolean }
+  /** `retryLater` — limit Gmaila na minutę; za chwilę odczyt się uda. */
+  | { status: "unavailable"; reason: string; reconnectSelf?: boolean; retryLater?: boolean }
 );
 
 type SentMailRow = {
@@ -351,6 +355,9 @@ async function readSentThreads(
             reason: own ? e.message : `Połączenie Gmaila ${row.from_address} wygasło.`,
             reconnectSelf: own,
           };
+        }
+        if (e instanceof GmailRateLimitedError) {
+          return { gmailUrl: null, status: "unavailable", reason: e.message, retryLater: true };
         }
         return { gmailUrl: null, status: "unavailable", reason: e instanceof Error ? e.message : String(e) };
       }
@@ -467,11 +474,11 @@ export type BoardReplyForAi = {
  * Jedna odpowiedź dostawcy z wątku pytania razem z załącznikami PDF — dla propozycji odpowiedzi (AI).
  * Czytane z konta osoby, która wysłała zapytanie. null = brak zapytania, odpowiedzi albo dostępu.
  */
-export async function boardReplyForAi(input: {
-  threadId: string;
-  inquiryId: string;
-  replyId: string;
-}): Promise<BoardReplyForAi | null> {
+/** Zapytanie z wątku tablicy i token Gmaila osoby, która je wysłała (odpowiedzi są w jej skrzynce). */
+async function inquirySenderMailbox(
+  threadId: string,
+  inquiryId: string
+): Promise<{ row: SentMailRow & { supplier_name: string; gmail_message_id: string }; token: string } | null> {
   const cfg = getGmailOAuthConfig();
   if (!cfg) return null;
   const { rows } = await query<SentMailRow & { supplier_name: string }>(
@@ -479,11 +486,55 @@ export async function boardReplyForAi(input: {
        FROM public.supplier_inquiry_emails i
        ${senderConnectionJoin("i")}
       WHERE i.id = $1 AND i.thread_id = $2`,
-    [input.inquiryId, input.threadId]
+    [inquiryId, threadId]
   );
   const row = rows[0];
   if (!row?.gmail_message_id || !row.refresh_token_enc || !scopeCanReadReplies(row.scope)) return null;
   const token = await gmailAccessToken(cfg, decryptToken(cfg.tokenKey, row.refresh_token_enc));
+  return { row: { ...row, gmail_message_id: row.gmail_message_id }, token };
+}
+
+/**
+ * Załączniki z jednej odpowiedzi dostawcy na zapytanie z tablicy — do dołączenia w odpowiedzi handlowcowi.
+ * Tylko wiadomość z wątku tego zapytania (nie dowolny mail ze skrzynki); jeden odczyt wiadomości na
+ * wszystkie pliki. Wynik w kolejności `filenames`: plik, „too_big” (rozmiar z Gmaila, bez pobierania)
+ * albo null (nie ma takiego pliku). null zamiast tablicy = brak zapytania, wiadomości albo dostępu.
+ */
+export async function boardReplyAttachments(input: {
+  threadId: string;
+  inquiryId: string;
+  replyId: string;
+  filenames: readonly string[];
+  maxBytes: number;
+}): Promise<Array<{ filename: string; data: Buffer } | "too_big" | null> | null> {
+  const box = await inquirySenderMailbox(input.threadId, input.inquiryId);
+  if (!box) return null;
+  const [meta, inquiryThread] = await Promise.all([
+    getGmailMessageMeta(box.token, input.replyId),
+    box.row.gmail_thread_id || getGmailThreadId(box.token, box.row.gmail_message_id),
+  ]);
+  if (!meta || !inquiryThread || meta.threadId !== inquiryThread || meta.labelIds.includes("SENT")) return null;
+  return Promise.all(
+    input.filenames.map(async (filename) => {
+      // attachmentId z tego odczytu — Gmail zmienia je przy każdym pobraniu wiadomości.
+      const ref = meta.attachments.find((a) => a.filename === filename);
+      if (!ref) return null;
+      if (ref.size > input.maxBytes) return "too_big" as const;
+      const data = await fetchGmailAttachment(box.token, input.replyId, ref.attachmentId);
+      if (!data) return null;
+      return data.length > input.maxBytes ? ("too_big" as const) : { filename: ref.filename, data };
+    })
+  );
+}
+
+export async function boardReplyForAi(input: {
+  threadId: string;
+  inquiryId: string;
+  replyId: string;
+}): Promise<BoardReplyForAi | null> {
+  const box = await inquirySenderMailbox(input.threadId, input.inquiryId);
+  if (!box) return null;
+  const { row, token } = box;
   const thread = await fetchGmailReplies(token, row.gmail_message_id, { withText: true, threadId: row.gmail_thread_id });
   const reply = thread?.replies.find((r) => r.id === input.replyId);
   if (!reply) return null;
@@ -538,11 +589,23 @@ export async function inquiriesToResolveOnReply(threadId: string): Promise<strin
     [threadId]
   );
   if (!rows.length) return [];
-  const reads = await readSentThreads(rows, "");
+  const [reads, linked] = await Promise.all([
+    readSentThreads(rows, ""),
+    // Odpowiedź przypięta w Poczcie dostawców także poza wątkiem wysyłki (numer zapytania w osobnym mailu).
+    query<{ case_id: string }>(
+      `SELECT DISTINCT case_id FROM public.supplier_mail_messages
+        WHERE case_kind = 'inquiry' AND case_id = ANY($1::uuid[]) AND kind IN ('supplier', 'bounce')`,
+      [rows.map((r) => r.id)]
+    )
+      .then((r) => new Set(r.rows.map((x) => String(x.case_id))))
+      .catch(() => new Set<string>()),
+  ]);
   return rows
-    .filter((_, i) => {
+    .filter((row, i) => {
       const read = reads[i]!;
-      return read.status === "unavailable" || awaitingReplyStatus(read.replies) === "replied";
+      // Zwrot też: zakupy odpisały handlowcowi, że mail nie doszedł — sprawa nie może wisieć na tablicy.
+      const status = read.status === "read" ? awaitingReplyStatus(read.replies) : null;
+      return read.status === "unavailable" || status === "replied" || status === "bounced" || linked.has(String(row.id));
     })
     .map((r) => String(r.id));
 }

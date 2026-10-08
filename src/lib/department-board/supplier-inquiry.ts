@@ -18,7 +18,19 @@ export type BoardSupplierInquiry = {
   sentAt: string;
   /** Zakupy odpisały w wątku po wysłaniu — wątek już nie czeka na dostawcę. */
   resolvedAt: string | null;
+  /**
+   * Ostatnia odpowiedź dostawcy (albo zwrot) z Poczty dostawców — synchronizacja Gmaila co kilka minut.
+   * null = jeszcze nic nie przyszło (albo brak migracji 178).
+   */
+  replyAt?: string | null;
+  /** Mail nie doszedł (zwrot z serwera poczty) — ostatnia wiadomość w sprawie to zwrot. */
+  bounced?: boolean;
 };
+
+/** Dostawca odpisał (albo mail wrócił), a zakupy jeszcze nie odpowiedziały w wątku. */
+export function inquiryNeedsAttention(i: BoardSupplierInquiry): boolean {
+  return !i.resolvedAt && Boolean(i.replyAt);
+}
 
 export type SupplierInquiryProduct = Pick<
   DepartmentBoardThreadRow,
