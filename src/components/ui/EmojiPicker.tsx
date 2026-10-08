@@ -1,6 +1,7 @@
 "use client";
 
-import { useId, useState, type RefObject } from "react";
+import { useEffect, useId, useRef, useState, type RefObject } from "react";
+import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 
 /** Emotki, które mają sens w rozmowie działu: potwierdzenia, pilność, logistyka, kilka min. */
@@ -30,6 +31,30 @@ export function EmojiPicker({
 }) {
   const [open, setOpen] = useState(false);
   const listId = useId();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // Escape zamyka i oddaje fokus przyciskowi; klik poza listą zamyka — jak każde menu w aplikacji.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      setOpen(false);
+      triggerRef.current?.focus();
+    };
+    const onPointer = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (listRef.current?.contains(t) || triggerRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointer);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointer);
+    };
+  }, [open]);
 
   const insert = (emoji: string) => {
     const el = textareaRef.current;
@@ -48,23 +73,22 @@ export function EmojiPicker({
 
   return (
     <div className="contents">
-      <button
+      <Button
+        ref={triggerRef}
         type="button"
+        size="sm"
+        variant="secondary"
         aria-label="Wstaw emotkę"
         aria-expanded={open}
         aria-controls={listId}
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
-        className={cn(
-          "inline-flex h-8 min-w-8 items-center justify-center rounded-md border border-slate-200 bg-white px-1.5 text-base leading-none shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 disabled:cursor-not-allowed disabled:opacity-50",
-          open && "bg-slate-100",
-          className
-        )}
+        className={cn("px-2 text-sm", open && "bg-slate-100", className)}
       >
         <span aria-hidden>🙂</span>
-      </button>
+      </Button>
       {open ? (
-        <div id={listId} role="group" aria-label="Emotki" className="mt-1.5 flex w-full max-w-[17rem] basis-full flex-wrap gap-0.5 rounded-md border border-slate-200 bg-slate-50/80 p-1.5">
+        <div ref={listRef} id={listId} role="group" aria-label="Emotki" className="mt-1.5 flex w-full max-w-[17rem] basis-full flex-wrap gap-0.5 rounded-md border border-slate-200 bg-slate-50/80 p-1.5">
           {EMOJI.map((e) => (
             <button
               key={e}

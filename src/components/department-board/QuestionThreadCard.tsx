@@ -430,11 +430,12 @@ export function QuestionThreadCard({
               )}
             />
             <span className="min-w-0 flex-1 space-y-1">
-              <span className="flex min-w-0 items-center gap-2">
+              {/* Telefon: tytuł w całości (do 2 linii), odznaka i data schodzą pod niego; od sm jedna linia. */}
+              <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:flex-nowrap">
                 {showUnseen ? (
                   <span className={boardQuestionUnseenDotClass} aria-hidden />
                 ) : null}
-                <span className={cn(salesTypography.rowTitle, "min-w-0 flex-1 truncate")}>
+                <span className={cn(salesTypography.rowTitle, "line-clamp-2 min-w-0 basis-full sm:flex-1 sm:basis-auto sm:truncate")}>
                   {question.title}
                 </span>
                 {status ? (
@@ -666,16 +667,28 @@ export function QuestionThreadCard({
           <div className={boardReplyFormShellClass}>{replyComposer(`reply-${question.id}`)}</div>
         ) : null}
 
-        {canReply && !isClosed && audience === "procurement" ? (
-          <div className="pt-1">
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={busy}
-              onClick={() => setInquiryOpen(true)}
-            >
-              Zapytaj dostawcę
-            </Button>
+        {/* Jeden pasek: główna akcja (zapytanie) po lewej, ciche porządkowe (zamknij, archiwizuj) po prawej. */}
+        {!isClosed && ((canReply && audience === "procurement") || canClose || canArchive) ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+            {canReply && audience === "procurement" ? (
+              <Button size="sm" variant="secondary" disabled={busy} onClick={() => setInquiryOpen(true)}>
+                Zapytaj dostawcę
+              </Button>
+            ) : (
+              <span />
+            )}
+            <span className="flex flex-wrap items-center gap-1">
+              {canClose ? (
+                <Button size="sm" variant="ghost" className="text-xs text-slate-500 hover:text-slate-900" disabled={busy} onClick={() => void closeThread()}>
+                  Zamknij wątek
+                </Button>
+              ) : null}
+              {canArchive ? (
+                <Button size="sm" variant="ghost" className="text-xs text-slate-500 hover:text-slate-900" disabled={busy} onClick={() => void archive()}>
+                  Archiwizuj pytanie
+                </Button>
+              ) : null}
+            </span>
           </div>
         ) : null}
 
@@ -727,33 +740,6 @@ export function QuestionThreadCard({
           </div>
         ) : null}
 
-        {canClose && !isClosed ? (
-          <div className="pt-1">
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-xs text-slate-400"
-              disabled={busy}
-              onClick={() => void closeThread()}
-            >
-              Zamknij wątek
-            </Button>
-          </div>
-        ) : null}
-
-        {canArchive && !isClosed ? (
-          <div className="pt-1">
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-xs text-slate-400"
-              disabled={busy}
-              onClick={() => void archive()}
-            >
-              Archiwizuj pytanie
-            </Button>
-          </div>
-        ) : null}
         </div>
       ) : null}
     </article>
