@@ -5,6 +5,7 @@ import { fetchOperationsDailyPanelMetrics } from "@/lib/orders/operations-daily-
 import { departmentsForRole } from "@/lib/operations/notepad-department";
 import { countSupplierMailNeedsAction } from "@/lib/supplier-mail/data";
 import { syncSupplierMail } from "@/lib/supplier-mail/sync";
+import { countDhlShipmentsNeedingReply } from "@/lib/customs/dhl-data";
 
 export async function GET() {
   const user = await getSessionUser();
@@ -24,7 +25,9 @@ export async function GET() {
     // ponytail: obietnica w tle w procesie Node (jeden serwer OnTime); przy serverless — cron.
     void syncSupplierMail().catch((e) => console.error("[poczta] synchronizacja", e));
   }
-  const supplierMail = mailRole ? await countSupplierMailNeedsAction() : undefined;
+  const [supplierMail, customsDhl] = mailRole
+    ? await Promise.all([countSupplierMailNeedsAction(), countDhlShipmentsNeedingReply()])
+    : [undefined, undefined];
 
   return NextResponse.json({
     version: metrics.version,
@@ -36,5 +39,6 @@ export async function GET() {
       : 0,
     operationsNotatki: metrics.operationsNotatkiCount,
     supplierMail,
+    customsDhl,
   });
 }

@@ -29,6 +29,7 @@ import {
   type MailCase,
   type SupplierCard,
 } from "@/lib/supplier-mail/match";
+import { syncDhlMailbox } from "@/lib/customs/dhl-sync";
 
 /** Pierwsza synchronizacja skrzynki sięga tyle wstecz. */
 const FIRST_SYNC_DAYS = 30;
@@ -41,7 +42,8 @@ const FORCE_SYNC_MIN_GAP_MS = 60_000;
 const MAX_MESSAGES_PER_QUERY = 300;
 const META_CONCURRENCY = 6;
 
-type Mailbox = { userId: string; email: string; tokenEnc: string };
+/** shared = skrzynka wspólna (office@) — tylko maile DHL o odprawach; userId = kto ją podłączył. */
+type Mailbox = { userId: string | null; email: string; tokenEnc: string; shared: boolean };
 
 async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const out: R[] = new Array(items.length);
@@ -61,9 +63,34 @@ async function loadMailboxes(): Promise<Mailbox[]> {
   const { rows } = await query<{ user_id: string; google_email: string; refresh_token_enc: string; scope: string }>(
     `SELECT user_id, google_email, refresh_token_enc, scope FROM public.google_mail_connections`
   );
-  return rows
+  const own = rows
     .filter((r) => scopeCanReadReplies(r.scope))
-    .map((r) => ({ userId: r.user_id, email: r.google_email.toLowerCase(), tokenEnc: r.refresh_token_enc }));
+    .map((r) => ({ userId: r.user_id, email: r.google_email.toLowerCase(), tokenEnc: r.refresh_token_enc, shared: false }));
+  // Przed migracją 179 tabeli skrzynek wspólnych nie ma.
+  const shared = await query<{ google_email: string; refresh_token_enc: string; scope: string; connected_by: string | null }>(
+    `SELECT google_email, refresh_token_enc, scope, connected_by FROM public.google_shared_mailboxes`
+  ).catch(() => ({ rows: [] }));
+  const ownEmails = new Set(own.map((b) => b.email));
+  return [
+    ...own,
+    ...shared.rows
+      .filter((r) => scopeCanReadReplies(r.scope) && !ownEmails.has(r.google_email.toLowerCase()))
+      .map((r) => ({ userId: r.connected_by, email: r.google_email.toLowerCase(), tokenEnc: r.refresh_token_enc, shared: true })),
+  ];
+}
+
+/**
+ * Odprawy DHL. Brak migracji 179 nie zatrzymuje Poczty dostawców; inny błąd (np. limit Gmaila) przerywa
+ * przebieg skrzynki bez przesuwania daty synchronizacji — inaczej maile DHL z tego okna by przepadły.
+ */
+async function syncDhl(token: string, box: Mailbox, since: Date): Promise<void> {
+  try {
+    await syncDhlMailbox(token, { email: box.email, userId: box.userId }, since);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    if (/customs_dhl_(shipments|events)/.test(message) && /does not exist|nie istnieje/.test(message)) return;
+    throw e;
+  }
 }
 
 type CaseRow = {
@@ -150,6 +177,11 @@ async function syncMailbox(
     : new Date(startedAt.getTime() - FIRST_SYNC_DAYS * 86_400_000);
 
   const token = await gmailAccessToken(cfg, decryptToken(cfg.tokenKey, box.tokenEnc));
+  await syncDhl(token, box, since);
+  if (box.shared) {
+    await markSynced(box.email, startedAt);
+    return { inserted: 0 };
+  }
   await backfillThreadIds(token, box.email, cases);
 
   const index = buildSenderIndex(cards);
@@ -170,7 +202,8 @@ async function syncMailbox(
   );
   const knownIds = new Set(known.map((k) => k.gmail_message_id));
   const fresh = [...ids].filter((id) => !knownIds.has(id));
-  const metas = (await mapLimit(fresh, META_CONCURRENCY, (id) => getGmailMessageMeta(token, id).catch(() => null))).filter(
+  // Bez .catch: błąd przerywa przebieg bez przesunięcia daty synchronizacji (wiadomość nie przepada).
+  const metas = (await mapLimit(fresh, META_CONCURRENCY, (id) => getGmailMessageMeta(token, id))).filter(
     (m): m is GmailMessageMeta => m != null
   );
 

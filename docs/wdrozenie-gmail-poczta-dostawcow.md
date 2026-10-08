@@ -8,7 +8,7 @@ Zakupy → Asystent → Poczta dostawców (synchronizacja, odpowiedź, przypomni
 
 **Nocny deploy (`installer/nightly-deploy.ps1`) nie uruchamia migracji.** Po wdrożeniu kodu:
 **Administracja → Migracje bazy danych → zastosuj oczekujące** (albo `npm run db:migrate` z `DATABASE_MIGRATE_URL`).
-Stan na 2026-10-07: produkcja ma 172–176; po wdrożeniu pojawią się **177** i **178**.
+Stan na 2026-10-07: produkcja ma 172–176; po wdrożeniu pojawią się **177**, **178** i **179**.
 Kod działa też chwilę bez nich (Poczta pusta, ślad wysyłki zapisuje się bez wątku), ale migracje trzeba
 zastosować tego samego dnia. Wymagane migracje tej funkcji:
 
@@ -21,6 +21,7 @@ zastosować tego samego dnia. Wymagane migracje tej funkcji:
 | `176_price_list_update_backup.sql` | (Cenniki — jeśli jeszcze nie ma) |
 | `177_supplier_order_emails_resolved.sql` | „Załatwione” na wysłanym ZD |
 | `178_supplier_mail.sql` | Poczta dostawców: maile, synchronizacja, wątki i przypomnienia na wysyłkach |
+| `179_customs_dhl_shipments.sql` | Odprawy DHL z maili: przesyłki po AWB, zdarzenia, skrzynka wspólna (office@) |
 
 Po migracji: `npm run verify:deploy`.
 
@@ -60,6 +61,13 @@ ustawia API — do zmiany po stronie API.
    maile starsze niż doba oznacza jako załatwione (bez zaległości na start), a sprawy, na które ktoś już
    odpisał w Gmailu — jako załatwione w Gmailu.
 3. Asystent widzą role `admin` i `zakupy`.
+4. **Odprawy DHL:** prośby Agencji Celnej DHL przychodzą na office@ (nie do osób). Admin albo zakupy:
+   Odprawy celne → „Podłącz skrzynkę” → logowanie w Google **na office@** (hasło wpisuje osoba, nie OnTime).
+   Od tej chwili każda nowa prośba (T#…) zakłada odprawę sama: faktura z załączników `<AWB>.INV.*` (PDF
+   albo TIFF; gdy plików jest kilka, wygrywa ten z pozycjami) →
+   odczyt AI → dostawca (po nazwie sprzedawcy) → pozycje i propozycje opisów / CN. Kopie, przekazania (Fwd:)
+   i ponaglenia dopinają się do tej samej przesyłki po numerze AWB. Wysyłka z odprawy idzie jako „Re:” na
+   prośbę agencji (temat bez zmian, jak wymaga DHL), z Gmaila osoby wysyłającej.
 
 ## 6. Ograniczenia, o których warto wiedzieć
 
@@ -67,6 +75,16 @@ ustawia API — do zmiany po stronie API.
   potrzebny cron i blokady w bazie.
 - OnTime czyta tylko maile od adresów / domen z kart dostawców (domeny ogólne typu gmail.com, wp.pl — tylko po
   pełnym adresie z karty) i zwroty. Reszty skrzynki nie przegląda.
+- Odprawy DHL: rozpoznawane są prośby (T#), ponaglenia, potwierdzenia (także starsze brzmienie z 2025),
+  pytania agencji, nasze odpowiedzi (także autoodpowiedź DHL „[T#…] Automatyczna Odpowiedź” — dowód odpowiedzi
+  z niepodłączonej skrzynki), komunikaty ZCX91 / PW429 / ZC429 i „dokonanej odprawie”, przedpłaty i cło, pokwitowania
+  oraz doręczenie (DHL On Demand Delivery). Rozmowy wewnętrzne i z dostawcą w wątku T# są pomijane.
+  Sprawdzone na 2 latach historii (28 przesyłek, 106 zdarzeń, bez duplikatów).
+- Limit Gemini (429) albo przeciążenie nie blokuje przesyłki: notatka „AI chwilowo niedostępne”, odczyt ponawia
+  się przy kolejnej synchronizacji (co 5 min). Limit Gmaila — ponowienie z odczekaniem; gdy dalej brak, data
+  synchronizacji skrzynki się nie przesuwa (maile nie przepadają).
+- Odprawa DHL nie założy się sama, gdy w załączniku „INV” nie ma pozycji (DHL bywa, że dołącza sam
+  certyfikat) albo gdy nie rozpoznano dostawcy — przesyłka czeka wtedy w „Z maili DHL” z wyborem dostawcy.
 - Kategorie (odpowiedź, potwierdzenie, faktura, wysyłka, reklama) rozpoznawane po temacie i nagłówkach — pomyłkę
   zamyka „Załatwione” (z „Cofnij”).
 

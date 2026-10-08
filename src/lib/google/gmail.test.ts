@@ -4,6 +4,7 @@ import {
   GMAIL_READ_SCOPE,
   GMAIL_SEND_SCOPE,
   buildGmailAuthUrl,
+  isGmailRetryable,
   buildMimeMessage,
   classifyReply,
   decryptToken,
@@ -309,5 +310,18 @@ describe("gmail — wycinanie skryptów, stylów i cytatów z HTML", () => {
     expect(text("<p>Odp.</p><blockquote>stary mail</blockquote><p>Koniec</p>")).toBe("Odp.\nKoniec\n");
     expect(text("<scripts>zostaje</scripts>")).toBe("zostaje");
     expect(text("<p>Tak</p><script>niezamknięty")).toBe("Tak\n");
+  });
+});
+
+describe("isGmailRetryable", () => {
+  it("limit i chwilowe błędy ponawiamy, brak zgody i złe zapytanie nie", () => {
+    expect(isGmailRetryable(429, "")).toBe(true);
+    expect(isGmailRetryable(503, "")).toBe(true);
+    expect(
+      isGmailRetryable(403, "Quota exceeded for quota metric 'Total Query Cost' and limit 'Units per minute per user'")
+    ).toBe(true);
+    expect(isGmailRetryable(403, "User rate limit exceeded")).toBe(true);
+    expect(isGmailRetryable(403, "Request had insufficient authentication scopes.")).toBe(false);
+    expect(isGmailRetryable(400, "Invalid query")).toBe(false);
   });
 });

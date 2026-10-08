@@ -976,6 +976,12 @@ export function CustomsClearanceEditor({
           </p>
         ) : (
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {view.dhlReply ? (
+              <p className="text-sm text-slate-700 sm:col-span-2 [overflow-wrap:anywhere]">
+                Przesyłka DHL {view.dhlReply.awb}: mail pójdzie jako odpowiedź na prośbę agencji (temat bez zmian
+                {view.dhlReply.inThread ? ", w tym samym wątku" : ""}).
+              </p>
+            ) : null}
             <Field label="Adres agencji celnej" hint="Kilka adresów rozdziel przecinkiem. Mail wyjdzie z Twojego Gmaila, odpowiedzi wrócą do Ciebie.">
               <Input
                 type="text"

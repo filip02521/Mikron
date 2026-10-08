@@ -214,6 +214,8 @@ export type NavBadges = {
   departmentBoardQuestions?: number;
   /** Poczta dostawców: rozmowy do reakcji + sprawy po terminie (Asystent). */
   supplierMail?: number;
+  /** Odprawy DHL z maili czekające na odpowiedź do agencji. */
+  customsDhl?: number;
   adminBugReports?: number;
   teethQueue?: number;
   teethVerification?: number;
@@ -559,7 +561,7 @@ function supplierHubItemsForRole(role: UserRole): NavItem[] {
 }
 
 /** Import i logistyka: odprawy importu, magazyn zewnętrzny i kontakty do kurierów. */
-const logisticsItems: NavItem[] = [
+const logisticsItems = (badges: Pick<NavBadges, "customsDhl"> = {}): NavItem[] => [
   {
     href: "/zakupy/odprawy",
     label: "Odprawy celne",
@@ -569,6 +571,7 @@ const logisticsItems: NavItem[] = [
     tone: "emerald",
     tier: "compact",
     mobileSlot: "overflow",
+    badge: badges.customsDhl,
   },
   {
     href: "/zakupy/gadki",
@@ -720,7 +723,7 @@ function operationsNavGroups(role: UserRole, badges: NavBadges): NavGroup[] {
     },
     {
       title: NAV_SECTION_LOGISTICS,
-      items: logisticsItems,
+      items: logisticsItems(badges),
       collapsible: true,
     },
   ];
