@@ -40,6 +40,7 @@ import { controlFocusClass } from "@/lib/ui/ontime-theme";
 import { prepareMailAttachment } from "@/lib/client/compress-image";
 import { EXTRA_ATTACHMENTS_ACCEPT, extraAttachmentsError } from "@/lib/email/extra-attachments";
 import { formatFileSize } from "@/components/mail/MailPreview";
+import { splitEmphasis } from "@/lib/mail/emphasis";
 
 type Scope = "mine" | "all";
 /** Kolumna tablicy albo półka „Do przejrzenia” (nieznani nadawcy — sprawa czy nie). */
@@ -1024,7 +1025,15 @@ function MessageCard({ m }: { m: ConversationMessage }) {
         </time>
       </header>
       <p className={cn("mt-2 whitespace-pre-line break-words text-sm leading-relaxed text-slate-800", long && !expanded && "line-clamp-[14]")}>
-        {text}
+        {splitEmphasis(text).map((run, i) =>
+          run.bold ? (
+            <strong key={i} className="font-semibold text-slate-900">
+              {run.text}
+            </strong>
+          ) : (
+            run.text
+          )
+        )}
       </p>
       {long ? (
         <button type="button" className="mt-1 text-xs font-medium text-indigo-700 hover:underline" onClick={() => setExpanded((v) => !v)}>
