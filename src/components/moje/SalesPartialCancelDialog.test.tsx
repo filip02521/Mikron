@@ -2,7 +2,7 @@
  * @vitest-environment happy-dom
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { SalesPartialCancelDialog } from "./SalesPartialCancelDialog";
 
 function setup() {
@@ -18,7 +18,7 @@ function setup() {
       onCancel={() => {}}
     />
   );
-  const input = screen.getByLabelText("Ilość do wycofania") as HTMLInputElement;
+  const input = screen.getByLabelText("Ile sztuk wycofać?") as HTMLInputElement;
   const confirm = () =>
     screen.getAllByRole("button").find((b) => !b.getAttribute("aria-label") && b.textContent !== "Zostaw bez zmian")!;
   return { input, confirm, onConfirm };
@@ -26,6 +26,17 @@ function setup() {
 
 describe("SalesPartialCancelDialog — wpisywana ilość", () => {
   afterEach(() => cleanup());
+
+  it("dwa szybkie kliknięcia „+” to dwa kroki (bez starej wartości z domknięcia)", () => {
+    const { input } = setup();
+    const plus = screen.getByRole("button", { name: "Wycofaj o 1 szt. więcej" });
+    // Oba kliknięcia przed ponownym renderem — jak szybkie podwójne stuknięcie.
+    act(() => {
+      plus.click();
+      plus.click();
+    });
+    expect(input.value).toBe("3");
+  });
 
   it("ilość spoza zakresu: komunikat pod polem i wyłączony przycisk; po wyjściu z pola przycina do maksimum", () => {
     const { input, confirm } = setup();

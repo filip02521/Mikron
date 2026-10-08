@@ -9,6 +9,7 @@ import {
   requireZdEstimateAdmin,
   SESSION_REQUIRED_ERROR,
 } from "@/lib/auth";
+import { extraAttachmentsError } from "@/lib/email/extra-attachments";
 import { parseMailRecipients } from "@/lib/email/recipients";
 import { normalizeEmailSignature } from "@/lib/email/signature";
 import { isMikranEmail } from "@/lib/email/supplier-emails";
@@ -163,6 +164,8 @@ export async function actionSendZdToSupplier(input: {
   allowUnknownRecipients?: boolean;
   /** Nasz termin dostawy (YYYY-MM-DD) — trafia na ZD zaraz po wysłaniu maila. */
   terminAfterSend?: string;
+  /** Pliki dołożone ręcznie (inne zamówienia, Excele, zdjęcia) — idą obok dokumentu ZD. */
+  extraFiles?: File[];
 }): Promise<SendZdToSupplierResult> {
   const user = await requireZdEstimateAdmin("mutate");
   if (
@@ -176,6 +179,12 @@ export async function actionSendZdToSupplier(input: {
   if (input.subject.length > SUBJECT_MAX || input.body.length > BODY_MAX) {
     return { ok: false, message: "Temat albo treść są za długie." };
   }
+  const extraFiles = input.extraFiles ?? [];
+  if (!Array.isArray(extraFiles) || extraFiles.some((f) => !(f instanceof File))) {
+    return { ok: false, message: "Nieprawidłowe załączniki." };
+  }
+  const extraError = extraAttachmentsError(extraFiles);
+  if (extraError) return { ok: false, message: extraError };
   const recipients = parseMailRecipients(input.to, input.cc);
   if (!recipients.ok) return recipients;
   const { to: emails, cc } = recipients;
@@ -230,6 +239,14 @@ export async function actionSendZdToSupplier(input: {
       }
     }
     const attachment = await buildZdMailAttachment(printed, dokId, { fresh });
+    const extras = await Promise.all(
+      extraFiles.map(async (f) => ({
+        filename: f.name.replace(/[\\/:*?"<>|\r\n]+/g, "-"),
+        content: Buffer.from(await f.arrayBuffer()),
+        contentType: f.type || "application/octet-stream",
+      }))
+    );
+    const attachmentName = [attachment, ...extras].map((a) => a.filename).join(", ");
 
     const sent = await sendGmailAsUser({
       userId: user.id,
@@ -237,7 +254,7 @@ export async function actionSendZdToSupplier(input: {
       cc,
       subject,
       text: input.body,
-      attachments: [attachment],
+      attachments: [attachment, ...extras],
       kind: "supplier_order",
     });
     if (!sent.ok) {
@@ -257,7 +274,7 @@ export async function actionSendZdToSupplier(input: {
         sentBy: user.id,
         from: sent.from,
         to: emails,
-        attachmentName: attachment.filename,
+        attachmentName,
         gmailMessageId: sent.messageId,
         gmailThreadId: sent.threadId,
       });
@@ -272,7 +289,7 @@ export async function actionSendZdToSupplier(input: {
       from: sent.from,
       to: emails,
       cc,
-      attachmentName: attachment.filename,
+      attachmentName,
       sentAt: new Date().toISOString(),
       termin,
     };

@@ -7,7 +7,7 @@
 
 import { randomUUID } from "crypto";
 import type { PoolClient } from "pg";
-import { mapLimit } from "@/lib/async/map-limit";
+import { mapPool } from "@/lib/async/map-pool";
 import { query, withClient } from "@/lib/db/pool";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { todayDateKeyInWarsaw, warsawDateKeyFromIso } from "@/lib/time/warsaw";
@@ -509,7 +509,7 @@ export async function syncDhlMailbox(token: string, box: DhlMailbox, since: Date
   // Błąd (np. limit Gmaila po ponowieniach) przerywa przebieg — data synchronizacji się nie przesuwa,
   // więc kolejna próba pobierze tę wiadomość, zamiast ją zgubić. null = wiadomość usunięta.
   const fetched = (
-    await mapLimit(
+    await mapPool(
       ids.filter((id) => !knownIds.has(id)),
       META_CONCURRENCY,
       (id) => getGmailMessageMeta(token, id)

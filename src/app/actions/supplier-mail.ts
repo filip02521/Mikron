@@ -31,22 +31,36 @@ function validConversation(input: { mailbox?: unknown; threadId?: unknown }): { 
   return mailbox.includes("@") && THREAD_RE.test(threadId) ? { mailbox, threadId } : null;
 }
 
-/** Widok z bazy; `sync` — najpierw dociąga nowe maile (gdy minęło 5 min od ostatniej synchronizacji). */
+/** Dłużej nie trzymamy strony — pierwsza synchronizacja (30 dni, limit Gmaila) trwa minuty; dalej idzie w tle. */
+const SYNC_WAIT_MS = 20_000;
+
+/**
+ * Widok z bazy; `sync` — najpierw dociąga nowe maile (gdy minęło 5 min od ostatniej synchronizacji).
+ * `syncPending` — przebieg trwa dalej; ponowne wywołanie z `sync` dołącza do niego.
+ */
 export async function actionSupplierMailView(opts: { sync?: boolean; force?: boolean } = {}): Promise<
-  { ok: true; view: SupplierMailView; me: string | null; canReply: boolean; signature: string; syncErrors: string[] } | Fail
+  | { ok: true; view: SupplierMailView; me: string | null; canReply: boolean; signature: string; syncErrors: string[]; syncPending: boolean }
+  | Fail
 > {
   const user = await requireMailUser("read");
   try {
     let syncErrors: string[] = [];
+    let syncPending = false;
     if (opts.sync && getGmailOAuthConfig()) {
-      syncErrors = (await syncSupplierMail({ force: Boolean(opts.force) })).errors;
+      const sync = syncSupplierMail({ force: Boolean(opts.force) }).then(
+        (r) => r.errors,
+        (e: unknown) => [e instanceof Error ? e.message : String(e)]
+      );
+      const done = await Promise.race([sync, new Promise<null>((r) => setTimeout(() => r(null), SYNC_WAIT_MS))]);
+      syncPending = done === null;
+      syncErrors = done ?? [];
     }
     const [view, conn, signature] = await Promise.all([
       loadSupplierMailView(),
       getGmailConnection(user.id),
       getEmailSignature(user.id).catch(() => ""),
     ]);
-    return { ok: true, view, me: conn?.email ?? null, canReply: Boolean(conn), signature, syncErrors };
+    return { ok: true, view, me: conn?.email ?? null, canReply: Boolean(conn), signature, syncErrors, syncPending };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się wczytać poczty dostawców.") };
   }
