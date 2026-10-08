@@ -1,5 +1,5 @@
 /**
- * Odczyt i zapis cen w Subiekcie dla cenników — host `SUBIEKT_API_PRICES_BASE_URL` (:5082 test / :5080 live).
+ * Odczyt i zapis cen w Subiekcie dla cenników — host `SUBIEKT_API_BASE_URL` (:5080 live / :5082 test).
  *
  * Zapis: gdy API ma `PUT /products/{id}/prices` (spec: docs/integrations/subiekt-price-update-api.md),
  * ustawiamy kartotekową i detaliczną dokładnie. Bez niego — tylko kartotekowa przez Sferę,

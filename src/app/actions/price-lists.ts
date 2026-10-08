@@ -1,7 +1,7 @@
 "use server";
 
 // Autoryzacja: podgląd i zaznaczanie — requireOperations(); zapis do Subiekta — tylko admin
-// (requireAdminForMutation). Zapis cen tylko na hoście SUBIEKT_API_PRICES_BASE_URL.
+// (requireAdminForMutation). Zapis cen na hoście SUBIEKT_API_BASE_URL.
 
 import { revalidatePath } from "next/cache";
 import { requireAdminForMutation, requireOperations } from "@/lib/auth";
