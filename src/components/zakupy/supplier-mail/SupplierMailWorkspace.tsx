@@ -946,7 +946,7 @@ function ConversationDetail({
             aria-pressed={forwarding}
             className={detailLinkClass}
           >
-            Przekaż
+            Przekaż dalej
           </button>
         ) : null}
         {item.column !== "done" && !hideDone ? (
@@ -975,9 +975,9 @@ function ConversationDetail({
       </div>
 
       {forwarding && canReply ? (
-        <ForwardForm key={`fwd-${conv.key}`} conv={conv} purpose="plain" defaultTo="" onSent={onChanged} onCancel={() => setForwarding(false)} />
+        <ForwardForm key={`fwd-${conv.key}`} conv={conv} me={me} purpose="plain" defaultTo="" onSent={onChanged} onCancel={() => setForwarding(false)} />
       ) : item.column === "to_pay" && canReply ? (
-        <ForwardForm key={conv.key} conv={conv} purpose="payment" defaultTo={paymentForwardEmail} onSent={onChanged} />
+        <ForwardForm key={conv.key} conv={conv} me={me} purpose="payment" defaultTo={paymentForwardEmail} onSent={onChanged} />
       ) : messages && hasSupplierMessage && canReply ? (
         <Composer
           key={conv.key}
@@ -1430,12 +1430,15 @@ function Composer({
  */
 function ForwardForm({
   conv,
+  me,
   purpose,
   defaultTo,
   onSent,
   onCancel,
 }: {
   conv: MailConversation;
+  /** Skrzynka zalogowanej osoby — z niej idzie przekazanie. */
+  me: string | null;
   purpose: "payment" | "plain";
   defaultTo: string;
   onSent: () => void;
@@ -1510,7 +1513,9 @@ function ForwardForm({
       />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-slate-500">
-          {conv.attachments ? `Pójdzie z załącznikami rozmowy (${conv.attachments}).` : "Rozmowa nie ma załączników."}
+          {conv.attachments
+            ? `Pójdzie treść rozmowy z ${me} i załączniki (${conv.attachments}).`
+            : `Pójdzie treść rozmowy z ${me}; rozmowa nie ma załączników.`}
           {payment ? " Potem sprawa czeka 3 dni rob. na płatność." : ""}
         </p>
         <Button type="submit" disabled={sending || !to.trim()} aria-busy={sending}>

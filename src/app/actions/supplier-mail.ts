@@ -3,6 +3,7 @@
 // Poczta dostawców (Zakupy → Asystent): widok, synchronizacja, rozmowa, „Załatwione”, odpowiedź z OnTime.
 // Odpowiedź zawsze z Gmaila zalogowanej osoby; gdy rozmowa jest w cudzej skrzynce — jej właściciel w DW.
 import { isInlineImage } from "@/lib/mail/attachments";
+import { forwardedConversationText } from "@/lib/supplier-mail/forward-text";
 import { revalidatePath } from "next/cache";
 import { requireZdEstimateAdmin } from "@/lib/auth";
 import { query } from "@/lib/db/pool";
@@ -519,8 +520,9 @@ export async function actionMailBoardSave(input: {
 const FORWARD_MAX_BYTES = 18 * 1024 * 1024;
 
 /**
- * Przekazanie rozmowy dalej: nowy mail z Gmaila zalogowanej osoby z załącznikami rozmowy (np. awizacja
- * do magazynu). `payment` — „Do zapłaty”: adres zapamiętuje się w profilu, sprawa przechodzi do Czekam na płatność.
+ * Przekazanie rozmowy dalej: nowy mail z Gmaila zalogowanej osoby z treścią wiadomości rozmowy i jej
+ * załącznikami (np. awizacja do magazynu). `payment` — „Do zapłaty”: adres zapamiętuje się w profilu,
+ * sprawa przechodzi do Czekam na płatność.
  */
 export async function actionMailForward(input: {
   mailbox: string;
@@ -558,13 +560,14 @@ export async function actionMailForward(input: {
     }
     const last = rows[0]!;
     const supplier = last.supplier_name ?? (last.from_name || last.from_address);
+    const texts = await readTexts(conv.mailbox, rows.map((m) => m.gmail_message_id));
     const sent = await sendGmailAsUser({
       userId: user.id,
       to: recipients.to,
       subject: (payment ? `Do zapłaty: ${supplier} - ${last.subject || "faktura"}` : `Fwd: ${last.subject || supplier}`).slice(0, 300),
       text: [
         input.note.trim(),
-        `Przekazane z OnTime: ${supplier}, „${last.subject || "(bez tematu)"}” od ${last.from_address}.`,
+        forwardedConversationText(rows.map((m) => ({ ...m, text: texts.get(m.gmail_message_id) ?? null }))),
         attachments.length ? "" : "Rozmowa nie ma załączników.",
       ]
         .filter(Boolean)
