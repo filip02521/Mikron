@@ -603,17 +603,18 @@ export async function actionMailForward(input: {
 export async function actionMailTriage(input: {
   mailbox: string;
   threadId: string;
-  decision: "case" | "ignore" | "review";
+  /** customs = agencja celna / spedytor → odprawy celne. */
+  decision: "case" | "ignore" | "customs" | "review";
   remember?: "none" | "sender" | "domain";
   forgetPattern?: string | null;
 }): Promise<{ ok: true; pattern: string | null; alsoApplied: number } | Fail> {
   const user = await requireMailUser("mutate");
   const conv = validConversation(input);
   if (!conv) return { ok: false, message: "Nieprawidłowa rozmowa." };
-  if (!["case", "ignore", "review"].includes(input.decision)) return { ok: false, message: "Nieznana decyzja." };
+  if (!["case", "ignore", "customs", "review"].includes(input.decision)) return { ok: false, message: "Nieznana decyzja." };
   const remember = input.remember ?? "none";
   if (!["none", "sender", "domain"].includes(remember)) return { ok: false, message: "Nieznany zakres." };
-  const triage = input.decision === "case" ? "case" : input.decision === "ignore" ? "ignored" : "review";
+  const triage = ({ case: "case", ignore: "ignored", customs: "customs", review: "review" } as const)[input.decision];
   try {
     const { rows } = await query<{ from_address: string }>(
       `UPDATE public.supplier_mail_messages SET triage = $3
@@ -631,12 +632,13 @@ export async function actionMailTriage(input: {
         // które ktoś wcześniej rozstrzygnął ręcznie tak samo; dokładne cofanie wymagałoby dziennika decyzji.
         await query(
           `UPDATE public.supplier_mail_messages SET triage = 'review'
-            WHERE kind = 'other' AND triage IN ('case', 'ignored') AND handled_at IS NULL
+            WHERE kind = 'other' AND triage IN ('case', 'ignored', 'customs') AND handled_at IS NULL
               AND (lower(from_address) = $1 OR ($1 LIKE '@%' AND lower(from_address) LIKE '%' || $1))`,
           [pattern]
         );
       }
       revalidatePath("/zakupy/asystent");
+      revalidatePath("/zakupy/odprawy");
       return { ok: true, pattern: null, alsoApplied: 0 };
     }
 
@@ -645,7 +647,7 @@ export async function actionMailTriage(input: {
     if (remember !== "none") {
       pattern = rulePattern(rows[0]!.from_address, remember);
       if (!pattern) return { ok: false, message: "Dla poczty prywatnej (np. gmail.com) można zapamiętać tylko adres." };
-      const decision = input.decision === "case" ? "case" : "ignore";
+      const decision = input.decision === "ignore" ? "ignore" : input.decision;
       await query(
         `INSERT INTO public.mail_sender_rules (pattern, decision, created_by) VALUES ($1, $2, $3)
          ON CONFLICT (pattern) DO UPDATE SET decision = EXCLUDED.decision, created_by = EXCLUDED.created_by, created_at = now()`,
@@ -654,12 +656,14 @@ export async function actionMailTriage(input: {
       const res = await query(
         `UPDATE public.supplier_mail_messages SET triage = $2
           WHERE kind = 'other' AND triage = 'review'
-            AND (lower(from_address) = $1 OR ($1 LIKE '@%' AND lower(from_address) LIKE '%' || $1))`,
+            AND (lower(from_address) = $1
+                 OR ($1 LIKE '@%' AND (lower(from_address) LIKE '%' || $1 OR lower(from_address) LIKE '%.' || substr($1, 2))))`,
         [pattern, triage]
       );
       alsoApplied = res.rowCount ?? 0;
     }
     revalidatePath("/zakupy/asystent");
+    revalidatePath("/zakupy/odprawy");
     return { ok: true, pattern, alsoApplied };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się zapisać decyzji.") };

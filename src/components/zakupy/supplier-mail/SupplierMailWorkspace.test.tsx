@@ -48,6 +48,7 @@ const conv = (over: Partial<MailConversation>): MailConversation => ({
   ownerUserId: "me",
   repliedAt: null,
   triage: null,
+  customsKind: null,
   ...over,
 });
 
@@ -73,6 +74,7 @@ const view: SupplierMailView = {
     item(conv({ threadId: "t3", key: "x3", supplierName: "Kulzer", category: "invoice", open: false }), { column: "to_pay" }),
   ],
   review: [],
+  customs: [],
   people: [
     { id: "me", name: "Osoba A." },
     { id: "other", name: "Osoba B." },
