@@ -7,7 +7,7 @@ import { getEmailSignature, getGmailConnection, getPaymentForwardEmail } from "@
 import { loadOcChecks } from "@/lib/oc-check/data";
 import type { OcCheck } from "@/lib/oc-check/types";
 import { groupOcChecks, parseOcView, type OcView } from "@/lib/oc-check/view";
-import { loadSupplierMailView } from "@/lib/supplier-mail/data";
+import { countNeedsAction, loadSupplierMailView } from "@/lib/supplier-mail/data";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
 import { buttonPrimaryClass, panelPageShellClass } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
@@ -82,7 +82,7 @@ export default async function AsystentPage({
       label: "Poczta dostawców",
       hint: "Sprawy z dostawcami: do zrobienia, w trakcie, czekam, do zapłaty",
       href: "/zakupy/asystent",
-      badgeCount: mail ? mail.items.filter((i) => i.column === "todo" && (!i.assigneeId || i.assigneeId === user.id)).length : 0,
+      badgeCount: mail ? countNeedsAction(mail, user.id) : 0,
     },
     { id: "oc", label: "Kontrola OC", hint: "Potwierdzenia porównane z ZD", href: "/zakupy/asystent?sekcja=oc", badgeCount: groups["do-ruchu"].length },
     { id: "raporty", label: "Raporty", hint: "Raporty rutyn w chmurze", href: "/zakupy/asystent?sekcja=raporty" },

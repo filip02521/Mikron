@@ -270,11 +270,17 @@ export function SupplierMailWorkspace({
         return;
       }
       if (undoTimer.current) clearTimeout(undoTimer.current);
-      const who = res.pattern ? ` · zawsze ${res.pattern}${res.alsoApplied ? ` (+${res.alsoApplied})` : ""}` : "";
+      const who = res.pattern ? ` · zawsze ${res.pattern}${res.changedIds.length ? ` (+${res.changedIds.length})` : ""}` : "";
       setUndo({
         label: `${conv.supplierName} → ${{ case: "sprawa", ignore: "nie sprawa", customs: "odprawy celne" }[decision]}${who}`,
         undo: () =>
-          actionMailTriage({ mailbox: conv.mailbox, threadId: conv.threadId, decision: "review", forgetPattern: res.pattern }).then((r) =>
+          actionMailTriage({
+            mailbox: conv.mailbox,
+            threadId: conv.threadId,
+            decision: "review",
+            revertIds: res.changedIds,
+            restoreRule: res.previousRule,
+          }).then((r) =>
             r.ok ? { ok: true as const } : r
           ),
       });
@@ -288,7 +294,9 @@ export function SupplierMailWorkspace({
   const move = useCallback(
     async (item: BoardItem, to: BoardColumn) => {
       if (item.column === to) return;
-      const prevManual = item.manualColumn;
+      // „Cofnij” wraca do ręcznej kolumny sprzed zmiany; sprawa zamknięta z automatu (np. dawne „Załatwione”)
+      // wraca do Zakończonych wprost — przeniesienie otworzyło jej wiadomości, sam automat dałby Do zrobienia.
+      const prevManual = item.manualColumn ?? (item.column === "done" ? "done" : null);
       const prevRemind = item.remindOn;
       setView((v) => ({ ...v, items: v.items.map((i) => (i.key === item.key ? { ...i, column: to, reason: null } : i)) }));
       if (item.key === selectedKey && item.column === column) {
@@ -714,8 +722,23 @@ function BoardPanel({
   const [waitingOn, setWaitingOn] = useState(item.waitingOn);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Wpisane, a jeszcze niezapisane (zapis przy wyjściu z pola). Przejście do innej sprawy (j/k, klik
+  // na liście) nie wywołuje blur — wtedy zapisujemy przy zamknięciu panelu, żeby opis nie przepadł.
+  const unsaved = useRef<{ note?: string; waitingOn?: string }>({});
+  const target = useRef({ key: item.key, inheritKey: inheritKeyOf(item) });
+  useEffect(() => {
+    const pending = unsaved.current;
+    const { key, inheritKey } = target.current;
+    return () => {
+      if (pending.note !== undefined || pending.waitingOn !== undefined) {
+        void actionMailBoardSave({ key, inheritKey, ...pending }).catch(() => undefined);
+      }
+    };
+  }, []);
 
   const save = async (patch: Parameters<typeof actionMailBoardSave>[0]) => {
+    if ("note" in patch) delete unsaved.current.note;
+    if ("waitingOn" in patch) delete unsaved.current.waitingOn;
     setSaving(true);
     setError(null);
     const res = await actionMailBoardSave({ ...patch, inheritKey: inheritKeyOf(item) }).catch(() => null);
@@ -750,7 +773,11 @@ function BoardPanel({
             onChange={(e) => void save({ key: item.key, assigneeId: e.target.value || null })}
             className={cn(field, "mt-1")}
           >
-            <option value="">nikt</option>
+            {item.assigneeId ? null : (
+              <option value="" disabled>
+                nieprzypisana
+              </option>
+            )}
             {people.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -769,8 +796,14 @@ function BoardPanel({
               id={ids.waitingOn}
               value={waitingOn}
               maxLength={200}
-              onChange={(e) => setWaitingOn(e.target.value)}
-              onBlur={() => waitingOn.trim() !== item.waitingOn && void save({ key: item.key, waitingOn })}
+              onChange={(e) => {
+                setWaitingOn(e.target.value);
+                unsaved.current.waitingOn = e.target.value;
+              }}
+              onBlur={() => {
+                if (waitingOn.trim() !== item.waitingOn) void save({ key: item.key, waitingOn });
+                else delete unsaved.current.waitingOn;
+              }}
               className={cn(field, "mt-1")}
             />
           </div>
@@ -798,8 +831,14 @@ function BoardPanel({
           maxLength={2000}
           rows={2}
           placeholder="Co to jest i co dalej - np. czekam na proformę, potem zapłata"
-          onChange={(e) => setNote(e.target.value)}
-          onBlur={() => note.trim() !== item.note && void save({ key: item.key, note })}
+          onChange={(e) => {
+            setNote(e.target.value);
+            unsaved.current.note = e.target.value;
+          }}
+          onBlur={() => {
+            if (note.trim() !== item.note) void save({ key: item.key, note });
+            else delete unsaved.current.note;
+          }}
           className={cn(controlFocusClass, "mt-1 w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm")}
         />
       </div>
@@ -1022,7 +1061,7 @@ function MessageCard({ m }: { m: ConversationMessage }) {
         <span className="min-w-0 font-medium text-slate-900">
           {m.kind === "mine" ? (
             <>
-              Nasza odpowiedź <span className="font-normal text-slate-500">do {m.to}</span>
+              Nasza wiadomość <span className="font-normal text-slate-500">do {m.to}</span>
             </>
           ) : (
             <>
@@ -1187,10 +1226,12 @@ function Composer({
 }) {
   const bodyId = useId();
   const ccId = useId();
-  const [body, setBody] = useState(() => {
+  const freshBody = () => {
     const sig = signature.trim();
     return sig ? `${initialBody}\n\n${sig}`.replace(/^\n+/, "\n\n") : initialBody;
-  });
+  };
+  const [body, setBody] = useState(freshBody);
+  const [sentNote, setSentNote] = useState<string | null>(null);
   const [cc, setCc] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [preparing, setPreparing] = useState(false);
@@ -1217,8 +1258,16 @@ function Composer({
       message: "Brak połączenia z serwerem (pliki ponad ~1 MB mogą nie przejść przez serwer - zmniejsz PDF).",
     }));
     setSending(false);
-    if (res.ok) onSent();
-    else setError(res.message);
+    if (!res.ok) {
+      setError(res.message);
+      return;
+    }
+    // Rozmowa zostaje otwarta — czyste pole, żeby drugi klik nie wysłał tego samego jeszcze raz.
+    setBody(freshBody());
+    setCc("");
+    setFiles([]);
+    setSentNote(`Wysłano ${new Date().toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })}.`);
+    onSent();
   };
 
   return (
@@ -1235,7 +1284,10 @@ function Composer({
       <textarea
         id={bodyId}
         value={body}
-        onChange={(e) => setBody(e.target.value)}
+        onChange={(e) => {
+          setBody(e.target.value);
+          setSentNote(null);
+        }}
         onKeyDown={(e) => {
           if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
             e.preventDefault();
@@ -1318,6 +1370,10 @@ function Composer({
         <p className="text-sm text-red-700" role="alert">
           {error}
         </p>
+      ) : sentNote ? (
+        <p className="text-sm text-emerald-800" role="status">
+          {sentNote}
+        </p>
       ) : null}
     </form>
   );
@@ -1361,6 +1417,8 @@ function ForwardForm({
     setSending(false);
     if (res.ok) {
       setResult({ ok: true, text: `Przekazano do ${res.to} (${res.attachments} zał.).${payment ? " Sprawa czeka na płatność." : ""}` });
+      // Bez adresu drugi klik nic nie wyśle; „Do zapłaty” zostawia zapamiętany adres (sprawa i tak przechodzi do Czekam).
+      if (!payment) setTo("");
       onSent();
     } else setResult({ ok: false, text: res.message });
   };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boardItems, groupConversations, waitingCases, type MailMessageRow } from "@/lib/supplier-mail/data";
+import { boardItems, countNeedsAction, groupConversations, waitingCases, type MailMessageRow } from "@/lib/supplier-mail/data";
 
 const msg = (over: Partial<MailMessageRow>): MailMessageRow => ({
   id: "m",
@@ -135,5 +135,47 @@ describe("tablica spraw — pozycje", () => {
     const row = { column: "waiting" as const, columnSetAt: "2026-10-06T10:00:00Z", note: "czekam na termin", waitingOn: "", remindOn: "2026-10-20", assigneeId: null };
     const [item] = boardItems([conv!], [], new Map([["zd:zd-1", row]]), today);
     expect(item).toMatchObject({ column: "todo", reason: "Nowa wiadomość", note: "czekam na termin", manualColumn: null });
+  });
+});
+
+describe("tablica spraw — poprawki z audytu", () => {
+  const today = "2026-10-08";
+
+  it("nadawca bez podpisu ma adres zamiast pustej nazwy", () => {
+    const [c] = groupConversations([msg({ kind: "other", triage: "review", supplier_name: null, from_name: "", from_address: "jan@nowa.example" })]);
+    expect(c!.supplierName).toBe("jan@nowa.example");
+    expect(c!.triage).toBe("review");
+  });
+
+  it("należności agencji idą do Do zapłaty, po Zakończone — do zakończonych", () => {
+    const dues = msg({ kind: "other", triage: "customs", supplier_name: null, subject: "Powiadomienie o należnościach - AWB 1" });
+    const [open] = boardItems(groupConversations([dues]), [], new Map(), today);
+    expect(open).toMatchObject({ column: "to_pay" });
+    expect(open!.ref.type === "conv" && open!.ref.conv.customsKind).toBe("dues");
+    const [closed] = boardItems(groupConversations([{ ...dues, handled_at: new Date(), handled_via: "manual" }]), [], new Map(), today);
+    expect(closed!.column).toBe("done");
+  });
+
+  it("licznik: moje Do zrobienia i moja półka, nieprzypisane liczą się każdemu", () => {
+    const items = boardItems(
+      groupConversations([
+        msg({ gmail_thread_id: "a", owner_user_id: "me" }),
+        msg({ gmail_thread_id: "b", owner_user_id: "other" }),
+        msg({ gmail_thread_id: "c", owner_user_id: null }),
+      ]),
+      [],
+      new Map(),
+      today
+    );
+    const review = groupConversations([msg({ gmail_thread_id: "r", kind: "other", triage: "review", owner_user_id: "other" })]);
+    expect(countNeedsAction({ items, review }, "me")).toBe(2);
+    expect(countNeedsAction({ items, review }, "other")).toBe(3);
+  });
+
+  it("odpowiedź spedytora w wątku ZD zamyka czekanie na to ZD", () => {
+    const base = { kind: "zd" as const, id: "zd-9", label: "ZD 9", supplier_id: "s", supplier_name: "X", location: "POLSKA" as const,
+      board_thread_id: null, from_address: "f@mikran.com", to_addresses: [], reminded_at: null, sent_by: null, resolved_at: null,
+      sent_at: new Date("2026-10-01T10:00:00Z") };
+    expect(waitingCases([base], [msg({ kind: "other", case_kind: "zd", case_id: "zd-9" })], new Date("2026-10-08T10:00:00Z"))).toEqual([]);
   });
 });

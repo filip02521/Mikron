@@ -13,4 +13,5 @@ export const TRANSACTIONAL_EMAIL_KIND_LABELS: Record<TransactionalEmailKind, str
   supplier_inquiry: "Zapytanie do dostawcy z tablicy (Gmail)",
   supplier_reply: "Odpowiedź do dostawcy z Poczty dostawców (Gmail)",
   payment_forward: "Faktura do zapłaty przekazana z Poczty dostawców (Gmail)",
+  mail_forward: "Rozmowa przekazana dalej z Poczty dostawców (Gmail)",
 };

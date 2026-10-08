@@ -43,8 +43,8 @@ export function CustomsMailPanel({ threads }: { threads: CustomsMailThread[] }) 
   const [showDone, setShowDone] = useState(false);
 
   if (!threads.length) return null;
-  const open = threads.filter((t) => t.open);
-  const done = threads.filter((t) => !t.open);
+  const open = threads.filter((t) => t.state === "open");
+  const done = threads.filter((t) => t.state !== "open");
   const list = [...open].sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) || b.lastAt.localeCompare(a.lastAt));
 
   const close = (t: CustomsMailThread) => {
@@ -68,8 +68,8 @@ export function CustomsMailPanel({ threads }: { threads: CustomsMailThread[] }) 
           <p className="truncate text-sm text-slate-700">{t.subject || "(bez tematu)"}</p>
           <p className="truncate text-xs text-slate-500">{t.snippet}</p>
         </div>
-        <Badge variant={t.open ? KIND_TONE[t.kind] : "default"} className="self-start">
-          {t.open ? CUSTOMS_KIND_LABELS[t.kind] : "zakończone"}
+        <Badge variant={t.state === "open" ? KIND_TONE[t.kind] : "default"} className="self-start">
+          {t.state === "open" ? CUSTOMS_KIND_LABELS[t.kind] : t.state === "replied" ? "odpowiedziano - czeka na agencję" : "zakończone"}
         </Badge>
       </div>
       {t.attachments.length ? (
@@ -95,9 +95,9 @@ export function CustomsMailPanel({ threads }: { threads: CustomsMailThread[] }) 
           href={`/zakupy/asystent?sprawa=${encodeURIComponent(t.key)}`}
           className="text-sm font-medium text-indigo-700 hover:text-indigo-900"
         >
-          {t.kind === "dues" ? "Otwórz i przekaż do zapłaty" : "Otwórz rozmowę i odpowiedz"}
+          {t.kind === "dues" ? "Otwórz i przekaż do zapłaty" : t.kind === "pickup" ? "Otwórz i przekaż magazynowi" : "Otwórz rozmowę i odpowiedz"}
         </Link>
-        {t.open ? (
+        {t.state !== "done" ? (
           <Button type="button" size="sm" variant="secondary" disabled={pending && busyKey === t.key} onClick={() => close(t)}>
             Zakończone
           </Button>
@@ -130,7 +130,7 @@ export function CustomsMailPanel({ threads }: { threads: CustomsMailThread[] }) 
             aria-expanded={showDone}
             className="rounded px-1.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
           >
-            {showDone ? "Ukryj zakończone" : `Zakończone (${done.length})`}
+            {showDone ? "Ukryj" : `Odpowiedziane i zakończone (${done.length})`}
           </button>
           {showDone ? <ul className="mt-2 divide-y divide-slate-100">{done.map(row)}</ul> : null}
         </div>
