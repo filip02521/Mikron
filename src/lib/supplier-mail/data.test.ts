@@ -28,6 +28,7 @@ const msg = (over: Partial<MailMessageRow>): MailMessageRow => ({
   board_thread_id: null,
   handled_at: null,
   handled_via: null,
+  triage: null,
   ...over,
 });
 

@@ -2,6 +2,7 @@
  * Synchronizacja Poczty dostawców: z każdej skrzynki połączonej z odczytem (gmail.readonly) pobiera
  * maile od adresów / domen z kart dostawców i zwroty, przypina je do spraw i zapisuje w
  * `supplier_mail_messages`. Kolejna synchronizacja bierze tylko nowsze (z zakładką 1 h).
+ * Po migracji 184 także resztę skrzynki (bez kategorii Gmaila), przesianą przez lib/mail-board/triage.
  */
 
 import { query } from "@/lib/db/pool";
@@ -22,6 +23,7 @@ import {
   buildSenderIndex,
   documentRefs,
   gmailBounceQuery,
+  gmailInboxQuery,
   gmailSenderQueries,
   linkToCase,
   parseFromHeader,
@@ -34,6 +36,7 @@ import {
 import { prepareWaitingShipments, syncDhlMailbox } from "@/lib/customs/dhl-sync";
 import { isMikranEmail } from "@/lib/email/supplier-emails";
 import { mapPool } from "@/lib/async/map-pool";
+import { triageOther, type SenderRule } from "@/lib/mail-board/triage";
 
 /** Pierwsza synchronizacja skrzynki sięga tyle wstecz. */
 const FIRST_SYNC_DAYS = 30;
@@ -51,6 +54,10 @@ const META_CONCURRENCY = 6;
  * kolejny przebieg pomija zapisane (knownIds) i pominięte (processedIds), zamiast od nowa pobierać 30 dni.
  */
 const META_CHUNK = 100;
+/** Cała skrzynka: pierwszy raz tyle dni wstecz (reszta historii zostaje w Gmailu). */
+const INBOX_FIRST_DAYS = 7;
+/** Skrzynka bez kategorii Gmaila (promocje, społeczności, fora, powiadomienia) — na przebieg. */
+const MAX_INBOX_MESSAGES = 400;
 
 /** Pobrane, ale niezapisane (newsletter, poczta wewnętrzna…) — przy przerwanej synchronizacji nie pytamy o nie znowu. */
 const processedIds = new Map<string, Set<string>>();
@@ -150,15 +157,19 @@ async function backfillThreadIds(token: string, mailbox: string, cases: CaseRow[
 async function syncMailbox(
   box: Mailbox,
   cards: SupplierCard[],
-  cases: CaseRow[]
+  cases: CaseRow[],
+  /** Reguły nadawców; null = przed migracją 184 — tylko dostawcy, jak dotąd. */
+  rules: SenderRule[] | null
 ): Promise<{ inserted: number }> {
   const cfg = getGmailOAuthConfig();
   if (!cfg) return { inserted: 0 };
   const startedAt = new Date();
-  const { rows: syncRows } = await query<{ synced_at: Date }>(
-    `SELECT synced_at FROM public.supplier_mail_sync WHERE mailbox = $1`,
+  // to_jsonb: kolumna inbox_synced_at jest od migracji 184 — zapytanie działa też bez niej.
+  const { rows: syncRows } = await query<{ synced_at: Date; inbox_synced_at: string | null }>(
+    `SELECT synced_at, to_jsonb(s) ->> 'inbox_synced_at' AS inbox_synced_at FROM public.supplier_mail_sync s WHERE mailbox = $1`,
     [box.email]
   );
+  const firstInbox = Boolean(rules) && !syncRows[0]?.inbox_synced_at;
   // synced_at = 0 (epoka) — dotąd tylko błędy, jeszcze żadnej udanej synchronizacji.
   const firstSync = !(syncRows[0] && syncRows[0].synced_at.getTime() > 0);
   const since = !firstSync
@@ -177,9 +188,17 @@ async function syncMailbox(
     if (found.length >= MAX_MESSAGES_PER_QUERY) console.warn("[poczta] limit wiadomości w zapytaniu", box.email, q.slice(0, 120));
     for (const id of found) ids.add(id);
   }
+  if (rules) {
+    const inboxSince = syncRows[0]?.inbox_synced_at
+      ? new Date(Date.parse(syncRows[0].inbox_synced_at) - OVERLAP_MS)
+      : new Date(startedAt.getTime() - INBOX_FIRST_DAYS * 86_400_000);
+    const found = await listGmailMessageIds(token, gmailInboxQuery(inboxSince), MAX_INBOX_MESSAGES);
+    if (found.length >= MAX_INBOX_MESSAGES) console.warn("[poczta] limit wiadomości ze skrzynki", box.email);
+    for (const id of found) ids.add(id);
+  }
   if (!ids.size) {
     await reconcileRepliedInGmail(token, box.email, since);
-    await markSynced(box.email, startedAt);
+    await markSynced(box.email, startedAt, rules != null);
     return { inserted: 0 };
   }
 
@@ -199,22 +218,26 @@ async function syncMailbox(
     const metas = (await mapPool(chunk, META_CONCURRENCY, (id) => getGmailMessageMeta(token, id))).filter(
       (m): m is GmailMessageMeta => m != null
     );
-    inserted += await storeMetas(box, metas, index, mailCases);
+    inserted += await storeMetas(box, metas, index, mailCases, rules);
     for (const id of chunk) processed.add(id);
     // Pierwsza synchronizacja: historia z 30 dni jest do wglądu, ale nie jako zaległości do reakcji —
     // po każdej porcji, bo przebieg może się przerwać przed końcem.
     if (firstSync) await markInitialHandled(box.email, startedAt);
+    // Pierwsze pobranie całej skrzynki (tydzień wstecz) dociąga też starsze maile od dostawców, których
+    // zapytania po nadawcach nie złapały — do historii, nie na tablicę. Nieznani zostają na półce.
+    else if (firstInbox) await markInitialHandled(box.email, startedAt, { onlyNewSuppliers: true });
   }
   await reconcileRepliedInGmail(token, box.email, since);
-  await markSynced(box.email, startedAt);
+  await markSynced(box.email, startedAt, rules != null);
   return { inserted };
 }
 
-async function markInitialHandled(mailbox: string, startedAt: Date): Promise<void> {
+async function markInitialHandled(mailbox: string, startedAt: Date, opts: { onlyNewSuppliers?: boolean } = {}): Promise<void> {
   await query(
     `UPDATE public.supplier_mail_messages SET handled_at = now(), handled_via = 'initial'
-      WHERE mailbox = $1 AND handled_at IS NULL AND received_at < $2`,
-    [mailbox, new Date(startedAt.getTime() - 86_400_000)]
+      WHERE mailbox = $1 AND handled_at IS NULL AND received_at < $2
+        AND (NOT $3 OR (kind <> 'other' AND created_at >= $4))`,
+    [mailbox, new Date(startedAt.getTime() - 86_400_000), Boolean(opts.onlyNewSuppliers), startedAt]
   );
 }
 
@@ -223,8 +246,21 @@ async function storeMetas(
   box: Mailbox,
   metas: GmailMessageMeta[],
   index: ReturnType<typeof buildSenderIndex>,
-  mailCases: MailCase[]
+  mailCases: MailCase[],
+  rules: SenderRule[] | null
 ): Promise<number> {
+  // Wątki, które już są sprawą na tablicy — kolejne wiadomości od obcych dołączają bez pytania.
+  const caseThreads = rules
+    ? new Set(
+        (
+          await query<{ gmail_thread_id: string }>(
+            `SELECT DISTINCT gmail_thread_id FROM public.supplier_mail_messages
+              WHERE mailbox = $1 AND triage = 'case' AND gmail_thread_id = ANY($2::text[])`,
+            [box.email, [...new Set(metas.map((m) => m.threadId))]]
+          )
+        ).rows.map((r) => r.gmail_thread_id)
+      )
+    : new Set<string>();
   // Numery ZD z treści — przypięcie także do ZD wysłanych poza OnTime (indeks Subiekta).
   const zdIndex = await loadZdIndex(
     metas.flatMap((m) => documentRefs([m.subject, m.snippet, ...m.attachments.map((a) => a.filename)].join("\n")).dokNrs)
@@ -235,10 +271,16 @@ async function storeMetas(
     if (meta.kind === "internal") continue;
     const sender = parseFromHeader(meta.from);
     const supplierIds = meta.kind === "bounce" ? [] : suppliersForSender(index, sender.email);
-    if (meta.kind !== "bounce" && !supplierIds.length) continue;
+    let triage: "case" | "review" | null = null;
+    if (meta.kind !== "bounce" && !supplierIds.length) {
+      // Spoza kart dostawców: tylko ludzie (bez autoodpowiedzi), przesiani regułami nadawców.
+      if (!rules || meta.kind !== "supplier") continue;
+      triage = triageOther({ email: sender.email, bulk: meta.bulk, rules, knownCaseThread: caseThreads.has(meta.threadId) });
+      if (!triage) continue;
+    }
     const attachmentNames = meta.attachments.map((a) => a.filename);
     const category = supplierMailCategory({ from: meta.from, subject: meta.subject, attachmentNames, bulk: meta.bulk });
-    if (category === "newsletter" && meta.kind !== "bounce") continue;
+    if (category === "newsletter" && meta.kind !== "bounce" && triage !== "case") continue;
     const text = [meta.subject, meta.snippet, ...attachmentNames].join("\n");
     const zdNr = documentRefs(text).dokNrs[0] ?? null;
     const zd = zdNr ? zdIndex.get(zdNr) : undefined;
@@ -273,8 +315,8 @@ async function storeMetas(
       `INSERT INTO public.supplier_mail_messages
          (mailbox, owner_user_id, gmail_message_id, gmail_thread_id, rfc_message_id, supplier_id, kind,
           from_address, from_name, subject, snippet, attachments, received_at, case_kind, case_id, linked_by,
-          category, zd_dok_nr, zd_dok_id)
-       SELECT $1, $2, $3, $4, NULLIF($5, ''), $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14, $15, $16, $17, $18, $19
+          category, zd_dok_nr, zd_dok_id, triage)
+       SELECT $1, $2, $3, $4, NULLIF($5, ''), $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14, $15, $16, $17, $18, $19, $20
         WHERE NOT EXISTS (
           -- Ta sama wiadomość w drugiej skrzynce (np. DW) — jedna pozycja w Poczcie.
           SELECT 1 FROM public.supplier_mail_messages WHERE rfc_message_id = NULLIF($5, '') AND mailbox <> $1
@@ -287,7 +329,7 @@ async function storeMetas(
         meta.threadId,
         meta.rfcMessageId,
         supplierId,
-        meta.kind,
+        triage ? "other" : meta.kind,
         sender.email,
         sender.name,
         meta.subject.slice(0, 500),
@@ -301,6 +343,7 @@ async function storeMetas(
         category === "newsletter" ? "reply" : category,
         zdNr ? `ZD ${zdNr}` : null,
         zd?.dokId ?? null,
+        triage,
       ]
     );
     inserted += res.rowCount ?? 0;
@@ -316,7 +359,8 @@ async function storeMetas(
 async function reconcileRepliedInGmail(token: string, mailbox: string, since: Date): Promise<void> {
   const { rows } = await query<{ id: string; gmail_thread_id: string; received_at: Date }>(
     `SELECT id, gmail_thread_id, received_at FROM public.supplier_mail_messages
-      WHERE mailbox = $1 AND handled_at IS NULL AND kind = 'supplier' AND category IN ('reply', 'confirmation')
+      WHERE mailbox = $1 AND handled_at IS NULL AND category IN ('reply', 'confirmation')
+        AND (kind = 'supplier' OR (kind = 'other' AND triage = 'case'))
         AND received_at > now() - interval '30 days'
       ORDER BY received_at DESC LIMIT 300`,
     [mailbox]
@@ -357,13 +401,24 @@ async function loadZdIndex(nrs: string[]): Promise<Map<string, { dokId: number; 
   );
 }
 
-async function markSynced(mailbox: string, at: Date): Promise<void> {
+async function markSynced(mailbox: string, at: Date, inbox: boolean): Promise<void> {
   processedIds.delete(mailbox);
   await query(
     `INSERT INTO public.supplier_mail_sync (mailbox, synced_at, last_error) VALUES ($1, $2, NULL)
      ON CONFLICT (mailbox) DO UPDATE SET synced_at = EXCLUDED.synced_at, last_error = NULL`,
     [mailbox, at]
   );
+  if (inbox) await query(`UPDATE public.supplier_mail_sync SET inbox_synced_at = $2 WHERE mailbox = $1`, [mailbox, at]);
+}
+
+/** Reguły nadawców; null przed migracją 184 (cała skrzynka jeszcze wyłączona). */
+async function loadSenderRules(): Promise<SenderRule[] | null> {
+  try {
+    return (await query<SenderRule>(`SELECT pattern, decision FROM public.mail_sender_rules`)).rows;
+  } catch (e) {
+    if (e instanceof Error && /mail_sender_rules/.test(e.message) && /does not exist|nie istnieje/.test(e.message)) return null;
+    throw e;
+  }
 }
 
 /** Błąd nie przesuwa daty synchronizacji — kolejna próba pobierze ten sam zakres. */
@@ -426,15 +481,16 @@ function runSync(opts: { force?: boolean }): Promise<SupplierMailSyncResult> {
       (b) => Date.now() - Math.max(lastSync.get(b.email) ?? 0, lastAttempt.get(b.email) ?? 0) >= minGap
     );
     if (!due.length) return result;
-    const [{ rows: cards }, cases] = await Promise.all([
+    const [{ rows: cards }, cases, rules] = await Promise.all([
       query<SupplierCard>(`SELECT id, mails, notes, extra_info FROM public.suppliers`),
       loadMailCases(),
+      loadSenderRules(),
     ]);
     for (const box of due) {
       result.mailboxes++;
       lastAttempt.set(box.email, Date.now());
       try {
-        result.inserted += (await syncMailbox(box, cards, cases)).inserted;
+        result.inserted += (await syncMailbox(box, cards, cases, rules)).inserted;
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
         result.errors.push(`${box.email}: ${message}`);

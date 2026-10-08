@@ -33,7 +33,8 @@ export type MailMessageRow = {
   supplier_id: string | null;
   supplier_name: string | null;
   supplier_location: SupplierLocation | null;
-  kind: "supplier" | "auto" | "bounce";
+  /** other = nadawca spoza kart dostawców (cała skrzynka, migracja 184). */
+  kind: "supplier" | "auto" | "bounce" | "other";
   category: Exclude<SupplierMailCategory, "newsletter">;
   from_address: string;
   from_name: string;
@@ -50,6 +51,8 @@ export type MailMessageRow = {
   board_thread_id: string | null;
   handled_at: Date | null;
   handled_via: string | null;
+  /** Tylko kind 'other': do przejrzenia / sprawa / nie sprawa. */
+  triage: "review" | "case" | "ignored" | null;
 };
 
 export type MailConversation = {
@@ -60,6 +63,8 @@ export type MailConversation = {
   supplierName: string;
   subject: string;
   lastFrom: string;
+  /** Adres ostatniego nadawcy — do reguły „zawsze od …”. */
+  lastFromEmail: string;
   lastAt: string;
   snippet: string;
   count: number;
@@ -81,6 +86,8 @@ export type MailConversation = {
   ownerUserId: string | null;
   /** Ostatnia nasza odpowiedź (z OnTime albo z Gmaila). */
   repliedAt: string | null;
+  /** Rozmowa od nadawcy spoza kart dostawców: do przejrzenia / sprawa / nie sprawa; null = dostawca. */
+  triage: MailMessageRow["triage"];
 };
 
 export type WaitingCase = {
@@ -126,6 +133,8 @@ export type MailPerson = { id: string; name: string };
 
 export type SupplierMailView = {
   items: BoardItem[];
+  /** Półka „Do przejrzenia”: nieznani nadawcy — sprawa czy nie. */
+  review: MailConversation[];
   /** Osoby z zakupów — do „Obsługuje”. */
   people: MailPerson[];
   sync: { at: string | null; error: string | null; mailboxes: number };
@@ -133,9 +142,17 @@ export type SupplierMailView = {
 
 const CATEGORY_RANK: Record<MailConversation["category"], number> = { confirmation: 0, reply: 1, invoice: 2, shipping: 3 };
 
-function needsAction(m: Pick<MailMessageRow, "kind" | "category" | "handled_at">): boolean {
+const fromPerson = (m: Pick<MailMessageRow, "kind" | "triage">) => m.kind === "supplier" || (m.kind === "other" && m.triage === "case");
+
+function needsAction(m: Pick<MailMessageRow, "kind" | "category" | "handled_at" | "triage">): boolean {
   if (m.handled_at) return false;
-  return m.kind === "bounce" || (m.kind === "supplier" && categoryNeedsAction(m.category));
+  return m.kind === "bounce" || (fromPerson(m) && categoryNeedsAction(m.category));
+}
+
+function threadTriage(list: readonly MailMessageRow[]): MailMessageRow["triage"] {
+  if (list.some((m) => m.kind !== "other")) return null;
+  for (const t of ["case", "review", "ignored"] as const) if (list.some((m) => m.triage === t)) return t;
+  return null;
 }
 
 /** Wiadomości → rozmowy (wątek w skrzynce); najnowsza wiadomość wyznacza nagłówek. */
@@ -154,7 +171,7 @@ export function groupConversations(rows: readonly MailMessageRow[]): MailConvers
       const fromSupplier = sorted.filter((m) => m.kind !== "bounce");
       const linked = sorted.find((m) => m.case_kind);
       const category = sorted
-        .filter((m) => m.kind === "supplier")
+        .filter(fromPerson)
         .map((m) => m.category)
         .sort((a, b) => CATEGORY_RANK[a] - CATEGORY_RANK[b])[0] ?? last.category;
       const open = sorted.some(needsAction);
@@ -166,6 +183,7 @@ export function groupConversations(rows: readonly MailMessageRow[]): MailConvers
         supplierName: sorted.find((m) => m.supplier_name)?.supplier_name ?? last.from_name ?? last.from_address,
         subject: last.subject,
         lastFrom: last.from_name || last.from_address,
+        lastFromEmail: last.from_address,
         lastAt: last.received_at.toISOString(),
         snippet: last.snippet,
         count: sorted.length,
@@ -188,6 +206,7 @@ export function groupConversations(rows: readonly MailMessageRow[]): MailConvers
             .map((m) => m.handled_at!.toISOString())
             .sort()
             .at(-1) ?? null,
+        triage: threadTriage(sorted),
       };
     })
     .sort((a, b) => b.lastAt.localeCompare(a.lastAt));
@@ -201,7 +220,7 @@ export async function loadMailMessages(where = "TRUE", params: unknown[] = []): 
             m.case_kind, m.case_id, m.linked_by, m.zd_dok_nr, m.zd_dok_id,
             CASE WHEN m.case_kind = 'zd' THEN e.dok_nr WHEN m.case_kind = 'inquiry' THEN COALESCE(NULLIF(t.product_name, ''), t.title) END AS case_label,
             i.thread_id AS board_thread_id,
-            m.handled_at, m.handled_via
+            m.handled_at, m.handled_via, to_jsonb(m) ->> 'triage' AS triage
        FROM public.supplier_mail_messages m
        LEFT JOIN public.suppliers s ON s.id = m.supplier_id
        LEFT JOIN public.supplier_order_emails e ON m.case_kind = 'zd' AND e.id = m.case_id
@@ -436,7 +455,8 @@ export async function loadSupplierMailView(now: Date = new Date()): Promise<Supp
       ),
       loadMailPeople(),
     ]);
-    const conversations = groupConversations(messages);
+    const all = groupConversations(messages);
+    const conversations = all.filter((c) => c.triage === null || c.triage === "case");
     const waiting = waitingCases(cases, await loadCaseLinks(cases), now);
     const keys = [
       ...conversations.flatMap((c) => [convBoardKey(c.mailbox, c.threadId), ...(c.caseKind && c.caseId ? [caseBoardKey(c.caseKind, c.caseId)] : [])]),
@@ -450,6 +470,7 @@ export async function loadSupplierMailView(now: Date = new Date()): Promise<Supp
     const lastOk = syncRes.rows.map((r) => r.synced_at.getTime()).filter((t) => t > 0);
     return {
       items: items.sort((a, b) => b.sortAt.localeCompare(a.sortAt)),
+      review: all.filter((c) => c.triage === "review"),
       people,
       sync: {
         at: lastOk.length ? new Date(Math.min(...lastOk)).toISOString() : null,
@@ -458,18 +479,19 @@ export async function loadSupplierMailView(now: Date = new Date()): Promise<Supp
       },
     };
   } catch (e) {
-    if (isMissingSchema(e)) return { items: [], people: [], sync: { at: null, error: null, mailboxes: 0 } };
+    if (isMissingSchema(e)) return { items: [], review: [], people: [], sync: { at: null, error: null, mailboxes: 0 } };
     throw e;
   }
 }
 
 /**
- * Licznik w menu: sprawy w kolumnie Do zrobienia — te same reguły co tablica.
+ * Licznik w menu: sprawy w kolumnie Do zrobienia i półka „Do przejrzenia” — te same reguły co tablica.
  * ponytail: liczy cały widok (wiadomości z 30 dni); przy wolnym menu — licznik w SQL z mail_board_items.
  */
 export async function countSupplierMailNeedsAction(now: Date = new Date()): Promise<number> {
   try {
-    return (await loadSupplierMailView(now)).items.filter((i) => i.column === "todo").length;
+    const view = await loadSupplierMailView(now);
+    return view.items.filter((i) => i.column === "todo").length + view.review.length;
   } catch (e) {
     // Licznik nie może zatrzymać menu, ale błąd bazy ma być widoczny w logach.
     console.error("[poczta] licznik", e);

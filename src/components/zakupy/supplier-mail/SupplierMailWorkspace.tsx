@@ -6,6 +6,7 @@ import {
   actionMailBoardForwardPayment,
   actionMailBoardMove,
   actionMailBoardSave,
+  actionMailTriage,
   actionSupplierMailConversation,
   actionSupplierMailRemind,
   actionSupplierMailReply,
@@ -18,11 +19,14 @@ import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { procurementBoardQuestionHref } from "@/lib/data/department-board-shared";
 import { BOARD_COLUMN_LABELS, BOARD_COLUMNS, type BoardColumn } from "@/lib/mail-board/board";
+import { domainOf, isFreeMailDomain } from "@/lib/mail-board/triage";
 import type { BoardItem, MailConversation, MailPerson, SupplierMailView, WaitingCase } from "@/lib/supplier-mail/data";
 import { businessDaysLabel } from "@/lib/suppliers/awaiting-supplier";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
 
 type Scope = "mine" | "all";
+/** Kolumna tablicy albo półka „Do przejrzenia” (nieznani nadawcy — sprawa czy nie). */
+type ViewTab = BoardColumn | "review";
 type UndoInfo = { label: string; undo: () => Promise<{ ok: true } | { ok: false; message: string }> };
 
 const timeFmt = new Intl.DateTimeFormat("pl-PL", { timeZone: "Europe/Warsaw", hour: "2-digit", minute: "2-digit" });
@@ -127,11 +131,16 @@ export function SupplierMailWorkspace({
   const [canReply, setCanReply] = useState(initialCanReply);
   const [signature, setSignature] = useState(initialSignature);
   const [paymentForwardEmail, setPaymentForwardEmail] = useState(initialPaymentForwardEmail);
-  const [column, setColumn] = useState<BoardColumn>("todo");
+  const [column, setColumn] = useState<ViewTab>("todo");
   const [scope, setScope] = useState<Scope>("mine");
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<BoardColumn | null>(null);
   const [syncing, setSyncing] = useState(true);
+  const [undo, setUndo] = useState<UndoInfo | null>(null);
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+  }, []);
   const [syncNote, setSyncNote] = useState<string | null>(null);
 
   const refresh = useCallback((opts: { sync?: boolean; force?: boolean } = {}) => {
@@ -177,15 +186,59 @@ export function SupplierMailWorkspace({
     for (const c of BOARD_COLUMNS) map.set(c, sortColumn(c, map.get(c)!));
     return map;
   }, [visible]);
-  const order = byColumn.get(column)!;
+  // Półka jako pozycje listy (ten sam wiersz i ta sama rozmowa), bez kolumny tablicy.
+  const reviewItems = useMemo(
+    () =>
+      view.review
+        .filter((c) => scope === "all" || !c.ownerUserId || c.ownerUserId === meId)
+        .map(
+          (c): BoardItem => ({
+            key: `conv:${c.mailbox}|${c.threadId}`,
+            ref: { type: "conv", conv: c },
+            column: "todo",
+            reason: null,
+            fresh: false,
+            remindOn: null,
+            note: "",
+            waitingOn: "",
+            assigneeId: c.ownerUserId,
+            manualColumn: null,
+            sortAt: c.lastAt,
+          })
+        ),
+    [view.review, scope, meId]
+  );
+  const order = column === "review" ? reviewItems : byColumn.get(column)!;
   const index = order.findIndex((i) => i.key === selectedKey);
-  const selected = view.items.find((i) => i.key === selectedKey) ?? null;
+  const reviewSelected = reviewItems.find((i) => i.key === selectedKey) ?? null;
+  const selected = view.items.find((i) => i.key === selectedKey) ?? reviewSelected;
 
-  const [undo, setUndo] = useState<UndoInfo | null>(null);
-  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => {
-    if (undoTimer.current) clearTimeout(undoTimer.current);
-  }, []);
+  /** Decyzja z półki: następna pozycja od razu, „Cofnij” przywraca rozmowę (i usuwa zapamiętaną regułę). */
+  const triage = useCallback(
+    async (conv: MailConversation, decision: "case" | "ignore", remember: "none" | "sender" | "domain") => {
+      const next = order[index + 1] ?? order[index - 1] ?? null;
+      setSelectedKey(next?.key ?? null);
+      setView((v) => ({ ...v, review: v.review.filter((c) => c.key !== conv.key) }));
+      const res = await actionMailTriage({ mailbox: conv.mailbox, threadId: conv.threadId, decision, remember }).catch(() => null);
+      if (!res?.ok) {
+        setSyncNote(res?.message ?? "Nie udało się zapisać decyzji.");
+        void refresh();
+        return;
+      }
+      if (undoTimer.current) clearTimeout(undoTimer.current);
+      const who = res.pattern ? ` · zawsze ${res.pattern}${res.alsoApplied ? ` (+${res.alsoApplied})` : ""}` : "";
+      setUndo({
+        label: `${conv.supplierName} → ${decision === "case" ? "sprawa" : "nie sprawa"}${who}`,
+        undo: () =>
+          actionMailTriage({ mailbox: conv.mailbox, threadId: conv.threadId, decision: "review", forgetPattern: res.pattern }).then((r) =>
+            r.ok ? { ok: true as const } : r
+          ),
+      });
+      undoTimer.current = setTimeout(() => setUndo(null), 30_000);
+      void refresh();
+    },
+    [index, order, refresh]
+  );
 
   /** Przeniesienie: optymistycznie na liście, potem zapis; „Cofnij” przywraca poprzednią ręczną kolumnę. */
   const move = useCallback(
@@ -251,6 +304,7 @@ export function SupplierMailWorkspace({
     e.preventDefault();
     setDropTarget(null);
     const key = e.dataTransfer.getData(DRAG_TYPE);
+    // Z półki „Do przejrzenia” nie przeciąga się — najpierw decyzja „To sprawa”.
     const item = view.items.find((i) => i.key === key);
     if (item) void move(item, target);
   };
@@ -264,6 +318,32 @@ export function SupplierMailWorkspace({
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div role="tablist" aria-label="Sprawy" className="flex flex-wrap gap-1 rounded-md bg-slate-100/70 p-1">
+          {reviewItems.length || column === "review" ? (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={column === "review"}
+              onClick={() => {
+                setColumn("review");
+                setSelectedKey(null);
+              }}
+              className={cn(
+                controlFocusClass,
+                "inline-flex min-h-9 items-center gap-1.5 rounded px-3 text-sm font-medium transition-colors",
+                column === "review" ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200" : "text-slate-600 hover:text-slate-900"
+              )}
+            >
+              Do przejrzenia
+              <span
+                className={cn(
+                  "min-w-5 rounded-full px-1.5 text-center text-xs tabular-nums",
+                  reviewItems.length ? "bg-sky-100 text-sky-900" : "bg-slate-200/70 text-slate-600"
+                )}
+              >
+                {reviewItems.length}
+              </span>
+            </button>
+          ) : null}
           {BOARD_COLUMNS.map((c) => {
             const count = byColumn.get(c)!.length;
             return (
@@ -374,13 +454,28 @@ export function SupplierMailWorkspace({
           <BoardList
             column={column}
             items={order}
+            draggable={column !== "review"}
             people={scope === "all" ? people : null}
             selectedKey={selectedKey}
             onSelect={setSelectedKey}
           />
         </div>
         <div ref={detailRef} className={cn("min-h-[24rem] scroll-mt-20 lg:min-h-0", selected ? "block" : "hidden lg:block")}>
-          {selected?.ref.type === "conv" ? (
+          {reviewSelected && reviewSelected.ref.type === "conv" ? (
+            <ConversationDetail
+              key={reviewSelected.key}
+              item={reviewSelected}
+              conv={reviewSelected.ref.conv}
+              me={me}
+              canReply={false}
+              paymentForwardEmail=""
+              panel={<TriageBar key={`triage-${reviewSelected.key}`} conv={reviewSelected.ref.conv} onDecide={triage} />}
+              hideDone
+              onBack={() => setSelectedKey(null)}
+              onMove={() => undefined}
+              onChanged={() => void refresh()}
+            />
+          ) : selected?.ref.type === "conv" ? (
             <ConversationDetail
               key={selected.key}
               item={selected}
@@ -419,7 +514,8 @@ export function SupplierMailWorkspace({
   );
 }
 
-const EMPTY: Record<BoardColumn, string> = {
+const EMPTY: Record<ViewTab, string> = {
+  review: "Wszystko przejrzane - nowi nadawcy pojawią się tutaj.",
   todo: "Nic nie czeka na Twój ruch.",
   doing: "Nic nie jest w trakcie.",
   waiting: "Na nic nie czekasz.",
@@ -430,12 +526,14 @@ const EMPTY: Record<BoardColumn, string> = {
 function BoardList({
   column,
   items,
+  draggable,
   people,
   selectedKey,
   onSelect,
 }: {
-  column: BoardColumn;
+  column: ViewTab;
   items: BoardItem[];
+  draggable: boolean;
   /** Tylko w widoku „Wszystkie” — kto obsługuje. */
   people: Map<string, string> | null;
   selectedKey: string | null;
@@ -451,7 +549,7 @@ function BoardList({
         return (
           <li
             key={i.key}
-            draggable
+            draggable={draggable}
             onDragStart={(e) => {
               e.dataTransfer.setData(DRAG_TYPE, i.key);
               e.dataTransfer.effectAllowed = "move";
@@ -462,12 +560,13 @@ function BoardList({
               onClick={() => onSelect(i.key)}
               aria-current={selected ? "true" : undefined}
               className={cn(
-                "block w-full cursor-grab px-4 py-3 text-left transition-colors active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500/45",
-                selected ? "bg-indigo-50/70" : "hover:bg-slate-50"
+                "block w-full px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500/45",
+                selected ? "bg-indigo-50/70" : "hover:bg-slate-50",
+                draggable && "cursor-grab active:cursor-grabbing"
               )}
             >
               <span className="flex items-baseline justify-between gap-2">
-                <span className={cn("min-w-0 truncate text-sm text-slate-900", column === "todo" ? "font-semibold" : "font-medium")}>
+                <span className={cn("min-w-0 truncate text-sm text-slate-900", column === "todo" || column === "review" ? "font-semibold" : "font-medium")}>
                   {itemTitle(i)}
                 </span>
                 <span className="shrink-0 text-xs tabular-nums text-slate-500">{shortWhen(i.sortAt)}</span>
@@ -684,12 +783,15 @@ function ConversationDetail({
   canReply,
   paymentForwardEmail,
   panel,
+  hideDone = false,
   onBack,
   onMove,
   onChanged,
 }: {
   item: BoardItem;
   conv: MailConversation;
+  /** Półka „Do przejrzenia” — bez przenoszenia, najpierw decyzja. */
+  hideDone?: boolean;
   me: string | null;
   canReply: boolean;
   paymentForwardEmail: string;
@@ -750,7 +852,7 @@ function ConversationDetail({
             Przekaż handlowcowi
           </Link>
         ) : null}
-        {item.column !== "done" ? (
+        {item.column !== "done" && !hideDone ? (
           <Button type="button" size="sm" variant="secondary" disabled={!armed} onClick={() => onMove("done")}>
             Zakończone
           </Button>
@@ -1109,5 +1211,48 @@ function PaymentForward({ conv, defaultTo, onSent }: { conv: MailConversation; d
         </p>
       ) : null}
     </form>
+  );
+}
+
+/** Półka: sprawa czy nie; zapamiętanie nadawcy albo całej domeny (nie dla poczty prywatnej). */
+function TriageBar({
+  conv,
+  onDecide,
+}: {
+  conv: MailConversation;
+  onDecide: (conv: MailConversation, decision: "case" | "ignore", remember: "none" | "sender" | "domain") => void;
+}) {
+  const rememberId = useId();
+  const email = conv.lastFromEmail;
+  const domain = domainOf(email);
+  const [remember, setRemember] = useState<"none" | "sender" | "domain">("sender");
+  const armed = useArmedAfterMount();
+  return (
+    <div className="space-y-2 border-b border-slate-200 bg-sky-50/60 px-4 py-3 sm:px-5">
+      <p className="text-sm text-slate-800">
+        Nowy nadawca <span className="font-medium">{email}</span>. To sprawa do załatwienia?
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="button" size="sm" disabled={!armed} onClick={() => onDecide(conv, "case", remember)}>
+          To sprawa
+        </Button>
+        <Button type="button" size="sm" variant="secondary" disabled={!armed} onClick={() => onDecide(conv, "ignore", remember)}>
+          Nie sprawa
+        </Button>
+        <label htmlFor={rememberId} className="sr-only">
+          Zapamiętaj
+        </label>
+        <select
+          id={rememberId}
+          value={remember}
+          onChange={(e) => setRemember(e.target.value as typeof remember)}
+          className={cn(controlFocusClass, "min-h-9 rounded-md border border-slate-200 bg-white px-2 text-sm")}
+        >
+          <option value="sender">i zapamiętaj: zawsze od {email}</option>
+          {domain && !isFreeMailDomain(domain) ? <option value="domain">i zapamiętaj: cała domena @{domain}</option> : null}
+          <option value="none">tylko ta rozmowa</option>
+        </select>
+      </div>
+    </div>
   );
 }

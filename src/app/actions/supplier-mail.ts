@@ -21,6 +21,7 @@ import {
   sendGmailAsUser,
 } from "@/lib/google/gmail-connections";
 import { addBusinessDaysKey, isBoardColumn, WAIT_BUSINESS_DAYS, type BoardColumn } from "@/lib/mail-board/board";
+import { rulePattern } from "@/lib/mail-board/triage";
 import {
   convBoardKey,
   loadMailMessages,
@@ -108,7 +109,7 @@ export async function actionSupplierMailView(opts: { sync?: boolean; force?: boo
 
 export type ConversationMessage = {
   id: string;
-  kind: "supplier" | "auto" | "bounce";
+  kind: "supplier" | "auto" | "bounce" | "other";
   category: string;
   from: string;
   fromName: string;
@@ -211,7 +212,7 @@ export async function actionSupplierMailReply(input: {
   if (input.cc !== undefined && typeof input.cc !== "string") return { ok: false, message: "Nieprawidłowe DW." };
   try {
     const rows = await loadMailMessages(`m.mailbox = $1 AND m.gmail_thread_id = $2`, [conv.mailbox, conv.threadId]);
-    const last = rows.filter((r) => r.kind === "supplier" || r.kind === "auto").sort((a, b) => b.received_at.getTime() - a.received_at.getTime())[0];
+    const last = rows.filter((r) => r.kind === "supplier" || r.kind === "auto" || r.kind === "other").sort((a, b) => b.received_at.getTime() - a.received_at.getTime())[0];
     if (!last) return { ok: false, message: "W tej rozmowie nie ma wiadomości od dostawcy, na którą można odpowiedzieć." };
     const conn = await getGmailConnection(user.id);
     if (!conn) return { ok: false, message: "Połącz swojego Gmaila w Ustawieniach.", reconnect: true };
@@ -533,5 +534,78 @@ export async function actionMailBoardForwardPayment(input: {
     return { ok: true, to, attachments: attachments.length };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się przekazać faktury.") };
+  }
+}
+
+// ─── Półka „Do przejrzenia”: sprawa czy nie, z zapamiętaniem nadawcy ───
+
+/**
+ * Decyzja o rozmowie od nieznanego nadawcy. `remember` zapisuje regułę (adres albo domena) i od razu
+ * stosuje ją do reszty półki; kolejne maile od tego nadawcy synchronizacja układa sama.
+ * `decision: "review"` = „Cofnij” (z `forgetPattern` usuwa też zapisaną regułę).
+ */
+export async function actionMailTriage(input: {
+  mailbox: string;
+  threadId: string;
+  decision: "case" | "ignore" | "review";
+  remember?: "none" | "sender" | "domain";
+  forgetPattern?: string | null;
+}): Promise<{ ok: true; pattern: string | null; alsoApplied: number } | Fail> {
+  const user = await requireMailUser("mutate");
+  const conv = validConversation(input);
+  if (!conv) return { ok: false, message: "Nieprawidłowa rozmowa." };
+  if (!["case", "ignore", "review"].includes(input.decision)) return { ok: false, message: "Nieznana decyzja." };
+  const remember = input.remember ?? "none";
+  if (!["none", "sender", "domain"].includes(remember)) return { ok: false, message: "Nieznany zakres." };
+  const triage = input.decision === "case" ? "case" : input.decision === "ignore" ? "ignored" : "review";
+  try {
+    const { rows } = await query<{ from_address: string }>(
+      `UPDATE public.supplier_mail_messages SET triage = $3
+        WHERE mailbox = $1 AND gmail_thread_id = $2 AND kind = 'other'
+        RETURNING from_address`,
+      [conv.mailbox, conv.threadId, triage]
+    );
+    if (!rows.length) return { ok: false, message: "Nie znaleziono rozmowy." };
+
+    if (input.decision === "review") {
+      const pattern = typeof input.forgetPattern === "string" ? input.forgetPattern.toLowerCase() : null;
+      if (pattern) {
+        await query(`DELETE FROM public.mail_sender_rules WHERE pattern = $1`, [pattern]);
+        // ponytail: cofa wszystkie nieobsłużone rozmowy tego nadawcy z decyzją reguły — także te,
+        // które ktoś wcześniej rozstrzygnął ręcznie tak samo; dokładne cofanie wymagałoby dziennika decyzji.
+        await query(
+          `UPDATE public.supplier_mail_messages SET triage = 'review'
+            WHERE kind = 'other' AND triage IN ('case', 'ignored') AND handled_at IS NULL
+              AND (lower(from_address) = $1 OR ($1 LIKE '@%' AND lower(from_address) LIKE '%' || $1))`,
+          [pattern]
+        );
+      }
+      revalidatePath("/zakupy/asystent");
+      return { ok: true, pattern: null, alsoApplied: 0 };
+    }
+
+    let pattern: string | null = null;
+    let alsoApplied = 0;
+    if (remember !== "none") {
+      pattern = rulePattern(rows[0]!.from_address, remember);
+      if (!pattern) return { ok: false, message: "Dla poczty prywatnej (np. gmail.com) można zapamiętać tylko adres." };
+      const decision = input.decision === "case" ? "case" : "ignore";
+      await query(
+        `INSERT INTO public.mail_sender_rules (pattern, decision, created_by) VALUES ($1, $2, $3)
+         ON CONFLICT (pattern) DO UPDATE SET decision = EXCLUDED.decision, created_by = EXCLUDED.created_by, created_at = now()`,
+        [pattern, decision, user.id]
+      );
+      const res = await query(
+        `UPDATE public.supplier_mail_messages SET triage = $2
+          WHERE kind = 'other' AND triage = 'review'
+            AND (lower(from_address) = $1 OR ($1 LIKE '@%' AND lower(from_address) LIKE '%' || $1))`,
+        [pattern, triage]
+      );
+      alsoApplied = res.rowCount ?? 0;
+    }
+    revalidatePath("/zakupy/asystent");
+    return { ok: true, pattern, alsoApplied };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się zapisać decyzji.") };
   }
 }

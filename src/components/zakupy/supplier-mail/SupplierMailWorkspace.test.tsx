@@ -6,10 +6,12 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import type { BoardItem, MailConversation, SupplierMailView } from "@/lib/supplier-mail/data";
 
 const moveMock = vi.fn(async (_input: unknown) => ({ ok: true as const }));
+const triageMock = vi.fn(async (_input: unknown) => ({ ok: true as const, pattern: "jan@nowa.example", alsoApplied: 2 }));
 
 vi.mock("@/app/actions/supplier-mail", () => ({
   actionMailBoardMove: (input: unknown) => moveMock(input),
   actionMailBoardSave: vi.fn(async () => ({ ok: true })),
+  actionMailTriage: (input: unknown) => triageMock(input),
   actionMailBoardForwardPayment: vi.fn(),
   actionSupplierMailConversation: vi.fn(() => new Promise(() => {})),
   actionSupplierMailRemind: vi.fn(),
@@ -28,6 +30,7 @@ const conv = (over: Partial<MailConversation>): MailConversation => ({
   supplierName: "Renfert",
   subject: "Re: order",
   lastFrom: "Miriam",
+  lastFromEmail: "m@renfert.example",
   lastAt: "2026-10-08T09:00:00.000Z",
   snippet: "",
   count: 1,
@@ -44,6 +47,7 @@ const conv = (over: Partial<MailConversation>): MailConversation => ({
   handledVia: null,
   ownerUserId: "me",
   repliedAt: null,
+  triage: null,
   ...over,
 });
 
@@ -68,6 +72,7 @@ const view: SupplierMailView = {
     item(conv({ threadId: "t2", key: "x2", supplierName: "Ivoclar", ownerUserId: "other" })),
     item(conv({ threadId: "t3", key: "x3", supplierName: "Kulzer", category: "invoice", open: false }), { column: "to_pay" }),
   ],
+  review: [],
   people: [
     { id: "me", name: "Osoba A." },
     { id: "other", name: "Osoba B." },
@@ -75,10 +80,10 @@ const view: SupplierMailView = {
   sync: { at: null, error: null, mailboxes: 1 },
 };
 
-function renderBoard() {
+function renderBoard(v: SupplierMailView = view) {
   return render(
     <SupplierMailWorkspace
-      initialView={view}
+      initialView={v}
       initialMe="zakupy@example.com"
       initialMeId="me"
       initialCanReply
@@ -132,5 +137,18 @@ describe("tablica spraw", () => {
     fireEvent.click(screen.getByText("Renfert"));
     fireEvent.change(screen.getByLabelText("Kolumna"), { target: { value: "waiting" } });
     await waitFor(() => expect(moveMock).toHaveBeenCalledWith(expect.objectContaining({ column: "waiting" })));
+  });
+
+  it("półka Do przejrzenia: decyzja z zapamiętaniem nadawcy, potem Cofnij", async () => {
+    const stranger = conv({ threadId: "t9", key: "x9", supplierName: "Jan Nowak", lastFromEmail: "jan@nowa.example", triage: "review" });
+    renderBoard({ ...view, review: [stranger] });
+    fireEvent.click(tab(/Do przejrzenia/));
+    fireEvent.click(screen.getByText("Jan Nowak"));
+    await new Promise((r) => setTimeout(r, 850)); // przycisk aktywny po chwili (ochrona przed seryjnym klikaniem)
+    fireEvent.click(screen.getByRole("button", { name: "To sprawa" }));
+    await waitFor(() =>
+      expect(triageMock).toHaveBeenCalledWith({ mailbox: "zakupy@example.com", threadId: "t9", decision: "case", remember: "sender" })
+    );
+    expect(await screen.findByText("Jan Nowak → sprawa · zawsze jan@nowa.example (+2)")).toBeTruthy();
   });
 });

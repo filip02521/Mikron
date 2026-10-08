@@ -130,6 +130,11 @@ export function gmailBounceQuery(after: Date): string {
   return `from:(mailer-daemon OR postmaster) after:${Math.floor(after.getTime() / 1000)}`;
 }
 
+/** Cała skrzynka bez kategorii Gmaila (promocje, społeczności, fora, powiadomienia) i bez naszych wysłanych. */
+export function gmailInboxQuery(after: Date): string {
+  return `in:inbox -from:me -category:promotions -category:social -category:forums -category:updates after:${Math.floor(after.getTime() / 1000)}`;
+}
+
 /** „Jan Kowalski <jan@x.pl>” → { email, name }. */
 export function parseFromHeader(from: string): { email: string; name: string } {
   const angle = from.match(/<([^>]+)>/);
