@@ -10,6 +10,8 @@ import {
   SESSION_REQUIRED_ERROR,
 } from "@/lib/auth";
 import { parseMailRecipients } from "@/lib/email/recipients";
+import { normalizeEmailSignature } from "@/lib/email/signature";
+import { isMikranEmail } from "@/lib/email/supplier-emails";
 import { getGmailOAuthConfig } from "@/lib/google/gmail";
 import {
   EMAIL_SIGNATURE_MAX,
@@ -30,12 +32,9 @@ import { setSubiektOrdersZdTermin } from "@/lib/subiekt/api";
 import { loadSupplierZd } from "@/lib/supplier-forms/prepare";
 import { findSupplierFormTemplate } from "@/lib/supplier-forms/templates";
 import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
+import { zdTerminError } from "@/lib/orders/zd-send-plan";
 import { buildZdMailAttachment } from "@/lib/supplier-forms/zd-mail-attachment";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
-
-function isMikranEmail(email: string): boolean {
-  return /@mikran\.(com|pl)$/i.test(email);
-}
 
 export type GmailStatus = { configured: boolean; email: string | null; signature: string };
 
@@ -53,15 +52,16 @@ export async function actionGmailStatus(): Promise<GmailStatus> {
   }
 }
 
-export async function actionSaveEmailSignature(signature: string): Promise<{ ok: true } | { ok: false; message: string }> {
+export async function actionSaveEmailSignature(
+  signature: string
+): Promise<{ ok: true; signature: string } | { ok: false; message: string }> {
   const user = await getSessionUserForMutation();
   if (typeof signature !== "string") return { ok: false, message: "Nieprawidłowy podpis." };
   if (signature.length > EMAIL_SIGNATURE_MAX) {
     return { ok: false, message: `Podpis może mieć najwyżej ${EMAIL_SIGNATURE_MAX} znaków.` };
   }
   await saveEmailSignature(user.id, signature);
-  revalidatePath("/ustawienia");
-  return { ok: true };
+  return { ok: true, signature: normalizeEmailSignature(signature) };
 }
 
 /** UUID (dostawca, wiersz wysyłki). */
@@ -111,16 +111,26 @@ export async function actionZdSupplierEmailSent(dokId: number): Promise<Supplier
 export async function actionDisconnectGmail(): Promise<{ ok: true }> {
   const user = await getSessionUserForMutation();
   await deleteGmailConnection(user.id);
-  revalidatePath("/ustawienia");
   return { ok: true };
 }
 
 export type SendZdToSupplierResult =
-  | { ok: true; from: string; to: string[]; cc: string[]; attachmentName: string; sentAt: string }
+  | {
+      ok: true;
+      from: string;
+      to: string[];
+      cc: string[];
+      attachmentName: string;
+      sentAt: string;
+      /** Nasz termin dostawy ustawiony zaraz po wysyłce (na serwerze — zamknięcie karty go nie gubi). */
+      termin?: { ok: true; termin: string } | { ok: false; message: string };
+    }
   | {
       ok: false;
       message: string;
       reconnect?: boolean;
+      /** Połączenie zerwane po wysłaniu treści — nie wiadomo, czy mail wyszedł. */
+      uncertain?: boolean;
       alreadySent?: SupplierOrderEmail;
       /** Adresy spoza karty dostawcy — wysyłka dopiero po świadomym potwierdzeniu. */
       unknownRecipients?: string[];
@@ -147,6 +157,8 @@ export async function actionSendZdToSupplier(input: {
   resend?: boolean;
   /** Świadoma wysyłka na adres spoza karty dostawcy. */
   allowUnknownRecipients?: boolean;
+  /** Nasz termin dostawy (YYYY-MM-DD) — trafia na ZD zaraz po wysłaniu maila. */
+  terminAfterSend?: string;
 }): Promise<SendZdToSupplierResult> {
   const user = await requireZdEstimateAdmin("mutate");
   if (
@@ -167,6 +179,9 @@ export async function actionSendZdToSupplier(input: {
   if (!subject) return { ok: false, message: "Temat nie może być pusty." };
   const dokId = Math.trunc(Number(input.dokId));
   if (!(dokId > 0)) return { ok: false, message: "Brak numeru ZD." };
+  const terminAfterSend = typeof input.terminAfterSend === "string" ? input.terminAfterSend.trim() : "";
+  const terminInvalid = terminAfterSend ? zdTerminError(terminAfterSend, todayDateKeyInWarsaw()) : null;
+  if (terminInvalid) return { ok: false, message: terminInvalid };
 
   if (sendingDokIds.has(dokId)) return { ok: false, message: "To zamówienie właśnie się wysyła." };
   sendingDokIds.add(dokId);
@@ -199,8 +214,13 @@ export async function actionSendZdToSupplier(input: {
     if (!findSupplierFormTemplate(zd.supplier.name)) {
       const today = todayDateKeyInWarsaw();
       if (zd.termin !== today) {
-        await setSubiektOrdersZdTermin(dokId, today);
-        restoreTermin = zd.termin ?? null;
+        const printedTermin = await setSubiektOrdersZdTermin(dokId, today);
+        // ZD bez terminu: po nieudanej wysyłce dostaje nasz termin dostawy (Subiekt nie umie wyczyścić pola),
+        // a nie dzisiejszą datę z wydruku.
+        restoreTermin = zd.termin ?? (terminAfterSend || null);
+        if (printedTermin !== today) {
+          throw new Error(`Subiekt zapisał termin ${printedTermin ?? "pusty"} zamiast dzisiejszego - wydruk ZD nie poszedł.`);
+        }
         printed = { ...zd, termin: today };
         fresh = true;
       }
@@ -209,7 +229,7 @@ export async function actionSendZdToSupplier(input: {
 
     const sent = await sendGmailAsUser({
       userId: user.id,
-      to: emails,
+        to: emails,
       cc,
       subject,
       text: input.body,
@@ -221,18 +241,24 @@ export async function actionSendZdToSupplier(input: {
       return sent;
     }
     restoreTermin = null;
-    // Mail już wyszedł — błąd zapisu śladu nie może wyglądać jak nieudana wysyłka.
-    await recordSupplierOrderEmail({
-      dokId,
-      dokNr: zd.dokNr,
-      supplierId: zd.supplier.id,
-      sentBy: user.id,
-      from: sent.from,
-      to: emails,
-      attachmentName: attachment.filename,
-      gmailMessageId: sent.messageId,
-      gmailThreadId: sent.threadId,
-    }).catch((e) => console.error("[gmail] supplier_order_emails", e));
+    // Mail już wyszedł — błąd zapisu śladu nie może wyglądać jak nieudana wysyłka. Ślad chroni przed
+    // drugą wysyłką („już wysłane”), więc przy chwilowym błędzie bazy jedna ponowna próba.
+    const record = () =>
+      recordSupplierOrderEmail({
+        dokId,
+        dokNr: zd.dokNr,
+        supplierId: zd.supplier.id,
+        sentBy: user.id,
+        from: sent.from,
+        to: emails,
+        attachmentName: attachment.filename,
+        gmailMessageId: sent.messageId,
+        gmailThreadId: sent.threadId,
+      });
+    await record()
+      .catch(() => record())
+      .catch((e) => console.error("[gmail] supplier_order_emails", e));
+    const termin = terminAfterSend ? await setTerminAfterSend(dokId, terminAfterSend) : undefined;
     // Nowy wpis w logu wysyłek (/admin/wysylki).
     revalidatePath("/admin/wysylki");
     return {
@@ -242,12 +268,27 @@ export async function actionSendZdToSupplier(input: {
       cc,
       attachmentName: attachment.filename,
       sentAt: new Date().toISOString(),
+      termin,
     };
   } catch (e) {
     await restoreZdTermin(dokId, restoreTermin);
     return { ok: false, message: userFacingErrorText(e, "Nie udało się wysłać zamówienia.") };
   } finally {
     sendingDokIds.delete(dokId);
+  }
+}
+
+async function setTerminAfterSend(
+  dokId: number,
+  date: string
+): Promise<{ ok: true; termin: string } | { ok: false; message: string }> {
+  try {
+    const after = await setSubiektOrdersZdTermin(dokId, date);
+    return after === date
+      ? { ok: true, termin: after }
+      : { ok: false, message: `Subiekt zapisał termin ${after ?? "pusty"} zamiast ${date}. Sprawdź ZD w Subiekcie.` };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się ustawić terminu realizacji w Subiekcie.") };
   }
 }
 

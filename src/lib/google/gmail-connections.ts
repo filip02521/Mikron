@@ -3,12 +3,12 @@
  * Wysyłka zawsze z konta zalogowanej osoby — nigdy w imieniu kogoś innego.
  */
 
+import { randomUUID } from "node:crypto";
 import { query } from "@/lib/db/pool";
 import { customsEmailHtml } from "@/lib/customs/customs-email";
+import { normalizeEmailSignature } from "@/lib/email/signature";
 import { recordTransactionalEmailLog } from "@/lib/services/transactional-email-log";
-import {
-  awaitingReplyStatus,
-} from "@/lib/suppliers/awaiting-supplier";
+import { awaitingReplyStatus } from "@/lib/suppliers/awaiting-supplier";
 import type { TransactionalEmailKind } from "@/types/database";
 import {
   GmailReconnectRequiredError,
@@ -16,6 +16,8 @@ import {
   decryptToken,
   fetchGmailAttachment,
   fetchGmailReplies,
+  findGmailMessageByRfcId,
+  isGmailTransportError,
   scopeCanReadReplies,
   type GmailReply,
   encryptToken,
@@ -116,10 +118,13 @@ export async function sendGmailAsUser(input: {
   kind: TransactionalEmailKind;
   /** Odpowiedź: Message-ID wiadomości dostawcy (In-Reply-To / References). */
   inReplyTo?: string;
+  /** References wiadomości, na którą odpowiadamy (łańcuch wątku). */
+  references?: string[];
   /** Wątek w skrzynce nadawcy — odpowiedź dołącza do niego w Gmailu (tylko gdy to ta sama skrzynka). */
   gmailThreadId?: string;
 }): Promise<
-  { ok: true; from: string; messageId: string; threadId: string | null } | { ok: false; message: string; reconnect?: boolean }
+  | { ok: true; from: string; messageId: string; threadId: string | null }
+  | { ok: false; message: string; reconnect?: boolean; uncertain?: boolean }
 > {
   const cfg = getGmailOAuthConfig();
   if (!cfg) return { ok: false, message: "Wysyłka z Gmaila nie jest skonfigurowana na serwerze." };
@@ -138,8 +143,10 @@ export async function sendGmailAsUser(input: {
     hasAttachments: input.attachments.length > 0,
     attachmentNames: input.attachments.map((a) => a.filename),
   };
+  const rfcMessageId = `<ontime-${randomUUID()}@${stored.email.split("@")[1] ?? "ontime"}>`;
+  let accessToken: string | null = null;
   try {
-    const accessToken = await gmailAccessToken(cfg, decryptToken(cfg.tokenKey, stored.tokenEnc));
+    accessToken = await gmailAccessToken(cfg, decryptToken(cfg.tokenKey, stored.tokenEnc));
     const mime = await buildMimeMessage({
       from: stored.email,
       to: input.to,
@@ -149,6 +156,8 @@ export async function sendGmailAsUser(input: {
       html,
       attachments: input.attachments,
       inReplyTo: input.inReplyTo,
+      references: input.references,
+      messageId: rfcMessageId,
     });
     const sent = input.gmailThreadId
       ? await sendGmailRawInThread(accessToken, mime, input.gmailThreadId)
@@ -156,6 +165,18 @@ export async function sendGmailAsUser(input: {
     await recordTransactionalEmailLog({ ...log, status: "sent", messageId: sent.id });
     return { ok: true, from: stored.email, messageId: sent.id, threadId: sent.threadId };
   } catch (e) {
+    // Zerwane połączenie po wysłaniu treści — Gmail mógł wysłać; sprawdzamy „Wysłane” po naszym Message-ID,
+    // zamiast pozwolić na drugą wysyłkę tego samego zamówienia.
+    if (accessToken && isGmailTransportError(e)) {
+      const found = await findGmailMessageByRfcId(accessToken, rfcMessageId);
+      if (found) {
+        await recordTransactionalEmailLog({ ...log, status: "sent", messageId: found.id });
+        return { ok: true, from: stored.email, messageId: found.id, threadId: found.threadId };
+      }
+      const message = "Połączenie z Gmailem zostało przerwane. Sprawdź „Wysłane” w Gmailu, zanim wyślesz ponownie.";
+      await recordTransactionalEmailLog({ ...log, status: "failed", errorMessage: message });
+      return { ok: false, message, uncertain: true };
+    }
     const message = e instanceof Error ? e.message : String(e);
     await recordTransactionalEmailLog({ ...log, status: "failed", errorMessage: message });
     if (e instanceof GmailReconnectRequiredError) {
@@ -172,7 +193,7 @@ export async function sendGmailAsUser(input: {
 
 // ─── Podpis i ślad wysłanych ZD ───────────────────────────────────────────
 
-export const EMAIL_SIGNATURE_MAX = 1000;
+export { EMAIL_SIGNATURE_MAX } from "@/lib/email/signature";
 
 export async function getEmailSignature(userId: string): Promise<string> {
   const { rows } = await query<{ email_signature: string | null }>(
@@ -185,7 +206,7 @@ export async function getEmailSignature(userId: string): Promise<string> {
 export async function saveEmailSignature(userId: string, signature: string): Promise<void> {
   await query(`UPDATE public.profiles SET email_signature = $2 WHERE id = $1`, [
     userId,
-    signature.replace(/\r\n/g, "\n").trim().slice(0, EMAIL_SIGNATURE_MAX),
+    normalizeEmailSignature(signature),
   ]);
 }
 
@@ -263,6 +284,8 @@ type SentMailRow = {
   sent_by: string | null;
   from_address: string;
   gmail_message_id: string | null;
+  /** Wątek zapisany przy wysyłce (178) — bez dodatkowego odczytu wiadomości w Gmailu. */
+  gmail_thread_id?: string | null;
   /** Połączenie nadawcy — tylko gdy to ten sam adres, z którego poszła wiadomość. */
   refresh_token_enc: string | null;
   scope: string | null;
@@ -308,7 +331,7 @@ async function readSentThreads(
           token = gmailAccessToken(cfg, decryptToken(cfg.tokenKey, row.refresh_token_enc));
           tokens.set(senderKey, token);
         }
-        const thread = await fetchGmailReplies(await token, row.gmail_message_id, opts);
+        const thread = await fetchGmailReplies(await token, row.gmail_message_id, { ...opts, threadId: row.gmail_thread_id });
         if (!thread) return { gmailUrl: null, status: "unavailable", reason: "Wiadomość usunięta ze skrzynki nadawcy." };
         return {
           gmailUrl: own
@@ -348,7 +371,7 @@ export async function supplierOrderReplies(supplierId: string, viewerId: string)
   const { rows } = await query<
     SentMailRow & { subiekt_dok_id: number; dok_nr: string; sent_at: Date; to_addresses: string[] }
   >(
-    `SELECT e.subiekt_dok_id, e.dok_nr, e.sent_at, e.sent_by, e.from_address, e.to_addresses, e.gmail_message_id,
+    `SELECT e.subiekt_dok_id, e.dok_nr, e.sent_at, e.sent_by, e.from_address, e.to_addresses, e.gmail_message_id, e.gmail_thread_id,
             c.refresh_token_enc, c.scope
        FROM (
          SELECT DISTINCT ON (subiekt_dok_id) *
@@ -405,7 +428,7 @@ export async function boardInquiryReplies(threadId: string, viewerId: string): P
   const { rows } = await query<
     SentMailRow & { id: string; supplier_name: string; sent_at: Date; resolved_at: Date | null }
   >(
-    `SELECT i.id, i.supplier_name, i.sent_at, i.resolved_at, i.sent_by, i.from_address, i.gmail_message_id,
+    `SELECT i.id, i.supplier_name, i.sent_at, i.resolved_at, i.sent_by, i.from_address, i.gmail_message_id, i.gmail_thread_id,
             c.refresh_token_enc, c.scope
        FROM public.supplier_inquiry_emails i
        ${senderConnectionJoin("i")}
@@ -449,7 +472,7 @@ export async function boardReplyForAi(input: {
   const cfg = getGmailOAuthConfig();
   if (!cfg) return null;
   const { rows } = await query<SentMailRow & { supplier_name: string }>(
-    `SELECT i.supplier_name, i.sent_by, i.from_address, i.gmail_message_id, c.refresh_token_enc, c.scope
+    `SELECT i.supplier_name, i.sent_by, i.from_address, i.gmail_message_id, i.gmail_thread_id, c.refresh_token_enc, c.scope
        FROM public.supplier_inquiry_emails i
        ${senderConnectionJoin("i")}
       WHERE i.id = $1 AND i.thread_id = $2`,
@@ -458,19 +481,29 @@ export async function boardReplyForAi(input: {
   const row = rows[0];
   if (!row?.gmail_message_id || !row.refresh_token_enc || !scopeCanReadReplies(row.scope)) return null;
   const token = await gmailAccessToken(cfg, decryptToken(cfg.tokenKey, row.refresh_token_enc));
-  const thread = await fetchGmailReplies(token, row.gmail_message_id, { withText: true });
+  const thread = await fetchGmailReplies(token, row.gmail_message_id, { withText: true, threadId: row.gmail_thread_id });
   const reply = thread?.replies.find((r) => r.id === input.replyId);
   if (!reply) return null;
 
   const pdfs: BoardReplyForAi["pdfs"] = [];
   const skippedPdfs: string[] = [];
-  let total = 0;
+  // Wybór po rozmiarze z nagłówka, potem pobranie równolegle (kolejność zostaje).
+  const picked: NonNullable<typeof reply.pdfs> = [];
+  let declared = 0;
   for (const ref of reply.pdfs ?? []) {
-    if (pdfs.length >= AI_PDF_MAX_FILES || ref.size > AI_PDF_MAX_BYTES || total + ref.size > AI_PDF_MAX_TOTAL) {
+    if (picked.length >= AI_PDF_MAX_FILES || ref.size > AI_PDF_MAX_BYTES || declared + ref.size > AI_PDF_MAX_TOTAL) {
       skippedPdfs.push(ref.filename);
       continue;
     }
-    const data = await fetchGmailAttachment(token, reply.id, ref.attachmentId).catch(() => null);
+    declared += ref.size;
+    picked.push(ref);
+  }
+  const downloaded = await Promise.all(
+    picked.map((ref) => fetchGmailAttachment(token, reply.id, ref.attachmentId).catch(() => null))
+  );
+  let total = 0;
+  for (const [i, ref] of picked.entries()) {
+    const data = downloaded[i];
     // Tylko prawdziwy PDF (nazwa „.pdf” bywa na czymkolwiek); rozmiar z nagłówka bywa pusty — liczy się pobrany.
     if (
       !data ||
@@ -495,7 +528,7 @@ export async function boardReplyForAi(input: {
  */
 export async function inquiriesToResolveOnReply(threadId: string): Promise<string[]> {
   const { rows } = await query<SentMailRow & { id: string }>(
-    `SELECT i.id, i.sent_by, i.from_address, i.gmail_message_id, c.refresh_token_enc, c.scope
+    `SELECT i.id, i.sent_by, i.from_address, i.gmail_message_id, i.gmail_thread_id, c.refresh_token_enc, c.scope
        FROM public.supplier_inquiry_emails i
        ${senderConnectionJoin("i")}
       WHERE i.thread_id = $1 AND i.resolved_at IS NULL`,

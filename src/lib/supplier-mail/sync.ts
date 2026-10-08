@@ -30,6 +30,7 @@ import {
   type SupplierCard,
 } from "@/lib/supplier-mail/match";
 import { prepareWaitingShipments, syncDhlMailbox } from "@/lib/customs/dhl-sync";
+import { isMikranEmail } from "@/lib/email/supplier-emails";
 
 /** Pierwsza synchronizacja skrzynki sięga tyle wstecz. */
 const FIRST_SYNC_DAYS = 30;
@@ -226,6 +227,19 @@ async function syncMailbox(
     const linkedCase = link ? mailCases.find((c) => c.kind === link.caseKind && c.id === link.caseId) : undefined;
     const supplierId = linkedCase?.supplierId ?? zd?.supplierId ?? supplierIds[0] ?? null;
 
+    // Ta sama wiadomość jest już z innej skrzynki (DW), ale tam bez wątku naszej wysyłki — przejmujemy
+    // ją na kopię z wątku: odpowiedź z OnTime i „odpisano w Gmailu” działają tylko w skrzynce nadawcy ZD.
+    if (link?.linkedBy === "thread" && meta.rfcMessageId) {
+      const moved = await query(
+        `UPDATE public.supplier_mail_messages
+            SET mailbox = $1, owner_user_id = $2, gmail_message_id = $3, gmail_thread_id = $4,
+                case_kind = $5, case_id = $6, linked_by = 'thread', supplier_id = COALESCE($7, supplier_id)
+          WHERE rfc_message_id = $8 AND mailbox <> $1 AND linked_by IS DISTINCT FROM 'thread'`,
+        [box.email, box.userId, meta.id, meta.threadId, link.caseKind, link.caseId, supplierId, meta.rfcMessageId]
+      );
+      if (moved.rowCount) continue;
+    }
+
     const res = await query(
       `INSERT INTO public.supplier_mail_messages
          (mailbox, owner_user_id, gmail_message_id, gmail_thread_id, rfc_message_id, supplier_id, kind,
@@ -290,7 +304,9 @@ async function reconcileRepliedInGmail(token: string, mailbox: string): Promise<
   const threads = [...new Set(rows.map((r) => r.gmail_thread_id))];
   const sentByThread = new Map<string, number[]>();
   await mapLimit(threads, META_CONCURRENCY, async (threadId) => {
-    const sent = await getGmailThreadSentTimes(token, threadId).catch(() => null);
+    const sent = await getGmailThreadSentTimes(token, threadId, isMikranEmail).catch(
+      () => null
+    );
     if (sent?.length) sentByThread.set(threadId, sent);
   });
   const replied = rows.filter((r) => (sentByThread.get(r.gmail_thread_id) ?? []).some((t) => t > r.received_at.getTime()));

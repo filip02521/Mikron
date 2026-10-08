@@ -57,7 +57,6 @@ export function ZdSendWorkspace({
   manualContact,
   actionsSlot,
   simulation,
-  onSent,
   onGlowneMarked,
   onScheduleMarked,
   onUndo,
@@ -87,7 +86,6 @@ export function ZdSendWorkspace({
   actionsSlot?: HTMLElement | null;
   /** Tylko laboratorium: kroki udają odpowiedzi serwera (nic nie wychodzi, nic się nie zapisuje). */
   simulation?: ZdSendSimulation | null;
-  onSent: (sent: { to: string[]; from: string; file: string }) => void;
   onGlowneMarked: (result: { processedIds: string[]; dropPendingIds: string[] }) => void;
   onScheduleMarked: () => void;
   onUndo: (kind: "glowne" | "schedule", payload: DailyPanelUndoPayload, title: string) => void;
@@ -269,8 +267,8 @@ export function ZdSendWorkspace({
   }
 
   /** Kroki po mailu — w tej kolejności; termin przed Główne, żeby handlowcy od razu widzieli datę. */
-  async function finishAfterMail() {
-    if (steps.termin.status !== "ok") await runTermin();
+  async function finishAfterMail(opts: { terminHandled?: boolean } = {}) {
+    if (!opts.terminHandled && steps.termin.status !== "ok") await runTermin();
     if (steps.glowne.status !== "ok") await runGlowne();
     if (steps.plan.status !== "ok") await runPlan();
   }
@@ -283,7 +281,7 @@ export function ZdSendWorkspace({
     setStep("mail", { status: "running" });
     showProgress();
     const res: SendZdToSupplierResult = live
-      ? await actionSendZdToSupplier({ dokId, supplierId, to, cc, subject, body, ...merged }).catch((e: unknown) => ({
+      ? await actionSendZdToSupplier({ dokId, supplierId, to, cc, subject, body, terminAfterSend: termin, ...merged }).catch((e: unknown) => ({
           ok: false as const,
           message: userFacingErrorTextFromMessage(e instanceof Error ? e.message : String(e), "Nie udało się wysłać zamówienia."),
         }))
@@ -301,12 +299,21 @@ export function ZdSendWorkspace({
       setStep("mail", { status: "error", message: res.message });
       return;
     }
-    onSent({ to: res.to, from: res.from, file: res.attachmentName });
     setStep("mail", {
       status: "ok",
       message: `Wysłano do ${[...res.to, ...res.cc].join(", ")} · ${res.attachmentName}`,
     });
-    await finishAfterMail();
+    // Termin ustawił już serwer razem z wysyłką; błąd zostaje z przyciskiem „Ponów”.
+    const serverTermin = "termin" in res ? res.termin : undefined;
+    if (serverTermin) {
+      setStep(
+        "termin",
+        serverTermin.ok
+          ? { status: "ok", message: `Termin realizacji: ${plDate(serverTermin.termin)}` }
+          : { status: "error", message: serverTermin.message }
+      );
+    }
+    await finishAfterMail({ terminHandled: Boolean(serverTermin) });
   }
 
   async function markSentManually() {

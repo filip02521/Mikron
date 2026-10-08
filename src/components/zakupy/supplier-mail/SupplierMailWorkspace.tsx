@@ -262,9 +262,10 @@ export function SupplierMailWorkspace({
           </button>
         </p>
       ) : null}
-      {syncNote ? (
+      {/* Błąd z ostatniego przebiegu w tle (odpytywanie) — inaczej skrzynka mogła milczeć bez śladu. */}
+      {syncNote || view.sync.error ? (
         <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-200" role="alert">
-          {syncNote}
+          {syncNote ?? `Ostatnie sprawdzenie skrzynki nie powiodło się: ${view.sync.error}`}
         </p>
       ) : null}
       {!me ? (

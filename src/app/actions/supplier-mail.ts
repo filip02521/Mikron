@@ -268,6 +268,7 @@ export async function actionSupplierMailRemind(input: {
       attachments: [],
       kind: "supplier_reply",
       inReplyTo: original?.rfcMessageId || undefined,
+      references: original?.references,
       gmailThreadId: own && original ? original.threadId : undefined,
     });
     if (!sent.ok) return sent;

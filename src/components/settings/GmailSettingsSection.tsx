@@ -8,6 +8,7 @@ import { IconMail } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
+import { EMAIL_SIGNATURE_MAX } from "@/lib/email/signature";
 import { buttonPrimaryClass, controlFocusClass, salesChromeInsetClass } from "@/lib/ui/ontime-theme";
 
 const SIGNATURE_PLACEHOLDER = "Pozdrawiam / Best regards\nImię Nazwisko\nDział dostaw\ntel. 61 847 58 58\nMikran sp. z o.o.";
@@ -44,7 +45,8 @@ export function GmailSettingsSection({
           setSignatureInfo(res.message);
           return;
         }
-        setSignatureSaved(signature.trim());
+        setSignature(res.signature);
+        setSignatureSaved(res.signature);
         setSignatureInfo("Zapisano podpis.");
       } catch {
         setSignatureInfo("Nie udało się zapisać podpisu. Spróbuj ponownie.");
@@ -151,7 +153,7 @@ export function GmailSettingsSection({
               setSignatureInfo(null);
             }}
             rows={5}
-            maxLength={1000}
+            maxLength={EMAIL_SIGNATURE_MAX}
             placeholder={SIGNATURE_PLACEHOLDER}
             className={cn(controlFocusClass, "w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm")}
           />

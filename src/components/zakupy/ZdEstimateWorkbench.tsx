@@ -6352,7 +6352,6 @@ export function ZdEstimateWorkbench({
       {postCreate ? (
         <ZdEstimatePostCreatePanel
           session={postCreate}
-          dateKey={bootstrap.todayKey}
           createLocked={
             !createUnlockedAfterDone &&
             (createUnconfirmedAttempt ||

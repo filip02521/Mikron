@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useState } from "react";
+import { actionGmailStatus } from "@/app/actions/gmail";
 import { MailPreview } from "@/components/mail/MailPreview";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
@@ -62,6 +63,21 @@ export function SupplierInquiryDialog({
     };
      
   }, [threadId]);
+
+  // „Połącz z Gmailem” otwiera nową kartę — po powrocie okno ma zobaczyć połączenie bez ponownego otwierania.
+  const gmailEmail = prep?.gmail.email ?? null;
+  const gmailConfigured = prep?.gmail.configured ?? false;
+  useEffect(() => {
+    if (!gmailConfigured || gmailEmail) return;
+    const refresh = () =>
+      void actionGmailStatus()
+        .then((res) => {
+          if (res.email) setPrep((p) => (p ? { ...p, gmail: { configured: true, email: res.email } } : p));
+        })
+        .catch(() => undefined);
+    window.addEventListener("focus", refresh);
+    return () => window.removeEventListener("focus", refresh);
+  }, [gmailConfigured, gmailEmail]);
 
   function pickSupplier(p: Prep, id: string) {
     setSupplierId(id);

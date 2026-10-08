@@ -60,6 +60,8 @@ beforeEach(() => {
   m.recordSupplierOrderEmail.mockResolvedValue(undefined);
   m.sendGmailAsUser.mockResolvedValue({ ok: true, from: "filip.naskret@mikran.com", messageId: "g-1" });
   m.getSubiektOrdersZdPdf.mockResolvedValue(Buffer.from("%PDF-1.2 wydruk ZD z Subiekta"));
+  // Subiekt oddaje termin odczytany po zapisie.
+  m.setSubiektOrdersZdTermin.mockImplementation(async (_id: number, date: string) => date);
 });
 
 describe("actionSendZdToSupplier", () => {
@@ -169,5 +171,36 @@ describe("actionSendZdToSupplier — nieudana wysyłka", () => {
     m.setSubiektOrdersZdTermin.mockClear();
     expect(await actionSendZdToSupplier(input)).toMatchObject({ ok: true });
     expect(m.setSubiektOrdersZdTermin.mock.calls).toEqual([[1867748, "2026-10-07"]]);
+  });
+});
+
+describe("actionSendZdToSupplier — termin po wysyłce", () => {
+  it("nasz termin dostawy idzie na ZD od razu po mailu (serwer), wynik w odpowiedzi", async () => {
+    m.loadSupplierZd.mockResolvedValue({ ...zd("Shenzhen Upcera Dental", "IMPORT"), termin: "2026-10-20" });
+    const res = await actionSendZdToSupplier({ ...input, terminAfterSend: "2026-11-03" });
+    expect(res).toMatchObject({ ok: true, termin: { ok: true, termin: "2026-11-03" } });
+    expect(m.setSubiektOrdersZdTermin.mock.calls).toEqual([
+      [1867748, "2026-10-07"],
+      [1867748, "2026-11-03"],
+    ]);
+  });
+
+  it("ZD bez terminu i mail nie wyszedł → nasz termin dostawy zamiast dzisiejszej daty z wydruku", async () => {
+    m.loadSupplierZd.mockResolvedValue(zd("Shenzhen Upcera Dental", "IMPORT"));
+    m.sendGmailAsUser.mockResolvedValue({ ok: false, message: "Gmail nie wysłał wiadomości: 500" });
+    await actionSendZdToSupplier({ ...input, terminAfterSend: "2026-11-03" });
+    expect(m.setSubiektOrdersZdTermin).toHaveBeenLastCalledWith(1867748, "2026-11-03");
+  });
+
+  it("Subiekt nie zapisał dzisiejszego terminu → bez wysyłki", async () => {
+    m.loadSupplierZd.mockResolvedValue({ ...zd("Shenzhen Upcera Dental", "IMPORT"), termin: "2026-10-20" });
+    m.setSubiektOrdersZdTermin.mockResolvedValueOnce("2026-10-20");
+    expect(await actionSendZdToSupplier(input)).toMatchObject({ ok: false });
+    expect(m.sendGmailAsUser).not.toHaveBeenCalled();
+  });
+
+  it("błędny termin dostawy → nic nie wychodzi", async () => {
+    expect(await actionSendZdToSupplier({ ...input, terminAfterSend: "2026-10-01" })).toMatchObject({ ok: false });
+    expect(m.sendGmailAsUser).not.toHaveBeenCalled();
   });
 });
