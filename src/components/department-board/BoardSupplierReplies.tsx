@@ -37,6 +37,12 @@ function senderName(from: string): string {
  * Wątek pytania (zakupy): odpowiedź dostawcy na „Zapytaj dostawcę” prosto z Gmaila
  * i propozycja odpowiedzi dla handlowca — wstawiana do pola odpowiedzi, wysyła człowiek.
  */
+/**
+ * Znalezione odpowiedzi dostawcy na wątek (w pamięci strony) — kolejne rozwinięcia i odświeżenia
+ * tablicy nie czytają Gmaila ponownie; tylko „Sprawdź ponownie w Gmailu”.
+ */
+const foundReplies = new Map<string, { items: BoardInquiryReplies[]; aiAvailable: boolean; refreshKey: string }>();
+
 export function BoardSupplierReplies({
   threadId,
   onUseAnswer,
@@ -47,45 +53,85 @@ export function BoardSupplierReplies({
   threadId: string;
   /** Wstawia tekst do pola odpowiedzi w wątku. */
   onUseAnswer: (text: string) => void;
-  /** Zmienia się, gdy synchronizacja poczty przyniesie nową odpowiedź — wtedy odczyt z Gmaila od nowa. */
+  /** Zmienia się, gdy Poczta przypnie nową odpowiedź — bez znalezionej wcześniej odpowiedzi to nowy odczyt z Gmaila. */
   refreshKey?: string;
   /** Pliki już dołączone do odpowiedzi (klucz `inquiryId|replyId|nazwa`). */
   attachedKeys?: readonly string[];
   onToggleFile?: (file: BoardSupplierFileRef) => void;
 }) {
-  const [items, setItems] = useState<BoardInquiryReplies[] | null>(null);
-  const [aiAvailable, setAiAvailable] = useState(false);
+  const cached = foundReplies.get(threadId);
+  const [items, setItems] = useState<BoardInquiryReplies[] | null>(cached?.items ?? null);
+  const [aiAvailable, setAiAvailable] = useState(cached?.aiAvailable ?? false);
   const [error, setError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+  /** refreshKey z chwili ostatniego odczytu — różny = Poczta zobaczyła nowszą wiadomość od dostawcy. */
+  const [readKey, setReadKey] = useState(cached?.refreshKey ?? refreshKey);
 
   // Stan ustawiany dopiero w .then — efekt przy rozwinięciu wątku nie robi synchronicznego setState.
   const load = useCallback(
-    () =>
-      actionBoardInquiryReplies(threadId)
+    (force = false) => {
+      // Odpowiedź już znaleziona — Gmaila nie pytamy ponownie, dopóki ktoś nie kliknie „Sprawdź ponownie”.
+      if (!force && foundReplies.has(threadId)) return Promise.resolve();
+      return actionBoardInquiryReplies(threadId)
         .then((res) => {
           setError(res.ok ? null : res.message);
           if (res.ok) {
             setItems(res.items);
             setAiAvailable(res.aiAvailable);
+            setReadKey(refreshKey);
+            if (res.items.some((i) => i.status === "read" && i.replies.some((r) => r.kind === "supplier"))) {
+              foundReplies.set(threadId, { items: res.items, aiAvailable: res.aiAvailable, refreshKey });
+            }
           }
         })
-        .catch(() => setError("Nie udało się odczytać odpowiedzi dostawcy z Gmaila.")),
-    [threadId]
+        .catch(() => setError("Nie udało się odczytać odpowiedzi dostawcy z Gmaila."))
+        .finally(() => setChecking(false));
+    },
+    [threadId, refreshKey]
   );
 
   useEffect(() => {
     void load();
-    // refreshKey — nowa odpowiedź dostawcy po odświeżeniu tablicy.
+    // refreshKey — Poczta przypięła nową odpowiedź; bez znalezionej wcześniej odpowiedzi czytamy Gmaila.
   }, [load, refreshKey]);
 
-  // Limit Gmaila na minutę (np. w trakcie synchronizacji poczty) — sami ponawiamy, bez klikania.
-  const retryLater = items?.some((i) => i.status === "unavailable" && i.retryLater) ?? false;
+  const found = foundReplies.has(threadId);
+  // Limit Gmaila na minutę (np. w trakcie synchronizacji poczty) — sami ponawiamy, bez klikania,
+  // ale tylko dopóki odpowiedzi jeszcze nie ma.
+  const retryLater = !found && (items?.some((i) => i.status === "unavailable" && i.retryLater) ?? false);
   useEffect(() => {
     if (!retryLater) return;
     const timer = window.setTimeout(() => void load(), 60_000);
     return () => window.clearTimeout(timer);
   }, [retryLater, items, load]);
 
-  if (error) return <p className="text-xs text-rose-800">{error}</p>;
+  const recheck = (
+    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
+      {found && refreshKey !== readKey ? (
+        <span className="font-medium text-emerald-800">Dostawca dopisał coś nowego.</span>
+      ) : null}
+      <button
+        type="button"
+        disabled={checking}
+        onClick={() => {
+          setChecking(true);
+          void load(true);
+        }}
+        className="font-medium text-indigo-700 hover:underline disabled:opacity-50"
+      >
+        {checking ? "Sprawdzam…" : "Sprawdź ponownie w Gmailu"}
+      </button>
+    </p>
+  );
+
+  if (error) {
+    return (
+      <div className="space-y-1">
+        <p className="text-xs text-rose-800">{error}</p>
+        {recheck}
+      </div>
+    );
+  }
   if (items == null) {
     return (
       <p className="flex items-center gap-2 text-xs text-slate-500" role="status">
@@ -116,6 +162,7 @@ export function BoardSupplierReplies({
   const notes = items.map((i) => ({ i, note: otherNote(i) })).filter((n) => n.note);
   const unavailable = items.filter((i) => i.status === "unavailable");
   if (!withReplies.length && !notes.length && !unavailable.length) return null;
+  const showRecheck = withReplies.length > 0 || unavailable.some((i) => i.status === "unavailable" && !i.retryLater);
 
   return (
     <div className="space-y-2">
@@ -153,6 +200,7 @@ export function BoardSupplierReplies({
           </p>
         ) : null
       )}
+      {showRecheck ? recheck : null}
     </div>
   );
 }
