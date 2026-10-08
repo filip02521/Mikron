@@ -8,11 +8,13 @@ import {
   actionMarkZdEstimateIndividualsGlowne,
   actionMarkZdEstimateSupplierOrdered,
 } from "@/app/actions/zd-estimate";
-import { IconAlertCircle, IconCircleCheck, IconMail } from "@/components/icons/StrokeIcons";
+import { IconAlertCircle, IconCircleCheck, IconMail, IconPaperclip } from "@/components/icons/StrokeIcons";
 import { MailPreview, type MailPreviewAttachment } from "@/components/mail/MailPreview";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
+import { compressImageFile } from "@/lib/client/compress-image";
+import { EXTRA_ATTACHMENTS_ACCEPT, extraAttachmentExtension, extraAttachmentsError } from "@/lib/email/extra-attachments";
 import { parseMailRecipients } from "@/lib/email/recipients";
 import { zdTerminError } from "@/lib/orders/zd-send-plan";
 import type { SupplierOrderEmail } from "@/lib/google/gmail-connections";
@@ -24,6 +26,22 @@ const fieldClass = cn(controlFocusClass, "mt-1 w-full rounded-md border border-s
 
 type StepKey = "mail" | "termin" | "glowne" | "plan";
 type StepState = { status: "idle" | "running" | "ok" | "error" | "skipped"; message?: string };
+
+/** ponytail: proxy przed ontime.mikran.pl ucina żądania ~1 MB; po podniesieniu client_max_body_size — usuń ostrzeżenie. */
+const PROXY_BODY_LIMIT_BYTES = 1024 * 1024;
+const COMPRESSIBLE_IMAGE = ["jpg", "jpeg", "png", "heic", "heif", "webp"];
+
+/** Zdjęcie → JPEG ~1600 px (telefon robi 3–5 MB); gdy przeglądarka nie odczyta formatu, zostaje oryginał. */
+async function prepareExtraFile(file: File): Promise<File> {
+  if (!COMPRESSIBLE_IMAGE.includes(extraAttachmentExtension(file.name))) return file;
+  try {
+    const blob = await compressImageFile(file);
+    if (blob.size >= file.size) return file;
+    return new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" });
+  } catch {
+    return file;
+  }
+}
 
 const plDate = (key: string) => key.split("-").reverse().join(".");
 
@@ -113,6 +131,46 @@ export function ZdSendWorkspace({
   const [attachment, setAttachment] = useState<
     { state: "loading" } | { state: "ready"; file: MailPreviewAttachment } | { state: "error"; message: string }
   >({ state: "loading" });
+  const [extras, setExtras] = useState<{ file: File; href: string }[]>([]);
+  const [extrasBusy, setExtrasBusy] = useState(false);
+  const [extrasError, setExtrasError] = useState<string | null>(null);
+  const extrasInputRef = useRef<HTMLInputElement>(null);
+  // Adresy podglądu plików — zwalniane przy usunięciu pliku i przy zamknięciu okna.
+  const extraUrlsRef = useRef(new Set<string>());
+  useEffect(() => {
+    const urls = extraUrlsRef.current;
+    return () => urls.forEach((u) => URL.revokeObjectURL(u));
+  }, []);
+  const extrasBytes = extras.reduce((n, x) => n + x.file.size, 0);
+
+  async function addExtras(list: FileList) {
+    setExtrasError(null);
+    setExtrasBusy(true);
+    try {
+      const prepared = await Promise.all(Array.from(list).map(prepareExtraFile));
+      const error = extraAttachmentsError([...extras.map((x) => x.file), ...prepared]);
+      if (error) {
+        setExtrasError(error);
+        return;
+      }
+      const added = prepared.map((file) => ({ file, href: URL.createObjectURL(file) }));
+      added.forEach((x) => extraUrlsRef.current.add(x.href));
+      setExtras((prev) => [...prev, ...added]);
+    } finally {
+      setExtrasBusy(false);
+    }
+  }
+
+  function removeExtra(index: number) {
+    setExtrasError(null);
+    const href = extras[index]?.href;
+    if (href) {
+      URL.revokeObjectURL(href);
+      extraUrlsRef.current.delete(href);
+    }
+    setExtras((prev) => prev.filter((_, i) => i !== index));
+  }
+
   const [steps, setSteps] = useState<Record<StepKey, StepState>>({
     mail: { status: previousSend ? "ok" : "idle", message: previousSend ? sentLabel(previousSend) : undefined },
     termin: { status: "idle" },
@@ -287,7 +345,7 @@ export function ZdSendWorkspace({
     setStep("mail", { status: "running" });
     showProgress();
     const res: SendZdToSupplierResult = live
-      ? await actionSendZdToSupplier({ dokId, supplierId, to, cc, subject, body, terminAfterSend: termin, ...merged }).catch((e: unknown) => ({
+      ? await actionSendZdToSupplier({ dokId, supplierId, to, cc, subject, body, terminAfterSend: termin, extraFiles: extras.map((x) => x.file), ...merged }).catch((e: unknown) => ({
           ok: false as const,
           message: userFacingErrorTextFromMessage(e instanceof Error ? e.message : String(e), "Nie udało się wysłać zamówienia."),
         }))
@@ -296,7 +354,7 @@ export function ZdSendWorkspace({
           from: gmail.email,
           to: recipients.ok ? recipients.to : [to],
           cc: recipients.ok ? recipients.cc : [],
-          attachmentName: attachment.state === "ready" ? attachment.file.name : "zamowienie.pdf",
+          attachmentName: [attachment.state === "ready" ? attachment.file.name : "zamowienie.pdf", ...extras.map((x) => x.file.name)].join(", "),
           sentAt: new Date().toISOString(),
         }));
     if (!res.ok) {
@@ -341,6 +399,7 @@ export function ZdSendWorkspace({
     subject.trim() !== "" &&
     body.trim() !== "" &&
     attachment.state === "ready" &&
+    !extrasBusy &&
     Boolean(planOk) &&
     !terminInvalid &&
     mailIssue?.kind !== "uncertain";
@@ -535,7 +594,52 @@ export function ZdSendWorkspace({
             cc={cc}
             subject={subject}
             text={body}
-            attachments={attachment.state === "ready" ? [attachment.file] : []}
+            attachments={[
+              ...(attachment.state === "ready" ? [attachment.file] : []),
+              ...extras.map((x, i) => ({
+                name: x.file.name,
+                size: x.file.size,
+                href: x.href,
+                opensInline: x.file.type === "application/pdf" || x.file.type.startsWith("image/"),
+                onRemove: mailDone || running ? undefined : () => removeExtra(i),
+              })),
+            ]}
+            attachmentsFooter={
+              mailDone ? null : (
+                <div className="mt-2 space-y-1.5">
+                  <input
+                    ref={extrasInputRef}
+                    type="file"
+                    multiple
+                    accept={EXTRA_ATTACHMENTS_ACCEPT}
+                    className="sr-only"
+                    tabIndex={-1}
+                    onChange={(e) => {
+                      if (e.target.files?.length) void addExtras(e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => extrasInputRef.current?.click()}
+                    disabled={extrasBusy || running}
+                    className="inline-flex min-h-9 items-center gap-1.5 rounded px-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 disabled:opacity-50"
+                  >
+                    {extrasBusy ? <Spinner size="sm" /> : <IconPaperclip size={14} aria-hidden />}
+                    {extrasBusy ? "Przygotowuję pliki…" : "Dodaj pliki"}
+                  </button>
+                  {extrasError ? (
+                    <p className="text-sm text-red-700" role="alert">
+                      {extrasError}
+                    </p>
+                  ) : live && extrasBytes > PROXY_BODY_LIMIT_BYTES ? (
+                    <p className="text-xs text-amber-800">
+                      Dodatkowe pliki mają razem ponad 1 MB - serwer OnTime może odrzucić wysyłkę. Zmniejsz PDF albo wyślij go osobno.
+                    </p>
+                  ) : null}
+                </div>
+              )
+            }
             attachmentsLoading={
               attachment.state === "loading"
                 ? orderFormKind
