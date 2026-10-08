@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { parseMailRecipients } from "@/lib/email/recipients";
+import { zdTerminError } from "@/lib/orders/zd-send-plan";
 import type { SupplierOrderEmail } from "@/lib/google/gmail-connections";
 import type { DailyPanelUndoPayload } from "@/lib/orders/daily-panel-undo";
 import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
@@ -57,7 +58,6 @@ export function ZdSendWorkspace({
   manualContact,
   actionsSlot,
   simulation,
-  onSent,
   onGlowneMarked,
   onScheduleMarked,
   onUndo,
@@ -87,7 +87,6 @@ export function ZdSendWorkspace({
   actionsSlot?: HTMLElement | null;
   /** Tylko laboratorium: kroki udają odpowiedzi serwera (nic nie wychodzi, nic się nie zapisuje). */
   simulation?: ZdSendSimulation | null;
-  onSent: (sent: { to: string[]; from: string; file: string }) => void;
   onGlowneMarked: (result: { processedIds: string[]; dropPendingIds: string[] }) => void;
   onScheduleMarked: () => void;
   onUndo: (kind: "glowne" | "schedule", payload: DailyPanelUndoPayload, title: string) => void;
@@ -122,7 +121,11 @@ export function ZdSendWorkspace({
   });
   const [confirm, setConfirm] = useState<{ resend?: boolean; allowUnknownRecipients?: boolean }>({});
   const [mailIssue, setMailIssue] = useState<
-    { kind: "unknown"; emails: string[] } | { kind: "already"; sent: SupplierOrderEmail } | null
+    | { kind: "unknown"; emails: string[] }
+    | { kind: "already"; sent: SupplierOrderEmail }
+    /** Połączenie zerwane po wysłaniu treści — ponowna wysyłka dopiero po sprawdzeniu „Wysłanych”. */
+    | { kind: "uncertain" }
+    | null
   >(null);
   const running = Object.values(steps).some((s) => s.status === "running");
   // Symulacja: drugi zapis terminu się udaje (sprawdza „Ponów ten krok”).
@@ -191,7 +194,8 @@ export function ZdSendWorkspace({
   const planOk = plan?.ok ? plan : null;
   const inZdIds = planOk ? planOk.inZd.map((r) => r.orderId) : [];
   const glowneTargetIds = [...new Set([...inZdIds, ...serviceOrderIds])];
-  const terminInvalid = !/^\d{4}-\d{2}-\d{2}$/.test(termin) || (planOk ? termin < planOk.today : false);
+  // Te same reguły co na serwerze — błędny termin nie może zablokować samej wysyłki dopiero po kliknięciu.
+  const terminInvalid = planOk ? zdTerminError(termin, planOk.today) != null : !/^\d{4}-\d{2}-\d{2}$/.test(termin);
   const recipients = parseMailRecipients(to, cc);
   const mailDone = steps.mail.status === "ok";
   const allDone = (["mail", "termin", "glowne", "plan"] as const).every((k) => ["ok", "skipped"].includes(steps[k].status));
@@ -269,8 +273,8 @@ export function ZdSendWorkspace({
   }
 
   /** Kroki po mailu — w tej kolejności; termin przed Główne, żeby handlowcy od razu widzieli datę. */
-  async function finishAfterMail() {
-    if (steps.termin.status !== "ok") await runTermin();
+  async function finishAfterMail(opts: { terminHandled?: boolean } = {}) {
+    if (!opts.terminHandled && steps.termin.status !== "ok") await runTermin();
     if (steps.glowne.status !== "ok") await runGlowne();
     if (steps.plan.status !== "ok") await runPlan();
   }
@@ -283,7 +287,7 @@ export function ZdSendWorkspace({
     setStep("mail", { status: "running" });
     showProgress();
     const res: SendZdToSupplierResult = live
-      ? await actionSendZdToSupplier({ dokId, supplierId, to, cc, subject, body, ...merged }).catch((e: unknown) => ({
+      ? await actionSendZdToSupplier({ dokId, supplierId, to, cc, subject, body, terminAfterSend: termin, ...merged }).catch((e: unknown) => ({
           ok: false as const,
           message: userFacingErrorTextFromMessage(e instanceof Error ? e.message : String(e), "Nie udało się wysłać zamówienia."),
         }))
@@ -298,20 +302,32 @@ export function ZdSendWorkspace({
     if (!res.ok) {
       if ("unknownRecipients" in res && res.unknownRecipients?.length) setMailIssue({ kind: "unknown", emails: res.unknownRecipients });
       else if ("alreadySent" in res && res.alreadySent) setMailIssue({ kind: "already", sent: res.alreadySent });
+      else if ("uncertain" in res && res.uncertain) setMailIssue({ kind: "uncertain" });
       setStep("mail", { status: "error", message: res.message });
       return;
     }
-    onSent({ to: res.to, from: res.from, file: res.attachmentName });
     setStep("mail", {
       status: "ok",
       message: `Wysłano do ${[...res.to, ...res.cc].join(", ")} · ${res.attachmentName}`,
     });
-    await finishAfterMail();
+    // Termin ustawił już serwer razem z wysyłką; błąd zostaje z przyciskiem „Ponów”.
+    const serverTermin = "termin" in res ? res.termin : undefined;
+    if (serverTermin) {
+      setStep(
+        "termin",
+        serverTermin.ok
+          ? { status: "ok", message: `Termin realizacji: ${plDate(serverTermin.termin)}` }
+          : { status: "error", message: serverTermin.message }
+      );
+    }
+    await finishAfterMail({ terminHandled: Boolean(serverTermin) });
   }
 
   async function markSentManually() {
     if ((previewOnly && live) || running) return;
-    setStep("mail", { status: "ok", message: "Wysłane poza OnTime" });
+    const confirmedInGmail = mailIssue?.kind === "uncertain";
+    setMailIssue(null);
+    setStep("mail", { status: "ok", message: confirmedInGmail ? "Jest w Wysłanych w Gmailu" : "Wysłane poza OnTime" });
     showProgress();
     await finishAfterMail();
   }
@@ -326,7 +342,8 @@ export function ZdSendWorkspace({
     body.trim() !== "" &&
     attachment.state === "ready" &&
     Boolean(planOk) &&
-    !terminInvalid;
+    !terminInvalid &&
+    mailIssue?.kind !== "uncertain";
 
   return (
     <>
@@ -356,7 +373,7 @@ export function ZdSendWorkspace({
                 <label htmlFor={ids.to} className="text-xs font-medium text-slate-500">
                   Do
                 </label>
-                <input id={ids.to} value={to} onChange={(e) => setTo(e.target.value)} disabled={mailDone} className={fieldClass} />
+                <input id={ids.to} value={to} onChange={(e) => { setTo(e.target.value); setConfirm((c) => ({ ...c, allowUnknownRecipients: false })); }} disabled={mailDone} className={fieldClass} />
               </div>
               <div>
                 <label htmlFor={ids.cc} className="text-xs font-medium text-slate-500">
@@ -365,7 +382,7 @@ export function ZdSendWorkspace({
                 <input
                   id={ids.cc}
                   value={cc}
-                  onChange={(e) => setCc(e.target.value)}
+                  onChange={(e) => { setCc(e.target.value); setConfirm((c) => ({ ...c, allowUnknownRecipients: false })); }}
                   disabled={mailDone}
                   inputMode="email"
                   autoComplete="off"
@@ -486,6 +503,18 @@ export function ZdSendWorkspace({
             <Button type="button" variant="secondary" className="min-h-10" disabled={running} onClick={() => void send({ resend: true })}>
               Wyślij ponownie
             </Button>
+          </div>
+        ) : mailIssue?.kind === "uncertain" ? (
+          <div className="space-y-2 rounded-md bg-amber-50 px-3 py-2.5 text-sm text-amber-950 ring-1 ring-amber-200" role="alert">
+            <p>Nie wiadomo, czy mail wyszedł. Sprawdź „Wysłane” w Gmailu.</p>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="secondary" className="min-h-10" disabled={running} onClick={() => void markSentManually()}>
+                Jest w Wysłanych
+              </Button>
+              <Button type="button" variant="ghost" className="min-h-10" disabled={running} onClick={() => void send()}>
+                Nie ma - wyślij jeszcze raz
+              </Button>
+            </div>
           </div>
         ) : null}
 

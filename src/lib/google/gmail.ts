@@ -9,7 +9,7 @@
  * Przekierowanie: `${NEXT_PUBLIC_APP_URL}/api/google/callback` (musi być HTTPS).
  */
 
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import nodemailer from "nodemailer";
 import { getAppUrl } from "@/lib/env/app-config";
 
@@ -66,10 +66,15 @@ export function encryptToken(key: Buffer, plain: string): string {
 
 export function decryptToken(key: Buffer, enc: string): string {
   const [v, iv, tag, ct] = enc.split(":");
-  if (v !== "v1" || !iv || !tag || !ct) throw new Error("Nieznany format zaszyfrowanego tokenu.");
-  const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "base64"));
-  decipher.setAuthTag(Buffer.from(tag, "base64"));
-  return Buffer.concat([decipher.update(Buffer.from(ct, "base64")), decipher.final()]).toString("utf8");
+  if (v !== "v1" || !iv || !tag || !ct) throw new GmailReconnectRequiredError();
+  try {
+    const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "base64"), { authTagLength: 16 });
+    decipher.setAuthTag(Buffer.from(tag, "base64"));
+    return Buffer.concat([decipher.update(Buffer.from(ct, "base64")), decipher.final()]).toString("utf8");
+  } catch {
+    // Zmieniony GOOGLE_OAUTH_TOKEN_KEY albo uszkodzony wiersz — jedyne wyjście to połączyć konto ponownie.
+    throw new GmailReconnectRequiredError();
+  }
 }
 
 // ─── OAuth ────────────────────────────────────────────────────────────────
@@ -145,17 +150,33 @@ export async function exchangeGmailCode(
   return { refreshToken: json.refresh_token, email, scope };
 }
 
+/** Tokeny dostępu żyją ~1 h — bez pamięci każde otwarcie karty, załącznik i synchronizacja pytały Google od nowa. */
+const accessTokens = new Map<string, { token: string; expiresAt: number }>();
+
 export async function gmailAccessToken(cfg: GmailOAuthConfig, refreshToken: string): Promise<string> {
+  const key = createHash("sha256").update(refreshToken).digest("hex");
+  const hit = accessTokens.get(key);
+  if (hit && hit.expiresAt > Date.now()) return hit.token;
+  const token = await requestGmailAccessToken(cfg, refreshToken);
+  for (const [k, v] of accessTokens) if (v.expiresAt <= Date.now()) accessTokens.delete(k);
+  accessTokens.set(key, { token: token.accessToken, expiresAt: Date.now() + (token.expiresIn - 120) * 1000 });
+  return token.accessToken;
+}
+
+async function requestGmailAccessToken(
+  cfg: GmailOAuthConfig,
+  refreshToken: string
+): Promise<{ accessToken: string; expiresIn: number }> {
   const res = await postForm(TOKEN_URL, {
     refresh_token: refreshToken,
     client_id: cfg.clientId,
     client_secret: cfg.clientSecret,
     grant_type: "refresh_token",
   });
-  const json = (await res.json().catch(() => ({}))) as { access_token?: string; error?: string };
+  const json = (await res.json().catch(() => ({}))) as { access_token?: string; expires_in?: number; error?: string };
   if (json.error === "invalid_grant") throw new GmailReconnectRequiredError();
   if (!res.ok || !json.access_token) throw new Error(`Google nie wydał tokenu (${json.error ?? res.status}).`);
-  return json.access_token;
+  return { accessToken: json.access_token, expiresIn: Number(json.expires_in) || 3600 };
 }
 
 /** Cofnięcie zgody w Google — błąd nie blokuje odłączenia w OnTime. */
@@ -177,12 +198,16 @@ export type GmailMessageInput = {
   attachments?: GmailAttachment[];
   /** Odpowiedź: Message-ID wiadomości, na którą odpowiadamy (In-Reply-To + References). */
   inReplyTo?: string;
+  /** Łańcuch References wiadomości, na którą odpowiadamy — wątek w programie odbiorcy się nie rozpada. */
+  references?: string[];
+  /** Własny Message-ID — po zerwanym połączeniu da się sprawdzić w „Wysłanych”, czy mail poszedł. */
+  messageId?: string;
 };
 
 /** MIME (RFC 5322) przez nodemailer — ten sam składacz co przy SMTP, bez wysyłki. */
 export async function buildMimeMessage(input: GmailMessageInput): Promise<Buffer> {
   const info = await nodemailer
-    .createTransport({ streamTransport: true, buffer: true, newline: "unix" })
+    .createTransport({ streamTransport: true, buffer: true, newline: "windows" })
     .sendMail({
       from: input.from,
       to: input.to,
@@ -191,7 +216,10 @@ export async function buildMimeMessage(input: GmailMessageInput): Promise<Buffer
       text: input.text,
       html: input.html,
       attachments: input.attachments,
-      ...(input.inReplyTo ? { inReplyTo: input.inReplyTo, references: [input.inReplyTo] } : {}),
+      ...(input.messageId ? { messageId: input.messageId } : {}),
+      ...(input.inReplyTo
+        ? { inReplyTo: input.inReplyTo, references: [...new Set([...(input.references ?? []), input.inReplyTo])] }
+        : {}),
     });
   return info.message as Buffer;
 }
@@ -216,6 +244,28 @@ export async function sendGmailRaw(
     throw new Error(`Gmail nie wysłał wiadomości: ${json.error?.message ?? res.status}`);
   }
   return { id: json.id, threadId: json.threadId ?? null };
+}
+
+/** Błąd po stronie połączenia (limit czasu, zerwanie) — Gmail mógł już wysłać wiadomość. */
+export function isGmailTransportError(e: unknown): boolean {
+  return e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError" || e.name === "TypeError");
+}
+
+/** Wiadomość w skrzynce po naszym Message-ID (wymaga gmail.readonly). null = nie ma albo brak zgody na odczyt. */
+export async function findGmailMessageByRfcId(
+  accessToken: string,
+  rfcMessageId: string
+): Promise<{ id: string; threadId: string | null } | null> {
+  const q = `rfc822msgid:${rfcMessageId.replace(/^<|>$/g, "")} in:sent`;
+  let ids: string[] = [];
+  // Wyszukiwarka Gmaila indeksuje świeżą wiadomość z opóźnieniem — kilka prób zamiast jednej.
+  for (const wait of [0, 3_000, 8_000]) {
+    if (wait) await new Promise((r) => setTimeout(r, wait));
+    ids = await listGmailMessageIds(accessToken, q, 1).catch(() => []);
+    if (ids[0]) break;
+  }
+  if (!ids[0]) return null;
+  return { id: ids[0], threadId: await getGmailThreadId(accessToken, ids[0]).catch(() => null) };
 }
 
 // ─── Odpowiedzi w wątku wysłanej wiadomości ───────────────────────────────
@@ -313,7 +363,6 @@ export function classifyReply(headers: GmailHeaders | undefined): GmailReplyKind
   return "supplier";
 }
 
-/** Nagłówek cytatu: „Dnia … napisał(a):”, „On … wrote:”, „Am … schrieb …:”. */
 /**
  * Początek nagłówka cytatu: „Dnia …”, „On …”, „Am …”, „Le …” albo data z polskiego Gmaila
  * („śr., 7 paź 2026 o 21:19 …”), zakończone „napisał(a)” / „wrote” / „schrieb” / „a écrit”.
@@ -367,16 +416,36 @@ export function isGmailRetryable(status: number, message: string): boolean {
   return status === 429 || status >= 500 || (status === 403 && /quota|rate ?limit/i.test(message));
 }
 
+function retryDelay(attempt: number, retryAfter?: string | null): number | undefined {
+  const base = RETRY_DELAYS_MS[attempt];
+  if (base == null) return undefined;
+  const asked = Number(retryAfter) * 1000;
+  // Rozrzut — równoległe odczyty po limicie nie uderzają znowu w tej samej chwili.
+  return Math.max(base * (0.5 + Math.random()), Number.isFinite(asked) ? Math.min(asked, 60_000) : 0);
+}
+
 async function gmailGet<T>(accessToken: string, path: string): Promise<T | null> {
   for (let attempt = 0; ; attempt++) {
-    const res = await fetch(`${API_URL}${path}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${API_URL}${path}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+    } catch (e) {
+      // Zerwane połączenie / limit czasu przy odczycie — ponawiamy jak 5xx.
+      const delay = isGmailTransportError(e) ? retryDelay(attempt) : undefined;
+      if (delay == null) throw e;
+      await new Promise((r) => setTimeout(r, delay));
+      continue;
+    }
     if (res.status === 404) return null;
-    if (res.status === 401) throw new GmailReconnectRequiredError();
+    if (res.status === 401) {
+      accessTokens.clear();
+      throw new GmailReconnectRequiredError();
+    }
     const json = (await res.json().catch(() => ({}))) as T & { error?: { message?: string } };
-    const delay = RETRY_DELAYS_MS[attempt];
+    const delay = retryDelay(attempt, res.headers.get("Retry-After"));
     if (!res.ok && delay != null && isGmailRetryable(res.status, json.error?.message ?? "")) {
       await new Promise((r) => setTimeout(r, delay));
       continue;
@@ -396,13 +465,11 @@ function gmailResult<T>(res: Response, json: T & { error?: { message?: string } 
 export async function fetchGmailReplies(
   accessToken: string,
   messageId: string,
-  opts: { withText?: boolean } = {}
+  /** threadId — wątek zapisany przy wysyłce; bez niego najpierw odczyt wiadomości (stare wysyłki). */
+  opts: { withText?: boolean; threadId?: string | null } = {}
 ): Promise<{ threadId: string; replies: GmailReply[] } | null> {
-  const msg = await gmailGet<{ threadId?: string }>(
-    accessToken,
-    `/messages/${encodeURIComponent(messageId)}?format=minimal&fields=threadId`
-  );
-  if (!msg?.threadId) return null;
+  const threadId = opts.threadId || (await getGmailThreadId(accessToken, messageId));
+  if (!threadId) return null;
   // Z treścią: drzewo MIME do 4 poziomów (multipart/mixed → alternative → text/plain).
   const part = "filename,mimeType,body(data,attachmentId,size)";
   const fields = opts.withText
@@ -410,10 +477,10 @@ export async function fetchGmailReplies(
     : "messages(id,labelIds,internalDate,snippet,payload(filename,headers,parts(filename,parts(filename))))";
   const thread = await gmailGet<{ messages?: GmailThreadMessage[] }>(
     accessToken,
-    `/threads/${encodeURIComponent(msg.threadId)}?format=full&fields=${encodeURIComponent(fields)}`
+    `/threads/${encodeURIComponent(threadId)}?format=full&fields=${encodeURIComponent(fields)}`
   );
   if (!thread) return null;
-  return { threadId: msg.threadId, replies: repliesFromThread(thread.messages ?? [], messageId, opts) };
+  return { threadId, replies: repliesFromThread(thread.messages ?? [], messageId, opts) };
 }
 
 // ─── Pełna treść odpowiedzi (bez cytatu naszej wiadomości) ────────────────
@@ -587,6 +654,8 @@ export type GmailMessageMeta = {
   to: string;
   subject: string;
   rfcMessageId: string;
+  /** Nagłówek References (Message-ID wcześniejszych wiadomości wątku). */
+  references: string[];
   attachments: GmailAttachmentRef[];
   /** Wysyłka masowa (List-Unsubscribe / Precedence: bulk) — newsletter, reklama. */
   bulk: boolean;
@@ -614,6 +683,7 @@ export async function getGmailMessageMeta(accessToken: string, id: string): Prom
     to: [header(headers, "To"), header(headers, "Cc")].filter(Boolean).join(", "),
     subject: header(headers, "Subject"),
     rfcMessageId: header(headers, "Message-ID") || header(headers, "Message-Id"),
+    references: header(headers, "References").match(/<[^<>\s]+>/g) ?? [],
     attachments: attachmentRefs(m.payload),
     bulk: Boolean(header(headers, "List-Unsubscribe")) || /^(bulk|list|junk)$/i.test(header(headers, "Precedence").trim()),
   };
@@ -656,7 +726,7 @@ export async function sendGmailRawInThread(
   mime: Buffer,
   threadId: string
 ): Promise<{ id: string; threadId: string | null }> {
-  const boundary = `ontime-${Date.now().toString(36)}`;
+  const boundary = `ontime-${randomBytes(16).toString("hex")}`;
   const body = Buffer.concat([
     Buffer.from(
       `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({ threadId })}\r\n` +
@@ -677,15 +747,33 @@ export async function sendGmailRawInThread(
   return { id: json.id, threadId: json.threadId ?? null };
 }
 
-/** Kiedy w wątku były nasze wiadomości (etykieta SENT) — ms epoki, rosnąco. null = brak wątku. */
-export async function getGmailThreadSentTimes(accessToken: string, threadId: string): Promise<number[] | null> {
-  const t = await gmailGet<{ messages?: Array<{ labelIds?: string[]; internalDate?: string }> }>(
+/** Adresy z nagłówków To/Cc (małe litery). */
+export function headerAddresses(value: string): string[] {
+  return [...value.matchAll(/[^\s@,;<>()"']+@[^\s@,;<>()"']+\.[a-z]{2,}/gi)].map((m) => m[0].toLowerCase());
+}
+
+/**
+ * Kiedy w wątku były nasze wiadomości (SENT) do kogoś spoza firmy — ms epoki, rosnąco. Przekazanie (Fwd)
+ * do kolegi w tym samym wątku nie jest odpowiedzią dostawcy. null = brak wątku.
+ */
+export async function getGmailThreadSentTimes(
+  accessToken: string,
+  threadId: string,
+  isInternal: (email: string) => boolean
+): Promise<number[] | null> {
+  const t = await gmailGet<{ messages?: GmailThreadMessage[] }>(
     accessToken,
-    `/threads/${encodeURIComponent(threadId)}?format=minimal&fields=${encodeURIComponent("messages(labelIds,internalDate)")}`
+    `/threads/${encodeURIComponent(threadId)}?format=metadata&metadataHeaders=To&metadataHeaders=Cc&fields=${encodeURIComponent(
+      "messages(labelIds,internalDate,payload/headers)"
+    )}`
   );
   if (!t) return null;
   return (t.messages ?? [])
     .filter((m) => m.labelIds?.includes("SENT"))
+    .filter((m) => {
+      const to = headerAddresses([header(m.payload?.headers, "To"), header(m.payload?.headers, "Cc")].join(","));
+      return to.some((e) => !isInternal(e));
+    })
     .map((m) => Number(m.internalDate ?? 0))
     .sort((a, b) => a - b);
 }

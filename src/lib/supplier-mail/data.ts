@@ -259,15 +259,32 @@ export function waitingCases(cases: readonly CaseRow[], messages: readonly MailM
     .sort((a, b) => a.sentAt.localeCompare(b.sentAt));
 }
 
+/**
+ * Wiadomości przypięte do otwartych spraw — bez limitu 30 dni widoku, żeby widok i licznik w menu
+ * liczyły „po terminie” tak samo (zapytanie odpowiedziane dawno temu nie jest zaległe).
+ */
+async function loadCaseLinks(cases: readonly CaseRow[]): Promise<MailMessageRow[]> {
+  if (!cases.length) return [];
+  const { rows } = await query<Pick<MailMessageRow, "case_kind" | "case_id" | "kind">>(
+    `SELECT case_kind, case_id, kind FROM public.supplier_mail_messages WHERE case_id = ANY($1::uuid[])`,
+    [cases.map((c) => c.id)]
+  );
+  return rows as MailMessageRow[];
+}
+
 export async function loadSupplierMailView(): Promise<SupplierMailView> {
   try {
     const [messages, cases, syncRes] = await Promise.all([
       loadMailMessages(`m.received_at > now() - make_interval(days => $1)`, [VIEW_DAYS]),
       loadOpenCases(),
-      query<{ synced_at: Date; last_error: string | null }>(`SELECT synced_at, last_error FROM public.supplier_mail_sync`),
+      // Tylko skrzynki nadal połączone — odłączona nie zamraża „sprawdzono” na starej dacie.
+      query<{ synced_at: Date; last_error: string | null }>(
+        `SELECT s.synced_at, s.last_error FROM public.supplier_mail_sync s
+          WHERE EXISTS (SELECT 1 FROM public.google_mail_connections c WHERE lower(c.google_email) = s.mailbox)`
+      ),
     ]);
     const conversations = groupConversations(messages);
-    const waiting = waitingCases(cases, messages);
+    const waiting = waitingCases(cases, await loadCaseLinks(cases));
     const doneSince = Date.now() - DONE_DAYS * 86_400_000;
     const lastOk = syncRes.rows.map((r) => r.synced_at.getTime()).filter((t) => t > 0);
     return {
@@ -314,16 +331,11 @@ export async function countSupplierMailNeedsAction(now: Date = new Date()): Prom
       ),
       loadOpenCases(),
     ]);
-    let overdue = 0;
-    if (cases.length) {
-      const { rows: linked } = await query<Pick<MailMessageRow, "case_kind" | "case_id" | "kind">>(
-        `SELECT case_kind, case_id, kind FROM public.supplier_mail_messages WHERE case_id = ANY($1::uuid[])`,
-        [cases.map((c) => c.id)]
-      );
-      overdue = waitingCases(cases, linked as MailMessageRow[], now).filter((w) => w.overdue).length;
-    }
+    const overdue = waitingCases(cases, await loadCaseLinks(cases), now).filter((w) => w.overdue).length;
     return (open.rows[0]?.n ?? 0) + overdue;
-  } catch {
+  } catch (e) {
+    // Licznik nie może zatrzymać menu, ale błąd bazy (poza brakiem migracji) ma być widoczny w logach.
+    if (!isMissingSchema(e)) console.error("[poczta] licznik", e);
     return 0;
   }
 }

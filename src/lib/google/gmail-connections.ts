@@ -3,12 +3,12 @@
  * Wysyłka zawsze z konta zalogowanej osoby — nigdy w imieniu kogoś innego.
  */
 
+import { randomUUID } from "node:crypto";
 import { query } from "@/lib/db/pool";
 import { customsEmailHtml } from "@/lib/customs/customs-email";
+import { normalizeEmailSignature } from "@/lib/email/signature";
 import { recordTransactionalEmailLog } from "@/lib/services/transactional-email-log";
-import {
-  awaitingReplyStatus,
-} from "@/lib/suppliers/awaiting-supplier";
+import { awaitingReplyStatus } from "@/lib/suppliers/awaiting-supplier";
 import type { TransactionalEmailKind } from "@/types/database";
 import {
   GmailReconnectRequiredError,
@@ -16,6 +16,8 @@ import {
   decryptToken,
   fetchGmailAttachment,
   fetchGmailReplies,
+  findGmailMessageByRfcId,
+  isGmailTransportError,
   scopeCanReadReplies,
   type GmailReply,
   encryptToken,
@@ -70,56 +72,29 @@ export async function saveGmailConnection(input: {
   );
 }
 
-/** Skrzynka wspólna (office@) — tylko odczyt maili DHL o odprawach; z niej nic nie wysyłamy. */
-export async function saveSharedMailbox(input: {
-  connectedBy: string;
-  email: string;
-  refreshToken: string;
-  scope: string;
-}): Promise<void> {
-  const cfg = getGmailOAuthConfig();
-  if (!cfg) throw new Error("Gmail nie jest skonfigurowany.");
-  await query(
-    `INSERT INTO public.google_shared_mailboxes (google_email, refresh_token_enc, scope, connected_by)
-     VALUES ($1, $2, $3, $4)
-     ON CONFLICT (google_email) DO UPDATE
-       SET refresh_token_enc = EXCLUDED.refresh_token_enc, scope = EXCLUDED.scope,
-           connected_by = EXCLUDED.connected_by, connected_at = now(), updated_at = now()`,
-    [input.email.toLowerCase(), encryptToken(cfg.tokenKey, input.refreshToken), input.scope, input.connectedBy]
+async function loadStoredConnection(userId: string): Promise<{ email: string; tokenEnc: string } | null> {
+  const { rows } = await query<{ google_email: string; refresh_token_enc: string }>(
+    `SELECT google_email, refresh_token_enc FROM public.google_mail_connections WHERE user_id = $1`,
+    [userId]
   );
-}
-
-export async function listSharedMailboxes(): Promise<{ email: string; connectedAt: string }[] | null> {
-  try {
-    const { rows } = await query<{ google_email: string; connected_at: Date }>(
-      `SELECT google_email, connected_at FROM public.google_shared_mailboxes ORDER BY google_email`
-    );
-    return rows.map((r) => ({ email: r.google_email, connectedAt: r.connected_at.toISOString() }));
-  } catch {
-    // Przed migracją 179.
-    return null;
-  }
-}
-
-/** Odłączenie skrzynki wspólnej: usunięcie wiersza i odwołanie tokenu w Google. */
-export async function deleteSharedMailbox(email: string): Promise<void> {
-  const cfg = getGmailOAuthConfig();
-  const { rows } = await query<{ refresh_token_enc: string }>(
-    `DELETE FROM public.google_shared_mailboxes WHERE google_email = $1 RETURNING refresh_token_enc`,
-    [email.trim().toLowerCase()]
-  );
-  if (cfg && rows[0]) await revokeGmailToken(decryptToken(cfg.tokenKey, rows[0].refresh_token_enc)).catch(() => undefined);
+  return rows[0] ? { email: rows[0].google_email, tokenEnc: rows[0].refresh_token_enc } : null;
 }
 
 async function loadRefreshToken(userId: string): Promise<{ email: string; token: string } | null> {
   const cfg = getGmailOAuthConfig();
   if (!cfg) return null;
-  const { rows } = await query<{ google_email: string; refresh_token_enc: string }>(
-    `SELECT google_email, refresh_token_enc FROM public.google_mail_connections WHERE user_id = $1`,
-    [userId]
+  const stored = await loadStoredConnection(userId);
+  return stored ? { email: stored.email, token: decryptToken(cfg.tokenKey, stored.tokenEnc) } : null;
+}
+
+/** Konto Google podłączone w OnTime — wtedy jego zgody w Google nie cofamy. */
+export async function isGoogleAccountConnected(email: string): Promise<boolean> {
+  const e = email.trim().toLowerCase();
+  const { rows } = await query<{ n: number }>(
+    `SELECT count(*)::int AS n FROM public.google_mail_connections WHERE lower(google_email) = $1`,
+    [e]
   );
-  const row = rows[0];
-  return row ? { email: row.google_email, token: decryptToken(cfg.tokenKey, row.refresh_token_enc) } : null;
+  return Boolean(rows[0]?.n);
 }
 
 export async function deleteGmailConnection(userId: string): Promise<void> {
@@ -143,14 +118,17 @@ export async function sendGmailAsUser(input: {
   kind: TransactionalEmailKind;
   /** Odpowiedź: Message-ID wiadomości dostawcy (In-Reply-To / References). */
   inReplyTo?: string;
+  /** References wiadomości, na którą odpowiadamy (łańcuch wątku). */
+  references?: string[];
   /** Wątek w skrzynce nadawcy — odpowiedź dołącza do niego w Gmailu (tylko gdy to ta sama skrzynka). */
   gmailThreadId?: string;
 }): Promise<
-  { ok: true; from: string; messageId: string; threadId: string | null } | { ok: false; message: string; reconnect?: boolean }
+  | { ok: true; from: string; messageId: string; threadId: string | null }
+  | { ok: false; message: string; reconnect?: boolean; uncertain?: boolean }
 > {
   const cfg = getGmailOAuthConfig();
   if (!cfg) return { ok: false, message: "Wysyłka z Gmaila nie jest skonfigurowana na serwerze." };
-  const stored = await loadRefreshToken(input.userId);
+  const stored = await loadStoredConnection(input.userId);
   if (!stored) return { ok: false, message: "Najpierw połącz swojego Gmaila.", reconnect: true };
 
   const html = customsEmailHtml(input.text);
@@ -165,8 +143,12 @@ export async function sendGmailAsUser(input: {
     hasAttachments: input.attachments.length > 0,
     attachmentNames: input.attachments.map((a) => a.filename),
   };
+  const rfcMessageId = `<ontime-${randomUUID()}@${stored.email.split("@")[1] ?? "ontime"}>`;
+  let accessToken: string | null = null;
+  /** Treść poszła do Gmaila — tylko wtedy zerwane połączenie znaczy „mogło wyjść”. */
+  let sending = false;
   try {
-    const accessToken = await gmailAccessToken(cfg, stored.token);
+    accessToken = await gmailAccessToken(cfg, decryptToken(cfg.tokenKey, stored.tokenEnc));
     const mime = await buildMimeMessage({
       from: stored.email,
       to: input.to,
@@ -176,17 +158,36 @@ export async function sendGmailAsUser(input: {
       html,
       attachments: input.attachments,
       inReplyTo: input.inReplyTo,
+      references: input.references,
+      messageId: rfcMessageId,
     });
+    sending = true;
     const sent = input.gmailThreadId
       ? await sendGmailRawInThread(accessToken, mime, input.gmailThreadId)
       : await sendGmailRaw(accessToken, mime);
     await recordTransactionalEmailLog({ ...log, status: "sent", messageId: sent.id });
     return { ok: true, from: stored.email, messageId: sent.id, threadId: sent.threadId };
   } catch (e) {
+    // Zerwane połączenie po wysłaniu treści — Gmail mógł wysłać; sprawdzamy „Wysłane” po naszym Message-ID,
+    // zamiast pozwolić na drugą wysyłkę tego samego zamówienia.
+    if (accessToken && sending && isGmailTransportError(e)) {
+      const found = await findGmailMessageByRfcId(accessToken, rfcMessageId);
+      if (found) {
+        await recordTransactionalEmailLog({ ...log, status: "sent", messageId: found.id });
+        return { ok: true, from: stored.email, messageId: found.id, threadId: found.threadId };
+      }
+      const message = "Połączenie z Gmailem zostało przerwane. Sprawdź „Wysłane” w Gmailu, zanim wyślesz ponownie.";
+      await recordTransactionalEmailLog({ ...log, status: "failed", errorMessage: message });
+      return { ok: false, message, uncertain: true };
+    }
     const message = e instanceof Error ? e.message : String(e);
     await recordTransactionalEmailLog({ ...log, status: "failed", errorMessage: message });
     if (e instanceof GmailReconnectRequiredError) {
-      await query(`DELETE FROM public.google_mail_connections WHERE user_id = $1`, [input.userId]);
+      // Tylko ten token — połączenie odnowione w innej karcie w trakcie wysyłki zostaje.
+      await query(`DELETE FROM public.google_mail_connections WHERE user_id = $1 AND refresh_token_enc = $2`, [
+        input.userId,
+        stored.tokenEnc,
+      ]);
       return { ok: false, message, reconnect: true };
     }
     return { ok: false, message };
@@ -195,7 +196,7 @@ export async function sendGmailAsUser(input: {
 
 // ─── Podpis i ślad wysłanych ZD ───────────────────────────────────────────
 
-export const EMAIL_SIGNATURE_MAX = 1000;
+export { EMAIL_SIGNATURE_MAX } from "@/lib/email/signature";
 
 export async function getEmailSignature(userId: string): Promise<string> {
   const { rows } = await query<{ email_signature: string | null }>(
@@ -208,7 +209,7 @@ export async function getEmailSignature(userId: string): Promise<string> {
 export async function saveEmailSignature(userId: string, signature: string): Promise<void> {
   await query(`UPDATE public.profiles SET email_signature = $2 WHERE id = $1`, [
     userId,
-    signature.replace(/\r\n/g, "\n").trim().slice(0, EMAIL_SIGNATURE_MAX),
+    normalizeEmailSignature(signature),
   ]);
 }
 
@@ -266,7 +267,7 @@ export async function recordSupplierOrderEmail(input: {
 }
 
 /** Błąd „kolumna nie istnieje” (migracja jeszcze nie uruchomiona). */
-export function isMissingColumn(e: unknown, column: string): boolean {
+function isMissingColumn(e: unknown, column: string): boolean {
   return e instanceof Error && e.message.includes(column) && /does not exist|nie istnieje/.test(e.message);
 }
 
@@ -286,6 +287,8 @@ type SentMailRow = {
   sent_by: string | null;
   from_address: string;
   gmail_message_id: string | null;
+  /** Wątek zapisany przy wysyłce (178) — bez dodatkowego odczytu wiadomości w Gmailu. */
+  gmail_thread_id?: string | null;
   /** Połączenie nadawcy — tylko gdy to ten sam adres, z którego poszła wiadomość. */
   refresh_token_enc: string | null;
   scope: string | null;
@@ -331,7 +334,7 @@ async function readSentThreads(
           token = gmailAccessToken(cfg, decryptToken(cfg.tokenKey, row.refresh_token_enc));
           tokens.set(senderKey, token);
         }
-        const thread = await fetchGmailReplies(await token, row.gmail_message_id, opts);
+        const thread = await fetchGmailReplies(await token, row.gmail_message_id, { ...opts, threadId: row.gmail_thread_id });
         if (!thread) return { gmailUrl: null, status: "unavailable", reason: "Wiadomość usunięta ze skrzynki nadawcy." };
         return {
           gmailUrl: own
@@ -371,7 +374,7 @@ export async function supplierOrderReplies(supplierId: string, viewerId: string)
   const { rows } = await query<
     SentMailRow & { subiekt_dok_id: number; dok_nr: string; sent_at: Date; to_addresses: string[] }
   >(
-    `SELECT e.subiekt_dok_id, e.dok_nr, e.sent_at, e.sent_by, e.from_address, e.to_addresses, e.gmail_message_id,
+    `SELECT e.subiekt_dok_id, e.dok_nr, e.sent_at, e.sent_by, e.from_address, e.to_addresses, e.gmail_message_id, e.gmail_thread_id,
             c.refresh_token_enc, c.scope
        FROM (
          SELECT DISTINCT ON (subiekt_dok_id) *
@@ -428,7 +431,7 @@ export async function boardInquiryReplies(threadId: string, viewerId: string): P
   const { rows } = await query<
     SentMailRow & { id: string; supplier_name: string; sent_at: Date; resolved_at: Date | null }
   >(
-    `SELECT i.id, i.supplier_name, i.sent_at, i.resolved_at, i.sent_by, i.from_address, i.gmail_message_id,
+    `SELECT i.id, i.supplier_name, i.sent_at, i.resolved_at, i.sent_by, i.from_address, i.gmail_message_id, i.gmail_thread_id,
             c.refresh_token_enc, c.scope
        FROM public.supplier_inquiry_emails i
        ${senderConnectionJoin("i")}
@@ -472,7 +475,7 @@ export async function boardReplyForAi(input: {
   const cfg = getGmailOAuthConfig();
   if (!cfg) return null;
   const { rows } = await query<SentMailRow & { supplier_name: string }>(
-    `SELECT i.supplier_name, i.sent_by, i.from_address, i.gmail_message_id, c.refresh_token_enc, c.scope
+    `SELECT i.supplier_name, i.sent_by, i.from_address, i.gmail_message_id, i.gmail_thread_id, c.refresh_token_enc, c.scope
        FROM public.supplier_inquiry_emails i
        ${senderConnectionJoin("i")}
       WHERE i.id = $1 AND i.thread_id = $2`,
@@ -481,19 +484,29 @@ export async function boardReplyForAi(input: {
   const row = rows[0];
   if (!row?.gmail_message_id || !row.refresh_token_enc || !scopeCanReadReplies(row.scope)) return null;
   const token = await gmailAccessToken(cfg, decryptToken(cfg.tokenKey, row.refresh_token_enc));
-  const thread = await fetchGmailReplies(token, row.gmail_message_id, { withText: true });
+  const thread = await fetchGmailReplies(token, row.gmail_message_id, { withText: true, threadId: row.gmail_thread_id });
   const reply = thread?.replies.find((r) => r.id === input.replyId);
   if (!reply) return null;
 
   const pdfs: BoardReplyForAi["pdfs"] = [];
   const skippedPdfs: string[] = [];
-  let total = 0;
+  // Wybór po rozmiarze z nagłówka, potem pobranie równolegle (kolejność zostaje).
+  const picked: NonNullable<typeof reply.pdfs> = [];
+  let declared = 0;
   for (const ref of reply.pdfs ?? []) {
-    if (pdfs.length >= AI_PDF_MAX_FILES || ref.size > AI_PDF_MAX_BYTES || total + ref.size > AI_PDF_MAX_TOTAL) {
+    if (picked.length >= AI_PDF_MAX_FILES || ref.size > AI_PDF_MAX_BYTES || declared + ref.size > AI_PDF_MAX_TOTAL) {
       skippedPdfs.push(ref.filename);
       continue;
     }
-    const data = await fetchGmailAttachment(token, reply.id, ref.attachmentId).catch(() => null);
+    declared += ref.size;
+    picked.push(ref);
+  }
+  const downloaded = await Promise.all(
+    picked.map((ref) => fetchGmailAttachment(token, reply.id, ref.attachmentId).catch(() => null))
+  );
+  let total = 0;
+  for (const [i, ref] of picked.entries()) {
+    const data = downloaded[i];
     // Tylko prawdziwy PDF (nazwa „.pdf” bywa na czymkolwiek); rozmiar z nagłówka bywa pusty — liczy się pobrany.
     if (
       !data ||
@@ -518,7 +531,7 @@ export async function boardReplyForAi(input: {
  */
 export async function inquiriesToResolveOnReply(threadId: string): Promise<string[]> {
   const { rows } = await query<SentMailRow & { id: string }>(
-    `SELECT i.id, i.sent_by, i.from_address, i.gmail_message_id, c.refresh_token_enc, c.scope
+    `SELECT i.id, i.sent_by, i.from_address, i.gmail_message_id, i.gmail_thread_id, c.refresh_token_enc, c.scope
        FROM public.supplier_inquiry_emails i
        ${senderConnectionJoin("i")}
       WHERE i.thread_id = $1 AND i.resolved_at IS NULL`,

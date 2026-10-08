@@ -773,7 +773,8 @@ export function buildZdSupplierMailto(input: {
       ? `New order ${dok}`
       : "New order"
     : dok
-      ? `ZD ${dok} - ${name}`
+      ? // dok_NrPelny z Subiekta ma już prefiks („ZD 72/M/10/2026”).
+        `${/^ZD\b/i.test(dok) ? dok : `ZD ${dok}`} - ${name}`
       : `Zamówienie ZD - ${name}`;
   const body = buildZdSupplierMailBody(input.location);
   const href = buildMailtoHref({ email, subject, body });

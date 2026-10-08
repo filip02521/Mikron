@@ -230,6 +230,15 @@ describe("zd-estimate-post-create", () => {
     );
   });
 
+  it("temat bez podwójnego ZD, gdy numer z Subiekta ma prefiks", () => {
+    expect(buildZdSupplierMailto({ email: "a@polkard.pl", dokNr: "ZD 72/M/10/2026", supplierName: "Polkard" })?.subject).toBe(
+      "ZD 72/M/10/2026 - Polkard"
+    );
+    expect(buildZdSupplierMailto({ email: "a@polkard.pl", dokNr: "72/M/10/2026", supplierName: "Polkard" })?.subject).toBe(
+      "ZD 72/M/10/2026 - Polkard"
+    );
+  });
+
   it("mailto do zagranicy - treść po angielsku", () => {
     const m = buildZdSupplierMailto({
       email: "a@b.de",

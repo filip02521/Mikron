@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useState } from "react";
+import { actionGmailStatus } from "@/app/actions/gmail";
 import { MailPreview } from "@/components/mail/MailPreview";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
@@ -62,6 +63,21 @@ export function SupplierInquiryDialog({
     };
      
   }, [threadId]);
+
+  // „Połącz z Gmailem” otwiera nową kartę — po powrocie okno ma zobaczyć połączenie bez ponownego otwierania.
+  const gmailEmail = prep?.gmail.email ?? null;
+  const gmailConfigured = prep?.gmail.configured ?? false;
+  useEffect(() => {
+    if (!gmailConfigured || gmailEmail) return;
+    const refresh = () =>
+      void actionGmailStatus()
+        .then((res) => {
+          if (res.email) setPrep((p) => (p ? { ...p, gmail: { configured: true, email: res.email } } : p));
+        })
+        .catch(() => undefined);
+    window.addEventListener("focus", refresh);
+    return () => window.removeEventListener("focus", refresh);
+  }, [gmailConfigured, gmailEmail]);
 
   function pickSupplier(p: Prep, id: string) {
     setSupplierId(id);
@@ -209,7 +225,7 @@ export function SupplierInquiryDialog({
                   Do
                 </label>
                 {supplier.emails.length > 1 ? (
-                  <select id={ids.to} value={to} onChange={(e) => setTo(e.target.value)} className={fieldClass}>
+                  <select id={ids.to} value={to} onChange={(e) => { setTo(e.target.value); setConfirmed((c) => ({ ...c, allowUnknownRecipients: false })); }} className={fieldClass}>
                     {supplier.emails.map((email) => (
                       <option key={email} value={email}>
                         {email}
@@ -217,7 +233,7 @@ export function SupplierInquiryDialog({
                     ))}
                   </select>
                 ) : (
-                  <input id={ids.to} value={to} onChange={(e) => setTo(e.target.value)} className={fieldClass} />
+                  <input id={ids.to} value={to} onChange={(e) => { setTo(e.target.value); setConfirmed((c) => ({ ...c, allowUnknownRecipients: false })); }} className={fieldClass} />
                 )}
                 <p className="mt-1 text-xs text-slate-500">
                   {supplier.english ? "Szkic po angielsku (dostawca zagraniczny)." : "Szkic po polsku."}
@@ -233,7 +249,7 @@ export function SupplierInquiryDialog({
                   inputMode="email"
                   autoComplete="off"
                   value={cc}
-                  onChange={(e) => setCc(e.target.value)}
+                  onChange={(e) => { setCc(e.target.value); setConfirmed((c) => ({ ...c, allowUnknownRecipients: false })); }}
                   placeholder="np. kierownik@mikran.com"
                   className={fieldClass}
                 />

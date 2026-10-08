@@ -18,6 +18,13 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 type Fail = { ok: false; message: string };
 
+/** Poczta czyta cudze skrzynki — jak strona Asystenta: tylko admin i zakupy. */
+async function requireMailUser(intent: "read" | "mutate") {
+  const user = await requireZdEstimateAdmin(intent);
+  if (user.role !== "admin" && user.role !== "zakupy") throw new Error("Brak uprawnień do poczty dostawców");
+  return user;
+}
+
 function validConversation(input: { mailbox?: unknown; threadId?: unknown }): { mailbox: string; threadId: string } | null {
   const mailbox = String(input?.mailbox ?? "").trim().toLowerCase();
   const threadId = String(input?.threadId ?? "").trim();
@@ -28,7 +35,7 @@ function validConversation(input: { mailbox?: unknown; threadId?: unknown }): { 
 export async function actionSupplierMailView(opts: { sync?: boolean; force?: boolean } = {}): Promise<
   { ok: true; view: SupplierMailView; me: string | null; canReply: boolean; signature: string; syncErrors: string[] } | Fail
 > {
-  const user = await requireZdEstimateAdmin("read");
+  const user = await requireMailUser("read");
   try {
     let syncErrors: string[] = [];
     if (opts.sync && getGmailOAuthConfig()) {
@@ -65,7 +72,7 @@ export async function actionSupplierMailConversation(input: {
   mailbox: string;
   threadId: string;
 }): Promise<{ ok: true; messages: ConversationMessage[]; signature: string } | Fail> {
-  const user = await requireZdEstimateAdmin("read");
+  const user = await requireMailUser("read");
   const conv = validConversation(input);
   if (!conv) return { ok: false, message: "Nieprawidłowa rozmowa." };
   try {
@@ -115,7 +122,7 @@ async function readTexts(mailbox: string, ids: string[]): Promise<Map<string, st
  * czekanie na to ZD (zapytania z tablicy zamyka odpowiedź handlowcowi w wątku).
  */
 export async function actionSupplierMailHandle(input: { mailbox: string; threadId: string }): Promise<{ ok: true } | Fail> {
-  const user = await requireZdEstimateAdmin("mutate");
+  const user = await requireMailUser("mutate");
   const conv = validConversation(input);
   if (!conv) return { ok: false, message: "Nieprawidłowa rozmowa." };
   try {
@@ -159,7 +166,7 @@ export async function actionSupplierMailReply(input: {
   body: string;
   cc?: string;
 }): Promise<{ ok: true; to: string[]; cc: string[] } | (Fail & { reconnect?: boolean })> {
-  const user = await requireZdEstimateAdmin("mutate");
+  const user = await requireMailUser("mutate");
   const conv = validConversation(input);
   if (!conv) return { ok: false, message: "Nieprawidłowa rozmowa." };
   if (typeof input.body !== "string" || !input.body.trim()) return { ok: false, message: "Treść odpowiedzi jest pusta." };
@@ -199,7 +206,7 @@ export async function actionSupplierMailReply(input: {
 
 /** Czekająca sprawa bez odpowiedzi — „Załatwione” (np. potwierdzenie telefoniczne). */
 export async function actionSupplierMailResolveCase(input: { kind: "zd" | "inquiry"; id: string }): Promise<{ ok: true } | Fail> {
-  const user = await requireZdEstimateAdmin("mutate");
+  const user = await requireMailUser("mutate");
   if ((input?.kind !== "zd" && input?.kind !== "inquiry") || !UUID_RE.test(String(input?.id ?? ""))) {
     return { ok: false, message: "Nieprawidłowa sprawa." };
   }
@@ -227,7 +234,7 @@ export async function actionSupplierMailRemind(input: {
   id: string;
   body: string;
 }): Promise<{ ok: true; to: string[] } | (Fail & { reconnect?: boolean })> {
-  const user = await requireZdEstimateAdmin("mutate");
+  const user = await requireMailUser("mutate");
   if ((input?.kind !== "zd" && input?.kind !== "inquiry") || !UUID_RE.test(String(input?.id ?? ""))) {
     return { ok: false, message: "Nieprawidłowa sprawa." };
   }
@@ -261,6 +268,7 @@ export async function actionSupplierMailRemind(input: {
       attachments: [],
       kind: "supplier_reply",
       inReplyTo: original?.rfcMessageId || undefined,
+      references: original?.references,
       gmailThreadId: own && original ? original.threadId : undefined,
     });
     if (!sent.ok) return sent;
@@ -276,8 +284,13 @@ export async function actionSupplierMailRemind(input: {
 export async function actionSupplierMailBounces(): Promise<{ ok: true; suppliers: string[] } | Fail> {
   await requireZdEstimateAdmin("read");
   try {
-    const view = await loadSupplierMailView();
-    return { ok: true, suppliers: [...new Set(view.open.filter((c) => c.bounce).map((c) => c.supplierName))] };
+    // Same nazwy dostawców — bez wczytywania całego widoku.
+    const { rows } = await query<{ name: string }>(
+      `SELECT DISTINCT s.name FROM public.supplier_mail_messages m JOIN public.suppliers s ON s.id = m.supplier_id
+        WHERE m.kind = 'bounce' AND m.handled_at IS NULL AND m.received_at > now() - interval '30 days'
+        ORDER BY s.name`
+    );
+    return { ok: true, suppliers: rows.map((r) => r.name) };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się sprawdzić poczty dostawców.") };
   }
@@ -288,7 +301,7 @@ export async function actionSupplierMailBounces(): Promise<{ ok: true; suppliers
  * do „Do reakcji”; ZD zamknięte razem z nimi znowu czeka.
  */
 export async function actionSupplierMailReopen(input: { mailbox: string; threadId: string }): Promise<{ ok: true } | Fail> {
-  await requireZdEstimateAdmin("mutate");
+  const user = await requireMailUser("mutate");
   const conv = validConversation(input);
   if (!conv) return { ok: false, message: "Nieprawidłowa rozmowa." };
   try {
@@ -305,8 +318,8 @@ export async function actionSupplierMailReopen(input: { mailbox: string; threadI
     if (zdIds.length) {
       await query(
         `UPDATE public.supplier_order_emails SET resolved_at = NULL, resolved_by = NULL
-          WHERE id = ANY($1::uuid[]) AND resolved_at > now() - interval '10 minutes'`,
-        [zdIds]
+          WHERE id = ANY($1::uuid[]) AND resolved_at > now() - interval '10 minutes' AND resolved_by = $2`,
+        [zdIds, user.id]
       );
     }
     revalidatePath("/zakupy/asystent");
@@ -318,7 +331,7 @@ export async function actionSupplierMailReopen(input: { mailbox: string; threadI
 
 /** „Cofnij” po „Załatwione” na sprawie bez odpowiedzi (do 10 minut). */
 export async function actionSupplierMailReopenCase(input: { kind: "zd" | "inquiry"; id: string }): Promise<{ ok: true } | Fail> {
-  await requireZdEstimateAdmin("mutate");
+  await requireMailUser("mutate");
   if ((input?.kind !== "zd" && input?.kind !== "inquiry") || !UUID_RE.test(String(input?.id ?? ""))) {
     return { ok: false, message: "Nieprawidłowa sprawa." };
   }

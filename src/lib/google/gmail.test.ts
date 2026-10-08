@@ -19,6 +19,7 @@ import {
   type GmailOAuthConfig,
 } from "@/lib/google/gmail";
 import { readGmailOAuthCookie, safeReturnPath } from "@/lib/google/gmail-oauth-cookie";
+import { headerAddresses } from "@/lib/google/gmail";
 
 const key = randomBytes(32);
 const cfg: GmailOAuthConfig = {
@@ -77,10 +78,12 @@ describe("gmail — OAuth", () => {
   });
 
   it("ciasteczko stanu: zgodny stan → returnTo; inny stan lub brak → odrzuć", () => {
-    expect(readGmailOAuthCookie("abc|/zakupy/szacunek", "abc")).toEqual({ ok: true, returnTo: "/zakupy/szacunek" });
-    expect(readGmailOAuthCookie("abc|/x", "xyz")).toEqual({ ok: false });
-    expect(readGmailOAuthCookie(undefined, "abc")).toEqual({ ok: false });
-    expect(readGmailOAuthCookie("abc|//evil.com", "abc")).toEqual({ ok: true, returnTo: "/" });
+    expect(readGmailOAuthCookie("abc|u1|/zakupy/szacunek", "abc", "u1")).toEqual({ ok: true, returnTo: "/zakupy/szacunek" });
+    expect(readGmailOAuthCookie("abc|u1|/x", "xyz", "u1")).toEqual({ ok: false });
+    expect(readGmailOAuthCookie(undefined, "abc", "u1")).toEqual({ ok: false });
+    expect(readGmailOAuthCookie("abc|u1|//evil.com", "abc", "u1")).toEqual({ ok: true, returnTo: "/" });
+    // Łączenie zaczęła inna osoba (wylogowanie w trakcie) — odrzucone.
+    expect(readGmailOAuthCookie("abc|u1|/x", "abc", "u2")).toEqual({ ok: false });
   });
 });
 
@@ -323,5 +326,16 @@ describe("isGmailRetryable", () => {
     expect(isGmailRetryable(403, "User rate limit exceeded")).toBe(true);
     expect(isGmailRetryable(403, "Request had insufficient authentication scopes.")).toBe(false);
     expect(isGmailRetryable(400, "Invalid query")).toBe(false);
+  });
+});
+
+describe("headerAddresses", () => {
+  it("adresy z To/Cc (nazwy, przecinki, wielkość liter)", () => {
+    expect(headerAddresses('"Anna Kowalska" <Anna.Kowalska@Mikran.com>, order@renfert.de, Jan <jan@polkard.pl>')).toEqual([
+      "anna.kowalska@mikran.com",
+      "order@renfert.de",
+      "jan@polkard.pl",
+    ]);
+    expect(headerAddresses("")).toEqual([]);
   });
 });

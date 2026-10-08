@@ -29,7 +29,9 @@ import {
   type MailCase,
   type SupplierCard,
 } from "@/lib/supplier-mail/match";
-import { syncDhlMailbox } from "@/lib/customs/dhl-sync";
+import { prepareWaitingShipments, syncDhlMailbox } from "@/lib/customs/dhl-sync";
+import { isMikranEmail } from "@/lib/email/supplier-emails";
+import { mapLimit } from "@/lib/async/map-limit";
 
 /** Pierwsza synchronizacja skrzynki sięga tyle wstecz. */
 const FIRST_SYNC_DAYS = 30;
@@ -39,44 +41,20 @@ const OVERLAP_MS = 60 * 60_000;
 export const SUPPLIER_MAIL_SYNC_EVERY_MS = 5 * 60_000;
 /** Najkrótszy odstęp przy „Sprawdź teraz”. */
 const FORCE_SYNC_MIN_GAP_MS = 60_000;
-const MAX_MESSAGES_PER_QUERY = 300;
+/** Wysoko — przy limicie starsze maile z okna by przepadły (data synchronizacji idzie naprzód). */
+const MAX_MESSAGES_PER_QUERY = 3000;
 const META_CONCURRENCY = 6;
 
-/** shared = skrzynka wspólna (office@) — tylko maile DHL o odprawach; userId = kto ją podłączył. */
-type Mailbox = { userId: string | null; email: string; tokenEnc: string; shared: boolean };
-
-async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
-  const out: R[] = new Array(items.length);
-  let next = 0;
-  await Promise.all(
-    Array.from({ length: Math.min(limit, items.length) }, async () => {
-      while (next < items.length) {
-        const i = next++;
-        out[i] = await fn(items[i]!);
-      }
-    })
-  );
-  return out;
-}
+/** Skrzynki osób, które połączyły Gmaila ze zgodą na odczyt. */
+type Mailbox = { userId: string; email: string; tokenEnc: string };
 
 async function loadMailboxes(): Promise<Mailbox[]> {
   const { rows } = await query<{ user_id: string; google_email: string; refresh_token_enc: string; scope: string }>(
     `SELECT user_id, google_email, refresh_token_enc, scope FROM public.google_mail_connections`
   );
-  const own = rows
+  return rows
     .filter((r) => scopeCanReadReplies(r.scope))
-    .map((r) => ({ userId: r.user_id, email: r.google_email.toLowerCase(), tokenEnc: r.refresh_token_enc, shared: false }));
-  // Przed migracją 179 tabeli skrzynek wspólnych nie ma.
-  const shared = await query<{ google_email: string; refresh_token_enc: string; scope: string; connected_by: string | null }>(
-    `SELECT google_email, refresh_token_enc, scope, connected_by FROM public.google_shared_mailboxes`
-  ).catch(() => ({ rows: [] }));
-  const ownEmails = new Set(own.map((b) => b.email));
-  return [
-    ...own,
-    ...shared.rows
-      .filter((r) => scopeCanReadReplies(r.scope) && !ownEmails.has(r.google_email.toLowerCase()))
-      .map((r) => ({ userId: r.connected_by, email: r.google_email.toLowerCase(), tokenEnc: r.refresh_token_enc, shared: true })),
-  ];
+    .map((r) => ({ userId: r.user_id, email: r.google_email.toLowerCase(), tokenEnc: r.refresh_token_enc }));
 }
 
 /**
@@ -144,16 +122,17 @@ export function toMailCase(row: CaseRow): MailCase {
 
 /** Wysyłki sprzed migracji 178 nie mają wątku — dociągamy go z Gmaila nadawcy (raz). */
 async function backfillThreadIds(token: string, mailbox: string, cases: CaseRow[]): Promise<void> {
-  const missing = cases.filter((c) => !c.gmail_thread_id && c.gmail_message_id && c.from_address.toLowerCase() === mailbox);
+  const missing = cases.filter((c) => c.gmail_thread_id == null && c.gmail_message_id && c.from_address.toLowerCase() === mailbox);
   await mapLimit(missing, META_CONCURRENCY, async (c) => {
-    const threadId = await getGmailThreadId(token, c.gmail_message_id!).catch(() => null);
-    if (!threadId) return;
-    c.gmail_thread_id = threadId;
+    const threadId = await getGmailThreadId(token, c.gmail_message_id!).catch(() => undefined);
+    // Błąd sieci — spróbujemy przy kolejnej synchronizacji; null (wiadomość usunięta) — '' i więcej nie pytamy.
+    if (threadId === undefined) return;
+    c.gmail_thread_id = threadId ?? "";
     await query(
       c.kind === "zd"
         ? `UPDATE public.supplier_order_emails SET gmail_thread_id = $2 WHERE id = $1`
         : `UPDATE public.supplier_inquiry_emails SET gmail_thread_id = $2 WHERE id = $1`,
-      [c.id, threadId]
+      [c.id, threadId ?? ""]
     );
   });
 }
@@ -178,17 +157,15 @@ async function syncMailbox(
 
   const token = await gmailAccessToken(cfg, decryptToken(cfg.tokenKey, box.tokenEnc));
   await syncDhl(token, box, since);
-  if (box.shared) {
-    await markSynced(box.email, startedAt);
-    return { inserted: 0 };
-  }
   await backfillThreadIds(token, box.email, cases);
 
   const index = buildSenderIndex(cards);
   const queries = [...gmailSenderQueries(senderSearchTerms(index), since), gmailBounceQuery(since)];
   const ids = new Set<string>();
   for (const q of queries) {
-    for (const id of await listGmailMessageIds(token, q, MAX_MESSAGES_PER_QUERY)) ids.add(id);
+    const found = await listGmailMessageIds(token, q, MAX_MESSAGES_PER_QUERY);
+    if (found.length >= MAX_MESSAGES_PER_QUERY) console.warn("[poczta] limit wiadomości w zapytaniu", box.email, q.slice(0, 120));
+    for (const id of found) ids.add(id);
   }
   if (!ids.size) {
     await reconcileRepliedInGmail(token, box.email);
@@ -232,10 +209,25 @@ async function syncMailbox(
             const c = mailCases.find((x) => x.threadId && x.threadId === meta.threadId);
             return c ? { caseKind: c.kind, caseId: c.id, linkedBy: "thread" as const } : null;
           })()
-        : linkToCase({ threadId: meta.threadId, text, supplierIds, category }, mailCases);
+        : linkToCase({ threadId: meta.threadId, text, supplierIds, category, receivedAt: meta.receivedAt }, mailCases);
     if (meta.kind === "bounce" && !link) continue;
     const linkedCase = link ? mailCases.find((c) => c.kind === link.caseKind && c.id === link.caseId) : undefined;
     const supplierId = linkedCase?.supplierId ?? zd?.supplierId ?? supplierIds[0] ?? null;
+
+    // Ta sama wiadomość jest już z innej skrzynki (DW), ale tam bez wątku naszej wysyłki — przejmujemy
+    // ją na kopię z wątku: odpowiedź z OnTime i „odpisano w Gmailu” działają tylko w skrzynce nadawcy ZD.
+    if (link?.linkedBy === "thread" && meta.rfcMessageId) {
+      const moved = await query(
+        `UPDATE public.supplier_mail_messages
+            SET mailbox = $1, owner_user_id = $2, gmail_message_id = $3, gmail_thread_id = $4,
+                case_kind = $5, case_id = $6, linked_by = 'thread', supplier_id = COALESCE($7, supplier_id)
+          WHERE id = (SELECT id FROM public.supplier_mail_messages
+                       WHERE rfc_message_id = $8 AND mailbox <> $1 AND linked_by IS DISTINCT FROM 'thread'
+                       LIMIT 1)`,
+        [box.email, box.userId, meta.id, meta.threadId, link.caseKind, link.caseId, supplierId, meta.rfcMessageId]
+      );
+      if (moved.rowCount) continue;
+    }
 
     const res = await query(
       `INSERT INTO public.supplier_mail_messages
@@ -294,13 +286,16 @@ async function reconcileRepliedInGmail(token: string, mailbox: string): Promise<
   const { rows } = await query<{ id: string; gmail_thread_id: string; received_at: Date }>(
     `SELECT id, gmail_thread_id, received_at FROM public.supplier_mail_messages
       WHERE mailbox = $1 AND handled_at IS NULL AND kind = 'supplier' AND category IN ('reply', 'confirmation')
+        AND received_at > now() - interval '30 days'
       ORDER BY received_at DESC LIMIT 300`,
     [mailbox]
   );
   const threads = [...new Set(rows.map((r) => r.gmail_thread_id))];
   const sentByThread = new Map<string, number[]>();
   await mapLimit(threads, META_CONCURRENCY, async (threadId) => {
-    const sent = await getGmailThreadSentTimes(token, threadId).catch(() => null);
+    const sent = await getGmailThreadSentTimes(token, threadId, isMikranEmail).catch(
+      () => null
+    );
     if (sent?.length) sentByThread.set(threadId, sent);
   });
   const replied = rows.filter((r) => (sentByThread.get(r.gmail_thread_id) ?? []).some((t) => t > r.received_at.getTime()));
@@ -352,12 +347,27 @@ export type SupplierMailSyncResult = { mailboxes: number; inserted: number; erro
 
 /** ponytail: blokada w procesie (jeden serwer OnTime); przy kilku instancjach — advisory lock w bazie. */
 let running: Promise<SupplierMailSyncResult> | null = null;
+let forced: Promise<SupplierMailSyncResult> | null = null;
 
 /**
  * Synchronizuje wszystkie skrzynki z odczytem. `force` = bez czekania na odstęp 5 min.
  * Równoległe wywołania czekają na ten sam przebieg. Błąd jednej skrzynki nie zatrzymuje reszty.
  */
 export function syncSupplierMail(opts: { force?: boolean } = {}): Promise<SupplierMailSyncResult> {
+  // „Sprawdź teraz” w trakcie przebiegu z odpytywania (który mógł pominąć skrzynki) — drugi przebieg po nim.
+  if (running && opts.force) {
+    const prev = running;
+    return (forced ??= prev
+      .catch(() => undefined)
+      .then(() => runSync(opts))
+      .finally(() => {
+        forced = null;
+      }));
+  }
+  return runSync(opts);
+}
+
+function runSync(opts: { force?: boolean }): Promise<SupplierMailSyncResult> {
   if (running) return running;
   running = (async () => {
     const result: SupplierMailSyncResult = { mailboxes: 0, inserted: 0, errors: [] };
@@ -395,6 +405,11 @@ export function syncSupplierMail(opts: { force?: boolean } = {}): Promise<Suppli
         await markSyncError(box.email, message).catch(() => undefined);
       }
     }
+    // Prośby DHL czekające na odczyt AI — raz na przebieg (nie na skrzynkę), także gdy nie było nowych maili.
+    await prepareWaitingShipments(due[0]?.userId ?? null).catch((e: unknown) => {
+      const message = e instanceof Error ? e.message : String(e);
+      if (!/customs_dhl_shipments/.test(message)) console.error("[odprawy] automat", e);
+    });
     return result;
   })().finally(() => {
     running = null;
