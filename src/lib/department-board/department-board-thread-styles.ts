@@ -73,9 +73,9 @@ export function boardQuestionRowClass(opts: {
         ? "border-l-2 border-l-slate-300"
         : opts.open
           ? "border-l-2 border-l-amber-400/80"
-      : stale
-        ? "border-l-2 border-l-slate-200/60"
-        : "border-l-2 border-l-indigo-300/50";
+          : stale
+            ? "border-l-2 border-l-slate-200/60"
+            : "border-l-2 border-l-indigo-300/50";
 
   if (opts.unseen) {
     return cn(

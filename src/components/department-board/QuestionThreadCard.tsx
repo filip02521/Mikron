@@ -299,13 +299,15 @@ export function QuestionThreadCard({
 
   // Status w wierszu tylko gdy coś się dzieje; resztę mówi filtr i pasek po lewej.
   // Kolor = czy ruch jest po stronie oglądającego; „czeka na dostawcę” to cisza, nie alarm.
-  const status: { label: string; tone: BoardQuestionStatusTone; title?: string } | null = isClosed
+  // `age` zostaje na telefonie, `label` chowa się wizualnie (nadal czytany przez czytnik ekranu).
+  const status: { label: string; age?: string; tone: BoardQuestionStatusTone; title?: string } | null = isClosed
     ? null
     : !isOpen && showUnseen
       ? { label: "Nowa odpowiedź", tone: "unseen" }
       : pendingInquiry && inquiryWait
         ? {
-            label: `${inquiryOverdue ? "Przypomnij dostawcy" : "Czeka na dostawcę"} · ${supplierInquiryWaitLabel(inquiryWait.businessDays)}`,
+            label: inquiryOverdue ? "Przypomnij dostawcy" : "Czeka na dostawcę",
+            age: supplierInquiryWaitLabel(inquiryWait.businessDays),
             tone: inquiryOverdue ? "waiting-overdue" : "waiting",
             title: `Zapytanie do: ${pendingInquiry.supplierName}, wysłane ${formatBoardDate(pendingInquiry.sentAt)}`,
           }
@@ -396,7 +398,14 @@ export function QuestionThreadCard({
                     {status.tone === "waiting" || status.tone === "waiting-overdue" ? (
                       <IconClock size={11} className="shrink-0" aria-hidden />
                     ) : null}
-                    {status.label}
+                    {status.age ? (
+                      <span>
+                        <span className="sr-only sm:not-sr-only">{status.label} · </span>
+                        <span className="tabular-nums">{status.age}</span>
+                      </span>
+                    ) : (
+                      status.label
+                    )}
                   </span>
                 ) : null}
                 {threadPhotoCount > 0 ? (
