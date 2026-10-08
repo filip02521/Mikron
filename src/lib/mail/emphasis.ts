@@ -6,7 +6,8 @@
 
 export type TextRun = { bold: boolean; text: string };
 
-const BOLD_RE = /(^|[\s(\["'„])\*(?=\S)([^*\n]{1,200}?)(?<=\S)\*(?=$|[\s).,:;!?\]"'”])/gm;
+// Bez lookbehind — Safari przed 16.4 nie zna go i wywala cały moduł przy wczytaniu.
+const BOLD_RE = /(^|[\s(\["'„])\*([^*\s](?:[^*\n]{0,198}?[^*\s])?)\*(?=$|[\s).,:;!?\]"'”])/gm;
 
 export function splitEmphasis(text: string): TextRun[] {
   const runs: TextRun[] = [];

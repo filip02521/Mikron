@@ -3,7 +3,8 @@ import { convertEmoticonAtCaret, convertEmoticons } from "./emoticons";
 
 describe("convertEmoticons", () => {
   it("buźki z granicą słowa; adresy, godziny i środek słowa zostają", () => {
-    expect(convertEmoticons("Dzięki :) do jutra ;-) <3")).toBe("Dzięki 🙂 do jutra 😉 ❤️");
+    expect(convertEmoticons("Dzięki :) do jutra ;-) B-)")).toBe("Dzięki 🙂 do jutra 😉 😎");
+    expect(convertEmoticons("ilość <3 szt, punkt B) i C)")).toBe("ilość <3 szt, punkt B) i C)");
     expect(convertEmoticons("ok:)")).toBe("ok:)");
     expect(convertEmoticons("http://sklep.pl o 10:30 :D")).toBe("http://sklep.pl o 10:30 😀");
     expect(convertEmoticons("(:P)")).toBe("(😛)");

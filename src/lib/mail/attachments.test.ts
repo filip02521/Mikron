@@ -9,11 +9,12 @@ describe("isInlineImage", () => {
     expect(isInlineImage(att("Outlook-abc123.png"))).toBe(true);
     expect(isInlineImage(att("logo_mikran.jpg", "image/jpeg"))).toBe(true);
     expect(isInlineImage(att("IMG_2231.jpg", "image/jpeg", 12_000))).toBe(true);
-    expect(isInlineImage(att("IMG_2231.jpg", "image/jpeg", 900_000, true))).toBe(true);
+    expect(isInlineImage(att("IMG_2231.jpg", "image/jpeg", 150_000, true))).toBe(true);
   });
 
   it("duże zdjęcie i dokumenty to prawdziwe załączniki", () => {
     expect(isInlineImage(att("IMG_2231.jpg", "image/jpeg", 900_000))).toBe(false);
+    expect(isInlineImage(att("IMG_2231.jpg", "image/jpeg", 900_000, true))).toBe(false);
     expect(isInlineImage(att("logo-faktura.pdf", "application/pdf", 5_000))).toBe(false);
   });
 

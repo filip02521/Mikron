@@ -9,7 +9,8 @@ import { callCustomsGemini } from "@/lib/customs/customs-ai";
 const MAX_SOURCE = 6000;
 const MAX_TRANSLATION = 8000;
 
-const POLISH_HINTS = /\b(się|nie|jest|oraz|proszę|dzień dobry|dziękuję|pozdrawiam|zamówienie|faktura|dostawa|termin|które|został[ao]?)\b/gi;
+// Nie \b: w JS granica słowa nie widzi „ę” czy „ą”, więc „proszę” i „się” nigdy by nie pasowały.
+const POLISH_HINTS = /(?:^|[^\p{L}])(się|nie|jest|oraz|proszę|dzień dobry|dziękuję|pozdrawiam|zamówienie|faktura|dostawa|termin|które|został[ao]?)(?![\p{L}])/giu;
 
 /** Mail wygląda na polski — tłumaczenie nie ma sensu (próg: 2 typowo polskie słowa albo polskie znaki). */
 export function looksPolish(text: string): boolean {

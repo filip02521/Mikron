@@ -695,7 +695,9 @@ function findPart(part: GmailPart | undefined, mimeType: string): GmailPart | nu
 
 /** Systemy sklepowe potrafią wysłać text/plain z „?” zamiast polskich liter („zosta?o ju?”), a HTML poprawny. */
 function looksMangled(text: string): boolean {
-  return (text.match(/\p{L}\?\p{L}|\?\p{L}/gu)?.length ?? 0) >= 2;
+  // Bez adresów: „?utm_source=” w linku to nie zepsuta litera.
+  const noUrls = text.replace(/\S*:\/\/\S*/g, " ");
+  return (noUrls.match(/\p{L}\?\p{L}|\?\p{L}/gu)?.length ?? 0) >= 2;
 }
 
 /**
@@ -803,7 +805,8 @@ function attachmentRefs(part: GmailPart | undefined): GmailAttachmentRef[] {
             attachmentId: part.body.attachmentId,
             size: Number(part.body.size) || 0,
             mimeType: part.mimeType ?? "application/octet-stream",
-            ...(header(part.headers, "Content-ID") || /^\s*inline/i.test(header(part.headers, "Content-Disposition")) ? { inline: true } : {}),
+            // Tylko Content-ID (obrazek wpięty w HTML). Samo „Content-Disposition: inline” daje np. Apple Mail każdemu zdjęciu.
+            ...(header(part.headers, "Content-ID") ? { inline: true } : {}),
           },
         ]
       : [];

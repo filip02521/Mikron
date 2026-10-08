@@ -1,7 +1,7 @@
 /**
  * Tekstowe buźki → emotki, jak w Slacku czy Teams: „:)” po spacji zamienia się w trakcie pisania,
  * a przy wysyłce zamieniamy resztę (np. buźkę na samym końcu). Tylko z granicą słowa po obu stronach,
- * więc „http://” ani „10:30” nie są ruszane.
+ * więc „http://” ani „10:30” nie są ruszane. Bez „<3” i „B)” — „ilość <3 szt” i punkt „B)” w wyliczance to nie buźki.
  */
 
 import type { ChangeEvent } from "react";
@@ -24,10 +24,8 @@ const MAP: Record<string, string> = {
   ":|": "😐",
   ":*": "😘",
   ":'(": "😢",
-  "<3": "❤️",
   "xD": "😆",
   "XD": "😆",
-  "B)": "😎",
   "B-)": "😎",
 };
 

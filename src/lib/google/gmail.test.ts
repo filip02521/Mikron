@@ -396,6 +396,7 @@ describe("gmail — wycinanie skryptów, stylów i cytatów z HTML", () => {
     });
     expect(messagePlainText(parts("Zam?wienie zosta?o ju? spakowane"))).toBe("Zamówienie zostało już spakowane");
     expect(messagePlainText(parts("Czy jest dostępne? Kiedy wysyłka?"))).toBe("Czy jest dostępne? Kiedy wysyłka?");
+    expect(messagePlainText(parts("Link: https://sklep.pl/a?utm=x&b=y Dziękujemy"))).toBe("Link: https://sklep.pl/a?utm=x&b=y Dziękujemy");
   });
 
   it("kodowanie z Content-Type części: ISO-8859-2 nie zamienia polskich znaków w „?”", () => {

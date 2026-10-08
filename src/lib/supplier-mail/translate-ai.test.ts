@@ -5,6 +5,7 @@ describe("translate-ai", () => {
   it("looksPolish: polskie słowa albo znaki → true; angielski / niemiecki → false", () => {
     expect(looksPolish("Dzień dobry, proszę o potwierdzenie zamówienia.")).toBe(true);
     expect(looksPolish("Przesyłka już spakowana, wyślemy jutro.")).toBe(true);
+    expect(looksPolish("Dziękuję, proszę o fakturę.")).toBe(true);
     expect(looksPolish("Dear Filip, please find enclosed the invoice for your order.")).toBe(false);
     expect(looksPolish("Sehr geehrte Damen und Herren, die Lieferung erfolgt nächste Woche.")).toBe(false);
   });

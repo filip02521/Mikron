@@ -635,6 +635,7 @@ export async function actionSupplierMailSuggestReply(input: {
   threadId: string;
   notes: string;
 }): Promise<{ ok: true; draft: string } | Fail> {
+  await requireMailUser("read");
   const conv = validConversation(input);
   if (!conv) return { ok: false, message: "Nieprawidłowa rozmowa." };
   if (!isCustomsAiConfigured()) return { ok: false, message: "AI jest wyłączone na serwerze (brak klucza Gemini)." };
