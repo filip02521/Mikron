@@ -727,21 +727,26 @@ export async function fetchGmailAttachment(
 
 // ─── Poczta dostawców: wyszukiwanie, metadane, treść, odpowiedź w wątku ───
 
-/** Id wiadomości pasujących do zapytania (najnowsze pierwsze), najwyżej `max`. */
-export async function listGmailMessageIds(accessToken: string, q: string, max = 300): Promise<string[]> {
-  const ids: string[] = [];
+/** Wiadomości pasujące do zapytania (najnowsze pierwsze), najwyżej `max` — id i wątek z samej listy. */
+export async function listGmailMessages(accessToken: string, q: string, max = 300): Promise<Array<{ id: string; threadId: string }>> {
+  const out: Array<{ id: string; threadId: string }> = [];
   let pageToken: string | undefined;
   do {
-    const params = new URLSearchParams({ q, maxResults: String(Math.min(100, max - ids.length)) });
+    const params = new URLSearchParams({ q, maxResults: String(Math.min(100, max - out.length)) });
     if (pageToken) params.set("pageToken", pageToken);
-    const page = await gmailGet<{ messages?: Array<{ id: string }>; nextPageToken?: string }>(
+    const page = await gmailGet<{ messages?: Array<{ id: string; threadId: string }>; nextPageToken?: string }>(
       accessToken,
       `/messages?${params.toString()}`
     );
-    for (const m of page?.messages ?? []) ids.push(m.id);
+    out.push(...(page?.messages ?? []));
     pageToken = page?.nextPageToken;
-  } while (pageToken && ids.length < max);
-  return ids;
+  } while (pageToken && out.length < max);
+  return out;
+}
+
+/** Id wiadomości pasujących do zapytania (najnowsze pierwsze), najwyżej `max`. */
+export async function listGmailMessageIds(accessToken: string, q: string, max = 300): Promise<string[]> {
+  return (await listGmailMessages(accessToken, q, max)).map((m) => m.id);
 }
 
 export type GmailAttachmentRef = { filename: string; attachmentId: string; size: number; mimeType: string };
