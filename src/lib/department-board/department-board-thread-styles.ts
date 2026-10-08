@@ -144,19 +144,18 @@ export type BoardQuestionStatusTone =
  * „waiting” = cisza po naszej stronie, piłka u dostawcy — biała, obrysowana, z zegarem.
  */
 export function boardQuestionStatusBadgeClass(tone: BoardQuestionStatusTone): string {
+  // Ten sam język co ui/Badge: płaskie tło, bez obrysu, 12 px; kolor tylko dla stanu.
   return cn(
-    "inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold leading-none whitespace-nowrap",
-    tone === "attention"
-      ? "bg-amber-100 text-amber-900 ring-1 ring-amber-200/70"
+    "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 text-xs font-medium tabular-nums",
+    tone === "attention" || tone === "waiting-overdue"
+      ? "bg-amber-50 text-amber-900"
       : tone === "unseen"
-        ? "bg-indigo-100 text-indigo-900 ring-1 ring-indigo-200/70"
+        ? "bg-indigo-50 text-indigo-800"
         : tone === "supplier-replied"
-          ? "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200"
+          ? "bg-emerald-50 text-emerald-800"
           : tone === "supplier-bounced"
-            ? "bg-red-50 text-red-800 ring-1 ring-red-200"
-            : tone === "waiting-overdue"
-          ? "bg-amber-50 text-amber-900 ring-1 ring-amber-300/70"
-          : "bg-white text-slate-600 ring-1 ring-slate-300/80"
+            ? "bg-red-50 text-red-800"
+            : "bg-slate-100 text-slate-700"
   );
 }
 

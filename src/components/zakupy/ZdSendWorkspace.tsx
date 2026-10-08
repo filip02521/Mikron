@@ -13,8 +13,8 @@ import { MailPreview, type MailPreviewAttachment } from "@/components/mail/MailP
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
-import { compressImageFile } from "@/lib/client/compress-image";
-import { EXTRA_ATTACHMENTS_ACCEPT, extraAttachmentExtension, extraAttachmentsError } from "@/lib/email/extra-attachments";
+import { prepareMailAttachment } from "@/lib/client/compress-image";
+import { EXTRA_ATTACHMENTS_ACCEPT, extraAttachmentsError } from "@/lib/email/extra-attachments";
 import { parseMailRecipients } from "@/lib/email/recipients";
 import { zdTerminError } from "@/lib/orders/zd-send-plan";
 import type { SupplierOrderEmail } from "@/lib/google/gmail-connections";
@@ -29,19 +29,6 @@ type StepState = { status: "idle" | "running" | "ok" | "error" | "skipped"; mess
 
 /** ponytail: proxy przed ontime.mikran.pl ucina żądania ~1 MB; po podniesieniu client_max_body_size — usuń ostrzeżenie. */
 const PROXY_BODY_LIMIT_BYTES = 1024 * 1024;
-const COMPRESSIBLE_IMAGE = ["jpg", "jpeg", "png", "heic", "heif", "webp"];
-
-/** Zdjęcie → JPEG ~1600 px (telefon robi 3–5 MB); gdy przeglądarka nie odczyta formatu, zostaje oryginał. */
-async function prepareExtraFile(file: File): Promise<File> {
-  if (!COMPRESSIBLE_IMAGE.includes(extraAttachmentExtension(file.name))) return file;
-  try {
-    const blob = await compressImageFile(file);
-    if (blob.size >= file.size) return file;
-    return new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" });
-  } catch {
-    return file;
-  }
-}
 
 const plDate = (key: string) => key.split("-").reverse().join(".");
 
@@ -147,7 +134,7 @@ export function ZdSendWorkspace({
     setExtrasError(null);
     setExtrasBusy(true);
     try {
-      const prepared = await Promise.all(Array.from(list).map(prepareExtraFile));
+      const prepared = await Promise.all(Array.from(list).map(prepareMailAttachment));
       const error = extraAttachmentsError([...extras.map((x) => x.file), ...prepared]);
       if (error) {
         setExtrasError(error);

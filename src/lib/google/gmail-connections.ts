@@ -609,3 +609,12 @@ export async function inquiriesToResolveOnReply(threadId: string): Promise<strin
     })
     .map((r) => String(r.id));
 }
+
+/** Adres, na który „Do zapłaty” przekazuje faktury (np. księgowość) — zapamiętany per osoba. */
+export async function getPaymentForwardEmail(userId: string): Promise<string> {
+  const { rows } = await query<{ payment_forward_email: string | null }>(
+    `SELECT payment_forward_email FROM public.profiles WHERE id = $1`,
+    [userId]
+  );
+  return rows[0]?.payment_forward_email ?? "";
+}

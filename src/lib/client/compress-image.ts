@@ -48,3 +48,20 @@ export async function compressImageFile(
     bitmap.close();
   }
 }
+
+const COMPRESSIBLE_ATTACHMENT = /\.(jpe?g|png|heic|heif|webp)$/i;
+
+/**
+ * Załącznik maila: zdjęcie → JPEG ~1600 px (telefon robi 3–5 MB); PDF, Excel i obraz, którego przeglądarka
+ * nie odczyta (np. HEIC poza Safari), zostają bez zmian.
+ */
+export async function prepareMailAttachment(file: File): Promise<File> {
+  if (!COMPRESSIBLE_ATTACHMENT.test(file.name)) return file;
+  try {
+    const blob = await compressImageFile(file);
+    if (blob.size >= file.size) return file;
+    return new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" });
+  } catch {
+    return file;
+  }
+}

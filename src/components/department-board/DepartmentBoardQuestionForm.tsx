@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ClipboardEvent } from "react";
+import { useRef, useState, type ClipboardEvent } from "react";
+import { EmojiPicker } from "@/components/ui/EmojiPicker";
+import { changeWithEmoticons } from "@/lib/ui/emoticons";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { IconChevronDown, IconClipboardPen } from "@/components/icons/StrokeIcons";
@@ -79,6 +81,7 @@ function QuestionFormFields({
   onSubmit: () => void | Promise<void>;
   idPrefix: string;
 }) {
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
   const busy = saving || imagesCompressing;
 
   function handlePaste(event: ClipboardEvent) {
@@ -124,14 +127,16 @@ function QuestionFormFields({
           {DEPARTMENT_BOARD_QUESTIONS_FORM.bodyLabel}
         </label>
         <textarea
+          ref={bodyRef}
           id={`${idPrefix}-body`}
           rows={4}
           value={body}
-          onChange={(e) => onBodyChange(e.target.value)}
+          onChange={(e) => changeWithEmoticons(e, onBodyChange)}
           placeholder={DEPARTMENT_BOARD_QUESTIONS_FORM.bodyPlaceholder}
           disabled={tourDemo || busy}
           className={cn(NOTATNIK_TEXTAREA_CLASS, "w-full text-sm leading-relaxed")}
         />
+        <EmojiPicker textareaRef={bodyRef} value={body} onChange={onBodyChange} disabled={tourDemo || busy} className="mt-1.5" />
       </div>
 
       <BoardQuestionImagesField
