@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRef, useState, type ClipboardEvent } from "react";
 import { EmojiPicker } from "@/components/ui/EmojiPicker";
+import { changeWithEmoticons } from "@/lib/ui/emoticons";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { IconChevronDown, IconClipboardPen } from "@/components/icons/StrokeIcons";
@@ -130,7 +131,7 @@ function QuestionFormFields({
           id={`${idPrefix}-body`}
           rows={4}
           value={body}
-          onChange={(e) => onBodyChange(e.target.value)}
+          onChange={(e) => changeWithEmoticons(e, onBodyChange)}
           placeholder={DEPARTMENT_BOARD_QUESTIONS_FORM.bodyPlaceholder}
           disabled={tourDemo || busy}
           className={cn(NOTATNIK_TEXTAREA_CLASS, "w-full text-sm leading-relaxed")}

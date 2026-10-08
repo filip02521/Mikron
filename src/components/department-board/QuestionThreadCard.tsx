@@ -1,6 +1,7 @@
 "use client";
 
 import { initialsFromLabel } from "@/lib/ui/initials";
+import { convertEmoticons } from "@/lib/ui/emoticons";
 import { actionResolveAwaitingSupplier } from "@/app/actions/gmail";
 import { BoardSupplierReplies } from "@/components/department-board/BoardSupplierReplies";
 import { businessDaysLabel } from "@/lib/suppliers/awaiting-supplier";
@@ -242,7 +243,7 @@ export function QuestionThreadCard({
     setBusy(true);
     setError(null);
     try {
-      await actionReplyToQuestion(question.id, reply, replyImageFiles, supplierFiles);
+      await actionReplyToQuestion(question.id, convertEmoticons(reply), replyImageFiles, supplierFiles);
       setReply("");
       setSupplierFiles([]);
       clearReplyImages();

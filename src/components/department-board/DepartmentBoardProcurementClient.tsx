@@ -3,6 +3,7 @@
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { EmojiPicker } from "@/components/ui/EmojiPicker";
+import { changeWithEmoticons, convertEmoticons } from "@/lib/ui/emoticons";
 import { useRouter } from "next/navigation";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
@@ -190,7 +191,7 @@ export function DepartmentBoardProcurementClient({
     setSaving(true);
     setAnnouncementFormError(null);
     try {
-      await actionCreateAnnouncement(announcementTitle, announcementBody, {
+      await actionCreateAnnouncement(announcementTitle, convertEmoticons(announcementBody), {
         color: announcementColor,
         pinned: announcementPinned,
         expires_at: announcementExpires || null,
@@ -274,7 +275,7 @@ export function DepartmentBoardProcurementClient({
                 ref={announcementBodyRef}
                 rows={4}
                 value={announcementBody}
-                onChange={(e) => setAnnouncementBody(e.target.value)}
+                onChange={(e) => changeWithEmoticons(e, setAnnouncementBody)}
                 placeholder="Treść widoczna dla wszystkich handlowców…"
                 disabled={readOnly || saving}
                 className={cn(NOTATNIK_TEXTAREA_CLASS, "mt-2 w-full text-sm")}

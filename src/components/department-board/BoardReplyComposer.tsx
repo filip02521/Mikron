@@ -2,6 +2,7 @@
 
 import { useRef, useState, type ClipboardEvent, type DragEvent } from "react";
 import { Button } from "@/components/ui/Button";
+import { changeWithEmoticons } from "@/lib/ui/emoticons";
 import { EmojiPicker } from "@/components/ui/EmojiPicker";
 import { Spinner } from "@/components/ui/Spinner";
 import { IconCamera, IconPaperclip } from "@/components/icons/StrokeIcons";
@@ -128,7 +129,7 @@ export function BoardReplyComposer({
           rows={3}
           value={value}
           disabled={busy}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => changeWithEmoticons(e, onChange)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && canSubmit) {
               e.preventDefault();
