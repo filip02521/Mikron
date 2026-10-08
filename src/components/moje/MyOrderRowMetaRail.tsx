@@ -25,6 +25,8 @@ export type MyOrderRowMetaRailProps = {
   mobileTiming?: string | null;
   isUrgent?: boolean;
   isStock?: boolean;
+  /** Telefon: meta w jednym wierszu pod treścią, wyrównana do lewej. */
+  inline?: boolean;
   className?: string;
 };
 
@@ -42,6 +44,7 @@ export function MyOrderRowMetaRail({
   mobileTiming,
   isUrgent,
   isStock,
+  inline = false,
   className,
 }: MyOrderRowMetaRailProps) {
   const zdFulfillment = row.zdFulfillment ?? null;
@@ -59,15 +62,31 @@ export function MyOrderRowMetaRail({
 
   if (!hasContent) return null;
 
+  // Krótki termin tylko gdy rail nie pokazuje własnego — inaczej „Brak terminu” stoi dwa razy.
+  const railShowsTiming = Boolean(
+    (showInformacjaTimingMeta && row.timingLabel) ||
+      zdFulfillment ||
+      showEstimatedDeliveryMeta ||
+      plannedOrderDate
+  );
+  const showMobileTiming = Boolean(mobileTiming) && !railShowsTiming;
+
   return (
     <div
       className={cn(
-        "flex min-w-0 flex-col items-end gap-1 sm:max-w-[42%] sm:shrink-0",
+        inline
+          ? "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1"
+          : "flex min-w-0 flex-col items-end gap-1 sm:max-w-[42%] sm:shrink-0",
         className
       )}
     >
-      <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
-        {mobileTiming ? (
+      <div
+        className={cn(
+          "flex min-w-0 flex-wrap items-center gap-1.5",
+          inline ? "justify-start" : "justify-end"
+        )}
+      >
+        {showMobileTiming && mobileTiming ? (
           <SearchHighlightText
             text={mobileTiming}
             searchQuery={searchQuery}
@@ -84,15 +103,20 @@ export function MyOrderRowMetaRail({
           <InformacjaEmailSentMeta timingLabel={row.timingLabel} />
         ) : null}
         {!showInformacjaTimingMeta && zdFulfillment ? (
-          <ZdFulfillmentDateMeta fulfillment={zdFulfillment} collapsed lines={row.lines} />
+          <ZdFulfillmentDateMeta
+            fulfillment={zdFulfillment}
+            collapsed
+            inline={inline}
+            lines={row.lines}
+          />
         ) : null}
         {!showInformacjaTimingMeta && showEstimatedDeliveryMeta ? (
-          <MyOrderEstimatedDeliveryMeta row={row} />
+          <MyOrderEstimatedDeliveryMeta row={row} inline={inline} />
         ) : null}
         {showZdEtaPendingMeta ? (
           <ZdEtaPendingMeta compact={showZdEtaPendingWithEstimate} />
         ) : null}
-        {plannedOrderDate ? <PlannedOrderDateMeta display={plannedOrderDate} /> : null}
+        {plannedOrderDate ? <PlannedOrderDateMeta display={plannedOrderDate} inline={inline} /> : null}
         {showStatusPill ? (
           <MyOrderStatusPill
             label={row.statusTitle}

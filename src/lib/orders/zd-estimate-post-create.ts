@@ -751,7 +751,7 @@ export function buildZdSupplierMailBody(location: SupplierLocation | null | unde
       ].join("\n");
 }
 
-function isZdSupplierAbroad(location: SupplierLocation | null | undefined): boolean {
+export function isZdSupplierAbroad(location: SupplierLocation | null | undefined): boolean {
   return location === "ZAGRANICA" || location === "IMPORT";
 }
 

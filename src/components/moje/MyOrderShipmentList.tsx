@@ -3,6 +3,8 @@ import { MY_ORDERS_TOAST, toastSuccess, type ToastNotice, toastFromUnknown } fro
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
+import { useMojeSectionHeaderSlot } from "@/components/moje/MojeSectionShell";
 import { useRouter } from "next/navigation";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { sortMyOrderRows } from "@/lib/orders/my-order-sales-ui";
@@ -148,6 +150,19 @@ export function MyOrderShipmentList({
   const collapseAll = useCallback(() => {
     setExpandedIds(new Set());
   }, []);
+
+  const headerSlot = useMojeSectionHeaderSlot();
+  const expandAllToggle =
+    sortedRows.length > 1 ? (
+      <button
+        type="button"
+        aria-expanded={allExpanded}
+        className="hit-target rounded px-1.5 py-0.5 text-[11px] font-medium text-slate-500 underline-offset-2 transition-colors hover:text-slate-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/30"
+        onClick={() => (allExpanded ? collapseAll() : expandAll())}
+      >
+        {allExpanded ? "Zwiń wszystkie" : "Rozwiń wszystkie"}
+      </button>
+    ) : null;
 
   const focusRowIdsKey = focusRowIds?.size
     ? [...focusRowIds].sort().join("\0")
@@ -667,17 +682,11 @@ export function MyOrderShipmentList({
           }}
         />
       ) : null}
-      {sortedRows.length > 1 ? (
-        <div className="flex justify-end px-3 pt-1 sm:px-4">
-          <button
-            type="button"
-            className="rounded px-1 py-0.5 text-[11px] font-medium text-slate-500 underline-offset-2 transition-colors hover:text-slate-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/30"
-            onClick={() => (allExpanded ? collapseAll() : expandAll())}
-          >
-            {allExpanded ? "Zwiń wszystkie" : "Rozwiń wszystkie"}
-          </button>
-        </div>
-      ) : null}
+      {expandAllToggle && headerSlot && !continuation
+        ? createPortal(expandAllToggle, headerSlot)
+        : expandAllToggle ? (
+            <div className="flex justify-end px-3 pt-1 sm:px-4">{expandAllToggle}</div>
+          ) : null}
       <VirtualList
         items={sortedRows}
         threshold={MOJE_SHIPMENT_VIRTUAL_THRESHOLD}

@@ -5,6 +5,11 @@ import {
   actionListCustomsSuppliers,
 } from "@/app/actions/customs-clearance";
 import { CustomsClearanceListClient } from "@/components/zakupy/customs/CustomsClearanceListClient";
+import { DhlShipmentsPanel } from "@/components/zakupy/customs/DhlShipmentsPanel";
+import { DhlMailboxCard } from "@/components/zakupy/customs/DhlMailboxCard";
+import { loadDhlShipments } from "@/lib/customs/dhl-data";
+import { getGmailOAuthConfig } from "@/lib/google/gmail";
+import { listSharedMailboxes } from "@/lib/google/gmail-connections";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { isCustomsAiConfigured } from "@/lib/customs/customs-ai";
 import { pageMetadataFor, PAGE_DESCRIPTIONS, PAGE_TITLES } from "@/lib/ui/page-metadata";
@@ -16,10 +21,13 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export default async function CustomsClearancesPage() {
-  await requireOperations("read");
-  const [suppliers, clearances] = await Promise.all([
+  const user = await requireOperations("read");
+  const canManageMailbox = (user.role === "admin" || user.role === "zakupy") && Boolean(getGmailOAuthConfig());
+  const [suppliers, clearances, dhl, sharedMailboxes] = await Promise.all([
     actionListCustomsSuppliers(),
     actionListCustomsClearances(),
+    loadDhlShipments(),
+    canManageMailbox ? listSharedMailboxes() : Promise.resolve(null),
   ]);
 
   return (
@@ -28,6 +36,9 @@ export default async function CustomsClearancesPage() {
         title={PAGE_TITLES.customsClearance}
         description={PAGE_DESCRIPTIONS.customsClearance}
       />
+      {sharedMailboxes && !sharedMailboxes.length ? <DhlMailboxCard mailboxes={sharedMailboxes} /> : null}
+      {dhl ? <DhlShipmentsPanel shipments={dhl} suppliers={suppliers} /> : null}
+      {sharedMailboxes?.length ? <DhlMailboxCard mailboxes={sharedMailboxes} /> : null}
       <CustomsClearanceListClient
         suppliers={suppliers}
         clearances={clearances}

@@ -29,7 +29,7 @@ const ACCENT_SHELL: Record<SectionListAccent, string> = {
 };
 
 const ACCENT_TITLE: Record<SectionListAccent, string> = {
-  emerald: salesTypography.sectionLabelAccent,
+  emerald: "text-emerald-900",
   indigo: "text-indigo-900",
   sky: "text-sky-900",
   violet: "text-violet-900",
@@ -72,6 +72,7 @@ export function SectionListLabel({
   domain = "sales",
   icon,
   tileClassName,
+  action,
 }: {
   id?: string;
   title: string;
@@ -85,8 +86,10 @@ export function SectionListLabel({
   domain?: "sales" | "panel";
   icon: React.ReactNode;
   tileClassName: string;
+  /** Kontrolka po prawej, przed licznikiem (np. „Rozwiń wszystkie”). */
+  action?: ReactNode;
 }) {
-  const titleToken = domain === "panel" ? panelTypography.sectionLabel : salesTypography.sectionLabel;
+  const titleToken = domain === "panel" ? panelTypography.sectionLabel : salesTypography.sectionTitle;
   const hintToken = domain === "panel" ? panelTypography.sectionDesc : salesTypography.sectionHint;
 
   const titleClass =
@@ -118,16 +121,19 @@ export function SectionListLabel({
           {hint && hintMode === "inline" ? <p className={hintClass}>{hint}</p> : null}
         </div>
       </div>
-      {count !== undefined && count > 0 ? (
-        <span
-          className={cn(
-            "shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold tabular-nums",
-            ACCENT_COUNT[accent]
-          )}
-        >
-          {count}
-        </span>
-      ) : null}
+      <div className="flex shrink-0 items-center gap-2 self-center">
+        {action}
+        {count !== undefined && count > 0 ? (
+          <span
+            className={cn(
+              "shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold tabular-nums",
+              ACCENT_COUNT[accent]
+            )}
+          >
+            {count}
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 }

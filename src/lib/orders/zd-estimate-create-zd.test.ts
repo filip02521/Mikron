@@ -490,6 +490,15 @@ describe("validateZdCreateClientLines", () => {
   });
 });
 
+describe("buildZdCreateApiBody — wystawiający", () => {
+  it("personelId zalogowanej osoby trafia do body; brak dopasowania = bez pola", () => {
+    const lines = [{ twId: 1, ilosc: 1 }];
+    expect(buildZdCreateApiBody({ kontrahentId: 10, lines, personelId: 44 }).personelId).toBe(44);
+    expect("personelId" in buildZdCreateApiBody({ kontrahentId: 10, lines, personelId: null })).toBe(false);
+    expect("personelId" in buildZdCreateApiBody({ kontrahentId: 10, lines })).toBe(false);
+  });
+});
+
 describe("buildZdCreateApiBody + uwagi", () => {
   it("buduje body i przycina uwagi", () => {
     const body = buildZdCreateApiBody({

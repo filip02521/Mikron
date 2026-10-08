@@ -24,3 +24,11 @@ export function vacationColorMap<T extends { id: string }>(
   });
   return map;
 }
+
+/** Siatka miesiąca: od sm sobota i niedziela węższe (na telefonie równe — „Niedz” by się nie mieściło) — nie są dniami pracy, więc oddają miejsce dniom roboczym. */
+export const vacationMonthGridClass =
+  "grid grid-cols-7 sm:grid-cols-[repeat(5,minmax(0,1fr))_repeat(2,minmax(0,0.6fr))]";
+
+/** Weekend bez urlopów: delikatne ukośne kreskowanie zamiast pustej komórki. */
+export const vacationWeekendCellClass =
+  "bg-slate-50 [background-image:repeating-linear-gradient(135deg,var(--color-slate-200)_0_1px,transparent_1px_7px)]";

@@ -132,6 +132,18 @@ Transakcyjne maile OnTime (OTP resetu hasła, dostawy, tablica) idą przez **Ama
 6. `npm run server-setup` zapisuje `SMTP_*` + `EMAIL_*` (nie Resend).
 7. Tygodniowe maile Ivoclar wysyła **OnTime Raporty** (osobny cutover providera) — patrz `docs/CUTOVER-IVOCLAR.md`.
 
+## Wysyłka zamówień ZD z Gmaila (opcjonalnie)
+
+Po utworzeniu ZD panel ma „Wyślij z Gmaila…”: mail idzie z firmowej skrzynki zalogowanej osoby
+(Google Workspace, OAuth „Internal”, zakres tylko `gmail.send`) i ląduje w jej „Wysłanych”.
+Załącznik: formularz dostawcy (Wiedent, Renfert, Sirona…) albo PDF zamówienia z pozycji ZD (PL / EN wg lokalizacji).
+
+1. Google Cloud: Gmail API + klient OAuth (Web), redirect `https://ontime.mikran.pl/api/google/callback`.
+2. Env: `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_TOKEN_KEY` (`openssl rand -base64 32` — szyfruje tokeny w bazie; zmiana = wszyscy łączą ponownie). Puste = funkcja ukryta.
+3. Migracja `172_google_mail_connections.sql`; `NEXT_PUBLIC_APP_URL` musi być `https://…` (Google nie przyjmie przekierowania po HTTP).
+4. Użytkownik: **Ustawienia → Gmail → Połącz z Gmailem** (+ podpis — Gmail API nie dokleja podpisu ze skrzynki).
+5. Wysłane ZD: tabela `supplier_order_emails` (ostrzeżenie przed ponowną wysyłką) i log `/admin/wysylki`.
+
 ## Integracja Subiekt (opcjonalnie)
 
 Mostek **HTTP REST** (nie bezpośrednio Sfera/SQL). Konfiguracja w `.env.local` — zmienne `SUBIEKT_*`, opis w [docs/integrations/subiekt.md](docs/integrations/subiekt.md). Test połączenia: **Administracja** → Integracja Subiekt.

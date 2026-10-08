@@ -100,16 +100,8 @@ export function MojeOrdersEmptyGuide({
   showActions?: boolean;
   embedded?: boolean;
 }) {
-  if (embedded) {
-    return (
-      <div className="relative overflow-hidden rounded-md border border-slate-200/80 bg-slate-50/50 px-4 py-4">
-        <BrandCardAccent className="absolute -right-6 -top-6 h-24 w-32 opacity-80" />
-        <div className="relative z-[1]">
-          <GuideContent showActions={showActions} />
-        </div>
-      </div>
-    );
-  }
+  // W karcie listy — sama treść; druga ramka w karcie to karta w karcie.
+  if (embedded) return <GuideContent showActions={showActions} />;
 
   return (
     <Card className="relative overflow-hidden px-4 py-5 sm:px-6">

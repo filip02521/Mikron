@@ -46,3 +46,13 @@ export function plCoTydzien(weeks: number): string {
   }
   return `Co ${n} tygodni`;
 }
+
+/** Odmiana „dzień roboczy” — np. 1 dzień roboczy, 2 dni robocze, 5 dni roboczych. */
+export function plDzienRoboczy(count: number): string {
+  const n = Math.abs(Math.trunc(count));
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (n === 1) return "dzień roboczy";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "dni robocze";
+  return "dni roboczych";
+}

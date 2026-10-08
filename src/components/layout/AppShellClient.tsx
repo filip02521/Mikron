@@ -100,12 +100,15 @@ function AppShellMain({
   mobileChrome,
   uniformBackground: _uniformBackground,
   topNotices,
+  footer,
   adminPreviewDock = false,
 }: {
   children: React.ReactNode;
   mobileChrome: boolean;
   uniformBackground: boolean;
   topNotices?: React.ReactNode;
+  /** Pod treścią strony, w przepływie — nie przykrywa list (np. „Zgłoś problem”). */
+  footer?: React.ReactNode;
   /** Extra bottom padding when admin preview dock is visible. */
   adminPreviewDock?: boolean;
 }) {
@@ -129,6 +132,7 @@ function AppShellMain({
         {topNotices}
         <SalesOnboardingTourBanner />
         <SalesOnboardingContentGuard>{children}</SalesOnboardingContentGuard>
+        {footer}
       </div>
     </main>
   );
@@ -344,6 +348,7 @@ export function AppShellClient({
           mobileChrome={mobileChrome}
           uniformBackground={uniformBackground}
           adminPreviewDock={Boolean(adminPanelPreview)}
+          footer={salesLive && !adminPanelPreview ? <SalesBugReportTrigger /> : null}
           topNotices={
             adminPanelPreview ? (
               <PageNoticeStack>
@@ -411,7 +416,6 @@ export function AppShellClient({
             />
           </Suspense>
         ) : null}
-        {salesLive && !adminPanelPreview ? <SalesBugReportTrigger /> : null}
         {operationsLive && !salesLive && role ? (
           <MobileOperationsNav
             role={role}

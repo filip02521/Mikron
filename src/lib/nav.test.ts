@@ -249,6 +249,8 @@ describe("navForRole struktura zakupów", () => {
       expect(ordering?.items.map((item) => item.href)).toEqual([
         "/zakupy/szacunek",
         "/zakupy/braki",
+        "/zakupy/cenniki",
+        "/zakupy/asystent",
         "/zamowienia/nowe",
         "/historia",
       ]);

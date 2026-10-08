@@ -33,6 +33,8 @@ export function SubiektClientNameField({
   disabled,
   maxLength,
   placeholder = "dla kogo jest ten towar - pojawi się w mailu po dostawie",
+  inputId,
+  autoFocus,
 }: {
   value: string;
   clientKhId?: number | null;
@@ -40,6 +42,9 @@ export function SubiektClientNameField({
   disabled?: boolean;
   maxLength: number;
   placeholder?: string;
+  /** Dla `<label htmlFor>` w formularzu nadrzędnym. */
+  inputId?: string;
+  autoFocus?: boolean;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
@@ -201,6 +206,8 @@ export function SubiektClientNameField({
         )}
       >
         <Input
+          id={inputId}
+          autoFocus={autoFocus}
           disabled={disabled}
           placeholder={placeholder}
           maxLength={maxLength}

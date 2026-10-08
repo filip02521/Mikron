@@ -11,11 +11,11 @@ export const mojeQueueRowLayoutClass =
 
 /** Slot akcji inline — bez border-t na mobile (ack-only). */
 export const mojeQueueRowActionsInlineClass =
-  "w-full sm:w-auto sm:shrink-0 sm:self-center";
+  "w-full empty:hidden sm:w-auto sm:shrink-0 sm:self-center";
 
 /** Slot akcji w wierszu — pełna szerokość na mobile. */
 export const mojeQueueRowActionsClass =
-  "w-full border-t border-slate-100/90 pt-2 sm:w-auto sm:shrink-0 sm:border-0 sm:pt-0 sm:self-center";
+  "w-full border-t border-slate-100/90 pt-2 empty:hidden sm:w-auto sm:shrink-0 sm:border-0 sm:pt-0 sm:self-center";
 
 /** Główna treść wiersza (chevron + opis). */
 export const mojeQueueRowMainClass = "flex min-w-0 flex-1 items-center gap-1 sm:gap-2";

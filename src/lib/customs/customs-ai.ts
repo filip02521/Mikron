@@ -102,6 +102,7 @@ export const INVOICE_EXTRACTION_SCHEMA = {
   type: Type.OBJECT,
   properties: {
     invoiceNumber: { type: Type.STRING },
+    sellerName: { type: Type.STRING, nullable: true, description: "Nazwa firmy sprzedawcy / eksportera (Seller, Shipper, Exporter)" },
     invoiceDate: { type: Type.STRING, description: "YYYY-MM-DD" },
     currency: { type: Type.STRING, description: "ISO 4217, np. EUR, USD, CNY" },
     total: { type: Type.NUMBER, nullable: true },
@@ -161,12 +162,16 @@ export const INVOICE_EXTRACTION_PROMPT = `Odczytaj fakturę handlową (commercia
 8. currency jako kod ISO (EUR, USD, CNY). total — kwota końcowa faktury (TOTAL / SAY TOTAL / Total Invoice Amount).
    goodsTotal — wartość samych towarów, gdy faktura ją podaje osobno (Total Goods Value, Sub-total).
    countryOfOrigin — kraj pochodzenia towaru („Country of origin”, „MADE IN KOREA”). hsCode — kod HS z faktury, jeśli jest.
+9. sellerName — pełna nazwa firmy sprzedawcy / eksportera z nagłówka faktury (Seller, Shipper, Exporter, From),
+   nie odbiorcy (Mikran to odbiorca).
 Nie zgaduj — zostaw puste pole, gdy wartości nie widać.`;
 
 export type InvoiceCharge = { name: string; amount: number | null };
 
 export type InvoiceExtraction = {
   invoiceNumber: string;
+  /** Sprzedawca / eksporter z nagłówka faktury — do rozpoznania dostawcy (opcjonalne). */
+  sellerName?: string;
   invoiceDate: string | null;
   currency: string | null;
   total: number | null;
@@ -294,6 +299,7 @@ export function parseInvoiceExtraction(raw: unknown): InvoiceExtraction {
   const goodsTotal = parseLooseNumber(str(obj.goodsTotal));
   return {
     invoiceNumber: str(obj.invoiceNumber).slice(0, 120),
+    ...(str(obj.sellerName) ? { sellerName: str(obj.sellerName).slice(0, 200) } : {}),
     invoiceDate: parseInvoiceDate(str(obj.invoiceDate)),
     currency: normalizeCurrency(str(obj.currency)),
     total: parseLooseNumber(str(obj.total)),

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ZdEstimateCreateZdDialog } from "@/components/zakupy/ZdEstimateCreateZdDialog";
 import { ZdEstimatePostCreatePanel } from "@/components/zakupy/ZdEstimatePostCreatePanel";
+import type { ZdSendSimulation } from "@/components/zakupy/ZdSendWorkspace";
 import type { ZdCreatePreview, ZdCreatePreviewLine } from "@/lib/orders/zd-estimate-create-zd";
 import type { ZdPostCreateKind, ZdPostCreateMarkFreeze, ZdPostCreateSession } from "@/lib/orders/zd-estimate-post-create";
 
@@ -53,14 +54,19 @@ const MARK_FREEZE: ZdPostCreateMarkFreeze = {
   omittedServiceCount: 0,
 };
 
-function postSession(supplierId: string, kind: ZdPostCreateKind, snapshotOk: boolean): ZdPostCreateSession {
+function postSession(
+  supplierId: string,
+  kind: ZdPostCreateKind,
+  snapshotOk: boolean,
+  real?: { dokId: number; supplierName: string }
+): ZdPostCreateSession {
   return {
     kind,
     supplierId,
-    supplierName: "Polkard",
+    supplierName: real?.supplierName ?? "Polkard",
     fromDaily: false,
-    dokId: kind === "timeout_recovery" ? null : 1866820,
-    dokNrPelny: kind === "timeout_recovery" ? null : "ZD 29/M/10/2026",
+    dokId: kind === "timeout_recovery" ? null : (real?.dokId ?? 1866820),
+    dokNrPelny: kind === "timeout_recovery" ? null : real ? `ZD #${real.dokId}` : "ZD 29/M/10/2026",
     lineCount: LINES.length,
     snapshotOk,
     snapshotMessage: snapshotOk ? undefined : undefined,
@@ -96,7 +102,15 @@ function postSession(supplierId: string, kind: ZdPostCreateKind, snapshotOk: boo
 }
 
 /** Harness: okno podsumowania „Utwórz ZD” — `previewOnly`, więc nic nie trafia do Subiekta. */
-export function ZdCreateDialogLab({ supplierId }: { supplierId: string }) {
+/** `real` — prawdziwe ZD i dostawca (`?dok=…&nazwa=…`): okno wysyłki z podglądem i prawdziwym załącznikiem, bez wysyłania. */
+export function ZdCreateDialogLab({
+  supplierId,
+  real,
+}: {
+  supplierId: string;
+  real?: { dokId: number; supplierName: string };
+}) {
+  const [simulation, setSimulation] = useState<ZdSendSimulation>("ok");
   const [scenario, setScenario] = useState<Scenario | null>("typical");
   const typical = scenario === "typical";
   const lines = scenario === "simple" ? LINES.slice(0, 2) : LINES;
@@ -130,13 +144,28 @@ export function ZdCreateDialogLab({ supplierId }: { supplierId: string }) {
         ))}
       </div>
       {scenario?.startsWith("post_") ? (
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          Symulacja wysyłki:
+          <select
+            value={simulation}
+            onChange={(e) => setSimulation(e.target.value as ZdSendSimulation)}
+            className="rounded-md border border-slate-200 bg-white px-2 py-1"
+          >
+            <option value="ok">wszystko się udaje</option>
+            <option value="termin_error">błąd zapisu terminu (potem ponów)</option>
+          </select>
+        </label>
+      ) : null}
+      {scenario?.startsWith("post_") ? (
         <ZdEstimatePostCreatePanel
-          key={scenario}
+          key={`${scenario}-${simulation}`}
           previewOnly
+          sendSimulation={simulation}
           session={postSession(
             supplierId,
             scenario === "post_timeout" ? "timeout_recovery" : "created",
-            scenario !== "post_need_link"
+            scenario !== "post_need_link",
+            real
           )}
           onDismiss={() => setScenario(null)}
           onOpenLink={() => undefined}

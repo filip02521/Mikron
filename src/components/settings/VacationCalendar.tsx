@@ -45,7 +45,9 @@ import {
 import { cn } from "@/lib/cn";
 import { salesTypography, panelDropdownShellClass } from "@/lib/ui/ontime-theme";
 import { computeAnchoredDropdownPosition } from "@/lib/ui/dropdown-anchor";
-import { vacationColorMap } from "@/lib/ui/vacation-colors";
+import { vacationColorMap, vacationMonthGridClass, vacationWeekendCellClass } from "@/lib/ui/vacation-colors";
+import { countBusinessDaysInclusive } from "@/lib/orders/business-calendar";
+import { plDzienRoboczy } from "@/lib/ui/polish-plurals";
 
 const MONTH_NAMES = [
   "Styczeń",
@@ -104,12 +106,6 @@ function formatRangeLabel(startDate: string, endDate: string): string {
     return `${day} ${months[m - 1]} ${y}`;
   };
   return startDate === endDate ? fmt(startDate) : `${fmt(startDate)} - ${fmt(endDate)}`;
-}
-
-function vacationDuration(startDate: string, endDate: string): number {
-  const start = new Date(startDate + "T00:00:00");
-  const end = new Date(endDate + "T00:00:00");
-  return Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
 }
 
 function buildCalendarCells(
@@ -177,7 +173,8 @@ function buildCalendarCells(
       isCurrentMonth: true,
       isWeekend: isWeekend(weekday),
       isToday: dateKey === todayKey,
-      periods: getPeriodsForDate(dateKey),
+      // Weekend nie jest dniem pracy — urlopu na nim nie pokazujemy.
+      periods: isWeekend(weekday) ? [] : getPeriodsForDate(dateKey),
     });
   }
 
@@ -658,10 +655,10 @@ export function VacationCalendar({
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-500">
-                      {vacationDuration(period.startDate, period.endDate) === 1
-                        ? "1 dzień"
-                        : `${vacationDuration(period.startDate, period.endDate)} dni`
-                      }
+                      {(() => {
+                        const days = countBusinessDaysInclusive(period.startDate, period.endDate);
+                        return days > 0 ? `${days} ${plDzienRoboczy(days)}` : "Tylko dni wolne od pracy";
+                      })()}
                     </p>
                   </div>
 
@@ -927,7 +924,7 @@ export function VacationCalendar({
         </div>
       ) : null}
 
-      <div className="grid grid-cols-7 rounded-t-lg border-t border-l border-slate-100 bg-slate-50/30">
+      <div className={cn(vacationMonthGridClass, "rounded-t-lg border-t border-l border-slate-100 bg-slate-50/30")}>
         {WEEKDAY_LABELS.map((label, idx) => (
           <div
             key={label}
@@ -949,11 +946,11 @@ export function VacationCalendar({
         </p>
       ) : null}
       {(
-        <div className="grid grid-cols-7 border-l border-slate-100">
+        <div className={cn(vacationMonthGridClass, "border-l border-slate-100")}>
           {cells.map((cell, i) => {
             const bgClasses = cn(
               !cell.isCurrentMonth && "bg-slate-50/20",
-              cell.isWeekend && cell.isCurrentMonth && "bg-slate-100/50",
+              cell.isWeekend && vacationWeekendCellClass,
               cell.isToday && "bg-sky-50/40 ring-1 ring-inset ring-sky-200/40"
             );
 
@@ -978,6 +975,7 @@ export function VacationCalendar({
                   >
                     {cell.dayOfMonth}
                   </span>
+                  {cell.isWeekend ? <span className="sr-only">, weekend</span> : null}
                   {cell.isToday ? (
                     <Badge variant="info" className="hidden text-[9px] uppercase sm:inline-flex">Dziś</Badge>
                   ) : null}

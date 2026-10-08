@@ -1,7 +1,6 @@
 import path from "node:path";
 import ExcelJS from "exceljs";
 import {
-  compareExcelText,
   excelSymbolValue,
   matchLinesToCodeRows,
   normalizeFormSymbol,
@@ -54,7 +53,7 @@ export async function fillSupplierXlsxForm(
   return { bytes: new Uint8Array(buffer as ArrayBuffer), mapped, unmapped };
 }
 
-/** Własny arkusz: Lp | Symbol | Nazwa | Ilość, pozycje posortowane jak w Excelu po nazwie. */
+/** Własny arkusz: Lp | Symbol | Nazwa | Ilość — kolejność jak w ZD, żeby faktura wpisywała się 1:1. */
 export async function buildSupplierXlsxList(
   template: SupplierXlsxListTemplate,
   lines: readonly SupplierFormLine[]
@@ -70,8 +69,7 @@ export async function buildSupplierXlsxList(
       ? [{ header: template.unitColumn.header, key: "unit", width: template.unitColumn.width }]
       : []),
   ];
-  const sorted = lines.filter((l) => l.qty > 0).sort((a, b) => compareExcelText(a.name, b.name));
-  sorted.forEach((l, i) =>
+  lines.filter((l) => l.qty > 0).forEach((l, i) =>
     ws.addRow({
       lp: i + 1,
       symbol: excelSymbolValue(l.symbol),

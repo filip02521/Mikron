@@ -212,6 +212,10 @@ export type NavBadges = {
   salesTablica?: number;
   operationsNotatki?: number;
   departmentBoardQuestions?: number;
+  /** Poczta dostawców: rozmowy do reakcji + sprawy po terminie (Asystent). */
+  supplierMail?: number;
+  /** Odprawy DHL z maili czekające na odpowiedź do agencji. */
+  customsDhl?: number;
   adminBugReports?: number;
   teethQueue?: number;
   teethVerification?: number;
@@ -389,7 +393,7 @@ function operationsTodayItems(
 }
 
 /** Zamawianie: Kreator ZD (admin + zakupy), formularz grupowy i archiwum zamówień. */
-function operationsOrderingItems(role: UserRole): NavItem[] {
+function operationsOrderingItems(role: UserRole, badges: Pick<NavBadges, "supplierMail"> = {}): NavItem[] {
   const items: NavItem[] = [];
   if (role === "admin" || role === "zakupy") {
     items.push({
@@ -411,6 +415,26 @@ function operationsOrderingItems(role: UserRole): NavItem[] {
       tone: "orange",
       tier: "primary",
       mobileSlot: "overflow",
+    });
+    items.push({
+      href: "/zakupy/cenniki",
+      label: "Cenniki",
+      description: "Ceny z cennika dostawcy do Subiekta",
+      icon: "catalog",
+      tone: "violet",
+      tier: "compact",
+      mobileSlot: "overflow",
+    });
+    items.push({
+      href: "/zakupy/asystent",
+      label: "Asystent",
+      mobileLabel: "Asystent",
+      description: "Poczta dostawców, przegląd skrzynki i kontrola potwierdzeń OC",
+      icon: "mail",
+      tone: "slate",
+      tier: "compact",
+      mobileSlot: "overflow",
+      badge: badges.supplierMail,
     });
   }
   items.push(
@@ -537,7 +561,7 @@ function supplierHubItemsForRole(role: UserRole): NavItem[] {
 }
 
 /** Import i logistyka: odprawy importu, magazyn zewnętrzny i kontakty do kurierów. */
-const logisticsItems: NavItem[] = [
+const logisticsItems = (badges: Pick<NavBadges, "customsDhl"> = {}): NavItem[] => [
   {
     href: "/zakupy/odprawy",
     label: "Odprawy celne",
@@ -547,6 +571,7 @@ const logisticsItems: NavItem[] = [
     tone: "emerald",
     tier: "compact",
     mobileSlot: "overflow",
+    badge: badges.customsDhl,
   },
   {
     href: "/zakupy/gadki",
@@ -689,7 +714,7 @@ function adminCatalogMailItems(): NavItem[] {
 function operationsNavGroups(role: UserRole, badges: NavBadges): NavGroup[] {
   const groups: NavGroup[] = [
     { title: NAV_SECTION_TODAY, items: operationsTodayItems(badges) },
-    { title: NAV_SECTION_ORDERING, items: operationsOrderingItems(role) },
+    { title: NAV_SECTION_ORDERING, items: operationsOrderingItems(role, badges) },
     { title: NAV_SECTION_TEAM, items: operationsTeamItems(badges) },
     {
       title: NAV_SECTION_SUPPLIERS,
@@ -698,7 +723,7 @@ function operationsNavGroups(role: UserRole, badges: NavBadges): NavGroup[] {
     },
     {
       title: NAV_SECTION_LOGISTICS,
-      items: logisticsItems,
+      items: logisticsItems(badges),
       collapsible: true,
     },
   ];
@@ -1059,6 +1084,8 @@ export function pageTitle(pathname: string): string {
   if (pathname.startsWith("/zakupy/odprawy")) return "Odprawy celne";
   if (pathname.startsWith("/zakupy/szacunek")) return "Kreator ZD";
   if (pathname.startsWith("/zakupy/braki")) return "Braki i zamówienia";
+  if (pathname.startsWith("/zakupy/cenniki")) return "Cenniki";
+  if (pathname.startsWith("/zakupy/asystent")) return "Asystent";
   if (pathname.startsWith("/zakupy/raporty-ivoclar")) return "Raporty Ivoclar (przeniesione)";
   if (pathname === "/urlopy" || pathname.startsWith("/urlopy/")) {
     return "Urlopy działu";

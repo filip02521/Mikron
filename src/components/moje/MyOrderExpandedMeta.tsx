@@ -21,7 +21,7 @@ export function MyOrderExpandedMeta({
           <div key={f.label} className="min-w-0">
             <dt
               className={cn(
-                "font-medium text-slate-400",
+                "font-medium text-slate-500",
                 salesTypography.rowMeta
               )}
             >

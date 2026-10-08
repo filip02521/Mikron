@@ -2,7 +2,7 @@
 
 Dokument dla modelu AI (lub zespołu), który ma zbudować **podobny projekt wizualnie i technicznie**, ale w **innej dziedzinie biznesowej**. Opisuje wzorce, nie logikę domenową (dostawcy, magazyn itd.).
 
-Szczegóły palety: [design-system.md](./design-system.md). Stos ogólny: [README.md](../README.md).
+Szczegóły palety i komponentów: [DESIGN.md](../DESIGN.md). Stos ogólny: [README.md](../README.md).
 
 ---
 
@@ -31,32 +31,7 @@ Szczegóły palety: [design-system.md](./design-system.md). Stos ogólny: [READM
 
 ## 2. Tożsamość wizualna (marka)
 
-### Paleta
-
-- **Marka:** indigo + sky na jasnym tle (`#4f46e5`, `#0284c7`).
-- **Tło aplikacji:** jasny szary + subtelny gradient `slate → sky` (fixed na `body`).
-- **Auth (login, reset hasła):** ciemny gradient `indigo-800 → sky-900 → slate-950` — **tylko ekrany logowania**, nie cała aplikacja.
-- **Karty:** białe (`--card`), obramowanie `slate-200/80`, cień `--shadow-card-elevated`.
-
-### Zasady wizualne
-
-1. **Gradient** — logo, przycisk primary, pasek marki; nie na całych tabelach ani aktywnych linkach menu.
-2. **Semantyka kolorów** (nie zmieniać pod markę):
-   - `amber` / `orange` — zaległe, ostrzeżenie
-   - `red` — błąd, niebezpieczna akcja
-   - `emerald` — sukces, potwierdzenie
-   - `sky` — informacja operacyjna (np. magazyn)
-   - `violet` — informacja dla innej roli (np. handlowiec)
-   - `indigo` — marka, nawigacja primary
-3. **Zaokrąglenia:** małe (`rounded-md`, `--radius` 6px) — profesjonalny B2B, nie „bubble UI”.
-4. **Cienie:** delikatne, wielowarstwowe na kartach (`--shadow-card-elevated`).
-
-### Typografia
-
-- **Font:** [Geist Sans](https://vercel.com/font) + Geist Mono (`next/font/google` w `layout.tsx`).
-- **Rozmiar bazowy:** `15px` (`0.9375rem`), `line-height: 1.55`.
-- **Nagłówki stron:** `font-semibold`, `tracking-tight`, `text-slate-900`.
-- **Etykiety sekcji:** `text-[11px] uppercase tracking-wide text-slate-500`.
+Paleta, typografia, cienie, kształty i zasady komponentów: [`DESIGN.md`](../DESIGN.md) — jedyne źródło. W skrócie: grafit + jeden akcent Petrol (`#0f7380`), statusy tylko zielony / bursztyn / czerwony, Geist + Geist Mono; ciemny gradient tylko na ekranach logowania.
 
 ---
 
@@ -66,18 +41,23 @@ Skopiuj strukturę `:root` i dostosuj hex marki:
 
 ```css
 :root {
-  --brand-indigo: #4f46e5;
-  --brand-sky: #0284c7;
-  --background: #f4f6f9;
-  --foreground: #0f172a;
+  --brand-indigo: #0f7380;        /* Petrol — jedyny akcent (nazwa historyczna) */
+  --brand-indigo-hover: #0d5d67;
+  --brand-sky: var(--brand-indigo);
+  --background: #f3f5f7;
+  --foreground: #151920;
   --card: #ffffff;
-  --card-border: #e2e8f0;
+  --card-border: #e1e4e9;
   --primary: var(--brand-indigo);
-  --primary-muted: #eef2ff;
-  --shadow-card-elevated: 0 1px 2px ..., 0 8px 24px -8px ...;
-  --shadow-brand: 0 4px 14px -6px rgba(79, 70, 229, 0.12);
+  --primary-muted: #edf7f8;
+  --radius: 0.375rem;
+  --radius-panel: 0.625rem;
+  --shadow-card-elevated: 0 1px 2px rgba(21, 25, 32, 0.05), 0 6px 20px -8px rgba(21, 25, 32, 0.12);
+  --shadow-brand: 0 4px 14px -6px rgba(15, 115, 128, 0.25);
 }
 ```
+
+Palety Tailwinda są przemapowane w `@theme`: `slate-*` = grafit, `indigo-*` = Petrol, a pozostałe rodziny (violet, blue, cyan, sky…) wskazują na Petrol lub grafit, żeby w UI został jeden akcent.
 
 W nowym projekcie zmień nazwy prefiksów (`--brand-*`) i ewentualnie odcień, ale **zachowaj** rozdzielenie: tokeny CSS → `@theme` → klasy w `*-theme.ts`.
 
@@ -314,7 +294,7 @@ Role użytkowników: [LISTA]
 |------|--------|
 | `src/app/globals.css` | Tokeny, tło, typografia |
 | `src/lib/ui/ontime-theme.ts` | Wszystkie klasy powtarzalne |
-| `docs/design-system.md` | Skrót palety i faz UI |
+| `DESIGN.md` | System wizualny: tokeny, typografia, komponenty, zasady |
 | `src/components/ui/Button.tsx` | Wzorzec wariantów |
 | `src/components/layout/AppShellClient.tsx` | Shell + mobile |
 | `src/components/layout/Sidebar.tsx` | Nawigacja desktop |

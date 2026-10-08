@@ -48,12 +48,13 @@ export function MyOrderLineClientField({
         )}
       >
         <MyOrderAssignedClient name={trimmed} clientKhId={clientKhId} className="min-w-0" />
-        <span className="inline-flex shrink-0 items-center gap-1.5 text-[0.68rem]">
+        {/* hit-target: 44 px pod palcem; odstęp, żeby strefy „Zmień” i „Usuń” się nie nakładały. */}
+        <span className="inline-flex shrink-0 items-center gap-4 text-[11px]">
           <button
             type="button"
             disabled={disabled}
             onClick={onStartEdit}
-            className={cn("font-medium", brandLinkSubtleClass)}
+            className={cn("hit-target font-medium", brandLinkSubtleClass)}
           >
             Zmień
           </button>
@@ -64,7 +65,7 @@ export function MyOrderLineClientField({
             type="button"
             disabled={disabled}
             onClick={() => void onSave({ clientName: null, clientKhId: null })}
-            className="font-medium text-red-700 hover:text-red-900 disabled:opacity-50"
+            className="hit-target font-medium text-red-700 hover:text-red-900 disabled:opacity-50"
           >
             Usuń
           </button>
@@ -79,7 +80,7 @@ export function MyOrderLineClientField({
       disabled={disabled}
       onClick={onStartEdit}
       className={cn(
-        "mt-1 text-left text-[0.68rem] font-medium disabled:opacity-50",
+        "hit-target mt-1 text-left text-[11px] font-medium disabled:opacity-50",
         brandLinkSubtleClass,
         className
       )}

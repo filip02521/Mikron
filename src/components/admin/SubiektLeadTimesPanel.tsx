@@ -236,6 +236,8 @@ export function SubiektLeadTimesPanel({ initialData }: { initialData: SubiektLea
   const state = data?.state ?? null;
   const fromSubiekt = data?.suppliers.filter((r) => r.status === "subiekt" || r.status === "subiekt_old").length ?? 0;
   const diffCount = data?.suppliers.filter(isDiff).length ?? 0;
+  // Pusta kopia: przyrost (18 mies.) nie wystarczy — pierwszy krok to pełna historia.
+  const firstRun = data != null && data.docs.zd + data.docs.fz === 0;
 
   return (
     <>
@@ -314,7 +316,27 @@ export function SubiektLeadTimesPanel({ initialData }: { initialData: SubiektLea
                 />
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
+              {firstRun ? (
+                <div className="flex flex-wrap items-center gap-3 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2.5">
+                  <p className="min-w-0 flex-1 text-sm text-slate-800">
+                    <strong className="font-semibold">Kopia ZD/FZ jest pusta.</strong> Wczytaj raz całą historię z
+                    Subiekta (ok. 5 min) - dopiero wtedy czasy dostaw liczą się z prawdziwych dat, a nie z kliknięć w
+                    panelu. Potem co noc dociąga się samo.
+                  </p>
+                  <Button size="sm" disabled={running != null} onClick={() => sync("full")}>
+                    {running === "full" ? (
+                      <>
+                        <Spinner size="sm" />
+                        Wczytuję historię (ok. 5 min)…
+                      </>
+                    ) : (
+                      "Wczytaj historię z Subiekta"
+                    )}
+                  </Button>
+                </div>
+              ) : null}
+
+              <div className={cn("flex flex-wrap items-center gap-2", firstRun && "hidden")}>
                 <Button size="sm" disabled={running != null} onClick={() => sync("incremental")}>
                   {running === "incremental" ? (
                     <>

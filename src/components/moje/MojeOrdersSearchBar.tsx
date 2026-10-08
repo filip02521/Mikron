@@ -81,7 +81,7 @@ export function MojeOrdersSearchBar({
               }
             }}
             placeholder={salesSearchPlaceholder(SALES_SEARCH_COPY.moje)}
-            className="min-h-11 pl-10 pr-9 sm:min-h-0"
+            className="min-h-11 text-ellipsis pl-10 pr-9 sm:min-h-0"
             autoComplete="off"
             spellCheck={false}
             enterKeyHint="search"

@@ -4,7 +4,7 @@ import { getSupplierFormTemplate, type SupplierXlsxListTemplate } from "@/lib/su
 import { buildSupplierXlsxList } from "@/lib/supplier-forms/xlsx";
 
 describe("Ivoclar - własny arkusz z Jm", () => {
-  it("sortuje po nazwie, Jm zawsze szt.", async () => {
+  it("kolejność jak w ZD, Jm zawsze szt.", async () => {
     const template = getSupplierFormTemplate("ivoclar-lista") as SupplierXlsxListTemplate;
     const bytes = await buildSupplierXlsxList(
       template,
@@ -20,8 +20,8 @@ describe("Ivoclar - własny arkusz z Jm", () => {
     const rows = [1, 2, 3, 4].map((r) => [1, 2, 3, 4, 5].map((c) => ws.getRow(r).getCell(c).value));
     expect(rows).toEqual([
       ["Lp", "Symbol", "Nazwa", "Ilość", "Jm"],
-      [1, 529479, "Chromascop", 4, "szt."],
-      [2, 605329, "IPS e.max CAD CEREC/inLab LT A2 C14/5", 15, "szt."],
+      [1, 605329, "IPS e.max CAD CEREC/inLab LT A2 C14/5", 15, "szt."],
+      [2, 529479, "Chromascop", 4, "szt."],
       [3, "540308 / SZAFKA", "Szafka na zęby Ivoclar z 6 szufladami", 2, "szt."],
     ]);
   });

@@ -49,28 +49,22 @@ export function SalesBugReportTrigger({ className }: { className?: string }) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => {
-          setOpen(true);
-          setError(null);
-          setSent(false);
-        }}
-        className={cn(
-          "fixed z-20 select-none",
-          // Telefon: sama ikona — pigułka z tekstem zasłaniała przyciski na kartach listy.
-          "inline-flex items-center gap-1.5 rounded-full border border-slate-300/90 bg-white/95 p-2 md:px-3 md:py-1.5",
-          "text-[11px] font-medium text-slate-600 shadow-sm backdrop-blur-sm",
-          "transition hover:border-slate-400 hover:bg-white hover:text-slate-800 hover:shadow",
-          "bottom-[calc(3.85rem+env(safe-area-inset-bottom,0px))] right-3 md:bottom-4 md:right-5",
-          className
-        )}
-        aria-label="Zgłoś problem z aplikacją"
-        title="Zgłoś problem"
-      >
-        <IconMessageSquare size={14} className="md:hidden" aria-hidden />
-        <span className="hidden md:inline">Zgłoś problem</span>
-      </button>
+      {/* Na końcu strony, w przepływie — pływający przycisk zasłaniał „⋮” i chevrony w listach. */}
+      <div className={cn("mt-6 flex justify-center pb-2", className)}>
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(true);
+            setError(null);
+            setSent(false);
+          }}
+          className="inline-flex min-h-10 select-none items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium text-slate-500 transition-colors hover:bg-white hover:text-slate-800 active:bg-slate-100"
+          aria-label="Zgłoś problem z aplikacją"
+        >
+          <IconMessageSquare size={14} aria-hidden />
+          Zgłoś problem
+        </button>
+      </div>
 
       <ModalShell
         open={open}
@@ -119,7 +113,7 @@ export function SalesBugReportTrigger({ className }: { className?: string }) {
                 disabled={pending}
               />
             </Field>
-            <p className="text-[10px] text-slate-400">Strona: {pathname}</p>
+            <p className="text-[11px] text-slate-500">Strona: {pathname}</p>
             {error ? <p className="text-xs text-red-700">{error}</p> : null}
           </div>
         )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/Button";
+import Link from "next/link";
 import { IconClipboardPen } from "@/components/icons/StrokeIcons";
 import {
   PageAttentionStrip,
@@ -13,7 +13,7 @@ import { panelChromeInsetClass } from "@/lib/ui/ontime-theme";
 export function DailyPanelVerificationBanner({
   count,
   onOpenModal,
-  edge = "flush",
+  edge = "row",
   className,
 }: {
   count: number;
@@ -23,10 +23,7 @@ export function DailyPanelVerificationBanner({
 }) {
   if (count <= 0) return null;
 
-  const label =
-    count === 1
-      ? "1 zgłoszenie do uzupełnienia"
-      : `${count} zgłoszeń do uzupełnienia`;
+  const label = `${count} ${verificationNoun(count)} do uzupełnienia`;
 
   return (
     <PageAttentionStrip
@@ -43,12 +40,25 @@ export function DailyPanelVerificationBanner({
       hint="brak danych blokuje kolejkę próśb."
       actions={
         <>
-          <Button variant="primary" size="sm" className="h-8" onClick={onOpenModal}>
+          <Link
+            href="/weryfikacja"
+            className="inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-amber-900/80 transition-colors hover:text-amber-950 hover:underline"
+          >
+            Pełny widok
+          </Link>
+          <PageAttentionStripCta chevron={false} onClick={onOpenModal}>
             Uzupełnij
-          </Button>
-          <PageAttentionStripCta href="/weryfikacja">Pełny widok</PageAttentionStripCta>
+          </PageAttentionStripCta>
         </>
       }
     />
   );
+}
+
+/** 1 zgłoszenie, 2–4 zgłoszenia (poza 12–14), 5+ zgłoszeń. */
+export function verificationNoun(count: number): string {
+  if (count === 1) return "zgłoszenie";
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  return mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) ? "zgłoszenia" : "zgłoszeń";
 }

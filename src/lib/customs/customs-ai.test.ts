@@ -11,6 +11,13 @@ import {
 import { parseInvoiceLinesPaste } from "./customs-lines";
 
 describe("parseInvoiceExtraction", () => {
+  it("nazwa sprzedawcy tylko gdy jest (do rozpoznania dostawcy)", () => {
+    const line = { code: "A1", name: "Bur", quantity: 1 };
+    expect(parseInvoiceExtraction({ sellerName: " Shenzhen UP3D Technology Co., Ltd ", lines: [line] }).sellerName).toBe(
+      "Shenzhen UP3D Technology Co., Ltd"
+    );
+    expect(parseInvoiceExtraction({ sellerName: "", lines: [line] })).not.toHaveProperty("sellerName");
+  });
   it("normalizuje nagłówek i pozycje, odrzuca puste", () => {
     const inv = parseInvoiceExtraction({
       invoiceNumber: " AI/3177/26 ",

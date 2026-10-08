@@ -133,6 +133,13 @@ export function HelpHintBubble({
           setHovered(true);
         }}
         onBlur={() => setHovered(false)}
+        onKeyDown={(event) => {
+          // Dymek z hover/fokusu musi dać się zamknąć bez ruszania kursorem.
+          if (event.key !== "Escape" || !open) return;
+          event.stopPropagation();
+          setPinned(false);
+          setHovered(false);
+        }}
         className={cn(
           "hit-target inline-flex shrink-0 items-center justify-center rounded-full transition-colors",
           buttonSize,

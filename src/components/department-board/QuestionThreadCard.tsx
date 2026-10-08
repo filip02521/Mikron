@@ -1,5 +1,8 @@
 "use client";
 
+import { actionResolveAwaitingSupplier } from "@/app/actions/gmail";
+import { BoardSupplierReplies } from "@/components/department-board/BoardSupplierReplies";
+import { businessDaysLabel, businessDaysSince } from "@/lib/suppliers/awaiting-supplier";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { Button } from "@/components/ui/Button";
@@ -31,6 +34,8 @@ import type { DepartmentBoardQuestion } from "@/lib/data/department-board-shared
 import { BoardQuestionProductContext } from "@/components/department-board/BoardQuestionProductContext";
 import { BoardThreadMessage } from "@/components/department-board/BoardThreadMessage";
 import { BoardReplyComposer } from "@/components/department-board/BoardReplyComposer";
+import { SupplierInquiryDialog } from "@/components/department-board/SupplierInquiryDialog";
+import { pendingSupplierInquiry } from "@/lib/department-board/supplier-inquiry";
 import { useBoardQuestionImages } from "@/components/department-board/useBoardQuestionImages";
 import {
   boardQuestionHasProduct,
@@ -98,6 +103,7 @@ export function QuestionThreadCard({
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [inlineReply, setInlineReply] = useState(false);
+  const [inquiryOpen, setInquiryOpen] = useState(false);
   const [locallySeen, setLocallySeen] = useState(!unseenReply);
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState(false);
@@ -124,6 +130,7 @@ export function QuestionThreadCard({
   const showUnseen = unseenReply && !locallySeen;
   const hasProduct = boardQuestionHasProduct(question);
   const stale = isStaleAnsweredQuestion(question);
+  const pendingInquiry = isClosed ? null : pendingSupplierInquiry(question.supplierInquiries);
   const threadPhotoCount =
     (question.attachments?.length ?? 0) +
     question.posts.reduce((sum, post) => sum + (post.attachments?.length ?? 0), 0);
@@ -221,6 +228,21 @@ export function QuestionThreadCard({
     }
   }
 
+  /** Dostawca odpowiedział poza mailem — koniec czekania bez wpisu w wątku. */
+  async function endSupplierWait(inquiryId: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await actionResolveAwaitingSupplier({ kind: "inquiry", id: inquiryId });
+      if (!res.ok && !/już zamknięta/.test(res.message)) setError(res.message);
+      else onChanged?.();
+    } catch (e) {
+      setError(userFacingErrorText(e, "Nie udało się zakończyć czekania."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function archive() {
     setBusy(true);
     setError(null);
@@ -285,7 +307,17 @@ export function QuestionThreadCard({
   }
 
   // Status w wierszu tylko gdy wymaga uwagi; resztę mówi filtr i pasek po lewej.
-  const statusLabel = isClosed ? null : isOpen ? "Bez odpowiedzi" : showUnseen ? "Nowa odpowiedź" : null;
+  const statusLabel = isClosed
+    ? null
+    : isOpen
+      ? pendingInquiry
+        ? "Czeka na dostawcę"
+        : "Bez odpowiedzi"
+      : showUnseen
+        ? "Nowa odpowiedź"
+        : pendingInquiry
+          ? "Czeka na dostawcę"
+          : null;
 
   const replyLabel = audience === "sales"
     ? "Twoja wiadomość"
@@ -467,7 +499,7 @@ export function QuestionThreadCard({
         />
 
         {question.posts.length === 0 ? (
-          audience === "sales" ? (
+          audience === "sales" && !pendingInquiry ? (
             <p className={boardAwaitingReplyClass}>Dział zakupów jeszcze nie odpowiedział.</p>
           ) : null
         ) : (
@@ -499,8 +531,70 @@ export function QuestionThreadCard({
           </div>
         )}
 
+        {audience === "procurement" && !isClosed && question.supplierInquiries?.length ? (
+          <BoardSupplierReplies
+            threadId={question.id}
+            onUseAnswer={(text) => {
+              // Nie nadpisuje tego, co już ktoś zaczął pisać — dokleja pod spodem.
+              setReply((prev) => (prev.trim() ? `${prev.trimEnd()}\n\n${text}` : text));
+              // Pole odpowiedzi pod spodem — od razu do poprawki.
+              requestAnimationFrame(() => document.getElementById(`reply-${question.id}`)?.focus());
+            }}
+          />
+        ) : null}
+
+        {pendingInquiry ? (
+          <p className={boardAwaitingReplyClass}>
+            {audience === "sales" ? "Zakupy zapytały dostawcę" : "Zapytanie wysłane do dostawcy"}{" "}
+            <span className="font-medium text-slate-700">{pendingInquiry.supplierName}</span> ·{" "}
+            {formatBoardDate(pendingInquiry.sentAt)}
+            {businessDaysSince(new Date(pendingInquiry.sentAt)) > 0
+              ? ` (czeka ${businessDaysLabel(businessDaysSince(new Date(pendingInquiry.sentAt)))})`
+              : ""}
+            .{" "}
+            {audience === "sales"
+              ? "Odpowiedź pojawi się w tym wątku."
+              : "Gdy dostawca odpisze, jego mail pokaże się tutaj - Twoja odpowiedź handlowcowi zakończy czekanie."}
+            {audience === "procurement" && canReply ? (
+              <>
+                {" "}
+                <button
+                  type="button"
+                  className="font-medium text-indigo-700 underline decoration-indigo-300 underline-offset-2 hover:decoration-indigo-600 disabled:opacity-50"
+                  disabled={busy}
+                  onClick={() => void endSupplierWait(pendingInquiry.id)}
+                  title="Dostawca odpowiedział inną drogą (telefon, portal) - zapytanie znika z listy „Czeka na dostawcę”"
+                >
+                  Zakończ czekanie
+                </button>
+              </>
+            ) : null}
+          </p>
+        ) : null}
+
         {canReply && !isClosed ? (
           <div className={boardReplyFormShellClass}>{replyComposer(`reply-${question.id}`)}</div>
+        ) : null}
+
+        {canReply && !isClosed && audience === "procurement" ? (
+          <div className="pt-1">
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={busy}
+              onClick={() => setInquiryOpen(true)}
+            >
+              Zapytaj dostawcę
+            </Button>
+          </div>
+        ) : null}
+
+        {inquiryOpen ? (
+          <SupplierInquiryDialog
+            threadId={question.id}
+            onClose={() => setInquiryOpen(false)}
+            onSent={() => onChanged?.()}
+          />
         ) : null}
 
         {error && !showInlineReplyForm && !(canReply && !isClosed) ? (

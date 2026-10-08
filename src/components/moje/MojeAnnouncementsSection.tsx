@@ -110,7 +110,7 @@ function MojeAnnouncementCompactRow({
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
             {unread ? (
-              <span className="shrink-0 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800">
+              <span className="shrink-0 rounded bg-sky-100 px-1.5 py-0.5 text-[11px] font-semibold text-sky-800">
                 Nowe
               </span>
             ) : null}
@@ -131,7 +131,7 @@ function MojeAnnouncementCompactRow({
             {author} · {dateLabel}
           </p>
         </div>
-        <IconChevronDown open={expanded} size={15} className="shrink-0 text-slate-400" />
+        <IconChevronDown open={expanded} size={15} className="shrink-0 text-slate-500" />
       </button>
       {expanded ? (
         <div

@@ -77,6 +77,7 @@ const HREF_TO_NAV_ICON: Record<string, NavIconKey> = {
   "/zakupy/gadki": "magazynGadki",
   "/zakupy/szacunek": "zdCreator",
   "/zakupy/braki": "stockWatch",
+  "/zakupy/cenniki": "catalog",
   "/zakupy/odprawy": "customs",
   "/admin/wysylki": "mail",
   "/admin/mail": "mail",

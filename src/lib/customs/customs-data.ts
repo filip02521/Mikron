@@ -1,6 +1,7 @@
 // @service-role-ok — wywoływane wyłącznie z akcji po requireOperations().
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { loadDhlReplyThread } from "./dhl-data";
 import { createCnLookup } from "./cn-nomenclature";
 import { shipmentFromRow, type CustomsShipmentRow } from "./customs-shipment";
 import {
@@ -84,9 +85,10 @@ export async function loadClearanceView(supabase: Db, id: string): Promise<Custo
     email_text: string | null;
     invoice_storage_path: string | null;
     agency_email: string | null;
+    dhl_shipment_id?: string | null;
   };
 
-  const [{ data: supplier }, { data: lineRows }, docs, { data: lastAgency }] = await Promise.all([
+  const [{ data: supplier }, { data: lineRows }, docs, { data: lastAgency }, dhlReply] = await Promise.all([
     supabase.from("suppliers").select("name").eq("id", clearance.supplier_id).single(),
     supabase
       .from("customs_clearance_lines")
@@ -103,6 +105,7 @@ export async function loadClearanceView(supabase: Db, id: string): Promise<Custo
       .neq("agency_email", "")
       .order("sent_at", { ascending: false })
       .limit(1),
+    clearance.dhl_shipment_id ? loadDhlReplyThread(clearance.id) : Promise.resolve(null),
   ]);
 
   const lines = (lineRows ?? []) as CustomsLineRow[];
@@ -141,8 +144,10 @@ export async function loadClearanceView(supabase: Db, id: string): Promise<Custo
     sentEmailText: clearance.email_text,
     hasInvoiceFile: Boolean(clearance.invoice_storage_path),
     agencyEmail: clearance.agency_email,
+    dhlReply: dhlReply ? { awb: dhlReply.awb, subject: dhlReply.subject, inThread: Boolean(dhlReply.inReplyTo) } : null,
     defaultAgencyEmail:
       clearance.agency_email ??
+      dhlReply?.to ??
       (((lastAgency ?? [])[0] as { agency_email?: string | null } | undefined)?.agency_email ?? null),
     lines: lineViews,
     documents: docs.documents,

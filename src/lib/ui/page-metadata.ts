@@ -45,7 +45,9 @@ export const PAGE_TITLES = {
   magazynGadki: "Magazyn Gądki",
   zdEstimate: "Kreator ZD",
   stockWatch: "Braki i zamówienia",
+  assistant: "Asystent",
   customsClearance: "Odprawy celne",
+  priceLists: "Cenniki",
   ivoclarReport: "Raporty Ivoclar (przeniesione)",
   inactiveSuppliers: "Nieaktywni dostawcy",
   team: "Zespół",
@@ -71,10 +73,14 @@ export const PAGE_DESCRIPTIONS: Partial<Record<keyof typeof PAGE_TITLES, string>
   monthlySummary: "Statystyki miesięczne - handlowcy, dostawy i zakupy",
   carriers: "Numery telefonów i kontakty do kurierów - szybki dostęp z dziennika dostaw",
   magazynGadki: "Podgląd stałych ZK magazynu zewnętrznego Gądki",
+  priceLists:
+    "Cennik dostawcy do Subiekta - podgląd różnic, kontrola opakowań i VAT, zapis cen z weryfikacją",
   customsClearance:
     "Dane do odprawy celnej importu - opis PL, kod CN, VAT i deklaracje do maila dla agencji",
   stockWatch:
     "Proaktywne braki: czas do wyczerpania i lista „Do ZD” po dostawcach - liczona jak w Kreatorze ZD",
+  assistant:
+    "Raporty automatycznych kontroli: przegląd skrzynki i zgodność potwierdzeń OC z zamówieniami",
   zdEstimate:
     "Lista produktów do zamówienia u dostawcy - jak proces ręczny (sprzedaż, stan, otwarte ZD)",
   ivoclarReport:

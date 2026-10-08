@@ -546,8 +546,8 @@ export function salesCancelLineLabel(kind: "zamowienie" | "informacja"): string 
 }
 
 /** Krótka etykieta przy linii produktu — pełne wycofanie pozycji. */
-export function salesCancelLineShortLabel(kind: "zamowienie" | "informacja"): string {
-  return kind === "informacja" ? "Anuluj" : "Anuluj";
+export function salesCancelLineShortLabel(_kind: "zamowienie" | "informacja"): string {
+  return "Anuluj pozycję";
 }
 
 /** Pełne anulowanie w menu overflow (jedna pozycja w prośbie). */

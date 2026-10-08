@@ -580,6 +580,15 @@ export function IconLink(props: StrokeIconProps) {
   );
 }
 
+/** Załącznik maila */
+export function IconPaperclip(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+    </Svg>
+  );
+}
+
 /** Brak powiązania z Subiektem */
 export function IconLinkOff(props: StrokeIconProps) {
   return (
@@ -741,6 +750,33 @@ export function IconMapPin(props: StrokeIconProps) {
     <Svg {...props}>
       <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
       <circle cx="12" cy="10" r="3" />
+    </Svg>
+  );
+}
+
+/** Plus (bez okręgu) — krokomierz ilości */
+export function IconPlus(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 5v14M5 12h14" />
+    </Svg>
+  );
+}
+
+/** Minus — krokomierz ilości */
+export function IconMinus(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M5 12h14" />
+    </Svg>
+  );
+}
+
+/** Ptaszek (bez okręgu) */
+export function IconCheck(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M20 6L9 17l-5-5" />
     </Svg>
   );
 }

@@ -73,6 +73,8 @@ export type CustomsClearanceView = {
   hasInvoiceFile: boolean;
   /** Adres agencji, na który wysłano mail z aplikacji (null = oznaczone ręcznie). */
   agencyEmail: string | null;
+  /** Odprawa z maila DHL: odpowiedź idzie jako „Re:” w wątku prośby agencji (null = zwykły mail). */
+  dhlReply?: { awb: string; subject: string; inThread: boolean } | null;
   /** Podpowiedź adresu agencji: ten z odprawy albo ostatnio użyty. */
   defaultAgencyEmail: string | null;
   lines: CustomsLineView[];

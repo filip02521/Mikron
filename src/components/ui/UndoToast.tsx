@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { IconCircleCheck } from "@/components/icons/StrokeIcons";
+import { IconAlertCircle, IconCircleCheck } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { useToastNotificationSound } from "@/lib/client/use-toast-notification-sound";
@@ -142,7 +142,11 @@ export function UndoToast({
       <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:px-4">
         <div className="flex min-w-0 items-start gap-2.5">
           <span className={cn(undoNoticeIconTileClass, isError && "bg-red-600 ring-red-500/30")}>
-            <IconCircleCheck size={18} strokeWidth={2.25} />
+            {isError ? (
+              <IconAlertCircle size={18} strokeWidth={2.25} />
+            ) : (
+              <IconCircleCheck size={18} strokeWidth={2.25} />
+            )}
           </span>
           <div className="min-w-0 pt-0.5">
             <NoticeContent
@@ -159,7 +163,7 @@ export function UndoToast({
             ) : null}
             {undoShortcut ? (
               <p className="mt-1 text-[11px] text-slate-500">
-                <kbd className="rounded border border-slate-200 bg-slate-50 px-1 py-0.5 font-mono text-[10px] text-slate-700">
+                <kbd className="rounded border border-slate-200 bg-slate-50 px-1 py-0.5 font-mono text-[11px] text-slate-700">
                   {undoShortcut}
                 </kbd>{" "}
                 - szybkie cofnięcie

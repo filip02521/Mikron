@@ -9,6 +9,7 @@ export function ConfirmDialog({
   title,
   message,
   summary,
+  summaryTone = "warning",
   confirmLabel = "Potwierdź",
   cancelLabel = "Anuluj",
   danger,
@@ -24,6 +25,8 @@ export function ConfirmDialog({
   message: string;
   /** Krótki lead nad treścią (np. „2 pozycje na stanie”). */
   summary?: string | null;
+  /** `neutral` — informacja bez alarmu (np. zapis na Subiekcie testowym). */
+  summaryTone?: "warning" | "neutral";
   confirmLabel?: string;
   cancelLabel?: string;
   danger?: boolean;
@@ -73,11 +76,15 @@ export function ConfirmDialog({
     >
       {summary ? (
         <div
-          className="flex items-start gap-2.5 rounded-lg border border-amber-200/80 bg-amber-50/70 px-3.5 py-2.5 text-xs leading-relaxed text-amber-950"
+          className={
+            summaryTone === "neutral"
+              ? "flex items-start gap-2.5 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs leading-relaxed text-slate-700"
+              : "flex items-start gap-2.5 rounded-lg border border-amber-200/80 bg-amber-50/70 px-3.5 py-2.5 text-xs leading-relaxed text-amber-950"
+          }
           role="status"
           aria-live="polite"
         >
-          <IconAlertCircle size={16} className="mt-0.5 shrink-0 text-amber-600" />
+          <IconAlertCircle size={16} className={summaryTone === "neutral" ? "mt-0.5 shrink-0 text-slate-500" : "mt-0.5 shrink-0 text-amber-600"} />
           <span className="min-w-0 flex-1 font-medium">{summary}</span>
         </div>
       ) : null}

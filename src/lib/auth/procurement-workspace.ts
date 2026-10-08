@@ -196,6 +196,7 @@ const DOSTAWY_WORKSPACE_PATH_PREFIXES = [
   "/zamowienia",
   "/zakupy/gadki",
   "/zakupy/szacunek",
+  "/zakupy/asystent",
   "/zakupy/tablica",
   "/urlopy",
   "/kurierzy",

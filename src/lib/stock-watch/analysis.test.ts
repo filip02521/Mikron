@@ -3,6 +3,7 @@ import {
   analyzeStockWatchItem,
   compareStockWatchAlerts,
   computeStockHealthScore,
+  pairStockPieces,
   unitPricePerPiece,
   type StockWatchInput,
 } from "@/lib/stock-watch/analysis";
@@ -101,5 +102,32 @@ describe("computeStockHealthScore", () => {
         { status: "out_of_stock", rule: "excluded" },
       ])
     ).toEqual({ score: 50, active: 2, ok: 1 });
+  });
+});
+
+describe("pairStockPieces", () => {
+  const wirofine = {
+    role: "pack" as const,
+    unitsPerPack: 45,
+    pieceDostepne: 240,
+    packDostepne: 5,
+    coverSzt: 240 + 5 * 45 + 2 * 45, // + 2 kartony na otwartym ZD
+  };
+
+  it("paczka: stan w sztukach = sztuki + paczki × przelicznik, ZD = reszta pokrycia", () => {
+    expect(pairStockPieces(wirofine)).toEqual({ availableQty: 465, openZdQty: 90 });
+  });
+
+  it("Wirofine nie jest krytyczny (dawniej 5 kartonów / 8 szt. dziennie = 0,6 dnia)", () => {
+    const stock = pairStockPieces(wirofine)!;
+    const r = analyzeStockWatchItem(input({ ...stock, velocityDaily: 7.97, targetQty: 175 }));
+    expect(r.status).toBe("ok");
+    expect(r.daysOfCover).toBe(58.3);
+  });
+
+  it("linia sztuk, brak pary albo brak partnera → zwykłe liczenie", () => {
+    expect(pairStockPieces({ ...wirofine, role: "piece" })).toBeNull();
+    expect(pairStockPieces({ ...wirofine, partnerMissing: true })).toBeNull();
+    expect(pairStockPieces(null)).toBeNull();
   });
 });

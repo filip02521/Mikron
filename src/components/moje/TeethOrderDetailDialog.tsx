@@ -22,7 +22,6 @@ import {
   mojeShipmentSectionHeaderTitleClass,
   mojeShipmentLineRowClass,
 } from "@/lib/ui/moje-shipment-row-styles";
-import { salesTypography } from "@/lib/ui/ontime-theme";
 
 type TeethLineSummary = {
   group: TeethGroupedDetail;
@@ -64,20 +63,20 @@ function buildTeethLineSummaries(
 function DeliveryBadge({ delivered, ordered }: { delivered: number; ordered: number }) {
   if (delivered <= 0) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 ring-1 ring-slate-200/80">
+      <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-1.5 py-0.5 text-[11px] font-semibold text-slate-500 ring-1 ring-slate-200/80">
         czeka
       </span>
     );
   }
   if (delivered >= ordered) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200/80">
+      <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-200/80">
         komplet
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 ring-1 ring-amber-200/80">
+    <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold text-amber-700 ring-1 ring-amber-200/80">
       częściowo
     </span>
   );
@@ -140,34 +139,6 @@ export function TeethOrderDetailDialog({
         }
       >
         <div className="space-y-2 px-3 py-3 sm:px-4">
-          {/* Summary band */}
-          <div className="grid grid-cols-3 gap-2">
-            <div className="rounded-md border border-slate-200/80 bg-white px-3 py-2">
-              <p className={cn(salesTypography.sectionLabel, "text-slate-400")}>
-                Zamówiono
-              </p>
-              <p className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">
-                {totalOrdered}
-              </p>
-            </div>
-            <div className="rounded-md border border-emerald-200/80 bg-emerald-50/40 px-3 py-2">
-              <p className={cn(salesTypography.sectionLabel, "text-emerald-600")}>
-                Przyjęto
-              </p>
-              <p className="mt-0.5 text-lg font-semibold tabular-nums text-emerald-900">
-                {totalDelivered}
-              </p>
-            </div>
-            <div className="rounded-md border border-amber-200/80 bg-amber-50/40 px-3 py-2">
-              <p className={cn(salesTypography.sectionLabel, "text-amber-600")}>
-                Brakuje
-              </p>
-              <p className="mt-0.5 text-lg font-semibold tabular-nums text-amber-900">
-                {totalRemaining}
-              </p>
-            </div>
-          </div>
-
           {/* Detail table */}
           <section className={mojeShipmentLinesShellClass}>
             <div className={mojeShipmentSectionHeaderClass}>
@@ -177,19 +148,19 @@ export function TeethOrderDetailDialog({
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-100">
-                    <th className="px-3 py-1.5 text-left text-[10px] font-semibold text-slate-400">
+                    <th className="px-3 py-1.5 text-left text-[11px] font-semibold text-slate-500">
                       Specyfikacja
                     </th>
-                    <th className="px-3 py-1.5 text-center text-[10px] font-semibold text-slate-400">
+                    <th className="px-3 py-1.5 text-center text-[11px] font-semibold text-slate-500">
                       Zam.
                     </th>
-                    <th className="px-3 py-1.5 text-center text-[10px] font-semibold text-slate-400">
+                    <th className="px-3 py-1.5 text-center text-[11px] font-semibold text-slate-500">
                       Przyj.
                     </th>
-                    <th className="px-3 py-1.5 text-center text-[10px] font-semibold text-slate-400">
+                    <th className="px-3 py-1.5 text-center text-[11px] font-semibold text-slate-500">
                       Brak
                     </th>
-                    <th className="px-3 py-1.5 text-center text-[10px] font-semibold text-slate-400">
+                    <th className="px-3 py-1.5 text-center text-[11px] font-semibold text-slate-500">
                       Status
                     </th>
                   </tr>
@@ -218,6 +189,15 @@ export function TeethOrderDetailDialog({
                     </tr>
                   ))}
                 </tbody>
+                <tfoot>
+                  <tr className="border-t border-slate-200 bg-slate-50 text-xs font-semibold">
+                    <td className="px-3 py-2 text-slate-600">Razem</td>
+                    <td className="px-3 py-2 text-center tabular-nums text-slate-700">{totalOrdered}</td>
+                    <td className="px-3 py-2 text-center tabular-nums text-emerald-700">{totalDelivered}</td>
+                    <td className="px-3 py-2 text-center tabular-nums text-amber-700">{totalRemaining}</td>
+                    <td />
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </section>
@@ -228,7 +208,7 @@ export function TeethOrderDetailDialog({
               Magazynier przyjmie je w kolejnej dostawie, a status zaktualizuje się automatycznie.
             </p>
           ) : (
-            <p className="text-xs leading-relaxed text-emerald-600">
+            <p className="text-xs leading-relaxed text-emerald-700">
               Całość zamówienia jest przyjęta na magazyn. Potwierdź odbiór osobisty, aby pozycja zniknęła z listy.
             </p>
           )}

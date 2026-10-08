@@ -47,7 +47,7 @@ import { deriveMyOrderSectionDisplayState } from "@/lib/orders/my-order-section-
 import { useMojeScrollManagement } from "@/components/moje/useMojeScrollManagement";
 import { parseMojeFocusOrderIds } from "@/lib/orders/moje-order-focus";
 import { sortInformacjaProgressRows } from "@/lib/orders/my-order-informacja-progress-sort";
-import { MojeSectionShell } from "@/components/moje/MojeSectionShell";
+import { MojeSectionHeaderSlot, MojeSectionShell } from "@/components/moje/MojeSectionShell";
 import {
   mojeSectionHeadingDomId,
 } from "@/lib/orders/moje-section-focus";
@@ -192,6 +192,7 @@ function MojeSectionListLabel({
       accent={toSectionListAccent(accent)}
       icon={<MojeSectionIcon kind={icon} size={17} />}
       tileClassName={mojeSectionIconTileClass(icon)}
+      action={<MojeSectionHeaderSlot />}
     />
   );
 }
@@ -1002,14 +1003,14 @@ function MojeOrdersViewContent({
               sectionId="ordered_progress"
               rows={orderedProgressZamowienia}
               showSectionLabel={showProgressSectionLabels}
-              showWhenEmpty={showZamowieniaProgressSplit}
+              showWhenEmpty={showZamowieniaProgressSplit && !clientLinkFilterActive}
               listProps={listProps}
             />
             <MyOrderZamowieniaProgressSection
               sectionId="before_order"
               rows={beforeOrderZamowienia}
               showSectionLabel={showProgressSectionLabels}
-              showWhenEmpty={showZamowieniaProgressSplit}
+              showWhenEmpty={showZamowieniaProgressSplit && !clientLinkFilterActive}
               listProps={listProps}
             />
           </>

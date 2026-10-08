@@ -168,6 +168,7 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   createSubiektOrdersZd,
+  resolveSubiektIssuerId,
   fetchSubiektOrdersLatestFsDateKey,
   fetchSubiektZdEstimateZkPage,
   getSubiektOrdersZd,
@@ -3302,10 +3303,19 @@ export async function actionCreateZdFromEstimate(input: {
     prioritizeServices: true,
   });
 
+  // „Wystawił” = osoba zalogowana w OnTime, nie domyślny operator API (dotąd zawsze ta sama osoba).
+  const personelId = await resolveSubiektIssuerId(user.email).catch((e: unknown) => {
+    console.warn("[zd-estimate:create:issuer]", { userId: user.id, message: e instanceof Error ? e.message : String(e) });
+    return null;
+  });
+  if (personelId == null) {
+    console.warn("[zd-estimate:create:issuer]", { userId: user.id, email: user.email, message: "Brak użytkownika Subiekta dla konta" });
+  }
   const body = buildZdCreateApiBody({
     kontrahentId: khRes.khId,
     uwagi: composedUwagi.uwagi,
     lines: createLines,
+    personelId,
   });
 
   let dokId = 0;
