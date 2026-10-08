@@ -57,6 +57,14 @@ import { useDeepLinkScrollOnce } from "@/hooks/use-deep-link-scroll-once";
 import { useDepartmentBoardTabUrl } from "@/hooks/use-department-board-tab-url";
 import { SalesListFilterEmptyHint } from "@/components/sales/SalesListEmptyHints";
 import { toastSuccess } from "@/lib/ui/notice-copy";
+import { inquiryNeedsAttention } from "@/lib/department-board/supplier-inquiry";
+import type { DepartmentBoardQuestion } from "@/lib/data/department-board-shared";
+
+/** Pytania z odpowiedzią dostawcy (do przekazania handlowcowi) na górę — reszta w dotychczasowej kolejności. */
+function withSupplierRepliesFirst(questions: DepartmentBoardQuestion[]): DepartmentBoardQuestion[] {
+  const replied = questions.filter((q) => q.supplierInquiries?.some(inquiryNeedsAttention));
+  return replied.length ? [...replied, ...questions.filter((q) => !replied.includes(q))] : questions;
+}
 
 const PROCUREMENT_ANNOUNCEMENT_SUCCESS_TOAST = toastSuccess(
   "Opublikowano",
@@ -109,7 +117,7 @@ export function DepartmentBoardProcurementClient({
 
   const openQuestionsCount = initial.questions.filter((q) => q.status === "open").length;
   const allQuestions = useMemo(
-    () => [...initial.questions, ...initial.closedQuestions],
+    () => [...withSupplierRepliesFirst(initial.questions), ...initial.closedQuestions],
     [initial.questions, initial.closedQuestions]
   );
 

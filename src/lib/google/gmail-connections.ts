@@ -17,6 +17,8 @@ import {
   fetchGmailAttachment,
   fetchGmailReplies,
   findGmailMessageByRfcId,
+  getGmailMessageMeta,
+  getGmailThreadId,
   isGmailTransportError,
   scopeCanReadReplies,
   type GmailReply,
@@ -467,11 +469,11 @@ export type BoardReplyForAi = {
  * Jedna odpowiedź dostawcy z wątku pytania razem z załącznikami PDF — dla propozycji odpowiedzi (AI).
  * Czytane z konta osoby, która wysłała zapytanie. null = brak zapytania, odpowiedzi albo dostępu.
  */
-export async function boardReplyForAi(input: {
-  threadId: string;
-  inquiryId: string;
-  replyId: string;
-}): Promise<BoardReplyForAi | null> {
+/** Zapytanie z wątku tablicy i token Gmaila osoby, która je wysłała (odpowiedzi są w jej skrzynce). */
+async function inquirySenderMailbox(
+  threadId: string,
+  inquiryId: string
+): Promise<{ row: SentMailRow & { supplier_name: string; gmail_message_id: string }; token: string } | null> {
   const cfg = getGmailOAuthConfig();
   if (!cfg) return null;
   const { rows } = await query<SentMailRow & { supplier_name: string }>(
@@ -479,11 +481,46 @@ export async function boardReplyForAi(input: {
        FROM public.supplier_inquiry_emails i
        ${senderConnectionJoin("i")}
       WHERE i.id = $1 AND i.thread_id = $2`,
-    [input.inquiryId, input.threadId]
+    [inquiryId, threadId]
   );
   const row = rows[0];
   if (!row?.gmail_message_id || !row.refresh_token_enc || !scopeCanReadReplies(row.scope)) return null;
   const token = await gmailAccessToken(cfg, decryptToken(cfg.tokenKey, row.refresh_token_enc));
+  return { row: { ...row, gmail_message_id: row.gmail_message_id }, token };
+}
+
+/**
+ * Załącznik z odpowiedzi dostawcy na zapytanie z tablicy — do dołączenia w odpowiedzi handlowcowi.
+ * Tylko wiadomość z wątku tego zapytania (nie dowolny mail ze skrzynki). null = brak pliku albo dostępu.
+ */
+export async function boardReplyAttachment(input: {
+  threadId: string;
+  inquiryId: string;
+  replyId: string;
+  filename: string;
+}): Promise<{ filename: string; data: Buffer } | null> {
+  const box = await inquirySenderMailbox(input.threadId, input.inquiryId);
+  if (!box) return null;
+  const [meta, inquiryThread] = await Promise.all([
+    getGmailMessageMeta(box.token, input.replyId),
+    box.row.gmail_thread_id || getGmailThreadId(box.token, box.row.gmail_message_id),
+  ]);
+  if (!meta || !inquiryThread || meta.threadId !== inquiryThread || meta.labelIds.includes("SENT")) return null;
+  // attachmentId z tego odczytu — Gmail zmienia je przy każdym pobraniu wiadomości.
+  const ref = meta.attachments.find((a) => a.filename === input.filename);
+  if (!ref) return null;
+  const data = await fetchGmailAttachment(box.token, input.replyId, ref.attachmentId);
+  return data ? { filename: ref.filename, data } : null;
+}
+
+export async function boardReplyForAi(input: {
+  threadId: string;
+  inquiryId: string;
+  replyId: string;
+}): Promise<BoardReplyForAi | null> {
+  const box = await inquirySenderMailbox(input.threadId, input.inquiryId);
+  if (!box) return null;
+  const { row, token } = box;
   const thread = await fetchGmailReplies(token, row.gmail_message_id, { withText: true, threadId: row.gmail_thread_id });
   const reply = thread?.replies.find((r) => r.id === input.replyId);
   if (!reply) return null;

@@ -6,9 +6,16 @@ import {
   actionBoardInquiryReplies,
   actionSuggestBoardAnswerFromSupplier,
 } from "@/app/actions/department-board-inquiry";
+import type { BoardSupplierFileRef } from "@/app/actions/department-board";
+import { IconPaperclip } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
+import {
+  BOARD_SUPPLIER_FILE_MAX_BYTES,
+  BOARD_SUPPLIER_FILE_MAX_COUNT,
+  boardSupplierFileType,
+} from "@/lib/department-board/attachments";
 import type { GmailReply } from "@/lib/google/gmail";
 import type { BoardInquiryReplies } from "@/lib/google/gmail-connections";
 
@@ -33,10 +40,18 @@ function senderName(from: string): string {
 export function BoardSupplierReplies({
   threadId,
   onUseAnswer,
+  refreshKey = "",
+  attachedKeys = [],
+  onToggleFile,
 }: {
   threadId: string;
   /** Wstawia tekst do pola odpowiedzi w wątku. */
   onUseAnswer: (text: string) => void;
+  /** Zmienia się, gdy synchronizacja poczty przyniesie nową odpowiedź — wtedy odczyt z Gmaila od nowa. */
+  refreshKey?: string;
+  /** Pliki już dołączone do odpowiedzi (klucz `inquiryId|replyId|nazwa`). */
+  attachedKeys?: readonly string[];
+  onToggleFile?: (file: BoardSupplierFileRef) => void;
 }) {
   const [items, setItems] = useState<BoardInquiryReplies[] | null>(null);
   const [aiAvailable, setAiAvailable] = useState(false);
@@ -59,7 +74,8 @@ export function BoardSupplierReplies({
 
   useEffect(() => {
     void load();
-  }, [load]);
+    // refreshKey — nowa odpowiedź dostawcy po odświeżeniu tablicy.
+  }, [load, refreshKey]);
 
   if (error) return <p className="text-xs text-rose-800">{error}</p>;
   if (items == null) {
@@ -105,6 +121,8 @@ export function BoardSupplierReplies({
             olderCount={inquiry.replies.filter((r) => r.kind === "supplier").length - 1}
             aiAvailable={aiAvailable}
             onUseAnswer={onUseAnswer}
+            attachedKeys={attachedKeys}
+            onToggleFile={onToggleFile}
           />
         ) : null
       )}
@@ -137,6 +155,8 @@ function SupplierReplyCard({
   olderCount,
   aiAvailable,
   onUseAnswer,
+  attachedKeys,
+  onToggleFile,
 }: {
   threadId: string;
   inquiry: BoardInquiryReplies;
@@ -144,6 +164,8 @@ function SupplierReplyCard({
   olderCount: number;
   aiAvailable: boolean;
   onUseAnswer: (text: string) => void;
+  attachedKeys: readonly string[];
+  onToggleFile?: (file: BoardSupplierFileRef) => void;
 }) {
   const [showAll, setShowAll] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -200,7 +222,51 @@ function SupplierReplyCard({
           {showAll ? "Zwiń" : "Pokaż całość"}
         </button>
       ) : null}
-      {reply.attachments.length ? (
+      {reply.files?.length && onToggleFile ? (
+        <div className="mt-2">
+          <p className="text-[11px] font-medium text-slate-600">Załączniki - dołącz do odpowiedzi dla handlowca:</p>
+          <ul className="mt-1 flex flex-wrap gap-1.5">
+            {reply.files.map((f, i) => {
+              const ref = { inquiryId: inquiry.inquiryId, replyId: reply.id, filename: f.filename };
+              const key = `${ref.inquiryId}|${ref.replyId}|${ref.filename}`;
+              const attached = attachedKeys.includes(key);
+              const supported = Boolean(boardSupplierFileType(f.filename));
+              const tooBig = f.size > BOARD_SUPPLIER_FILE_MAX_BYTES;
+              const disabled =
+                !supported || tooBig || (!attached && attachedKeys.length >= BOARD_SUPPLIER_FILE_MAX_COUNT);
+              return (
+                <li key={`${f.filename}-${i}`}>
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    aria-pressed={attached}
+                    onClick={() => onToggleFile(ref)}
+                    title={
+                      !supported
+                        ? "Tego typu pliku nie można dołączyć (PDF, zdjęcia, Excel, Word, CSV)"
+                        : tooBig
+                          ? "Plik jest za duży (max 15 MB) - prześlij go handlowcowi z Gmaila"
+                          : attached
+                            ? "Kliknij, żeby usunąć z odpowiedzi"
+                            : "Dołącz do odpowiedzi"
+                    }
+                    className={cn(
+                      "inline-flex max-w-72 items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50",
+                      attached
+                        ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                    )}
+                  >
+                    <IconPaperclip size={12} className="shrink-0 text-slate-400" aria-hidden />
+                    <span className="truncate">{f.filename}</span>
+                    <span className="shrink-0 font-medium">{attached ? "Dołączony" : "Dołącz"}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : reply.attachments.length ? (
         <p className="mt-1 break-all text-[11px] text-slate-500">Załączniki: {reply.attachments.join(", ")}</p>
       ) : null}
       {olderCount > 0 ? (

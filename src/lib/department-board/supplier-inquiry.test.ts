@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildSupplierInquiryDraft,
+  inquiryNeedsAttention,
   pendingInquiryToSupplier,
   pendingSupplierInquiry,
   supplierInquiryRef,
@@ -99,3 +100,25 @@ describe("pendingSupplierInquiry", () => {
     expect(en.body).not.toContain("Kind regards");
   });
 });
+
+describe("inquiryNeedsAttention", () => {
+  const base: BoardSupplierInquiry = {
+    id: "i1",
+    supplierId: "s1",
+    supplierName: "Renfert GmbH",
+    sentAt: "2026-10-06T08:00:00.000Z",
+    resolvedAt: null,
+  };
+  it("odpowiedź dostawcy (albo zwrot) bez odpowiedzi zakupów → do reakcji", () => {
+    expect(inquiryNeedsAttention({ ...base, replyAt: "2026-10-07T09:12:00.000Z" })).toBe(true);
+    expect(inquiryNeedsAttention({ ...base, replyAt: "2026-10-07T09:12:00.000Z", bounced: true })).toBe(true);
+  });
+  it("brak odpowiedzi albo zakupy już odpisały w wątku → nie", () => {
+    expect(inquiryNeedsAttention(base)).toBe(false);
+    expect(inquiryNeedsAttention({ ...base, replyAt: null })).toBe(false);
+    expect(
+      inquiryNeedsAttention({ ...base, replyAt: "2026-10-07T09:12:00.000Z", resolvedAt: "2026-10-07T10:00:00.000Z" })
+    ).toBe(false);
+  });
+});
+

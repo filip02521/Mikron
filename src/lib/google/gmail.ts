@@ -288,6 +288,8 @@ export type GmailReply = {
   text?: string;
   /** Załączniki PDF do pobrania (tylko z `withText`). */
   pdfs?: GmailPdfRef[];
+  /** Wszystkie załączniki z typem i rozmiarem (tylko z `withText`) — do dołączenia w odpowiedzi na tablicy. */
+  files?: Array<{ filename: string; size: number; mimeType: string }>;
 };
 
 export type GmailPdfRef = { filename: string; attachmentId: string; size: number };
@@ -405,7 +407,14 @@ export function repliesFromThread(
       at: new Date(Number(m.internalDate ?? 0)).toISOString(),
       snippet: decodeSnippet(m.snippet ?? ""),
       attachments: attachmentNames(m.payload),
-      ...(opts.withText ? { text: stripQuotedReply(messagePlainText(m.payload)), pdfs: pdfAttachmentRefs(m.payload) } : {}),
+      ...(opts.withText
+        ? {
+            text: stripQuotedReply(messagePlainText(m.payload)),
+            pdfs: pdfAttachmentRefs(m.payload),
+            // Bez attachmentId — Gmail zmienia je przy każdym odczycie; plik wskazuje nazwa.
+            files: attachmentRefs(m.payload).map(({ filename, size, mimeType }) => ({ filename, size, mimeType })),
+          }
+        : {}),
     }));
 }
 

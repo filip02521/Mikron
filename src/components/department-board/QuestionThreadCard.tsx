@@ -35,7 +35,8 @@ import { BoardQuestionProductContext } from "@/components/department-board/Board
 import { BoardThreadMessage } from "@/components/department-board/BoardThreadMessage";
 import { BoardReplyComposer } from "@/components/department-board/BoardReplyComposer";
 import { SupplierInquiryDialog } from "@/components/department-board/SupplierInquiryDialog";
-import { pendingSupplierInquiry } from "@/lib/department-board/supplier-inquiry";
+import { inquiryNeedsAttention, pendingSupplierInquiry } from "@/lib/department-board/supplier-inquiry";
+import { isBoardImageAttachment } from "@/lib/department-board/attachments";
 import { useBoardQuestionImages } from "@/components/department-board/useBoardQuestionImages";
 import {
   boardQuestionHasProduct,
@@ -49,6 +50,7 @@ import {
   actionMarkQuestionThreadSeen,
   actionReopenQuestion,
   actionReplyToQuestion,
+  type BoardSupplierFileRef,
 } from "@/app/actions/department-board";
 import { isStaleAnsweredQuestion } from "@/lib/department-board/attention";
 import { askConfirm } from "@/components/ui/ConfirmHost";
@@ -59,11 +61,17 @@ function photoLabel(count: number): string {
 }
 
 /** Podgląd treści wpisu w zwiniętym wierszu — samo zdjęcie też coś mówi. */
-function postPreviewText(body: string, photoCount: number): string {
+function postPreviewText(body: string, photoCount: number, fileCount = 0): string {
   const text = body.trim();
-  if (!photoCount) return text;
-  const photos = `[${photoLabel(photoCount)}]`;
-  return text ? `${photos} ${text}` : photos;
+  const tags = [
+    photoCount ? `[${photoLabel(photoCount)}]` : null,
+    fileCount ? `[${fileCount === 1 ? "plik" : `pliki: ${fileCount}`}]` : null,
+  ].filter(Boolean);
+  return [...tags, text].filter(Boolean).join(" ");
+}
+
+function supplierFileKey(f: BoardSupplierFileRef): string {
+  return `${f.inquiryId}|${f.replyId}|${f.filename}`;
 }
 
 function procurementReplyLabel(indexAmongProcurement: number): string {
@@ -106,6 +114,8 @@ export function QuestionThreadCard({
   const [inquiryOpen, setInquiryOpen] = useState(false);
   const [locallySeen, setLocallySeen] = useState(!unseenReply);
   const [reply, setReply] = useState("");
+  /** Załączniki z maila dostawcy dołączone do odpowiedzi (plik pobiera serwer przy wysyłce). */
+  const [supplierFiles, setSupplierFiles] = useState<BoardSupplierFileRef[]>([]);
   const [busy, setBusy] = useState(false);
   const {
     images: replyImages,
@@ -131,9 +141,12 @@ export function QuestionThreadCard({
   const hasProduct = boardQuestionHasProduct(question);
   const stale = isStaleAnsweredQuestion(question);
   const pendingInquiry = isClosed ? null : pendingSupplierInquiry(question.supplierInquiries);
-  const threadPhotoCount =
-    (question.attachments?.length ?? 0) +
-    question.posts.reduce((sum, post) => sum + (post.attachments?.length ?? 0), 0);
+  // Odpowiedź dostawcy z Poczty (synchronizacja Gmaila w tle) — zakupy widzą ją na liście bez rozwijania.
+  const supplierAnswered =
+    isClosed || audience !== "procurement" ? null : (question.supplierInquiries ?? []).find(inquiryNeedsAttention) ?? null;
+  const threadPhotoCount = [...(question.attachments ?? []), ...question.posts.flatMap((post) => post.attachments ?? [])].filter(
+    (a) => isBoardImageAttachment(a.mime_type)
+  ).length;
 
   const latestActivityPost = useMemo(() => {
     if (question.posts.length === 0) return null;
@@ -155,7 +168,8 @@ export function QuestionThreadCard({
             ),
         text: postPreviewText(
           latestActivityPost.body,
-          latestActivityPost.attachments?.length ?? 0
+          (latestActivityPost.attachments ?? []).filter((a) => isBoardImageAttachment(a.mime_type)).length,
+          (latestActivityPost.attachments ?? []).filter((a) => !isBoardImageAttachment(a.mime_type)).length
         ),
       };
     }
@@ -216,8 +230,9 @@ export function QuestionThreadCard({
     setBusy(true);
     setError(null);
     try {
-      await actionReplyToQuestion(question.id, reply, replyImageFiles);
+      await actionReplyToQuestion(question.id, reply, replyImageFiles, supplierFiles);
       setReply("");
+      setSupplierFiles([]);
       clearReplyImages();
       setInlineReply(false);
       onChanged?.();
@@ -309,7 +324,11 @@ export function QuestionThreadCard({
   // Status w wierszu tylko gdy wymaga uwagi; resztę mówi filtr i pasek po lewej.
   const statusLabel = isClosed
     ? null
-    : isOpen
+    : supplierAnswered
+      ? supplierAnswered.bounced
+        ? "Mail do dostawcy nie doszedł"
+        : "Dostawca odpisał"
+      : isOpen
       ? pendingInquiry
         ? "Czeka na dostawcę"
         : "Bez odpowiedzi"
@@ -341,6 +360,8 @@ export function QuestionThreadCard({
       busy={busy}
       onSubmit={() => void submitReply()}
       error={error}
+      extraFiles={supplierFiles.map((f) => ({ key: supplierFileKey(f), name: f.filename }))}
+      onRemoveExtraFile={(key) => setSupplierFiles((prev) => prev.filter((f) => supplierFileKey(f) !== key))}
     />
   );
   const expandLabel = `Pytanie: ${question.title}`;
@@ -398,7 +419,21 @@ export function QuestionThreadCard({
                 </span>
                 {statusLabel ? (
                   <span
-                    className={boardQuestionStatusBadgeClass({ unseen: showUnseen, open: isOpen })}
+                    className={
+                      supplierAnswered
+                        ? cn(
+                            "shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold ring-1",
+                            supplierAnswered.bounced
+                              ? "bg-red-50 text-red-800 ring-red-200"
+                              : "bg-emerald-50 text-emerald-800 ring-emerald-200"
+                          )
+                        : boardQuestionStatusBadgeClass({ unseen: showUnseen, open: isOpen })
+                    }
+                    title={
+                      supplierAnswered
+                        ? `${supplierAnswered.supplierName} · ${formatBoardDate(supplierAnswered.replyAt!)}`
+                        : undefined
+                    }
                   >
                     {statusLabel}
                   </span>
@@ -534,6 +569,15 @@ export function QuestionThreadCard({
         {audience === "procurement" && !isClosed && question.supplierInquiries?.length ? (
           <BoardSupplierReplies
             threadId={question.id}
+            refreshKey={(question.supplierInquiries ?? []).map((i) => i.replyAt ?? "").join("|")}
+            attachedKeys={supplierFiles.map(supplierFileKey)}
+            onToggleFile={(file) =>
+              setSupplierFiles((prev) =>
+                prev.some((f) => supplierFileKey(f) === supplierFileKey(file))
+                  ? prev.filter((f) => supplierFileKey(f) !== supplierFileKey(file))
+                  : [...prev, file]
+              )
+            }
             onUseAnswer={(text) => {
               // Nie nadpisuje tego, co już ktoś zaczął pisać — dokleja pod spodem.
               setReply((prev) => (prev.trim() ? `${prev.trimEnd()}\n\n${text}` : text));
@@ -548,13 +592,15 @@ export function QuestionThreadCard({
             {audience === "sales" ? "Zakupy zapytały dostawcę" : "Zapytanie wysłane do dostawcy"}{" "}
             <span className="font-medium text-slate-700">{pendingInquiry.supplierName}</span> ·{" "}
             {formatBoardDate(pendingInquiry.sentAt)}
-            {businessDaysSince(new Date(pendingInquiry.sentAt)) > 0
+            {!pendingInquiry.replyAt && businessDaysSince(new Date(pendingInquiry.sentAt)) > 0
               ? ` (czeka ${businessDaysLabel(businessDaysSince(new Date(pendingInquiry.sentAt)))})`
               : ""}
             .{" "}
             {audience === "sales"
               ? "Odpowiedź pojawi się w tym wątku."
-              : "Gdy dostawca odpisze, jego mail pokaże się tutaj - Twoja odpowiedź handlowcowi zakończy czekanie."}
+              : pendingInquiry.replyAt
+                ? `${pendingInquiry.bounced ? "Mail wrócił" : "Dostawca odpisał"} ${formatBoardDate(pendingInquiry.replyAt)} - odpowiedz handlowcowi, żeby zamknąć sprawę.`
+                : "Gdy dostawca odpisze, jego mail pokaże się tutaj (sprawdzamy co kilka minut) - Twoja odpowiedź handlowcowi zakończy czekanie."}
             {audience === "procurement" && canReply ? (
               <>
                 {" "}

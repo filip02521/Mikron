@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   BOARD_IMAGE_MAX_COUNT,
   boardImageStoragePrefix,
+  boardSupplierFileType,
+  isBoardImageAttachment,
   imageFilesFromClipboardData,
   isBoardImageMime,
   isBoardImageStoragePath,
@@ -126,3 +128,24 @@ describe("imageFilesFromClipboardData", () => {
     expect(files[0]?.name).toBe("etykieta.webp");
   });
 });
+
+describe("pliki od dostawcy na tablicy", () => {
+  it("PDF, zdjęcia, Excel, Word, CSV — tak; HTML, EXE, ZIP — nie", () => {
+    expect(boardSupplierFileType("Oferta 2026-10.PDF")).toEqual({ ext: "pdf", mime: "application/pdf" });
+    expect(boardSupplierFileType("karta.jpeg")).toEqual({ ext: "jpg", mime: "image/jpeg" });
+    expect(boardSupplierFileType("cennik.xlsx")?.ext).toBe("xlsx");
+    expect(boardSupplierFileType("warunki.docx")?.ext).toBe("docx");
+    expect(boardSupplierFileType("strona.html")).toBeNull();
+    expect(boardSupplierFileType("setup.exe")).toBeNull();
+    expect(boardSupplierFileType("paczka.zip")).toBeNull();
+    expect(boardSupplierFileType("bez-rozszerzenia")).toBeNull();
+  });
+
+  it("ścieżka w magazynie dopuszcza PDF; zdjęcie odróżnione od pliku", () => {
+    expect(isBoardImageStoragePath("board/11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222.pdf")).toBe(true);
+    expect(isBoardImageStoragePath("board/11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222.html")).toBe(false);
+    expect(isBoardImageAttachment("image/png")).toBe(true);
+    expect(isBoardImageAttachment("application/pdf")).toBe(false);
+  });
+});
+

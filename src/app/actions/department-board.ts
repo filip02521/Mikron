@@ -17,13 +17,16 @@ import {
 } from "@/lib/data/department-board";
 import { notifyBoardQuestionReplyToSales } from "@/lib/department-board/notify-board-reply";
 import { resolveSupplierInquiries } from "@/lib/department-board/supplier-inquiry-db";
-import { inquiriesToResolveOnReply } from "@/lib/google/gmail-connections";
+import { boardReplyAttachment, inquiriesToResolveOnReply } from "@/lib/google/gmail-connections";
 import { markInquiryMailHandled } from "@/lib/supplier-mail/data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SalesNoteColor } from "@/types/database";
 import {
   BOARD_IMAGE_BUCKET,
+  BOARD_SUPPLIER_FILE_MAX_BYTES,
+  BOARD_SUPPLIER_FILE_MAX_COUNT,
   DEPARTMENT_BOARD_ATTACHMENT_SELECT,
+  boardSupplierFileType,
   type BoardThreadAttachmentRow,
   boardImageStoragePrefix,
   isBoardImageStoragePath,
@@ -406,10 +409,14 @@ export async function actionGetBoardQuestionImageUrl(
   return { url: signed.signedUrl };
 }
 
+/** Załącznik z maila dostawcy wskazany w odpowiedzi (plik pobiera serwer z Gmaila osoby, która pytała). */
+export type BoardSupplierFileRef = { inquiryId: string; replyId: string; filename: string };
+
 export async function actionReplyToQuestion(
   threadId: string,
   body: string,
-  images?: File[] | null
+  images?: File[] | null,
+  supplierFiles?: BoardSupplierFileRef[] | null
 ) {
   const user = await getSessionUser();
   if (!user?.id) throw new Error("Zaloguj się ponownie.");
@@ -436,7 +443,12 @@ export async function actionReplyToQuestion(
 
   const trimmedBody = trimBody(body);
   const imageFiles = validateBoardImages(images);
-  if (!trimmedBody && !imageFiles.length) {
+  const supplierRefs = (supplierFiles ?? []).filter(Boolean);
+  if (supplierRefs.length && !isProcurement) throw new Error("Pliki od dostawcy dołącza dział zakupów.");
+  if (supplierRefs.length > BOARD_SUPPLIER_FILE_MAX_COUNT) {
+    throw new Error(`Możesz dołączyć najwyżej ${BOARD_SUPPLIER_FILE_MAX_COUNT} pliki od dostawcy.`);
+  }
+  if (!trimmedBody && !imageFiles.length && !supplierRefs.length) {
     throw new Error("Napisz wiadomość albo dodaj zdjęcie.");
   }
 
@@ -451,6 +463,9 @@ export async function actionReplyToQuestion(
   if (isSales && thread.created_by !== user.id) {
     throw new Error("Możesz odpowiadać tylko we własnych pytaniach.");
   }
+
+  // Pliki od dostawcy pobierane przed zapisem wpisu — błąd Gmaila nie zostawia odpowiedzi bez załączników.
+  const supplierFileData = supplierRefs.length ? await loadBoardSupplierFiles(threadId, supplierRefs) : [];
 
   const supabase = createAdminClient();
   const now = new Date().toISOString();
@@ -468,7 +483,7 @@ export async function actionReplyToQuestion(
   if (postError) throw new Error(postError.message);
 
   let attachments: BoardThreadAttachmentRow[] = [];
-  if (imageFiles.length) {
+  if (imageFiles.length || supplierFileData.length) {
     const failReply = async (message: string): Promise<never> => {
       // Bez zdjęć odpowiedź jest niepełna — cofamy wpis, szkic zostaje w formularzu.
       await supabase.from("department_board_posts").delete().eq("id", post.id);
@@ -478,15 +493,30 @@ export async function actionReplyToQuestion(
     if (!hasSupabaseConfig()) {
       await failReply("Brak konfiguracji przechowywania plików - nie można wysłać zdjęć.");
     }
-    const upload = await uploadBoardQuestionImages({
-      supabase,
-      threadId,
-      userId: user.id,
-      files: imageFiles,
-      postId: post.id,
-    });
-    if (upload.error) {
-      await failReply("Nie udało się wysłać zdjęć. Spróbuj ponownie.");
+    if (imageFiles.length) {
+      const upload = await uploadBoardQuestionImages({
+        supabase,
+        threadId,
+        userId: user.id,
+        files: imageFiles,
+        postId: post.id,
+      });
+      if (upload.error) {
+        await failReply("Nie udało się wysłać zdjęć. Spróbuj ponownie.");
+      }
+    }
+    if (supplierFileData.length) {
+      const stored = await storeBoardSupplierFiles({
+        supabase,
+        threadId,
+        userId: user.id,
+        postId: post.id,
+        files: supplierFileData,
+        firstSortOrder: imageFiles.length,
+      });
+      if (stored.error) {
+        await failReply("Nie udało się zapisać plików od dostawcy. Spróbuj ponownie.");
+      }
     }
     const { data: attachmentRows } = await supabase
       .from("department_board_thread_attachments")
@@ -542,7 +572,7 @@ export async function actionReplyToQuestion(
         questionBody: thread.body,
         productSymbol: thread.product_symbol,
         productName: thread.product_name,
-        replyBody: boardReplyEmailBody(trimmedBody, imageFiles.length),
+        replyBody: boardReplyEmailBody(trimmedBody, imageFiles.length, supplierFileData.length),
       });
       if (!result.emailSent) {
         console.warn(
@@ -567,14 +597,90 @@ export async function actionReplyToQuestion(
   return { post: { ...post, attachments } };
 }
 
-/** Mail nie niesie zdjęć — informujemy, że czekają w wątku. */
-function boardReplyEmailBody(body: string, imageCount: number): string {
-  if (!imageCount) return body;
-  const note =
+/** Mail nie niesie załączników — informujemy, że czekają w wątku. */
+function boardReplyEmailBody(body: string, imageCount: number, fileCount = 0): string {
+  const notes = [
     imageCount === 1
       ? "Dołączono zdjęcie - zobacz je w wątku na Tablicy."
-      : `Dołączono zdjęcia (${imageCount}) - zobacz je w wątku na Tablicy.`;
-  return body ? `${body}\n\n${note}` : note;
+      : imageCount > 1
+        ? `Dołączono zdjęcia (${imageCount}) - zobacz je w wątku na Tablicy.`
+        : null,
+    fileCount === 1
+      ? "Dołączono plik od dostawcy - pobierzesz go z wątku na Tablicy."
+      : fileCount > 1
+        ? `Dołączono pliki od dostawcy (${fileCount}) - pobierzesz je z wątku na Tablicy.`
+        : null,
+  ].filter(Boolean);
+  if (!notes.length) return body;
+  return [body, ...notes].filter(Boolean).join("\n\n");
+}
+
+type BoardSupplierFileData = { filename: string; data: Buffer; ext: string; mime: string };
+
+async function loadBoardSupplierFiles(
+  threadId: string,
+  refs: BoardSupplierFileRef[]
+): Promise<BoardSupplierFileData[]> {
+  const files = await Promise.all(
+    refs.map(async (ref) => {
+      const filename = String(ref?.filename ?? "").trim();
+      const type = boardSupplierFileType(filename);
+      if (!type) throw new Error(`Pliku „${filename}” nie można dołączyć (dozwolone: PDF, zdjęcia, Excel, Word, CSV).`);
+      const file = await boardReplyAttachment({
+        threadId,
+        inquiryId: String(ref.inquiryId ?? ""),
+        replyId: String(ref.replyId ?? ""),
+        filename,
+      });
+      if (!file) throw new Error(`Nie udało się pobrać „${filename}” z Gmaila - otwórz wątek ponownie i spróbuj jeszcze raz.`);
+      if (file.data.length > BOARD_SUPPLIER_FILE_MAX_BYTES) {
+        throw new Error(`„${filename}” jest za duży (max ${BOARD_SUPPLIER_FILE_MAX_BYTES / (1024 * 1024)} MB).`);
+      }
+      return { filename: file.filename, data: file.data, ...type };
+    })
+  );
+  return files;
+}
+
+async function storeBoardSupplierFiles(input: {
+  supabase: ReturnType<typeof createAdminClient>;
+  threadId: string;
+  userId: string;
+  postId: string;
+  files: BoardSupplierFileData[];
+  firstSortOrder: number;
+}): Promise<{ error?: string }> {
+  const { randomUUID } = await import("crypto");
+  const uploaded: string[] = [];
+  try {
+    const rows = [];
+    for (const [i, file] of input.files.entries()) {
+      const storagePath = `${boardImageStoragePrefix(input.threadId)}${randomUUID()}.${file.ext}`;
+      const { error } = await input.supabase.storage
+        .from(BOARD_IMAGE_BUCKET)
+        .upload(storagePath, file.data, { contentType: file.mime, upsert: false });
+      if (error) throw new Error(error.message);
+      uploaded.push(storagePath);
+      rows.push({
+        thread_id: input.threadId,
+        post_id: input.postId,
+        created_by: input.userId,
+        storage_path: storagePath,
+        file_name: file.filename.slice(0, 200),
+        mime_type: file.mime,
+        byte_size: file.data.length,
+        sort_order: input.firstSortOrder + i,
+      });
+    }
+    const { error } = await input.supabase.from("department_board_thread_attachments").insert(rows);
+    if (error) throw new Error(error.message);
+    return {};
+  } catch (e) {
+    if (uploaded.length) await input.supabase.storage.from(BOARD_IMAGE_BUCKET).remove(uploaded).catch(() => {});
+    const message = e instanceof Error ? e.message.replace(/\n|\r/g, "") : "upload failed";
+    console.error("[board-files] upload failed", message);
+    return { error: message };
+  }
 }
 
 export async function actionArchiveQuestion(threadId: string) {
