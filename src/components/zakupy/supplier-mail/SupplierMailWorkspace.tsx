@@ -11,6 +11,7 @@ import {
   actionSupplierMailRemind,
   actionSupplierMailReply,
   actionSupplierMailSuggestReply,
+  actionSupplierMailTranslate,
   actionSupplierMailView,
   type ConversationMessage,
 } from "@/app/actions/supplier-mail";
@@ -45,6 +46,7 @@ import { EXTRA_ATTACHMENTS_ACCEPT, extraAttachmentsError } from "@/lib/email/ext
 import { formatFileSize } from "@/components/mail/MailPreview";
 import { isInlineImage, isPreviewableImage } from "@/lib/mail/attachments";
 import { splitEmphasis } from "@/lib/mail/emphasis";
+import { looksPolish } from "@/lib/supplier-mail/translate-ai";
 
 type Scope = "mine" | "all";
 /** Kolumna tablicy albo półka „Do przejrzenia” (nieznani nadawcy — sprawa czy nie). */
@@ -981,6 +983,7 @@ function ConversationDetail({
           <MessageCard
             key={m.id}
             m={m}
+            aiAvailable={aiAvailable}
             onForward={canReply && !hideDone && m.kind !== "mine" ? () => setForwarding({ messageId: m.id }) : undefined}
           />
         ))}
@@ -1019,9 +1022,32 @@ function ConversationDetail({
   );
 }
 
-function MessageCard({ m, onForward }: { m: ConversationMessage; onForward?: () => void }) {
+function MessageCard({ m, aiAvailable = false, onForward }: { m: ConversationMessage; aiAvailable?: boolean; onForward?: () => void }) {
   const [expanded, setExpanded] = useState(false);
-  const text = m.text?.trim() || m.snippet;
+  const original = m.text?.trim() || m.snippet;
+  // Tłumaczenie na polski (AI) — w miejscu treści, z powrotem do oryginału jednym kliknięciem.
+  const [translation, setTranslation] = useState<string | null>(null);
+  const [showTranslation, setShowTranslation] = useState(false);
+  const [translating, setTranslating] = useState(false);
+  const [translateError, setTranslateError] = useState<string | null>(null);
+  const canTranslate = aiAvailable && m.kind !== "mine" && !looksPolish(original);
+  const translate = async () => {
+    if (translation) {
+      setShowTranslation(true);
+      return;
+    }
+    setTranslating(true);
+    setTranslateError(null);
+    const res = await actionSupplierMailTranslate({ text: original, subject: m.subject }).catch(() => ({ ok: false as const, message: "Brak połączenia z serwerem." }));
+    setTranslating(false);
+    if (!res.ok) {
+      setTranslateError(res.message);
+      return;
+    }
+    setTranslation(res.translation);
+    setShowTranslation(true);
+  };
+  const text = showTranslation && translation ? translation : original;
   const long = text.length > 700 || text.split("\n").length > 14;
   const files = m.attachments.filter((a) => !isInlineImage(a));
   const inlineImages = m.attachments.filter(isInlineImage);
@@ -1057,6 +1083,17 @@ function MessageCard({ m, onForward }: { m: ConversationMessage; onForward?: () 
           <time className="tabular-nums text-slate-500" dateTime={m.receivedAt}>
             {fullFmt.format(new Date(m.receivedAt))}
           </time>
+          {canTranslate ? (
+            <button
+              type="button"
+              onClick={() => (showTranslation ? setShowTranslation(false) : void translate())}
+              disabled={translating}
+              className="inline-flex items-center gap-1 rounded font-medium text-indigo-700 hover:underline disabled:opacity-50"
+            >
+              {translating ? <Spinner size="sm" /> : null}
+              {translating ? "Tłumaczę…" : showTranslation ? "Oryginał" : "Przetłumacz"}
+            </button>
+          ) : null}
           {onForward ? (
             <button type="button" onClick={onForward} className="rounded font-medium text-indigo-700 hover:underline">
               Przekaż
@@ -1064,6 +1101,14 @@ function MessageCard({ m, onForward }: { m: ConversationMessage; onForward?: () 
           ) : null}
         </span>
       </header>
+      {showTranslation && translation ? (
+        <p className="mt-1.5 text-[11px] font-medium text-indigo-700">Tłumaczenie AI na polski — oryginał pod „Oryginał”.</p>
+      ) : null}
+      {translateError ? (
+        <p className="mt-1.5 text-xs text-red-700" role="alert">
+          {translateError}
+        </p>
+      ) : null}
       <p className={cn("mt-2 whitespace-pre-line break-words text-sm leading-relaxed text-slate-800", long && !expanded && "line-clamp-[14]")}>
         {splitEmphasis(text).map((run, i) =>
           run.bold ? (

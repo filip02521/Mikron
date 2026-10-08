@@ -5,6 +5,7 @@
 import { isInlineImage } from "@/lib/mail/attachments";
 import { isCustomsAiConfigured, userFacingCustomsAiError } from "@/lib/customs/customs-ai";
 import { suggestSupplierMailReply } from "@/lib/supplier-mail/reply-ai";
+import { translateSupplierMail } from "@/lib/supplier-mail/translate-ai";
 import { forwardedConversationText } from "@/lib/supplier-mail/forward-text";
 import { revalidatePath } from "next/cache";
 import { requireZdEstimateAdmin } from "@/lib/auth";
@@ -643,6 +644,22 @@ export async function actionSupplierMailSuggestReply(input: {
     });
     if (!draft) return { ok: false, message: "AI nie zaproponowało treści. Spróbuj ponownie albo napisz notatkę, co przekazać." };
     return { ok: true, draft };
+  } catch (e) {
+    return { ok: false, message: userFacingCustomsAiError(e) };
+  }
+}
+
+const TRANSLATE_MAX = 6000;
+
+/** Tłumaczenie treści maila dostawcy na polski (Gemini) — treść przychodzi z karty rozmowy. */
+export async function actionSupplierMailTranslate(input: { text: string; subject?: string }): Promise<{ ok: true; translation: string } | Fail> {
+  await requireMailUser("read");
+  if (!isCustomsAiConfigured()) return { ok: false, message: "AI jest wyłączone na serwerze (brak klucza Gemini)." };
+  const text = typeof input?.text === "string" ? input.text.trim().slice(0, TRANSLATE_MAX) : "";
+  if (!text) return { ok: false, message: "Brak treści do przetłumaczenia." };
+  try {
+    const translation = await translateSupplierMail(text, typeof input.subject === "string" ? input.subject.slice(0, 300) : "");
+    return translation ? { ok: true, translation } : { ok: false, message: "AI nie zwróciło tłumaczenia. Spróbuj ponownie." };
   } catch (e) {
     return { ok: false, message: userFacingCustomsAiError(e) };
   }
