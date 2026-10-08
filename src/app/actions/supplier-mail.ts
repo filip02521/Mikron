@@ -354,7 +354,7 @@ export async function actionSupplierMailRemind(input: {
 
 /** Panel dzienny: tylko ważne — maile do dostawców, które nie doszły (zwroty). Z bazy, bez Gmaila. */
 export async function actionSupplierMailBounces(): Promise<{ ok: true; suppliers: string[] } | Fail> {
-  await requireZdEstimateAdmin("read");
+  await requireMailUser("read");
   try {
     // Same nazwy dostawców — bez wczytywania całego widoku.
     const { rows } = await query<{ name: string }>(
@@ -727,14 +727,25 @@ export async function actionMailTriage(input: {
     if (!rows.length) return { ok: false, message: "Nie znaleziono rozmowy." };
 
     if (input.decision === "review") {
-      // Dokładnie to, co przestawiła decyzja — nic, co ktoś rozstrzygnął wcześniej sam.
-      const ids = Array.isArray(input.revertIds) ? input.revertIds.filter((id) => UUID_RE.test(String(id))).slice(0, 2000) : [];
-      if (ids.length) {
-        await query(`UPDATE public.supplier_mail_messages SET triage = 'review' WHERE id = ANY($1::uuid[]) AND kind = 'other'`, [ids]);
-      }
+      // Cofamy tylko w obrębie nadawcy tej rozmowy: reguła i wiadomości muszą pasować do jego adresu albo
+      // domeny — klient nie może podać cudzych id ani cudzego wzorca.
+      const sender = rows[0]!.from_address;
+      const ownPatterns = new Set([rulePattern(sender, "sender"), rulePattern(sender, "domain")].filter(Boolean));
       const restore = input.restoreRule;
-      if (restore && typeof restore.pattern === "string" && /^[^\s@]*@[^\s@]+$/.test(restore.pattern)) {
-        const pattern = restore.pattern.toLowerCase();
+      const pattern =
+        restore && typeof restore.pattern === "string" && ownPatterns.has(restore.pattern.toLowerCase()) ? restore.pattern.toLowerCase() : null;
+      const ids = Array.isArray(input.revertIds) ? input.revertIds.filter((id) => UUID_RE.test(String(id))).slice(0, 2000) : [];
+      if (ids.length && pattern) {
+        // Dokładnie to, co przestawiła decyzja — nic, co ktoś rozstrzygnął wcześniej sam.
+        await query(
+          `UPDATE public.supplier_mail_messages SET triage = 'review'
+            WHERE id = ANY($2::uuid[]) AND kind = 'other' AND triage <> 'review'
+              AND (lower(from_address) = $1
+                   OR ($1 LIKE '@%' AND (lower(from_address) LIKE '%' || $1 OR lower(from_address) LIKE '%.' || substr($1, 2))))`,
+          [pattern, ids]
+        );
+      }
+      if (pattern && restore) {
         if (restore.decision === null) await query(`DELETE FROM public.mail_sender_rules WHERE pattern = $1`, [pattern]);
         else if (["case", "ignore", "customs"].includes(restore.decision)) {
           await query(`UPDATE public.mail_sender_rules SET decision = $2 WHERE pattern = $1`, [pattern, restore.decision]);
