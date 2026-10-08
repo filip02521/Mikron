@@ -440,6 +440,7 @@ export async function resolveSubiektIssuerId(email: string | null | undefined): 
 const ZD_PDF_TIMEOUT_MS = 90_000;
 const ZD_PDF_TTL_MS = 5 * 60_000;
 const ZD_PDF_FRESH_MIN_GAP_MS = 30_000;
+const ZD_PDF_RETRY_DELAYS_MS = [3_000, 10_000];
 /**
  * ponytail: pamięć w procesie (jeden serwer OnTime) — podgląd i wysyłka biorą ten sam plik bez drugiego
  * wydruku. Zmiana ZD w Subiekcie po podglądzie dociera po 5 min; przy kilku instancjach — cache w bazie.
@@ -457,10 +458,19 @@ export async function getSubiektOrdersZdPdf(id: number, opts: { fresh?: boolean 
   // fresh = świeży wydruk, ale nie częściej niż co 30 s na dokument (wydruk przez Sferę trwa ~20 s).
   const maxAge = opts.fresh ? ZD_PDF_FRESH_MIN_GAP_MS : ZD_PDF_TTL_MS;
   if (hit && Date.now() - hit.at < maxAge) return hit.bytes;
-  const res = await subiektFetch(`${SUBIEKT_PATHS.documentZd(id)}/pdf`, {}, { ...config, timeoutMs: ZD_PDF_TIMEOUT_MS });
-  const bytes = Buffer.from(await res.arrayBuffer());
+  let res: Response;
+  let bytes: Buffer;
+  for (let attempt = 0; ; attempt++) {
+    res = await subiektFetch(`${SUBIEKT_PATHS.documentZd(id)}/pdf`, {}, { ...config, timeoutMs: ZD_PDF_TIMEOUT_MS });
+    bytes = Buffer.from(await res.arrayBuffer());
+    const delay = ZD_PDF_RETRY_DELAYS_MS[attempt];
+    // 502/503/504 — Sfera zajęta innym wydrukiem albo startuje (pierwszy wydruk po zmianie terminu).
+    if (res.ok || delay == null || ![502, 503, 504].includes(res.status)) break;
+    await new Promise((r) => setTimeout(r, delay));
+  }
   if (!res.ok || bytes.subarray(0, 4).toString() !== "%PDF") {
-    throw new Error(`Subiekt nie wydrukował ZD do PDF (HTTP ${res.status}).`);
+    const detail = res.ok ? "" : bytes.toString("utf8", 0, 300).replace(/\s+/g, " ").trim();
+    throw new Error(`Subiekt nie wydrukował ZD do PDF (HTTP ${res.status}${detail ? `: ${detail}` : ""}).`);
   }
   // Stare wydruki wylatują przy każdym nowym — pamięć nie rośnie bez końca.
   for (const [k, v] of zdPdfCache) if (Date.now() - v.at >= ZD_PDF_TTL_MS) zdPdfCache.delete(k);
