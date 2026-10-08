@@ -371,10 +371,42 @@ describe("gmail — wycinanie skryptów, stylów i cytatów z HTML", () => {
   const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64url");
   const text = (html: string) => messagePlainText({ mimeType: "text/html", body: { data: b64(html) } });
   it("całe bloki z treścią; wielkość liter; podobne nazwy zostają; niezamknięty do końca", () => {
-    expect(text("<STYLE>p{color:red}</STYLE><p>A</p><Script type=x>alert(1)</sCript ><p>B</p>")).toBe("A\nB\n");
-    expect(text("<p>Odp.</p><blockquote>stary mail</blockquote><p>Koniec</p>")).toBe("Odp.\nKoniec\n");
+    expect(text("<STYLE>p{color:red}</STYLE><p>A</p><Script type=x>alert(1)</sCript ><p>B</p>")).toBe("A\nB");
+    expect(text("<p>Odp.</p><blockquote>stary mail</blockquote><p>Koniec</p>")).toBe("Odp.\nKoniec");
     expect(text("<scripts>zostaje</scripts>")).toBe("zostaje");
-    expect(text("<p>Tak</p><script>niezamknięty")).toBe("Tak\n");
+    expect(text("<p>Tak</p><script>niezamknięty")).toBe("Tak");
+  });
+
+  it("tabela sklepu: komórki wiersza w jednej linii, bloki bez znacznika zamykającego osobno, pusta linia tylko z <br>", () => {
+    expect(text("<table><tr><td>Zamówienie numer</td><td>46262</td></tr><tr><td>z dnia</td><td>2026-10-06</td></tr></table>")).toBe(
+      "Zamówienie numer 46262\nz dnia 2026-10-06"
+    );
+    expect(text("<div>ZAMÓWIONE PRODUKTY<div>Płytka szklana<div>Ilość: 18")).toBe("ZAMÓWIONE PRODUKTY\nPłytka szklana\nIlość: 18");
+    expect(text("<p>Dzień dobry,<br><br>cena 12 zł</p>")).toBe("Dzień dobry,\n\ncena 12 zł");
+  });
+
+  it("uszkodzony text/plain („zosta?o ju?”) — bierzemy HTML; zwykłe pytajniki nie przełączają", () => {
+    const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64url");
+    const parts = (plain: string) => ({
+      mimeType: "multipart/alternative",
+      parts: [
+        { mimeType: "text/plain", body: { data: b64(plain) } },
+        { mimeType: "text/html", body: { data: b64("<p>Zamówienie zostało już spakowane</p>") } },
+      ],
+    });
+    expect(messagePlainText(parts("Zam?wienie zosta?o ju? spakowane"))).toBe("Zamówienie zostało już spakowane");
+    expect(messagePlainText(parts("Czy jest dostępne? Kiedy wysyłka?"))).toBe("Czy jest dostępne? Kiedy wysyłka?");
+  });
+
+  it("kodowanie z Content-Type części: ISO-8859-2 nie zamienia polskich znaków w „?”", () => {
+    const latin2 = Buffer.from([0x50, 0xb3, 0x61, 0x74, 0x6e, 0x6f, 0xb6, 0xe6, 0x3a, 0x20, 0x31, 0x30, 0x20, 0x7a, 0xb3]).toString("base64url");
+    expect(
+      messagePlainText({
+        mimeType: "text/plain",
+        headers: [{ name: "Content-Type", value: 'text/plain; charset="ISO-8859-2"' }],
+        body: { data: latin2 },
+      })
+    ).toBe("Płatność: 10 zł");
   });
 });
 

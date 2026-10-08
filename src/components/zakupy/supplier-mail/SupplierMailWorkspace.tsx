@@ -16,6 +16,7 @@ import {
 import { IconCircleCheck, IconMail, IconPaperclip, IconPencil, IconSearch, IconX } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
 import { Kbd } from "@/components/ui/Kbd";
+import { ModalShell } from "@/components/ui/ModalShell";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Spinner } from "@/components/ui/Spinner";
 import {
@@ -34,6 +35,7 @@ import { cn } from "@/lib/cn";
 import { procurementBoardQuestionHref } from "@/lib/data/department-board-shared";
 import { BOARD_COLUMN_LABELS, BOARD_COLUMNS, type BoardColumn } from "@/lib/mail-board/board";
 import { CUSTOMS_KIND_LABELS, domainOf, isFreeMailDomain } from "@/lib/mail-board/triage";
+import type { GmailAttachmentRef } from "@/lib/google/gmail";
 import type { BoardItem, MailConversation, MailPerson, SupplierMailView, WaitingCase } from "@/lib/supplier-mail/data";
 import { businessDaysLabel } from "@/lib/suppliers/awaiting-supplier";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
@@ -998,6 +1000,8 @@ function MessageCard({ m }: { m: ConversationMessage }) {
   const long = text.length > 700 || text.split("\n").length > 14;
   const files = m.attachments.filter((a) => !isInlineImage(a));
   const inlineImages = m.attachments.filter(isInlineImage);
+  // Podgląd obrazka w nakładce — bez nawigacji, „Wstecz” nie wyrzuca z wątku.
+  const [preview, setPreview] = useState<GmailAttachmentRef | null>(null);
   return (
     <article
       className={cn(
@@ -1050,17 +1054,16 @@ function MessageCard({ m }: { m: ConversationMessage }) {
           {files.map((a) => (
             <li key={a.attachmentId}>
               {isPreviewableImage(a) ? (
-                <a
-                  href={attachmentUrl(m.id, a.attachmentId)}
-                  target="_blank"
-                  rel="noopener"
+                <button
+                  type="button"
+                  onClick={() => setPreview(a)}
                   title={a.filename}
-                  className="block overflow-hidden rounded-md ring-1 ring-slate-200 transition-shadow hover:ring-slate-400"
+                  className="block overflow-hidden rounded-md ring-1 ring-slate-200 transition-shadow hover:ring-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45"
                 >
                   {/* Załącznik z własnego API za sesją — next/image nie ma tu czego optymalizować. */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={attachmentUrl(m.id, a.attachmentId)} alt={a.filename} loading="lazy" className="h-20 w-20 bg-slate-100 object-cover" />
-                </a>
+                </button>
               ) : (
                 <a
                   href={attachmentUrl(m.id, a.attachmentId)}
@@ -1085,19 +1088,45 @@ function MessageCard({ m }: { m: ConversationMessage }) {
           <ul className="mt-1.5 flex flex-wrap items-center gap-1.5">
             {inlineImages.map((a) => (
               <li key={a.attachmentId}>
-                <a href={attachmentUrl(m.id, a.attachmentId)} target="_blank" rel="noopener" title={a.filename} className="block rounded-md ring-1 ring-slate-200 hover:ring-slate-400">
-                  {isPreviewableImage(a) ? (
-                    // eslint-disable-next-line @next/next/no-img-element
+                {isPreviewableImage(a) ? (
+                  <button
+                    type="button"
+                    onClick={() => setPreview(a)}
+                    title={a.filename}
+                    className="block rounded-md ring-1 ring-slate-200 hover:ring-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={attachmentUrl(m.id, a.attachmentId)} alt={a.filename} loading="lazy" className="h-12 max-w-[10rem] rounded-md bg-white object-contain" />
-                  ) : (
-                    <span className="block px-2 py-1 text-xs text-slate-600">{a.filename}</span>
-                  )}
-                </a>
+                  </button>
+                ) : (
+                  <a href={attachmentUrl(m.id, a.attachmentId)} target="_blank" rel="noopener" className="block rounded-md px-2 py-1 text-xs text-slate-600 ring-1 ring-slate-200 hover:ring-slate-400">
+                    {a.filename}
+                  </a>
+                )}
               </li>
             ))}
           </ul>
         </details>
       ) : null}
+      <ModalShell
+        open={preview !== null}
+        onClose={() => setPreview(null)}
+        title={preview?.filename ?? "Obrazek"}
+        size="xl"
+        titleId={`preview-${m.id}`}
+        footer={
+          preview ? (
+            <a href={attachmentUrl(m.id, preview.attachmentId)} target="_blank" rel="noopener" className={detailLinkClass}>
+              Otwórz w nowej karcie
+            </a>
+          ) : null
+        }
+      >
+        {preview ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={attachmentUrl(m.id, preview.attachmentId)} alt={preview.filename} className="mx-auto max-h-[75vh] w-auto max-w-full rounded-md" />
+        ) : null}
+      </ModalShell>
     </article>
   );
 }

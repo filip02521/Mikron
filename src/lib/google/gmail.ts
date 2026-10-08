@@ -608,8 +608,19 @@ export async function fetchGmailReplies(
 
 const MAX_REPLY_TEXT = 6000;
 
-function decodeBase64Url(data: string): string {
-  return Buffer.from(data, "base64url").toString("utf8");
+/** Kodowanie z Content-Type części; sklepy i starsze systemy wysyłają ISO-8859-2 / windows-1250 — jako UTF-8 to „?” zamiast ł, ś, ć. */
+function partCharset(part: GmailPart | undefined): string {
+  const m = /charset\s*=\s*"?([\w.:-]+)"?/i.exec(header(part?.headers, "Content-Type"));
+  return m?.[1]?.toLowerCase() ?? "utf-8";
+}
+
+function decodeBase64Url(data: string, charset = "utf-8"): string {
+  const bytes = Buffer.from(data, "base64url");
+  try {
+    return new TextDecoder(charset).decode(bytes);
+  } catch {
+    return bytes.toString("utf8");
+  }
 }
 
 /** Usuwa znaczniki do skutku — zagnieżdżone / sklejone („<scr<script>ipt>”) nie zostają w tekście. */
@@ -629,8 +640,22 @@ function stripTags(s: string): string {
 function htmlToText(html: string): string {
   let text = html;
   for (const tag of ["script", "style", "blockquote"]) text = removeElements(text, tag);
-  text = text.replace(/<br\s*\/?>/gi, "\n").replace(/<\/(p|div|tr|li|h[1-6])>/gi, "\n");
-  return stripTags(decodeEntities(stripTags(text)));
+  // Granica bloku (otwarcie i zamknięcie) to jedna nowa linia; pustą linię daje tylko jawne <br>.
+  // Komórki tabeli zostają w jednej linii („Zamówienie numer 46262”).
+  const BR = "\u0001";
+  text = text
+    .replace(/<br\s*\/?>/gi, BR)
+    .replace(/<hr\s*\/?>/gi, "\n")
+    .replace(/<\/(td|th)>/gi, " ")
+    .replace(/<\/?(p|div|tr|li|h[1-6]|table|ul|ol|section|article|header|footer)\b[^>]*>/gi, "\n");
+  return stripTags(decodeEntities(stripTags(text)))
+    .split("\n")
+    .map((line) => line.replace(/[ \t\u00a0]+/g, " ").trim())
+    .join("\n")
+    .replace(/\n{2,}/g, "\n")
+    .replace(new RegExp(BR, "g"), "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 /**
@@ -657,23 +682,32 @@ function removeElements(html: string, tag: string): string {
   }
 }
 
-/** Pierwszy fragment danego typu w drzewie MIME (pomija załączniki z nazwą pliku). */
-function findPartData(part: GmailPart | undefined, mimeType: string): string | null {
+/** Pierwsza część danego typu w drzewie MIME (pomija załączniki z nazwą pliku). */
+function findPart(part: GmailPart | undefined, mimeType: string): GmailPart | null {
   if (!part) return null;
-  if (part.mimeType === mimeType && !part.filename && part.body?.data) return part.body.data;
+  if (part.mimeType === mimeType && !part.filename && part.body?.data) return part;
   for (const child of part.parts ?? []) {
-    const found = findPartData(child, mimeType);
+    const found = findPart(child, mimeType);
     if (found) return found;
   }
   return null;
 }
 
-/** Treść wiadomości: text/plain, a gdy go nie ma — text/html zamieniony na tekst. */
+/** Systemy sklepowe potrafią wysłać text/plain z „?” zamiast polskich liter („zosta?o ju?”), a HTML poprawny. */
+function looksMangled(text: string): boolean {
+  return (text.match(/\p{L}\?\p{L}|\?\p{L}/gu)?.length ?? 0) >= 2;
+}
+
+/**
+ * Treść wiadomości: text/plain, a gdy go nie ma albo jest uszkodzony — text/html zamieniony na tekst.
+ * Kodowanie z nagłówka części.
+ */
 export function messagePlainText(payload: GmailPart | undefined): string {
-  const plain = findPartData(payload, "text/plain");
-  if (plain) return decodeBase64Url(plain);
-  const html = findPartData(payload, "text/html");
-  return html ? htmlToText(decodeBase64Url(html)) : "";
+  const plain = findPart(payload, "text/plain");
+  const html = findPart(payload, "text/html");
+  const plainText = plain ? decodeBase64Url(plain.body!.data!, partCharset(plain)) : null;
+  if (plainText !== null && !(html && looksMangled(plainText))) return plainText;
+  return html ? htmlToText(decodeBase64Url(html.body!.data!, partCharset(html))) : (plainText ?? "");
 }
 
 /** Linia otwierająca cytat: „Dnia … napisał(a):”, „On … wrote:”, „Am … schrieb”, Outlook „-----Original Message-----” / „From:”. */
@@ -839,7 +873,7 @@ export async function getGmailMessageText(
   /** full = z cytatem i przekazaną treścią (numer przesyłki bywa tylko w przekazanej części). */
   opts: { full?: boolean } = {}
 ): Promise<string | null> {
-  const part = "filename,mimeType,body/data";
+  const part = "filename,mimeType,headers,body/data";
   const fields = `payload(${part},parts(${part},parts(${part},parts(${part}))))`;
   const m = await gmailGet<GmailThreadMessage>(
     accessToken,
