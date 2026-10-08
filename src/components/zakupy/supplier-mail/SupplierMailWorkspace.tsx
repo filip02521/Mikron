@@ -87,24 +87,25 @@ export function SupplierMailWorkspace({
   const [syncing, setSyncing] = useState(true);
   const [syncNote, setSyncNote] = useState<string | null>(null);
 
-  const refresh = useCallback(
-    (opts: { sync?: boolean; force?: boolean } = {}) =>
-      actionSupplierMailView(opts)
-        .then((res) => {
-          if (!res.ok) {
-            setSyncNote(res.message);
-            return;
-          }
-          setView(res.view);
-          setMe(res.me);
-          setCanReply(res.canReply);
-          setSignature(res.signature);
-          setSyncNote(res.syncErrors.length ? `Nie udało się sprawdzić skrzynki: ${res.syncErrors[0]}` : null);
-        })
-        .catch(() => setSyncNote("Nie udało się odświeżyć poczty."))
-        .finally(() => setSyncing(false)),
-    []
-  );
+  const refresh = useCallback((opts: { sync?: boolean; force?: boolean } = {}) => {
+    const load = (o: typeof opts): Promise<void> =>
+      actionSupplierMailView(o).then((res) => {
+        if (!res.ok) {
+          setSyncNote(res.message);
+          return;
+        }
+        setView(res.view);
+        setMe(res.me);
+        setCanReply(res.canReply);
+        setSignature(res.signature);
+        setSyncNote(res.syncErrors.length ? `Nie udało się sprawdzić skrzynki: ${res.syncErrors[0]}` : null);
+        // Przebieg trwa w tle (np. pierwsza synchronizacja) — dołączamy do niego; lista rośnie po drodze.
+        if (res.syncPending) return load({ sync: true });
+      });
+    return load(opts)
+      .catch(() => setSyncNote("Nie udało się odświeżyć poczty."))
+      .finally(() => setSyncing(false));
+  }, []);
 
   // Przy wejściu: nowe maile z Gmaila (najwyżej co 5 min na skrzynkę), lista z bazy już jest.
   useEffect(() => {

@@ -13,6 +13,7 @@ import {
   getGmailThreadSentTimes,
   gmailAccessToken,
   listGmailMessageIds,
+  listGmailMessages,
   runAsGmailBackground,
   scopeCanReadReplies,
   type GmailMessageMeta,
@@ -32,7 +33,7 @@ import {
 } from "@/lib/supplier-mail/match";
 import { prepareWaitingShipments, syncDhlMailbox } from "@/lib/customs/dhl-sync";
 import { isMikranEmail } from "@/lib/email/supplier-emails";
-import { mapLimit } from "@/lib/async/map-limit";
+import { mapPool } from "@/lib/async/map-pool";
 
 /** Pierwsza synchronizacja skrzynki sięga tyle wstecz. */
 const FIRST_SYNC_DAYS = 30;
@@ -45,6 +46,14 @@ const FORCE_SYNC_MIN_GAP_MS = 60_000;
 /** Wysoko — przy limicie starsze maile z okna by przepadły (data synchronizacji idzie naprzód). */
 const MAX_MESSAGES_PER_QUERY = 3000;
 const META_CONCURRENCY = 6;
+/**
+ * Metadane porcjami, każda porcja od razu zapisana. Błąd (np. limit Gmaila na minutę) nie kasuje pracy:
+ * kolejny przebieg pomija zapisane (knownIds) i pominięte (processedIds), zamiast od nowa pobierać 30 dni.
+ */
+const META_CHUNK = 100;
+
+/** Pobrane, ale niezapisane (newsletter, poczta wewnętrzna…) — przy przerwanej synchronizacji nie pytamy o nie znowu. */
+const processedIds = new Map<string, Set<string>>();
 
 /** Skrzynki osób, które połączyły Gmaila ze zgodą na odczyt. */
 type Mailbox = { userId: string; email: string; tokenEnc: string };
@@ -124,10 +133,10 @@ export function toMailCase(row: CaseRow): MailCase {
 /** Wysyłki sprzed migracji 178 nie mają wątku — dociągamy go z Gmaila nadawcy (raz). */
 async function backfillThreadIds(token: string, mailbox: string, cases: CaseRow[]): Promise<void> {
   const missing = cases.filter((c) => c.gmail_thread_id == null && c.gmail_message_id && c.from_address.toLowerCase() === mailbox);
-  await mapLimit(missing, META_CONCURRENCY, async (c) => {
-    const threadId = await getGmailThreadId(token, c.gmail_message_id!).catch(() => undefined);
-    // Błąd sieci — spróbujemy przy kolejnej synchronizacji; null (wiadomość usunięta) — '' i więcej nie pytamy.
-    if (threadId === undefined) return;
+  // Błąd (np. limit Gmaila) kończy dociąganie — reszta przy kolejnej synchronizacji, bez pytania o każdą osobno.
+  await mapPool(missing, META_CONCURRENCY, async (c) => {
+    const threadId = await getGmailThreadId(token, c.gmail_message_id!);
+    // null (wiadomość usunięta) — '' i więcej nie pytamy.
     c.gmail_thread_id = threadId ?? "";
     await query(
       c.kind === "zd"
@@ -135,7 +144,7 @@ async function backfillThreadIds(token: string, mailbox: string, cases: CaseRow[
         : `UPDATE public.supplier_inquiry_emails SET gmail_thread_id = $2 WHERE id = $1`,
       [c.id, threadId ?? ""]
     );
-  });
+  }).catch((e: unknown) => console.warn("[poczta] wątki starych wysyłek", mailbox, e instanceof Error ? e.message : e));
 }
 
 async function syncMailbox(
@@ -169,7 +178,7 @@ async function syncMailbox(
     for (const id of found) ids.add(id);
   }
   if (!ids.size) {
-    await reconcileRepliedInGmail(token, box.email);
+    await reconcileRepliedInGmail(token, box.email, since);
     await markSynced(box.email, startedAt);
     return { inserted: 0 };
   }
@@ -179,13 +188,43 @@ async function syncMailbox(
     [box.email, [...ids]]
   );
   const knownIds = new Set(known.map((k) => k.gmail_message_id));
-  const fresh = [...ids].filter((id) => !knownIds.has(id));
-  // Bez .catch: błąd przerywa przebieg bez przesunięcia daty synchronizacji (wiadomość nie przepada).
-  const metas = (await mapLimit(fresh, META_CONCURRENCY, (id) => getGmailMessageMeta(token, id))).filter(
-    (m): m is GmailMessageMeta => m != null
-  );
-
+  const processed = processedIds.get(box.email) ?? new Set<string>();
+  processedIds.set(box.email, processed);
+  const fresh = [...ids].filter((id) => !knownIds.has(id) && !processed.has(id));
   const mailCases = cases.map(toMailCase);
+  let inserted = 0;
+  for (let i = 0; i < fresh.length; i += META_CHUNK) {
+    const chunk = fresh.slice(i, i + META_CHUNK);
+    // Bez .catch: błąd przerywa przebieg bez przesunięcia daty synchronizacji (wiadomość nie przepada).
+    const metas = (await mapPool(chunk, META_CONCURRENCY, (id) => getGmailMessageMeta(token, id))).filter(
+      (m): m is GmailMessageMeta => m != null
+    );
+    inserted += await storeMetas(box, metas, index, mailCases);
+    for (const id of chunk) processed.add(id);
+    // Pierwsza synchronizacja: historia z 30 dni jest do wglądu, ale nie jako zaległości do reakcji —
+    // po każdej porcji, bo przebieg może się przerwać przed końcem.
+    if (firstSync) await markInitialHandled(box.email, startedAt);
+  }
+  await reconcileRepliedInGmail(token, box.email, since);
+  await markSynced(box.email, startedAt);
+  return { inserted };
+}
+
+async function markInitialHandled(mailbox: string, startedAt: Date): Promise<void> {
+  await query(
+    `UPDATE public.supplier_mail_messages SET handled_at = now(), handled_via = 'initial'
+      WHERE mailbox = $1 AND handled_at IS NULL AND received_at < $2`,
+    [mailbox, new Date(startedAt.getTime() - 86_400_000)]
+  );
+}
+
+/** Zapisuje wiadomości od dostawców i zwroty z jednej porcji; zwraca liczbę nowych. */
+async function storeMetas(
+  box: Mailbox,
+  metas: GmailMessageMeta[],
+  index: ReturnType<typeof buildSenderIndex>,
+  mailCases: MailCase[]
+): Promise<number> {
   // Numery ZD z treści — przypięcie także do ZD wysłanych poza OnTime (indeks Subiekta).
   const zdIndex = await loadZdIndex(
     metas.flatMap((m) => documentRefs([m.subject, m.snippet, ...m.attachments.map((a) => a.filename)].join("\n")).dokNrs)
@@ -266,24 +305,15 @@ async function syncMailbox(
     );
     inserted += res.rowCount ?? 0;
   }
-  await reconcileRepliedInGmail(token, box.email);
-  if (firstSync) {
-    // Pierwsza synchronizacja: historia z 30 dni jest do wglądu, ale nie jako zaległości do reakcji.
-    await query(
-      `UPDATE public.supplier_mail_messages SET handled_at = now(), handled_via = 'initial'
-        WHERE mailbox = $1 AND handled_at IS NULL AND received_at < $2`,
-      [box.email, new Date(startedAt.getTime() - 86_400_000)]
-    );
-  }
-  await markSynced(box.email, startedAt);
-  return { inserted };
+  return inserted;
 }
 
 /**
  * Odpowiedź w Gmailu zamyka sprawę w OnTime: otwarta wiadomość od dostawcy, po której w tym samym
- * wątku jest nasza wiadomość (SENT), jest załatwiona („gmail”). Jeden odczyt na wątek.
+ * wątku jest nasza wiadomość (SENT), jest załatwiona („gmail”). Czytamy tylko wątki, w których od `since`
+ * coś wysłaliśmy (jedna lista SENT) — bez tego co 5 min do 300 odczytów wątków, prawie zawsze bez zmian.
  */
-async function reconcileRepliedInGmail(token: string, mailbox: string): Promise<void> {
+async function reconcileRepliedInGmail(token: string, mailbox: string, since: Date): Promise<void> {
   const { rows } = await query<{ id: string; gmail_thread_id: string; received_at: Date }>(
     `SELECT id, gmail_thread_id, received_at FROM public.supplier_mail_messages
       WHERE mailbox = $1 AND handled_at IS NULL AND kind = 'supplier' AND category IN ('reply', 'confirmation')
@@ -291,12 +321,15 @@ async function reconcileRepliedInGmail(token: string, mailbox: string): Promise<
       ORDER BY received_at DESC LIMIT 300`,
     [mailbox]
   );
-  const threads = [...new Set(rows.map((r) => r.gmail_thread_id))];
+  if (!rows.length) return;
+  const sentThreads = new Set(
+    (await listGmailMessages(token, `in:sent after:${Math.floor(since.getTime() / 1000)}`, 500)).map((m) => m.threadId)
+  );
+  const threads = [...new Set(rows.map((r) => r.gmail_thread_id))].filter((t) => sentThreads.has(t));
   const sentByThread = new Map<string, number[]>();
-  await mapLimit(threads, META_CONCURRENCY, async (threadId) => {
-    const sent = await getGmailThreadSentTimes(token, threadId, isMikranEmail).catch(
-      () => null
-    );
+  // Błąd (np. limit) przerywa przebieg bez przesunięcia daty — inaczej niesprawdzone wątki wypadłyby z okna `since`.
+  await mapPool(threads, META_CONCURRENCY, async (threadId) => {
+    const sent = await getGmailThreadSentTimes(token, threadId, isMikranEmail);
     if (sent?.length) sentByThread.set(threadId, sent);
   });
   const replied = rows.filter((r) => (sentByThread.get(r.gmail_thread_id) ?? []).some((t) => t > r.received_at.getTime()));
@@ -325,6 +358,7 @@ async function loadZdIndex(nrs: string[]): Promise<Map<string, { dokId: number; 
 }
 
 async function markSynced(mailbox: string, at: Date): Promise<void> {
+  processedIds.delete(mailbox);
   await query(
     `INSERT INTO public.supplier_mail_sync (mailbox, synced_at, last_error) VALUES ($1, $2, NULL)
      ON CONFLICT (mailbox) DO UPDATE SET synced_at = EXCLUDED.synced_at, last_error = NULL`,
