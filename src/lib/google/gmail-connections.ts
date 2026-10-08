@@ -264,7 +264,7 @@ export async function recordSupplierOrderEmail(input: {
 }
 
 /** Błąd „kolumna nie istnieje” (migracja jeszcze nie uruchomiona). */
-export function isMissingColumn(e: unknown, column: string): boolean {
+function isMissingColumn(e: unknown, column: string): boolean {
   return e instanceof Error && e.message.includes(column) && /does not exist|nie istnieje/.test(e.message);
 }
 

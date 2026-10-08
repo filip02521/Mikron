@@ -31,6 +31,7 @@ import {
 } from "@/lib/supplier-mail/match";
 import { prepareWaitingShipments, syncDhlMailbox } from "@/lib/customs/dhl-sync";
 import { isMikranEmail } from "@/lib/email/supplier-emails";
+import { mapLimit } from "@/lib/async/map-limit";
 
 /** Pierwsza synchronizacja skrzynki sięga tyle wstecz. */
 const FIRST_SYNC_DAYS = 30;
@@ -46,20 +47,6 @@ const META_CONCURRENCY = 6;
 
 /** Skrzynki osób, które połączyły Gmaila ze zgodą na odczyt. */
 type Mailbox = { userId: string; email: string; tokenEnc: string };
-
-async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
-  const out: R[] = new Array(items.length);
-  let next = 0;
-  await Promise.all(
-    Array.from({ length: Math.min(limit, items.length) }, async () => {
-      while (next < items.length) {
-        const i = next++;
-        out[i] = await fn(items[i]!);
-      }
-    })
-  );
-  return out;
-}
 
 async function loadMailboxes(): Promise<Mailbox[]> {
   const { rows } = await query<{ user_id: string; google_email: string; refresh_token_enc: string; scope: string }>(

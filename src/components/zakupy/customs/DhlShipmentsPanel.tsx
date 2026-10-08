@@ -63,6 +63,8 @@ export function DhlShipmentsPanel({
   const [picked, setPicked] = useState<Record<string, string>>({});
   const [messages, setMessages] = useState<Record<string, { tone: "error" | "info"; text: string }>>({});
   const [now] = useState(() => Date.now());
+  /** „Pomiń” chowa przesyłkę z listy na stałe — drugi klik potwierdza. */
+  const [confirmDismiss, setConfirmDismiss] = useState<string | null>(null);
 
   if (!shipments.length) return null;
 
@@ -137,7 +139,7 @@ export function DhlShipmentsPanel({
               ) : (
                 <>
                   {s.note ? <p className="text-sm text-slate-600">{s.note}</p> : null}
-                  {!s.hasInvoice ? (
+                  {!s.hasInvoice && !s.note ? (
                     <p className="text-sm text-slate-600">
                       Faktury nie było w załączniku. Załóż odprawę ręcznie przyciskiem „Nowa odprawa”.
                     </p>
@@ -179,9 +181,14 @@ export function DhlShipmentsPanel({
                       size="sm"
                       variant="ghost"
                       disabled={pending}
-                      onClick={() => run(s.id, () => actionDismissDhlShipment(s.id, true))}
+                      onClick={() => {
+                        if (confirmDismiss !== s.id) return setConfirmDismiss(s.id);
+                        setConfirmDismiss(null);
+                        run(s.id, () => actionDismissDhlShipment(s.id, true));
+                      }}
+                      onBlur={() => setConfirmDismiss((c) => (c === s.id ? null : c))}
                     >
-                      Pomiń
+                      {confirmDismiss === s.id ? "Na pewno pominąć? Zniknie z listy" : "Pomiń"}
                     </Button>
                   </div>
                 </>

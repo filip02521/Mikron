@@ -28,7 +28,7 @@ import { buildCustomsClearanceWorkbook } from "@/lib/customs/customs-excel";
 import { CUSTOMS_EMAIL_MAX_ATTACHMENTS_BYTES, customsEmailSubject } from "@/lib/customs/customs-email";
 import { parseMailRecipients } from "@/lib/email/recipients";
 import { getGmailConnection, sendGmailAsUser } from "@/lib/google/gmail-connections";
-import { collectCustomsMailAttachments } from "@/lib/customs/customs-mail-attachments";
+import { collectCustomsMailAttachments, listCustomsMailAttachments } from "@/lib/customs/customs-mail-attachments";
 import { createCustomsClearance, type CreateCustomsClearanceInput } from "@/lib/customs/customs-create";
 import { loadDhlReplyThread, markDhlReplied } from "@/lib/customs/dhl-data";
 import {
@@ -667,7 +667,7 @@ export type CustomsMailPreview = {
   /** Skrzynka Gmail, z której wyjdzie mail; null = trzeba połączyć Gmaila. */
   from: string | null;
   subject: string;
-  attachments: { name: string; size: number; contentType: string }[];
+  attachments: { key: string; name: string; size: number; contentType: string }[];
   totalBytes: number;
 };
 
@@ -683,17 +683,18 @@ export async function actionCustomsMailPreview(
   const view = await loadClearanceView(supabase, id);
   if (!view) return fail("Odprawa nie istnieje.");
   try {
-    const [files, conn] = await Promise.all([
-      collectCustomsMailAttachments(supabase, view, Boolean(includeExcel)),
+    const [refs, conn] = await Promise.all([
+      listCustomsMailAttachments(supabase, view, Boolean(includeExcel)),
       getGmailConnection(user.id),
     ]);
+    const sizes = await Promise.all(refs.map((r) => r.size()));
     return {
       ok: true,
       preview: {
         from: conn?.email ?? null,
         subject: view.dhlReply?.subject ?? customsEmailSubject(view),
-        attachments: files.map((f) => ({ name: f.filename, size: f.content.length, contentType: f.contentType })),
-        totalBytes: files.reduce((n, f) => n + f.content.length, 0),
+        attachments: refs.map((r, i) => ({ key: r.key, name: r.filename, size: sizes[i]!, contentType: r.contentType })),
+        totalBytes: sizes.reduce((n, size) => n + size, 0),
       },
     };
   } catch (e) {

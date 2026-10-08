@@ -7,6 +7,7 @@
 
 import { randomUUID } from "crypto";
 import type { PoolClient } from "pg";
+import { mapLimit } from "@/lib/async/map-limit";
 import { query, withClient } from "@/lib/db/pool";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { todayDateKeyInWarsaw, warsawDateKeyFromIso } from "@/lib/time/warsaw";
@@ -49,6 +50,7 @@ import {
 
 const STORAGE_BUCKET = "customs-documents";
 const MAX_MESSAGES = 300;
+const META_CONCURRENCY = 6;
 /** Starszych próśb nie zakładamy automatycznie (pierwsza synchronizacja sięga 30 dni wstecz). */
 const AUTO_CREATE_MAX_AGE_MS = 10 * 86_400_000;
 const MAX_INVOICE_BYTES = 14 * 1024 * 1024;
@@ -60,7 +62,7 @@ type Extraction = InvoiceExtraction & { file?: string };
 export type DhlMailbox = { email: string; userId: string | null };
 
 /** Notatka chwilowego błędu AI — automat ponowi odczyt przy kolejnej synchronizacji. */
-export const DHL_AI_RETRY_NOTE = "AI chwilowo niedostępne - ponowię odczyt przy kolejnej synchronizacji.";
+const DHL_AI_RETRY_NOTE = "AI chwilowo niedostępne - ponowię odczyt przy kolejnej synchronizacji.";
 
 function isTransientAiError(e: unknown): boolean {
   return e instanceof TimeoutError || isGeminiQuotaExceeded(e) || isRetryableGeminiError(e);
@@ -281,7 +283,7 @@ async function setNote(id: string, note: string | null): Promise<void> {
  * Odczyt AI każdego pliku INV osobno; wygrywa plik z największą liczbą pozycji (obok faktury DHL
  * dołącza bywa certyfikat albo drugą stronę bez pozycji).
  */
-export async function extractBestInvoice(files: DhlInvoiceFile[]): Promise<{ invoice: Extraction; bytes: Buffer; file: DhlInvoiceFile }> {
+async function extractBestInvoice(files: DhlInvoiceFile[]): Promise<{ invoice: Extraction; bytes: Buffer; file: DhlInvoiceFile }> {
   let best: { invoice: Extraction; bytes: Buffer; file: DhlInvoiceFile } | null = null;
   let lastError: unknown = null;
   for (const file of files) {
@@ -480,7 +482,7 @@ export async function createDhlClearanceForSupplier(
 }
 
 /** Rozpoznanie maila; gdy temat wskazuje DHL, a numeru przesyłki nie ma we fragmencie — z pełnej treści. */
-export async function classifyMeta(token: string, meta: GmailMessageMeta): Promise<DhlMail | null> {
+async function classifyMeta(token: string, meta: GmailMessageMeta): Promise<DhlMail | null> {
   const input = {
     subject: meta.subject,
     from: meta.from,
@@ -504,14 +506,25 @@ export async function syncDhlMailbox(token: string, box: DhlMailbox, since: Date
     [box.email, ids]
   );
   const knownIds = new Set(known.map((k) => k.gmail_message_id));
-  const metas: GmailMessageMeta[] = [];
-  for (const id of ids) {
-    if (knownIds.has(id)) continue;
-    // Błąd (np. limit Gmaila po ponowieniach) przerywa przebieg — data synchronizacji się nie przesuwa,
-    // więc kolejna próba pobierze tę wiadomość, zamiast ją zgubić. null = wiadomość usunięta.
-    const meta = await getGmailMessageMeta(token, id);
-    if (meta && !meta.labelIds.includes("DRAFT")) metas.push(meta);
-  }
+  // Błąd (np. limit Gmaila po ponowieniach) przerywa przebieg — data synchronizacji się nie przesuwa,
+  // więc kolejna próba pobierze tę wiadomość, zamiast ją zgubić. null = wiadomość usunięta.
+  const fetched = (
+    await mapLimit(
+      ids.filter((id) => !knownIds.has(id)),
+      META_CONCURRENCY,
+      (id) => getGmailMessageMeta(token, id)
+    )
+  ).filter((m): m is GmailMessageMeta => m != null && !m.labelIds.includes("DRAFT"));
+  // Kopia już zapisana z innej skrzynki (ta sama wiadomość, DW) — bez ponownego rozpoznawania i czytania treści.
+  const rfcIds = fetched.map((m) => m.rfcMessageId).filter(Boolean);
+  const { rows: seen } = rfcIds.length
+    ? await query<{ rfc_message_id: string }>(
+        `SELECT rfc_message_id FROM public.customs_dhl_events WHERE rfc_message_id = ANY($1::text[])`,
+        [rfcIds]
+      )
+    : { rows: [] };
+  const seenRfc = new Set(seen.map((r) => r.rfc_message_id));
+  const metas = fetched.filter((m) => !m.rfcMessageId || !seenRfc.has(m.rfcMessageId));
   // Od najstarszej — etapy (prośba → odpowiedź → potwierdzenie → zwolnienie) w kolejności zdarzeń.
   metas.sort((a, b) => a.receivedAt.localeCompare(b.receivedAt));
 

@@ -19,6 +19,7 @@ import {
   type GmailOAuthConfig,
 } from "@/lib/google/gmail";
 import { readGmailOAuthCookie, safeReturnPath } from "@/lib/google/gmail-oauth-cookie";
+import { headerAddresses } from "@/lib/google/gmail";
 
 const key = randomBytes(32);
 const cfg: GmailOAuthConfig = {
@@ -325,5 +326,16 @@ describe("isGmailRetryable", () => {
     expect(isGmailRetryable(403, "User rate limit exceeded")).toBe(true);
     expect(isGmailRetryable(403, "Request had insufficient authentication scopes.")).toBe(false);
     expect(isGmailRetryable(400, "Invalid query")).toBe(false);
+  });
+});
+
+describe("headerAddresses", () => {
+  it("adresy z To/Cc (nazwy, przecinki, wielkość liter)", () => {
+    expect(headerAddresses('"Anna Kowalska" <Anna.Kowalska@Mikran.com>, order@renfert.de, Jan <jan@polkard.pl>')).toEqual([
+      "anna.kowalska@mikran.com",
+      "order@renfert.de",
+      "jan@polkard.pl",
+    ]);
+    expect(headerAddresses("")).toEqual([]);
   });
 });
