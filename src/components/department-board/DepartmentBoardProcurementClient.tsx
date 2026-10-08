@@ -60,6 +60,8 @@ import { toastSuccess } from "@/lib/ui/notice-copy";
 import { inquiryNeedsAttention } from "@/lib/department-board/supplier-inquiry";
 import type { DepartmentBoardQuestion } from "@/lib/data/department-board-shared";
 
+const PROCUREMENT_FILTER_CTX = { supplierRepliesNeedAction: true } as const;
+
 /** Pytania z odpowiedzią dostawcy (do przekazania handlowcowi) na górę — reszta w dotychczasowej kolejności. */
 function withSupplierRepliesFirst(questions: DepartmentBoardQuestion[]): DepartmentBoardQuestion[] {
   const replied = questions.filter((q) => q.supplierInquiries?.some(inquiryNeedsAttention));
@@ -115,7 +117,11 @@ export function DepartmentBoardProcurementClient({
   const [saving, setSaving] = useState(false);
   const [successToast, setSuccessToast] = useState(false);
 
-  const openQuestionsCount = initial.questions.filter((q) => q.status === "open").length;
+  // Jak licznik w menu: bez odpowiedzi + odpowiedź dostawcy czeka na przekazanie handlowcowi.
+  const openQuestionsCount = useMemo(
+    () => filterDepartmentBoardQuestions(initial.questions, { filter: "open", ctx: PROCUREMENT_FILTER_CTX }).length,
+    [initial.questions]
+  );
   const allQuestions = useMemo(
     () => [...withSupplierRepliesFirst(initial.questions), ...initial.closedQuestions],
     [initial.questions, initial.closedQuestions]
@@ -125,6 +131,7 @@ export function DepartmentBoardProcurementClient({
     () =>
       departmentBoardQuestionFilterCounts(allQuestions, {
         search: questionSearch,
+        ctx: PROCUREMENT_FILTER_CTX,
       }),
     [allQuestions, questionSearch]
   );
@@ -140,6 +147,7 @@ export function DepartmentBoardProcurementClient({
       filterDepartmentBoardQuestions(allQuestions, {
         filter: activeQuestionFilter,
         search: "",
+        ctx: PROCUREMENT_FILTER_CTX,
       }),
     [allQuestions, activeQuestionFilter]
   );
@@ -151,6 +159,7 @@ export function DepartmentBoardProcurementClient({
         filter: activeQuestionFilter,
         search: questionSearch,
         focusQuestionId,
+        ctx: PROCUREMENT_FILTER_CTX,
       }),
     [focusQuestionId, allQuestions, questionSearch, activeQuestionFilter]
   );

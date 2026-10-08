@@ -490,15 +490,18 @@ async function inquirySenderMailbox(
 }
 
 /**
- * Załącznik z odpowiedzi dostawcy na zapytanie z tablicy — do dołączenia w odpowiedzi handlowcowi.
- * Tylko wiadomość z wątku tego zapytania (nie dowolny mail ze skrzynki). null = brak pliku albo dostępu.
+ * Załączniki z jednej odpowiedzi dostawcy na zapytanie z tablicy — do dołączenia w odpowiedzi handlowcowi.
+ * Tylko wiadomość z wątku tego zapytania (nie dowolny mail ze skrzynki); jeden odczyt wiadomości na
+ * wszystkie pliki. Wynik w kolejności `filenames`: plik, „too_big” (rozmiar z Gmaila, bez pobierania)
+ * albo null (nie ma takiego pliku). null zamiast tablicy = brak zapytania, wiadomości albo dostępu.
  */
-export async function boardReplyAttachment(input: {
+export async function boardReplyAttachments(input: {
   threadId: string;
   inquiryId: string;
   replyId: string;
-  filename: string;
-}): Promise<{ filename: string; data: Buffer } | null> {
+  filenames: readonly string[];
+  maxBytes: number;
+}): Promise<Array<{ filename: string; data: Buffer } | "too_big" | null> | null> {
   const box = await inquirySenderMailbox(input.threadId, input.inquiryId);
   if (!box) return null;
   const [meta, inquiryThread] = await Promise.all([
@@ -506,11 +509,17 @@ export async function boardReplyAttachment(input: {
     box.row.gmail_thread_id || getGmailThreadId(box.token, box.row.gmail_message_id),
   ]);
   if (!meta || !inquiryThread || meta.threadId !== inquiryThread || meta.labelIds.includes("SENT")) return null;
-  // attachmentId z tego odczytu — Gmail zmienia je przy każdym pobraniu wiadomości.
-  const ref = meta.attachments.find((a) => a.filename === input.filename);
-  if (!ref) return null;
-  const data = await fetchGmailAttachment(box.token, input.replyId, ref.attachmentId);
-  return data ? { filename: ref.filename, data } : null;
+  return Promise.all(
+    input.filenames.map(async (filename) => {
+      // attachmentId z tego odczytu — Gmail zmienia je przy każdym pobraniu wiadomości.
+      const ref = meta.attachments.find((a) => a.filename === filename);
+      if (!ref) return null;
+      if (ref.size > input.maxBytes) return "too_big" as const;
+      const data = await fetchGmailAttachment(box.token, input.replyId, ref.attachmentId);
+      if (!data) return null;
+      return data.length > input.maxBytes ? ("too_big" as const) : { filename: ref.filename, data };
+    })
+  );
 }
 
 export async function boardReplyForAi(input: {
@@ -575,11 +584,23 @@ export async function inquiriesToResolveOnReply(threadId: string): Promise<strin
     [threadId]
   );
   if (!rows.length) return [];
-  const reads = await readSentThreads(rows, "");
+  const [reads, linked] = await Promise.all([
+    readSentThreads(rows, ""),
+    // Odpowiedź przypięta w Poczcie dostawców także poza wątkiem wysyłki (numer zapytania w osobnym mailu).
+    query<{ case_id: string }>(
+      `SELECT DISTINCT case_id FROM public.supplier_mail_messages
+        WHERE case_kind = 'inquiry' AND case_id = ANY($1::uuid[]) AND kind IN ('supplier', 'bounce')`,
+      [rows.map((r) => r.id)]
+    )
+      .then((r) => new Set(r.rows.map((x) => String(x.case_id))))
+      .catch(() => new Set<string>()),
+  ]);
   return rows
-    .filter((_, i) => {
+    .filter((row, i) => {
       const read = reads[i]!;
-      return read.status === "unavailable" || awaitingReplyStatus(read.replies) === "replied";
+      // Zwrot też: zakupy odpisały handlowcowi, że mail nie doszedł — sprawa nie może wisieć na tablicy.
+      const status = read.status === "read" ? awaitingReplyStatus(read.replies) : null;
+      return read.status === "unavailable" || status === "replied" || status === "bounced" || linked.has(String(row.id));
     })
     .map((r) => String(r.id));
 }

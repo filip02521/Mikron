@@ -18,9 +18,9 @@ vi.mock("@/lib/google/gmail", async (importOriginal) => ({
   fetchGmailAttachment: m.fetchGmailAttachment,
 }));
 
-import { boardReplyAttachment } from "@/lib/google/gmail-connections";
+import { boardReplyAttachments } from "@/lib/google/gmail-connections";
 
-const input = { threadId: "board-1", inquiryId: "inq-1", replyId: "msg-reply", filename: "Oferta Renfert.pdf" };
+const input = { threadId: "board-1", inquiryId: "inq-1", replyId: "msg-reply", filenames: ["Oferta Renfert.pdf"], maxBytes: 15 * 1024 * 1024 };
 const meta = (over: Record<string, unknown> = {}) => ({
   id: "msg-reply",
   threadId: "gmail-thread-1",
@@ -47,30 +47,36 @@ beforeEach(() => {
   m.fetchGmailAttachment.mockResolvedValue(Buffer.from("%PDF-1.7 oferta"));
 });
 
-describe("boardReplyAttachment", () => {
+describe("boardReplyAttachments", () => {
   it("plik z odpowiedzi w wątku zapytania — pobrany świeżym attachmentId", async () => {
     m.getGmailMessageMeta.mockResolvedValue(meta());
-    const file = await boardReplyAttachment(input);
-    expect(file?.filename).toBe("Oferta Renfert.pdf");
+    const [file] = (await boardReplyAttachments(input))!;
+    expect(file).toMatchObject({ filename: "Oferta Renfert.pdf" });
     expect(m.fetchGmailAttachment).toHaveBeenCalledWith("ya29.token", "msg-reply", "fresh-att-id");
   });
 
   it("wiadomość z innego wątku skrzynki → nic (nie da się pobrać dowolnego maila)", async () => {
     m.getGmailMessageMeta.mockResolvedValue(meta({ threadId: "inny-watek" }));
-    expect(await boardReplyAttachment(input)).toBeNull();
+    expect(await boardReplyAttachments(input)).toBeNull();
+    expect(m.fetchGmailAttachment).not.toHaveBeenCalled();
+  });
+
+  it("za duży plik (rozmiar z Gmaila) → bez pobierania", async () => {
+    m.getGmailMessageMeta.mockResolvedValue(meta());
+    expect(await boardReplyAttachments({ ...input, maxBytes: 1000 })).toEqual(["too_big"]);
     expect(m.fetchGmailAttachment).not.toHaveBeenCalled();
   });
 
   it("nasza wysłana wiadomość albo brak pliku o tej nazwie → nic", async () => {
     m.getGmailMessageMeta.mockResolvedValue(meta({ labelIds: ["SENT"] }));
-    expect(await boardReplyAttachment(input)).toBeNull();
+    expect(await boardReplyAttachments(input)).toBeNull();
     m.getGmailMessageMeta.mockResolvedValue(meta());
-    expect(await boardReplyAttachment({ ...input, filename: "inny.pdf" })).toBeNull();
+    expect(await boardReplyAttachments({ ...input, filenames: ["inny.pdf"] })).toEqual([null]);
   });
 
   it("zapytanie spoza tego wątku tablicy → nic", async () => {
     m.query.mockResolvedValue({ rows: [] });
-    expect(await boardReplyAttachment(input)).toBeNull();
+    expect(await boardReplyAttachments(input)).toBeNull();
     expect(m.getGmailMessageMeta).not.toHaveBeenCalled();
   });
 });

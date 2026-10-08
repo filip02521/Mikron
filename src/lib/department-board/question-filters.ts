@@ -1,12 +1,24 @@
 import type { DepartmentBoardQuestionFilter } from "@/components/department-board/DepartmentBoardSalesChrome";
 import type { DepartmentBoardQuestion } from "@/lib/data/department-board-shared";
 import { filterDepartmentBoardQuestionsByQuery } from "@/lib/department-board/question-search";
+import { inquiryNeedsAttention } from "@/lib/department-board/supplier-inquiry";
 
 export type DepartmentBoardQuestionFilterContext = {
   unseenIds?: ReadonlySet<string>;
   unseenOwnIds?: ReadonlySet<string>;
   currentSalesPersonId?: string | null;
+  /**
+   * Zakupy: „Bez odpowiedzi” obejmuje też pytania, w których dostawca odpisał (albo mail wrócił),
+   * a handlowiec jeszcze nie dostał odpowiedzi — tak liczy licznik tablicy w menu.
+   */
+  supplierRepliesNeedAction?: boolean;
 };
+
+function needsProcurementAction(q: DepartmentBoardQuestion, ctx: DepartmentBoardQuestionFilterContext): boolean {
+  if (q.archived_at != null) return false;
+  if (q.status === "open") return true;
+  return Boolean(ctx.supplierRepliesNeedAction && q.supplierInquiries?.some(inquiryNeedsAttention));
+}
 
 export function filterDepartmentBoardQuestionsByStatus(
   questions: DepartmentBoardQuestion[],
@@ -15,7 +27,7 @@ export function filterDepartmentBoardQuestionsByStatus(
 ): DepartmentBoardQuestion[] {
   switch (filter) {
     case "open":
-      return questions.filter((q) => q.status === "open");
+      return questions.filter((q) => (ctx.supplierRepliesNeedAction ? needsProcurementAction(q, ctx) : q.status === "open"));
     case "answered":
       return questions.filter((q) => q.status === "answered");
     case "closed":
@@ -95,7 +107,7 @@ export function departmentBoardQuestionFilterCounts(
   const ctx = opts.ctx ?? {};
   return {
     all: searched.filter((q) => q.archived_at == null).length,
-    open: searched.filter((q) => q.status === "open" && q.archived_at == null).length,
+    open: searched.filter((q) => needsProcurementAction(q, ctx)).length,
     answered: searched.filter((q) => q.status === "answered" && q.archived_at == null).length,
     closed: searched.filter((q) => q.archived_at != null).length,
     unseen: searched.filter((q) => ctx.unseenIds?.has(q.id) ?? false).length,

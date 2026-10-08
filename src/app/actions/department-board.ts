@@ -17,7 +17,7 @@ import {
 } from "@/lib/data/department-board";
 import { notifyBoardQuestionReplyToSales } from "@/lib/department-board/notify-board-reply";
 import { resolveSupplierInquiries } from "@/lib/department-board/supplier-inquiry-db";
-import { boardReplyAttachment, inquiriesToResolveOnReply } from "@/lib/google/gmail-connections";
+import { boardReplyAttachments, inquiriesToResolveOnReply } from "@/lib/google/gmail-connections";
 import { markInquiryMailHandled } from "@/lib/supplier-mail/data";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SalesNoteColor } from "@/types/database";
@@ -446,7 +446,7 @@ export async function actionReplyToQuestion(
   const supplierRefs = (supplierFiles ?? []).filter(Boolean);
   if (supplierRefs.length && !isProcurement) throw new Error("Pliki od dostawcy dołącza dział zakupów.");
   if (supplierRefs.length > BOARD_SUPPLIER_FILE_MAX_COUNT) {
-    throw new Error(`Możesz dołączyć najwyżej ${BOARD_SUPPLIER_FILE_MAX_COUNT} pliki od dostawcy.`);
+    throw new Error(`Możesz dołączyć najwyżej ${BOARD_SUPPLIER_FILE_MAX_COUNT} plików od dostawcy.`);
   }
   if (!trimmedBody && !imageFiles.length && !supplierRefs.length) {
     throw new Error("Napisz wiadomość albo dodaj zdjęcie.");
@@ -485,13 +485,20 @@ export async function actionReplyToQuestion(
   let attachments: BoardThreadAttachmentRow[] = [];
   if (imageFiles.length || supplierFileData.length) {
     const failReply = async (message: string): Promise<never> => {
-      // Bez zdjęć odpowiedź jest niepełna — cofamy wpis, szkic zostaje w formularzu.
+      // Bez załączników odpowiedź jest niepełna — cofamy wpis (wiersze załączników kasują się z nim)
+      // i pliki już zapisane w magazynie; szkic zostaje w formularzu.
+      const { data: saved } = await supabase
+        .from("department_board_thread_attachments")
+        .select("storage_path")
+        .eq("post_id", post.id);
+      const paths = ((saved ?? []) as Array<{ storage_path: string }>).map((r) => r.storage_path);
+      if (paths.length) await supabase.storage.from(BOARD_IMAGE_BUCKET).remove(paths).catch(() => {});
       await supabase.from("department_board_posts").delete().eq("id", post.id);
       throw new Error(message);
     };
     const { hasSupabaseConfig } = await import("@/lib/supabase/admin");
     if (!hasSupabaseConfig()) {
-      await failReply("Brak konfiguracji przechowywania plików - nie można wysłać zdjęć.");
+      await failReply("Brak konfiguracji przechowywania plików - nie można wysłać załączników.");
     }
     if (imageFiles.length) {
       const upload = await uploadBoardQuestionImages({
@@ -621,25 +628,36 @@ async function loadBoardSupplierFiles(
   threadId: string,
   refs: BoardSupplierFileRef[]
 ): Promise<BoardSupplierFileData[]> {
-  const files = await Promise.all(
-    refs.map(async (ref) => {
-      const filename = String(ref?.filename ?? "").trim();
-      const type = boardSupplierFileType(filename);
-      if (!type) throw new Error(`Pliku „${filename}” nie można dołączyć (dozwolone: PDF, zdjęcia, Excel, Word, CSV).`);
-      const file = await boardReplyAttachment({
-        threadId,
-        inquiryId: String(ref.inquiryId ?? ""),
-        replyId: String(ref.replyId ?? ""),
-        filename,
+  // Ten sam plik raz; pliki z jednej wiadomości dostawcy — jeden odczyt z Gmaila.
+  const groups = new Map<string, { inquiryId: string; replyId: string; filenames: string[] }>();
+  for (const ref of refs) {
+    const inquiryId = String(ref?.inquiryId ?? "");
+    const replyId = String(ref?.replyId ?? "");
+    const filename = String(ref?.filename ?? "").trim();
+    if (!boardSupplierFileType(filename)) {
+      throw new Error(`Pliku „${filename}” nie można dołączyć (dozwolone: PDF, zdjęcia, Excel, Word, CSV).`);
+    }
+    const key = `${inquiryId}|${replyId}`;
+    const group = groups.get(key) ?? { inquiryId, replyId, filenames: [] };
+    if (!group.filenames.includes(filename)) group.filenames.push(filename);
+    groups.set(key, group);
+  }
+  const loaded = await Promise.all(
+    [...groups.values()].map(async (g) => {
+      const files = await boardReplyAttachments({ threadId, ...g, maxBytes: BOARD_SUPPLIER_FILE_MAX_BYTES });
+      return g.filenames.map((filename, i) => {
+        const file = files?.[i];
+        if (file === "too_big") {
+          throw new Error(`„${filename}” jest za duży (max ${BOARD_SUPPLIER_FILE_MAX_BYTES / (1024 * 1024)} MB).`);
+        }
+        if (!file) {
+          throw new Error(`Nie udało się pobrać „${filename}” z Gmaila - otwórz wątek ponownie i spróbuj jeszcze raz.`);
+        }
+        return { filename: file.filename, data: file.data, ...boardSupplierFileType(filename)! };
       });
-      if (!file) throw new Error(`Nie udało się pobrać „${filename}” z Gmaila - otwórz wątek ponownie i spróbuj jeszcze raz.`);
-      if (file.data.length > BOARD_SUPPLIER_FILE_MAX_BYTES) {
-        throw new Error(`„${filename}” jest za duży (max ${BOARD_SUPPLIER_FILE_MAX_BYTES / (1024 * 1024)} MB).`);
-      }
-      return { filename: file.filename, data: file.data, ...type };
     })
   );
-  return files;
+  return loaded.flat();
 }
 
 async function storeBoardSupplierFiles(input: {
