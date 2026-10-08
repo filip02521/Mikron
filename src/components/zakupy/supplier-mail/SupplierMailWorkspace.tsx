@@ -16,6 +16,7 @@ import {
 import { IconCircleCheck, IconMail, IconPaperclip, IconPencil, IconSearch, IconX } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
 import { Kbd } from "@/components/ui/Kbd";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Spinner } from "@/components/ui/Spinner";
 import {
   DetailEmpty,
@@ -403,52 +404,45 @@ export function SupplierMailWorkspace({
   return (
     <div className={workspaceGridClass}>
       <nav aria-label="Sprawy" className={railClass}>
-        <p className={cn(railGroupLabelClass, "hidden lg:block")}>Sprawy</p>
-        <div role="tablist" aria-label="Sprawy" className="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible">
+        <p className={cn(railGroupLabelClass, "hidden 2xl:block")}>Sprawy</p>
+        <div role="tablist" aria-label="Sprawy" className="flex min-w-0 gap-1 overflow-x-auto lg:shrink-0 lg:overflow-visible 2xl:flex-col">
           {reviewItems.length || column === "review" ? columnTab("review", "Do przejrzenia", reviewItems.length, "info") : null}
           {BOARD_COLUMNS.map((c) => columnTab(c, BOARD_COLUMN_LABELS[c], byColumn.get(c)!.length, c === "todo" ? "attention" : "neutral"))}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 lg:mt-auto lg:flex-col lg:items-stretch lg:gap-3">
-          <div role="group" aria-label="Czyje sprawy" className="flex rounded-md border border-slate-200/90 bg-white/70 p-0.5 text-xs">
-            {(["mine", "all"] as const).map((s) => (
-              <button
-                key={s}
-                type="button"
-                aria-pressed={scope === s}
-                onClick={() => setScope(s)}
-                className={cn(
-                  "min-h-7 flex-1 rounded-[5px] px-2.5 font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45",
-                  scope === s ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/70" : "text-slate-600 hover:text-slate-900"
-                )}
-              >
-                {s === "mine" ? "Moje" : "Wszystkie"}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-2 text-xs text-slate-500 lg:flex-col lg:items-stretch lg:gap-1.5">
-            <p className="flex items-center gap-1.5" role="status" aria-live="polite">
-              {syncing ? (
-                <>
-                  <Spinner size="sm" /> Sprawdzam skrzynkę…
-                </>
-              ) : view.sync.at ? (
-                `Skrzynka sprawdzona ${shortWhen(view.sync.at)}`
-              ) : (
-                "Skrzynka jeszcze nie była sprawdzana"
-              )}
-            </p>
-            <button
-              type="button"
-              onClick={checkNow}
-              disabled={syncing}
-              className="inline-flex min-h-7 items-center justify-center rounded-md px-2 font-medium text-indigo-700 transition-colors hover:bg-indigo-50 disabled:opacity-50 lg:border lg:border-slate-200 lg:bg-white"
-            >
-              Sprawdź teraz
-            </button>
-          </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 lg:shrink-0 2xl:mt-auto 2xl:flex-col 2xl:items-stretch 2xl:gap-3">
+          <SegmentedControl
+            value={scope}
+            onChange={setScope}
+            ariaLabel="Czyje sprawy"
+            density="compact"
+            className="2xl:w-full 2xl:[&>button]:flex-1"
+            options={[
+              { value: "mine", label: "Moje" },
+              { value: "all", label: "Wszystkie" },
+            ]}
+          />
+          <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-slate-500" role="status" aria-live="polite">
+            {syncing ? (
+              <>
+                <Spinner size="sm" /> Sprawdzam skrzynkę…
+              </>
+            ) : (
+              <>
+                <span className="truncate">
+                  {view.sync.at ? `Skrzynka sprawdzona ${shortWhen(view.sync.at)}` : "Skrzynka jeszcze nie była sprawdzana"}
+                </span>
+                <span aria-hidden className="text-slate-300 2xl:hidden">
+                  ·
+                </span>
+                <button type="button" onClick={checkNow} className="shrink-0 rounded font-medium text-indigo-700 hover:underline">
+                  Sprawdź teraz
+                </button>
+              </>
+            )}
+          </p>
           {!me ? (
-            <p className="w-full text-xs leading-relaxed text-slate-600 lg:w-auto">
+            <p className="w-full text-xs leading-relaxed text-slate-600 2xl:w-auto">
               Połącz swojego Gmaila w{" "}
               <Link href="/ustawienia" className="font-medium text-indigo-700 underline">
                 Ustawieniach

@@ -6,15 +6,15 @@ import { cn } from "@/lib/cn";
 const focusRingClass = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45";
 
 /**
- * Panel Asystenta: od lg trzy kolumny (szyna widoków | lista | treść) na całej wysokości ekranu,
- * niżej jeden stos (szyna jako pasek, lista albo treść — jak w programie pocztowym na telefonie).
+ * Panel Asystenta: od lg lista i treść obok siebie na całej wysokości ekranu, widoki jako pasek nad nimi;
+ * od 2xl widoki w pionowej szynie z lewej. Niżej jeden stos (lista albo treść, jak w programie pocztowym).
  */
 export const workspaceGridClass =
-  "relative grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[13.5rem_minmax(0,22rem)_minmax(0,1fr)] xl:grid-cols-[14rem_minmax(0,24rem)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]";
+  "relative grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:grid-rows-[auto_minmax(0,1fr)] xl:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] 2xl:grid-cols-[14rem_minmax(0,24rem)_minmax(0,1fr)] 2xl:grid-rows-[minmax(0,1fr)]";
 
 /** Szyna: drugi odcień neutralny (Studnia) — oddziela nawigację od treści bez obramowań. */
 export const railClass =
-  "flex min-w-0 flex-col gap-3 border-b border-slate-200 bg-slate-50/80 px-3 py-2.5 lg:border-b-0 lg:border-r lg:py-3";
+  "col-span-full flex min-w-0 flex-col gap-2 border-b border-slate-200 bg-slate-50/80 px-3 py-2 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between lg:gap-x-6 lg:gap-y-2 2xl:col-span-1 2xl:flex-nowrap 2xl:flex-col 2xl:items-stretch 2xl:justify-start 2xl:gap-3 2xl:border-b-0 2xl:border-r 2xl:py-3";
 
 /** Lista: przewija się osobno od lg; na telefonie rośnie z treścią. */
 export const listColumnClass = "min-h-0 border-slate-200 lg:overflow-y-auto lg:border-r";
@@ -25,7 +25,7 @@ export const railGroupLabelClass = "px-2 text-[10px] font-bold uppercase trackin
 export function railItemClass(active: boolean): string {
   return cn(
     focusRingClass,
-    "flex shrink-0 items-center justify-between gap-3 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors duration-150 active:scale-[0.98] motion-reduce:active:scale-100 lg:py-2",
+    "flex shrink-0 items-center justify-between gap-3 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors duration-150 active:scale-[0.98] motion-reduce:active:scale-100 2xl:py-2",
     active
       ? "bg-white text-slate-900 shadow-[var(--shadow-card)] ring-1 ring-slate-200/80"
       : "text-slate-600 hover:bg-white/70 hover:text-slate-900",
@@ -88,7 +88,8 @@ export function DetailHeader({
         </button>
       )}
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-        <div className="min-w-0 flex-1">
+        {/* min-w: tytuł nie ściska się do słowa w wierszu — akcje schodzą pod niego, gdy brakuje miejsca */}
+        <div className="min-w-[14rem] flex-1">
           <h3 className="text-base font-semibold tracking-tight text-slate-900">{title}</h3>
           {subtitle ? <p className="mt-0.5 text-sm text-slate-600">{subtitle}</p> : null}
         </div>
