@@ -20,7 +20,6 @@ import {
   BOARD_PROCUREMENT_AUTHOR_LABEL,
   boardAwaitingReplyClass,
   boardQuestionPreviewClass,
-  boardQuestionAuthorNameClass,
   boardQuestionRowClass,
   boardQuestionRowHeaderExpandedClass,
   boardQuestionStatusBadgeClass,
@@ -421,24 +420,51 @@ export function QuestionThreadCard({
           aria-expanded={expanded}
           aria-label={expandLabel}
         >
-          <span className="flex items-start gap-2.5 sm:gap-3">
-            <IconChevronDown
-              open={expanded}
-              size={16}
-              className={cn(
-                "mt-0.5 shrink-0 text-slate-400 transition-transform duration-300 ease-out motion-reduce:transition-none",
-                expanded && "text-indigo-500"
-              )}
-            />
-            <span className="min-w-0 flex-1 space-y-1">
-              {/* Telefon: tytuł w całości (do 2 linii), odznaka i data schodzą pod niego; od sm jedna linia. */}
-              <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:flex-nowrap">
-                {showUnseen ? (
-                  <span className={boardQuestionUnseenDotClass} aria-hidden />
+          {/* Stałe kolumny jak w programie pocztowym: awatar | autor, tytuł, podgląd | data i stan. */}
+          <span className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3">
+            <AuthorAvatar label={author} size="md" className="mt-0.5" />
+            <span className="min-w-0">
+              <span className="flex min-w-0 items-center gap-2 text-xs text-slate-600">
+                {showUnseen ? <span className={boardQuestionUnseenDotClass} aria-hidden /> : null}
+                <span className="truncate font-medium">{author}</span>
+                {productSymbolHint ? (
+                  <span className="shrink-0 rounded border border-slate-200 bg-slate-50 px-1 py-px font-mono text-[10.5px] text-slate-600">
+                    {productSymbolHint}
+                  </span>
                 ) : null}
-                <span className={cn(salesTypography.rowTitle, "line-clamp-2 min-w-0 basis-full sm:flex-1 sm:basis-auto sm:truncate")}>
-                  {question.title}
+                {threadPhotoCount > 0 ? (
+                  <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-slate-500" title={`W wątku: ${photoLabel(threadPhotoCount)}`}>
+                    <IconCamera size={12} className="shrink-0" aria-hidden />
+                    <span className="tabular-nums">{threadPhotoCount}</span>
+                    <span className="sr-only">zdjęć w wątku</span>
+                  </span>
+                ) : null}
+              </span>
+              <span className={cn(salesTypography.rowTitle, "mt-0.5 block", expanded ? "" : "line-clamp-2 sm:truncate")}>{question.title}</span>
+              {expanded ? (
+                <span className="mt-0.5 block text-xs tabular-nums text-slate-500">{formatBoardDate(question.created_at)}</span>
+              ) : (
+                <span className={cn(boardQuestionPreviewClass, "mt-0.5")}>
+                  {preview.who ? (
+                    <>
+                      <span className="font-semibold text-slate-700">{preview.who}:</span>{" "}
+                    </>
+                  ) : null}
+                  {preview.text}
                 </span>
+              )}
+            </span>
+            <span className="flex flex-col items-end gap-1.5 pt-0.5">
+              <span className="flex items-center gap-1.5">
+                <span className="text-[11px] tabular-nums text-slate-500" title={`Ostatnia aktywność: ${formatBoardDate(lastActivityAt)}`}>
+                  {formatBoardShortDate(lastActivityAt)}
+                </span>
+                <IconChevronDown
+                  open={expanded}
+                  size={16}
+                  className={cn("shrink-0 text-slate-400 transition-transform duration-300 ease-out motion-reduce:transition-none", expanded && "text-indigo-500")}
+                />
+              </span>
                 {status ? (
                   <span className={boardQuestionStatusBadgeClass(status.tone)} title={status.title}>
                     {status.tone === "waiting" || status.tone === "waiting-overdue" ? (
@@ -454,53 +480,6 @@ export function QuestionThreadCard({
                     )}
                   </span>
                 ) : null}
-                {threadPhotoCount > 0 ? (
-                  <span
-                    className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-slate-500"
-                    title={`W wątku: ${photoLabel(threadPhotoCount)}`}
-                  >
-                    <IconCamera size={12} className="shrink-0" aria-hidden />
-                    <span className="tabular-nums">{threadPhotoCount}</span>
-                    <span className="sr-only">zdjęć w wątku</span>
-                  </span>
-                ) : null}
-                {!expanded ? (
-                  <span className="hidden max-w-[11rem] shrink-0 items-center gap-1.5 text-xs font-medium text-slate-600 sm:inline-flex">
-                    <AuthorAvatar label={author} />
-                    <span className="truncate">{author}</span>
-                  </span>
-                ) : null}
-                <span
-                  className="shrink-0 text-[11px] tabular-nums text-slate-500"
-                  title={`Ostatnia aktywność: ${formatBoardDate(lastActivityAt)}`}
-                >
-                  {formatBoardShortDate(lastActivityAt)}
-                </span>
-              </span>
-              {expanded ? (
-                <span className={cn(salesTypography.rowBody, "block text-slate-600")}>
-                  <AuthorAvatar label={author} className="mr-1.5 align-[-0.3em]" />
-                  <span className={boardQuestionAuthorNameClass}>{author}</span>
-                  <span className="ml-2 tabular-nums">{formatBoardDate(question.created_at)}</span>
-                </span>
-              ) : (
-                <span className={boardQuestionPreviewClass}>
-                  {productSymbolHint ? (
-                    <span className="mr-2 rounded border border-slate-200 bg-slate-50 px-1 py-px font-mono text-[10.5px] text-slate-600">
-                      {productSymbolHint}
-                    </span>
-                  ) : null}
-                  {/* Telefon: autor tylko tu (w 1. linii brak miejsca). */}
-                  {preview.who ? (
-                    <>
-                      <span className="font-semibold text-slate-700">{preview.who}:</span>{" "}
-                    </>
-                  ) : (
-                    <span className="font-semibold text-slate-700 sm:hidden">{author}: </span>
-                  )}
-                  {preview.text}
-                </span>
-              )}
             </span>
           </span>
         </button>
@@ -747,12 +726,13 @@ export function QuestionThreadCard({
   );
 }
 
-/** Mały awater z inicjałami autora pytania — ten sam co przy wiadomościach w wątku. */
-function AuthorAvatar({ label, className }: { label: string; className?: string }) {
+/** Awatar z inicjałami autora pytania — ten sam język co przy wiadomościach w wątku. */
+function AuthorAvatar({ label, size = "sm", className }: { label: string; size?: "sm" | "md"; className?: string }) {
   return (
     <span
       className={cn(
-        "inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[9px] font-semibold leading-none text-slate-600 ring-1 ring-slate-200/80",
+        "inline-flex shrink-0 items-center justify-center rounded-full bg-slate-100 font-semibold leading-none text-slate-600 ring-1 ring-slate-200/80",
+        size === "md" ? "size-8 text-[11px]" : "size-5 text-[9px]",
         className
       )}
       title={label}
