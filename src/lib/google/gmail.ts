@@ -343,6 +343,7 @@ export type GmailPdfRef = { filename: string; attachmentId: string; size: number
 type GmailPart = {
   filename?: string;
   mimeType?: string;
+  headers?: GmailHeaders;
   body?: { data?: string; attachmentId?: string; size?: number };
   parts?: GmailPart[];
 };
@@ -591,7 +592,7 @@ export async function fetchGmailReplies(
   const threadId = opts.threadId || (await getGmailThreadId(accessToken, messageId));
   if (!threadId) return null;
   // Z treścią: drzewo MIME do 4 poziomów (multipart/mixed → alternative → text/plain).
-  const part = "filename,mimeType,body(data,attachmentId,size)";
+  const part = "filename,mimeType,headers,body(data,attachmentId,size)";
   const fields = opts.withText
     ? `messages(id,labelIds,internalDate,snippet,payload(${part},headers,parts(${part},parts(${part},parts(${part})))))`
     : "messages(id,labelIds,internalDate,snippet,payload(filename,headers,parts(filename,parts(filename))))";
@@ -749,7 +750,14 @@ export async function listGmailMessageIds(accessToken: string, q: string, max = 
   return (await listGmailMessages(accessToken, q, max)).map((m) => m.id);
 }
 
-export type GmailAttachmentRef = { filename: string; attachmentId: string; size: number; mimeType: string };
+export type GmailAttachmentRef = {
+  filename: string;
+  attachmentId: string;
+  size: number;
+  mimeType: string;
+  /** Osadzony w treści (Content-ID / Content-Disposition: inline) — logo z podpisu, obrazek wklejony w mail. */
+  inline?: boolean;
+};
 
 function attachmentRefs(part: GmailPart | undefined): GmailAttachmentRef[] {
   if (!part) return [];
@@ -761,6 +769,7 @@ function attachmentRefs(part: GmailPart | undefined): GmailAttachmentRef[] {
             attachmentId: part.body.attachmentId,
             size: Number(part.body.size) || 0,
             mimeType: part.mimeType ?? "application/octet-stream",
+            ...(header(part.headers, "Content-ID") || /^\s*inline/i.test(header(part.headers, "Content-Disposition")) ? { inline: true } : {}),
           },
         ]
       : [];
@@ -786,7 +795,7 @@ export type GmailMessageMeta = {
   bulk: boolean;
 };
 
-const META_PART = "filename,mimeType,body(attachmentId,size)";
+const META_PART = "filename,mimeType,headers,body(attachmentId,size)";
 const META_FIELDS = `id,threadId,labelIds,internalDate,snippet,payload(headers,${META_PART},parts(${META_PART},parts(${META_PART},parts(${META_PART}))))`;
 
 /** Nagłówki, fragment i lista załączników — bez treści (szybko, mało danych). null = brak wiadomości. */

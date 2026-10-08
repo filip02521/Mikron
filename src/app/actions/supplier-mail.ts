@@ -2,6 +2,7 @@
 
 // Poczta dostawców (Zakupy → Asystent): widok, synchronizacja, rozmowa, „Załatwione”, odpowiedź z OnTime.
 // Odpowiedź zawsze z Gmaila zalogowanej osoby; gdy rozmowa jest w cudzej skrzynce — jej właściciel w DW.
+import { isInlineImage } from "@/lib/mail/attachments";
 import { revalidatePath } from "next/cache";
 import { requireZdEstimateAdmin } from "@/lib/auth";
 import { query } from "@/lib/db/pool";
@@ -544,7 +545,7 @@ export async function actionMailForward(input: {
     if (!token) return { ok: false, message: "Skrzynka tej rozmowy nie jest połączona z OnTime." };
     const refs = rows.flatMap((m) =>
       m.attachments
-        .filter((a) => !/^image\d{3}\.(png|jpe?g|gif)$/i.test(a.filename))
+        .filter((a) => !isInlineImage(a))
         .map((a) => ({ messageId: m.gmail_message_id, ref: a }))
     );
     if (refs.reduce((n, r) => n + (r.ref.size ?? 0), 0) > FORWARD_MAX_BYTES) {

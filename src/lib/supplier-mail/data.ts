@@ -14,6 +14,7 @@ import {
   type BoardRow,
 } from "@/lib/mail-board/board";
 import { customsMailKind, type CustomsMailKind } from "@/lib/mail-board/triage";
+import { isInlineImage } from "@/lib/mail/attachments";
 import { categoryNeedsAction, type SupplierMailCategory } from "@/lib/supplier-mail/match";
 import { awaitingReplyTiming, type AwaitingReplyTiming } from "@/lib/suppliers/awaiting-supplier";
 import { todayDateKeyInWarsaw, warsawDateKeyFromIso } from "@/lib/time/warsaw";
@@ -193,7 +194,7 @@ export function groupConversations(rows: readonly MailMessageRow[]): MailConvers
         snippet: last.snippet,
         count: sorted.length,
         // Bez obrazków z podpisu Outlooka (image001.png…).
-        attachments: sorted.reduce((n, m) => n + m.attachments.filter((f) => !/^image\d{3}\.(png|jpe?g|gif)$/i.test(f.filename)).length, 0),
+        attachments: sorted.reduce((n, m) => n + m.attachments.filter((f) => !isInlineImage(f)).length, 0),
         category,
         bounce: sorted.some((m) => m.kind === "bounce" && !m.handled_at),
         autoReply: fromSupplier[0]?.kind === "auto",
@@ -573,7 +574,7 @@ export async function loadCustomsMail(): Promise<CustomsMailThread[]> {
         open: list.some((m) => !m.handled_at),
         attachments: list.flatMap((m) =>
           m.attachments
-            .filter((a) => !/^image\d{3}\.(png|jpe?g|gif)$/i.test(a.filename))
+            .filter((a) => !isInlineImage(a))
             .map((a) => ({ messageId: m.id, attachmentId: a.attachmentId, filename: a.filename }))
         ),
       };

@@ -40,6 +40,7 @@ import { controlFocusClass } from "@/lib/ui/ontime-theme";
 import { prepareMailAttachment } from "@/lib/client/compress-image";
 import { EXTRA_ATTACHMENTS_ACCEPT, extraAttachmentsError } from "@/lib/email/extra-attachments";
 import { formatFileSize } from "@/components/mail/MailPreview";
+import { isInlineImage, isPreviewableImage } from "@/lib/mail/attachments";
 import { splitEmphasis } from "@/lib/mail/emphasis";
 
 type Scope = "mine" | "all";
@@ -59,10 +60,11 @@ const fullFmt = new Intl.DateTimeFormat("pl-PL", {
 });
 const DRAG_TYPE = "application/x-ontime-mail-item";
 
-/** Obrazki z podpisu Outlooka (image001.png…) to nie załączniki — nie zaśmiecają listy. */
-function visibleAttachments<T extends { filename: string }>(list: readonly T[]): T[] {
-  return list.filter((a) => !/^image\d{3}\.(png|jpe?g|gif)$/i.test(a.filename));
-}
+const attachmentUrl = (messageId: string, attachmentId: string) =>
+  `/api/operations/supplier-mail/attachment?id=${encodeURIComponent(messageId)}&a=${encodeURIComponent(attachmentId)}`;
+
+const inlineImagesLabel = (n: number) =>
+  n === 1 ? "1 obrazek z treści maila" : `${n} ${n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? "obrazki" : "obrazków"} z treści maila`;
 
 function shortWhen(iso: string): string {
   const d = new Date(iso);
@@ -994,6 +996,8 @@ function MessageCard({ m }: { m: ConversationMessage }) {
   const [expanded, setExpanded] = useState(false);
   const text = m.text?.trim() || m.snippet;
   const long = text.length > 700 || text.split("\n").length > 14;
+  const files = m.attachments.filter((a) => !isInlineImage(a));
+  const inlineImages = m.attachments.filter(isInlineImage);
   return (
     <article
       className={cn(
@@ -1040,23 +1044,59 @@ function MessageCard({ m }: { m: ConversationMessage }) {
           {expanded ? "Zwiń" : "Pokaż całość"}
         </button>
       ) : null}
-      {visibleAttachments(m.attachments).length ? (
-        <ul className="mt-2 flex flex-wrap gap-1.5">
-          {visibleAttachments(m.attachments).map((a) => (
+      {/* Dokumenty jako chipy, zdjęcia jako miniatury; logo z podpisu i obrazki z treści schowane pod zwijaną listą. */}
+      {files.length ? (
+        <ul className="mt-2 flex flex-wrap items-center gap-1.5">
+          {files.map((a) => (
             <li key={a.attachmentId}>
-              <a
-                href={`/api/operations/supplier-mail/attachment?id=${encodeURIComponent(m.id)}&a=${encodeURIComponent(a.attachmentId)}`}
-                target="_blank"
-                rel="noopener"
-                className="inline-flex max-w-[16rem] items-center gap-1 rounded bg-slate-50 px-2 py-1 text-xs text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
-                title={a.filename}
-              >
-                <IconPaperclip size={12} aria-hidden className="shrink-0 text-slate-400" />
-                <span className="truncate">{a.filename}</span>
-              </a>
+              {isPreviewableImage(a) ? (
+                <a
+                  href={attachmentUrl(m.id, a.attachmentId)}
+                  target="_blank"
+                  rel="noopener"
+                  title={a.filename}
+                  className="block overflow-hidden rounded-md ring-1 ring-slate-200 transition-shadow hover:ring-slate-400"
+                >
+                  {/* Załącznik z własnego API za sesją — next/image nie ma tu czego optymalizować. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={attachmentUrl(m.id, a.attachmentId)} alt={a.filename} loading="lazy" className="h-20 w-20 bg-slate-100 object-cover" />
+                </a>
+              ) : (
+                <a
+                  href={attachmentUrl(m.id, a.attachmentId)}
+                  target="_blank"
+                  rel="noopener"
+                  className="inline-flex max-w-[16rem] items-center gap-1 rounded bg-slate-50 px-2 py-1 text-xs text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100"
+                  title={a.filename}
+                >
+                  <IconPaperclip size={12} aria-hidden className="shrink-0 text-slate-400" />
+                  <span className="truncate">{a.filename}</span>
+                </a>
+              )}
             </li>
           ))}
         </ul>
+      ) : null}
+      {inlineImages.length ? (
+        <details className="mt-2">
+          <summary className="cursor-pointer list-none text-xs text-slate-500 transition-colors hover:text-slate-800 [&::-webkit-details-marker]:hidden">
+            {inlineImagesLabel(inlineImages.length)} (podpis, logo)
+          </summary>
+          <ul className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            {inlineImages.map((a) => (
+              <li key={a.attachmentId}>
+                <a href={attachmentUrl(m.id, a.attachmentId)} target="_blank" rel="noopener" title={a.filename} className="block rounded-md ring-1 ring-slate-200 hover:ring-slate-400">
+                  {isPreviewableImage(a) ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={attachmentUrl(m.id, a.attachmentId)} alt={a.filename} loading="lazy" className="h-12 max-w-[10rem] rounded-md bg-white object-contain" />
+                  ) : (
+                    <span className="block px-2 py-1 text-xs text-slate-600">{a.filename}</span>
+                  )}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </details>
       ) : null}
     </article>
   );
