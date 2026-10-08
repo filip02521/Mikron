@@ -5,10 +5,12 @@
 import { revalidatePath } from "next/cache";
 import { requireZdEstimateAdmin } from "@/lib/auth";
 import { query } from "@/lib/db/pool";
+import { extraAttachmentsError } from "@/lib/email/extra-attachments";
 import { parseMailRecipients } from "@/lib/email/recipients";
 import {
   fetchGmailAttachment,
   getGmailMessageMeta,
+  getGmailThreadSentMessages,
   getGmailMessageText,
   getGmailOAuthConfig,
   type GmailAttachmentRef,
@@ -109,7 +111,10 @@ export async function actionSupplierMailView(opts: { sync?: boolean; force?: boo
 
 export type ConversationMessage = {
   id: string;
-  kind: "supplier" | "auto" | "bounce" | "other";
+  /** mine = nasza wiadomość w wątku (z Gmaila, SENT) — żeby rozmowa była cała, nie tylko to, co przyszło. */
+  kind: "supplier" | "auto" | "bounce" | "other" | "mine";
+  /** Tylko „mine”: do kogo. */
+  to?: string;
   category: string;
   from: string;
   fromName: string;
@@ -122,7 +127,7 @@ export type ConversationMessage = {
   handled: boolean;
 };
 
-/** Rozmowa: wiadomości od dostawcy z pełną treścią (z Gmaila skrzynki, w której są). */
+/** Rozmowa: wiadomości od nadawcy i nasze odpowiedzi z pełną treścią (z Gmaila skrzynki, w której są). */
 export async function actionSupplierMailConversation(input: {
   mailbox: string;
   threadId: string;
@@ -133,14 +138,34 @@ export async function actionSupplierMailConversation(input: {
   try {
     const rows = await loadMailMessages(`m.mailbox = $1 AND m.gmail_thread_id = $2`, [conv.mailbox, conv.threadId]);
     if (!rows.length) return { ok: false, message: "Nie znaleziono rozmowy - odśwież listę." };
-    const texts = await readTexts(conv.mailbox, rows.slice(0, 12).map((r) => r.gmail_message_id));
+    const token = await mailboxAccessToken(conv.mailbox).catch(() => null);
+    // Błąd odczytu wątku nie zasłania rozmowy — pokazujemy wtedy same wiadomości przychodzące.
+    const sent = token ? ((await getGmailThreadSentMessages(token, conv.threadId).catch(() => null)) ?? []) : [];
+    const texts = await readTexts(conv.mailbox, [
+      ...rows.slice(0, 12).map((r) => r.gmail_message_id),
+      ...sent.slice(-6).map((m) => m.id),
+    ]);
     const signature = await getEmailSignature(user.id).catch(() => "");
+    const mine: ConversationMessage[] = sent.map((m) => ({
+      id: m.id,
+      kind: "mine",
+      to: m.to,
+      category: "reply",
+      from: conv.mailbox,
+      fromName: "",
+      subject: m.subject,
+      receivedAt: m.at,
+      text: texts.get(m.id) ?? null,
+      snippet: m.snippet,
+      attachments: [],
+      handled: true,
+    }));
     return {
       ok: true,
       signature,
-      messages: [...rows]
-        .sort((a, b) => a.received_at.getTime() - b.received_at.getTime())
-        .map((r) => ({
+      messages: [
+        ...mine,
+        ...rows.map((r): ConversationMessage => ({
           id: r.id,
           kind: r.kind,
           category: r.category,
@@ -153,6 +178,7 @@ export async function actionSupplierMailConversation(input: {
           attachments: r.attachments,
           handled: Boolean(r.handled_at),
         })),
+      ].sort((a, b) => a.receivedAt.localeCompare(b.receivedAt)),
     };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się wczytać rozmowy.") };
@@ -194,6 +220,26 @@ async function markConversationHandled(
 
 const BODY_MAX = 20_000;
 
+/** Pliki z formularza → załączniki Gmaila; te same reguły co w przeglądarce (granica zaufania). */
+async function mailFiles(
+  raw: unknown
+): Promise<{ ok: true; attachments: { filename: string; content: Buffer; contentType: string }[] } | Fail> {
+  const list = raw ?? [];
+  if (!Array.isArray(list) || list.some((f) => !(f instanceof File))) return { ok: false, message: "Nieprawidłowe załączniki." };
+  const error = extraAttachmentsError(list as File[]);
+  if (error) return { ok: false, message: error };
+  return {
+    ok: true,
+    attachments: await Promise.all(
+      (list as File[]).map(async (f) => ({
+        filename: f.name.replace(/[\\/:*?"<>|\r\n]+/g, "-"),
+        content: Buffer.from(await f.arrayBuffer()),
+        contentType: f.type || "application/octet-stream",
+      }))
+    ),
+  };
+}
+
 /**
  * Odpowiedź dostawcy z OnTime: „Re:” do ostatniej wiadomości od dostawcy, z Gmaila zalogowanej osoby.
  * We własnej skrzynce dołącza do wątku; w cudzej — właściciel rozmowy dostaje kopię (DW).
@@ -203,6 +249,8 @@ export async function actionSupplierMailReply(input: {
   threadId: string;
   body: string;
   cc?: string;
+  /** Pliki dołożone do odpowiedzi (PDF, Excel, zdjęcia). */
+  files?: File[];
 }): Promise<{ ok: true; to: string[]; cc: string[] } | (Fail & { reconnect?: boolean })> {
   const user = await requireMailUser("mutate");
   const conv = validConversation(input);
@@ -210,6 +258,8 @@ export async function actionSupplierMailReply(input: {
   if (typeof input.body !== "string" || !input.body.trim()) return { ok: false, message: "Treść odpowiedzi jest pusta." };
   if (input.body.length > BODY_MAX) return { ok: false, message: "Treść jest za długa." };
   if (input.cc !== undefined && typeof input.cc !== "string") return { ok: false, message: "Nieprawidłowe DW." };
+  const files = await mailFiles(input.files);
+  if (!files.ok) return files;
   try {
     const rows = await loadMailMessages(`m.mailbox = $1 AND m.gmail_thread_id = $2`, [conv.mailbox, conv.threadId]);
     const last = rows.filter((r) => r.kind === "supplier" || r.kind === "auto" || r.kind === "other").sort((a, b) => b.received_at.getTime() - a.received_at.getTime())[0];
@@ -227,7 +277,7 @@ export async function actionSupplierMailReply(input: {
       cc: recipients.cc,
       subject: subject.slice(0, 300),
       text: input.body,
-      attachments: [],
+      attachments: files.attachments,
       kind: "supplier_reply",
       inReplyTo: last.rfc_message_id ?? undefined,
       gmailThreadId: own ? conv.threadId : undefined,
@@ -468,23 +518,25 @@ export async function actionMailBoardSave(input: {
 const FORWARD_MAX_BYTES = 18 * 1024 * 1024;
 
 /**
- * „Do zapłaty” → przekazanie faktury (np. księgowości): nowy mail z Gmaila zalogowanej osoby z załącznikami
- * rozmowy. Adres zapamiętuje się w profilu; sprawa przechodzi do Czekam na płatność.
+ * Przekazanie rozmowy dalej: nowy mail z Gmaila zalogowanej osoby z załącznikami rozmowy (np. awizacja
+ * do magazynu). `payment` — „Do zapłaty”: adres zapamiętuje się w profilu, sprawa przechodzi do Czekam na płatność.
  */
-export async function actionMailBoardForwardPayment(input: {
+export async function actionMailForward(input: {
   mailbox: string;
   threadId: string;
   to: string;
   note: string;
+  purpose: "payment" | "plain";
 }): Promise<{ ok: true; to: string; attachments: number } | (Fail & { reconnect?: boolean })> {
   const user = await requireMailUser("mutate");
   const conv = validConversation(input);
   if (!conv) return { ok: false, message: "Nieprawidłowa rozmowa." };
   if (typeof input.note !== "string" || input.note.length > BODY_MAX) return { ok: false, message: "Treść jest za długa." };
+  const payment = input.purpose === "payment";
   const recipients = parseMailRecipients(String(input.to ?? ""), "");
   if (!recipients.ok) return recipients;
-  if (recipients.to.length !== 1) return { ok: false, message: "Podaj jeden adres." };
-  const to = recipients.to[0]!;
+  if (payment && recipients.to.length !== 1) return { ok: false, message: "Podaj jeden adres." };
+  const to = recipients.to.join(", ");
   try {
     const rows = await loadMailMessages(`m.mailbox = $1 AND m.gmail_thread_id = $2`, [conv.mailbox, conv.threadId]);
     if (!rows.length) return { ok: false, message: "Nie znaleziono rozmowy." };
@@ -507,8 +559,8 @@ export async function actionMailBoardForwardPayment(input: {
     const supplier = last.supplier_name ?? (last.from_name || last.from_address);
     const sent = await sendGmailAsUser({
       userId: user.id,
-      to: [to],
-      subject: `Do zapłaty: ${supplier} - ${last.subject || "faktura"}`.slice(0, 300),
+      to: recipients.to,
+      subject: (payment ? `Do zapłaty: ${supplier} - ${last.subject || "faktura"}` : `Fwd: ${last.subject || supplier}`).slice(0, 300),
       text: [
         input.note.trim(),
         `Przekazane z OnTime: ${supplier}, „${last.subject || "(bez tematu)"}” od ${last.from_address}.`,
@@ -517,9 +569,13 @@ export async function actionMailBoardForwardPayment(input: {
         .filter(Boolean)
         .join("\n\n"),
       attachments,
-      kind: "payment_forward",
+      kind: payment ? "payment_forward" : "supplier_reply",
     });
     if (!sent.ok) return sent;
+    if (!payment) {
+      revalidatePath("/admin/wysylki");
+      return { ok: true, to, attachments: attachments.length };
+    }
     const key = convBoardKey(conv.mailbox, conv.threadId);
     await query(`UPDATE public.profiles SET payment_forward_email = $2 WHERE id = $1`, [user.id, to]);
     await query(

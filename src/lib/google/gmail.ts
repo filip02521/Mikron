@@ -871,6 +871,28 @@ export async function sendGmailRawInThread(
   );
 }
 
+export type GmailSentInThread = { id: string; at: string; to: string; subject: string; snippet: string };
+
+/** Nasze wiadomości (SENT) w wątku — do pokazania pełnej rozmowy, nie tylko tego, co przyszło. */
+export async function getGmailThreadSentMessages(accessToken: string, threadId: string): Promise<GmailSentInThread[] | null> {
+  const t = await gmailGet<{ messages?: GmailThreadMessage[] }>(
+    accessToken,
+    `/threads/${encodeURIComponent(threadId)}?format=metadata&metadataHeaders=To&metadataHeaders=Subject&fields=${encodeURIComponent(
+      "messages(id,labelIds,internalDate,snippet,payload/headers)"
+    )}`
+  );
+  if (!t) return null;
+  return (t.messages ?? [])
+    .filter((m) => m.labelIds?.includes("SENT") && m.id)
+    .map((m) => ({
+      id: m.id!,
+      at: new Date(Number(m.internalDate ?? 0)).toISOString(),
+      to: header(m.payload?.headers, "To"),
+      subject: header(m.payload?.headers, "Subject"),
+      snippet: m.snippet ?? "",
+    }));
+}
+
 /** Adresy z nagłówków To/Cc (małe litery). */
 export function headerAddresses(value: string): string[] {
   return [...value.matchAll(/[^\s@,;<>()"']+@[^\s@,;<>()"']+\.[a-z]{2,}/gi)].map((m) => m[0].toLowerCase());

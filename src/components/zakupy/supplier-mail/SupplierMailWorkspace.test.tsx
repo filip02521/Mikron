@@ -12,7 +12,7 @@ vi.mock("@/app/actions/supplier-mail", () => ({
   actionMailBoardMove: (input: unknown) => moveMock(input),
   actionMailBoardSave: vi.fn(async () => ({ ok: true })),
   actionMailTriage: (input: unknown) => triageMock(input),
-  actionMailBoardForwardPayment: vi.fn(),
+  actionMailForward: vi.fn(),
   actionSupplierMailConversation: vi.fn(() => new Promise(() => {})),
   actionSupplierMailRemind: vi.fn(),
   actionSupplierMailReply: vi.fn(),
@@ -150,5 +150,15 @@ describe("tablica spraw", () => {
       expect(triageMock).toHaveBeenCalledWith({ mailbox: "zakupy@example.com", threadId: "t9", decision: "case", remember: "sender" })
     );
     expect(await screen.findByText("Jan Nowak → sprawa · zawsze jan@nowa.example (+2)")).toBeTruthy();
+  });
+
+  it("wyszukiwarka szuka we wszystkich kolumnach, bez polskich znaków", () => {
+    renderBoard();
+    fireEvent.change(screen.getByLabelText("Szukaj sprawy"), { target: { value: "kulzer" } });
+    expect(screen.getByText("Kulzer")).toBeTruthy();
+    expect(screen.getByText("Do zapłaty", { selector: "span" })).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Szukaj sprawy"), { target: { value: "proforme" } });
+    expect(screen.getByText("Renfert")).toBeTruthy();
+    expect(screen.queryByText("Kulzer")).toBeNull();
   });
 });

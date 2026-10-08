@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
-  actionMailBoardForwardPayment,
+  actionMailForward,
   actionMailBoardMove,
   actionMailBoardSave,
   actionMailTriage,
@@ -23,6 +23,9 @@ import { domainOf, isFreeMailDomain } from "@/lib/mail-board/triage";
 import type { BoardItem, MailConversation, MailPerson, SupplierMailView, WaitingCase } from "@/lib/supplier-mail/data";
 import { businessDaysLabel } from "@/lib/suppliers/awaiting-supplier";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
+import { prepareMailAttachment } from "@/lib/client/compress-image";
+import { EXTRA_ATTACHMENTS_ACCEPT, extraAttachmentsError } from "@/lib/email/extra-attachments";
+import { formatFileSize } from "@/components/mail/MailPreview";
 
 type Scope = "mine" | "all";
 /** Kolumna tablicy albo półka „Do przejrzenia” (nieznani nadawcy — sprawa czy nie). */
@@ -97,6 +100,18 @@ const inheritKeyOf = (i: BoardItem) =>
     ? `${i.ref.conv.caseKind}:${i.ref.conv.caseId}`
     : null;
 
+/** Bez wielkości liter i polskich znaków — „zolw” znajdzie „Żółw”. */
+const fold = (t: string) => t.toLocaleLowerCase("pl").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ł/g, "l");
+
+function matchesSearch(i: BoardItem, q: string): boolean {
+  const conv = i.ref.type === "conv" ? i.ref.conv : null;
+  const hay = [itemTitle(i), itemSubject(i), i.note, i.waitingOn, conv?.zdLabel ?? "", conv?.snippet ?? "", conv?.lastFromEmail ?? ""].join(" ");
+  return fold(q)
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((w) => fold(hay).includes(w));
+}
+
 /** Kolejność w kolumnie: w Do zrobienia najpierw to, co samo wróciło (zwrot, termin), w Czekam — najbliższy termin. */
 function sortColumn(column: BoardColumn, list: BoardItem[]): BoardItem[] {
   const sorted = [...list].sort((a, b) => b.sortAt.localeCompare(a.sortAt));
@@ -134,6 +149,7 @@ export function SupplierMailWorkspace({
   const [column, setColumn] = useState<ViewTab>("todo");
   const [scope, setScope] = useState<Scope>("mine");
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
   const [dropTarget, setDropTarget] = useState<BoardColumn | null>(null);
   const [syncing, setSyncing] = useState(true);
   const [undo, setUndo] = useState<UndoInfo | null>(null);
@@ -208,7 +224,13 @@ export function SupplierMailWorkspace({
         ),
     [view.review, scope, meId]
   );
-  const order = column === "review" ? reviewItems : byColumn.get(column)!;
+  const searching = search.trim().length >= 2;
+  const order = searching
+    ? [...reviewItems, ...visible].filter((i) => matchesSearch(i, search)).sort((a, b) => b.sortAt.localeCompare(a.sortAt))
+    : column === "review"
+      ? reviewItems
+      : byColumn.get(column)!;
+  const reviewKeys = useMemo(() => new Set(reviewItems.map((i) => i.key)), [reviewItems]);
   const index = order.findIndex((i) => i.key === selectedKey);
   const reviewSelected = reviewItems.find((i) => i.key === selectedKey) ?? null;
   const selected = view.items.find((i) => i.key === selectedKey) ?? reviewSelected;
@@ -451,10 +473,25 @@ export function SupplierMailWorkspace({
           pole odpowiedzi zawsze widoczne na dole rozmowy. */}
       <div className="grid overflow-hidden rounded-[var(--radius-panel)] border border-slate-200 bg-white lg:h-[calc(100dvh-15rem)] lg:min-h-[32rem] lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
         <div className={cn("min-h-[24rem] border-slate-200 lg:min-h-0 lg:overflow-y-auto lg:border-r", selected ? "hidden lg:block" : "block")}>
+          <div className="sticky top-0 z-10 border-b border-slate-100 bg-white px-3 py-2">
+            <label htmlFor="mail-board-search" className="sr-only">
+              Szukaj sprawy
+            </label>
+            <input
+              id="mail-board-search"
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Szukaj: dostawca, temat, ZD, opis…"
+              className={cn(controlFocusClass, "min-h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-sm")}
+            />
+          </div>
           <BoardList
             column={column}
             items={order}
-            draggable={column !== "review"}
+            searching={searching}
+            reviewKeys={reviewKeys}
+            draggable={column !== "review" && !searching}
             people={scope === "all" ? people : null}
             selectedKey={selectedKey}
             onSelect={setSelectedKey}
@@ -526,6 +563,8 @@ const EMPTY: Record<ViewTab, string> = {
 function BoardList({
   column,
   items,
+  searching,
+  reviewKeys,
   draggable,
   people,
   selectedKey,
@@ -533,13 +572,18 @@ function BoardList({
 }: {
   column: ViewTab;
   items: BoardItem[];
+  /** Wyniki wyszukiwania ze wszystkich kolumn — przy każdym widać, gdzie leży. */
+  searching: boolean;
+  reviewKeys: ReadonlySet<string>;
   draggable: boolean;
   /** Tylko w widoku „Wszystkie” — kto obsługuje. */
   people: Map<string, string> | null;
   selectedKey: string | null;
   onSelect: (key: string) => void;
 }) {
-  if (!items.length) return <p className="px-4 py-10 text-center text-sm text-slate-500">{EMPTY[column]}</p>;
+  if (!items.length) {
+    return <p className="px-4 py-10 text-center text-sm text-slate-500">{searching ? "Nic nie pasuje do wyszukiwania." : EMPTY[column]}</p>;
+  }
   return (
     <ul className="divide-y divide-slate-100">
       {items.map((i) => {
@@ -572,6 +616,12 @@ function BoardList({
                 <span className="shrink-0 text-xs tabular-nums text-slate-500">{shortWhen(i.sortAt)}</span>
               </span>
               <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                {searching ? (
+                  <Tag
+                    text={reviewKeys.has(i.key) ? "Do przejrzenia" : BOARD_COLUMN_LABELS[i.column]}
+                    className="bg-white text-slate-700 ring-slate-300"
+                  />
+                ) : null}
                 {i.reason ? <Tag text={i.reason} className="bg-amber-50 text-amber-900 ring-amber-200" /> : <ItemTag item={i} />}
                 {i.fresh ? <Tag text="Nowa wiadomość" className="bg-amber-50 text-amber-900 ring-amber-200" /> : null}
                 {conv?.zdLabel ? <span className="truncate text-xs font-medium text-slate-600">{conv.zdLabel}</span> : null}
@@ -801,6 +851,7 @@ function ConversationDetail({
   onChanged: () => void;
 }) {
   const [messages, setMessages] = useState<ConversationMessage[] | null>(null);
+  const [forwarding, setForwarding] = useState(false);
   // Po przejściu do następnej rozmowy „Załatwione” jest pod kursorem — chwila przerwy chroni przed seryjnym zamykaniem.
   const armed = useArmedAfterMount();
   const [signature, setSignature] = useState("");
@@ -823,7 +874,7 @@ function ConversationDetail({
   }, [conv.mailbox, conv.threadId]);
 
   const foreign = me ? me.toLowerCase() !== conv.mailbox : true;
-  const hasSupplierMessage = Boolean(messages?.some((m) => m.kind !== "bounce"));
+  const hasSupplierMessage = Boolean(messages?.some((m) => m.kind !== "bounce" && m.kind !== "mine"));
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -852,6 +903,16 @@ function ConversationDetail({
             Przekaż handlowcowi
           </Link>
         ) : null}
+        {canReply && !hideDone ? (
+          <button
+            type="button"
+            onClick={() => setForwarding((v) => !v)}
+            aria-pressed={forwarding}
+            className="rounded px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50"
+          >
+            Przekaż
+          </button>
+        ) : null}
         {item.column !== "done" && !hideDone ? (
           <Button type="button" size="sm" variant="secondary" disabled={!armed} onClick={() => onMove("done")}>
             Zakończone
@@ -877,8 +938,10 @@ function ConversationDetail({
         ) : null}
       </div>
 
-      {item.column === "to_pay" && canReply ? (
-        <PaymentForward key={conv.key} conv={conv} defaultTo={paymentForwardEmail} onSent={onChanged} />
+      {forwarding && canReply ? (
+        <ForwardForm key={`fwd-${conv.key}`} conv={conv} purpose="plain" defaultTo="" onSent={onChanged} onCancel={() => setForwarding(false)} />
+      ) : item.column === "to_pay" && canReply ? (
+        <ForwardForm key={conv.key} conv={conv} purpose="payment" defaultTo={paymentForwardEmail} onSent={onChanged} />
       ) : messages && hasSupplierMessage && canReply ? (
         <Composer
           key={conv.key}
@@ -886,7 +949,8 @@ function ConversationDetail({
           note={`Pójdzie z ${me} jako „Re:” do ostatniej wiadomości dostawcy${foreign ? `; ${conv.mailbox} dostanie kopię` : ""}.`}
           signature={signature}
           withCc
-          send={(body, cc) => actionSupplierMailReply({ mailbox: conv.mailbox, threadId: conv.threadId, body, cc })}
+          withFiles
+          send={(body, cc, files) => actionSupplierMailReply({ mailbox: conv.mailbox, threadId: conv.threadId, body, cc, files })}
           onSent={onChanged}
         />
       ) : null}
@@ -902,13 +966,27 @@ function MessageCard({ m }: { m: ConversationMessage }) {
     <article
       className={cn(
         "rounded-md px-3.5 py-3 ring-1",
-        m.kind === "bounce" ? "bg-red-50/60 ring-red-200" : m.kind === "auto" ? "bg-slate-50 ring-slate-200" : "bg-white ring-slate-200"
+        m.kind === "bounce"
+          ? "bg-red-50/60 ring-red-200"
+          : m.kind === "auto"
+            ? "bg-slate-50 ring-slate-200"
+            : m.kind === "mine"
+              ? "ml-6 bg-indigo-50/50 ring-indigo-100"
+              : "bg-white ring-slate-200"
       )}
     >
       <header className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-xs">
         <span className="min-w-0 font-medium text-slate-900">
-          {m.kind === "bounce" ? "Mail nie doszedł · " : m.kind === "auto" ? "Autoodpowiedź · " : ""}
-          {m.fromName || m.from} <span className="font-normal text-slate-500">{m.fromName ? `<${m.from}>` : ""}</span>
+          {m.kind === "mine" ? (
+            <>
+              Nasza odpowiedź <span className="font-normal text-slate-500">do {m.to}</span>
+            </>
+          ) : (
+            <>
+              {m.kind === "bounce" ? "Mail nie doszedł · " : m.kind === "auto" ? "Autoodpowiedź · " : ""}
+              {m.fromName || m.from} <span className="font-normal text-slate-500">{m.fromName ? `<${m.from}>` : ""}</span>
+            </>
+          )}
         </span>
         <time className="tabular-nums text-slate-500" dateTime={m.receivedAt}>
           {fullFmt.format(new Date(m.receivedAt))}
@@ -1048,6 +1126,7 @@ function Composer({
   signature,
   initialBody = "",
   withCc = false,
+  withFiles = false,
   send,
   onSent,
   sendLabel = "Wyślij odpowiedź",
@@ -1057,7 +1136,9 @@ function Composer({
   signature: string;
   initialBody?: string;
   withCc?: boolean;
-  send: (body: string, cc?: string) => Promise<{ ok: true } | { ok: false; message: string }>;
+  /** „Dodaj pliki” — PDF, Excel, zdjęcia (zdjęcia zmniejszone w przeglądarce). */
+  withFiles?: boolean;
+  send: (body: string, cc?: string, files?: File[]) => Promise<{ ok: true } | { ok: false; message: string }>;
   onSent: () => void;
   sendLabel?: string;
 }) {
@@ -1068,14 +1149,30 @@ function Composer({
     return sig ? `${initialBody}\n\n${sig}`.replace(/^\n+/, "\n\n") : initialBody;
   });
   const [cc, setCc] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [preparing, setPreparing] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const addFiles = async (list: FileList) => {
+    setError(null);
+    setPreparing(true);
+    const prepared = await Promise.all(Array.from(list).map(prepareMailAttachment));
+    setPreparing(false);
+    const problem = extraAttachmentsError([...files, ...prepared]);
+    if (problem) setError(problem);
+    else setFiles((prev) => [...prev, ...prepared]);
+  };
+
   const submit = async () => {
-    if (sending || !body.trim()) return;
+    if (sending || preparing || !body.trim()) return;
     setSending(true);
     setError(null);
-    const res = await send(body, cc.trim() || undefined).catch(() => ({ ok: false as const, message: "Brak połączenia z serwerem." }));
+    const res = await send(body, cc.trim() || undefined, files.length ? files : undefined).catch(() => ({
+      ok: false as const,
+      message: "Brak połączenia z serwerem (pliki ponad ~1 MB mogą nie przejść przez serwer - zmniejsz PDF).",
+    }));
     setSending(false);
     if (res.ok) onSent();
     else setError(res.message);
@@ -1123,9 +1220,54 @@ function Composer({
           />
         </div>
       ) : null}
+      {withFiles ? (
+        <div className="space-y-1.5">
+          {files.length ? (
+            <ul className="flex flex-wrap gap-1.5">
+              {files.map((f, i) => (
+                <li key={`${i}-${f.name}`} className="inline-flex max-w-[16rem] items-center gap-1 rounded bg-white px-2 py-1 text-xs text-slate-700 ring-1 ring-slate-200">
+                  <IconPaperclip size={12} aria-hidden className="shrink-0 text-slate-400" />
+                  <span className="truncate">{f.name}</span>
+                  <span className="shrink-0 tabular-nums text-slate-400">{formatFileSize(f.size)}</span>
+                  <button
+                    type="button"
+                    onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}
+                    disabled={sending}
+                    aria-label={`Usuń ${f.name}`}
+                    className="ml-0.5 rounded px-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <input
+            ref={fileRef}
+            type="file"
+            multiple
+            accept={EXTRA_ATTACHMENTS_ACCEPT}
+            className="sr-only"
+            tabIndex={-1}
+            onChange={(e) => {
+              if (e.target.files?.length) void addFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={sending || preparing}
+            className="inline-flex min-h-8 items-center gap-1.5 rounded px-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
+          >
+            {preparing ? <Spinner size="sm" /> : <IconPaperclip size={14} aria-hidden />}
+            {preparing ? "Przygotowuję pliki…" : "Dodaj pliki"}
+          </button>
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-slate-500">{note}</p>
-        <Button type="submit" disabled={sending || !body.trim()} aria-busy={sending}>
+        <Button type="submit" disabled={sending || preparing || !body.trim()} aria-busy={sending}>
           {sending ? "Wysyłam…" : sendLabel}
         </Button>
       </div>
@@ -1138,12 +1280,30 @@ function Composer({
   );
 }
 
-/** „Do zapłaty” → przekazanie faktury z załącznikami rozmowy; adres zapamiętuje się po pierwszym razie. */
-function PaymentForward({ conv, defaultTo, onSent }: { conv: MailConversation; defaultTo: string; onSent: () => void }) {
+/**
+ * Przekazanie rozmowy z załącznikami. `payment` (Do zapłaty): adres zapamiętuje się po pierwszym razie,
+ * sprawa przechodzi do Czekam na płatność.
+ */
+function ForwardForm({
+  conv,
+  purpose,
+  defaultTo,
+  onSent,
+  onCancel,
+}: {
+  conv: MailConversation;
+  purpose: "payment" | "plain";
+  defaultTo: string;
+  onSent: () => void;
+  onCancel?: () => void;
+}) {
+  const payment = purpose === "payment";
   const toId = useId();
   const noteId = useId();
   const [to, setTo] = useState(defaultTo);
-  const [note, setNote] = useState("Dzień dobry,\n\nproszę o opłacenie faktury w załączniku.\n\nDziękuję.");
+  const [note, setNote] = useState(
+    payment ? "Dzień dobry,\n\nproszę o opłacenie faktury w załączniku.\n\nDziękuję." : "Dzień dobry,\n\nprzekazuję do wiadomości.\n\n"
+  );
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -1151,13 +1311,13 @@ function PaymentForward({ conv, defaultTo, onSent }: { conv: MailConversation; d
     if (sending || !to.trim()) return;
     setSending(true);
     setResult(null);
-    const res = await actionMailBoardForwardPayment({ mailbox: conv.mailbox, threadId: conv.threadId, to, note }).catch(() => ({
+    const res = await actionMailForward({ mailbox: conv.mailbox, threadId: conv.threadId, to, note, purpose }).catch(() => ({
       ok: false as const,
       message: "Brak połączenia z serwerem.",
     }));
     setSending(false);
     if (res.ok) {
-      setResult({ ok: true, text: `Przekazano do ${res.to} (${res.attachments} zał.). Sprawa czeka na płatność.` });
+      setResult({ ok: true, text: `Przekazano do ${res.to} (${res.attachments} zał.).${payment ? " Sprawa czeka na płatność." : ""}` });
       onSent();
     } else setResult({ ok: false, text: res.message });
   };
@@ -1170,7 +1330,14 @@ function PaymentForward({ conv, defaultTo, onSent }: { conv: MailConversation; d
         void submit();
       }}
     >
-      <p className="text-sm font-semibold text-slate-900">Przekaż do zapłaty</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-semibold text-slate-900">{payment ? "Przekaż do zapłaty" : "Przekaż dalej"}</p>
+        {onCancel ? (
+          <button type="button" onClick={onCancel} className="rounded px-1.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100">
+            Anuluj
+          </button>
+        ) : null}
+      </div>
       <div className="flex items-center gap-2">
         <label htmlFor={toId} className="shrink-0 text-xs font-medium text-slate-500">
           Do
@@ -1182,7 +1349,7 @@ function PaymentForward({ conv, defaultTo, onSent }: { conv: MailConversation; d
           disabled={sending}
           inputMode="email"
           autoComplete="off"
-          placeholder="adres osoby, która płaci"
+          placeholder={payment ? "adres osoby, która płaci" : "adres (kilka - po przecinku)"}
           className={cn(controlFocusClass, "min-h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-sm")}
         />
       </div>
@@ -1199,7 +1366,8 @@ function PaymentForward({ conv, defaultTo, onSent }: { conv: MailConversation; d
       />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-slate-500">
-          {conv.attachments ? `Pójdzie z załącznikami rozmowy (${conv.attachments}).` : "Rozmowa nie ma załączników."} Potem sprawa czeka 3 dni rob. na płatność.
+          {conv.attachments ? `Pójdzie z załącznikami rozmowy (${conv.attachments}).` : "Rozmowa nie ma załączników."}
+          {payment ? " Potem sprawa czeka 3 dni rob. na płatność." : ""}
         </p>
         <Button type="submit" disabled={sending || !to.trim()} aria-busy={sending}>
           {sending ? "Wysyłam…" : "Przekaż"}
