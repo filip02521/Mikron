@@ -6,9 +6,28 @@ import { revalidatePath } from "next/cache";
 import { requireZdEstimateAdmin } from "@/lib/auth";
 import { query } from "@/lib/db/pool";
 import { parseMailRecipients } from "@/lib/email/recipients";
-import { getGmailMessageMeta, getGmailMessageText, getGmailOAuthConfig, type GmailAttachmentRef } from "@/lib/google/gmail";
-import { getEmailSignature, getGmailConnection, sendGmailAsUser } from "@/lib/google/gmail-connections";
-import { loadMailMessages, loadSupplierMailView, type SupplierMailView } from "@/lib/supplier-mail/data";
+import {
+  fetchGmailAttachment,
+  getGmailMessageMeta,
+  getGmailMessageText,
+  getGmailOAuthConfig,
+  type GmailAttachmentRef,
+} from "@/lib/google/gmail";
+import {
+  getEmailSignature,
+  getGmailConnection,
+  getPaymentForwardEmail,
+  resolveAwaitingSupplier,
+  sendGmailAsUser,
+} from "@/lib/google/gmail-connections";
+import { addBusinessDaysKey, isBoardColumn, WAIT_BUSINESS_DAYS, type BoardColumn } from "@/lib/mail-board/board";
+import {
+  convBoardKey,
+  loadMailMessages,
+  loadSupplierMailView,
+  type SupplierMailView,
+} from "@/lib/supplier-mail/data";
+import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
 import { mailboxAccessToken } from "@/lib/supplier-mail/mailbox";
 import { syncSupplierMail } from "@/lib/supplier-mail/sync";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
@@ -39,7 +58,17 @@ const SYNC_WAIT_MS = 20_000;
  * `syncPending` — przebieg trwa dalej; ponowne wywołanie z `sync` dołącza do niego.
  */
 export async function actionSupplierMailView(opts: { sync?: boolean; force?: boolean } = {}): Promise<
-  | { ok: true; view: SupplierMailView; me: string | null; canReply: boolean; signature: string; syncErrors: string[]; syncPending: boolean }
+  | {
+      ok: true;
+      view: SupplierMailView;
+      me: string | null;
+      meId: string;
+      canReply: boolean;
+      signature: string;
+      paymentForwardEmail: string;
+      syncErrors: string[];
+      syncPending: boolean;
+    }
   | Fail
 > {
   const user = await requireMailUser("read");
@@ -55,12 +84,23 @@ export async function actionSupplierMailView(opts: { sync?: boolean; force?: boo
       syncPending = done === null;
       syncErrors = done ?? [];
     }
-    const [view, conn, signature] = await Promise.all([
+    const [view, conn, signature, paymentForwardEmail] = await Promise.all([
       loadSupplierMailView(),
       getGmailConnection(user.id),
       getEmailSignature(user.id).catch(() => ""),
+      getPaymentForwardEmail(user.id).catch(() => ""),
     ]);
-    return { ok: true, view, me: conn?.email ?? null, canReply: Boolean(conn), signature, syncErrors, syncPending };
+    return {
+      ok: true,
+      view,
+      me: conn?.email ?? null,
+      meId: user.id,
+      canReply: Boolean(conn),
+      signature,
+      paymentForwardEmail,
+      syncErrors,
+      syncPending,
+    };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się wczytać poczty dostawców.") };
   }
@@ -131,23 +171,6 @@ async function readTexts(mailbox: string, ids: string[]): Promise<Map<string, st
   return out;
 }
 
-/**
- * „Załatwione”: wszystkie otwarte wiadomości rozmowy. Odpowiedź dostawcy na wysłane ZD zamyka też
- * czekanie na to ZD (zapytania z tablicy zamyka odpowiedź handlowcowi w wątku).
- */
-export async function actionSupplierMailHandle(input: { mailbox: string; threadId: string }): Promise<{ ok: true } | Fail> {
-  const user = await requireMailUser("mutate");
-  const conv = validConversation(input);
-  if (!conv) return { ok: false, message: "Nieprawidłowa rozmowa." };
-  try {
-    await markConversationHandled(conv, user.id, "manual");
-    revalidatePath("/zakupy/asystent");
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, message: userFacingErrorText(e, "Nie udało się oznaczyć rozmowy.") };
-  }
-}
-
 async function markConversationHandled(
   conv: { mailbox: string; threadId: string },
   userId: string,
@@ -215,27 +238,6 @@ export async function actionSupplierMailReply(input: {
     return { ok: true, to: recipients.to, cc: recipients.cc };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się wysłać odpowiedzi.") };
-  }
-}
-
-/** Czekająca sprawa bez odpowiedzi — „Załatwione” (np. potwierdzenie telefoniczne). */
-export async function actionSupplierMailResolveCase(input: { kind: "zd" | "inquiry"; id: string }): Promise<{ ok: true } | Fail> {
-  const user = await requireMailUser("mutate");
-  if ((input?.kind !== "zd" && input?.kind !== "inquiry") || !UUID_RE.test(String(input?.id ?? ""))) {
-    return { ok: false, message: "Nieprawidłowa sprawa." };
-  }
-  try {
-    await query(
-      input.kind === "zd"
-        ? `UPDATE public.supplier_order_emails SET resolved_at = now(), resolved_by = $2 WHERE id = $1 AND resolved_at IS NULL`
-        : `UPDATE public.supplier_inquiry_emails SET resolved_at = now() WHERE id = $1 AND resolved_at IS NULL AND $2::uuid IS NOT NULL`,
-      [input.id, user.id]
-    );
-    revalidatePath("/zakupy/asystent");
-    if (input.kind === "inquiry") revalidatePath("/zakupy/tablica");
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, message: userFacingErrorText(e, "Nie udało się zamknąć sprawy.") };
   }
 }
 
@@ -310,55 +312,226 @@ export async function actionSupplierMailBounces(): Promise<{ ok: true; suppliers
   }
 }
 
+// ─── Tablica spraw: kolumna, opis, na kogo czekam, kto obsługuje ───
+
+type BoardKey =
+  | { type: "conv"; key: string; mailbox: string; threadId: string }
+  | { type: "case"; key: string; kind: "zd" | "inquiry"; id: string };
+
+function parseBoardKey(raw: unknown): BoardKey | null {
+  const key = String(raw ?? "");
+  const conv = /^conv:(.+)\|([0-9a-f]{6,40})$/i.exec(key);
+  if (conv) {
+    const valid = validConversation({ mailbox: conv[1], threadId: conv[2] });
+    return valid ? { type: "conv", key: convBoardKey(valid.mailbox, valid.threadId), ...valid } : null;
+  }
+  const cs = /^(zd|inquiry):(.+)$/.exec(key);
+  return cs && UUID_RE.test(cs[2]!) ? { type: "case", key, kind: cs[1] as "zd" | "inquiry", id: cs[2]! } : null;
+}
+
 /**
- * „Cofnij” po „Załatwione”: wiadomości rozmowy zamknięte ręcznie w ostatnich 10 minutach wracają
- * do „Do reakcji”; ZD zamknięte razem z nimi znowu czeka.
+ * Pierwszy zapis odpowiedzi na sprawę (ZD / zapytanie) przejmuje opis i kolumnę tej sprawy,
+ * żeby zmiana jednego pola nie zgubiła reszty.
  */
-export async function actionSupplierMailReopen(input: { mailbox: string; threadId: string }): Promise<{ ok: true } | Fail> {
+async function adoptInherited(key: string, inheritKey: unknown): Promise<void> {
+  const inherit = parseBoardKey(inheritKey);
+  if (!inherit || inherit.type !== "case") return;
+  await query(
+    `INSERT INTO public.mail_board_items (item_key, board_column, column_set_at, note, waiting_on, remind_on, assignee_id)
+     SELECT $1, board_column, column_set_at, note, waiting_on, remind_on, assignee_id
+       FROM public.mail_board_items WHERE item_key = $2
+     ON CONFLICT (item_key) DO NOTHING`,
+    [key, inherit.key]
+  );
+}
+
+/**
+ * Przeniesienie sprawy do kolumny (`null` = z powrotem „z automatu”). Zakończone zamyka też sprawę
+ * w poczcie (jak dawne „Załatwione”), wyjście z Zakończonych otwiera ją z powrotem.
+ */
+export async function actionMailBoardMove(input: {
+  key: string;
+  inheritKey?: string | null;
+  column: BoardColumn | null;
+  remindOn?: string | null;
+}): Promise<{ ok: true } | Fail> {
   const user = await requireMailUser("mutate");
-  const conv = validConversation(input);
-  if (!conv) return { ok: false, message: "Nieprawidłowa rozmowa." };
+  const key = parseBoardKey(input?.key);
+  if (!key) return { ok: false, message: "Nieprawidłowa sprawa." };
+  const column = input.column;
+  if (column !== null && !isBoardColumn(column)) return { ok: false, message: "Nieznana kolumna." };
+  if (input.remindOn != null && !/^\d{4}-\d{2}-\d{2}$/.test(String(input.remindOn))) return { ok: false, message: "Nieprawidłowa data." };
+  const remindOn =
+    column === "waiting" ? (input.remindOn ?? addBusinessDaysKey(todayDateKeyInWarsaw(), WAIT_BUSINESS_DAYS)) : null;
   try {
-    const { rows } = await query<{ case_kind: string | null; case_id: string | null; handled_at: Date }>(
-      `UPDATE public.supplier_mail_messages m SET handled_at = NULL, handled_by = NULL, handled_via = NULL
-         FROM (SELECT id, handled_at AS was FROM public.supplier_mail_messages
-                WHERE mailbox = $1 AND gmail_thread_id = $2 AND handled_via = 'manual'
-                  AND handled_at > now() - interval '10 minutes') prev
-        WHERE m.id = prev.id
-        RETURNING m.case_kind, m.case_id, prev.was AS handled_at`,
-      [conv.mailbox, conv.threadId]
+    await adoptInherited(key.key, input.inheritKey);
+    await query(
+      `INSERT INTO public.mail_board_items (item_key, board_column, column_set_at, remind_on, updated_by)
+       VALUES ($1, $2, now(), $3, $4)
+       ON CONFLICT (item_key) DO UPDATE SET board_column = EXCLUDED.board_column, column_set_at = now(),
+         remind_on = EXCLUDED.remind_on, updated_at = now(), updated_by = EXCLUDED.updated_by`,
+      [key.key, column, remindOn, user.id]
     );
-    const zdIds = [...new Set(rows.filter((r) => r.case_kind === "zd" && r.case_id).map((r) => r.case_id!))];
-    if (zdIds.length) {
+    if (key.type === "conv") {
+      if (column === "done") await markConversationHandled(key, user.id, "manual");
+      else await reopenConversation(key);
+    } else if (column === "done") {
+      await resolveAwaitingSupplier(key.kind, key.id, user.id);
+    } else {
       await query(
-        `UPDATE public.supplier_order_emails SET resolved_at = NULL, resolved_by = NULL
-          WHERE id = ANY($1::uuid[]) AND resolved_at > now() - interval '10 minutes' AND resolved_by = $2`,
-        [zdIds, user.id]
+        key.kind === "zd"
+          ? `UPDATE public.supplier_order_emails SET resolved_at = NULL, resolved_by = NULL WHERE id = $1`
+          : `UPDATE public.supplier_inquiry_emails SET resolved_at = NULL WHERE id = $1`,
+        [key.id]
       );
     }
     revalidatePath("/zakupy/asystent");
-    return rows.length ? { ok: true } : { ok: false, message: "Nie ma czego cofnąć (minęło ponad 10 minut)." };
+    return { ok: true };
   } catch (e) {
-    return { ok: false, message: userFacingErrorText(e, "Nie udało się cofnąć.") };
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się przenieść sprawy.") };
   }
 }
 
-/** „Cofnij” po „Załatwione” na sprawie bez odpowiedzi (do 10 minut). */
-export async function actionSupplierMailReopenCase(input: { kind: "zd" | "inquiry"; id: string }): Promise<{ ok: true } | Fail> {
-  await requireMailUser("mutate");
-  if ((input?.kind !== "zd" && input?.kind !== "inquiry") || !UUID_RE.test(String(input?.id ?? ""))) {
-    return { ok: false, message: "Nieprawidłowa sprawa." };
+/** Wyjście z Zakończonych: wiadomości zamknięte ręcznie wracają, ZD zamknięte razem z nimi znowu czeka. */
+async function reopenConversation(conv: { mailbox: string; threadId: string }): Promise<void> {
+  const { rows } = await query<{ case_kind: string | null; case_id: string | null }>(
+    `UPDATE public.supplier_mail_messages SET handled_at = NULL, handled_by = NULL, handled_via = NULL
+      WHERE mailbox = $1 AND gmail_thread_id = $2 AND handled_via = 'manual'
+      RETURNING case_kind, case_id`,
+    [conv.mailbox, conv.threadId]
+  );
+  const zdIds = [...new Set(rows.filter((r) => r.case_kind === "zd" && r.case_id).map((r) => r.case_id!))];
+  if (zdIds.length) {
+    await query(`UPDATE public.supplier_order_emails SET resolved_at = NULL, resolved_by = NULL WHERE id = ANY($1::uuid[])`, [zdIds]);
+  }
+}
+
+const NOTE_MAX = 2000;
+const WAITING_ON_MAX = 200;
+
+/** Opis, na kogo czekam, termin „wróć do tego” i kto obsługuje — tylko przekazane pola. */
+export async function actionMailBoardSave(input: {
+  key: string;
+  inheritKey?: string | null;
+  note?: string;
+  waitingOn?: string;
+  remindOn?: string | null;
+  assigneeId?: string | null;
+}): Promise<{ ok: true } | Fail> {
+  const user = await requireMailUser("mutate");
+  const key = parseBoardKey(input?.key);
+  if (!key) return { ok: false, message: "Nieprawidłowa sprawa." };
+  const has = (k: keyof typeof input) => Object.prototype.hasOwnProperty.call(input, k);
+  if (has("note") && (typeof input.note !== "string" || input.note.length > NOTE_MAX)) return { ok: false, message: "Opis jest za długi." };
+  if (has("waitingOn") && (typeof input.waitingOn !== "string" || input.waitingOn.length > WAITING_ON_MAX)) {
+    return { ok: false, message: "Pole „czekam na” jest za długie." };
+  }
+  if (has("remindOn") && input.remindOn !== null && !/^\d{4}-\d{2}-\d{2}$/.test(String(input.remindOn))) {
+    return { ok: false, message: "Nieprawidłowa data." };
+  }
+  if (has("assigneeId") && input.assigneeId !== null && !UUID_RE.test(String(input.assigneeId))) {
+    return { ok: false, message: "Nieprawidłowa osoba." };
   }
   try {
-    const { rowCount } = await query(
-      input.kind === "zd"
-        ? `UPDATE public.supplier_order_emails SET resolved_at = NULL, resolved_by = NULL WHERE id = $1 AND resolved_at > now() - interval '10 minutes'`
-        : `UPDATE public.supplier_inquiry_emails SET resolved_at = NULL WHERE id = $1 AND resolved_at > now() - interval '10 minutes'`,
-      [input.id]
+    await adoptInherited(key.key, input.inheritKey);
+    await query(
+      `INSERT INTO public.mail_board_items (item_key, note, waiting_on, remind_on, assignee_id, updated_by)
+       VALUES ($1, COALESCE($3, ''), COALESCE($5, ''), $7::date, $9::uuid, $10)
+       ON CONFLICT (item_key) DO UPDATE SET
+         note = CASE WHEN $2 THEN EXCLUDED.note ELSE mail_board_items.note END,
+         waiting_on = CASE WHEN $4 THEN EXCLUDED.waiting_on ELSE mail_board_items.waiting_on END,
+         remind_on = CASE WHEN $6 THEN EXCLUDED.remind_on ELSE mail_board_items.remind_on END,
+         assignee_id = CASE WHEN $8 THEN EXCLUDED.assignee_id ELSE mail_board_items.assignee_id END,
+         updated_at = now(), updated_by = EXCLUDED.updated_by`,
+      [
+        key.key,
+        has("note"),
+        has("note") ? input.note!.trim() : null,
+        has("waitingOn"),
+        has("waitingOn") ? input.waitingOn!.trim() : null,
+        has("remindOn"),
+        has("remindOn") ? input.remindOn : null,
+        has("assigneeId"),
+        has("assigneeId") ? input.assigneeId : null,
+        user.id,
+      ]
     );
     revalidatePath("/zakupy/asystent");
-    return rowCount ? { ok: true } : { ok: false, message: "Nie ma czego cofnąć (minęło ponad 10 minut)." };
+    return { ok: true };
   } catch (e) {
-    return { ok: false, message: userFacingErrorText(e, "Nie udało się cofnąć.") };
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się zapisać sprawy.") };
+  }
+}
+
+/** Gmail przyjmuje 25 MB po zakodowaniu (+33%). */
+const FORWARD_MAX_BYTES = 18 * 1024 * 1024;
+
+/**
+ * „Do zapłaty” → przekazanie faktury (np. księgowości): nowy mail z Gmaila zalogowanej osoby z załącznikami
+ * rozmowy. Adres zapamiętuje się w profilu; sprawa przechodzi do Czekam na płatność.
+ */
+export async function actionMailBoardForwardPayment(input: {
+  mailbox: string;
+  threadId: string;
+  to: string;
+  note: string;
+}): Promise<{ ok: true; to: string; attachments: number } | (Fail & { reconnect?: boolean })> {
+  const user = await requireMailUser("mutate");
+  const conv = validConversation(input);
+  if (!conv) return { ok: false, message: "Nieprawidłowa rozmowa." };
+  if (typeof input.note !== "string" || input.note.length > BODY_MAX) return { ok: false, message: "Treść jest za długa." };
+  const recipients = parseMailRecipients(String(input.to ?? ""), "");
+  if (!recipients.ok) return recipients;
+  if (recipients.to.length !== 1) return { ok: false, message: "Podaj jeden adres." };
+  const to = recipients.to[0]!;
+  try {
+    const rows = await loadMailMessages(`m.mailbox = $1 AND m.gmail_thread_id = $2`, [conv.mailbox, conv.threadId]);
+    if (!rows.length) return { ok: false, message: "Nie znaleziono rozmowy." };
+    const token = await mailboxAccessToken(conv.mailbox);
+    if (!token) return { ok: false, message: "Skrzynka tej rozmowy nie jest połączona z OnTime." };
+    const refs = rows.flatMap((m) =>
+      m.attachments
+        .filter((a) => !/^image\d{3}\.(png|jpe?g|gif)$/i.test(a.filename))
+        .map((a) => ({ messageId: m.gmail_message_id, ref: a }))
+    );
+    if (refs.reduce((n, r) => n + (r.ref.size ?? 0), 0) > FORWARD_MAX_BYTES) {
+      return { ok: false, message: "Załączniki są za duże na jeden mail - przekaż je z Gmaila." };
+    }
+    const attachments = [];
+    for (const r of refs) {
+      const content = await fetchGmailAttachment(token, r.messageId, r.ref.attachmentId);
+      if (content) attachments.push({ filename: r.ref.filename, content, contentType: r.ref.mimeType || "application/octet-stream" });
+    }
+    const last = rows[0]!;
+    const supplier = last.supplier_name ?? (last.from_name || last.from_address);
+    const sent = await sendGmailAsUser({
+      userId: user.id,
+      to: [to],
+      subject: `Do zapłaty: ${supplier} - ${last.subject || "faktura"}`.slice(0, 300),
+      text: [
+        input.note.trim(),
+        `Przekazane z OnTime: ${supplier}, „${last.subject || "(bez tematu)"}” od ${last.from_address}.`,
+        attachments.length ? "" : "Rozmowa nie ma załączników.",
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
+      attachments,
+      kind: "payment_forward",
+    });
+    if (!sent.ok) return sent;
+    const key = convBoardKey(conv.mailbox, conv.threadId);
+    await query(`UPDATE public.profiles SET payment_forward_email = $2 WHERE id = $1`, [user.id, to]);
+    await query(
+      `INSERT INTO public.mail_board_items (item_key, board_column, column_set_at, waiting_on, remind_on, updated_by)
+       VALUES ($1, 'waiting', now(), $2, $3, $4)
+       ON CONFLICT (item_key) DO UPDATE SET board_column = 'waiting', column_set_at = now(), waiting_on = EXCLUDED.waiting_on,
+         remind_on = EXCLUDED.remind_on, updated_at = now(), updated_by = EXCLUDED.updated_by`,
+      [key, `płatność (${to})`, addBusinessDaysKey(todayDateKeyInWarsaw(), WAIT_BUSINESS_DAYS), user.id]
+    );
+    revalidatePath("/zakupy/asystent");
+    revalidatePath("/admin/wysylki");
+    return { ok: true, to, attachments: attachments.length };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się przekazać faktury.") };
   }
 }

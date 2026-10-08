@@ -3,13 +3,12 @@
 import Link from "next/link";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
+  actionMailBoardForwardPayment,
+  actionMailBoardMove,
+  actionMailBoardSave,
   actionSupplierMailConversation,
-  actionSupplierMailHandle,
   actionSupplierMailRemind,
-  actionSupplierMailReopen,
-  actionSupplierMailReopenCase,
   actionSupplierMailReply,
-  actionSupplierMailResolveCase,
   actionSupplierMailView,
   type ConversationMessage,
 } from "@/app/actions/supplier-mail";
@@ -18,13 +17,13 @@ import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { procurementBoardQuestionHref } from "@/lib/data/department-board-shared";
-import type { MailConversation, SupplierMailView, WaitingCase } from "@/lib/supplier-mail/data";
+import { BOARD_COLUMN_LABELS, BOARD_COLUMNS, type BoardColumn } from "@/lib/mail-board/board";
+import type { BoardItem, MailConversation, MailPerson, SupplierMailView, WaitingCase } from "@/lib/supplier-mail/data";
 import { businessDaysLabel } from "@/lib/suppliers/awaiting-supplier";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
 
-type Filter = "open" | "waiting" | "documents" | "done";
-type DoneInfo = { label: string; undo: () => Promise<{ ok: true } | { ok: false; message: string }> };
-type Selection = { type: "conv"; key: string } | { type: "case"; kind: "zd" | "inquiry"; id: string } | null;
+type Scope = "mine" | "all";
+type UndoInfo = { label: string; undo: () => Promise<{ ok: true } | { ok: false; message: string }> };
 
 const timeFmt = new Intl.DateTimeFormat("pl-PL", { timeZone: "Europe/Warsaw", hour: "2-digit", minute: "2-digit" });
 const dayFmt = new Intl.DateTimeFormat("pl-PL", { timeZone: "Europe/Warsaw", day: "2-digit", month: "2-digit" });
@@ -36,6 +35,7 @@ const fullFmt = new Intl.DateTimeFormat("pl-PL", {
   hour: "2-digit",
   minute: "2-digit",
 });
+const DRAG_TYPE = "application/x-ontime-mail-item";
 
 /** Obrazki z podpisu Outlooka (image001.png…) to nie załączniki — nie zaśmiecają listy. */
 function visibleAttachments<T extends { filename: string }>(list: readonly T[]): T[] {
@@ -47,6 +47,9 @@ function shortWhen(iso: string): string {
   return dayFmt.format(d) === dayFmt.format(new Date()) ? timeFmt.format(d) : dayFmt.format(d);
 }
 
+/** „2026-10-13” → „13.10”. */
+const shortDay = (key: string) => `${key.slice(8, 10)}.${key.slice(5, 7)}`;
+
 const CATEGORY_TAG: Record<MailConversation["category"], { text: string; className: string }> = {
   confirmation: { text: "Potwierdzenie", className: "bg-emerald-50 text-emerald-800 ring-emerald-200" },
   reply: { text: "Odpowiedź", className: "bg-indigo-50 text-indigo-800 ring-indigo-200" },
@@ -54,36 +57,80 @@ const CATEGORY_TAG: Record<MailConversation["category"], { text: string; classNa
   shipping: { text: "Wysyłka", className: "bg-slate-100 text-slate-700 ring-slate-200" },
 };
 
-function ConversationTag({ c }: { c: MailConversation }) {
+function Tag({ text, className }: { text: string; className: string }) {
+  return <span className={cn("shrink-0 rounded px-1.5 py-px text-[11px] font-medium ring-1", className)}>{text}</span>;
+}
+
+function ItemTag({ item }: { item: BoardItem }) {
+  if (item.ref.type === "case") {
+    const w = item.ref.item;
+    return (
+      <Tag
+        text={w.kind === "zd" ? "Wysłane ZD" : "Zapytanie"}
+        className="bg-slate-100 text-slate-700 ring-slate-200"
+      />
+    );
+  }
+  const c = item.ref.conv;
   const tag = c.bounce
     ? { text: "Mail nie doszedł", className: "bg-red-50 text-red-800 ring-red-200" }
     : c.autoReply
       ? { text: "Autoodpowiedź", className: "bg-slate-100 text-slate-700 ring-slate-200" }
       : CATEGORY_TAG[c.category];
-  return <span className={cn("shrink-0 rounded px-1.5 py-px text-[11px] font-medium ring-1", tag.className)}>{tag.text}</span>;
+  return <Tag {...tag} />;
+}
+
+const itemTitle = (i: BoardItem) => (i.ref.type === "conv" ? i.ref.conv.supplierName : i.ref.item.supplierName);
+const itemSubject = (i: BoardItem) =>
+  i.ref.type === "conv"
+    ? i.ref.conv.subject || "(bez tematu)"
+    : i.ref.item.kind === "zd"
+      ? i.ref.item.label
+      : `Pytanie z tablicy: ${i.ref.item.label}`;
+/** Klucz sprawy (ZD / zapytanie), z której rozmowa przejmuje opis przy pierwszym zapisie. */
+const inheritKeyOf = (i: BoardItem) =>
+  i.ref.type === "conv" && i.ref.conv.caseKind && i.ref.conv.caseId && i.ref.conv.linkedBy !== "supplier"
+    ? `${i.ref.conv.caseKind}:${i.ref.conv.caseId}`
+    : null;
+
+/** Kolejność w kolumnie: w Do zrobienia najpierw to, co samo wróciło (zwrot, termin), w Czekam — najbliższy termin. */
+function sortColumn(column: BoardColumn, list: BoardItem[]): BoardItem[] {
+  const sorted = [...list].sort((a, b) => b.sortAt.localeCompare(a.sortAt));
+  if (column === "todo") return sorted.sort((a, b) => Number(Boolean(b.reason)) - Number(Boolean(a.reason)));
+  if (column === "waiting") return sorted.sort((a, b) => (a.remindOn ?? "9").localeCompare(b.remindOn ?? "9"));
+  return sorted;
 }
 
 /**
- * Poczta dostawców: odpowiedzi i potwierdzenia od dostawców (także OC osobnym mailem), zwroty, sprawy
- * bez odpowiedzi po terminie i dokumenty. Odpowiedź / przypomnienie z Gmaila zalogowanej osoby.
+ * Poczta dostawców jako tablica spraw: Do zrobienia / W trakcie / Czekam / Do zapłaty / Zakończone.
+ * Sprawę przeciąga się na zakładkę (albo wybiera kolumnę w szczegółach); poczta sama przesuwa ją z powrotem,
+ * gdy przyjdzie nowa wiadomość, gdy odpowiesz albo gdy minie termin „wróć do tego”.
  */
 export function SupplierMailWorkspace({
   initialView,
   initialMe,
+  initialMeId,
   initialCanReply,
   initialSignature,
+  initialPaymentForwardEmail,
 }: {
   initialView: SupplierMailView;
   initialMe: string | null;
+  initialMeId: string;
   initialCanReply: boolean;
   initialSignature: string;
+  initialPaymentForwardEmail: string;
 }) {
   const [view, setView] = useState(initialView);
   const [me, setMe] = useState(initialMe);
+  const [meId, setMeId] = useState(initialMeId);
   const [canReply, setCanReply] = useState(initialCanReply);
   const [signature, setSignature] = useState(initialSignature);
-  const [filter, setFilter] = useState<Filter>("open");
-  const [selection, setSelection] = useState<Selection>(null);
+  const [paymentForwardEmail, setPaymentForwardEmail] = useState(initialPaymentForwardEmail);
+  const [column, setColumn] = useState<BoardColumn>("todo");
+  const [scope, setScope] = useState<Scope>("mine");
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<BoardColumn | null>(null);
   const [syncing, setSyncing] = useState(true);
   const [syncNote, setSyncNote] = useState<string | null>(null);
 
@@ -96,8 +143,10 @@ export function SupplierMailWorkspace({
         }
         setView(res.view);
         setMe(res.me);
+        setMeId(res.meId);
         setCanReply(res.canReply);
         setSignature(res.signature);
+        setPaymentForwardEmail(res.paymentForwardEmail);
         setSyncNote(res.syncErrors.length ? `Nie udało się sprawdzić skrzynki: ${res.syncErrors[0]}` : null);
         // Przebieg trwa w tle (np. pierwsza synchronizacja) — dołączamy do niego; lista rośnie po drodze.
         if (res.syncPending) return load({ sync: true });
@@ -117,58 +166,66 @@ export function SupplierMailWorkspace({
     void refresh({ sync: true, force: true });
   };
 
-  const conversations = useMemo(() => new Map([...view.open, ...view.documents, ...view.done].map((c) => [c.key, c])), [view]);
-  const cases = useMemo(() => new Map([...view.overdue, ...view.waiting].map((c) => [`${c.kind}|${c.id}`, c])), [view]);
+  const people = useMemo(() => new Map(view.people.map((p) => [p.id, p.name])), [view.people]);
+  const visible = useMemo(
+    () => view.items.filter((i) => scope === "all" || !i.assigneeId || i.assigneeId === meId),
+    [view.items, scope, meId]
+  );
+  const byColumn = useMemo(() => {
+    const map = new Map<BoardColumn, BoardItem[]>(BOARD_COLUMNS.map((c) => [c, []]));
+    for (const i of visible) map.get(i.column)!.push(i);
+    for (const c of BOARD_COLUMNS) map.set(c, sortColumn(c, map.get(c)!));
+    return map;
+  }, [visible]);
+  const order = byColumn.get(column)!;
+  const index = order.findIndex((i) => i.key === selectedKey);
+  const selected = view.items.find((i) => i.key === selectedKey) ?? null;
 
-  /** Kolejność listy w bieżącym filtrze — do j/k i wyboru następnej pozycji po zamknięciu. */
-  const order: Selection[] = useMemo(() => {
-    const conv = (list: MailConversation[]) => list.map((c) => ({ type: "conv" as const, key: c.key }));
-    const cs = (list: WaitingCase[]) => list.map((c) => ({ type: "case" as const, kind: c.kind, id: c.id }));
-    if (filter === "open") return [...conv(view.open), ...cs(view.overdue)];
-    if (filter === "waiting") return cs(view.waiting);
-    if (filter === "documents") return conv(view.documents);
-    return conv(view.done);
-  }, [filter, view]);
-
-  const sameSel = (a: Selection, b: Selection) =>
-    a?.type === "conv" && b?.type === "conv"
-      ? a.key === b.key
-      : a?.type === "case" && b?.type === "case"
-        ? a.kind === b.kind && a.id === b.id
-        : false;
-  const index = order.findIndex((s) => sameSel(s, selection));
-
-  /** „Załatwione” z ostatnich 30 s — wszystkie do cofnięcia jednym kliknięciem (kilka szybkich kliknięć też). */
-  const [undo, setUndo] = useState<DoneInfo[]>([]);
+  const [undo, setUndo] = useState<UndoInfo | null>(null);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => {
     if (undoTimer.current) clearTimeout(undoTimer.current);
   }, []);
 
-  const afterDone = (done?: { label: string; undo: () => Promise<{ ok: true } | { ok: false; message: string }> }) => {
-    // Następna pozycja w tej samej grupie — jak w skrzynce pocztowej.
-    const next = order[index + 1] ?? order[index - 1] ?? null;
-    setSelection(next);
-    void refresh();
-    if (done) {
+  /** Przeniesienie: optymistycznie na liście, potem zapis; „Cofnij” przywraca poprzednią ręczną kolumnę. */
+  const move = useCallback(
+    async (item: BoardItem, to: BoardColumn) => {
+      if (item.column === to) return;
+      const prevManual = item.manualColumn;
+      const prevRemind = item.remindOn;
+      setView((v) => ({ ...v, items: v.items.map((i) => (i.key === item.key ? { ...i, column: to, reason: null } : i)) }));
+      if (item.key === selectedKey && item.column === column) {
+        const next = order[index + 1] ?? order[index - 1] ?? null;
+        setSelectedKey(next?.key ?? null);
+      }
+      const res = await actionMailBoardMove({ key: item.key, inheritKey: inheritKeyOf(item), column: to }).catch(() => null);
+      if (!res?.ok) {
+        setSyncNote(res?.message ?? "Nie udało się przenieść sprawy.");
+        void refresh();
+        return;
+      }
       if (undoTimer.current) clearTimeout(undoTimer.current);
-      setUndo((prev) => [...prev, done]);
-      undoTimer.current = setTimeout(() => setUndo([]), 30_000);
-    }
-  };
+      setUndo({
+        label: `${itemTitle(item)} → ${BOARD_COLUMN_LABELS[to]}`,
+        undo: () => actionMailBoardMove({ key: item.key, column: prevManual, remindOn: prevManual === "waiting" ? prevRemind : null }),
+      });
+      undoTimer.current = setTimeout(() => setUndo(null), 30_000);
+      void refresh();
+    },
+    [column, index, order, refresh, selectedKey]
+  );
 
   const runUndo = async () => {
-    const items = undo;
-    if (!items.length) return;
-    setUndo([]);
-    const results = await Promise.all(items.map((u) => u.undo().catch(() => ({ ok: false as const, message: "Nie udało się cofnąć." }))));
-    const failed = results.find((r) => !r.ok);
-    if (failed && !failed.ok) setSyncNote(failed.message);
+    const u = undo;
+    if (!u) return;
+    setUndo(null);
+    const res = await u.undo().catch(() => ({ ok: false as const, message: "Nie udało się cofnąć." }));
+    if (!res.ok) setSyncNote(res.message);
     void refresh();
   };
 
   // Skróty tylko do przeglądania: j / k — następna / poprzednia (poza polami tekstowymi). Bez skrótów
-  // zmieniających stan — jeden przypadkowy klawisz nie może zamknąć sprawy.
+  // zmieniających stan — jeden przypadkowy klawisz nie może przenieść sprawy.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
@@ -176,88 +233,119 @@ export function SupplierMailWorkspace({
       if (e.key !== "j" && e.key !== "k") return;
       e.preventDefault();
       const i = index < 0 ? (e.key === "j" ? 0 : order.length - 1) : index + (e.key === "j" ? 1 : -1);
-      if (order[i]) setSelection(order[i]);
+      if (order[i]) setSelectedKey(order[i]!.key);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [index, order]);
 
-  const tabs: { id: Filter; label: string; count: number }[] = [
-    { id: "open", label: "Do reakcji", count: view.open.length + view.overdue.length },
-    { id: "waiting", label: "Czekają", count: view.waiting.length },
-    { id: "documents", label: "Dokumenty", count: view.documents.length },
-    { id: "done", label: "Załatwione", count: view.done.length },
-  ];
-
   // Telefon: lista i rozmowa są jedna pod drugą — po wyborze przewijamy do rozmowy.
   const detailRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (selection && window.matchMedia("(max-width: 1023px)").matches) {
+    if (selectedKey && window.matchMedia("(max-width: 1023px)").matches) {
       detailRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
     }
-  }, [selection]);
+  }, [selectedKey]);
 
-  const selectedConv = selection?.type === "conv" ? conversations.get(selection.key) : undefined;
-  const selectedCase = selection?.type === "case" ? cases.get(`${selection.kind}|${selection.id}`) : undefined;
+  const dropOn = (target: BoardColumn) => (e: React.DragEvent) => {
+    e.preventDefault();
+    setDropTarget(null);
+    const key = e.dataTransfer.getData(DRAG_TYPE);
+    const item = view.items.find((i) => i.key === key);
+    if (item) void move(item, target);
+  };
+
+  const panel =
+    selected?.ref.type === "conv" || selected?.ref.type === "case" ? (
+      <BoardPanel key={`panel-${selected.key}`} item={selected} people={view.people} onMove={(to) => void move(selected, to)} onSaved={() => void refresh()} />
+    ) : null;
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div role="tablist" aria-label="Poczta dostawców" className="flex flex-wrap gap-1 rounded-md bg-slate-100/70 p-1">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              aria-selected={filter === t.id}
-              onClick={() => {
-                setFilter(t.id);
-                setSelection(null);
-              }}
-              className={cn(
-                controlFocusClass,
-                "inline-flex min-h-9 items-center gap-1.5 rounded px-3 text-sm font-medium transition-colors",
-                filter === t.id ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200" : "text-slate-600 hover:text-slate-900"
-              )}
-            >
-              {t.label}
-              <span
+        <div role="tablist" aria-label="Sprawy" className="flex flex-wrap gap-1 rounded-md bg-slate-100/70 p-1">
+          {BOARD_COLUMNS.map((c) => {
+            const count = byColumn.get(c)!.length;
+            return (
+              <button
+                key={c}
+                type="button"
+                role="tab"
+                aria-selected={column === c}
+                onClick={() => {
+                  setColumn(c);
+                  setSelectedKey(null);
+                }}
+                onDragOver={(e) => {
+                  if (!e.dataTransfer.types.includes(DRAG_TYPE)) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  setDropTarget(c);
+                }}
+                onDragLeave={() => setDropTarget((t) => (t === c ? null : t))}
+                onDrop={dropOn(c)}
                 className={cn(
-                  "min-w-5 rounded-full px-1.5 text-center text-xs tabular-nums",
-                  t.id === "open" && t.count ? "bg-amber-100 text-amber-900" : "bg-slate-200/70 text-slate-600"
+                  controlFocusClass,
+                  "inline-flex min-h-9 items-center gap-1.5 rounded px-3 text-sm font-medium transition-colors",
+                  column === c ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200" : "text-slate-600 hover:text-slate-900",
+                  dropTarget === c && "bg-indigo-50 text-indigo-900 ring-2 ring-indigo-400"
                 )}
               >
-                {t.count}
-              </span>
-            </button>
-          ))}
+                {BOARD_COLUMN_LABELS[c]}
+                <span
+                  className={cn(
+                    "min-w-5 rounded-full px-1.5 text-center text-xs tabular-nums",
+                    c === "todo" && count ? "bg-amber-100 text-amber-900" : "bg-slate-200/70 text-slate-600"
+                  )}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
-        <p className="flex items-center gap-2 text-xs text-slate-500" role="status" aria-live="polite">
-          {syncing ? (
-            <>
-              <Spinner size="sm" /> Sprawdzam skrzynkę…
-            </>
-          ) : view.sync.at ? (
-            `Skrzynka sprawdzona ${shortWhen(view.sync.at)}`
-          ) : (
-            "Skrzynka jeszcze nie była sprawdzana"
-          )}
-          <button
-            type="button"
-            onClick={checkNow}
-            disabled={syncing}
-            className="rounded px-1.5 py-1 font-medium text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
-          >
-            Sprawdź teraz
-          </button>
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <div role="group" aria-label="Czyje sprawy" className="flex rounded-md bg-slate-100/70 p-0.5 text-xs">
+            {(["mine", "all"] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                aria-pressed={scope === s}
+                onClick={() => setScope(s)}
+                className={cn(
+                  controlFocusClass,
+                  "min-h-8 rounded px-2.5 font-medium",
+                  scope === s ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200" : "text-slate-600 hover:text-slate-900"
+                )}
+              >
+                {s === "mine" ? "Moje" : "Wszystkie"}
+              </button>
+            ))}
+          </div>
+          <p className="flex items-center gap-2 text-xs text-slate-500" role="status" aria-live="polite">
+            {syncing ? (
+              <>
+                <Spinner size="sm" /> Sprawdzam skrzynkę…
+              </>
+            ) : view.sync.at ? (
+              `Skrzynka sprawdzona ${shortWhen(view.sync.at)}`
+            ) : (
+              "Skrzynka jeszcze nie była sprawdzana"
+            )}
+            <button
+              type="button"
+              onClick={checkNow}
+              disabled={syncing}
+              className="rounded px-1.5 py-1 font-medium text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
+            >
+              Sprawdź teraz
+            </button>
+          </p>
+        </div>
       </div>
-      {undo.length ? (
-        <p
-          className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-slate-900 px-3 py-2 text-sm text-white"
-          role="status"
-        >
-          <span>{undo.length === 1 ? undo[0]!.label : `${undo.length} ${undo.length < 5 ? "sprawy" : "spraw"} - załatwione.`}</span>
+      {undo ? (
+        <p className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-slate-900 px-3 py-2 text-sm text-white" role="status">
+          <span>{undo.label}</span>
           <button type="button" onClick={() => void runUndo()} className="rounded px-2 py-1 font-semibold text-indigo-200 hover:bg-white/10">
             Cofnij
           </button>
@@ -282,40 +370,47 @@ export function SupplierMailWorkspace({
       {/* Na dużym ekranie jak program pocztowy: stała wysokość, lista i rozmowa przewijają się osobno,
           pole odpowiedzi zawsze widoczne na dole rozmowy. */}
       <div className="grid overflow-hidden rounded-[var(--radius-panel)] border border-slate-200 bg-white lg:h-[calc(100dvh-15rem)] lg:min-h-[32rem] lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-        <div className={cn("min-h-[24rem] border-slate-200 lg:min-h-0 lg:overflow-y-auto lg:border-r", selection ? "hidden lg:block" : "block")}>
-          <MailList
-            filter={filter}
-            view={view}
-            selection={selection}
-            onSelect={setSelection}
-            isSelected={(s) => sameSel(s, selection)}
+        <div className={cn("min-h-[24rem] border-slate-200 lg:min-h-0 lg:overflow-y-auto lg:border-r", selected ? "hidden lg:block" : "block")}>
+          <BoardList
+            column={column}
+            items={order}
+            people={scope === "all" ? people : null}
+            selectedKey={selectedKey}
+            onSelect={setSelectedKey}
           />
         </div>
-        <div ref={detailRef} className={cn("min-h-[24rem] scroll-mt-20 lg:min-h-0", selection ? "block" : "hidden lg:block")}>
-          {selectedConv ? (
+        <div ref={detailRef} className={cn("min-h-[24rem] scroll-mt-20 lg:min-h-0", selected ? "block" : "hidden lg:block")}>
+          {selected?.ref.type === "conv" ? (
             <ConversationDetail
-              key={selectedConv.key}
-              conv={selectedConv}
+              key={selected.key}
+              item={selected}
+              conv={selected.ref.conv}
               me={me}
               canReply={canReply}
-              onBack={() => setSelection(null)}
-              onDone={afterDone}
+              paymentForwardEmail={paymentForwardEmail}
+              panel={panel}
+              onBack={() => setSelectedKey(null)}
+              onMove={(to) => void move(selected, to)}
+              onChanged={() => void refresh()}
             />
-          ) : selectedCase ? (
+          ) : selected?.ref.type === "case" ? (
             <CaseDetail
-              key={`${selectedCase.kind}|${selectedCase.id}`}
-              item={selectedCase}
+              key={selected.key}
+              item={selected.ref.item}
               me={me}
               signature={signature}
               canReply={canReply}
-              onBack={() => setSelection(null)}
-              onDone={afterDone}
+              panel={panel}
+              done={selected.column === "done"}
+              onBack={() => setSelectedKey(null)}
+              onMove={(to) => void move(selected, to)}
+              onChanged={() => void refresh()}
             />
           ) : (
             <div className="flex h-full min-h-[24rem] flex-col items-center justify-center gap-2 px-6 text-center text-sm text-slate-500">
               <IconMail size={22} className="text-slate-300" aria-hidden />
-              <p>Wybierz wiadomość z listy.</p>
-              <p className="text-xs text-slate-400">Skróty: j / k - następna / poprzednia.</p>
+              <p>Wybierz sprawę z listy.</p>
+              <p className="text-xs text-slate-400">Przeciągnij sprawę na zakładkę, żeby ją przenieść. Skróty: j / k.</p>
             </div>
           )}
         </div>
@@ -324,131 +419,208 @@ export function SupplierMailWorkspace({
   );
 }
 
-function MailList({
-  filter,
-  view,
+const EMPTY: Record<BoardColumn, string> = {
+  todo: "Nic nie czeka na Twój ruch.",
+  doing: "Nic nie jest w trakcie.",
+  waiting: "Na nic nie czekasz.",
+  to_pay: "Brak faktur do zapłaty.",
+  done: "Brak spraw zakończonych w ostatnich 14 dniach.",
+};
+
+function BoardList({
+  column,
+  items,
+  people,
+  selectedKey,
   onSelect,
-  isSelected,
 }: {
-  filter: Filter;
-  view: SupplierMailView;
-  selection: Selection;
-  onSelect: (s: Selection) => void;
-  isSelected: (s: Selection) => boolean;
+  column: BoardColumn;
+  items: BoardItem[];
+  /** Tylko w widoku „Wszystkie” — kto obsługuje. */
+  people: Map<string, string> | null;
+  selectedKey: string | null;
+  onSelect: (key: string) => void;
 }) {
-  const convRow = (c: MailConversation) => {
-    const sel: Selection = { type: "conv", key: c.key };
-    return (
-      <li key={c.key}>
-        <button
-          type="button"
-          onClick={() => onSelect(sel)}
-          aria-current={isSelected(sel) ? "true" : undefined}
-          className={cn(
-            "block w-full px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500/45",
-            isSelected(sel) ? "bg-indigo-50/70" : "hover:bg-slate-50"
-          )}
-        >
-          <span className="flex items-baseline justify-between gap-2">
-            <span className={cn("min-w-0 truncate text-sm text-slate-900", c.open ? "font-semibold" : "font-medium")}>
-              {c.supplierName}
-            </span>
-            <span className="shrink-0 text-xs tabular-nums text-slate-500">{shortWhen(c.lastAt)}</span>
-          </span>
-          <span className="mt-0.5 flex items-center gap-1.5">
-            <ConversationTag c={c} />
-            {c.zdLabel ? <span className="truncate text-xs font-medium text-slate-600">{c.zdLabel}</span> : null}
-            {c.attachments ? <IconPaperclip size={12} className="shrink-0 text-slate-400" aria-label="Załączniki" /> : null}
-            {c.count > 1 ? <span className="text-xs tabular-nums text-slate-400">{c.count}</span> : null}
-          </span>
-          <span className="mt-0.5 block truncate text-sm text-slate-700">{c.subject || "(bez tematu)"}</span>
-          <span className="block truncate text-xs text-slate-500">{c.snippet}</span>
-        </button>
-      </li>
-    );
-  };
-  const caseRow = (w: WaitingCase) => {
-    const sel: Selection = { type: "case", kind: w.kind, id: w.id };
-    return (
-      <li key={`${w.kind}|${w.id}`}>
-        <button
-          type="button"
-          onClick={() => onSelect(sel)}
-          aria-current={isSelected(sel) ? "true" : undefined}
-          className={cn(
-            "block w-full px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500/45",
-            isSelected(sel) ? "bg-indigo-50/70" : "hover:bg-slate-50"
-          )}
-        >
-          <span className="flex items-baseline justify-between gap-2">
-            <span className="min-w-0 truncate text-sm font-medium text-slate-900">{w.supplierName}</span>
-            <span className="shrink-0 text-xs tabular-nums text-slate-500">{shortWhen(w.remindedAt ?? w.sentAt)}</span>
-          </span>
-          <span className="mt-0.5 flex items-center gap-1.5">
-            <span
+  if (!items.length) return <p className="px-4 py-10 text-center text-sm text-slate-500">{EMPTY[column]}</p>;
+  return (
+    <ul className="divide-y divide-slate-100">
+      {items.map((i) => {
+        const conv = i.ref.type === "conv" ? i.ref.conv : null;
+        const wc: WaitingCase | null = i.ref.type === "case" ? i.ref.item : null;
+        const selected = i.key === selectedKey;
+        return (
+          <li
+            key={i.key}
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData(DRAG_TYPE, i.key);
+              e.dataTransfer.effectAllowed = "move";
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => onSelect(i.key)}
+              aria-current={selected ? "true" : undefined}
               className={cn(
-                "shrink-0 rounded px-1.5 py-px text-[11px] font-medium ring-1",
-                w.overdue ? "bg-red-50 text-red-800 ring-red-200" : "bg-slate-100 text-slate-600 ring-slate-200"
+                "block w-full cursor-grab px-4 py-3 text-left transition-colors active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500/45",
+                selected ? "bg-indigo-50/70" : "hover:bg-slate-50"
               )}
             >
-              {w.overdue
-                ? `Brak odpowiedzi · ${businessDaysLabel(w.businessDays)}`
-                : w.businessDays === 0
-                  ? "Wysłano dziś"
-                  : `Czeka · ${businessDaysLabel(w.businessDays)}`}
-            </span>
-            {w.remindedAt ? <span className="text-xs text-slate-500">przypomniano</span> : null}
-            {w.autoReply ? <span className="text-xs text-slate-500">autoodpowiedź</span> : null}
-          </span>
-          <span className="mt-0.5 block truncate text-sm text-slate-700">
-            {w.kind === "zd" ? w.label : `Pytanie z tablicy: ${w.label}`}
-          </span>
-        </button>
-      </li>
-    );
+              <span className="flex items-baseline justify-between gap-2">
+                <span className={cn("min-w-0 truncate text-sm text-slate-900", column === "todo" ? "font-semibold" : "font-medium")}>
+                  {itemTitle(i)}
+                </span>
+                <span className="shrink-0 text-xs tabular-nums text-slate-500">{shortWhen(i.sortAt)}</span>
+              </span>
+              <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                {i.reason ? <Tag text={i.reason} className="bg-amber-50 text-amber-900 ring-amber-200" /> : <ItemTag item={i} />}
+                {i.fresh ? <Tag text="Nowa wiadomość" className="bg-amber-50 text-amber-900 ring-amber-200" /> : null}
+                {conv?.zdLabel ? <span className="truncate text-xs font-medium text-slate-600">{conv.zdLabel}</span> : null}
+                {conv?.attachments ? <IconPaperclip size={12} className="shrink-0 text-slate-400" aria-label="Załączniki" /> : null}
+                {conv && conv.count > 1 ? <span className="text-xs tabular-nums text-slate-400">{conv.count}</span> : null}
+                {wc && !i.reason ? (
+                  <span className="text-xs text-slate-500">
+                    {wc.businessDays === 0 ? "wysłano dziś" : `wysłano ${businessDaysLabel(wc.businessDays)} temu`}
+                  </span>
+                ) : null}
+                {people && i.assigneeId ? <span className="ml-auto text-xs text-slate-500">{people.get(i.assigneeId) ?? ""}</span> : null}
+              </span>
+              <span className="mt-0.5 block truncate text-sm text-slate-700">{itemSubject(i)}</span>
+              {i.note ? (
+                <span className="mt-0.5 block truncate text-xs font-medium text-indigo-900">{i.note}</span>
+              ) : conv ? (
+                <span className="block truncate text-xs text-slate-500">{conv.snippet}</span>
+              ) : null}
+              {i.column === "waiting" ? (
+                <span className="mt-0.5 block truncate text-xs text-slate-500">
+                  Czekam na {i.waitingOn}
+                  {i.remindOn ? ` · do ${shortDay(i.remindOn)}` : ""}
+                </span>
+              ) : null}
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/** Stan sprawy: kolumna (dostępna bez przeciągania — telefon, klawiatura), opis, na kogo czekam, kto obsługuje. */
+function BoardPanel({
+  item,
+  people,
+  onMove,
+  onSaved,
+}: {
+  item: BoardItem;
+  people: MailPerson[];
+  onMove: (to: BoardColumn) => void;
+  onSaved: () => void;
+}) {
+  const ids = { column: useId(), note: useId(), waitingOn: useId(), remindOn: useId(), assignee: useId() };
+  const [note, setNote] = useState(item.note);
+  const [waitingOn, setWaitingOn] = useState(item.waitingOn);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const save = async (patch: Parameters<typeof actionMailBoardSave>[0]) => {
+    setSaving(true);
+    setError(null);
+    const res = await actionMailBoardSave({ ...patch, inheritKey: inheritKeyOf(item) }).catch(() => null);
+    setSaving(false);
+    if (res?.ok) onSaved();
+    else setError(res?.message ?? "Nie udało się zapisać.");
   };
 
-  const section = (title: string, items: React.ReactNode[], empty?: string) =>
-    items.length || empty ? (
-      <section aria-label={title}>
-        <h3 className="sticky top-0 z-10 border-b border-slate-100 bg-white/95 px-4 py-2 text-xs font-semibold text-slate-500 backdrop-blur">
-          {title} <span className="tabular-nums text-slate-400">{items.length}</span>
-        </h3>
-        {items.length ? (
-          <ul className="divide-y divide-slate-100">{items}</ul>
-        ) : (
-          <p className="px-4 py-6 text-sm text-slate-500">{empty}</p>
-        )}
-      </section>
-    ) : null;
-
-  if (filter === "open") {
-    const bounces = view.open.filter((c) => c.bounce);
-    const rest = view.open.filter((c) => !c.bounce);
-    if (!view.open.length && !view.overdue.length) {
-      return <p className="px-4 py-10 text-center text-sm text-slate-500">Nic nie czeka na Twoją reakcję.</p>;
-    }
-    return (
-      <div>
-        {section("Mail nie doszedł", bounces.map(convRow))}
-        {section("Odpowiedzi i potwierdzenia", rest.map(convRow))}
-        {section("Brak odpowiedzi po terminie", view.overdue.map(caseRow))}
+  const field = cn(controlFocusClass, "min-h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-sm");
+  return (
+    <div className="space-y-2 border-b border-slate-200 bg-slate-50/60 px-4 py-3 sm:px-5">
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div>
+          <label htmlFor={ids.column} className="text-xs font-medium text-slate-500">
+            Kolumna
+          </label>
+          <select id={ids.column} value={item.column} onChange={(e) => onMove(e.target.value as BoardColumn)} className={cn(field, "mt-1")}>
+            {BOARD_COLUMNS.map((c) => (
+              <option key={c} value={c}>
+                {BOARD_COLUMN_LABELS[c]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor={ids.assignee} className="text-xs font-medium text-slate-500">
+            Obsługuje
+          </label>
+          <select
+            id={ids.assignee}
+            value={item.assigneeId ?? ""}
+            onChange={(e) => void save({ key: item.key, assigneeId: e.target.value || null })}
+            className={cn(field, "mt-1")}
+          >
+            <option value="">nikt</option>
+            {people.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
-    );
-  }
-  const list =
-    filter === "waiting"
-      ? view.waiting.map(caseRow)
-      : (filter === "documents" ? view.documents : view.done).map(convRow);
-  const empty = {
-    waiting: "Żadne wysłane ZD ani zapytanie nie czeka w terminie.",
-    documents: "Brak faktur i dokumentów wysyłki z ostatnich 30 dni.",
-    done: "Brak załatwionych rozmów z ostatnich 14 dni.",
-  }[filter];
-  return list.length ? (
-    <ul className="divide-y divide-slate-100">{list}</ul>
-  ) : (
-    <p className="px-4 py-10 text-center text-sm text-slate-500">{empty}</p>
+      {item.column === "waiting" ? (
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_10rem]">
+          <div>
+            <label htmlFor={ids.waitingOn} className="text-xs font-medium text-slate-500">
+              Czekam na
+            </label>
+            <input
+              id={ids.waitingOn}
+              value={waitingOn}
+              maxLength={200}
+              onChange={(e) => setWaitingOn(e.target.value)}
+              onBlur={() => waitingOn.trim() !== item.waitingOn && void save({ key: item.key, waitingOn })}
+              className={cn(field, "mt-1")}
+            />
+          </div>
+          <div>
+            <label htmlFor={ids.remindOn} className="text-xs font-medium text-slate-500">
+              Wróć do tego
+            </label>
+            <input
+              id={ids.remindOn}
+              type="date"
+              value={item.remindOn ?? ""}
+              onChange={(e) => void save({ key: item.key, remindOn: e.target.value || null })}
+              className={cn(field, "mt-1 tabular-nums")}
+            />
+          </div>
+        </div>
+      ) : null}
+      <div>
+        <label htmlFor={ids.note} className="text-xs font-medium text-slate-500">
+          Opis sprawy
+        </label>
+        <textarea
+          id={ids.note}
+          value={note}
+          maxLength={2000}
+          rows={2}
+          placeholder="Co to jest i co dalej - np. czekam na proformę, potem zapłata"
+          onChange={(e) => setNote(e.target.value)}
+          onBlur={() => note.trim() !== item.note && void save({ key: item.key, note })}
+          className={cn(controlFocusClass, "mt-1 w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm")}
+        />
+      </div>
+      {saving ? (
+        <p className="text-xs text-slate-500" role="status">
+          Zapisuję…
+        </p>
+      ) : error ? (
+        <p className="text-xs text-red-700" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -506,24 +678,31 @@ function DetailHeader({
 }
 
 function ConversationDetail({
+  item,
   conv,
   me,
   canReply,
+  paymentForwardEmail,
+  panel,
   onBack,
-  onDone,
+  onMove,
+  onChanged,
 }: {
+  item: BoardItem;
   conv: MailConversation;
   me: string | null;
   canReply: boolean;
+  paymentForwardEmail: string;
+  panel: React.ReactNode;
   onBack: () => void;
-  onDone: (done?: DoneInfo) => void;
+  onMove: (to: BoardColumn) => void;
+  onChanged: () => void;
 }) {
   const [messages, setMessages] = useState<ConversationMessage[] | null>(null);
   // Po przejściu do następnej rozmowy „Załatwione” jest pod kursorem — chwila przerwy chroni przed seryjnym zamykaniem.
   const armed = useArmedAfterMount();
   const [signature, setSignature] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -540,20 +719,6 @@ function ConversationDetail({
       alive = false;
     };
   }, [conv.mailbox, conv.threadId]);
-
-  const handle = useCallback(async () => {
-    if (!conv.open) return;
-    setBusy(true);
-    setError(null);
-    const res = await actionSupplierMailHandle({ mailbox: conv.mailbox, threadId: conv.threadId }).catch(() => null);
-    setBusy(false);
-    if (res?.ok) {
-      onDone({
-        label: `Rozmowa z ${conv.supplierName} - załatwione.`,
-        undo: () => actionSupplierMailReopen({ mailbox: conv.mailbox, threadId: conv.threadId }),
-      });
-    } else setError(res?.message ?? "Nie udało się oznaczyć rozmowy.");
-  }, [conv, onDone]);
 
   const foreign = me ? me.toLowerCase() !== conv.mailbox : true;
   const hasSupplierMessage = Boolean(messages?.some((m) => m.kind !== "bounce"));
@@ -585,12 +750,13 @@ function ConversationDetail({
             Przekaż handlowcowi
           </Link>
         ) : null}
-        {conv.open ? (
-          <Button type="button" size="sm" variant="secondary" disabled={busy || !armed} onClick={() => void handle()}>
-            {busy ? "Zapisuję…" : "Załatwione"}
+        {item.column !== "done" ? (
+          <Button type="button" size="sm" variant="secondary" disabled={!armed} onClick={() => onMove("done")}>
+            Zakończone
           </Button>
         ) : null}
       </DetailHeader>
+      {panel}
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-5">
         {error ? (
@@ -609,7 +775,9 @@ function ConversationDetail({
         ) : null}
       </div>
 
-      {messages && hasSupplierMessage && canReply ? (
+      {item.column === "to_pay" && canReply ? (
+        <PaymentForward key={conv.key} conv={conv} defaultTo={paymentForwardEmail} onSent={onChanged} />
+      ) : messages && hasSupplierMessage && canReply ? (
         <Composer
           key={conv.key}
           title={`Odpowiedz ${conv.supplierName}`}
@@ -617,7 +785,7 @@ function ConversationDetail({
           signature={signature}
           withCc
           send={(body, cc) => actionSupplierMailReply({ mailbox: conv.mailbox, threadId: conv.threadId, body, cc })}
-          onSent={onDone}
+          onSent={onChanged}
         />
       ) : null}
     </div>
@@ -679,32 +847,23 @@ function CaseDetail({
   me,
   signature,
   canReply,
+  panel,
+  done,
   onBack,
-  onDone,
+  onMove,
+  onChanged,
 }: {
   item: WaitingCase;
   me: string | null;
   signature: string;
   canReply: boolean;
+  panel: React.ReactNode;
+  done: boolean;
   onBack: () => void;
-  onDone: (done?: DoneInfo) => void;
+  onMove: (to: BoardColumn) => void;
+  onChanged: () => void;
 }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const armed = useArmedAfterMount();
-
-  const resolve = useCallback(async () => {
-    setBusy(true);
-    setError(null);
-    const res = await actionSupplierMailResolveCase({ kind: item.kind, id: item.id }).catch(() => null);
-    setBusy(false);
-    if (res?.ok) {
-      onDone({
-        label: `${item.supplierName}: ${item.label} - załatwione.`,
-        undo: () => actionSupplierMailReopenCase({ kind: item.kind, id: item.id }),
-      });
-    } else setError(res?.message ?? "Nie udało się zamknąć sprawy.");
-  }, [item, onDone]);
 
   // Język jak w pierwszej wiadomości: zagranica i import po angielsku.
   const sent = dayFmt.format(new Date(item.sentAt));
@@ -732,10 +891,13 @@ function CaseDetail({
             Wątek na tablicy
           </Link>
         ) : null}
-        <Button type="button" size="sm" variant="secondary" disabled={busy || !armed} onClick={() => void resolve()}>
-          {busy ? "Zapisuję…" : "Załatwione"}
-        </Button>
+        {!done ? (
+          <Button type="button" size="sm" variant="secondary" disabled={!armed} onClick={() => onMove("done")}>
+            Zakończone
+          </Button>
+        ) : null}
       </DetailHeader>
+      {panel}
       <div className="space-y-3 px-4 py-4 sm:px-5">
         <dl className="grid grid-cols-[8rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
           <dt className="text-slate-500">Wysłano</dt>
@@ -759,15 +921,10 @@ function CaseDetail({
           </dd>
         </dl>
         <p className="text-xs text-slate-500">
-          Dostawca odpowiedział inną drogą (telefon, portal)? Kliknij „Załatwione”. Odpowiedź mailem pojawi się tu sama.
+          Dostawca odpowiedział inną drogą (telefon, portal)? Kliknij „Zakończone”. Odpowiedź mailem pojawi się tu sama.
         </p>
-        {error ? (
-          <p className="text-sm text-red-700" role="alert">
-            {error}
-          </p>
-        ) : null}
       </div>
-      {canReply ? (
+      {canReply && !done ? (
         <Composer
           key={`${item.kind}|${item.id}`}
           title="Przypomnij dostawcy"
@@ -775,7 +932,7 @@ function CaseDetail({
           initialBody={reminder}
           signature={signature}
           send={(body) => actionSupplierMailRemind({ kind: item.kind, id: item.id, body })}
-          onSent={onDone}
+          onSent={onChanged}
           sendLabel="Wyślij przypomnienie"
         />
       ) : null}
@@ -873,6 +1030,82 @@ function Composer({
       {error ? (
         <p className="text-sm text-red-700" role="alert">
           {error}
+        </p>
+      ) : null}
+    </form>
+  );
+}
+
+/** „Do zapłaty” → przekazanie faktury z załącznikami rozmowy; adres zapamiętuje się po pierwszym razie. */
+function PaymentForward({ conv, defaultTo, onSent }: { conv: MailConversation; defaultTo: string; onSent: () => void }) {
+  const toId = useId();
+  const noteId = useId();
+  const [to, setTo] = useState(defaultTo);
+  const [note, setNote] = useState("Dzień dobry,\n\nproszę o opłacenie faktury w załączniku.\n\nDziękuję.");
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const submit = async () => {
+    if (sending || !to.trim()) return;
+    setSending(true);
+    setResult(null);
+    const res = await actionMailBoardForwardPayment({ mailbox: conv.mailbox, threadId: conv.threadId, to, note }).catch(() => ({
+      ok: false as const,
+      message: "Brak połączenia z serwerem.",
+    }));
+    setSending(false);
+    if (res.ok) {
+      setResult({ ok: true, text: `Przekazano do ${res.to} (${res.attachments} zał.). Sprawa czeka na płatność.` });
+      onSent();
+    } else setResult({ ok: false, text: res.message });
+  };
+
+  return (
+    <form
+      className="shrink-0 space-y-2 border-t border-slate-200 bg-slate-50/60 px-4 py-3 sm:px-5"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void submit();
+      }}
+    >
+      <p className="text-sm font-semibold text-slate-900">Przekaż do zapłaty</p>
+      <div className="flex items-center gap-2">
+        <label htmlFor={toId} className="shrink-0 text-xs font-medium text-slate-500">
+          Do
+        </label>
+        <input
+          id={toId}
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+          disabled={sending}
+          inputMode="email"
+          autoComplete="off"
+          placeholder="adres osoby, która płaci"
+          className={cn(controlFocusClass, "min-h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-sm")}
+        />
+      </div>
+      <label htmlFor={noteId} className="sr-only">
+        Treść
+      </label>
+      <textarea
+        id={noteId}
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        rows={4}
+        disabled={sending}
+        className={cn(controlFocusClass, "w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed")}
+      />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-slate-500">
+          {conv.attachments ? `Pójdzie z załącznikami rozmowy (${conv.attachments}).` : "Rozmowa nie ma załączników."} Potem sprawa czeka 3 dni rob. na płatność.
+        </p>
+        <Button type="submit" disabled={sending || !to.trim()} aria-busy={sending}>
+          {sending ? "Wysyłam…" : "Przekaż"}
+        </Button>
+      </div>
+      {result ? (
+        <p className={cn("text-sm", result.ok ? "text-emerald-800" : "text-red-700")} role={result.ok ? "status" : "alert"}>
+          {result.text}
         </p>
       ) : null}
     </form>

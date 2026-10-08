@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupConversations, waitingCases, type MailMessageRow } from "@/lib/supplier-mail/data";
+import { boardItems, groupConversations, waitingCases, type MailMessageRow } from "@/lib/supplier-mail/data";
 
 const msg = (over: Partial<MailMessageRow>): MailMessageRow => ({
   id: "m",
@@ -65,6 +65,8 @@ describe("poczta dostawców — rozmowy", () => {
 describe("poczta dostawców — sprawy czekające", () => {
   const base = {
     supplier_id: "renfert",
+    sent_by: null,
+    resolved_at: null,
     supplier_name: "Renfert",
     location: "ZAGRANICA" as const,
     label: "ZD 70/M/10/2026",
@@ -104,5 +106,33 @@ describe("poczta dostawców — sprawy czekające", () => {
       now
     );
     expect(r).toMatchObject({ overdue: false, businessDays: 1, remindedAt: "2026-10-08T10:00:00.000Z" });
+  });
+});
+
+describe("tablica spraw — pozycje", () => {
+  const now = new Date("2026-10-08T12:00:00Z");
+  const today = "2026-10-08";
+  const zd = { kind: "zd" as const, id: "zd-1", label: "ZD 1", supplier_id: "s", supplier_name: "Renfert", location: "ZAGRANICA" as const,
+    board_thread_id: null, from_address: "f@mikran.com", to_addresses: [], reminded_at: null, sent_by: "u1", resolved_at: null };
+
+  it("faktura → Do zapłaty, odpowiedź dostawcy → Do zrobienia, ZD po terminie → Do zrobienia", () => {
+    const convs = groupConversations([
+      msg({ gmail_thread_id: "a", category: "invoice", handled_at: new Date(), handled_via: "manual" }),
+      msg({ gmail_thread_id: "b", owner_user_id: "u2" }),
+    ]);
+    const cases = waitingCases([{ ...zd, sent_at: new Date("2026-10-01T10:00:00Z") }], [], now);
+    const items = boardItems(convs, cases, new Map(), today);
+    expect(items.map((i) => [i.key, i.column, i.assigneeId])).toEqual([
+      ["conv:filip@mikran.com|a", "to_pay", null],
+      ["conv:filip@mikran.com|b", "todo", "u2"],
+      ["zd:zd-1", "todo", "u1"],
+    ]);
+  });
+
+  it("odpowiedź na ZD dziedziczy opis sprawy i wraca z Czekam do Do zrobienia", () => {
+    const [conv] = groupConversations([msg({ case_kind: "zd", case_id: "zd-1", linked_by: "thread" })]);
+    const row = { column: "waiting" as const, columnSetAt: "2026-10-06T10:00:00Z", note: "czekam na termin", waitingOn: "", remindOn: "2026-10-20", assigneeId: null };
+    const [item] = boardItems([conv!], [], new Map([["zd:zd-1", row]]), today);
+    expect(item).toMatchObject({ column: "todo", reason: "Nowa wiadomość", note: "czekam na termin", manualColumn: null });
   });
 });

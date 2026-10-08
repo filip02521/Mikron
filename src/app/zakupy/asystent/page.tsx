@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { requireOperations } from "@/lib/auth";
 import { assistantReports } from "@/lib/assistant/reports";
 import { createAdminClient, hasDatabaseConfig } from "@/lib/db/admin";
-import { getEmailSignature, getGmailConnection } from "@/lib/google/gmail-connections";
+import { getEmailSignature, getGmailConnection, getPaymentForwardEmail } from "@/lib/google/gmail-connections";
 import { loadOcChecks } from "@/lib/oc-check/data";
 import type { OcCheck } from "@/lib/oc-check/types";
 import { groupOcChecks, parseOcView, type OcView } from "@/lib/oc-check/view";
@@ -70,18 +70,19 @@ export default async function AsystentPage({
   const list = groups[view];
 
   // Poczta dostawców: lista z bazy od razu; nowe maile z Gmaila dociąga komponent po wejściu.
-  const [mail, conn, signature] = await Promise.all([
+  const [mail, conn, signature, paymentForwardEmail] = await Promise.all([
     loadSupplierMailView().catch(() => null),
     getGmailConnection(user.id).catch(() => null),
     getEmailSignature(user.id).catch(() => ""),
+    getPaymentForwardEmail(user.id).catch(() => ""),
   ]);
   const sections: SectionTab<Section>[] = [
     {
       id: "poczta",
       label: "Poczta dostawców",
-      hint: "Odpowiedzi, potwierdzenia i sprawy bez odpowiedzi",
+      hint: "Sprawy z dostawcami: do zrobienia, w trakcie, czekam, do zapłaty",
       href: "/zakupy/asystent",
-      badgeCount: mail ? mail.open.length + mail.overdue.length : 0,
+      badgeCount: mail ? mail.items.filter((i) => i.column === "todo" && (!i.assigneeId || i.assigneeId === user.id)).length : 0,
     },
     { id: "oc", label: "Kontrola OC", hint: "Potwierdzenia porównane z ZD", href: "/zakupy/asystent?sekcja=oc", badgeCount: groups["do-ruchu"].length },
     { id: "raporty", label: "Raporty", hint: "Raporty rutyn w chmurze", href: "/zakupy/asystent?sekcja=raporty" },
@@ -91,7 +92,7 @@ export default async function AsystentPage({
     <div className={panelPageShellClass}>
       <PageHeader
         title="Asystent"
-        description="Korespondencja z dostawcami w jednym miejscu: odpowiedzi i potwierdzenia, zwroty, sprawy bez odpowiedzi oraz kontrola OC."
+        description="Sprawy z dostawcami w jednym miejscu: co jest do zrobienia, co w trakcie, na co czekasz i co do zapłaty - oraz kontrola OC."
       />
 
       <SectionTabNav activeTab={section} tabs={sections} ariaLabel="Sekcje Asystenta" sectionLabel="Asystent" />
@@ -101,12 +102,14 @@ export default async function AsystentPage({
           <SupplierMailWorkspace
             initialView={mail}
             initialMe={conn?.email ?? null}
+            initialMeId={user.id}
             initialCanReply={Boolean(conn)}
             initialSignature={signature}
+            initialPaymentForwardEmail={paymentForwardEmail}
           />
         ) : (
           <Alert tone="error">
-            Nie udało się wczytać poczty dostawców. Sprawdź, czy migracja 178_supplier_mail została uruchomiona.
+            Nie udało się wczytać poczty dostawców. Sprawdź, czy migracje 178_supplier_mail i 183_mail_board zostały uruchomione.
           </Alert>
         )
       ) : null}

@@ -1,12 +1,21 @@
 /**
- * Poczta dostawców — odczyt z bazy (bez Gmaila): rozmowy (wątki) w grupach „do reakcji”, „dokumenty”,
- * „załatwione” i sprawy czekające na dostawcę (wysłane ZD / zapytania bez odpowiedzi).
+ * Poczta dostawców — odczyt z bazy (bez Gmaila): rozmowy (wątki) i sprawy czekające na dostawcę
+ * (wysłane ZD / zapytania bez odpowiedzi), ułożone w kolumny tablicy spraw (lib/mail-board).
  */
 
 import { query } from "@/lib/db/pool";
 import type { GmailAttachmentRef } from "@/lib/google/gmail";
+import {
+  addBusinessDaysKey,
+  deriveColumn,
+  isBoardColumn,
+  waitUntilAfter,
+  type BoardColumn,
+  type BoardRow,
+} from "@/lib/mail-board/board";
 import { categoryNeedsAction, type SupplierMailCategory } from "@/lib/supplier-mail/match";
 import { awaitingReplyTiming, type AwaitingReplyTiming } from "@/lib/suppliers/awaiting-supplier";
+import { todayDateKeyInWarsaw, warsawDateKeyFromIso } from "@/lib/time/warsaw";
 import type { SupplierLocation } from "@/types/database";
 
 /** Jak daleko wstecz pokazujemy rozmowy i dokumenty. */
@@ -68,6 +77,10 @@ export type MailConversation = {
   linkedBy: MailMessageRow["linked_by"];
   boardThreadId: string | null;
   handledVia: string | null;
+  /** Właściciel skrzynki — domyślnie on obsługuje sprawę. */
+  ownerUserId: string | null;
+  /** Ostatnia nasza odpowiedź (z OnTime albo z Gmaila). */
+  repliedAt: string | null;
 };
 
 export type WaitingCase = {
@@ -86,19 +99,35 @@ export type WaitingCase = {
   remindedAt: string | null;
   /** Dostawca odpisał tylko autoodpowiedzią. */
   autoReply: boolean;
+  /** Kto wysłał — domyślnie on obsługuje sprawę. */
+  sentBy: string | null;
+  /** Zamknięta „Załatwione” (ostatnie 14 dni — kolumna Zakończone). */
+  resolved: boolean;
 } & AwaitingReplyTiming;
 
+/** Sprawa na tablicy: rozmowa albo wysłane ZD / zapytanie bez odpowiedzi. */
+export type BoardItem = {
+  /** Klucz wpisu w mail_board_items: 'conv:<skrzynka>|<wątek>' albo 'zd:<id>' / 'inquiry:<id>'. */
+  key: string;
+  ref: { type: "conv"; conv: MailConversation } | { type: "case"; item: WaitingCase };
+  column: BoardColumn;
+  reason: string | null;
+  fresh: boolean;
+  remindOn: string | null;
+  note: string;
+  waitingOn: string;
+  assigneeId: string | null;
+  /** Ręczna kolumna — do „Cofnij” po przeniesieniu. */
+  manualColumn: BoardColumn | null;
+  sortAt: string;
+};
+
+export type MailPerson = { id: string; name: string };
+
 export type SupplierMailView = {
-  /** Rozmowy wymagające reakcji (najnowsze pierwsze). */
-  open: MailConversation[];
-  /** Sprawy bez odpowiedzi po terminie (PL 1 dzień rob., zagranica / import 2). */
-  overdue: WaitingCase[];
-  /** Sprawy czekające w terminie. */
-  waiting: WaitingCase[];
-  /** Faktury i dokumenty wysyłki z ostatnich 30 dni. */
-  documents: MailConversation[];
-  /** Załatwione rozmowy z ostatnich 14 dni. */
-  done: MailConversation[];
+  items: BoardItem[];
+  /** Osoby z zakupów — do „Obsługuje”. */
+  people: MailPerson[];
   sync: { at: string | null; error: string | null; mailboxes: number };
 };
 
@@ -152,6 +181,13 @@ export function groupConversations(rows: readonly MailMessageRow[]): MailConvers
         linkedBy: linked?.linked_by ?? null,
         boardThreadId: linked?.board_thread_id ?? null,
         handledVia: open ? null : (sorted.find((m) => m.handled_via)?.handled_via ?? null),
+        ownerUserId: last.owner_user_id,
+        repliedAt:
+          sorted
+            .filter((m) => m.handled_at && (m.handled_via === "reply" || m.handled_via === "gmail"))
+            .map((m) => m.handled_at!.toISOString())
+            .sort()
+            .at(-1) ?? null,
       };
     })
     .sort((a, b) => b.lastAt.localeCompare(a.lastAt));
@@ -191,14 +227,19 @@ type CaseRow = {
   reminded_at: Date | null;
   from_address: string;
   to_addresses: string[];
+  sent_by: string | null;
+  resolved_at: Date | null;
 };
 
-/** Wysłane ZD (30 dni) i zapytania bez zamknięcia — kandydaci na „czeka na dostawcę”. */
-async function loadOpenCases(): Promise<CaseRow[]> {
+/**
+ * Wysłane ZD (30 dni) i zapytania bez zamknięcia — kandydaci na „czeka na dostawcę”; z `withResolved`
+ * także zamknięte w ostatnich 14 dniach (kolumna Zakończone).
+ */
+async function loadOpenCases(withResolved = false): Promise<CaseRow[]> {
   const { rows } = await query<CaseRow>(
     `SELECT 'zd' AS kind, e.id, s.id AS supplier_id, s.name AS supplier_name, s.location,
             COALESCE(NULLIF(e.dok_nr, ''), 'ZD ' || e.subiekt_dok_id) AS label, NULL::uuid AS board_thread_id,
-            e.sent_at, e.reminded_at, e.from_address, e.to_addresses
+            e.sent_at, e.reminded_at, e.from_address, e.to_addresses, e.sent_by, e.resolved_at
        FROM (
          SELECT DISTINCT ON (subiekt_dok_id) *
            FROM public.supplier_order_emails
@@ -206,14 +247,16 @@ async function loadOpenCases(): Promise<CaseRow[]> {
           ORDER BY subiekt_dok_id, sent_at DESC
        ) e
        JOIN public.suppliers s ON s.id = e.supplier_id
-      WHERE e.resolved_at IS NULL
+      WHERE e.resolved_at IS NULL OR ($1 AND e.resolved_at > now() - make_interval(days => $2))
      UNION ALL
      SELECT 'inquiry', i.id, i.supplier_id, COALESCE(s.name, i.supplier_name), s.location,
-            COALESCE(NULLIF(t.product_name, ''), t.title), t.id, i.sent_at, i.reminded_at, i.from_address, i.to_addresses
+            COALESCE(NULLIF(t.product_name, ''), t.title), t.id, i.sent_at, i.reminded_at, i.from_address, i.to_addresses,
+            i.sent_by, i.resolved_at
        FROM public.supplier_inquiry_emails i
        JOIN public.department_board_threads t ON t.id = i.thread_id AND t.archived_at IS NULL
        LEFT JOIN public.suppliers s ON s.id = i.supplier_id
-      WHERE i.resolved_at IS NULL`
+      WHERE i.resolved_at IS NULL OR ($1 AND i.resolved_at > now() - make_interval(days => $2))`,
+    [withResolved, DONE_DAYS]
   );
   return rows;
 }
@@ -221,7 +264,7 @@ async function loadOpenCases(): Promise<CaseRow[]> {
 function isMissingSchema(e: unknown): boolean {
   return (
     e instanceof Error &&
-    /supplier_mail_|gmail_thread_id|resolved_at|resolved_by|reminded_at/.test(e.message) &&
+    /supplier_mail_|mail_board_|gmail_thread_id|resolved_at|resolved_by|reminded_at/.test(e.message) &&
     /does not exist|nie istnieje/.test(e.message)
   );
 }
@@ -254,6 +297,8 @@ export function waitingCases(cases: readonly CaseRow[], messages: readonly MailM
       english: c.location === "ZAGRANICA" || c.location === "IMPORT",
       remindedAt: c.reminded_at ? c.reminded_at.toISOString() : null,
       autoReply: auto.has(`${c.kind}|${c.id}`),
+      sentBy: c.sent_by ? String(c.sent_by) : null,
+      resolved: Boolean(c.resolved_at),
       ...awaitingReplyTiming(c.reminded_at && c.reminded_at > c.sent_at ? c.reminded_at : c.sent_at, c.location, now),
     }))
     .sort((a, b) => a.sentAt.localeCompare(b.sentAt));
@@ -272,34 +317,140 @@ async function loadCaseLinks(cases: readonly CaseRow[]): Promise<MailMessageRow[
   return rows as MailMessageRow[];
 }
 
-export async function loadSupplierMailView(): Promise<SupplierMailView> {
+type BoardDbRow = {
+  item_key: string;
+  board_column: string | null;
+  column_set_at: Date | null;
+  note: string;
+  waiting_on: string;
+  remind_on: string | null;
+  assignee_id: string | null;
+};
+
+async function loadBoardRows(keys: readonly string[]): Promise<Map<string, BoardRow>> {
+  if (!keys.length) return new Map();
+  const res = await query<BoardDbRow>(
+    `SELECT item_key, board_column, column_set_at, note, waiting_on, to_char(remind_on, 'YYYY-MM-DD') AS remind_on, assignee_id
+       FROM public.mail_board_items WHERE item_key = ANY($1::text[])`,
+    [[...keys]]
+  ).catch((e: unknown) => {
+    // Kod przed migracją 183: sprawy z samej poczty, bez ręcznych kolumn.
+    if (isMissingSchema(e)) return { rows: [] as BoardDbRow[] };
+    throw e;
+  });
+  const { rows } = res;
+  return new Map(
+    rows.map((r) => [
+      r.item_key,
+      {
+        column: isBoardColumn(r.board_column) ? r.board_column : null,
+        columnSetAt: r.column_set_at ? r.column_set_at.toISOString() : null,
+        note: r.note,
+        waitingOn: r.waiting_on,
+        remindOn: r.remind_on,
+        assigneeId: r.assignee_id ? String(r.assignee_id) : null,
+      },
+    ])
+  );
+}
+
+export const convBoardKey = (mailbox: string, threadId: string) => `conv:${mailbox}|${threadId}`;
+export const caseBoardKey = (kind: "zd" | "inquiry", id: string) => `${kind}:${id}`;
+
+/** Kolumna z samej poczty, zanim ktoś przeniesie sprawę ręcznie. */
+function autoColumn(ref: BoardItem["ref"]): { column: BoardColumn; remindOn: string | null; reason?: string | null } {
+  if (ref.type === "case") {
+    const c = ref.item;
+    if (c.resolved) return { column: "done", remindOn: null };
+    if (c.overdue) return { column: "todo", remindOn: null, reason: "Brak odpowiedzi po terminie" };
+    const from = warsawDateKeyFromIso(c.remindedAt && c.remindedAt > c.sentAt ? c.remindedAt : c.sentAt);
+    return { column: "waiting", remindOn: addBusinessDaysKey(from, c.dueDays + 1) };
+  }
+  const c = ref.conv;
+  if (c.open) return { column: "todo", remindOn: null, reason: c.bounce ? "Mail nie doszedł" : null };
+  if (c.handledVia !== "initial" && c.category === "invoice") return { column: "to_pay", remindOn: null };
+  if (c.repliedAt && c.handledVia !== "manual") return { column: "waiting", remindOn: waitUntilAfter(c.repliedAt) };
+  return { column: "done", remindOn: null };
+}
+
+/** Rozmowy i sprawy → pozycje tablicy z kolumną, opisem i osobą. */
+export function boardItems(
+  conversations: readonly MailConversation[],
+  cases: readonly WaitingCase[],
+  rows: ReadonlyMap<string, BoardRow>,
+  today: string
+): BoardItem[] {
+  const refs: { key: string; inherit: string | null; ref: BoardItem["ref"] }[] = [
+    ...conversations.map((conv) => ({
+      key: convBoardKey(conv.mailbox, conv.threadId),
+      // Odpowiedź na wysłane ZD / zapytanie dziedziczy opis i kolumnę sprawy, która na nią czekała.
+      inherit: conv.caseKind && conv.caseId && conv.linkedBy !== "supplier" ? caseBoardKey(conv.caseKind, conv.caseId) : null,
+      ref: { type: "conv" as const, conv },
+    })),
+    ...cases.map((item) => ({ key: caseBoardKey(item.kind, item.id), inherit: null, ref: { type: "case" as const, item } })),
+  ];
+  return refs.map(({ key, inherit, ref }) => {
+    const row = rows.get(key) ?? (inherit ? rows.get(inherit) : undefined) ?? null;
+    const isConv = ref.type === "conv";
+    const derived = deriveColumn({
+      auto: autoColumn(ref),
+      lastIncomingAt: isConv ? ref.conv.lastAt : null,
+      repliedAt: isConv ? ref.conv.repliedAt : (ref.item.remindedAt ?? ref.item.sentAt),
+      row,
+      today,
+    });
+    return {
+      key,
+      ref,
+      ...derived,
+      note: row?.note ?? "",
+      waitingOn: row?.waitingOn || (isConv ? ref.conv.supplierName : ref.item.supplierName),
+      assigneeId: row?.assigneeId ?? (isConv ? ref.conv.ownerUserId : ref.item.sentBy),
+      manualColumn: rows.get(key)?.column ?? null,
+      sortAt: isConv ? ref.conv.lastAt : (ref.item.remindedAt ?? ref.item.sentAt),
+    };
+  });
+}
+
+async function loadMailPeople(): Promise<MailPerson[]> {
+  const { rows } = await query<{ id: string; email: string }>(
+    `SELECT id, email FROM public.profiles WHERE role IN ('admin', 'zakupy') AND coalesce(email, '') <> '' ORDER BY email`
+  );
+  return rows.map((r) => {
+    const local = r.email.split("@")[0] ?? r.email;
+    const [first, last] = local.split(/[._-]/);
+    const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+    return { id: String(r.id), name: last ? `${cap(first!)} ${cap(last).charAt(0)}.` : cap(local) };
+  });
+}
+
+export async function loadSupplierMailView(now: Date = new Date()): Promise<SupplierMailView> {
   try {
-    const [messages, cases, syncRes] = await Promise.all([
+    const [messages, cases, syncRes, people] = await Promise.all([
       loadMailMessages(`m.received_at > now() - make_interval(days => $1)`, [VIEW_DAYS]),
-      loadOpenCases(),
+      loadOpenCases(true),
       // Tylko skrzynki nadal połączone — odłączona nie zamraża „sprawdzono” na starej dacie.
       query<{ synced_at: Date; last_error: string | null }>(
         `SELECT s.synced_at, s.last_error FROM public.supplier_mail_sync s
           WHERE EXISTS (SELECT 1 FROM public.google_mail_connections c WHERE lower(c.google_email) = s.mailbox)`
       ),
+      loadMailPeople(),
     ]);
     const conversations = groupConversations(messages);
-    const waiting = waitingCases(cases, await loadCaseLinks(cases));
-    const doneSince = Date.now() - DONE_DAYS * 86_400_000;
+    const waiting = waitingCases(cases, await loadCaseLinks(cases), now);
+    const keys = [
+      ...conversations.flatMap((c) => [convBoardKey(c.mailbox, c.threadId), ...(c.caseKind && c.caseId ? [caseBoardKey(c.caseKind, c.caseId)] : [])]),
+      ...waiting.map((w) => caseBoardKey(w.kind, w.id)),
+    ];
+    const doneSince = new Date(now.getTime() - DONE_DAYS * 86_400_000).toISOString();
+    const items = boardItems(conversations, waiting, await loadBoardRows(keys), todayDateKeyInWarsaw(now)).filter(
+      // Zakończone z ostatnich 14 dni; pierwsza synchronizacja skrzynki nie zasypuje kolumny starociami.
+      (i) => i.column !== "done" || (i.sortAt >= doneSince && !(i.ref.type === "conv" && i.ref.conv.handledVia === "initial" && !i.manualColumn))
+    );
     const lastOk = syncRes.rows.map((r) => r.synced_at.getTime()).filter((t) => t > 0);
     return {
-      open: conversations.filter((c) => c.open),
-      overdue: waiting.filter((w) => w.overdue),
-      waiting: waiting.filter((w) => !w.overdue),
-      documents: conversations.filter((c) => !c.open && (c.category === "invoice" || c.category === "shipping")),
-      done: conversations.filter(
-        (c) =>
-          !c.open &&
-          c.category !== "invoice" &&
-          c.category !== "shipping" &&
-          c.handledVia !== "initial" &&
-          Date.parse(c.lastAt) >= doneSince
-      ),
+      items: items.sort((a, b) => b.sortAt.localeCompare(a.sortAt)),
+      people,
       sync: {
         at: lastOk.length ? new Date(Math.min(...lastOk)).toISOString() : null,
         error: syncRes.rows.find((r) => r.last_error)?.last_error ?? null,
@@ -307,35 +458,21 @@ export async function loadSupplierMailView(): Promise<SupplierMailView> {
       },
     };
   } catch (e) {
-    if (isMissingSchema(e)) {
-      return { open: [], overdue: [], waiting: [], documents: [], done: [], sync: { at: null, error: null, mailboxes: 0 } };
-    }
+    if (isMissingSchema(e)) return { items: [], people: [], sync: { at: null, error: null, mailboxes: 0 } };
     throw e;
   }
 }
 
 /**
- * Licznik w menu: rozmowy do reakcji + sprawy po terminie — te same reguły co widok, ale bez wczytywania
- * wiadomości (odświeżany co kilkadziesiąt sekund u każdej osoby z zakupów).
+ * Licznik w menu: sprawy w kolumnie Do zrobienia — te same reguły co tablica.
+ * ponytail: liczy cały widok (wiadomości z 30 dni); przy wolnym menu — licznik w SQL z mail_board_items.
  */
 export async function countSupplierMailNeedsAction(now: Date = new Date()): Promise<number> {
   try {
-    const [open, cases] = await Promise.all([
-      query<{ n: number }>(
-        `SELECT count(DISTINCT mailbox || '|' || gmail_thread_id)::int AS n
-           FROM public.supplier_mail_messages
-          WHERE handled_at IS NULL
-            AND received_at > now() - make_interval(days => $1)
-            AND (kind = 'bounce' OR (kind = 'supplier' AND category IN ('reply', 'confirmation')))`,
-        [VIEW_DAYS]
-      ),
-      loadOpenCases(),
-    ]);
-    const overdue = waitingCases(cases, await loadCaseLinks(cases), now).filter((w) => w.overdue).length;
-    return (open.rows[0]?.n ?? 0) + overdue;
+    return (await loadSupplierMailView(now)).items.filter((i) => i.column === "todo").length;
   } catch (e) {
-    // Licznik nie może zatrzymać menu, ale błąd bazy (poza brakiem migracji) ma być widoczny w logach.
-    if (!isMissingSchema(e)) console.error("[poczta] licznik", e);
+    // Licznik nie może zatrzymać menu, ale błąd bazy ma być widoczny w logach.
+    console.error("[poczta] licznik", e);
     return 0;
   }
 }

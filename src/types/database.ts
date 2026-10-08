@@ -671,7 +671,8 @@ export type TransactionalEmailKind =
   | "attachments"
   | "supplier_order"
   | "supplier_inquiry"
-  | "supplier_reply";
+  | "supplier_reply"
+  | "payment_forward";
 
 export type TransactionalEmailLogStatus = "sent" | "failed";
 
