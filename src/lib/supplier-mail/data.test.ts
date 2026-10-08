@@ -116,7 +116,7 @@ describe("tablica spraw — pozycje", () => {
   const zd = { kind: "zd" as const, id: "zd-1", label: "ZD 1", supplier_id: "s", supplier_name: "Renfert", location: "ZAGRANICA" as const,
     board_thread_id: null, from_address: "f@mikran.com", to_addresses: [], reminded_at: null, sent_by: "u1", resolved_at: null };
 
-  it("faktura → Do zapłaty, odpowiedź dostawcy → Do zrobienia, ZD po terminie → Do zrobienia", () => {
+  it("faktura → Faktury (nie Do zapłaty), odpowiedź dostawcy → Do zrobienia, ZD po terminie → Do zrobienia", () => {
     const convs = groupConversations([
       msg({ gmail_thread_id: "a", category: "invoice", handled_at: new Date(), handled_via: "manual" }),
       msg({ gmail_thread_id: "b", owner_user_id: "u2" }),
@@ -124,7 +124,7 @@ describe("tablica spraw — pozycje", () => {
     const cases = waitingCases([{ ...zd, sent_at: new Date("2026-10-01T10:00:00Z") }], [], now);
     const items = boardItems(convs, cases, new Map(), today);
     expect(items.map((i) => [i.key, i.column, i.assigneeId])).toEqual([
-      ["conv:filip@mikran.com|a", "to_pay", null],
+      ["conv:filip@mikran.com|a", "invoices", null],
       ["conv:filip@mikran.com|b", "todo", "u2"],
       ["zd:zd-1", "todo", "u1"],
     ]);

@@ -47,6 +47,13 @@ describe("deriveColumn", () => {
     expect(d).toMatchObject({ column: "waiting", remindOn: "2026-10-12" });
   });
 
+  it("Faktury i Do zapłaty: moja odpowiedź nie przenosi do Czekam (faktura czeka na wpis, przedpłata na przekazanie)", () => {
+    for (const column of ["invoices", "to_pay"] as const) {
+      const d = deriveColumn({ auto, lastIncomingAt: "2026-10-05T09:00:00Z", repliedAt: "2026-10-07T12:00:00Z", row: row({ column }), today });
+      expect(d.column).toBe(column);
+    }
+  });
+
   it("minięty termin czekania wraca do Do zrobienia", () => {
     const d = deriveColumn({ auto, lastIncomingAt: null, repliedAt: null, row: row({ column: "waiting", remindOn: "2026-10-08" }), today });
     expect(d.column).toBe("todo");

@@ -10,13 +10,16 @@
 import { isBusinessDay } from "@/lib/orders/business-calendar";
 import { warsawDateKeyFromIso } from "@/lib/time/warsaw";
 
-export const BOARD_COLUMNS = ["todo", "doing", "waiting", "to_pay", "done"] as const;
+export const BOARD_COLUMNS = ["todo", "doing", "waiting", "invoices", "to_pay", "done"] as const;
 export type BoardColumn = (typeof BOARD_COLUMNS)[number];
 
 export const BOARD_COLUMN_LABELS: Record<BoardColumn, string> = {
   todo: "Do zrobienia",
   doing: "W trakcie",
   waiting: "Czekam",
+  /** Faktury do wpisania do Subiekta z terminem płatności — płaci je księgowość w swoim terminie. */
+  invoices: "Faktury",
+  /** Tylko przedpłaty (proforma, należności celne) — do przekazania do zapłaty od razu. */
   to_pay: "Do zapłaty",
   done: "Zakończone",
 };
@@ -94,7 +97,7 @@ export function deriveColumn(input: {
       reason = "Nowa wiadomość";
     } else if (incomingAfter) {
       fresh = true;
-    } else if (repliedAfter && column !== "done" && column !== "to_pay") {
+    } else if (repliedAfter && column !== "done" && column !== "to_pay" && column !== "invoices") {
       column = "waiting";
       remindOn = waitUntilAfter(repliedAt!);
     }

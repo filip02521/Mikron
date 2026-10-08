@@ -58,7 +58,7 @@ const SECTION_COPY: Record<Section, { label: string; shortLabel?: string; descri
   poczta: {
     label: "Poczta dostawców",
     shortLabel: "Poczta",
-    description: "Sprawy z dostawcami: co jest do zrobienia, co w trakcie, na co czekasz i co do zapłaty.",
+    description: "Sprawy z dostawcami: co do zrobienia, co w trakcie, na co czekasz, które faktury wpisać do Subiekta i które przedpłaty przekazać do zapłaty.",
   },
   oc: {
     label: "Kontrola OC",

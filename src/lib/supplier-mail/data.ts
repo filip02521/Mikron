@@ -398,7 +398,8 @@ function autoColumn(ref: BoardItem["ref"]): { column: BoardColumn; remindOn: str
   // Należności agencji celnej (na tablicy są tylko one) — do przekazania do zapłaty.
   if (c.triage === "customs") return { column: c.handledVia ? "done" : "to_pay", remindOn: null };
   if (c.open) return { column: "todo", remindOn: null, reason: c.bounce ? "Mail nie doszedł" : null };
-  if (c.handledVia !== "initial" && c.category === "invoice") return { column: "to_pay", remindOn: null };
+  // Faktura — do wpisania do Subiekta z terminem; „Do zapłaty” (przedpłata) ustawia się ręcznie.
+  if (c.handledVia !== "initial" && c.category === "invoice") return { column: "invoices", remindOn: null };
   if (c.repliedAt && c.handledVia !== "manual") return { column: "waiting", remindOn: waitUntilAfter(c.repliedAt) };
   return { column: "done", remindOn: null };
 }

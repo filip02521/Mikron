@@ -607,7 +607,8 @@ const EMPTY: Record<ViewTab, string> = {
   todo: "Nic nie czeka na Twój ruch.",
   doing: "Nic nie jest w trakcie.",
   waiting: "Na nic nie czekasz.",
-  to_pay: "Brak faktur do zapłaty.",
+  invoices: "Brak faktur do wpisania do Subiekta.",
+  to_pay: "Brak przedpłat do przekazania do zapłaty.",
   done: "Brak spraw zakończonych w ostatnich 14 dniach.",
 };
 
@@ -951,7 +952,7 @@ function ConversationDetail({
         ) : null}
         {item.column !== "done" && !hideDone ? (
           <Button type="button" size="sm" variant="secondary" disabled={!armed} onClick={() => onMove("done")}>
-            Zakończone
+            {item.column === "invoices" ? "Wpisana do Subiekta" : "Zakończone"}
           </Button>
         ) : null}
       </DetailHeader>
