@@ -13,6 +13,7 @@ import {
   type BoardColumn,
   type BoardRow,
 } from "@/lib/mail-board/board";
+import { customsMailKind, type CustomsMailKind } from "@/lib/mail-board/triage";
 import { categoryNeedsAction, type SupplierMailCategory } from "@/lib/supplier-mail/match";
 import { awaitingReplyTiming, type AwaitingReplyTiming } from "@/lib/suppliers/awaiting-supplier";
 import { todayDateKeyInWarsaw, warsawDateKeyFromIso } from "@/lib/time/warsaw";
@@ -51,8 +52,8 @@ export type MailMessageRow = {
   board_thread_id: string | null;
   handled_at: Date | null;
   handled_via: string | null;
-  /** Tylko kind 'other': do przejrzenia / sprawa / nie sprawa. */
-  triage: "review" | "case" | "ignored" | null;
+  /** Tylko kind 'other': do przejrzenia / sprawa / nie sprawa / odprawa celna (agencja, spedytor). */
+  triage: "review" | "case" | "ignored" | "customs" | null;
 };
 
 export type MailConversation = {
@@ -88,6 +89,8 @@ export type MailConversation = {
   repliedAt: string | null;
   /** Rozmowa od nadawcy spoza kart dostawców: do przejrzenia / sprawa / nie sprawa; null = dostawca. */
   triage: MailMessageRow["triage"];
+  /** Tylko triage 'customs': co jest w mailu agencji (należności, dokumenty, wycena, awizacja, prośba). */
+  customsKind: CustomsMailKind | null;
 };
 
 export type WaitingCase = {
@@ -135,6 +138,8 @@ export type SupplierMailView = {
   items: BoardItem[];
   /** Półka „Do przejrzenia”: nieznani nadawcy — sprawa czy nie. */
   review: MailConversation[];
+  /** Agencje celne i spedytorzy — lista w odprawach; tu do otwarcia rozmowy z linku. */
+  customs: MailConversation[];
   /** Osoby z zakupów — do „Obsługuje”. */
   people: MailPerson[];
   sync: { at: string | null; error: string | null; mailboxes: number };
@@ -151,7 +156,7 @@ function needsAction(m: Pick<MailMessageRow, "kind" | "category" | "handled_at" 
 
 function threadTriage(list: readonly MailMessageRow[]): MailMessageRow["triage"] {
   if (list.some((m) => m.kind !== "other")) return null;
-  for (const t of ["case", "review", "ignored"] as const) if (list.some((m) => m.triage === t)) return t;
+  for (const t of ["case", "customs", "review", "ignored"] as const) if (list.some((m) => m.triage === t)) return t;
   return null;
 }
 
@@ -207,6 +212,10 @@ export function groupConversations(rows: readonly MailMessageRow[]): MailConvers
             .sort()
             .at(-1) ?? null,
         triage: threadTriage(sorted),
+        customsKind:
+          threadTriage(sorted) === "customs"
+            ? customsMailKind({ subject: last.subject, attachmentNames: sorted.flatMap((m) => m.attachments.map((a) => a.filename)) })
+            : null,
       };
     })
     .sort((a, b) => b.lastAt.localeCompare(a.lastAt));
@@ -386,6 +395,8 @@ function autoColumn(ref: BoardItem["ref"]): { column: BoardColumn; remindOn: str
     return { column: "waiting", remindOn: addBusinessDaysKey(from, c.dueDays + 1) };
   }
   const c = ref.conv;
+  // Należności agencji celnej (na tablicy są tylko one) — do przekazania do zapłaty.
+  if (c.triage === "customs") return { column: c.handledVia ? "done" : "to_pay", remindOn: null };
   if (c.open) return { column: "todo", remindOn: null, reason: c.bounce ? "Mail nie doszedł" : null };
   if (c.handledVia !== "initial" && c.category === "invoice") return { column: "to_pay", remindOn: null };
   if (c.repliedAt && c.handledVia !== "manual") return { column: "waiting", remindOn: waitUntilAfter(c.repliedAt) };
@@ -456,7 +467,10 @@ export async function loadSupplierMailView(now: Date = new Date()): Promise<Supp
       loadMailPeople(),
     ]);
     const all = groupConversations(messages);
-    const conversations = all.filter((c) => c.triage === null || c.triage === "case");
+    // Agencje i spedytorzy żyją w odprawach celnych; na tablicę trafiają tylko ich należności (płatność na już).
+    const conversations = all.filter(
+      (c) => c.triage === null || c.triage === "case" || (c.triage === "customs" && c.customsKind === "dues")
+    );
     const waiting = waitingCases(cases, await loadCaseLinks(cases), now);
     const keys = [
       ...conversations.flatMap((c) => [convBoardKey(c.mailbox, c.threadId), ...(c.caseKind && c.caseId ? [caseBoardKey(c.caseKind, c.caseId)] : [])]),
@@ -471,6 +485,7 @@ export async function loadSupplierMailView(now: Date = new Date()): Promise<Supp
     return {
       items: items.sort((a, b) => b.sortAt.localeCompare(a.sortAt)),
       review: all.filter((c) => c.triage === "review"),
+      customs: all.filter((c) => c.triage === "customs"),
       people,
       sync: {
         at: lastOk.length ? new Date(Math.min(...lastOk)).toISOString() : null,
@@ -479,7 +494,7 @@ export async function loadSupplierMailView(now: Date = new Date()): Promise<Supp
       },
     };
   } catch (e) {
-    if (isMissingSchema(e)) return { items: [], review: [], people: [], sync: { at: null, error: null, mailboxes: 0 } };
+    if (isMissingSchema(e)) return { items: [], review: [], customs: [], people: [], sync: { at: null, error: null, mailboxes: 0 } };
     throw e;
   }
 }
@@ -510,5 +525,60 @@ export async function markInquiryMailHandled(inquiryIds: readonly string[], user
     );
   } catch (e) {
     if (!isMissingSchema(e)) throw e;
+  }
+}
+
+/** Rozmowa agencji / spedytora na liście w odprawach celnych. */
+export type CustomsMailThread = {
+  key: string;
+  mailbox: string;
+  threadId: string;
+  company: string;
+  fromEmail: string;
+  subject: string;
+  snippet: string;
+  lastAt: string;
+  kind: CustomsMailKind;
+  /** Jest coś bez reakcji (nie „Zakończone”, nie odpisano). */
+  open: boolean;
+  attachments: { messageId: string; attachmentId: string; filename: string }[];
+};
+
+/** DHL Express ma własny panel w odprawach (przesyłki z AWB) — tu go nie dublujemy. */
+const DHL_DOMAIN_RE = /@(.+\.)?(dhl\.com|dhlexpress\.pl)$/i;
+
+/** Korespondencja agencji celnych i spedytorów z ostatnich 30 dni — do panelu w /zakupy/odprawy. */
+export async function loadCustomsMail(): Promise<CustomsMailThread[]> {
+  try {
+    const rows = await loadMailMessages(`m.triage = 'customs' AND m.received_at > now() - make_interval(days => $1)`, [VIEW_DAYS]);
+    const byThread = new Map<string, MailMessageRow[]>();
+    for (const r of rows) {
+      if (DHL_DOMAIN_RE.test(r.from_address)) continue;
+      const k = `${r.mailbox}|${r.gmail_thread_id}`;
+      byThread.set(k, [...(byThread.get(k) ?? []), r]);
+    }
+    return groupConversations(rows.filter((r) => byThread.has(`${r.mailbox}|${r.gmail_thread_id}`))).map((c) => {
+      const list = byThread.get(c.key)!;
+      return {
+        key: convBoardKey(c.mailbox, c.threadId),
+        mailbox: c.mailbox,
+        threadId: c.threadId,
+        company: c.supplierName,
+        fromEmail: c.lastFromEmail,
+        subject: c.subject,
+        snippet: c.snippet,
+        lastAt: c.lastAt,
+        kind: c.customsKind ?? "request",
+        open: list.some((m) => !m.handled_at),
+        attachments: list.flatMap((m) =>
+          m.attachments
+            .filter((a) => !/^image\d{3}\.(png|jpe?g|gif)$/i.test(a.filename))
+            .map((a) => ({ messageId: m.id, attachmentId: a.attachmentId, filename: a.filename }))
+        ),
+      };
+    });
+  } catch (e) {
+    if (isMissingSchema(e) || (e instanceof Error && /triage/.test(e.message))) return [];
+    throw e;
   }
 }

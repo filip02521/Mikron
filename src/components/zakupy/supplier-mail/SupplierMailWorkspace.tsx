@@ -19,7 +19,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { procurementBoardQuestionHref } from "@/lib/data/department-board-shared";
 import { BOARD_COLUMN_LABELS, BOARD_COLUMNS, type BoardColumn } from "@/lib/mail-board/board";
-import { domainOf, isFreeMailDomain } from "@/lib/mail-board/triage";
+import { CUSTOMS_KIND_LABELS, domainOf, isFreeMailDomain } from "@/lib/mail-board/triage";
 import type { BoardItem, MailConversation, MailPerson, SupplierMailView, WaitingCase } from "@/lib/supplier-mail/data";
 import { businessDaysLabel } from "@/lib/suppliers/awaiting-supplier";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
@@ -132,6 +132,7 @@ export function SupplierMailWorkspace({
   initialCanReply,
   initialSignature,
   initialPaymentForwardEmail,
+  initialSelectedKey = null,
 }: {
   initialView: SupplierMailView;
   initialMe: string | null;
@@ -139,6 +140,8 @@ export function SupplierMailWorkspace({
   initialCanReply: boolean;
   initialSignature: string;
   initialPaymentForwardEmail: string;
+  /** Link „?sprawa=…” (np. z odpraw celnych) — od razu otwarta rozmowa. */
+  initialSelectedKey?: string | null;
 }) {
   const [view, setView] = useState(initialView);
   const [me, setMe] = useState(initialMe);
@@ -148,7 +151,7 @@ export function SupplierMailWorkspace({
   const [paymentForwardEmail, setPaymentForwardEmail] = useState(initialPaymentForwardEmail);
   const [column, setColumn] = useState<ViewTab>("todo");
   const [scope, setScope] = useState<Scope>("mine");
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(initialSelectedKey);
   const [search, setSearch] = useState("");
   const [dropTarget, setDropTarget] = useState<BoardColumn | null>(null);
   const [syncing, setSyncing] = useState(true);
@@ -233,11 +236,30 @@ export function SupplierMailWorkspace({
   const reviewKeys = useMemo(() => new Set(reviewItems.map((i) => i.key)), [reviewItems]);
   const index = order.findIndex((i) => i.key === selectedKey);
   const reviewSelected = reviewItems.find((i) => i.key === selectedKey) ?? null;
-  const selected = view.items.find((i) => i.key === selectedKey) ?? reviewSelected;
+  // Rozmowa agencji / spedytora otwarta z odpraw celnych (poza tablicą).
+  const customsConv = view.items.some((i) => i.key === selectedKey)
+    ? undefined
+    : view.customs.find((c) => `conv:${c.mailbox}|${c.threadId}` === selectedKey);
+  const customsSelected: BoardItem | null = customsConv
+    ? {
+        key: `conv:${customsConv.mailbox}|${customsConv.threadId}`,
+        ref: { type: "conv", conv: customsConv },
+        column: customsConv.handledVia ? "done" : "todo",
+        reason: null,
+        fresh: false,
+        remindOn: null,
+        note: "",
+        waitingOn: "",
+        assigneeId: customsConv.ownerUserId,
+        manualColumn: null,
+        sortAt: customsConv.lastAt,
+      }
+    : null;
+  const selected = view.items.find((i) => i.key === selectedKey) ?? reviewSelected ?? customsSelected;
 
   /** Decyzja z półki: następna pozycja od razu, „Cofnij” przywraca rozmowę (i usuwa zapamiętaną regułę). */
   const triage = useCallback(
-    async (conv: MailConversation, decision: "case" | "ignore", remember: "none" | "sender" | "domain") => {
+    async (conv: MailConversation, decision: "case" | "ignore" | "customs", remember: "none" | "sender" | "domain") => {
       const next = order[index + 1] ?? order[index - 1] ?? null;
       setSelectedKey(next?.key ?? null);
       setView((v) => ({ ...v, review: v.review.filter((c) => c.key !== conv.key) }));
@@ -250,7 +272,7 @@ export function SupplierMailWorkspace({
       if (undoTimer.current) clearTimeout(undoTimer.current);
       const who = res.pattern ? ` · zawsze ${res.pattern}${res.alsoApplied ? ` (+${res.alsoApplied})` : ""}` : "";
       setUndo({
-        label: `${conv.supplierName} → ${decision === "case" ? "sprawa" : "nie sprawa"}${who}`,
+        label: `${conv.supplierName} → ${{ case: "sprawa", ignore: "nie sprawa", customs: "odprawy celne" }[decision]}${who}`,
         undo: () =>
           actionMailTriage({ mailbox: conv.mailbox, threadId: conv.threadId, decision: "review", forgetPattern: res.pattern }).then((r) =>
             r.ok ? { ok: true as const } : r
@@ -510,6 +532,27 @@ export function SupplierMailWorkspace({
               hideDone
               onBack={() => setSelectedKey(null)}
               onMove={() => undefined}
+              onChanged={() => void refresh()}
+            />
+          ) : customsSelected && customsSelected.ref.type === "conv" ? (
+            <ConversationDetail
+              key={customsSelected.key}
+              item={customsSelected}
+              conv={customsSelected.ref.conv}
+              me={me}
+              canReply={canReply}
+              paymentForwardEmail={paymentForwardEmail}
+              panel={
+                <p className="border-b border-slate-200 bg-amber-50/60 px-4 py-2.5 text-sm text-amber-950 sm:px-5">
+                  Agencja / spedytor - sprawa z{" "}
+                  <Link href="/zakupy/odprawy" className="font-medium underline">
+                    odpraw celnych
+                  </Link>
+                  : {CUSTOMS_KIND_LABELS[customsSelected.ref.conv.customsKind ?? "request"]}.
+                </p>
+              }
+              onBack={() => setSelectedKey(null)}
+              onMove={(to) => void move(customsSelected, to)}
               onChanged={() => void refresh()}
             />
           ) : selected?.ref.type === "conv" ? (
@@ -1388,7 +1431,7 @@ function TriageBar({
   onDecide,
 }: {
   conv: MailConversation;
-  onDecide: (conv: MailConversation, decision: "case" | "ignore", remember: "none" | "sender" | "domain") => void;
+  onDecide: (conv: MailConversation, decision: "case" | "ignore" | "customs", remember: "none" | "sender" | "domain") => void;
 }) {
   const rememberId = useId();
   const email = conv.lastFromEmail;
@@ -1406,6 +1449,9 @@ function TriageBar({
         </Button>
         <Button type="button" size="sm" variant="secondary" disabled={!armed} onClick={() => onDecide(conv, "ignore", remember)}>
           Nie sprawa
+        </Button>
+        <Button type="button" size="sm" variant="secondary" disabled={!armed} onClick={() => onDecide(conv, "customs", remember)}>
+          Odprawa / spedycja
         </Button>
         <label htmlFor={rememberId} className="sr-only">
           Zapamiętaj

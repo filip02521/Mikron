@@ -41,7 +41,7 @@ function parseSection(raw: string | undefined): Section {
 export default async function AsystentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ widok?: string; sekcja?: string }>;
+  searchParams: Promise<{ widok?: string; sekcja?: string; sprawa?: string }>;
 }) {
   const user = await requireOperations("read");
   // Raporty dotyczą skrzynki działu zakupów — jak Kreator ZD, tylko admin i zakupy.
@@ -106,6 +106,7 @@ export default async function AsystentPage({
             initialCanReply={Boolean(conn)}
             initialSignature={signature}
             initialPaymentForwardEmail={paymentForwardEmail}
+            initialSelectedKey={typeof params.sprawa === "string" ? params.sprawa : null}
           />
         ) : (
           <Alert tone="error">

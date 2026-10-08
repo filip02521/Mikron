@@ -271,16 +271,18 @@ async function storeMetas(
     if (meta.kind === "internal") continue;
     const sender = parseFromHeader(meta.from);
     const supplierIds = meta.kind === "bounce" ? [] : suppliersForSender(index, sender.email);
-    let triage: "case" | "review" | null = null;
+    let triage: "case" | "review" | "customs" | null = null;
     if (meta.kind !== "bounce" && !supplierIds.length) {
-      // Spoza kart dostawców: tylko ludzie (bez autoodpowiedzi), przesiani regułami nadawców.
-      if (!rules || meta.kind !== "supplier") continue;
+      // Spoza kart dostawców: przesiani regułami nadawców.
+      if (!rules) continue;
       triage = triageOther({ email: sender.email, bulk: meta.bulk, rules, knownCaseThread: caseThreads.has(meta.threadId) });
-      if (!triage) continue;
+      // Autoodpowiedzi (urlop) pomijamy — poza automatami agencji celnych (powiadomienia o należnościach).
+      if (!triage || (meta.kind !== "supplier" && triage !== "customs")) continue;
     }
     const attachmentNames = meta.attachments.map((a) => a.filename);
     const category = supplierMailCategory({ from: meta.from, subject: meta.subject, attachmentNames, bulk: meta.bulk });
-    if (category === "newsletter" && meta.kind !== "bounce" && triage !== "case") continue;
+    // Reguła nadawcy („sprawa”, „odprawa”) wygrywa z wyglądem wysyłki masowej (automaty agencji celnych).
+    if (category === "newsletter" && meta.kind !== "bounce" && (triage === null || triage === "review")) continue;
     const text = [meta.subject, meta.snippet, ...attachmentNames].join("\n");
     const zdNr = documentRefs(text).dokNrs[0] ?? null;
     const zd = zdNr ? zdIndex.get(zdNr) : undefined;
