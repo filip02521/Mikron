@@ -887,7 +887,8 @@ function ConversationDetail({
   onChanged: () => void;
 }) {
   const [messages, setMessages] = useState<ConversationMessage[] | null>(null);
-  const [forwarding, setForwarding] = useState(false);
+  // Przekazanie całej rozmowy albo jednej wiadomości (przycisk przy wiadomości).
+  const [forwarding, setForwarding] = useState<false | "thread" | { messageId: string }>(false);
   // Po przejściu do następnej rozmowy „Załatwione” jest pod kursorem — chwila przerwy chroni przed seryjnym zamykaniem.
   const armed = useArmedAfterMount();
   const [signature, setSignature] = useState("");
@@ -942,8 +943,8 @@ function ConversationDetail({
         {canReply && !hideDone ? (
           <button
             type="button"
-            onClick={() => setForwarding((v) => !v)}
-            aria-pressed={forwarding}
+            onClick={() => setForwarding((v) => (v ? false : "thread"))}
+            aria-pressed={Boolean(forwarding)}
             className={detailLinkClass}
           >
             Przekaż dalej
@@ -968,14 +969,29 @@ function ConversationDetail({
             <Spinner size="sm" /> Wczytuję treść z Gmaila…
           </p>
         ) : null}
-        {messages?.map((m) => <MessageCard key={m.id} m={m} />)}
+        {messages?.map((m) => (
+          <MessageCard
+            key={m.id}
+            m={m}
+            onForward={canReply && !hideDone && m.kind !== "mine" ? () => setForwarding({ messageId: m.id }) : undefined}
+          />
+        ))}
         {conv.mailbox !== me && me ? (
           <p className="text-xs text-slate-500">Rozmowa jest w skrzynce {conv.mailbox}.</p>
         ) : null}
       </div>
 
       {forwarding && canReply ? (
-        <ForwardForm key={`fwd-${conv.key}`} conv={conv} me={me} purpose="plain" defaultTo="" onSent={onChanged} onCancel={() => setForwarding(false)} />
+        <ForwardForm
+          key={`fwd-${conv.key}-${forwarding === "thread" ? "thread" : forwarding.messageId}`}
+          conv={conv}
+          me={me}
+          purpose="plain"
+          defaultTo=""
+          message={forwarding === "thread" ? null : (messages?.find((x) => x.id === forwarding.messageId) ?? null)}
+          onSent={onChanged}
+          onCancel={() => setForwarding(false)}
+        />
       ) : item.column === "to_pay" && canReply ? (
         <ForwardForm key={conv.key} conv={conv} me={me} purpose="payment" defaultTo={paymentForwardEmail} onSent={onChanged} />
       ) : messages && hasSupplierMessage && canReply ? (
@@ -994,7 +1010,7 @@ function ConversationDetail({
   );
 }
 
-function MessageCard({ m }: { m: ConversationMessage }) {
+function MessageCard({ m, onForward }: { m: ConversationMessage; onForward?: () => void }) {
   const [expanded, setExpanded] = useState(false);
   const text = m.text?.trim() || m.snippet;
   const long = text.length > 700 || text.split("\n").length > 14;
@@ -1028,9 +1044,16 @@ function MessageCard({ m }: { m: ConversationMessage }) {
             </>
           )}
         </span>
-        <time className="tabular-nums text-slate-500" dateTime={m.receivedAt}>
-          {fullFmt.format(new Date(m.receivedAt))}
-        </time>
+        <span className="flex items-center gap-2">
+          <time className="tabular-nums text-slate-500" dateTime={m.receivedAt}>
+            {fullFmt.format(new Date(m.receivedAt))}
+          </time>
+          {onForward ? (
+            <button type="button" onClick={onForward} className="rounded font-medium text-indigo-700 hover:underline">
+              Przekaż
+            </button>
+          ) : null}
+        </span>
       </header>
       <p className={cn("mt-2 whitespace-pre-line break-words text-sm leading-relaxed text-slate-800", long && !expanded && "line-clamp-[14]")}>
         {splitEmphasis(text).map((run, i) =>
@@ -1080,12 +1103,9 @@ function MessageCard({ m }: { m: ConversationMessage }) {
           ))}
         </ul>
       ) : null}
+      {/* Logo i obrazki z treści zawsze widoczne (małe) — po nich łatwiej poznać, od kogo mail; nie liczą się jako załączniki. */}
       {inlineImages.length ? (
-        <details className="mt-2">
-          <summary className="cursor-pointer list-none text-xs text-slate-500 transition-colors hover:text-slate-800 [&::-webkit-details-marker]:hidden">
-            {inlineImagesLabel(inlineImages.length)} (podpis, logo)
-          </summary>
-          <ul className="mt-1.5 flex flex-wrap items-center gap-1.5">
+        <ul className="mt-2 flex flex-wrap items-center gap-1.5" aria-label={inlineImagesLabel(inlineImages.length)}>
             {inlineImages.map((a) => (
               <li key={a.attachmentId}>
                 {isPreviewableImage(a) ? (
@@ -1096,7 +1116,7 @@ function MessageCard({ m }: { m: ConversationMessage }) {
                     className="block rounded-md ring-1 ring-slate-200 hover:ring-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={attachmentUrl(m.id, a.attachmentId)} alt={a.filename} loading="lazy" className="h-12 max-w-[10rem] rounded-md bg-white object-contain" />
+                    <img src={attachmentUrl(m.id, a.attachmentId)} alt={a.filename} loading="lazy" className="h-10 max-w-[9rem] rounded-md bg-white object-contain" />
                   </button>
                 ) : (
                   <a href={attachmentUrl(m.id, a.attachmentId)} target="_blank" rel="noopener" className="block rounded-md px-2 py-1 text-xs text-slate-600 ring-1 ring-slate-200 hover:ring-slate-400">
@@ -1105,8 +1125,7 @@ function MessageCard({ m }: { m: ConversationMessage }) {
                 )}
               </li>
             ))}
-          </ul>
-        </details>
+        </ul>
       ) : null}
       <ModalShell
         open={preview !== null}
@@ -1433,6 +1452,7 @@ function ForwardForm({
   me,
   purpose,
   defaultTo,
+  message = null,
   onSent,
   onCancel,
 }: {
@@ -1440,6 +1460,8 @@ function ForwardForm({
   /** Skrzynka zalogowanej osoby — z niej idzie przekazanie. */
   me: string | null;
   purpose: "payment" | "plain";
+  /** Tylko ta wiadomość (z jej załącznikami); null = cała rozmowa. */
+  message?: ConversationMessage | null;
   defaultTo: string;
   onSent: () => void;
   onCancel?: () => void;
@@ -1458,7 +1480,7 @@ function ForwardForm({
     if (sending || !to.trim()) return;
     setSending(true);
     setResult(null);
-    const res = await actionMailForward({ mailbox: conv.mailbox, threadId: conv.threadId, to, note, purpose }).catch(() => ({
+    const res = await actionMailForward({ mailbox: conv.mailbox, threadId: conv.threadId, to, note, purpose, messageId: message?.id ?? null }).catch(() => ({
       ok: false as const,
       message: "Brak połączenia z serwerem.",
     }));
@@ -1478,7 +1500,9 @@ function ForwardForm({
       }}
     >
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-semibold text-slate-900">{payment ? "Przekaż do zapłaty" : "Przekaż dalej"}</p>
+        <p className="text-sm font-semibold text-slate-900">
+          {payment ? "Przekaż do zapłaty" : message ? `Przekaż dalej wiadomość od ${message.fromName || message.from}` : "Przekaż dalej"}
+        </p>
         {onCancel ? (
           <button type="button" onClick={onCancel} className="rounded px-1.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100">
             Anuluj
@@ -1513,9 +1537,11 @@ function ForwardForm({
       />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-slate-500">
-          {conv.attachments
-            ? `Pójdzie treść rozmowy z ${me} i załączniki (${conv.attachments}).`
-            : `Pójdzie treść rozmowy z ${me}; rozmowa nie ma załączników.`}
+          {(() => {
+            const what = message ? `ta wiadomość z ${fullFmt.format(new Date(message.receivedAt))}` : "treść rozmowy";
+            const n = message ? message.attachments.filter((a) => !isInlineImage(a)).length : conv.attachments;
+            return n ? `Pójdzie ${what} z ${me} i załączniki (${n}).` : `Pójdzie ${what} z ${me}; bez załączników.`;
+          })()}
           {payment ? " Potem sprawa czeka 3 dni rob. na płatność." : ""}
         </p>
         <Button type="submit" disabled={sending || !to.trim()} aria-busy={sending}>

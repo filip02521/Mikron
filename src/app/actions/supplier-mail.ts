@@ -530,6 +530,8 @@ export async function actionMailForward(input: {
   to: string;
   note: string;
   purpose: "payment" | "plain";
+  /** Tylko ta wiadomość rozmowy (id wiersza supplier_mail_messages); bez — cała rozmowa. */
+  messageId?: string | null;
 }): Promise<{ ok: true; to: string; attachments: number } | (Fail & { reconnect?: boolean })> {
   const user = await requireMailUser("mutate");
   const conv = validConversation(input);
@@ -541,8 +543,11 @@ export async function actionMailForward(input: {
   if (payment && recipients.to.length !== 1) return { ok: false, message: "Podaj jeden adres." };
   const to = recipients.to.join(", ");
   try {
-    const rows = await loadMailMessages(`m.mailbox = $1 AND m.gmail_thread_id = $2`, [conv.mailbox, conv.threadId]);
-    if (!rows.length) return { ok: false, message: "Nie znaleziono rozmowy." };
+    const messageId = typeof input.messageId === "string" && /^[0-9a-f-]{36}$/i.test(input.messageId) ? input.messageId : null;
+    const rows = (await loadMailMessages(`m.mailbox = $1 AND m.gmail_thread_id = $2`, [conv.mailbox, conv.threadId])).filter(
+      (m) => !messageId || m.id === messageId
+    );
+    if (!rows.length) return { ok: false, message: messageId ? "Nie znaleziono wiadomości." : "Nie znaleziono rozmowy." };
     const token = await mailboxAccessToken(conv.mailbox);
     if (!token) return { ok: false, message: "Skrzynka tej rozmowy nie jest połączona z OnTime." };
     const refs = rows.flatMap((m) =>
