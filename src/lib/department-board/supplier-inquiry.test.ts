@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  supplierInquiryWait,
   buildSupplierInquiryDraft,
   inquiryNeedsAttention,
   pendingInquiryToSupplier,
@@ -122,3 +123,24 @@ describe("inquiryNeedsAttention", () => {
   });
 });
 
+describe("supplierInquiryWait", () => {
+  // 2026-10-05 to poniedziałek.
+  const sentAt = "2026-10-05T09:00:00+02:00";
+
+  it("liczy dni robocze, weekend nie przeterminowuje", () => {
+    expect(supplierInquiryWait({ sentAt }, new Date("2026-10-05T15:00:00+02:00"))).toEqual({
+      businessDays: 0,
+      overdue: false,
+    });
+    expect(supplierInquiryWait({ sentAt }, new Date("2026-10-07T10:00:00+02:00")).overdue).toBe(false);
+    expect(supplierInquiryWait({ sentAt }, new Date("2026-10-08T10:00:00+02:00"))).toEqual({
+      businessDays: 3,
+      overdue: true,
+    });
+    // Piątek → poniedziałek to 1 dzień roboczy.
+    expect(
+      supplierInquiryWait({ sentAt: "2026-10-09T09:00:00+02:00" }, new Date("2026-10-12T09:00:00+02:00"))
+        .businessDays
+    ).toBe(1);
+  });
+});

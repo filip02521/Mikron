@@ -224,26 +224,71 @@ export async function buildMimeMessage(input: GmailMessageInput): Promise<Buffer
   return info.message as Buffer;
 }
 
+type GmailSendResponse = {
+  id?: string;
+  threadId?: string;
+  error?: { message?: string; status?: string; errors?: { reason?: string }[] };
+};
+
+const RATE_LIMIT_REASONS = new Set(["rateLimitExceeded", "userRateLimitExceeded"]);
+const SEND_ATTEMPTS = 3;
+const RETRY_AFTER_MAX_MS = 10_000;
+
+/**
+ * Limit „Units per minute per user” Google zwraca też przy pojedynczej wysyłce (najczęściej
+ * pierwsza po świeżym tokenie) — wiadomość wtedy nie wyszła, więc ponowienie nie zdubluje maila.
+ */
+function isRateLimited(status: number, json: GmailSendResponse): boolean {
+  if (status === 429) return true;
+  if (status !== 403) return false;
+  return (
+    (json.error?.errors ?? []).some((e) => e.reason && RATE_LIMIT_REASONS.has(e.reason)) ||
+    /quota|rate ?limit/i.test(json.error?.message ?? "")
+  );
+}
+
+function retryDelayMs(res: Response, attempt: number): number {
+  const header = Number(res.headers.get("retry-after"));
+  if (Number.isFinite(header) && header > 0) return Math.min(header * 1000, RETRY_AFTER_MAX_MS);
+  return 1000 * 2 ** (attempt - 1) + Math.floor(Math.random() * 250);
+}
+
+type GmailSendOpts = { sleep?: (ms: number) => Promise<void> };
+
+/** POST wysyłki z ponowieniem tylko przy limicie — przy 5xx mail mógł już wyjść (inaczej niż odczyty). */
+async function postGmailSend(
+  accessToken: string,
+  url: string,
+  contentType: string,
+  body: Uint8Array<ArrayBuffer>,
+  errorPrefix: string,
+  opts: GmailSendOpts
+): Promise<{ id: string; threadId: string | null }> {
+  const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  for (let attempt = 1; ; attempt++) {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": contentType },
+      body,
+      signal: AbortSignal.timeout(TIMEOUT_MS * 3),
+    });
+    const json = (await res.json().catch(() => ({}))) as GmailSendResponse;
+    if (res.status === 401) throw new GmailReconnectRequiredError();
+    if (res.ok && json.id) return { id: json.id, threadId: json.threadId ?? null };
+    if (attempt < SEND_ATTEMPTS && isRateLimited(res.status, json)) {
+      await sleep(retryDelayMs(res, attempt));
+      continue;
+    }
+    throw new Error(`${errorPrefix}: ${json.error?.message ?? res.status}`);
+  }
+}
+
 export async function sendGmailRaw(
   accessToken: string,
-  mime: Buffer
+  mime: Buffer,
+  opts: GmailSendOpts = {}
 ): Promise<{ id: string; threadId: string | null }> {
-  const res = await fetch(SEND_URL, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "message/rfc822" },
-    body: new Uint8Array(mime),
-    signal: AbortSignal.timeout(TIMEOUT_MS * 3),
-  });
-  const json = (await res.json().catch(() => ({}))) as {
-    id?: string;
-    threadId?: string;
-    error?: { message?: string; status?: string };
-  };
-  if (res.status === 401) throw new GmailReconnectRequiredError();
-  if (!res.ok || !json.id) {
-    throw new Error(`Gmail nie wysłał wiadomości: ${json.error?.message ?? res.status}`);
-  }
-  return { id: json.id, threadId: json.threadId ?? null };
+  return postGmailSend(accessToken, SEND_URL, "message/rfc822", new Uint8Array(mime), "Gmail nie wysłał wiadomości", opts);
 }
 
 /** Błąd po stronie połączenia (limit czasu, zerwanie) — Gmail mógł już wysłać wiadomość. */
@@ -733,7 +778,8 @@ const SEND_MULTIPART_URL = "https://gmail.googleapis.com/upload/gmail/v1/users/m
 export async function sendGmailRawInThread(
   accessToken: string,
   mime: Buffer,
-  threadId: string
+  threadId: string,
+  opts: GmailSendOpts = {}
 ): Promise<{ id: string; threadId: string | null }> {
   const boundary = `ontime-${randomBytes(16).toString("hex")}`;
   const body = Buffer.concat([
@@ -744,16 +790,14 @@ export async function sendGmailRawInThread(
     mime,
     Buffer.from(`\r\n--${boundary}--`),
   ]);
-  const res = await fetch(SEND_MULTIPART_URL, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": `multipart/related; boundary=${boundary}` },
-    body: new Uint8Array(body),
-    signal: AbortSignal.timeout(TIMEOUT_MS * 3),
-  });
-  const json = (await res.json().catch(() => ({}))) as { id?: string; threadId?: string; error?: { message?: string } };
-  if (res.status === 401) throw new GmailReconnectRequiredError();
-  if (!res.ok || !json.id) throw new Error(`Gmail nie wysłał odpowiedzi: ${json.error?.message ?? res.status}`);
-  return { id: json.id, threadId: json.threadId ?? null };
+  return postGmailSend(
+    accessToken,
+    SEND_MULTIPART_URL,
+    `multipart/related; boundary=${boundary}`,
+    new Uint8Array(body),
+    "Gmail nie wysłał odpowiedzi",
+    opts
+  );
 }
 
 /** Adresy z nagłówków To/Cc (małe litery). */

@@ -8,6 +8,7 @@ import {
   isSubiektOrdersLiveBaseUrl,
   isSubiektOrdersTestBaseUrl,
   resolveSubiektOrdersConfig,
+  resolveSubiektPricesConfig,
   shouldPersistZdEstimateOrderSnapshots,
   subiektSameApiOrigin,
   zdEstimateOrdersHostLabel,
@@ -110,6 +111,22 @@ describe("subiekt config", () => {
     expect(summary.ordersIsLive).toBe(true);
     expect(summary.ordersPort).toBe(5080);
     expect(summary.ordersHostLabel).toContain("LIVE");
+  });
+
+  it("cenniki używają SUBIEKT_API_BASE_URL", () => {
+    process.env.SUBIEKT_API_BASE_URL = "http://192.168.0.140:5080/api/v1";
+    process.env.SUBIEKT_API_AUTH_MODE = "none";
+    const resolved = resolveSubiektPricesConfig();
+    expect(resolved.ok).toBe(true);
+    if (resolved.ok) {
+      expect(resolved.config.baseUrl).toBe("http://192.168.0.140:5080/api/v1");
+    }
+  });
+
+  it("cenniki bez SUBIEKT_API_BASE_URL - brak konfiguracji", () => {
+    const resolved = resolveSubiektPricesConfig();
+    expect(resolved.ok).toBe(false);
+    if (!resolved.ok) expect(resolved.message).toContain("SUBIEKT_API_BASE_URL");
   });
 
   it("blokuje ORDERS gdy port spoza :5080/:5082", () => {

@@ -51,6 +51,8 @@ export function boardQuestionRowClass(opts: {
   alternate?: boolean;
   /** Odpowiedź starsza niż 1 dzień roboczy — mniej zauważalna. */
   stale?: boolean;
+  /** Zapytanie u dostawcy — piłka po jego stronie; `overdue` gdy milczy za długo. */
+  waiting?: "supplier" | "supplier-overdue" | null;
 }): string {
   const alt = opts.alternate ?? false;
   const stale = opts.stale ?? false;
@@ -62,13 +64,18 @@ export function boardQuestionRowClass(opts: {
     );
   }
 
+  const waiting = opts.waiting ?? null;
   const accent = opts.unseen
     ? "border-l-2 border-l-indigo-500/85"
-    : opts.open
+    : waiting === "supplier-overdue"
       ? "border-l-2 border-l-amber-400/80"
-      : stale
-        ? "border-l-2 border-l-slate-200/60"
-        : "border-l-2 border-l-indigo-300/50";
+      : waiting === "supplier"
+        ? "border-l-2 border-l-slate-300"
+        : opts.open
+          ? "border-l-2 border-l-amber-400/80"
+          : stale
+            ? "border-l-2 border-l-slate-200/60"
+            : "border-l-2 border-l-indigo-300/50";
 
   if (opts.unseen) {
     return cn(
@@ -81,7 +88,15 @@ export function boardQuestionRowClass(opts: {
     );
   }
 
-  if (opts.open) {
+  if (waiting === "supplier") {
+    return cn(
+      accent,
+      "transition-[background-color,box-shadow,ring-color,border-color] duration-200 ease-out motion-reduce:transition-none",
+      alt ? "bg-slate-50/60 hover:bg-slate-100/60" : "bg-white hover:bg-slate-50/90"
+    );
+  }
+
+  if (opts.open || waiting === "supplier-overdue") {
     return cn(
       accent,
       "transition-[background-color,box-shadow,ring-color,border-color] duration-200 ease-out motion-reduce:transition-none",
@@ -114,17 +129,42 @@ export const boardQuestionRowHeaderExpandedClass =
 
 export const boardQuestionUnseenDotClass = "h-2 w-2 shrink-0 rounded-full bg-indigo-500";
 
-export function boardQuestionStatusBadgeClass(opts: {
-  unseen: boolean;
-  open: boolean;
-}): string {
+export type BoardQuestionStatusTone =
+  | "attention"
+  | "unseen"
+  | "waiting"
+  | "waiting-overdue"
+  /** Dostawca odpisał na zapytanie — ruch po stronie zakupów (przekazać handlowcowi). */
+  | "supplier-replied"
+  /** Mail do dostawcy wrócił. */
+  | "supplier-bounced";
+
+/**
+ * Odznaka stanu w wierszu. Bursztyn = ruch po stronie zakupów; Petrol = nowa odpowiedź;
+ * „waiting” = cisza po naszej stronie, piłka u dostawcy — biała, obrysowana, z zegarem.
+ */
+export function boardQuestionStatusBadgeClass(tone: BoardQuestionStatusTone): string {
   return cn(
-    "inline-flex shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold leading-none",
-    opts.open
+    "inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold leading-none whitespace-nowrap",
+    tone === "attention"
       ? "bg-amber-100 text-amber-900 ring-1 ring-amber-200/70"
-      : opts.unseen
+      : tone === "unseen"
         ? "bg-indigo-100 text-indigo-900 ring-1 ring-indigo-200/70"
-        : "bg-slate-100 text-slate-600 ring-1 ring-slate-200/70"
+        : tone === "supplier-replied"
+          ? "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200"
+          : tone === "supplier-bounced"
+            ? "bg-red-50 text-red-800 ring-1 ring-red-200"
+            : tone === "waiting-overdue"
+          ? "bg-amber-50 text-amber-900 ring-1 ring-amber-300/70"
+          : "bg-white text-slate-600 ring-1 ring-slate-300/80"
+  );
+}
+
+/** Panel „czeka na dostawcę” w rozwiniętym wątku — spokojna karta zamiast kursywy. */
+export function boardSupplierWaitPanelClass(overdue: boolean): string {
+  return cn(
+    "flex items-start gap-3 rounded-lg border px-3.5 py-3",
+    overdue ? "border-amber-200 bg-amber-50/60" : "border-slate-200 bg-slate-50/70"
   );
 }
 
