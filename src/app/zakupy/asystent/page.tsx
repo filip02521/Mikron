@@ -8,6 +8,7 @@ import { getEmailSignature, getGmailConnection, getPaymentForwardEmail } from "@
 import { loadOcChecks } from "@/lib/oc-check/data";
 import type { OcCheck } from "@/lib/oc-check/types";
 import { groupOcChecks, OC_VIEWS, parseOcView, type OcView } from "@/lib/oc-check/view";
+import { isCustomsAiConfigured } from "@/lib/customs/customs-ai";
 import { loadSupplierMailView } from "@/lib/supplier-mail/data";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
 import { buttonPrimaryClass } from "@/lib/ui/ontime-theme";
@@ -178,6 +179,7 @@ export default async function AsystentPage({
               initialSignature={signature}
               initialPaymentForwardEmail={paymentForwardEmail}
               initialSelectedKey={sprawa}
+              initialAiAvailable={isCustomsAiConfigured()}
             />
           ) : (
             <div className="p-4 sm:p-6">

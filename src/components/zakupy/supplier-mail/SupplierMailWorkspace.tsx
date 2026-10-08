@@ -10,10 +10,11 @@ import {
   actionSupplierMailConversation,
   actionSupplierMailRemind,
   actionSupplierMailReply,
+  actionSupplierMailSuggestReply,
   actionSupplierMailView,
   type ConversationMessage,
 } from "@/app/actions/supplier-mail";
-import { IconCircleCheck, IconMail, IconPaperclip, IconPencil, IconSearch, IconX } from "@/components/icons/StrokeIcons";
+import { IconCircleCheck, IconMail, IconPaperclip, IconPencil, IconSearch, IconSparkles, IconX } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
 import { Kbd } from "@/components/ui/Kbd";
 import { ModalShell } from "@/components/ui/ModalShell";
@@ -152,6 +153,7 @@ export function SupplierMailWorkspace({
   initialSignature,
   initialPaymentForwardEmail,
   initialSelectedKey = null,
+  initialAiAvailable = false,
 }: {
   initialView: SupplierMailView;
   initialMe: string | null;
@@ -161,6 +163,8 @@ export function SupplierMailWorkspace({
   initialPaymentForwardEmail: string;
   /** Link „?sprawa=…” (np. z odpraw celnych) — od razu otwarta rozmowa. */
   initialSelectedKey?: string | null;
+  /** Klucz Gemini na serwerze — przycisk „Zaproponuj odpowiedź” w polu odpowiedzi. */
+  initialAiAvailable?: boolean;
 }) {
   const [view, setView] = useState(initialView);
   const [me, setMe] = useState(initialMe);
@@ -516,6 +520,7 @@ export function SupplierMailWorkspace({
             me={me}
             canReply={canReply}
             paymentForwardEmail={paymentForwardEmail}
+            aiAvailable={initialAiAvailable}
             panel={
               <p className="border-b border-slate-200 bg-amber-50/60 px-4 py-2.5 text-sm text-amber-950 sm:px-5">
                 Agencja / spedytor - sprawa z{" "}
@@ -537,6 +542,7 @@ export function SupplierMailWorkspace({
             me={me}
             canReply={canReply}
             paymentForwardEmail={paymentForwardEmail}
+            aiAvailable={initialAiAvailable}
             panel={panel}
             onBack={() => setSelectedKey(null)}
             onMove={(to) => void move(selected, to)}
@@ -868,6 +874,7 @@ function ConversationDetail({
   me,
   canReply,
   paymentForwardEmail,
+  aiAvailable = false,
   panel,
   hideDone = false,
   onBack,
@@ -881,6 +888,7 @@ function ConversationDetail({
   me: string | null;
   canReply: boolean;
   paymentForwardEmail: string;
+  aiAvailable?: boolean;
   panel: React.ReactNode;
   onBack: () => void;
   onMove: (to: BoardColumn) => void;
@@ -1002,6 +1010,7 @@ function ConversationDetail({
           signature={signature}
           withCc
           withFiles
+          suggest={aiAvailable ? (notes) => actionSupplierMailSuggestReply({ mailbox: conv.mailbox, threadId: conv.threadId, notes }) : undefined}
           send={(body, cc, files) => actionSupplierMailReply({ mailbox: conv.mailbox, threadId: conv.threadId, body, cc, files })}
           onSent={onChanged}
         />
@@ -1255,6 +1264,7 @@ function Composer({
   initialBody = "",
   withCc = false,
   withFiles = false,
+  suggest,
   send,
   onSent,
   sendLabel = "Wyślij odpowiedź",
@@ -1266,6 +1276,8 @@ function Composer({
   withCc?: boolean;
   /** „Dodaj pliki” — PDF, Excel, zdjęcia (zdjęcia zmniejszone w przeglądarce). */
   withFiles?: boolean;
+  /** AI: szkic odpowiedzi z rozmowy; to, co już wpisano, idzie jako notatka „co przekazać”. */
+  suggest?: (notes: string) => Promise<{ ok: true; draft: string } | { ok: false; message: string }>;
   send: (body: string, cc?: string, files?: File[]) => Promise<{ ok: true } | { ok: false; message: string }>;
   onSent: () => void;
   sendLabel?: string;
@@ -1284,6 +1296,26 @@ function Composer({
   const [error, setError] = useState<string | null>(null);
   // Zwinięte do jednego wiersza: treść rozmowy ma całą wysokość, dopóki nie zaczniesz pisać.
   const [open, setOpen] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
+  /** Treść sprzed propozycji AI — „Przywróć moją wersję”. */
+  const [beforeSuggest, setBeforeSuggest] = useState<string | null>(null);
+
+  const sig = signature.trim();
+  const withoutSignature = (text: string) => (sig && text.trimEnd().endsWith(sig) ? text.trimEnd().slice(0, -sig.length).trimEnd() : text);
+  const runSuggest = async () => {
+    if (!suggest || suggesting) return;
+    setSuggesting(true);
+    setError(null);
+    const res = await suggest(withoutSignature(body)).catch(() => ({ ok: false as const, message: "Brak połączenia z serwerem." }));
+    setSuggesting(false);
+    if (!res.ok) {
+      setError(res.message);
+      return;
+    }
+    setBeforeSuggest(body);
+    setBody(sig ? `${res.draft}\n\n${sig}` : res.draft);
+    bodyRef.current?.focus();
+  };
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     if (open) bodyRef.current?.focus();
@@ -1417,15 +1449,42 @@ function Composer({
               e.target.value = "";
             }}
           />
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            disabled={sending || preparing}
-            className="inline-flex min-h-8 items-center gap-1.5 rounded px-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
-          >
-            {preparing ? <Spinner size="sm" /> : <IconPaperclip size={14} aria-hidden />}
-            {preparing ? "Przygotowuję pliki…" : "Dodaj pliki"}
-          </button>
+          <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={sending || preparing}
+              className="inline-flex min-h-8 items-center gap-1.5 rounded px-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
+            >
+              {preparing ? <Spinner size="sm" /> : <IconPaperclip size={14} aria-hidden />}
+              {preparing ? "Przygotowuję pliki…" : "Dodaj pliki"}
+            </button>
+            {suggest ? (
+              <button
+                type="button"
+                onClick={() => void runSuggest()}
+                disabled={sending || suggesting}
+                title="AI pisze szkic z rozmowy; to, co już wpisałeś, traktuje jako notatkę, co przekazać"
+                className="inline-flex min-h-8 items-center gap-1.5 rounded px-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
+              >
+                {suggesting ? <Spinner size="sm" /> : <IconSparkles size={14} aria-hidden />}
+                {suggesting ? "Piszę szkic…" : "Zaproponuj odpowiedź"}
+              </button>
+            ) : null}
+            {beforeSuggest !== null ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setBody(beforeSuggest);
+                  setBeforeSuggest(null);
+                }}
+                disabled={sending}
+                className="inline-flex min-h-8 items-center rounded px-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              >
+                Przywróć moją wersję
+              </button>
+            ) : null}
+          </div>
         </div>
       ) : null}
       <div className="flex flex-wrap items-center justify-between gap-2">

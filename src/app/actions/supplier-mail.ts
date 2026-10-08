@@ -3,6 +3,8 @@
 // Poczta dostawców (Zakupy → Asystent): widok, synchronizacja, rozmowa, „Załatwione”, odpowiedź z OnTime.
 // Odpowiedź zawsze z Gmaila zalogowanej osoby; gdy rozmowa jest w cudzej skrzynce — jej właściciel w DW.
 import { isInlineImage } from "@/lib/mail/attachments";
+import { isCustomsAiConfigured, userFacingCustomsAiError } from "@/lib/customs/customs-ai";
+import { suggestSupplierMailReply } from "@/lib/supplier-mail/reply-ai";
 import { forwardedConversationText } from "@/lib/supplier-mail/forward-text";
 import { revalidatePath } from "next/cache";
 import { requireZdEstimateAdmin } from "@/lib/auth";
@@ -599,6 +601,50 @@ export async function actionMailForward(input: {
     return { ok: true, to, attachments: attachments.length };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się przekazać faktury.") };
+  }
+}
+
+// ─── AI: propozycja odpowiedzi do dostawcy ───
+
+const NOTES_MAX = 2000;
+const replyAiDateFmt = new Intl.DateTimeFormat("pl-PL", { timeZone: "Europe/Warsaw", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
+/**
+ * Propozycja treści odpowiedzi do dostawcy z całej rozmowy i notatek osoby z zakupów (Gemini).
+ * Zwraca sam szkic — formularz dokleja podpis, człowiek poprawia i wysyła.
+ */
+export async function actionSupplierMailSuggestReply(input: {
+  mailbox: string;
+  threadId: string;
+  notes: string;
+}): Promise<{ ok: true; draft: string } | Fail> {
+  const conv = validConversation(input);
+  if (!conv) return { ok: false, message: "Nieprawidłowa rozmowa." };
+  if (!isCustomsAiConfigured()) return { ok: false, message: "AI jest wyłączone na serwerze (brak klucza Gemini)." };
+  const notes = typeof input.notes === "string" ? input.notes.slice(0, NOTES_MAX) : "";
+  const loaded = await actionSupplierMailConversation(conv);
+  if (!loaded.ok) return loaded;
+  const messages = [...loaded.messages].sort((a, b) => a.receivedAt.localeCompare(b.receivedAt));
+  const supplier = [...messages].reverse().find((m) => m.kind !== "mine" && m.kind !== "bounce");
+  try {
+    const draft = await suggestSupplierMailReply({
+      supplierName: supplier?.fromName || supplier?.from || conv.mailbox,
+      subject: supplier?.subject ?? messages[0]?.subject ?? "",
+      notes,
+      messages: messages
+        .filter((m) => m.kind !== "bounce")
+        .slice(-8)
+        .map((m) => ({
+          mine: m.kind === "mine",
+          from: m.fromName ? `${m.fromName} <${m.from}>` : m.from,
+          at: replyAiDateFmt.format(new Date(m.receivedAt)),
+          text: m.text ?? m.snippet,
+        })),
+    });
+    if (!draft) return { ok: false, message: "AI nie zaproponowało treści. Spróbuj ponownie albo napisz notatkę, co przekazać." };
+    return { ok: true, draft };
+  } catch (e) {
+    return { ok: false, message: userFacingCustomsAiError(e) };
   }
 }
 
