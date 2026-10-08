@@ -2,6 +2,7 @@
 
 import { useRef, useState, type ClipboardEvent, type DragEvent } from "react";
 import { Button } from "@/components/ui/Button";
+import { EmojiPicker } from "@/components/ui/EmojiPicker";
 import { Spinner } from "@/components/ui/Spinner";
 import { IconCamera, IconPaperclip } from "@/components/icons/StrokeIcons";
 import {
@@ -61,6 +62,7 @@ export function BoardReplyComposer({
   onRemoveExtraFile?: (key: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dragDepth = useRef(0);
   const [dragging, setDragging] = useState(false);
 
@@ -121,6 +123,7 @@ export function BoardReplyComposer({
 
       <div className="relative mt-2">
         <textarea
+          ref={textareaRef}
           id={id}
           rows={3}
           value={value}
@@ -219,6 +222,7 @@ export function BoardReplyComposer({
             </span>
           ) : null}
         </Button>
+        <EmojiPicker textareaRef={textareaRef} value={value} onChange={onChange} disabled={busy} />
         <span className="hidden text-[11px] text-slate-400 sm:inline">{COPY.hint}</span>
         <Button
           type="button"

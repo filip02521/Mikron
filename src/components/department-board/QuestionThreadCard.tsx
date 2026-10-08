@@ -1,5 +1,6 @@
 "use client";
 
+import { initialsFromLabel } from "@/lib/ui/initials";
 import { actionResolveAwaitingSupplier } from "@/app/actions/gmail";
 import { BoardSupplierReplies } from "@/components/department-board/BoardSupplierReplies";
 import { businessDaysLabel } from "@/lib/suppliers/awaiting-supplier";
@@ -462,8 +463,9 @@ export function QuestionThreadCard({
                   </span>
                 ) : null}
                 {!expanded ? (
-                  <span className="hidden max-w-[9rem] shrink-0 truncate text-xs font-medium text-slate-600 sm:inline">
-                    {author}
+                  <span className="hidden max-w-[11rem] shrink-0 items-center gap-1.5 text-xs font-medium text-slate-600 sm:inline-flex">
+                    <AuthorAvatar label={author} />
+                    <span className="truncate">{author}</span>
                   </span>
                 ) : null}
                 <span
@@ -475,6 +477,7 @@ export function QuestionThreadCard({
               </span>
               {expanded ? (
                 <span className={cn(salesTypography.rowBody, "block text-slate-600")}>
+                  <AuthorAvatar label={author} className="mr-1.5 align-[-0.3em]" />
                   <span className={boardQuestionAuthorNameClass}>{author}</span>
                   <span className="ml-2 tabular-nums">{formatBoardDate(question.created_at)}</span>
                 </span>
@@ -754,5 +757,21 @@ export function QuestionThreadCard({
         </div>
       ) : null}
     </article>
+  );
+}
+
+/** Mały awater z inicjałami autora pytania — ten sam co przy wiadomościach w wątku. */
+function AuthorAvatar({ label, className }: { label: string; className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[9px] font-semibold leading-none text-slate-600 ring-1 ring-slate-200/80",
+        className
+      )}
+      title={label}
+      aria-hidden
+    >
+      {initialsFromLabel(label)}
+    </span>
   );
 }

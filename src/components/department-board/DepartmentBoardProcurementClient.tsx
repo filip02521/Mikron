@@ -1,7 +1,8 @@
 "use client";
 
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { EmojiPicker } from "@/components/ui/EmojiPicker";
 import { useRouter } from "next/navigation";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
@@ -110,6 +111,7 @@ export function DepartmentBoardProcurementClient({
 
   const [announcementTitle, setAnnouncementTitle] = useState("");
   const [announcementBody, setAnnouncementBody] = useState("");
+  const announcementBodyRef = useRef<HTMLTextAreaElement>(null);
   const [announcementColor, setAnnouncementColor] = useState<SalesNoteColor>("default");
   const [announcementPinned, setAnnouncementPinned] = useState(false);
   const [announcementExpires, setAnnouncementExpires] = useState("");
@@ -269,6 +271,7 @@ export function DepartmentBoardProcurementClient({
                 className={cn(NOTATNIK_INPUT_CLASS, "w-full text-sm")}
               />
               <textarea
+                ref={announcementBodyRef}
                 rows={4}
                 value={announcementBody}
                 onChange={(e) => setAnnouncementBody(e.target.value)}
@@ -276,6 +279,7 @@ export function DepartmentBoardProcurementClient({
                 disabled={readOnly || saving}
                 className={cn(NOTATNIK_TEXTAREA_CLASS, "mt-2 w-full text-sm")}
               />
+              <EmojiPicker textareaRef={announcementBodyRef} value={announcementBody} onChange={setAnnouncementBody} disabled={readOnly || saving} className="mt-1.5" />
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <NoteColorPicker
                   value={announcementColor}
