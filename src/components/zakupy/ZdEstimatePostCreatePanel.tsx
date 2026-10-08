@@ -744,7 +744,7 @@ export function ZdEstimatePostCreatePanel({
               // Wysyłka z OnTime tylko z połączonym Gmailem i adresem dostawcy; inaczej tryb ręczny (portal, telefon).
               gmail={canGmailCompose && gmailEmail && email ? { email: gmailEmail, signature: gmail.signature } : null}
               toSeed={email ?? ""}
-              subjectSeed={mailtoSeed?.subject ?? `ZD ${session.dokNrPelny ?? ""}`.trim()}
+              subjectSeed={mailtoSeed?.subject ?? (session.dokNrPelny?.trim() || "ZD")}
               bodySeed={mailtoSeed?.body ?? ""}
               orderFormKind={orderFormTemplate?.kind ?? null}
               etaDateKey={eta?.supplierId === session.supplierId ? eta.dateKey : null}
