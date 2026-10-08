@@ -24,6 +24,9 @@ import type { createAdminClient } from "@/lib/supabase/admin";
 type Db = ReturnType<typeof createAdminClient>;
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
+/** Wszystkie pozycje mają karty z opisem i CN (np. z poprzednich odpraw) — dla automatu to sukces. */
+export const NOTHING_TO_PROPOSE = "Wszystkie pozycje mają już opis i kod CN - nic do zaproponowania.";
+
 function fail(error: string): { ok: false; error: string } {
   return { ok: false, error };
 }
@@ -112,7 +115,7 @@ export async function proposeCustomsLines(
     .filter((l, i, all) => all.findIndex((o) => o.supplierArticleCode === l.supplierArticleCode) === i);
   const remaining = Math.max(0, targets.length - MAX_PROPOSAL_LINES);
   targets.splice(MAX_PROPOSAL_LINES);
-  if (!targets.length) return fail("Wszystkie pozycje mają już opis i kod CN - nic do zaproponowania.");
+  if (!targets.length) return fail(NOTHING_TO_PROPOSE);
 
   const { data: confirmed } = await supabase
     .from("customs_product_cards")

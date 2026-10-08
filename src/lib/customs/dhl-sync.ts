@@ -32,7 +32,7 @@ import {
 import { TimeoutError, isGeminiQuotaExceeded, isRetryableGeminiError } from "@/lib/teeth/teeth-vision-gemini";
 import { customsAiInlineData, customsFileMime } from "./customs-ai-input";
 import { createCustomsClearance } from "./customs-create";
-import { proposeCustomsLines } from "./customs-proposals";
+import { NOTHING_TO_PROPOSE, proposeCustomsLines } from "./customs-proposals";
 import {
   DHL_GMAIL_QUERY,
   classifyDhlMail,
@@ -446,7 +446,9 @@ async function createFromShipment(
       ok: false as const,
       error: e instanceof Error ? e.message : String(e),
     }));
-    if (!res.ok) await setNote(s.id, `Odprawa założona, propozycje AI nie powiodły się: ${res.error}`.slice(0, 300));
+    if (!res.ok && res.error !== NOTHING_TO_PROPOSE) {
+      await setNote(s.id, `Odprawa założona, propozycje AI nie powiodły się: ${res.error}`.slice(0, 300));
+    }
   }
   return clearanceId;
 }
