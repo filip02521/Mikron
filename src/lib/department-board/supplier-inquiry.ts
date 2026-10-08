@@ -4,6 +4,7 @@
  */
 
 import type { DepartmentBoardThreadRow } from "@/lib/data/department-board-shared";
+import { businessDaysSince } from "@/lib/suppliers/awaiting-supplier";
 
 /**
  * Zapytanie wysłane z wątku (tabela supplier_inquiry_emails). Trafia też do handlowców —
@@ -107,4 +108,17 @@ export function pendingSupplierInquiry(
   if (!inquiries?.length) return null;
   const latest = inquiries.reduce((a, b) => (b.sentAt > a.sentAt ? b : a));
   return latest.resolvedAt ? null : latest;
+}
+
+/** Po tylu dniach roboczych ciszy dostawcy wątek znów wymaga reakcji (przypomnienie). */
+export const SUPPLIER_INQUIRY_OVERDUE_BUSINESS_DAYS = 3;
+
+export type SupplierInquiryWait = { businessDays: number; overdue: boolean };
+
+export function supplierInquiryWait(
+  inquiry: Pick<BoardSupplierInquiry, "sentAt">,
+  now: Date = new Date()
+): SupplierInquiryWait {
+  const businessDays = businessDaysSince(new Date(inquiry.sentAt), now);
+  return { businessDays, overdue: businessDays >= SUPPLIER_INQUIRY_OVERDUE_BUSINESS_DAYS };
 }

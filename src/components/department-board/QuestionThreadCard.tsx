@@ -2,11 +2,11 @@
 
 import { actionResolveAwaitingSupplier } from "@/app/actions/gmail";
 import { BoardSupplierReplies } from "@/components/department-board/BoardSupplierReplies";
-import { businessDaysLabel, businessDaysSince } from "@/lib/suppliers/awaiting-supplier";
+import { businessDaysLabel } from "@/lib/suppliers/awaiting-supplier";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { Button } from "@/components/ui/Button";
-import { IconCamera, IconChevronDown } from "@/components/icons/StrokeIcons";
+import { IconCamera, IconChevronDown, IconClock } from "@/components/icons/StrokeIcons";
 import {
   authorLabelFromProfile,
   formatBoardDate,
@@ -24,6 +24,8 @@ import {
   boardQuestionStatusBadgeClass,
   boardQuestionUnseenDotClass,
   boardReplyFormShellClass,
+  boardSupplierWaitPanelClass,
+  type BoardQuestionStatusTone,
 } from "@/lib/department-board/department-board-thread-styles";
 import {
   boardQuestionExpandedShellClass,
@@ -35,7 +37,7 @@ import { BoardQuestionProductContext } from "@/components/department-board/Board
 import { BoardThreadMessage } from "@/components/department-board/BoardThreadMessage";
 import { BoardReplyComposer } from "@/components/department-board/BoardReplyComposer";
 import { SupplierInquiryDialog } from "@/components/department-board/SupplierInquiryDialog";
-import { pendingSupplierInquiry } from "@/lib/department-board/supplier-inquiry";
+import { pendingSupplierInquiry, supplierInquiryWait } from "@/lib/department-board/supplier-inquiry";
 import { useBoardQuestionImages } from "@/components/department-board/useBoardQuestionImages";
 import {
   boardQuestionHasProduct,
@@ -131,6 +133,9 @@ export function QuestionThreadCard({
   const hasProduct = boardQuestionHasProduct(question);
   const stale = isStaleAnsweredQuestion(question);
   const pendingInquiry = isClosed ? null : pendingSupplierInquiry(question.supplierInquiries);
+  const inquiryWait = pendingInquiry ? supplierInquiryWait(pendingInquiry) : null;
+  // Przeterminowanie wymaga ruchu tylko od zakupów (przypomnienie) — handlowiec widzi spokojny stan.
+  const inquiryOverdue = Boolean(inquiryWait?.overdue) && audience === "procurement";
   const threadPhotoCount =
     (question.attachments?.length ?? 0) +
     question.posts.reduce((sum, post) => sum + (post.attachments?.length ?? 0), 0);
@@ -306,17 +311,22 @@ export function QuestionThreadCard({
     }
   }
 
-  // Status w wierszu tylko gdy wymaga uwagi; resztę mówi filtr i pasek po lewej.
-  const statusLabel = isClosed
+  // Status w wierszu tylko gdy coś się dzieje; resztę mówi filtr i pasek po lewej.
+  // Kolor = czy ruch jest po stronie oglądającego; „czeka na dostawcę” to cisza, nie alarm.
+  // `age` zostaje na telefonie, `label` chowa się wizualnie (nadal czytany przez czytnik ekranu).
+  const status: { label: string; age?: string; tone: BoardQuestionStatusTone; title?: string } | null = isClosed
     ? null
-    : isOpen
-      ? pendingInquiry
-        ? "Czeka na dostawcę"
-        : "Bez odpowiedzi"
-      : showUnseen
-        ? "Nowa odpowiedź"
-        : pendingInquiry
-          ? "Czeka na dostawcę"
+    : !isOpen && showUnseen
+      ? { label: "Nowa odpowiedź", tone: "unseen" }
+      : pendingInquiry && inquiryWait
+        ? {
+            label: inquiryOverdue ? "Przypomnij dostawcy" : "Czeka na dostawcę",
+            age: businessDaysLabel(inquiryWait.businessDays),
+            tone: inquiryOverdue ? "waiting-overdue" : "waiting",
+            title: `Zapytanie do: ${pendingInquiry.supplierName}, wysłane ${formatBoardDate(pendingInquiry.sentAt)}`,
+          }
+        : isOpen
+          ? { label: "Bez odpowiedzi", tone: "attention" }
           : null;
 
   const replyLabel = audience === "sales"
@@ -358,6 +368,7 @@ export function QuestionThreadCard({
               expanded,
               alternate: rowAlternate,
               stale,
+              waiting: pendingInquiry ? (inquiryOverdue ? "supplier-overdue" : "supplier") : null,
             })
           : "rounded-md border border-slate-200/90 bg-white shadow-sm"
       )}
@@ -396,11 +407,19 @@ export function QuestionThreadCard({
                 <span className={cn(salesTypography.rowTitle, "min-w-0 flex-1 truncate")}>
                   {question.title}
                 </span>
-                {statusLabel ? (
-                  <span
-                    className={boardQuestionStatusBadgeClass({ unseen: showUnseen, open: isOpen })}
-                  >
-                    {statusLabel}
+                {status ? (
+                  <span className={boardQuestionStatusBadgeClass(status.tone)} title={status.title}>
+                    {status.tone === "waiting" || status.tone === "waiting-overdue" ? (
+                      <IconClock size={11} className="shrink-0" aria-hidden />
+                    ) : null}
+                    {status.age ? (
+                      <span>
+                        <span className="sr-only sm:not-sr-only">{status.label} · </span>
+                        <span className="tabular-nums">{status.age}</span>
+                      </span>
+                    ) : (
+                      status.label
+                    )}
                   </span>
                 ) : null}
                 {threadPhotoCount > 0 ? (
@@ -543,33 +562,54 @@ export function QuestionThreadCard({
           />
         ) : null}
 
-        {pendingInquiry ? (
-          <p className={boardAwaitingReplyClass}>
-            {audience === "sales" ? "Zakupy zapytały dostawcę" : "Zapytanie wysłane do dostawcy"}{" "}
-            <span className="font-medium text-slate-700">{pendingInquiry.supplierName}</span> ·{" "}
-            {formatBoardDate(pendingInquiry.sentAt)}
-            {businessDaysSince(new Date(pendingInquiry.sentAt)) > 0
-              ? ` (czeka ${businessDaysLabel(businessDaysSince(new Date(pendingInquiry.sentAt)))})`
-              : ""}
-            .{" "}
-            {audience === "sales"
-              ? "Odpowiedź pojawi się w tym wątku."
-              : "Gdy dostawca odpisze, jego mail pokaże się tutaj - Twoja odpowiedź handlowcowi zakończy czekanie."}
-            {audience === "procurement" && canReply ? (
-              <>
-                {" "}
-                <button
-                  type="button"
-                  className="font-medium text-indigo-700 underline decoration-indigo-300 underline-offset-2 hover:decoration-indigo-600 disabled:opacity-50"
-                  disabled={busy}
-                  onClick={() => void endSupplierWait(pendingInquiry.id)}
-                  title="Dostawca odpowiedział inną drogą (telefon, portal) - zapytanie znika z listy „Czeka na dostawcę”"
-                >
-                  Zakończ czekanie
-                </button>
-              </>
-            ) : null}
-          </p>
+        {pendingInquiry && inquiryWait ? (
+          <div className={boardSupplierWaitPanelClass(inquiryOverdue)} role="status">
+            <IconClock
+              size={16}
+              className={cn("mt-0.5 shrink-0", inquiryOverdue ? "text-amber-700" : "text-slate-500")}
+              aria-hidden
+            />
+            <div className="min-w-0 space-y-0.5">
+              <p className="text-sm font-medium text-slate-900">
+                {audience === "sales" ? "Zakupy czekają na odpowiedź dostawcy" : "Czeka na odpowiedź dostawcy"}{" "}
+                <span className="font-semibold">{pendingInquiry.supplierName}</span>
+              </p>
+              <p className="text-xs leading-relaxed text-slate-600">
+                <span className="tabular-nums">Wysłano {formatBoardDate(pendingInquiry.sentAt)}</span>
+                {inquiryWait.businessDays > 0 ? (
+                  <>
+                    {" · "}
+                    <span className="tabular-nums">
+                      {inquiryWait.businessDays}{" "}
+                      {polishPluralWord(inquiryWait.businessDays, "dzień roboczy", "dni robocze", "dni roboczych")} bez
+                      odpowiedzi
+                    </span>
+                  </>
+                ) : null}
+              </p>
+              <p className="text-xs leading-relaxed text-slate-500">
+                {audience === "sales"
+                  ? "Odpowiedź pojawi się w tym wątku."
+                  : inquiryOverdue
+                    ? "Dostawca długo milczy — przypomnij się mailem albo telefonicznie."
+                    : "Gdy dostawca odpisze, jego mail pokaże się tutaj — Twoja odpowiedź handlowcowi zakończy czekanie."}
+                {audience === "procurement" && canReply ? (
+                  <>
+                    {" "}
+                    <button
+                      type="button"
+                      className="font-medium text-indigo-700 underline decoration-indigo-300 underline-offset-2 hover:decoration-indigo-600 disabled:opacity-50"
+                      disabled={busy}
+                      onClick={() => void endSupplierWait(pendingInquiry.id)}
+                      title="Dostawca odpowiedział inną drogą (telefon, portal) - zapytanie znika z listy „Czeka na dostawcę”"
+                    >
+                      Zakończ czekanie
+                    </button>
+                  </>
+                ) : null}
+              </p>
+            </div>
+          </div>
         ) : null}
 
         {canReply && !isClosed ? (

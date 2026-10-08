@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   GMAIL_READ_SCOPE,
   GMAIL_SEND_SCOPE,
@@ -15,6 +15,8 @@ import {
   pdfAttachmentRefs,
   repliesFromThread,
   scopeCanReadReplies,
+  sendGmailRaw,
+  sendGmailRawInThread,
   stripQuotedReply,
   type GmailOAuthConfig,
 } from "@/lib/google/gmail";
@@ -104,6 +106,66 @@ describe("gmail — MIME", () => {
     expect(mime).toMatch(/Subject: =\?UTF-8\?/);
     expect(mime).toContain("multipart/mixed");
     expect(mime).toContain("Zamowienie ZD 123_26.pdf");
+  });
+});
+
+describe("gmail — wysyłka", () => {
+  const quota = {
+    error: {
+      message: "Quota exceeded for quota metric 'Total Query Cost' and limit 'Units per minute per user'",
+      errors: [{ reason: "rateLimitExceeded" }],
+    },
+  };
+  const reply = (status: number, body: object) => new Response(JSON.stringify(body), { status });
+  const noSleep = async () => {};
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("limit Google przy pierwszej próbie → ponowienie i sukces", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(reply(429, quota))
+      .mockResolvedValueOnce(reply(200, { id: "m1", threadId: "t1" }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(sendGmailRaw("tok", Buffer.from("x"), { sleep: noSleep })).resolves.toEqual({
+      id: "m1",
+      threadId: "t1",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("403 rateLimitExceeded też ponawia; po 3 próbach błąd", async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => reply(403, quota));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(sendGmailRaw("tok", Buffer.from("x"), { sleep: noSleep })).rejects.toThrow("Units per minute");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("odpowiedź w wątku też ponawia przy limicie", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(reply(429, quota))
+      .mockResolvedValueOnce(reply(200, { id: "m2", threadId: "t9" }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(sendGmailRawInThread("tok", Buffer.from("x"), "t9", { sleep: noSleep })).resolves.toEqual({
+      id: "m2",
+      threadId: "t9",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("5xx przy wysyłce nie jest ponawiany (mail mógł wyjść)", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(reply(503, { error: { message: "Backend Error" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(sendGmailRaw("tok", Buffer.from("x"), { sleep: noSleep })).rejects.toThrow("Backend Error");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("inny błąd nie jest ponawiany", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(reply(400, { error: { message: "Invalid To header" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(sendGmailRaw("tok", Buffer.from("x"), { sleep: noSleep })).rejects.toThrow("Invalid To header");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
 

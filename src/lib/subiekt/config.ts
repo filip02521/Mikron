@@ -211,11 +211,11 @@ export function resolveSubiektOrdersConfig(): SubiektOrdersConfigStatus {
 }
 
 /**
- * Host cen (Zakupy → Cenniki): `SUBIEKT_API_PRICES_BASE_URL`, te same porty co ORDERS.
- * Osobna zmienna — zapis cen idzie na :5082, gdy kreator ZD czyta live :5080.
+ * Host cen (Zakupy → Cenniki): ten sam `SUBIEKT_API_BASE_URL` co reszta aplikacji.
+ * Porty jak przy ORDERS (:5080 live / :5082 test) — host musi dać się otagować host_kind.
  */
 export function resolveSubiektPricesConfig(): SubiektOrdersConfigStatus {
-  return resolveOrdersHostConfig("SUBIEKT_API_PRICES_BASE_URL", "Cenniki", "host cen");
+  return resolveOrdersHostConfig("SUBIEKT_API_BASE_URL", "Cenniki", "host Subiekta");
 }
 
 function resolveOrdersHostConfig(

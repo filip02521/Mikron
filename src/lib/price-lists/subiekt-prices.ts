@@ -1,5 +1,5 @@
 /**
- * Odczyt i zapis cen w Subiekcie dla cenników — host `SUBIEKT_API_PRICES_BASE_URL` (:5082 test / :5080 live).
+ * Odczyt i zapis cen w Subiekcie dla cenników — host `SUBIEKT_API_BASE_URL` (:5080 live / :5082 test).
  *
  * Zapis: gdy API ma `PUT /price/catalog/levels/{level}`, kartotekowa i detaliczna idą dokładnie
  * (SQL, bez Sfery). Bez niego — tylko kartotekowa przez Sferę, a detaliczną Subiekt przelicza narzutem
@@ -32,7 +32,7 @@ export type PricesHost = {
   label: string;
 };
 
-/** Przełącznik admina w Cennikach (app_settings); brak wpisu = port z SUBIEKT_API_PRICES_BASE_URL. */
+/** Przełącznik admina w Cennikach (app_settings); brak wpisu = port z SUBIEKT_API_BASE_URL. */
 export const PRICES_HOST_SETTING_KEY = "price_lists_host";
 
 async function pricesHostOverride(): Promise<ZdEstimateSnapshotHostKind | null> {
