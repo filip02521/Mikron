@@ -13,9 +13,22 @@ import {
   actionSupplierMailView,
   type ConversationMessage,
 } from "@/app/actions/supplier-mail";
-import { IconChevronLeft, IconMail, IconPaperclip } from "@/components/icons/StrokeIcons";
+import { IconCircleCheck, IconMail, IconPaperclip, IconPencil, IconSearch, IconX } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
+import { Kbd } from "@/components/ui/Kbd";
 import { Spinner } from "@/components/ui/Spinner";
+import {
+  DetailEmpty,
+  DetailHeader as WorkspaceDetailHeader,
+  detailLinkClass,
+  listColumnClass,
+  listRowClass,
+  RailCount,
+  railClass,
+  railGroupLabelClass,
+  railItemClass,
+  workspaceGridClass,
+} from "@/components/zakupy/asystent/workspace";
 import { cn } from "@/lib/cn";
 import { procurementBoardQuestionHref } from "@/lib/data/department-board-shared";
 import { BOARD_COLUMN_LABELS, BOARD_COLUMNS, type BoardColumn } from "@/lib/mail-board/board";
@@ -358,78 +371,46 @@ export function SupplierMailWorkspace({
       <BoardPanel key={`panel-${selected.key}`} item={selected} people={view.people} onMove={(to) => void move(selected, to)} onSaved={() => void refresh()} />
     ) : null;
 
+  const columnTab = (c: ViewTab, label: string, count: number, tone: "attention" | "info" | "neutral") => (
+    <button
+      key={c}
+      type="button"
+      role="tab"
+      aria-selected={column === c}
+      onClick={() => {
+        setColumn(c);
+        setSelectedKey(null);
+      }}
+      onDragOver={
+        c === "review"
+          ? undefined
+          : (e) => {
+              if (!e.dataTransfer.types.includes(DRAG_TYPE)) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              setDropTarget(c);
+            }
+      }
+      onDragLeave={c === "review" ? undefined : () => setDropTarget((t) => (t === c ? null : t))}
+      onDrop={c === "review" ? undefined : dropOn(c)}
+      className={cn(railItemClass(column === c), dropTarget === c && "bg-indigo-50 text-indigo-900 ring-2 ring-indigo-400")}
+    >
+      {label}
+      <RailCount value={count} tone={tone} />
+    </button>
+  );
+
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div role="tablist" aria-label="Sprawy" className="flex flex-wrap gap-1 rounded-md bg-slate-100/70 p-1">
-          {reviewItems.length || column === "review" ? (
-            <button
-              type="button"
-              role="tab"
-              aria-selected={column === "review"}
-              onClick={() => {
-                setColumn("review");
-                setSelectedKey(null);
-              }}
-              className={cn(
-                controlFocusClass,
-                "inline-flex min-h-9 items-center gap-1.5 rounded px-3 text-sm font-medium transition-colors",
-                column === "review" ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200" : "text-slate-600 hover:text-slate-900"
-              )}
-            >
-              Do przejrzenia
-              <span
-                className={cn(
-                  "min-w-5 rounded-full px-1.5 text-center text-xs tabular-nums",
-                  reviewItems.length ? "bg-sky-100 text-sky-900" : "bg-slate-200/70 text-slate-600"
-                )}
-              >
-                {reviewItems.length}
-              </span>
-            </button>
-          ) : null}
-          {BOARD_COLUMNS.map((c) => {
-            const count = byColumn.get(c)!.length;
-            return (
-              <button
-                key={c}
-                type="button"
-                role="tab"
-                aria-selected={column === c}
-                onClick={() => {
-                  setColumn(c);
-                  setSelectedKey(null);
-                }}
-                onDragOver={(e) => {
-                  if (!e.dataTransfer.types.includes(DRAG_TYPE)) return;
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = "move";
-                  setDropTarget(c);
-                }}
-                onDragLeave={() => setDropTarget((t) => (t === c ? null : t))}
-                onDrop={dropOn(c)}
-                className={cn(
-                  controlFocusClass,
-                  "inline-flex min-h-9 items-center gap-1.5 rounded px-3 text-sm font-medium transition-colors",
-                  column === c ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200" : "text-slate-600 hover:text-slate-900",
-                  dropTarget === c && "bg-indigo-50 text-indigo-900 ring-2 ring-indigo-400"
-                )}
-              >
-                {BOARD_COLUMN_LABELS[c]}
-                <span
-                  className={cn(
-                    "min-w-5 rounded-full px-1.5 text-center text-xs tabular-nums",
-                    c === "todo" && count ? "bg-amber-100 text-amber-900" : "bg-slate-200/70 text-slate-600"
-                  )}
-                >
-                  {count}
-                </span>
-              </button>
-            );
-          })}
+    <div className={workspaceGridClass}>
+      <nav aria-label="Sprawy" className={railClass}>
+        <p className={cn(railGroupLabelClass, "hidden lg:block")}>Sprawy</p>
+        <div role="tablist" aria-label="Sprawy" className="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible">
+          {reviewItems.length || column === "review" ? columnTab("review", "Do przejrzenia", reviewItems.length, "info") : null}
+          {BOARD_COLUMNS.map((c) => columnTab(c, BOARD_COLUMN_LABELS[c], byColumn.get(c)!.length, c === "todo" ? "attention" : "neutral"))}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div role="group" aria-label="Czyje sprawy" className="flex rounded-md bg-slate-100/70 p-0.5 text-xs">
+
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 lg:mt-auto lg:flex-col lg:items-stretch lg:gap-3">
+          <div role="group" aria-label="Czyje sprawy" className="flex rounded-md border border-slate-200/90 bg-white/70 p-0.5 text-xs">
             {(["mine", "all"] as const).map((s) => (
               <button
                 key={s}
@@ -437,159 +418,186 @@ export function SupplierMailWorkspace({
                 aria-pressed={scope === s}
                 onClick={() => setScope(s)}
                 className={cn(
-                  controlFocusClass,
-                  "min-h-8 rounded px-2.5 font-medium",
-                  scope === s ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200" : "text-slate-600 hover:text-slate-900"
+                  "min-h-7 flex-1 rounded-[5px] px-2.5 font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45",
+                  scope === s ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/70" : "text-slate-600 hover:text-slate-900"
                 )}
               >
                 {s === "mine" ? "Moje" : "Wszystkie"}
               </button>
             ))}
           </div>
-          <p className="flex items-center gap-2 text-xs text-slate-500" role="status" aria-live="polite">
-            {syncing ? (
-              <>
-                <Spinner size="sm" /> Sprawdzam skrzynkę…
-              </>
-            ) : view.sync.at ? (
-              `Skrzynka sprawdzona ${shortWhen(view.sync.at)}`
-            ) : (
-              "Skrzynka jeszcze nie była sprawdzana"
-            )}
+          <div className="flex items-center gap-2 text-xs text-slate-500 lg:flex-col lg:items-stretch lg:gap-1.5">
+            <p className="flex items-center gap-1.5" role="status" aria-live="polite">
+              {syncing ? (
+                <>
+                  <Spinner size="sm" /> Sprawdzam skrzynkę…
+                </>
+              ) : view.sync.at ? (
+                `Skrzynka sprawdzona ${shortWhen(view.sync.at)}`
+              ) : (
+                "Skrzynka jeszcze nie była sprawdzana"
+              )}
+            </p>
             <button
               type="button"
               onClick={checkNow}
               disabled={syncing}
-              className="rounded px-1.5 py-1 font-medium text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
+              className="inline-flex min-h-7 items-center justify-center rounded-md px-2 font-medium text-indigo-700 transition-colors hover:bg-indigo-50 disabled:opacity-50 lg:border lg:border-slate-200 lg:bg-white"
             >
               Sprawdź teraz
             </button>
-          </p>
+          </div>
+          {!me ? (
+            <p className="w-full text-xs leading-relaxed text-slate-600 lg:w-auto">
+              Połącz swojego Gmaila w{" "}
+              <Link href="/ustawienia" className="font-medium text-indigo-700 underline">
+                Ustawieniach
+              </Link>
+              , żeby odpowiadać dostawcom z OnTime.
+            </p>
+          ) : null}
         </div>
-      </div>
-      {undo ? (
-        <p className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-slate-900 px-3 py-2 text-sm text-white" role="status">
-          <span>{undo.label}</span>
-          <button type="button" onClick={() => void runUndo()} className="rounded px-2 py-1 font-semibold text-indigo-200 hover:bg-white/10">
-            Cofnij
-          </button>
-        </p>
-      ) : null}
-      {/* Błąd z ostatniego przebiegu w tle (odpytywanie) — inaczej skrzynka mogła milczeć bez śladu. */}
-      {syncNote || view.sync.error ? (
-        <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-200" role="alert">
-          {syncNote ?? `Ostatnie sprawdzenie skrzynki nie powiodło się: ${view.sync.error}`}
-        </p>
-      ) : null}
-      {!me ? (
-        <p className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700 ring-1 ring-slate-200">
-          Połącz swojego Gmaila w{" "}
-          <Link href="/ustawienia" className="font-medium text-indigo-700 underline">
-            Ustawieniach
-          </Link>
-          , żeby odpowiadać dostawcom z OnTime.
-        </p>
-      ) : null}
+      </nav>
 
-      {/* Na dużym ekranie jak program pocztowy: stała wysokość, lista i rozmowa przewijają się osobno,
-          pole odpowiedzi zawsze widoczne na dole rozmowy. */}
-      <div className="grid overflow-hidden rounded-[var(--radius-panel)] border border-slate-200 bg-white lg:h-[calc(100dvh-15rem)] lg:min-h-[32rem] lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-        <div className={cn("min-h-[24rem] border-slate-200 lg:min-h-0 lg:overflow-y-auto lg:border-r", selected ? "hidden lg:block" : "block")}>
-          <div className="sticky top-0 z-10 border-b border-slate-100 bg-white px-3 py-2">
-            <label htmlFor="mail-board-search" className="sr-only">
-              Szukaj sprawy
-            </label>
+      <div className={cn(listColumnClass, selected ? "hidden lg:block" : "block")}>
+        <div className="sticky top-0 z-10 border-b border-slate-100 bg-white/95 px-3 py-2 backdrop-blur-sm">
+          <label htmlFor="mail-board-search" className="sr-only">
+            Szukaj sprawy
+          </label>
+          <div className="relative">
+            <IconSearch size={14} aria-hidden className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               id="mail-board-search"
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Szukaj: dostawca, temat, ZD, opis…"
-              className={cn(controlFocusClass, "min-h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-sm")}
+              className={cn(controlFocusClass, "min-h-9 w-full rounded-md border border-slate-200 bg-white pl-8 pr-2.5 text-sm")}
             />
           </div>
-          <BoardList
-            column={column}
-            items={order}
-            searching={searching}
-            reviewKeys={reviewKeys}
-            draggable={column !== "review" && !searching}
-            people={scope === "all" ? people : null}
-            selectedKey={selectedKey}
-            onSelect={setSelectedKey}
-          />
         </div>
-        <div ref={detailRef} className={cn("min-h-[24rem] scroll-mt-20 lg:min-h-0", selected ? "block" : "hidden lg:block")}>
-          {reviewSelected && reviewSelected.ref.type === "conv" ? (
-            <ConversationDetail
-              key={reviewSelected.key}
-              item={reviewSelected}
-              conv={reviewSelected.ref.conv}
-              me={me}
-              canReply={false}
-              paymentForwardEmail=""
-              panel={<TriageBar key={`triage-${reviewSelected.key}`} conv={reviewSelected.ref.conv} onDecide={triage} />}
-              hideDone
-              onBack={() => setSelectedKey(null)}
-              onMove={() => undefined}
-              onChanged={() => void refresh()}
-            />
-          ) : customsSelected && customsSelected.ref.type === "conv" ? (
-            <ConversationDetail
-              key={customsSelected.key}
-              item={customsSelected}
-              conv={customsSelected.ref.conv}
-              me={me}
-              canReply={canReply}
-              paymentForwardEmail={paymentForwardEmail}
-              panel={
-                <p className="border-b border-slate-200 bg-amber-50/60 px-4 py-2.5 text-sm text-amber-950 sm:px-5">
-                  Agencja / spedytor - sprawa z{" "}
-                  <Link href="/zakupy/odprawy" className="font-medium underline">
-                    odpraw celnych
-                  </Link>
-                  : {CUSTOMS_KIND_LABELS[customsSelected.ref.conv.customsKind ?? "request"]}.
-                </p>
-              }
-              onBack={() => setSelectedKey(null)}
-              onMove={(to) => void move(customsSelected, to)}
-              onChanged={() => void refresh()}
-            />
-          ) : selected?.ref.type === "conv" ? (
-            <ConversationDetail
-              key={selected.key}
-              item={selected}
-              conv={selected.ref.conv}
-              me={me}
-              canReply={canReply}
-              paymentForwardEmail={paymentForwardEmail}
-              panel={panel}
-              onBack={() => setSelectedKey(null)}
-              onMove={(to) => void move(selected, to)}
-              onChanged={() => void refresh()}
-            />
-          ) : selected?.ref.type === "case" ? (
-            <CaseDetail
-              key={selected.key}
-              item={selected.ref.item}
-              me={me}
-              signature={signature}
-              canReply={canReply}
-              panel={panel}
-              done={selected.column === "done"}
-              onBack={() => setSelectedKey(null)}
-              onMove={(to) => void move(selected, to)}
-              onChanged={() => void refresh()}
-            />
-          ) : (
-            <div className="flex h-full min-h-[24rem] flex-col items-center justify-center gap-2 px-6 text-center text-sm text-slate-500">
-              <IconMail size={22} className="text-slate-300" aria-hidden />
-              <p>Wybierz sprawę z listy.</p>
-              <p className="text-xs text-slate-400">Przeciągnij sprawę na zakładkę, żeby ją przenieść. Skróty: j / k.</p>
-            </div>
-          )}
-        </div>
+        {/* Błąd z ostatniego przebiegu w tle (odpytywanie) — inaczej skrzynka mogła milczeć bez śladu. */}
+        {syncNote || view.sync.error ? (
+          <p className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs leading-relaxed text-amber-900" role="alert">
+            {syncNote ?? `Ostatnie sprawdzenie skrzynki nie powiodło się: ${view.sync.error}`}
+          </p>
+        ) : null}
+        <BoardList
+          column={column}
+          items={order}
+          searching={searching}
+          reviewKeys={reviewKeys}
+          draggable={column !== "review" && !searching}
+          people={scope === "all" ? people : null}
+          selectedKey={selectedKey}
+          onSelect={setSelectedKey}
+        />
       </div>
+
+      <div ref={detailRef} className={cn("min-h-0 scroll-mt-20 flex-col", selected ? "flex" : "hidden lg:flex")}>
+        {reviewSelected && reviewSelected.ref.type === "conv" ? (
+          <ConversationDetail
+            key={reviewSelected.key}
+            item={reviewSelected}
+            conv={reviewSelected.ref.conv}
+            me={me}
+            canReply={false}
+            paymentForwardEmail=""
+            panel={<TriageBar key={`triage-${reviewSelected.key}`} conv={reviewSelected.ref.conv} onDecide={triage} />}
+            hideDone
+            onBack={() => setSelectedKey(null)}
+            onMove={() => undefined}
+            onChanged={() => void refresh()}
+          />
+        ) : customsSelected && customsSelected.ref.type === "conv" ? (
+          <ConversationDetail
+            key={customsSelected.key}
+            item={customsSelected}
+            conv={customsSelected.ref.conv}
+            me={me}
+            canReply={canReply}
+            paymentForwardEmail={paymentForwardEmail}
+            panel={
+              <p className="border-b border-slate-200 bg-amber-50/60 px-4 py-2.5 text-sm text-amber-950 sm:px-5">
+                Agencja / spedytor - sprawa z{" "}
+                <Link href="/zakupy/odprawy" className="font-medium underline">
+                  odpraw celnych
+                </Link>
+                : {CUSTOMS_KIND_LABELS[customsSelected.ref.conv.customsKind ?? "request"]}.
+              </p>
+            }
+            onBack={() => setSelectedKey(null)}
+            onMove={(to) => void move(customsSelected, to)}
+            onChanged={() => void refresh()}
+          />
+        ) : selected?.ref.type === "conv" ? (
+          <ConversationDetail
+            key={selected.key}
+            item={selected}
+            conv={selected.ref.conv}
+            me={me}
+            canReply={canReply}
+            paymentForwardEmail={paymentForwardEmail}
+            panel={panel}
+            onBack={() => setSelectedKey(null)}
+            onMove={(to) => void move(selected, to)}
+            onChanged={() => void refresh()}
+          />
+        ) : selected?.ref.type === "case" ? (
+          <CaseDetail
+            key={selected.key}
+            item={selected.ref.item}
+            me={me}
+            signature={signature}
+            canReply={canReply}
+            panel={panel}
+            done={selected.column === "done"}
+            onBack={() => setSelectedKey(null)}
+            onMove={(to) => void move(selected, to)}
+            onChanged={() => void refresh()}
+          />
+        ) : (
+          <DetailEmpty
+            icon={<IconMail size={22} />}
+            title="Wybierz sprawę z listy"
+            hint="Przeciągnij sprawę na kolumnę po lewej, żeby ją przenieść. Na telefonie zmienisz kolumnę w szczegółach sprawy."
+            className="flex-1"
+          >
+            <p className="mt-4 flex items-center gap-1.5 text-xs text-slate-500">
+              <Kbd>j</Kbd>
+              <Kbd>k</Kbd>
+              <span>następna / poprzednia sprawa</span>
+            </p>
+          </DetailEmpty>
+        )}
+      </div>
+
+      {/* „Cofnij” po przeniesieniu / decyzji — 30 s: nad dolną nawigacją na telefonie; na desktopie w rogu panelu,
+          przy akcjach nagłówka, a nie nad polem odpowiedzi. */}
+      {undo ? (
+        <div className="pointer-events-none fixed inset-x-3 bottom-[calc(1rem+var(--mobile-bottom-chrome,0px))] z-40 flex justify-center lg:absolute lg:inset-x-auto lg:bottom-auto lg:right-4 lg:top-3 lg:justify-end">
+          <div
+            role="status"
+            className="pointer-events-auto flex max-w-[min(100%,28rem)] items-center gap-3 rounded-md border border-slate-200/90 bg-white px-3 py-2 text-sm text-slate-900 shadow-[var(--shadow-card-elevated)]"
+          >
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-indigo-600 text-white">
+              <IconCircleCheck size={16} strokeWidth={2.25} aria-hidden />
+            </span>
+            <span className="min-w-0 truncate">{undo.label}</span>
+            <Button type="button" size="sm" onClick={() => void runUndo()} className="shrink-0">
+              Cofnij
+            </Button>
+            <button
+              type="button"
+              onClick={() => setUndo(null)}
+              aria-label="Zamknij"
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+            >
+              <IconX size={14} aria-hidden />
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -646,11 +654,7 @@ function BoardList({
               type="button"
               onClick={() => onSelect(i.key)}
               aria-current={selected ? "true" : undefined}
-              className={cn(
-                "block w-full px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500/45",
-                selected ? "bg-indigo-50/70" : "hover:bg-slate-50",
-                draggable && "cursor-grab active:cursor-grabbing"
-              )}
+              className={cn(listRowClass(selected), draggable && "cursor-grab active:cursor-grabbing")}
             >
               <span className="flex items-baseline justify-between gap-2">
                 <span className={cn("min-w-0 truncate text-sm text-slate-900", column === "todo" || column === "review" ? "font-semibold" : "font-medium")}>
@@ -727,7 +731,7 @@ function BoardPanel({
   const field = cn(controlFocusClass, "min-h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-sm");
   return (
     <div className="space-y-2 border-b border-slate-200 bg-slate-50/60 px-4 py-3 sm:px-5">
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[11rem_11rem_minmax(0,1fr)]">
         <div>
           <label htmlFor={ids.column} className="text-xs font-medium text-slate-500">
             Kolumna
@@ -757,6 +761,21 @@ function BoardPanel({
               </option>
             ))}
           </select>
+        </div>
+        <div className="sm:col-span-2 xl:col-span-1">
+          <label htmlFor={ids.note} className="text-xs font-medium text-slate-500">
+            Opis sprawy
+          </label>
+          <textarea
+            id={ids.note}
+            value={note}
+            maxLength={2000}
+            rows={1}
+            placeholder="Co to jest i co dalej - np. czekam na proformę, potem zapłata"
+            onChange={(e) => setNote(e.target.value)}
+            onBlur={() => note.trim() !== item.note && void save({ key: item.key, note })}
+            className={cn(controlFocusClass, "mt-1 min-h-9 w-full resize-y rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm leading-relaxed")}
+          />
         </div>
       </div>
       {item.column === "waiting" ? (
@@ -788,21 +807,6 @@ function BoardPanel({
           </div>
         </div>
       ) : null}
-      <div>
-        <label htmlFor={ids.note} className="text-xs font-medium text-slate-500">
-          Opis sprawy
-        </label>
-        <textarea
-          id={ids.note}
-          value={note}
-          maxLength={2000}
-          rows={2}
-          placeholder="Co to jest i co dalej - np. czekam na proformę, potem zapłata"
-          onChange={(e) => setNote(e.target.value)}
-          onBlur={() => note.trim() !== item.note && void save({ key: item.key, note })}
-          className={cn(controlFocusClass, "mt-1 w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm")}
-        />
-      </div>
       {saving ? (
         <p className="text-xs text-slate-500" role="status">
           Zapisuję…
@@ -840,32 +844,21 @@ function DetailHeader({
   children?: React.ReactNode;
 }) {
   return (
-    <header className="border-b border-slate-200 px-4 py-3 sm:px-5">
-      <button
-        type="button"
-        onClick={onBack}
-        className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-indigo-700 lg:hidden"
-      >
-        <IconChevronLeft size={16} aria-hidden /> Lista
-      </button>
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h3 className="text-base font-semibold text-slate-900">{title}</h3>
-          <p className="mt-0.5 text-sm text-slate-600">{subtitle}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-1">
+    <WorkspaceDetailHeader
+      title={title}
+      subtitle={subtitle}
+      back={{ onClick: onBack }}
+      actions={
+        <>
           {supplierId ? (
-            <Link
-              href={`/podsumowanie?supplierId=${encodeURIComponent(supplierId)}`}
-              className="rounded px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50"
-            >
+            <Link href={`/podsumowanie?supplierId=${encodeURIComponent(supplierId)}`} className={detailLinkClass}>
               Karta dostawcy
             </Link>
           ) : null}
           {children}
-        </div>
-      </div>
-    </header>
+        </>
+      }
+    />
   );
 }
 
@@ -941,7 +934,7 @@ function ConversationDetail({
         {conv.boardThreadId ? (
           <Link
             href={procurementBoardQuestionHref(conv.boardThreadId)}
-            className="rounded px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50"
+            className={detailLinkClass}
           >
             Przekaż handlowcowi
           </Link>
@@ -951,7 +944,7 @@ function ConversationDetail({
             type="button"
             onClick={() => setForwarding((v) => !v)}
             aria-pressed={forwarding}
-            className="rounded px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50"
+            className={detailLinkClass}
           >
             Przekaż
           </button>
@@ -1109,7 +1102,7 @@ function CaseDetail({
         {item.boardThreadId ? (
           <Link
             href={procurementBoardQuestionHref(item.boardThreadId)}
-            className="rounded px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50"
+            className={detailLinkClass}
           >
             Wątek na tablicy
           </Link>
@@ -1197,6 +1190,12 @@ function Composer({
   const fileRef = useRef<HTMLInputElement>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Zwinięte do jednego wiersza: treść rozmowy ma całą wysokość, dopóki nie zaczniesz pisać.
+  const [open, setOpen] = useState(false);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (open) bodyRef.current?.focus();
+  }, [open]);
 
   const addFiles = async (list: FileList) => {
     setError(null);
@@ -1221,6 +1220,24 @@ function Composer({
     else setError(res.message);
   };
 
+  if (!open) {
+    return (
+      <div className="shrink-0 border-t border-slate-200 bg-slate-50/60 px-4 py-2.5 sm:px-5">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className={cn(
+            controlFocusClass,
+            "flex min-h-10 w-full items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-left text-sm text-slate-500 shadow-[var(--shadow-card)] transition-colors hover:border-slate-300 hover:text-slate-700"
+          )}
+        >
+          <IconPencil size={14} aria-hidden className="shrink-0 text-slate-400" />
+          <span className="truncate">{title}…</span>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <form
       className="shrink-0 space-y-2 border-t border-slate-200 bg-slate-50/60 px-4 py-3 sm:px-5"
@@ -1229,10 +1246,21 @@ function Composer({
         void submit();
       }}
     >
-      <label htmlFor={bodyId} className="text-sm font-semibold text-slate-900">
-        {title}
-      </label>
+      <div className="flex items-center justify-between gap-2">
+        <label htmlFor={bodyId} className="text-sm font-semibold text-slate-900">
+          {title}
+        </label>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          disabled={sending}
+          className="rounded-md px-1.5 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+        >
+          Zwiń
+        </button>
+      </div>
       <textarea
+        ref={bodyRef}
         id={bodyId}
         value={body}
         onChange={(e) => setBody(e.target.value)}
