@@ -221,7 +221,9 @@ async function syncMailbox(
         `UPDATE public.supplier_mail_messages
             SET mailbox = $1, owner_user_id = $2, gmail_message_id = $3, gmail_thread_id = $4,
                 case_kind = $5, case_id = $6, linked_by = 'thread', supplier_id = COALESCE($7, supplier_id)
-          WHERE rfc_message_id = $8 AND mailbox <> $1 AND linked_by IS DISTINCT FROM 'thread'`,
+          WHERE id = (SELECT id FROM public.supplier_mail_messages
+                       WHERE rfc_message_id = $8 AND mailbox <> $1 AND linked_by IS DISTINCT FROM 'thread'
+                       LIMIT 1)`,
         [box.email, box.userId, meta.id, meta.threadId, link.caseKind, link.caseId, supplierId, meta.rfcMessageId]
       );
       if (moved.rowCount) continue;

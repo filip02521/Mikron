@@ -447,6 +447,8 @@ const ZD_PDF_RETRY_DELAYS_MS = [3_000, 10_000];
 const zdPdfCache = new Map<string, { at: number; bytes: Buffer }>();
 /** Trwające wydruki — podgląd i wysyłka w tej samej chwili czekają na jeden wydruk (Sfera drukuje po kolei). */
 const zdPdfInflight = new Map<string, Promise<Buffer>>();
+/** Zmiana terminu w trakcie wydruku — taki wydruk nie trafia do pamięci (mógł mieć stary termin). */
+const zdPdfGeneration = new Map<string, number>();
 
 /**
  * Wydruk ZD do PDF z Subiekta (`GET /documents/zd/{id}/pdf`, host ORDERS).
@@ -460,10 +462,12 @@ export async function getSubiektOrdersZdPdf(id: number, opts: { fresh?: boolean;
   if (!opts.fresh && hit && Date.now() - hit.at < ZD_PDF_TTL_MS) return hit.bytes;
   const pending = zdPdfInflight.get(key);
   if (pending) return pending;
+  const docKey = `${config.baseUrl}#${id}`;
+  const generation = zdPdfGeneration.get(docKey) ?? 0;
   const job = printSubiektOrdersZdPdf(id, config).then((bytes) => {
     // Stare wydruki wylatują przy każdym nowym — pamięć nie rośnie bez końca.
     for (const [k, v] of zdPdfCache) if (Date.now() - v.at >= ZD_PDF_TTL_MS) zdPdfCache.delete(k);
-    zdPdfCache.set(key, { at: Date.now(), bytes });
+    if ((zdPdfGeneration.get(docKey) ?? 0) === generation) zdPdfCache.set(key, { at: Date.now(), bytes });
     return bytes;
   });
   zdPdfInflight.set(key, job);
@@ -504,6 +508,7 @@ export async function setSubiektOrdersZdTermin(id: number, dateKey: string): Pro
     config
   );
   for (const k of zdPdfCache.keys()) if (k.startsWith(`${config.baseUrl}#${id}#`)) zdPdfCache.delete(k);
+  zdPdfGeneration.set(`${config.baseUrl}#${id}`, (zdPdfGeneration.get(`${config.baseUrl}#${id}`) ?? 0) + 1);
   const after = String(res.data?.dok_TerminRealizacji ?? "").slice(0, 10);
   return after || null;
 }

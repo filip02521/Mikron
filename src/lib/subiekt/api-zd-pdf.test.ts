@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getSubiektOrdersZdPdf } from "@/lib/subiekt/api";
+import { getSubiektOrdersZdPdf, setSubiektOrdersZdTermin } from "@/lib/subiekt/api";
 
 vi.mock("@/lib/subiekt/config", () => ({
   resolveSubiektOrdersConfig: () => ({
@@ -9,8 +9,10 @@ vi.mock("@/lib/subiekt/config", () => ({
 }));
 
 const fetchMock = vi.fn();
+const jsonMock = vi.fn();
 vi.mock("@/lib/subiekt/client", () => ({
   subiektFetch: (...args: unknown[]) => fetchMock(...args),
+  subiektJson: (...args: unknown[]) => jsonMock(...args),
 }));
 
 const pdf = () => new Response("%PDF-1.4 ZD 412/2026", { status: 200 });
@@ -47,6 +49,20 @@ describe("getSubiektOrdersZdPdf", () => {
     await getSubiektOrdersZdPdf(1867751, { version: "a" });
     expect(fetchMock).toHaveBeenCalledTimes(1);
     await getSubiektOrdersZdPdf(1867751, { version: "b" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("zmiana terminu w trakcie wydruku → ten wydruk nie trafia do pamięci", async () => {
+    let release: (r: Response) => void = () => undefined;
+    fetchMock.mockImplementationOnce(() => new Promise<Response>((r) => (release = r)));
+    const first = getSubiektOrdersZdPdf(1867752, { version: "a" });
+    await Promise.resolve();
+    jsonMock.mockResolvedValueOnce({ data: { dok_TerminRealizacji: "2026-10-07" } });
+    await setSubiektOrdersZdTermin(1867752, "2026-10-07");
+    release(pdf());
+    await first;
+    fetchMock.mockImplementation(async () => pdf());
+    await getSubiektOrdersZdPdf(1867752, { version: "a" });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 

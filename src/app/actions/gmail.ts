@@ -46,7 +46,11 @@ export async function actionGmailStatus(): Promise<GmailStatus> {
     const [conn, signature] = await Promise.all([getGmailConnection(user.id), getEmailSignature(user.id)]);
     return { configured: true, email: conn?.email ?? null, signature };
   } catch (e) {
-    // Np. niepełna migracja 172 — panel ZD przechodzi w tryb ręczny zamiast błędu przy każdym powrocie do karty.
+    // Niepełna migracja 172 — panel ZD w trybie ręcznym. Inny (chwilowy) błąd idzie dalej: panel zostaje
+    // przy poprzednim stanie zamiast przełączać okno wysyłki w tryb ręczny w trakcie pracy.
+    if (!(e instanceof Error && /google_mail_connections|email_signature/.test(e.message) && /does not exist|nie istnieje/.test(e.message))) {
+      throw e;
+    }
     console.error("[gmail] status", e);
     return { configured: false, email: null, signature: "" };
   }
@@ -237,7 +241,9 @@ export async function actionSendZdToSupplier(input: {
       kind: "supplier_order",
     });
     if (!sent.ok) {
-      await restoreZdTermin(dokId, restoreTermin);
+      // Niepewne (mail mógł wyjść) — termin z wydruku zostaje; przywracamy tylko, gdy na pewno nie wyszedł.
+      if (!sent.uncertain) await restoreZdTermin(dokId, restoreTermin);
+      restoreTermin = null;
       return sent;
     }
     restoreTermin = null;

@@ -145,6 +145,8 @@ export async function sendGmailAsUser(input: {
   };
   const rfcMessageId = `<ontime-${randomUUID()}@${stored.email.split("@")[1] ?? "ontime"}>`;
   let accessToken: string | null = null;
+  /** Treść poszła do Gmaila — tylko wtedy zerwane połączenie znaczy „mogło wyjść”. */
+  let sending = false;
   try {
     accessToken = await gmailAccessToken(cfg, decryptToken(cfg.tokenKey, stored.tokenEnc));
     const mime = await buildMimeMessage({
@@ -159,6 +161,7 @@ export async function sendGmailAsUser(input: {
       references: input.references,
       messageId: rfcMessageId,
     });
+    sending = true;
     const sent = input.gmailThreadId
       ? await sendGmailRawInThread(accessToken, mime, input.gmailThreadId)
       : await sendGmailRaw(accessToken, mime);
@@ -167,7 +170,7 @@ export async function sendGmailAsUser(input: {
   } catch (e) {
     // Zerwane połączenie po wysłaniu treści — Gmail mógł wysłać; sprawdzamy „Wysłane” po naszym Message-ID,
     // zamiast pozwolić na drugą wysyłkę tego samego zamówienia.
-    if (accessToken && isGmailTransportError(e)) {
+    if (accessToken && sending && isGmailTransportError(e)) {
       const found = await findGmailMessageByRfcId(accessToken, rfcMessageId);
       if (found) {
         await recordTransactionalEmailLog({ ...log, status: "sent", messageId: found.id });

@@ -204,3 +204,13 @@ describe("actionSendZdToSupplier — termin po wysyłce", () => {
     expect(m.sendGmailAsUser).not.toHaveBeenCalled();
   });
 });
+
+describe("actionSendZdToSupplier — zerwane połączenie", () => {
+  it("niepewne (mail mógł wyjść) → termin z wydruku zostaje", async () => {
+    m.loadSupplierZd.mockResolvedValue({ ...zd("Shenzhen Upcera Dental", "IMPORT"), termin: "2026-10-20" });
+    m.sendGmailAsUser.mockResolvedValue({ ok: false, message: "Połączenie z Gmailem zostało przerwane.", uncertain: true });
+    expect(await actionSendZdToSupplier(input)).toMatchObject({ ok: false, uncertain: true });
+    expect(m.setSubiektOrdersZdTermin.mock.calls).toEqual([[1867748, "2026-10-07"]]);
+  });
+});
+

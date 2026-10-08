@@ -256,9 +256,14 @@ export async function findGmailMessageByRfcId(
   accessToken: string,
   rfcMessageId: string
 ): Promise<{ id: string; threadId: string | null } | null> {
-  const ids = await listGmailMessageIds(accessToken, `rfc822msgid:${rfcMessageId.replace(/^<|>$/g, "")} in:sent`, 1).catch(
-    () => []
-  );
+  const q = `rfc822msgid:${rfcMessageId.replace(/^<|>$/g, "")} in:sent`;
+  let ids: string[] = [];
+  // Wyszukiwarka Gmaila indeksuje świeżą wiadomość z opóźnieniem — kilka prób zamiast jednej.
+  for (const wait of [0, 3_000, 8_000]) {
+    if (wait) await new Promise((r) => setTimeout(r, wait));
+    ids = await listGmailMessageIds(accessToken, q, 1).catch(() => []);
+    if (ids[0]) break;
+  }
   if (!ids[0]) return null;
   return { id: ids[0], threadId: await getGmailThreadId(accessToken, ids[0]).catch(() => null) };
 }

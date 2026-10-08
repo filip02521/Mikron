@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { parseMailRecipients } from "@/lib/email/recipients";
+import { zdTerminError } from "@/lib/orders/zd-send-plan";
 import type { SupplierOrderEmail } from "@/lib/google/gmail-connections";
 import type { DailyPanelUndoPayload } from "@/lib/orders/daily-panel-undo";
 import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
@@ -120,7 +121,11 @@ export function ZdSendWorkspace({
   });
   const [confirm, setConfirm] = useState<{ resend?: boolean; allowUnknownRecipients?: boolean }>({});
   const [mailIssue, setMailIssue] = useState<
-    { kind: "unknown"; emails: string[] } | { kind: "already"; sent: SupplierOrderEmail } | null
+    | { kind: "unknown"; emails: string[] }
+    | { kind: "already"; sent: SupplierOrderEmail }
+    /** Połączenie zerwane po wysłaniu treści — ponowna wysyłka dopiero po sprawdzeniu „Wysłanych”. */
+    | { kind: "uncertain" }
+    | null
   >(null);
   const running = Object.values(steps).some((s) => s.status === "running");
   // Symulacja: drugi zapis terminu się udaje (sprawdza „Ponów ten krok”).
@@ -189,7 +194,8 @@ export function ZdSendWorkspace({
   const planOk = plan?.ok ? plan : null;
   const inZdIds = planOk ? planOk.inZd.map((r) => r.orderId) : [];
   const glowneTargetIds = [...new Set([...inZdIds, ...serviceOrderIds])];
-  const terminInvalid = !/^\d{4}-\d{2}-\d{2}$/.test(termin) || (planOk ? termin < planOk.today : false);
+  // Te same reguły co na serwerze — błędny termin nie może zablokować samej wysyłki dopiero po kliknięciu.
+  const terminInvalid = planOk ? zdTerminError(termin, planOk.today) != null : !/^\d{4}-\d{2}-\d{2}$/.test(termin);
   const recipients = parseMailRecipients(to, cc);
   const mailDone = steps.mail.status === "ok";
   const allDone = (["mail", "termin", "glowne", "plan"] as const).every((k) => ["ok", "skipped"].includes(steps[k].status));
@@ -296,6 +302,7 @@ export function ZdSendWorkspace({
     if (!res.ok) {
       if ("unknownRecipients" in res && res.unknownRecipients?.length) setMailIssue({ kind: "unknown", emails: res.unknownRecipients });
       else if ("alreadySent" in res && res.alreadySent) setMailIssue({ kind: "already", sent: res.alreadySent });
+      else if ("uncertain" in res && res.uncertain) setMailIssue({ kind: "uncertain" });
       setStep("mail", { status: "error", message: res.message });
       return;
     }
@@ -318,7 +325,9 @@ export function ZdSendWorkspace({
 
   async function markSentManually() {
     if ((previewOnly && live) || running) return;
-    setStep("mail", { status: "ok", message: "Wysłane poza OnTime" });
+    const confirmedInGmail = mailIssue?.kind === "uncertain";
+    setMailIssue(null);
+    setStep("mail", { status: "ok", message: confirmedInGmail ? "Jest w Wysłanych w Gmailu" : "Wysłane poza OnTime" });
     showProgress();
     await finishAfterMail();
   }
@@ -333,7 +342,8 @@ export function ZdSendWorkspace({
     body.trim() !== "" &&
     attachment.state === "ready" &&
     Boolean(planOk) &&
-    !terminInvalid;
+    !terminInvalid &&
+    mailIssue?.kind !== "uncertain";
 
   return (
     <>
@@ -493,6 +503,18 @@ export function ZdSendWorkspace({
             <Button type="button" variant="secondary" className="min-h-10" disabled={running} onClick={() => void send({ resend: true })}>
               Wyślij ponownie
             </Button>
+          </div>
+        ) : mailIssue?.kind === "uncertain" ? (
+          <div className="space-y-2 rounded-md bg-amber-50 px-3 py-2.5 text-sm text-amber-950 ring-1 ring-amber-200" role="alert">
+            <p>Nie wiadomo, czy mail wyszedł. Sprawdź „Wysłane” w Gmailu.</p>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="secondary" className="min-h-10" disabled={running} onClick={() => void markSentManually()}>
+                Jest w Wysłanych
+              </Button>
+              <Button type="button" variant="ghost" className="min-h-10" disabled={running} onClick={() => void send()}>
+                Nie ma - wyślij jeszcze raz
+              </Button>
+            </div>
           </div>
         ) : null}
 
