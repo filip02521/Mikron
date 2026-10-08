@@ -81,12 +81,17 @@ export function triageOther(input: {
   email: string;
   bulk: boolean;
   rules: readonly SenderRule[];
-  /** Wątek jest już sprawą na tablicy — kolejne wiadomości dołączają bez pytania. */
-  knownCaseThread: boolean;
+  /**
+   * Decyzja podjęta już dla tego wątku (sprawa / odprawa / nie sprawa) — kolejne wiadomości w nim idą
+   * tak samo, bez ponownego pytania i niezależnie od reguł nadawcy (np. ktoś nowy dopisany w DW).
+   */
+  threadDecision: "case" | "customs" | "ignored" | null;
 }): "case" | "review" | "customs" | null {
+  if (input.threadDecision === "ignored") return null;
+  if (input.threadDecision) return input.threadDecision;
   const decision = senderDecision(input.rules, input.email);
   if (decision === "ignore") return null;
-  if (decision === "case" || input.knownCaseThread) return "case";
+  if (decision === "case") return "case";
   // Agencje piszą też z automatów (powiadomienia o należnościach) — i tak należą do odpraw.
   if (decision === "customs") return "customs";
   if (isAutomatedSender(input.email, input.bulk)) return null;
@@ -115,14 +120,19 @@ const DUES_RE = /nale[żz]no[śs]|wykaz nale|cło|clo\b|duty|duties|import (tax|
 const REQUEST_RE = /t[łl]umacz|translat|pro[śs]ba o (dok|tłum|tlum|fakt|dan)|prosimy o|please (send|provide)|missing|brak(uje|ując)|potrzebuj/i;
 const DOCUMENTS_RE = /faktur|invoice|rechnung|\bSAD\b|ZC ?429|PZC|nota (obc|kred)|zgłoszenie celne/i;
 const QUOTE_RE = /wycen|oferta|offer|quotation|\bquote\b|rate request|stawk|pytanie o (transport|fracht)|freight|transport (z|ze|from)\b/i;
-const PICKUP_RE = /awiz|odbi[oó]r|pick.?up|kierowc|dostaw[ay] (do|na)|zlecenie odbioru|delivery note/i;
+const PICKUP_RE = /awiz|odbi[oó]r|pick.?up|kierowc|dostaw[ay] (do|na)|zlecenie odbioru|delivery note|rejestracj|nr auta|numer auta/i;
 
-export function customsMailKind(input: { subject: string; attachmentNames: readonly string[] }): CustomsMailKind {
+/**
+ * Temat wątku mówi, o czym jest sprawa („pytanie o transport”), a ostatnia wiadomość — co jest teraz do
+ * zrobienia („podsyłam dane kierowcy”). Dlatego awizacja i prośba sprawdzane są też w treści ostatniej.
+ */
+export function customsMailKind(input: { subject: string; attachmentNames: readonly string[]; snippet?: string }): CustomsMailKind {
   const text = `${input.subject} ${input.attachmentNames.join(" ")}`;
+  const latest = input.snippet ?? "";
   if (DUES_RE.test(text)) return "dues";
-  if (REQUEST_RE.test(input.subject)) return "request";
+  if (REQUEST_RE.test(input.subject) || REQUEST_RE.test(latest)) return "request";
+  if (PICKUP_RE.test(input.subject) || PICKUP_RE.test(latest)) return "pickup";
   if (DOCUMENTS_RE.test(text)) return "documents";
   if (QUOTE_RE.test(input.subject)) return "quote";
-  if (PICKUP_RE.test(input.subject)) return "pickup";
   return "request";
 }

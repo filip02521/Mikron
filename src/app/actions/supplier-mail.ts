@@ -430,7 +430,7 @@ export async function actionMailBoardMove(input: {
     );
     if (key.type === "conv") {
       if (column === "done") await markConversationHandled(key, user.id, "manual");
-      else await reopenConversation(key);
+      else await reopenConversation(key, user.id);
     } else if (column === "done") {
       await resolveAwaitingSupplier(key.kind, key.id, user.id);
     } else {
@@ -448,8 +448,12 @@ export async function actionMailBoardMove(input: {
   }
 }
 
-/** Wyjście z Zakończonych: wiadomości zamknięte ręcznie wracają, ZD zamknięte razem z nimi znowu czeka. */
-async function reopenConversation(conv: { mailbox: string; threadId: string }): Promise<void> {
+/**
+ * Wyjście z Zakończonych: wiadomości zamknięte ręcznie wracają. ZD zamknięte razem z nimi wraca do
+ * „czeka na dostawcę” tylko przy „Cofnij” (do 10 min) — dostawca przecież odpisał, przeniesienie starej
+ * rozmowy do W trakcie nie może cofnąć potwierdzenia ZD w innych modułach.
+ */
+async function reopenConversation(conv: { mailbox: string; threadId: string }, userId: string): Promise<void> {
   const { rows } = await query<{ case_kind: string | null; case_id: string | null }>(
     `UPDATE public.supplier_mail_messages SET handled_at = NULL, handled_by = NULL, handled_via = NULL
       WHERE mailbox = $1 AND gmail_thread_id = $2 AND handled_via = 'manual'
@@ -458,7 +462,11 @@ async function reopenConversation(conv: { mailbox: string; threadId: string }): 
   );
   const zdIds = [...new Set(rows.filter((r) => r.case_kind === "zd" && r.case_id).map((r) => r.case_id!))];
   if (zdIds.length) {
-    await query(`UPDATE public.supplier_order_emails SET resolved_at = NULL, resolved_by = NULL WHERE id = ANY($1::uuid[])`, [zdIds]);
+    await query(
+      `UPDATE public.supplier_order_emails SET resolved_at = NULL, resolved_by = NULL
+        WHERE id = ANY($1::uuid[]) AND resolved_by = $2 AND resolved_at > now() - interval '10 minutes'`,
+      [zdIds, userId]
+    );
   }
 }
 
@@ -553,9 +561,17 @@ export async function actionMailForward(input: {
     if (!rows.length) return { ok: false, message: messageId ? "Nie znaleziono wiadomości." : "Nie znaleziono rozmowy." };
     const token = await mailboxAccessToken(conv.mailbox);
     if (!token) return { ok: false, message: "Skrzynka tej rozmowy nie jest połączona z OnTime." };
+    // Ten sam plik w kilku wiadomościach wątku (np. faktura w odpowiedzi i w przypomnieniu) — raz.
+    const seen = new Set<string>();
     const refs = rows.flatMap((m) =>
       m.attachments
         .filter((a) => !isInlineImage(a))
+        .filter((a) => {
+          const k = `${a.filename.toLowerCase()}|${a.size ?? ""}`;
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        })
         .map((a) => ({ messageId: m.gmail_message_id, ref: a }))
     );
     if (refs.reduce((n, r) => n + (r.ref.size ?? 0), 0) > FORWARD_MAX_BYTES) {
@@ -567,7 +583,7 @@ export async function actionMailForward(input: {
       if (content) attachments.push({ filename: r.ref.filename, content, contentType: r.ref.mimeType || "application/octet-stream" });
     }
     const last = rows[0]!;
-    const supplier = last.supplier_name ?? (last.from_name || last.from_address);
+    const supplier = last.supplier_name || last.from_name || last.from_address;
     const texts = await readTexts(conv.mailbox, rows.map((m) => m.gmail_message_id));
     const sent = await sendGmailAsUser({
       userId: user.id,
@@ -581,7 +597,7 @@ export async function actionMailForward(input: {
         .filter(Boolean)
         .join("\n\n"),
       attachments,
-      kind: payment ? "payment_forward" : "supplier_reply",
+      kind: payment ? "payment_forward" : "mail_forward",
     });
     if (!sent.ok) return sent;
     if (!payment) {
@@ -678,8 +694,21 @@ export async function actionMailTriage(input: {
   /** customs = agencja celna / spedytor → odprawy celne. */
   decision: "case" | "ignore" | "customs" | "review";
   remember?: "none" | "sender" | "domain";
-  forgetPattern?: string | null;
-}): Promise<{ ok: true; pattern: string | null; alsoApplied: number } | Fail> {
+  /** „Cofnij”: wiadomości, które decyzja z zapamiętaniem przestawiła poza tą rozmową. */
+  revertIds?: string[];
+  /** „Cofnij”: reguła sprzed decyzji (decision null = nie było jej — usunąć). */
+  restoreRule?: { pattern: string; decision: "case" | "ignore" | "customs" | null } | null;
+}): Promise<
+  | {
+      ok: true;
+      pattern: string | null;
+      /** Inne wiadomości z półki przestawione przez regułę — do „Cofnij”. */
+      changedIds: string[];
+      /** Reguła sprzed zapisu — do „Cofnij”. */
+      previousRule: { pattern: string; decision: "case" | "ignore" | "customs" | null } | null;
+    }
+  | Fail
+> {
   const user = await requireMailUser("mutate");
   const conv = validConversation(input);
   if (!conv) return { ok: false, message: "Nieprawidłowa rozmowa." };
@@ -697,46 +726,54 @@ export async function actionMailTriage(input: {
     if (!rows.length) return { ok: false, message: "Nie znaleziono rozmowy." };
 
     if (input.decision === "review") {
-      const pattern = typeof input.forgetPattern === "string" ? input.forgetPattern.toLowerCase() : null;
-      if (pattern) {
-        await query(`DELETE FROM public.mail_sender_rules WHERE pattern = $1`, [pattern]);
-        // ponytail: cofa wszystkie nieobsłużone rozmowy tego nadawcy z decyzją reguły — także te,
-        // które ktoś wcześniej rozstrzygnął ręcznie tak samo; dokładne cofanie wymagałoby dziennika decyzji.
-        await query(
-          `UPDATE public.supplier_mail_messages SET triage = 'review'
-            WHERE kind = 'other' AND triage IN ('case', 'ignored', 'customs') AND handled_at IS NULL
-              AND (lower(from_address) = $1 OR ($1 LIKE '@%' AND lower(from_address) LIKE '%' || $1))`,
-          [pattern]
-        );
+      // Dokładnie to, co przestawiła decyzja — nic, co ktoś rozstrzygnął wcześniej sam.
+      const ids = Array.isArray(input.revertIds) ? input.revertIds.filter((id) => UUID_RE.test(String(id))).slice(0, 2000) : [];
+      if (ids.length) {
+        await query(`UPDATE public.supplier_mail_messages SET triage = 'review' WHERE id = ANY($1::uuid[]) AND kind = 'other'`, [ids]);
+      }
+      const restore = input.restoreRule;
+      if (restore && typeof restore.pattern === "string" && /^[^\s@]*@[^\s@]+$/.test(restore.pattern)) {
+        const pattern = restore.pattern.toLowerCase();
+        if (restore.decision === null) await query(`DELETE FROM public.mail_sender_rules WHERE pattern = $1`, [pattern]);
+        else if (["case", "ignore", "customs"].includes(restore.decision)) {
+          await query(`UPDATE public.mail_sender_rules SET decision = $2 WHERE pattern = $1`, [pattern, restore.decision]);
+        }
       }
       revalidatePath("/zakupy/asystent");
       revalidatePath("/zakupy/odprawy");
-      return { ok: true, pattern: null, alsoApplied: 0 };
+      return { ok: true, pattern: null, changedIds: [], previousRule: null };
     }
 
     let pattern: string | null = null;
-    let alsoApplied = 0;
+    let changedIds: string[] = [];
+    let previousRule: { pattern: string; decision: "case" | "ignore" | "customs" | null } | null = null;
     if (remember !== "none") {
       pattern = rulePattern(rows[0]!.from_address, remember);
       if (!pattern) return { ok: false, message: "Dla poczty prywatnej (np. gmail.com) można zapamiętać tylko adres." };
-      const decision = input.decision === "ignore" ? "ignore" : input.decision;
+      const decision = input.decision;
+      const { rows: before } = await query<{ decision: "case" | "ignore" | "customs" }>(
+        `SELECT decision FROM public.mail_sender_rules WHERE pattern = $1`,
+        [pattern]
+      );
+      previousRule = { pattern, decision: before[0]?.decision ?? null };
       await query(
         `INSERT INTO public.mail_sender_rules (pattern, decision, created_by) VALUES ($1, $2, $3)
          ON CONFLICT (pattern) DO UPDATE SET decision = EXCLUDED.decision, created_by = EXCLUDED.created_by, created_at = now()`,
         [pattern, decision, user.id]
       );
-      const res = await query(
+      const res = await query<{ id: string }>(
         `UPDATE public.supplier_mail_messages SET triage = $2
           WHERE kind = 'other' AND triage = 'review'
             AND (lower(from_address) = $1
-                 OR ($1 LIKE '@%' AND (lower(from_address) LIKE '%' || $1 OR lower(from_address) LIKE '%.' || substr($1, 2))))`,
+                 OR ($1 LIKE '@%' AND (lower(from_address) LIKE '%' || $1 OR lower(from_address) LIKE '%.' || substr($1, 2))))
+          RETURNING id`,
         [pattern, triage]
       );
-      alsoApplied = res.rowCount ?? 0;
+      changedIds = res.rows.map((r) => String(r.id));
     }
     revalidatePath("/zakupy/asystent");
     revalidatePath("/zakupy/odprawy");
-    return { ok: true, pattern, alsoApplied };
+    return { ok: true, pattern, changedIds, previousRule };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się zapisać decyzji.") };
   }

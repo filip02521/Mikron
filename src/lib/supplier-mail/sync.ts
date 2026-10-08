@@ -249,18 +249,17 @@ async function storeMetas(
   mailCases: MailCase[],
   rules: SenderRule[] | null
 ): Promise<number> {
-  // Wątki, które już są sprawą na tablicy — kolejne wiadomości od obcych dołączają bez pytania.
-  const caseThreads = rules
-    ? new Set(
-        (
-          await query<{ gmail_thread_id: string }>(
-            `SELECT DISTINCT gmail_thread_id FROM public.supplier_mail_messages
-              WHERE mailbox = $1 AND triage = 'case' AND gmail_thread_id = ANY($2::text[])`,
-            [box.email, [...new Set(metas.map((m) => m.threadId))]]
-          )
-        ).rows.map((r) => r.gmail_thread_id)
-      )
-    : new Set<string>();
+  // Wątki już rozstrzygnięte (sprawa / odprawa / nie sprawa) — kolejne wiadomości od obcych idą tak samo.
+  const threadDecisions = new Map<string, "case" | "customs" | "ignored">();
+  if (rules && metas.length) {
+    const { rows } = await query<{ gmail_thread_id: string; triage: "case" | "customs" | "ignored" }>(
+      `SELECT DISTINCT ON (gmail_thread_id) gmail_thread_id, triage FROM public.supplier_mail_messages
+        WHERE mailbox = $1 AND triage IN ('case', 'customs', 'ignored') AND gmail_thread_id = ANY($2::text[])
+        ORDER BY gmail_thread_id, received_at DESC`,
+      [box.email, [...new Set(metas.map((m) => m.threadId))]]
+    );
+    for (const r of rows) threadDecisions.set(r.gmail_thread_id, r.triage);
+  }
   // Numery ZD z treści — przypięcie także do ZD wysłanych poza OnTime (indeks Subiekta).
   const zdIndex = await loadZdIndex(
     metas.flatMap((m) => documentRefs([m.subject, m.snippet, ...m.attachments.map((a) => a.filename)].join("\n")).dokNrs)
@@ -275,7 +274,7 @@ async function storeMetas(
     if (meta.kind !== "bounce" && !supplierIds.length) {
       // Spoza kart dostawców: przesiani regułami nadawców.
       if (!rules) continue;
-      triage = triageOther({ email: sender.email, bulk: meta.bulk, rules, knownCaseThread: caseThreads.has(meta.threadId) });
+      triage = triageOther({ email: sender.email, bulk: meta.bulk, rules, threadDecision: threadDecisions.get(meta.threadId) ?? null });
       // Autoodpowiedzi (urlop) pomijamy — poza automatami agencji celnych (powiadomienia o należnościach).
       if (!triage || (meta.kind !== "supplier" && triage !== "customs")) continue;
     }
@@ -362,7 +361,7 @@ async function reconcileRepliedInGmail(token: string, mailbox: string, since: Da
   const { rows } = await query<{ id: string; gmail_thread_id: string; received_at: Date }>(
     `SELECT id, gmail_thread_id, received_at FROM public.supplier_mail_messages
       WHERE mailbox = $1 AND handled_at IS NULL AND category IN ('reply', 'confirmation')
-        AND (kind = 'supplier' OR (kind = 'other' AND triage = 'case'))
+        AND (kind = 'supplier' OR (kind = 'other' AND triage IN ('case', 'customs')))
         AND received_at > now() - interval '30 days'
       ORDER BY received_at DESC LIMIT 300`,
     [mailbox]

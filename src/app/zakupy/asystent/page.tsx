@@ -9,7 +9,7 @@ import { loadOcChecks } from "@/lib/oc-check/data";
 import type { OcCheck } from "@/lib/oc-check/types";
 import { groupOcChecks, OC_VIEWS, parseOcView, type OcView } from "@/lib/oc-check/view";
 import { isCustomsAiConfigured } from "@/lib/customs/customs-ai";
-import { loadSupplierMailView } from "@/lib/supplier-mail/data";
+import { countNeedsAction, loadSupplierMailView } from "@/lib/supplier-mail/data";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
 import { buttonPrimaryClass } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
@@ -112,7 +112,7 @@ export default async function AsystentPage({
     getEmailSignature(user.id).catch(() => ""),
     getPaymentForwardEmail(user.id).catch(() => ""),
   ]);
-  const mailTodo = mail ? mail.items.filter((i) => i.column === "todo" && (!i.assigneeId || i.assigneeId === user.id)).length : 0;
+  const mailTodo = mail ? countNeedsAction(mail, user.id) : 0;
   const sections: { id: Section; href: string; count: number }[] = [
     { id: "poczta", href: "/zakupy/asystent", count: mailTodo },
     {

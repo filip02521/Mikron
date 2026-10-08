@@ -24,6 +24,8 @@ import type { SupplierLocation } from "@/types/database";
 const VIEW_DAYS = 30;
 /** Załatwione — tyle dni wstecz. */
 const DONE_DAYS = 14;
+/** Wiadomości na jeden odczyt widoku (cała skrzynka z 30 dni, bez odrzuconych na półce). */
+const MESSAGES_LIMIT = 3000;
 
 export type MailMessageRow = {
   id: string;
@@ -186,7 +188,8 @@ export function groupConversations(rows: readonly MailMessageRow[]): MailConvers
         mailbox: last.mailbox,
         threadId: last.gmail_thread_id,
         supplierId: (sorted.find((m) => m.supplier_id)?.supplier_id ?? null) as string | null,
-        supplierName: sorted.find((m) => m.supplier_name)?.supplier_name ?? last.from_name ?? last.from_address,
+        // from_name to pusty tekst, gdy nadawca nie ma podpisu — wtedy adres.
+        supplierName: sorted.find((m) => m.supplier_name)?.supplier_name || last.from_name || last.from_address,
         subject: last.subject,
         lastFrom: last.from_name || last.from_address,
         lastFromEmail: last.from_address,
@@ -215,7 +218,11 @@ export function groupConversations(rows: readonly MailMessageRow[]): MailConvers
         triage: threadTriage(sorted),
         customsKind:
           threadTriage(sorted) === "customs"
-            ? customsMailKind({ subject: last.subject, attachmentNames: sorted.flatMap((m) => m.attachments.map((a) => a.filename)) })
+            ? customsMailKind({
+                subject: last.subject,
+                attachmentNames: sorted.flatMap((m) => m.attachments.map((a) => a.filename)),
+                snippet: last.snippet,
+              })
             : null,
       };
     })
@@ -238,9 +245,10 @@ export async function loadMailMessages(where = "TRUE", params: unknown[] = []): 
        LEFT JOIN public.department_board_threads t ON t.id = i.thread_id
       WHERE ${where}
       ORDER BY m.received_at DESC
-      LIMIT 1500`,
+      LIMIT ${MESSAGES_LIMIT}`,
     params
   );
+  if (rows.length >= MESSAGES_LIMIT) console.warn("[poczta] limit wiadomości w widoku - starsze rozmowy pominięte", where.slice(0, 80));
   return rows.map((r) => ({ ...r, attachments: Array.isArray(r.attachments) ? r.attachments : [] }));
 }
 
@@ -308,7 +316,7 @@ export function waitingCases(cases: readonly CaseRow[], messages: readonly MailM
   for (const m of messages) {
     if (!m.case_kind || !m.case_id) continue;
     const key = `${m.case_kind}|${m.case_id}`;
-    if (m.kind === "supplier" || m.kind === "bounce") answered.add(key);
+    if (m.kind === "supplier" || m.kind === "bounce" || m.kind === "other") answered.add(key);
     else auto.add(key);
   }
   return cases
@@ -459,7 +467,11 @@ async function loadMailPeople(): Promise<MailPerson[]> {
 export async function loadSupplierMailView(now: Date = new Date()): Promise<SupplierMailView> {
   try {
     const [messages, cases, syncRes, people] = await Promise.all([
-      loadMailMessages(`m.received_at > now() - make_interval(days => $1)`, [VIEW_DAYS]),
+      // „Nie sprawa” z półki nie zajmuje miejsca w widoku (to_jsonb: kolumna triage jest od migracji 184).
+      loadMailMessages(
+        `m.received_at > now() - make_interval(days => $1) AND (to_jsonb(m) ->> 'triage') IS DISTINCT FROM 'ignored'`,
+        [VIEW_DAYS]
+      ),
       loadOpenCases(true),
       // Tylko skrzynki nadal połączone — odłączona nie zamraża „sprawdzono” na starej dacie.
       query<{ synced_at: Date; last_error: string | null }>(
@@ -501,14 +513,19 @@ export async function loadSupplierMailView(now: Date = new Date()): Promise<Supp
   }
 }
 
+/** Ile czeka na ruch tej osoby: jej Do zrobienia i jej półka „Do przejrzenia” (nieprzypisane też liczą się każdemu). */
+export function countNeedsAction(view: Pick<SupplierMailView, "items" | "review">, userId: string): number {
+  const mine = (owner: string | null) => !owner || owner === userId;
+  return view.items.filter((i) => i.column === "todo" && mine(i.assigneeId)).length + view.review.filter((c) => mine(c.ownerUserId)).length;
+}
+
 /**
- * Licznik w menu: sprawy w kolumnie Do zrobienia i półka „Do przejrzenia” — te same reguły co tablica.
+ * Licznik w menu — te same reguły co tablica i zakładka „Moje”.
  * ponytail: liczy cały widok (wiadomości z 30 dni); przy wolnym menu — licznik w SQL z mail_board_items.
  */
-export async function countSupplierMailNeedsAction(now: Date = new Date()): Promise<number> {
+export async function countSupplierMailNeedsAction(userId: string, now: Date = new Date()): Promise<number> {
   try {
-    const view = await loadSupplierMailView(now);
-    return view.items.filter((i) => i.column === "todo").length + view.review.length;
+    return countNeedsAction(await loadSupplierMailView(now), userId);
   } catch (e) {
     // Licznik nie może zatrzymać menu, ale błąd bazy ma być widoczny w logach.
     console.error("[poczta] licznik", e);
@@ -541,8 +558,8 @@ export type CustomsMailThread = {
   snippet: string;
   lastAt: string;
   kind: CustomsMailKind;
-  /** Jest coś bez reakcji (nie „Zakończone”, nie odpisano). */
-  open: boolean;
+  /** open = czeka na nas; replied = odpisaliśmy (z OnTime albo z Gmaila), czekamy na agencję; done = zakończone. */
+  state: "open" | "replied" | "done";
   attachments: { messageId: string; attachmentId: string; filename: string }[];
 };
 
@@ -571,7 +588,11 @@ export async function loadCustomsMail(): Promise<CustomsMailThread[]> {
         snippet: c.snippet,
         lastAt: c.lastAt,
         kind: c.customsKind ?? "request",
-        open: list.some((m) => !m.handled_at),
+        state: list.some((m) => !m.handled_at)
+          ? "open"
+          : list.some((m) => m.handled_via === "reply" || m.handled_via === "gmail")
+            ? "replied"
+            : "done",
         attachments: list.flatMap((m) =>
           m.attachments
             .filter((a) => !isInlineImage(a))
@@ -582,5 +603,15 @@ export async function loadCustomsMail(): Promise<CustomsMailThread[]> {
   } catch (e) {
     if (isMissingSchema(e) || (e instanceof Error && /triage/.test(e.message))) return [];
     throw e;
+  }
+}
+
+/** Odprawy w menu: sprawy agencji, które czekają na nas i blokują towar (prośby, należności, awizacje). */
+export async function countCustomsMailNeedsAction(): Promise<number> {
+  try {
+    return (await loadCustomsMail()).filter((t) => t.state === "open" && t.kind !== "documents" && t.kind !== "quote").length;
+  } catch (e) {
+    console.error("[odprawy] licznik poczty agencji", e);
+    return 0;
   }
 }

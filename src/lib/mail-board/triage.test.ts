@@ -22,7 +22,7 @@ describe("sita skrzynki", () => {
   });
 
   it("nieznany człowiek → do przejrzenia, automat i ignorowany → pominięty", () => {
-    const base = { bulk: false, rules, knownCaseThread: false };
+    const base = { bulk: false, rules, threadDecision: null };
     expect(triageOther({ ...base, email: "jan@nowa.example" })).toBe("review");
     expect(triageOther({ ...base, email: "noreply@sklep.example" })).toBeNull();
     expect(triageOther({ ...base, email: "powiadomienia@bank.example" })).toBeNull();
@@ -31,15 +31,18 @@ describe("sita skrzynki", () => {
     expect(triageOther({ ...base, email: "anna@agencja.example" })).toBe("case");
   });
 
-  it("kolejna wiadomość w wątku, który już jest sprawą, wchodzi od razu", () => {
-    expect(triageOther({ email: "noreply@portal.example", bulk: false, rules, knownCaseThread: true })).toBe("case");
+  it("kolejna wiadomość w rozstrzygniętym wątku idzie jak wątek", () => {
+    const base = { bulk: false, rules };
+    expect(triageOther({ ...base, email: "noreply@portal.example", threadDecision: "case" })).toBe("case");
+    expect(triageOther({ ...base, email: "jan@nowa.example", threadDecision: "customs" })).toBe("customs");
+    expect(triageOther({ ...base, email: "anna@agencja.example", threadDecision: "ignored" })).toBeNull();
   });
 
   it("agencje i spedytorzy (także z poddomen i z automatów) idą do odpraw", () => {
-    const base = { bulk: false, rules, knownCaseThread: false };
+    const base = { bulk: false, rules, threadDecision: null };
     expect(senderDecision(rules, "jan@pl.spedycja.example")).toBe("customs");
     expect(triageOther({ ...base, email: "noreply@spedycja.example", bulk: true })).toBe("customs");
-    expect(triageOther({ ...base, email: "jan@spedycja.example", knownCaseThread: true })).toBe("case");
+    expect(triageOther({ ...base, email: "jan@spedycja.example", threadDecision: "case" })).toBe("case");
   });
 
   it("rodzaj maila agencji", () => {
@@ -51,6 +54,9 @@ describe("sita skrzynki", () => {
     expect(k("RE: Prośba o wycenę - Fastform")).toBe("quote");
     expect(k("RE: Zlecenie odbioru towaru Ernst Hinrichs")).toBe("pickup");
     expect(k("RE: pytanie o transport Tajwan-Polska")).toBe("quote");
+    // Ostatnia wiadomość mówi, co teraz: dane kierowcy → awizacja, prośba o dokumenty → odpowiedz.
+    expect(customsMailKind({ subject: "RE: pytanie o transport Tajwan-Polska", attachmentNames: [], snippet: "Podsyłam dane kierowcy" })).toBe("pickup");
+    expect(customsMailKind({ subject: "RE: Oferta", attachmentNames: [], snippet: "Prosimy o przesłanie faktury handlowej" })).toBe("request");
     expect(k("Prośba o tłumaczenie faktury")).toBe("request");
     expect(k("Brakujące dokumenty do odprawy")).toBe("request");
   });

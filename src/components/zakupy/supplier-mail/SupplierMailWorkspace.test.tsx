@@ -6,7 +6,12 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import type { BoardItem, MailConversation, SupplierMailView } from "@/lib/supplier-mail/data";
 
 const moveMock = vi.fn(async (_input: unknown) => ({ ok: true as const }));
-const triageMock = vi.fn(async (_input: unknown) => ({ ok: true as const, pattern: "jan@nowa.example", alsoApplied: 2 }));
+const triageMock = vi.fn(async (_input: unknown) => ({
+  ok: true as const,
+  pattern: "jan@nowa.example",
+  changedIds: ["a", "b"],
+  previousRule: { pattern: "jan@nowa.example", decision: null },
+}));
 
 vi.mock("@/app/actions/supplier-mail", () => ({
   actionMailBoardMove: (input: unknown) => moveMock(input),
