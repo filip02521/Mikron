@@ -401,3 +401,26 @@ describe("headerAddresses", () => {
     expect(headerAddresses("")).toEqual([]);
   });
 });
+
+describe("budżet zapytań Gmaila", () => {
+  it("limit na minutę: odczyt na żywo dostaje czytelny błąd po jednej szybkiej próbie", async () => {
+    const { listGmailMessageIds, GmailRateLimitedError } = await import("@/lib/google/gmail");
+    vi.useFakeTimers();
+    const quota = {
+      error: { message: "Quota exceeded for quota metric 'Total Query Cost' and limit 'Units per minute per user'" },
+    };
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () => new Response(JSON.stringify(quota), { status: 429 }));
+    try {
+      const p = listGmailMessageIds("token-quota-test", "from:renfert.de", 10);
+      const assertion = expect(p).rejects.toBeInstanceOf(GmailRateLimitedError);
+      await vi.runAllTimersAsync();
+      await assertion;
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      fetchMock.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+});

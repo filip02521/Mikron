@@ -11,6 +11,7 @@ import { recordTransactionalEmailLog } from "@/lib/services/transactional-email-
 import { awaitingReplyStatus } from "@/lib/suppliers/awaiting-supplier";
 import type { TransactionalEmailKind } from "@/types/database";
 import {
+  GmailRateLimitedError,
   GmailReconnectRequiredError,
   buildMimeMessage,
   decryptToken,
@@ -282,7 +283,8 @@ export type SentThreadRead = {
 } & (
   | { status: "read"; replies: GmailReply[] }
   /** Nie da się odczytać: nadawca bez połączenia z odczytem, wiadomość usunięta albo błąd Gmaila. */
-  | { status: "unavailable"; reason: string; reconnectSelf?: boolean }
+  /** `retryLater` — limit Gmaila na minutę; za chwilę odczyt się uda. */
+  | { status: "unavailable"; reason: string; reconnectSelf?: boolean; retryLater?: boolean }
 );
 
 type SentMailRow = {
@@ -353,6 +355,9 @@ async function readSentThreads(
             reason: own ? e.message : `Połączenie Gmaila ${row.from_address} wygasło.`,
             reconnectSelf: own,
           };
+        }
+        if (e instanceof GmailRateLimitedError) {
+          return { gmailUrl: null, status: "unavailable", reason: e.message, retryLater: true };
         }
         return { gmailUrl: null, status: "unavailable", reason: e instanceof Error ? e.message : String(e) };
       }

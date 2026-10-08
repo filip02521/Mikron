@@ -77,6 +77,14 @@ export function BoardSupplierReplies({
     // refreshKey — nowa odpowiedź dostawcy po odświeżeniu tablicy.
   }, [load, refreshKey]);
 
+  // Limit Gmaila na minutę (np. w trakcie synchronizacji poczty) — sami ponawiamy, bez klikania.
+  const retryLater = items?.some((i) => i.status === "unavailable" && i.retryLater) ?? false;
+  useEffect(() => {
+    if (!retryLater) return;
+    const timer = window.setTimeout(() => void load(), 60_000);
+    return () => window.clearTimeout(timer);
+  }, [retryLater, items, load]);
+
   if (error) return <p className="text-xs text-rose-800">{error}</p>;
   if (items == null) {
     return (
@@ -141,6 +149,7 @@ export function BoardSupplierReplies({
         inquiry.status === "unavailable" ? (
           <p key={inquiry.inquiryId} className="text-xs text-slate-500">
             Odpowiedź od {inquiry.supplierName}: {inquiry.reason}
+            {inquiry.retryLater ? " Sprawdzę ponownie za minutę." : ""}
           </p>
         ) : null
       )}

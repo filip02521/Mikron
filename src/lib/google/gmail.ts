@@ -9,6 +9,7 @@
  * Przekierowanie: `${NEXT_PUBLIC_APP_URL}/api/google/callback` (musi być HTTPS).
  */
 
+import { AsyncLocalStorage } from "node:async_hooks";
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import nodemailer from "nodemailer";
 import { getAppUrl } from "@/lib/env/app-config";
@@ -465,13 +466,71 @@ export function repliesFromThread(
 
 /** Limit Gmaila (zapytania na minutę na użytkownika) i chwilowe 5xx — ponów zamiast gubić wiadomość. */
 const RETRY_DELAYS_MS = [2_000, 8_000, 20_000];
+/** Limit „na minutę” w tle (synchronizacja) — czekamy, aż minuta się zwolni. */
+const BACKGROUND_QUOTA_RETRY_MS = [15_000, 30_000, 60_000];
 
 export function isGmailRetryable(status: number, message: string): boolean {
   return status === 429 || status >= 500 || (status === 403 && /quota|rate ?limit/i.test(message));
 }
 
-function retryDelay(attempt: number, retryAfter?: string | null): number | undefined {
-  const base = RETRY_DELAYS_MS[attempt];
+export function isGmailQuotaMessage(message: string): boolean {
+  return /quota|rate ?limit|per minute/i.test(message);
+}
+
+/** Gmail odrzucił odczyt z powodu limitu na minutę — komunikat dla ludzi, a UI może ponowić za chwilę. */
+export class GmailRateLimitedError extends Error {
+  constructor() {
+    super("Gmail chwilowo ogranicza odczyty z tej skrzynki (limit na minutę) - spróbuj ponownie za minutę.");
+    this.name = "GmailRateLimitedError";
+  }
+}
+
+// ─── Budżet zapytań na skrzynkę ───────────────────────────────────────────
+// Gmail liczy „koszt” zapytań na użytkownika na minutę (ok. 15 000 jednostek). Synchronizacja w tle
+// (Poczta dostawców, maile DHL) potrafi zjeść cały limit — wtedy tablica i karta dostawcy, czytające
+// tę samą skrzynkę, dostają błąd. Tło ma niższy pułap i czeka; odczyt na żywo ma zapas.
+
+const gmailBackground = new AsyncLocalStorage<true>();
+
+/** Zapytania Gmaila wewnątrz `fn` to praca w tle — ustępują odczytom, które czeka człowiek. */
+export function runAsGmailBackground<T>(fn: () => Promise<T>): Promise<T> {
+  return gmailBackground.run(true, fn);
+}
+
+const QUOTA_WINDOW_MS = 60_000;
+const BACKGROUND_UNITS_PER_MINUTE = 9_000;
+const INTERACTIVE_UNITS_PER_MINUTE = 14_000;
+const quotaUsage = new Map<string, Array<{ at: number; units: number }>>();
+
+/** Koszt wg dokumentacji Gmail API: threads.get 10, messages.get / list / attachments 5. */
+function gmailQueryCost(path: string): number {
+  return path.startsWith("/threads/") ? 10 : 5;
+}
+
+async function reserveGmailQuota(accessToken: string, units: number): Promise<void> {
+  const limit = gmailBackground.getStore() ? BACKGROUND_UNITS_PER_MINUTE : INTERACTIVE_UNITS_PER_MINUTE;
+  const key = createHash("sha256").update(accessToken).digest("hex");
+  for (;;) {
+    const now = Date.now();
+    const recent = (quotaUsage.get(key) ?? []).filter((u) => now - u.at < QUOTA_WINDOW_MS);
+    const used = recent.reduce((n, u) => n + u.units, 0);
+    if (used + units <= limit || !recent.length) {
+      recent.push({ at: now, units });
+      quotaUsage.set(key, recent);
+      // Stare klucze (wygasłe tokeny) nie rosną bez końca.
+      if (quotaUsage.size > 200) for (const [k, v] of quotaUsage) if (!v.some((u) => now - u.at < QUOTA_WINDOW_MS)) quotaUsage.delete(k);
+      return;
+    }
+    // Czekamy, aż najstarszy wpis wypadnie z okna minuty.
+    await new Promise((r) => setTimeout(r, Math.max(250, QUOTA_WINDOW_MS - (now - recent[0]!.at) + 50)));
+  }
+}
+
+function retryDelay(attempt: number, retryAfter?: string | null, quota = false): number | undefined {
+  // Odczyt na żywo przy limicie na minutę: jedna szybka próba, potem komunikat (UI ponowi za minutę) —
+  // zamiast trzymać człowieka pół minuty na kręcącym się kółku.
+  if (quota && !gmailBackground.getStore() && attempt > 0) return undefined;
+  const base = (quota && gmailBackground.getStore() ? BACKGROUND_QUOTA_RETRY_MS : RETRY_DELAYS_MS)[attempt];
   if (base == null) return undefined;
   const asked = Number(retryAfter) * 1000;
   // Rozrzut — równoległe odczyty po limicie nie uderzają znowu w tej samej chwili.
@@ -480,6 +539,7 @@ function retryDelay(attempt: number, retryAfter?: string | null): number | undef
 
 async function gmailGet<T>(accessToken: string, path: string): Promise<T | null> {
   for (let attempt = 0; ; attempt++) {
+    await reserveGmailQuota(accessToken, gmailQueryCost(path));
     let res: Response;
     try {
       res = await fetch(`${API_URL}${path}`, {
@@ -499,8 +559,9 @@ async function gmailGet<T>(accessToken: string, path: string): Promise<T | null>
       throw new GmailReconnectRequiredError();
     }
     const json = (await res.json().catch(() => ({}))) as T & { error?: { message?: string } };
-    const delay = retryDelay(attempt, res.headers.get("Retry-After"));
-    if (!res.ok && delay != null && isGmailRetryable(res.status, json.error?.message ?? "")) {
+    const message = json.error?.message ?? "";
+    const delay = retryDelay(attempt, res.headers.get("Retry-After"), isGmailQuotaMessage(message));
+    if (!res.ok && delay != null && isGmailRetryable(res.status, message)) {
       await new Promise((r) => setTimeout(r, delay));
       continue;
     }
@@ -510,7 +571,12 @@ async function gmailGet<T>(accessToken: string, path: string): Promise<T | null>
 
 function gmailResult<T>(res: Response, json: T & { error?: { message?: string } }): T {
   // 403 „insufficient scopes” — zgoda tylko na wysyłkę; trzeba połączyć ponownie z odczytem.
-  if (res.status === 403 && /scope/i.test(json.error?.message ?? "")) throw new GmailReconnectRequiredError();
+  if (res.status === 403 && /scope/i.test(json.error?.message ?? "") && !isGmailQuotaMessage(json.error?.message ?? "")) {
+    throw new GmailReconnectRequiredError();
+  }
+  if ((res.status === 429 || res.status === 403) && isGmailQuotaMessage(json.error?.message ?? "")) {
+    throw new GmailRateLimitedError();
+  }
   if (!res.ok) throw new Error(`Gmail nie oddał wiadomości: ${json.error?.message ?? res.status}`);
   return json;
 }
