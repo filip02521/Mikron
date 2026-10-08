@@ -1,7 +1,6 @@
 "use client";
 
 import { useId } from "react";
-import { BrandCardAccent } from "@/components/brand/BrandCardAccent";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { MY_ORDER_PICKUP_SHELF_NOTICE } from "@/lib/orders/my-order-pickup-shelf-notice";
@@ -137,39 +136,15 @@ export function MyOrderPickupShelfNoticeDialog({
         </div>
       }
     >
-      <div className="relative overflow-hidden px-5 py-5 sm:px-6 sm:py-6">
-        <BrandCardAccent className="pointer-events-none absolute -right-8 -top-10 h-36 w-44 text-emerald-600 opacity-80" />
-
-        <div className="relative z-[1] flex flex-col items-center text-center">
-          <div
-            className={cn(
-              "mb-4 flex w-full flex-col items-center rounded-xl border border-emerald-100/90",
-              "bg-emerald-50/90 px-4 pb-3 pt-4"
-            )}
-          >
-            <span className="mb-3 inline-flex items-center rounded-md bg-emerald-600/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200/70">
-              Odbiór z regału
-            </span>
-            <PickupShelfDedicatedIllustration glowId={glowId} />
-          </div>
-
-          <div
-            id={bodyDescriptionId}
-            className={cn(
-              "w-full rounded-lg border border-emerald-100/90 bg-emerald-50/45 px-4 py-3.5 text-left",
-              "ring-1 ring-inset ring-emerald-100/60"
-            )}
-          >
-            <p className="text-sm font-semibold leading-snug text-emerald-950">
-              {copy.headline}
-            </p>
-            <p className="mt-2 text-sm font-medium leading-relaxed text-emerald-950">
-              {copy.lead}
-            </p>
-            <p className="mt-2 text-sm leading-relaxed text-emerald-900/90">
-              {copy.detail}
-            </p>
-          </div>
+      {/* Jedna studnia z ilustracją, tekst bez kolejnej karty — zieleń znaczy „gotowe”, nie dekorację. */}
+      <div className="px-5 py-5 sm:px-6">
+        <div className="flex justify-center rounded-lg bg-emerald-50/70 px-4 py-3">
+          <PickupShelfDedicatedIllustration glowId={glowId} />
+        </div>
+        <div id={bodyDescriptionId} className="mt-4 space-y-1.5">
+          <p className="text-sm font-semibold leading-snug text-slate-900">{copy.headline}</p>
+          <p className="text-sm leading-relaxed text-slate-700">{copy.lead}</p>
+          <p className="text-sm leading-relaxed text-slate-600">{copy.detail}</p>
         </div>
       </div>
     </ModalShell>

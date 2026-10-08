@@ -4,7 +4,8 @@
 import { revalidatePath } from "next/cache";
 import { requireOperations } from "@/lib/auth";
 import { assertAdminPanelAllowsProcurementBoardMutations } from "@/lib/auth/guard-admin-panel-preview";
-import { parseEmailList } from "@/lib/customs/customs-email";
+import { parseMailRecipients } from "@/lib/email/recipients";
+import { isMikranEmail } from "@/lib/email/supplier-emails";
 import {
   buildSupplierInquiryDraft,
   pendingInquiryToSupplier,
@@ -20,7 +21,16 @@ import {
 } from "@/lib/department-board/supplier-inquiry-db";
 import { query } from "@/lib/db/pool";
 import { getGmailOAuthConfig } from "@/lib/google/gmail";
-import { getEmailSignature, getGmailConnection, sendGmailAsUser } from "@/lib/google/gmail-connections";
+import {
+  boardInquiryReplies,
+  boardReplyForAi,
+  getEmailSignature,
+  getGmailConnection,
+  sendGmailAsUser,
+  type BoardInquiryReplies,
+} from "@/lib/google/gmail-connections";
+import { suggestAnswerFromSupplierReply } from "@/lib/department-board/supplier-reply-ai";
+import { isCustomsAiConfigured, userFacingCustomsAiError } from "@/lib/customs/customs-ai";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 
 type InquiryThread = SupplierInquiryProduct & { subiekt_tw_id: number | null; archived_at: string | null };
@@ -95,6 +105,8 @@ export async function actionSendSupplierInquiry(input: {
   threadId: string;
   supplierId: string;
   to: string;
+  /** Kopia (DW), adresy rozdzielone przecinkiem. */
+  cc?: string;
   subject: string;
   body: string;
   /** Świadome ponowne zapytanie, gdy poprzednie do tego dostawcy wciąż czeka. */
@@ -104,7 +116,12 @@ export async function actionSendSupplierInquiry(input: {
 }): Promise<SendSupplierInquiryResult> {
   const user = await requireOperations("mutate");
   await assertAdminPanelAllowsProcurementBoardMutations(user);
-  if (typeof input.to !== "string" || typeof input.subject !== "string" || typeof input.body !== "string") {
+  if (
+    typeof input.to !== "string" ||
+    typeof input.subject !== "string" ||
+    typeof input.body !== "string" ||
+    (input.cc !== undefined && typeof input.cc !== "string")
+  ) {
     return { ok: false, message: "Nieprawidłowe dane wiadomości." };
   }
   if (input.subject.length > SUBJECT_MAX || input.body.length > BODY_MAX) {
@@ -113,10 +130,10 @@ export async function actionSendSupplierInquiry(input: {
   const subject = input.subject.trim();
   if (!subject) return { ok: false, message: "Temat nie może być pusty." };
   if (!input.body.trim()) return { ok: false, message: "Treść nie może być pusta." };
-  const { emails, invalid } = parseEmailList(input.to);
-  if (invalid.length) return { ok: false, message: `Błędny adres: ${invalid.join(", ")}` };
-  if (!emails.length) return { ok: false, message: "Podaj adres e-mail dostawcy." };
-  if (emails.length > RECIPIENTS_MAX) return { ok: false, message: `Najwyżej ${RECIPIENTS_MAX} adresów w jednym zapytaniu.` };
+  const recipients = parseMailRecipients(input.to, input.cc);
+  if (!recipients.ok) return recipients;
+  const { to: emails, cc } = recipients;
+  if (emails.length > RECIPIENTS_MAX) return { ok: false, message: `Najwyżej ${RECIPIENTS_MAX} adresów dostawcy w jednym zapytaniu.` };
 
   const thread = await loadQuestionThread(input.threadId);
   if (!thread) return { ok: false, message: "Nie znaleziono pytania." };
@@ -135,7 +152,10 @@ export async function actionSendSupplierInquiry(input: {
         return { ok: false, message: `Zapytanie do ${supplier.name} już czeka na odpowiedź.`, alreadyPending: pending };
       }
     }
-    const unknownRecipients = emails.filter((e) => !supplier.emails.includes(e));
+    // DW też — kopia do kolegi z Mikranu bez potwierdzenia.
+    const unknownRecipients = [...emails, ...cc].filter(
+      (e) => !supplier.emails.includes(e) && !isMikranEmail(e)
+    );
     if (unknownRecipients.length && !input.allowUnknownRecipients) {
       return {
         ok: false,
@@ -147,6 +167,7 @@ export async function actionSendSupplierInquiry(input: {
     const sent = await sendGmailAsUser({
       userId: user.id,
       to: emails,
+      cc,
       subject,
       text: input.body,
       attachments: [],
@@ -163,6 +184,7 @@ export async function actionSendSupplierInquiry(input: {
       to: emails,
       subject,
       gmailMessageId: sent.messageId,
+      gmailThreadId: sent.threadId,
     }).catch((e) => console.error("[tablica] supplier_inquiry_emails", e));
     revalidatePath("/tablica");
     revalidatePath("/zakupy/tablica");
@@ -174,3 +196,75 @@ export async function actionSendSupplierInquiry(input: {
   }
 }
 
+
+// ─── Odpowiedź dostawcy w wątku pytania ───────────────────────────────────
+
+/** Zapytania z tego wątku i odpowiedzi dostawców (pełna treść z Gmaila nadawcy). */
+export async function actionBoardInquiryReplies(
+  threadId: string
+): Promise<{ ok: true; items: BoardInquiryReplies[]; aiAvailable: boolean } | { ok: false; message: string }> {
+  const user = await requireOperations("read");
+  const thread = await loadQuestionThread(threadId);
+  if (!thread) return { ok: false, message: "Nie znaleziono pytania." };
+  if (!getGmailOAuthConfig()) return { ok: true, items: [], aiAvailable: false };
+  try {
+    return { ok: true, items: await boardInquiryReplies(thread.id, user.id), aiAvailable: isCustomsAiConfigured() };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się odczytać odpowiedzi dostawcy z Gmaila.") };
+  }
+}
+
+/**
+ * Propozycja odpowiedzi dla handlowca z maila dostawcy. Treść maila czytana od nowa z Gmaila
+ * (nie z przeglądarki) — AI dostaje tylko to, co naprawdę przyszło.
+ */
+export async function actionSuggestBoardAnswerFromSupplier(input: {
+  threadId: string;
+  inquiryId: string;
+  replyId: string;
+}): Promise<
+  | { ok: true; answer: string; readPdfs: string[]; skippedPdfs: string[] }
+  | { ok: false; message: string }
+> {
+  await requireOperations("read");
+  const thread = await loadQuestionThread(input?.threadId);
+  if (!thread) return { ok: false, message: "Nie znaleziono pytania." };
+  if (!isCustomsAiConfigured()) return { ok: false, message: "AI jest wyłączone na serwerze (brak klucza Gemini)." };
+  if (
+    typeof input.inquiryId !== "string" ||
+    !/^[0-9a-f-]{36}$/i.test(input.inquiryId) ||
+    typeof input.replyId !== "string" ||
+    !/^[0-9a-f]{6,40}$/i.test(input.replyId)
+  ) {
+    return { ok: false, message: "Nieprawidłowa odpowiedź dostawcy." };
+  }
+  let source;
+  try {
+    source = await boardReplyForAi({ threadId: thread.id, inquiryId: input.inquiryId, replyId: input.replyId });
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się odczytać odpowiedzi dostawcy z Gmaila.") };
+  }
+  if (!source) return { ok: false, message: "Nie znaleziono tej odpowiedzi dostawcy - odśwież wątek." };
+  try {
+    const { rows } = await query<{ body: string }>(
+      `SELECT body FROM public.department_board_threads WHERE id = $1`,
+      [thread.id]
+    );
+    const answer = await suggestAnswerFromSupplierReply(
+      {
+        title: thread.title,
+        question: rows[0]?.body ?? "",
+        product: [thread.product_name, thread.product_symbol || thread.mikran_code].filter(Boolean).join(" · ") || null,
+        supplierName: source.supplierName,
+        replyText: source.reply.text ?? source.reply.snippet,
+        attachments: source.reply.attachments,
+      },
+      source.pdfs
+    );
+    return answer
+      ? { ok: true, answer, readPdfs: source.pdfs.map((f) => f.filename), skippedPdfs: source.skippedPdfs }
+      : { ok: false, message: "AI nie zaproponowało odpowiedzi. Spróbuj ponownie." };
+  } catch (e) {
+    return { ok: false, message: userFacingCustomsAiError(e) };
+  }
+}

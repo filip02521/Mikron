@@ -14,7 +14,7 @@ import { IconColorLegendSample, IconHelpCircle } from "@/components/icons/Stroke
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { cn } from "@/lib/cn";
 
-type PanelPosition = { top: number; left: number };
+type PanelPosition = { top: number; left: number; origin: string };
 
 const PANEL_WIDTH = 384; // w-[24rem]
 const PANEL_GAP = 8;
@@ -56,6 +56,7 @@ export function HelpPopover({
       e.stopPropagation();
       e.preventDefault();
       setOpen(false);
+      triggerRef.current?.focus({ preventScroll: true });
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
@@ -87,7 +88,11 @@ export function HelpPopover({
       top = Math.max(PANEL_GAP, window.innerHeight - panelHeight - PANEL_GAP);
     }
 
-    setPanelPos({ top, left });
+    setPanelPos({
+      top,
+      left,
+      origin: `${align === "right" ? "right" : "left"} ${top < rect.top ? "bottom" : "top"}`,
+    });
   }, [align]);
 
   useLayoutEffect(() => {
@@ -132,8 +137,8 @@ export function HelpPopover({
         ref={panelRef}
         role="dialog"
         aria-label={title}
-        style={{ top: panelPos.top, left: panelPos.left }}
-        className="fixed z-[72] max-h-[min(70vh,28rem)] w-[min(100vw-2rem,24rem)] overflow-y-auto overscroll-contain rounded-md border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-lg"
+        style={{ top: panelPos.top, left: panelPos.left, transformOrigin: panelPos.origin }}
+        className="menu-pop-enter fixed z-[72] max-h-[min(70vh,28rem)] w-[min(100vw-2rem,24rem)] overflow-y-auto overscroll-contain rounded-md border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-lg"
       >
         <p className="mb-3 text-sm font-semibold text-slate-900">{title}</p>
         {children}

@@ -8,6 +8,7 @@ import { IconMail } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
+import { EMAIL_SIGNATURE_MAX } from "@/lib/email/signature";
 import { buttonPrimaryClass, controlFocusClass, salesChromeInsetClass } from "@/lib/ui/ontime-theme";
 
 const SIGNATURE_PLACEHOLDER = "Pozdrawiam / Best regards\nImię Nazwisko\nDział dostaw\ntel. 61 847 58 58\nMikran sp. z o.o.";
@@ -15,10 +16,16 @@ const SIGNATURE_PLACEHOLDER = "Pozdrawiam / Best regards\nImię Nazwisko\nDział
 /** Połączenie z firmowym Gmailem — wysyłka zamówień ZD z własnej skrzynki. */
 export function GmailSettingsSection({
   connectedEmail,
+  canReadReplies = false,
   signature: savedSignature,
+  unavailable = false,
 }: {
   connectedEmail: string | null;
+  /** Połączenie ze zgodą na odczyt odpowiedzi dostawców (gmail.readonly). */
+  canReadReplies?: boolean;
   signature: string;
+  /** Nie udało się odczytać połączenia z bazy — karta z komunikatem zamiast przycisków. */
+  unavailable?: boolean;
 }) {
   const router = useRouter();
   const signatureId = useId();
@@ -38,7 +45,8 @@ export function GmailSettingsSection({
           setSignatureInfo(res.message);
           return;
         }
-        setSignatureSaved(signature.trim());
+        setSignature(res.signature);
+        setSignatureSaved(res.signature);
         setSignatureInfo("Zapisano podpis.");
       } catch {
         setSignatureInfo("Nie udało się zapisać podpisu. Spróbuj ponownie.");
@@ -62,42 +70,67 @@ export function GmailSettingsSection({
         inset
         density="compact"
         title="Gmail"
-        description="Wysyłanie zamówień do dostawców z Twojej skrzynki. OnTime może tylko wysyłać — nie czyta poczty."
+        description="Wysyłanie zamówień i odpowiedzi do dostawców z Twojej skrzynki. OnTime czyta tylko maile od adresów i domen z kart dostawców (Poczta dostawców w Asystencie) - reszty poczty nie przegląda."
         leading={
           <SectionHeadingIcon tileClassName="bg-indigo-100 text-indigo-800">
             <IconMail size={20} />
           </SectionHeadingIcon>
         }
       />
-      <div className={cn(salesChromeInsetClass, "flex flex-col gap-3 py-3.5 sm:flex-row sm:items-center sm:justify-between")}>
-        {connectedEmail ? (
-          <>
-            <p className="text-sm text-slate-700">
-              Połączono: <span className="font-medium text-slate-900">{connectedEmail}</span>. Wysłane maile
-              zobaczysz w „Wysłanych” w Gmailu.
-            </p>
-            <Button type="button" variant="ghost" className="min-h-10 shrink-0" disabled={pending} onClick={disconnect}>
-              {pending ? "Odłączam…" : "Odłącz"}
-            </Button>
-          </>
-        ) : (
-          <>
-            <p className="text-sm text-slate-700">
-              Połącz swoje konto, żeby po utworzeniu ZD wysyłać zamówienie jednym kliknięciem.
-            </p>
-            <a
-              href="/api/google/connect?returnTo=/ustawienia"
-              className={cn(
-                buttonPrimaryClass,
-                "inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium"
-              )}
-            >
-              <IconMail size={16} aria-hidden />
-              Połącz z Gmailem
-            </a>
-          </>
-        )}
-      </div>
+      {unavailable ? (
+        <p className={cn(salesChromeInsetClass, "py-3.5 text-sm text-rose-800")} role="alert">
+          Nie udało się odczytać połączenia z Gmailem. Sprawdź migrację 172 (google_mail_connections, profiles.email_signature)
+          i log serwera.
+        </p>
+      ) : (
+        <div className={cn(salesChromeInsetClass, "flex flex-col gap-3 py-3.5 sm:flex-row sm:items-center sm:justify-between")}>
+          {connectedEmail ? (
+            <>
+              <p className="text-sm text-slate-700">
+                Połączono: <span className="font-medium text-slate-900">{connectedEmail}</span>. Wysłane maile
+                zobaczysz w „Wysłanych” w Gmailu.
+                {!canReadReplies ? (
+                  <span className="mt-1 block text-amber-800">
+                    Połącz ponownie i zgódź się na odczyt, żeby widzieć odpowiedzi dostawców w Poczcie dostawców (Asystent).
+                  </span>
+                ) : null}
+              </p>
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                {!canReadReplies ? (
+                  <a
+                    href="/api/google/connect?returnTo=/ustawienia"
+                    className={cn(
+                      buttonPrimaryClass,
+                      "inline-flex min-h-10 items-center justify-center rounded-md px-4 py-2 text-sm font-medium"
+                    )}
+                  >
+                    Połącz ponownie
+                  </a>
+                ) : null}
+                <Button type="button" variant="ghost" className="min-h-10" disabled={pending} onClick={disconnect}>
+                  {pending ? "Odłączam…" : "Odłącz"}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-slate-700">
+                Połącz swoje konto, żeby po utworzeniu ZD wysyłać zamówienie jednym kliknięciem.
+              </p>
+              <a
+                href="/api/google/connect?returnTo=/ustawienia"
+                className={cn(
+                  buttonPrimaryClass,
+                  "inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium"
+                )}
+              >
+                <IconMail size={16} aria-hidden />
+                Połącz z Gmailem
+              </a>
+            </>
+          )}
+        </div>
+      )}
       {error ? (
         <p className={cn(salesChromeInsetClass, "pb-3 text-sm text-rose-800")} role="alert">
           {error}
@@ -120,7 +153,7 @@ export function GmailSettingsSection({
               setSignatureInfo(null);
             }}
             rows={5}
-            maxLength={1000}
+            maxLength={EMAIL_SIGNATURE_MAX}
             placeholder={SIGNATURE_PLACEHOLDER}
             className={cn(controlFocusClass, "w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm")}
           />

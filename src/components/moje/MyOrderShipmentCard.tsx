@@ -923,6 +923,12 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   })();
   const useCompactActionsLayout =
     compactPickupOrAvailability || compactCancelAck || (needsAck && !expanded);
+  /** Sam „⋮” bez przycisków potwierdzeń — zostaje w wierszu tytułu także na telefonie. */
+  const menuOnlyToolbar =
+    Boolean(overflowMenuProps) &&
+    !(showDismissAck && !bannerDismiss) &&
+    !showBulkPickup &&
+    !(showSinglePickup && !bannerPickup);
 
   const archiveAccent: MojeShipmentRowArchiveAccent = row.isArchive
     ? row.kind === "informacja"
@@ -967,7 +973,12 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
           action={bannerAction}
         />
       ) : null}
-      <div className={cn("px-2 py-1.5 sm:px-3 sm:py-2", mojeQueueRowLayoutClass)}>
+      <div
+        className={cn(
+          "px-2 py-1.5 sm:px-3 sm:py-2",
+          menuOnlyToolbar ? "flex items-start gap-1 sm:items-center sm:gap-2" : mojeQueueRowLayoutClass
+        )}
+      >
         <div className={mojeQueueRowMainClass}>
         <button
           type="button"
@@ -1026,10 +1037,10 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                   showUnreadRequestNoteChrome ? (
                     <span
                       className={cn(
-                        "shrink-0 inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium leading-none ring-1 ring-inset",
+                        "shrink-0 inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-medium leading-none ring-1 ring-inset",
                         showUnreadRequestNoteChrome
                           ? "bg-indigo-100 text-indigo-800 ring-indigo-300/80"
-                          : "bg-indigo-50 text-indigo-500 ring-indigo-200/70"
+                          : "bg-indigo-50 text-indigo-700 ring-indigo-200/70"
                       )}
                       title={
                         showUnreadRequestNoteChrome
@@ -1070,6 +1081,15 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                 />
               ) : null
             }
+            footer={
+              !expanded ? (
+                <MyOrderRowMetaRail
+                  {...collapsedMetaRailProps}
+                  inline
+                  className="mt-1.5 sm:hidden"
+                />
+              ) : null
+            }
           />
 
         {!expanded ? (
@@ -1085,7 +1105,11 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
             bo `w-full` na telefonie ściskało tytuł i status do zera. */}
         <div
           className={cn(
-            useCompactActionsLayout ? mojeQueueRowActionsInlineClass : mojeQueueRowActionsClass
+            menuOnlyToolbar
+              ? "shrink-0 pt-1 sm:self-center sm:pt-0"
+              : useCompactActionsLayout
+                ? mojeQueueRowActionsInlineClass
+                : mojeQueueRowActionsClass
           )}
           onClick={(event) => event.stopPropagation()}
           onMouseDown={(event) => event.stopPropagation()}
@@ -1096,7 +1120,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
 
       {showSharedUnreadRequestNote && sharedRequestNote ? (
         <div
-          className="border-t border-indigo-100/80 bg-indigo-50/60 px-3 py-2.5 sm:px-4"
+          className="border-t border-slate-100 px-3 py-2.5 sm:px-4"
           onClick={(event) => event.stopPropagation()}
           onMouseDown={(event) => event.stopPropagation()}
         >
@@ -1113,13 +1137,6 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
             }
           />
         </div>
-      ) : null}
-
-      {!expanded ? (
-        <MyOrderRowMetaRail
-          {...collapsedMetaRailProps}
-          className="items-start px-3 pb-1.5 pt-0 sm:hidden"
-        />
       ) : null}
 
       {needsExpand ? (
@@ -1310,7 +1327,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
             </div>
             {expandedOrderTypeLabel ? (
               <p className="flex flex-wrap items-baseline gap-x-1.5 px-0.5 text-[11px] leading-snug text-slate-500">
-                <span className="font-medium text-indigo-400">Typ</span>
+                <span className="font-medium text-slate-500">Typ</span>
                 <span className="text-slate-600">{expandedOrderTypeLabel}</span>
               </p>
             ) : null}

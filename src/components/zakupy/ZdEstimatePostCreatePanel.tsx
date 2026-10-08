@@ -1,21 +1,18 @@
 "use client";
 
 import { findSupplierFormTemplate } from "@/lib/supplier-forms/templates";
-import { useEffect, useId, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   actionGetSupplierContact,
   actionGetZdEstimateScheduleMarkContext,
-  actionMarkZdEstimateIndividualsGlowne,
-  actionMarkZdEstimateSupplierOrdered,
   actionUndoZdEstimateDailyPanelChange,
   actionZdEstimateSupplierEta,
 } from "@/app/actions/zd-estimate";
 import { zdCreateEtaTile } from "@/lib/orders/zd-estimate-create-zd";
 import {
   actionGmailStatus,
-  actionSendZdToSupplier,
   actionZdSupplierEmailSent,
   type GmailStatus,
 } from "@/app/actions/gmail";
@@ -32,6 +29,7 @@ import {
 } from "@/components/zakupy/ZdEstimateOrderPreviewTable";
 import { SupplierContactActions } from "@/components/procurement/SupplierContactActions";
 import { Button } from "@/components/ui/Button";
+import { ZdSendWorkspace, type ZdSendSimulation } from "@/components/zakupy/ZdSendWorkspace";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Spinner } from "@/components/ui/Spinner";
 import { UndoToast } from "@/components/ui/UndoToast";
@@ -39,7 +37,6 @@ import { cn } from "@/lib/cn";
 import type { DailyPanelUndoPayload } from "@/lib/orders/daily-panel-undo";
 import type { SupplierLocation } from "@/types/database";
 import {
-  buildMailtoHref,
   buildZdSupplierMailBody,
   buildZdSupplierMailto,
   pendingGlowneOrderIds,
@@ -66,9 +63,6 @@ import {
 import {
   buttonPrimaryClass,
   controlFocusClass,
-  panelTypography,
-  zdEstimateRadiusSurfaceClass,
-  zdEstimateShadowControlClass,
 } from "@/lib/ui/ontime-theme";
 
 export function ZdEstimatePostCreatePanel({
@@ -82,12 +76,13 @@ export function ZdEstimatePostCreatePanel({
   onScheduleMarked,
   onUndoMark,
   previewOnly = false,
+  sendSimulation = null,
 }: {
   session: ZdPostCreateSession;
   /** Harness UI (e2e-lab): bez zapisów — Główne / plan / cofnij nic nie wysyłają. */
   previewOnly?: boolean;
-  /** Nieużywane od czasu stałej treści maila — zostawione dla zgodności wywołań. */
-  dateKey?: string;
+  /** Laboratorium: przebieg wysyłki na niby (tylko z previewOnly). */
+  sendSimulation?: ZdSendSimulation | null;
   /** Create nadal zablokowany — pokaż CTA w panelu (bez osobnego banera). */
   createLocked?: boolean;
   onDismiss: () => void;
@@ -102,8 +97,6 @@ export function ZdEstimatePostCreatePanel({
   onUndoMark?: (kind: "glowne" | "schedule") => void;
 }) {
   const router = useRouter();
-  const subjectId = useId();
-  const bodyId = useId();
   const [contactLoading, setContactLoading] = useState(true);
   const [contactError, setContactError] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
@@ -114,29 +107,9 @@ export function ZdEstimatePostCreatePanel({
   const [tsvCopied, setTsvCopied] = useState(false);
   const [tsvError, setTsvError] = useState(false);
   const [dokCopied, setDokCopied] = useState(false);
-  const [mailOpen, setMailOpen] = useState(false);
-  const [mailSubject, setMailSubject] = useState("");
-  const [mailBody, setMailBody] = useState("");
-  const [mailTo, setMailTo] = useState("");
   const [gmail, setGmail] = useState<GmailStatus | null>(null);
-  const [gmailSending, startGmailSend] = useTransition();
-  const [gmailError, setGmailError] = useState<{
-    message: string;
-    reconnect: boolean;
-    alreadySent: SupplierOrderEmail | null;
-    unknownRecipients: string[] | null;
-  } | null>(null);
   /** Wysyłka tego ZD z OnTime sprzed otwarcia panelu (np. przed odświeżeniem strony). */
   const [previousSend, setPreviousSend] = useState<SupplierOrderEmail | null>(null);
-  const [gmailSent, setGmailSent] = useState<{ to: string[]; from: string; file: string } | null>(null);
-  const toId = useId();
-  const [glownePending, startGlowne] = useTransition();
-  const [schedulePending, startSchedule] = useTransition();
-  const [glowneError, setGlowneError] = useState<string | null>(null);
-  const [glowneInfo, setGlowneInfo] = useState<string | null>(null);
-  /** glowneDone po samym dropie skipów — bez faktycznego oznaczenia Główne. */
-  const [glowneDoneViaSkip, setGlowneDoneViaSkip] = useState(false);
-  const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [scheduleHint, setScheduleHint] = useState<string | null>(null);
   const [scheduleCanMark, setScheduleCanMark] = useState(false);
   const [undo, setUndo] = useState<{
@@ -146,6 +119,8 @@ export function ZdEstimatePostCreatePanel({
   } | null>(null);
   const [undoBusy, setUndoBusy] = useState(false);
   const [supplierPreviewOpen, setSupplierPreviewOpen] = useState(false);
+  /** Stopka okna: tu trafiają przyciski wysyłki z ZdSendWorkspace (portal). */
+  const [sendActionsSlot, setSendActionsSlot] = useState<HTMLDivElement | null>(null);
   const [eta, setEta] = useState<{
     supplierId: string;
     dateKey: string | null;
@@ -231,12 +206,20 @@ export function ZdEstimatePostCreatePanel({
   // panel po utworzeniu ZD żyje tylko w pamięci strony i zniknąłby przy przejściu do Google).
   useEffect(() => {
     let cancelled = false;
-    const refresh = () =>
+    let lastAt = 0;
+    const refresh = () => {
+      // Przełączanie okien co chwilę nie musi za każdym razem pytać serwera.
+      if (Date.now() - lastAt < 15_000) return;
+      lastAt = Date.now();
       void actionGmailStatus()
         .then((res) => {
           if (!cancelled) setGmail(res);
         })
-        .catch(() => undefined);
+        // Bez statusu Gmaila okno nie może czekać w nieskończoność — tryb ręczny.
+        .catch(() => {
+          if (!cancelled) setGmail((g) => g ?? { configured: false, email: null, signature: "" });
+        });
+    };
     refresh();
     window.addEventListener("focus", refresh);
     return () => {
@@ -267,7 +250,10 @@ export function ZdEstimatePostCreatePanel({
       setContactError(null);
     });
     void (async () => {
-      const res = await actionGetSupplierContact(session.supplierId);
+      const res = await actionGetSupplierContact(session.supplierId).catch((e: unknown) => ({
+        ok: false as const,
+        message: e instanceof Error ? e.message : "Nie udało się wczytać kontaktu dostawcy.",
+      }));
       if (cancelled) return;
       if (!res.ok) {
         setContactError(
@@ -292,14 +278,6 @@ export function ZdEstimatePostCreatePanel({
       cancelled = true;
     };
   }, [session.supplierId]);
-
-  useEffect(() => {
-    queueMicrotask(() => {
-      setGlowneInfo(null);
-      setGlowneDoneViaSkip(false);
-      setGlowneError(null);
-    });
-  }, [session.dokId, session.createdAtMs, session.kind]);
 
   useEffect(() => {
     let cancelled = false;
@@ -359,9 +337,7 @@ export function ZdEstimatePostCreatePanel({
   });
 
   const glowneStatus = session.glowneDone
-    ? glowneDoneViaSkip
-      ? ZD_ESTIMATE_UI.postCreateStatusGlowneClearedSkipped
-      : ZD_ESTIMATE_UI.postCreateStatusGlowneDone
+    ? ZD_ESTIMATE_UI.postCreateStatusGlowneDone
     : glowneIds.length
       ? ZD_ESTIMATE_UI.postCreateStatusGlownePending
       : ZD_ESTIMATE_UI.postCreateStatusGlowneNone;
@@ -414,136 +390,14 @@ export function ZdEstimatePostCreatePanel({
     router.push(`/podsumowanie?view=dzis&supplierId=${id}`);
   };
 
-  const openMailComposer = () => {
-    if (!mailtoSeed) return;
-    setMailSubject(mailtoSeed.subject);
-    const signature = gmail?.email ? gmail.signature.trim() : "";
-    setMailBody(signature ? `${mailtoSeed.body}\n${signature}` : mailtoSeed.body);
-    setMailTo(email ?? "");
-    setGmailError(null);
-    setMailOpen(true);
-  };
 
   const gmailEmail = gmail?.email ?? null;
-  const canGmailSend = Boolean(gmailEmail) && canAct && !previewOnly;
+  // Okno wysyłki z podglądem pokazujemy też w trybie podglądu (laboratorium) — tylko „Wyślij” jest wtedy wyłączone.
+  const canGmailCompose = Boolean(gmailEmail) && canAct;
   const gmailConnectHref = "/api/google/connect?returnTo=/ustawienia";
 
-  const sendViaGmail = (resend = false, allowUnknownRecipients = false) => {
-    if (!canGmailSend || session.dokId == null) return;
-    setGmailError(null);
-    startGmailSend(async () => {
-      try {
-        const res = await actionSendZdToSupplier({
-          dokId: session.dokId!,
-          supplierId: session.supplierId,
-          to: mailTo,
-          subject: mailSubject,
-          body: mailBody,
-          resend: resend || previousSend != null,
-          allowUnknownRecipients,
-        });
-        if (!res.ok) {
-          setGmailError({
-            message: res.message,
-            reconnect: Boolean(res.reconnect),
-            alreadySent: res.alreadySent ?? null,
-            unknownRecipients: res.unknownRecipients ?? null,
-          });
-          if (res.reconnect) setGmail((g) => (g ? { ...g, email: null } : g));
-          return;
-        }
-        setGmailSent({ to: res.to, from: res.from, file: res.attachmentName });
-        setMailOpen(false);
-      } catch (e) {
-        setGmailError({
-          message: userFacingErrorTextFromMessage(
-            e instanceof Error ? e.message : String(e),
-            "Nie udało się wysłać zamówienia."
-          ),
-          reconnect: false,
-          alreadySent: null,
-          unknownRecipients: null,
-        });
-      }
-    });
-  };
 
-  const composedHref =
-    email && mailOpen
-      ? buildMailtoHref({
-          email,
-          subject: mailSubject,
-          body: mailBody,
-        })
-      : null;
 
-  const markGlowne = () => {
-    if (previewOnly || !canAct || session.glowneDone || !glowneIds.length || glownePending) {
-      return;
-    }
-    setGlowneError(null);
-    startGlowne(async () => {
-      const res = await actionMarkZdEstimateIndividualsGlowne({
-        supplierId: session.supplierId,
-        orderIds: glowneIds,
-      });
-      if (!res.ok) {
-        setGlowneError(
-          userFacingErrorTextFromMessage(res.message, "Nie udało się oznaczyć Główne.")
-        );
-        return;
-      }
-      onGlowneMarked?.({
-        processedIds: res.processedIds,
-        dropPendingIds: [
-          ...new Set([...res.processedIds, ...res.skippedIds]),
-        ],
-      });
-      if (res.undo) {
-        setGlowneDoneViaSkip(false);
-        setGlowneInfo(null);
-        setUndo({
-          kind: "glowne",
-          payload: res.undo,
-          title: res.message,
-        });
-      } else if (res.processedIds.length === 0 && res.skippedIds.length) {
-        setGlowneDoneViaSkip(true);
-        setGlowneInfo(res.message);
-        setGlowneError(null);
-      } else {
-        setGlowneDoneViaSkip(false);
-        setGlowneInfo(null);
-      }
-    });
-  };
-
-  const markSchedule = () => {
-    if (previewOnly || !canAct || session.scheduleDone || !scheduleCanMark || schedulePending) {
-      return;
-    }
-    setScheduleError(null);
-    startSchedule(async () => {
-      const res = await actionMarkZdEstimateSupplierOrdered({
-        supplierId: session.supplierId,
-      });
-      if (!res.ok) {
-        setScheduleError(
-          userFacingErrorTextFromMessage(res.message, "Nie udało się zapisać planu.")
-        );
-        return;
-      }
-      onScheduleMarked?.();
-      setScheduleCanMark(false);
-      if (res.undo) {
-        setUndo({
-          kind: "schedule",
-          payload: res.undo,
-          title: res.message,
-        });
-      }
-    });
-  };
 
   const undoMark = () => {
     if (previewOnly || !undo || undoBusy) return;
@@ -557,10 +411,6 @@ export function ZdEstimatePostCreatePanel({
         return;
       }
       setUndo(null);
-      if (current.kind === "glowne") {
-        setGlowneDoneViaSkip(false);
-        setGlowneInfo(null);
-      }
       onUndoMark?.(current.kind);
     })();
   };
@@ -603,13 +453,74 @@ export function ZdEstimatePostCreatePanel({
     },
   ];
 
+  // Gdy OnTime nie wyśle maila samo: kontakt dostawcy i gotowa treść do własnej poczty / portalu.
+  const manualContact = (
+    <div className="space-y-2">
+      {contactError ? <p className="text-sm text-amber-900">{contactError}</p> : null}
+      <p className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700 ring-1 ring-slate-200/80">
+        {!email
+          ? `${session.supplierName} nie ma na karcie adresu do zamówień - zamów jak zwykle (portal, telefon).`
+          : gmail?.configured && !gmailEmail
+            ? "Twój Gmail nie jest połączony z OnTime - wyślij ze swojej poczty albo połącz Gmaila (nowa karta) i wróć tutaj."
+            : "Wyślij zamówienie ze swojej poczty."}
+      </p>
+      {orderForm ? (
+        <a
+          href={orderForm.href}
+          download
+          className={cn(
+            buttonPrimaryClass,
+            "inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium sm:w-auto"
+          )}
+        >
+          <IconDownload size={16} aria-hidden />
+          {orderForm.kind === "pdf" ? "Pobierz formularz (PDF)" : "Pobierz formularz (Excel)"}
+        </a>
+      ) : null}
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        {mailtoSeed ? (
+          <a
+            href={mailtoSeed.href}
+            className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 sm:w-auto"
+          >
+            <IconMail size={16} aria-hidden />
+            {ZD_ESTIMATE_UI.postCreateMailComposeOpen}
+          </a>
+        ) : null}
+        <Button type="button" variant="secondary" className="min-h-10 w-full sm:w-auto" onClick={() => void copyMailBody()}>
+          {mailBodyCopied
+            ? ZD_ESTIMATE_UI.postCreateMailBodyCopied
+            : location === "POLSKA"
+              ? ZD_ESTIMATE_UI.postCreateMailBodyCopyPl
+              : ZD_ESTIMATE_UI.postCreateMailBodyCopyEn}
+        </Button>
+        {gmail?.configured && !gmailEmail && email && !previewOnly ? (
+          <a
+            href={gmailConnectHref}
+            target="_blank"
+            rel="noopener"
+            className="inline-flex min-h-10 items-center px-2 text-sm font-medium text-indigo-700 underline-offset-2 hover:underline"
+          >
+            {ZD_ESTIMATE_UI.postCreateGmailConnect}
+          </a>
+        ) : null}
+      </div>
+      <SupplierContactActions notes={notes} mails={mails} extraInfo={extraInfo} />
+      {!contactUi.contactLink && !contactUi.copyText ? (
+        <p className="text-sm text-slate-600">
+          {ZD_ESTIMATE_UI.postCreateNoContact}{" "}
+          <Link href={cardsHref} className="font-medium text-indigo-700 underline-offset-2 hover:underline">
+            {ZD_ESTIMATE_UI.postCreateCardsLink}
+          </Link>
+        </p>
+      ) : null}
+    </div>
+  );
+
   return (
     <>
       {/* Region aria-live dla czytników ekranu — komunikaty statusu akcji. */}
       <div className="sr-only" aria-live="polite" aria-atomic="true">
-        {glowneError ? `Błąd oznaczania Główne: ${glowneError}. ` : null}
-        {glowneInfo ? `${glowneInfo}. ` : null}
-        {scheduleError ? `Błąd planu: ${scheduleError}. ` : null}
         {scheduleHint ? `${scheduleHint}. ` : null}
         {tsvError ? "Kopiowanie TSV nie powiodło się. " : null}
         {tsvCopied ? "TSV skopiowano. " : null}
@@ -621,7 +532,7 @@ export function ZdEstimatePostCreatePanel({
         titleHint={ZD_ESTIMATE_UI.postCreateModalHint}
         titleHintAriaLabel="O panelu po utworzeniu ZD"
         titleId="zd-post-create-title"
-        size="xl"
+        size="full"
         tier="raised"
         bodyClassName="space-y-4 px-5 py-4 sm:px-6 sm:py-5"
         footer={
@@ -690,6 +601,7 @@ export function ZdEstimatePostCreatePanel({
                   {ZD_ESTIMATE_UI.postCreateLinkTimeoutCta}
                 </Button>
               ) : null}
+              <div ref={setSendActionsSlot} className="contents" />
             </div>
           </div>
         }
@@ -820,289 +732,65 @@ export function ZdEstimatePostCreatePanel({
           </p>
         ) : null}
 
-        <div
-          className={cn(
-            "grid gap-4 lg:items-start",
-            hasRequestsPreview ? "lg:grid-cols-5" : null
-          )}
-        >
-          <section
-            className={cn(
-              "border border-slate-200/80 bg-white p-3.5 sm:p-4",
-              zdEstimateRadiusSurfaceClass,
-              zdEstimateShadowControlClass,
-              hasRequestsPreview ? "lg:col-span-3" : null
-            )}
-            aria-labelledby="zd-post-create-next"
-          >
-            <p
-              id="zd-post-create-next"
-              className={cn(panelTypography.sectionLabel, "text-slate-600")}
-            >
-              Co dalej
+        {canAct && session.dokId != null ? (
+          gmail == null || contactLoading ? (
+            <p className="inline-flex items-center gap-2 text-sm text-slate-600" role="status">
+              <Spinner className="size-4" /> Przygotowuję wysyłkę…
             </p>
-            {!canAct ? (
-              <p className="mt-2 text-sm leading-relaxed text-amber-900">
-                {ZD_ESTIMATE_UI.postCreateMarksTimeoutHint}
-              </p>
-            ) : null}
-            <ol className="mt-3 space-y-3">
-              <NextStep
-                n={1}
-                done={gmailSent != null}
-                doneLabel={
-                  gmailSent
-                    ? `Wysłano z ${gmailSent.from} do ${gmailSent.to.join(", ")} · ${gmailSent.file}`
-                    : null
-                }
-                title="Wyślij zamówienie do dostawcy"
-              >
-                {contactLoading ? (
-                  <p className="inline-flex items-center gap-2 text-sm text-slate-600">
-                    <Spinner className="size-4" /> Wczytuję kontakt…
-                  </p>
-                ) : contactError ? (
-                  <p className="text-sm text-amber-900">{contactError}</p>
-                ) : (
-                  <div className="space-y-2">
-                    {previousSend ? (
-                      <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-900 ring-1 ring-emerald-200/80">
-                        Wysłano już {formatSentAt(previousSend.sentAt)} z {previousSend.from} do{" "}
-                        {previousSend.to.join(", ")}. Ponowna wysyłka pójdzie jako kolejny mail.
-                      </p>
-                    ) : null}
-                    {orderForm ? (
-                      <div className="flex flex-col gap-2 rounded-md bg-slate-50 px-3 py-2.5 ring-1 ring-slate-200/80 sm:flex-row sm:items-center sm:justify-between">
-                        <p className="text-sm text-slate-700">
-                          {session.supplierName} przyjmuje zamówienia na swoim{" "}
-                          {orderForm.kind === "pdf" ? "formularzu PDF" : "arkuszu Excel"} - pobierz go
-                          wypełnionego tym ZD i dołącz do maila.
-                        </p>
-                        <a
-                          href={orderForm.href}
-                          download
-                          className={cn(
-                            buttonPrimaryClass,
-                            "inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium"
-                          )}
-                        >
-                          <IconDownload size={16} aria-hidden />
-                          {orderForm.kind === "pdf" ? "Pobierz formularz (PDF)" : "Pobierz formularz (Excel)"}
-                        </a>
-                      </div>
-                    ) : null}
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="min-h-10 w-full sm:w-auto"
-                      onClick={() => void copyMailBody()}
-                    >
-                      {mailBodyCopied
-                        ? ZD_ESTIMATE_UI.postCreateMailBodyCopied
-                        : location === "POLSKA"
-                          ? ZD_ESTIMATE_UI.postCreateMailBodyCopyPl
-                          : ZD_ESTIMATE_UI.postCreateMailBodyCopyEn}
-                    </Button>
-                    {mailtoSeed && canGmailSend ? (
-                      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                        <Button
-                          type="button"
-                          className="min-h-10 w-full sm:w-auto"
-                          onClick={openMailComposer}
-                        >
-                          <IconMail size={16} aria-hidden />
-                          {ZD_ESTIMATE_UI.postCreateGmailCta}
-                        </Button>
-                        <a
-                          href={mailtoSeed.href}
-                          className="inline-flex min-h-10 w-full items-center justify-center rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 sm:w-auto"
-                        >
-                          {ZD_ESTIMATE_UI.postCreateMailComposeOpen}
-                        </a>
-                      </div>
-                    ) : mailtoSeed ? (
-                      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                        <a
-                          href={mailtoSeed.href}
-                          className={cn(
-                            buttonPrimaryClass,
-                            "inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium sm:w-auto"
-                          )}
-                        >
-                          <IconMail size={16} aria-hidden />
-                          {ZD_ESTIMATE_UI.postCreateMailCta}
-                        </a>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="min-h-10 w-full sm:w-auto"
-                          onClick={openMailComposer}
-                        >
-                          {ZD_ESTIMATE_UI.postCreateMailComposeCta}
-                        </Button>
-                      </div>
-                    ) : null}
-                    {mailtoSeed && gmail?.configured && !gmailEmail && canAct && !previewOnly ? (
-                      <p className="text-sm text-slate-600">
-                        <a
-                          href={gmailConnectHref}
-                          target="_blank"
-                          rel="noopener"
-                          className="font-medium text-indigo-700 underline-offset-2 hover:underline"
-                        >
-                          {ZD_ESTIMATE_UI.postCreateGmailConnect}
-                        </a>{" "}
-                        {ZD_ESTIMATE_UI.postCreateGmailConnectHint}
-                      </p>
-                    ) : null}
-                    <SupplierContactActions
-                      notes={notes}
-                      mails={mails}
-                      extraInfo={extraInfo}
-                    />
-                    {!contactUi.contactLink && !contactUi.copyText ? (
-                      <p className="text-sm text-slate-600">
-                        {ZD_ESTIMATE_UI.postCreateNoContact}{" "}
-                        <Link
-                          href={cardsHref}
-                          className="font-medium text-indigo-700 underline-offset-2 hover:underline"
-                        >
-                          {ZD_ESTIMATE_UI.postCreateCardsLink}
-                        </Link>
-                      </p>
-                    ) : null}
-                  </div>
-                )}
-              </NextStep>
-              {canAct && (glowneIds.length > 0 || session.glowneDone) ? (
-                <NextStep
-                  n={2}
-                  done={session.glowneDone}
-                  doneLabel={
-                    glowneDoneViaSkip
-                      ? glowneInfo || ZD_ESTIMATE_UI.postCreateStatusGlowneClearedSkipped
-                      : ZD_ESTIMATE_UI.postCreateStatusGlowneDone
-                  }
-                  title="Prośby jako Główne"
-                  hint={ZD_ESTIMATE_UI.postCreateMarkGlowneHint}
-                >
-                  <Button
-                    type="button"
-                    variant={session.glowneDone ? "ghost" : "secondary"}
-                    className="min-h-10 w-full sm:w-auto"
-                    disabled={session.glowneDone || !glowneIds.length || glownePending}
-                    onClick={markGlowne}
-                    aria-busy={glownePending}
-                  >
-                    {glownePending ? (
-                      <span className="inline-flex items-center gap-2">
-                        <Spinner className="size-4" /> Odznaczam…
-                      </span>
-                    ) : session.glowneDone ? (
-                      glowneDoneViaSkip
-                        ? ZD_ESTIMATE_UI.postCreateStatusGlowneClearedSkipped
-                        : ZD_ESTIMATE_UI.postCreateStatusGlowneDone
-                    ) : (
-                      `${ZD_ESTIMATE_UI.postCreateMarkGlowneCta}${
-                        glowneIds.length ? ` (${glowneIds.length})` : ""
-                      }`
-                    )}
-                  </Button>
-                  {glowneInfo ? (
-                    <p className="text-sm text-slate-700">{glowneInfo}</p>
-                  ) : null}
-                  {glowneError ? (
-                    <p className="text-sm text-rose-800" role="alert">
-                      {glowneError}
-                    </p>
-                  ) : null}
-                </NextStep>
-              ) : null}
+          ) : (
+            <ZdSendWorkspace
+              // Wcześniejsza wysyłka dociera asynchronicznie — okno musi ją pokazać, a nie pusty formularz.
+              key={`${session.dokId}|${gmailEmail ?? "-"}|${email ?? "-"}|${previousSend ? "sent" : "new"}`}
+              dokId={session.dokId}
+              supplierId={session.supplierId}
+              supplierName={session.supplierName}
+              previewOnly={previewOnly}
+              // Wysyłka z OnTime tylko z połączonym Gmailem i adresem dostawcy; inaczej tryb ręczny (portal, telefon).
+              gmail={canGmailCompose && gmailEmail && email ? { email: gmailEmail, signature: gmail.signature } : null}
+              toSeed={email ?? ""}
+              subjectSeed={mailtoSeed?.subject ?? (session.dokNrPelny?.trim() || "ZD")}
+              bodySeed={mailtoSeed?.body ?? ""}
+              orderFormKind={orderFormTemplate?.kind ?? null}
+              etaDateKey={eta?.supplierId === session.supplierId ? eta.dateKey : null}
+              etaSub={etaTile.sub}
+              catalogOrderIds={session.markFreeze.pendingGlowneCatalogIds}
+              serviceOrderIds={session.markFreeze.pendingGlowneServiceIds}
+              glowneDone={session.glowneDone}
+              scheduleDone={session.scheduleDone}
+              scheduleCanMark={scheduleCanMark}
+              scheduleHint={scheduleHint}
+              previousSend={previousSend}
+              manualContact={manualContact}
+              actionsSlot={sendActionsSlot}
+              simulation={previewOnly ? sendSimulation : null}
+              onGlowneMarked={(r) => onGlowneMarked?.(r)}
+              onScheduleMarked={() => {
+                onScheduleMarked?.();
+                setScheduleCanMark(false);
+              }}
+              onUndo={(kind, payload, title) => setUndo({ kind, payload, title })}
+            />
+          )
+        ) : null}
 
-              {canAct ? (
-                <NextStep
-                  n={glowneIds.length > 0 || session.glowneDone ? 3 : 2}
-                  done={session.scheduleDone}
-                  doneLabel={ZD_ESTIMATE_UI.postCreateStatusScheduleDone}
-                  title="Plan tygodnia"
-                  hint={ZD_ESTIMATE_UI.postCreateMarkScheduleHint}
-                  warning={
-                    session.scheduleDone || scheduleCanMark
-                      ? ZD_ESTIMATE_UI.postCreateMarkDzisWarning
-                      : null
-                  }
-                >
-                  <Button
-                    type="button"
-                    variant={session.scheduleDone ? "ghost" : "secondary"}
-                    className="min-h-10 w-full sm:w-auto"
-                    disabled={
-                      session.scheduleDone || !scheduleCanMark || schedulePending
-                    }
-                    onClick={markSchedule}
-                    title={scheduleHint ?? undefined}
-                    aria-busy={schedulePending}
-                  >
-                    {schedulePending ? (
-                      <span className="inline-flex items-center gap-2">
-                        <Spinner className="size-4" /> Zapisuję plan…
-                      </span>
-                    ) : session.scheduleDone ? (
-                      ZD_ESTIMATE_UI.postCreateStatusScheduleDone
-                    ) : (
-                      ZD_ESTIMATE_UI.postCreateMarkScheduleCta
-                    )}
-                  </Button>
-                  {scheduleError ? (
-                    <p className="text-sm text-rose-800" role="alert">
-                      {scheduleError}
-                    </p>
-                  ) : null}
-                  {!scheduleCanMark && scheduleHint && !session.scheduleDone ? (
-                    <p className="text-xs text-slate-600">{scheduleHint}</p>
-                  ) : null}
-                </NextStep>
-              ) : null}
-
-            </ol>
-          </section>
-
-          {hasRequestsPreview && (
-            <div className="space-y-4 lg:col-span-2">
+        {hasRequestsPreview ? (
+          <details className="rounded-[var(--radius-panel)] border border-slate-200 bg-white px-4 py-3">
+            <summary className="cursor-pointer text-sm font-medium text-slate-700">
+              Prośby i uwagi na tym ZD
+            </summary>
+            <div className="mt-3 space-y-4">
               {session.composedUwagi ? (
-                <section
-                  className={cn(
-                    "border border-slate-200/80 bg-slate-50/60 p-3.5 sm:p-4",
-                    zdEstimateRadiusSurfaceClass
-                  )}
-                >
-                  <p
-                    className={cn(
-                      panelTypography.sectionLabel,
-                      "text-slate-600"
-                    )}
-                  >
-                    {ZD_ESTIMATE_UI.postCreateUwagiTitle}
-                  </p>
-                  <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
-                    {session.composedUwagi}
-                  </p>
-                </section>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{session.composedUwagi}</p>
               ) : null}
-
               <ZdEstimateCreateRequestsPreview
                 catalogRequests={glownePreview.catalogRequests}
                 serviceLines={glownePreview.serviceLines}
-                glowneCatalogCount={
-                  session.markFreeze.pendingGlowneCatalogIds.length
-                }
-                glowneServiceCount={
-                  session.markFreeze.pendingGlowneServiceIds.length
-                }
+                glowneCatalogCount={session.markFreeze.pendingGlowneCatalogIds.length}
+                glowneServiceCount={session.markFreeze.pendingGlowneServiceIds.length}
               />
             </div>
-          )}
-        </div>
+          </details>
+        ) : null}
 
         {session.bumped.length > 0 ||
         session.markFreeze.omittedServiceCount > 0 ||
@@ -1163,171 +851,6 @@ export function ZdEstimatePostCreatePanel({
         />
       ) : null}
 
-      {mailOpen && mailtoSeed && email ? (
-        <ModalShell
-          open
-          onClose={() => setMailOpen(false)}
-          title={ZD_ESTIMATE_UI.postCreateMailComposeTitle}
-          titleHint={ZD_ESTIMATE_UI.postCreateMailComposeHint}
-          titleId="zd-post-create-mail-title"
-          size="md"
-          tier="top"
-          bodyClassName="space-y-4 px-5 py-5 sm:px-6"
-          footer={
-            <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <Button
-                type="button"
-                variant="ghost"
-                className="min-h-11 w-full sm:w-auto"
-                onClick={() => setMailOpen(false)}
-              >
-                Anuluj
-              </Button>
-              {canGmailSend ? (
-                <Button
-                  type="button"
-                  className="min-h-11 w-full sm:w-auto"
-                  disabled={gmailSending || !mailTo.trim() || !mailSubject.trim()}
-                  onClick={() => sendViaGmail()}
-                  aria-busy={gmailSending}
-                >
-                  {gmailSending ? (
-                    <span className="inline-flex items-center gap-2">
-                      <Spinner className="size-4" /> Wysyłam…
-                    </span>
-                  ) : (
-                    ZD_ESTIMATE_UI.postCreateGmailSend
-                  )}
-                </Button>
-              ) : composedHref ? (
-                <a
-                  href={composedHref}
-                  className={cn(
-                    buttonPrimaryClass,
-                    "inline-flex min-h-11 w-full items-center justify-center rounded-md px-4 py-2 text-sm font-medium sm:w-auto"
-                  )}
-                  onClick={() => setMailOpen(false)}
-                >
-                  {ZD_ESTIMATE_UI.postCreateMailComposeOpen}
-                </a>
-              ) : (
-                <Button
-                  type="button"
-                  className="min-h-11 w-full sm:w-auto"
-                  disabled
-                >
-                  {ZD_ESTIMATE_UI.postCreateMailComposeOpen}
-                </Button>
-              )}
-            </div>
-          }
-        >
-          <div>
-            <p className="text-xs font-medium text-slate-500">
-              {ZD_ESTIMATE_UI.postCreateMailComposeTo}
-            </p>
-            {canGmailSend ? (
-              <input
-                id={toId}
-                aria-label={ZD_ESTIMATE_UI.postCreateMailComposeTo}
-                value={mailTo}
-                onChange={(e) => setMailTo(e.target.value)}
-                className={cn(
-                  controlFocusClass,
-                  "mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
-                )}
-              />
-            ) : (
-              <p className="mt-1 text-sm font-medium text-slate-900">{email}</p>
-            )}
-          </div>
-          {canGmailSend ? (
-            <p className="text-xs leading-relaxed text-slate-500">
-              Od: <span className="font-medium text-slate-700">{gmailEmail}</span> ·{" "}
-              {orderForm
-                ? `Załącznik: formularz ${session.supplierName} wypełniony tym ZD.`
-                : `Załącznik: PDF zamówienia z pozycji ZD (${location === "POLSKA" ? "PL" : "EN"}).`}
-            </p>
-          ) : null}
-          {gmailError?.unknownRecipients?.length ? (
-            <div className="space-y-2 rounded-md bg-amber-50 px-3 py-2.5 text-sm text-amber-950 ring-1 ring-amber-200" role="alert">
-              <p>
-                {gmailError.unknownRecipients.join(", ")} nie ma na karcie {session.supplierName}. Sprawdź adres —
-                zamówienie wyjdzie z Twojej skrzynki.
-              </p>
-              <Button
-                type="button"
-                variant="secondary"
-                className="min-h-10"
-                disabled={gmailSending}
-                onClick={() => sendViaGmail(true, true)}
-              >
-                Wyślij mimo to
-              </Button>
-            </div>
-          ) : gmailError?.alreadySent ? (
-            <div className="space-y-2 rounded-md bg-amber-50 px-3 py-2.5 text-sm text-amber-950 ring-1 ring-amber-200" role="alert">
-              <p>
-                To ZD wysłano już {formatSentAt(gmailError.alreadySent.sentAt)} z {gmailError.alreadySent.from} do{" "}
-                {gmailError.alreadySent.to.join(", ")}. Wysłać jeszcze raz?
-              </p>
-              <Button
-                type="button"
-                variant="secondary"
-                className="min-h-10"
-                disabled={gmailSending}
-                onClick={() => sendViaGmail(true)}
-              >
-                Wyślij ponownie
-              </Button>
-            </div>
-          ) : gmailError ? (
-            <p className="text-sm text-rose-800" role="alert">
-              {gmailError.message}{" "}
-              {gmailError.reconnect ? (
-                <a href={gmailConnectHref} target="_blank" rel="noopener" className="font-medium underline">
-                  {ZD_ESTIMATE_UI.postCreateGmailConnect}
-                </a>
-              ) : null}
-            </p>
-          ) : null}
-          <div>
-            <label
-              htmlFor={subjectId}
-              className="text-xs font-medium text-slate-500"
-            >
-              {ZD_ESTIMATE_UI.postCreateMailComposeSubject}
-            </label>
-            <input
-              id={subjectId}
-              value={mailSubject}
-              onChange={(e) => setMailSubject(e.target.value)}
-              className={cn(
-                controlFocusClass,
-                "mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
-              )}
-            />
-          </div>
-          <div>
-            <label
-              htmlFor={bodyId}
-              className="text-xs font-medium text-slate-500"
-            >
-              {ZD_ESTIMATE_UI.postCreateMailComposeBody}
-            </label>
-            <textarea
-              id={bodyId}
-              value={mailBody}
-              onChange={(e) => setMailBody(e.target.value)}
-              rows={8}
-              className={cn(
-                controlFocusClass,
-                "mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
-              )}
-            />
-          </div>
-        </ModalShell>
-      ) : null}
     </>
   );
 }
@@ -1418,78 +941,4 @@ function StatusDot({
       aria-hidden
     />
   );
-}
-
-function NextStep({
-  n,
-  done,
-  doneLabel,
-  title,
-  hint,
-  warning,
-  children,
-}: {
-  n: number;
-  done: boolean;
-  /** Po wykonaniu: krótka linia zamiast opisu i przycisku. */
-  doneLabel?: string | null;
-  title: string;
-  hint?: string | null;
-  warning?: string | null;
-  children: React.ReactNode;
-}) {
-  if (done && doneLabel) {
-    return (
-      <li className="flex gap-3">
-        <span
-          className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-semibold text-emerald-800"
-          aria-hidden
-        >
-          ✓
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-slate-900">{title}</p>
-          <p className="mt-0.5 text-sm text-emerald-800">{doneLabel}</p>
-        </div>
-      </li>
-    );
-  }
-  return (
-    <li className="flex gap-3">
-      <span
-        className={cn(
-          "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
-          done
-            ? "bg-emerald-100 text-emerald-800"
-            : "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
-        )}
-        aria-hidden
-      >
-        {done ? "✓" : n}
-      </span>
-      <div className="min-w-0 flex-1 space-y-2">
-        <div>
-          <p className="text-sm font-semibold text-slate-900">{title}</p>
-          {hint ? (
-            <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{hint}</p>
-          ) : null}
-          {warning ? (
-            <p className="mt-0.5 text-xs leading-relaxed text-amber-900">
-              {warning}
-            </p>
-          ) : null}
-        </div>
-        {children}
-      </div>
-    </li>
-  );
-}
-
-function formatSentAt(iso: string): string {
-  return new Date(iso).toLocaleString("pl-PL", {
-    day: "numeric",
-    month: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }

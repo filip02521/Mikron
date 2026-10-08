@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   supplierInquiryWait,
-  supplierInquiryWaitLabel,
   buildSupplierInquiryDraft,
   pendingInquiryToSupplier,
   pendingSupplierInquiry,
@@ -94,6 +93,12 @@ describe("pendingSupplierInquiry", () => {
   it("najnowsze już z odpowiedzią → nie czeka", () => {
     expect(pendingSupplierInquiry([{ ...base, resolvedAt: "2026-10-05T12:00:00.000Z" }])).toBeNull();
   });
+
+  it("podpis z pożegnaniem zastępuje pożegnanie szkicu (bez podwójnego „Pozdrawiam”)", () => {
+    const en = buildSupplierInquiryDraft({ product, english: true, signature: "Pozdrawiam/Best Regards\n\nFilip" });
+    expect(en.body).toContain("Thank you in advance.\nPozdrawiam/Best Regards");
+    expect(en.body).not.toContain("Kind regards");
+  });
 });
 
 describe("supplierInquiryWait", () => {
@@ -115,11 +120,5 @@ describe("supplierInquiryWait", () => {
       supplierInquiryWait({ sentAt: "2026-10-09T09:00:00+02:00" }, new Date("2026-10-12T09:00:00+02:00"))
         .businessDays
     ).toBe(1);
-  });
-
-  it("etykieta", () => {
-    expect(supplierInquiryWaitLabel(0)).toBe("dziś");
-    expect(supplierInquiryWaitLabel(1)).toBe("1 dzień");
-    expect(supplierInquiryWaitLabel(4)).toBe("4 dni");
   });
 });

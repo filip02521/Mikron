@@ -11,7 +11,9 @@ import {
   actionGetCustomsInvoiceUrl,
   actionImportCustomsEmailDescriptions,
   actionMarkCustomsClearanceSent,
+  actionCustomsMailPreview,
   actionSendCustomsClearanceEmail,
+  type CustomsMailPreview,
   actionSaveCustomsLine,
   actionSetCustomsDocumentArticles,
   actionUpdateCustomsClearanceHeader,
@@ -22,6 +24,8 @@ import {
   actionExtractDocumentArticlesWithAi,
   actionProposeCustomsLinesWithAi,
 } from "@/app/actions/customs-ai";
+import { formatFileSize, MailPreview } from "@/components/mail/MailPreview";
+import { parseMailRecipients } from "@/lib/email/recipients";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -61,10 +65,19 @@ type LineFilter = "todo" | "confirmed" | "all";
 type PendingConfirm = "delete" | "markSent" | "send" | "confirmAll" | null;
 
 /** Pierwszy brakujący warunek wysyłki — wyłączony przycisk musi mówić, czego brakuje. */
-function sendBlocker(input: { incomplete: number; hasInvoice: boolean; email: string }): string | null {
+function sendBlocker(input: {
+  incomplete: number;
+  hasInvoice: boolean;
+  email: string;
+  cc: string;
+  gmail: string | null | undefined;
+}): string | null {
   if (input.incomplete > 0) return `Uzupełnij ${pozycjeAcc(input.incomplete)} (opis PL i poprawny kod CN).`;
   if (!input.hasInvoice) return "Wgraj plik faktury w sekcji Faktura.";
   if (!input.email.trim()) return "Wpisz adres agencji celnej.";
+  const recipients = parseMailRecipients(input.email, input.cc);
+  if (!recipients.ok) return recipients.message;
+  if (input.gmail === null) return "Połącz swojego Gmaila w Ustawieniach - mail do agencji wychodzi z Twojej skrzynki.";
   return null;
 }
 
@@ -571,7 +584,7 @@ export function CustomsClearanceEditor({
   const readOnly = view.status === "sent";
   const [notice, setNotice] = useState<Notice>(null);
   const [agencyEmail, setAgencyEmail] = useState(view.defaultAgencyEmail ?? "");
-  const [copyToMe, setCopyToMe] = useState(true);
+  const [agencyCc, setAgencyCc] = useState("");
   const [sendExcel, setSendExcel] = useState(false);
   const [header, setHeader] = useState({
     invoiceNumber: view.invoiceNumber,
@@ -609,7 +622,33 @@ export function CustomsClearanceEditor({
         ),
     [view.lines, lineFilter]
   );
-  const blocker = sendBlocker({ incomplete: view.incompleteCount, hasInvoice: view.hasInvoiceFile, email: agencyEmail });
+  // Podgląd maila (nadawca, temat, dokładnie te pliki) — odświeżany, gdy zmienia się zestaw załączników.
+  const previewKey = `${view.id}|${sendExcel ? 1 : 0}|${view.invoiceFileName ?? ""}|${view.attachments.map((a) => a.id).join(",")}`;
+  const [mailPreview, setMailPreview] = useState<{ key: string; data: CustomsMailPreview | null; error: string | null } | null>(null);
+  useEffect(() => {
+    if (readOnly) return;
+    let alive = true;
+    actionCustomsMailPreview(view.id, sendExcel)
+      .then((res) => {
+        if (alive) setMailPreview({ key: previewKey, data: res.ok ? res.preview : null, error: res.ok ? null : res.error });
+      })
+      .catch(() => {
+        if (alive) setMailPreview({ key: previewKey, data: null, error: "Nie udało się przygotować podglądu - odśwież stronę." });
+      });
+    return () => {
+      alive = false;
+    };
+    // previewKey obejmuje wszystko, od czego zależą załączniki.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewKey, readOnly]);
+  const previewReady = mailPreview?.key === previewKey ? mailPreview : null;
+  const blocker = sendBlocker({
+    incomplete: view.incompleteCount,
+    hasInvoice: view.hasInvoiceFile,
+    email: agencyEmail,
+    cc: agencyCc,
+    gmail: previewReady?.data ? previewReady.data.from : undefined,
+  });
 
   function run(task: () => Promise<Notice | void>) {
     startTransition(async () => {
@@ -898,17 +937,36 @@ export function CustomsClearanceEditor({
             {`Bez opisu PL albo z brakującym lub nieistniejącym kodem CN: ${polishPozycjeLabel(view.incompleteCount)} - nie ma ich jeszcze w mailu.`}
           </Alert>
         ) : null}
-        <textarea
-          readOnly
-          aria-label="Treść maila do agencji celnej (generowana z pozycji)"
-          className={fieldControlClass("default", "min-h-72 sm:min-h-72 bg-slate-50 font-mono text-xs")}
-          value={emailText}
-        />
-        <p className="mt-3 text-xs text-slate-500 [overflow-wrap:anywhere]">
-          Załączniki: {view.hasInvoiceFile ? (view.invoiceFileName ?? "faktura") : "brak faktury (wgraj wyżej)"}
-          {view.attachments.length ? `, ${view.attachments.map((a) => a.fileName).join(", ")}` : ""}
-          {sendExcel && !readOnly ? ", Excel" : ""}
-        </p>
+        {readOnly ? (
+          <>
+            <textarea
+              readOnly
+              aria-label="Treść maila do agencji celnej (wysłana)"
+              className={fieldControlClass("default", "min-h-72 sm:min-h-72 bg-slate-50 font-mono text-xs")}
+              value={emailText}
+            />
+            <p className="mt-3 text-xs text-slate-500 [overflow-wrap:anywhere]">
+              Załączniki: {view.invoiceFileName ?? "faktura"}
+              {view.attachments.length ? `, ${view.attachments.map((a) => a.fileName).join(", ")}` : ""}
+            </p>
+          </>
+        ) : (
+          <MailPreview
+            from={previewReady?.data ? previewReady.data.from : null}
+            to={agencyEmail}
+            cc={agencyCc}
+            subject={previewReady?.data?.subject ?? ""}
+            text={emailText}
+            attachments={(previewReady?.data?.attachments ?? []).map((a) => ({
+              name: a.name,
+              size: a.size,
+              href: `/api/operations/customs/${view.id}/mail-attachment?f=${encodeURIComponent(a.key)}`,
+              opensInline: /^(application\/pdf|image\/)/.test(a.contentType),
+            }))}
+            attachmentsLoading={previewReady ? null : "Przygotowuję załączniki…"}
+            attachmentsError={previewReady?.error ?? null}
+          />
+        )}
         {readOnly ? (
           <p className="mt-2 text-sm text-slate-700">
             {view.agencyEmail
@@ -917,8 +975,14 @@ export function CustomsClearanceEditor({
             {view.sentAt ? ` · ${new Date(view.sentAt).toLocaleString("pl-PL", { timeZone: "Europe/Warsaw" })}` : ""}
           </p>
         ) : (
-          <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-            <Field label="Adres agencji celnej" hint="Kilka adresów rozdziel przecinkiem. Odpowiedzi agencji trafią do Ciebie.">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {view.dhlReply ? (
+              <p className="text-sm text-slate-700 sm:col-span-2 [overflow-wrap:anywhere]">
+                Przesyłka DHL {view.dhlReply.awb}: mail pójdzie jako odpowiedź na prośbę agencji (temat bez zmian
+                {view.dhlReply.inThread ? ", w tym samym wątku" : ""}).
+              </p>
+            ) : null}
+            <Field label="Adres agencji celnej" hint="Kilka adresów rozdziel przecinkiem. Mail wyjdzie z Twojego Gmaila, odpowiedzi wrócą do Ciebie.">
               <Input
                 type="text"
                 inputMode="email"
@@ -927,16 +991,19 @@ export function CustomsClearanceEditor({
                 placeholder="odprawy@agencja.pl"
               />
             </Field>
-            <div className="flex flex-wrap items-center gap-3 pb-1 text-sm text-slate-700 sm:pb-7">
-              <label className="flex min-h-9 items-center gap-2">
-                <input type="checkbox" className="size-4" checked={copyToMe} onChange={(e) => setCopyToMe(e.target.checked)} />
-                Kopia do mnie
-              </label>
-              <label className="flex min-h-9 items-center gap-2">
-                <input type="checkbox" className="size-4" checked={sendExcel} onChange={(e) => setSendExcel(e.target.checked)} />
-                Dołącz Excel
-              </label>
-            </div>
+            <Field label="DW (kopia)" hint="Opcjonalnie, np. osoba z finansów. Twoja kopia jest w „Wysłanych”.">
+              <Input
+                type="text"
+                inputMode="email"
+                value={agencyCc}
+                onChange={(e) => setAgencyCc(e.target.value)}
+                placeholder="np. daria.fraczek@mikran.com"
+              />
+            </Field>
+            <label className="flex min-h-9 items-center gap-2 text-sm text-slate-700 sm:col-span-2">
+              <input type="checkbox" className="size-4" checked={sendExcel} onChange={(e) => setSendExcel(e.target.checked)} />
+              Dołącz Excel z pozycjami
+            </label>
           </div>
         )}
         <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
@@ -965,7 +1032,7 @@ export function CustomsClearanceEditor({
                 Wysłałem ręcznie
               </Button>
               <Button
-                disabled={pending || Boolean(blocker)}
+                disabled={pending || Boolean(blocker) || !previewReady?.data}
                 onClick={() => setConfirming("send")}
               >
                 {pending ? "Wysyłam…" : "Wyślij do agencji"}
@@ -1027,12 +1094,12 @@ export function CustomsClearanceEditor({
       <ConfirmDialog
         open={confirming === "send"}
         title="Wysłać do agencji celnej?"
-        summary={agencyEmail.trim()}
-        message={`Załączniki: ${[
-          view.invoiceFileName ?? "faktura",
-          ...view.attachments.map((a) => a.fileName),
-          ...(sendExcel ? ["Excel"] : []),
-        ].join(", ")}.${copyToMe ? " Kopia trafi do Ciebie." : ""}`}
+        summary={`Do: ${agencyEmail.trim()}${agencyCc.trim() ? ` · DW: ${agencyCc.trim()}` : ""}`}
+        message={`Z Twojego Gmaila (${previewReady?.data?.from ?? "-"}). Załączniki: ${
+          previewReady?.data
+            ? `${previewReady.data.attachments.map((a) => a.name).join(", ")} (${formatFileSize(previewReady.data.totalBytes)})`
+            : "-"
+        }. Wysłanego maila nie da się cofnąć.`}
         confirmLabel="Wyślij"
         pending={pending}
         onCancel={() => setConfirming(null)}
@@ -1040,7 +1107,7 @@ export function CustomsClearanceEditor({
           run(async () => {
             const res = await actionSendCustomsClearanceEmail(view.id, {
               to: agencyEmail,
-              copyToMe,
+              cc: agencyCc,
               includeExcel: sendExcel,
             });
             return res.ok

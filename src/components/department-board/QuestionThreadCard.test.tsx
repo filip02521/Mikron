@@ -117,17 +117,17 @@ describe("QuestionThreadCard", () => {
       { id: "i1", supplierId: "s1", supplierName: "Sirio", sentAt: "2026-10-05T09:00:00+02:00", resolvedAt: null },
     ];
     const { unmount } = render(<QuestionThreadCard question={question} embedded audience="procurement" />);
-    expect(screen.getByTitle(/Zapytanie do: Sirio/).textContent).toBe("Czeka na dostawcę · 1 dzień");
+    expect(screen.getByTitle(/Zapytanie do: Sirio/).textContent).toBe("Czeka na dostawcę · 1 dzień rob.");
     unmount();
 
     vi.setSystemTime(new Date("2026-10-09T12:00:00+02:00"));
     render(<QuestionThreadCard question={question} embedded audience="procurement" />);
-    expect(screen.getByTitle(/Zapytanie do: Sirio/).textContent).toBe("Przypomnij dostawcy · 4 dni");
+    expect(screen.getByTitle(/Zapytanie do: Sirio/).textContent).toBe("Przypomnij dostawcy · 4 dni rob.");
     cleanup();
 
     // Handlowiec nie ma ruchu — spokojny stan także po terminie.
     render(<QuestionThreadCard question={question} embedded audience="sales" />);
-    expect(screen.getByTitle(/Zapytanie do: Sirio/).textContent).toBe("Czeka na dostawcę · 4 dni");
+    expect(screen.getByTitle(/Zapytanie do: Sirio/).textContent).toBe("Czeka na dostawcę · 4 dni rob.");
     vi.useRealTimers();
   });
 

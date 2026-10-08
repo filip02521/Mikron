@@ -79,15 +79,19 @@ export async function fetchAppShellMetrics(
 
   if (showOperationsBadges) {
     try {
-      const [metrics, pinnedAnnouncements] = await Promise.all([
+      const mailRole = role === "admin" || role === "zakupy";
+      const [metrics, pinnedAnnouncements, supplierMail, customsDhl] = await Promise.all([
         fetchOperationsDailyPanelMetrics(),
         fetchPinnedActiveAnnouncements().catch(() => []),
+        mailRole ? import("@/lib/supplier-mail/data").then((m) => m.countSupplierMailNeedsAction()) : undefined,
+        mailRole ? import("@/lib/customs/dhl-data").then((m) => m.countDhlShipmentsNeedingReply()) : undefined,
       ]);
       navBadges = {
         ...navBadges,
         weryfikacja: metrics.verificationCount,
         nowe: metrics.navBadge,
         departmentBoardQuestions: metrics.openBoardQuestionsCount,
+        ...(mailRole ? { supplierMail, customsDhl } : {}),
       };
       operationsDailyPanelVersion = metrics.version;
       operationsPinnedAnnouncements = pinnedAnnouncements;

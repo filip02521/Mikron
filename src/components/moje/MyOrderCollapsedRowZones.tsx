@@ -21,6 +21,8 @@ export type MyOrderCollapsedRowZonesProps = {
   showStatusHint?: boolean;
   chips?: ReactNode;
   patternHint?: ReactNode;
+  /** Pod treścią (telefon: termin i liczba produktów). */
+  footer?: ReactNode;
   searchQuery?: string | null;
   displayLaneKind?: MyOrderProductLaneKind;
   srOnlyHeadline?: string | null;
@@ -40,6 +42,7 @@ export function MyOrderCollapsedRowZones({
   showStatusHint,
   chips,
   patternHint,
+  footer,
   searchQuery,
   displayLaneKind,
   srOnlyHeadline,
@@ -54,7 +57,7 @@ export function MyOrderCollapsedRowZones({
           className={cn("truncate", salesTypography.rowTitle)}
         />
         {showInlineLineCountBadge && row.lineCount > 1 ? (
-          <span className="shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-indigo-700">
+          <span className="shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-indigo-700">
             +{row.lineCount - 1}
           </span>
         ) : null}
@@ -92,9 +95,11 @@ export function MyOrderCollapsedRowZones({
         />
       ) : null}
 
-      {chips ? <div className="mt-0.5 flex items-center gap-1.5">{chips}</div> : null}
+      {chips ? <div className="mt-0.5 flex flex-wrap items-center gap-1.5">{chips}</div> : null}
 
       {patternHint}
+
+      {footer}
     </div>
   );
 }

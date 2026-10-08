@@ -57,7 +57,7 @@ export function MyOrderExpandedContextStrip({
   return (
     <div className="space-y-2 border-b border-slate-100 px-0 pb-2 pt-1">
       {(clientLabel || progressLabel || metaFields.length > 0 || showStatusBadge) ? (
-        <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-[10px] leading-tight">
+        <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-[11px] leading-tight">
           {showStatusBadge ? (
             <MyOrderStatusPill
               label={row.statusTitle}
@@ -71,7 +71,7 @@ export function MyOrderExpandedContextStrip({
               name={clientLabel}
               clientKhId={clientKhId}
               searchQuery={searchQuery}
-              className="text-[10px] leading-tight"
+              className="text-[11px] leading-tight"
             />
           ) : null}
           {progressLabel ? (
@@ -101,7 +101,7 @@ export function MyOrderExpandedContextStrip({
       ) : null}
 
       {expandedNotes ? (
-        <span className="inline-flex items-start gap-1 rounded bg-sky-50 px-1.5 py-1 text-[10px] leading-snug text-sky-700">
+        <span className="inline-flex items-start gap-1 rounded bg-sky-50 px-1.5 py-1 text-[11px] leading-snug text-sky-700">
           <svg viewBox="0 0 16 16" className="mt-0.5 size-3 shrink-0" fill="currentColor" aria-hidden>
             <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 3a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4Zm0 8a.875.875 0 1 1 0-1.75.875.875 0 0 1 0 1.75Z" />
           </svg>

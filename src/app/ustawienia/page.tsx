@@ -20,9 +20,15 @@ export default async function UstawieniaPage() {
   if (!user) redirect("/login");
   const showGmail =
     canAccessZdEstimate(user.role, user.assignedWorkspaces) && getGmailOAuthConfig() != null;
-  const [gmail, signature] = showGmail
-    ? await Promise.all([getGmailConnection(user.id), getEmailSignature(user.id)])
-    : [null, ""];
+  // Błąd bazy (np. niepełna migracja 172) wyłącza kartę Gmaila, nie całe ustawienia.
+  const gmailData = showGmail
+    ? await Promise.all([getGmailConnection(user.id), getEmailSignature(user.id)]).catch((e: unknown) => {
+        console.error("[ustawienia] gmail", e);
+        return null;
+      })
+    : null;
+  const [gmail, signature] = gmailData ?? [null, ""];
+  const gmailUnavailable = showGmail && !gmailData;
 
   return (
     <div className={salesPageShellClass}>
@@ -34,7 +40,12 @@ export default async function UstawieniaPage() {
 
         <AutoRefreshSettingsSection role={user.role} />
 
-        {showGmail ? <GmailSettingsSection connectedEmail={gmail?.email ?? null} signature={signature} /> : null}
+        {showGmail ? <GmailSettingsSection
+            connectedEmail={gmail?.email ?? null}
+            canReadReplies={gmail?.canReadReplies ?? false}
+            signature={signature}
+            unavailable={gmailUnavailable}
+          /> : null}
 
         <AppearanceSettingsSection uniformBackground={user.uniformBackground} fontScale={user.fontScale} />
       </SettingsWorkspace>

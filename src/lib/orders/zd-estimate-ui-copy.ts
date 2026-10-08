@@ -1117,7 +1117,7 @@ export const ZD_ESTIMATE_UI = {
   postCreateTitleLinked: "ZD powiązane",
   postCreateTitleTimeout: "Sprawdź wynik tworzenia",
   postCreateModalHint:
-    "Podsumowanie po utworzeniu lub powiązaniu ZD: status w Subiekcie, historia, oznaczenia Główne/plan, kontakt i pozycje dokumentu. Zamknięcie okna nie odblokowuje ponownego tworzenia - do tego służą osobne akcje albo „Policz listę”.",
+    "Wysyłka utworzonego ZD do dostawcy: mail z dokumentem (termin realizacji na dziś), potem termin dostawy na ZD, prośby z tego ZD jako Główne i plan dostawcy. Zamknięcie okna nie odblokowuje ponownego tworzenia - do tego służą osobne akcje albo „Policz listę”.",
   postCreateDokUnconfirmed: "niepotwierdzony",
   postCreateStatusSubiektOk: "Dokument w Subiekcie",
   postCreateStatusSubiektUnsure: "Dokument w Subiekcie - niepewny (timeout)",

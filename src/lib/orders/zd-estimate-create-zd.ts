@@ -310,9 +310,12 @@ export function buildZdCreateApiBody(input: {
   kontrahentId: number;
   uwagi?: string | null;
   lines: readonly ZdCreateClientLineInput[];
+  /** Użytkownik Subiekta wystawiający ZD (zalogowane konto OnTime); brak = domyślny operator API. */
+  personelId?: number | null;
 }): SubiektCreateZdInput {
   return {
     kontrahentId: Math.trunc(input.kontrahentId),
+    ...(input.personelId && input.personelId > 0 ? { personelId: Math.trunc(input.personelId) } : {}),
     uwagi: normalizeZdCreateUwagi(input.uwagi),
     pozycje: input.lines.map((l) => ({
       towarId: Math.trunc(l.twId),

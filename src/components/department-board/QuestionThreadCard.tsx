@@ -1,5 +1,8 @@
 "use client";
 
+import { actionResolveAwaitingSupplier } from "@/app/actions/gmail";
+import { BoardSupplierReplies } from "@/components/department-board/BoardSupplierReplies";
+import { businessDaysLabel } from "@/lib/suppliers/awaiting-supplier";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { Button } from "@/components/ui/Button";
@@ -34,11 +37,7 @@ import { BoardQuestionProductContext } from "@/components/department-board/Board
 import { BoardThreadMessage } from "@/components/department-board/BoardThreadMessage";
 import { BoardReplyComposer } from "@/components/department-board/BoardReplyComposer";
 import { SupplierInquiryDialog } from "@/components/department-board/SupplierInquiryDialog";
-import {
-  pendingSupplierInquiry,
-  supplierInquiryWait,
-  supplierInquiryWaitLabel,
-} from "@/lib/department-board/supplier-inquiry";
+import { pendingSupplierInquiry, supplierInquiryWait } from "@/lib/department-board/supplier-inquiry";
 import { useBoardQuestionImages } from "@/components/department-board/useBoardQuestionImages";
 import {
   boardQuestionHasProduct,
@@ -234,6 +233,21 @@ export function QuestionThreadCard({
     }
   }
 
+  /** Dostawca odpowiedział poza mailem — koniec czekania bez wpisu w wątku. */
+  async function endSupplierWait(inquiryId: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await actionResolveAwaitingSupplier({ kind: "inquiry", id: inquiryId });
+      if (!res.ok && !/już zamknięta/.test(res.message)) setError(res.message);
+      else onChanged?.();
+    } catch (e) {
+      setError(userFacingErrorText(e, "Nie udało się zakończyć czekania."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function archive() {
     setBusy(true);
     setError(null);
@@ -307,7 +321,7 @@ export function QuestionThreadCard({
       : pendingInquiry && inquiryWait
         ? {
             label: inquiryOverdue ? "Przypomnij dostawcy" : "Czeka na dostawcę",
-            age: supplierInquiryWaitLabel(inquiryWait.businessDays),
+            age: businessDaysLabel(inquiryWait.businessDays),
             tone: inquiryOverdue ? "waiting-overdue" : "waiting",
             title: `Zapytanie do: ${pendingInquiry.supplierName}, wysłane ${formatBoardDate(pendingInquiry.sentAt)}`,
           }
@@ -536,6 +550,18 @@ export function QuestionThreadCard({
           </div>
         )}
 
+        {audience === "procurement" && !isClosed && question.supplierInquiries?.length ? (
+          <BoardSupplierReplies
+            threadId={question.id}
+            onUseAnswer={(text) => {
+              // Nie nadpisuje tego, co już ktoś zaczął pisać — dokleja pod spodem.
+              setReply((prev) => (prev.trim() ? `${prev.trimEnd()}\n\n${text}` : text));
+              // Pole odpowiedzi pod spodem — od razu do poprawki.
+              requestAnimationFrame(() => document.getElementById(`reply-${question.id}`)?.focus());
+            }}
+          />
+        ) : null}
+
         {pendingInquiry && inquiryWait ? (
           <div className={boardSupplierWaitPanelClass(inquiryOverdue)} role="status">
             <IconClock
@@ -566,7 +592,21 @@ export function QuestionThreadCard({
                   ? "Odpowiedź pojawi się w tym wątku."
                   : inquiryOverdue
                     ? "Dostawca długo milczy — przypomnij się mailem albo telefonicznie."
-                    : "Odpowiedź przyjdzie na Twojego Gmaila — wpisz ją tutaj."}
+                    : "Gdy dostawca odpisze, jego mail pokaże się tutaj — Twoja odpowiedź handlowcowi zakończy czekanie."}
+                {audience === "procurement" && canReply ? (
+                  <>
+                    {" "}
+                    <button
+                      type="button"
+                      className="font-medium text-indigo-700 underline decoration-indigo-300 underline-offset-2 hover:decoration-indigo-600 disabled:opacity-50"
+                      disabled={busy}
+                      onClick={() => void endSupplierWait(pendingInquiry.id)}
+                      title="Dostawca odpowiedział inną drogą (telefon, portal) - zapytanie znika z listy „Czeka na dostawcę”"
+                    >
+                      Zakończ czekanie
+                    </button>
+                  </>
+                ) : null}
               </p>
             </div>
           </div>

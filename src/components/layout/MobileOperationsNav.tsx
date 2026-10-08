@@ -52,6 +52,8 @@ export function MobileOperationsNav({
     realizacja?: number;
     operationsNotatki?: number;
     departmentBoardQuestions?: number;
+    supplierMail?: number;
+    customsDhl?: number;
     teethQueue?: number;
     teethReceivePending?: number;
   };

@@ -5,6 +5,8 @@ import {
   actionListCustomsSuppliers,
 } from "@/app/actions/customs-clearance";
 import { CustomsClearanceListClient } from "@/components/zakupy/customs/CustomsClearanceListClient";
+import { DhlShipmentsPanel } from "@/components/zakupy/customs/DhlShipmentsPanel";
+import { loadDhlShipments } from "@/lib/customs/dhl-data";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { isCustomsAiConfigured } from "@/lib/customs/customs-ai";
 import { pageMetadataFor, PAGE_DESCRIPTIONS, PAGE_TITLES } from "@/lib/ui/page-metadata";
@@ -17,9 +19,10 @@ export const maxDuration = 300;
 
 export default async function CustomsClearancesPage() {
   await requireOperations("read");
-  const [suppliers, clearances] = await Promise.all([
+  const [suppliers, clearances, dhl] = await Promise.all([
     actionListCustomsSuppliers(),
     actionListCustomsClearances(),
+    loadDhlShipments(),
   ]);
 
   return (
@@ -28,6 +31,7 @@ export default async function CustomsClearancesPage() {
         title={PAGE_TITLES.customsClearance}
         description={PAGE_DESCRIPTIONS.customsClearance}
       />
+      {dhl ? <DhlShipmentsPanel shipments={dhl} suppliers={suppliers} /> : null}
       <CustomsClearanceListClient
         suppliers={suppliers}
         clearances={clearances}

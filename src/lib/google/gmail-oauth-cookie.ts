@@ -6,13 +6,21 @@ export function safeReturnPath(raw: string | null | undefined): string {
   return v.startsWith("/") && !v.startsWith("//") && !v.includes("\\") ? v : "/";
 }
 
-/** Ciasteczko `state|returnTo` → zgodne z `state` z Google? */
+export function gmailOAuthCookieValue(state: string, userId: string, returnTo: string): string {
+  return `${state}|${userId}|${returnTo}`;
+}
+
+/**
+ * Ciasteczko `state|userId|returnTo` → zgodne z `state` z Google i z osobą, która zaczęła łączenie?
+ * (Wylogowanie i logowanie innej osoby w tej przeglądarce w ciągu 10 min nie podłączy jej konta cudzym startem.)
+ */
 export function readGmailOAuthCookie(
   cookie: string | undefined,
-  state: string | null
+  state: string | null,
+  userId: string
 ): { ok: true; returnTo: string } | { ok: false } {
   if (!cookie || !state) return { ok: false };
-  const sep = cookie.indexOf("|");
-  if (sep <= 0 || cookie.slice(0, sep) !== state) return { ok: false };
-  return { ok: true, returnTo: safeReturnPath(cookie.slice(sep + 1)) };
+  const [cookieState, cookieUser, ...rest] = cookie.split("|");
+  if (!cookieState || cookieState !== state || cookieUser !== userId) return { ok: false };
+  return { ok: true, returnTo: safeReturnPath(rest.join("|")) };
 }

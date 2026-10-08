@@ -4,7 +4,7 @@
  */
 
 import type { DepartmentBoardThreadRow } from "@/lib/data/department-board-shared";
-import { calculateBusinessDays } from "@/lib/orders/dates";
+import { businessDaysSince } from "@/lib/suppliers/awaiting-supplier";
 
 /**
  * Zapytanie wysłane z wątku (tabela supplier_inquiry_emails). Trafia też do handlowców —
@@ -81,6 +81,10 @@ export function buildSupplierInquiryDraft(input: {
         "Z góry dziękujemy.",
         "Pozdrawiamy",
       ];
+  // Podpis z pożegnaniem („Pozdrawiam/Best Regards…”) zastępuje nasze — inaczej mail żegna się dwa razy.
+  if (signature && /^(pozdrawiam|pozdrawiamy|z powa[zż]aniem|kind regards|best regards|regards|thank you)/i.test(signature)) {
+    body.pop();
+  }
   if (signature) body.push(signature);
 
   return {
@@ -115,12 +119,6 @@ export function supplierInquiryWait(
   inquiry: Pick<BoardSupplierInquiry, "sentAt">,
   now: Date = new Date()
 ): SupplierInquiryWait {
-  const businessDays = calculateBusinessDays(new Date(inquiry.sentAt), now);
+  const businessDays = businessDaysSince(new Date(inquiry.sentAt), now);
   return { businessDays, overdue: businessDays >= SUPPLIER_INQUIRY_OVERDUE_BUSINESS_DAYS };
-}
-
-/** „dziś”, „1 dzień”, „3 dni” — liczone w dniach roboczych. */
-export function supplierInquiryWaitLabel(businessDays: number): string {
-  if (businessDays <= 0) return "dziś";
-  return businessDays === 1 ? "1 dzień" : `${businessDays} dni`;
 }

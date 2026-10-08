@@ -37,7 +37,9 @@ function MoreIcon({ className }: { className?: string }) {
   );
 }
 
-type MenuPosition = { top: number; left: number; maxHeight: number };
+type MenuPosition = { top: number; left: number; maxHeight: number; origin: string };
+
+const MENU_ITEM_SELECTOR = '[role="menuitem"]:not(:disabled)';
 
 export function OverflowMenu({
   label,
@@ -76,7 +78,11 @@ export function OverflowMenu({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
-  const close = () => setOpen(false);
+  /** Zamknięcie z wnętrza menu (wybór, Escape, Tab) — fokus wraca na przycisk, więc otwarty dialog wie, dokąd go oddać. */
+  const close = useCallback(() => {
+    setOpen(false);
+    triggerRef.current?.focus({ preventScroll: true });
+  }, []);
 
   const leading =
     triggerLeading !== undefined ? (
@@ -100,8 +106,42 @@ export function OverflowMenu({
       align === "end"
         ? endLeft
         : Math.min(rect.left, window.innerWidth - menuWidth - 8);
-    setMenuPos({ top, left, maxHeight });
+    // Menu rośnie od przycisku: w górę, gdy nie mieści się pod nim.
+    const origin = `${align === "end" ? "right" : "left"} ${top < rect.top ? "bottom" : "top"}`;
+    setMenuPos({ top, left, maxHeight, origin });
   }, [align]);
+
+  const menuShown = open && menuPos != null;
+  useEffect(() => {
+    if (!menuShown) return;
+    menuRef.current?.querySelector<HTMLElement>(MENU_ITEM_SELECTOR)?.focus({ preventScroll: true });
+  }, [menuShown]);
+
+  const onMenuKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Tab") {
+      event.preventDefault();
+      close();
+      return;
+    }
+    const items = Array.from(
+      menuRef.current?.querySelectorAll<HTMLElement>(MENU_ITEM_SELECTOR) ?? []
+    );
+    if (items.length === 0) return;
+    const current = items.indexOf(document.activeElement as HTMLElement);
+    const next =
+      event.key === "ArrowDown"
+        ? (current + 1) % items.length
+        : event.key === "ArrowUp"
+          ? (current - 1 + items.length) % items.length
+          : event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? items.length - 1
+              : null;
+    if (next == null) return;
+    event.preventDefault();
+    items[next]?.focus();
+  };
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -130,7 +170,7 @@ export function OverflowMenu({
       setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") close();
     };
     const t = window.setTimeout(() => {
       document.addEventListener("mousedown", onDoc);
@@ -141,7 +181,7 @@ export function OverflowMenu({
       document.removeEventListener("mousedown", onDoc);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [open, close]);
 
   const segmentTriggerClass = cn(
     buttonGroupItemClass,
@@ -235,12 +275,19 @@ export function OverflowMenu({
           ref={menuRef}
           id={menuId}
           role="menu"
+          aria-label={label}
+          onKeyDown={onMenuKeyDown}
           className={cn(
-            "fixed z-[200] min-w-[12.5rem] overflow-y-auto overscroll-y-contain",
+            "menu-pop-enter fixed z-[200] min-w-[12.5rem] overflow-y-auto overscroll-y-contain",
             panelDropdownShellClass,
             menuClassName
           )}
-          style={{ top: menuPos.top, left: menuPos.left, maxHeight: menuPos.maxHeight }}
+          style={{
+            top: menuPos.top,
+            left: menuPos.left,
+            maxHeight: menuPos.maxHeight,
+            transformOrigin: menuPos.origin,
+          }}
         >
           {children}
         </div>
@@ -298,10 +345,10 @@ export function OverflowMenuItem({
       disabled={disabled}
       title={title}
       className={cn(
-        "block w-full cursor-pointer px-3 py-2.5 text-left text-sm disabled:cursor-not-allowed disabled:opacity-50",
+        "block w-full cursor-pointer px-3 py-2.5 text-left text-sm outline-none transition-colors duration-100 disabled:cursor-not-allowed disabled:opacity-50",
         danger
           ? "text-red-700 hover:bg-red-50 focus-visible:bg-red-50"
-          : "text-slate-700 hover:bg-indigo-50/80 hover:text-indigo-950",
+          : "text-slate-700 hover:bg-indigo-50/80 hover:text-indigo-950 focus-visible:bg-indigo-50/80 focus-visible:text-indigo-950",
         className
       )}
       onClick={(event) => {
@@ -319,7 +366,7 @@ export function OverflowMenuItem({
 export function OverflowMenuLabel({ children }: { children: ReactNode }) {
   return (
     <p
-      className="px-3 pb-0.5 pt-2 text-[10px] font-semibold text-slate-400"
+      className="px-3 pb-0.5 pt-2 text-[11px] font-semibold text-slate-500"
       role="presentation"
     >
       {children}

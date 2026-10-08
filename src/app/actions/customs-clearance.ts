@@ -6,10 +6,9 @@ import { revalidatePath } from "next/cache";
 import { warsawDateKeyDaysAgo } from "@/lib/time/warsaw";
 import { requireOperations } from "@/lib/auth";
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
-import { getSubiektZd, searchSubiektZd } from "@/lib/subiekt/api";
+import { searchSubiektZd } from "@/lib/subiekt/api";
 import { fetchSupplierSubiektKhAliases } from "@/lib/data/supplier-subiekt-kh";
 import {
-  extractDocKhIds,
   zdListItemMatchesSupplierKhIds,
   type SubiektZdListItem,
 } from "@/lib/subiekt/zd-document-kh";
@@ -18,12 +17,7 @@ import {
   normalizeCnCode,
   type CustomsVatRate,
 } from "@/lib/customs/customs-clearance";
-import {
-  linesFromSubiektZd,
-  parseArticleCodesPaste,
-  parseInvoiceLinesPaste,
-  type CustomsInputLine,
-} from "@/lib/customs/customs-lines";
+import { parseArticleCodesPaste } from "@/lib/customs/customs-lines";
 import { CUSTOMS_AI_MIME, customsFileMime } from "@/lib/customs/customs-ai-input";
 import { createCnLookup, formatCnCode } from "@/lib/customs/cn-nomenclature";
 import { polishPozycjeLabel } from "@/lib/email/polish-plural";
@@ -31,20 +25,17 @@ import { emailRangeConflicts, parseCustomsEmailText } from "@/lib/customs/custom
 import { isLineComplete, type CustomsClearanceView } from "@/lib/customs/customs-view";
 import { shipmentFromRow, type CustomsShipment, type CustomsShipmentRow } from "@/lib/customs/customs-shipment";
 import { buildCustomsClearanceWorkbook } from "@/lib/customs/customs-excel";
-import {
-  CUSTOMS_EMAIL_MAX_ATTACHMENTS_BYTES,
-  customsEmailHtml,
-  customsEmailSubject,
-  parseEmailList,
-} from "@/lib/customs/customs-email";
-import { sendHtmlEmailWithAttachments, type EmailAttachmentInput } from "@/lib/services/email";
-import { readStorageObject } from "@/lib/storage/local";
+import { CUSTOMS_EMAIL_MAX_ATTACHMENTS_BYTES, customsEmailSubject } from "@/lib/customs/customs-email";
+import { parseMailRecipients } from "@/lib/email/recipients";
+import { getGmailConnection, sendGmailAsUser } from "@/lib/google/gmail-connections";
+import { collectCustomsMailAttachments, listCustomsMailAttachments } from "@/lib/customs/customs-mail-attachments";
+import { createCustomsClearance, type CreateCustomsClearanceInput } from "@/lib/customs/customs-create";
+import { loadDhlReplyThread, markDhlReplied } from "@/lib/customs/dhl-data";
 import {
   cleanUuid,
   loadClearanceView,
   markClearanceSent,
   upsertCard,
-  type Db,
 } from "@/lib/customs/customs-data";
 
 const STORAGE_BUCKET = "customs-documents";
@@ -203,135 +194,16 @@ export async function actionListCustomsClearances(): Promise<CustomsClearanceLis
 
 // ─── Tworzenie ─────────────────────────────────────────────────────────────
 
-export type CreateCustomsClearanceInput = {
-  supplierId: string;
-  invoiceNumber: string;
-  invoiceDate: string | null;
-  currency: string;
-  shipmentDescription: string;
-  zdId: number | null;
-  pastedLines: string;
-  /** Z odczytu faktury przez AI (opcjonalnie). */
-  invoiceTotal?: number | null;
-  invoiceHsCode?: string | null;
-  countryOfOrigin?: string | null;
-};
-
-async function lastShipmentDescription(supabase: Db, supplierId: string): Promise<string> {
-  const { data } = await supabase
-    .from("customs_clearances")
-    .select("shipment_description")
-    .eq("supplier_id", supplierId)
-    .neq("shipment_description", "")
-    .order("created_at", { ascending: false })
-    .limit(1);
-  return ((data ?? [])[0] as { shipment_description?: string } | undefined)?.shipment_description ?? "";
-}
+export type { CreateCustomsClearanceInput } from "@/lib/customs/customs-create";
 
 export async function actionCreateCustomsClearance(
   input: CreateCustomsClearanceInput
 ): Promise<Result<{ id: string; warnings: string[] }>> {
   const user = await requireOperations("mutate");
   if (!hasSupabaseConfig()) return fail("Brak konfiguracji bazy.");
-  const supplierId = cleanUuid(input.supplierId);
-  if (!supplierId) return fail("Wybierz dostawcę.");
-  const supabase = createAdminClient();
-
-  const { data: supplier } = await supabase
-    .from("suppliers")
-    .select("id, location, subiekt_kh_id")
-    .eq("id", supplierId)
-    .single();
-  if (!supplier) return fail("Wybierz dostawcę.");
-  if ((supplier as { location: string }).location !== "IMPORT") {
-    return fail("Odprawy robimy tylko dla dostawców typu Import.");
-  }
-
-  const warnings: string[] = [];
-  let lines: CustomsInputLine[] = [];
-  let zdNumber: string | null = null;
-  let zdLines: CustomsInputLine[] = [];
-
-  if (input.zdId) {
-    try {
-      const doc = await getSubiektZd(input.zdId);
-      const khIds = new Set<number>();
-      const primary = Number((supplier as { subiekt_kh_id?: number | null }).subiekt_kh_id);
-      if (Number.isFinite(primary) && primary > 0) khIds.add(primary);
-      for (const alias of await fetchSupplierSubiektKhAliases(supplierId)) khIds.add(alias.subiektKhId);
-      if (khIds.size && !extractDocKhIds(doc).some((id) => khIds.has(id))) {
-        return fail(`${doc.dok_NrPelny ?? "To ZD"} nie należy do wybranego dostawcy.`);
-      }
-      zdNumber = doc.dok_NrPelny ?? `ZD ${doc.dok_Id}`;
-      zdLines = linesFromSubiektZd(doc);
-    } catch (e) {
-      console.error("[customs] ZD z Subiekta:", errorText(e, "brak połączenia"));
-      return fail("Subiekt jest niedostępny - nie wczytano ZD. Odznacz ZD i wgraj plik faktury albo wklej pozycje.");
-    }
-  }
-
-  if (input.pastedLines.trim()) {
-    const parsed = parseInvoiceLinesPaste(input.pastedLines);
-    warnings.push(...parsed.errors);
-    lines = parsed.lines;
-  } else {
-    lines = zdLines;
-  }
-  if (!lines.length) return fail("Brak pozycji - wybierz ZD albo wklej pozycje faktury.");
-
-  // Klucz karty: kod z faktury, a bez kodu — nazwa (UP3D, PioCreat, Saeshin „105L(BL):COLLET CHUCK”).
-  const keyOf = (l: CustomsInputLine) => customsArticleKey(l.supplierArticleCode, l.supplierName);
-  const zdQtyByCode = new Map<string, number>();
-  for (const l of zdLines) {
-    zdQtyByCode.set(keyOf(l), (zdQtyByCode.get(keyOf(l)) ?? 0) + l.quantity);
-  }
-
-  const shipmentDescription =
-    input.shipmentDescription.trim() || (await lastShipmentDescription(supabase, supplierId));
-
-  const { data: created, error } = await supabase
-    .from("customs_clearances")
-    .insert({
-      supplier_id: supplierId,
-      subiekt_zd_id: input.zdId,
-      zd_number: zdNumber,
-      invoice_number: input.invoiceNumber.trim().slice(0, 120),
-      invoice_date: input.invoiceDate || null,
-      currency: (input.currency.trim() || "EUR").toUpperCase().slice(0, 3),
-      shipment_description: shipmentDescription.slice(0, 300),
-      invoice_total: Number.isFinite(input.invoiceTotal) ? input.invoiceTotal : null,
-      invoice_hs_code: input.invoiceHsCode?.trim().slice(0, 40) || null,
-      country_of_origin: input.countryOfOrigin?.trim().slice(0, 80) || null,
-      created_by: user.id,
-    })
-    .select("id")
-    .single();
-  if (error || !created) return fail(error?.message ?? "Nie udało się utworzyć odprawy.");
-  const clearanceId = (created as { id: string }).id;
-
-  const { error: linesError } = await supabase.from("customs_clearance_lines").insert(
-    lines.map((l, i) => ({
-      clearance_id: clearanceId,
-      position: i + 1,
-      supplier_article_code: keyOf(l),
-      supplier_name: l.supplierName.slice(0, 500),
-      quantity: l.quantity,
-      unit_price: l.unitPrice,
-      amount: l.unitPrice != null ? Math.round(l.unitPrice * l.quantity * 100) / 100 : null,
-      subiekt_tw_id: l.subiektTwId,
-      // Kolumna z migracji 160 — wysyłana tylko, gdy faktura ma HS przy pozycjach.
-      ...(l.invoiceHsCode ? { invoice_hs_code: l.invoiceHsCode } : {}),
-      ...(l.invoiceGroup ? { invoice_group: l.invoiceGroup } : {}),
-      zd_quantity: input.zdId ? zdQtyByCode.get(keyOf(l)) ?? 0 : null,
-    }))
-  );
-  if (linesError) {
-    await supabase.from("customs_clearances").delete().eq("id", clearanceId);
-    return fail(linesError.message);
-  }
-
-  revalidateClearance();
-  return { ok: true, id: clearanceId, warnings };
+  const res = await createCustomsClearance(createAdminClient(), input, user.id);
+  if (res.ok) revalidateClearance();
+  return res;
 }
 
 // ─── Widok ─────────────────────────────────────────────────────────────────
@@ -784,20 +656,51 @@ export async function actionMarkCustomsClearanceSent(clearanceId: string): Promi
   return { ok: true };
 }
 
-function invoiceMimeFromName(name: string | null): string {
-  const ext = (name ?? "").toLowerCase().split(".").pop();
-  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
-  if (ext === "png") return "image/png";
-  if (ext === "webp") return "image/webp";
-  if (ext === "tif" || ext === "tiff") return "image/tiff";
-  return "application/pdf";
-}
-
 export type SendCustomsEmailInput = {
   to: string;
-  copyToMe: boolean;
+  /** Kopia (DW), adresy rozdzielone przecinkiem. */
+  cc?: string;
   includeExcel: boolean;
 };
+
+export type CustomsMailPreview = {
+  /** Skrzynka Gmail, z której wyjdzie mail; null = trzeba połączyć Gmaila. */
+  from: string | null;
+  subject: string;
+  attachments: { key: string; name: string; size: number; contentType: string }[];
+  totalBytes: number;
+};
+
+/** Podgląd maila do agencji: nadawca, temat i dokładnie te pliki, które pójdą (z rozmiarami). */
+export async function actionCustomsMailPreview(
+  clearanceId: string,
+  includeExcel: boolean
+): Promise<Result<{ preview: CustomsMailPreview }>> {
+  const user = await requireOperations("read");
+  const id = cleanUuid(clearanceId);
+  if (!id) return fail("Odprawa nie istnieje.");
+  const supabase = createAdminClient();
+  const view = await loadClearanceView(supabase, id);
+  if (!view) return fail("Odprawa nie istnieje.");
+  try {
+    const [refs, conn] = await Promise.all([
+      listCustomsMailAttachments(supabase, view, Boolean(includeExcel)),
+      getGmailConnection(user.id),
+    ]);
+    const sizes = await Promise.all(refs.map((r) => r.size()));
+    return {
+      ok: true,
+      preview: {
+        from: conn?.email ?? null,
+        subject: view.dhlReply?.subject ?? customsEmailSubject(view),
+        attachments: refs.map((r, i) => ({ key: r.key, name: r.filename, size: sizes[i]!, contentType: r.contentType })),
+        totalBytes: sizes.reduce((n, size) => n + size, 0),
+      },
+    };
+  } catch (e) {
+    return fail(`Nie udało się przygotować załączników: ${errorText(e, "brak pliku")}`);
+  }
+}
 
 /**
  * Wysyła mail do agencji celnej (treść jak w podglądzie) z fakturą, dokumentami podstawy VAT 8%
@@ -810,9 +713,12 @@ export async function actionSendCustomsClearanceEmail(
   const user = await requireOperations("mutate");
   const id = cleanUuid(clearanceId);
   if (!id) return fail("Odprawa nie istnieje.");
-  const { emails: to, invalid } = parseEmailList(input.to);
-  if (invalid.length) return fail(`Nieprawidłowy adres: ${invalid.join(", ")}`);
-  if (!to.length) return fail("Podaj adres agencji celnej.");
+  if (typeof input.to !== "string" || (input.cc !== undefined && typeof input.cc !== "string")) {
+    return fail("Nieprawidłowe dane wiadomości.");
+  }
+  const recipients = parseMailRecipients(input.to, input.cc);
+  if (!recipients.ok) return fail(recipients.message);
+  const { to, cc } = recipients;
 
   const supabase = createAdminClient();
   const view = await loadClearanceView(supabase, id);
@@ -823,62 +729,48 @@ export async function actionSendCustomsClearanceEmail(
   }
   if (!view.hasInvoiceFile) return fail("Wgraj plik faktury - agencja potrzebuje go w załączniku.");
 
-  const attachments: EmailAttachmentInput[] = [];
-  let totalBytes = 0;
+  let attachments: Awaited<ReturnType<typeof collectCustomsMailAttachments>>;
   try {
-    const { data: c } = await supabase
-      .from("customs_clearances")
-      .select("invoice_storage_path, invoice_file_name")
-      .eq("id", id)
-      .single();
-    const inv = c as { invoice_storage_path: string; invoice_file_name: string | null };
-    const invoiceBytes = await readStorageObject(inv.invoice_storage_path);
-    totalBytes += invoiceBytes.length;
-    attachments.push({
-      filename: inv.invoice_file_name || "faktura.pdf",
-      content: invoiceBytes.toString("base64"),
-      contentType: invoiceMimeFromName(inv.invoice_file_name),
-    });
-
-    if (view.attachments.length) {
-      const { data: docs } = await supabase
-        .from("supplier_customs_documents")
-        .select("id, storage_path, file_name, mime_type")
-        .in("id", view.attachments.map((a) => a.id));
-      for (const d of (docs ?? []) as Array<{ storage_path: string; file_name: string; mime_type: string }>) {
-        const bytes = await readStorageObject(d.storage_path);
-        totalBytes += bytes.length;
-        attachments.push({ filename: d.file_name, content: bytes.toString("base64"), contentType: d.mime_type });
-      }
-    }
-    if (input.includeExcel) {
-      const xlsx = await buildCustomsClearanceWorkbook(view);
-      totalBytes += xlsx.length;
-      const safe = (view.invoiceNumber || view.id.slice(0, 8)).replace(/[^\p{L}\p{N}._-]+/gu, "_");
-      attachments.push({ filename: `odprawa_${safe}.xlsx`, content: xlsx.toString("base64") });
-    }
+    attachments = await collectCustomsMailAttachments(supabase, view, Boolean(input.includeExcel));
   } catch (e) {
     return fail(`Nie udało się przygotować załączników: ${errorText(e, "brak pliku")}`);
   }
+  const totalBytes = attachments.reduce((n, a) => n + a.content.length, 0);
   if (totalBytes > CUSTOMS_EMAIL_MAX_ATTACHMENTS_BYTES) {
     return fail("Załączniki przekraczają 18 MB - wyślij mail ręcznie z poczty.");
   }
 
-  const res = await sendHtmlEmailWithAttachments({
+  // Odprawa z maila DHL: „Re:” w wątku prośby (DHL wymaga niezmienionego tematu); w Gmailu dołącza do
+  // wątku, gdy prośba przyszła do skrzynki nadawcy.
+  const dhl = await loadDhlReplyThread(id);
+  const conn = dhl?.gmailThreadId ? await getGmailConnection(user.id) : null;
+  // Z Gmaila osoby, która prowadzi odprawę — mail jest w jej „Wysłanych”, odpowiedzi agencji wracają do niej.
+  const res = await sendGmailAsUser({
+    userId: user.id,
     to,
-    cc: input.copyToMe && user.email ? [user.email] : [],
-    replyTo: user.email || undefined,
-    subject: customsEmailSubject(view),
-    html: customsEmailHtml(view.emailText),
+    cc,
+    subject: dhl?.subject ?? customsEmailSubject(view),
+    inReplyTo: dhl?.inReplyTo ?? undefined,
+    gmailThreadId:
+      dhl?.gmailThreadId && conn && dhl.mailbox === conn.email.toLowerCase() ? dhl.gmailThreadId : undefined,
+    text: view.emailText,
     attachments,
     kind: "attachments",
   });
-  if (!res.ok) return fail(`Wysyłka nie powiodła się: ${res.error}`);
+  if (!res.ok) {
+    return fail(
+      res.reconnect
+        ? "Połącz swojego Gmaila w Ustawieniach (Gmail), żeby wysłać mail do agencji z Twojej skrzynki."
+        : `Wysyłka nie powiodła się: ${res.message}`
+    );
+  }
 
-  const error = await markClearanceSent(supabase, view, { agencyEmail: to.join(", "), messageId: res.id });
+  if (dhl) await markDhlReplied(dhl.shipmentId).catch(() => undefined);
+  const error = await markClearanceSent(supabase, view, { agencyEmail: to.join(", "), messageId: res.messageId });
   if (error) return fail(`Mail wysłany, ale nie zapisano statusu: ${error}`);
   revalidateClearance(id);
-  return { ok: true, deliveredTo: res.deliveredTo };
+  revalidatePath("/admin/wysylki");
+  return { ok: true, deliveredTo: [...to, ...cc] };
 }
 
 export async function actionDeleteCustomsClearance(clearanceId: string): Promise<Result> {

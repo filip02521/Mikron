@@ -297,6 +297,8 @@ export type SubiektCreateDocumentLineInput = {
 /** Body POST /documents/zd/create — kontrahentId = dostawca (kh_Id). */
 export type SubiektCreateZdInput = {
   kontrahentId: number;
+  /** uz_Id użytkownika Subiekta — ustawia „Wystawił” na dokumencie (operator Sfery zostaje bez zmian). */
+  personelId?: number;
   uwagi?: string | null;
   pozycje: SubiektCreateDocumentLineInput[];
 };

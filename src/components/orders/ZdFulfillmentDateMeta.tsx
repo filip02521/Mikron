@@ -146,7 +146,7 @@ export function ZdFulfillmentDateMeta({
   return (
     <div className={cn(
       "min-w-0 max-w-full",
-      inline ? "flex items-center gap-1.5" : "flex flex-col items-end gap-1",
+      inline ? "flex flex-wrap items-center gap-x-1.5 gap-y-0.5" : "flex flex-col items-end gap-1",
       className
     )}>
       <DeliveryTimingMeta
@@ -172,7 +172,7 @@ export function ZdFulfillmentDateMeta({
               pendingConfirmation={primaryPending}
               inline={inline}
             />
-            <span className="max-w-full truncate text-[9px] font-medium text-slate-500">
+            <span className="max-w-full truncate text-[11px] font-medium text-slate-500">
               {primarySlot.dokNr}
             </span>
           </>
@@ -194,7 +194,7 @@ export function ZdFulfillmentDateMeta({
                   pendingConfirmation={slot.pendingConfirmation ?? pendingConfirmation}
                   inline={inline}
                 />
-                <span className="max-w-full truncate text-[9px] font-medium text-slate-500">
+                <span className="max-w-full truncate text-[11px] font-medium text-slate-500">
                   {slot.dokNr}
                 </span>
               </div>
@@ -203,23 +203,25 @@ export function ZdFulfillmentDateMeta({
         ) : primaryDisplay ? (
           <>
             <DeliveryDateMetaValue display={primaryDisplay} className="max-w-full" inline={inline} />
-            <span className="max-w-full truncate text-[9px] font-medium text-slate-500">
+            <span className="max-w-full truncate text-[11px] font-medium text-slate-500">
               {fulfillment.dokNr}
             </span>
           </>
         ) : null}
       </DeliveryTimingMeta>
-      {!inline ? collapsedHints.map((hint) => (
+      {/* Podpowiedzi są tylko w zwiniętej karcie; w trybie inline (telefon) idą w nowej linii. */}
+      {collapsedHints.map((hint) => (
         <p
           key={hint}
           className={cn(
-            "max-w-full text-right text-[10px] font-medium leading-snug text-indigo-900/85",
+            "max-w-full font-medium leading-snug text-indigo-900",
+            inline ? "basis-full text-left" : "text-right",
             salesTypography.rowMeta
           )}
         >
           {hint}
         </p>
-      )) : null}
+      ))}
     </div>
   );
 }
