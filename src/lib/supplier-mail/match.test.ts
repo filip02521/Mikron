@@ -31,6 +31,14 @@ describe("poczta dostawców — nadawcy", () => {
     expect(suppliersForSender(index, "ola@mikran.com")).toEqual([]);
   });
 
+  it("domena tylko z pola maili — spedytor z notatek nie ściąga całej poczty swojej firmy", () => {
+    const idx = buildSenderIndex([{ id: "upcera", mails: "sales@upcera.com", notes: "spedycja: jan@dhl.com", extra_info: "yahoo: li@yahoo.de" }]);
+    expect(suppliersForSender(idx, "jan@dhl.com")).toEqual(["upcera"]);
+    expect(suppliersForSender(idx, "inny@dhl.com")).toEqual([]);
+    expect(suppliersForSender(idx, "ktos@upcera.com")).toEqual(["upcera"]);
+    expect(senderSearchTerms(idx)).not.toContain("yahoo.de");
+  });
+
   it("zapytania Gmaila: domeny + adresy z domen ogólnych, w paczkach", () => {
     expect(senderSearchTerms(index)).toEqual(["dreve.de", "jan.kowalski@wp.pl", "renfert.de"]);
     const after = new Date("2026-10-01T00:00:00Z");
@@ -100,6 +108,13 @@ describe("poczta dostawców — przypinanie do sprawy", () => {
     // Kilku możliwych dostawców (wspólna domena) albo żaden — bez zgadywania.
     expect(linkToCase({ threadId: "inny", text: "Info", supplierIds: ["dreve", "dreve-eco"] }, cases)).toBeNull();
     expect(linkToCase({ threadId: "inny", text: "Info", supplierIds: ["kowalski"] }, cases)).toBeNull();
+    // Mail sprzed wysyłki ZD nie jest na nie odpowiedzią — zgadujemy tylko ZD wysłane wcześniej.
+    expect(
+      linkToCase({ threadId: "inny", text: "Auftragsbestätigung", supplierIds: ["renfert"], receivedAt: "2026-10-06T09:00:00Z" }, cases)
+    ).toMatchObject({ caseId: "zd-69", linkedBy: "supplier" });
+    expect(
+      linkToCase({ threadId: "inny", text: "Auftragsbestätigung", supplierIds: ["renfert"], receivedAt: "2026-10-04T09:00:00Z" }, cases)
+    ).toBeNull();
   });
 });
 

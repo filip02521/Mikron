@@ -33,14 +33,24 @@ import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
 import { buildZdMailAttachment } from "@/lib/supplier-forms/zd-mail-attachment";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 
+function isMikranEmail(email: string): boolean {
+  return /@mikran\.(com|pl)$/i.test(email);
+}
+
 export type GmailStatus = { configured: boolean; email: string | null; signature: string };
 
 export async function actionGmailStatus(): Promise<GmailStatus> {
   const user = await getSessionUser();
   if (!user) throw new Error(SESSION_REQUIRED_ERROR);
   if (!getGmailOAuthConfig()) return { configured: false, email: null, signature: "" };
-  const [conn, signature] = await Promise.all([getGmailConnection(user.id), getEmailSignature(user.id)]);
-  return { configured: true, email: conn?.email ?? null, signature };
+  try {
+    const [conn, signature] = await Promise.all([getGmailConnection(user.id), getEmailSignature(user.id)]);
+    return { configured: true, email: conn?.email ?? null, signature };
+  } catch (e) {
+    // Np. niepełna migracja 172 — panel ZD przechodzi w tryb ręczny zamiast błędu przy każdym powrocie do karty.
+    console.error("[gmail] status", e);
+    return { configured: false, email: null, signature: "" };
+  }
 }
 
 export async function actionSaveEmailSignature(signature: string): Promise<{ ok: true } | { ok: false; message: string }> {
@@ -172,7 +182,8 @@ export async function actionSendZdToSupplier(input: {
     const zd = await loadSupplierZd({ dokId, supplierId: input.supplierId });
     if (!zd.ok) return zd;
     if (!zd.lines.length) return { ok: false, message: `${zd.dokNr} nie ma pozycji.` };
-    const unknownRecipients = emails.filter((e) => !zd.supplier.cardEmails.includes(e));
+    // DW też — ZD (ceny) nie może pójść na obcy adres bez potwierdzenia; kopia do kolegi z Mikranu jest w porządku.
+    const unknownRecipients = [...emails, ...cc].filter((e) => !zd.supplier.cardEmails.includes(e) && !isMikranEmail(e));
     if (unknownRecipients.length && !input.allowUnknownRecipients) {
       return {
         ok: false,
@@ -183,15 +194,18 @@ export async function actionSendZdToSupplier(input: {
 
     // Dostawca dostaje wydruk z terminem realizacji = dziś; nasz termin dostawy ustawiamy dopiero po wysyłce.
     let fresh = false;
+    /** ZD z terminem, który faktycznie idzie na wydruk (odcisk wydruku w pamięci). */
+    let printed = zd;
     if (!findSupplierFormTemplate(zd.supplier.name)) {
       const today = todayDateKeyInWarsaw();
       if (zd.termin !== today) {
         await setSubiektOrdersZdTermin(dokId, today);
         restoreTermin = zd.termin ?? null;
+        printed = { ...zd, termin: today };
         fresh = true;
       }
     }
-    const attachment = await buildZdMailAttachment(zd, dokId, { fresh });
+    const attachment = await buildZdMailAttachment(printed, dokId, { fresh });
 
     const sent = await sendGmailAsUser({
       userId: user.id,

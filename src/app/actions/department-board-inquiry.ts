@@ -151,7 +151,10 @@ export async function actionSendSupplierInquiry(input: {
         return { ok: false, message: `Zapytanie do ${supplier.name} już czeka na odpowiedź.`, alreadyPending: pending };
       }
     }
-    const unknownRecipients = emails.filter((e) => !supplier.emails.includes(e));
+    // DW też — kopia do kolegi z Mikranu bez potwierdzenia.
+    const unknownRecipients = [...emails, ...cc].filter(
+      (e) => !supplier.emails.includes(e) && !/@mikran\.(com|pl)$/i.test(e)
+    );
     if (unknownRecipients.length && !input.allowUnknownRecipients) {
       return {
         ok: false,

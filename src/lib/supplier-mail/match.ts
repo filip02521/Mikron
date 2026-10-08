@@ -33,6 +33,20 @@ const GENERIC_DOMAINS = new Set([
   "qq.com",
   "163.com",
   "126.com",
+  "aol.com",
+  "protonmail.com",
+  "proton.me",
+  "yahoo.de",
+  "yahoo.co.uk",
+  "hotmail.de",
+  "hotmail.co.uk",
+  "outlook.de",
+  "mail.ru",
+  "yandex.ru",
+  "zoho.com",
+  "seznam.cz",
+  "wp.eu",
+  "go2.pl",
 ]);
 
 export type SupplierCard = {
@@ -68,10 +82,12 @@ export function buildSenderIndex(cards: readonly SupplierCard[]): SenderIndex {
   const byAddress = new Map<string, string[]>();
   const byDomain = new Map<string, string[]>();
   for (const card of cards) {
+    // Domena tylko z pola „maile” — w notatkach bywają spedytorzy i klienci (cała ich poczta trafiłaby do Poczty).
+    const cardMails = new Set(emailsInText(card.mails ?? ""));
     for (const email of emailsInText(`${card.mails ?? ""} ${card.notes ?? ""} ${card.extra_info ?? ""}`)) {
       push(byAddress, email, card.id);
       const domain = domainOf(email);
-      if (domain && !isGenericDomain(domain) && !/mikran\./.test(domain)) push(byDomain, domain, card.id);
+      if (cardMails.has(email) && domain && !isGenericDomain(domain) && !/mikran\./.test(domain)) push(byDomain, domain, card.id);
     }
   }
   return { byAddress, byDomain };
@@ -169,6 +185,8 @@ export function linkToCase(
     supplierIds: readonly string[];
     /** Zgadywanie po dostawcy tylko dla odpowiedzi / potwierdzeń — faktura nie „odpowiada” na ZD. */
     category?: SupplierMailCategory;
+    /** Zgadywane ZD musi być wysłane przed mailem — starszy mail nie jest odpowiedzią na nie. */
+    receivedAt?: string;
   },
   cases: readonly MailCase[]
 ): CaseLink | null {
@@ -189,7 +207,13 @@ export function linkToCase(
   if (msg.supplierIds.length !== 1) return null;
   if (msg.category && !categoryNeedsAction(msg.category)) return null;
   const latestOpenZd = cases
-    .filter((c) => c.kind === "zd" && !c.resolved && c.supplierId === msg.supplierIds[0])
+    .filter(
+      (c) =>
+        c.kind === "zd" &&
+        !c.resolved &&
+        c.supplierId === msg.supplierIds[0] &&
+        (!msg.receivedAt || Date.parse(c.sentAt) < Date.parse(msg.receivedAt))
+    )
     .sort((a, b) => b.sentAt.localeCompare(a.sentAt))[0];
   return latestOpenZd ? { caseKind: "zd", caseId: latestOpenZd.id, linkedBy: "supplier" } : null;
 }

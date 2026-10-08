@@ -108,18 +108,42 @@ export async function deleteSharedMailbox(email: string): Promise<void> {
     `DELETE FROM public.google_shared_mailboxes WHERE google_email = $1 RETURNING refresh_token_enc`,
     [email.trim().toLowerCase()]
   );
-  if (cfg && rows[0]) await revokeGmailToken(decryptToken(cfg.tokenKey, rows[0].refresh_token_enc)).catch(() => undefined);
+  if (!cfg || !rows[0]) return;
+  try {
+    await revokeGmailToken(decryptToken(cfg.tokenKey, rows[0].refresh_token_enc));
+  } catch {
+    // Wiersz już usunięty — nieodczytywalny token nie zmienia wyniku odłączenia.
+  }
+}
+
+async function loadStoredConnection(userId: string): Promise<{ email: string; tokenEnc: string } | null> {
+  const { rows } = await query<{ google_email: string; refresh_token_enc: string }>(
+    `SELECT google_email, refresh_token_enc FROM public.google_mail_connections WHERE user_id = $1`,
+    [userId]
+  );
+  return rows[0] ? { email: rows[0].google_email, tokenEnc: rows[0].refresh_token_enc } : null;
 }
 
 async function loadRefreshToken(userId: string): Promise<{ email: string; token: string } | null> {
   const cfg = getGmailOAuthConfig();
   if (!cfg) return null;
-  const { rows } = await query<{ google_email: string; refresh_token_enc: string }>(
-    `SELECT google_email, refresh_token_enc FROM public.google_mail_connections WHERE user_id = $1`,
-    [userId]
+  const stored = await loadStoredConnection(userId);
+  return stored ? { email: stored.email, token: decryptToken(cfg.tokenKey, stored.tokenEnc) } : null;
+}
+
+/** Konto Google podłączone w OnTime (własne albo wspólne) — wtedy jego zgody w Google nie cofamy. */
+export async function isGoogleAccountConnected(email: string): Promise<boolean> {
+  const e = email.trim().toLowerCase();
+  const { rows } = await query<{ n: number }>(
+    `SELECT count(*)::int AS n FROM public.google_mail_connections WHERE lower(google_email) = $1`,
+    [e]
   );
-  const row = rows[0];
-  return row ? { email: row.google_email, token: decryptToken(cfg.tokenKey, row.refresh_token_enc) } : null;
+  if (rows[0]?.n) return true;
+  const shared = await query<{ n: number }>(
+    `SELECT count(*)::int AS n FROM public.google_shared_mailboxes WHERE google_email = $1`,
+    [e]
+  ).catch(() => ({ rows: [{ n: 0 }] }));
+  return Boolean(shared.rows[0]?.n);
 }
 
 export async function deleteGmailConnection(userId: string): Promise<void> {
@@ -150,7 +174,7 @@ export async function sendGmailAsUser(input: {
 > {
   const cfg = getGmailOAuthConfig();
   if (!cfg) return { ok: false, message: "Wysyłka z Gmaila nie jest skonfigurowana na serwerze." };
-  const stored = await loadRefreshToken(input.userId);
+  const stored = await loadStoredConnection(input.userId);
   if (!stored) return { ok: false, message: "Najpierw połącz swojego Gmaila.", reconnect: true };
 
   const html = customsEmailHtml(input.text);
@@ -166,7 +190,7 @@ export async function sendGmailAsUser(input: {
     attachmentNames: input.attachments.map((a) => a.filename),
   };
   try {
-    const accessToken = await gmailAccessToken(cfg, stored.token);
+    const accessToken = await gmailAccessToken(cfg, decryptToken(cfg.tokenKey, stored.tokenEnc));
     const mime = await buildMimeMessage({
       from: stored.email,
       to: input.to,
@@ -186,7 +210,11 @@ export async function sendGmailAsUser(input: {
     const message = e instanceof Error ? e.message : String(e);
     await recordTransactionalEmailLog({ ...log, status: "failed", errorMessage: message });
     if (e instanceof GmailReconnectRequiredError) {
-      await query(`DELETE FROM public.google_mail_connections WHERE user_id = $1`, [input.userId]);
+      // Tylko ten token — połączenie odnowione w innej karcie w trakcie wysyłki zostaje.
+      await query(`DELETE FROM public.google_mail_connections WHERE user_id = $1 AND refresh_token_enc = $2`, [
+        input.userId,
+        stored.tokenEnc,
+      ]);
       return { ok: false, message, reconnect: true };
     }
     return { ok: false, message };

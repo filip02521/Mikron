@@ -9,7 +9,7 @@
  * Przekierowanie: `${NEXT_PUBLIC_APP_URL}/api/google/callback` (musi być HTTPS).
  */
 
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import nodemailer from "nodemailer";
 import { getAppUrl } from "@/lib/env/app-config";
 
@@ -66,10 +66,15 @@ export function encryptToken(key: Buffer, plain: string): string {
 
 export function decryptToken(key: Buffer, enc: string): string {
   const [v, iv, tag, ct] = enc.split(":");
-  if (v !== "v1" || !iv || !tag || !ct) throw new Error("Nieznany format zaszyfrowanego tokenu.");
-  const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "base64"));
-  decipher.setAuthTag(Buffer.from(tag, "base64"));
-  return Buffer.concat([decipher.update(Buffer.from(ct, "base64")), decipher.final()]).toString("utf8");
+  if (v !== "v1" || !iv || !tag || !ct) throw new GmailReconnectRequiredError();
+  try {
+    const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "base64"), { authTagLength: 16 });
+    decipher.setAuthTag(Buffer.from(tag, "base64"));
+    return Buffer.concat([decipher.update(Buffer.from(ct, "base64")), decipher.final()]).toString("utf8");
+  } catch {
+    // Zmieniony GOOGLE_OAUTH_TOKEN_KEY albo uszkodzony wiersz — jedyne wyjście to połączyć konto ponownie.
+    throw new GmailReconnectRequiredError();
+  }
 }
 
 // ─── OAuth ────────────────────────────────────────────────────────────────
@@ -145,17 +150,33 @@ export async function exchangeGmailCode(
   return { refreshToken: json.refresh_token, email, scope };
 }
 
+/** Tokeny dostępu żyją ~1 h — bez pamięci każde otwarcie karty, załącznik i synchronizacja pytały Google od nowa. */
+const accessTokens = new Map<string, { token: string; expiresAt: number }>();
+
 export async function gmailAccessToken(cfg: GmailOAuthConfig, refreshToken: string): Promise<string> {
+  const key = createHash("sha256").update(refreshToken).digest("hex");
+  const hit = accessTokens.get(key);
+  if (hit && hit.expiresAt > Date.now()) return hit.token;
+  const token = await requestGmailAccessToken(cfg, refreshToken);
+  for (const [k, v] of accessTokens) if (v.expiresAt <= Date.now()) accessTokens.delete(k);
+  accessTokens.set(key, { token: token.accessToken, expiresAt: Date.now() + (token.expiresIn - 120) * 1000 });
+  return token.accessToken;
+}
+
+async function requestGmailAccessToken(
+  cfg: GmailOAuthConfig,
+  refreshToken: string
+): Promise<{ accessToken: string; expiresIn: number }> {
   const res = await postForm(TOKEN_URL, {
     refresh_token: refreshToken,
     client_id: cfg.clientId,
     client_secret: cfg.clientSecret,
     grant_type: "refresh_token",
   });
-  const json = (await res.json().catch(() => ({}))) as { access_token?: string; error?: string };
+  const json = (await res.json().catch(() => ({}))) as { access_token?: string; expires_in?: number; error?: string };
   if (json.error === "invalid_grant") throw new GmailReconnectRequiredError();
   if (!res.ok || !json.access_token) throw new Error(`Google nie wydał tokenu (${json.error ?? res.status}).`);
-  return json.access_token;
+  return { accessToken: json.access_token, expiresIn: Number(json.expires_in) || 3600 };
 }
 
 /** Cofnięcie zgody w Google — błąd nie blokuje odłączenia w OnTime. */
@@ -182,7 +203,7 @@ export type GmailMessageInput = {
 /** MIME (RFC 5322) przez nodemailer — ten sam składacz co przy SMTP, bez wysyłki. */
 export async function buildMimeMessage(input: GmailMessageInput): Promise<Buffer> {
   const info = await nodemailer
-    .createTransport({ streamTransport: true, buffer: true, newline: "unix" })
+    .createTransport({ streamTransport: true, buffer: true, newline: "windows" })
     .sendMail({
       from: input.from,
       to: input.to,
@@ -374,9 +395,13 @@ async function gmailGet<T>(accessToken: string, path: string): Promise<T | null>
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (res.status === 404) return null;
-    if (res.status === 401) throw new GmailReconnectRequiredError();
+    if (res.status === 401) {
+      accessTokens.clear();
+      throw new GmailReconnectRequiredError();
+    }
     const json = (await res.json().catch(() => ({}))) as T & { error?: { message?: string } };
-    const delay = RETRY_DELAYS_MS[attempt];
+    // Rozrzut — równoległe odczyty po limicie nie uderzają znowu w tej samej chwili.
+    const delay = RETRY_DELAYS_MS[attempt] == null ? undefined : RETRY_DELAYS_MS[attempt]! * (0.5 + Math.random());
     if (!res.ok && delay != null && isGmailRetryable(res.status, json.error?.message ?? "")) {
       await new Promise((r) => setTimeout(r, delay));
       continue;
@@ -656,7 +681,7 @@ export async function sendGmailRawInThread(
   mime: Buffer,
   threadId: string
 ): Promise<{ id: string; threadId: string | null }> {
-  const boundary = `ontime-${Date.now().toString(36)}`;
+  const boundary = `ontime-${randomBytes(16).toString("hex")}`;
   const body = Buffer.concat([
     Buffer.from(
       `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({ threadId })}\r\n` +

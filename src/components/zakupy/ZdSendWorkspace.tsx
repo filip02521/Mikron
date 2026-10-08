@@ -356,7 +356,7 @@ export function ZdSendWorkspace({
                 <label htmlFor={ids.to} className="text-xs font-medium text-slate-500">
                   Do
                 </label>
-                <input id={ids.to} value={to} onChange={(e) => setTo(e.target.value)} disabled={mailDone} className={fieldClass} />
+                <input id={ids.to} value={to} onChange={(e) => { setTo(e.target.value); setConfirm((c) => ({ ...c, allowUnknownRecipients: false })); }} disabled={mailDone} className={fieldClass} />
               </div>
               <div>
                 <label htmlFor={ids.cc} className="text-xs font-medium text-slate-500">
@@ -365,7 +365,7 @@ export function ZdSendWorkspace({
                 <input
                   id={ids.cc}
                   value={cc}
-                  onChange={(e) => setCc(e.target.value)}
+                  onChange={(e) => { setCc(e.target.value); setConfirm((c) => ({ ...c, allowUnknownRecipients: false })); }}
                   disabled={mailDone}
                   inputMode="email"
                   autoComplete="off"

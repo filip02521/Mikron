@@ -323,7 +323,9 @@ export async function countSupplierMailNeedsAction(now: Date = new Date()): Prom
       overdue = waitingCases(cases, linked as MailMessageRow[], now).filter((w) => w.overdue).length;
     }
     return (open.rows[0]?.n ?? 0) + overdue;
-  } catch {
+  } catch (e) {
+    // Licznik nie może zatrzymać menu, ale błąd bazy (poza brakiem migracji) ma być widoczny w logach.
+    if (!isMissingSchema(e)) console.error("[poczta] licznik", e);
     return 0;
   }
 }

@@ -209,7 +209,7 @@ export function SupplierInquiryDialog({
                   Do
                 </label>
                 {supplier.emails.length > 1 ? (
-                  <select id={ids.to} value={to} onChange={(e) => setTo(e.target.value)} className={fieldClass}>
+                  <select id={ids.to} value={to} onChange={(e) => { setTo(e.target.value); setConfirmed((c) => ({ ...c, allowUnknownRecipients: false })); }} className={fieldClass}>
                     {supplier.emails.map((email) => (
                       <option key={email} value={email}>
                         {email}
@@ -217,7 +217,7 @@ export function SupplierInquiryDialog({
                     ))}
                   </select>
                 ) : (
-                  <input id={ids.to} value={to} onChange={(e) => setTo(e.target.value)} className={fieldClass} />
+                  <input id={ids.to} value={to} onChange={(e) => { setTo(e.target.value); setConfirmed((c) => ({ ...c, allowUnknownRecipients: false })); }} className={fieldClass} />
                 )}
                 <p className="mt-1 text-xs text-slate-500">
                   {supplier.english ? "Szkic po angielsku (dostawca zagraniczny)." : "Szkic po polsku."}
@@ -233,7 +233,7 @@ export function SupplierInquiryDialog({
                   inputMode="email"
                   autoComplete="off"
                   value={cc}
-                  onChange={(e) => setCc(e.target.value)}
+                  onChange={(e) => { setCc(e.target.value); setConfirmed((c) => ({ ...c, allowUnknownRecipients: false })); }}
                   placeholder="np. kierownik@mikran.com"
                   className={fieldClass}
                 />

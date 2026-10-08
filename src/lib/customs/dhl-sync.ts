@@ -221,6 +221,9 @@ async function applyInTransaction(
     add("request_mailbox = ?", box.email);
     add("request_gmail_message_id = ?", meta.id);
     add("request_gmail_thread_id = ?", meta.threadId);
+  } else if ((mail.kind === "request" || mail.kind === "agency") && mail.forwarded && mail.ticket) {
+    // Oryginał przyszedł do niepodłączonej skrzynki — temat z T# z przekazanej kopii, inaczej odpowiedź bez numeru sprawy.
+    add("request_subject = COALESCE(request_subject, ?)", stripSubjectPrefixes(meta.subject).subject.slice(0, 500));
   }
   if (STARTS_REQUEST.has(mail.kind)) {
     // Wcześniejsza z: data maila, dzień z numeru sprawy (przekazanie bywa dużo później niż prośba).
@@ -413,6 +416,11 @@ async function createFromShipment(
     return null;
   }
   const clearanceId = created.id;
+  // Od razu przypięta — błąd dalej (plik, aktualizacja) nie może skończyć się drugą odprawą dla tego AWB.
+  await query(`UPDATE public.customs_dhl_shipments SET clearance_id = $2, note = NULL, claimed_at = NULL, updated_at = now() WHERE id = $1`, [
+    s.id,
+    clearanceId,
+  ]);
 
   // Własna kopia faktury — usunięcie / podmiana pliku w odprawie nie rusza pliku przesyłki.
   const ext = invoiceFile.name.split(".").pop()?.toLowerCase() ?? "pdf";
@@ -437,10 +445,7 @@ async function createFromShipment(
       up.error ? null : invoiceFile.name,
     ]
   );
-  await query(`UPDATE public.customs_dhl_shipments SET clearance_id = $2, note = NULL, claimed_at = NULL, updated_at = now() WHERE id = $1`, [
-    s.id,
-    clearanceId,
-  ]);
+  if (up.error) await setNote(s.id, `Odprawa założona bez faktury - nie udało się zapisać pliku: ${up.error.message}`.slice(0, 300));
   if (userId) {
     const res = await proposeCustomsLines(supabase, clearanceId, userId).catch((e: unknown) => ({
       ok: false as const,
@@ -516,7 +521,6 @@ export async function syncDhlMailbox(token: string, box: DhlMailbox, since: Date
     if (!mail) continue;
     if (await applyMail(token, box, meta, mail)) applied++;
   }
-  await prepareWaitingShipments(box.userId);
   return applied;
 }
 
@@ -528,7 +532,8 @@ export async function prepareWaitingShipments(userId: string | null): Promise<vo
   const { rows } = await query<{ id: string }>(
     `SELECT id FROM public.customs_dhl_shipments
       WHERE clearance_id IS NULL AND dismissed_at IS NULL AND stage = 'request' AND extraction IS NULL
-        AND (note IS NULL OR note = $2) AND requested_at > $1
+        -- Po limicie Gemini co najwyżej raz na 15 min, nie przy każdym przebiegu.
+        AND (note IS NULL OR (note = $2 AND updated_at < now() - interval '15 minutes')) AND requested_at > $1
       ORDER BY requested_at`,
     [new Date(Date.now() - AUTO_CREATE_MAX_AGE_MS), DHL_AI_RETRY_NOTE]
   );

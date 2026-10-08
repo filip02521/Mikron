@@ -69,7 +69,7 @@ describe("actionSendZdToSupplier", () => {
     expect(res).toMatchObject({ ok: true, to: ["order@renfert.de"], cc: ["kierownik@mikran.com"], attachmentName: "ZD 45-M-10-2026.pdf" });
     // ZD bez terminu „dziś” → termin wraca na dziś i wydruk jest świeży (dostawca widzi dzisiejszą datę).
     expect(m.setSubiektOrdersZdTermin).toHaveBeenCalledWith(1867748, "2026-10-07");
-    expect(m.getSubiektOrdersZdPdf).toHaveBeenCalledWith(1867748, { fresh: true });
+    expect(m.getSubiektOrdersZdPdf).toHaveBeenCalledWith(1867748, { fresh: true, version: expect.any(String) });
     const sent = m.sendGmailAsUser.mock.calls[0]![0];
     expect(sent.userId).toBe("user-1");
     expect(sent.kind).toBe("supplier_order");
@@ -137,7 +137,7 @@ describe("actionSendZdToSupplier — termin na wydruku", () => {
     m.loadSupplierZd.mockResolvedValue({ ...zd("Formlabs", "IMPORT"), termin: "2026-10-07" });
     await actionSendZdToSupplier(input);
     expect(m.setSubiektOrdersZdTermin).not.toHaveBeenCalled();
-    expect(m.getSubiektOrdersZdPdf).toHaveBeenCalledWith(1867748, { fresh: false });
+    expect(m.getSubiektOrdersZdPdf).toHaveBeenCalledWith(1867748, { fresh: false, version: expect.any(String) });
   });
   it("dostawca z formularzem → termin ZD nie jest ruszany przed wysyłką", async () => {
     m.loadSupplierZd.mockResolvedValue({ ...zd("Wiedent", "POLSKA"), termin: "2026-10-30" });

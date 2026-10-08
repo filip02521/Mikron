@@ -40,6 +40,16 @@ describe("getSubiektOrdersZdPdf", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
+  it("podgląd i wysyłka w tej samej chwili — jeden wydruk; inna treść ZD — nowy wydruk", async () => {
+    fetchMock.mockImplementation(async () => pdf());
+    await Promise.all([getSubiektOrdersZdPdf(1867751, { version: "a" }), getSubiektOrdersZdPdf(1867751, { version: "a" })]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await getSubiektOrdersZdPdf(1867751, { version: "a" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await getSubiektOrdersZdPdf(1867751, { version: "b" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("nie ponawia przy 500", async () => {
     fetchMock.mockResolvedValueOnce(new Response("", { status: 500 }));
     await expect(getSubiektOrdersZdPdf(1867750)).rejects.toThrow("(HTTP 500).");
