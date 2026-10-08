@@ -1,5 +1,5 @@
 /**
- * Odprawy DHL Express z Gmaila: każda skrzynka z odczytem (osoby i wspólne, np. office@) dokłada
+ * Odprawy DHL Express z Gmaila: każda połączona skrzynka osoby (z odczytem) dokłada
  * zdarzenia do przesyłki o danym AWB. Kopie tej samej wiadomości (kilka skrzynek) liczą się raz
  * (Message-ID), przekazania (Fwd:) dopinają się do tej samej przesyłki. Pierwsza prośba agencji
  * zakłada odprawę: faktura z załącznika → AI → dostawca → pozycje → propozycje opisów i CN.

@@ -77,10 +77,12 @@ describe("gmail — OAuth", () => {
   });
 
   it("ciasteczko stanu: zgodny stan → returnTo; inny stan lub brak → odrzuć", () => {
-    expect(readGmailOAuthCookie("abc|/zakupy/szacunek", "abc")).toEqual({ ok: true, returnTo: "/zakupy/szacunek" });
-    expect(readGmailOAuthCookie("abc|/x", "xyz")).toEqual({ ok: false });
-    expect(readGmailOAuthCookie(undefined, "abc")).toEqual({ ok: false });
-    expect(readGmailOAuthCookie("abc|//evil.com", "abc")).toEqual({ ok: true, returnTo: "/" });
+    expect(readGmailOAuthCookie("abc|u1|/zakupy/szacunek", "abc", "u1")).toEqual({ ok: true, returnTo: "/zakupy/szacunek" });
+    expect(readGmailOAuthCookie("abc|u1|/x", "xyz", "u1")).toEqual({ ok: false });
+    expect(readGmailOAuthCookie(undefined, "abc", "u1")).toEqual({ ok: false });
+    expect(readGmailOAuthCookie("abc|u1|//evil.com", "abc", "u1")).toEqual({ ok: true, returnTo: "/" });
+    // Łączenie zaczęła inna osoba (wylogowanie w trakcie) — odrzucone.
+    expect(readGmailOAuthCookie("abc|u1|/x", "abc", "u2")).toEqual({ ok: false });
   });
 });
 

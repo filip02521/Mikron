@@ -21,7 +21,9 @@ zastosować tego samego dnia. Wymagane migracje tej funkcji:
 | `176_price_list_update_backup.sql` | (Cenniki — jeśli jeszcze nie ma) |
 | `177_supplier_order_emails_resolved.sql` | „Załatwione” na wysłanym ZD |
 | `178_supplier_mail.sql` | Poczta dostawców: maile, synchronizacja, wątki i przypomnienia na wysyłkach |
-| `179_customs_dhl_shipments.sql` | Odprawy DHL z maili: przesyłki po AWB, zdarzenia, skrzynka wspólna (office@) |
+| `179_customs_dhl_shipments.sql` | Odprawy DHL z maili: przesyłki po AWB, zdarzenia |
+| `180_supplier_mail_case_idx.sql` | Indeks pod licznik Poczty dostawców |
+| `181_drop_google_shared_mailboxes.sql` | Usuwa skrzynkę wspólną (office@) — czytamy tylko połączone skrzynki osób |
 
 Po migracji: `npm run verify:deploy`.
 
@@ -61,9 +63,9 @@ ustawia API — do zmiany po stronie API.
    maile starsze niż doba oznacza jako załatwione (bez zaległości na start), a sprawy, na które ktoś już
    odpisał w Gmailu — jako załatwione w Gmailu.
 3. Asystent widzą role `admin` i `zakupy`.
-4. **Odprawy DHL:** prośby Agencji Celnej DHL przychodzą na office@ (nie do osób). Admin albo zakupy:
-   Odprawy celne → „Podłącz skrzynkę” → logowanie w Google **na office@** (hasło wpisuje osoba, nie OnTime).
-   Od tej chwili każda nowa prośba (T#…) zakłada odprawę sama: faktura z załączników `<AWB>.INV.*` (PDF
+4. **Odprawy DHL:** OnTime czyta maile DHL tylko ze skrzynek osób, które połączyły Gmaila (z odczytem).
+   Prośba, która trafia wyłącznie na adres ogólny (np. office@), musi zostać przekazana (Fwd:) do kogoś
+   z połączonym Gmailem — przekazanie dopina się do przesyłki po AWB. Każda nowa prośba (T#…) zakłada odprawę sama: faktura z załączników `<AWB>.INV.*` (PDF
    albo TIFF; gdy plików jest kilka, wygrywa ten z pozycjami) →
    odczyt AI → dostawca (po nazwie sprzedawcy) → pozycje i propozycje opisów / CN. Kopie, przekazania (Fwd:)
    i ponaglenia dopinają się do tej samej przesyłki po numerze AWB. Wysyłka z odprawy idzie jako „Re:” na

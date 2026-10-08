@@ -70,52 +70,6 @@ export async function saveGmailConnection(input: {
   );
 }
 
-/** Skrzynka wspólna (office@) — tylko odczyt maili DHL o odprawach; z niej nic nie wysyłamy. */
-export async function saveSharedMailbox(input: {
-  connectedBy: string;
-  email: string;
-  refreshToken: string;
-  scope: string;
-}): Promise<void> {
-  const cfg = getGmailOAuthConfig();
-  if (!cfg) throw new Error("Gmail nie jest skonfigurowany.");
-  await query(
-    `INSERT INTO public.google_shared_mailboxes (google_email, refresh_token_enc, scope, connected_by)
-     VALUES ($1, $2, $3, $4)
-     ON CONFLICT (google_email) DO UPDATE
-       SET refresh_token_enc = EXCLUDED.refresh_token_enc, scope = EXCLUDED.scope,
-           connected_by = EXCLUDED.connected_by, connected_at = now(), updated_at = now()`,
-    [input.email.toLowerCase(), encryptToken(cfg.tokenKey, input.refreshToken), input.scope, input.connectedBy]
-  );
-}
-
-export async function listSharedMailboxes(): Promise<{ email: string; connectedAt: string }[] | null> {
-  try {
-    const { rows } = await query<{ google_email: string; connected_at: Date }>(
-      `SELECT google_email, connected_at FROM public.google_shared_mailboxes ORDER BY google_email`
-    );
-    return rows.map((r) => ({ email: r.google_email, connectedAt: r.connected_at.toISOString() }));
-  } catch {
-    // Przed migracją 179.
-    return null;
-  }
-}
-
-/** Odłączenie skrzynki wspólnej: usunięcie wiersza i odwołanie tokenu w Google. */
-export async function deleteSharedMailbox(email: string): Promise<void> {
-  const cfg = getGmailOAuthConfig();
-  const { rows } = await query<{ refresh_token_enc: string }>(
-    `DELETE FROM public.google_shared_mailboxes WHERE google_email = $1 RETURNING refresh_token_enc`,
-    [email.trim().toLowerCase()]
-  );
-  if (!cfg || !rows[0]) return;
-  try {
-    await revokeGmailToken(decryptToken(cfg.tokenKey, rows[0].refresh_token_enc));
-  } catch {
-    // Wiersz już usunięty — nieodczytywalny token nie zmienia wyniku odłączenia.
-  }
-}
-
 async function loadStoredConnection(userId: string): Promise<{ email: string; tokenEnc: string } | null> {
   const { rows } = await query<{ google_email: string; refresh_token_enc: string }>(
     `SELECT google_email, refresh_token_enc FROM public.google_mail_connections WHERE user_id = $1`,
@@ -131,19 +85,14 @@ async function loadRefreshToken(userId: string): Promise<{ email: string; token:
   return stored ? { email: stored.email, token: decryptToken(cfg.tokenKey, stored.tokenEnc) } : null;
 }
 
-/** Konto Google podłączone w OnTime (własne albo wspólne) — wtedy jego zgody w Google nie cofamy. */
+/** Konto Google podłączone w OnTime — wtedy jego zgody w Google nie cofamy. */
 export async function isGoogleAccountConnected(email: string): Promise<boolean> {
   const e = email.trim().toLowerCase();
   const { rows } = await query<{ n: number }>(
     `SELECT count(*)::int AS n FROM public.google_mail_connections WHERE lower(google_email) = $1`,
     [e]
   );
-  if (rows[0]?.n) return true;
-  const shared = await query<{ n: number }>(
-    `SELECT count(*)::int AS n FROM public.google_shared_mailboxes WHERE google_email = $1`,
-    [e]
-  ).catch(() => ({ rows: [{ n: 0 }] }));
-  return Boolean(shared.rows[0]?.n);
+  return Boolean(rows[0]?.n);
 }
 
 export async function deleteGmailConnection(userId: string): Promise<void> {

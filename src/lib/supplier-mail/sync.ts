@@ -43,8 +43,8 @@ const FORCE_SYNC_MIN_GAP_MS = 60_000;
 const MAX_MESSAGES_PER_QUERY = 3000;
 const META_CONCURRENCY = 6;
 
-/** shared = skrzynka wspólna (office@) — tylko maile DHL o odprawach; userId = kto ją podłączył. */
-type Mailbox = { userId: string | null; email: string; tokenEnc: string; shared: boolean };
+/** Skrzynki osób, które połączyły Gmaila ze zgodą na odczyt. */
+type Mailbox = { userId: string; email: string; tokenEnc: string };
 
 async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const out: R[] = new Array(items.length);
@@ -64,20 +64,9 @@ async function loadMailboxes(): Promise<Mailbox[]> {
   const { rows } = await query<{ user_id: string; google_email: string; refresh_token_enc: string; scope: string }>(
     `SELECT user_id, google_email, refresh_token_enc, scope FROM public.google_mail_connections`
   );
-  const own = rows
+  return rows
     .filter((r) => scopeCanReadReplies(r.scope))
-    .map((r) => ({ userId: r.user_id, email: r.google_email.toLowerCase(), tokenEnc: r.refresh_token_enc, shared: false }));
-  // Przed migracją 179 tabeli skrzynek wspólnych nie ma.
-  const shared = await query<{ google_email: string; refresh_token_enc: string; scope: string; connected_by: string | null }>(
-    `SELECT google_email, refresh_token_enc, scope, connected_by FROM public.google_shared_mailboxes`
-  ).catch(() => ({ rows: [] }));
-  const ownEmails = new Set(own.map((b) => b.email));
-  return [
-    ...own,
-    ...shared.rows
-      .filter((r) => scopeCanReadReplies(r.scope) && !ownEmails.has(r.google_email.toLowerCase()))
-      .map((r) => ({ userId: r.connected_by, email: r.google_email.toLowerCase(), tokenEnc: r.refresh_token_enc, shared: true })),
-  ];
+    .map((r) => ({ userId: r.user_id, email: r.google_email.toLowerCase(), tokenEnc: r.refresh_token_enc }));
 }
 
 /**
@@ -180,10 +169,6 @@ async function syncMailbox(
 
   const token = await gmailAccessToken(cfg, decryptToken(cfg.tokenKey, box.tokenEnc));
   await syncDhl(token, box, since);
-  if (box.shared) {
-    await markSynced(box.email, startedAt);
-    return { inserted: 0 };
-  }
   await backfillThreadIds(token, box.email, cases);
 
   const index = buildSenderIndex(cards);
@@ -416,7 +401,7 @@ function runSync(opts: { force?: boolean }): Promise<SupplierMailSyncResult> {
       }
     }
     // Prośby DHL czekające na odczyt AI — raz na przebieg (nie na skrzynkę), także gdy nie było nowych maili.
-    await prepareWaitingShipments(due.find((b) => !b.shared && b.userId)?.userId ?? due[0]?.userId ?? null).catch((e: unknown) => {
+    await prepareWaitingShipments(due[0]?.userId ?? null).catch((e: unknown) => {
       const message = e instanceof Error ? e.message : String(e);
       if (!/customs_dhl_shipments/.test(message)) console.error("[odprawy] automat", e);
     });
