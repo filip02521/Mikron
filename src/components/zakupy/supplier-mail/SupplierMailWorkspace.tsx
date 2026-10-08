@@ -571,10 +571,10 @@ export function SupplierMailWorkspace({
         )}
       </div>
 
-      {/* „Cofnij” po przeniesieniu / decyzji — 30 s: nad dolną nawigacją na telefonie; na desktopie w rogu panelu,
-          przy akcjach nagłówka, a nie nad polem odpowiedzi. */}
+      {/* „Cofnij” po przeniesieniu / decyzji — 30 s: nad dolną nawigacją na telefonie; na desktopie dołem nad listą
+          (jak w Gmailu) — nie zasłania paska kolumn ani pola odpowiedzi. Od 2xl lista zaczyna się za szyną 14rem. */}
       {undo ? (
-        <div className="pointer-events-none fixed inset-x-3 bottom-[calc(1rem+var(--mobile-bottom-chrome,0px))] z-40 flex justify-center lg:absolute lg:inset-x-auto lg:bottom-auto lg:right-4 lg:top-3 lg:justify-end">
+        <div className="pointer-events-none fixed inset-x-3 bottom-[calc(1rem+var(--mobile-bottom-chrome,0px))] z-40 flex justify-center lg:absolute lg:inset-x-auto lg:bottom-4 lg:left-4 lg:justify-start 2xl:left-[15rem]">
           <div
             role="status"
             className="pointer-events-auto flex max-w-[min(100%,28rem)] items-center gap-3 rounded-md border border-slate-200/90 bg-white px-3 py-2 text-sm text-slate-900 shadow-[var(--shadow-card-elevated)]"
