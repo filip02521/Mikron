@@ -145,3 +145,34 @@ describe("departmentBoardQuestionFilterCounts", () => {
     expect(counts.unseen).toBe(0);
   });
 });
+
+describe("zakupy: odpowiedź dostawcy jak pytanie bez odpowiedzi", () => {
+  const inquiry = { id: "i1", supplierId: "s1", supplierName: "Renfert GmbH", sentAt: "2026-10-06T08:00:00.000Z" };
+  const withReply = testQuestion({
+    id: "q4",
+    title: "Frez - kiedy dostawa?",
+    body: "d",
+    status: "answered",
+    supplierInquiries: [{ ...inquiry, resolvedAt: null, replyAt: "2026-10-07T09:00:00.000Z" }],
+  });
+  const resolved = testQuestion({
+    id: "q5",
+    title: "Wosk - cena",
+    body: "e",
+    status: "answered",
+    supplierInquiries: [{ ...inquiry, resolvedAt: "2026-10-07T10:00:00.000Z", replyAt: "2026-10-07T09:00:00.000Z" }],
+  });
+  const all = [...questions, withReply, resolved];
+  const ctx = { supplierRepliesNeedAction: true };
+
+  it("filtr i licznik „open” u zakupów obejmują pytanie z odpowiedzią dostawcy", () => {
+    expect(filterDepartmentBoardQuestionsByStatus(all, "open", ctx).map((q) => q.id)).toEqual(["q1", "q4"]);
+    expect(departmentBoardQuestionFilterCounts(all, { ctx }).open).toBe(2);
+  });
+
+  it("u handlowca (bez flagi) „open” bez zmian", () => {
+    expect(filterDepartmentBoardQuestionsByStatus(all, "open").map((q) => q.id)).toEqual(["q1"]);
+    expect(departmentBoardQuestionFilterCounts(all).open).toBe(1);
+  });
+});
+

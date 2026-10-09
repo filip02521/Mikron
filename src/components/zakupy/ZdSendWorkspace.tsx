@@ -8,12 +8,15 @@ import {
   actionMarkZdEstimateIndividualsGlowne,
   actionMarkZdEstimateSupplierOrdered,
 } from "@/app/actions/zd-estimate";
-import { IconAlertCircle, IconCircleCheck, IconMail } from "@/components/icons/StrokeIcons";
+import { IconAlertCircle, IconCircleCheck, IconMail, IconPaperclip } from "@/components/icons/StrokeIcons";
 import { MailPreview, type MailPreviewAttachment } from "@/components/mail/MailPreview";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
+import { prepareMailAttachment } from "@/lib/client/compress-image";
+import { EXTRA_ATTACHMENTS_ACCEPT, extraAttachmentsError } from "@/lib/email/extra-attachments";
 import { parseMailRecipients } from "@/lib/email/recipients";
+import { zdTerminError } from "@/lib/orders/zd-send-plan";
 import type { SupplierOrderEmail } from "@/lib/google/gmail-connections";
 import type { DailyPanelUndoPayload } from "@/lib/orders/daily-panel-undo";
 import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
@@ -23,6 +26,9 @@ const fieldClass = cn(controlFocusClass, "mt-1 w-full rounded-md border border-s
 
 type StepKey = "mail" | "termin" | "glowne" | "plan";
 type StepState = { status: "idle" | "running" | "ok" | "error" | "skipped"; message?: string };
+
+/** ponytail: proxy przed ontime.mikran.pl ucina żądania ~1 MB; po podniesieniu client_max_body_size — usuń ostrzeżenie. */
+const PROXY_BODY_LIMIT_BYTES = 1024 * 1024;
 
 const plDate = (key: string) => key.split("-").reverse().join(".");
 
@@ -57,7 +63,6 @@ export function ZdSendWorkspace({
   manualContact,
   actionsSlot,
   simulation,
-  onSent,
   onGlowneMarked,
   onScheduleMarked,
   onUndo,
@@ -87,7 +92,6 @@ export function ZdSendWorkspace({
   actionsSlot?: HTMLElement | null;
   /** Tylko laboratorium: kroki udają odpowiedzi serwera (nic nie wychodzi, nic się nie zapisuje). */
   simulation?: ZdSendSimulation | null;
-  onSent: (sent: { to: string[]; from: string; file: string }) => void;
   onGlowneMarked: (result: { processedIds: string[]; dropPendingIds: string[] }) => void;
   onScheduleMarked: () => void;
   onUndo: (kind: "glowne" | "schedule", payload: DailyPanelUndoPayload, title: string) => void;
@@ -114,6 +118,46 @@ export function ZdSendWorkspace({
   const [attachment, setAttachment] = useState<
     { state: "loading" } | { state: "ready"; file: MailPreviewAttachment } | { state: "error"; message: string }
   >({ state: "loading" });
+  const [extras, setExtras] = useState<{ file: File; href: string }[]>([]);
+  const [extrasBusy, setExtrasBusy] = useState(false);
+  const [extrasError, setExtrasError] = useState<string | null>(null);
+  const extrasInputRef = useRef<HTMLInputElement>(null);
+  // Adresy podglądu plików — zwalniane przy usunięciu pliku i przy zamknięciu okna.
+  const extraUrlsRef = useRef(new Set<string>());
+  useEffect(() => {
+    const urls = extraUrlsRef.current;
+    return () => urls.forEach((u) => URL.revokeObjectURL(u));
+  }, []);
+  const extrasBytes = extras.reduce((n, x) => n + x.file.size, 0);
+
+  async function addExtras(list: FileList) {
+    setExtrasError(null);
+    setExtrasBusy(true);
+    try {
+      const prepared = await Promise.all(Array.from(list).map(prepareMailAttachment));
+      const error = extraAttachmentsError([...extras.map((x) => x.file), ...prepared]);
+      if (error) {
+        setExtrasError(error);
+        return;
+      }
+      const added = prepared.map((file) => ({ file, href: URL.createObjectURL(file) }));
+      added.forEach((x) => extraUrlsRef.current.add(x.href));
+      setExtras((prev) => [...prev, ...added]);
+    } finally {
+      setExtrasBusy(false);
+    }
+  }
+
+  function removeExtra(index: number) {
+    setExtrasError(null);
+    const href = extras[index]?.href;
+    if (href) {
+      URL.revokeObjectURL(href);
+      extraUrlsRef.current.delete(href);
+    }
+    setExtras((prev) => prev.filter((_, i) => i !== index));
+  }
+
   const [steps, setSteps] = useState<Record<StepKey, StepState>>({
     mail: { status: previousSend ? "ok" : "idle", message: previousSend ? sentLabel(previousSend) : undefined },
     termin: { status: "idle" },
@@ -122,7 +166,11 @@ export function ZdSendWorkspace({
   });
   const [confirm, setConfirm] = useState<{ resend?: boolean; allowUnknownRecipients?: boolean }>({});
   const [mailIssue, setMailIssue] = useState<
-    { kind: "unknown"; emails: string[] } | { kind: "already"; sent: SupplierOrderEmail } | null
+    | { kind: "unknown"; emails: string[] }
+    | { kind: "already"; sent: SupplierOrderEmail }
+    /** Połączenie zerwane po wysłaniu treści — ponowna wysyłka dopiero po sprawdzeniu „Wysłanych”. */
+    | { kind: "uncertain" }
+    | null
   >(null);
   const running = Object.values(steps).some((s) => s.status === "running");
   // Symulacja: drugi zapis terminu się udaje (sprawdza „Ponów ten krok”).
@@ -191,7 +239,8 @@ export function ZdSendWorkspace({
   const planOk = plan?.ok ? plan : null;
   const inZdIds = planOk ? planOk.inZd.map((r) => r.orderId) : [];
   const glowneTargetIds = [...new Set([...inZdIds, ...serviceOrderIds])];
-  const terminInvalid = !/^\d{4}-\d{2}-\d{2}$/.test(termin) || (planOk ? termin < planOk.today : false);
+  // Te same reguły co na serwerze — błędny termin nie może zablokować samej wysyłki dopiero po kliknięciu.
+  const terminInvalid = planOk ? zdTerminError(termin, planOk.today) != null : !/^\d{4}-\d{2}-\d{2}$/.test(termin);
   const recipients = parseMailRecipients(to, cc);
   const mailDone = steps.mail.status === "ok";
   const allDone = (["mail", "termin", "glowne", "plan"] as const).every((k) => ["ok", "skipped"].includes(steps[k].status));
@@ -269,8 +318,8 @@ export function ZdSendWorkspace({
   }
 
   /** Kroki po mailu — w tej kolejności; termin przed Główne, żeby handlowcy od razu widzieli datę. */
-  async function finishAfterMail() {
-    if (steps.termin.status !== "ok") await runTermin();
+  async function finishAfterMail(opts: { terminHandled?: boolean } = {}) {
+    if (!opts.terminHandled && steps.termin.status !== "ok") await runTermin();
     if (steps.glowne.status !== "ok") await runGlowne();
     if (steps.plan.status !== "ok") await runPlan();
   }
@@ -283,7 +332,7 @@ export function ZdSendWorkspace({
     setStep("mail", { status: "running" });
     showProgress();
     const res: SendZdToSupplierResult = live
-      ? await actionSendZdToSupplier({ dokId, supplierId, to, cc, subject, body, ...merged }).catch((e: unknown) => ({
+      ? await actionSendZdToSupplier({ dokId, supplierId, to, cc, subject, body, terminAfterSend: termin, extraFiles: extras.map((x) => x.file), ...merged }).catch((e: unknown) => ({
           ok: false as const,
           message: userFacingErrorTextFromMessage(e instanceof Error ? e.message : String(e), "Nie udało się wysłać zamówienia."),
         }))
@@ -292,26 +341,38 @@ export function ZdSendWorkspace({
           from: gmail.email,
           to: recipients.ok ? recipients.to : [to],
           cc: recipients.ok ? recipients.cc : [],
-          attachmentName: attachment.state === "ready" ? attachment.file.name : "zamowienie.pdf",
+          attachmentName: [attachment.state === "ready" ? attachment.file.name : "zamowienie.pdf", ...extras.map((x) => x.file.name)].join(", "),
           sentAt: new Date().toISOString(),
         }));
     if (!res.ok) {
       if ("unknownRecipients" in res && res.unknownRecipients?.length) setMailIssue({ kind: "unknown", emails: res.unknownRecipients });
       else if ("alreadySent" in res && res.alreadySent) setMailIssue({ kind: "already", sent: res.alreadySent });
+      else if ("uncertain" in res && res.uncertain) setMailIssue({ kind: "uncertain" });
       setStep("mail", { status: "error", message: res.message });
       return;
     }
-    onSent({ to: res.to, from: res.from, file: res.attachmentName });
     setStep("mail", {
       status: "ok",
       message: `Wysłano do ${[...res.to, ...res.cc].join(", ")} · ${res.attachmentName}`,
     });
-    await finishAfterMail();
+    // Termin ustawił już serwer razem z wysyłką; błąd zostaje z przyciskiem „Ponów”.
+    const serverTermin = "termin" in res ? res.termin : undefined;
+    if (serverTermin) {
+      setStep(
+        "termin",
+        serverTermin.ok
+          ? { status: "ok", message: `Termin realizacji: ${plDate(serverTermin.termin)}` }
+          : { status: "error", message: serverTermin.message }
+      );
+    }
+    await finishAfterMail({ terminHandled: Boolean(serverTermin) });
   }
 
   async function markSentManually() {
     if ((previewOnly && live) || running) return;
-    setStep("mail", { status: "ok", message: "Wysłane poza OnTime" });
+    const confirmedInGmail = mailIssue?.kind === "uncertain";
+    setMailIssue(null);
+    setStep("mail", { status: "ok", message: confirmedInGmail ? "Jest w Wysłanych w Gmailu" : "Wysłane poza OnTime" });
     showProgress();
     await finishAfterMail();
   }
@@ -325,8 +386,10 @@ export function ZdSendWorkspace({
     subject.trim() !== "" &&
     body.trim() !== "" &&
     attachment.state === "ready" &&
+    !extrasBusy &&
     Boolean(planOk) &&
-    !terminInvalid;
+    !terminInvalid &&
+    mailIssue?.kind !== "uncertain";
 
   return (
     <>
@@ -356,7 +419,7 @@ export function ZdSendWorkspace({
                 <label htmlFor={ids.to} className="text-xs font-medium text-slate-500">
                   Do
                 </label>
-                <input id={ids.to} value={to} onChange={(e) => setTo(e.target.value)} disabled={mailDone} className={fieldClass} />
+                <input id={ids.to} value={to} onChange={(e) => { setTo(e.target.value); setConfirm((c) => ({ ...c, allowUnknownRecipients: false })); }} disabled={mailDone} className={fieldClass} />
               </div>
               <div>
                 <label htmlFor={ids.cc} className="text-xs font-medium text-slate-500">
@@ -365,7 +428,7 @@ export function ZdSendWorkspace({
                 <input
                   id={ids.cc}
                   value={cc}
-                  onChange={(e) => setCc(e.target.value)}
+                  onChange={(e) => { setCc(e.target.value); setConfirm((c) => ({ ...c, allowUnknownRecipients: false })); }}
                   disabled={mailDone}
                   inputMode="email"
                   autoComplete="off"
@@ -487,6 +550,18 @@ export function ZdSendWorkspace({
               Wyślij ponownie
             </Button>
           </div>
+        ) : mailIssue?.kind === "uncertain" ? (
+          <div className="space-y-2 rounded-md bg-amber-50 px-3 py-2.5 text-sm text-amber-950 ring-1 ring-amber-200" role="alert">
+            <p>Nie wiadomo, czy mail wyszedł. Sprawdź „Wysłane” w Gmailu.</p>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="secondary" className="min-h-10" disabled={running} onClick={() => void markSentManually()}>
+                Jest w Wysłanych
+              </Button>
+              <Button type="button" variant="ghost" className="min-h-10" disabled={running} onClick={() => void send()}>
+                Nie ma - wyślij jeszcze raz
+              </Button>
+            </div>
+          </div>
         ) : null}
 
       </div>
@@ -506,7 +581,52 @@ export function ZdSendWorkspace({
             cc={cc}
             subject={subject}
             text={body}
-            attachments={attachment.state === "ready" ? [attachment.file] : []}
+            attachments={[
+              ...(attachment.state === "ready" ? [attachment.file] : []),
+              ...extras.map((x, i) => ({
+                name: x.file.name,
+                size: x.file.size,
+                href: x.href,
+                opensInline: x.file.type === "application/pdf" || x.file.type.startsWith("image/"),
+                onRemove: mailDone || running ? undefined : () => removeExtra(i),
+              })),
+            ]}
+            attachmentsFooter={
+              mailDone ? null : (
+                <div className="mt-2 space-y-1.5">
+                  <input
+                    ref={extrasInputRef}
+                    type="file"
+                    multiple
+                    accept={EXTRA_ATTACHMENTS_ACCEPT}
+                    className="sr-only"
+                    tabIndex={-1}
+                    onChange={(e) => {
+                      if (e.target.files?.length) void addExtras(e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => extrasInputRef.current?.click()}
+                    disabled={extrasBusy || running}
+                    className="inline-flex min-h-9 items-center gap-1.5 rounded px-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 disabled:opacity-50"
+                  >
+                    {extrasBusy ? <Spinner size="sm" /> : <IconPaperclip size={14} aria-hidden />}
+                    {extrasBusy ? "Przygotowuję pliki…" : "Dodaj pliki"}
+                  </button>
+                  {extrasError ? (
+                    <p className="text-sm text-red-700" role="alert">
+                      {extrasError}
+                    </p>
+                  ) : live && extrasBytes > PROXY_BODY_LIMIT_BYTES ? (
+                    <p className="text-xs text-amber-800">
+                      Dodatkowe pliki mają razem ponad 1 MB - serwer OnTime może odrzucić wysyłkę. Zmniejsz PDF albo wyślij go osobno.
+                    </p>
+                  ) : null}
+                </div>
+              )
+            }
             attachmentsLoading={
               attachment.state === "loading"
                 ? orderFormKind

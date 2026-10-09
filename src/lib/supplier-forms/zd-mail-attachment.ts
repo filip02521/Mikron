@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { GmailAttachment } from "@/lib/google/gmail";
 import { getSubiektOrdersZdPdf } from "@/lib/subiekt/api";
 import type { SupplierZd } from "@/lib/supplier-forms/prepare";
@@ -27,7 +28,15 @@ export async function buildZdMailAttachment(
   }
   return {
     filename: `${zd.dokNr.replace(/[\\/:*?"<>|]+/g, "-")}.pdf`,
-    content: await getSubiektOrdersZdPdf(dokId, opts),
+    content: await getSubiektOrdersZdPdf(dokId, { ...opts, version: zdPdfVersion(zd) }),
     contentType: "application/pdf",
   };
+}
+
+/** Odcisk treści wydruku — termin i pozycje (zmiana w Subiekcie po podglądzie nie wysyła starego pliku). */
+export function zdPdfVersion(zd: Pick<SupplierZd, "termin" | "lines">): string {
+  return createHash("sha1")
+    .update(JSON.stringify([zd.termin ?? null, zd.lines.map((l) => [l.symbol, l.name, l.qty])]))
+    .digest("hex")
+    .slice(0, 12);
 }

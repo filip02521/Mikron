@@ -11,24 +11,32 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Field";
 import type { DhlShipmentItem } from "@/lib/customs/dhl-data";
+import { todayDateKeyInWarsaw, warsawDateKeyFromIso } from "@/lib/time/warsaw";
 
-const DAY_MS = 86_400_000;
 /** DHL Express: 3 dni kalendarzowe bez opłat (z dniem przybycia), zwrot do nadawcy po 10 dniach. */
 const FREE_DAYS = 3;
 const RETURN_DAYS = 10;
 
-function dayLabel(ms: number): string {
-  return new Date(ms).toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit", timeZone: "Europe/Warsaw" });
+/** Dni kalendarzowe w Warszawie (YYYY-MM-DD) — nie godziny od maila, inaczej termin przesuwa się o pół dnia. */
+function addDaysToKey(key: string, days: number): string {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(Date.UTC(y!, m! - 1, d! + days)).toISOString().slice(0, 10);
+}
+
+function dayLabel(key: string): string {
+  const [, m, d] = key.split("-");
+  return `${d}.${m}`;
 }
 
 function deadlines(requestedAt: string | null, now: number): { text: string; tone: "warning" | "danger" | "default" } | null {
   if (!requestedAt) return null;
-  const start = new Date(requestedAt).getTime();
-  const lastFree = start + (FREE_DAYS - 1) * DAY_MS;
-  const returnAt = start + RETURN_DAYS * DAY_MS;
-  if (now > returnAt) return { text: `Termin zwrotu minął ${dayLabel(returnAt)}`, tone: "danger" };
-  if (now > lastFree + DAY_MS) return { text: `Składowanie płatne · zwrot ${dayLabel(returnAt)}`, tone: "danger" };
-  return { text: `Bez opłat do ${dayLabel(lastFree)}`, tone: lastFree - now < DAY_MS ? "warning" : "default" };
+  const start = warsawDateKeyFromIso(requestedAt);
+  const lastFree = addDaysToKey(start, FREE_DAYS - 1);
+  const returnAt = addDaysToKey(start, RETURN_DAYS);
+  const today = todayDateKeyInWarsaw(new Date(now));
+  if (today > returnAt) return { text: `Termin zwrotu minął ${dayLabel(returnAt)}`, tone: "danger" };
+  if (today > lastFree) return { text: `Składowanie płatne · zwrot ${dayLabel(returnAt)}`, tone: "danger" };
+  return { text: `Bez opłat do ${dayLabel(lastFree)}`, tone: today === lastFree ? "warning" : "default" };
 }
 
 function formatDateTime(iso: string | null): string {
@@ -55,6 +63,8 @@ export function DhlShipmentsPanel({
   const [picked, setPicked] = useState<Record<string, string>>({});
   const [messages, setMessages] = useState<Record<string, { tone: "error" | "info"; text: string }>>({});
   const [now] = useState(() => Date.now());
+  /** „Pomiń” chowa przesyłkę z listy na stałe — drugi klik potwierdza. */
+  const [confirmDismiss, setConfirmDismiss] = useState<string | null>(null);
 
   if (!shipments.length) return null;
 
@@ -124,11 +134,12 @@ export function DhlShipmentsPanel({
                       ? "Wysyłka z odprawy odpowie w wątku agencji."
                       : "Oryginał prośby nie dotarł do połączonej skrzynki - mail pójdzie jako odpowiedź z tematem prośby."}
                   </span>
+                  {s.note ? <p className="basis-full text-sm text-slate-600">{s.note}</p> : null}
                 </div>
               ) : (
                 <>
                   {s.note ? <p className="text-sm text-slate-600">{s.note}</p> : null}
-                  {!s.hasInvoice ? (
+                  {!s.hasInvoice && !s.note ? (
                     <p className="text-sm text-slate-600">
                       Faktury nie było w załączniku. Załóż odprawę ręcznie przyciskiem „Nowa odprawa”.
                     </p>
@@ -170,9 +181,14 @@ export function DhlShipmentsPanel({
                       size="sm"
                       variant="ghost"
                       disabled={pending}
-                      onClick={() => run(s.id, () => actionDismissDhlShipment(s.id, true))}
+                      onClick={() => {
+                        if (confirmDismiss !== s.id) return setConfirmDismiss(s.id);
+                        setConfirmDismiss(null);
+                        run(s.id, () => actionDismissDhlShipment(s.id, true));
+                      }}
+                      onBlur={() => setConfirmDismiss((c) => (c === s.id ? null : c))}
                     >
-                      Pomiń
+                      {confirmDismiss === s.id ? "Na pewno pominąć? Zniknie z listy" : "Pomiń"}
                     </Button>
                   </div>
                 </>

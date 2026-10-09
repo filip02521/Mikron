@@ -46,10 +46,15 @@ export async function GET(request: NextRequest) {
                         : ext === "csv"
                           ? "text/csv"
                           : "application/octet-stream";
+    // Pliki bywają od zewnętrznych nadawców (np. dostawców) — przeglądarka nie zgaduje typu,
+    // a w karcie otwierają się tylko zdjęcia i PDF; reszta jako pobranie.
+    const inline = type.startsWith("image/") || type === "application/pdf";
     return new NextResponse(new Uint8Array(bytes), {
       headers: {
         "Content-Type": type,
         "Cache-Control": "private, max-age=300",
+        "X-Content-Type-Options": "nosniff",
+        ...(inline ? {} : { "Content-Disposition": "attachment" }),
       },
     });
   } catch {

@@ -87,7 +87,39 @@ export function isBoardImageStoragePath(path: string, threadId?: string): boolea
   if (threadId) {
     return trimmed.startsWith(boardImageStoragePrefix(threadId));
   }
-  return /^board\/[0-9a-f-]{36}\/[0-9a-f-]+\.(jpe?g|png|webp)$/i.test(trimmed);
+  return /^board\/[0-9a-f-]{36}\/[0-9a-f-]+\.(jpe?g|png|webp|pdf|xlsx|xls|docx|doc|csv)$/i.test(trimmed);
+}
+
+// ─── Pliki od dostawcy (załączniki maila dołączone do odpowiedzi na tablicy) ───
+
+/** Ile plików od dostawcy w jednej odpowiedzi i jak duże (oferty, karty katalogowe, cenniki). */
+export const BOARD_SUPPLIER_FILE_MAX_COUNT = 5;
+export const BOARD_SUPPLIER_FILE_MAX_BYTES = 15 * 1024 * 1024;
+
+/** Rozszerzenie w magazynie → typ; inne pliki (np. .html, .exe) nie trafiają na tablicę. */
+const BOARD_FILE_TYPES: Record<string, string> = {
+  pdf: "application/pdf",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  xls: "application/vnd.ms-excel",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  doc: "application/msword",
+  csv: "text/csv",
+};
+
+/** Plik od dostawcy, który można dołączyć do odpowiedzi: rozszerzenie i typ do zapisu. null = nieobsługiwany. */
+export function boardSupplierFileType(filename: string): { ext: string; mime: string } | null {
+  const ext = filename.toLowerCase().split(".").pop() ?? "";
+  const mime = BOARD_FILE_TYPES[ext];
+  if (!mime) return null;
+  return { ext: ext === "jpeg" ? "jpg" : ext, mime };
+}
+
+export function isBoardImageAttachment(mime: string | null | undefined): boolean {
+  return Boolean(mime && mime.toLowerCase().startsWith("image/"));
 }
 
 export function validateBoardImageFile(file: {

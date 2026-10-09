@@ -7,14 +7,14 @@ import {
   type OrderFulfillmentProgress,
 } from "@/lib/orders/individual";
 import type { IndividualOrder, IndividualOrderStatus } from "@/types/database";
-import { undoWindowBannerDescription } from "@/lib/orders/daily-panel-undo";
+import { undoWindowLongLabel } from "@/lib/orders/daily-panel-undo";
 import { polishPlural } from "@/lib/email/polish-plural";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export type SalesCancelPhase = "before_order" | "in_transit" | "on_stock";
 
 export function salesCancelUndoHint(): string {
-  return undoWindowBannerDescription("Toast u dołu ekranu lub skrót ⌘Z / Ctrl+Z");
+  return `Przez ${undoWindowLongLabel()} po zatwierdzeniu możesz to cofnąć - przyciskiem „Cofnij” na dole ekranu albo skrótem ⌘Z / Ctrl+Z.`;
 }
 
 /** Status po cofnięciu anulowania (before_order → było Anulowane). */
@@ -163,27 +163,29 @@ export function showSalesCancelSupplierQuickAction(order: IndividualOrder): bool
   return delivered > 0 && remainder === 1;
 }
 
-/** Skrót rezygnacji z reszty u dostawcy (np. 3 z 5 szt. jeszcze w drodze). */
+/** Skrót rezygnacji z tego, czego jeszcze brakuje u dostawcy (np. 2 z 5 szt.). */
 export function salesCancelLineRemainderLabel(remainder?: number): string {
   const n = remainder != null ? Math.max(1, Math.trunc(remainder)) : 0;
-  return n > 1 ? `Rezygnuj z reszty (${n} szt.)` : "Rezygnuj z reszty";
+  if (n === 1) return "Zrezygnuj z brakującej 1 szt.";
+  return n > 1 ? `Zrezygnuj z brakujących ${n} szt.` : "Zrezygnuj z brakujących sztuk";
 }
 
 /** Opis dla czytników ekranu — rezygnacja z reszty u dostawcy. */
 export function salesCancelLineRemainderAriaLabel(remainder: number): string {
   const n = Math.max(1, Math.trunc(remainder));
   return n > 1
-    ? `Rezygnuj z reszty u dostawcy: ${polishPlural(n, "sztuka", "sztuki", "sztuk")}`
-    : "Rezygnuj z reszty u dostawcy";
+    ? `Zrezygnuj z brakujących u dostawcy: ${polishPlural(n, "sztuka", "sztuki", "sztuk")}`
+    : "Zrezygnuj z brakującej sztuki u dostawcy";
 }
 
+/** Ilość można tylko zmniejszyć — „Zmień” sugerowało też zwiększanie. */
 export function salesCancelLineCustomQtyLabel(): string {
-  return "Zmień ilość";
+  return "Zmniejsz ilość…";
 }
 
 /** Ostatnia szt. u dostawcy po częściowej dostawie — rezygnacja z reszty. */
 export function salesCancelQuickActionLabel(): string {
-  return "Rezygnuj z reszty";
+  return salesCancelLineRemainderLabel(1);
 }
 
 export type SalesCancelQuantityPlan = {
@@ -267,52 +269,97 @@ export function planSalesCancelQuantity(
   };
 }
 
-function salesPartialCancelRemainingAfterDelivery(activeAfter: number): string {
-  if (activeAfter === 1) {
-    return "Pozostała 1 szt. będzie na Ciebie czekała po dostawie.";
-  }
-  return `Pozostałe ${activeAfter} szt. będą na Ciebie czekały po dostawie.`;
-}
+export type SalesPartialCancelCopy = {
+  title: string;
+  /** Stan pozycji przed zmianą — stały, niezależny od wybranej ilości. */
+  facts: { label: string; value: string }[];
+  /** Co się stanie przy wybranej ilości — aktualizowane na żywo. */
+  outcome: string;
+  confirmLabel: string;
+  undoHint: string;
+};
 
+const szt = (n: number) => `${n} szt.`;
+
+/**
+ * Treść okna „Zmniejsz ilość” / „Zrezygnuj z brakujących”.
+ * maxQty: on_stock = aktywna ilość (z tym, co już na magazynie); pozostałe fazy = to, co można wycofać.
+ */
 export function salesPartialCancelConfirmCopy(
   phase: SalesCancelPhase,
-  product: string,
+  _product: string,
   cancelQty: number,
   maxQty: number,
   deliveredQty = 0
-): { title: string; message: string; confirmLabel: string } {
-  const base = salesCancelConfirmCopy(phase, { productName: product });
-  const qtyPart =
-    cancelQty >= maxQty
-      ? `${cancelQty} szt.`
-      : `${cancelQty} z ${maxQty} szt.`;
-  const activeAfter = Math.max(0, deliveredQty + maxQty - cancelQty);
+): SalesPartialCancelCopy {
+  const qty = Math.max(1, Math.min(cancelQty, maxQty));
+  const whole = qty >= maxQty;
+  const confirmLabel = whole ? "Wycofaj całą pozycję" : `Wycofaj ${szt(qty)}`;
+  const undoHint = salesCancelUndoHint();
+
   if (phase === "before_order") {
-    if (cancelQty >= maxQty) return base;
     return {
-      title: "Wycofać część pozycji?",
-      message: `Wycofasz ${qtyPart} pozycji „${product}”. Reszta zostaje w prośbie. ${salesCancelUndoHint()}`,
-      confirmLabel: "Zmień ilość",
+      title: "Zmniejszyć ilość w prośbie?",
+      facts: [
+        { label: "W prośbie", value: szt(maxQty) },
+        { label: "U dostawcy", value: "jeszcze nie zamówione" },
+      ],
+      outcome: whole
+        ? "Prośba zniknie z Twojej listy i z listy działu dostaw."
+        : `W prośbie zostanie ${szt(maxQty - qty)} - tyle zamówi dział dostaw.`,
+      confirmLabel,
+      undoHint,
     };
   }
-  if (phase === "in_transit" && cancelQty < maxQty && activeAfter > 0) {
+
+  if (phase === "in_transit") {
+    const arrived = Math.max(0, Math.min(deliveredQty, maxQty));
     return {
-      title: "Zmniejszyć ilość w zamówieniu?",
-      message: `Wycofasz ${qtyPart} z pozycji „${product}”. ${salesPartialCancelRemainingAfterDelivery(activeAfter)}`,
-      confirmLabel: "Zmień ilość",
+      title: "Zmniejszyć zamówienie?",
+      facts: [
+        { label: "Zamówione u dostawcy", value: szt(maxQty) },
+        ...(arrived > 0 ? [{ label: "Już na magazynie", value: szt(arrived) }] : []),
+      ],
+      outcome: whole
+        ? "Nic nie będzie na Ciebie czekać. Jeśli dostawca dowiezie towar, trafi on na stan magazynu."
+        : `Odbierzesz ${szt(maxQty - qty)} po dostawie. Towar, z którego rezygnujesz, trafi na stan magazynu, jeśli dostawca go dowiezie.`,
+      confirmLabel,
+      undoHint,
     };
   }
-  if (cancelQty < maxQty) {
-    return {
-      title: "Zmienić ilość w prośbie?",
-      message: `Wycofasz ${qtyPart} z pozycji „${product}”. Reszta zostaje w prośbie. ${salesCancelUndoHint()}`,
-      confirmLabel: "Zmień ilość",
-    };
+
+  // on_stock — część już na magazynie, reszta może jeszcze być u dostawcy.
+  const delivered = Math.max(0, Math.min(deliveredQty, maxQty));
+  const atSupplier = Math.max(0, maxQty - delivered);
+  const fromSupplier = Math.min(qty, atSupplier);
+  const fromStock = Math.max(0, qty - atSupplier);
+  const pickup = delivered - fromStock;
+  const stillWaiting = atSupplier - fromSupplier;
+
+  const parts: string[] = [];
+  parts.push(
+    pickup > 0
+      ? `Odbierzesz ${szt(pickup)} z magazynu.`
+      : "Nic nie odbierasz - wycofujesz całą pozycję."
+  );
+  if (fromStock > 0) {
+    parts.push(`${szt(fromStock)} z magazynu wraca na stan i nie będzie już na Ciebie czekać.`);
   }
+  if (stillWaiting > 0) {
+    parts.push(`Na ${szt(stillWaiting)} od dostawcy nadal czekasz.`);
+  } else if (fromSupplier > 0) {
+    parts.push("Nie czekasz już na dostawcę - jeśli dowiezie brakujący towar, trafi on na stan magazynu.");
+  }
+
   return {
-    title: base.title,
-    message: base.message,
-    confirmLabel: base.confirmLabel,
+    title: fromStock > 0 ? "Oddać też towar z magazynu?" : "Zrezygnować z brakujących sztuk?",
+    facts: [
+      ...(delivered > 0 ? [{ label: "Na magazynie, czeka na Ciebie", value: szt(delivered) }] : []),
+      ...(atSupplier > 0 ? [{ label: "Brakuje u dostawcy", value: szt(atSupplier) }] : []),
+    ],
+    outcome: parts.join(" "),
+    confirmLabel,
+    undoHint,
   };
 }
 
@@ -584,9 +631,9 @@ export function salesCancelConfirmForLines(lines: SalesCancelLineContext[]): {
   }
   const products = formatProductList(valid.map((l) => l.product));
   return {
-    title: "Wycofać wybrane pozycje?",
-    message: `Pozycje ${products} zostaną wycofane - skutek zależy od etapu każdej z nich (część może być już u dostawcy lub na magazynie). ${salesCancelUndoHint()}`,
-    confirmLabel: "Wycofaj wybrane",
+    title: "Anulować wszystkie pozycje?",
+    message: `Pozycje ${products} są na różnych etapach. Te jeszcze niezamówione znikną z listy, a towar, który jest już u dostawcy lub na magazynie, trafi na stan i nie będzie na Ciebie czekać. ${salesCancelUndoHint()}`,
+    confirmLabel: "Anuluj wszystkie",
   };
 }
 
@@ -604,51 +651,36 @@ export function salesCancelConfirmCopy(
     ? formatProductList(context.productNames)
     : "";
 
+  const undo = salesCancelUndoHint();
+  const many = Boolean(groupProducts);
+  const title = single && product
+    ? "Anulować tę pozycję?"
+    : many
+      ? "Anulować wszystkie pozycje?"
+      : "Anulować prośbę?";
+  const confirmLabel = single && product ? "Anuluj pozycję" : many ? "Anuluj wszystkie" : "Anuluj prośbę";
+  const subject = single && product ? `„${product}”` : many ? `Pozycje ${groupProducts}` : "Prośba";
+  // Prefiks z nazwą — bez uzgadniania rodzaju z nazwą produktu („jest zamówiony/-a/-e”).
+  const lead = single && product ? `„${product}” - ` : many ? `Pozycje ${groupProducts} - ` : "";
+
   switch (phase) {
     case "before_order":
-      if (single && product) {
-        return {
-          title: "Wycofać tę pozycję?",
-          message: `„${product}” zniknie z Twojej listy i u działu dostaw. ${salesCancelUndoHint()}`,
-          confirmLabel: "Wycofaj pozycję",
-        };
-      }
       return {
-        title: groupProducts ? "Wycofać wszystkie pozycje?" : "Wycofać prośbę?",
-        message: groupProducts
-          ? `Pozycje ${groupProducts} znikną z Twojej listy i u działu dostaw. ${salesCancelUndoHint()}`
-          : `Prośba zniknie z Twojej listy i u działu dostaw. ${salesCancelUndoHint()}`,
-        confirmLabel: groupProducts ? "Wycofaj wszystkie" : "Wycofaj prośbę",
+        title,
+        message: `${subject} ${many ? "znikną" : "zniknie"} z Twojej listy i z listy działu dostaw. Nic nie zostało jeszcze zamówione u dostawcy. ${undo}`,
+        confirmLabel,
       };
     case "in_transit":
-      if (single && product) {
-        return {
-          title: "Anulować tę pozycję?",
-          message: `„${product}” może być już u dostawcy. Jeśli towar dotrze, magazyn rozliczy go poza Twoją rezerwacją.`,
-          confirmLabel: "Anuluj pozycję",
-        };
-      }
       return {
-        title: groupProducts ? "Anulować wszystkie pozycje?" : "Anulować prośbę?",
-        message: groupProducts
-          ? `Pozycje ${groupProducts} mogą być już u dostawcy. Jeśli towar dotrze, magazyn rozliczy go poza Twoją rezerwacją.`
-          : "Zamówienie może być już u dostawcy. Jeśli towar dotrze, magazyn rozliczy go poza Twoją rezerwacją.",
-        confirmLabel: groupProducts ? "Anuluj wszystkie" : "Anuluj prośbę",
+        title,
+        message: `${lead}${lead ? "towar" : "Towar"} jest już zamówiony u dostawcy. Jeśli dotrze, trafi na stan magazynu i nie będzie na Ciebie czekać. ${undo}`,
+        confirmLabel,
       };
     case "on_stock":
-      if (single && product) {
-        return {
-          title: "Anulować tę pozycję?",
-          message: `„${product}” może być już na magazynie. Magazyn rozliczy towar poza Twoją rezerwacją.`,
-          confirmLabel: "Anuluj pozycję",
-        };
-      }
       return {
-        title: groupProducts ? "Anulować wszystkie pozycje?" : "Anulować prośbę?",
-        message: groupProducts
-          ? `Pozycje ${groupProducts} mogą być już na magazynie. Magazyn rozliczy towar poza Twoją rezerwacją.`
-          : "Część lub całość może być już na magazynie. Magazyn rozliczy towar poza Twoją rezerwacją.",
-        confirmLabel: groupProducts ? "Anuluj wszystkie" : "Anuluj prośbę",
+        title,
+        message: `${lead}${lead ? "towar" : "Towar"} jest już na magazynie (całość albo część). Po anulowaniu wraca na stan i nie będzie na Ciebie czekać. Jeśli czegoś jeszcze brakuje u dostawcy, na to też już nie czekasz. ${undo}`,
+        confirmLabel,
       };
   }
 }

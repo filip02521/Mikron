@@ -12,7 +12,8 @@ import { userFacingErrorText } from "@/lib/ui/user-facing-error";
  */
 export async function GET(request: NextRequest) {
   const user = await getSessionUser();
-  if (!user || !canAccessZdEstimate(user.role, user.assignedWorkspaces)) {
+  // Jak strona Asystenta — poczta z cudzych skrzynek tylko dla admin i zakupy.
+  if (!user || !canAccessZdEstimate(user.role, user.assignedWorkspaces) || (user.role !== "admin" && user.role !== "zakupy")) {
     return NextResponse.json({ error: "Brak dostępu" }, { status: 401 });
   }
   const id = request.nextUrl.searchParams.get("id") ?? "";

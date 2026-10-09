@@ -212,9 +212,9 @@ export type NavBadges = {
   salesTablica?: number;
   operationsNotatki?: number;
   departmentBoardQuestions?: number;
-  /** Poczta dostawców: rozmowy do reakcji + sprawy po terminie (Asystent). */
+  /** Tablica spraw (Asystent): moje Do zrobienia + moja półka „Do przejrzenia”. */
   supplierMail?: number;
-  /** Odprawy DHL z maili czekające na odpowiedź do agencji. */
+  /** Odprawy: prośby DHL bez odpowiedzi + sprawy innych agencji / spedytorów czekające na nas. */
   customsDhl?: number;
   adminBugReports?: number;
   teethQueue?: number;

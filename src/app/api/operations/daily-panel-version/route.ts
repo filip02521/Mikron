@@ -3,7 +3,7 @@ import { getSessionUser } from "@/lib/auth";
 import { canAccessOperations, canAccessWarehouse } from "@/lib/auth-roles";
 import { fetchOperationsDailyPanelMetrics } from "@/lib/orders/operations-daily-panel-version";
 import { departmentsForRole } from "@/lib/operations/notepad-department";
-import { countSupplierMailNeedsAction } from "@/lib/supplier-mail/data";
+import { countCustomsMailNeedsAction, countSupplierMailNeedsAction } from "@/lib/supplier-mail/data";
 import { syncSupplierMail } from "@/lib/supplier-mail/sync";
 import { countDhlShipmentsNeedingReply } from "@/lib/customs/dhl-data";
 
@@ -26,7 +26,11 @@ export async function GET() {
     void syncSupplierMail().catch((e) => console.error("[poczta] synchronizacja", e));
   }
   const [supplierMail, customsDhl] = mailRole
-    ? await Promise.all([countSupplierMailNeedsAction(), countDhlShipmentsNeedingReply()])
+    ? await Promise.all([
+        countSupplierMailNeedsAction(user.id),
+        // Odprawy w menu: prośby DHL i sprawy pozostałych agencji / spedytorów czekające na nas.
+        Promise.all([countDhlShipmentsNeedingReply(), countCustomsMailNeedsAction()]).then(([dhl, agencies]) => dhl + agencies),
+      ])
     : [undefined, undefined];
 
   return NextResponse.json({

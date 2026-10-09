@@ -7,8 +7,6 @@ import { requireOperations } from "@/lib/auth";
 import { query } from "@/lib/db/pool";
 import { cleanUuid } from "@/lib/customs/customs-data";
 import { createDhlClearanceForSupplier, prepareDhlClearance } from "@/lib/customs/dhl-sync";
-import { deleteSharedMailbox } from "@/lib/google/gmail-connections";
-import { canConnectSharedMailbox } from "@/lib/google/gmail-oauth-cookie";
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -61,16 +59,6 @@ export async function actionDismissDhlShipment(shipmentId: string, dismissed: bo
       WHERE id = $1`,
     [id, dismissed, user.id]
   );
-  revalidatePath(ODPRAWY_PATH);
-  return { ok: true };
-}
-
-/** Odłączenie skrzynki wspólnej (office@) — token odwołany w Google. */
-export async function actionDisconnectSharedMailbox(email: string): Promise<Result> {
-  const user = await requireOperations("mutate");
-  if (!canConnectSharedMailbox(user.role)) return { ok: false, error: "Skrzynkę wspólną odłącza admin albo zakupy." };
-  if (typeof email !== "string" || !email.includes("@")) return { ok: false, error: "Nieprawidłowy adres." };
-  await deleteSharedMailbox(email);
   revalidatePath(ODPRAWY_PATH);
   return { ok: true };
 }

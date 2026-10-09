@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { IconAlertCircle, IconDownload, IconEye } from "@/components/icons/StrokeIcons";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { IconAlertCircle, IconDownload, IconEye, IconX } from "@/components/icons/StrokeIcons";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { parseEmailList } from "@/lib/customs/customs-email";
@@ -15,6 +15,8 @@ export type MailPreviewAttachment = {
   href: string | null;
   /** PDF i obrazy otwierają się w karcie, reszta się pobiera. */
   opensInline?: boolean;
+  /** Plik dołożony ręcznie — można go zdjąć przed wysyłką. */
+  onRemove?: () => void;
 };
 
 export function formatFileSize(bytes: number): string {
@@ -36,6 +38,7 @@ export function MailPreview({
   attachments,
   attachmentsLoading,
   attachmentsError,
+  attachmentsFooter,
   className,
 }: {
   from: string | null;
@@ -47,6 +50,8 @@ export function MailPreview({
   /** Opis trwającego przygotowania, np. „Pobieram wydruk ZD z Subiekta…”. */
   attachmentsLoading?: string | null;
   attachmentsError?: string | null;
+  /** Pod listą, np. „Dodaj pliki”. */
+  attachmentsFooter?: ReactNode;
   className?: string;
 }) {
   const toList = useMemo(() => parseEmailList(to), [to]);
@@ -122,8 +127,9 @@ export function MailPreview({
           </p>
         ) : attachments.length === 0 ? (
           <p className="text-sm text-slate-500">Bez załączników</p>
-        ) : (
-          <ul className="space-y-1.5">
+        ) : null}
+        {attachments.length ? (
+          <ul className={cn("space-y-1.5", (attachmentsError || attachmentsLoading) && "mt-2")}>
             {attachments.map((a, i) => (
               <li key={`${i}-${a.name}`} className="flex min-w-0 items-center gap-3 rounded-[var(--radius-control)] bg-slate-50 px-2.5 py-1.5 ring-1 ring-slate-200">
                 <span className="min-w-0 flex-1 break-all text-sm text-slate-900">{a.name}</span>
@@ -141,10 +147,21 @@ export function MailPreview({
                     {a.opensInline ? "Otwórz" : "Pobierz"}
                   </a>
                 ) : null}
+                {a.onRemove ? (
+                  <button
+                    type="button"
+                    onClick={a.onRemove}
+                    aria-label={`Usuń ${a.name}`}
+                    className="inline-flex min-h-8 min-w-8 shrink-0 items-center justify-center rounded text-slate-500 hover:bg-slate-200 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45"
+                  >
+                    <IconX size={14} aria-hidden />
+                  </button>
+                ) : null}
               </li>
             ))}
           </ul>
-        )}
+        ) : null}
+        {attachmentsFooter}
       </div>
 
       <div className="p-3 sm:p-4">

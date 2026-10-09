@@ -5,11 +5,10 @@ import {
   actionListCustomsSuppliers,
 } from "@/app/actions/customs-clearance";
 import { CustomsClearanceListClient } from "@/components/zakupy/customs/CustomsClearanceListClient";
+import { CustomsMailPanel } from "@/components/zakupy/customs/CustomsMailPanel";
 import { DhlShipmentsPanel } from "@/components/zakupy/customs/DhlShipmentsPanel";
-import { DhlMailboxCard } from "@/components/zakupy/customs/DhlMailboxCard";
 import { loadDhlShipments } from "@/lib/customs/dhl-data";
-import { getGmailOAuthConfig } from "@/lib/google/gmail";
-import { listSharedMailboxes } from "@/lib/google/gmail-connections";
+import { loadCustomsMail } from "@/lib/supplier-mail/data";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { isCustomsAiConfigured } from "@/lib/customs/customs-ai";
 import { pageMetadataFor, PAGE_DESCRIPTIONS, PAGE_TITLES } from "@/lib/ui/page-metadata";
@@ -22,12 +21,14 @@ export const maxDuration = 300;
 
 export default async function CustomsClearancesPage() {
   const user = await requireOperations("read");
-  const canManageMailbox = (user.role === "admin" || user.role === "zakupy") && Boolean(getGmailOAuthConfig());
-  const [suppliers, clearances, dhl, sharedMailboxes] = await Promise.all([
+  // Treść maili z cudzych skrzynek — jak Poczta w Asystencie: tylko admin i zakupy.
+  const canSeeMail = user.role === "admin" || user.role === "zakupy";
+  const [suppliers, clearances, dhl, agencyMail] = await Promise.all([
     actionListCustomsSuppliers(),
     actionListCustomsClearances(),
     loadDhlShipments(),
-    canManageMailbox ? listSharedMailboxes() : Promise.resolve(null),
+    // Poczta agencji nie może zatrzymać listy odpraw (np. brak migracji, błąd bazy) — wtedy bez panelu.
+    canSeeMail ? loadCustomsMail().catch(() => []) : Promise.resolve([]),
   ]);
 
   return (
@@ -36,9 +37,8 @@ export default async function CustomsClearancesPage() {
         title={PAGE_TITLES.customsClearance}
         description={PAGE_DESCRIPTIONS.customsClearance}
       />
-      {sharedMailboxes && !sharedMailboxes.length ? <DhlMailboxCard mailboxes={sharedMailboxes} /> : null}
       {dhl ? <DhlShipmentsPanel shipments={dhl} suppliers={suppliers} /> : null}
-      {sharedMailboxes?.length ? <DhlMailboxCard mailboxes={sharedMailboxes} /> : null}
+      <CustomsMailPanel threads={agencyMail} />
       <CustomsClearanceListClient
         suppliers={suppliers}
         clearances={clearances}

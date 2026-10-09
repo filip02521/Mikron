@@ -42,6 +42,7 @@ predicate isAuthFunction(string fnName) {
     "assertProcurementAccess",
     "assertNoteAccess",
     "userIdForMutation",
+    "requireMailUser",
     "salesPersonIdForAction",
     "salesReporterForAction",
     // Bootstrap action uses setup token instead of session auth

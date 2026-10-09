@@ -1,7 +1,12 @@
 /** Słowa, po których na karcie stoją dane logowania do portalu dostawcy, a nie adres do zamówień. */
 const LOGIN_LABEL = /(login|user|u[zż]ytkownik|konto|has[lł]o|password)\s*[:=]?\s*$/i;
 /** Nasza własna domena — taki adres na karcie dostawcy to nie dostawca. */
-const OWN_DOMAIN = /@mikran\.com$/;
+const OWN_DOMAIN = /@(?:[a-z0-9-]+\.)*mikran\.(?:pl|com)$/;
+
+/** Adres Mikranu (także subdomeny, .pl i .com) — kopia do kolegi, nie do obcych. */
+export function isMikranEmail(email: string): boolean {
+  return OWN_DOMAIN.test(email.trim().toLowerCase());
+}
 
 /**
  * Adresy dostawcy z tekstu karty (małe litery, bez duplikatów). Pomija loginy do portali

@@ -79,21 +79,24 @@ export async function fetchAppShellMetrics(
 
   if (showOperationsBadges) {
     try {
-      const [metrics, pinnedAnnouncements] = await Promise.all([
+      const mailRole = role === "admin" || role === "zakupy";
+      const [metrics, pinnedAnnouncements, supplierMail, customsDhl] = await Promise.all([
         fetchOperationsDailyPanelMetrics(),
         fetchPinnedActiveAnnouncements().catch(() => []),
+        mailRole ? import("@/lib/supplier-mail/data").then((m) => m.countSupplierMailNeedsAction(session.id)) : undefined,
+        mailRole
+          ? Promise.all([
+              import("@/lib/customs/dhl-data").then((m) => m.countDhlShipmentsNeedingReply()),
+              import("@/lib/supplier-mail/data").then((m) => m.countCustomsMailNeedsAction()),
+            ]).then(([dhl, agencies]) => dhl + agencies)
+          : undefined,
       ]);
       navBadges = {
         ...navBadges,
         weryfikacja: metrics.verificationCount,
         nowe: metrics.navBadge,
         departmentBoardQuestions: metrics.openBoardQuestionsCount,
-        ...(role === "admin" || role === "zakupy"
-          ? {
-              supplierMail: await import("@/lib/supplier-mail/data").then((m) => m.countSupplierMailNeedsAction()),
-              customsDhl: await import("@/lib/customs/dhl-data").then((m) => m.countDhlShipmentsNeedingReply()),
-            }
-          : {}),
+        ...(mailRole ? { supplierMail, customsDhl } : {}),
       };
       operationsDailyPanelVersion = metrics.version;
       operationsPinnedAnnouncements = pinnedAnnouncements;

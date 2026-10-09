@@ -117,24 +117,48 @@ export async function resolveSupplierInquiries(threadId: string, onlyIds?: reado
   }
 }
 
+type InquiryRow = {
+  id: string;
+  thread_id: string;
+  supplier_id: string | null;
+  supplier_name: string;
+  sent_at: Date;
+  resolved_at: Date | null;
+  reply_at?: Date | null;
+  reply_kind?: string | null;
+};
+
 export async function listSupplierInquiries(threadIds: readonly string[]): Promise<Map<string, BoardSupplierInquiry[]>> {
   const out = new Map<string, BoardSupplierInquiry[]>();
   if (!threadIds.length) return out;
   try {
-    const { rows } = await query<{
-      id: string;
-      thread_id: string;
-      supplier_id: string | null;
-      supplier_name: string;
-      sent_at: Date;
-      resolved_at: Date | null;
-    }>(
-      `SELECT id, thread_id, supplier_id, supplier_name, sent_at, resolved_at
-         FROM public.supplier_inquiry_emails
-        WHERE thread_id = ANY($1::uuid[])
-        ORDER BY sent_at DESC`,
+    // Odpowiedź dostawcy z Poczty dostawców (przypięta do zapytania); przed migracją 178 — bez niej.
+    const rows = await query<InquiryRow>(
+      `SELECT i.id, i.thread_id, i.supplier_id, i.supplier_name, i.sent_at, i.resolved_at,
+              r.received_at AS reply_at, r.kind AS reply_kind
+         FROM public.supplier_inquiry_emails i
+         LEFT JOIN LATERAL (
+           SELECT m.received_at, m.kind FROM public.supplier_mail_messages m
+            WHERE m.case_kind = 'inquiry' AND m.case_id = i.id AND m.kind IN ('supplier', 'bounce')
+              AND m.received_at > i.sent_at
+            ORDER BY m.received_at DESC LIMIT 1
+         ) r ON true
+        WHERE i.thread_id = ANY($1::uuid[])
+        ORDER BY i.sent_at DESC`,
       [[...threadIds]]
-    );
+    )
+      .then((r) => r.rows)
+      .catch(async (e: unknown) => {
+        if (!(e instanceof Error && /supplier_mail_messages/.test(e.message))) throw e;
+        const legacy = await query<InquiryRow>(
+          `SELECT id, thread_id, supplier_id, supplier_name, sent_at, resolved_at
+             FROM public.supplier_inquiry_emails
+            WHERE thread_id = ANY($1::uuid[])
+            ORDER BY sent_at DESC`,
+          [[...threadIds]]
+        );
+        return legacy.rows;
+      });
     for (const r of rows) {
       const list = out.get(r.thread_id) ?? [];
       list.push({
@@ -143,6 +167,8 @@ export async function listSupplierInquiries(threadIds: readonly string[]): Promi
         supplierName: r.supplier_name,
         sentAt: r.sent_at.toISOString(),
         resolvedAt: r.resolved_at?.toISOString() ?? null,
+        replyAt: r.reply_at?.toISOString() ?? null,
+        bounced: r.reply_kind === "bounce",
       });
       out.set(r.thread_id, list);
     }

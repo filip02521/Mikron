@@ -493,7 +493,7 @@ export function SupplierDrawer({
               hint="Odpowiedzi dostawcy z Gmaila na zamówienia wysłane z OnTime"
               icon={<IconMail size={14} />}
             >
-              <SupplierOrderReplies supplierId={supplier.id} />
+              <SupplierOrderReplies key={supplier.id} supplierId={supplier.id} />
             </DrawerSection>
           ) : null}
 

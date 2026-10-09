@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   GMAIL_READ_SCOPE,
   GMAIL_SEND_SCOPE,
@@ -15,10 +15,13 @@ import {
   pdfAttachmentRefs,
   repliesFromThread,
   scopeCanReadReplies,
+  sendGmailRaw,
+  sendGmailRawInThread,
   stripQuotedReply,
   type GmailOAuthConfig,
 } from "@/lib/google/gmail";
 import { readGmailOAuthCookie, safeReturnPath } from "@/lib/google/gmail-oauth-cookie";
+import { headerAddresses } from "@/lib/google/gmail";
 
 const key = randomBytes(32);
 const cfg: GmailOAuthConfig = {
@@ -77,10 +80,12 @@ describe("gmail — OAuth", () => {
   });
 
   it("ciasteczko stanu: zgodny stan → returnTo; inny stan lub brak → odrzuć", () => {
-    expect(readGmailOAuthCookie("abc|/zakupy/szacunek", "abc")).toEqual({ ok: true, returnTo: "/zakupy/szacunek" });
-    expect(readGmailOAuthCookie("abc|/x", "xyz")).toEqual({ ok: false });
-    expect(readGmailOAuthCookie(undefined, "abc")).toEqual({ ok: false });
-    expect(readGmailOAuthCookie("abc|//evil.com", "abc")).toEqual({ ok: true, returnTo: "/" });
+    expect(readGmailOAuthCookie("abc|u1|/zakupy/szacunek", "abc", "u1")).toEqual({ ok: true, returnTo: "/zakupy/szacunek" });
+    expect(readGmailOAuthCookie("abc|u1|/x", "xyz", "u1")).toEqual({ ok: false });
+    expect(readGmailOAuthCookie(undefined, "abc", "u1")).toEqual({ ok: false });
+    expect(readGmailOAuthCookie("abc|u1|//evil.com", "abc", "u1")).toEqual({ ok: true, returnTo: "/" });
+    // Łączenie zaczęła inna osoba (wylogowanie w trakcie) — odrzucone.
+    expect(readGmailOAuthCookie("abc|u1|/x", "abc", "u2")).toEqual({ ok: false });
   });
 });
 
@@ -101,6 +106,66 @@ describe("gmail — MIME", () => {
     expect(mime).toMatch(/Subject: =\?UTF-8\?/);
     expect(mime).toContain("multipart/mixed");
     expect(mime).toContain("Zamowienie ZD 123_26.pdf");
+  });
+});
+
+describe("gmail — wysyłka", () => {
+  const quota = {
+    error: {
+      message: "Quota exceeded for quota metric 'Total Query Cost' and limit 'Units per minute per user'",
+      errors: [{ reason: "rateLimitExceeded" }],
+    },
+  };
+  const reply = (status: number, body: object) => new Response(JSON.stringify(body), { status });
+  const noSleep = async () => {};
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("limit Google przy pierwszej próbie → ponowienie i sukces", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(reply(429, quota))
+      .mockResolvedValueOnce(reply(200, { id: "m1", threadId: "t1" }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(sendGmailRaw("tok", Buffer.from("x"), { sleep: noSleep })).resolves.toEqual({
+      id: "m1",
+      threadId: "t1",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("403 rateLimitExceeded też ponawia; po 3 próbach błąd", async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => reply(403, quota));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(sendGmailRaw("tok", Buffer.from("x"), { sleep: noSleep })).rejects.toThrow("Units per minute");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("odpowiedź w wątku też ponawia przy limicie", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(reply(429, quota))
+      .mockResolvedValueOnce(reply(200, { id: "m2", threadId: "t9" }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(sendGmailRawInThread("tok", Buffer.from("x"), "t9", { sleep: noSleep })).resolves.toEqual({
+      id: "m2",
+      threadId: "t9",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("5xx przy wysyłce nie jest ponawiany (mail mógł wyjść)", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(reply(503, { error: { message: "Backend Error" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(sendGmailRaw("tok", Buffer.from("x"), { sleep: noSleep })).rejects.toThrow("Backend Error");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("inny błąd nie jest ponawiany", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(reply(400, { error: { message: "Invalid To header" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(sendGmailRaw("tok", Buffer.from("x"), { sleep: noSleep })).rejects.toThrow("Invalid To header");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -306,10 +371,43 @@ describe("gmail — wycinanie skryptów, stylów i cytatów z HTML", () => {
   const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64url");
   const text = (html: string) => messagePlainText({ mimeType: "text/html", body: { data: b64(html) } });
   it("całe bloki z treścią; wielkość liter; podobne nazwy zostają; niezamknięty do końca", () => {
-    expect(text("<STYLE>p{color:red}</STYLE><p>A</p><Script type=x>alert(1)</sCript ><p>B</p>")).toBe("A\nB\n");
-    expect(text("<p>Odp.</p><blockquote>stary mail</blockquote><p>Koniec</p>")).toBe("Odp.\nKoniec\n");
+    expect(text("<STYLE>p{color:red}</STYLE><p>A</p><Script type=x>alert(1)</sCript ><p>B</p>")).toBe("A\nB");
+    expect(text("<p>Odp.</p><blockquote>stary mail</blockquote><p>Koniec</p>")).toBe("Odp.\nKoniec");
     expect(text("<scripts>zostaje</scripts>")).toBe("zostaje");
-    expect(text("<p>Tak</p><script>niezamknięty")).toBe("Tak\n");
+    expect(text("<p>Tak</p><script>niezamknięty")).toBe("Tak");
+  });
+
+  it("tabela sklepu: komórki wiersza w jednej linii, bloki bez znacznika zamykającego osobno, pusta linia tylko z <br>", () => {
+    expect(text("<table><tr><td>Zamówienie numer</td><td>46262</td></tr><tr><td>z dnia</td><td>2026-10-06</td></tr></table>")).toBe(
+      "Zamówienie numer 46262\nz dnia 2026-10-06"
+    );
+    expect(text("<div>ZAMÓWIONE PRODUKTY<div>Płytka szklana<div>Ilość: 18")).toBe("ZAMÓWIONE PRODUKTY\nPłytka szklana\nIlość: 18");
+    expect(text("<p>Dzień dobry,<br><br>cena 12 zł</p>")).toBe("Dzień dobry,\n\ncena 12 zł");
+  });
+
+  it("uszkodzony text/plain („zosta?o ju?”) — bierzemy HTML; zwykłe pytajniki nie przełączają", () => {
+    const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64url");
+    const parts = (plain: string) => ({
+      mimeType: "multipart/alternative",
+      parts: [
+        { mimeType: "text/plain", body: { data: b64(plain) } },
+        { mimeType: "text/html", body: { data: b64("<p>Zamówienie zostało już spakowane</p>") } },
+      ],
+    });
+    expect(messagePlainText(parts("Zam?wienie zosta?o ju? spakowane"))).toBe("Zamówienie zostało już spakowane");
+    expect(messagePlainText(parts("Czy jest dostępne? Kiedy wysyłka?"))).toBe("Czy jest dostępne? Kiedy wysyłka?");
+    expect(messagePlainText(parts("Link: https://sklep.pl/a?utm=x&b=y Dziękujemy"))).toBe("Link: https://sklep.pl/a?utm=x&b=y Dziękujemy");
+  });
+
+  it("kodowanie z Content-Type części: ISO-8859-2 nie zamienia polskich znaków w „?”", () => {
+    const latin2 = Buffer.from([0x50, 0xb3, 0x61, 0x74, 0x6e, 0x6f, 0xb6, 0xe6, 0x3a, 0x20, 0x31, 0x30, 0x20, 0x7a, 0xb3]).toString("base64url");
+    expect(
+      messagePlainText({
+        mimeType: "text/plain",
+        headers: [{ name: "Content-Type", value: 'text/plain; charset="ISO-8859-2"' }],
+        body: { data: latin2 },
+      })
+    ).toBe("Płatność: 10 zł");
   });
 });
 
@@ -323,5 +421,39 @@ describe("isGmailRetryable", () => {
     expect(isGmailRetryable(403, "User rate limit exceeded")).toBe(true);
     expect(isGmailRetryable(403, "Request had insufficient authentication scopes.")).toBe(false);
     expect(isGmailRetryable(400, "Invalid query")).toBe(false);
+  });
+});
+
+describe("headerAddresses", () => {
+  it("adresy z To/Cc (nazwy, przecinki, wielkość liter)", () => {
+    expect(headerAddresses('"Anna Kowalska" <Anna.Kowalska@Mikran.com>, order@renfert.de, Jan <jan@polkard.pl>')).toEqual([
+      "anna.kowalska@mikran.com",
+      "order@renfert.de",
+      "jan@polkard.pl",
+    ]);
+    expect(headerAddresses("")).toEqual([]);
+  });
+});
+
+describe("budżet zapytań Gmaila", () => {
+  it("limit na minutę: odczyt na żywo dostaje czytelny błąd po jednej szybkiej próbie", async () => {
+    const { listGmailMessageIds, GmailRateLimitedError } = await import("@/lib/google/gmail");
+    vi.useFakeTimers();
+    const quota = {
+      error: { message: "Quota exceeded for quota metric 'Total Query Cost' and limit 'Units per minute per user'" },
+    };
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () => new Response(JSON.stringify(quota), { status: 429 }));
+    try {
+      const p = listGmailMessageIds("token-quota-test", "from:renfert.de", 10);
+      const assertion = expect(p).rejects.toBeInstanceOf(GmailRateLimitedError);
+      await vi.runAllTimersAsync();
+      await assertion;
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      fetchMock.mockRestore();
+      vi.useRealTimers();
+    }
   });
 });

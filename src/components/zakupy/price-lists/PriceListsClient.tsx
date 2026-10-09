@@ -202,7 +202,7 @@ export function PriceListsClient({
           summary={host.isLive ? "Test :5082 — produkcja bez zmian" : "LIVE :5080 — baza produkcyjna, zapis zmieni ceny widoczne dla handlowców"}
           summaryTone={host.isLive ? "neutral" : "warning"}
           danger={!host.isLive}
-          message="Dotyczy wszystkich użytkowników Cenników. Podglądy przygotowane na drugim Subiekcie nie dadzą się zapisać — trzeba wgrać cennik ponownie. Ustawienie zastępuje port z SUBIEKT_API_PRICES_BASE_URL."
+          message="Dotyczy wszystkich użytkowników Cenników. Podglądy przygotowane na drugim Subiekcie nie dadzą się zapisać — trzeba wgrać cennik ponownie. Ustawienie zastępuje port z SUBIEKT_API_BASE_URL."
           confirmLabel={host.isLive ? "Przełącz na test" : "Przełącz na LIVE"}
           pending={pending}
           onCancel={() => setConfirmSwitch(false)}

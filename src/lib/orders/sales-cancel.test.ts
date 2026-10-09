@@ -104,20 +104,21 @@ describe("sales-cancel", () => {
     expect(shouldShowRemainderSpecificLabel(3, 0)).toBe(false);
   });
 
-  it("salesCancelLineRemainderLabel - rezygnacja z reszty u dostawcy", () => {
-    expect(salesCancelLineRemainderLabel()).toBe("Rezygnuj z reszty");
-    expect(salesCancelLineRemainderLabel(3)).toBe("Rezygnuj z reszty (3 szt.)");
+  it("salesCancelLineRemainderLabel - rezygnacja z brakujących u dostawcy", () => {
+    expect(salesCancelLineRemainderLabel()).toBe("Zrezygnuj z brakujących sztuk");
+    expect(salesCancelLineRemainderLabel(3)).toBe("Zrezygnuj z brakujących 3 szt.");
+    expect(salesCancelLineRemainderLabel(1)).toBe("Zrezygnuj z brakującej 1 szt.");
   });
 
   it("salesCancelLineRemainderAriaLabel - liczba sztuk dla czytników", () => {
     expect(salesCancelLineRemainderAriaLabel(4)).toBe(
-      "Rezygnuj z reszty u dostawcy: 4 sztuki"
+      "Zrezygnuj z brakujących u dostawcy: 4 sztuki"
     );
-    expect(salesCancelLineRemainderAriaLabel(1)).toBe("Rezygnuj z reszty u dostawcy");
+    expect(salesCancelLineRemainderAriaLabel(1)).toBe("Zrezygnuj z brakującej sztuki u dostawcy");
   });
 
   it("salesCancelLineCustomQtyLabel - zmiana ilości", () => {
-    expect(salesCancelLineCustomQtyLabel()).toBe("Zmień ilość");
+    expect(salesCancelLineCustomQtyLabel()).toBe("Zmniejsz ilość…");
   });
 
   it("showSalesCancelSupplierQuickAction - 1 szt. u dostawcy po częściowej dostawie", () => {
@@ -128,7 +129,7 @@ describe("sales-cancel", () => {
     expect(defaultSalesCancelQuantity(o)).toBe(1);
     expect(showSalesCancelRemainderAction(o)).toBe(false);
     expect(showSalesCancelSupplierQuickAction(o)).toBe(true);
-    expect(salesCancelQuickActionLabel()).toBe("Rezygnuj z reszty");
+    expect(salesCancelQuickActionLabel()).toBe("Zrezygnuj z brakującej 1 szt.");
   });
 
   it("showSalesCancelRemainderAction - reszta > 1 przy częściowej dostawie", () => {
@@ -225,7 +226,8 @@ describe("sales-cancel", () => {
   });
 
   it("salesCancelConfirmCopy ma teksty dla każdej fazy", () => {
-    expect(salesCancelConfirmCopy("before_order").confirmLabel).toContain("Wycofaj");
+    expect(salesCancelConfirmCopy("before_order").confirmLabel).toBe("Anuluj prośbę");
+    expect(salesCancelConfirmCopy("before_order").message).toContain("możesz to cofnąć");
     expect(salesCancelConfirmCopy("in_transit").title).toContain("Anulować");
     expect(salesCancelConfirmCopy("on_stock").title).toContain("Anulować");
   });
@@ -236,7 +238,7 @@ describe("sales-cancel", () => {
     });
     expect(copy.title).toContain("pozycję");
     expect(copy.message).toContain("Ivoclar Variolink");
-    expect(copy.confirmLabel).toBe("Wycofaj pozycję");
+    expect(copy.confirmLabel).toBe("Anuluj pozycję");
   });
 
   it("salesCancelConfirmForLines - mieszane fazy w grupie", () => {
@@ -244,9 +246,9 @@ describe("sales-cancel", () => {
       { product: "Produkt A", phase: "before_order" },
       { product: "Produkt B", phase: "in_transit" },
     ]);
-    expect(copy.title).toContain("wybrane");
+    expect(copy.title).toBe("Anulować wszystkie pozycje?");
     expect(copy.message).toContain("Produkt A");
-    expect(copy.message).toContain("etapu");
+    expect(copy.message).toContain("na różnych etapach");
   });
 
   it("salesCancelOverflowLabel rozróżnia jedną i wiele pozycji", () => {
@@ -340,30 +342,44 @@ describe("sales-cancel", () => {
   });
 
   it("salesPartialCancelConfirmCopy - częściowa rezygnacja w drodze", () => {
-    const copy = salesPartialCancelConfirmCopy(
-      "in_transit",
-      "Ivoclar Variolink",
-      3,
-      5,
-      0
-    );
-    expect(copy.title).toBe("Zmniejszyć ilość w zamówieniu?");
-    expect(copy.message).toContain("Wycofasz 3 z 5 szt.");
-    expect(copy.message).toContain("Pozostałe 2 szt. będą na Ciebie czekały po dostawie.");
-    expect(copy.confirmLabel).toBe("Zmień ilość");
+    const copy = salesPartialCancelConfirmCopy("in_transit", "Ivoclar Variolink", 3, 5, 0);
+    expect(copy.title).toBe("Zmniejszyć zamówienie?");
+    expect(copy.facts).toEqual([{ label: "Zamówione u dostawcy", value: "5 szt." }]);
+    expect(copy.outcome).toContain("Odbierzesz 2 szt. po dostawie.");
+    expect(copy.outcome).not.toContain("..");
+    expect(copy.confirmLabel).toBe("Wycofaj 3 szt.");
+    expect(copy.undoHint).toContain("10 sekund");
   });
 
-  it("salesPartialCancelConfirmCopy - jedna sztuka zostaje w zamówieniu", () => {
-    const copy = salesPartialCancelConfirmCopy(
-      "in_transit",
-      "Produkt X",
-      4,
-      5,
-      0
-    );
-    expect(copy.message).toContain(
-      "Pozostała 1 szt. będzie na Ciebie czekała po dostawie."
-    );
+  it("salesPartialCancelConfirmCopy - 3 z 5 na magazynie, rezygnacja z brakujących 2", () => {
+    // Przypadek ze zgłoszenia: maxQty = aktywna ilość (5), domyślnie brakujące 2.
+    const copy = salesPartialCancelConfirmCopy("on_stock", "Katana krążek", 2, 5, 3);
+    expect(copy.title).toBe("Zrezygnować z brakujących sztuk?");
+    expect(copy.facts).toEqual([
+      { label: "Na magazynie, czeka na Ciebie", value: "3 szt." },
+      { label: "Brakuje u dostawcy", value: "2 szt." },
+    ]);
+    expect(copy.outcome).toContain("Odbierzesz 3 szt. z magazynu.");
+    expect(copy.outcome).toContain("Nie czekasz już na dostawcę");
+    expect(copy.outcome).not.toContain("zostaje w prośbie");
+    expect(copy.confirmLabel).toBe("Wycofaj 2 szt.");
+  });
+
+  it("salesPartialCancelConfirmCopy - ponad brakujące oddaje też towar z magazynu", () => {
+    const one = salesPartialCancelConfirmCopy("on_stock", "X", 1, 5, 3);
+    expect(one.outcome).toContain("Na 1 szt. od dostawcy nadal czekasz.");
+    const four = salesPartialCancelConfirmCopy("on_stock", "X", 4, 5, 3);
+    expect(four.title).toBe("Oddać też towar z magazynu?");
+    expect(four.outcome).toContain("Odbierzesz 1 szt. z magazynu.");
+    expect(four.outcome).toContain("2 szt. z magazynu wraca na stan");
+    const all = salesPartialCancelConfirmCopy("on_stock", "X", 5, 5, 3);
+    expect(all.outcome).toContain("Nic nie odbierasz");
+    expect(all.confirmLabel).toBe("Wycofaj całą pozycję");
+  });
+
+  it("salesPartialCancelConfirmCopy - przed zamówieniem pokazuje, ile zostanie", () => {
+    const copy = salesPartialCancelConfirmCopy("before_order", "X", 2, 5, 0);
+    expect(copy.outcome).toContain("W prośbie zostanie 3 szt.");
   });
 
   it("planSalesCancelQuantity - Zamowione 5 szt., rezygnacja z 3, zostają 2 u dostawcy", () => {

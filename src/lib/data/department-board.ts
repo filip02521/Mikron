@@ -4,6 +4,7 @@ import {
   type BoardThreadAttachmentRow,
 } from "@/lib/department-board/attachments";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { query } from "@/lib/db/pool";
 import {
   isBoardAnswerUnseen,
   countUnseenOwnBoardAnswers,
@@ -268,7 +269,25 @@ export async function fetchDepartmentBoard(
 }
 
 /** Zakupy/admin: aktywne pytania bez odpowiedzi (status open, nie zarchiwizowane). */
+/**
+ * Pytania do reakcji zakupów: bez odpowiedzi albo z odpowiedzią dostawcy (lub zwrotem) na zapytanie,
+ * na którą zakupy jeszcze nie odpisały w wątku. Licznik w menu i dźwięk tablicy — jak przy nowym pytaniu.
+ */
 export async function countOpenDepartmentBoardQuestions(): Promise<number> {
+  try {
+    const { rows } = await query<{ n: number }>(
+      `SELECT count(*)::int AS n FROM public.department_board_threads t
+        WHERE t.kind = 'question' AND t.archived_at IS NULL
+          AND (t.status = 'open' OR EXISTS (
+            SELECT 1 FROM public.supplier_inquiry_emails i
+              JOIN public.supplier_mail_messages m ON m.case_kind = 'inquiry' AND m.case_id = i.id
+             WHERE i.thread_id = t.id AND i.resolved_at IS NULL
+               AND m.kind IN ('supplier', 'bounce') AND m.received_at > i.sent_at))`
+    );
+    return rows[0]?.n ?? 0;
+  } catch {
+    // Przed migracjami 174 / 178 — same pytania bez odpowiedzi.
+  }
   const supabase = createAdminClient();
   const { count, error } = await supabase
     .from("department_board_threads")

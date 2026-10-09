@@ -9,7 +9,8 @@
  * Przekierowanie: `${NEXT_PUBLIC_APP_URL}/api/google/callback` (musi być HTTPS).
  */
 
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { AsyncLocalStorage } from "node:async_hooks";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import nodemailer from "nodemailer";
 import { getAppUrl } from "@/lib/env/app-config";
 
@@ -66,10 +67,15 @@ export function encryptToken(key: Buffer, plain: string): string {
 
 export function decryptToken(key: Buffer, enc: string): string {
   const [v, iv, tag, ct] = enc.split(":");
-  if (v !== "v1" || !iv || !tag || !ct) throw new Error("Nieznany format zaszyfrowanego tokenu.");
-  const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "base64"));
-  decipher.setAuthTag(Buffer.from(tag, "base64"));
-  return Buffer.concat([decipher.update(Buffer.from(ct, "base64")), decipher.final()]).toString("utf8");
+  if (v !== "v1" || !iv || !tag || !ct) throw new GmailReconnectRequiredError();
+  try {
+    const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "base64"), { authTagLength: 16 });
+    decipher.setAuthTag(Buffer.from(tag, "base64"));
+    return Buffer.concat([decipher.update(Buffer.from(ct, "base64")), decipher.final()]).toString("utf8");
+  } catch {
+    // Zmieniony GOOGLE_OAUTH_TOKEN_KEY albo uszkodzony wiersz — jedyne wyjście to połączyć konto ponownie.
+    throw new GmailReconnectRequiredError();
+  }
 }
 
 // ─── OAuth ────────────────────────────────────────────────────────────────
@@ -145,17 +151,33 @@ export async function exchangeGmailCode(
   return { refreshToken: json.refresh_token, email, scope };
 }
 
+/** Tokeny dostępu żyją ~1 h — bez pamięci każde otwarcie karty, załącznik i synchronizacja pytały Google od nowa. */
+const accessTokens = new Map<string, { token: string; expiresAt: number }>();
+
 export async function gmailAccessToken(cfg: GmailOAuthConfig, refreshToken: string): Promise<string> {
+  const key = createHash("sha256").update(refreshToken).digest("hex");
+  const hit = accessTokens.get(key);
+  if (hit && hit.expiresAt > Date.now()) return hit.token;
+  const token = await requestGmailAccessToken(cfg, refreshToken);
+  for (const [k, v] of accessTokens) if (v.expiresAt <= Date.now()) accessTokens.delete(k);
+  accessTokens.set(key, { token: token.accessToken, expiresAt: Date.now() + (token.expiresIn - 120) * 1000 });
+  return token.accessToken;
+}
+
+async function requestGmailAccessToken(
+  cfg: GmailOAuthConfig,
+  refreshToken: string
+): Promise<{ accessToken: string; expiresIn: number }> {
   const res = await postForm(TOKEN_URL, {
     refresh_token: refreshToken,
     client_id: cfg.clientId,
     client_secret: cfg.clientSecret,
     grant_type: "refresh_token",
   });
-  const json = (await res.json().catch(() => ({}))) as { access_token?: string; error?: string };
+  const json = (await res.json().catch(() => ({}))) as { access_token?: string; expires_in?: number; error?: string };
   if (json.error === "invalid_grant") throw new GmailReconnectRequiredError();
   if (!res.ok || !json.access_token) throw new Error(`Google nie wydał tokenu (${json.error ?? res.status}).`);
-  return json.access_token;
+  return { accessToken: json.access_token, expiresIn: Number(json.expires_in) || 3600 };
 }
 
 /** Cofnięcie zgody w Google — błąd nie blokuje odłączenia w OnTime. */
@@ -177,12 +199,16 @@ export type GmailMessageInput = {
   attachments?: GmailAttachment[];
   /** Odpowiedź: Message-ID wiadomości, na którą odpowiadamy (In-Reply-To + References). */
   inReplyTo?: string;
+  /** Łańcuch References wiadomości, na którą odpowiadamy — wątek w programie odbiorcy się nie rozpada. */
+  references?: string[];
+  /** Własny Message-ID — po zerwanym połączeniu da się sprawdzić w „Wysłanych”, czy mail poszedł. */
+  messageId?: string;
 };
 
 /** MIME (RFC 5322) przez nodemailer — ten sam składacz co przy SMTP, bez wysyłki. */
 export async function buildMimeMessage(input: GmailMessageInput): Promise<Buffer> {
   const info = await nodemailer
-    .createTransport({ streamTransport: true, buffer: true, newline: "unix" })
+    .createTransport({ streamTransport: true, buffer: true, newline: "windows" })
     .sendMail({
       from: input.from,
       to: input.to,
@@ -191,31 +217,101 @@ export async function buildMimeMessage(input: GmailMessageInput): Promise<Buffer
       text: input.text,
       html: input.html,
       attachments: input.attachments,
-      ...(input.inReplyTo ? { inReplyTo: input.inReplyTo, references: [input.inReplyTo] } : {}),
+      ...(input.messageId ? { messageId: input.messageId } : {}),
+      ...(input.inReplyTo
+        ? { inReplyTo: input.inReplyTo, references: [...new Set([...(input.references ?? []), input.inReplyTo])] }
+        : {}),
     });
   return info.message as Buffer;
 }
 
+type GmailSendResponse = {
+  id?: string;
+  threadId?: string;
+  error?: { message?: string; status?: string; errors?: { reason?: string }[] };
+};
+
+const RATE_LIMIT_REASONS = new Set(["rateLimitExceeded", "userRateLimitExceeded"]);
+const SEND_ATTEMPTS = 3;
+const RETRY_AFTER_MAX_MS = 10_000;
+
+/**
+ * Limit „Units per minute per user” Google zwraca też przy pojedynczej wysyłce (najczęściej
+ * pierwsza po świeżym tokenie) — wiadomość wtedy nie wyszła, więc ponowienie nie zdubluje maila.
+ */
+function isRateLimited(status: number, json: GmailSendResponse): boolean {
+  if (status === 429) return true;
+  if (status !== 403) return false;
+  return (
+    (json.error?.errors ?? []).some((e) => e.reason && RATE_LIMIT_REASONS.has(e.reason)) ||
+    /quota|rate ?limit/i.test(json.error?.message ?? "")
+  );
+}
+
+function retryDelayMs(res: Response, attempt: number): number {
+  const header = Number(res.headers.get("retry-after"));
+  if (Number.isFinite(header) && header > 0) return Math.min(header * 1000, RETRY_AFTER_MAX_MS);
+  return 1000 * 2 ** (attempt - 1) + Math.floor(Math.random() * 250);
+}
+
+type GmailSendOpts = { sleep?: (ms: number) => Promise<void> };
+
+/** POST wysyłki z ponowieniem tylko przy limicie — przy 5xx mail mógł już wyjść (inaczej niż odczyty). */
+async function postGmailSend(
+  accessToken: string,
+  url: string,
+  contentType: string,
+  body: Uint8Array<ArrayBuffer>,
+  errorPrefix: string,
+  opts: GmailSendOpts
+): Promise<{ id: string; threadId: string | null }> {
+  const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  for (let attempt = 1; ; attempt++) {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": contentType },
+      body,
+      signal: AbortSignal.timeout(TIMEOUT_MS * 3),
+    });
+    const json = (await res.json().catch(() => ({}))) as GmailSendResponse;
+    if (res.status === 401) throw new GmailReconnectRequiredError();
+    if (res.ok && json.id) return { id: json.id, threadId: json.threadId ?? null };
+    if (attempt < SEND_ATTEMPTS && isRateLimited(res.status, json)) {
+      await sleep(retryDelayMs(res, attempt));
+      continue;
+    }
+    throw new Error(`${errorPrefix}: ${json.error?.message ?? res.status}`);
+  }
+}
+
 export async function sendGmailRaw(
   accessToken: string,
-  mime: Buffer
+  mime: Buffer,
+  opts: GmailSendOpts = {}
 ): Promise<{ id: string; threadId: string | null }> {
-  const res = await fetch(SEND_URL, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "message/rfc822" },
-    body: new Uint8Array(mime),
-    signal: AbortSignal.timeout(TIMEOUT_MS * 3),
-  });
-  const json = (await res.json().catch(() => ({}))) as {
-    id?: string;
-    threadId?: string;
-    error?: { message?: string; status?: string };
-  };
-  if (res.status === 401) throw new GmailReconnectRequiredError();
-  if (!res.ok || !json.id) {
-    throw new Error(`Gmail nie wysłał wiadomości: ${json.error?.message ?? res.status}`);
+  return postGmailSend(accessToken, SEND_URL, "message/rfc822", new Uint8Array(mime), "Gmail nie wysłał wiadomości", opts);
+}
+
+/** Błąd po stronie połączenia (limit czasu, zerwanie) — Gmail mógł już wysłać wiadomość. */
+export function isGmailTransportError(e: unknown): boolean {
+  return e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError" || e.name === "TypeError");
+}
+
+/** Wiadomość w skrzynce po naszym Message-ID (wymaga gmail.readonly). null = nie ma albo brak zgody na odczyt. */
+export async function findGmailMessageByRfcId(
+  accessToken: string,
+  rfcMessageId: string
+): Promise<{ id: string; threadId: string | null } | null> {
+  const q = `rfc822msgid:${rfcMessageId.replace(/^<|>$/g, "")} in:sent`;
+  let ids: string[] = [];
+  // Wyszukiwarka Gmaila indeksuje świeżą wiadomość z opóźnieniem — kilka prób zamiast jednej.
+  for (const wait of [0, 3_000, 8_000]) {
+    if (wait) await new Promise((r) => setTimeout(r, wait));
+    ids = await listGmailMessageIds(accessToken, q, 1).catch(() => []);
+    if (ids[0]) break;
   }
-  return { id: json.id, threadId: json.threadId ?? null };
+  if (!ids[0]) return null;
+  return { id: ids[0], threadId: await getGmailThreadId(accessToken, ids[0]).catch(() => null) };
 }
 
 // ─── Odpowiedzi w wątku wysłanej wiadomości ───────────────────────────────
@@ -238,6 +334,8 @@ export type GmailReply = {
   text?: string;
   /** Załączniki PDF do pobrania (tylko z `withText`). */
   pdfs?: GmailPdfRef[];
+  /** Wszystkie załączniki z typem i rozmiarem (tylko z `withText`) — do dołączenia w odpowiedzi na tablicy. */
+  files?: Array<{ filename: string; size: number; mimeType: string }>;
 };
 
 export type GmailPdfRef = { filename: string; attachmentId: string; size: number };
@@ -245,6 +343,7 @@ export type GmailPdfRef = { filename: string; attachmentId: string; size: number
 type GmailPart = {
   filename?: string;
   mimeType?: string;
+  headers?: GmailHeaders;
   body?: { data?: string; attachmentId?: string; size?: number };
   parts?: GmailPart[];
 };
@@ -313,7 +412,6 @@ export function classifyReply(headers: GmailHeaders | undefined): GmailReplyKind
   return "supplier";
 }
 
-/** Nagłówek cytatu: „Dnia … napisał(a):”, „On … wrote:”, „Am … schrieb …:”. */
 /**
  * Początek nagłówka cytatu: „Dnia …”, „On …”, „Am …”, „Le …” albo data z polskiego Gmaila
  * („śr., 7 paź 2026 o 21:19 …”), zakończone „napisał(a)” / „wrote” / „schrieb” / „a écrit”.
@@ -356,28 +454,115 @@ export function repliesFromThread(
       at: new Date(Number(m.internalDate ?? 0)).toISOString(),
       snippet: decodeSnippet(m.snippet ?? ""),
       attachments: attachmentNames(m.payload),
-      ...(opts.withText ? { text: stripQuotedReply(messagePlainText(m.payload)), pdfs: pdfAttachmentRefs(m.payload) } : {}),
+      ...(opts.withText
+        ? {
+            text: stripQuotedReply(messagePlainText(m.payload)),
+            pdfs: pdfAttachmentRefs(m.payload),
+            // Bez attachmentId — Gmail zmienia je przy każdym odczycie; plik wskazuje nazwa.
+            files: attachmentRefs(m.payload).map(({ filename, size, mimeType }) => ({ filename, size, mimeType })),
+          }
+        : {}),
     }));
 }
 
 /** Limit Gmaila (zapytania na minutę na użytkownika) i chwilowe 5xx — ponów zamiast gubić wiadomość. */
 const RETRY_DELAYS_MS = [2_000, 8_000, 20_000];
+/** Limit „na minutę” w tle (synchronizacja) — czekamy, aż minuta się zwolni. */
+const BACKGROUND_QUOTA_RETRY_MS = [15_000, 30_000, 60_000];
 
 export function isGmailRetryable(status: number, message: string): boolean {
   return status === 429 || status >= 500 || (status === 403 && /quota|rate ?limit/i.test(message));
 }
 
+export function isGmailQuotaMessage(message: string): boolean {
+  return /quota|rate ?limit|per minute/i.test(message);
+}
+
+/** Gmail odrzucił odczyt z powodu limitu na minutę — komunikat dla ludzi, a UI może ponowić za chwilę. */
+export class GmailRateLimitedError extends Error {
+  constructor() {
+    super("Gmail chwilowo ogranicza odczyty z tej skrzynki (limit na minutę) - spróbuj ponownie za minutę.");
+    this.name = "GmailRateLimitedError";
+  }
+}
+
+// ─── Budżet zapytań na skrzynkę ───────────────────────────────────────────
+// Gmail liczy „koszt” zapytań na użytkownika na minutę (ok. 15 000 jednostek). Synchronizacja w tle
+// (Poczta dostawców, maile DHL) potrafi zjeść cały limit — wtedy tablica i karta dostawcy, czytające
+// tę samą skrzynkę, dostają błąd. Tło ma niższy pułap i czeka; odczyt na żywo ma zapas.
+
+const gmailBackground = new AsyncLocalStorage<true>();
+
+/** Zapytania Gmaila wewnątrz `fn` to praca w tle — ustępują odczytom, które czeka człowiek. */
+export function runAsGmailBackground<T>(fn: () => Promise<T>): Promise<T> {
+  return gmailBackground.run(true, fn);
+}
+
+const QUOTA_WINDOW_MS = 60_000;
+const BACKGROUND_UNITS_PER_MINUTE = 9_000;
+const INTERACTIVE_UNITS_PER_MINUTE = 14_000;
+const quotaUsage = new Map<string, Array<{ at: number; units: number }>>();
+
+/** Koszt wg dokumentacji Gmail API: threads.get 10, messages.get / list / attachments 5. */
+function gmailQueryCost(path: string): number {
+  return path.startsWith("/threads/") ? 10 : 5;
+}
+
+async function reserveGmailQuota(accessToken: string, units: number): Promise<void> {
+  const limit = gmailBackground.getStore() ? BACKGROUND_UNITS_PER_MINUTE : INTERACTIVE_UNITS_PER_MINUTE;
+  const key = createHash("sha256").update(accessToken).digest("hex");
+  for (;;) {
+    const now = Date.now();
+    const recent = (quotaUsage.get(key) ?? []).filter((u) => now - u.at < QUOTA_WINDOW_MS);
+    const used = recent.reduce((n, u) => n + u.units, 0);
+    if (used + units <= limit || !recent.length) {
+      recent.push({ at: now, units });
+      quotaUsage.set(key, recent);
+      // Stare klucze (wygasłe tokeny) nie rosną bez końca.
+      if (quotaUsage.size > 200) for (const [k, v] of quotaUsage) if (!v.some((u) => now - u.at < QUOTA_WINDOW_MS)) quotaUsage.delete(k);
+      return;
+    }
+    // Czekamy, aż najstarszy wpis wypadnie z okna minuty.
+    await new Promise((r) => setTimeout(r, Math.max(250, QUOTA_WINDOW_MS - (now - recent[0]!.at) + 50)));
+  }
+}
+
+function retryDelay(attempt: number, retryAfter?: string | null, quota = false): number | undefined {
+  // Odczyt na żywo przy limicie na minutę: jedna szybka próba, potem komunikat (UI ponowi za minutę) —
+  // zamiast trzymać człowieka pół minuty na kręcącym się kółku.
+  if (quota && !gmailBackground.getStore() && attempt > 0) return undefined;
+  const base = (quota && gmailBackground.getStore() ? BACKGROUND_QUOTA_RETRY_MS : RETRY_DELAYS_MS)[attempt];
+  if (base == null) return undefined;
+  const asked = Number(retryAfter) * 1000;
+  // Rozrzut — równoległe odczyty po limicie nie uderzają znowu w tej samej chwili.
+  return Math.max(base * (0.5 + Math.random()), Number.isFinite(asked) ? Math.min(asked, 60_000) : 0);
+}
+
 async function gmailGet<T>(accessToken: string, path: string): Promise<T | null> {
   for (let attempt = 0; ; attempt++) {
-    const res = await fetch(`${API_URL}${path}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
+    await reserveGmailQuota(accessToken, gmailQueryCost(path));
+    let res: Response;
+    try {
+      res = await fetch(`${API_URL}${path}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+    } catch (e) {
+      // Zerwane połączenie / limit czasu przy odczycie — ponawiamy jak 5xx.
+      const delay = isGmailTransportError(e) ? retryDelay(attempt) : undefined;
+      if (delay == null) throw e;
+      await new Promise((r) => setTimeout(r, delay));
+      continue;
+    }
     if (res.status === 404) return null;
-    if (res.status === 401) throw new GmailReconnectRequiredError();
+    if (res.status === 401) {
+      accessTokens.clear();
+      throw new GmailReconnectRequiredError();
+    }
     const json = (await res.json().catch(() => ({}))) as T & { error?: { message?: string } };
-    const delay = RETRY_DELAYS_MS[attempt];
-    if (!res.ok && delay != null && isGmailRetryable(res.status, json.error?.message ?? "")) {
+    const message = json.error?.message ?? "";
+    const delay = retryDelay(attempt, res.headers.get("Retry-After"), isGmailQuotaMessage(message));
+    if (!res.ok && delay != null && isGmailRetryable(res.status, message)) {
       await new Promise((r) => setTimeout(r, delay));
       continue;
     }
@@ -387,7 +572,12 @@ async function gmailGet<T>(accessToken: string, path: string): Promise<T | null>
 
 function gmailResult<T>(res: Response, json: T & { error?: { message?: string } }): T {
   // 403 „insufficient scopes” — zgoda tylko na wysyłkę; trzeba połączyć ponownie z odczytem.
-  if (res.status === 403 && /scope/i.test(json.error?.message ?? "")) throw new GmailReconnectRequiredError();
+  if (res.status === 403 && /scope/i.test(json.error?.message ?? "") && !isGmailQuotaMessage(json.error?.message ?? "")) {
+    throw new GmailReconnectRequiredError();
+  }
+  if ((res.status === 429 || res.status === 403) && isGmailQuotaMessage(json.error?.message ?? "")) {
+    throw new GmailRateLimitedError();
+  }
   if (!res.ok) throw new Error(`Gmail nie oddał wiadomości: ${json.error?.message ?? res.status}`);
   return json;
 }
@@ -396,32 +586,41 @@ function gmailResult<T>(res: Response, json: T & { error?: { message?: string } 
 export async function fetchGmailReplies(
   accessToken: string,
   messageId: string,
-  opts: { withText?: boolean } = {}
+  /** threadId — wątek zapisany przy wysyłce; bez niego najpierw odczyt wiadomości (stare wysyłki). */
+  opts: { withText?: boolean; threadId?: string | null } = {}
 ): Promise<{ threadId: string; replies: GmailReply[] } | null> {
-  const msg = await gmailGet<{ threadId?: string }>(
-    accessToken,
-    `/messages/${encodeURIComponent(messageId)}?format=minimal&fields=threadId`
-  );
-  if (!msg?.threadId) return null;
+  const threadId = opts.threadId || (await getGmailThreadId(accessToken, messageId));
+  if (!threadId) return null;
   // Z treścią: drzewo MIME do 4 poziomów (multipart/mixed → alternative → text/plain).
-  const part = "filename,mimeType,body(data,attachmentId,size)";
+  const part = "filename,mimeType,headers,body(data,attachmentId,size)";
   const fields = opts.withText
     ? `messages(id,labelIds,internalDate,snippet,payload(${part},headers,parts(${part},parts(${part},parts(${part})))))`
     : "messages(id,labelIds,internalDate,snippet,payload(filename,headers,parts(filename,parts(filename))))";
   const thread = await gmailGet<{ messages?: GmailThreadMessage[] }>(
     accessToken,
-    `/threads/${encodeURIComponent(msg.threadId)}?format=full&fields=${encodeURIComponent(fields)}`
+    `/threads/${encodeURIComponent(threadId)}?format=full&fields=${encodeURIComponent(fields)}`
   );
   if (!thread) return null;
-  return { threadId: msg.threadId, replies: repliesFromThread(thread.messages ?? [], messageId, opts) };
+  return { threadId, replies: repliesFromThread(thread.messages ?? [], messageId, opts) };
 }
 
 // ─── Pełna treść odpowiedzi (bez cytatu naszej wiadomości) ────────────────
 
 const MAX_REPLY_TEXT = 6000;
 
-function decodeBase64Url(data: string): string {
-  return Buffer.from(data, "base64url").toString("utf8");
+/** Kodowanie z Content-Type części; sklepy i starsze systemy wysyłają ISO-8859-2 / windows-1250 — jako UTF-8 to „?” zamiast ł, ś, ć. */
+function partCharset(part: GmailPart | undefined): string {
+  const m = /charset\s*=\s*"?([\w.:-]+)"?/i.exec(header(part?.headers, "Content-Type"));
+  return m?.[1]?.toLowerCase() ?? "utf-8";
+}
+
+function decodeBase64Url(data: string, charset = "utf-8"): string {
+  const bytes = Buffer.from(data, "base64url");
+  try {
+    return new TextDecoder(charset).decode(bytes);
+  } catch {
+    return bytes.toString("utf8");
+  }
 }
 
 /** Usuwa znaczniki do skutku — zagnieżdżone / sklejone („<scr<script>ipt>”) nie zostają w tekście. */
@@ -441,8 +640,22 @@ function stripTags(s: string): string {
 function htmlToText(html: string): string {
   let text = html;
   for (const tag of ["script", "style", "blockquote"]) text = removeElements(text, tag);
-  text = text.replace(/<br\s*\/?>/gi, "\n").replace(/<\/(p|div|tr|li|h[1-6])>/gi, "\n");
-  return stripTags(decodeEntities(stripTags(text)));
+  // Granica bloku (otwarcie i zamknięcie) to jedna nowa linia; pustą linię daje tylko jawne <br>.
+  // Komórki tabeli zostają w jednej linii („Zamówienie numer 46262”).
+  const BR = "\u0001";
+  text = text
+    .replace(/<br\s*\/?>/gi, BR)
+    .replace(/<hr\s*\/?>/gi, "\n")
+    .replace(/<\/(td|th)>/gi, " ")
+    .replace(/<\/?(p|div|tr|li|h[1-6]|table|ul|ol|section|article|header|footer)\b[^>]*>/gi, "\n");
+  return stripTags(decodeEntities(stripTags(text)))
+    .split("\n")
+    .map((line) => line.replace(/[ \t\u00a0]+/g, " ").trim())
+    .join("\n")
+    .replace(/\n{2,}/g, "\n")
+    .replace(new RegExp(BR, "g"), "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 /**
@@ -469,23 +682,34 @@ function removeElements(html: string, tag: string): string {
   }
 }
 
-/** Pierwszy fragment danego typu w drzewie MIME (pomija załączniki z nazwą pliku). */
-function findPartData(part: GmailPart | undefined, mimeType: string): string | null {
+/** Pierwsza część danego typu w drzewie MIME (pomija załączniki z nazwą pliku). */
+function findPart(part: GmailPart | undefined, mimeType: string): GmailPart | null {
   if (!part) return null;
-  if (part.mimeType === mimeType && !part.filename && part.body?.data) return part.body.data;
+  if (part.mimeType === mimeType && !part.filename && part.body?.data) return part;
   for (const child of part.parts ?? []) {
-    const found = findPartData(child, mimeType);
+    const found = findPart(child, mimeType);
     if (found) return found;
   }
   return null;
 }
 
-/** Treść wiadomości: text/plain, a gdy go nie ma — text/html zamieniony na tekst. */
+/** Systemy sklepowe potrafią wysłać text/plain z „?” zamiast polskich liter („zosta?o ju?”), a HTML poprawny. */
+function looksMangled(text: string): boolean {
+  // Bez adresów: „?utm_source=” w linku to nie zepsuta litera.
+  const noUrls = text.replace(/\S*:\/\/\S*/g, " ");
+  return (noUrls.match(/\p{L}\?\p{L}|\?\p{L}/gu)?.length ?? 0) >= 2;
+}
+
+/**
+ * Treść wiadomości: text/plain, a gdy go nie ma albo jest uszkodzony — text/html zamieniony na tekst.
+ * Kodowanie z nagłówka części.
+ */
 export function messagePlainText(payload: GmailPart | undefined): string {
-  const plain = findPartData(payload, "text/plain");
-  if (plain) return decodeBase64Url(plain);
-  const html = findPartData(payload, "text/html");
-  return html ? htmlToText(decodeBase64Url(html)) : "";
+  const plain = findPart(payload, "text/plain");
+  const html = findPart(payload, "text/html");
+  const plainText = plain ? decodeBase64Url(plain.body!.data!, partCharset(plain)) : null;
+  if (plainText !== null && !(html && looksMangled(plainText))) return plainText;
+  return html ? htmlToText(decodeBase64Url(html.body!.data!, partCharset(html))) : (plainText ?? "");
 }
 
 /** Linia otwierająca cytat: „Dnia … napisał(a):”, „On … wrote:”, „Am … schrieb”, Outlook „-----Original Message-----” / „From:”. */
@@ -540,24 +764,36 @@ export async function fetchGmailAttachment(
 
 // ─── Poczta dostawców: wyszukiwanie, metadane, treść, odpowiedź w wątku ───
 
-/** Id wiadomości pasujących do zapytania (najnowsze pierwsze), najwyżej `max`. */
-export async function listGmailMessageIds(accessToken: string, q: string, max = 300): Promise<string[]> {
-  const ids: string[] = [];
+/** Wiadomości pasujące do zapytania (najnowsze pierwsze), najwyżej `max` — id i wątek z samej listy. */
+export async function listGmailMessages(accessToken: string, q: string, max = 300): Promise<Array<{ id: string; threadId: string }>> {
+  const out: Array<{ id: string; threadId: string }> = [];
   let pageToken: string | undefined;
   do {
-    const params = new URLSearchParams({ q, maxResults: String(Math.min(100, max - ids.length)) });
+    const params = new URLSearchParams({ q, maxResults: String(Math.min(100, max - out.length)) });
     if (pageToken) params.set("pageToken", pageToken);
-    const page = await gmailGet<{ messages?: Array<{ id: string }>; nextPageToken?: string }>(
+    const page = await gmailGet<{ messages?: Array<{ id: string; threadId: string }>; nextPageToken?: string }>(
       accessToken,
       `/messages?${params.toString()}`
     );
-    for (const m of page?.messages ?? []) ids.push(m.id);
+    out.push(...(page?.messages ?? []));
     pageToken = page?.nextPageToken;
-  } while (pageToken && ids.length < max);
-  return ids;
+  } while (pageToken && out.length < max);
+  return out;
 }
 
-export type GmailAttachmentRef = { filename: string; attachmentId: string; size: number; mimeType: string };
+/** Id wiadomości pasujących do zapytania (najnowsze pierwsze), najwyżej `max`. */
+export async function listGmailMessageIds(accessToken: string, q: string, max = 300): Promise<string[]> {
+  return (await listGmailMessages(accessToken, q, max)).map((m) => m.id);
+}
+
+export type GmailAttachmentRef = {
+  filename: string;
+  attachmentId: string;
+  size: number;
+  mimeType: string;
+  /** Osadzony w treści (Content-ID / Content-Disposition: inline) — logo z podpisu, obrazek wklejony w mail. */
+  inline?: boolean;
+};
 
 function attachmentRefs(part: GmailPart | undefined): GmailAttachmentRef[] {
   if (!part) return [];
@@ -569,6 +805,8 @@ function attachmentRefs(part: GmailPart | undefined): GmailAttachmentRef[] {
             attachmentId: part.body.attachmentId,
             size: Number(part.body.size) || 0,
             mimeType: part.mimeType ?? "application/octet-stream",
+            // Tylko Content-ID (obrazek wpięty w HTML). Samo „Content-Disposition: inline” daje np. Apple Mail każdemu zdjęciu.
+            ...(header(part.headers, "Content-ID") ? { inline: true } : {}),
           },
         ]
       : [];
@@ -587,12 +825,14 @@ export type GmailMessageMeta = {
   to: string;
   subject: string;
   rfcMessageId: string;
+  /** Nagłówek References (Message-ID wcześniejszych wiadomości wątku). */
+  references: string[];
   attachments: GmailAttachmentRef[];
   /** Wysyłka masowa (List-Unsubscribe / Precedence: bulk) — newsletter, reklama. */
   bulk: boolean;
 };
 
-const META_PART = "filename,mimeType,body(attachmentId,size)";
+const META_PART = "filename,mimeType,headers,body(attachmentId,size)";
 const META_FIELDS = `id,threadId,labelIds,internalDate,snippet,payload(headers,${META_PART},parts(${META_PART},parts(${META_PART},parts(${META_PART}))))`;
 
 /** Nagłówki, fragment i lista załączników — bez treści (szybko, mało danych). null = brak wiadomości. */
@@ -614,6 +854,7 @@ export async function getGmailMessageMeta(accessToken: string, id: string): Prom
     to: [header(headers, "To"), header(headers, "Cc")].filter(Boolean).join(", "),
     subject: header(headers, "Subject"),
     rfcMessageId: header(headers, "Message-ID") || header(headers, "Message-Id"),
+    references: header(headers, "References").match(/<[^<>\s]+>/g) ?? [],
     attachments: attachmentRefs(m.payload),
     bulk: Boolean(header(headers, "List-Unsubscribe")) || /^(bulk|list|junk)$/i.test(header(headers, "Precedence").trim()),
   };
@@ -635,7 +876,7 @@ export async function getGmailMessageText(
   /** full = z cytatem i przekazaną treścią (numer przesyłki bywa tylko w przekazanej części). */
   opts: { full?: boolean } = {}
 ): Promise<string | null> {
-  const part = "filename,mimeType,body/data";
+  const part = "filename,mimeType,headers,body/data";
   const fields = `payload(${part},parts(${part},parts(${part},parts(${part}))))`;
   const m = await gmailGet<GmailThreadMessage>(
     accessToken,
@@ -654,9 +895,10 @@ const SEND_MULTIPART_URL = "https://gmail.googleapis.com/upload/gmail/v1/users/m
 export async function sendGmailRawInThread(
   accessToken: string,
   mime: Buffer,
-  threadId: string
+  threadId: string,
+  opts: GmailSendOpts = {}
 ): Promise<{ id: string; threadId: string | null }> {
-  const boundary = `ontime-${Date.now().toString(36)}`;
+  const boundary = `ontime-${randomBytes(16).toString("hex")}`;
   const body = Buffer.concat([
     Buffer.from(
       `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({ threadId })}\r\n` +
@@ -665,27 +907,65 @@ export async function sendGmailRawInThread(
     mime,
     Buffer.from(`\r\n--${boundary}--`),
   ]);
-  const res = await fetch(SEND_MULTIPART_URL, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": `multipart/related; boundary=${boundary}` },
-    body: new Uint8Array(body),
-    signal: AbortSignal.timeout(TIMEOUT_MS * 3),
-  });
-  const json = (await res.json().catch(() => ({}))) as { id?: string; threadId?: string; error?: { message?: string } };
-  if (res.status === 401) throw new GmailReconnectRequiredError();
-  if (!res.ok || !json.id) throw new Error(`Gmail nie wysłał odpowiedzi: ${json.error?.message ?? res.status}`);
-  return { id: json.id, threadId: json.threadId ?? null };
+  return postGmailSend(
+    accessToken,
+    SEND_MULTIPART_URL,
+    `multipart/related; boundary=${boundary}`,
+    new Uint8Array(body),
+    "Gmail nie wysłał odpowiedzi",
+    opts
+  );
 }
 
-/** Kiedy w wątku były nasze wiadomości (etykieta SENT) — ms epoki, rosnąco. null = brak wątku. */
-export async function getGmailThreadSentTimes(accessToken: string, threadId: string): Promise<number[] | null> {
-  const t = await gmailGet<{ messages?: Array<{ labelIds?: string[]; internalDate?: string }> }>(
+export type GmailSentInThread = { id: string; at: string; to: string; subject: string; snippet: string };
+
+/** Nasze wiadomości (SENT) w wątku — do pokazania pełnej rozmowy, nie tylko tego, co przyszło. */
+export async function getGmailThreadSentMessages(accessToken: string, threadId: string): Promise<GmailSentInThread[] | null> {
+  const t = await gmailGet<{ messages?: GmailThreadMessage[] }>(
     accessToken,
-    `/threads/${encodeURIComponent(threadId)}?format=minimal&fields=${encodeURIComponent("messages(labelIds,internalDate)")}`
+    `/threads/${encodeURIComponent(threadId)}?format=metadata&metadataHeaders=To&metadataHeaders=Subject&fields=${encodeURIComponent(
+      "messages(id,labelIds,internalDate,snippet,payload/headers)"
+    )}`
+  );
+  if (!t) return null;
+  return (t.messages ?? [])
+    .filter((m) => m.labelIds?.includes("SENT") && m.id)
+    .map((m) => ({
+      id: m.id!,
+      at: new Date(Number(m.internalDate ?? 0)).toISOString(),
+      to: header(m.payload?.headers, "To"),
+      subject: header(m.payload?.headers, "Subject"),
+      snippet: m.snippet ?? "",
+    }));
+}
+
+/** Adresy z nagłówków To/Cc (małe litery). */
+export function headerAddresses(value: string): string[] {
+  return [...value.matchAll(/[^\s@,;<>()"']+@[^\s@,;<>()"']+\.[a-z]{2,}/gi)].map((m) => m[0].toLowerCase());
+}
+
+/**
+ * Kiedy w wątku były nasze wiadomości (SENT) do kogoś spoza firmy — ms epoki, rosnąco. Przekazanie (Fwd)
+ * do kolegi w tym samym wątku nie jest odpowiedzią dostawcy. null = brak wątku.
+ */
+export async function getGmailThreadSentTimes(
+  accessToken: string,
+  threadId: string,
+  isInternal: (email: string) => boolean
+): Promise<number[] | null> {
+  const t = await gmailGet<{ messages?: GmailThreadMessage[] }>(
+    accessToken,
+    `/threads/${encodeURIComponent(threadId)}?format=metadata&metadataHeaders=To&metadataHeaders=Cc&fields=${encodeURIComponent(
+      "messages(labelIds,internalDate,payload/headers)"
+    )}`
   );
   if (!t) return null;
   return (t.messages ?? [])
     .filter((m) => m.labelIds?.includes("SENT"))
+    .filter((m) => {
+      const to = headerAddresses([header(m.payload?.headers, "To"), header(m.payload?.headers, "Cc")].join(","));
+      return to.some((e) => !isInternal(e));
+    })
     .map((m) => Number(m.internalDate ?? 0))
     .sort((a, b) => a - b);
 }

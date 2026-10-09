@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireOperations } from "@/lib/auth";
 import { assertAdminPanelAllowsProcurementBoardMutations } from "@/lib/auth/guard-admin-panel-preview";
 import { parseMailRecipients } from "@/lib/email/recipients";
+import { isMikranEmail } from "@/lib/email/supplier-emails";
 import {
   buildSupplierInquiryDraft,
   pendingInquiryToSupplier,
@@ -151,7 +152,10 @@ export async function actionSendSupplierInquiry(input: {
         return { ok: false, message: `Zapytanie do ${supplier.name} już czeka na odpowiedź.`, alreadyPending: pending };
       }
     }
-    const unknownRecipients = emails.filter((e) => !supplier.emails.includes(e));
+    // DW też — kopia do kolegi z Mikranu bez potwierdzenia.
+    const unknownRecipients = [...emails, ...cc].filter(
+      (e) => !supplier.emails.includes(e) && !isMikranEmail(e)
+    );
     if (unknownRecipients.length && !input.allowUnknownRecipients) {
       return {
         ok: false,

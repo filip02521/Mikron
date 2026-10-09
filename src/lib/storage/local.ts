@@ -1,5 +1,5 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "crypto";
-import { mkdir, readFile, unlink, writeFile } from "fs/promises";
+import { mkdir, readFile, stat, unlink, writeFile } from "fs/promises";
 import path from "path";
 
 export function storageRoot(): string {
@@ -51,6 +51,11 @@ export async function writeStorageObject(dbPath: string, bytes: Buffer): Promise
 
 export async function readStorageObject(dbPath: string): Promise<Buffer> {
   return readFile(folderForDbPrefix(dbPath));
+}
+
+/** Rozmiar pliku bez czytania treści (podgląd listy załączników). */
+export async function storageObjectSize(dbPath: string): Promise<number> {
+  return (await stat(folderForDbPrefix(dbPath))).size;
 }
 
 export async function deleteStorageObject(dbPath: string): Promise<void> {

@@ -3,7 +3,7 @@
 // Wysyłka ZD do dostawcy — kroki po mailu (termin realizacji, Główne tylko dla próśb z ZD).
 // @service-role-ok — autoryzacja requireZdEstimateAdmin(); service role po warstwie aplikacji.
 import { requireZdEstimateAdmin } from "@/lib/auth";
-import { requestsCoveredByZd, type ZdSendRequest } from "@/lib/orders/zd-send-plan";
+import { requestsCoveredByZd, zdTerminError, type ZdSendRequest } from "@/lib/orders/zd-send-plan";
 import { setSubiektOrdersZdTermin } from "@/lib/subiekt/api";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadSupplierZd } from "@/lib/supplier-forms/prepare";
@@ -86,10 +86,6 @@ export async function actionZdSendPlan(input: {
   }
 }
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-/** Najdalszy rozsądny termin dostawy — dalej to prawie na pewno pomyłka w dacie. */
-const MAX_DAYS_AHEAD = 400;
-
 /**
  * Po wysyłce: termin realizacji ZD = nasza przewidywana dostawa (nie dzisiejsza data z wydruku dla dostawcy).
  * Zwraca termin odczytany z Subiekta po zapisie.
@@ -103,13 +99,8 @@ export async function actionSetZdTerminAfterSend(input: {
   const dokId = Math.trunc(Number(input.dokId));
   const date = String(input.date ?? "").trim();
   if (!(dokId > 0)) return { ok: false, message: "Brak numeru ZD." };
-  if (!DATE_RE.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00Z`))) {
-    return { ok: false, message: "Podaj termin realizacji w formacie RRRR-MM-DD." };
-  }
-  const today = todayDateKeyInWarsaw();
-  if (date < today) return { ok: false, message: "Termin realizacji nie może być wcześniejszy niż dziś." };
-  const daysAhead = (Date.parse(`${date}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000;
-  if (daysAhead > MAX_DAYS_AHEAD) return { ok: false, message: "Termin realizacji jest dalej niż rok - sprawdź datę." };
+  const invalid = zdTerminError(date, todayDateKeyInWarsaw());
+  if (invalid) return { ok: false, message: invalid };
   try {
     // Ten sam dostawca co w oknie — nie ustawiamy terminu na cudzym ZD.
     const zd = await loadSupplierZd({ dokId, supplierId: String(input.supplierId ?? "") });

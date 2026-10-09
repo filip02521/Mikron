@@ -447,8 +447,8 @@ export const MY_ORDERS_TOAST = {
     toastFromError(detail, "Operacja nie powiodła się. Spróbuj ponownie."),
   undoSuccess: UNDO_TOAST.success,
   undoExpired: toastError(
-    "Czas minął",
-    "Nie można już cofnąć - odśwież listę zamówień.",
+    "Minęło 10 sekund na cofnięcie",
+    "Tej zmiany nie da się już cofnąć. Odśwież listę, żeby zobaczyć aktualny stan.",
   ),
   undoPickupFailed: toastError(
     "Nie udało się cofnąć odbioru",
@@ -460,7 +460,7 @@ export const MY_ORDERS_TOAST = {
   ),
   undoCancelFailed: toastError(
     "Nie udało się cofnąć anulowania",
-    "Wycofanie pozycji nie zostało cofnięte.",
+    "Pozycja nadal jest anulowana. Spróbuj jeszcze raz.",
   ),
 } as const;
 

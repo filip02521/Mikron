@@ -1,12 +1,14 @@
 "use client";
 
+import { initialsFromLabel } from "@/lib/ui/initials";
+import { convertEmoticons } from "@/lib/ui/emoticons";
 import { actionResolveAwaitingSupplier } from "@/app/actions/gmail";
 import { BoardSupplierReplies } from "@/components/department-board/BoardSupplierReplies";
-import { businessDaysLabel, businessDaysSince } from "@/lib/suppliers/awaiting-supplier";
+import { businessDaysLabel } from "@/lib/suppliers/awaiting-supplier";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { Button } from "@/components/ui/Button";
-import { IconCamera, IconChevronDown } from "@/components/icons/StrokeIcons";
+import { IconCamera, IconChevronDown, IconClock } from "@/components/icons/StrokeIcons";
 import {
   authorLabelFromProfile,
   formatBoardDate,
@@ -18,12 +20,13 @@ import {
   BOARD_PROCUREMENT_AUTHOR_LABEL,
   boardAwaitingReplyClass,
   boardQuestionPreviewClass,
-  boardQuestionAuthorNameClass,
   boardQuestionRowClass,
   boardQuestionRowHeaderExpandedClass,
   boardQuestionStatusBadgeClass,
   boardQuestionUnseenDotClass,
   boardReplyFormShellClass,
+  boardSupplierWaitPanelClass,
+  type BoardQuestionStatusTone,
 } from "@/lib/department-board/department-board-thread-styles";
 import {
   boardQuestionExpandedShellClass,
@@ -35,7 +38,12 @@ import { BoardQuestionProductContext } from "@/components/department-board/Board
 import { BoardThreadMessage } from "@/components/department-board/BoardThreadMessage";
 import { BoardReplyComposer } from "@/components/department-board/BoardReplyComposer";
 import { SupplierInquiryDialog } from "@/components/department-board/SupplierInquiryDialog";
-import { pendingSupplierInquiry } from "@/lib/department-board/supplier-inquiry";
+import {
+  inquiryNeedsAttention,
+  pendingSupplierInquiry,
+  supplierInquiryWait,
+} from "@/lib/department-board/supplier-inquiry";
+import { isBoardImageAttachment } from "@/lib/department-board/attachments";
 import { useBoardQuestionImages } from "@/components/department-board/useBoardQuestionImages";
 import {
   boardQuestionHasProduct,
@@ -49,6 +57,7 @@ import {
   actionMarkQuestionThreadSeen,
   actionReopenQuestion,
   actionReplyToQuestion,
+  type BoardSupplierFileRef,
 } from "@/app/actions/department-board";
 import { isStaleAnsweredQuestion } from "@/lib/department-board/attention";
 import { askConfirm } from "@/components/ui/ConfirmHost";
@@ -59,11 +68,17 @@ function photoLabel(count: number): string {
 }
 
 /** Podgląd treści wpisu w zwiniętym wierszu — samo zdjęcie też coś mówi. */
-function postPreviewText(body: string, photoCount: number): string {
+function postPreviewText(body: string, photoCount: number, fileCount = 0): string {
   const text = body.trim();
-  if (!photoCount) return text;
-  const photos = `[${photoLabel(photoCount)}]`;
-  return text ? `${photos} ${text}` : photos;
+  const tags = [
+    photoCount ? `[${photoLabel(photoCount)}]` : null,
+    fileCount ? `[${fileCount === 1 ? "plik" : `pliki: ${fileCount}`}]` : null,
+  ].filter(Boolean);
+  return [...tags, text].filter(Boolean).join(" ");
+}
+
+function supplierFileKey(f: BoardSupplierFileRef): string {
+  return `${f.inquiryId}|${f.replyId}|${f.filename}`;
 }
 
 function procurementReplyLabel(indexAmongProcurement: number): string {
@@ -106,6 +121,8 @@ export function QuestionThreadCard({
   const [inquiryOpen, setInquiryOpen] = useState(false);
   const [locallySeen, setLocallySeen] = useState(!unseenReply);
   const [reply, setReply] = useState("");
+  /** Załączniki z maila dostawcy dołączone do odpowiedzi (plik pobiera serwer przy wysyłce). */
+  const [supplierFiles, setSupplierFiles] = useState<BoardSupplierFileRef[]>([]);
   const [busy, setBusy] = useState(false);
   const {
     images: replyImages,
@@ -131,9 +148,17 @@ export function QuestionThreadCard({
   const hasProduct = boardQuestionHasProduct(question);
   const stale = isStaleAnsweredQuestion(question);
   const pendingInquiry = isClosed ? null : pendingSupplierInquiry(question.supplierInquiries);
-  const threadPhotoCount =
-    (question.attachments?.length ?? 0) +
-    question.posts.reduce((sum, post) => sum + (post.attachments?.length ?? 0), 0);
+  // Odpowiedź dostawcy z Poczty (synchronizacja Gmaila w tle) — zakupy widzą ją na liście bez rozwijania.
+  const supplierAnswered =
+    isClosed || audience !== "procurement" ? null : (question.supplierInquiries ?? []).find(inquiryNeedsAttention) ?? null;
+  // Zakupy po odpowiedzi dostawcy już nie czekają; handlowiec dalej widzi „czeka na dostawcę”, dopóki zakupy nie odpiszą.
+  const inquiryWait =
+    pendingInquiry && !(pendingInquiry.replyAt && audience === "procurement") ? supplierInquiryWait(pendingInquiry) : null;
+  // Przeterminowanie wymaga ruchu tylko od zakupów (przypomnienie) — handlowiec widzi spokojny stan.
+  const inquiryOverdue = Boolean(inquiryWait?.overdue) && audience === "procurement";
+  const threadPhotoCount = [...(question.attachments ?? []), ...question.posts.flatMap((post) => post.attachments ?? [])].filter(
+    (a) => isBoardImageAttachment(a.mime_type)
+  ).length;
 
   const latestActivityPost = useMemo(() => {
     if (question.posts.length === 0) return null;
@@ -155,7 +180,8 @@ export function QuestionThreadCard({
             ),
         text: postPreviewText(
           latestActivityPost.body,
-          latestActivityPost.attachments?.length ?? 0
+          (latestActivityPost.attachments ?? []).filter((a) => isBoardImageAttachment(a.mime_type)).length,
+          (latestActivityPost.attachments ?? []).filter((a) => !isBoardImageAttachment(a.mime_type)).length
         ),
       };
     }
@@ -216,8 +242,9 @@ export function QuestionThreadCard({
     setBusy(true);
     setError(null);
     try {
-      await actionReplyToQuestion(question.id, reply, replyImageFiles);
+      await actionReplyToQuestion(question.id, convertEmoticons(reply), replyImageFiles, supplierFiles);
       setReply("");
+      setSupplierFiles([]);
       clearReplyImages();
       setInlineReply(false);
       onChanged?.();
@@ -306,18 +333,29 @@ export function QuestionThreadCard({
     }
   }
 
-  // Status w wierszu tylko gdy wymaga uwagi; resztę mówi filtr i pasek po lewej.
-  const statusLabel = isClosed
+  // Status w wierszu tylko gdy coś się dzieje; resztę mówi filtr i pasek po lewej.
+  // Kolor = czy ruch jest po stronie oglądającego; „czeka na dostawcę” to cisza, nie alarm.
+  // `age` zostaje na telefonie, `label` chowa się wizualnie (nadal czytany przez czytnik ekranu).
+  const status: { label: string; age?: string; tone: BoardQuestionStatusTone; title?: string } | null = isClosed
     ? null
-    : isOpen
-      ? pendingInquiry
-        ? "Czeka na dostawcę"
-        : "Bez odpowiedzi"
-      : showUnseen
-        ? "Nowa odpowiedź"
-        : pendingInquiry
-          ? "Czeka na dostawcę"
-          : null;
+    : supplierAnswered
+      ? {
+          label: supplierAnswered.bounced ? "Mail do dostawcy nie doszedł" : "Dostawca odpisał",
+          tone: supplierAnswered.bounced ? "supplier-bounced" : "supplier-replied",
+          title: `${supplierAnswered.supplierName} · ${formatBoardDate(supplierAnswered.replyAt!)}`,
+        }
+      : !isOpen && showUnseen
+        ? { label: "Nowa odpowiedź", tone: "unseen" }
+        : pendingInquiry && inquiryWait
+          ? {
+              label: inquiryOverdue ? "Przypomnij dostawcy" : "Czeka na dostawcę",
+              age: businessDaysLabel(inquiryWait.businessDays),
+              tone: inquiryOverdue ? "waiting-overdue" : "waiting",
+              title: `Zapytanie do: ${pendingInquiry.supplierName}, wysłane ${formatBoardDate(pendingInquiry.sentAt)}`,
+            }
+          : isOpen
+            ? { label: "Bez odpowiedzi", tone: "attention" }
+            : null;
 
   const replyLabel = audience === "sales"
     ? "Twoja wiadomość"
@@ -341,6 +379,8 @@ export function QuestionThreadCard({
       busy={busy}
       onSubmit={() => void submitReply()}
       error={error}
+      extraFiles={supplierFiles.map((f) => ({ key: supplierFileKey(f), name: f.filename }))}
+      onRemoveExtraFile={(key) => setSupplierFiles((prev) => prev.filter((f) => supplierFileKey(f) !== key))}
     />
   );
   const expandLabel = `Pytanie: ${question.title}`;
@@ -358,6 +398,7 @@ export function QuestionThreadCard({
               expanded,
               alternate: rowAlternate,
               stale,
+              waiting: pendingInquiry ? (inquiryOverdue ? "supplier-overdue" : "supplier") : null,
             })
           : "rounded-md border border-slate-200/90 bg-white shadow-sm"
       )}
@@ -379,75 +420,66 @@ export function QuestionThreadCard({
           aria-expanded={expanded}
           aria-label={expandLabel}
         >
-          <span className="flex items-start gap-2.5 sm:gap-3">
-            <IconChevronDown
-              open={expanded}
-              size={16}
-              className={cn(
-                "mt-0.5 shrink-0 text-slate-400 transition-transform duration-300 ease-out motion-reduce:transition-none",
-                expanded && "text-indigo-500"
-              )}
-            />
-            <span className="min-w-0 flex-1 space-y-1">
-              <span className="flex min-w-0 items-center gap-2">
-                {showUnseen ? (
-                  <span className={boardQuestionUnseenDotClass} aria-hidden />
-                ) : null}
-                <span className={cn(salesTypography.rowTitle, "min-w-0 flex-1 truncate")}>
-                  {question.title}
-                </span>
-                {statusLabel ? (
-                  <span
-                    className={boardQuestionStatusBadgeClass({ unseen: showUnseen, open: isOpen })}
-                  >
-                    {statusLabel}
+          {/* Stałe kolumny jak w programie pocztowym: awatar | autor, tytuł, podgląd | data i stan. */}
+          <span className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-3">
+            <AuthorAvatar label={author} size="md" className="mt-0.5" />
+            <span className="min-w-0">
+              <span className="flex min-w-0 items-center gap-2 text-xs text-slate-600">
+                {showUnseen ? <span className={boardQuestionUnseenDotClass} aria-hidden /> : null}
+                <span className="truncate font-medium">{author}</span>
+                {productSymbolHint ? (
+                  <span className="shrink-0 rounded border border-slate-200 bg-slate-50 px-1 py-px font-mono text-[10.5px] text-slate-600">
+                    {productSymbolHint}
                   </span>
                 ) : null}
                 {threadPhotoCount > 0 ? (
-                  <span
-                    className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-slate-500"
-                    title={`W wątku: ${photoLabel(threadPhotoCount)}`}
-                  >
+                  <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-slate-500" title={`W wątku: ${photoLabel(threadPhotoCount)}`}>
                     <IconCamera size={12} className="shrink-0" aria-hidden />
                     <span className="tabular-nums">{threadPhotoCount}</span>
                     <span className="sr-only">zdjęć w wątku</span>
                   </span>
                 ) : null}
-                {!expanded ? (
-                  <span className="hidden max-w-[9rem] shrink-0 truncate text-xs font-medium text-slate-600 sm:inline">
-                    {author}
-                  </span>
-                ) : null}
-                <span
-                  className="shrink-0 text-[11px] tabular-nums text-slate-500"
-                  title={`Ostatnia aktywność: ${formatBoardDate(lastActivityAt)}`}
-                >
-                  {formatBoardShortDate(lastActivityAt)}
-                </span>
               </span>
+              <span className={cn(salesTypography.rowTitle, "mt-0.5 block", expanded ? "" : "line-clamp-2 sm:truncate")}>{question.title}</span>
               {expanded ? (
-                <span className={cn(salesTypography.rowBody, "block text-slate-600")}>
-                  <span className={boardQuestionAuthorNameClass}>{author}</span>
-                  <span className="ml-2 tabular-nums">{formatBoardDate(question.created_at)}</span>
-                </span>
+                <span className="mt-0.5 block text-xs tabular-nums text-slate-500">{formatBoardDate(question.created_at)}</span>
               ) : (
-                <span className={boardQuestionPreviewClass}>
-                  {productSymbolHint ? (
-                    <span className="mr-2 rounded border border-slate-200 bg-slate-50 px-1 py-px font-mono text-[10.5px] text-slate-600">
-                      {productSymbolHint}
-                    </span>
-                  ) : null}
-                  {/* Telefon: autor tylko tu (w 1. linii brak miejsca). */}
+                <span className={cn(boardQuestionPreviewClass, "mt-0.5")}>
                   {preview.who ? (
                     <>
                       <span className="font-semibold text-slate-700">{preview.who}:</span>{" "}
                     </>
-                  ) : (
-                    <span className="font-semibold text-slate-700 sm:hidden">{author}: </span>
-                  )}
+                  ) : null}
                   {preview.text}
                 </span>
               )}
+            </span>
+            <span className="flex flex-col items-end gap-1.5 pt-0.5">
+              <span className="flex items-center gap-1.5">
+                <span className="text-[11px] tabular-nums text-slate-500" title={`Ostatnia aktywność: ${formatBoardDate(lastActivityAt)}`}>
+                  {formatBoardShortDate(lastActivityAt)}
+                </span>
+                <IconChevronDown
+                  open={expanded}
+                  size={16}
+                  className={cn("shrink-0 text-slate-400 transition-transform duration-300 ease-out motion-reduce:transition-none", expanded && "text-indigo-500")}
+                />
+              </span>
+                {status ? (
+                  <span className={boardQuestionStatusBadgeClass(status.tone)} title={status.title}>
+                    {status.tone === "waiting" || status.tone === "waiting-overdue" ? (
+                      <IconClock size={11} className="shrink-0" aria-hidden />
+                    ) : null}
+                    {status.age ? (
+                      <span>
+                        <span className="sr-only sm:not-sr-only">{status.label} · </span>
+                        <span className="tabular-nums">{status.age}</span>
+                      </span>
+                    ) : (
+                      status.label
+                    )}
+                  </span>
+                ) : null}
             </span>
           </span>
         </button>
@@ -534,6 +566,15 @@ export function QuestionThreadCard({
         {audience === "procurement" && !isClosed && question.supplierInquiries?.length ? (
           <BoardSupplierReplies
             threadId={question.id}
+            refreshKey={(question.supplierInquiries ?? []).map((i) => i.replyAt ?? "").join("|")}
+            attachedKeys={supplierFiles.map(supplierFileKey)}
+            onToggleFile={(file) =>
+              setSupplierFiles((prev) =>
+                prev.some((f) => supplierFileKey(f) === supplierFileKey(file))
+                  ? prev.filter((f) => supplierFileKey(f) !== supplierFileKey(file))
+                  : [...prev, file]
+              )
+            }
             onUseAnswer={(text) => {
               // Nie nadpisuje tego, co już ktoś zaczął pisać — dokleja pod spodem.
               setReply((prev) => (prev.trim() ? `${prev.trimEnd()}\n\n${text}` : text));
@@ -543,49 +584,91 @@ export function QuestionThreadCard({
           />
         ) : null}
 
-        {pendingInquiry ? (
+        {pendingInquiry?.replyAt && audience === "procurement" ? (
           <p className={boardAwaitingReplyClass}>
-            {audience === "sales" ? "Zakupy zapytały dostawcę" : "Zapytanie wysłane do dostawcy"}{" "}
-            <span className="font-medium text-slate-700">{pendingInquiry.supplierName}</span> ·{" "}
-            {formatBoardDate(pendingInquiry.sentAt)}
-            {businessDaysSince(new Date(pendingInquiry.sentAt)) > 0
-              ? ` (czeka ${businessDaysLabel(businessDaysSince(new Date(pendingInquiry.sentAt)))})`
-              : ""}
-            .{" "}
-            {audience === "sales"
-              ? "Odpowiedź pojawi się w tym wątku."
-              : "Gdy dostawca odpisze, jego mail pokaże się tutaj - Twoja odpowiedź handlowcowi zakończy czekanie."}
-            {audience === "procurement" && canReply ? (
-              <>
-                {" "}
-                <button
-                  type="button"
-                  className="font-medium text-indigo-700 underline decoration-indigo-300 underline-offset-2 hover:decoration-indigo-600 disabled:opacity-50"
-                  disabled={busy}
-                  onClick={() => void endSupplierWait(pendingInquiry.id)}
-                  title="Dostawca odpowiedział inną drogą (telefon, portal) - zapytanie znika z listy „Czeka na dostawcę”"
-                >
-                  Zakończ czekanie
-                </button>
-              </>
-            ) : null}
+            {pendingInquiry.bounced ? "Mail do dostawcy" : "Dostawca"}{" "}
+            <span className="font-medium text-slate-700">{pendingInquiry.supplierName}</span>{" "}
+            {pendingInquiry.bounced ? "wrócił" : "odpisał"} {formatBoardDate(pendingInquiry.replyAt)} - odpowiedz handlowcowi,
+            żeby zamknąć sprawę.
           </p>
+        ) : null}
+
+        {pendingInquiry && inquiryWait ? (
+          <div className={boardSupplierWaitPanelClass(inquiryOverdue)} role="status">
+            <IconClock
+              size={16}
+              className={cn("mt-0.5 shrink-0", inquiryOverdue ? "text-amber-700" : "text-slate-500")}
+              aria-hidden
+            />
+            <div className="min-w-0 space-y-0.5">
+              <p className="text-sm font-medium text-slate-900">
+                {audience === "sales" ? "Zakupy czekają na odpowiedź dostawcy" : "Czeka na odpowiedź dostawcy"}{" "}
+                <span className="font-semibold">{pendingInquiry.supplierName}</span>
+              </p>
+              <p className="text-xs leading-relaxed text-slate-600">
+                <span className="tabular-nums">Wysłano {formatBoardDate(pendingInquiry.sentAt)}</span>
+                {inquiryWait.businessDays > 0 ? (
+                  <>
+                    {" · "}
+                    <span className="tabular-nums">
+                      {inquiryWait.businessDays}{" "}
+                      {polishPluralWord(inquiryWait.businessDays, "dzień roboczy", "dni robocze", "dni roboczych")} bez
+                      odpowiedzi
+                    </span>
+                  </>
+                ) : null}
+              </p>
+              <p className="text-xs leading-relaxed text-slate-500">
+                {audience === "sales"
+                  ? "Odpowiedź pojawi się w tym wątku."
+                  : inquiryOverdue
+                    ? "Dostawca długo milczy — przypomnij się mailem albo telefonicznie."
+                    : "Gdy dostawca odpisze, jego mail pokaże się tutaj — Twoja odpowiedź handlowcowi zakończy czekanie."}
+                {audience === "procurement" && canReply ? (
+                  <>
+                    {" "}
+                    <button
+                      type="button"
+                      className="font-medium text-indigo-700 underline decoration-indigo-300 underline-offset-2 hover:decoration-indigo-600 disabled:opacity-50"
+                      disabled={busy}
+                      onClick={() => void endSupplierWait(pendingInquiry.id)}
+                      title="Dostawca odpowiedział inną drogą (telefon, portal) - zapytanie znika z listy „Czeka na dostawcę”"
+                    >
+                      Zakończ czekanie
+                    </button>
+                  </>
+                ) : null}
+              </p>
+            </div>
+          </div>
         ) : null}
 
         {canReply && !isClosed ? (
           <div className={boardReplyFormShellClass}>{replyComposer(`reply-${question.id}`)}</div>
         ) : null}
 
-        {canReply && !isClosed && audience === "procurement" ? (
-          <div className="pt-1">
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={busy}
-              onClick={() => setInquiryOpen(true)}
-            >
-              Zapytaj dostawcę
-            </Button>
+        {/* Jeden pasek: główna akcja (zapytanie) po lewej, ciche porządkowe (zamknij, archiwizuj) po prawej. */}
+        {!isClosed && ((canReply && audience === "procurement") || canClose || canArchive) ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+            {canReply && audience === "procurement" ? (
+              <Button size="sm" variant="secondary" disabled={busy} onClick={() => setInquiryOpen(true)}>
+                Zapytaj dostawcę
+              </Button>
+            ) : (
+              <span />
+            )}
+            <span className="flex flex-wrap items-center gap-1">
+              {canClose ? (
+                <Button size="sm" variant="ghost" className="text-xs text-slate-500 hover:text-slate-900" disabled={busy} onClick={() => void closeThread()}>
+                  Zamknij wątek
+                </Button>
+              ) : null}
+              {canArchive ? (
+                <Button size="sm" variant="ghost" className="text-xs text-slate-500 hover:text-slate-900" disabled={busy} onClick={() => void archive()}>
+                  Archiwizuj pytanie
+                </Button>
+              ) : null}
+            </span>
           </div>
         ) : null}
 
@@ -637,35 +720,25 @@ export function QuestionThreadCard({
           </div>
         ) : null}
 
-        {canClose && !isClosed ? (
-          <div className="pt-1">
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-xs text-slate-400"
-              disabled={busy}
-              onClick={() => void closeThread()}
-            >
-              Zamknij wątek
-            </Button>
-          </div>
-        ) : null}
-
-        {canArchive && !isClosed ? (
-          <div className="pt-1">
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-xs text-slate-400"
-              disabled={busy}
-              onClick={() => void archive()}
-            >
-              Archiwizuj pytanie
-            </Button>
-          </div>
-        ) : null}
         </div>
       ) : null}
     </article>
+  );
+}
+
+/** Awatar z inicjałami autora pytania — ten sam język co przy wiadomościach w wątku. */
+function AuthorAvatar({ label, size = "sm", className }: { label: string; size?: "sm" | "md"; className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center justify-center rounded-full bg-slate-100 font-semibold leading-none text-slate-600 ring-1 ring-slate-200/80",
+        size === "md" ? "size-8 text-[11px]" : "size-5 text-[9px]",
+        className
+      )}
+      title={label}
+      aria-hidden
+    >
+      {initialsFromLabel(label)}
+    </span>
   );
 }

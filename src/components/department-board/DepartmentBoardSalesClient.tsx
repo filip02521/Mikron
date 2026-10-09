@@ -47,6 +47,7 @@ import {
 } from "@/lib/ui/ontime-theme";
 import { SalesListFilterEmptyHint } from "@/components/sales/SalesListEmptyHints";
 import { actionCreateQuestion } from "@/app/actions/department-board";
+import { convertEmoticons } from "@/lib/ui/emoticons";
 import { useBoardQuestionImages } from "@/components/department-board/useBoardQuestionImages";
 import {
   emptyBoardQuestionProductDraft,
@@ -226,7 +227,7 @@ export function DepartmentBoardSalesClient({
     try {
       const result = await actionCreateQuestion(
         questionTitle,
-        questionBody,
+        convertEmoticons(questionBody),
         {
           symbol: questionProduct.symbol,
           productName: questionProduct.product,

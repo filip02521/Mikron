@@ -81,8 +81,6 @@ export function ZdEstimatePostCreatePanel({
   session: ZdPostCreateSession;
   /** Harness UI (e2e-lab): bez zapisów — Główne / plan / cofnij nic nie wysyłają. */
   previewOnly?: boolean;
-  /** Nieużywane od czasu stałej treści maila — zostawione dla zgodności wywołań. */
-  dateKey?: string;
   /** Laboratorium: przebieg wysyłki na niby (tylko z previewOnly). */
   sendSimulation?: ZdSendSimulation | null;
   /** Create nadal zablokowany — pokaż CTA w panelu (bez osobnego banera). */
@@ -208,7 +206,11 @@ export function ZdEstimatePostCreatePanel({
   // panel po utworzeniu ZD żyje tylko w pamięci strony i zniknąłby przy przejściu do Google).
   useEffect(() => {
     let cancelled = false;
-    const refresh = () =>
+    let lastAt = 0;
+    const refresh = () => {
+      // Przełączanie okien co chwilę nie musi za każdym razem pytać serwera.
+      if (Date.now() - lastAt < 15_000) return;
+      lastAt = Date.now();
       void actionGmailStatus()
         .then((res) => {
           if (!cancelled) setGmail(res);
@@ -217,6 +219,7 @@ export function ZdEstimatePostCreatePanel({
         .catch(() => {
           if (!cancelled) setGmail((g) => g ?? { configured: false, email: null, signature: "" });
         });
+    };
     refresh();
     window.addEventListener("focus", refresh);
     return () => {
@@ -736,7 +739,8 @@ export function ZdEstimatePostCreatePanel({
             </p>
           ) : (
             <ZdSendWorkspace
-              key={`${session.dokId}|${gmailEmail ?? "-"}|${email ?? "-"}`}
+              // Wcześniejsza wysyłka dociera asynchronicznie — okno musi ją pokazać, a nie pusty formularz.
+              key={`${session.dokId}|${gmailEmail ?? "-"}|${email ?? "-"}|${previousSend ? "sent" : "new"}`}
               dokId={session.dokId}
               supplierId={session.supplierId}
               supplierName={session.supplierName}
@@ -744,7 +748,7 @@ export function ZdEstimatePostCreatePanel({
               // Wysyłka z OnTime tylko z połączonym Gmailem i adresem dostawcy; inaczej tryb ręczny (portal, telefon).
               gmail={canGmailCompose && gmailEmail && email ? { email: gmailEmail, signature: gmail.signature } : null}
               toSeed={email ?? ""}
-              subjectSeed={mailtoSeed?.subject ?? `ZD ${session.dokNrPelny ?? ""}`.trim()}
+              subjectSeed={mailtoSeed?.subject ?? (session.dokNrPelny?.trim() || "ZD")}
               bodySeed={mailtoSeed?.body ?? ""}
               orderFormKind={orderFormTemplate?.kind ?? null}
               etaDateKey={eta?.supplierId === session.supplierId ? eta.dateKey : null}
@@ -759,7 +763,6 @@ export function ZdEstimatePostCreatePanel({
               manualContact={manualContact}
               actionsSlot={sendActionsSlot}
               simulation={previewOnly ? sendSimulation : null}
-              onSent={() => undefined}
               onGlowneMarked={(r) => onGlowneMarked?.(r)}
               onScheduleMarked={() => {
                 onScheduleMarked?.();

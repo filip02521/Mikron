@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  supplierInquiryWait,
   buildSupplierInquiryDraft,
+  inquiryNeedsAttention,
   pendingInquiryToSupplier,
   pendingSupplierInquiry,
   supplierInquiryRef,
@@ -97,5 +99,48 @@ describe("pendingSupplierInquiry", () => {
     const en = buildSupplierInquiryDraft({ product, english: true, signature: "Pozdrawiam/Best Regards\n\nFilip" });
     expect(en.body).toContain("Thank you in advance.\nPozdrawiam/Best Regards");
     expect(en.body).not.toContain("Kind regards");
+  });
+});
+
+describe("inquiryNeedsAttention", () => {
+  const base: BoardSupplierInquiry = {
+    id: "i1",
+    supplierId: "s1",
+    supplierName: "Renfert GmbH",
+    sentAt: "2026-10-06T08:00:00.000Z",
+    resolvedAt: null,
+  };
+  it("odpowiedź dostawcy (albo zwrot) bez odpowiedzi zakupów → do reakcji", () => {
+    expect(inquiryNeedsAttention({ ...base, replyAt: "2026-10-07T09:12:00.000Z" })).toBe(true);
+    expect(inquiryNeedsAttention({ ...base, replyAt: "2026-10-07T09:12:00.000Z", bounced: true })).toBe(true);
+  });
+  it("brak odpowiedzi albo zakupy już odpisały w wątku → nie", () => {
+    expect(inquiryNeedsAttention(base)).toBe(false);
+    expect(inquiryNeedsAttention({ ...base, replyAt: null })).toBe(false);
+    expect(
+      inquiryNeedsAttention({ ...base, replyAt: "2026-10-07T09:12:00.000Z", resolvedAt: "2026-10-07T10:00:00.000Z" })
+    ).toBe(false);
+  });
+});
+
+describe("supplierInquiryWait", () => {
+  // 2026-10-05 to poniedziałek.
+  const sentAt = "2026-10-05T09:00:00+02:00";
+
+  it("liczy dni robocze, weekend nie przeterminowuje", () => {
+    expect(supplierInquiryWait({ sentAt }, new Date("2026-10-05T15:00:00+02:00"))).toEqual({
+      businessDays: 0,
+      overdue: false,
+    });
+    expect(supplierInquiryWait({ sentAt }, new Date("2026-10-07T10:00:00+02:00")).overdue).toBe(false);
+    expect(supplierInquiryWait({ sentAt }, new Date("2026-10-08T10:00:00+02:00"))).toEqual({
+      businessDays: 3,
+      overdue: true,
+    });
+    // Piątek → poniedziałek to 1 dzień roboczy.
+    expect(
+      supplierInquiryWait({ sentAt: "2026-10-09T09:00:00+02:00" }, new Date("2026-10-12T09:00:00+02:00"))
+        .businessDays
+    ).toBe(1);
   });
 });

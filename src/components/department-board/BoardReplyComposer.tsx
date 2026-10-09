@@ -2,8 +2,10 @@
 
 import { useRef, useState, type ClipboardEvent, type DragEvent } from "react";
 import { Button } from "@/components/ui/Button";
+import { changeWithEmoticons } from "@/lib/ui/emoticons";
+import { EmojiPicker } from "@/components/ui/EmojiPicker";
 import { Spinner } from "@/components/ui/Spinner";
-import { IconCamera } from "@/components/icons/StrokeIcons";
+import { IconCamera, IconPaperclip } from "@/components/icons/StrokeIcons";
 import {
   BoardImageDraftThumbs,
   type BoardQuestionImageDraft,
@@ -40,6 +42,8 @@ export function BoardReplyComposer({
   onSubmit,
   error,
   className,
+  extraFiles = [],
+  onRemoveExtraFile,
 }: {
   id: string;
   label: string;
@@ -54,13 +58,18 @@ export function BoardReplyComposer({
   onSubmit: () => void;
   error?: string | null;
   className?: string;
+  /** Pliki od dostawcy dołączone z jego maila (pobiera je serwer przy wysyłce). */
+  extraFiles?: { key: string; name: string }[];
+  onRemoveExtraFile?: (key: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dragDepth = useRef(0);
   const [dragging, setDragging] = useState(false);
 
   const canAddImage = images.length < BOARD_IMAGE_MAX_COUNT && !busy;
-  const canSubmit = !busy && !compressing && (value.trim().length > 0 || images.length > 0);
+  const canSubmit =
+    !busy && !compressing && (value.trim().length > 0 || images.length > 0 || extraFiles.length > 0);
 
   function handlePaste(event: ClipboardEvent) {
     const files = imageFilesFromClipboardData(event.clipboardData);
@@ -115,11 +124,12 @@ export function BoardReplyComposer({
 
       <div className="relative mt-2">
         <textarea
+          ref={textareaRef}
           id={id}
           rows={3}
           value={value}
           disabled={busy}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => changeWithEmoticons(e, onChange)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && canSubmit) {
               e.preventDefault();
@@ -157,6 +167,31 @@ export function BoardReplyComposer({
         </div>
       ) : null}
 
+      {extraFiles.length ? (
+        <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Pliki od dostawcy w odpowiedzi">
+          {extraFiles.map((f) => (
+            <li
+              key={f.key}
+              className="inline-flex max-w-72 items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 py-1 pl-2 pr-1 text-xs text-slate-700"
+            >
+              <IconPaperclip size={12} className="shrink-0 text-slate-400" aria-hidden />
+              <span className="truncate">{f.name}</span>
+              {onRemoveExtraFile ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onRemoveExtraFile(f.key)}
+                  className="rounded px-1 text-slate-400 transition-all duration-200 hover:bg-slate-200 hover:text-slate-700"
+                  aria-label={`Usuń ${f.name} z odpowiedzi`}
+                >
+                  ×
+                </button>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
         <input
           ref={inputRef}
@@ -188,6 +223,7 @@ export function BoardReplyComposer({
             </span>
           ) : null}
         </Button>
+        <EmojiPicker textareaRef={textareaRef} value={value} onChange={onChange} disabled={busy} />
         <span className="hidden text-[11px] text-slate-400 sm:inline">{COPY.hint}</span>
         <Button
           type="button"

@@ -439,32 +439,60 @@ export async function resolveSubiektIssuerId(email: string | null | undefined): 
 /** Wydruk ZD przez Sferę trwa ~20 s na live. */
 const ZD_PDF_TIMEOUT_MS = 90_000;
 const ZD_PDF_TTL_MS = 5 * 60_000;
-const ZD_PDF_FRESH_MIN_GAP_MS = 30_000;
+const ZD_PDF_RETRY_DELAYS_MS = [3_000, 10_000];
 /**
  * ponytail: pamięć w procesie (jeden serwer OnTime) — podgląd i wysyłka biorą ten sam plik bez drugiego
- * wydruku. Zmiana ZD w Subiekcie po podglądzie dociera po 5 min; przy kilku instancjach — cache w bazie.
+ * wydruku; przy kilku instancjach — cache w bazie.
  */
 const zdPdfCache = new Map<string, { at: number; bytes: Buffer }>();
+/** Trwające wydruki — podgląd i wysyłka w tej samej chwili czekają na jeden wydruk (Sfera drukuje po kolei). */
+const zdPdfInflight = new Map<string, Promise<Buffer>>();
+/** Zmiana terminu w trakcie wydruku — taki wydruk nie trafia do pamięci (mógł mieć stary termin). */
+const zdPdfGeneration = new Map<string, number>();
 
 /**
  * Wydruk ZD do PDF z Subiekta (`GET /documents/zd/{id}/pdf`, host ORDERS).
- * `fresh` — pomija pamięć (ZD zmienione w Subiekcie albo zmieniony termin realizacji).
+ * `version` — odcisk treści ZD (termin, pozycje): zmiana w Subiekcie po podglądzie to inny klucz, nie stary plik.
+ * `fresh` — pomija pamięć („Odśwież dokument z Subiekta”).
  */
-export async function getSubiektOrdersZdPdf(id: number, opts: { fresh?: boolean } = {}): Promise<Buffer> {
+export async function getSubiektOrdersZdPdf(id: number, opts: { fresh?: boolean; version?: string } = {}): Promise<Buffer> {
   const config = ordersConfigOrThrow();
-  const key = `${config.baseUrl}#${id}`;
+  const key = `${config.baseUrl}#${id}#${opts.version ?? ""}`;
   const hit = zdPdfCache.get(key);
-  // fresh = świeży wydruk, ale nie częściej niż co 30 s na dokument (wydruk przez Sferę trwa ~20 s).
-  const maxAge = opts.fresh ? ZD_PDF_FRESH_MIN_GAP_MS : ZD_PDF_TTL_MS;
-  if (hit && Date.now() - hit.at < maxAge) return hit.bytes;
-  const res = await subiektFetch(`${SUBIEKT_PATHS.documentZd(id)}/pdf`, {}, { ...config, timeoutMs: ZD_PDF_TIMEOUT_MS });
-  const bytes = Buffer.from(await res.arrayBuffer());
-  if (!res.ok || bytes.subarray(0, 4).toString() !== "%PDF") {
-    throw new Error(`Subiekt nie wydrukował ZD do PDF (HTTP ${res.status}).`);
+  if (!opts.fresh && hit && Date.now() - hit.at < ZD_PDF_TTL_MS) return hit.bytes;
+  const pending = zdPdfInflight.get(key);
+  if (pending) return pending;
+  const docKey = `${config.baseUrl}#${id}`;
+  const generation = zdPdfGeneration.get(docKey) ?? 0;
+  const job = printSubiektOrdersZdPdf(id, config).then((bytes) => {
+    // Stare wydruki wylatują przy każdym nowym — pamięć nie rośnie bez końca.
+    for (const [k, v] of zdPdfCache) if (Date.now() - v.at >= ZD_PDF_TTL_MS) zdPdfCache.delete(k);
+    if ((zdPdfGeneration.get(docKey) ?? 0) === generation) zdPdfCache.set(key, { at: Date.now(), bytes });
+    return bytes;
+  });
+  zdPdfInflight.set(key, job);
+  try {
+    return await job;
+  } finally {
+    zdPdfInflight.delete(key);
   }
-  // Stare wydruki wylatują przy każdym nowym — pamięć nie rośnie bez końca.
-  for (const [k, v] of zdPdfCache) if (Date.now() - v.at >= ZD_PDF_TTL_MS) zdPdfCache.delete(k);
-  zdPdfCache.set(key, { at: Date.now(), bytes });
+}
+
+async function printSubiektOrdersZdPdf(id: number, config: SubiektConfig): Promise<Buffer> {
+  let res: Response;
+  let bytes: Buffer;
+  for (let attempt = 0; ; attempt++) {
+    res = await subiektFetch(`${SUBIEKT_PATHS.documentZd(id)}/pdf`, {}, { ...config, timeoutMs: ZD_PDF_TIMEOUT_MS });
+    bytes = Buffer.from(await res.arrayBuffer());
+    const delay = ZD_PDF_RETRY_DELAYS_MS[attempt];
+    // 502/503/504 — Sfera zajęta innym wydrukiem albo startuje (pierwszy wydruk po zmianie terminu).
+    if (res.ok || delay == null || ![502, 503, 504].includes(res.status)) break;
+    await new Promise((r) => setTimeout(r, delay));
+  }
+  if (!res.ok || bytes.subarray(0, 4).toString() !== "%PDF") {
+    const detail = res.ok ? "" : bytes.toString("utf8", 0, 300).replace(/\s+/g, " ").trim();
+    throw new Error(`Subiekt nie wydrukował ZD do PDF (HTTP ${res.status}${detail ? `: ${detail}` : ""}).`);
+  }
   return bytes;
 }
 
@@ -479,7 +507,8 @@ export async function setSubiektOrdersZdTermin(id: number, dateKey: string): Pro
     { method: "PUT", body: JSON.stringify({ terminRealizacji: dateKey }) },
     config
   );
-  zdPdfCache.delete(`${config.baseUrl}#${id}`);
+  for (const k of zdPdfCache.keys()) if (k.startsWith(`${config.baseUrl}#${id}#`)) zdPdfCache.delete(k);
+  zdPdfGeneration.set(`${config.baseUrl}#${id}`, (zdPdfGeneration.get(`${config.baseUrl}#${id}`) ?? 0) + 1);
   const after = String(res.data?.dok_TerminRealizacji ?? "").slice(0, 10);
   return after || null;
 }

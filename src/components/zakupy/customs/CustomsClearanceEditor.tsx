@@ -957,10 +957,10 @@ export function CustomsClearanceEditor({
             cc={agencyCc}
             subject={previewReady?.data?.subject ?? ""}
             text={emailText}
-            attachments={(previewReady?.data?.attachments ?? []).map((a, i) => ({
+            attachments={(previewReady?.data?.attachments ?? []).map((a) => ({
               name: a.name,
               size: a.size,
-              href: `/api/operations/customs/${view.id}/mail-attachment?i=${i}&excel=${sendExcel ? 1 : 0}`,
+              href: `/api/operations/customs/${view.id}/mail-attachment?f=${encodeURIComponent(a.key)}`,
               opensInline: /^(application\/pdf|image\/)/.test(a.contentType),
             }))}
             attachmentsLoading={previewReady ? null : "Przygotowuję załączniki…"}

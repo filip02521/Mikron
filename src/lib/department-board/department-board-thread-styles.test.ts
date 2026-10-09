@@ -27,6 +27,19 @@ describe("boardQuestionRowClass", () => {
   });
 });
 
+describe("boardQuestionRowClass — czeka na dostawcę", () => {
+  it("otwarte pytanie z zapytaniem u dostawcy nie świeci bursztynem", () => {
+    const row = boardQuestionRowClass({ unseen: false, open: true, expanded: false, waiting: "supplier" });
+    expect(row).toContain("border-l-slate-300");
+    expect(row).not.toContain("amber");
+  });
+
+  it("dostawca milczy za długo — wraca bursztyn", () => {
+    const row = boardQuestionRowClass({ unseen: false, open: false, expanded: false, waiting: "supplier-overdue" });
+    expect(row).toContain("border-l-amber-400");
+  });
+});
+
 describe("boardQuestionAuthorNameClass", () => {
   it("używa zwykłego koloru bez badge", () => {
     expect(boardQuestionAuthorNameClass).toContain("text-slate-800");

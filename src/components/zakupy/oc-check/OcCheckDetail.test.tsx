@@ -4,7 +4,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import type { OcCheck } from "@/lib/oc-check/types";
-import { OcCheckCard } from "./OcCheckCard";
+import { OcCheckDetail } from "./OcCheckDetail";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/app/actions/oc-check", () => ({ actionSetOcCheckResolved: vi.fn() }));
@@ -60,11 +60,11 @@ const base: OcCheck = {
   ],
 };
 
-describe("OcCheckCard", () => {
+describe("OcCheckDetail", () => {
   afterEach(() => cleanup());
 
   it("otwarta sprawa: status, pilne, ruch, różnice bez pozycji zgodnych i link do Gmaila", () => {
-    render(<OcCheckCard check={base} />);
+    render(<OcCheckDetail check={base} backHref="/zakupy/asystent?sekcja=oc" />);
     expect(screen.getByText("Polirapid · OC 2027-20320")).toBeTruthy();
     expect(screen.getByText("Rozbieżności")).toBeTruthy();
     expect(screen.getByText("Pilne")).toBeTruthy();
@@ -79,7 +79,7 @@ describe("OcCheckCard", () => {
 
   it("wyjaśniona sprawa: bez ruchu i pilnego, z kim i kiedy", () => {
     render(
-      <OcCheckCard
+      <OcCheckDetail backHref="/zakupy/asystent?sekcja=oc"
         check={{ ...base, resolvedAt: "2026-10-05T14:00:00Z", resolvedByName: "filip@mikran.com", resolutionNote: "bierzemy" }}
       />
     );

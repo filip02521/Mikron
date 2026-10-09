@@ -3623,3 +3623,30 @@ input[type="checkbox"].toggle-switch.toggle-indigo:checked {
     height: 1.25rem;
   }
 }
+
+/**
+ * Asystent — od lg panel (poczta / kontrola OC) wypełnia resztę wysokości: `main` nie scrolluje,
+ * lista i treść przewijają się osobno. Niżej strona scrolluje normalnie (lista i treść jedna pod drugą).
+ * `data-assistant-viewport` na root strony /zakupy/asystent.
+ */
+@media (min-width: 1024px) {
+  main:has([data-assistant-viewport]) {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  main:has([data-assistant-viewport]) > div {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  main:has([data-assistant-viewport]) [data-assistant-viewport] {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+}
