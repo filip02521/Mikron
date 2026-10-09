@@ -117,14 +117,18 @@ export function mojeShipmentRowClass({
   );
 }
 
-export const mojeShipmentExpandedRowShellClass =
-  "relative z-[2] mb-2 mt-0.5 rounded-lg shadow-lg ring-1 ring-slate-200/60";
+/**
+ * Rozwinięty wiersz zostaje wierszem listy: bez zaokrągleń, cienia i marginesów. Pływająca karta
+ * zaokrąglała 3-pikselowy pasek koloru po lewej i przesuwała sąsiednie wiersze o margines.
+ */
+export const mojeShipmentExpandedRowShellClass = "relative";
 
 export const mojeShipmentExpandedMetaShellClass =
   "px-0 py-0";
 
+/** Szczegóły pod nagłówkiem wiersza: płaskie, oddzielone cienką linią — bez karty w karcie. */
 export const mojeShipmentExpandedPanelClass =
-  "space-y-2 rounded-lg border border-slate-200/70 bg-white shadow-sm shadow-slate-200/30 px-3 py-3 sm:px-4 sm:py-3.5";
+  "space-y-2 border-t border-slate-200/70 bg-white px-3 py-3 sm:px-4 sm:py-3.5";
 
 export const mojeShipmentExpandedInfoBlockClass =
   "space-y-1.5 px-3 py-2";
