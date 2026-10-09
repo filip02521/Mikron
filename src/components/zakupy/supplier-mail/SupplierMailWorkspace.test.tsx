@@ -159,6 +159,59 @@ describe("tablica spraw", () => {
     expect(await screen.findByText("Jan Nowak → sprawa · zawsze jan@nowa.example (+2)")).toBeTruthy();
   });
 
+  it("pola sprawy przewijają się z treścią (rozmowa i wysłane ZD); decyzja z półki zostaje przypięta", () => {
+    const zd: BoardItem = {
+      key: "zd:z1",
+      ref: {
+        type: "case",
+        item: {
+          kind: "zd",
+          id: "z1",
+          supplierId: null,
+          supplierName: "Dentsply",
+          label: "ZD 12/M/10/2026",
+          boardThreadId: null,
+          sentAt: "2026-10-01T08:00:00.000Z",
+          from: "zakupy@example.com",
+          to: ["order@dentsply.example"],
+          english: true,
+          remindedAt: null,
+          autoReply: false,
+          sentBy: "me",
+          resolved: false,
+          dueDays: 3,
+          businessDays: 6,
+          overdue: true,
+        },
+      },
+      column: "todo",
+      reason: null,
+      fresh: false,
+      remindOn: null,
+      note: "",
+      waitingOn: "",
+      assigneeId: "me",
+      manualColumn: null,
+      sortAt: "2026-10-01T08:00:00.000Z",
+    };
+    const stranger = conv({ threadId: "t9", key: "x9", supplierName: "Jan Nowak", lastFromEmail: "jan@nowa.example", triage: "review" });
+    renderBoard({ ...view, items: [...view.items, zd], review: [stranger] });
+    const scroller = (el: HTMLElement) => el.closest(".overflow-y-auto");
+
+    fireEvent.click(screen.getByText("Dentsply"));
+    expect(scroller(screen.getByLabelText("Kolumna"))).toBeTruthy();
+    expect(scroller(screen.getByText("order@dentsply.example"))).toBe(scroller(screen.getByLabelText("Kolumna")));
+    expect(screen.getByText(/po terminie/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Przypomnij dostawcy/ })).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Renfert"));
+    expect(scroller(screen.getByLabelText("Kolumna"))).toBeTruthy();
+
+    fireEvent.click(tab(/Do przejrzenia/));
+    fireEvent.click(screen.getByText("Jan Nowak"));
+    expect(scroller(screen.getByRole("button", { name: "To sprawa" }))).toBeNull();
+  });
+
   it("wyszukiwarka szuka we wszystkich kolumnach, bez polskich znaków", () => {
     renderBoard();
     fireEvent.change(screen.getByLabelText("Szukaj sprawy"), { target: { value: "kulzer" } });

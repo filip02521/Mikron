@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildTranslatePrompt, looksPolish, parseTranslation } from "./translate-ai";
+import { looksPolish } from "./polish";
+import { buildTranslatePrompt, parseTranslation } from "./translate-ai";
 
 describe("translate-ai", () => {
   it("looksPolish: polskie słowa albo znaki → true; angielski / niemiecki → false", () => {
