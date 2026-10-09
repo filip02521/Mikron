@@ -373,7 +373,7 @@ const ENTITIES: Record<string, string> = {
 };
 
 /** Encje HTML: nazwane podstawowe i numeryczne (&#39;, &#8217;, &#x2013;). */
-function decodeEntities(s: string): string {
+export function decodeEntities(s: string): string {
   return s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (whole, e: string) => {
     if (e[0] === "#") {
       const code = e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);

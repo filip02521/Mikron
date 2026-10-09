@@ -31,6 +31,7 @@ import {
   railClass,
   railGroupLabelClass,
   railItemClass,
+  railTabsClass,
   workspaceGridClass,
 } from "@/components/zakupy/asystent/workspace";
 import { cn } from "@/lib/cn";
@@ -46,7 +47,7 @@ import { EXTRA_ATTACHMENTS_ACCEPT, extraAttachmentsError } from "@/lib/email/ext
 import { formatFileSize } from "@/components/mail/MailPreview";
 import { isInlineImage, isPreviewableImage } from "@/lib/mail/attachments";
 import { splitEmphasis } from "@/lib/mail/emphasis";
-import { looksPolish } from "@/lib/supplier-mail/translate-ai";
+import { looksPolish } from "@/lib/supplier-mail/polish";
 
 type Scope = "mine" | "all";
 /** Kolumna tablicy albo półka „Do przejrzenia” (nieznani nadawcy — sprawa czy nie). */
@@ -423,7 +424,7 @@ export function SupplierMailWorkspace({
     <div className={workspaceGridClass}>
       <nav aria-label="Sprawy" className={railClass}>
         <p className={cn(railGroupLabelClass, "hidden 2xl:block")}>Sprawy</p>
-        <div role="tablist" aria-label="Sprawy" className="flex min-w-0 gap-1 overflow-x-auto lg:shrink-0 lg:overflow-visible 2xl:flex-col">
+        <div role="tablist" aria-label="Sprawy" className={railTabsClass}>
           {reviewItems.length || column === "review" ? columnTab("review", "Do przejrzenia", reviewItems.length, "info") : null}
           {BOARD_COLUMNS.map((c) => columnTab(c, BOARD_COLUMN_LABELS[c], byColumn.get(c)!.length, c === "todo" ? "attention" : "neutral"))}
         </div>
@@ -574,7 +575,7 @@ export function SupplierMailWorkspace({
           <DetailEmpty
             icon={<IconMail size={22} />}
             title="Wybierz sprawę z listy"
-            hint="Przeciągnij sprawę na kolumnę po lewej, żeby ją przenieść. Na telefonie zmienisz kolumnę w szczegółach sprawy."
+            hint="Przeciągnij sprawę na zakładkę kolumny, żeby ją przenieść, albo zmień kolumnę w szczegółach sprawy."
             className="flex-1"
           >
             <p className="mt-4 flex items-center gap-1.5 text-xs text-slate-500">
@@ -594,9 +595,7 @@ export function SupplierMailWorkspace({
             role="status"
             className="pointer-events-auto flex max-w-[min(100%,28rem)] items-center gap-3 rounded-md border border-slate-200/90 bg-white px-3 py-2 text-sm text-slate-900 shadow-[var(--shadow-card-elevated)]"
           >
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-indigo-600 text-white">
-              <IconCircleCheck size={16} strokeWidth={2.25} aria-hidden />
-            </span>
+            <IconCircleCheck size={18} aria-hidden className="shrink-0 text-emerald-700" />
             <span className="min-w-0 truncate">{undo.label}</span>
             <Button type="button" size="sm" onClick={() => void runUndo()} className="shrink-0">
               Cofnij
@@ -761,7 +760,7 @@ function BoardPanel({
   const field = cn(controlFocusClass, "min-h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-sm");
   return (
     <div className="space-y-2 border-b border-slate-200 bg-slate-50/60 px-4 py-3 sm:px-5">
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[11rem_11rem_minmax(0,1fr)]">
+      <div className="grid grid-cols-2 gap-2 xl:grid-cols-[11rem_11rem_minmax(0,1fr)]">
         <div>
           <label htmlFor={ids.column} className="text-xs font-medium text-slate-500">
             Kolumna
@@ -796,7 +795,7 @@ function BoardPanel({
             ))}
           </select>
         </div>
-        <div className="sm:col-span-2 xl:col-span-1">
+        <div className="col-span-2 xl:col-span-1">
           <label htmlFor={ids.note} className="text-xs font-medium text-slate-500">
             Opis sprawy
           </label>
@@ -805,7 +804,7 @@ function BoardPanel({
             value={note}
             maxLength={2000}
             rows={1}
-            placeholder="Co to jest i co dalej - np. czekam na proformę, potem zapłata"
+            placeholder="np. czekam na proformę"
             onChange={(e) => {
               setNote(e.target.value);
               unsaved.current.note = e.target.value;
@@ -814,12 +813,15 @@ function BoardPanel({
             if (note.trim() !== item.note) void save({ key: item.key, note });
             else delete unsaved.current.note;
           }}
-            className={cn(controlFocusClass, "mt-1 min-h-9 w-full resize-y rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm leading-relaxed")}
+            className={cn(
+              controlFocusClass,
+              "mt-1 min-h-9 max-h-40 w-full resize-y rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm leading-relaxed field-sizing-content"
+            )}
           />
         </div>
       </div>
       {item.column === "waiting" ? (
-        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_10rem]">
+        <div className="grid grid-cols-[minmax(0,1fr)_10rem] gap-2">
           <div>
             <label htmlFor={ids.waitingOn} className="text-xs font-medium text-slate-500">
               Czekam na
@@ -1004,30 +1006,35 @@ function ConversationDetail({
           </Button>
         ) : null}
       </DetailHeader>
-      {panel}
+      {/* Decyzja z półki zostaje na wierzchu; pola sprawy przewijają się z treścią — na niskim ekranie
+          (1024×768) przypięte zostawiały wiadomościom ~160 px. */}
+      {hideDone ? panel : null}
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-5">
-        {error ? (
-          <p className="text-sm text-red-700" role="alert">
-            {error}
-          </p>
-        ) : null}
-        {!messages && !error ? (
-          <p className="flex items-center gap-2 text-sm text-slate-500" role="status">
-            <Spinner size="sm" /> Wczytuję treść z Gmaila…
-          </p>
-        ) : null}
-        {messages?.map((m) => (
-          <MessageCard
-            key={m.id}
-            m={m}
-            aiAvailable={aiAvailable}
-            onForward={canReply && !hideDone && m.kind !== "mine" ? () => setForwarding({ messageId: m.id }) : undefined}
-          />
-        ))}
-        {conv.mailbox !== me && me ? (
-          <p className="text-xs text-slate-500">Rozmowa jest w skrzynce {conv.mailbox}.</p>
-        ) : null}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {hideDone ? null : panel}
+        <div className="space-y-3 px-4 py-4 sm:px-5">
+          {error ? (
+            <p className="text-sm text-red-700" role="alert">
+              {error}
+            </p>
+          ) : null}
+          {!messages && !error ? (
+            <p className="flex items-center gap-2 text-sm text-slate-500" role="status">
+              <Spinner size="sm" /> Wczytuję treść z Gmaila…
+            </p>
+          ) : null}
+          {messages?.map((m) => (
+            <MessageCard
+              key={m.id}
+              m={m}
+              aiAvailable={aiAvailable}
+              onForward={canReply && !hideDone && m.kind !== "mine" ? () => setForwarding({ messageId: m.id }) : undefined}
+            />
+          ))}
+          {conv.mailbox !== me && me ? (
+            <p className="text-xs text-slate-500">Rozmowa jest w skrzynce {conv.mailbox}.</p>
+          ) : null}
+        </div>
       </div>
 
       {forwarding && canReply ? (
@@ -1297,32 +1304,34 @@ function CaseDetail({
           </Button>
         ) : null}
       </DetailHeader>
-      {panel}
-      <div className="space-y-3 px-4 py-4 sm:px-5">
-        <dl className="grid grid-cols-[8rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
-          <dt className="text-slate-500">Wysłano</dt>
-          <dd className="text-slate-900">
-            {fullFmt.format(new Date(item.sentAt))} z {item.from}
-          </dd>
-          <dt className="text-slate-500">Do</dt>
-          <dd className="break-words text-slate-900">{item.to.join(", ") || "-"}</dd>
-          {item.remindedAt ? (
-            <>
-              <dt className="text-slate-500">Przypomnienie</dt>
-              <dd className="text-slate-900">{fullFmt.format(new Date(item.remindedAt))}</dd>
-            </>
-          ) : null}
-          <dt className="text-slate-500">Odpowiedź</dt>
-          <dd className={item.overdue ? "font-medium text-red-700" : "text-slate-900"}>
-            {item.autoReply ? "tylko autoodpowiedź · " : "brak · "}
-            {item.overdue
-              ? `po terminie (${businessDaysLabel(item.businessDays)}, termin ${item.dueDays} ${item.dueDays === 1 ? "dzień rob." : "dni rob."})`
-              : `w terminie (${item.dueDays === 1 ? "1 dzień rob." : `${item.dueDays} dni rob.`})`}
-          </dd>
-        </dl>
-        <p className="text-xs text-slate-500">
-          Dostawca odpowiedział inną drogą (telefon, portal)? Kliknij „Zakończone”. Odpowiedź mailem pojawi się tu sama.
-        </p>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {panel}
+        <div className="space-y-3 px-4 py-4 sm:px-5">
+          <dl className="grid grid-cols-[8rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
+            <dt className="text-slate-500">Wysłano</dt>
+            <dd className="text-slate-900">
+              {fullFmt.format(new Date(item.sentAt))} z {item.from}
+            </dd>
+            <dt className="text-slate-500">Do</dt>
+            <dd className="break-words text-slate-900">{item.to.join(", ") || "-"}</dd>
+            {item.remindedAt ? (
+              <>
+                <dt className="text-slate-500">Przypomnienie</dt>
+                <dd className="text-slate-900">{fullFmt.format(new Date(item.remindedAt))}</dd>
+              </>
+            ) : null}
+            <dt className="text-slate-500">Odpowiedź</dt>
+            <dd className={item.overdue ? "font-medium text-red-700" : "text-slate-900"}>
+              {item.autoReply ? "tylko autoodpowiedź · " : "brak · "}
+              {item.overdue
+                ? `po terminie (${businessDaysLabel(item.businessDays)}, termin ${item.dueDays} ${item.dueDays === 1 ? "dzień rob." : "dni rob."})`
+                : `w terminie (${item.dueDays === 1 ? "1 dzień rob." : `${item.dueDays} dni rob.`})`}
+            </dd>
+          </dl>
+          <p className="text-xs text-slate-500">
+            Dostawca odpowiedział inną drogą (telefon, portal)? Kliknij „Zakończone”. Odpowiedź mailem pojawi się tu sama.
+          </p>
+        </div>
       </div>
       {canReply && !done ? (
         <Composer
@@ -1512,9 +1521,9 @@ function Composer({
                     onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}
                     disabled={sending}
                     aria-label={`Usuń ${f.name}`}
-                    className="ml-0.5 rounded px-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                    className="ml-0.5 inline-flex h-5 w-5 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-900"
                   >
-                    ×
+                    <IconX size={12} aria-hidden />
                   </button>
                 </li>
               ))}
