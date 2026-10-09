@@ -145,10 +145,16 @@ export function ZkWatchLinesModal({
   const followUpDue = !archived && isFollowUpDue(watch.follow_up_at);
   const followUpLabel = formatFollowUpLabel(watch.follow_up_at);
   const displayNumber = formatZkWatchDisplayNumber(watch.zk_number);
-  const progressLabel =
+  // Jedno zdanie stanu zamiast ułamka, procentu i paska mówiących to samo; pasek zostaje jako obraz.
+  const shownPct = allScopeExcluded ? 100 : progressPct;
+  const progressHeadline =
     checkboxSummary.total > 0
-      ? `${checkboxSummary.checked}/${checkboxSummary.total} zaznaczone`
-      : null;
+      ? checkboxSummary.checked === checkboxSummary.total
+        ? "Wszystko odhaczone"
+        : `Odhaczone ${checkboxSummary.checked} z ${checkboxSummary.total}`
+      : allScopeExcluded
+        ? "Wszystkie pozycje pominięte - bez prośby"
+        : "Brak szczegółowej listy towaru";
   const newLineCount = scopedNewLineKeys.length;
   const lineStatusSummary = buildZkWatchLineStatusSummary({
     lineViews: scopedLineViews,
@@ -178,57 +184,40 @@ export function ZkWatchLinesModal({
       {open ? (
         <>
           <div className="shrink-0 border-b border-slate-100 bg-slate-50/70 px-5 py-3 sm:px-6">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                {checkboxSummary.total > 0 ? (
-                  <span className={cn(salesTypography.rowBody, "font-medium text-slate-700")}>
-                    {progressLabel ??
-                      `${checkboxSummary.checked}/${checkboxSummary.total} zaznaczone`}
-                  </span>
-                ) : allScopeExcluded ? (
-                  <span className={cn(salesTypography.rowBody, "font-medium text-slate-700")}>
-                    Wszystkie pozycje pominięte - bez prośby
-                  </span>
-                ) : (
-                  <span className={salesTypography.rowMeta}>Brak szczegółowej listy towaru</span>
-                )}
-                {subiektStatus && subiektStatus !== "Aktywne" ? (
-                  <Badge variant="info" className="text-[10px]">
-                    {subiektStatus}
-                  </Badge>
-                ) : null}
-                {archived ? (
-                  <Badge variant="default" className="text-[10px]">
-                    Archiwum
-                  </Badge>
-                ) : null}
-              </div>
-              {checkboxSummary.total > 0 || allScopeExcluded ? (
-                <span className={cn(salesTypography.statValue, "text-indigo-900")}>
-                  {allScopeExcluded ? "100%" : `${progressPct}%`}
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+              <p className={cn(salesTypography.rowBody, "font-medium tabular-nums text-slate-800")}>{progressHeadline}</p>
+              {(subiektStatus && subiektStatus !== "Aktywne") || archived ? (
+                <span className="flex flex-wrap gap-1.5">
+                  {subiektStatus && subiektStatus !== "Aktywne" ? <Badge variant="info">{subiektStatus}</Badge> : null}
+                  {archived ? <Badge variant="default">Archiwum</Badge> : null}
                 </span>
               ) : null}
             </div>
             {checkboxSummary.total > 0 || allScopeExcluded ? (
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200/80">
+              <div
+                role="progressbar"
+                aria-label="Odhaczone pozycje"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={shownPct}
+                className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200/80"
+              >
                 <div
                   className={cn(
-                    "h-full rounded-full transition-[width,background-color] duration-300",
-                    progressPct === 100 || allScopeExcluded ? "bg-emerald-500" : "bg-indigo-500"
+                    "h-full rounded-full transition-[width,background-color] duration-300 motion-reduce:transition-none",
+                    shownPct === 100 ? "bg-emerald-500" : "bg-indigo-500"
                   )}
-                  style={{ width: `${allScopeExcluded ? 100 : progressPct}%` }}
+                  style={{ width: `${shownPct}%` }}
                 />
               </div>
             ) : null}
             {lineStatusSummary ? (
-              <p className={cn("mt-2", salesTypography.rowMeta, "text-slate-600")}>
-                {lineStatusSummary}
-              </p>
+              <p className={cn("mt-2", salesTypography.rowMeta, "text-slate-600")}>{lineStatusSummary}</p>
             ) : null}
             {followUpLabel && !archived ? (
               <p
                 className={cn(
-                  "mt-2",
+                  "mt-1",
                   salesTypography.rowMeta,
                   followUpDue ? "font-semibold text-amber-800" : "text-slate-500"
                 )}
@@ -238,7 +227,7 @@ export function ZkWatchLinesModal({
             ) : null}
           </div>
 
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4 sm:px-6 sm:py-5">
+          <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-4 sm:px-6 sm:py-5">
             {newLineCount > 0 || hiddenNewLineCount > 0 ? (
               <div className="rounded-lg border border-amber-200/90 bg-amber-50/80 px-3 py-2.5 text-sm text-amber-950">
                 <p className="font-medium">

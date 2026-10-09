@@ -5,6 +5,7 @@ import { buildNotatnikPageHref } from "@/lib/sales/notepad-page-tabs";
 import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
 import { Button } from "@/components/ui/Button";
 import { SystemNotice } from "@/components/ui/SystemNotice";
+import { cn } from "@/lib/cn";
 import { salesTouchTargetClass } from "@/lib/ui/ontime-theme";
 import { IconChevronLeft, IconSun } from "@/components/icons/StrokeIcons";
 
@@ -63,12 +64,12 @@ export function ManagerPreviewBanner({
           : "Tryb zastępstwa - ograniczone uprawnienia."
     : readOnly
     ? scope === "zk"
-      ? "Tryb administratora - tylko odczyt. Edycja ZK i składanie próśb są wyłączone."
+      ? "Edycja ZK i składanie próśb są wyłączone."
       : scope === "notatnik"
-        ? "Tryb administratora - tylko odczyt. Edycja notatek jest wyłączona."
+        ? "Edycja notatek jest wyłączona."
         : scope === "orders"
-          ? "W podglądzie widać aktywne prośby, archiwum i zapisane terminy ZD - bez odświeżania z Subiekta i bez potwierdzania odbioru."
-          : "Tryb administratora - tylko odczyt. Składanie próśb i edycja danych są wyłączone."
+          ? "Widać aktywne prośby, archiwum i zapisane terminy ZD - bez odświeżania z Subiekta i bez potwierdzania odbioru."
+          : "Składanie próśb i edycja danych są wyłączone."
     : scope === "zk"
       ? "Tryb podglądu - edycja ZK tylko we własnej zakładce ZK czekające."
       : scope === "notatnik"
@@ -163,31 +164,37 @@ export function ManagerPreviewBanner({
   ) : (
     <>
       {backToOwnPanel}
-      <Link href={`/moje?dla=${salesPersonId}`}>
-        <Button size="sm" variant="secondary" className={salesTouchTargetClass}>
-          Prośby
-        </Button>
-      </Link>
-      <Link href={buildNotatnikPageHref({ preview: true, salesPersonId })}>
-        <Button size="sm" variant="outline" className={salesTouchTargetClass}>
-          ZK
-        </Button>
-      </Link>
-      <Link href={buildNotatnikPageHref({ preview: true, salesPersonId, tab: "notes" })}>
-        <Button size="sm" variant="outline" className={salesTouchTargetClass}>
-          Notatnik
-        </Button>
-      </Link>
-      <Link href={`/plan?dla=${salesPersonId}`}>
-        <Button size="sm" variant="outline" className={salesTouchTargetClass}>
-          Plan
-        </Button>
-      </Link>
-      <Link href={`/tablica?dla=${salesPersonId}`}>
-        <Button size="sm" variant="outline" className={salesTouchTargetClass}>
-          Tablica
-        </Button>
-      </Link>
+      {/* Przełącznik widoków handlowca: bieżący wyróżniony, reszta w jednym stylu. */}
+      <nav aria-label={`Panel: ${salesPersonName}`} className="flex flex-wrap items-center gap-1.5">
+        {(
+          [
+            { scope: "orders", label: "Prośby", href: `/moje?dla=${salesPersonId}` },
+            { scope: "zk", label: "ZK", href: buildNotatnikPageHref({ preview: true, salesPersonId }) },
+            { scope: "notatnik", label: "Notatnik", href: buildNotatnikPageHref({ preview: true, salesPersonId, tab: "notes" }) },
+            { scope: "plan", label: "Plan", href: `/plan?dla=${salesPersonId}` },
+            { scope: "tablica", label: "Tablica", href: `/tablica?dla=${salesPersonId}` },
+          ] as const
+        ).map((item) => {
+          const current = item.scope === scope;
+          return (
+            <Link
+              key={item.scope}
+              href={item.href}
+              aria-current={current ? "page" : undefined}
+              className={cn(
+                salesTouchTargetClass,
+                "inline-flex items-center rounded-md px-2.5 text-xs font-medium transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 focus-visible:ring-offset-1",
+                current
+                  ? "bg-indigo-50 text-indigo-900 ring-1 ring-inset ring-indigo-200"
+                  : "text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50"
+              )}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
     </>
   );
 
@@ -201,6 +208,9 @@ export function ManagerPreviewBanner({
             <IconSun size={16} className="text-amber-500" />
             {`Zastępujesz: ${salesPersonName}`}
           </span>
+        ) : readOnly ? (
+          // Nagłówek strony ma już „ZK czekające: <handlowiec>” — tu tylko, w jakim trybie jesteś.
+          "Podgląd administratora - tylko odczyt"
         ) : (
           `Podgląd ${scopeLabel}: ${salesPersonName}`
         )

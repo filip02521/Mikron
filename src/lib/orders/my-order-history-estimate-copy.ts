@@ -22,7 +22,7 @@ export const MY_ORDER_HISTORY_ESTIMATE_OVERDUE_ZD_PENDING_DETAIL =
   "Termin z historii minął - szukamy aktualnego terminu w dokumencie ZD u dostawcy.";
 
 export const MY_ORDER_HISTORY_ESTIMATE_OVERDUE_ZD_NO_MATCH_DETAIL =
-  "Sprawdziliśmy dokumenty ZD u dostawcy - brak terminu realizacji. Termin z historii już minął.";
+  "W dokumencie ZD u dostawcy nie ma terminu, a termin z historii już minął.";
 
 export const MY_ORDER_HISTORY_ESTIMATE_BELOW_ZD_NO_MATCH_DETAIL =
   "Sprawdziliśmy dokumenty ZD u dostawcy - brak terminu realizacji dla tej pozycji. Poniżej termin z historii dostaw.";

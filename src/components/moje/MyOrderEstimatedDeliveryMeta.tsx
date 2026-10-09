@@ -15,13 +15,20 @@ export function MyOrderEstimatedDeliveryMeta({
   row,
   className,
   inline = false,
+  hideWhenOverdue = false,
 }: {
   row: Pick<MyOrderRow, "timingLabel" | "zdFulfillment" | "zdEtaPending" | "zdEtaNoMatch">;
   className?: string;
   inline?: boolean;
+  /**
+   * Zwinięty wiersz: po minionym szacunku nagłówek mówi już „Po przewidywanym terminie” —
+   * „Z historii · Brak terminu” obok byłoby powtórką. Szczegóły zostają po rozwinięciu.
+   */
+  hideWhenOverdue?: boolean;
 }) {
   const estimate = resolveMyOrderHistoryDeliveryEstimate(row);
   if (!estimate) return null;
+  if (hideWhenOverdue && estimate.parsed.overdue) return null;
 
   const { display, parsed } = estimate;
 

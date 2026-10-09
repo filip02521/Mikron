@@ -35,7 +35,16 @@ const tonePanelClass: Record<HelpHintTone, string> = {
 const TOOLTIP_MAX_WIDTH = 280;
 const TOOLTIP_GAP = 6;
 
-/** Ikona ? z dymkiem — hover, focus lub klik (portal, bez ucinania overflow). */
+/** :focus-visible = fokus z klawiatury; przeglądarka bez tego selektora — traktujemy jak klawiaturę. */
+function isKeyboardFocus(el: HTMLElement): boolean {
+  try {
+    return el.matches(":focus-visible");
+  } catch {
+    return true;
+  }
+}
+
+/** Ikona ? z dymkiem — hover, fokus z klawiatury lub klik (portal, bez ucinania overflow). */
 export function HelpHintBubble({
   message,
   tone = "slate",
@@ -111,6 +120,7 @@ export function HelpHintBubble({
         ref={buttonRef}
         type="button"
         aria-label={ariaLabel}
+        data-help-hint=""
         aria-expanded={open}
         aria-describedby={showTooltip ? tooltipId : undefined}
         onPointerDown={(event) => event.stopPropagation()}
@@ -128,7 +138,10 @@ export function HelpHintBubble({
           setHovered(true);
         }}
         onMouseLeave={() => setHovered(false)}
-        onFocus={() => {
+        onFocus={(event) => {
+          // Tylko fokus z klawiatury (Tab). Fokus ustawiony programowo — np. okno skupia pierwszy element
+          // przy otwarciu — nie może otwierać dymka, inaczej wisi nad treścią od pierwszej chwili.
+          if (!isKeyboardFocus(event.currentTarget)) return;
           updatePosition();
           setHovered(true);
         }}

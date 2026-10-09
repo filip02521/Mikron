@@ -238,9 +238,10 @@ export function buildMyOrderDeliveryTimingDisplay(
             : historyEstimate.display.primaryLabel
           : estimate;
     if (historyEstimate?.display.overdue || overdue) {
+      // Tytuł „Brak terminu u dostawcy” już to mówi — bez drugiej linii „Brak informacji o planowanej dostawie”.
       return {
         title: ZD_ETA_TIMING_TITLE_NO_MATCH,
-        estimate: MY_ORDER_HISTORY_ESTIMATE_OVERDUE_LABEL,
+        estimate: "",
         detail: MY_ORDER_HISTORY_ESTIMATE_OVERDUE_ZD_NO_MATCH_DETAIL,
         tone: "overdue",
         urgency: "overdue",

@@ -1192,9 +1192,11 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
           {row.lineCount > 0 ? (
             <div className="space-y-1.5">
             <div className={mojeShipmentLinesShellClass}>
+              {/* Nagłówek „Produkt” nad jedną pozycją nic nie mówi — tylko przy liście. */}
+              {row.lineCount > 1 ? (
               <div className={mojeShipmentLinesHeaderClass}>
                 <p className={mojeShipmentLinesHeaderTitleClass}>
-                  {row.lineCount > 1 ? productSummaryRaw ?? "Produkty" : "Produkt"}
+                  {productSummaryRaw ?? "Produkty"}
                 </p>
                 {row.lineCount > 8 ? (
                   <button
@@ -1206,12 +1208,14 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                   </button>
                 ) : null}
               </div>
+              ) : null}
               <ul>
                 {(row.lineCount > 8 ? visibleLines : row.lines).map((line, i) => (
                   <MyOrderLineItem
                     key={line.id}
                     line={line}
                     index={i}
+                    showIndex={row.lineCount > 1}
                     searchQuery={searchQuery}
                     listKind={row.kind}
                     showPerLineLaneBadge={row.productLaneKind === "mixed"}
@@ -1334,6 +1338,8 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
             </div>
           ) : null}
 
+          {/* Dolne „Zwiń” tylko przy długiej treści — przy krótkiej strzałka w nagłówku jest tuż obok. */}
+          {row.lineCount > 3 ? (
           <div className="flex justify-center px-3 pb-2 pt-1">
             <button
               type="button"
@@ -1347,6 +1353,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
               Zwiń
             </button>
           </div>
+          ) : null}
         </div>
         </div>
         </div>

@@ -187,7 +187,8 @@ function MojeSectionListLabel({
       id={mojeSectionHeadingDomId(icon)}
       title={title}
       hint={hint}
-      hintMode="tooltip"
+      // Jedno zdanie „co z tym zrobić” widać od razu — za ikonką „?” nikt go nie czytał.
+      hintMode="inline"
       count={count}
       accent={toSectionListAccent(accent)}
       icon={<MojeSectionIcon kind={icon} size={17} />}

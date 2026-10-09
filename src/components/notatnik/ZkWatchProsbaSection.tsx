@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
+import { IconChevronRight } from "@/components/icons/StrokeIcons";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
 import { appendMojeFocusOrderIds } from "@/lib/orders/moje-order-focus";
@@ -18,7 +19,7 @@ import { deriveZkWatchProsbaCardAction } from "@/lib/sales/zk-watch-line-ui-stat
 import { buildZkWatchLineViews } from "@/lib/sales/zk-watch-lines";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 import { Button } from "@/components/ui/Button";
-import { ZK_MODAL_PROSBA_COPY, ZK_MODAL_SECTION_HINTS, ZK_MODAL_SECTION_TITLES } from "@/lib/sales/zk-modal-section-copy";
+import { ZK_MODAL_PROSBA_COPY, ZK_MODAL_SECTION_TITLES } from "@/lib/sales/zk-modal-section-copy";
 import type { SalesZkWatch } from "@/types/database";
 import { ZkWatchProsbaCoveredPanel } from "./ZkWatchProsbaCoveredPanel";
 import { ZkWatchModalSection } from "./ZkWatchModalSection";
@@ -85,61 +86,50 @@ export function ZkWatchProsbaSection({
     if (!previewEntries.length) return null;
   }
 
+  // Cały wiersz prowadzi do prośby w „Moje zamówienia” — bez osobnego przycisku „Podgląd” przy każdej pozycji.
   function renderProsbaEntry(entry: ZkWatchProsbaPreviewEntry) {
     return (
-      <li
-        key={entry.order.id}
-        className={cn(
-          "rounded-lg border px-3 py-2.5 shadow-[var(--shadow-card)]",
-          entry.isOpen
-            ? "border-slate-200/90 bg-white"
-            : "border-slate-200/70 bg-slate-50/80"
-        )}
-      >
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <p className={cn(salesTypography.rowBody, "font-medium text-slate-800")}>
-              {entry.productLabel}
-            </p>
-            <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
-              <Badge variant={entry.statusBadgeVariant} className="shrink-0 text-[10px]">
+      <li key={entry.order.id}>
+        <Link
+          href={mojeFocusHref(entry.order.id)}
+          title={ZK_MODAL_PROSBA_COPY.previewLinkTitle}
+          className={cn(
+            "group flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-slate-50",
+            "focus-visible:relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500/45"
+          )}
+        >
+          <span className="min-w-0 flex-1">
+            <span className={cn(salesTypography.rowBody, "block font-medium text-slate-800")}>{entry.productLabel}</span>
+            <span className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              <Badge variant={entry.statusBadgeVariant} className="shrink-0">
                 {entry.statusLabel}
               </Badge>
               <span
-                className={cn(
-                  salesTypography.rowMeta,
-                  "min-w-0 max-w-full line-clamp-2 leading-snug"
-                )}
+                className={cn(salesTypography.rowMeta, "min-w-0 line-clamp-2 tabular-nums leading-snug")}
                 title={formatZkProsbaPreviewMetaTooltip(entry)}
               >
                 {formatZkProsbaPreviewMetaLine(entry)}
               </span>
-            </div>
-          </div>
-          <div className="flex shrink-0 flex-wrap gap-1.5">
-            <Link
-              href={mojeFocusHref(entry.order.id)}
-              title={ZK_MODAL_PROSBA_COPY.previewLinkTitle}
-              className={cn(
-                "inline-flex cursor-pointer items-center justify-center gap-2 font-medium transition-colors",
-                "border border-[var(--card-border)] bg-[var(--card)] text-slate-700 shadow-sm hover:bg-slate-50",
-                "rounded-md px-2.5 py-1.5 text-xs leading-none"
-              )}
-            >
-              Podgląd
-            </Link>
-          </div>
-        </div>
+            </span>
+          </span>
+          <IconChevronRight
+            size={16}
+            aria-hidden
+            className="shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-600 motion-reduce:transition-none"
+          />
+        </Link>
       </li>
     );
   }
 
+  const listClass = "divide-y divide-slate-100 overflow-hidden rounded-[var(--radius-surface)] border border-slate-200/90 bg-white";
+
   return (
-    <ZkWatchModalSection title={ZK_MODAL_SECTION_TITLES.prosba} hint={ZK_MODAL_SECTION_HINTS.prosba}>
+    <ZkWatchModalSection title={ZK_MODAL_SECTION_TITLES.prosba}>
       {previewEntries.length > 0 ? (
         <div className="space-y-3">
           {openEntries.length > 0 ? (
-            <ul className="space-y-2">{openEntries.map(renderProsbaEntry)}</ul>
+            <ul className={listClass}>{openEntries.map(renderProsbaEntry)}</ul>
           ) : null}
           {closedEntries.length > 0 ? (
             <div className="space-y-2">
@@ -148,35 +138,23 @@ export function ZkWatchProsbaSection({
                   Wcześniejsze prośby
                 </p>
               ) : null}
-              <ul className="space-y-2">{closedEntries.map(renderProsbaEntry)}</ul>
+              <ul className={listClass}>{closedEntries.map(renderProsbaEntry)}</ul>
             </div>
           ) : null}
         </div>
       ) : prosbaCardAction.kind === "covered" ? (
         <ZkWatchProsbaCoveredPanel reason={prosbaCardAction.reason} />
       ) : !archived ? (
-        <div className="rounded-lg border border-slate-200/90 bg-slate-50/60 px-3 py-2.5">
-          <p className={cn(salesTypography.rowBody, "font-medium text-slate-800")}>
+        <div>
+          <p className={cn(salesTypography.rowBody, "text-slate-600")}>
             {ZK_MODAL_PROSBA_COPY.emptyTitle}
           </p>
-          {onRequestProsba &&
-          (prosbaCardAction.kind === "new_prosba" ||
-            prosbaCardAction.kind === "supplement") ? (
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <Button type="button" size="sm" onClick={onRequestProsba}>
-                {prosbaCardAction.label}
-              </Button>
-              <span className={cn(salesTypography.rowMeta, "text-slate-500")}>
-                Otworzy prośbę z pozycjami tego ZK.
-              </span>
-            </div>
-          ) : (
-            <p className={cn("mt-1", salesTypography.rowMeta, "text-slate-600")}>
-              {ZK_MODAL_PROSBA_COPY.emptyHintPrefix}{" "}
-              <span className="font-medium">{ZK_MODAL_PROSBA_COPY.createProsbaAction}</span> lub{" "}
-              <span className="font-medium">{ZK_MODAL_PROSBA_COPY.supplementAction}</span>.
-            </p>
-          )}
+          {/* Akcja tylko tam, gdzie można działać — w podglądzie bez instrukcji odsyłających gdzie indziej. */}
+          {onRequestProsba && (prosbaCardAction.kind === "new_prosba" || prosbaCardAction.kind === "supplement") ? (
+            <Button type="button" size="sm" className="mt-2" onClick={onRequestProsba}>
+              {prosbaCardAction.label}
+            </Button>
+          ) : null}
         </div>
       ) : (
         <p className={cn(salesTypography.rowMeta, "text-slate-500")}>

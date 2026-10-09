@@ -109,12 +109,12 @@ export function ModalShell({
       formControl.focus();
       return;
     }
-    // Bez pól formularza: pomiń przyciski nagłówka (dymek pomocy otwiera się na
-    // focus i zasłaniał tytuł, np. nr ZD w panelu po utworzeniu) — pierwszy
-    // focusable w treści / stopce, a gdy brak — sam panel.
+    // Bez pól formularza: pomiń przyciski nagłówka i ikonki pomocy „?” w treści (np. przy tytule
+    // sekcji „Powiązane prośby” w podglądzie ZK) — fokus na nich nic nie daje, a dymek zasłaniał treść.
+    // Pierwszy inny focusable w treści / stopce, a gdy brak — sam panel.
     const focusable = Array.from(
       panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
-    ).find((el) => !el.closest("header"));
+    ).find((el) => !el.closest("header") && !el.hasAttribute("data-help-hint"));
     if (focusable) {
       focusable.focus();
     } else {
