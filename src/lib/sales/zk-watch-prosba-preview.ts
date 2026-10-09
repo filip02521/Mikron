@@ -113,10 +113,8 @@ export function formatZkProsbaPreviewMetaLine(
   const isInformacja = entry.requestKind === "informacja";
   const parts: string[] = [];
 
-  if (!isInformacja) {
-    parts.push(`Liczba: ${entry.quantityLabel}`);
-    if (entry.progressLabel) parts.push(entry.progressLabel);
-  }
+  // „2/2 szt.” mówi już, ile zamówiono — sama ilość („2 szt.”) tylko, gdy nie ma postępu.
+  if (!isInformacja) parts.push(entry.progressLabel ?? entry.quantityLabel);
 
   if (entry.deliveryDisplay) {
     if (

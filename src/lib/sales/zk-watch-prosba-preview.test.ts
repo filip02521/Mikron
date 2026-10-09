@@ -189,7 +189,7 @@ describe("resolveZkProsbaPreviewDelivery", () => {
         requestKind: "zamowienie",
         ...delivery,
       })
-    ).toBe("Liczba: 2 szt. · 2/2 szt.");
+    ).toBe("2/2 szt.");
   });
 
   it("prefers ZD deadline over email estimate", () => {
@@ -316,7 +316,7 @@ describe("formatZkProsbaPreviewMetaLine", () => {
       progressLabel: null,
       requestKind: "zamowienie",
       ...delivery,
-    })).toBe("Liczba: 2 szt. · Ustalamy termin dostawy");
+    })).toBe("2 szt. · Ustalamy termin dostawy");
     expect(formatZkProsbaPreviewMetaTooltip({
       quantityLabel: "2 szt.",
       progressLabel: null,
