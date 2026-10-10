@@ -139,19 +139,6 @@ export async function fetchSalesNotesPageData(
   };
 }
 
-export async function countActiveZkWatches(salesPersonId: string): Promise<number> {
-  const supabase = createAdminClient();
-  const { count, error } = await supabase
-    .from("sales_zk_watches")
-    .select("id", { count: "exact", head: true })
-    .eq("sales_person_id", salesPersonId)
-    .is("closed_at", null)
-    .is("archived_at", null);
-
-  if (error) throw new Error(error.message);
-  return count ?? 0;
-}
-
 /** Badge ZK z już pobranej listy (bez dodatkowego zapytania). */
 export function countZkDueFromWatches(watches: SalesZkWatch[]): number {
   const today = formatDateString(todayInWarsaw());
@@ -172,39 +159,4 @@ export function countNotesDueFromSlice(notes: SalesNote[]): number {
     if (note.follow_up_at <= today) count += 1;
   }
   return count;
-}
-
-/** Badge ZK: follow-up na dziś/wcześniej (tylko aktywne ZK). */
-export async function countZkDueNavBadge(salesPersonId: string): Promise<number> {
-  const supabase = createAdminClient();
-  const today = formatDateString(todayInWarsaw());
-
-  const { count, error } = await supabase
-    .from("sales_zk_watches")
-    .select("id", { count: "exact", head: true })
-    .eq("sales_person_id", salesPersonId)
-    .is("closed_at", null)
-    .is("archived_at", null)
-    .not("follow_up_at", "is", null)
-    .lte("follow_up_at", today);
-
-  if (error) throw new Error(error.message);
-  return count ?? 0;
-}
-
-/** Badge notatek: follow-up na dziś/wcześniej (tylko aktywne notatki). */
-export async function countNotesDueNavBadge(salesPersonId: string): Promise<number> {
-  const supabase = createAdminClient();
-  const today = formatDateString(todayInWarsaw());
-
-  const { count, error } = await supabase
-    .from("sales_notes")
-    .select("id", { count: "exact", head: true })
-    .eq("sales_person_id", salesPersonId)
-    .is("archived_at", null)
-    .not("follow_up_at", "is", null)
-    .lte("follow_up_at", today);
-
-  if (error) throw new Error(error.message);
-  return count ?? 0;
 }
