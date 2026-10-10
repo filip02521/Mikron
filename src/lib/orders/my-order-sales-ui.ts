@@ -1,4 +1,5 @@
 import { parseDateOnly, formatDateString } from "@/lib/orders/dates";
+import { isTimingOverdue, stripTimingOverdue, timingOverdueSuffix } from "@/lib/orders/timing-overdue";
 import { isPastExpectedDate } from "@/lib/orders/delivery-eta";
 import {
   isZdEtaSyncEligible,
@@ -168,7 +169,7 @@ export function summarizeMyOrdersInbox(rows: MyOrderRow[]): MyOrdersInboxSummary
 }
 
 export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
-  const overdue = Boolean(row.timingLabel?.includes("po terminie"));
+  const overdue = isTimingOverdue(row.timingLabel);
 
   if (row.acknowledgeMode === "availability" && row.pickupPendingCount > 0) {
     return {
@@ -260,7 +261,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     ).length;
     const zdOverdue =
       row.zdFulfillment &&
-      row.timingLabel?.includes("po terminie") &&
+      isTimingOverdue(row.timingLabel) &&
       parseDateOnly(row.zdFulfillment.deadline) != null &&
       isPastExpectedDate(parseDateOnly(row.zdFulfillment.deadline)!);
     return {
@@ -274,7 +275,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
             row.progressLabel
               ? `Magazyn: ${row.progressLabel.replace(" na magazynie", "")}`
               : null,
-            row.timingLabel?.replace(/\s*·\s*po terminie\s*/i, "").trim(),
+            row.timingLabel ? stripTimingOverdue(row.timingLabel) : null,
           ]
             .filter(Boolean)
             .join(" · ")
@@ -496,8 +497,8 @@ export function parseStatusDetailMetaParts(statusDetail: string | null): {
 export function isExpandedSublineRedundant(row: MyOrderRow): boolean {
   if (!row.subline?.trim()) return false;
   if (row.timingLabel) {
-    const sub = row.subline.replace(" · po terminie", "").trim();
-    const timing = row.timingLabel.replace(" · po terminie", "").trim();
+    const sub = stripTimingOverdue(row.subline);
+    const timing = stripTimingOverdue(row.timingLabel);
     if (sub === timing) return true;
   }
   if (
@@ -540,10 +541,7 @@ export function myOrderExpandedMetaFields(
   return fields;
 }
 
-export function isTimingOverdue(timingLabel: string | null): boolean {
-  if (!timingLabel?.includes("po terminie")) return false;
-  return true;
-}
+export { isTimingOverdue };
 
 export type MyOrderZdFulfillmentSlot = {
   deadline: string;
@@ -652,7 +650,7 @@ export function salesZdTimingLabel(
   const date = parsed
     ? formatDateString(parsed, "dd.MM.yyyy")
     : deadline;
-  const overdueSuffix = overdue ? " · po terminie" : "";
+  const overdueSuffix = timingOverdueSuffix(overdue);
   return `${date} · ${dokNr}${overdueSuffix}`;
 }
 
@@ -751,7 +749,7 @@ export function salesTimingLabel(
 ): string {
   const date = formatDateString(expectedDate, "dd.MM.yyyy");
   const conf = lowConfidence ? " · mało historii" : "";
-  const overdue = isPastExpectedDate(expectedDate) ? " · po terminie" : "";
+  const overdue = timingOverdueSuffix(isPastExpectedDate(expectedDate));
   if (options?.sameDay || avgDays === 0) {
     return `ok. ${date} (tego samego dnia rob.)${conf}${overdue}`;
   }
