@@ -95,7 +95,7 @@ const MOJE_SOURCES = new Set<SalesDayStartSource>([
 ]);
 
 const MOJE_ACTION_SECTION = mojeSectionDomId("action");
-const MOJE_INFORMACJA_SECTION = mojeSectionDomId("informacja");
+const MOJE_INFORMACJA_SECTION = mojeSectionDomId("informacja-ready");
 
 /** Od tej liczby pozycji odbioru — jedno powiadomienie zbiorcze (jak informacje). */
 const PICKUP_AGGREGATE_FROM = 2;

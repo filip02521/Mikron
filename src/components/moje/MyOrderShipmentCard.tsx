@@ -286,6 +286,9 @@ function ShipmentToolbar({
           <span className="inline-flex items-center gap-1.5">
             {ackMode === "teeth_handover" ? (
               <IconTooth size={13} className="shrink-0" />
+            ) : ackMode === "availability" ? (
+              // Powiadomienie o dostępności to nie odbiór paczki — bez ikony paczki.
+              <IconCircleCheck size={13} className="shrink-0" />
             ) : (
               <IconPackageCheck size={13} className="shrink-0" />
             )}
@@ -309,6 +312,9 @@ function ShipmentToolbar({
           <span className="inline-flex items-center gap-1.5">
             {ackMode === "teeth_handover" ? (
               <IconTooth size={13} className="shrink-0" />
+            ) : ackMode === "availability" ? (
+              // Powiadomienie o dostępności to nie odbiór paczki — bez ikony paczki.
+              <IconCircleCheck size={13} className="shrink-0" />
             ) : (
               <IconPackageCheck size={13} className="shrink-0" />
             )}
@@ -744,6 +750,8 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
             <IconTooth size={14} className="shrink-0" />
             <IconPackageCheck size={14} className="shrink-0" />
           </>
+        ) : isInformacjaAck ? (
+          <IconCircleCheck size={14} className="shrink-0" />
         ) : (
           <IconPackageCheck size={14} className="shrink-0" />
         )}

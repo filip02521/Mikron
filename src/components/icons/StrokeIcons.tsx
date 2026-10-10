@@ -472,6 +472,7 @@ export type MojeSectionIconKind =
   | "zamowienie"
   | "before_order"
   | "informacja"
+  | "informacja-ready"
   | "archive"
   | "dismiss";
 
@@ -487,6 +488,7 @@ const MOJE_SECTION_ICON_MAP: Record<
   zamowienie: IconTruck,
   before_order: IconClipboardList,
   informacja: IconAvailability,
+  "informacja-ready": IconAvailability,
   archive: IconArchive,
   dismiss: IconArchive,
 };
@@ -517,6 +519,7 @@ export function mojeSectionIconTileClass(kind: MojeSectionIconKind): string {
     case "before_order":
       return "bg-indigo-50 text-indigo-800";
     case "informacja":
+    case "informacja-ready":
       return "bg-violet-100 text-violet-800";
     case "archive":
       return "bg-slate-200/80 text-slate-600";

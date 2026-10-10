@@ -1,3 +1,4 @@
+import { PROCUREMENT_TEAM_LABEL_TITLE } from "@/lib/orders/procurement-copy";
 /** Przystępne etykiety statusów w /moje — bez żargonu panelu dziennego. */
 const FRIENDLY_STATUS: Record<string, string> = {
   "W dziale dostaw": "Sprawdzamy Twoją prośbę",
@@ -29,7 +30,7 @@ export function myOrderFriendlyStatusHint(statusTitle: string): string | null {
     case "Uzupełnianie danych":
       return "Nie musisz nic robić - damy znać, gdy będzie postęp.";
     case "Przed zamówieniem":
-      return "Dział dostaw złoży zamówienie u dostawcy.";
+      return `${PROCUREMENT_TEAM_LABEL_TITLE} złoży zamówienie u dostawcy.`;
     case "Zamówione":
       return "Towar jest w drodze od dostawcy.";
     case "Informacja o dostępności":

@@ -347,7 +347,7 @@ describe("buildSalesDayStartSnapshot", () => {
     expect(item?.source).toBe("zk_warehouse");
   });
 
-  it("kieruje potwierdzenie informacji do sekcji informacji na dole listy", () => {
+  it("kieruje potwierdzenie informacji do sekcji „Towar jest już na magazynie”", () => {
     const snapshot = buildSalesDayStartSnapshot({
       rows: [
         row({
@@ -362,8 +362,8 @@ describe("buildSalesDayStartSnapshot", () => {
     });
 
     const item = snapshot.items.find((i) => i.source === "informacja_ready");
-    expect(item?.scrollTarget).toBe("moje-section-informacja");
-    expect(item?.href).toContain("moje-section-informacja");
+    expect(item?.scrollTarget).toBe("moje-section-informacja-ready");
+    expect(item?.href).toContain("moje-section-informacja-ready");
     expect(item?.href).toContain("focusOrders=o-inf");
   });
 
