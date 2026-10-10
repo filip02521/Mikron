@@ -191,6 +191,7 @@ export function SubiektProductLineFields({
   requestKind,
   disabled,
   appearance = "default",
+  salesProsbaForm = false,
   productFieldClassName,
   suppliers,
   onSupplierResolved,
@@ -221,6 +222,8 @@ export function SubiektProductLineFields({
   requestKind: IndividualRequestKind;
   disabled?: boolean;
   appearance?: "default" | "prosba";
+  /** Formularz handlowca /prosba — bez powtórek komunikatu o niedostępnym Subiekcie pod pozycją. */
+  salesProsbaForm?: boolean;
   productFieldClassName?: string;
   suppliers?: AppSupplierRef[];
   onSupplierResolved?: (result: {
@@ -951,11 +954,15 @@ export function SubiektProductLineFields({
     if (resolvingSupplier) {
       prosbaMessageItems.push({ kind: "resolving" });
     }
-    const lineSupplierFeedback = prosbaLineSubiektFeedback(supplierFeedback);
+    const lineSupplierFeedback = salesProsbaForm
+      ? prosbaLineSubiektFeedback(supplierFeedback)
+      : supplierFeedback;
     if (lineSupplierFeedback) {
       prosbaMessageItems.push({ kind: "feedback", feedback: lineSupplierFeedback });
     }
-    const lineFeedback = prosbaLineSubiektFeedback(productFieldFeedback);
+    const lineFeedback = salesProsbaForm
+      ? prosbaLineSubiektFeedback(productFieldFeedback)
+      : productFieldFeedback;
     if (lineFeedback) {
       prosbaMessageItems.push({
         kind: "feedback",
@@ -1072,8 +1079,14 @@ export function SubiektProductLineFields({
         label="Mikran"
         className="w-full shrink-0 sm:w-[6.75rem]"
         {...mikranField}
-        // Stała podpowiedź — wcześniej zmieniała się po wczytaniu statusu Subiekta.
-        hint={!mikranField.error && !mikranField.state ? "Kod PLU" : undefined}
+        // /prosba handlowca: stała podpowiedź — wcześniej zmieniała się po wczytaniu statusu Subiekta.
+        hint={
+          !mikranField.error && !mikranField.state
+            ? typeaheadEnabled && !salesProsbaForm
+              ? "PLU (min. 1 cyfra)"
+              : "Kod PLU"
+            : undefined
+        }
       >
         <div
           ref={pluAnchorRef}
@@ -1141,8 +1154,8 @@ export function SubiektProductLineFields({
             disabled={disabled || isTeethOrderLine}
             readOnly={isTeethOrderLine}
             maxLength={MAX_QUANTITY_LEN}
-            // Bez „1” — szary placeholder wyglądał jak wpisana ilość; jednostkę mówi podpowiedź „Sztuk”.
-            placeholder={isTeethOrderLine ? "-" : undefined}
+            // /prosba handlowca bez „1” — szary placeholder wyglądał jak wpisana ilość.
+            placeholder={isTeethOrderLine ? "-" : salesProsbaForm ? undefined : "1"}
             inputMode="numeric"
             aria-label="Ilość sztuk"
             value={

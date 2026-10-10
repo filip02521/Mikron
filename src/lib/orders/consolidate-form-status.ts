@@ -43,6 +43,22 @@ export function isSubiektUnavailableFeedback(feedback: SubiektFeedback): boolean
 }
 
 /**
+ * Jak pokazać niedostępny Subiekt nad pozycjami edytora.
+ * Formularz handlowca (/prosba) — jeden komunikat („notice”), ukryty gdy wszystkie
+ * pozycje są powiązane; pozostałe ekrany — dotychczasowa plakietka „Tryb ręczny”.
+ */
+export function subiektOfflineDisplay(options: {
+  feedback: SubiektFeedback | null;
+  prosba: boolean;
+  salesProsbaForm: boolean;
+  allLinesLinked: boolean;
+}): "badge" | "notice" | null {
+  if (!options.prosba || !options.feedback) return null;
+  if (!options.salesProsbaForm) return "badge";
+  return options.allLinesLinked ? null : "notice";
+}
+
+/**
  * Komunikat pod pozycją prośby handlowca. Niedostępność Subiekta zgłasza jeden
  * komunikat nad pozycjami — tu bez powtórzeń i bez żargonu technicznego.
  */
@@ -56,7 +72,7 @@ export function prosbaLineSubiektFeedback(
   return {
     code: feedback.code,
     title: "Subiekt nie odpowiada",
-    message: "Spróbuj za chwilę albo wpisz dane ręcznie.",
+    message: "Wpisz symbol lub nazwę ręcznie - dział zakupów uzupełni brakujące dane.",
     tone: "info",
   };
 }
