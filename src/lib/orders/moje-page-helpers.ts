@@ -69,7 +69,23 @@ export async function resolveMojePageContext(
       const own = await resolveSalesPersonForUser(user);
       ownSalesPersonId = own?.id ?? null;
 
-      if (isSalesManager(user.role) && previewSalesPersonId) {
+      // Kierownik wyznaczony na zastępcę działa jak zastępca (jak na /zk), nie tylko podgląd zespołu —
+      // także dla handlowca spoza swoich grup.
+      const managerDelegatePreview =
+        isSalesManager(user.role) &&
+        previewSalesPersonId &&
+        previewSalesPersonId !== ownSalesPersonId
+          ? await resolveDelegatePreviewSalesPerson(previewSalesPersonId, user)
+          : null;
+
+      if (managerDelegatePreview) {
+        salesPersonId = managerDelegatePreview.id;
+        salesPersonName = managerDelegatePreview.name;
+        isDelegatePreview = true;
+        try {
+          activeDelegations = await fetchActiveDelegationsForDelegate(user.id);
+        } catch {}
+      } else if (isSalesManager(user.role) && previewSalesPersonId) {
         const preview = await resolvePreviewSalesPerson(previewSalesPersonId, user);
         if (preview) {
           salesPersonId = preview.id;

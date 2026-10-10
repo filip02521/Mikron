@@ -399,12 +399,16 @@ export async function actionCloseZkWatch(watchId: string, delegateFor?: string) 
   }
   if (row.closed_at) throw new Error("Ten ZK został już zamknięty.");
 
-  const { error } = await supabase
+  // .is(closed_at, null): dwa równoległe zamknięcia nie nadpisują daty pierwszego.
+  const { data: closed, error } = await supabase
     .from("sales_zk_watches")
     .update({ closed_at: now, updated_at: now })
-    .eq("id", watchId);
+    .eq("id", watchId)
+    .is("closed_at", null)
+    .select("id");
 
   if (error) throw new Error(error.message);
+  if (!closed?.length) throw new Error("Ten ZK został już zamknięty.");
   scheduleNotepadRevalidation();
   return { success: true as const, closedAt: now };
 }

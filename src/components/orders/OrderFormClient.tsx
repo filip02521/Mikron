@@ -219,6 +219,10 @@ export function OrderFormClient({
     buildInitialGroups(lockedId, initialSupplierId)
   );
   const [pending, start] = useTransition();
+  const submitLockRef = useRef(false);
+  useEffect(() => {
+    if (!pending) submitLockRef.current = false;
+  }, [pending]);
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   /** Po udanym submit z ZK — blokada ponownej wysyłki do czasu unmount / nawigacji. */
   const [submitLocked, setSubmitLocked] = useState(false);
@@ -819,6 +823,9 @@ export function OrderFormClient({
     entries: (Entry & { requestNote?: string })[],
     options?: { acknowledgeSufficientStock?: boolean }
   ) => {
+    // pending z useTransition zmienia się dopiero po renderze — dwa kliknięcia w jednym takcie wysłałyby dwie prośby.
+    if (submitLockRef.current) return;
+    submitLockRef.current = true;
     setPendingMessage(
       singleGroup ? "Wysyłanie prośby…" : "Zapisywanie zamówień…"
     );
