@@ -150,6 +150,7 @@ export function MobileSalesNav({
           previewDla={previewDla}
           adminSalesPreview={preservePreviewDla}
           navLocked={navLocked}
+          showSignOut
         />
       </ul>
     </nav>
