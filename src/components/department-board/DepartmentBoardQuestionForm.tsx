@@ -1,5 +1,6 @@
 "use client";
 
+import { BoardQuestionZdHint } from "@/components/department-board/BoardQuestionZdHint";
 import Link from "next/link";
 import { useRef, useState, type ClipboardEvent } from "react";
 import { EmojiPicker } from "@/components/ui/EmojiPicker";
@@ -121,6 +122,8 @@ function QuestionFormFields({
         disabled={tourDemo || busy}
         idPrefix={idPrefix}
       />
+
+      {!tourDemo ? <BoardQuestionZdHint product={product} /> : null}
 
       <div>
         <label htmlFor={`${idPrefix}-body`} className={boardQuestionsFieldLabelClass}>
