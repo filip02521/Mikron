@@ -1,4 +1,5 @@
 import { PROCUREMENT_TEAM_LABEL, PROCUREMENT_TEAM_LABEL_TITLE } from "@/lib/orders/procurement-copy";
+import { informacjaAvailableSinceShort } from "@/lib/orders/informacja-timing-meta";
 import {
   VERIFICATION_PROCUREMENT_MATCHES_SUPPLIER,
   VERIFICATION_PROCUREMENT_WILL_FILL,
@@ -186,6 +187,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
       subline: informacjaReadyAckSubline({
         sourceMix: row.informacjaArrivedSourceMix ?? null,
         informacjaPath: row.informacjaPath,
+        availableSince: informacjaAvailableSinceShort(row.timingLabel),
       }),
       sortPriority: 10,
     };

@@ -23,7 +23,6 @@ import {
   filterRedundantExpandedMetaFields,
   progressLabelInSubline,
   shouldHideLineRequestNote,
-  shouldShowCollapsedProductSummary,
   shouldShowCollapsedStatusHint,
   shouldShowCollapsedStatusPill,
   shouldShowExpandedOrderStatusBadge,
@@ -591,13 +590,9 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     : null;
   const expandHint = myOrderExpandHint(row, expandCtx);
   const productSummaryRaw = myOrderCollapsedProductSummary(row, listKind);
-  const showCollapsedProductSummary = shouldShowCollapsedProductSummary(row, {
-    expanded,
-    hasStatusHint: Boolean(showStatusHintText && statusHint),
-  });
-  const productSummary = showCollapsedProductSummary ? productSummaryRaw : null;
   const zdEtaPending = Boolean(row.zdEtaPending && subiektReachable);
-  const showInformacjaTimingMeta = shouldShowInformacjaEmailSentMeta(row);
+  // Karta z „Potwierdź powiadomienie”: data jest w tekście („Na półce od …”), nie w kolumnie obok przycisku.
+  const showInformacjaTimingMeta = shouldShowInformacjaEmailSentMeta(row) && !isInformacjaAck;
   const historyDeliveryEstimate = resolveMyOrderHistoryDeliveryEstimate(row);
   const showEstimatedDeliveryMeta =
     !showInformacjaTimingMeta &&
@@ -782,8 +777,9 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     showZdEtaPendingMeta,
     showZdEtaPendingWithEstimate,
     showStatusPill: showStatusPillInRail,
-    productSummary,
-    productSummaryExpandHint: needsExpand ? expandHint : null,
+    // Liczba produktów opisuje prośbę, nie termin — „+N” przy nazwie (showInlineLineCountBadge).
+    productSummary: null,
+    productSummaryExpandHint: null,
     mobileTiming,
     isUrgent,
     isStock,
@@ -1046,7 +1042,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
             srOnlyHeadline={suppressSharedHeadline ? headline : null}
             searchQuery={searchQuery}
             displayLaneKind={displayLaneKind}
-            showInlineLineCountBadge={!productSummary}
+            showInlineLineCountBadge
             chips={
               row.sourceZkNumber ||
               sharedRequestNote ||

@@ -49,13 +49,14 @@ describe("buildZdDeliveryDateMetaDisplay", () => {
     expect(display.primaryLabel).not.toBe("Dziś");
   });
 
-  it("pokazuje Dziś gdy termin różni się od dnia złożenia", () => {
+  it("pokazuje termin (dziś) gdy różni się od dnia złożenia", () => {
     const display = buildZdDeliveryDateMetaDisplay(parseDateOnly("2026-06-18")!, {
       todayDateKey: "2026-06-18",
       placementAt: "2026-06-17T10:00:00Z",
     });
 
-    expect(display.primaryLabel).toBe("Dziś");
+    expect(display.primaryLabel).toBe("Czw 18.06");
+    expect(display.detailLabel).toBe("dziś");
   });
 });
 

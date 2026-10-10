@@ -60,3 +60,9 @@ export const MY_ORDER_HISTORY_ESTIMATE_SAME_DAY_DETAIL =
 
 export const MY_ORDER_HISTORY_ESTIMATE_NEXT_MORNING_DETAIL =
   "U tego dostawcy typowy czas to ok. 1 dzień roboczy (często nazajutrz).";
+
+/** Znacznik pewności pod datą na zwiniętej karcie — szacunek z historii dostawcy, nie termin z ZD. */
+export const MY_ORDER_HISTORY_ESTIMATE_CERTAINTY_TAG = "≈ szacunek";
+
+/** Znacznik pewności pod datą — termin potwierdzony w dokumencie ZD. */
+export const ZD_DELIVERY_CERTAINTY_TAG = "z ZD";
