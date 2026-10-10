@@ -1,3 +1,4 @@
+import { cache } from "react";
 import {
   fetchDeliveryStats,
   fetchIndividualOrders,
@@ -18,6 +19,19 @@ import {
 } from "@/lib/sales/sales-day-start";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import type { DeliveryStats, IndividualOrder, SalesNote, SalesZkWatch } from "@/types/database";
+
+/*
+ * React `cache()` — deduplikacja w obrębie jednego żądania RSC: AppShell (layout) i /moje
+ * pobierają te same dane handlowca; drugie wywołanie dostaje tę samą obietnicę.
+ * Klucze to wartości prymitywne (obiekt filtrów w literale nie trafiłby w cache).
+ * Poza renderem (route handler, akcja) działa jak zwykłe wywołanie.
+ */
+export const fetchSalesPersonOrdersForRequest = cache((salesPersonId: string) =>
+  fetchIndividualOrders({ salesPersonId, hideSalesAcknowledged: false })
+);
+export const fetchDeliveryStatsForRequest = cache(() => fetchDeliveryStats());
+export const fetchSalesDayStartNotepadSliceForRequest = cache(fetchSalesDayStartNotepadSlice);
+export const fetchSalesBoardAttentionSnapshotForRequest = cache(fetchSalesBoardAttentionSnapshot);
 
 export type SalesInboxLoadedData = {
   orders: IndividualOrder[];
@@ -100,15 +114,15 @@ export async function loadSalesInboxData(
 ): Promise<SalesInboxLoadedData> {
   let notepadLoadFailed = false;
   const [orders, statsRows, notepadSlice, boardAttention] = await Promise.all([
-    fetchIndividualOrders({ salesPersonId, hideSalesAcknowledged: false }),
-    fetchDeliveryStats(),
-    fetchSalesDayStartNotepadSlice(salesPersonId).catch((e) => {
+    fetchSalesPersonOrdersForRequest(salesPersonId),
+    fetchDeliveryStatsForRequest(),
+    fetchSalesDayStartNotepadSliceForRequest(salesPersonId).catch((e) => {
       console.error("[loadSalesInboxData] notatnik", e);
       notepadLoadFailed = true;
       return { zkWatches: [] as SalesZkWatch[], notes: [] as SalesNote[] };
     }),
     profileId
-      ? fetchSalesBoardAttentionSnapshot(profileId).catch(() => null)
+      ? fetchSalesBoardAttentionSnapshotForRequest(profileId).catch(() => null)
       : Promise.resolve(null),
   ]);
 
