@@ -572,3 +572,29 @@ describe("buildSalesDayStartSnapshot — błąd notatnika", () => {
     expect(snapshot.cleared).toBe(false);
   });
 });
+
+describe("buildSalesDayStartSnapshot — zmiana terminu ZD", () => {
+  const change = (variant: "postponed" | "first_confirmed") => ({
+    previousDeadline: "2026-10-01",
+    currentDeadline: "2026-10-15",
+    changedAt: "2026-10-02T10:00:00Z",
+    variant,
+    title: "Zmiana terminu",
+    detail: "01.10 → 15.10",
+  });
+
+  it("przesunięcie trafia do Pilnych spraw, pierwsze ustalenie nie", () => {
+    const snapshot = buildSalesDayStartSnapshot({
+      rows: [
+        row({ id: "a", supplierName: "Dostawca A", orderIds: ["o1"], zdFulfillment: { deadlineChange: change("postponed") } as never }),
+        row({ id: "b", supplierName: "Dostawca B", orderIds: ["o2"], zdFulfillment: { deadlineChange: change("first_confirmed") } as never }),
+      ],
+    });
+    const items = snapshot.items.filter((i) => i.source === "zd_deadline_change");
+    expect(items).toHaveLength(1);
+    expect(items[0]?.title).toBe("Dostawca A");
+    expect(items[0]?.href).toContain("o1");
+    expect(snapshot.totalActionCount).toBe(1);
+    expect(snapshot.mojeActionCount).toBe(1);
+  });
+});

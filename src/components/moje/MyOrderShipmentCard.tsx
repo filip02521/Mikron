@@ -64,6 +64,11 @@ import { isLineZdDetailRedundantWithExpandedGroupTiming } from "@/lib/orders/my-
 import { resolveMyOrderDeliveryRowVisual } from "@/lib/orders/my-order-delivery-urgency";
 import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
 import { MyOrderRequestNote } from "@/components/moje/MyOrderRequestNote";
+import { MyOrderZdDeadlineChangeAck } from "@/components/moje/MyOrderZdDeadlineChangeAck";
+import {
+  collectPendingZdDeadlineChanges,
+  zdDeadlineChangeNeedsClick,
+} from "@/lib/orders/zd-deadline-change-pending";
 import { isRequestNotesAggregateSummary } from "@/lib/orders/sales-request-note";
 import { isProcurementCancelNotesAggregateSummary } from "@/lib/orders/procurement-cancel-note";
 import { MyOrderLineItem } from "@/components/moje/MyOrderLineItem";
@@ -344,6 +349,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   onAcknowledgeCancelled,
   onAcknowledgeCancelNotice,
   onAcknowledgeRequestNote,
+  onAcknowledgeZdDeadlineChange,
   onCancelRequest,
   onPartialCancelRequest,
   onSaveClient,
@@ -372,6 +378,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   onAcknowledgeCancelled?: (orderIds: string[]) => void;
   onAcknowledgeCancelNotice?: (orderIds: string[]) => void;
   onAcknowledgeRequestNote?: (orderIds: string[]) => void;
+  onAcknowledgeZdDeadlineChange?: (orderIds: string[]) => void;
   onCancelRequest?: (orderIds: string[], lines: SalesCancelLineContext[]) => void;
   onPartialCancelRequest?: (
     orderId: string,
@@ -814,6 +821,12 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   const showSharedUnreadRequestNote =
     showUnreadRequestNoteChrome && Boolean(sharedRequestNote && unreadRequestNoteIds.length);
   const hideLineRequestNote = shouldHideLineRequestNote(sharedRequestNote);
+  const zdChangeToAck =
+    canAcknowledge && onAcknowledgeZdDeadlineChange
+      ? (collectPendingZdDeadlineChanges([row]).find((item) =>
+          zdDeadlineChangeNeedsClick(item.change)
+        ) ?? null)
+      : null;
   const sharedProcurementCancelNote =
     row.procurementCancelNote &&
     !isProcurementCancelNotesAggregateSummary(row.procurementCancelNote)
@@ -1117,6 +1130,20 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
           {toolbar}
         </div>
       </div>
+
+      {zdChangeToAck ? (
+        <div
+          className="border-t border-slate-100 px-3 py-2.5 sm:px-4"
+          onClick={(event) => event.stopPropagation()}
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <MyOrderZdDeadlineChangeAck
+            change={zdChangeToAck.change}
+            pending={pending}
+            onAcknowledge={() => onAcknowledgeZdDeadlineChange!(zdChangeToAck.orderIds)}
+          />
+        </div>
+      ) : null}
 
       {showSharedUnreadRequestNote && sharedRequestNote ? (
         <div

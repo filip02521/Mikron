@@ -13,6 +13,7 @@ import {
   actionAcknowledgeCancelled,
   actionAcknowledgeSalesCancelNotice,
   actionAcknowledgeSalesRequestNote,
+  actionAcknowledgeZdFulfillmentDeadlineChange,
   actionSalesCancelOrders,
   actionSalesCancelTeethGroups,
   actionUpdateSalesClientName,
@@ -367,6 +368,25 @@ export function MyOrderShipmentList({
     [router, tourPreview, delegateFor]
   );
 
+  const runAcknowledgeZdDeadlineChange = useCallback(
+    (orderIds: string[]) => {
+      if (tourPreview) return;
+      setPendingMessage("Zapisywanie…");
+      start(async () => {
+        try {
+          await actionAcknowledgeZdFulfillmentDeadlineChange(orderIds, delegateFor);
+          setSuccessToast(toastSuccess("Nowy termin przyjęty"));
+          router.refresh();
+        } catch (e) {
+          setErrorToast(toastFromUnknown(e, "Operacja nie powiodła się. Spróbuj ponownie."));
+        } finally {
+          setPendingMessage(null);
+        }
+      });
+    },
+    [router, tourPreview, delegateFor]
+  );
+
   const saveClient = useCallback(
     async (orderId: string, patch: SalesClientAssignment) => {
       if (tourPreview) return;
@@ -502,6 +522,7 @@ export function MyOrderShipmentList({
             ? runAcknowledgeRequestNote
             : undefined
         }
+        onAcknowledgeZdDeadlineChange={canAcknowledge ? runAcknowledgeZdDeadlineChange : undefined}
         onCancelRequest={
           (canEditProp ?? canAcknowledge) && row.salesCancelOrderIds.length && row.salesCancelPhase
             ? requestCancel
@@ -541,6 +562,7 @@ export function MyOrderShipmentList({
       runAcknowledgeCancelNotice,
       runAcknowledgeCancelled,
       runAcknowledgeRequestNote,
+      runAcknowledgeZdDeadlineChange,
       saveClient,
       searchQuery,
       showProgress,
