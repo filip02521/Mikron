@@ -31,7 +31,7 @@ import { filterProsbaLinesWithSufficientStock } from "@/lib/orders/prosba-stock-
 import { useProsbaLinesStockSync } from "@/hooks/useProsbaLinesStockSync";
 import { useTeethExemptTwIds, useTeethProductInfo } from "@/components/layout/TeethExemptContext";
 import {
-  assessProsbaLineFields,
+  assessProsbaLineFieldsLive,
   prosbaLineHasSubmitBlockers,
   shouldShowProsbaLineFieldValidation,
 } from "@/lib/orders/prosba-line-field-validation";
@@ -219,7 +219,10 @@ export function RequestProductLinesEditor({
   }, [lines, prosba, requestKind, collapseOptions]);
   const [subiektOfflineFeedback, setSubiektOfflineFeedback] =
     useState<SubiektFeedback | null>(null);
-  const visibleSubiektOfflineFeedback = prosba ? subiektOfflineFeedback : null;
+  // Wszystkie pozycje już powiązane (np. z ZK) — komunikat o braku Subiekta tylko by mylił.
+  const allLinesLinked = lines.every((l) => (l.subiektTwId ?? 0) > 0);
+  const visibleSubiektOfflineFeedback =
+    prosba && !allLinesLinked ? subiektOfflineFeedback : null;
   const stockChecksEnabled = requestKind === "zamowienie";
   const sufficientStockCount = stockChecksEnabled
     ? filterProsbaLinesWithSufficientStock(lines, requestKind, teethExemptTwIds).length
@@ -333,9 +336,7 @@ export function RequestProductLinesEditor({
   return (
     <div className="space-y-3">
       {visibleSubiektOfflineFeedback ? (
-        <div className="flex justify-end">
-          <SubiektOfflineHint feedback={visibleSubiektOfflineFeedback} />
-        </div>
+        <SubiektOfflineHint feedback={visibleSubiektOfflineFeedback} />
       ) : null}
 
       {prosba && requestKind === "zamowienie" ? (
@@ -394,11 +395,7 @@ export function RequestProductLinesEditor({
             requestKind,
           });
         const fieldValidation = showFieldValidation
-          ? assessProsbaLineFields(
-              line,
-              requestKind,
-              validationAttempted ? "strict" : "soft"
-            )
+          ? assessProsbaLineFieldsLive(line, requestKind, validationAttempted)
           : undefined;
 
         const lineSupplierId =

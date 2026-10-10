@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   consolidateSubiektFeedbacks,
   dedupeSubiektFeedbacks,
+  prosbaLineSubiektFeedback,
   shouldSuppressCompletenessBanner,
   subiektFeedbackBody,
 } from "@/lib/orders/consolidate-form-status";
@@ -67,5 +68,13 @@ describe("consolidate-form-status", () => {
       requestKind: "zamowienie" as const,
     };
     expect(shouldSuppressCompletenessBanner([mapping], draft)).toBe(false);
+  });
+
+  it("prosbaLineSubiektFeedback: bez powtórki offline i bez „API” pod pozycją", () => {
+    expect(prosbaLineSubiektFeedback(getSubiektFeedback("subiekt_unavailable"))).toBeNull();
+    const timeout = prosbaLineSubiektFeedback(getSubiektFeedback("timeout"));
+    expect(`${timeout?.title} ${timeout?.message}`).not.toMatch(/API/);
+    const notFound = getSubiektFeedback("not_found_product");
+    expect(prosbaLineSubiektFeedback(notFound)).toBe(notFound);
   });
 });

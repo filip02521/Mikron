@@ -18,6 +18,15 @@ export const PROSBA_FORM_SECTION_COPY = {
     procurementEditHint:
       "Symbol, kod Mikran lub opis, ilość oraz opcjonalnie klient końcowy (Subiekt) przy każdej pozycji.",
   },
+  /** Jedyny komunikat o niedostępnym Subiekcie na formularzu (nad pozycjami). */
+  subiektOffline: {
+    /** Subiekt nie odpowiada — wyszukiwarka korzysta z bazy OnTime. */
+    catalogFallback:
+      "Subiekt jest teraz niedostępny - szukamy w bazie OnTime. Jeśli produktu tam nie ma, wpisz symbol lub nazwę ręcznie. Prośbę wyślesz normalnie, a dział zakupów uzupełni brakujące dane.",
+    /** Bez wyszukiwarki (integracja wyłączona). */
+    manualOnly:
+      "Podpowiedzi z Subiekta są wyłączone. Wpisz symbol lub nazwę ręcznie - prośbę wyślesz normalnie, a dział zakupów uzupełni brakujące dane.",
+  },
   delegateProcurement: {
     title: "Dla kogo i u kogo?",
     hint: "Handlowiec, którego dotyczy prośba, oraz dostawca - widoczne w panelu dziennym i przy zamówieniu.",
