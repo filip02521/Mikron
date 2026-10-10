@@ -84,6 +84,16 @@ function QuestionFormFields({
 }) {
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const busy = saving || imagesCompressing;
+  const missingTitle = !title.trim();
+  const missingBody = !body.trim();
+  const missingHint =
+    missingTitle && missingBody
+      ? DEPARTMENT_BOARD_QUESTIONS_FORM.submitMissingBoth
+      : missingTitle
+        ? DEPARTMENT_BOARD_QUESTIONS_FORM.submitMissingTitle
+        : missingBody
+          ? DEPARTMENT_BOARD_QUESTIONS_FORM.submitMissingBody
+          : null;
 
   function handlePaste(event: ClipboardEvent) {
     if (tourDemo || busy) return;
@@ -153,9 +163,15 @@ function QuestionFormFields({
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
 
       <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-3">
+        {missingHint ? (
+          <p id={`${idPrefix}-submit-hint`} className="text-xs text-slate-500">
+            {missingHint}
+          </p>
+        ) : null}
         <Button
           size="sm"
-          disabled={tourDemo || busy || !title.trim() || !body.trim()}
+          aria-describedby={missingHint ? `${idPrefix}-submit-hint` : undefined}
+          disabled={tourDemo || busy || Boolean(missingHint)}
           onClick={() => void onSubmit()}
         >
           {tourDemo

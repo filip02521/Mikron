@@ -1,3 +1,4 @@
+import { PROCUREMENT_TEAM_LABEL_GENITIVE } from "@/lib/orders/procurement-copy";
 import { formatPlDate } from "@/lib/display-labels";
 import { timingOverdueSuffix } from "@/lib/orders/timing-overdue";
 import {
@@ -1017,7 +1018,7 @@ function presentZamowienie(
         ...base,
         statusTitle: "Przed zamówieniem",
         statusDetail:
-          ["Prośba jest u działu dostaw. Złożymy zamówienie planowo (z innymi towarami) lub osobno."]
+          [`Prośba jest u ${PROCUREMENT_TEAM_LABEL_GENITIVE}. Złożymy zamówienie planowo (z innymi towarami) lub osobno.`]
             .filter(Boolean)
             .join(" "),
         timingLabel,

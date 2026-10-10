@@ -34,6 +34,10 @@ export const DEPARTMENT_BOARD_QUESTIONS_FORM = {
   productSearchLoading: "Szukam…",
   submit: "Wyślij",
   submitting: "Wysyłanie…",
+  /** Podpowiedź przy nieaktywnym „Wyślij” — czego brakuje. */
+  submitMissingBoth: "Wpisz temat i treść pytania.",
+  submitMissingTitle: "Wpisz temat pytania.",
+  submitMissingBody: "Wpisz treść pytania.",
   successToast: DEPARTMENT_BOARD_SUCCESS_TOAST,
   introBeforeLink: "Zamówienie towaru -",
   introLinkLabel: "Nowa prośba",

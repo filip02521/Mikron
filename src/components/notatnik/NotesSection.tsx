@@ -712,7 +712,7 @@ export function NotesSection({
                     </SectionHeadingIcon>
                     <div className="min-w-0">
                       <p className={cn(salesTypography.sectionLabel, "normal-case text-indigo-950")}>
-                        Nowa karteczka
+                        {NOTATNIK_NOTES_SECTION_COPY.newNoteTitle}
                       </p>
                       <p className={cn("mt-0.5", salesTypography.sectionHint, "text-indigo-950/75")}>
                         {NOTATNIK_NOTES_SECTION_COPY.hint}
@@ -740,7 +740,7 @@ export function NotesSection({
                 onClick={() => setComposeOpen(true)}
               >
                 <IconPlusCircle size={16} strokeWidth={2} className="mr-1.5 shrink-0" aria-hidden />
-                Przypnij nową karteczkę
+                {NOTATNIK_NOTES_SECTION_COPY.addNoteButton}
                 <span className="ml-2 hidden sm:inline-flex">
                   <KeyboardShortcutsHint items={[{ keys: ["N"], label: "" }]} compact />
                 </span>
@@ -767,7 +767,7 @@ export function NotesSection({
 
           {canDrag && filtered.length > 1 ? (
             <p className="inline-flex flex-wrap items-center gap-1 text-[10px] text-slate-400">
-              Przeciągnij karteczkę (
+              {NOTATNIK_NOTES_SECTION_COPY.dragHintBefore}
               <DragHandleGlyph />
               ) w sekcji przypiętych lub zwykłych - między sekcjami nie da się przenieść.
             </p>
