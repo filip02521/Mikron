@@ -32,6 +32,7 @@ import { useProsbaLinesStockSync } from "@/hooks/useProsbaLinesStockSync";
 import { useTeethExemptTwIds, useTeethProductInfo } from "@/components/layout/TeethExemptContext";
 import {
   assessProsbaLineFields,
+  assessProsbaLineFieldsLive,
   prosbaLineHasSubmitBlockers,
   shouldShowProsbaLineFieldValidation,
 } from "@/lib/orders/prosba-line-field-validation";
@@ -48,6 +49,8 @@ import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { ProsbaOptionalSection } from "@/components/orders/ProsbaOptionalSection";
 import { PROSBA_OPTIONAL_SECTION_COPY } from "@/lib/orders/prosba-optional-section-copy";
 import { SubiektOfflineHint } from "@/components/subiekt/SubiektOfflineHint";
+import { SubiektOfflineNotice } from "@/components/subiekt/SubiektOfflineNotice";
+import { subiektOfflineDisplay } from "@/lib/orders/consolidate-form-status";
 import {
   copyProsbaLineNoteToAllLines,
 } from "@/lib/orders/prosba-line-note-copy";
@@ -78,6 +81,7 @@ export function RequestProductLinesEditor({
   liveValidation = false,
   showLineNotes,
   noteAudience = "sales",
+  salesProsbaForm = false,
   typeaheadSize = "default",
   onAfterTeethListSave,
   onTeethListCommitNotice,
@@ -127,6 +131,8 @@ export function RequestProductLinesEditor({
   showLineNotes?: boolean;
   /** Podpowiedź przy notatce — zakupy vs handlowiec. */
   noteAudience?: "sales" | "procurement";
+  /** Formularz handlowca /prosba — teksty o Subiekcie pisane dla handlowca. */
+  salesProsbaForm?: boolean;
   /** Wyższa lista podpowiedzi Subiekta / dostawcy w modalach. */
   typeaheadSize?: "default" | "comfortable";
   onAfterTeethListSave?: (
@@ -219,7 +225,12 @@ export function RequestProductLinesEditor({
   }, [lines, prosba, requestKind, collapseOptions]);
   const [subiektOfflineFeedback, setSubiektOfflineFeedback] =
     useState<SubiektFeedback | null>(null);
-  const visibleSubiektOfflineFeedback = prosba ? subiektOfflineFeedback : null;
+  const subiektOfflineMode = subiektOfflineDisplay({
+    feedback: subiektOfflineFeedback,
+    prosba,
+    salesProsbaForm,
+    allLinesLinked: lines.every((l) => (l.subiektTwId ?? 0) > 0),
+  });
   const stockChecksEnabled = requestKind === "zamowienie";
   const sufficientStockCount = stockChecksEnabled
     ? filterProsbaLinesWithSufficientStock(lines, requestKind, teethExemptTwIds).length
@@ -332,9 +343,12 @@ export function RequestProductLinesEditor({
 
   return (
     <div className="space-y-3">
-      {visibleSubiektOfflineFeedback ? (
+      {subiektOfflineFeedback && subiektOfflineMode === "notice" ? (
+        <SubiektOfflineNotice feedback={subiektOfflineFeedback} />
+      ) : null}
+      {subiektOfflineFeedback && subiektOfflineMode === "badge" ? (
         <div className="flex justify-end">
-          <SubiektOfflineHint feedback={visibleSubiektOfflineFeedback} />
+          <SubiektOfflineHint feedback={subiektOfflineFeedback} />
         </div>
       ) : null}
 
@@ -393,13 +407,11 @@ export function RequestProductLinesEditor({
             lineCount: lines.length,
             requestKind,
           });
-        const fieldValidation = showFieldValidation
-          ? assessProsbaLineFields(
-              line,
-              requestKind,
-              validationAttempted ? "strict" : "soft"
-            )
-          : undefined;
+        const fieldValidation = !showFieldValidation
+          ? undefined
+          : salesProsbaForm
+            ? assessProsbaLineFieldsLive(line, requestKind, validationAttempted)
+            : assessProsbaLineFields(line, requestKind, validationAttempted ? "strict" : "soft");
 
         const lineSupplierId =
           (
@@ -492,6 +504,7 @@ export function RequestProductLinesEditor({
 
             <SubiektProductLineFields
               appearance={appearance}
+              salesProsbaForm={salesProsbaForm}
               requestKind={requestKind}
               productFieldClassName={prosba ? undefined : "sm:col-span-2"}
               suppliers={suppliers}
@@ -613,6 +626,7 @@ export function RequestProductLinesEditor({
                   className="mt-2"
                 >
                   <SubiektClientNameField
+                    prosba={salesProsbaForm}
                     maxLength={MAX_CLIENT_NAME_LEN}
                     value={line.clientName ?? ""}
                     clientKhId={line.clientKhId ?? null}

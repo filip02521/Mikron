@@ -19,6 +19,7 @@ import {
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { getSubiektFeedback } from "@/lib/subiekt/feedback";
+import { prosbaLineSubiektFeedback } from "@/lib/orders/consolidate-form-status";
 import {
   buildProductPickFromSubiekt,
   combinedProductSearchDisplay,
@@ -190,6 +191,7 @@ export function SubiektProductLineFields({
   requestKind,
   disabled,
   appearance = "default",
+  salesProsbaForm = false,
   productFieldClassName,
   suppliers,
   onSupplierResolved,
@@ -220,6 +222,8 @@ export function SubiektProductLineFields({
   requestKind: IndividualRequestKind;
   disabled?: boolean;
   appearance?: "default" | "prosba";
+  /** Formularz handlowca /prosba — bez powtórek komunikatu o niedostępnym Subiekcie pod pozycją. */
+  salesProsbaForm?: boolean;
   productFieldClassName?: string;
   suppliers?: AppSupplierRef[];
   onSupplierResolved?: (result: {
@@ -950,13 +954,19 @@ export function SubiektProductLineFields({
     if (resolvingSupplier) {
       prosbaMessageItems.push({ kind: "resolving" });
     }
-    if (supplierFeedback) {
-      prosbaMessageItems.push({ kind: "feedback", feedback: supplierFeedback });
+    const lineSupplierFeedback = salesProsbaForm
+      ? prosbaLineSubiektFeedback(supplierFeedback)
+      : supplierFeedback;
+    if (lineSupplierFeedback) {
+      prosbaMessageItems.push({ kind: "feedback", feedback: lineSupplierFeedback });
     }
-    if (productFieldFeedback) {
+    const lineFeedback = salesProsbaForm
+      ? prosbaLineSubiektFeedback(productFieldFeedback)
+      : productFieldFeedback;
+    if (lineFeedback) {
       prosbaMessageItems.push({
         kind: "feedback",
-        feedback: productFieldFeedback,
+        feedback: lineFeedback,
         fieldLabel: `Subiekt - ${subiektFieldLabel(activeField)}`,
       });
     }
@@ -1069,9 +1079,10 @@ export function SubiektProductLineFields({
         label="Mikran"
         className="w-full shrink-0 sm:w-[6.75rem]"
         {...mikranField}
+        // /prosba handlowca: stała podpowiedź — wcześniej zmieniała się po wczytaniu statusu Subiekta.
         hint={
           !mikranField.error && !mikranField.state
-            ? typeaheadEnabled
+            ? typeaheadEnabled && !salesProsbaForm
               ? "PLU (min. 1 cyfra)"
               : "Kod PLU"
             : undefined
@@ -1143,7 +1154,8 @@ export function SubiektProductLineFields({
             disabled={disabled || isTeethOrderLine}
             readOnly={isTeethOrderLine}
             maxLength={MAX_QUANTITY_LEN}
-            placeholder={isTeethOrderLine ? "-" : "1"}
+            // /prosba handlowca bez „1” — szary placeholder wyglądał jak wpisana ilość.
+            placeholder={isTeethOrderLine ? "-" : salesProsbaForm ? undefined : "1"}
             inputMode="numeric"
             aria-label="Ilość sztuk"
             value={
