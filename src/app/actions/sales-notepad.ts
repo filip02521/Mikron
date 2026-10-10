@@ -2,6 +2,7 @@
 
 // @service-role-ok — autoryzacja require*(); service role z pełnym scope po warstwie aplikacji.
 
+import { assertPasswordChangeCompleted } from "@/lib/auth/must-change-password-guard";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { getSessionUser } from "@/lib/auth";
@@ -107,6 +108,7 @@ import { ActionError, unwrapActionResult } from "@/lib/actions/action-error";
 async function salesPersonIdForAction(delegateFor?: string): Promise<string> {
   const user = await getSessionUser();
   if (!user) throw new Error("Wymagane logowanie");
+  assertPasswordChangeCompleted(user);
   if (!isSalesAccount(user.role)) {
     throw new Error("Brak uprawnień do tej operacji.");
   }

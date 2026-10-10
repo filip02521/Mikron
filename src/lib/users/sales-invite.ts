@@ -66,6 +66,23 @@ export async function generateSalesPersonInviteLink(
   const existing = await findAuthUserByEmail(supabase, email);
 
   if (existing) {
+    // Link „recovery” do istniejącego konta = przejęcie go; dozwolone tylko dla zwykłego handlowca
+    // bez innej karty. Rolę innych kont zmienia wyłącznie panel Użytkownicy.
+    const { data: existingProfile, error: existingProfileError } = await supabase
+      .from("profiles")
+      .select("role, sales_person_id")
+      .eq("id", existing.id)
+      .maybeSingle();
+    if (existingProfileError) return { error: existingProfileError.message };
+    if (existingProfile && existingProfile.role !== "sales") {
+      return {
+        error: "Ten e-mail należy do konta o innej roli niż handlowiec. Zmień e-mail na karcie albo rolę w panelu Użytkownicy.",
+      };
+    }
+    if (existingProfile?.sales_person_id && existingProfile.sales_person_id !== salesPersonId) {
+      return { error: "Ten e-mail należy do konta powiązanego z innym handlowcem." };
+    }
+
     const { error: metaError } = await supabase.auth.admin.updateUserById(existing.id, {
       user_metadata: { sales_person_id: salesPersonId },
     });
