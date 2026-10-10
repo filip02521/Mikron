@@ -212,6 +212,29 @@ function hasAnyPeriodInMonth(
   return false;
 }
 
+function periodsInMonth(
+  year: number,
+  month: number,
+  periods: VacationPeriodRow[]
+): VacationPeriodRow[] {
+  const monthStart = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const monthEnd = `${year}-${String(month + 1).padStart(2, "0")}-31`;
+  return periods
+    .filter((p) => p.startDate <= monthEnd && p.endDate >= monthStart)
+    .sort((a, b) => a.startDate.localeCompare(b.startDate));
+}
+
+const VACATION_DELEGATE_LABEL = "zastępca";
+
+function vacationBarTitle(
+  name: string,
+  category: VacationCategory,
+  delegateName: string | null
+): string {
+  const base = `${name} - ${staffVacationCategoryShort(category)}`;
+  return delegateName ? `${base} · ${VACATION_DELEGATE_LABEL}: ${delegateName}` : base;
+}
+
 function getActiveSalesPeopleInMonth(
   year: number,
   month: number,
@@ -292,6 +315,13 @@ export function VacationCalendar({
     canEdit && (!editableSalesPersonId || spId === editableSalesPersonId);
   const colorMap = vacationColorMap(salesPeople);
   const delegateNameById = new Map(delegateOptions.map((d) => [d.id, d.name]));
+  /** Zastępca przypisany do dokładnie tego okresu (ta sama reguła co w dymku). */
+  const delegateNameForPeriod = (salesPersonId: string, period: VacationPeriodRow) => {
+    const delegation = (delegationsBySalesPerson[salesPersonId] ?? []).find(
+      (d) => d.startDate === period.startDate && d.endDate === period.endDate
+    );
+    return delegation ? delegateNameById.get(delegation.delegateProfileId) ?? "nieznany" : null;
+  };
 
   const anchorRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -999,7 +1029,7 @@ export function VacationCalendar({
                               c.text
                             )}
                             onClick={(e) => onBarClick(e, p.period.id, p.salesPersonId)}
-                            title={`${p.salesPersonName} - ${staffVacationCategoryShort(p.period.category)}`}
+                            title={vacationBarTitle(p.salesPersonName, p.period.category, delegateNameForPeriod(p.salesPersonId, p.period))}
                           >
                             <span className="truncate">
                               {p.salesPersonName}
@@ -1009,17 +1039,12 @@ export function VacationCalendar({
                                 · {staffVacationCategoryShort(p.period.category)}
                               </span>
                             ) : null}
-                            {(() => {
-                              const delegations = delegationsBySalesPerson[p.salesPersonId] ?? [];
-                              const hasDelegate = delegations.some(
-                                (d) =>
-                                  d.startDate === p.period.startDate &&
-                                  d.endDate === p.period.endDate
-                              );
-                              return hasDelegate ? (
-                                <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-500" />
-                              ) : null;
-                            })()}
+                            {delegateNameForPeriod(p.salesPersonId, p.period) ? (
+                              <span
+                                className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-500"
+                                aria-hidden
+                              />
+                            ) : null}
                           </button>
                         );
                       })}
@@ -1045,7 +1070,7 @@ export function VacationCalendar({
                               c.dot
                             )}
                             onClick={(e) => onBarClick(e, p.period.id, p.salesPersonId)}
-                            title={`${p.salesPersonName} - ${staffVacationCategoryShort(p.period.category)}`}
+                            title={vacationBarTitle(p.salesPersonName, p.period.category, delegateNameForPeriod(p.salesPersonId, p.period))}
                           />
                         );
                       })}
@@ -1064,25 +1089,45 @@ export function VacationCalendar({
       )}
 
       {activeSalesPeople.length > 0 ? (
-        <div className="flex flex-wrap gap-x-4 gap-y-1.5 rounded-md border border-slate-100 bg-slate-50/30 px-3 py-2">
+        <ul className="space-y-1.5 rounded-md border border-slate-100 bg-slate-50/30 px-3 py-2">
           {activeSalesPeople.map((sp) => {
             const c = colorMap.get(sp.id);
             if (!c) return null;
             const isOwn = editableSalesPersonId === sp.id;
+            const monthPeriods = periodsInMonth(
+              currentYear,
+              currentMonth,
+              periodsBySalesPerson[sp.id] ?? []
+            );
             return (
-              <div key={sp.id} className="flex items-center gap-1.5">
-                <span className={cn("h-2.5 w-2.5 rounded-full", c.dot)} />
-                <span className={cn(
-                  "text-[10px]",
-                  isOwn ? "font-semibold text-slate-700" : "text-slate-500"
-                )}>
-                  {sp.name}
-                  {isOwn ? " (Ty)" : ""}
+              <li key={sp.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs">
+                <span className="flex items-center gap-1.5">
+                  <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", c.dot)} aria-hidden />
+                  <span className={isOwn ? "font-semibold text-slate-800" : "font-medium text-slate-700"}>
+                    {sp.name}
+                    {isOwn ? " (Ty)" : ""}
+                  </span>
                 </span>
-              </div>
+                {monthPeriods.map((period) => {
+                  const delegateName = delegateNameForPeriod(sp.id, period);
+                  return (
+                    <span key={period.id} className="text-slate-500">
+                      {formatRangeLabel(period.startDate, period.endDate)}
+                      {delegateName ? (
+                        <>
+                          {" · "}
+                          <span className="text-slate-700">
+                            {VACATION_DELEGATE_LABEL}: {delegateName}
+                          </span>
+                        </>
+                      ) : null}
+                    </span>
+                  );
+                })}
+              </li>
             );
           })}
-        </div>
+        </ul>
       ) : null}
 
       {popover ? createPortal(popover, document.body) : null}
