@@ -464,9 +464,18 @@ export async function actionAddIndividualOrders(
       });
     }
 
-    const sourceZkWatchId = normalized
-      .map((e) => (typeof e.sourceZkWatchId === "string" ? e.sourceZkWatchId.trim() : ""))
-      .find((id) => id.length > 0);
+    // Prośba z ZK dotyczy jednego ZK — różne id w pozycjach ominęłyby kontrolę właściciela poniżej.
+    const sourceZkWatchIds = [
+      ...new Set(
+        normalized
+          .map((e) => (typeof e.sourceZkWatchId === "string" ? e.sourceZkWatchId.trim() : ""))
+          .filter((id) => id.length > 0)
+      ),
+    ];
+    if (sourceZkWatchIds.length > 1) {
+      throw new Error("Prośba może dotyczyć tylko jednego ZK - wyślij pozycje z różnych ZK osobno.");
+    }
+    const sourceZkWatchId = sourceZkWatchIds[0];
     if (sourceZkWatchId) {
       const supabase = createAdminClient();
       const { data: watchRow, error: watchError } = await supabase
