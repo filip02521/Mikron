@@ -1,4 +1,9 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
+import {
+  summarizeSalesPersonOrderAttention,
+  type SalesPersonOrderAttentionRow,
+} from "@/lib/data/sales-people-admin-shared";
+import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
 import type { SessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { isSalesManager } from "@/lib/auth-roles";
@@ -88,6 +93,20 @@ export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
     orderCountBySalesId.set(id, (orderCountBySalesId.get(id) ?? 0) + 1);
   }
 
+  // Jawny limit: domyślny DB_MAX_ROWS (1000) uciąłby otwarte prośby całej firmy.
+  const { data: attentionRows, error: attentionError } = await supabase
+    .from("individual_orders")
+    .select("sales_person_id, status, request_kind, is_teeth, warehouse_cleared_at, zd_fulfillment_deadline")
+    .is("sales_acknowledged_at", null)
+    .is("sales_cancelled_at", null)
+    .neq("status", "Anulowane")
+    .limit(20000);
+  if (attentionError) throw new Error(attentionError.message);
+  const attentionBySalesId = summarizeSalesPersonOrderAttention(
+    (attentionRows ?? []) as SalesPersonOrderAttentionRow[],
+    todayDateKeyInWarsaw()
+  );
+
   const pendingZkBySalesId = new Map<string, number>();
   const followUpDueZkBySalesId = new Map<string, number>();
   for (const row of watchRows ?? []) {
@@ -121,6 +140,9 @@ export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
       pendingZkCount: pendingZkBySalesId.get(p.id) ?? 0,
       followUpDueZkCount: followUpDueZkBySalesId.get(p.id) ?? 0,
       followUpDueNotesCount: followUpDueNotesBySalesId.get(p.id) ?? 0,
+      openOrderCount: attentionBySalesId.get(p.id)?.openCount ?? 0,
+      shelfWaitingCount: attentionBySalesId.get(p.id)?.shelfWaitingCount ?? 0,
+      overdueZdCount: attentionBySalesId.get(p.id)?.overdueZdCount ?? 0,
       linkedUserId: linked?.id ?? null,
       linkedUserEmail: linked?.email ?? null,
       linkedUserCreatedAt: linked?.createdAt ?? null,
