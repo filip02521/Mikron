@@ -91,4 +91,15 @@ describe("DepartmentBoardQuestionForm", () => {
     expect(screen.getByLabelText("Temat").getAttribute("disabled")).not.toBeNull();
     expect(screen.getByLabelText("Treść").getAttribute("disabled")).not.toBeNull();
   });
+
+  it("przy nieaktywnym Wyślij mówi, czego brakuje", () => {
+    render(<DepartmentBoardQuestionForm {...baseProps} title="" body="  " />);
+    expect(screen.getAllByText("Wpisz temat i treść pytania.").length).toBeGreaterThan(0);
+    cleanup();
+    render(<DepartmentBoardQuestionForm {...baseProps} body="" />);
+    expect(screen.getAllByText("Wpisz treść pytania.").length).toBeGreaterThan(0);
+    cleanup();
+    render(<DepartmentBoardQuestionForm {...baseProps} />);
+    expect(screen.queryByText(/^Wpisz /)).toBeNull();
+  });
 });

@@ -1,3 +1,8 @@
+import { PROCUREMENT_TEAM_LABEL, PROCUREMENT_TEAM_LABEL_TITLE } from "@/lib/orders/procurement-copy";
+import {
+  VERIFICATION_PROCUREMENT_MATCHES_SUPPLIER,
+  VERIFICATION_PROCUREMENT_WILL_FILL,
+} from "@/lib/orders/verification-gaps";
 import { parseDateOnly, formatDateString } from "@/lib/orders/dates";
 import { isPastExpectedDate } from "@/lib/orders/delivery-eta";
 import {
@@ -84,11 +89,14 @@ export function verificationSublineFromDetail(statusDetail: string | null): stri
   ) {
     return "Trwa dopasowanie dostawcy w systemie";
   }
-  if (statusDetail.includes("Dział dostaw dopasuje dostawcę")) {
+  if (statusDetail.includes(VERIFICATION_PROCUREMENT_MATCHES_SUPPLIER)) {
     return "Zakupy dopasują dostawcę - bez Twojej akcji";
   }
-  if (statusDetail.includes("Dział dostaw uzupełni:")) {
-    const match = statusDetail.match(/Dział dostaw uzupełni: ([^.]+)/);
+  const willFillAt = statusDetail.indexOf(VERIFICATION_PROCUREMENT_WILL_FILL);
+  if (willFillAt >= 0) {
+    const match = statusDetail
+      .slice(willFillAt + VERIFICATION_PROCUREMENT_WILL_FILL.length)
+      .match(/^ ([^.]+)/);
     return match ? `Zakupy uzupełnią ${match[1]}` : "Zakupy dopracują szczegóły";
   }
   if (statusDetail.includes("nie musisz")) {
@@ -249,7 +257,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     return {
       headline: row.statusTitle,
       headlineTone: "dismiss",
-      subline: `Prośba została anulowana przez dział dostaw. Potwierdź, aby zamknąć sprawę i usunąć ją z listy.${noteSuffix}`,
+      subline: `Prośba została anulowana przez ${PROCUREMENT_TEAM_LABEL}. Potwierdź, aby zamknąć sprawę i usunąć ją z listy.${noteSuffix}`,
       sortPriority: 3,
     };
   }
@@ -339,7 +347,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     return {
       headline: "Czeka na zamówienie u dostawcy",
       headlineTone: "neutral",
-      subline: "Dział dostaw złoży zamówienie planowo lub osobno",
+      subline: `${PROCUREMENT_TEAM_LABEL_TITLE} złoży zamówienie planowo lub osobno`,
       sortPriority: 8,
     };
   }

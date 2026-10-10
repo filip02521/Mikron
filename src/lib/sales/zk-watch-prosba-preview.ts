@@ -1,3 +1,4 @@
+import { PROCUREMENT_TEAM_LABEL } from "@/lib/orders/procurement-copy";
 import { parseDateOnly } from "@/lib/orders/dates";
 import {
   buildDeliveryDateMetaDisplay,
@@ -223,7 +224,7 @@ export function resolveZkProsbaPreviewDelivery(
     deliveryCaption: "Termin dostawy",
     deliveryTone: "pending",
     deliveryDisplay: null,
-    deliveryEmptyLabel: "Jeszcze nie ustalono - dział dostaw poda datę w kolejnych krokach.",
+    deliveryEmptyLabel: `Jeszcze nie ustalono - ${PROCUREMENT_TEAM_LABEL} poda datę w kolejnych krokach.`,
   };
 }
 
