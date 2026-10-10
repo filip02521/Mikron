@@ -1,5 +1,10 @@
 import type { SalesBoardAttentionSnapshot } from "@/lib/data/department-board";
 import {
+  collectPendingZdDeadlineChanges,
+  zdDeadlineChangeNeedsClick,
+} from "@/lib/orders/zd-deadline-change-pending";
+import { zdFulfillmentDeadlineChangeShortLabel } from "@/lib/orders/zd-fulfillment-deadline-change";
+import {
   rowNeedsSalesAction,
 } from "@/lib/orders/my-order-inbox-filter";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
@@ -31,6 +36,7 @@ export type SalesDayStartSource =
   | "mixed_pickup"
   | "zk_warehouse"
   | "cancel_ack"
+  | "zd_deadline_change"
   | "note_from_procurement"
   | "informacja_ready"
   | "zk_follow_up"
@@ -64,6 +70,7 @@ const PRIORITY: Record<SalesDayStartSource, number> = {
   teeth_handover: 12,
   zk_warehouse: 15,
   cancel_ack: 20,
+  zd_deadline_change: 22,
   note_from_procurement: 25,
   informacja_ready: 30,
   zk_follow_up: 40,
@@ -378,6 +385,46 @@ function buildBoardItems(
   return items;
 }
 
+/** Przesunięty / przyspieszony termin ZD — obietnica dla klienta się zmieniła, potwierdź przy prośbie. */
+function buildZdDeadlineChangeItems(rows: MyOrderRow[]): SalesDayStartItem[] {
+  const pending = collectPendingZdDeadlineChanges(rows).filter((item) =>
+    zdDeadlineChangeNeedsClick(item.change)
+  );
+  if (pending.length === 0) return [];
+
+  if (pending.length === 1) {
+    const item = pending[0]!;
+    return [
+      {
+        id: `zd-change-${item.orderIds[0]}`,
+        source: "zd_deadline_change",
+        priority: PRIORITY.zd_deadline_change,
+        title: item.supplierName?.trim() || "Do ustalenia",
+        subtitle: zdFulfillmentDeadlineChangeShortLabel(item.change),
+        href: appendMojeFocusOrderIds("/moje", item.orderIds.slice(0, 8)),
+        count: 1,
+        ctaLabel: "Zobacz",
+      },
+    ];
+  }
+
+  return [
+    {
+      id: "zd-change-many",
+      source: "zd_deadline_change",
+      priority: PRIORITY.zd_deadline_change,
+      title: `Zmienione terminy dostaw (${pending.length})`,
+      subtitle: "Sprawdź nowe daty i potwierdź przy prośbach - może trzeba uprzedzić klienta.",
+      href: appendMojeFocusOrderIds(
+        "/moje",
+        pending.flatMap((item) => item.orderIds.slice(0, 1)).slice(0, 8)
+      ),
+      count: pending.length,
+      ctaLabel: "Zobacz",
+    },
+  ];
+}
+
 function buildNoteFromProcurementItems(rows: MyOrderRow[]): SalesDayStartItem[] {
   const noteRows = rows.filter((row) => {
     if (!row.requestNoteUnread) return false;
@@ -445,10 +492,11 @@ export function buildSalesDayStartSnapshot(input: {
 
   const orderItems = buildOrderActionItems(rows);
   const noteItems = buildNoteFromProcurementItems(rows);
+  const zdChangeItems = buildZdDeadlineChangeItems(rows);
   const notepadItems = buildNotepadItems(watches, notes, previewDla, unseenWarehouseWatchIds);
   const boardItems = boardAttention ? buildBoardItems(boardAttention, previewDla) : [];
 
-  const items = [...orderItems, ...noteItems, ...notepadItems, ...boardItems].sort(
+  const items = [...orderItems, ...zdChangeItems, ...noteItems, ...notepadItems, ...boardItems].sort(
     (a, b) => a.priority - b.priority || (b.count ?? 0) - (a.count ?? 0)
   );
 
@@ -457,6 +505,7 @@ export function buildSalesDayStartSnapshot(input: {
     inboxSummary.cancelAckCount +
     inboxSummary.informacjaReadyCount +
     noteItems.reduce((sum, i) => sum + (i.count ?? 1), 0) +
+    zdChangeItems.reduce((sum, i) => sum + (i.count ?? 1), 0) +
     notepadItems.length +
     boardItems.reduce((sum, i) => sum + (i.count ?? 1), 0);
 
@@ -479,6 +528,8 @@ export function salesDayStartSourceLabel(source: SalesDayStartSource): string {
       return "Na regale";
     case "cancel_ack":
       return "Anulowanie";
+    case "zd_deadline_change":
+      return "Zmiana terminu";
     case "note_from_procurement":
       return "Uwagi zakupów";
     case "informacja_ready":
