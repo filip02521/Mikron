@@ -105,20 +105,12 @@ export async function computeSalesActivityVersion(
 ): Promise<string> {
   if (!hasSupabaseConfig()) return "0";
 
+  // Ten sam zbiór wierszy co layout (fetchSalesShellMetrics) — inna próbka = wieczne „są zmiany”.
+  const { fetchIndividualOrders } = await import("@/lib/data/queries");
+  const orders = await fetchIndividualOrders({ salesPersonId, hideSalesAcknowledged: false });
+  const ordersPart = computeSalesActivityVersionFromRows(filterSalesActivityRows(orders));
+
   const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("individual_orders")
-    .select(
-      "action_at, ordered_at, delivery_at, status, sales_acknowledged_at, request_kind, informacja_stock_out_reorder, zd_fulfillment_deadline, zd_fulfillment_source, zd_fulfillment_synced_at, zd_fulfillment_dok_id, zd_fulfillment_dok_nr, sales_request_note_updated_at, sales_request_note_seen_at"
-    )
-    .eq("sales_person_id", salesPersonId);
-
-  if (error) throw new Error(error.message);
-
-  const ordersPart = computeSalesActivityVersionFromRows(
-    filterSalesActivityRows((data ?? []) as SalesActivityRow[])
-  );
-
   const { data: watchesRaw, error: watchesError } = await supabase
     .from("sales_zk_watches")
     .select("updated_at, line_checks")

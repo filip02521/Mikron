@@ -56,7 +56,9 @@ describe("buildSalesDayStartSnapshot", () => {
     expect(pickupItems[0]?.title).toBe("Potwierdź odbiór z regału (4)");
     expect(pickupItems[0]?.ctaLabel).toBe("Przejdź");
     expect(pickupItems[0]?.scrollTarget).toBe("moje-section-action");
-    expect(snapshot.totalActionCount).toBe(3);
+    // Licznik = to, co widać w panelu: jedna pozycja „(4)” → 4, nie liczba wierszy.
+    expect(snapshot.totalActionCount).toBe(4);
+    expect(snapshot.mojeActionCount).toBe(4);
   });
 
   it("łączy odbiór zębów w jedno powiadomienie zbiorcze", () => {
@@ -78,7 +80,7 @@ describe("buildSalesDayStartSnapshot", () => {
     expect(teethItems[0]?.scrollTarget).toBe("moje-section-teeth");
     expect(teethItems[0]?.href).toBe("/moje#moje-section-teeth");
     expect(snapshotActionWeight(snapshot)).toBe(2);
-    expect(snapshot.totalActionCount).toBe(1);
+    expect(snapshot.totalActionCount).toBe(2);
   });
 
   it("łączy mieszany odbiór zębów i towaru w jedno powiadomienie", () => {
@@ -168,6 +170,8 @@ describe("buildSalesDayStartSnapshot", () => {
     });
 
     expect(snapshot.totalActionCount).toBe(3);
+    // Anulowanie jest na /moje; przypomnienie ZK i odpowiedź z Tablicy mają własne liczniki w menu.
+    expect(snapshot.mojeActionCount).toBe(1);
     expect(snapshot.items.find((i) => i.source === "board_announcement")).toBeUndefined();
     const answerItem = snapshot.items.find((i) => i.source === "board_answer");
     expect(answerItem?.title).toContain("Twoje pytanie");
@@ -556,5 +560,15 @@ describe("salesDayStartPanelDescription", () => {
     expect(salesDayStartPanelDescription(1)).toContain("1 pilna sprawa");
     expect(salesDayStartPanelDescription(8)).toContain("8 pilnych spraw");
     expect(salesDayStartPanelDescription(8)).not.toContain("regału");
+  });
+});
+
+describe("buildSalesDayStartSnapshot — błąd notatnika", () => {
+  it("pokazuje ostrzeżenie zamiast „wszystko zrobione”, bez liczenia go jako sprawy", () => {
+    const snapshot = buildSalesDayStartSnapshot({ rows: [], notepadLoadFailed: true });
+    expect(snapshot.items[0]?.id).toBe("notepad-load-failed");
+    expect(snapshot.totalActionCount).toBe(0);
+    expect(snapshot.mojeActionCount).toBe(0);
+    expect(snapshot.cleared).toBe(false);
   });
 });

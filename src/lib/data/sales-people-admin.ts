@@ -76,17 +76,21 @@ export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
     ),
   ]);
 
-  const { data: orderRows, error: ordersError } = await supabase
-    .from("individual_orders")
-    .select("sales_person_id");
-  if (ordersError) throw new Error(ordersError.message);
-
-  const orderCountBySalesId = new Map<string, number>();
-  for (const row of orderRows ?? []) {
-    const id = row.sales_person_id;
-    if (!id) continue;
-    orderCountBySalesId.set(id, (orderCountBySalesId.get(id) ?? 0) + 1);
-  }
+  // COUNT w SQL — pobieranie wierszy cięła domyślna granica 1000 w query-builderze,
+  // a orderCount blokuje usunięcie handlowca w panelu admina.
+  const orderCountBySalesId = new Map<string, number>(
+    await Promise.all(
+      (people ?? []).map(async (person) => {
+        const id = person.id as string;
+        const { count, error } = await supabase
+          .from("individual_orders")
+          .select("id", { count: "exact", head: true })
+          .eq("sales_person_id", id);
+        if (error) throw new Error(error.message);
+        return [id, count ?? 0] as const;
+      })
+    )
+  );
 
   const pendingZkBySalesId = new Map<string, number>();
   const followUpDueZkBySalesId = new Map<string, number>();

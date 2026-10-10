@@ -4,7 +4,6 @@ import {
 } from "@/lib/orders/my-order-inbox-filter";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import {
-  summarizeMyOrdersInbox,
   enrichMyOrderSalesUi,
   type MyOrdersInboxSummary,
 } from "@/lib/orders/my-order-sales-ui";
@@ -54,7 +53,10 @@ export type SalesDayStartItem = {
 
 export type SalesDayStartSnapshot = {
   items: SalesDayStartItem[];
+  /** Dzwonek — suma pozycji z listy (ta sama liczba, którą widać po otwarciu). */
   totalActionCount: number;
+  /** Badge „Moje” — tylko sprawy z listy /moje; ZK, notatki i Tablica mają własne liczniki. */
+  mojeActionCount: number;
   cleared: boolean;
 };
 
@@ -71,6 +73,16 @@ const PRIORITY: Record<SalesDayStartSource, number> = {
   board_answer: 60,
   board_announcement: 70,
 };
+
+/** Źródła, które handlowiec załatwia na /moje (reszta ma własne liczniki w menu). */
+const MOJE_SOURCES = new Set<SalesDayStartSource>([
+  "pickup",
+  "mixed_pickup",
+  "teeth_handover",
+  "cancel_ack",
+  "note_from_procurement",
+  "informacja_ready",
+]);
 
 const MOJE_ACTION_SECTION = mojeSectionDomId("action");
 const MOJE_INFORMACJA_SECTION = mojeSectionDomId("informacja");
@@ -438,32 +450,45 @@ export function buildSalesDayStartSnapshot(input: {
   boardAttention?: SalesBoardAttentionSnapshot | null;
   previewDla?: string | null;
   unseenWarehouseWatchIds?: Set<string> | string[];
+  notepadLoadFailed?: boolean;
 }): SalesDayStartSnapshot {
   const { rows, watches = [], notes = [], boardAttention, previewDla, unseenWarehouseWatchIds } =
     input;
-  const inboxSummary = summarizeMyOrdersInbox(rows);
 
   const orderItems = buildOrderActionItems(rows);
   const noteItems = buildNoteFromProcurementItems(rows);
   const notepadItems = buildNotepadItems(watches, notes, previewDla, unseenWarehouseWatchIds);
   const boardItems = boardAttention ? buildBoardItems(boardAttention, previewDla) : [];
 
-  const items = [...orderItems, ...noteItems, ...notepadItems, ...boardItems].sort(
+  // count: 0 — widoczne ostrzeżenie, ale nie „sprawa do zrobienia” w licznikach.
+  const loadErrorItems: SalesDayStartItem[] = input.notepadLoadFailed
+    ? [
+        {
+          id: "notepad-load-failed",
+          source: "note_follow_up",
+          priority: 0,
+          title: "Nie udało się wczytać przypomnień ZK i notatek",
+          subtitle: "Liczniki ZK i Notatnika mogą być niepełne - odśwież stronę.",
+          href: buildNotatnikPageHref({ tab: "zk", surface: "zk" }),
+          count: 0,
+          ctaLabel: "Otwórz",
+        },
+      ]
+    : [];
+
+  const items = [...loadErrorItems, ...orderItems, ...noteItems, ...notepadItems, ...boardItems].sort(
     (a, b) => a.priority - b.priority || (b.count ?? 0) - (a.count ?? 0)
   );
 
-  const totalActionCount =
-    inboxSummary.pickupCount +
-    inboxSummary.cancelAckCount +
-    inboxSummary.informacjaReadyCount +
-    noteItems.reduce((sum, i) => sum + (i.count ?? 1), 0) +
-    notepadItems.length +
-    boardItems.reduce((sum, i) => sum + (i.count ?? 1), 0);
+  const weight = (list: SalesDayStartItem[]) =>
+    list.reduce((sum, i) => sum + (i.count ?? 1), 0);
+  const totalActionCount = weight(items);
 
   return {
     items,
     totalActionCount,
-    cleared: totalActionCount === 0,
+    mojeActionCount: weight(items.filter((i) => MOJE_SOURCES.has(i.source))),
+    cleared: totalActionCount === 0 && !input.notepadLoadFailed,
   };
 }
 
