@@ -54,7 +54,7 @@ describe("buildSalesDayStartSnapshot", () => {
     expect(pickupItems[0]?.id).toBe("pickup-ready");
     expect(pickupItems[0]?.count).toBe(4);
     expect(pickupItems[0]?.title).toBe("Potwierdź odbiór z regału (4)");
-    expect(pickupItems[0]?.ctaLabel).toBe("Przejdź");
+    expect(pickupItems[0]?.ctaLabel).toBe("Otwórz");
     expect(pickupItems[0]?.scrollTarget).toBe("moje-section-action");
     // Licznik = to, co widać w panelu: jedna pozycja „(4)” → 4, nie liczba wierszy.
     expect(snapshot.totalActionCount).toBe(4);
@@ -317,7 +317,7 @@ describe("buildSalesDayStartSnapshot", () => {
 
     const zkItem = snapshot.items.find((i) => i.source === "zk_follow_up");
     expect(zkItem?.href).toBe("/zk?focusWatch=w1#watch-w1");
-    expect(zkItem?.ctaLabel).toBe("ZK czekające");
+    expect(zkItem?.ctaLabel).toBe("Otwórz");
   });
 
   it("linkuje przyjście towaru ZK do /zk z focusWatch", () => {
@@ -343,7 +343,7 @@ describe("buildSalesDayStartSnapshot", () => {
 
     const item = snapshot.items.find((i) => i.id.startsWith("zk-warehouse-arrival"));
     expect(item?.href).toBe("/zk?focusWatch=w-wh#watch-w-wh");
-    expect(item?.ctaLabel).toBe("ZK czekające");
+    expect(item?.ctaLabel).toBe("Otwórz");
     expect(item?.source).toBe("zk_warehouse");
   });
 
@@ -415,7 +415,7 @@ describe("buildSalesDayStartSnapshot", () => {
     expect(item?.title).toBe("Mikran");
     expect(item?.subtitle).toBe("Pilne - sprawdź termin");
     expect(item?.scrollTarget).toBeUndefined();
-    expect(item?.ctaLabel).toBe("Zobacz");
+    expect(item?.ctaLabel).toBe("Otwórz");
     expect(item?.href).toContain("focusOrders=o-n1");
   });
 
