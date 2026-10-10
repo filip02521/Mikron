@@ -89,14 +89,19 @@ export async function fetchSalesZkPageData(
       .from("sales_zk_watches")
       .select("*")
       .eq("sales_person_id", salesPersonId)
-      .order("created_at", { ascending: true })
+      // Limit 500 celowy (bez starych śmieci) — ale ucinamy najstarsze zamknięte, nie nowe ZK.
+      .order("closed_at", { ascending: false, nullsFirst: true })
+      .order("archived_at", { ascending: false, nullsFirst: true })
+      .order("created_at", { ascending: false })
       .limit(500),
     fetchZkLinkableOrdersForSalesPerson(salesPersonId),
   ]);
 
   if (watchesRes.error) throw new Error(watchesRes.error.message);
 
-  const watches = (watchesRes.data ?? []) as SalesZkWatch[];
+  const watches = ((watchesRes.data ?? []) as SalesZkWatch[]).sort((a, b) =>
+    a.created_at.localeCompare(b.created_at)
+  );
   const { zkWatches, archivedZkWatches } = partitionSalesZkWatches(watches);
 
   return {
@@ -117,6 +122,8 @@ export async function fetchSalesNotesPageData(
     .from("sales_notes")
     .select("*")
     .eq("sales_person_id", salesPersonId)
+    // Aktywne najpierw — archiwum nie wypycha ich poza limit.
+    .order("archived_at", { ascending: false, nullsFirst: true })
     .order("pinned", { ascending: false })
     .order("sort_order", { ascending: true })
     .order("updated_at", { ascending: false })

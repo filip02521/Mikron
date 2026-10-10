@@ -203,7 +203,10 @@ export function NotatnikClient({
   const searchParams = useSearchParams();
   const hydrated = useClientHydrated();
   const undoShortcut = useUndoShortcutLabel();
-  const tourDemo = useSalesOnboardingDemo("notatnik");
+  // Ten sam klient obsługuje krok „notatnik” (/zk) i „notatnik-notes” (/notatnik) — oba pokazują dane demo.
+  const zkTourDemo = useSalesOnboardingDemo("notatnik");
+  const notesTourDemo = useSalesOnboardingDemo("notatnik-notes");
+  const tourDemo = zkTourDemo || notesTourDemo;
   const demoInitial = useMemo(
     () =>
       buildOnboardingNotepadDemo(
