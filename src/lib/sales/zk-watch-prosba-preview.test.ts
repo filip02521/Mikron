@@ -206,6 +206,18 @@ describe("resolveZkProsbaPreviewDelivery", () => {
     expect(delivery.deliveryCaption).not.toBe("Z historii");
   });
 
+  it("częściowa realizacja: data przyjęcia jako fakt, nie zaległy szacunek", () => {
+    const delivery = resolveZkProsbaPreviewDelivery({
+      ...baseOrder,
+      status: "Czesciowo_zrealizowane",
+      zd_fulfillment_deadline: null,
+      delivery_at: "2026-07-15",
+    });
+    expect(delivery.deliveryTone).not.toBe("overdue");
+    expect(delivery.deliveryCaption).not.toBe("Z historii");
+    expect(delivery.deliveryEmptyLabel).toContain("Część przyjęta");
+  });
+
   it("uses delivery_at when ZD missing", () => {
     const delivery = resolveZkProsbaPreviewDelivery({
       ...baseOrder,

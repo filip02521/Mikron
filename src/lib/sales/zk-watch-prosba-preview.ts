@@ -1,3 +1,4 @@
+import { formatPlDate } from "@/lib/display-labels";
 import { parseDateOnly } from "@/lib/orders/dates";
 import {
   buildDeliveryDateMetaDisplay,
@@ -197,6 +198,15 @@ export function resolveZkProsbaPreviewDelivery(
   }
 
   const deliveryAt = order.delivery_at?.trim();
+  // Przy częściowej realizacji delivery_at to fakt (przyjęcie części), nie szacunek — nie „zaległe”.
+  if (deliveryAt && order.status === "Czesciowo_zrealizowane") {
+    return {
+      deliveryCaption: "Termin dostawy",
+      deliveryTone: "pending",
+      deliveryDisplay: null,
+      deliveryEmptyLabel: `Część przyjęta ${formatPlDate(deliveryAt)} - na resztę dział dostaw poda termin.`,
+    };
+  }
   if (deliveryAt) {
     const parsed = parseDateOnly(deliveryAt.slice(0, 10));
     if (parsed) {

@@ -1,4 +1,5 @@
 import { formatPlDate } from "@/lib/display-labels";
+import { timingOverdueSuffix } from "@/lib/orders/timing-overdue";
 import {
   estimateDeliveryEta,
   estimateOptionsFromQuantiles,
@@ -932,7 +933,7 @@ function presentZamowienie(
         : null;
     const leadPart =
       leadDays != null && leadDays > 0 ? ` · ~${leadDays} dni rob.` : "";
-    timingLabel = `Planowana dostawa: ${formatPlDate(teethDeliveryDate)}${leadPart}${overdue ? " · po terminie" : ""}`;
+    timingLabel = `Planowana dostawa: ${formatPlDate(teethDeliveryDate)}${leadPart}${timingOverdueSuffix(overdue)}`;
 
     const configuredLead =
       order.supplier_id && options?.teethLeadDaysBySupplierId

@@ -1,4 +1,5 @@
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
+import { isTimingOverdue, stripTimingOverdue } from "@/lib/orders/timing-overdue";
 import { formatPlDate } from "@/lib/display-labels";
 import { parseDateOnly, formatDateString } from "@/lib/orders/dates";
 import {
@@ -93,10 +94,9 @@ export function parseMyOrderTimingLabel(timingLabel: string): {
   overdue: boolean;
   lowConfidence: boolean;
 } {
-  const overdue = /·\s*po terminie/i.test(timingLabel);
+  const overdue = isTimingOverdue(timingLabel);
   const lowConfidence = /mało historii/i.test(timingLabel);
-  const estimate = timingLabel
-    .replace(/\s*·\s*po terminie\s*/gi, "")
+  const estimate = stripTimingOverdue(timingLabel)
     .replace(/\s*·\s*mało historii\s*/gi, "")
     .trim();
 
