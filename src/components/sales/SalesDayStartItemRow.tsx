@@ -5,6 +5,7 @@ import { runAfterScrollUnlock } from "@/lib/ui/page-scroll-lock";
 import type { SalesDayStartItem } from "@/lib/sales/sales-day-start";
 import { salesDayStartSourceLabel } from "@/lib/sales/sales-day-start";
 import { cn } from "@/lib/cn";
+import { SalesDayStartReminderActions } from "@/components/sales/SalesDayStartReminderActions";
 import {
   mojeQueueRowActionsClass,
   mojeQueueRowLayoutClass,
@@ -88,11 +89,14 @@ export function SalesDayStartItemRow({
   previewHref,
   onNavigate,
   onScrollToSection,
+  onReminderChanged,
 }: {
   item: SalesDayStartItem;
   previewHref: (href: string) => string;
   onNavigate?: () => void;
   onScrollToSection?: (scrollTarget: string, fallbackHref: string) => void;
+  /** Gdy podane (własne konto, nie podgląd) — „Zrobione” / „Jutro” przy przypomnieniach. */
+  onReminderChanged?: () => void | Promise<void>;
 }) {
   const router = useRouter();
 
@@ -153,6 +157,9 @@ export function SalesDayStartItemRow({
           </span>
         </div>
       </button>
+      {item.reminder && onReminderChanged ? (
+        <SalesDayStartReminderActions reminder={item.reminder} onDone={onReminderChanged} />
+      ) : null}
     </li>
   );
 }

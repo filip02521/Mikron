@@ -50,6 +50,8 @@ export type SalesDayStartItem = {
   scrollTarget?: string;
   count?: number;
   ctaLabel: string;
+  /** Przypomnienie — w panelu można je od razu oznaczyć jako zrobione albo przesunąć. */
+  reminder?: { kind: "zk" | "note"; id: string };
 };
 
 export type SalesDayStartSnapshot = {
@@ -175,7 +177,7 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
       href: `/moje#${MOJE_ACTION_SECTION}`,
       scrollTarget: MOJE_ACTION_SECTION,
       count: pickupLineCount,
-      ctaLabel: "Przejdź",
+      ctaLabel: "Otwórz",
     });
   } else if (pickupLineCount === 1 && pickupGroups[0]) {
     const group = pickupGroups[0];
@@ -205,7 +207,7 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
       href: `/moje#${MOJE_TEETH_ACTION_SECTION_ID}`,
       scrollTarget: MOJE_TEETH_ACTION_SECTION_ID,
       count: teethLineCount,
-      ctaLabel: "Przejdź",
+      ctaLabel: "Otwórz",
     });
   } else if (teethLineCount === 1 && teethGroups[0]) {
     const group = teethGroups[0];
@@ -235,7 +237,7 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
       href: `/moje#${MOJE_MIXED_ACTION_SECTION_ID}`,
       scrollTarget: MOJE_MIXED_ACTION_SECTION_ID,
       count: mixedLineCount,
-      ctaLabel: "Przejdź",
+      ctaLabel: "Otwórz",
     });
   } else if (mixedLineCount > 0 && mixedGroups[0]) {
     const group = mixedGroups[0];
@@ -266,7 +268,7 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
       href: `/moje#${MOJE_ACTION_SECTION}`,
       scrollTarget: MOJE_ACTION_SECTION,
       count: n,
-      ctaLabel: "Przejdź",
+      ctaLabel: "Otwórz",
     });
   }
 
@@ -290,7 +292,7 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
       href,
       scrollTarget: MOJE_INFORMACJA_SECTION,
       count: n,
-      ctaLabel: "Przejdź",
+      ctaLabel: "Otwórz",
     });
   }
 
@@ -337,7 +339,10 @@ function buildNotepadItems(
         extraParams: previewDla ? { dla: previewDla } : undefined,
       }),
       count: 1,
-      ctaLabel: isZkTask ? "ZK czekające" : "Notatki",
+      ctaLabel: "Otwórz",
+      reminder: isZkWarehouse
+        ? undefined
+        : { kind: isZkTask ? ("zk" as const) : ("note" as const), id: task.id },
     };
   });
 }
@@ -371,7 +376,7 @@ function buildBoardItems(
       subtitle: preview?.title ? `„${preview.title}”` : undefined,
       href,
       count: ownAnswerCount,
-      ctaLabel: "Tablica",
+      ctaLabel: "Otwórz",
     });
   }
 
@@ -408,7 +413,7 @@ function buildNoteFromProcurementItems(rows: MyOrderRow[]): SalesDayStartItem[] 
         subtitle,
         href,
         count: 1,
-        ctaLabel: "Zobacz",
+        ctaLabel: "Otwórz",
       },
     ];
   }
@@ -426,7 +431,7 @@ function buildNoteFromProcurementItems(rows: MyOrderRow[]): SalesDayStartItem[] 
       subtitle: `Otwórz prośbę i potwierdź „${MOJE_COPY_NOTES_ACK_BUTTON}” przy uwagach`,
       href,
       count: noteRows.length,
-      ctaLabel: "Zobacz",
+      ctaLabel: "Otwórz",
     },
   ];
 }
