@@ -1,4 +1,5 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
+import { warsawMidnightIso } from "@/lib/time/warsaw";
 import { normalizeIndividualOrders } from "@/lib/data/normalize-order";
 import { runRepairIncompleteIndividualOrders } from "@/lib/services/repair-incomplete-orders-runner";
 import { mapRowToOrderFormSupplier, mapRowsToOrderFormSuppliers } from "@/lib/orders/order-form-suppliers";
@@ -154,7 +155,7 @@ export async function fetchSalesAcknowledgedOrders(
   if (options?.acknowledgedSince) {
     const since = options.acknowledgedSince.includes("T")
       ? options.acknowledgedSince
-      : `${options.acknowledgedSince}T00:00:00+02:00`;
+      : warsawMidnightIso(options.acknowledgedSince);
     q = q.gte("sales_acknowledged_at", since);
   }
 

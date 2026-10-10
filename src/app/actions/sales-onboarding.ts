@@ -29,3 +29,24 @@ export async function completeSalesOnboarding(): Promise<{ ok: true } | { ok: fa
   revalidatePath("/", "layout");
   return { ok: true };
 }
+
+/** Ponowne wprowadzenie — zeruje znacznik, kreator pokaże się po odświeżeniu. */
+export async function restartSalesOnboarding(): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await getSessionUser();
+  if (!user || !isSalesAccount(user.role)) {
+    return { ok: false, error: "Brak uprawnień." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ sales_onboarding_completed_at: null })
+    .eq("id", user.id);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
