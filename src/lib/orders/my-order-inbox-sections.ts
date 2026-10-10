@@ -17,7 +17,7 @@ import { mojeSectionDomId } from "@/lib/orders/moje-section-focus";
 
 /** Sekcja u góry listy — wymaga kliknięcia handlowca. */
 export const MY_ORDER_ACTION_SECTION_COPY = {
-  title: "Potwierdź odbiór z regału",
+  title: "Do potwierdzenia",
   hint: "Towar czeka na regale albo sprawa jest do zamknięcia - potwierdź jednym kliknięciem.",
   icon: "action" as const,
   accent: "emerald" as const satisfies MyOrderSectionAccent,
@@ -47,6 +47,17 @@ export const MY_ORDER_DISMISS_SECTION_COPY = {
 export const MOJE_TEETH_ACTION_SECTION_ID = mojeSectionDomId("teeth");
 export const MOJE_MIXED_ACTION_SECTION_ID = mojeSectionDomId("mixed-pickup");
 
+/**
+ * Odpowiedź na prośbę „informacja o towarze” — towar leży u nas na półce. To nie jest odbiór z regału,
+ * więc osobna sekcja w kolorze informacji, a nie w zielonym „Do potwierdzenia”.
+ */
+export const MY_ORDER_INFORMACJA_READY_SECTION_COPY = {
+  title: "Towar jest już na magazynie",
+  hint: "Odpowiedź na Twoją prośbę o informację - towar leży u nas na półce. Potwierdź, że widziałeś/aś.",
+  icon: "informacja-ready" as const,
+  accent: "violet" as const satisfies MyOrderSectionAccent,
+};
+
 export const MY_ORDER_INFORMACJA_SECTION_COPY = {
   title: "Sprawdzamy dostępność",
   hint: "Bez zamówienia u dostawcy - odpowie magazyn.",
@@ -66,7 +77,7 @@ export const MY_ORDER_PROGRESS_SECTION_COPY: Record<
   },
   before_order: {
     title: "Przed zamówieniem",
-    hint: "Dział dostaw sprawdza lub zamawia - nie musisz nic robić.",
+    hint: "Dział zakupów sprawdza lub zamawia - nie musisz nic robić.",
     icon: "before_order",
     accent: "indigo",
   },

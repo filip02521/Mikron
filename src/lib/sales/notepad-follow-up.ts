@@ -1,5 +1,6 @@
 import type { SalesZkWatch } from "@/types/database";
 import { formatDateString } from "@/lib/orders/dates";
+import { isBusinessDay } from "@/lib/orders/business-calendar";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 
 function dateOnlyTimestamp(value: string | null | undefined): number | null {
@@ -49,11 +50,20 @@ export function addDaysToIso(isoDate: string, days: number): string {
   return formatDateString(d);
 }
 
-export function followUpQuickDates(): { label: string; value: string }[] {
-  const today = todayIso();
+/** „Jutro” w piątek / przed świętem to najbliższy dzień roboczy — przypomnienie nie wpada w weekend. */
+function nextBusinessDayQuickDate(today: string): { label: string; value: string } {
+  let value = addDaysToIso(today, 1);
+  while (!isBusinessDay(new Date(`${value}T12:00:00`))) value = addDaysToIso(value, 1);
+  if (value === addDaysToIso(today, 1)) return { label: "Jutro", value };
+  const weekday = new Date(`${value}T12:00:00`).toLocaleDateString("pl-PL", { weekday: "short" });
+  return { label: weekday.charAt(0).toUpperCase() + weekday.slice(1), value };
+}
+
+export function followUpQuickDates(referenceMs?: number): { label: string; value: string }[] {
+  const today = todayIso(referenceMs);
   return [
     { label: "Dziś", value: today },
-    { label: "Jutro", value: addDaysToIso(today, 1) },
+    nextBusinessDayQuickDate(today),
     { label: "Za tydz.", value: addDaysToIso(today, 7) },
   ];
 }

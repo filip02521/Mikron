@@ -11,7 +11,7 @@ export const boardQuestionsStatusTrackClass =
   "flex w-full flex-wrap gap-0.5 rounded-lg border border-slate-200/90 bg-slate-100/70 p-0.5 sm:flex-nowrap";
 
 export const boardQuestionsStatusChipClass =
-  "inline-flex min-h-9 min-w-0 flex-1 cursor-pointer items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-semibold leading-none transition sm:min-h-8 sm:px-2.5 sm:text-xs";
+  "inline-flex min-h-9 flex-auto cursor-pointer whitespace-nowrap sm:min-w-0 sm:flex-1 items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-semibold leading-none transition sm:min-h-8 sm:px-2.5 sm:text-xs";
 
 export const boardQuestionsStatusChipIdleClass =
   "text-slate-600 hover:bg-white/80 hover:text-slate-900";

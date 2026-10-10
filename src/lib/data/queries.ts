@@ -1,4 +1,5 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
+import { warsawMidnightIso } from "@/lib/time/warsaw";
 import { normalizeIndividualOrders } from "@/lib/data/normalize-order";
 import { runRepairIncompleteIndividualOrders } from "@/lib/services/repair-incomplete-orders-runner";
 import { mapRowToOrderFormSupplier, mapRowsToOrderFormSuppliers } from "@/lib/orders/order-form-suppliers";
@@ -114,9 +115,11 @@ export async function fetchIndividualOrders(filters?: {
     throw new Error("fetchIndividualOrders wymaga salesPersonId lub allowAll=true");
   }
   const supabase = createAdminClient();
+  // Z potwierdzonymi: niepotwierdzone najpierw, żeby limit ucinał stare potwierdzone, nie otwarte prośby.
   let q = supabase
     .from("individual_orders")
     .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
+    .order("sales_acknowledged_at", { ascending: false, nullsFirst: true })
     .order("action_at", { ascending: false })
     .limit(500);
   if (filters?.status) q = q.eq("status", filters.status);
@@ -129,7 +132,10 @@ export async function fetchIndividualOrders(filters?: {
   }
   const { data, error } = await q;
   if (error) throw new Error(error.message);
-  return normalizeIndividualOrders(data ?? []);
+  // Kolejność dla widoków jak dotąd: ostatnia akcja najpierw.
+  return normalizeIndividualOrders(data ?? []).sort((a, b) =>
+    (b.action_at ?? "").localeCompare(a.action_at ?? "")
+  );
 }
 
 /** Ostatnio potwierdzone przez handlowca (archiwum na /moje). */
@@ -154,7 +160,7 @@ export async function fetchSalesAcknowledgedOrders(
   if (options?.acknowledgedSince) {
     const since = options.acknowledgedSince.includes("T")
       ? options.acknowledgedSince
-      : `${options.acknowledgedSince}T00:00:00+02:00`;
+      : warsawMidnightIso(options.acknowledgedSince);
     q = q.gte("sales_acknowledged_at", since);
   }
 

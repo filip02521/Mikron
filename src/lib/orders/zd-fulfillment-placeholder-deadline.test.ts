@@ -75,7 +75,7 @@ describe("resolvePlaceholderZdFulfillmentDeadlineFromOrder", () => {
 
 describe("buildPlaceholderZdDeliveryDateMetaDisplay", () => {
   it("ma tytuł podpowiedzi dla handlowca", () => {
-    expect(buildPlaceholderZdDeliveryDateMetaDisplay().title).toContain("Dział dostaw");
+    expect(buildPlaceholderZdDeliveryDateMetaDisplay().title).toContain("Dział zakupów");
   });
 
   it("trzyma krótki detail pod wąską kolumnę meta", () => {

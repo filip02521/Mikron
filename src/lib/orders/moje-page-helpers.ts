@@ -1,7 +1,13 @@
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { fetchIndividualOrders, fetchDeliveryStats, fetchSalesAcknowledgedOrders, fetchSuppliersForRequestForms, fetchSuppliersOnVacationNow } from "@/lib/data/queries";
-import { fetchSalesBoardAttentionSnapshot, fetchDepartmentBoardAnnouncements, type SalesBoardAttentionSnapshot, type DepartmentBoardAnnouncementsSlice } from "@/lib/data/department-board";
-import { fetchSalesDayStartNotepadSlice } from "@/lib/data/sales-notepad";
+import { fetchDepartmentBoardAnnouncements, type SalesBoardAttentionSnapshot, type DepartmentBoardAnnouncementsSlice } from "@/lib/data/department-board";
+import type { fetchSalesDayStartNotepadSlice } from "@/lib/data/sales-notepad";
+import {
+  fetchDeliveryStatsForRequest,
+  fetchSalesBoardAttentionSnapshotForRequest,
+  fetchSalesDayStartNotepadSliceForRequest,
+  fetchSalesPersonOrdersForRequest,
+} from "@/lib/sales/fetch-sales-inbox";
 import { fetchActiveDelegationsForDelegate, type VacationDelegationRow } from "@/lib/data/vacation-delegations";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
@@ -69,7 +75,23 @@ export async function resolveMojePageContext(
       const own = await resolveSalesPersonForUser(user);
       ownSalesPersonId = own?.id ?? null;
 
-      if (isSalesManager(user.role) && previewSalesPersonId) {
+      // Kierownik wyznaczony na zastępcę działa jak zastępca (jak na /zk), nie tylko podgląd zespołu —
+      // także dla handlowca spoza swoich grup.
+      const managerDelegatePreview =
+        isSalesManager(user.role) &&
+        previewSalesPersonId &&
+        previewSalesPersonId !== ownSalesPersonId
+          ? await resolveDelegatePreviewSalesPerson(previewSalesPersonId, user)
+          : null;
+
+      if (managerDelegatePreview) {
+        salesPersonId = managerDelegatePreview.id;
+        salesPersonName = managerDelegatePreview.name;
+        isDelegatePreview = true;
+        try {
+          activeDelegations = await fetchActiveDelegationsForDelegate(user.id);
+        } catch {}
+      } else if (isSalesManager(user.role) && previewSalesPersonId) {
         const preview = await resolvePreviewSalesPerson(previewSalesPersonId, user);
         if (preview) {
           salesPersonId = preview.id;
@@ -245,8 +267,8 @@ export async function loadMojePageData(
         notepadData,
         announcementsSlice,
       ] = await Promise.all([
-        fetchIndividualOrders({ salesPersonId, hideSalesAcknowledged: false }),
-        fetchDeliveryStats(),
+        fetchSalesPersonOrdersForRequest(salesPersonId),
+        fetchDeliveryStatsForRequest(),
         viewingOwnPanel || isTeamPreview || delegatePreviewActive
           ? fetchSalesAcknowledgedOrders(salesPersonId, {
               acknowledgedSince: archiveAcknowledgedSinceExpanded(),
@@ -256,10 +278,10 @@ export async function loadMojePageData(
         fetchSuppliersForRequestForms(),
         fetchSuppliersOnVacationNow(todayDateKey),
         viewingOwnPanel && sessionUserId
-          ? fetchSalesBoardAttentionSnapshot(sessionUserId).catch(() => null)
+          ? fetchSalesBoardAttentionSnapshotForRequest(sessionUserId).catch(() => null)
           : Promise.resolve(null),
         viewingOwnPanel
-          ? fetchSalesDayStartNotepadSlice(salesPersonId).catch(() => null)
+          ? fetchSalesDayStartNotepadSliceForRequest(salesPersonId).catch(() => null)
           : Promise.resolve(null),
         loadMojeAnnouncements
           ? fetchDepartmentBoardAnnouncements(sessionUserId!).catch((e) => {
@@ -271,13 +293,16 @@ export async function loadMojePageData(
           : Promise.resolve(null),
       ]);
 
-      let acknowledgedRows = acknowledgedRows_;
-      const orders = await attachTeethDetailsIfNeeded(orderRows);
       const stats = statsRows as DeliveryStats[];
       const suppliers = supplierRows;
 
-      const { supplierScheduleById, weekDays } =
-        await loadPlannedOrderScheduleContext(orderRows, todayDateKey);
+      const [orders, { supplierScheduleById, weekDays }, acknowledgedRows] = await Promise.all([
+        attachTeethDetailsIfNeeded(orderRows),
+        loadPlannedOrderScheduleContext(orderRows, todayDateKey),
+        showSalesPersonOrdersPanel
+          ? attachTeethDetailsIfNeeded(acknowledgedRows_)
+          : Promise.resolve(acknowledgedRows_),
+      ]);
 
       if (!adminSalesPreview) {
         await scheduleAutoAssignSuppliers(orderRows, salesPersonId, 80, "autoAssignMissingSuppliersFromCatalog moje");
@@ -287,7 +312,6 @@ export async function loadMojePageData(
       let archiwumExtended: MojePageData["archiwumExtended"] = [];
 
       if (showSalesPersonOrdersPanel) {
-        acknowledgedRows = await attachTeethDetailsIfNeeded(acknowledgedRows);
         const legacyUnackedCancelled = orderRows.filter(
           (o) => o.status === "Anulowane" && !o.sales_acknowledged_at,
         );
@@ -324,10 +348,11 @@ export async function loadMojePageData(
         fetchSuppliersOnVacationNow(todayDateKey),
       ]);
 
-      const orders = await attachTeethDetailsIfNeeded(orderRows);
       const stats = statsRows as DeliveryStats[];
-      const { supplierScheduleById, weekDays } =
-        await loadPlannedOrderScheduleContext(orderRows, todayDateKey);
+      const [orders, { supplierScheduleById, weekDays }] = await Promise.all([
+        attachTeethDetailsIfNeeded(orderRows),
+        loadPlannedOrderScheduleContext(orderRows, todayDateKey),
+      ]);
 
       await scheduleAutoAssignSuppliers(orderRows, salesPersonId, 120, "autoAssignMissingSuppliersFromCatalog ops moje");
 

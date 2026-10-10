@@ -1,4 +1,6 @@
+import { PROCUREMENT_TEAM_LABEL_GENITIVE } from "@/lib/orders/procurement-copy";
 import { formatPlDate } from "@/lib/display-labels";
+import { timingOverdueSuffix } from "@/lib/orders/timing-overdue";
 import {
   estimateDeliveryEta,
   estimateOptionsFromQuantiles,
@@ -932,7 +934,7 @@ function presentZamowienie(
         : null;
     const leadPart =
       leadDays != null && leadDays > 0 ? ` · ~${leadDays} dni rob.` : "";
-    timingLabel = `Planowana dostawa: ${formatPlDate(teethDeliveryDate)}${leadPart}${overdue ? " · po terminie" : ""}`;
+    timingLabel = `Planowana dostawa: ${formatPlDate(teethDeliveryDate)}${leadPart}${timingOverdueSuffix(overdue)}`;
 
     const configuredLead =
       order.supplier_id && options?.teethLeadDaysBySupplierId
@@ -1016,7 +1018,7 @@ function presentZamowienie(
         ...base,
         statusTitle: "Przed zamówieniem",
         statusDetail:
-          ["Prośba jest u działu dostaw. Złożymy zamówienie planowo (z innymi towarami) lub osobno."]
+          [`Prośba jest u ${PROCUREMENT_TEAM_LABEL_GENITIVE}. Złożymy zamówienie planowo (z innymi towarami) lub osobno.`]
             .filter(Boolean)
             .join(" "),
         timingLabel,

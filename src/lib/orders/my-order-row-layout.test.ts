@@ -129,7 +129,7 @@ describe("my-order-row-layout", () => {
     const r = row({
       statusTitle: "W dziale dostaw",
       statusDetail:
-        "Dział dostaw dopasuje dostawcę. Prośba jest zapisana - nie musisz nic uzupełniać.",
+        "Dział zakupów dopasuje dostawcę. Prośba jest zapisana - nie musisz nic uzupełniać.",
       subline: "Zakupy dopasują dostawcę - bez Twojej akcji",
     });
     expect(myOrderCollapsedStatusHint(r)).toContain("Zakupy dopasują dostawcę");

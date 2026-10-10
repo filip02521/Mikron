@@ -21,6 +21,7 @@ import {
 import { formatSubiektKontrahentLabel } from "@/lib/subiekt/match-supplier";
 import { normalizeSalesClientName } from "@/lib/orders/sales-client-label";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
+import { prosbaLineSubiektFeedback } from "@/lib/orders/consolidate-form-status";
 import type { SubiektKontrahent } from "@/lib/subiekt/types";
 import { cn } from "@/lib/cn";
 
@@ -35,7 +36,10 @@ export function SubiektClientNameField({
   placeholder = "dla kogo jest ten towar - pojawi się w mailu po dostawie",
   inputId,
   autoFocus,
+  prosba = false,
 }: {
+  /** Formularz /prosba — bez powtarzania komunikatu o niedostępnym Subiekcie. */
+  prosba?: boolean;
   value: string;
   clientKhId?: number | null;
   onChange: (patch: { clientName: string; clientKhId: number | null }) => void;
@@ -69,7 +73,11 @@ export function SubiektClientNameField({
     () => (searchActive ? items : []),
     [items, searchActive]
   );
-  const visibleFeedback = searchActive ? feedback : null;
+  const visibleFeedback = !searchActive
+    ? null
+    : prosba
+      ? prosbaLineSubiektFeedback(feedback)
+      : feedback;
   const visibleStatus = searchActive ? (isPending ? "loading" : status) : "idle";
   const itemsKey = visibleItems.map((item) => item.kh_Id).join("\0");
   const [appliedItemsKey, setAppliedItemsKey] = useState(itemsKey);
@@ -281,7 +289,10 @@ export function SubiektClientNameField({
           nazwę ręcznie.
         </p>
       ) : configFeedback ? (
-        <p className="text-xs text-slate-500">{configFeedback.message}</p>
+        <p className="text-xs text-slate-500">
+          {/* /prosba: komunikat o Subiekcie jest raz, nad pozycjami. */}
+          {prosba ? "Wpisz nazwę klienta ręcznie." : configFeedback.message}
+        </p>
       ) : null}
 
       {showFeedbackBelow && visibleFeedback ? (

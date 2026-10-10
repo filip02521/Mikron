@@ -8,35 +8,16 @@ import { useDelegateFor } from "@/components/moje/DelegatePreviewContext";
 import {
   buildZdDeadlineChangeToastMessage,
   zdDeadlineChangeToastTone,
-  type PendingZdDeadlineChange,
 } from "@/components/moje/zd-fulfillment-deadline-change-auto-ack-copy";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
-import type { ZdFulfillmentDeadlineChangeDisplay } from "@/lib/orders/zd-fulfillment-deadline-change";
+import {
+  collectPendingZdDeadlineChanges,
+  zdDeadlineChangeNeedsClick,
+  type PendingZdDeadlineChange,
+} from "@/lib/orders/zd-deadline-change-pending";
 
-export function collectPendingZdDeadlineChanges(rows: MyOrderRow[]): PendingZdDeadlineChange[] {
-  const pending: PendingZdDeadlineChange[] = [];
-
-  for (const row of rows) {
-    const lineChanges = row.lines.filter((line) => line.zdFulfillment?.deadlineChange);
-    const change: ZdFulfillmentDeadlineChangeDisplay | null | undefined =
-      row.zdFulfillment?.deadlineChange ?? lineChanges[0]?.zdFulfillment?.deadlineChange;
-    if (!change) continue;
-
-    const orderIds = lineChanges.length
-      ? lineChanges.map((line) => line.id)
-      : row.orderIds;
-    if (!orderIds.length) continue;
-
-    pending.push({
-      orderIds,
-      supplierName: row.supplierName,
-      change,
-    });
-  }
-
-  return pending;
-}
+export { collectPendingZdDeadlineChanges };
 
 function buildZdDeadlineChangeAckKey(pending: PendingZdDeadlineChange[]): string {
   return pending
@@ -48,7 +29,10 @@ function buildZdDeadlineChangeAckKey(pending: PendingZdDeadlineChange[]): string
 const ZD_DEADLINE_ACK_MAX_RETRIES = 3;
 const ZD_DEADLINE_ACK_RETRY_MS = 2500;
 
-/** Automatycznie potwierdza zmianę terminu ZD i pokazuje krótki toast — bez klikania „Rozumiem”. */
+/**
+ * Automatycznie potwierdza tylko pierwsze ustalenie terminu z ZD (krótki toast).
+ * Przesunięcie / przyspieszenie czeka na „Przyjąłem/am” przy prośbie i jest w Pilnych sprawach.
+ */
 export function ZdFulfillmentDeadlineChangeAutoAck({
   rows,
   canAcknowledge,
@@ -73,7 +57,9 @@ export function ZdFulfillmentDeadlineChangeAutoAck({
   useEffect(() => {
     if (!canAcknowledge || tourPreview) return;
 
-    const pending = collectPendingZdDeadlineChanges(rows);
+    const pending = collectPendingZdDeadlineChanges(rows).filter(
+      (item) => !zdDeadlineChangeNeedsClick(item.change)
+    );
     if (!pending.length) return;
 
     const orderIds = [...new Set(pending.flatMap((item) => item.orderIds))];

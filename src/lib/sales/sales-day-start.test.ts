@@ -54,9 +54,11 @@ describe("buildSalesDayStartSnapshot", () => {
     expect(pickupItems[0]?.id).toBe("pickup-ready");
     expect(pickupItems[0]?.count).toBe(4);
     expect(pickupItems[0]?.title).toBe("Potwierdź odbiór z regału (4)");
-    expect(pickupItems[0]?.ctaLabel).toBe("Przejdź");
+    expect(pickupItems[0]?.ctaLabel).toBe("Otwórz");
     expect(pickupItems[0]?.scrollTarget).toBe("moje-section-action");
-    expect(snapshot.totalActionCount).toBe(3);
+    // Licznik = to, co widać w panelu: jedna pozycja „(4)” → 4, nie liczba wierszy.
+    expect(snapshot.totalActionCount).toBe(4);
+    expect(snapshot.mojeActionCount).toBe(4);
   });
 
   it("łączy odbiór zębów w jedno powiadomienie zbiorcze", () => {
@@ -78,7 +80,7 @@ describe("buildSalesDayStartSnapshot", () => {
     expect(teethItems[0]?.scrollTarget).toBe("moje-section-teeth");
     expect(teethItems[0]?.href).toBe("/moje#moje-section-teeth");
     expect(snapshotActionWeight(snapshot)).toBe(2);
-    expect(snapshot.totalActionCount).toBe(1);
+    expect(snapshot.totalActionCount).toBe(2);
   });
 
   it("łączy mieszany odbiór zębów i towaru w jedno powiadomienie", () => {
@@ -168,6 +170,8 @@ describe("buildSalesDayStartSnapshot", () => {
     });
 
     expect(snapshot.totalActionCount).toBe(3);
+    // Anulowanie jest na /moje; przypomnienie ZK i odpowiedź z Tablicy mają własne liczniki w menu.
+    expect(snapshot.mojeActionCount).toBe(1);
     expect(snapshot.items.find((i) => i.source === "board_announcement")).toBeUndefined();
     const answerItem = snapshot.items.find((i) => i.source === "board_answer");
     expect(answerItem?.title).toContain("Twoje pytanie");
@@ -313,7 +317,7 @@ describe("buildSalesDayStartSnapshot", () => {
 
     const zkItem = snapshot.items.find((i) => i.source === "zk_follow_up");
     expect(zkItem?.href).toBe("/zk?focusWatch=w1#watch-w1");
-    expect(zkItem?.ctaLabel).toBe("ZK czekające");
+    expect(zkItem?.ctaLabel).toBe("Otwórz");
   });
 
   it("linkuje przyjście towaru ZK do /zk z focusWatch", () => {
@@ -339,11 +343,11 @@ describe("buildSalesDayStartSnapshot", () => {
 
     const item = snapshot.items.find((i) => i.id.startsWith("zk-warehouse-arrival"));
     expect(item?.href).toBe("/zk?focusWatch=w-wh#watch-w-wh");
-    expect(item?.ctaLabel).toBe("ZK czekające");
+    expect(item?.ctaLabel).toBe("Otwórz");
     expect(item?.source).toBe("zk_warehouse");
   });
 
-  it("kieruje potwierdzenie informacji do sekcji informacji na dole listy", () => {
+  it("kieruje potwierdzenie informacji do sekcji „Towar jest już na magazynie”", () => {
     const snapshot = buildSalesDayStartSnapshot({
       rows: [
         row({
@@ -358,8 +362,8 @@ describe("buildSalesDayStartSnapshot", () => {
     });
 
     const item = snapshot.items.find((i) => i.source === "informacja_ready");
-    expect(item?.scrollTarget).toBe("moje-section-informacja");
-    expect(item?.href).toContain("moje-section-informacja");
+    expect(item?.scrollTarget).toBe("moje-section-informacja-ready");
+    expect(item?.href).toContain("moje-section-informacja-ready");
     expect(item?.href).toContain("focusOrders=o-inf");
   });
 
@@ -411,7 +415,7 @@ describe("buildSalesDayStartSnapshot", () => {
     expect(item?.title).toBe("Mikran");
     expect(item?.subtitle).toBe("Pilne - sprawdź termin");
     expect(item?.scrollTarget).toBeUndefined();
-    expect(item?.ctaLabel).toBe("Zobacz");
+    expect(item?.ctaLabel).toBe("Otwórz");
     expect(item?.href).toContain("focusOrders=o-n1");
   });
 
@@ -556,5 +560,41 @@ describe("salesDayStartPanelDescription", () => {
     expect(salesDayStartPanelDescription(1)).toContain("1 pilna sprawa");
     expect(salesDayStartPanelDescription(8)).toContain("8 pilnych spraw");
     expect(salesDayStartPanelDescription(8)).not.toContain("regału");
+  });
+});
+
+describe("buildSalesDayStartSnapshot — błąd notatnika", () => {
+  it("pokazuje ostrzeżenie zamiast „wszystko zrobione”, bez liczenia go jako sprawy", () => {
+    const snapshot = buildSalesDayStartSnapshot({ rows: [], notepadLoadFailed: true });
+    expect(snapshot.items[0]?.id).toBe("notepad-load-failed");
+    expect(snapshot.totalActionCount).toBe(0);
+    expect(snapshot.mojeActionCount).toBe(0);
+    expect(snapshot.cleared).toBe(false);
+  });
+});
+
+describe("buildSalesDayStartSnapshot — zmiana terminu ZD", () => {
+  const change = (variant: "postponed" | "first_confirmed") => ({
+    previousDeadline: "2026-10-01",
+    currentDeadline: "2026-10-15",
+    changedAt: "2026-10-02T10:00:00Z",
+    variant,
+    title: "Zmiana terminu",
+    detail: "01.10 → 15.10",
+  });
+
+  it("przesunięcie trafia do Pilnych spraw, pierwsze ustalenie nie", () => {
+    const snapshot = buildSalesDayStartSnapshot({
+      rows: [
+        row({ id: "a", supplierName: "Dostawca A", orderIds: ["o1"], zdFulfillment: { deadlineChange: change("postponed") } as never }),
+        row({ id: "b", supplierName: "Dostawca B", orderIds: ["o2"], zdFulfillment: { deadlineChange: change("first_confirmed") } as never }),
+      ],
+    });
+    const items = snapshot.items.filter((i) => i.source === "zd_deadline_change");
+    expect(items).toHaveLength(1);
+    expect(items[0]?.title).toBe("Dostawca A");
+    expect(items[0]?.href).toContain("o1");
+    expect(snapshot.totalActionCount).toBe(1);
+    expect(snapshot.mojeActionCount).toBe(1);
   });
 });

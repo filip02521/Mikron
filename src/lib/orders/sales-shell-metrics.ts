@@ -11,7 +11,6 @@ import type { SalesDayStartSnapshot } from "@/lib/sales/sales-day-start";
 import {
   composeSalesActivityVersion,
   computeSalesActivityVersionFromRows,
-  type SalesActivityRow,
 } from "@/lib/orders/sales-activity-version";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { DeliveryStats } from "@/types/database";
@@ -19,7 +18,7 @@ import type { DeliveryStats } from "@/types/database";
 export type SalesShellMetrics = {
   activityVersion: string;
   navAttention: number;
-  /** Badge „Moje” — ten sam licznik co dzwonek (totalActionCount inboxu). */
+  /** Badge „Moje” — tylko sprawy z /moje (mojeActionCount inboxu), bez ZK/notatek/Tablicy. */
   dayStartNavCount: number;
   /** Badge „ZK czekające” — zaległe przypomnienia ZK. */
   zkNavBadge: number;
@@ -27,7 +26,7 @@ export type SalesShellMetrics = {
   notesNavBadge: number;
   /** Badge Tablica — własne aktywne pytania z nieprzeczytaną odpowiedzią. */
   boardNavBadge: number;
-  inboxSnapshot: SalesDayStartSnapshot | null;
+  inboxSnapshot: SalesDayStartSnapshot;
   boardAttention: SalesBoardAttentionSnapshot | null;
 };
 
@@ -54,34 +53,16 @@ export async function fetchSalesShellMetrics(
   const inbox = summarizeMyOrdersInbox([...zamowienia, ...informacje]);
   const navBadges = inboxNavBadgesFromLoadedData(loaded);
 
-  const inboxSnapshot = profileId
-    ? await buildSalesInboxSnapshotFromLoadedData(loaded)
-    : null;
+  // Także w podglądzie admina (bez profileId) — inaczej badge „Moje” i dzwonek pokazują 0.
+  const inboxSnapshot = await buildSalesInboxSnapshotFromLoadedData(loaded);
 
-  const activityRows: SalesActivityRow[] = salesVisibleOrders.map((o) => ({
-    action_at: o.action_at,
-    ordered_at: o.ordered_at,
-    delivery_at: o.delivery_at,
-    status: o.status,
-    sales_acknowledged_at: o.sales_acknowledged_at,
-    request_kind: o.request_kind,
-    informacja_stock_out_reorder: o.informacja_stock_out_reorder,
-    zd_fulfillment_deadline: o.zd_fulfillment_deadline,
-    zd_fulfillment_source: o.zd_fulfillment_source,
-    zd_fulfillment_synced_at: o.zd_fulfillment_synced_at,
-    zd_fulfillment_dok_id: o.zd_fulfillment_dok_id,
-    zd_fulfillment_dok_nr: o.zd_fulfillment_dok_nr,
-    sales_request_note_updated_at: o.sales_request_note_updated_at,
-    sales_request_note_seen_at: o.sales_request_note_seen_at,
-  }));
-
-  const ordersPart = computeSalesActivityVersionFromRows(activityRows);
+  const ordersPart = computeSalesActivityVersionFromRows(salesVisibleOrders);
 
   return {
     activityVersion: composeSalesActivityVersion(ordersPart, watchesRes.data ?? []),
     navAttention:
       inbox.pickupCount + inbox.cancelAckCount + inbox.informacjaReadyCount,
-    dayStartNavCount: inboxSnapshot?.totalActionCount ?? 0,
+    dayStartNavCount: inboxSnapshot.mojeActionCount,
     zkNavBadge: navBadges.zkNavBadge,
     notesNavBadge: navBadges.notesNavBadge,
     boardNavBadge: navBadges.boardNavBadge,

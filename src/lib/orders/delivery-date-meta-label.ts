@@ -1,4 +1,5 @@
 import { addDays } from "date-fns";
+import { isTimingOverdue, stripTimingOverdue } from "@/lib/orders/timing-overdue";
 import { formatDateString, parseDateOnly, toDateOnly } from "@/lib/orders/dates";
 import { MY_ORDER_HISTORY_ESTIMATE_OVERDUE_META_TITLE, MY_ORDER_HISTORY_ESTIMATE_TITLE } from "@/lib/orders/my-order-history-estimate-copy";
 import { todayInWarsaw } from "@/lib/time/warsaw";
@@ -151,7 +152,7 @@ export function parseDeliveryEstimateFromTimingLabel(timingLabel: string): {
   lowConfidence: boolean;
   overdue: boolean;
 } {
-  const overdue = /·\s*po terminie/i.test(timingLabel);
+  const overdue = isTimingOverdue(timingLabel);
   const lowConfidence = /mało historii/i.test(timingLabel);
   const avgMatch = timingLabel.match(AVG_DAYS);
   const avgBusinessDays = avgMatch?.[1] ? Number.parseInt(avgMatch[1], 10) : null;
@@ -196,8 +197,7 @@ export function resolveLineHistoryEstimateFromTimingLabel(
   const parsed = parseDeliveryEstimateFromTimingLabel(raw);
   if (!parsed.expectedDate) return null;
 
-  const estimate = raw
-    .replace(/\s*·\s*po terminie\s*/gi, "")
+  const estimate = stripTimingOverdue(raw)
     .replace(/\s*·\s*mało historii\s*/gi, "")
     .trim();
   if (!estimate) return null;

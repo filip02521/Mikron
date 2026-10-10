@@ -3,8 +3,19 @@
 // @service-role-ok — autoryzacja require*(); service role z pełnym scope po warstwie aplikacji.
 
 import { revalidatePath } from "next/cache";
-import { getSessionUser, getSessionUserForMutation } from "@/lib/auth";
+import { requireOperations } from "@/lib/auth";
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
+
+const NO_ACCESS = "Dokumenty odpraw są dostępne tylko dla działu zakupów.";
+
+/** Dokumenty odpraw (faktury, SAD) — tylko operacje; handlowiec i magazyn nie mają dostępu. */
+async function operationsUserOrNull(intent: "read" | "mutate") {
+  try {
+    return await requireOperations(intent);
+  } catch {
+    return null;
+  }
+}
 
 const CUSTOMS_BUCKET = "customs-documents";
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
@@ -73,12 +84,12 @@ async function fetchCustomsDocumentForImportSupplier(
   return { doc: doc as { id: string; storage_path: string; file_name: string } };
 }
 
-/** Lista dokumentów odpraw dla dostawcy — dostęp dla każdego zalogowanego. */
+/** Lista dokumentów odpraw dla dostawcy — tylko operacje (admin / zakupy). */
 export async function actionListCustomsDocuments(
   supplierId: string
 ): Promise<{ documents: SupplierCustomsDocumentRow[]; error?: string }> {
-  const user = await getSessionUser();
-  if (!user) return { documents: [], error: "Brak sesji." };
+  const user = await operationsUserOrNull("read");
+  if (!user) return { documents: [], error: NO_ACCESS };
 
   if (!hasSupabaseConfig()) return { documents: [] };
 
@@ -148,13 +159,14 @@ export async function actionListCustomsDocuments(
   }
 }
 
-/** Upload dokumentu odprawy z opisem — dostęp dla każdego zalogowanego. */
+/** Upload dokumentu odprawy z opisem — tylko operacje (admin / zakupy). */
 export async function actionUploadCustomsDocument(
   supplierId: string,
   file: File,
   description: string
 ): Promise<{ success: boolean; error?: string }> {
-  const user = await getSessionUserForMutation();
+  const user = await operationsUserOrNull("mutate");
+  if (!user) return { success: false, error: NO_ACCESS };
 
   if (!hasSupabaseConfig()) {
     return { success: false, error: "Brak konfiguracji Storage." };
@@ -243,11 +255,11 @@ export async function actionUploadCustomsDocument(
   return { success: true };
 }
 
-/** Usunięcie dokumentu odprawy (plik + rekord) — dostęp dla każdego zalogowanego. */
+/** Usunięcie dokumentu odprawy (plik + rekord) — tylko operacje (admin / zakupy). */
 export async function actionRemoveCustomsDocument(
   documentId: string
 ): Promise<{ success: boolean; error?: string }> {
-  await getSessionUserForMutation();
+  if (!(await operationsUserOrNull("mutate"))) return { success: false, error: NO_ACCESS };
 
   if (!hasSupabaseConfig()) {
     return { success: false, error: "Brak konfiguracji Storage." };
@@ -277,12 +289,12 @@ export async function actionRemoveCustomsDocument(
   return { success: true };
 }
 
-/** Aktualizacja opisu dokumentu — dostęp dla każdego zalogowanego. */
+/** Aktualizacja opisu dokumentu — tylko operacje (admin / zakupy). */
 export async function actionUpdateCustomsDocumentDescription(
   documentId: string,
   description: string
 ): Promise<{ success: boolean; error?: string }> {
-  await getSessionUserForMutation();
+  if (!(await operationsUserOrNull("mutate"))) return { success: false, error: NO_ACCESS };
 
   if (!hasSupabaseConfig()) {
     return { success: false, error: "Brak konfiguracji bazy." };
@@ -310,12 +322,12 @@ export async function actionUpdateCustomsDocumentDescription(
   return { success: true };
 }
 
-/** Signed URL do pobrania pliku — dostęp dla każdego zalogowanego. */
+/** Signed URL do pobrania pliku — tylko operacje (admin / zakupy). */
 export async function actionGetCustomsDocumentUrl(
   documentId: string
 ): Promise<{ url: string | null; fileName: string | null; error?: string }> {
-  const user = await getSessionUser();
-  if (!user) return { url: null, fileName: null, error: "Brak sesji." };
+  const user = await operationsUserOrNull("read");
+  if (!user) return { url: null, fileName: null, error: NO_ACCESS };
 
   if (!hasSupabaseConfig()) {
     return { url: null, fileName: null, error: "Brak konfiguracji Storage." };

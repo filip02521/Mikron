@@ -479,7 +479,7 @@ export function ZkWatchProsbaScopeModal({
             />
             <span className="min-w-0 flex-1">
               <span className="text-sm font-semibold text-slate-900">
-                Utwórz prośbę od razu ({orderCount})
+                Zgłoś prośbę od razu ({orderCount})
               </span>
               <span className="mt-0.5 block text-xs leading-relaxed text-slate-600">
                 {autoProsbaActive

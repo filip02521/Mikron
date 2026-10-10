@@ -26,6 +26,8 @@ import { sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
 import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
 import { ProsbaFormMetaStrip } from "@/components/orders/ProsbaFormMetaStrip";
 import { ProsbaPageToolbar } from "@/components/orders/ProsbaPageToolbar";
+import { ProductZdLookupTrigger } from "@/components/sales/ProductZdLookupTrigger";
+import { stickyAboveMobileChromeClass } from "@/lib/ui/sales-mobile-chrome";
 import type { ProductZdLookupStockOutPrefill } from "@/lib/orders/product-zd-lookup-session";
 import { hasAnyProductHint, hasValidOrderQuantity } from "@/lib/orders/request-completeness";
 import { buildProcurementFormReadiness } from "@/lib/orders/procurement-form-readiness";
@@ -219,6 +221,10 @@ export function OrderFormClient({
     buildInitialGroups(lockedId, initialSupplierId)
   );
   const [pending, start] = useTransition();
+  const submitLockRef = useRef(false);
+  useEffect(() => {
+    if (!pending) submitLockRef.current = false;
+  }, [pending]);
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   /** Po udanym submit z ZK — blokada ponownej wysyłki do czasu unmount / nawigacji. */
   const [submitLocked, setSubmitLocked] = useState(false);
@@ -819,6 +825,9 @@ export function OrderFormClient({
     entries: (Entry & { requestNote?: string })[],
     options?: { acknowledgeSufficientStock?: boolean }
   ) => {
+    // pending z useTransition zmienia się dopiero po renderze — dwa kliknięcia w jednym takcie wysłałyby dwie prośby.
+    if (submitLockRef.current) return;
+    submitLockRef.current = true;
     setPendingMessage(
       singleGroup ? "Wysyłanie prośby…" : "Zapisywanie zamówień…"
     );
@@ -861,9 +870,9 @@ export function OrderFormClient({
         const defaultSuccessText =
           singleGroup && lockedSalesPerson
             ? requestKind === "informacja" && informacjaFlags.informacjaStockOutReorder
-              ? "Prośba zapisana - sygnał „brak na stanie” trafi do zakupów w panelu Dziś (Prośby handlowców)."
+              ? "Sygnał „brak na stanie” trafi do zakupów w panelu Dziś (Prośby handlowców)."
               : requestKind === "informacja" && informacjaFlags.informacjaQueueViaDailyPanel
-                ? "Prośba zapisana - zakupy najpierw zamówią u dostawcy, potem magazyn wyśle informację e-mailem."
+                ? "Zakupy najpierw zamówią u dostawcy, potem magazyn wyśle informację e-mailem."
                 : formatSubmitResult(r, requestKind, true)
             : procurementSubmitSuccessMessage({
                 count: r.count,
@@ -1560,20 +1569,13 @@ export function OrderFormClient({
         {toastSlot}
         {stockConfirmDialog}
 
-        <ProsbaPageToolbar
-          mojeHref={mojeHref}
-          mojeLabel={mojeLabel}
-          showProductZdLookup={!readOnly && !tourDemo}
-          suppliers={suppliers}
-          onProductStockOutPrefill={
-            readOnly || tourDemo ? undefined : applyProductZdStockOutPrefill
-          }
-        />
+        <ProsbaPageToolbar mojeHref={mojeHref} mojeLabel={mojeLabel} />
 
         <Card
           padding={false}
           className={cn(
-            zkProsbaLinkContext && !tourDemo ? "overflow-visible" : "overflow-hidden"
+            // clip, nie hidden — hidden tworzy kontener przewijania i psuje sticky stopkę „Wyślij”.
+            zkProsbaLinkContext && !tourDemo ? "overflow-visible" : "overflow-clip"
           )}
         >
           <div className={cn(tourDemo && "pointer-events-none select-none")}>
@@ -1665,10 +1667,6 @@ export function OrderFormClient({
               ) : null}
             </div>
           ) : null}
-
-          {!tourDemo ? <ProsbaVsBoardHint /> : null}
-
-          <ProsbaFormMetaStrip keyboardHints={SALES_PROSBA_KEYBOARD_HINTS} />
 
           <div
             className={cn(
@@ -1764,6 +1762,7 @@ export function OrderFormClient({
                   }}
                   requestKind={requestKind}
                   appearance="prosba"
+                  salesProsbaForm
                   addLabel="+ Kolejny produkt"
                   showClientField
                   suppliers={supplierRefs}
@@ -1817,9 +1816,14 @@ export function OrderFormClient({
             </ProsbaFormProductsSection>
           </div>
 
+          {/* Wybór rodzaju prośby jest pierwszy — informacje pomocnicze pod formularzem. */}
+          {!tourDemo ? <ProsbaVsBoardHint /> : null}
+          <ProsbaFormMetaStrip keyboardHints={SALES_PROSBA_KEYBOARD_HINTS} />
+
           <div
             className={cn(
-              "flex flex-col gap-3 border-t border-slate-200/80 bg-slate-50/35 px-3 py-3 sm:flex-row sm:items-center sm:px-4",
+              "sticky z-10 flex flex-col gap-3 border-t border-slate-200/80 bg-white/95 px-3 py-3 shadow-[0_-4px_16px_-8px_rgba(15,23,42,0.12)] backdrop-blur-sm sm:flex-row sm:items-center sm:px-4",
+              stickyAboveMobileChromeClass,
               requestKind === "informacja" ? "sm:justify-between" : "sm:justify-end"
             )}
           >
@@ -1863,6 +1867,13 @@ export function OrderFormClient({
           </div>
           </div>
         </Card>
+
+        {!readOnly && !tourDemo ? (
+          <ProductZdLookupTrigger
+            onStockOutPrefill={applyProductZdStockOutPrefill}
+            suppliers={suppliers}
+          />
+        ) : null}
 
         <AppBrandContentFooter mobileOnly variant="page" />
       </div>

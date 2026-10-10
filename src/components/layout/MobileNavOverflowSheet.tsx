@@ -6,7 +6,8 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { NavIcon, navIconTileActiveClassForTone, navIconTileClassForTone } from "@/components/icons/NavIcon";
-import { IconMoreVertical } from "@/components/icons/StrokeIcons";
+import { IconLogOut, IconMoreVertical } from "@/components/icons/StrokeIcons";
+import { signOutToLogin } from "@/lib/auth/sign-out-client";
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { isNavItemActive, navItemDisplayTone, navItemHasDueReminders, type NavItem } from "@/lib/nav";
 import { hrefWithAdminSalesPreview } from "@/lib/nav/sales-preview-href";
@@ -41,12 +42,15 @@ export function MobileNavOverflowSheet({
   adminSalesPreview = false,
   navLocked = false,
   switcher = null,
+  showSignOut = false,
 }: {
   items: NavItem[];
   previewDla?: string | null;
   adminSalesPreview?: boolean;
   navLocked?: boolean;
   switcher?: React.ReactNode;
+  /** Ostatnia pozycja „Wyloguj” — na telefonie zamiast przycisku w nagłówku. */
+  showSignOut?: boolean;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -87,7 +91,7 @@ export function MobileNavOverflowSheet({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, close]);
 
-  if (items.length === 0 && !switcher) return null;
+  if (items.length === 0 && !switcher && !showSignOut) return null;
 
   const sheet =
     open && hydrated
@@ -202,6 +206,27 @@ export function MobileNavOverflowSheet({
                     </li>
                   );
                 })}
+                {showSignOut ? (
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpen(false);
+                        void signOutToLogin();
+                      }}
+                      className={cn(
+                        "flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-left",
+                        controlFocusClass,
+                        navLinkIdleClass
+                      )}
+                    >
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-500">
+                        <IconLogOut size={17} />
+                      </span>
+                      <span className={cn(panelTypography.rowTitle, "min-w-0 flex-1")}>Wyloguj</span>
+                    </button>
+                  </li>
+                ) : null}
               </ul>
             </div>
           </div>,

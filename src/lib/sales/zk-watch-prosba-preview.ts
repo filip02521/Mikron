@@ -1,4 +1,7 @@
+import { formatPlDate } from "@/lib/display-labels";
+import { PROCUREMENT_TEAM_LABEL } from "@/lib/orders/procurement-copy";
 import { parseDateOnly } from "@/lib/orders/dates";
+import { resolveMyOrderHistoryDeliveryEstimate } from "@/lib/orders/delivery-date-meta-label";
 import {
   buildDeliveryDateMetaDisplay,
   type DeliveryDateMetaDisplay,
@@ -152,6 +155,7 @@ export function resolveZkProsbaPreviewDelivery(
     ZkLinkableOrder,
     | "delivery_at"
     | "zd_fulfillment_deadline"
+    | "history_timing_label"
     | "zd_fulfillment_deadline_changed_at"
     | "ordered_at"
     | "action_at"
@@ -197,6 +201,15 @@ export function resolveZkProsbaPreviewDelivery(
   }
 
   const deliveryAt = order.delivery_at?.trim();
+  // Przy częściowej realizacji delivery_at to fakt (przyjęcie części), nie szacunek — nie „zaległe”.
+  if (deliveryAt && order.status === "Czesciowo_zrealizowane") {
+    return {
+      deliveryCaption: "Termin dostawy",
+      deliveryTone: "pending",
+      deliveryDisplay: null,
+      deliveryEmptyLabel: `Część przyjęta ${formatPlDate(deliveryAt)} - na resztę ${PROCUREMENT_TEAM_LABEL} poda termin.`,
+    };
+  }
   if (deliveryAt) {
     const parsed = parseDateOnly(deliveryAt.slice(0, 10));
     if (parsed) {
@@ -208,6 +221,18 @@ export function resolveZkProsbaPreviewDelivery(
         deliveryEmptyLabel: null,
       };
     }
+  }
+
+  const history = order.history_timing_label
+    ? resolveMyOrderHistoryDeliveryEstimate({ timingLabel: order.history_timing_label })
+    : null;
+  if (history) {
+    return {
+      deliveryCaption: MY_ORDER_HISTORY_ESTIMATE_CAPTION,
+      deliveryTone: history.display.overdue ? "overdue" : "default",
+      deliveryDisplay: history.display,
+      deliveryEmptyLabel: null,
+    };
   }
 
   if (order.request_kind === "informacja") {
@@ -223,7 +248,7 @@ export function resolveZkProsbaPreviewDelivery(
     deliveryCaption: "Termin dostawy",
     deliveryTone: "pending",
     deliveryDisplay: null,
-    deliveryEmptyLabel: "Jeszcze nie ustalono - dział dostaw poda datę w kolejnych krokach.",
+    deliveryEmptyLabel: `Jeszcze nie ustalono - ${PROCUREMENT_TEAM_LABEL} poda datę w kolejnych krokach.`,
   };
 }
 

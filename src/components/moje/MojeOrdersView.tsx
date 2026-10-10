@@ -57,6 +57,7 @@ import {
   MY_ORDER_MIXED_ACTION_SECTION_COPY,
   MY_ORDER_DISMISS_SECTION_COPY,
   MY_ORDER_INFORMACJA_SECTION_COPY,
+  MY_ORDER_INFORMACJA_READY_SECTION_COPY,
   MY_ORDER_PROGRESS_SECTION_COPY,
   MY_ORDER_PROGRESS_SECTION_EMPTY,
   partitionMyOrderProgressRows,
@@ -633,7 +634,7 @@ function MojeOrdersViewContent({
   const shipmentCount = zamowienia.length + informacje.length;
   const filteredCount = filteredZamowienia.length + filteredInformacje.length;
   const actionCount = actionZamowienia.length + actionInformacje.length;
-  const actionShelfCount = actionShelfZamowienia.length + actionInformacje.length;
+  const actionShelfCount = actionShelfZamowienia.length;
   const actionTeethCount = actionTeethZamowienia.length;
   const actionMixedCount = actionMixedZamowienia.length;
   const actionDismissCount = actionDismissZamowienia.length;
@@ -920,13 +921,22 @@ function MojeOrdersViewContent({
                   suppressedSectionPatterns={actionShelfSectionCallouts.suppressedPatterns}
                   {...listProps}
                 />
+              </MojeSectionShell>
+            ) : null}
+            {actionInformacje.length > 0 ? (
+              <MojeSectionShell sectionIcon={MY_ORDER_INFORMACJA_READY_SECTION_COPY.icon}>
+                <MojeSectionListLabel
+                  title={MY_ORDER_INFORMACJA_READY_SECTION_COPY.title}
+                  hint={MY_ORDER_INFORMACJA_READY_SECTION_COPY.hint}
+                  count={actionInformacje.length}
+                  accent={MY_ORDER_INFORMACJA_READY_SECTION_COPY.accent}
+                  icon={MY_ORDER_INFORMACJA_READY_SECTION_COPY.icon}
+                />
                 <MyOrderShipmentBlock
                   embedded
-                  continuation
                   rows={actionInformacje}
                   listKind="informacja"
                   showProgress={false}
-                  suppressedSectionPatterns={actionShelfSectionCallouts.suppressedPatterns}
                   {...listProps}
                 />
               </MojeSectionShell>

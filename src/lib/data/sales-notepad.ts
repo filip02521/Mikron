@@ -2,6 +2,7 @@ import { formatDateString } from "@/lib/orders/dates";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import type { ZkLinkableOrder } from "@/lib/sales/zk-watch-order-link";
+import { attachZkHistoryTimingLabels } from "@/lib/sales/zk-history-timing";
 import {
   fetchAllZkLinkableOrdersForSalesPerson,
 } from "@/lib/sales/zk-watch-close-pending-fetch";
@@ -89,20 +90,25 @@ export async function fetchSalesZkPageData(
       .from("sales_zk_watches")
       .select("*")
       .eq("sales_person_id", salesPersonId)
-      .order("created_at", { ascending: true })
+      // Limit 500 celowy (bez starych śmieci) — ale ucinamy najstarsze zamknięte, nie nowe ZK.
+      .order("closed_at", { ascending: false, nullsFirst: true })
+      .order("archived_at", { ascending: false, nullsFirst: true })
+      .order("created_at", { ascending: false })
       .limit(500),
     fetchZkLinkableOrdersForSalesPerson(salesPersonId),
   ]);
 
   if (watchesRes.error) throw new Error(watchesRes.error.message);
 
-  const watches = (watchesRes.data ?? []) as SalesZkWatch[];
+  const watches = ((watchesRes.data ?? []) as SalesZkWatch[]).sort((a, b) =>
+    a.created_at.localeCompare(b.created_at)
+  );
   const { zkWatches, archivedZkWatches } = partitionSalesZkWatches(watches);
 
   return {
     zkWatches,
     archivedZkWatches,
-    zkLinkableOrders: linkResult.orders,
+    zkLinkableOrders: await attachZkHistoryTimingLabels(salesPersonId, linkResult.orders),
     zkOrdersMigrationMissing: linkResult.migrationMissing,
   };
 }
@@ -117,6 +123,8 @@ export async function fetchSalesNotesPageData(
     .from("sales_notes")
     .select("*")
     .eq("sales_person_id", salesPersonId)
+    // Aktywne najpierw — archiwum nie wypycha ich poza limit.
+    .order("archived_at", { ascending: false, nullsFirst: true })
     .order("pinned", { ascending: false })
     .order("sort_order", { ascending: true })
     .order("updated_at", { ascending: false })
@@ -130,19 +138,6 @@ export async function fetchSalesNotesPageData(
     notes: notes.filter((n) => !n.archived_at),
     archivedNotes: notes.filter((n) => n.archived_at),
   };
-}
-
-export async function countActiveZkWatches(salesPersonId: string): Promise<number> {
-  const supabase = createAdminClient();
-  const { count, error } = await supabase
-    .from("sales_zk_watches")
-    .select("id", { count: "exact", head: true })
-    .eq("sales_person_id", salesPersonId)
-    .is("closed_at", null)
-    .is("archived_at", null);
-
-  if (error) throw new Error(error.message);
-  return count ?? 0;
 }
 
 /** Badge ZK z już pobranej listy (bez dodatkowego zapytania). */
@@ -165,39 +160,4 @@ export function countNotesDueFromSlice(notes: SalesNote[]): number {
     if (note.follow_up_at <= today) count += 1;
   }
   return count;
-}
-
-/** Badge ZK: follow-up na dziś/wcześniej (tylko aktywne ZK). */
-export async function countZkDueNavBadge(salesPersonId: string): Promise<number> {
-  const supabase = createAdminClient();
-  const today = formatDateString(todayInWarsaw());
-
-  const { count, error } = await supabase
-    .from("sales_zk_watches")
-    .select("id", { count: "exact", head: true })
-    .eq("sales_person_id", salesPersonId)
-    .is("closed_at", null)
-    .is("archived_at", null)
-    .not("follow_up_at", "is", null)
-    .lte("follow_up_at", today);
-
-  if (error) throw new Error(error.message);
-  return count ?? 0;
-}
-
-/** Badge notatek: follow-up na dziś/wcześniej (tylko aktywne notatki). */
-export async function countNotesDueNavBadge(salesPersonId: string): Promise<number> {
-  const supabase = createAdminClient();
-  const today = formatDateString(todayInWarsaw());
-
-  const { count, error } = await supabase
-    .from("sales_notes")
-    .select("id", { count: "exact", head: true })
-    .eq("sales_person_id", salesPersonId)
-    .is("archived_at", null)
-    .not("follow_up_at", "is", null)
-    .lte("follow_up_at", today);
-
-  if (error) throw new Error(error.message);
-  return count ?? 0;
 }

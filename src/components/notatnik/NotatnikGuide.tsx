@@ -58,7 +58,7 @@ export function NotatnikGuide({ surface }: { surface: NotatnikSurface }) {
           <HelpBlock title="Notatki prywatne">
             <p>
               Notatnik służy tylko Tobie - wpisy nie trafiają do działu zakupów. Możesz przypiąć
-              ważne karteczki i ustawić przypomnienie.
+              ważne notatki i ustawić przypomnienie.
             </p>
           </HelpBlock>
           <HelpBlock title="ZK vs notatnik">

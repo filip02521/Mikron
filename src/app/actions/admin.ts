@@ -1,5 +1,6 @@
 "use server";
 
+import { assertPasswordChangeCompleted } from "@/lib/auth/must-change-password-guard";
 import { refreshStockWatchAfterOrder } from "@/lib/stock-watch/refresh-after-order";
 import { runActionSafely, type ActionErrorResult } from "@/lib/actions/action-error";
 
@@ -83,7 +84,10 @@ import {
 } from "@/lib/orders/procurement-request-flag";
 import type { InformacjaFlowPath } from "@/lib/orders/informacja-stock-out-reorder";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { syncLinkedSalesPersonLoginEmail } from "@/lib/users/sync-sales-person-email";
+import {
+  assertManagerMayChangeCardEmail,
+  syncLinkedSalesPersonLoginEmail,
+} from "@/lib/users/sync-sales-person-email";
 import { intervalWeeksForStorage, parseInterval } from "@/lib/orders/dates";
 import { resolveOrderOnDemandForSave } from "@/lib/orders/supplier-on-demand";
 import { WAREHOUSE_SHELF_DEFAULT } from "@/lib/orders/warehouse-inventory";
@@ -427,6 +431,7 @@ export async function actionAddIndividualOrders(
     const { entries, acknowledgeSufficientStock, stockByTwId } = normalizeAddIndividualOrdersInput(input);
     const user = await getSessionUser();
     if (!user) throw new Error("Wymagane logowanie");
+    assertPasswordChangeCompleted(user);
 
     await assertCanSubmitIndividualOrders(user, entries);
 
@@ -459,9 +464,18 @@ export async function actionAddIndividualOrders(
       });
     }
 
-    const sourceZkWatchId = normalized
-      .map((e) => (typeof e.sourceZkWatchId === "string" ? e.sourceZkWatchId.trim() : ""))
-      .find((id) => id.length > 0);
+    // Prośba z ZK dotyczy jednego ZK — różne id w pozycjach ominęłyby kontrolę właściciela poniżej.
+    const sourceZkWatchIds = [
+      ...new Set(
+        normalized
+          .map((e) => (typeof e.sourceZkWatchId === "string" ? e.sourceZkWatchId.trim() : ""))
+          .filter((id) => id.length > 0)
+      ),
+    ];
+    if (sourceZkWatchIds.length > 1) {
+      throw new Error("Prośba może dotyczyć tylko jednego ZK - wyślij pozycje z różnych ZK osobno.");
+    }
+    const sourceZkWatchId = sourceZkWatchIds[0];
     if (sourceZkWatchId) {
       const supabase = createAdminClient();
       const { data: watchRow, error: watchError } = await supabase
@@ -474,6 +488,16 @@ export async function actionAddIndividualOrders(
         throw new Error("ZK niedostępne - odśwież notatnik i spróbuj ponownie.");
       }
       const watch = watchRow as import("@/types/database").SalesZkWatch;
+      if (isSales(user.role) || isSalesManager(user.role)) {
+        // Id obserwacji przychodzi od klienta — tylko własne ZK, ZK osoby zastępowanej albo z zakresu kierownika.
+        const owner = watch.sales_person_id;
+        const { isProfileActiveDelegateForSalesPerson } = await import("@/lib/data/vacation-delegations");
+        const allowed =
+          normalized.some((e) => e.salesPersonId === owner) ||
+          (isSalesManager(user.role) && (await canAccessSalesPerson(user, owner))) ||
+          (await isProfileActiveDelegateForSalesPerson(user.id, owner));
+        if (!allowed) throw new Error("Brak uprawnień do tego ZK.");
+      }
       assertZkWatchOpenForProsba(watch);
       const allowedTwIds = new Set(collectZkWatchAllowedTwIds(watch));
       assertProsbaLinesBelongToZk(normalized, allowedTwIds);
@@ -1992,6 +2016,11 @@ export async function actionUpsertSalesPerson(form: {
       await assertManagerRequiresGroupInScope(actor, groupId);
     } catch (e) {
       return { error: userFacingErrorText(e, "Brak uprawnień do grupy.") };
+    }
+
+    if (!isAdmin(actor.role)) {
+      const emailError = await assertManagerMayChangeCardEmail(supabase, salesPersonId, email);
+      if (emailError) return { error: emailError };
     }
 
     const { error } = await supabase

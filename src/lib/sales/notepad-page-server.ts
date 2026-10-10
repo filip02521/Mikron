@@ -6,6 +6,7 @@ import { logDevPageError } from "@/lib/dev/log-page-error";
 import { isAdmin, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
 import type { UserRole } from "@/types/database";
 import type { VacationDelegationRow } from "@/lib/data/vacation-delegations";
+import { canReadSalesNotes } from "@/lib/sales/sales-notes-access";
 
 export type SalesNotepadPageAccess = {
   role: UserRole | null;
@@ -18,6 +19,8 @@ export type SalesNotepadPageAccess = {
   delegationStartDate: string | null;
   delegationEndDate: string | null;
   activeDelegations: VacationDelegationRow[];
+  /** Czy oglądający może czytać notatki (sales_notes) handlowca `salesPersonId`. */
+  canReadNotes: boolean;
 };
 
 /** Wspólna autoryzacja i podgląd handlowca dla /zk oraz /notatnik. */
@@ -35,9 +38,12 @@ export async function resolveSalesNotepadPageAccess(input: {
   let delegationStartDate: string | null = null;
   let delegationEndDate: string | null = null;
   let activeDelegations: VacationDelegationRow[] = [];
+  let viewerIsAdmin = false;
+  let isManagerInScope = false;
 
   try {
     const user = await getSessionUser();
+    viewerIsAdmin = !!user && isAdmin(user.role);
     if (user && isAdmin(user.role) && previewSalesPersonId) {
       const preview = await resolvePreviewSalesPerson(previewSalesPersonId, user);
       if (preview) {
@@ -55,6 +61,8 @@ export async function resolveSalesNotepadPageAccess(input: {
         if (preview) {
           salesPersonId = preview.id;
           salesPersonName = preview.name;
+          // resolvePreviewSalesPerson przepuszcza kierownika tylko przez canAccessSalesPerson.
+          isManagerInScope = true;
           try {
             const { fetchActiveDelegationsForDelegate } = await import("@/lib/data/vacation-delegations");
             activeDelegations = await fetchActiveDelegationsForDelegate(user.id);
@@ -144,6 +152,14 @@ export async function resolveSalesNotepadPageAccess(input: {
     delegationStartDate,
     delegationEndDate,
     activeDelegations,
+    canReadNotes:
+      !!salesPersonId &&
+      canReadSalesNotes({
+        isOwner: salesPersonId === ownSalesPersonId,
+        isAdmin: viewerIsAdmin,
+        isManagerInScope,
+        isActiveDelegate: isDelegatePreview,
+      }),
   };
 }
 

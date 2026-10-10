@@ -114,15 +114,26 @@ export default async function MojePage({
     salesPanelView && salesPersonId && (viewingOwnPanel || isTeamPreview || delegatePreviewActive)
   );
 
-  const data = await loadMojePageData(ctx, {
-    salesPanelView,
-    viewingOwnPanel,
-    isTeamPreview,
-    delegatePreviewActive,
-    adminSalesPreview,
-    showSalesPersonOrdersPanel,
-    loadMojeAnnouncements,
-  });
+  // Niezależne kroki równolegle: dane próśb, dostępność Subiekta, dostawcy z Subiekta.
+  const [data, subiektAvailability, supplierRefs] = await Promise.all([
+    loadMojePageData(ctx, {
+      salesPanelView,
+      viewingOwnPanel,
+      isTeamPreview,
+      delegatePreviewActive,
+      adminSalesPreview,
+      showSalesPersonOrdersPanel,
+      loadMojeAnnouncements,
+    }),
+    getSubiektAvailability().catch(() => ({
+      configured: false,
+      reachable: false,
+      checkedAt: 0,
+      shortLabel: "System magazynowy: niedostępny",
+      message: "Nie udało się sprawdzić połączenia z systemem magazynowym.",
+    })),
+    showSalesPersonOrdersPanel ? getAppSupplierRefsCached() : Promise.resolve([]),
+  ]);
 
   const {
     orders,
@@ -140,21 +151,7 @@ export default async function MojePage({
     loadError,
   } = data;
 
-  let subiektAvailability: Awaited<ReturnType<typeof getSubiektAvailability>>;
-  try {
-    subiektAvailability = await getSubiektAvailability();
-  } catch {
-    subiektAvailability = {
-      configured: false,
-      reachable: false,
-      checkedAt: 0,
-      shortLabel: "System magazynowy: niedostępny",
-      message: "Nie udało się sprawdzić połączenia z systemem magazynowym.",
-    };
-  }
   const subiektReachable = isSubiektAvailableForZdSync(subiektAvailability);
-
-  const supplierRefs = showSalesPersonOrdersPanel ? await getAppSupplierRefsCached() : [];
   const supplierKhIdsBySupplierId = buildSupplierKhIdsBySupplierId(supplierRefs);
   const zdEtaSyncMountCount =
     viewingOwnPanel ? countZdEtaMojeClientSyncMount(orders, stats, supplierRefs) : 0;
@@ -163,23 +160,22 @@ export default async function MojePage({
       ? countZdEtaMojeClientSyncTriggers(orders, stats, supplierRefs, subiektReachable)
       : 0;
 
+  const [teethLeadDaysBySupplierId, etaQuantiles] = await Promise.all([
+    loadTeethLeadDaysBySupplierIdForOrders(orders),
+    import("@/lib/orders/delivery-eta-quantiles-load").then((m) =>
+      m.loadDeliveryEtaQuantilesForOrders(orders)
+    ),
+  ]);
+
   const { zamowienia, informacje, productLineCount } = presentMyOrders(orders, stats, {
     supplierScheduleById,
     todayDateKey: formatDateString(todayInWarsaw()),
     weekDays: plannedOrderWeekDays,
     supplierKhIdsBySupplierId,
     subiektReachable,
-    teethLeadDaysBySupplierId: await loadTeethLeadDaysBySupplierIdForOrders(orders),
-    ...(await (async () => {
-      const { loadDeliveryEtaQuantilesForOrders } = await import(
-        "@/lib/orders/delivery-eta-quantiles-load"
-      );
-      const q = await loadDeliveryEtaQuantilesForOrders(orders);
-      return {
-        useP50: q.useP50,
-        etaQuantilesBySupplierId: q.bySupplierId,
-      };
-    })()),
+    teethLeadDaysBySupplierId,
+    useP50: etaQuantiles.useP50,
+    etaQuantilesBySupplierId: etaQuantiles.bySupplierId,
   });
 
   const dayStartContext = buildDayStartContext(
