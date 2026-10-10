@@ -99,11 +99,11 @@ export function MobileSalesNav({
             <>
               <span className="relative">
                 <NavIcon navKey={item.icon} size={20} className="text-current" />
-                {attentionBadge > 0 && !active ? (
+                {attentionBadge > 0 ? (
                   <span
                     className={cn(
                       "absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 leading-none tabular-nums text-[9px] font-bold ring-2 ring-white lg:text-[10px]",
-                      sidebarNavBadgeClassForTone(displayTone, false)
+                      sidebarNavBadgeClassForTone(displayTone, active)
                     )}
                   >
                     {attentionBadge > 9 ? "9+" : attentionBadge}
