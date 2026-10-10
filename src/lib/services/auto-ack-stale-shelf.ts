@@ -9,7 +9,7 @@ const BATCH_LIMIT = 200;
 
 type StaleShelfRow = Pick<
   IndividualOrder,
-  "id" | "status" | "delivery_at" | "action_at" | "sales_acknowledged_at" | "sales_cancelled_at" | "is_teeth" | "request_kind" | "delivered_quantity" | "quantity" | "sales_person_id" | "source_zk_watch_id" | "source_zk_number" | "sales_client_kh_id" | "sales_client_name" | "products" | "symbol" | "mikran_code" | "subiekt_tw_id"
+  "id" | "status" | "delivery_at" | "action_at" | "sales_acknowledged_at" | "sales_cancelled_at" | "warehouse_cleared_at" | "is_teeth" | "request_kind" | "delivered_quantity" | "quantity" | "sales_person_id" | "source_zk_watch_id" | "source_zk_number" | "sales_client_kh_id" | "sales_client_name" | "products" | "symbol" | "mikran_code" | "subiekt_tw_id"
 >;
 
 /**
@@ -24,12 +24,17 @@ export async function autoAcknowledgeStaleWarehouseInventory(
   const { data, error } = await supabase
     .from("individual_orders")
     .select(
-      "id, status, delivery_at, action_at, sales_acknowledged_at, sales_cancelled_at, is_teeth, request_kind, delivered_quantity, quantity, sales_person_id, source_zk_watch_id, source_zk_number, sales_client_kh_id, sales_client_name, products, symbol, mikran_code, subiekt_tw_id"
+      "id, status, delivery_at, action_at, sales_acknowledged_at, sales_cancelled_at, warehouse_cleared_at, is_teeth, request_kind, delivered_quantity, quantity, sales_person_id, source_zk_watch_id, source_zk_number, sales_client_kh_id, sales_client_name, products, symbol, mikran_code, subiekt_tw_id"
     )
     .in("status", ["Zrealizowane", "Czesciowo_zrealizowane"])
     .is("sales_acknowledged_at", null)
     .is("sales_cancelled_at", null)
+    // Wiersze, które classifyOnShelf i tak odrzuci, odcinamy w SQL — inaczej przy ≥ BATCH_LIMIT
+    // takich wierszy ta sama paczka wraca co przebieg i nic się nie potwierdza.
+    .not("is_teeth", "is", true)
+    .is("warehouse_cleared_at", null)
     .or(`delivery_at.lt.${cutoffIso},action_at.lt.${cutoffIso}`)
+    .order("delivery_at", { ascending: true, nullsFirst: false })
     .limit(BATCH_LIMIT);
 
   if (error) {

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@/lib/db/admin";
+import { completesPartialDelivery } from "@/lib/orders/partial-completion";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatDbError } from "@/lib/supabase/db-errors";
 import {
@@ -1791,11 +1792,15 @@ async function applyDeliveredQuantityUpdate(
   if (status === "Zrealizowane" || status === "Czesciowo_zrealizowane") {
     // Nie nadpisuj delivery_at przy edycji qty gdy status już był zrealizowany —
     // chroni realną datę przyjęcia i spójność delivery_stats_samples.
+    // Pierwsza dostawa zostaje w first_delivery_at (model delivery_stats_samples).
     if (
-      prevStatus !== "Zrealizowane" &&
-      prevStatus !== "Czesciowo_zrealizowane"
+      completesPartialDelivery(prevStatus, status) ||
+      (prevStatus !== "Zrealizowane" && prevStatus !== "Czesciowo_zrealizowane")
     ) {
       update.delivery_at = new Date().toISOString();
+      if (completesPartialDelivery(prevStatus, status) && !order.first_delivery_at && order.delivery_at) {
+        update.first_delivery_at = order.delivery_at;
+      }
     } else if (!order.delivery_at) {
       update.delivery_at = new Date().toISOString();
     }
@@ -1814,7 +1819,20 @@ async function applyDeliveredQuantityUpdate(
     update.first_delivery_at = null;
   }
 
-  await supabase.from("individual_orders").update(update).eq("id", orderId);
+  // Auto-ack (21 dni na regale) mógł ukryć częściową dostawę — reszta towaru musi wrócić do odbioru.
+  if (
+    completesPartialDelivery(prevStatus, status) &&
+    order.sales_acknowledged_at &&
+    !order.sales_cancelled_at
+  ) {
+    update.sales_acknowledged_at = null;
+  }
+
+  const { error: updateError } = await supabase
+    .from("individual_orders")
+    .update(update)
+    .eq("id", orderId);
+  if (updateError) throw new Error(updateError.message);
 
   if (
     (status === "Zrealizowane" || status === "Czesciowo_zrealizowane") &&
