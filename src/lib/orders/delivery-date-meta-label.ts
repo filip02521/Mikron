@@ -1,4 +1,3 @@
-import { addDays } from "date-fns";
 import { isTimingOverdue, stripTimingOverdue } from "@/lib/orders/timing-overdue";
 import { formatDateString, parseDateOnly, toDateOnly } from "@/lib/orders/dates";
 import { MY_ORDER_HISTORY_ESTIMATE_OVERDUE_META_TITLE, MY_ORDER_HISTORY_ESTIMATE_TITLE } from "@/lib/orders/my-order-history-estimate-copy";
@@ -12,12 +11,6 @@ export type DeliveryDateMetaDisplay = {
   overdue: boolean;
   title: string;
 };
-
-function dateKeyOffset(fromDateKey: string, dayOffset: number): string | null {
-  const base = parseDateOnly(fromDateKey);
-  if (!base) return null;
-  return formatDateString(addDays(base, dayOffset));
-}
 
 function weekdayShort(date: Date): string {
   return WEEKDAY_LABELS[date.getDay()] ?? "";
@@ -59,57 +52,30 @@ export function buildDeliveryDateMetaDisplay(
     };
   }
 
-  if (targetKey === todayStr) {
-    return {
-      primaryLabel: "Dziś",
-      detailLabel: shortDate,
-      overdue: false,
-      title: `Planowana dostawa dziś · ${longDate}`,
-    };
-  }
-
-  const tomorrowKey = dateKeyOffset(todayStr, 1);
-  if (tomorrowKey && targetKey === tomorrowKey) {
-    return {
-      primaryLabel: "Jutro",
-      detailLabel: shortDate,
-      overdue: false,
-      title: `Planowana dostawa jutro · ${longDate}`,
-    };
-  }
-
-  const dayAfterKey = dateKeyOffset(todayStr, 2);
-  if (dayAfterKey && targetKey === dayAfterKey) {
-    return {
-      primaryLabel: "Pojutrze",
-      detailLabel: shortDate,
-      overdue: false,
-      title: `Planowana dostawa pojutrze · ${longDate}`,
-    };
-  }
-
+  // Jeden format dla każdego źródła (ZD i szacunek): „Śr 05.11” + odległość pod spodem.
+  // Rok tylko, gdy inny niż bieżący — „05.11.2026” obok „Pojutrze” zmuszało do przestawiania się.
   const weekday = weekdayShort(target);
-  const withinTwoWeeks =
-    Math.abs(
-      (target.getTime() - (parseDateOnly(todayStr)?.getTime() ?? target.getTime())) /
-        (24 * 60 * 60 * 1000)
-    ) <= 14;
-
-  if (withinTwoWeeks && weekday) {
-    return {
-      primaryLabel: `${weekday} ${shortDate}`,
-      detailLabel: estimateDetail || null,
-      overdue: false,
-      title: `Planowana dostawa ${weekday} ${longDate}`,
-    };
-  }
-
+  const sameYear = targetKey.slice(0, 4) === todayStr.slice(0, 4);
+  const dateLabel = `${weekday} ${sameYear ? shortDate : longDate}`.trim();
+  const relative = relativeDaysLabel(todayStr, target);
   return {
-    primaryLabel: longDate,
-    detailLabel: estimateDetail || null,
+    primaryLabel: dateLabel,
+    detailLabel: [relative, options?.lowConfidence ? "mało historii" : null].filter(Boolean).join(" · ") || null,
     overdue: false,
-    title: `Planowana dostawa ${longDate}`,
+    title: [`Planowana dostawa ${weekday} ${longDate}`.replace("  ", " "), estimateDetail || null]
+      .filter(Boolean)
+      .join(" · "),
   };
+}
+
+function relativeDaysLabel(todayKey: string, target: Date): string | null {
+  const today = parseDateOnly(todayKey);
+  if (!today) return null;
+  const days = Math.round((toDateOnly(target).getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+  if (days === 0) return "dziś";
+  if (days === 1) return "jutro";
+  if (days === 2) return "pojutrze";
+  return days > 2 ? `za ${days} dni` : null;
 }
 
 export const MY_ORDER_HISTORY_ESTIMATE_OVERDUE_LABEL =
