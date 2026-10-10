@@ -2,6 +2,7 @@ import { formatDateString } from "@/lib/orders/dates";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import type { ZkLinkableOrder } from "@/lib/sales/zk-watch-order-link";
+import { attachZkHistoryTimingLabels } from "@/lib/sales/zk-history-timing";
 import {
   fetchAllZkLinkableOrdersForSalesPerson,
 } from "@/lib/sales/zk-watch-close-pending-fetch";
@@ -102,7 +103,7 @@ export async function fetchSalesZkPageData(
   return {
     zkWatches,
     archivedZkWatches,
-    zkLinkableOrders: linkResult.orders,
+    zkLinkableOrders: await attachZkHistoryTimingLabels(salesPersonId, linkResult.orders),
     zkOrdersMigrationMissing: linkResult.migrationMissing,
   };
 }

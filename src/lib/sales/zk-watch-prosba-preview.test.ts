@@ -206,6 +206,18 @@ describe("resolveZkProsbaPreviewDelivery", () => {
     expect(delivery.deliveryCaption).not.toBe("Z historii");
   });
 
+  it("bez ZD pokazuje szacunek z historii jak /moje zamiast „nie ustalono”", () => {
+    const delivery = resolveZkProsbaPreviewDelivery({
+      ...baseOrder,
+      zd_fulfillment_deadline: null,
+      delivery_at: null,
+      history_timing_label: "ok. 15.01.2099 (~5 dni rob.)",
+    });
+    expect(delivery.deliveryDisplay).not.toBeNull();
+    expect(delivery.deliveryEmptyLabel).toBeNull();
+    expect(delivery.deliveryTone).toBe("default");
+  });
+
   it("uses delivery_at when ZD missing", () => {
     const delivery = resolveZkProsbaPreviewDelivery({
       ...baseOrder,

@@ -1,4 +1,5 @@
 import { parseDateOnly } from "@/lib/orders/dates";
+import { resolveMyOrderHistoryDeliveryEstimate } from "@/lib/orders/delivery-date-meta-label";
 import {
   buildDeliveryDateMetaDisplay,
   type DeliveryDateMetaDisplay,
@@ -152,6 +153,7 @@ export function resolveZkProsbaPreviewDelivery(
     ZkLinkableOrder,
     | "delivery_at"
     | "zd_fulfillment_deadline"
+    | "history_timing_label"
     | "zd_fulfillment_deadline_changed_at"
     | "ordered_at"
     | "action_at"
@@ -208,6 +210,18 @@ export function resolveZkProsbaPreviewDelivery(
         deliveryEmptyLabel: null,
       };
     }
+  }
+
+  const history = order.history_timing_label
+    ? resolveMyOrderHistoryDeliveryEstimate({ timingLabel: order.history_timing_label })
+    : null;
+  if (history) {
+    return {
+      deliveryCaption: MY_ORDER_HISTORY_ESTIMATE_CAPTION,
+      deliveryTone: history.display.overdue ? "overdue" : "default",
+      deliveryDisplay: history.display,
+      deliveryEmptyLabel: null,
+    };
   }
 
   if (order.request_kind === "informacja") {
