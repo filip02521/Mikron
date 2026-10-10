@@ -78,6 +78,7 @@ export function RequestProductLinesEditor({
   liveValidation = false,
   showLineNotes,
   noteAudience = "sales",
+  salesProsbaForm = false,
   typeaheadSize = "default",
   onAfterTeethListSave,
   onTeethListCommitNotice,
@@ -127,6 +128,8 @@ export function RequestProductLinesEditor({
   showLineNotes?: boolean;
   /** Podpowiedź przy notatce — zakupy vs handlowiec. */
   noteAudience?: "sales" | "procurement";
+  /** Formularz handlowca /prosba — teksty o Subiekcie pisane dla handlowca. */
+  salesProsbaForm?: boolean;
   /** Wyższa lista podpowiedzi Subiekta / dostawcy w modalach. */
   typeaheadSize?: "default" | "comfortable";
   onAfterTeethListSave?: (
@@ -336,7 +339,10 @@ export function RequestProductLinesEditor({
   return (
     <div className="space-y-3">
       {visibleSubiektOfflineFeedback ? (
-        <SubiektOfflineHint feedback={visibleSubiektOfflineFeedback} />
+        <SubiektOfflineHint
+          feedback={visibleSubiektOfflineFeedback}
+          salesForm={salesProsbaForm}
+        />
       ) : null}
 
       {prosba && requestKind === "zamowienie" ? (
@@ -610,6 +616,7 @@ export function RequestProductLinesEditor({
                   className="mt-2"
                 >
                   <SubiektClientNameField
+                    prosba={salesProsbaForm}
                     maxLength={MAX_CLIENT_NAME_LEN}
                     value={line.clientName ?? ""}
                     clientKhId={line.clientKhId ?? null}

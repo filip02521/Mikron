@@ -1755,6 +1755,7 @@ export function OrderFormClient({
                   }}
                   requestKind={requestKind}
                   appearance="prosba"
+                  salesProsbaForm
                   addLabel="+ Kolejny produkt"
                   showClientField
                   suppliers={supplierRefs}

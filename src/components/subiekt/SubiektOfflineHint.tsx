@@ -5,16 +5,20 @@ import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { PROSBA_FORM_SECTION_COPY } from "@/lib/orders/prosba-form-section-copy";
 import { cn } from "@/lib/cn";
 
-/** Jeden komunikat na formularzu prośby: Subiekt niedostępny i co handlowiec może zrobić. */
+/** Jeden komunikat nad pozycjami: Subiekt niedostępny i co można zrobić. */
 export function SubiektOfflineHint({
   feedback,
+  salesForm = false,
   className,
 }: {
   feedback: SubiektFeedback;
+  /** Formularz handlowca — dopisek, że dział zakupów uzupełni dane. */
+  salesForm?: boolean;
   className?: string;
 }) {
   const copy = PROSBA_FORM_SECTION_COPY.subiektOffline;
-  const text = feedback.code === "not_configured" ? copy.manualOnly : copy.catalogFallback;
+  const base = feedback.code === "not_configured" ? copy.manualOnly : copy.catalogFallback;
+  const text = salesForm ? `${base} ${copy.salesTail}` : base;
 
   return (
     <p

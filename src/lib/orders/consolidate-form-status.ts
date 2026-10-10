@@ -56,7 +56,7 @@ export function prosbaLineSubiektFeedback(
   return {
     code: feedback.code,
     title: "Subiekt nie odpowiada",
-    message: "Wpisz symbol lub nazwę ręcznie - dział zakupów uzupełni brakujące dane.",
+    message: "Spróbuj za chwilę albo wpisz dane ręcznie.",
     tone: "info",
   };
 }

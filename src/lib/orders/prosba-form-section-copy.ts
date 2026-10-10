@@ -22,10 +22,11 @@ export const PROSBA_FORM_SECTION_COPY = {
   subiektOffline: {
     /** Subiekt nie odpowiada — wyszukiwarka korzysta z bazy OnTime. */
     catalogFallback:
-      "Subiekt jest teraz niedostępny - szukamy w bazie OnTime. Jeśli produktu tam nie ma, wpisz symbol lub nazwę ręcznie. Prośbę wyślesz normalnie, a dział zakupów uzupełni brakujące dane.",
+      "Subiekt jest teraz niedostępny - szukamy w bazie OnTime. Jeśli produktu tam nie ma, wpisz symbol lub nazwę ręcznie.",
     /** Bez wyszukiwarki (integracja wyłączona). */
-    manualOnly:
-      "Podpowiedzi z Subiekta są wyłączone. Wpisz symbol lub nazwę ręcznie - prośbę wyślesz normalnie, a dział zakupów uzupełni brakujące dane.",
+    manualOnly: "Podpowiedzi z Subiekta są wyłączone. Wpisz symbol lub nazwę ręcznie.",
+    /** Dopisek tylko dla handlowca (/prosba). */
+    salesTail: "Prośbę wyślesz normalnie, a dział zakupów uzupełni brakujące dane.",
   },
   delegateProcurement: {
     title: "Dla kogo i u kogo?",
