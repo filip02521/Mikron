@@ -296,7 +296,7 @@ export function ZkWatchRefreshPromptModal({
     : patching
       ? "Zapisuję wybór…"
       : redirectToOpenProsba
-        ? "Otwórz prośbę"
+        ? "Zobacz prośbę"
         : canProceedToProsba
           ? linesToAddCount === addedCount
             ? "Dodaj brakujące do prośby"

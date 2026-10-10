@@ -17,7 +17,7 @@ import { mojeSectionDomId } from "@/lib/orders/moje-section-focus";
 
 /** Sekcja u góry listy — wymaga kliknięcia handlowca. */
 export const MY_ORDER_ACTION_SECTION_COPY = {
-  title: "Potwierdź odbiór z regału",
+  title: "Do potwierdzenia",
   hint: "Towar czeka na regale albo sprawa jest do zamknięcia - potwierdź jednym kliknięciem.",
   icon: "action" as const,
   accent: "emerald" as const satisfies MyOrderSectionAccent,

@@ -691,7 +691,11 @@ export function NotesSection({
       ) : null}
 
       <div className={cn(embedded && "pb-3 pt-0", !embedded && "space-y-3")}>
-        <SalesKeyboardShortcutsStrip items={NOTATNIK_KEYBOARD_HINTS} embedded={embedded} />
+        <SalesKeyboardShortcutsStrip
+          items={NOTATNIK_KEYBOARD_HINTS}
+          embedded={embedded}
+          description="Nowa notatka, szukanie, edycja i formatowanie"
+        />
 
         <div className={cn(NOTATNIK_NOTES_WALL_CLASS, "space-y-3", embedded && "px-3 sm:px-4")}>
 

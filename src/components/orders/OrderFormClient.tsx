@@ -868,9 +868,9 @@ export function OrderFormClient({
         const defaultSuccessText =
           singleGroup && lockedSalesPerson
             ? requestKind === "informacja" && informacjaFlags.informacjaStockOutReorder
-              ? "Prośba zapisana - sygnał „brak na stanie” trafi do zakupów w panelu Dziś (Prośby handlowców)."
+              ? "Sygnał „brak na stanie” trafi do zakupów w panelu Dziś (Prośby handlowców)."
               : requestKind === "informacja" && informacjaFlags.informacjaQueueViaDailyPanel
-                ? "Prośba zapisana - zakupy najpierw zamówią u dostawcy, potem magazyn wyśle informację e-mailem."
+                ? "Zakupy najpierw zamówią u dostawcy, potem magazyn wyśle informację e-mailem."
                 : formatSubmitResult(r, requestKind, true)
             : procurementSubmitSuccessMessage({
                 count: r.count,

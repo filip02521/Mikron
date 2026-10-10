@@ -167,7 +167,7 @@ export default async function SalesBoardPage({
 
   const pageTitle =
     isTeamPreview && salesPersonName
-      ? `Pytania zespołu: ${salesPersonName}`
+      ? `Tablica: ${salesPersonName}`
       : DEPARTMENT_BOARD_SALES_PAGE_TITLE;
 
   const boardClient = (

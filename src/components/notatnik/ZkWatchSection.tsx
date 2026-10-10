@@ -195,7 +195,7 @@ export function ZkWatchSection({
   const [confirmTitle, setConfirmTitle] = useState("Towar na stanie");
   const [confirmMessage, setConfirmMessage] = useState("");
   const [confirmSummary, setConfirmSummary] = useState<string | null>(null);
-  const [confirmLabel, setConfirmLabel] = useState("Utwórz prośbę mimo stanu");
+  const [confirmLabel, setConfirmLabel] = useState("Zgłoś prośbę mimo stanu");
   const [autoProsbaSubmitting, setAutoProsbaSubmitting] = useState(false);
   const [autoProsbaPendingWatchId, setAutoProsbaPendingWatchId] = useState<string | null>(null);
   const pendingLinesRef = useRef<ProductLineDraft[]>([]);
@@ -307,7 +307,7 @@ export function ZkWatchSection({
           formatAutoProsbaStockConfirmSummary(pendingLinesRef.current.length) || null
         );
         setConfirmMessage(result.message);
-        setConfirmLabel("Utwórz prośbę mimo stanu");
+        setConfirmLabel("Zgłoś prośbę mimo stanu");
         setConfirmKind("stock");
         setConfirmOpen(true);
         return;
@@ -359,7 +359,7 @@ export function ZkWatchSection({
         setConfirmTitle("Brak stanu magazynowego");
         setConfirmSummary(unknownConfirm.summary);
         setConfirmMessage(unknownConfirm.message);
-        setConfirmLabel("Utwórz prośbę mimo to");
+        setConfirmLabel("Zgłoś prośbę mimo to");
         setConfirmKind("unknown_stock");
         setConfirmOpen(true);
         return;
@@ -379,7 +379,7 @@ export function ZkWatchSection({
         setConfirmTitle("Towar na stanie");
         setConfirmSummary(stockConfirm.summary);
         setConfirmMessage(stockConfirm.message);
-        setConfirmLabel("Utwórz prośbę mimo stanu");
+        setConfirmLabel("Zgłoś prośbę mimo stanu");
         setConfirmKind("stock");
         setConfirmOpen(true);
         return;
