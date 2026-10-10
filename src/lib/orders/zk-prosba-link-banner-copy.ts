@@ -22,7 +22,7 @@ export const ZK_PROSBA_LINK_BANNER_COPY = {
   /** Nagłówek karty formularza gdy jest kontekst ZK. */
   formTitle: "Nowa prośba z ZK",
   fullLockedDetail:
-    "Pozycje pochodzą z tego zamówienia klienta. Możesz wybrać tylko produkty z ZK - po wysłaniu prośba pojawi się przy nim w notatniku.",
+    "Pozycje pochodzą z tego zamówienia klienta. Możesz wybrać tylko produkty z ZK - po wysłaniu prośba pojawi się przy nim w „ZK czekające”.",
   fullUnlockedDetail:
     "Brak kodów produktów Subiekta na tym ZK - katalog nie jest ograniczony. Uzupełnij pozycje ręcznie.",
   supplementLockedSuffix: "Możesz dodać tylko produkty z tego ZK.",

@@ -107,7 +107,7 @@ describe("deriveZkWatchProsbaCardAction", () => {
         newLineKeys: [],
         hasOpenMatchingProsba: true,
       })
-    ).toEqual({ kind: "view_open", label: "Otwórz prośbę" });
+    ).toEqual({ kind: "view_open", label: "Zobacz prośbę" });
   });
 
   it("tylko nowe pozycje - uzupełnij", () => {
@@ -131,7 +131,7 @@ describe("deriveZkWatchProsbaCardAction", () => {
         newLineKeys: [],
         hasOpenMatchingProsba: false,
       })
-    ).toMatchObject({ kind: "new_prosba", label: "Utwórz prośbę" });
+    ).toMatchObject({ kind: "new_prosba", label: "Zgłoś prośbę" });
   });
 
   it("część w prośbie - uzupełnij z liczbą", () => {
@@ -156,7 +156,7 @@ describe("deriveZkWatchProsbaCardAction", () => {
         newLineKeys: [],
         hasOpenMatchingProsba: false,
       })
-    ).toEqual({ kind: "view_open", label: "Otwórz prośbę" });
+    ).toEqual({ kind: "view_open", label: "Zobacz prośbę" });
   });
 
   it("towar na regale bez odbioru - CTA do Moje, nie Komplet", () => {
@@ -182,7 +182,7 @@ describe("deriveZkWatchProsbaCardAction", () => {
         newLineKeys: [],
         hasOpenMatchingProsba: true,
       })
-    ).toEqual({ kind: "view_open", label: "Otwórz prośbę" });
+    ).toEqual({ kind: "view_open", label: "Zobacz prośbę" });
   });
 
   it("wszystkie pozycje pominięte w zakresie - chip Ze stanu", () => {
@@ -265,7 +265,7 @@ describe("formatZkProsbaCardActionLabelAfterStockFilter", () => {
         sourceCount: 2,
         hasOpenMatchingProsba: true,
       })
-    ).toBe("Otwórz prośbę");
+    ).toBe("Zobacz prośbę");
   });
 
   it("aktualizuje liczbę po filtrze", () => {
@@ -283,14 +283,14 @@ describe("formatZkProsbaCardActionLabelAfterStockFilter", () => {
   it("przy zapisanym zakresie ZK nie blokuje CTA etykietą Na stanie", () => {
     expect(
       formatZkProsbaCardActionLabelAfterStockFilter({
-        action: { kind: "new_prosba", label: "Utwórz prośbę (2)", lineKeys: ["a", "b"] },
+        action: { kind: "new_prosba", label: "Zgłoś prośbę (2)", lineKeys: ["a", "b"] },
         stockLoading: false,
         allOnStock: true,
         filteredCount: 2,
         sourceCount: 2,
         explicitScopeSelection: true,
       })
-    ).toBe("Utwórz prośbę (2)");
+    ).toBe("Zgłoś prośbę (2)");
   });
 });
 
@@ -334,7 +334,7 @@ describe("applyZkProsbaStockFilterToCardAction", () => {
   it("nie zamienia akcji na view_open gdy zakres ZK jest jawnie wybrany", () => {
     const action = {
       kind: "new_prosba" as const,
-      label: "Utwórz prośbę (2)",
+      label: "Zgłoś prośbę (2)",
       lineKeys: ["a", "b"],
     };
     expect(
@@ -356,7 +356,7 @@ describe("applyZkProsbaStockFilterToCardAction", () => {
         allOnStock: true,
         hasOpenMatchingProsba: true,
       })
-    ).toEqual({ kind: "view_open", label: "Otwórz prośbę" });
+    ).toEqual({ kind: "view_open", label: "Zobacz prośbę" });
   });
 });
 
