@@ -135,13 +135,13 @@ function warehouseSummaryLabel(insight: SalesSupplierInsight): {
 
 /** Wspólna siatka wiersza — wyrównanie kolumn między wierszami. */
 const PLAN_ROW_GRID =
-  "grid w-full min-w-0 grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-x-2 sm:grid-cols-[1.25rem_minmax(0,1.4fr)_6.5rem_6.5rem_8.25rem] sm:gap-x-3";
+  "grid w-full min-w-0 grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-x-2 lg:grid-cols-[1.25rem_minmax(0,1.4fr)_6.5rem_6.5rem_8.25rem] lg:gap-x-3";
 
 function SalesPlanColumnHeader() {
   return (
     <div
       className={cn(
-        "hidden border-b border-slate-200/90 bg-slate-50/90 px-3 py-1.5 sm:grid sm:px-4",
+        "hidden border-b border-slate-200/90 bg-slate-50/90 px-3 py-1.5 sm:px-4 lg:grid",
         PLAN_ROW_GRID
       )}
       aria-hidden
@@ -156,7 +156,9 @@ function SalesPlanColumnHeader() {
       <span className={cn(salesTypography.sectionLabel, "text-right text-slate-500")}>
         {C.colWarehouse}
       </span>
-      <span className="min-w-0" />
+      <span className={cn(salesTypography.sectionLabel, "text-right text-slate-500")}>
+        {C.colStatus}
+      </span>
     </div>
   );
 }
@@ -227,11 +229,18 @@ function SalesSupplierRow({
           </div>
           <p
             className={cn(
-              "mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 sm:hidden",
+              "mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 lg:hidden",
               salesTypography.rowMeta
             )}
           >
-            <span className="tabular-nums text-slate-700">{orderLabel}</span>
+            <span
+              className={cn(
+                "tabular-nums",
+                insight.isOverdue ? "font-medium text-amber-800" : "text-slate-700"
+              )}
+            >
+              {orderLabel}
+            </span>
             <span className="text-slate-300" aria-hidden>
               →
             </span>
@@ -250,15 +259,12 @@ function SalesSupplierRow({
             {insight.onVacationNow ? (
               <span className="font-medium text-amber-700">· {C.labelVacationShort}</span>
             ) : null}
-            {insight.isOverdue ? (
-              <span className="font-medium text-amber-800">· {C.labelOverdue}</span>
-            ) : null}
           </p>
         </div>
 
         <p
           className={cn(
-            "hidden tabular-nums text-right sm:block",
+            "hidden tabular-nums text-right lg:block",
             salesTypography.rowBody,
             "font-semibold text-slate-800",
             insight.isOverdue && "text-amber-900"
@@ -268,7 +274,7 @@ function SalesSupplierRow({
         </p>
         <p
           className={cn(
-            "hidden tabular-nums text-right sm:block",
+            "hidden tabular-nums text-right lg:block",
             salesTypography.rowBody,
             warehouse.empty
               ? "font-normal text-slate-400"
@@ -279,12 +285,7 @@ function SalesSupplierRow({
           {warehouse.text}
         </p>
 
-        <div className="hidden min-w-0 flex-wrap items-center justify-end gap-1 sm:flex">
-          {insight.isOverdue ? (
-            <Badge variant="warning" className="px-1.5 py-0 text-[10px]">
-              {C.labelOverdue}
-            </Badge>
-          ) : null}
+        <div className="hidden min-w-0 flex-wrap items-center justify-end gap-1 lg:flex">
           {insight.onVacationNow && insight.vacationWindow ? (
             <SupplierVacationNowChip window={insight.vacationWindow} compact />
           ) : null}
