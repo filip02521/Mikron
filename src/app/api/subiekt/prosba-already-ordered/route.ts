@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     .slice(0, PROSBA_ALREADY_ORDERED_MAX_TW_IDS);
   const forSalesPersonId = body?.forSalesPersonId;
   const requested =
-    typeof forSalesPersonId === "string" && /^[0-9a-f-]{36}$/i.test(forSalesPersonId.trim())
+    typeof forSalesPersonId === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(forSalesPersonId.trim())
       ? forSalesPersonId.trim()
       : null;
   const own = await resolveOwnSalesPersonId(user, requested);
