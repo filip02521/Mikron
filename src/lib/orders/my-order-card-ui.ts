@@ -1,3 +1,4 @@
+import { MY_ORDER_STATUS_TITLE } from "@/lib/orders/my-order-status-titles";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { isInformacjaAvailabilityPendingStatusTitle } from "@/lib/orders/informacja-flow-copy";
 import { isProsbaHandoffStatus } from "@/lib/orders/my-order-sales-ui";
@@ -87,12 +88,12 @@ export function shouldShowOrderStatusDetail(row: MyOrderRow): boolean {
     return false;
   }
   if (row.kind === "informacja" && row.statusTitle === "Dostępne") return false;
-  if (row.statusTitle === "Zamówione" && row.headlineTone === "info") return false;
-  if (row.statusTitle === "Przed zamówieniem") return false;
+  if (row.statusTitle === MY_ORDER_STATUS_TITLE.ordered && row.headlineTone === "info") return false;
+  if (row.statusTitle === MY_ORDER_STATUS_TITLE.beforeOrder) return false;
   if (
     isInformacjaAvailabilityPendingStatusTitle(row.statusTitle) ||
-    row.statusTitle === "Czekamy na zamówienie u dostawcy" ||
-    row.statusTitle === "Zamówione - czekamy na magazyn"
+    row.statusTitle === MY_ORDER_STATUS_TITLE.informacjaAwaitingProcurement ||
+    row.statusTitle === MY_ORDER_STATUS_TITLE.informacjaAwaitingWarehouse
   ) {
     return false;
   }

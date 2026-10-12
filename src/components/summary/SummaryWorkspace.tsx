@@ -13,6 +13,18 @@ import { UndoToast } from "@/components/ui/UndoToast";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { SupplierDrawer } from "@/components/summary/SupplierDrawer";
 import { QuickOrderModal } from "@/components/summary/QuickOrderModal";
+import dynamic from "next/dynamic";
+
+// Widok „Tydzień” i modale dostawcy — osobne chunki, ładowane dopiero przy otwarciu.
+const DailyWeekView = dynamic(() =>
+  import("@/components/summary/DailyWeekView").then((m) => m.DailyWeekView)
+);
+const SupplierVacationModal = dynamic(() =>
+  import("@/components/procurement/SupplierVacationModal").then((m) => m.SupplierVacationModal)
+);
+const SupplierEditModal = dynamic(() =>
+  import("@/components/procurement/SupplierEditModal").then((m) => m.SupplierEditModal)
+);
 import {
   countDailyPanelExceptions,
   countUrgentItemsWithVacation,
@@ -32,11 +44,8 @@ import { useDailyPanelRunner } from "@/components/summary/useDailyPanelRunner";
 import { DailyPanelStickyFooter } from "@/components/summary/DailyPanelStickyFooter";
 import { DailyPanelContentFooter } from "@/components/summary/DailyPanelContentFooter";
 import { DailyTodayView } from "@/components/summary/DailyTodayView";
-import { DailyWeekView } from "@/components/summary/DailyWeekView";
 import { leadTimeDisplayFromQuantiles } from "@/lib/orders/delivery-eta-quantiles-shared";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
-import { SupplierVacationModal } from "@/components/procurement/SupplierVacationModal";
-import { SupplierEditModal } from "@/components/procurement/SupplierEditModal";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import type { SupplierDirectoryEntry } from "@/components/procurement/SupplierSearchField";
 import { VerificationModal } from "@/components/verification/VerificationModal";
@@ -69,7 +78,11 @@ import {
   dailyPanelMarkOrderedToastTitle,
 } from "@/lib/orders/daily-panel-mark-ordered-copy";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
-import type { StockWatchSupplierSignal } from "@/lib/stock-watch/data";
+import type {
+  StockWatchOffPlanSupplier,
+  StockWatchSupplierSignal,
+} from "@/lib/stock-watch/data";
+import { StockWatchOffPlanBanner } from "@/components/stock-watch/StockWatchOffPlanBanner";
 import {
   SupplierStockSignalsProvider,
   supplierStockSignalRank,
@@ -78,6 +91,7 @@ import {
 export function SummaryWorkspace({
   workspace: workspaceIn,
   stockSignalBySupplierId = {},
+  offPlanSuppliers = [],
   suppliers,
   supplierDirectory,
   salesPeople,
@@ -93,6 +107,8 @@ export function SummaryWorkspace({
   workspace: SummaryWorkspaceData;
   /** Nocna analiza Braki per dostawca (karty: Do ZD / braki / nic do zamówienia). */
   stockSignalBySupplierId?: Record<string, StockWatchSupplierSignal>;
+  /** „Zamów dziś poza planem” — braki przed dostawą u dostawców bez planu na dziś. */
+  offPlanSuppliers?: StockWatchOffPlanSupplier[];
   suppliers: OrderFormSupplierOption[];
   supplierDirectory: SupplierDirectoryEntry[];
   salesPeople: { id: string; name: string; email: string }[];
@@ -155,10 +171,10 @@ export function SummaryWorkspace({
   const [onDemandOpen, setOnDemandOpen] = useState(false);
 
   const verificationCount = verificationOrders.length;
-  const exceptionsCount = countDailyPanelExceptions(workspace);
+  const exceptionsCount = useMemo(() => countDailyPanelExceptions(workspace), [workspace]);
 
   const drawerSupplier = drawerId ? workspace.supplierMeta[drawerId] ?? null : null;
-  const inboxSummary = summarizeDailyInbox(workspace);
+  const inboxSummary = useMemo(() => summarizeDailyInbox(workspace), [workspace]);
 
   const standardUrgentAll = useMemo(
     () =>
@@ -449,6 +465,7 @@ export function SummaryWorkspace({
               verificationCount={verificationCount}
               showVerification={!hideVerificationDup}
               urgentVacationCount={urgentVacationCount}
+              cancelledCount={workspace.salesCancelledNotices.length}
               onOpenOnDemand={() => setOnDemandOpen(true)}
             />
           }
@@ -458,6 +475,9 @@ export function SummaryWorkspace({
         <PageAttentionGroup className="mx-3 mb-1 mt-2.5 sm:mx-4 lg:mx-5">
           <BoardQuestionsAttentionNotice edge="row" suppressPathHide />
           {canPrepareZd ? <SupplierMailBounceNotice edge="row" /> : null}
+          {panelView === "dzis" && offPlanSuppliers.length > 0 ? (
+            <StockWatchOffPlanBanner suppliers={offPlanSuppliers} canPrepareZd={canPrepareZd} />
+          ) : null}
           {panelView === "dzis" ? (
             <DailyPanelVerificationBanner
               count={verificationCount}
@@ -469,11 +489,7 @@ export function SummaryWorkspace({
         <DailyPanelToolbar
           view={panelView}
           summary={inboxSummary}
-          dayProgress={dayProgress}
-          urgentVacationCount={urgentVacationCount}
           exceptionsCount={exceptionsCount}
-          verificationCount={verificationCount}
-          hideVerificationMetric={hideVerificationDup}
           onOpenOnDemand={() => setOnDemandOpen(true)}
         />
 

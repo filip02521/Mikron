@@ -2,8 +2,10 @@ import type { IndividualRequestKind } from "@/types/database";
 import type { KeyboardShortcutItem } from "@/components/ui/KeyboardShortcutsHint";
 
 export const SALES_PROSBA_KEYBOARD_HINTS: readonly KeyboardShortcutItem[] = [
+  // Pole produktu ma fokus od startu (desktop) — skróty 1 / 2 / + działają po wyjściu z pola.
+  { keys: ["Esc"], label: "wyjdź z pola - wtedy 1, 2, +" },
   { keys: ["1"], label: "zamówienie" },
-  { keys: ["2"], label: "dostępność" },
+  { keys: ["2"], label: "powiadomienie" },
   { keys: ["+"], label: "kolejny produkt" },
   { keys: ["↑", "↓"], label: "wybór z Subiekta" },
   { keys: ["Enter"], label: "towar z listy" },

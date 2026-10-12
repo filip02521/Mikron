@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import {
   parseDailyPanelView,
   type DailyPanelView,
@@ -16,7 +16,6 @@ function panelPath(view: DailyPanelView, searchParams: URLSearchParams, hash = "
 
 /** Synchronizacja zakładki panelu z `?view=` i legacy hash `#dzis` / `#plan`. */
 export function useDailyPanelView() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const view = parseDailyPanelView(searchParams.get("view"));
   const legacyHashHandled = useRef(false);
@@ -24,9 +23,10 @@ export function useDailyPanelView() {
   const setView = useCallback(
     (next: DailyPanelView) => {
       if (parseDailyPanelView(searchParams.get("view")) === next) return;
-      router.replace(panelPath(next, searchParams), { scroll: false });
+      // Widok czysto kliencki — replaceState aktualizuje useSearchParams bez ponownego renderu serwera.
+      window.history.replaceState(null, "", panelPath(next, searchParams));
     },
-    [router, searchParams]
+    [searchParams]
   );
 
   useEffect(() => {
@@ -59,7 +59,7 @@ export function useDailyPanelView() {
       const targetPath = panelPath("wyjatki", searchParams, anchorHash);
 
       if (view !== "wyjatki") {
-        router.replace(targetPath, { scroll: false });
+        window.history.replaceState(null, "", targetPath);
         return;
       }
 
@@ -77,7 +77,7 @@ export function useDailyPanelView() {
         });
       }
     }
-  }, [view, setView, router, searchParams]);
+  }, [view, setView, searchParams]);
 
   return { view, setView };
 }

@@ -188,8 +188,8 @@ function MojeSectionListLabel({
       id={mojeSectionHeadingDomId(icon)}
       title={title}
       hint={hint}
-      // Jedno zdanie „co z tym zrobić” widać od razu — za ikonką „?” nikt go nie czytał.
-      hintMode="inline"
+      // Opis sekcji w dymku „?” — lista ma być krótka; nagłówek i ikona mówią, co to za sekcja.
+      hintMode="tooltip"
       count={count}
       accent={toSectionListAccent(accent)}
       icon={<MojeSectionIcon kind={icon} size={17} />}

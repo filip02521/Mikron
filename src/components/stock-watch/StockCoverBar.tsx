@@ -11,12 +11,15 @@ export function StockCoverBar({
   incoming,
   safetyStock,
   status,
+  detail,
   className,
 }: {
   available: number;
   incoming: number;
   safetyStock: number;
   status: StockWatchStatus;
+  /** Składniki „dostępne” — w podpowiedzi po najechaniu. */
+  detail?: { stock: number; reserved: number; openZkUnreserved: number; minStock: number | null };
   className?: string;
 }) {
   // Skala do 150% celu — nadwyżka nie rozpycha paska.
@@ -31,7 +34,14 @@ export function StockCoverBar({
     safetyStock > 0 ? Math.round((Math.max(0, available) / safetyStock) * 100) : null;
 
   return (
-    <div className={cn("min-w-[9rem]", className)}>
+    <div
+      className={cn("min-w-[9rem]", className)}
+      title={
+        detail
+          ? `stan ${formatQtyPl(detail.stock)} · rezerwacje ${formatQtyPl(detail.reserved)} · ZK bez rezerwacji ${formatQtyPl(detail.openZkUnreserved)} · min. ${formatQtyPl(detail.minStock)}`
+          : undefined
+      }
+    >
       <div
         className="relative h-2.5 w-full overflow-hidden rounded-full bg-slate-100"
         role="img"

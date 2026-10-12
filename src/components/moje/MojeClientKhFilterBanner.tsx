@@ -47,7 +47,6 @@ export function MojeClientKhFilterBanner({
         "border-b border-slate-200/80 bg-slate-50/90 px-3 py-2.5 sm:px-4 lg:px-6",
         "flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between"
       )}
-      role="status"
     >
       <div className="min-w-0">
         {scopeLabel ? (
@@ -60,13 +59,15 @@ export function MojeClientKhFilterBanner({
               zkWatchId={zkWatchId}
               salesPersonId={salesPersonId}
               inline
+              copyable
             />
             {displayName ? (
               <span className="font-medium text-slate-700"> · {displayName}</span>
             ) : null}
           </p>
         )}
-        <p className={cn("mt-0.5", salesTypography.rowMeta, "text-slate-600")}>
+        {/* Ogłaszana jest tylko liczba trafień — baner ma przyciski (kopiowanie ZK, czyszczenie). */}
+        <p role="status" className={cn("mt-0.5", salesTypography.rowMeta, "text-slate-600")}>
           {matchCount != null ? (
             <>
               {matchLabel}

@@ -216,6 +216,8 @@ export function SubiektProductLineFields({
   lockSubiektLink = false,
   groupSupplierId,
   linkedLeadTime = null,
+  hideStockStatus = false,
+  autoFocusProduct = false,
 }: {
   value: SubiektProductLineValue;
   onChange: (patch: Partial<SubiektProductLineValue>) => void;
@@ -273,9 +275,22 @@ export function SubiektProductLineFields({
   groupSupplierId?: string | null;
   /** Meta czasu dostawy — pod „Powiązano z Subiektem” / „Z bazy”. */
   linkedLeadTime?: ReactNode;
+  /** Stan pokazuje karta „Dostępność” pod pozycją (formularz prośby) — bez drugiego bloku. */
+  hideStockStatus?: boolean;
+  /** Formularz handlowca: kursor od razu w polu produktu (tylko mysz/klawiatura, nie telefon). */
+  autoFocusProduct?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const productAnchorRef = useRef<HTMLDivElement>(null);
+  // Rozmowa z klientem: pierwsze, co robi handlowiec, to wpisanie towaru — bez klikania w pole.
+  // Telefon pominięty: fokus otworzyłby klawiaturę i zasłonił pół formularza.
+  useEffect(() => {
+    if (!autoFocusProduct || value.product?.trim() || value.symbol?.trim()) return;
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    productAnchorRef.current?.querySelector("input")?.focus({ preventScroll: true });
+    // Tylko przy pierwszym wyrenderowaniu pozycji.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const pluAnchorRef = useRef<HTMLDivElement>(null);
   const searchGenerationRef = useRef(0);
   const typeaheadInstanceId = useId();
@@ -1101,6 +1116,8 @@ export function SubiektProductLineFields({
             <Input
               disabled={disabled}
               readOnly={linkedFromSubiekt}
+              // Po powiązaniu kod jest tylko do odczytu — Tab idzie od produktu prosto do ilości.
+              tabIndex={linkedFromSubiekt ? -1 : undefined}
               placeholder="np. 896"
               inputMode="numeric"
               maxLength={MAX_MIKRAN_CODE_LEN}
@@ -1215,7 +1232,7 @@ export function SubiektProductLineFields({
             variant="ghost"
             size="sm"
             disabled={disabled}
-            className="shrink-0 text-emerald-800 hover:bg-emerald-50"
+            className="shrink-0 text-indigo-800 hover:bg-indigo-50"
             onClick={unlinkSubiektForEdit}
           >
             Zmień towar
@@ -1236,7 +1253,7 @@ export function SubiektProductLineFields({
             variant="ghost"
             size="sm"
             disabled={disabled}
-            className="text-emerald-800 hover:bg-emerald-50"
+            className="text-indigo-800 hover:bg-indigo-50"
             onClick={unlinkSubiektForEdit}
           >
             Zmień towar
@@ -1264,7 +1281,9 @@ export function SubiektProductLineFields({
         ) : (
           <>
             <ProsbaTeethExemptHint line={value as ProductLineDraft} />
-            <ProsbaProductStockStatus line={value as ProductLineDraft} requestKind={requestKind} />
+            {hideStockStatus ? null : (
+              <ProsbaProductStockStatus line={value as ProductLineDraft} requestKind={requestKind} />
+            )}
             <ProsbaPairHint twId={value.subiektTwId} />
           </>
         )
