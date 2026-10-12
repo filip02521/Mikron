@@ -1,3 +1,4 @@
+import { MY_ORDER_STATUS_TITLE } from "@/lib/orders/my-order-status-titles";
 import { PROCUREMENT_TEAM_LABEL, PROCUREMENT_TEAM_LABEL_TITLE } from "@/lib/orders/procurement-copy";
 import { informacjaAvailableSinceShort } from "@/lib/orders/informacja-timing-meta";
 import {
@@ -67,7 +68,7 @@ export type MyOrderHeadlineTone =
 export const MY_ORDER_PARTIAL_STOCK_HEADLINE = "Część towaru na magazynie";
 
 export function isMyOrderPartialStockRow(row: MyOrderRow): boolean {
-  if (row.kind !== "zamowienie" || row.statusTitle !== "Częściowo na magazynie") {
+  if (row.kind !== "zamowienie" || row.statusTitle !== MY_ORDER_STATUS_TITLE.partialOnStock) {
     return false;
   }
   return enrichMyOrderSalesUi(row).headlineTone === "stock";
@@ -153,22 +154,22 @@ export function summarizeMyOrdersInbox(rows: MyOrderRow[]): MyOrdersInboxSummary
   for (const row of rows) {
     const ui = enrichMyOrderSalesUi(row);
     if (ui.sortPriority === 1) s.pickupCount++;
-    else if (row.kind === "zamowienie" && row.statusTitle === "Częściowo na magazynie") {
+    else if (row.kind === "zamowienie" && row.statusTitle === MY_ORDER_STATUS_TITLE.partialOnStock) {
       s.partialReadyCount++;
     }
     else if (ui.sortPriority === 3) s.cancelAckCount++;
     else if (ui.sortPriority === 4) s.overdueCount++;
     else if (ui.sortPriority === 5) s.verificationCount++;
     else if (ui.sortPriority === 10) s.informacjaReadyCount++;
-    else if (row.kind === "zamowienie" && row.statusTitle === "Przed zamówieniem") {
+    else if (row.kind === "zamowienie" && row.statusTitle === MY_ORDER_STATUS_TITLE.beforeOrder) {
       s.przedZamowieniemCount++;
-    } else if (row.kind === "zamowienie" && row.statusTitle === "Zamówione") {
+    } else if (row.kind === "zamowienie" && row.statusTitle === MY_ORDER_STATUS_TITLE.ordered) {
       s.zamowioneCount++;
     } else if (
       row.kind === "informacja" &&
       (isInformacjaAvailabilityPendingStatusTitle(row.statusTitle) ||
-        row.statusTitle === "Czekamy na zamówienie u dostawcy" ||
-        row.statusTitle === "Zamówione - czekamy na magazyn")
+        row.statusTitle === MY_ORDER_STATUS_TITLE.informacjaAwaitingProcurement ||
+        row.statusTitle === MY_ORDER_STATUS_TITLE.informacjaAwaitingWarehouse)
     ) {
       s.availabilityPendingCount++;
     }
@@ -265,7 +266,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     };
   }
 
-  if (row.statusTitle === "Częściowo na magazynie") {
+  if (row.statusTitle === MY_ORDER_STATUS_TITLE.partialOnStock) {
     const onStock = row.lines.filter(
       (l) => l.stockStatus === "on_stock" || l.stockStatus === "partial"
     ).length;
@@ -332,7 +333,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     };
   }
 
-  if (row.statusTitle === "Zamówione") {
+  if (row.statusTitle === MY_ORDER_STATUS_TITLE.ordered) {
     const hasEstimate = Boolean(row.timingLabel);
     return {
       headline: hasEstimate
@@ -346,7 +347,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     };
   }
 
-  if (row.statusTitle === "Przed zamówieniem") {
+  if (row.statusTitle === MY_ORDER_STATUS_TITLE.beforeOrder) {
     return {
       headline: "Czeka na zamówienie u dostawcy",
       headlineTone: "neutral",
@@ -355,7 +356,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     };
   }
 
-  if (row.statusTitle === "Czekamy na zamówienie u dostawcy") {
+  if (row.statusTitle === MY_ORDER_STATUS_TITLE.informacjaAwaitingProcurement) {
     return {
       headline: "Zamówimy u dostawcy",
       headlineTone: "info",
@@ -373,7 +374,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     };
   }
 
-  if (row.statusTitle === "Zamówione - czekamy na magazyn") {
+  if (row.statusTitle === MY_ORDER_STATUS_TITLE.informacjaAwaitingWarehouse) {
     return {
       headline: "Zamówione u dostawcy",
       headlineTone: "info",
@@ -518,7 +519,7 @@ export function isExpandedSublineRedundant(row: MyOrderRow): boolean {
     return true;
   }
   if (
-    row.statusTitle === "Zamówione" &&
+    row.statusTitle === MY_ORDER_STATUS_TITLE.ordered &&
     row.subline.includes("Mało dostaw w historii") &&
     row.timingLabel?.trim()
   ) {

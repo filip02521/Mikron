@@ -40,7 +40,6 @@ src/components/ui/UndoToast.tsx
 src/components/verification/VerificationWorkspace.tsx
 src/hooks/useDailyDayProgress.ts
 src/hooks/useDailyPanelFreshHighlight.ts
-src/hooks/useDailyUrgentProgress.ts
 src/hooks/useLatest.ts
 src/lib/client/use-client-hydrated.ts
 src/lib/orders/my-order-row-layout.ts

@@ -80,18 +80,7 @@ function SupplementaryLinks({
   onOpenOnDemand?: () => void;
 }) {
   const items: ReactNode[] = [];
-
-  if (summary.weekPlanCount > 0) {
-    items.push(
-      <Link
-        key="plan"
-        href="/podsumowanie?view=tydzien"
-        className={cn(panelTextLinkClass, "text-xs")}
-      >
-        Plan {summary.weekPlanCount}
-      </Link>
-    );
-  }
+  // Plan tygodnia ma własną zakładkę „Tydzień N” tuż obok — bez powtórki tej samej liczby.
   if (summary.onDemandCount > 0 && onOpenOnDemand) {
     items.push(
       <button
@@ -137,6 +126,7 @@ function StatusBandBody({
   dayProgress,
   dayProgressReady = true,
   queueTotal,
+  cancelledCount,
   showQueueSteps,
   hasSupplementary,
   showVerification,
@@ -149,6 +139,8 @@ function StatusBandBody({
   dayProgress: DailyDayProgress;
   dayProgressReady?: boolean;
   queueTotal: number;
+  /** Wliczone do „w kolejce” — pokazane osobno, żeby liczby się sumowały. */
+  cancelledCount: number;
   showQueueSteps: boolean;
   hasSupplementary: boolean;
   showVerification: boolean;
@@ -197,6 +189,15 @@ function StatusBandBody({
                 value={summary.todayCount}
                 label={unitLabel(summary.todayCount, "na dziś", "na dziś", "na dziś")}
                 sectionKey="today"
+              />
+              <StatDivider />
+            </>
+          ) : null}
+          {cancelledCount > 0 ? (
+            <>
+              <Stat
+                value={cancelledCount}
+                label={unitLabel(cancelledCount, "anulowanie", "anulowania", "anulowań")}
               />
               <StatDivider />
             </>
@@ -261,6 +262,7 @@ export function DailyPanelStatusBand({
   verificationCount = 0,
   showVerification = true,
   urgentVacationCount = 0,
+  cancelledCount = 0,
   onOpenOnDemand,
 }: {
   view: DailyPanelView;
@@ -270,6 +272,8 @@ export function DailyPanelStatusBand({
   verificationCount?: number;
   showVerification?: boolean;
   urgentVacationCount?: number;
+  /** Anulowania handlowców do rozliczenia — liczone też w zakładce „Dziś”. */
+  cancelledCount?: number;
   onOpenOnDemand?: () => void;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -280,9 +284,9 @@ export function DailyPanelStatusBand({
     summary.overdueCount +
     summary.todayCount +
     summary.forSomeoneGroupCount +
-    summary.stockOutGroupCount;
+    summary.stockOutGroupCount +
+    cancelledCount;
   const hasSupplementary =
-    summary.weekPlanCount > 0 ||
     (summary.onDemandCount > 0 && Boolean(onOpenOnDemand)) ||
     summary.hiddenScheduleCount > 0;
   const activeSectionCount =
@@ -331,6 +335,7 @@ export function DailyPanelStatusBand({
           dayProgress={dayProgress}
           dayProgressReady={dayProgressReady}
           queueTotal={queueTotal}
+          cancelledCount={cancelledCount}
           showQueueSteps={showQueueSteps}
           hasSupplementary={hasSupplementary}
           showVerification={showVerification}

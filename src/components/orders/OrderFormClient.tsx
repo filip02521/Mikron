@@ -27,6 +27,11 @@ import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter
 import { ProsbaFormMetaStrip } from "@/components/orders/ProsbaFormMetaStrip";
 import { ProsbaPageToolbar } from "@/components/orders/ProsbaPageToolbar";
 import { ProductZdLookupTrigger } from "@/components/sales/ProductZdLookupTrigger";
+import { buildProsbaAlreadyOrderedConfirm } from "@/lib/orders/prosba-already-ordered";
+import {
+  invalidateProsbaAlreadyOrdered,
+  readProsbaAlreadyOrderedCache,
+} from "@/lib/orders/prosba-already-ordered-cache";
 import { stickyAboveMobileChromeClass } from "@/lib/ui/sales-mobile-chrome";
 import type { ProductZdLookupStockOutPrefill } from "@/lib/orders/product-zd-lookup-session";
 import { hasAnyProductHint, hasValidOrderQuantity } from "@/lib/orders/request-completeness";
@@ -91,7 +96,11 @@ import {
   type ZkProsbaPrefill,
 } from "@/lib/orders/zk-watch-prosba-prefill";
 import { ZK_PROSBA_LINK_BANNER_COPY } from "@/lib/orders/zk-prosba-link-banner-copy";
-import { assertProsbaLinesBelongToZk } from "@/lib/orders/zk-prosba-catalog-guard";
+import {
+  assertProsbaLinesBelongToZk,
+  prosbaLinesViolateZkCatalog,
+  ZK_PROSBA_OFF_CATALOG_MESSAGE,
+} from "@/lib/orders/zk-prosba-catalog-guard";
 import {
   clearBoardQuestionProsbaPrefill,
   readBoardQuestionProsbaPrefill,
@@ -100,7 +109,7 @@ import { DEPARTMENT_BOARD_QUESTIONS_FORM } from "@/lib/department-board/copy";
 import { readTeethOcrProsbaPrefill, clearTeethOcrProsbaPrefill, resolveSupplierForTeethPrefill } from "@/lib/orders/teeth-ocr-prosba-prefill";
 import { clearUnseenNewZkLineKeys, removeUnseenNewZkLineKeys } from "@/lib/client/zk-watch-new-lines-snapshot";
 import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirmDialog";
-import { buildProsbaSubmitStockConfirm, buildProsbaSubmitUnknownStockConfirm, buildProsbaSubmitZkQuantityConfirm, formatProsbaZkQuantityFormBanner, applyProsbaLineStockMap, collectProsbaLineTwIdsMissingStock } from "@/lib/orders/prosba-stock-check";
+import { buildProsbaSubmitStockConfirm, buildProsbaSubmitUnknownStockConfirm, isProsbaLineStockSufficient, buildProsbaSubmitZkQuantityConfirm, formatProsbaZkQuantityFormBanner, applyProsbaLineStockMap, collectProsbaLineTwIdsMissingStock } from "@/lib/orders/prosba-stock-check";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
 import { useTeethExemptTwIds, useTeethProductInfo } from "@/components/layout/TeethExemptContext";
 import { prosbaLinesIncludeTeethProduct } from "@/lib/orders/teeth-stock-exempt";
@@ -272,7 +281,7 @@ export function OrderFormClient({
   const [validationAttempted, setValidationAttempted] = useState(false);
   const [stockConfirmOpen, setStockConfirmOpen] = useState(false);
   const [stockConfirmKind, setStockConfirmKind] = useState<
-    "stock" | "unknown_stock" | "zk_quantity" | null
+    "stock" | "unknown_stock" | "zk_quantity" | "already_ordered" | null
   >(null);
   const [stockConfirmMessage, setStockConfirmMessage] = useState("");
   const [stockConfirmSummary, setStockConfirmSummary] = useState<string | null>(null);
@@ -283,6 +292,7 @@ export function OrderFormClient({
     acknowledgeSufficientStock?: boolean;
     acknowledgeUnknownStock?: boolean;
     acknowledgeZkQuantityMismatch?: boolean;
+    acknowledgeAlreadyOrdered?: boolean;
   }>({});
   const submitRef = useRef<() => void>(() => {});
   const zkPrefillAppliedRef = useRef(false);
@@ -823,7 +833,7 @@ export function OrderFormClient({
 
   const performSubmit = (
     entries: (Entry & { requestNote?: string })[],
-    options?: { acknowledgeSufficientStock?: boolean }
+    options?: typeof pendingSubmitAckRef.current
   ) => {
     // pending z useTransition zmienia się dopiero po renderze — dwa kliknięcia w jednym takcie wysłałyby dwie prośby.
     if (submitLockRef.current) return;
@@ -884,6 +894,11 @@ export function OrderFormClient({
                 informacjaStockOutReorder: informacjaFlags.informacjaStockOutReorder,
                 informacjaQueueViaDailyPanel: informacjaFlags.informacjaQueueViaDailyPanel,
               });
+
+        // Kolejna prośba na ten sam towar musi zobaczyć tę właśnie wysłaną.
+        invalidateProsbaAlreadyOrdered(
+          entries.map((e) => e.subiektTwId).filter((id): id is number => id != null)
+        );
 
         const stockOutHidden =
           requestKind === "informacja" && informacjaFlags.informacjaStockOutReorder;
@@ -1017,10 +1032,17 @@ export function OrderFormClient({
         setGroups(buildInitialGroups(lockedId, initialSupplierId));
         setStockConfirmOpen(false);
         setStockConfirmKind(null);
+        pendingSubmitEntriesRef.current = [];
+        pendingSubmitAckRef.current = {};
       } catch (e) {
         handleProsbaStockSubmitError(
           e,
           (message) => {
+            // „Wyślij mimo to” ponawia TĘ prośbę, z już potwierdzonymi pytaniami.
+            pendingSubmitEntriesRef.current = entries;
+            pendingSubmitAckRef.current = { ...options };
+            setStockConfirmTitle("Towar na stanie");
+            setStockConfirmConfirmLabel("Wyślij mimo to");
             setStockConfirmSummary(null);
             setStockConfirmMessage(message);
             setStockConfirmKind("stock");
@@ -1048,9 +1070,51 @@ export function OrderFormClient({
       acknowledgeSufficientStock?: boolean;
       acknowledgeUnknownStock?: boolean;
       acknowledgeZkQuantityMismatch?: boolean;
+      acknowledgeAlreadyOrdered?: boolean;
     } = {}
   ) => {
     const mergedAck = { ...pendingSubmitAckRef.current, ...ack };
+
+    // Produkt spoza ZK zablokuje zapis — powiedz to od razu, nie po serii potwierdzeń.
+    if (prosbaLinesViolateZkCatalog(entries, zkProsbaLinkContext?.allowedTwIds)) {
+      setMsg({ text: ZK_PROSBA_OFF_CATALOG_MESSAGE, tone: "error" });
+      return;
+    }
+
+    // Najpierw dubel: to pytanie „czy w ogóle wysyłać”, zanim formularz zapyta o stan.
+    if (requestKind === "zamowienie" && !mergedAck.acknowledgeAlreadyOrdered) {
+      // Ten sam klucz co podpowiedź przy pozycji: handlowiec, dla którego jest prośba.
+      const salesForm = singleGroup && Boolean(lockedSalesPerson);
+      // Per pozycja: grupy mogą mieć różnych handlowców z tym samym towarem.
+      // includeStale — to samo, co pokazuje karta, także po TTL cache.
+      const dupConfirm = buildProsbaAlreadyOrderedConfirm(
+        entries,
+        requestKind,
+        (e) =>
+          e.subiektTwId != null
+            ? readProsbaAlreadyOrderedCache(
+                [e.subiektTwId],
+                (salesForm ? lockedId : e.salesPersonId) || null,
+                true
+              )[e.subiektTwId]
+            : undefined,
+        {
+          forOther: !salesForm || submitForOther,
+          shelfSufficient: (e) => isProsbaLineStockSufficient(e, "zamowienie", teethExemptTwIds),
+        }
+      );
+      if (dupConfirm) {
+        pendingSubmitEntriesRef.current = entries;
+        pendingSubmitAckRef.current = mergedAck;
+        setStockConfirmTitle(dupConfirm.title);
+        setStockConfirmConfirmLabel("Wyślij mimo to");
+        setStockConfirmSummary(dupConfirm.summary);
+        setStockConfirmMessage(dupConfirm.message);
+        setStockConfirmKind("already_ordered");
+        setStockConfirmOpen(true);
+        return;
+      }
+    }
 
     if (requestKind === "zamowienie" && !mergedAck.acknowledgeUnknownStock) {
       const unknownConfirm = buildProsbaSubmitUnknownStockConfirm(
@@ -1412,7 +1476,8 @@ export function OrderFormClient({
     const onKey = (e: KeyboardEvent) => {
       handleSalesProsbaKeyboardEvent(e, {
         pending,
-        canSubmit: salesProsbaSubmitState?.canSubmit ?? false,
+        // Ctrl+Enter jak przycisk: niekompletny formularz pokaże braki, nie milczy.
+        canSubmit: !resolvingSupplier,
         locked: readOnly || tourDemo,
         onSubmit: () => submitRef.current(),
         onSetRequestKind: setRequestKind,
@@ -1429,7 +1494,7 @@ export function OrderFormClient({
     readOnly,
     tourDemo,
     addSalesProductLine,
-    salesProsbaSubmitState?.canSubmit,
+    resolvingSupplier,
   ]);
 
   useEffect(() => {
@@ -1514,6 +1579,10 @@ export function OrderFormClient({
         const kind = stockConfirmKind;
         setStockConfirmKind(null);
         setStockConfirmSummary(null);
+        if (kind === "already_ordered") {
+          runSubmitWithConfirms(entries, { ...prevAck, acknowledgeAlreadyOrdered: true });
+          return;
+        }
         if (kind === "unknown_stock") {
           runSubmitWithConfirms(entries, { ...prevAck, acknowledgeUnknownStock: true });
           return;
@@ -1763,6 +1832,14 @@ export function OrderFormClient({
                   requestKind={requestKind}
                   appearance="prosba"
                   salesProsbaForm
+                  alreadyOrderedCheck={!tourDemo}
+                  alreadyOrderedForSalesPersonId={lockedId || null}
+                  alreadyOrderedForOther={submitForOther}
+                  onRequestKindChange={(kind) => {
+                    clearFormNotice();
+                    setRequestKind(kind);
+                    setInformacjaPath(kind === "informacja" ? DEFAULT_INFORMACJA_FLOW_PATH : "direct");
+                  }}
                   addLabel="+ Kolejny produkt"
                   showClientField
                   suppliers={supplierRefs}
@@ -1827,7 +1904,12 @@ export function OrderFormClient({
               requestKind === "informacja" ? "sm:justify-between" : "sm:justify-end"
             )}
           >
-            {requestKind === "informacja" ? (
+            {!canSubmitProsba && !pending && !tourDemo && !resolvingSupplier ? (
+              // Powód widoczny także na telefonie (wcześniej tylko w dymku title).
+              <p className="text-xs font-medium leading-relaxed text-slate-600 sm:mr-auto">
+                {prosbaReadiness.headline}
+              </p>
+            ) : requestKind === "informacja" ? (
               <p className="text-xs leading-relaxed text-slate-500">
                 {informacjaSalesFooterNote(informacjaPath)}
               </p>
@@ -1840,17 +1922,18 @@ export function OrderFormClient({
                 zkPrefillLoading ||
                 submitLocked ||
                 Boolean(pendingMessage) ||
-                !canSubmitProsba
+                // Dostawca ustalany z Subiekta — wysyłka teraz zapisałaby prośbę bez niego.
+                resolvingSupplier
               }
+              // Zawsze klikalny: niekompletny formularz pokazuje błędy i przewija do pierwszej
+              // pozycji z brakami (walidacja w submit) zamiast martwego, wyszarzonego przycisku.
               onClick={submit}
               title={
                 zkPrefillLoading
                   ? "Trwa wczytywanie pozycji z ZK"
                   : submitLocked || pendingMessage
                     ? "Prośba jest już wysyłana"
-                    : !canSubmitProsba && !pending && !tourDemo
-                      ? prosbaReadiness.headline
-                      : undefined
+                    : undefined
               }
               className="w-full shrink-0 sm:w-auto sm:min-w-[10rem]"
             >
@@ -1862,7 +1945,9 @@ export function OrderFormClient({
                     : "Wysyłanie…"
                   : zkPrefillLoading
                     ? "Wczytywanie ZK…"
-                    : "Wyślij prośbę"}
+                    : resolvingSupplier
+                      ? "Ustalam dostawcę…"
+                      : "Wyślij prośbę"}
             </Button>
           </div>
           </div>
@@ -2126,6 +2211,10 @@ export function OrderFormClient({
                   }}
                   requestKind={requestKind}
                   appearance="prosba"
+                  alreadyOrderedCheck={!tourDemo}
+                  alreadyOrderedForSalesPersonId={group[0]?.salesPersonId || null}
+                  alreadyOrderedForOther
+                  onRequestKindChange={groups.length === 1 ? setProcurementRequestKind : undefined}
                   addLabel="+ Kolejny produkt w grupie"
                   showClientField={Boolean(lockedSalesPerson)}
                   suppliers={supplierRefs}
@@ -2205,7 +2294,12 @@ export function OrderFormClient({
                   : "Powiadomienie o stanie magazynowym trafi od razu do kolejki magazynu."
               : "Zamówienia trafiają do panelu dziennego po zapisie kompletnych danych (dostawca, produkt z Subiekta lub ręcznie, ilość)."}
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {!procurementCanSubmit && !pending && !readOnly ? (
+              <p className="basis-full text-xs font-medium text-slate-600 sm:basis-auto">
+                Uzupełnij handlowca, dostawcę i produkt z ilością w każdej grupie.
+              </p>
+            ) : null}
             {!singleGroup ? (
               <Button
                 variant="outline"
@@ -2219,7 +2313,8 @@ export function OrderFormClient({
               </Button>
             ) : null}
             <Button
-              disabled={pending || readOnly || !procurementCanSubmit}
+              // Klikalny także przy brakach — submit pokazuje, czego brakuje w której grupie.
+              disabled={pending || readOnly || resolvingSupplier}
               onClick={submit}
             >
               {pending ? "Zapisywanie…" : "Zatwierdź wszystkie"}

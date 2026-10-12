@@ -1,3 +1,4 @@
+import { MY_ORDER_STATUS_TITLE } from "@/lib/orders/my-order-status-titles";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import type { MojeSectionIconKind } from "@/components/icons/StrokeIcons";
 import { isProsbaHandoffStatus, sortMyOrderRows } from "@/lib/orders/my-order-sales-ui";
@@ -92,8 +93,8 @@ export const MY_ORDER_PROGRESS_SECTION_EMPTY: Record<MyOrderProgressSectionId, s
 /** Czy prośba jest jeszcze przed realnym zamówieniem u dostawcy. */
 export function myOrderProgressSection(row: MyOrderRow): MyOrderProgressSectionId {
   if (
-    row.statusTitle === "Przed zamówieniem" ||
-    row.statusTitle === "Czekamy na zamówienie u dostawcy" ||
+    row.statusTitle === MY_ORDER_STATUS_TITLE.beforeOrder ||
+    row.statusTitle === MY_ORDER_STATUS_TITLE.informacjaAwaitingProcurement ||
     isProsbaHandoffStatus(row.statusTitle)
   ) {
     return "before_order";

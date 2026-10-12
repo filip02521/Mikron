@@ -579,43 +579,83 @@ export async function listStockWatchSupplierOrders(): Promise<StockWatchSupplier
   }));
 }
 
-/** Skrót analizy per dostawca — karty panelu dziennego (czy jest co zamawiać). */
-export type StockWatchSupplierSignal = {
-  /** Pozycje „Do ZD” — to samo co Kreator (bez opcji). */
-  lineCount: number;
-  orderValue: number;
-  unpricedCount: number;
-  /** Brak towaru + krytyczne (zgodnie z regułami towarów). */
-  criticalCount: number;
-  /** Dzień danych analizy (koniec okna sprzedaży). */
-  dataDo: string;
-};
+export type { StockWatchSupplierSignal } from "@/lib/stock-watch/signal";
+export { stockWatchHorizonExtends, stockWatchSignalStale } from "@/lib/stock-watch/signal";
+import type { StockWatchSupplierSignal } from "@/lib/stock-watch/signal";
 
 export async function listStockWatchSupplierSignals(): Promise<
   Record<string, StockWatchSupplierSignal>
 > {
   const res = await query<{
     supplier_id: string;
+    dni_zapasu: unknown;
+    data_do: unknown;
+    lead_days: unknown;
+    next_order_date: unknown;
+    next_order_days: unknown;
+    computed_at: unknown;
     line_count: unknown;
     order_value: unknown;
     unpriced_count: unknown;
-    data_do: unknown;
     critical: unknown;
+    before_delivery: unknown;
+    urgent_symbol: string | null;
+    urgent_name: string | null;
+    urgent_cover: unknown;
   }>(
-    `SELECT o.supplier_id, o.line_count, o.order_value, o.unpriced_count, o.data_do,
-            (SELECT count(*) FROM stock_watch_items i
-              WHERE i.supplier_id = o.supplier_id
-                AND i.status IN ('out_of_stock', 'critical')) AS critical
-       FROM stock_watch_supplier_orders o`
+    `WITH lines AS (
+       SELECT i.*,
+              (e.subiekt_tw_id IS NULL AND r.subiekt_tw_id IS NULL) AS standard,
+              (i.in_order AND e.subiekt_tw_id IS NULL
+                 AND (r.subiekt_tw_id IS NULL OR i.order_individual_pieces > 0)) AS do_zd
+         FROM stock_watch_items i
+         LEFT JOIN zd_estimate_exclusions e ON e.subiekt_tw_id = i.subiekt_tw_id
+         LEFT JOIN zd_estimate_on_request r ON r.subiekt_tw_id = i.subiekt_tw_id
+     ),
+     agg AS (
+       SELECT supplier_id,
+              count(*) FILTER (WHERE do_zd) AS line_count,
+              coalesce(sum(order_value) FILTER (WHERE do_zd AND order_zd_units > 0), 0) AS order_value,
+              count(*) FILTER (WHERE do_zd AND order_zd_units > 0 AND order_value IS NULL) AS unpriced_count,
+              -- Jak lista pilnych w Brakach (link „N pilne” otwiera dokładnie te pozycje): standardowe,
+              -- niezależnie od in_order — przy niepełnej analizie (np. BOM) in_order bywa false.
+              count(*) FILTER (WHERE standard AND status IN ('out_of_stock', 'critical')) AS critical,
+              count(*) FILTER (WHERE standard AND delivery_risk = 'before_delivery') AS before_delivery
+         FROM lines
+        GROUP BY supplier_id
+     ),
+     urgent AS (
+       SELECT DISTINCT ON (supplier_id) supplier_id, tw_symbol, tw_nazwa, days_of_cover
+         FROM lines
+        WHERE do_zd
+        ORDER BY supplier_id, days_of_cover ASC NULLS LAST
+     )
+     SELECT o.supplier_id, o.dni_zapasu, o.data_do, o.lead_days, o.next_order_date,
+            o.next_order_days, o.computed_at,
+            a.line_count, a.order_value, a.unpriced_count, a.critical, a.before_delivery,
+            u.tw_symbol AS urgent_symbol, u.tw_nazwa AS urgent_name, u.days_of_cover AS urgent_cover
+       FROM stock_watch_supplier_orders o
+       LEFT JOIN agg a ON a.supplier_id = o.supplier_id
+       LEFT JOIN urgent u ON u.supplier_id = o.supplier_id`
   );
   const out: Record<string, StockWatchSupplierSignal> = {};
   for (const row of res.rows) {
     out[String(row.supplier_id)] = {
       lineCount: num(row.line_count),
-      orderValue: num(row.order_value),
+      orderValue: Math.round(num(row.order_value) * 100) / 100,
       unpricedCount: num(row.unpriced_count),
       criticalCount: num(row.critical),
+      beforeDeliveryCount: num(row.before_delivery),
+      mostUrgent:
+        row.urgent_name != null
+          ? { twSymbol: row.urgent_symbol, twNazwa: row.urgent_name, daysOfCover: numOrNull(row.urgent_cover) }
+          : null,
+      dniZapasu: num(row.dni_zapasu),
+      leadDays: numOrNull(row.lead_days),
+      nextOrderDate: dateKey(row.next_order_date),
+      nextOrderDays: numOrNull(row.next_order_days),
       dataDo: dateKey(row.data_do) ?? "",
+      computedAt: iso(row.computed_at) ?? "",
     };
   }
   return out;

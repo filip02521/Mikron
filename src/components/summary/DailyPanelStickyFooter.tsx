@@ -17,6 +17,7 @@ export function DailyPanelStickyFooter({
   verificationCount = 0,
   showVerification = true,
   urgentVacationCount = 0,
+  cancelledCount = 0,
   onOpenOnDemand,
 }: {
   view: DailyPanelView;
@@ -26,6 +27,7 @@ export function DailyPanelStickyFooter({
   verificationCount?: number;
   showVerification?: boolean;
   urgentVacationCount?: number;
+  cancelledCount?: number;
   onOpenOnDemand?: () => void;
 }) {
   const showStatusBand = view === "dzis";
@@ -41,6 +43,7 @@ export function DailyPanelStickyFooter({
           verificationCount={verificationCount}
           showVerification={showVerification}
           urgentVacationCount={urgentVacationCount}
+          cancelledCount={cancelledCount}
           onOpenOnDemand={onOpenOnDemand}
         />
       ) : null}
