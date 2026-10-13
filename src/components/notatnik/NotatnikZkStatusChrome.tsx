@@ -7,7 +7,7 @@ import { cn } from "@/lib/cn";
 import type { SubiektAvailability } from "@/lib/subiekt/availability";
 import { salesChromeInsetClass } from "@/lib/ui/ontime-theme";
 
-/** Sync listy ZK + status magazynu w jednym pasku. */
+/** Sync / Subiekt — tylko gdy coś wymaga uwagi (nie „Na bieżąco” na spokojnie). */
 export function NotatnikZkStatusChrome({
   subiektInitial,
   onSubiektStatusChange,
@@ -18,25 +18,26 @@ export function NotatnikZkStatusChrome({
   const ctx = useSalesUpdates();
   if (!ctx) return null;
 
+  const showSyncAttention = ctx.hasUpdates;
+
   return (
-    <div className="border-b border-slate-100 bg-slate-50/45">
-      <div
-        className={cn(
-          salesChromeInsetClass,
-          "flex flex-col gap-2 py-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3"
-        )}
-      >
-        <SalesPanelSyncControl variant="notatnik" embedded compact />
-        {subiektInitial ? (
-          <SubiektStatusBar
-            initial={subiektInitial}
-            embedded
-            compact
-            className="min-w-0 sm:max-w-md sm:flex-1"
-            onStatusChange={onSubiektStatusChange}
-          />
-        ) : null}
-      </div>
-    </div>
+    <>
+      {showSyncAttention ? (
+        <div className="border-b border-slate-100 bg-slate-50/45">
+          <div className={cn(salesChromeInsetClass, "py-2")}>
+            <SalesPanelSyncControl variant="notatnik" embedded compact />
+          </div>
+        </div>
+      ) : null}
+      {subiektInitial ? (
+        <SubiektStatusBar
+          initial={subiektInitial}
+          embedded
+          compact
+          className="min-w-0"
+          onStatusChange={onSubiektStatusChange}
+        />
+      ) : null}
+    </>
   );
 }

@@ -923,13 +923,13 @@ export const panelChoiceChipSuccessSelectedClass =
 export const panelDashedActionClass =
   "w-full rounded-md border border-dashed border-indigo-200/70 bg-indigo-50/30 px-4 py-3 text-sm font-medium text-indigo-800 transition hover:border-indigo-300/90 hover:bg-indigo-50/60 hover:text-indigo-950";
 
-/** Główna akcja dodawania w notatniku (ZK, karteczki). */
+/** Główna akcja dodawania w notatniku (ZK, karteczki) — petrol soft, nie pełny primary. */
 export const notatnikPrimaryAddButtonClass =
-  "min-h-11 w-full justify-center border-indigo-200/80 bg-indigo-50/50 text-indigo-950 hover:bg-indigo-100/70 sm:w-auto";
+  "min-h-9 justify-center border-indigo-200/80 bg-indigo-50/55 text-indigo-950 hover:bg-indigo-100/70 sm:w-auto";
 
-/** Obudowa rozwiniętego formularza dodawania w notatniku. */
+/** Obudowa rozwiniętego formularza dodawania (ZK); notatki compose = sticky na tablicy. */
 export const notatnikAddPanelShellClass =
-  "overflow-hidden rounded-md border border-indigo-200/90 bg-indigo-50/45 shadow-sm";
+  "overflow-hidden rounded-md border border-slate-200/90 bg-white";
 
 export const panelMutedToggleClass =
   "text-sm font-medium text-indigo-700/80 transition hover:text-indigo-900";

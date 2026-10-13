@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/Button";
-import { IconAlertCircle, IconPackage, IconTruck, IconWarehouse } from "@/components/icons/StrokeIcons";
 import type { ProductLineDraft } from "@/components/orders/request-product-lines";
 import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
 import { buildProsbaLineStockStatusView } from "@/lib/orders/prosba-line-stock-ui";
@@ -16,77 +15,30 @@ import {
   prosbaAlreadyOrderedStockTone,
   prosbaLineRequestedQty,
   type ProsbaAlreadyOrderedInfo,
-  type ProsbaAlreadyOrderedTone,
 } from "@/lib/orders/prosba-already-ordered";
+import {
+  ProsbaLineSupplierMeta,
+  useProsbaLineSupplierTiming,
+  type ProsbaLineSupplierTimingProps,
+} from "@/components/orders/ProsbaSupplierContext";
 
 type Tone = ReturnType<typeof prosbaAlreadyOrderedStockTone>;
 
-/** Ta sama rodzina co status stanu magazynu przy pozycji + zielony „w drodze i wolne”. */
-const SHELL: Record<Tone, string> = {
-  amber: "border-amber-200/90 bg-amber-50/70",
-  sky: "border-sky-200/90 bg-sky-50/65",
-  slate: "border-slate-200/90 bg-slate-50/80",
-  emerald: "border-emerald-200/90 bg-emerald-50/70",
-};
-const TITLE: Record<Tone, string> = {
-  amber: "text-amber-950",
-  sky: "text-sky-950",
-  slate: "text-slate-800",
-  emerald: "text-emerald-950",
-};
-const DETAIL: Record<Tone, string> = {
-  amber: "text-amber-900/90",
-  sky: "text-sky-900/90",
-  slate: "text-slate-600",
-  emerald: "text-emerald-900/90",
-};
-const ICON_TILE: Record<Tone, string> = {
-  amber: "bg-amber-100 text-amber-700",
-  sky: "bg-sky-100 text-sky-700",
-  slate: "bg-slate-100 text-slate-600",
-  emerald: "bg-emerald-100 text-emerald-700",
-};
-
-/** Odznaka w zwiniętym wierszu pozycji. */
+/** Odznaka w zwiniętym wierszu — neutralna ramka, kolor tylko w tekście. */
 export const PROSBA_ALREADY_ORDERED_BADGE: Record<Tone, string> = {
-  amber: "bg-amber-100 text-amber-950 ring-1 ring-amber-200/80",
-  sky: "bg-sky-100 text-sky-900 ring-1 ring-sky-200/70",
-  slate: "bg-slate-100 text-slate-700 ring-1 ring-slate-200/80",
-  emerald: "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200/80",
+  amber: "bg-white text-amber-900 ring-1 ring-slate-200/90",
+  sky: "bg-white text-sky-900 ring-1 ring-slate-200/90",
+  slate: "bg-white text-slate-700 ring-1 ring-slate-200/90",
+  emerald: "bg-white text-emerald-900 ring-1 ring-slate-200/90",
 };
 
-function ToneIcon({ tone }: { tone: ProsbaAlreadyOrderedTone }) {
-  const cls = "size-[18px]";
-  if (tone === "mine") return <IconAlertCircle className={cls} strokeWidth={2.25} aria-hidden />;
-  if (tone === "claimed") return <IconPackage className={cls} strokeWidth={2.25} aria-hidden />;
-  return <IconTruck className={cls} strokeWidth={2.25} aria-hidden />;
-}
-
 /**
- * Pasek „w drodze”: ile czeka na zamówienia klientów, ile jest wolne. Wolna część rośnie
- * od prawej — oko ląduje na niej, a ona jest odpowiedzią na pytanie „czy zamawiać”.
- */
-function IncomingBar({ incoming, free }: { incoming: number; free: number }) {
-  if (!(incoming > 0)) return null;
-  const freePct = Math.max(0, Math.min(100, (free / incoming) * 100));
-  return (
-    <div
-      className="mt-2 flex h-1.5 w-full overflow-hidden rounded-full bg-slate-300/70"
-      role="img"
-      aria-label={`W drodze: ${Math.round(freePct)}% wolne`}
-    >
-      <span className="ml-auto h-full rounded-full bg-emerald-500" style={{ width: `${freePct}%` }} />
-    </div>
-  );
-}
-
-/**
- * Podpowiedź pod pozycją prośby — czy towar już jedzie i czy jest wolny, albo czy ta sama
- * osoba już o niego prosi. Dane przychodzą w tle; blok wchodzi bez skoku (200 ms ease-out).
+ * Podpowiedź „w drodze” — tekst + akcja, bez ikonowych kafelków i animacji wejścia.
  */
 export function ProsbaAlreadyOrderedHint({
   info,
   requestedQty,
+  ownZkQty = null,
   onSwitchToNotify,
   onRemoveLine,
   forOther = false,
@@ -95,20 +47,20 @@ export function ProsbaAlreadyOrderedHint({
   className,
 }: {
   info: ProsbaAlreadyOrderedInfo | null | undefined;
-  /** Ilość z pozycji — porównanie z wolną częścią dostawy. */
   requestedQty?: number | null;
-  /** Tylko gdy prośba ma jedną pozycję — rodzaj prośby jest wspólny dla wszystkich. */
+  ownZkQty?: number | null;
   onSwitchToNotify?: () => void;
-  /** Dubel własnej prośby w wielopozycyjnym formularzu. */
   onRemoveLine?: () => void;
-  /** Formularz wypełniany w imieniu innego handlowca. */
   forOther?: boolean;
-  /** Po „Cofnij” — fokus wraca na przycisk, z którego przełączono. */
   focusNotifyOnMount?: boolean;
   onNotifyFocused?: () => void;
   className?: string;
 }) {
-  const view = buildProsbaAlreadyOrderedView(info, { forOther, requestedQty });
+  const view = buildProsbaAlreadyOrderedView(info, {
+    forOther,
+    requestedQty,
+    ownZkQty,
+  });
   const notifyRef = useRef<HTMLButtonElement>(null);
   const hasNotify = Boolean(view?.suggestNotify && onSwitchToNotify);
   useEffect(() => {
@@ -118,77 +70,52 @@ export function ProsbaAlreadyOrderedHint({
   }, [focusNotifyOnMount, hasNotify, onNotifyFocused]);
 
   if (!view) return null;
-  const tone = prosbaAlreadyOrderedStockTone(view.tone);
   const showRemove = view.tone === "mine" && onRemoveLine;
-  const inc = view.tone !== "mine" ? info?.incoming : null;
 
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className={cn(
-        "flex items-start gap-3 rounded-md border px-3 py-3",
-        // Wejście: dane przychodzą chwilę po wyborze towaru — bez skoku, 200 ms ease-out.
-        "transition-[opacity,translate] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
-        "starting:-translate-y-1 starting:opacity-0 motion-reduce:starting:translate-y-0",
-        SHELL[tone],
-        className
-      )}
-    >
-      <span
-        className={cn("flex size-8 shrink-0 items-center justify-center rounded-md", ICON_TILE[tone])}
-      >
-        <ToneIcon tone={view.tone} />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className={cn("text-sm font-semibold leading-snug tabular-nums", TITLE[tone])}>
-          {view.title}
-        </p>
-        {inc ? <IncomingBar incoming={inc.incoming} free={inc.freeIncoming} /> : null}
-        <ul className={cn("mt-1.5 space-y-0.5 text-xs leading-relaxed tabular-nums", DETAIL[tone])}>
-          {view.details.map((line, i) => (
-            <li key={`${i}-${line}`} className="break-words">
-              {line}
-            </li>
-          ))}
-        </ul>
-        <p className={cn("mt-1.5 text-xs font-medium leading-relaxed", TITLE[tone])}>{view.advice}</p>
-        {hasNotify || showRemove ? (
-          <div className="mt-2.5 flex flex-wrap items-center gap-2">
-            {hasNotify ? (
-              <Button
-                ref={notifyRef}
-                type="button"
-                size="sm"
-                variant="outline"
-                className="min-h-9 w-full bg-white sm:w-auto"
-                onClick={onSwitchToNotify}
-              >
-                Tylko powiadom, gdy dotrze
-              </Button>
-            ) : null}
-            {showRemove ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="min-h-9 w-full bg-white sm:w-auto"
-                onClick={onRemoveLine}
-              >
-                Usuń tę pozycję
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
+    <div role="status" aria-live="polite" className={cn("space-y-1.5", className)}>
+      <p className="text-[13px] font-semibold leading-snug tracking-tight tabular-nums text-slate-900">
+        {view.title}
+      </p>
+      <ul className="space-y-0.5 text-[12px] leading-snug text-slate-600 tabular-nums">
+        {view.details.map((line, i) => (
+          <li key={`${i}-${line}`} className="break-words">
+            {line}
+          </li>
+        ))}
+      </ul>
+      <p className="text-[12px] leading-snug text-slate-500">{view.advice}</p>
+      {hasNotify || showRemove ? (
+        <div className="flex flex-wrap items-center gap-2 pt-0.5">
+          {hasNotify ? (
+            <Button
+              ref={notifyRef}
+              type="button"
+              size="sm"
+              variant="outline"
+              className="min-h-9"
+              onClick={onSwitchToNotify}
+            >
+              Tylko powiadom, gdy dotrze
+            </Button>
+          ) : null}
+          {showRemove ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="min-h-9"
+              onClick={onRemoveLine}
+            >
+              Usuń tę pozycję
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
 
-/**
- * Po „Tylko powiadom, gdy dotrze”: potwierdzenie w miejscu podpowiedzi — przełącznik rodzaju
- * jest wysoko w formularzu, a bez tego jedynym śladem zmiany byłaby etykieta przycisku.
- */
 export function ProsbaNotifySwitchedNote({
   onUndo,
   className,
@@ -196,7 +123,6 @@ export function ProsbaNotifySwitchedNote({
   onUndo: () => void;
   className?: string;
 }) {
-  // Kliknięty przycisk zniknął razem z podpowiedzią — fokus na „Cofnij”, nie na <body>.
   const undoRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     undoRef.current?.focus({ preventScroll: true });
@@ -207,22 +133,16 @@ export function ProsbaNotifySwitchedNote({
       role="status"
       aria-live="polite"
       className={cn(
-        "flex items-start gap-3 rounded-md border px-3 py-3",
-        "transition-[opacity,translate] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
-        "starting:-translate-y-1 starting:opacity-0 motion-reduce:starting:translate-y-0",
-        SHELL.emerald,
+        "flex flex-wrap items-start justify-between gap-2 text-sm",
         className
       )}
     >
-      <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-md", ICON_TILE.emerald)}>
-        <IconTruck className="size-[18px]" strokeWidth={2.25} aria-hidden />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className={cn("text-sm font-semibold leading-snug", TITLE.emerald)}>
-          Zamiast zamówienia - powiadomienie, gdy towar dotrze
+      <div className="min-w-0">
+        <p className="font-medium text-slate-900">
+          Powiadomienie zamiast zamówienia
         </p>
-        <p className={cn("mt-0.5 text-xs leading-relaxed", DETAIL.emerald)}>
-          Prośba nie trafi do zakupów jako nowe zamówienie. Magazyn da znać, gdy towar będzie na stanie.
+        <p className="mt-0.5 text-xs text-slate-600">
+          Magazyn da znać, gdy towar będzie na stanie.
         </p>
       </div>
       <Button
@@ -230,7 +150,7 @@ export function ProsbaNotifySwitchedNote({
         type="button"
         size="sm"
         variant="outline"
-        className="min-h-9 shrink-0 bg-white"
+        className="min-h-9 shrink-0"
         onClick={onUndo}
       >
         Cofnij
@@ -239,39 +159,60 @@ export function ProsbaNotifySwitchedNote({
   );
 }
 
-/** Komórka paska liczb: etykieta, wartość, dopisek. */
+/** Komórka metryki — kompaktowa (czytelna, nie „dashboard”). */
 function AvailabilityStat({
   label,
   value,
   note,
+  quiet,
   emphasis,
+  hint,
 }: {
   label: string;
   value: string;
   note?: string | null;
+  quiet?: boolean;
   emphasis?: boolean;
+  hint?: string;
 }) {
   return (
-    <div className="min-w-0 px-2 py-1.5 first:pl-0 sm:px-2.5">
-      <dt className="truncate text-[11px] font-medium leading-tight text-slate-500">{label}</dt>
+    <div
+      title={hint}
+      className={cn(
+        "-m-px flex min-w-0 flex-col items-center justify-center border border-slate-200/90 px-1.5 py-1.5 text-center sm:px-2 sm:py-2",
+        emphasis ? "bg-indigo-50/70" : "bg-white",
+        quiet && "opacity-65"
+      )}
+    >
+      <dt
+        className={cn(
+          "order-2 mt-1 text-[10px] font-medium leading-none",
+          emphasis ? "text-indigo-800" : "text-slate-500"
+        )}
+      >
+        {label}
+      </dt>
       <dd
         className={cn(
-          "mt-0.5 whitespace-nowrap text-sm font-semibold leading-tight tabular-nums",
-          emphasis ? "text-emerald-800" : "text-slate-900"
+          "order-1 text-[13px] font-semibold leading-none tabular-nums sm:text-sm",
+          quiet
+            ? "text-slate-400"
+            : emphasis
+              ? "text-indigo-900"
+              : "text-slate-900"
         )}
       >
         {value}
       </dd>
-      {/* Dopisek pod liczbą — obok niej łamał wartość na telefonie. */}
-      {note ? <dd className="mt-0.5 text-[11px] font-medium leading-tight text-slate-500">{note}</dd> : null}
+      {note ? (
+        <p className="order-3 mt-0.5 text-[10px] leading-none text-slate-500">{note}</p>
+      ) : null}
     </div>
   );
 }
 
 /**
- * Karta „Dostępność” pod pozycją prośby — jedna odpowiedź zamiast dwóch bloków:
- * werdykt (dubel → wystarczy z półki → wolne w drodze → częściowo → zajęte → brak),
- * pasek liczb (na stanie · w drodze · wolne z dostawy), ZD z terminem i jedna akcja.
+ * Werdykt + 3 panele (stan / w drodze / wolne) w skali formularza + meta dostawcy.
  */
 export function ProsbaAvailabilityCard({
   line,
@@ -283,33 +224,62 @@ export function ProsbaAvailabilityCard({
   onRemoveLine,
   focusNotifyOnMount = false,
   onNotifyFocused,
+  supplierTiming = null,
   className,
 }: {
   line: ProductLineDraft;
   requestKind: IndividualRequestKind;
   info: ProsbaAlreadyOrderedInfo | null | undefined;
-  /** Zapytanie o dostawę w toku (pierwsze dla tego towaru). */
   checking?: boolean;
   forOther?: boolean;
   onSwitchToNotify?: () => void;
   onRemoveLine?: () => void;
   focusNotifyOnMount?: boolean;
   onNotifyFocused?: () => void;
+  /** Meta dostawcy tej pozycji — w tej samej sekcji co dostępność. */
+  supplierTiming?: ProsbaLineSupplierTimingProps | null;
   className?: string;
 }) {
   const teethExemptTwIds = useTeethExemptTwIds();
+  const timing = useProsbaLineSupplierTiming(
+    supplierTiming ?? {
+      supplierId: "",
+      suppliers: [],
+      supplierScheduleById: {},
+      statsBySupplierId: {},
+    }
+  );
+
   const requested = prosbaLineRequestedQty(line);
-  const stockView = buildProsbaLineStockStatusView(line, requestKind, teethExemptTwIds);
+  const stockView =
+    requestKind === "zamowienie"
+      ? buildProsbaLineStockStatusView(line, requestKind, teethExemptTwIds)
+      : null;
   const stock = stockSnapshotFromLineDraft(line);
-  // Pozycja z ZK: ZK tego klienta nie „zabiera” dostawy samemu sobie.
   const ownZkQty = line.zkQuantity ?? null;
-  const incView = buildProsbaAlreadyOrderedView(info, { forOther, requestedQty: requested, ownZkQty });
-  const inc = info?.incoming ? incomingForOwnZk(info.incoming, ownZkQty) : null;
+  const incView =
+    requestKind === "zamowienie"
+      ? buildProsbaAlreadyOrderedView(info, {
+          forOther,
+          requestedQty: requested,
+          ownZkQty,
+        })
+      : null;
+  const inc =
+    requestKind === "zamowienie" && info?.incoming
+      ? incomingForOwnZk(info.incoming, ownZkQty)
+      : null;
+
+  const showAvailability =
+    requestKind === "zamowienie" &&
+    line.subiektTwId != null &&
+    Boolean(stockView || incView || checking);
 
   const notifyRef = useRef<HTMLButtonElement>(null);
-  // Werdykt: własny dubel > wystarczy z półki > dostawa > sam stan.
   const useInc =
-    incView != null && (incView.tone === "mine" || stockView?.assessment !== "sufficient");
+    showAvailability &&
+    incView != null &&
+    (incView.tone === "mine" || stockView?.assessment !== "sufficient");
   const canNotify = Boolean(useInc && incView?.suggestNotify && onSwitchToNotify);
   useEffect(() => {
     if (!focusNotifyOnMount || !canNotify) return;
@@ -317,139 +287,203 @@ export function ProsbaAvailabilityCard({
     onNotifyFocused?.();
   }, [focusNotifyOnMount, canNotify, onNotifyFocused]);
 
-  if (requestKind !== "zamowienie" || line.subiektTwId == null) return null;
-  if (!stockView && !incView && !inc && !checking) return null;
+  if (!showAvailability && !timing) return null;
 
-  const tone: Tone = useInc
-    ? prosbaAlreadyOrderedStockTone(incView!.tone)
-    : stockView
-      ? stockView.tone
-      : "slate";
-  const title = useInc
-    ? incView!.title
-    : stockView
-      ? stockView.title
-      : checking
-        ? "Sprawdzam dostępność…"
-        : inc && inc.incoming <= 0
-          ? "Nic nie jest w drodze"
-          : "Brak danych o stanie";
-  const details = useInc ? incView!.details.slice(1) : [];
-  const advice = useInc ? incView!.advice : stockView?.detail ?? null;
-  // Kilka pozycji: rodzaj prośby jest wspólny, więc „Tylko powiadom” zmieniłby wszystkie.
+  const title = showAvailability
+    ? useInc
+      ? incView!.title
+      : stockView
+        ? stockView.title
+        : checking
+          ? "Sprawdzam dostępność…"
+          : "Brak danych o stanie"
+    : timing?.supplierName ?? null;
+
+  const details = useInc
+    ? incView!.tone === "mine"
+      ? incView!.details
+      : incView!.details.slice(1)
+    : [];
+  // Przy wystarczającym stanie liczby są w panelach — tu tylko wyjątki (np. cover pary).
+  const advice = useInc
+    ? incView!.advice
+    : stockView?.assessment === "sufficient"
+      ? line.pairStockCover
+        ? stockView.detail.trim() || null
+        : null
+      : stockView?.detail?.trim() || null;
   const notifyNeedsSplit = Boolean(useInc && incView?.suggestNotify && !onSwitchToNotify);
   const showRemove = Boolean(
     onRemoveLine && useInc && (incView!.tone === "mine" || notifyNeedsSplit)
   );
   const available = stock?.available ?? inc?.available ?? null;
   const reserved = stock?.reserved ?? 0;
+  const sufficient = showAvailability && !useInc && stockView?.assessment === "sufficient";
+  const shelfFree = inc
+    ? Math.max(0, inc.available - inc.zkWaiting)
+    : 0;
+  const freeCoversRequest = Boolean(
+    useInc &&
+      inc &&
+      requested != null &&
+      inc.freeIncoming + shelfFree >= requested
+  );
+  const emphasizeStock = sufficient;
+  const emphasizeFree = !sufficient && freeCoversRequest;
+  const nameInTitle = Boolean(!showAvailability && timing?.supplierName);
+
+  const hasFollowUp =
+    showAvailability &&
+    Boolean(
+      details.length > 0 ||
+        advice ||
+        notifyNeedsSplit ||
+        canNotify ||
+        showRemove
+    );
+
+  const header = (
+    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between sm:gap-x-3 sm:gap-y-1">
+      {title ? (
+        <p
+          role="status"
+          className="min-w-0 shrink text-[13px] font-semibold leading-snug tracking-tight tabular-nums text-slate-900"
+        >
+          {title}
+        </p>
+      ) : null}
+      {timing ? (
+        <ProsbaLineSupplierMeta
+          timing={timing}
+          omitSupplierName={nameInTitle}
+          className={cn(
+            "min-w-0 sm:max-w-[min(100%,22rem)]",
+            showAvailability && "sm:text-right [&_div]:sm:justify-end"
+          )}
+        />
+      ) : null}
+    </div>
+  );
+
+  if (!showAvailability) {
+    return (
+      <section
+        aria-label="Dostawca pozycji"
+        aria-live="polite"
+        className={cn("border-t border-slate-200/80 pt-2.5", className)}
+      >
+        {header}
+      </section>
+    );
+  }
 
   return (
     <section
       aria-label="Dostępność towaru"
       aria-live="polite"
-      className={cn(
-        "rounded-md border px-3 py-3",
-        "transition-[opacity,translate] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
-        "starting:-translate-y-1 starting:opacity-0 motion-reduce:starting:translate-y-0",
-        SHELL[tone],
-        className
-      )}
+      aria-busy={checking || undefined}
+      className={cn("pt-2.5", className)}
     >
-      <div className="flex items-start gap-3">
-        {/* Telefon: bez kafelka ikony — pasek liczb potrzebuje pełnej szerokości. */}
-        <span className={cn("hidden size-8 shrink-0 items-center justify-center rounded-md sm:flex", ICON_TILE[tone])}>
-          {useInc ? (
-            <ToneIcon tone={incView!.tone} />
-          ) : (
-            <IconWarehouse className="size-[18px]" strokeWidth={2.25} aria-hidden />
-          )}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p role="status" className={cn("text-sm font-semibold leading-snug tabular-nums", TITLE[tone])}>
-            {title}
-          </p>
-
-          <dl className="mt-2 grid grid-cols-3 divide-x divide-slate-900/10 rounded-md">
-            <AvailabilityStat
-              label="Na stanie"
-              value={available != null ? formatPieces(Math.max(0, available)) : "-"}
-              note={reserved > 0 ? `rez. ${reserved}` : available != null && available < 0 ? `brak ${-available}` : null}
-            />
-            <AvailabilityStat
-              label="W drodze"
-              value={inc ? formatPieces(inc.incoming) : checking ? "…" : "-"}
-              note={
-                inc && inc.zkWaiting > 0
-                  ? ownZkQty
-                    ? `inne ZK ${inc.zkWaiting}`
-                    : `ZK ${inc.zkWaiting}`
-                  : null
-              }
-            />
-            <AvailabilityStat
-              label="Wolne"
-              value={inc ? formatPieces(inc.freeIncoming) : checking ? "…" : "-"}
-              emphasis={Boolean(inc && inc.freeIncoming > 0)}
-            />
-          </dl>
-          {useInc && inc && incView!.tone !== "mine" ? (
-            <IncomingBar incoming={inc.incoming} free={inc.freeIncoming} />
-          ) : null}
-
-          {useInc && incView!.tone === "mine" ? (
-            <ul className={cn("mt-2 space-y-0.5 text-xs leading-relaxed tabular-nums", DETAIL[tone])}>
-              {incView!.details.map((d, i) => (
-                <li key={`${i}-${d}`}>{d}</li>
-              ))}
-            </ul>
-          ) : details.length > 0 ? (
-            <ul className={cn("mt-2 space-y-0.5 text-xs leading-relaxed tabular-nums", DETAIL[tone])}>
-              {details.map((d, i) => (
-                <li key={`${i}-${d}`} className="break-words">
-                  {d}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-
-          {advice ? (
-            <p className={cn("mt-2 text-xs font-medium leading-relaxed", TITLE[tone])}>{advice}</p>
-          ) : null}
-          {notifyNeedsSplit ? (
-            <p className={cn("mt-1 text-xs leading-relaxed", DETAIL[tone])}>
-              W prośbie jest kilka pozycji - usuń tę i dodaj ją osobno jako „Informacja o towarze”.
-            </p>
-          ) : null}
-
-          {canNotify || showRemove ? (
-            <div className="mt-2.5 flex flex-wrap items-center gap-2">
-              {canNotify ? (
-                <Button
-                  ref={notifyRef}
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="min-h-9 w-full bg-white sm:w-auto"
-                  onClick={onSwitchToNotify}
-                >
-                  Tylko powiadom, gdy dotrze
-                </Button>
-              ) : null}
-              {showRemove ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="min-h-9 w-full bg-white sm:w-auto"
-                  onClick={onRemoveLine}
-                >
-                  Usuń tę pozycję
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
+      <div className="overflow-hidden rounded-md border border-slate-200/90">
+        <div className="border-b border-slate-200/80 bg-slate-50/60 px-2.5 py-1.5 sm:px-3">
+          {header}
         </div>
+
+        <dl className="grid grid-cols-3 overflow-hidden">
+          <AvailabilityStat
+            label="Na stanie"
+            value={available != null ? formatPieces(Math.max(0, available)) : "—"}
+            emphasis={emphasizeStock}
+            note={
+              reserved > 0
+                ? `rez. ${reserved}`
+                : available != null && available < 0
+                  ? `brak ${-available}`
+                  : null
+            }
+          />
+          <AvailabilityStat
+            label="W drodze"
+            value={
+              checking && !inc
+                ? "…"
+                : inc && inc.incoming > 0
+                  ? formatPieces(inc.incoming)
+                  : "—"
+            }
+            quiet={!inc || inc.incoming <= 0}
+            note={
+              inc && inc.incoming > 0 && inc.zkWaiting > 0
+                ? ownZkQty
+                  ? `inne ZK ${inc.zkWaiting}`
+                  : `ZK ${inc.zkWaiting}`
+                : null
+            }
+          />
+          <AvailabilityStat
+            label="Wolne z dostawy"
+            hint="Część towaru w ZD, której nie zabierają czekające ZK — nie to samo co stan na półce."
+            value={
+              checking && !inc
+                ? "…"
+                : inc && inc.incoming > 0
+                  ? formatPieces(inc.freeIncoming)
+                  : "—"
+            }
+            quiet={!inc || inc.incoming <= 0}
+            emphasis={emphasizeFree}
+          />
+        </dl>
+
+        {hasFollowUp ? (
+          <div className="space-y-1.5 border-t border-slate-200/80 px-2.5 py-2 sm:px-3">
+            {details.length > 0 ? (
+              <ul className="space-y-0.5 text-[12px] leading-snug text-slate-600 tabular-nums">
+                {details.map((d, i) => (
+                  <li key={`${i}-${d}`} className="break-words">
+                    {d}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+
+            {advice ? (
+              <p className="text-[12px] leading-snug text-slate-500">{advice}</p>
+            ) : null}
+            {notifyNeedsSplit ? (
+              <p className="text-[12px] leading-snug text-slate-500">
+                Kilka pozycji w prośbie — usuń tę i złóż osobno jako „Informacja o towarze”.
+              </p>
+            ) : null}
+
+            {canNotify || showRemove ? (
+              <div className="flex flex-wrap items-center gap-2">
+                {canNotify ? (
+                  <Button
+                    ref={notifyRef}
+                    type="button"
+                    size="sm"
+                    className="min-h-9"
+                    onClick={onSwitchToNotify}
+                  >
+                    Tylko powiadom, gdy dotrze
+                  </Button>
+                ) : null}
+                {showRemove ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="min-h-9 text-slate-600"
+                    onClick={onRemoveLine}
+                  >
+                    Usuń tę pozycję
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </section>
   );
