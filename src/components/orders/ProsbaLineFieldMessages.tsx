@@ -23,16 +23,13 @@ export function ProsbaLineFieldMessages({
       {items.map((item, i) => {
         if (item.kind === "resolving") {
           return (
-            <div
+            <p
               key={`resolving-${i}`}
-              className="flex items-start gap-2.5 rounded-md border border-indigo-200/90 bg-indigo-50/70 px-3 py-2.5"
+              className="inline-flex items-center gap-2 text-xs text-slate-600"
             >
-              <Spinner size="sm" className="mt-0.5 shrink-0" />
-              <div className="min-w-0 text-xs leading-relaxed text-indigo-900">
-                <p className="font-semibold text-indigo-950">Sprawdzam dostawcę</p>
-                <p className="mt-0.5 text-indigo-800/90">Szukam dopasowania w bazie powiązań produkt-dostawca…</p>
-              </div>
-            </div>
+              <Spinner size="sm" className="shrink-0" />
+              Dopasowuję dostawcę…
+            </p>
           );
         }
         return (

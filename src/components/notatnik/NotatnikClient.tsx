@@ -11,7 +11,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { UndoToast } from "@/components/ui/UndoToast";
 import { NoticeToast } from "@/components/ui/NoticeToast";
-import { IconPackageCheck, IconClipboardPen } from "@/components/icons/StrokeIcons";
+import { IconPackageCheck } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { MyOrderPickupShelfDialogProvider } from "@/components/moje/MyOrderPickupShelfDialogProvider";
 import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
@@ -1254,10 +1254,13 @@ export function NotatnikClient({
           hintAriaLabel={isZkSurface ? "O stronie ZK" : "O notatniku"}
           description={pageDescription}
           action={<NotatnikGuide surface={isZkSurface ? "zk" : "notes"} />}
+          actionAlign="inline"
           leading={
-            <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
-              {isZkSurface ? <IconPackageCheck size={20} /> : <IconClipboardPen size={20} />}
-            </SectionHeadingIcon>
+            isZkSurface ? (
+              <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
+                <IconPackageCheck size={20} />
+              </SectionHeadingIcon>
+            ) : undefined
           }
         />
 

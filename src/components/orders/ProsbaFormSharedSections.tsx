@@ -76,6 +76,8 @@ export function ProsbaFormInformacjaSection({
   disabled = false,
   includeViaPanel = false,
   className,
+  /** /prosba — bez violet shell + ikony. */
+  plain = false,
 }: {
   path: InformacjaFlowPath;
   onChange: (path: InformacjaFlowPath) => void;
@@ -83,6 +85,7 @@ export function ProsbaFormInformacjaSection({
   /** Panel dzienny — 3 opcje (direct, via_panel, stock_out). */
   includeViaPanel?: boolean;
   className?: string;
+  plain?: boolean;
 }) {
   const section = includeViaPanel
     ? INFORMACJA_FLOW_PICKER_SECTION_DAILY
@@ -92,10 +95,14 @@ export function ProsbaFormInformacjaSection({
     <ProsbaFormSection
       title={section.title}
       hint={section.hint}
-      accent="violet"
-      icon={<IconAvailability size={17} />}
-      tileClassName="bg-violet-100 text-violet-800"
       className={className}
+      {...(plain
+        ? {}
+        : {
+            accent: "violet" as const,
+            icon: <IconAvailability size={17} />,
+            tileClassName: "bg-violet-100 text-violet-800",
+          })}
     >
       <InformacjaFlowPicker
         path={path}
@@ -114,6 +121,8 @@ export function ProsbaFormProductsSection({
   children,
   className,
   showShortageLookup = true,
+  /** /prosba — bez drugiej karty z ikoną (jak „Co chcesz zgłosić?”). */
+  plain = false,
 }: {
   requestKind: IndividualRequestKind;
   informacjaPath: InformacjaFlowPath;
@@ -121,6 +130,7 @@ export function ProsbaFormProductsSection({
   children: ReactNode;
   className?: string;
   showShortageLookup?: boolean;
+  plain?: boolean;
 }) {
   const isInformacja = requestKind === "informacja";
   const productsHint =
@@ -133,18 +143,19 @@ export function ProsbaFormProductsSection({
     <ProsbaFormSection
       title={PROSBA_FORM_SECTION_COPY.products.title}
       hint={productsHint}
-      accent={isInformacja ? "violet" : "slate"}
-      icon={<IconPackageCheck size={17} />}
-      tileClassName={
-        isInformacja ? "bg-violet-100 text-violet-800" : "bg-slate-100 text-slate-700"
-      }
       className={className}
+      {...(plain
+        ? {}
+        : {
+            accent: (isInformacja ? "violet" : "slate") as "violet" | "slate",
+            icon: <IconPackageCheck size={17} />,
+            tileClassName: isInformacja
+              ? "bg-violet-100 text-violet-800"
+              : "bg-slate-100 text-slate-700",
+          })}
     >
       {showShortageLookup && !isInformacja ? (
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200/70 bg-amber-50/40 px-2.5 py-2">
-          <p className="min-w-0 text-[11px] leading-snug text-amber-900/85">
-            Zanim wyślesz prośbę o zęby - sprawdź, czy wariant nie jest na liście braków.
-          </p>
+        <div className="mb-2 flex justify-end">
           <TeethShortageLookupButton className="shrink-0" />
         </div>
       ) : null}

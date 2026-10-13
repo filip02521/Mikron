@@ -1,15 +1,15 @@
-/** Podpowiedzi strony i sekcji notatnika (zakładka Notatki). */
+/** Dymek ? przy tytule strony — krótko, bez powtórek z guide. */
 export const NOTATNIK_NOTES_PAGE_HINT =
-  "Prywatne notatki i przypomnienia - nie trafiają do działu zakupów. Zarchiwizowane notatki są w zakładce Archiwum.";
+  "Prywatne przypomnienia — nie trafiają do zakupów. Archiwum w drugiej zakładce.";
 
 export const NOTATNIK_NOTES_SECTION_COPY = {
   title: "Notatki",
-  hint: "Własne przypomnienia - nie trafiają do działu zakupów.",
-  emptyEditable: "Brak notatek - dodaj pierwszą notatkę.",
+  hint: "Własne przypomnienia — nie trafiają do zakupów.",
+  emptyEditable: "Brak notatek — dodaj pierwszą.",
   /** Zawsze „notatka” — nie „karteczka” (jedno słowo w całym widoku handlowca). */
   newNoteTitle: "Nowa notatka",
-  addNoteButton: "Przypnij nową notatkę",
-  dragHintBefore: "Przeciągnij notatkę (",
+  addNoteButton: "Nowa notatka",
+  dragHintBefore: "Przeciągnij (",
   emptyReadOnly: "Brak notatek.",
 } as const;
 

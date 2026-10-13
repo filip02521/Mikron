@@ -480,7 +480,7 @@ export function SubiektProductLineFields({
         : {}),
     });
     if (catalogLineDrifted && value.teethDetails?.length) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset modala po zmianie linii katalogu
+       
       setTeethModalOpen(false);
       setTeethModalKey((k) => k + 1);
     }
@@ -988,7 +988,12 @@ export function SubiektProductLineFields({
   }
 
   const productSearchRow = (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+    <div
+      className={cn(
+        "flex flex-col sm:flex-row sm:items-start",
+        compactControls ? "gap-2" : "gap-3"
+      )}
+    >
       <Field
         label={
           <span>
@@ -1078,13 +1083,26 @@ export function SubiektProductLineFields({
             </p>
           ) : null}
           {linkedFromSubiekt ? (
-            <div className="mt-1.5 space-y-1">
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
               <SubiektLinkedLineBanner
                 symbol={symbolPreview}
                 mikranCode={value.mikranCode}
                 fromCatalog={value.source === "catalog"}
               />
               {linkedLeadTime}
+              {!(prosba && isTeethOrderLine && linkedFromSubiekt) &&
+              !lockSubiektLink ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={disabled}
+                  className="h-7 min-h-0 px-1.5 text-xs text-indigo-800 hover:bg-indigo-50"
+                  onClick={unlinkSubiektForEdit}
+                >
+                  Zmień towar
+                </Button>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -1092,15 +1110,22 @@ export function SubiektProductLineFields({
 
       <Field
         label="Mikran"
-        className="w-full shrink-0 sm:w-[6.75rem]"
+        className={cn(
+          "w-full shrink-0",
+          compactControls ? "sm:w-[5.75rem]" : "sm:w-[6.75rem]"
+        )}
         {...mikranField}
-        // /prosba handlowca: stała podpowiedź — wcześniej zmieniała się po wczytaniu statusu Subiekta.
+        // /prosba: bez hintu pod polem — mniej pustki; PLU tylko poza sales.
         hint={
-          !mikranField.error && !mikranField.state
-            ? typeaheadEnabled && !salesProsbaForm
-              ? "PLU (min. 1 cyfra)"
-              : "Kod PLU"
-            : undefined
+          !mikranField.error &&
+          !mikranField.state &&
+          typeaheadEnabled &&
+          !salesProsbaForm &&
+          !prosba
+            ? "PLU (min. 1 cyfra)"
+            : !mikranField.error && !mikranField.state && !prosba
+              ? "Kod PLU"
+              : undefined
         }
       >
         <div
@@ -1151,16 +1176,14 @@ export function SubiektProductLineFields({
       {!isInformacja ? (
         <Field
           label="Ilość"
-          className="w-[5.5rem] shrink-0"
+          className={cn("shrink-0", compactControls ? "w-[4.75rem]" : "w-[5.5rem]")}
           {...(showQuantityValidation && !isTeethOrderLine ? quantityField : {})}
           hint={
             isTeethOrderLine
               ? teethQuantityFromList > 0
                 ? "Ilość = liczba pozycji na liście"
                 : "Uzupełnij listę - ilość ustawi się sama"
-              : prosba && !quantityField.error && !quantityField.state
-                ? "Sztuk"
-                : undefined
+              : undefined
           }
         >
           <Input
@@ -1243,23 +1266,11 @@ export function SubiektProductLineFields({
   ) : null;
 
   return (
-    <div ref={ref} className="relative space-y-3">
+    <div
+      ref={ref}
+      className={cn("relative", compactControls ? "space-y-2" : "space-y-3")}
+    >
       {showTeethCompactProduct ? teethCompactProductHeader : productSearchRow}
-
-      {!showTeethCompactProduct && linkedFromSubiekt && !lockSubiektLink ? (
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={disabled}
-            className="text-indigo-800 hover:bg-indigo-50"
-            onClick={unlinkSubiektForEdit}
-          >
-            Zmień towar
-          </Button>
-        </div>
-      ) : null}
 
       {prosbaMessageItems.length > 0 ? (
         <ProsbaLineFieldMessages items={prosbaMessageItems} />

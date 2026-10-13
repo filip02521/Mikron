@@ -96,24 +96,19 @@ export function buildProsbaLineStockStatusView(
   const assessment = assessProsbaLineStockFromDraft(line, requestKind, stockExemptTwIds);
   const requestedQty = parseOrderQuantity(line.quantity);
   const availLabel = formatAvailable(stock.available);
-  const reserveSuffix =
-    stock.reserved > 0 ? ` (na stanie ${stock.onHand} szt., rezerwacja ${stock.reserved} szt.)` : "";
   const reserveShort = stock.reserved > 0 ? ` (−${stock.reserved} rez.)` : "";
 
   if (assessment === "sufficient" && requestedQty != null) {
-    const pairSuffix = line.pairStockCover
-      ? " Cover pary obejmuje sztuki i paczki (wystarczy po demontażu)."
-      : "";
     return {
       assessment,
       tone: "amber",
       shortLabel: line.pairStockCover
         ? `Cover pary ${availLabel}${reserveShort}`
-        : `Stan ${availLabel}${reserveShort}`,
-      title: line.pairStockCover
-        ? "Wystarczający stan (para montaż/demontaż)"
-        : "Wystarczający stan magazynowy",
-      detail: `Na magazynie ${availLabel}${reserveSuffix}, potrzebujesz ${requestedQty} szt.${pairSuffix} - może wystarczy wydać z magazynu, bez zamawiania.`,
+        : `Na stanie ${availLabel}${reserveShort}`,
+      title: line.pairStockCover ? "Wystarczy (para)" : "Wystarczy z półki",
+      detail: line.pairStockCover
+        ? "Cover pary: sztuki i paczki po demontażu"
+        : `${availLabel}${reserveShort}`,
     };
   }
 
@@ -122,8 +117,8 @@ export function buildProsbaLineStockStatusView(
       assessment,
       tone: "sky",
       shortLabel: `Dostępne ${availLabel}${reserveShort}`,
-      title: "Częściowy stan magazynowy",
-      detail: `Dostępne ${availLabel}${reserveSuffix}, zamawiasz ${requestedQty} szt. - reszta u dostawcy.`,
+      title: "Za mało z półki",
+      detail: `${availLabel}${reserveShort}`,
     };
   }
 
@@ -132,11 +127,8 @@ export function buildProsbaLineStockStatusView(
       assessment,
       tone: "slate",
       shortLabel: "Brak na stanie",
-      title: "Brak dostępnego stanu",
-      detail:
-        requestedQty != null
-          ? `Dostępne 0 szt.${reserveSuffix} przy zamówieniu ${requestedQty} szt.`
-          : `Dostępne 0 szt.${reserveSuffix} na magazynie.`,
+      title: "Brak na stanie",
+      detail: "",
     };
   }
 
@@ -145,10 +137,7 @@ export function buildProsbaLineStockStatusView(
     tone: "slate",
     shortLabel: `Stan ${availLabel}${reserveShort}`,
     title: "Stan magazynowy",
-    detail:
-      stock.reserved > 0
-        ? `Dostępne ${availLabel} (na stanie ${stock.onHand} szt., rezerwacja ${stock.reserved} szt.).`
-        : `Dostępne ${availLabel} na magazynie.`,
+    detail: "",
   };
 }
 
@@ -169,7 +158,11 @@ export function formatProsbaStockLineHint(
     },
     "zamowienie"
   );
-  if (view) return `${view.title}. ${view.detail}`;
+  if (view) {
+    return view.detail.trim()
+      ? `${view.title}. ${view.detail}`
+      : `${view.title} · ${view.shortLabel}`;
+  }
   const name = line.product.trim() || line.symbol.trim() || "Produkt";
   const qty = line.quantity.trim();
   const avail = line.available;
@@ -186,8 +179,8 @@ export function buildProsbaSufficientStockSummary(count: number): {
   if (count <= 0) return null;
   if (count === 1) {
     return {
-      title: "1 pozycja ma wystarczający stan",
-      detail: "Rozwiń linię i sprawdź, czy zamówienie u dostawcy jest potrzebne.",
+      title: "1 pozycja: stan wystarczy",
+      detail: "Szczegóły w rozwiniętej linii.",
     };
   }
   const mod10 = count % 10;
@@ -195,7 +188,7 @@ export function buildProsbaSufficientStockSummary(count: number): {
   const noun =
     mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) ? "pozycje" : "pozycji";
   return {
-    title: `${count} ${noun} mają wystarczający stan`,
-    detail: "Sprawdź każdą linię - przy pełnym stanie prośba może być zbędna.",
+    title: `${count} ${noun}: stan wystarczy`,
+    detail: "Szczegóły w rozwiniętych liniach.",
   };
 }
