@@ -19,6 +19,8 @@ vi.mock("next/link", () => ({
 }));
 
 import { SupplierDrawer } from "./SupplierDrawer";
+import { SupplierStockSignalsProvider } from "./SupplierStockSignal";
+import type { StockWatchSupplierSignal } from "@/lib/stock-watch/signal";
 
 const supplier: SupplierSummaryMeta = {
   id: "e6b2b188-2d67-4953-8002-159162cc08ee",
@@ -80,5 +82,86 @@ describe("SupplierDrawer - tryb podglądu (okno po utworzeniu ZD)", () => {
     fireEvent.keyDown(window, { key: "z" });
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(screen.queryByText(/Oznaczyć/)).toBeNull();
+  });
+});
+
+describe("SupplierDrawer - stan magazynu z analizy Braki", () => {
+  afterEach(() => cleanup());
+
+  const signal: StockWatchSupplierSignal = {
+    lineCount: 14,
+    orderValue: 3200,
+    unpricedCount: 2,
+    criticalCount: 2,
+    beforeDeliveryCount: 3,
+    mostUrgent: { twSymbol: "IV-123", twNazwa: "Tetric EvoCeram A2", daysOfCover: 0.5 },
+    dniZapasu: 28,
+    leadDays: 9,
+    nextOrderDate: "2026-09-10",
+    nextOrderDays: 7,
+    dataDo: "2026-09-02",
+    computedAt: new Date().toISOString(),
+  };
+
+  function renderPanel(s: StockWatchSupplierSignal | null) {
+    return render(
+      <SupplierStockSignalsProvider signals={s ? { [supplier.id]: s } : {}} canPrepareZd>
+        <SupplierDrawer
+          supplier={supplier}
+          onClose={() => {}}
+          isScopePending={() => false}
+          run={vi.fn()}
+          canPrepareZd
+        />
+      </SupplierStockSignalsProvider>
+    );
+  }
+
+  it("pokazuje pilne, Do ZD z wartością, przed dostawą, termin i link do Braki; Przygotuj ZD jest główną akcją", () => {
+    // „za N dni” liczone od dziś, nie z dnia analizy (nextOrderDays bywa nieaktualne).
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-03T10:00:00+02:00"));
+    try {
+      renderPanel({ ...signal, nextOrderDays: 99, computedAt: new Date().toISOString() });
+    } finally {
+      vi.useRealTimers();
+    }
+    const section = screen.getByRole("region", { name: "Stan magazynu (analiza Braki)" });
+    const text = section.textContent ?? "";
+    expect(text).toContain("2 pilne");
+    expect(text).toMatch(/Do ZD: 14 poz\. · ok\. 3\s?200\s+zł \(\+2 bez ceny\)/);
+    expect(text).toContain("3 towary skończą się przed dostawą");
+    expect(text).toContain("Najpilniej IV-123 (< 1 dzień)");
+    expect(text).toContain("Dostawa ok. 9 dni · kolejne zamówienie 10.09 (za 7 dni)");
+    expect(text).not.toContain("nieaktualna");
+    expect(screen.getByRole("link", { name: "Pokaż w Braki" }).getAttribute("href")).toBe(
+      `/zakupy/braki?dostawca=${supplier.id}`
+    );
+    const zd = screen.getByRole("link", { name: /Przygotuj ZD/ });
+    expect(zd.querySelector("button")).toBeNull();
+    expect(zd.className).toContain("bg-indigo-600");
+    expect(screen.getByRole("button", { name: /Zamówione/ }).className).not.toContain("bg-indigo-600");
+  });
+
+  it("nieaktualna analiza bez pozycji nie twierdzi, że stan wystarcza", () => {
+    renderPanel({
+      ...signal,
+      lineCount: 0,
+      orderValue: 0,
+      unpricedCount: 0,
+      criticalCount: 0,
+      beforeDeliveryCount: 0,
+      mostUrgent: null,
+      computedAt: "2026-01-01T00:00:00Z",
+    });
+    const text = screen.getByRole("region", { name: "Stan magazynu (analiza Braki)" }).textContent ?? "";
+    expect(text).not.toContain("Stan wystarcza");
+    expect(text).toContain("analiza z 01.01 - może być nieaktualna");
+    expect(screen.getByRole("link", { name: /Przygotuj ZD/ }).className).not.toContain("bg-indigo-600");
+  });
+
+  it("bez analizy dostawcy sekcji nie ma", () => {
+    renderPanel(null);
+    expect(screen.queryByRole("region", { name: "Stan magazynu (analiza Braki)" })).toBeNull();
   });
 });

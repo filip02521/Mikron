@@ -1,3 +1,4 @@
+import { MY_ORDER_STATUS_TITLE } from "@/lib/orders/my-order-status-titles";
 import { differenceInCalendarDays, isSameWeek } from "date-fns";
 import type { DeliveryDateMetaDisplay } from "@/lib/orders/delivery-date-meta-label";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
@@ -216,7 +217,7 @@ export function resolveMyOrderDeliveryRowVisual(
     return deliveryUrgencyRowVisual(urgency);
   }
 
-  if (row.statusTitle !== "Zamówione" && row.statusTitle !== "Częściowo_zrealizowane") {
+  if (row.statusTitle !== MY_ORDER_STATUS_TITLE.ordered && row.statusTitle !== MY_ORDER_STATUS_TITLE.partialOnStock) {
     return null;
   }
   const { urgency } = resolveMyOrderDeliveryUrgency(row, at);

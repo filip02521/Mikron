@@ -113,7 +113,7 @@ export function buildProsbaLineStockStatusView(
       title: line.pairStockCover
         ? "Wystarczający stan (para montaż/demontaż)"
         : "Wystarczający stan magazynowy",
-      detail: `Dostępne ${availLabel}${reserveSuffix} przy zamówieniu ${requestedQty} szt.${pairSuffix} - sprawdź, czy prośba jest potrzebna.`,
+      detail: `Na magazynie ${availLabel}${reserveSuffix}, potrzebujesz ${requestedQty} szt.${pairSuffix} - może wystarczy wydać z magazynu, bez zamawiania.`,
     };
   }
 

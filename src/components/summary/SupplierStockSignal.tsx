@@ -1,11 +1,23 @@
 "use client";
 
 import Link from "next/link";
+import { warsawTodayDateKey } from "@/lib/warehouse/delivery-receipts-shared";
 import { createContext, useContext, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 import { buildZdEstimateLaunchHref } from "@/lib/orders/zd-estimate-supplier-scope";
-import type { StockWatchSupplierSignal } from "@/lib/stock-watch/data";
+import {
+  stockWatchHorizonDays,
+  stockWatchHorizonExtends,
+  stockWatchPrepareZdUsesHorizon,
+  stockWatchSignalStale,
+  type StockWatchSupplierSignal,
+} from "@/lib/stock-watch/signal";
+import {
+  formatCover,
+  formatPln,
+  formatRunOutDate,
+} from "@/components/stock-watch/stock-watch-format";
 
 type SupplierStockSignals = {
   signals: Record<string, StockWatchSupplierSignal>;
@@ -30,22 +42,188 @@ export function SupplierStockSignalsProvider({
   );
 }
 
-/** Ranking „czy jest co zamawiać”: braki krytyczne, potem pozycje Do ZD, potem bez analizy. */
-export function supplierStockSignalRank(signal: StockWatchSupplierSignal | undefined): number {
-  if (!signal) return 0;
-  if (signal.criticalCount > 0) return 3;
-  return signal.lineCount > 0 ? 2 : 1;
-}
-
-const plnFormatter = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 });
-
-function shortDate(key: string): string {
-  const [, m, d] = key.split("-");
-  return m && d ? `${d}.${m}` : key;
+/** Sygnały Braki z kontekstu panelu (np. ostrzeżenie przed masowym „Zamówione”). */
+export function useSupplierStockSignals(): SupplierStockSignals {
+  return useContext(SupplierStockSignalsContext);
 }
 
 /**
- * „Do ZD: 14 poz. · ok. 3 200 zł · Przygotuj ZD” albo „Nic do zamówienia”.
+ * Ranking „czy jest co zamawiać”: pilne, potem coś skończy się przed dostawą,
+ * potem pozycje Do ZD, potem przeanalizowani bez zamówienia, na końcu bez analizy.
+ */
+export function supplierStockSignalRank(signal: StockWatchSupplierSignal | undefined): number {
+  if (!signal) return 0;
+  if (signal.criticalCount > 0) return 4;
+  if (signal.beforeDeliveryCount > 0) return 3;
+  return signal.lineCount > 0 ? 2 : 1;
+}
+
+/** Czy jest co zamawiać wg analizy (pokazujemy wtedy „Przygotuj ZD”). */
+export function stockSignalHasWork(s: StockWatchSupplierSignal): boolean {
+  return s.lineCount > 0 || s.criticalCount > 0 || s.beforeDeliveryCount > 0;
+}
+
+/** Filtr panelu Braki na jednego dostawcę. */
+export function brakiSupplierHref(supplierId: string): string {
+  return `/zakupy/braki?dostawca=${encodeURIComponent(supplierId)}`;
+}
+
+/** „2 pilne” (pozycje: pilna / pilne / pilnych). */
+export function stockSignalUrgentLabel(count: number): string {
+  return `${count} ${polishPluralWord(count, "pilna", "pilne", "pilnych")}`;
+}
+
+/** „Do ZD: 14 poz. · ok. 3 200 zł (+2 bez ceny)”. */
+export function stockSignalOrderSummary(s: StockWatchSupplierSignal): string {
+  let out = `Do ZD: ${s.lineCount} poz.`;
+  if (s.orderValue > 0) out += ` · ok. ${formatPln(s.orderValue)}`;
+  if (s.unpricedCount > 0) {
+    out += s.orderValue > 0 ? ` (+${s.unpricedCount} bez ceny)` : ` · ${s.unpricedCount} bez ceny`;
+  }
+  return out;
+}
+
+/** „3 towary skończą się przed dostawą”. */
+export function stockSignalBeforeDeliveryLabel(count: number): string {
+  return `${count} ${polishPluralWord(count, "towar", "towary", "towarów")} ${polishPluralWord(
+    count,
+    "skończy",
+    "skończą",
+    "skończy"
+  )} się przed dostawą`;
+}
+
+/** Najkrótszy zapas: symbol (albo nazwa) i „< 1 dzień” / „4 dni” / „brak towaru”. */
+export function stockSignalMostUrgent(
+  s: StockWatchSupplierSignal
+): { label: string; cover: string; full: string } | null {
+  const u = s.mostUrgent;
+  if (!u) return null;
+  const cover = formatCover(
+    u.daysOfCover,
+    u.daysOfCover != null && u.daysOfCover <= 0 ? "out_of_stock" : "ok"
+  );
+  const label = u.twSymbol?.trim() || u.twNazwa;
+  return { label, cover, full: u.twSymbol ? `${u.twSymbol} - ${u.twNazwa}` : u.twNazwa };
+}
+
+/** Dni od dziś (Warszawa) do daty YYYY-MM-DD — liczone na żywo, nie z dnia analizy. */
+export function daysFromToday(key: string, todayKey = warsawTodayDateKey()): number | null {
+  const diff = Math.round((Date.parse(key) - Date.parse(todayKey)) / 86_400_000);
+  return Number.isFinite(diff) ? diff : null;
+}
+
+/** „dziś” / „jutro” / „za 9 dni” / „9 dni temu”. */
+export function formatDaysAhead(days: number): string {
+  if (days === 0) return "dziś";
+  if (days === 1) return "jutro";
+  if (days === -1) return "wczoraj";
+  return days > 0 ? `za ${days} dni` : `${-days} dni temu`;
+}
+
+/** Dzień przebiegu analizy (dd.mm, czas warszawski) — do noty o nieaktualności. */
+export function stockSignalComputedDay(s: StockWatchSupplierSignal): string | null {
+  const t = Date.parse(s.computedAt);
+  if (!Number.isFinite(t)) return formatRunOutDate(s.dataDo || null);
+  return new Date(t).toLocaleDateString("pl-PL", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "Europe/Warsaw",
+  });
+}
+
+export function stockSignalStaleNote(s: StockWatchSupplierSignal): string {
+  const day = stockSignalComputedDay(s);
+  return day ? `analiza z ${day} - może być nieaktualna` : "analiza może być nieaktualna";
+}
+
+/** Tytuł linku „do kolejnej dostawy”. */
+export function stockSignalHorizonTitle(s: StockWatchSupplierSignal): string {
+  return `Zapas ${s.dniZapasu} d nie wystarczy do kolejnej dostawy (${stockWatchHorizonDays(s) ?? 0} d) - Kreator policzy ilości do kolejnej dostawy.`;
+}
+
+const linkClass = "font-semibold text-indigo-700 underline-offset-2 hover:text-indigo-900 hover:underline";
+
+/** „Dostawa ok. 9 dni · kolejne zamówienie 21.10 (za 9 dni)” / „… · zamówienie na żądanie”. */
+export function stockSignalScheduleLine(s: StockWatchSupplierSignal, onDemand: boolean): string | null {
+  const parts: string[] = [];
+  if (s.leadDays != null) {
+    parts.push(`Dostawa ok. ${s.leadDays} ${polishPluralWord(s.leadDays, "dzień", "dni", "dni")}`);
+  }
+  if (onDemand) parts.push("zamówienie na żądanie");
+  else if (s.nextOrderDate) {
+    const days = daysFromToday(s.nextOrderDate);
+    const when = days != null ? ` (${formatDaysAhead(days)})` : "";
+    parts.push(`kolejne zamówienie ${formatRunOutDate(s.nextOrderDate)}${when}`);
+  }
+  return parts.length ? parts.join(" · ") : null;
+}
+
+/**
+ * Szuflada dostawcy: pełny skrót analizy Braki przy decyzji o zamówieniu.
+ * Bez analizy (dostawca bez zakresu) — nic.
+ */
+export function SupplierStockSummary({
+  supplierId,
+  onDemand,
+  className,
+}: {
+  supplierId: string;
+  onDemand: boolean;
+  className?: string;
+}) {
+  const { signals } = useContext(SupplierStockSignalsContext);
+  const s = signals[supplierId];
+  if (!s) return null;
+  const stale = stockWatchSignalStale(s.computedAt);
+  const urgent = stockSignalMostUrgent(s);
+  const schedule = stockSignalScheduleLine(s, onDemand);
+
+  return (
+    <section
+      aria-label="Stan magazynu (analiza Braki)"
+      className={cn("rounded-lg border border-slate-200/70 bg-white px-3 py-2.5 text-xs", className)}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-slate-500">Stan magazynu (analiza Braki)</h3>
+        <Link href={brakiSupplierHref(supplierId)} className={cn(linkClass, "inline-flex min-h-6 items-center")}>
+          Pokaż w Braki
+        </Link>
+      </div>
+      {stockSignalHasWork(s) ? (
+        <>
+          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm">
+            {s.criticalCount > 0 ? (
+              <span className="rounded-md bg-red-50 px-1.5 text-xs font-medium text-red-800">
+                {stockSignalUrgentLabel(s.criticalCount)}
+              </span>
+            ) : null}
+            <span className="font-medium tabular-nums text-slate-800">{stockSignalOrderSummary(s)}</span>
+          </p>
+          {s.beforeDeliveryCount > 0 ? (
+            <p className="mt-0.5 text-red-700">{stockSignalBeforeDeliveryLabel(s.beforeDeliveryCount)}</p>
+          ) : null}
+          {urgent ? (
+            <p className="mt-0.5 truncate text-slate-600" title={urgent.full}>
+              Najpilniej {urgent.label} ({urgent.cover})
+            </p>
+          ) : null}
+        </>
+      ) : (
+        <p className="mt-1 text-sm text-slate-700">
+          {stale ? "Brak pozycji Do ZD" : "Stan wystarcza - nic do zamówienia"}
+        </p>
+      )}
+      {schedule ? <p className="mt-0.5 tabular-nums text-slate-500">{schedule}</p> : null}
+      {stale ? <p className="mt-0.5 text-amber-800">{stockSignalStaleNote(s)}</p> : null}
+    </section>
+  );
+}
+
+
+/**
+ * Podpowiedź z nocnej analizy Braki w wierszu dostawcy: pilne, Do ZD z wartością,
+ * co skończy się przed dostawą, najpilniejszy towar i „Przygotuj ZD”.
  * Bez zakresu w Kreatorze (brak analizy) — nic nie pokazuje.
  */
 export function SupplierStockSignal({
@@ -58,41 +236,94 @@ export function SupplierStockSignal({
   const { signals, canPrepareZd } = useContext(SupplierStockSignalsContext);
   const s = signals[supplierId];
   if (!s) return null;
-  const asOf = s.dataDo ? `Nocna analiza Braki - sprzedaż do ${shortDate(s.dataDo)}.` : "Nocna analiza Braki.";
+  const stale = stockWatchSignalStale(s.computedAt);
+  const asOf = s.dataDo
+    ? `Nocna analiza Braki - sprzedaż do ${formatRunOutDate(s.dataDo)}.`
+    : "Nocna analiza Braki.";
 
-  if (s.lineCount === 0 && s.criticalCount === 0) {
+  if (!stockSignalHasWork(s)) {
     return (
       <p
-        className={cn("text-[11px] text-slate-500", className)}
-        title={`${asOf} Stan i towar w drodze pokrywają zapas - można przesunąć termin.`}
+        className={cn("text-xs text-slate-500", className)}
+        title={
+          stale
+            ? `${asOf} ${stockSignalStaleNote(s)}.`
+            : `${asOf} Stan i towar w drodze pokrywają zapas - można przesunąć termin.`
+        }
       >
-        Nic do zamówienia - stan wystarcza
+        {stale
+          ? `Brak pozycji Do ZD · analiza z ${stockSignalComputedDay(s) ?? "-"}`
+          : "Stan wystarcza - nic do zamówienia"}
       </p>
     );
   }
 
+  const urgent = stockSignalMostUrgent(s);
+  // Tylko pozycje zagrożone przed dostawą — „Przygotuj ZD” od razu z horyzontem dostawy.
+  const prepareWithHorizon = stockWatchPrepareZdUsesHorizon(s);
+  const horizon = stockWatchHorizonExtends(s) && s.beforeDeliveryCount > 0 && !prepareWithHorizon;
+
   return (
-    <p
-      className={cn("flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px]", className)}
-      title={`${asOf} Liczba pozycji i wartość jak w Kreatorze ZD (ostatnie ceny z ZD).`}
-    >
-      {s.criticalCount > 0 ? (
-        <span className="rounded-md bg-red-50 px-1.5 font-medium text-red-800">
-          {s.criticalCount} {polishPluralWord(s.criticalCount, "brak", "braki", "braków")}
-        </span>
+    <div className={cn("min-w-0 text-xs", className)}>
+      <p
+        className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5"
+        title={`${asOf} Liczba pozycji i wartość jak w Kreatorze ZD (ostatnie ceny z ZD).`}
+      >
+        {s.criticalCount > 0 ? (
+          <Link
+            href={brakiSupplierHref(supplierId)}
+            className="rounded-md bg-red-50 px-1.5 font-medium text-red-800 hover:bg-red-100"
+            title="Pokaż pilne pozycje w panelu Braki"
+          >
+            {stockSignalUrgentLabel(s.criticalCount)}
+          </Link>
+        ) : null}
+        {s.criticalCount > 0 ? (
+          <span className="font-medium tabular-nums text-slate-700">{stockSignalOrderSummary(s)}</span>
+        ) : (
+          <Link
+            href={brakiSupplierHref(supplierId)}
+            className="font-medium tabular-nums text-slate-700 underline-offset-2 hover:text-slate-900 hover:underline"
+            title="Pokaż pozycje w panelu Braki"
+          >
+            {stockSignalOrderSummary(s)}
+          </Link>
+        )}
+        {canPrepareZd ? (
+          <Link
+            href={buildZdEstimateLaunchHref(supplierId, prepareWithHorizon ? { leadTimeHorizon: true } : undefined)}
+            className={linkClass}
+          >
+            Przygotuj ZD
+          </Link>
+        ) : null}
+        {canPrepareZd && horizon ? (
+          <Link
+            href={buildZdEstimateLaunchHref(supplierId, { leadTimeHorizon: true })}
+            className={linkClass}
+            title={stockSignalHorizonTitle(s)}
+            aria-label="Przygotuj ZD do kolejnej dostawy"
+          >
+            do kolejnej dostawy
+          </Link>
+        ) : null}
+      </p>
+      {s.beforeDeliveryCount > 0 || urgent || stale ? (
+        <p className="mt-0.5 flex min-w-0 flex-wrap gap-x-1.5 text-slate-500 [&>*+*]:before:content-['·_']">
+          {s.beforeDeliveryCount > 0 ? (
+            <span className="text-red-700">{stockSignalBeforeDeliveryLabel(s.beforeDeliveryCount)}</span>
+          ) : null}
+          {urgent ? (
+            <span className="min-w-0 max-w-full truncate" title={urgent.full}>
+              najpilniej {urgent.label} ({urgent.cover})
+            </span>
+          ) : null}
+          {/* W wierszu tylko data — pełne ostrzeżenie w dymku; przy nieudanej nocy powtarzało się w każdym wierszu. */}
+          {stale ? (
+            <span title={stockSignalStaleNote(s)}>analiza z {stockSignalComputedDay(s) ?? "-"}</span>
+          ) : null}
+        </p>
       ) : null}
-      <span className="font-medium tabular-nums text-slate-700">
-        Do ZD: {s.lineCount} poz.
-        {s.orderValue > 0 ? ` · ok. ${plnFormatter.format(Math.round(s.orderValue))} zł` : ""}
-      </span>
-      {canPrepareZd && s.lineCount > 0 ? (
-        <Link
-          href={buildZdEstimateLaunchHref(supplierId)}
-          className="font-semibold text-indigo-700 hover:text-indigo-900"
-        >
-          Przygotuj ZD
-        </Link>
-      ) : null}
-    </p>
+    </div>
   );
 }

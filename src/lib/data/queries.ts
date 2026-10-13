@@ -196,6 +196,11 @@ const VERIFICATION_SYNC_TTL_MS = 20_000;
 let verificationSyncExpiresAt = 0;
 let verificationSyncInFlight: Promise<void> | null = null;
 
+/** Naprawa właśnie przebiegła (np. runOrderMaintenanceBeforePageLoad) — pomiń ją przez TTL. */
+export function markVerificationQueueSynced(): void {
+  verificationSyncExpiresAt = Date.now() + VERIFICATION_SYNC_TTL_MS;
+}
+
 /**
  * Niekompletne prośby → status Weryfikacja (jak przed fetch na /weryfikacja).
  * Bez tego badge w menu liczy tylko rekordy już oznaczone w DB.
@@ -470,30 +475,54 @@ export async function fetchDeliveryQueue(options?: {
 }
 
 export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }) {
-  const allSchedules = await fetchSuppliersWithSchedules(undefined, { activeOnly: true });
-  let schedules = allSchedules;
-  if (options?.salesPersonId) {
-    const allowed = await fetchSupplierIdsForSalesPerson(options.salesPersonId);
-    schedules = allSchedules.filter((s) => allowed.has(s.id));
-  }
-  const { fetchSalesPeopleForPicker } = await import("@/lib/data/sales-people-admin");
-  const [allNewOrders, salesPeople, statsRows, formSuppliers, teethLaneIndex, onVacationNow, flagDefinitions, laneOrderRaw] =
-    await Promise.all([
+  type EtaQuantiles = import("@/lib/orders/delivery-eta-quantiles-load").DeliveryEtaSupplierQuantiles;
+  const salesPersonId = options?.salesPersonId;
+  // Statystyki → kwantyle ETA (zależne od supplier_id ze statystyk), reszta równolegle.
+  const statsPromise = fetchDeliveryStats();
+  const etaPromise = statsPromise
+    .then(async (rows) => {
+      const { loadDeliveryEtaQuantilesForSupplierIds } = await import(
+        "@/lib/orders/delivery-eta-quantiles-load"
+      );
+      return loadDeliveryEtaQuantilesForSupplierIds(rows.map((s) => s.supplier_id));
+    })
+    .catch((e): { useP50: boolean; bySupplierId: Record<string, EtaQuantiles> } => {
+      console.warn("fetchSummaryWorkspace eta quantiles:", e);
+      return { useP50: false, bySupplierId: {} };
+    });
+  const [
+    schedules,
+    allNewOrders,
+    salesPeople,
+    statsRows,
+    formSuppliers,
+    teethLaneIndex,
+    onVacationNow,
+    flagDefinitions,
+    laneOrderRaw,
+    salesCancelledOrders,
+    etaLoaded,
+  ] = await Promise.all([
+    Promise.all([
+      fetchSuppliersWithSchedules(undefined, { activeOnly: true }),
+      salesPersonId ? fetchSupplierIdsForSalesPerson(salesPersonId) : null,
+    ]).then(([all, allowed]) => (allowed ? all.filter((s) => allowed.has(s.id)) : all)),
     fetchIndividualOrders({ status: "Nowe", hideSalesAcknowledged: false, excludeTeeth: true, allowAll: true }),
-    fetchSalesPeopleForPicker(),
-    fetchDeliveryStats(),
+    import("@/lib/data/sales-people-admin").then((m) => m.fetchSalesPeopleForPicker()),
+    statsPromise,
     fetchSuppliersForRequestForms(),
     fetchTeethSupplierLaneIndex(),
     fetchSuppliersOnVacationNow(),
     fetchProcurementFlagDefinitions(),
     fetchProcurementLaneOrderRaw(),
+    salesPersonId
+      ? ([] as IndividualOrder[])
+      : fetchSalesCancelledOrders(7).catch(() => [] as IndividualOrder[]),
+    etaPromise,
   ]);
-  const newOrders = options?.salesPersonId
-    ? allNewOrders.filter((o) => o.sales_person_id === options.salesPersonId)
+  const newOrders = salesPersonId
+    ? allNewOrders.filter((o) => o.sales_person_id === salesPersonId)
     : allNewOrders;
-  const salesCancelledOrders = options?.salesPersonId
-    ? []
-    : await fetchSalesCancelledOrders(7).catch(() => [] as IndividualOrder[]);
 
   const workspace = buildSummaryWorkspace(
     schedules,
@@ -520,23 +549,8 @@ export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }
     schedules.map((s) => [s.id, (s.stats_mode ?? "LACZNIE") as import("@/types/database").StatsMode])
   );
 
-  let etaUseP50 = false;
-  let etaQuantilesBySupplierId: Record<
-    string,
-    import("@/lib/orders/delivery-eta-quantiles-load").DeliveryEtaSupplierQuantiles
-  > = {};
-  try {
-    const { loadDeliveryEtaQuantilesForSupplierIds } = await import(
-      "@/lib/orders/delivery-eta-quantiles-load"
-    );
-    const loaded = await loadDeliveryEtaQuantilesForSupplierIds(
-      Object.keys(statsBySupplierId)
-    );
-    etaUseP50 = loaded.useP50;
-    etaQuantilesBySupplierId = loaded.bySupplierId;
-  } catch (e) {
-    console.warn("fetchSummaryWorkspace eta quantiles:", e);
-  }
+  const etaUseP50 = etaLoaded.useP50;
+  const etaQuantilesBySupplierId: Record<string, EtaQuantiles> = etaLoaded.bySupplierId;
 
   return {
     workspace: {

@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { memo, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import type { SalesClientAssignment } from "@/lib/orders/sales-client-label";
 import {
@@ -635,14 +635,6 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     onToggleRow?.(row.id);
   };
 
-  const handleMainRowKeyDown = (event: KeyboardEvent) => {
-    if (!needsExpand) return;
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      handleToggle();
-    }
-  };
-
   const soleLine = row.lineCount === 1 ? row.lines[0] : undefined;
 
   const openPartialCancel = (line: MyOrderLine, defaultQty: number) => {
@@ -1022,13 +1014,9 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
             "flex min-w-0 flex-1 items-start gap-1",
             needsExpand && "cursor-pointer"
           )}
+          // Klik w wiersz to skrót myszą; klawiatura i czytnik ekranu używają przycisku ze
+          // strzałką obok (aria-expanded). Bez role="button" — w wierszu są linki i kopiowanie ZK.
           onClick={needsExpand ? handleToggle : undefined}
-          onKeyDown={needsExpand ? handleMainRowKeyDown : undefined}
-          role={needsExpand ? "button" : undefined}
-          tabIndex={needsExpand ? 0 : undefined}
-          aria-expanded={needsExpand ? expanded : undefined}
-          aria-controls={needsExpand ? panelId : undefined}
-          aria-label={needsExpand ? expandHint : undefined}
         >
           <MyOrderCollapsedRowZones
             row={row}
@@ -1083,6 +1071,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                       salesPersonId={row.salesPersonId}
                       searchQuery={searchQuery}
                       inline
+                      copyable
                       className="max-w-full"
                     />
                   ) : null}
