@@ -185,7 +185,13 @@ export function ProsbaLineSupplierMeta({
           className="text-xs leading-snug text-amber-950"
           title={vacationNoticeModel.rangeTitle}
         >
-          {vacationNoticeModel.title}
+          <span className="font-medium">{vacationNoticeModel.title}</span>
+          {vacationNoticeModel.description ? (
+            <>
+              {" — "}
+              {vacationNoticeModel.description}
+            </>
+          ) : null}
         </p>
       ) : null}
     </div>

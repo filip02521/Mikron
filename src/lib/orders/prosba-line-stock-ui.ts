@@ -158,13 +158,14 @@ export function formatProsbaStockLineHint(
     },
     "zamowienie"
   );
+  const qty = line.quantity.trim();
   if (view) {
-    return view.detail.trim()
+    const core = view.detail.trim()
       ? `${view.title}. ${view.detail}`
       : `${view.title} · ${view.shortLabel}`;
+    return qty ? `${core} · prośba ${qty} szt.` : core;
   }
   const name = line.product.trim() || line.symbol.trim() || "Produkt";
-  const qty = line.quantity.trim();
   const avail = line.available;
   const availLabel =
     avail != null && Number.isFinite(avail) ? `${avail} szt.` : "wystarczająco";

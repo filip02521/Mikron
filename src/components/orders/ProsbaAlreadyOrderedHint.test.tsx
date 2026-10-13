@@ -174,8 +174,10 @@ describe("ProsbaAvailabilityCard", () => {
       />
     );
     const card = screen.getByRole("region", { name: "Dostępność towaru" });
-    expect(card.textContent).toMatch(/—\s*Wolne z dostawy/);
-    expect(card.textContent).not.toMatch(/0 szt\.\s*Wolne z dostawy/);
+    // DOM: <dt> przed <dd> (wizualnie odwrotnie przez CSS order).
+    expect(card.textContent).toMatch(/Wolne z dostawy—/);
+    expect(card.textContent).not.toMatch(/Wolne z dostawy0 szt/);
+    expect(card.textContent).toMatch(/W drodze—/);
   });
 
   it("kilka pozycji: zamiast przełącznika — wskazówka i usunięcie pozycji", () => {

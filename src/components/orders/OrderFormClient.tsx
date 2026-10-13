@@ -25,7 +25,6 @@ import { prosbaHref } from "@/lib/orders/prosba-url";
 import { IconLayers, IconPlusCircle, IconUserCog, IconUserGroup } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { cn } from "@/lib/cn";
-import { sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
 import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
 import { ProsbaFormMetaStrip } from "@/components/orders/ProsbaFormMetaStrip";
 import { ProsbaPageToolbar } from "@/components/orders/ProsbaPageToolbar";

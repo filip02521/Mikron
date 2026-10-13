@@ -480,7 +480,7 @@ export function SubiektProductLineFields({
         : {}),
     });
     if (catalogLineDrifted && value.teethDetails?.length) {
-       
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset modala po zmianie linii katalogu
       setTeethModalOpen(false);
       setTeethModalKey((k) => k + 1);
     }
@@ -994,119 +994,121 @@ export function SubiektProductLineFields({
         compactControls ? "gap-2" : "gap-3"
       )}
     >
-      <Field
-        label={
-          <span>
-            {isInformacja
-              ? "Produkt (symbol lub nazwa)"
-              : "Produkt - symbol lub nazwa"}
-          </span>
-        }
-        className={cn("min-w-0 flex-1", productFieldClassName)}
-        {...mergedProductField}
-        hint={
-          !mergedProductField.error && !mergedProductField.state
-            ? mikranOnlyHint ??
-              (typeaheadEnabled && !prosba
-                ? catalogFallback
-                  ? "Wpisz nazwę lub symbol - wyniki z lokalnej bazy"
-                  : "Wpisz nazwę lub symbol - wyniki z Subiekta pojawią się poniżej"
-                : !typeaheadEnabled
-                  ? "Nazwa lub symbol produktu (wpis ręczny)"
-                  : undefined)
-            : undefined
-        }
-      >
-        <div
-          ref={productAnchorRef}
-          className={cn(
-            "relative rounded-md transition-[box-shadow]",
-            typeaheadPanelVisible &&
-              activeField !== "plu" &&
-              "z-30 ring-2 ring-indigo-400/80 ring-offset-2"
-          )}
+      <div className={cn("min-w-0 flex-1", productFieldClassName)}>
+        <Field
+          label={
+            <span>
+              {isInformacja
+                ? "Produkt (symbol lub nazwa)"
+                : "Produkt - symbol lub nazwa"}
+            </span>
+          }
+          {...mergedProductField}
+          hint={
+            !mergedProductField.error && !mergedProductField.state
+              ? mikranOnlyHint ??
+                (typeaheadEnabled && !prosba
+                  ? catalogFallback
+                    ? "Wpisz nazwę lub symbol - wyniki z lokalnej bazy"
+                    : "Wpisz nazwę lub symbol - wyniki z Subiekta pojawią się poniżej"
+                  : !typeaheadEnabled
+                    ? "Nazwa lub symbol produktu (wpis ręczny)"
+                    : undefined)
+              : undefined
+          }
         >
-          <SubiektInputShell loading={productInputLoading}>
-            <Input
-              disabled={disabled}
-              placeholder={
-                isInformacja
-                  ? "np. Śruba M6 lub ABC-12"
-                  : typeaheadEnabled
-                    ? catalogFallback
-                      ? "Szukaj w bazie: nazwa lub symbol…"
-                      : "Szukaj w Subiekcie: nazwa lub symbol…"
-                    : "Nazwa lub symbol produktu"
-              }
-              maxLength={MAX_PRODUCT_TEXT_LEN}
-              value={combinedProductSearchDisplay(value)}
-              autoComplete="off"
-              state={mergedProductField.state}
-              className={cn(
-                compactControls
-                  ? "min-h-11 py-2.5 text-base sm:min-h-[2.5rem] sm:text-sm"
-                  : "min-h-12 py-3 text-base sm:min-h-[2.75rem]",
-                inputLoadingPadding(productInputLoading)
-              )}
-              onKeyDown={handleTypeaheadKeyDown}
-              {...(activeField === "plu"
-                ? {}
-                : typeaheadInputA11y(activeField))}
-              onChange={(e) => {
-                const q = e.target.value;
-                const field = inferCombinedProductSearchField(q);
-                manualPatch(
-                  patchFromCombinedProductInput(q, {
-                    symbol: value.symbol,
-                    product: value.product,
-                  }),
-                  true
-                );
-                setActiveField(field);
-                setOpen(true);
-              }}
-              onFocus={() => {
-                if (linkedFromSubiekt) return;
-                const q = combinedProductSearchDisplay(value);
-                setActiveField(
-                  q.trim() ? inferCombinedProductSearchField(q) : "name"
-                );
-                setOpen(true);
-              }}
-            />
-          </SubiektInputShell>
-          {renderTypeaheadPanel()}
-          {!linkedFromSubiekt && symbolPreview ? (
-            <p className="mt-1.5 text-xs text-slate-500">
-              Symbol w Subiekcie:{" "}
-              <span className="font-medium text-slate-700">{symbolPreview}</span>
-            </p>
-          ) : null}
-          {linkedFromSubiekt ? (
-            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-              <SubiektLinkedLineBanner
-                symbol={symbolPreview}
-                mikranCode={value.mikranCode}
-                fromCatalog={value.source === "catalog"}
+          <div
+            ref={productAnchorRef}
+            className={cn(
+              "relative rounded-md transition-[box-shadow]",
+              typeaheadPanelVisible &&
+                activeField !== "plu" &&
+                "z-30 ring-2 ring-indigo-400/80 ring-offset-2"
+            )}
+          >
+            <SubiektInputShell loading={productInputLoading}>
+              <Input
+                disabled={disabled}
+                placeholder={
+                  isInformacja
+                    ? "np. Śruba M6 lub ABC-12"
+                    : typeaheadEnabled
+                      ? catalogFallback
+                        ? "Szukaj w bazie: nazwa lub symbol…"
+                        : "Szukaj w Subiekcie: nazwa lub symbol…"
+                      : "Nazwa lub symbol produktu"
+                }
+                maxLength={MAX_PRODUCT_TEXT_LEN}
+                value={combinedProductSearchDisplay(value)}
+                autoComplete="off"
+                state={mergedProductField.state}
+                className={cn(
+                  compactControls
+                    ? "min-h-11 py-2.5 text-base sm:min-h-[2.5rem] sm:text-sm"
+                    : "min-h-12 py-3 text-base sm:min-h-[2.75rem]",
+                  inputLoadingPadding(productInputLoading)
+                )}
+                onKeyDown={handleTypeaheadKeyDown}
+                {...(activeField === "plu"
+                  ? {}
+                  : typeaheadInputA11y(activeField))}
+                onChange={(e) => {
+                  const q = e.target.value;
+                  const field = inferCombinedProductSearchField(q);
+                  manualPatch(
+                    patchFromCombinedProductInput(q, {
+                      symbol: value.symbol,
+                      product: value.product,
+                    }),
+                    true
+                  );
+                  setActiveField(field);
+                  setOpen(true);
+                }}
+                onFocus={() => {
+                  if (linkedFromSubiekt) return;
+                  const q = combinedProductSearchDisplay(value);
+                  setActiveField(
+                    q.trim() ? inferCombinedProductSearchField(q) : "name"
+                  );
+                  setOpen(true);
+                }}
               />
-              {linkedLeadTime}
-              {!(prosba && isTeethOrderLine && linkedFromSubiekt) &&
-              !lockSubiektLink ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={disabled}
-                  className="h-7 min-h-0 px-1.5 text-xs text-indigo-800 hover:bg-indigo-50"
-                  onClick={unlinkSubiektForEdit}
-                >
-                  Zmień towar
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-      </Field>
+            </SubiektInputShell>
+            {renderTypeaheadPanel()}
+            {!linkedFromSubiekt && symbolPreview ? (
+              <p className="mt-1.5 text-xs text-slate-500">
+                Symbol w Subiekcie:{" "}
+                <span className="font-medium text-slate-700">{symbolPreview}</span>
+              </p>
+            ) : null}
+          </div>
+        </Field>
+        {/* Poza <label> Field — przycisk w labelu psuje nazwę dostępności. */}
+        {linkedFromSubiekt ? (
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <SubiektLinkedLineBanner
+              symbol={symbolPreview}
+              mikranCode={value.mikranCode}
+              fromCatalog={value.source === "catalog"}
+            />
+            {linkedLeadTime}
+            {!(prosba && isTeethOrderLine && linkedFromSubiekt) &&
+            !lockSubiektLink ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={disabled}
+                className="h-7 min-h-0 px-1.5 text-xs text-indigo-800 hover:bg-indigo-50"
+                onClick={unlinkSubiektForEdit}
+              >
+                Zmień towar
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
 
       <Field
         label="Mikran"

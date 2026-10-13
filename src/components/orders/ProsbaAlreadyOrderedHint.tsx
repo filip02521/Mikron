@@ -38,6 +38,7 @@ export const PROSBA_ALREADY_ORDERED_BADGE: Record<Tone, string> = {
 export function ProsbaAlreadyOrderedHint({
   info,
   requestedQty,
+  ownZkQty = null,
   onSwitchToNotify,
   onRemoveLine,
   forOther = false,
@@ -47,6 +48,7 @@ export function ProsbaAlreadyOrderedHint({
 }: {
   info: ProsbaAlreadyOrderedInfo | null | undefined;
   requestedQty?: number | null;
+  ownZkQty?: number | null;
   onSwitchToNotify?: () => void;
   onRemoveLine?: () => void;
   forOther?: boolean;
@@ -54,7 +56,11 @@ export function ProsbaAlreadyOrderedHint({
   onNotifyFocused?: () => void;
   className?: string;
 }) {
-  const view = buildProsbaAlreadyOrderedView(info, { forOther, requestedQty });
+  const view = buildProsbaAlreadyOrderedView(info, {
+    forOther,
+    requestedQty,
+    ownZkQty,
+  });
   const notifyRef = useRef<HTMLButtonElement>(null);
   const hasNotify = Boolean(view?.suggestNotify && onSwitchToNotify);
   useEffect(() => {
@@ -178,9 +184,17 @@ function AvailabilityStat({
         quiet && "opacity-65"
       )}
     >
+      <dt
+        className={cn(
+          "order-2 mt-1 text-[10px] font-medium leading-none",
+          emphasis ? "text-indigo-800" : "text-slate-500"
+        )}
+      >
+        {label}
+      </dt>
       <dd
         className={cn(
-          "text-[13px] font-semibold leading-none tabular-nums sm:text-sm",
+          "order-1 text-[13px] font-semibold leading-none tabular-nums sm:text-sm",
           quiet
             ? "text-slate-400"
             : emphasis
@@ -190,16 +204,8 @@ function AvailabilityStat({
       >
         {value}
       </dd>
-      <dt
-        className={cn(
-          "mt-1 text-[10px] font-medium leading-none",
-          emphasis ? "text-indigo-800" : "text-slate-500"
-        )}
-      >
-        {label}
-      </dt>
       {note ? (
-        <p className="mt-0.5 text-[10px] leading-none text-slate-500">{note}</p>
+        <p className="order-3 mt-0.5 text-[10px] leading-none text-slate-500">{note}</p>
       ) : null}
     </div>
   );
@@ -298,7 +304,14 @@ export function ProsbaAvailabilityCard({
       ? incView!.details
       : incView!.details.slice(1)
     : [];
-  const advice = useInc ? incView!.advice : null;
+  // Przy wystarczającym stanie liczby są w panelach — tu tylko wyjątki (np. cover pary).
+  const advice = useInc
+    ? incView!.advice
+    : stockView?.assessment === "sufficient"
+      ? line.pairStockCover
+        ? stockView.detail.trim() || null
+        : null
+      : stockView?.detail?.trim() || null;
   const notifyNeedsSplit = Boolean(useInc && incView?.suggestNotify && !onSwitchToNotify);
   const showRemove = Boolean(
     onRemoveLine && useInc && (incView!.tone === "mine" || notifyNeedsSplit)
@@ -306,8 +319,15 @@ export function ProsbaAvailabilityCard({
   const available = stock?.available ?? inc?.available ?? null;
   const reserved = stock?.reserved ?? 0;
   const sufficient = showAvailability && !useInc && stockView?.assessment === "sufficient";
-  const freeCoversRequest =
-    Boolean(useInc && inc && requested != null && inc.freeIncoming >= requested);
+  const shelfFree = inc
+    ? Math.max(0, inc.available - inc.zkWaiting)
+    : 0;
+  const freeCoversRequest = Boolean(
+    useInc &&
+      inc &&
+      requested != null &&
+      inc.freeIncoming + shelfFree >= requested
+  );
   const emphasizeStock = sufficient;
   const emphasizeFree = !sufficient && freeCoversRequest;
   const nameInTitle = Boolean(!showAvailability && timing?.supplierName);
@@ -384,10 +404,16 @@ export function ProsbaAvailabilityCard({
           />
           <AvailabilityStat
             label="W drodze"
-            value={inc ? formatPieces(inc.incoming) : checking ? "…" : "—"}
-            quiet={checking && !inc}
+            value={
+              checking && !inc
+                ? "…"
+                : inc && inc.incoming > 0
+                  ? formatPieces(inc.incoming)
+                  : "—"
+            }
+            quiet={!inc || inc.incoming <= 0}
             note={
-              inc && inc.zkWaiting > 0
+              inc && inc.incoming > 0 && inc.zkWaiting > 0
                 ? ownZkQty
                   ? `inne ZK ${inc.zkWaiting}`
                   : `ZK ${inc.zkWaiting}`
