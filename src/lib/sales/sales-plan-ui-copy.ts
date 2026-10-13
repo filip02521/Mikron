@@ -48,6 +48,8 @@ export const SALES_PLAN_COPY = {
   colSupplier: "Dostawca",
   colOrder: "Zamówienie",
   colWarehouse: "Na magazynie",
+  /** Urlop, na żądanie, przesunięcie i liczba otwartych próśb. */
+  colStatus: "Status",
 
   labelOnDemand: "Na żądanie",
   labelOverdue: "Po terminie",

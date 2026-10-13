@@ -258,6 +258,8 @@ function parseSubiektPasteLabel(query: string): Pick<SubiektProductPick, "symbol
   const symbol = m[1]!.trim();
   const product = m[2]!.trim();
   if (!symbol || !product) return null;
+  // Ręczny wpis „TEST audyt - nie realizować” to nazwa, nie wklejka — dzielimy tylko, gdy lewa część to symbol.
+  if (!looksLikeProductSymbol(symbol)) return null;
   return { symbol, product };
 }
 

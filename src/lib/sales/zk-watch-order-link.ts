@@ -42,6 +42,8 @@ export type ZkLinkableOrder = {
   action_at: string | null;
   delivery_at: string | null;
   zd_fulfillment_deadline: string | null;
+  /** Szacunek z historii dostawcy (jak na /moje), gdy brak terminu w ZD — liczony na serwerze strony /zk. */
+  history_timing_label?: string | null;
   zd_fulfillment_previous_deadline?: string | null;
   zd_fulfillment_deadline_changed_at?: string | null;
   zd_fulfillment_deadline_change_seen_at?: string | null;

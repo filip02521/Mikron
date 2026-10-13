@@ -1,5 +1,6 @@
 "use server";
 
+import { assertPasswordChangeCompleted } from "@/lib/auth/must-change-password-guard";
 import { runActionSafely } from "@/lib/actions/action-error";
 
 // @user-jwt-ok — autoryzacja require*() + RLS individual_orders (071) dla mutacji handlowca.
@@ -67,6 +68,7 @@ import { actionCloseZkWatch } from "@/app/actions/sales-notepad";
 async function salesPersonIdForAction(delegateFor?: string): Promise<string> {
   const user = await getSessionUser();
   if (!user) throw new Error("Wymagane logowanie");
+  assertPasswordChangeCompleted(user);
   if (!isSalesAccount(user.role)) {
     throw new Error("Brak uprawnień do tej operacji.");
   }
@@ -641,6 +643,11 @@ export async function actionUnacknowledgeSalesCancel(
 
   const teethRestore = options?.teethDetailsById;
   if (teethRestore && Object.keys(teethRestore).length > 0) {
+    // Klucze przychodzą od klienta — wolno przywrócić listę zębów tylko pozycji sprawdzonych wyżej.
+    const ownedIds = new Set(rows.map((row) => row.id));
+    if (Object.keys(teethRestore).some((orderId) => !ownedIds.has(orderId))) {
+      throw new Error("Brak uprawnień do tej pozycji.");
+    }
     await saveTeethDetailsForOrders(
       supabase,
       Object.entries(teethRestore).map(([orderId, teethDetails]) => ({

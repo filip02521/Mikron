@@ -26,6 +26,7 @@ export function DeliveryTimingMeta({
   className,
   title,
   inline = false,
+  captionBelow = false,
 }: {
   caption: string;
   captionTone?: DeliveryTimingMetaCaptionTone;
@@ -34,7 +35,17 @@ export function DeliveryTimingMeta({
   className?: string;
   title?: string;
   inline?: boolean;
+  /** Zwinięta karta /moje: najpierw data, pod nią znacznik pewności („z ZD” / „≈ szacunek”). */
+  captionBelow?: boolean;
 }) {
+  const captionRow = (
+    <div className={cn("flex items-center gap-1", inline ? "" : "flex-nowrap justify-end")}>
+      <span className={cn(captionToneClass[captionTone], !inline && "whitespace-nowrap")}>
+        {caption}
+      </span>
+      {accessory}
+    </div>
+  );
   return (
     <div
       className={cn(
@@ -46,13 +57,9 @@ export function DeliveryTimingMeta({
       )}
       title={title}
     >
-      <div className={cn("flex items-center gap-1", inline ? "" : "flex-nowrap justify-end")}>
-        <span className={cn(captionToneClass[captionTone], !inline && "whitespace-nowrap")}>
-          {caption}
-        </span>
-        {accessory}
-      </div>
+      {captionBelow ? null : captionRow}
       {children}
+      {captionBelow ? captionRow : null}
     </div>
   );
 }

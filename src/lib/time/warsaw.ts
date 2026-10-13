@@ -88,3 +88,16 @@ export function formatWarsawDateTime(iso: string): string {
   if (Number.isNaN(d.getTime())) return iso;
   return dateTimeFormatter.format(d);
 }
+
+/** Północ dnia `YYYY-MM-DD` w Warszawie jako ISO z właściwym przesunięciem (+01:00 zimą, +02:00 latem). */
+export function warsawMidnightIso(dateKey: string): string {
+  // 00:00 UTC to jeszcze ten sam dzień w Warszawie i przed zmianą czasu (ta jest o 01:00 UTC).
+  const probe = new Date(`${dateKey.slice(0, 10)}T00:00:00Z`);
+  const tzName =
+    new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Warsaw", timeZoneName: "shortOffset" })
+      .formatToParts(probe)
+      .find((p) => p.type === "timeZoneName")?.value ?? "GMT+1";
+  const hours = Number(tzName.replace("GMT", "") || "0");
+  const sign = hours < 0 ? "-" : "+";
+  return `${dateKey.slice(0, 10)}T00:00:00${sign}${String(Math.abs(hours)).padStart(2, "0")}:00`;
+}

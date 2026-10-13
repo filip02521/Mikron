@@ -174,6 +174,7 @@ describe("buildStockWatchDashboard - czas dostawy", () => {
         beforeNextDeliveryCount: 1,
         leadDays: 7,
         nextOrderDays: 17,
+        horizonExtends: false,
       })
     );
   });
@@ -188,5 +189,25 @@ describe("buildStockWatchDashboard - limit czerwonej strefy", () => {
     const d = buildStockWatchDashboard([...outs, risk], []);
     expect(d.alerts).toHaveLength(61);
     expect(d.alerts.some((a) => a.subiektTwId === 999)).toBe(true);
+  });
+});
+
+describe("buildStockWatchDashboard - filtr dostawcy", () => {
+  it("pilne pozycje dostawcy nie wypadają za globalny limit alertów", () => {
+    // 200 braków u s1 wypełnia limit; jedyny brak s2 musi być widoczny po filtrze.
+    const many = Array.from({ length: 200 }, (_, i) =>
+      item({ subiektTwId: 1000 + i, status: "out_of_stock", availableQty: 0, daysOfCover: 0 })
+    );
+    const s2 = item({
+      subiektTwId: 5,
+      supplierId: "s2",
+      status: "critical",
+      daysOfCover: 1.5,
+      velocityDaily: 0.01,
+    });
+    const all = buildStockWatchDashboard([...many, s2], []);
+    expect(all.alerts.some((r) => r.supplierId === "s2")).toBe(false);
+    const filtered = buildStockWatchDashboard([...many, s2], [], { alertsSupplierId: "s2" });
+    expect(filtered.alerts.map((r) => r.supplierId)).toEqual(["s2"]);
   });
 });

@@ -1,3 +1,4 @@
+import { MY_ORDER_STATUS_TITLE } from "@/lib/orders/my-order-status-titles";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { isClientNamesAggregateSummary } from "@/lib/orders/sales-client-label";
 import { isInformacjaAvailabilityPendingStatusTitle } from "@/lib/orders/informacja-flow-copy";
@@ -55,7 +56,7 @@ export function myOrderCollapsedStatusHint(row: MyOrderRow): string | null {
     return verificationSublineFromDetail(row.statusDetail);
   }
 
-  if (row.statusTitle === "Częściowo na magazynie" && row.subline?.trim()) {
+  if (row.statusTitle === MY_ORDER_STATUS_TITLE.partialOnStock && row.subline?.trim()) {
     return row.subline.trim();
   }
 
@@ -64,14 +65,14 @@ export function myOrderCollapsedStatusHint(row: MyOrderRow): string | null {
     return null;
   }
 
-  if (row.headlineTone === "info" && row.statusTitle === "Zamówione") {
+  if (row.headlineTone === "info" && row.statusTitle === MY_ORDER_STATUS_TITLE.ordered) {
     if (row.subline?.trim()) return row.subline.trim();
     return null;
   }
 
   if (
     row.headlineTone === "info" &&
-    row.statusTitle !== "Zamówione" &&
+    row.statusTitle !== MY_ORDER_STATUS_TITLE.ordered &&
     !isInformacjaFlowSublineExpandedOnly(row.statusTitle) &&
     row.subline?.trim()
   ) {
@@ -89,8 +90,8 @@ export function myOrderCollapsedSubline(row: MyOrderRow): string | null {
 /** Statusy informacyjne, których subline ma się pojawić dopiero po rozwinięciu jako badge — nie w zwiniętej karcie. */
 function isInformacjaFlowSublineExpandedOnly(statusTitle: string): boolean {
   return (
-    statusTitle === "Czekamy na zamówienie u dostawcy" ||
-    statusTitle === "Zamówione - czekamy na magazyn" ||
+    statusTitle === MY_ORDER_STATUS_TITLE.informacjaAwaitingProcurement ||
+    statusTitle === MY_ORDER_STATUS_TITLE.informacjaAwaitingWarehouse ||
     isInformacjaAvailabilityPendingStatusTitle(statusTitle)
   );
 }
@@ -107,11 +108,11 @@ export function myOrderExpandedNotes(row: MyOrderRow): string | null {
 
   if (row.subline?.trim() && row.subline !== collapsed && !isExpandedSublineRedundant(row)) {
     const explanatory =
-      row.statusTitle === "Przed zamówieniem" ||
+      row.statusTitle === MY_ORDER_STATUS_TITLE.beforeOrder ||
       isInformacjaAvailabilityPendingStatusTitle(row.statusTitle) ||
-      row.statusTitle === "Czekamy na zamówienie u dostawcy" ||
-      row.statusTitle === "Zamówione - czekamy na magazyn" ||
-      row.statusTitle === "Zamówione" ||
+      row.statusTitle === MY_ORDER_STATUS_TITLE.informacjaAwaitingProcurement ||
+      row.statusTitle === MY_ORDER_STATUS_TITLE.informacjaAwaitingWarehouse ||
+      row.statusTitle === MY_ORDER_STATUS_TITLE.ordered ||
       isProsbaHandoffStatus(row.statusTitle) ||
       row.kind === "informacja";
     if (explanatory) parts.push(row.subline.trim());
@@ -136,7 +137,7 @@ export function myOrderCollapsedMetaFields(
     showProgress &&
     (row.acknowledgeMode === "pickup" ||
       row.statusTitle.includes("magazynie") ||
-      row.statusTitle === "Częściowo na magazynie")
+      row.statusTitle === MY_ORDER_STATUS_TITLE.partialOnStock)
   ) {
     pick.add("Magazyn");
   }

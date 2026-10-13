@@ -19,6 +19,7 @@ import {
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { getSubiektFeedback } from "@/lib/subiekt/feedback";
+import { prosbaLineSubiektFeedback } from "@/lib/orders/consolidate-form-status";
 import {
   buildProductPickFromSubiekt,
   combinedProductSearchDisplay,
@@ -190,6 +191,7 @@ export function SubiektProductLineFields({
   requestKind,
   disabled,
   appearance = "default",
+  salesProsbaForm = false,
   productFieldClassName,
   suppliers,
   onSupplierResolved,
@@ -214,12 +216,16 @@ export function SubiektProductLineFields({
   lockSubiektLink = false,
   groupSupplierId,
   linkedLeadTime = null,
+  hideStockStatus = false,
+  autoFocusProduct = false,
 }: {
   value: SubiektProductLineValue;
   onChange: (patch: Partial<SubiektProductLineValue>) => void;
   requestKind: IndividualRequestKind;
   disabled?: boolean;
   appearance?: "default" | "prosba";
+  /** Formularz handlowca /prosba — bez powtórek komunikatu o niedostępnym Subiekcie pod pozycją. */
+  salesProsbaForm?: boolean;
   productFieldClassName?: string;
   suppliers?: AppSupplierRef[];
   onSupplierResolved?: (result: {
@@ -269,9 +275,22 @@ export function SubiektProductLineFields({
   groupSupplierId?: string | null;
   /** Meta czasu dostawy — pod „Powiązano z Subiektem” / „Z bazy”. */
   linkedLeadTime?: ReactNode;
+  /** Stan pokazuje karta „Dostępność” pod pozycją (formularz prośby) — bez drugiego bloku. */
+  hideStockStatus?: boolean;
+  /** Formularz handlowca: kursor od razu w polu produktu (tylko mysz/klawiatura, nie telefon). */
+  autoFocusProduct?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const productAnchorRef = useRef<HTMLDivElement>(null);
+  // Rozmowa z klientem: pierwsze, co robi handlowiec, to wpisanie towaru — bez klikania w pole.
+  // Telefon pominięty: fokus otworzyłby klawiaturę i zasłonił pół formularza.
+  useEffect(() => {
+    if (!autoFocusProduct || value.product?.trim() || value.symbol?.trim()) return;
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    productAnchorRef.current?.querySelector("input")?.focus({ preventScroll: true });
+    // Tylko przy pierwszym wyrenderowaniu pozycji.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const pluAnchorRef = useRef<HTMLDivElement>(null);
   const searchGenerationRef = useRef(0);
   const typeaheadInstanceId = useId();
@@ -950,13 +969,19 @@ export function SubiektProductLineFields({
     if (resolvingSupplier) {
       prosbaMessageItems.push({ kind: "resolving" });
     }
-    if (supplierFeedback) {
-      prosbaMessageItems.push({ kind: "feedback", feedback: supplierFeedback });
+    const lineSupplierFeedback = salesProsbaForm
+      ? prosbaLineSubiektFeedback(supplierFeedback)
+      : supplierFeedback;
+    if (lineSupplierFeedback) {
+      prosbaMessageItems.push({ kind: "feedback", feedback: lineSupplierFeedback });
     }
-    if (productFieldFeedback) {
+    const lineFeedback = salesProsbaForm
+      ? prosbaLineSubiektFeedback(productFieldFeedback)
+      : productFieldFeedback;
+    if (lineFeedback) {
       prosbaMessageItems.push({
         kind: "feedback",
-        feedback: productFieldFeedback,
+        feedback: lineFeedback,
         fieldLabel: `Subiekt - ${subiektFieldLabel(activeField)}`,
       });
     }
@@ -1069,9 +1094,10 @@ export function SubiektProductLineFields({
         label="Mikran"
         className="w-full shrink-0 sm:w-[6.75rem]"
         {...mikranField}
+        // /prosba handlowca: stała podpowiedź — wcześniej zmieniała się po wczytaniu statusu Subiekta.
         hint={
           !mikranField.error && !mikranField.state
-            ? typeaheadEnabled
+            ? typeaheadEnabled && !salesProsbaForm
               ? "PLU (min. 1 cyfra)"
               : "Kod PLU"
             : undefined
@@ -1090,6 +1116,8 @@ export function SubiektProductLineFields({
             <Input
               disabled={disabled}
               readOnly={linkedFromSubiekt}
+              // Po powiązaniu kod jest tylko do odczytu — Tab idzie od produktu prosto do ilości.
+              tabIndex={linkedFromSubiekt ? -1 : undefined}
               placeholder="np. 896"
               inputMode="numeric"
               maxLength={MAX_MIKRAN_CODE_LEN}
@@ -1143,7 +1171,8 @@ export function SubiektProductLineFields({
             disabled={disabled || isTeethOrderLine}
             readOnly={isTeethOrderLine}
             maxLength={MAX_QUANTITY_LEN}
-            placeholder={isTeethOrderLine ? "-" : "1"}
+            // /prosba handlowca bez „1” — szary placeholder wyglądał jak wpisana ilość.
+            placeholder={isTeethOrderLine ? "-" : salesProsbaForm ? undefined : "1"}
             inputMode="numeric"
             aria-label="Ilość sztuk"
             value={
@@ -1203,7 +1232,7 @@ export function SubiektProductLineFields({
             variant="ghost"
             size="sm"
             disabled={disabled}
-            className="shrink-0 text-emerald-800 hover:bg-emerald-50"
+            className="shrink-0 text-indigo-800 hover:bg-indigo-50"
             onClick={unlinkSubiektForEdit}
           >
             Zmień towar
@@ -1224,7 +1253,7 @@ export function SubiektProductLineFields({
             variant="ghost"
             size="sm"
             disabled={disabled}
-            className="text-emerald-800 hover:bg-emerald-50"
+            className="text-indigo-800 hover:bg-indigo-50"
             onClick={unlinkSubiektForEdit}
           >
             Zmień towar
@@ -1252,7 +1281,9 @@ export function SubiektProductLineFields({
         ) : (
           <>
             <ProsbaTeethExemptHint line={value as ProductLineDraft} />
-            <ProsbaProductStockStatus line={value as ProductLineDraft} requestKind={requestKind} />
+            {hideStockStatus ? null : (
+              <ProsbaProductStockStatus line={value as ProductLineDraft} requestKind={requestKind} />
+            )}
             <ProsbaPairHint twId={value.subiektTwId} />
           </>
         )

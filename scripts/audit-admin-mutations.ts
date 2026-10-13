@@ -1,5 +1,7 @@
 /**
- * Wykrywa server actions z requireAdmin() zamiast requireAdminForMutation().
+ * Wykrywa server actions z requireAdmin() zamiast requireAdminForMutation()
+ * oraz akcje przyjmujące tożsamość od klienta (np. `knownUser?`) — server action jest publicznym
+ * endpointem, więc użytkownik musi zawsze pochodzić z sesji.
  * Użycie: npx tsx scripts/audit-admin-mutations.ts
  */
 
@@ -42,6 +44,8 @@ function isLikelyReadOnlyAction(fnName: string): boolean {
   return READ_HINTS.some((hint) => fnName.includes(hint));
 }
 
+const IDENTITY_PARAM = /\b(knownUser|sessionUser|currentUser|user|session|actor)\??\s*:/;
+
 const EXCLUDED_FILES = ["src/app/actions/admin-panel-context.ts"];
 
 function main() {
@@ -61,6 +65,12 @@ function main() {
       const start = match.index;
       const nextFn = content.indexOf("export async function", start + 1);
       const body = content.slice(start, nextFn === -1 ? undefined : nextFn);
+      const params = body.slice(body.indexOf("("), body.indexOf(")"));
+
+      if (IDENTITY_PARAM.test(params)) {
+        findings.push(`${rel} — ${fnName} (tożsamość z parametru zamiast z sesji)`);
+        continue;
+      }
 
       if (!body.includes("requireAdmin()")) continue;
       if (body.includes("requireAdminForMutation()")) continue;
@@ -71,11 +81,11 @@ function main() {
   }
 
   if (!findings.length) {
-    console.log("✓ Brak oczywistych mutacji z samym requireAdmin().");
+    console.log("✓ Brak oczywistych mutacji z samym requireAdmin() ani tożsamości z parametru.");
     return;
   }
 
-  console.log("Mutacje do przejrzenia (requireAdmin → requireAdminForMutation):\n");
+  console.log("Akcje do przejrzenia (requireAdmin → requireAdminForMutation; tożsamość tylko z sesji):\n");
   for (const line of findings.sort()) {
     console.log(`  • ${line}`);
   }

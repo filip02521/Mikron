@@ -22,7 +22,7 @@ export const MY_ORDER_HISTORY_ESTIMATE_OVERDUE_ZD_PENDING_DETAIL =
   "Termin z historii minął - szukamy aktualnego terminu w dokumencie ZD u dostawcy.";
 
 export const MY_ORDER_HISTORY_ESTIMATE_OVERDUE_ZD_NO_MATCH_DETAIL =
-  "Sprawdziliśmy dokumenty ZD u dostawcy - brak terminu realizacji. Termin z historii już minął.";
+  "W dokumencie ZD u dostawcy nie ma terminu, a termin z historii już minął.";
 
 export const MY_ORDER_HISTORY_ESTIMATE_BELOW_ZD_NO_MATCH_DETAIL =
   "Sprawdziliśmy dokumenty ZD u dostawcy - brak terminu realizacji dla tej pozycji. Poniżej termin z historii dostaw.";
@@ -60,3 +60,9 @@ export const MY_ORDER_HISTORY_ESTIMATE_SAME_DAY_DETAIL =
 
 export const MY_ORDER_HISTORY_ESTIMATE_NEXT_MORNING_DETAIL =
   "U tego dostawcy typowy czas to ok. 1 dzień roboczy (często nazajutrz).";
+
+/** Znacznik pewności pod datą na zwiniętej karcie — szacunek z historii dostawcy, nie termin z ZD. */
+export const MY_ORDER_HISTORY_ESTIMATE_CERTAINTY_TAG = "≈ szacunek";
+
+/** Znacznik pewności pod datą — termin potwierdzony w dokumencie ZD. */
+export const ZD_DELIVERY_CERTAINTY_TAG = "z ZD";

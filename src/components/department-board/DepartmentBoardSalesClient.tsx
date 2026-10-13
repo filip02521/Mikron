@@ -347,7 +347,7 @@ export function DepartmentBoardSalesClient({
               error={questionFormError}
               saving={saving}
               tourDemo={tourDemo}
-              defaultExpanded={board.questions.length === 0}
+              defaultExpanded
               hasQuestions={board.questions.length > 0}
               onTitleChange={setQuestionTitle}
               onBodyChange={setQuestionBody}

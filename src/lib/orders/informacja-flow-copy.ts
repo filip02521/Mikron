@@ -152,8 +152,19 @@ export function resolveInformacjaArrivedSourceMix(
 export function informacjaReadyAckSubline(input: {
   sourceMix: InformacjaArrivedSourceMix;
   informacjaPath?: "direct" | "via_panel" | "stock_out";
+  /** „Pt 09.10” — data trafia do tekstu karty zamiast osobnej kolumny obok przycisku. */
+  availableSince?: string | null;
 }): string {
-  const { sourceMix, informacjaPath } = input;
+  const { sourceMix, informacjaPath, availableSince } = input;
+  if (availableSince) {
+    const source =
+      sourceMix === "stock_auto"
+        ? " · wg stanu w Subiekcie"
+        : sourceMix !== "mixed" && informacjaPath === "via_panel"
+          ? " · potwierdził magazyn"
+          : "";
+    return `Na półce od ${availableSince}${source}`;
+  }
   if (sourceMix === "stock_auto") {
     return "Powiadomienie wysłano automatycznie (stan w Subiekcie) - potwierdź odczyt";
   }

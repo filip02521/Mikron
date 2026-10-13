@@ -4,7 +4,7 @@
  */
 
 import { query } from "@/lib/db/pool";
-import type { GmailAttachmentRef } from "@/lib/google/gmail";
+import { decodeEntities, type GmailAttachmentRef } from "@/lib/google/gmail";
 import {
   addBusinessDaysKey,
   deriveColumn,
@@ -194,7 +194,8 @@ export function groupConversations(rows: readonly MailMessageRow[]): MailConvers
         lastFrom: last.from_name || last.from_address,
         lastFromEmail: last.from_address,
         lastAt: last.received_at.toISOString(),
-        snippet: last.snippet,
+        // Snippet jest dekodowany przy synchronizacji; część sklepów koduje treść podwójnie („zam&#243;wienia”).
+        snippet: decodeEntities(last.snippet),
         count: sorted.length,
         // Bez obrazków z podpisu Outlooka (image001.png…).
         attachments: sorted.reduce((n, m) => n + m.attachments.filter((f) => !isInlineImage(f)).length, 0),

@@ -5,7 +5,8 @@ import { AutoRefreshSettingsSection } from "@/components/settings/AutoRefreshSet
 import { AppearanceSettingsSection } from "@/components/settings/AppearanceSettingsSection";
 import { SettingsWorkspace } from "@/components/settings/SettingsWorkspace";
 import { GmailSettingsSection } from "@/components/settings/GmailSettingsSection";
-import { canAccessZdEstimate } from "@/lib/auth-roles";
+import { SalesOnboardingSettingsSection } from "@/components/settings/SalesOnboardingSettingsSection";
+import { canAccessZdEstimate, isSalesAccount } from "@/lib/auth-roles";
 import { getGmailOAuthConfig } from "@/lib/google/gmail";
 import { getEmailSignature, getGmailConnection } from "@/lib/google/gmail-connections";
 import { salesPageShellClass } from "@/lib/ui/ontime-theme";
@@ -48,6 +49,8 @@ export default async function UstawieniaPage() {
           /> : null}
 
         <AppearanceSettingsSection uniformBackground={user.uniformBackground} fontScale={user.fontScale} />
+
+        {isSalesAccount(user.role) && user.salesPersonId ? <SalesOnboardingSettingsSection /> : null}
       </SettingsWorkspace>
     </div>
   );

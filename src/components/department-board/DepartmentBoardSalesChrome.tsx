@@ -174,7 +174,7 @@ function StatusFilterChip({
         disabled && "pointer-events-none opacity-60"
       )}
     >
-      <span className={cn(compact && "truncate")}>{FILTER_LABELS[id]}</span>
+      <span>{FILTER_LABELS[id]}</span>
       <DepartmentBoardCountBadge
         count={count}
         active={active}

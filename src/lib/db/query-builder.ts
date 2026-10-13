@@ -1915,6 +1915,17 @@ export class PostgrestQueryBuilder implements PromiseLike<PostgrestListResponse>
 
     const result = await query<Row>(built.rowsText, built.rowsParams);
 
+    if (
+      state.mode === "select" &&
+      !state.head &&
+      state.limitCount == null &&
+      state.singleMode === "none" &&
+      result.rows.length >= defaultMaxRows()
+    ) {
+      // Cichy limit (DB_MAX_ROWS) uciął wynik — dodaj .limit()/stronicowanie albo licz w SQL.
+      console.warn(`[db] wynik ucięty do ${defaultMaxRows()} wierszy bez jawnego .limit(): ${built.rowsText.slice(0, 160)}`);
+    }
+
     if (state.mode !== "select" && !state.returning) {
       return {
         data: null,

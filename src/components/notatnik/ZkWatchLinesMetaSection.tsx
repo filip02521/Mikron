@@ -12,14 +12,14 @@ import {
   normalizePhoneHref,
 } from "@/lib/sales/zk-watch-contact";
 import type { SalesZkWatch } from "@/types/database";
-import { ZK_MODAL_SECTION_HINTS, ZK_MODAL_SECTION_TITLES } from "@/lib/sales/zk-modal-section-copy";
+import { ZK_MODAL_SECTION_TITLES } from "@/lib/sales/zk-modal-section-copy";
 import { ZkWatchModalSection } from "./ZkWatchModalSection";
 
 function MetaFact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="min-w-0">
-      <p className={salesTypography.sectionLabel}>{label}</p>
-      <div className={cn("mt-0.5", salesTypography.rowBody, "text-slate-800")}>{children}</div>
+      <dt className={salesTypography.sectionLabel}>{label}</dt>
+      <dd className={cn("mt-0.5 break-words", salesTypography.rowBody, "text-slate-800")}>{children}</dd>
     </div>
   );
 }
@@ -40,17 +40,18 @@ export function ZkWatchLinesMetaSection({
   const canEdit = !readOnly && !tourPreview && !archived;
   const clientContact = extractZkWatchClientContact(watch);
   const issued = formatShortDate(watch.zk_issued_at);
-  // Data wystawienia ma własny kafelek — bez powtórki w podpisie.
-  const subtitle = zkWatchSubtitle(watch, { omitLineSummary: true, omitIssued: true });
+  // Data wystawienia ma własne pole, a status Subiekta stoi w nagłówku okna — bez powtórki w podpisie.
+  const subtitle = zkWatchSubtitle(watch, { omitLineSummary: true, omitIssued: true, omitStatus: true });
 
   const hasContact = Boolean(clientContact.phone || clientContact.email);
   const hasFacts = hasContact || issued || watch.amount_gross != null || Boolean(subtitle);
 
   return (
-    <ZkWatchModalSection title={ZK_MODAL_SECTION_TITLES.details} hint={ZK_MODAL_SECTION_HINTS.details}>
+    <ZkWatchModalSection title={ZK_MODAL_SECTION_TITLES.details}>
       {hasFacts ? (
-        <div className="rounded-md border border-slate-200/90 bg-slate-50/50 p-3">
-          <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          {/* Dane z Subiekta jako lista faktów — bez pudełka w pudełku okna. */}
+          <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
             {clientContact.phone ? (
               <MetaFact label="Telefon">
                 <a href={normalizePhoneHref(clientContact.phone)} className={brandLinkSubtleClass}>
@@ -67,11 +68,13 @@ export function ZkWatchLinesMetaSection({
             ) : null}
             {issued ? <MetaFact label="Wystawiono">{issued}</MetaFact> : null}
             {watch.amount_gross != null ? (
-              <MetaFact label="Kwota">{formatPln(watch.amount_gross)}</MetaFact>
+              <MetaFact label="Kwota">
+                <span className="tabular-nums">{formatPln(watch.amount_gross)}</span>
+              </MetaFact>
             ) : null}
-          </div>
+          </dl>
           {subtitle ? (
-            <p className={cn("mt-2 border-t border-slate-200/70 pt-2", salesTypography.rowMeta)}>
+            <p className={cn("mt-3", salesTypography.rowMeta)}>
               {subtitle}
             </p>
           ) : null}
@@ -84,7 +87,7 @@ export function ZkWatchLinesMetaSection({
       ) : null}
 
       {showSubiektRealizedCloseHint && canEdit ? (
-        <p className="rounded-md border border-emerald-200/80 bg-emerald-50/70 px-3 py-2 text-xs leading-snug text-emerald-900">
+        <p className="rounded-[var(--radius-control)] bg-emerald-50 px-3 py-2 text-xs leading-snug text-emerald-900">
           Subiekt: Zrealizowane - rozważ zamknięcie sprawy (menu na karcie ZK).
         </p>
       ) : null}

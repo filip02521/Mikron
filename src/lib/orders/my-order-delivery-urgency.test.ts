@@ -211,3 +211,18 @@ describe("shouldShowDeliveryUrgencyBadgeBesideDateMeta", () => {
     expect(shouldShowDeliveryUrgencyBadgeBesideDateMeta(null, today)).toBe(true);
   });
 });
+
+describe("resolveMyOrderDeliveryRowVisual - częściowo dostarczone po terminie", () => {
+  it("akcent „Po terminie” także dla części na magazynie (nie tylko „Zamówione”)", () => {
+    const ordered = row({ statusTitle: "Zamówione", timingLabel: "ok. 10.06.2026" });
+    expect(resolveMyOrderDeliveryRowVisual(ordered, at)?.borderAccent).toContain("amber");
+    // Wcześniej porównanie z kodem bazy „Częściowo_zrealizowane” zamiast tytułu → brak akcentu.
+    const partialLate = row({
+      statusTitle: "Częściowo na magazynie",
+      timingLabel: "ok. 10.06.2026",
+      pickupReadyTotal: 0,
+    });
+    expect(resolveMyOrderPartialStockRowVisual(partialLate)).toBeNull();
+    expect(resolveMyOrderDeliveryRowVisual(partialLate, at)?.borderAccent).toContain("amber");
+  });
+});

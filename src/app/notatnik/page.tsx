@@ -71,7 +71,7 @@ export default async function NotatnikPage({
     archivedNotes: [],
   } as Awaited<ReturnType<typeof fetchSalesNotesPageData>>;
 
-  if (access.salesPersonId) {
+  if (access.salesPersonId && access.canReadNotes) {
     try {
       notesData = await fetchSalesNotesPageData(access.salesPersonId);
     } catch (e) {

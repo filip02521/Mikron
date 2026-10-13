@@ -1,4 +1,12 @@
+import { MY_ORDER_STATUS_TITLE } from "@/lib/orders/my-order-status-titles";
+import { PROCUREMENT_TEAM_LABEL, PROCUREMENT_TEAM_LABEL_TITLE } from "@/lib/orders/procurement-copy";
+import { informacjaAvailableSinceShort } from "@/lib/orders/informacja-timing-meta";
+import {
+  VERIFICATION_PROCUREMENT_MATCHES_SUPPLIER,
+  VERIFICATION_PROCUREMENT_WILL_FILL,
+} from "@/lib/orders/verification-gaps";
 import { parseDateOnly, formatDateString } from "@/lib/orders/dates";
+import { isTimingOverdue, stripTimingOverdue, timingOverdueSuffix } from "@/lib/orders/timing-overdue";
 import { isPastExpectedDate } from "@/lib/orders/delivery-eta";
 import {
   isZdEtaSyncEligible,
@@ -60,7 +68,7 @@ export type MyOrderHeadlineTone =
 export const MY_ORDER_PARTIAL_STOCK_HEADLINE = "Część towaru na magazynie";
 
 export function isMyOrderPartialStockRow(row: MyOrderRow): boolean {
-  if (row.kind !== "zamowienie" || row.statusTitle !== "Częściowo na magazynie") {
+  if (row.kind !== "zamowienie" || row.statusTitle !== MY_ORDER_STATUS_TITLE.partialOnStock) {
     return false;
   }
   return enrichMyOrderSalesUi(row).headlineTone === "stock";
@@ -84,11 +92,14 @@ export function verificationSublineFromDetail(statusDetail: string | null): stri
   ) {
     return "Trwa dopasowanie dostawcy w systemie";
   }
-  if (statusDetail.includes("Dział dostaw dopasuje dostawcę")) {
+  if (statusDetail.includes(VERIFICATION_PROCUREMENT_MATCHES_SUPPLIER)) {
     return "Zakupy dopasują dostawcę - bez Twojej akcji";
   }
-  if (statusDetail.includes("Dział dostaw uzupełni:")) {
-    const match = statusDetail.match(/Dział dostaw uzupełni: ([^.]+)/);
+  const willFillAt = statusDetail.indexOf(VERIFICATION_PROCUREMENT_WILL_FILL);
+  if (willFillAt >= 0) {
+    const match = statusDetail
+      .slice(willFillAt + VERIFICATION_PROCUREMENT_WILL_FILL.length)
+      .match(/^ ([^.]+)/);
     return match ? `Zakupy uzupełnią ${match[1]}` : "Zakupy dopracują szczegóły";
   }
   if (statusDetail.includes("nie musisz")) {
@@ -143,22 +154,22 @@ export function summarizeMyOrdersInbox(rows: MyOrderRow[]): MyOrdersInboxSummary
   for (const row of rows) {
     const ui = enrichMyOrderSalesUi(row);
     if (ui.sortPriority === 1) s.pickupCount++;
-    else if (row.kind === "zamowienie" && row.statusTitle === "Częściowo na magazynie") {
+    else if (row.kind === "zamowienie" && row.statusTitle === MY_ORDER_STATUS_TITLE.partialOnStock) {
       s.partialReadyCount++;
     }
     else if (ui.sortPriority === 3) s.cancelAckCount++;
     else if (ui.sortPriority === 4) s.overdueCount++;
     else if (ui.sortPriority === 5) s.verificationCount++;
     else if (ui.sortPriority === 10) s.informacjaReadyCount++;
-    else if (row.kind === "zamowienie" && row.statusTitle === "Przed zamówieniem") {
+    else if (row.kind === "zamowienie" && row.statusTitle === MY_ORDER_STATUS_TITLE.beforeOrder) {
       s.przedZamowieniemCount++;
-    } else if (row.kind === "zamowienie" && row.statusTitle === "Zamówione") {
+    } else if (row.kind === "zamowienie" && row.statusTitle === MY_ORDER_STATUS_TITLE.ordered) {
       s.zamowioneCount++;
     } else if (
       row.kind === "informacja" &&
       (isInformacjaAvailabilityPendingStatusTitle(row.statusTitle) ||
-        row.statusTitle === "Czekamy na zamówienie u dostawcy" ||
-        row.statusTitle === "Zamówione - czekamy na magazyn")
+        row.statusTitle === MY_ORDER_STATUS_TITLE.informacjaAwaitingProcurement ||
+        row.statusTitle === MY_ORDER_STATUS_TITLE.informacjaAwaitingWarehouse)
     ) {
       s.availabilityPendingCount++;
     }
@@ -168,7 +179,7 @@ export function summarizeMyOrdersInbox(rows: MyOrderRow[]): MyOrdersInboxSummary
 }
 
 export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
-  const overdue = Boolean(row.timingLabel?.includes("po terminie"));
+  const overdue = isTimingOverdue(row.timingLabel);
 
   if (row.acknowledgeMode === "availability" && row.pickupPendingCount > 0) {
     return {
@@ -177,6 +188,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
       subline: informacjaReadyAckSubline({
         sourceMix: row.informacjaArrivedSourceMix ?? null,
         informacjaPath: row.informacjaPath,
+        availableSince: informacjaAvailableSinceShort(row.timingLabel),
       }),
       sortPriority: 10,
     };
@@ -249,18 +261,18 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     return {
       headline: row.statusTitle,
       headlineTone: "dismiss",
-      subline: `Prośba została anulowana przez dział dostaw. Potwierdź, aby zamknąć sprawę i usunąć ją z listy.${noteSuffix}`,
+      subline: `Prośba została anulowana przez ${PROCUREMENT_TEAM_LABEL}. Potwierdź, aby zamknąć sprawę i usunąć ją z listy.${noteSuffix}`,
       sortPriority: 3,
     };
   }
 
-  if (row.statusTitle === "Częściowo na magazynie") {
+  if (row.statusTitle === MY_ORDER_STATUS_TITLE.partialOnStock) {
     const onStock = row.lines.filter(
       (l) => l.stockStatus === "on_stock" || l.stockStatus === "partial"
     ).length;
     const zdOverdue =
       row.zdFulfillment &&
-      row.timingLabel?.includes("po terminie") &&
+      isTimingOverdue(row.timingLabel) &&
       parseDateOnly(row.zdFulfillment.deadline) != null &&
       isPastExpectedDate(parseDateOnly(row.zdFulfillment.deadline)!);
     return {
@@ -274,7 +286,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
             row.progressLabel
               ? `Magazyn: ${row.progressLabel.replace(" na magazynie", "")}`
               : null,
-            row.timingLabel?.replace(/\s*·\s*po terminie\s*/i, "").trim(),
+            row.timingLabel ? stripTimingOverdue(row.timingLabel) : null,
           ]
             .filter(Boolean)
             .join(" · ")
@@ -321,7 +333,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     };
   }
 
-  if (row.statusTitle === "Zamówione") {
+  if (row.statusTitle === MY_ORDER_STATUS_TITLE.ordered) {
     const hasEstimate = Boolean(row.timingLabel);
     return {
       headline: hasEstimate
@@ -335,16 +347,16 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     };
   }
 
-  if (row.statusTitle === "Przed zamówieniem") {
+  if (row.statusTitle === MY_ORDER_STATUS_TITLE.beforeOrder) {
     return {
       headline: "Czeka na zamówienie u dostawcy",
       headlineTone: "neutral",
-      subline: "Dział dostaw złoży zamówienie planowo lub osobno",
+      subline: `${PROCUREMENT_TEAM_LABEL_TITLE} złoży zamówienie planowo lub osobno`,
       sortPriority: 8,
     };
   }
 
-  if (row.statusTitle === "Czekamy na zamówienie u dostawcy") {
+  if (row.statusTitle === MY_ORDER_STATUS_TITLE.informacjaAwaitingProcurement) {
     return {
       headline: "Zamówimy u dostawcy",
       headlineTone: "info",
@@ -362,7 +374,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     };
   }
 
-  if (row.statusTitle === "Zamówione - czekamy na magazyn") {
+  if (row.statusTitle === MY_ORDER_STATUS_TITLE.informacjaAwaitingWarehouse) {
     return {
       headline: "Zamówione u dostawcy",
       headlineTone: "info",
@@ -496,8 +508,8 @@ export function parseStatusDetailMetaParts(statusDetail: string | null): {
 export function isExpandedSublineRedundant(row: MyOrderRow): boolean {
   if (!row.subline?.trim()) return false;
   if (row.timingLabel) {
-    const sub = row.subline.replace(" · po terminie", "").trim();
-    const timing = row.timingLabel.replace(" · po terminie", "").trim();
+    const sub = stripTimingOverdue(row.subline);
+    const timing = stripTimingOverdue(row.timingLabel);
     if (sub === timing) return true;
   }
   if (
@@ -507,7 +519,7 @@ export function isExpandedSublineRedundant(row: MyOrderRow): boolean {
     return true;
   }
   if (
-    row.statusTitle === "Zamówione" &&
+    row.statusTitle === MY_ORDER_STATUS_TITLE.ordered &&
     row.subline.includes("Mało dostaw w historii") &&
     row.timingLabel?.trim()
   ) {
@@ -540,10 +552,7 @@ export function myOrderExpandedMetaFields(
   return fields;
 }
 
-export function isTimingOverdue(timingLabel: string | null): boolean {
-  if (!timingLabel?.includes("po terminie")) return false;
-  return true;
-}
+export { isTimingOverdue };
 
 export type MyOrderZdFulfillmentSlot = {
   deadline: string;
@@ -652,7 +661,7 @@ export function salesZdTimingLabel(
   const date = parsed
     ? formatDateString(parsed, "dd.MM.yyyy")
     : deadline;
-  const overdueSuffix = overdue ? " · po terminie" : "";
+  const overdueSuffix = timingOverdueSuffix(overdue);
   return `${date} · ${dokNr}${overdueSuffix}`;
 }
 
@@ -751,7 +760,7 @@ export function salesTimingLabel(
 ): string {
   const date = formatDateString(expectedDate, "dd.MM.yyyy");
   const conf = lowConfidence ? " · mało historii" : "";
-  const overdue = isPastExpectedDate(expectedDate) ? " · po terminie" : "";
+  const overdue = timingOverdueSuffix(isPastExpectedDate(expectedDate));
   if (options?.sameDay || avgDays === 0) {
     return `ok. ${date} (tego samego dnia rob.)${conf}${overdue}`;
   }

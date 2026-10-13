@@ -1,3 +1,4 @@
+import { MY_ORDER_STATUS_TITLE } from "@/lib/orders/my-order-status-titles";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import {
   INFORMACJA_FLOW_SALES_AWAITING_PROCUREMENT,
@@ -81,16 +82,16 @@ function zamowienieCurrentStepIndex(row: MyOrderRow): number {
     return 3;
   }
 
-  if (row.statusTitle === "Częściowo na magazynie") {
+  if (row.statusTitle === MY_ORDER_STATUS_TITLE.partialOnStock) {
     return 2;
   }
 
-  if (row.statusTitle === "Zamówione") {
+  if (row.statusTitle === MY_ORDER_STATUS_TITLE.ordered) {
     return 1;
   }
 
   if (
-    row.statusTitle === "Przed zamówieniem" ||
+    row.statusTitle === MY_ORDER_STATUS_TITLE.beforeOrder ||
     isProsbaHandoffStatus(row.statusTitle)
   ) {
     return 0;

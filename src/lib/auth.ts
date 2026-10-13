@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { fetchOwnProfileForSession } from "@/lib/auth/profile";
 import { assertPasswordChangeCompleted } from "@/lib/auth/must-change-password-guard";
 import {
@@ -37,7 +38,7 @@ export interface SessionUser {
   fontScale: FontScale;
 }
 
-export async function getSessionUser(): Promise<SessionUser | null> {
+async function loadSessionUser(): Promise<SessionUser | null> {
   const profile = await fetchOwnProfileForSession();
   if (!profile) return null;
 
@@ -53,6 +54,13 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     fontScale: profile.font_scale,
   };
 }
+
+/**
+ * Sesja bieżącego żądania — React cache() deduplikuje layout + page w jednym renderze RSC.
+ * Zakres = jedno żądanie. Nie czytaj sesji ponownie po zmianie profilu w tym samym żądaniu
+ * (wynik może być sprzed zmiany) — użyj wartości zwróconej przez mutację.
+ */
+export const getSessionUser = cache(loadSessionUser);
 
 async function requireLoggedInUser(): Promise<SessionUser> {
   const user = await getSessionUser();

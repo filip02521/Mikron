@@ -10,7 +10,11 @@ vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: vi.fn(),
 }));
 
-import { syncLinkedSalesPersonLoginEmail, syncSalesPersonCardEmailFromProfile } from "./sync-sales-person-email";
+import {
+  assertManagerMayChangeCardEmail,
+  syncLinkedSalesPersonLoginEmail,
+  syncSalesPersonCardEmailFromProfile,
+} from "./sync-sales-person-email";
 
 describe("syncLinkedSalesPersonLoginEmail", () => {
   beforeEach(() => {
@@ -105,5 +109,48 @@ describe("syncSalesPersonCardEmailFromProfile", () => {
     );
     expect(error).toBeNull();
     expect(cardUpdate).toHaveBeenCalled();
+  });
+});
+
+describe("assertManagerMayChangeCardEmail", () => {
+  const supabaseWith = (data: unknown) => ({
+    from: () => ({
+      select: () => ({
+        eq: () => ({ maybeSingle: async () => ({ data, error: null }) }),
+      }),
+    }),
+  });
+
+  it("pozwala, gdy karta nie ma konta albo konto to handlowiec", async () => {
+    expect(await assertManagerMayChangeCardEmail(supabaseWith(null) as never, "sp", "a@b.pl")).toBeNull();
+    expect(
+      await assertManagerMayChangeCardEmail(
+        supabaseWith({ role: "sales", email: "x@b.pl" }) as never,
+        "sp",
+        "a@b.pl"
+      )
+    ).toBeNull();
+  });
+
+  it("blokuje zmianę e-maila konta admina lub kierownika (przejęcie loginu)", async () => {
+    for (const role of ["admin", "sales_manager", "zakupy"]) {
+      expect(
+        await assertManagerMayChangeCardEmail(
+          supabaseWith({ role, email: "szef@b.pl" }) as never,
+          "sp",
+          "atak@b.pl"
+        )
+      ).toMatch(/innej roli/);
+    }
+  });
+
+  it("nie blokuje zapisu karty bez zmiany e-maila", async () => {
+    expect(
+      await assertManagerMayChangeCardEmail(
+        supabaseWith({ role: "admin", email: "szef@b.pl" }) as never,
+        "sp",
+        "Szef@b.pl"
+      )
+    ).toBeNull();
   });
 });

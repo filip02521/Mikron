@@ -47,7 +47,7 @@ describe("formatCollapsedDeliveryTimingLabel", () => {
           },
         })
       )
-    ).toBe(`Jutro · ${shortDate}`);
+    ).toMatch(new RegExp(`^\\S+ ${shortDate.replace(".", "\\.")} · jutro\x24`));
   });
 });
 

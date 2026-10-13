@@ -90,9 +90,9 @@ describe("toastForAutoProsbaBlockedCode", () => {
     expect(["success", "warning", "error"]).toContain(toast.tone);
   });
 
-  it("redirect_open_prosba - actionLabel Otwórz prośbę", () => {
+  it("redirect_open_prosba - actionLabel Zobacz prośbę", () => {
     expect(toastForAutoProsbaBlockedCode("redirect_open_prosba").actionLabel).toBe(
-      "Otwórz prośbę"
+      "Zobacz prośbę"
     );
   });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { memo, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import type { SalesClientAssignment } from "@/lib/orders/sales-client-label";
 import {
@@ -23,7 +23,6 @@ import {
   filterRedundantExpandedMetaFields,
   progressLabelInSubline,
   shouldHideLineRequestNote,
-  shouldShowCollapsedProductSummary,
   shouldShowCollapsedStatusHint,
   shouldShowCollapsedStatusPill,
   shouldShowExpandedOrderStatusBadge,
@@ -64,6 +63,11 @@ import { isLineZdDetailRedundantWithExpandedGroupTiming } from "@/lib/orders/my-
 import { resolveMyOrderDeliveryRowVisual } from "@/lib/orders/my-order-delivery-urgency";
 import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
 import { MyOrderRequestNote } from "@/components/moje/MyOrderRequestNote";
+import { MyOrderZdDeadlineChangeAck } from "@/components/moje/MyOrderZdDeadlineChangeAck";
+import {
+  collectPendingZdDeadlineChanges,
+  zdDeadlineChangeNeedsClick,
+} from "@/lib/orders/zd-deadline-change-pending";
 import { isRequestNotesAggregateSummary } from "@/lib/orders/sales-request-note";
 import { isProcurementCancelNotesAggregateSummary } from "@/lib/orders/procurement-cancel-note";
 import { MyOrderLineItem } from "@/components/moje/MyOrderLineItem";
@@ -281,6 +285,9 @@ function ShipmentToolbar({
           <span className="inline-flex items-center gap-1.5">
             {ackMode === "teeth_handover" ? (
               <IconTooth size={13} className="shrink-0" />
+            ) : ackMode === "availability" ? (
+              // Powiadomienie o dostępności to nie odbiór paczki — bez ikony paczki.
+              <IconCircleCheck size={13} className="shrink-0" />
             ) : (
               <IconPackageCheck size={13} className="shrink-0" />
             )}
@@ -304,6 +311,9 @@ function ShipmentToolbar({
           <span className="inline-flex items-center gap-1.5">
             {ackMode === "teeth_handover" ? (
               <IconTooth size={13} className="shrink-0" />
+            ) : ackMode === "availability" ? (
+              // Powiadomienie o dostępności to nie odbiór paczki — bez ikony paczki.
+              <IconCircleCheck size={13} className="shrink-0" />
             ) : (
               <IconPackageCheck size={13} className="shrink-0" />
             )}
@@ -344,6 +354,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   onAcknowledgeCancelled,
   onAcknowledgeCancelNotice,
   onAcknowledgeRequestNote,
+  onAcknowledgeZdDeadlineChange,
   onCancelRequest,
   onPartialCancelRequest,
   onSaveClient,
@@ -372,6 +383,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   onAcknowledgeCancelled?: (orderIds: string[]) => void;
   onAcknowledgeCancelNotice?: (orderIds: string[]) => void;
   onAcknowledgeRequestNote?: (orderIds: string[]) => void;
+  onAcknowledgeZdDeadlineChange?: (orderIds: string[]) => void;
   onCancelRequest?: (orderIds: string[], lines: SalesCancelLineContext[]) => void;
   onPartialCancelRequest?: (
     orderId: string,
@@ -578,13 +590,9 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     : null;
   const expandHint = myOrderExpandHint(row, expandCtx);
   const productSummaryRaw = myOrderCollapsedProductSummary(row, listKind);
-  const showCollapsedProductSummary = shouldShowCollapsedProductSummary(row, {
-    expanded,
-    hasStatusHint: Boolean(showStatusHintText && statusHint),
-  });
-  const productSummary = showCollapsedProductSummary ? productSummaryRaw : null;
   const zdEtaPending = Boolean(row.zdEtaPending && subiektReachable);
-  const showInformacjaTimingMeta = shouldShowInformacjaEmailSentMeta(row);
+  // Karta z „Potwierdź powiadomienie”: data jest w tekście („Na półce od …”), nie w kolumnie obok przycisku.
+  const showInformacjaTimingMeta = shouldShowInformacjaEmailSentMeta(row) && !isInformacjaAck;
   const historyDeliveryEstimate = resolveMyOrderHistoryDeliveryEstimate(row);
   const showEstimatedDeliveryMeta =
     !showInformacjaTimingMeta &&
@@ -625,14 +633,6 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     if (!needsExpand) return;
     if (expanded) setClientEditorLineId(null);
     onToggleRow?.(row.id);
-  };
-
-  const handleMainRowKeyDown = (event: KeyboardEvent) => {
-    if (!needsExpand) return;
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      handleToggle();
-    }
   };
 
   const soleLine = row.lineCount === 1 ? row.lines[0] : undefined;
@@ -737,6 +737,8 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
             <IconTooth size={14} className="shrink-0" />
             <IconPackageCheck size={14} className="shrink-0" />
           </>
+        ) : isInformacjaAck ? (
+          <IconCircleCheck size={14} className="shrink-0" />
         ) : (
           <IconPackageCheck size={14} className="shrink-0" />
         )}
@@ -767,8 +769,9 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     showZdEtaPendingMeta,
     showZdEtaPendingWithEstimate,
     showStatusPill: showStatusPillInRail,
-    productSummary,
-    productSummaryExpandHint: needsExpand ? expandHint : null,
+    // Liczba produktów opisuje prośbę, nie termin — „+N” przy nazwie (showInlineLineCountBadge).
+    productSummary: null,
+    productSummaryExpandHint: null,
     mobileTiming,
     isUrgent,
     isStock,
@@ -814,6 +817,12 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   const showSharedUnreadRequestNote =
     showUnreadRequestNoteChrome && Boolean(sharedRequestNote && unreadRequestNoteIds.length);
   const hideLineRequestNote = shouldHideLineRequestNote(sharedRequestNote);
+  const zdChangeToAck =
+    canAcknowledge && onAcknowledgeZdDeadlineChange
+      ? (collectPendingZdDeadlineChanges([row]).find((item) =>
+          zdDeadlineChangeNeedsClick(item.change)
+        ) ?? null)
+      : null;
   const sharedProcurementCancelNote =
     row.procurementCancelNote &&
     !isProcurementCancelNotesAggregateSummary(row.procurementCancelNote)
@@ -1005,13 +1014,9 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
             "flex min-w-0 flex-1 items-start gap-1",
             needsExpand && "cursor-pointer"
           )}
+          // Klik w wiersz to skrót myszą; klawiatura i czytnik ekranu używają przycisku ze
+          // strzałką obok (aria-expanded). Bez role="button" — w wierszu są linki i kopiowanie ZK.
           onClick={needsExpand ? handleToggle : undefined}
-          onKeyDown={needsExpand ? handleMainRowKeyDown : undefined}
-          role={needsExpand ? "button" : undefined}
-          tabIndex={needsExpand ? 0 : undefined}
-          aria-expanded={needsExpand ? expanded : undefined}
-          aria-controls={needsExpand ? panelId : undefined}
-          aria-label={needsExpand ? expandHint : undefined}
         >
           <MyOrderCollapsedRowZones
             row={row}
@@ -1025,7 +1030,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
             srOnlyHeadline={suppressSharedHeadline ? headline : null}
             searchQuery={searchQuery}
             displayLaneKind={displayLaneKind}
-            showInlineLineCountBadge={!productSummary}
+            showInlineLineCountBadge
             chips={
               row.sourceZkNumber ||
               sharedRequestNote ||
@@ -1066,6 +1071,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                       salesPersonId={row.salesPersonId}
                       searchQuery={searchQuery}
                       inline
+                      copyable
                       className="max-w-full"
                     />
                   ) : null}
@@ -1117,6 +1123,20 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
           {toolbar}
         </div>
       </div>
+
+      {zdChangeToAck ? (
+        <div
+          className="border-t border-slate-100 px-3 py-2.5 sm:px-4"
+          onClick={(event) => event.stopPropagation()}
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <MyOrderZdDeadlineChangeAck
+            change={zdChangeToAck.change}
+            pending={pending}
+            onAcknowledge={() => onAcknowledgeZdDeadlineChange!(zdChangeToAck.orderIds)}
+          />
+        </div>
+      ) : null}
 
       {showSharedUnreadRequestNote && sharedRequestNote ? (
         <div
@@ -1192,9 +1212,11 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
           {row.lineCount > 0 ? (
             <div className="space-y-1.5">
             <div className={mojeShipmentLinesShellClass}>
+              {/* Nagłówek „Produkt” nad jedną pozycją nic nie mówi — tylko przy liście. */}
+              {row.lineCount > 1 ? (
               <div className={mojeShipmentLinesHeaderClass}>
                 <p className={mojeShipmentLinesHeaderTitleClass}>
-                  {row.lineCount > 1 ? productSummaryRaw ?? "Produkty" : "Produkt"}
+                  {productSummaryRaw ?? "Produkty"}
                 </p>
                 {row.lineCount > 8 ? (
                   <button
@@ -1206,12 +1228,14 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                   </button>
                 ) : null}
               </div>
+              ) : null}
               <ul>
                 {(row.lineCount > 8 ? visibleLines : row.lines).map((line, i) => (
                   <MyOrderLineItem
                     key={line.id}
                     line={line}
                     index={i}
+                    showIndex={row.lineCount > 1}
                     searchQuery={searchQuery}
                     listKind={row.kind}
                     showPerLineLaneBadge={row.productLaneKind === "mixed"}
@@ -1334,6 +1358,8 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
             </div>
           ) : null}
 
+          {/* Dolne „Zwiń” tylko przy długiej treści — przy krótkiej strzałka w nagłówku jest tuż obok. */}
+          {row.lineCount > 3 ? (
           <div className="flex justify-center px-3 pb-2 pt-1">
             <button
               type="button"
@@ -1347,6 +1373,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
               Zwiń
             </button>
           </div>
+          ) : null}
         </div>
         </div>
         </div>

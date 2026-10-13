@@ -10,22 +10,22 @@ export function useDailyPanelFreshHighlight(): boolean {
   const hydrated = useClientHydrated();
   const until = ops?.freshHighlightUntil ?? 0;
   const generation = ops?.refreshGeneration ?? 0;
+  const hasOps = ops != null;
   const [now, setNow] = useState(0);
 
+  // Zależność od samych wartości — obiekt kontekstu jest nowy przy każdym odpytaniu (co 25 s).
   useEffect(() => {
-    if (!hydrated || !ops) return;
+    if (!hydrated || !hasOps) return;
     const raf = requestAnimationFrame(() => setNow(Date.now()));
-    const interval = window.setInterval(() => setNow(Date.now()), 200);
     const timeout =
       until > Date.now()
         ? window.setTimeout(() => setNow(Date.now()), until - Date.now() + 50)
         : undefined;
     return () => {
       cancelAnimationFrame(raf);
-      window.clearInterval(interval);
       if (timeout !== undefined) window.clearTimeout(timeout);
     };
-  }, [hydrated, ops, until, generation]);
+  }, [hydrated, hasOps, until, generation]);
 
   return Boolean(hydrated && ops && until > now);
 }

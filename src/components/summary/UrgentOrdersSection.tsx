@@ -1,6 +1,10 @@
 "use client";
 
-import { SupplierStockSignal } from "@/components/summary/SupplierStockSignal";
+import {
+  SupplierStockSignal,
+  useSupplierStockSignals,
+} from "@/components/summary/SupplierStockSignal";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 import { useMemo, useState } from "react";
 import type { SummaryStandardItem } from "@/lib/orders/summary";
 import { formatDateString } from "@/lib/orders/dates";
@@ -394,9 +398,15 @@ export function UrgentOrdersSection({
   const scopeIds = useMemo(() => scopeItems.map((i) => i.supplierId), [scopeItems]);
   const allSelected = scopeIds.length > 0 && scopeIds.every((id) => selected[id]);
   const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+  const { signals: stockSignals } = useSupplierStockSignals();
+  // Zaznaczeni dostawcy z pilnymi pozycjami Do ZD (analiza Braki) — „Zamówione” bez ZD to częsty błąd.
+  // Wszyscy zaznaczeni, nie tylko z tej sekcji: przycisk oznacza każdego zaznaczonego.
+  const selectedWithUrgent = Object.keys(selected).filter(
+    (id) => selected[id] && (stockSignals[id]?.criticalCount ?? 0) > 0
+  ).length;
 
   const handleBulkClick = () => {
-    if (selectedCount > 1) {
+    if (selectedCount > 1 || selectedWithUrgent > 0) {
       setBulkConfirmOpen(true);
       return;
     }
@@ -420,9 +430,9 @@ export function UrgentOrdersSection({
   const descriptions: Record<UrgentQueuePart, string | undefined> = {
     full: [
       overdue.length && todayList.length
-        ? `${overdue.length} zaległych · ${todayList.length} na dziś`
+        ? `${overdue.length} ${polishPluralWord(overdue.length, "zaległy", "zaległe", "zaległych")} · ${todayList.length} na dziś`
         : overdue.length
-          ? `${overdue.length} zaległych`
+          ? `${overdue.length} ${polishPluralWord(overdue.length, "zaległy", "zaległe", "zaległych")}`
           : `${todayList.length} na dziś`,
     ].filter(Boolean).join(""),
     overdue: undefined,
@@ -459,8 +469,21 @@ export function UrgentOrdersSection({
     <>
       <ConfirmDialog
         open={bulkConfirmOpen}
-        title="Oznaczyć wielu dostawców?"
-        message={`Oznaczysz ${selectedCount} dostawców jako zamówionych. Po potwierdzeniu masz 10 sekund na cofnięcie całej operacji.`}
+        title={
+          selectedCount > 1
+            ? `Oznaczyć ${selectedCount} ${polishPluralWord(selectedCount, "dostawcę", "dostawców", "dostawców")} jako zamówionych?`
+            : "Oznaczyć jako zamówione?"
+        }
+        message={[
+          selectedWithUrgent > 0 && selectedCount === 1
+            ? "Ten dostawca ma pilne pozycje Do ZD w analizie Braki - upewnij się, że ZD jest przygotowane w Subiekcie."
+            : selectedWithUrgent > 0
+            ? `${selectedWithUrgent} z ${selectedCount} ${polishPluralWord(selectedWithUrgent, "ma", "mają", "ma")} pilne pozycje Do ZD w analizie Braki - upewnij się, że ZD jest przygotowane w Subiekcie.`
+            : null,
+          "Po potwierdzeniu masz 10 sekund na cofnięcie całej operacji.",
+        ]
+          .filter(Boolean)
+          .join(" ")}
         confirmLabel={`Zamówione (${selectedCount})`}
         pending={isBulkPending}
         onCancel={() => setBulkConfirmOpen(false)}
@@ -477,7 +500,7 @@ export function UrgentOrdersSection({
           tone={subsectionTone}
           step={queueStep}
           count={scopeCount}
-          countUnit={{ one: "dostawca", few: "dostawców", many: "dostawców" }}
+          countUnit={{ one: "dostawca", few: "dostawcy", many: "dostawców" }}
           compact
         />
       ) : (

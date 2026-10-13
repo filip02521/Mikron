@@ -144,6 +144,21 @@ export function assessProsbaLineFields(
   return fields;
 }
 
+/**
+ * Walidacja na żywo (przed próbą wysłania): pusta ilość nie jest jeszcze błędem —
+ * „Podaj ilość” pokazujemy dopiero po wpisaniu złej wartości albo przy wysyłce.
+ */
+export function assessProsbaLineFieldsLive(
+  line: ProductLineDraft,
+  requestKind: IndividualRequestKind,
+  validationAttempted: boolean
+): ProsbaLineFieldMap {
+  if (validationAttempted) return assessProsbaLineFields(line, requestKind, "strict");
+  const fields = assessProsbaLineFields(line, requestKind, "soft");
+  if (!line.quantity.trim()) fields.quantity = { ...DEFAULT_FIELD };
+  return fields;
+}
+
 export function prosbaLineHasFieldIssues(fields: ProsbaLineFieldMap): boolean {
   return Object.values(fields).some(
     (field) => field.state === "error" || field.state === "warning"

@@ -42,7 +42,7 @@ import type { SalesZkWatch } from "@/types/database";
 import { ZkWatchLineStatusChip } from "./ZkWatchLineStatusChip";
 import { ZkWatchLineStatusLegendToggle } from "./ZkWatchLineStatusLegendToggle";
 import { ZkWatchLineCheckboxControl } from "./ZkWatchLineCheckboxControl";
-import { ZK_MODAL_SECTION_HINTS, ZK_MODAL_SECTION_TITLES } from "@/lib/sales/zk-modal-section-copy";
+import { ZK_MODAL_SECTION_TITLES } from "@/lib/sales/zk-modal-section-copy";
 import { ZkWatchModalSection } from "./ZkWatchModalSection";
 
 type LineFilter =
@@ -645,7 +645,7 @@ export function ZkWatchLinesPanel({
 
   if (!showSummary) {
     return (
-      <ZkWatchModalSection title={ZK_MODAL_SECTION_TITLES.lines} hint={ZK_MODAL_SECTION_HINTS.lines}>
+      <ZkWatchModalSection title={ZK_MODAL_SECTION_TITLES.lines}>
         {scopeLinesToggle}
         {canEdit && displayViews.length > 0 ? (
           <div className="flex justify-end">
@@ -653,7 +653,6 @@ export function ZkWatchLinesPanel({
               type="button"
               variant="secondary"
               size="sm"
-              className="h-7 px-2.5 text-[0.68rem]"
               disabled={saving || !hasBulkMarkWork}
               onClick={() => void persist(applyBulkMarkToDisplayedLines(views))}
             >

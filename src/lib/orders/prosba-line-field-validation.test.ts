@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ProductLineDraft } from "@/components/orders/request-product-lines";
 import {
   assessProsbaLineFields,
+  assessProsbaLineFieldsLive,
   shouldShowProsbaLineFieldValidation,
   prosbaLineHasTeethBlockers,
   prosbaLineHasSubmitBlockers,
@@ -88,6 +89,21 @@ describe("assessProsbaLineFields", () => {
       "strict"
     );
     expect(fields.quantity.state).toBe("default");
+  });
+});
+
+describe("assessProsbaLineFieldsLive", () => {
+  const picked = { ...baseLine, product: "Wkręt", subiektTwId: 1 };
+
+  it("nie zgłasza pustej ilości przed próbą wysłania", () => {
+    expect(assessProsbaLineFieldsLive(picked, "zamowienie", false).quantity.state).toBe("default");
+  });
+
+  it("zgłasza złą ilość po wpisaniu i pustą przy wysyłce", () => {
+    expect(
+      assessProsbaLineFieldsLive({ ...picked, quantity: "0" }, "zamowienie", false).quantity.state
+    ).toBe("warning");
+    expect(assessProsbaLineFieldsLive(picked, "zamowienie", true).quantity.state).toBe("error");
   });
 });
 

@@ -1,5 +1,25 @@
 import type { SupabaseClient } from "@/lib/db/admin";
 
+/**
+ * Kierownik może zmienić e-mail karty tylko wtedy, gdy powiązane konto to zwykły handlowiec.
+ * Inaczej zmiana loginu (sync niżej) + reset hasła = przejęcie konta innej roli (np. admina).
+ */
+export async function assertManagerMayChangeCardEmail(
+  supabase: SupabaseClient,
+  salesPersonId: string,
+  email: string
+): Promise<string | null> {
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("role, email")
+    .eq("sales_person_id", salesPersonId)
+    .maybeSingle();
+  if (error) return error.message;
+  if (!profile || profile.role === "sales") return null;
+  if ((profile.email ?? "").trim().toLowerCase() === email.trim().toLowerCase()) return null;
+  return "Ta karta jest powiązana z kontem o innej roli niż handlowiec. E-mail może zmienić tylko administrator.";
+}
+
 /** Po zmianie e-mailu na karcie handlowca — zsynchronizuj login w auth i profiles. */
 export async function syncLinkedSalesPersonLoginEmail(
   supabase: SupabaseClient,

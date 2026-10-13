@@ -1,3 +1,4 @@
+import { PROCUREMENT_TEAM_LABEL, PROCUREMENT_TEAM_LABEL_GENITIVE } from "@/lib/orders/procurement-copy";
 import {
   getDeliveryProgress,
   getOrderFulfillmentProgress,
@@ -305,8 +306,8 @@ export function salesPartialCancelConfirmCopy(
         { label: "U dostawcy", value: "jeszcze nie zamówione" },
       ],
       outcome: whole
-        ? "Prośba zniknie z Twojej listy i z listy działu dostaw."
-        : `W prośbie zostanie ${szt(maxQty - qty)} - tyle zamówi dział dostaw.`,
+        ? `Prośba zniknie z Twojej listy i z listy ${PROCUREMENT_TEAM_LABEL_GENITIVE}.`
+        : `W prośbie zostanie ${szt(maxQty - qty)} - tyle zamówi ${PROCUREMENT_TEAM_LABEL}.`,
       confirmLabel,
       undoHint,
     };
@@ -667,7 +668,7 @@ export function salesCancelConfirmCopy(
     case "before_order":
       return {
         title,
-        message: `${subject} ${many ? "znikną" : "zniknie"} z Twojej listy i z listy działu dostaw. Nic nie zostało jeszcze zamówione u dostawcy. ${undo}`,
+        message: `${subject} ${many ? "znikną" : "zniknie"} z Twojej listy i z listy ${PROCUREMENT_TEAM_LABEL_GENITIVE}. Nic nie zostało jeszcze zamówione u dostawcy. ${undo}`,
         confirmLabel,
       };
     case "in_transit":

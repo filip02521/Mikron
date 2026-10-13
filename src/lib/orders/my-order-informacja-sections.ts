@@ -1,3 +1,4 @@
+import { MY_ORDER_STATUS_TITLE } from "@/lib/orders/my-order-status-titles";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { isInformacjaAvailabilityPendingStatusTitle } from "@/lib/orders/informacja-flow-copy";
 
@@ -46,9 +47,9 @@ const PHASE_ORDER: InformacjaProgressPhase[] = [
 export function informacjaProgressPhase(row: MyOrderRow): InformacjaProgressPhase {
   if (row.kind !== "informacja") return "other";
   switch (row.statusTitle) {
-    case "Czekamy na zamówienie u dostawcy":
+    case MY_ORDER_STATUS_TITLE.informacjaAwaitingProcurement:
       return "awaiting_procurement";
-    case "Zamówione - czekamy na magazyn":
+    case MY_ORDER_STATUS_TITLE.informacjaAwaitingWarehouse:
       return "ordered_awaiting_warehouse";
     default:
       if (isInformacjaAvailabilityPendingStatusTitle(row.statusTitle)) {

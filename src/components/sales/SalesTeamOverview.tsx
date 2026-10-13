@@ -20,6 +20,41 @@ import { cn } from "@/lib/cn";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 
+const TEAM_STAT_TONES = {
+  rose: { bg: "bg-rose-50/80", link: "text-rose-800 decoration-rose-200 hover:text-rose-950" },
+  amber: { bg: "bg-amber-50/80", link: "text-amber-800 decoration-amber-300 hover:text-amber-950" },
+  slate: { bg: "bg-slate-100/80", link: "text-slate-800 decoration-slate-300 hover:text-slate-950" },
+} as const;
+
+/** Kafelek „kto ma problem” — podświetlony i klikalny tylko, gdy jest co sprawdzić. */
+function TeamAttentionStat({
+  label,
+  value,
+  href,
+  tone,
+}: {
+  label: string;
+  value: number;
+  href: string;
+  tone: keyof typeof TEAM_STAT_TONES;
+}) {
+  const styles = TEAM_STAT_TONES[tone];
+  return (
+    <div className={cn("rounded-md px-2.5 py-2", value > 0 ? styles.bg : "bg-slate-50/80")}>
+      <dt className={salesTypography.statLabel}>{label}</dt>
+      <dd className={cn(salesTypography.statValue, "tabular-nums")}>
+        {value > 0 ? (
+          <Link href={href} className={cn("underline underline-offset-2", styles.link)}>
+            {value}
+          </Link>
+        ) : (
+          value
+        )}
+      </dd>
+    </div>
+  );
+}
+
 function TeamCardActionLink({
   href,
   children,
@@ -137,10 +172,24 @@ function SalesPersonCard({
       </div>
       <div className="space-y-3 px-4 py-3">
         <dl className="grid grid-cols-2 gap-2">
-          <div className="rounded-md bg-slate-50/80 px-2.5 py-2">
-            <dt className={salesTypography.statLabel}>Zamówienia</dt>
-            <dd className={cn(salesTypography.statValue, "tabular-nums")}>{row.orderCount}</dd>
-          </div>
+          <TeamAttentionStat
+            label="Termin ZD minął"
+            value={row.overdueZdCount}
+            href={`/moje?dla=${encodeURIComponent(row.id)}`}
+            tone="rose"
+          />
+          <TeamAttentionStat
+            label="Na regale"
+            value={row.shelfWaitingCount}
+            href={`/moje?dla=${encodeURIComponent(row.id)}`}
+            tone="amber"
+          />
+          <TeamAttentionStat
+            label="Prośby w toku"
+            value={row.openOrderCount}
+            href={`/moje?dla=${encodeURIComponent(row.id)}`}
+            tone="slate"
+          />
           <div className={cn(
             "rounded-md px-2.5 py-2",
             row.pendingZkCount > 0 ? "bg-amber-50/80" : "bg-slate-50/80"

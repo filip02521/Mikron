@@ -2,17 +2,26 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { IconTruck } from "@/components/icons/StrokeIcons";
+import { formatRunOutDate } from "@/components/stock-watch/stock-watch-format";
+import { daysFromToday, formatDaysAhead } from "@/components/summary/SupplierStockSignal";
 import { cn } from "@/lib/cn";
+import { polishPluralWord } from "@/lib/email/polish-plural";
+import { warsawTodayDateKey } from "@/lib/warehouse/delivery-receipts-shared";
 import { buildZdEstimateLaunchHref } from "@/lib/orders/zd-estimate-supplier-scope";
 import type { StockWatchOffPlanSupplier } from "@/lib/stock-watch/data";
 
-function planLabel(key: string | null, onDemand: boolean): string {
+function planLabel(key: string | null, onDemand: boolean, todayKey: string): string {
   if (!key) return onDemand ? "na żądanie" : "brak terminu planu";
-  const [, m, d] = key.split("-");
-  return m && d ? `plan ${d}.${m}` : key;
+  const day = formatRunOutDate(key) ?? key;
+  const diff = daysFromToday(key, todayKey);
+  return diff != null ? `plan ${day} (${formatDaysAhead(diff)})` : `plan ${day}`;
 }
 
-/** Panel dzienny: „Zamów dziś poza planem” — z nocnej analizy czasu dostaw. */
+/**
+ * Panel dzienny: „Zamów dziś poza planem” — z nocnej analizy czasu dostaw.
+ * Wiersz w grupie uwagi karty (jak pozostałe sygnały), bez własnej ramki.
+ */
 export function StockWatchOffPlanBanner({
   suppliers,
   canPrepareZd,
@@ -24,61 +33,69 @@ export function StockWatchOffPlanBanner({
   const [mobileOpen, setMobileOpen] = useState(false);
   if (suppliers.length === 0) return null;
   const shown = suppliers.slice(0, 6);
+  const todayKey = warsawTodayDateKey();
+  const n = suppliers.length;
   return (
-    <section
-      aria-label="Zamów dziś poza planem"
-      className="mb-4 rounded-md border border-slate-200 bg-white px-4 py-3"
-    >
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-sm font-semibold text-slate-900">
-          Zamów dziś poza planem -{" "}
-          <span className="tabular-nums text-red-700">{suppliers.length}</span>{" "}
-          {suppliers.length === 1 ? "dostawca" : "dostawców"}
-        </p>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            className="min-h-9 text-xs font-semibold text-indigo-700 hover:text-indigo-900 sm:hidden"
-            aria-expanded={mobileOpen}
-            onClick={() => setMobileOpen((v) => !v)}
+    <section aria-label="Zamów dziś poza planem" className="px-3 py-2.5 sm:px-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-amber-100/90 text-amber-800"
+            aria-hidden
           >
-            {mobileOpen ? "Zwiń" : "Pokaż"}
-          </button>
-          <Link href="/zakupy/braki" className="text-xs font-medium text-indigo-700 hover:text-indigo-900">
-            Panel Braki →
-          </Link>
+            <IconTruck size={17} strokeWidth={2.25} />
+          </span>
+          <p className="min-w-0 text-sm leading-snug text-slate-800">
+            <span className="font-semibold text-amber-950">
+              Zamów dziś poza planem: <span className="tabular-nums">{n}</span>{" "}
+              {polishPluralWord(n, "dostawca", "dostawcy", "dostawców")}
+            </span>
+            <span className="text-slate-600 max-sm:hidden">
+              {" "}
+              - towar skończy się, zanim przyjedzie zamówienie złożone dziś, a planowe zamówienie jest później.
+            </span>
+          </p>
         </div>
+        <button
+          type="button"
+          className="inline-flex h-9 items-center rounded-md px-2 text-xs font-medium text-amber-900/80 hover:text-amber-950 hover:underline sm:hidden"
+          aria-expanded={mobileOpen}
+          onClick={() => setMobileOpen((v) => !v)}
+        >
+          {mobileOpen ? "Zwiń" : "Pokaż"}
+        </button>
       </div>
-      <div className={cn(!mobileOpen && "max-sm:hidden")}>
-      <p className="mt-0.5 text-[11px] text-slate-500">
-        Towary skończą się, zanim przyjedzie zamówienie złożone dziś - a planowe zamówienie jest później.
-      </p>
-      <ul className="mt-2 flex flex-wrap gap-2">
+      <ul className={cn("mt-2 flex flex-wrap gap-2 sm:pl-[2.625rem]", !mobileOpen && "max-sm:hidden")}>
         {shown.map((s) => (
           <li
             key={s.supplierId}
-            className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs"
+            className="inline-flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded-md border border-amber-200/80 bg-white/90 px-2.5 py-1 text-xs"
           >
             <span className="font-medium text-slate-900">{s.supplierName}</span>
-            <span className="tabular-nums text-red-700">{s.count} tow.</span>
-            <span className="text-slate-500">{planLabel(s.nextOrderDate, s.onDemand)}</span>
+            <span className="tabular-nums text-red-700">
+              {s.count} {polishPluralWord(s.count, "towar", "towary", "towarów")}
+            </span>
+            <span className="text-slate-500">{planLabel(s.nextOrderDate, s.onDemand, todayKey)}</span>
             {canPrepareZd ? (
               <Link
-                href={buildZdEstimateLaunchHref(s.supplierId)}
-                className="font-semibold text-indigo-700 hover:text-indigo-900"
+                href={buildZdEstimateLaunchHref(s.supplierId, { leadTimeHorizon: true })}
+                className="font-semibold text-indigo-700 hover:text-indigo-900 hover:underline"
+                title="Kreator ZD z ilościami do kolejnej dostawy"
               >
                 Przygotuj ZD
               </Link>
             ) : null}
           </li>
         ))}
-        {suppliers.length > shown.length ? (
-          <li className="self-center text-xs text-slate-500">
-            …i {suppliers.length - shown.length} więcej
-          </li>
-        ) : null}
+        <li className="self-center">
+          <Link
+            href="/zakupy/braki"
+            className="inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-amber-900/80 hover:text-amber-950 hover:underline"
+          >
+            {n > shown.length ? `Pokaż wszystkich (${n}) w Braki` : "Panel Braki"}
+          </Link>
+        </li>
       </ul>
-      </div>
     </section>
   );
 }

@@ -1,3 +1,4 @@
+import { MY_ORDER_STATUS_TITLE } from "@/lib/orders/my-order-status-titles";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import {
   MY_ORDER_HISTORY_ESTIMATE_OVERDUE_LABEL,
@@ -81,7 +82,7 @@ export function myOrderCollapsedMobileTiming(
   const showTiming =
     row.headlineTone === "warning" ||
     row.headlineTone === "stock" ||
-    (row.headlineTone === "info" && row.statusTitle === "Zamówione") ||
+    (row.headlineTone === "info" && row.statusTitle === MY_ORDER_STATUS_TITLE.ordered) ||
     row.kind === "informacja";
 
   return showTiming ? timing : null;

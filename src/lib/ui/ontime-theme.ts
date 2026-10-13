@@ -765,8 +765,9 @@ export const mobileNavBadgeClass =
   "bg-slate-700 text-[9px] font-bold text-white shadow-sm lg:text-[10px]";
 
 /** Wspólna obudowa komunikatów systemowych. */
+/** Tekst i akcje obok siebie; gdy akcje się nie mieszczą, schodzą pod tekst (sm:flex-wrap), zamiast go ściskać. */
 export const systemNoticeShellClass = cn(
-  "flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+  "flex flex-col gap-3 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
 );
 
 /** Przypięte ogłoszenie — neutralna karta, bez gradientu. */

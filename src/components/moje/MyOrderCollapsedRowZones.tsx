@@ -1,5 +1,6 @@
 "use client";
 
+import { myOrderCollapsedProductSummary } from "@/lib/orders/my-order-row-layout";
 import type { ReactNode } from "react";
 import { MyOrderKindBadge } from "@/components/moje/MyOrderKindBadge";
 import { MyOrderProductLaneBadge } from "@/components/moje/MyOrderProductLaneBadge";
@@ -54,10 +55,14 @@ export function MyOrderCollapsedRowZones({
         <SearchHighlightText
           text={title}
           searchQuery={searchQuery}
-          className={cn("truncate", salesTypography.rowTitle)}
+          // Telefon: nazwa produktu w 2 liniach zamiast ucięcia po kilku słowach.
+          className={cn("line-clamp-2 break-words sm:block sm:truncate", salesTypography.rowTitle)}
         />
         {showInlineLineCountBadge && row.lineCount > 1 ? (
-          <span className="shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-indigo-700">
+          <span
+            className="shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-indigo-700"
+            title={`${myOrderCollapsedProductSummary(row, listKind)} w prośbie - rozwiń, aby zobaczyć`}
+          >
             +{row.lineCount - 1}
           </span>
         ) : null}

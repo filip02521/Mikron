@@ -6,7 +6,6 @@ import { revalidatePath } from "next/cache";
 import {
   requireAdminForMutation,
   requireAdminOrSalesTeamManagement,
-  getSessionUser,
 } from "@/lib/auth";
 import { roleRequiresSalesPerson } from "@/lib/users/labels";
 import { isAdmin } from "@/lib/auth-roles";
@@ -354,55 +353,6 @@ export async function actionGenerateSalesPersonInviteLink(
   if ("error" in result) return { error: result.error };
   revalidateUsers({ includeHandlowcy: true, includeTeam: true });
   return { success: true, invite: result };
-}
-
-type FinalizeSalesPersonInviteUser = {
-  id: string;
-  email: string;
-};
-
-/** Po ustawieniu hasła z linku zaproszenia — dopina powiązanie z handlowcem. */
-export async function actionFinalizeSalesPersonInvite(
-  knownUser?: FinalizeSalesPersonInviteUser
-): Promise<{ success: true } | { error: string }> {
-  const session = knownUser ?? (await getSessionUser());
-  if (!session) return { error: "Brak aktywnej sesji." };
-
-  const supabase = createAdminClient();
-  const { data: authData, error: authError } = await supabase.auth.admin.getUserById(
-    session.id
-  );
-  if (authError || !authData.user) {
-    return { error: authError?.message ?? "Nie znaleziono użytkownika." };
-  }
-
-  const raw = authData.user.user_metadata?.sales_person_id;
-  const salesPersonId =
-    typeof raw === "string" && raw.trim() ? raw.trim() : null;
-  if (!salesPersonId) return { success: true };
-
-  const linkError = await assertUniqueSalesPersonLink(
-    supabase,
-    salesPersonId,
-    session.id
-  );
-  if (linkError) return { error: linkError };
-
-  const email =
-    authData.user.email?.trim().toLowerCase() ?? session.email?.trim().toLowerCase();
-  const { error } = await supabase
-    .from("profiles")
-    .update({
-      role: "sales",
-      sales_person_id: salesPersonId,
-      ...(email ? { email } : {}),
-    })
-    .eq("id", session.id);
-
-  if (error) return { error: error.message };
-
-  revalidateUsers({ includeHandlowcy: true });
-  return { success: true };
 }
 
 export async function actionGeneratePasswordResetLink(

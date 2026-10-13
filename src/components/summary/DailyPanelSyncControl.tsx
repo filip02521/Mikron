@@ -34,14 +34,8 @@ export function DailyPanelSyncControl({ embedded = false }: { embedded?: boolean
         />
         {ctx.hasUpdates ? (
           <span aria-live="polite" className="text-slate-700">
-            Wykryto zmiany - odświeżamy panel…{" "}
-            <button
-              type="button"
-              onClick={ctx.refreshNow}
-              className="min-h-9 rounded-sm font-semibold text-indigo-700 underline decoration-indigo-300/80 underline-offset-2 hover:text-indigo-900 sm:min-h-0"
-            >
-              odśwież teraz
-            </button>
+            {/* Przycisk „Odśwież panel” jest w pasku nad treścią — tu tylko stan. */}
+            Wykryto zmiany - odświeżamy panel…
           </span>
         ) : (
           <span aria-live="polite">

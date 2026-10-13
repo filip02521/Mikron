@@ -23,9 +23,9 @@ const base: IndividualOrder = {
 };
 
 describe("describeVerificationGaps", () => {
-  it("opisuje pracę działu dostaw bez „Brakuje”", () => {
+  it("opisuje pracę działu zakupów bez „Brakuje”", () => {
     const text = describeVerificationGaps(base);
-    expect(text).toContain("Dział dostaw uzupełni:");
+    expect(text).toContain("Dział zakupów uzupełni:");
     expect(text).toContain("dostawcę");
     expect(text).toContain("nie musisz");
     expect(text).not.toContain("Brakuje:");
@@ -38,7 +38,7 @@ describe("describeVerificationGaps", () => {
       products: "Test",
       quantity: "1",
     });
-    expect(text).toContain("Dział dostaw dopasuje dostawcę");
+    expect(text).toContain("Dział zakupów dopasuje dostawcę");
     expect(text).not.toContain("Brakuje:");
   });
 

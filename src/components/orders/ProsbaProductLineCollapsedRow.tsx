@@ -19,6 +19,7 @@ import type { IndividualRequestKind } from "@/types/database";
 import { Button } from "@/components/ui/Button";
 import { IconCircleCheck, IconAlertCircle } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
+import { PROSBA_ALREADY_ORDERED_BADGE } from "@/components/orders/ProsbaAlreadyOrderedHint";
 
 export function ProsbaProductLineCollapsedRow({
   index,
@@ -26,6 +27,7 @@ export function ProsbaProductLineCollapsedRow({
   requestKind,
   canRemove,
   hasFieldIssues = false,
+  alreadyOrdered,
   onEdit,
   onRemove,
 }: {
@@ -34,6 +36,8 @@ export function ProsbaProductLineCollapsedRow({
   requestKind: IndividualRequestKind;
   canRemove: boolean;
   hasFieldIssues?: boolean;
+  /** „Już zamówione” — odznaka, żeby zwinięta pozycja nie chowała dubla. */
+  alreadyOrdered?: { badge: string; tone: "amber" | "sky" | "slate" | "emerald" } | null;
   onEdit: () => void;
   onRemove: () => void;
 }) {
@@ -141,6 +145,16 @@ export function ProsbaProductLineCollapsedRow({
               {stockView.shortLabel}
             </span>
           ) : null}
+          {alreadyOrdered ? (
+            <span
+              className={cn(
+                "shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold",
+                PROSBA_ALREADY_ORDERED_BADGE[alreadyOrdered.tone],
+              )}
+            >
+              {alreadyOrdered.badge}
+            </span>
+          ) : null}
         </div>
         {summary.meta ? (
           <p className="mt-0.5 truncate text-xs text-slate-500">{summary.meta}</p>
@@ -169,8 +183,8 @@ export function ProsbaProductLineCollapsedRow({
         ) : null}
       </div>
 
-      <div className="flex shrink-0 items-center gap-1">
-        <Button type="button" variant="ghost" size="sm" onClick={onEdit}>
+      <div className="flex shrink-0 items-center gap-2">
+        <Button type="button" variant="ghost" size="sm" className="min-h-9" onClick={onEdit}>
           {teethNeedsList ? "Uzupełnij listę" : "Edytuj"}
         </Button>
         {canRemove ? (
@@ -178,7 +192,7 @@ export function ProsbaProductLineCollapsedRow({
             type="button"
             variant="ghost"
             size="sm"
-            className="text-red-700 hover:bg-red-50"
+            className="min-h-9 text-red-700 hover:bg-red-50"
             onClick={onRemove}
           >
             Usuń

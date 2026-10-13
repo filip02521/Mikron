@@ -19,7 +19,15 @@ export const railClass =
 /** Lista: przewija się osobno od lg; na telefonie rośnie z treścią. */
 export const listColumnClass = "min-h-0 border-slate-200 lg:overflow-y-auto lg:border-r";
 
-export const railGroupLabelClass = "px-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500";
+/**
+ * Zakładki widoków w szynie: przewijają się w poziomie aż do 2xl (od lg nie mieszczą się obok przełącznika
+ * na 1024 px); p-0.5 — przewijany pasek nie ucina pierścienia aktywnej pozycji. Bez suwaka, jak inne
+ * przewijane rzędy zakładek (panel dzienny): na telefonie leżał pod zakładkami jak szara kreska.
+ */
+export const railTabsClass =
+  "flex min-w-0 gap-1 overflow-x-auto p-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden 2xl:flex-col 2xl:overflow-visible";
+
+export const railGroupLabelClass ="px-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500";
 
 /** Pozycja szyny: aktywna jak segment (biała, lekki cień) — ten sam język co przełączniki w aplikacji. */
 export function railItemClass(active: boolean): string {
@@ -92,10 +100,11 @@ export function DetailHeader({
         <div className="min-w-[14rem] flex-1">
           <h3 className="text-base font-semibold tracking-tight text-slate-900">{title}</h3>
           {subtitle ? <p className="mt-0.5 text-sm text-slate-600">{subtitle}</p> : null}
+          {/* Stan (odznaki) przy tytule — na telefonie akcje schodzą pod niego, nie między tytuł a stan. */}
+          {children}
         </div>
         {actions ? <div className="flex flex-wrap items-center gap-1.5">{actions}</div> : null}
       </div>
-      {children}
     </header>
   );
 }
@@ -116,7 +125,7 @@ export function DetailEmpty({
 }) {
   return (
     <div className={cn("flex min-h-[18rem] flex-col items-center justify-center px-6 py-10 text-center", className)}>
-      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-slate-100 text-slate-500">{icon}</div>
+      <div className="mb-2 text-slate-400">{icon}</div>
       <p className="text-sm font-medium text-slate-900">{title}</p>
       {hint ? <p className="mt-1 max-w-xs text-sm leading-relaxed text-slate-500">{hint}</p> : null}
       {children}

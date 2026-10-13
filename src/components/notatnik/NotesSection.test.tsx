@@ -46,14 +46,14 @@ describe("NotesSection", () => {
 
   it("pokazuje wyraźny przycisk dodawania karteczki", () => {
     render(<NotesSection embedded notes={[]} />);
-    expect(screen.queryByText(/Brak notatek - przypnij pierwszą karteczkę powyżej/i)).toBeNull();
-    expect(screen.getByRole("button", { name: /Przypnij nową karteczkę/i })).toBeTruthy();
+    expect(screen.queryByText(/Brak notatek - przypnij pierwszą notatkę powyżej/i)).toBeNull();
+    expect(screen.getByRole("button", { name: /Przypnij nową notatkę/i })).toBeTruthy();
   });
 
   it("otwiera formularz nowej karteczki po kliknięciu", () => {
     render(<NotesSection embedded notes={[]} />);
-    fireEvent.click(screen.getByRole("button", { name: /Przypnij nową karteczkę/i }));
-    expect(screen.getByText("Nowa karteczka")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Przypnij nową notatkę/i }));
+    expect(screen.getByText("Nowa notatka")).toBeTruthy();
     expect(document.querySelector('[data-placeholder="Treść (opcjonalnie)"]')).toBeTruthy();
   });
 

@@ -10,7 +10,6 @@ src/components/moje/MyOrderPickupShelfDialogProvider.tsx
 src/components/moje/MyOrderShipmentList.tsx
 src/components/moje/MyOrderShipmentUndoProvider.tsx
 src/components/moje/SalesClientNameEditor.tsx
-src/components/moje/SalesDayStartPanel.tsx
 src/components/moje/SearchHighlightText.tsx
 src/components/moje/useMojeOrdersSearch.ts
 src/components/orders/EditIndividualRequestModal.tsx
@@ -41,7 +40,6 @@ src/components/ui/UndoToast.tsx
 src/components/verification/VerificationWorkspace.tsx
 src/hooks/useDailyDayProgress.ts
 src/hooks/useDailyPanelFreshHighlight.ts
-src/hooks/useDailyUrgentProgress.ts
 src/hooks/useLatest.ts
 src/lib/client/use-client-hydrated.ts
 src/lib/orders/my-order-row-layout.ts

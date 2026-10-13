@@ -139,7 +139,7 @@ export function toastForAutoProsbaBlockedCode(
           : base.message,
     tone: base.tone,
     ...(code === "redirect_open_prosba"
-      ? { actionLabel: "Otwórz prośbę" }
+      ? { actionLabel: "Zobacz prośbę" }
       : code === "skipped_already_covered"
         ? { actionLabel: "Prośby tego klienta" }
         : {}),

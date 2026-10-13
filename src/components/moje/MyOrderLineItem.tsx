@@ -124,6 +124,7 @@ function stockBadge(status: MyOrderLineStockStatus): { label: string; className:
 export const MyOrderLineItem = memo(function MyOrderLineItem({
   line,
   index,
+  showIndex = true,
   showProgress,
   emphasizeStock,
   compact = false,
@@ -159,6 +160,8 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
 }: {
   line: MyOrderLine;
   index: number;
+  /** Numer pozycji („1.”) — wyłączony, gdy w prośbie jest jeden produkt. */
+  showIndex?: boolean;
   showProgress: boolean;
   emphasizeStock: boolean;
   compact?: boolean;
@@ -414,14 +417,17 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
         <div className="min-w-0 flex-1">
           <div className="flex items-start gap-2">
             <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <span
-              className={cn(
-                "shrink-0 tabular-nums font-semibold text-slate-500",
-                compact ? "text-xs" : "mr-1.5"
-              )}
-            >
-              {index + 1}.
-            </span>
+            {/* Numer ma sens dopiero przy kilku pozycjach — przy jednej „1.” to szum. */}
+            {showIndex ? (
+              <span
+                className={cn(
+                  "shrink-0 tabular-nums font-semibold text-slate-500",
+                  compact ? "text-xs" : "mr-1.5"
+                )}
+              >
+                {index + 1}.
+              </span>
+            ) : null}
             <SearchHighlightText
               text={line.product}
               searchQuery={searchQuery}

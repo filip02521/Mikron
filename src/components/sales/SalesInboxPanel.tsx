@@ -171,6 +171,7 @@ export function SalesInboxPanel({
                     previewHref={previewHref}
                     onNavigate={handleClose}
                     onScrollToSection={handleScrollToSection}
+                    onReminderChanged={previewDla ? undefined : inbox.refresh}
                   />
                 ))}
               </ul>

@@ -1,11 +1,7 @@
 import { zdFulfillmentDeadlineChangeShortLabel } from "@/lib/orders/zd-fulfillment-deadline-change";
-import type { ZdFulfillmentDeadlineChangeDisplay } from "@/lib/orders/zd-fulfillment-deadline-change";
+import type { PendingZdDeadlineChange } from "@/lib/orders/zd-deadline-change-pending";
 
-export type PendingZdDeadlineChange = {
-  orderIds: string[];
-  supplierName: string;
-  change: ZdFulfillmentDeadlineChangeDisplay;
-};
+export type { PendingZdDeadlineChange };
 
 export function buildZdDeadlineChangeToastMessage(items: PendingZdDeadlineChange[]): string {
   if (items.length === 1) {

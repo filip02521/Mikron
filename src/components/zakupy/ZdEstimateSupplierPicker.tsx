@@ -3,28 +3,34 @@
 import { useId, useMemo, useRef, useState } from "react";
 import { IconSearch } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
-import { polishPluralWord } from "@/lib/email/polish-plural";
+import {
+  stockSignalHasWork,
+  stockSignalUrgentLabel,
+  supplierStockSignalRank,
+} from "@/components/summary/SupplierStockSignal";
 import { buildZdEstimateLaunchHref } from "@/lib/orders/zd-estimate-supplier-scope";
-import type { StockWatchSupplierSignal } from "@/lib/stock-watch/data";
+import {
+  stockWatchPrepareZdUsesHorizon,
+  stockWatchSignalStale,
+  type StockWatchSupplierSignal,
+} from "@/lib/stock-watch/signal";
 
 type Option = { id: string; name: string; stockLabel: string };
 
-function rank(s: StockWatchSupplierSignal | undefined): number {
-  if (!s) return 0;
-  if (s.criticalCount > 0) return 3;
-  return s.lineCount > 0 ? 2 : 1;
-}
-
 function signalLabel(s: StockWatchSupplierSignal | undefined): { text: string; urgent: boolean } | null {
   if (!s) return null;
-  if (s.lineCount === 0 && s.criticalCount === 0) return { text: "nic do zamówienia", urgent: false };
+  if (!stockSignalHasWork(s)) {
+    return {
+      text: stockWatchSignalStale(s.computedAt) ? "analiza nieaktualna" : "nic do zamówienia",
+      urgent: false,
+    };
+  }
   const parts = [
-    s.criticalCount > 0
-      ? `${s.criticalCount} ${polishPluralWord(s.criticalCount, "brak", "braki", "braków")}`
-      : null,
+    s.criticalCount > 0 ? stockSignalUrgentLabel(s.criticalCount) : null,
+    s.beforeDeliveryCount > 0 ? `${s.beforeDeliveryCount} przed dostawą` : null,
     s.lineCount > 0 ? `Do ZD ${s.lineCount} poz.` : null,
   ].filter(Boolean);
-  return { text: parts.join(" · "), urgent: s.criticalCount > 0 };
+  return { text: parts.join(" · "), urgent: s.criticalCount > 0 || s.beforeDeliveryCount > 0 };
 }
 
 const fold = (s: string) =>
@@ -60,7 +66,7 @@ export function ZdEstimateSupplierPicker({
     const list = q ? suppliers.filter((s) => fold(s.name).includes(q)) : [...suppliers];
     list.sort(
       (a, b) =>
-        rank(signals[b.id]) - rank(signals[a.id]) ||
+        supplierStockSignalRank(signals[b.id]) - supplierStockSignalRank(signals[a.id]) ||
         (signals[b.id]?.criticalCount ?? 0) - (signals[a.id]?.criticalCount ?? 0) ||
         (signals[b.id]?.lineCount ?? 0) - (signals[a.id]?.lineCount ?? 0) ||
         a.name.localeCompare(b.name, "pl")
@@ -72,7 +78,10 @@ export function ZdEstimateSupplierPicker({
     if (!o) return;
     setOpen(false);
     // Pełne przejście: Kreator startuje od nowa dla dostawcy (jak „Przygotuj ZD” z panelu).
-    window.location.assign(buildZdEstimateLaunchHref(o.id));
+    const sig = signals[o.id];
+    window.location.assign(
+      buildZdEstimateLaunchHref(o.id, sig && stockWatchPrepareZdUsesHorizon(sig) ? { leadTimeHorizon: true } : undefined)
+    );
   };
 
   return (

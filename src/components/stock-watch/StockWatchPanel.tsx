@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { daysFromToday, formatDaysAhead } from "@/components/summary/SupplierStockSignal";
+import { stockWatchHorizonDays, stockWatchPrepareZdUsesHorizon } from "@/lib/stock-watch/signal";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
@@ -26,6 +28,8 @@ import {
   actionStartStockWatchRun,
 } from "@/app/actions/stock-watch";
 import { buildZdEstimateLaunchHref } from "@/lib/orders/zd-estimate-supplier-scope";
+import { polishPluralWord, polishPozycjeLabel } from "@/lib/email/polish-plural";
+import { buttonPrimaryClass } from "@/lib/ui/ontime-theme";
 import type {
   StockWatchDashboard,
   StockWatchRowView,
@@ -57,6 +61,12 @@ export type StockWatchRunSummary = {
 };
 
 type TabId = "alerts" | "suppliers" | "rotation" | "rules";
+const TAB_IDS: readonly TabId[] = ["alerts", "suppliers", "rotation", "rules"];
+type AlertFilter = "all" | "out_of_stock" | "critical" | "before_delivery";
+
+function isTabId(v: string | null | undefined): v is TabId {
+  return TAB_IDS.includes(v as TabId);
+}
 
 const dateTimeFormatter = new Intl.DateTimeFormat("pl-PL", {
   day: "2-digit",
@@ -82,15 +92,32 @@ export function StockWatchPanel({
   run,
   canMutate,
   coverage,
+  initialSupplierId = null,
+  initialSupplierName = null,
+  initialTab = null,
 }: {
   dashboard: StockWatchDashboard;
   run: StockWatchRunSummary | null;
   canMutate: boolean;
   /** Aktywni dostawcy vs z zakresem w kreatorze ZD (tylko ci są analizowani). */
   coverage: { active: number; mapped: number };
+  /** `?dostawca=` — link „N pilne” z panelu dziennego. */
+  initialSupplierId?: string | null;
+  /** Nazwa z wyników analizy — także gdy dostawca nie ma nic do zamówienia. */
+  initialSupplierName?: string | null;
+  /** `?tab=alerts|suppliers|rotation|rules` */
+  initialTab?: string | null;
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState<TabId>(dashboard.alerts.length > 0 ? "alerts" : "suppliers");
+  const [supplierId, setSupplierId] = useState<string | null>(initialSupplierId);
+  const [tab, setTab] = useState<TabId>(() => {
+    if (isTabId(initialTab)) return initialTab;
+    if (initialSupplierId) {
+      return dashboard.alerts.some((r) => r.supplierId === initialSupplierId) ? "alerts" : "suppliers";
+    }
+    return dashboard.alerts.length > 0 ? "alerts" : "suppliers";
+  });
+  const [alertFilter, setAlertFilter] = useState<AlertFilter>("all");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [starting, startRun] = useTransition();
@@ -111,7 +138,9 @@ export function StockWatchPanel({
     startRun(async () => {
       const res = await actionStartStockWatchRun();
       if (!res.ok) {
-        setError(res.message);
+        setError(
+          `Nie udało się uruchomić analizy: ${res.message.replace(/\.\s*$/, "")}. Spróbuj ponownie za kilka minut.`
+        );
         return;
       }
       setNotice("Analiza uruchomiona w tle - wyniki odświeżą się same (zwykle kilka minut).");
@@ -119,17 +148,56 @@ export function StockWatchPanel({
     });
   };
 
+  const alerts = useMemo(
+    () => (supplierId ? dashboard.alerts.filter((r) => r.supplierId === supplierId) : dashboard.alerts),
+    [dashboard.alerts, supplierId]
+  );
+  const proposals = useMemo(
+    () =>
+      supplierId ? dashboard.proposals.filter((p) => p.supplierId === supplierId) : dashboard.proposals,
+    [dashboard.proposals, supplierId]
+  );
+  const supplierName = supplierId
+    ? (dashboard.proposals.find((p) => p.supplierId === supplierId)?.supplierName ??
+      dashboard.alerts.find((r) => r.supplierId === supplierId)?.supplierName ??
+      (supplierId === initialSupplierId ? initialSupplierName : null) ??
+      "spoza analizy")
+    : null;
+
+  const clearSupplier = () => {
+    setSupplierId(null);
+    router.replace("/zakupy/braki", { scroll: false });
+  };
+
+  const jumpToAlerts = (filter: AlertFilter) => {
+    setAlertFilter(filter);
+    setTab("alerts");
+  };
+
   const tabs: { id: TabId; label: string; count?: number; tone?: "danger" | "warning" }[] = [
-    {
-      id: "alerts",
-      label: "Krytyczne",
-      count: dashboard.alerts.length,
-      tone: "danger",
-    },
-    { id: "suppliers", label: "Do ZD po dostawcach", count: dashboard.proposals.length },
-    { id: "rotation", label: "Rotacja - Top 20" },
+    { id: "alerts", label: "Do zamówienia dziś", count: alerts.length, tone: "danger" },
+    { id: "suppliers", label: "Do ZD po dostawcach", count: proposals.length },
+    { id: "rotation", label: `Najlepiej sprzedawane (${dashboard.topVelocity.length})` },
     { id: "rules", label: "Reguły", count: dashboard.flagged.length },
   ];
+
+  const onTabKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    const idx = TAB_IDS.indexOf(tab);
+    const next =
+      e.key === "ArrowRight"
+        ? TAB_IDS[(idx + 1) % TAB_IDS.length]
+        : e.key === "ArrowLeft"
+          ? TAB_IDS[(idx - 1 + TAB_IDS.length) % TAB_IDS.length]
+          : e.key === "Home"
+            ? TAB_IDS[0]
+            : e.key === "End"
+              ? TAB_IDS[TAB_IDS.length - 1]
+              : null;
+    if (!next) return;
+    e.preventDefault();
+    setTab(next);
+    document.getElementById(`stock-watch-tabbtn-${next}`)?.focus();
+  };
 
   return (
     <div className="space-y-5">
@@ -156,13 +224,14 @@ export function StockWatchPanel({
       />
 
       {error ? (
-        <Alert tone="error" title="Nie udało się">
-          {error}
-        </Alert>
+        <Alert tone="error">{error}</Alert>
       ) : null}
       {notice ? <Alert tone="info">{notice}</Alert> : null}
       {run && run.failures.length > 0 ? (
-        <Alert tone="warning" title={`Nie przeliczono ${run.failures.length} dostawców`}>
+        <Alert
+          tone="warning"
+          title={`Nie przeliczono ${run.failures.length} ${polishPluralWord(run.failures.length, "dostawcy", "dostawców", "dostawców")} - ich listy są z poprzedniej nocy. Sprawdź zakres w Kreatorze ZD.`}
+        >
           {run.failures
             .slice(0, 4)
             .map((f) => `${f.supplierName}: ${f.message}`)
@@ -193,8 +262,11 @@ export function StockWatchPanel({
         </Card>
       ) : (
         <>
-          <OverviewBand dashboard={dashboard} onJump={setTab} />
-          {coverage.active > coverage.mapped ? (
+          {/* Z linku dostawcy (panel dzienny) liczby całej firmy tylko spychają jego listę w dół. */}
+          {supplierId ? null : (
+            <OverviewBand dashboard={dashboard} onJumpAlerts={jumpToAlerts} onJump={setTab} />
+          )}
+          {!supplierId && coverage.active > coverage.mapped ? (
             <p className="-mt-2 px-1 text-xs text-slate-500">
               Analiza obejmuje <strong className="text-slate-700">{coverage.mapped}</strong> z{" "}
               {coverage.active} aktywnych dostawców.{" "}
@@ -206,7 +278,7 @@ export function StockWatchPanel({
             </p>
           ) : null}
 
-          <nav
+          <div
             role="tablist"
             aria-label="Sekcje panelu braków"
             className="sticky top-0 z-10 -mx-1 flex gap-1 overflow-x-auto rounded-md border border-slate-200/80 bg-white p-1"
@@ -216,13 +288,16 @@ export function StockWatchPanel({
               return (
                 <button
                   key={t.id}
+                  id={`stock-watch-tabbtn-${t.id}`}
                   type="button"
                   role="tab"
                   aria-selected={active}
                   aria-controls={`stock-watch-tab-${t.id}`}
+                  tabIndex={active ? 0 : -1}
                   onClick={() => setTab(t.id)}
+                  onKeyDown={onTabKeyDown}
                   className={cn(
-                    "inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                    "inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors sm:min-h-0",
                     active
                       ? "bg-indigo-50 text-indigo-900"
                       : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
@@ -246,15 +321,42 @@ export function StockWatchPanel({
                 </button>
               );
             })}
-          </nav>
+          </div>
 
-          <section id={`stock-watch-tab-${tab}`} role="tabpanel" aria-label={tabs.find((t) => t.id === tab)?.label}>
+          {supplierName ? (
+            <div className="-mt-2 flex items-center gap-2 px-1">
+              <span className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white py-0.5 pl-2.5 pr-1 text-xs font-medium text-slate-800">
+                Dostawca: {supplierName}
+                <button
+                  type="button"
+                  onClick={clearSupplier}
+                  className="inline-flex size-6 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40"
+                  aria-label={`Usuń filtr dostawcy ${supplierName}`}
+                >
+                  ×
+                </button>
+              </span>
+              <span className="text-xs text-slate-500">Zakładki „Do zamówienia dziś” i „Do ZD” pokazują tylko tego dostawcę.</span>
+            </div>
+          ) : null}
+
+          <section
+            id={`stock-watch-tab-${tab}`}
+            role="tabpanel"
+            aria-labelledby={`stock-watch-tabbtn-${tab}`}
+          >
             {tab === "alerts" ? (
-              <AlertsSection rows={dashboard.alerts} canMutate={canMutate} onError={setError} />
+              <AlertsSection
+                rows={alerts}
+                filter={alertFilter}
+                onFilterChange={setAlertFilter}
+                canMutate={canMutate}
+                onError={setError}
+              />
             ) : tab === "suppliers" ? (
-              <SuppliersSection proposals={dashboard.proposals} canMutate={canMutate} />
+              <SuppliersSection proposals={proposals} canMutate={canMutate} filtered={supplierId != null} />
             ) : tab === "rotation" ? (
-              <RotationSection rows={dashboard.topVelocity} />
+              <RotationSection rows={dashboard.topVelocity} canMutate={canMutate} onError={setError} />
             ) : (
               <RulesSection flagged={dashboard.flagged} canMutate={canMutate} onError={setError} />
             )}
@@ -299,9 +401,11 @@ function RunStatusChip({ run }: { run: StockWatchRunSummary | null }) {
 function OverviewBand({
   dashboard,
   onJump,
+  onJumpAlerts,
 }: {
   dashboard: StockWatchDashboard;
   onJump: (tab: TabId) => void;
+  onJumpAlerts: (filter: AlertFilter) => void;
 }) {
   const { counts, totals, health } = dashboard;
   return (
@@ -321,33 +425,37 @@ function OverviewBand({
             value={counts.outOfStock}
             hint="Stan dostępny ≤ 0, towar rotuje"
             tone={counts.outOfStock > 0 ? "danger" : "success"}
-            onClick={() => onJump("alerts")}
+            onClick={() => onJumpAlerts("out_of_stock")}
           />
           <PanelSummaryMetric
             label="Skończy się ≤ 48 h"
             value={counts.critical}
             hint="Przy obecnym tempie sprzedaży"
             tone={counts.critical > 0 ? "danger" : "success"}
-            onClick={() => onJump("alerts")}
+            onClick={() => onJumpAlerts("critical")}
           />
           <PanelSummaryMetric
             label="Przed dostawą"
             value={counts.beforeDelivery}
-            hint="Jeszcze jest, ale skończy się, zanim przyjedzie zamówienie złożone dziś"
+            hint={`Skończy się, zanim przyjedzie zamówienie złożone dziś${
+              counts.beforeNextDelivery > 0
+                ? ` · ${counts.beforeNextDelivery} przed kolejną dostawą`
+                : ""
+            }`}
             tone={counts.beforeDelivery > 0 ? "danger" : "success"}
-            onClick={() => onJump("alerts")}
+            onClick={() => onJumpAlerts("before_delivery")}
           />
+          {/* Bez kliknięcia: pozycje poniżej celu nie mają osobnej listy - wchodzą do list „Do ZD”. */}
           <PanelSummaryMetric
             label="Poniżej celu"
             value={counts.warning}
-            hint="Z otwartymi ZD nadal poniżej celu zapasu"
+            hint="Z otwartymi ZD nadal poniżej celu - są już na listach „Do ZD”"
             tone={counts.warning > 0 ? "warning" : "success"}
-            onClick={() => onJump("suppliers")}
           />
           <PanelSummaryMetric
-            label="Do ZD"
+            label="Wartość do ZD"
             value={formatPln(totals.proposalValue)}
-            hint={`${totals.proposalLines} pozycji u ${dashboard.proposals.length} dostawców`}
+            hint={`${polishPozycjeLabel(totals.proposalLines)} u ${dashboard.proposals.length} ${polishPluralWord(dashboard.proposals.length, "dostawcy", "dostawców", "dostawców")}`}
             onClick={() => onJump("suppliers")}
           />
         </div>
@@ -382,7 +490,7 @@ function CoverChip({
         {formatCover(row.daysOfCover, row.status)}
       </Badge>
       {runOut && row.status !== "out_of_stock" ? (
-        <span className="text-[11px] text-slate-500">koniec ok. {runOut}</span>
+        <span className="text-xs text-slate-500">koniec ok. {runOut}</span>
       ) : null}
       {row.deliveryRisk ? <DeliveryRiskTag risk={row.deliveryRisk} /> : null}
     </div>
@@ -392,14 +500,14 @@ function CoverChip({
 function DeliveryRiskTag({ risk }: { risk: NonNullable<StockWatchRowView["deliveryRisk"]> }) {
   return risk === "before_delivery" ? (
     <span
-      className="whitespace-nowrap rounded-md bg-red-50 px-1.5 text-[11px] font-medium text-red-800"
+      className="whitespace-nowrap rounded-md bg-red-50 px-1.5 text-xs font-medium text-red-800"
       title="Przy obecnym tempie sprzedaży (z towarem w drodze) skończy się, zanim przyjedzie zamówienie złożone dziś."
     >
       przed dostawą
     </span>
   ) : (
     <span
-      className="whitespace-nowrap rounded-md bg-amber-50 px-1.5 text-[11px] font-medium text-amber-900"
+      className="whitespace-nowrap rounded-md bg-amber-50 px-1.5 text-xs font-medium text-amber-900"
       title="Skończy się przed dostawą z kolejnego planowego zamówienia - warto zamówić wcześniej."
     >
       przed kolejną dostawą
@@ -446,14 +554,17 @@ function OrderQty({
 
 function AlertsSection({
   rows,
+  filter,
+  onFilterChange: setFilter,
   canMutate,
   onError,
 }: {
   rows: StockWatchRowView[];
+  filter: AlertFilter;
+  onFilterChange: (filter: AlertFilter) => void;
   canMutate: boolean;
   onError: (message: string) => void;
 }) {
-  const [filter, setFilter] = useState<"all" | "out_of_stock" | "critical" | "before_delivery">("all");
   const visible = rows.filter((r) =>
     filter === "all"
       ? true
@@ -480,7 +591,7 @@ function AlertsSection({
             <IconAlertCircle size={16} strokeWidth={2} />
           </span>
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">Czerwona strefa</h2>
+            <h2 className="text-sm font-semibold text-slate-900">Do zamówienia dziś</h2>
             <p className="text-xs text-slate-500">
               Brak, ≤ 48 h i „przed dostawą” (skończy się, zanim przyjedzie zamówienie złożone dziś).
             </p>
@@ -506,7 +617,7 @@ function AlertsSection({
           <li key={row.subiektTwId} className="flex gap-3 px-4 py-3">
             <div className="min-w-0 flex-1">
               <ProductCell row={row} />
-              <p className="truncate text-[11px] font-medium text-slate-600">{row.supplierName ?? "-"}</p>
+              <p className="truncate text-xs font-medium text-slate-600">{row.supplierName ?? "-"}</p>
               <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
                 <CoverChip row={row} />
                 <span className="tabular-nums">
@@ -536,10 +647,10 @@ function AlertsSection({
               <th scope="col">Towar</th>
               <th scope="col">Starczy na</th>
               <th scope="col" className="text-right" title="Średnia dzienna sprzedaż (szt/dzień) z okna Kreatora ZD">Rotacja</th>
-              <th scope="col">Stan vs cel</th>
+              <th scope="col">Stan / cel zapasu</th>
               <th scope="col" className="text-right" title="Ilość z listy Kreatora ZD (jednostka dokumentu)">Do ZD</th>
               <th scope="col" className="text-right" title="Wartość dziennej sprzedaży: rotacja × ostatnia cena zakupu z ZD">
-                Zł / dzień
+                Sprzedaż zł / dzień
               </th>
               {canMutate ? (
                 <th scope="col">
@@ -553,7 +664,7 @@ function AlertsSection({
               <tr key={row.subiektTwId}>
                 <td>
                   <ProductCell row={row} />
-                  <p className="max-w-[16rem] truncate text-[11px] font-medium text-slate-600">{row.supplierName ?? "-"}</p>
+                  <p className="max-w-[16rem] truncate text-xs font-medium text-slate-600">{row.supplierName ?? "-"}</p>
                 </td>
                 <td>
                   <CoverChip row={row} />
@@ -567,6 +678,12 @@ function AlertsSection({
                     incoming={row.openZdQty}
                     safetyStock={row.targetQty}
                     status={row.status}
+                    detail={{
+                      stock: row.stockQty,
+                      reserved: row.reservedQty,
+                      openZkUnreserved: row.openZkUnreservedQty,
+                      minStock: row.minStockQty,
+                    }}
                   />
                   {row.openZdQty > 0 ? (
                     <p className="text-[11px] text-indigo-700">w drodze {formatQtyPl(row.openZdQty)} szt (ZD)</p>
@@ -601,9 +718,11 @@ function AlertsSection({
 function SuppliersSection({
   proposals,
   canMutate,
+  filtered,
 }: {
   proposals: StockWatchSupplierProposal[];
   canMutate: boolean;
+  filtered: boolean;
 }) {
   if (proposals.length === 0) {
     return (
@@ -611,7 +730,11 @@ function SuppliersSection({
         <EmptyState
           icon={<IconTruck size={26} strokeWidth={1.75} />}
           title="Nic do zamówienia"
-          description="Lista „Do ZD” jest pusta u wszystkich analizowanych dostawców."
+          description={
+            filtered
+              ? "Lista „Do ZD” tego dostawcy jest pusta. Usuń filtr, żeby zobaczyć pozostałych."
+              : "Lista „Do ZD” jest pusta u wszystkich analizowanych dostawców."
+          }
         />
       </Card>
     );
@@ -639,53 +762,49 @@ function SupplierProposalCard({
   canMutate: boolean;
 }) {
   const urgent = p.outOfStockCount + p.criticalCount;
-  // Opcja „Do kolejnej dostawy” zmienia ilości tylko, gdy dni do kolejnego
-  // zamówienia + dostawa przekraczają zapas z karty (inaczej lista już wystarcza).
-  const horizonExtends =
-    p.leadDays != null && p.nextOrderDays != null && p.nextOrderDays + p.leadDays > p.dniZapasu;
+  // „Do kolejnej dostawy” zmienia ilości tylko, gdy kolejne zamówienie + dostawa > zapas z karty.
+  const { horizonExtends } = p;
   const hasDeliveryRisk = p.beforeDeliveryCount > 0 || p.beforeNextDeliveryCount > 0;
+  // Nic Do ZD poza zagrożonymi przed dostawą — domyślny horyzont Kreatora by ich nie objął.
+  const prepareWithHorizon = stockWatchPrepareZdUsesHorizon(p);
   return (
-    <Card
-      padding={false}
-      className={cn(
-        "flex flex-col p-4 transition-colors hover:border-slate-300"
-      )}
-    >
+    <div id={`dostawca-${p.supplierId}`} className="flex scroll-mt-16">
+    <Card padding={false} className="flex flex-1 flex-col p-4 transition-colors hover:border-slate-300">
       <div className="flex items-start justify-between gap-2">
         <h3 className="min-w-0 text-[15px] font-semibold leading-snug text-slate-900">{p.supplierName}</h3>
         {urgent > 0 ? (
           <Badge variant="danger" className="shrink-0">
-            {urgent} pilne
+            {urgent} {polishPluralWord(urgent, "pilna", "pilne", "pilnych")}
           </Badge>
         ) : (
-          <Badge variant="warning" className="shrink-0">
+          <Badge variant="default" className="shrink-0">
             uzupełnienie
           </Badge>
         )}
       </div>
 
       <p className="mt-2 text-sm text-slate-700">
-        Do ZD: <strong className="tabular-nums">{p.lineCount} {p.lineCount === 1 ? "pozycja" : "pozycji"}</strong>
+        Do ZD: <strong className="tabular-nums">{polishPozycjeLabel(p.lineCount)}</strong>
         {p.orderValue > 0 ? (
           <>
             , wartość ok. <strong className="tabular-nums text-slate-900">{formatPln(p.orderValue)}</strong>
           </>
         ) : null}
       </p>
-      <p className="mt-0.5 text-[11px] text-slate-500">
+      <p className="mt-0.5 text-xs text-slate-500">
         Zapas {p.dniZapasu} dni · sprzedaż {p.dataOd} - {p.dataDo} · policzono {formatWhen(p.computedAt)}
       </p>
       {p.leadDays != null ? (
-        <p className="mt-0.5 text-[11px] text-slate-500" title="Czas dostawy z historii dostaw (9 na 10 dostaw), kolejne zamówienie z harmonogramu">
+        <p className="mt-0.5 text-xs text-slate-500" title="Czas dostawy z historii dostaw (9 na 10 dostaw), kolejne zamówienie z harmonogramu">
           Dostawa ~{p.leadDays} d
           {p.leadSource === "default" ? " (założenie)" : ""} ·{" "}
           {p.nextOrderDate
-            ? `kolejne zamówienie ${formatShortDate(p.nextOrderDate)} (za ${p.nextOrderDays} d)`
+            ? `kolejne zamówienie ${formatShortDate(p.nextOrderDate)} (${formatDaysAhead(daysFromToday(p.nextOrderDate) ?? p.nextOrderDays ?? 0)})`
             : "na żądanie"}
         </p>
       ) : null}
       {p.beforeDeliveryCount > 0 || p.beforeNextDeliveryCount > 0 ? (
-        <p className="mt-1.5 text-[11px] leading-snug text-red-800">
+        <p className="mt-1.5 text-xs leading-snug text-red-800">
           {p.beforeDeliveryCount > 0 ? (
             <strong>{p.beforeDeliveryCount} skończy się przed dostawą zamówienia złożonego dziś. </strong>
           ) : null}
@@ -693,13 +812,13 @@ function SupplierProposalCard({
             ? `${p.beforeNextDeliveryCount} przed dostawą z kolejnego zamówienia. `
             : ""}
           {horizonExtends
-            ? `Zapas ${p.dniZapasu} d nie wystarczy do kolejnej dostawy (${(p.nextOrderDays ?? 0) + (p.leadDays ?? 0)} d) - w Kreatorze zaznacz „Do kolejnej dostawy”.`
+            ? `Zapas ${p.dniZapasu} d nie wystarczy do kolejnej dostawy (${stockWatchHorizonDays(p) ?? 0} d) - w Kreatorze zaznacz „Do kolejnej dostawy”.`
             : "Zapas z karty wystarcza do kolejnej dostawy - zamów dziś, nie czekaj na termin z planu."}
         </p>
       ) : null}
       {p.unpricedCount > 0 ? (
-        <p className="mt-0.5 text-[11px] text-slate-500">
-          {p.unpricedCount} {p.unpricedCount === 1 ? "pozycja" : "pozycji"} bez ceny z ZD - poza wartością
+        <p className="mt-0.5 text-xs text-slate-500">
+          {polishPozycjeLabel(p.unpricedCount)} bez ceny z ZD - poza wartością
         </p>
       ) : null}
 
@@ -716,7 +835,7 @@ function SupplierProposalCard({
       ) : null}
 
       {p.warnings.length > 0 ? (
-        <ul className="mt-2 space-y-0.5 text-[11px] text-amber-800">
+        <ul className="mt-2 space-y-0.5 text-xs text-amber-800">
           {p.warnings.map((w) => (
             <li key={w}>{w}</li>
           ))}
@@ -727,15 +846,18 @@ function SupplierProposalCard({
         {canMutate ? (
           <>
             <Link
-              href={buildZdEstimateLaunchHref(p.supplierId)}
-              className="inline-flex h-9 w-full items-center justify-center rounded-md border border-slate-200 bg-white px-4 text-sm font-semibold text-indigo-700 transition-colors hover:border-indigo-200 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+              href={buildZdEstimateLaunchHref(p.supplierId, prepareWithHorizon ? { leadTimeHorizon: true } : undefined)}
+              className={cn(
+                "inline-flex h-10 w-full items-center justify-center rounded-md px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 focus-visible:ring-offset-1 sm:h-9",
+                buttonPrimaryClass
+              )}
             >
               Przygotuj ZD
             </Link>
-            {hasDeliveryRisk && horizonExtends ? (
+            {hasDeliveryRisk && horizonExtends && !prepareWithHorizon ? (
               <Link
                 href={buildZdEstimateLaunchHref(p.supplierId, { leadTimeHorizon: true })}
-                className="inline-flex h-9 w-full items-center justify-center rounded-md border border-slate-200 bg-white px-4 text-[13px] font-medium text-slate-800 transition-colors hover:bg-slate-50"
+                className="inline-flex h-10 w-full items-center justify-center rounded-md border border-slate-200 bg-white px-4 text-[13px] font-medium text-slate-800 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 sm:h-9"
                 title="Otwiera Kreator z zaznaczoną opcją „Do kolejnej dostawy” - możesz ją odznaczyć"
               >
                 Przygotuj ZD do kolejnej dostawy
@@ -745,14 +867,23 @@ function SupplierProposalCard({
         ) : null}
       </div>
     </Card>
+    </div>
   );
 }
 
-function RotationSection({ rows }: { rows: StockWatchRowView[] }) {
+function RotationSection({
+  rows,
+  canMutate,
+  onError,
+}: {
+  rows: StockWatchRowView[];
+  canMutate: boolean;
+  onError: (message: string) => void;
+}) {
   return (
     <Card padding={false} className="overflow-hidden">
       <div className="border-b border-slate-100 px-4 py-3 sm:px-5">
-        <h2 className="text-sm font-semibold text-slate-900">Top 20 najszybciej rotujących</h2>
+        <h2 className="text-sm font-semibold text-slate-900">Najlepiej sprzedawane ({rows.length})</h2>
         <p className="text-xs text-slate-500">
           Pasek: stan dostępny względem celu zapasu z Kreatora (rotacja × dni zapasu dostawcy). Kreska = 100% celu,
           kreskowanie = towar w drodze.
@@ -765,7 +896,7 @@ function RotationSection({ rows }: { rows: StockWatchRowView[] }) {
               <th scope="col" className="w-10 text-right">#</th>
               <th scope="col">Towar</th>
               <th scope="col" className="text-right" title="Średnia dzienna sprzedaż (szt/dzień) z okna Kreatora ZD">Rotacja</th>
-              <th scope="col">Stan vs cel</th>
+              <th scope="col">Stan / cel zapasu</th>
               <th scope="col">Starczy na</th>
               <th scope="col">Reguła</th>
             </tr>
@@ -776,7 +907,7 @@ function RotationSection({ rows }: { rows: StockWatchRowView[] }) {
                 <td className="text-right text-xs font-semibold tabular-nums text-slate-400">{i + 1}</td>
                 <td>
                   <ProductCell row={row} />
-                  <p className="truncate text-[11px] text-slate-500">{row.supplierName}</p>
+                  <p className="truncate text-xs text-slate-500">{row.supplierName}</p>
                 </td>
                 <td>
                   <VelocityCell row={row} />
@@ -787,6 +918,12 @@ function RotationSection({ rows }: { rows: StockWatchRowView[] }) {
                     incoming={row.openZdQty}
                     safetyStock={row.targetQty}
                     status={row.status}
+                    detail={{
+                      stock: row.stockQty,
+                      reserved: row.reservedQty,
+                      openZkUnreserved: row.openZkUnreservedQty,
+                      minStock: row.minStockQty,
+                    }}
                   />
                   <p className="text-[11px] text-slate-500">cel na {row.salesPeriodDays} dni</p>
                 </td>
@@ -794,9 +931,20 @@ function RotationSection({ rows }: { rows: StockWatchRowView[] }) {
                   <CoverChip row={row} />
                 </td>
                 <td>
-                  <span className={cn("text-xs", row.rule === "standard" ? "text-slate-500" : "font-medium text-indigo-800")}>
-                    {STOCK_WATCH_RULE_META[row.rule].label}
-                  </span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={cn("text-xs", row.rule === "standard" ? "text-slate-500" : "font-medium text-indigo-800")}>
+                      {STOCK_WATCH_RULE_META[row.rule].label}
+                    </span>
+                    {canMutate ? (
+                      <StockRuleMenu
+                        subiektTwId={row.subiektTwId}
+                        twSymbol={row.twSymbol}
+                        twNazwa={row.twNazwa}
+                        rule={row.rule}
+                        onError={onError}
+                      />
+                    ) : null}
+                  </div>
                 </td>
               </tr>
             ))}

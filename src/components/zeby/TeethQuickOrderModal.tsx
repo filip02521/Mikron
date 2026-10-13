@@ -260,11 +260,27 @@ export function TeethQuickOrderModal({
       bodyClassName="flex min-h-0 flex-1 flex-col"
       footer={
         <>
+          {!canSubmitProsba && !pending && !resolvingSupplier ? (
+            // Powód zamiast martwego przycisku — submit i tak pokaże braki przy polach.
+            <p className="basis-full text-xs font-medium leading-relaxed text-slate-600 sm:mr-auto sm:basis-auto">
+              {!salesPersonId.trim()
+                ? "Wybierz handlowca"
+                : !supplierId.trim()
+                  ? "Wybierz dostawcę"
+                  : teethExemptTwIds.size === 0
+                    ? "Brak katalogu zębów - dodaj produkty w Admin → Produkty zębowe"
+                    : prosbaReadiness.view.headline}
+            </p>
+          ) : null}
           <Button variant="secondary" onClick={handleClose} disabled={pending}>
             Anuluj
           </Button>
-          <Button onClick={submit} disabled={pending || !canSubmitProsba}>
-            {pending ? "Zapisywanie…" : TEETH_QUICK_ORDER_COPY.submitLabel}
+          <Button onClick={submit} disabled={pending || resolvingSupplier}>
+            {pending
+              ? "Zapisywanie…"
+              : resolvingSupplier
+                ? "Ustalam dostawcę…"
+                : TEETH_QUICK_ORDER_COPY.submitLabel}
           </Button>
         </>
       }

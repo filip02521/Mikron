@@ -5,13 +5,13 @@ describe("formatSubmitResult", () => {
   it("handlowiec - pełna realizacja", () => {
     expect(
       formatSubmitResult({ count: 2, complete: 2, verification: 0 }, "zamowienie", true)
-    ).toBe("Prośba zapisana.");
+    ).toBe("Status śledzisz w „Moje zamówienia”.");
   });
 
   it("handlowiec - tylko weryfikacja", () => {
     expect(
       formatSubmitResult({ count: 1, complete: 0, verification: 1 }, "zamowienie", true)
-    ).toContain("dział zakupów dopracuje szczegóły");
+    ).toContain("Dział zakupów dopracuje szczegóły");
   });
 
   it("handlowiec - mieszany wynik", () => {
@@ -23,6 +23,6 @@ describe("formatSubmitResult", () => {
   it("informacja dla handlowca", () => {
     expect(
       formatSubmitResult({ count: 1, complete: 1, verification: 0 }, "informacja", true)
-    ).toBe("Prośba o dostępność zapisana.");
+    ).toContain("Dostaniesz e-mail");
   });
 });

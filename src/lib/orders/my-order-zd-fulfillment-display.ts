@@ -1,4 +1,5 @@
 import { formatPlDate } from "@/lib/display-labels";
+import { timingOverdueSuffix } from "@/lib/orders/timing-overdue";
 import {
   parseDeliveryEstimateFromTimingLabel,
   resolveMyOrderHistoryDeliveryEstimate,
@@ -154,7 +155,7 @@ export function salesZdPrimarySlotTimingLabel(
     return ZD_FULFILLMENT_PLACEHOLDER_TIMING_LABEL;
   }
   const primary = zdFulfillmentPrimarySlot(fulfillment);
-  const overdueSuffix = overdue ? " · po terminie" : "";
+  const overdueSuffix = timingOverdueSuffix(overdue);
   return `${formatPlDate(primary.deadline)} · ${primary.dokNr}${overdueSuffix}`;
 }
 
@@ -210,7 +211,7 @@ export function salesZdGroupTimingLabel(
 ): string {
   if (slots.length <= 1) {
     const slot = slots[0]!;
-    const overdueSuffix = overdue ? " · po terminie" : "";
+    const overdueSuffix = timingOverdueSuffix(overdue);
     return `${formatPlDate(slot.deadline)} · ${slot.dokNr}${overdueSuffix}`;
   }
 
@@ -222,7 +223,7 @@ export function salesZdGroupTimingLabel(
   });
   const dates = sorted.map((s) => formatPlDate(s.deadline));
   const uniqueDates = [...new Set(dates)];
-  const overdueSuffix = overdue ? " · po terminie" : "";
+  const overdueSuffix = timingOverdueSuffix(overdue);
 
   if (uniqueDates.length === 1) {
     return `${uniqueDates[0]} · ${sorted.length} pozycje${overdueSuffix}`;

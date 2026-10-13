@@ -12,7 +12,7 @@ import {
   ZK_TEETH_TONE_BADGE_CLASS,
   type ZkTeethPreviewRow,
 } from "@/lib/sales/zk-watch-teeth-preview";
-import { ZK_MODAL_SECTION_HINTS, ZK_MODAL_SECTION_TITLES } from "@/lib/sales/zk-modal-section-copy";
+import { ZK_MODAL_SECTION_TITLES } from "@/lib/sales/zk-modal-section-copy";
 import { ZkWatchModalSection } from "./ZkWatchModalSection";
 import type { SalesZkWatch } from "@/types/database";
 
@@ -94,7 +94,6 @@ export function ZkWatchTeethPreviewSection({
     return (
       <ZkWatchModalSection
         title={ZK_MODAL_SECTION_TITLES.teeth}
-        hint={ZK_MODAL_SECTION_HINTS.teeth}
       >
         <div className="rounded-md border border-red-200/80 bg-red-50/60 px-3 py-2.5 text-sm text-red-800">
           <p>{error}</p>
@@ -119,7 +118,6 @@ export function ZkWatchTeethPreviewSection({
   return (
     <ZkWatchModalSection
       title={ZK_MODAL_SECTION_TITLES.teeth}
-      hint={ZK_MODAL_SECTION_HINTS.teeth}
     >
       <div className="overflow-x-auto rounded-md border border-slate-200/90">
         <table className="w-full text-sm" aria-label="Zęby powiązane z ZK - szkice i status zamówienia">

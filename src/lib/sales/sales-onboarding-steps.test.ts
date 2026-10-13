@@ -118,7 +118,7 @@ describe("sales onboarding steps", () => {
   it("tablica step focuses on questions and points announcements to moje", () => {
     const tablica = getSalesOnboardingSteps("sales").find((s) => s.id === "tablica");
     expect(tablica?.href).toBe("/tablica");
-    expect(tablica?.title).toBe("Pytania zespołu");
+    expect(tablica?.title).toBe("Tablica");
     expect(tablica?.bullets.some((b) => /Moje zamówienia/i.test(b))).toBe(true);
     expect(tablica?.bullets.some((b) => /Nowa prośba/i.test(b))).toBe(true);
     expect(tablica?.bullets.some((b) => /P:/i.test(b))).toBe(false);

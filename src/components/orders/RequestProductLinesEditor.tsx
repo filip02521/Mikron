@@ -27,11 +27,22 @@ import {
 import type { TeethDualKindCommitSummary } from "@/lib/teeth/teeth-dual-kind";
 import { ProsbaProductStockSummary } from "@/components/orders/ProsbaProductStockStatus";
 import { ProsbaZkQuantityHint } from "@/components/orders/ProsbaProductStockStatus";
-import { filterProsbaLinesWithSufficientStock } from "@/lib/orders/prosba-stock-check";
+import { filterProsbaLinesWithSufficientStock, isProsbaLineStockSufficient } from "@/lib/orders/prosba-stock-check";
 import { useProsbaLinesStockSync } from "@/hooks/useProsbaLinesStockSync";
+import { useProsbaAlreadyOrdered } from "@/hooks/useProsbaAlreadyOrdered";
+import {
+  ProsbaAvailabilityCard,
+  ProsbaNotifySwitchedNote,
+} from "@/components/orders/ProsbaAlreadyOrderedHint";
+import {
+  buildProsbaAlreadyOrderedView,
+  prosbaAlreadyOrderedStockTone,
+  prosbaLineRequestedQty,
+} from "@/lib/orders/prosba-already-ordered";
 import { useTeethExemptTwIds, useTeethProductInfo } from "@/components/layout/TeethExemptContext";
 import {
   assessProsbaLineFields,
+  assessProsbaLineFieldsLive,
   prosbaLineHasSubmitBlockers,
   shouldShowProsbaLineFieldValidation,
 } from "@/lib/orders/prosba-line-field-validation";
@@ -48,6 +59,8 @@ import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { ProsbaOptionalSection } from "@/components/orders/ProsbaOptionalSection";
 import { PROSBA_OPTIONAL_SECTION_COPY } from "@/lib/orders/prosba-optional-section-copy";
 import { SubiektOfflineHint } from "@/components/subiekt/SubiektOfflineHint";
+import { SubiektOfflineNotice } from "@/components/subiekt/SubiektOfflineNotice";
+import { subiektOfflineDisplay } from "@/lib/orders/consolidate-form-status";
 import {
   copyProsbaLineNoteToAllLines,
 } from "@/lib/orders/prosba-line-note-copy";
@@ -78,6 +91,7 @@ export function RequestProductLinesEditor({
   liveValidation = false,
   showLineNotes,
   noteAudience = "sales",
+  salesProsbaForm = false,
   typeaheadSize = "default",
   onAfterTeethListSave,
   onTeethListCommitNotice,
@@ -93,6 +107,10 @@ export function RequestProductLinesEditor({
   etaQuantilesBySupplierId = {},
   showLinkedLeadTime = false,
   linkedLeadTimeOmitSupplierIds,
+  alreadyOrderedCheck = false,
+  alreadyOrderedForSalesPersonId = null,
+  alreadyOrderedForOther = false,
+  onRequestKindChange,
 }: {
   lines: ProductLineDraft[];
   onChange: (lines: ProductLineDraft[]) => void;
@@ -127,6 +145,8 @@ export function RequestProductLinesEditor({
   showLineNotes?: boolean;
   /** Podpowiedź przy notatce — zakupy vs handlowiec. */
   noteAudience?: "sales" | "procurement";
+  /** Formularz handlowca /prosba — teksty o Subiekcie pisane dla handlowca. */
+  salesProsbaForm?: boolean;
   /** Wyższa lista podpowiedzi Subiekta / dostawcy w modalach. */
   typeaheadSize?: "default" | "comfortable";
   onAfterTeethListSave?: (
@@ -165,6 +185,20 @@ export function RequestProductLinesEditor({
   showLinkedLeadTime?: boolean;
   /** Nie powtarzaj mety dla tych dostawców (np. już w banerze harmonogramu). */
   linkedLeadTimeOmitSupplierIds?: readonly string[];
+  /**
+   * Nowa prośba: sprawdza w tle, czy towar jest już zamówiony / ktoś już o niego prosi.
+   * Wyłączone w edycji istniejącej prośby (znalazłaby samą siebie).
+   */
+  alreadyOrderedCheck?: boolean;
+  /** Handlowiec, dla którego jest prośba — „ma już prośbę” liczone względem niego. */
+  alreadyOrderedForSalesPersonId?: string | null;
+  /** Prośba w imieniu innego handlowca — teksty bez „Twoja”. */
+  alreadyOrderedForOther?: boolean;
+  /**
+   * „Tylko powiadom, gdy dotrze” / „Cofnij” — zmiana rodzaju całej prośby
+   * (informacja ↔ zamówienie). Formularz ustawia ścieżkę „Powiadom, gdy będzie na magazynie”.
+   */
+  onRequestKindChange?: (kind: IndividualRequestKind) => void;
 }) {
   const canRemove = lines.length > minLines;
   const prosba = appearance === "prosba";
@@ -219,13 +253,49 @@ export function RequestProductLinesEditor({
   }, [lines, prosba, requestKind, collapseOptions]);
   const [subiektOfflineFeedback, setSubiektOfflineFeedback] =
     useState<SubiektFeedback | null>(null);
-  const visibleSubiektOfflineFeedback = prosba ? subiektOfflineFeedback : null;
+  const subiektOfflineMode = subiektOfflineDisplay({
+    feedback: subiektOfflineFeedback,
+    prosba,
+    salesProsbaForm,
+    allLinesLinked: lines.every((l) => (l.subiektTwId ?? 0) > 0),
+  });
   const stockChecksEnabled = requestKind === "zamowienie";
   const sufficientStockCount = stockChecksEnabled
     ? filterProsbaLinesWithSufficientStock(lines, requestKind, teethExemptTwIds).length
     : 0;
 
   useProsbaLinesStockSync(lines, onChange, requestKind, stockChecksEnabled, teethExemptTwIds);
+  const { map: alreadyOrdered, checkingTwIds: alreadyOrderedChecking } = useProsbaAlreadyOrdered(
+    lines,
+    requestKind,
+    prosba && Boolean(alreadyOrderedCheck),
+    alreadyOrderedForSalesPersonId
+  );
+  /** Pozycja, z której przełączono na powiadomienie — tam pokazujemy potwierdzenie z „Cofnij”. */
+  const [notifySwitchLineId, setNotifySwitchLineId] = useState<string | null>(null);
+  // Powrót do zamówienia innym sposobem niż „Cofnij” (1, przełącznik) zamyka notkę — inaczej
+  // wróciłaby przy kolejnym „2” i zabrała fokus.
+  const [notifyKindSeen, setNotifyKindSeen] = useState(requestKind);
+  if (notifyKindSeen !== requestKind) {
+    setNotifyKindSeen(requestKind);
+    if (requestKind !== "informacja") setNotifySwitchLineId(null);
+  }
+  const [refocusNotifyLineId, setRefocusNotifyLineId] = useState<string | null>(null);
+  const alreadyOrderedBadge = (line: ProductLineDraft) => {
+    const twId = line.subiektTwId;
+    const view =
+      twId != null
+        ? buildProsbaAlreadyOrderedView(alreadyOrdered[twId], {
+            forOther: alreadyOrderedForOther,
+            requestedQty: prosbaLineRequestedQty(line),
+            ownZkQty: line.zkQuantity ?? null,
+          })
+        : null;
+    if (!view) return null;
+    // Jak karta: wystarczający stan z półki wygrywa z dostawą (poza własnym dublem).
+    if (view.tone !== "mine" && isProsbaLineStockSufficient(line, requestKind, teethExemptTwIds)) return null;
+    return { badge: view.badge, tone: prosbaAlreadyOrderedStockTone(view.tone) };
+  };
 
   useEffect(() => {
     if (!prosba) return;
@@ -332,9 +402,12 @@ export function RequestProductLinesEditor({
 
   return (
     <div className="space-y-3">
-      {visibleSubiektOfflineFeedback ? (
+      {subiektOfflineFeedback && subiektOfflineMode === "notice" ? (
+        <SubiektOfflineNotice feedback={subiektOfflineFeedback} />
+      ) : null}
+      {subiektOfflineFeedback && subiektOfflineMode === "badge" ? (
         <div className="flex justify-end">
-          <SubiektOfflineHint feedback={visibleSubiektOfflineFeedback} />
+          <SubiektOfflineHint feedback={subiektOfflineFeedback} />
         </div>
       ) : null}
 
@@ -342,7 +415,8 @@ export function RequestProductLinesEditor({
         <TeethProgressLine lines={lines} />
       ) : null}
 
-      {sufficientStockCount > 1 ? (
+      {/* Karta „Dostępność” przy każdej pozycji mówi to samo — bez zbiorczego powtórzenia. */}
+      {sufficientStockCount > 1 && !alreadyOrderedCheck ? (
         <ProsbaProductStockSummary count={sufficientStockCount} />
       ) : null}
 
@@ -371,6 +445,7 @@ export function RequestProductLinesEditor({
                           exemptTwIds: teethExemptTwIds,
                         })
                       }
+                      alreadyOrdered={alreadyOrderedBadge(line)}
                       onEdit={() => setFocusedLineId(line.id)}
                       onRemove={() => removeLine(index)}
                     />
@@ -393,13 +468,11 @@ export function RequestProductLinesEditor({
             lineCount: lines.length,
             requestKind,
           });
-        const fieldValidation = showFieldValidation
-          ? assessProsbaLineFields(
-              line,
-              requestKind,
-              validationAttempted ? "strict" : "soft"
-            )
-          : undefined;
+        const fieldValidation = !showFieldValidation
+          ? undefined
+          : salesProsbaForm
+            ? assessProsbaLineFieldsLive(line, requestKind, validationAttempted)
+            : assessProsbaLineFields(line, requestKind, validationAttempted ? "strict" : "soft");
 
         const lineSupplierId =
           (
@@ -492,6 +565,7 @@ export function RequestProductLinesEditor({
 
             <SubiektProductLineFields
               appearance={appearance}
+              salesProsbaForm={salesProsbaForm}
               requestKind={requestKind}
               productFieldClassName={prosba ? undefined : "sm:col-span-2"}
               suppliers={suppliers}
@@ -596,10 +670,49 @@ export function RequestProductLinesEditor({
               lockSubiektLink={lockSubiektLink}
               groupSupplierId={groupSupplierId}
               linkedLeadTime={linkedLeadTime}
+              hideStockStatus={prosba && alreadyOrderedCheck}
+              autoFocusProduct={Boolean(salesProsbaForm) && index === 0 && lines.length === 1}
             />
 
             {prosba ? (
               <ProsbaZkQuantityHint line={line} requestKind={requestKind} className="mt-2" />
+            ) : null}
+
+            {prosba &&
+            alreadyOrderedCheck &&
+            onRequestKindChange &&
+            requestKind === "informacja" &&
+            notifySwitchLineId === line.id ? (
+              <ProsbaNotifySwitchedNote
+                onUndo={() => {
+                  setNotifySwitchLineId(null);
+                  setRefocusNotifyLineId(line.id);
+                  onRequestKindChange("zamowienie");
+                }}
+                className="mt-2"
+              />
+            ) : null}
+
+            {prosba && alreadyOrderedCheck && line.subiektTwId != null ? (
+              <ProsbaAvailabilityCard
+                line={line}
+                requestKind={requestKind}
+                info={alreadyOrdered[line.subiektTwId]}
+                checking={alreadyOrderedChecking.has(line.subiektTwId)}
+                onSwitchToNotify={
+                  lines.length === 1 && onRequestKindChange
+                    ? () => {
+                        setNotifySwitchLineId(line.id);
+                        onRequestKindChange("informacja");
+                      }
+                    : undefined
+                }
+                onRemoveLine={canRemove ? () => removeLine(index) : undefined}
+                forOther={alreadyOrderedForOther}
+                focusNotifyOnMount={refocusNotifyLineId === line.id}
+                onNotifyFocused={() => setRefocusNotifyLineId(null)}
+                className="mt-2"
+              />
             ) : null}
 
             {showClientField ? (
@@ -613,6 +726,7 @@ export function RequestProductLinesEditor({
                   className="mt-2"
                 >
                   <SubiektClientNameField
+                    prosba={salesProsbaForm}
                     maxLength={MAX_CLIENT_NAME_LEN}
                     value={line.clientName ?? ""}
                     clientKhId={line.clientKhId ?? null}

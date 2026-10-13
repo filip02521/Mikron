@@ -3,6 +3,7 @@ import {
   computeStockHealthScore,
 } from "@/lib/stock-watch/analysis";
 import type { StockWatchItem, StockWatchSupplierOrder } from "@/lib/stock-watch/data";
+import { stockWatchHorizonExtends } from "@/lib/stock-watch/signal";
 
 /** Wiersz przekazywany do klienta — tylko pola używane w UI. */
 export type StockWatchRowView = Pick<
@@ -63,6 +64,8 @@ export type StockWatchSupplierProposal = {
   beforeDeliveryCount: number;
   /** …przed dostawą z kolejnego planowego zamówienia. */
   beforeNextDeliveryCount: number;
+  /** Kolejne zamówienie + dostawa > dni zapasu — opcja „Do kolejnej dostawy” zmienia ilości. */
+  horizonExtends: boolean;
   /** Kreator pokaże pustą listę albo zablokuje „Utwórz ZD” — wymaga uwagi w Kreatorze. */
   warnings: string[];
 };
@@ -154,7 +157,14 @@ function proposalWarnings(order: StockWatchSupplierOrder): string[] {
  */
 export function buildStockWatchDashboard(
   items: readonly StockWatchItem[],
-  supplierOrders: readonly StockWatchSupplierOrder[]
+  supplierOrders: readonly StockWatchSupplierOrder[],
+  opts: {
+    /**
+     * Filtr `?dostawca=`: alerty liczone z towarów tego dostawcy PRZED limitem —
+     * inaczej jego pilne pozycje wypadają za globalną „60” i lista nie zgadza się z panelem dziennym.
+     */
+    alertsSupplierId?: string | null;
+  } = {}
 ): StockWatchDashboard {
   const products = uniqueByProduct(items);
   const counts = {
@@ -184,13 +194,16 @@ export function buildStockWatchDashboard(
     else if (item.deliveryRisk === "before_next_delivery") counts.beforeNextDelivery += 1;
   }
 
-  // Czerwona strefa: brak i ≤ 48 h (limit) + osobno „przed dostawą” (własny limit) —
+  // „Do zamówienia dziś”: brak i ≤ 48 h (limit) + osobno „przed dostawą” (własny limit) —
   // inaczej przy setkach braków sygnał czasu dostawy nigdy by się nie zmieścił.
   const isOutOrCritical = (i: StockWatchItem) =>
     i.status === "out_of_stock" || i.status === "critical";
+  const alertSource = opts.alertsSupplierId
+    ? items.filter((i) => i.supplierId === opts.alertsSupplierId && i.rule === "standard")
+    : standard;
   const alerts = [
-    ...standard.filter(isOutOrCritical).sort(compareStockWatchAlerts).slice(0, STOCK_WATCH_ALERT_LIMIT),
-    ...standard
+    ...alertSource.filter(isOutOrCritical).sort(compareStockWatchAlerts).slice(0, STOCK_WATCH_ALERT_LIMIT),
+    ...alertSource
       .filter((i) => !isOutOrCritical(i) && i.deliveryRisk === "before_delivery")
       .sort(compareStockWatchAlerts)
       .slice(0, STOCK_WATCH_ALERT_LIMIT),
@@ -265,6 +278,7 @@ export function buildStockWatchDashboard(
       nextOrderDays: order.nextOrderDays,
       beforeDeliveryCount,
       beforeNextDeliveryCount,
+      horizonExtends: stockWatchHorizonExtends(order),
       warnings,
     });
   }

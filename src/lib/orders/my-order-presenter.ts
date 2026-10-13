@@ -1,4 +1,7 @@
+import { MY_ORDER_STATUS_TITLE } from "@/lib/orders/my-order-status-titles";
+import { PROCUREMENT_TEAM_LABEL_GENITIVE } from "@/lib/orders/procurement-copy";
 import { formatPlDate } from "@/lib/display-labels";
+import { timingOverdueSuffix } from "@/lib/orders/timing-overdue";
 import {
   estimateDeliveryEta,
   estimateOptionsFromQuantiles,
@@ -932,7 +935,7 @@ function presentZamowienie(
         : null;
     const leadPart =
       leadDays != null && leadDays > 0 ? ` · ~${leadDays} dni rob.` : "";
-    timingLabel = `Planowana dostawa: ${formatPlDate(teethDeliveryDate)}${leadPart}${overdue ? " · po terminie" : ""}`;
+    timingLabel = `Planowana dostawa: ${formatPlDate(teethDeliveryDate)}${leadPart}${timingOverdueSuffix(overdue)}`;
 
     const configuredLead =
       order.supplier_id && options?.teethLeadDaysBySupplierId
@@ -1014,9 +1017,9 @@ function presentZamowienie(
       }
       return finalize({
         ...base,
-        statusTitle: "Przed zamówieniem",
+        statusTitle: MY_ORDER_STATUS_TITLE.beforeOrder,
         statusDetail:
-          ["Prośba jest u działu dostaw. Złożymy zamówienie planowo (z innymi towarami) lub osobno."]
+          [`Prośba jest u ${PROCUREMENT_TEAM_LABEL_GENITIVE}. Złożymy zamówienie planowo (z innymi towarami) lub osobno.`]
             .filter(Boolean)
             .join(" "),
         timingLabel,
@@ -1047,7 +1050,7 @@ function presentZamowienie(
       }
       return finalize({
         ...base,
-        statusTitle: "Zamówione",
+        statusTitle: MY_ORDER_STATUS_TITLE.ordered,
         statusDetail: [
           orderTypeHintForSales(order.order_type),
           placement ? `Zamówiono ${formatPlDate(placement.slice(0, 10))}` : null,
@@ -1064,7 +1067,7 @@ function presentZamowienie(
     case "Czesciowo_zrealizowane":
       return finalize({
         ...base,
-        statusTitle: "Częściowo na magazynie",
+        statusTitle: MY_ORDER_STATUS_TITLE.partialOnStock,
         statusDetail: order.is_teeth
           ? teethHandoverStatusDetail(order, progress)
           : [
@@ -1173,7 +1176,7 @@ export function presentMyOrderGroup(
     timingLabel = salesZdPrimarySlotTimingLabel(zdFulfillment, overdue);
     if (overdue) {
       badgeVariant =
-        base.statusTitle === "Częściowo na magazynie" ? "warning" : "danger";
+        base.statusTitle === MY_ORDER_STATUS_TITLE.partialOnStock ? "warning" : "danger";
     }
   }
 
@@ -1286,7 +1289,7 @@ function attachPlannedOrderDate(
 ): MyOrderRow {
   if (!row.supplierId || !supplierScheduleById) return row;
   const waitingForSupplierOrder =
-    row.statusTitle === "Przed zamówieniem" ||
+    row.statusTitle === MY_ORDER_STATUS_TITLE.beforeOrder ||
     row.statusTitle === INFORMACJA_FLOW_SALES_AWAITING_PROCUREMENT.statusTitle;
   if (!waitingForSupplierOrder) return row;
 

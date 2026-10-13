@@ -250,7 +250,7 @@ describe("enrichMyOrderSalesUi", () => {
       {}
     );
     expect(row.statusTitle).toBe("Przed zamówieniem");
-    expect(row.statusDetail).toContain("działu dostaw");
+    expect(row.statusDetail).toContain("działu zakupów");
   });
 
   it("zęby w Weryfikacji - neutralny copy jak zwykłe produkty", () => {
@@ -263,7 +263,7 @@ describe("enrichMyOrderSalesUi", () => {
       {}
     );
     expect(row.statusTitle).toBe("W dziale dostaw");
-    expect(row.statusDetail).toContain("Dział dostaw");
+    expect(row.statusDetail).toContain("Dział zakupów");
   });
 
   it("oznacza opóźnienie po terminie", () => {
@@ -430,7 +430,7 @@ describe("verificationSublineFromDetail", () => {
   it("skraca komunikat weryfikacji do jednej linii", () => {
     expect(
       verificationSublineFromDetail(
-        "Dział dostaw dopasuje dostawcę. Prośba jest zapisana - nie musisz nic uzupełniać."
+        "Dział zakupów dopasuje dostawcę. Prośba jest zapisana - nie musisz nic uzupełniać."
       )
     ).toBe("Zakupy dopasują dostawcę - bez Twojej akcji");
     expect(verificationSublineFromDetail(null)).toContain("dopracują");

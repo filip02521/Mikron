@@ -219,7 +219,7 @@ export function deriveZkWatchProsbaCardAction(input: {
   } = input;
 
   if (lineCount <= 0) {
-    return { kind: "new_prosba", label: "Utwórz prośbę" };
+    return { kind: "new_prosba", label: "Zgłoś prośbę" };
   }
 
   if (uncoveredLineKeys.length === 0) {
@@ -229,7 +229,7 @@ export function deriveZkWatchProsbaCardAction(input: {
       partialLineKeys.length > 0 ||
       informacjaReadyLineKeys.length > 0
     ) {
-      return { kind: "view_open", label: "Otwórz prośbę" };
+      return { kind: "view_open", label: "Zobacz prośbę" };
     }
     // Tu już wiemy: brak otwartej prośby i openProsbaLineKeys — warunek
     // !hasOpenMatchingProsba && length === 0 byłby zawsze prawdziwy (CodeQL).
@@ -264,7 +264,7 @@ export function deriveZkWatchProsbaCardAction(input: {
 
   return {
     kind: "new_prosba",
-    label: count === lineCount ? "Utwórz prośbę" : `Utwórz prośbę (${count})`,
+    label: count === lineCount ? "Zgłoś prośbę" : `Zgłoś prośbę (${count})`,
     lineKeys: count === lineCount ? undefined : uncoveredLineKeys,
   };
 }
@@ -303,12 +303,12 @@ export function formatZkProsbaCardActionLabelAfterStockFilter(input: {
   if (stockLoading) return "Sprawdzam stan…";
 
   if (allOnStock) {
-    if (hasOpenMatchingProsba) return "Otwórz prośbę";
+    if (hasOpenMatchingProsba) return "Zobacz prośbę";
     if (explicitScopeSelection && sourceCount > 0) {
       if (action.kind === "supplement") {
         return sourceCount === 1 ? "Uzupełnij (1)" : `Uzupełnij (${sourceCount})`;
       }
-      return sourceCount === 1 ? "Utwórz prośbę (1)" : `Utwórz prośbę (${sourceCount})`;
+      return sourceCount === 1 ? "Utwórz prośbę (1)" : `Zgłoś prośbę (${sourceCount})`;
     }
     return action.kind === "supplement" ? "Na stanie" : "Wszystko na stanie";
   }
@@ -321,7 +321,7 @@ export function formatZkProsbaCardActionLabelAfterStockFilter(input: {
     return filteredCount === 1 ? "Uzupełnij (1)" : `Uzupełnij (${filteredCount})`;
   }
 
-  return filteredCount === 1 ? "Utwórz prośbę (1)" : `Utwórz prośbę (${filteredCount})`;
+  return filteredCount === 1 ? "Utwórz prośbę (1)" : `Zgłoś prośbę (${filteredCount})`;
 }
 
 /** Gdy filtr stanu wyklucza wszystko, ale jest otwarta prośba — przejdź do niej zamiast blokować CTA. */
@@ -338,7 +338,7 @@ export function applyZkProsbaStockFilterToCardAction(input: {
   if (explicitScopeSelection) return action;
   if (stockLoading || !allOnStock || !hasOpenMatchingProsba) return action;
   if (action.kind !== "supplement" && action.kind !== "new_prosba") return action;
-  return { kind: "view_open", label: "Otwórz prośbę" };
+  return { kind: "view_open", label: "Zobacz prośbę" };
 }
 
 /** Klucze pozycji do prefill prośby z akcji na karcie ZK. */

@@ -20,7 +20,7 @@ export function OcCheckImportForm() {
         setMessage({ ok: false, text: result.error });
         return;
       }
-      setMessage({ ok: true, text: `Zapisano: ${result.created} nowych, ${result.updated} zaktualizowanych.` });
+      setMessage({ ok: true, text: `Zapisano. Nowe: ${result.created}, zaktualizowane: ${result.updated}.` });
       setValue("");
       router.refresh();
     });

@@ -1,6 +1,7 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import { runRepairIncompleteIndividualOrders } from "@/lib/services/repair-incomplete-orders-runner";
 import { autoAcknowledgeStaleWarehouseInventory } from "@/lib/services/auto-ack-stale-shelf";
+import { markVerificationQueueSynced } from "@/lib/data/queries";
 
 export type OrderMaintenanceOnLoadOptions = {
   /** Uzupełnienie supplier_id w Weryfikacji — przed pierwszym fetch listy (/weryfikacja). */
@@ -18,8 +19,11 @@ export async function runOrderMaintenanceBeforePageLoad(
   if (!hasSupabaseConfig()) return;
 
   const supabase = createAdminClient();
+  // Po kolei: naprawa statusów widzi stan po auto-potwierdzeniu półki (rzadkie przypadki brzegowe).
   await autoAcknowledgeStaleWarehouseInventory(supabase);
   await runRepairIncompleteIndividualOrders(supabase);
+  // fetchVerificationOrders / countVerificationOrders w tym samym żądaniu nie powtórzą naprawy.
+  markVerificationQueueSynced();
 
   if (options.autoAssign) {
     const { autoAssignMissingSuppliersFromCatalog } = await import(

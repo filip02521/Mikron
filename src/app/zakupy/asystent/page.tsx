@@ -23,6 +23,7 @@ import {
   railClass,
   railGroupLabelClass,
   railItemClass,
+  railTabsClass,
   workspaceGridClass,
 } from "@/components/zakupy/asystent/workspace";
 import { OcCheckDetail } from "@/components/zakupy/oc-check/OcCheckDetail";
@@ -197,7 +198,7 @@ export default async function AsystentPage({
               <div
                 role="tablist"
                 aria-label="Widok spraw kontroli OC"
-                className="flex min-w-0 gap-1 overflow-x-auto lg:shrink-0 lg:overflow-visible 2xl:flex-col"
+                className={railTabsClass}
               >
                 {OC_VIEWS.map((v) => {
                   const active = v === view;
@@ -236,7 +237,8 @@ export default async function AsystentPage({
               )}
             </div>
 
-            <div className={cn("flex min-h-0 flex-col lg:overflow-y-auto", ocSelected ? "flex" : "hidden lg:flex")}>
+            {/* Bez wybranej sprawy kolumna jest też na telefonie — inaczej import i opis rutyny były tam nieosiągalne. */}
+            <div className="flex min-h-0 flex-col lg:overflow-y-auto">
               {ocSelected ? (
                 <OcCheckDetail check={ocSelected} backHref={ocCheckHref(view)} />
               ) : (
@@ -246,10 +248,10 @@ export default async function AsystentPage({
                       icon={<IconClipboardList size={22} />}
                       title="Wybierz sprawę z listy"
                       hint="Zobaczysz, które pozycje różnią się od ZD, i oznaczysz sprawę jako wyjaśnioną."
-                      className="flex-1"
+                      className="hidden flex-1 lg:flex"
                     />
                   ) : (
-                    <div className="flex-1 px-4 py-5 text-sm leading-relaxed text-slate-600 sm:px-5">
+                    <div className="px-4 py-4 text-sm leading-relaxed text-slate-600 sm:px-5 lg:flex-1 lg:py-5">
                       Rutyna porównuje potwierdzenia z ZD w dni robocze o 9:07, 11:07, 13:07 i 15:07. Sprawy do decyzji trafiają do „Do
                       ruchu”, zgodne potwierdzenia do „Zgodne”.
                     </div>
@@ -278,19 +280,23 @@ export default async function AsystentPage({
         ) : null}
 
         {section === "raporty" ? (
-          <div className="min-h-0 p-4 sm:p-6 lg:overflow-y-auto">
-            <ul className="grid max-w-4xl gap-4 md:grid-cols-2">
+          <div className="min-h-0 lg:overflow-y-auto">
+            {/* Wiersze w panelu, nie karty w karcie: tytuł i opis po lewej, akcja po prawej (na telefonie pod spodem). */}
+            <ul className="divide-y divide-slate-100">
               {reports.map((report) => (
-                <li key={report.key} className="flex flex-col gap-4 rounded-lg border border-slate-200 p-5">
-                  <div className="space-y-1.5">
+                <li
+                  key={report.key}
+                  className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-8 sm:px-6 sm:py-5"
+                >
+                  <div className="max-w-2xl space-y-1">
                     <h2 className="text-base font-semibold tracking-tight text-slate-900">{report.title}</h2>
                     <p className="text-sm leading-relaxed text-slate-600">{report.description}</p>
-                    <p className="flex items-center gap-1.5 text-xs text-slate-500 tabular-nums">
+                    <p className="flex items-center gap-1.5 pt-0.5 text-xs text-slate-500 tabular-nums">
                       <IconClock size={14} aria-hidden className="text-slate-400" />
                       {report.schedule}
                     </p>
                   </div>
-                  <div className="mt-auto">
+                  <div className="shrink-0 sm:max-w-xs sm:pt-0.5">
                     {report.url ? (
                       <a
                         href={report.url}
