@@ -281,8 +281,8 @@ export function buildProsbaAlreadyOrderedView(
         : `W drodze wolne ${formatPieces(free)} - termin nieznany`,
       details,
       advice: late
-        ? "Dostawa się spóźnia. Zapytaj zakupy o nowy termin - jeśli klient może czekać, wystarczy powiadomienie."
-        : "Nie znaleźliśmy terminu w ZD. Jeśli klient może czekać, wystarczy powiadomienie.",
+        ? "Termin ZD minął — sprawdź u zakupów."
+        : "Brak terminu w ZD.",
       suggestNotify: true,
       confirmOnSubmit: false,
     };
@@ -293,7 +293,7 @@ export function buildProsbaAlreadyOrderedView(
     badge: "W drodze, wolne",
     title: `Towar jest w drodze - wolne ${formatPieces(free)}`,
     details,
-    advice: "Nowe zamówienie nie przyspieszy tej dostawy. Wystarczy powiadomienie, gdy towar będzie na stanie.",
+    advice: "Możesz zamiast tego poprosić o powiadomienie.",
     suggestNotify: true,
     confirmOnSubmit: true,
   };

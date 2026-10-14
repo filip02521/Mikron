@@ -37,13 +37,13 @@ describe("ProsbaAlreadyOrderedHint", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("w drodze i wolne: liczba, pasek, ZD z terminem i akcja powiadomienia", () => {
+  it("w drodze i wolne: liczba, ZD z terminem i akcja powiadomienia", () => {
     const onNotify = vi.fn();
     render(<ProsbaAlreadyOrderedHint info={free} requestedQty={2} onSwitchToNotify={onNotify} />);
     const status = screen.getByRole("status");
     expect(status.textContent).toContain("Towar jest w drodze - wolne 10 szt.");
     expect(status.textContent).toContain("ZD 123/10 · 50 szt. · z 06.10 · termin 21.10");
-    expect(screen.getByRole("img", { name: "W drodze: 20% wolne" })).toBeTruthy();
+    expect(screen.queryByRole("img")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Tylko powiadom, gdy dotrze" }));
     expect(onNotify).toHaveBeenCalledTimes(1);
   });
@@ -86,7 +86,6 @@ describe("ProsbaAlreadyOrderedHint", () => {
   });
 });
 
-
 function line(over: Partial<ProductLineDraft> = {}): ProductLineDraft {
   return {
     id: "l1",
@@ -116,16 +115,21 @@ const freeFuture: ProsbaAlreadyOrderedInfo = {
 };
 
 describe("ProsbaAvailabilityCard", () => {
-  it("jedna karta: werdykt, liczby (stan · w drodze · wolne), ZD z terminem, akcja", () => {
+  it("panele: werdykt, stan · w drodze · wolne, ZD, akcja", () => {
     render(
       <ProsbaAvailabilityCard line={line()} requestKind="zamowienie" info={freeFuture} onSwitchToNotify={() => {}} />
     );
     const card = screen.getByRole("region", { name: "Dostępność towaru" });
     expect(card.textContent).toContain("Towar jest w drodze - wolne 26 szt.");
-    expect(card.textContent).toContain("Na stanie0 szt.");
-    expect(card.textContent).toContain("W drodze35 szt.ZK 9");
-    expect(card.textContent).toContain("Wolne26 szt.");
+    expect(card.textContent).toContain("Na stanie");
+    expect(card.textContent).toContain("0 szt.");
+    expect(card.textContent).toContain("W drodze");
+    expect(card.textContent).toContain("35 szt.");
+    expect(card.textContent).toContain("ZK 9");
+    expect(card.textContent).toContain("Wolne z dostawy");
+    expect(card.textContent).toContain("26 szt.");
     expect(card.textContent).toContain("ZD 5/10/2026 · 35 szt. · z 06.10 · termin 21.10");
+    expect(card.querySelector("dl")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Tylko powiadom, gdy dotrze" })).toBeTruthy();
   });
 
@@ -139,16 +143,41 @@ describe("ProsbaAvailabilityCard", () => {
       />
     );
     const card = screen.getByRole("region", { name: "Dostępność towaru" });
-    expect(card.textContent).toContain("Wystarczający stan magazynowy");
-    expect(card.textContent).toContain("może wystarczy wydać z magazynu");
+    expect(card.textContent).toContain("Wystarczy z półki");
+    expect(card.textContent).toContain("12 szt.");
+    expect(card.textContent).not.toContain("Potrzebujesz");
     expect(screen.queryByRole("button", { name: /powiadom/ })).toBeNull();
   });
 
   it("w trakcie sprawdzania dostawy — stan od razu, w drodze „…”", () => {
     render(<ProsbaAvailabilityCard line={line()} requestKind="zamowienie" info={undefined} checking />);
     const card = screen.getByRole("region", { name: "Dostępność towaru" });
-    expect(card.textContent).toContain("Brak dostępnego stanu");
-    expect(card.textContent).toContain("W drodze…");
+    expect(card.textContent).toContain("Brak na stanie");
+    expect(card.textContent).toMatch(/W drodze…|…/);
+  });
+
+  it("bez dostawy — Wolne z dostawy to „—”, nie 0", () => {
+    render(
+      <ProsbaAvailabilityCard
+        line={line({ onHand: 6, available: 6 })}
+        requestKind="zamowienie"
+        info={{
+          own: [],
+          incoming: {
+            incoming: 0,
+            available: 6,
+            zkWaiting: 8,
+            freeIncoming: 0,
+            docs: [],
+          },
+        }}
+      />
+    );
+    const card = screen.getByRole("region", { name: "Dostępność towaru" });
+    // DOM: <dt> przed <dd> (wizualnie odwrotnie przez CSS order).
+    expect(card.textContent).toMatch(/Wolne z dostawy—/);
+    expect(card.textContent).not.toMatch(/Wolne z dostawy0 szt/);
+    expect(card.textContent).toMatch(/W drodze—/);
   });
 
   it("kilka pozycji: zamiast przełącznika — wskazówka i usunięcie pozycji", () => {
@@ -157,7 +186,7 @@ describe("ProsbaAvailabilityCard", () => {
       <ProsbaAvailabilityCard line={line()} requestKind="zamowienie" info={freeFuture} onRemoveLine={onRemove} />
     );
     expect(screen.getByRole("region", { name: "Dostępność towaru" }).textContent).toContain(
-      "usuń tę i dodaj ją osobno"
+      "usuń tę i złóż osobno"
     );
     fireEvent.click(screen.getByRole("button", { name: "Usuń tę pozycję" }));
     expect(onRemove).toHaveBeenCalledTimes(1);
@@ -168,5 +197,34 @@ describe("ProsbaAvailabilityCard", () => {
       <ProsbaAvailabilityCard line={line()} requestKind="informacja" info={freeFuture} />
     );
     expect(container.firstChild).toBeNull();
+  });
+
+  it("jedna sekcja: najpierw dostępność, meta dostawcy na końcu", () => {
+    render(
+      <ProsbaAvailabilityCard
+        line={line()}
+        requestKind="zamowienie"
+        info={freeFuture}
+        onSwitchToNotify={() => {}}
+        supplierTiming={{
+          supplierId: "sup-1",
+          suppliers: [{ id: "sup-1", name: "Alpha Dental", stats_mode: "LACZNIE" }],
+          supplierScheduleById: {
+            "sup-1": {
+              computedNextDate: "2099-03-15",
+              orderOnDemand: false,
+            },
+          },
+          todayDateKey: "2099-03-01",
+          statsBySupplierId: {},
+          showLeadTime: false,
+        }}
+      />
+    );
+    const card = screen.getByRole("region", { name: "Dostępność towaru" });
+    expect(card.textContent).toContain("Towar jest w drodze");
+    expect(card.textContent).toContain("Alpha Dental");
+    expect(card.textContent).toMatch(/15\.03/);
+    expect(screen.queryByLabelText("Dostawca pozycji")).toBeNull();
   });
 });

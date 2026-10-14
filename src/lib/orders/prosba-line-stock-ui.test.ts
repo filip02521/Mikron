@@ -56,7 +56,7 @@ describe("buildProsbaLineStockStatusView", () => {
     );
     expect(view?.assessment).toBe("insufficient");
     expect(view?.tone).toBe("sky");
-    expect(view?.title).toContain("Częściowy");
+    expect(view?.title).toBe("Za mało z półki");
   });
 
   it("brak stanu - ton slate", () => {
@@ -86,12 +86,13 @@ describe("buildProsbaLineStockStatusView", () => {
       "zamowienie"
     );
     expect(view?.assessment).toBe("sufficient");
-    expect(view?.detail).toContain("rezerwacja 3 szt.");
-    expect(view?.detail).toContain("na stanie 10 szt.");
+    expect(view?.title).toBe("Wystarczy z półki");
+    expect(view?.detail).toContain("7 szt.");
+    expect(view?.detail).toContain("−3 rez.");
     expect(view?.shortLabel).toContain("−3 rez.");
   });
 
-  it("częściowy stan z rezerwacją - pokazuje rezerwację w detail i shortLabel", () => {
+  it("częściowy stan z rezerwacją - rezerwacja w shortLabel i detail", () => {
     const view = buildProsbaLineStockStatusView(
       line({
         stockSource: "subiekt",
@@ -103,7 +104,8 @@ describe("buildProsbaLineStockStatusView", () => {
       "zamowienie"
     );
     expect(view?.assessment).toBe("insufficient");
-    expect(view?.detail).toContain("rezerwacja 2 szt.");
+    expect(view?.title).toBe("Za mało z półki");
+    expect(view?.detail).toContain("3 szt.");
     expect(view?.shortLabel).toContain("−2 rez.");
   });
 });
@@ -126,7 +128,6 @@ describe("formatProsbaStockLineHint", () => {
       available: 10,
     });
     expect(hint).toContain("10 szt.");
-    expect(hint).toContain("3 szt.");
-    expect(hint).toContain("Wystarczający stan magazynowy");
+    expect(hint).toContain("Wystarczy z półki");
   });
 });

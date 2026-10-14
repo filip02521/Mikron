@@ -3,6 +3,7 @@ import {
   fetchSalesPeople,
   fetchSupplierFormContext,
   fetchSuppliersOnVacationNow,
+  fetchSuppliersWithSchedules,
 } from "@/lib/data/queries";
 import { OrderFormClient } from "@/components/orders/OrderFormClient";
 import { getSessionUser } from "@/lib/auth";
@@ -25,6 +26,14 @@ import { Alert } from "@/components/ui/Alert";
 import { salesPageShellClass, brandLinkClass } from "@/lib/ui/ontime-theme";
 import { logDevPageError } from "@/lib/dev/log-page-error";
 import type { SupplierOnVacationWindow } from "@/lib/orders/procurement-supplier-vacation";
+import type { SupplierScheduleSnapshot } from "@/lib/orders/my-order-presenter";
+import {
+  buildProsbaPlannedOrderWeekDays,
+  buildProsbaSupplierScheduleById,
+} from "@/lib/orders/prosba-planned-order-display";
+import { formatDateString } from "@/lib/orders/dates";
+import { todayInWarsaw } from "@/lib/time/warsaw";
+import type { WeekDayPlan } from "@/lib/orders/summary-workspace";
 
 import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
@@ -49,24 +58,42 @@ export default async function ProsbaPage({
     ReturnType<typeof fetchSupplierFormContext>
   >["etaQuantilesBySupplierId"] = {};
   let suppliersOnVacationNow: Record<string, SupplierOnVacationWindow> = {};
+  let supplierScheduleById: Record<string, SupplierScheduleSnapshot> = {};
+  let plannedOrderWeekDays: WeekDayPlan[] = [];
   let salesPeople: { id: string; name: string }[] = [];
   let lockedSalesPerson: { id: string; name: string } | null = null;
   let isSales = false;
   let isManager = false;
   let managerSelfId: string | null = null;
 
-  try {
-    const [ctx, onVacation] = await Promise.all([
+  {
+    const [ctxResult, vacationResult, scheduleResult] = await Promise.allSettled([
       fetchSupplierFormContext(),
       fetchSuppliersOnVacationNow(),
+      fetchSuppliersWithSchedules(undefined, { activeOnly: true }),
     ]);
-    suppliers = ctx.suppliers;
-    statsBySupplierId = ctx.statsBySupplierId;
-    etaUseP50 = ctx.etaUseP50;
-    etaQuantilesBySupplierId = ctx.etaQuantilesBySupplierId;
-    suppliersOnVacationNow = onVacation;
-  } catch (error) {
-    logDevPageError("prosba/page:suppliers", error);
+    if (ctxResult.status === "fulfilled") {
+      suppliers = ctxResult.value.suppliers;
+      statsBySupplierId = ctxResult.value.statsBySupplierId;
+      etaUseP50 = ctxResult.value.etaUseP50;
+      etaQuantilesBySupplierId = ctxResult.value.etaQuantilesBySupplierId;
+    } else {
+      logDevPageError("prosba/page:suppliers", ctxResult.reason);
+    }
+    if (vacationResult.status === "fulfilled") {
+      suppliersOnVacationNow = vacationResult.value;
+    } else {
+      logDevPageError("prosba/page:vacation", vacationResult.reason);
+    }
+    if (scheduleResult.status === "fulfilled") {
+      supplierScheduleById = buildProsbaSupplierScheduleById(scheduleResult.value);
+      plannedOrderWeekDays = buildProsbaPlannedOrderWeekDays(
+        supplierScheduleById,
+        formatDateString(todayInWarsaw())
+      );
+    } else {
+      logDevPageError("prosba/page:schedules", scheduleResult.reason);
+    }
   }
 
   try {
@@ -162,8 +189,10 @@ export default async function ProsbaPage({
             forceReadOnly
             suppliersOnVacationNow={suppliersOnVacationNow}
             statsBySupplierId={statsBySupplierId}
-          etaUseP50={etaUseP50}
-          etaQuantilesBySupplierId={etaQuantilesBySupplierId}
+            etaUseP50={etaUseP50}
+            etaQuantilesBySupplierId={etaQuantilesBySupplierId}
+            supplierScheduleById={supplierScheduleById}
+            plannedOrderWeekDays={plannedOrderWeekDays}
           />
         </Suspense>
       </DelegateModeBackground>
@@ -239,6 +268,8 @@ export default async function ProsbaPage({
           statsBySupplierId={statsBySupplierId}
           etaUseP50={etaUseP50}
           etaQuantilesBySupplierId={etaQuantilesBySupplierId}
+          supplierScheduleById={supplierScheduleById}
+          plannedOrderWeekDays={plannedOrderWeekDays}
         />
       ) : (
         <OrderFormClient
@@ -253,6 +284,8 @@ export default async function ProsbaPage({
           statsBySupplierId={statsBySupplierId}
           etaUseP50={etaUseP50}
           etaQuantilesBySupplierId={etaQuantilesBySupplierId}
+          supplierScheduleById={supplierScheduleById}
+          plannedOrderWeekDays={plannedOrderWeekDays}
         />
       )}
       </Suspense>

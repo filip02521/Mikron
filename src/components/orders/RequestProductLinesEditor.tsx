@@ -4,7 +4,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { IndividualRequestKind, DeliveryStats } from "@/types/database";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
-import { IconPlusCircle } from "@/components/icons/StrokeIcons";
+import {
+  IconChevronDown,
+  IconPlusCircle,
+  IconTrash2,
+} from "@/components/icons/StrokeIcons";
 import { SubiektClientNameField } from "@/components/subiekt/SubiektClientNameField";
 import { SubiektProductLineFields } from "@/components/subiekt/SubiektProductLineFields";
 import { ProsbaProductLineCollapsedRow } from "@/components/orders/ProsbaProductLineCollapsedRow";
@@ -34,6 +38,15 @@ import {
   ProsbaAvailabilityCard,
   ProsbaNotifySwitchedNote,
 } from "@/components/orders/ProsbaAlreadyOrderedHint";
+import type { SupplierScheduleSnapshot } from "@/lib/orders/my-order-presenter";
+import type { WeekDayPlan } from "@/lib/orders/summary-workspace";
+import type { SupplierOnVacationWindow } from "@/lib/orders/procurement-supplier-vacation";
+import {
+  buildProsbaSupplierVacationNoticeModel,
+  type ProsbaVacationHit,
+} from "@/lib/orders/prosba-supplier-vacation-copy";
+import { formatDateString } from "@/lib/orders/dates";
+import { todayInWarsaw } from "@/lib/time/warsaw";
 import {
   buildProsbaAlreadyOrderedView,
   prosbaAlreadyOrderedStockTone,
@@ -111,6 +124,10 @@ export function RequestProductLinesEditor({
   alreadyOrderedForSalesPersonId = null,
   alreadyOrderedForOther = false,
   onRequestKindChange,
+  supplierScheduleById = {},
+  plannedOrderWeekDays = [],
+  suppliersOnVacationNow = {},
+  showLineSupplierTiming = false,
 }: {
   lines: ProductLineDraft[];
   onChange: (lines: ProductLineDraft[]) => void;
@@ -194,6 +211,12 @@ export function RequestProductLinesEditor({
   alreadyOrderedForSalesPersonId?: string | null;
   /** Prośba w imieniu innego handlowca — teksty bez „Twoja”. */
   alreadyOrderedForOther?: boolean;
+  /** Harmonogram dostawców — Planowe zamówienie przy pozycji (nie całej prośbie). */
+  supplierScheduleById?: Record<string, SupplierScheduleSnapshot>;
+  plannedOrderWeekDays?: WeekDayPlan[];
+  suppliersOnVacationNow?: Record<string, SupplierOnVacationWindow>;
+  /** Sales `/prosba`: meta dostawcy per linia (po resolucji Subiekta). */
+  showLineSupplierTiming?: boolean;
   /**
    * „Tylko powiadom, gdy dotrze” / „Cofnij” — zmiana rodzaju całej prośby
    * (informacja ↔ zamówienie). Formularz ustawia ścieżkę „Powiadom, gdy będzie na magazynie”.
@@ -502,70 +525,41 @@ export function RequestProductLinesEditor({
             />
           ) : null;
 
+        const canCollapseActive =
+          prosba && canCollapseProsbaLine(line, requestKind, collapseOptions);
+
         return (
           <div
             key={line.id}
             className={cn(
               wrapLine
                 ? prosba
-                  ? "rounded-md border border-slate-200 bg-white p-3 shadow-sm sm:p-4"
+                  ? cn(
+                      "relative overflow-hidden rounded-lg border bg-white",
+                      isActive
+                        ? "border-indigo-300 shadow-sm ring-1 ring-indigo-200/70"
+                        : "border-slate-200/90"
+                    )
                   : "rounded-md border border-dashed border-slate-200 bg-slate-50/50 p-3"
                 : "space-y-3"
             )}
           >
-            {(() => {
-              const canCollapseActive =
-                prosba &&
-                canCollapseProsbaLine(line, requestKind, collapseOptions);
-              const collapseButton = canCollapseActive ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="min-h-9 text-slate-600 hover:bg-slate-50"
-                  onClick={() => setFocusedLineId(null)}
-                >
-                  Zwiń
-                </Button>
-              ) : null;
-              const removeButton = canRemove ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="min-h-9 text-red-700 hover:bg-red-50"
-                  onClick={() => removeLine(index)}
-                >
-                  Usuń
-                </Button>
-              ) : null;
-              if (showLineLabel) {
-                return (
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold text-slate-500">
-                      {prosba ? `Produkt ${index + 1}` : `Pozycja ${index + 1}`}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      {collapseButton}
-                      {removeButton}
-                    </div>
-                  </div>
-                );
-              }
-              if (collapseButton || removeButton) {
-                return (
-                  <div className="mb-2 flex justify-end gap-1">
-                    {collapseButton}
-                    {removeButton}
-                  </div>
-                );
-              }
-              return null;
-            })()}
+            {prosba && showLineLabel ? (
+              <span className="pointer-events-none absolute left-3 top-2 z-[1] text-[11px] font-semibold tabular-nums text-slate-400">
+                {index + 1}.
+              </span>
+            ) : null}
 
+            <div
+              className={cn(
+                prosba && wrapLine && "p-3 sm:p-3.5",
+                prosba && showLineLabel && "pt-5"
+              )}
+            >
             <SubiektProductLineFields
               appearance={appearance}
               salesProsbaForm={salesProsbaForm}
+              compactControls={prosba}
               requestKind={requestKind}
               productFieldClassName={prosba ? undefined : "sm:col-span-2"}
               suppliers={suppliers}
@@ -693,24 +687,67 @@ export function RequestProductLinesEditor({
               />
             ) : null}
 
-            {prosba && alreadyOrderedCheck && line.subiektTwId != null ? (
+            {prosba &&
+            ((alreadyOrderedCheck && line.subiektTwId != null) ||
+              (showLineSupplierTiming && Boolean(line.supplierId?.trim()))) ? (
               <ProsbaAvailabilityCard
                 line={line}
                 requestKind={requestKind}
-                info={alreadyOrdered[line.subiektTwId]}
-                checking={alreadyOrderedChecking.has(line.subiektTwId)}
+                info={
+                  line.subiektTwId != null
+                    ? alreadyOrdered[line.subiektTwId]
+                    : undefined
+                }
+                checking={
+                  line.subiektTwId != null &&
+                  alreadyOrderedChecking.has(line.subiektTwId)
+                }
                 onSwitchToNotify={
-                  lines.length === 1 && onRequestKindChange
+                  alreadyOrderedCheck &&
+                  lines.length === 1 &&
+                  onRequestKindChange
                     ? () => {
                         setNotifySwitchLineId(line.id);
                         onRequestKindChange("informacja");
                       }
                     : undefined
                 }
-                onRemoveLine={canRemove ? () => removeLine(index) : undefined}
+                onRemoveLine={
+                  alreadyOrderedCheck && canRemove
+                    ? () => removeLine(index)
+                    : undefined
+                }
                 forOther={alreadyOrderedForOther}
                 focusNotifyOnMount={refocusNotifyLineId === line.id}
                 onNotifyFocused={() => setRefocusNotifyLineId(null)}
+                supplierTiming={
+                  showLineSupplierTiming && line.supplierId?.trim()
+                    ? {
+                        supplierId: line.supplierId,
+                        suppliers: formSuppliers ?? [],
+                        supplierScheduleById,
+                        plannedOrderWeekDays,
+                        todayDateKey: formatDateString(todayInWarsaw()),
+                        statsBySupplierId: statsBySupplierId ?? {},
+                        etaUseP50,
+                        etaQuantilesBySupplierId,
+                        showLeadTime: requestKind === "zamowienie",
+                        vacationNoticeModel: (() => {
+                          const id = line.supplierId!.trim();
+                          const window = suppliersOnVacationNow[id];
+                          if (!window) return null;
+                          const hit: ProsbaVacationHit = {
+                            supplierId: id,
+                            supplierName:
+                              formSuppliers?.find((s) => s.id === id)?.name?.trim() ||
+                              id,
+                            window,
+                          };
+                          return buildProsbaSupplierVacationNoticeModel([hit]);
+                        })(),
+                      }
+                    : null
+                }
                 className="mt-2"
               />
             ) : null}
@@ -758,6 +795,55 @@ export function RequestProductLinesEditor({
                 audience={noteAudience}
                 className={showClientField || wrapLine ? "mt-2" : undefined}
               />
+            ) : null}
+
+            {!prosba && canRemove ? (
+              <div className="mt-2 flex justify-end">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="min-h-9 text-red-700 hover:bg-red-50"
+                  onClick={() => removeLine(index)}
+                >
+                  Usuń
+                </Button>
+              </div>
+            ) : null}
+            </div>
+
+            {/* Uchwyt zwijania — na dole karty, zero rzędu nad inputami. */}
+            {prosba && wrapLine && (canCollapseActive || canRemove) ? (
+              <div className="flex items-stretch border-t border-slate-200/80 bg-slate-50/80">
+                {canRemove ? (
+                  <button
+                    type="button"
+                    className="inline-flex min-h-10 shrink-0 items-center gap-1.5 px-3 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 active:scale-[0.98]"
+                    onClick={() => removeLine(index)}
+                    aria-label="Usuń pozycję"
+                  >
+                    <IconTrash2 size={14} className="shrink-0" />
+                    Usuń
+                  </button>
+                ) : null}
+                {canCollapseActive ? (
+                  <button
+                    type="button"
+                    className={cn(
+                      "inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 text-xs font-semibold text-slate-700 transition-colors",
+                      "hover:bg-slate-100/90 hover:text-slate-900 active:scale-[0.99]",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500/40"
+                    )}
+                    onClick={() => setFocusedLineId(null)}
+                    aria-label="Zwiń pozycję"
+                  >
+                    <IconChevronDown open size={15} className="text-slate-500" />
+                    Zwiń
+                  </button>
+                ) : (
+                  <span className="flex-1" aria-hidden />
+                )}
+              </div>
             ) : null}
           </div>
         );

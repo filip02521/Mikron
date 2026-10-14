@@ -15,14 +15,16 @@ import type { FormMessage, TransientNotice } from "@/lib/ui/notice-content";
 import { Field, Select } from "@/components/ui/Field";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
 import { ProsbaSupplierLeadTimeMeta } from "@/components/orders/ProsbaSupplierLeadTimeMeta";
+import { RequestKindToggle } from "@/components/orders/RequestKindToggle";
 import type { DeliveryStats, IndividualRequestKind } from "@/types/database";
+import type { SupplierScheduleSnapshot } from "@/lib/orders/my-order-presenter";
+import type { WeekDayPlan } from "@/lib/orders/summary-workspace";
 import type { TeethManufacturer, TeethLineDetail, TeethProductLine, TeethKind } from "@/lib/teeth/teeth-catalog";
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
 import { prosbaHref } from "@/lib/orders/prosba-url";
 import { IconLayers, IconPlusCircle, IconUserCog, IconUserGroup } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { cn } from "@/lib/cn";
-import { sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
 import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
 import { ProsbaFormMetaStrip } from "@/components/orders/ProsbaFormMetaStrip";
 import { ProsbaPageToolbar } from "@/components/orders/ProsbaPageToolbar";
@@ -188,6 +190,8 @@ export function OrderFormClient({
   statsBySupplierId = {},
   etaUseP50 = false,
   etaQuantilesBySupplierId = {},
+  supplierScheduleById = {},
+  plannedOrderWeekDays = [],
 }: {
   suppliers: OrderFormSupplierOption[];
   salesPeople: { id: string; name: string }[];
@@ -213,6 +217,9 @@ export function OrderFormClient({
     string,
     import("@/lib/orders/delivery-eta-quantiles-load").DeliveryEtaSupplierQuantiles
   >;
+  /** Harmonogramy dostawców — Planowe zamówienie na `/prosba`. */
+  supplierScheduleById?: Record<string, SupplierScheduleSnapshot>;
+  plannedOrderWeekDays?: WeekDayPlan[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1609,25 +1616,12 @@ export function OrderFormClient({
       });
     const canSubmitProsba = salesProsbaSubmitState?.canSubmit ?? false;
     const zkCatalogLocked = Boolean(zkProsbaLinkContext?.allowedTwIds?.size);
-    /** Prefill z harmonogramu (?dostawca=) — pokazuj, dopóki Subiekt nie wskaże innego dostawcy. */
-    const scheduleSupplier =
-      initialSupplierId && group[0]?.supplierId === initialSupplierId
-        ? suppliers.find((s) => s.id === initialSupplierId) ?? null
-        : null;
-
-    const vacationHits = collectProsbaVacationHits(group, suppliersOnVacationNow, {
-      fallbackSupplierId: initialSupplierId,
-      supplierNames: Object.fromEntries(suppliers.map((s) => [s.id, s.name])),
-    });
-    const vacationNoticeModel = !tourDemo
-      ? buildProsbaSupplierVacationNoticeModel(vacationHits)
-      : null;
 
     const mojeHref = submitForOther ? `/moje?dla=${lockedSalesPerson.id}` : "/moje";
     const mojeLabel = submitForOther ? "Prośby handlowca" : "Moje zamówienia";
 
     return (
-      <div className={cn("relative space-y-5", msg && "pb-44")}>
+      <div className={cn("relative space-y-6", msg && "pb-44")}>
         {pendingMessage ? (
           <ActionLoadingOverlay
             message={pendingMessage}
@@ -1638,320 +1632,323 @@ export function OrderFormClient({
         {toastSlot}
         {stockConfirmDialog}
 
-        <ProsbaPageToolbar mojeHref={mojeHref} mojeLabel={mojeLabel} />
-
-        <Card
-          padding={false}
-          className={cn(
-            // clip, nie hidden — hidden tworzy kontener przewijania i psuje sticky stopkę „Wyślij”.
-            zkProsbaLinkContext && !tourDemo ? "overflow-visible" : "overflow-clip"
-          )}
-        >
-          <div className={cn(tourDemo && "pointer-events-none select-none")}>
-          <CardHeader
-            inset
-            density="compact"
-            leading={
-              <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
-                <IconPlusCircle size={20} />
-              </SectionHeadingIcon>
-            }
-            title={
-              zkProsbaLinkContext && !tourDemo
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
+              {zkProsbaLinkContext && !tourDemo
                 ? ZK_PROSBA_LINK_BANNER_COPY.formTitle
-                : "Nowa prośba"
-            }
-            hint={submitForOther ? undefined : PROSBA_PAGE_HEADER_HINTS.newRequest}
-            hintAriaLabel="O formularzu prośby"
-            description={
-              submitForOther
-                ? `Zgłaszasz w imieniu: ${lockedSalesPerson.name}. Po wysłaniu prośba pojawi się w jego liście „Moje zamówienia”.`
-                : zkProsbaLinkContext && !tourDemo
-                  ? // Tytuł „Tworzysz prośbę…” jest w banerze poniżej — tu tylko ZK i klient.
-                    [
-                      `ZK ${zkProsbaLinkContext.zkNumber.trim().replace(/^zk\s*/i, "")}`,
-                      zkProsbaLinkContext.clientLabel?.trim() || null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")
-                  : undefined
-            }
-          />
-
-          {tourDemo ? (
-            <div className="border-b border-amber-200/90 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-950 sm:px-4">
-              Podgląd formularza z przykładowymi pozycjami - edycja i wysyłka są wyłączone.
-            </div>
-          ) : null}
-
-          {zkProsbaLinkContext && !tourDemo ? (
-            <ZkProsbaLinkBanner
-              zkNumber={zkProsbaLinkContext.zkNumber}
-              zkWatchId={zkProsbaLinkContext.zkWatchId}
-              salesPersonId={lockedId}
-              previewDla={searchParams.get("dla")}
-              clientLabel={zkProsbaLinkContext.clientLabel}
-              mode={zkProsbaLinkContext.mode}
-              supplementLineCount={zkProsbaLinkContext.supplementLineCount}
-              catalogLocked={zkCatalogLocked}
-              caseNoteIncluded={zkCaseNoteStillOnLines}
-            />
-          ) : null}
-
-          {zkQuantityFormBanner ? (
-            <div
-              className="border-b border-indigo-200/80 bg-indigo-50/70 px-3 py-2.5 text-xs leading-relaxed text-indigo-950 sm:px-4"
-              role="status"
-            >
-              {zkQuantityFormBanner}
-            </div>
-          ) : null}
-
-          {scheduleSupplier && !tourDemo ? (
-            <div
-              className="border-b border-indigo-100 bg-indigo-50/90 px-3 py-2.5 text-sm text-indigo-950 sm:px-4"
-              role="status"
-            >
-              <p className="leading-snug">
-                <span className="font-medium">Dostawca z harmonogramu:</span>{" "}
-                <span className="font-semibold text-indigo-900">
-                  {scheduleSupplier.name}
+                : "Nowa prośba"}
+            </h1>
+            {submitForOther ? (
+              <p className="mt-1 text-sm text-slate-600">
+                W imieniu:{" "}
+                <span className="font-medium text-slate-800">
+                  {lockedSalesPerson.name}
                 </span>
               </p>
-              <p className="mt-1 text-xs leading-relaxed text-indigo-800/85">
-                Prośba trafi do tego dostawcy. Jeśli wybierzesz produkt z Subiekta
-                przypisany do innego dostawcy, dopasowanie zaktualizuje się
-                automatycznie.
+            ) : zkProsbaLinkContext && !tourDemo ? (
+              <p className="mt-1 text-sm text-slate-600">
+                {[
+                  `ZK ${zkProsbaLinkContext.zkNumber.trim().replace(/^zk\s*/i, "")}`,
+                  zkProsbaLinkContext.clientLabel?.trim() || null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </p>
-              {requestKind === "zamowienie" ? (
-                <ProsbaSupplierLeadTimeMeta
-                  className="mt-2"
-                  supplierIds={[scheduleSupplier.id]}
-                  suppliers={suppliers}
-                  statsBySupplierId={statsBySupplierId}
-                  etaUseP50={etaUseP50}
-                  etaQuantilesBySupplierId={etaQuantilesBySupplierId}
-                  showSupplierNames={false}
-                />
-              ) : null}
-            </div>
-          ) : null}
-
-          <div
-            className={cn(
-              "space-y-3 p-3 sm:p-4",
-              tourDemo && "pointer-events-none select-none"
-            )}
-          >
-            {delegatePeople && delegatePeople.length > 0 ? (
-              <ProsbaFormSection
-                title={PROSBA_FORM_SECTION_COPY.delegate.title}
-                hint={PROSBA_FORM_SECTION_COPY.delegate.hint}
-                accent="indigo"
-                icon={<IconUserCog size={17} />}
-                tileClassName="bg-indigo-100 text-indigo-800"
-              >
-                <Field labelClassName="inline-flex min-h-6 items-center" label="Handlowiec">
-                  <Select
-                    value={lockedSalesPerson.id}
-                    onChange={(e) => {
-                      const id = e.target.value;
-                      router.push(
-                        prosbaHref({
-                          salesPersonId:
-                            managerSelfId && id === managerSelfId ? undefined : id,
-                        })
-                      );
-                    }}
-                  >
-                    {delegatePeople.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {managerSelfId && p.id === managerSelfId
-                          ? `${p.name} (ja)`
-                          : p.name}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </ProsbaFormSection>
             ) : null}
+          </div>
+          <ProsbaPageToolbar mojeHref={mojeHref} mojeLabel={mojeLabel} />
+        </div>
 
-            <ProsbaFormRequestKindSection
-              value={requestKind}
-              disabled={pending || tourDemo}
-              onChange={(kind) => {
-                setRequestKind(kind);
-                if (kind === "informacja") setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
-                else setInformacjaPath("direct");
-              }}
-            />
-
-            {requestKind === "informacja" ? (
-              <ProsbaFormInformacjaSection
-                path={informacjaPath}
-                onChange={setInformacjaPath}
-                disabled={pending || tourDemo}
-              />
-            ) : null}
-
-            <ProsbaFormProductsSection
-              requestKind={requestKind}
-              informacjaPath={informacjaPath}
-              showShortageLookup={
-                !zkPrefillLoading &&
-                prosbaLinesIncludeTeethProduct(group, teethExemptTwIds)
-              }
-              hint={
-                zkPrefillLoading
-                  ? "Trwa wczytywanie pozycji z zamówienia klienta."
-                  : zkCatalogLocked
-                    ? ZK_PROSBA_LINK_BANNER_COPY.productsSectionHint
-                    : requestKind === "informacja"
-                      ? informacjaProductsFormHint(informacjaPath)
-                      : PROSBA_FORM_SECTION_COPY.products.orderHint
-              }
+        <div className="min-w-0">
+            <Card
+              padding={false}
+              className={cn(
+                // clip, nie hidden — hidden tworzy kontener przewijania i psuje sticky stopkę „Wyślij”.
+                zkProsbaLinkContext && !tourDemo ? "overflow-visible" : "overflow-clip"
+              )}
             >
-              <div className="space-y-3">
-                {zkPrefillLoading ? (
-                  <ProsbaZkPrefillLoading
-                    zkNumber={
-                      zkProsbaLinkContext?.zkNumber ?? zkPrefillNumberHint
-                    }
-                  />
-                ) : (
-                  <>
-                {vacationNoticeModel ? (
-                  <ProsbaSupplierVacationNotice model={vacationNoticeModel} />
+              <div className={cn(tourDemo && "pointer-events-none select-none")}>
+                {tourDemo ? (
+                  <div className="border-b border-amber-200/90 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-950 sm:px-4">
+                    Podgląd formularza z przykładowymi pozycjami - edycja i wysyłka są
+                    wyłączone.
+                  </div>
                 ) : null}
-                <RequestProductLinesEditor
-                  lines={group}
-                  onChange={(lines) => {
-                    clearFormNotice();
-                    updateGroupLines(0, lines as Entry[]);
-                  }}
-                  requestKind={requestKind}
-                  appearance="prosba"
-                  salesProsbaForm
-                  alreadyOrderedCheck={!tourDemo}
-                  alreadyOrderedForSalesPersonId={lockedId || null}
-                  alreadyOrderedForOther={submitForOther}
-                  onRequestKindChange={(kind) => {
-                    clearFormNotice();
-                    setRequestKind(kind);
-                    setInformacjaPath(kind === "informacja" ? DEFAULT_INFORMACJA_FLOW_PATH : "direct");
-                  }}
-                  addLabel="+ Kolejny produkt"
-                  showClientField
-                  suppliers={supplierRefs}
-                  deferSupplierResolve={deferSupplierResolve}
-                  groupSupplierId={group[0]?.supplierId || initialSupplierId || ""}
-                  formSuppliers={suppliers}
-                  statsBySupplierId={statsBySupplierId}
-                  etaUseP50={etaUseP50}
-                  etaQuantilesBySupplierId={etaQuantilesBySupplierId}
-                  showLinkedLeadTime={!tourDemo}
-                  linkedLeadTimeOmitSupplierIds={
-                    scheduleSupplier ? [scheduleSupplier.id] : undefined
-                  }
-                  allowedTwIds={zkProsbaLinkContext?.allowedTwIds ?? undefined}
-                  allowedTwIdsHint={
-                    zkCatalogLocked ? ZK_PROSBA_LINK_BANNER_COPY.typeaheadHint : undefined
-                  }
-                  lockSubiektLink={zkCatalogLocked}
-                  onSupplierResolved={({ supplierId }) => {
-                    if (!deferSupplierResolve) {
-                      applySupplierFromSubiekt(supplierId, 0);
+
+                {zkProsbaLinkContext && !tourDemo ? (
+                  <ZkProsbaLinkBanner
+                    zkNumber={zkProsbaLinkContext.zkNumber}
+                    zkWatchId={zkProsbaLinkContext.zkWatchId}
+                    salesPersonId={lockedId}
+                    previewDla={searchParams.get("dla")}
+                    clientLabel={zkProsbaLinkContext.clientLabel}
+                    mode={zkProsbaLinkContext.mode}
+                    supplementLineCount={zkProsbaLinkContext.supplementLineCount}
+                    catalogLocked={zkCatalogLocked}
+                    caseNoteIncluded={zkCaseNoteStillOnLines}
+                  />
+                ) : null}
+
+                {zkQuantityFormBanner ? (
+                  <div
+                    className="border-b border-indigo-200/80 bg-indigo-50/70 px-3 py-2.5 text-xs leading-relaxed text-indigo-950 sm:px-4"
+                    role="status"
+                  >
+                    {zkQuantityFormBanner}
+                  </div>
+                ) : null}
+
+                <div
+                  className={cn(
+                    "space-y-4 p-3 sm:p-4",
+                    tourDemo && "pointer-events-none select-none"
+                  )}
+                >
+                  {delegatePeople && delegatePeople.length > 0 ? (
+                    <ProsbaFormSection
+                      title={PROSBA_FORM_SECTION_COPY.delegate.title}
+                      hint={PROSBA_FORM_SECTION_COPY.delegate.hint}
+                      accent="indigo"
+                      icon={<IconUserCog size={17} />}
+                      tileClassName="bg-indigo-100 text-indigo-800"
+                    >
+                      <Field
+                        labelClassName="inline-flex min-h-6 items-center"
+                        label="Handlowiec"
+                      >
+                        <Select
+                          value={lockedSalesPerson.id}
+                          onChange={(e) => {
+                            const id = e.target.value;
+                            router.push(
+                              prosbaHref({
+                                salesPersonId:
+                                  managerSelfId && id === managerSelfId
+                                    ? undefined
+                                    : id,
+                              })
+                            );
+                          }}
+                        >
+                          {delegatePeople.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {managerSelfId && p.id === managerSelfId
+                                ? `${p.name} (ja)`
+                                : p.name}
+                            </option>
+                          ))}
+                        </Select>
+                      </Field>
+                    </ProsbaFormSection>
+                  ) : null}
+
+                  <section className="space-y-2" aria-labelledby="prosba-kind-heading">
+                    <h2
+                      id="prosba-kind-heading"
+                      className="text-sm font-semibold text-slate-900"
+                    >
+                      {PROSBA_FORM_SECTION_COPY.requestKind.title}
+                    </h2>
+                    <RequestKindToggle
+                      value={requestKind}
+                      disabled={pending || tourDemo}
+                      onChange={(kind) => {
+                        setRequestKind(kind);
+                        if (kind === "informacja") {
+                          setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
+                        } else {
+                          setInformacjaPath("direct");
+                        }
+                      }}
+                    />
+                  </section>
+
+                  {requestKind === "informacja" ? (
+                    <ProsbaFormInformacjaSection
+                      plain
+                      path={informacjaPath}
+                      onChange={setInformacjaPath}
+                      disabled={pending || tourDemo}
+                    />
+                  ) : null}
+
+                  <ProsbaFormProductsSection
+                    plain
+                    requestKind={requestKind}
+                    informacjaPath={informacjaPath}
+                    showShortageLookup={
+                      !zkPrefillLoading &&
+                      prosbaLinesIncludeTeethProduct(group, teethExemptTwIds)
                     }
-                  }}
-                  onResolvingSupplierChange={setResolvingSupplier}
-                  validationAttempted={validationAttempted}
-                  liveValidation={!tourDemo}
-                  onTeethListCommitNotice={(notice, tone = "success") =>
-                    setMsg(
-                      typeof notice === "string"
-                        ? { text: notice, tone }
-                        : { title: notice.title, text: notice.text, tone },
-                    )
-                  }
-                />
+                    hint={
+                      zkPrefillLoading
+                        ? "Trwa wczytywanie pozycji z zamówienia klienta."
+                        : zkCatalogLocked
+                          ? ZK_PROSBA_LINK_BANNER_COPY.productsSectionHint
+                          : requestKind === "informacja"
+                            ? informacjaProductsFormHint(informacjaPath)
+                            : PROSBA_FORM_SECTION_COPY.products.orderHint
+                    }
+                  >
+                    <div className="space-y-3">
+                      {zkPrefillLoading ? (
+                        <ProsbaZkPrefillLoading
+                          zkNumber={
+                            zkProsbaLinkContext?.zkNumber ?? zkPrefillNumberHint
+                          }
+                        />
+                      ) : (
+                        <>
+                          <RequestProductLinesEditor
+                            lines={group}
+                            onChange={(lines) => {
+                              clearFormNotice();
+                              updateGroupLines(0, lines as Entry[]);
+                            }}
+                            requestKind={requestKind}
+                            appearance="prosba"
+                            salesProsbaForm
+                            alreadyOrderedCheck={!tourDemo}
+                            alreadyOrderedForSalesPersonId={lockedId || null}
+                            alreadyOrderedForOther={submitForOther}
+                            onRequestKindChange={(kind) => {
+                              clearFormNotice();
+                              setRequestKind(kind);
+                              setInformacjaPath(
+                                kind === "informacja"
+                                  ? DEFAULT_INFORMACJA_FLOW_PATH
+                                  : "direct"
+                              );
+                            }}
+                            addLabel="+ Kolejny produkt"
+                            showClientField
+                            suppliers={supplierRefs}
+                            deferSupplierResolve={deferSupplierResolve}
+                            groupSupplierId={
+                              group[0]?.supplierId || initialSupplierId || ""
+                            }
+                            formSuppliers={suppliers}
+                            statsBySupplierId={statsBySupplierId}
+                            etaUseP50={etaUseP50}
+                            etaQuantilesBySupplierId={etaQuantilesBySupplierId}
+                            showLinkedLeadTime={false}
+                            showLineSupplierTiming={!tourDemo}
+                            supplierScheduleById={supplierScheduleById}
+                            plannedOrderWeekDays={plannedOrderWeekDays}
+                            suppliersOnVacationNow={suppliersOnVacationNow}
+                            allowedTwIds={
+                              zkProsbaLinkContext?.allowedTwIds ?? undefined
+                            }
+                            allowedTwIdsHint={
+                              zkCatalogLocked
+                                ? ZK_PROSBA_LINK_BANNER_COPY.typeaheadHint
+                                : undefined
+                            }
+                            lockSubiektLink={zkCatalogLocked}
+                            onSupplierResolved={({ supplierId }) => {
+                              if (!deferSupplierResolve) {
+                                applySupplierFromSubiekt(supplierId, 0);
+                              }
+                            }}
+                            onResolvingSupplierChange={setResolvingSupplier}
+                            validationAttempted={validationAttempted}
+                            liveValidation={!tourDemo}
+                            onTeethListCommitNotice={(notice, tone = "success") =>
+                              setMsg(
+                                typeof notice === "string"
+                                  ? { text: notice, tone }
+                                  : {
+                                      title: notice.title,
+                                      text: notice.text,
+                                      tone,
+                                    }
+                              )
+                            }
+                          />
 
-                <ProsbaFormReadiness
-                  lines={group}
-                  requestKind={requestKind}
-                  salesSubmitPlan={salesSubmitPlan}
-                  formMessage={formNotice}
-                  supplierId={group[0]?.supplierId || initialSupplierId || ""}
-                  resolvingSupplier={resolvingSupplier}
-                  informacjaPath={informacjaPath}
-                  validationAttempted={validationAttempted}
-                  teethExemptTwIds={teethExemptTwIds}
-                  zkAllowedTwIds={zkProsbaLinkContext?.allowedTwIds ?? undefined}
-                />
-                  </>
-                )}
+                          <ProsbaFormReadiness
+                            lines={group}
+                            requestKind={requestKind}
+                            salesSubmitPlan={salesSubmitPlan}
+                            formMessage={formNotice}
+                            supplierId={
+                              group[0]?.supplierId || initialSupplierId || ""
+                            }
+                            resolvingSupplier={resolvingSupplier}
+                            informacjaPath={informacjaPath}
+                            validationAttempted={validationAttempted}
+                            teethExemptTwIds={teethExemptTwIds}
+                            zkAllowedTwIds={
+                              zkProsbaLinkContext?.allowedTwIds ?? undefined
+                            }
+                          />
+                        </>
+                      )}
+                    </div>
+                  </ProsbaFormProductsSection>
+                </div>
+
+                {!tourDemo ? <ProsbaVsBoardHint /> : null}
+                <ProsbaFormMetaStrip keyboardHints={SALES_PROSBA_KEYBOARD_HINTS} />
+
+                <div
+                  className={cn(
+                    "sticky z-10 flex flex-col gap-3 border-t border-slate-200/80 bg-white/95 px-3 py-3 shadow-[0_-4px_16px_-8px_rgba(15,23,42,0.12)] backdrop-blur-sm sm:flex-row sm:items-center sm:px-4",
+                    stickyAboveMobileChromeClass,
+                    requestKind === "informacja"
+                      ? "sm:justify-between"
+                      : "sm:justify-end"
+                  )}
+                >
+                  {!canSubmitProsba &&
+                  !pending &&
+                  !tourDemo &&
+                  !resolvingSupplier ? (
+                    <p className="text-xs font-medium leading-relaxed text-slate-600 sm:mr-auto">
+                      {prosbaReadiness.headline}
+                    </p>
+                  ) : requestKind === "informacja" ? (
+                    <p className="text-xs leading-relaxed text-slate-500">
+                      {informacjaSalesFooterNote(informacjaPath)}
+                    </p>
+                  ) : null}
+                  <Button
+                    disabled={
+                      pending ||
+                      tourDemo ||
+                      readOnly ||
+                      zkPrefillLoading ||
+                      submitLocked ||
+                      Boolean(pendingMessage) ||
+                      resolvingSupplier
+                    }
+                    onClick={submit}
+                    title={
+                      zkPrefillLoading
+                        ? "Trwa wczytywanie pozycji z ZK"
+                        : submitLocked || pendingMessage
+                          ? "Prośba jest już wysyłana"
+                          : undefined
+                    }
+                    className="w-full shrink-0 sm:w-auto sm:min-w-[10rem]"
+                  >
+                    {tourDemo
+                      ? "Podgląd - bez wysyłki"
+                      : pending || submitLocked
+                        ? pendingMessage?.startsWith("Prośba zapisana")
+                          ? "Wraca do ZK…"
+                          : "Wysyłanie…"
+                        : zkPrefillLoading
+                          ? "Wczytywanie ZK…"
+                          : resolvingSupplier
+                            ? "Ustalam dostawcę…"
+                            : "Wyślij prośbę"}
+                  </Button>
+                </div>
               </div>
-            </ProsbaFormProductsSection>
-          </div>
-
-          {/* Wybór rodzaju prośby jest pierwszy — informacje pomocnicze pod formularzem. */}
-          {!tourDemo ? <ProsbaVsBoardHint /> : null}
-          <ProsbaFormMetaStrip keyboardHints={SALES_PROSBA_KEYBOARD_HINTS} />
-
-          <div
-            className={cn(
-              "sticky z-10 flex flex-col gap-3 border-t border-slate-200/80 bg-white/95 px-3 py-3 shadow-[0_-4px_16px_-8px_rgba(15,23,42,0.12)] backdrop-blur-sm sm:flex-row sm:items-center sm:px-4",
-              stickyAboveMobileChromeClass,
-              requestKind === "informacja" ? "sm:justify-between" : "sm:justify-end"
-            )}
-          >
-            {!canSubmitProsba && !pending && !tourDemo && !resolvingSupplier ? (
-              // Powód widoczny także na telefonie (wcześniej tylko w dymku title).
-              <p className="text-xs font-medium leading-relaxed text-slate-600 sm:mr-auto">
-                {prosbaReadiness.headline}
-              </p>
-            ) : requestKind === "informacja" ? (
-              <p className="text-xs leading-relaxed text-slate-500">
-                {informacjaSalesFooterNote(informacjaPath)}
-              </p>
-            ) : null}
-            <Button
-              disabled={
-                pending ||
-                tourDemo ||
-                readOnly ||
-                zkPrefillLoading ||
-                submitLocked ||
-                Boolean(pendingMessage) ||
-                // Dostawca ustalany z Subiekta — wysyłka teraz zapisałaby prośbę bez niego.
-                resolvingSupplier
-              }
-              // Zawsze klikalny: niekompletny formularz pokazuje błędy i przewija do pierwszej
-              // pozycji z brakami (walidacja w submit) zamiast martwego, wyszarzonego przycisku.
-              onClick={submit}
-              title={
-                zkPrefillLoading
-                  ? "Trwa wczytywanie pozycji z ZK"
-                  : submitLocked || pendingMessage
-                    ? "Prośba jest już wysyłana"
-                    : undefined
-              }
-              className="w-full shrink-0 sm:w-auto sm:min-w-[10rem]"
-            >
-              {tourDemo
-                ? "Podgląd - bez wysyłki"
-                : pending || submitLocked
-                  ? pendingMessage?.startsWith("Prośba zapisana")
-                    ? "Wraca do ZK…"
-                    : "Wysyłanie…"
-                  : zkPrefillLoading
-                    ? "Wczytywanie ZK…"
-                    : resolvingSupplier
-                      ? "Ustalam dostawcę…"
-                      : "Wyślij prośbę"}
-            </Button>
-          </div>
-          </div>
-        </Card>
+            </Card>
+        </div>
 
         {!readOnly && !tourDemo ? (
           <ProductZdLookupTrigger
