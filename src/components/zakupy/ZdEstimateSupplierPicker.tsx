@@ -103,7 +103,7 @@ export function ZdEstimateSupplierPicker({
           placeholder="Wpisz dostawcę, np. Everall7…"
           disabled={disabled}
           value={query}
-          className="h-10 w-full rounded-md border border-slate-200 bg-white pl-8 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50"
+          className="h-9 w-full cursor-text rounded-md border border-slate-200/90 bg-white pl-8 pr-3 text-sm leading-none text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 disabled:cursor-not-allowed disabled:opacity-50"
           onFocus={() => {
             if (blurTimer.current) window.clearTimeout(blurTimer.current);
             setOpen(true);

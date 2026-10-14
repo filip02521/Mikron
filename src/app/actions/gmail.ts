@@ -9,7 +9,11 @@ import {
   requireZdEstimateAdmin,
   SESSION_REQUIRED_ERROR,
 } from "@/lib/auth";
-import { extraAttachmentsError } from "@/lib/email/extra-attachments";
+import {
+  extraAttachmentsError,
+  mailAttachmentsCombinedError,
+  primaryZdOverrideError,
+} from "@/lib/email/extra-attachments";
 import { parseMailRecipients } from "@/lib/email/recipients";
 import { normalizeEmailSignature } from "@/lib/email/signature";
 import { isMikranEmail } from "@/lib/email/supplier-emails";
@@ -166,6 +170,11 @@ export async function actionSendZdToSupplier(input: {
   terminAfterSend?: string;
   /** Pliki dołożone ręcznie (inne zamówienia, Excele, zdjęcia) — idą obok dokumentu ZD. */
   extraFiles?: File[];
+  /**
+   * Ręczny dokument ZD (PDF/Excel), gdy Subiekt/Sfera nie odda wydruku.
+   * Zastępuje buildZdMailAttachment — nie zmienia terminu na ZD pod wydruk.
+   */
+  primaryOverride?: File;
 }): Promise<SendZdToSupplierResult> {
   const user = await requireZdEstimateAdmin("mutate");
   if (
@@ -185,6 +194,17 @@ export async function actionSendZdToSupplier(input: {
   }
   const extraError = extraAttachmentsError(extraFiles);
   if (extraError) return { ok: false, message: extraError };
+  const primaryOverride =
+    input.primaryOverride instanceof File ? input.primaryOverride : null;
+  if (input.primaryOverride != null && !primaryOverride) {
+    return { ok: false, message: "Nieprawidłowy dokument ZD." };
+  }
+  if (primaryOverride) {
+    const overrideError = primaryZdOverrideError(primaryOverride);
+    if (overrideError) return { ok: false, message: overrideError };
+  }
+  const combinedError = mailAttachmentsCombinedError(primaryOverride, extraFiles);
+  if (combinedError) return { ok: false, message: combinedError };
   const recipients = parseMailRecipients(input.to, input.cc);
   if (!recipients.ok) return recipients;
   const { to: emails, cc } = recipients;
@@ -220,25 +240,42 @@ export async function actionSendZdToSupplier(input: {
       };
     }
 
-    // Dostawca dostaje wydruk z terminem realizacji = dziś; nasz termin dostawy ustawiamy dopiero po wysyłce.
-    let fresh = false;
-    /** ZD z terminem, który faktycznie idzie na wydruk (odcisk wydruku w pamięci). */
-    let printed = zd;
-    if (!findSupplierFormTemplate(zd.supplier.name)) {
-      const today = todayDateKeyInWarsaw();
-      if (zd.termin !== today) {
-        const printedTermin = await setSubiektOrdersZdTermin(dokId, today);
-        // ZD bez terminu: po nieudanej wysyłce dostaje nasz termin dostawy (Subiekt nie umie wyczyścić pola),
-        // a nie dzisiejszą datę z wydruku.
-        restoreTermin = zd.termin ?? (terminAfterSend || null);
-        if (printedTermin !== today) {
-          throw new Error(`Subiekt zapisał termin ${printedTermin ?? "pusty"} zamiast dzisiejszego - wydruk ZD nie poszedł.`);
+    // Ręczny dokument ZD: bez zmiany terminu pod wydruk i bez Sfery.
+    // Subiekt: dostawca dostaje wydruk z terminem = dziś; nasz termin dostawy — po wysyłce.
+    let attachment: {
+      filename: string;
+      content: Buffer;
+      contentType: string;
+    };
+    if (primaryOverride) {
+      const safeName = primaryOverride.name.replace(/[\\/:*?"<>|\r\n]+/g, "-");
+      attachment = {
+        filename: safeName || `ZD-${dokId}.pdf`,
+        content: Buffer.from(await primaryOverride.arrayBuffer()),
+        contentType: primaryOverride.type || "application/octet-stream",
+      };
+    } else {
+      let fresh = false;
+      /** ZD z terminem, który faktycznie idzie na wydruk (odcisk wydruku w pamięci). */
+      let printed = zd;
+      if (!findSupplierFormTemplate(zd.supplier.name)) {
+        const today = todayDateKeyInWarsaw();
+        if (zd.termin !== today) {
+          const printedTermin = await setSubiektOrdersZdTermin(dokId, today);
+          // ZD bez terminu: po nieudanej wysyłce dostaje nasz termin dostawy (Subiekt nie umie wyczyścić pola),
+          // a nie dzisiejszą datę z wydruku.
+          restoreTermin = zd.termin ?? (terminAfterSend || null);
+          if (printedTermin !== today) {
+            throw new Error(
+              `Subiekt zapisał termin ${printedTermin ?? "pusty"} zamiast dzisiejszego - wydruk ZD nie poszedł.`
+            );
+          }
+          printed = { ...zd, termin: today };
+          fresh = true;
         }
-        printed = { ...zd, termin: today };
-        fresh = true;
       }
+      attachment = await buildZdMailAttachment(printed, dokId, { fresh });
     }
-    const attachment = await buildZdMailAttachment(printed, dokId, { fresh });
     const extras = await Promise.all(
       extraFiles.map(async (f) => ({
         filename: f.name.replace(/[\\/:*?"<>|\r\n]+/g, "-"),
@@ -250,7 +287,7 @@ export async function actionSendZdToSupplier(input: {
 
     const sent = await sendGmailAsUser({
       userId: user.id,
-        to: emails,
+      to: emails,
       cc,
       subject,
       text: input.body,

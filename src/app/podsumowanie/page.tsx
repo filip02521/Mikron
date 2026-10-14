@@ -36,7 +36,8 @@ const emptyWorkspace = buildSummaryWorkspace([], []);
 export default async function PodsumowaniePage() {
   // Konserwacja kolejki nie zmienia sesji — oba kroki równolegle.
   const [, session] = await Promise.all([
-    runOrderMaintenanceBeforePageLoad(),
+    // Auto-powiązanie dostawcy — inaczej badge „Weryfikacja” świeci, a prośba już jest w Nowe.
+    runOrderMaintenanceBeforePageLoad({ autoAssign: true }),
     getSessionUser(),
   ]);
   const canPrepareZd = Boolean(

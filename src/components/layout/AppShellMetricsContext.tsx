@@ -58,7 +58,30 @@ export function usePatchAppShellNavBadges(): (patch: Partial<AppShellNavBadges>)
 export function AppShellMetricsSync({ payload }: { payload: AppShellMetrics }) {
   const setMetrics = useContext(AppShellMetricsContext)?.setMetrics;
   useLayoutEffect(() => {
-    setMetrics?.(payload);
+    setMetrics?.((current) => {
+      // Pierwszy SSR — pełny payload. Potem live poll jest źródłem prawdy dla
+      // badge’y ops (router.refresh często wraca ze starym RSC layoutu).
+      if (!current.ready) return payload;
+      return {
+        ...payload,
+        navBadges: {
+          ...payload.navBadges,
+          nowe: current.navBadges.nowe,
+          weryfikacja: current.navBadges.weryfikacja,
+          realizacja: current.navBadges.realizacja,
+          operationsNotatki:
+            current.navBadges.operationsNotatki ??
+            payload.navBadges.operationsNotatki,
+          departmentBoardQuestions:
+            current.navBadges.departmentBoardQuestions ??
+            payload.navBadges.departmentBoardQuestions,
+          supplierMail:
+            current.navBadges.supplierMail ?? payload.navBadges.supplierMail,
+          customsDhl:
+            current.navBadges.customsDhl ?? payload.navBadges.customsDhl,
+        },
+      };
+    });
   }, [setMetrics, payload]);
   return null;
 }
