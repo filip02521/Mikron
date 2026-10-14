@@ -90,6 +90,37 @@ describe("compareStockWatchAlerts", () => {
       "crit-low",
     ]);
   });
+
+  it("wśród braków: najpierw bez towaru w drodze", () => {
+    const rows = [
+      {
+        id: "with-zd",
+        status: "out_of_stock" as const,
+        dailyValue: 90,
+        velocityDaily: 2,
+        daysOfCover: 0,
+        openZdQty: 20,
+      },
+      {
+        id: "empty",
+        status: "out_of_stock" as const,
+        dailyValue: 10,
+        velocityDaily: 1,
+        daysOfCover: 0,
+        openZdQty: 0,
+      },
+    ];
+    expect(rows.sort(compareStockWatchAlerts).map((r) => r.id)).toEqual(["empty", "with-zd"]);
+  });
+});
+
+describe("isStockWatchEmptyNoIncoming", () => {
+  it("wymaga braku i zerowego open ZD", async () => {
+    const { isStockWatchEmptyNoIncoming } = await import("@/lib/stock-watch/analysis");
+    expect(isStockWatchEmptyNoIncoming({ status: "out_of_stock", openZdQty: 0 })).toBe(true);
+    expect(isStockWatchEmptyNoIncoming({ status: "out_of_stock", openZdQty: 5 })).toBe(false);
+    expect(isStockWatchEmptyNoIncoming({ status: "critical", openZdQty: 0 })).toBe(false);
+  });
 });
 
 describe("computeStockHealthScore", () => {

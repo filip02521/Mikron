@@ -145,10 +145,33 @@ export function analyzeStockWatchItem(input: StockWatchInput): StockWatchResult 
   return { daysOfCover, runOutDate, dailyValue, status };
 }
 
-/** Kolejność alertów: najpierw brak, potem krytyczne; w grupie — największa wartość / rotacja. */
+/**
+ * Brak na stanie i nic w otwartych ZD — „dziura” bez towaru w drodze.
+ * status out_of_stock = dostępne ≤ 0; openZdQty = szt. na niezrealizowanych ZD.
+ */
+export function isStockWatchEmptyNoIncoming(item: {
+  status: StockWatchStatus;
+  openZdQty: number;
+}): boolean {
+  return item.status === "out_of_stock" && item.openZdQty <= 0;
+}
+
+/** Kolejność alertów: brak (najpierw bez dostawy), potem krytyczne; w grupie — wartość / rotacja. */
 export function compareStockWatchAlerts(
-  a: { status: StockWatchStatus; dailyValue: number | null; velocityDaily: number; daysOfCover: number | null },
-  b: { status: StockWatchStatus; dailyValue: number | null; velocityDaily: number; daysOfCover: number | null }
+  a: {
+    status: StockWatchStatus;
+    dailyValue: number | null;
+    velocityDaily: number;
+    daysOfCover: number | null;
+    openZdQty?: number;
+  },
+  b: {
+    status: StockWatchStatus;
+    dailyValue: number | null;
+    velocityDaily: number;
+    daysOfCover: number | null;
+    openZdQty?: number;
+  }
 ): number {
   const rank: Record<StockWatchStatus, number> = {
     out_of_stock: 0,
@@ -159,6 +182,12 @@ export function compareStockWatchAlerts(
   };
   const byStatus = rank[a.status] - rank[b.status];
   if (byStatus !== 0) return byStatus;
+  // Wśród braków: najpierw te bez niczego w drodze (najbardziej „gołe”).
+  if (a.status === "out_of_stock" && b.status === "out_of_stock") {
+    const aIn = (a.openZdQty ?? 0) > 0 ? 1 : 0;
+    const bIn = (b.openZdQty ?? 0) > 0 ? 1 : 0;
+    if (aIn !== bIn) return aIn - bIn;
+  }
   const av = a.dailyValue ?? -1;
   const bv = b.dailyValue ?? -1;
   if (av !== bv) return bv - av;

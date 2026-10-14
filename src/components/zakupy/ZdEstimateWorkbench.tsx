@@ -419,6 +419,8 @@ import {
   zdEstimateDockButtonClass,
   zdEstimateListBodyInsetClass,
   zdEstimateListBodyPadClass,
+  zdEstimatePhaseWidthTransitionClass,
+  zdEstimatePrepPhaseShellClass,
   zdEstimateStickyBarClass,
   zdEstimateStickyClearanceClass,
   zdEstimateStickyClearanceTallClass,
@@ -6053,8 +6055,16 @@ export function ZdEstimateWorkbench({
   return (
     <ZdEstimateNoticeTrayProvider>
     <div
+      data-zd-estimate-phase={lines ? "list" : "prep"}
       className={cn(
         zdEstimateWorkbenchStackClass,
+        zdEstimatePhaseWidthTransitionClass,
+        // Wąskie okno tylko przy wprowadzaniu; po liście — pełna szerokość.
+        !showLaunchProgress &&
+          !showSessionResumeProgress &&
+          !showQuietSessionRestore &&
+          !lines &&
+          zdEstimatePrepPhaseShellClass,
         // Bez listy: scroll całego formularza, jeśli nie mieści się w oknie.
         // Przy liście workbench NIE scrolluje — tabela ma własny scrollport
         // (#zd-estimate-table-scroll); overflow tu psuje sticky nagłówki.

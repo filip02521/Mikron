@@ -1,6 +1,7 @@
 import {
   compareStockWatchAlerts,
   computeStockHealthScore,
+  isStockWatchEmptyNoIncoming,
 } from "@/lib/stock-watch/analysis";
 import type { StockWatchItem, StockWatchSupplierOrder } from "@/lib/stock-watch/data";
 import { stockWatchHorizonExtends } from "@/lib/stock-watch/signal";
@@ -74,6 +75,8 @@ export type StockWatchDashboard = {
   health: { score: number; active: number; ok: number };
   counts: {
     outOfStock: number;
+    /** Brak na stanie i open ZD = 0 — nic nie jedzie. */
+    emptyNoIncoming: number;
     critical: number;
     warning: number;
     ok: number;
@@ -169,6 +172,7 @@ export function buildStockWatchDashboard(
   const products = uniqueByProduct(items);
   const counts = {
     outOfStock: 0,
+    emptyNoIncoming: 0,
     critical: 0,
     warning: 0,
     ok: 0,
@@ -178,8 +182,10 @@ export function buildStockWatchDashboard(
   };
   const standard = products.filter((i) => i.rule === "standard");
   for (const item of standard) {
-    if (item.status === "out_of_stock") counts.outOfStock += 1;
-    else if (item.status === "critical") counts.critical += 1;
+    if (item.status === "out_of_stock") {
+      counts.outOfStock += 1;
+      if (isStockWatchEmptyNoIncoming(item)) counts.emptyNoIncoming += 1;
+    } else if (item.status === "critical") counts.critical += 1;
     else if (item.status === "warning") counts.warning += 1;
     else if (item.status === "ok") counts.ok += 1;
     else counts.noSales += 1;
