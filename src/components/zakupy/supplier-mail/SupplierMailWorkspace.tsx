@@ -49,8 +49,8 @@ import { splitEmphasis } from "@/lib/mail/emphasis";
 import { looksPolish } from "@/lib/supplier-mail/translate-ai";
 
 type Scope = "mine" | "all";
-/** Kolumna tablicy albo półka „Do przejrzenia” (nieznani nadawcy — sprawa czy nie). */
-type ViewTab = BoardColumn | "review";
+/** Kolumna tablicy albo półka: „Do przejrzenia” (nieznani nadawcy — sprawa czy nie), „Oferty” (reklamy dostawców). */
+type ViewTab = BoardColumn | "review" | "offers";
 type UndoInfo = { label: string; undo: () => Promise<{ ok: true } | { ok: false; message: string }> };
 
 const timeFmt = new Intl.DateTimeFormat("pl-PL", { timeZone: "Europe/Warsaw", hour: "2-digit", minute: "2-digit" });
@@ -84,6 +84,7 @@ const CATEGORY_TAG: Record<MailConversation["category"], { text: string; classNa
   reply: { text: "Odpowiedź", className: "bg-indigo-50 text-indigo-800 ring-indigo-200" },
   invoice: { text: "Faktura", className: "bg-slate-100 text-slate-700 ring-slate-200" },
   shipping: { text: "Wysyłka", className: "bg-slate-100 text-slate-700 ring-slate-200" },
+  offer: { text: "Oferta", className: "bg-violet-50 text-violet-800 ring-violet-200" },
 };
 
 function Tag({ text, className }: { text: string; className: string }) {
@@ -105,7 +106,9 @@ function ItemTag({ item }: { item: BoardItem }) {
     ? { text: "Mail nie doszedł", className: "bg-red-50 text-red-800 ring-red-200" }
     : c.autoReply
       ? { text: "Autoodpowiedź", className: "bg-slate-100 text-slate-700 ring-slate-200" }
-      : CATEGORY_TAG[c.category];
+      : c.category === "invoice" && c.ksef
+        ? { text: "Faktura · KSeF", className: "bg-slate-100 text-slate-700 ring-slate-200" }
+        : CATEGORY_TAG[c.category];
   return <Tag {...tag} />;
 }
 
@@ -132,6 +135,27 @@ function matchesSearch(i: BoardItem, q: string): boolean {
     .split(/\s+/)
     .filter(Boolean)
     .every((w) => fold(hay).includes(w));
+}
+
+/** 1 sprawa, 2–4 sprawy, 5+ spraw (12–14 też „spraw”). */
+const casesWord = (n: number) =>
+  n === 1 ? "sprawa" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? "sprawy" : "spraw";
+
+/** Rozmowa z półki (Do przejrzenia, Oferty) jako pozycja listy — bez wpisu na tablicy. */
+function shelfItem(c: MailConversation, column: BoardColumn): BoardItem {
+  return {
+    key: `conv:${c.mailbox}|${c.threadId}`,
+    ref: { type: "conv", conv: c },
+    column,
+    reason: null,
+    fresh: false,
+    remindOn: null,
+    note: "",
+    waitingOn: "",
+    assigneeId: c.ownerUserId,
+    manualColumn: null,
+    sortAt: c.lastAt,
+  };
 }
 
 /** Kolejność w kolumnie: w Do zrobienia najpierw to, co samo wróciło (zwrot, termin), w Czekam — najbliższy termin. */
@@ -230,37 +254,31 @@ export function SupplierMailWorkspace({
     for (const c of BOARD_COLUMNS) map.set(c, sortColumn(c, map.get(c)!));
     return map;
   }, [visible]);
-  // Półka jako pozycje listy (ten sam wiersz i ta sama rozmowa), bez kolumny tablicy.
+  // Półki jako pozycje listy (ten sam wiersz i ta sama rozmowa), bez kolumny tablicy.
   const reviewItems = useMemo(
-    () =>
-      view.review
-        .filter((c) => scope === "all" || !c.ownerUserId || c.ownerUserId === meId)
-        .map(
-          (c): BoardItem => ({
-            key: `conv:${c.mailbox}|${c.threadId}`,
-            ref: { type: "conv", conv: c },
-            column: "todo",
-            reason: null,
-            fresh: false,
-            remindOn: null,
-            note: "",
-            waitingOn: "",
-            assigneeId: c.ownerUserId,
-            manualColumn: null,
-            sortAt: c.lastAt,
-          })
-        ),
+    () => view.review.filter((c) => scope === "all" || !c.ownerUserId || c.ownerUserId === meId).map((c) => shelfItem(c, "todo")),
     [view.review, scope, meId]
+  );
+  // Oferty: kolumna „done” — bez przycisku „Zakończone”; „Weź jako sprawę” przenosi na tablicę.
+  const offerItems = useMemo(
+    () => view.offers.filter((c) => scope === "all" || !c.ownerUserId || c.ownerUserId === meId).map((c) => shelfItem(c, "done")),
+    [view.offers, scope, meId]
   );
   const searching = search.trim().length >= 2;
   const order = searching
-    ? [...reviewItems, ...visible].filter((i) => matchesSearch(i, search)).sort((a, b) => b.sortAt.localeCompare(a.sortAt))
+    ? [...reviewItems, ...offerItems, ...visible].filter((i) => matchesSearch(i, search)).sort((a, b) => b.sortAt.localeCompare(a.sortAt))
     : column === "review"
       ? reviewItems
-      : byColumn.get(column)!;
-  const reviewKeys = useMemo(() => new Set(reviewItems.map((i) => i.key)), [reviewItems]);
+      : column === "offers"
+        ? offerItems
+        : byColumn.get(column)!;
+  const shelfOf = useMemo(
+    () => new Map<string, string>([...reviewItems.map((i) => [i.key, "Do przejrzenia"] as const), ...offerItems.map((i) => [i.key, "Oferty"] as const)]),
+    [reviewItems, offerItems]
+  );
   const index = order.findIndex((i) => i.key === selectedKey);
   const reviewSelected = reviewItems.find((i) => i.key === selectedKey) ?? null;
+  const offerSelected = offerItems.find((i) => i.key === selectedKey) ?? null;
   // Rozmowa agencji / spedytora otwarta z odpraw celnych (poza tablicą).
   const customsConv = view.items.some((i) => i.key === selectedKey)
     ? undefined
@@ -280,7 +298,7 @@ export function SupplierMailWorkspace({
         sortAt: customsConv.lastAt,
       }
     : null;
-  const selected = view.items.find((i) => i.key === selectedKey) ?? reviewSelected ?? customsSelected;
+  const selected = view.items.find((i) => i.key === selectedKey) ?? reviewSelected ?? offerSelected ?? customsSelected;
 
   /** Decyzja z półki: następna pozycja od razu, „Cofnij” przywraca rozmowę (i usuwa zapamiętaną regułę). */
   const triage = useCallback(
@@ -319,8 +337,10 @@ export function SupplierMailWorkspace({
   const move = useCallback(
     async (item: BoardItem, to: BoardColumn) => {
       if (item.column === to) return;
-      // „Cofnij” wraca do ręcznej kolumny sprzed zmiany; sprawa zamknięta z automatu wraca do Zakończonych wprost.
-      const prevManual = item.manualColumn ?? (item.column === "done" ? "done" : null);
+      // „Cofnij” wraca do ręcznej kolumny sprzed zmiany; sprawa zamknięta z automatu wraca do Zakończonych wprost,
+      // a oferta z półki — na półkę (bez wpisu), nie do Zakończonych.
+      const fromShelf = item.ref.type === "conv" && item.ref.conv.category === "offer" && !item.manualColumn;
+      const prevManual = item.manualColumn ?? (item.column === "done" && !fromShelf ? "done" : null);
       const prevRemind = item.remindOn;
       setView((v) => ({ ...v, items: v.items.map((i) => (i.key === item.key ? { ...i, column: to, reason: null } : i)) }));
       if (item.key === selectedKey && item.column === column) {
@@ -342,6 +362,38 @@ export function SupplierMailWorkspace({
       void refresh();
     },
     [column, index, order, refresh, selectedKey]
+  );
+
+  /** Kilka spraw naraz (np. faktury wpisane do Subiekta) — jedno „Cofnij” dla wszystkich. */
+  const moveMany = useCallback(
+    async (list: BoardItem[], to: BoardColumn) => {
+      const moving = list.filter((i) => i.column !== to);
+      if (!moving.length) return;
+      const keys = new Set(moving.map((i) => i.key));
+      setView((v) => ({ ...v, items: v.items.map((i) => (keys.has(i.key) ? { ...i, column: to, reason: null } : i)) }));
+      if (selectedKey && keys.has(selectedKey)) setSelectedKey(null);
+      const results = await Promise.all(
+        moving.map((i) => actionMailBoardMove({ key: i.key, inheritKey: inheritKeyOf(i), column: to }).catch(() => null))
+      );
+      const failed = results.filter((r) => !r?.ok).length;
+      if (failed) setSyncNote(`Nie udało się przenieść ${failed} z ${moving.length} spraw.`);
+      if (undoTimer.current) clearTimeout(undoTimer.current);
+      setUndo({
+        label: `${moving.length} ${casesWord(moving.length)} → ${BOARD_COLUMN_LABELS[to]}`,
+        undo: async () => {
+          const back = await Promise.all(
+            moving.map((i) => {
+              const prev = i.manualColumn ?? (i.column === "done" ? "done" : null);
+              return actionMailBoardMove({ key: i.key, column: prev, remindOn: prev === "waiting" ? i.remindOn : null }).catch(() => null);
+            })
+          );
+          return back.every((r) => r?.ok) ? { ok: true as const } : { ok: false as const, message: "Nie wszystko udało się cofnąć." };
+        },
+      });
+      undoTimer.current = setTimeout(() => setUndo(null), 30_000);
+      void refresh();
+    },
+    [refresh, selectedKey]
   );
 
   const runUndo = async () => {
@@ -385,8 +437,14 @@ export function SupplierMailWorkspace({
     if (item) void move(item, target);
   };
 
-  const panel =
-    selected?.ref.type === "conv" || selected?.ref.type === "case" ? (
+  const panel = offerSelected ? (
+    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-violet-50/50 px-4 py-2.5 text-sm text-violet-950 sm:px-5">
+      <span>Oferta / reklama dostawcy - nie leży na tablicy.</span>
+      <Button type="button" size="sm" variant="secondary" onClick={() => void move(offerSelected, "todo")}>
+        Weź jako sprawę
+      </Button>
+    </div>
+  ) : selected?.ref.type === "conv" || selected?.ref.type === "case" ? (
       <BoardPanel key={`panel-${selected.key}`} item={selected} people={view.people} onMove={(to) => void move(selected, to)} onSaved={() => void refresh()} />
     ) : null;
 
@@ -401,7 +459,7 @@ export function SupplierMailWorkspace({
         setSelectedKey(null);
       }}
       onDragOver={
-        c === "review"
+        c === "review" || c === "offers"
           ? undefined
           : (e) => {
               if (!e.dataTransfer.types.includes(DRAG_TYPE)) return;
@@ -410,8 +468,8 @@ export function SupplierMailWorkspace({
               setDropTarget(c);
             }
       }
-      onDragLeave={c === "review" ? undefined : () => setDropTarget((t) => (t === c ? null : t))}
-      onDrop={c === "review" ? undefined : dropOn(c)}
+      onDragLeave={c === "review" || c === "offers" ? undefined : () => setDropTarget((t) => (t === c ? null : t))}
+      onDrop={c === "review" || c === "offers" ? undefined : dropOn(c)}
       className={cn(railItemClass(column === c), dropTarget === c && "bg-indigo-50 text-indigo-900 ring-2 ring-indigo-400")}
     >
       {label}
@@ -423,9 +481,10 @@ export function SupplierMailWorkspace({
     <div className={workspaceGridClass}>
       <nav aria-label="Sprawy" className={railClass}>
         <p className={cn(railGroupLabelClass, "hidden 2xl:block")}>Sprawy</p>
-        <div role="tablist" aria-label="Sprawy" className="flex min-w-0 gap-1 overflow-x-auto lg:shrink-0 lg:overflow-visible 2xl:flex-col">
+        <div role="tablist" aria-label="Sprawy" className="flex min-w-0 gap-1 overflow-x-auto lg:flex-wrap lg:overflow-visible 2xl:shrink-0 2xl:flex-col 2xl:flex-nowrap">
           {reviewItems.length || column === "review" ? columnTab("review", "Do przejrzenia", reviewItems.length, "info") : null}
           {BOARD_COLUMNS.map((c) => columnTab(c, BOARD_COLUMN_LABELS[c], byColumn.get(c)!.length, c === "todo" ? "attention" : "neutral"))}
+          {offerItems.length || column === "offers" ? columnTab("offers", "Oferty", offerItems.length, "neutral") : null}
         </div>
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 lg:shrink-0 2xl:mt-auto 2xl:flex-col 2xl:items-stretch 2xl:gap-3">
@@ -495,11 +554,13 @@ export function SupplierMailWorkspace({
           </p>
         ) : null}
         <BoardList
+          key={column}
           column={column}
           items={order}
           searching={searching}
-          reviewKeys={reviewKeys}
-          draggable={column !== "review" && !searching}
+          shelfOf={shelfOf}
+          draggable={column !== "review" && column !== "offers" && !searching}
+          onMoveMany={column === "invoices" && !searching ? (list) => void moveMany(list, "done") : undefined}
           people={scope === "all" ? people : null}
           selectedKey={selectedKey}
           onSelect={setSelectedKey}
@@ -624,14 +685,16 @@ const EMPTY: Record<ViewTab, string> = {
   invoices: "Brak faktur do wpisania do Subiekta.",
   to_pay: "Brak przedpłat do przekazania do zapłaty.",
   done: "Brak spraw zakończonych w ostatnich 14 dniach.",
+  offers: "Brak ofert od dostawców z ostatnich 30 dni.",
 };
 
 function BoardList({
   column,
   items,
   searching,
-  reviewKeys,
+  shelfOf,
   draggable,
+  onMoveMany,
   people,
   selectedKey,
   onSelect,
@@ -640,17 +703,61 @@ function BoardList({
   items: BoardItem[];
   /** Wyniki wyszukiwania ze wszystkich kolumn — przy każdym widać, gdzie leży. */
   searching: boolean;
-  reviewKeys: ReadonlySet<string>;
+  /** Klucz → nazwa półki (Do przejrzenia, Oferty) dla pozycji spoza tablicy. */
+  shelfOf: ReadonlyMap<string, string>;
   draggable: boolean;
+  /** Faktury: zaznaczenie kilku i „Wpisane do Subiekta” jednym kliknięciem. */
+  onMoveMany?: (items: BoardItem[]) => void;
   /** Tylko w widoku „Wszystkie” — kto obsługuje. */
   people: Map<string, string> | null;
   selectedKey: string | null;
   onSelect: (key: string) => void;
 }) {
+  const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set());
+  // Zaznaczenie dotyczy tylko tego, co jest na liście (po przeniesieniu znika samo).
+  const pickedItems = onMoveMany ? items.filter((i) => picked.has(i.key)) : [];
   if (!items.length) {
     return <p className="px-4 py-10 text-center text-sm text-slate-500">{searching ? "Nic nie pasuje do wyszukiwania." : EMPTY[column]}</p>;
   }
+  const allPicked = pickedItems.length === items.length;
+  const toggle = (key: string) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
   return (
+    <>
+      {onMoveMany ? (
+        <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50/70 px-3 py-1.5">
+          <label className="flex min-h-8 cursor-pointer items-center gap-2 text-xs text-slate-600">
+            <input
+              type="checkbox"
+              checked={allPicked}
+              ref={(el) => {
+                if (el) el.indeterminate = pickedItems.length > 0 && !allPicked;
+              }}
+              onChange={() => setPicked(allPicked ? new Set() : new Set(items.map((i) => i.key)))}
+              className="h-4 w-4 rounded border-slate-300 accent-indigo-600"
+            />
+            {pickedItems.length ? `Zaznaczone: ${pickedItems.length}` : "Zaznacz faktury"}
+          </label>
+          {pickedItems.length ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="ml-auto"
+              onClick={() => {
+                onMoveMany(pickedItems);
+                setPicked(new Set());
+              }}
+            >
+              Wpisane do Subiekta
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
     <ul className="divide-y divide-slate-100">
       {items.map((i) => {
         const conv = i.ref.type === "conv" ? i.ref.conv : null;
@@ -664,12 +771,24 @@ function BoardList({
               e.dataTransfer.setData(DRAG_TYPE, i.key);
               e.dataTransfer.effectAllowed = "move";
             }}
+            className={onMoveMany ? "flex items-stretch" : undefined}
           >
+            {onMoveMany ? (
+              <label className="flex shrink-0 cursor-pointer items-start pl-3 pt-3.5">
+                <span className="sr-only">Zaznacz {itemTitle(i)}</span>
+                <input
+                  type="checkbox"
+                  checked={picked.has(i.key)}
+                  onChange={() => toggle(i.key)}
+                  className="h-4 w-4 rounded border-slate-300 accent-indigo-600"
+                />
+              </label>
+            ) : null}
             <button
               type="button"
               onClick={() => onSelect(i.key)}
               aria-current={selected ? "true" : undefined}
-              className={cn(listRowClass(selected), draggable && "cursor-grab active:cursor-grabbing")}
+              className={cn(listRowClass(selected), onMoveMany && "min-w-0 flex-1", draggable && "cursor-grab active:cursor-grabbing")}
             >
               <span className="flex items-baseline justify-between gap-2">
                 <span className={cn("min-w-0 truncate text-sm text-slate-900", column === "todo" || column === "review" ? "font-semibold" : "font-medium")}>
@@ -680,7 +799,7 @@ function BoardList({
               <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
                 {searching ? (
                   <Tag
-                    text={reviewKeys.has(i.key) ? "Do przejrzenia" : BOARD_COLUMN_LABELS[i.column]}
+                    text={shelfOf.get(i.key) ?? BOARD_COLUMN_LABELS[i.column]}
                     className="bg-white text-slate-700 ring-slate-300"
                   />
                 ) : null}
@@ -713,6 +832,7 @@ function BoardList({
         );
       })}
     </ul>
+    </>
   );
 }
 

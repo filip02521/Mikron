@@ -4,7 +4,7 @@
  */
 
 import { query } from "@/lib/db/pool";
-import type { GmailAttachmentRef } from "@/lib/google/gmail";
+import { decodeEntities, type GmailAttachmentRef } from "@/lib/google/gmail";
 import {
   addBusinessDaysKey,
   deriveColumn,
@@ -17,6 +17,7 @@ import { customsMailKind, type CustomsMailKind } from "@/lib/mail-board/triage";
 import { isInlineImage } from "@/lib/mail/attachments";
 import { categoryNeedsAction, type SupplierMailCategory } from "@/lib/supplier-mail/match";
 import { awaitingReplyTiming, type AwaitingReplyTiming } from "@/lib/suppliers/awaiting-supplier";
+import { looksPolish } from "@/lib/supplier-mail/translate-ai";
 import { todayDateKeyInWarsaw, warsawDateKeyFromIso } from "@/lib/time/warsaw";
 import type { SupplierLocation } from "@/types/database";
 
@@ -39,7 +40,7 @@ export type MailMessageRow = {
   supplier_location: SupplierLocation | null;
   /** other = nadawca spoza kart dostawców (cała skrzynka, migracja 184). */
   kind: "supplier" | "auto" | "bounce" | "other";
-  category: Exclude<SupplierMailCategory, "newsletter">;
+  category: SupplierMailCategory;
   from_address: string;
   from_name: string;
   subject: string;
@@ -73,10 +74,14 @@ export type MailConversation = {
   snippet: string;
   count: number;
   attachments: number;
-  category: Exclude<SupplierMailCategory, "newsletter">;
+  category: SupplierMailCategory;
   bounce: boolean;
-  /** Ostatnia wiadomość od dostawcy to autoodpowiedź (urlop). */
+  /** Od dostawcy przyszły same autoodpowiedzi (urlop, potwierdzenie odbioru z systemu zgłoszeń). */
   autoReply: boolean;
+  /** Faktura krajowa (KSeF) — Subiekt pobiera ją sam, nie trzeba jej wpisywać. */
+  ksef: boolean;
+  /** Faktura / proforma do zapłaty od razu (przedpłata), nie w terminie. */
+  prepayment: boolean;
   /** Wymaga reakcji: odpowiedź / potwierdzenie od dostawcy albo zwrot, jeszcze nie załatwione. */
   open: boolean;
   /** ZD: z OnTime (sprawa) albo numer z treści maila. */
@@ -143,12 +148,32 @@ export type SupplierMailView = {
   review: MailConversation[];
   /** Agencje celne i spedytorzy — lista w odprawach; tu do otwarcia rozmowy z linku. */
   customs: MailConversation[];
+  /** Półka „Oferty”: reklamy i newslettery dostawców z kart — bez tablicy, ale pod ręką. */
+  offers: MailConversation[];
   /** Osoby z zakupów — do „Obsługuje”. */
   people: MailPerson[];
   sync: { at: string | null; error: string | null; mailboxes: number };
 };
 
-const CATEGORY_RANK: Record<MailConversation["category"], number> = { confirmation: 0, reply: 1, invoice: 2, shipping: 3 };
+const CATEGORY_RANK: Record<MailConversation["category"], number> = { confirmation: 0, reply: 1, invoice: 2, shipping: 3, offer: 4 };
+
+/** Faktura z KSeF: wzmianka w mailu albo polski dostawca piszący po polsku (od 04.2026 wszystkie krajowe idą przez KSeF). */
+const KSEF_RE = /\bKSeF\b|krajow\w* system\w* e-?faktur/i;
+/**
+ * Zapłata od razu: proforma, przedpłata, „prosimy przelać kwotę”. Bez ogólnego „please pay” (zwykła faktura:
+ * „please pay by the due date”) i bez „zaliczki” (faktura zaliczkowa zwykle dokumentuje wpłatę już zrobioną).
+ */
+const PREPAYMENT_RE =
+  /pro[ -]?forma|prepayment|pre-payment|advance payment|payment in advance|vorauskasse|vorkasse|przedp[łl]at|transfer the (?:invoice |total )?amount|(?:kindly|please) transfer\b|bitte (?:überweisen|ueberweisen)|pay(?:ment)? before (?:shipment|dispatch|delivery)/i;
+
+function invoiceFlags(list: readonly MailMessageRow[]): { ksef: boolean; prepayment: boolean } {
+  const invoices = list.filter((m) => fromPerson(m) && m.category === "invoice");
+  const text = (m: MailMessageRow) => [m.subject, m.snippet, ...m.attachments.map((a) => a.filename)].join(" ");
+  return {
+    ksef: invoices.some((m) => KSEF_RE.test(text(m)) || (m.supplier_location === "POLSKA" && looksPolish(`${m.subject} ${m.snippet}`))),
+    prepayment: invoices.some((m) => PREPAYMENT_RE.test(`${m.subject} ${m.snippet}`)),
+  };
+}
 
 const fromPerson = (m: Pick<MailMessageRow, "kind" | "triage">) => m.kind === "supplier" || (m.kind === "other" && m.triage === "case");
 
@@ -175,7 +200,9 @@ export function groupConversations(rows: readonly MailMessageRow[]): MailConvers
   return [...byKey.entries()]
     .map(([key, list]) => {
       const sorted = [...list].sort((a, b) => b.received_at.getTime() - a.received_at.getTime());
-      const last = sorted[0]!;
+      // Autoodpowiedź (urlop, „wiadomość dotarła”) nie jest nową wiadomością: nie wyznacza nagłówka ani czasu,
+      // więc nie cofa sprawy z Czekam do Do zrobienia i nie zasłania prawdziwej odpowiedzi.
+      const last = sorted.find((m) => m.kind !== "auto") ?? sorted[0]!;
       const fromSupplier = sorted.filter((m) => m.kind !== "bounce");
       const linked = sorted.find((m) => m.case_kind);
       const category = sorted
@@ -200,7 +227,8 @@ export function groupConversations(rows: readonly MailMessageRow[]): MailConvers
         attachments: sorted.reduce((n, m) => n + m.attachments.filter((f) => !isInlineImage(f)).length, 0),
         category,
         bounce: sorted.some((m) => m.kind === "bounce" && !m.handled_at),
-        autoReply: fromSupplier[0]?.kind === "auto",
+        autoReply: fromSupplier.length > 0 && fromSupplier.every((m) => m.kind === "auto"),
+        ...invoiceFlags(sorted),
         open,
         zdLabel: linked?.case_label ?? sorted.find((m) => m.zd_dok_nr)?.zd_dok_nr ?? null,
         caseKind: linked?.case_kind ?? null,
@@ -220,7 +248,8 @@ export function groupConversations(rows: readonly MailMessageRow[]): MailConvers
           threadTriage(sorted) === "customs"
             ? customsMailKind({
                 subject: last.subject,
-                attachmentNames: sorted.flatMap((m) => m.attachments.map((a) => a.filename)),
+                // Tylko ostatnia wiadomość: dokumenty z odprawy sprzed tygodnia nie robią z awizacji „należności”.
+                attachmentNames: last.attachments.map((a) => a.filename),
                 snippet: last.snippet,
               })
             : null,
@@ -249,7 +278,8 @@ export async function loadMailMessages(where = "TRUE", params: unknown[] = []): 
     params
   );
   if (rows.length >= MESSAGES_LIMIT) console.warn("[poczta] limit wiadomości w widoku - starsze rozmowy pominięte", where.slice(0, 80));
-  return rows.map((r) => ({ ...r, attachments: Array.isArray(r.attachments) ? r.attachments : [] }));
+  // Snippety zapisane przed poprawką podwójnych encji („zam&#243;wienia”) — dekodowane przy odczycie.
+  return rows.map((r) => ({ ...r, snippet: decodeEntities(r.snippet), attachments: Array.isArray(r.attachments) ? r.attachments : [] }));
 }
 
 type CaseRow = {
@@ -407,8 +437,13 @@ function autoColumn(ref: BoardItem["ref"]): { column: BoardColumn; remindOn: str
   // Należności agencji celnej (na tablicy są tylko one) — do przekazania do zapłaty.
   if (c.triage === "customs") return { column: c.handledVia ? "done" : "to_pay", remindOn: null };
   if (c.open) return { column: "todo", remindOn: null, reason: c.bounce ? "Mail nie doszedł" : null };
-  // Faktura — do wpisania do Subiekta z terminem; „Do zapłaty” (przedpłata) ustawia się ręcznie.
-  if (c.handledVia !== "initial" && c.category === "invoice") return { column: "invoices", remindOn: null };
+  // Faktura: przedpłata → Do zapłaty od razu; krajowa (KSeF) Subiekt pobiera sam → Zakończone;
+  // reszta (zagraniczne) → Faktury, do wpisania do Subiekta z terminem.
+  if (c.handledVia !== "initial" && c.category === "invoice") {
+    if (c.prepayment) return { column: "to_pay", remindOn: null, reason: "Przedpłata" };
+    if (c.ksef) return { column: "done", remindOn: null };
+    return { column: "invoices", remindOn: null };
+  }
   if (c.repliedAt && c.handledVia !== "manual") return { column: "waiting", remindOn: waitUntilAfter(c.repliedAt) };
   return { column: "done", remindOn: null };
 }
@@ -482,16 +517,22 @@ export async function loadSupplierMailView(now: Date = new Date()): Promise<Supp
     ]);
     const all = groupConversations(messages);
     // Agencje i spedytorzy żyją w odprawach celnych; na tablicę trafiają tylko ich należności (płatność na już).
-    const conversations = all.filter(
-      (c) => c.triage === null || c.triage === "case" || (c.triage === "customs" && c.customsKind === "dues")
-    );
+    const candidates = all.filter((c) => c.triage === null || c.triage === "case" || c.triage === "customs");
     const waiting = waitingCases(cases, await loadCaseLinks(cases), now);
     const keys = [
-      ...conversations.flatMap((c) => [convBoardKey(c.mailbox, c.threadId), ...(c.caseKind && c.caseId ? [caseBoardKey(c.caseKind, c.caseId)] : [])]),
+      ...candidates.flatMap((c) => [convBoardKey(c.mailbox, c.threadId), ...(c.caseKind && c.caseId ? [caseBoardKey(c.caseKind, c.caseId)] : [])]),
       ...waiting.map((w) => caseBoardKey(w.kind, w.id)),
     ];
+    const rows = await loadBoardRows(keys);
+    const manual = (c: MailConversation) => Boolean(rows.get(convBoardKey(c.mailbox, c.threadId))?.column);
+    // Agencje i spedytorzy żyją w odprawach; na tablicy tylko należności (płatność na już) i to, co ktoś już na niej
+    // ustawił (np. Czekam po przekazaniu do zapłaty) — kolejna wiadomość agencji nie może zdjąć sprawy z tablicy.
+    // Oferta trafia na tablicę dopiero, gdy ktoś ręcznie wybierze jej kolumnę; do tego czasu leży na półce.
+    const onBoard = (c: MailConversation) =>
+      c.triage === "customs" ? c.customsKind === "dues" || manual(c) : c.category !== "offer" || manual(c);
+    const conversations = candidates.filter(onBoard);
     const doneSince = new Date(now.getTime() - DONE_DAYS * 86_400_000).toISOString();
-    const items = boardItems(conversations, waiting, await loadBoardRows(keys), todayDateKeyInWarsaw(now)).filter(
+    const items = boardItems(conversations, waiting, rows, todayDateKeyInWarsaw(now)).filter(
       // Zakończone z ostatnich 14 dni; pierwsza synchronizacja skrzynki nie zasypuje kolumny starociami.
       (i) => i.column !== "done" || (i.sortAt >= doneSince && !(i.ref.type === "conv" && i.ref.conv.handledVia === "initial" && !i.manualColumn))
     );
@@ -500,6 +541,7 @@ export async function loadSupplierMailView(now: Date = new Date()): Promise<Supp
       items: items.sort((a, b) => b.sortAt.localeCompare(a.sortAt)),
       review: all.filter((c) => c.triage === "review"),
       customs: all.filter((c) => c.triage === "customs"),
+      offers: candidates.filter((c) => c.category === "offer" && c.triage === null && !onBoard(c)),
       people,
       sync: {
         at: lastOk.length ? new Date(Math.min(...lastOk)).toISOString() : null,
@@ -508,7 +550,7 @@ export async function loadSupplierMailView(now: Date = new Date()): Promise<Supp
       },
     };
   } catch (e) {
-    if (isMissingSchema(e)) return { items: [], review: [], customs: [], people: [], sync: { at: null, error: null, mailboxes: 0 } };
+    if (isMissingSchema(e)) return { items: [], review: [], customs: [], offers: [], people: [], sync: { at: null, error: null, mailboxes: 0 } };
     throw e;
   }
 }

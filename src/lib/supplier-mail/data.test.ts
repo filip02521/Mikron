@@ -172,6 +172,39 @@ describe("tablica spraw — poprawki z audytu", () => {
     expect(countNeedsAction({ items, review }, "other")).toBe(3);
   });
 
+  it("potwierdzenie odbioru po odpowiedzi nie przykrywa jej i nie wraca sprawy z Czekam", () => {
+    const real = msg({ id: "1", gmail_message_id: "a", snippet: "przekazałam do kompletacji", received_at: new Date("2026-10-09T11:22:00Z"), handled_at: new Date("2026-10-09T11:48:00Z"), handled_via: "gmail" });
+    const ack = msg({ id: "2", gmail_message_id: "b", kind: "auto", snippet: "potwierdzamy, że wiadomość dotarła", received_at: new Date("2026-10-09T11:48:30Z") });
+    const [c] = groupConversations([real, ack]);
+    expect(c).toMatchObject({ snippet: "przekazałam do kompletacji", lastAt: "2026-10-09T11:22:00.000Z", autoReply: false, open: false });
+    const [item] = boardItems([c!], [], new Map(), "2026-10-09");
+    expect(item!.column).toBe("waiting");
+  });
+
+  it("faktury: przedpłata → Do zapłaty, krajowa z KSeF → Zakończone, zagraniczna → Faktury", () => {
+    const inv = (over: Partial<MailMessageRow>) => groupConversations([msg({ category: "invoice", subject: "Invoice 1", ...over })]);
+    const col = (over: Partial<MailMessageRow>) => boardItems(inv(over), [], new Map(), today)[0]!.column;
+    expect(col({ snippet: "We kindly ask you to transfer the invoice amount to our account" })).toBe("to_pay");
+    expect(col({ subject: "Proforma 12", snippet: "please pay before shipment" })).toBe("to_pay");
+    expect(
+      col({ supplier_location: "POLSKA", subject: "Ivoclar Faktura 38905239", snippet: "Od dnia 1 kwietnia 2026 r. Ivoclar-Vivadent Polska przesyła faktury za pośrednictwem Krajowego Systemu e-Faktur (KSeF)." })
+    ).toBe("done");
+    expect(col({ supplier_location: "POLSKA", subject: "Faktura FV/12/10/2026", snippet: "W załączeniu przesyłamy fakturę, proszę o potwierdzenie." })).toBe("done");
+    // Polski dostawca z angielską fakturą (np. zagraniczna centrala) zostaje w Fakturach.
+    expect(col({ supplier_location: "POLSKA", subject: "Invoice VRE520727", snippet: "Please find enclosed Invoice VRE520727." })).toBe("invoices");
+    expect(col({ subject: "Invoice VRE520727", snippet: "Please find enclosed Invoice VRE520727." })).toBe("invoices");
+  });
+
+  it("mail spedytora: o rodzaju decyduje ostatnia wiadomość, nie dokumenty z wcześniejszych", () => {
+    const docs = msg({ id: "1", gmail_message_id: "a", kind: "other", triage: "customs", supplier_name: null, subject: "RE: Prośba o wycenę",
+      attachments: [{ filename: "wykaz należności.pdf", attachmentId: "x", size: 1, mimeType: "application/pdf" }], received_at: new Date("2026-10-02T14:11:00Z") });
+    const pickup = msg({ id: "2", gmail_message_id: "b", kind: "other", triage: "customs", supplier_name: null, subject: "RE: Prośba o wycenę",
+      snippet: "Towar dziś zostanie odebrany z lotniska. Przesyłam awizacje kierowcy", received_at: new Date("2026-10-05T08:04:00Z") });
+    const [c] = groupConversations([docs, pickup]);
+    expect(c!.customsKind).toBe("pickup");
+    expect(groupConversations([docs])[0]!.customsKind).toBe("dues");
+  });
+
   it("odpowiedź spedytora w wątku ZD zamyka czekanie na to ZD", () => {
     const base = { kind: "zd" as const, id: "zd-9", label: "ZD 9", supplier_id: "s", supplier_name: "X", location: "POLSKA" as const,
       board_thread_id: null, from_address: "f@mikran.com", to_addresses: [], reminded_at: null, sent_by: null, resolved_at: null,

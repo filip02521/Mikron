@@ -43,6 +43,8 @@ const conv = (over: Partial<MailConversation>): MailConversation => ({
   category: "reply",
   bounce: false,
   autoReply: false,
+  ksef: false,
+  prepayment: false,
   open: true,
   zdLabel: null,
   caseKind: null,
@@ -80,6 +82,7 @@ const view: SupplierMailView = {
   ],
   review: [],
   customs: [],
+  offers: [],
   people: [
     { id: "me", name: "Osoba A." },
     { id: "other", name: "Osoba B." },
@@ -167,5 +170,43 @@ describe("tablica spraw", () => {
     fireEvent.change(screen.getByLabelText("Szukaj sprawy"), { target: { value: "proforme" } });
     expect(screen.getByText("Renfert")).toBeTruthy();
     expect(screen.queryByText("Kulzer")).toBeNull();
+  });
+
+  it("Faktury: zaznaczone naraz → Wpisane do Subiekta, jedno Cofnij", async () => {
+    const inv = (t: string, name: string) => item(conv({ threadId: t, key: t, supplierName: name, category: "invoice", open: false }), { column: "invoices" });
+    renderBoard({ ...view, items: [inv("i1", "Renfert"), inv("i2", "Scheftner"), inv("i3", "Dreve")] });
+    fireEvent.click(tab(/Faktury/));
+    fireEvent.click(screen.getByLabelText("Zaznacz Renfert"));
+    fireEvent.click(screen.getByLabelText("Zaznacz Dreve"));
+    expect(screen.getByText("Zaznaczone: 2")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Wpisane do Subiekta" }));
+    await waitFor(() => expect(moveMock).toHaveBeenCalledTimes(2));
+    expect(moveMock).toHaveBeenCalledWith({ key: "conv:zakupy@example.com|i1", inheritKey: null, column: "done" });
+    expect(moveMock).toHaveBeenCalledWith({ key: "conv:zakupy@example.com|i3", inheritKey: null, column: "done" });
+    expect(within(tab(/Faktury/)).getByText("1")).toBeTruthy();
+    expect(await screen.findByText("2 sprawy → Zakończone")).toBeTruthy();
+  });
+
+  it("Oferty: osobna półka, „Weź jako sprawę” przenosi na tablicę", async () => {
+    const promo = conv({ threadId: "o1", key: "o1", supplierName: "Mercator", subject: "NOWOŚĆ W OFERCIE!!!", category: "offer", open: false });
+    renderBoard({ ...view, offers: [promo] });
+    expect(screen.queryByText("Mercator")).toBeNull();
+    fireEvent.click(tab(/Oferty/));
+    fireEvent.click(screen.getByText("Mercator"));
+    fireEvent.click(screen.getByRole("button", { name: "Weź jako sprawę" }));
+    await waitFor(() => expect(moveMock).toHaveBeenCalledWith({ key: "conv:zakupy@example.com|o1", inheritKey: null, column: "todo" }));
+    // Cofnij wraca na półkę (bez kolumny), nie do Zakończonych.
+    fireEvent.click(await screen.findByRole("button", { name: "Cofnij" }));
+    await waitFor(() => expect(moveMock).toHaveBeenLastCalledWith({ key: "conv:zakupy@example.com|o1", column: null, remindOn: null }));
+  });
+
+  it("zaznaczenie faktur nie przechodzi na inną kolumnę", () => {
+    const inv = item(conv({ threadId: "i1", key: "i1", supplierName: "Renfert", category: "invoice", open: false }), { column: "invoices" });
+    renderBoard({ ...view, items: [inv] });
+    fireEvent.click(tab(/Faktury/));
+    fireEvent.click(screen.getByLabelText("Zaznacz Renfert"));
+    fireEvent.click(tab(/Do zrobienia/));
+    fireEvent.click(tab(/Faktury/));
+    expect((screen.getByLabelText("Zaznacz Renfert") as HTMLInputElement).checked).toBe(false);
   });
 });

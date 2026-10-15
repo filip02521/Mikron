@@ -372,8 +372,13 @@ const ENTITIES: Record<string, string> = {
   rdquo: "”",
 };
 
-/** Encje HTML: nazwane podstawowe i numeryczne (&#39;, &#8217;, &#x2013;). */
-function decodeEntities(s: string): string {
+/** Encje HTML: nazwane podstawowe i numeryczne (&#39;, &#8217;, &#x2013;), także podwójnie zakodowane (&amp;#243;). */
+export function decodeEntities(s: string): string {
+  const once = decodeEntitiesOnce(s);
+  return once !== s && /&(#x[0-9a-f]+|#\d+|[a-z]+);/i.test(once) ? decodeEntitiesOnce(once) : once;
+}
+
+function decodeEntitiesOnce(s: string): string {
   return s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (whole, e: string) => {
     if (e[0] === "#") {
       const code = e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
@@ -393,8 +398,15 @@ const INTERNAL_FROM_RE = /@(?:[a-z0-9-]+\.)*mikran\.(?:pl|com)\b/i;
 const AUTO_SUBJECT_RE =
   /^\s*(?:automatic reply|auto(?:matic)?[- ]?(?:reply|response)|automatische antwort|out of (?:the )?office|abwesenheit|odpowied[zź] automatyczna|autoodpowied[zź]|nieobecno[sś][cć]|r[ée]ponse automatique)/i;
 
-/** Zwrot / autoodpowiedź / ktoś z Mikranu / dostawca — po nagłówkach (RFC 3834) i temacie. */
-export function classifyReply(headers: GmailHeaders | undefined): GmailReplyKind {
+/**
+ * Potwierdzenie odbioru z systemu zgłoszeń (Thulium, Zendesk, Freshdesk…) — bez nagłówków RFC 3834,
+ * więc tylko po treści. Nie jest odpowiedzią: czekanie na dostawcę trwa dalej.
+ */
+const ACK_SNIPPET_RE =
+  /potwierdzamy,? (?:że|iż) (?:Pa[ńn]stwa |Twoja )?wiadomo[śs][ćc] dotar|wiadomo[śs][ćc] (?:zosta[łl]a )?(?:przyj[ęe]ta|zarejestrowana)|zg[łl]oszenie (?:zosta[łl]o )?(?:przyj[ęe]te|zarejestrowane)|we(?: have|'ve) received your (?:message|e-?mail|request|inquiry|enquiry)|your (?:message|request|ticket|inquiry) has been (?:received|logged)|this is an automated (?:message|response|reply|confirmation)|wir haben ihre (?:nachricht|anfrage|e-?mail) erhalten|ihre (?:nachricht|anfrage) (?:ist|wurde) (?:bei uns )?eingegangen|abbiamo ricevuto (?:la sua|il suo|la vostra)/i;
+
+/** Zwrot / autoodpowiedź / ktoś z Mikranu / dostawca — po nagłówkach (RFC 3834), temacie i potwierdzeniu odbioru w treści. */
+export function classifyReply(headers: GmailHeaders | undefined, snippet = ""): GmailReplyKind {
   const from = header(headers, "From");
   const contentType = header(headers, "Content-Type");
   if (/mailer-daemon|postmaster/i.test(from) || /report-type="?delivery-status/i.test(contentType)) return "bounce";
@@ -404,7 +416,8 @@ export function classifyReply(headers: GmailHeaders | undefined): GmailReplyKind
     header(headers, "X-Autoreply") ||
     header(headers, "X-Autorespond") ||
     /^auto_reply$/i.test(header(headers, "Precedence").trim()) ||
-    AUTO_SUBJECT_RE.test(header(headers, "Subject"))
+    AUTO_SUBJECT_RE.test(header(headers, "Subject")) ||
+    ACK_SNIPPET_RE.test(snippet.slice(0, 300))
   ) {
     return "auto";
   }
@@ -449,7 +462,7 @@ export function repliesFromThread(
     .sort((a, b) => Number(a.internalDate ?? 0) - Number(b.internalDate ?? 0))
     .map((m) => ({
       id: m.id,
-      kind: classifyReply(m.payload?.headers),
+      kind: classifyReply(m.payload?.headers, decodeSnippet(m.snippet ?? "")),
       from: header(m.payload?.headers, "From"),
       at: new Date(Number(m.internalDate ?? 0)).toISOString(),
       snippet: decodeSnippet(m.snippet ?? ""),
@@ -843,13 +856,14 @@ export async function getGmailMessageMeta(accessToken: string, id: string): Prom
   );
   if (!m?.threadId) return null;
   const headers = m.payload?.headers;
+  const snippet = decodeSnippet(m.snippet ?? "");
   return {
     id: m.id,
     threadId: m.threadId,
     labelIds: m.labelIds ?? [],
     receivedAt: new Date(Number(m.internalDate ?? 0)).toISOString(),
-    snippet: decodeSnippet(m.snippet ?? ""),
-    kind: classifyReply(headers),
+    snippet,
+    kind: classifyReply(headers, snippet),
     from: header(headers, "From"),
     to: [header(headers, "To"), header(headers, "Cc")].filter(Boolean).join(", "),
     subject: header(headers, "Subject"),
