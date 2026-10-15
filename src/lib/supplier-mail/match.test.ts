@@ -136,10 +136,23 @@ describe("poczta dostawców — numer ZD bez przedrostka i kategorie", () => {
     expect(cat("RE: New Order - MIKRAN", ["Invoice_778.pdf"])).toBe("invoice");
     expect(cat("RE: Zamówienie Mikran")).toBe("reply");
     expect(cat("Re: Pytanie - wycena i dostępność")).toBe("reply");
-    expect(cat("Live the REVOLUTION", [], "news@bartmedical.com")).toBe("newsletter");
-    expect(cat("Promocja: ViscoStat 2+1 z rabatem 50%", [], "dornwell@dornwell.pl", true)).toBe("newsletter");
-    expect(cat("Promocja: ViscoStat 2+1 z rabatem 50%", [], "dornwell@dornwell.pl")).toBe("newsletter");
-    expect(cat("RĘKAWICZKI - OFERTA HURTOWA", [], "biuro@kol-dental.pl")).toBe("newsletter");
+    expect(cat("Live the REVOLUTION", [], "news@bartmedical.com")).toBe("offer");
+    expect(cat("Promocja: ViscoStat 2+1 z rabatem 50%", [], "dornwell@dornwell.pl", true)).toBe("offer");
+    expect(cat("Promocja: ViscoStat 2+1 z rabatem 50%", [], "dornwell@dornwell.pl")).toBe("offer");
+    expect(cat("RĘKAWICZKI - OFERTA HURTOWA", [], "biuro@kol-dental.pl")).toBe("offer");
+    expect(cat("NOWOŚĆ W OFERCIE!!!", [], "biuro@mercator.example")).toBe("offer");
+    expect(cat("DENTEX 2+1 | Wyczerpujące się zapasy", [], "biuro@dentex.example")).toBe("offer");
+    // Zmiana cen to robota dla zakupów, nawet w wysyłce masowej.
+    expect(cat("Nowość - zmiana cen od 01.11.2026", [], "biuro@kol-dental.pl")).toBe("reply");
+    expect(cat("Price increase 2027", [], "news@bartmedical.com", true)).toBe("reply");
+    // Odpowiedź w wątku nie jest reklamą, nawet z „rabatem” w temacie.
+    expect(cat("RE: rabat na zamówienie")).toBe("reply");
+  });
+
+  it("„invoice” w temacie odpowiedzi bez dokumentu to rozmowa; przekazana faktura z PDF — faktura", () => {
+    expect(cat("RE: reminder: Transport order for Mikran 2688 / invoice 2742688", ["image001.png"])).toBe("reply");
+    expect(cat("WG: Follow Up - Mikran sp. z o.o. / Customer no. 21158 // Our invoice 8261178", ["8261178.pdf"])).toBe("invoice");
+    expect(cat("Invoice/Credit Note VRE520727- Order dd. 07.10.2026")).toBe("invoice");
     expect(cat("Re: promocja na frezy - zamówienie Mikran", [], "biuro@kol-dental.pl")).toBe("reply");
   });
 });
