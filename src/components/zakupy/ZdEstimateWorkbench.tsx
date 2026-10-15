@@ -97,6 +97,7 @@ import type { ZdProductBomRow } from "@/lib/data/zd-product-boms";
 import {
   buildExtraOnlyTwIds,
   buildOrderExcludedTwIds,
+  dropQtyOverridesForOnRequest,
   filterSessionIncludeRespectingOnRequest,
   onRequestTwIdSet,
   retargetTwIdToPackIfPiece,
@@ -5496,6 +5497,10 @@ export function ZdEstimateWorkbench({
         setOnRequests(res.onRequests);
         setOnRequestsError(null);
         const nextOnRequest = onRequestTwIdSet(res.onRequests, productPairs);
+        // Ręczna ilość sprzed oznaczenia nie może trzymać towaru na liście (ani zawyżać prośby).
+        setQtyOverrideByTwId((prev) =>
+          dropQtyOverridesForOnRequest(prev, [line.tw_Id], productPairs) as Record<number, number>
+        );
         const freshEx = await actionListZdEstimateExclusions();
         if (freshEx.ok) {
           applyExclusionsMutation(freshEx.exclusions);
@@ -5554,6 +5559,10 @@ export function ZdEstimateWorkbench({
       setOnRequests(res.onRequests);
       setOnRequestsError(null);
       const nextOnRequest = onRequestTwIdSet(res.onRequests, productPairs);
+      // Ręczne ilości sprzed oznaczenia nie mogą trzymać towarów na liście (ani zawyżać próśb).
+      setQtyOverrideByTwId((prev) =>
+        dropQtyOverridesForOnRequest(prev, res.succeededTwIds, productPairs) as Record<number, number>
+      );
       clearBulkOnRequestSelection(
         res.succeededTwIds,
         products.map((p) => p.subiektTwId)
