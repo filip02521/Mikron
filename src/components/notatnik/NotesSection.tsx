@@ -11,10 +11,9 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { KeyboardShortcutsHint } from "@/components/ui/KeyboardShortcutsHint";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { IconGripVertical, IconPlusCircle } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
-import { notatnikAddPanelShellClass, notatnikPrimaryAddButtonClass, salesTypography } from "@/lib/ui/ontime-theme";
+import { notatnikPrimaryAddButtonClass, salesTypography } from "@/lib/ui/ontime-theme";
 import { reorderNoteIds, sortSalesNotes, notesInSamePinBand, filterSalesNotesByQuery } from "@/lib/sales/notepad-note-sort";
 import { NOTE_TITLE_REQUIRED_MESSAGE, normalizeNoteBody, normalizeNoteTitle } from "@/lib/sales/note-content";
 import type { SalesNote, SalesNoteColor } from "@/types/database";
@@ -690,44 +689,15 @@ export function NotesSection({
         </div>
       ) : null}
 
-      <div className={cn(embedded && "pb-3 pt-0", !embedded && "space-y-3")}>
-        <SalesKeyboardShortcutsStrip items={NOTATNIK_KEYBOARD_HINTS} embedded={embedded} />
-
-        <div className={cn(NOTATNIK_NOTES_WALL_CLASS, "space-y-3", embedded && "px-3 sm:px-4")}>
-
-          {!readOnly ? (
-            composeExpanded ? (
-              <div className={notatnikAddPanelShellClass}>
-                <div className="flex items-start justify-between gap-2 border-b border-indigo-100/80 px-3 py-2.5 sm:px-3.5">
-                  <div className="flex min-w-0 items-start gap-2.5">
-                    <SectionHeadingIcon
-                      tileClassName="bg-indigo-100 text-indigo-800"
-                      className="mt-0.5 h-8 w-8"
-                    >
-                      <IconPlusCircle size={17} strokeWidth={2.25} />
-                    </SectionHeadingIcon>
-                    <div className="min-w-0">
-                      <p className={cn(salesTypography.sectionLabel, "normal-case text-indigo-950")}>
-                        Nowa karteczka
-                      </p>
-                      <p className={cn("mt-0.5", salesTypography.sectionHint, "text-indigo-950/75")}>
-                        {NOTATNIK_NOTES_SECTION_COPY.hint}
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="min-h-9 shrink-0 text-indigo-800 hover:bg-indigo-100/80"
-                    onClick={closeCompose}
-                  >
-                    Zwiń
-                  </Button>
-                </div>
-                <div className="px-3 py-3 sm:px-3.5">{composeForm}</div>
-              </div>
-            ) : (
+      <div
+        className={cn(
+          "space-y-3",
+          embedded ? "border-t border-slate-100 px-3 pb-4 pt-3 sm:px-4" : null
+        )}
+      >
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            {!readOnly && !composeExpanded ? (
               <Button
                 type="button"
                 variant="secondary"
@@ -736,40 +706,53 @@ export function NotesSection({
                 onClick={() => setComposeOpen(true)}
               >
                 <IconPlusCircle size={16} strokeWidth={2} className="mr-1.5 shrink-0" aria-hidden />
-                Przypnij nową karteczkę
+                {NOTATNIK_NOTES_SECTION_COPY.addNoteButton}
                 <span className="ml-2 hidden sm:inline-flex">
                   <KeyboardShortcutsHint items={[{ keys: ["N"], label: "" }]} compact />
                 </span>
               </Button>
-            )
-          ) : null}
-
-          {notes.length > 0 ? (
-            <NotatnikListFilterBar
-              embedded
-              bleed
-              visibleLabel="Szukaj w notatkach"
-              value={searchQuery}
-              onChange={setSearchQuery}
-              matchCount={filtered.length}
-              totalCount={notes.length}
-              placeholder={NOTATNIK_NOTES_SEARCH_PLACEHOLDER}
-              searchLabel="Szukaj w notatkach"
-              showIdleHint={false}
-              showActiveDetail={false}
-              emptyMatchHint="Brak dopasowań - sprawdź tytuł lub treść notatki."
+            ) : composeExpanded ? (
+              <p className="text-[13px] font-semibold text-slate-900">
+                {NOTATNIK_NOTES_SECTION_COPY.newNoteTitle}
+              </p>
+            ) : null}
+            <SalesKeyboardShortcutsStrip
+              items={NOTATNIK_KEYBOARD_HINTS}
+              layout="toolbar"
+              description="Skróty"
             />
+          </div>
+          {notes.length > 0 ? (
+            <div className="min-w-0 sm:max-w-xs sm:flex-1">
+              <NotatnikListFilterBar
+                compact
+                visibleLabel={undefined}
+                value={searchQuery}
+                onChange={setSearchQuery}
+                matchCount={filtered.length}
+                totalCount={notes.length}
+                placeholder={NOTATNIK_NOTES_SEARCH_PLACEHOLDER}
+                searchLabel="Szukaj w notatkach"
+                showIdleHint={false}
+                showActiveDetail={false}
+                emptyMatchHint="Brak dopasowań — sprawdź tytuł lub treść."
+              />
+            </div>
           ) : null}
+        </div>
+
+        {error ? <Alert tone="error">{error}</Alert> : null}
+
+        <div className={cn(NOTATNIK_NOTES_WALL_CLASS, "space-y-3")}>
+          {!readOnly && composeExpanded ? composeForm : null}
 
           {canDrag && filtered.length > 1 ? (
             <p className="inline-flex flex-wrap items-center gap-1 text-[10px] text-slate-400">
-              Przeciągnij karteczkę (
+              {NOTATNIK_NOTES_SECTION_COPY.dragHintBefore}
               <DragHandleGlyph />
-              ) w sekcji przypiętych lub zwykłych - między sekcjami nie da się przenieść.
+              ) w sekcji — między przypiętymi a zwykłymi nie da się przenieść.
             </p>
           ) : null}
-
-          {error ? <Alert tone="error">{error}</Alert> : null}
 
           {filtered.length === 0 ? (
             needle ? (
@@ -780,7 +763,9 @@ export function NotesSection({
               />
             ) : readOnly ? (
               <SalesSectionEmptyHint message="Brak notatek." />
-            ) : null
+            ) : composeExpanded ? null : (
+              <SalesSectionEmptyHint message={NOTATNIK_NOTES_SECTION_COPY.emptyEditable} />
+            )
           ) : (
             <>
               {renderNoteWallSection(pinnedFiltered, pinnedFiltered.length ? "Przypięte" : undefined)}

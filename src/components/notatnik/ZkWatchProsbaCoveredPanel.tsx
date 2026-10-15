@@ -12,7 +12,7 @@ export function ZkWatchProsbaCoveredPanel({ reason }: { reason: ZkWatchProsbaCov
   const meta = zkWatchProsbaCoveredMeta(reason);
 
   return (
-    <div className={cn("rounded-lg border px-3 py-2.5 shadow-[var(--shadow-card)]", meta.panelClass)}>
+    <div className={cn("rounded-[var(--radius-surface)] border px-3 py-2.5", meta.panelClass)}>
       <ZkWatchProsbaCoveredChip reason={reason} />
       <p className={cn("mt-1.5 text-xs leading-relaxed", meta.detailClass, salesTypography.rowMeta)}>
         {meta.detail}

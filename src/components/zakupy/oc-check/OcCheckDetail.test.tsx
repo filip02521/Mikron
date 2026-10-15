@@ -77,6 +77,20 @@ describe("OcCheckDetail", () => {
     expect(screen.getByRole("button", { name: "Wyjaśnione" })).toBeTruthy();
   });
 
+  it("licznik zgodnych pozycji odmienia się po polsku (1, 3, 12)", () => {
+    const ok = base.lines[1]!;
+    const withOk = (n: number): OcCheck => ({
+      ...base,
+      lines: [base.lines[0]!, ...Array.from({ length: n }, (_, i) => ({ ...ok, position: i + 2 }))],
+    });
+    const { rerender } = render(<OcCheckDetail check={withOk(1)} backHref="/" />);
+    expect(screen.getByText("Pozostała 1 pozycja jest zgodna z ZD.")).toBeTruthy();
+    rerender(<OcCheckDetail check={withOk(3)} backHref="/" />);
+    expect(screen.getByText("Pozostałe 3 pozycje są zgodne z ZD.")).toBeTruthy();
+    rerender(<OcCheckDetail check={withOk(12)} backHref="/" />);
+    expect(screen.getByText("Pozostałych 12 pozycji jest zgodnych z ZD.")).toBeTruthy();
+  });
+
   it("wyjaśniona sprawa: bez ruchu i pilnego, z kim i kiedy", () => {
     render(
       <OcCheckDetail backHref="/zakupy/asystent?sekcja=oc"

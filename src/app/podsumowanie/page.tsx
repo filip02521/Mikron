@@ -19,7 +19,6 @@ import {
   type StockWatchOffPlanSupplier,
   type StockWatchSupplierSignal,
 } from "@/lib/stock-watch/data";
-import { StockWatchOffPlanBanner } from "@/components/stock-watch/StockWatchOffPlanBanner";
 import { warsawNowParts } from "@/lib/time/warsaw";
 import {
   supplierSubiektScopeInfoFromRow,
@@ -35,9 +34,12 @@ export const dynamic = "force-dynamic";
 const emptyWorkspace = buildSummaryWorkspace([], []);
 
 export default async function PodsumowaniePage() {
-  await runOrderMaintenanceBeforePageLoad();
-
-  const session = await getSessionUser();
+  // Konserwacja kolejki nie zmienia sesji — oba kroki równolegle.
+  const [, session] = await Promise.all([
+    // Auto-powiązanie dostawcy — inaczej badge „Weryfikacja” świeci, a prośba już jest w Nowe.
+    runOrderMaintenanceBeforePageLoad({ autoAssign: true }),
+    getSessionUser(),
+  ]);
   const canPrepareZd = Boolean(
     session?.role && canAccessZdEstimate(session.role, session.assignedWorkspaces)
   );
@@ -97,7 +99,10 @@ export default async function PodsumowaniePage() {
     etaUseP50 = data.etaUseP50;
     etaQuantilesBySupplierId = data.etaQuantilesBySupplierId;
   } catch (e) {
-    error = userFacingErrorText(e, "Błąd ładowania");
+    error = userFacingErrorText(
+      e,
+      "Nie udało się wczytać panelu dziennego. Odśwież stronę - jeśli błąd wraca, zgłoś go administratorowi."
+    );
   }
 
   return (
@@ -108,16 +113,11 @@ export default async function PodsumowaniePage() {
         </Alert>
       ) : null}
 
-      {offPlanSuppliers.length > 0 ? (
-        <div className={dailyPanelWorkspaceShellClass}>
-          <StockWatchOffPlanBanner suppliers={offPlanSuppliers} canPrepareZd={canPrepareZd} />
-        </div>
-      ) : null}
-
       <Suspense fallback={<PanelDailyRouteLoadingSkeleton />}>
         <SummaryWorkspace
           workspace={workspace}
           stockSignalBySupplierId={stockSignalBySupplierId}
+          offPlanSuppliers={offPlanSuppliers}
           suppliers={suppliers}
           supplierDirectory={supplierDirectory}
           salesPeople={salesPeople}

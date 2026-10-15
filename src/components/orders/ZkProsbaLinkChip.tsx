@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { IconCheck, IconCopy } from "@/components/icons/StrokeIcons";
+import { copyTextToClipboard } from "@/lib/ui/copy-text-to-clipboard";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { formatProsbaZkLinkNumber } from "@/lib/orders/zk-prosba-link-display";
@@ -30,6 +32,83 @@ const chipToneStyles = {
   },
 } as const;
 
+type CopyState = "idle" | "copied" | "failed";
+
+/**
+ * Kopiuje pełny numer ZK (jak dok_NrPelny w Subiekcie). Nie rozwija karty ani nie nawiguje;
+ * potwierdzenie w dymku nad przyciskiem — bez przesuwania wiersza.
+ */
+function ZkNumberCopyButton({ nr }: { nr: string }) {
+  const [state, setState] = useState<CopyState>("idle");
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const fullNumber = `ZK ${nr}`;
+
+  useEffect(() => {
+    if (state === "idle") return;
+    const t = window.setTimeout(() => setState("idle"), state === "copied" ? 1600 : 3000);
+    return () => window.clearTimeout(t);
+  }, [state]);
+
+  const copy = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const ok = await copyTextToClipboard(fullNumber);
+    // Zapasowe kopiowanie (http w LAN) przenosi fokus na ukryte pole — oddaj go przyciskowi.
+    if (document.activeElement !== buttonRef.current) buttonRef.current?.focus({ preventScroll: true });
+    setState(ok ? "copied" : "failed");
+  };
+
+  const label =
+    state === "copied"
+      ? `Skopiowano ${fullNumber}`
+      : state === "failed"
+        ? "Nie udało się skopiować - zaznacz numer ręcznie"
+        : `Kopiuj numer ${fullNumber}`;
+
+  return (
+    <span className="relative inline-flex shrink-0">
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={copy}
+        // Enter / Spacja kopiują — nie mogą też uruchomić akcji rodzica; inne klawisze
+        // (np. „/” wyszukiwania, Ctrl+Z) przechodzą do skrótów strony.
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") event.stopPropagation();
+        }}
+        aria-label={label}
+        title={label}
+        className={cn(
+          "-my-1 inline-flex size-7 items-center justify-center rounded-md text-slate-400 sm:size-6",
+          "transition-[color,background-color,scale] duration-150 ease-out active:scale-[0.94]",
+          "hover:bg-slate-100 hover:text-slate-700",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45",
+          state === "copied" && "text-emerald-600 hover:text-emerald-700",
+          state === "failed" && "text-red-600 hover:text-red-700"
+        )}
+      >
+        {state === "copied" ? (
+          <IconCheck size={14} strokeWidth={2.5} />
+        ) : (
+          <IconCopy size={13} strokeWidth={2} />
+        )}
+      </button>
+      {state !== "idle" ? (
+        <span
+          role="status"
+          className={cn(
+            "pointer-events-none absolute bottom-full left-1/2 z-20 mb-1 -translate-x-1/2 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] font-medium text-white shadow-sm",
+            "transition-[opacity,translate] duration-150 ease-out starting:translate-y-0.5 starting:opacity-0",
+            state === "copied" ? "bg-slate-900" : "bg-red-700"
+          )}
+        >
+          {state === "copied" ? "Skopiowano" : "Nie udało się skopiować"}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 function zkPendingMessage(nr: string): string {
   return `${ZK_NAV_PENDING_LABEL} ${nr}`;
 }
@@ -43,6 +122,7 @@ export function ZkProsbaLinkChip({
   className,
   inline = false,
   tone = "violet",
+  copyable = false,
 }: {
   zkNumber: string;
   zkWatchId?: string | null;
@@ -54,6 +134,8 @@ export function ZkProsbaLinkChip({
   inline?: boolean;
   /** Dopasowanie koloru chipa do otoczenia (np. baner uzupełnienia ZK). */
   tone?: keyof typeof chipToneStyles;
+  /** Przycisk kopiowania numeru obok (np. „Moje zamówienia”). */
+  copyable?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -147,6 +229,7 @@ export function ZkProsbaLinkChip({
         ZK
       </span>
       {linkedNumber}
+      {copyable ? <ZkNumberCopyButton nr={nr} /> : null}
     </span>
   );
 

@@ -27,6 +27,7 @@ import { actionFetchSupplierRecentHistory, actionMarkOrdered, actionShiftOrder }
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 import { cn } from "@/lib/cn";
+import { stockWatchPrepareZdUsesHorizon } from "@/lib/stock-watch/signal";
 import { sidePanelBackdropClass, sidePanelShellClass, sidePanelCloseButtonClass, sidePanelHeaderClass, sidePanelContentClass } from "@/lib/ui/surfaces";
 import {
   IconX,
@@ -75,6 +76,27 @@ import {
   type SupplierOnVacationWindow,
 } from "@/lib/orders/procurement-supplier-vacation";
 import { useAnimatedClose } from "@/lib/ui/use-animated-close";
+import { buttonPrimaryClass } from "@/lib/ui/ontime-theme";
+import {
+  SupplierStockSummary,
+  stockSignalHasWork,
+  useSupplierStockSignals,
+} from "@/components/summary/SupplierStockSignal";
+
+/** Link wyglądający jak `Button` size="sm" (bez zagnieżdżania <button> w <a>), cel ≥ 36 px. */
+const LINK_BUTTON_VARIANT = {
+  primary: buttonPrimaryClass,
+  secondary:
+    "border border-[var(--card-border)] bg-[var(--card)] text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900",
+  ghost: "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+} as const;
+
+function linkButtonClass(variant: keyof typeof LINK_BUTTON_VARIANT): string {
+  return cn(
+    "inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-md px-2.5 py-1.5 text-xs font-medium leading-none transition-[color,background-color,border-color] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 focus-visible:ring-offset-1",
+    LINK_BUTTON_VARIANT[variant]
+  );
+}
 
 type HistoryRow = {
   action_at: string;
@@ -132,6 +154,7 @@ export function SupplierDrawer({
 }) {
   const preview = mode === "preview";
   const hubContext = useSupplierHubContext();
+  const { signals: stockSignals } = useSupplierStockSignals();
   useBodyScrollLock(Boolean(supplier));
   const supplierId = supplier?.id ?? null;
   /** Confirm „Zamówione” — powiązany z id; zmiana dostawcy zamyka dialog bez effectu. */
@@ -258,6 +281,20 @@ export function SupplierDrawer({
   };
 
   const due = supplierDueInfo(supplier.computed_next_date, warsawTodayDateKey());
+  const stockSignal = stockSignals[supplier.id];
+  const zdFirst = canPrepareZd && stockSignal != null && stockSignalHasWork(stockSignal);
+  const prepareZdLink = canPrepareZd ? (
+    <Link
+      href={buildZdEstimateLaunchHref(
+        supplier.id,
+        stockSignal && stockWatchPrepareZdUsesHorizon(stockSignal) ? { leadTimeHorizon: true } : undefined
+      )}
+      className={linkButtonClass(zdFirst ? "primary" : "secondary")}
+    >
+      <IconClipboardList size={15} className="shrink-0" />
+      Przygotuj ZD
+    </Link>
+  ) : null;
   const minOrder = formatSupplierMinOrder(supplier.min_order_value, supplier.min_order_currency);
   const hasPickup = supplier.pickup_mikran || supplier.pickup_pallet;
   const historyExpanded = historyExpandedFor === supplier.id;
@@ -379,58 +416,56 @@ export function SupplierDrawer({
             ) : null}
           </div>
 
+          <SupplierStockSummary
+            supplierId={supplier.id}
+            onDemand={supplier.order_on_demand}
+            className="mt-3"
+          />
+
           {preview ? (
             // Podgląd: termin i plan zmienia się w krokach okna, z którego otwarto podgląd —
             // tu tylko przejścia do pełnych widoków.
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               <Link
                 href={`/podsumowanie?view=dzis&supplierId=${encodeURIComponent(supplier.id)}`}
-                className="block w-full"
+                className={linkButtonClass("secondary")}
               >
-                <Button variant="secondary" size="sm" className="w-full justify-center">
-                  <IconCalendar size={15} className="shrink-0" />
-                  Otwórz w panelu dziennym
-                </Button>
+                <IconCalendar size={15} className="shrink-0" />
+                Otwórz w panelu dziennym
               </Link>
-              <Link href={cardsHref} className="block w-full">
-                <Button variant="ghost" size="sm" className="w-full justify-center">
-                  <IconPencil size={15} className="shrink-0" />
-                  Karta dostawcy
-                </Button>
+              <Link href={cardsHref} className={linkButtonClass("ghost")}>
+                <IconPencil size={15} className="shrink-0" />
+                Karta dostawcy
               </Link>
             </div>
           ) : (
             <>
-          {/* Akcje: główne duże, pomocnicze mniejsze */}
+          {/* Akcje: główne duże, pomocnicze mniejsze. Gdy Braki mają pozycje Do ZD, główną akcją jest „Przygotuj ZD”. */}
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {zdFirst ? prepareZdLink : null}
               <Button
-                variant="primary"
+                variant={zdFirst ? "secondary" : "primary"}
                 size="sm"
                 disabled={rowPending}
                 aria-busy={rowPending}
-                className={cn("w-full justify-center", !canPrepareZd && "sm:col-span-2")}
+                className={cn("min-h-9 w-full justify-center", !canPrepareZd && "sm:col-span-2")}
                 onClick={() => setMarkConfirmForId(supplier.id)}
                 title="Skrót klawiszowy: Z"
               >
                 <IconCircleCheck size={15} className={cn("shrink-0", rowPending && "animate-pulse")} />
                 {rowPending ? DAILY_PANEL_MARK_ORDERED_PENDING : DAILY_PANEL_MARK_ORDERED_LABEL}
                 {!rowPending ? (
-                  <kbd className="ml-1 hidden rounded border border-white/30 px-1 text-[10px] font-semibold leading-4 sm:inline">
+                  <kbd
+                    className={cn(
+                      "ml-1 hidden rounded border px-1 text-[10px] font-semibold leading-4 sm:inline",
+                      zdFirst ? "border-slate-300" : "border-white/30"
+                    )}
+                  >
                     Z
                   </kbd>
                 ) : null}
               </Button>
-              {canPrepareZd ? (
-                <Link
-                  href={buildZdEstimateLaunchHref(supplier.id)}
-                  className="block w-full"
-                >
-                  <Button variant="secondary" size="sm" className="w-full justify-center">
-                    <IconClipboardList size={15} className="shrink-0" />
-                    Przygotuj ZD
-                  </Button>
-                </Link>
-              ) : null}
+              {!zdFirst ? prepareZdLink : null}
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               <ShiftMenu

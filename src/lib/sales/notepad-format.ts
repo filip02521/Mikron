@@ -42,7 +42,7 @@ function readSnapshotStatusLabel(watch: SalesZkWatch): string | null {
 
 export function zkWatchSubtitle(
   watch: SalesZkWatch,
-  options?: { omitLineSummary?: boolean; omitIssued?: boolean }
+  options?: { omitLineSummary?: boolean; omitIssued?: boolean; omitStatus?: boolean }
 ): string | null {
   const parts: string[] = [];
   const issued = formatShortDate(watch.zk_issued_at);
@@ -51,7 +51,7 @@ export function zkWatchSubtitle(
     parts.push(watch.line_summary.trim());
   }
   const status = readSnapshotStatusLabel(watch);
-  if (status && status !== "Aktywne") parts.push(`Status: ${status}`);
+  if (status && status !== "Aktywne" && !options?.omitStatus) parts.push(`Status: ${status}`);
   return parts.length ? parts.join(" · ") : null;
 }
 

@@ -37,6 +37,14 @@ describe("extractZkWatchClientContact", () => {
     });
   });
 
+  it("ucina przecinek lub średnik na końcu telefonu z Subiekta", () => {
+    const watch = {
+      ...baseWatch,
+      subiekt_snapshot: { kh__Kontrahent_Odbiorca: { kh_Id: 42, adr_Telefon: "600-100-200, " } },
+    } as SalesZkWatch;
+    expect(extractZkWatchClientContact(watch).phone).toBe("600-100-200");
+  });
+
   it("zwraca puste kontakty bez snapshotu", () => {
     expect(
       extractZkWatchClientContact({ ...baseWatch, subiekt_snapshot: null })

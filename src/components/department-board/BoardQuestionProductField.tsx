@@ -447,7 +447,12 @@ export function BoardQuestionProductField({
         </div>
       )}
 
-      {configFeedback ? <SubiektFeedbackAlert feedback={configFeedback} /> : null}
+      {configFeedback?.code === "subiekt_unavailable" ? (
+        // Handlowiec nie potrzebuje diagnostyki (API, LAN) — produkt jest opcjonalny, wystarczy wpisać nazwę.
+        <p className="text-xs text-slate-500">Subiekt jest teraz niedostępny - wpisz nazwę produktu ręcznie.</p>
+      ) : configFeedback ? (
+        <SubiektFeedbackAlert feedback={configFeedback} />
+      ) : null}
       {visibleFeedback && visibleFeedback.tone !== "info" ? (
         <SubiektFeedbackAlert feedback={visibleFeedback} />
       ) : null}

@@ -1,6 +1,6 @@
 import { DEPARTMENT_BOARD_SUCCESS_TOAST } from "@/lib/ui/notice-copy";
 
-export const DEPARTMENT_BOARD_SALES_PAGE_TITLE = "Pytania zespołu";
+export const DEPARTMENT_BOARD_SALES_PAGE_TITLE = "Tablica";
 export const DEPARTMENT_BOARD_SALES_PAGE_DESC =
   "Wspólne pytania i odpowiedzi z działem zakupów. Ogłoszenia od zakupów znajdziesz w Moje zamówienia. Możesz doprecyzować pytanie lub zamknąć wątek, gdy uzyskasz odpowiedź. Wątki bez aktywności przez 2 dni po odpowiedzi zakupów zamykają się automatycznie.";
 
@@ -34,6 +34,10 @@ export const DEPARTMENT_BOARD_QUESTIONS_FORM = {
   productSearchLoading: "Szukam…",
   submit: "Wyślij",
   submitting: "Wysyłanie…",
+  /** Podpowiedź przy nieaktywnym „Wyślij” — czego brakuje. */
+  submitMissingBoth: "Wpisz temat i treść pytania.",
+  submitMissingTitle: "Wpisz temat pytania.",
+  submitMissingBody: "Wpisz treść pytania.",
   successToast: DEPARTMENT_BOARD_SUCCESS_TOAST,
   introBeforeLink: "Zamówienie towaru -",
   introLinkLabel: "Nowa prośba",

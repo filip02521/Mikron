@@ -372,6 +372,7 @@ export async function runCatalogZdSync(options?: {
 
   let state = resolveCatalogZdSyncStartState(prev, runId, options);
   let autoAssignUpdated = state.autoAssignUpdated;
+  const autoAssignAtStart = autoAssignUpdated;
 
   const supplierByKh = await loadSupplierByKh();
 
@@ -419,6 +420,17 @@ export async function runCatalogZdSync(options?: {
     }
 
     await writeCatalogZdSyncState(state);
+
+    if (autoAssignUpdated > autoAssignAtStart) {
+      try {
+        const { revalidateAfterVerificationAutoAssign } = await import(
+          "@/lib/services/deferred-order-maintenance"
+        );
+        revalidateAfterVerificationAutoAssign();
+      } catch (e) {
+        console.error("[catalog-zd-sync revalidate after autoAssign]", e);
+      }
+    }
 
     return {
       ok: allDone && !state.lastError,

@@ -10,25 +10,33 @@ import {
 import { parseDateOnly } from "@/lib/orders/dates";
 
 describe("buildDeliveryDateMetaDisplay", () => {
-  it("pokazuje Dziś z datą skróconą", () => {
+  it("jeden format: dzień tygodnia z datą, odległość pod spodem", () => {
     expect(
       buildDeliveryDateMetaDisplay(parseDateOnly("2026-06-18")!, {
         todayDateKey: "2026-06-18",
       })
     ).toEqual({
-      primaryLabel: "Dziś",
-      detailLabel: "18.06",
+      primaryLabel: "Czw 18.06",
+      detailLabel: "dziś",
       overdue: false,
-      title: "Planowana dostawa dziś · 18.06.2026",
+      title: "Planowana dostawa Czw 18.06.2026",
     });
   });
 
-  it("pokazuje Jutro", () => {
+  it("jutro jako odległość, data z dniem tygodnia jako główna", () => {
+    const display = buildDeliveryDateMetaDisplay(parseDateOnly("2026-06-19")!, {
+      todayDateKey: "2026-06-18",
+    });
+    expect(display.primaryLabel).toBe("Pt 19.06");
+    expect(display.detailLabel).toBe("jutro");
+  });
+
+  it("rok tylko gdy inny niż bieżący", () => {
     expect(
-      buildDeliveryDateMetaDisplay(parseDateOnly("2026-06-19")!, {
-        todayDateKey: "2026-06-18",
+      buildDeliveryDateMetaDisplay(parseDateOnly("2027-01-05")!, {
+        todayDateKey: "2026-12-20",
       }).primaryLabel
-    ).toBe("Jutro");
+    ).toBe("Wt 05.01.2027");
   });
 
   it("pokazuje Po terminie dla minionych dat", () => {
@@ -40,14 +48,14 @@ describe("buildDeliveryDateMetaDisplay", () => {
     expect(display.detailLabel).toBe("10.06.2026");
   });
 
-  it("dodaje szacunek dni roboczych w detalu", () => {
+  it("mało historii zostaje widoczne, średnia dni roboczych idzie do dymka", () => {
     expect(
       buildDeliveryDateMetaDisplay(parseDateOnly("2026-08-01")!, {
         todayDateKey: "2026-06-18",
         avgBusinessDays: 5,
         lowConfidence: true,
       }).detailLabel
-    ).toBe("~5 dni rob. · mało historii");
+    ).toBe("za 44 dni · mało historii");
   });
 });
 

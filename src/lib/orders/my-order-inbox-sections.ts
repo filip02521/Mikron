@@ -1,3 +1,4 @@
+import { MY_ORDER_STATUS_TITLE } from "@/lib/orders/my-order-status-titles";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import type { MojeSectionIconKind } from "@/components/icons/StrokeIcons";
 import { isProsbaHandoffStatus, sortMyOrderRows } from "@/lib/orders/my-order-sales-ui";
@@ -17,29 +18,29 @@ import { mojeSectionDomId } from "@/lib/orders/moje-section-focus";
 
 /** Sekcja u góry listy — wymaga kliknięcia handlowca. */
 export const MY_ORDER_ACTION_SECTION_COPY = {
-  title: "Potwierdź odbiór z regału",
-  hint: "Towar gotowy do odbioru albo sprawa do zamknięcia - potwierdź jednym kliknięciem.",
+  title: "Do potwierdzenia",
+  hint: "Towar czeka na regale albo sprawa jest do zamknięcia - potwierdź jednym kliknięciem.",
   icon: "action" as const,
   accent: "emerald" as const satisfies MyOrderSectionAccent,
 };
 
 export const MY_ORDER_TEETH_ACTION_SECTION_COPY = {
   title: "Potwierdź odbiór zębów",
-  hint: "Magazyn przyjął zęby i doręczy je osobiście - potwierdź, że je otrzymałeś/aś (nie na regał).",
+  hint: "Magazyn doręcza zęby osobiście (nie na regał) - potwierdź odbiór.",
   icon: "teeth" as const,
   accent: "violet" as const satisfies MyOrderSectionAccent,
 };
 
 export const MY_ORDER_MIXED_ACTION_SECTION_COPY = {
   title: "Potwierdź odbiór (zęby i towar)",
-  hint: "W tej prośbie są zęby i towar z regału - każdy typ potwierdzasz osobno.",
+  hint: "Zęby i towar z regału potwierdzasz osobno.",
   icon: "mixed-pickup" as const,
   accent: "indigo" as const satisfies MyOrderSectionAccent,
 };
 
 export const MY_ORDER_DISMISS_SECTION_COPY = {
   title: "Anulowania do potwierdzenia",
-  hint: "Anulowania i rezygnacje - potwierdź, aby usunąć wpis z listy.",
+  hint: "Potwierdź, żeby usunąć wpis z listy.",
   icon: "dismiss" as const,
   accent: "slate" as const satisfies MyOrderSectionAccent,
 };
@@ -47,9 +48,20 @@ export const MY_ORDER_DISMISS_SECTION_COPY = {
 export const MOJE_TEETH_ACTION_SECTION_ID = mojeSectionDomId("teeth");
 export const MOJE_MIXED_ACTION_SECTION_ID = mojeSectionDomId("mixed-pickup");
 
+/**
+ * Odpowiedź na prośbę „informacja o towarze” — towar leży u nas na półce. To nie jest odbiór z regału,
+ * więc osobna sekcja w kolorze informacji, a nie w zielonym „Do potwierdzenia”.
+ */
+export const MY_ORDER_INFORMACJA_READY_SECTION_COPY = {
+  title: "Towar jest już na magazynie",
+  hint: "Odpowiedź na Twoją prośbę o informację - towar leży u nas na półce. Potwierdź, że widziałeś/aś.",
+  icon: "informacja-ready" as const,
+  accent: "violet" as const satisfies MyOrderSectionAccent,
+};
+
 export const MY_ORDER_INFORMACJA_SECTION_COPY = {
   title: "Sprawdzamy dostępność",
-  hint: "Prośby informacyjne - bez zamówienia u dostawcy. Czekasz na odpowiedź z magazynu.",
+  hint: "Bez zamówienia u dostawcy - odpowie magazyn.",
   icon: "informacja" as const,
   accent: "violet" as const satisfies MyOrderSectionAccent,
 };
@@ -60,13 +72,13 @@ export const MY_ORDER_PROGRESS_SECTION_COPY: Record<
 > = {
   ordered_progress: {
     title: "Czekamy na dostawę",
-    hint: "Zamówienia już złożone u dostawcy. U góry najbliższy termin - rozwiń wiersz, aby zobaczyć termin u dostawcy.",
+    hint: "Zamówione u dostawcy - najbliższy termin u góry.",
     icon: "zamowienie",
     accent: "slate",
   },
   before_order: {
     title: "Przed zamówieniem",
-    hint: "Weryfikacja w dziale dostaw lub czekamy na złożenie zamówienia u dostawcy. Nie musisz nic robić.",
+    hint: "Dział zakupów sprawdza lub zamawia - nie musisz nic robić.",
     icon: "before_order",
     accent: "indigo",
   },
@@ -81,8 +93,8 @@ export const MY_ORDER_PROGRESS_SECTION_EMPTY: Record<MyOrderProgressSectionId, s
 /** Czy prośba jest jeszcze przed realnym zamówieniem u dostawcy. */
 export function myOrderProgressSection(row: MyOrderRow): MyOrderProgressSectionId {
   if (
-    row.statusTitle === "Przed zamówieniem" ||
-    row.statusTitle === "Czekamy na zamówienie u dostawcy" ||
+    row.statusTitle === MY_ORDER_STATUS_TITLE.beforeOrder ||
+    row.statusTitle === MY_ORDER_STATUS_TITLE.informacjaAwaitingProcurement ||
     isProsbaHandoffStatus(row.statusTitle)
   ) {
     return "before_order";

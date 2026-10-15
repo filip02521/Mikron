@@ -53,6 +53,11 @@ describe("poczta dostawców — rozmowy", () => {
     expect(other).toMatchObject({ category: "invoice", open: false });
   });
 
+  it("snippet z podwójnie zakodowanymi encjami czyta się po polsku", () => {
+    const [c] = groupConversations([msg({ snippet: "Potwierdzenie złożenia zam&#243;wienia &amp; płatności" })]);
+    expect(c!.snippet).toBe("Potwierdzenie złożenia zamówienia & płatności");
+  });
+
   it("załatwione nie są otwarte; zwrot jest otwarty; sama autoodpowiedź nie", () => {
     const [done] = groupConversations([msg({ handled_at: new Date(), handled_via: "gmail" })]);
     expect(done).toMatchObject({ open: false, handledVia: "gmail" });

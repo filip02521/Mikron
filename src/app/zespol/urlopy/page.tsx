@@ -19,6 +19,7 @@ import { SystemNotice } from "@/components/ui/SystemNotice";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { IconSun } from "@/components/icons/StrokeIcons";
 import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
+import { salesWorkspaceShellClass } from "@/lib/ui/ontime-theme";
 
 import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
@@ -80,7 +81,7 @@ export default async function ZespolUrlopyPage() {
     delegateOptions = await fetchDelegateOptions();
   } catch {}
 
-  return (
+  const workspace = (
     <SalesTeamWorkspace
       title={isManager ? "Urlopy i zastępstwa" : "Urlopy"}
       description={
@@ -133,4 +134,8 @@ export default async function ZespolUrlopyPage() {
       )}
     </SalesTeamWorkspace>
   );
+
+  // Handlowiec: ta sama szerokość co /moje, /plan, /tablica. Kierownik zostaje w szerszej
+  // kolumnie zakładek zespołu (obok /zespol/handlowcy, /zespol/grupy).
+  return isManager ? workspace : <div className={salesWorkspaceShellClass}>{workspace}</div>;
 }

@@ -135,7 +135,7 @@ function TourStepContent({
 
       {previewMode === "finish" ? (
         <p className="rounded-md border border-emerald-200/90 bg-emerald-50/80 px-2.5 py-2 text-[11px] leading-relaxed text-emerald-950">
-          Kliknij „Zakończ tour”, aby wejść do panelu ze{" "}
+          Kliknij „Zakończ wprowadzenie”, aby wejść do panelu ze{" "}
           <strong className="font-medium">swoimi danymi</strong>. Przykładowe wpisy znikną.
         </p>
       ) : null}
@@ -409,7 +409,7 @@ export function SalesOnboardingWizard() {
             disabled={pending}
             onClick={handleNext}
           >
-            {pending ? "Zapis…" : isLast ? "Zakończ tour" : "Dalej"}
+            {pending ? "Zapis…" : isLast ? "Zakończ wprowadzenie" : "Dalej"}
           </Button>
         </div>
       </div>

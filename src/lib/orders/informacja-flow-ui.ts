@@ -81,7 +81,8 @@ export function informacjaProductsFormHint(path: InformacjaFlowPath): string {
     case "via_panel":
       return "Wystarczy nazwa lub symbol - bez ilości. Najpierw zamówienie u dostawcy, potem magazyn wyśle e-mail po przyjęciu towaru.";
     default:
-      return "Wystarczy nazwa lub symbol - bez ilości. To nie zapytanie u dostawcy: obserwujemy stan magazynowy i powiadomimy e-mailem, gdy towar się pojawi.";
+      // „To nie zapytanie u dostawcy” mówi już podpowiedź wyboru ścieżki — bez powtórki.
+      return "Wystarczy nazwa lub symbol - bez ilości.";
   }
 }
 
@@ -105,7 +106,7 @@ export function informacjaReadinessSubline(
     case "via_panel":
       return "Po wysłaniu najpierw Prośby handlowców (Główne/Uzupełniające), potem magazyn.";
     default:
-      return "Po wysłaniu obserwujemy stan magazynowy - e-mail, gdy towar się pojawi (bez zapytania u dostawcy).";
+      return "Po wysłaniu obserwujemy stan magazynowy - e-mail, gdy towar się pojawi.";
   }
 }
 
@@ -116,7 +117,7 @@ export function informacjaSalesFooterNote(path: InformacjaFlowPath): string {
   if (path === "via_panel") {
     return "Najpierw zamówienie u dostawcy - e-mail po sprawdzeniu na magazynie.";
   }
-  return "Powiadomimy e-mailem, gdy towar pojawi się na magazynie - bez zapytania u dostawcy.";
+  return "Powiadomimy e-mailem, gdy towar pojawi się na magazynie.";
 }
 
 export const INFORMACJA_FLOW_CARD_STYLES: Record<

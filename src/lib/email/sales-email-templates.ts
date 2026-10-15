@@ -1,3 +1,4 @@
+import { PROCUREMENT_TEAM_LABEL_GENITIVE, PROCUREMENT_TEAM_LABEL_TITLE } from "@/lib/orders/procurement-copy";
 import { getAppUrl } from "@/lib/env/app-config";
 import { salesBoardQuestionHref } from "@/lib/data/department-board-shared";
 import { escapeHtml } from "@/lib/security/escape-html";
@@ -329,7 +330,7 @@ function renderProcurementCancelItem(
   rows.push(emailDataRow("Produkt", item.products));
   if (item.symbol) rows.push(emailDataRow("Symbol", item.symbol));
   if (item.procurementCancelNote) {
-    rows.push(emailDataRow("Wiadomość od działu dostaw", item.procurementCancelNote));
+    rows.push(emailDataRow(`Wiadomość od ${PROCUREMENT_TEAM_LABEL_GENITIVE}`, item.procurementCancelNote));
   }
   rows.push(
     emailDataRow(
@@ -375,11 +376,11 @@ export function renderProcurementCancelEmail(params: {
 
   const leadFixed = noteUpdated
     ? count === 1
-      ? "Dział dostaw zaktualizował wiadomość do anulowanej prośby."
-      : `Dział dostaw zaktualizował wiadomości do <strong>${polishPozycjeLabel(count)}</strong> anulowanych próśb.`
+      ? `${PROCUREMENT_TEAM_LABEL_TITLE} zaktualizował wiadomość do anulowanej prośby.`
+      : `${PROCUREMENT_TEAM_LABEL_TITLE} zaktualizował wiadomości do <strong>${polishPozycjeLabel(count)}</strong> anulowanych próśb.`
     : count === 1
-      ? "Dział dostaw anulował Twoją prośbę indywidualną."
-      : `Dział dostaw anulował <strong>${polishPozycjeLabel(count)}</strong> z Twoich próśb.`;
+      ? `${PROCUREMENT_TEAM_LABEL_TITLE} anulował Twoją prośbę indywidualną.`
+      : `${PROCUREMENT_TEAM_LABEL_TITLE} anulował <strong>${polishPozycjeLabel(count)}</strong> z Twoich próśb.`;
 
   const body = [
     emailGreeting(firstName(params.recipientName)),
@@ -390,7 +391,7 @@ export function renderProcurementCancelEmail(params: {
         )
       : "",
     emailMutedParagraph(
-      "Szczegóły i ewentualną wiadomość od działu dostaw zobaczysz poniżej. Pełny status jest w aplikacji OnTime."
+      `Szczegóły i ewentualną wiadomość od ${PROCUREMENT_TEAM_LABEL_GENITIVE} zobaczysz poniżej. Pełny status jest w aplikacji OnTime.`
     ),
     renderProcurementCancelItems(sorted),
     emailButton(mojeUrl(), "Otwórz Moje zamówienia"),
@@ -413,7 +414,7 @@ export function renderProcurementCancelEmail(params: {
     html: emailDocument({
       preheader,
       headerTitle: noteUpdated ? "Zaktualizowano wiadomość" : "Prośba anulowana",
-      headerSubtitle: "Dział dostaw",
+      headerSubtitle: PROCUREMENT_TEAM_LABEL_TITLE,
       accentColor: EMAIL_THEME.warning,
       bodyHtml: body,
     }),

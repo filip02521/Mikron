@@ -179,7 +179,7 @@ export function zkCaseNoteProsbaStatusCopy(
         label: "Dołączana do prośby",
         shortLabel: "Do prośby",
         description:
-          "Przy „Utwórz prośbę” / „Uzupełnij” notatka trafi do uwag pozycji - zakupy ją zobaczą.",
+          "Przy „Zgłoś prośbę” / „Uzupełnij” notatka trafi do uwag pozycji - zakupy ją zobaczą.",
         tone: "amber",
       };
     case "planned_pending_attach":

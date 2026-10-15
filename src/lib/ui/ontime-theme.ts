@@ -207,6 +207,19 @@ export const procurementArchivePageShellClass = adminPageShellClass;
 export const zdEstimatePageShellClass =
   "relative mx-auto flex w-full max-w-[min(100%,100rem)] min-h-0 flex-1 flex-col";
 
+/**
+ * Faza wprowadzania (brak listy): standardowa kolumna jak podsumowanie / admin
+ * (`salesTeamShellClass`). Po `lines` — pełna szerokość shella kreatora.
+ */
+export const zdEstimatePrepPhaseShellClass = cn(
+  salesTeamShellClass,
+  "px-0"
+);
+
+/** Ease-out — rozszerzenie prep → lista (max-width). */
+export const zdEstimatePhaseWidthTransitionClass =
+  "motion-safe:transition-[max-width] motion-safe:duration-300 motion-safe:ease-[cubic-bezier(0.23,1,0.32,1)]";
+
 /** Scena loadingu / launch — wyśrodkowanie w flex-1 workspace. */
 export const zdEstimateLoadingStageClass =
   "zd-est-loading-stage relative flex w-full min-h-0 flex-1 items-center justify-center px-2 py-4 sm:px-3 sm:py-6";
@@ -224,7 +237,7 @@ export const zdEstimateLoadingWindowHeaderClass =
 
 /** Pionowy rytm workbencha fill (micro → prep → lista → sticky). */
 export const zdEstimateWorkbenchStackClass =
-  "relative flex min-h-0 flex-1 flex-col gap-1 sm:gap-1.5";
+  "relative flex min-h-0 flex-1 flex-col gap-1.5 sm:gap-2";
 
 /**
  * Skala gęstości chrome Kreatora ZD (top bar + belka listy):
@@ -272,16 +285,26 @@ export const zdEstimateNestedWellClass = cn(
  * Karta zakresu (start i Zmień zakres): naturalna wysokość, bez max-height 12rem.
  * Przy braku listy scroll jest na workbenchu — nie na polach.
  */
-export const zdEstimatePrepFormInsetXClass = "px-3.5 sm:px-5";
+export const zdEstimatePrepFormInsetXClass = "px-4 sm:px-5";
 
-/** Treść karty przygotowania — jedna kolumna, gęsty stack. */
+/** Powierzchnia karty przygotowania — spokojny panel, bez „AI purple”. */
+export const zdEstimatePrepCardClass = cn(
+  zdEstimateCardSurfaceClass,
+  "overflow-hidden bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] ring-1 ring-slate-900/[0.03]"
+);
+
+/** Sekcja w prep (dostawca / zakres / parametry). */
+export const zdEstimatePrepSectionClass =
+  "min-w-0 space-y-2.5 rounded-lg bg-white/70 p-3 ring-1 ring-slate-200/70 sm:p-3.5";
+
+/** Treść karty przygotowania — jedna kolumna, czytelny rytm. */
 export const zdEstimatePrepIdleBodyClass = cn(
-  "flex flex-col content-start gap-3 py-3 sm:gap-3.5 sm:py-3.5",
+  "flex flex-col content-start gap-3 py-3.5 sm:gap-3.5 sm:py-4",
   zdEstimatePrepFormInsetXClass
 );
 
 /** Belka parametrów biegu (zapas / okno / boost / prośby). */
-export const zdEstimatePrepParamsStripClass =
+export const zdEstimatePrepParamsStripWideClass =
   "flex min-w-0 flex-wrap items-end gap-x-3 gap-y-2.5 border-t border-slate-100/90 pt-3";
 
 /** Input / chip / przycisk / Select w prep — jeden box h-9 (jak dock). */
@@ -293,9 +316,9 @@ export const zdEstimatePrepControlClass = cn(
 
 /** Stopka Policz karty zakresu — ten sam inset X co treść, zaraz pod polami. */
 export const zdEstimatePrepIdleFooterClass = cn(
-  "scroll-mt-24 flex shrink-0 flex-col border-t border-slate-100/90 bg-slate-50/55 sm:flex-row sm:items-center sm:justify-between",
+  "scroll-mt-24 flex shrink-0 flex-col border-t border-slate-200/80 bg-slate-50/80",
   zdEstimatePrepFormInsetXClass,
-  "gap-2 py-2.5 sm:py-3"
+  "gap-2.5 py-3 sm:py-3.5"
 );
 
 /** Luźniejszy inset niż panel dzienny — tabela potrzebuje powietrza. */
@@ -479,10 +502,10 @@ export const zdEstimateStickyClearanceTallClass =
 
 /** Primarny Policz w stopce prep — ten sam box co dock / prep (h-9). */
 export const zdEstimatePrepPrimaryButtonClass = cn(
-  "inline-flex w-full items-center justify-center gap-1.5 px-3 text-sm font-medium leading-none sm:w-auto sm:min-w-[10.5rem]",
+  "inline-flex w-full cursor-pointer items-center justify-center gap-1.5 px-3 text-sm font-medium leading-none sm:w-auto sm:min-w-[10.5rem]",
   zdEstimateRadiusControlClass,
   zdEstimateDockControlHeightClass,
-  "min-h-9 py-0"
+  "min-h-9 py-0 active:scale-[0.98] motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.23,1,0.32,1)]"
 );
 
 /**
@@ -765,8 +788,9 @@ export const mobileNavBadgeClass =
   "bg-slate-700 text-[9px] font-bold text-white shadow-sm lg:text-[10px]";
 
 /** Wspólna obudowa komunikatów systemowych. */
+/** Tekst i akcje obok siebie; gdy akcje się nie mieszczą, schodzą pod tekst (sm:flex-wrap), zamiast go ściskać. */
 export const systemNoticeShellClass = cn(
-  "flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+  "flex flex-col gap-3 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"
 );
 
 /** Przypięte ogłoszenie — neutralna karta, bez gradientu. */
@@ -922,13 +946,13 @@ export const panelChoiceChipSuccessSelectedClass =
 export const panelDashedActionClass =
   "w-full rounded-md border border-dashed border-indigo-200/70 bg-indigo-50/30 px-4 py-3 text-sm font-medium text-indigo-800 transition hover:border-indigo-300/90 hover:bg-indigo-50/60 hover:text-indigo-950";
 
-/** Główna akcja dodawania w notatniku (ZK, karteczki). */
+/** Główna akcja dodawania w notatniku (ZK, karteczki) — petrol soft, nie pełny primary. */
 export const notatnikPrimaryAddButtonClass =
-  "min-h-11 w-full justify-center border-indigo-200/80 bg-indigo-50/50 text-indigo-950 hover:bg-indigo-100/70 sm:w-auto";
+  "min-h-9 justify-center border-indigo-200/80 bg-indigo-50/55 text-indigo-950 hover:bg-indigo-100/70 sm:w-auto";
 
-/** Obudowa rozwiniętego formularza dodawania w notatniku. */
+/** Obudowa rozwiniętego formularza dodawania (ZK); notatki compose = sticky na tablicy. */
 export const notatnikAddPanelShellClass =
-  "overflow-hidden rounded-md border border-indigo-200/90 bg-indigo-50/45 shadow-sm";
+  "overflow-hidden rounded-md border border-slate-200/90 bg-white";
 
 export const panelMutedToggleClass =
   "text-sm font-medium text-indigo-700/80 transition hover:text-indigo-900";

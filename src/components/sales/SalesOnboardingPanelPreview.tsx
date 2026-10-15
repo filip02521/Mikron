@@ -1,5 +1,6 @@
 "use client";
 
+import { PROCUREMENT_TEAM_LABEL_GENITIVE } from "@/lib/orders/procurement-copy";
 import { FlowChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 import type { SalesOnboardingStep } from "@/lib/sales/sales-onboarding-steps";
@@ -206,7 +207,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
             </div>
           ))}
           <div className="rounded-md border border-sky-100 bg-sky-50/70 px-2.5 py-1.5 text-[10px] text-sky-900">
-            Plan działu dostaw · pn.-pt. · kiedy składamy zamówienia u dostawców
+            Plan {PROCUREMENT_TEAM_LABEL_GENITIVE} · pn.-pt. · kiedy składamy zamówienia u dostawców
           </div>
         </div>
       );

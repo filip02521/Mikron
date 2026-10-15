@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   consolidateSubiektFeedbacks,
   dedupeSubiektFeedbacks,
+  prosbaLineSubiektFeedback,
   shouldSuppressCompletenessBanner,
+  subiektOfflineDisplay,
   subiektFeedbackBody,
 } from "@/lib/orders/consolidate-form-status";
 import { getSubiektFeedback } from "@/lib/subiekt/feedback";
@@ -67,5 +69,24 @@ describe("consolidate-form-status", () => {
       requestKind: "zamowienie" as const,
     };
     expect(shouldSuppressCompletenessBanner([mapping], draft)).toBe(false);
+  });
+
+  it("subiektOfflineDisplay: bez salesProsbaForm stara plakietka, na /prosba jeden komunikat", () => {
+    const feedback = getSubiektFeedback("subiekt_unavailable");
+    const base = { feedback, prosba: true, allLinesLinked: false };
+    expect(subiektOfflineDisplay({ ...base, salesProsbaForm: false })).toBe("badge");
+    expect(subiektOfflineDisplay({ ...base, salesProsbaForm: false, allLinesLinked: true })).toBe("badge");
+    expect(subiektOfflineDisplay({ ...base, salesProsbaForm: true })).toBe("notice");
+    expect(subiektOfflineDisplay({ ...base, salesProsbaForm: true, allLinesLinked: true })).toBeNull();
+    expect(subiektOfflineDisplay({ ...base, feedback: null, salesProsbaForm: true })).toBeNull();
+    expect(subiektOfflineDisplay({ ...base, prosba: false, salesProsbaForm: false })).toBeNull();
+  });
+
+  it("prosbaLineSubiektFeedback: bez powtórki offline i bez „API” pod pozycją", () => {
+    expect(prosbaLineSubiektFeedback(getSubiektFeedback("subiekt_unavailable"))).toBeNull();
+    const timeout = prosbaLineSubiektFeedback(getSubiektFeedback("timeout"));
+    expect(`${timeout?.title} ${timeout?.message}`).not.toMatch(/API/);
+    const notFound = getSubiektFeedback("not_found_product");
+    expect(prosbaLineSubiektFeedback(notFound)).toBe(notFound);
   });
 });

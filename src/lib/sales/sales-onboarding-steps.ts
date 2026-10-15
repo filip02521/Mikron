@@ -42,15 +42,15 @@ export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
       lead:
         "OnTime łączy Cię z działem zakupów i magazynem. Składasz prośby, śledzisz statusy i komunikujesz się z zespołem - bez codziennej obiegówki mailowej.",
       bullets: [
-        "Sześć głównych zakładek: Moje zamówienia, Nowa prośba, ZK czekające, Notatnik, Harmonogram i Tablica - ZK i Notatnik to osobne pozycje menu.",
+        "Główne zakładki: Moje zamówienia, Nowa prośba, ZK czekające, Notatnik, Harmonogram i Tablica. Urlopy znajdziesz w sekcji Zespół.",
         ...(isManager
           ? [
               "Jako kierownik zobaczysz też krok Podgląd zespołu - bez logowania na konta innych handlowców.",
             ]
           : []),
         "Status spraw zawsze w aplikacji. E-mail dostaniesz przy ważnych zdarzeniach - np. gdy towar jest na magazynie lub gotowy do odbioru.",
-        "Tour przejdzie po głównych zakładkach z przykładowymi danymi. Menu będzie chwilowo wyłączone - używaj panelu „Dalej” po prawej (na telefonie - u dołu).",
-        "Tour uruchamia się raz. Po zakończeniu zobaczysz swoje dane i pełną nawigację.",
+        "Wprowadzenie przejdzie po głównych zakładkach z przykładowymi danymi. Menu będzie chwilowo wyłączone - używaj panelu „Dalej” po prawej (na telefonie - u dołu).",
+        "Wprowadzenie uruchamia się samo tylko raz. Po zakończeniu zobaczysz swoje dane i pełną nawigację.",
       ],
     },
     {
@@ -60,7 +60,7 @@ export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
       href: "/moje",
       title: "Moje zamówienia",
       lead:
-        "Tu sprawdzasz status próśb - co czeka u dostawcy, co możesz odebrać z magazynu i co wymaga Twojej reakcji. Sekcja Start dnia u góry zbiera pilne sprawy.",
+        "Tu sprawdzasz status próśb - co czeka u dostawcy, co możesz odebrać z magazynu i co wymaga Twojej reakcji. Dzwonek „Pilne sprawy” u góry zbiera wszystko, co wymaga Twojej reakcji.",
       bullets: [
         "Jeden wiersz = jedna prośba u jednego dostawcy. Nagłówek mówi, co się dzieje.",
         "Przy wierszu widać klienta końcowego - łatwiej rozróżnisz sprawy różnych gabinetów.",
@@ -68,7 +68,7 @@ export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
         "Zielony przycisk oznacza Twoją akcję: potwierdź odbiór z magazynu albo zamknij powiadomienie o dostępności.",
         "Na dole strony jest archiwum zakończonych spraw.",
       ],
-      tip: "Pilne sprawy są u góry w sekcji „Potwierdź odbiór z regału” - Start dnia przewinie Cię tam.",
+      tip: "Sprawy do Twojej reakcji są u góry w sekcji „Do potwierdzenia” - kliknięcie w „Pilnych sprawach” przewinie Cię tam.",
     },
     {
       id: "prosba",
@@ -81,7 +81,7 @@ export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
       bullets: [
         "Na górze wybierz rodzaj: Zamówienie u dostawcy albo Informacja o towarze.",
         `Przy informacji: „${informacjaDirect}” (e-mail do Ciebie + wpis w „Moje zamówienia”) albo „${informacjaStockOut}” (tylko sygnał dla zakupów - bez wpisu u Ciebie).`,
-        "Wpisz produkt w jednym polu (nazwa lub symbol) i kod Mikran obok. Więcej pozycji dodajesz przyciskiem „+ Kolejny produkt”.",
+        "Wpisz produkt w jednym polu (nazwa lub symbol) i kod Mikran obok. Więcej pozycji dodajesz przyciskiem „Dodaj kolejny produkt”.",
         "Opcjonalnie wskaż klienta końcowego - wpisz kilka liter i wybierz z listy Subiekta albo wpisz nazwę ręcznie.",
         "Dostawcę nie wybierasz - system dopasuje go po symbolu lub kodzie. Zakupy doprecyzują, gdy trzeba.",
         "Po wysłaniu status zobaczysz w „Moje zamówienia”. Każdy dostawca ma osobny wiersz.",
@@ -109,7 +109,7 @@ export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
       navKey: "board",
       navLabel: "Tablica",
       href: "/tablica",
-      title: "Pytania zespołu",
+      title: "Tablica",
       lead:
         "Wspólne pytania i odpowiedzi z działem zakupów. Ogłoszenia od zakupów znajdziesz w Moje zamówienia.",
       bullets: [

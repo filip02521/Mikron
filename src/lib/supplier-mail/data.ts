@@ -17,7 +17,7 @@ import { customsMailKind, type CustomsMailKind } from "@/lib/mail-board/triage";
 import { isInlineImage } from "@/lib/mail/attachments";
 import { categoryNeedsAction, type SupplierMailCategory } from "@/lib/supplier-mail/match";
 import { awaitingReplyTiming, type AwaitingReplyTiming } from "@/lib/suppliers/awaiting-supplier";
-import { looksPolish } from "@/lib/supplier-mail/translate-ai";
+import { looksPolish } from "@/lib/supplier-mail/polish";
 import { todayDateKeyInWarsaw, warsawDateKeyFromIso } from "@/lib/time/warsaw";
 import type { SupplierLocation } from "@/types/database";
 
@@ -221,7 +221,8 @@ export function groupConversations(rows: readonly MailMessageRow[]): MailConvers
         lastFrom: last.from_name || last.from_address,
         lastFromEmail: last.from_address,
         lastAt: last.received_at.toISOString(),
-        snippet: last.snippet,
+        // Snippet jest dekodowany przy synchronizacji; część sklepów koduje treść podwójnie („zam&#243;wienia”).
+        snippet: decodeEntities(last.snippet),
         count: sorted.length,
         // Bez obrazków z podpisu Outlooka (image001.png…).
         attachments: sorted.reduce((n, m) => n + m.attachments.filter((f) => !isInlineImage(f)).length, 0),

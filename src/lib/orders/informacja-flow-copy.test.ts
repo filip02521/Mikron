@@ -38,6 +38,15 @@ describe("informacjaReadyAckSubline", () => {
     ).toBe("Potwierdź, że widziałeś/aś powiadomienie o dostępności");
   });
 
+  it("z datą: „Na półce od …” zamiast osobnej kolumny przy przycisku", () => {
+    expect(
+      informacjaReadyAckSubline({ sourceMix: "stock_auto", informacjaPath: "direct", availableSince: "Pt 09.10" })
+    ).toBe("Na półce od Pt 09.10 · wg stanu w Subiekcie");
+    expect(
+      informacjaReadyAckSubline({ sourceMix: "manual", informacjaPath: "via_panel", availableSince: "Pt 09.10" })
+    ).toBe("Na półce od Pt 09.10 · potwierdził magazyn");
+  });
+
   it("manual via_panel - magazyn potwierdził", () => {
     expect(
       informacjaReadyAckSubline({ sourceMix: "manual", informacjaPath: "via_panel" })

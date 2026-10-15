@@ -1,3 +1,4 @@
+import { PROCUREMENT_TEAM_LABEL_TITLE } from "@/lib/orders/procurement-copy";
 import {
   requestDraftMissingLabels,
   type RequestDraft,
@@ -5,6 +6,10 @@ import {
 import { isInformacjaRequest } from "@/lib/orders/individual";
 import { verificationInformacjaUiForOrder } from "@/lib/orders/verification-informacja-ui";
 import type { IndividualOrder } from "@/types/database";
+
+/** Zdania statusu weryfikacji — {@link my-order-sales-ui} rozpoznaje je po tych prefiksach. */
+export const VERIFICATION_PROCUREMENT_MATCHES_SUPPLIER = `${PROCUREMENT_TEAM_LABEL_TITLE} dopasuje dostawcę.`;
+export const VERIFICATION_PROCUREMENT_WILL_FILL = `${PROCUREMENT_TEAM_LABEL_TITLE} uzupełni:`;
 
 function orderToDraft(order: IndividualOrder): RequestDraft {
   return {
@@ -41,10 +46,10 @@ export function describeVerificationGaps(order: IndividualOrder): string {
   }
 
   if (procurementTodo.length === 1 && procurementTodo[0] === "dostawcę") {
-    return `Dział dostaw dopasuje dostawcę. ${footer}`;
+    return `${VERIFICATION_PROCUREMENT_MATCHES_SUPPLIER} ${footer}`;
   }
 
-  return `Dział dostaw uzupełni: ${procurementTodo.join(", ")}. ${footer}`;
+  return `${VERIFICATION_PROCUREMENT_WILL_FILL} ${procurementTodo.join(", ")}. ${footer}`;
 }
 
 /** Krótkie etykiety braków — lista kolejki w weryfikacji. */

@@ -121,7 +121,9 @@ describe("my-order-delivery-timing-display", () => {
       })
     );
     expect(display?.title).toBe(ZD_ETA_TIMING_TITLE_NO_MATCH);
-    expect(display?.estimate).toBe("Brak informacji o planowanej dostawie");
+    // Tytuł mówi „brak terminu” — bez powtórki w drugiej linii.
+    expect(display?.estimate).toBe("");
+    expect(display?.detail).toBe("W dokumencie ZD u dostawcy nie ma terminu, a termin z historii już minął.");
     expect(display?.urgency).toBe("overdue");
     expect(display?.urgencyLabel).toBeNull();
   });

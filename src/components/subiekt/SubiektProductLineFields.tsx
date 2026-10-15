@@ -19,6 +19,7 @@ import {
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { getSubiektFeedback } from "@/lib/subiekt/feedback";
+import { prosbaLineSubiektFeedback } from "@/lib/orders/consolidate-form-status";
 import {
   buildProductPickFromSubiekt,
   combinedProductSearchDisplay,
@@ -190,6 +191,7 @@ export function SubiektProductLineFields({
   requestKind,
   disabled,
   appearance = "default",
+  salesProsbaForm = false,
   productFieldClassName,
   suppliers,
   onSupplierResolved,
@@ -214,12 +216,16 @@ export function SubiektProductLineFields({
   lockSubiektLink = false,
   groupSupplierId,
   linkedLeadTime = null,
+  hideStockStatus = false,
+  autoFocusProduct = false,
 }: {
   value: SubiektProductLineValue;
   onChange: (patch: Partial<SubiektProductLineValue>) => void;
   requestKind: IndividualRequestKind;
   disabled?: boolean;
   appearance?: "default" | "prosba";
+  /** Formularz handlowca /prosba — bez powtórek komunikatu o niedostępnym Subiekcie pod pozycją. */
+  salesProsbaForm?: boolean;
   productFieldClassName?: string;
   suppliers?: AppSupplierRef[];
   onSupplierResolved?: (result: {
@@ -269,9 +275,22 @@ export function SubiektProductLineFields({
   groupSupplierId?: string | null;
   /** Meta czasu dostawy — pod „Powiązano z Subiektem” / „Z bazy”. */
   linkedLeadTime?: ReactNode;
+  /** Stan pokazuje karta „Dostępność” pod pozycją (formularz prośby) — bez drugiego bloku. */
+  hideStockStatus?: boolean;
+  /** Formularz handlowca: kursor od razu w polu produktu (tylko mysz/klawiatura, nie telefon). */
+  autoFocusProduct?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const productAnchorRef = useRef<HTMLDivElement>(null);
+  // Rozmowa z klientem: pierwsze, co robi handlowiec, to wpisanie towaru — bez klikania w pole.
+  // Telefon pominięty: fokus otworzyłby klawiaturę i zasłonił pół formularza.
+  useEffect(() => {
+    if (!autoFocusProduct || value.product?.trim() || value.symbol?.trim()) return;
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    productAnchorRef.current?.querySelector("input")?.focus({ preventScroll: true });
+    // Tylko przy pierwszym wyrenderowaniu pozycji.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const pluAnchorRef = useRef<HTMLDivElement>(null);
   const searchGenerationRef = useRef(0);
   const typeaheadInstanceId = useId();
@@ -950,131 +969,165 @@ export function SubiektProductLineFields({
     if (resolvingSupplier) {
       prosbaMessageItems.push({ kind: "resolving" });
     }
-    if (supplierFeedback) {
-      prosbaMessageItems.push({ kind: "feedback", feedback: supplierFeedback });
+    const lineSupplierFeedback = salesProsbaForm
+      ? prosbaLineSubiektFeedback(supplierFeedback)
+      : supplierFeedback;
+    if (lineSupplierFeedback) {
+      prosbaMessageItems.push({ kind: "feedback", feedback: lineSupplierFeedback });
     }
-    if (productFieldFeedback) {
+    const lineFeedback = salesProsbaForm
+      ? prosbaLineSubiektFeedback(productFieldFeedback)
+      : productFieldFeedback;
+    if (lineFeedback) {
       prosbaMessageItems.push({
         kind: "feedback",
-        feedback: productFieldFeedback,
+        feedback: lineFeedback,
         fieldLabel: `Subiekt - ${subiektFieldLabel(activeField)}`,
       });
     }
   }
 
   const productSearchRow = (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-      <Field
-        label={
-          <span>
-            {isInformacja
-              ? "Produkt (symbol lub nazwa)"
-              : "Produkt - symbol lub nazwa"}
-          </span>
-        }
-        className={cn("min-w-0 flex-1", productFieldClassName)}
-        {...mergedProductField}
-        hint={
-          !mergedProductField.error && !mergedProductField.state
-            ? mikranOnlyHint ??
-              (typeaheadEnabled && !prosba
-                ? catalogFallback
-                  ? "Wpisz nazwę lub symbol - wyniki z lokalnej bazy"
-                  : "Wpisz nazwę lub symbol - wyniki z Subiekta pojawią się poniżej"
-                : !typeaheadEnabled
-                  ? "Nazwa lub symbol produktu (wpis ręczny)"
-                  : undefined)
-            : undefined
-        }
-      >
-        <div
-          ref={productAnchorRef}
-          className={cn(
-            "relative rounded-md transition-[box-shadow]",
-            typeaheadPanelVisible &&
-              activeField !== "plu" &&
-              "z-30 ring-2 ring-indigo-400/80 ring-offset-2"
-          )}
+    <div
+      className={cn(
+        "flex flex-col sm:flex-row sm:items-start",
+        compactControls ? "gap-2" : "gap-3"
+      )}
+    >
+      <div className={cn("min-w-0 flex-1", productFieldClassName)}>
+        <Field
+          label={
+            <span>
+              {isInformacja
+                ? "Produkt (symbol lub nazwa)"
+                : "Produkt - symbol lub nazwa"}
+            </span>
+          }
+          {...mergedProductField}
+          hint={
+            !mergedProductField.error && !mergedProductField.state
+              ? mikranOnlyHint ??
+                (typeaheadEnabled && !prosba
+                  ? catalogFallback
+                    ? "Wpisz nazwę lub symbol - wyniki z lokalnej bazy"
+                    : "Wpisz nazwę lub symbol - wyniki z Subiekta pojawią się poniżej"
+                  : !typeaheadEnabled
+                    ? "Nazwa lub symbol produktu (wpis ręczny)"
+                    : undefined)
+              : undefined
+          }
         >
-          <SubiektInputShell loading={productInputLoading}>
-            <Input
-              disabled={disabled}
-              placeholder={
-                isInformacja
-                  ? "np. Śruba M6 lub ABC-12"
-                  : typeaheadEnabled
-                    ? catalogFallback
-                      ? "Szukaj w bazie: nazwa lub symbol…"
-                      : "Szukaj w Subiekcie: nazwa lub symbol…"
-                    : "Nazwa lub symbol produktu"
-              }
-              maxLength={MAX_PRODUCT_TEXT_LEN}
-              value={combinedProductSearchDisplay(value)}
-              autoComplete="off"
-              state={mergedProductField.state}
-              className={cn(
-                compactControls
-                  ? "min-h-11 py-2.5 text-base sm:min-h-[2.5rem] sm:text-sm"
-                  : "min-h-12 py-3 text-base sm:min-h-[2.75rem]",
-                inputLoadingPadding(productInputLoading)
-              )}
-              onKeyDown={handleTypeaheadKeyDown}
-              {...(activeField === "plu"
-                ? {}
-                : typeaheadInputA11y(activeField))}
-              onChange={(e) => {
-                const q = e.target.value;
-                const field = inferCombinedProductSearchField(q);
-                manualPatch(
-                  patchFromCombinedProductInput(q, {
-                    symbol: value.symbol,
-                    product: value.product,
-                  }),
-                  true
-                );
-                setActiveField(field);
-                setOpen(true);
-              }}
-              onFocus={() => {
-                if (linkedFromSubiekt) return;
-                const q = combinedProductSearchDisplay(value);
-                setActiveField(
-                  q.trim() ? inferCombinedProductSearchField(q) : "name"
-                );
-                setOpen(true);
-              }}
-            />
-          </SubiektInputShell>
-          {renderTypeaheadPanel()}
-          {!linkedFromSubiekt && symbolPreview ? (
-            <p className="mt-1.5 text-xs text-slate-500">
-              Symbol w Subiekcie:{" "}
-              <span className="font-medium text-slate-700">{symbolPreview}</span>
-            </p>
-          ) : null}
-          {linkedFromSubiekt ? (
-            <div className="mt-1.5 space-y-1">
-              <SubiektLinkedLineBanner
-                symbol={symbolPreview}
-                mikranCode={value.mikranCode}
-                fromCatalog={value.source === "catalog"}
+          <div
+            ref={productAnchorRef}
+            className={cn(
+              "relative rounded-md transition-[box-shadow]",
+              typeaheadPanelVisible &&
+                activeField !== "plu" &&
+                "z-30 ring-2 ring-indigo-400/80 ring-offset-2"
+            )}
+          >
+            <SubiektInputShell loading={productInputLoading}>
+              <Input
+                disabled={disabled}
+                placeholder={
+                  isInformacja
+                    ? "np. Śruba M6 lub ABC-12"
+                    : typeaheadEnabled
+                      ? catalogFallback
+                        ? "Szukaj w bazie: nazwa lub symbol…"
+                        : "Szukaj w Subiekcie: nazwa lub symbol…"
+                      : "Nazwa lub symbol produktu"
+                }
+                maxLength={MAX_PRODUCT_TEXT_LEN}
+                value={combinedProductSearchDisplay(value)}
+                autoComplete="off"
+                state={mergedProductField.state}
+                className={cn(
+                  compactControls
+                    ? "min-h-11 py-2.5 text-base sm:min-h-[2.5rem] sm:text-sm"
+                    : "min-h-12 py-3 text-base sm:min-h-[2.75rem]",
+                  inputLoadingPadding(productInputLoading)
+                )}
+                onKeyDown={handleTypeaheadKeyDown}
+                {...(activeField === "plu"
+                  ? {}
+                  : typeaheadInputA11y(activeField))}
+                onChange={(e) => {
+                  const q = e.target.value;
+                  const field = inferCombinedProductSearchField(q);
+                  manualPatch(
+                    patchFromCombinedProductInput(q, {
+                      symbol: value.symbol,
+                      product: value.product,
+                    }),
+                    true
+                  );
+                  setActiveField(field);
+                  setOpen(true);
+                }}
+                onFocus={() => {
+                  if (linkedFromSubiekt) return;
+                  const q = combinedProductSearchDisplay(value);
+                  setActiveField(
+                    q.trim() ? inferCombinedProductSearchField(q) : "name"
+                  );
+                  setOpen(true);
+                }}
               />
-              {linkedLeadTime}
-            </div>
-          ) : null}
-        </div>
-      </Field>
+            </SubiektInputShell>
+            {renderTypeaheadPanel()}
+            {!linkedFromSubiekt && symbolPreview ? (
+              <p className="mt-1.5 text-xs text-slate-500">
+                Symbol w Subiekcie:{" "}
+                <span className="font-medium text-slate-700">{symbolPreview}</span>
+              </p>
+            ) : null}
+          </div>
+        </Field>
+        {/* Poza <label> Field — przycisk w labelu psuje nazwę dostępności. */}
+        {linkedFromSubiekt ? (
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <SubiektLinkedLineBanner
+              symbol={symbolPreview}
+              mikranCode={value.mikranCode}
+              fromCatalog={value.source === "catalog"}
+            />
+            {linkedLeadTime}
+            {!(prosba && isTeethOrderLine && linkedFromSubiekt) &&
+            !lockSubiektLink ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={disabled}
+                className="h-7 min-h-0 px-1.5 text-xs text-indigo-800 hover:bg-indigo-50"
+                onClick={unlinkSubiektForEdit}
+              >
+                Zmień towar
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
 
       <Field
         label="Mikran"
-        className="w-full shrink-0 sm:w-[6.75rem]"
+        className={cn(
+          "w-full shrink-0",
+          compactControls ? "sm:w-[5.75rem]" : "sm:w-[6.75rem]"
+        )}
         {...mikranField}
+        // /prosba: bez hintu pod polem — mniej pustki; PLU tylko poza sales.
         hint={
-          !mikranField.error && !mikranField.state
-            ? typeaheadEnabled
-              ? "PLU (min. 1 cyfra)"
-              : "Kod PLU"
-            : undefined
+          !mikranField.error &&
+          !mikranField.state &&
+          typeaheadEnabled &&
+          !salesProsbaForm &&
+          !prosba
+            ? "PLU (min. 1 cyfra)"
+            : !mikranField.error && !mikranField.state && !prosba
+              ? "Kod PLU"
+              : undefined
         }
       >
         <div
@@ -1090,6 +1143,8 @@ export function SubiektProductLineFields({
             <Input
               disabled={disabled}
               readOnly={linkedFromSubiekt}
+              // Po powiązaniu kod jest tylko do odczytu — Tab idzie od produktu prosto do ilości.
+              tabIndex={linkedFromSubiekt ? -1 : undefined}
               placeholder="np. 896"
               inputMode="numeric"
               maxLength={MAX_MIKRAN_CODE_LEN}
@@ -1123,16 +1178,14 @@ export function SubiektProductLineFields({
       {!isInformacja ? (
         <Field
           label="Ilość"
-          className="w-[5.5rem] shrink-0"
+          className={cn("shrink-0", compactControls ? "w-[4.75rem]" : "w-[5.5rem]")}
           {...(showQuantityValidation && !isTeethOrderLine ? quantityField : {})}
           hint={
             isTeethOrderLine
               ? teethQuantityFromList > 0
                 ? "Ilość = liczba pozycji na liście"
                 : "Uzupełnij listę - ilość ustawi się sama"
-              : prosba && !quantityField.error && !quantityField.state
-                ? "Sztuk"
-                : undefined
+              : undefined
           }
         >
           <Input
@@ -1143,7 +1196,8 @@ export function SubiektProductLineFields({
             disabled={disabled || isTeethOrderLine}
             readOnly={isTeethOrderLine}
             maxLength={MAX_QUANTITY_LEN}
-            placeholder={isTeethOrderLine ? "-" : "1"}
+            // /prosba handlowca bez „1” — szary placeholder wyglądał jak wpisana ilość.
+            placeholder={isTeethOrderLine ? "-" : salesProsbaForm ? undefined : "1"}
             inputMode="numeric"
             aria-label="Ilość sztuk"
             value={
@@ -1203,7 +1257,7 @@ export function SubiektProductLineFields({
             variant="ghost"
             size="sm"
             disabled={disabled}
-            className="shrink-0 text-emerald-800 hover:bg-emerald-50"
+            className="shrink-0 text-indigo-800 hover:bg-indigo-50"
             onClick={unlinkSubiektForEdit}
           >
             Zmień towar
@@ -1214,23 +1268,11 @@ export function SubiektProductLineFields({
   ) : null;
 
   return (
-    <div ref={ref} className="relative space-y-3">
+    <div
+      ref={ref}
+      className={cn("relative", compactControls ? "space-y-2" : "space-y-3")}
+    >
       {showTeethCompactProduct ? teethCompactProductHeader : productSearchRow}
-
-      {!showTeethCompactProduct && linkedFromSubiekt && !lockSubiektLink ? (
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={disabled}
-            className="text-emerald-800 hover:bg-emerald-50"
-            onClick={unlinkSubiektForEdit}
-          >
-            Zmień towar
-          </Button>
-        </div>
-      ) : null}
 
       {prosbaMessageItems.length > 0 ? (
         <ProsbaLineFieldMessages items={prosbaMessageItems} />
@@ -1252,7 +1294,9 @@ export function SubiektProductLineFields({
         ) : (
           <>
             <ProsbaTeethExemptHint line={value as ProductLineDraft} />
-            <ProsbaProductStockStatus line={value as ProductLineDraft} requestKind={requestKind} />
+            {hideStockStatus ? null : (
+              <ProsbaProductStockStatus line={value as ProductLineDraft} requestKind={requestKind} />
+            )}
             <ProsbaPairHint twId={value.subiektTwId} />
           </>
         )

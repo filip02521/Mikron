@@ -1,3 +1,4 @@
+import { PROCUREMENT_TEAM_LABEL_TITLE } from "@/lib/orders/procurement-copy";
 import type { IndividualOrder } from "@/types/database";
 import { MAX_PROCUREMENT_CANCEL_NOTE_LEN } from "@/lib/security/text-limits";
 
@@ -155,12 +156,12 @@ export function procurementInitiatedCancelStatusCopy(
     return {
       statusTitle: "Anulowano",
       statusDetail:
-        "Dział dostaw anulował prośbę. Potwierdź, aby ukryć ją z listy.",
+        `${PROCUREMENT_TEAM_LABEL_TITLE} anulował prośbę. Potwierdź, aby ukryć ją z listy.`,
     };
   }
   return {
     statusTitle: "Anulowane",
     statusDetail:
-      "Dział dostaw anulował zgłoszenie. Potwierdź, aby ukryć je z listy.",
+      `${PROCUREMENT_TEAM_LABEL_TITLE} anulował zgłoszenie. Potwierdź, aby ukryć je z listy.`,
   };
 }

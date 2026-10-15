@@ -19,14 +19,15 @@ export function formatSubmitResult(
   const { complete, verification } = r;
   if (forSales) {
     if (verification > 0 && complete === 0) {
-      return "Prośba zapisana - dział zakupów dopracuje szczegóły. Śledź status w „Moje zamówienia”.";
+      return "Dział zakupów dopracuje szczegóły. Status śledzisz w „Moje zamówienia”.";
     }
     if (verification > 0 && complete > 0) {
       return `Zapisano prośbę (${complete} od razu do realizacji, ${verification} do weryfikacji). Sprawdź „Moje zamówienia”.`;
     }
+    // Tytuł komunikatu to już „Prośba zapisana” — treść mówi, co dalej, bez powtórzenia.
     return requestKind === "informacja"
-      ? "Prośba o dostępność zapisana."
-      : "Prośba zapisana.";
+      ? "Dostaniesz e-mail, gdy towar będzie na magazynie. Status śledzisz w „Moje zamówienia”."
+      : "Status śledzisz w „Moje zamówienia”.";
   }
   if (verification > 0 && complete > 0) {
     return `Zapisano ${complete} kompletnych i ${verification} do weryfikacji przez ${PROCUREMENT_TEAM_LABEL}.`;

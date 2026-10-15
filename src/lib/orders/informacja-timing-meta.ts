@@ -72,3 +72,15 @@ export function shouldShowInformacjaTimingMeta(row: InformacjaTimingRow): boolea
   if (!raw) return false;
   return EMAIL_TIMING.test(raw) || ORDERED_TIMING.test(raw);
 }
+
+const WEEKDAYS = ["Niedz", "Pon", "Wt", "Śr", "Czw", "Pt", "Sob"];
+
+/** „Pt 09.10” — od kiedy towar z prośby o informację leży na półce (do tekstu karty, nie do kolumny terminu). */
+export function informacjaAvailableSinceShort(timingLabel: string | null | undefined): string | null {
+  const display = timingLabel ? buildInformacjaTimingMetaDisplay(timingLabel) : null;
+  if (!display || display.kind !== "available") return null;
+  const m = display.dateLabel.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (!m) return display.dateLabel;
+  const weekday = WEEKDAYS[new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1])).getDay()];
+  return `${weekday} ${m[1]}.${m[2]}`;
+}

@@ -45,7 +45,12 @@ import {
   PROCUREMENT_PROSBA_KEYBOARD_HINTS,
 } from "@/lib/orders/procurement-prosba-keyboard";
 import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirmDialog";
-import { buildProsbaSubmitStockConfirm } from "@/lib/orders/prosba-stock-check";
+import { buildProsbaSubmitStockConfirm, isProsbaLineStockSufficient } from "@/lib/orders/prosba-stock-check";
+import { buildProsbaAlreadyOrderedConfirm } from "@/lib/orders/prosba-already-ordered";
+import {
+  invalidateProsbaAlreadyOrdered,
+  readProsbaAlreadyOrderedCache,
+} from "@/lib/orders/prosba-already-ordered-cache";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
 import { prosbaLineHasTeethBlockers } from "@/lib/orders/prosba-line-field-validation";
 import type { FormMessage } from "@/lib/ui/notice-content";
@@ -105,6 +110,9 @@ export function QuickOrderModal({
   const [stockConfirmOpen, setStockConfirmOpen] = useState(false);
   const [stockConfirmMessage, setStockConfirmMessage] = useState("");
   const [stockConfirmSummary, setStockConfirmSummary] = useState<string | null>(null);
+  /** Kolejne pytanie przed wysyłką: najpierw dubel, potem towar na stanie. */
+  const [confirmKind, setConfirmKind] = useState<"already_ordered" | "stock">("stock");
+  const [confirmTitle, setConfirmTitle] = useState<string | undefined>(undefined);
   const pendingSubmitRef = useRef<AddIndividualOrdersEntry[]>([]);
 
   const supplierRefs = toAppSupplierRefs(suppliers);
@@ -265,14 +273,48 @@ export function QuickOrderModal({
       );
       return;
     }
+    continueSubmit(entries, {});
+  };
+
+  const continueSubmit = (
+    entries: AddIndividualOrdersEntry[],
+    ack: { alreadyOrdered?: boolean }
+  ) => {
+    if (!ack.alreadyOrdered) {
+      const twIds = lines
+        .map((l) => l.subiektTwId)
+        .filter((id): id is number => id != null && id > 0);
+      const dup = buildProsbaAlreadyOrderedConfirm(
+        lines,
+        requestKind,
+        // includeStale — to samo, co pokazuje karta, także po TTL cache.
+        readProsbaAlreadyOrderedCache(twIds, salesPersonId.trim() || null, true),
+        {
+          forOther: true,
+          shelfSufficient: (l) => isProsbaLineStockSufficient(l, "zamowienie", teethExemptTwIds),
+        }
+      );
+      if (dup) {
+        pendingSubmitRef.current = entries;
+        setConfirmKind("already_ordered");
+        setConfirmTitle(dup.title);
+        setStockConfirmSummary(dup.summary);
+        setStockConfirmMessage(dup.message);
+        setStockConfirmOpen(true);
+        return;
+      }
+    }
     const stockConfirm = buildProsbaSubmitStockConfirm(lines, requestKind, teethExemptTwIds);
     if (stockConfirm) {
       pendingSubmitRef.current = entries;
+      setConfirmKind("stock");
+      setConfirmTitle(undefined);
       setStockConfirmSummary(stockConfirm.summary);
       setStockConfirmMessage(stockConfirm.message);
       setStockConfirmOpen(true);
       return;
     }
+    setStockConfirmOpen(false);
     performSubmit(entries);
   };
 
@@ -289,6 +331,10 @@ export function QuickOrderModal({
           entries,
           acknowledgeSufficientStock: options?.acknowledgeSufficientStock,
         }));
+        // Kolejna prośba na ten sam towar musi zobaczyć tę właśnie wysłaną.
+        invalidateProsbaAlreadyOrdered(
+          entries.map((e) => e.subiektTwId).filter((id): id is number => id != null)
+        );
         const lanes = classifyProsbaLinesByLane(entries, teethExemptTwIds);
         setFormNotice({
           text:
@@ -316,6 +362,11 @@ export function QuickOrderModal({
         handleProsbaStockSubmitError(
           e,
           (message) => {
+            // Odpowiedź serwera „towar na stanie” — ponów TĘ prośbę z potwierdzeniem stanu.
+            pendingSubmitRef.current = entries;
+            setConfirmKind("stock");
+            setConfirmTitle(undefined);
+            setStockConfirmSummary(null);
             setStockConfirmMessage(message);
             setStockConfirmOpen(true);
           },
@@ -360,6 +411,7 @@ export function QuickOrderModal({
     <>
       <ProsbaStockConfirmDialog
         open={stockConfirmOpen}
+        title={confirmTitle}
         message={stockConfirmMessage}
         summary={stockConfirmSummary}
         pending={pending}
@@ -368,9 +420,14 @@ export function QuickOrderModal({
           setStockConfirmSummary(null);
           pendingSubmitRef.current = [];
         }}
-        onConfirm={() =>
-          performSubmit(pendingSubmitRef.current, { acknowledgeSufficientStock: true })
-        }
+        onConfirm={() => {
+          if (confirmKind === "already_ordered") {
+            setStockConfirmOpen(false);
+            continueSubmit(pendingSubmitRef.current, { alreadyOrdered: true });
+            return;
+          }
+          performSubmit(pendingSubmitRef.current, { acknowledgeSufficientStock: true });
+        }}
       />
     <ModalShell
       open={open}
@@ -386,20 +443,25 @@ export function QuickOrderModal({
       bodyClassName="flex min-h-0 flex-1 flex-col"
       footer={
         <>
+          {!canSubmitProsba && !pending && !resolvingSupplier ? (
+            <p className="basis-full text-xs font-medium leading-relaxed text-slate-600 sm:mr-auto sm:basis-auto">
+              {!salesPersonId.trim()
+                ? "Wybierz handlowca"
+                : !supplierId.trim()
+                  ? "Wybierz dostawcę"
+                  : prosbaReadiness.view.headline}
+            </p>
+          ) : null}
           <Button variant="secondary" onClick={handleClose} disabled={pending}>
             Anuluj
           </Button>
-          <Button onClick={submit} disabled={pending || !canSubmitProsba}>
-            {pending ? "Zapisywanie…" : submitLabel}
+          {/* Klikalny także przy brakach — submit pokazuje, czego brakuje (handlowiec, dostawca, pola). */}
+          <Button onClick={submit} disabled={pending || resolvingSupplier}>
+            {pending ? "Zapisywanie…" : resolvingSupplier ? "Ustalam dostawcę…" : submitLabel}
           </Button>
         </>
       }
     >
-      <ProsbaFormKeyboardStrip
-        hints={PROCUREMENT_PROSBA_KEYBOARD_HINTS}
-        variant="procurement"
-      />
-
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 sm:p-4">
         <ProsbaFormRequestKindSection
           value={requestKind}
@@ -496,6 +558,14 @@ export function QuickOrderModal({
               requestKind={requestKind}
               appearance="prosba"
               showClientField
+              alreadyOrderedCheck
+              alreadyOrderedForSalesPersonId={salesPersonId.trim() || null}
+              alreadyOrderedForOther
+              onRequestKindChange={(kind) => {
+                setFormNotice(null);
+                setRequestKind(kind);
+                setInformacjaPath(kind === "informacja" ? DEFAULT_INFORMACJA_FLOW_PATH : "direct");
+              }}
               addLabel="+ Kolejny produkt"
               suppliers={supplierRefs}
               unifiedFeedback
@@ -528,6 +598,11 @@ export function QuickOrderModal({
             />
           </div>
         </ProsbaFormProductsSection>
+        {/* Skróty pod formularzem — na górze zabierały miejsce przed pierwszym polem. */}
+        <ProsbaFormKeyboardStrip
+          hints={PROCUREMENT_PROSBA_KEYBOARD_HINTS}
+          variant="procurement"
+        />
       </div>
     </ModalShell>
     </>

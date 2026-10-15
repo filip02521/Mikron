@@ -70,7 +70,7 @@ export function mojeShipmentRowClass({
     return cn(
       "border-l-[3px] transition duration-150",
       accent,
-      expanded ? "bg-slate-50/70" : "bg-slate-50/45 hover:bg-slate-50/65"
+      expanded ? "bg-slate-100/80" : "bg-slate-50/45 hover:bg-slate-50/65"
     );
   }
 
@@ -101,8 +101,9 @@ export function mojeShipmentRowClass({
     isCancelAck && !expanded && "bg-amber-50/50",
     !expanded && isStock && !deliveryCollapsedBg && "bg-sky-50/35",
     !expanded && deliveryCollapsedBg,
+    // Nagłówek rozwiniętego wiersza wyraźnie ciemniejszy niż zwinięte — tu zaczyna się otwarta prośba.
     expanded
-      ? "bg-slate-50/50"
+      ? "bg-slate-100/80"
       : isAction
         ? "hover:bg-emerald-50/50"
         : isInformacjaAck
@@ -117,14 +118,25 @@ export function mojeShipmentRowClass({
   );
 }
 
-export const mojeShipmentExpandedRowShellClass =
-  "relative z-[2] mb-2 mt-0.5 rounded-lg shadow-lg ring-1 ring-slate-200/60";
+/**
+ * Rozwinięty wiersz zostaje w liście (bez zaokrągleń i marginesów — te zawijały 3-pikselowy pasek po
+ * lewej i przesuwały sąsiadów), ale ma wyraźne granice: ramkę na całym obwodzie i krótki cień pod
+ * spodem, żeby było widać, gdzie otwarta prośba się kończy, a zaczyna następna.
+ */
+export const mojeShipmentExpandedRowShellClass = cn(
+  "relative z-[1] shadow-[0_10px_18px_-12px_rgba(21,25,32,0.12)]",
+  // Ramka na warstwie nad treścią (::after) — wewnętrzny cień na samym wierszu zasłaniał biały panel
+  // szczegółów. Góra, prawa i dół w kolorze Linii Mocnej; z lewej zostaje pasek koloru wiersza.
+  "after:pointer-events-none after:absolute after:inset-0 after:content-['']",
+  "after:shadow-[inset_0_1px_0_#c9ced6,inset_-1px_0_0_#c9ced6,inset_0_-1px_0_#c9ced6]"
+);
 
 export const mojeShipmentExpandedMetaShellClass =
   "px-0 py-0";
 
+/** Szczegóły pod nagłówkiem wiersza: płaskie, oddzielone cienką linią — bez karty w karcie. */
 export const mojeShipmentExpandedPanelClass =
-  "space-y-2 rounded-lg border border-slate-200/70 bg-white shadow-sm shadow-slate-200/30 px-3 py-3 sm:px-4 sm:py-3.5";
+  "space-y-2 border-t border-slate-200/70 bg-white px-3 py-3 sm:px-4 sm:py-3.5";
 
 export const mojeShipmentExpandedInfoBlockClass =
   "space-y-1.5 px-3 py-2";

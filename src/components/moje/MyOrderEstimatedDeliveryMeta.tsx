@@ -1,7 +1,7 @@
 import { DeliveryDateMetaValue } from "@/components/orders/DeliveryDateMetaValue";
 import { DeliveryTimingMeta } from "@/components/orders/DeliveryTimingMeta";
 import {
-  MY_ORDER_HISTORY_ESTIMATE_CAPTION,
+  MY_ORDER_HISTORY_ESTIMATE_CERTAINTY_TAG,
   MY_ORDER_HISTORY_ESTIMATE_ZD_NO_MATCH_OVERDUE_TOOLTIP,
   MY_ORDER_HISTORY_ESTIMATE_ZD_NO_MATCH_TOOLTIP,
   MY_ORDER_HISTORY_ESTIMATE_ZD_PENDING_OVERDUE_TOOLTIP,
@@ -15,13 +15,20 @@ export function MyOrderEstimatedDeliveryMeta({
   row,
   className,
   inline = false,
+  hideWhenOverdue = false,
 }: {
   row: Pick<MyOrderRow, "timingLabel" | "zdFulfillment" | "zdEtaPending" | "zdEtaNoMatch">;
   className?: string;
   inline?: boolean;
+  /**
+   * Zwinięty wiersz: po minionym szacunku nagłówek mówi już „Po przewidywanym terminie” —
+   * „Z historii · Brak terminu” obok byłoby powtórką. Szczegóły zostają po rozwinięciu.
+   */
+  hideWhenOverdue?: boolean;
 }) {
   const estimate = resolveMyOrderHistoryDeliveryEstimate(row);
   if (!estimate) return null;
+  if (hideWhenOverdue && estimate.parsed.overdue) return null;
 
   const { display, parsed } = estimate;
 
@@ -38,8 +45,9 @@ export function MyOrderEstimatedDeliveryMeta({
   return (
     <DeliveryTimingMeta
       className={className}
-      caption={MY_ORDER_HISTORY_ESTIMATE_CAPTION}
+      caption={MY_ORDER_HISTORY_ESTIMATE_CERTAINTY_TAG}
       captionTone="default"
+      captionBelow
       title={title}
       inline={inline}
     >

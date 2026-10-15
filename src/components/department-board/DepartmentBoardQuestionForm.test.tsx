@@ -15,6 +15,11 @@ vi.mock("@/components/ui/ModalShell", () => ({
   }) => (open ? <div data-testid="question-modal">{children}</div> : null),
 }));
 
+/** Podpowiedź terminu woła server action — poza zakresem testu formularza. */
+vi.mock("@/components/department-board/BoardQuestionZdHint", () => ({
+  BoardQuestionZdHint: () => null,
+}));
+
 /** Stub pola produktu — bez łańcucha importów Subiekt/Supabase (EnvironmentTeardownError na CI). */
 vi.mock("@/components/department-board/BoardQuestionProductField", () => ({
   BoardQuestionProductField: () => <div data-testid="question-product-field-stub" />,
@@ -90,5 +95,16 @@ describe("DepartmentBoardQuestionForm", () => {
 
     expect(screen.getByLabelText("Temat").getAttribute("disabled")).not.toBeNull();
     expect(screen.getByLabelText("Treść").getAttribute("disabled")).not.toBeNull();
+  });
+
+  it("przy nieaktywnym Wyślij mówi, czego brakuje", () => {
+    render(<DepartmentBoardQuestionForm {...baseProps} title="" body="  " />);
+    expect(screen.getAllByText("Wpisz temat i treść pytania.").length).toBeGreaterThan(0);
+    cleanup();
+    render(<DepartmentBoardQuestionForm {...baseProps} body="" />);
+    expect(screen.getAllByText("Wpisz treść pytania.").length).toBeGreaterThan(0);
+    cleanup();
+    render(<DepartmentBoardQuestionForm {...baseProps} />);
+    expect(screen.queryByText(/^Wpisz /)).toBeNull();
   });
 });

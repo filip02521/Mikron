@@ -8,14 +8,12 @@ import {
   actionUpdateZkWatchIncludeNoteInProsba,
   actionUpdateZkWatchNote,
 } from "@/app/actions/sales-notepad";
-import { IconNotepad } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { polishPozycjeLabel } from "@/lib/email/polish-plural";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 import { zkCaseNoteProsbaCalloutClassForTone } from "@/lib/ui/zk-case-note-prosba-styles";
 import {
-  ZK_MODAL_SECTION_HINTS,
   ZK_MODAL_SECTION_TITLES,
 } from "@/lib/sales/zk-modal-section-copy";
 import {
@@ -255,32 +253,19 @@ export function ZkWatchNoteSection({
   return (
     <ZkWatchModalSection
       title={ZK_MODAL_SECTION_TITLES.note}
-      hint={ZK_MODAL_SECTION_HINTS.note}
     >
-      <div
-        className={cn(
-          "mb-2.5 flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3",
-          status !== "none" && zkCaseNoteProsbaCalloutClassForTone(statusCopy.tone)
-        )}
-      >
-        {status !== "none" ? (
-          <>
-            <ZkCaseNoteProsbaChip
-              status={status}
-              pendingKind={pendingKind}
-              variant="modal"
-              className="shrink-0"
-            />
-            <p className={cn(salesTypography.rowMeta, "min-w-0 text-slate-600")}>
-              {statusCopy.description}
-            </p>
-          </>
-        ) : (
-          <p className={cn(salesTypography.rowMeta, "text-slate-500")}>
-            {statusCopy.description}
-          </p>
-        )}
-      </div>
+      {/* Stan „czy notatka idzie do prośby” — tylko gdy jest o czym mówić (bez notatki nie ma czego dołączać). */}
+      {status !== "none" ? (
+        <div
+          className={cn(
+            "mb-2.5 flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3",
+            zkCaseNoteProsbaCalloutClassForTone(statusCopy.tone)
+          )}
+        >
+          <ZkCaseNoteProsbaChip status={status} pendingKind={pendingKind} variant="modal" className="shrink-0" />
+          <p className={cn(salesTypography.rowMeta, "min-w-0 text-slate-600")}>{statusCopy.description}</p>
+        </div>
+      ) : null}
 
       {noteOpen && canEdit ? (
         <div className="space-y-2 rounded-lg border border-indigo-200/80 bg-indigo-50/35 p-3">
@@ -316,8 +301,8 @@ export function ZkWatchNoteSection({
           </div>
         </div>
       ) : hasSavedNote ? (
-        <div className="rounded-lg border border-slate-200/90 bg-white px-3 py-2.5 shadow-[var(--shadow-card)]">
-          <p className="text-sm leading-relaxed text-slate-700">{savedNote}</p>
+        <div className="rounded-[var(--radius-surface)] bg-slate-50 px-3 py-2.5">
+          <p className="whitespace-pre-line break-words text-sm leading-relaxed text-slate-800">{savedNote}</p>
           {canEdit ? (
             <Button
               type="button"
@@ -331,29 +316,16 @@ export function ZkWatchNoteSection({
           ) : null}
         </div>
       ) : canEdit ? (
-        <div className="rounded-lg border border-dashed border-indigo-200/90 bg-indigo-50/25 px-3 py-3 sm:px-4 sm:py-3.5">
-          <div className="flex items-start gap-3">
-            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 ring-1 ring-indigo-200/80">
-              <IconNotepad size={16} aria-hidden />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className={cn(salesTypography.rowBody, "font-medium text-slate-800")}>
-                Brak notatki
-              </p>
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                className="mt-2.5"
-                onClick={() => setNoteOpen(true)}
-              >
-                Dodaj notatkę
-              </Button>
-            </div>
-          </div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <p className={cn(salesTypography.rowBody, "text-slate-600")}>
+            Brak notatki.
+          </p>
+          <Button type="button" size="sm" variant="secondary" onClick={() => setNoteOpen(true)}>
+            Dodaj notatkę
+          </Button>
         </div>
       ) : (
-        <p className={cn(salesTypography.rowMeta, "text-slate-500")}>Brak notatki.</p>
+        <p className={cn(salesTypography.rowBody, "text-slate-600")}>Brak notatki.</p>
       )}
 
       {hasSavedNote && canEdit ? (

@@ -1,3 +1,4 @@
+import { PROCUREMENT_TEAM_LABEL_GENITIVE, PROCUREMENT_TEAM_LABEL_TITLE } from "@/lib/orders/procurement-copy";
 import { isStockExemptTwId } from "@/lib/orders/teeth-stock-exempt";
 import { formatPlDate } from "@/lib/display-labels";
 import type { IndividualRequestKind } from "@/types/database";
@@ -67,10 +68,10 @@ export const MIXED_PROCUREMENT_EDIT_BANNER =
 
 export const TEETH_SALES_STATUS_NEW_TITLE = "Przed zamówieniem";
 export const TEETH_SALES_STATUS_NEW_DETAIL =
-  "Prośba jest u działu dostaw. Złożymy zamówienie u dostawcy zębów.";
+  `Prośba jest u ${PROCUREMENT_TEAM_LABEL_GENITIVE}. Złożymy zamówienie u dostawcy zębów.`;
 export const TEETH_SALES_STATUS_VERIFICATION_TITLE = "W dziale dostaw";
 export const TEETH_SALES_STATUS_VERIFICATION_DETAIL =
-  "Dział dostaw doprecyzuje szczegóły zamówienia.";
+  `${PROCUREMENT_TEAM_LABEL_TITLE} doprecyzuje szczegóły zamówienia.`;
 export const TEETH_SALES_STATUS_ORDERED_TITLE = "Zamówione";
 
 export type ProsbaLaneClassification = {

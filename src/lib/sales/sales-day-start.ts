@@ -1,10 +1,14 @@
 import type { SalesBoardAttentionSnapshot } from "@/lib/data/department-board";
 import {
+  collectPendingZdDeadlineChanges,
+  zdDeadlineChangeNeedsClick,
+} from "@/lib/orders/zd-deadline-change-pending";
+import { zdFulfillmentDeadlineChangeShortLabel } from "@/lib/orders/zd-fulfillment-deadline-change";
+import {
   rowNeedsSalesAction,
 } from "@/lib/orders/my-order-inbox-filter";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import {
-  summarizeMyOrdersInbox,
   enrichMyOrderSalesUi,
   type MyOrdersInboxSummary,
 } from "@/lib/orders/my-order-sales-ui";
@@ -31,6 +35,7 @@ export type SalesDayStartSource =
   | "mixed_pickup"
   | "zk_warehouse"
   | "cancel_ack"
+  | "zd_deadline_change"
   | "note_from_procurement"
   | "informacja_ready"
   | "zk_follow_up"
@@ -50,11 +55,16 @@ export type SalesDayStartItem = {
   scrollTarget?: string;
   count?: number;
   ctaLabel: string;
+  /** Przypomnienie — w panelu można je od razu oznaczyć jako zrobione albo przesunąć. */
+  reminder?: { kind: "zk" | "note"; id: string };
 };
 
 export type SalesDayStartSnapshot = {
   items: SalesDayStartItem[];
+  /** Dzwonek — suma pozycji z listy (ta sama liczba, którą widać po otwarciu). */
   totalActionCount: number;
+  /** Badge „Moje” — tylko sprawy z listy /moje; ZK, notatki i Tablica mają własne liczniki. */
+  mojeActionCount: number;
   cleared: boolean;
 };
 
@@ -64,6 +74,7 @@ const PRIORITY: Record<SalesDayStartSource, number> = {
   teeth_handover: 12,
   zk_warehouse: 15,
   cancel_ack: 20,
+  zd_deadline_change: 22,
   note_from_procurement: 25,
   informacja_ready: 30,
   zk_follow_up: 40,
@@ -72,8 +83,19 @@ const PRIORITY: Record<SalesDayStartSource, number> = {
   board_announcement: 70,
 };
 
+/** Źródła, które handlowiec załatwia na /moje (reszta ma własne liczniki w menu). */
+const MOJE_SOURCES = new Set<SalesDayStartSource>([
+  "pickup",
+  "mixed_pickup",
+  "teeth_handover",
+  "cancel_ack",
+  "zd_deadline_change",
+  "note_from_procurement",
+  "informacja_ready",
+]);
+
 const MOJE_ACTION_SECTION = mojeSectionDomId("action");
-const MOJE_INFORMACJA_SECTION = mojeSectionDomId("informacja");
+const MOJE_INFORMACJA_SECTION = mojeSectionDomId("informacja-ready");
 
 /** Od tej liczby pozycji odbioru — jedno powiadomienie zbiorcze (jak informacje). */
 const PICKUP_AGGREGATE_FROM = 2;
@@ -175,7 +197,7 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
       href: `/moje#${MOJE_ACTION_SECTION}`,
       scrollTarget: MOJE_ACTION_SECTION,
       count: pickupLineCount,
-      ctaLabel: "Przejdź",
+      ctaLabel: "Otwórz",
     });
   } else if (pickupLineCount === 1 && pickupGroups[0]) {
     const group = pickupGroups[0];
@@ -205,7 +227,7 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
       href: `/moje#${MOJE_TEETH_ACTION_SECTION_ID}`,
       scrollTarget: MOJE_TEETH_ACTION_SECTION_ID,
       count: teethLineCount,
-      ctaLabel: "Przejdź",
+      ctaLabel: "Otwórz",
     });
   } else if (teethLineCount === 1 && teethGroups[0]) {
     const group = teethGroups[0];
@@ -235,7 +257,7 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
       href: `/moje#${MOJE_MIXED_ACTION_SECTION_ID}`,
       scrollTarget: MOJE_MIXED_ACTION_SECTION_ID,
       count: mixedLineCount,
-      ctaLabel: "Przejdź",
+      ctaLabel: "Otwórz",
     });
   } else if (mixedLineCount > 0 && mixedGroups[0]) {
     const group = mixedGroups[0];
@@ -266,7 +288,7 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
       href: `/moje#${MOJE_ACTION_SECTION}`,
       scrollTarget: MOJE_ACTION_SECTION,
       count: n,
-      ctaLabel: "Przejdź",
+      ctaLabel: "Otwórz",
     });
   }
 
@@ -290,7 +312,7 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
       href,
       scrollTarget: MOJE_INFORMACJA_SECTION,
       count: n,
-      ctaLabel: "Przejdź",
+      ctaLabel: "Otwórz",
     });
   }
 
@@ -337,7 +359,10 @@ function buildNotepadItems(
         extraParams: previewDla ? { dla: previewDla } : undefined,
       }),
       count: 1,
-      ctaLabel: isZkTask ? "ZK czekające" : "Notatki",
+      ctaLabel: "Otwórz",
+      reminder: isZkWarehouse
+        ? undefined
+        : { kind: isZkTask ? ("zk" as const) : ("note" as const), id: task.id },
     };
   });
 }
@@ -371,11 +396,51 @@ function buildBoardItems(
       subtitle: preview?.title ? `„${preview.title}”` : undefined,
       href,
       count: ownAnswerCount,
-      ctaLabel: "Tablica",
+      ctaLabel: "Otwórz",
     });
   }
 
   return items;
+}
+
+/** Przesunięty / przyspieszony termin ZD — obietnica dla klienta się zmieniła, potwierdź przy prośbie. */
+function buildZdDeadlineChangeItems(rows: MyOrderRow[]): SalesDayStartItem[] {
+  const pending = collectPendingZdDeadlineChanges(rows).filter((item) =>
+    zdDeadlineChangeNeedsClick(item.change)
+  );
+  if (pending.length === 0) return [];
+
+  if (pending.length === 1) {
+    const item = pending[0]!;
+    return [
+      {
+        id: `zd-change-${item.orderIds[0]}`,
+        source: "zd_deadline_change",
+        priority: PRIORITY.zd_deadline_change,
+        title: item.supplierName?.trim() || "Do ustalenia",
+        subtitle: zdFulfillmentDeadlineChangeShortLabel(item.change),
+        href: appendMojeFocusOrderIds("/moje", item.orderIds.slice(0, 8)),
+        count: 1,
+        ctaLabel: "Zobacz",
+      },
+    ];
+  }
+
+  return [
+    {
+      id: "zd-change-many",
+      source: "zd_deadline_change",
+      priority: PRIORITY.zd_deadline_change,
+      title: `Zmienione terminy dostaw (${pending.length})`,
+      subtitle: "Sprawdź nowe daty i potwierdź przy prośbach - może trzeba uprzedzić klienta.",
+      href: appendMojeFocusOrderIds(
+        "/moje",
+        pending.flatMap((item) => item.orderIds.slice(0, 1)).slice(0, 8)
+      ),
+      count: pending.length,
+      ctaLabel: "Zobacz",
+    },
+  ];
 }
 
 function buildNoteFromProcurementItems(rows: MyOrderRow[]): SalesDayStartItem[] {
@@ -408,7 +473,7 @@ function buildNoteFromProcurementItems(rows: MyOrderRow[]): SalesDayStartItem[] 
         subtitle,
         href,
         count: 1,
-        ctaLabel: "Zobacz",
+        ctaLabel: "Otwórz",
       },
     ];
   }
@@ -426,7 +491,7 @@ function buildNoteFromProcurementItems(rows: MyOrderRow[]): SalesDayStartItem[] 
       subtitle: `Otwórz prośbę i potwierdź „${MOJE_COPY_NOTES_ACK_BUTTON}” przy uwagach`,
       href,
       count: noteRows.length,
-      ctaLabel: "Zobacz",
+      ctaLabel: "Otwórz",
     },
   ];
 }
@@ -438,32 +503,46 @@ export function buildSalesDayStartSnapshot(input: {
   boardAttention?: SalesBoardAttentionSnapshot | null;
   previewDla?: string | null;
   unseenWarehouseWatchIds?: Set<string> | string[];
+  notepadLoadFailed?: boolean;
 }): SalesDayStartSnapshot {
   const { rows, watches = [], notes = [], boardAttention, previewDla, unseenWarehouseWatchIds } =
     input;
-  const inboxSummary = summarizeMyOrdersInbox(rows);
 
   const orderItems = buildOrderActionItems(rows);
   const noteItems = buildNoteFromProcurementItems(rows);
+  const zdChangeItems = buildZdDeadlineChangeItems(rows);
   const notepadItems = buildNotepadItems(watches, notes, previewDla, unseenWarehouseWatchIds);
   const boardItems = boardAttention ? buildBoardItems(boardAttention, previewDla) : [];
 
-  const items = [...orderItems, ...noteItems, ...notepadItems, ...boardItems].sort(
+  // count: 0 — widoczne ostrzeżenie, ale nie „sprawa do zrobienia” w licznikach.
+  const loadErrorItems: SalesDayStartItem[] = input.notepadLoadFailed
+    ? [
+        {
+          id: "notepad-load-failed",
+          source: "note_follow_up",
+          priority: 0,
+          title: "Nie udało się wczytać przypomnień ZK i notatek",
+          subtitle: "Liczniki ZK i Notatnika mogą być niepełne - odśwież stronę.",
+          href: buildNotatnikPageHref({ tab: "zk", surface: "zk" }),
+          count: 0,
+          ctaLabel: "Otwórz",
+        },
+      ]
+    : [];
+
+  const items = [...loadErrorItems, ...orderItems, ...zdChangeItems, ...noteItems, ...notepadItems, ...boardItems].sort(
     (a, b) => a.priority - b.priority || (b.count ?? 0) - (a.count ?? 0)
   );
 
-  const totalActionCount =
-    inboxSummary.pickupCount +
-    inboxSummary.cancelAckCount +
-    inboxSummary.informacjaReadyCount +
-    noteItems.reduce((sum, i) => sum + (i.count ?? 1), 0) +
-    notepadItems.length +
-    boardItems.reduce((sum, i) => sum + (i.count ?? 1), 0);
+  const weight = (list: SalesDayStartItem[]) =>
+    list.reduce((sum, i) => sum + (i.count ?? 1), 0);
+  const totalActionCount = weight(items);
 
   return {
     items,
     totalActionCount,
-    cleared: totalActionCount === 0,
+    mojeActionCount: weight(items.filter((i) => MOJE_SOURCES.has(i.source))),
+    cleared: totalActionCount === 0 && !input.notepadLoadFailed,
   };
 }
 
@@ -479,6 +558,8 @@ export function salesDayStartSourceLabel(source: SalesDayStartSource): string {
       return "Na regale";
     case "cancel_ack":
       return "Anulowanie";
+    case "zd_deadline_change":
+      return "Zmiana terminu";
     case "note_from_procurement":
       return "Uwagi zakupów";
     case "informacja_ready":

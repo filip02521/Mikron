@@ -97,11 +97,13 @@ export function SectionListLabel({
       ? cn(panelTypography.sectionLabel, "text-emerald-900")
       : cn(titleToken, ACCENT_TITLE[accent]);
 
-  const hintClass = cn("mt-0.5", hintToken, ACCENT_HINT[accent]);
+  // Opis w osobnym wierszu na pełną szerokość (wcięty pod tytuł: kafelek 2rem + odstęp 0.625rem) —
+  // w kolumnie tytułu na telefonie gniótł się obok „Rozwiń wszystkie” do kilku linii.
+  const hintClass = cn("basis-full pl-[2.625rem]", hintToken, ACCENT_HINT[accent]);
 
   return (
-    <div className={ACCENT_SHELL[accent]}>
-      <div className="flex min-w-0 items-center gap-2.5">
+    <div className={cn(ACCENT_SHELL[accent], "flex-wrap gap-y-0.5")}>
+      <div className="flex min-w-0 flex-1 items-center gap-2.5">
         <SectionHeadingIcon tileClassName={tileClassName}>{icon}</SectionHeadingIcon>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -118,7 +120,6 @@ export function SectionListLabel({
             ) : null}
             {badges}
           </div>
-          {hint && hintMode === "inline" ? <p className={hintClass}>{hint}</p> : null}
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2 self-center">
@@ -134,6 +135,7 @@ export function SectionListLabel({
           </span>
         ) : null}
       </div>
+      {hint && hintMode === "inline" ? <p className={hintClass}>{hint}</p> : null}
     </div>
   );
 }

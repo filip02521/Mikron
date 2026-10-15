@@ -1,14 +1,19 @@
 type VacationColor = { bg: string; text: string; dot: string };
 
+/**
+ * Kolejność maksymalizuje różnicę odcieni między sąsiednimi osobami (pierwsze dwie, trzy
+ * osoby w grupie muszą się wyraźnie różnić). Kropki w nasyceniu 500 — jasne 300 zlewały się
+ * (indygo / niebieski / fiolet).
+ */
 const PALETTE: VacationColor[] = [
-  { bg: "bg-indigo-50", text: "text-indigo-700", dot: "bg-indigo-300" },
-  { bg: "bg-sky-50", text: "text-sky-700", dot: "bg-sky-300" },
-  { bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-300" },
-  { bg: "bg-violet-50", text: "text-violet-700", dot: "bg-violet-300" },
-  { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-300" },
-  { bg: "bg-rose-50", text: "text-rose-700", dot: "bg-rose-300" },
-  { bg: "bg-teal-50", text: "text-teal-700", dot: "bg-teal-300" },
-  { bg: "bg-slate-100", text: "text-slate-700", dot: "bg-slate-300" },
+  { bg: "bg-sky-100", text: "text-sky-800", dot: "bg-sky-500" },
+  { bg: "bg-amber-100", text: "text-amber-800", dot: "bg-amber-500" },
+  { bg: "bg-emerald-100", text: "text-emerald-800", dot: "bg-emerald-600" },
+  { bg: "bg-rose-100", text: "text-rose-800", dot: "bg-rose-500" },
+  { bg: "bg-violet-100", text: "text-violet-800", dot: "bg-violet-500" },
+  { bg: "bg-lime-100", text: "text-lime-800", dot: "bg-lime-500" },
+  { bg: "bg-fuchsia-100", text: "text-fuchsia-800", dot: "bg-fuchsia-500" },
+  { bg: "bg-slate-200", text: "text-slate-800", dot: "bg-slate-500" },
 ];
 
 export function vacationColorForIndex(index: number): VacationColor {

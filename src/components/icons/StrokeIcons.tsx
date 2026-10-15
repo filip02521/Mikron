@@ -472,6 +472,7 @@ export type MojeSectionIconKind =
   | "zamowienie"
   | "before_order"
   | "informacja"
+  | "informacja-ready"
   | "archive"
   | "dismiss";
 
@@ -487,6 +488,7 @@ const MOJE_SECTION_ICON_MAP: Record<
   zamowienie: IconTruck,
   before_order: IconClipboardList,
   informacja: IconAvailability,
+  "informacja-ready": IconAvailability,
   archive: IconArchive,
   dismiss: IconArchive,
 };
@@ -517,6 +519,7 @@ export function mojeSectionIconTileClass(kind: MojeSectionIconKind): string {
     case "before_order":
       return "bg-indigo-50 text-indigo-800";
     case "informacja":
+    case "informacja-ready":
       return "bg-violet-100 text-violet-800";
     case "archive":
       return "bg-slate-200/80 text-slate-600";
@@ -777,6 +780,16 @@ export function IconCheck(props: StrokeIconProps) {
   return (
     <Svg {...props}>
       <path d="M20 6L9 17l-5-5" />
+    </Svg>
+  );
+}
+
+/** Kopiuj do schowka — dwie nachodzące kartki */
+export function IconCopy(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="9" y="9" width="11" height="11" rx="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
     </Svg>
   );
 }

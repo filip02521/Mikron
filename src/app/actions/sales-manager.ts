@@ -14,7 +14,10 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeFontScale } from "@/lib/auth/profile";
-import { assertUniqueSalesPersonLink } from "@/lib/users/sales-person-link";
+import {
+  assertUniqueSalesPersonLink,
+  finalizeSalesPersonInviteForUser,
+} from "@/lib/users/sales-person-link";
 import type { Workspace } from "@/types/database";
 import {
   generateSalesPersonInviteLink,
@@ -22,7 +25,6 @@ import {
 } from "@/lib/users/sales-invite";
 import { isValidEmail } from "@/lib/security/text-limits";
 import { passwordValidationError } from "@/lib/auth/password-policy";
-import { actionFinalizeSalesPersonInvite } from "@/app/actions/users";
 
 function revalidateTeamPaths() {
   revalidatePath("/zespol");
@@ -309,8 +311,9 @@ export async function actionCompletePasswordChange(
     };
   }
 
-  const finalize = await actionFinalizeSalesPersonInvite(user);
+  const finalize = await finalizeSalesPersonInviteForUser(admin, user.id);
   if ("error" in finalize) return { error: finalize.error };
+  revalidateTeamPaths();
 
   const { panelContext } = await readAdminPanelContextForSession();
   const redirectTo = redirectPathAfterLogin(user.role, null, {

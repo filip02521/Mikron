@@ -1,4 +1,5 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
+import { warsawMidnightIso } from "@/lib/time/warsaw";
 import { normalizeIndividualOrders } from "@/lib/data/normalize-order";
 import { runRepairIncompleteIndividualOrders } from "@/lib/services/repair-incomplete-orders-runner";
 import { mapRowToOrderFormSupplier, mapRowsToOrderFormSuppliers } from "@/lib/orders/order-form-suppliers";
@@ -114,9 +115,11 @@ export async function fetchIndividualOrders(filters?: {
     throw new Error("fetchIndividualOrders wymaga salesPersonId lub allowAll=true");
   }
   const supabase = createAdminClient();
+  // Z potwierdzonymi: niepotwierdzone najpierw, żeby limit ucinał stare potwierdzone, nie otwarte prośby.
   let q = supabase
     .from("individual_orders")
     .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
+    .order("sales_acknowledged_at", { ascending: false, nullsFirst: true })
     .order("action_at", { ascending: false })
     .limit(500);
   if (filters?.status) q = q.eq("status", filters.status);
@@ -129,7 +132,10 @@ export async function fetchIndividualOrders(filters?: {
   }
   const { data, error } = await q;
   if (error) throw new Error(error.message);
-  return normalizeIndividualOrders(data ?? []);
+  // Kolejność dla widoków jak dotąd: ostatnia akcja najpierw.
+  return normalizeIndividualOrders(data ?? []).sort((a, b) =>
+    (b.action_at ?? "").localeCompare(a.action_at ?? "")
+  );
 }
 
 /** Ostatnio potwierdzone przez handlowca (archiwum na /moje). */
@@ -154,7 +160,7 @@ export async function fetchSalesAcknowledgedOrders(
   if (options?.acknowledgedSince) {
     const since = options.acknowledgedSince.includes("T")
       ? options.acknowledgedSince
-      : `${options.acknowledgedSince}T00:00:00+02:00`;
+      : warsawMidnightIso(options.acknowledgedSince);
     q = q.gte("sales_acknowledged_at", since);
   }
 
@@ -187,30 +193,63 @@ export async function fetchSalesCancelledOrders(
 
 /** TTL w obrębie procesu — ogranicza koszt przy pollingu badge (co ~25 s). */
 const VERIFICATION_SYNC_TTL_MS = 20_000;
-let verificationSyncExpiresAt = 0;
-let verificationSyncInFlight: Promise<void> | null = null;
+/** Osobno: naprawa statusów vs auto-powiązanie — page load nie może „zabić” assign w badge. */
+let verificationRepairExpiresAt = 0;
+let verificationAutoAssignExpiresAt = 0;
+let verificationRepairInFlight: Promise<void> | null = null;
+let verificationAutoAssignInFlight: Promise<void> | null = null;
+
+/** Naprawa statusów właśnie przebiegła — pomiń tylko repair przez TTL. */
+export function markVerificationQueueSynced(): void {
+  verificationRepairExpiresAt = Date.now() + VERIFICATION_SYNC_TTL_MS;
+}
+
+/** Auto-assign właśnie przebiegł (page / sync) — pomiń kolejny assign przez TTL. */
+export function markVerificationAutoAssignSynced(): void {
+  verificationAutoAssignExpiresAt = Date.now() + VERIFICATION_SYNC_TTL_MS;
+}
 
 /**
- * Niekompletne prośby → status Weryfikacja (jak przed fetch na /weryfikacja).
- * Bez tego badge w menu liczy tylko rekordy już oznaczone w DB.
+ * Niekompletne prośby → status Weryfikacja, potem auto-powiązanie dostawcy z katalogu.
+ * Badge w menu woła to samo (osobne TTL) — inaczej świeci „Weryfikacja” mimo że prośba
+ * już poszła do podsumowania po cichym promote do Nowe.
+ * Bez revalidatePath tu (ścieżka renderu layoutu / poll API).
  */
 async function syncVerificationQueueStatuses(): Promise<void> {
   if (!hasSupabaseConfig()) return;
 
-  const now = Date.now();
-  if (now < verificationSyncExpiresAt) return;
-
-  if (!verificationSyncInFlight) {
-    verificationSyncInFlight = (async () => {
-      const supabase = createAdminClient();
-      await runRepairIncompleteIndividualOrders(supabase);
-      verificationSyncExpiresAt = Date.now() + VERIFICATION_SYNC_TTL_MS;
-    })().finally(() => {
-      verificationSyncInFlight = null;
-    });
+  if (Date.now() >= verificationRepairExpiresAt) {
+    if (!verificationRepairInFlight) {
+      verificationRepairInFlight = (async () => {
+        const supabase = createAdminClient();
+        await runRepairIncompleteIndividualOrders(supabase);
+        verificationRepairExpiresAt = Date.now() + VERIFICATION_SYNC_TTL_MS;
+      })().finally(() => {
+        verificationRepairInFlight = null;
+      });
+    }
+    await verificationRepairInFlight;
   }
 
-  await verificationSyncInFlight;
+  // Ponowny odczyt czasu — po await repair page mógł już zrobić assign.
+  if (Date.now() >= verificationAutoAssignExpiresAt) {
+    if (!verificationAutoAssignInFlight) {
+      verificationAutoAssignInFlight = (async () => {
+        try {
+          const { autoAssignMissingSuppliersFromCatalog } = await import(
+            "@/lib/services/auto-assign-suppliers"
+          );
+          await autoAssignMissingSuppliersFromCatalog({ limit: 80 });
+        } catch (e) {
+          console.error("[syncVerificationQueueStatuses autoAssign]", e);
+        }
+        verificationAutoAssignExpiresAt = Date.now() + VERIFICATION_SYNC_TTL_MS;
+      })().finally(() => {
+        verificationAutoAssignInFlight = null;
+      });
+    }
+    await verificationAutoAssignInFlight;
+  }
 }
 
 /** Historia audytu — bez pozycji informacyjnych (tylko powiadomienie, bez rezerwacji). */
@@ -464,30 +503,54 @@ export async function fetchDeliveryQueue(options?: {
 }
 
 export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }) {
-  const allSchedules = await fetchSuppliersWithSchedules(undefined, { activeOnly: true });
-  let schedules = allSchedules;
-  if (options?.salesPersonId) {
-    const allowed = await fetchSupplierIdsForSalesPerson(options.salesPersonId);
-    schedules = allSchedules.filter((s) => allowed.has(s.id));
-  }
-  const { fetchSalesPeopleForPicker } = await import("@/lib/data/sales-people-admin");
-  const [allNewOrders, salesPeople, statsRows, formSuppliers, teethLaneIndex, onVacationNow, flagDefinitions, laneOrderRaw] =
-    await Promise.all([
+  type EtaQuantiles = import("@/lib/orders/delivery-eta-quantiles-load").DeliveryEtaSupplierQuantiles;
+  const salesPersonId = options?.salesPersonId;
+  // Statystyki → kwantyle ETA (zależne od supplier_id ze statystyk), reszta równolegle.
+  const statsPromise = fetchDeliveryStats();
+  const etaPromise = statsPromise
+    .then(async (rows) => {
+      const { loadDeliveryEtaQuantilesForSupplierIds } = await import(
+        "@/lib/orders/delivery-eta-quantiles-load"
+      );
+      return loadDeliveryEtaQuantilesForSupplierIds(rows.map((s) => s.supplier_id));
+    })
+    .catch((e): { useP50: boolean; bySupplierId: Record<string, EtaQuantiles> } => {
+      console.warn("fetchSummaryWorkspace eta quantiles:", e);
+      return { useP50: false, bySupplierId: {} };
+    });
+  const [
+    schedules,
+    allNewOrders,
+    salesPeople,
+    statsRows,
+    formSuppliers,
+    teethLaneIndex,
+    onVacationNow,
+    flagDefinitions,
+    laneOrderRaw,
+    salesCancelledOrders,
+    etaLoaded,
+  ] = await Promise.all([
+    Promise.all([
+      fetchSuppliersWithSchedules(undefined, { activeOnly: true }),
+      salesPersonId ? fetchSupplierIdsForSalesPerson(salesPersonId) : null,
+    ]).then(([all, allowed]) => (allowed ? all.filter((s) => allowed.has(s.id)) : all)),
     fetchIndividualOrders({ status: "Nowe", hideSalesAcknowledged: false, excludeTeeth: true, allowAll: true }),
-    fetchSalesPeopleForPicker(),
-    fetchDeliveryStats(),
+    import("@/lib/data/sales-people-admin").then((m) => m.fetchSalesPeopleForPicker()),
+    statsPromise,
     fetchSuppliersForRequestForms(),
     fetchTeethSupplierLaneIndex(),
     fetchSuppliersOnVacationNow(),
     fetchProcurementFlagDefinitions(),
     fetchProcurementLaneOrderRaw(),
+    salesPersonId
+      ? ([] as IndividualOrder[])
+      : fetchSalesCancelledOrders(7).catch(() => [] as IndividualOrder[]),
+    etaPromise,
   ]);
-  const newOrders = options?.salesPersonId
-    ? allNewOrders.filter((o) => o.sales_person_id === options.salesPersonId)
+  const newOrders = salesPersonId
+    ? allNewOrders.filter((o) => o.sales_person_id === salesPersonId)
     : allNewOrders;
-  const salesCancelledOrders = options?.salesPersonId
-    ? []
-    : await fetchSalesCancelledOrders(7).catch(() => [] as IndividualOrder[]);
 
   const workspace = buildSummaryWorkspace(
     schedules,
@@ -514,23 +577,8 @@ export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }
     schedules.map((s) => [s.id, (s.stats_mode ?? "LACZNIE") as import("@/types/database").StatsMode])
   );
 
-  let etaUseP50 = false;
-  let etaQuantilesBySupplierId: Record<
-    string,
-    import("@/lib/orders/delivery-eta-quantiles-load").DeliveryEtaSupplierQuantiles
-  > = {};
-  try {
-    const { loadDeliveryEtaQuantilesForSupplierIds } = await import(
-      "@/lib/orders/delivery-eta-quantiles-load"
-    );
-    const loaded = await loadDeliveryEtaQuantilesForSupplierIds(
-      Object.keys(statsBySupplierId)
-    );
-    etaUseP50 = loaded.useP50;
-    etaQuantilesBySupplierId = loaded.bySupplierId;
-  } catch (e) {
-    console.warn("fetchSummaryWorkspace eta quantiles:", e);
-  }
+  const etaUseP50 = etaLoaded.useP50;
+  const etaQuantilesBySupplierId: Record<string, EtaQuantiles> = etaLoaded.bySupplierId;
 
   return {
     workspace: {

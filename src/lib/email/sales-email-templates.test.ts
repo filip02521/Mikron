@@ -152,7 +152,7 @@ describe("sales email templates", () => {
     });
     expect(subject).toContain("Prośba anulowana");
     expect(html).toContain("Brak na stanie");
-    expect(html).toContain("Wiadomość od działu dostaw");
+    expect(html).toContain("Wiadomość od działu zakupów");
     expect(html).toContain("/moje");
   });
 

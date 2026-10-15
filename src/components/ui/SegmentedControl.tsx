@@ -57,7 +57,7 @@ export function SegmentedControl<T extends string>({
             disabled={disabled}
             onClick={() => onChange(opt.value)}
             className={cn(
-              "min-w-0 truncate rounded-[5px] font-medium transition active:bg-white/90 active:text-slate-900",
+              "min-w-0 cursor-pointer truncate rounded-[5px] font-medium transition-[background-color,color,box-shadow] duration-150 ease-out active:bg-white/90 active:text-slate-900",
               compact &&
                 "flex-auto px-1.5 text-xs leading-none sm:flex-none sm:px-2.5 sm:text-[11px]",
               dock &&

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { NotatnikListFilterBar } from "@/components/notatnik/NotatnikListFilterBar";
@@ -175,7 +175,17 @@ export function MojeAnnouncementsSection({
     [readAnnouncementIds, optimisticReadIds]
   );
   const initialUnread = announcements.filter((a) => !readAnnouncementIds.includes(a.id)).length;
-  const autoSectionExpanded = Boolean(focusAnnouncementId) || initialUnread > 0;
+  // Telefon: zwinięte do jednego wiersza („N nowych”), żeby sprawy do potwierdzenia były nad zgięciem.
+  const isDesktop = useSyncExternalStore(
+    (cb) => {
+      const mq = window.matchMedia("(min-width: 640px)");
+      mq.addEventListener("change", cb);
+      return () => mq.removeEventListener("change", cb);
+    },
+    () => window.matchMedia("(min-width: 640px)").matches,
+    () => true
+  );
+  const autoSectionExpanded = Boolean(focusAnnouncementId) || (initialUnread > 0 && isDesktop);
   const [hashExpand] = useState(() => hashRequestsAnnouncementsExpand());
   const [userSectionExpanded, setUserSectionExpanded] = useState<boolean | null>(null);
   const sectionExpanded = userSectionExpanded ?? (autoSectionExpanded || hashExpand);

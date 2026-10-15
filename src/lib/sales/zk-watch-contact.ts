@@ -17,7 +17,8 @@ function readKontrahentPhone(k: SubiektKontrahent): string | null {
     raw.adr_Telefon1,
   ];
   for (const value of candidates) {
-    const cleaned = cleanSubiektText(typeof value === "string" ? value : null);
+    // W Subiekcie telefon bywa wpisany z przecinkiem lub średnikiem na końcu („600-100-200,”).
+    const cleaned = cleanSubiektText(typeof value === "string" ? value : null)?.replace(/[\s,;.]+$/, "");
     if (cleaned) return cleaned;
   }
   return null;

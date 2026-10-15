@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/Badge";
 import { DetailHeader, detailLinkClass } from "@/components/zakupy/asystent/workspace";
 import { OC_LINE_KIND_LABELS, OC_STATUS_LABELS, type OcCheck, type OcCheckLine } from "@/lib/oc-check/types";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 import { gmailThreadUrl } from "@/lib/oc-check/view";
 import { OcCheckResolveButton } from "./OcCheckResolveButton";
 import { OC_STATUS_VARIANT } from "./OcCheckList";
@@ -34,7 +35,7 @@ function LineRow({ line }: { line: OcCheckLine }) {
   return (
     <tr className="border-t border-slate-100 align-top">
       <td className="whitespace-nowrap px-3 py-2 font-mono text-xs text-slate-700">{line.symbol || "—"}</td>
-      <td className="px-3 py-2 text-slate-700">{line.name || "—"}</td>
+      <td className="min-w-[10rem] px-3 py-2 text-slate-700">{line.name || "—"}</td>
       <td className="whitespace-nowrap px-3 py-2 tabular-nums text-slate-900">
         {qty(line.qtyOrdered, line.unitOrdered)} → {qty(line.qtyConfirmed, line.unitConfirmed)}
         {ordered || confirmed ? (
@@ -128,8 +129,8 @@ export function OcCheckDetail({ check, backHref }: { check: OcCheck; backHref: s
             </div>
             {okCount > 0 ? (
               <p className="text-xs text-slate-500">
-                Pozostałe {okCount} {okCount === 1 ? "pozycja jest zgodna" : okCount < 5 ? "pozycje są zgodne" : "pozycji jest zgodnych"} z
-                ZD.
+                {polishPluralWord(okCount, "Pozostała", "Pozostałe", "Pozostałych")} {okCount}{" "}
+                {polishPluralWord(okCount, "pozycja jest zgodna", "pozycje są zgodne", "pozycji jest zgodnych")} z ZD.
               </p>
             ) : null}
           </section>

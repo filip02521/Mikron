@@ -17,6 +17,11 @@ export type MailPreviewAttachment = {
   opensInline?: boolean;
   /** Plik dołożony ręcznie — można go zdjąć przed wysyłką. */
   onRemove?: () => void;
+  /** Etykieta roli (np. „Dokument ZD”). */
+  roleLabel?: string;
+  /** Akcja: oznacz dodatkowy plik jako główny dokument ZD. */
+  onMarkAsZd?: () => void;
+  markAsZdLabel?: string;
 };
 
 export function formatFileSize(bytes: number): string {
@@ -125,23 +130,47 @@ export function MailPreview({
             <Spinner size="sm" />
             {attachmentsLoading}
           </p>
-        ) : attachments.length === 0 ? (
+        ) : attachments.length === 0 && !attachmentsFooter ? (
           <p className="text-sm text-slate-500">Bez załączników</p>
         ) : null}
         {attachments.length ? (
           <ul className={cn("space-y-1.5", (attachmentsError || attachmentsLoading) && "mt-2")}>
             {attachments.map((a, i) => (
-              <li key={`${i}-${a.name}`} className="flex min-w-0 items-center gap-3 rounded-[var(--radius-control)] bg-slate-50 px-2.5 py-1.5 ring-1 ring-slate-200">
-                <span className="min-w-0 flex-1 break-all text-sm text-slate-900">{a.name}</span>
+              <li
+                key={`${i}-${a.name}`}
+                className={cn(
+                  "flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 rounded-[var(--radius-control)] px-2.5 py-1.5 ring-1",
+                  a.roleLabel
+                    ? "bg-emerald-50/80 ring-emerald-200/90"
+                    : "bg-slate-50 ring-slate-200"
+                )}
+              >
+                <span className="min-w-0 flex-1 break-all text-sm text-slate-900">
+                  {a.roleLabel ? (
+                    <span className="mb-0.5 block text-[11px] font-semibold uppercase tracking-[0.04em] text-emerald-800">
+                      {a.roleLabel}
+                    </span>
+                  ) : null}
+                  {a.name}
+                </span>
                 {a.size != null ? (
                   <span className="shrink-0 tabular-nums text-xs text-slate-500">{formatFileSize(a.size)}</span>
+                ) : null}
+                {a.onMarkAsZd ? (
+                  <button
+                    type="button"
+                    onClick={a.onMarkAsZd}
+                    className="inline-flex min-h-8 shrink-0 cursor-pointer items-center rounded-md bg-slate-900 px-2 text-xs font-medium text-white transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:bg-slate-800 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/40"
+                  >
+                    {a.markAsZdLabel ?? "To jest dokument ZD"}
+                  </button>
                 ) : null}
                 {a.href ? (
                   <a
                     href={a.href}
                     target="_blank"
                     rel="noopener"
-                    className="inline-flex min-h-8 shrink-0 items-center gap-1 rounded px-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45"
+                    className="inline-flex min-h-8 shrink-0 cursor-pointer items-center gap-1 rounded px-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45"
                   >
                     {a.opensInline ? <IconEye size={14} aria-hidden /> : <IconDownload size={14} aria-hidden />}
                     {a.opensInline ? "Otwórz" : "Pobierz"}
@@ -152,7 +181,7 @@ export function MailPreview({
                     type="button"
                     onClick={a.onRemove}
                     aria-label={`Usuń ${a.name}`}
-                    className="inline-flex min-h-8 min-w-8 shrink-0 items-center justify-center rounded text-slate-500 hover:bg-slate-200 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45"
+                    className="inline-flex min-h-8 min-w-8 shrink-0 cursor-pointer items-center justify-center rounded text-slate-500 hover:bg-slate-200 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45"
                   >
                     <IconX size={14} aria-hidden />
                   </button>

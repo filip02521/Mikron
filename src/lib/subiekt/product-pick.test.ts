@@ -178,6 +178,13 @@ describe("combined product search", () => {
     ).toEqual({ product: "ABC opis", symbol: "ABC" });
   });
 
+  it("nie dzieli ręcznej nazwy z dywizem", () => {
+    expect(patchFromCombinedProductInput("TEST UX audyt - nie realizować")).toEqual({
+      symbol: "",
+      product: "TEST UX audyt - nie realizować",
+    });
+  });
+
   it("rozpoznaje wklejkę SYMBOL - Nazwa z Subiekta", () => {
     expect(patchFromCombinedProductInput("SR6 - Śruba M6")).toEqual({
       symbol: "SR6",

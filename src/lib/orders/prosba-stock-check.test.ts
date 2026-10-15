@@ -740,7 +740,7 @@ describe("formatProsbaStockLineHint", () => {
     });
     expect(hint).toContain("10 szt.");
     expect(hint).toContain("3 szt.");
-    expect(hint).toContain("Wystarczający stan magazynowy");
+    expect(hint).toContain("Wystarczy z półki");
   });
 });
 

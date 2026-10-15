@@ -54,7 +54,9 @@ export function MyOrderRequestProgressBar({
   const palette = accentClass[track.accent];
 
   return (
-    <nav
+    // Nie <nav> — to nie nawigacja; przy wielu kartach /moje miało kilkanaście landmarków.
+    <div
+      role="group"
       aria-label="Postęp prośby"
       className={cn("px-0.5", className)}
     >
@@ -121,6 +123,6 @@ export function MyOrderRequestProgressBar({
           );
         })}
       </ol>
-    </nav>
+    </div>
   );
 }

@@ -111,7 +111,7 @@ export function MyOrderRowMetaRail({
           />
         ) : null}
         {!showInformacjaTimingMeta && showEstimatedDeliveryMeta ? (
-          <MyOrderEstimatedDeliveryMeta row={row} inline={inline} />
+          <MyOrderEstimatedDeliveryMeta row={row} inline={inline} hideWhenOverdue />
         ) : null}
         {showZdEtaPendingMeta ? (
           <ZdEtaPendingMeta compact={showZdEtaPendingWithEstimate} />

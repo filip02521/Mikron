@@ -37,7 +37,7 @@ predicate isAuthFunction(string fnName) {
     "requireSubiektLookup",
     "requireMailCenterAccess",
     "requireMailCenterForMutation",
-    // Helper functions that internally call getSessionUser*()
+    // Helper functions that internally call getSessionUser*() / requireOperations()
     "assertSalesAccess",
     "assertProcurementAccess",
     "assertNoteAccess",
@@ -45,6 +45,7 @@ predicate isAuthFunction(string fnName) {
     "requireMailUser",
     "salesPersonIdForAction",
     "salesReporterForAction",
+    "operationsUserOrNull",
     // Bootstrap action uses setup token instead of session auth
     "validateSetupToken",
     // Delegate functions: call auth internally but CodeQL AST analysis

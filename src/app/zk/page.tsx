@@ -42,6 +42,16 @@ export default async function ZkPage({
     );
   }
 
+  // Zły tab nie zależy od dostępu ani danych — przekieruj zanim cokolwiek pobierzemy.
+  if (isInvalidNotatnikTabParam(tab)) {
+    redirect(
+      buildZkRouteRedirectUrl({
+        searchParams: params,
+        focusWatch,
+      })
+    );
+  }
+
   const access = await resolveSalesNotepadPageAccess({
     previewSalesPersonId,
   });
@@ -68,15 +78,6 @@ export default async function ZkPage({
     } catch (e) {
       loadError = userFacingErrorText(e, "Nie udało się załadować listy ZK.");
     }
-  }
-
-  if (isInvalidNotatnikTabParam(tab)) {
-    redirect(
-      buildZkRouteRedirectUrl({
-        searchParams: params,
-        focusWatch,
-      })
-    );
   }
 
   let subiektAvailability: Awaited<ReturnType<typeof getSubiektAvailability>>;

@@ -80,7 +80,8 @@ export function SystemNotice({
         className
       )}
     >
-      <div className="flex min-w-0 items-start gap-2">
+      {/* Tekst nie schodzi poniżej ~16rem — inaczej rząd przycisków zgniatał go do jednego słowa w linii. */}
+      <div className="flex min-w-0 items-start gap-2 sm:min-w-[16rem] sm:flex-1">
         {icon ? <span className="mt-0.5 shrink-0 text-indigo-500">{icon}</span> : null}
         <div className="min-w-0">
           <p
@@ -106,7 +107,7 @@ export function SystemNotice({
           ) : null}
         </div>
       </div>
-      {actionNode ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actionNode}</div> : null}
+      {actionNode ? <div className="flex max-w-full flex-wrap items-center gap-2 sm:shrink-0">{actionNode}</div> : null}
     </div>
   );
 }

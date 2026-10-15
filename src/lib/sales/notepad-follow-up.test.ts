@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  followUpQuickDates,
   buildMojeClientLink,
   isFollowUpDue,
   todayIso,
@@ -34,5 +35,19 @@ describe("notepad-follow-up", () => {
     ).toBe(
       "/moje?zkWatch=w1&zk=ZK%2F2026%2F0142&klient=Klinika+Smile&kh=42"
     );
+  });
+});
+
+describe("followUpQuickDates — dzień roboczy", () => {
+  it("w piątek drugi skrót to poniedziałek, nie sobota", () => {
+    const friday = new Date("2026-10-09T10:00:00+02:00").getTime();
+    const [, next] = followUpQuickDates(friday);
+    expect(next?.value).toBe("2026-10-12");
+    expect(next?.label).not.toBe("Jutro");
+  });
+
+  it("w środę zostaje „Jutro”", () => {
+    const wednesday = new Date("2026-10-07T10:00:00+02:00").getTime();
+    expect(followUpQuickDates(wednesday)[1]).toEqual({ label: "Jutro", value: "2026-10-08" });
   });
 });

@@ -17,8 +17,6 @@ import {
 import type { MyOrderLine } from "@/lib/orders/my-order-presenter";
 import type { MyOrderZdFulfillment, MyOrderZdFulfillmentSlot } from "@/lib/orders/my-order-sales-ui";
 import {
-  buildCollapsedZdMixedNoMatchHint,
-  buildCollapsedZdMultiSlotHint,
   linesWithoutZdTerm,
   myOrderPositionCountLabel,
   resolveZdFulfillmentUrgency,
@@ -28,6 +26,7 @@ import {
   zdFulfillmentSlots,
   zdFulfillmentSlotsTooltip,
 } from "@/lib/orders/my-order-zd-fulfillment-display";
+import { ZD_DELIVERY_CERTAINTY_TAG } from "@/lib/orders/my-order-history-estimate-copy";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 
 function ZdSlotDateValue({
@@ -94,17 +93,7 @@ export function ZdFulfillmentDateMeta({
 }) {
   const slots = zdFulfillmentSlots(fulfillment);
   const multiple = zdFulfillmentHasMultipleSlots(fulfillment);
-  const showCollapsedSummary = collapsed && multiple;
-  const visibleSlots = showCollapsedSummary ? [zdFulfillmentPrimarySlot(fulfillment)] : slots;
-  const collapsedMultiSlotHint = showCollapsedSummary
-    ? buildCollapsedZdMultiSlotHint(fulfillment, lines)
-    : null;
-  const collapsedMixedNoMatchHint = collapsed
-    ? buildCollapsedZdMixedNoMatchHint(lines)
-    : null;
-  const collapsedHints = [collapsedMultiSlotHint, collapsedMixedNoMatchHint].filter(
-    (hint): hint is string => Boolean(hint)
-  );
+  const visibleSlots = slots;
   const syncedLabel = fulfillment.syncedAt
     ? formatPlDate(fulfillment.syncedAt.slice(0, 10))
     : null;
@@ -132,6 +121,65 @@ export function ZdFulfillmentDateMeta({
   ]
     .filter(Boolean)
     .join("\n");
+
+  if (collapsed) {
+    // Zwinięta karta: najpóźniejszy znany termin (kiedy klient dostanie całość), znacznik pewności
+    // pod datą, numer ZD tylko w dymku, a pozycje bez terminu jako krótka plakietka.
+    const datedSlots = slots.filter((slot) => !slot.pendingConfirmation && parseDateOnly(slot.deadline));
+    const latestSlot =
+      [...datedSlots].sort((a, b) => b.deadline.localeCompare(a.deadline))[0] ??
+      zdFulfillmentPrimarySlot(fulfillment);
+    const latestPending = pendingConfirmation || (latestSlot.pendingConfirmation ?? false);
+    const latestDate = parseDateOnly(latestSlot.deadline);
+    const latestDisplay = latestPending
+      ? buildPlaceholderZdDeliveryDateMetaDisplay()
+      : latestDate
+        ? buildZdDeliveryDateMetaDisplay(latestDate)
+        : null;
+    const latestUrgent = shouldShowDeliveryUrgencyBadgeBesideDateMeta(latestDisplay, urgency);
+    const caption = latestPending
+      ? zdFulfillmentCollapsedCaption(1)
+      : multiple || withoutZdCount > 0
+        ? `${ZD_DELIVERY_CERTAINTY_TAG} · całość`
+        : ZD_DELIVERY_CERTAINTY_TAG;
+    return (
+      <div className={cn(
+        "min-w-0 max-w-full",
+        inline ? "flex flex-wrap items-center gap-x-1.5 gap-y-0.5" : "flex flex-col items-end gap-1",
+        className
+      )}>
+        <DeliveryTimingMeta
+          caption={caption}
+          captionTone={latestPending ? "pending" : anyOverdue ? "overdue" : "zd"}
+          captionBelow
+          title={tooltip}
+          inline={inline}
+          className="max-w-full"
+          accessory={
+            latestUrgent && badgeLabel ? (
+              <DeliveryUrgencyBadge
+                urgency={urgency.urgency}
+                label={badgeLabel}
+                title={urgency.detailLabel ?? undefined}
+              />
+            ) : null
+          }
+        >
+          {latestDisplay ? (
+            <DeliveryDateMetaValue display={latestDisplay} className="max-w-full" inline={inline} />
+          ) : null}
+        </DeliveryTimingMeta>
+        {withoutZdCount > 0 ? (
+          <span
+            className="inline-flex max-w-full items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-amber-900 ring-1 ring-inset ring-amber-200/80"
+            title="Szczegóły i szacunek z historii po rozwinięciu"
+          >
+            {withoutZdCount} z {lines.length} bez terminu
+          </span>
+        ) : null}
+      </div>
+    );
+  }
 
   const primarySlot = visibleSlots[0]!;
   const primaryPending = primarySlot.pendingConfirmation ?? pendingConfirmation;
@@ -165,18 +213,7 @@ export function ZdFulfillmentDateMeta({
           ) : null
         }
       >
-        {showCollapsedSummary && primaryDisplay ? (
-          <>
-            <ZdSlotDateValue
-              slot={primarySlot}
-              pendingConfirmation={primaryPending}
-              inline={inline}
-            />
-            <span className="max-w-full truncate text-[11px] font-medium text-slate-500">
-              {primarySlot.dokNr}
-            </span>
-          </>
-        ) : multiple ? (
+        {multiple ? (
           <div className={cn(
             "max-w-full",
             inline ? "flex items-center gap-1.5" : "flex flex-col items-end gap-1.5"
@@ -209,19 +246,6 @@ export function ZdFulfillmentDateMeta({
           </>
         ) : null}
       </DeliveryTimingMeta>
-      {/* Podpowiedzi są tylko w zwiniętej karcie; w trybie inline (telefon) idą w nowej linii. */}
-      {collapsedHints.map((hint) => (
-        <p
-          key={hint}
-          className={cn(
-            "max-w-full font-medium leading-snug text-indigo-900",
-            inline ? "basis-full text-left" : "text-right",
-            salesTypography.rowMeta
-          )}
-        >
-          {hint}
-        </p>
-      ))}
     </div>
   );
 }
