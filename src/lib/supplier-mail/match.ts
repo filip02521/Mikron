@@ -228,11 +228,18 @@ export function linkToCase(
  * reply / confirmation (odpowiedź, potwierdzenie zamówienia) → do reakcji; invoice / shipping → dokumenty;
  * newsletter → pomijany.
  */
-export type SupplierMailCategory = "reply" | "confirmation" | "invoice" | "shipping" | "newsletter";
+/** offer = reklama, newsletter, oferta wysyłana masowo — półka „Oferty”, bez tablicy (czasem się przydaje). */
+export type SupplierMailCategory = "reply" | "confirmation" | "invoice" | "shipping" | "offer";
 
 const NEWSLETTER_FROM_RE = /^(news|newsletter|marketing|promo|promocje|mailing|info-?news)@/i;
 /** Reklamy wysyłane zwykłą pocztą (bez List-Unsubscribe) — po temacie. */
-const PROMO_SUBJECT_RE = /promocj|promotion|newsletter|webinar|black friday|oferta hurtowa|wyprzeda[zż]|\bsale\b/i;
+const PROMO_SUBJECT_RE =
+  /promocj|promotion|newsletter|webinar|black friday|oferta hurtowa|wyprzeda[zż]|\bsale\b|nowo[śs][ćc]|nowo[śs]ci|w ofercie|zapas[óo]w|wyczerpuj|\b\d\s?\+\s?\d\b|rabat|discount|special offer|sonderangebot|black week/i;
+/** Zmiana cen, nowy cennik — wygląda jak reklama („Nowość!”), ale to robota dla zakupów (ceny w Subiekcie). */
+const PRICE_NOTICE_RE =
+  /zmian\w* cen|podwy[żz]k\w* cen|now\w* cennik|cennik 20\d\d|price (?:change|increase|adjustment|list)|preis(?:änderung|erhöhung|anpassung|liste)|aumento (?:dei )?prezzi|listino/i;
+/** Obrazki (podpis, logo) nie są dokumentem — „RE: … invoice 123” bez pliku to rozmowa, nie faktura. */
+const IMAGE_FILE_RE = /\.(png|jpe?g|gif|bmp|webp)$/i;
 const INVOICE_RE = /faktur|invoice|rechnung|factura|fattura|facture|credit note|nota kredyt|korekt|\bFV[ /-]?\d/i;
 const SHIPPING_RE =
   /tracking|shipment|versand|lieferschein|delivery note|albar[aá]n|wysy[lł]k|przesy[lł]k|\bWZ\b|dispatch|spedizion|\bDDT\b|list przewozowy|\bAWB\b/i;
@@ -250,10 +257,13 @@ export function supplierMailCategory(input: {
   const subject = input.subject;
   // Odpowiedź w naszym wątku („Re: …”) nie jest reklamą, nawet gdy w temacie jest „promocja”.
   const isReply = /^\s*(re|odp|aw|r|antwort|sv)\s*:/i.test(subject);
-  if (input.bulk || NEWSLETTER_FROM_RE.test(email) || (!isReply && PROMO_SUBJECT_RE.test(subject))) return "newsletter";
-  const files = input.attachmentNames.join(" ");
+  const promo = input.bulk || NEWSLETTER_FROM_RE.test(email) || (!isReply && PROMO_SUBJECT_RE.test(subject));
+  if (promo && !PRICE_NOTICE_RE.test(subject)) return "offer";
+  const docs = input.attachmentNames.filter((n) => !IMAGE_FILE_RE.test(n));
+  const files = docs.join(" ");
   // Odpowiedź w wątku („RE: Zamówienie”) z potwierdzeniem w załączniku to potwierdzenie, z fakturą — faktura.
-  if (INVOICE_RE.test(subject) || (INVOICE_RE.test(files) && !CONFIRMATION_RE.test(files))) return "invoice";
+  // Słowo „invoice” w temacie odpowiedzi bez pliku (np. „RE: Transport order / invoice 274”) to rozmowa.
+  if ((INVOICE_RE.test(subject) && (!isReply || docs.length > 0)) || (INVOICE_RE.test(files) && !CONFIRMATION_RE.test(files))) return "invoice";
   if (SHIPPING_RE.test(subject)) return "shipping";
   if (CONFIRMATION_RE.test(subject) || CONFIRMATION_RE.test(files)) return "confirmation";
   if (SHIPPING_RE.test(files)) return "shipping";

@@ -1,16 +1,40 @@
 import { describe, expect, it } from "vitest";
-import { EXTRA_ATTACHMENTS_MAX_BYTES, extraAttachmentsError } from "./extra-attachments";
+import {
+  MAIL_ATTACHMENTS_COMBINED_MAX_BYTES,
+  mailAttachmentsCombinedError,
+  primaryZdOverrideError,
+} from "@/lib/email/extra-attachments";
 
-describe("extraAttachmentsError", () => {
-  it("przepuszcza PDF, Excel i zdjęcia", () => {
-    expect(extraAttachmentsError([])).toBeNull();
-    expect(extraAttachmentsError([{ name: "Zam 12.PDF", size: 10 }, { name: "a.xlsx", size: 1 }, { name: "f.jpg", size: 5 }])).toBeNull();
+describe("primaryZdOverrideError", () => {
+  it("akceptuje PDF", () => {
+    expect(primaryZdOverrideError({ name: "ZD.pdf", size: 1200 })).toBeNull();
   });
-  it("odrzuca inne typy, puste pliki, za dużo plików i za dużą sumę", () => {
-    expect(extraAttachmentsError([{ name: "x.exe", size: 1 }])).toMatch(/x\.exe/);
-    expect(extraAttachmentsError([{ name: "bez-rozszerzenia", size: 1 }])).toMatch(/dozwolone/);
-    expect(extraAttachmentsError([{ name: "a.pdf", size: 0 }])).toMatch(/pusty/);
-    expect(extraAttachmentsError(Array.from({ length: 11 }, (_, i) => ({ name: `${i}.pdf`, size: 1 })))).toMatch(/10/);
-    expect(extraAttachmentsError([{ name: "a.pdf", size: EXTRA_ATTACHMENTS_MAX_BYTES }, { name: "b.pdf", size: 1 }])).toMatch(/15 MB/);
+
+  it("odrzuca zdjęcie", () => {
+    expect(primaryZdOverrideError({ name: "scan.png", size: 1200 })).toMatch(/PDF|Excel/i);
+  });
+
+  it("odrzuca pusty plik", () => {
+    expect(primaryZdOverrideError({ name: "ZD.pdf", size: 0 })).toMatch(/pusty/i);
+  });
+});
+
+describe("mailAttachmentsCombinedError", () => {
+  it("akceptuje rozsądny zestaw", () => {
+    expect(
+      mailAttachmentsCombinedError(
+        { name: "ZD.pdf", size: 2_000_000 },
+        [{ name: "a.pdf", size: 1_000_000 }]
+      )
+    ).toBeNull();
+  });
+
+  it("odrzuca sumę ponad limit", () => {
+    expect(
+      mailAttachmentsCombinedError(
+        { name: "ZD.pdf", size: MAIL_ATTACHMENTS_COMBINED_MAX_BYTES - 100 },
+        [{ name: "a.pdf", size: 200 }]
+      )
+    ).toMatch(/18 MB/i);
   });
 });

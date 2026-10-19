@@ -27,7 +27,14 @@ fi
 if [ ! -f "$gate/$sha.predeploy" ]; then
   log="$gate/$sha.predeploy.log"
   fail=""; : >"$log"
-  for step in "npx tsc --noEmit" "npm run lint" "npm test" "npm run verify:deploy"; do
+  steps=("npx tsc --noEmit" "npm run lint" "npm test")
+  # verify:deploy sprawdza produkcyjne sekrety z .env; w chmurze Claude Code ich nie ma, więc zawsze by padał.
+  if [ "$CLAUDE_CODE_REMOTE" = "true" ]; then
+    echo "== npm run verify:deploy (pominięty: CLAUDE_CODE_REMOTE)" >>"$log"
+  else
+    steps+=("npm run verify:deploy")
+  fi
+  for step in "${steps[@]}"; do
     echo "== $step" >>"$log"
     eval "$step" >>"$log" 2>&1 || fail="$fail\n- $step"
   done

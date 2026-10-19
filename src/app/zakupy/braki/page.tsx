@@ -69,7 +69,11 @@ async function loadPanel(supplierId: string | null) {
 export default async function StockWatchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ dostawca?: string | string[]; tab?: string | string[] }>;
+  searchParams: Promise<{
+    dostawca?: string | string[];
+    tab?: string | string[];
+    filtr?: string | string[];
+  }>;
 }) {
   await requireZdEstimateAdmin("read");
   const params = await searchParams;
@@ -99,6 +103,7 @@ export default async function StockWatchPage({
           initialSupplierId={first(params.dostawca)}
           initialSupplierName={panel.supplierName}
           initialTab={first(params.tab)}
+          initialAlertFilter={first(params.filtr)}
         />
       ) : (
         <Alert tone="error" title="Panel braków niedostępny">

@@ -1181,6 +1181,18 @@ export const ZD_ESTIMATE_UI = {
   postCreateGmailSend: "Wyślij",
   postCreateGmailConnect: "Połącz z Gmailem",
   postCreateGmailConnectHint: "(nowa karta) — potem wyślesz zamówienie stąd, z załącznikiem, jednym kliknięciem.",
+  /** Wysyłka ZD — brak wydruku z Subiekta / Sfery. */
+  zdSendAttachFailedTitle: "Brak dokumentu ZD z Subiekta",
+  zdSendAttachFailedLead:
+    "Wgraj własny wydruk albo formularz i oznacz go jako dokument ZD — wtedy odblokuje się „Wyślij”.",
+  zdSendAttachUploadZdCta: "Wgraj dokument ZD",
+  zdSendAttachMarkAsZdCta: "To jest dokument ZD",
+  zdSendAttachMarkedBadge: "Dokument ZD",
+  zdSendAttachMarkedHint:
+    "Wysyłasz ręcznie wgrany dokument (Subiekt nie oddał wydruku). Sprawdź podgląd przed wysyłką.",
+  zdSendAttachClearManualCta: "Cofnij — spróbuj z Subiekta",
+  zdSendAttachStepDetailManual:
+    "Załącznik: Twój dokument ZD (wgrany ręcznie, gdy Subiekt nie oddał wydruku).",
   postCreateMailComposeTo: "Do",
   postCreateMailComposeSubject: "Temat",
   postCreateMailComposeBody: "Treść",

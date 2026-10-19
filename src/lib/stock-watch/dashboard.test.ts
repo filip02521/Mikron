@@ -141,6 +141,7 @@ describe("buildStockWatchDashboard", () => {
     expect(d.health).toEqual({ score: 25, active: 4, ok: 1 });
     expect(d.counts).toEqual({
       outOfStock: 1,
+      emptyNoIncoming: 1,
       critical: 1,
       warning: 1,
       ok: 1,
@@ -148,6 +149,32 @@ describe("buildStockWatchDashboard", () => {
       beforeDelivery: 0,
       beforeNextDelivery: 0,
     });
+  });
+
+  it("emptyNoIncoming: brak na stanie i bez otwartego ZD", () => {
+    const withIncoming = buildStockWatchDashboard(
+      [
+        item({
+          subiektTwId: 1,
+          status: "out_of_stock",
+          availableQty: 0,
+          openZdQty: 12,
+          daysOfCover: 0,
+        }),
+        item({
+          subiektTwId: 2,
+          status: "out_of_stock",
+          availableQty: 0,
+          openZdQty: 0,
+          daysOfCover: 0,
+        }),
+      ],
+      []
+    );
+    expect(withIncoming.counts.outOfStock).toBe(2);
+    expect(withIncoming.counts.emptyNoIncoming).toBe(1);
+    // Puste bez dostawy przed brakiem z towarem w drodze.
+    expect(withIncoming.alerts.map((a) => a.subiektTwId)).toEqual([2, 1]);
   });
 });
 

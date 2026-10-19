@@ -306,6 +306,27 @@ describe("gmail — rodzaj odpowiedzi", () => {
     expect(classifyReply(undefined)).toBe("supplier");
   });
 
+  it("potwierdzenie odbioru z systemu zgłoszeń (bez nagłówków) to autoodpowiedź, odpowiedź człowieka nie", () => {
+    const medilab = h({ From: "biuro@medilab.example", Subject: "[#33823] ZD 84/M/10/2026 - Medilab", "X-Mailer": "Thulium" });
+    expect(
+      classifyReply(medilab, "Dzień dobry, potwierdzamy, że Państwa wiadomość dotarła do nas pomyślnie. Odpowiemy na nią najszybciej jak to możliwe.")
+    ).toBe("auto");
+    expect(classifyReply(medilab, "Dzień dobry, zamówienie przekazałam do kompletacji na naszym magazynie.")).toBe("supplier");
+    expect(classifyReply(h({ From: "s@x.com" }), "Thank you, we have received your message and will reply shortly.")).toBe("auto");
+    expect(classifyReply(h({ From: "s@x.de" }), "Vielen Dank, wir haben Ihre Nachricht erhalten.")).toBe("auto");
+  });
+
+  it("snippet: encje zakodowane podwójnie (&amp;#243;)", () => {
+    const [r] = repliesFromThread(
+      [
+        { id: "s", internalDate: "1", labelIds: ["SENT"] },
+        { id: "r", internalDate: "2", labelIds: ["INBOX"], snippet: "Potwierdzenie złożenia zam&amp;#243;wienia" },
+      ],
+      "s"
+    );
+    expect(r!.snippet).toBe("Potwierdzenie złożenia zamówienia");
+  });
+
   it("snippet: encje numeryczne i nazwane", () => {
     const [r] = repliesFromThread(
       [

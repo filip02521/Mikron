@@ -14,13 +14,28 @@ import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { prepareMailAttachment } from "@/lib/client/compress-image";
-import { EXTRA_ATTACHMENTS_ACCEPT, extraAttachmentsError } from "@/lib/email/extra-attachments";
+import {
+  EXTRA_ATTACHMENTS_ACCEPT,
+  PRIMARY_ZD_OVERRIDE_ACCEPT,
+  PRIMARY_ZD_OVERRIDE_EXTENSIONS,
+  extraAttachmentExtension,
+  extraAttachmentsError,
+  mailAttachmentsCombinedError,
+  primaryZdOverrideError,
+} from "@/lib/email/extra-attachments";
 import { parseMailRecipients } from "@/lib/email/recipients";
 import { zdTerminError } from "@/lib/orders/zd-send-plan";
 import type { SupplierOrderEmail } from "@/lib/google/gmail-connections";
 import type { DailyPanelUndoPayload } from "@/lib/orders/daily-panel-undo";
+import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
+
+function canBePrimaryZd(file: File): boolean {
+  return (PRIMARY_ZD_OVERRIDE_EXTENSIONS as readonly string[]).includes(
+    extraAttachmentExtension(file.name)
+  );
+}
 
 const fieldClass = cn(controlFocusClass, "mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm");
 
@@ -121,7 +136,13 @@ export function ZdSendWorkspace({
   const [extras, setExtras] = useState<{ file: File; href: string }[]>([]);
   const [extrasBusy, setExtrasBusy] = useState(false);
   const [extrasError, setExtrasError] = useState<string | null>(null);
+  /** Ręczny dokument ZD — gdy Subiekt/Sfera nie odda wydruku. */
+  const [manualPrimary, setManualPrimary] = useState<{
+    file: File;
+    href: string;
+  } | null>(null);
   const extrasInputRef = useRef<HTMLInputElement>(null);
+  const zdPrimaryInputRef = useRef<HTMLInputElement>(null);
   // Adresy podglądu plików — zwalniane przy usunięciu pliku i przy zamknięciu okna.
   const extraUrlsRef = useRef(new Set<string>());
   useEffect(() => {
@@ -129,13 +150,51 @@ export function ZdSendWorkspace({
     return () => urls.forEach((u) => URL.revokeObjectURL(u));
   }, []);
   const extrasBytes = extras.reduce((n, x) => n + x.file.size, 0);
+  const outboundAttachmentBytes =
+    extrasBytes + (manualPrimary?.file.size ?? 0);
+
+  function setAsManualPrimary(
+    file: File,
+    href: string,
+    extrasForTotal: ReadonlyArray<File> = extras.map((x) => x.file)
+  ) {
+    const err =
+      primaryZdOverrideError(file) ??
+      mailAttachmentsCombinedError(file, extrasForTotal);
+    if (err) {
+      setExtrasError(err);
+      return false;
+    }
+    setExtrasError(null);
+    const previous = manualPrimary;
+    if (previous && previous.href !== href) {
+      URL.revokeObjectURL(previous.href);
+      extraUrlsRef.current.delete(previous.href);
+    }
+    setManualPrimary({ file, href });
+    extraUrlsRef.current.add(href);
+    setAttachment({
+      state: "ready",
+      file: {
+        name: file.name,
+        size: file.size,
+        href,
+        opensInline: file.type === "application/pdf" || /\.pdf$/i.test(file.name),
+        roleLabel: ZD_ESTIMATE_UI.zdSendAttachMarkedBadge,
+      },
+    });
+    return true;
+  }
 
   async function addExtras(list: FileList) {
     setExtrasError(null);
     setExtrasBusy(true);
     try {
       const prepared = await Promise.all(Array.from(list).map(prepareMailAttachment));
-      const error = extraAttachmentsError([...extras.map((x) => x.file), ...prepared]);
+      const nextExtras = [...extras.map((x) => x.file), ...prepared];
+      const error =
+        extraAttachmentsError(nextExtras) ??
+        mailAttachmentsCombinedError(manualPrimary?.file ?? null, nextExtras);
       if (error) {
         setExtrasError(error);
         return;
@@ -146,6 +205,70 @@ export function ZdSendWorkspace({
     } finally {
       setExtrasBusy(false);
     }
+  }
+
+  async function uploadPrimaryZd(list: FileList) {
+    const raw = list[0];
+    if (!raw) return;
+    setExtrasError(null);
+    setExtrasBusy(true);
+    try {
+      const file = await prepareMailAttachment(raw);
+      const href = URL.createObjectURL(file);
+      if (!setAsManualPrimary(file, href)) {
+        URL.revokeObjectURL(href);
+      }
+    } finally {
+      setExtrasBusy(false);
+    }
+  }
+
+  function markExtraAsZd(index: number) {
+    const item = extras[index];
+    if (!item) return;
+    const demoted = manualPrimary;
+    const remaining = [
+      ...extras.filter((_, i) => i !== index).map((x) => x.file),
+      ...(demoted ? [demoted.file] : []),
+    ];
+    // setAsManualPrimary zwalnia URL poprzedniego — przy demote zachowaj href.
+    if (demoted) {
+      const err =
+        primaryZdOverrideError(item.file) ??
+        mailAttachmentsCombinedError(item.file, remaining);
+      if (err) {
+        setExtrasError(err);
+        return;
+      }
+      setExtrasError(null);
+      setManualPrimary({ file: item.file, href: item.href });
+      setAttachment({
+        state: "ready",
+        file: {
+          name: item.file.name,
+          size: item.file.size,
+          href: item.href,
+          opensInline:
+            item.file.type === "application/pdf" || /\.pdf$/i.test(item.file.name),
+          roleLabel: ZD_ESTIMATE_UI.zdSendAttachMarkedBadge,
+        },
+      });
+      setExtras((prev) => [...prev.filter((_, i) => i !== index), demoted]);
+      return;
+    }
+    if (!setAsManualPrimary(item.file, item.href, remaining)) return;
+    setExtras((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function clearManualPrimary() {
+    setExtrasError(null);
+    setManualPrimary((prev) => {
+      if (prev) {
+        URL.revokeObjectURL(prev.href);
+        extraUrlsRef.current.delete(prev.href);
+      }
+      return null;
+    });
   }
 
   function removeExtra(index: number) {
@@ -195,16 +318,20 @@ export function ZdSendWorkspace({
 
   useEffect(() => {
     if (!gmail) return;
+    // Ręczny dokument ZD — nie nadpisuj pobieraniem z Subiekta.
+    if (manualPrimary) return;
     const controller = new AbortController();
     let objectUrl: string | null = null;
     const url = `/api/operations/supplier-forms/zd/${dokId}/mail-attachment?supplierId=${encodeURIComponent(supplierId)}${refreshKey ? "&fresh=1" : ""}`;
     fetch(url, { signal: controller.signal })
       .then(async (res) => {
+        if (controller.signal.aborted) return;
         if (!res.ok) {
           const json = (await res.json().catch(() => null)) as { error?: string } | null;
           throw new Error(json?.error ?? `HTTP ${res.status}`);
         }
         const blob = await res.blob();
+        if (controller.signal.aborted) return;
         const encoded = (res.headers.get("Content-Disposition") ?? "").match(/filename\*=UTF-8''([^;]+)/)?.[1];
         objectUrl = URL.createObjectURL(blob);
         setAttachment({
@@ -228,9 +355,10 @@ export function ZdSendWorkspace({
       controller.abort();
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [gmail, dokId, supplierId, refreshKey]);
+  }, [gmail, dokId, supplierId, refreshKey, manualPrimary]);
 
   const refreshDocument = () => {
+    clearManualPrimary();
     setPlan(null);
     setAttachment({ state: "loading" });
     setRefreshKey((k) => k + 1);
@@ -244,7 +372,13 @@ export function ZdSendWorkspace({
   const recipients = parseMailRecipients(to, cc);
   const mailDone = steps.mail.status === "ok";
   const allDone = (["mail", "termin", "glowne", "plan"] as const).every((k) => ["ok", "skipped"].includes(steps[k].status));
-  const willResetTermin = Boolean(planOk && !planOk.usesSupplierForm && planOk.termin !== planOk.today);
+  // Przy ręcznym ZD serwer nie zmienia terminu pod wydruk — nie strasz użytkownika.
+  const willResetTermin = Boolean(
+    planOk &&
+      !planOk.usesSupplierForm &&
+      planOk.termin !== planOk.today &&
+      !manualPrimary
+  );
 
   const setStep = (key: StepKey, state: StepState) => setSteps((prev) => ({ ...prev, [key]: state }));
 
@@ -332,7 +466,18 @@ export function ZdSendWorkspace({
     setStep("mail", { status: "running" });
     showProgress();
     const res: SendZdToSupplierResult = live
-      ? await actionSendZdToSupplier({ dokId, supplierId, to, cc, subject, body, terminAfterSend: termin, extraFiles: extras.map((x) => x.file), ...merged }).catch((e: unknown) => ({
+      ? await actionSendZdToSupplier({
+          dokId,
+          supplierId,
+          to,
+          cc,
+          subject,
+          body,
+          terminAfterSend: termin,
+          extraFiles: extras.map((x) => x.file),
+          primaryOverride: manualPrimary?.file,
+          ...merged,
+        }).catch((e: unknown) => ({
           ok: false as const,
           message: userFacingErrorTextFromMessage(e instanceof Error ? e.message : String(e), "Nie udało się wysłać zamówienia."),
         }))
@@ -377,6 +522,11 @@ export function ZdSendWorkspace({
     await finishAfterMail();
   }
 
+  const combinedSizeError = mailAttachmentsCombinedError(
+    manualPrimary?.file ?? null,
+    extras.map((x) => x.file)
+  );
+
   const canSend =
     Boolean(gmail) &&
     (!previewOnly || !live) &&
@@ -389,7 +539,8 @@ export function ZdSendWorkspace({
     !extrasBusy &&
     Boolean(planOk) &&
     !terminInvalid &&
-    mailIssue?.kind !== "uncertain";
+    mailIssue?.kind !== "uncertain" &&
+    !combinedSizeError;
 
   return (
     <>
@@ -470,9 +621,11 @@ export function ZdSendWorkspace({
               title={gmail ? "Mail z dokumentem do dostawcy" : "Zamówienie wysłane poza OnTime"}
               detail={
                 gmail
-                  ? orderFormKind
-                    ? `Załącznik: formularz ${supplierName} wypełniony tym ZD.`
-                    : "Załącznik: wydruk ZD z Subiekta z terminem realizacji na dziś."
+                  ? manualPrimary
+                    ? ZD_ESTIMATE_UI.zdSendAttachStepDetailManual
+                    : orderFormKind
+                      ? `Załącznik: formularz ${supplierName} wypełniony tym ZD.`
+                      : "Załącznik: wydruk ZD z Subiekta z terminem realizacji na dziś."
                   : "Potwierdzasz przyciskiem „Wysłałem ręcznie”."
               }
             />
@@ -587,13 +740,85 @@ export function ZdSendWorkspace({
                 name: x.file.name,
                 size: x.file.size,
                 href: x.href,
-                opensInline: x.file.type === "application/pdf" || x.file.type.startsWith("image/"),
-                onRemove: mailDone || running ? undefined : () => removeExtra(i),
+                opensInline:
+                  x.file.type === "application/pdf" ||
+                  x.file.type.startsWith("image/"),
+                onRemove:
+                  mailDone || running ? undefined : () => removeExtra(i),
+                onMarkAsZd:
+                  !mailDone &&
+                  !running &&
+                  (attachment.state === "error" || Boolean(manualPrimary)) &&
+                  canBePrimaryZd(x.file)
+                    ? () => markExtraAsZd(i)
+                    : undefined,
+                markAsZdLabel: ZD_ESTIMATE_UI.zdSendAttachMarkAsZdCta,
               })),
             ]}
             attachmentsFooter={
               mailDone ? null : (
-                <div className="mt-2 space-y-1.5">
+                <div className="mt-2 space-y-2">
+                  {attachment.state === "error" && !manualPrimary ? (
+                    <div
+                      className="rounded-lg bg-amber-50/90 px-3 py-3 ring-1 ring-amber-200/90"
+                      role="group"
+                      aria-label={ZD_ESTIMATE_UI.zdSendAttachFailedTitle}
+                    >
+                      <p className="text-sm font-semibold text-amber-950">
+                        {ZD_ESTIMATE_UI.zdSendAttachFailedTitle}
+                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-amber-900/90">
+                        {ZD_ESTIMATE_UI.zdSendAttachFailedLead}
+                      </p>
+                      <p className="mt-1.5 text-[11px] leading-snug text-amber-800/80">
+                        {attachment.message}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <input
+                          ref={zdPrimaryInputRef}
+                          type="file"
+                          accept={PRIMARY_ZD_OVERRIDE_ACCEPT}
+                          className="sr-only"
+                          tabIndex={-1}
+                          onChange={(e) => {
+                            if (e.target.files?.length) void uploadPrimaryZd(e.target.files);
+                            e.target.value = "";
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          className="min-h-10 cursor-pointer active:scale-[0.98]"
+                          disabled={extrasBusy || running}
+                          onClick={() => zdPrimaryInputRef.current?.click()}
+                        >
+                          {extrasBusy ? (
+                            <span className="inline-flex items-center gap-1.5">
+                              <Spinner size="sm" /> Przygotowuję…
+                            </span>
+                          ) : (
+                            ZD_ESTIMATE_UI.zdSendAttachUploadZdCta
+                          )}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="min-h-10 cursor-pointer"
+                          disabled={running}
+                          onClick={refreshDocument}
+                        >
+                          Odśwież z Subiekta
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+                  {manualPrimary ? (
+                    <p
+                      className="rounded-md bg-emerald-50/90 px-2.5 py-2 text-xs leading-relaxed text-emerald-950 ring-1 ring-emerald-200/80"
+                      role="status"
+                    >
+                      {ZD_ESTIMATE_UI.zdSendAttachMarkedHint}
+                    </p>
+                  ) : null}
                   <input
                     ref={extrasInputRef}
                     type="file"
@@ -610,18 +835,20 @@ export function ZdSendWorkspace({
                     type="button"
                     onClick={() => extrasInputRef.current?.click()}
                     disabled={extrasBusy || running}
-                    className="inline-flex min-h-9 items-center gap-1.5 rounded px-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 disabled:opacity-50"
+                    className="inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded px-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 disabled:opacity-50"
                   >
                     {extrasBusy ? <Spinner size="sm" /> : <IconPaperclip size={14} aria-hidden />}
                     {extrasBusy ? "Przygotowuję pliki…" : "Dodaj pliki"}
                   </button>
-                  {extrasError ? (
+                  {extrasError || combinedSizeError ? (
                     <p className="text-sm text-red-700" role="alert">
-                      {extrasError}
+                      {extrasError ?? combinedSizeError}
                     </p>
-                  ) : live && extrasBytes > PROXY_BODY_LIMIT_BYTES ? (
+                  ) : live && outboundAttachmentBytes > PROXY_BODY_LIMIT_BYTES ? (
                     <p className="text-xs text-amber-800">
-                      Dodatkowe pliki mają razem ponad 1 MB - serwer OnTime może odrzucić wysyłkę. Zmniejsz PDF albo wyślij go osobno.
+                      {manualPrimary
+                        ? "Dokument ZD i dodatkowe pliki mają razem ponad 1 MB — serwer OnTime może odrzucić wysyłkę. Zmniejsz PDF albo wyślij załączniki osobno."
+                        : "Dodatkowe pliki mają razem ponad 1 MB — serwer OnTime może odrzucić wysyłkę. Zmniejsz PDF albo wyślij go osobno."}
                     </p>
                   ) : null}
                 </div>
@@ -634,18 +861,23 @@ export function ZdSendWorkspace({
                   : "Pobieram wydruk ZD z Subiekta (do ok. 30 s)…"
                 : null
             }
-            attachmentsError={attachment.state === "error" ? attachment.message : null}
+            // Błąd Subiekta obsługuje karta odzyskiwania w footerze (nie dubluj czerwonego alertu).
+            attachmentsError={null}
           />
           {!mailDone ? (
-            <button
-              type="button"
-              onClick={refreshDocument}
-              disabled={attachment.state === "loading" || running}
-              className="inline-flex min-h-9 items-center rounded px-1.5 text-xs font-medium text-indigo-700 underline decoration-indigo-300 underline-offset-2 hover:decoration-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 disabled:opacity-50"
-              title="Gdy dopisałeś coś do ZD w Subiekcie - pozycje i wydruk wczytają się od nowa"
-            >
-              Odśwież dokument z Subiekta
-            </button>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <button
+                type="button"
+                onClick={refreshDocument}
+                disabled={attachment.state === "loading" || running}
+                className="inline-flex min-h-9 cursor-pointer items-center rounded px-1.5 text-xs font-medium text-indigo-700 underline decoration-indigo-300 underline-offset-2 hover:decoration-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 disabled:opacity-50"
+                title="Gdy dopisałeś coś do ZD w Subiekcie - pozycje i wydruk wczytają się od nowa"
+              >
+                {manualPrimary
+                  ? ZD_ESTIMATE_UI.zdSendAttachClearManualCta
+                  : "Odśwież dokument z Subiekta"}
+              </button>
+            </div>
           ) : null}
         </div>
       ) : null}
@@ -679,6 +911,13 @@ export function ZdSendWorkspace({
             className="min-h-11 w-full sm:w-auto"
             disabled={!canSend}
             aria-busy={steps.mail.status === "running"}
+            title={
+              attachment.state === "error" && !manualPrimary
+                ? "Wgraj dokument ZD albo odśwież z Subiekta — wtedy odblokuje się wysyłka"
+                : attachment.state === "loading"
+                  ? "Czekam na dokument ZD…"
+                  : undefined
+            }
             onClick={() => void send()}
           >
             {steps.mail.status === "running" ? (

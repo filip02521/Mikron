@@ -193,35 +193,63 @@ export async function fetchSalesCancelledOrders(
 
 /** TTL w obrębie procesu — ogranicza koszt przy pollingu badge (co ~25 s). */
 const VERIFICATION_SYNC_TTL_MS = 20_000;
-let verificationSyncExpiresAt = 0;
-let verificationSyncInFlight: Promise<void> | null = null;
+/** Osobno: naprawa statusów vs auto-powiązanie — page load nie może „zabić” assign w badge. */
+let verificationRepairExpiresAt = 0;
+let verificationAutoAssignExpiresAt = 0;
+let verificationRepairInFlight: Promise<void> | null = null;
+let verificationAutoAssignInFlight: Promise<void> | null = null;
 
-/** Naprawa właśnie przebiegła (np. runOrderMaintenanceBeforePageLoad) — pomiń ją przez TTL. */
+/** Naprawa statusów właśnie przebiegła — pomiń tylko repair przez TTL. */
 export function markVerificationQueueSynced(): void {
-  verificationSyncExpiresAt = Date.now() + VERIFICATION_SYNC_TTL_MS;
+  verificationRepairExpiresAt = Date.now() + VERIFICATION_SYNC_TTL_MS;
+}
+
+/** Auto-assign właśnie przebiegł (page / sync) — pomiń kolejny assign przez TTL. */
+export function markVerificationAutoAssignSynced(): void {
+  verificationAutoAssignExpiresAt = Date.now() + VERIFICATION_SYNC_TTL_MS;
 }
 
 /**
- * Niekompletne prośby → status Weryfikacja (jak przed fetch na /weryfikacja).
- * Bez tego badge w menu liczy tylko rekordy już oznaczone w DB.
+ * Niekompletne prośby → status Weryfikacja, potem auto-powiązanie dostawcy z katalogu.
+ * Badge w menu woła to samo (osobne TTL) — inaczej świeci „Weryfikacja” mimo że prośba
+ * już poszła do podsumowania po cichym promote do Nowe.
+ * Bez revalidatePath tu (ścieżka renderu layoutu / poll API).
  */
 async function syncVerificationQueueStatuses(): Promise<void> {
   if (!hasSupabaseConfig()) return;
 
-  const now = Date.now();
-  if (now < verificationSyncExpiresAt) return;
-
-  if (!verificationSyncInFlight) {
-    verificationSyncInFlight = (async () => {
-      const supabase = createAdminClient();
-      await runRepairIncompleteIndividualOrders(supabase);
-      verificationSyncExpiresAt = Date.now() + VERIFICATION_SYNC_TTL_MS;
-    })().finally(() => {
-      verificationSyncInFlight = null;
-    });
+  if (Date.now() >= verificationRepairExpiresAt) {
+    if (!verificationRepairInFlight) {
+      verificationRepairInFlight = (async () => {
+        const supabase = createAdminClient();
+        await runRepairIncompleteIndividualOrders(supabase);
+        verificationRepairExpiresAt = Date.now() + VERIFICATION_SYNC_TTL_MS;
+      })().finally(() => {
+        verificationRepairInFlight = null;
+      });
+    }
+    await verificationRepairInFlight;
   }
 
-  await verificationSyncInFlight;
+  // Ponowny odczyt czasu — po await repair page mógł już zrobić assign.
+  if (Date.now() >= verificationAutoAssignExpiresAt) {
+    if (!verificationAutoAssignInFlight) {
+      verificationAutoAssignInFlight = (async () => {
+        try {
+          const { autoAssignMissingSuppliersFromCatalog } = await import(
+            "@/lib/services/auto-assign-suppliers"
+          );
+          await autoAssignMissingSuppliersFromCatalog({ limit: 80 });
+        } catch (e) {
+          console.error("[syncVerificationQueueStatuses autoAssign]", e);
+        }
+        verificationAutoAssignExpiresAt = Date.now() + VERIFICATION_SYNC_TTL_MS;
+      })().finally(() => {
+        verificationAutoAssignInFlight = null;
+      });
+    }
+    await verificationAutoAssignInFlight;
+  }
 }
 
 /** Historia audytu — bez pozycji informacyjnych (tylko powiadomienie, bez rezerwacji). */

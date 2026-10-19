@@ -280,8 +280,9 @@ async function storeMetas(
     }
     const attachmentNames = meta.attachments.map((a) => a.filename);
     const category = supplierMailCategory({ from: meta.from, subject: meta.subject, attachmentNames, bulk: meta.bulk });
+    // Reklamy nieznanych nadawców nie wchodzą; od dostawców z kart — na półkę „Oferty” (czasem się przydają).
     // Reguła nadawcy („sprawa”, „odprawa”) wygrywa z wyglądem wysyłki masowej (automaty agencji celnych).
-    if (category === "newsletter" && meta.kind !== "bounce" && (triage === null || triage === "review")) continue;
+    if (category === "offer" && meta.kind !== "bounce" && triage === "review") continue;
     const text = [meta.subject, meta.snippet, ...attachmentNames].join("\n");
     const zdNr = documentRefs(text).dokNrs[0] ?? null;
     const zd = zdNr ? zdIndex.get(zdNr) : undefined;
@@ -340,8 +341,8 @@ async function storeMetas(
         link?.caseKind ?? null,
         link?.caseId ?? null,
         link?.linkedBy ?? null,
-        // Zwrot zawsze „do reakcji” (jak odpowiedź) — mail nie doszedł.
-        category === "newsletter" ? "reply" : category,
+        // Zwrot zawsze „do reakcji” (jak odpowiedź) — mail nie doszedł; agencja z reguły to sprawa, nie reklama.
+        category === "offer" && (meta.kind === "bounce" || triage) ? "reply" : category,
         zdNr ? `ZD ${zdNr}` : null,
         zd?.dokId ?? null,
         triage,

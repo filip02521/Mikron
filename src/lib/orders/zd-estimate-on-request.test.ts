@@ -4,6 +4,7 @@ import {
   buildExtraOnlyTwIds,
   buildOrderExcludedTwIds,
   buildReclassifyExcludedTwIds,
+  dropQtyOverridesForOnRequest,
   filterSessionIncludeRespectingOnRequest,
   onRequestIdsToClearForExcludedTw,
   onRequestIdsToClearForTw,
@@ -13,6 +14,7 @@ import {
 import {
   resolveOrderQtyForLine,
   summarizePackOrderQty,
+  filterOrderableLinesWithPackaging,
   type PackagingLookup,
 } from "./zd-estimate-packaging";
 import type { ManualZdEstimateLine } from "./zd-estimate-manual";
@@ -211,5 +213,33 @@ describe("on-request summarize KPI (extra_only)", () => {
     const qty = resolveOrderQtyForLine(lines[0]!, pack, 25, true);
     expect(qty.zdUnits).toBe(3);
     expect(qty.piecesNeeded).toBe(25);
+  });
+});
+
+describe("„na prośbę” a ręczna ilość sprzed oznaczenia", () => {
+  const line = (tw_Id: number) =>
+    ({ tw_Id, tw_Symbol: "X", tw_Nazwa: "X", sprzedazOkres: 0, wzNiepowiazaneOkres: 0, stan: 0, naZamowieniach: 0,
+       celZapasu: 1000, doZamowienia: 0, doZamowieniaReczne: 500 }) as unknown as ManualZdEstimateLine;
+  const pack: PackagingLookup = { unitsPerPackage: 10, packageLabel: "op." };
+
+  it("stara ręczna ilość trzyma towar z prośbą na pełnej ilości; po zapomnieniu zostaje sama prośba", () => {
+    const packaging = new Map([[50, pack]]);
+    const onRequest = new Set([50]);
+    const extras = new Map([[50, 25]]);
+    const extraOnly = buildExtraOnlyTwIds(onRequest, extras);
+    const excluded = buildOrderExcludedTwIds(new Set(), onRequest, extraOnly);
+    const stale = { 50: 50 }; // 50 op. wpisane ręcznie przed oznaczeniem
+    const withStale = filterOrderableLinesWithPackaging([line(50)], packaging, excluded, extras, new Map([[50, 50]]), extraOnly);
+    expect(withStale).toHaveLength(1);
+    const cleaned = dropQtyOverridesForOnRequest(stale, [50], []);
+    expect(cleaned).toEqual({});
+    expect(resolveOrderQtyForLine(line(50), pack, 25, true).zdUnits).toBe(3);
+  });
+
+  it("zapomina także partnera z pary; reszta zostaje; bez zmian zwraca ten sam obiekt", () => {
+    const pairs = [{ packTwId: 100, pieceTwId: 101 }];
+    expect(dropQtyOverridesForOnRequest({ 100: 4, 101: 7, 7: 2 }, [101], pairs)).toEqual({ 7: 2 });
+    const same = { 7: 2 };
+    expect(dropQtyOverridesForOnRequest(same, [50], pairs)).toBe(same);
   });
 });

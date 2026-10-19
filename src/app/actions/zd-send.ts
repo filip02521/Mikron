@@ -3,6 +3,7 @@
 // Wysyłka ZD do dostawcy — kroki po mailu (termin realizacji, Główne tylko dla próśb z ZD).
 // @service-role-ok — autoryzacja requireZdEstimateAdmin(); service role po warstwie aplikacji.
 import { requireZdEstimateAdmin } from "@/lib/auth";
+import { fetchZdProductPairs } from "@/lib/data/zd-product-pairs";
 import { requestsCoveredByZd, zdTerminError, type ZdSendRequest } from "@/lib/orders/zd-send-plan";
 import { setSubiektOrdersZdTermin } from "@/lib/subiekt/api";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -71,7 +72,7 @@ export async function actionZdSendPlan(input: {
           quantity: r.quantity == null ? null : String(r.quantity),
         }));
     }
-    const { inZd, notInZd } = requestsCoveredByZd(requests, zd.lines);
+    const { inZd, notInZd } = requestsCoveredByZd(requests, zd.lines, requests.length ? await fetchZdProductPairs() : []);
     return {
       ok: true,
       dokNr: zd.dokNr,

@@ -214,3 +214,52 @@ describe("actionSendZdToSupplier — zerwane połączenie", () => {
   });
 });
 
+describe("actionSendZdToSupplier — ręczny dokument ZD", () => {
+  it("primaryOverride → bez Subiekta PDF i bez zmiany terminu pod wydruk", async () => {
+    m.loadSupplierZd.mockResolvedValue({ ...zd("Shenzhen Upcera Dental", "IMPORT"), termin: "2026-10-20" });
+    const primaryOverride = new File([Buffer.from("%PDF-1.4 manual")], "ZD-reczny.pdf", {
+      type: "application/pdf",
+    });
+    const res = await actionSendZdToSupplier({
+      ...input,
+      primaryOverride,
+      terminAfterSend: "2026-11-03",
+    });
+    expect(res).toMatchObject({ ok: true, attachmentName: expect.stringContaining("ZD-reczny.pdf") });
+    expect(m.getSubiektOrdersZdPdf).not.toHaveBeenCalled();
+    // Tylko termin po wysyłce — bez „dziś” pod wydruk.
+    expect(m.setSubiektOrdersZdTermin.mock.calls).toEqual([[1867748, "2026-11-03"]]);
+    expect(m.sendGmailAsUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attachments: expect.arrayContaining([
+          expect.objectContaining({ filename: "ZD-reczny.pdf" }),
+        ]),
+      })
+    );
+  });
+
+  it("primaryOverride nie-PDF → odrzut", async () => {
+    m.loadSupplierZd.mockResolvedValue(zd("Shenzhen Upcera Dental", "IMPORT"));
+    const primaryOverride = new File([Buffer.from("x")], "zdjecie.png", { type: "image/png" });
+    expect(await actionSendZdToSupplier({ ...input, primaryOverride })).toMatchObject({
+      ok: false,
+      message: expect.stringMatching(/PDF|Excel/i),
+    });
+    expect(m.sendGmailAsUser).not.toHaveBeenCalled();
+  });
+
+  it("primaryOverride + extras ponad łączny limit → odrzut", async () => {
+    m.loadSupplierZd.mockResolvedValue(zd("Shenzhen Upcera Dental", "IMPORT"));
+    const primaryOverride = new File([Buffer.alloc(10 * 1024 * 1024)], "ZD.pdf", {
+      type: "application/pdf",
+    });
+    const extraFiles = [
+      new File([Buffer.alloc(9 * 1024 * 1024)], "extra.pdf", { type: "application/pdf" }),
+    ];
+    expect(
+      await actionSendZdToSupplier({ ...input, primaryOverride, extraFiles })
+    ).toMatchObject({ ok: false, message: expect.stringMatching(/18 MB/i) });
+    expect(m.sendGmailAsUser).not.toHaveBeenCalled();
+  });
+});
+

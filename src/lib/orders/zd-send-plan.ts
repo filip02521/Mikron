@@ -4,12 +4,19 @@ export type ZdSendRequest = { orderId: string; twId: number | null; label: strin
 /**
  * Które prośby są w wysyłanym ZD: produkt prośby jest na pozycjach dokumentu (stan z Subiekta w chwili
  * wysyłki — także po ręcznych zmianach). Prośba bez produktu z Subiekta nie jest „w ZD” — nie zgadujemy.
+ * Para opakowanie ↔ sztuka: Kreator zamawia prośbę na sztukę jako opakowanie (i odwrotnie), więc partner
+ * z pary na ZD też obejmuje prośbę — inaczej zostaje „Nowa” i wraca w każdym kolejnym ZD.
  */
 export function requestsCoveredByZd(
   requests: readonly ZdSendRequest[],
-  lines: readonly { twId?: number | null }[]
+  lines: readonly { twId?: number | null }[],
+  pairs: readonly { packTwId: number; pieceTwId: number }[] = []
 ): { inZd: ZdSendRequest[]; notInZd: ZdSendRequest[] } {
   const onZd = new Set(lines.map((l) => Math.trunc(Number(l.twId) || 0)).filter((id) => id > 0));
+  for (const p of pairs) {
+    if (onZd.has(p.packTwId)) onZd.add(p.pieceTwId);
+    if (onZd.has(p.pieceTwId)) onZd.add(p.packTwId);
+  }
   const inZd: ZdSendRequest[] = [];
   const notInZd: ZdSendRequest[] = [];
   for (const r of requests) (r.twId != null && onZd.has(r.twId) ? inZd : notInZd).push(r);

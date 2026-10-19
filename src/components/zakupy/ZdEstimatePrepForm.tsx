@@ -42,14 +42,15 @@ import {
 } from "@/lib/orders/zd-estimate-ui-copy";
 import { ZD_ESTIMATE_POLICZ_CTA_ID } from "@/lib/orders/zd-estimate-launch-scroll";
 import {
-  zdEstimateCardSurfaceClass,
   zdEstimateNestedWellClass,
+  zdEstimatePrepCardClass,
   zdEstimatePrepControlClass,
   zdEstimatePrepFormInsetXClass,
   zdEstimatePrepIdleBodyClass,
   zdEstimatePrepIdleFooterClass,
-  zdEstimatePrepParamsStripClass,
+  zdEstimatePrepParamsStripWideClass,
   zdEstimatePrepPrimaryButtonClass,
+  zdEstimatePrepSectionClass,
   zdEstimateRadiusNestedClass,
   zdEstimateShadowControlClass,
 } from "@/lib/ui/ontime-theme";
@@ -137,9 +138,35 @@ function formatWindowShort(dataOd: string, dataDo: string): string {
 }
 
 const stripLabelClass =
-  "text-xs font-semibold text-slate-600";
+  "text-[11px] font-semibold uppercase tracking-[0.04em] text-slate-500";
 const sectionLabelClass =
-  "text-xs font-semibold text-slate-700";
+  "text-sm font-semibold tracking-tight text-slate-800";
+
+function PrepStepBadge({
+  n,
+  active,
+  done,
+}: {
+  n: number;
+  active?: boolean;
+  done?: boolean;
+}) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums",
+        done
+          ? "bg-emerald-100 text-emerald-800"
+          : active
+            ? "bg-slate-900 text-white"
+            : "bg-slate-100 text-slate-500"
+      )}
+    >
+      {n}
+    </span>
+  );
+}
 
 /**
  * Karta przygotowania Kreatora ZD: zakres → parametry biegu → nadpisania → Policz.
@@ -240,46 +267,78 @@ export function ZdEstimatePrepForm({
           }
         : null;
 
+  // Standardowa kolumna (jak podsumowanie) — belka parametrów w wrap, nie wąska siatka 2-kol.
+  const paramsStripClass = zdEstimatePrepParamsStripWideClass;
+
   return (
     <Card
       padding={false}
       className={cn(
         "relative flex shrink-0 flex-col overflow-visible",
-        zdEstimateCardSurfaceClass
+        zdEstimatePrepCardClass
       )}
     >
       <CardHeader
         inset
         density="compact"
-        className={zdEstimatePrepFormInsetXClass}
+        className={cn(
+          zdEstimatePrepFormInsetXClass,
+          "!border-b-0 bg-white/80 pb-2 sm:pb-2"
+        )}
         title={ZD_ESTIMATE_UI.prepFormTitle}
         hint={zdEstimatePrepCardHint()}
       />
+      <ol
+        aria-label="Kroki przygotowania"
+        className={cn(
+          "flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-slate-100/90 pb-3 text-xs text-slate-500",
+          zdEstimatePrepFormInsetXClass
+        )}
+      >
+        <li className="inline-flex items-center gap-1.5">
+          <PrepStepBadge n={1} active={!scopeSelected} done={scopeSelected} />
+          Dostawca / zakres
+        </li>
+        <li className="inline-flex items-center gap-1.5">
+          <PrepStepBadge
+            n={2}
+            active={scopeSelected && !hasList}
+            done={Boolean(hasList)}
+          />
+          Parametry
+        </li>
+        <li className="inline-flex items-center gap-1.5">
+          <PrepStepBadge n={3} active={scopeSelected} done={Boolean(hasList)} />
+          Policz listę
+        </li>
+      </ol>
 
       <div className={zdEstimatePrepIdleBodyClass}>
         {/* Strefa 0 — start od dostawcy */}
         {supplierPicker ? (
-          <section className="min-w-0 space-y-1.5" aria-label="Dostawca">
-            <p className={sectionLabelClass}>Dostawca</p>
+          <section className={zdEstimatePrepSectionClass} aria-label="Dostawca">
+            <div className="flex items-center gap-2">
+              <PrepStepBadge n={1} active={!scopeSelected} done={scopeSelected} />
+              <p className={sectionLabelClass}>Dostawca</p>
+            </div>
             {supplierPicker}
-            <p className="text-xs text-slate-500">
+            <p className="text-xs leading-snug text-slate-500">
               Zakresy, dni zapasu i okno sprzedaży ustawią się z karty dostawcy.
             </p>
           </section>
         ) : null}
 
         {/* Strefa 1 — wybór zakresu */}
-        <section className="min-w-0 space-y-2.5">
+        <section className={zdEstimatePrepSectionClass}>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className={sectionLabelClass}>
-              {supplierPicker ? (
-                "Albo zakres Subiekta"
-              ) : (
-                <>
-                  <span className="mr-1 text-indigo-500/70">1</span>Zakres
-                </>
-              )}
-            </p>
+            <div className="flex min-w-0 items-center gap-2">
+              {!supplierPicker ? (
+                <PrepStepBadge n={1} active={!scopeSelected} done={scopeSelected} />
+              ) : null}
+              <p className={sectionLabelClass}>
+                {supplierPicker ? "Albo zakres Subiekta" : "Zakres Subiekta"}
+              </p>
+            </div>
             <SegmentedControl
               ariaLabel="Tryb zakresu szacunku"
               value={scopeMode}
@@ -676,9 +735,14 @@ export function ZdEstimatePrepForm({
         {/* Strefa 2 — parametry biegu (po wyborze zakresu — wcześniej to tylko szare pola) */}
         {scopeSelected ? (
         <section
-          className={zdEstimatePrepParamsStripClass}
+          className={cn(zdEstimatePrepSectionClass, "space-y-3")}
           aria-label="Parametry biegu"
         >
+          <div className="flex items-center gap-2">
+            <PrepStepBadge n={2} active={!hasList} done={Boolean(hasList)} />
+            <p className={sectionLabelClass}>Parametry biegu</p>
+          </div>
+        <div className={paramsStripClass}>
           <div className="flex min-w-0 flex-col gap-1">
             <label className={stripLabelClass} htmlFor="zd-prep-dni-zapasu">
               Zapas (dni)
@@ -818,6 +882,7 @@ export function ZdEstimatePrepForm({
               ]}
             />
           </div>
+        </div>
         </section>
         ) : null}
 
@@ -923,52 +988,58 @@ export function ZdEstimatePrepForm({
         id={ZD_ESTIMATE_POLICZ_CTA_ID}
         className={zdEstimatePrepIdleFooterClass}
       >
-        <button
-          type="button"
-          className="inline-flex items-center gap-1.5 self-start rounded-md px-1 py-0.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100/80 hover:text-slate-900"
-          onClick={onToggleAdvanced}
-          aria-expanded={showAdvanced}
-          aria-controls={
-            showAdvanced ? "zd-estimate-prep-advanced" : undefined
-          }
-        >
-          <IconChevronDown
-            size={15}
-            strokeWidth={2}
-            className={cn(
-              "transition-transform duration-150",
-              showAdvanced && "rotate-180"
-            )}
-          />
-          <span className="mr-0.5 text-indigo-500/70">3</span>
-          {showAdvanced
-            ? ZD_ESTIMATE_UI.prepOverridesHide
-            : ZD_ESTIMATE_UI.prepOverridesShow}
-        </button>
-        <div className="flex w-full flex-col gap-1.5 sm:w-auto sm:items-end">
-          {footerStatus ? (
-            <p
-              className={cn(
-                "max-w-sm text-sm leading-snug sm:text-right",
-                footerStatus.className
-              )}
+        <div className="flex w-full flex-col gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <button
+              type="button"
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-md px-1 py-0.5 text-sm font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-100/80 hover:text-slate-900"
+              onClick={onToggleAdvanced}
+              aria-expanded={showAdvanced}
+              aria-controls={
+                showAdvanced ? "zd-estimate-prep-advanced" : undefined
+              }
             >
-              {footerStatus.text}
+              <IconChevronDown
+                size={15}
+                strokeWidth={2}
+                className={cn(
+                  "motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.23,1,0.32,1)]",
+                  showAdvanced && "rotate-180"
+                )}
+              />
+              {showAdvanced
+                ? ZD_ESTIMATE_UI.prepOverridesHide
+                : ZD_ESTIMATE_UI.prepOverridesShow}
+            </button>
+            {footerStatus ? (
+              <p
+                className={cn(
+                  "max-w-sm text-sm leading-snug",
+                  footerStatus.className
+                )}
+              >
+                {footerStatus.text}
+              </p>
+            ) : null}
+          </div>
+          {!scopeSelected && configured ? (
+            <p className="text-xs leading-snug text-slate-500" role="status">
+              {supplierPicker
+                ? "Wybierz dostawcę albo zakres Subiekta, żeby policzyć listę."
+                : "Wybierz grupę albo cechę, żeby policzyć listę."}
             </p>
           ) : null}
-          <div className="flex w-full flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-end">
-            {!scopeSelected && configured ? (
-              <p className="text-xs text-slate-500 sm:mr-auto" role="status">
-                {supplierPicker
-                  ? "Wybierz dostawcę albo zakres Subiekta, żeby policzyć listę."
-                  : "Wybierz grupę albo cechę, żeby policzyć listę."}
-              </p>
-            ) : null}
-            {recountNeeded && !estimating ? (
-              <p className="text-xs font-medium text-amber-800 sm:mr-auto" role="status">
-                Parametry zmienione - lista jest nieaktualna, przelicz przed utworzeniem ZD.
-              </p>
-            ) : null}
+          {recountNeeded && !estimating ? (
+            <p className="text-xs font-medium text-amber-800" role="status">
+              Parametry zmienione — lista jest nieaktualna, przelicz przed utworzeniem ZD.
+            </p>
+          ) : null}
+          <div
+            className={cn(
+              "flex w-full flex-col gap-1.5",
+              hasList && "sm:flex-row sm:items-center sm:justify-end"
+            )}
+          >
             <Button
               type="button"
               onClick={onPolicz}
@@ -988,11 +1059,12 @@ export function ZdEstimatePrepForm({
               }
               className={cn(
                 zdEstimatePrepPrimaryButtonClass,
+                !hasList && "w-full sm:w-full sm:min-w-0",
                 canPolicz &&
                   !estimating &&
                   (recountNeeded
                     ? "shadow-md ring-2 ring-amber-400/70"
-                    : "shadow-md ring-2 ring-indigo-500/25")
+                    : "shadow-md ring-2 ring-slate-900/15")
               )}
             >
               {estimating ? (
@@ -1018,7 +1090,10 @@ export function ZdEstimatePrepForm({
                   !scopeSelected ||
                   !settingsTrusted
                 }
-                className={zdEstimatePrepPrimaryButtonClass}
+                className={cn(
+                  zdEstimatePrepPrimaryButtonClass,
+                  !hasList && "w-full sm:w-full sm:min-w-0"
+                )}
               >
                 {mutating ? "Zapisuję…" : "Zapisz zakres i policz"}
               </Button>
