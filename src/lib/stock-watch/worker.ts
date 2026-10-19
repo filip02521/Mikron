@@ -10,6 +10,7 @@
  * do kolejnego wywołania crona tego samego dnia.
  */
 
+import { isZdNameAutoExcluded } from "@/lib/orders/zd-estimate-name-exclude";
 import { getPool } from "@/lib/db/pool";
 import { fetchSuppliersWithSchedules } from "@/lib/data/queries";
 import {
@@ -368,7 +369,9 @@ async function computeSupplierOrder(input: {
   let orderValue = 0;
   let unpricedCount = 0;
   let zdUnitsSum = 0;
-  const rows: StockWatchItemWrite[] = engine.result.pozycje.map((line) => {
+  // Outlet / wycofane nie są pilnowane — Kreator i tak ich nie zamawia (auto-wykluczenie z nazwy).
+  const monitored = engine.result.pozycje.filter((line) => !isZdNameAutoExcluded(String(line.tw_Nazwa ?? "")));
+  const rows: StockWatchItemWrite[] = monitored.map((line) => {
     const tw = line.tw_Id;
     const pack = engine.packagingLookup.get(tw) ?? null;
     const unitPrice = unitPricePerPiece(prices.get(tw)?.priceNet ?? null, pack);

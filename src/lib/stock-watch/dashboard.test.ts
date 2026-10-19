@@ -238,3 +238,44 @@ describe("buildStockWatchDashboard - filtr dostawcy", () => {
     expect(filtered.alerts.map((r) => r.supplierId)).toEqual(["s2"]);
   });
 });
+
+describe("buildStockWatchDashboard — tablica dostawców", () => {
+  const items = [
+    // Duży dostawca: dużo braków, ale wszystko już jedzie.
+    item({ subiektTwId: 10, supplierId: "big", supplierName: "Duży", status: "out_of_stock", openZdQty: 5 }),
+    item({ subiektTwId: 11, supplierId: "big", supplierName: "Duży", status: "out_of_stock", openZdQty: 3 }),
+    // Mały dostawca: jedna pusta półka bez dostawy — ma być wyżej.
+    item({ subiektTwId: 20, supplierId: "small", supplierName: "Mały", status: "out_of_stock", openZdQty: 0, ...inOrder(2, 40) }),
+    // Ryzyko przed dostawą.
+    item({ subiektTwId: 30, supplierId: "lead", supplierName: "Daleki", status: "warning", deliveryRisk: "before_delivery", ...inOrder(1, 10) }),
+    // Tylko poniżej celu.
+    item({ subiektTwId: 40, supplierId: "restock", supplierName: "Uzupełnienie", status: "warning", ...inOrder(3, 90) }),
+    // Wykluczony towar nie robi priorytetu.
+    item({ subiektTwId: 50, supplierId: "excluded", supplierName: "Wykluczony", status: "out_of_stock", rule: "excluded" }),
+    item({ subiektTwId: 60, supplierId: "quiet", supplierName: "Spokojny", status: "ok" }),
+  ];
+  const d = buildStockWatchDashboard(items, [
+    order({ supplierId: "small", supplierName: "Mały" }),
+    order({ supplierId: "lead", supplierName: "Daleki" }),
+    order({ supplierId: "restock", supplierName: "Uzupełnienie" }),
+  ]);
+
+  it("orders suppliers by priority, not by the size of their shortage list", () => {
+    expect(d.suppliers.map((s) => [s.supplierId, s.priority])).toEqual([
+      ["small", "now"],
+      ["lead", "today"],
+      ["restock", "restock"],
+      ["big", "waiting"],
+    ]);
+    expect(d.quietSupplierCount).toBe(2);
+  });
+
+  it("carries the supplier's urgent rows and the proposal for the row action", () => {
+    const small = d.suppliers[0]!;
+    expect(small.emptyNoIncoming).toBe(1);
+    expect(small.urgentRows.map((r) => r.subiektTwId)).toEqual([20]);
+    expect(small.proposal?.lineCount).toBe(1);
+    const big = d.suppliers.find((s) => s.supplierId === "big")!;
+    expect([big.outOfStock, big.emptyNoIncoming, big.urgentTotal]).toEqual([2, 0, 2]);
+  });
+});

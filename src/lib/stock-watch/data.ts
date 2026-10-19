@@ -5,6 +5,7 @@ import type {
   StockWatchStatus,
 } from "@/lib/stock-watch/analysis";
 import type { ZdDeliveryRisk } from "@/lib/orders/zd-order-horizon";
+import { isZdNameAutoExcluded } from "@/lib/orders/zd-estimate-name-exclude";
 
 /** pg zwraca `numeric` jako string — normalizacja w jednym miejscu. */
 function num(value: unknown): number {
@@ -442,7 +443,15 @@ const ITEM_SELECT = `SELECT i.*,
  */
 export async function listStockWatchItems(): Promise<StockWatchItem[]> {
   const res = await query<ItemRow>(ITEM_SELECT);
-  return res.rows.map(mapItem);
+  return res.rows.map(mapItem).filter(isStockWatchMonitored);
+}
+
+/**
+ * Outlet / wycofane (także ucięte „WYCOF…”) — ta sama reguła co auto-wykluczenie w Kreatorze ZD.
+ * Worker ich nie zapisuje; filtr przy odczycie chowa wiersze z przebiegów sprzed tej reguły.
+ */
+export function isStockWatchMonitored(item: { twNazwa: string }): boolean {
+  return !isZdNameAutoExcluded(item.twNazwa);
 }
 
 /** Wyszukiwanie po symbolu / nazwie (zakładka reguł) — limit 50. */
@@ -457,7 +466,7 @@ export async function searchStockWatchItems(term: string): Promise<StockWatchIte
       LIMIT 50`,
     [`%${escaped}%`, `${escaped}%`]
   );
-  return res.rows.map(mapItem);
+  return res.rows.map(mapItem).filter(isStockWatchMonitored);
 }
 
 // ---------------------------------------------------------------------------
