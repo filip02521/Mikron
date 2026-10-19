@@ -87,7 +87,8 @@ export function isWycofaneNameToken(token: string): boolean {
  * (`…ProduktWYCOFA`). Najdłuższy pasujący prefiks „wycofane”, potem `wycofan…`.
  */
 export function matchWycofaneGluedSuffix(normalizedLower: string): string | null {
-  const lower = normalizedLower.toLowerCase();
+  // Kropka / nawias po uciętym dopisku („…70gWYCOF.”) nie zmienia, że to sufiks nazwy.
+  const lower = normalizedLower.toLowerCase().replace(/[^\p{L}\p{N}]+$/u, "");
   if (!lower) return null;
 
   for (
@@ -139,8 +140,23 @@ export function matchZdNameAutoExclude(
     return { reason: "wycofane", matched: glued };
   }
 
+  // Ucięcie do 4 liter („…Brush no. 1 WYCO”, „…wyciągWYCO”) — tylko gdy nazwa ma pełny limit pola
+  // Subiekta (czyli dopisek naprawdę się nie zmieścił), na samym końcu, jako osobne słowo albo
+  // wersalikami. Krótka nazwa z „wyco” nie jest wykluczana — za mało charakterystyczne.
+  if (
+    raw.normalize("NFKC").length >= ZD_NAME_SUBIEKT_MAX_LENGTH &&
+    (WYCO_END_TOKEN.test(raw) || WYCO_END_GLUED_UPPER.test(raw))
+  ) {
+    return { reason: "wycofane", matched: "wyco" };
+  }
+
   return null;
 }
+
+/** Limit pola `tw_Nazwa` w Subiekcie GT — dłuższe dopiski są ucinane. */
+export const ZD_NAME_SUBIEKT_MAX_LENGTH = 50;
+const WYCO_END_TOKEN = /(?:^|[^\p{L}\p{N}])wyco[^\p{L}\p{N}]*$/iu;
+const WYCO_END_GLUED_UPPER = /WYCO[^\p{L}\p{N}]*$/u;
 
 export function isZdNameAutoExcluded(nazwa: string): boolean {
   return matchZdNameAutoExclude(nazwa) != null;

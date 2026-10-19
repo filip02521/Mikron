@@ -4,7 +4,7 @@ import type {
   StockWatchSupplierBoardRow,
   StockWatchSupplierProposal,
 } from "@/lib/stock-watch/dashboard";
-import { buildStockWatchStatusLine } from "@/lib/stock-watch/status-line";
+import { buildStockWatchStatusLine, stockWatchPrepareZdHref } from "@/lib/stock-watch/status-line";
 
 const zeroCounts: StockWatchDashboard["counts"] = {
   outOfStock: 0,
@@ -60,6 +60,7 @@ function row(over: Partial<StockWatchSupplierBoardRow>): StockWatchSupplierBoard
     beforeNextDelivery: 0,
     warning: 0,
     lineCount: 0,
+    dataWarnings: 0,
     ...over,
   };
 }
@@ -89,7 +90,8 @@ describe("buildStockWatchStatusLine", () => {
     );
     expect(line.tone).toBe("danger");
     expect(line.headline).toBe("2 towary bez stanu i bez dostawy w drodze");
-    expect(line.urgentToday).toBe(6);
+    // 2 puste bez dostawy + 1 krytyczny + 2 przed dostawą; 1 brak w drodze się nie liczy.
+    expect(line.urgentToday).toBe(5);
     expect(line.urgentSuppliers).toBe(2);
     expect(line.focus).toEqual({
       supplierId: "hot",
@@ -98,10 +100,19 @@ describe("buildStockWatchStatusLine", () => {
     });
   });
 
-  it("counts today's orders when everything empty already has an incoming ZD", () => {
+  it("does not count shortages that are already in transit as today's orders", () => {
     const line = buildStockWatchStatusLine(dash({ outOfStock: 1, beforeDelivery: 4 }));
-    expect(line.headline).toBe("5 towarów do zamówienia dziś");
-    expect(line.tone).toBe("danger");
+    expect(line.headline).toBe("4 towary do zamówienia dziś");
+    expect(line.urgentToday).toBe(4);
+    expect(line.tone).toBe("warning");
+    expect(line.focus).toBeNull();
+  });
+
+  it("says shortages wait for delivery when everything missing is already ordered", () => {
+    const line = buildStockWatchStatusLine(dash({ outOfStock: 5 }, [row({ priority: "waiting", outOfStock: 5 })]));
+    expect(line.headline).toBe("5 braków czeka na dostawę z otwartych ZD");
+    expect(line.tone).toBe("warning");
+    expect(line.urgentToday).toBe(0);
     expect(line.focus).toBeNull();
   });
 
@@ -127,5 +138,20 @@ describe("buildStockWatchStatusLine", () => {
     const ok = buildStockWatchStatusLine(dash({ ok: 40 }));
     expect(ok.tone).toBe("ok");
     expect(ok.focus).toBeNull();
+  });
+});
+
+describe("stockWatchPrepareZdHref", () => {
+  const base = "/zakupy/szacunek?from=daily&supplierId=s1&autorun=1";
+  it("keeps the default horizon when the list has lines", () => {
+    expect(stockWatchPrepareZdHref(proposal({ lineCount: 3, beforeNextDeliveryCount: 2, horizonExtends: true }))).toBe(base);
+  });
+  it("opens 'Do kolejnej dostawy' for an empty list with next-delivery risk the horizon covers", () => {
+    expect(stockWatchPrepareZdHref(proposal({ lineCount: 0, beforeNextDeliveryCount: 2, horizonExtends: true }))).toBe(
+      `${base}&horizon=1`
+    );
+  });
+  it("keeps the default when the horizon would not change anything", () => {
+    expect(stockWatchPrepareZdHref(proposal({ lineCount: 0, beforeNextDeliveryCount: 2, horizonExtends: false }))).toBe(base);
   });
 });

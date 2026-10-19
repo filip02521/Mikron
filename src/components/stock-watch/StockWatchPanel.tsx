@@ -50,7 +50,7 @@ export type StockWatchRunSummary = {
   salesEndDate: string;
   scopesTotal: number;
   scopesDone: number;
-  failures: { supplierName: string; message: string }[];
+  failures: { supplierId: string; supplierName: string; message: string }[];
 };
 
 type TabId = "alerts" | "suppliers" | "rotation" | "rules";
@@ -125,6 +125,13 @@ export function StockWatchPanel({
   const [starting, startRun] = useTransition();
 
   const running = run?.status === "running";
+  // Z kiedy są dane dostawców, których ten przebieg nie przeliczył (najstarsze) — chip pokazuje datę przebiegu.
+  const dataAsOf = useMemo(() => {
+    const failed = new Set(run?.failures.map((f) => f.supplierId) ?? []);
+    return dashboard.proposals
+      .filter((p) => failed.has(p.supplierId))
+      .reduce<string | null>((min, p) => (!min || p.computedAt < min ? p.computedAt : min), null);
+  }, [dashboard.proposals, run]);
 
   // Analiza w toku — odświeżaj co 10 s, aż worker skończy.
   useEffect(() => {
@@ -180,6 +187,14 @@ export function StockWatchPanel({
     else if (listFilter !== "all") params.set("filtr", listFilter);
     const qs = params.toString();
     router.replace(qs ? `/zakupy/braki?${qs}` : "/zakupy/braki", { scroll: false });
+  };
+
+  /** „Lista braków dostawcy” z tablicy — stan zmieniany tutaj, bo strona nie remontuje panelu przy tym samym `dostawca`. */
+  const openSupplierList = (id: string) => {
+    setSupplierId(id);
+    setAlertFilter("all");
+    setTab("alerts");
+    syncBrakiUrl({ supplierId: id, filter: "all", tab: "alerts" });
   };
 
   const clearSupplier = () => {
@@ -254,7 +269,7 @@ export function StockWatchPanel({
       {run && run.failures.length > 0 ? (
         <Alert
           tone="warning"
-          title={`Nie przeliczono ${run.failures.length} ${polishPluralWord(run.failures.length, "dostawcy", "dostawców", "dostawców")} — ich listy są z poprzedniej nocy. Sprawdź zakres w Kreatorze ZD.`}
+          title={`Nie przeliczono ${run.failures.length === run.scopesTotal ? "żadnego dostawcy" : `${run.failures.length} ${polishPluralWord(run.failures.length, "dostawcy", "dostawców", "dostawców")}`} — ich listy pochodzą z ostatniego udanego przeliczenia${dataAsOf ? ` (${formatWhen(dataAsOf)})` : ""}.`}
         >
           {run.failures
             .slice(0, 4)
@@ -399,6 +414,7 @@ export function StockWatchPanel({
                 onError={setError}
                 initialExpandedId={supplierId}
                 filtered={supplierId != null}
+                onOpenList={openSupplierList}
               />
             ) : tab === "rotation" ? (
               <RotationSection rows={dashboard.topVelocity} canMutate={canMutate} onError={setError} />
@@ -456,6 +472,8 @@ function StatusPanel({
   canMutate: boolean;
 }) {
   const { totals, health, proposals, counts } = dashboard;
+  // Tylko dostawcy z czymś na liście — propozycje z samym ryzykiem albo ostrzeżeniem mają 0 pozycji.
+  const suppliersWithLines = proposals.filter((p) => p.lineCount > 0).length;
   const line = buildStockWatchStatusLine(dashboard);
   const dot =
     line.tone === "danger" ? "bg-red-600" : line.tone === "warning" ? "bg-amber-500" : "bg-emerald-600";
@@ -472,7 +490,7 @@ function StatusPanel({
               ? `${line.urgentSuppliers} ${polishPluralWord(line.urgentSuppliers, "dostawca wymaga", "dostawcy wymagają", "dostawców wymaga")} zamówienia dziś. `
               : null}
             {totals.proposalLines > 0
-              ? `Na listach „Do ZD”: ${polishPozycjeLabel(totals.proposalLines)} u ${proposals.length} ${polishPluralWord(proposals.length, "dostawcy", "dostawców", "dostawców")}, ok. ${formatPln(totals.proposalValue)} netto. `
+              ? `Na listach „Do ZD”: ${polishPozycjeLabel(totals.proposalLines)} u ${suppliersWithLines} ${polishPluralWord(suppliersWithLines, "dostawcy", "dostawców", "dostawców")}, ok. ${formatPln(totals.proposalValue)} netto. `
               : "Listy „Do ZD” są puste. "}
             <span className="text-slate-500">
               W normie {health.score}% towarów ze sprzedażą

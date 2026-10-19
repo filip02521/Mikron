@@ -6,7 +6,7 @@ import { cn } from "@/lib/cn";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { IconChevronDown, IconSearch, IconTruck } from "@/components/icons/StrokeIcons";
+import { IconAlertCircle, IconChevronDown, IconSearch, IconTruck } from "@/components/icons/StrokeIcons";
 import { daysFromToday, formatDaysAhead } from "@/components/summary/SupplierStockSignal";
 import { StockRuleMenu } from "@/components/stock-watch/StockRuleControl";
 import {
@@ -23,8 +23,8 @@ import { polishPlural, polishPluralWord, polishPozycjeLabel } from "@/lib/email/
 import { buildZdEstimateLaunchHref } from "@/lib/orders/zd-estimate-supplier-scope";
 import type { StockWatchSupplierBoardRow } from "@/lib/stock-watch/dashboard";
 import { STOCK_WATCH_PRIORITY_ORDER, type StockWatchPriority } from "@/lib/stock-watch/priority";
-import { stockWatchHorizonDays, stockWatchPrepareZdUsesHorizon } from "@/lib/stock-watch/signal";
-import { stockWatchSupplierRowHref } from "@/lib/stock-watch/status-line";
+import { stockWatchHorizonDays } from "@/lib/stock-watch/signal";
+import { stockWatchProposalUsesHorizon, stockWatchSupplierRowHref } from "@/lib/stock-watch/status-line";
 
 type TierFilter = "all" | StockWatchPriority;
 
@@ -61,6 +61,13 @@ const PRIORITY_META: Record<
     chip: "bg-slate-100 text-slate-700",
     group: "text-slate-700",
   },
+  attention: {
+    label: "Do sprawdzenia",
+    hint: "Nic do zamówienia, ale Kreator zgłasza problem z danymi — lista może być pusta albo niepełna",
+    dot: "bg-amber-500",
+    chip: "bg-amber-50 text-amber-900",
+    group: "text-amber-900",
+  },
   waiting: {
     label: "Czeka na dostawę",
     hint: "Braki, ale wszystko już jedzie na otwartych ZD — nie zamawiaj drugi raz",
@@ -75,12 +82,13 @@ const thClass = "whitespace-nowrap px-3 py-2.5";
 
 function nextOrderText(row: StockWatchSupplierBoardRow): string | null {
   const p = row.proposal;
-  if (!p) return null;
-  const lead = p.leadDays != null ? `dostawa ~${p.leadDays} d${p.leadSource === "default" ? " (założenie)" : ""}` : null;
+  // Bez czasu dostawy nie wiemy też, czy brak daty to „na żądanie”, czy brak danych — jak stara karta.
+  if (!p || p.leadDays == null) return null;
+  const lead = `dostawa ~${p.leadDays} d${p.leadSource === "default" ? " (założenie)" : ""}`;
   const next = p.nextOrderDate
     ? `kolejne zam. ${formatShortDate(p.nextOrderDate)} (${formatDaysAhead(daysFromToday(p.nextOrderDate) ?? p.nextOrderDays ?? 0)})`
     : "zamówienie na żądanie";
-  return [lead, next].filter(Boolean).join(" · ");
+  return `${lead} · ${next}`;
 }
 
 function PriorityChip({ priority }: { priority: StockWatchPriority }) {
@@ -98,7 +106,14 @@ function PriorityChip({ priority }: { priority: StockWatchPriority }) {
 
 /** Liczba w kolumnie: zero jest blade, żeby oko łapało tylko to, co niezerowe. */
 function Count({ value, alarm, sub }: { value: number; alarm?: boolean; sub?: string | null }) {
-  if (value <= 0) return <span className="text-slate-300" aria-label="0">–</span>;
+  if (value <= 0) {
+    return (
+      <span className="text-slate-300">
+        <span aria-hidden>–</span>
+        <span className="sr-only">0</span>
+      </span>
+    );
+  }
   return (
     <span className="inline-flex flex-col items-end leading-tight">
       <span className={cn("font-semibold tabular-nums", alarm ? "text-red-700" : "text-slate-900")}>{value}</span>
@@ -107,22 +122,40 @@ function Count({ value, alarm, sub }: { value: number; alarm?: boolean; sub?: st
   );
 }
 
+/** Ostrzeżenie Kreatora w wierszu dostawcy — widoczne bez rozwijania. */
+function DataWarning({ row }: { row: StockWatchSupplierBoardRow }) {
+  const first = row.proposal?.warnings[0];
+  if (!first) return null;
+  return (
+    <span className="mt-0.5 flex items-start gap-1 text-xs text-amber-900">
+      <IconAlertCircle size={12} strokeWidth={2} className="mt-0.5 shrink-0" aria-hidden />
+      <span className="min-w-0">
+        {first}
+        {row.dataWarnings > 1 ? ` (+${row.dataWarnings - 1})` : ""}
+      </span>
+    </span>
+  );
+}
+
 const secondaryLinkClass =
-  "inline-flex h-8 shrink-0 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 shadow-[0_1px_2px_rgba(21,25,32,.06)] transition-[background-color,transform] duration-150 ease-out hover:bg-slate-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 focus-visible:ring-offset-1";
+  "inline-flex h-8 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 shadow-[0_1px_2px_rgba(21,25,32,.06)] transition-[background-color,transform] duration-150 ease-out hover:bg-slate-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 focus-visible:ring-offset-1";
 
 /** Rozwinięty dostawca: dlaczego ten priorytet, co zrobić w Kreatorze, jego pilne towary. */
 function SupplierDetail({
   row,
   canMutate,
   onError,
+  onOpenList,
 }: {
   row: StockWatchSupplierBoardRow;
   canMutate: boolean;
   onError: (message: string) => void;
+  onOpenList: (supplierId: string) => void;
 }) {
   const p = row.proposal;
   const horizonDays = p ? stockWatchHorizonDays(p) : null;
-  const prepareWithHorizon = p ? stockWatchPrepareZdUsesHorizon(p) : false;
+  // Jak stara karta dostawcy: ryzyko liczone ze wszystkich towarów Standard (także brak / ≤ 48 h).
+  const deliveryRisk = p != null && (p.beforeDeliveryCount > 0 || p.beforeNextDeliveryCount > 0);
   const notes: { tone: "danger" | "warning" | "muted"; text: string }[] = [];
   if (row.emptyNoIncoming > 0) {
     notes.push({
@@ -136,9 +169,9 @@ function SupplierDetail({
       text: `${polishPlural(row.outOfStock - row.emptyNoIncoming, "brak już jedzie", "braki już jadą", "braków już jedzie")} na otwartych ZD — Kreator je odlicza.`,
     });
   }
-  if (p && (row.beforeDelivery > 0 || row.beforeNextDelivery > 0)) {
+  if (p && deliveryRisk) {
     notes.push({
-      tone: row.beforeDelivery > 0 ? "danger" : "warning",
+      tone: p.beforeDeliveryCount > 0 ? "danger" : "warning",
       text: p.horizonExtends
         ? `Zapas ${p.dniZapasu} d nie wystarczy do kolejnej dostawy (${horizonDays ?? 0} d) — w Kreatorze zaznacz „Do kolejnej dostawy”.`
         : "Zapas z karty wystarcza do kolejnej dostawy — zamów dziś, nie czekaj na termin z planu.",
@@ -174,7 +207,7 @@ function SupplierDetail({
           ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
-          {canMutate && p && p.horizonExtends && (row.beforeDelivery > 0 || row.beforeNextDelivery > 0) && !prepareWithHorizon ? (
+          {canMutate && p && p.horizonExtends && deliveryRisk && !stockWatchProposalUsesHorizon(p) ? (
             <Link
               href={buildZdEstimateLaunchHref(row.supplierId, { leadTimeHorizon: true })}
               className={secondaryLinkClass}
@@ -183,12 +216,9 @@ function SupplierDetail({
               ZD do kolejnej dostawy
             </Link>
           ) : null}
-          <Link
-            href={`/zakupy/braki?tab=alerts&dostawca=${encodeURIComponent(row.supplierId)}`}
-            className={secondaryLinkClass}
-          >
+          <button type="button" onClick={() => onOpenList(row.supplierId)} className={secondaryLinkClass}>
             Lista braków dostawcy
-          </Link>
+          </button>
         </div>
       </div>
 
@@ -257,7 +287,11 @@ function SupplierDetail({
         </div>
       ) : (
         <p className="text-sm text-slate-600">
-          Nic pilnego — {row.lineCount > 0 ? `${polishPozycjeLabel(row.lineCount)} do uzupełnienia zapasu w Kreatorze.` : "towar jedzie."}
+          {row.lineCount > 0
+            ? `Nic pilnego — ${polishPozycjeLabel(row.lineCount)} do uzupełnienia zapasu w Kreatorze.`
+            : row.outOfStock > 0
+              ? "Nic do zamówienia — braki już jadą na otwartych ZD."
+              : "Nic pilnego na liście towarów."}
         </p>
       )}
     </div>
@@ -275,6 +309,7 @@ export function StockSupplierBoard({
   onError,
   initialExpandedId = null,
   filtered = false,
+  onOpenList,
 }: {
   rows: StockWatchSupplierBoardRow[];
   quietSupplierCount: number;
@@ -283,6 +318,8 @@ export function StockSupplierBoard({
   initialExpandedId?: string | null;
   /** Widok jednego dostawcy (`?dostawca=`). */
   filtered?: boolean;
+  /** „Lista braków dostawcy” — przełącza panel na zakładkę braków z filtrem dostawcy. */
+  onOpenList: (supplierId: string) => void;
 }) {
   const [tier, setTier] = useState<TierFilter>("all");
   const [query, setQuery] = useState("");
@@ -388,7 +425,7 @@ export function StockSupplierBoard({
                 r.beforeNextDelivery > 0 ? `${r.beforeNextDelivery} przed kolejną` : null,
               ].filter(Boolean);
               return (
-                <li key={r.supplierId} id={`dostawca-${r.supplierId}`} className="scroll-mt-16">
+                <li key={r.supplierId}>
                   <button
                     type="button"
                     onClick={() => toggle(r.supplierId)}
@@ -404,6 +441,7 @@ export function StockSupplierBoard({
                       {facts.length > 0 ? (
                         <span className="mt-1 block text-xs tabular-nums text-slate-700">{facts.join(" · ")}</span>
                       ) : null}
+                      <DataWarning row={r} />
                       <span className="mt-0.5 block text-xs tabular-nums text-slate-500">
                         {r.lineCount > 0
                           ? `Do ZD ${polishPozycjeLabel(r.lineCount)}${r.orderValue > 0 ? `, ok. ${formatPln(r.orderValue)}` : ""}`
@@ -427,7 +465,7 @@ export function StockSupplierBoard({
                   ) : null}
                   {open ? (
                     <div id={detailId}>
-                      <SupplierDetail row={r} canMutate={canMutate} onError={onError} />
+                      <SupplierDetail row={r} canMutate={canMutate} onError={onError} onOpenList={onOpenList} />
                     </div>
                   ) : null}
                 </li>
@@ -476,7 +514,7 @@ export function StockSupplierBoard({
                     {newTier ? (
                       <tr>
                         <th
-                          scope="colgroup"
+                          scope="rowgroup"
                           colSpan={COLS}
                           className={cn(
                             "border-t border-slate-200 bg-white px-4 pb-1.5 pt-4 text-left text-xs font-semibold uppercase tracking-[0.04em]",
@@ -521,13 +559,14 @@ export function StockSupplierBoard({
                       <td className="px-3 py-2.5 align-middle">
                         <PriorityChip priority={r.priority} />
                       </td>
-                      <td className="max-w-[18rem] px-3 py-2.5 align-middle">
+                      <td className="max-w-[15rem] px-3 py-2.5 align-middle">
                         <span className="block truncate font-semibold text-slate-900" title={r.supplierName}>
                           {r.supplierName}
                         </span>
                         {nextOrderText(r) ? (
                           <span className="block truncate text-xs text-slate-500">{nextOrderText(r)}</span>
                         ) : null}
+                        <DataWarning row={r} />
                       </td>
                       <td className="px-3 py-2.5 text-right align-middle">
                         <Count value={r.emptyNoIncoming} alarm />
@@ -573,7 +612,7 @@ export function StockSupplierBoard({
                     {open ? (
                       <tr id={detailId}>
                         <td colSpan={COLS} className="p-0">
-                          <SupplierDetail row={r} canMutate={canMutate} onError={onError} />
+                          <SupplierDetail row={r} canMutate={canMutate} onError={onError} onOpenList={onOpenList} />
                         </td>
                       </tr>
                     ) : null}

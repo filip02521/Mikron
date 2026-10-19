@@ -6,10 +6,11 @@
  * 2. today    — skończy się przed dostawą zamówienia złożonego dziś,
  * 3. soon     — skończy się przed dostawą z kolejnego planowego zamówienia,
  * 4. restock  — lista „Do ZD” niepusta (poniżej celu zapasu),
- * 5. waiting  — brak na stanie, ale wszystko już jedzie (nie zamawiać drugi raz).
+ * 5. waiting  — brak na stanie, ale wszystko już jedzie (nie zamawiać drugi raz),
+ * 6. attention — nic do zamówienia, ale Kreator zgłasza problem z danymi (np. brak BOM → pusta lista).
  */
 
-export type StockWatchPriority = "now" | "today" | "soon" | "restock" | "waiting";
+export type StockWatchPriority = "now" | "today" | "soon" | "restock" | "waiting" | "attention";
 
 export const STOCK_WATCH_PRIORITY_ORDER: readonly StockWatchPriority[] = [
   "now",
@@ -17,6 +18,7 @@ export const STOCK_WATCH_PRIORITY_ORDER: readonly StockWatchPriority[] = [
   "soon",
   "restock",
   "waiting",
+  "attention",
 ];
 
 export type StockWatchSupplierCounts = {
@@ -33,6 +35,8 @@ export type StockWatchSupplierCounts = {
   warning: number;
   /** Pozycje na liście „Do ZD”. */
   lineCount: number;
+  /** Ostrzeżenia nocnego przebiegu dla Kreatora (BOM, historia ZD, prośby, limit stron). */
+  dataWarnings: number;
 };
 
 export function stockWatchSupplierPriority(c: StockWatchSupplierCounts): StockWatchPriority | null {
@@ -41,6 +45,7 @@ export function stockWatchSupplierPriority(c: StockWatchSupplierCounts): StockWa
   if (c.beforeNextDelivery > 0) return "soon";
   if (c.lineCount > 0) return "restock";
   if (c.outOfStock > 0) return "waiting";
+  if (c.dataWarnings > 0) return "attention";
   return null;
 }
 

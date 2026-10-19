@@ -344,13 +344,34 @@ export async function replaceSupplierStockWatchItems(
   return written;
 }
 
-/** Wyniki dostawców, których zakres zniknął — po kilku dniach poza panelem. */
+/**
+ * Wyniki dostawców, których zakres zniknął — po kilku dniach poza panelem. Do tego wiersze,
+ * których analiza już nie pilnuje (zęby z katalogu, outlet / wycofane): także u dostawców,
+ * których zakres się nie przeliczył, żeby sygnały SQL (panel dzienny, Kreator) ich nie liczyły.
+ */
 export async function pruneStaleStockWatchItems(olderThanDays: number): Promise<number> {
   const res = await query(
     `DELETE FROM stock_watch_items
       WHERE computed_at < now() - ($1::int * interval '1 day')`,
     [olderThanDays]
   );
+  await query(
+    `DELETE FROM stock_watch_items i
+      USING prosba_teeth_products t
+      WHERE t.subiekt_tw_id = i.subiekt_tw_id`
+  );
+  const names = await query<{ supplier_id: string; subiekt_tw_id: number; tw_nazwa: string }>(
+    `SELECT supplier_id, subiekt_tw_id, tw_nazwa FROM stock_watch_items`
+  );
+  const unmonitored = names.rows.filter((r) => !isStockWatchMonitored({ twNazwa: r.tw_nazwa }));
+  if (unmonitored.length > 0) {
+    await query(
+      `DELETE FROM stock_watch_items i
+        USING unnest($1::uuid[], $2::int[]) AS x(supplier_id, subiekt_tw_id)
+        WHERE i.supplier_id = x.supplier_id AND i.subiekt_tw_id = x.subiekt_tw_id`,
+      [unmonitored.map((r) => r.supplier_id), unmonitored.map((r) => r.subiekt_tw_id)]
+    );
+  }
   await query(
     `DELETE FROM stock_watch_supplier_orders
       WHERE computed_at < now() - ($1::int * interval '1 day')`,
@@ -435,7 +456,10 @@ const ITEM_SELECT = `SELECT i.*,
        LEFT JOIN suppliers s ON s.id = i.supplier_id
        LEFT JOIN zd_estimate_exclusions e ON e.subiekt_tw_id = i.subiekt_tw_id
        LEFT JOIN zd_estimate_on_request r ON r.subiekt_tw_id = i.subiekt_tw_id
-       LEFT JOIN product_purchase_prices p ON p.subiekt_tw_id = i.subiekt_tw_id`;
+       LEFT JOIN product_purchase_prices p ON p.subiekt_tw_id = i.subiekt_tw_id
+      WHERE NOT EXISTS (
+        SELECT 1 FROM prosba_teeth_products t WHERE t.subiekt_tw_id = i.subiekt_tw_id
+      )`;
 
 /**
  * Wszystkie wyniki z regułą liczoną na żywo — oznaczenie „Wyklucz” / „Na prośbę”
@@ -447,8 +471,9 @@ export async function listStockWatchItems(): Promise<StockWatchItem[]> {
 }
 
 /**
- * Outlet / wycofane (także ucięte „WYCOF…”) — ta sama reguła co auto-wykluczenie w Kreatorze ZD.
- * Worker ich nie zapisuje; filtr przy odczycie chowa wiersze z przebiegów sprzed tej reguły.
+ * Outlet / wycofane (także ucięte „WYCOF…”) — reguła z nazwy, jak auto-wykluczenie w Kreatorze ZD
+ * (katalog zębów odfiltrowuje `ITEM_SELECT`). Worker ich nie zapisuje, a `pruneStaleStockWatchItems`
+ * usuwa wiersze ze starszych przebiegów — filtr przy odczycie działa do tego czasu.
  */
 export function isStockWatchMonitored(item: { twNazwa: string }): boolean {
   return !isZdNameAutoExcluded(item.twNazwa);
@@ -461,12 +486,13 @@ export async function searchStockWatchItems(term: string): Promise<StockWatchIte
   const escaped = q.replace(/[\\%_]/g, (c) => `\\${c}`);
   const res = await query<ItemRow>(
     `${ITEM_SELECT}
-      WHERE i.tw_symbol ILIKE $1 OR i.tw_nazwa ILIKE $1
+        AND (i.tw_symbol ILIKE $1 OR i.tw_nazwa ILIKE $1)
       ORDER BY (i.tw_symbol ILIKE $2) DESC, i.velocity_daily DESC, i.tw_symbol
-      LIMIT 50`,
+      LIMIT 200`,
     [`%${escaped}%`, `${escaped}%`]
   );
-  return res.rows.map(mapItem).filter(isStockWatchMonitored);
+  // Filtr nazw po stronie aplikacji — zapas w LIMIT, żeby wycofane nie wypchnęły wyników.
+  return res.rows.map(mapItem).filter(isStockWatchMonitored).slice(0, 50);
 }
 
 // ---------------------------------------------------------------------------

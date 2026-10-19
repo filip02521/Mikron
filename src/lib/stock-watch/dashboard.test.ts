@@ -270,6 +270,35 @@ describe("buildStockWatchDashboard — tablica dostawców", () => {
     expect(d.quietSupplierCount).toBe(2);
   });
 
+  it("shows a supplier whose only problem is a Kreator warning, as 'attention'", () => {
+    const withWarning = buildStockWatchDashboard(
+      [item({ subiektTwId: 70, supplierId: "bom", supplierName: "Komplety", status: "ok" })],
+      [order({ supplierId: "bom", supplierName: "Komplety", explodeBomIncomplete: true })]
+    );
+    expect(withWarning.suppliers.map((s) => [s.supplierId, s.priority, s.dataWarnings])).toEqual([["bom", "attention", 1]]);
+    expect(withWarning.quietSupplierCount).toBe(0);
+  });
+
+  it("counts a shared-scope product only at the supplier that orders it", () => {
+    const shared = buildStockWatchDashboard(
+      [
+        item({ subiektTwId: 80, supplierId: "a", supplierName: "A", status: "out_of_stock", ...inOrder(2, 20) }),
+        item({ subiektTwId: 80, supplierId: "b", supplierName: "B", status: "out_of_stock" }),
+      ],
+      [order({ supplierId: "a", supplierName: "A" }), order({ supplierId: "b", supplierName: "B" })]
+    );
+    expect(shared.suppliers.map((s) => [s.supplierId, s.emptyNoIncoming])).toEqual([["a", 1]]);
+  });
+
+  it("lists next-delivery risks in the expansion of a 'soon' supplier", () => {
+    const soon = buildStockWatchDashboard(
+      [item({ subiektTwId: 90, supplierId: "n", supplierName: "N", status: "warning", deliveryRisk: "before_next_delivery" })],
+      [order({ supplierId: "n", supplierName: "N" })]
+    );
+    expect(soon.suppliers[0]?.priority).toBe("soon");
+    expect(soon.suppliers[0]?.urgentRows.map((r) => r.subiektTwId)).toEqual([90]);
+  });
+
   it("carries the supplier's urgent rows and the proposal for the row action", () => {
     const small = d.suppliers[0]!;
     expect(small.emptyNoIncoming).toBe(1);

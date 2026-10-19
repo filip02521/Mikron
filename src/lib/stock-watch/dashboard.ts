@@ -85,7 +85,7 @@ export type StockWatchSupplierBoardRow = StockWatchSupplierCounts & {
   /** Wartość listy „Do ZD” (0 bez propozycji). */
   orderValue: number;
   proposal: StockWatchSupplierProposal | null;
-  /** Pilne towary dostawcy (brak, ≤ 48 h, przed dostawą), od najpilniejszego — do rozwinięcia wiersza. */
+  /** Pilne towary dostawcy (brak, ≤ 48 h, przed dostawą, przed kolejną dostawą), od najpilniejszego. */
   urgentRows: StockWatchRowView[];
   urgentTotal: number;
 };
@@ -320,12 +320,17 @@ export function buildStockWatchDashboard(
       b.orderValue - a.orderValue
   );
 
-  // Tablica dostawców: liczniki z towarów dostawcy (bez łączenia wspólnych zakresów —
-  // towar w zakresie dwóch dostawców liczy się u obu, bo u obu można go zamówić).
+  // Tablica dostawców. Towar ze wspólnego zakresu dwóch dostawców liczy się tylko u jednego —
+  // tego samego, co w sygnałach (uniqueByProduct: wygrywa dostawca z pozycją „Do ZD”).
+  // Inaczej oba wiersze pokazałyby tę samą dziurę i zachęcały do podwójnego zamówienia.
+  const ownerByTw = new Map(products.map((p) => [p.subiektTwId, p.supplierId]));
   const proposalById = new Map(proposals.map((p) => [p.supplierId, p]));
   const suppliers: StockWatchSupplierBoardRow[] = [];
   let quietSupplierCount = 0;
-  for (const [supplierId, supplierItems] of itemsBySupplier) {
+  // Także dostawcy z samą propozycją (np. same ostrzeżenia, brak towarów po filtrze nazw).
+  const boardSupplierIds = new Set([...itemsBySupplier.keys(), ...proposalById.keys()]);
+  for (const supplierId of boardSupplierIds) {
+    const supplierItems = itemsBySupplier.get(supplierId) ?? [];
     const c: StockWatchSupplierCounts = {
       emptyNoIncoming: 0,
       outOfStock: 0,
@@ -334,10 +339,11 @@ export function buildStockWatchDashboard(
       beforeNextDelivery: 0,
       warning: 0,
       lineCount: proposalById.get(supplierId)?.lineCount ?? 0,
+      dataWarnings: proposalById.get(supplierId)?.warnings.length ?? 0,
     };
     const urgent: StockWatchItem[] = [];
     for (const i of supplierItems) {
-      if (i.rule !== "standard") continue;
+      if (i.rule !== "standard" || ownerByTw.get(i.subiektTwId) !== supplierId) continue;
       if (i.status === "out_of_stock") {
         c.outOfStock += 1;
         if (isStockWatchEmptyNoIncoming(i)) c.emptyNoIncoming += 1;
@@ -345,7 +351,7 @@ export function buildStockWatchDashboard(
       else if (i.status === "warning") c.warning += 1;
       if (i.deliveryRisk === "before_delivery" && !isOutOrCritical(i)) c.beforeDelivery += 1;
       else if (i.deliveryRisk === "before_next_delivery") c.beforeNextDelivery += 1;
-      if (isOutOrCritical(i) || i.deliveryRisk === "before_delivery") urgent.push(i);
+      if (isOutOrCritical(i) || i.deliveryRisk != null) urgent.push(i);
     }
     const priority = stockWatchSupplierPriority(c);
     if (!priority) {

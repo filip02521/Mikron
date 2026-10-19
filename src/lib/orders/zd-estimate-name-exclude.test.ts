@@ -120,3 +120,29 @@ describe("mapZdNameAutoExcludedByTwId + zęby", () => {
     expect(formatZdNameAutoExcludeBadge("teeth")).toBe("auto · zęby");
   });
 });
+
+describe("matchZdNameAutoExclude — ucięcia z limitu 50 znaków (nazwy z Subiekta)", () => {
+  it("sklejony dopisek z kropką na końcu", () => {
+    expect(matchZdNameAutoExclude("Renfert-Wosk Geo Avantgarde,zgryzowy,beż,70gWYCOF.")?.reason).toBe(
+      "wycofane"
+    );
+  });
+
+  it("dopisek ucięty do „WYCO” — osobne słowo albo sklejone wersalikami", () => {
+    expect(matchZdNameAutoExclude('Moore Krążki do polerowania (200szt)1/2" fine WYCO')?.reason).toBe(
+      "wycofane"
+    );
+    expect(matchZdNameAutoExclude("IPS e.max ZirCAD Colouring Liquid Brush no. 1 WYCO")?.matched).toBe(
+      "wyco"
+    );
+    expect(matchZdNameAutoExclude("Omec-Piaskarka1zbiornik+obieg zamknięty+wyciągWYCO")?.reason).toBe(
+      "wycofane"
+    );
+  });
+
+  it("nie łapie „wyco” w środku nazwy ani zwykłego słowa na końcu", () => {
+    expect(matchZdNameAutoExclude("Wyco system mocowania 10 szt.")).toBeNull();
+    expect(matchZdNameAutoExclude("Pędzel do retuszu wyciąg")).toBeNull();
+    expect(matchZdNameAutoExclude("Uchwyt typu Pawyco")).toBeNull();
+  });
+});
