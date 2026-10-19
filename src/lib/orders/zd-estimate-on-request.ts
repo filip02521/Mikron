@@ -80,6 +80,35 @@ export function onRequestIdsToClearForExcludedTw(
   return [...ids];
 }
 
+/**
+ * Ręczne ilości „Do ZD” sprzed oznaczenia „na prośbę” — do zapomnienia (z partnerami z pary).
+ * Nadpisanie wygrywa z każdą wyliczoną ilością, więc stara ilość z zapasu trzymałaby towar
+ * na liście z pełną ilością zamiast samej prośby (albo zamiast zniknięcia bez prośby).
+ * Zwraca ten sam obiekt, gdy nic nie usunięto.
+ */
+export function dropQtyOverridesForOnRequest(
+  overrides: Readonly<Record<number, number>>,
+  markedTwIds: Iterable<number>,
+  pairs: readonly { packTwId: number; pieceTwId: number }[]
+): Readonly<Record<number, number>> {
+  const drop = new Set<number>();
+  for (const raw of markedTwIds) {
+    const id = Math.trunc(Number(raw));
+    if (!Number.isFinite(id) || id <= 0) continue;
+    drop.add(id);
+    for (const p of pairs) {
+      if (p.packTwId === id || p.pieceTwId === id) {
+        drop.add(p.packTwId);
+        drop.add(p.pieceTwId);
+      }
+    }
+  }
+  if (!Object.keys(overrides).some((k) => drop.has(Number(k)))) return overrides;
+  const next: Record<number, number> = {};
+  for (const [k, v] of Object.entries(overrides)) if (!drop.has(Number(k))) next[Number(k)] = v;
+  return next;
+}
+
 /** tw z dodatnią rezerwą katalogową (po piece→pack). */
 export function buildExtraOnlyTwIds(
   onRequestTwIds: ReadonlySet<number>,
