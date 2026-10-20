@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { formatQty } from "@/lib/orders/zd-estimate-manual";
 import {
@@ -26,7 +27,21 @@ export type ZdSalesChartOrderMark = {
   label: string;
 };
 
-/** Duży wykres w dymku: 12 okien, bieżące w akcencie, przerywana = typowy miesiąc, kropki = nasze ZD. */
+const MONTHS_PL = ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"];
+const DAY_MS = 86_400_000;
+const CHART_BAR_PX = 56;
+
+/** Wartość nad słupkiem: wąska kolumna, więc tysiące skrótem („2,2k”). */
+function compactQty(v: number): string {
+  if (v >= 1000) return `${(v / 1000).toLocaleString("pl-PL", { maximumFractionDigits: 1 })}k`;
+  return formatQty(Math.round(v));
+}
+
+/**
+ * Duży wykres (dymek i karta): 12 okien po 30 dni, wartość nad każdym słupkiem, miesiąc pod nim,
+ * bieżące okno w akcencie, przerywana = typowy miesiąc, kropki = nasze ZD.
+ * HTML zamiast SVG: tekst ma stały rozmiar niezależnie od szerokości wykresu.
+ */
 function ZdSalesProfileChart({
   profile,
   orders,
@@ -34,101 +49,75 @@ function ZdSalesProfileChart({
   profile: ZdSalesProfileLineMeta;
   orders?: readonly ZdSalesChartOrderMark[];
 }) {
+  const [nowMs] = useState(() => Date.now());
   const w = profile.windows;
-  const H = 64;
-  const barW = 14;
-  const gap = 6;
-  const left = 4;
-  const width = left + w.length * (barW + gap);
-  const max = Math.max(1, ...w);
-  const heights = barHeights(w, H);
-  const typicalY = H - (Math.min(profile.typicalMonthly, max) / max) * H;
   const last = w.length - 1;
-  // ponytail: okna Kreatora kończą się w dniu profilu (do kilku dni temu), kropki liczone od dziś.
+  const max = Math.max(1, ...w);
+  // Okno i kończy się (last − i) × 30 dni temu; podpis = miesiąc środka okna.
+  const months = w.map((_, i) => MONTHS_PL[new Date(nowMs - ((last - i) * 30 + 15) * DAY_MS).getMonth()]!);
   // Kilka ZD w jednym oknie = jedna kropka z opisem wszystkich.
   const byWindow = new Map<number, string[]>();
   for (const o of orders ?? []) {
     const i = last - Math.floor(Math.max(0, o.daysAgo) / 30);
     if (i >= 0) byWindow.set(i, [...(byWindow.get(i) ?? []), o.label]);
   }
-  const marks = [...byWindow].map(([i, labels]) => ({
-    i,
-    label: labels.length > 1 ? `${labels.length} ZD:\n${labels.join("\n")}` : labels[0]!,
-  }));
-  const axisPad = marks.length > 0 ? 8 : 0;
+  const typicalPx = profile.typicalMonthly > 0 ? (Math.min(profile.typicalMonthly, max) / max) * CHART_BAR_PX : null;
+  const cols = { gridTemplateColumns: `repeat(${w.length}, minmax(0, 1fr))` };
   return (
-    <>
-      <svg
-        viewBox={`0 0 ${width} ${H + 2 + axisPad}`}
-        width="100%"
-        role="img"
-        aria-label={`Sprzedaż w 12 oknach po 30 dni, od najstarszego: ${seriesLabel(w)} szt`}
-        className="mt-2 block"
-      >
-        <line
-          x1={0}
-          y1={H}
-          x2={width}
-          y2={H}
-          className="stroke-slate-300"
-          strokeWidth={1}
-        />
-        {w.map((v, i) => {
-          const h = heights[i]!;
-          const x = left + i * (barW + gap);
-          return h > 0 ? (
-            <rect
-              key={i}
-              x={x}
-              y={H - h}
-              width={barW}
-              height={h}
-              rx={2}
-              className={i === last ? "fill-indigo-600" : "fill-slate-300"}
-            />
-          ) : (
-            <rect
-              key={i}
-              x={x}
-              y={H - 1}
-              width={barW}
-              height={1}
-              className="fill-slate-300"
-            />
-          );
-        })}
-        {profile.typicalMonthly > 0 ? (
-          <line
-            x1={0}
-            y1={typicalY}
-            x2={width}
-            y2={typicalY}
-            className="stroke-slate-500"
-            strokeWidth={1}
-            strokeDasharray="3 3"
+    <span
+      role="img"
+      aria-label={`Sprzedaż w 12 oknach po 30 dni, od najstarszego: ${w.map((v, i) => `${months[i]} ${formatQty(v)}`).join(", ")} szt`}
+      className="mt-2 block"
+    >
+      <span className="relative grid items-end gap-1" style={cols} aria-hidden>
+        {typicalPx != null ? (
+          <span
+            className="pointer-events-none absolute inset-x-0 border-t border-dashed border-slate-500"
+            style={{ bottom: typicalPx }}
           />
         ) : null}
-        {marks.map((m, k) => (
-          <circle
-            key={k}
-            cx={left + m.i * (barW + gap) + barW / 2}
-            cy={H + 5}
-            r={3}
-            className="fill-indigo-600 stroke-white"
-            strokeWidth={1}
-          >
-            <title>{m.label}</title>
-          </circle>
+        {w.map((v, i) => (
+          <span key={i} className="flex flex-col items-center justify-end">
+            <span
+              className={cn(
+                // Nad przerywaną linią typowego miesiąca: tło dymka/karty, żeby linia nie przecinała liczby.
+                "relative z-[1] mb-0.5 rounded-sm bg-white px-0.5 text-[10px] leading-none tabular-nums",
+                i === last ? "font-semibold text-slate-900" : v > 0 ? "text-slate-600" : "text-slate-400"
+              )}
+            >
+              {compactQty(v)}
+            </span>
+            <span
+              className={cn("block w-full rounded-t-sm", i === last ? "bg-indigo-600" : "bg-slate-300")}
+              style={{ height: v > 0 ? Math.max(2, (v / max) * CHART_BAR_PX) : 1 }}
+            />
+          </span>
         ))}
-      </svg>
-      {/* Podpisy w HTML: SVG skaluje się do szerokości, tekst w nim rósłby razem z wykresem. */}
-      <span className="mt-0.5 flex justify-between text-[11px]">
-        <span className="text-slate-500">rok temu</span>
-        <span className="tabular-nums text-slate-700">
-          teraz {formatQty(w[last] ?? 0)} szt
-        </span>
       </span>
-    </>
+      {byWindow.size > 0 ? (
+        <span className="grid h-3 items-center gap-1 border-t border-slate-300" style={cols} aria-hidden>
+          {w.map((_, i) => {
+            const labels = byWindow.get(i);
+            return (
+              <span key={i} className="flex justify-center" title={labels?.join("\n")}>
+                {labels ? <span className="size-1.5 rounded-full bg-indigo-600" /> : null}
+              </span>
+            );
+          })}
+        </span>
+      ) : null}
+      <span
+        className={cn("grid gap-1 pt-0.5 text-center text-[10px] leading-none", byWindow.size > 0 ? "" : "border-t border-slate-300")}
+        style={cols}
+        aria-hidden
+      >
+        {months.map((m, i) => (
+          <span key={i} className={i === last ? "font-semibold text-slate-900" : "text-slate-500"}>
+            {i === last ? "teraz" : m}
+          </span>
+        ))}
+      </span>
+    </span>
   );
 }
 
