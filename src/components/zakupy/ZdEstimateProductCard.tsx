@@ -84,6 +84,7 @@ export function ZdEstimateProductCard({
   minStockSzt,
   overrideZdUnits,
   leadDays,
+  compareZdUnits = null,
   supplierName,
   status,
   position,
@@ -102,6 +103,8 @@ export function ZdEstimateProductCard({
   minStockSzt?: number | null;
   overrideZdUnits?: number | null;
   leadDays?: number | null;
+  /** Strategia testowa: jednostki ZD wg „jak dotąd” (null = bez porównania). */
+  compareZdUnits?: number | null;
   supplierName?: string | null;
   status: { excluded: boolean; onRequest: boolean };
   /** Pozycja na bieżącej (przefiltrowanej) liście. */
@@ -311,6 +314,12 @@ export function ZdEstimateProductCard({
             <p className={cn("mt-0.5 text-xs", lead != null && days != null && days < lead ? "text-red-700" : "text-slate-600")}>
               {coverLine}
             </p>
+            {compareZdUnits != null && compareZdUnits !== shownUnits ? (
+              <p className="mt-1 text-xs tabular-nums text-slate-600">
+                Strategia „jak dotąd”: {formatQty(compareZdUnits)}{" "}
+                {qty.hasPackaging && isPackagingPackagesMode(qty.documentUnitMode) ? label : "szt"}
+              </p>
+            ) : null}
           </section>
 
           <ZdProductPurchasesSection state={history} titleId={titleId} unitFor={purchaseUnit} />

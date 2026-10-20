@@ -9,7 +9,8 @@ import {
   upsertZdSupplierOrderPolicy,
   type ZdSupplierOrderPolicyRow,
 } from "@/lib/data/zd-supplier-order-policy";
-import type { ZdDemandStrategy } from "@/lib/orders/zd-demand-policy";
+import { ZD_SUPPLIER_ORDER_POLICY_CLASSIC, type ZdDemandStrategy } from "@/lib/orders/zd-demand-policy";
+import { buildZdOrderList } from "@/lib/orders/zd-order-list";
 import {
   decideZdAutoProposal,
   fetchLatestZdAutoProposal,
@@ -384,6 +385,8 @@ export type ZdEstimateRunResult =
       /** Strategia dostawcy użyta w tym Policz (classic = jak dotąd) i ile pozycji podniosła podłoga 90 d. */
       orderPolicy?: import("@/lib/orders/zd-demand-policy").ZdSupplierOrderPolicy;
       demandFloorCount?: number;
+      /** Strategia testowa: ilości „jak dotąd” na tym samym zakresie (twId → jednostki ZD / sztuki). */
+      classicCompare?: ZdClassicCompare | null;
       /** Opcja wygładzenia przy tym Policz + ile pozycji zmieniła (null = profil niedostępny). */
       salesSmoothingEnabled?: boolean;
       salesSmoothing?: import("@/lib/orders/zd-order-engine").ZdSalesSmoothingSummary | null;
@@ -1336,6 +1339,38 @@ export async function actionFetchZdEstimateProductHistory(input: {
   return { sales, purchases };
 }
 
+export type ZdClassicCompare = {
+  byTwId: Record<number, { units: number; pieces: number }>;
+  lineCount: number;
+  pieces: number;
+};
+
+/** Lista „Do ZD” strategii „jak dotąd” (te same reguły co nocny przebieg) do porównania w Kreatorze. */
+function summarizeClassicCompare(e: Extract<Awaited<ReturnType<typeof runZdOrderEngine>>, { ok: true }>): ZdClassicCompare {
+  const list = buildZdOrderList({
+    lines: e.result.pozycje,
+    packagingLookup: e.packagingLookup,
+    hardExcludedTwIds: e.hardExcludedTwIds,
+    onRequestTwIds: e.onRequestTwIds,
+    productPairs: e.productPairs,
+    bomRefs: e.bomRefs,
+    missingBomTwIds: e.missingBomTwIds,
+    teethTwIds: e.teethTwIds,
+    pendingIndividuals: e.pendingIndividuals,
+    prosbaReservedByTwId: e.prosbaReservedByTwId ?? new Map(),
+    extrasPolicy: e.extrasPolicy,
+    minStockByTwId: e.minStockByTwId,
+  });
+  const byTwId: ZdClassicCompare["byTwId"] = {};
+  let pieces = 0;
+  for (const l of list.lines) {
+    if (!(l.zdUnits > 0)) continue;
+    byTwId[l.line.tw_Id] = { units: l.zdUnits, pieces: l.piecesArriving };
+    pieces += l.piecesArriving;
+  }
+  return { byTwId, lineCount: Object.keys(byTwId).length, pieces };
+}
+
 /**
  * ZD utworzone dla dostawcy z czekającą propozycją automatu = akceptacja tej propozycji;
  * linie ZD zapisane obok propozycji (raport: co zmieniłeś). Błąd tylko w logu — ZD już jest.
@@ -1624,7 +1659,7 @@ export async function actionRunZdEstimateManual(
     const horizon = input.leadTimeHorizon === true ? supplierHorizon : null;
     const leadDays = supplierHorizon?.leadDays ?? null;
 
-    const engine = await runZdOrderEngine({
+    const engineInput = {
       scope,
       supplierId: String(input.supplierId ?? "").trim() || null,
       dniZapasu: horizon ? horizon.horizonDays : dniZapasu,
@@ -1633,9 +1668,19 @@ export async function actionRunZdEstimateManual(
       zapasMin,
       ordersBaseUrl: orders.config.baseUrl,
       salesSmoothing: input.salesSmoothing === true,
-      salesProfileRefresh: "background",
-      onProgress: touchProgress,
-    });
+      salesProfileRefresh: "background" as const,
+    };
+    // Strategia testowa: równolegle „jak dotąd” na tym samym zakresie — do porównania w tabeli.
+    // Błąd strategii → silnik sam pokaże „reguły niedostępne” (bez orderPolicy wczyta ją ponownie).
+    const policyRow = engineInput.supplierId
+      ? await fetchZdSupplierOrderPolicy(engineInput.supplierId).catch(() => null)
+      : null;
+    const [engine, classicEngine] = await Promise.all([
+      runZdOrderEngine({ ...engineInput, ...(policyRow ? { orderPolicy: policyRow } : {}), onProgress: touchProgress }),
+      policyRow && policyRow.strategy !== "classic"
+        ? runZdOrderEngine({ ...engineInput, orderPolicy: ZD_SUPPLIER_ORDER_POLICY_CLASSIC }).catch(() => null)
+        : Promise.resolve(null),
+    ]);
     if (!engine.ok) {
       failProgress(engine.feedback.message);
       return {
@@ -1779,6 +1824,7 @@ export async function actionRunZdEstimateManual(
       leadDays,
       orderPolicy: engine.orderPolicy,
       demandFloorCount: engine.demandFloorCount,
+      classicCompare: classicEngine?.ok ? summarizeClassicCompare(classicEngine) : null,
       salesSmoothingEnabled: input.salesSmoothing === true,
       salesSmoothing: engine.salesSmoothing,
       unitPriceByTwId,

@@ -38,6 +38,7 @@ export function ZdEstimateDoZdCell({
   accepted = false,
   detailHint,
   onAccept,
+  compareZdUnits,
 }: {
   qty: ZdPackOrderQty;
   excluded?: boolean;
@@ -52,6 +53,8 @@ export function ZdEstimateDoZdCell({
   accepted?: boolean;
   detailHint?: string;
   onAccept?: () => void;
+  /** Strategia testowa: jednostki ZD wg strategii „jak dotąd” (null = bez porównania). */
+  compareZdUnits?: number | null;
 }) {
   const [focused, setFocused] = useState(false);
   const [draft, setDraft] = useState("");
@@ -308,9 +311,21 @@ export function ZdEstimateDoZdCell({
       </span>
     ) : null;
 
+  const unitShort = packagesMode ? qty.packageLabel.trim() || "op." : "szt";
+  const compareChip =
+    compareZdUnits != null && compareZdUnits !== displayUnits ? (
+      <span
+        className="zd-est-dozd-compare"
+        title={`Strategia „jak dotąd”: ${formatQty(compareZdUnits)} ${unitShort} (teraz ${formatQty(displayUnits)})`}
+      >
+        dotąd <s>{formatQty(compareZdUnits)}</s>
+      </span>
+    ) : null;
+
   const hintLine =
-    primaryHint || reviewAcceptAside || palletChip ? (
+    primaryHint || reviewAcceptAside || palletChip || compareChip ? (
       <span className="zd-est-dozd-hint-row">
+        {compareChip}
         {palletChip}
         {primaryHint}
         {reviewAcceptAside}

@@ -60,6 +60,7 @@ import {
   ZdSupplierOrderPolicyDialog,
 } from "@/components/zakupy/ZdSupplierOrderPolicyDialog";
 import type { ZdSupplierOrderPolicyRow } from "@/lib/data/zd-supplier-order-policy";
+import type { ZdClassicCompare } from "@/app/actions/zd-estimate";
 import { ZdAutoProposalBanner } from "@/components/zakupy/ZdAutoProposalBanner";
 import {
   policyForBoostPreset,
@@ -1131,6 +1132,8 @@ export function ZdEstimateWorkbench({
     leadDays?: number | null;
     /** Ile pozycji zmieniło wygładzenie (null = opcja wyłączona). */
     salesSmoothing?: ZdSalesSmoothingSummary | null;
+    /** Strategia testowa: lista „jak dotąd” na tym samym zakresie (porównanie w tabeli). */
+    classicCompare?: ZdClassicCompare | null;
   } | null>(null);
   const [extrasPolicy, setExtrasPolicy] = useState<ZdEstimateExtrasPolicy>(
     () =>
@@ -2309,6 +2312,17 @@ export function ZdEstimateWorkbench({
     qtyOverrideMap,
     unitPriceByTwId,
   ]);
+
+  const classicCompareSummary = useMemo(() => {
+    const c = policzScopeInfo?.classicCompare;
+    if (!c) return null;
+    let value = 0;
+    for (const [tw, v] of Object.entries(c.byTwId)) {
+      const price = unitPriceByTwId[Number(tw)];
+      if (price != null && price > 0) value += v.pieces * price;
+    }
+    return { lineCount: c.lineCount, pieces: c.pieces, value };
+  }, [policzScopeInfo, unitPriceByTwId]);
 
   const segmentFilteredLines = useMemo(() => {
     if (!lines) return [];
@@ -4042,6 +4056,7 @@ export function ZdEstimateWorkbench({
           horizon: res.horizon ?? null,
           leadDays: res.leadDays ?? null,
           salesSmoothing: res.salesSmoothingEnabled ? res.salesSmoothing ?? null : null,
+          classicCompare: res.classicCompare ?? null,
         });
         setUnitPriceByTwId(res.unitPriceByTwId ?? {});
         setHorizonNeedsRecount(false);
@@ -7842,6 +7857,11 @@ export function ZdEstimateWorkbench({
                           packRow={packagingMap.get(l.tw_Id) ?? null}
                           packLookup={packagingLookup.get(l.tw_Id) ?? null}
                           leadDays={policzScopeInfo?.leadDays ?? policzScopeInfo?.horizon?.leadDays ?? null}
+                          compareZdUnits={
+                            policzScopeInfo?.classicCompare
+                              ? (policzScopeInfo.classicCompare.byTwId[l.tw_Id]?.units ?? 0)
+                              : null
+                          }
                           individualExtra={
                             individualBundle.byTwId.get(l.tw_Id) ?? null
                           }
@@ -8089,6 +8109,27 @@ export function ZdEstimateWorkbench({
                     ) : null}
                     {orderSummary.unpriced > 0 ? (
                       <span className="text-slate-500">· {orderSummary.unpriced} bez ceny</span>
+                    ) : null}
+                    {policyTargetDays != null && !classicCompareSummary ? (
+                      // Lista policzona przed włączeniem strategii (albo przywrócona z sesji) — liczby są „jak dotąd”.
+                      <button
+                        type="button"
+                        onClick={() => runEstimate()}
+                        disabled={busy}
+                        title="Lista jest jeszcze policzona strategią „jak dotąd”. Przelicz, żeby zobaczyć ilości strategii testowej i porównanie."
+                        className="ml-1 inline-flex items-center gap-1 border-l border-slate-200 pl-2 font-medium text-indigo-800 hover:text-indigo-950 disabled:opacity-60"
+                      >
+                        Przelicz wg strategii
+                      </button>
+                    ) : null}
+                    {classicCompareSummary ? (
+                      <span
+                        className="ml-1 border-l border-slate-200 pl-2 text-slate-500"
+                        title="Ta sama lista policzona strategią „jak dotąd” (bez Twoich zmian ilości)"
+                      >
+                        jak dotąd {classicCompareSummary.lineCount} poz. · {classicCompareSummary.pieces.toLocaleString("pl-PL")} szt
+                        {classicCompareSummary.value > 0 ? ` · ok. ${Math.round(classicCompareSummary.value).toLocaleString("pl-PL")} zł` : ""}
+                      </span>
                     ) : null}
                   </span>
                 ) : null}
@@ -8428,6 +8469,9 @@ export function ZdEstimateWorkbench({
                 minStockSzt={minSt}
                 overrideZdUnits={qtyOverrideByTwId[l.tw_Id]}
                 leadDays={policzScopeInfo?.leadDays ?? policzScopeInfo?.horizon?.leadDays ?? null}
+                compareZdUnits={
+                  policzScopeInfo?.classicCompare ? (policzScopeInfo.classicCompare.byTwId[l.tw_Id]?.units ?? 0) : null
+                }
                 supplierName={selectedSupplier?.name ?? null}
                 status={{
                   excluded: orderExcludedTwIds.has(l.tw_Id),
@@ -8460,6 +8504,8 @@ export function ZdEstimateWorkbench({
           onSaved={(policy) => {
             setSupplierPolicy({ supplierId: selectedSupplier.id, policy });
             setSupplierPolicyOpen(false);
+            // Lista już policzona → przelicz od razu nową strategią (z porównaniem „jak dotąd”).
+            if (lines) runEstimate();
           }}
         />
       ) : null}

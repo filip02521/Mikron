@@ -64,3 +64,20 @@ describe("Do ZD: znacznik pełnych palet", () => {
     expect(formatZdPackCompactLabel("worek")).toBe("wor.");
   });
 });
+
+describe("ZdEstimateDoZdCell — porównanie ze strategią „jak dotąd”", () => {
+  afterEach(() => cleanup());
+
+  it("inna ilość → „dotąd N” z przekreśloną liczbą; ta sama albo brak porównania → nic", () => {
+    const qty = computeZdPackOrderQty(10, 1, "op.");
+    const a = render(<ZdEstimateDoZdCell qty={qty} compareZdUnits={14} />);
+    expect(a.container.querySelector(".zd-est-dozd-compare")?.textContent).toBe("dotąd 14");
+    expect(a.container.querySelector(".zd-est-dozd-compare s")?.textContent).toBe("14");
+    cleanup();
+    const b = render(<ZdEstimateDoZdCell qty={qty} compareZdUnits={qty.zdUnits} />);
+    expect(b.container.querySelector(".zd-est-dozd-compare")).toBeNull();
+    cleanup();
+    const c = render(<ZdEstimateDoZdCell qty={qty} />);
+    expect(c.container.querySelector(".zd-est-dozd-compare")).toBeNull();
+  });
+});
