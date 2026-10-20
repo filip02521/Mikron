@@ -4,7 +4,7 @@ import { refreshStockWatchAfterOrder } from "@/lib/stock-watch/refresh-after-ord
 import type { SupplierLocation } from "@/types/database";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 // @service-role-ok — autoryzacja requireZdEstimateAdmin() (operacje dostaw); service role z pełnym scope po warstwie aplikacji.
-import { getSessionUser, requireZdEstimateAdmin } from "@/lib/auth";
+import { requireZdEstimateAdmin } from "@/lib/auth";
 import {
   deleteZdEstimateExclusion,
   deleteZdEstimateExclusionsMany,
@@ -4847,7 +4847,8 @@ async function persistZdEstimateUiSessionSnapshot(input: {
   | { ok: true; sessionId: string; rotated: true }
   | { ok: false; message: string; rotated: boolean }
 > {
-  const user = await getSessionUser();
+  // Ta sama bramka co pozostałe akcje sesji UI (dostęp do kreatora, nie każdy zalogowany).
+  const user = await zdEstimateUiSessionUser();
   if (!user) {
     return { ok: false, message: "Brak sesji.", rotated: false };
   }
