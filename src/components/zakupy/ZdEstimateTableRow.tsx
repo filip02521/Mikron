@@ -51,6 +51,7 @@ const PRODUCT_NAME_LINK = "button.zd-est-product-name--link";
  */
 export function handleZdEstimateRowArrowKeys(e: ReactKeyboardEvent<HTMLElement>) {
   if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+  if (e.defaultPrevented) return; // menu / widget obsłużył strzałki sam
   if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
   const t = e.target;
   if (!(t instanceof HTMLElement) || t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
