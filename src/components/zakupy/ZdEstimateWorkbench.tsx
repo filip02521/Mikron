@@ -1457,10 +1457,11 @@ export function ZdEstimateWorkbench({
     pairUnitsByPackTwId,
     packagingLookup,
   } = rulesState;
-  // Restore sesji jest asynchroniczny — czytaj reguły z ostatniego renderu, nie z closure.
-  const restoreRulesRef = useRef<ZdEstimateRestoreRules>(rulesState);
+  // Restore sesji i ponowne wczytanie reguł są asynchroniczne — czytaj reguły
+  // z ostatniego renderu, nie z closure.
+  const latestRulesRef = useRef<ZdEstimateRestoreRules>(rulesState);
   useLayoutEffect(() => {
-    restoreRulesRef.current = rulesState;
+    latestRulesRef.current = rulesState;
   });
   const [pairsOpen, setPairsOpen] = useState(false);
   const [pairSeed, setPairSeed] = useState<
@@ -2964,7 +2965,7 @@ export function ZdEstimateWorkbench({
       // żeby zmiana reguły w trakcie nieobecności nie wróciła starą kopią.
       const restored = recomputeRestoredZdEstimateLines(
         payload,
-        restoreRulesRef.current
+        latestRulesRef.current
       );
       setLines(restored.lines);
       setMissingPartnerTwIds(restored.missingPartnerTwIds);
@@ -2990,7 +2991,6 @@ export function ZdEstimateWorkbench({
         Boolean(payload.pendingIndividualsTruncated)
       );
       setPendingIndividualsError(payload.pendingIndividualsError ?? null);
-
 
       setQtyOverrideByTwId(payload.qtyOverrideByTwId ?? {});
       listScopeKeyRef.current = zdEstimateListScopeKey(
@@ -5735,7 +5735,7 @@ export function ZdEstimateWorkbench({
       setTeethProductsError(null);
       recountLinesWithRules(
         {
-          ...restoreRulesRef.current,
+          ...latestRulesRef.current,
           teethTwIds: res.teethTwIds,
           teethTrusted: true,
         },
@@ -5760,7 +5760,7 @@ export function ZdEstimateWorkbench({
       // Jeden komplet reguł i jedno przeliczenie — łańcuch apply*Live liczył każdą
       // regułę z resztą z closure, a ostatni reapply nadpisywał wykluczenia,
       // opakowania i minimum starymi wartościami.
-      const current = restoreRulesRef.current;
+      const current = latestRulesRef.current;
       const nextRules: ZdEstimateRestoreRules = {
         exclusions: ex.ok ? ex.exclusions : current.exclusions,
         // Nieudane wczytanie ustawia błąd → reguła nieufna (jak w reszcie kreatora).
@@ -5875,21 +5875,33 @@ export function ZdEstimateWorkbench({
     retryLoadPackaging();
   };
 
-  const retryLoadMinStock = useCallback(async () => {
+  const retryLoadMinStock = async () => {
     setMinStockError(null);
+    const estimateGen = estimateGenRef.current;
     try {
       const res = await actionListZdEstimateMinStock();
       if (!res.ok) {
-        setMinStockError(res.message);
+        setMinStockError(userFacingErrorTextFromMessage(res.message));
         return;
       }
+      const current = latestRulesRef.current;
       setMinStock(res.minStock);
+      // Bez komunikatu (wołane też przy otwarciu okna) — przelicz tylko, gdy
+      // minimum w bazie zmieniło się od ostatniego przeliczenia listy.
+      if (JSON.stringify(res.minStock) !== JSON.stringify(current.minStock)) {
+        recountLinesWithRules(
+          { ...current, minStock: res.minStock },
+          estimateGen
+        );
+      }
     } catch (e) {
       setMinStockError(
-        e instanceof Error ? e.message : "Nie udało się wczytać minimum stanów."
+        e instanceof Error
+          ? userFacingErrorTextFromMessage(e.message)
+          : "Nie udało się wczytać minimum stanów."
       );
     }
-  }, [setMinStock, setMinStockError]);
+  };
 
   const openMinStockPanel = () => {
     setMinStockOpen(true);

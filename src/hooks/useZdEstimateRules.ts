@@ -298,6 +298,8 @@ export function useZdEstimateRulesLiveApply({
     teethTrusted,
     teethTwIdSet,
     onRequestTwIds,
+    onRequests,
+    onRequestTrusted,
     productPairs,
     productBoms,
     packagingByTwIdForRefresh,
@@ -325,11 +327,11 @@ export function useZdEstimateRulesLiveApply({
         onRequestTwIds,
       }),
     [
-    linesBase,
-    dbExcludedIds,
-    exclusionsTrusted,
-    teethTwIdSet,
-    teethTrusted,
+      linesBase,
+      dbExcludedIds,
+      exclusionsTrusted,
+      teethTwIdSet,
+      teethTrusted,
       sessionIncludeTwIds,
       onRequestTwIds,
     ]
@@ -369,7 +371,20 @@ export function useZdEstimateRulesLiveApply({
           options: {
             ...zdEstimateRefreshDays(paramInfo, dniZapasu),
             zapasMin: Number(zapasMin) || 0,
-            excludedTwIds: excludedIdsForRefresh,
+            // „Tylko na prośbę” na sztuce przechodzi na opakowanie z pary —
+            // przy nowych parach mapuj z nimi, nie z parami z poprzedniego renderu.
+            excludedTwIds:
+              nextPairs === productPairs
+                ? excludedIdsForRefresh
+                : buildZdEstimateBakeExcludedTwIds({
+                    linesBase,
+                    dbExcludedTwIds: exclusionsTrusted ? dbExcludedIds : [],
+                    teethTwIds: teethTrusted ? teethTwIdSet : null,
+                    sessionIncludeTwIds,
+                    onRequestTwIds: onRequestTrusted
+                      ? onRequestTwIdSet(onRequests, nextPairs)
+                      : new Set<number>(),
+                  }),
             packagingByTwId: packagingLookup ?? packagingByTwIdForRefresh,
             historyByTwId:
               historyByTwId.size > 0 ? historyByTwId : null,
@@ -390,7 +405,15 @@ export function useZdEstimateRulesLiveApply({
       paramInfo,
       zapasMin,
       excludedIdsForRefresh,
+      productPairs,
       productBoms,
+      exclusionsTrusted,
+      dbExcludedIds,
+      teethTrusted,
+      teethTwIdSet,
+      sessionIncludeTwIds,
+      onRequestTrusted,
+      onRequests,
       packagingByTwIdForRefresh,
       minStockByTwIdForRefresh,
       historyByTwId,
