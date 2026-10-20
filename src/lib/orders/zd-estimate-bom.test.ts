@@ -1280,6 +1280,10 @@ describe("Castorit BOM + pary", () => {
     expect(
       bomRowHidesHardExclude({ bom: { role: "assembled_parent" } })
     ).toBe(true);
+    // Piece pary: bez Wyklucz, ale „Na prośbę” dostępne (flaga ląduje na packu).
+    expect(bomRowHidesHardExclude({ pair: { role: "piece" } })).toBe(true);
+    expect(bomRowHidesOnRequest({ pair: { role: "piece" } })).toBe(false);
+    expect(bomRowHidesOnRequest({ bom: { role: "assembled_parent" } })).toBe(true);
   });
 
   it("zdEstimateLineSalesDemandSignal: piece/parent z zerowaną kolumną", () => {

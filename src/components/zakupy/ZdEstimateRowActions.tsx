@@ -24,11 +24,13 @@ export function ZdEstimateRowActions({
   /** Trwałe „tylko na prośbę”. */
   onRequest = false,
   /**
-   * Piece pary / BOM assembled — bez Wyklucz / Na prośbę (nie idą na ZD;
-   * flaga żyje na packu).
+   * Piece pary / BOM assembled — bez Wyklucz (nie idą na ZD; flaga żyje na packu).
    */
   hideHardExclude = false,
-  /** kit_only composition — bez „Na prośbę” (nie obchodzić purchaseBlocked). */
+  /**
+   * BOM assembled / kit_only composition — bez „Na prośbę” (nie obchodzić purchaseBlocked).
+   * Piece pary ma „Na prośbę” — serwer zapisuje je na packu.
+   */
   hideOnRequest = false,
   packagingHint,
   minStockHint,
@@ -83,7 +85,6 @@ export function ZdEstimateRowActions({
     !dbExcluded &&
     !onRequest &&
     !nameAutoExcluded &&
-    !hideHardExclude &&
     !hideOnRequest &&
     Boolean(onMarkOnRequest);
   // Clear dozwolony także przy purchaseBlocked — qty i tak blokuje bomBlocksZdOrder;
