@@ -9,7 +9,11 @@ import {
   upsertZdSupplierOrderPolicy,
   type ZdSupplierOrderPolicyRow,
 } from "@/lib/data/zd-supplier-order-policy";
-import { ZD_SUPPLIER_ORDER_POLICY_CLASSIC, type ZdDemandStrategy } from "@/lib/orders/zd-demand-policy";
+import {
+  ZD_SUPPLIER_ORDER_POLICY_CLASSIC,
+  type ZdClassicCompare,
+  type ZdDemandStrategy,
+} from "@/lib/orders/zd-demand-policy";
 import { buildZdOrderList } from "@/lib/orders/zd-order-list";
 import {
   decideZdAutoProposal,
@@ -1339,12 +1343,6 @@ export async function actionFetchZdEstimateProductHistory(input: {
   return { sales, purchases };
 }
 
-export type ZdClassicCompare = {
-  byTwId: Record<number, { units: number; pieces: number }>;
-  lineCount: number;
-  pieces: number;
-};
-
 /** Lista „Do ZD” strategii „jak dotąd” (te same reguły co nocny przebieg) do porównania w Kreatorze. */
 function summarizeClassicCompare(e: Extract<Awaited<ReturnType<typeof runZdOrderEngine>>, { ok: true }>): ZdClassicCompare {
   const list = buildZdOrderList({
@@ -1681,6 +1679,7 @@ export async function actionRunZdEstimateManual(
         ? runZdOrderEngine({ ...engineInput, orderPolicy: ZD_SUPPLIER_ORDER_POLICY_CLASSIC }).catch(() => null)
         : Promise.resolve(null),
     ]);
+    const classicCompare = classicEngine?.ok ? summarizeClassicCompare(classicEngine) : null;
     if (!engine.ok) {
       failProgress(engine.feedback.message);
       return {
@@ -1785,6 +1784,8 @@ export async function actionRunZdEstimateManual(
         salesSmoothingEnabled: input.salesSmoothing === true,
         salesSmoothing: engine.salesSmoothing,
         unitPriceByTwId,
+        leadDays,
+        classicCompare,
         seed: input.uiSessionSeed ?? null,
       });
       const persisted = await persistZdEstimateUiSessionSnapshot({
@@ -1824,7 +1825,7 @@ export async function actionRunZdEstimateManual(
       leadDays,
       orderPolicy: engine.orderPolicy,
       demandFloorCount: engine.demandFloorCount,
-      classicCompare: classicEngine?.ok ? summarizeClassicCompare(classicEngine) : null,
+      classicCompare,
       salesSmoothingEnabled: input.salesSmoothing === true,
       salesSmoothing: engine.salesSmoothing,
       unitPriceByTwId,

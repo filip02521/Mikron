@@ -68,3 +68,10 @@ export function applyZdDemandFloorToLine<
     demandFloor: { sales90: input.sales90, rateBefore, rateAfter },
   };
 }
+
+/** Strategia testowa: lista „Do ZD” policzona „jak dotąd” na tym samym zakresie (porównanie w Kreatorze). */
+export type ZdClassicCompare = {
+  byTwId: Record<number, { units: number; pieces: number }>;
+  lineCount: number;
+  pieces: number;
+};

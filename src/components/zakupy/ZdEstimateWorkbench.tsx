@@ -60,7 +60,7 @@ import {
   ZdSupplierOrderPolicyDialog,
 } from "@/components/zakupy/ZdSupplierOrderPolicyDialog";
 import type { ZdSupplierOrderPolicyRow } from "@/lib/data/zd-supplier-order-policy";
-import type { ZdClassicCompare } from "@/app/actions/zd-estimate";
+import type { ZdClassicCompare } from "@/lib/orders/zd-demand-policy";
 import { ZdAutoProposalBanner } from "@/components/zakupy/ZdAutoProposalBanner";
 import {
   policyForBoostPreset,
@@ -2771,6 +2771,8 @@ export function ZdEstimateWorkbench({
         salesSmoothingEnabled: salesSmoothing,
         salesSmoothing: policzScopeInfo?.salesSmoothing ?? null,
         unitPriceByTwId,
+        leadDays: policzScopeInfo?.leadDays ?? null,
+        classicCompare: policzScopeInfo?.classicCompare ?? null,
         boostNeedsRecount,
         scopeMode,
         selectedGroup,
@@ -3022,15 +3024,18 @@ export function ZdEstimateWorkbench({
       setLines(payload.lines);
       setHistoryByTwId(historyMapFromEntries(payload.historyByTwId));
       setHistoryFetchFailed(Boolean(payload.historyFetchFailed));
-      // Z sesji: tylko horyzont (zakresy / podpowiedzi ZD wrócą przy kolejnym Policz).
+      // Z sesji: horyzont, czas dostawy, wygładzenie i porównanie strategii
+      // (zakresy / podpowiedzi ZD wrócą przy kolejnym Policz).
       setPoliczScopeInfo(
-        payload.horizon || payload.salesSmoothing
+        payload.horizon || payload.salesSmoothing || payload.classicCompare || payload.leadDays != null
           ? {
               scopesIncluded: [],
               assignedElsewhere: [],
               otherSupplierHintByTwId: {},
               horizon: payload.horizon ?? null,
+              leadDays: payload.leadDays ?? null,
               salesSmoothing: payload.salesSmoothingEnabled ? payload.salesSmoothing ?? null : null,
+              classicCompare: payload.classicCompare ?? null,
             }
           : null
       );
