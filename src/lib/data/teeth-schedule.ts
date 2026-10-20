@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
+import { query } from "@/lib/db/pool";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import { addWeeks } from "date-fns";
 import {
@@ -583,19 +584,17 @@ export async function fetchTeethSupplierIds(): Promise<Set<string>> {
 
   const [schedResult, ordersResult] = await Promise.all([
     supabase.from("teeth_supplier_schedules").select("supplier_id"),
-    supabase
-      .from("individual_orders")
-      .select("supplier_id")
-      .eq("is_teeth", true)
-      .not("supplier_id", "is", null),
+    // DISTINCT w bazie — zamówień zębowych przybywa z każdym tygodniem.
+    query<{ supplier_id: string }>(
+      `SELECT DISTINCT supplier_id FROM individual_orders
+        WHERE is_teeth = true AND supplier_id IS NOT NULL`
+    ),
   ]);
 
   const ids = new Set<string>();
   for (const row of schedResult.data ?? []) {
     if (row.supplier_id) ids.add(String(row.supplier_id));
   }
-  for (const row of ordersResult.data ?? []) {
-    if (row.supplier_id) ids.add(String(row.supplier_id));
-  }
+  for (const row of ordersResult.rows) ids.add(String(row.supplier_id));
   return ids;
 }

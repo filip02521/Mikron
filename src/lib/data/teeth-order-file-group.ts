@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@/lib/db/admin";
+import { fetchAllRows } from "@/lib/data/fetch-all-rows";
 import { TEETH_QUEUE_PENDING_STATUSES } from "@/lib/data/teeth-queue-shared";
 import {
   orderHasTeethOrderFile,
@@ -226,18 +227,22 @@ export async function fetchTeethOrderFileMetaBySupplierGroups(
   };
 
   if (named.length > 0) {
-    const { data, error } = await supabase
-      .from("individual_orders")
-      .select("supplier_id, teeth_order_file_path, teeth_order_file_name")
-      .eq("is_teeth", true)
-      .in("supplier_id", named)
-      .not("teeth_order_file_path", "is", null);
-    if (error) throw new Error(error.message);
-    ingest((data ?? []) as Array<{
-      supplier_id: string | null;
-      teeth_order_file_path: string | null;
-      teeth_order_file_name: string | null;
-    }>);
+    // Wszystkie zamówienia zębowe z plikiem — rośnie z historią, więc stronami.
+    ingest(
+      await fetchAllRows<{
+        supplier_id: string | null;
+        teeth_order_file_path: string | null;
+        teeth_order_file_name: string | null;
+      }>(() =>
+        supabase
+          .from("individual_orders")
+          .select("supplier_id, teeth_order_file_path, teeth_order_file_name")
+          .eq("is_teeth", true)
+          .in("supplier_id", named)
+          .not("teeth_order_file_path", "is", null)
+          .order("id", { ascending: true })
+      )
+    );
   }
 
   if (hasNull) {

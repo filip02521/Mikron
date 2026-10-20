@@ -22,6 +22,7 @@ import {
   ZD_ETA_EXTENDED_DOCS_PER_ORDER,
   ZD_ETA_INDEX_LIMIT_EXTENDED,
   ZD_ETA_MAX_LIVE_SEARCH_PLANS,
+  loadExtraKhIdsBySupplierIdFromZdIndex,
 } from "@/lib/subiekt/zd-eta-sync";
 import {
   placementIsOlderThanRollingWindow,
@@ -96,29 +97,6 @@ async function fetchOrderPool(salesPersonId?: string): Promise<IndividualOrder[]
   const res = await query;
   if (res.error) throw new Error(res.error.message);
   return normalizeIndividualOrders(res.data ?? []);
-}
-
-async function loadExtraKhIdsBySupplierIdFromZdIndex(): Promise<Map<string, number[]>> {
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("subiekt_zd_index")
-    .select("supplier_id, subiekt_kh_id")
-    .not("supplier_id", "is", null);
-  if (error) throw new Error(error.message);
-
-  const map = new Map<string, Set<number>>();
-  for (const row of data ?? []) {
-    const supplierId = (row as { supplier_id: string | null }).supplier_id;
-    const kh = Math.trunc(Number((row as { subiekt_kh_id: number }).subiekt_kh_id));
-    if (!supplierId || !Number.isFinite(kh) || kh <= 0) continue;
-    const set = map.get(supplierId) ?? new Set<number>();
-    set.add(kh);
-    map.set(supplierId, set);
-  }
-
-  const out = new Map<string, number[]>();
-  for (const [supplierId, ids] of map) out.set(supplierId, [...ids]);
-  return out;
 }
 
 /** Jedna prośba — index (dok_id) → live search → browse (fallback). */

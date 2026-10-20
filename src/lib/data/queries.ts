@@ -1,4 +1,6 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
+import { query } from "@/lib/db/pool";
+import { fetchAllRows, fetchAllRowsResult } from "@/lib/data/fetch-all-rows";
 import { warsawMidnightIso } from "@/lib/time/warsaw";
 import { normalizeIndividualOrders } from "@/lib/data/normalize-order";
 import { runRepairIncompleteIndividualOrders } from "@/lib/services/repair-incomplete-orders-runner";
@@ -47,16 +49,13 @@ export async function fetchSupplierIdsForSalesPerson(
   salesPersonId: string
 ): Promise<Set<string>> {
   if (!hasSupabaseConfig()) return new Set();
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("individual_orders")
-    .select("supplier_id")
-    .eq("sales_person_id", salesPersonId)
-    .not("supplier_id", "is", null);
-  if (error) throw new Error(error.message);
-  return new Set(
-    (data ?? []).map((r) => r.supplier_id).filter((id): id is string => Boolean(id))
+  // DISTINCT w bazie — wiersz na prośbę rośnie z historią handlowca.
+  const { rows } = await query<{ supplier_id: string }>(
+    `SELECT DISTINCT supplier_id FROM individual_orders
+      WHERE sales_person_id = $1 AND supplier_id IS NOT NULL`,
+    [salesPersonId]
   );
+  return new Set(rows.map((r) => r.supplier_id));
 }
 
 export type FetchSuppliersOptions = {
@@ -281,6 +280,9 @@ export async function countVerificationOrders(): Promise<number> {
   return count ?? 0;
 }
 
+/** /historia pokazuje najnowsze pozycje z okna retencji — świadomy limit, nie całość. */
+const INDIVIDUAL_HISTORY_LIMIT = 1000;
+
 export async function fetchIndividualHistory(options?: {
   /**
    * Domyślnie true — historia toru standardowego (/historia).
@@ -296,7 +298,8 @@ export async function fetchIndividualHistory(options?: {
     .neq("request_kind", "informacja")
     .neq("status", "Weryfikacja")
     .gte("action_at", historyRetentionCutoffIso())
-    .order("action_at", { ascending: false });
+    .order("action_at", { ascending: false })
+    .limit(INDIVIDUAL_HISTORY_LIMIT);
   if (options?.excludeTeeth !== false) {
     q = q.neq("is_teeth", true);
   }
@@ -357,13 +360,17 @@ export async function countDeliveryQueue(): Promise<number> {
       .in("status", ["Zamowione", "Czesciowo_zrealizowane"])
       .is("sales_cancelled_at", null)
       .not("supplier_id", "is", null),
-    supabase
-      .from("individual_orders")
-      .select(DELIVERY_QUEUE_CANCELLED_COUNT_SELECT)
-      .eq("request_kind", "zamowienie")
-      .not("sales_cancelled_at", "is", null)
-      .not("procurement_cancel_disposition", "is", null)
-      .order("sales_cancelled_at", { ascending: false }),
+    // Anulowane bez granicy czasu — rośnie z historią, więc całość stronami.
+    fetchAllRowsResult(() =>
+      supabase
+        .from("individual_orders")
+        .select(DELIVERY_QUEUE_CANCELLED_COUNT_SELECT)
+        .eq("request_kind", "zamowienie")
+        .not("sales_cancelled_at", "is", null)
+        .not("procurement_cancel_disposition", "is", null)
+        .order("sales_cancelled_at", { ascending: false })
+        .order("id", { ascending: true })
+    ),
   ]);
 
   if (activeRes.error) throw new Error(activeRes.error.message);
@@ -400,36 +407,26 @@ export async function countPickupReadyForSales(): Promise<number> {
   ).length;
 }
 
-const SUPABASE_PAGE = 1000;
-
 /** Pozycje fizycznie na magazynie — inwentaryzacja regału (odbiór / informacja). */
 export async function fetchWarehouseInventory(): Promise<IndividualOrder[]> {
   if (!hasSupabaseConfig()) return [];
   const supabase = createAdminClient();
-  const orders: IndividualOrder[] = [];
-  let offset = 0;
-
-  while (true) {
-    const { data, error } = await supabase
+  const { data, error } = await fetchAllRowsResult<IndividualOrder>(() =>
+    supabase
       .from("individual_orders")
       .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
       .in("status", ["Zrealizowane", "Czesciowo_zrealizowane"])
       .is("sales_acknowledged_at", null)
       .is("sales_cancelled_at", null)
       .order("action_at", { ascending: true })
-      .range(offset, offset + SUPABASE_PAGE - 1);
-    if (error) {
-      if (error.message?.includes("sales_acknowledged_at")) return [];
-      throw new Error(error.message);
-    }
-    const batch = data ?? [];
-    const normalized = normalizeIndividualOrders(batch).filter(isWarehouseInventoryOrder);
-    orders.push(...buildWarehouseInventoryRows(normalized).map((r) => r.order));
-    if (batch.length < SUPABASE_PAGE) break;
-    offset += SUPABASE_PAGE;
+      .order("id", { ascending: true })
+  );
+  if (error) {
+    if (error.message?.includes("sales_acknowledged_at")) return [];
+    throw new Error(error.message);
   }
-
-  return orders;
+  const normalized = normalizeIndividualOrders(data ?? []).filter(isWarehouseInventoryOrder);
+  return buildWarehouseInventoryRows(normalized).map((r) => r.order);
 }
 
 /** Kolejka dostaw: zamówienia dla handlowca do przyjęcia towaru — bez informacji. */
@@ -454,13 +451,16 @@ export async function fetchDeliveryQueue(options?: {
       .is("sales_cancelled_at", null)
       .not("supplier_id", "is", null)
       .order("action_at", { ascending: true }),
-    supabase
-      .from("individual_orders")
-      .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
-      .eq("request_kind", "zamowienie")
-      .not("sales_cancelled_at", "is", null)
-      .is("warehouse_cancel_fulfilled_at", null)
-      .order("sales_cancelled_at", { ascending: false }),
+    fetchAllRowsResult<IndividualOrder>(() =>
+      supabase
+        .from("individual_orders")
+        .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
+        .eq("request_kind", "zamowienie")
+        .not("sales_cancelled_at", "is", null)
+        .is("warehouse_cancel_fulfilled_at", null)
+        .order("sales_cancelled_at", { ascending: false })
+        .order("id", { ascending: true })
+    ),
   ]);
 
   if (activeRes.error) throw new Error(activeRes.error.message);
@@ -473,14 +473,15 @@ export async function fetchDeliveryQueue(options?: {
       );
     }
     if (cancelledRes.error.message?.includes("warehouse_cancel_fulfilled_at")) {
-      const fallback = await supabase
-        .from("individual_orders")
-        .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
-        .eq("request_kind", "zamowienie")
-        .not("sales_cancelled_at", "is", null)
-        .order("sales_cancelled_at", { ascending: false });
-      if (fallback.error) throw new Error(fallback.error.message);
-      cancelledRows = fallback.data ?? [];
+      cancelledRows = await fetchAllRows<IndividualOrder>(() =>
+        supabase
+          .from("individual_orders")
+          .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
+          .eq("request_kind", "zamowienie")
+          .not("sales_cancelled_at", "is", null)
+          .order("sales_cancelled_at", { ascending: false })
+          .order("id", { ascending: true })
+      );
     } else {
       throw new Error(cancelledRes.error.message);
     }
