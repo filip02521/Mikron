@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/data/fetch-all-rows";
 
 export type ZdEstimateMinStockRow = {
   subiektTwId: number;
@@ -51,12 +52,14 @@ export async function fetchZdEstimateMinStock(): Promise<
   ZdEstimateMinStockRow[]
 > {
   const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("zd_estimate_min_stock")
-    .select(SELECT_COLS)
-    .order("tw_symbol", { ascending: true, nullsFirst: false });
-  if (error) throw new Error(error.message);
-  return (data ?? []).map((row) => mapZdEstimateMinStockRow(row as DbRow));
+  const rows = await fetchAllRows<DbRow>(() =>
+    supabase
+      .from("zd_estimate_min_stock")
+      .select(SELECT_COLS)
+      .order("tw_symbol", { ascending: true, nullsFirst: false })
+      .order("subiekt_tw_id", { ascending: true })
+  );
+  return rows.map(mapZdEstimateMinStockRow);
 }
 
 export async function fetchZdEstimateMinStockOne(
