@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/data/fetch-all-rows";
 import {
   assertOrderMultiple,
   assertPackagingUnits,
@@ -87,12 +88,14 @@ export function mapZdEstimatePackagingRow(row: DbRow): ZdEstimatePackagingRow {
 
 export async function fetchZdEstimatePackaging(): Promise<ZdEstimatePackagingRow[]> {
   const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("zd_estimate_packaging")
-    .select(SELECT_COLS)
-    .order("tw_symbol", { ascending: true, nullsFirst: false });
-  if (error) throw new Error(error.message);
-  return (data ?? []).map((row) => mapZdEstimatePackagingRow(row as DbRow));
+  const rows = await fetchAllRows<DbRow>(() =>
+    supabase
+      .from("zd_estimate_packaging")
+      .select(SELECT_COLS)
+      .order("tw_symbol", { ascending: true, nullsFirst: false })
+      .order("subiekt_tw_id", { ascending: true })
+  );
+  return rows.map(mapZdEstimatePackagingRow);
 }
 
 export async function fetchZdEstimatePackagingOne(
