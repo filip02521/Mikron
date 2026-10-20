@@ -36,7 +36,7 @@ function GroupChip({
       className={cn(
         "inline-flex min-h-8 items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition",
         active
-          ? "border-slate-800 bg-slate-900 text-white"
+          ? "border-indigo-200 bg-indigo-50 text-indigo-900"
           : "border-slate-200/90 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
       )}
     >
@@ -44,7 +44,7 @@ function GroupChip({
       <span
         className={cn(
           "rounded px-1 py-px text-[10px] font-semibold tabular-nums",
-          active ? "bg-white/15 text-white" : "bg-slate-100 text-slate-500"
+          active ? "bg-white text-indigo-700" : "bg-slate-100 text-slate-500"
         )}
       >
         {count}

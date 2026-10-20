@@ -56,7 +56,7 @@ export const boardQuestionsFormEmbeddedHeaderClass = cn(
   "flex w-full items-center gap-2.5 rounded-lg border border-indigo-200/90",
   "bg-indigo-50/90 px-3 py-2.5 text-left shadow-sm",
   "transition hover:border-indigo-300 hover:bg-indigo-50 hover:shadow",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/25"
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
 );
 
 export const boardQuestionsFormEmbeddedHeaderExpandedClass =

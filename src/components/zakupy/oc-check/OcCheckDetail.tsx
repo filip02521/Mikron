@@ -111,7 +111,7 @@ export function OcCheckDetail({ check, backHref }: { check: OcCheck; backHref: s
             </h4>
             <div className="overflow-x-auto rounded-md border border-slate-200">
               <table className="w-full min-w-[30rem] text-sm">
-                <thead className="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-[0.04em] text-slate-500">
+                <thead className="bg-slate-50 text-left text-[11px] font-semibold text-slate-500">
                   <tr>
                     <th className="px-3 py-2">Symbol</th>
                     <th className="px-3 py-2">Nazwa</th>

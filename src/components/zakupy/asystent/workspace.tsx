@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { IconChevronLeft } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 
-const focusRingClass = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45";
+const focusRingClass = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600";
 
 /**
  * Panel Asystenta: od lg lista i treść obok siebie na całej wysokości ekranu, widoki jako pasek nad nimi;
@@ -27,7 +27,7 @@ export const listColumnClass = "min-h-0 border-slate-200 lg:overflow-y-auto lg:b
 export const railTabsClass =
   "flex min-w-0 gap-1 overflow-x-auto p-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden 2xl:flex-col 2xl:overflow-visible";
 
-export const railGroupLabelClass ="px-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500";
+export const railGroupLabelClass ="px-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500";
 
 /** Pozycja szyny: aktywna jak segment (biała, lekki cień) — ten sam język co przełączniki w aplikacji. */
 export function railItemClass(active: boolean): string {
@@ -61,7 +61,7 @@ export function RailCount({ value, tone = "neutral" }: { value: number; tone?: "
 /** Wiersz listy: zaznaczenie = Petrol Mist + 3 px pasek z lewej (jak wybrany wiersz tabeli). */
 export function listRowClass(selected: boolean): string {
   return cn(
-    "block w-full px-4 py-3 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500/45",
+    "block w-full px-4 py-3 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-600",
     selected ? "bg-indigo-50/70 shadow-[inset_3px_0_0_var(--primary)]" : "hover:bg-slate-50 active:bg-slate-100",
   );
 }

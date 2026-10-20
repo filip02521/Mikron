@@ -144,7 +144,7 @@ export default async function AsystentPage({
                   aria-selected={active}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "inline-flex min-h-9 shrink-0 items-center gap-2 rounded-[5px] px-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45",
+                    "inline-flex min-h-9 shrink-0 items-center gap-2 rounded-[5px] px-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
                     active
                       ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/70"
                       : "text-slate-600 hover:bg-white/70 hover:text-slate-900",
@@ -304,7 +304,7 @@ export default async function AsystentPage({
                         rel="noopener noreferrer"
                         className={cn(
                           buttonPrimaryClass,
-                          "inline-flex min-h-10 items-center rounded-md px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 focus-visible:ring-offset-1",
+                          "inline-flex min-h-10 items-center rounded-md px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-1",
                         )}
                       >
                         Otwórz raport
