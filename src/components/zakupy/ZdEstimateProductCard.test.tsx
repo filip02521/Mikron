@@ -1,8 +1,11 @@
 /**
  * @vitest-environment happy-dom
  */
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+
+const historyMock = vi.hoisted(() => vi.fn());
+vi.mock("@/app/actions/zd-estimate", () => ({ actionFetchZdEstimateProductZdHistory: historyMock }));
 import { ZdEstimateProductCard } from "./ZdEstimateProductCard";
 import { computeZdPackOrderQty } from "@/lib/orders/zd-estimate-packaging";
 import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
@@ -43,6 +46,7 @@ function renderCard(extra: Partial<Parameters<typeof ZdEstimateProductCard>[0]> 
 
 describe("ZdEstimateProductCard", () => {
   afterEach(() => cleanup());
+  beforeEach(() => historyMock.mockResolvedValue({ ok: true, rows: [] }));
 
   it("zdanie decyzji z paletami, zapas vs dostawa i kroki „dlaczego tyle”", () => {
     renderCard();
@@ -69,5 +73,23 @@ describe("ZdEstimateProductCard", () => {
   it("wykluczony towar: decyzja mówi to wprost", () => {
     renderCard({ status: { excluded: true, onRequest: false } });
     expect(screen.getByText("Wykluczony z ZD")).toBeTruthy();
+  });
+
+  it("pokazuje stan i ruch oraz nasze ZD z historii", async () => {
+    historyMock.mockResolvedValueOnce({
+      ok: true,
+      rows: [{ linkedAt: "2026-09-01T10:00:00.000Z", qty: 180, dokNrPelny: "ZD 41/2026" }],
+    });
+    renderCard();
+    expect(screen.getByText("W drodze (ZD)")).toBeTruthy();
+    expect(await screen.findByText("ZD 41/2026")).toBeTruthy();
+    expect(screen.getByText("180 szt")).toBeTruthy();
+  });
+
+  it("błąd historii nie psuje karty", async () => {
+    historyMock.mockResolvedValueOnce({ ok: false, message: "brak hosta" });
+    renderCard();
+    expect(await screen.findByText(/Historia ZD niedostępna: brak hosta/)).toBeTruthy();
+    expect(screen.getByText(/Brak do celu/)).toBeTruthy();
   });
 });

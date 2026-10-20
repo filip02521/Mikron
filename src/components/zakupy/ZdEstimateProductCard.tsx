@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { actionFetchZdEstimateProductZdHistory } from "@/app/actions/zd-estimate";
 import { IconChevronLeft, IconChevronRight, IconX } from "@/components/icons/StrokeIcons";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { ZdSalesProfileCardContent } from "@/components/zakupy/ZdSalesSparkline";
+import { ZdSalesProfileCardContent, type ZdSalesChartOrderMark } from "@/components/zakupy/ZdSalesSparkline";
 import { cn } from "@/lib/cn";
 import type { ZdEstimateExtrasPolicy } from "@/lib/orders/zd-estimate-extras-policy";
 import { explainZdOrderQty } from "@/lib/orders/zd-estimate-explain";
@@ -21,6 +22,48 @@ import { useAnimatedClose } from "@/lib/ui/use-animated-close";
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+type ZdHistoryState =
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | { status: "ok"; rows: Array<{ linkedAt: string; qty: number; dokNrPelny: string; daysAgo: number }> };
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const HISTORY_LIST_MAX = 6;
+
+function formatDatePl(iso: string): string {
+  return new Date(iso).toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw" });
+}
+
+/** Nasze ZD z Kreatora dla towaru — dociągane przy otwarciu karty (i przy ←/→). */
+function useZdHistory(twId: number): ZdHistoryState {
+  const [state, setState] = useState<ZdHistoryState & { twId: number }>({ status: "loading", twId });
+  useEffect(() => {
+    let cancelled = false;
+    actionFetchZdEstimateProductZdHistory({ twId })
+      .then((r) => {
+        if (cancelled) return;
+        const now = Date.now();
+        setState(
+          r.ok
+            ? {
+                status: "ok",
+                rows: r.rows.map((row) => ({ ...row, daysAgo: Math.floor((now - Date.parse(row.linkedAt)) / DAY_MS) })),
+                twId,
+              }
+            : { status: "error", message: r.message, twId }
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setState({ status: "error", message: "Nie udało się wczytać historii ZD.", twId });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [twId]);
+  // Po ←/→ do czasu odpowiedzi pokazujemy „wczytuję”, nie ZD poprzedniego towaru.
+  return state.twId === twId ? state : { status: "loading" };
+}
 
 function isTypingTarget(el: EventTarget | null): boolean {
   return el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
@@ -57,7 +100,6 @@ export function ZdEstimateProductCard({
   onClose,
   actions,
   canMutate,
-  children,
 }: {
   line: ManualZdEstimateLine;
   qty: ZdPackOrderQty;
@@ -77,10 +119,17 @@ export function ZdEstimateProductCard({
   onClose: () => void;
   actions: ZdEstimateProductCardActions;
   canMutate: boolean;
-  /** Bloki dociągane osobno (historia ZD, w drodze) — plaster 4. */
-  children?: ReactNode;
 }) {
   const titleId = useId();
+  const history = useZdHistory(line.tw_Id);
+  const orderMarks: ZdSalesChartOrderMark[] =
+    history.status === "ok"
+      ? history.rows.map((r) => ({
+          daysAgo: r.daysAgo,
+          qty: r.qty,
+          label: `${formatDatePl(r.linkedAt)} · ${r.dokNrPelny || "ZD"} · ${formatQty(r.qty)} szt`,
+        }))
+      : [];
   useBodyScrollLock(true);
   const { panelRef, backdropRef, requestClose } = useAnimatedClose(onClose);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -256,12 +305,60 @@ export function ZdEstimateProductCard({
                 Sprzedaż
               </h3>
               <div className="mt-1.5 text-xs leading-relaxed text-slate-800">
-                <ZdSalesProfileCardContent profile={line.salesProfile} />
+                <ZdSalesProfileCardContent profile={line.salesProfile} orders={orderMarks} />
               </div>
             </section>
           ) : null}
 
-          {children}
+          <section aria-labelledby={`${titleId}-stock`}>
+            <h3 id={`${titleId}-stock`} className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+              Stan i ruch
+            </h3>
+            <dl className="mt-1.5 grid grid-cols-3 gap-px overflow-hidden rounded-md border border-slate-200 bg-slate-200 text-sm">
+              {[
+                ["Stan", line.tw_Stan],
+                ["Zarezerwowane", line.tw_StanRez],
+                ["Dostępne", line.dostepne],
+                ["W drodze (ZD)", openZdPieces],
+                ["ZK bez rezerwacji", line.otwarteZkBezRez],
+                ["Prośby", extraPieces],
+              ].map(([label, value]) => (
+                <div key={label as string} className="bg-white px-2.5 py-1.5">
+                  <dt className="text-xs text-slate-600">{label}</dt>
+                  <dd className="tabular-nums font-medium text-slate-900">{formatQty(Number(value) || 0)} szt</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+
+          <section aria-labelledby={`${titleId}-zd`}>
+            <h3 id={`${titleId}-zd`} className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+              Nasze ZD (12 mies.)
+            </h3>
+            {history.status === "loading" ? (
+              <p className="mt-1.5 text-sm text-slate-500">Wczytuję…</p>
+            ) : history.status === "error" ? (
+              <p className="mt-1.5 text-sm text-amber-800">Historia ZD niedostępna: {history.message}</p>
+            ) : history.rows.length === 0 ? (
+              <p className="mt-1.5 text-sm text-slate-600">Brak ZD z Kreatora dla tego towaru w ostatnich 12 miesiącach.</p>
+            ) : (
+              <ul className="mt-1.5 divide-y divide-slate-100 rounded-md border border-slate-200">
+                {history.rows.slice(0, HISTORY_LIST_MAX).map((r) => (
+                  <li key={`${r.linkedAt}-${r.dokNrPelny}`} className="flex items-baseline justify-between gap-3 px-3 py-1.5 text-sm">
+                    <span className="text-slate-700">
+                      <span className="tabular-nums">{formatDatePl(r.linkedAt)}</span>
+                      {r.dokNrPelny ? <span className="ml-2 font-mono text-xs text-slate-500">{r.dokNrPelny}</span> : null}
+                    </span>
+                    <span className="shrink-0 tabular-nums font-medium text-slate-900">{formatQty(r.qty)} szt</span>
+                  </li>
+                ))}
+                {history.rows.length > HISTORY_LIST_MAX ? (
+                  <li className="px-3 py-1.5 text-xs text-slate-500">i {history.rows.length - HISTORY_LIST_MAX} starszych</li>
+                ) : null}
+              </ul>
+            )}
+          </section>
+
 
           <section aria-labelledby={`${titleId}-why`}>
             <h3 id={`${titleId}-why`} className="text-xs font-semibold uppercase tracking-wide text-slate-600">

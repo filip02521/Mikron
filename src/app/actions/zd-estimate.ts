@@ -153,6 +153,7 @@ import {
   fetchRecentZdEstimateOrderSnapshots,
   fetchZdEstimateOrderSnapshotLines,
   updateZdEstimateSnapshotEligibleForHistory,
+  fetchSnapshotLinesForTwId,
   upsertZdEstimateOrderSnapshot,
   type ZdEstimateOrderSnapshotRow,
   type ZdEstimateSnapshotScopeMode,
@@ -1226,6 +1227,29 @@ export async function actionFetchZdEstimateProductReservations(input: {
   } catch (e) {
     const feedback = feedbackFromException(e);
     return { ok: false, message: feedback.message, feedback };
+  }
+}
+
+/** Karta produktu: nasze ZD z Kreatora dla towaru z ostatnich 12 miesięcy (sztuki). */
+export async function actionFetchZdEstimateProductZdHistory(input: {
+  twId: number;
+}): Promise<
+  | { ok: true; rows: Array<{ linkedAt: string; qty: number; dokNrPelny: string }> }
+  | { ok: false; message: string }
+> {
+  await requireZdEstimateAdmin("read");
+  const twId = Math.trunc(Number(input.twId));
+  if (!Number.isFinite(twId) || twId <= 0) {
+    return { ok: false, message: "Nieprawidłowy identyfikator towaru." };
+  }
+  const orders = resolveSubiektOrdersConfig();
+  if (!orders.ok) return { ok: false, message: orders.message };
+  try {
+    const hostKind = requireZdEstimateSnapshotHostKind(orders.config.baseUrl);
+    const since = new Date(Date.now() - 360 * 24 * 60 * 60 * 1000).toISOString();
+    return { ok: true, rows: await fetchSnapshotLinesForTwId(twId, hostKind, since) };
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : "Nie udało się wczytać historii ZD." };
   }
 }
 
