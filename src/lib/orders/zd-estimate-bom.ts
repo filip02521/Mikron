@@ -183,16 +183,12 @@ export function bomRowHidesHardExclude(line: {
   return line.pair?.role === "piece" || isAssembledBomParent(line);
 }
 
-/**
- * UI: ukryj „Na prośbę” (assembled + purchaseBlocked). Clear legacy nadal OK.
- * Piece pary zostaje — serwer przepina flagę na pack (retargetTwIdToPackIfPiece),
- * a ukrycie po cichu pomijało piece przy zaznaczeniu zbiorczym.
- */
+/** UI: ukryj „Na prośbę” (hard + purchaseBlocked). Clear legacy nadal OK. */
 export function bomRowHidesOnRequest(line: {
   pair?: { role?: string } | null;
   bom?: ZdEstimateBomMeta | null;
 }): boolean {
-  return isAssembledBomParent(line) || isBomPurchaseBlockedWithoutExplode(line);
+  return bomRowHidesHardExclude(line) || isBomPurchaseBlockedWithoutExplode(line);
 }
 
 function bomAllocation(bom: ZdProductBomRef): BomDemandAllocation {
