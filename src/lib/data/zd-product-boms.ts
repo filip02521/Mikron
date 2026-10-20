@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/data/fetch-all-rows";
 import { fetchZdProductPairs } from "@/lib/data/zd-product-pairs";
 import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
 import {
@@ -113,19 +114,23 @@ function mapBom(
 
 export async function fetchZdProductBoms(): Promise<ZdProductBomRow[]> {
   const supabase = createAdminClient();
-  const { data: boms, error } = await supabase
-    .from("zd_product_boms")
-    .select(BOM_COLS)
-    .order("parent_symbol", { ascending: true, nullsFirst: false });
-  if (error) throw new Error(error.message);
-  if (!boms?.length) return [];
+  const boms = await fetchAllRows<BomDbRow>(() =>
+    supabase
+      .from("zd_product_boms")
+      .select(BOM_COLS)
+      .order("parent_symbol", { ascending: true, nullsFirst: false })
+      .order("id", { ascending: true })
+  );
+  if (!boms.length) return [];
 
   const ids = boms.map((b) => b.id);
-  const { data: comps, error: compErr } = await supabase
-    .from("zd_product_bom_components")
-    .select(COMP_COLS)
-    .in("bom_id", ids);
-  if (compErr) throw new Error(compErr.message);
+  const comps = await fetchAllRows<CompDbRow>(() =>
+    supabase
+      .from("zd_product_bom_components")
+      .select(COMP_COLS)
+      .in("bom_id", ids)
+      .order("id", { ascending: true })
+  );
 
   const byBom = new Map<string, ZdProductBomComponentRow[]>();
   for (const raw of comps ?? []) {

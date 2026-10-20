@@ -97,38 +97,38 @@ export function computeProsbaZkReservationDedupe(
 
   let extraOverlap = 0;
   let stockNeedRelief = 0;
+  // Dwa przebiegi: najpierw wszystkie własne ZK (reguła 1), potem inne ZK klienta (reguła 2).
+  // W jednym przebiegu prośba bez ZK zjadała rezerwację cudzego source_zk — wynik zależał od kolejności.
+  const left = contributions.map((c) => positiveQty(c.qty));
 
-  for (const c of contributions) {
-    let left = positiveQty(c.qty);
-    if (!(left > 0)) continue;
-    const kh = positiveInt(c.salesClientKhId);
+  contributions.forEach((c, i) => {
     const ownZk = String(c.sourceZkNumber ?? "").trim() || null;
-
-    // 1) Własny source_zk — ulga na stock need (nie ruszaj extra).
-    if (ownZk) {
-      for (const r of pool) {
-        if (!(left > 0)) break;
-        if (!(r.remaining > 0)) continue;
-        if (!isOwnSourceZkReservation(ownZk, r.zkNumber)) continue;
-        const take = Math.min(left, r.remaining);
-        r.remaining -= take;
-        left -= take;
-        stockNeedRelief += take;
-      }
-    }
-
-    // 2) Inne ZK tego samego kh — overlap na extra.
-    if (kh == null || !(left > 0)) continue;
+    if (!ownZk) return;
     for (const r of pool) {
-      if (!(left > 0)) break;
+      if (!(left[i]! > 0)) break;
+      if (!(r.remaining > 0)) continue;
+      if (!isOwnSourceZkReservation(ownZk, r.zkNumber)) continue;
+      const take = Math.min(left[i]!, r.remaining);
+      r.remaining -= take;
+      left[i] = left[i]! - take;
+      stockNeedRelief += take;
+    }
+  });
+
+  contributions.forEach((c, i) => {
+    const kh = positiveInt(c.salesClientKhId);
+    if (kh == null) return;
+    const ownZk = String(c.sourceZkNumber ?? "").trim() || null;
+    for (const r of pool) {
+      if (!(left[i]! > 0)) break;
       if (r.clientKhId !== kh || !(r.remaining > 0)) continue;
       if (ownZk && isOwnSourceZkReservation(ownZk, r.zkNumber)) continue;
-      const take = Math.min(left, r.remaining);
+      const take = Math.min(left[i]!, r.remaining);
       r.remaining -= take;
-      left -= take;
+      left[i] = left[i]! - take;
       extraOverlap += take;
     }
-  }
+  });
 
   return { extraOverlap, stockNeedRelief };
 }

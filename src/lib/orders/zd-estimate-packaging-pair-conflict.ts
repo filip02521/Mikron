@@ -1,4 +1,6 @@
 import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
+import { effectiveUnitsPerPackageForTwId } from "@/lib/orders/zd-estimate-pairs";
+import { indexZdProductPairs } from "@/lib/orders/zd-product-pair-units";
 import type { ZdEstimatePackagingRow } from "@/lib/data/zd-estimate-packaging";
 import {
   isPackagingPackagesMode,
@@ -72,4 +74,20 @@ export function formatZdPackagingPairConflictHint(
     return `${conflict.symbol}: tryb „dobicie w sztukach” koliduje z parą (paczka)`;
   }
   return `${conflict.symbol}: opakowanie ${conflict.packagingUnits} ≠ para ${conflict.pairUnitsPerPack}`;
+}
+
+/**
+ * Paczka z pary: N opakowania = N pary (inaczej Create ZD blokuje konflikt).
+ * Zapis opakowania na paczce z pary niesie tylko etykietę i wielokrotność (palety).
+ * Ta sama reguła co w kreatorze (effectiveUnitsPerPackageForTwId); poza parą — requestedUnits.
+ */
+export function packagingUnitsForPairPack<U extends number | null>(
+  twId: number,
+  requestedUnits: U,
+  pairIndex: ReturnType<typeof indexZdProductPairs>
+): number | U {
+  const hit = pairIndex.get(Math.trunc(twId));
+  return hit?.role === "pack"
+    ? (effectiveUnitsPerPackageForTwId(twId, pairIndex, null) ?? requestedUnits)
+    : requestedUnits;
 }

@@ -143,6 +143,7 @@ describe("buildStockWatchDashboard", () => {
       outOfStock: 1,
       emptyNoIncoming: 1,
       critical: 1,
+      criticalInTransit: 0,
       warning: 1,
       ok: 1,
       noSales: 0,
@@ -306,5 +307,40 @@ describe("buildStockWatchDashboard — tablica dostawców", () => {
     expect(small.proposal?.lineCount).toBe(1);
     const big = d.suppliers.find((s) => s.supplierId === "big")!;
     expect([big.outOfStock, big.emptyNoIncoming, big.urgentTotal]).toEqual([2, 0, 2]);
+  });
+});
+
+describe("≤ 48 h z towarem w drodze nie jest „do zamówienia dziś”", () => {
+  const board = (over: Partial<StockWatchItem>) =>
+    buildStockWatchDashboard(
+      [item({ subiektTwId: 95, supplierId: "z", supplierName: "Z", status: "critical", ...over })],
+      [order({ supplierId: "z", supplierName: "Z" })]
+    );
+
+  it("nic w drodze → Teraz", () => {
+    const d = board({ openZdQty: 0 });
+    expect(d.suppliers[0]?.priority).toBe("now");
+    expect(d.counts.critical).toBe(1);
+  });
+
+  it("ZD w drodze i zdąży → czeka na dostawę (nie znika z tablicy)", () => {
+    const d = board({ openZdQty: 500 });
+    expect(d.counts.critical).toBe(0);
+    expect(d.counts.criticalInTransit).toBe(1);
+    expect(d.counts.beforeDelivery).toBe(0);
+    expect(d.suppliers[0]?.priority).toBe("waiting");
+  });
+
+  it("ryzyko przed dostawą liczone szeroko dla sygnału panelu (także ≤ 48 h bez dostawy)", () => {
+    const d = board({ openZdQty: 0, deliveryRisk: "before_delivery" });
+    expect(d.suppliers[0]?.beforeDelivery).toBe(0);
+    expect(d.suppliers[0]?.atRiskBeforeDelivery).toBe(1);
+  });
+
+  it("ZD w drodze, ale nie zdąży → Dziś", () => {
+    const d = board({ openZdQty: 500, deliveryRisk: "before_delivery" });
+    expect(d.counts.critical).toBe(0);
+    expect(d.counts.beforeDelivery).toBe(1);
+    expect(d.suppliers[0]?.priority).toBe("today");
   });
 });

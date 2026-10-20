@@ -1,4 +1,5 @@
-import { parseDateOnly, toDateOnly } from "@/lib/orders/dates";
+import { parseDateOnly } from "@/lib/orders/dates";
+import { todayInWarsaw } from "@/lib/time/warsaw";
 import { parseSubiektDocDate } from "@/lib/subiekt/zk-document";
 import type { SubiektListParams } from "@/lib/subiekt/api";
 import type { SubiektDocument } from "@/lib/subiekt/types";
@@ -70,7 +71,8 @@ export function isActiveZdFulfillmentDeadline(
   if (!deadline?.trim()) return false;
   const parsed = parseDateOnly(deadline.trim());
   if (!parsed) return false;
-  const today = toDateOnly(at);
+  // „Dziś” w Warszawie, niezależnie od strefy procesu (CI i Vercel działają w UTC).
+  const today = todayInWarsaw(at);
   return parsed.getTime() >= today.getTime();
 }
 

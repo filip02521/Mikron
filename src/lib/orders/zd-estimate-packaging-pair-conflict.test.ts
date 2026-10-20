@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   collectZdPackagingPairConflicts,
   formatZdPackagingPairConflictHint,
+  packagingUnitsForPairPack,
 } from "./zd-estimate-packaging-pair-conflict";
 import type { ManualZdEstimateLine } from "./zd-estimate-manual";
+import { indexZdProductPairs } from "./zd-product-pair-units";
 
 function line(
   partial: Partial<ManualZdEstimateLine> & Pick<ManualZdEstimateLine, "tw_Id">
@@ -234,5 +236,18 @@ describe("formatZdPackagingPairConflictHint", () => {
         reason: "pieces_multiple_mode",
       })
     ).toContain("dobicie w sztukach");
+  });
+});
+
+describe("packagingUnitsForPairPack", () => {
+  const idx = indexZdProductPairs([{ packTwId: 10, pieceTwId: 20, unitsPerPack: 5 }]);
+  it("paczka z pary: N z pary (36 wpisane jako paleta nie robi konfliktu)", () => {
+    expect(packagingUnitsForPairPack(10, 36, idx)).toBe(5);
+    expect(packagingUnitsForPairPack(10, null, idx)).toBe(5);
+  });
+  it("sztuka z pary i towar spoza pary: N bez zmian", () => {
+    expect(packagingUnitsForPairPack(20, 36, idx)).toBe(36);
+    expect(packagingUnitsForPairPack(11, 36, idx)).toBe(36);
+    expect(packagingUnitsForPairPack(11, null, idx)).toBe(null);
   });
 });

@@ -6,6 +6,7 @@ import type {
 } from "@/lib/stock-watch/analysis";
 import type { ZdDeliveryRisk } from "@/lib/orders/zd-order-horizon";
 import { isZdNameAutoExcluded } from "@/lib/orders/zd-estimate-name-exclude";
+import { buildStockWatchDashboard } from "@/lib/stock-watch/dashboard";
 
 /** pg zwraca `numeric` jako string — normalizacja w jednym miejscu. */
 function num(value: unknown): number {
@@ -621,6 +622,10 @@ import type { StockWatchSupplierSignal } from "@/lib/stock-watch/signal";
 export async function listStockWatchSupplierSignals(): Promise<
   Record<string, StockWatchSupplierSignal>
 > {
+  // Pozycje tablicy czytane równolegle z agregatu listy „Do ZD”.
+  const itemsPromise = listStockWatchItems();
+  // Gdy agregat rzuci pierwszy, odrzucenie pozycji nie może zostać nieobsłużone.
+  itemsPromise.catch(() => undefined);
   const res = await query<{
     supplier_id: string;
     dni_zapasu: unknown;
@@ -632,8 +637,6 @@ export async function listStockWatchSupplierSignals(): Promise<
     line_count: unknown;
     order_value: unknown;
     unpriced_count: unknown;
-    critical: unknown;
-    before_delivery: unknown;
     urgent_symbol: string | null;
     urgent_name: string | null;
     urgent_cover: unknown;
@@ -651,11 +654,7 @@ export async function listStockWatchSupplierSignals(): Promise<
        SELECT supplier_id,
               count(*) FILTER (WHERE do_zd) AS line_count,
               coalesce(sum(order_value) FILTER (WHERE do_zd AND order_zd_units > 0), 0) AS order_value,
-              count(*) FILTER (WHERE do_zd AND order_zd_units > 0 AND order_value IS NULL) AS unpriced_count,
-              -- Jak lista pilnych w Brakach (link „N pilne” otwiera dokładnie te pozycje): standardowe,
-              -- niezależnie od in_order — przy niepełnej analizie (np. BOM) in_order bywa false.
-              count(*) FILTER (WHERE standard AND status IN ('out_of_stock', 'critical')) AS critical,
-              count(*) FILTER (WHERE standard AND delivery_risk = 'before_delivery') AS before_delivery
+              count(*) FILTER (WHERE do_zd AND order_zd_units > 0 AND order_value IS NULL) AS unpriced_count
          FROM lines
         GROUP BY supplier_id
      ),
@@ -667,20 +666,27 @@ export async function listStockWatchSupplierSignals(): Promise<
      )
      SELECT o.supplier_id, o.dni_zapasu, o.data_do, o.lead_days, o.next_order_date,
             o.next_order_days, o.computed_at,
-            a.line_count, a.order_value, a.unpriced_count, a.critical, a.before_delivery,
+            a.line_count, a.order_value, a.unpriced_count,
             u.tw_symbol AS urgent_symbol, u.tw_nazwa AS urgent_name, u.days_of_cover AS urgent_cover
        FROM stock_watch_supplier_orders o
        LEFT JOIN agg a ON a.supplier_id = o.supplier_id
        LEFT JOIN urgent u ON u.supplier_id = o.supplier_id`
   );
+  // „N pilne” / „przed dostawą” liczone tą samą funkcją co tablica Braków: filtr zębów i WYCOF,
+  // towar wspólny tylko u jednego dostawcy, towar w drodze nie jest pilny.
+  // Liczniki pilności zależą tylko od pozycji (propozycje Do ZD idą z SQL powyżej).
+  const board = buildStockWatchDashboard(await itemsPromise, []);
+  const boardById = new Map(board.suppliers.map((s) => [s.supplierId, s]));
   const out: Record<string, StockWatchSupplierSignal> = {};
   for (const row of res.rows) {
+    const boardRow = boardById.get(String(row.supplier_id));
     out[String(row.supplier_id)] = {
       lineCount: num(row.line_count),
       orderValue: Math.round(num(row.order_value) * 100) / 100,
       unpricedCount: num(row.unpriced_count),
-      criticalCount: num(row.critical),
-      beforeDeliveryCount: num(row.before_delivery),
+      criticalCount: boardRow ? boardRow.emptyNoIncoming + boardRow.critical : 0,
+      // Szeroko (także brak / ≤ 48 h), jak dotąd — panel dzienny pokazuje z tego „Do kolejnej dostawy”.
+      beforeDeliveryCount: boardRow?.atRiskBeforeDelivery ?? 0,
       mostUrgent:
         row.urgent_name != null
           ? { twSymbol: row.urgent_symbol, twNazwa: row.urgent_name, daysOfCover: numOrNull(row.urgent_cover) }

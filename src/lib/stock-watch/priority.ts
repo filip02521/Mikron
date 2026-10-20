@@ -26,8 +26,12 @@ export type StockWatchSupplierCounts = {
   emptyNoIncoming: number;
   /** Stan dostępny ≤ 0 (także z towarem w drodze). */
   outOfStock: number;
-  /** Starczy na ≤ 48 h. */
+  /** Starczy na ≤ 48 h i nic nie jedzie. */
   critical: number;
+  /** Starczy na ≤ 48 h, ale otwarte ZD zdąży — czeka na dostawę, nie do zamówienia. */
+  criticalInTransit: number;
+  /** Wszystkie towary, które skończą się przed dostawą dzisiejszego ZD (także brak / ≤ 48 h) — sygnał panelu dziennego. */
+  atRiskBeforeDelivery: number;
   /** Skończy się przed dostawą dzisiejszego ZD (poza brakiem i ≤ 48 h). */
   beforeDelivery: number;
   beforeNextDelivery: number;
@@ -44,7 +48,7 @@ export function stockWatchSupplierPriority(c: StockWatchSupplierCounts): StockWa
   if (c.beforeDelivery > 0) return "today";
   if (c.beforeNextDelivery > 0) return "soon";
   if (c.lineCount > 0) return "restock";
-  if (c.outOfStock > 0) return "waiting";
+  if (c.outOfStock > 0 || c.criticalInTransit > 0) return "waiting";
   if (c.dataWarnings > 0) return "attention";
   return null;
 }
@@ -62,6 +66,7 @@ export function compareStockWatchSupplierUrgency(
     b.beforeDelivery - a.beforeDelivery ||
     b.beforeNextDelivery - a.beforeNextDelivery ||
     b.outOfStock - a.outOfStock ||
+    b.criticalInTransit - a.criticalInTransit ||
     b.orderValue - a.orderValue
   );
 }

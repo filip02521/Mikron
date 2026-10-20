@@ -171,7 +171,7 @@ export async function upsertZdEstimatePackaging(input: {
   orderMultiple?: number | null;
   note?: string;
   createdBy?: string | null;
-}): Promise<ZdEstimatePackagingRow | null> {
+}, retriedAfterRace = false): Promise<ZdEstimatePackagingRow | null> {
   const subiektTwId = Math.trunc(input.subiektTwId);
   if (!Number.isFinite(subiektTwId) || subiektTwId <= 0) {
     throw new Error("Niepoprawne tw_Id produktu.");
@@ -185,8 +185,14 @@ export async function upsertZdEstimatePackaging(input: {
   const documentUnitMode = normalizePackagingDocumentUnitMode(
     input.documentUnitMode
   );
+  const existing = await fetchZdEstimatePackagingOne(subiektTwId);
+  // undefined = bez zmian (zbiorczy zapis), null = wyłącz palety.
+  const requestedOrderMultiple =
+    input.orderMultiple === undefined
+      ? (existing?.orderMultiple ?? null)
+      : input.orderMultiple;
   const orderCheck = assertOrderMultiple(
-    documentUnitMode === "pieces_multiple" ? null : input.orderMultiple
+    documentUnitMode === "pieces_multiple" ? null : requestedOrderMultiple
   );
   if (!orderCheck.ok) {
     throw new Error(orderCheck.message);
@@ -198,10 +204,11 @@ export async function upsertZdEstimatePackaging(input: {
   const twSymbol = input.twSymbol?.trim() || null;
   const grtId = input.grtId ?? null;
   const grtNazwa = input.grtNazwa?.trim() || null;
-  const packageLabel = (input.packageLabel ?? "op.").trim().slice(0, 24) || "op.";
+  const packageLabel =
+    (input.packageLabel ?? existing?.packageLabel ?? "op.").trim().slice(0, 24) ||
+    "op.";
   const now = new Date().toISOString();
 
-  const existing = await fetchZdEstimatePackagingOne(subiektTwId);
   if (existing) {
     return updateExistingPackaging({
       subiektTwId,
@@ -240,6 +247,10 @@ export async function upsertZdEstimatePackaging(input: {
 
   if (!error) {
     return mapZdEstimatePackagingRow(data as DbRow);
+  }
+  if (error.code === PG_UNIQUE_VIOLATION && !retriedAfterRace) {
+    // Wiersz powstał równolegle — przelicz „bez zmian” względem niego (jedna ponowna próba).
+    return upsertZdEstimatePackaging(input, true);
   }
   if (error.code === PG_UNIQUE_VIOLATION) {
     return updateExistingPackaging({

@@ -169,6 +169,12 @@ function SupplierDetail({
       text: `${polishPlural(row.outOfStock - row.emptyNoIncoming, "brak już jedzie", "braki już jadą", "braków już jedzie")} na otwartych ZD — Kreator je odlicza.`,
     });
   }
+  if (row.criticalInTransit > 0) {
+    notes.push({
+      tone: "muted",
+      text: `${polishPlural(row.criticalInTransit, "towar", "towary", "towarów")} na ≤ 48 h, ale dostawa z otwartych ZD zdąży.`,
+    });
+  }
   if (p && deliveryRisk) {
     notes.push({
       tone: p.beforeDeliveryCount > 0 ? "danger" : "warning",
@@ -289,8 +295,8 @@ function SupplierDetail({
         <p className="text-sm text-slate-600">
           {row.lineCount > 0
             ? `Nic pilnego — ${polishPozycjeLabel(row.lineCount)} do uzupełnienia zapasu w Kreatorze.`
-            : row.outOfStock > 0
-              ? "Nic do zamówienia — braki już jadą na otwartych ZD."
+            : row.outOfStock > 0 || row.criticalInTransit > 0
+              ? "Nic do zamówienia — towar już jedzie na otwartych ZD."
               : "Nic pilnego na liście towarów."}
         </p>
       )}
@@ -421,6 +427,7 @@ export function StockSupplierBoard({
                 r.emptyNoIncoming > 0 ? `${polishPlural(r.emptyNoIncoming, "pusty", "puste", "pustych")} bez dostawy` : null,
                 r.outOfStock > r.emptyNoIncoming ? `${polishPlural(r.outOfStock - r.emptyNoIncoming, "brak", "braki", "braków")} w drodze` : null,
                 r.critical > 0 ? `${r.critical} ≤ 48 h` : null,
+                r.criticalInTransit > 0 ? `${r.criticalInTransit} ≤ 48 h w drodze` : null,
                 r.beforeDelivery > 0 ? `${r.beforeDelivery} przed dostawą` : null,
                 r.beforeNextDelivery > 0 ? `${r.beforeNextDelivery} przed kolejną` : null,
               ].filter(Boolean);
@@ -578,7 +585,11 @@ export function StockSupplierBoard({
                         />
                       </td>
                       <td className="px-3 py-2.5 text-right align-middle">
-                        <Count value={r.critical} alarm />
+                        <Count
+                          value={r.critical}
+                          alarm
+                          sub={r.criticalInTransit > 0 ? `${r.criticalInTransit} jedzie` : null}
+                        />
                       </td>
                       <td className="px-3 py-2.5 text-right align-middle">
                         <Count

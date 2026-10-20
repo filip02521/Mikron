@@ -11,12 +11,14 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Field";
 import { ModalShell } from "@/components/ui/ModalShell";
+import { askConfirm } from "@/components/ui/ConfirmHost";
+import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { formatPlDate } from "@/lib/display-labels";
 import {
-  assertOrderMultiple,
   assertPackagingUnits,
+  parsePalletInput,
   ZD_PACKAGING_UNITS_MAX,
   ZD_PACKAGING_UNITS_MIN,
   type ZdPackagingDocumentUnitMode,
@@ -32,6 +34,7 @@ export function ZdEstimatePackagingModal({
   onPackagingChange,
   onError,
   packPairTwIds,
+  pairUnitsByPackTwId,
 }: {
   open: boolean;
   onClose: () => void;
@@ -40,6 +43,8 @@ export function ZdEstimatePackagingModal({
   onError: (message: string) => void;
   /** tw_Id paczek z pary — Mode B niedostępny. */
   packPairTwIds?: ReadonlySet<number> | null;
+  /** N z pary dla opakowań z pary — zapis i tak przyjmie N pary (serwer). */
+  pairUnitsByPackTwId?: ReadonlyMap<number, number> | null;
 }) {
   const searchId = useId();
   const searchRef = useRef<HTMLInputElement>(null);
@@ -47,8 +52,6 @@ export function ZdEstimatePackagingModal({
   const [query, setQuery] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draftUnits, setDraftUnits] = useState("");
-  const [draftOrderMultipleEnabled, setDraftOrderMultipleEnabled] =
-    useState(false);
   const [draftOrderMultiple, setDraftOrderMultiple] = useState("");
   const [draftLabel, setDraftLabel] = useState("op.");
   const [draftNote, setDraftNote] = useState("");
@@ -77,33 +80,18 @@ export function ZdEstimatePackagingModal({
   const draftUnitsCheck = assertPackagingUnits(draftUnits);
   const draftUnitsOk = draftUnitsCheck.ok;
   const showDraftUnitsError = draftUnits.trim() !== "" && !draftUnitsOk;
-  const draftOrderActive =
-    draftMode === "packages" && draftOrderMultipleEnabled;
-  const draftOrderCheck = assertOrderMultiple(
-    draftOrderActive ? draftOrderMultiple : null
-  );
-  const draftOrderValueOk =
-    !draftOrderActive ||
-    (draftOrderCheck.ok && draftOrderCheck.orderMultiple != null);
-  const showDraftOrderError =
-    draftOrderActive &&
-    (draftOrderMultiple.trim() === "" ||
-      !draftOrderCheck.ok ||
-      !draftOrderValueOk);
-  const draftOrderErrorMessage =
-    draftOrderActive && draftOrderMultiple.trim() === ""
-      ? ZD_ESTIMATE_UI.packagingOrderMultipleRequiredError
-      : !draftOrderCheck.ok
-        ? draftOrderCheck.message
-        : draftOrderActive && draftOrderCheck.orderMultiple == null
-          ? ZD_ESTIMATE_UI.packagingOrderMultipleRequiredError
-          : null;
+  // Puste pole palet = bez palet (jak w oknie wiersza); tryb sztuk — palet brak.
+  const palletDraftFor = (mode: ZdPackagingDocumentUnitMode) =>
+    parsePalletInput(mode === "packages" ? draftOrderMultiple : "");
+  const draftPallet = palletDraftFor(draftMode);
+  const draftOrderValueOk = draftPallet.ok;
+  const draftOrderErrorMessage = draftPallet.ok ? null : draftPallet.message;
+  const showDraftOrderError = draftOrderErrorMessage != null;
 
   const beginEdit = (row: ZdEstimatePackagingRow) => {
     setEditingId(row.subiektTwId);
     setDraftUnits(String(row.unitsPerPackage));
     const hasM = row.orderMultiple != null && row.orderMultiple >= 2;
-    setDraftOrderMultipleEnabled(hasM);
     setDraftOrderMultiple(hasM ? String(row.orderMultiple) : "");
     setDraftLabel(row.packageLabel);
     setDraftNote(row.note);
@@ -125,16 +113,9 @@ export function ZdEstimatePackagingModal({
     )
       ? "packages"
       : draftMode;
-    const orderActive = mode === "packages" && draftOrderMultipleEnabled;
-    const orderCheck = assertOrderMultiple(
-      orderActive ? draftOrderMultiple : null
-    );
-    if (!orderCheck.ok) {
-      onError(orderCheck.message);
-      return;
-    }
-    if (orderActive && orderCheck.orderMultiple == null) {
-      onError(ZD_ESTIMATE_UI.packagingOrderMultipleRequiredError);
+    const palletParsed = palletDraftFor(mode);
+    if (!palletParsed.ok) {
+      onError(palletParsed.message);
       return;
     }
     start(async () => {
@@ -147,7 +128,7 @@ export function ZdEstimatePackagingModal({
         unitsPerPackage: unitsCheck.units,
         packageLabel: draftLabel,
         documentUnitMode: mode,
-        orderMultiple: orderActive ? orderCheck.orderMultiple : null,
+        orderMultiple: palletParsed.value,
         note: draftNote,
       });
       if (!res.ok) {
@@ -159,7 +140,15 @@ export function ZdEstimatePackagingModal({
     });
   };
 
-  const remove = (subiektTwId: number) => {
+  const remove = async (row: ZdEstimatePackagingRow) => {
+    const subiektTwId = row.subiektTwId;
+    const ok = await askConfirm({
+      title: "Usunąć opakowanie?",
+      message: `${row.twSymbol ?? row.twNazwa}: kreator wróci do sztuk 1:1 (bez opakowania i palet).`,
+      confirmLabel: "Usuń",
+      danger: true,
+    });
+    if (!ok) return;
     start(async () => {
       const res = await actionDeleteZdEstimatePackaging(subiektTwId);
       if (!res.ok) {
@@ -271,6 +260,9 @@ export function ZdEstimatePackagingModal({
             const editing = editingId === row.subiektTwId;
             const pairPackBlocksPiecesMode =
               packPairTwIds?.has(row.subiektTwId) === true;
+            const pairUnits = pairPackBlocksPiecesMode
+              ? (pairUnitsByPackTwId?.get(row.subiektTwId) ?? null)
+              : null;
             const editMode: ZdPackagingDocumentUnitMode =
               pairPackBlocksPiecesMode ? "packages" : draftMode;
             return (
@@ -295,8 +287,13 @@ export function ZdEstimatePackagingModal({
                             : `1 ${row.packageLabel} = ${row.unitsPerPackage} szt`}
                       </span>
                     </div>
-                    <p className="text-sm text-slate-600">{row.twNazwa}</p>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-sm text-slate-600">
+                      {row.twNazwa}
+                      {pairPackBlocksPiecesMode ? (
+                        <Badge className="ml-2 align-middle">z pary</Badge>
+                      ) : null}
+                    </p>
+                    <p className="text-xs text-slate-500">
                       {row.grtNazwa ? `${row.grtNazwa} · ` : ""}
                       od {formatPlDate(row.createdAt)}
                     </p>
@@ -321,7 +318,7 @@ export function ZdEstimatePackagingModal({
                       size="sm"
                       variant="secondary"
                       disabled={pending}
-                      onClick={() => remove(row.subiektTwId)}
+                      onClick={() => void remove(row)}
                       title={ZD_ESTIMATE_UI.packagingClearCta}
                     >
                       Usuń
@@ -354,7 +351,6 @@ export function ZdEstimatePackagingModal({
                           disabled={pending || pairPackBlocksPiecesMode}
                           onChange={() => {
                             setDraftMode("pieces_multiple");
-                            setDraftOrderMultipleEnabled(false);
                             setDraftOrderMultiple("");
                           }}
                         />
@@ -362,23 +358,66 @@ export function ZdEstimatePackagingModal({
                       </label>
                     </div>
                     {pairPackBlocksPiecesMode ? (
-                      <p className="text-[11px] leading-snug text-amber-800">
+                      <p className="text-xs leading-snug text-slate-600">
                         {ZD_ESTIMATE_UI.packagingModePairBlockedHint}
                       </p>
                     ) : null}
+                    {pairUnits != null && row.unitsPerPackage !== pairUnits ? (
+                      <div
+                        role="status"
+                        className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-snug text-amber-900"
+                      >
+                        <p>
+                          {ZD_ESTIMATE_UI.packagingPairConflictCallout(
+                            row.unitsPerPackage,
+                            row.packageLabel.trim() || "op.",
+                            pairUnits
+                          )}
+                        </p>
+                        {draftOrderMultiple.trim() !== String(row.unitsPerPackage) ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            className="mt-2"
+                            disabled={pending}
+                            onClick={() => {
+                              setDraftOrderMultiple(String(row.unitsPerPackage));
+                              if (/^pal/i.test(draftLabel.trim())) setDraftLabel("op.");
+                            }}
+                          >
+                            {ZD_ESTIMATE_UI.packagingPairConflictCta(row.unitsPerPackage)}
+                          </Button>
+                        ) : null}
+                      </div>
+                    ) : null}
                     <div className="grid gap-2 sm:grid-cols-2">
+                      {pairPackBlocksPiecesMode ? (
+                        <div className="text-xs font-medium text-slate-600">
+                          {ZD_ESTIMATE_UI.packagingUnitsLabel}
+                          <p className="mt-1 flex min-h-10 items-center rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-semibold tabular-nums text-slate-900">
+                            {pairUnits ?? row.unitsPerPackage} szt
+                          </p>
+                          <p className="mt-1 text-xs font-normal leading-snug text-slate-600">
+                            {ZD_ESTIMATE_UI.packagingUnitsFromPairHint}
+                          </p>
+                        </div>
+                      ) : (
                       <label className="block text-xs font-medium text-slate-600">
                         {ZD_ESTIMATE_UI.packagingUnitsLabel}
                         <Input
                           type="number"
+                          inputMode="numeric"
                           min={ZD_PACKAGING_UNITS_MIN}
                           max={ZD_PACKAGING_UNITS_MAX}
                           className="mt-1"
                           value={draftUnits}
                           onChange={(e) => setDraftUnits(e.target.value)}
+                          state={showDraftUnitsError ? "warning" : "default"}
                           aria-invalid={showDraftUnitsError || undefined}
                         />
                       </label>
+                      )}
                       <div>
                         <label className="block text-xs font-medium text-slate-600">
                           {ZD_ESTIMATE_UI.packagingLabelField}
@@ -398,80 +437,36 @@ export function ZdEstimatePackagingModal({
                       </div>
                     </div>
                     {editMode === "packages" ? (
-                      <div className="space-y-2">
-                        <label className="flex cursor-pointer gap-2.5 rounded-lg border border-slate-200 bg-white px-3 py-2">
-                          <input
-                            type="checkbox"
-                            className="mt-0.5"
-                            checked={draftOrderMultipleEnabled}
-                            disabled={pending}
-                            onChange={(e) => {
-                              const on = e.target.checked;
-                              setDraftOrderMultipleEnabled(on);
-                              if (!on) setDraftOrderMultiple("");
-                            }}
-                          />
-                          <span className="min-w-0">
-                            <span className="block text-xs font-semibold text-slate-900">
-                              {ZD_ESTIMATE_UI.packagingOrderMultipleEnableLabel}
-                            </span>
-                            <span className="mt-0.5 block text-[11px] leading-snug text-slate-500">
-                              {ZD_ESTIMATE_UI.packagingOrderMultipleEnableHint}
-                            </span>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600">
+                          {ZD_ESTIMATE_UI.packagingPalletFieldLabel}{" "}
+                          <span className="font-normal text-slate-500">
+                            {ZD_ESTIMATE_UI.packagingPalletFieldOptional}
                           </span>
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete="off"
+                            state={showDraftOrderError ? "warning" : "default"}
+                            className="mt-1 max-w-[12rem]"
+                            value={draftOrderMultiple}
+                            onChange={(e) => setDraftOrderMultiple(e.target.value)}
+                            disabled={pending}
+                            placeholder={ZD_ESTIMATE_UI.packagingOrderMultiplePlaceholder}
+                            aria-invalid={showDraftOrderError || undefined}
+                          />
                         </label>
-                        <div
+                        <p
                           className={cn(
-                            "rounded-lg border px-3 py-2 transition",
-                            draftOrderMultipleEnabled
-                              ? "border-slate-200 bg-white"
-                              : "border-slate-200/80 bg-slate-100/80 opacity-70"
+                            panelTypography.caption,
+                            "mt-1",
+                            showDraftOrderError && "font-medium text-amber-900"
                           )}
                         >
-                          <label className="block text-xs font-medium text-slate-600">
-                            {ZD_ESTIMATE_UI.packagingOrderMultipleLabel}
-                            <Input
-                              type="number"
-                              min={ZD_PACKAGING_UNITS_MIN}
-                              max={ZD_PACKAGING_UNITS_MAX}
-                              className="mt-1 max-w-[12rem]"
-                              value={draftOrderMultiple}
-                              onChange={(e) =>
-                                setDraftOrderMultiple(e.target.value)
-                              }
-                              disabled={pending || !draftOrderMultipleEnabled}
-                              placeholder={
-                                ZD_ESTIMATE_UI.packagingOrderMultiplePlaceholder
-                              }
-                              aria-invalid={showDraftOrderError || undefined}
-                            />
-                          </label>
-                          {draftOrderMultipleEnabled ? (
-                            showDraftOrderError && draftOrderErrorMessage ? (
-                              <p
-                                className={cn(
-                                  panelTypography.caption,
-                                  "mt-1 text-amber-800"
-                                )}
-                              >
-                                {draftOrderErrorMessage}
-                              </p>
-                            ) : (
-                              <p className={cn(panelTypography.caption, "mt-1")}>
-                                {ZD_ESTIMATE_UI.packagingOrderMultipleHint}
-                              </p>
-                            )
-                          ) : (
-                            <p
-                              className={cn(
-                                panelTypography.caption,
-                                "mt-1 text-slate-400"
-                              )}
-                            >
-                              {ZD_ESTIMATE_UI.packagingOrderMultipleOffCaption}
-                            </p>
-                          )}
-                        </div>
+                          {showDraftOrderError && draftOrderErrorMessage
+                            ? draftOrderErrorMessage
+                            : ZD_ESTIMATE_UI.packagingPalletFieldHint}
+                        </p>
                       </div>
                     ) : null}
                     {showDraftUnitsError ? (

@@ -176,6 +176,11 @@ export function useZdEstimateRulesData(
     [productPairs]
   );
 
+  const pairUnitsByPackTwId = useMemo(
+    () => new Map(productPairs.map((p) => [p.packTwId, p.unitsPerPack])),
+    [productPairs]
+  );
+
   const packagingLookup = useMemo(() => {
     const map = new Map<number, PackagingLookup>();
     for (const row of packaging) {
@@ -245,6 +250,7 @@ export function useZdEstimateRulesData(
     minStockByTwIdForRefresh,
     packagingMap,
     packPairTwIds,
+    pairUnitsByPackTwId,
     packagingLookup,
   };
 }

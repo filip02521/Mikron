@@ -8,6 +8,7 @@ import { getSessionUser, requireZdEstimateAdmin } from "@/lib/auth";
 import {
   deleteZdEstimateExclusion,
   deleteZdEstimateExclusionsMany,
+  fetchZdEstimateExclusion,
   fetchZdEstimateExclusions,
   updateZdEstimateExclusionNote,
   upsertZdEstimateExclusion,
@@ -65,6 +66,8 @@ import {
   upsertZdProductPair,
   type ZdProductPairRow,
 } from "@/lib/data/zd-product-pairs";
+import { packagingUnitsForPairPack } from "@/lib/orders/zd-estimate-packaging-pair-conflict";
+import { indexZdProductPairs } from "@/lib/orders/zd-product-pair-units";
 import {
   deleteZdProductBom,
   fetchZdProductBoms,
@@ -1818,6 +1821,11 @@ async function resolveOnRequestUpsertTarget(input: {
   };
 }
 
+/** Sztuka z pary → flaga trafia na opakowanie; świadomego wykluczenia opakowania nie kasujemy po cichu. */
+function excludedPackOnRequestMessage(packSymbol: string | null): string {
+  return `Opakowanie ${packSymbol ?? "z pary"} jest wykluczone z ZD. Najpierw przywróć je w kreatorze, potem oznacz „Na prośbę”.`;
+}
+
 export async function actionListZdEstimateOnRequests(): Promise<ZdEstimateOnRequestActionResult> {
   await requireZdEstimateAdmin("read");
   try {
@@ -1843,16 +1851,18 @@ export async function actionMarkZdEstimateOnRequest(input: {
   const user = await requireZdEstimateAdmin("mutate");
   try {
     const target = await resolveOnRequestUpsertTarget(input);
+    const retargeted = target.subiektTwId !== Math.trunc(input.subiektTwId);
+    if (retargeted && (await fetchZdEstimateExclusion(target.subiektTwId))) {
+      return { ok: false, message: excludedPackOnRequestMessage(target.twSymbol) };
+    }
     await upsertZdEstimateOnRequest({
       ...target,
       note: input.note,
       createdBy: user.id,
     });
     try {
-      await deleteZdEstimateExclusion(target.subiektTwId);
-      if (target.subiektTwId !== Math.trunc(input.subiektTwId)) {
-        await deleteZdEstimateExclusion(input.subiektTwId);
-      }
+      // Zdejmij wykluczenie zaznaczonego towaru (przy sztuce z pary — tylko jej; opakowanie sprawdzone wyżej).
+      await deleteZdEstimateExclusion(Math.trunc(input.subiektTwId));
     } catch {
       /* ignore */
     }
@@ -1921,8 +1931,15 @@ export async function actionMarkZdEstimateOnRequestProducts(input: {
   const succeededTwIds: number[] = [];
   const failed: ZdEstimateBulkFailure[] = [];
   const pairs = await fetchZdProductPairs();
+  // Najpierw opakowania i zwykłe towary, potem sztuki z par — sprawdzenie wykluczenia
+  // opakowania widzi już zmiany z tej samej paczki (wynik nie zależy od kolejności zaznaczenia).
+  const ordered = [...products].sort(
+    (a, b) =>
+      Number(retargetTwIdToPackIfPiece(a.subiektTwId, pairs).retargeted) -
+      Number(retargetTwIdToPackIfPiece(b.subiektTwId, pairs).retargeted)
+  );
 
-  for (const p of products) {
+  for (const p of ordered) {
     try {
       const hit = retargetTwIdToPackIfPiece(p.subiektTwId, pairs);
       const pair = hit.pair
@@ -1933,6 +1950,14 @@ export async function actionMarkZdEstimateOnRequestProducts(input: {
           )
         : null;
       const targetTwId = hit.twId;
+      if (hit.retargeted && (await fetchZdEstimateExclusion(targetTwId))) {
+        failed.push({
+          subiektTwId: p.subiektTwId,
+          twSymbol: p.twSymbol,
+          error: excludedPackOnRequestMessage(pair?.packSymbol ?? null),
+        });
+        continue;
+      }
       await upsertZdEstimateOnRequest({
         subiektTwId: targetTwId,
         twSymbol: hit.retargeted
@@ -1947,10 +1972,7 @@ export async function actionMarkZdEstimateOnRequestProducts(input: {
         createdBy: user.id,
       });
       try {
-        await deleteZdEstimateExclusion(targetTwId);
-        if (targetTwId !== p.subiektTwId) {
-          await deleteZdEstimateExclusion(p.subiektTwId);
-        }
+        await deleteZdEstimateExclusion(p.subiektTwId);
       } catch {
         /* ignore */
       }
@@ -2075,38 +2097,44 @@ export async function actionUpsertZdEstimatePackaging(input: {
   if (!orderCheck.ok) {
     return { ok: false, message: orderCheck.message };
   }
-  if (documentUnitMode === "pieces_multiple") {
-    try {
-      const pairs = await fetchZdProductPairs();
-      const isPackSku = pairs.some(
-        (p) => p.packTwId === Math.trunc(input.subiektTwId)
-      );
-      if (isPackSku) {
-        return {
-          ok: false,
-          message:
-            "Tryb „dobicie w sztukach” nie działa na paczce z pary montaż/demontaż - użyj trybu opakowań (1 na ZD = N szt) albo usuń parę.",
-        };
-      }
-    } catch (e) {
-      return {
-        ok: false,
-        message: userFacingErrorText(
-          e,
-          "Nie udało się sprawdzić par przed zapisem opakowania."
-        ),
-      };
-    }
+  let pairs: ZdProductPairRow[];
+  try {
+    pairs = await fetchZdProductPairs();
+  } catch (e) {
+    return {
+      ok: false,
+      message: userFacingErrorText(
+        e,
+        "Nie udało się sprawdzić par przed zapisem opakowania."
+      ),
+    };
+  }
+  const isPackSku = pairs.some(
+    (p) => p.packTwId === Math.trunc(input.subiektTwId)
+  );
+  if (documentUnitMode === "pieces_multiple" && isPackSku) {
+    return {
+      ok: false,
+      message:
+        "Tryb „dobicie w sztukach” nie działa na paczce z pary montaż/demontaż - na ZD wpisuj opakowania albo usuń parę.",
+    };
   }
   try {
     await upsertZdEstimatePackaging({
       ...input,
-      unitsPerPackage: unitsCheck.units,
+      unitsPerPackage: packagingUnitsForPairPack(
+        input.subiektTwId,
+        unitsCheck.units,
+        indexZdProductPairs(pairs)
+      ),
       documentUnitMode,
+      // Brak w wejściu = bez zmian (np. „Ujednolić z parą” nie kasuje palety), null = wyłącz.
       orderMultiple:
         documentUnitMode === "pieces_multiple"
           ? null
-          : orderCheck.orderMultiple,
+          : input.orderMultiple === undefined
+            ? undefined
+            : orderCheck.orderMultiple,
       createdBy: user.id,
     });
     const packaging = await fetchZdEstimatePackaging();
@@ -2327,9 +2355,12 @@ export async function actionRestoreZdEstimateProducts(
  */
 export async function actionUpsertZdEstimatePackagingBulk(input: {
   products: ZdEstimateBulkProductInput[];
-  unitsPerPackage: number;
+  /** Brak = N z pary (opakowanie z pary) albo dotychczasowe N produktu. */
+  unitsPerPackage?: number;
+  /** Brak = bez zmian (każdy produkt zachowuje swoją etykietę). */
   packageLabel?: string;
   documentUnitMode?: ZdPackagingDocumentUnitMode | null;
+  /** Brak = bez zmian, null = wyłącz palety, liczba = ustaw. */
   orderMultiple?: number | null;
   note?: string;
 }): Promise<ZdEstimateBulkPackagingActionResult> {
@@ -2340,11 +2371,14 @@ export async function actionUpsertZdEstimatePackagingBulk(input: {
     return { ok: false, message: "Zaznacz co najmniej jeden produkt." };
   }
   const truncated = normalized.truncated;
-  const unitsCheck = assertPackagingUnits(input.unitsPerPackage);
-  if (!unitsCheck.ok) {
-    return { ok: false, message: unitsCheck.message };
+  let units: number | null = null;
+  if (input.unitsPerPackage !== undefined) {
+    const unitsCheck = assertPackagingUnits(input.unitsPerPackage);
+    if (!unitsCheck.ok) {
+      return { ok: false, message: unitsCheck.message };
+    }
+    units = unitsCheck.units;
   }
-  const units = unitsCheck.units;
   const documentUnitMode = normalizePackagingDocumentUnitMode(
     input.documentUnitMode
   );
@@ -2355,23 +2389,37 @@ export async function actionUpsertZdEstimatePackagingBulk(input: {
     return { ok: false, message: orderCheck.message };
   }
   const orderMultiple =
-    documentUnitMode === "pieces_multiple" ? null : orderCheck.orderMultiple;
+    documentUnitMode === "pieces_multiple"
+      ? null
+      : input.orderMultiple === undefined
+        ? undefined
+        : orderCheck.orderMultiple;
+  const packageLabel = input.packageLabel?.trim() ? input.packageLabel : undefined;
 
-  let packTwIds = new Set<number>();
-  if (documentUnitMode === "pieces_multiple") {
-    try {
-      const pairs = await fetchZdProductPairs();
-      packTwIds = new Set(pairs.map((p) => p.packTwId));
-    } catch (e) {
+  let pairs: ZdProductPairRow[];
+  try {
+    pairs = await fetchZdProductPairs();
+  } catch (e) {
     return {
       ok: false,
-        message: userFacingErrorText(
-          e,
-          "Nie udało się sprawdzić par przed zapisem opakowań."
-        ),
+      message: userFacingErrorText(
+        e,
+        "Nie udało się sprawdzić par przed zapisem opakowań."
+      ),
     };
-    }
   }
+  const packTwIds = new Set(pairs.map((p) => p.packTwId));
+  const pairIndex = indexZdProductPairs(pairs);
+  // Bez N w wejściu: N z pary albo dotychczasowe N produktu (nigdy zgadywane).
+  const existingUnitsByTw =
+    units == null
+      ? new Map(
+          (await fetchZdEstimatePackaging()).map((r) => [
+            r.subiektTwId,
+            r.unitsPerPackage,
+          ])
+        )
+      : null;
 
   const succeededTwIds: number[] = [];
   const failed: ZdEstimateBulkFailure[] = [];
@@ -2390,14 +2438,27 @@ export async function actionUpsertZdEstimatePackagingBulk(input: {
         });
         continue;
       }
+      // Paczka z pary zachowuje N pary — bulk niesie etykietę i wielokrotność.
+      const productUnits =
+        packagingUnitsForPairPack(p.subiektTwId, units, pairIndex) ??
+        existingUnitsByTw?.get(p.subiektTwId) ??
+        null;
+      if (productUnits == null) {
+        failed.push({
+          subiektTwId: p.subiektTwId,
+          twSymbol: p.twSymbol,
+          error: "Brak liczby sztuk w opakowaniu — ustaw ją w wierszu produktu.",
+        });
+        continue;
+      }
       await upsertZdEstimatePackaging({
         subiektTwId: p.subiektTwId,
         twSymbol: p.twSymbol,
         twNazwa: p.twNazwa,
         grtId: p.grtId,
         grtNazwa: p.grtNazwa,
-        unitsPerPackage: units,
-        packageLabel: input.packageLabel,
+        unitsPerPackage: productUnits,
+        packageLabel,
         documentUnitMode,
         orderMultiple,
         note: input.note?.trim()
@@ -4856,6 +4917,15 @@ async function persistZdEstimateUiSessionSnapshot(input: {
   return { ok: true, sessionId: created.sessionId, rotated: true };
 }
 
+/** Sesja UI kreatora: tylko użytkownik z dostępem do kreatora ZD (nie każdy zalogowany). */
+async function zdEstimateUiSessionUser() {
+  try {
+    return await requireZdEstimateAdmin("read");
+  } catch {
+    return null;
+  }
+}
+
 export async function actionCreateZdEstimateUiSession(input: {
   payload: ZdEstimateUiSessionPayload;
   schemaVersion: number;
@@ -4863,7 +4933,7 @@ export async function actionCreateZdEstimateUiSession(input: {
   | { ok: true; sessionId: string }
   | { ok: false; message: string }
 > {
-  const user = await getSessionUser();
+  const user = await zdEstimateUiSessionUser();
   if (!user) {
     return { ok: false, message: "Brak sesji." };
   }
@@ -4878,7 +4948,7 @@ export async function actionUpsertZdEstimateUiSessionSnapshot(input: {
   | { ok: true; sessionId: string }
   | { ok: false; message: string; reason: "not_found" | "error" }
 > {
-  const user = await getSessionUser();
+  const user = await zdEstimateUiSessionUser();
   if (!user) {
     return { ok: false, message: "Brak sesji.", reason: "error" };
   }
@@ -4939,7 +5009,7 @@ export async function actionGetZdEstimateUiSession(input: {
     }
   | { ok: false; message: string; reason: "not_found" | "expired" }
 > {
-  const user = await getSessionUser();
+  const user = await zdEstimateUiSessionUser();
   if (!user) {
     return { ok: false, message: "Brak sesji.", reason: "not_found" };
   }
@@ -4993,7 +5063,7 @@ export async function actionGetZdEstimateUiSession(input: {
 export async function actionDeleteZdEstimateUiSession(input: {
   sessionId: string;
 }): Promise<{ ok: true } | { ok: false; message: string }> {
-  const user = await getSessionUser();
+  const user = await zdEstimateUiSessionUser();
   if (!user) {
     return { ok: false, message: "Brak sesji." };
   }

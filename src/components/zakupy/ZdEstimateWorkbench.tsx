@@ -1449,6 +1449,7 @@ export function ZdEstimateWorkbench({
     minStockByTwIdForRefresh,
     packagingMap,
     packPairTwIds,
+    pairUnitsByPackTwId,
     packagingLookup,
   } = rulesState;
   const [pairsOpen, setPairsOpen] = useState(false);
@@ -5395,10 +5396,10 @@ export function ZdEstimateWorkbench({
   };
 
   const confirmBulkPackaging = (input: {
-    unitsPerPackage: number;
-    packageLabel: string;
+    unitsPerPackage?: number;
+    packageLabel?: string;
     documentUnitMode?: import("@/lib/orders/zd-estimate-units").ZdPackagingDocumentUnitMode;
-    orderMultiple: number | null;
+    orderMultiple?: number | null;
     note: string;
   }) => {
     const products = toBulkProducts(selectedLines);
@@ -5799,10 +5800,9 @@ export function ZdEstimateWorkbench({
           subiektTwId: c.twId,
           twSymbol: line?.tw_Symbol ?? c.symbol,
           twNazwa: line?.tw_Nazwa ?? c.nazwa,
+          // Tylko N i tryb z pary — etykieta, palety i notatka zostają (bez zmian).
           unitsPerPackage: c.pairUnitsPerPack,
-          packageLabel: "op.",
           documentUnitMode: "packages",
-          note: "Ujednolicone z parą montaż/demontaż",
         });
         if (!res.ok) {
           reportError(res.message);
@@ -7560,7 +7560,6 @@ export function ZdEstimateWorkbench({
                         className="zd-estimate-symbol-col"
                         align="left"
                         hint={ZD_ESTIMATE_UI.listSortSymbolHint}
-                        density="compact"
                       />
                       <ZdEstimateSortableTh
                         label="Nazwa"
@@ -7571,7 +7570,6 @@ export function ZdEstimateWorkbench({
                         className="zd-estimate-product-name-col"
                         align="left"
                         hint={ZD_ESTIMATE_UI.listSortNameHint}
-                        density="compact"
                       />
                       {showPackagingColumn ? (
                         <th
@@ -7612,7 +7610,6 @@ export function ZdEstimateWorkbench({
                                 className={cn("zd-estimate-num-col zd-estimate-cover-col", sectionCls)}
                                 align="right"
                                 hint="Dni do wyczerpania: dostępne ÷ sprzedaż dziennie. Sortowanie rosnąco = najpilniejsze."
-                                density="compact"
                               />
                             );
                           case "value":
@@ -8354,6 +8351,11 @@ export function ZdEstimateWorkbench({
             : false
         }
         extrasPolicy={extrasPolicy}
+        minStockSzt={
+          packagingCandidate
+            ? minStockByTwIdForRefresh.get(packagingCandidate.tw_Id)
+            : undefined
+        }
         stockNeedReliefPieces={
           packagingCandidate
             ? individualExtraPiecesForTw(
@@ -8400,6 +8402,7 @@ export function ZdEstimateWorkbench({
           onClose={() => setPackagingOpen(false)}
           packaging={packaging}
           packPairTwIds={packPairTwIds}
+          pairUnitsByPackTwId={pairUnitsByPackTwId}
           onPackagingChange={applyPackagingLive}
           onError={reportError}
         />
@@ -8924,7 +8927,6 @@ function ZdEstimateSortHeaderButton({
   sortDir,
   onSort,
   hint,
-  density = "default",
 }: {
   label: string;
   field: ZdEstimateListSortKey;
@@ -8932,7 +8934,6 @@ function ZdEstimateSortHeaderButton({
   sortDir: ZdEstimateListSortDir;
   onSort: (field: ZdEstimateListSortKey) => void;
   hint?: string;
-  density?: "default" | "compact";
 }) {
   const isActive = sortKey === field;
   return (
@@ -8941,11 +8942,9 @@ function ZdEstimateSortHeaderButton({
       onClick={() => onSort(field)}
       aria-pressed={isActive}
       className={cn(
-        "inline-flex max-w-full items-center gap-0.5 text-left transition-colors hover:text-slate-900",
-        density === "compact"
-          ? "text-[10px] font-semibold leading-none"
-          : "text-sm font-semibold",
-        isActive ? "text-slate-900" : "text-slate-600"
+        // Typografia z <th> (wersaliki, rozmiar, rozstrzelenie) — preflight zeruje text-transform na <button>.
+        "inline-flex max-w-full items-center gap-1 text-left leading-none transition-colors [font-size:inherit] [font-weight:inherit] [letter-spacing:inherit] [text-transform:inherit] hover:text-slate-900",
+        isActive ? "text-slate-900" : "text-inherit"
       )}
       title={
         isActive
@@ -8983,7 +8982,6 @@ function ZdEstimateSortableTh({
   className,
   align = "left",
   hint,
-  density = "default",
 }: {
   label: string;
   field: ZdEstimateListSortKey;
@@ -8994,7 +8992,6 @@ function ZdEstimateSortableTh({
   align?: "left" | "right" | "center";
   /** Opis kolumny (tooltip), niezależny od sortowania */
   hint?: string;
-  density?: "default" | "compact";
 }) {
   const isActive = sortKey === field;
   const ariaSort =
@@ -9016,7 +9013,6 @@ function ZdEstimateSortableTh({
           sortDir={sortDir}
           onSort={onSort}
           hint={hint}
-          density={density}
         />
       </div>
     </th>

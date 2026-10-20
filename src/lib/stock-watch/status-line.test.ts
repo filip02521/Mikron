@@ -10,6 +10,7 @@ const zeroCounts: StockWatchDashboard["counts"] = {
   outOfStock: 0,
   emptyNoIncoming: 0,
   critical: 0,
+  criticalInTransit: 0,
   warning: 0,
   ok: 0,
   noSales: 0,
@@ -56,6 +57,8 @@ function row(over: Partial<StockWatchSupplierBoardRow>): StockWatchSupplierBoard
     emptyNoIncoming: 0,
     outOfStock: 0,
     critical: 0,
+    criticalInTransit: 0,
+    atRiskBeforeDelivery: 0,
     beforeDelivery: 0,
     beforeNextDelivery: 0,
     warning: 0,
@@ -110,7 +113,7 @@ describe("buildStockWatchStatusLine", () => {
 
   it("says shortages wait for delivery when everything missing is already ordered", () => {
     const line = buildStockWatchStatusLine(dash({ outOfStock: 5 }, [row({ priority: "waiting", outOfStock: 5 })]));
-    expect(line.headline).toBe("5 braków czeka na dostawę z otwartych ZD");
+    expect(line.headline).toBe("5 towarów czeka na dostawę z otwartych ZD");
     expect(line.tone).toBe("warning");
     expect(line.urgentToday).toBe(0);
     expect(line.focus).toBeNull();

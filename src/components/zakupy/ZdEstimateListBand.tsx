@@ -217,7 +217,8 @@ export function ZdEstimateListBand({
       >
         <div
           className={cn(
-            "flex min-w-0 flex-1 items-center",
+            // Od sm: lewa grupa ma szerokość treści (filtry + notka), szukanie bierze resztę i kurczy się pierwsze.
+            "flex min-w-0 flex-1 items-center sm:flex-none",
             zdEstimateChromeGapClass
           )}
         >
@@ -296,7 +297,7 @@ export function ZdEstimateListBand({
 
         <div
           className={cn(
-            "flex w-full min-w-0 items-center sm:ml-auto sm:w-auto",
+            "flex w-full min-w-0 items-center sm:ml-auto sm:w-auto sm:flex-1 sm:justify-end",
             zdEstimateChromeGapClass
           )}
         >
@@ -346,7 +347,7 @@ export function ZdEstimateListBand({
               <span className="lg:hidden">Wygładź</span>
             </label>
           ) : null}
-          <div className="relative min-w-0 flex-1 sm:w-[14rem] sm:flex-none md:w-[15rem] lg:w-[16rem]">
+          <div className="relative min-w-0 flex-1 sm:min-w-[7.5rem] sm:max-w-[16rem]">
             <IconSearch
               size={14}
               strokeWidth={2}
