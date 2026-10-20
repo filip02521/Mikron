@@ -1003,8 +1003,9 @@ export async function runZdOrderEngine(
   const salesTrackPolicy = policyForBoostPreset(boostPreset);
 
   // Profil sprzedaży: znaczniki zawsze, wygładzenie przy opcji. Profil jest w jednostkach
-  // karty jak sprzedaż. Pary i komplety liczą popyt łącznie (składnik + wkład kompletów),
-  // a profil zna tylko własną sprzedaż towaru — bez profilu, żeby znacznik nie przeczył liczbom.
+  // karty jak sprzedaż. Komplety (BOM) liczą popyt łącznie ze wkładem kompletów, a profil zna
+  // tylko własną sprzedaż towaru — bez profilu, żeby znacznik nie przeczył liczbom. Pary dostają
+  // profil łączny (niżej), bo ich sprzedaż w tabeli to sztuki + paczki × przelicznik.
   // Prośby odejmujemy tylko bez opakowań (prośba w sztukach, sprzedaż w jednostkach karty).
   let salesSmoothing: ZdSalesSmoothingSummary | null = null;
   {
@@ -1080,6 +1081,30 @@ export async function runZdOrderEngine(
           else if (meta.kind === "rare") salesSmoothing.rare += 1;
           if (meta.prosbaPieces > 0) salesSmoothing.prosba += 1;
         }
+      }
+      // Para: profil łączny (sztuki + paczki × przelicznik) na wierszu paczki — sprzedaż pary
+      // w tabeli jest łączna, więc wykres i znacznik też. Tylko znaczniki (bez wygładzenia).
+      const indexByTw = new Map(mergedPozycje.map((p, idx) => [Math.trunc(Number(p.tw_Id) || 0), idx]));
+      const bomTwIds = new Set(bomRefs.flatMap((b) => [b.parentTwId, ...b.components.map((c) => c.componentTwId)]));
+      for (const pair of productPairs) {
+        // Para w komplecie (BOM): sprzedaż ze wkładem kompletów, którego profil nie zna.
+        if (bomTwIds.has(pair.packTwId) || bomTwIds.has(pair.pieceTwId)) continue;
+        const packIdx = indexByTw.get(pair.packTwId);
+        if (packIdx == null) continue;
+        const packW = profiles.get(pair.packTwId);
+        const pieceW = profiles.get(pair.pieceTwId);
+        // Strona pary na liście bez profilu (inny zakres) — wykres zaniżyłby sprzedaż; lepiej bez.
+        if (!packW || (indexByTw.has(pair.pieceTwId) && !pieceW)) continue;
+        const n = Math.max(packW?.length ?? 0, pieceW?.length ?? 0);
+        const ratio = Math.max(1, Number(pair.unitsPerPack) || 1);
+        const windows = Array.from({ length: n }, (_, k) => (pieceW?.[k] ?? 0) + (packW?.[k] ?? 0) * ratio);
+        const pieceIdx = indexByTw.get(pair.pieceTwId);
+        const packLine = mergedPozycje[packIdx]!;
+        const sales =
+          (Number(packLine.sprzedazOkres) || 0) * ratio +
+          (pieceIdx != null ? Number(mergedPozycje[pieceIdx]!.sprzedazOkres) || 0 : 0);
+        const meta = resolveZdSalesProfile({ windows, sprzedazOkres: sales, dniOkresu, prosbaPieces: 0, smoothing: false });
+        mergedPozycje[packIdx] = { ...packLine, salesProfile: meta };
       }
     }
   }
