@@ -23,11 +23,16 @@ export type ZdEstimateSortPackaging = {
 /**
  * Dni do wyczerpania: dostępne / sprzedaż dziennie. Brak dostępnego = 0,
  * brak sprzedaży = null (nie kończy się).
+ * Para (wiersz paczki): sprzedaż jest łączna w sztukach, więc dostępne też w sztukach —
+ * sztuki + paczki × przelicznik (bez otwartych ZD, jak przy zwykłym towarze).
  */
 export function zdEstimateDaysOfCover(
-  line: Pick<ManualZdEstimateLine, "dostepne" | "sprzedazDziennie">
+  line: Pick<ManualZdEstimateLine, "dostepne" | "sprzedazDziennie"> & Partial<Pick<ManualZdEstimateLine, "pair">>
 ): number | null {
-  const available = Number(line.dostepne) || 0;
+  const pair = line.pair?.role === "pack" && !line.pair.partnerMissing ? line.pair : null;
+  const available = pair
+    ? (Number(pair.pieceDostepne) || 0) + (Number(pair.packDostepne) || 0) * Math.max(1, Number(pair.unitsPerPack) || 1)
+    : Number(line.dostepne) || 0;
   const daily = Number(line.sprzedazDziennie) || 0;
   if (available <= 0) return daily > 0 ? 0 : null;
   if (daily <= 0) return null;
@@ -35,7 +40,7 @@ export function zdEstimateDaysOfCover(
 }
 
 function zdEstimateDaysOfCoverSortValue(
-  line: Pick<ManualZdEstimateLine, "dostepne" | "sprzedazDziennie">
+  line: Pick<ManualZdEstimateLine, "dostepne" | "sprzedazDziennie"> & Partial<Pick<ManualZdEstimateLine, "pair">>
 ): number {
   return zdEstimateDaysOfCover(line) ?? Number.POSITIVE_INFINITY;
 }

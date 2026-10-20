@@ -3,6 +3,7 @@ import { mapZdEstimateLineToManual } from "./zd-estimate-manual";
 import {
   defaultDirForZdEstimateSortKey,
   sortZdEstimateLines,
+  zdEstimateDaysOfCover,
 } from "./zd-estimate-sort";
 
 function line(partial: {
@@ -117,5 +118,28 @@ describe("defaultDirForZdEstimateSortKey", () => {
     expect(defaultDirForZdEstimateSortKey("confidence")).toBe("desc");
     expect(defaultDirForZdEstimateSortKey("symbol")).toBe("asc");
     expect(defaultDirForZdEstimateSortKey("name")).toBe("asc");
+  });
+});
+
+describe("zdEstimateDaysOfCover — para (sprzedaż łączna w sztukach)", () => {
+  it("dostępne pary liczone w sztukach: sztuki + paczki × przelicznik", () => {
+    // Haczyki 100 szt (10.2026): 195 szt + 1 op. × 100, sprzedaż 26,77 szt/d → ~11 d, nie 0
+    const days = zdEstimateDaysOfCover({
+      dostepne: 1,
+      sprzedazDziennie: 26.77,
+      pair: { role: "pack", unitsPerPack: 100, pieceDostepne: 195, packDostepne: 1 } as never,
+    });
+    expect(days).toBeCloseTo(295 / 26.77);
+  });
+
+  it("brak partnera albo wiersz sztuki — jak zwykły towar", () => {
+    expect(
+      zdEstimateDaysOfCover({
+        dostepne: 10,
+        sprzedazDziennie: 2,
+        pair: { role: "pack", unitsPerPack: 100, pieceDostepne: 195, packDostepne: 1, partnerMissing: true } as never,
+      })
+    ).toBe(5);
+    expect(zdEstimateDaysOfCover({ dostepne: 10, sprzedazDziennie: 2 })).toBe(5);
   });
 });
