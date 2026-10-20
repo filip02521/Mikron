@@ -1390,8 +1390,14 @@ export async function actionCreateZdAutoProposalNow(input: {
   try {
     const policy = await fetchZdSupplierOrderPolicy(supplierId);
     if (policy.strategy === "classic") return { ok: false, message: "Najpierw włącz strategię testową dla dostawcy." };
-    await createZdAutoProposalNow(supplierId);
-    return { ok: true, proposal: await fetchLatestZdAutoProposal(supplierId) };
+    const before = await fetchLatestZdAutoProposal(supplierId);
+    const outcome = await createZdAutoProposalNow(supplierId);
+    if (outcome === "no_scope") return { ok: false, message: "Dostawca nie ma zakresu (grupy / cechy) w Kreatorze." };
+    if (outcome === "no_run") return { ok: false, message: "Brak porannej analizy braków - uruchom ją raz w panelu Braki." };
+    if (outcome === "not_configured") return { ok: false, message: "Brak połączenia z Subiektem (host kreatora ZD)." };
+    const after = await fetchLatestZdAutoProposal(supplierId);
+    // Nowa propozycja nie powstała = dziś nie ma nic do zamówienia.
+    return { ok: true, proposal: after && after.id !== before?.id ? after : null };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się przygotować propozycji.") };
   }

@@ -594,26 +594,27 @@ export function refreshStockWatchSupplier(supplierId: string): Promise<void> {
  * „Przygotuj propozycję teraz” (Kreator, strategia testowa): przelicza analizę dostawcy
  * i zapisuje propozycję bez czekania na nocny przebieg i cykl.
  */
-export async function createZdAutoProposalNow(supplierId: string): Promise<void> {
-  await computeSingleSupplier(supplierId, { proposalForce: true });
+export async function createZdAutoProposalNow(supplierId: string): Promise<"ok" | "no_scope" | "no_run" | "not_configured"> {
+  return computeSingleSupplier(supplierId, { proposalForce: true });
 }
 
 async function computeSingleSupplier(
   supplierId: string,
   options?: { proposalForce?: boolean }
-): Promise<void> {
+): Promise<"ok" | "no_scope" | "no_run" | "not_configured"> {
   const orders = resolveSubiektOrdersConfig();
-  if (!orders.ok) return;
+  if (!orders.ok) return "not_configured";
   const scope = groupZdEstimateScopesBySupplier(await listZdEstimateSupplierScopes())
     .get(supplierId)?.[0];
-  if (!scope) return;
+  if (!scope) return "no_scope";
   const [supplier] = await fetchSuppliersWithSchedules(undefined, {
     activeOnly: false,
     supplierIds: [supplierId],
   });
   // Wiersze należą do przebiegu — bez żadnego nocnego przebiegu panel i tak nic nie pokazuje.
   const run = await getLatestStockWatchRun();
-  if (!supplier || !run) return;
+  if (!supplier) return "no_scope";
+  if (!run) return "no_run";
   const todayKey = warsawNowParts().dateKey;
   const [salesEndDate, prices, horizons] = await Promise.all([
     resolveSalesEndDate(todayKey),
@@ -634,4 +635,5 @@ async function computeSingleSupplier(
     horizon: horizons.get(supplier.id) ?? null,
     ...(options?.proposalForce ? { proposalTodayKey: todayKey, proposalForce: true } : {}),
   });
+  return "ok";
 }
