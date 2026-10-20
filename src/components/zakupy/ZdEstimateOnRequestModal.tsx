@@ -40,7 +40,7 @@ function GroupChip({
           : "border-slate-200/90 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
       )}
     >
-      <span className="max-w-[10rem] truncate">{label}</span>
+      <span className="max-w-[16rem] text-left leading-snug [overflow-wrap:anywhere]">{label}</span>
       <span
         className={cn(
           "rounded px-1 py-px text-[10px] font-semibold tabular-nums",
