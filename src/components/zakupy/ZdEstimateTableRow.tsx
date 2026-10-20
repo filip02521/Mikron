@@ -213,6 +213,8 @@ export type ZdEstimateTableRowProps = {
 
   onToggleSelected: (twId: number, shiftKey: boolean) => void;
   onEditPackaging: (line: ManualZdEstimateLine) => void;
+  /** Otwiera kartę produktu (panel boczny). */
+  onOpenProduct?: (twId: number) => void;
   onEditMinStock: (line: ManualZdEstimateLine) => void;
   onExclude: (line: ManualZdEstimateLine) => void;
   onRestore: (twId: number) => void;
@@ -272,6 +274,7 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
   reviewAccepted,
   onToggleSelected,
   onEditPackaging,
+  onOpenProduct,
   onEditMinStock,
   onExclude,
   onRestore,
@@ -421,7 +424,18 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
         )}
         title={l.tw_Nazwa}
       >
-        <span className="zd-est-product-name">{l.tw_Nazwa}</span>
+        {onOpenProduct ? (
+          <button
+            type="button"
+            className="zd-est-product-name zd-est-product-name--link"
+            onClick={() => onOpenProduct(l.tw_Id)}
+            aria-label={`${l.tw_Nazwa} - pokaż kartę produktu`}
+          >
+            {l.tw_Nazwa}
+          </button>
+        ) : (
+          <span className="zd-est-product-name">{l.tw_Nazwa}</span>
+        )}
         <span className="zd-est-name-meta">
           <ZdEstimateNameMetaStack
             pairMeta={pairMeta}

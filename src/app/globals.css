@@ -3699,3 +3699,23 @@ input[type="checkbox"].toggle-switch.toggle-indigo:checked {
   border-radius: 1px;
   background: var(--color-slate-700);
 }
+
+/* Nazwa w wierszu otwiera kartę produktu — wygląda jak nazwa, podkreślenie przy hover. */
+.data-table.zd-estimate-table button.zd-est-product-name--link {
+  display: -webkit-box;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  text-decoration-line: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  transition: text-decoration-color 0.15s ease-out;
+}
+
+.data-table.zd-estimate-table button.zd-est-product-name--link:hover {
+  text-decoration-color: var(--color-slate-400);
+}

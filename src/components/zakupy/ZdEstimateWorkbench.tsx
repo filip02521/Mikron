@@ -217,6 +217,7 @@ import {
   individualExtraPiecesForTw,
   piecesArrivingForZdUnitsFromQty,
   resolveOrderQtyForLine,
+  zdDocumentUnitsToPieces,
   orderableLinesToTsv,
   pruneZdDocumentUnitOverrides,
 } from "@/lib/orders/zd-estimate-packaging";
@@ -310,6 +311,7 @@ import { ZdEstimateExcludeDialog } from "@/components/zakupy/ZdEstimateExcludeDi
 import { ZdEstimateLinkZdDialog } from "@/components/zakupy/ZdEstimateLinkZdDialog";
 import { ZdEstimateCreateZdDialog } from "@/components/zakupy/ZdEstimateCreateZdDialog";
 import { ZdEstimatePostCreatePanel } from "@/components/zakupy/ZdEstimatePostCreatePanel";
+import { ZdEstimateProductCard } from "@/components/zakupy/ZdEstimateProductCard";
 import { ZdEstimatePackagingDialog } from "@/components/zakupy/ZdEstimatePackagingDialog";
 import { ZdEstimateMinStockDialog } from "@/components/zakupy/ZdEstimateMinStockDialog";
 import type { ZdPairSeedProduct } from "@/components/zakupy/ZdEstimatePairsModal";
@@ -6018,6 +6020,9 @@ export function ZdEstimateWorkbench({
   // Stabilne handlery wierszy — `ZdEstimateTableRow` (memo) nie renderuje się przy niezwiązanych zmianach.
   const handleRowToggleSelected = useStableCallback(toggleRowSelected);
   const handleRowRestore = useStableCallback(restoreLine);
+  // Karta produktu (panel boczny) — otwierana nazwą w wierszu.
+  const [productCardTwId, setProductCardTwId] = useState<number | null>(null);
+  const handleOpenProduct = useStableCallback((twId: number) => setProductCardTwId(twId));
   const handleRowMarkOnRequest = useStableCallback(markOnRequestLine);
   const handleRowClearOnRequest = useStableCallback(clearOnRequestLine);
   const handleRowSessionInclude = useStableCallback(setSessionIncludeTwId);
@@ -7813,6 +7818,7 @@ export function ZdEstimateWorkbench({
                           reviewAccepted={Boolean(acceptedReviewTwIds[l.tw_Id])}
                           onToggleSelected={handleRowToggleSelected}
                           onEditPackaging={setPackagingCandidate}
+                          onOpenProduct={handleOpenProduct}
                           onEditMinStock={setMinStockCandidate}
                           onExclude={setExcludeCandidate}
                           onRestore={handleRowRestore}
@@ -8332,6 +8338,67 @@ export function ZdEstimateWorkbench({
         onSave={confirmBulkPackaging}
         onClear={confirmBulkClearPackaging}
       />
+
+      {productCardTwId != null
+        ? (() => {
+            const idx = visibleLines.findIndex((x) => x.tw_Id === productCardTwId);
+            const l = idx >= 0 ? visibleLines[idx]! : lines?.find((x) => x.tw_Id === productCardTwId);
+            if (!l) return null;
+            const canonical = retargetTwIdToPackIfPiece(l.tw_Id, productPairs).twId;
+            const extraOnly = extraOnlyTwIds.has(canonical);
+            const pack = packagingLookup.get(l.tw_Id) ?? null;
+            const extra = individualExtraPiecesForTw(l.tw_Id, individualExtraByTwId);
+            const minSt = minStockByTwIdForRefresh.get(l.tw_Id);
+            const qty = resolveOrderQtyForLine(
+              l,
+              pack,
+              extra,
+              extraOnly,
+              extrasPolicy,
+              individualExtraPiecesForTw(l.tw_Id, stockNeedReliefByTwId),
+              individualExtraPiecesForTw(l.tw_Id, extraOverlapByTwId),
+              minSt
+            );
+            const prev = idx > 0 ? visibleLines[idx - 1] : undefined;
+            const next = idx >= 0 && idx < visibleLines.length - 1 ? visibleLines[idx + 1] : undefined;
+            const canMutate = !busy && exclusionsTrusted && onRequestTrusted;
+            return (
+              <ZdEstimateProductCard
+                line={l}
+                qty={qty}
+                openZdPieces={zdDocumentUnitsToPieces(
+                  Math.max(0, Number(l.otwarteZd) || 0),
+                  pack?.unitsPerPackage,
+                  pack?.documentUnitMode ?? "packages"
+                )}
+                extraPieces={extra}
+                extraOnly={extraOnly}
+                extrasPolicy={extrasPolicy}
+                minStockSzt={minSt}
+                overrideZdUnits={qtyOverrideByTwId[l.tw_Id]}
+                leadDays={policzScopeInfo?.leadDays ?? policzScopeInfo?.horizon?.leadDays ?? null}
+                supplierName={selectedSupplier?.name ?? null}
+                status={{
+                  excluded: orderExcludedTwIds.has(l.tw_Id),
+                  onRequest: onRequestTrusted && onRequestTwIds.has(canonical),
+                }}
+                position={{ index: Math.max(0, idx), total: visibleLines.length }}
+                onPrev={prev ? () => setProductCardTwId(prev.tw_Id) : undefined}
+                onNext={next ? () => setProductCardTwId(next.tw_Id) : undefined}
+                onClose={() => setProductCardTwId(null)}
+                canMutate={canMutate}
+                actions={{
+                  onEditPackaging: packagingTrusted ? () => setPackagingCandidate(l) : undefined,
+                  onEditMinStock: () => setMinStockCandidate(l),
+                  onMarkOnRequest: () => handleRowMarkOnRequest(l),
+                  onClearOnRequest: () => handleRowClearOnRequest(canonical),
+                  onExclude: () => setExcludeCandidate(l),
+                  onRestore: () => handleRowRestore(l.tw_Id),
+                }}
+              />
+            );
+          })()
+        : null}
 
       <ZdEstimatePackagingDialog
         open={packagingCandidate != null}
