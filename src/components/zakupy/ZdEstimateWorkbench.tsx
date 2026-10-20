@@ -60,6 +60,7 @@ import {
   ZdSupplierOrderPolicyDialog,
 } from "@/components/zakupy/ZdSupplierOrderPolicyDialog";
 import type { ZdSupplierOrderPolicyRow } from "@/lib/data/zd-supplier-order-policy";
+import { ZdAutoProposalBanner } from "@/components/zakupy/ZdAutoProposalBanner";
 import {
   policyForBoostPreset,
   ZD_BOOST_POWER_DEFAULT,
@@ -6221,7 +6222,7 @@ export function ZdEstimateWorkbench({
               density={prepFormOpen && scopeSelected ? "short" : "full"}
               scopeMode={scopeMode}
               scopeName={scopeLabel}
-              stockLabel={policyTargetDays != null ? `${policyTargetDays} dni (strategia testowa)` : stockLabel}
+              stockLabel={policyTargetDays != null ? "Strategia testowa" : stockLabel}
               dniZapasu={policyTargetDays != null ? String(policyTargetDays) : dniZapasu}
               supplierLabel={supplierLabel}
               dataOd={dataOd}
@@ -6328,6 +6329,9 @@ export function ZdEstimateWorkbench({
             : null,
         }}
       />
+      {selectedSupplier && currentSupplierPolicy?.strategy === "max30_90" ? (
+        <ZdAutoProposalBanner key={selectedSupplier.id} supplierId={selectedSupplier.id} supplierName={selectedSupplier.name} />
+      ) : null}
       {launchReadyMessage ? (
         <Toast
           tone="success"

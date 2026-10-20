@@ -1,6 +1,7 @@
 "use server";
 
 import { refreshStockWatchAfterOrder } from "@/lib/stock-watch/refresh-after-order";
+import { createZdAutoProposalNow } from "@/lib/stock-watch/worker";
 import type { SupplierLocation } from "@/types/database";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import {
@@ -9,6 +10,12 @@ import {
   type ZdSupplierOrderPolicyRow,
 } from "@/lib/data/zd-supplier-order-policy";
 import type { ZdDemandStrategy } from "@/lib/orders/zd-demand-policy";
+import {
+  decideZdAutoProposal,
+  fetchLatestZdAutoProposal,
+  listZdAutoProposals,
+  type ZdAutoProposal,
+} from "@/lib/data/zd-auto-proposals";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // @service-role-ok — autoryzacja requireZdEstimateAdmin() (operacje dostaw); service role z pełnym scope po warstwie aplikacji.
@@ -1327,6 +1334,87 @@ export async function actionFetchZdEstimateProductHistory(input: {
 
   const [sales, purchases] = await Promise.all([salesP, purchasesP]);
   return { sales, purchases };
+}
+
+/**
+ * ZD utworzone dla dostawcy z czekającą propozycją automatu = akceptacja tej propozycji;
+ * linie ZD zapisane obok propozycji (raport: co zmieniłeś). Błąd tylko w logu — ZD już jest.
+ */
+async function acceptPendingAutoProposal(input: {
+  supplierId: string;
+  dokId: number;
+  createLines: ReadonlyArray<{ twId: number; ilosc: number }>;
+  userId: string;
+}): Promise<void> {
+  try {
+    const latest = await fetchLatestZdAutoProposal(input.supplierId);
+    if (!latest || latest.status !== "pending") return;
+    const finalLines: Record<string, number> = {};
+    for (const l of input.createLines) finalLines[String(l.twId)] = (finalLines[String(l.twId)] ?? 0) + l.ilosc;
+    await decideZdAutoProposal({
+      id: latest.id,
+      supplierId: input.supplierId,
+      status: "accepted",
+      note: null,
+      decidedBy: input.userId,
+      dokId: input.dokId,
+      finalLines,
+    });
+  } catch (e) {
+    console.warn("[zd-auto-proposal] akceptacja po ZD", input.supplierId, e);
+  }
+}
+
+/** Propozycje automatu dostawcy (najnowsze pierwsze) — baner i historia w Kreatorze. */
+export async function actionListZdAutoProposals(input: {
+  supplierId: string;
+}): Promise<{ ok: true; proposals: ZdAutoProposal[] } | { ok: false; message: string }> {
+  await requireZdEstimateAdmin("read");
+  const supplierId = String(input.supplierId ?? "").trim();
+  if (!UUID_RE.test(supplierId)) return { ok: false, message: "Nieprawidłowy dostawca." };
+  try {
+    return { ok: true, proposals: await listZdAutoProposals(supplierId, 20) };
+  } catch (e) {
+    if (typeof e === "object" && e != null && (e as { code?: unknown }).code === "42P01") return { ok: true, proposals: [] };
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się wczytać propozycji.") };
+  }
+}
+
+/** „Przygotuj propozycję teraz” — przelicza dostawcę strategią testową i zapisuje propozycję. */
+export async function actionCreateZdAutoProposalNow(input: {
+  supplierId: string;
+}): Promise<{ ok: true; proposal: ZdAutoProposal | null } | { ok: false; message: string }> {
+  await requireZdEstimateAdmin("mutate");
+  const supplierId = String(input.supplierId ?? "").trim();
+  if (!UUID_RE.test(supplierId)) return { ok: false, message: "Nieprawidłowy dostawca." };
+  try {
+    const policy = await fetchZdSupplierOrderPolicy(supplierId);
+    if (policy.strategy === "classic") return { ok: false, message: "Najpierw włącz strategię testową dla dostawcy." };
+    await createZdAutoProposalNow(supplierId);
+    return { ok: true, proposal: await fetchLatestZdAutoProposal(supplierId) };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się przygotować propozycji.") };
+  }
+}
+
+/** Odrzucenie propozycji z powodem (akceptacja zapisuje się sama przy Utwórz ZD). */
+export async function actionRejectZdAutoProposal(input: {
+  id: string;
+  supplierId: string;
+  note: string;
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  const user = await requireZdEstimateAdmin("mutate");
+  const supplierId = String(input.supplierId ?? "").trim();
+  const id = String(input.id ?? "").trim();
+  if (!UUID_RE.test(supplierId) || !UUID_RE.test(id)) return { ok: false, message: "Nieprawidłowa propozycja." };
+  const note = String(input.note ?? "").trim().slice(0, 500);
+  if (!note) return { ok: false, message: "Napisz krótko, dlaczego odrzucasz - to uczy automat." };
+  try {
+    const done = await decideZdAutoProposal({ id, supplierId, status: "rejected", note, decidedBy: user.id });
+    return done ? { ok: true } : { ok: false, message: "Propozycja nie czeka już na decyzję." };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się zapisać decyzji.") };
+  }
 }
 
 /** Strategia zamawiania dostawcy (Kreator: chip „Strategia” przy zakresie). */
@@ -3653,6 +3741,13 @@ export async function actionCreateZdFromEstimate(input: {
     teethServiceCount: teethServiceOrderIds.size,
     includedServiceOrderIds: composedUwagi.includedServiceOrderIds,
     acceptedCatalogOrderIds: catalogIds,
+  });
+
+  await acceptPendingAutoProposal({
+    supplierId: input.supplierId,
+    dokId,
+    createLines,
+    userId: user.id,
   });
 
   let dokNrPelny = `ZD/${dokId}`;

@@ -30,7 +30,14 @@ import { runZdOrderEngine } from "@/lib/orders/zd-order-engine";
 import { zdDeliveryRisk, type ZdOrderHorizon } from "@/lib/orders/zd-order-horizon";
 import { loadZdOrderHorizons } from "@/lib/orders/zd-order-horizon-load";
 import { buildZdOrderList } from "@/lib/orders/zd-order-list";
-import { warsawNowParts } from "@/lib/time/warsaw";
+import {
+  createZdAutoProposal,
+  fetchLatestZdAutoProposal,
+  isZdAutoProposalDue,
+  type ZdAutoProposalLine,
+} from "@/lib/data/zd-auto-proposals";
+import { fetchZdSupplierOrderPolicy } from "@/lib/data/zd-supplier-order-policy";
+import { warsawDateKeyFromIso, warsawNowParts } from "@/lib/time/warsaw";
 import { classifySubiektException, feedbackFromException } from "@/lib/subiekt/feedback";
 import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
 import { analyzeStockWatchItem, pairStockPieces, unitPricePerPiece } from "@/lib/stock-watch/analysis";
@@ -239,6 +246,8 @@ export async function runStockWatchWorker(input: {
           ordersBaseUrl: orders.config.baseUrl,
           prices,
           horizon: horizons.get(supplier.id) ?? null,
+          // Propozycje ZD automatu tylko z nocnego przebiegu (nie z odświeżenia po ZD).
+          proposalTodayKey: todayKey,
         });
         itemsWritten += outcome.itemsWritten;
         if (outcome.message) {
@@ -328,6 +337,10 @@ async function computeSupplierOrder(input: {
   ordersBaseUrl: string;
   prices: ReadonlyMap<number, ProductPurchasePrice>;
   horizon: ZdOrderHorizon | null;
+  /** Dzień nocnego przebiegu — wtedy (i tylko wtedy) może powstać propozycja ZD automatu. */
+  proposalTodayKey?: string;
+  /** „Przygotuj teraz” w Kreatorze — bez czekania na cykl. */
+  proposalForce?: boolean;
 }): Promise<{ itemsWritten: number; message: string | null }> {
   const { scope, supplier, runId, salesEndDate, prices, horizon } = input;
   const scopeId = (scope.mode === "grupa" ? scope.grupaId : scope.cechaId) ?? 0;
@@ -485,12 +498,65 @@ async function computeSupplierOrder(input: {
     nextOrderDays: horizon ? horizon.nextOrderDays : null,
   });
 
+  if (input.proposalTodayKey && !engine.fetch.truncated && !list.explodeBomIncomplete) {
+    await maybeCreateAutoProposal({
+      supplierId: supplier.id,
+      force: input.proposalForce === true,
+      todayKey: input.proposalTodayKey,
+      dataOd: window.dataOd,
+      dataDo: window.dataDo,
+      lines: list.lines
+        .filter((l) => l.zdUnits > 0)
+        .map((l) => ({
+          twId: l.line.tw_Id,
+          symbol: l.line.tw_Symbol || "",
+          nazwa: String(l.line.tw_Nazwa ?? "").trim(),
+          zdUnits: l.zdUnits,
+          pieces: l.piecesArriving,
+          unitLabel: l.packagesMode ? l.packageLabel || "op." : "szt.",
+          priceNet: unitPricePerPiece(prices.get(l.line.tw_Id)?.priceNet ?? null, engine.packagingLookup.get(l.line.tw_Id) ?? null),
+          prosbaPieces: l.individualExtraPieces,
+          floor: l.line.demandFloor != null,
+        })),
+    });
+  }
+
   return {
     itemsWritten,
     message: engine.fetch.truncated
       ? "Lista z Subiekta niepełna (limit stron) - część towarów pominięta."
       : null,
   };
+}
+
+/**
+ * Propozycja ZD automatu: dostawca z włączonymi propozycjami i strategią testową, minął cykl,
+ * są pozycje do zamówienia. Błąd tylko w logu — analiza braków idzie dalej.
+ */
+async function maybeCreateAutoProposal(input: {
+  supplierId: string;
+  force: boolean;
+  todayKey: string;
+  dataOd: string;
+  dataDo: string;
+  lines: ZdAutoProposalLine[];
+}): Promise<void> {
+  try {
+    const policy = await fetchZdSupplierOrderPolicy(input.supplierId);
+    if ((!policy.autoProposals && !input.force) || policy.strategy === "classic" || input.lines.length === 0) return;
+    const last = await fetchLatestZdAutoProposal(input.supplierId);
+    const lastKey = last ? warsawDateKeyFromIso(last.createdAt) : null;
+    if (!input.force && !isZdAutoProposalDue({ cycleDays: policy.cycleDays, lastCreatedDateKey: lastKey, todayKey: input.todayKey })) return;
+    await createZdAutoProposal({
+      supplierId: input.supplierId,
+      policy: { strategy: policy.strategy, targetDays: policy.targetDays, cycleDays: policy.cycleDays },
+      dataOd: input.dataOd,
+      dataDo: input.dataDo,
+      lines: input.lines,
+    });
+  } catch (e) {
+    console.error("[stock-watch] propozycja ZD automatu", input.supplierId, e);
+  }
 }
 
 /** Jedno przeliczenie dostawcy naraz; wywołanie w trakcie = jedno ponowienie po nim. */
@@ -524,7 +590,18 @@ export function refreshStockWatchSupplier(supplierId: string): Promise<void> {
   return entry.running;
 }
 
-async function computeSingleSupplier(supplierId: string): Promise<void> {
+/**
+ * „Przygotuj propozycję teraz” (Kreator, strategia testowa): przelicza analizę dostawcy
+ * i zapisuje propozycję bez czekania na nocny przebieg i cykl.
+ */
+export async function createZdAutoProposalNow(supplierId: string): Promise<void> {
+  await computeSingleSupplier(supplierId, { proposalForce: true });
+}
+
+async function computeSingleSupplier(
+  supplierId: string,
+  options?: { proposalForce?: boolean }
+): Promise<void> {
   const orders = resolveSubiektOrdersConfig();
   if (!orders.ok) return;
   const scope = groupZdEstimateScopesBySupplier(await listZdEstimateSupplierScopes())
@@ -555,5 +632,6 @@ async function computeSingleSupplier(supplierId: string): Promise<void> {
     ordersBaseUrl: orders.config.baseUrl,
     prices,
     horizon: horizons.get(supplier.id) ?? null,
+    ...(options?.proposalForce ? { proposalTodayKey: todayKey, proposalForce: true } : {}),
   });
 }
