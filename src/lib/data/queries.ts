@@ -42,6 +42,7 @@ import type {
   IndividualOrder,
   SupplierLocation,
   SupplierWithSchedule,
+  Vacation,
 } from "@/types/database";
 
 /** Dostawcy powiązani z prośbami danego handlowca (dowolny status). */
@@ -257,14 +258,16 @@ export async function fetchVerificationOrders(): Promise<IndividualOrder[]> {
   await syncVerificationQueueStatuses();
   const supabase = createAdminClient();
 
-  const { data, error } = await supabase
-    .from("individual_orders")
-    .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
-    .eq("status", "Weryfikacja")
-    .neq("is_teeth", true)
-    .order("action_at", { ascending: true });
-  if (error) throw new Error(error.message);
-  return normalizeIndividualOrders(data ?? []);
+  const data = await fetchAllRows<IndividualOrder>(() =>
+    supabase
+      .from("individual_orders")
+      .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
+      .eq("status", "Weryfikacja")
+      .neq("is_teeth", true)
+      .order("action_at", { ascending: true })
+      .order("id", { ascending: true })
+  );
+  return normalizeIndividualOrders(data);
 }
 
 export async function countVerificationOrders(): Promise<number> {
@@ -312,36 +315,38 @@ export async function fetchIndividualHistory(options?: {
 export async function fetchInformacjaQueue(): Promise<IndividualOrder[]> {
   if (!hasSupabaseConfig()) return [];
   const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("individual_orders")
-    .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
-    .eq("request_kind", "informacja")
-    .in("status", ["Nowe", "Zamowione", "Czesciowo_zrealizowane"])
-    .is("sales_cancelled_at", null)
-    .order("action_at", { ascending: true });
-  if (error) throw new Error(error.message);
-  const rows = normalizeIndividualOrders(data ?? []).filter(isInformacjaWarehouseQueueOrder);
+  const data = await fetchAllRows<IndividualOrder>(() =>
+    supabase
+      .from("individual_orders")
+      .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
+      .eq("request_kind", "informacja")
+      .in("status", ["Nowe", "Zamowione", "Czesciowo_zrealizowane"])
+      .is("sales_cancelled_at", null)
+      .order("action_at", { ascending: true })
+      .order("id", { ascending: true })
+  );
+  const rows = normalizeIndividualOrders(data).filter(isInformacjaWarehouseQueueOrder);
   return sortInformacjaQueueForDisplay(rows);
 }
 
+// informacja_stock_out_reorder: bez niego licznik liczył też „brak na stanie”, których kolejka nie pokazuje.
 const INFORMACJA_QUEUE_COUNT_SELECT =
-  "request_kind, status, informacja_queue_via_daily_panel, sales_cancelled_at";
+  "request_kind, status, informacja_queue_via_daily_panel, informacja_stock_out_reorder, sales_cancelled_at";
 
 export async function countInformacjaQueue(): Promise<number> {
   if (!hasSupabaseConfig()) return 0;
   const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("individual_orders")
-    .select(INFORMACJA_QUEUE_COUNT_SELECT)
-    .eq("request_kind", "informacja")
-    .in("status", ["Nowe", "Zamowione", "Czesciowo_zrealizowane"])
-    .is("sales_cancelled_at", null);
-
-  if (error) throw new Error(error.message);
-
-  return countInformacjaWarehouseQueueRows(
-    (data ?? []) as import("@/lib/data/queue-counts").InformacjaQueueCountRow[]
+  const data = await fetchAllRows<import("@/lib/data/queue-counts").InformacjaQueueCountRow>(() =>
+    supabase
+      .from("individual_orders")
+      .select(INFORMACJA_QUEUE_COUNT_SELECT)
+      .eq("request_kind", "informacja")
+      .in("status", ["Nowe", "Zamowione", "Czesciowo_zrealizowane"])
+      .is("sales_cancelled_at", null)
+      .order("id", { ascending: true })
   );
+
+  return countInformacjaWarehouseQueueRows(data);
 }
 
 const DELIVERY_QUEUE_CANCELLED_COUNT_SELECT =
@@ -392,12 +397,15 @@ export async function countDeliveryQueue(): Promise<number> {
 export async function countPickupReadyForSales(): Promise<number> {
   if (!hasSupabaseConfig()) return 0;
   const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("individual_orders")
-    .select("id, status, sales_acknowledged_at, sales_cancelled_at, sales_cancelled_quantity, quantity, delivered_quantity, request_kind")
-    .eq("request_kind", "zamowienie")
-    .eq("status", "Zrealizowane")
-    .is("sales_acknowledged_at", null);
+  const { data, error } = await fetchAllRowsResult<IndividualOrder>(() =>
+    supabase
+      .from("individual_orders")
+      .select("id, status, sales_acknowledged_at, sales_cancelled_at, sales_cancelled_quantity, quantity, delivered_quantity, request_kind")
+      .eq("request_kind", "zamowienie")
+      .eq("status", "Zrealizowane")
+      .is("sales_acknowledged_at", null)
+      .order("id", { ascending: true })
+  );
   if (error) {
     if (error.message?.includes("sales_acknowledged_at")) return 0;
     throw new Error(error.message);
@@ -443,14 +451,17 @@ export async function fetchDeliveryQueue(options?: {
   const supabase = createAdminClient();
 
   const [activeRes, cancelledRes] = await Promise.all([
-    supabase
-      .from("individual_orders")
-      .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
-      .eq("request_kind", "zamowienie")
-      .in("status", ["Zamowione", "Czesciowo_zrealizowane"])
-      .is("sales_cancelled_at", null)
-      .not("supplier_id", "is", null)
-      .order("action_at", { ascending: true }),
+    fetchAllRowsResult<IndividualOrder>(() =>
+      supabase
+        .from("individual_orders")
+        .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
+        .eq("request_kind", "zamowienie")
+        .in("status", ["Zamowione", "Czesciowo_zrealizowane"])
+        .is("sales_cancelled_at", null)
+        .not("supplier_id", "is", null)
+        .order("action_at", { ascending: true })
+        .order("id", { ascending: true })
+    ),
     fetchAllRowsResult<IndividualOrder>(() =>
       supabase
         .from("individual_orders")
@@ -634,10 +645,15 @@ export async function fetchSalesPeople() {
 export async function fetchVacations() {
   if (!hasSupabaseConfig()) return [];
   const supabase = createAdminClient();
-  const { data } = await supabase
-    .from("vacations")
-    .select("*, suppliers(name)")
-    .order("start_date", { ascending: false });
+  // Wszystkie urlopy od początku — lista rośnie z czasem, więc stronami.
+  const { data, error } = await fetchAllRowsResult<Vacation & { suppliers?: { name: string } }>(() =>
+    supabase
+      .from("vacations")
+      .select("*, suppliers(name)")
+      .order("start_date", { ascending: false })
+      .order("id", { ascending: true })
+  );
+  if (error) console.error("fetchVacations:", error.message);
   return data ?? [];
 }
 

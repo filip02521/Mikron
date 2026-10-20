@@ -6,6 +6,8 @@
  *   npx tsx --env-file=.env.local scripts/cleanup-ungrouped-sales-people.ts --apply
  */
 import { createAdminClient as createClient } from "../src/lib/db/admin";
+import { fetchAllRows } from "../src/lib/data/fetch-all-rows";
+import type { Row } from "../src/lib/db/query-builder";
 import {
   isManagedSalesPersonEmail,
   isTeamSalesPerson,
@@ -68,12 +70,15 @@ async function main() {
     const importLike = !isManagedSalesPersonEmail(orphan.email);
     const label = `${orphan.name} <${orphan.email}>`;
 
-    const { data: orders } = await supabase
-      .from("individual_orders")
-      .select("id, sales_client_name")
-      .eq("sales_person_id", orphan.id);
+    const orders = await fetchAllRows<Row>(() =>
+      supabase
+        .from("individual_orders")
+        .select("id, sales_client_name")
+        .eq("sales_person_id", orphan.id)
+        .order("id", { ascending: true })
+    );
 
-    const orderCount = orders?.length ?? 0;
+    const orderCount = orders.length;
 
     if (orderCount > 0) {
       if (!target) {

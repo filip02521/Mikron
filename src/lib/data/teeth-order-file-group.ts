@@ -25,7 +25,8 @@ function pendingTeethFileGroupQuery(supabase: SupabaseClient) {
     .select("id, supplier_id, teeth_order_file_path, teeth_order_file_name")
     .eq("is_teeth", true)
     .in("status", [...TEETH_QUEUE_PENDING_STATUSES])
-    .is("sales_cancelled_at", null);
+    .is("sales_cancelled_at", null)
+    .order("id", { ascending: true });
 }
 
 /**
@@ -44,21 +45,19 @@ export async function fetchPendingTeethFileGroupSiblings(
   const rows: TeethPendingFileGroupRow[] = [];
 
   if (named.length > 0) {
-    const { data, error } = await pendingTeethFileGroupQuery(supabase).in(
-      "supplier_id",
-      named
+    rows.push(
+      ...(await fetchAllRows<TeethPendingFileGroupRow>(() =>
+        pendingTeethFileGroupQuery(supabase).in("supplier_id", named)
+      ))
     );
-    if (error) throw new Error(error.message);
-    rows.push(...((data ?? []) as TeethPendingFileGroupRow[]));
   }
 
   if (hasNull) {
-    const { data, error } = await pendingTeethFileGroupQuery(supabase).is(
-      "supplier_id",
-      null
+    rows.push(
+      ...(await fetchAllRows<TeethPendingFileGroupRow>(() =>
+        pendingTeethFileGroupQuery(supabase).is("supplier_id", null)
+      ))
     );
-    if (error) throw new Error(error.message);
-    rows.push(...((data ?? []) as TeethPendingFileGroupRow[]));
   }
 
   const byId = new Map<string, TeethPendingFileGroupRow>();

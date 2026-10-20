@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { query } from "@/lib/db/pool";
+import { fetchAllRows } from "@/lib/data/fetch-all-rows";
 import type { ZdEstimateSnapshotHostKind } from "@/lib/subiekt/config";
 
 export type ZdEstimateSnapshotScopeMode = "grupa" | "cecha";
@@ -239,12 +240,15 @@ export async function upsertZdEstimateOrderSnapshot(
   let linkedAt = now;
   if (existingSnap?.id) {
     const existing = existingSnap as SnapshotDb;
-    const { data: existingLines } = await supabase
-      .from("zd_estimate_order_snapshot_lines")
-      .select("tw_id, qty")
-      .eq("snapshot_id", existing.id);
+    const existingLines = await fetchAllRows<{ tw_id: number; qty: number }>(() =>
+      supabase
+        .from("zd_estimate_order_snapshot_lines")
+        .select("tw_id, qty")
+        .eq("snapshot_id", existing.id)
+        .order("tw_id", { ascending: true })
+    );
     const prevFp = linesFingerprint(
-      (existingLines ?? []).map((r) => ({
+      existingLines.map((r) => ({
         twId: Math.trunc(Number(r.tw_id)),
         twSymbol: null,
         twNazwa: "-",
@@ -326,15 +330,17 @@ export async function upsertZdEstimateOrderSnapshot(
   if (upsertLinesErr) throw new Error(upsertLinesErr.message);
 
   const keepTwIds = new Set(lines.map((l) => l.twId));
-  const { data: existingLines, error: existingErr } = await supabase
-    .from("zd_estimate_order_snapshot_lines")
-    .select("tw_id")
-    .eq("snapshot_id", snapshot.id);
-  if (existingErr) throw new Error(existingErr.message);
+  const existingLines = await fetchAllRows<{ tw_id: number }>(() =>
+    supabase
+      .from("zd_estimate_order_snapshot_lines")
+      .select("tw_id")
+      .eq("snapshot_id", snapshot.id)
+      .order("tw_id", { ascending: true })
+  );
 
   const orphanTwIds = [
     ...new Set(
-      (existingLines ?? [])
+      existingLines
         .map((r) => Math.trunc(Number(r.tw_id)))
         .filter((id) => id > 0 && !keepTwIds.has(id))
     ),
@@ -597,16 +603,18 @@ export async function fetchZdEstimateOrderSnapshotLines(
   if (!header) return [];
   const snap = mapZdEstimateOrderSnapshot(header as SnapshotDb);
 
-  const { data, error } = await supabase
-    .from("zd_estimate_order_snapshot_lines")
-    .select(
-      "id, snapshot_id, tw_id, tw_symbol, tw_nazwa, qty, cel_at_link, delta_at_link"
-    )
-    .eq("snapshot_id", id)
-    .order("tw_symbol", { ascending: true });
-  if (error) throw new Error(error.message);
+  const data = await fetchAllRows<LineDb>(() =>
+    supabase
+      .from("zd_estimate_order_snapshot_lines")
+      .select(
+        "id, snapshot_id, tw_id, tw_symbol, tw_nazwa, qty, cel_at_link, delta_at_link"
+      )
+      .eq("snapshot_id", id)
+      .order("tw_symbol", { ascending: true })
+      .order("id", { ascending: true })
+  );
 
-  return (data ?? []).map((row) => {
+  return data.map((row) => {
     const r = row as LineDb;
     return {
       id: r.id,

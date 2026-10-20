@@ -2243,12 +2243,20 @@ export async function processMarkedDeliveries(options?: {
 
 async function processMarkedDeliveriesUnlocked(): Promise<ProcessDeliveriesResult> {
   const supabase = createAdminClient();
-  const { data: queueRaw } = await supabase
-    .from("individual_orders")
-    .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
-    .eq("request_kind", "zamowienie")
-    .eq("status", "Zamowione");
-  const queue = normalizeIndividualOrders(queueRaw ?? []);
+  // Cała kolejka zamówionych. Błąd odczytu jak dotąd = pusta kolejka (poranna rutyna
+  // idzie dalej do czyszczenia), ale już z logiem zamiast po cichu.
+  const queueRaw = await fetchAllRows<IndividualOrder>(() =>
+    supabase
+      .from("individual_orders")
+      .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
+      .eq("request_kind", "zamowienie")
+      .eq("status", "Zamowione")
+      .order("id", { ascending: true })
+  ).catch((e: unknown) => {
+    console.error("processMarkedDeliveries: odczyt kolejki", e);
+    return [] as IndividualOrder[];
+  });
+  const queue = normalizeIndividualOrders(queueRaw);
 
   const empty: ProcessDeliveriesResult = {
     processed: 0,
