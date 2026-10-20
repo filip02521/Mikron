@@ -3,7 +3,9 @@
  *
  * Bazowy cel z Subiekta = sprzedaż w oknie ÷ dni okna × dni zapasu, więc każda
  * sprzedaż w oknie trafia w cel. Profil pozwala odróżnić:
- *   - spike  — bieżące okno ≥ 3× typowego miesiąca (jednorazowa duża sprzedaż),
+ *   - spike  — bieżące okno ≥ 3× typowego miesiąca i wyraźnie ponad każdy wcześniejszy
+ *              (jednorazowa duża sprzedaż),
+ *   - lumpy  — jak spike, ale tak duże miesiące już były (sprzedaż falami — nie ruszamy),
  *   - rare   — sprzedaż w ≤ 3 z 12 okien (kupowany pod zamówienie?),
  *   - new    — sprzedaż dopiero w ostatnich 3 oknach (nowość — nie ruszamy),
  *   - rising — poprzednie okno też wysokie (wzrost — nie ruszamy),
@@ -24,6 +26,8 @@ export const ZD_SALES_PROFILE = {
   spikeRatio: 3,
   /** Skok tylko od tylu sztuk w bieżącym oknie (na 30 dni). */
   spikeMinPieces: 5,
+  /** Wcześniejsze okno ≥ tyle × bieżące → duże miesiące się powtarzają (falami), nie jednorazowy skok. */
+  spikeRepeatShare: 0.67,
   /** Okno przed bieżącym ≥ tyle × typowy → wzrost, nie skok. */
   risingRatio: 1.5,
   /** Sprzedaż w najwyżej tylu oknach z 12 → rzadki. */
@@ -32,7 +36,7 @@ export const ZD_SALES_PROFILE = {
   newWithinWindows: 3,
 } as const;
 
-export type ZdSalesProfileKind = "steady" | "rare" | "spike" | "new" | "rising" | "none";
+export type ZdSalesProfileKind = "steady" | "rare" | "spike" | "lumpy" | "new" | "rising" | "none";
 
 /** Dołączane do wiersza API i dalej do wiersza Kreatora (przeżywa przeliczenia w przeglądarce). */
 export type ZdSalesProfileLineMeta = {
@@ -90,8 +94,11 @@ export function classifyZdSalesProfile(input: {
   // Okna nakładające się na bieżące okno Kreatora nie są „historią”.
   const overlap = Math.min(w.length - 1, Math.max(1, Math.ceil(days / p.windowDays)));
   const prev = w.slice(0, w.length - overlap);
-  const typicalMonthly = median(prev);
-  const robustMonthly = Math.max(typicalMonthly, percentile(prev, 0.75));
+  // Typowy miesiąc liczony od pierwszej sprzedaży: zera sprzed wprowadzenia towaru to nie „słaby miesiąc”.
+  const firstPrev = prev.findIndex((x) => x > 0);
+  const life = firstPrev < 0 ? prev : prev.slice(firstPrev);
+  const typicalMonthly = median(life);
+  const robustMonthly = Math.max(typicalMonthly, percentile(life, 0.75));
   const meanMonthly = w.length ? w.reduce((a, b) => a + b, 0) / w.length : 0;
   const activeWindows = w.filter((x) => x > 0).length;
   const base = { activeWindows, typicalMonthly, robustMonthly, meanMonthly, currentMonthly };
@@ -108,7 +115,9 @@ export function classifyZdSalesProfile(input: {
   const floor = Math.max(1, typicalMonthly);
   const before = prev[prev.length - 1] ?? 0;
   if (currentMonthly >= p.spikeMinPieces && currentMonthly >= p.spikeRatio * floor) {
-    return { kind: before >= p.risingRatio * floor ? "rising" : "spike", ...base };
+    if (before >= p.risingRatio * floor) return { kind: "rising", ...base };
+    const peak = Math.max(0, ...prev);
+    return { kind: peak >= p.spikeRepeatShare * currentMonthly ? "lumpy" : "spike", ...base };
   }
   return { kind: "steady", ...base };
 }
@@ -243,6 +252,8 @@ export function formatZdSalesProfileHeadline(meta: ZdSalesProfileLineMeta): stri
         ? `Rzadka sprzedaż: w ${meta.activeWindows} z ${meta.windows.length} miesięcy - może kupowany pod zamówienie.`
         : meta.kind === "new"
           ? "Nowość - sprzedaż dopiero od ostatnich miesięcy."
+          : meta.kind === "lumpy"
+            ? `Sprzedaż falami: ${fmt(meta.currentMonthly)} szt / 30 d, takie miesiące już były (do ${fmt(Math.max(0, ...meta.windows.slice(0, -1)))}).`
           : meta.kind === "rising"
             ? `Wzrost sprzedaży: ${fmt(meta.currentMonthly)} szt / 30 d, wcześniej ~${fmt(meta.typicalMonthly)}.`
             : `Sprzedaż regularna (${meta.activeWindows} z ${meta.windows.length} miesięcy).`
