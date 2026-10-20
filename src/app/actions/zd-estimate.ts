@@ -362,6 +362,8 @@ export type ZdEstimateRunResult =
       otherSupplierHintByTwId?: Record<number, string>;
       /** Rozbicie horyzontu, gdy opcja czasu dostawy była zaznaczona. */
       horizon?: import("@/lib/orders/zd-order-horizon").ZdOrderHorizon | null;
+      /** Czas dostawy dostawcy (dni) — także bez opcji horyzontu; kreska w „Starczy”. */
+      leadDays?: number | null;
       /** Opcja wygładzenia przy tym Policz + ile pozycji zmieniła (null = profil niedostępny). */
       salesSmoothingEnabled?: boolean;
       salesSmoothing?: import("@/lib/orders/zd-order-engine").ZdSalesSmoothingSummary | null;
@@ -1355,24 +1357,33 @@ export async function actionRunZdEstimateManual(
 
   try {
     // Opcja czasu dostawy: dłuższy horyzont celu, to samo okno sprzedaży.
-    let horizon: import("@/lib/orders/zd-order-horizon").ZdOrderHorizon | null = null;
+    // Czas dostawy dostawcy liczymy zawsze (kolumna „Starczy” pokazuje go jako kreskę),
+    // ale horyzont celu zmienia tylko zaznaczona opcja „Do kolejnej dostawy”.
+    let supplierHorizon: import("@/lib/orders/zd-order-horizon").ZdOrderHorizon | null = null;
     const horizonSupplierId = String(input.supplierId ?? "").trim();
-    if (input.leadTimeHorizon === true && horizonSupplierId) {
-      const [supplier] = await fetchSuppliersWithSchedules(undefined, {
-        activeOnly: false,
-        supplierIds: [horizonSupplierId],
-      });
-      if (supplier) {
-        horizon =
-          (
-            await loadZdOrderHorizons({
-              suppliers: [supplier],
-              stockDaysBySupplierId: new Map([[supplier.id, dniZapasu]]),
-              todayKey,
-            })
-          ).get(supplier.id) ?? null;
+    if (horizonSupplierId) {
+      try {
+        const [supplier] = await fetchSuppliersWithSchedules(undefined, {
+          activeOnly: false,
+          supplierIds: [horizonSupplierId],
+        });
+        if (supplier) {
+          supplierHorizon =
+            (
+              await loadZdOrderHorizons({
+                suppliers: [supplier],
+                stockDaysBySupplierId: new Map([[supplier.id, dniZapasu]]),
+                todayKey,
+              })
+            ).get(supplier.id) ?? null;
+        }
+      } catch (e) {
+        // Bez opcji horyzontu brak czasu dostawy to tylko brak kreski — nie blokuje Policz.
+        if (input.leadTimeHorizon === true) throw e;
       }
     }
+    const horizon = input.leadTimeHorizon === true ? supplierHorizon : null;
+    const leadDays = supplierHorizon?.leadDays ?? null;
 
     const engine = await runZdOrderEngine({
       scope,
@@ -1526,6 +1537,7 @@ export async function actionRunZdEstimateManual(
       assignedElsewhere: engine.assignedElsewhere,
       otherSupplierHintByTwId: engine.otherSupplierHintByTwId,
       horizon,
+      leadDays,
       salesSmoothingEnabled: input.salesSmoothing === true,
       salesSmoothing: engine.salesSmoothing,
       unitPriceByTwId,

@@ -1115,6 +1115,8 @@ export function ZdEstimateWorkbench({
     otherSupplierHintByTwId: Record<number, string>;
     /** Rozbicie horyzontu, gdy Policz liczył z czasem dostawy. */
     horizon: ZdOrderHorizon | null;
+    /** Czas dostawy dostawcy (dni) z Policz — kreska w kolumnie „Starczy”. */
+    leadDays?: number | null;
     /** Ile pozycji zmieniło wygładzenie (null = opcja wyłączona). */
     salesSmoothing?: ZdSalesSmoothingSummary | null;
   } | null>(null);
@@ -3999,6 +4001,7 @@ export function ZdEstimateWorkbench({
           assignedElsewhere: res.assignedElsewhere ?? [],
           otherSupplierHintByTwId: res.otherSupplierHintByTwId ?? {},
           horizon: res.horizon ?? null,
+          leadDays: res.leadDays ?? null,
           salesSmoothing: res.salesSmoothingEnabled ? res.salesSmoothing ?? null : null,
         });
         setUnitPriceByTwId(res.unitPriceByTwId ?? {});
@@ -7788,6 +7791,7 @@ export function ZdEstimateWorkbench({
                           nameHit={nameAutoByTwId.get(l.tw_Id)}
                           packRow={packagingMap.get(l.tw_Id) ?? null}
                           packLookup={packagingLookup.get(l.tw_Id) ?? null}
+                          leadDays={policzScopeInfo?.leadDays ?? policzScopeInfo?.horizon?.leadDays ?? null}
                           individualExtra={
                             individualBundle.byTwId.get(l.tw_Id) ?? null
                           }

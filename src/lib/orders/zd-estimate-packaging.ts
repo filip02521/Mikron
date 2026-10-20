@@ -372,6 +372,8 @@ const ZD_PACK_COMPACT_LABEL_BY_KEY: Record<string, string> = {
   op: "op.",
   karton: "kart.",
   paczka: "pac.",
+  worek: "wor.",
+  worki: "wor.",
   zbiorcze: "zb.",
   zb: "zb.",
   "zb.": "zb.",

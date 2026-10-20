@@ -289,9 +289,29 @@ export function ZdEstimateDoZdCell({
       piecesSubline
     ) : null;
 
+  // Pełne palety widać bez otwierania okna opakowania („2 pal.” przy 72 workach, paleta 36).
+  const palletCount =
+    packagesMode &&
+    qty.orderMultiple >= 2 &&
+    displayUnits > 0 &&
+    !editingBlank &&
+    isZdUnitsMultipleOfOrderMultiple(displayUnits, qty.orderMultiple)
+      ? displayUnits / qty.orderMultiple
+      : null;
+  const palletChip =
+    palletCount != null ? (
+      <span
+        className="zd-est-dozd-pallets"
+        title={`${palletCount} ${palletCount === 1 ? "pełna paleta" : "pełne palety"} po ${qty.orderMultiple} ${qty.packageLabel.trim() || "op."}`}
+      >
+        {palletCount} pal.
+      </span>
+    ) : null;
+
   const hintLine =
-    primaryHint || reviewAcceptAside ? (
+    primaryHint || reviewAcceptAside || palletChip ? (
       <span className="zd-est-dozd-hint-row">
+        {palletChip}
         {primaryHint}
         {reviewAcceptAside}
       </span>

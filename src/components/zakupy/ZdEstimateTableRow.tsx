@@ -42,11 +42,13 @@ import { checkboxBrandClass } from "@/lib/ui/ontime-theme";
 import { askConfirm } from "@/components/ui/ConfirmHost";
 
 /** Kolumny przepływu (Dost. → Sprzed. → Cel → Otwarte) — wspólne dla nagłówka i wierszy. */
-/** „Starczy na” — dni do wyczerpania (dostępne / sprzedaż dziennie). */
-function ZdEstimateCoverCell({
+/** „Starczy na” — dni do wyczerpania (dostępne / sprzedaż dziennie) i minipasek z kreską czasu dostawy. */
+export function ZdEstimateCoverCell({
   line,
+  leadDays,
 }: {
   line: Pick<ManualZdEstimateLine, "dostepne" | "sprzedazDziennie">;
+  leadDays?: number | null;
 }) {
   const days = zdEstimateDaysOfCover(line);
   if (days == null) {
@@ -58,16 +60,35 @@ function ZdEstimateCoverCell({
   }
   const tone = days <= 0 ? "out" : days <= 2 ? "critical" : days <= 14 ? "low" : "ok";
   const label = days <= 0 ? "brak" : days < 10 ? `${days.toLocaleString("pl-PL", { maximumFractionDigits: 1 })} d` : `${Math.round(days)} d`;
+  const lead = leadDays != null && leadDays > 0 ? leadDays : null;
+  const shortOfDelivery = lead != null && days < lead;
+  const base =
+    days <= 0
+      ? "Brak towaru dostępnego (stan − rezerwacje ≤ 0), a towar się sprzedaje"
+      : `Przy obecnej sprzedaży (${formatQty(line.sprzedazDziennie)} szt/dzień) dostępny stan wystarczy na ok. ${label}`;
+  const title =
+    lead == null
+      ? base
+      : `${base}. Dostawa od dostawcy ~${lead} d - ${shortOfDelivery ? "zabraknie przed dostawą" : "starczy do dostawy"}.`;
+  // Skala paska: 2 × czas dostawy (min. 14 d) — kreska dostawy w połowie, dłuższy zapas = pełny pasek.
+  const scale = lead != null ? Math.max(14, lead * 2) : null;
   return (
-    <span
-      className={cn("zd-est-cover", `zd-est-cover--${tone}`)}
-      title={
-        days <= 0
-          ? "Brak towaru dostępnego (stan − rezerwacje ≤ 0), a towar się sprzedaje"
-          : `Przy obecnej sprzedaży (${formatQty(line.sprzedazDziennie)} szt/dzień) dostępny stan wystarczy na ok. ${label}`
-      }
-    >
-      {label}
+    <span className="zd-est-cover-wrap" title={title}>
+      <span className={cn("zd-est-cover", `zd-est-cover--${tone}`)}>{label}</span>
+      {scale != null && lead != null ? (
+        <span className="zd-est-cover-track" aria-hidden>
+          <span
+            className={cn("zd-est-cover-fill", shortOfDelivery && "zd-est-cover-fill--short")}
+            style={{ width: `${Math.min(100, (Math.max(0, days) / scale) * 100)}%` }}
+          />
+          <span className="zd-est-cover-lead" style={{ left: `${(lead / scale) * 100}%` }} />
+        </span>
+      ) : null}
+      {lead != null ? (
+        <span className="sr-only">
+          {shortOfDelivery ? `Zabraknie przed dostawą (~${lead} d)` : `Starczy do dostawy (~${lead} d)`}
+        </span>
+      ) : null}
     </span>
   );
 }
@@ -177,6 +198,8 @@ export type ZdEstimateTableRowProps = {
 
   packRow: ZdEstimatePackagingRow | null;
   packLookup: PackagingLookup | null;
+  /** Czas dostawy dostawcy (dni) — kreska na minipasku „Starczy”. */
+  leadDays?: number | null;
   individualExtra: ZdEstimateIndividualTwExtra | null;
   /** Prośby po dedupe z rezerwacjami (wejście Do ZD). */
   individualExtraPieces: number;
@@ -238,6 +261,7 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
   nameHit,
   packRow,
   packLookup,
+  leadDays = null,
   individualExtra,
   individualExtraPieces,
   stockNeedReliefPieces,
@@ -491,7 +515,7 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
                 key={col}
                 className={cn("zd-estimate-num-col zd-estimate-cover-col whitespace-nowrap", sectionCls)}
               >
-                <ZdEstimateCoverCell line={l} />
+                <ZdEstimateCoverCell line={l} leadDays={leadDays} />
               </td>
             );
           case "value": {
