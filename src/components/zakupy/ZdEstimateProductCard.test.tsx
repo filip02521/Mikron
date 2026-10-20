@@ -92,4 +92,18 @@ describe("ZdEstimateProductCard", () => {
     expect(await screen.findByText(/Historia ZD niedostępna: brak hosta/)).toBeTruthy();
     expect(screen.getByText(/Brak do celu/)).toBeTruthy();
   });
+
+  it("para: stan pokazany osobno dla sztuk i paczek, plus pokrycie pary", () => {
+    renderCard({
+      line: {
+        ...line,
+        pair: { role: "pack", unitsPerPack: 5, pieceDostepne: 7, packDostepne: 3, coverSzt: 72, partnerMissing: false },
+      } as unknown as ManualZdEstimateLine,
+    });
+    expect(screen.getByText("Dostępne - sztuki")).toBeTruthy();
+    expect(screen.getByText("Dostępne - worek (×5)")).toBeTruthy();
+    expect(screen.getByText("15 szt")).toBeTruthy();
+    expect(screen.getByText("Pokrycie pary (z ZD)")).toBeTruthy();
+    expect(screen.queryByText("W drodze (ZD)")).toBeNull();
+  });
 });

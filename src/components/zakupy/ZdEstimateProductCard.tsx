@@ -121,6 +121,24 @@ export function ZdEstimateProductCard({
   canMutate: boolean;
 }) {
   const titleId = useId();
+  const activePair = line.pair?.role === "pack" && !line.pair.partnerMissing ? line.pair : null;
+  // Para: wiersz paczki ma już pokrycie pary w „dostepne” (z ZD), więc pokazujemy obie strony osobno.
+  const stockRows: Array<[string, number]> = activePair
+    ? [
+        ["Dostępne - sztuki", activePair.pieceDostepne],
+        [`Dostępne - ${qty.packageLabel.trim() || "op."} (×${activePair.unitsPerPack})`, activePair.packDostepne * activePair.unitsPerPack],
+        ["Pokrycie pary (z ZD)", activePair.coverSzt],
+        ["ZK bez rezerwacji", line.otwarteZkBezRez],
+        ["Prośby", extraPieces],
+      ]
+    : [
+        ["Stan", line.tw_Stan],
+        ["Zarezerwowane", line.tw_StanRez],
+        ["Dostępne", line.dostepne],
+        ["W drodze (ZD)", openZdPieces],
+        ["ZK bez rezerwacji", line.otwarteZkBezRez],
+        ["Prośby", extraPieces],
+      ];
   const history = useZdHistory(line.tw_Id);
   const orderMarks: ZdSalesChartOrderMark[] =
     history.status === "ok"
@@ -315,14 +333,7 @@ export function ZdEstimateProductCard({
               Stan i ruch
             </h3>
             <dl className="mt-1.5 grid grid-cols-3 gap-px overflow-hidden rounded-md border border-slate-200 bg-slate-200 text-sm">
-              {[
-                ["Stan", line.tw_Stan],
-                ["Zarezerwowane", line.tw_StanRez],
-                ["Dostępne", line.dostepne],
-                ["W drodze (ZD)", openZdPieces],
-                ["ZK bez rezerwacji", line.otwarteZkBezRez],
-                ["Prośby", extraPieces],
-              ].map(([label, value]) => (
+              {stockRows.map(([label, value]) => (
                 <div key={label as string} className="bg-white px-2.5 py-1.5">
                   <dt className="text-xs text-slate-600">{label}</dt>
                   <dd className="tabular-nums font-medium text-slate-900">{formatQty(Number(value) || 0)} szt</dd>
