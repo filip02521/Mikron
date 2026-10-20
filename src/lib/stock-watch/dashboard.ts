@@ -5,6 +5,12 @@ import {
 } from "@/lib/stock-watch/analysis";
 import type { StockWatchItem, StockWatchSupplierOrder } from "@/lib/stock-watch/data";
 import { stockWatchHorizonExtends } from "@/lib/stock-watch/signal";
+import {
+  compareStockWatchSupplierUrgency,
+  stockWatchSupplierPriority,
+  type StockWatchPriority,
+  type StockWatchSupplierCounts,
+} from "@/lib/stock-watch/priority";
 
 /** Wiersz przekazywany do klienta — tylko pola używane w UI. */
 export type StockWatchRowView = Pick<
@@ -71,6 +77,19 @@ export type StockWatchSupplierProposal = {
   warnings: string[];
 };
 
+/** Wiersz tablicy dostawców — jeden na dostawcę, z priorytetem „co najpierw”. */
+export type StockWatchSupplierBoardRow = StockWatchSupplierCounts & {
+  supplierId: string;
+  supplierName: string;
+  priority: StockWatchPriority;
+  /** Wartość listy „Do ZD” (0 bez propozycji). */
+  orderValue: number;
+  proposal: StockWatchSupplierProposal | null;
+  /** Pilne towary dostawcy (brak, ≤ 48 h, przed dostawą, przed kolejną dostawą), od najpilniejszego. */
+  urgentRows: StockWatchRowView[];
+  urgentTotal: number;
+};
+
 export type StockWatchDashboard = {
   health: { score: number; active: number; ok: number };
   counts: {
@@ -90,6 +109,10 @@ export type StockWatchDashboard = {
   };
   alerts: StockWatchRowView[];
   proposals: StockWatchSupplierProposal[];
+  /** Tablica dostawców od najpilniejszego; dostawcy bez braków i bez listy „Do ZD” pominięci. */
+  suppliers: StockWatchSupplierBoardRow[];
+  /** Analizowani dostawcy bez niczego do zrobienia. */
+  quietSupplierCount: number;
   topVelocity: StockWatchRowView[];
   flagged: StockWatchRowView[];
   totals: { proposalValue: number; proposalLines: number; itemCount: number; supplierCount: number };
@@ -97,6 +120,7 @@ export type StockWatchDashboard = {
 
 export const STOCK_WATCH_ALERT_LIMIT = 60;
 export const STOCK_WATCH_TOP_VELOCITY = 20;
+export const STOCK_WATCH_SUPPLIER_ROW_LIMIT = 40;
 
 export function toStockWatchRowView(item: StockWatchItem): StockWatchRowView {
   return {
@@ -296,6 +320,61 @@ export function buildStockWatchDashboard(
       b.orderValue - a.orderValue
   );
 
+  // Tablica dostawców. Towar ze wspólnego zakresu dwóch dostawców liczy się tylko u jednego —
+  // tego samego, co w sygnałach (uniqueByProduct: wygrywa dostawca z pozycją „Do ZD”).
+  // Inaczej oba wiersze pokazałyby tę samą dziurę i zachęcały do podwójnego zamówienia.
+  const ownerByTw = new Map(products.map((p) => [p.subiektTwId, p.supplierId]));
+  const proposalById = new Map(proposals.map((p) => [p.supplierId, p]));
+  const suppliers: StockWatchSupplierBoardRow[] = [];
+  let quietSupplierCount = 0;
+  // Także dostawcy z samą propozycją (np. same ostrzeżenia, brak towarów po filtrze nazw).
+  const boardSupplierIds = new Set([...itemsBySupplier.keys(), ...proposalById.keys()]);
+  for (const supplierId of boardSupplierIds) {
+    const supplierItems = itemsBySupplier.get(supplierId) ?? [];
+    const c: StockWatchSupplierCounts = {
+      emptyNoIncoming: 0,
+      outOfStock: 0,
+      critical: 0,
+      beforeDelivery: 0,
+      beforeNextDelivery: 0,
+      warning: 0,
+      lineCount: proposalById.get(supplierId)?.lineCount ?? 0,
+      dataWarnings: proposalById.get(supplierId)?.warnings.length ?? 0,
+    };
+    const urgent: StockWatchItem[] = [];
+    for (const i of supplierItems) {
+      if (i.rule !== "standard" || ownerByTw.get(i.subiektTwId) !== supplierId) continue;
+      if (i.status === "out_of_stock") {
+        c.outOfStock += 1;
+        if (isStockWatchEmptyNoIncoming(i)) c.emptyNoIncoming += 1;
+      } else if (i.status === "critical") c.critical += 1;
+      else if (i.status === "warning") c.warning += 1;
+      if (i.deliveryRisk === "before_delivery" && !isOutOrCritical(i)) c.beforeDelivery += 1;
+      else if (i.deliveryRisk === "before_next_delivery") c.beforeNextDelivery += 1;
+      if (isOutOrCritical(i) || i.deliveryRisk != null) urgent.push(i);
+    }
+    const priority = stockWatchSupplierPriority(c);
+    if (!priority) {
+      quietSupplierCount += 1;
+      continue;
+    }
+    const proposal = proposalById.get(supplierId) ?? null;
+    suppliers.push({
+      ...c,
+      supplierId,
+      supplierName: supplierItems[0]?.supplierName ?? proposal?.supplierName ?? "Dostawca",
+      priority,
+      orderValue: proposal?.orderValue ?? 0,
+      proposal,
+      urgentRows: urgent
+        .sort(compareStockWatchAlerts)
+        .slice(0, STOCK_WATCH_SUPPLIER_ROW_LIMIT)
+        .map(toStockWatchRowView),
+      urgentTotal: urgent.length,
+    });
+  }
+  suppliers.sort(compareStockWatchSupplierUrgency);
+
   const topVelocity = products
     .filter((i) => i.rule !== "excluded" && i.velocityDaily > 0)
     .sort((a, b) => b.velocityDaily - a.velocityDaily)
@@ -312,6 +391,8 @@ export function buildStockWatchDashboard(
     counts,
     alerts,
     proposals,
+    suppliers,
+    quietSupplierCount,
     topVelocity,
     flagged,
     totals: {

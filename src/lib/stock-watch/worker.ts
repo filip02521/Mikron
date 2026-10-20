@@ -10,6 +10,7 @@
  * do kolejnego wywołania crona tego samego dnia.
  */
 
+import { isZdNameAutoExcluded } from "@/lib/orders/zd-estimate-name-exclude";
 import { getPool } from "@/lib/db/pool";
 import { fetchSuppliersWithSchedules } from "@/lib/data/queries";
 import {
@@ -30,6 +31,7 @@ import { zdDeliveryRisk, type ZdOrderHorizon } from "@/lib/orders/zd-order-horiz
 import { loadZdOrderHorizons } from "@/lib/orders/zd-order-horizon-load";
 import { buildZdOrderList } from "@/lib/orders/zd-order-list";
 import { warsawNowParts } from "@/lib/time/warsaw";
+import { classifySubiektException, feedbackFromException } from "@/lib/subiekt/feedback";
 import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
 import { analyzeStockWatchItem, pairStockPieces, unitPricePerPiece } from "@/lib/stock-watch/analysis";
 import {
@@ -247,10 +249,14 @@ export async function runStockWatchWorker(input: {
           });
         }
       } catch (e) {
-        const message = userFacingErrorTextFromMessage(
-          e instanceof Error ? e.message : String(e)
-        );
-        console.error("[stock-watch] scope", scope.supplierId, message);
+        // Błąd Subiekta (brak sieci, timeout, 5xx) ma własny opis — ogólne „Coś poszło nie tak”
+        // ukrywało, że 52 zakresy padły na braku połączenia.
+        const code = classifySubiektException(e);
+        const message =
+          code === "unknown"
+            ? userFacingErrorTextFromMessage(e instanceof Error ? e.message : String(e))
+            : feedbackFromException(e).message;
+        console.error("[stock-watch] scope", scope.supplierId, message, e);
         scopesFailed.push({
           supplierId: scope.supplierId,
           supplierName: supplier.name,
@@ -368,7 +374,13 @@ async function computeSupplierOrder(input: {
   let orderValue = 0;
   let unpricedCount = 0;
   let zdUnitsSum = 0;
-  const rows: StockWatchItemWrite[] = engine.result.pozycje.map((line) => {
+  // Outlet / wycofane i zęby z katalogu nie są pilnowane — Kreator ich nie zamawia
+  // (auto-wykluczenie: `mergeZdEstimateExcludedTwIds` = nazwa + katalog zębów).
+  const teeth = new Set(engine.teethTwIds);
+  const monitored = engine.result.pozycje.filter(
+    (line) => !teeth.has(line.tw_Id) && !isZdNameAutoExcluded(String(line.tw_Nazwa ?? ""))
+  );
+  const rows: StockWatchItemWrite[] = monitored.map((line) => {
     const tw = line.tw_Id;
     const pack = engine.packagingLookup.get(tw) ?? null;
     const unitPrice = unitPricePerPiece(prices.get(tw)?.priceNet ?? null, pack);
