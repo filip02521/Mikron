@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import { formatQty } from "@/lib/orders/zd-estimate-manual";
 import {
   formatDatePlKey,
@@ -39,6 +40,15 @@ function Muted({ children, tone = "slate" }: { children: React.ReactNode; tone?:
   );
 }
 
+function Loading({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mt-1.5 flex items-center gap-2 text-sm text-slate-600" role="status">
+      <BrandLoader size="sm" tile={false} />
+      {children}
+    </p>
+  );
+}
+
 /** Kto kupuje + ostatnie sprzedaże — z dokumentów Subiekta (12 mies.). */
 export function ZdProductSalesSections({ state, titleId }: { state: ZdProductHistoryState; titleId: string }) {
   const sales = state.status === "ok" ? state.sales : null;
@@ -50,7 +60,7 @@ export function ZdProductSalesSections({ state, titleId }: { state: ZdProductHis
           Kto kupuje (12 mies.)
         </h3>
         {state.status === "loading" ? (
-          <Muted>Wczytuję sprzedaż z Subiekta…</Muted>
+          <Loading>Wczytuję sprzedaż z Subiekta…</Loading>
         ) : state.status === "error" ? (
           <Muted tone="amber">Sprzedaż niedostępna: {state.message}</Muted>
         ) : !sales?.ok ? (
@@ -141,7 +151,7 @@ export function ZdProductPurchasesSection({
         Nasze zakupy (ZD, 12 mies.)
       </h3>
       {state.status === "loading" ? (
-        <Muted>Wczytuję…</Muted>
+        <Loading>Wczytuję zakupy…</Loading>
       ) : state.status === "error" ? (
         <Muted tone="amber">Historia zakupów niedostępna: {state.message}</Muted>
       ) : !purchases?.ok ? (

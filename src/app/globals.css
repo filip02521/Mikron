@@ -3719,3 +3719,44 @@ input[type="checkbox"].toggle-switch.toggle-indigo:checked {
 .data-table.zd-estimate-table button.zd-est-product-name--link:hover {
   text-decoration-color: var(--color-slate-400);
 }
+
+/* ── Loader z logo (BrandLoader) ─────────────────────────────────────────────
+   Pojawia się po 250 ms, żeby krótkie ładowanie nie mignęło. Przygaszona tarcza,
+   jasny łuk (22% obwodu) obiega ją liniowo co 1 s; ptaszek stoi. */
+.brand-loader {
+  animation: brand-loader-in 200ms cubic-bezier(0.22, 1, 0.36, 1) 250ms both;
+}
+@keyframes brand-loader-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+.brand-loader__ring {
+  opacity: 0.3;
+}
+.brand-loader__arc {
+  stroke-dasharray: 0.22 0.78;
+  transform-box: view-box;
+  transform-origin: 32px 32px;
+  animation: brand-loader-turn 1s linear infinite;
+}
+@keyframes brand-loader-turn {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand-loader {
+    animation: brand-loader-fade 200ms ease 250ms both;
+  }
+  .brand-loader__arc {
+    animation: none;
+  }
+  .brand-loader svg {
+    animation: brand-loader-breathe 1.6s ease-in-out infinite alternate;
+  }
+}
+@keyframes brand-loader-fade {
+  from { opacity: 0; }
+}
+@keyframes brand-loader-breathe {
+  from { opacity: 1; }
+  to { opacity: 0.55; }
+}

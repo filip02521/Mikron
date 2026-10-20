@@ -400,6 +400,7 @@ import {
   OverflowMenuItem,
   OverflowMenuLabel,
 } from "@/components/ui/OverflowMenu";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import { Spinner } from "@/components/ui/Spinner";
 import {
   IconAlertCircle,
@@ -6175,7 +6176,7 @@ export function ZdEstimateWorkbench({
           aria-live="polite"
           aria-busy="true"
         >
-          <Spinner className="size-6 text-slate-500" />
+          <BrandLoader size="lg" />
           <p className="text-sm font-medium text-slate-700">
             Przywracanie listy…
           </p>
