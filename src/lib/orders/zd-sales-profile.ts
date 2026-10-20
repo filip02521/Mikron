@@ -234,9 +234,9 @@ function fmt(n: number): string {
 }
 
 /** Krótki opis do podpowiedzi (title) i znacznika. */
-export function formatZdSalesProfileHint(meta: ZdSalesProfileLineMeta): string {
-  const series = meta.windows.map((x) => fmt(x)).join(" · ");
-  const head =
+/** Jedno zdanie profilu („Jednorazowy skok: … zwykle ~…”) — nagłówek dymka z wykresem. */
+export function formatZdSalesProfileHeadline(meta: ZdSalesProfileLineMeta): string {
+  return (
     meta.kind === "spike"
       ? `Jednorazowy skok: ${fmt(meta.currentMonthly)} szt / 30 d, zwykle ~${fmt(meta.typicalMonthly)}.`
       : meta.kind === "rare"
@@ -245,11 +245,22 @@ export function formatZdSalesProfileHint(meta: ZdSalesProfileLineMeta): string {
           ? "Nowość - sprzedaż dopiero od ostatnich miesięcy."
           : meta.kind === "rising"
             ? `Wzrost sprzedaży: ${fmt(meta.currentMonthly)} szt / 30 d, wcześniej ~${fmt(meta.typicalMonthly)}.`
-            : `Sprzedaż regularna (${meta.activeWindows} z ${meta.windows.length} miesięcy).`;
+            : `Sprzedaż regularna (${meta.activeWindows} z ${meta.windows.length} miesięcy).`
+  );
+}
+
+/** Dopiski profilu: prośby w oknie i wygładzenie (bez nagłówka i serii). */
+export function formatZdSalesProfileNotes(meta: ZdSalesProfileLineMeta): string {
   const prosba =
     meta.prosbaPieces > 0 ? ` W oknie ${fmt(meta.prosbaPieces)} szt z zrealizowanych próśb.` : "";
   const applied = meta.applied
     ? ` Wygładzono: sprzedaż w oknie ${fmt(meta.rawSprzedazOkres)} → ${fmt(meta.rawSprzedazOkres * meta.factor)} szt.`
     : "";
-  return `${head}${prosba}${applied} Ostatnie 12 × 30 dni: ${series}.`;
+  return `${prosba}${applied}`.trim();
+}
+
+export function formatZdSalesProfileHint(meta: ZdSalesProfileLineMeta): string {
+  const series = meta.windows.map((x) => fmt(x)).join(" · ");
+  const notes = formatZdSalesProfileNotes(meta);
+  return `${formatZdSalesProfileHeadline(meta)}${notes ? ` ${notes}` : ""} Ostatnie 12 × 30 dni: ${series}.`;
 }

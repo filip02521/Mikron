@@ -34,6 +34,8 @@ import { ZdEstimateNameMetaStack } from "@/components/zakupy/ZdEstimateNameMetaS
 import { ZdEstimateQtyValue } from "@/components/zakupy/ZdEstimateQtyValue";
 import { ZdEstimateReservationsCell } from "@/components/zakupy/ZdEstimateReservationsCell";
 import { ZdEstimateRowActions } from "@/components/zakupy/ZdEstimateRowActions";
+import { ZdSalesProfileCardContent, ZdSalesSparkline } from "@/components/zakupy/ZdSalesSparkline";
+import { HoverCard } from "@/components/ui/HoverCard";
 import { cn } from "@/lib/cn";
 import { formatZdSalesProfileHint } from "@/lib/orders/zd-sales-profile";
 import { checkboxBrandClass } from "@/lib/ui/ontime-theme";
@@ -84,9 +86,15 @@ function ZdEstimateSalesProfileBadge({
   const hint = formatZdSalesProfileHint(profile);
   if (profile.kind === "spike") {
     return (
-      <span className="zd-est-profile-badge zd-est-profile-badge--spike" title={hint}>
+      <HoverCard
+        ariaLabel={hint}
+        width={300}
+        estimatedHeight={150}
+        triggerClassName="zd-est-profile-badge zd-est-profile-badge--spike"
+        content={<ZdSalesProfileCardContent profile={profile} />}
+      >
         {profile.applied ? "skok · wygładzony" : "jednorazowy skok?"}
-      </span>
+      </HoverCard>
     );
   }
   if (onRequest) return null;
@@ -613,6 +621,9 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
                     }
                   />
                 )}
+                {l.salesProfile && l.salesProfile.windows.length > 0 ? (
+                  <ZdSalesSparkline profile={l.salesProfile} />
+                ) : null}
               </td>
             );
           case "target":
