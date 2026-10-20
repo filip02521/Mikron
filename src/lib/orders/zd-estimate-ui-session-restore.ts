@@ -34,12 +34,68 @@ export type ZdEstimateRestoreRules = {
   teethTrusted: boolean;
 };
 
+type RecomputeResult = {
+  lines: ManualZdEstimateLine[];
+  missingPartnerTwIds: number[];
+  missingBomTwIds: number[];
+};
+
+/**
+ * Przeliczenie listy (bez Subiekta) z kompletem reguł podanym jawnie — jedno
+ * przejście zamiast łańcucha `apply*Live`, z których każde widzi tylko swoją
+ * świeżą regułę, a resztę z closure.
+ * Niewczytane reguły traktuje jak kreator (pominięte; Policz/Utwórz ZD i tak
+ * blokuje baner błędu).
+ */
+export function recomputeZdEstimateLinesWithRules(
+  input: {
+    linesBase: ManualZdEstimateLine[];
+    paramInfo: Record<string, unknown> | null | undefined;
+    dniZapasu: string;
+    zapasMin: string;
+    historyByTwId: ReadonlyMap<
+      number,
+      { lastOrderedQty: number; linkedAt: string }
+    > | null;
+    salesTrackPolicy: ReturnType<typeof policyForBoostPreset>;
+    sessionIncludeTwIds: Record<number, true>;
+  },
+  rules: ZdEstimateRestoreRules
+): RecomputeResult {
+  const onRequestIds = rules.onRequestTrusted
+    ? onRequestTwIdSet(rules.onRequests, rules.productPairs)
+    : new Set<number>();
+  const excludedTwIds = buildZdEstimateBakeExcludedTwIds({
+    linesBase: input.linesBase,
+    dbExcludedTwIds: rules.exclusionsTrusted
+      ? rules.exclusions.map((e) => e.subiektTwId)
+      : [],
+    teethTwIds: rules.teethTrusted ? new Set(rules.teethTwIds) : null,
+    sessionIncludeTwIds: input.sessionIncludeTwIds,
+    onRequestTwIds: onRequestIds,
+  });
+  return refreshZdEstimateLinesWithPairs({
+    linesBase: input.linesBase,
+    pairs: rules.productPairs,
+    boms: bomRowsToRefs(rules.productBoms),
+    options: {
+      ...zdEstimateRefreshDays(input.paramInfo, input.dniZapasu),
+      zapasMin: Number(input.zapasMin) || 0,
+      excludedTwIds,
+      packagingByTwId: packagingRowsToRefreshLookup(rules.packaging),
+      historyByTwId:
+        input.historyByTwId && input.historyByTwId.size > 0
+          ? input.historyByTwId
+          : null,
+      salesTrackPolicy: input.salesTrackPolicy,
+      minStockByTwId: minStockRowsToMap(rules.minStock),
+    },
+  });
+}
+
 /**
  * Lista z przywróconej sesji przeliczona raz z bieżącymi regułami z bazy
  * (snapshot trzyma tylko `linesBase` i parametry Policz, nie kopie reguł).
- * Ta sama ścieżka co przeliczenie po zmianie reguły w oknie ustawień.
- * Niewczytane reguły traktuje jak kreator (pominięte; Policz/Utwórz ZD i tak
- * blokuje baner błędu).
  */
 export function recomputeRestoredZdEstimateLines(
   snapshot: Pick<
@@ -57,11 +113,7 @@ export function recomputeRestoredZdEstimateLines(
     | "sessionIncludeTwIds"
   >,
   rules: ZdEstimateRestoreRules
-): {
-  lines: ManualZdEstimateLine[];
-  missingPartnerTwIds: number[];
-  missingBomTwIds: number[];
-} {
+): RecomputeResult {
   if (!snapshot.linesBase?.length) {
     return {
       lines: snapshot.lines,
@@ -69,33 +121,18 @@ export function recomputeRestoredZdEstimateLines(
       missingBomTwIds: snapshot.missingBomTwIds ?? [],
     };
   }
-  const onRequestIds = rules.onRequestTrusted
-    ? onRequestTwIdSet(rules.onRequests, rules.productPairs)
-    : new Set<number>();
-  const excludedTwIds = buildZdEstimateBakeExcludedTwIds({
-    linesBase: snapshot.linesBase,
-    dbExcludedTwIds: rules.exclusionsTrusted
-      ? rules.exclusions.map((e) => e.subiektTwId)
-      : [],
-    teethTwIds: rules.teethTrusted ? new Set(rules.teethTwIds) : null,
-    sessionIncludeTwIds: snapshot.sessionIncludeTwIds ?? {},
-    onRequestTwIds: onRequestIds,
-  });
-  const history = historyMapFromEntries(snapshot.historyByTwId);
-  return refreshZdEstimateLinesWithPairs({
-    linesBase: snapshot.linesBase,
-    pairs: rules.productPairs,
-    boms: bomRowsToRefs(rules.productBoms),
-    options: {
-      ...zdEstimateRefreshDays(snapshot.paramInfo, snapshot.dniZapasu),
-      zapasMin: Number(snapshot.zapasMin) || 0,
-      excludedTwIds,
-      packagingByTwId: packagingRowsToRefreshLookup(rules.packaging),
-      historyByTwId: history.size > 0 ? history : null,
+  return recomputeZdEstimateLinesWithRules(
+    {
+      linesBase: snapshot.linesBase,
+      paramInfo: snapshot.paramInfo,
+      dniZapasu: snapshot.dniZapasu,
+      zapasMin: snapshot.zapasMin,
+      historyByTwId: historyMapFromEntries(snapshot.historyByTwId),
       salesTrackPolicy: policyForBoostPreset(
         snapshot.appliedBoostPreset ?? snapshot.boostPreset
       ),
-      minStockByTwId: minStockRowsToMap(rules.minStock),
+      sessionIncludeTwIds: snapshot.sessionIncludeTwIds ?? {},
     },
-  });
+    rules
+  );
 }

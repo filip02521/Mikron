@@ -1261,6 +1261,7 @@ export const ZD_ESTIMATE_UI = {
   minStockNoteLabel: "Notatka",
   minStockClearCta: "Usuń minimum",
   minStockLiveFlash: "Minimum stanów zaktualizowane - lista przeliczona.",
+  settingsReloadedLiveFlash: "Ustawienia wczytane - lista przeliczona.",
   minStockBadgeShort: "min",
   minStockAddSectionTitle: "Dodaj produkt",
   minStockAddPlaceholder: "Wpisz symbol lub nazwę towaru z Subiekta…",

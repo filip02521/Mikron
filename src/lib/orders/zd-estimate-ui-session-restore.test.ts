@@ -6,6 +6,7 @@ import {
 import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
 import {
   recomputeRestoredZdEstimateLines,
+  recomputeZdEstimateLinesWithRules,
   type ZdEstimateRestoreRules,
 } from "@/lib/orders/zd-estimate-ui-session-restore";
 import { policyForBoostPreset } from "@/lib/orders/zd-estimate-boost-presets";
@@ -154,5 +155,76 @@ describe("buildZdEstimateBakeExcludedTwIds", () => {
       onRequestTwIds: new Set(),
     });
     expect(out.size).toBe(0);
+  });
+});
+
+describe("recomputeZdEstimateLinesWithRules", () => {
+  const linesBase = [baseLine(100), baseLine(200), baseLine(300)];
+  const input = {
+    linesBase,
+    paramInfo: { dniZapasu: 45, dniOkresu: 30 },
+    dniZapasu: "14",
+    zapasMin: "0",
+    historyByTwId: null,
+    salesTrackPolicy: policyForBoostPreset("standard"),
+    sessionIncludeTwIds: {},
+  };
+  const rules: ZdEstimateRestoreRules = {
+    ...noRules,
+    exclusions: [{ subiektTwId: 300 }] as unknown as ZdEstimateRestoreRules["exclusions"],
+    packaging: [
+      { subiektTwId: 100, unitsPerPackage: 10, documentUnitMode: "packages", orderMultiple: null },
+    ] as unknown as ZdEstimateRestoreRules["packaging"],
+    minStock: [
+      { subiektTwId: 300, minStockSzt: 80 },
+    ] as unknown as ZdEstimateRestoreRules["minStock"],
+    productPairs: [
+      { packTwId: 100, pieceTwId: 200, unitsPerPack: 10 },
+    ] as unknown as ZdEstimateRestoreRules["productPairs"],
+    teethTwIds: [999],
+  };
+
+  it("jedno przejście bierze wszystkie świeże reguły naraz (nie ostatnią z łańcucha)", () => {
+    const out = recomputeZdEstimateLinesWithRules(input, rules);
+    const expected = refreshZdEstimateLinesWithPairs({
+      linesBase,
+      pairs: rules.productPairs,
+      options: {
+        dniZapasu: 45,
+        dniOkresu: 30,
+        zapasMin: 0,
+        excludedTwIds: new Set([300]),
+        packagingByTwId: new Map([
+          [100, { unitsPerPackage: 10, documentUnitMode: "packages", orderMultiple: null }],
+        ]),
+        historyByTwId: null,
+        salesTrackPolicy: policyForBoostPreset("standard"),
+        minStockByTwId: new Map([[300, 80]]),
+      },
+    });
+    expect(out.lines).toEqual(expected.lines);
+    expect(out.lines.find((l) => l.tw_Id === 100)?.pair?.role).toBe("pack");
+    // Minimum stanów z tego samego przejścia podnosi zamówienie.
+    const withoutMin = recomputeZdEstimateLinesWithRules(input, {
+      ...rules,
+      minStock: [],
+    });
+    expect(
+      out.lines.find((l) => l.tw_Id === 300)!.doZamowieniaReczne
+    ).toBeGreaterThan(
+      withoutMin.lines.find((l) => l.tw_Id === 300)!.doZamowieniaReczne
+    );
+  });
+
+  it("nieufne wykluczenia (błąd wczytania) są pomijane", () => {
+    const untrusted = recomputeZdEstimateLinesWithRules(input, {
+      ...rules,
+      exclusionsTrusted: false,
+    });
+    const none = recomputeZdEstimateLinesWithRules(input, {
+      ...rules,
+      exclusions: [],
+    });
+    expect(untrusted.lines).toEqual(none.lines);
   });
 });
