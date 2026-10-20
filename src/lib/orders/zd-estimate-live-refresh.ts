@@ -11,9 +11,15 @@ import {
   type ZdProductBomRef,
 } from "@/lib/orders/zd-estimate-bom";
 import {
+  DEFAULT_DNI_ZAPASU,
   mapZdEstimateLinesSolo,
   type ManualZdEstimateLine,
 } from "@/lib/orders/zd-estimate-manual";
+import { mergeZdEstimateExcludedTwIds } from "@/lib/orders/zd-estimate-name-exclude";
+import {
+  buildBakeExcludedTwIds,
+  filterSessionIncludeRespectingOnRequest,
+} from "@/lib/orders/zd-estimate-on-request";
 import {
   applyZdEstimatePairs,
   type ApplyZdEstimatePairsOptions,
@@ -128,3 +134,55 @@ export function refreshZdEstimateLinesWithPairs(input: {
 }
 
 export { collectMissingZdBomTwIds };
+
+/**
+ * Dni zapasu / okresu do przeliczenia na kliencie: te, z którymi liczył serwer
+ * (opcja czasu dostawy może je wydłużyć), z fallbackiem na formularz.
+ */
+export function zdEstimateRefreshDays(
+  paramInfo: Record<string, unknown> | null | undefined,
+  dniZapasuForm: string | number
+): { dniZapasu: number; dniOkresu: number | null } {
+  const serverDni = Number(paramInfo?.dniZapasu);
+  const dni = Math.round(
+    Number.isFinite(serverDni) && serverDni >= 1 ? serverDni : Number(dniZapasuForm)
+  );
+  const dniOkresuRaw = paramInfo?.dniOkresu;
+  return {
+    dniZapasu: Number.isFinite(dni) && dni >= 1 ? dni : DEFAULT_DNI_ZAPASU,
+    dniOkresu:
+      dniOkresuRaw != null && Number.isFinite(Number(dniOkresuRaw))
+        ? Number(dniOkresuRaw)
+        : null,
+  };
+}
+
+/**
+ * Bake exclude dla przeliczenia: DB ∪ auto z nazwy ∪ zęby − włączone w sesji
+ * (sesja nie zdejmuje „tylko na prośbę”) ∪ „tylko na prośbę”.
+ */
+export function buildZdEstimateBakeExcludedTwIds(input: {
+  linesBase: ReadonlyArray<{ tw_Id: number; tw_Nazwa: string }> | null;
+  dbExcludedTwIds: Iterable<number>;
+  /** null = lista zębów niewczytana (nie wykluczaj po niej). */
+  teethTwIds: ReadonlySet<number> | null;
+  sessionIncludeTwIds: Record<number, true>;
+  onRequestTwIds: ReadonlySet<number>;
+}): Set<number> {
+  const db = [...input.dbExcludedTwIds];
+  let base: Set<number>;
+  if (!input.linesBase) {
+    base = new Set(db);
+    if (input.teethTwIds) for (const id of input.teethTwIds) base.add(id);
+  } else {
+    base = mergeZdEstimateExcludedTwIds(input.linesBase, db, {
+      teethTwIds: input.teethTwIds,
+    });
+  }
+  const sessionOk = filterSessionIncludeRespectingOnRequest(
+    input.sessionIncludeTwIds,
+    input.onRequestTwIds
+  );
+  for (const id of sessionOk) base.delete(id);
+  return buildBakeExcludedTwIds(base, input.onRequestTwIds);
+}

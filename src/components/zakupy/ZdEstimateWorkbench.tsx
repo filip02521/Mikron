@@ -132,6 +132,10 @@ import {
   parseZdEstimateUiSessionSnapshot,
   type ZdEstimateUiSessionSnapshot,
 } from "@/lib/orders/zd-estimate-ui-session-snapshot";
+import {
+  recomputeRestoredZdEstimateLines,
+  type ZdEstimateRestoreRules,
+} from "@/lib/orders/zd-estimate-ui-session-restore";
 import { bomRowsToRefs, bomRowHidesHardExclude, bomRowHidesOnRequest, hasUnresolvedExplodeBomNodes, zdEstimateLineSalesDemandSignal } from "@/lib/orders/zd-estimate-bom";
 import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
 import {
@@ -1452,6 +1456,11 @@ export function ZdEstimateWorkbench({
     pairUnitsByPackTwId,
     packagingLookup,
   } = rulesState;
+  // Restore sesji jest asynchroniczny — czytaj reguły z ostatniego renderu, nie z closure.
+  const restoreRulesRef = useRef<ZdEstimateRestoreRules>(rulesState);
+  useLayoutEffect(() => {
+    restoreRulesRef.current = rulesState;
+  });
   const [pairsOpen, setPairsOpen] = useState(false);
   const [pairSeed, setPairSeed] = useState<
     readonly [ZdPairSeedProduct, ZdPairSeedProduct] | null
@@ -2702,13 +2711,6 @@ export function ZdEstimateWorkbench({
         missingPartnerTwIds,
         missingBomTwIds,
         paramInfo: paramInfo ?? {},
-        exclusions,
-        onRequests,
-        packaging,
-        minStock,
-        productPairs,
-        productBoms,
-        teethTwIds,
         boostPreset,
         appliedBoostPreset,
         leadTimeHorizon,
@@ -2751,13 +2753,6 @@ export function ZdEstimateWorkbench({
       missingPartnerTwIds,
       missingBomTwIds,
       paramInfo,
-      exclusions,
-      onRequests,
-      packaging,
-      minStock,
-      productPairs,
-      productBoms,
-      teethTwIds,
       appliedBoostPreset,
       leadTimeHorizon,
       salesSmoothing,
@@ -2964,7 +2959,15 @@ export function ZdEstimateWorkbench({
       setSalesWindowSource(payload.salesWindowSource ?? "stock");
 
       setLinesBase(coerceZdEstimateLinesBase(payload.linesBase ?? []));
-      setLines(payload.lines);
+      // Reguły z bazy (bootstrap strony) zostają — lista przeliczona raz z nimi,
+      // żeby zmiana reguły w trakcie nieobecności nie wróciła starą kopią.
+      const restored = recomputeRestoredZdEstimateLines(
+        payload,
+        restoreRulesRef.current
+      );
+      setLines(restored.lines);
+      setMissingPartnerTwIds(restored.missingPartnerTwIds);
+      setMissingBomTwIds(restored.missingBomTwIds);
       setHistoryByTwId(historyMapFromEntries(payload.historyByTwId));
       setHistoryFetchFailed(Boolean(payload.historyFetchFailed));
       // Z sesji: tylko horyzont (zakresy / podpowiedzi ZD wrócą przy kolejnym Policz).
@@ -2987,20 +2990,6 @@ export function ZdEstimateWorkbench({
       );
       setPendingIndividualsError(payload.pendingIndividualsError ?? null);
 
-      setOnRequests(payload.onRequests ?? []);
-      setOnRequestsError(null);
-      setExclusions(payload.exclusions ?? []);
-      setExclusionsError(null);
-      setPackaging(payload.packaging ?? []);
-      setPackagingError(null);
-      setProductPairs(payload.productPairs ?? []);
-      setProductPairsError(null);
-      setProductBoms(payload.productBoms ?? []);
-      setProductBomsError(null);
-      setTeethTwIds(payload.teethTwIds ?? []);
-      setTeethProductsError(null);
-      setMissingPartnerTwIds(payload.missingPartnerTwIds ?? []);
-      setMissingBomTwIds(payload.missingBomTwIds ?? []);
 
       setQtyOverrideByTwId(payload.qtyOverrideByTwId ?? {});
       listScopeKeyRef.current = zdEstimateListScopeKey(
@@ -3065,18 +3054,6 @@ export function ZdEstimateWorkbench({
       resetSelectionQuiet,
       resetCreateZdFlow,
       setListComputedAtMs,
-      setExclusions,
-      setExclusionsError,
-      setOnRequests,
-      setOnRequestsError,
-      setPackaging,
-      setPackagingError,
-      setProductBoms,
-      setProductBomsError,
-      setProductPairs,
-      setProductPairsError,
-      setTeethProductsError,
-      setTeethTwIds,
     ]
   );
 
@@ -4270,13 +4247,6 @@ export function ZdEstimateWorkbench({
             missingPartnerTwIds: res.meta.pairMissingTwIds ?? [],
             missingBomTwIds: res.meta.bomMissingTwIds ?? [],
             paramInfo: res.result.parametry as Record<string, unknown>,
-            exclusions: res.exclusions ?? [],
-            onRequests: res.onRequests ?? [],
-            packaging: res.packaging ?? [],
-            minStock: res.minStock ?? [],
-            productPairs: res.productPairs ?? [],
-            productBoms: res.productBoms ?? [],
-            teethTwIds: res.teethTwIds ?? [],
             boostPreset: res.boostPreset ?? boostPreset,
             appliedBoostPreset: res.boostPreset ?? appliedBoostPreset,
             boostNeedsRecount: false,

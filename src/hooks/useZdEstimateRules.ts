@@ -15,14 +15,8 @@ import type { ZdEstimateMinStockRow } from "@/lib/data/zd-estimate-min-stock";
 import type { ZdProductPairRow } from "@/lib/data/zd-product-pairs";
 import type { ZdProductBomRow } from "@/lib/data/zd-product-boms";
 import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
-import { DEFAULT_DNI_ZAPASU } from "@/lib/orders/zd-estimate-manual";
 import { minStockRowsToMap } from "@/lib/orders/zd-estimate-min-stock-lookup";
-import {
-  buildBakeExcludedTwIds,
-  filterSessionIncludeRespectingOnRequest,
-  onRequestTwIdSet,
-} from "@/lib/orders/zd-estimate-on-request";
-import { mergeZdEstimateExcludedTwIds } from "@/lib/orders/zd-estimate-name-exclude";
+import { onRequestTwIdSet } from "@/lib/orders/zd-estimate-on-request";
 import { bomRowsToRefs } from "@/lib/orders/zd-estimate-bom";
 import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
@@ -32,7 +26,11 @@ import {
   type PackagingLookup,
   type ZdEstimatePackagingRefreshEntry,
 } from "@/lib/orders/zd-estimate-packaging";
-import { refreshZdEstimateLinesWithPairs } from "@/lib/orders/zd-estimate-live-refresh";
+import {
+  buildZdEstimateBakeExcludedTwIds,
+  refreshZdEstimateLinesWithPairs,
+  zdEstimateRefreshDays,
+} from "@/lib/orders/zd-estimate-live-refresh";
 import type { ZdProductPairRef } from "@/lib/orders/zd-product-pair-units";
 import type { policyForBoostPreset } from "@/lib/orders/zd-estimate-boost-presets";
 
@@ -317,32 +315,25 @@ export function useZdEstimateRulesLiveApply({
   } = rules;
 
   /** Bake exclude względem linesBase + session — do re-merge par (pełne onRequest). */
-  const bakeExcludedTwIds = useMemo(() => {
-    const db = exclusionsTrusted ? [...dbExcludedIds] : [];
-    let base: Set<number>;
-    if (!linesBase) {
-      base = new Set(db);
-      if (teethTrusted) for (const id of teethTwIdSet) base.add(id);
-    } else {
-      base = mergeZdEstimateExcludedTwIds(linesBase, db, {
+  const bakeExcludedTwIds = useMemo(
+    () =>
+      buildZdEstimateBakeExcludedTwIds({
+        linesBase,
+        dbExcludedTwIds: exclusionsTrusted ? dbExcludedIds : [],
         teethTwIds: teethTrusted ? teethTwIdSet : null,
-      });
-    }
-    const sessionOk = filterSessionIncludeRespectingOnRequest(
-      sessionIncludeTwIds,
-      onRequestTwIds
-    );
-    for (const id of sessionOk) base.delete(id);
-    return buildBakeExcludedTwIds(base, onRequestTwIds);
-  }, [
+        sessionIncludeTwIds,
+        onRequestTwIds,
+      }),
+    [
     linesBase,
     dbExcludedIds,
     exclusionsTrusted,
     teethTwIdSet,
     teethTrusted,
-    sessionIncludeTwIds,
-    onRequestTwIds,
-  ]);
+      sessionIncludeTwIds,
+      onRequestTwIds,
+    ]
+  );
 
   const excludedIdsForRefresh = bakeExcludedTwIds;
 
@@ -370,26 +361,13 @@ export function useZdEstimateRulesLiveApply({
           applied: false,
         };
       }
-      // Dni zapasu, z którymi liczył serwer (opcja czasu dostawy może je wydłużyć) —
-      // inaczej przeliczenie po zmianie reguły wróciłoby do wartości z formularza.
-      const serverDni = Number(paramInfo?.dniZapasu);
-      const dni = Math.round(
-        Number.isFinite(serverDni) && serverDni >= 1 ? serverDni : Number(dniZapasu)
-      );
-      const dniOkresuRaw = paramInfo?.dniOkresu;
-      const dniOkresu =
-        dniOkresuRaw != null && Number.isFinite(Number(dniOkresuRaw))
-          ? Number(dniOkresuRaw)
-          : null;
       const { lines: nextLines, missingPartnerTwIds, missingBomTwIds } =
         refreshZdEstimateLinesWithPairs({
           linesBase,
           pairs: nextPairs,
           boms: bomRowsToRefs(nextBoms),
           options: {
-            dniZapasu:
-              Number.isFinite(dni) && dni >= 1 ? dni : DEFAULT_DNI_ZAPASU,
-            dniOkresu,
+            ...zdEstimateRefreshDays(paramInfo, dniZapasu),
             zapasMin: Number(zapasMin) || 0,
             excludedTwIds: excludedIdsForRefresh,
             packagingByTwId: packagingLookup ?? packagingByTwIdForRefresh,
@@ -427,26 +405,13 @@ export function useZdEstimateRulesLiveApply({
   const recountEstimateLinesWithExcluded = useCallback(
     (excludedTwIds: ReadonlySet<number>) => {
       if (!linesBase?.length) return;
-      // Dni zapasu, z którymi liczył serwer (opcja czasu dostawy może je wydłużyć) —
-      // inaczej przeliczenie po zmianie reguły wróciłoby do wartości z formularza.
-      const serverDni = Number(paramInfo?.dniZapasu);
-      const dni = Math.round(
-        Number.isFinite(serverDni) && serverDni >= 1 ? serverDni : Number(dniZapasu)
-      );
-      const dniOkresuRaw = paramInfo?.dniOkresu;
-      const dniOkresu =
-        dniOkresuRaw != null && Number.isFinite(Number(dniOkresuRaw))
-          ? Number(dniOkresuRaw)
-          : null;
       const { lines: nextLines, missingPartnerTwIds, missingBomTwIds } =
         refreshZdEstimateLinesWithPairs({
           linesBase,
           pairs: productPairs,
           boms: bomRowsToRefs(productBoms),
           options: {
-            dniZapasu:
-              Number.isFinite(dni) && dni >= 1 ? dni : DEFAULT_DNI_ZAPASU,
-            dniOkresu,
+            ...zdEstimateRefreshDays(paramInfo, dniZapasu),
             zapasMin: Number(zapasMin) || 0,
             excludedTwIds,
             packagingByTwId: packagingByTwIdForRefresh,
@@ -484,24 +449,14 @@ export function useZdEstimateRulesLiveApply({
       sessionIncludes: Record<number, true>,
       dbExcluded: Iterable<number> = exclusionsTrusted ? dbExcludedIds : [],
       onRequestIds: ReadonlySet<number> = onRequestTwIds
-    ) => {
-      const db = [...dbExcluded];
-      let base: Set<number>;
-      if (!linesBase) {
-        base = new Set(db);
-        if (teethTrusted) for (const id of teethTwIdSet) base.add(id);
-      } else {
-        base = mergeZdEstimateExcludedTwIds(linesBase, db, {
-          teethTwIds: teethTrusted ? teethTwIdSet : null,
-        });
-      }
-      const sessionOk = filterSessionIncludeRespectingOnRequest(
-        sessionIncludes,
-        onRequestIds
-      );
-      for (const id of sessionOk) base.delete(id);
-      return buildBakeExcludedTwIds(base, onRequestIds);
-    },
+    ) =>
+      buildZdEstimateBakeExcludedTwIds({
+        linesBase,
+        dbExcludedTwIds: dbExcluded,
+        teethTwIds: teethTrusted ? teethTwIdSet : null,
+        sessionIncludeTwIds: sessionIncludes,
+        onRequestTwIds: onRequestIds,
+      }),
     [
       linesBase,
       exclusionsTrusted,

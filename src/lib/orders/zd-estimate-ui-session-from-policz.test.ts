@@ -76,13 +76,6 @@ describe("buildZdEstimateUiSessionSnapshotFromPolicz", () => {
       pendingIndividualsTruncated: false,
       pendingIndividualsError: null,
       meta,
-      exclusions: [],
-      onRequests: [],
-      packaging: [],
-      minStock: [],
-      productPairs: [],
-      productBoms: [],
-      teethTwIds: [],
       boostPreset: "standard",
       seed: null,
     });
@@ -116,13 +109,6 @@ describe("buildZdEstimateUiSessionSnapshotFromPolicz", () => {
       pendingIndividualsTruncated: false,
       pendingIndividualsError: "boom",
       meta,
-      exclusions: [],
-      onRequests: [],
-      packaging: [],
-      minStock: [],
-      productPairs: [],
-      productBoms: [],
-      teethTwIds: [9],
       boostPreset: "standard",
       seed: {
         selectedCecha: {
@@ -152,7 +138,8 @@ describe("buildZdEstimateUiSessionSnapshotFromPolicz", () => {
     expect(snapshot.showAdvanced).toBe(true);
     expect(snapshot.sortKey).toBe("symbol");
     expect(snapshot.pendingIndividualsError).toBe("boom");
-    expect(snapshot.teethTwIds).toEqual([9]);
+    // Reguły z bazy nie trafiają do snapshotu — restore bierze świeże.
+    expect(snapshot).not.toHaveProperty("teethTwIds");
     expect(parseZdEstimateUiSessionSnapshot(snapshot)).not.toBeNull();
   });
 
@@ -174,13 +161,6 @@ describe("buildZdEstimateUiSessionSnapshotFromPolicz", () => {
       pendingIndividualsTruncated: true,
       pendingIndividualsError: null,
       meta: { ...meta, totalFromSubiekt: 1 },
-      exclusions: [],
-      onRequests: [],
-      packaging: [],
-      minStock: [],
-      productPairs: [],
-      productBoms: [],
-      teethTwIds: [],
       boostPreset: "standard",
     });
 
@@ -229,13 +209,6 @@ describe("buildZdEstimateUiSessionSnapshotFromPolicz", () => {
       pendingIndividualsTruncated: false,
       pendingIndividualsError: null,
       meta,
-      exclusions: [],
-      onRequests: [],
-      packaging: [],
-      minStock: [],
-      productPairs: [],
-      productBoms: [],
-      teethTwIds: [],
       boostPreset: "standard",
     });
 
