@@ -72,6 +72,14 @@ import {
   fetchSubiektZdEstimateAll,
   fetchSubiektZdEstimateZkPage,
 } from "@/lib/subiekt/api";
+import { fetchZdSupplierOrderPolicy } from "@/lib/data/zd-supplier-order-policy";
+import {
+  applyZdDemandFloorToLine,
+  effectiveDniZapasu,
+  sales90FromProfile,
+  ZD_SUPPLIER_ORDER_POLICY_CLASSIC,
+  type ZdSupplierOrderPolicy,
+} from "@/lib/orders/zd-demand-policy";
 import { requireZdEstimateSnapshotHostKind } from "@/lib/subiekt/config";
 import { getSubiektFeedback, type SubiektFeedback } from "@/lib/subiekt/feedback";
 import { assertZdEstimateFilterEcho } from "@/lib/orders/zd-estimate-scope";
@@ -422,6 +430,11 @@ export type ZdOrderEngineInput = {
   salesSmoothing?: boolean;
   /** Kreator: "background" (nie czeka na odświeżenie profilu do 14 dni). Nocny przebieg: "sync". */
   salesProfileRefresh?: "sync" | "background";
+  /**
+   * Strategia dostawcy (zd_supplier_order_policy). Brak = wczytana z bazy dla `supplierId`
+   * (bez dostawcy: classic). Podgląd / testy mogą ją podać wprost.
+   */
+  orderPolicy?: ZdSupplierOrderPolicy;
   onProgress?: (patch: ZdOrderEngineProgressPatch) => void;
 };
 
@@ -465,6 +478,10 @@ export type ZdOrderEngineOutput = {
   teethTwIds: number[];
   boostPreset: ZdBoostPowerPreset;
   extrasPolicy: ZdEstimateExtrasPolicy;
+  /** Strategia, z którą liczono (classic = jak dotąd); dni zapasu już z niej. */
+  orderPolicy: ZdSupplierOrderPolicy;
+  /** Pozycje, którym podłoga 90 d podniosła tempo. */
+  demandFloorCount: number;
   /** Wykluczenia twarde (DB ∪ auto z nazwy ∪ zęby) na pozycjach wyniku. */
   hardExcludedTwIds: Set<number>;
   onRequestTwIds: Set<number>;
@@ -493,10 +510,27 @@ export async function runZdOrderEngine(
   | ({ ok: true } & ZdOrderEngineOutput)
   | { ok: false; feedback: SubiektFeedback }
 > {
-  const { scope, dniZapasu, dataOd, dataDo, zapasMin } = input;
+  const { scope, dataOd, dataDo, zapasMin } = input;
   const touchProgress = (patch: ZdOrderEngineProgressPatch) => {
     input.onProgress?.(patch);
   };
+
+  // Strategia przed pobraniem listy: Subiekt liczy cel z dni zapasu już w zapytaniu.
+  let orderPolicy: ZdSupplierOrderPolicy = input.orderPolicy ?? ZD_SUPPLIER_ORDER_POLICY_CLASSIC;
+  if (!input.orderPolicy && input.supplierId) {
+    try {
+      orderPolicy = await fetchZdSupplierOrderPolicy(input.supplierId);
+    } catch (e) {
+      const feedback = getSubiektFeedback("empty_query", {
+        title: "Strategia dostawcy niedostępna",
+        message: `Lista nie została pokazana - bez strategii dostawcy ilości mogłyby być liczone inaczej niż w propozycji automatu. ${userFacingErrorText(e, "Nie udało się wczytać strategii dostawcy.")}`,
+        hint: "Odśwież stronę lub spróbuj ponownie za chwilę.",
+      });
+      return { ok: false, feedback };
+    }
+  }
+  const dniZapasu = effectiveDniZapasu(orderPolicy, input.dniZapasu);
+  let demandFloorCount = 0;
 
   // Pełna lista towarów zakresu z Subiekta (nie tylko braki API / nie nasza baza).
   // Echo filtra zaraz po 1. stronie — bez tego stary API mógłby dociągnąć cały katalog.
@@ -997,7 +1031,8 @@ export async function runZdOrderEngine(
         compositeTwIds.add(bom.parentTwId);
         for (const c of bom.components) compositeTwIds.add(c.componentTwId);
       }
-      const smoothing = input.salesSmoothing === true;
+      // Strategia max30_90 zastępuje wygładzenie (backtest: wygładzenie nie poprawiało wyniku).
+      const smoothing = input.salesSmoothing === true && orderPolicy.strategy === "classic";
       const prosbaInPieces = (tw: number) =>
         smoothing &&
         !compositeTwIds.has(tw) &&
@@ -1018,15 +1053,28 @@ export async function runZdOrderEngine(
         const line = mergedPozycje[i]!;
         const tw = Math.trunc(Number(line.tw_Id) || 0);
         const windows = profiles.get(tw);
+        if (windows && orderPolicy.strategy !== "classic") {
+          const floored = applyZdDemandFloorToLine(line, {
+            policy: orderPolicy,
+            sales90: sales90FromProfile(windows),
+            dniOkresu,
+            dniZapasu,
+          });
+          if (floored !== line) {
+            demandFloorCount += 1;
+            mergedPozycje[i] = floored;
+          }
+        }
         if (!windows || compositeTwIds.has(tw)) continue;
         const meta = resolveZdSalesProfile({
           windows,
+          // Profil (znaczniki) z prawdziwej sprzedaży, nie z podłogi strategii.
           sprzedazOkres: Number(line.sprzedazOkres) || 0,
           dniOkresu,
           prosbaPieces: prosbaPieces.get(tw) ?? 0,
           smoothing,
         });
-        mergedPozycje[i] = applyZdSalesProfileToLine(line, meta, zapasMin);
+        mergedPozycje[i] = applyZdSalesProfileToLine(mergedPozycje[i]!, meta, zapasMin);
         if (meta.applied) {
           if (meta.kind === "spike") salesSmoothing.spike += 1;
           else if (meta.kind === "rare") salesSmoothing.rare += 1;
@@ -1241,6 +1289,8 @@ export async function runZdOrderEngine(
     bomRefs,
     teethTwIds,
     boostPreset,
+    orderPolicy,
+    demandFloorCount,
     extrasPolicy,
     hardExcludedTwIds: hardBase,
     onRequestTwIds: onRequestIds,

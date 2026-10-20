@@ -15,9 +15,10 @@ Otwarte: produkcja niedostępna przy analizie (sesja wygasła) — dane ERP z lo
 
 Cel: Kreator liczy Polkard wg strategii z backtestu, co 3 dni gotowa propozycja ZD; Filip akceptuje / odrzuca / poprawia, decyzje zapisane.
 
-- [ ] A. Backtest na całej puli (52 dostawców) przez prawdziwy kod Kreatora (mapZdEstimateLineToManual + sales track „gentle” + historia + opakowania). Kryterium: dla każdego dostawcy znana najlepsza para (cykl, dni zapasu, estymator) i porównanie z rzeczywistością (dni bez towaru, średni zapas).
-- [ ] B. Strategia w silniku jako czysta funkcja (zd-demand-policy): tempo = max(30 d, 90 d / 3), cel = tempo × dni zapasu dostawcy-strategii; ustawienia per dostawca (domyślnie: jak dziś). Kryterium: test jednostkowy + backtest woła tę samą funkcję.
+- [x] A. Backtest na całej puli (52 dostawców) przez prawdziwy kod Kreatora (mapZdEstimateLineToManual + sales track „gentle” + historia + opakowania). Kryterium: dla każdego dostawcy znana najlepsza para (cykl, dni zapasu, estymator) i porównanie z rzeczywistością (dni bez towaru, średni zapas).
+- [x] B. Strategia w silniku jako czysta funkcja (zd-demand-policy): tempo = max(30 d, 90 d / 3), cel = tempo × dni zapasu dostawcy-strategii; ustawienia per dostawca (domyślnie: jak dziś). Kryterium: test jednostkowy + backtest woła tę samą funkcję.
 - [ ] C. Ustawienia strategii dostawcy (migracja + UI w Kreatorze): strategia, dni zapasu, cykl dni. Kryterium: Polkard włączony, reszta bez zmian (diff list „Do ZD” dla innych dostawców = 0).
 - [ ] D. Propozycje automatu: co `cykl` dni nocny przebieg zapisuje propozycję (linie, ilości, powód); w Kreatorze baner „Propozycja z …” → wczytaj / odrzuć z powodem. Kryterium: propozycja = to samo co Policz w Kreatorze tego dnia.
 - [ ] E. Dziennik decyzji: przy Utwórz ZD z propozycji zapis zaakceptowane / zmienione (propozycja vs ZD per linia) / odrzucone. Kryterium: raport różnic po każdej propozycji.
+  - Wynik (20.10.2026, 45 dostawców z rekonstrukcją ≥70%): dostawa ≤3 d → co 3 d + podłoga 90 d wygrywa z rzeczywistością (Polkard 25 d: −33% dni bez towaru, −33% zapasu); podłoga 90 d daje −10–18% dni bez towaru przy +1–2% zapasu. Dostawa >3 d (import) → krótkie cele przegrywają; zostaje „jak dziś”.
 - [ ] F. Pełne testy, review, authz-reviewer (nowe akcje), weryfikacja w przeglądarce; migracje do wgrania na produkcji.
