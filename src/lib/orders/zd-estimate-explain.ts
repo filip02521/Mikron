@@ -4,7 +4,7 @@
  * nie sumują się do niego (rezerwacje ZK pod prośby), pokazujemy jawną korektę.
  */
 
-import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
+import { formatQty, type ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
 import type { ZdEstimateExtrasPolicy } from "@/lib/orders/zd-estimate-extras-policy";
 import {
   isPackagingPackagesMode,
@@ -27,7 +27,7 @@ function ceilPos(n: number): number {
 export function explainZdOrderQty(input: {
   line: Pick<
     ManualZdEstimateLine,
-    "celZapasu" | "celZapasuTracked" | "dostepne" | "pair"
+    "celZapasu" | "celZapasuTracked" | "dostepne" | "pair" | "demandFloor"
   >;
   qty: ZdPackOrderQty;
   /** Otwarte ZD przeliczone na sztuki (dla pary — już w pokryciu). */
@@ -54,6 +54,16 @@ export function explainZdOrderQty(input: {
     }
     expected = qty.piecesNeeded;
   } else {
+    if (line.demandFloor) {
+      const f = line.demandFloor;
+      steps.push({
+        key: "floor",
+        label: `Średnia 90 dni wyższa niż ostatnie tempo (${formatQty(f.rateBefore * 30)} → ${formatQty(f.rateAfter * 30)} szt / 30 d)`,
+        value: Math.round(f.sales90),
+        unit: "szt w 90 d",
+        kind: "note",
+      });
+    }
     const celBase = Number(line.celZapasuTracked ?? line.celZapasu) || 0;
     const cel = Math.max(celBase, minStock);
     steps.push({

@@ -56,3 +56,19 @@ describe("explainZdOrderQty", () => {
     expect(s.at(-1)).toMatchObject({ key: "override", value: 3 });
   });
 });
+
+describe("explainZdOrderQty — strategia testowa", () => {
+  it("podłoga 90 d pokazana jako osobny krok przed celem", () => {
+    const qty = computeZdPackOrderQty(10, 1, "op.");
+    const s = explainZdOrderQty({
+      line: line({ celZapasu: 10, celZapasuTracked: 10, dostepne: 0, demandFloor: { sales90: 36, rateBefore: 0.2, rateAfter: 0.4 } }),
+      qty,
+      openZdPieces: 0,
+      extraPieces: 0,
+      extraOnly: false,
+      extrasPolicy: "sum",
+    });
+    expect(s[0]).toMatchObject({ key: "floor", value: 36, kind: "note" });
+    expect(s[0]!.label).toContain("6 → 12 szt / 30 d");
+  });
+});
