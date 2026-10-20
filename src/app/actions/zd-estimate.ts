@@ -3,6 +3,14 @@
 import { refreshStockWatchAfterOrder } from "@/lib/stock-watch/refresh-after-order";
 import type { SupplierLocation } from "@/types/database";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
+import {
+  fetchZdSupplierOrderPolicy,
+  upsertZdSupplierOrderPolicy,
+  type ZdSupplierOrderPolicyRow,
+} from "@/lib/data/zd-supplier-order-policy";
+import type { ZdDemandStrategy } from "@/lib/orders/zd-demand-policy";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // @service-role-ok — autoryzacja requireZdEstimateAdmin() (operacje dostaw); service role z pełnym scope po warstwie aplikacji.
 import { requireZdEstimateAdmin } from "@/lib/auth";
 import {
@@ -366,6 +374,9 @@ export type ZdEstimateRunResult =
       horizon?: import("@/lib/orders/zd-order-horizon").ZdOrderHorizon | null;
       /** Czas dostawy dostawcy (dni) — także bez opcji horyzontu; kreska w „Starczy”. */
       leadDays?: number | null;
+      /** Strategia dostawcy użyta w tym Policz (classic = jak dotąd) i ile pozycji podniosła podłoga 90 d. */
+      orderPolicy?: import("@/lib/orders/zd-demand-policy").ZdSupplierOrderPolicy;
+      demandFloorCount?: number;
       /** Opcja wygładzenia przy tym Policz + ile pozycji zmieniła (null = profil niedostępny). */
       salesSmoothingEnabled?: boolean;
       salesSmoothing?: import("@/lib/orders/zd-order-engine").ZdSalesSmoothingSummary | null;
@@ -1318,6 +1329,51 @@ export async function actionFetchZdEstimateProductHistory(input: {
   return { sales, purchases };
 }
 
+/** Strategia zamawiania dostawcy (Kreator: chip „Strategia” przy zakresie). */
+export async function actionGetZdSupplierOrderPolicy(input: {
+  supplierId: string;
+}): Promise<{ ok: true; policy: ZdSupplierOrderPolicyRow } | { ok: false; message: string }> {
+  await requireZdEstimateAdmin("read");
+  const supplierId = String(input.supplierId ?? "").trim();
+  if (!UUID_RE.test(supplierId)) return { ok: false, message: "Nieprawidłowy dostawca." };
+  try {
+    return { ok: true, policy: await fetchZdSupplierOrderPolicy(supplierId) };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się wczytać strategii dostawcy.") };
+  }
+}
+
+export async function actionSaveZdSupplierOrderPolicy(input: {
+  supplierId: string;
+  strategy: ZdDemandStrategy;
+  targetDays: number | null;
+  cycleDays: number | null;
+  autoProposals: boolean;
+}): Promise<{ ok: true; policy: ZdSupplierOrderPolicyRow } | { ok: false; message: string }> {
+  const user = await requireZdEstimateAdmin("mutate");
+  const supplierId = String(input.supplierId ?? "").trim();
+  if (!UUID_RE.test(supplierId)) return { ok: false, message: "Nieprawidłowy dostawca." };
+  const strategy: ZdDemandStrategy = input.strategy === "max30_90" ? "max30_90" : "classic";
+  const days = input.targetDays == null ? null : Math.trunc(Number(input.targetDays));
+  const cycle = input.cycleDays == null ? null : Math.trunc(Number(input.cycleDays));
+  if (days != null && !(days >= 1 && days <= 180)) return { ok: false, message: "Dni zapasu: od 1 do 180." };
+  if (cycle != null && !(cycle >= 1 && cycle <= 60)) return { ok: false, message: "Co ile dni: od 1 do 60." };
+  if (input.autoProposals && cycle == null) return { ok: false, message: "Propozycje automatu wymagają cyklu (co ile dni)." };
+  try {
+    const policy = await upsertZdSupplierOrderPolicy({
+      supplierId,
+      strategy,
+      targetDays: strategy === "classic" ? null : days,
+      cycleDays: cycle,
+      autoProposals: input.autoProposals === true,
+      updatedBy: user.id,
+    });
+    return { ok: true, policy };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się zapisać strategii dostawcy.") };
+  }
+}
+
 /**
  * Zarezerwowane ZK dla kandydatów overlap (prośba + tw_StanRez).
  * Fail-open: brak / błąd dla jednego tw = bez korekty tego tw.
@@ -1627,6 +1683,8 @@ export async function actionRunZdEstimateManual(
       otherSupplierHintByTwId: engine.otherSupplierHintByTwId,
       horizon,
       leadDays,
+      orderPolicy: engine.orderPolicy,
+      demandFloorCount: engine.demandFloorCount,
       salesSmoothingEnabled: input.salesSmoothing === true,
       salesSmoothing: engine.salesSmoothing,
       unitPriceByTwId,

@@ -53,7 +53,13 @@ import {
   type ZdEstimateCechaOption,
   type ZdEstimateGroupOption,
   type ZdEstimateSupplierOption,
+  actionGetZdSupplierOrderPolicy,
 } from "@/app/actions/zd-estimate";
+import {
+  ZdSupplierOrderPolicyChip,
+  ZdSupplierOrderPolicyDialog,
+} from "@/components/zakupy/ZdSupplierOrderPolicyDialog";
+import type { ZdSupplierOrderPolicyRow } from "@/lib/data/zd-supplier-order-policy";
 import {
   policyForBoostPreset,
   ZD_BOOST_POWER_DEFAULT,
@@ -1856,6 +1862,23 @@ export function ZdEstimateWorkbench({
     () => bootstrap.suppliers.find((s) => s.id === supplierId) ?? null,
     [bootstrap.suppliers, supplierId]
   );
+
+  // Strategia zamawiania dostawcy (chip przy zakresie). Brak/błąd = „jak dotąd” w etykiecie.
+  const [supplierPolicy, setSupplierPolicy] = useState<{ supplierId: string; policy: ZdSupplierOrderPolicyRow } | null>(null);
+  const [supplierPolicyOpen, setSupplierPolicyOpen] = useState(false);
+  useEffect(() => {
+    if (!supplierId) return;
+    let cancelled = false;
+    void actionGetZdSupplierOrderPolicy({ supplierId }).then((r) => {
+      if (!cancelled && r.ok) setSupplierPolicy({ supplierId, policy: r.policy });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [supplierId]);
+  const currentSupplierPolicy = supplierPolicy && supplierPolicy.supplierId === supplierId ? supplierPolicy.policy : null;
+  const policyTargetDays =
+    currentSupplierPolicy?.strategy === "max30_90" && currentSupplierPolicy.targetDays ? currentSupplierPolicy.targetDays : null;
 
   const createKhResolution = useMemo(() => {
     if (!selectedSupplier) return null;
@@ -6198,8 +6221,8 @@ export function ZdEstimateWorkbench({
               density={prepFormOpen && scopeSelected ? "short" : "full"}
               scopeMode={scopeMode}
               scopeName={scopeLabel}
-              stockLabel={stockLabel}
-              dniZapasu={dniZapasu}
+              stockLabel={policyTargetDays != null ? `${policyTargetDays} dni (strategia testowa)` : stockLabel}
+              dniZapasu={policyTargetDays != null ? String(policyTargetDays) : dniZapasu}
               supplierLabel={supplierLabel}
               dataOd={dataOd}
               dataDo={dataDo}
@@ -6208,6 +6231,9 @@ export function ZdEstimateWorkbench({
         }
         actions={
           <>
+            {selectedSupplier && scopeSelected ? (
+              <ZdSupplierOrderPolicyChip policy={currentSupplierPolicy} onClick={() => setSupplierPolicyOpen(true)} />
+            ) : null}
             {(() => {
               const showChangeScope = Boolean(lines && prepCollapsed);
               const showCollapse = Boolean(lines && !prepCollapsed);
@@ -8419,6 +8445,18 @@ export function ZdEstimateWorkbench({
           })()
         : null}
 
+      {supplierPolicyOpen && selectedSupplier ? (
+        <ZdSupplierOrderPolicyDialog
+          supplierId={selectedSupplier.id}
+          supplierName={selectedSupplier.name}
+          policy={currentSupplierPolicy}
+          onClose={() => setSupplierPolicyOpen(false)}
+          onSaved={(policy) => {
+            setSupplierPolicy({ supplierId: selectedSupplier.id, policy });
+            setSupplierPolicyOpen(false);
+          }}
+        />
+      ) : null}
       <ZdEstimatePackagingDialog
         open={packagingCandidate != null}
         line={packagingCandidate}
