@@ -310,16 +310,13 @@ Albo dokumentacja estimate, albo nowe pola:
 
 ---
 
-### P2 — sprzedaż towaru wg dokumentów (karta produktu w kreatorze ZD)
+### P2 — przyjęcia towaru (PZ / FZ) z datą (karta produktu w kreatorze ZD)
 
-**Po co:** decyzja „kupować na stan czy tylko na prośbę”. Sygnały: ilu klientów kupowało, w ilu miesiącach, czy dostawa szła w kilka dni od przyjęcia do jednego klienta (towar „przelotowy”).
+**Po co:** reguła „towar przelotowy” — dostawa sprzedana w kilka dni jednemu klientowi.
 
-**Sprawdzone 2026-10-20 (host live :5080):**
+**Jest (sprawdzone 2026-10-20, live :5080):** sprzedaż towaru dokument po dokumencie z klientem i datą — `GET /orders/zd/estimate/{towarId}` (`rola`: fs, pa, wzNiepowiazane, zw). OnTime używa tego w karcie produktu. Zamówienia u dostawcy: linie ZD z `/documents/zd/{id}` (nocny odczyt → `zd_purchase_lines`).
 
-- `GET /documents?plu=691` — filtr `plu` ignorowany (58 259 wyników = wszystkie dokumenty), lista bez pozycji.
-- `GET /reports/sprzedaz/asortyment?towarId=691&dataOd=…&dataDo=…&zDetalem=true` — tylko suma (ilość, netto, zysk), bez kontrahentów i dat.
-
-**Prośba:** `GET /reports/sprzedaz/towar?towarId=&dataOd=&dataDo=` → pozycje dokumentów sprzedaży tego towaru (te same typy co `sprzedazOkres` w estimate: FS + PA + WZ niepowiązane), każda z `dok_Id`, `dok_Typ`, `dok_DataWyst`, `kh_Id`, `kh_Symbol`, `ilosc` (jednostka karty). Opcjonalnie w tym samym zakresie przyjęcia (PZ/FZ: data, ilość) — do liczenia „sprzedane w N dni od dostawy”.
+**Brakuje:** daty **przyjęcia** dostawy (PZ/FZ) per towar — ZD ma datę zamówienia, nie przyjęcia. Prośba: `rola=pz` (albo `fz`) w `/orders/zd/estimate/{towarId}`: `dok_DataWyst` / `dok_DataMag`, ilość, dostawca.
 
 ## 4. Czego **nie** trzeba w API Subiekta
 
