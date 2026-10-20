@@ -1,11 +1,17 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { actionFetchZdEstimateProductZdHistory } from "@/app/actions/zd-estimate";
+import { actionFetchZdEstimateProductHistory } from "@/app/actions/zd-estimate";
 import { IconChevronLeft, IconChevronRight, IconX } from "@/components/icons/StrokeIcons";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ZdSalesProfileCardContent, type ZdSalesChartOrderMark } from "@/components/zakupy/ZdSalesSparkline";
+import {
+  ZdProductPurchasesSection,
+  ZdProductSalesSections,
+  type ZdProductHistoryState,
+} from "@/components/zakupy/ZdProductHistorySections";
+import { formatDatePlKey, type ZdProductPurchaseRow } from "@/lib/orders/zd-product-history";
 import { cn } from "@/lib/cn";
 import type { ZdEstimateExtrasPolicy } from "@/lib/orders/zd-estimate-extras-policy";
 import { explainZdOrderQty } from "@/lib/orders/zd-estimate-explain";
@@ -23,46 +29,32 @@ import { useAnimatedClose } from "@/lib/ui/use-animated-close";
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-type ZdHistoryState =
-  | { status: "loading" }
-  | { status: "error"; message: string }
-  | { status: "ok"; rows: Array<{ linkedAt: string; qty: number; dokNrPelny: string; daysAgo: number }> };
-
 const DAY_MS = 24 * 60 * 60 * 1000;
-const HISTORY_LIST_MAX = 6;
 
-function formatDatePl(iso: string): string {
-  return new Date(iso).toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw" });
-}
-
-/** Nasze ZD z Kreatora dla towaru — dociągane przy otwarciu karty (i przy ←/→). */
-function useZdHistory(twId: number): ZdHistoryState {
-  const [state, setState] = useState<ZdHistoryState & { twId: number }>({ status: "loading", twId });
+/** Sprzedaż (Subiekt) i nasze zakupy towaru — dociągane przy otwarciu karty i przy ←/→. */
+function useProductHistory(
+  twId: number,
+  pair: { twinTwId: number; unitsPerPack: number } | null
+): ZdProductHistoryState & { nowMs?: number } {
+  const twinTwId = pair?.twinTwId ?? 0;
+  const unitsPerPack = pair?.unitsPerPack ?? 0;
+  const key = `${twId}:${twinTwId}:${unitsPerPack}`;
+  const [state, setState] = useState<ZdProductHistoryState & { key: string; nowMs?: number }>({ status: "loading", key });
   useEffect(() => {
     let cancelled = false;
-    actionFetchZdEstimateProductZdHistory({ twId })
+    actionFetchZdEstimateProductHistory({ twId, pair: twinTwId > 0 ? { twinTwId, unitsPerPack } : null })
       .then((r) => {
-        if (cancelled) return;
-        const now = Date.now();
-        setState(
-          r.ok
-            ? {
-                status: "ok",
-                rows: r.rows.map((row) => ({ ...row, daysAgo: Math.floor((now - Date.parse(row.linkedAt)) / DAY_MS) })),
-                twId,
-              }
-            : { status: "error", message: r.message, twId }
-        );
+        if (!cancelled) setState({ status: "ok", ...r, key, nowMs: Date.now() });
       })
       .catch(() => {
-        if (!cancelled) setState({ status: "error", message: "Nie udało się wczytać historii ZD.", twId });
+        if (!cancelled) setState({ status: "error", message: "Nie udało się wczytać historii.", key });
       });
     return () => {
       cancelled = true;
     };
-  }, [twId]);
-  // Po ←/→ do czasu odpowiedzi pokazujemy „wczytuję”, nie ZD poprzedniego towaru.
-  return state.twId === twId ? state : { status: "loading" };
+  }, [twId, twinTwId, unitsPerPack, key]);
+  // Po ←/→ do czasu odpowiedzi pokazujemy „wczytuję”, nie dane poprzedniego towaru.
+  return state.key === key ? state : { status: "loading" };
 }
 
 function isTypingTarget(el: EventTarget | null): boolean {
@@ -122,31 +114,35 @@ export function ZdEstimateProductCard({
 }) {
   const titleId = useId();
   const activePair = line.pair?.role === "pack" && !line.pair.partnerMissing ? line.pair : null;
-  // Para: wiersz paczki ma już pokrycie pary w „dostepne” (z ZD), więc pokazujemy obie strony osobno.
-  const stockRows: Array<[string, number]> = activePair
+  // Para: stan obu stron osobno (w tabeli jest tylko pokrycie pary).
+  const pairStockRows: Array<[string, number]> = activePair
     ? [
         ["Dostępne - sztuki", activePair.pieceDostepne],
         [`Dostępne - ${qty.packageLabel.trim() || "op."} (×${activePair.unitsPerPack})`, activePair.packDostepne * activePair.unitsPerPack],
         ["Pokrycie pary (z ZD)", activePair.coverSzt],
-        ["ZK bez rezerwacji", line.otwarteZkBezRez],
-        ["Prośby", extraPieces],
       ]
-    : [
-        ["Stan", line.tw_Stan],
-        ["Zarezerwowane", line.tw_StanRez],
-        ["Dostępne", line.dostepne],
-        ["W drodze (ZD)", openZdPieces],
-        ["ZK bez rezerwacji", line.otwarteZkBezRez],
-        ["Prośby", extraPieces],
-      ];
-  const history = useZdHistory(line.tw_Id);
+    : [];
+  const history = useProductHistory(
+    line.tw_Id,
+    activePair ? { twinTwId: activePair.twinTwId, unitsPerPack: activePair.unitsPerPack } : null
+  );
+  const packLabel = qty.packageLabel.trim() || "op.";
+  const purchaseUnit = (r: ZdProductPurchaseRow): { label: string; piecesPerUnit: number | null } => {
+    if (activePair && r.twId !== line.tw_Id) return { label: "szt", piecesPerUnit: null };
+    if (activePair) return { label: packLabel, piecesPerUnit: activePair.unitsPerPack };
+    return qty.hasPackaging && isPackagingPackagesMode(qty.documentUnitMode)
+      ? { label: packLabel, piecesPerUnit: qty.unitsPerPackage }
+      : { label: "szt", piecesPerUnit: null };
+  };
   const orderMarks: ZdSalesChartOrderMark[] =
-    history.status === "ok"
-      ? history.rows.map((r) => ({
-          daysAgo: r.daysAgo,
-          qty: r.qty,
-          label: `${formatDatePl(r.linkedAt)} · ${r.dokNrPelny || "ZD"} · ${formatQty(r.qty)} szt`,
-        }))
+    history.status === "ok" && history.purchases.ok && history.nowMs != null
+      ? history.purchases.rows
+          .filter((r) => r.date)
+          .map((r) => ({
+            daysAgo: Math.floor((history.nowMs! - Date.parse(`${r.date}T12:00:00Z`)) / DAY_MS),
+            qty: r.qty,
+            label: `${formatDatePlKey(r.date)} · ${r.dokNr || "ZD"} · ${formatQty(r.qty)} ${purchaseUnit(r).label}`,
+          }))
       : [];
   useBodyScrollLock(true);
   const { panelRef, backdropRef, requestClose } = useAnimatedClose(onClose);
@@ -317,10 +313,12 @@ export function ZdEstimateProductCard({
             </p>
           </section>
 
+          <ZdProductPurchasesSection state={history} titleId={titleId} unitFor={purchaseUnit} />
+
           {line.salesProfile && line.salesProfile.windows.length > 0 ? (
             <section aria-labelledby={`${titleId}-sales`}>
               <h3 id={`${titleId}-sales`} className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-                Sprzedaż
+                Sprzedaż i nasze ZD
               </h3>
               <div className="mt-1.5 text-xs leading-relaxed text-slate-800">
                 <ZdSalesProfileCardContent profile={line.salesProfile} orders={orderMarks} />
@@ -328,48 +326,23 @@ export function ZdEstimateProductCard({
             </section>
           ) : null}
 
-          <section aria-labelledby={`${titleId}-stock`}>
-            <h3 id={`${titleId}-stock`} className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-              Stan i ruch
-            </h3>
-            <dl className="mt-1.5 grid grid-cols-3 gap-px overflow-hidden rounded-md border border-slate-200 bg-slate-200 text-sm">
-              {stockRows.map(([label, value]) => (
-                <div key={label as string} className="bg-white px-2.5 py-1.5">
-                  <dt className="text-xs text-slate-600">{label}</dt>
-                  <dd className="tabular-nums font-medium text-slate-900">{formatQty(Number(value) || 0)} szt</dd>
-                </div>
-              ))}
-            </dl>
-          </section>
+          <ZdProductSalesSections state={history} titleId={titleId} />
 
-          <section aria-labelledby={`${titleId}-zd`}>
-            <h3 id={`${titleId}-zd`} className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-              Nasze ZD (12 mies.)
-            </h3>
-            {history.status === "loading" ? (
-              <p className="mt-1.5 text-sm text-slate-500">Wczytuję…</p>
-            ) : history.status === "error" ? (
-              <p className="mt-1.5 text-sm text-amber-800">Historia ZD niedostępna: {history.message}</p>
-            ) : history.rows.length === 0 ? (
-              <p className="mt-1.5 text-sm text-slate-600">Brak ZD z Kreatora dla tego towaru w ostatnich 12 miesiącach.</p>
-            ) : (
-              <ul className="mt-1.5 divide-y divide-slate-100 rounded-md border border-slate-200">
-                {history.rows.slice(0, HISTORY_LIST_MAX).map((r) => (
-                  <li key={`${r.linkedAt}-${r.dokNrPelny}`} className="flex items-baseline justify-between gap-3 px-3 py-1.5 text-sm">
-                    <span className="text-slate-700">
-                      <span className="tabular-nums">{formatDatePl(r.linkedAt)}</span>
-                      {r.dokNrPelny ? <span className="ml-2 font-mono text-xs text-slate-500">{r.dokNrPelny}</span> : null}
-                    </span>
-                    <span className="shrink-0 tabular-nums font-medium text-slate-900">{formatQty(r.qty)} szt</span>
-                  </li>
+          {pairStockRows.length > 0 ? (
+            <section aria-labelledby={`${titleId}-stock`}>
+              <h3 id={`${titleId}-stock`} className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                Stan pary
+              </h3>
+              <dl className="mt-1.5 grid grid-cols-3 gap-px overflow-hidden rounded-md border border-slate-200 bg-slate-200 text-sm">
+                {pairStockRows.map(([label, value]) => (
+                  <div key={label} className="bg-white px-2.5 py-1.5">
+                    <dt className="text-xs text-slate-600">{label}</dt>
+                    <dd className="tabular-nums font-medium text-slate-900">{formatQty(Number(value) || 0)} szt</dd>
+                  </div>
                 ))}
-                {history.rows.length > HISTORY_LIST_MAX ? (
-                  <li className="px-3 py-1.5 text-xs text-slate-500">i {history.rows.length - HISTORY_LIST_MAX} starszych</li>
-                ) : null}
-              </ul>
-            )}
-          </section>
-
+              </dl>
+            </section>
+          ) : null}
 
           <section aria-labelledby={`${titleId}-why`}>
             <h3 id={`${titleId}-why`} className="text-xs font-semibold uppercase tracking-wide text-slate-600">

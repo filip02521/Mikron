@@ -584,28 +584,3 @@ export async function listSnapshotHistoryScopesForKh(
   return out;
 }
 
-/** ZD z Kreatora dla jednego towaru (karta produktu): najnowsze pierwsze, max `limit`. */
-export async function fetchSnapshotLinesForTwId(
-  twId: number,
-  hostKind: ZdEstimateSnapshotHostKind,
-  sinceIso: string,
-  limit = 24
-): Promise<Array<{ linkedAt: string; qty: number; dokNrPelny: string }>> {
-  const id = Math.trunc(twId);
-  if (!(id > 0)) return [];
-  const res = await query<{ linked_at: Date | string; qty: string | number; dok_nr_pelny: string | null }>(
-    `SELECT s.linked_at, l.qty, s.dok_nr_pelny
-       FROM zd_estimate_order_snapshot_lines l
-       JOIN zd_estimate_order_snapshots s ON s.id = l.snapshot_id
-      WHERE l.tw_id = $1 AND s.host_kind = $2 AND s.linked_at >= $3
-        AND s.eligible_for_history IS DISTINCT FROM false
-      ORDER BY s.linked_at DESC
-      LIMIT $4`,
-    [id, hostKind, sinceIso, Math.min(100, Math.max(1, Math.trunc(limit)))]
-  );
-  return res.rows.map((r) => ({
-    linkedAt: new Date(r.linked_at).toISOString(),
-    qty: asNum(r.qty),
-    dokNrPelny: (r.dok_nr_pelny ?? "").trim(),
-  }));
-}

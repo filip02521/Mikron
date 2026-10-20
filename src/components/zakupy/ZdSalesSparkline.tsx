@@ -45,9 +45,16 @@ function ZdSalesProfileChart({
   const typicalY = H - (Math.min(profile.typicalMonthly, max) / max) * H;
   const last = w.length - 1;
   // ponytail: okna Kreatora kończą się w dniu profilu (do kilku dni temu), kropki liczone od dziś.
-  const marks = (orders ?? [])
-    .map((o) => ({ ...o, i: last - Math.floor(Math.max(0, o.daysAgo) / 30) }))
-    .filter((o) => o.i >= 0);
+  // Kilka ZD w jednym oknie = jedna kropka z opisem wszystkich.
+  const byWindow = new Map<number, string[]>();
+  for (const o of orders ?? []) {
+    const i = last - Math.floor(Math.max(0, o.daysAgo) / 30);
+    if (i >= 0) byWindow.set(i, [...(byWindow.get(i) ?? []), o.label]);
+  }
+  const marks = [...byWindow].map(([i, labels]) => ({
+    i,
+    label: labels.length > 1 ? `${labels.length} ZD:\n${labels.join("\n")}` : labels[0]!,
+  }));
   const axisPad = marks.length > 0 ? 8 : 0;
   return (
     <>

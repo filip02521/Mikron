@@ -134,7 +134,8 @@ import {
   runZdOrderEngine,
 } from "@/lib/orders/zd-order-engine";
 import { loadZdOrderHorizons } from "@/lib/orders/zd-order-horizon-load";
-import { loadProductPurchasePrices } from "@/lib/stock-watch/data";
+import { listZdPurchaseLinesForTw, loadProductPurchasePrices } from "@/lib/stock-watch/data";
+import type { ZdProductPurchaseRow, ZdProductSaleRow } from "@/lib/orders/zd-product-history";
 import { unitPricePerPiece } from "@/lib/stock-watch/analysis";
 import {
   assertOrderMultiple,
@@ -153,7 +154,6 @@ import {
   fetchRecentZdEstimateOrderSnapshots,
   fetchZdEstimateOrderSnapshotLines,
   updateZdEstimateSnapshotEligibleForHistory,
-  fetchSnapshotLinesForTwId,
   upsertZdEstimateOrderSnapshot,
   type ZdEstimateOrderSnapshotRow,
   type ZdEstimateSnapshotScopeMode,
@@ -174,6 +174,7 @@ import {
   createSubiektOrdersZd,
   resolveSubiektIssuerId,
   fetchSubiektOrdersLatestFsDateKey,
+  fetchSubiektProductSalesDocs,
   fetchSubiektZdEstimateZkPage,
   getSubiektOrdersZd,
   searchSubiektOrdersZd,
@@ -205,7 +206,7 @@ import {
   getSubiektFeedback,
   type SubiektFeedback,
 } from "@/lib/subiekt/feedback";
-import { warsawNowParts } from "@/lib/time/warsaw";
+import { warsawDateKeyDaysAgo, warsawNowParts } from "@/lib/time/warsaw";
 import type { SubiektProductCecha, SubiektProductGroup } from "@/lib/subiekt/types";
 import {
   resolveZdEstimateRunScope,
@@ -1230,27 +1231,91 @@ export async function actionFetchZdEstimateProductReservations(input: {
   }
 }
 
-/** Karta produktu: nasze ZD z Kreatora dla towaru z ostatnich 12 miesięcy (sztuki). */
-export async function actionFetchZdEstimateProductZdHistory(input: {
+/**
+ * Karta produktu: sprzedaż dokument po dokumencie (Subiekt, 12 mies.) i nasze zakupy (linie ZD
+ * z nocnego harvestu). Para: obie strony, sprzedaż paczek przeliczona na sztuki.
+ * Każda połowa może się nie udać osobno — karta pokazuje, co jest.
+ */
+export async function actionFetchZdEstimateProductHistory(input: {
   twId: number;
-}): Promise<
-  | { ok: true; rows: Array<{ linkedAt: string; qty: number; dokNrPelny: string }> }
-  | { ok: false; message: string }
-> {
+  pair?: { twinTwId: number; unitsPerPack: number } | null;
+}): Promise<{
+  sales: { ok: true; rows: ZdProductSaleRow[]; truncated: boolean } | { ok: false; message: string };
+  purchases: { ok: true; rows: ZdProductPurchaseRow[] } | { ok: false; message: string };
+}> {
   await requireZdEstimateAdmin("read");
   const twId = Math.trunc(Number(input.twId));
   if (!Number.isFinite(twId) || twId <= 0) {
-    return { ok: false, message: "Nieprawidłowy identyfikator towaru." };
+    const bad = { ok: false as const, message: "Nieprawidłowy identyfikator towaru." };
+    return { sales: bad, purchases: bad };
   }
-  const orders = resolveSubiektOrdersConfig();
-  if (!orders.ok) return { ok: false, message: orders.message };
-  try {
-    const hostKind = requireZdEstimateSnapshotHostKind(orders.config.baseUrl);
-    const since = new Date(Date.now() - 360 * 24 * 60 * 60 * 1000).toISOString();
-    return { ok: true, rows: await fetchSnapshotLinesForTwId(twId, hostKind, since) };
-  } catch (e) {
-    return { ok: false, message: e instanceof Error ? e.message : "Nie udało się wczytać historii ZD." };
-  }
+  const twinTwId = Math.trunc(Number(input.pair?.twinTwId));
+  const ratio = Number(input.pair?.unitsPerPack);
+  const pair = twinTwId > 0 && twinTwId !== twId && ratio > 0 ? { twinTwId, ratio } : null;
+  const sides = pair ? [{ tw: twId, factor: pair.ratio }, { tw: pair.twinTwId, factor: 1 }] : [{ tw: twId, factor: 1 }];
+  // 12 miesięcy kalendarzowych (bieżący niepełny), żeby „N z 12 mies.” się zgadzało.
+  const dataDo = warsawDateKeyDaysAgo(0);
+  const [y, m] = dataDo.split("-").map(Number) as [number, number];
+  const startMonth = new Date(Date.UTC(y, m - 1 - 11, 1));
+  const dataOd = startMonth.toISOString().slice(0, 10);
+
+  const salesP = (async () => {
+    try {
+      const parts = await Promise.all(
+        sides.map(async (side) => {
+          const r = await fetchSubiektProductSalesDocs({ towarId: side.tw, dataOd, dataDo });
+          return {
+            truncated: r.truncated,
+            rows: r.rows.map(
+              (d): ZdProductSaleRow => ({
+                rola: d.rola,
+                dokNr: d.dokNr,
+                date: d.date,
+                khId: d.khId,
+                khSymbol: d.khSymbol,
+                khName: d.khName,
+                pieces: d.qty * side.factor,
+              })
+            ),
+          };
+        })
+      );
+      const rows = parts.flatMap((p) => p.rows).sort((a, b) => b.date.localeCompare(a.date));
+      return { ok: true as const, rows, truncated: parts.some((p) => p.truncated) };
+    } catch (e) {
+      return { ok: false as const, message: feedbackFromException(e).message };
+    }
+  })();
+
+  const purchasesP = (async () => {
+    try {
+      const rows = await listZdPurchaseLinesForTw(
+        sides.map((s) => s.tw),
+        dataOd
+      );
+      return {
+        ok: true as const,
+        rows: rows.map((r): ZdProductPurchaseRow => ({
+          twId: r.subiektTwId,
+          dokNr: r.dokNr,
+          date: r.dokDate,
+          qty: r.qty,
+          priceNet: r.priceNet,
+        })),
+      };
+    } catch (e) {
+      const missingTable = typeof e === "object" && e != null && (e as { code?: unknown }).code === "42P01";
+      return {
+        ok: false as const,
+        message: missingTable
+          ? "Historia zakupów pojawi się po wgraniu migracji 189 i nocnym odczycie ZD."
+          : "Historia zakupów niedostępna (błąd bazy).",
+      };
+    }
+  })();
+
+  const [sales, purchases] = await Promise.all([salesP, purchasesP]);
+  return { sales, purchases };
 }
 
 /**

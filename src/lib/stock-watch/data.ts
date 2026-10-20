@@ -782,6 +782,69 @@ export async function upsertProductPurchasePrices(
   return res.rowCount ?? 0;
 }
 
+export type ZdPurchaseLineRow = {
+  subiektTwId: number;
+  dokId: number;
+  dokNr: string | null;
+  dokDate: string | null;
+  khId: number | null;
+  /** Jednostki dokumentu ZD (przy opakowaniach: paczki). */
+  qty: number;
+  priceNet: number | null;
+};
+
+/** Linie ZD do historii zakupów (karta produktu). Ten sam ZD odczytany ponownie nadpisuje linię. */
+export async function upsertZdPurchaseLines(rows: readonly ZdPurchaseLineRow[]): Promise<number> {
+  if (!rows.length) return 0;
+  const params: unknown[] = [];
+  const tuples = rows.map((r) => {
+    params.push(r.dokId, r.subiektTwId, r.dokNr, r.dokDate, r.khId, r.qty, r.priceNet);
+    const b = params.length - 7;
+    return `($${b + 1}, $${b + 2}, $${b + 3}, $${b + 4}::date, $${b + 5}, $${b + 6}, $${b + 7}, now())`;
+  });
+  const res = await query(
+    `INSERT INTO zd_purchase_lines
+       (dok_id, subiekt_tw_id, dok_nr, dok_date, kh_id, qty, price_net, updated_at)
+     VALUES ${tuples.join(", ")}
+     ON CONFLICT (dok_id, subiekt_tw_id) DO UPDATE SET
+       dok_nr = EXCLUDED.dok_nr,
+       dok_date = EXCLUDED.dok_date,
+       kh_id = EXCLUDED.kh_id,
+       qty = EXCLUDED.qty,
+       price_net = EXCLUDED.price_net,
+       updated_at = now()`,
+    params
+  );
+  return res.rowCount ?? 0;
+}
+
+/** Historia zakupów towarów (najnowsze pierwsze) — karta produktu w Kreatorze. */
+export async function listZdPurchaseLinesForTw(
+  twIds: readonly number[],
+  sinceDate: string,
+  limit = 40
+): Promise<ZdPurchaseLineRow[]> {
+  const ids = [...new Set(twIds.map((x) => Math.trunc(x)).filter((x) => x > 0))];
+  if (!ids.length) return [];
+  const res = await query<ItemRow>(
+    `SELECT subiekt_tw_id, dok_id, dok_nr, dok_date, kh_id, qty, price_net
+       FROM zd_purchase_lines
+      WHERE subiekt_tw_id = ANY($1::int[]) AND dok_date >= $2::date
+      ORDER BY dok_date DESC, dok_id DESC
+      LIMIT $3`,
+    [ids, sinceDate, Math.min(200, Math.max(1, Math.trunc(limit)))]
+  );
+  return res.rows.map((r) => ({
+    subiektTwId: num(r.subiekt_tw_id),
+    dokId: num(r.dok_id),
+    dokNr: (r.dok_nr as string | null) ?? null,
+    dokDate: dateKey(r.dok_date),
+    khId: r.kh_id == null ? null : num(r.kh_id),
+    qty: num(r.qty),
+    priceNet: r.price_net == null ? null : num(r.price_net),
+  }));
+}
+
 export async function listZdIndexPendingPriceHarvest(limit: number): Promise<
   { dokId: number; dokDate: string | null; khId: number | null }[]
 > {

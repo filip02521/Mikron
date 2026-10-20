@@ -5,6 +5,8 @@ import {
   listZdIndexPendingPriceHarvest,
   markZdIndexPriceHarvested,
   upsertProductPurchasePrices,
+  upsertZdPurchaseLines,
+  type ZdPurchaseLineRow,
 } from "@/lib/stock-watch/data";
 
 export type ZdPriceLine = {
@@ -43,6 +45,41 @@ export function extractZdPriceLines(
     });
   }
   return [...byTw.values()];
+}
+
+/** Wszystkie pozycje ZD do historii zakupów: ilość sumowana per towar, cena najwyższa (jak wyżej). */
+export function extractZdPurchaseLines(
+  doc: SubiektDocument,
+  fallback: { dokDate: string | null; khId: number | null }
+): ZdPurchaseLineRow[] {
+  const dokId = Math.trunc(Number(doc.dok_Id));
+  if (!(dokId > 0)) return [];
+  const dokDateRaw = String(doc.dok_DataWyst ?? "").slice(0, 10);
+  const dokDate = /^\d{4}-\d{2}-\d{2}$/.test(dokDateRaw) ? dokDateRaw : fallback.dokDate;
+  const byTw = new Map<number, ZdPurchaseLineRow>();
+  for (const line of doc.dok_Pozycja ?? []) {
+    const tw = Math.trunc(Number(line.ob_TowId));
+    const qty = Number(line.ob_Ilosc);
+    if (!(tw > 0) || !Number.isFinite(qty) || qty <= 0) continue;
+    const price = Number(line.ob_CenaNetto);
+    const priceNet = Number.isFinite(price) && price > 0 ? Math.round(price * 10000) / 10000 : null;
+    const prev = byTw.get(tw);
+    byTw.set(tw, {
+      subiektTwId: tw,
+      dokId,
+      dokNr: doc.dok_NrPelny ?? null,
+      dokDate,
+      khId: fallback.khId,
+      qty: (prev?.qty ?? 0) + qty,
+      priceNet: prev?.priceNet != null && (priceNet == null || prev.priceNet >= priceNet) ? prev.priceNet : priceNet,
+    });
+  }
+  return [...byTw.values()];
+}
+
+/** Brak tabeli (migracja 189 jeszcze nie wgrana) — ceny zbieramy dalej, linie pomijamy. */
+function isUndefinedTable(e: unknown): boolean {
+  return typeof e === "object" && e != null && (e as { code?: unknown }).code === "42P01";
 }
 
 /**
@@ -85,6 +122,7 @@ export async function harvestZdPurchasePrices(input: {
 
     const done: number[] = [];
     const lines: ZdPriceLine[] = [];
+    const purchaseLines: ZdPurchaseLineRow[] = [];
     let next = 0;
     const workers = Array.from({ length: Math.min(concurrency, batch.length) }, async () => {
       while (next < batch.length && Date.now() < input.deadlineMs) {
@@ -93,6 +131,7 @@ export async function harvestZdPurchasePrices(input: {
         try {
           const doc = await getSubiektZdDocumentCached(item.dokId);
           lines.push(...extractZdPriceLines(doc, item));
+          purchaseLines.push(...extractZdPurchaseLines(doc, item));
           done.push(item.dokId);
         } catch (e) {
           // ZD usunięte w Subiekcie — nie wracaj do niego co noc.
@@ -107,6 +146,11 @@ export async function harvestZdPurchasePrices(input: {
     await Promise.all(workers);
 
     pricesUpdated += await upsertProductPurchasePrices(newestPricePerProduct(lines));
+    try {
+      await upsertZdPurchaseLines(purchaseLines);
+    } catch (e) {
+      if (!isUndefinedTable(e)) throw e;
+    }
     await markZdIndexPriceHarvested(done);
     docsProcessed += done.length;
 

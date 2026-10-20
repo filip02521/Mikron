@@ -743,3 +743,59 @@ export async function searchSubiektProductKomplety(
     config
   );
 }
+
+/** Pozycja sprzedaży towaru z `GET /orders/zd/estimate/{towarId}` (karta produktu w Kreatorze). */
+export type SubiektProductSaleDoc = {
+  rola: "fs" | "pa" | "wzNiepowiazane" | "zw";
+  dokId: number;
+  dokNr: string;
+  date: string;
+  khId: number | null;
+  khSymbol: string;
+  khName: string;
+  /** Jednostka karty towaru; ZW ujemne. */
+  qty: number;
+};
+
+const PRODUCT_SALE_ROLES = new Set(["fs", "pa", "wzNiepowiazane", "zw"]);
+const PRODUCT_SALES_MAX_PAGES = 5;
+
+/**
+ * Sprzedaż jednego towaru dokument po dokumencie (FS, PA, WZ niepowiązane, ZW) — te same
+ * dokumenty co `sprzedazOkres` w estimate. Do {@link PRODUCT_SALES_MAX_PAGES} × 200 pozycji.
+ */
+export async function fetchSubiektProductSalesDocs(input: {
+  towarId: number;
+  dataOd: string;
+  dataDo: string;
+}): Promise<{ rows: SubiektProductSaleDoc[]; truncated: boolean }> {
+  const config = ordersConfigOrThrow();
+  const towarId = Math.trunc(Number(input.towarId));
+  if (!(towarId > 0)) throw new Error("Nieprawidłowy identyfikator towaru.");
+  const rows: SubiektProductSaleDoc[] = [];
+  for (let page = 1; page <= PRODUCT_SALES_MAX_PAGES; page += 1) {
+    const qs = subiektQueryString({ dataOd: input.dataOd, dataDo: input.dataDo, page, pageSize: 200 });
+    const res = await subiektJson<{
+      data?: { dokumenty?: Array<Record<string, unknown>> };
+      pagination?: { totalPages?: number };
+    }>(`${SUBIEKT_PATHS.ordersZdEstimateTowar(towarId)}${qs}`, {}, config);
+    for (const d of res.data?.dokumenty ?? []) {
+      const rola = String(d.rola ?? "");
+      if (!PRODUCT_SALE_ROLES.has(rola)) continue;
+      const kh = Math.trunc(Number(d.kontrahentId));
+      rows.push({
+        rola: rola as SubiektProductSaleDoc["rola"],
+        dokId: Math.trunc(Number(d.dok_Id)) || 0,
+        dokNr: String(d.dok_NrPelny ?? "").trim(),
+        date: String(d.dok_DataWyst ?? "").slice(0, 10),
+        khId: kh > 0 ? kh : null,
+        khSymbol: String(d.kh_Symbol ?? "").trim(),
+        khName: String(d.adr_Nazwa ?? "").trim(),
+        qty: Number(d.ob_Ilosc) || 0,
+      });
+    }
+    const totalPages = Number(res.pagination?.totalPages) || 1;
+    if (page >= totalPages) return { rows, truncated: false };
+  }
+  return { rows, truncated: true };
+}

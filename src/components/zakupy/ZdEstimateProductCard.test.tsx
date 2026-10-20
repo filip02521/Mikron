@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 const historyMock = vi.hoisted(() => vi.fn());
-vi.mock("@/app/actions/zd-estimate", () => ({ actionFetchZdEstimateProductZdHistory: historyMock }));
+vi.mock("@/app/actions/zd-estimate", () => ({ actionFetchZdEstimateProductHistory: historyMock }));
 import { ZdEstimateProductCard } from "./ZdEstimateProductCard";
 import { computeZdPackOrderQty } from "@/lib/orders/zd-estimate-packaging";
 import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
@@ -46,7 +46,9 @@ function renderCard(extra: Partial<Parameters<typeof ZdEstimateProductCard>[0]> 
 
 describe("ZdEstimateProductCard", () => {
   afterEach(() => cleanup());
-  beforeEach(() => historyMock.mockResolvedValue({ ok: true, rows: [] }));
+  beforeEach(() =>
+    historyMock.mockResolvedValue({ sales: { ok: true, rows: [], truncated: false }, purchases: { ok: true, rows: [] } })
+  );
 
   it("zdanie decyzji z paletami, zapas vs dostawa i kroki „dlaczego tyle”", () => {
     renderCard();
@@ -75,21 +77,36 @@ describe("ZdEstimateProductCard", () => {
     expect(screen.getByText("Wykluczony z ZD")).toBeTruthy();
   });
 
-  it("pokazuje stan i ruch oraz nasze ZD z historii", async () => {
+  it("pokazuje nasze zakupy, kto kupuje i ostatnie sprzedaże", async () => {
     historyMock.mockResolvedValueOnce({
-      ok: true,
-      rows: [{ linkedAt: "2026-09-01T10:00:00.000Z", qty: 180, dokNrPelny: "ZD 41/2026" }],
+      sales: {
+        ok: true,
+        truncated: false,
+        rows: [
+          { rola: "fs", dokNr: "FS 7", date: "2026-10-01", khId: 1, khSymbol: "LAB", khName: "Lab Ortho", pieces: 30 },
+          { rola: "fs", dokNr: "FS 3", date: "2026-06-01", khId: 1, khSymbol: "LAB", khName: "Lab Ortho", pieces: 20 },
+          { rola: "pa", dokNr: "PA 1", date: "2026-05-01", khId: 3306, khSymbol: "PARAGON", khName: "PARAGON", pieces: 2 },
+        ],
+      },
+      purchases: { ok: true, rows: [{ twId: 10, dokNr: "ZD 41/2026", date: "2026-09-01", qty: 36, priceNet: 52.5 }] },
     });
     renderCard();
-    expect(screen.getByText("W drodze (ZD)")).toBeTruthy();
     expect(await screen.findByText("ZD 41/2026")).toBeTruthy();
-    expect(screen.getByText("180 szt")).toBeTruthy();
+    expect(screen.getByText("36 worek")).toBeTruthy();
+    expect(screen.getByText("= 180 szt")).toBeTruthy();
+    expect(screen.getByText(/Kupuje głównie Lab Ortho \(96%\)/)).toBeTruthy();
+    expect(screen.getByText("Paragon")).toBeTruthy();
+    expect(screen.queryByText("W drodze (ZD)")).toBeNull();
   });
 
-  it("błąd historii nie psuje karty", async () => {
-    historyMock.mockResolvedValueOnce({ ok: false, message: "brak hosta" });
+  it("błąd sprzedaży nie psuje zakupów ani reszty karty", async () => {
+    historyMock.mockResolvedValueOnce({
+      sales: { ok: false, message: "brak hosta" },
+      purchases: { ok: true, rows: [] },
+    });
     renderCard();
-    expect(await screen.findByText(/Historia ZD niedostępna: brak hosta/)).toBeTruthy();
+    expect(await screen.findByText(/Sprzedaż niedostępna: brak hosta/)).toBeTruthy();
+    expect(screen.getByText(/Brak ZD z tym towarem/)).toBeTruthy();
     expect(screen.getByText(/Brak do celu/)).toBeTruthy();
   });
 
@@ -104,6 +121,5 @@ describe("ZdEstimateProductCard", () => {
     expect(screen.getByText("Dostępne - worek (×5)")).toBeTruthy();
     expect(screen.getByText("15 szt")).toBeTruthy();
     expect(screen.getByText("Pokrycie pary (z ZD)")).toBeTruthy();
-    expect(screen.queryByText("W drodze (ZD)")).toBeNull();
   });
 });
