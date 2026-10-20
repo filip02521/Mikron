@@ -6,9 +6,11 @@ import {
   actionListZdAutoProposals,
   actionRejectZdAutoProposal,
 } from "@/app/actions/zd-estimate";
+import { IconPackageCheck } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
+import { PageAttentionStrip, PageAttentionStripCta } from "@/components/ui/PageAttentionStrip";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 import { ModalShell } from "@/components/ui/ModalShell";
-import { cn } from "@/lib/cn";
 import type { ZdAutoProposal } from "@/lib/data/zd-auto-proposals";
 import { formatQty } from "@/lib/orders/zd-estimate-manual";
 
@@ -21,6 +23,10 @@ function formatDateTimePl(iso: string): string {
     minute: "2-digit",
   });
 }
+
+/** Drugorzędne akcje w pasku: tekst bez ramki, ta sama wysokość co CTA. */
+const quietActionClass =
+  "inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-slate-600 transition-colors hover:bg-white/70 hover:text-slate-900 disabled:opacity-60";
 
 function zl(v: number): string {
   return `${Math.round(v).toLocaleString("pl-PL")} zł`;
@@ -98,15 +104,17 @@ export function ZdAutoProposalBanner({ supplierId, supplierName }: { supplierId:
   if (proposals == null) return null;
   if (!latest) {
     return (
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-slate-200 bg-white px-3.5 py-2.5 text-sm" role="status">
-        <p className="min-w-0 flex-1 text-slate-700">
-          Strategia testowa włączona - brak propozycji automatu. Pierwsza powstanie przy porannym przebiegu albo teraz.
-          {error ? <span className="ml-2 text-red-700">{error}</span> : null}
-        </p>
-        <Button type="button" size="sm" variant="secondary" onClick={buildNow} disabled={building}>
-          {building ? "Liczę…" : "Przygotuj teraz"}
-        </Button>
-      </div>
+      <PageAttentionStrip
+        tone="violet"
+        icon={<IconPackageCheck size={16} strokeWidth={2.25} />}
+        title="Brak propozycji ZD"
+        hint={error ?? "pierwsza powstanie przy porannym przebiegu albo teraz."}
+        actions={
+          <PageAttentionStripCta tone="violet" chevron={false} onClick={buildNow}>
+            {building ? "Liczę…" : "Przygotuj teraz"}
+          </PageAttentionStripCta>
+        }
+      />
     );
   }
   const waiting = latest.status === "pending";
@@ -125,38 +133,37 @@ export function ZdAutoProposalBanner({ supplierId, supplierName }: { supplierId:
 
   return (
     <>
-      <div
-        className={cn(
-          "flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border px-3.5 py-2.5 text-sm",
-          waiting ? "border-indigo-200 bg-indigo-50/70" : "border-slate-200 bg-white"
-        )}
-        role="status"
-      >
-        <p className="min-w-0 flex-1 text-slate-800">
-          <span className="font-semibold text-slate-900">
-            {waiting ? "Propozycja automatu" : "Ostatnia propozycja automatu"} z {formatDateTimePl(latest.createdAt)}
-          </span>
-          <span className="tabular-nums">
-            {" "}
-            · {latest.lineCount} poz. · {formatQty(pieces)} szt · ok. {zl(latest.valueNet)}
-          </span>
-          {!waiting ? <span className="text-slate-500"> · {STATUS_LABEL[latest.status]}</span> : null}
-          {error && !rejecting ? <span className="ml-2 text-red-700">{error}</span> : null}
-        </p>
-        <div className="flex gap-2">
-          <Button type="button" size="sm" variant="ghost" onClick={buildNow} disabled={building}>
-            {building ? "Liczę…" : "Przelicz teraz"}
-          </Button>
-          <Button type="button" size="sm" variant="secondary" onClick={() => setOpen(true)}>
-            Pokaż
-          </Button>
-          {waiting ? (
-            <Button type="button" size="sm" variant="ghost" onClick={() => setRejecting(true)}>
-              Odrzuć…
-            </Button>
-          ) : null}
-        </div>
-      </div>
+      <PageAttentionStrip
+        tone="violet"
+        icon={<IconPackageCheck size={16} strokeWidth={2.25} />}
+        title={`${waiting ? "Propozycja ZD" : "Ostatnia propozycja ZD"} z ${formatDateTimePl(latest.createdAt)}`}
+        hint={
+          error && !rejecting ? (
+            <span className="text-red-700">{error}</span>
+          ) : (
+            <span className="tabular-nums">
+              {latest.lineCount} {polishPluralWord(latest.lineCount, "pozycja", "pozycje", "pozycji")} ·{" "}
+              {formatQty(pieces)} szt · ok. {zl(latest.valueNet)}
+              {!waiting ? ` · ${STATUS_LABEL[latest.status]}` : ""}
+            </span>
+          )
+        }
+        actions={
+          <>
+            <button type="button" className={quietActionClass} onClick={buildNow} disabled={building}>
+              {building ? "Liczę…" : "Przelicz"}
+            </button>
+            {waiting ? (
+              <button type="button" className={quietActionClass} onClick={() => setRejecting(true)}>
+                Odrzuć
+              </button>
+            ) : null}
+            <PageAttentionStripCta tone="violet" onClick={() => setOpen(true)}>
+              Pokaż propozycję
+            </PageAttentionStripCta>
+          </>
+        }
+      />
 
       {open ? (
         <ModalShell

@@ -5,6 +5,7 @@ import { actionSaveZdSupplierOrderPolicy } from "@/app/actions/zd-estimate";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { ModalShell } from "@/components/ui/ModalShell";
+import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 import type { ZdSupplierOrderPolicyRow } from "@/lib/data/zd-supplier-order-policy";
 import type { ZdDemandStrategy } from "@/lib/orders/zd-demand-policy";
@@ -21,7 +22,13 @@ export function zdSupplierPolicyLabel(p: Pick<ZdSupplierOrderPolicyRow, "strateg
   return parts.join(" · ");
 }
 
-/** Chip przy zakresie Kreatora — pokazuje strategię dostawcy i otwiera ustawienia. */
+/** Krótka etykieta w linii faktów zakresu (dni zapasu są już w tej linii). */
+export function zdSupplierPolicyShortLabel(p: Pick<ZdSupplierOrderPolicyRow, "strategy" | "cycleDays"> | null): string {
+  if (!p || p.strategy === "classic") return "Strategia: jak dotąd";
+  return p.cycleDays ? `Strategia testowa · ZD co ${p.cycleDays} dni` : "Strategia testowa";
+}
+
+/** Cichy przycisk na końcu linii faktów zakresu — strategia dostawcy, otwiera ustawienia. */
 export function ZdSupplierOrderPolicyChip({
   policy,
   onClick,
@@ -37,14 +44,18 @@ export function ZdSupplierOrderPolicyChip({
       type="button"
       onClick={onClick}
       disabled={disabled}
+      title={zdSupplierPolicyLabel(policy)}
+      aria-label={`${zdSupplierPolicyLabel(policy)} - zmień strategię`}
       className={cn(
-        "inline-flex h-7 items-center rounded-md border px-2.5 text-xs font-medium transition-colors disabled:opacity-60",
-        test
-          ? "border-indigo-200 bg-indigo-50 text-indigo-800 hover:bg-indigo-100"
-          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+        "inline-flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 text-xs font-medium transition-colors disabled:opacity-60",
+        test ? "text-indigo-800 hover:bg-indigo-50" : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
       )}
     >
-      {zdSupplierPolicyLabel(policy)}
+      {test ? <span aria-hidden className="size-1.5 rounded-full bg-indigo-600" /> : null}
+      {/* Wąski ekran: sama „Strategia” — pełny opis w title / aria-label, fakty zakresu się mieszczą. */}
+      <span className="hidden lg:inline">{zdSupplierPolicyShortLabel(policy)}</span>
+      <span className="lg:hidden">Strategia</span>
+      <LinkChevron size={12} tone="muted" />
     </button>
   );
 }

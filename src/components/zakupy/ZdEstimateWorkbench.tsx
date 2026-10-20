@@ -6222,19 +6222,21 @@ export function ZdEstimateWorkbench({
               density={prepFormOpen && scopeSelected ? "short" : "full"}
               scopeMode={scopeMode}
               scopeName={scopeLabel}
-              stockLabel={policyTargetDays != null ? "Strategia testowa" : stockLabel}
+              stockLabel={policyTargetDays != null ? null : stockLabel}
               dniZapasu={policyTargetDays != null ? String(policyTargetDays) : dniZapasu}
               supplierLabel={supplierLabel}
               dataOd={dataOd}
               dataDo={dataDo}
+              trailing={
+                selectedSupplier ? (
+                  <ZdSupplierOrderPolicyChip policy={currentSupplierPolicy} onClick={() => setSupplierPolicyOpen(true)} />
+                ) : null
+              }
             />
           ) : null
         }
         actions={
           <>
-            {selectedSupplier && scopeSelected ? (
-              <ZdSupplierOrderPolicyChip policy={currentSupplierPolicy} onClick={() => setSupplierPolicyOpen(true)} />
-            ) : null}
             {(() => {
               const showChangeScope = Boolean(lines && prepCollapsed);
               const showCollapse = Boolean(lines && !prepCollapsed);
