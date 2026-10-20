@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, memo } from "react";
+import { Fragment, memo, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { ZdEstimateOptionalColumn } from "@/lib/orders/zd-estimate-prefs";
 import type { ZdEstimateExtrasPolicy } from "@/lib/orders/zd-estimate-extras-policy";
 import type { ZdEstimatePackagingRow } from "@/lib/data/zd-estimate-packaging";
@@ -43,6 +43,28 @@ import { askConfirm } from "@/components/ui/ConfirmHost";
 
 /** Kolumny przepływu (Dost. → Sprzed. → Cel → Otwarte) — wspólne dla nagłówka i wierszy. */
 /** „Starczy na” — dni do wyczerpania (dostępne / sprzedaż dziennie) i minipasek z kreską czasu dostawy. */
+const PRODUCT_NAME_LINK = "button.zd-est-product-name--link";
+
+/**
+ * ↑/↓ w tabeli: fokus na nazwę poprzedniego / następnego towaru (Enter otwiera kartę).
+ * Pola liczbowe i tekstowe zachowują własne strzałki.
+ */
+export function handleZdEstimateRowArrowKeys(e: ReactKeyboardEvent<HTMLElement>) {
+  if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+  if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+  const t = e.target;
+  if (!(t instanceof HTMLElement) || t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+  let row = t.closest("tr")?.[e.key === "ArrowDown" ? "nextElementSibling" : "previousElementSibling"] ?? null;
+  while (row && !row.querySelector(PRODUCT_NAME_LINK)) {
+    row = row[e.key === "ArrowDown" ? "nextElementSibling" : "previousElementSibling"];
+  }
+  const target = row?.querySelector<HTMLButtonElement>(PRODUCT_NAME_LINK);
+  if (!target) return;
+  e.preventDefault();
+  target.focus();
+  target.scrollIntoView({ block: "nearest" });
+}
+
 export function ZdEstimateCoverCell({
   line,
   leadDays,

@@ -215,6 +215,7 @@ import {
 import {
   filterOrderableLinesWithPackaging,
   individualExtraPiecesForTw,
+  isPackagingPackagesMode,
   piecesArrivingForZdUnitsFromQty,
   resolveOrderQtyForLine,
   zdDocumentUnitsToPieces,
@@ -318,6 +319,7 @@ import type { ZdPairSeedProduct } from "@/components/zakupy/ZdEstimatePairsModal
 import type { ZdBomSeedProduct } from "@/components/zakupy/ZdEstimateBomsModal";
 import {
   ZdEstimateTableRow,
+  handleZdEstimateRowArrowKeys,
   zdEstimateFlowColumnClass,
 } from "@/components/zakupy/ZdEstimateTableRow";
 import { useStableCallback } from "@/hooks/useStableCallback";
@@ -2237,6 +2239,7 @@ export function ZdEstimateWorkbench({
     let pieces = 0;
     let value = 0;
     let unpriced = 0;
+    let pallets = 0;
     for (const l of orderableLines) {
       const qty = resolveOrderQtyForLine(
         l,
@@ -2258,8 +2261,17 @@ export function ZdEstimateWorkbench({
       const price = unitPriceByTwId[l.tw_Id];
       if (price != null && price > 0) value += linePieces * price;
       else unpriced += 1;
+      // Jak znacznik „N pal.” w wierszu: tylko pełne wielokrotności palety.
+      if (
+        qty.hasPackaging &&
+        isPackagingPackagesMode(qty.documentUnitMode) &&
+        qty.orderMultiple >= 2 &&
+        units % qty.orderMultiple === 0
+      ) {
+        pallets += units / qty.orderMultiple;
+      }
     }
-    return { count, pieces, value, unpriced };
+    return { count, pieces, value, unpriced, pallets };
   }, [
     orderableLines,
     packagingLookup,
@@ -7735,7 +7747,7 @@ export function ZdEstimateWorkbench({
                       </th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody onKeyDown={handleZdEstimateRowArrowKeys}>
                     {tableVirtual.enabled && tableVirtual.paddingTop > 0 ? (
                       <tr aria-hidden>
                         <td
@@ -8034,6 +8046,12 @@ export function ZdEstimateWorkbench({
                         <strong className="font-semibold text-slate-900">
                           ok. {Math.round(orderSummary.value).toLocaleString("pl-PL")} zł
                         </strong>
+                      </>
+                    ) : null}
+                    {orderSummary.pallets > 0 ? (
+                      <>
+                        <span aria-hidden>·</span>
+                        {orderSummary.pallets} pal.
                       </>
                     ) : null}
                     {orderSummary.unpriced > 0 ? (
