@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/data/fetch-all-rows";
 
 export type ZdEstimateOnRequestRow = {
   subiektTwId: number;
@@ -46,12 +47,14 @@ export function mapZdEstimateOnRequestRow(row: DbRow): ZdEstimateOnRequestRow {
 
 export async function fetchZdEstimateOnRequests(): Promise<ZdEstimateOnRequestRow[]> {
   const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("zd_estimate_on_request")
-    .select(SELECT_COLS)
-    .order("tw_symbol", { ascending: true, nullsFirst: false });
-  if (error) throw new Error(error.message);
-  return (data ?? []).map((row) => mapZdEstimateOnRequestRow(row as DbRow));
+  const rows = await fetchAllRows<DbRow>(() =>
+    supabase
+      .from("zd_estimate_on_request")
+      .select(SELECT_COLS)
+      .order("tw_symbol", { ascending: true, nullsFirst: false })
+      .order("subiekt_tw_id", { ascending: true })
+  );
+  return rows.map(mapZdEstimateOnRequestRow);
 }
 
 export async function fetchZdEstimateOnRequest(

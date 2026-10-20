@@ -2420,10 +2420,17 @@ export function ZdEstimateWorkbench({
 
   const createDialogPreview = createPreviewFrozen ?? createZdPreview;
 
-  const confirmedTwIdsForSnapshot = useMemo(
-    () => createDialogPreview.lines.map((l) => l.twId),
-    [createDialogPreview.lines]
-  );
+  /**
+   * Powiąż istniejący ZD: jego pozycje są już „w drodze”, więc wypadły z „Do ZD”.
+   * Potwierdzone = cała lista szacunku poza wykluczonymi (jak przy Create: brak opakowania → 1:1).
+   */
+  const confirmedTwIdsForSnapshot = useMemo(() => {
+    const ids = new Set(createDialogPreview.lines.map((l) => l.twId));
+    for (const l of lines ?? []) {
+      if (!orderExcludedTwIds.has(l.tw_Id)) ids.add(l.tw_Id);
+    }
+    return [...ids];
+  }, [createDialogPreview.lines, lines, orderExcludedTwIds]);
 
   const implicitPieceSnapshotLines = useMemo(() => {
     if (!settingsTrusted || !createDialogPreview.lineCount) return [];
