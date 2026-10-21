@@ -2,7 +2,7 @@
 
 import { isUndefinedTableError } from "@/lib/db/pool";
 import { refreshStockWatchAfterOrder } from "@/lib/stock-watch/refresh-after-order";
-import { createZdAutoProposalNow } from "@/lib/stock-watch/worker";
+import { createZdAutoProposalNow, zdAutoProposalNowInFlight } from "@/lib/stock-watch/worker";
 import type { SupplierLocation } from "@/types/database";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import {
@@ -224,7 +224,7 @@ import {
   getSubiektFeedback,
   type SubiektFeedback,
 } from "@/lib/subiekt/feedback";
-import { warsawDateKeyDaysAgo, warsawNowParts } from "@/lib/time/warsaw";
+import { warsawDateKeyDaysAgo, warsawDateKeyFromIso, warsawNowParts } from "@/lib/time/warsaw";
 import type { SubiektProductCecha, SubiektProductGroup } from "@/lib/subiekt/types";
 import {
   resolveZdEstimateRunScope,
@@ -1267,7 +1267,7 @@ export async function actionFetchZdEstimateProductHistory(input: {
 }> {
   await requireZdEstimateAdmin("read");
   const twId = Math.trunc(Number(input.twId));
-  if (!Number.isFinite(twId) || twId <= 0) {
+  if (!Number.isSafeInteger(twId) || twId <= 0) {
     const bad = { ok: false as const, message: "Nieprawidłowy identyfikator towaru." };
     return { sales: bad, purchases: bad };
   }
@@ -1388,9 +1388,12 @@ async function acceptPendingAutoProposal(input: {
     const finalLines: Record<string, number> = {};
     for (const l of input.createLines) finalLines[String(l.twId)] = (finalLines[String(l.twId)] ?? 0) + l.ilosc;
     if (latest.status === "accepted") {
-      // Zamówienie podzielone na kilka ZD w ciągu 12 h: raport różnic liczy wszystkie.
-      const decided = latest.decidedAt ? Date.parse(latest.decidedAt) : NaN;
-      if (Number.isFinite(decided) && Date.now() - decided < 12 * 3_600_000) {
+      // Zamówienie podzielone na kilka ZD tego samego dnia (Warszawa): raport różnic liczy wszystkie.
+      if (
+        latest.dokId !== input.dokId &&
+        latest.decidedAt &&
+        warsawDateKeyFromIso(latest.decidedAt) === warsawDateKeyDaysAgo(0)
+      ) {
         await addZdAutoProposalFinalLines({ id: latest.id, supplierId: input.supplierId, finalLines });
       }
       return;
@@ -3811,12 +3814,11 @@ export async function actionCreateZdFromEstimate(input: {
     acceptedCatalogOrderIds: catalogIds,
   });
 
-  await acceptPendingAutoProposal({
-    supplierId: input.supplierId,
-    dokId,
-    createLines,
-    userId: user.id,
-  });
+  const acceptInput = { supplierId: input.supplierId, dokId, createLines, userId: user.id };
+  await acceptPendingAutoProposal(acceptInput);
+  // „Przygotuj teraz” w toku: propozycja powstanie po tym ZD — to ZD na nią odpowiada.
+  const proposalRun = zdAutoProposalNowInFlight(input.supplierId);
+  if (proposalRun) void proposalRun.then(() => acceptPendingAutoProposal(acceptInput), () => undefined);
 
   let dokNrPelny = `ZD/${dokId}`;
   let docSource: "create" | "reget" | null = null;

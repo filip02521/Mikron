@@ -604,6 +604,9 @@ export function refreshStockWatchSupplier(supplierId: string): Promise<void> {
     try {
       do {
         entry.again = false;
+        // „Przygotuj teraz” w toku liczy stan sprzed zamówienia — przeliczamy dopiero po nim,
+        // żeby ostatni zapis analizy był ten po zamówieniu.
+        await proposalNowInFlight.get(supplierId)?.catch(() => undefined);
         await computeSingleSupplier(supplierId);
       } while (entry.again);
     } catch (e) {
@@ -638,6 +641,11 @@ export async function createZdAutoProposalNow(supplierId: string): Promise<ZdAut
 }
 
 const proposalNowInFlight = new Map<string, Promise<ZdAutoProposalNowResult>>();
+
+/** Trwające „Przygotuj teraz” dostawcy (albo null) — Utwórz ZD akceptuje też propozycję, która z niego powstanie. */
+export function zdAutoProposalNowInFlight(supplierId: string): Promise<unknown> | null {
+  return proposalNowInFlight.get(supplierId) ?? null;
+}
 
 async function computeSingleSupplier(
   supplierId: string,
