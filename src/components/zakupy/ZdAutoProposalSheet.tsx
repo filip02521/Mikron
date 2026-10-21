@@ -18,7 +18,7 @@ import { polishPluralWord } from "@/lib/email/polish-plural";
 import { ZD_AUTO_PROPOSAL_EDIT_MAX_UNITS, diffZdAutoProposalLines } from "@/lib/orders/zd-auto-proposal-create";
 import type { ZdPostCreateSession } from "@/lib/orders/zd-estimate-post-create";
 import { formatQty } from "@/lib/orders/zd-estimate-manual";
-import { useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
+import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 import {
   sidePanelBackdropClass,
   sidePanelCloseButtonClass,
@@ -262,6 +262,8 @@ export function ZdAutoProposalSheet({
         aria-modal
         aria-labelledby="zd-auto-sheet-title"
         tabIndex={-1}
+        // Blokada przewijania strony przepuszcza kółko i dotyk tylko w oznaczonych obszarach.
+        {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}
         className={cn(sidePanelShellClass, "panel-slide-enter z-[61] outline-none md:max-w-2xl")}
       >
         <header className={sidePanelHeaderClass}>
