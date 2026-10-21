@@ -4,14 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { actionAcceptZdAutoProposal, actionCreateZdAutoProposalNow } from "@/app/actions/zd-estimate";
-import { IconAlertCircle, IconCheck, IconCircleCheck, IconTrash2, IconUndoLeft, IconX } from "@/components/icons/StrokeIcons";
+import { IconAlertCircle, IconCircleCheck, IconTrash2, IconUndoLeft, IconX } from "@/components/icons/StrokeIcons";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { FOCUSABLE_SELECTOR } from "@/components/ui/ModalShell";
 import { QtyStepButton } from "@/components/ui/QtyStepButton";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Spinner } from "@/components/ui/Spinner";
-import { BrandLoader } from "@/components/ui/BrandLoader";
+import { BrandStepMark } from "@/components/ui/BrandStepMark";
 import { ZdEstimatePostCreatePanel } from "@/components/zakupy/ZdEstimatePostCreatePanel";
 import { cn } from "@/lib/cn";
 import type { ZdAutoProposal, ZdAutoProposalLine } from "@/lib/data/zd-auto-proposals";
@@ -72,13 +72,16 @@ function PhaseProgress({ phase }: { phase: Phase }) {
   );
 }
 
+/** Tyle widać zakończony krok (ptaszek rysuje się ok. 520 ms), zanim panel pójdzie dalej. */
+const STEP_DONE_HOLD_MS = 900;
+
 type StepStatus = "idle" | "running" | "ok" | "error";
 type Step = { key: string; title: string; detail: React.ReactNode; status: StepStatus; message?: string; onRetry?: () => void };
 
 /**
- * Pionowa oś działań: węzeł ze stanem, szyna zielenieje po każdym zakończonym kroku.
- * Krok w toku ma animowane logo OnTime (systemowe ładowanie), pod nim pierścień na 250 ms,
- * zanim logo się pojawi — węzeł nigdy nie jest pusty.
+ * Pionowa oś działań. Krok w toku i zakończony to ten sam znak OnTime (BrandStepMark): w toku
+ * obiega łuk, po sukcesie tarcza się domyka i rysuje się ptaszek; szyna do następnego kroku
+ * przejmuje kolor marki.
  */
 function ActionTimeline({ steps }: { steps: Step[] }) {
   return (
@@ -92,28 +95,23 @@ function ActionTimeline({ steps }: { steps: Step[] }) {
                 aria-hidden
                 className={cn(
                   "absolute top-9 bottom-1 left-4 w-px -translate-x-1/2 transition-colors duration-300 motion-reduce:transition-none",
-                  s.status === "ok" ? "bg-emerald-300" : "bg-slate-200"
+                  s.status === "ok" ? "bg-indigo-300" : "bg-slate-200"
                 )}
               />
             ) : null}
             <span aria-hidden className="relative z-[1] flex size-8 shrink-0 items-center justify-center">
-              {s.status === "running" ? (
-                <>
-                  <span className="absolute inset-0 rounded-full ring-2 ring-indigo-200" />
-                  <BrandLoader size="md" className="relative" />
-                </>
+              {/* Ten sam element w toku i po sukcesie — przejście stanu się animuje. */}
+              {s.status === "running" || s.status === "ok" ? (
+                <BrandStepMark state={s.status === "ok" ? "done" : "running"} />
               ) : (
                 <span
                   className={cn(
                     "flex size-8 items-center justify-center rounded-full text-xs font-semibold tabular-nums transition-colors duration-200 motion-reduce:transition-none",
-                    s.status === "ok" && "bg-emerald-600 text-white",
                     s.status === "error" && "bg-red-600 text-white",
                     s.status === "idle" && "bg-white text-slate-500 ring-1 ring-slate-300"
                   )}
                 >
-                  {s.status === "ok" ? (
-                    <IconCheck size={15} strokeWidth={2.5} />
-                  ) : s.status === "error" ? (
+                  {s.status === "error" ? (
                     <IconAlertCircle size={15} />
                   ) : (
                     i + 1
@@ -214,9 +212,12 @@ export function ZdAutoProposalSheet({
   const [createError, setCreateError] = useState<string | null>(null);
   /** Numer utworzonego ZD — krok „ZD w Subiekcie” chwilę zielony, zanim przejdzie do wysyłki. */
   const [createdNr, setCreatedNr] = useState<string | null>(null);
+  /** Po przeliczeniu krok 1 chwilę pokazuje sukces (logo się domyka), dopiero potem lista. */
+  const [listReady, setListReady] = useState(false);
   const [session, setSession] = useState<ZdPostCreateSession | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const started = useRef(false);
+  const recomputeSeq = useRef(0);
   useBodyScrollLock(true);
 
   const creating = phase === "creating";
@@ -252,7 +253,9 @@ export function ZdAutoProposalSheet({
   }, [panelRef]);
 
   const runRecompute = () => {
+    const seq = ++recomputeSeq.current;
     setRecompute({ status: "running" });
+    setListReady(false);
     setFresh(null);
     setEdits({});
     void actionCreateZdAutoProposalNow({ supplierId }).then(
@@ -261,6 +264,10 @@ export function ZdAutoProposalSheet({
         if (!r.proposal) return setRecompute({ status: "error", message: "Na aktualnych stanach nie ma nic do zamówienia." });
         setFresh(r.proposal);
         setRecompute({ status: "ok" });
+        // Ponowne przeliczenie w trakcie pauzy nie może odsłonić listy za wcześnie.
+        window.setTimeout(() => {
+          if (seq === recomputeSeq.current) setListReady(true);
+        }, STEP_DONE_HOLD_MS);
       },
       () => setRecompute({ status: "error", message: "Nie udało się przeliczyć propozycji." })
     );
@@ -288,7 +295,7 @@ export function ZdAutoProposalSheet({
         window.setTimeout(() => {
           setSession(r.session);
           setPhase("send");
-        }, 700);
+        }, STEP_DONE_HOLD_MS);
       },
       () => {
         // Wynik nieznany (zerwane połączenie) — ZD mogło powstać; bez ślepego ponawiania.
@@ -324,7 +331,7 @@ export function ZdAutoProposalSheet({
   );
 
   // Oczekiwanie (przeliczenie, zapis w Subiekcie) pokazuje oś działań zamiast listy.
-  const showTimeline = !fresh || creating;
+  const showTimeline = !fresh || !listReady || creating;
   const prosbaLines = activeLines.filter((l) => l.prosbaPieces > 0).length;
   const cycle = morning.policy.cycleDays;
   const steps: Step[] = [
