@@ -10,6 +10,7 @@ import { IconPackageCheck } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
 import { fieldControlClass } from "@/components/ui/Field";
 import { PageAttentionStrip, PageAttentionStripCta } from "@/components/ui/PageAttentionStrip";
+import { ZdAutoProposalSheet } from "@/components/zakupy/ZdAutoProposalSheet";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 import { ModalShell } from "@/components/ui/ModalShell";
 import type { ZdAutoProposal } from "@/lib/data/zd-auto-proposals";
@@ -66,9 +67,19 @@ export function zdAutoProposalDiff(p: Pick<ZdAutoProposal, "lines" | "finalLines
  * Propozycja ZD automatu dla wybranego dostawcy (strategia testowa). Akceptacja zapisuje się
  * sama przy „Utwórz ZD” (z Twoimi zmianami); tu: podgląd, odrzucenie z powodem i historia.
  */
-export function ZdAutoProposalBanner({ supplierId, supplierName }: { supplierId: string; supplierName: string }) {
+export function ZdAutoProposalBanner({
+  supplierId,
+  supplierName,
+  inDailyPanel = false,
+}: {
+  supplierId: string;
+  supplierName: string;
+  /** Panel dzienny: wiersz w grupie uwagi, dostawca w tytule i „Akceptuj” (ZD + wysyłka bez Kreatora). */
+  inDailyPanel?: boolean;
+}) {
   const [proposals, setProposals] = useState<ZdAutoProposal[] | null>(null);
   const [open, setOpen] = useState(false);
+  const [accepting, setAccepting] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -103,6 +114,8 @@ export function ZdAutoProposalBanner({ supplierId, supplierName }: { supplierId:
 
   const latest = proposals?.[0] ?? null;
   if (proposals == null) return null;
+  // Panel dzienny pokazuje tylko czekające — po decyzji wiersz znika.
+  if (inDailyPanel && latest?.status !== "pending" && !accepting) return null;
   if (!latest) {
     return (
       <PageAttentionStrip
@@ -136,8 +149,13 @@ export function ZdAutoProposalBanner({ supplierId, supplierName }: { supplierId:
     <>
       <PageAttentionStrip
         tone="violet"
+        edge={inDailyPanel ? "row" : undefined}
         icon={<IconPackageCheck size={16} strokeWidth={2.25} />}
-        title={`${waiting ? "Propozycja ZD" : "Ostatnia propozycja ZD"} z ${formatDateTimePl(latest.createdAt)}`}
+        title={
+          inDailyPanel
+            ? `Zamówienie ${supplierName} do potwierdzenia`
+            : `${waiting ? "Propozycja ZD" : "Ostatnia propozycja ZD"} z ${formatDateTimePl(latest.createdAt)}`
+        }
         hint={
           error && !rejecting ? (
             <span className="text-red-700">{error}</span>
@@ -146,22 +164,34 @@ export function ZdAutoProposalBanner({ supplierId, supplierName }: { supplierId:
               {latest.lineCount} {polishPluralWord(latest.lineCount, "pozycja", "pozycje", "pozycji")} ·{" "}
               {formatQty(pieces)} szt · ok. {zl(latest.valueNet)}
               {!waiting ? ` · ${STATUS_LABEL[latest.status]}` : ""}
+              {inDailyPanel ? ` · z ${formatDateTimePl(latest.createdAt)}` : ""}
             </span>
           )
         }
         actions={
           <>
-            <button type="button" className={quietActionClass} onClick={buildNow} disabled={building}>
-              {building ? "Liczę…" : "Przelicz"}
-            </button>
+            {/* Panel dzienny: przeliczenie i podgląd są w oknie akceptacji. */}
+            {!inDailyPanel ? (
+              <button type="button" className={quietActionClass} onClick={buildNow} disabled={building}>
+                {building ? "Liczę…" : "Przelicz"}
+              </button>
+            ) : null}
             {waiting ? (
               <button type="button" className={quietActionClass} onClick={() => setRejecting(true)}>
                 Odrzuć
               </button>
             ) : null}
-            <PageAttentionStripCta tone="violet" onClick={() => setOpen(true)}>
-              Pokaż propozycję
-            </PageAttentionStripCta>
+            {inDailyPanel ? (
+              waiting ? (
+                <PageAttentionStripCta tone="violet" onClick={() => setAccepting(true)}>
+                  Sprawdź i zatwierdź
+                </PageAttentionStripCta>
+              ) : null
+            ) : (
+              <PageAttentionStripCta tone="violet" onClick={() => setOpen(true)}>
+                Pokaż propozycję
+              </PageAttentionStripCta>
+            )}
           </>
         }
       />
@@ -223,6 +253,18 @@ export function ZdAutoProposalBanner({ supplierId, supplierName }: { supplierId:
             </section>
           ) : null}
         </ModalShell>
+      ) : null}
+
+      {accepting ? (
+        <ZdAutoProposalSheet
+          supplierId={supplierId}
+          supplierName={supplierName}
+          morning={latest}
+          onClose={() => {
+            setAccepting(false);
+            load();
+          }}
+        />
       ) : null}
 
       {rejecting ? (

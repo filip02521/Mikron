@@ -338,6 +338,17 @@ Karta stanu na górze ekranu pracy: zdanie stanu z liczbą („433 pozycje czeka
 
 Ruch tylko potwierdza działanie: zmiana tła i obramowania w 150 ms, rozwinięcie panelu w 200–300 ms, krzywa `cubic-bezier(0.22, 1, 0.36, 1)` (szybki start, miękkie wyhamowanie). Elementy są widoczne od razu, bez animacji wejścia przy ładowaniu strony. Każdy ruch ma wariant `motion-reduce`.
 
+### Ładowanie
+
+Systemowe ładowanie OnTime to animowane logo, `BrandLoader` (`src/components/ui/BrandLoader.tsx`): przygaszona tarcza, łuk obiega ją w kółko, ptaszek stoi; przy „ogranicz ruch” spokojnie pulsuje. Znak pojawia się dopiero po 250 ms, więc krótkie ładowanie nie mignie i można go dawać wszędzie, gdzie coś się wczytuje.
+
+- **Obszar, panel, okno albo strona czeka na dane lub na długą operację** (przeliczenie, zapis do Subiekta, wysyłka): `BrandLoader` (`size="lg"` na środku pustego obszaru, `md` w karcie, `sm` w wierszu stanu obok tekstu) z jednym zdaniem, co się dzieje, i ile to zwykle trwa. Nad treścią, która zostaje widoczna: `ActionLoadingOverlay` (ma logo w środku).
+- **Operacja z kilkoma krokami** (przeliczenie → zapis w Subiekcie → wysyłka): pionowa oś kroków w miejscu treści, na którą się czeka. Węzeł kroku w toku i zakończonego to `BrandStepMark`: w toku sama przygaszona tarcza z obiegającym łukiem, po sukcesie tarcza się domyka, wracają wskazówki i rysuje się ptaszek (pełne logo); szyna do następnego kroku w Petrolu (`indigo-300`), błąd czerwony węzeł z „Spróbuj ponownie”, kroki przed nami numer i cichy opis. Wzór: `ActionTimeline` w `ZdAutoProposalSheet.tsx`.
+- **Przycisk w toku**: `Spinner` w przycisku zostaje (mała ikona przy etykiecie „Tworzę…”). Gdy operacja trwa dłużej niż kilka sekund, obszar, którego dotyczy, dostaje dodatkowo wiersz stanu z `BrandLoader size="sm"`.
+- **Bez szkieletów i pulsujących pasków** zamiast logo na ekranach pracy. Wyjątek: wiersze tabeli, które dociągają się pod już widoczną listą.
+- Logo przy tekście jest dekoracją (`aria-hidden`); kontener ma `role="status"` i widoczny opis. Sam znak bez tekstu dostaje `label`.
+- Nowe miejsca z ładowaniem od razu używają `BrandLoader`; stare `Spinner` poza przyciskami i szkielety wymieniamy przy każdej zmianie tego ekranu.
+
 ### Powierzchnie przeglądarki
 
 Zaznaczenie tekstu ma tło `petrol-mist` i tekst `petrol-deep`. Kursor tekstowy i natywne checkboxy, radia i suwaki są w Petrolu (`accent-color`, `caret-color`). Paski przewijania są cienkie, `slate-300`. Fokus z klawiatury ma zawsze ten sam kolor, `indigo-600` (także na elementach w tonie stanu): komponenty rysują go jako `focus-visible:ring-2 focus-visible:ring-indigo-600`, a element bez własnego stylu dostaje obrys 2px z odstępem 2px z `@layer base`. Pierścieni przezroczystych (`/40`) nie stosujemy, bo nie mają kontrastu 3:1. Linki mają podkreślenie odsunięte od tekstu.
@@ -352,6 +363,7 @@ Zaznaczenie tekstu ma tło `petrol-mist` i tekst `petrol-deep`. Kursor tekstowy 
 - **Do** sprawdzaj każdy ekran przy 375px: brak przewijania strony w poziomie, etykiety całe, pola min. 44px.
 - **Do** pokazuj stan tłem, odznaką lub ikoną z tekstem, zawsze w kolorze jego znaczenia.
 - **Do** dawaj każdemu ruchowi wariant `motion-reduce`.
+- **Do** pokazuj każde dłuższe ładowanie animowanym logo (`BrandLoader`) ze zdaniem, co się dzieje.
 
 ### Don't:
 
@@ -364,3 +376,4 @@ Zaznaczenie tekstu ma tło `petrol-mist` i tekst `petrol-deep`. Kursor tekstowy 
 - **Don't** używaj `slate-400` do tekstu, który trzeba przeczytać.
 - **Don't** zaznaczaj wybranego stanu grafitem ani kolorem stanu; wybrane jest zawsze w Petrolu.
 - **Don't** przenoś ciemnego gradientu logowania do aplikacji.
+- **Don't** stawiaj szkieletu, pulsującego paska ani samego `Spinner` tam, gdzie czeka cały obszar lub panel.

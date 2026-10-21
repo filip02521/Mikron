@@ -15,7 +15,10 @@ import { buildZdOrderList } from "@/lib/orders/zd-order-list";
 import {
   decideZdAutoProposal,
   addZdAutoProposalFinalLines,
+  claimZdAutoProposalCreate,
+  expirePendingZdAutoProposals,
   fetchLatestZdAutoProposal,
+  releaseZdAutoProposalCreate,
   listZdAutoProposals,
   type ZdAutoProposal,
 } from "@/lib/data/zd-auto-proposals";
@@ -119,7 +122,13 @@ import {
 import { revalidatePath } from "next/cache";
 import { isProcurementDraftReady } from "@/lib/orders/procurement-readiness";
 import { assessRequestCompleteness } from "@/lib/orders/request-completeness";
-import { excludeConsumedPendingOrders } from "@/lib/orders/zd-estimate-post-create";
+import {
+  buildZdPostCreateMarkFreeze,
+  buildZdPostCreateSessionFromCreate,
+  excludeConsumedPendingOrders,
+  type ZdPostCreateSession,
+} from "@/lib/orders/zd-estimate-post-create";
+import { applyZdAutoProposalEdits, buildZdCreateInputFromAutoProposal } from "@/lib/orders/zd-auto-proposal-create";
 import { isSupplierOrderOnDemand } from "@/lib/orders/supplier-on-demand";
 import { dateToIso, resolveSupplierInterval } from "@/lib/orders/dates";
 import { todayInWarsaw } from "@/lib/time/warsaw";
@@ -179,6 +188,7 @@ import {
 import {
   deleteZdEstimateSupplierScope,
   fetchZdEstimateSupplierScope,
+  groupZdEstimateScopesBySupplier,
   listZdEstimateSupplierScopes,
   setPrimaryZdEstimateSupplierScope,
   upsertZdEstimateSupplierScope,
@@ -225,6 +235,7 @@ import {
   type SubiektFeedback,
 } from "@/lib/subiekt/feedback";
 import { warsawDateKeyDaysAgo, warsawDateKeyFromIso, warsawNowParts } from "@/lib/time/warsaw";
+import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 import type { SubiektProductCecha, SubiektProductGroup } from "@/lib/subiekt/types";
 import {
   resolveZdEstimateRunScope,
@@ -1461,7 +1472,11 @@ export async function actionCreateZdAutoProposalNow(input: {
     const p = result.proposal;
     if (!p) return { ok: false, message: "Propozycja nie została policzona - spróbuj ponownie." };
     if (p.kind === "created") return { ok: true, proposal: await fetchLatestZdAutoProposal(supplierId) };
-    if (p.kind === "nothing_to_order") return { ok: true, proposal: null };
+    if (p.kind === "nothing_to_order") {
+      // Rano była propozycja, teraz nic do zamówienia — karta w panelu dziennym nie może czekać dalej.
+      if ((await expirePendingZdAutoProposals(supplierId)) > 0) revalidateAfterZdEstimateMark();
+      return { ok: true, proposal: null };
+    }
     if (p.kind === "skipped") return { ok: false, message: p.reason };
     if (p.kind === "error") return { ok: false, message: `Nie udało się zapisać propozycji: ${p.message}` };
     return { ok: false, message: "Strategia testowa jest wyłączona dla tego dostawcy." };
@@ -1487,6 +1502,152 @@ export async function actionRejectZdAutoProposal(input: {
     return done ? { ok: true } : { ok: false, message: "Propozycja nie czeka już na decyzję." };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się zapisać decyzji.") };
+  }
+}
+
+/**
+ * Panel dzienny: „Akceptuj” propozycję automatu — tworzy ZD z jej linii tak, jak Kreator
+ * zrobiłby z tej listy (zakres dostawcy, prośby katalogowe i usługi). Zwraca sesję panelu po
+ * utworzeniu (wysyłka, termin, Główne, plan). Akceptacja propozycji zapisuje się w create.
+ */
+/** Szybka blokada w procesie; właściwa jest w bazie (claimZdAutoProposalCreate). */
+const acceptingProposalIds = new Set<string>();
+
+export async function actionAcceptZdAutoProposal(input: {
+  supplierId: string;
+  proposalId: string;
+  /** Korekty z panelu: twId → jednostki ZD (0 = usuń); tylko towary z propozycji. */
+  edits?: Record<string, number> | null;
+}): Promise<
+  | { ok: true; session: ZdPostCreateSession }
+  /** unknownOutcome: Subiekt nie potwierdził zapisu w czasie — ZD mogło powstać, bez ponowienia. */
+  | { ok: false; message: string; title?: string; unknownOutcome?: boolean }
+> {
+  await requireZdEstimateAdmin("mutate");
+  const supplierId = String(input.supplierId ?? "").trim();
+  const proposalId = String(input.proposalId ?? "").trim();
+  if (!UUID_RE.test(supplierId) || !UUID_RE.test(proposalId)) {
+    return { ok: false, message: "Nieprawidłowa propozycja." };
+  }
+  // Dwie zakładki / dwie osoby: drugie kliknięcie nie może utworzyć drugiego ZD na LIVE.
+  if (acceptingProposalIds.has(proposalId)) {
+    return { ok: false, message: "Ta propozycja właśnie się zatwierdza - poczekaj na wynik." };
+  }
+  acceptingProposalIds.add(proposalId);
+  try {
+    const proposal = await fetchLatestZdAutoProposal(supplierId);
+    // Tylko aktualna, czekająca propozycja — inna zakładka mogła ją przeliczyć albo odrzucić.
+    if (!proposal || proposal.id !== proposalId || proposal.status !== "pending") {
+      return { ok: false, message: "Propozycja zmieniła się w międzyczasie - przelicz ją ponownie." };
+    }
+    const scope = groupZdEstimateScopesBySupplier(await listZdEstimateSupplierScopes()).get(supplierId)?.[0];
+    if (!scope) return { ok: false, message: "Dostawca nie ma zakresu w Kreatorze ZD." };
+    const [pending, pairs, boms, teeth, supplierRow] = await Promise.all([
+      fetchZdEstimatePendingIndividualOrders(supplierId),
+      fetchZdProductPairs(),
+      fetchZdProductBoms(),
+      fetchTeethProductTwIdSet(),
+      createAdminClient().from("suppliers").select("name").eq("id", supplierId).maybeSingle(),
+    ]);
+    // Jak blokada „Utwórz ZD” w Kreatorze: z niepełną listą próśb część mogłaby nie wejść.
+    if (pending.truncated) return { ok: false, message: ZD_ESTIMATE_UI.createGatePendingIndividualsTruncated };
+    const edited = applyZdAutoProposalEdits(proposal.lines, input.edits);
+    if (!edited.ok) return { ok: false, message: edited.message };
+    const built = buildZdCreateInputFromAutoProposal({
+      lines: edited.lines,
+      scope,
+      pendingOrders: pending.orders,
+      serviceOrderIds: proposal.serviceOrderIds,
+      pairs,
+      boms: bomRowsToRefs(boms),
+      teethTwIds: teeth,
+    });
+    if (!built.lines.length) return { ok: false, message: "Propozycja nie ma pozycji do zamówienia." };
+
+    // Atomowo w bazie: druga zakładka / instancja albo propozycja po timeoucie nie utworzy drugiego ZD.
+    const claim = await claimZdAutoProposalCreate(proposal.id, supplierId);
+    if (claim === "busy") {
+      return {
+        ok: false,
+        unknownOutcome: true,
+        message:
+          "Ta propozycja jest już zatwierdzana albo poprzednia próba nie dostała potwierdzenia z Subiekta - przelicz ją na nowo (uwzględni ZD, jeśli powstało).",
+      };
+    }
+    if (claim === "unsupported") console.warn("[zd-auto-proposal:accept] brak migracji 193 - tylko blokada w procesie");
+
+    // Kliknięcie „Utwórz ZD” w oknie akceptacji jest jawnym potwierdzeniem zapisu na LIVE.
+    let res: Awaited<ReturnType<typeof actionCreateZdFromEstimate>>;
+    try {
+      res = await actionCreateZdFromEstimate({
+      supplierId,
+      // Jak Kreator: nazwa zakresu w uwagach (domyślne z serwera ma tylko numer grupy).
+      uwagi: defaultZdCreateUwagi({
+        scopeMode: built.scopeMode,
+        scopeLabel: scope.label || null,
+        dateKey: warsawNowParts().dateKey,
+      }),
+      scopeMode: built.scopeMode,
+      grtId: built.grtId,
+      cechaId: built.cechaId,
+      lines: built.lines,
+      lineMeta: built.lineMeta,
+      confirmLiveCreate: true,
+      individualCatalogOrderIds: built.individualCatalogOrderIds,
+      individualServiceOrderIds: built.individualServiceOrderIds,
+      });
+    } catch (e) {
+      // Wyjątek w trakcie zapisu = wynik nieznany; blokada w bazie zostaje.
+      return { ok: false, unknownOutcome: true, message: userFacingErrorText(e, "Nie udało się utworzyć ZD z propozycji.") };
+    }
+    if (!res.ok) {
+      // Tylko odrzucenie walidacji na pewno nie zapisało dokumentu. Timeout, zerwane połączenie,
+      // błąd Sfery: ZD mogło powstać — blokada zostaje (nowe przeliczenie da nową propozycję).
+      if (res.code !== "validation") return { ok: false, message: res.message, title: res.title, unknownOutcome: true };
+      if (claim === "claimed") await releaseZdAutoProposalCreate(proposal.id);
+      return { ok: false, message: res.message, title: res.title };
+    }
+    // Karta propozycji znika z panelu dziennego także u innych osób.
+    revalidateAfterZdEstimateMark();
+
+    const markFreeze = buildZdPostCreateMarkFreeze({
+      catalogOrderIds: res.acceptedCatalogOrderIds ?? built.individualCatalogOrderIds,
+      includedServiceOrderIds: res.includedServiceOrderIds ?? [],
+      omittedServiceCount: res.omittedServiceCount,
+      serviceLines: built.extras.serviceLines,
+      catalogByTwId: built.extras.byTwId,
+    });
+    const supplierName = String((supplierRow.data as { name?: string } | null)?.name ?? "").trim() || "Dostawca";
+    return {
+      ok: true,
+      session: buildZdPostCreateSessionFromCreate({
+        supplierId,
+        supplierName,
+        fromDaily: true,
+        dokId: res.dokId,
+        dokNrPelny: res.dokNrPelny,
+        lineCount: res.lineCount,
+        snapshotOk: res.snapshotOk,
+        snapshotMessage: res.snapshotMessage,
+        previewLines: edited.lines.map((l) => ({
+          twId: l.twId,
+          symbol: l.symbol,
+          nazwa: l.nazwa,
+          ilosc: l.zdUnits,
+          packagingHint: l.unitLabel !== "szt" ? l.unitLabel : null,
+          individualExtraPieces: l.prosbaPieces,
+          piecesArriving: l.pieces,
+        })),
+        createdLines: res.createdLines,
+        markFreeze,
+        bumped: res.bumped,
+        composedUwagi: res.composedUwagi ?? null,
+      }),
+    };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się utworzyć ZD z propozycji.") };
+  } finally {
+    acceptingProposalIds.delete(proposalId);
   }
 }
 

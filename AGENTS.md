@@ -8,6 +8,10 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
+# Interfejs — zasady w DESIGN.md
+
+`DESIGN.md` jest normatywny dla każdej zmiany UI. Każde dłuższe ładowanie (obszar, panel, okno, strona, długa operacja) pokazuje animowane logo OnTime `BrandLoader` ze zdaniem, co się dzieje — nie szkielet ani sam `Spinner` (ten zostaje tylko w przyciskach). Szczegóły: DESIGN.md → Components → Ładowanie.
+
 # Baza danych — PostgreSQL, NIE Supabase
 
 Projekt używa **PostgreSQL** jako bazy danych — zarówno na produkcji, jak i lokalnie.

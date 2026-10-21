@@ -8,7 +8,7 @@ import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
 import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 
-const FOCUSABLE_SELECTOR =
+export const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export type ModalTier = "standard" | "raised" | "top" | "stack" | "overlay";
