@@ -5,6 +5,7 @@
 import { revalidatePath } from "next/cache";
 import { requireWarehouse } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { query } from "@/lib/db/pool";
 import { getAppSupplierRefsCached } from "@/lib/data/supplier-refs";
 import {
   SubiektNetworkError,
@@ -83,21 +84,23 @@ async function fetchPendingOrderCountBySupplier(
   supplierIds: string[]
 ): Promise<Record<string, number>> {
   if (!supplierIds.length) return {};
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("individual_orders")
-    .select("supplier_id")
-    .in("supplier_id", supplierIds)
-    .in("status", ["Zamowione", "Czesciowo_zrealizowane"])
-    .is("sales_cancelled_at", null)
-    .eq("request_kind", "zamowienie");
-  if (error) return {};
-  const counts: Record<string, number> = {};
-  for (const row of data ?? []) {
-    const sid = String(row.supplier_id);
-    counts[sid] = (counts[sid] ?? 0) + 1;
+  // COUNT w bazie zamiast wiersza na każdą otwartą prośbę.
+  try {
+    const { rows } = await query<{ supplier_id: string; n: number }>(
+      `SELECT supplier_id, count(*)::int AS n
+         FROM individual_orders
+        WHERE supplier_id = ANY($1::uuid[])
+          AND status IN ('Zamowione', 'Czesciowo_zrealizowane')
+          AND sales_cancelled_at IS NULL
+          AND request_kind = 'zamowienie'
+        GROUP BY supplier_id`,
+      [supplierIds]
+    );
+    return Object.fromEntries(rows.map((r) => [String(r.supplier_id), r.n]));
+  } catch (e) {
+    console.error("fetchPendingOrderCountBySupplier:", e);
+    return {};
   }
-  return counts;
 }
 
 async function buildDeliveryJournalForDate(date: string): Promise<DeliveryJournalPayload> {

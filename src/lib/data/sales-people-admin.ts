@@ -1,4 +1,5 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
+import { fetchAllRowsResult } from "@/lib/data/fetch-all-rows";
 import {
   summarizeSalesPersonOrderAttention,
   type SalesPersonOrderAttentionRow,
@@ -41,15 +42,22 @@ export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
         .from("profiles")
         .select("id, email, sales_person_id, created_at")
         .not("sales_person_id", "is", null),
-      supabase
-        .from("sales_zk_watches")
-        .select("sales_person_id, follow_up_at, closed_at, archived_at")
-        .is("closed_at", null)
-        .is("archived_at", null),
-      supabase
-        .from("sales_notes")
-        .select("sales_person_id, follow_up_at, archived_at")
-        .is("archived_at", null),
+      // Otwarte ZK i notatki całej firmy — bez górnej granicy, więc stronami.
+      fetchAllRowsResult<{ sales_person_id: string; follow_up_at: string | null; closed_at: string | null; archived_at: string | null }>(() =>
+        supabase
+          .from("sales_zk_watches")
+          .select("sales_person_id, follow_up_at, closed_at, archived_at")
+          .is("closed_at", null)
+          .is("archived_at", null)
+          .order("id", { ascending: true })
+      ),
+      fetchAllRowsResult<{ sales_person_id: string; follow_up_at: string | null; archived_at: string | null }>(() =>
+        supabase
+          .from("sales_notes")
+          .select("sales_person_id, follow_up_at, archived_at")
+          .is("archived_at", null)
+          .order("id", { ascending: true })
+      ),
     ]);
 
   if (peopleError) throw new Error(peopleError.message);
@@ -74,9 +82,8 @@ export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
 
   const profileIds = [...linkedBySalesId.values()].map((linked) => linked.id);
   const [activityByProfileId, activityBySalesPersonId] = await Promise.all([
-    fetchLastActivityAtByProfileId(supabase, profileIds),
+    fetchLastActivityAtByProfileId(profileIds),
     fetchLastActivityAtBySalesPersonId(
-      supabase,
       (people ?? []).map((person) => person.id as string)
     ),
   ]);
@@ -97,14 +104,16 @@ export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
     )
   );
 
-  // Jawny limit: domyślny DB_MAX_ROWS (1000) uciąłby otwarte prośby całej firmy.
-  const { data: attentionRows, error: attentionError } = await supabase
-    .from("individual_orders")
-    .select("sales_person_id, status, request_kind, is_teeth, warehouse_cleared_at, zd_fulfillment_deadline")
-    .is("sales_acknowledged_at", null)
-    .is("sales_cancelled_at", null)
-    .neq("status", "Anulowane")
-    .limit(20000);
+  // Otwarte prośby całej firmy — stronami (domyślny limit warstwy DB to 1000).
+  const { data: attentionRows, error: attentionError } = await fetchAllRowsResult<SalesPersonOrderAttentionRow>(() =>
+    supabase
+      .from("individual_orders")
+      .select("sales_person_id, status, request_kind, is_teeth, warehouse_cleared_at, zd_fulfillment_deadline")
+      .is("sales_acknowledged_at", null)
+      .is("sales_cancelled_at", null)
+      .neq("status", "Anulowane")
+      .order("id", { ascending: true })
+  );
   if (attentionError) throw new Error(attentionError.message);
   const attentionBySalesId = summarizeSalesPersonOrderAttention(
     (attentionRows ?? []) as SalesPersonOrderAttentionRow[],
