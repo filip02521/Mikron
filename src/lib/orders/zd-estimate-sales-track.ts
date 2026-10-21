@@ -406,8 +406,11 @@ export function computeSalesTrackedCel(input: {
 
   const coverDays =
     sprzedazDziennie > 1e-9 ? coverStock / sprzedazDziennie : null;
-  const pool = sprzedazOkres + coverStock;
-  const sellThrough = pool > 0 ? sprzedazOkres / pool : null;
+  // Sprzedaż w skali dni zapasu — inaczej dłuższe okno (ręczne daty, horyzont, dni strategii)
+  // samo podbijało sell-through, a krótkie cięło przy stanie poniżej celu.
+  const soldInZapas = soldNormalizedToZapas({ sprzedazOkres, dniOkresuEffective, dniZapasu });
+  const pool = soldInZapas + coverStock;
+  const sellThrough = pool > 0 ? soldInZapas / pool : null;
 
   const confidence =
     sprzedazOkres >= policy.minSprzedazOkres

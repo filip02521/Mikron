@@ -477,6 +477,21 @@ export function mapZdEstimateLinesSolo(
   });
 }
 
+/**
+ * Długość okna sprzedaży (dni, włącznie): `dniOkresu` z API, inaczej z dat okna.
+ * Bez tego para liczyła tempo na dniach zapasu, a pojedynczy towar na tempie z Subiekta.
+ */
+export function zdEstimateWindowDays(
+  parametry: Pick<SubiektZdEstimateParams, "dniOkresu" | "dataOd" | "dataDo"> | null | undefined
+): number | null {
+  const raw = Number(parametry?.dniOkresu);
+  if (parametry?.dniOkresu != null && Number.isFinite(raw) && raw > 0) return raw;
+  const od = Date.parse(String(parametry?.dataOd ?? "").slice(0, 10));
+  const doo = Date.parse(String(parametry?.dataDo ?? "").slice(0, 10));
+  if (!Number.isFinite(od) || !Number.isFinite(doo) || doo < od) return null;
+  return Math.round((doo - od) / 86_400_000) + 1;
+}
+
 export function buildManualZdEstimateResult(
   parametry: SubiektZdEstimateParams,
   lines: SubiektZdEstimateLine[],
@@ -523,10 +538,7 @@ export function buildManualZdEstimateResult(
     parametry.dniZapasu != null && Number.isFinite(Number(parametry.dniZapasu))
       ? Number(parametry.dniZapasu)
       : DEFAULT_DNI_ZAPASU;
-  const dniOkresu =
-    parametry.dniOkresu != null && Number.isFinite(Number(parametry.dniOkresu))
-      ? Number(parametry.dniOkresu)
-      : null;
+  const dniOkresu = zdEstimateWindowDays(parametry);
   const historyByTwId = options?.historyByTwId ?? null;
   const packagingByTwId = options?.packagingByTwId ?? null;
   const minStockByTwId = options?.minStockByTwId ?? null;
