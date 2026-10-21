@@ -463,13 +463,28 @@ export function ZdAutoProposalSheet({
               {createLocked ? (
                 <div className="flex items-start gap-2 rounded-md bg-amber-50 px-3 py-2.5 text-sm text-amber-900" role="alert">
                   <IconAlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden />
-                  <p>
-                    {createError ? `${createError} ` : ""}Subiekt nie potwierdził zapisu - ZD mogło powstać. Sprawdź listę ZD w{" "}
-                    <a className="font-medium underline underline-offset-2" href={`/zakupy/szacunek?supplierId=${encodeURIComponent(supplierId)}`}>
-                      Kreatorze ZD
-                    </a>{" "}
-                    i powiąż dokument; ponowne zatwierdzenie stąd jest zablokowane, żeby nie powstało drugie ZD.
-                  </p>
+                  <div className="min-w-0 space-y-2">
+                    <p>
+                      {createError ? `${createError} ` : ""}ZD mogło powstać, więc tej listy nie zatwierdzisz drugi raz. Przelicz na nowo -
+                      przeliczenie uwzględni ZD, jeśli powstało - albo sprawdź i powiąż dokument w{" "}
+                      <a className="font-medium underline underline-offset-2" href={`/zakupy/szacunek?supplierId=${encodeURIComponent(supplierId)}`}>
+                        Kreatorze ZD
+                      </a>
+                      .
+                    </p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => {
+                        setCreateLocked(false);
+                        setCreateError(null);
+                        runRecompute();
+                      }}
+                    >
+                      Przelicz na nowo
+                    </Button>
+                  </div>
                 </div>
               ) : createError ? (
                 <p className="flex items-start gap-2 rounded-md bg-red-50 px-3 py-2.5 text-sm text-red-700" role="alert">

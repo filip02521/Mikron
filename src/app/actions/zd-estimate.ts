@@ -15,8 +15,10 @@ import { buildZdOrderList } from "@/lib/orders/zd-order-list";
 import {
   decideZdAutoProposal,
   addZdAutoProposalFinalLines,
+  claimZdAutoProposalCreate,
   expirePendingZdAutoProposals,
   fetchLatestZdAutoProposal,
+  releaseZdAutoProposalCreate,
   listZdAutoProposals,
   type ZdAutoProposal,
 } from "@/lib/data/zd-auto-proposals";
@@ -1504,7 +1506,7 @@ export async function actionRejectZdAutoProposal(input: {
  * zrobiłby z tej listy (zakres dostawcy, prośby katalogowe i usługi). Zwraca sesję panelu po
  * utworzeniu (wysyłka, termin, Główne, plan). Akceptacja propozycji zapisuje się w create.
  */
-/** shortcut: blokada w procesie (jeden serwer OnTime), przy kilku instancjach — status „w toku” w bazie. */
+/** Szybka blokada w procesie; właściwa jest w bazie (claimZdAutoProposalCreate). */
 const acceptingProposalIds = new Set<string>();
 
 export async function actionAcceptZdAutoProposal(input: {
@@ -1558,8 +1560,22 @@ export async function actionAcceptZdAutoProposal(input: {
     });
     if (!built.lines.length) return { ok: false, message: "Propozycja nie ma pozycji do zamówienia." };
 
+    // Atomowo w bazie: druga zakładka / instancja albo propozycja po timeoucie nie utworzy drugiego ZD.
+    const claim = await claimZdAutoProposalCreate(proposal.id, supplierId);
+    if (claim === "busy") {
+      return {
+        ok: false,
+        unknownOutcome: true,
+        message:
+          "Ta propozycja jest już zatwierdzana albo poprzednia próba nie dostała potwierdzenia z Subiekta - przelicz ją na nowo (uwzględni ZD, jeśli powstało).",
+      };
+    }
+    if (claim === "unsupported") console.warn("[zd-auto-proposal:accept] brak migracji 193 - tylko blokada w procesie");
+
     // Kliknięcie „Utwórz ZD” w oknie akceptacji jest jawnym potwierdzeniem zapisu na LIVE.
-    const res = await actionCreateZdFromEstimate({
+    let res: Awaited<ReturnType<typeof actionCreateZdFromEstimate>>;
+    try {
+      res = await actionCreateZdFromEstimate({
       supplierId,
       // Jak Kreator: nazwa zakresu w uwagach (domyślne z serwera ma tylko numer grupy).
       uwagi: defaultZdCreateUwagi({
@@ -1575,8 +1591,17 @@ export async function actionAcceptZdAutoProposal(input: {
       confirmLiveCreate: true,
       individualCatalogOrderIds: built.individualCatalogOrderIds,
       individualServiceOrderIds: built.individualServiceOrderIds,
-    });
-    if (!res.ok) return { ok: false, message: res.message, title: res.title, unknownOutcome: res.code === "timeout" };
+      });
+    } catch (e) {
+      // Wyjątek w trakcie zapisu = wynik nieznany; blokada w bazie zostaje.
+      return { ok: false, unknownOutcome: true, message: userFacingErrorText(e, "Nie udało się utworzyć ZD z propozycji.") };
+    }
+    if (!res.ok) {
+      // Timeout: ZD mogło powstać — blokada zostaje (nowe przeliczenie da nową propozycję).
+      if (res.code === "timeout") return { ok: false, message: res.message, title: res.title, unknownOutcome: true };
+      if (claim === "claimed") await releaseZdAutoProposalCreate(proposal.id);
+      return { ok: false, message: res.message, title: res.title };
+    }
     // Karta propozycji znika z panelu dziennego także u innych osób.
     revalidateAfterZdEstimateMark();
 

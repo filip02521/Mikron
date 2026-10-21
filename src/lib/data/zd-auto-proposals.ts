@@ -169,6 +169,32 @@ export async function createZdAutoProposal(input: {
   return created;
 }
 
+/**
+ * Zajęcie propozycji przed tworzeniem ZD — atomowo w bazie (dwie zakładki, kilka instancji).
+ * "claimed" = można tworzyć; "busy" = ktoś już tworzy albo poprzednia próba nie dostała
+ * potwierdzenia z Subiekta (ZD mogło powstać); "unsupported" = brak migracji 193.
+ */
+export async function claimZdAutoProposalCreate(id: string, supplierId: string): Promise<"claimed" | "busy" | "unsupported"> {
+  try {
+    const res = await query(
+      `UPDATE zd_auto_proposals SET create_attempted_at = now()
+        WHERE id = $1 AND supplier_id = $2 AND status = 'pending' AND create_attempted_at IS NULL`,
+      [id, supplierId]
+    );
+    return (res.rowCount ?? 0) > 0 ? "claimed" : "busy";
+  } catch (e) {
+    if ((e as { code?: string }).code === "42703") return "unsupported";
+    throw e;
+  }
+}
+
+/** Create zakończony pewną porażką (Subiekt odrzucił dokument) — propozycję można zatwierdzić ponownie. */
+export async function releaseZdAutoProposalCreate(id: string): Promise<void> {
+  await query(`UPDATE zd_auto_proposals SET create_attempted_at = NULL WHERE id = $1 AND status = 'pending'`, [id]).catch(
+    (e: unknown) => console.error("[zd-auto-proposals] zwolnienie blokady", id, e)
+  );
+}
+
 /** Na aktualnych stanach nie ma nic do zamówienia — czekająca propozycja jest nieaktualna. */
 export async function expirePendingZdAutoProposals(supplierId: string): Promise<number> {
   const res = await query(
