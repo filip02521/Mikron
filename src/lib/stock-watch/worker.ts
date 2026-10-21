@@ -25,7 +25,6 @@ import {
   stockPeriodToDniZapasu,
 } from "@/lib/orders/zd-estimate-manual";
 import { ZD_ESTIMATE_UI_PREFS_DEFAULTS } from "@/lib/orders/zd-estimate-prefs";
-import { zdDocumentUnitsToPieces } from "@/lib/orders/zd-estimate-units";
 import { runZdOrderEngine } from "@/lib/orders/zd-order-engine";
 import { zdDeliveryRisk, type ZdOrderHorizon } from "@/lib/orders/zd-order-horizon";
 import { loadZdOrderHorizons } from "@/lib/orders/zd-order-horizon-load";
@@ -40,7 +39,8 @@ import { fetchZdSupplierOrderPolicy } from "@/lib/data/zd-supplier-order-policy"
 import { warsawDateKeyFromIso, warsawNowParts } from "@/lib/time/warsaw";
 import { classifySubiektException, feedbackFromException } from "@/lib/subiekt/feedback";
 import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
-import { analyzeStockWatchItem, pairStockPieces, unitPricePerPiece } from "@/lib/stock-watch/analysis";
+import { analyzeStockWatchItem, unitPricePerPiece } from "@/lib/stock-watch/analysis";
+import { resolveStockWatchBomViews, resolveStockWatchLineFigures } from "@/lib/stock-watch/bom-stock";
 import {
   createStockWatchRun,
   getLatestStockWatchRun,
@@ -397,35 +397,47 @@ async function computeSupplierOrder(input: {
   const monitored = engine.result.pozycje.filter(
     (line) => !teeth.has(line.tw_Id) && !isZdNameAutoExcluded(String(line.tw_Nazwa ?? ""))
   );
+  // Opakowania z karty (bez nadpisania parą) — otwarte ZD w sztukach karty, jak w Kreatorze.
+  const cardPackaging = new Map(
+    engine.packaging.map((row) => [
+      row.subiektTwId,
+      { unitsPerPackage: row.unitsPerPackage, documentUnitMode: row.documentUnitMode },
+    ])
+  );
+  const dniOkresu = Number(engine.result.parametry.dniOkresu);
+  const bomViews = resolveStockWatchBomViews({
+    byTw: new Map(engine.result.pozycje.map((l) => [l.tw_Id, l])),
+    boms: engine.bomRefs,
+    packagingByTwId: cardPackaging,
+    dniOkresu: Number.isFinite(dniOkresu) && dniOkresu > 0 ? dniOkresu : null,
+    fallbackDniOkresu: dniZapasu,
+  });
   const rows: StockWatchItemWrite[] = monitored.map((line) => {
     const tw = line.tw_Id;
-    const pack = engine.packagingLookup.get(tw) ?? null;
-    const unitPrice = unitPricePerPiece(prices.get(tw)?.priceNet ?? null, pack);
+    // Cena: przy parze paczka↔sztuka lookup ma przelicznik pary, więc wychodzi za sztukę (tempo pary).
+    const unitPrice = unitPricePerPiece(prices.get(tw)?.priceNet ?? null, engine.packagingLookup.get(tw) ?? null);
     const minStock = engine.minStockByTwId.get(tw) ?? null;
-    const pairStock = pairStockPieces(line.pair);
-    const availableQty = pairStock?.availableQty ?? num(line.dostepne);
-    const openZdQty =
-      pairStock?.openZdQty ??
-      zdDocumentUnitsToPieces(
-        Math.max(0, num(line.otwarteZd)),
-        pack?.unitsPerPackage,
-        pack?.documentUnitMode ?? "packages"
-      );
+    const figures = resolveStockWatchLineFigures(line, bomViews.get(tw) ?? null, cardPackaging.get(tw) ?? null);
+    const { availableQty, openZdQty, targetQty, assembly } = figures;
+    const velocity = figures.velocityDaily;
     const signal = analyzeStockWatchItem({
       availableQty,
       openZdQty,
-      velocityDaily: num(line.sprzedazDziennie),
-      targetQty: num(line.celZapasuTracked),
+      velocityDaily: velocity,
+      targetQty,
       minStockQty: minStock,
       unitPriceNet: unitPrice,
       salesEndDate,
+      assemblyQty: assembly?.coversDemand ? assembly.qty : 0,
+      assemblyActionable: assembly?.actionable === true,
     });
     const order = orderByTw.get(tw) ?? null;
-    const velocity = Math.max(0, num(line.sprzedazDziennie));
+    const coverNow = Math.max(0, availableQty + (assembly?.coversDemand ? assembly.qty : 0));
+    // Zestaw „Składamy” nie idzie na ZD — ryzyko dostawy pokazują jego składniki.
     const deliveryRisk =
-      horizon && velocity > 0
+      horizon && velocity > 0 && figures.orderable
         ? zdDeliveryRisk({
-            daysOfCoverWithIncoming: (Math.max(0, availableQty) + openZdQty) / velocity,
+            daysOfCoverWithIncoming: (coverNow + openZdQty) / velocity,
             horizon,
           })
         : null;
@@ -452,15 +464,15 @@ async function computeSupplierOrder(input: {
       availableQty,
       openZdQty: round(openZdQty, 3),
       openZkUnreservedQty: num(line.otwarteZkBezRez),
-      salesPeriodQty: num(line.sprzedazOkres),
+      salesPeriodQty: figures.salesPeriodQty,
       salesPeriodDays: dniZapasu,
-      velocityDaily: round(Math.max(0, num(line.sprzedazDziennie)), 4),
+      velocityDaily: round(velocity, 4),
       velocityTrend: null,
       daysOfCover: signal.daysOfCover,
       runOutDate: signal.runOutDate,
       // Dni celu faktycznie użyte (strategia dostawcy może je nadpisać); okno sprzedaży zostaje.
       bufferDays: engine.dniZapasuUsed,
-      targetQty: round(num(line.celZapasuTracked), 2),
+      targetQty: round(targetQty, 2),
       minStockQty: minStock,
       inOrder: order != null,
       orderZdUnits: order?.zdUnits ?? 0,
@@ -476,6 +488,11 @@ async function computeSupplierOrder(input: {
       dailyValue: signal.dailyValue,
       deliveryRisk,
       status: signal.status,
+      bomRole: figures.bomRole,
+      pairRole: line.pair && !line.pair.partnerMissing ? line.pair.role : null,
+      assemblyKind: assembly?.kind ?? null,
+      assemblyQty: assembly ? round(assembly.qty, 3) : null,
+      assemblyNote: assembly?.note ?? null,
     };
   });
 

@@ -65,6 +65,11 @@ function item(over: Partial<StockWatchItem>): StockWatchItem {
     ruleNote: null,
     priceDokNr: null,
     priceDate: null,
+    bomRole: null,
+    pairRole: null,
+    assemblyKind: null,
+    assemblyQty: null,
+    assemblyNote: null,
     ...over,
   };
 }

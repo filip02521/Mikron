@@ -42,6 +42,11 @@ function item(over: Partial<StockWatchItem>): StockWatchItem {
     ruleNote: null,
     priceDokNr: null,
     priceDate: null,
+    bomRole: null,
+    pairRole: null,
+    assemblyKind: null,
+    assemblyQty: null,
+    assemblyNote: null,
     ...over,
   };
 }
@@ -145,6 +150,7 @@ describe("buildStockWatchDashboard", () => {
       critical: 1,
       criticalInTransit: 0,
       warning: 1,
+      toAssemble: 0,
       ok: 1,
       noSales: 0,
       beforeDelivery: 0,

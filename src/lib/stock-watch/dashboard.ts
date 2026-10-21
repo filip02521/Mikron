@@ -44,6 +44,11 @@ export type StockWatchRowView = Pick<
   | "rule"
   | "ruleNote"
   | "grtNazwa"
+  | "bomRole"
+  | "pairRole"
+  | "assemblyKind"
+  | "assemblyQty"
+  | "assemblyNote"
 >;
 
 /** Lista „Do ZD” dostawcy z nocnego przebiegu silnika — ta sama co w Kreatorze ZD. */
@@ -102,6 +107,8 @@ export type StockWatchDashboard = {
     /** ≤ 48 h, ale otwarte ZD zdąży — czeka na dostawę. */
     criticalInTransit: number;
     warning: number;
+    /** Własny stan pusty / na wyczerpaniu, ale kompletacja w Subiekcie go pokrywa — bez zamawiania. */
+    toAssemble: number;
     ok: number;
     noSales: number;
     /**
@@ -112,6 +119,8 @@ export type StockWatchDashboard = {
     beforeNextDelivery: number;
   };
   alerts: StockWatchRowView[];
+  /** „Do kompletacji”: zestaw z części / składnik z kompletu — dokument w Subiekcie, nie ZD. */
+  assembly: StockWatchRowView[];
   proposals: StockWatchSupplierProposal[];
   /** Tablica dostawców od najpilniejszego; dostawcy bez braków i bez listy „Do ZD” pominięci. */
   suppliers: StockWatchSupplierBoardRow[];
@@ -156,6 +165,11 @@ export function toStockWatchRowView(item: StockWatchItem): StockWatchRowView {
     rule: item.rule,
     ruleNote: item.ruleNote,
     grtNazwa: item.grtNazwa,
+    bomRole: item.bomRole,
+    pairRole: item.pairRole,
+    assemblyKind: item.assemblyKind,
+    assemblyQty: item.assemblyQty,
+    assemblyNote: item.assemblyNote,
   };
 }
 
@@ -204,6 +218,7 @@ export function buildStockWatchDashboard(
     critical: 0,
     criticalInTransit: 0,
     warning: 0,
+    toAssemble: 0,
     ok: 0,
     noSales: 0,
     beforeDelivery: 0,
@@ -219,6 +234,7 @@ export function buildStockWatchDashboard(
       else if (item.deliveryRisk !== "before_delivery") counts.criticalInTransit += 1;
     }
     else if (item.status === "warning") counts.warning += 1;
+    else if (item.status === "to_assemble") counts.toAssemble += 1;
     else if (item.status === "ok") counts.ok += 1;
     else counts.noSales += 1;
     // Bez dublowania z „brak” i „≤ 48 h bez dostawy” — te są już wyżej w liczbach.
@@ -250,6 +266,12 @@ export function buildStockWatchDashboard(
       .sort(compareStockWatchAlerts)
       .slice(0, STOCK_WATCH_ALERT_LIMIT),
   ].map(toStockWatchRowView);
+
+  const assembly = alertSource
+    .filter((i) => i.status === "to_assemble")
+    .sort(compareStockWatchAlerts)
+    .slice(0, STOCK_WATCH_ALERT_LIMIT)
+    .map(toStockWatchRowView);
 
   const itemsBySupplier = new Map<string, StockWatchItem[]>();
   for (const item of items) {
@@ -413,6 +435,7 @@ export function buildStockWatchDashboard(
     health: computeStockHealthScore(products),
     counts,
     alerts,
+    assembly,
     proposals,
     suppliers,
     quietSupplierCount,
