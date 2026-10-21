@@ -33,6 +33,12 @@ import { fetchZdProductBoms, type ZdProductBomRow } from "@/lib/data/zd-product-
 import { bomRowsToRefs, type ZdProductBomRef } from "@/lib/orders/zd-estimate-bom";
 import { normalizeDemandAllocation } from "@/lib/orders/zd-estimate-bom-policy";
 import { withPairMinStock } from "@/lib/orders/zd-estimate-min-stock-lookup";
+import {
+  applyStockoutAdjustToLine,
+  businessDaysInWindow,
+  computeStockoutSalesFactor,
+  loadStockHistoryWindow,
+} from "@/lib/stock-watch/stock-history";
 import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
 import { collectMissingZdBomTwIds } from "@/lib/orders/zd-estimate-live-refresh";
 import { normalizeIndividualOrders } from "@/lib/data/normalize-order";
@@ -1038,6 +1044,32 @@ export async function runZdOrderEngine(
   // tylko własną sprzedaż towaru — bez profilu, żeby znacznik nie przeczył liczbom. Pary dostają
   // profil łączny (niżej), bo ich sprzedaż w tabeli to sztuki + paczki × przelicznik.
   // Prośby odejmujemy tylko bez opakowań (prośba w sztukach, sprzedaż w jednostkach karty).
+  // Dni braku w oknie (historia stanów z nocnego przebiegu): sprzedaż przeliczona na dni ze
+  // stanem, zanim podłoga / profil / cel ją wezmą. Pary i składy — bez (stan łączony gdzie indziej).
+  // Bez historii (pierwsze tygodnie, błąd bazy) — jak dotąd.
+  {
+    const composite = new Set<number>([
+      ...productPairs.flatMap((p) => [p.packTwId, p.pieceTwId]),
+      ...bomRefs.flatMap((b) => [b.parentTwId, ...b.components.map((c) => c.componentTwId)]),
+    ]);
+    const windowDays = businessDaysInWindow(dataOd, dataDo);
+    const twIds = mergedPozycje.map((p) => Math.trunc(Number(p.tw_Id) || 0)).filter((t) => t > 0 && !composite.has(t));
+    const history =
+      windowDays > 0 && twIds.length
+        ? await loadStockHistoryWindow(twIds, dataOd, dataDo).catch((e) => {
+            console.error("[zd-order-engine] historia stanów", e);
+            return new Map<number, { recordedDays: number; outDays: number }>();
+          })
+        : new Map<number, { recordedDays: number; outDays: number }>();
+    for (let i = 0; i < mergedPozycje.length; i += 1) {
+      const tw = Math.trunc(Number(mergedPozycje[i]!.tw_Id) || 0);
+      const h = history.get(tw);
+      if (!h || composite.has(tw)) continue;
+      const meta = computeStockoutSalesFactor({ windowDays, recordedDays: h.recordedDays, outDays: h.outDays });
+      if (meta) mergedPozycje[i] = applyStockoutAdjustToLine(mergedPozycje[i]!, meta, zapasMin);
+    }
+  }
+
   let salesSmoothing: ZdSalesSmoothingSummary | null = null;
   /** Linie przed podłogą strategii — „jak dotąd” liczone z tego samego pobrania (porównanie). */
   const classicBase: typeof mergedPozycje | null =

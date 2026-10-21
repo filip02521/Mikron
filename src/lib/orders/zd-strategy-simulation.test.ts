@@ -5,6 +5,7 @@ import {
   type ZdSupplierOrderPolicy,
 } from "@/lib/orders/zd-demand-policy";
 import { buildManualZdEstimateResult } from "@/lib/orders/zd-estimate-manual";
+import { applyStockoutAdjustToLine, computeStockoutSalesFactor } from "@/lib/stock-watch/stock-history";
 
 const strategy: ZdSupplierOrderPolicy = { strategy: "max30_90", targetDays: 25, cycleDays: 7 };
 
@@ -22,6 +23,8 @@ function simulate(input: {
   dniZapasu: (day: number) => number;
   zapasMin?: number;
   startStock: number;
+  /** Dzienna historia stanów (poranny stan): sprzedaż przeliczona na dni ze stanem, jak w silniku. */
+  stockHistory?: boolean;
 }) {
   let stock = input.startStock;
   const sold: number[] = [];
@@ -29,8 +32,10 @@ function simulate(input: {
   let stockoutDays = 0;
   let stockSum = 0;
   const orders: number[] = [];
+  const morning: number[] = [];
   for (let day = 0; day < input.days; day += 1) {
     stock += arrivals.get(day) ?? 0;
+    morning.push(stock);
     const want = input.demand(day);
     const s = Math.min(stock, want);
     stock -= s;
@@ -44,19 +49,30 @@ function simulate(input: {
       for (const [d, q] of arrivals) if (d > day) openZd += q;
       const dni = input.dniZapasu(day);
       const zapasMin = input.zapasMin ?? 0;
+      let raw = {
+        tw_Id: 1,
+        tw_Symbol: "A",
+        sprzedazOkres: salesWindow,
+        sprzedazDziennie: salesWindow / input.windowDays,
+        dostepne: stock,
+        otwarteZd: openZd,
+        celZapasu: (salesWindow / input.windowDays) * dni + zapasMin,
+      };
+      if (input.stockHistory) {
+        const meta = computeStockoutSalesFactor({
+          windowDays: input.windowDays,
+          recordedDays: input.windowDays,
+          outDays: morning.slice(-input.windowDays).filter((m) => m <= 0).length,
+        });
+        if (meta) raw = applyStockoutAdjustToLine(raw, meta, zapasMin);
+      }
       // Podłoga 90 d strategii jak w silniku (max z tempa okna i średniej 90 d).
-      const line = applyZdDemandFloorToLine(
-        {
-          tw_Id: 1,
-          tw_Symbol: "A",
-          sprzedazOkres: salesWindow,
-          sprzedazDziennie: salesWindow / input.windowDays,
-          dostepne: stock,
-          otwarteZd: openZd,
-          celZapasu: (salesWindow / input.windowDays) * dni + zapasMin,
-        },
-        { policy: strategy, sales90, dniOkresu: input.windowDays, dniZapasu: dni }
-      );
+      const line = applyZdDemandFloorToLine(raw, {
+        policy: strategy,
+        sales90,
+        dniOkresu: input.windowDays,
+        dniZapasu: dni,
+      });
       const res = buildManualZdEstimateResult({ dniZapasu: dni, dniOkresu: input.windowDays, zapasMin }, [line], {
         salesTrack: true,
         salesTrackCuts: true,
@@ -140,5 +156,32 @@ describe("strategia max30_90 na dłuższym oknie - symulacja 15 miesięcy", () =
     const now = simulate({ ...base, demand, lead: 30, windowDays: 30, dniZapasu: days30 });
     expect(now.stockoutDays).toBeLessThan(noBuffer.stockoutDays / 2);
     expect(now.stockoutDays).toBeLessThan(30);
+  });
+});
+
+describe("historia stanów: popyt liczony na dniach ze stanem", () => {
+  const base = { days: 600, cycle: 7, startStock: 600, lead: 30, windowDays: 30 };
+  const days = () => effectiveDniZapasu(strategy, 30, { leadDays: 30, nextOrderDays: 3 });
+
+  // Symulacja: 18 → 12 dni braku na 450, średni stan +11%.
+  it("popyt rośnie 2×: z historią przejście krótsze", () => {
+    const demand = (d: number) => (d < 250 ? 4 : 8);
+    const without = simulate({ ...base, demand, dniZapasu: days });
+    const withHistory = simulate({ ...base, demand, dniZapasu: days, stockHistory: true });
+    expect(withHistory.stockoutDays).toBeLessThan(without.stockoutDays);
+  });
+
+  it("start po długim braku: z historią szybciej wraca", () => {
+    const demand = noisy(() => 4, 3);
+    const without = simulate({ ...base, startStock: 150, demand, dniZapasu: days });
+    const withHistory = simulate({ ...base, startStock: 150, demand, dniZapasu: days, stockHistory: true });
+    // Symulacja: 30 → 13 dni braku na 450.
+    expect(withHistory.stockoutDays).toBeLessThan(without.stockoutDays * 0.6);
+  });
+
+  it("stały popyt bez braków: historia nic nie zmienia", () => {
+    const a = simulate({ ...base, demand: () => 4, dniZapasu: days });
+    const b = simulate({ ...base, demand: () => 4, dniZapasu: days, stockHistory: true });
+    expect(b.orders).toEqual(a.orders);
   });
 });

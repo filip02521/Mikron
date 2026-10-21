@@ -78,6 +78,8 @@ export type ManualZdEstimateLine = {
   salesProfile?: ZdSalesProfileLineMeta;
   /** Strategia testowa: średnia 90 d podniosła tempo (szt / dzień przed i po). */
   demandFloor?: { sales90: number; rateBefore: number; rateAfter: number };
+  /** Dni braku w oknie (historia stanów): sprzedaż przeliczona na dni ze stanem. */
+  stockoutAdjust?: import("@/lib/stock-watch/stock-history").StockoutAdjustMeta;
   tw_Id: number;
   tw_Symbol: string;
   tw_Nazwa: string;
@@ -415,6 +417,9 @@ export function mapZdEstimateLineToManual(
     doZamowieniaReczne,
     wkladZk: Math.max(0, doZamowieniaApi - doZamowieniaReczne),
     ...(salesProfile ? { salesProfile } : {}),
+    ...((line as { stockoutAdjust?: ManualZdEstimateLine["stockoutAdjust"] }).stockoutAdjust
+      ? { stockoutAdjust: (line as { stockoutAdjust?: ManualZdEstimateLine["stockoutAdjust"] }).stockoutAdjust }
+      : {}),
     ...((line as { demandFloor?: ManualZdEstimateLine["demandFloor"] }).demandFloor
       ? { demandFloor: (line as { demandFloor?: ManualZdEstimateLine["demandFloor"] }).demandFloor }
       : {}),

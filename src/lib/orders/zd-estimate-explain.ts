@@ -28,7 +28,8 @@ export function explainZdOrderQty(input: {
   line: Pick<
     ManualZdEstimateLine,
     "celZapasu" | "celZapasuTracked" | "dostepne" | "pair" | "demandFloor"
-  >;
+  > &
+    Partial<Pick<ManualZdEstimateLine, "stockoutAdjust">>;
   qty: ZdPackOrderQty;
   /** Otwarte ZD przeliczone na sztuki (dla pary — już w pokryciu). */
   openZdPieces: number;
@@ -61,6 +62,16 @@ export function explainZdOrderQty(input: {
         label: `Średnia 90 dni wyższa niż ostatnie tempo (${formatQty(f.rateBefore * 30)} → ${formatQty(f.rateAfter * 30)} szt / 30 d)`,
         value: Math.round(f.sales90),
         unit: "szt w 90 d",
+        kind: "note",
+      });
+    }
+    if (line.stockoutAdjust) {
+      const a = line.stockoutAdjust;
+      steps.push({
+        key: "stockout",
+        label: `Sprzedaż przeliczona na dni ze stanem (${a.outDays} z ${a.recordedDays} dni bez towaru)`,
+        value: Math.round(a.factor * 100) / 100,
+        unit: "× sprzedaż",
         kind: "note",
       });
     }

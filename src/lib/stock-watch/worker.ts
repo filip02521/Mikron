@@ -58,6 +58,7 @@ import {
   type StockWatchScopeFailure,
 } from "@/lib/stock-watch/data";
 import { harvestZdPurchasePrices } from "@/lib/stock-watch/price-harvest";
+import { pruneStockDailyHistory, recordStockDailySnapshot } from "@/lib/stock-watch/stock-history";
 import { getScopeIndexSyncedAt, syncSubiektScopeIndex } from "@/lib/orders/zd-scope-index";
 
 /** Budżet jednego wywołania crona (route ma maxDuration 900 s). */
@@ -279,6 +280,7 @@ export async function runStockWatchWorker(input: {
     }
 
     await pruneStaleStockWatchItems(STALE_ITEM_DAYS);
+    await pruneStockDailyHistory().catch((e) => console.error("[stock-watch] historia stanów prune", e));
     const scopeIndex = timedOut ? null : await maybeSyncScopeIndex(deadlineMs);
 
     const status: StockWatchRun["status"] = timedOut
@@ -500,6 +502,19 @@ async function computeSupplierOrder(input: {
   });
 
   const itemsWritten = await replaceSupplierStockWatchItems(supplier.id, runId, rows);
+  // Dzienna historia stanów (tylko przebieg nocny / „Przygotuj teraz”, nie odświeżenie po ZD):
+  // stan karty sprzed składów i par. Błąd (np. bez migracji 192) nie psuje analizy.
+  if (input.proposalTodayKey) {
+    await recordStockDailySnapshot(
+      input.proposalTodayKey,
+      engine.result.pozycjeBase.map((l) => ({
+        twId: l.tw_Id,
+        stock: num(l.tw_Stan),
+        reserved: num(l.tw_StanRez),
+        available: num(l.dostepne),
+      }))
+    ).catch((e) => console.error("[stock-watch] historia stanów", supplier.id, e));
+  }
   await upsertStockWatchSupplierOrder({
     supplierId: supplier.id,
     runId,
