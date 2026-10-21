@@ -1,4 +1,4 @@
-import { query } from "@/lib/db/pool";
+import { isUndefinedTableError, query } from "@/lib/db/pool";
 import {
   ZD_SUPPLIER_ORDER_POLICY_CLASSIC,
   type ZdDemandStrategy,
@@ -20,9 +20,6 @@ function intOrNull(v: unknown, lo: number, hi: number): number | null {
   return Number.isFinite(n) && n >= lo && n <= hi ? n : null;
 }
 
-function isUndefinedTable(e: unknown): boolean {
-  return typeof e === "object" && e != null && (e as { code?: unknown }).code === "42P01";
-}
 
 /**
  * Brak wiersza = classic (jak dotąd). Brak tabeli (migracja 190 jeszcze niewgrana) też classic,
@@ -45,7 +42,7 @@ export async function fetchZdSupplierOrderPolicy(supplierId: string): Promise<Zd
     [supplierId]
   );
   } catch (e) {
-    if (isUndefinedTable(e)) return classic;
+    if (isUndefinedTableError(e)) return classic;
     throw e;
   }
   const r = res.rows[0];
@@ -86,16 +83,3 @@ export async function upsertZdSupplierOrderPolicy(input: {
   return fetchZdSupplierOrderPolicy(input.supplierId);
 }
 
-/** Dostawcy z włączonymi propozycjami automatu (nocny przebieg). */
-export async function listZdSuppliersWithAutoProposals(): Promise<ZdSupplierOrderPolicyRow[]> {
-  let res;
-  try {
-    res = await query<{ supplier_id: string }>(
-      `SELECT supplier_id FROM zd_supplier_order_policy WHERE auto_proposals = true AND cycle_days IS NOT NULL`
-    );
-  } catch (e) {
-    if (isUndefinedTable(e)) return [];
-    throw e;
-  }
-  return Promise.all(res.rows.map((r) => fetchZdSupplierOrderPolicy(r.supplier_id)));
-}

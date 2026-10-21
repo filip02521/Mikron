@@ -1,3 +1,4 @@
+import { isUndefinedTableError } from "@/lib/db/pool";
 import { getSubiektZdDocumentCached } from "@/lib/subiekt/subiekt-runtime-cache";
 import { SubiektRequestError } from "@/lib/subiekt/errors";
 import type { SubiektDocument } from "@/lib/subiekt/types";
@@ -78,9 +79,6 @@ export function extractZdPurchaseLines(
 }
 
 /** Brak tabeli (migracja 189 jeszcze nie wgrana) — ceny zbieramy dalej, linie pomijamy. */
-function isUndefinedTable(e: unknown): boolean {
-  return typeof e === "object" && e != null && (e as { code?: unknown }).code === "42P01";
-}
 
 /**
  * Jeden wiersz na towar — najnowszy dokument (data, potem dok_id).
@@ -149,7 +147,7 @@ export async function harvestZdPurchasePrices(input: {
     try {
       await upsertZdPurchaseLines(purchaseLines);
     } catch (e) {
-      if (!isUndefinedTable(e)) throw e;
+      if (!isUndefinedTableError(e)) throw e;
     }
     await markZdIndexPriceHarvested(done);
     docsProcessed += done.length;

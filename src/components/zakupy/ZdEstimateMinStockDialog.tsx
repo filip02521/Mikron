@@ -10,6 +10,7 @@ import { ModalShell } from "@/components/ui/ModalShell";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
+import { zdLineAvailablePieces } from "@/lib/orders/zd-estimate-sort";
 import { panelTypography } from "@/lib/ui/ontime-theme";
 
 const MIN_STOCK_MAX = 1_000_000;
@@ -94,10 +95,11 @@ function MinStockDialogForm({
     : line.celZapasu;
   const celZMin = Math.max(celBazowy, draftMin);
   const doZdBezMin = line.doZamowieniaReczne;
-  const doZdZMin = Math.max(
-    0,
-    Math.ceil(celZMin - line.dostepne - line.otwarteZd)
-  );
+  // Para: wszystko w sztukach (paczki × przelicznik), pokrycie z otwartymi ZD obu stron.
+  const pair = line.pair?.role === "pack" && !line.pair.partnerMissing ? line.pair : null;
+  const dostepneSzt = zdLineAvailablePieces(line);
+  const otwarteZdSzt = pair ? Math.max(0, pair.coverSzt - dostepneSzt) : line.otwarteZd;
+  const doZdZMin = Math.max(0, Math.ceil(celZMin - dostepneSzt - otwarteZdSzt));
   const roznica = doZdZMin - doZdBezMin;
   const minAktywny = draftMin > celBazowy;
 
@@ -199,8 +201,8 @@ function MinStockDialogForm({
 
         {/* Stats — obecny stan magazynu */}
         <div className="grid grid-cols-3 gap-2 rounded-lg border border-slate-200/70 bg-white px-4 py-2.5">
-          <Stat label="Dostępne" value={String(line.dostepne)} />
-          <Stat label="Otwarte ZD" value={String(line.otwarteZd)} />
+          <Stat label={pair ? "Dostępne (szt)" : "Dostępne"} value={String(Math.round(dostepneSzt * 100) / 100)} />
+          <Stat label={pair ? "Otwarte ZD (szt)" : "Otwarte ZD"} value={String(Math.round(otwarteZdSzt * 100) / 100)} />
           <Stat
             label="Cel (sprzedaż)"
             value={String(Math.round(celBazowy))}

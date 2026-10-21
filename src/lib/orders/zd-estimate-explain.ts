@@ -103,7 +103,8 @@ export function explainZdOrderQty(input: {
   if (diff !== 0 && !input.extraOnly) {
     steps.push({
       key: "adjust",
-      label: "Korekta (rezerwacje ZK pod prośby)",
+      // Kroki wyżej to uproszczenie; różnicę robią m.in. rezerwacje ZK pod prośby i komplety (BOM).
+      label: "Korekta Kreatora (np. rezerwacje ZK pod prośby, komplety)",
       value: Math.abs(diff),
       unit: "szt",
       kind: diff > 0 ? "plus" : "minus",

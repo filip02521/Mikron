@@ -5862,9 +5862,11 @@ export function ZdEstimateWorkbench({
           subiektTwId: c.twId,
           twSymbol: line?.tw_Symbol ?? c.symbol,
           twNazwa: line?.tw_Nazwa ?? c.nazwa,
-          // Tylko N i tryb z pary — etykieta, palety i notatka zostają (bez zmian).
+          // Tylko N i tryb z pary — palety i notatka zostają (bez zmian). Etykieta też,
+          // chyba że to „paleta”: paczka z pary to opakowanie, nie paleta (jak w oknie opakowania).
           unitsPerPackage: c.pairUnitsPerPack,
           documentUnitMode: "packages",
+          ...(/^pal/i.test(packagingMap.get(c.twId)?.packageLabel.trim() ?? "") ? { packageLabel: "op." } : {}),
         });
         if (!res.ok) {
           reportError(res.message);

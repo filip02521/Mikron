@@ -26,13 +26,20 @@ export type ZdEstimateSortPackaging = {
  * Para (wiersz paczki): sprzedaż jest łączna w sztukach, więc dostępne też w sztukach —
  * sztuki + paczki × przelicznik (bez otwartych ZD, jak przy zwykłym towarze).
  */
+/** Dostępne w sztukach — dla pary sztuki + paczki × przelicznik (wiersz paczki ma `dostepne` w paczkach). */
+export function zdLineAvailablePieces(
+  line: Pick<ManualZdEstimateLine, "dostepne"> & Partial<Pick<ManualZdEstimateLine, "pair">>
+): number {
+  const pair = line.pair?.role === "pack" && !line.pair.partnerMissing ? line.pair : null;
+  return pair
+    ? (Number(pair.pieceDostepne) || 0) + (Number(pair.packDostepne) || 0) * Math.max(1, Number(pair.unitsPerPack) || 1)
+    : Number(line.dostepne) || 0;
+}
+
 export function zdEstimateDaysOfCover(
   line: Pick<ManualZdEstimateLine, "dostepne" | "sprzedazDziennie"> & Partial<Pick<ManualZdEstimateLine, "pair">>
 ): number | null {
-  const pair = line.pair?.role === "pack" && !line.pair.partnerMissing ? line.pair : null;
-  const available = pair
-    ? (Number(pair.pieceDostepne) || 0) + (Number(pair.packDostepne) || 0) * Math.max(1, Number(pair.unitsPerPack) || 1)
-    : Number(line.dostepne) || 0;
+  const available = zdLineAvailablePieces(line);
   const daily = Number(line.sprzedazDziennie) || 0;
   if (available <= 0) return daily > 0 ? 0 : null;
   if (daily <= 0) return null;

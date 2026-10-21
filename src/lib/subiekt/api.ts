@@ -772,14 +772,19 @@ export async function fetchSubiektProductSalesDocs(input: {
   const config = ordersConfigOrThrow();
   const towarId = Math.trunc(Number(input.towarId));
   if (!(towarId > 0)) throw new Error("Nieprawidłowy identyfikator towaru.");
-  const rows: SubiektProductSaleDoc[] = [];
-  for (let page = 1; page <= PRODUCT_SALES_MAX_PAGES; page += 1) {
-    const qs = subiektQueryString({ dataOd: input.dataOd, dataDo: input.dataDo, page, pageSize: 200 });
-    const res = await subiektJson<{
+  const PAGE_SIZE = 200;
+  const fetchPage = (page: number) =>
+    subiektJson<{
       data?: { dokumenty?: Array<Record<string, unknown>> };
       pagination?: { totalPages?: number };
-    }>(`${SUBIEKT_PATHS.ordersZdEstimateTowar(towarId)}${qs}`, {}, config);
-    for (const d of res.data?.dokumenty ?? []) {
+    }>(
+      `${SUBIEKT_PATHS.ordersZdEstimateTowar(towarId)}${subiektQueryString({ dataOd: input.dataOd, dataDo: input.dataDo, page, pageSize: PAGE_SIZE })}`,
+      {},
+      config
+    );
+  const rows: SubiektProductSaleDoc[] = [];
+  const collect = (docs: Array<Record<string, unknown>>) => {
+    for (const d of docs) {
       const rola = String(d.rola ?? "");
       if (!PRODUCT_SALE_ROLES.has(rola)) continue;
       const kh = Math.trunc(Number(d.kontrahentId));
@@ -794,8 +799,24 @@ export async function fetchSubiektProductSalesDocs(input: {
         qty: Number(d.ob_Ilosc) || 0,
       });
     }
-    const totalPages = Number(res.pagination?.totalPages) || 1;
-    if (page >= totalPages) return { rows, truncated: false };
+  };
+  const first = await fetchPage(1);
+  const firstDocs = first.data?.dokumenty ?? [];
+  collect(firstDocs);
+  const totalPages = Math.trunc(Number(first.pagination?.totalPages));
+  if (totalPages > 0) {
+    // Znana liczba stron: reszta równolegle (zachowując kolejność stron).
+    const last = Math.min(totalPages, PRODUCT_SALES_MAX_PAGES);
+    const rest = await Promise.all(Array.from({ length: last - 1 }, (_, i) => fetchPage(i + 2)));
+    for (const r of rest) collect(r.data?.dokumenty ?? []);
+    return { rows, truncated: totalPages > PRODUCT_SALES_MAX_PAGES };
   }
-  return { rows, truncated: true };
+  // Bez paginacji w odpowiedzi: kolejne strony, dopóki przychodzi pełna strona.
+  let pageDocs = firstDocs.length;
+  for (let page = 2; page <= PRODUCT_SALES_MAX_PAGES && pageDocs >= PAGE_SIZE; page += 1) {
+    const docs = (await fetchPage(page)).data?.dokumenty ?? [];
+    collect(docs);
+    pageDocs = docs.length;
+  }
+  return { rows, truncated: pageDocs >= PAGE_SIZE };
 }

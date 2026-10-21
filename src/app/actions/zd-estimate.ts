@@ -1,5 +1,6 @@
 "use server";
 
+import { isUndefinedTableError } from "@/lib/db/pool";
 import { refreshStockWatchAfterOrder } from "@/lib/stock-watch/refresh-after-order";
 import { createZdAutoProposalNow } from "@/lib/stock-watch/worker";
 import type { SupplierLocation } from "@/types/database";
@@ -1328,7 +1329,7 @@ export async function actionFetchZdEstimateProductHistory(input: {
         })),
       };
     } catch (e) {
-      const missingTable = typeof e === "object" && e != null && (e as { code?: unknown }).code === "42P01";
+      const missingTable = isUndefinedTableError(e);
       return {
         ok: false as const,
         message: missingTable
@@ -1419,7 +1420,7 @@ export async function actionListZdAutoProposals(input: {
   try {
     return { ok: true, proposals: await listZdAutoProposals(supplierId, 20) };
   } catch (e) {
-    if (typeof e === "object" && e != null && (e as { code?: unknown }).code === "42P01") return { ok: true, proposals: [] };
+    if (isUndefinedTableError(e)) return { ok: true, proposals: [] };
     return { ok: false, message: userFacingErrorText(e, "Nie udało się wczytać propozycji.") };
   }
 }
