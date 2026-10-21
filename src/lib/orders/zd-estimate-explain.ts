@@ -45,11 +45,22 @@ export function explainZdOrderQty(input: {
   const pair = line.pair?.role === "pack" && !line.pair.partnerMissing ? line.pair : null;
   const minStock = Math.max(0, Number(input.minStockSzt) || 0);
   const extra = Math.max(0, Math.ceil(input.extraPieces || 0));
+  const fromSupply = Math.max(0, Math.ceil(qty.prosbaFromSupplyPieces ?? 0));
+  const supplyStep: ZdOrderExplainStep = {
+    key: "prosba_supply",
+    label: input.extraOnly
+      ? "Prośby z wolnego towaru (półka i w drodze) — wydaj z magazynu"
+      : "Prośby z nadwyżki ponad cel (półka i w drodze) — wydaj z magazynu",
+    value: fromSupply,
+    unit: "szt",
+    kind: "minus",
+  };
 
   let expected: number;
   if (input.extraOnly) {
     steps.push({ key: "mode", label: "Tylko na prośbę — bez celu zapasu", value: 0, unit: "", kind: "note" });
     if (extra > 0) steps.push({ key: "extra", label: "Prośby handlowców", value: extra, unit: "szt", kind: "plus" });
+    if (fromSupply > 0) steps.push(supplyStep);
     if (minStock > 0) {
       steps.push({ key: "min", label: "Minimum stanów (poziom)", value: minStock, unit: "szt", kind: "base" });
     }
@@ -129,7 +140,9 @@ export function explainZdOrderQty(input: {
         kind: "plus",
       });
     }
-    expected = input.extrasPolicy === "max" ? Math.max(shortage, extra) : shortage + extra;
+    if (fromSupply > 0) steps.push(supplyStep);
+    const extraToOrder = Math.max(0, extra - fromSupply);
+    expected = input.extrasPolicy === "max" ? Math.max(shortage, extraToOrder) : shortage + extraToOrder;
   }
 
   const diff = qty.piecesNeeded - expected;
