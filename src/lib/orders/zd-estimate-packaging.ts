@@ -57,7 +57,32 @@ export type ZdPackOrderQty = {
   orderMultiple: number;
   /** Liczba paczek przed dobiciem do M (packages); null gdy M off / Mode B. */
   packsBeforeOrderMultiple: number | null;
+  /** Sztuki próśb pokryte wolnym towarem (półka / w drodze ponad cel) — nie idą na ZD. */
+  prosbaFromSupplyPieces?: number;
 };
+
+/**
+ * Wolne sztuki ponad poziom (cel albo minimum): stan dostępny + w drodze − otwarte ZK bez
+ * rezerwacji. Prośba bierze je przed zamówieniem — inaczej towar z półki zamawiano drugi raz.
+ * ZK bez rezerwacji odejmujemy, bo zabiorą ten sam stan (gdy to ZK prośby — zamówimy jak dawniej).
+ */
+export function freeSupplyForProsbaPieces(input: {
+  dostepne: number;
+  otwarteZdPieces: number;
+  otwarteZkBezRez?: number;
+  levelPieces: number;
+}): number {
+  const free =
+    (Number(input.dostepne) || 0) +
+    Math.max(0, Number(input.otwarteZdPieces) || 0) -
+    Math.max(0, Number(input.otwarteZkBezRez) || 0) -
+    Math.max(0, Number(input.levelPieces) || 0);
+  return free > 0 ? Math.floor(free + 1e-9) : 0;
+}
+
+function withProsbaFromSupply(qty: ZdPackOrderQty, pieces: number): ZdPackOrderQty {
+  return pieces > 0 ? { ...qty, prosbaFromSupplyPieces: pieces } : qty;
+}
 
 export type PackagingLookup = {
   unitsPerPackage: number;
@@ -243,6 +268,12 @@ export function resolveOrderQtyForLine(
     return computeZdPackOrderQty(0, 1, label, "packages", null);
   }
   if (line.pair?.role === "pack") {
+    // Wolny towar pary: pokrycie obu kart (z ZD) ponad poziom. Bez partnera — jak dawniej.
+    // ponytail: ZK bez rezerwacji pomijamy w parze (różne jednostki kart); dodać, gdy para dostanie je w sztukach.
+    const pairFree = (level: number) =>
+      line.pair!.partnerMissing
+        ? 0
+        : freeSupplyForProsbaPieces({ dostepne: line.pair!.coverSzt, otwarteZdPieces: 0, levelPieces: level });
     if (extraOnly) {
       // Na prośbę: prośba albo brak do minimum stanów (poziom w sztukach pary), co większe.
       // Bez minimum (0/brak) nic nie dobijamy — ujemne pokrycie (dług rezerwacji) to nie zamówienie.
@@ -255,28 +286,37 @@ export function resolveOrderQtyForLine(
             otwarteZd: 0, // już w coverSzt
             minStockSzt,
           });
-      return computeZdPackOrderQty(
-        Math.max(effectiveExtraForNeed(0), minShortfall),
-        line.pair.unitsPerPack,
-        label,
-        "packages",
-        orderMult
+      const extra = effectiveExtraForNeed(0);
+      const fromSupply = Math.min(extra, pairFree(Math.max(0, Number(minStockSzt) || 0)));
+      return withProsbaFromSupply(
+        computeZdPackOrderQty(
+          Math.max(extra - fromSupply, minShortfall),
+          line.pair.unitsPerPack,
+          label,
+          "packages",
+          orderMult
+        ),
+        fromSupply
       );
     }
     const baseRaw = line.pair.partnerMissing
       ? 0
       : Math.max(0, Math.ceil(Number(line.doZamowieniaReczne) || 0));
     const base = Math.max(0, baseRaw - relief);
-    return computeZdPackOrderQty(
-      combineStockNeedWithExtra(
-        base,
-        effectiveExtraForNeed(base),
-        extrasPolicy
+    const extra = effectiveExtraForNeed(base);
+    const fromSupply = Math.min(
+      extra,
+      pairFree(Math.max(Number(line.celZapasuTracked ?? line.celZapasu) || 0, Number(minStockSzt) || 0))
+    );
+    return withProsbaFromSupply(
+      computeZdPackOrderQty(
+        combineStockNeedWithExtra(base, extra - fromSupply, extrasPolicy),
+        line.pair.unitsPerPack,
+        label,
+        "packages",
+        orderMult
       ),
-      line.pair.unitsPerPack,
-      label,
-      "packages",
-      orderMult
+      fromSupply
     );
   }
 
@@ -287,8 +327,15 @@ export function resolveOrderQtyForLine(
     packaging?.unitsPerPackage,
     mode
   );
+  const lineFree = (level: number) =>
+    freeSupplyForProsbaPieces({
+      dostepne: line.dostepne,
+      otwarteZdPieces,
+      otwarteZkBezRez: line.otwarteZkBezRez,
+      levelPieces: level,
+    });
   if (extraOnly) {
-    // need=0 → overlap nie obcina; Do ZD = prośba.
+    // need=0 → overlap nie obcina; Do ZD = prośba minus wolny towar (półka + w drodze).
     // Minimum stanów to poziom (stan + otwarte ZD), nie ilość — dobija tylko brak.
     const minShortfall =
       Number(minStockSzt) > 0
@@ -299,12 +346,11 @@ export function resolveOrderQtyForLine(
             minStockSzt,
           })
         : 0;
-    return computeZdPackOrderQty(
-      Math.max(effectiveExtraForNeed(0), minShortfall),
-      pack,
-      label,
-      mode,
-      orderMult
+    const extra = effectiveExtraForNeed(0);
+    const fromSupply = Math.min(extra, lineFree(Math.max(0, Number(minStockSzt) || 0)));
+    return withProsbaFromSupply(
+      computeZdPackOrderQty(Math.max(extra - fromSupply, minShortfall), pack, label, mode, orderMult),
+      fromSupply
     );
   }
   const stockNeed = Math.max(
@@ -316,12 +362,16 @@ export function resolveOrderQtyForLine(
       minStockSzt,
     }) - relief
   );
-  const piecesNeeded = combineStockNeedWithExtra(
-    stockNeed,
-    effectiveExtraForNeed(stockNeed),
-    extrasPolicy
+  const extra = effectiveExtraForNeed(stockNeed);
+  const fromSupply = Math.min(
+    extra,
+    lineFree(Math.max(Number(line.celZapasuTracked ?? line.celZapasu) || 0, Number(minStockSzt) || 0))
   );
-  return computeZdPackOrderQty(piecesNeeded, pack, label, mode, orderMult);
+  const piecesNeeded = combineStockNeedWithExtra(stockNeed, extra - fromSupply, extrasPolicy);
+  return withProsbaFromSupply(
+    computeZdPackOrderQty(piecesNeeded, pack, label, mode, orderMult),
+    fromSupply
+  );
 }
 
 /**

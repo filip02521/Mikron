@@ -188,7 +188,8 @@ describe("Do ZD end-to-end: prośba z własnym ZK", () => {
     expect(maps.extraOverlapByTwId.get(50)).toBe(3);
     expect(
       resolveOrderQtyForLine(
-        line({ celZapasu: 0, celZapasuTracked: 0, doZamowieniaReczne: 0 }),
+        // Stan = rezerwacja klienta (bez wolnego towaru, który pokryłby prośbę).
+        line({ celZapasu: 0, celZapasuTracked: 0, doZamowieniaReczne: 0, tw_Stan: 3, dostepne: 0 }),
         { unitsPerPackage: 1, packageLabel: "szt" },
         maps.extraByTwId.get(50),
         true,
@@ -224,7 +225,8 @@ describe("Do ZD end-to-end: prośba z własnym ZK", () => {
     expect(maps.stockNeedReliefByTwId.get(50)).toBe(3);
     expect(
       resolveOrderQtyForLine(
-        line({ celZapasu: 0, celZapasuTracked: 0, doZamowieniaReczne: 0 }),
+        // Stan = rezerwacja klienta (bez wolnego towaru, który pokryłby prośbę).
+        line({ celZapasu: 0, celZapasuTracked: 0, doZamowieniaReczne: 0, tw_Stan: 3, dostepne: 0 }),
         { unitsPerPackage: 1, packageLabel: "szt" },
         maps.extraByTwId.get(50),
         true,

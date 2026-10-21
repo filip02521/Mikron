@@ -627,8 +627,8 @@ describe("resolveOrderQtyForLine + individualExtra", () => {
       dostepne: 10,
       otwarteZd: 0,
       doZamowienia: 0,
-    });
-    // base 0 + extra 8 → 1 op.
+    }, { salesTrack: false });
+    // base 0 + extra 8 → 1 op. (stan = cel, bez wolnego towaru na prośbę)
     const q = resolveOrderQtyForLine(
       line,
       { unitsPerPackage: 10, packageLabel: "op." },
@@ -1235,5 +1235,96 @@ describe("parsePalletInput", () => {
     for (const bad of ["36e", "3-6", "36.5", "1", "0", "100001"]) {
       expect(parsePalletInput(bad).ok).toBe(false);
     }
+  });
+});
+
+describe("resolveOrderQtyForLine — wolny towar pokrywa prośbę", () => {
+  const solo = (over: Partial<ManualZdEstimateLine>): ManualZdEstimateLine =>
+    ({
+      tw_Id: 7, tw_Symbol: "X", tw_Nazwa: "X", tw_IdGrupa: null, grt_Nazwa: "-",
+      tw_Stan: 0, tw_StanRez: 0, dostepne: 0, sprzedazOkres: 0, wzNiepowiazaneOkres: 0,
+      sprzedazDziennie: 0, celZapasu: 0, celZapasuTracked: 0, salesTrackDelta: 0,
+      salesTrackReasons: [], salesTrackConfidence: 0, salesTrackQtyReview: false,
+      salesTrackHeldExtraQty: 0, salesTrackAllowedExtraQty: 0, otwarteZkBezRez: 0,
+      otwarteZkZarezerwowane: 0, otwarteZd: 0, doZamowieniaApi: 0, doZamowieniaReczne: 0, wkladZk: 0,
+      ...over,
+    }) as ManualZdEstimateLine;
+
+  it("tylko na prośbę: 10 wolnych na półce, prośba 2 → nic na ZD", () => {
+    const q = resolveOrderQtyForLine(solo({ tw_Stan: 10, dostepne: 10 }), null, 2, true);
+    expect(q.piecesNeeded).toBe(0);
+    expect(q.prosbaFromSupplyPieces).toBe(2);
+  });
+
+  it("tylko na prośbę: 5 w drodze, prośba 2 → nic na ZD", () => {
+    const q = resolveOrderQtyForLine(solo({ otwarteZd: 5 }), null, 2, true);
+    expect(q.piecesNeeded).toBe(0);
+    expect(q.prosbaFromSupplyPieces).toBe(2);
+  });
+
+  it("częściowo: 3 wolne, prośba 5 → 2 na ZD", () => {
+    const q = resolveOrderQtyForLine(solo({ tw_Stan: 3, dostepne: 3 }), null, 5, true);
+    expect(q.piecesNeeded).toBe(2);
+    expect(q.prosbaFromSupplyPieces).toBe(3);
+  });
+
+  it("otwarte ZK bez rezerwacji zabierają półkę → prośba zamawiana", () => {
+    const q = resolveOrderQtyForLine(solo({ tw_Stan: 4, dostepne: 4, otwarteZkBezRez: 4 }), null, 2, true);
+    expect(q.piecesNeeded).toBe(2);
+    expect(q.prosbaFromSupplyPieces).toBeUndefined();
+  });
+
+  it("minimum stanów: wolne tylko ponad minimum", () => {
+    // stan 6, minimum 5 → 1 wolna; prośba 3 → 2 na ZD
+    const q = resolveOrderQtyForLine(solo({ tw_Stan: 6, dostepne: 6 }), null, 3, true, "sum", 0, 0, 5);
+    expect(q.piecesNeeded).toBe(2);
+    expect(q.prosbaFromSupplyPieces).toBe(1);
+  });
+
+  it("zapas (sum): nadwyżka ponad cel pokrywa prośbę", () => {
+    const q = resolveOrderQtyForLine(
+      solo({ celZapasu: 10, celZapasuTracked: 10, tw_Stan: 50, dostepne: 50 }), null, 2, false, "sum"
+    );
+    expect(q.piecesNeeded).toBe(0);
+    expect(q.prosbaFromSupplyPieces).toBe(2);
+  });
+
+  it("zapas: brak do celu — prośba w całości jak dawniej", () => {
+    const q = resolveOrderQtyForLine(
+      solo({ celZapasu: 10, celZapasuTracked: 10, tw_Stan: 4, dostepne: 4, doZamowieniaReczne: 6 }), null, 2, false, "sum"
+    );
+    expect(q.piecesNeeded).toBe(8);
+    expect(q.prosbaFromSupplyPieces).toBeUndefined();
+  });
+
+  it("polityka max: nadwyżka pokrywa prośbę", () => {
+    const q = resolveOrderQtyForLine(
+      solo({ celZapasu: 10, celZapasuTracked: 10, tw_Stan: 13, dostepne: 13 }), null, 5, false, "max"
+    );
+    expect(q.piecesNeeded).toBe(2);
+    expect(q.prosbaFromSupplyPieces).toBe(3);
+  });
+
+  it("para (opakowanie): pokrycie obu kart pokrywa prośbę", () => {
+    const pair = {
+      role: "pack" as const, twinTwId: 20, unitsPerPack: 10, sprzedazSzt: 0, wzNiepowiazaneSzt: 0,
+      coverSzt: 12, pieceSprzedaz: 0, packSprzedaz: 0, pieceWzNiepowiazane: 0, packWzNiepowiazane: 0,
+      pieceDostepne: 12, packDostepne: 0,
+    };
+    const q = resolveOrderQtyForLine(solo({ pair } as Partial<ManualZdEstimateLine>), null, 15, true);
+    // 12 wolnych sztuk → 3 na ZD → 1 opakowanie
+    expect(q.piecesNeeded).toBe(3);
+    expect(q.zdUnits).toBe(1);
+    expect(q.prosbaFromSupplyPieces).toBe(12);
+  });
+
+  it("para bez partnera — bez pokrycia z półki", () => {
+    const pair = {
+      role: "pack" as const, twinTwId: 20, unitsPerPack: 10, sprzedazSzt: 0, wzNiepowiazaneSzt: 0,
+      coverSzt: 12, pieceSprzedaz: 0, packSprzedaz: 0, pieceWzNiepowiazane: 0, packWzNiepowiazane: 0,
+      pieceDostepne: 12, packDostepne: 0, partnerMissing: true,
+    };
+    const q = resolveOrderQtyForLine(solo({ pair } as Partial<ManualZdEstimateLine>), null, 15, true);
+    expect(q.piecesNeeded).toBe(15);
   });
 });

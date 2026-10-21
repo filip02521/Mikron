@@ -48,9 +48,10 @@ function line(twId: number): ManualZdEstimateLine {
     tw_Nazwa: "X",
     tw_IdGrupa: null,
     grt_Nazwa: "-",
-    tw_Stan: 10,
+    // Bez wolnego towaru — wolny stan pokrywa prośbę przed zamówieniem.
+    tw_Stan: 0,
     tw_StanRez: 0,
-    dostepne: 10,
+    dostepne: 0,
     sprzedazOkres: 0,
     wzNiepowiazaneOkres: 0,
     sprzedazDziennie: 0,

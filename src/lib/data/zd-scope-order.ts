@@ -500,3 +500,67 @@ export async function loadLastZdSupplierByTwIds(
   }
   return out;
 }
+
+export type ZdProsbaElsewhere = { supplierName: string; count: number };
+
+/**
+ * Wiszące prośby („Nowe”) na towary z listy, ale przypisane innemu dostawcy — Kreator liczy
+ * tylko prośby swojego dostawcy, więc zły dostawca w prośbie inaczej nie daje żadnego sygnału.
+ * Dopasowanie: przypięty towar albo ten sam symbol (bez wielkości liter).
+ */
+export async function loadProsbyElsewhereByTwIds(input: {
+  supplierId: string;
+  lines: readonly { tw_Id: number; tw_Symbol?: string | null }[];
+}): Promise<Map<number, ZdProsbaElsewhere[]>> {
+  const out = new Map<number, ZdProsbaElsewhere[]>();
+  const twBySymbol = new Map<string, number>();
+  const ids: number[] = [];
+  for (const l of input.lines) {
+    const tw = num(l.tw_Id);
+    if (!(tw > 0)) continue;
+    ids.push(tw);
+    const sym = String(l.tw_Symbol ?? "").trim().toLowerCase();
+    if (sym && sym !== "-" && !twBySymbol.has(sym)) twBySymbol.set(sym, tw);
+  }
+  if (!ids.length) return out;
+  const res = await query<{ subiekt_tw_id: number | null; sym: string | null; name: string; n: string }>(
+    `SELECT o.subiekt_tw_id, lower(btrim(o.symbol)) AS sym, s.name,
+            count(*) AS n
+       FROM individual_orders o
+       JOIN suppliers s ON s.id = o.supplier_id
+      WHERE o.status = 'Nowe'
+        AND coalesce(o.is_teeth, false) = false
+        AND coalesce(o.request_kind, 'zamowienie') = 'zamowienie'
+        AND o.supplier_id IS DISTINCT FROM $1::uuid
+        AND (o.subiekt_tw_id = ANY($2::int[]) OR lower(btrim(o.symbol)) = ANY($3::text[]))
+      GROUP BY 1, 2, 3`,
+    [input.supplierId, ids, [...twBySymbol.keys()]]
+  );
+  const idSet = new Set(ids);
+  for (const r of res.rows) {
+    const byId = num(r.subiekt_tw_id);
+    const tw = idSet.has(byId) ? byId : twBySymbol.get(r.sym ?? "") ?? 0;
+    if (!(tw > 0)) continue;
+    const list = out.get(tw) ?? [];
+    const hit = list.find((x) => x.supplierName === r.name);
+    if (hit) {
+      hit.count += num(r.n);
+    } else {
+      list.push({ supplierName: r.name, count: num(r.n) });
+    }
+    out.set(tw, list);
+  }
+  return out;
+}
+
+/** Prośby tego dostawcy, które nie wejdą do Kreatora, bo czekają na uzupełnienie (Weryfikacja). */
+export async function countIncompleteProsbyForSupplier(supplierId: string): Promise<number> {
+  const res = await query<{ n: string }>(
+    `SELECT count(*) AS n FROM individual_orders
+      WHERE supplier_id = $1::uuid AND status = 'Weryfikacja'
+        AND coalesce(is_teeth, false) = false
+        AND coalesce(request_kind, 'zamowienie') = 'zamowienie'`,
+    [supplierId]
+  );
+  return num(res.rows[0]?.n);
+}
