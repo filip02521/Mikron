@@ -1597,8 +1597,9 @@ export async function actionAcceptZdAutoProposal(input: {
       return { ok: false, unknownOutcome: true, message: userFacingErrorText(e, "Nie udało się utworzyć ZD z propozycji.") };
     }
     if (!res.ok) {
-      // Timeout: ZD mogło powstać — blokada zostaje (nowe przeliczenie da nową propozycję).
-      if (res.code === "timeout") return { ok: false, message: res.message, title: res.title, unknownOutcome: true };
+      // Tylko odrzucenie walidacji na pewno nie zapisało dokumentu. Timeout, zerwane połączenie,
+      // błąd Sfery: ZD mogło powstać — blokada zostaje (nowe przeliczenie da nową propozycję).
+      if (res.code !== "validation") return { ok: false, message: res.message, title: res.title, unknownOutcome: true };
       if (claim === "claimed") await releaseZdAutoProposalCreate(proposal.id);
       return { ok: false, message: res.message, title: res.title };
     }
