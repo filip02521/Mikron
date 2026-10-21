@@ -1,4 +1,4 @@
-import { query } from "@/lib/db/pool";
+import { query, withClient } from "@/lib/db/pool";
 import {
   groupZdEstimateScopesBySupplier,
   listZdEstimateSupplierScopes,
@@ -165,15 +165,23 @@ export async function setZdProductAssignments(
   }[],
   updatedBy: string | null
 ): Promise<void> {
-  const toDelete = items.filter((i) => !i.supplierId).map((i) => i.subiektTwId);
-  const toSet = items.filter((i) => i.supplierId);
-  if (toDelete.length) {
-    await query(`DELETE FROM zd_product_supplier_assignments WHERE subiekt_tw_id = ANY($1::int[])`, [
-      toDelete,
-    ]);
-  }
-  if (toSet.length) {
-    await query(
+  // Ostatni wpis dla towaru wygrywa — duplikat w jednym INSERT ... ON CONFLICT to błąd 21000.
+  const byTw = new Map(items.map((i) => [i.subiektTwId, i]));
+  const unique = [...byTw.values()];
+  const toDelete = unique.filter((i) => !i.supplierId).map((i) => i.subiektTwId);
+  const toSet = unique.filter((i) => i.supplierId);
+  // Usunięcia i zapisy razem albo wcale — bez połowicznego zapisu przy błędzie.
+  await withClient(async (client) => {
+    await client.query("BEGIN");
+    try {
+      if (toDelete.length) {
+        await client.query(
+          `DELETE FROM zd_product_supplier_assignments WHERE subiekt_tw_id = ANY($1::int[])`,
+          [toDelete]
+        );
+      }
+      if (toSet.length) {
+        await client.query(
       `INSERT INTO zd_product_supplier_assignments
          (subiekt_tw_id, supplier_id, tw_symbol, tw_nazwa, updated_at, updated_by)
        SELECT t.tw, t.sid::uuid, t.sym, COALESCE(t.nm, ''), now(), $2
@@ -195,8 +203,14 @@ export async function setZdProductAssignments(
         ),
         updatedBy,
       ]
-    );
-  }
+        );
+      }
+      await client.query("COMMIT");
+    } catch (e) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw e;
+    }
+  });
 }
 
 export type ZdSharedScopeProduct = {
@@ -205,42 +219,83 @@ export type ZdSharedScopeProduct = {
   twNazwa: string;
   /** Liczba ZD per dostawca (tylko dostawcy dzielący zakres). */
   orderCountBySupplier: Record<string, number>;
-  /** Podpowiedź z historii ZD: dostawca z największą liczbą zamówień. */
+  /** Podpowiedź z historii ZD: najwięcej zamówień, przy remisie — ostatnie. */
   suggestedSupplierId: string | null;
   assignedSupplierId: string | null;
+  /** Ostatnie ZD u któregoś z dostawców zakresu (ISO) — null bez historii. */
+  lastOrderAt: string | null;
+  /** Kiedy i kto zapisał przypisanie (login z e-maila) — null bez przypisania. */
+  assignedAt: string | null;
+  assignedBy: string | null;
+  /** Para paczka/sztuka — przypisanie działa dopiero przy zgodnym dostawcy po obu stronach. */
+  pair: ZdSharedScopePair | null;
 };
 
+export type ZdSharedScopePair = {
+  /** Rola tego towaru w parze. */
+  role: "pack" | "piece";
+  otherTwId: number;
+  otherSymbol: string | null;
+  otherAssignedSupplierId: string | null;
+};
+
+/** Górna granica wierszy w panelu — duże cechy mają tysiące starych towarów. */
+export const ZD_SHARED_SCOPE_PRODUCTS_LIMIT = 3000;
+
 /**
- * Towary wspólnego zakresu, które kupujemy od któregoś z dzielących go dostawców
- * (albo już przypisane). Stare towary bez historii ZD nie są pokazywane.
+ * Towary wspólnego zakresu. Domyślnie tylko te, które kupujemy od któregoś
+ * z dzielących go dostawców (albo już przypisane); `includeAll` dokłada resztę
+ * zakresu z indeksu Subiekta (do limitu).
  */
 export async function loadZdSharedScopeProducts(input: {
   mode: ZdEstimateRunMode;
   scopeId: number;
   supplierIds: readonly string[];
-}): Promise<ZdSharedScopeProduct[]> {
+  includeAll?: boolean;
+}): Promise<{ products: ZdSharedScopeProduct[]; truncated: boolean }> {
   const scopeFilter =
     input.mode === "cecha" ? `$1 = ANY(i.cecha_ids)` : `i.grupa_id = $1`;
+  const relevant = `(a.supplier_id IS NOT NULL OR EXISTS (
+      SELECT 1 FROM product_supplier_links l2
+       WHERE l2.subiekt_tw_id = i.subiekt_tw_id AND l2.supplier_id = ANY($2::uuid[])
+         AND l2.order_count > 0))`;
+  const historyFilter = input.includeAll ? "" : "WHERE x.is_relevant";
   const res = await query<{
     subiekt_tw_id: number;
     symbol: string | null;
     name: string | null;
     supplier_id: string | null;
     order_count: number | null;
+    last_action_at: Date | string | null;
     assigned: string | null;
+    assigned_at: Date | string | null;
+    assigned_by: string | null;
   }>(
-    `SELECT i.subiekt_tw_id, p.symbol, p.name, l.supplier_id, l.order_count,
-            a.supplier_id AS assigned
-       FROM subiekt_product_scope_index i
-       LEFT JOIN subiekt_products p ON p.subiekt_tw_id = i.subiekt_tw_id
+    `WITH x AS (
+       SELECT i.subiekt_tw_id, a.supplier_id AS assigned, a.updated_at AS assigned_at,
+              split_part(pr.email, '@', 1) AS assigned_by, ${relevant} AS is_relevant
+         FROM subiekt_product_scope_index i
+         LEFT JOIN zd_product_supplier_assignments a ON a.subiekt_tw_id = i.subiekt_tw_id
+         LEFT JOIN profiles pr ON pr.id = a.updated_by
+        WHERE ${scopeFilter}
+     ),
+     tw AS (
+       SELECT * FROM x ${historyFilter}
+        -- Przy limicie najpierw towary z historią ZD / przypisaniem, potem najnowsze w katalogu.
+        ORDER BY x.is_relevant DESC, x.subiekt_tw_id DESC
+        LIMIT $3
+     )
+     SELECT tw.subiekt_tw_id, p.symbol, p.name, l.supplier_id, l.order_count, l.last_action_at,
+            tw.assigned, tw.assigned_at, tw.assigned_by
+       FROM tw
+       LEFT JOIN subiekt_products p ON p.subiekt_tw_id = tw.subiekt_tw_id
        LEFT JOIN product_supplier_links l
-         ON l.subiekt_tw_id = i.subiekt_tw_id AND l.supplier_id = ANY($2::uuid[])
-       LEFT JOIN zd_product_supplier_assignments a ON a.subiekt_tw_id = i.subiekt_tw_id
-      WHERE ${scopeFilter}
-        AND (l.supplier_id IS NOT NULL OR a.supplier_id IS NOT NULL)`,
-    [input.scopeId, [...input.supplierIds]]
+         ON l.subiekt_tw_id = tw.subiekt_tw_id AND l.supplier_id = ANY($2::uuid[])
+      ORDER BY tw.is_relevant DESC, tw.subiekt_tw_id DESC`,
+    [input.scopeId, [...input.supplierIds], ZD_SHARED_SCOPE_PRODUCTS_LIMIT + 1]
   );
   const byTw = new Map<number, ZdSharedScopeProduct>();
+  const lastBySupplier = new Map<number, Record<string, number>>();
   for (const r of res.rows) {
     const tw = num(r.subiekt_tw_id);
     const hit =
@@ -252,20 +307,174 @@ export async function loadZdSharedScopeProducts(input: {
         orderCountBySupplier: {},
         suggestedSupplierId: null,
         assignedSupplierId: r.assigned,
+        lastOrderAt: null,
+        assignedAt: r.assigned && r.assigned_at ? new Date(r.assigned_at).toISOString() : null,
+        assignedBy: r.assigned ? r.assigned_by || null : null,
+        pair: null,
       } satisfies ZdSharedScopeProduct);
-    if (r.supplier_id) hit.orderCountBySupplier[r.supplier_id] = num(r.order_count);
+    if (r.supplier_id) {
+      hit.orderCountBySupplier[r.supplier_id] = num(r.order_count);
+      const at = r.last_action_at ? new Date(r.last_action_at).getTime() : 0;
+      const last = lastBySupplier.get(tw) ?? {};
+      last[r.supplier_id] = at;
+      lastBySupplier.set(tw, last);
+      if (at && (!hit.lastOrderAt || at > Date.parse(hit.lastOrderAt))) {
+        hit.lastOrderAt = new Date(at).toISOString();
+      }
+    }
     byTw.set(tw, hit);
   }
+  const truncated = byTw.size > ZD_SHARED_SCOPE_PRODUCTS_LIMIT;
   for (const p of byTw.values()) {
-    let best: [string, number] | null = null;
+    const last = lastBySupplier.get(p.subiektTwId) ?? {};
+    let best: [string, number, number] | null = null;
     for (const [sid, n] of Object.entries(p.orderCountBySupplier)) {
-      if (!best || n > best[1]) best = [sid, n];
+      // Powiązanie bez zamówień (np. z katalogu) to nie historia ZD.
+      if (n <= 0) continue;
+      const at = last[sid] ?? 0;
+      if (!best || n > best[1] || (n === best[1] && at > best[2])) best = [sid, n, at];
     }
     p.suggestedSupplierId = best?.[0] ?? null;
   }
-  return [...byTw.values()].sort((a, b) =>
-    (a.twSymbol ?? "").localeCompare(b.twSymbol ?? "", "pl")
+  // Obcinamy w kolejności z SQL (istotne pierwsze), dopiero potem sortujemy po symbolu.
+  const products = [...byTw.values()]
+    .slice(0, ZD_SHARED_SCOPE_PRODUCTS_LIMIT)
+    .sort((a, b) => (a.twSymbol ?? "").localeCompare(b.twSymbol ?? "", "pl"));
+  const pairs = await loadZdPairsForTw(products.map((p) => p.subiektTwId));
+  for (const p of products) p.pair = pairs.get(p.subiektTwId) ?? null;
+  return { products, truncated };
+}
+
+/**
+ * Para paczka/sztuka dla towarów z listy. Towar w dwóch parach naraz (sztuka jednej,
+ * paczka drugiej) dostaje jedną z nich — w danych Mikranu łańcuchów par nie ma.
+ */
+async function loadZdPairsForTw(twIds: readonly number[]): Promise<Map<number, ZdSharedScopePair>> {
+  const out = new Map<number, ZdSharedScopePair>();
+  if (!twIds.length) return out;
+  const res = await query<{
+    pack_tw_id: number;
+    piece_tw_id: number;
+    pack_symbol: string | null;
+    piece_symbol: string | null;
+    pack_assigned: string | null;
+    piece_assigned: string | null;
+  }>(
+    `SELECT pp.pack_tw_id, pp.piece_tw_id,
+            COALESCE(sp.symbol, pp.pack_symbol) AS pack_symbol,
+            COALESCE(ss.symbol, pp.piece_symbol) AS piece_symbol,
+            ap.supplier_id AS pack_assigned, aps.supplier_id AS piece_assigned
+       FROM zd_product_pairs pp
+       LEFT JOIN subiekt_products sp ON sp.subiekt_tw_id = pp.pack_tw_id
+       LEFT JOIN subiekt_products ss ON ss.subiekt_tw_id = pp.piece_tw_id
+       LEFT JOIN zd_product_supplier_assignments ap ON ap.subiekt_tw_id = pp.pack_tw_id
+       LEFT JOIN zd_product_supplier_assignments aps ON aps.subiekt_tw_id = pp.piece_tw_id
+      WHERE pp.pack_tw_id = ANY($1::int[]) OR pp.piece_tw_id = ANY($1::int[])`,
+    [[...twIds]]
   );
+  for (const r of res.rows) {
+    const pack = num(r.pack_tw_id);
+    const piece = num(r.piece_tw_id);
+    out.set(pack, {
+      role: "pack",
+      otherTwId: piece,
+      otherSymbol: r.piece_symbol,
+      otherAssignedSupplierId: r.piece_assigned,
+    });
+    out.set(piece, {
+      role: "piece",
+      otherTwId: pack,
+      otherSymbol: r.pack_symbol,
+      otherAssignedSupplierId: r.pack_assigned,
+    });
+  }
+  return out;
+}
+
+/** Grupa, cechy i dane katalogowe towarów — do walidacji przypisań po stronie serwera. */
+export async function loadZdTwScopeFacts(twIds: readonly number[]): Promise<
+  Map<number, { grupaId: number | null; cechaIds: number[]; symbol: string | null; name: string }>
+> {
+  const out = new Map<number, { grupaId: number | null; cechaIds: number[]; symbol: string | null; name: string }>();
+  const ids = [...new Set(twIds.filter((t) => t > 0))];
+  if (!ids.length) return out;
+  const res = await query<{
+    subiekt_tw_id: number;
+    grupa_id: number | null;
+    cecha_ids: number[] | null;
+    symbol: string | null;
+    name: string | null;
+  }>(
+    `SELECT i.subiekt_tw_id, i.grupa_id, i.cecha_ids, p.symbol, p.name
+       FROM subiekt_product_scope_index i
+       LEFT JOIN subiekt_products p ON p.subiekt_tw_id = i.subiekt_tw_id
+      WHERE i.subiekt_tw_id = ANY($1::int[])`,
+    [ids]
+  );
+  for (const r of res.rows) {
+    out.set(num(r.subiekt_tw_id), {
+      grupaId: r.grupa_id != null ? num(r.grupa_id) : null,
+      cechaIds: (r.cecha_ids ?? []).map(num),
+      symbol: r.symbol,
+      name: r.name ?? "",
+    });
+  }
+  return out;
+}
+
+export type ZdSharedScopeStats = {
+  mode: ZdEstimateRunMode;
+  scopeId: number;
+  /** Towary z historii ZD u dostawców zakresu (lub już przypisane). */
+  products: number;
+  /** Z tego z zapisanym przypisaniem (także do dostawcy spoza zakresu — decyzja podjęta). */
+  assigned: number;
+};
+
+/** Postęp rozdzielania każdego wspólnego zakresu — do listy w panelu. */
+export async function loadZdSharedScopeStats(
+  shared: readonly ZdSharedScope[]
+): Promise<ZdSharedScopeStats[]> {
+  if (!shared.length) return [];
+  // Dwie gałęzie zamiast OR w JOIN — planer może użyć indeksów GIN (cechy) i btree (grupa).
+  const res = await query<{ idx: number; products: number; assigned: number }>(
+    `WITH s AS (
+       SELECT * FROM jsonb_to_recordset($1::jsonb)
+         AS s(idx int, mode text, scope_id int, supplier_ids uuid[])
+     ),
+     tw AS (
+       SELECT s.idx, s.supplier_ids, i.subiekt_tw_id
+         FROM s JOIN subiekt_product_scope_index i ON i.cecha_ids @> ARRAY[s.scope_id]
+        WHERE s.mode = 'cecha'
+       UNION ALL
+       SELECT s.idx, s.supplier_ids, i.subiekt_tw_id
+         FROM s JOIN subiekt_product_scope_index i ON i.grupa_id = s.scope_id
+        WHERE s.mode = 'grupa'
+     )
+     SELECT tw.idx,
+            count(*)::int AS products,
+            count(*) FILTER (WHERE a.supplier_id IS NOT NULL)::int AS assigned
+       FROM tw
+       LEFT JOIN zd_product_supplier_assignments a ON a.subiekt_tw_id = tw.subiekt_tw_id
+      WHERE a.supplier_id IS NOT NULL
+         OR EXISTS (SELECT 1 FROM product_supplier_links l
+                     WHERE l.subiekt_tw_id = tw.subiekt_tw_id
+                       AND l.supplier_id = ANY(tw.supplier_ids)
+                       AND l.order_count > 0)
+      GROUP BY tw.idx`,
+    [
+      JSON.stringify(
+        shared.map((s, idx) => ({ idx, mode: s.mode, scope_id: s.scopeId, supplier_ids: s.supplierIds }))
+      ),
+    ]
+  );
+  const byIdx = new Map(res.rows.map((r) => [num(r.idx), r]));
+  return shared.map((s, idx) => ({
+    mode: s.mode,
+    scopeId: s.scopeId,
+    products: num(byIdx.get(idx)?.products),
+    assigned: num(byIdx.get(idx)?.assigned),
+  }));
 }
 
 /**
