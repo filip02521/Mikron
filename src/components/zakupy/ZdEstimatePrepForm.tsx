@@ -159,7 +159,7 @@ function PrepStepBadge({
         done
           ? "bg-emerald-100 text-emerald-800"
           : active
-            ? "bg-slate-900 text-white"
+            ? "bg-indigo-600 text-white"
             : "bg-slate-100 text-slate-500"
       )}
     >

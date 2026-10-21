@@ -138,7 +138,7 @@ function DataWarning({ row }: { row: StockWatchSupplierBoardRow }) {
 }
 
 const secondaryLinkClass =
-  "inline-flex h-8 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 shadow-[0_1px_2px_rgba(21,25,32,.06)] transition-[background-color,transform] duration-150 ease-out hover:bg-slate-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 focus-visible:ring-offset-1";
+  "inline-flex h-8 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 shadow-[0_1px_2px_rgba(21,25,32,.06)] transition-[background-color,transform] duration-150 ease-out hover:bg-slate-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-1";
 
 /** Rozwinięty dostawca: dlaczego ten priorytet, co zrobić w Kreatorze, jego pilne towary. */
 function SupplierDetail({
@@ -233,7 +233,7 @@ function SupplierDetail({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-sm">
               <thead>
-                <tr className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-[0.04em] text-slate-500">
+                <tr className="bg-slate-50 text-left text-xs font-semibold text-slate-500">
                   <th scope="col" className="px-3 py-2">Towar</th>
                   <th scope="col" className="px-3 py-2">Starczy na</th>
                   <th scope="col" className="px-3 py-2">Stan · w drodze</th>
@@ -438,7 +438,7 @@ export function StockSupplierBoard({
                     onClick={() => toggle(r.supplierId)}
                     aria-expanded={open}
                     aria-controls={detailId}
-                    className="flex w-full cursor-pointer items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500/45"
+                    className="flex w-full cursor-pointer items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-600"
                   >
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2">
@@ -484,7 +484,7 @@ export function StockSupplierBoard({
           <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[780px] text-sm">
               <thead>
-                <tr className="bg-slate-50 text-xs font-semibold uppercase tracking-[0.04em] text-slate-500">
+                <tr className="bg-slate-50 text-xs font-semibold text-slate-500">
                   <th scope="col" className="w-10 py-2.5 pl-4">
                     <span className="sr-only">Rozwiń</span>
                   </th>
@@ -524,7 +524,7 @@ export function StockSupplierBoard({
                           scope="rowgroup"
                           colSpan={COLS}
                           className={cn(
-                            "border-t border-slate-200 bg-white px-4 pb-1.5 pt-4 text-left text-xs font-semibold uppercase tracking-[0.04em]",
+                            "border-t border-slate-200 bg-white px-4 pb-1.5 pt-4 text-left text-xs font-semibold",
                             PRIORITY_META[r.priority].group
                           )}
                         >
@@ -554,7 +554,7 @@ export function StockSupplierBoard({
                           aria-expanded={open}
                           aria-controls={detailId}
                           aria-label={`${open ? "Zwiń" : "Rozwiń"} ${r.supplierName}`}
-                          className="inline-flex size-7 cursor-pointer items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-white hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45"
+                          className="inline-flex size-7 cursor-pointer items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-white hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
                         >
                           <IconChevronDown
                             size={16}

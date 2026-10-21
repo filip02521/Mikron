@@ -8,7 +8,11 @@ import type { IndividualOrder } from "@/types/database";
 
 export type InformacjaQueueCountRow = Pick<
   IndividualOrder,
-  "request_kind" | "status" | "informacja_queue_via_daily_panel" | "sales_cancelled_at"
+  | "request_kind"
+  | "status"
+  | "informacja_queue_via_daily_panel"
+  | "informacja_stock_out_reorder"
+  | "sales_cancelled_at"
 >;
 
 export type DeliveryQueueCancelledCountRow = Pick<

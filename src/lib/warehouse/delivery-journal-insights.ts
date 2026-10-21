@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/data/fetch-all-rows";
 import { normalizeShipmentCounts } from "@/lib/warehouse/delivery-carriers";
 import {
   assertJournalDateReadable,
@@ -64,20 +65,23 @@ export async function searchDeliveryReceipts(
     query: filters.query,
   });
   const supabase = createAdminClient();
-  let q = supabase
-    .from("warehouse_delivery_receipts")
-    .select(
-      "id, received_date, supplier_id, supplier_label, carrier, shipment_form, package_count, pallet_count, note, created_at, updated_at, created_by, suppliers(name)"
-    )
-    .gte("received_date", filters.dateFrom)
-    .lte("received_date", filters.dateTo)
-    .order("received_date", { ascending: false })
-    .order("created_at", { ascending: false });
-  if (filters.supplierId) q = q.eq("supplier_id", filters.supplierId);
-  if (filters.carrier) q = q.eq("carrier", filters.carrier);
-  const { data, error } = await q;
-  if (error) throw new Error(error.message);
-  let rows = (data ?? []).map((r) => mapSearchRow(r as Record<string, unknown>));
+  // Zakres do 93 dni — przyjęć bywa więcej niż jedna strona, a podsumowanie liczy całość.
+  const data = await fetchAllRows<Record<string, unknown>>(() => {
+    let q = supabase
+      .from("warehouse_delivery_receipts")
+      .select(
+        "id, received_date, supplier_id, supplier_label, carrier, shipment_form, package_count, pallet_count, note, created_at, updated_at, created_by, suppliers(name)"
+      )
+      .gte("received_date", filters.dateFrom)
+      .lte("received_date", filters.dateTo);
+    if (filters.supplierId) q = q.eq("supplier_id", filters.supplierId);
+    if (filters.carrier) q = q.eq("carrier", filters.carrier);
+    return q
+      .order("received_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: true });
+  });
+  let rows = data.map((r) => mapSearchRow(r));
   const query = normalizeJournalSearchQuery(filters.query ?? "");
   if (query) {
     rows = rows.filter((r) => matchesDeliveryReceiptQuery(r, query));

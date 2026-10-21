@@ -138,7 +138,7 @@ export function HelpPopover({
         role="dialog"
         aria-label={title}
         style={{ top: panelPos.top, left: panelPos.left, transformOrigin: panelPos.origin }}
-        className="menu-pop-enter fixed z-[72] max-h-[min(70vh,28rem)] w-[min(100vw-2rem,24rem)] overflow-y-auto overscroll-contain rounded-md border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-lg"
+        className="menu-pop-enter fixed z-[72] max-h-[min(70vh,28rem)] w-[min(100vw-2rem,24rem)] overflow-y-auto overscroll-contain rounded-md border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-[var(--shadow-elevated)]"
       >
         <p className="mb-3 text-sm font-semibold text-slate-900">{title}</p>
         {children}

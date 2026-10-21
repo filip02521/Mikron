@@ -3,12 +3,6 @@
  * Unika drugiego, ciężkiego Server Action z przeglądarki (duże cechy, np. Ivoclar ~1590 SKU).
  */
 
-import type { ZdEstimateExclusionRow } from "@/lib/data/zd-estimate-exclusions";
-import type { ZdEstimateOnRequestRow } from "@/lib/data/zd-estimate-on-request";
-import type { ZdEstimatePackagingRow } from "@/lib/data/zd-estimate-packaging";
-import type { ZdEstimateMinStockRow } from "@/lib/data/zd-estimate-min-stock";
-import type { ZdProductBomRow } from "@/lib/data/zd-product-boms";
-import type { ZdProductPairRow } from "@/lib/data/zd-product-pairs";
 import type { ZdBoostPowerPreset } from "@/lib/orders/zd-estimate-boost-presets";
 import type { ZdEstimatePendingIndividualOrder } from "@/lib/orders/zd-estimate-individual";
 import { coerceZdEstimateLinesBase } from "@/lib/orders/zd-estimate-lines-base";
@@ -99,13 +93,6 @@ export function buildZdEstimateUiSessionSnapshotFromPolicz(input: {
     pairMissingTwIds?: number[];
     bomMissingTwIds?: number[];
   };
-  exclusions: ZdEstimateExclusionRow[];
-  onRequests: ZdEstimateOnRequestRow[];
-  packaging: ZdEstimatePackagingRow[];
-  minStock: ZdEstimateMinStockRow[];
-  productPairs: ZdProductPairRow[];
-  productBoms: ZdProductBomRow[];
-  teethTwIds: number[];
   boostPreset: ZdBoostPowerPreset;
   /** Horyzont z opcji „Do kolejnej dostawy” (null = opcja wyłączona). */
   horizon?: import("@/lib/orders/zd-order-horizon").ZdOrderHorizon | null;
@@ -195,13 +182,6 @@ export function buildZdEstimateUiSessionSnapshotFromPolicz(input: {
     missingPartnerTwIds: input.meta.pairMissingTwIds ?? [],
     missingBomTwIds: input.meta.bomMissingTwIds ?? [],
     paramInfo: input.result.parametry as Record<string, unknown>,
-    exclusions: input.exclusions,
-    onRequests: input.onRequests,
-    packaging: input.packaging,
-    minStock: input.minStock,
-    productPairs: input.productPairs,
-    productBoms: input.productBoms,
-    teethTwIds: input.teethTwIds,
     boostPreset: input.boostPreset,
     appliedBoostPreset: input.boostPreset,
     boostNeedsRecount: false,

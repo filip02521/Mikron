@@ -1,4 +1,5 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
+import { fetchAllRowsResult } from "@/lib/data/fetch-all-rows";
 import { normalizeIndividualOrders } from "@/lib/data/normalize-order";
 import { estimateTeethDeliveryEtaBatch, applyTeethDeliveryEstimateToOrders, collectOrdersNeedingTeethDeliveryEstimate } from "@/lib/data/teeth-delivery-eta";
 import { markTeethScheduleOrdered, fetchTeethSchedules } from "@/lib/data/teeth-schedule";
@@ -831,21 +832,24 @@ export async function fetchTeethQueueVersion(): Promise<string | null> {
   const todayStr = formatDateString(todayInWarsaw());
 
   const [ordersResult, schedulesResult] = await Promise.all([
-    supabase
-      .from("individual_orders")
-      .select("id, created_at", { count: "exact" })
-      .eq("is_teeth", true)
-      .eq("teeth_ocr_pending", false)
-      .in("status", [...TEETH_QUEUE_PENDING_STATUSES])
-      .is("sales_cancelled_at", null)
-      .order("created_at", { ascending: false }),
+    fetchAllRowsResult<{ id: string; created_at: string }>(() =>
+      supabase
+        .from("individual_orders")
+        .select("id, created_at")
+        .eq("is_teeth", true)
+        .eq("teeth_ocr_pending", false)
+        .in("status", [...TEETH_QUEUE_PENDING_STATUSES])
+        .is("sales_cancelled_at", null)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: true })
+    ),
     fetchTeethSchedules().catch(() => [] as TeethSupplierScheduleWithSupplier[]),
   ]);
 
   if (ordersResult.error) return null;
 
   const orderRows = ordersResult.data ?? [];
-  const orderCount = ordersResult.count ?? 0;
+  const orderCount = orderRows.length;
   const maxCreatedAt = orderRows[0]?.created_at ?? null;
   const orderIds = orderRows.map((row) => row.id);
 
