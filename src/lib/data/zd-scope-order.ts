@@ -210,6 +210,19 @@ export type ZdSharedScopeProduct = {
   assignedSupplierId: string | null;
   /** Ostatnie ZD u któregoś z dostawców zakresu (ISO) — null bez historii. */
   lastOrderAt: string | null;
+  /** Kiedy i kto zapisał przypisanie (login z e-maila) — null bez przypisania. */
+  assignedAt: string | null;
+  assignedBy: string | null;
+  /** Para paczka/sztuka — przypisanie działa dopiero przy zgodnym dostawcy po obu stronach. */
+  pair: ZdSharedScopePair | null;
+};
+
+export type ZdSharedScopePair = {
+  /** Rola tego towaru w parze. */
+  role: "pack" | "piece";
+  otherTwId: number;
+  otherSymbol: string | null;
+  otherAssignedSupplierId: string | null;
 };
 
 /** Górna granica wierszy w panelu — duże cechy mają tysiące starych towarów. */
@@ -241,18 +254,22 @@ export async function loadZdSharedScopeProducts(input: {
     order_count: number | null;
     last_action_at: Date | string | null;
     assigned: string | null;
+    assigned_at: Date | string | null;
+    assigned_by: string | null;
   }>(
     `WITH tw AS (
-       SELECT i.subiekt_tw_id, a.supplier_id AS assigned
+       SELECT i.subiekt_tw_id, a.supplier_id AS assigned, a.updated_at AS assigned_at,
+              split_part(pr.email, '@', 1) AS assigned_by
          FROM subiekt_product_scope_index i
          LEFT JOIN zd_product_supplier_assignments a ON a.subiekt_tw_id = i.subiekt_tw_id
+         LEFT JOIN profiles pr ON pr.id = a.updated_by
         WHERE ${scopeFilter} ${historyFilter}
         -- Przy limicie najpierw towary z historią ZD / przypisaniem, potem reszta zakresu.
         ORDER BY ${relevant} DESC, i.subiekt_tw_id
         LIMIT $3
      )
      SELECT tw.subiekt_tw_id, p.symbol, p.name, l.supplier_id, l.order_count, l.last_action_at,
-            tw.assigned
+            tw.assigned, tw.assigned_at, tw.assigned_by
        FROM tw
        LEFT JOIN subiekt_products p ON p.subiekt_tw_id = tw.subiekt_tw_id
        LEFT JOIN product_supplier_links l
@@ -273,6 +290,9 @@ export async function loadZdSharedScopeProducts(input: {
         suggestedSupplierId: null,
         assignedSupplierId: r.assigned,
         lastOrderAt: null,
+        assignedAt: r.assigned && r.assigned_at ? new Date(r.assigned_at).toISOString() : null,
+        assignedBy: r.assigned ? r.assigned_by || null : null,
+        pair: null,
       } satisfies ZdSharedScopeProduct);
     if (r.supplier_id) {
       hit.orderCountBySupplier[r.supplier_id] = num(r.order_count);
@@ -301,7 +321,55 @@ export async function loadZdSharedScopeProducts(input: {
   const products = [...byTw.values()]
     .sort((a, b) => (a.twSymbol ?? "").localeCompare(b.twSymbol ?? "", "pl"))
     .slice(0, ZD_SHARED_SCOPE_PRODUCTS_LIMIT);
+  const pairs = await loadZdPairsForTw(products.map((p) => p.subiektTwId));
+  for (const p of products) p.pair = pairs.get(p.subiektTwId) ?? null;
   return { products, truncated };
+}
+
+/**
+ * Para paczka/sztuka dla towarów z listy. Towar w dwóch parach naraz (sztuka jednej,
+ * paczka drugiej) dostaje jedną z nich — w danych Mikranu łańcuchów par nie ma.
+ */
+async function loadZdPairsForTw(twIds: readonly number[]): Promise<Map<number, ZdSharedScopePair>> {
+  const out = new Map<number, ZdSharedScopePair>();
+  if (!twIds.length) return out;
+  const res = await query<{
+    pack_tw_id: number;
+    piece_tw_id: number;
+    pack_symbol: string | null;
+    piece_symbol: string | null;
+    pack_assigned: string | null;
+    piece_assigned: string | null;
+  }>(
+    `SELECT pp.pack_tw_id, pp.piece_tw_id,
+            COALESCE(sp.symbol, pp.pack_symbol) AS pack_symbol,
+            COALESCE(ss.symbol, pp.piece_symbol) AS piece_symbol,
+            ap.supplier_id AS pack_assigned, aps.supplier_id AS piece_assigned
+       FROM zd_product_pairs pp
+       LEFT JOIN subiekt_products sp ON sp.subiekt_tw_id = pp.pack_tw_id
+       LEFT JOIN subiekt_products ss ON ss.subiekt_tw_id = pp.piece_tw_id
+       LEFT JOIN zd_product_supplier_assignments ap ON ap.subiekt_tw_id = pp.pack_tw_id
+       LEFT JOIN zd_product_supplier_assignments aps ON aps.subiekt_tw_id = pp.piece_tw_id
+      WHERE pp.pack_tw_id = ANY($1::int[]) OR pp.piece_tw_id = ANY($1::int[])`,
+    [[...twIds]]
+  );
+  for (const r of res.rows) {
+    const pack = num(r.pack_tw_id);
+    const piece = num(r.piece_tw_id);
+    out.set(pack, {
+      role: "pack",
+      otherTwId: piece,
+      otherSymbol: r.piece_symbol,
+      otherAssignedSupplierId: r.piece_assigned,
+    });
+    out.set(piece, {
+      role: "piece",
+      otherTwId: pack,
+      otherSymbol: r.pack_symbol,
+      otherAssignedSupplierId: r.pack_assigned,
+    });
+  }
+  return out;
 }
 
 /** Grupa, cechy i dane katalogowe towarów — do walidacji przypisań po stronie serwera. */

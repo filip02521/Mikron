@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import type { ZdSharedScopeProduct } from "@/lib/data/zd-scope-order";
 import {
   zdSplitApplyHistory,
+  zdSplitAlignablePairs,
+  zdSplitAlignPairs,
   zdSplitAssign,
+  zdSplitImpact,
+  zdSplitPairMismatch,
+  zdSplitPairMismatchCount,
+  zdSplitSorted,
   zdSplitChanged,
   zdSplitCounts,
   zdSplitDraftFrom,
@@ -26,6 +32,9 @@ function product(
     suggestedSupplierId: null,
     assignedSupplierId: null,
     lastOrderAt: null,
+    assignedAt: null,
+    assignedBy: null,
+    pair: null,
     ...patch,
   };
 }
@@ -48,12 +57,14 @@ describe("zd-shared-scope-split", () => {
 
   it("filtry: bez przypisania, niezgodne z historią, dostawca, fraza", () => {
     const draft = zdSplitDraftFrom(products);
+    const ctx = { byTw: new Map(products.map((p) => [p.subiektTwId, p])), scopeSupplierIds: [A] };
     const ids = (f: Parameters<typeof zdSplitVisible>[2], q = "") =>
-      zdSplitVisible(products, draft, f, q).map((p) => p.subiektTwId);
+      zdSplitVisible(products, draft, f, q, ctx).map((p) => p.subiektTwId);
     expect(ids({ kind: "unassigned" })).toEqual([1, 3]);
     expect(ids({ kind: "conflict" })).toEqual([1, 4]);
     expect(ids({ kind: "supplier", supplierId: B })).toEqual([2, 4]);
     expect(ids({ kind: "all" }, "frez")).toEqual([3]);
+    expect(ids({ kind: "outside" })).toEqual([2, 4]);
     expect(ids({ kind: "all" }, "sym-2")).toEqual([2]);
   });
 
@@ -86,5 +97,64 @@ describe("zd-shared-scope-split", () => {
     expect(zdSplitShortName("Hager & Meisinger GmbH")).toBe("Hager & Meisinger");
     expect(zdSplitShortName("Hager & Meisingerowie Dental")).toBe("Hager");
     expect(zdSplitShortName("Superlongsuppliername International")).toBe("Superlongsuppliername");
+  });
+
+  it("sortowanie: liczba ZD i ostatnie ZD, remis po symbolu", () => {
+    const list = [
+      product(1, { twSymbol: "B", orderCountBySupplier: { [A]: 1 }, lastOrderAt: "2026-05-01T00:00:00Z" }),
+      product(2, { twSymbol: "A", orderCountBySupplier: { [A]: 2, [B]: 3 }, lastOrderAt: "2026-01-01T00:00:00Z" }),
+      product(3, { twSymbol: "C" }),
+    ];
+    expect(zdSplitSorted(list, "symbol").map((p) => p.subiektTwId)).toEqual([2, 1, 3]);
+    expect(zdSplitSorted(list, "orders").map((p) => p.subiektTwId)).toEqual([2, 1, 3]);
+    expect(zdSplitSorted(list, "recent").map((p) => p.subiektTwId)).toEqual([1, 2, 3]);
+  });
+
+  it("skutek zapisu: tylko zmienione liczniki", () => {
+    const draft = zdSplitAssign(zdSplitDraftFrom(products), [1, 3], A);
+    expect(zdSplitImpact(products, draft)).toEqual([
+      { value: "", before: 2, after: 0 },
+      { value: A, before: 0, after: 2 },
+    ]);
+    expect(zdSplitImpact(products, zdSplitDraftFrom(products))).toEqual([]);
+  });
+
+  it("pary: niespójny wybór i wyrównanie sztuki do paczki", () => {
+    const pack = product(10, { pair: { role: "pack", otherTwId: 11, otherSymbol: "S-11", otherAssignedSupplierId: null } });
+    const piece = product(11, { pair: { role: "piece", otherTwId: 10, otherSymbol: "S-10", otherAssignedSupplierId: null } });
+    const lone = product(12, {
+      assignedSupplierId: A,
+      pair: { role: "pack", otherTwId: 99, otherSymbol: "S-99", otherAssignedSupplierId: B },
+    });
+    const list = [pack, piece, lone];
+    const byTw = new Map(list.map((p) => [p.subiektTwId, p]));
+    let draft: Record<number, string> = {};
+    expect(zdSplitPairMismatch(pack, draft, byTw)).toBe(false);
+    draft = zdSplitAssign(draft, [10], A);
+    expect(zdSplitPairMismatch(pack, draft, byTw)).toBe(true);
+    expect(zdSplitPairMismatch(piece, draft, byTw)).toBe(true);
+    // Druga strona spoza listy — porównanie z zapisanym przypisaniem.
+    expect(zdSplitPairMismatch(lone, draft, byTw)).toBe(true);
+    const ctx = { byTw, scopeSupplierIds: [A, B] };
+    expect(zdSplitVisible(list, draft, { kind: "pair" }, "", ctx).map((p) => p.subiektTwId)).toEqual([10, 11, 12]);
+    // Para 10/11 liczona raz, 12 z drugą stroną spoza listy osobno; wyrównać da się tylko 10/11.
+    expect(zdSplitPairMismatchCount(list, draft, byTw)).toBe(2);
+    expect(zdSplitAlignablePairs(list, draft, byTw)).toBe(1);
+    const aligned = zdSplitAlignPairs(list, draft, byTw);
+    expect(aligned[11]).toBe(A);
+    expect(zdSplitPairMismatch(piece, aligned, byTw)).toBe(false);
+    expect(aligned[99]).toBeUndefined();
+  });
+
+  it("wyrównanie: paczka bez przypisania przejmuje dostawcę sztuk, nie kasuje go", () => {
+    const pack = product(20, { pair: { role: "pack", otherTwId: 21, otherSymbol: null, otherAssignedSupplierId: B } });
+    const piece = product(21, {
+      assignedSupplierId: B,
+      pair: { role: "piece", otherTwId: 20, otherSymbol: null, otherAssignedSupplierId: null },
+    });
+    const list = [pack, piece];
+    const byTw = new Map(list.map((p) => [p.subiektTwId, p]));
+    const aligned = zdSplitAlignPairs(list, {}, byTw);
+    expect(aligned).toEqual({ 20: B });
   });
 });

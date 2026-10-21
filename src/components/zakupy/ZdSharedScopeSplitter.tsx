@@ -8,8 +8,15 @@ import {
 import type { ZdEstimateSupplierOption } from "@/app/actions/zd-estimate";
 import type { ZdSharedScope, ZdSharedScopeProduct } from "@/lib/data/zd-scope-order";
 import {
+  zdSplitAlignablePairs,
+  zdSplitAlignPairs,
   zdSplitApplyHistory,
   zdSplitAssign,
+  zdSplitImpact,
+  zdSplitPairMismatch,
+  zdSplitPairMismatchCount,
+  zdSplitSorted,
+  type ZdSplitSort,
   zdSplitChanged,
   zdSplitCounts,
   zdSplitRangeSelect,
@@ -24,6 +31,7 @@ import { Button } from "@/components/ui/Button";
 import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
 import { Input } from "@/components/ui/Field";
 import { Kbd } from "@/components/ui/Kbd";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { formatPlDate } from "@/lib/display-labels";
@@ -38,7 +46,56 @@ const SPLIT_HELP =
   "Bez przypisania widzą go wszyscy. Para paczka/sztuka znika dopiero, gdy obie strony mają " +
   "tego samego dostawcę. Zmiana działa od kolejnego „Policz”.";
 
-type Option = { id: string; name: string; short: string; key: string };
+type Option = { id: string; name: string; short: string; key: string; swatch: string };
+
+/**
+ * Kolory segmentów paska podziału — odcienie Petrolu i szarości (DESIGN.md: jeden akcent).
+ * Kolor rozróżnia dostawców, nie niesie stanu.
+ */
+const SUPPLIER_SWATCHES = [
+  "bg-indigo-800",
+  "bg-indigo-500",
+  "bg-indigo-300",
+  "bg-slate-600",
+  "bg-slate-400",
+  "bg-indigo-100",
+];
+const UNASSIGNED_SWATCH = "bg-slate-200";
+const OUTSIDE_SWATCH = "bg-amber-300";
+
+type Segment = { key: string; label: string; count: number; swatch: string };
+
+function PartitionBar({ segments, total }: { segments: readonly Segment[]; total: number }) {
+  if (total === 0) return null;
+  return (
+    <div
+      className="flex h-2 w-full overflow-hidden rounded-full bg-slate-100"
+      role="img"
+      aria-label={segments.map((s) => `${s.label}: ${s.count}`).join(", ")}
+    >
+      {segments
+        .filter((s) => s.count > 0)
+        .map((s) => (
+          <span
+            key={s.key}
+            title={`${s.label}: ${s.count} (${Math.round((s.count / total) * 100)}%)`}
+            className={cn("h-full transition-[width] duration-300 ease-out motion-reduce:transition-none", s.swatch)}
+            style={{ width: `${(s.count / total) * 100}%` }}
+          />
+        ))}
+    </div>
+  );
+}
+
+function Swatch({ className }: { className: string }) {
+  return <span aria-hidden className={cn("size-2 shrink-0 rounded-sm", className)} />;
+}
+
+const SORT_OPTIONS: { value: ZdSplitSort; label: string; title: string }[] = [
+  { value: "symbol", label: "Symbol", title: "Sortuj po symbolu" },
+  { value: "orders", label: "Liczba ZD", title: "Najczęściej zamawiane na górze" },
+  { value: "recent", label: "Ostatnie ZD", title: "Ostatnio zamawiane na górze" },
+];
 
 function isTypingTarget(el: EventTarget | null): boolean {
   if (!(el instanceof HTMLElement)) return false;
@@ -214,6 +271,7 @@ export function ZdSharedScopeSplitter({
   const [anchor, setAnchor] = useState<number | null>(null);
   const [limit, setLimit] = useState(PAGE);
   const [savedCount, setSavedCount] = useState<number | null>(null);
+  const [sort, setSort] = useState<ZdSplitSort>("symbol");
 
   // Nowa tożsamość callbacków rodzica nie może przeładować listy (skasowałaby zmiany).
   const onErrorRef = useRef(onError);
@@ -249,21 +307,51 @@ export function ZdSharedScopeSplitter({
     () =>
       scope.supplierIds.map((id, i) => {
         const name = suppliers.find((s) => s.id === id)?.name?.trim() || id;
-        return { id, name, short: zdSplitShortName(name), key: String(i + 1) };
+        return {
+          id,
+          name,
+          short: zdSplitShortName(name),
+          key: String(i + 1),
+          swatch: SUPPLIER_SWATCHES[i % SUPPLIER_SWATCHES.length],
+        };
       }),
     [scope.supplierIds, suppliers]
   );
+  const impactLabel = (value: string) => (value === "" ? "bez przypisania" : nameOf(value));
   const nameOf = (id: string) =>
     options.find((o) => o.id === id)?.name ?? suppliers.find((s) => s.id === id)?.name ?? "inny dostawca";
 
-  const all = useMemo(() => products ?? [], [products]);
+  const all = useMemo(() => zdSplitSorted(products ?? [], sort), [products, sort]);
+  const byTw = useMemo(() => new Map(all.map((p) => [p.subiektTwId, p])), [all]);
   const changed = useMemo(() => zdSplitChanged(all, edits), [all, edits]);
   const counts = useMemo(() => zdSplitCounts(all, edits), [all, edits]);
   const conflictCount = useMemo(
     () => zdSplitVisible(all, edits, { kind: "conflict" }, "").length,
     [all, edits]
   );
-  const visible = useMemo(() => zdSplitVisible(all, edits, filter, query), [all, edits, filter, query]);
+  const splitCtx = useMemo(() => ({ byTw, scopeSupplierIds: scope.supplierIds }), [byTw, scope.supplierIds]);
+  const pairMismatchCount = useMemo(() => zdSplitPairMismatchCount(all, edits, byTw), [all, edits, byTw]);
+  const alignablePairs = useMemo(() => zdSplitAlignablePairs(all, edits, byTw), [all, edits, byTw]);
+  const impact = useMemo(() => zdSplitImpact(all, edits), [all, edits]);
+  const outsideCount = useMemo(
+    () =>
+      [...counts.entries()]
+        .filter(([v]) => v !== "" && !scope.supplierIds.includes(v))
+        .reduce((n, [, c]) => n + c, 0),
+    [counts, scope.supplierIds]
+  );
+  const segments = useMemo<Segment[]>(() => {
+    return [
+      ...options.map((o) => ({ key: o.id, label: o.name, count: counts.get(o.id) ?? 0, swatch: o.swatch })),
+      { key: "__outside", label: "Dostawcy spoza zakresu", count: outsideCount, swatch: OUTSIDE_SWATCH },
+      { key: "", label: "Bez przypisania", count: counts.get("") ?? 0, swatch: UNASSIGNED_SWATCH },
+    ];
+  }, [counts, options, outsideCount]);
+  const assignedCount = all.length - (counts.get("") ?? 0);
+  const visible = useMemo(
+    () => zdSplitVisible(all, edits, filter, query, splitCtx),
+    [all, edits, filter, query, splitCtx]
+  );
   const visibleIds = useMemo(() => visible.map((p) => p.subiektTwId), [visible]);
   const rendered = visible.slice(0, limit);
   const hasHistory = all.some((p) => p.suggestedSupplierId);
@@ -342,10 +430,22 @@ export function ZdSharedScopeSplitter({
         return;
       }
       const saved = new Map(items.map((i) => [i.subiektTwId, i.supplierId]));
+      const now = new Date().toISOString();
       setProducts((prev) =>
-        (prev ?? []).map((p) =>
-          saved.has(p.subiektTwId) ? { ...p, assignedSupplierId: saved.get(p.subiektTwId) ?? null } : p
-        )
+        (prev ?? []).map((p) => {
+          let next = p;
+          if (saved.has(p.subiektTwId)) {
+            const sid = saved.get(p.subiektTwId) ?? null;
+            next = { ...next, assignedSupplierId: sid, assignedAt: sid ? now : null, assignedBy: sid ? "Ty" : null };
+          }
+          if (next.pair && saved.has(next.pair.otherTwId)) {
+            next = {
+              ...next,
+              pair: { ...next.pair, otherAssignedSupplierId: saved.get(next.pair.otherTwId) ?? null },
+            };
+          }
+          return next;
+        })
       );
       setEdits({});
       setSavedCount(items.length);
@@ -358,6 +458,13 @@ export function ZdSharedScopeSplitter({
   const busy = saving || loading;
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Escape" && selectionSet.size > 0) {
+      // Najpierw czyści zaznaczenie (także z pola szukania), dopiero kolejny Esc zamyka okno.
+      e.preventDefault();
+      e.stopPropagation();
+      clearSelection();
+      return;
+    }
     if (isTypingTarget(e.target) || e.altKey) return;
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a") {
       e.preventDefault();
@@ -365,13 +472,6 @@ export function ZdSharedScopeSplitter({
       return;
     }
     if (e.metaKey || e.ctrlKey) return;
-    if (e.key === "Escape" && selectionSet.size > 0) {
-      // Najpierw czyści zaznaczenie, dopiero kolejny Esc zamyka okno.
-      e.preventDefault();
-      e.stopPropagation();
-      clearSelection();
-      return;
-    }
     if (!selectionSet.size || busy) return;
     if (e.key === "0") {
       e.preventDefault();
@@ -399,7 +499,7 @@ export function ZdSharedScopeSplitter({
       onKeyDown={onKeyDown}
       aria-busy={busy || undefined}
     >
-      <div className="shrink-0 space-y-4 border-b border-slate-100 px-5 py-4 sm:px-6">
+      <div className="shrink-0 space-y-3 border-b border-slate-100 px-5 py-4 sm:px-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -412,23 +512,56 @@ export function ZdSharedScopeSplitter({
               <span className="text-xs tabular-nums text-slate-500">#{scope.scopeId}</span>
               <HelpHintBubble message={SPLIT_HELP} ariaLabel="Jak działa rozdzielanie" />
             </div>
-            <p className="mt-1 text-sm text-slate-500">
-              Wskaż, u którego dostawcy zamawiasz każdy towar. Zaznacz wiele wierszy i przypisz je naraz.
-            </p>
           </div>
-          {hasHistory ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              disabled={busy}
-              onClick={() => applyHistory()}
-              title="Każdy towar z historią ZD dostaje dostawcę, u którego zamawiasz go najczęściej"
-            >
-              Wszystkie wg historii ZD
-            </Button>
-          ) : null}
+          <div className="flex flex-wrap gap-2">
+            {alignablePairs > 0 ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={busy}
+                onClick={() => {
+                  touch();
+                  setEdits((prev) => zdSplitAlignPairs(all, prev, byTw));
+                }}
+                title="Sztuki dostają dostawcę paczki (paczka bez przypisania przejmuje dostawcę sztuk) - inaczej para nie znika u pozostałych dostawców"
+              >
+                Wyrównaj pary ({alignablePairs})
+              </Button>
+            ) : null}
+            {hasHistory ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={busy}
+                onClick={() => applyHistory()}
+                title="Każdy towar z historią ZD dostaje dostawcę, u którego zamawiasz go najczęściej"
+              >
+                Wszystkie wg historii ZD
+              </Button>
+            ) : null}
+          </div>
         </div>
+
+        {all.length > 0 ? (
+          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-4">
+            <div className="flex shrink-0 flex-wrap items-baseline gap-x-2 text-xs">
+              <span className="text-slate-600">
+                <span className="font-medium tabular-nums text-slate-900">{assignedCount}</span> z{" "}
+                <span className="tabular-nums">{all.length}</span> przypisanych
+                <span className="tabular-nums text-slate-500">
+                  {" "}
+                  ({Math.round((assignedCount / all.length) * 100)}%)
+                </span>
+              </span>
+              {changed.length > 0 ? <span className="text-slate-500">· z niezapisanymi</span> : null}
+            </div>
+            <div className="min-w-0 flex-1">
+              <PartitionBar segments={segments} total={all.length} />
+            </div>
+          </div>
+        ) : null}
 
         <div
           className="-mx-5 flex gap-1.5 overflow-x-auto px-5 [scrollbar-width:thin] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
@@ -444,6 +577,7 @@ export function ZdSharedScopeSplitter({
             onClick={() => changeFilter({ kind: "unassigned" })}
             title="Towary widoczne u wszystkich dostawców zakresu"
           >
+            <Swatch className={UNASSIGNED_SWATCH} />
             Bez przypisania
           </FilterChip>
           {options.map((o) => (
@@ -454,11 +588,33 @@ export function ZdSharedScopeSplitter({
               onClick={() => changeFilter({ kind: "supplier", supplierId: o.id })}
               title={o.name}
             >
-              <Kbd className="bg-white">{o.key}</Kbd>
+              <Swatch className={o.swatch} />
               {o.name}
+              <Kbd className="bg-white">{o.key}</Kbd>
             </FilterChip>
           ))}
-          {conflictCount > 0 ? (
+          {outsideCount > 0 || filter.kind === "outside" ? (
+            <FilterChip
+              active={filterIs({ kind: "outside" })}
+              count={outsideCount}
+              onClick={() => changeFilter({ kind: "outside" })}
+              title="Towary przypisane do dostawcy, który nie ma tego zakresu - nie pokażą się u żadnego z dostawców zakresu"
+            >
+              <Swatch className={OUTSIDE_SWATCH} />
+              Spoza zakresu
+            </FilterChip>
+          ) : null}
+          {pairMismatchCount > 0 || filter.kind === "pair" ? (
+            <FilterChip
+              active={filterIs({ kind: "pair" })}
+              count={pairMismatchCount}
+              onClick={() => changeFilter({ kind: "pair" })}
+              title="Pary paczka/sztuki z różnym dostawcą po obu stronach - para nie zniknie u pozostałych"
+            >
+              Niespójne pary
+            </FilterChip>
+          ) : null}
+          {conflictCount > 0 || filter.kind === "conflict" ? (
             <FilterChip
               active={filterIs({ kind: "conflict" })}
               count={conflictCount}
@@ -468,7 +624,7 @@ export function ZdSharedScopeSplitter({
               Inaczej niż w ZD
             </FilterChip>
           ) : null}
-          {changed.length > 0 ? (
+          {changed.length > 0 || filter.kind === "changed" ? (
             <FilterChip
               active={filterIs({ kind: "changed" })}
               count={changed.length}
@@ -479,7 +635,7 @@ export function ZdSharedScopeSplitter({
           ) : null}
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
           <label htmlFor={searchId} className="relative min-w-0 flex-1">
             <span className="sr-only">Szukaj towaru</span>
             <IconSearch
@@ -514,6 +670,19 @@ export function ZdSharedScopeSplitter({
               </button>
             ) : null}
           </label>
+          {(query.trim() || filter.kind !== "all") && visibleIds.length > 0 && !allVisibleSelected ? (
+            <Button type="button" size="sm" variant="ghost" className="shrink-0" onClick={toggleAllVisible}>
+              Zaznacz wyniki ({visibleIds.length})
+            </Button>
+          ) : null}
+          <SegmentedControl
+            ariaLabel="Sortowanie towarów"
+            density="compact"
+            value={sort}
+            onChange={setSort}
+            options={SORT_OPTIONS}
+            className="shrink-0 self-start sm:self-auto"
+          />
           <label className="inline-flex shrink-0 cursor-pointer items-center gap-2 text-sm text-slate-600">
             <input
               type="checkbox"
@@ -529,6 +698,7 @@ export function ZdSharedScopeSplitter({
             Także towary bez historii ZD
           </label>
         </div>
+
       </div>
 
       <div className="relative min-w-0 overflow-x-auto lg:min-h-0 lg:flex-1 lg:overflow-auto">
@@ -594,6 +764,7 @@ export function ZdSharedScopeSplitter({
                 const isSelected = selected.has(tw);
                 const outside =
                   value && !scope.supplierIds.includes(value) ? nameOf(value) : null;
+                const pairMismatch = zdSplitPairMismatch(p, edits, byTw);
                 const history = Object.entries(p.orderCountBySupplier)
                   .filter(([, n]) => n > 0)
                   .sort((a, b) => b[1] - a[1]);
@@ -637,6 +808,27 @@ export function ZdSharedScopeSplitter({
                             zmiana
                           </span>
                         ) : null}
+                        {p.pair ? (
+                          pairMismatch ? (
+                            <span
+                              className="shrink-0 rounded bg-amber-50 px-1 text-[11px] font-medium text-amber-900"
+                              title={`${p.pair.role === "pack" ? "Sztuki" : "Paczka"} ${
+                                p.pair.otherSymbol ?? `#${p.pair.otherTwId}`
+                              } ma innego dostawcę${
+                                byTw.has(p.pair.otherTwId) ? "" : " (towar spoza tej listy)"
+                              }. Para zniknie u pozostałych dopiero przy zgodnym wyborze.`}
+                            >
+                              para: {p.pair.otherSymbol ?? `#${p.pair.otherTwId}`} inaczej
+                            </span>
+                          ) : (
+                            <span
+                              className="shrink-0 rounded bg-slate-100 px-1 text-[11px] font-medium text-slate-600"
+                              title={`Para z ${p.pair.otherSymbol ?? `#${p.pair.otherTwId}`}`}
+                            >
+                              {p.pair.role === "pack" ? "paczka" : "sztuki"}
+                            </span>
+                          )
+                        ) : null}
                       </div>
                       <p className="truncate text-xs text-slate-500" title={p.twNazwa}>
                         {p.twNazwa || "-"}
@@ -674,6 +866,12 @@ export function ZdSharedScopeSplitter({
                         label={`Dostawca dla ${p.twSymbol ?? p.twNazwa}`}
                         onPick={(sid) => assign([tw], sid)}
                       />
+                      {p.assignedAt && !isChanged ? (
+                        <p className="mt-1 text-[11px] tabular-nums text-slate-500">
+                          zapisane {formatPlDate(p.assignedAt)}
+                          {p.assignedBy ? ` · ${p.assignedBy}` : ""}
+                        </p>
+                      ) : null}
                     </td>
                   </tr>
                 );
@@ -748,8 +946,29 @@ export function ZdSharedScopeSplitter({
             </Button>
           </div>
         ) : (
-          <p className={cn("text-xs leading-relaxed text-slate-500", savedCount == null && "hidden sm:block")}>
-            {savedCount != null && changed.length === 0 ? (
+          <p
+            className={cn(
+              "min-w-0 text-xs leading-relaxed text-slate-500",
+              savedCount == null && changed.length === 0 && "hidden sm:block"
+            )}
+          >
+            {changed.length > 0 ? (
+              <span className="text-slate-600">
+                Po zapisie:{" "}
+                {impact.length === 0 ? (
+                  <span className="text-slate-500">liczby bez zmian - towary zamieniają się między dostawcami</span>
+                ) : null}
+                {impact.map((row, i) => (
+                  <span key={row.value || "none"} className="whitespace-nowrap">
+                    {i > 0 ? <span className="text-slate-300"> · </span> : null}
+                    {impactLabel(row.value)}{" "}
+                    <span className="tabular-nums text-slate-500">{row.before}</span>
+                    <span className="text-slate-400"> → </span>
+                    <span className="font-medium tabular-nums text-slate-900">{row.after}</span>
+                  </span>
+                ))}
+              </span>
+            ) : savedCount != null ? (
               <span className="font-medium text-emerald-700">
                 Zapisano {savedCount} {plWord(savedCount, "zmianę", "zmiany", "zmian")} - działa od kolejnego „Policz”.
               </span>

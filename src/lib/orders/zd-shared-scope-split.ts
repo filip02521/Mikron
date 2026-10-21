@@ -15,7 +15,17 @@ export type ZdSplitFilter =
   | { kind: "changed" }
   /** Wybór różny od podpowiedzi z historii ZD. */
   | { kind: "conflict" }
+  /** Para paczka/sztuka z różnym wyborem po obu stronach. */
+  | { kind: "pair" }
+  /** Przypisane do dostawcy, który nie dzieli tego zakresu. */
+  | { kind: "outside" }
   | { kind: "supplier"; supplierId: string };
+
+/** Dane zakresu potrzebne części filtrów (pary, dostawcy spoza zakresu). */
+export type ZdSplitContext = {
+  byTw: ReadonlyMap<number, ZdSharedScopeProduct>;
+  scopeSupplierIds: readonly string[];
+};
 
 export function zdSplitDraftFrom(products: readonly ZdSharedScopeProduct[]): Record<number, string> {
   return Object.fromEntries(products.map((p) => [p.subiektTwId, p.assignedSupplierId ?? ""]));
@@ -44,7 +54,8 @@ function matchesQuery(p: ZdSharedScopeProduct, q: string): boolean {
 export function zdSplitMatches(
   p: ZdSharedScopeProduct,
   draft: ZdSplitDraft,
-  filter: ZdSplitFilter
+  filter: ZdSplitFilter,
+  ctx?: ZdSplitContext
 ): boolean {
   const value = zdSplitValue(draft, p);
   switch (filter.kind) {
@@ -58,6 +69,10 @@ export function zdSplitMatches(
       return p.suggestedSupplierId != null && value !== p.suggestedSupplierId;
     case "supplier":
       return value === filter.supplierId;
+    case "pair":
+      return ctx ? zdSplitPairMismatch(p, draft, ctx.byTw) : false;
+    case "outside":
+      return ctx ? value !== "" && !ctx.scopeSupplierIds.includes(value) : false;
   }
 }
 
@@ -65,10 +80,11 @@ export function zdSplitVisible(
   products: readonly ZdSharedScopeProduct[],
   draft: ZdSplitDraft,
   filter: ZdSplitFilter,
-  query: string
+  query: string,
+  ctx?: ZdSplitContext
 ): ZdSharedScopeProduct[] {
   const q = query.trim().toLowerCase();
-  return products.filter((p) => matchesQuery(p, q) && zdSplitMatches(p, draft, filter));
+  return products.filter((p) => matchesQuery(p, q) && zdSplitMatches(p, draft, filter, ctx));
 }
 
 /** Liczba towarów per wybór ("" = bez przypisania). */
@@ -156,4 +172,119 @@ export function zdSplitShortName(name: string, max = 18): string {
   }
   // „Hager &” albo „Dental -” urwane na łączniku czyta się gorzej niż samo pierwsze słowo.
   return out.replace(/\s+(&|\+|-|i|and|und)$/i, "");
+}
+
+export type ZdSplitSort = "symbol" | "orders" | "recent";
+
+function totalOrders(p: ZdSharedScopeProduct): number {
+  let n = 0;
+  for (const v of Object.values(p.orderCountBySupplier)) n += v > 0 ? v : 0;
+  return n;
+}
+
+/** Sortowanie listy: symbol rosnąco, liczba ZD malejąco, ostatnie ZD od najnowszego. */
+export function zdSplitSorted(
+  products: readonly ZdSharedScopeProduct[],
+  sort: ZdSplitSort
+): ZdSharedScopeProduct[] {
+  const bySymbol = (a: ZdSharedScopeProduct, b: ZdSharedScopeProduct) =>
+    (a.twSymbol ?? "").localeCompare(b.twSymbol ?? "", "pl") || a.subiektTwId - b.subiektTwId;
+  const out = [...products];
+  if (sort === "orders") out.sort((a, b) => totalOrders(b) - totalOrders(a) || bySymbol(a, b));
+  else if (sort === "recent")
+    out.sort(
+      (a, b) =>
+        (b.lastOrderAt ? Date.parse(b.lastOrderAt) : 0) - (a.lastOrderAt ? Date.parse(a.lastOrderAt) : 0) ||
+        bySymbol(a, b)
+    );
+  else out.sort(bySymbol);
+  return out;
+}
+
+export type ZdSplitImpactRow = { value: string; before: number; after: number };
+
+/**
+ * Skutek zapisu per wybór ("" = bez przypisania): ile towarów było i ile będzie.
+ * Tylko wiersze, które się zmieniają.
+ */
+export function zdSplitImpact(
+  products: readonly ZdSharedScopeProduct[],
+  draft: ZdSplitDraft
+): ZdSplitImpactRow[] {
+  const before = new Map<string, number>();
+  const after = new Map<string, number>();
+  for (const p of products) {
+    const b = p.assignedSupplierId ?? "";
+    const a = zdSplitValue(draft, p);
+    before.set(b, (before.get(b) ?? 0) + 1);
+    after.set(a, (after.get(a) ?? 0) + 1);
+  }
+  const keys = new Set([...before.keys(), ...after.keys()]);
+  return [...keys]
+    .map((value) => ({ value, before: before.get(value) ?? 0, after: after.get(value) ?? 0 }))
+    .filter((r) => r.before !== r.after);
+}
+
+/**
+ * Wybór drugiej strony pary paczka/sztuka: ze szkicu, gdy jest na liście,
+ * inaczej zapisane przypisanie. Para znika u innych dostawców tylko przy zgodnym wyborze.
+ */
+export function zdSplitPairMismatch(
+  p: ZdSharedScopeProduct,
+  draft: ZdSplitDraft,
+  byTw: ReadonlyMap<number, ZdSharedScopeProduct>
+): boolean {
+  if (!p.pair) return false;
+  const other = byTw.get(p.pair.otherTwId);
+  const otherValue = other ? zdSplitValue(draft, other) : (p.pair.otherAssignedSupplierId ?? "");
+  return zdSplitValue(draft, p) !== otherValue;
+}
+
+/** Liczba niespójnych par (para liczona raz, nawet gdy obie strony są na liście). */
+export function zdSplitPairMismatchCount(
+  products: readonly ZdSharedScopeProduct[],
+  draft: ZdSplitDraft,
+  byTw: ReadonlyMap<number, ZdSharedScopeProduct>
+): number {
+  const keys = new Set<number>();
+  for (const p of products) {
+    if (!p.pair || !zdSplitPairMismatch(p, draft, byTw)) continue;
+    keys.add(p.pair.role === "pack" ? p.subiektTwId : p.pair.otherTwId);
+  }
+  return keys.size;
+}
+
+/** Pary z obiema stronami na liście i różnym wyborem — tylko te da się wyrównać tutaj. */
+export function zdSplitAlignablePairs(
+  products: readonly ZdSharedScopeProduct[],
+  draft: ZdSplitDraft,
+  byTw: ReadonlyMap<number, ZdSharedScopeProduct>
+): number {
+  return products.filter(
+    (p) => p.pair?.role === "pack" && byTw.has(p.pair.otherTwId) && zdSplitPairMismatch(p, draft, byTw)
+  ).length;
+}
+
+/**
+ * Wyrównanie par z obiema stronami na liście. Paczkę kupujemy na ZD, więc jej wybór
+ * wygrywa; paczka bez przypisania przejmuje dostawcę sztuk (nie kasujemy decyzji).
+ */
+export function zdSplitAlignPairs(
+  products: readonly ZdSharedScopeProduct[],
+  draft: ZdSplitDraft,
+  byTw: ReadonlyMap<number, ZdSharedScopeProduct>
+): Record<number, string> {
+  const next: Record<number, string> = { ...draft };
+  for (const pack of products) {
+    if (pack.pair?.role !== "pack") continue;
+    const piece = byTw.get(pack.pair.otherTwId);
+    if (!piece) continue;
+    // Wartości ze szkicu wejściowego — wynik nie zależy od kolejności par.
+    const packValue = zdSplitValue(draft, pack);
+    const pieceValue = zdSplitValue(draft, piece);
+    if (packValue === pieceValue) continue;
+    if (packValue) next[piece.subiektTwId] = packValue;
+    else next[pack.subiektTwId] = pieceValue;
+  }
+  return next;
 }
