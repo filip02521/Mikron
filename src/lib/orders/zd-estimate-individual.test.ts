@@ -91,6 +91,18 @@ describe("overlapContributions w buildIndividualEstimateExtras", () => {
 });
 
 describe("matchZdEstimateTwFromOrder", () => {
+  it("przypięty towar bez symbolu wygrywa z kodem innego towaru w nazwie", () => {
+    const bySymbol = new Map([["fr-01", 111], ["ab123", 222]]);
+    const byTw = new Map([
+      [111, { tw_Id: 111, tw_Symbol: "FR-01" }],
+      [222, { tw_Id: 222, tw_Symbol: "AB123" }],
+    ]);
+    const o = pending({ id: "p", products: "Frez diamentowy AB123", subiektTwId: 111 });
+    expect(matchZdEstimateTwFromOrder(o, bySymbol, new Map(), byTw)).toBe(111);
+    // bez przypiętego towaru kod z nazwy nadal działa
+    expect(matchZdEstimateTwFromOrder({ ...o, subiektTwId: null }, bySymbol, new Map(), byTw)).toBe(222);
+  });
+
   it("kolejność: symbol > PLU > subiektTwId; bez firstToken", () => {
     const bySymbol = new Map([
       ["ivoclar", 111],

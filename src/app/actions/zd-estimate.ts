@@ -397,6 +397,10 @@ export type ZdEstimateRunResult =
       assignedElsewhere?: import("@/lib/orders/zd-order-engine").ZdOrderAssignedElsewhere[];
       /** tw → dostawca ostatniego ZD, gdy inny niż liczony (podpowiedź). */
       otherSupplierHintByTwId?: Record<number, string>;
+      /** tw → wiszące prośby na ten towar u innego dostawcy (podpowiedź). */
+      prosbyElsewhereByTwId?: Record<number, import("@/lib/data/zd-scope-order").ZdProsbaElsewhere[]>;
+      /** Prośby dostawcy w Weryfikacji (poza Kreatorem); null = nie policzono. */
+      incompleteProsbyCount?: number | null;
       /** Rozbicie horyzontu, gdy opcja czasu dostawy była zaznaczona. */
       horizon?: import("@/lib/orders/zd-order-horizon").ZdOrderHorizon | null;
       /** Czas dostawy dostawcy (dni) — także bez opcji horyzontu; kreska w „Starczy”. */
@@ -2031,6 +2035,8 @@ export async function actionRunZdEstimateManual(
       scopesIncluded: engine.scopesIncluded,
       assignedElsewhere: engine.assignedElsewhere,
       otherSupplierHintByTwId: engine.otherSupplierHintByTwId,
+      prosbyElsewhereByTwId: engine.prosbyElsewhereByTwId,
+      incompleteProsbyCount: engine.incompleteProsbyCount,
       horizon: appliedHorizon,
       leadDays,
       orderPolicy: engine.orderPolicy,

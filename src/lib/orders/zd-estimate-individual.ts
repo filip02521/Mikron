@@ -227,7 +227,8 @@ export function matchZdEstimateTwFromOrder(
   if (mikranHit != null && mikranHit > 0) return mikranHit;
 
   // Kod z nazwy tylko gdy wygląda jak SKU (litery+cyfry) i trafia dokładnie 1 symbol.
-  if (!explicitSym) {
+  // Przypięty towar z Subiekta jest pewniejszy niż zgadywanie z opisu — kod z nazwy go nie nadpisuje.
+  if (!explicitSym && storedTw == null) {
     const fromName = extractAlphanumericProductCodeFromName(
       order.products ?? ""
     );

@@ -226,7 +226,9 @@ export function ZdEstimateProductCard({
   const decision = status.excluded
     ? "Wykluczony z ZD"
     : shownUnits <= 0
-      ? "Nic do zamówienia"
+      ? (qty.prosbaFromSupplyPieces ?? 0) > 0
+        ? "Nic do zamówienia — prośbę wydaj z magazynu"
+        : "Nic do zamówienia"
       : shownUnits !== qty.zdUnits
         ? `Na ZD: ${formatQty(shownUnits)} ${qty.hasPackaging && isPackagingPackagesMode(qty.documentUnitMode) ? `× ${label}` : "szt"} (wpisane ręcznie)`
         : (preview?.orderLine ?? `Na ZD: ${formatQty(shownUnits)} szt`);

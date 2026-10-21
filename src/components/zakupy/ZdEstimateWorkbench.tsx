@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import {
   Fragment,
   useCallback,
@@ -97,6 +98,7 @@ import {
   type ZdEstimateScopeCoverage,
 } from "@/lib/orders/zd-estimate-scope-coverage";
 import type { ZdEstimateExclusionRow } from "@/lib/data/zd-estimate-exclusions";
+import type { ZdProsbaElsewhere } from "@/lib/data/zd-scope-order";
 import type { ZdEstimateOnRequestRow } from "@/lib/data/zd-estimate-on-request";
 import type { ZdEstimatePackagingRow } from "@/lib/data/zd-estimate-packaging";
 import type { ZdEstimateMinStockRow } from "@/lib/data/zd-estimate-min-stock";
@@ -1136,6 +1138,10 @@ export function ZdEstimateWorkbench({
     scopesIncluded: ZdOrderScopeIncluded[];
     assignedElsewhere: ZdOrderAssignedElsewhere[];
     otherSupplierHintByTwId: Record<number, string>;
+    /** tw → wiszące prośby na ten towar u innego dostawcy. */
+    prosbyElsewhereByTwId?: Record<number, ZdProsbaElsewhere[]>;
+    /** Prośby dostawcy w Weryfikacji (poza Kreatorem); null = nie policzono. */
+    incompleteProsbyCount?: number | null;
     /** Rozbicie horyzontu, gdy Policz liczył z czasem dostawy. */
     horizon: ZdOrderHorizon | null;
     /** Czas dostawy dostawcy (dni) z Policz — kreska w kolumnie „Starczy”. */
@@ -4097,6 +4103,8 @@ export function ZdEstimateWorkbench({
           scopesIncluded: res.scopesIncluded ?? [],
           assignedElsewhere: res.assignedElsewhere ?? [],
           otherSupplierHintByTwId: res.otherSupplierHintByTwId ?? {},
+          prosbyElsewhereByTwId: res.prosbyElsewhereByTwId ?? {},
+          incompleteProsbyCount: res.incompleteProsbyCount ?? null,
           horizon: res.horizon ?? null,
           leadDays: res.leadDays ?? null,
           // Strategia nie wygładza, ale bez profilu traci podłogę 90 d — awarię pokazujemy zawsze.
@@ -6731,6 +6739,19 @@ export function ZdEstimateWorkbench({
         </ZdEstimateNotice>
       ) : null}
 
+      {(policzScopeInfo?.incompleteProsbyCount ?? 0) > 0 ? (
+        <ZdEstimateNotice
+          tray
+          tone="info"
+          title={`${policzScopeInfo!.incompleteProsbyCount} ${polishPluralWord(policzScopeInfo!.incompleteProsbyCount!, "prośba czeka", "prośby czekają", "próśb czeka")} na uzupełnienie`}
+        >
+          Brakuje ilości albo opisu produktu, więc nie wchodzą do tej listy.{" "}
+          <Link href="/weryfikacja" className="font-medium underline underline-offset-2">
+            Otwórz Weryfikację
+          </Link>
+        </ZdEstimateNotice>
+      ) : null}
+
       {pendingIndividualsTruncated ? (
         <ZdEstimateNotice tray tone="warning" title="Limit 500 próśb">
           Wczytano pierwsze 500 próśb Nowe - możliwe, że część nie weszła do
@@ -8020,6 +8041,7 @@ export function ZdEstimateWorkbench({
                           onOverrideChange={handleRowOverrideChange}
                           onAcceptReview={handleRowAcceptReview}
                           otherSupplierHint={policzScopeInfo?.otherSupplierHintByTwId[l.tw_Id] ?? null}
+                          prosbyElsewhere={policzScopeInfo?.prosbyElsewhereByTwId?.[l.tw_Id] ?? null}
                           unitPriceNet={unitPriceByTwId[l.tw_Id] ?? null}
                         />
                       );

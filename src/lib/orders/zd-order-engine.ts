@@ -74,8 +74,11 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { listZdEstimateSupplierScopesFor } from "@/lib/data/zd-estimate-supplier-scopes";
 import {
+  countIncompleteProsbyForSupplier,
   loadLastZdSupplierByTwIds,
+  loadProsbyElsewhereByTwIds,
   loadZdProductAssignments,
+  type ZdProsbaElsewhere,
 } from "@/lib/data/zd-scope-order";
 import {
   fetchSubiektZdEstimateAll,
@@ -492,6 +495,10 @@ export type ZdOrderEngineOutput = {
   assignedElsewhere: ZdOrderAssignedElsewhere[];
   /** tw → nazwa dostawcy z ostatniego ZD, gdy inny niż liczony. */
   otherSupplierHintByTwId: Record<number, string>;
+  /** tw → wiszące prośby na ten towar przypisane innemu dostawcy (podpowiedź). */
+  prosbyElsewhereByTwId: Record<number, ZdProsbaElsewhere[]>;
+  /** Prośby tego dostawcy w Weryfikacji — poza Kreatorem do uzupełnienia; null = nie udało się policzyć. */
+  incompleteProsbyCount: number | null;
   fetch: { pagesFetched: number; totalCountApi: number; truncated: boolean };
   historyByTwId: Map<number, { lastOrderedQty: number; linkedAt: string }> | null;
   historyFetchFailed: boolean;
@@ -1350,17 +1357,23 @@ export async function runZdOrderEngine(
     }
   }
 
-  // Podpowiedź: ostatnie ZD na ten towar było u innego dostawcy.
+  // Podpowiedzi (bez nich lista działa): ostatnie ZD u innego dostawcy, prośby na te towary
+  // przypisane innemu dostawcy, prośby tego dostawcy czekające na uzupełnienie.
   const otherSupplierHintByTwId: Record<number, string> = {};
+  const prosbyElsewhereByTwId: Record<number, ZdProsbaElsewhere[]> = {};
+  let incompleteProsbyCount: number | null = null;
   if (input.supplierId) {
-    try {
-      const last = await loadLastZdSupplierByTwIds(result.pozycje.map((p) => p.tw_Id));
-      for (const [tw, hit] of last) {
-        if (hit.supplierId !== input.supplierId) otherSupplierHintByTwId[tw] = hit.supplierName;
-      }
-    } catch {
-      // Tylko podpowiedź — bez niej lista działa.
+    const supplierId = input.supplierId;
+    const [last, elsewhere, incomplete] = await Promise.all([
+      loadLastZdSupplierByTwIds(result.pozycje.map((p) => p.tw_Id)).catch(() => null),
+      loadProsbyElsewhereByTwIds({ supplierId, lines: result.pozycje }).catch(() => null),
+      countIncompleteProsbyForSupplier(supplierId).catch(() => null),
+    ]);
+    for (const [tw, hit] of last ?? []) {
+      if (hit.supplierId !== supplierId) otherSupplierHintByTwId[tw] = hit.supplierName;
     }
+    for (const [tw, list] of elsewhere ?? []) prosbyElsewhereByTwId[tw] = list;
+    incompleteProsbyCount = incomplete;
   }
 
   const hardBase = mergeZdEstimateExcludedTwIds(
@@ -1486,6 +1499,8 @@ export async function runZdOrderEngine(
     scopesIncluded,
     assignedElsewhere,
     otherSupplierHintByTwId,
+    prosbyElsewhereByTwId,
+    incompleteProsbyCount,
     fetch: {
       pagesFetched: fetched.pagesFetched,
       totalCountApi: fetched.totalCountApi,

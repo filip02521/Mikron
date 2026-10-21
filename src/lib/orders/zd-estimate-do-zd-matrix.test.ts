@@ -375,7 +375,8 @@ describe("Do ZD - własny source_zk nie zeruje prośby", () => {
     expect(
       zdUnits({
         cel: 0,
-        dostepne: 10,
+        // Bez wolnego towaru — wolny stan pokrywa prośbę (osobne testy wolnego towaru).
+        dostepne: 0,
         rawExtra: 3,
         overlap: 0,
         extraOnly: true,
@@ -387,7 +388,7 @@ describe("Do ZD - własny source_zk nie zeruje prośby", () => {
 describe("Do ZD - orderable przy full overlap + extraOnly", () => {
   it("linia widoczna i Do ZD = 3 (need=0 → overlap nie zeruje prośby)", () => {
     const lines = [
-      soloLine({ twId: 50, cel: 0, dostepne: 7, stanRez: 3 }),
+      soloLine({ twId: 50, cel: 0, dostepne: 0, stanRez: 3 }),
     ];
     const byTw = new Map([
       [
