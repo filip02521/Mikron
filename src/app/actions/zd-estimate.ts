@@ -125,7 +125,7 @@ import {
   excludeConsumedPendingOrders,
   type ZdPostCreateSession,
 } from "@/lib/orders/zd-estimate-post-create";
-import { buildZdCreateInputFromAutoProposal } from "@/lib/orders/zd-auto-proposal-create";
+import { applyZdAutoProposalEdits, buildZdCreateInputFromAutoProposal } from "@/lib/orders/zd-auto-proposal-create";
 import { isSupplierOrderOnDemand } from "@/lib/orders/supplier-on-demand";
 import { dateToIso, resolveSupplierInterval } from "@/lib/orders/dates";
 import { todayInWarsaw } from "@/lib/time/warsaw";
@@ -1504,6 +1504,8 @@ const acceptingProposalIds = new Set<string>();
 export async function actionAcceptZdAutoProposal(input: {
   supplierId: string;
   proposalId: string;
+  /** Korekty z panelu: twId → jednostki ZD (0 = usuń); tylko towary z propozycji. */
+  edits?: Record<string, number> | null;
 }): Promise<
   | { ok: true; session: ZdPostCreateSession }
   | { ok: false; message: string; title?: string }
@@ -1534,8 +1536,10 @@ export async function actionAcceptZdAutoProposal(input: {
       fetchTeethProductTwIdSet(),
       createAdminClient().from("suppliers").select("name").eq("id", supplierId).maybeSingle(),
     ]);
+    const edited = applyZdAutoProposalEdits(proposal.lines, input.edits);
+    if (!edited.ok) return { ok: false, message: edited.message };
     const built = buildZdCreateInputFromAutoProposal({
-      lines: proposal.lines,
+      lines: edited.lines,
       scope,
       pendingOrders: pending.orders,
       pairs,
@@ -1579,7 +1583,7 @@ export async function actionAcceptZdAutoProposal(input: {
         lineCount: res.lineCount,
         snapshotOk: res.snapshotOk,
         snapshotMessage: res.snapshotMessage,
-        previewLines: proposal.lines.map((l) => ({
+        previewLines: edited.lines.map((l) => ({
           twId: l.twId,
           symbol: l.symbol,
           nazwa: l.nazwa,

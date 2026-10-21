@@ -84,3 +84,32 @@ export function diffZdAutoProposalLines(
   for (const b of prev.values()) out.push({ line: b, change: "removed", beforeUnits: b.zdUnits });
   return out;
 }
+
+/** Najwyżej tyle jednostek ZD na pozycję w korekcie — literówka (dopisane zero) nie trafi do Subiekta. */
+export const ZD_AUTO_PROPOSAL_EDIT_MAX_UNITS = 9999;
+
+/**
+ * Korekty z panelu (twId → jednostki ZD, 0 = usuń). Tylko towary z propozycji — nic spoza listy
+ * nie wchodzi tą drogą; sztuki przeliczane w tej samej proporcji co w propozycji.
+ */
+export function applyZdAutoProposalEdits(
+  lines: readonly ZdAutoProposalLine[],
+  edits: Readonly<Record<string, number>> | null | undefined
+): { ok: true; lines: ZdAutoProposalLine[] } | { ok: false; message: string } {
+  if (!edits) return { ok: true, lines: [...lines] };
+  const known = new Set(lines.map((l) => String(l.twId)));
+  for (const [key, value] of Object.entries(edits)) {
+    if (!known.has(key)) return { ok: false, message: "Korekta dotyczy towaru spoza propozycji - przelicz ją ponownie." };
+    if (!Number.isInteger(value) || value < 0 || value > ZD_AUTO_PROPOSAL_EDIT_MAX_UNITS) {
+      return { ok: false, message: `Nieprawidłowa ilość w korekcie (0–${ZD_AUTO_PROPOSAL_EDIT_MAX_UNITS}).` };
+    }
+  }
+  const out = lines.flatMap((l) => {
+    const v = edits[String(l.twId)];
+    if (v == null) return [l];
+    if (v === 0) return [];
+    const perUnit = l.zdUnits > 0 ? l.pieces / l.zdUnits : 1;
+    return [{ ...l, zdUnits: v, pieces: Math.round(v * perUnit * 1000) / 1000 }];
+  });
+  return { ok: true, lines: out };
+}

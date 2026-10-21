@@ -10,7 +10,7 @@ import { IconPackageCheck } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
 import { fieldControlClass } from "@/components/ui/Field";
 import { PageAttentionStrip, PageAttentionStripCta } from "@/components/ui/PageAttentionStrip";
-import { ZdAutoProposalAcceptDialog } from "@/components/zakupy/ZdAutoProposalAcceptDialog";
+import { ZdAutoProposalSheet } from "@/components/zakupy/ZdAutoProposalSheet";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 import { ModalShell } from "@/components/ui/ModalShell";
 import type { ZdAutoProposal } from "@/lib/data/zd-auto-proposals";
@@ -256,7 +256,7 @@ export function ZdAutoProposalBanner({
       ) : null}
 
       {accepting ? (
-        <ZdAutoProposalAcceptDialog
+        <ZdAutoProposalSheet
           supplierId={supplierId}
           supplierName={supplierName}
           morning={latest}

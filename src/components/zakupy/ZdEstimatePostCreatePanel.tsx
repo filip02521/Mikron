@@ -65,6 +65,24 @@ import {
   controlFocusClass,
 } from "@/lib/ui/ontime-theme";
 
+/**
+ * Panel po utworzeniu bez okna — w panelu bocznym propozycji ZD (tytuł, treść i stopka w miejscu).
+ * Te same właściwości co ModalShell, żeby podmiana była jedną linią.
+ */
+function InlineShell({ title, titleId, footer, children }: React.ComponentProps<typeof ModalShell>) {
+  return (
+    <section aria-labelledby={titleId} className="space-y-4">
+      {title ? (
+        <h3 id={titleId} className="text-base font-semibold text-slate-900">
+          {title}
+        </h3>
+      ) : null}
+      <div className="space-y-4">{children}</div>
+      {footer ? <div className="border-t border-slate-100 pt-4">{footer}</div> : null}
+    </section>
+  );
+}
+
 export function ZdEstimatePostCreatePanel({
   session,
   createLocked = false,
@@ -77,8 +95,11 @@ export function ZdEstimatePostCreatePanel({
   onUndoMark,
   previewOnly = false,
   sendSimulation = null,
+  embedded = false,
 }: {
   session: ZdPostCreateSession;
+  /** W panelu bocznym propozycji ZD: bez własnego okna. */
+  embedded?: boolean;
   /** Harness UI (e2e-lab): bez zapisów — Główne / plan / cofnij nic nie wysyłają. */
   previewOnly?: boolean;
   /** Laboratorium: przebieg wysyłki na niby (tylko z previewOnly). */
@@ -304,6 +325,7 @@ export function ZdEstimatePostCreatePanel({
     };
   }, [session.supplierId, session.scheduleDone, session.createdAtMs]);
 
+  const Shell = embedded ? InlineShell : ModalShell;
   const title =
     session.kind === "linked"
       ? ZD_ESTIMATE_UI.postCreateTitleLinked
@@ -525,7 +547,7 @@ export function ZdEstimatePostCreatePanel({
         {tsvError ? "Kopiowanie TSV nie powiodło się. " : null}
         {tsvCopied ? "TSV skopiowano. " : null}
       </div>
-      <ModalShell
+      <Shell
         open
         onClose={onDismiss}
         title={title}
@@ -825,7 +847,7 @@ export function ZdEstimatePostCreatePanel({
           lines={orderPreviewRowsFromSnap(session.linesSnapshot)}
           compact
         />
-      </ModalShell>
+      </Shell>
 
       <SupplierDrawer
         mode="preview"

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ZdAutoProposalLine } from "@/lib/data/zd-auto-proposals";
 import type { ZdEstimatePendingIndividualOrder } from "@/lib/orders/zd-estimate-individual";
-import { buildZdCreateInputFromAutoProposal, diffZdAutoProposalLines } from "./zd-auto-proposal-create";
+import { applyZdAutoProposalEdits, buildZdCreateInputFromAutoProposal, diffZdAutoProposalLines } from "./zd-auto-proposal-create";
 
 const line = (twId: number, zdUnits: number, symbol = `S${twId}`): ZdAutoProposalLine => ({
   twId, symbol, nazwa: `Towar ${twId}`, zdUnits, pieces: zdUnits, unitLabel: "szt", priceNet: null, prosbaPieces: 0, floor: false,
@@ -57,5 +57,19 @@ describe("diffZdAutoProposalLines", () => {
       [4, "added", null],
       [3, "removed", 1],
     ]);
+  });
+});
+
+describe("applyZdAutoProposalEdits", () => {
+  const pack = { ...line(2, 2), pieces: 200, unitLabel: "op." };
+  it("zmienia ilość (sztuki w proporcji), 0 usuwa, reszta bez zmian", () => {
+    const r = applyZdAutoProposalEdits([line(1, 3), pack, line(3, 1)], { "2": 5, "3": 0 });
+    expect(r.ok && r.lines.map((l) => [l.twId, l.zdUnits, l.pieces])).toEqual([[1, 3, 3], [2, 5, 500]]);
+  });
+  it("odrzuca towar spoza propozycji i złą ilość", () => {
+    expect(applyZdAutoProposalEdits([line(1, 3)], { "9": 1 }).ok).toBe(false);
+    expect(applyZdAutoProposalEdits([line(1, 3)], { "1": 1.5 }).ok).toBe(false);
+    expect(applyZdAutoProposalEdits([line(1, 3)], { "1": -1 }).ok).toBe(false);
+    expect(applyZdAutoProposalEdits([line(1, 3)], { "1": 100000 }).ok).toBe(false);
   });
 });
