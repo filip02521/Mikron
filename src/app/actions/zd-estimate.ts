@@ -1382,6 +1382,7 @@ async function acceptPendingAutoProposal(input: {
   createLines: ReadonlyArray<{ twId: number; ilosc: number }>;
   userId: string;
 }): Promise<void> {
+  if (!UUID_RE.test(input.supplierId)) return;
   try {
     const latest = await fetchLatestZdAutoProposal(input.supplierId);
     if (!latest) return;
@@ -1409,7 +1410,7 @@ async function acceptPendingAutoProposal(input: {
       finalLines,
     });
   } catch (e) {
-    console.warn("[zd-auto-proposal] akceptacja po ZD", input.supplierId, e);
+    console.warn("[zd-auto-proposal] akceptacja po ZD", input.supplierId.replace(/[\r\n]/g, ""), e);
   }
 }
 
