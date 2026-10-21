@@ -156,7 +156,7 @@ export function BoardQuestionAttachmentsGallery({
                 onClick={() => setZoomIndex(index)}
                 className={cn(
                   thumbClass,
-                  "group block cursor-zoom-in transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40"
+                  "group block cursor-zoom-in transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
                 )}
                 title="Powiększ zdjęcie"
                 aria-label={`Powiększ zdjęcie ${index + 1}`}

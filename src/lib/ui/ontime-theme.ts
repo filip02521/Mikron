@@ -55,7 +55,7 @@ export const navLinkIdleClass = cn(
 
 /** Sidebar — nagłówek grupy nawigacji. */
 export const sidebarNavSectionTitleClass =
-  "px-3 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500";
+  "px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500";
 
 /** Sidebar — separator między grupami (subtelny). */
 export const sidebarNavSectionDividerClass = "mt-2.5 pt-2.5";
@@ -137,7 +137,7 @@ export function roleBadgeClass(role: string): string {
 
 /** Karty treści — cień zbliżony do karty na logowaniu */
 export const surfaceCardClass =
-  "rounded-md border border-slate-200/80 bg-[var(--card)] shadow-[var(--shadow-card-elevated)]";
+  "rounded-[var(--radius-panel)] border border-slate-200 bg-[var(--card)] shadow-[var(--shadow-card-elevated)]";
 
 /** Przycisk primary — pełny petrol, ciemniejszy przy hover/active. */
 export const buttonPrimaryClass =
@@ -536,7 +536,7 @@ export const mojeControlHeightClass = "min-h-11 sm:h-10 sm:min-h-10";
 /** Drugorzędny przycisk / chip akcji na /moje. */
 export const mojeSecondaryControlClass = cn(
   "inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm transition",
-  "hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500",
+  "hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600",
   "disabled:cursor-not-allowed disabled:opacity-50",
   mojeControlHeightClass
 );
@@ -545,7 +545,7 @@ export const mojeSecondaryControlClass = cn(
 export const mojePickupControlClass = cn(
   "inline-flex min-w-[4.75rem] items-center justify-center rounded-md border border-emerald-200/90 bg-emerald-50/90 px-2.5 py-0 text-center text-xs font-semibold leading-none text-emerald-800 shadow-sm transition sm:min-w-[4.5rem]",
   "hover:border-emerald-300 hover:bg-emerald-100 active:bg-emerald-100/90 disabled:cursor-not-allowed disabled:opacity-50",
-  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500/40",
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600",
   mojeControlHeightClass
 );
 
@@ -553,7 +553,7 @@ export const mojePickupControlClass = cn(
 export const mojeLinePickupAckClass = cn(
   "inline-flex w-full min-w-0 items-center justify-center rounded-md border border-emerald-200/90 bg-white px-2 py-2 text-center text-[11px] font-semibold leading-snug text-emerald-800 shadow-sm transition sm:text-xs",
   "hover:border-emerald-300 hover:bg-emerald-50 active:bg-emerald-100/90 disabled:cursor-not-allowed disabled:opacity-50",
-  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500/40",
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600",
   "min-h-9 sm:min-h-10"
 );
 
@@ -561,14 +561,14 @@ export const mojeLinePickupAckClass = cn(
 export const mojeBulkPickupAckClass = cn(
   "inline-flex w-full min-h-10 items-center justify-center rounded-md border border-emerald-600 bg-emerald-600 px-4 text-center text-xs font-semibold leading-none text-white shadow-sm transition",
   "hover:border-emerald-700 hover:bg-emerald-700 active:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50",
-  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500/50 sm:w-auto sm:min-w-[10.5rem]"
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:w-auto sm:min-w-[10.5rem]"
 );
 
 /** Potwierdzenie powiadomienia informacyjnego od magazynu. */
 export const mojeInformacjaAckControlClass = cn(
   "inline-flex items-center justify-center gap-0.5 rounded-md border border-violet-200/90 bg-violet-50/90 px-3 text-xs font-semibold text-violet-800 shadow-sm transition",
   "hover:border-violet-300 hover:bg-violet-100 active:bg-violet-100/90 disabled:cursor-not-allowed disabled:opacity-50",
-  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500/40",
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600",
   mojeControlHeightClass
 );
 
@@ -576,7 +576,7 @@ export const mojeInformacjaAckControlClass = cn(
 export const mojeCancelAckControlClass = cn(
   "inline-flex items-center justify-center gap-0.5 rounded-md border border-amber-200/90 bg-amber-50/90 px-3 text-xs font-semibold text-amber-900 shadow-sm transition",
   "hover:border-amber-300 hover:bg-amber-100 active:bg-amber-100/90 disabled:cursor-not-allowed disabled:opacity-50",
-  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500/40",
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600",
   mojeControlHeightClass
 );
 
@@ -590,7 +590,7 @@ export const mojeBrandOutlineControlClass = cn(
 /** Destrukcyjna akcja wtórna — anulowanie pojedynczej pozycji (outline, spójne z mojeSecondary). */
 export const mojeDestructiveOutlineControlClass = cn(
   "inline-flex items-center justify-center gap-1.5 rounded-md border border-red-200 bg-white px-3 text-xs font-semibold text-red-800 shadow-sm transition",
-  "hover:border-red-300 hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400",
+  "hover:border-red-300 hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600",
   "disabled:cursor-not-allowed disabled:opacity-50",
   mojeControlHeightClass
 );
@@ -598,7 +598,7 @@ export const mojeDestructiveOutlineControlClass = cn(
 /** Anulowanie pojedynczej linii — dyskretny link przy wierszu produktu. */
 export const mojeDestructiveSubtleControlClass = cn(
   "inline-flex shrink-0 items-center justify-center rounded-sm px-1 py-0.5 text-[10px] font-medium text-slate-400/90 transition",
-  "hover:text-red-700 focus-visible:text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-red-400/50",
+  "hover:text-red-700 focus-visible:text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-indigo-600",
   "disabled:cursor-not-allowed disabled:opacity-40"
 );
 
@@ -606,7 +606,7 @@ export const mojeDestructiveSubtleControlClass = cn(
 export const mojeLineCancelControlClass = cn(
   "inline-flex w-full min-w-0 items-center justify-center rounded-md border border-red-200/90 bg-white px-2 py-2 text-center text-[11px] font-semibold leading-snug text-red-800 shadow-sm transition sm:text-xs",
   "hover:border-red-300 hover:bg-red-50 active:bg-red-100/90 disabled:cursor-not-allowed disabled:opacity-50",
-  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400/50",
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600",
   "min-h-9 sm:min-h-10"
 );
 
@@ -716,13 +716,13 @@ export const brandLinkSubtleClass = "font-medium text-indigo-600 hover:text-indi
 
 /** Pola i checkboxy */
 export const controlFocusClass =
-  "focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-sky-500/15";
+  "focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20";
 
 export const controlFocusRingClass =
-  "focus:border-indigo-500 focus:ring-2 focus:ring-sky-500/15";
+  "focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20";
 
 export const checkboxBrandClass =
-  "size-4 shrink-0 rounded border-slate-300 text-indigo-600 accent-indigo-600 focus:ring-2 focus:ring-indigo-500/25 focus-visible:ring-2 focus-visible:ring-indigo-500/40";
+  "size-4 shrink-0 rounded border-slate-300 text-indigo-600 accent-indigo-600 focus:ring-2 focus:ring-indigo-500/25 focus-visible:ring-2 focus-visible:ring-indigo-600";
 
 /** Kafelki ikon sekcji */
 export const sectionIconTileBrandClass = "bg-indigo-100 text-indigo-800";
@@ -870,7 +870,7 @@ export const panelQueueStepsShellClass = cn(
 
 /** Klikalny licznik sekcji w pasku kolejki Dziś. */
 export const panelQueueStatButtonClass =
-  "inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5 -mx-1 transition-colors hover:bg-slate-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300/80";
+  "inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5 -mx-1 transition-colors hover:bg-slate-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600";
 
 /** Podświetlenie świeżo zsynchronizowanych, nieprzeczytanych próśb. */
 export const dailyPanelFreshHighlightClass =
@@ -932,7 +932,7 @@ export const panelContactLinkClass =
   "max-w-[min(100%,18rem)] truncate text-xs font-medium text-indigo-700/80 transition-colors hover:text-indigo-950";
 
 export const panelChoiceChipClass =
-  "rounded-md border px-3 py-2 text-left text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/15";
+  "rounded-md border px-3 py-2 text-left text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600";
 
 export const panelChoiceChipIdleClass =
   "border-indigo-100/80 bg-white text-slate-700 hover:border-indigo-200/80 hover:bg-indigo-50/50";
@@ -1101,4 +1101,4 @@ export const panelContentFooterClass = cn(
 
 /** Linki w stopce panelu dziennego. */
 export const panelContentFooterLinkClass =
-  "text-xs font-medium text-indigo-700 underline-offset-2 transition hover:text-indigo-900 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500";
+  "text-xs font-medium text-indigo-700 underline-offset-2 transition hover:text-indigo-900 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600";

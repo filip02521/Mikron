@@ -344,7 +344,7 @@ export function StockWatchPanel({
                   className={cn(
                     "inline-flex min-h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-[background-color,color,box-shadow] duration-150 ease-out sm:min-h-9",
                     active
-                      ? "bg-slate-900 text-white shadow-sm"
+                      ? "bg-indigo-50 text-indigo-900 ring-1 ring-inset ring-indigo-200"
                       : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                   )}
                 >
@@ -354,7 +354,7 @@ export function StockWatchPanel({
                       className={cn(
                         "rounded px-1.5 py-0.5 text-[11px] font-semibold tabular-nums",
                         active
-                          ? "bg-white/15 text-white"
+                          ? "bg-white text-indigo-700"
                           : t.tone === "danger"
                             ? "bg-red-50 text-red-700"
                             : "bg-slate-100 text-slate-600"
@@ -375,7 +375,7 @@ export function StockWatchPanel({
                 <button
                   type="button"
                   onClick={clearSupplier}
-                  className="inline-flex size-7 cursor-pointer items-center justify-center rounded text-slate-500 transition-colors hover:bg-white hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40"
+                  className="inline-flex size-7 cursor-pointer items-center justify-center rounded text-slate-500 transition-colors hover:bg-white hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
                   aria-label={`Usuń filtr dostawcy ${supplierName}`}
                 >
                   ×
@@ -503,7 +503,7 @@ function StatusPanel({
             <Link
               href={line.focus.href}
               className={cn(
-                "inline-flex h-10 cursor-pointer items-center justify-center rounded-md px-4 text-sm font-semibold transition-[transform,background-color] duration-150 ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 focus-visible:ring-offset-1",
+                "inline-flex h-10 cursor-pointer items-center justify-center rounded-md px-4 text-sm font-semibold transition-[transform,background-color] duration-150 ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-1",
                 buttonPrimaryClass
               )}
             >
@@ -535,7 +535,7 @@ function EmptyShelfSwitch({
       onClick={() => onChange(!checked)}
       className={cn(
         "inline-flex min-h-10 w-full cursor-pointer items-center gap-2.5 rounded-md border px-3 py-2 text-left transition-[border-color,background-color,box-shadow] duration-150 ease-out sm:w-auto sm:min-h-9 sm:py-1.5",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/35 active:scale-[0.99]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 active:scale-[0.99]",
         checked
           ? "border-red-300 bg-red-50/95 text-red-950 shadow-sm ring-1 ring-red-200/70"
           : "border-slate-200 bg-white text-slate-800 hover:border-slate-300 hover:bg-slate-50"

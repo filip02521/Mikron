@@ -158,7 +158,7 @@ export function MyOrderShipmentList({
       <button
         type="button"
         aria-expanded={allExpanded}
-        className="hit-target rounded px-1.5 py-0.5 text-[11px] font-medium text-slate-500 underline-offset-2 transition-colors hover:text-slate-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/30"
+        className="hit-target rounded px-1.5 py-0.5 text-[11px] font-medium text-slate-500 underline-offset-2 transition-colors hover:text-slate-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
         onClick={() => (allExpanded ? collapseAll() : expandAll())}
       >
         {allExpanded ? "Zwiń wszystkie" : "Rozwiń wszystkie"}

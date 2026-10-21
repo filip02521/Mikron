@@ -445,7 +445,7 @@ export function PriceListReviewClient({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <Link href="/zakupy/cenniki" className="rounded text-indigo-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45">
+        <Link href="/zakupy/cenniki" className="rounded text-indigo-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600">
           ← Cenniki
         </Link>
       </div>
@@ -480,7 +480,7 @@ export function PriceListReviewClient({
           <div className="mt-2 flex flex-wrap gap-2">
             <Link
               href={`/zakupy/cenniki/${newerImportId}`}
-              className="inline-flex min-h-9 items-center rounded-[var(--radius-control)] bg-indigo-600 px-3 text-sm font-medium text-white hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 focus-visible:ring-offset-2"
+              className="inline-flex min-h-9 items-center rounded-[var(--radius-control)] bg-indigo-600 px-3 text-sm font-medium text-white hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2"
             >
               Otwórz nowszy cennik
             </Link>
@@ -993,7 +993,7 @@ function ItemNotes({ item, canRestore, onRestore }: { item: PriceListItem; canRe
       {restorable ? (
         <button
           type="button"
-          className="-mx-1 inline-flex min-h-8 items-center whitespace-nowrap rounded px-1 text-xs font-medium text-indigo-700 underline decoration-indigo-300 underline-offset-2 hover:decoration-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45"
+          className="-mx-1 inline-flex min-h-8 items-center whitespace-nowrap rounded px-1 text-xs font-medium text-indigo-700 underline decoration-indigo-300 underline-offset-2 hover:decoration-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
           onClick={onRestore}
         >
           {item.status === "restore_failed" ? "Spróbuj przywrócić ponownie" : "Przywróć z kopii"}: {fmt(item.backupPurchase)} / {fmt(item.backupRetail)}

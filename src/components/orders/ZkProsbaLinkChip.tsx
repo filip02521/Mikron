@@ -82,7 +82,7 @@ function ZkNumberCopyButton({ nr }: { nr: string }) {
           "-my-1 inline-flex size-7 items-center justify-center rounded-md text-slate-400 sm:size-6",
           "transition-[color,background-color,scale] duration-150 ease-out active:scale-[0.94]",
           "hover:bg-slate-100 hover:text-slate-700",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
           state === "copied" && "text-emerald-600 hover:text-emerald-700",
           state === "failed" && "text-red-600 hover:text-red-700"
         )}
