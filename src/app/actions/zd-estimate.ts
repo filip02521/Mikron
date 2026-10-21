@@ -15,6 +15,7 @@ import { buildZdOrderList } from "@/lib/orders/zd-order-list";
 import {
   decideZdAutoProposal,
   addZdAutoProposalFinalLines,
+  expirePendingZdAutoProposals,
   fetchLatestZdAutoProposal,
   listZdAutoProposals,
   type ZdAutoProposal,
@@ -232,6 +233,7 @@ import {
   type SubiektFeedback,
 } from "@/lib/subiekt/feedback";
 import { warsawDateKeyDaysAgo, warsawDateKeyFromIso, warsawNowParts } from "@/lib/time/warsaw";
+import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 import type { SubiektProductCecha, SubiektProductGroup } from "@/lib/subiekt/types";
 import {
   resolveZdEstimateRunScope,
@@ -1464,7 +1466,11 @@ export async function actionCreateZdAutoProposalNow(input: {
     const p = result.proposal;
     if (!p) return { ok: false, message: "Propozycja nie została policzona - spróbuj ponownie." };
     if (p.kind === "created") return { ok: true, proposal: await fetchLatestZdAutoProposal(supplierId) };
-    if (p.kind === "nothing_to_order") return { ok: true, proposal: null };
+    if (p.kind === "nothing_to_order") {
+      // Rano była propozycja, teraz nic do zamówienia — karta w panelu dziennym nie może czekać dalej.
+      if ((await expirePendingZdAutoProposals(supplierId)) > 0) revalidateAfterZdEstimateMark();
+      return { ok: true, proposal: null };
+    }
     if (p.kind === "skipped") return { ok: false, message: p.reason };
     if (p.kind === "error") return { ok: false, message: `Nie udało się zapisać propozycji: ${p.message}` };
     return { ok: false, message: "Strategia testowa jest wyłączona dla tego dostawcy." };
@@ -1536,12 +1542,15 @@ export async function actionAcceptZdAutoProposal(input: {
       fetchTeethProductTwIdSet(),
       createAdminClient().from("suppliers").select("name").eq("id", supplierId).maybeSingle(),
     ]);
+    // Jak blokada „Utwórz ZD” w Kreatorze: z niepełną listą próśb część mogłaby nie wejść.
+    if (pending.truncated) return { ok: false, message: ZD_ESTIMATE_UI.createGatePendingIndividualsTruncated };
     const edited = applyZdAutoProposalEdits(proposal.lines, input.edits);
     if (!edited.ok) return { ok: false, message: edited.message };
     const built = buildZdCreateInputFromAutoProposal({
       lines: edited.lines,
       scope,
       pendingOrders: pending.orders,
+      serviceOrderIds: proposal.serviceOrderIds,
       pairs,
       boms: bomRowsToRefs(boms),
       teethTwIds: teeth,
@@ -1551,11 +1560,17 @@ export async function actionAcceptZdAutoProposal(input: {
     // Kliknięcie „Utwórz ZD” w oknie akceptacji jest jawnym potwierdzeniem zapisu na LIVE.
     const res = await actionCreateZdFromEstimate({
       supplierId,
-      uwagi: null,
+      // Jak Kreator: nazwa zakresu w uwagach (domyślne z serwera ma tylko numer grupy).
+      uwagi: defaultZdCreateUwagi({
+        scopeMode: built.scopeMode,
+        scopeLabel: scope.label || null,
+        dateKey: warsawNowParts().dateKey,
+      }),
       scopeMode: built.scopeMode,
       grtId: built.grtId,
       cechaId: built.cechaId,
       lines: built.lines,
+      lineMeta: built.lineMeta,
       confirmLiveCreate: true,
       individualCatalogOrderIds: built.individualCatalogOrderIds,
       individualServiceOrderIds: built.individualServiceOrderIds,

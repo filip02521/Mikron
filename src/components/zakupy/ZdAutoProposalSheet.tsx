@@ -11,6 +11,7 @@ import { FOCUSABLE_SELECTOR } from "@/components/ui/ModalShell";
 import { QtyStepButton } from "@/components/ui/QtyStepButton";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Spinner } from "@/components/ui/Spinner";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import { ZdEstimatePostCreatePanel } from "@/components/zakupy/ZdEstimatePostCreatePanel";
 import { cn } from "@/lib/cn";
 import type { ZdAutoProposal, ZdAutoProposalLine } from "@/lib/data/zd-auto-proposals";
@@ -305,11 +306,7 @@ export function ZdAutoProposalSheet({
             </div>
           ) : (
             <div className="space-y-4">
-              {recompute.status === "running" ? (
-                <p className="flex items-center gap-2 text-sm text-slate-600" role="status">
-                  <Spinner size="sm" /> Przeliczam na stanach z tej chwili…
-                </p>
-              ) : recompute.status === "error" ? (
+              {recompute.status === "running" ? null : recompute.status === "error" ? (
                 <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-red-50 px-3 py-2.5 text-sm text-red-700" role="alert">
                   <span className="flex items-center gap-2">
                     <IconAlertCircle size={16} aria-hidden /> {recompute.message}
@@ -365,85 +362,94 @@ export function ZdAutoProposalSheet({
 
               {!fresh ? (
                 recompute.status === "running" ? (
-                  <div className="space-y-2" aria-hidden>
-                    {Array.from({ length: 7 }, (_, i) => (
-                      <div key={i} className="h-14 animate-pulse rounded-md bg-slate-100 motion-reduce:animate-none" />
-                    ))}
+                  // Systemowe ładowanie OnTime (DESIGN.md: dłuższe ładowanie = logo, nie szkielet).
+                  <div className="flex flex-col items-center gap-3 py-16 text-center" role="status">
+                    <BrandLoader size="lg" />
+                    <p className="text-sm font-medium text-slate-900">Przeliczam na stanach z tej chwili…</p>
+                    <p className="max-w-xs text-xs text-slate-500">Stany, prośby i strategia dostawcy - jak „Policz” w Kreatorze. Zwykle kilkanaście sekund.</p>
                   </div>
                 ) : null
               ) : (
-                <ul className={cn("divide-y divide-slate-100 rounded-lg border border-slate-200", creating && "pointer-events-none opacity-60")}>
-                  {shown.length === 0 ? (
-                    <li className="px-3 py-6 text-center text-sm text-slate-500">Brak pozycji w tym widoku.</li>
+                <>
+                  {creating ? (
+                    <div className="flex items-center gap-3 rounded-md bg-indigo-50 px-3 py-2.5 text-sm text-slate-900" role="status">
+                      <BrandLoader size="sm" />
+                      <span>Tworzę ZD w Subiekcie - przy dużym zamówieniu do 3 minut. Nie zamykaj panelu.</span>
+                    </div>
                   ) : null}
-                  {shown.map(({ line: l, change, beforeUnits }) => {
-                    const units = change === "removed" ? 0 : unitsOf(l);
-                    const removedByMe = change !== "removed" && units === 0;
-                    const editedByMe = String(l.twId) in edits;
-                    return (
-                      <li
-                        key={l.twId}
-                        className={cn(
-                          "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-2.5 transition-colors duration-150 max-sm:grid-cols-1",
-                          editedByMe && !removedByMe && "bg-indigo-50/60",
-                          (removedByMe || change === "removed") && "bg-slate-50"
-                        )}
-                      >
-                        <div className="min-w-0">
-                          <p
-                            className={cn(
-                              "truncate text-sm",
-                              removedByMe || change === "removed" ? "text-slate-500 line-through" : "text-slate-900"
-                            )}
-                            title={l.nazwa}
-                          >
-                            {l.nazwa}
-                          </p>
-                          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
-                            <span className="font-mono">{l.symbol}</span>
-                            {l.prosbaPieces > 0 ? <span>prośby {formatQty(l.prosbaPieces)} szt</span> : null}
-                            {change === "added" ? <Badge variant="info">nowa od rana</Badge> : null}
-                            {change === "changed" && beforeUnits != null ? (
-                              <Badge variant="warning">rano {formatQty(beforeUnits)}</Badge>
-                            ) : null}
-                            {change === "removed" ? <Badge>wypadła od rana</Badge> : null}
-                            {editedByMe && !removedByMe ? <Badge variant="info">automat: {formatQty(l.zdUnits)}</Badge> : null}
-                          </p>
-                        </div>
-                        {change === "removed" ? (
-                          <span className="text-right text-xs text-slate-500">nie zamawiamy</span>
-                        ) : removedByMe ? (
-                          <button
-                            type="button"
-                            className="inline-flex h-10 items-center justify-self-end gap-1.5 rounded-md px-2.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 sm:h-8"
-                            onClick={() => setUnits(l, l.zdUnits)}
-                          >
-                            <IconUndoLeft size={14} aria-hidden /> Przywróć
-                          </button>
-                        ) : (
-                          <div className="flex items-center justify-end gap-2">
-                            <UnitsStepper
-                              line={l}
-                              value={units}
-                              onChange={(n) => setUnits(l, n)}
-                              onStep={(d) => setUnits(l, (cur) => Math.max(1, cur + d))}
-                              disabled={creating}
-                            />
-                            <span className="w-8 text-xs text-slate-500">{l.unitLabel}</span>
+                  <ul className={cn("divide-y divide-slate-100 rounded-lg border border-slate-200", creating && "pointer-events-none opacity-60")}>
+                    {shown.length === 0 ? (
+                      <li className="px-3 py-6 text-center text-sm text-slate-500">Brak pozycji w tym widoku.</li>
+                    ) : null}
+                    {shown.map(({ line: l, change, beforeUnits }) => {
+                      const units = change === "removed" ? 0 : unitsOf(l);
+                      const removedByMe = change !== "removed" && units === 0;
+                      const editedByMe = String(l.twId) in edits;
+                      return (
+                        <li
+                          key={l.twId}
+                          className={cn(
+                            "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-2.5 transition-colors duration-150 max-sm:grid-cols-1",
+                            editedByMe && !removedByMe && "bg-indigo-50/60",
+                            (removedByMe || change === "removed") && "bg-slate-50"
+                          )}
+                        >
+                          <div className="min-w-0">
+                            <p
+                              className={cn(
+                                "truncate text-sm",
+                                removedByMe || change === "removed" ? "text-slate-500 line-through" : "text-slate-900"
+                              )}
+                              title={l.nazwa}
+                            >
+                              {l.nazwa}
+                            </p>
+                            <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+                              <span className="font-mono">{l.symbol}</span>
+                              {l.prosbaPieces > 0 ? <span>prośby {formatQty(l.prosbaPieces)} szt</span> : null}
+                              {change === "added" ? <Badge variant="info">nowa od rana</Badge> : null}
+                              {change === "changed" && beforeUnits != null ? (
+                                <Badge variant="warning">rano {formatQty(beforeUnits)}</Badge>
+                              ) : null}
+                              {change === "removed" ? <Badge>wypadła od rana</Badge> : null}
+                              {editedByMe && !removedByMe ? <Badge variant="info">automat: {formatQty(l.zdUnits)}</Badge> : null}
+                            </p>
+                          </div>
+                          {change === "removed" ? (
+                            <span className="text-right text-xs text-slate-500">nie zamawiamy</span>
+                          ) : removedByMe ? (
                             <button
                               type="button"
-                              aria-label={`Usuń z zamówienia: ${l.nazwa}`}
-                              className="flex h-10 w-10 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-red-50 hover:text-red-700 sm:h-8 sm:w-8"
-                              onClick={() => setUnits(l, 0)}
+                              className="inline-flex h-10 items-center justify-self-end gap-1.5 rounded-md px-2.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 sm:h-8"
+                              onClick={() => setUnits(l, l.zdUnits)}
                             >
-                              <IconTrash2 size={15} aria-hidden />
+                              <IconUndoLeft size={14} aria-hidden /> Przywróć
                             </button>
-                          </div>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
+                          ) : (
+                            <div className="flex items-center justify-end gap-2">
+                              <UnitsStepper
+                                line={l}
+                                value={units}
+                                onChange={(n) => setUnits(l, n)}
+                                onStep={(d) => setUnits(l, (cur) => Math.max(1, cur + d))}
+                                disabled={creating}
+                              />
+                              <span className="w-8 text-xs text-slate-500">{l.unitLabel}</span>
+                              <button
+                                type="button"
+                                aria-label={`Usuń z zamówienia: ${l.nazwa}`}
+                                className="flex h-10 w-10 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-red-50 hover:text-red-700 sm:h-8 sm:w-8"
+                                onClick={() => setUnits(l, 0)}
+                              >
+                                <IconTrash2 size={15} aria-hidden />
+                              </button>
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </>
               )}
               <p className="text-xs text-slate-500">
                 Brakuje towaru?{" "}

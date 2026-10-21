@@ -18,6 +18,11 @@ export type ZdAutoProposalLine = {
   prosbaPieces: number;
   /** Podłoga 90 d podniosła tempo. */
   floor: boolean;
+  /** PLU (kod Mikran) — prośby z samym kodem Mikran dopasowują się przy tworzeniu ZD jak w Kreatorze. */
+  plu?: string | null;
+  /** Cel i korekta śledzenia sprzedaży w chwili propozycji — zapis ZD w historii jak z Kreatora. */
+  celAtLink?: number | null;
+  deltaAtLink?: number | null;
 };
 
 export type ZdAutoProposalStatus = "pending" | "accepted" | "rejected" | "expired";
@@ -38,6 +43,8 @@ export type ZdAutoProposal = {
   dokId: number | null;
   /** twId → jednostki ZD na utworzonym ZD (raport różnic). */
   finalLines: Record<string, number> | null;
+  /** Prośby-usługi (bez towaru na liście zakresu); null = propozycja sprzed migracji 193. */
+  serviceOrderIds: string[] | null;
 };
 
 type Row = {
@@ -55,6 +62,7 @@ type Row = {
   decision_note: string | null;
   dok_id: number | null;
   final_lines: Record<string, number> | null;
+  service_order_ids: unknown;
 };
 
 const iso = (v: Date | string) => new Date(v).toISOString();
@@ -77,11 +85,15 @@ function map(r: Row): ZdAutoProposal {
     decisionNote: r.decision_note,
     dokId: r.dok_id,
     finalLines: r.final_lines,
+    serviceOrderIds: Array.isArray(r.service_order_ids)
+      ? r.service_order_ids.filter((x): x is string => typeof x === "string" && x.length > 0)
+      : null,
   };
 }
 
 const SELECT = `SELECT id, supplier_id, created_at, policy, data_od, data_do, lines, line_count, value_net,
-                       status, decided_at, decision_note, dok_id, final_lines
+                       status, decided_at, decision_note, dok_id, final_lines,
+                       to_jsonb(zd_auto_proposals.*) -> 'service_order_ids' AS service_order_ids
                   FROM zd_auto_proposals`;
 
 /** Czy minął cykl od ostatniej propozycji (dni kalendarzowe wg dat Warszawy). */
@@ -119,6 +131,7 @@ export async function createZdAutoProposal(input: {
   dataOd: string;
   dataDo: string;
   lines: ZdAutoProposalLine[];
+  serviceOrderIds: string[];
 }): Promise<ZdAutoProposal> {
   await query(
     `UPDATE zd_auto_proposals SET status = 'expired', decided_at = now()
@@ -130,7 +143,8 @@ export async function createZdAutoProposal(input: {
     `INSERT INTO zd_auto_proposals (supplier_id, policy, data_od, data_do, lines, line_count, value_net)
      VALUES ($1, $2::jsonb, $3::date, $4::date, $5::jsonb, $6, $7)
      RETURNING id, supplier_id, created_at, policy, data_od, data_do, lines, line_count, value_net,
-               status, decided_at, decision_note, dok_id, final_lines`,
+               status, decided_at, decision_note, dok_id, final_lines,
+               to_jsonb(zd_auto_proposals.*) -> 'service_order_ids' AS service_order_ids`,
     [
       input.supplierId,
       JSON.stringify(input.policy),
@@ -141,7 +155,28 @@ export async function createZdAutoProposal(input: {
       Math.round(valueNet * 100) / 100,
     ]
   );
-  return map(res.rows[0]!);
+  const created = map(res.rows[0]!);
+  // Osobno: bez migracji 193 propozycja powstaje dalej, tylko bez usług (akceptacja ich nie dopisze).
+  try {
+    await query(`UPDATE zd_auto_proposals SET service_order_ids = $2::jsonb WHERE id = $1`, [
+      created.id,
+      JSON.stringify(input.serviceOrderIds),
+    ]);
+    created.serviceOrderIds = [...input.serviceOrderIds];
+  } catch (e) {
+    console.error("[zd-auto-proposals] usługi propozycji (migracja 193?)", e);
+  }
+  return created;
+}
+
+/** Na aktualnych stanach nie ma nic do zamówienia — czekająca propozycja jest nieaktualna. */
+export async function expirePendingZdAutoProposals(supplierId: string): Promise<number> {
+  const res = await query(
+    `UPDATE zd_auto_proposals SET status = 'expired', decided_at = now()
+      WHERE supplier_id = $1 AND status = 'pending'`,
+    [supplierId]
+  );
+  return res.rowCount ?? 0;
 }
 
 /** Decyzja Filipa. Tylko czekająca propozycja — druga decyzja nic nie zmienia (false). */

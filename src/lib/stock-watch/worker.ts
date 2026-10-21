@@ -30,6 +30,8 @@ import { runZdOrderEngine } from "@/lib/orders/zd-order-engine";
 import { zdDeliveryRisk, type ZdOrderHorizon } from "@/lib/orders/zd-order-horizon";
 import { loadZdOrderHorizons } from "@/lib/orders/zd-order-horizon-load";
 import { buildZdOrderList } from "@/lib/orders/zd-order-list";
+import { zdAutoProposalBlockReason } from "@/lib/orders/zd-auto-proposal-create";
+import { collectZdPackagingPairConflicts } from "@/lib/orders/zd-estimate-packaging-pair-conflict";
 import {
   createZdAutoProposal,
   fetchLatestZdAutoProposal,
@@ -549,13 +551,27 @@ async function computeSupplierOrder(input: {
   });
 
   let proposal: ZdAutoProposalOutcome | undefined;
-  if (input.proposalTodayKey && engine.fetch.truncated) {
-    proposal = { kind: "skipped", reason: "Lista z Subiekta niepełna (limit stron) - propozycja nie powstała." };
-  } else if (input.proposalTodayKey && engine.orderPolicy.strategy !== "classic" && engine.salesSmoothing?.failed) {
-    // Bez profilu 12 mies. strategia liczy bez podłogi 90 d — propozycja byłaby zaniżona.
-    proposal = { kind: "skipped", reason: "Profil sprzedaży z 12 miesięcy niedostępny - propozycja nie powstała." };
-  } else if (input.proposalTodayKey && list.explodeBomIncomplete) {
-    proposal = { kind: "skipped", reason: "Brakuje danych kompletów (BOM) - Kreator pokazałby pustą listę." };
+  const blockReason = input.proposalTodayKey
+    ? zdAutoProposalBlockReason({
+        fetchTruncated: engine.fetch.truncated,
+        strategyActive: engine.orderPolicy.strategy !== "classic",
+        salesProfileFailed: engine.salesSmoothing?.failed === true,
+        explodeBomIncomplete: list.explodeBomIncomplete,
+        pendingIndividualsError: engine.pendingIndividualsError,
+        pendingIndividualsLoaded: engine.pendingIndividuals != null,
+        pendingIndividualsTruncated: engine.pendingIndividualsTruncated,
+        prosbaOverlapCandidateCount: engine.prosbaOverlapCandidateTwIds?.length ?? 0,
+        prosbaOverlapResolved: engine.prosbaOverlapResolved,
+        historyFetchFailed: engine.historyFetchFailed,
+        packagingPairConflictCount: collectZdPackagingPairConflicts(
+          engine.result.pozycje,
+          new Map(engine.packaging.map((row) => [row.subiektTwId, row])),
+          list.orderExcludedTwIds
+        ).length,
+      })
+    : null;
+  if (blockReason) {
+    proposal = { kind: "skipped", reason: blockReason };
   } else if (input.proposalTodayKey) {
     proposal = await maybeCreateAutoProposal({
       supplierId: supplier.id,
@@ -576,7 +592,11 @@ async function computeSupplierOrder(input: {
           priceNet: unitPricePerPiece(prices.get(l.line.tw_Id)?.priceNet ?? null, engine.packagingLookup.get(l.line.tw_Id) ?? null),
           prosbaPieces: l.individualExtraPieces,
           floor: l.line.demandFloor != null,
+          plu: String(l.line.tw_PLU ?? "").trim() || null,
+          celAtLink: l.line.celZapasuTracked,
+          deltaAtLink: l.line.salesTrackDelta,
         })),
+      serviceOrderIds: list.serviceOrderIds,
     });
   }
 
@@ -611,6 +631,7 @@ async function maybeCreateAutoProposal(input: {
   /** Dni celu faktycznie użyte (strategia: co najmniej cykl + dostawa + bufor). */
   dniZapasuUsed: number;
   lines: ZdAutoProposalLine[];
+  serviceOrderIds: string[];
 }): Promise<ZdAutoProposalOutcome> {
   try {
     const policy = await fetchZdSupplierOrderPolicy(input.supplierId);
@@ -628,6 +649,7 @@ async function maybeCreateAutoProposal(input: {
       dataOd: input.dataOd,
       dataDo: input.dataDo,
       lines: input.lines,
+      serviceOrderIds: input.serviceOrderIds,
     });
     return { kind: "created", id: created.id };
   } catch (e) {
