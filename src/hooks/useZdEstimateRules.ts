@@ -15,7 +15,7 @@ import type { ZdEstimateMinStockRow } from "@/lib/data/zd-estimate-min-stock";
 import type { ZdProductPairRow } from "@/lib/data/zd-product-pairs";
 import type { ZdProductBomRow } from "@/lib/data/zd-product-boms";
 import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
-import { minStockRowsToMap } from "@/lib/orders/zd-estimate-min-stock-lookup";
+import { minStockRowsToMap, withPairMinStock } from "@/lib/orders/zd-estimate-min-stock-lookup";
 import { onRequestTwIdSet } from "@/lib/orders/zd-estimate-on-request";
 import { bomRowsToRefs } from "@/lib/orders/zd-estimate-bom";
 import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
@@ -160,8 +160,8 @@ export function useZdEstimateRulesData(
     [packaging]
   );
   const minStockByTwIdForRefresh = useMemo(
-    () => minStockRowsToMap(minStock),
-    [minStock]
+    () => withPairMinStock(minStockRowsToMap(minStock), productPairs),
+    [minStock, productPairs]
   );
 
   const packagingMap = useMemo(

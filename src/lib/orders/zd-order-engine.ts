@@ -32,6 +32,7 @@ import { fetchZdProductPairs, type ZdProductPairRow } from "@/lib/data/zd-produc
 import { fetchZdProductBoms, type ZdProductBomRow } from "@/lib/data/zd-product-boms";
 import { bomRowsToRefs, type ZdProductBomRef } from "@/lib/orders/zd-estimate-bom";
 import { normalizeDemandAllocation } from "@/lib/orders/zd-estimate-bom-policy";
+import { withPairMinStock } from "@/lib/orders/zd-estimate-min-stock-lookup";
 import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
 import { collectMissingZdBomTwIds } from "@/lib/orders/zd-estimate-live-refresh";
 import { normalizeIndividualOrders } from "@/lib/data/normalize-order";
@@ -92,7 +93,11 @@ import {
   collectTwIdsNeedingProsbaReservationOverlap,
   collectTwIdsNeedingProsbaReservationOverlapWithoutStanRez,
   individualExtrasAndReliefWithReservationOverlap,
-  mergePairReservedSlicesOntoPack,
+  buildZdOverlapReservationSources,
+  linesWithReservationSources,
+  mergeReservedSlicesBySources,
+  reservationSourceTwIds,
+  type ZdOverlapReservationSources,
   reservedRowsToOverlapSlices,
   type ZdEstimateProsbaOverlapContribution,
   type ZdEstimateReservedOverlapSlice,
@@ -300,10 +305,10 @@ export async function resolveIndividualExtrasWithReservationOverlap(input: {
     ZdPackagingDocumentUnitMode
   > | null;
   /**
-   * Pary paczka↔sztuka: extra paczki jest w sztukach pary, a ZK klienta rezerwuje często kartę
-   * sztuki — rezerwacje obu kart scalane na paczce w sztukach (paczka × przelicznik).
+   * Pary i zestawy „Składamy”: ZK klienta rezerwuje inną kartę niż ta z prośbą (sztuka pary,
+   * karta zestawu) — rezerwacje kart źródłowych scalane na linii w jednostkach jej extra.
    */
-  pairs?: readonly { packTwId: number; pieceTwId: number; unitsPerPack: number }[] | null;
+  reservationSources?: ZdOverlapReservationSources | null;
 }): Promise<{
   adjustedExtraByTwId: Map<number, number>;
   rawExtraByTwId: Map<number, number>;
@@ -327,19 +332,9 @@ export async function resolveIndividualExtrasWithReservationOverlap(input: {
     if (extra.extraPieces > 0) rawMap.set(tw, extra.extraPieces);
   }
 
-  const pairByPack = new Map((input.pairs ?? []).map((p) => [p.packTwId, p]));
-  // Rezerwacja na którejkolwiek karcie pary czyni paczkę kandydatem.
-  const linesForCandidates = input.lines?.length
-    ? (() => {
-        const rezByTw = new Map(input.lines.map((l) => [Math.trunc(Number(l.tw_Id)) || 0, Math.max(0, Number(l.tw_StanRez) || 0)]));
-        return input.lines.map((l) => {
-          const pair = pairByPack.get(Math.trunc(Number(l.tw_Id)) || 0);
-          return pair
-            ? { tw_Id: l.tw_Id, tw_StanRez: (rezByTw.get(pair.packTwId) ?? 0) + (rezByTw.get(pair.pieceTwId) ?? 0) }
-            : l;
-        });
-      })()
-    : null;
+  const sources = input.reservationSources ?? new Map();
+  // Rezerwacja na którejkolwiek karcie źródłowej czyni linię kandydatem.
+  const linesForCandidates = input.lines?.length ? linesWithReservationSources(input.lines, sources) : null;
   const candidateTwIds = linesForCandidates
     ? collectTwIdsNeedingProsbaReservationOverlap({
         extraTwIds: rawMap.keys(),
@@ -385,12 +380,8 @@ export async function resolveIndividualExtrasWithReservationOverlap(input: {
   }
 
   try {
-    const pieceTwIds = toFetch.flatMap((tw) => {
-      const pair = pairByPack.get(tw);
-      return pair ? [pair.pieceTwId] : [];
-    });
-    const fetched = await fetchReservedOverlapSlicesByTwIds([...new Set([...toFetch, ...pieceTwIds])]);
-    mergePairReservedSlicesOntoPack(fetched.reservedByTwId, toFetch, pairByPack);
+    const fetched = await fetchReservedOverlapSlicesByTwIds(reservationSourceTwIds(toFetch, sources));
+    fetched.reservedByTwId = mergeReservedSlicesBySources(fetched.reservedByTwId, toFetch, sources);
     const maps = individualExtrasAndReliefWithReservationOverlap(
       scopedByTw,
       fetched.reservedByTwId
@@ -811,7 +802,7 @@ export async function runZdOrderEngine(
 
   // Min stock — soft fail (bez minimum lista działa, po prostu bez dobijania).
   const minStock = minStockSettled.ok ? minStockSettled.value : [];
-  const minStockByTwId = minStockRowsToMap(minStock);
+  const minStockByTwIdOwn = minStockRowsToMap(minStock);
 
   if (!productPairsSettled.ok) {
     const message = userFacingErrorText(
@@ -826,6 +817,8 @@ export async function runZdOrderEngine(
     return { ok: false, feedback };
   }
   const productPairs = productPairsSettled.value;
+  // Minimum z wiersza sztuki pary liczy się na paczce (ścieżki czytające mapę po tw paczki).
+  const minStockByTwId = withPairMinStock(minStockByTwIdOwn, productPairs);
 
   if (!productBomsSettled.ok) {
     const message =
@@ -1099,17 +1092,33 @@ export async function runZdOrderEngine(
       const explodeBoms = bomRefs.filter(
         (b) => normalizeDemandAllocation(b.demandAllocation) === "explode" && b.components.length > 0
       );
-      const explodeTwIds = new Set(
-        explodeBoms.flatMap((b) => [b.parentTwId, ...b.components.map((c) => c.componentTwId)])
-      );
+      const explodeParentIds = new Set(explodeBoms.map((b) => b.parentTwId));
       const rawSalesByTw = new Map(
         mergedPozycje.map((p) => [Math.trunc(Number(p.tw_Id) || 0), Number(p.sprzedazOkres) || 0])
       );
+      // Najpierw łączna podłoga składników; składnik bez niej (brak profilu zestawu, zestaw spoza
+      // zakresu) dostaje własną podłogę per linia — inaczej traciłby ją całkiem.
+      const bomFloored = applyZdBomDemandFloor({
+        lines: mergedPozycje,
+        explodeBoms,
+        profiles,
+        rawSalesByTw,
+        pairTwIds,
+        policy: orderPolicy,
+        dniOkresu,
+        dniZapasu,
+      });
       for (let i = 0; i < mergedPozycje.length; i += 1) {
         const line = mergedPozycje[i]!;
         const tw = Math.trunc(Number(line.tw_Id) || 0);
         const windows = profiles.get(tw);
-        if (windows && strategyActive && !pairTwIds.has(tw) && !explodeTwIds.has(tw)) {
+        if (
+          windows &&
+          strategyActive &&
+          !pairTwIds.has(tw) &&
+          !explodeParentIds.has(tw) &&
+          !bomFloored.has(tw)
+        ) {
           let base = line;
           let floorWindows: readonly number[] = windows;
           const prosba = prosbaPieces.get(tw) ?? 0;
@@ -1156,16 +1165,6 @@ export async function runZdOrderEngine(
         }
       }
       const indexByTw = new Map(mergedPozycje.map((p, idx) => [Math.trunc(Number(p.tw_Id) || 0), idx]));
-      applyZdBomDemandFloor({
-        lines: mergedPozycje,
-        explodeBoms,
-        profiles,
-        rawSalesByTw,
-        pairTwIds,
-        policy: orderPolicy,
-        dniOkresu,
-        dniZapasu,
-      });
       const bomTwIds = new Set(bomRefs.flatMap((b) => [b.parentTwId, ...b.components.map((c) => c.componentTwId)]));
       for (const pair of productPairs) {
         const packIdx = indexByTw.get(pair.packTwId);
@@ -1353,7 +1352,7 @@ export async function runZdOrderEngine(
       const overlap = await resolveIndividualExtrasWithReservationOverlap({
         byTwId: extras.byTwId,
         lines: result.pozycje,
-        pairs: productPairs,
+        reservationSources: buildZdOverlapReservationSources({ pairs: productPairs, boms: bomRefs }),
       });
       prosbaOverlapCandidateTwIds = overlap.candidateTwIds;
       prosbaOverlapResolved = overlap.resolved;

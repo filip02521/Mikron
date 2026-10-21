@@ -23,6 +23,7 @@ import {
   DEFAULT_DNI_ZAPASU,
   salesWindowFromDniZapasu,
   stockPeriodToDniZapasu,
+  zdEstimateWindowDays,
 } from "@/lib/orders/zd-estimate-manual";
 import { ZD_ESTIMATE_UI_PREFS_DEFAULTS } from "@/lib/orders/zd-estimate-prefs";
 import { runZdOrderEngine } from "@/lib/orders/zd-order-engine";
@@ -404,7 +405,8 @@ async function computeSupplierOrder(input: {
       { unitsPerPackage: row.unitsPerPackage, documentUnitMode: row.documentUnitMode },
     ])
   );
-  const dniOkresu = Number(engine.result.parametry.dniOkresu);
+  // Okno jak w silniku (bez dniOkresu z API — z dat): tempo zestawu i składników w tej samej skali.
+  const dniOkresu = zdEstimateWindowDays(engine.result.parametry) ?? NaN;
   const bomViews = resolveStockWatchBomViews({
     byTw: new Map(engine.result.pozycje.map((l) => [l.tw_Id, l])),
     boms: engine.bomRefs,

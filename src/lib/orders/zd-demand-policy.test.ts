@@ -140,7 +140,7 @@ describe("podłoga 90 d dla składników zestawów „Składamy”", () => {
       { tw_Id: 100, sprzedazOkres: 30, celZapasu: 30 },
       { tw_Id: 1, sprzedazOkres: 0, celZapasu: 0 },
     ];
-    applyZdBomDemandFloor({
+    const handled = applyZdBomDemandFloor({
       lines,
       explodeBoms: [{ parentTwId: 100, components: [{ componentTwId: 1, qtyPerParent: 1 }] }],
       profiles: new Map([[1, [...zeros(9), 45, 45, 0]]]),
@@ -154,5 +154,7 @@ describe("podłoga 90 d dla składników zestawów „Składamy”", () => {
       dniZapasu: 30,
     });
     expect(lines[1]!.sprzedazOkres).toBe(0);
+    // Nieobsłużony składnik wraca do własnej podłogi per linia w silniku.
+    expect(handled.has(1)).toBe(false);
   });
 });

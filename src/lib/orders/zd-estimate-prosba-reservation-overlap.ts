@@ -433,23 +433,95 @@ export function stockNeedReliefPiecesForTw(
 }
 
 /**
- * Pary: rezerwacje ZK obu kart na paczce, w sztukach pary (paczka × przelicznik + sztuki) —
- * tak jak extra prośby i pokrycie pary. Bez tego ZK klienta na karcie sztuki nie zdejmował
- * prośby i ta sama ilość szła raz przez ujemne dostępne, raz jako dodatek. Zmienia mapę w miejscu.
+ * Skąd brać rezerwacje ZK dla linii z prośbą: prośba ląduje na innej karcie niż ZK klienta.
+ * - para: prośba na paczce (w sztukach pary), ZK na paczce (× przelicznik) albo na sztuce;
+ * - zestaw „Składamy”: prośba rozpisana na składnik, ZK na karcie zestawu (× ilość w zestawie).
+ * Wszystko w jednostkach extra linii docelowej. Linia bez wpisu = tylko własna karta.
  */
-export function mergePairReservedSlicesOntoPack(
-  reservedByTwId: Map<number, ZdEstimateReservedOverlapSlice[]>,
-  packTwIds: readonly number[],
-  pairByPack: ReadonlyMap<number, { pieceTwId: number; unitsPerPack: number }>
-): void {
-  for (const tw of packTwIds) {
-    const pair = pairByPack.get(tw);
-    if (!pair) continue;
-    const ratio = Math.max(1, Number(pair.unitsPerPack) || 1);
-    reservedByTwId.set(tw, [
-      ...(reservedByTwId.get(tw) ?? []).map((sl) => ({ ...sl, quantity: sl.quantity * ratio })),
-      ...(reservedByTwId.get(pair.pieceTwId) ?? []),
+export type ZdOverlapReservationSources = Map<number, { twId: number; factor: number }[]>;
+
+export function buildZdOverlapReservationSources(input: {
+  pairs?: readonly { packTwId: number; pieceTwId: number; unitsPerPack: number }[] | null;
+  boms?: readonly {
+    parentTwId: number;
+    demandAllocation?: string | null;
+    components: readonly { componentTwId: number; qtyPerParent: number }[];
+  }[] | null;
+}): ZdOverlapReservationSources {
+  const out: ZdOverlapReservationSources = new Map();
+  const pieceToPack = new Map<number, { packTwId: number; ratio: number }>();
+  const ratioByPack = new Map<number, number>();
+  for (const p of input.pairs ?? []) {
+    const ratio = Math.max(1, Number(p.unitsPerPack) || 1);
+    ratioByPack.set(p.packTwId, ratio);
+    pieceToPack.set(p.pieceTwId, { packTwId: p.packTwId, ratio });
+    out.set(p.packTwId, [
+      { twId: p.packTwId, factor: ratio },
+      { twId: p.pieceTwId, factor: 1 },
     ]);
-    reservedByTwId.delete(pair.pieceTwId);
   }
+  for (const bom of input.boms ?? []) {
+    if (bom.demandAllocation === "separate") continue;
+    for (const c of bom.components) {
+      const q = Math.trunc(Number(c.qtyPerParent)) || 0;
+      if (q < 1) continue;
+      // Prośba ze składnika-sztuki trafia na paczkę pary — tam też rezerwacje zestawu.
+      const viaPiece = pieceToPack.get(c.componentTwId);
+      const target = viaPiece ? viaPiece.packTwId : c.componentTwId;
+      const factor = ratioByPack.has(c.componentTwId) ? q * ratioByPack.get(c.componentTwId)! : q;
+      const list = out.get(target) ?? [{ twId: target, factor: 1 }];
+      list.push({ twId: bom.parentTwId, factor });
+      out.set(target, list);
+    }
+  }
+  return out;
+}
+
+/** Linie z sumą rezerwacji ze wszystkich kart źródłowych (do wyboru kandydatów overlap). */
+export function linesWithReservationSources<T extends { tw_Id: number; tw_StanRez?: number | null }>(
+  lines: readonly T[],
+  sources: ZdOverlapReservationSources
+): T[] {
+  const rez = new Map(lines.map((l) => [Math.trunc(Number(l.tw_Id)) || 0, Math.max(0, Number(l.tw_StanRez) || 0)]));
+  return lines.map((l) => {
+    const src = sources.get(Math.trunc(Number(l.tw_Id)) || 0);
+    if (!src) return l;
+    return { ...l, tw_StanRez: src.reduce((sum, s) => sum + (rez.get(s.twId) ?? 0) * s.factor, 0) };
+  });
+}
+
+/** Karty do pobrania rezerwacji dla linii docelowych. */
+export function reservationSourceTwIds(
+  targets: readonly number[],
+  sources: ZdOverlapReservationSources
+): number[] {
+  const ids = new Set<number>();
+  for (const tw of targets) {
+    for (const s of sources.get(tw) ?? [{ twId: tw, factor: 1 }]) ids.add(s.twId);
+  }
+  return [...ids];
+}
+
+/** Rezerwacje kart źródłowych scalone na liniach docelowych, w jednostkach extra linii. */
+export function mergeReservedSlicesBySources(
+  reservedByTwId: ReadonlyMap<number, readonly ZdEstimateReservedOverlapSlice[]>,
+  targets: readonly number[],
+  sources: ZdOverlapReservationSources
+): Map<number, ZdEstimateReservedOverlapSlice[]> {
+  const out = new Map<number, ZdEstimateReservedOverlapSlice[]>();
+  for (const tw of targets) {
+    const src = sources.get(tw);
+    if (!src) {
+      const own = reservedByTwId.get(tw);
+      if (own) out.set(tw, [...own]);
+      continue;
+    }
+    out.set(
+      tw,
+      src.flatMap((s) =>
+        (reservedByTwId.get(s.twId) ?? []).map((sl) => ({ ...sl, quantity: sl.quantity * s.factor }))
+      )
+    );
+  }
+  return out;
 }

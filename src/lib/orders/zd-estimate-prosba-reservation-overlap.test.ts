@@ -12,10 +12,13 @@ import {
   resolveIndividualExtraPiecesMap,
   resolveProsbaReservationDedupeMaps,
   sumProsbaZkReservationOverlapPieces,
-  mergePairReservedSlicesOntoPack,
+  buildZdOverlapReservationSources,
+  linesWithReservationSources,
+  mergeReservedSlicesBySources,
+  reservationSourceTwIds,
 } from "./zd-estimate-prosba-reservation-overlap";
 import { resolveOrderQtyForLine } from "./zd-estimate-packaging";
-import type { ManualZdEstimateLine } from "./zd-estimate-manual";
+import { buildManualZdEstimateResult, type ManualZdEstimateLine } from "./zd-estimate-manual";
 
 describe("normalizeZdEstimateZkNumberKey", () => {
   it("usuwa prefiks ZK i spacje", () => {
@@ -474,15 +477,27 @@ describe("computeProsbaZkReservationDedupe: kolejność próśb nie zmienia wyni
   });
 });
 
-describe("pary: rezerwacje obu kart na paczce w sztukach", () => {
-  it("ZK klienta na karcie sztuki zdejmuje prośbę tego klienta", () => {
-    const reserved = new Map([
-      [21, [{ quantity: 6, clientKhId: 7, zkNumber: "ZK 5/M/10/2026" }]],
-      [20, [{ quantity: 1, clientKhId: 9, zkNumber: "ZK 6/M/10/2026" }]],
-    ]);
-    mergePairReservedSlicesOntoPack(reserved, [20], new Map([[20, { pieceTwId: 21, unitsPerPack: 2 }]]));
-    expect(reserved.has(21)).toBe(false);
-    expect(reserved.get(20)!.map((s) => s.quantity)).toEqual([2, 6]);
+describe("rezerwacje z innej karty niż prośba (para, zestaw „Składamy”)", () => {
+  it("para: ZK klienta na karcie sztuki zdejmuje prośbę tego klienta", () => {
+    const sources = buildZdOverlapReservationSources({ pairs: [{ packTwId: 20, pieceTwId: 21, unitsPerPack: 2 }] });
+    const lines = linesWithReservationSources(
+      [
+        { tw_Id: 20, tw_StanRez: 0 },
+        { tw_Id: 21, tw_StanRez: 6 },
+      ],
+      sources
+    );
+    expect(lines[0]!.tw_StanRez).toBe(6);
+    expect(reservationSourceTwIds([20], sources).sort()).toEqual([20, 21]);
+    const reserved = mergeReservedSlicesBySources(
+      new Map([
+        [21, [{ quantity: 6, clientKhId: 7, zkNumber: "ZK 5/M/10/2026" }]],
+        [20, [{ quantity: 1, clientKhId: 9, zkNumber: "ZK 6/M/10/2026" }]],
+      ]),
+      [20],
+      sources
+    );
+    expect(reserved.get(20)!.map((x) => x.quantity)).toEqual([2, 6]);
     const maps = individualExtrasAndReliefWithReservationOverlap(
       new Map([
         [
@@ -495,7 +510,48 @@ describe("pary: rezerwacje obu kart na paczce w sztukach", () => {
       ]),
       reserved
     );
-    // Prośba = rezerwacja własnego ZK: ulga w potrzebie zapasu, bez drugiego liczenia.
     expect((maps.stockNeedReliefByTwId.get(20) ?? 0) + (maps.extraOverlapByTwId.get(20) ?? 0)).toBe(6);
+  });
+
+  it("zestaw: 5 zestawów zarezerwowanych ZK + prośba tego ZK = 10 szt. składnika, nie 20", () => {
+    const boms = [
+      {
+        parentTwId: 100,
+        stockAsCover: true,
+        demandAllocation: "explode" as const,
+        purchaseTarget: "components" as const,
+        components: [{ componentTwId: 1, qtyPerParent: 2 }],
+      },
+    ];
+    const res = buildManualZdEstimateResult(
+      { dniZapasu: 30, dniOkresu: 30, zapasMin: 0 },
+      [
+        { tw_Id: 100, tw_Symbol: "KIT", dostepne: -5, tw_StanRez: 5, sprzedazOkres: 0, celZapasu: 0 },
+        { tw_Id: 1, tw_Symbol: "A", dostepne: 0, sprzedazOkres: 0, celZapasu: 0 },
+      ],
+      { salesTrack: false, productBoms: boms }
+    );
+    const a = res.pozycje.find((p) => p.tw_Id === 1)!;
+    expect(a.doZamowieniaReczne).toBe(10);
+    const sources = buildZdOverlapReservationSources({ boms });
+    const reserved = mergeReservedSlicesBySources(
+      new Map([[100, [{ quantity: 5, clientKhId: 100, zkNumber: "ZK 1" }]]]),
+      [1],
+      sources
+    );
+    const maps = individualExtrasAndReliefWithReservationOverlap(
+      new Map([[1, { extraPieces: 10, overlapContributions: [{ orderId: "o1", qty: 10, salesClientKhId: 100, sourceZkNumber: "ZK 1" }] }]]),
+      reserved
+    );
+    const qty = resolveOrderQtyForLine(
+      a,
+      { unitsPerPackage: 1, packageLabel: "szt" },
+      maps.extraByTwId.get(1),
+      false,
+      "sum",
+      maps.stockNeedReliefByTwId.get(1) ?? 0,
+      maps.extraOverlapByTwId.get(1) ?? 0
+    );
+    expect(qty.zdUnits).toBe(10);
   });
 });

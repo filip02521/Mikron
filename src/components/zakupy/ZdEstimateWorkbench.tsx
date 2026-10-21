@@ -209,6 +209,7 @@ import {
 import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
 import {
   DEFAULT_DNI_ZAPASU,
+  zdEstimateWindowDays,
   salesWindowFromDniZapasu,
 } from "@/lib/orders/zd-estimate-manual";
 import {
@@ -249,7 +250,9 @@ import {
   type ZdEstimatePendingIndividualOrder,
 } from "@/lib/orders/zd-estimate-individual";
 import {
+  buildZdOverlapReservationSources,
   collectTwIdsNeedingProsbaReservationOverlap,
+  linesWithReservationSources,
   mapProsbaReservedOverlapDto,
   resolveProsbaReservationDedupeMaps,
   type ZdEstimateReservedOverlapSlice,
@@ -2102,16 +2105,22 @@ export function ZdEstimateWorkbench({
     [catalogExtrasBundle, reclassifyExcludedTwIds]
   );
 
+  // Para / zestaw „Składamy”: ZK klienta na innej karcie niż prośba — jak w Policz na serwerze.
+  const prosbaReservationSources = useMemo(
+    () => buildZdOverlapReservationSources({ pairs: productPairs, boms: bomRowsToRefs(productBoms) }),
+    [productPairs, productBoms]
+  );
+
   /** Kandydaci overlap z katalogu (przed reclassify) — stabilne vs on-request. */
   const prosbaOverlapCandidateTwIds = useMemo(() => {
     if (!lines?.length) return [] as number[];
     if (!catalogExtrasBundle.byTwId.size) return [] as number[];
     return collectTwIdsNeedingProsbaReservationOverlap({
       extraTwIds: catalogRawExtraByTwId.keys(),
-      lines,
+      lines: linesWithReservationSources(lines, prosbaReservationSources),
       byTwId: catalogExtrasBundle.byTwId,
     });
-  }, [lines, catalogRawExtraByTwId, catalogExtrasBundle.byTwId]);
+  }, [lines, catalogRawExtraByTwId, catalogExtrasBundle.byTwId, prosbaReservationSources]);
 
   const prosbaOverlapCandidateKey = prosbaOverlapCandidateTwIds.join(",");
 
@@ -2131,7 +2140,13 @@ export function ZdEstimateWorkbench({
     let cancelled = false;
     const twIds = [...prosbaOverlapCandidateTwIds];
     void (async () => {
-      const res = await actionFetchZdEstimateProsbaReservationOverlap({ twIds });
+      const res = await actionFetchZdEstimateProsbaReservationOverlap({
+        twIds,
+        sources: twIds.flatMap((tw) => {
+          const src = prosbaReservationSources.get(tw);
+          return src ? [[tw, src] as [number, { twId: number; factor: number }[]]] : [];
+        }),
+      });
       if (cancelled) return;
       if (!res.ok) {
         // Fail-open: pusta mapa = resolve OK bez ZK.
@@ -8853,11 +8868,10 @@ export function ZdEstimateWorkbench({
               setLinesBase(bumped);
               // Dni z ostatniego Policz (strategia dostawcy może je nadpisać), nie z formularza.
               const dni = Math.round(Number(paramInfo?.dniZapasu ?? dniZapasu));
-              const dniOkresuRaw = paramInfo?.dniOkresu;
-              const dniOkresu =
-                dniOkresuRaw != null && Number.isFinite(Number(dniOkresuRaw))
-                  ? Number(dniOkresuRaw)
-                  : null;
+              // Jak Policz i odświeżenie na żywo: bez dniOkresu z API — dni z dat okna.
+              const dniOkresu = zdEstimateWindowDays(
+                paramInfo as Parameters<typeof zdEstimateWindowDays>[0]
+              );
               const { lines: nextLines, missingPartnerTwIds, missingBomTwIds } =
                 refreshZdEstimateLinesWithPairs({
                   linesBase: bumped,
@@ -9056,11 +9070,10 @@ export function ZdEstimateWorkbench({
               setLinesBase(bumped);
               // Dni z ostatniego Policz (strategia dostawcy może je nadpisać), nie z formularza.
               const dni = Math.round(Number(paramInfo?.dniZapasu ?? dniZapasu));
-              const dniOkresuRaw = paramInfo?.dniOkresu;
-              const dniOkresu =
-                dniOkresuRaw != null && Number.isFinite(Number(dniOkresuRaw))
-                  ? Number(dniOkresuRaw)
-                  : null;
+              // Jak Policz i odświeżenie na żywo: bez dniOkresu z API — dni z dat okna.
+              const dniOkresu = zdEstimateWindowDays(
+                paramInfo as Parameters<typeof zdEstimateWindowDays>[0]
+              );
               const { lines: nextLines, missingPartnerTwIds, missingBomTwIds } =
                 refreshZdEstimateLinesWithPairs({
                   linesBase: bumped,

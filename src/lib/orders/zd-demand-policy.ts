@@ -132,7 +132,8 @@ export function applyZdPairDemandFloor<P extends SalesLine, Q extends SalesLine>
  * zestawu × ilość, więc podłoga per linia dałaby max(składnik) + ilość × max(zestaw).
  * Tu raz, na łącznym popycie (własne + Σ ilość × zestaw); składnik dostaje tylko dopełnienie
  * do podłogi (wkład zestawów doliczy expand). Zestaw w zestawie, składnik w parze i brak
- * profilu którejkolwiek strony — bez podłogi. Zmienia `lines` w miejscu.
+ * profilu którejkolwiek strony — bez łącznej podłogi (składnik wraca do własnej, per linia).
+ * Zmienia `lines` w miejscu; zwraca składniki obsłużone tutaj (bez podłogi per linia).
  */
 export function applyZdBomDemandFloor<
   T extends {
@@ -151,8 +152,9 @@ export function applyZdBomDemandFloor<
   policy: ZdSupplierOrderPolicy;
   dniOkresu: number;
   dniZapasu: number;
-}): void {
-  if (input.policy.strategy !== "max30_90") return;
+}): Set<number> {
+  const handled = new Set<number>();
+  if (input.policy.strategy !== "max30_90") return handled;
   const days = Math.max(1, input.dniOkresu);
   const indexByTw = new Map(input.lines.map((l, i) => [Math.trunc(Number(l.tw_Id) || 0), i]));
   const parentIds = new Set(input.explodeBoms.map((b) => b.parentTwId));
@@ -172,6 +174,7 @@ export function applyZdBomDemandFloor<
     const own = input.profiles.get(cid);
     const kitWindows = terms.map((t) => input.profiles.get(t.parentTwId));
     if (!own || kitWindows.some((w) => !w)) continue;
+    handled.add(cid);
     const combined = own.map(
       (v, k) => Math.max(0, v) + terms.reduce((sum, t, i) => sum + t.qty * Math.max(0, kitWindows[i]![k] ?? 0), 0)
     );
@@ -192,4 +195,5 @@ export function applyZdBomDemandFloor<
       demandFloor: floored.demandFloor,
     };
   }
+  return handled;
 }
