@@ -1556,11 +1556,16 @@ export async function actionFetchZdEstimateProsbaReservationOverlap(input: {
     return { ok: false, message: orders.message, feedback };
   }
 
-  const twIds = Array.isArray(input.twIds) ? input.twIds : [];
+  // Limity wejścia z przeglądarki: lista kandydatów i źródła rezerwacji (para + kilka zestawów).
+  const twIds = (Array.isArray(input.twIds) ? input.twIds : [])
+    .map((t) => Math.trunc(Number(t)) || 0)
+    .filter((t) => t > 0)
+    .slice(0, 2000);
   const sources: ZdOverlapReservationSources = new Map();
-  for (const entry of Array.isArray(input.sources) ? input.sources : []) {
+  for (const entry of (Array.isArray(input.sources) ? input.sources : []).slice(0, 2000)) {
     const target = Math.trunc(Number(entry?.[0])) || 0;
     const list = (Array.isArray(entry?.[1]) ? entry[1] : [])
+      .slice(0, 50)
       .map((x) => ({ twId: Math.trunc(Number(x?.twId)) || 0, factor: Number(x?.factor) || 0 }))
       .filter((x) => x.twId > 0 && x.factor > 0 && x.factor <= 1_000_000);
     if (target > 0 && list.length) sources.set(target, list);
