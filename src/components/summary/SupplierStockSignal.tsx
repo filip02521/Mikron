@@ -229,9 +229,12 @@ export function SupplierStockSummary({
 export function SupplierStockSignal({
   supplierId,
   className,
+  hidePrepare = false,
 }: {
   supplierId: string;
   className?: string;
+  /** Wiersz ma gotowe zamówienie automatu — bez drugiej drogi „Przygotuj ZD” i bez powtórki liczb Do ZD. */
+  hidePrepare?: boolean;
 }) {
   const { signals, canPrepareZd } = useContext(SupplierStockSignalsContext);
   const s = signals[supplierId];
@@ -278,7 +281,7 @@ export function SupplierStockSignal({
             {stockSignalUrgentLabel(s.criticalCount)}
           </Link>
         ) : null}
-        {s.criticalCount > 0 ? (
+        {hidePrepare ? null : s.criticalCount > 0 ? (
           <span className="font-medium tabular-nums text-slate-700">{stockSignalOrderSummary(s)}</span>
         ) : (
           <Link
@@ -289,7 +292,7 @@ export function SupplierStockSignal({
             {stockSignalOrderSummary(s)}
           </Link>
         )}
-        {canPrepareZd ? (
+        {canPrepareZd && !hidePrepare ? (
           <Link
             href={buildZdEstimateLaunchHref(supplierId, prepareWithHorizon ? { leadTimeHorizon: true } : undefined)}
             className={linkClass}
@@ -297,7 +300,7 @@ export function SupplierStockSignal({
             Przygotuj ZD
           </Link>
         ) : null}
-        {canPrepareZd && horizon ? (
+        {canPrepareZd && horizon && !hidePrepare ? (
           <Link
             href={buildZdEstimateLaunchHref(supplierId, { leadTimeHorizon: true })}
             className={linkClass}

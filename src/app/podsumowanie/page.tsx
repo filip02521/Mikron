@@ -20,7 +20,8 @@ import {
   type StockWatchSupplierSignal,
 } from "@/lib/stock-watch/data";
 import { warsawNowParts } from "@/lib/time/warsaw";
-import { listPendingZdAutoProposalSuppliers } from "@/lib/data/zd-auto-proposals";
+import { listPendingZdAutoProposals } from "@/lib/data/zd-auto-proposals";
+import type { DailyZdProposal } from "@/components/summary/DailyZdProposals";
 import {
   supplierSubiektScopeInfoFromRow,
   type SupplierSubiektScopeInfo,
@@ -66,10 +67,10 @@ export default async function PodsumowaniePage() {
   let error: string | null = null;
   let offPlanSuppliers: StockWatchOffPlanSupplier[] = [];
   let stockSignalBySupplierId: Record<string, StockWatchSupplierSignal> = {};
-  let autoProposalSuppliers: Array<{ supplierId: string; supplierName: string }> = [];
+  let autoProposals: DailyZdProposal[] = [];
 
   try {
-    const [data, verification, scopeRows, offPlan, stockSignals, autoProposals] = await Promise.all([
+    const [data, verification, scopeRows, offPlan, stockSignals, pendingProposals] = await Promise.all([
       fetchSummaryWorkspace(),
       fetchVerificationOrders(),
       // Powiązania dostawca → grupa/cecha Subiekta; brak tabeli/błąd nie blokuje panelu.
@@ -78,9 +79,9 @@ export default async function PodsumowaniePage() {
       listStockWatchOffPlanSuppliers(warsawNowParts().dateKey).catch(() => []),
       listStockWatchSupplierSignals().catch(() => ({})),
       // Propozycje ZD automatu do potwierdzenia; bez migracji 190 / błąd — brak karty.
-      canPrepareZd ? listPendingZdAutoProposalSuppliers().catch(() => []) : Promise.resolve([]),
+      canPrepareZd ? listPendingZdAutoProposals().catch(() => []) : Promise.resolve([]),
     ]);
-    autoProposalSuppliers = autoProposals;
+    autoProposals = pendingProposals;
     offPlanSuppliers = offPlan;
     stockSignalBySupplierId = stockSignals;
     for (const row of scopeRows) {
@@ -123,7 +124,7 @@ export default async function PodsumowaniePage() {
           workspace={workspace}
           stockSignalBySupplierId={stockSignalBySupplierId}
           offPlanSuppliers={offPlanSuppliers}
-          autoProposalSuppliers={autoProposalSuppliers}
+          autoProposals={autoProposals}
           suppliers={suppliers}
           supplierDirectory={supplierDirectory}
           salesPeople={salesPeople}

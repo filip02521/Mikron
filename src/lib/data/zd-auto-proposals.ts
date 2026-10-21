@@ -259,16 +259,21 @@ export async function addZdAutoProposalFinalLines(input: {
   return (res.rowCount ?? 0) > 0;
 }
 
-/** Panel dzienny: dostawcy z propozycją ZD czekającą na decyzję (najstarsza pierwsza). */
-export async function listPendingZdAutoProposalSuppliers(): Promise<Array<{ supplierId: string; supplierName: string }>> {
-  const res = await query<{ supplier_id: string; name: string }>(
-    `SELECT DISTINCT ON (a.supplier_id) a.supplier_id, s.name, a.created_at
-       FROM zd_auto_proposals a
-       JOIN suppliers s ON s.id = a.supplier_id
-      WHERE a.status = 'pending'
-      ORDER BY a.supplier_id, a.created_at`
+/**
+ * Panel dzienny: aktualna czekająca propozycja każdego dostawcy (najnowsza) z nazwą dostawcy.
+ * Wiersz harmonogramu pokazuje ją od razu, bez dociągania w przeglądarce.
+ */
+export async function listPendingZdAutoProposals(): Promise<Array<ZdAutoProposal & { supplierName: string }>> {
+  const res = await query<Row & { supplier_name: string }>(
+    `SELECT DISTINCT ON (p.supplier_id) p.id, p.supplier_id, p.created_at, p.policy, p.data_od, p.data_do, p.lines,
+            p.line_count, p.value_net, p.status, p.decided_at, p.decision_note, p.dok_id, p.final_lines,
+            to_jsonb(p.*) -> 'service_order_ids' AS service_order_ids, s.name AS supplier_name
+       FROM zd_auto_proposals p
+       JOIN suppliers s ON s.id = p.supplier_id
+      WHERE p.status = 'pending'
+      ORDER BY p.supplier_id, p.created_at DESC`
   );
   return res.rows
-    .map((r) => ({ supplierId: r.supplier_id, supplierName: r.name }))
+    .map((r) => ({ ...map(r), supplierName: r.supplier_name }))
     .sort((a, b) => a.supplierName.localeCompare(b.supplierName, "pl"));
 }
