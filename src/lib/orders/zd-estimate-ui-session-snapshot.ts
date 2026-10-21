@@ -1,9 +1,3 @@
-import type { ZdEstimateExclusionRow } from "@/lib/data/zd-estimate-exclusions";
-import type { ZdEstimateOnRequestRow } from "@/lib/data/zd-estimate-on-request";
-import type { ZdEstimatePackagingRow } from "@/lib/data/zd-estimate-packaging";
-import type { ZdEstimateMinStockRow } from "@/lib/data/zd-estimate-min-stock";
-import type { ZdProductPairRow } from "@/lib/data/zd-product-pairs";
-import type { ZdProductBomRow } from "@/lib/data/zd-product-boms";
 import {
   normalizeZdBoostPowerPreset,
   ZD_BOOST_POWER_PRESET_IDS,
@@ -63,13 +57,12 @@ export type ZdEstimateUiSessionSnapshot = {
   missingBomTwIds: number[];
 
   paramInfo: Record<string, unknown>;
-  exclusions: ZdEstimateExclusionRow[];
-  onRequests: ZdEstimateOnRequestRow[];
-  packaging: ZdEstimatePackagingRow[];
-  minStock: ZdEstimateMinStockRow[];
-  productPairs: ZdProductPairRow[];
-  productBoms: ZdProductBomRow[];
-  teethTwIds: number[];
+  /*
+   * Reguły działu (wykluczenia, „tylko na prośbę”, opakowania, minimum, pary,
+   * składy, zęby) NIE są w snapshocie — przy restore obowiązują te z bazy
+   * (bootstrap strony), a lista jest z nimi przeliczana. Starsze snapshoty
+   * mogą je mieć; parser je odrzuca.
+   */
   /** Aktualny wybór w UI (może różnić się od applied przy dirty boost). */
   boostPreset: ZdBoostPowerPreset;
   /** Moc użyta przy ostatnim Policz / remat — opcjonalne w starszych snapshotach. */
@@ -154,6 +147,17 @@ export function buildZdEstimateUiSessionSnapshot(
   };
 }
 
+/** Reguły z bazy zapisywane w snapshotach sprzed przeliczenia przy restore. */
+const LEGACY_RULE_KEYS = [
+  "exclusions",
+  "onRequests",
+  "packaging",
+  "minStock",
+  "productPairs",
+  "productBoms",
+  "teethTwIds",
+] as const;
+
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
@@ -163,7 +167,9 @@ export function parseZdEstimateUiSessionSnapshot(
   fallbackSchemaVersion?: number
 ): ZdEstimateUiSessionSnapshot | null {
   if (!payload || typeof payload !== "object") return null;
-  const p = payload as Partial<ZdEstimateUiSessionSnapshot>;
+  const raw: Record<string, unknown> = { ...(payload as Record<string, unknown>) };
+  for (const key of LEGACY_RULE_KEYS) delete raw[key];
+  const p = raw as Partial<ZdEstimateUiSessionSnapshot>;
   const schemaVersion =
     typeof p.schemaVersion === "number" ? p.schemaVersion : fallbackSchemaVersion;
   if (schemaVersion !== ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION) {
@@ -226,13 +232,6 @@ export function parseZdEstimateUiSessionSnapshot(
       ? p.missingPartnerTwIds
       : [],
     missingBomTwIds: Array.isArray(p.missingBomTwIds) ? p.missingBomTwIds : [],
-    exclusions: Array.isArray(p.exclusions) ? p.exclusions : [],
-    onRequests: Array.isArray(p.onRequests) ? p.onRequests : [],
-    packaging: Array.isArray(p.packaging) ? p.packaging : [],
-    minStock: Array.isArray(p.minStock) ? p.minStock : [],
-    productPairs: Array.isArray(p.productPairs) ? p.productPairs : [],
-    productBoms: Array.isArray(p.productBoms) ? p.productBoms : [],
-    teethTwIds: Array.isArray(p.teethTwIds) ? p.teethTwIds : [],
     paramInfo:
       p.paramInfo && typeof p.paramInfo === "object"
         ? (p.paramInfo as Record<string, unknown>)

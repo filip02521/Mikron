@@ -132,6 +132,11 @@ import {
   parseZdEstimateUiSessionSnapshot,
   type ZdEstimateUiSessionSnapshot,
 } from "@/lib/orders/zd-estimate-ui-session-snapshot";
+import {
+  recomputeRestoredZdEstimateLines,
+  recomputeZdEstimateLinesWithRules,
+  type ZdEstimateRestoreRules,
+} from "@/lib/orders/zd-estimate-ui-session-restore";
 import { bomRowsToRefs, bomRowHidesHardExclude, bomRowHidesOnRequest, hasUnresolvedExplodeBomNodes, zdEstimateLineSalesDemandSignal } from "@/lib/orders/zd-estimate-bom";
 import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
 import {
@@ -1452,6 +1457,12 @@ export function ZdEstimateWorkbench({
     pairUnitsByPackTwId,
     packagingLookup,
   } = rulesState;
+  // Restore sesji i ponowne wczytanie reguł są asynchroniczne — czytaj reguły
+  // z ostatniego renderu, nie z closure.
+  const latestRulesRef = useRef<ZdEstimateRestoreRules>(rulesState);
+  useLayoutEffect(() => {
+    latestRulesRef.current = rulesState;
+  });
   const [pairsOpen, setPairsOpen] = useState(false);
   const [pairSeed, setPairSeed] = useState<
     readonly [ZdPairSeedProduct, ZdPairSeedProduct] | null
@@ -2702,13 +2713,6 @@ export function ZdEstimateWorkbench({
         missingPartnerTwIds,
         missingBomTwIds,
         paramInfo: paramInfo ?? {},
-        exclusions,
-        onRequests,
-        packaging,
-        minStock,
-        productPairs,
-        productBoms,
-        teethTwIds,
         boostPreset,
         appliedBoostPreset,
         leadTimeHorizon,
@@ -2751,13 +2755,6 @@ export function ZdEstimateWorkbench({
       missingPartnerTwIds,
       missingBomTwIds,
       paramInfo,
-      exclusions,
-      onRequests,
-      packaging,
-      minStock,
-      productPairs,
-      productBoms,
-      teethTwIds,
       appliedBoostPreset,
       leadTimeHorizon,
       salesSmoothing,
@@ -2964,7 +2961,15 @@ export function ZdEstimateWorkbench({
       setSalesWindowSource(payload.salesWindowSource ?? "stock");
 
       setLinesBase(coerceZdEstimateLinesBase(payload.linesBase ?? []));
-      setLines(payload.lines);
+      // Reguły z bazy (bootstrap strony) zostają — lista przeliczona raz z nimi,
+      // żeby zmiana reguły w trakcie nieobecności nie wróciła starą kopią.
+      const restored = recomputeRestoredZdEstimateLines(
+        payload,
+        latestRulesRef.current
+      );
+      setLines(restored.lines);
+      setMissingPartnerTwIds(restored.missingPartnerTwIds);
+      setMissingBomTwIds(restored.missingBomTwIds);
       setHistoryByTwId(historyMapFromEntries(payload.historyByTwId));
       setHistoryFetchFailed(Boolean(payload.historyFetchFailed));
       // Z sesji: tylko horyzont (zakresy / podpowiedzi ZD wrócą przy kolejnym Policz).
@@ -2986,21 +2991,6 @@ export function ZdEstimateWorkbench({
         Boolean(payload.pendingIndividualsTruncated)
       );
       setPendingIndividualsError(payload.pendingIndividualsError ?? null);
-
-      setOnRequests(payload.onRequests ?? []);
-      setOnRequestsError(null);
-      setExclusions(payload.exclusions ?? []);
-      setExclusionsError(null);
-      setPackaging(payload.packaging ?? []);
-      setPackagingError(null);
-      setProductPairs(payload.productPairs ?? []);
-      setProductPairsError(null);
-      setProductBoms(payload.productBoms ?? []);
-      setProductBomsError(null);
-      setTeethTwIds(payload.teethTwIds ?? []);
-      setTeethProductsError(null);
-      setMissingPartnerTwIds(payload.missingPartnerTwIds ?? []);
-      setMissingBomTwIds(payload.missingBomTwIds ?? []);
 
       setQtyOverrideByTwId(payload.qtyOverrideByTwId ?? {});
       listScopeKeyRef.current = zdEstimateListScopeKey(
@@ -3065,18 +3055,6 @@ export function ZdEstimateWorkbench({
       resetSelectionQuiet,
       resetCreateZdFlow,
       setListComputedAtMs,
-      setExclusions,
-      setExclusionsError,
-      setOnRequests,
-      setOnRequestsError,
-      setPackaging,
-      setPackagingError,
-      setProductBoms,
-      setProductBomsError,
-      setProductPairs,
-      setProductPairsError,
-      setTeethProductsError,
-      setTeethTwIds,
     ]
   );
 
@@ -4270,13 +4248,6 @@ export function ZdEstimateWorkbench({
             missingPartnerTwIds: res.meta.pairMissingTwIds ?? [],
             missingBomTwIds: res.meta.bomMissingTwIds ?? [],
             paramInfo: res.result.parametry as Record<string, unknown>,
-            exclusions: res.exclusions ?? [],
-            onRequests: res.onRequests ?? [],
-            packaging: res.packaging ?? [],
-            minStock: res.minStock ?? [],
-            productPairs: res.productPairs ?? [],
-            productBoms: res.productBoms ?? [],
-            teethTwIds: res.teethTwIds ?? [],
             boostPreset: res.boostPreset ?? boostPreset,
             appliedBoostPreset: res.boostPreset ?? appliedBoostPreset,
             boostNeedsRecount: false,
@@ -5719,8 +5690,40 @@ export function ZdEstimateWorkbench({
     });
   };
 
+  /**
+   * Jedno przeliczenie listy z kompletem reguł podanym jawnie (świeże wiersze
+   * z serwera, nie closure). Pomija, gdy w międzyczasie ruszył Policz.
+   */
+  const recountLinesWithRules = (
+    nextRules: ZdEstimateRestoreRules,
+    estimateGen: number
+  ): boolean => {
+    if (!linesBase?.length || estimateGen !== estimateGenRef.current) {
+      return false;
+    }
+    const next = recomputeZdEstimateLinesWithRules(
+      {
+        linesBase,
+        paramInfo,
+        dniZapasu,
+        zapasMin,
+        historyByTwId,
+        salesTrackPolicy: appliedBoostPolicy,
+        sessionIncludeTwIds,
+      },
+      nextRules
+    );
+    startRemat(() => {
+      setLines(next.lines);
+      setMissingPartnerTwIds(next.missingPartnerTwIds);
+      setMissingBomTwIds(next.missingBomTwIds);
+    });
+    return true;
+  };
+
   const retryLoadTeeth = () => {
     setErrorMessage(null);
+    const estimateGen = estimateGenRef.current;
     startMutate(async () => {
       const res = await actionListZdEstimateTeethTwIds();
       if (!res.ok) {
@@ -5730,11 +5733,20 @@ export function ZdEstimateWorkbench({
       }
       setTeethTwIds(res.teethTwIds);
       setTeethProductsError(null);
+      recountLinesWithRules(
+        {
+          ...latestRulesRef.current,
+          teethTwIds: res.teethTwIds,
+          teethTrusted: true,
+        },
+        estimateGen
+      );
     });
   };
 
   const retryLoadAllSettings = () => {
     setErrorMessage(null);
+    const estimateGen = estimateGenRef.current;
     startMutate(async () => {
       const [ex, onReq, pack, minSt, pairs, boms, teeth] = await Promise.all([
         actionListZdEstimateExclusions(),
@@ -5745,28 +5757,41 @@ export function ZdEstimateWorkbench({
         actionListZdProductBoms(),
         actionListZdEstimateTeethTwIds(),
       ]);
-      if (ex.ok) applyExclusionsLive(ex.exclusions);
+      // Jeden komplet reguł i jedno przeliczenie — łańcuch apply*Live liczył każdą
+      // regułę z resztą z closure, a ostatni reapply nadpisywał wykluczenia,
+      // opakowania i minimum starymi wartościami.
+      const current = latestRulesRef.current;
+      const nextRules: ZdEstimateRestoreRules = {
+        exclusions: ex.ok ? ex.exclusions : current.exclusions,
+        // Nieudane wczytanie ustawia błąd → reguła nieufna (jak w reszcie kreatora).
+        exclusionsTrusted: ex.ok,
+        onRequests: onReq.ok ? onReq.onRequests : current.onRequests,
+        onRequestTrusted: onReq.ok,
+        packaging: pack.ok ? pack.packaging : current.packaging,
+        minStock: minSt.ok ? minSt.minStock : current.minStock,
+        productPairs: pairs.ok ? pairs.pairs : current.productPairs,
+        productBoms: boms.ok ? boms.boms : current.productBoms,
+        teethTwIds: teeth.ok ? teeth.teethTwIds : current.teethTwIds,
+        teethTrusted: teeth.ok,
+      };
+      if (ex.ok) applyExclusionsMutation(ex.exclusions);
       else setExclusionsError(userFacingErrorTextFromMessage(ex.message));
       if (onReq.ok) {
-        applyOnRequestsLive(
-          onReq.onRequests,
-          ex.ok ? ex.exclusions.map((r) => r.subiektTwId) : undefined
-        );
+        setOnRequests(onReq.onRequests);
+        setOnRequestsError(null);
       } else setOnRequestsError(userFacingErrorTextFromMessage(onReq.message));
-      if (pack.ok) applyPackagingLive(pack.packaging);
+      if (pack.ok) rulesState.applyPackagingMutation(pack.packaging);
       else setPackagingError(userFacingErrorTextFromMessage(pack.message));
-      if (minSt.ok) applyMinStockLive(minSt.minStock);
-      else setMinStockError(userFacingErrorTextFromMessage(minSt.message));
-      let nextPairs = productPairs;
-      let nextBoms = productBoms;
+      if (minSt.ok) {
+        setMinStock(minSt.minStock);
+        setMinStockError(null);
+      } else setMinStockError(userFacingErrorTextFromMessage(minSt.message));
       if (pairs.ok) {
         pairsGenRef.current += 1;
-        nextPairs = pairs.pairs;
         setProductPairs(pairs.pairs);
         setProductPairsError(null);
       } else setProductPairsError(userFacingErrorTextFromMessage(pairs.message));
       if (boms.ok) {
-        nextBoms = boms.boms;
         setProductBoms(boms.boms);
         setProductBomsError(null);
       } else setProductBomsError(userFacingErrorTextFromMessage(boms.message));
@@ -5774,8 +5799,10 @@ export function ZdEstimateWorkbench({
         setTeethTwIds(teeth.teethTwIds);
         setTeethProductsError(null);
       } else setTeethProductsError(userFacingErrorTextFromMessage(teeth.message));
-      if (linesBase?.length && (pairs.ok || boms.ok)) {
-        reapplyPairsToLines(nextPairs, nextBoms);
+      const anyLoaded =
+        ex.ok || onReq.ok || pack.ok || minSt.ok || pairs.ok || boms.ok || teeth.ok;
+      if (anyLoaded && recountLinesWithRules(nextRules, estimateGen)) {
+        flashSettingsLive(ZD_ESTIMATE_UI.settingsReloadedLiveFlash);
       }
       const failed = [
         !ex.ok && "wykluczenia",
@@ -5848,21 +5875,33 @@ export function ZdEstimateWorkbench({
     retryLoadPackaging();
   };
 
-  const retryLoadMinStock = useCallback(async () => {
+  const retryLoadMinStock = async () => {
     setMinStockError(null);
+    const estimateGen = estimateGenRef.current;
     try {
       const res = await actionListZdEstimateMinStock();
       if (!res.ok) {
-        setMinStockError(res.message);
+        setMinStockError(userFacingErrorTextFromMessage(res.message));
         return;
       }
+      const current = latestRulesRef.current;
       setMinStock(res.minStock);
+      // Bez komunikatu (wołane też przy otwarciu okna) — przelicz tylko, gdy
+      // minimum w bazie zmieniło się od ostatniego przeliczenia listy.
+      if (JSON.stringify(res.minStock) !== JSON.stringify(current.minStock)) {
+        recountLinesWithRules(
+          { ...current, minStock: res.minStock },
+          estimateGen
+        );
+      }
     } catch (e) {
       setMinStockError(
-        e instanceof Error ? e.message : "Nie udało się wczytać minimum stanów."
+        e instanceof Error
+          ? userFacingErrorTextFromMessage(e.message)
+          : "Nie udało się wczytać minimum stanów."
       );
     }
-  }, [setMinStock, setMinStockError]);
+  };
 
   const openMinStockPanel = () => {
     setMinStockOpen(true);
