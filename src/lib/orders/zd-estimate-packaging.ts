@@ -24,6 +24,7 @@ import {
   type ZdPackagingDocumentUnitMode,
 } from "@/lib/orders/zd-estimate-units";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
+import { polishPlural } from "@/lib/email/polish-plural";
 import {
   combineStockNeedWithExtra,
   type ZdEstimateExtrasPolicy,
@@ -242,11 +243,29 @@ export function resolveOrderQtyForLine(
     return computeZdPackOrderQty(0, 1, label, "packages", null);
   }
   if (line.pair?.role === "pack") {
-    const baseRaw = extraOnly
+    if (extraOnly) {
+      // Na prośbę: prośba albo brak do minimum stanów (poziom w sztukach pary), co większe.
+      // Bez minimum (0/brak) nic nie dobijamy — ujemne pokrycie (dług rezerwacji) to nie zamówienie.
+      const minShortfall =
+        line.pair.partnerMissing || !(Number(minStockSzt) > 0)
+          ? 0
+          : computeManualOrderQty({
+            celZapasu: 0,
+            dostepne: line.pair.coverSzt,
+            otwarteZd: 0, // już w coverSzt
+            minStockSzt,
+          });
+      return computeZdPackOrderQty(
+        Math.max(effectiveExtraForNeed(0), minShortfall),
+        line.pair.unitsPerPack,
+        label,
+        "packages",
+        orderMult
+      );
+    }
+    const baseRaw = line.pair.partnerMissing
       ? 0
-      : line.pair.partnerMissing
-        ? 0
-        : Math.max(0, Math.ceil(Number(line.doZamowieniaReczne) || 0));
+      : Math.max(0, Math.ceil(Number(line.doZamowieniaReczne) || 0));
     const base = Math.max(0, baseRaw - relief);
     return computeZdPackOrderQty(
       combineStockNeedWithExtra(
@@ -262,27 +281,32 @@ export function resolveOrderQtyForLine(
   }
 
   const pack = normalizeUnitsPerPackage(packaging?.unitsPerPackage);
-  if (extraOnly) {
-    // need=0 → overlap nie obcina; Do ZD = prośba.
-    // Minimum stanów dobija niezależnie od prośby (zapasowy floor).
-    const effectiveExtra = Math.max(
-      effectiveExtraForNeed(0),
-      minStockSzt ?? 0
-    );
-    return computeZdPackOrderQty(
-      effectiveExtra,
-      pack,
-      label,
-      mode,
-      orderMult
-    );
-  }
   const otwarteZdRaw = Math.max(0, Number(line.otwarteZd) || 0);
   const otwarteZdPieces = zdDocumentUnitsToPieces(
     otwarteZdRaw,
     packaging?.unitsPerPackage,
     mode
   );
+  if (extraOnly) {
+    // need=0 → overlap nie obcina; Do ZD = prośba.
+    // Minimum stanów to poziom (stan + otwarte ZD), nie ilość — dobija tylko brak.
+    const minShortfall =
+      Number(minStockSzt) > 0
+        ? computeManualOrderQty({
+            celZapasu: 0,
+            dostepne: line.dostepne,
+            otwarteZd: otwarteZdPieces,
+            minStockSzt,
+          })
+        : 0;
+    return computeZdPackOrderQty(
+      Math.max(effectiveExtraForNeed(0), minShortfall),
+      pack,
+      label,
+      mode,
+      orderMult
+    );
+  }
   const stockNeed = Math.max(
     0,
     computeManualOrderQty({
@@ -305,8 +329,39 @@ export const ZD_PACKAGING_LABEL_PRESETS = [
   "op.",
   "karton",
   "paczka",
+  "worek",
   "zbiorcze",
 ] as const;
+
+/**
+ * Podgląd w oknie opakowania: co pójdzie na ZD i ile to sztuk / palet.
+ * Liczba przed „× etykieta” — bez odmiany etykiety („36 × worek”).
+ */
+export function formatZdPackDialogPreview(qty: ZdPackOrderQty): {
+  orderLine: string;
+  needLine: string;
+} {
+  const label = qty.packageLabel.trim() || "op.";
+  const need = `${ZD_ESTIMATE_UI.packagingNeedLabel} ${formatQty(qty.piecesNeeded)} szt`;
+  const surplus = qty.piecesArriving - qty.piecesNeeded;
+  const needLine = surplus > 0 ? `${need} · zapas ${formatQty(surplus)} szt` : need;
+  if (!isPackagingPackagesMode(qty.documentUnitMode)) {
+    return {
+      orderLine: `${ZD_ESTIMATE_UI.packagingOrderLabel}: ${formatQty(qty.zdUnits)} szt (pełne opakowania po ${qty.unitsPerPackage} szt)`,
+      needLine,
+    };
+  }
+  const pallets =
+    qty.orderMultiple >= 2 ? Math.round(qty.zdUnits / qty.orderMultiple) : 0;
+  const palletPart =
+    pallets > 0
+      ? ` · ${polishPlural(pallets, "pełna paleta", "pełne palety", "pełnych palet")}`
+      : "";
+  return {
+    orderLine: `${ZD_ESTIMATE_UI.packagingOrderLabel}: ${formatQty(qty.zdUnits)} × ${label} = ${formatQty(qty.piecesArriving)} szt${palletPart}`,
+    needLine,
+  };
+}
 
 /**
  * Skrót etykiety opakowania do gęstej tabeli (Opak. / Do ZD).
@@ -410,6 +465,28 @@ export function assertOrderMultiple(
   return { ok: true, orderMultiple: n };
 }
 
+/**
+ * Pole „Opakowań na palecie” w oknach opakowania: puste = bez palet,
+ * inaczej tylko liczba całkowita 2–100 000 (bez cichego zerowania „36e” / „3-6”).
+ */
+export function parsePalletInput(
+  raw: string
+): { ok: true; value: number | null } | { ok: false; message: string } {
+  const t = raw.trim();
+  if (t === "") return { ok: true, value: null };
+  if (!/^\d+$/.test(t)) {
+    return { ok: false, message: ZD_ESTIMATE_UI.packagingOrderMultipleMinError };
+  }
+  const n = Number(t);
+  if (n < ZD_PACKAGING_UNITS_MIN) {
+    return { ok: false, message: ZD_ESTIMATE_UI.packagingOrderMultipleMinError };
+  }
+  if (n > ZD_PACKAGING_UNITS_MAX) {
+    return { ok: false, message: ZD_ESTIMATE_UI.packagingOrderMultipleMaxError };
+  }
+  return { ok: true, value: n };
+}
+
 /** Czy ręczne Do ZD jest wielokrotnością M (packages). */
 export function isZdUnitsMultipleOfOrderMultiple(
   zdUnits: number,
@@ -455,28 +532,6 @@ export function formatZdPackHint(qty: ZdPackOrderQty): string {
   const multHint =
     qty.orderMultiple >= 2 ? ` · co ${qty.orderMultiple} ${packWord}` : "";
   return `${doc} × ${qty.unitsPerPackage} = ${qty.piecesArriving} szt${multHint}${over}`;
-}
-
-/**
- * Linia „Na ZD” w dialogu Opak. — A: paczki × N; B: sztuki (bez fałszywego × N).
- */
-export function formatZdPackOrderPreviewLine(qty: ZdPackOrderQty): string {
-  if (!(qty.zdUnits > 0)) return "-";
-  if (!qty.hasPackaging) {
-    return `${formatQty(qty.zdUnits)} szt`;
-  }
-  if (!isPackagingPackagesMode(qty.documentUnitMode)) {
-    return `${formatQty(qty.zdUnits)} szt (wielokrotność ${qty.unitsPerPackage})`;
-  }
-  const packStep =
-    qty.orderMultiple >= 2 &&
-    qty.packsBeforeOrderMultiple != null &&
-    qty.packsBeforeOrderMultiple !== qty.zdUnits
-      ? ` (${qty.packsBeforeOrderMultiple}→${qty.zdUnits} op.)`
-      : qty.orderMultiple >= 2
-        ? ` · co ${qty.orderMultiple}`
-        : "";
-  return `${qty.zdUnits} × ${qty.unitsPerPackage} = ${formatQty(qty.piecesArriving)} szt${packStep}`;
 }
 
 /** Dane dobicia — do kompaktowego UI w wąskiej kolumnie Do ZD. */
@@ -666,23 +721,9 @@ export function effectiveZdDocumentUnits(
     Number.isFinite(overrideZdUnits) &&
     overrideZdUnits >= 0
   ) {
-    const raw = Math.trunc(overrideZdUnits);
-    // Normalizuj nadpisanie do wielokrotności jak computeZdPackOrderQty:
-    //  - packages + orderMultiple >= 2: dobij paczki do M
-    //  - pieces_multiple + pack > 1:    dobij sztuki do pack
-    const mode = packagingDocumentMode(packaging);
-    const pack = normalizeUnitsPerPackage(packaging?.unitsPerPackage);
-    if (isPackagingPackagesMode(mode)) {
-      const mult = normalizeOrderMultiple(packaging?.orderMultiple);
-      if (mult >= 2 && raw > 0) {
-        return Math.ceil(raw / mult) * mult;
-      }
-      return raw;
-    }
-    if (pack > 1 && raw > 0) {
-      return Math.ceil(raw / pack) * pack;
-    }
-    return raw;
+    // Ręczne nadpisanie idzie na ZD dokładnie tak, jak wpisane (decyzja zakupów 2026-10-20):
+    // komórka Do ZD ostrzega o niepełnej palecie / opakowaniu, ale nie dobija po cichu.
+    return Math.trunc(overrideZdUnits);
   }
   return computed;
 }

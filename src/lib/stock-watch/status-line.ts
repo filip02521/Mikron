@@ -56,7 +56,8 @@ export function buildStockWatchStatusLine(dashboard: StockWatchDashboard): Stock
   const towary = (n: number) => polishPlural(n, "towar", "towary", "towarów");
   // Brak z towarem w drodze nie jest „do zamówienia” — tablica pokazuje go jako „Czeka na dostawę”.
   const urgentToday = counts.emptyNoIncoming + counts.critical + counts.beforeDelivery;
-  const inTransit = counts.outOfStock - counts.emptyNoIncoming;
+  // Brak albo ≤ 48 h z dostawą w drodze, która zdąży — „Czeka na dostawę”, nie do zamówienia.
+  const inTransit = counts.outOfStock - counts.emptyNoIncoming + counts.criticalInTransit;
   const urgent = suppliers.filter((s) => s.priority === "now" || s.priority === "today");
   // Tablica jest posortowana od najpilniejszego (buildStockWatchDashboard).
   const top = urgent[0] ?? null;
@@ -79,7 +80,7 @@ export function buildStockWatchStatusLine(dashboard: StockWatchDashboard): Stock
     return {
       ...base,
       tone: "warning",
-      headline: `${polishPlural(inTransit, "brak czeka", "braki czekają", "braków czeka")} na dostawę z otwartych ZD`,
+      headline: `${polishPlural(inTransit, "towar czeka", "towary czekają", "towarów czeka")} na dostawę z otwartych ZD`,
     };
   }
   if (counts.warning > 0) {

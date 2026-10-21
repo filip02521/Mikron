@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   collectZdEstimateReservedZkRows,
+  fetchAllReservedZkRowsForTwId,
   formatZdEstimateZkStatusLabel,
   isZdEstimateZkReservedLine,
   mapZdEstimateZkLineToReservedRow,
@@ -132,5 +133,28 @@ describe("zd-estimate-reservations", () => {
       otwarteZkZarezerwowane: 3,
       otwarteZkBezRez: 10,
     });
+  });
+});
+
+describe("fetchAllReservedZkRowsForTwId bez totalPages w odpowiedzi", () => {
+  it("czyta kolejne strony, dopóki są pełne", async () => {
+    const pagesFetched: number[] = [];
+    const sizes = [2, 2, 1];
+    const res = await fetchAllReservedZkRowsForTwId({
+      twId: 1,
+      pageSize: 2,
+      maxPages: 10,
+      fetchPage: async ({ page }: { page: number }) => {
+        pagesFetched.push(page);
+        const n = sizes[page - 1] ?? 0;
+        return {
+          data: { pozycje: Array.from({ length: n }, () => ({})) },
+          pagination: undefined,
+        } as never;
+      },
+    } as never);
+    expect(pagesFetched).toEqual([1, 2, 3]);
+    expect(res.scannedApiRows).toBe(5);
+    expect(res.truncated).toBe(false);
   });
 });

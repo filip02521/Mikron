@@ -145,24 +145,3 @@ export async function actionSetWarehouseCarrierActive(
   revalidateCarrierPaths();
   return { success: true };
 }
-
-export async function assertWarehouseCarrierSlug(
-  slug: string
-): Promise<string> {
-  const trimmed = slug.trim();
-  const carriers = await fetchWarehouseCarriers();
-  const match = carriers.find((carrier) => carrier.slug === trimmed);
-  if (!match) {
-    throw new Error(
-      `Nieprawidłowy kurier „${slug}". Odśwież stronę i wybierz kuriera z listy.`
-    );
-  }
-  return trimmed;
-}
-
-/** @deprecated Użyj assertWarehouseCarrierSlug — autouzupełnianie może zwracać ukryte slugi z historii. */
-export async function assertActiveWarehouseCarrierSlug(
-  slug: string
-): Promise<string> {
-  return assertWarehouseCarrierSlug(slug);
-}

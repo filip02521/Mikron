@@ -109,7 +109,12 @@ export function ZdEstimateDoZdCell({
     displayUnits > 0 &&
     !isZdUnitsMultipleOfOrderMultiple(displayUnits, qty.orderMultiple)
       ? ZD_ESTIMATE_UI.packagingDoZdOrderMultipleWarn(qty.orderMultiple)
-      : null;
+      : overridden &&
+          !packagesMode &&
+          qty.hasPackaging &&
+          !isZdUnitsMultipleOfOrderMultiple(displayUnits, qty.unitsPerPackage)
+        ? ZD_ESTIMATE_UI.packagingDoZdPiecesMultipleWarn(qty.unitsPerPackage)
+        : null;
 
   const confidenceUi = buildZdEstimateConfidenceUi({
     confidence,

@@ -1,6 +1,7 @@
 import {
   compareStockWatchAlerts,
   computeStockHealthScore,
+  isStockWatchCriticalNoIncoming,
   isStockWatchEmptyNoIncoming,
 } from "@/lib/stock-watch/analysis";
 import type { StockWatchItem, StockWatchSupplierOrder } from "@/lib/stock-watch/data";
@@ -96,7 +97,10 @@ export type StockWatchDashboard = {
     outOfStock: number;
     /** Brak na stanie i open ZD = 0 — nic nie jedzie. */
     emptyNoIncoming: number;
+    /** ≤ 48 h i nic nie jedzie. */
     critical: number;
+    /** ≤ 48 h, ale otwarte ZD zdąży — czeka na dostawę. */
+    criticalInTransit: number;
     warning: number;
     ok: number;
     noSales: number;
@@ -198,6 +202,7 @@ export function buildStockWatchDashboard(
     outOfStock: 0,
     emptyNoIncoming: 0,
     critical: 0,
+    criticalInTransit: 0,
     warning: 0,
     ok: 0,
     noSales: 0,
@@ -209,15 +214,18 @@ export function buildStockWatchDashboard(
     if (item.status === "out_of_stock") {
       counts.outOfStock += 1;
       if (isStockWatchEmptyNoIncoming(item)) counts.emptyNoIncoming += 1;
-    } else if (item.status === "critical") counts.critical += 1;
+    } else if (item.status === "critical") {
+      if (isStockWatchCriticalNoIncoming(item)) counts.critical += 1;
+      else if (item.deliveryRisk !== "before_delivery") counts.criticalInTransit += 1;
+    }
     else if (item.status === "warning") counts.warning += 1;
     else if (item.status === "ok") counts.ok += 1;
     else counts.noSales += 1;
-    // Bez dublowania z „brak” i „≤ 48 h” — te są już wyżej w liczbach.
+    // Bez dublowania z „brak” i „≤ 48 h bez dostawy” — te są już wyżej w liczbach.
     if (
       item.deliveryRisk === "before_delivery" &&
       item.status !== "out_of_stock" &&
-      item.status !== "critical"
+      !isStockWatchCriticalNoIncoming(item)
     ) {
       counts.beforeDelivery += 1;
     }
@@ -231,10 +239,14 @@ export function buildStockWatchDashboard(
   const alertSource = opts.alertsSupplierId
     ? items.filter((i) => i.supplierId === opts.alertsSupplierId && i.rule === "standard")
     : standard;
+  // Jak liczniki: ≤ 48 h z dostawą w drodze nie jest „do zamówienia dziś”
+  // (trafia do „przed dostawą” tylko, gdy dostawa nie zdąży).
+  const isAlertNow = (i: StockWatchItem) =>
+    i.status === "out_of_stock" || isStockWatchCriticalNoIncoming(i);
   const alerts = [
-    ...alertSource.filter(isOutOrCritical).sort(compareStockWatchAlerts).slice(0, STOCK_WATCH_ALERT_LIMIT),
+    ...alertSource.filter(isAlertNow).sort(compareStockWatchAlerts).slice(0, STOCK_WATCH_ALERT_LIMIT),
     ...alertSource
-      .filter((i) => !isOutOrCritical(i) && i.deliveryRisk === "before_delivery")
+      .filter((i) => !isAlertNow(i) && i.deliveryRisk === "before_delivery")
       .sort(compareStockWatchAlerts)
       .slice(0, STOCK_WATCH_ALERT_LIMIT),
   ].map(toStockWatchRowView);
@@ -335,6 +347,8 @@ export function buildStockWatchDashboard(
       emptyNoIncoming: 0,
       outOfStock: 0,
       critical: 0,
+      criticalInTransit: 0,
+      atRiskBeforeDelivery: 0,
       beforeDelivery: 0,
       beforeNextDelivery: 0,
       warning: 0,
@@ -347,9 +361,18 @@ export function buildStockWatchDashboard(
       if (i.status === "out_of_stock") {
         c.outOfStock += 1;
         if (isStockWatchEmptyNoIncoming(i)) c.emptyNoIncoming += 1;
-      } else if (i.status === "critical") c.critical += 1;
-      else if (i.status === "warning") c.warning += 1;
-      if (i.deliveryRisk === "before_delivery" && !isOutOrCritical(i)) c.beforeDelivery += 1;
+      } else if (i.status === "critical") {
+        if (isStockWatchCriticalNoIncoming(i)) c.critical += 1;
+        else if (i.deliveryRisk !== "before_delivery") c.criticalInTransit += 1;
+      } else if (i.status === "warning") c.warning += 1;
+      if (i.deliveryRisk === "before_delivery") c.atRiskBeforeDelivery += 1;
+      if (
+        i.deliveryRisk === "before_delivery" &&
+        i.status !== "out_of_stock" &&
+        !isStockWatchCriticalNoIncoming(i)
+      ) {
+        c.beforeDelivery += 1;
+      }
       else if (i.deliveryRisk === "before_next_delivery") c.beforeNextDelivery += 1;
       if (isOutOrCritical(i) || i.deliveryRisk != null) urgent.push(i);
     }

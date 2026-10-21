@@ -50,7 +50,7 @@ import {
   warsawTodayDateKey,
   type WarehouseDeliveryReceipt,
 } from "@/lib/warehouse/delivery-receipts";
-import { assertWarehouseCarrierSlug } from "@/app/actions/warehouse-carriers";
+import { assertWarehouseCarrierSlug } from "@/lib/data/warehouse-carriers";
 import {
   parseWarehouseShipmentForm,
   shipmentFormShowsPackages,

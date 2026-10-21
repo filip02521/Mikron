@@ -156,6 +156,17 @@ export function isStockWatchEmptyNoIncoming(item: {
   return item.status === "out_of_stock" && item.openZdQty <= 0;
 }
 
+/**
+ * Starczy na ≤ 48 h i nic w otwartych ZD. Krytyczny towar, który już jedzie, nie jest
+ * „do zamówienia dziś” — chyba że dostawa nie zdąży (deliveryRisk before_delivery).
+ */
+export function isStockWatchCriticalNoIncoming(item: {
+  status: StockWatchStatus;
+  openZdQty: number;
+}): boolean {
+  return item.status === "critical" && item.openZdQty <= 0;
+}
+
 /** Kolejność alertów: brak (najpierw bez dostawy), potem krytyczne; w grupie — wartość / rotacja. */
 export function compareStockWatchAlerts(
   a: {
