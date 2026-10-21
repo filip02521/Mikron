@@ -401,12 +401,15 @@ export function buildIndividualEstimateExtras(
     }
   >();
 
-  function addExtra(targetTw: number, order: ZdEstimatePendingIndividualOrder, qty: number) {
+  function addExtra(targetTw: number, order: ZdEstimatePendingIndividualOrder, cardQty: number) {
     let tw = targetTw;
     const pairHit = pairIndex.get(tw);
     if (pairHit?.role === "piece") {
       tw = pairHit.pair.packTwId;
     }
+    // Pary: extra i dedupe z ZK w sztukach pary (jak cel i pokrycie paczki). Prośba na karcie
+    // paczki jest w paczkach — bez × przelicznik 3 kartony szły na ZD jako 3 sztuki (1 karton).
+    const qty = pairHit?.role === "pack" ? cardQty * Math.max(1, pairHit.pair.unitsPerPack) : cardQty;
     if (fetchFailed.has(tw)) {
       pushService(serviceLines, "fetch_failed", order);
       return;

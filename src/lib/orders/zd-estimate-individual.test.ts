@@ -966,3 +966,49 @@ describe("excluded → usługi", () => {
     expect(individualExtraPiecesMap(routed).get(2)).toBe(1);
   });
 });
+
+describe("prośby w parach paczka↔sztuka - w sztukach pary", () => {
+  const pairs = [{ packTwId: 20, pieceTwId: 21, unitsPerPack: 10 }];
+  const lines = [
+    { tw_Id: 20, tw_Symbol: "KARTON" },
+    { tw_Id: 21, tw_Symbol: "SZT" },
+  ];
+
+  it("prośba na kartonie: 3 kartony = 30 sztuk pary (nie 3)", () => {
+    const bundle = buildIndividualEstimateExtras({
+      orders: [pending({ id: "o1", symbol: "KARTON", qty: 3, salesClientKhId: 7 })],
+      lines,
+      pairs,
+    });
+    expect(bundle.byTwId.get(20)?.extraPieces).toBe(30);
+    expect(bundle.byTwId.get(20)?.overlapContributions?.[0]?.qty).toBe(30);
+  });
+
+  it("prośba na sztuce trafia na paczkę bez przeliczania", () => {
+    const bundle = buildIndividualEstimateExtras({
+      orders: [pending({ id: "o2", symbol: "SZT", qty: 6 })],
+      lines,
+      pairs,
+    });
+    expect(bundle.byTwId.get(20)?.extraPieces).toBe(6);
+    expect(bundle.byTwId.has(21)).toBe(false);
+  });
+
+  it("zestaw „Składamy” z kartonem: 2 zestawy × 1 karton = 2 kartony", () => {
+    const bundle = buildIndividualEstimateExtras({
+      orders: [pending({ id: "o3", symbol: "PROMO", qty: 2 })],
+      lines: [...lines, { tw_Id: 30, tw_Symbol: "PROMO" }],
+      pairs,
+      boms: [
+        {
+          parentTwId: 30,
+          stockAsCover: true,
+          demandAllocation: "explode",
+          purchaseTarget: "components",
+          components: [{ componentTwId: 20, qtyPerParent: 1 }],
+        },
+      ],
+    });
+    expect(bundle.byTwId.get(20)?.extraPieces).toBe(20);
+  });
+});

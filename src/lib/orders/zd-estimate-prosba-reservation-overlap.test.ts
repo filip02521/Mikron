@@ -12,6 +12,7 @@ import {
   resolveIndividualExtraPiecesMap,
   resolveProsbaReservationDedupeMaps,
   sumProsbaZkReservationOverlapPieces,
+  mergePairReservedSlicesOntoPack,
 } from "./zd-estimate-prosba-reservation-overlap";
 import { resolveOrderQtyForLine } from "./zd-estimate-packaging";
 import type { ManualZdEstimateLine } from "./zd-estimate-manual";
@@ -470,5 +471,31 @@ describe("computeProsbaZkReservationDedupe: kolejność próśb nie zmienia wyni
     const want = { extraOverlap: 0, stockNeedRelief: 3 };
     expect(computeProsbaZkReservationDedupe([A, B], reserved)).toEqual(want);
     expect(computeProsbaZkReservationDedupe([B, A], reserved)).toEqual(want);
+  });
+});
+
+describe("pary: rezerwacje obu kart na paczce w sztukach", () => {
+  it("ZK klienta na karcie sztuki zdejmuje prośbę tego klienta", () => {
+    const reserved = new Map([
+      [21, [{ quantity: 6, clientKhId: 7, zkNumber: "ZK 5/M/10/2026" }]],
+      [20, [{ quantity: 1, clientKhId: 9, zkNumber: "ZK 6/M/10/2026" }]],
+    ]);
+    mergePairReservedSlicesOntoPack(reserved, [20], new Map([[20, { pieceTwId: 21, unitsPerPack: 2 }]]));
+    expect(reserved.has(21)).toBe(false);
+    expect(reserved.get(20)!.map((s) => s.quantity)).toEqual([2, 6]);
+    const maps = individualExtrasAndReliefWithReservationOverlap(
+      new Map([
+        [
+          20,
+          {
+            extraPieces: 6,
+            overlapContributions: [{ orderId: "o1", qty: 6, salesClientKhId: 7, sourceZkNumber: "ZK 5/M/10/2026" }],
+          },
+        ],
+      ]),
+      reserved
+    );
+    // Prośba = rezerwacja własnego ZK: ulga w potrzebie zapasu, bez drugiego liczenia.
+    expect((maps.stockNeedReliefByTwId.get(20) ?? 0) + (maps.extraOverlapByTwId.get(20) ?? 0)).toBe(6);
   });
 });

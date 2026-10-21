@@ -431,3 +431,25 @@ export function stockNeedReliefPiecesForTw(
   const n = Number(reliefByTwId.get(Math.trunc(twId)));
   return Number.isFinite(n) && n > 0 ? Math.ceil(n) : 0;
 }
+
+/**
+ * Pary: rezerwacje ZK obu kart na paczce, w sztukach pary (paczka × przelicznik + sztuki) —
+ * tak jak extra prośby i pokrycie pary. Bez tego ZK klienta na karcie sztuki nie zdejmował
+ * prośby i ta sama ilość szła raz przez ujemne dostępne, raz jako dodatek. Zmienia mapę w miejscu.
+ */
+export function mergePairReservedSlicesOntoPack(
+  reservedByTwId: Map<number, ZdEstimateReservedOverlapSlice[]>,
+  packTwIds: readonly number[],
+  pairByPack: ReadonlyMap<number, { pieceTwId: number; unitsPerPack: number }>
+): void {
+  for (const tw of packTwIds) {
+    const pair = pairByPack.get(tw);
+    if (!pair) continue;
+    const ratio = Math.max(1, Number(pair.unitsPerPack) || 1);
+    reservedByTwId.set(tw, [
+      ...(reservedByTwId.get(tw) ?? []).map((sl) => ({ ...sl, quantity: sl.quantity * ratio })),
+      ...(reservedByTwId.get(pair.pieceTwId) ?? []),
+    ]);
+    reservedByTwId.delete(pair.pieceTwId);
+  }
+}

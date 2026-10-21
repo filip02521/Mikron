@@ -3544,6 +3544,7 @@ export async function actionCreateZdFromEstimate(input: {
     coverLines: linesCheck.lines,
     unitsPerPackageByTwId,
     packagingModeByTwId,
+    pairs: pairsForExtras,
   });
   msOverlap = Math.round(performance.now() - tOverlap);
   overlapCandidateCount = overlapForCreate.candidateTwIds.length;

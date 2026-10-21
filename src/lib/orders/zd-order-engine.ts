@@ -92,6 +92,7 @@ import {
   collectTwIdsNeedingProsbaReservationOverlap,
   collectTwIdsNeedingProsbaReservationOverlapWithoutStanRez,
   individualExtrasAndReliefWithReservationOverlap,
+  mergePairReservedSlicesOntoPack,
   reservedRowsToOverlapSlices,
   type ZdEstimateProsbaOverlapContribution,
   type ZdEstimateReservedOverlapSlice,
@@ -298,6 +299,11 @@ export async function resolveIndividualExtrasWithReservationOverlap(input: {
     number,
     ZdPackagingDocumentUnitMode
   > | null;
+  /**
+   * Pary paczka↔sztuka: extra paczki jest w sztukach pary, a ZK klienta rezerwuje często kartę
+   * sztuki — rezerwacje obu kart scalane na paczce w sztukach (paczka × przelicznik).
+   */
+  pairs?: readonly { packTwId: number; pieceTwId: number; unitsPerPack: number }[] | null;
 }): Promise<{
   adjustedExtraByTwId: Map<number, number>;
   rawExtraByTwId: Map<number, number>;
@@ -321,10 +327,23 @@ export async function resolveIndividualExtrasWithReservationOverlap(input: {
     if (extra.extraPieces > 0) rawMap.set(tw, extra.extraPieces);
   }
 
-  const candidateTwIds = input.lines?.length
+  const pairByPack = new Map((input.pairs ?? []).map((p) => [p.packTwId, p]));
+  // Rezerwacja na którejkolwiek karcie pary czyni paczkę kandydatem.
+  const linesForCandidates = input.lines?.length
+    ? (() => {
+        const rezByTw = new Map(input.lines.map((l) => [Math.trunc(Number(l.tw_Id)) || 0, Math.max(0, Number(l.tw_StanRez) || 0)]));
+        return input.lines.map((l) => {
+          const pair = pairByPack.get(Math.trunc(Number(l.tw_Id)) || 0);
+          return pair
+            ? { tw_Id: l.tw_Id, tw_StanRez: (rezByTw.get(pair.packTwId) ?? 0) + (rezByTw.get(pair.pieceTwId) ?? 0) }
+            : l;
+        });
+      })()
+    : null;
+  const candidateTwIds = linesForCandidates
     ? collectTwIdsNeedingProsbaReservationOverlap({
         extraTwIds: rawMap.keys(),
-        lines: input.lines,
+        lines: linesForCandidates,
         byTwId: scopedByTw,
       })
     : collectTwIdsNeedingProsbaReservationOverlapWithoutStanRez({
@@ -366,7 +385,12 @@ export async function resolveIndividualExtrasWithReservationOverlap(input: {
   }
 
   try {
-    const fetched = await fetchReservedOverlapSlicesByTwIds(toFetch);
+    const pieceTwIds = toFetch.flatMap((tw) => {
+      const pair = pairByPack.get(tw);
+      return pair ? [pair.pieceTwId] : [];
+    });
+    const fetched = await fetchReservedOverlapSlicesByTwIds([...new Set([...toFetch, ...pieceTwIds])]);
+    mergePairReservedSlicesOntoPack(fetched.reservedByTwId, toFetch, pairByPack);
     const maps = individualExtrasAndReliefWithReservationOverlap(
       scopedByTw,
       fetched.reservedByTwId
@@ -1329,6 +1353,7 @@ export async function runZdOrderEngine(
       const overlap = await resolveIndividualExtrasWithReservationOverlap({
         byTwId: extras.byTwId,
         lines: result.pozycje,
+        pairs: productPairs,
       });
       prosbaOverlapCandidateTwIds = overlap.candidateTwIds;
       prosbaOverlapResolved = overlap.resolved;
