@@ -7,10 +7,12 @@ import {
   findZdSharedScopes,
   loadZdScopeInsights,
   loadZdSharedScopeProducts,
+  loadZdSharedScopeStats,
   setZdProductAssignments,
   type ZdScopeInsightsBundle,
   type ZdSharedScope,
   type ZdSharedScopeProduct,
+  type ZdSharedScopeStats,
 } from "@/lib/data/zd-scope-order";
 import { syncSubiektScopeIndex } from "@/lib/orders/zd-scope-index";
 import type { ZdEstimateRunMode } from "@/lib/orders/zd-estimate-scope";
@@ -24,16 +26,31 @@ let indexSyncRunning = false;
 
 /** Pokrycie i podpowiedzi zakresów dla wszystkich dostawców + wspólne zakresy. */
 export async function actionLoadZdScopeOrder(): Promise<
-  Result<ZdScopeInsightsBundle & { sharedScopes: ZdSharedScope[]; indexSyncRunning: boolean }>
+  Result<
+    ZdScopeInsightsBundle & {
+      sharedScopes: ZdSharedScope[];
+      sharedScopeStats: ZdSharedScopeStats[];
+      indexSyncRunning: boolean;
+    }
+  >
 > {
   await requireZdEstimateAdmin("read");
   try {
     const scopes = await listZdEstimateSupplierScopes();
-    const bundle = await loadZdScopeInsights(scopes);
+    const sharedScopes = findZdSharedScopes(scopes);
+    const [bundle, sharedScopeStats] = await Promise.all([
+      loadZdScopeInsights(scopes),
+      // Postęp rozdzielania jest dodatkiem — błąd nie blokuje podpowiedzi.
+      loadZdSharedScopeStats(sharedScopes).catch((e) => {
+        console.error("[zd-scope-order] shared scope stats", e);
+        return [];
+      }),
+    ]);
     return {
       ok: true,
       ...bundle,
-      sharedScopes: findZdSharedScopes(scopes),
+      sharedScopes,
+      sharedScopeStats,
       indexSyncRunning,
     };
   } catch (e) {
@@ -62,7 +79,11 @@ export async function actionStartZdScopeIndexSync(): Promise<Result<object>> {
 export async function actionLoadZdSharedScopeProducts(input: {
   mode: ZdEstimateRunMode;
   scopeId: number;
-}): Promise<Result<{ scope: ZdSharedScope; products: ZdSharedScopeProduct[] }>> {
+  /** Także towary zakresu bez historii ZD (do limitu). */
+  includeAll?: boolean;
+}): Promise<
+  Result<{ scope: ZdSharedScope; products: ZdSharedScopeProduct[]; truncated: boolean }>
+> {
   await requireZdEstimateAdmin("read");
   try {
     // Dostawców wspólnego zakresu bierzemy z bazy, nie od klienta.
@@ -70,12 +91,13 @@ export async function actionLoadZdSharedScopeProducts(input: {
       (s) => s.mode === input.mode && s.scopeId === Math.trunc(Number(input.scopeId))
     );
     if (!scope) return { ok: false, message: "Ten zakres nie jest już wspólny dla kilku dostawców." };
-    const products = await loadZdSharedScopeProducts({
+    const { products, truncated } = await loadZdSharedScopeProducts({
       mode: scope.mode,
       scopeId: scope.scopeId,
       supplierIds: scope.supplierIds,
+      includeAll: input.includeAll === true,
     });
-    return { ok: true, scope, products };
+    return { ok: true, scope, products, truncated };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się wczytać towarów zakresu.") };
   }

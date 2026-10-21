@@ -205,42 +205,61 @@ export type ZdSharedScopeProduct = {
   twNazwa: string;
   /** Liczba ZD per dostawca (tylko dostawcy dzielący zakres). */
   orderCountBySupplier: Record<string, number>;
-  /** Podpowiedź z historii ZD: dostawca z największą liczbą zamówień. */
+  /** Podpowiedź z historii ZD: najwięcej zamówień, przy remisie — ostatnie. */
   suggestedSupplierId: string | null;
   assignedSupplierId: string | null;
+  /** Ostatnie ZD u któregoś z dostawców zakresu (ISO) — null bez historii. */
+  lastOrderAt: string | null;
 };
 
+/** Górna granica wierszy w panelu — duże cechy mają tysiące starych towarów. */
+export const ZD_SHARED_SCOPE_PRODUCTS_LIMIT = 3000;
+
 /**
- * Towary wspólnego zakresu, które kupujemy od któregoś z dzielących go dostawców
- * (albo już przypisane). Stare towary bez historii ZD nie są pokazywane.
+ * Towary wspólnego zakresu. Domyślnie tylko te, które kupujemy od któregoś
+ * z dzielących go dostawców (albo już przypisane); `includeAll` dokłada resztę
+ * zakresu z indeksu Subiekta (do limitu).
  */
 export async function loadZdSharedScopeProducts(input: {
   mode: ZdEstimateRunMode;
   scopeId: number;
   supplierIds: readonly string[];
-}): Promise<ZdSharedScopeProduct[]> {
+  includeAll?: boolean;
+}): Promise<{ products: ZdSharedScopeProduct[]; truncated: boolean }> {
   const scopeFilter =
     input.mode === "cecha" ? `$1 = ANY(i.cecha_ids)` : `i.grupa_id = $1`;
+  const historyFilter = input.includeAll
+    ? ""
+    : `AND (EXISTS (SELECT 1 FROM product_supplier_links l2
+                     WHERE l2.subiekt_tw_id = i.subiekt_tw_id AND l2.supplier_id = ANY($2::uuid[]))
+            OR a.supplier_id IS NOT NULL)`;
   const res = await query<{
     subiekt_tw_id: number;
     symbol: string | null;
     name: string | null;
     supplier_id: string | null;
     order_count: number | null;
+    last_action_at: Date | string | null;
     assigned: string | null;
   }>(
-    `SELECT i.subiekt_tw_id, p.symbol, p.name, l.supplier_id, l.order_count,
-            a.supplier_id AS assigned
-       FROM subiekt_product_scope_index i
-       LEFT JOIN subiekt_products p ON p.subiekt_tw_id = i.subiekt_tw_id
+    `WITH tw AS (
+       SELECT i.subiekt_tw_id, a.supplier_id AS assigned
+         FROM subiekt_product_scope_index i
+         LEFT JOIN zd_product_supplier_assignments a ON a.subiekt_tw_id = i.subiekt_tw_id
+        WHERE ${scopeFilter} ${historyFilter}
+        ORDER BY i.subiekt_tw_id
+        LIMIT $3
+     )
+     SELECT tw.subiekt_tw_id, p.symbol, p.name, l.supplier_id, l.order_count, l.last_action_at,
+            tw.assigned
+       FROM tw
+       LEFT JOIN subiekt_products p ON p.subiekt_tw_id = tw.subiekt_tw_id
        LEFT JOIN product_supplier_links l
-         ON l.subiekt_tw_id = i.subiekt_tw_id AND l.supplier_id = ANY($2::uuid[])
-       LEFT JOIN zd_product_supplier_assignments a ON a.subiekt_tw_id = i.subiekt_tw_id
-      WHERE ${scopeFilter}
-        AND (l.supplier_id IS NOT NULL OR a.supplier_id IS NOT NULL)`,
-    [input.scopeId, [...input.supplierIds]]
+         ON l.subiekt_tw_id = tw.subiekt_tw_id AND l.supplier_id = ANY($2::uuid[])`,
+    [input.scopeId, [...input.supplierIds], ZD_SHARED_SCOPE_PRODUCTS_LIMIT + 1]
   );
   const byTw = new Map<number, ZdSharedScopeProduct>();
+  const lastBySupplier = new Map<number, Record<string, number>>();
   for (const r of res.rows) {
     const tw = num(r.subiekt_tw_id);
     const hit =
@@ -252,20 +271,79 @@ export async function loadZdSharedScopeProducts(input: {
         orderCountBySupplier: {},
         suggestedSupplierId: null,
         assignedSupplierId: r.assigned,
+        lastOrderAt: null,
       } satisfies ZdSharedScopeProduct);
-    if (r.supplier_id) hit.orderCountBySupplier[r.supplier_id] = num(r.order_count);
+    if (r.supplier_id) {
+      hit.orderCountBySupplier[r.supplier_id] = num(r.order_count);
+      const at = r.last_action_at ? new Date(r.last_action_at).getTime() : 0;
+      const last = lastBySupplier.get(tw) ?? {};
+      last[r.supplier_id] = at;
+      lastBySupplier.set(tw, last);
+      if (at && (!hit.lastOrderAt || at > Date.parse(hit.lastOrderAt))) {
+        hit.lastOrderAt = new Date(at).toISOString();
+      }
+    }
     byTw.set(tw, hit);
   }
+  const truncated = byTw.size > ZD_SHARED_SCOPE_PRODUCTS_LIMIT;
   for (const p of byTw.values()) {
-    let best: [string, number] | null = null;
+    const last = lastBySupplier.get(p.subiektTwId) ?? {};
+    let best: [string, number, number] | null = null;
     for (const [sid, n] of Object.entries(p.orderCountBySupplier)) {
-      if (!best || n > best[1]) best = [sid, n];
+      const at = last[sid] ?? 0;
+      if (!best || n > best[1] || (n === best[1] && at > best[2])) best = [sid, n, at];
     }
     p.suggestedSupplierId = best?.[0] ?? null;
   }
-  return [...byTw.values()].sort((a, b) =>
-    (a.twSymbol ?? "").localeCompare(b.twSymbol ?? "", "pl")
+  const products = [...byTw.values()]
+    .sort((a, b) => (a.twSymbol ?? "").localeCompare(b.twSymbol ?? "", "pl"))
+    .slice(0, ZD_SHARED_SCOPE_PRODUCTS_LIMIT);
+  return { products, truncated };
+}
+
+export type ZdSharedScopeStats = {
+  mode: ZdEstimateRunMode;
+  scopeId: number;
+  /** Towary z historii ZD u dostawców zakresu (lub już przypisane). */
+  products: number;
+  /** Z tego przypisane do jednego z dostawców zakresu. */
+  assigned: number;
+};
+
+/** Postęp rozdzielania każdego wspólnego zakresu — do listy w panelu. */
+export async function loadZdSharedScopeStats(
+  shared: readonly ZdSharedScope[]
+): Promise<ZdSharedScopeStats[]> {
+  if (!shared.length) return [];
+  const res = await query<{ idx: number; products: number; assigned: number }>(
+    `SELECT s.idx,
+            count(DISTINCT i.subiekt_tw_id)::int AS products,
+            count(DISTINCT i.subiekt_tw_id) FILTER (
+              WHERE a.supplier_id::text = ANY(s.supplier_ids)
+            )::int AS assigned
+       FROM jsonb_to_recordset($1::jsonb) AS s(idx int, mode text, scope_id int, supplier_ids text[])
+       JOIN subiekt_product_scope_index i
+         ON (s.mode = 'cecha' AND s.scope_id = ANY(i.cecha_ids))
+         OR (s.mode = 'grupa' AND i.grupa_id = s.scope_id)
+       LEFT JOIN zd_product_supplier_assignments a ON a.subiekt_tw_id = i.subiekt_tw_id
+      WHERE a.supplier_id IS NOT NULL
+         OR EXISTS (SELECT 1 FROM product_supplier_links l
+                     WHERE l.subiekt_tw_id = i.subiekt_tw_id
+                       AND l.supplier_id::text = ANY(s.supplier_ids))
+      GROUP BY s.idx`,
+    [
+      JSON.stringify(
+        shared.map((s, idx) => ({ idx, mode: s.mode, scope_id: s.scopeId, supplier_ids: s.supplierIds }))
+      ),
+    ]
   );
+  const byIdx = new Map(res.rows.map((r) => [num(r.idx), r]));
+  return shared.map((s, idx) => ({
+    mode: s.mode,
+    scopeId: s.scopeId,
+    products: num(byIdx.get(idx)?.products),
+    assigned: num(byIdx.get(idx)?.assigned),
+  }));
 }
 
 /**
