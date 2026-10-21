@@ -43,15 +43,19 @@ function useProductHistory(
   const [state, setState] = useState<ZdProductHistoryState & { key: string; nowMs?: number }>({ status: "loading", key });
   useEffect(() => {
     let cancelled = false;
-    actionFetchZdEstimateProductHistory({ twId, pair: twinTwId > 0 ? { twinTwId, unitsPerPack } : null })
-      .then((r) => {
-        if (!cancelled) setState({ status: "ok", ...r, key, nowMs: Date.now() });
-      })
-      .catch(() => {
-        if (!cancelled) setState({ status: "error", message: "Nie udało się wczytać historii.", key });
-      });
+    // Szybkie ←/→ przez kilka towarów: pytamy Subiekta dopiero o ten, na którym się zatrzymano.
+    const timer = window.setTimeout(() => {
+      actionFetchZdEstimateProductHistory({ twId, pair: twinTwId > 0 ? { twinTwId, unitsPerPack } : null })
+        .then((r) => {
+          if (!cancelled) setState({ status: "ok", ...r, key, nowMs: Date.now() });
+        })
+        .catch(() => {
+          if (!cancelled) setState({ status: "error", message: "Nie udało się wczytać historii.", key });
+        });
+    }, 200);
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, [twId, twinTwId, unitsPerPack, key]);
   // Po ←/→ do czasu odpowiedzi pokazujemy „wczytuję”, nie dane poprzedniego towaru.
@@ -161,12 +165,20 @@ export function ZdEstimateProductCard({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
+      // Okno otwarte z karty (opakowanie, minimum) obsługuje swoje klawisze — karta nie reaguje.
+      const panel = panelRef.current;
+      if (panel && e.target instanceof Node && e.target !== document.body && !panel.contains(e.target)) return;
       if (e.key === "Escape") {
         e.preventDefault();
         requestClose();
         return;
       }
       if (isTypingTarget(e.target)) return;
+      if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && e.repeat) {
+        e.preventDefault();
+        return;
+      }
       if (e.key === "ArrowLeft" && onPrev) {
         e.preventDefault();
         onPrev();
@@ -175,7 +187,6 @@ export function ZdEstimateProductCard({
         onNext();
       } else if (e.key === "Tab") {
         // Pułapka fokusu — karta jest modalna.
-        const panel = panelRef.current;
         if (!panel) return;
         const items = [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.offsetParent !== null);
         if (items.length === 0) return;

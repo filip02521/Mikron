@@ -8,6 +8,7 @@ import {
 } from "@/app/actions/zd-estimate";
 import { IconPackageCheck } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
+import { fieldControlClass } from "@/components/ui/Field";
 import { PageAttentionStrip, PageAttentionStripCta } from "@/components/ui/PageAttentionStrip";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 import { ModalShell } from "@/components/ui/ModalShell";
@@ -110,7 +111,7 @@ export function ZdAutoProposalBanner({ supplierId, supplierName }: { supplierId:
         title="Brak propozycji ZD"
         hint={error ?? "pierwsza powstanie przy porannym przebiegu albo teraz."}
         actions={
-          <PageAttentionStripCta tone="violet" chevron={false} onClick={buildNow}>
+          <PageAttentionStripCta tone="violet" chevron={false} onClick={buildNow} disabled={building}>
             {building ? "Liczę…" : "Przygotuj teraz"}
           </PageAttentionStripCta>
         }
@@ -192,7 +193,7 @@ export function ZdAutoProposalBanner({ supplierId, supplierName }: { supplierId:
                 </span>
                 <span className="shrink-0 tabular-nums font-medium text-slate-900">
                   {formatQty(l.zdUnits)} {l.unitLabel}
-                  {l.unitLabel !== "szt." ? <span className="ml-1 text-xs text-slate-500">= {formatQty(l.pieces)} szt</span> : null}
+                  {l.pieces !== l.zdUnits ? <span className="ml-1 text-xs text-slate-500">= {formatQty(l.pieces)} szt</span> : null}
                 </span>
               </li>
             ))}
@@ -252,7 +253,7 @@ export function ZdAutoProposalBanner({ supplierId, supplierName }: { supplierId:
             value={note}
             onChange={(e) => setNote(e.target.value)}
             rows={3}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className={fieldControlClass("default", "resize-y")}
           />
           {error ? (
             <p className="text-sm text-red-700" role="alert">

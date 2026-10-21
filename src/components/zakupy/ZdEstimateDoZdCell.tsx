@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import { polishPlural } from "@/lib/email/polish-plural";
 import { formatQty } from "@/lib/orders/zd-estimate-manual";
 import {
   formatZdPackCompactLabel,
@@ -309,7 +310,7 @@ export function ZdEstimateDoZdCell({
     palletCount != null ? (
       <span
         className="zd-est-dozd-pallets"
-        title={`${palletCount} ${palletCount === 1 ? "pełna paleta" : "pełne palety"} po ${qty.orderMultiple} ${qty.packageLabel.trim() || "op."}`}
+        title={`${polishPlural(palletCount, "pełna paleta", "pełne palety", "pełnych palet")} po ${qty.orderMultiple} ${qty.packageLabel.trim() || "op."}`}
       >
         {palletCount} pal.
       </span>

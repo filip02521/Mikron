@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/Field";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 import type { ZdSupplierOrderPolicyRow } from "@/lib/data/zd-supplier-order-policy";
 import type { ZdDemandStrategy } from "@/lib/orders/zd-demand-policy";
 
@@ -16,8 +17,8 @@ export const ZD_TEST_POLICY_DEFAULTS = { targetDays: 25, cycleDays: 3 } as const
 export function zdSupplierPolicyLabel(p: Pick<ZdSupplierOrderPolicyRow, "strategy" | "targetDays" | "cycleDays" | "autoProposals"> | null): string {
   if (!p || p.strategy === "classic") return "Strategia: jak dotąd";
   const parts = ["Strategia testowa"];
-  if (p.targetDays) parts.push(`${p.targetDays} dni zapasu`);
-  if (p.cycleDays) parts.push(`co ${p.cycleDays} dni`);
+  if (p.targetDays) parts.push(`${p.targetDays} ${polishPluralWord(p.targetDays, "dzień", "dni", "dni")} zapasu`);
+  if (p.cycleDays) parts.push(p.cycleDays === 1 ? "codziennie" : `co ${p.cycleDays} dni`);
   if (p.autoProposals) parts.push("propozycje");
   return parts.join(" · ");
 }
@@ -25,7 +26,9 @@ export function zdSupplierPolicyLabel(p: Pick<ZdSupplierOrderPolicyRow, "strateg
 /** Krótka etykieta w linii faktów zakresu (dni zapasu są już w tej linii). */
 export function zdSupplierPolicyShortLabel(p: Pick<ZdSupplierOrderPolicyRow, "strategy" | "cycleDays"> | null): string {
   if (!p || p.strategy === "classic") return "Strategia: jak dotąd";
-  return p.cycleDays ? `Strategia testowa · ZD co ${p.cycleDays} dni` : "Strategia testowa";
+  return p.cycleDays
+    ? `Strategia testowa · ZD ${p.cycleDays === 1 ? "codziennie" : `co ${p.cycleDays} dni`}`
+    : "Strategia testowa";
 }
 
 /** Cichy przycisk na końcu linii faktów zakresu — strategia dostawcy, otwiera ustawienia. */
@@ -174,7 +177,8 @@ export function ZdSupplierOrderPolicyDialog({
           <label className="flex items-start gap-2 text-sm text-slate-800 sm:col-span-2">
             <input type="checkbox" className="mt-0.5" checked={auto} onChange={(e) => setAuto(e.target.checked)} />
             <span>
-              Przygotowuj propozycję ZD automatycznie co {parseDays(cycle, 1, 60) ?? "…"} dni
+              Przygotowuj propozycję ZD automatycznie{" "}
+              {parseDays(cycle, 1, 60) === 1 ? "codziennie" : `co ${parseDays(cycle, 1, 60) ?? "…"} dni`}
               <span className="block text-xs text-slate-500">Propozycja czeka w Kreatorze na akceptację - nic nie jest wysyłane samo.</span>
             </span>
           </label>

@@ -13,6 +13,7 @@ import type { ZdClassicCompare, ZdDemandStrategy } from "@/lib/orders/zd-demand-
 import { buildZdOrderList } from "@/lib/orders/zd-order-list";
 import {
   decideZdAutoProposal,
+  addZdAutoProposalFinalLines,
   fetchLatestZdAutoProposal,
   listZdAutoProposals,
   type ZdAutoProposal,
@@ -1271,7 +1272,10 @@ export async function actionFetchZdEstimateProductHistory(input: {
   }
   const twinTwId = Math.trunc(Number(input.pair?.twinTwId));
   const ratio = Number(input.pair?.unitsPerPack);
-  const pair = twinTwId > 0 && twinTwId !== twId && ratio > 0 ? { twinTwId, ratio } : null;
+  const pair =
+    Number.isSafeInteger(twinTwId) && twinTwId > 0 && twinTwId !== twId && Number.isFinite(ratio) && ratio > 0 && ratio <= 100_000
+      ? { twinTwId, ratio }
+      : null;
   const sides = pair ? [{ tw: twId, factor: pair.ratio }, { tw: pair.twinTwId, factor: 1 }] : [{ tw: twId, factor: 1 }];
   // 12 miesięcy kalendarzowych (bieżący niepełny), żeby „N z 12 mies.” się zgadzało.
   const dataDo = warsawDateKeyDaysAgo(0);
@@ -1379,9 +1383,18 @@ async function acceptPendingAutoProposal(input: {
 }): Promise<void> {
   try {
     const latest = await fetchLatestZdAutoProposal(input.supplierId);
-    if (!latest || latest.status !== "pending") return;
+    if (!latest) return;
     const finalLines: Record<string, number> = {};
     for (const l of input.createLines) finalLines[String(l.twId)] = (finalLines[String(l.twId)] ?? 0) + l.ilosc;
+    if (latest.status === "accepted") {
+      // Zamówienie podzielone na kilka ZD w ciągu 12 h: raport różnic liczy wszystkie.
+      const decided = latest.decidedAt ? Date.parse(latest.decidedAt) : NaN;
+      if (Number.isFinite(decided) && Date.now() - decided < 12 * 3_600_000) {
+        await addZdAutoProposalFinalLines({ id: latest.id, supplierId: input.supplierId, finalLines });
+      }
+      return;
+    }
+    if (latest.status !== "pending") return;
     await decideZdAutoProposal({
       id: latest.id,
       supplierId: input.supplierId,
@@ -1421,14 +1434,22 @@ export async function actionCreateZdAutoProposalNow(input: {
   try {
     const policy = await fetchZdSupplierOrderPolicy(supplierId);
     if (policy.strategy === "classic") return { ok: false, message: "Najpierw włącz strategię testową dla dostawcy." };
-    const before = await fetchLatestZdAutoProposal(supplierId);
-    const outcome = await createZdAutoProposalNow(supplierId);
-    if (outcome === "no_scope") return { ok: false, message: "Dostawca nie ma zakresu (grupy / cechy) w Kreatorze." };
-    if (outcome === "no_run") return { ok: false, message: "Brak porannej analizy braków - uruchom ją raz w panelu Braki." };
-    if (outcome === "not_configured") return { ok: false, message: "Brak połączenia z Subiektem (host kreatora ZD)." };
-    const after = await fetchLatestZdAutoProposal(supplierId);
-    // Nowa propozycja nie powstała = dziś nie ma nic do zamówienia.
-    return { ok: true, proposal: after && after.id !== before?.id ? after : null };
+    const result = await createZdAutoProposalNow(supplierId);
+    if (result.status !== "ok") {
+      const why = {
+        no_scope: "Dostawca nie ma zakresu (grupy / cechy) w Kreatorze.",
+        no_run: "Brak porannej analizy braków - uruchom ją raz w panelu Braki.",
+        not_configured: "Brak połączenia z Subiektem (host kreatora ZD).",
+      } as const;
+      return { ok: false, message: why[result.status] };
+    }
+    const p = result.proposal;
+    if (!p) return { ok: false, message: "Propozycja nie została policzona - spróbuj ponownie." };
+    if (p.kind === "created") return { ok: true, proposal: await fetchLatestZdAutoProposal(supplierId) };
+    if (p.kind === "nothing_to_order") return { ok: true, proposal: null };
+    if (p.kind === "skipped") return { ok: false, message: p.reason };
+    if (p.kind === "error") return { ok: false, message: `Nie udało się zapisać propozycji: ${p.message}` };
+    return { ok: false, message: "Strategia testowa jest wyłączona dla tego dostawcy." };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się przygotować propozycji.") };
   }

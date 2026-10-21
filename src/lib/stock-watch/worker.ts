@@ -341,7 +341,7 @@ async function computeSupplierOrder(input: {
   proposalTodayKey?: string;
   /** „Przygotuj teraz” w Kreatorze — bez czekania na cykl. */
   proposalForce?: boolean;
-}): Promise<{ itemsWritten: number; message: string | null }> {
+}): Promise<{ itemsWritten: number; message: string | null; proposal?: ZdAutoProposalOutcome }> {
   const { scope, supplier, runId, salesEndDate, prices, horizon } = input;
   const scopeId = (scope.mode === "grupa" ? scope.grupaId : scope.cechaId) ?? 0;
   if (!(scopeId > 0)) {
@@ -364,7 +364,11 @@ async function computeSupplierOrder(input: {
     ordersBaseUrl: input.ordersBaseUrl,
   });
   if (!engine.ok) {
-    return { itemsWritten: 0, message: engine.feedback.message };
+    return {
+      itemsWritten: 0,
+      message: engine.feedback.message,
+      proposal: { kind: "skipped", reason: engine.feedback.message },
+    };
   }
 
   const list = buildZdOrderList({
@@ -499,8 +503,13 @@ async function computeSupplierOrder(input: {
     nextOrderDays: horizon ? horizon.nextOrderDays : null,
   });
 
-  if (input.proposalTodayKey && !engine.fetch.truncated && !list.explodeBomIncomplete) {
-    await maybeCreateAutoProposal({
+  let proposal: ZdAutoProposalOutcome | undefined;
+  if (input.proposalTodayKey && engine.fetch.truncated) {
+    proposal = { kind: "skipped", reason: "Lista z Subiekta niepełna (limit stron) - propozycja nie powstała." };
+  } else if (input.proposalTodayKey && list.explodeBomIncomplete) {
+    proposal = { kind: "skipped", reason: "Brakuje danych kompletów (BOM) - Kreator pokazałby pustą listę." };
+  } else if (input.proposalTodayKey) {
+    proposal = await maybeCreateAutoProposal({
       supplierId: supplier.id,
       force: input.proposalForce === true,
       todayKey: input.proposalTodayKey,
@@ -514,7 +523,7 @@ async function computeSupplierOrder(input: {
           nazwa: String(l.line.tw_Nazwa ?? "").trim(),
           zdUnits: l.zdUnits,
           pieces: l.piecesArriving,
-          unitLabel: l.packagesMode ? l.packageLabel || "op." : "szt.",
+          unitLabel: l.packagesMode ? l.packageLabel || "op." : "szt",
           priceNet: unitPricePerPiece(prices.get(l.line.tw_Id)?.priceNet ?? null, engine.packagingLookup.get(l.line.tw_Id) ?? null),
           prosbaPieces: l.individualExtraPieces,
           floor: l.line.demandFloor != null,
@@ -524,6 +533,7 @@ async function computeSupplierOrder(input: {
 
   return {
     itemsWritten,
+    proposal,
     message: engine.fetch.truncated
       ? "Lista z Subiekta niepełna (limit stron) - część towarów pominięta."
       : null,
@@ -534,6 +544,15 @@ async function computeSupplierOrder(input: {
  * Propozycja ZD automatu: dostawca z włączonymi propozycjami i strategią testową, minął cykl,
  * są pozycje do zamówienia. Błąd tylko w logu — analiza braków idzie dalej.
  */
+/** Wynik próby propozycji — „Przygotuj teraz” pokazuje go zamiast zgadywać. */
+export type ZdAutoProposalOutcome =
+  | { kind: "created"; id: string }
+  | { kind: "nothing_to_order" }
+  | { kind: "not_due" }
+  | { kind: "disabled" }
+  | { kind: "skipped"; reason: string }
+  | { kind: "error"; message: string };
+
 async function maybeCreateAutoProposal(input: {
   supplierId: string;
   force: boolean;
@@ -541,22 +560,28 @@ async function maybeCreateAutoProposal(input: {
   dataOd: string;
   dataDo: string;
   lines: ZdAutoProposalLine[];
-}): Promise<void> {
+}): Promise<ZdAutoProposalOutcome> {
   try {
     const policy = await fetchZdSupplierOrderPolicy(input.supplierId);
-    if ((!policy.autoProposals && !input.force) || policy.strategy === "classic" || input.lines.length === 0) return;
+    if (policy.strategy === "classic" || (!policy.autoProposals && !input.force)) return { kind: "disabled" };
+    if (input.lines.length === 0) return { kind: "nothing_to_order" };
     const last = await fetchLatestZdAutoProposal(input.supplierId);
     const lastKey = last ? warsawDateKeyFromIso(last.createdAt) : null;
-    if (!input.force && !isZdAutoProposalDue({ cycleDays: policy.cycleDays, lastCreatedDateKey: lastKey, todayKey: input.todayKey })) return;
-    await createZdAutoProposal({
+    if (!input.force && !isZdAutoProposalDue({ cycleDays: policy.cycleDays, lastCreatedDateKey: lastKey, todayKey: input.todayKey })) {
+      return { kind: "not_due" };
+    }
+    const created = await createZdAutoProposal({
       supplierId: input.supplierId,
       policy: { strategy: policy.strategy, targetDays: policy.targetDays, cycleDays: policy.cycleDays },
       dataOd: input.dataOd,
       dataDo: input.dataDo,
       lines: input.lines,
     });
+    return { kind: "created", id: created.id };
   } catch (e) {
+    // Nocny przebieg idzie dalej (analiza braków); „Przygotuj teraz” dostaje przyczynę.
     console.error("[stock-watch] propozycja ZD automatu", input.supplierId, e);
+    return { kind: "error", message: e instanceof Error ? e.message : "Nie udało się zapisać propozycji." };
   }
 }
 
@@ -595,27 +620,42 @@ export function refreshStockWatchSupplier(supplierId: string): Promise<void> {
  * „Przygotuj propozycję teraz” (Kreator, strategia testowa): przelicza analizę dostawcy
  * i zapisuje propozycję bez czekania na nocny przebieg i cykl.
  */
-export async function createZdAutoProposalNow(supplierId: string): Promise<"ok" | "no_scope" | "no_run" | "not_configured"> {
-  return computeSingleSupplier(supplierId, { proposalForce: true });
+export type ZdAutoProposalNowResult =
+  | { status: "no_scope" | "no_run" | "not_configured" }
+  | { status: "ok"; proposal: ZdAutoProposalOutcome | undefined };
+
+export async function createZdAutoProposalNow(supplierId: string): Promise<ZdAutoProposalNowResult> {
+  // Jedno przeliczenie dostawcy naraz: poczekaj na trwające odświeżenie (np. po Utwórz ZD),
+  // a dwa kliknięcia „Przygotuj teraz” liczą się raz (drugie dostaje wynik pierwszego).
+  await supplierRefresh.get(supplierId)?.running;
+  const inFlight = proposalNowInFlight.get(supplierId);
+  if (inFlight) return inFlight;
+  const run = computeSingleSupplier(supplierId, { proposalForce: true }).finally(() => {
+    proposalNowInFlight.delete(supplierId);
+  });
+  proposalNowInFlight.set(supplierId, run);
+  return run;
 }
+
+const proposalNowInFlight = new Map<string, Promise<ZdAutoProposalNowResult>>();
 
 async function computeSingleSupplier(
   supplierId: string,
   options?: { proposalForce?: boolean }
-): Promise<"ok" | "no_scope" | "no_run" | "not_configured"> {
+): Promise<ZdAutoProposalNowResult> {
   const orders = resolveSubiektOrdersConfig();
-  if (!orders.ok) return "not_configured";
+  if (!orders.ok) return { status: "not_configured" };
   const scope = groupZdEstimateScopesBySupplier(await listZdEstimateSupplierScopes())
     .get(supplierId)?.[0];
-  if (!scope) return "no_scope";
+  if (!scope) return { status: "no_scope" };
   const [supplier] = await fetchSuppliersWithSchedules(undefined, {
     activeOnly: false,
     supplierIds: [supplierId],
   });
   // Wiersze należą do przebiegu — bez żadnego nocnego przebiegu panel i tak nic nie pokazuje.
   const run = await getLatestStockWatchRun();
-  if (!supplier) return "no_scope";
-  if (!run) return "no_run";
+  if (!supplier) return { status: "no_scope" };
+  if (!run) return { status: "no_run" };
   const todayKey = warsawNowParts().dateKey;
   const [salesEndDate, prices, horizons] = await Promise.all([
     resolveSalesEndDate(todayKey),
@@ -626,7 +666,7 @@ async function computeSingleSupplier(
       todayKey,
     }).catch(() => new Map<string, ZdOrderHorizon>()),
   ]);
-  await computeSupplierOrder({
+  const outcome = await computeSupplierOrder({
     scope,
     supplier,
     runId: run.id,
@@ -636,5 +676,5 @@ async function computeSingleSupplier(
     horizon: horizons.get(supplier.id) ?? null,
     ...(options?.proposalForce ? { proposalTodayKey: todayKey, proposalForce: true } : {}),
   });
-  return "ok";
+  return { status: "ok", proposal: outcome.proposal };
 }

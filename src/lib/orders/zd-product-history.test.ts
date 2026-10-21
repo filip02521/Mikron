@@ -62,4 +62,17 @@ describe("summarizeZdProductPurchases", () => {
       ])
     ).toEqual({ count: 3, typicalQty: 72, typicalGapDays: 62 });
   });
+
+  it("para: paczki i sztuki z jednego ZD to jeden zakup, liczony w sztukach", () => {
+    const rows = [
+      { twId: 1, dokNr: "ZD 2", date: "2026-09-01", qty: 2, priceNet: null },
+      { twId: 2, dokNr: "ZD 2", date: "2026-09-01", qty: 4, priceNet: null },
+      { twId: 1, dokNr: "ZD 1", date: "2026-08-01", qty: 3, priceNet: null },
+    ];
+    expect(summarizeZdProductPurchases(rows, (r) => r.qty * (r.twId === 1 ? 10 : 1))).toEqual({
+      count: 2,
+      typicalQty: 27,
+      typicalGapDays: 31,
+    });
+  });
 });

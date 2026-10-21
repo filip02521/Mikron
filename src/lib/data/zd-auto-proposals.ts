@@ -1,4 +1,5 @@
 import { query } from "@/lib/db/pool";
+import { dateToIso } from "@/lib/orders/dates";
 import type { ZdSupplierOrderPolicy } from "@/lib/orders/zd-demand-policy";
 
 /** Linia propozycji automatu — to, co Kreator pokazałby w „Do ZD” tego ranka. */
@@ -57,7 +58,8 @@ type Row = {
 };
 
 const iso = (v: Date | string) => new Date(v).toISOString();
-const dateKey = (v: Date | string) => (typeof v === "string" ? v.slice(0, 10) : v.toISOString().slice(0, 10));
+// pg zwraca kolumnę date jako lokalną północ — toISOString() cofałby datę o dzień (Warszawa, UTC+1/+2).
+const dateKey = (v: Date | string) => (typeof v === "string" ? v.slice(0, 10) : dateToIso(v) ?? "");
 
 function map(r: Row): ZdAutoProposal {
   return {
@@ -166,6 +168,32 @@ export async function decideZdAutoProposal(input: {
       input.dokId ?? null,
       input.finalLines ? JSON.stringify(input.finalLines) : null,
     ]
+  );
+  return (res.rowCount ?? 0) > 0;
+}
+
+/** Drugie ZD tego samego dnia (zamówienie podzielone) — dopisuje linie do zaakceptowanej propozycji. */
+export async function addZdAutoProposalFinalLines(input: {
+  id: string;
+  supplierId: string;
+  finalLines: Record<string, number>;
+}): Promise<boolean> {
+  const res = await query(
+    `UPDATE zd_auto_proposals p
+        SET final_lines = (
+          SELECT jsonb_object_agg(k, to_jsonb(v))
+            FROM (
+              SELECT k, sum(v::numeric) AS v
+                FROM (
+                  SELECT key AS k, value::text AS v FROM jsonb_each(coalesce(p.final_lines, '{}'::jsonb))
+                  UNION ALL
+                  SELECT key, value::text FROM jsonb_each($3::jsonb)
+                ) x
+               GROUP BY k
+            ) y
+        )
+      WHERE id = $1 AND supplier_id = $2 AND status = 'accepted'`,
+    [input.id, input.supplierId, JSON.stringify(input.finalLines)]
   );
   return (res.rowCount ?? 0) > 0;
 }

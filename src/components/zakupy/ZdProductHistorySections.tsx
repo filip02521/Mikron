@@ -1,6 +1,7 @@
 "use client";
 
 import { BrandLoader } from "@/components/ui/BrandLoader";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 import { formatQty } from "@/lib/orders/zd-estimate-manual";
 import {
   formatDatePlKey,
@@ -114,14 +115,15 @@ export function ZdProductSalesSections({ state, titleId }: { state: ZdProductHis
                   <span className="ml-2 text-slate-800">{r.khSymbol === "PARAGON" ? "Paragon" : r.khName || r.khSymbol}</span>
                   <span className="ml-2 text-xs text-slate-500">{ROLE_LABEL[r.rola]}</span>
                 </span>
-                <span className={cn("shrink-0 tabular-nums font-medium", r.pieces < 0 ? "text-red-700" : "text-slate-900")}>
+                <span className={cn("shrink-0 tabular-nums font-medium", r.pieces < 0 ? "text-slate-500" : "text-slate-900")}>
                   {formatQty(r.pieces)} szt
                 </span>
               </li>
             ))}
             {sales.rows.length > SALES_LIST_MAX ? (
               <li className="px-3 py-1.5 text-xs text-slate-500">
-                i {sales.rows.length - SALES_LIST_MAX} wcześniejszych w ostatnich 12 mies.
+                i {sales.rows.length - SALES_LIST_MAX}{" "}
+                {polishPluralWord(sales.rows.length - SALES_LIST_MAX, "wcześniejsza", "wcześniejsze", "wcześniejszych")} w ostatnich 12 mies.
               </li>
             ) : null}
           </ul>
@@ -143,8 +145,13 @@ export function ZdProductPurchasesSection({
   unitFor: (row: ZdProductPurchaseRow) => { label: string; piecesPerUnit: number | null };
 }) {
   const purchases = state.status === "ok" ? state.purchases : null;
-  const rhythm = purchases?.ok ? summarizeZdProductPurchases(purchases.rows) : null;
-  const typicalUnit = purchases?.ok && purchases.rows[0] ? unitFor(purchases.rows[0]).label : "";
+  // Jedna jednostka w całej historii → rytm w niej; para / mieszane jednostki → w sztukach.
+  const units = purchases?.ok ? purchases.rows.map(unitFor) : [];
+  const uniform = units.length > 0 && units.every((u) => u.label === units[0]!.label && u.piecesPerUnit === units[0]!.piecesPerUnit);
+  const rhythm = purchases?.ok
+    ? summarizeZdProductPurchases(purchases.rows, uniform ? undefined : (r) => r.qty * (unitFor(r).piecesPerUnit ?? 1))
+    : null;
+  const typicalUnit = uniform ? units[0]!.label : "szt";
   return (
     <section aria-labelledby={`${titleId}-buy`}>
       <h3 id={`${titleId}-buy`} className={headingClass}>
@@ -163,7 +170,7 @@ export function ZdProductPurchasesSection({
           {rhythm && rhythm.count >= 2 ? (
             <p className="mt-1.5 text-sm text-slate-800">
               Zwykle {formatQty(rhythm.typicalQty)} {typicalUnit}
-              {rhythm.typicalGapDays != null ? ` co ~${rhythm.typicalGapDays} dni` : ""} ({rhythm.count} ZD).
+              {rhythm.typicalGapDays != null ? ` co ~${rhythm.typicalGapDays} ${polishPluralWord(rhythm.typicalGapDays, "dzień", "dni", "dni")}` : ""} ({rhythm.count} ZD).
             </p>
           ) : null}
           <ul className={listClass}>
@@ -192,7 +199,9 @@ export function ZdProductPurchasesSection({
               );
             })}
             {purchases.rows.length > PURCHASES_LIST_MAX ? (
-              <li className="px-3 py-1.5 text-xs text-slate-500">i {purchases.rows.length - PURCHASES_LIST_MAX} starszych</li>
+              <li className="px-3 py-1.5 text-xs text-slate-500">i {purchases.rows.length - PURCHASES_LIST_MAX}{" "}
+                {polishPluralWord(purchases.rows.length - PURCHASES_LIST_MAX, "starsza", "starsze", "starszych")}
+              </li>
             ) : null}
           </ul>
         </>

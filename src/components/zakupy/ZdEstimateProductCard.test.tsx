@@ -72,6 +72,20 @@ describe("ZdEstimateProductCard", () => {
     expect(p.onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("okno otwarte nad kartą i przytrzymana strzałka nie przełączają towaru", () => {
+    const p = renderCard();
+    const dialog = document.createElement("div");
+    const input = document.createElement("button");
+    dialog.appendChild(input);
+    document.body.appendChild(dialog);
+    fireEvent.keyDown(input, { key: "ArrowRight" });
+    fireEvent.keyDown(input, { key: "Escape" });
+    fireEvent.keyDown(window, { key: "ArrowRight", repeat: true });
+    dialog.remove();
+    expect(p.onNext).not.toHaveBeenCalled();
+    expect(p.onClose).not.toHaveBeenCalled();
+  });
+
   it("wykluczony towar: decyzja mówi to wprost", () => {
     renderCard({ status: { excluded: true, onRequest: false } });
     expect(screen.getByText("Wykluczony z ZD")).toBeTruthy();

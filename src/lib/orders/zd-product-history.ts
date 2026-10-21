@@ -131,20 +131,32 @@ function median(values: readonly number[]): number {
 }
 
 /** Rytm zakupów: ile ZD, typowa ilość (jednostki ZD) i typowy odstęp w dniach. */
-export function summarizeZdProductPurchases(rows: readonly ZdProductPurchaseRow[]): {
+/**
+ * Rytm zakupów: jedno ZD = jeden zakup (para: paczki i sztuki z tego samego ZD sumują się),
+ * ilość w jednostce z `qtyOf` (np. sztuki), odstęp między kolejnymi datami ZD.
+ */
+export function summarizeZdProductPurchases(
+  rows: readonly ZdProductPurchaseRow[],
+  qtyOf: (row: ZdProductPurchaseRow) => number = (r) => r.qty
+): {
   count: number;
   typicalQty: number;
   typicalGapDays: number | null;
 } {
-  const dated = rows
-    .filter((r) => r.date)
-    .map((r) => Date.parse(`${r.date}T00:00:00Z`))
-    .sort((a, b) => a - b);
+  const byDoc = new Map<string, { date: string | null; qty: number }>();
+  for (const r of rows) {
+    const key = r.dokNr || `${r.date ?? ""}:${r.twId ?? ""}`;
+    const cur = byDoc.get(key) ?? { date: r.date, qty: 0 };
+    cur.qty += qtyOf(r);
+    byDoc.set(key, cur);
+  }
+  const docs = [...byDoc.values()];
+  const dated = [...new Set(docs.filter((d) => d.date).map((d) => Date.parse(`${d.date}T00:00:00Z`)))].sort((a, b) => a - b);
   const gaps: number[] = [];
   for (let i = 1; i < dated.length; i += 1) gaps.push(Math.round((dated[i]! - dated[i - 1]!) / 86_400_000));
   return {
-    count: rows.length,
-    typicalQty: median(rows.map((r) => r.qty)),
+    count: docs.length,
+    typicalQty: median(docs.map((d) => d.qty)),
     typicalGapDays: gaps.length ? Math.round(median(gaps)) : null,
   };
 }

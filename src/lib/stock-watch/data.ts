@@ -793,19 +793,22 @@ export type ZdPurchaseLineRow = {
   priceNet: number | null;
 };
 
-/** Linie ZD do historii zakupów (karta produktu). Ten sam ZD odczytany ponownie nadpisuje linię. */
+/**
+ * Linie ZD do historii zakupów (karta produktu). Ten sam ZD odczytany ponownie nadpisuje linię.
+ * Tablice + unnest: jedno zapytanie bez limitu 65 535 parametrów (porcja harvestu może mieć tysiące linii).
+ */
 export async function upsertZdPurchaseLines(rows: readonly ZdPurchaseLineRow[]): Promise<number> {
   if (!rows.length) return 0;
-  const params: unknown[] = [];
-  const tuples = rows.map((r) => {
-    params.push(r.dokId, r.subiektTwId, r.dokNr, r.dokDate, r.khId, r.qty, r.priceNet);
-    const b = params.length - 7;
-    return `($${b + 1}, $${b + 2}, $${b + 3}, $${b + 4}::date, $${b + 5}, $${b + 6}, $${b + 7}, now())`;
-  });
+  // Ten sam (ZD, towar) dwa razy w jednym INSERT … ON CONFLICT rzuca błąd — zostaje ostatni.
+  const byKey = new Map<string, ZdPurchaseLineRow>();
+  for (const r of rows) byKey.set(`${r.dokId}:${r.subiektTwId}`, r);
+  const list = [...byKey.values()];
   const res = await query(
     `INSERT INTO zd_purchase_lines
        (dok_id, subiekt_tw_id, dok_nr, dok_date, kh_id, qty, price_net, updated_at)
-     VALUES ${tuples.join(", ")}
+     SELECT t.dok_id, t.tw, t.dok_nr, t.dok_date, t.kh_id, t.qty, t.price_net, now()
+       FROM unnest($1::int[], $2::int[], $3::text[], $4::date[], $5::int[], $6::numeric[], $7::numeric[])
+         AS t(dok_id, tw, dok_nr, dok_date, kh_id, qty, price_net)
      ON CONFLICT (dok_id, subiekt_tw_id) DO UPDATE SET
        dok_nr = EXCLUDED.dok_nr,
        dok_date = EXCLUDED.dok_date,
@@ -813,7 +816,15 @@ export async function upsertZdPurchaseLines(rows: readonly ZdPurchaseLineRow[]):
        qty = EXCLUDED.qty,
        price_net = EXCLUDED.price_net,
        updated_at = now()`,
-    params
+    [
+      list.map((r) => r.dokId),
+      list.map((r) => r.subiektTwId),
+      list.map((r) => r.dokNr),
+      list.map((r) => r.dokDate),
+      list.map((r) => r.khId),
+      list.map((r) => r.qty),
+      list.map((r) => r.priceNet),
+    ]
   );
   return res.rowCount ?? 0;
 }
