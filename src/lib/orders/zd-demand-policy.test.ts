@@ -158,3 +158,13 @@ describe("podłoga 90 d dla składników zestawów „Składamy”", () => {
     expect(handled.has(1)).toBe(false);
   });
 });
+
+describe("dni celu strategii - złe dane czasu dostawy", () => {
+  const p: ZdSupplierOrderPolicy = { strategy: "max30_90", targetDays: 25, cycleDays: null };
+  it("NaN czasu dostawy - tylko dni strategii", () => {
+    expect(effectiveDniZapasu(p, 30, { leadDays: Number.NaN, nextOrderDays: 3 })).toBe(25);
+  });
+  it("dostawca na żądanie (kolejne zamówienie 0 dni): dostawa + bufor", () => {
+    expect(effectiveDniZapasu(p, 30, { leadDays: 30, nextOrderDays: 0 })).toBe(38);
+  });
+});

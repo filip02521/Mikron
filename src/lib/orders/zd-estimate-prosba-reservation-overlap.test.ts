@@ -555,3 +555,108 @@ describe("rezerwacje z innej karty niż prośba (para, zestaw „Składamy”)",
     expect(qty.zdUnits).toBe(10);
   });
 });
+
+describe("rezerwacje zestawów: zestaw w zestawie i wyłączone pokrycie", () => {
+  function qtyFor(input: {
+    lines: { tw_Id: number; tw_Symbol: string; dostepne: number; sprzedazOkres?: number; celZapasu?: number }[];
+    boms: {
+      parentTwId: number;
+      stockAsCover: boolean;
+      demandAllocation: "explode";
+      purchaseTarget: "components";
+      components: { componentTwId: number; qtyPerParent: number }[];
+    }[];
+    leaf: number;
+    reserved: Map<number, { quantity: number; clientKhId: number | null; zkNumber: string }[]>;
+    extraPieces: number;
+  }) {
+    const res = buildManualZdEstimateResult(
+      { dniZapasu: 30, dniOkresu: 30, zapasMin: 0 },
+      input.lines.map((l) => ({ sprzedazOkres: 0, celZapasu: 0, ...l })),
+      { salesTrack: false, productBoms: input.boms }
+    );
+    const leaf = res.pozycje.find((p) => p.tw_Id === input.leaf)!;
+    const sources = buildZdOverlapReservationSources({
+      boms: input.boms,
+      dostepneByTw: new Map(res.pozycjeBase.map((l) => [l.tw_Id, l.dostepne])),
+    });
+    const reserved = mergeReservedSlicesBySources(input.reserved, [input.leaf], sources);
+    const maps = individualExtrasAndReliefWithReservationOverlap(
+      new Map([
+        [
+          input.leaf,
+          {
+            extraPieces: input.extraPieces,
+            overlapContributions: [
+              { orderId: "o1", qty: input.extraPieces, salesClientKhId: 100, sourceZkNumber: "ZK X" },
+            ],
+          },
+        ],
+      ]),
+      reserved
+    );
+    return resolveOrderQtyForLine(
+      leaf,
+      { unitsPerPackage: 1, packageLabel: "szt" },
+      maps.extraByTwId.get(input.leaf),
+      false,
+      "sum",
+      maps.stockNeedReliefByTwId.get(input.leaf) ?? 0,
+      maps.extraOverlapByTwId.get(input.leaf) ?? 0
+    ).zdUnits;
+  }
+
+  it("zestaw w zestawie: 1 T (= 2 S = 6 L) zarezerwowany ZK + prośba tego ZK = 6, nie 12", () => {
+    expect(
+      qtyFor({
+        lines: [
+          { tw_Id: 300, tw_Symbol: "T", dostepne: -1 },
+          { tw_Id: 200, tw_Symbol: "S", dostepne: 0 },
+          { tw_Id: 1, tw_Symbol: "L", dostepne: 0 },
+        ],
+        boms: [
+          { parentTwId: 300, stockAsCover: true, demandAllocation: "explode", purchaseTarget: "components", components: [{ componentTwId: 200, qtyPerParent: 2 }] },
+          { parentTwId: 200, stockAsCover: true, demandAllocation: "explode", purchaseTarget: "components", components: [{ componentTwId: 1, qtyPerParent: 3 }] },
+        ],
+        leaf: 1,
+        reserved: new Map([[300, [{ quantity: 1, clientKhId: 100, zkNumber: "ZK X" }]]]),
+        extraPieces: 6,
+      })
+    ).toBe(6);
+  });
+
+  it("pokrycie wyłączone, zestaw na stanie: rezerwacja nie zdejmuje prośby (26, nie 20)", () => {
+    expect(
+      qtyFor({
+        lines: [
+          { tw_Id: 100, tw_Symbol: "KIT", dostepne: 7 },
+          { tw_Id: 1, tw_Symbol: "A", dostepne: 0, sprzedazOkres: 20, celZapasu: 20 },
+        ],
+        boms: [
+          { parentTwId: 100, stockAsCover: false, demandAllocation: "explode", purchaseTarget: "components", components: [{ componentTwId: 1, qtyPerParent: 2 }] },
+        ],
+        leaf: 1,
+        reserved: new Map([[100, [{ quantity: 3, clientKhId: 100, zkNumber: "ZK X" }]]]),
+        extraPieces: 6,
+      })
+    ).toBe(26);
+  });
+
+  it("pokrycie wyłączone, rezerwacje ponad stan: ulga tylko z części ponad stan", () => {
+    // Stan 1, rez. 3 → dostępne −2: niedobór 2 zestawy = 4 szt A; prośba 3 zestawy = 6 szt.
+    expect(
+      qtyFor({
+        lines: [
+          { tw_Id: 100, tw_Symbol: "KIT", dostepne: -2 },
+          { tw_Id: 1, tw_Symbol: "A", dostepne: 0 },
+        ],
+        boms: [
+          { parentTwId: 100, stockAsCover: false, demandAllocation: "explode", purchaseTarget: "components", components: [{ componentTwId: 1, qtyPerParent: 2 }] },
+        ],
+        leaf: 1,
+        reserved: new Map([[100, [{ quantity: 3, clientKhId: 100, zkNumber: "ZK X" }]]]),
+        extraPieces: 6,
+      })
+    ).toBe(6);
+  });
+});

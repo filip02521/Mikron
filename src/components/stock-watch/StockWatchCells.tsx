@@ -62,7 +62,8 @@ export function CoverChip({
         <span className="text-xs text-slate-500">koniec ok. {runOut}</span>
       ) : null}
       {row.deliveryRisk ? <DeliveryRiskTag risk={row.deliveryRisk} /> : null}
-      <AssemblyTag row={row} />
+      {/* Tylko gdy kompletacja jest do zrobienia — inaczej to szum przy towarze ze stanem. */}
+      {row.status === "to_assemble" ? <AssemblyTag row={row} /> : null}
     </div>
   );
 }

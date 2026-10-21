@@ -2108,8 +2108,13 @@ export function ZdEstimateWorkbench({
 
   // Para / zestaw „Składamy”: ZK klienta na innej karcie niż prośba — jak w Policz na serwerze.
   const prosbaReservationSources = useMemo(
-    () => buildZdOverlapReservationSources({ pairs: productPairs, boms: bomRowsToRefs(productBoms) }),
-    [productPairs, productBoms]
+    () =>
+      buildZdOverlapReservationSources({
+        pairs: productPairs,
+        boms: bomRowsToRefs(productBoms),
+        dostepneByTw: new Map((linesBase ?? lines ?? []).map((l) => [l.tw_Id, Number(l.dostepne) || 0])),
+      }),
+    [productPairs, productBoms, linesBase, lines]
   );
 
   /** Kandydaci overlap z katalogu (przed reclassify) — stabilne vs on-request. */
@@ -2123,7 +2128,11 @@ export function ZdEstimateWorkbench({
     });
   }, [lines, catalogRawExtraByTwId, catalogExtrasBundle.byTwId, prosbaReservationSources]);
 
-  const prosbaOverlapCandidateKey = prosbaOverlapCandidateTwIds.join(",");
+  // Klucz także ze źródeł rezerwacji: zmiana przelicznika pary / ilości w zestawie zmienia
+  // jednostki scalonych rezerwacji przy tym samym zbiorze kandydatów.
+  const prosbaOverlapCandidateKey = `${prosbaOverlapCandidateTwIds.join(",")}|${JSON.stringify(
+    prosbaOverlapCandidateTwIds.map((tw) => prosbaReservationSources.get(tw) ?? null)
+  )}`;
 
   if (!prosbaOverlapCandidateTwIds.length && prosbaReservedByTwId != null) {
     setProsbaReservedByTwId(null);
@@ -6120,6 +6129,11 @@ export function ZdEstimateWorkbench({
     });
   };
 
+  const pairTwinTwId = (line: ManualZdEstimateLine): number | null =>
+    line.pair && !line.pair.partnerMissing ? line.pair.twinTwId : null;
+  const pairPackTwId = (line: ManualZdEstimateLine): number =>
+    line.pair?.role === "piece" && !line.pair.partnerMissing ? line.pair.twinTwId : line.tw_Id;
+
   const saveMinStock = (value: number, note: string) => {
     const line = minStockCandidate;
     if (!line) return;
@@ -6139,7 +6153,12 @@ export function ZdEstimateWorkbench({
           reportError(res.message);
           return;
         }
-        applyMinStockLive(res.minStock);
+        // Para: minimum pary = jedna wartość. Wpis z drugiej karty (max z obu) zablokowałby
+        // obniżenie — usuwamy go.
+        const twin = pairTwinTwId(line);
+        const final = twin != null ? await actionDeleteZdEstimateMinStock(twin) : res;
+        applyMinStockLive(final.ok ? final.minStock : res.minStock);
+        if (!final.ok) reportError(final.message);
         setMinStockCandidate(null);
       } finally {
         setMutatingTwId(null);
@@ -6153,7 +6172,9 @@ export function ZdEstimateWorkbench({
     setMutatingTwId(line.tw_Id);
     startMutate(async () => {
       try {
-        const res = await actionDeleteZdEstimateMinStock(line.tw_Id);
+        const twin = pairTwinTwId(line);
+        const first = await actionDeleteZdEstimateMinStock(line.tw_Id);
+        const res = first.ok && twin != null ? await actionDeleteZdEstimateMinStock(twin) : first;
         if (!res.ok) {
           reportError(res.message);
           return;
@@ -8669,7 +8690,8 @@ export function ZdEstimateWorkbench({
         previewOrder={previewMinStockOrder}
         existingMinSzt={
           minStockCandidate
-            ? minStockByTwIdForRefresh.get(minStockCandidate.tw_Id) ?? 0
+            ? // Para: minimum pary trzymane na paczce (większe z obu kart).
+              minStockByTwIdForRefresh.get(pairPackTwId(minStockCandidate)) ?? 0
             : 0
         }
         pending={mutating && minStockCandidate != null}

@@ -29,7 +29,7 @@ export function explainZdOrderQty(input: {
     ManualZdEstimateLine,
     "celZapasu" | "celZapasuTracked" | "dostepne" | "pair" | "demandFloor"
   > &
-    Partial<Pick<ManualZdEstimateLine, "stockoutAdjust">>;
+    Partial<Pick<ManualZdEstimateLine, "stockoutAdjust" | "salesProfile">>;
   qty: ZdPackOrderQty;
   /** Otwarte ZD przeliczone na sztuki (dla pary — już w pokryciu). */
   openZdPieces: number;
@@ -62,6 +62,16 @@ export function explainZdOrderQty(input: {
         label: `Średnia 90 dni wyższa niż ostatnie tempo (${formatQty(f.rateBefore * 30)} → ${formatQty(f.rateAfter * 30)} szt / 30 d)`,
         value: Math.round(f.sales90),
         unit: "szt w 90 d",
+        kind: "note",
+      });
+    }
+    const sp = line.salesProfile;
+    if (sp?.applied && sp.prosbaPieces > 0) {
+      steps.push({
+        key: "prosba_sales",
+        label: "Sprzedaż pod prośby odjęta (zamawiana osobno z prośbą, nie na zapas)",
+        value: Math.round(sp.prosbaPieces * 100) / 100,
+        unit: "szt",
         kind: "note",
       });
     }

@@ -3,6 +3,7 @@ import {
   applyStockoutAdjustToLine,
   businessDaysInWindow,
   computeStockoutSalesFactor,
+  stockoutMetaExcludingProsba,
 } from "@/lib/stock-watch/stock-history";
 
 describe("korekta sprzedaży o dni braku", () => {
@@ -34,5 +35,18 @@ describe("dni robocze okna", () => {
   it("30 dni kalendarzowych = 22 dni robocze (21.09–20.10.2026)", () => {
     expect(businessDaysInWindow("2026-09-21", "2026-10-20")).toBe(22);
     expect(businessDaysInWindow("2026-10-24", "2026-10-25")).toBe(0);
+  });
+});
+
+describe("dni braku a sprzedaż pod prośby", () => {
+  const meta = { windowDays: 22, recordedDays: 22, outDays: 11, factor: 2 };
+
+  it("cała sprzedaż pod prośby - bez korekty (nie ma fantomowego popytu)", () => {
+    expect(stockoutMetaExcludingProsba(meta, 100, 100)).toBeNull();
+  });
+
+  it("część pod prośby - mnożnik tylko na sprzedaży na zapas", () => {
+    // 60 na zapas × 2 + 40 prośby = 160 → 1,6 × 100.
+    expect(stockoutMetaExcludingProsba(meta, 100, 40)?.factor).toBeCloseTo(1.6);
   });
 });

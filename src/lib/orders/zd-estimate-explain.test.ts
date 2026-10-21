@@ -72,3 +72,24 @@ describe("explainZdOrderQty — strategia testowa", () => {
     expect(s[0]!.label).toContain("6 → 12 szt / 30 d");
   });
 });
+
+describe("explainZdOrderQty - korekty sprzedaży widoczne w krokach", () => {
+  it("sprzedaż pod prośby odjęta i dni braku pokazane jako kroki", () => {
+    const qty = computeZdPackOrderQty(20, 1, "op.");
+    const s = explainZdOrderQty({
+      line: line({
+        celZapasu: 20,
+        celZapasuTracked: 20,
+        dostepne: 0,
+        salesProfile: { applied: true, prosbaPieces: 12 } as ManualZdEstimateLine["salesProfile"],
+        stockoutAdjust: { windowDays: 22, recordedDays: 22, outDays: 6, factor: 1.38 },
+      }),
+      qty,
+      openZdPieces: 0,
+      extraPieces: 0,
+      extraOnly: false,
+      extrasPolicy: "sum",
+    });
+    expect(byKey(s)).toMatchObject({ prosba_sales: 12, stockout: 1.38, cel: 20, short: 20 });
+  });
+});

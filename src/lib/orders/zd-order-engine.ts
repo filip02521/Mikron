@@ -38,6 +38,7 @@ import {
   businessDaysInWindow,
   computeStockoutSalesFactor,
   loadStockHistoryWindow,
+  stockoutMetaExcludingProsba,
 } from "@/lib/stock-watch/stock-history";
 import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
 import { collectMissingZdBomTwIds } from "@/lib/orders/zd-estimate-live-refresh";
@@ -1061,12 +1062,31 @@ export async function runZdOrderEngine(
             return new Map<number, { recordedDays: number; outDays: number }>();
           })
         : new Map<number, { recordedDays: number; outDays: number }>();
+    const metaByTw = new Map<number, NonNullable<ReturnType<typeof computeStockoutSalesFactor>>>();
+    for (const [tw, h] of history) {
+      if (composite.has(tw)) continue;
+      const meta = computeStockoutSalesFactor({ windowDays, recordedDays: h.recordedDays, outDays: h.outDays });
+      if (meta) metaByTw.set(tw, meta);
+    }
+    // Sprzedaż pod prośby nie dostaje mnożnika (jak w odejmowaniu próśb: tylko bez opakowań,
+    // bo prośba jest w sztukach, a sprzedaż w jednostkach karty).
+    const prosbaForStockout = metaByTw.size
+      ? await loadDeliveredProsbaPiecesByTwId({
+          twIds: [...metaByTw.keys()].filter((tw) => !((packagingByTwId.get(tw)?.unitsPerPackage ?? 1) > 1)),
+          dataOd,
+          dataDo,
+        }).catch(() => new Map<number, number>())
+      : new Map<number, number>();
     for (let i = 0; i < mergedPozycje.length; i += 1) {
       const tw = Math.trunc(Number(mergedPozycje[i]!.tw_Id) || 0);
-      const h = history.get(tw);
-      if (!h || composite.has(tw)) continue;
-      const meta = computeStockoutSalesFactor({ windowDays, recordedDays: h.recordedDays, outDays: h.outDays });
-      if (meta) mergedPozycje[i] = applyStockoutAdjustToLine(mergedPozycje[i]!, meta, zapasMin);
+      const meta = metaByTw.get(tw);
+      if (!meta) continue;
+      const effective = stockoutMetaExcludingProsba(
+        meta,
+        Number(mergedPozycje[i]!.sprzedazOkres) || 0,
+        prosbaForStockout.get(tw) ?? 0
+      );
+      if (effective) mergedPozycje[i] = applyStockoutAdjustToLine(mergedPozycje[i]!, effective, zapasMin);
     }
   }
 
@@ -1149,6 +1169,9 @@ export async function runZdOrderEngine(
         const line = mergedPozycje[i]!;
         const tw = Math.trunc(Number(line.tw_Id) || 0);
         const windows = profiles.get(tw);
+        // Strategia odjęła prośby — meta z tego kroku zostaje (drugi przebieg bez odejmowania
+        // nadpisałby ją „bez zmian”, a liczby już są po odjęciu).
+        let prosbaMetaKept = false;
         if (
           windows &&
           strategyActive &&
@@ -1173,7 +1196,10 @@ export async function runZdOrderEngine(
             floorWindows = windows.map((v, k) =>
               k === windows.length - 1 ? Math.max(0, v - pm.prosbaPieces) : v
             );
-            if (pm.applied) salesSmoothing.prosba += 1;
+            if (pm.applied) {
+              salesSmoothing.prosba += 1;
+              prosbaMetaKept = true;
+            }
           }
           const floored = applyZdDemandFloorToLine(base, {
             policy: orderPolicy,
@@ -1185,7 +1211,7 @@ export async function runZdOrderEngine(
             mergedPozycje[i] = floored;
           }
         }
-        if (!windows || compositeTwIds.has(tw)) continue;
+        if (!windows || compositeTwIds.has(tw) || prosbaMetaKept) continue;
         const meta = resolveZdSalesProfile({
           windows,
           // Profil (znaczniki) z prawdziwej sprzedaży, nie z podłogi strategii.
@@ -1389,7 +1415,11 @@ export async function runZdOrderEngine(
       const overlap = await resolveIndividualExtrasWithReservationOverlap({
         byTwId: extras.byTwId,
         lines: result.pozycje,
-        reservationSources: buildZdOverlapReservationSources({ pairs: productPairs, boms: bomRefs }),
+        reservationSources: buildZdOverlapReservationSources({
+          pairs: productPairs,
+          boms: bomRefs,
+          dostepneByTw: new Map(result.pozycjeBase.map((l) => [l.tw_Id, Number(l.dostepne) || 0])),
+        }),
       });
       prosbaOverlapCandidateTwIds = overlap.candidateTwIds;
       prosbaOverlapResolved = overlap.resolved;

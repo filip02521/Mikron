@@ -52,8 +52,12 @@ export function effectiveDniZapasu(
   const target = Math.round(t);
   if (!timing) return target;
   const cycle = Number(policy.cycleDays);
-  const cycleDays = Number.isFinite(cycle) && cycle >= 1 ? Math.round(cycle) : Math.max(0, Math.round(timing.nextOrderDays));
-  const lead = Math.max(0, Math.round(timing.leadDays));
+  const next = Number(timing.nextOrderDays);
+  const cycleDays = Number.isFinite(cycle) && cycle >= 1 ? Math.round(cycle) : Number.isFinite(next) ? Math.max(0, Math.round(next)) : 0;
+  const leadRaw = Number(timing.leadDays);
+  // Brak / zły czas dostawy — tylko dni strategii (NaN zatrułby każdy cel).
+  if (!Number.isFinite(leadRaw)) return target;
+  const lead = Math.max(0, Math.round(leadRaw));
   return Math.max(target, cycleDays + lead + Math.round(lead * ZD_STRATEGY_LEAD_SAFETY_SHARE));
 }
 

@@ -5,7 +5,8 @@
  * popyt dokładnie wtedy, gdy towaru nie ma (symulacja: przy dostawie 30 dni powrót po
  * braku trwał miesiącami). Z historią tempo liczymy na dniach ze stanem.
  *
- * Dzień obserwacji = poranny stan (przed sprzedażą tego dnia): dostępne ≤ 0 → dzień braku.
+ * Dzień obserwacji = poranny stan (przed sprzedażą tego dnia): stan karty ≤ 0 → dzień braku.
+ * Stan w całości zarezerwowany to nie brak — rezerwacje schodzą jako sprzedaż (ZK → FS).
  * Liczą się tylko dni robocze (pn–pt) — brak w weekend nie gubi sprzedaży.
  */
 
@@ -53,6 +54,24 @@ export function computeStockoutSalesFactor(input: {
   const factor = Math.min(p.maxFactor, recorded / inStock);
   if (!(factor > 1 + 1e-9)) return null;
   return { windowDays, recordedDays: recorded, outDays: out, factor };
+}
+
+/**
+ * Mnożnik tylko dla sprzedaży na zapas: sprzedaż pod prośby (zrealizowane prośby w oknie)
+ * idzie z dostaw pod klienta, także przy pustej półce — nie skalujemy jej, bo potem odejmuje
+ * się ją w całości (inaczej zostawałby fantomowy popyt (f − 1) × prośby).
+ * Zwraca meta z mnożnikiem efektywnym dla całej sprzedaży albo null (nic do zmiany).
+ */
+export function stockoutMetaExcludingProsba(
+  meta: StockoutAdjustMeta,
+  sprzedazOkres: number,
+  prosbaPieces: number
+): StockoutAdjustMeta | null {
+  const sales = Math.max(0, Number(sprzedazOkres) || 0);
+  if (!(sales > 0)) return null;
+  const prosba = Math.min(sales, Math.max(0, Number(prosbaPieces) || 0));
+  const factor = ((sales - prosba) * meta.factor + prosba) / sales;
+  return factor > 1 + 1e-9 ? { ...meta, factor } : null;
 }
 
 /**
@@ -131,7 +150,7 @@ export async function loadStockHistoryWindow(
   const res = await query<{ tw: number; recorded: string; out_days: string }>(
     `SELECT subiekt_tw_id AS tw,
             count(*)::text AS recorded,
-            count(*) FILTER (WHERE available_qty <= 0)::text AS out_days
+            count(*) FILTER (WHERE stock_qty <= 0)::text AS out_days
        FROM stock_daily_history
       WHERE subiekt_tw_id = ANY($1::int[])
         AND day BETWEEN $2::date AND $3::date

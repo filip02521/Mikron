@@ -224,7 +224,11 @@ function capByComponentCover(ctx: StockWatchBomContext, b: Buildable, kitVelocit
   if (!(kitVelocity > 0)) return b;
   let cap = Infinity;
   for (const l of b.limits) {
-    const compVelocity = Math.max(0, finite(ctx.byTw.get(l.twId)?.sprzedazDziennie));
+    const comp = ctx.byTw.get(l.twId);
+    // Sztuka pary ma tempo 0 (popyt pary na paczce, w sztukach) — tempo bierzemy z paczki.
+    const tempoLine =
+      comp?.pair?.role === "piece" && !comp.pair.partnerMissing ? ctx.byTw.get(tw(comp.pair.twinTwId)) : comp;
+    const compVelocity = Math.max(0, finite(tempoLine?.sprzedazDziennie));
     if (compVelocity > 1e-9) cap = Math.min(cap, (l.supply / compVelocity) * kitVelocity);
   }
   if (!Number.isFinite(cap)) return b;

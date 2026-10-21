@@ -435,18 +435,26 @@ export function stockNeedReliefPiecesForTw(
 /**
  * Skąd brać rezerwacje ZK dla linii z prośbą: prośba ląduje na innej karcie niż ZK klienta.
  * - para: prośba na paczce (w sztukach pary), ZK na paczce (× przelicznik) albo na sztuce;
- * - zestaw „Składamy”: prośba rozpisana na składnik, ZK na karcie zestawu (× ilość w zestawie).
+ * - zestaw „Składamy”: prośba rozpisana na składnik (także przez zestaw w zestawie), ZK na
+ *   karcie zestawu (× iloczyn ilości w zestawach).
  * Wszystko w jednostkach extra linii docelowej. Linia bez wpisu = tylko własna karta.
+ * `capQty` (jednostki karty źródłowej): ile rezerwacji zestawu naprawdę podniosło potrzebę
+ * składnika — przy wyłączonym „stan zestawu jako pokrycie” tylko część ponad stan.
  */
-export type ZdOverlapReservationSources = Map<number, { twId: number; factor: number }[]>;
+export type ZdOverlapReservationSources = Map<number, { twId: number; factor: number; capQty?: number }[]>;
+
+const MAX_BOM_DEPTH = 32;
 
 export function buildZdOverlapReservationSources(input: {
   pairs?: readonly { packTwId: number; pieceTwId: number; unitsPerPack: number }[] | null;
   boms?: readonly {
     parentTwId: number;
     demandAllocation?: string | null;
+    stockAsCover?: boolean | null;
     components: readonly { componentTwId: number; qtyPerParent: number }[];
   }[] | null;
+  /** Dostępne kart zestawów (stan − rezerwacje) — do limitu przy wyłączonym pokryciu. */
+  dostepneByTw?: ReadonlyMap<number, number> | null;
 }): ZdOverlapReservationSources {
   const out: ZdOverlapReservationSources = new Map();
   const pieceToPack = new Map<number, { packTwId: number; ratio: number }>();
@@ -460,19 +468,46 @@ export function buildZdOverlapReservationSources(input: {
       { twId: p.pieceTwId, factor: 1 },
     ]);
   }
+
+  // Tylko „Składamy” (explode): tam niedobór zestawu schodzi na składniki.
+  const parentsOf = new Map<number, { parent: number; qty: number; cover: boolean }[]>();
+  const explodeParents = new Set<number>();
   for (const bom of input.boms ?? []) {
     if (bom.demandAllocation === "separate") continue;
+    explodeParents.add(bom.parentTwId);
     for (const c of bom.components) {
       const q = Math.trunc(Number(c.qtyPerParent)) || 0;
       if (q < 1) continue;
-      // Prośba ze składnika-sztuki trafia na paczkę pary — tam też rezerwacje zestawu.
-      const viaPiece = pieceToPack.get(c.componentTwId);
-      const target = viaPiece ? viaPiece.packTwId : c.componentTwId;
-      const factor = ratioByPack.has(c.componentTwId) ? q * ratioByPack.get(c.componentTwId)! : q;
-      const list = out.get(target) ?? [{ twId: target, factor: 1 }];
-      list.push({ twId: bom.parentTwId, factor });
-      out.set(target, list);
+      const list = parentsOf.get(c.componentTwId) ?? [];
+      list.push({ parent: bom.parentTwId, qty: q, cover: bom.stockAsCover !== false });
+      parentsOf.set(c.componentTwId, list);
     }
+  }
+  const ancestors = (tw: number, factor: number, depth: number, acc: { twId: number; factor: number; capQty?: number }[]) => {
+    if (depth > MAX_BOM_DEPTH) return;
+    for (const p of parentsOf.get(tw) ?? []) {
+      const f = factor * p.qty;
+      const dost = Number(input.dostepneByTw?.get(p.parent));
+      acc.push(
+        p.cover
+          ? { twId: p.parent, factor: f }
+          : { twId: p.parent, factor: f, capQty: Math.max(0, -(Number.isFinite(dost) ? dost : 0)) }
+      );
+      ancestors(p.parent, f, depth + 1, acc);
+    }
+  };
+  for (const comp of parentsOf.keys()) {
+    // Zestaw w zestawie nie trafia na ZD — prośby i rezerwacje schodzą do liścia.
+    if (explodeParents.has(comp)) continue;
+    const viaPiece = pieceToPack.get(comp);
+    const target = viaPiece ? viaPiece.packTwId : comp;
+    const unit = ratioByPack.get(comp) ?? 1;
+    const acc: { twId: number; factor: number; capQty?: number }[] = [];
+    ancestors(comp, unit, 0, acc);
+    if (!acc.length) continue;
+    const list = out.get(target) ?? [{ twId: target, factor: 1 }];
+    list.push(...acc);
+    out.set(target, list);
   }
   return out;
 }
@@ -518,9 +553,18 @@ export function mergeReservedSlicesBySources(
     }
     out.set(
       tw,
-      src.flatMap((s) =>
-        (reservedByTwId.get(s.twId) ?? []).map((sl) => ({ ...sl, quantity: sl.quantity * s.factor }))
-      )
+      src.flatMap((s) => {
+        const slices = reservedByTwId.get(s.twId) ?? [];
+        // Limit (pokrycie wyłączone): liczy się tylko część rezerwacji ponad stan zestawu.
+        let scale = 1;
+        if (s.capQty != null) {
+          const total = slices.reduce((sum, sl) => sum + Math.max(0, sl.quantity), 0);
+          scale = total > 0 ? Math.min(1, Math.max(0, s.capQty) / total) : 0;
+        }
+        return slices
+          .map((sl) => ({ ...sl, quantity: sl.quantity * scale * s.factor }))
+          .filter((sl) => sl.quantity > 0);
+      })
     );
   }
   return out;

@@ -250,6 +250,7 @@ export async function runStockWatchWorker(input: {
           horizon: horizons.get(supplier.id) ?? null,
           // Propozycje ZD automatu tylko z nocnego przebiegu (nie z odświeżenia po ZD).
           proposalTodayKey: todayKey,
+          ...(input.trigger === "cron" ? { stockSnapshotDayKey: todayKey } : {}),
         });
         itemsWritten += outcome.itemsWritten;
         if (outcome.message) {
@@ -344,6 +345,8 @@ async function computeSupplierOrder(input: {
   proposalTodayKey?: string;
   /** „Przygotuj teraz” w Kreatorze — bez czekania na cykl. */
   proposalForce?: boolean;
+  /** Dzień porannego zapisu historii stanów — tylko nocny przebieg z crona. */
+  stockSnapshotDayKey?: string;
 }): Promise<{ itemsWritten: number; message: string | null; proposal?: ZdAutoProposalOutcome }> {
   const { scope, supplier, runId, salesEndDate, prices, horizon } = input;
   const scopeId = (scope.mode === "grupa" ? scope.grupaId : scope.cechaId) ?? 0;
@@ -421,7 +424,10 @@ async function computeSupplierOrder(input: {
     const tw = line.tw_Id;
     // Cena: przy parze paczka↔sztuka lookup ma przelicznik pary, więc wychodzi za sztukę (tempo pary).
     const unitPrice = unitPricePerPiece(prices.get(tw)?.priceNet ?? null, engine.packagingLookup.get(tw) ?? null);
-    const minStock = engine.minStockByTwId.get(tw) ?? null;
+    // Sztuka pary: minimum pary liczy się na paczce (scalone w silniku) — tu byłoby drugi raz,
+    // na samym stanie karty sztuki.
+    const minStock =
+      line.pair?.role === "piece" && !line.pair.partnerMissing ? null : (engine.minStockByTwId.get(tw) ?? null);
     const figures = resolveStockWatchLineFigures(line, bomViews.get(tw) ?? null, cardPackaging.get(tw) ?? null);
     const { availableQty, openZdQty, targetQty, assembly } = figures;
     const velocity = figures.velocityDaily;
@@ -502,11 +508,12 @@ async function computeSupplierOrder(input: {
   });
 
   const itemsWritten = await replaceSupplierStockWatchItems(supplier.id, runId, rows);
-  // Dzienna historia stanów (tylko przebieg nocny / „Przygotuj teraz”, nie odświeżenie po ZD):
+  // Dzienna historia stanów (tylko nocny przebieg z crona — ręczne „Przelicz teraz” i
+  // „Przygotuj teraz” bywają w trakcie dnia, a pierwszy zapis dnia wygrywa):
   // stan karty sprzed składów i par. Błąd (np. bez migracji 192) nie psuje analizy.
-  if (input.proposalTodayKey) {
+  if (input.stockSnapshotDayKey) {
     await recordStockDailySnapshot(
-      input.proposalTodayKey,
+      input.stockSnapshotDayKey,
       engine.result.pozycjeBase.map((l) => ({
         twId: l.tw_Id,
         stock: num(l.tw_Stan),
@@ -553,6 +560,7 @@ async function computeSupplierOrder(input: {
       todayKey: input.proposalTodayKey,
       dataOd: window.dataOd,
       dataDo: window.dataDo,
+      dniZapasuUsed: engine.dniZapasuUsed,
       lines: list.lines
         .filter((l) => l.zdUnits > 0)
         .map((l) => ({
@@ -597,6 +605,8 @@ async function maybeCreateAutoProposal(input: {
   todayKey: string;
   dataOd: string;
   dataDo: string;
+  /** Dni celu faktycznie użyte (strategia: co najmniej cykl + dostawa + bufor). */
+  dniZapasuUsed: number;
   lines: ZdAutoProposalLine[];
 }): Promise<ZdAutoProposalOutcome> {
   try {
@@ -610,7 +620,8 @@ async function maybeCreateAutoProposal(input: {
     }
     const created = await createZdAutoProposal({
       supplierId: input.supplierId,
-      policy: { strategy: policy.strategy, targetDays: policy.targetDays, cycleDays: policy.cycleDays },
+      // targetDays = dni faktycznie użyte w tej propozycji (baner pokazuje je zamiast ustawienia).
+      policy: { strategy: policy.strategy, targetDays: input.dniZapasuUsed, cycleDays: policy.cycleDays },
       dataOd: input.dataOd,
       dataDo: input.dataDo,
       lines: input.lines,

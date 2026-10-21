@@ -188,8 +188,8 @@ export function ZdSupplierOrderPolicyDialog({
       <p className="rounded-md bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-600">
         Backtest 10.2025-10.2026: przy dostawie do 3 dni (27 dostawców) strategia testowa dała mniej dni bez towaru i
         mniejszy zapas niż rzeczywistość (Polkard, 25 dni co 3 dni: −33% dni bez towaru, −33% zapasu). Przy dłuższej
-        dostawie (import) krótki cel przegrywa - tam zostaw „Jak dotąd”. Zmiana działa od następnego Policz; przy
-        strategii testowej opcja „Do dostawy” nie zmienia celu.
+        dostawie cel rośnie sam: co najmniej cykl zamawiania + czas dostawy + 25% czasu dostawy (dni wyżej to
+        minimum). Zmiana działa od następnego Policz.
       </p>
       {error ? (
         <p className="text-sm text-red-700" role="alert">

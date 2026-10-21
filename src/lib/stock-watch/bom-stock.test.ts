@@ -381,6 +381,27 @@ describe("Braki — wspólne składniki i sztuka pary w składzie", () => {
   });
 });
 
+describe("Braki — limit kompletacji, gdy składnikiem jest sztuka pary", () => {
+  it("tempo części z paczki pary: zestaw nie świeci „do kompletacji” dłużej niż starczy części", () => {
+    const P = 10;
+    const PS = 11;
+    const rows = run(
+      [
+        sub(KIT, "KIT", { sprzedazOkres: 30 }),
+        sub(P, "P", { sprzedazOkres: 30, dostepne: 2 }),
+        sub(PS, "PS"),
+      ],
+      [assemble(KIT, [[PS, 1]])],
+      { pairs: [{ packTwId: P, pieceTwId: PS, unitsPerPack: 10 }] }
+    );
+    const pack = rows.get(P)!;
+    const kit = rows.get(KIT)!;
+    // Części (20 szt) starczą tyle, ile pokazuje paczka — zestaw nie może mieć dłużej.
+    expect(kit.daysOfCover!).toBeLessThanOrEqual(pack.daysOfCover! + 0.1);
+    expect(kit.status).not.toBe("to_assemble");
+  });
+});
+
 describe("Braki — pary paczka↔sztuka", () => {
   it("paczka pary jako składnik: ZD zestawu jedzie, nie leży na półce", () => {
     const P = 10;
