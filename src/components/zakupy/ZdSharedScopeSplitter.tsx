@@ -42,7 +42,9 @@ type Option = { id: string; name: string; short: string; key: string };
 
 function isTypingTarget(el: EventTarget | null): boolean {
   if (!(el instanceof HTMLElement)) return false;
-  return el.isContentEditable || ["INPUT", "SELECT", "TEXTAREA"].includes(el.tagName);
+  // Checkbox wiersza ma fokus po kliknięciu — skróty mają wtedy działać.
+  if (el instanceof HTMLInputElement) return el.type !== "checkbox" && el.type !== "radio";
+  return el.isContentEditable || ["SELECT", "TEXTAREA"].includes(el.tagName);
 }
 
 function FilterChip({
@@ -352,7 +354,8 @@ export function ZdSharedScopeSplitter({
   };
 
   const selectionSet = useMemo(() => new Set(selectedVisible), [selectedVisible]);
-  const busy = saving || (loading && products == null);
+  // Zapis w trakcie przeładowania listy dałby wyścig: stara odpowiedź nadpisałaby zapisane przypisania.
+  const busy = saving || loading;
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (isTypingTarget(e.target) || e.altKey) return;
@@ -516,8 +519,12 @@ export function ZdSharedScopeSplitter({
               type="checkbox"
               className="size-4 rounded border-slate-300"
               checked={includeAll}
-              disabled={loading}
-              onChange={(e) => setIncludeAll(e.target.checked)}
+              disabled={loading || changed.length > 0}
+              title={changed.length > 0 ? "Zapisz albo cofnij zmiany przed przełączeniem listy" : undefined}
+              onChange={(e) => {
+                setIncludeAll(e.target.checked);
+                clearSelection();
+              }}
             />
             Także towary bez historii ZD
           </label>
@@ -587,7 +594,9 @@ export function ZdSharedScopeSplitter({
                 const isSelected = selected.has(tw);
                 const outside =
                   value && !scope.supplierIds.includes(value) ? nameOf(value) : null;
-                const history = Object.entries(p.orderCountBySupplier).sort((a, b) => b[1] - a[1]);
+                const history = Object.entries(p.orderCountBySupplier)
+                  .filter(([, n]) => n > 0)
+                  .sort((a, b) => b[1] - a[1]);
                 return (
                   <tr
                     key={tw}

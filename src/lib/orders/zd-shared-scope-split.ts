@@ -134,12 +134,19 @@ export function zdSplitRangeSelect(
  * Krótka etykieta dostawcy na przycisku w wierszu (pełna nazwa w title):
  * bez formy prawnej, całe słowa do `max` znaków — bez wielokropka (DESIGN.md).
  */
+const LEGAL_FORM_SUFFIX =
+  /[\s,]+(sp\.?\s*z\s*o\.?\s*o\.?|sp\.?\s*k\.?|sp\.?\s*j\.?|sp\.?\s*p\.?|s\.?\s*a\.?|s\.?\s*c\.?|spółka\s+\S+|gmbh|ltd\.?|inc\.?|s\.?\s*r\.?\s*l\.?)$/i;
+
 export function zdSplitShortName(name: string, max = 18): string {
-  const clean = name
-    .replace(/\s+/g, " ")
-    .replace(/[\s,]+(sp\.?\s*z\s*o\.?\s*o\.?|sp\.?\s*k\.?|sp\.?\s*j\.?|s\.?\s*a\.?|s\.?\s*c\.?)\s*$/i, "")
-    .replace(/[\s,.-]+$/, "")
-    .trim();
+  // Pętla zdejmuje formy złożone, np. „sp. z o.o. sp.k.”.
+  let clean = name.replace(/\s+/g, " ").trim();
+  for (let prev = ""; prev !== clean; ) {
+    prev = clean;
+    clean = clean
+      .replace(LEGAL_FORM_SUFFIX, "")
+      .replace(/[\s,.-]+$/, "")
+      .trim();
+  }
   if (clean.length <= max) return clean || name.trim();
   const words = clean.split(" ");
   let out = words[0];

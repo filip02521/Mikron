@@ -228,11 +228,11 @@ export async function loadZdSharedScopeProducts(input: {
 }): Promise<{ products: ZdSharedScopeProduct[]; truncated: boolean }> {
   const scopeFilter =
     input.mode === "cecha" ? `$1 = ANY(i.cecha_ids)` : `i.grupa_id = $1`;
-  const historyFilter = input.includeAll
-    ? ""
-    : `AND (EXISTS (SELECT 1 FROM product_supplier_links l2
-                     WHERE l2.subiekt_tw_id = i.subiekt_tw_id AND l2.supplier_id = ANY($2::uuid[]))
-            OR a.supplier_id IS NOT NULL)`;
+  const relevant = `(a.supplier_id IS NOT NULL OR EXISTS (
+      SELECT 1 FROM product_supplier_links l2
+       WHERE l2.subiekt_tw_id = i.subiekt_tw_id AND l2.supplier_id = ANY($2::uuid[])
+         AND l2.order_count > 0))`;
+  const historyFilter = input.includeAll ? "" : `AND ${relevant}`;
   const res = await query<{
     subiekt_tw_id: number;
     symbol: string | null;
@@ -247,7 +247,8 @@ export async function loadZdSharedScopeProducts(input: {
          FROM subiekt_product_scope_index i
          LEFT JOIN zd_product_supplier_assignments a ON a.subiekt_tw_id = i.subiekt_tw_id
         WHERE ${scopeFilter} ${historyFilter}
-        ORDER BY i.subiekt_tw_id
+        -- Przy limicie najpierw towary z historią ZD / przypisaniem, potem reszta zakresu.
+        ORDER BY ${relevant} DESC, i.subiekt_tw_id
         LIMIT $3
      )
      SELECT tw.subiekt_tw_id, p.symbol, p.name, l.supplier_id, l.order_count, l.last_action_at,
@@ -290,6 +291,8 @@ export async function loadZdSharedScopeProducts(input: {
     const last = lastBySupplier.get(p.subiektTwId) ?? {};
     let best: [string, number, number] | null = null;
     for (const [sid, n] of Object.entries(p.orderCountBySupplier)) {
+      // Powiązanie bez zamówień (np. z katalogu) to nie historia ZD.
+      if (n <= 0) continue;
       const at = last[sid] ?? 0;
       if (!best || n > best[1] || (n === best[1] && at > best[2])) best = [sid, n, at];
     }
@@ -301,12 +304,43 @@ export async function loadZdSharedScopeProducts(input: {
   return { products, truncated };
 }
 
+/** Grupa, cechy i dane katalogowe towarów — do walidacji przypisań po stronie serwera. */
+export async function loadZdTwScopeFacts(twIds: readonly number[]): Promise<
+  Map<number, { grupaId: number | null; cechaIds: number[]; symbol: string | null; name: string }>
+> {
+  const out = new Map<number, { grupaId: number | null; cechaIds: number[]; symbol: string | null; name: string }>();
+  const ids = [...new Set(twIds.filter((t) => t > 0))];
+  if (!ids.length) return out;
+  const res = await query<{
+    subiekt_tw_id: number;
+    grupa_id: number | null;
+    cecha_ids: number[] | null;
+    symbol: string | null;
+    name: string | null;
+  }>(
+    `SELECT i.subiekt_tw_id, i.grupa_id, i.cecha_ids, p.symbol, p.name
+       FROM subiekt_product_scope_index i
+       LEFT JOIN subiekt_products p ON p.subiekt_tw_id = i.subiekt_tw_id
+      WHERE i.subiekt_tw_id = ANY($1::int[])`,
+    [ids]
+  );
+  for (const r of res.rows) {
+    out.set(num(r.subiekt_tw_id), {
+      grupaId: r.grupa_id != null ? num(r.grupa_id) : null,
+      cechaIds: (r.cecha_ids ?? []).map(num),
+      symbol: r.symbol,
+      name: r.name ?? "",
+    });
+  }
+  return out;
+}
+
 export type ZdSharedScopeStats = {
   mode: ZdEstimateRunMode;
   scopeId: number;
   /** Towary z historii ZD u dostawców zakresu (lub już przypisane). */
   products: number;
-  /** Z tego przypisane do jednego z dostawców zakresu. */
+  /** Z tego z zapisanym przypisaniem (także do dostawcy spoza zakresu — decyzja podjęta). */
   assigned: number;
 };
 
@@ -315,22 +349,32 @@ export async function loadZdSharedScopeStats(
   shared: readonly ZdSharedScope[]
 ): Promise<ZdSharedScopeStats[]> {
   if (!shared.length) return [];
+  // Dwie gałęzie zamiast OR w JOIN — planer może użyć indeksów GIN (cechy) i btree (grupa).
   const res = await query<{ idx: number; products: number; assigned: number }>(
-    `SELECT s.idx,
-            count(DISTINCT i.subiekt_tw_id)::int AS products,
-            count(DISTINCT i.subiekt_tw_id) FILTER (
-              WHERE a.supplier_id::text = ANY(s.supplier_ids)
-            )::int AS assigned
-       FROM jsonb_to_recordset($1::jsonb) AS s(idx int, mode text, scope_id int, supplier_ids text[])
-       JOIN subiekt_product_scope_index i
-         ON (s.mode = 'cecha' AND s.scope_id = ANY(i.cecha_ids))
-         OR (s.mode = 'grupa' AND i.grupa_id = s.scope_id)
-       LEFT JOIN zd_product_supplier_assignments a ON a.subiekt_tw_id = i.subiekt_tw_id
+    `WITH s AS (
+       SELECT * FROM jsonb_to_recordset($1::jsonb)
+         AS s(idx int, mode text, scope_id int, supplier_ids uuid[])
+     ),
+     tw AS (
+       SELECT s.idx, s.supplier_ids, i.subiekt_tw_id
+         FROM s JOIN subiekt_product_scope_index i ON i.cecha_ids @> ARRAY[s.scope_id]
+        WHERE s.mode = 'cecha'
+       UNION ALL
+       SELECT s.idx, s.supplier_ids, i.subiekt_tw_id
+         FROM s JOIN subiekt_product_scope_index i ON i.grupa_id = s.scope_id
+        WHERE s.mode = 'grupa'
+     )
+     SELECT tw.idx,
+            count(*)::int AS products,
+            count(*) FILTER (WHERE a.supplier_id IS NOT NULL)::int AS assigned
+       FROM tw
+       LEFT JOIN zd_product_supplier_assignments a ON a.subiekt_tw_id = tw.subiekt_tw_id
       WHERE a.supplier_id IS NOT NULL
          OR EXISTS (SELECT 1 FROM product_supplier_links l
-                     WHERE l.subiekt_tw_id = i.subiekt_tw_id
-                       AND l.supplier_id::text = ANY(s.supplier_ids))
-      GROUP BY s.idx`,
+                     WHERE l.subiekt_tw_id = tw.subiekt_tw_id
+                       AND l.supplier_id = ANY(tw.supplier_ids)
+                       AND l.order_count > 0)
+      GROUP BY tw.idx`,
     [
       JSON.stringify(
         shared.map((s, idx) => ({ idx, mode: s.mode, scope_id: s.scopeId, supplier_ids: s.supplierIds }))

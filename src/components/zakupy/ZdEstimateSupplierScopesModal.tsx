@@ -478,7 +478,9 @@ export function ZdEstimateSupplierScopesModal({
     [allShared]
   );
   const activeShared =
-    allShared.find((sh) => sharedKeyOf(sh.mode, sh.scopeId) === sharedKey) ?? sharedScopes[0] ?? null;
+    // Domyślny zakres bierzemy z pełnej listy — z przefiltrowanej filtr zmieniałby aktywny
+    // zakres, a remount panelu gubiłby niezapisane przypisania bez pytania.
+    allShared.find((sh) => sharedKeyOf(sh.mode, sh.scopeId) === sharedKey) ?? allShared[0] ?? null;
   const activeSharedKey = activeShared ? sharedKeyOf(activeShared.mode, activeShared.scopeId) : null;
 
   const insightFor = (supplierId: string) => order?.insights.get(supplierId);
