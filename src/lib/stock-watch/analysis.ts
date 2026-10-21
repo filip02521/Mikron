@@ -149,10 +149,11 @@ export function analyzeStockWatchItem(input: StockWatchInput): StockWatchResult 
     status = "out_of_stock";
   } else if (daysOfCover != null && daysOfCover <= STOCK_WATCH_CRITICAL_DAYS) {
     status = "critical";
+  } else if (projected < target) {
+    // Poniżej celu Kreator i tak zamawia — kompletacja tego nie zastępuje.
+    status = "warning";
   } else if (assembly > 0 && input.assemblyActionable === true && ownShort) {
     status = "to_assemble";
-  } else if (projected < target) {
-    status = "warning";
   } else {
     status = "ok";
   }

@@ -63,7 +63,7 @@ function run(
   boms: ZdProductBomRef[],
   opts: {
     pairs?: ZdProductPairRef[];
-    packaging?: Map<number, { unitsPerPackage: number; documentUnitMode?: "packages" | "pieces" }>;
+    packaging?: Map<number, { unitsPerPackage: number; documentUnitMode?: "packages" | "pieces_multiple" }>;
     missingBomTwIds?: number[];
   } = {}
 ) {
@@ -190,19 +190,29 @@ describe("Braki — zestaw „Składamy” (explode)", () => {
   it("składnik: stan karty bez wkładu kompletów, ZD kompletów jako towar w drodze", () => {
     const rows = run(
       [
-        sub(KIT, "KIT", { dostepne: 4, otwarteZd: 6 }),
+        sub(KIT, "KIT", { dostepne: 4, otwarteZd: 20 }),
         sub(A, "A", { sprzedazOkres: 15 }),
       ],
       [assemble(KIT, [[A, 1]])]
     );
     const a = rows.get(A)!;
-    // Kreator: dostępne = 0 + (4 + 6) × 1.
-    expect(a.line.dostepne).toBe(10);
+    // Kreator: dostępne = 0 + (4 + 20) × 1.
+    expect(a.line.dostepne).toBe(24);
     expect(a.availableQty).toBe(0);
-    expect(a.openZdQty).toBe(6);
+    expect(a.openZdQty).toBe(20);
     expect(a.assembly).toMatchObject({ kind: "disassemble", qty: 4, actionable: true });
     expect(a.status).toBe("to_assemble");
     expect(a.daysOfCover).toBe(8);
+  });
+
+  it("kompletacja nie zastępuje zamówienia: poniżej celu Kreatora zostaje „Poniżej celu”", () => {
+    const rows = run(
+      [sub(KIT, "KIT", { dostepne: 4, otwarteZd: 6 }), sub(A, "A", { sprzedazOkres: 15 })],
+      [assemble(KIT, [[A, 1]])]
+    );
+    const a = rows.get(A)!;
+    expect(a.status).toBe("warning");
+    expect(a.line.doZamowieniaReczne).toBeGreaterThan(0);
   });
 
   it("składnik sprzedawany tylko w zestawach — komplet na półce wystarcza, bez rozkładania", () => {
@@ -301,13 +311,55 @@ describe("Braki — komplety kupowane (separate)", () => {
       [separate(MIX, "kit_from_components", [[A, 6], [B, 6]])]
     );
     const a = rows.get(A)!;
-    expect(a.assembly).toMatchObject({ kind: "disassemble", qty: 12, actionable: true });
-    expect(a.status).toBe("to_assemble");
+    // Stan kompletu zjada też jego własna sprzedaż — rozłożenie tylko jako podpowiedź.
+    expect(a.assembly).toMatchObject({ kind: "disassemble", qty: 12, coversDemand: false, actionable: false });
+    expect(a.status).toBe("out_of_stock");
     expect(rows.get(B)!.status).not.toBe("to_assemble");
+  });
+
+  it("Tylko komplet: stan kompletu nie liczy się drugi raz na składniku", () => {
+    const rows = run(
+      [sub(KIT, "KIT", { dostepne: 10, sprzedazOkres: 30 }), sub(A, "A", { sprzedazOkres: 30 })],
+      [separate(KIT, "kit_only", [[A, 1]])]
+    );
+    expect(rows.get(A)!.status).toBe("out_of_stock");
+    expect(rows.get(A)!.daysOfCover).toBe(0);
+  });
+
+  it("komplet kupowany w zestawie „Składamy”: ZD zewnętrznego zestawu nie robi stanu do rozłożenia", () => {
+    const OUTER = 200;
+    const rows = run(
+      [
+        sub(OUTER, "OUTER", { otwarteZd: 7 }),
+        sub(KIT, "KIT"),
+        sub(A, "A", { sprzedazOkres: 15 }),
+      ],
+      [assemble(OUTER, [[KIT, 1]]), separate(KIT, "kit_only", [[A, 1]])]
+    );
+    expect(rows.get(A)!.assembly).toBeNull();
+    expect(rows.get(A)!.status).toBe("out_of_stock");
   });
 });
 
 describe("Braki — pary paczka↔sztuka", () => {
+  it("paczka pary jako składnik: ZD zestawu jedzie, nie leży na półce", () => {
+    const P = 10;
+    const PS = 11;
+    const rows = run(
+      [
+        sub(KIT, "KIT", { otwarteZd: 50 }),
+        sub(P, "P", { sprzedazOkres: 3 }),
+        sub(PS, "PS", { sprzedazOkres: 0 }),
+      ],
+      [assemble(KIT, [[P, 1]])],
+      { pairs: [{ packTwId: P, pieceTwId: PS, unitsPerPack: 10 }] }
+    );
+    const p = rows.get(P)!;
+    expect(p.availableQty).toBe(0);
+    expect(p.openZdQty).toBe(500);
+    expect(p.status).toBe("out_of_stock");
+  });
+
   it("paczka liczy stan w sztukach pary; sztuka bez sprzedaży (popyt na paczce)", () => {
     const KARTON = 10;
     const SZT = 11;

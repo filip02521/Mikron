@@ -85,6 +85,12 @@ function dash(counts: Partial<StockWatchDashboard["counts"]>, suppliers: StockWa
 }
 
 describe("buildStockWatchStatusLine", () => {
+  it("same kompletacje: nie „w normie”, tylko do zrobienia w Subiekcie", () => {
+    const line = buildStockWatchStatusLine(dash({ toAssemble: 2 }, []));
+    expect(line.tone).toBe("warning");
+    expect(line.headline).toBe("Nic do zamówienia · 2 towary do kompletacji w Subiekcie");
+  });
+
   it("leads with empty shelves and points at the first urgent board row", () => {
     const line = buildStockWatchStatusLine(
       dash({ outOfStock: 3, emptyNoIncoming: 2, critical: 1, beforeDelivery: 2 }, [

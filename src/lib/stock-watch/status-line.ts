@@ -86,5 +86,12 @@ export function buildStockWatchStatusLine(dashboard: StockWatchDashboard): Stock
   if (counts.warning > 0) {
     return { ...base, tone: "warning", headline: `Nic się dziś nie kończy · ${towary(counts.warning)} poniżej celu` };
   }
+  if (counts.toAssemble > 0) {
+    return {
+      ...base,
+      tone: "warning",
+      headline: `Nic do zamówienia · ${towary(counts.toAssemble)} do kompletacji w Subiekcie`,
+    };
+  }
   return { ...base, tone: "ok", headline: "Zapas w normie u wszystkich analizowanych dostawców" };
 }
