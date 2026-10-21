@@ -1409,7 +1409,8 @@ async function acceptPendingAutoProposal(input: {
       finalLines,
     });
   } catch (e) {
-    console.warn("[zd-auto-proposal] akceptacja po ZD", input.supplierId, e);
+    // Bez supplierId z wejścia klienta w logu (log injection) — dokId pochodzi z Subiekta.
+    console.warn("[zd-auto-proposal] akceptacja po ZD", input.dokId, e);
   }
 }
 
