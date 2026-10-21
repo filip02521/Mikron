@@ -1498,6 +1498,9 @@ export async function actionRejectZdAutoProposal(input: {
  * zrobiłby z tej listy (zakres dostawcy, prośby katalogowe i usługi). Zwraca sesję panelu po
  * utworzeniu (wysyłka, termin, Główne, plan). Akceptacja propozycji zapisuje się w create.
  */
+/** shortcut: blokada w procesie (jeden serwer OnTime), przy kilku instancjach — status „w toku” w bazie. */
+const acceptingProposalIds = new Set<string>();
+
 export async function actionAcceptZdAutoProposal(input: {
   supplierId: string;
   proposalId: string;
@@ -1511,6 +1514,11 @@ export async function actionAcceptZdAutoProposal(input: {
   if (!UUID_RE.test(supplierId) || !UUID_RE.test(proposalId)) {
     return { ok: false, message: "Nieprawidłowa propozycja." };
   }
+  // Dwie zakładki / dwie osoby: drugie kliknięcie nie może utworzyć drugiego ZD na LIVE.
+  if (acceptingProposalIds.has(proposalId)) {
+    return { ok: false, message: "Ta propozycja właśnie się zatwierdza - poczekaj na wynik." };
+  }
+  acceptingProposalIds.add(proposalId);
   try {
     const proposal = await fetchLatestZdAutoProposal(supplierId);
     // Tylko aktualna, czekająca propozycja — inna zakładka mogła ją przeliczyć albo odrzucić.
@@ -1586,6 +1594,8 @@ export async function actionAcceptZdAutoProposal(input: {
     };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się utworzyć ZD z propozycji.") };
+  } finally {
+    acceptingProposalIds.delete(proposalId);
   }
 }
 
