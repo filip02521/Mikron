@@ -119,7 +119,13 @@ import {
 import { revalidatePath } from "next/cache";
 import { isProcurementDraftReady } from "@/lib/orders/procurement-readiness";
 import { assessRequestCompleteness } from "@/lib/orders/request-completeness";
-import { excludeConsumedPendingOrders } from "@/lib/orders/zd-estimate-post-create";
+import {
+  buildZdPostCreateMarkFreeze,
+  buildZdPostCreateSessionFromCreate,
+  excludeConsumedPendingOrders,
+  type ZdPostCreateSession,
+} from "@/lib/orders/zd-estimate-post-create";
+import { buildZdCreateInputFromAutoProposal } from "@/lib/orders/zd-auto-proposal-create";
 import { isSupplierOrderOnDemand } from "@/lib/orders/supplier-on-demand";
 import { dateToIso, resolveSupplierInterval } from "@/lib/orders/dates";
 import { todayInWarsaw } from "@/lib/time/warsaw";
@@ -179,6 +185,7 @@ import {
 import {
   deleteZdEstimateSupplierScope,
   fetchZdEstimateSupplierScope,
+  groupZdEstimateScopesBySupplier,
   listZdEstimateSupplierScopes,
   setPrimaryZdEstimateSupplierScope,
   upsertZdEstimateSupplierScope,
@@ -1483,6 +1490,102 @@ export async function actionRejectZdAutoProposal(input: {
     return done ? { ok: true } : { ok: false, message: "Propozycja nie czeka już na decyzję." };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się zapisać decyzji.") };
+  }
+}
+
+/**
+ * Panel dzienny: „Akceptuj” propozycję automatu — tworzy ZD z jej linii tak, jak Kreator
+ * zrobiłby z tej listy (zakres dostawcy, prośby katalogowe i usługi). Zwraca sesję panelu po
+ * utworzeniu (wysyłka, termin, Główne, plan). Akceptacja propozycji zapisuje się w create.
+ */
+export async function actionAcceptZdAutoProposal(input: {
+  supplierId: string;
+  proposalId: string;
+}): Promise<
+  | { ok: true; session: ZdPostCreateSession }
+  | { ok: false; message: string; title?: string }
+> {
+  await requireZdEstimateAdmin("mutate");
+  const supplierId = String(input.supplierId ?? "").trim();
+  const proposalId = String(input.proposalId ?? "").trim();
+  if (!UUID_RE.test(supplierId) || !UUID_RE.test(proposalId)) {
+    return { ok: false, message: "Nieprawidłowa propozycja." };
+  }
+  try {
+    const proposal = await fetchLatestZdAutoProposal(supplierId);
+    // Tylko aktualna, czekająca propozycja — inna zakładka mogła ją przeliczyć albo odrzucić.
+    if (!proposal || proposal.id !== proposalId || proposal.status !== "pending") {
+      return { ok: false, message: "Propozycja zmieniła się w międzyczasie - przelicz ją ponownie." };
+    }
+    const scope = groupZdEstimateScopesBySupplier(await listZdEstimateSupplierScopes()).get(supplierId)?.[0];
+    if (!scope) return { ok: false, message: "Dostawca nie ma zakresu w Kreatorze ZD." };
+    const [pending, pairs, boms, teeth, supplierRow] = await Promise.all([
+      fetchZdEstimatePendingIndividualOrders(supplierId),
+      fetchZdProductPairs(),
+      fetchZdProductBoms(),
+      fetchTeethProductTwIdSet(),
+      createAdminClient().from("suppliers").select("name").eq("id", supplierId).maybeSingle(),
+    ]);
+    const built = buildZdCreateInputFromAutoProposal({
+      lines: proposal.lines,
+      scope,
+      pendingOrders: pending.orders,
+      pairs,
+      boms: bomRowsToRefs(boms),
+      teethTwIds: teeth,
+    });
+    if (!built.lines.length) return { ok: false, message: "Propozycja nie ma pozycji do zamówienia." };
+
+    // Kliknięcie „Utwórz ZD” w oknie akceptacji jest jawnym potwierdzeniem zapisu na LIVE.
+    const res = await actionCreateZdFromEstimate({
+      supplierId,
+      uwagi: null,
+      scopeMode: built.scopeMode,
+      grtId: built.grtId,
+      cechaId: built.cechaId,
+      lines: built.lines,
+      confirmLiveCreate: true,
+      individualCatalogOrderIds: built.individualCatalogOrderIds,
+      individualServiceOrderIds: built.individualServiceOrderIds,
+    });
+    if (!res.ok) return { ok: false, message: res.message, title: res.title };
+
+    const markFreeze = buildZdPostCreateMarkFreeze({
+      catalogOrderIds: res.acceptedCatalogOrderIds ?? built.individualCatalogOrderIds,
+      includedServiceOrderIds: res.includedServiceOrderIds ?? [],
+      omittedServiceCount: res.omittedServiceCount,
+      serviceLines: built.extras.serviceLines,
+      catalogByTwId: built.extras.byTwId,
+    });
+    const supplierName = String((supplierRow.data as { name?: string } | null)?.name ?? "").trim() || "Dostawca";
+    return {
+      ok: true,
+      session: buildZdPostCreateSessionFromCreate({
+        supplierId,
+        supplierName,
+        fromDaily: true,
+        dokId: res.dokId,
+        dokNrPelny: res.dokNrPelny,
+        lineCount: res.lineCount,
+        snapshotOk: res.snapshotOk,
+        snapshotMessage: res.snapshotMessage,
+        previewLines: proposal.lines.map((l) => ({
+          twId: l.twId,
+          symbol: l.symbol,
+          nazwa: l.nazwa,
+          ilosc: l.zdUnits,
+          packagingHint: l.unitLabel !== "szt" ? l.unitLabel : null,
+          individualExtraPieces: l.prosbaPieces,
+          piecesArriving: l.pieces,
+        })),
+        createdLines: res.createdLines,
+        markFreeze,
+        bumped: res.bumped,
+        composedUwagi: res.composedUwagi ?? null,
+      }),
+    };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się utworzyć ZD z propozycji.") };
   }
 }
 

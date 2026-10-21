@@ -40,7 +40,7 @@ function canBePrimaryZd(file: File): boolean {
 const fieldClass = cn(controlFocusClass, "mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm");
 
 type StepKey = "mail" | "termin" | "glowne" | "plan";
-type StepState = { status: "idle" | "running" | "ok" | "error" | "skipped"; message?: string };
+export type StepState = { status: "idle" | "running" | "ok" | "error" | "skipped"; message?: string };
 
 /** ponytail: proxy przed ontime.mikran.pl ucina żądania ~1 MB; po podniesieniu client_max_body_size — usuń ostrzeżenie. */
 const PROXY_BODY_LIMIT_BYTES = 1024 * 1024;
@@ -974,7 +974,7 @@ function GlowneSummary({ plan, services }: { plan: Extract<ZdSendPlan, { ok: tru
   );
 }
 
-function StepRow({
+export function StepRow({
   n,
   state,
   title,

@@ -197,3 +197,17 @@ export async function addZdAutoProposalFinalLines(input: {
   );
   return (res.rowCount ?? 0) > 0;
 }
+
+/** Panel dzienny: dostawcy z propozycją ZD czekającą na decyzję (najstarsza pierwsza). */
+export async function listPendingZdAutoProposalSuppliers(): Promise<Array<{ supplierId: string; supplierName: string }>> {
+  const res = await query<{ supplier_id: string; name: string }>(
+    `SELECT DISTINCT ON (a.supplier_id) a.supplier_id, s.name, a.created_at
+       FROM zd_auto_proposals a
+       JOIN suppliers s ON s.id = a.supplier_id
+      WHERE a.status = 'pending'
+      ORDER BY a.supplier_id, a.created_at`
+  );
+  return res.rows
+    .map((r) => ({ supplierId: r.supplier_id, supplierName: r.name }))
+    .sort((a, b) => a.supplierName.localeCompare(b.supplierName, "pl"));
+}

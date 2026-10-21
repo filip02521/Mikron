@@ -20,6 +20,7 @@ import {
   type StockWatchSupplierSignal,
 } from "@/lib/stock-watch/data";
 import { warsawNowParts } from "@/lib/time/warsaw";
+import { listPendingZdAutoProposalSuppliers } from "@/lib/data/zd-auto-proposals";
 import {
   supplierSubiektScopeInfoFromRow,
   type SupplierSubiektScopeInfo,
@@ -65,9 +66,10 @@ export default async function PodsumowaniePage() {
   let error: string | null = null;
   let offPlanSuppliers: StockWatchOffPlanSupplier[] = [];
   let stockSignalBySupplierId: Record<string, StockWatchSupplierSignal> = {};
+  let autoProposalSuppliers: Array<{ supplierId: string; supplierName: string }> = [];
 
   try {
-    const [data, verification, scopeRows, offPlan, stockSignals] = await Promise.all([
+    const [data, verification, scopeRows, offPlan, stockSignals, autoProposals] = await Promise.all([
       fetchSummaryWorkspace(),
       fetchVerificationOrders(),
       // Powiązania dostawca → grupa/cecha Subiekta; brak tabeli/błąd nie blokuje panelu.
@@ -75,7 +77,10 @@ export default async function PodsumowaniePage() {
       // Panel Braki (nocna analiza): brak tabeli / błąd nie blokuje panelu dziennego.
       listStockWatchOffPlanSuppliers(warsawNowParts().dateKey).catch(() => []),
       listStockWatchSupplierSignals().catch(() => ({})),
+      // Propozycje ZD automatu do potwierdzenia; bez migracji 190 / błąd — brak karty.
+      canPrepareZd ? listPendingZdAutoProposalSuppliers().catch(() => []) : Promise.resolve([]),
     ]);
+    autoProposalSuppliers = autoProposals;
     offPlanSuppliers = offPlan;
     stockSignalBySupplierId = stockSignals;
     for (const row of scopeRows) {
@@ -118,6 +123,7 @@ export default async function PodsumowaniePage() {
           workspace={workspace}
           stockSignalBySupplierId={stockSignalBySupplierId}
           offPlanSuppliers={offPlanSuppliers}
+          autoProposalSuppliers={autoProposalSuppliers}
           suppliers={suppliers}
           supplierDirectory={supplierDirectory}
           salesPeople={salesPeople}
