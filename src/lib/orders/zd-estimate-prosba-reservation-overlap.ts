@@ -512,6 +512,23 @@ export function buildZdOverlapReservationSources(input: {
   return out;
 }
 
+/**
+ * Karty zestawów, dla których `buildZdOverlapReservationSources` potrzebuje stanu
+ * („Składamy” z wyłączonym pokryciem) — bez `dostepneByTw` ich limit wynosi 0.
+ */
+export function overlapCapKitTwIds(
+  boms: readonly { parentTwId: number; demandAllocation?: string | null; stockAsCover?: boolean | null }[]
+): number[] {
+  return [
+    ...new Set(
+      boms
+        .filter((b) => b.demandAllocation !== "separate" && b.stockAsCover === false)
+        .map((b) => b.parentTwId)
+        .filter((tw) => tw > 0)
+    ),
+  ];
+}
+
 /** Linie z sumą rezerwacji ze wszystkich kart źródłowych (do wyboru kandydatów overlap). */
 export function linesWithReservationSources<T extends { tw_Id: number; tw_StanRez?: number | null }>(
   lines: readonly T[],

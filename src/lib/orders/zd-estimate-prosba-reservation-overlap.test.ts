@@ -13,6 +13,7 @@ import {
   resolveProsbaReservationDedupeMaps,
   sumProsbaZkReservationOverlapPieces,
   buildZdOverlapReservationSources,
+  overlapCapKitTwIds,
   linesWithReservationSources,
   mergeReservedSlicesBySources,
   reservationSourceTwIds,
@@ -658,5 +659,29 @@ describe("rezerwacje zestawów: zestaw w zestawie i wyłączone pokrycie", () =>
         extraPieces: 6,
       })
     ).toBe(6);
+  });
+
+  it("karty zestawów do limitu: tylko „Składamy” bez pokrycia (Utwórz ZD pobiera ich stan)", () => {
+    expect(
+      overlapCapKitTwIds([
+        { parentTwId: 1, demandAllocation: "explode", stockAsCover: false },
+        { parentTwId: 2, demandAllocation: "explode", stockAsCover: true },
+        { parentTwId: 3, demandAllocation: "separate", stockAsCover: false },
+        { parentTwId: 1, demandAllocation: "explode", stockAsCover: false },
+      ])
+    ).toEqual([1]);
+  });
+
+  it("limit zestawu bez pokrycia: bez stanu karty 0, ze stanem część ponad stan", () => {
+    const boms = [
+      { parentTwId: 50, demandAllocation: "explode", stockAsCover: false, components: [{ componentTwId: 51, qtyPerParent: 1 }] },
+    ];
+    const capOf = (dostepneByTw?: Map<number, number>) =>
+      buildZdOverlapReservationSources({ boms, dostepneByTw })
+        .get(51)
+        ?.find((x) => x.twId === 50)?.capQty;
+    expect(capOf()).toBe(0);
+    expect(capOf(new Map([[50, -5]]))).toBe(5);
+    expect(capOf(new Map([[50, 3]]))).toBe(0);
   });
 });

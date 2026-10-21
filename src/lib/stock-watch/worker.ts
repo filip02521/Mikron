@@ -161,6 +161,7 @@ export async function runStockWatchWorker(input: {
     if (!locked) return { ok: true, skipped: true, reason: "lock_held" };
 
     const todayKey = warsawNowParts().dateKey;
+    const snapshotWindow = isWarsawStockWatchWindow();
     const [scopes, suppliers] = await Promise.all([
       listZdEstimateSupplierScopes(),
       fetchSuppliersWithSchedules(undefined, { activeOnly: true }),
@@ -250,7 +251,9 @@ export async function runStockWatchWorker(input: {
           horizon: horizons.get(supplier.id) ?? null,
           // Propozycje ZD automatu tylko z nocnego przebiegu (nie z odświeżenia po ZD).
           proposalTodayKey: todayKey,
-          ...(input.trigger === "cron" ? { stockSnapshotDayKey: todayKey } : {}),
+          // Poranny stan tylko z cronu w oknie 5:00–6:59 — ?force=1 w ciągu dnia zapisałby stan
+          // po sprzedaży jako „poranny” (pierwszy zapis dnia wygrywa) i zawyżył dni braku.
+          ...(input.trigger === "cron" && snapshotWindow ? { stockSnapshotDayKey: todayKey } : {}),
         });
         itemsWritten += outcome.itemsWritten;
         if (outcome.message) {

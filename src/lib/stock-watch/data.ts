@@ -301,11 +301,18 @@ async function hasStockWatchBomColumns(): Promise<boolean> {
     [[...ITEM_BOM_COLUMNS]]
   )
     .then((r) => Number(r.rows[0]?.n) === ITEM_BOM_COLUMNS.length)
-    .catch(() => false)
-    .then((ok) => {
-      if (!ok) bomColumnsReady = null;
-      return ok;
-    });
+    .then(
+      (ok) => {
+        if (!ok) bomColumnsReady = null;
+        return ok;
+      },
+      (e) => {
+        // Błąd bazy ≠ brak migracji: zapis bez kolumn zostawiłby stare dane kompletacji
+        // przy nowym statusie (ON CONFLICT). Zakres pada jak przy innym błędzie zapisu.
+        bomColumnsReady = null;
+        throw e;
+      }
+    );
   return bomColumnsReady;
 }
 

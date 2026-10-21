@@ -601,7 +601,8 @@ export function useZdEstimateRulesLiveApply({
           productPairs,
           productBoms,
           undefined,
-          minStockRowsToMap(rows)
+          // Ta sama mapa co przy odświeżeniu: minimum pary zapisane na jednej karcie obu stron.
+          withPairMinStock(minStockRowsToMap(rows), productPairs)
         );
         flashSettingsLive(ZD_ESTIMATE_UI.minStockLiveFlash);
       } else {

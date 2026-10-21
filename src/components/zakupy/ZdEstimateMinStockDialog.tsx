@@ -10,7 +10,6 @@ import { ModalShell } from "@/components/ui/ModalShell";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
-import { zdLineAvailablePieces } from "@/lib/orders/zd-estimate-sort";
 import { panelTypography } from "@/lib/ui/ontime-theme";
 
 const MIN_STOCK_MAX = 1_000_000;
@@ -19,7 +18,13 @@ const MIN_STOCK_MAX = 1_000_000;
 export type ZdMinStockPreviewOrder = (
   line: ManualZdEstimateLine,
   minStockSzt: number
-) => { zdUnits: number; label: string; openZdPieces: number };
+) => {
+  zdUnits: number;
+  label: string;
+  openZdPieces: number;
+  /** Dostępne w sztukach z tej samej linii co Do ZD (sztuka pary → cała para). */
+  availablePieces: number;
+};
 
 function assertMinStockSzt(raw: string):
   | { ok: true; value: number }
@@ -106,7 +111,7 @@ function MinStockDialogForm({
   const teraz = previewOrder(line, existingMinSzt);
   const zMin = previewOrder(line, draftMin);
   const pair = line.pair?.role === "pack" && !line.pair.partnerMissing ? line.pair : null;
-  const dostepneSzt = zdLineAvailablePieces(line);
+  const dostepneSzt = teraz.availablePieces;
   const otwarteZdSzt = teraz.openZdPieces;
   const roznica = zMin.zdUnits - teraz.zdUnits;
   const minAktywny = draftMin > celBazowy;

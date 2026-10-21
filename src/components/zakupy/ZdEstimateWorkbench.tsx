@@ -291,6 +291,7 @@ import { coerceZdEstimateLinesBase } from "@/lib/orders/zd-estimate-lines-base";
 import {
   defaultDirForZdEstimateSortKey,
   sortZdEstimateLines,
+  zdLineAvailablePieces,
   type ZdEstimateListSortDir,
   type ZdEstimateListSortKey,
 } from "@/lib/orders/zd-estimate-sort";
@@ -2154,7 +2155,7 @@ export function ZdEstimateWorkbench({
         twIds,
         sources: twIds.flatMap((tw) => {
           const src = prosbaReservationSources.get(tw);
-          return src ? [[tw, src] as [number, { twId: number; factor: number }[]]] : [];
+          return src ? [[tw, src] as [number, { twId: number; factor: number; capQty?: number }[]]] : [];
         }),
       });
       if (cancelled) return;
@@ -2307,7 +2308,7 @@ export function ZdEstimateWorkbench({
         row.pair?.role === "piece" && !row.pair.partnerMissing
           ? lines?.find((x) => x.tw_Id === row.pair!.twinTwId) ?? row
           : row;
-      return previewZdOrderForMinStock(l, minStockSzt, {
+      const order = previewZdOrderForMinStock(l, minStockSzt, {
         packaging: packagingLookup.get(l.tw_Id) ?? null,
         extraPieces: individualExtraPiecesForTw(l.tw_Id, individualExtraByTwId),
         extraOnly: extraOnlyTwIds.has(l.tw_Id),
@@ -2315,6 +2316,8 @@ export function ZdEstimateWorkbench({
         stockNeedReliefPieces: individualExtraPiecesForTw(l.tw_Id, stockNeedReliefByTwId),
         extraOverlapPieces: individualExtraPiecesForTw(l.tw_Id, extraOverlapByTwId),
       });
+      // Stan z tej samej linii co Do ZD — przy sztuce pary to cała para, nie sama sztuka.
+      return { ...order, availablePieces: zdLineAvailablePieces(l) };
     },
     [
       lines,
