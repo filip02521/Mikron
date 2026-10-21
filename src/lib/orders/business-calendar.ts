@@ -53,6 +53,8 @@ export function polishPublicHolidayKeys(year: number): Set<string> {
   for (const [m, d] of fixed) {
     keys.add(formatDateString(new Date(year, m - 1, d)));
   }
+  // Wigilia ustawowo wolna od 2025 r. (Dz.U. 2024 poz. 1965).
+  if (year >= 2025) keys.add(formatDateString(new Date(year, 11, 24)));
 
   const easter = easterSunday(year);
   keys.add(formatDateString(easter));

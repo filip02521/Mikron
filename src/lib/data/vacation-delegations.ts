@@ -1,4 +1,5 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
+import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
 
 export type VacationDelegationRow = {
   id: string;
@@ -48,8 +49,8 @@ export async function fetchActiveDelegationsForDelegate(
       "id, sales_person_id, delegate_profile_id, start_date, end_date, created_by, created_at, sales_person:sales_people(name)"
     )
     .eq("delegate_profile_id", profileId)
-    .lte("start_date", new Date().toISOString().slice(0, 10))
-    .gte("end_date", new Date().toISOString().slice(0, 10))
+    .lte("start_date", todayDateKeyInWarsaw())
+    .gte("end_date", todayDateKeyInWarsaw())
     .order("end_date", { ascending: true });
 
   if (error) throw new Error(error.message);
@@ -69,8 +70,8 @@ export async function fetchActiveDelegationForSalesPerson(
       "id, sales_person_id, delegate_profile_id, start_date, end_date, created_by, created_at, sales_person:sales_people(name)"
     )
     .eq("sales_person_id", salesPersonId)
-    .lte("start_date", new Date().toISOString().slice(0, 10))
-    .gte("end_date", new Date().toISOString().slice(0, 10))
+    .lte("start_date", todayDateKeyInWarsaw())
+    .gte("end_date", todayDateKeyInWarsaw())
     .maybeSingle();
 
   if (error) throw new Error(error.message);
@@ -86,7 +87,7 @@ export async function isProfileActiveDelegateForSalesPerson(
   if (!hasSupabaseConfig()) return false;
 
   const supabase = createAdminClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayDateKeyInWarsaw();
   const { data, error } = await supabase
     .from("sales_vacation_delegations")
     .select("id")
@@ -200,7 +201,7 @@ export async function fetchActiveDelegationsForGroupManager(
   const salesPersonIds = (salesPeople ?? []).map((r) => r.id as string);
   if (!salesPersonIds.length) return [];
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayDateKeyInWarsaw();
   const { data, error } = await supabase
     .from("sales_vacation_delegations")
     .select(

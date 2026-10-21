@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@/lib/db/admin";
 import { completesPartialDelivery } from "@/lib/orders/partial-completion";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/data/fetch-all-rows";
 import { formatDbError } from "@/lib/supabase/db-errors";
 import {
   normalizeIndividualOrder,
@@ -2048,16 +2049,24 @@ async function fetchSupplierCompletedOrdersForStats(
   excludeOrderId?: string
 ): Promise<DeliveryStatsOrderInput[]> {
   const supabase = createAdminClient();
-  const { data } = await supabase
-    .from("individual_orders")
-    .select(
-      "id, supplier_id, request_kind, status, ordered_at, action_at, delivery_at, order_type, products, is_teeth, sales_cancelled_at, procurement_cancel_disposition, already_ordered"
-    )
-    .eq("supplier_id", supplierId)
-    .eq("request_kind", "zamowienie")
-    .eq("status", DELIVERY_STATS_COMPLETED_STATUS);
+  // Cała historia dostawcy — u dużych dostawców przekracza limit jednej strony.
+  const data = await fetchAllRows<DeliveryStatsOrderInput>(() =>
+    supabase
+      .from("individual_orders")
+      .select(
+        "id, supplier_id, request_kind, status, ordered_at, action_at, delivery_at, order_type, products, is_teeth, sales_cancelled_at, procurement_cancel_disposition, already_ordered"
+      )
+      .eq("supplier_id", supplierId)
+      .eq("request_kind", "zamowienie")
+      .eq("status", DELIVERY_STATS_COMPLETED_STATUS)
+      .order("id", { ascending: true })
+  ).catch((e: unknown) => {
+    // Jak dotąd: błąd odczytu nie blokuje przyjęcia — statystyka bez sprawdzenia duplikatu.
+    console.error("fetchSupplierCompletedOrdersForStats:", e);
+    return [] as DeliveryStatsOrderInput[];
+  });
 
-  return ((data ?? []) as DeliveryStatsOrderInput[]).filter((row) => row.id !== excludeOrderId);
+  return data.filter((row) => row.id !== excludeOrderId);
 }
 
 function toDeliveryStatsCandidate(
@@ -2234,12 +2243,20 @@ export async function processMarkedDeliveries(options?: {
 
 async function processMarkedDeliveriesUnlocked(): Promise<ProcessDeliveriesResult> {
   const supabase = createAdminClient();
-  const { data: queueRaw } = await supabase
-    .from("individual_orders")
-    .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
-    .eq("request_kind", "zamowienie")
-    .eq("status", "Zamowione");
-  const queue = normalizeIndividualOrders(queueRaw ?? []);
+  // Cała kolejka zamówionych. Błąd odczytu jak dotąd = pusta kolejka (poranna rutyna
+  // idzie dalej do czyszczenia), ale już z logiem zamiast po cichu.
+  const queueRaw = await fetchAllRows<IndividualOrder>(() =>
+    supabase
+      .from("individual_orders")
+      .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
+      .eq("request_kind", "zamowienie")
+      .eq("status", "Zamowione")
+      .order("id", { ascending: true })
+  ).catch((e: unknown) => {
+    console.error("processMarkedDeliveries: odczyt kolejki", e);
+    return [] as IndividualOrder[];
+  });
+  const queue = normalizeIndividualOrders(queueRaw);
 
   const empty: ProcessDeliveriesResult = {
     processed: 0,
@@ -2386,18 +2403,20 @@ export async function recalculateAllStats() {
     .delete()
     .neq("supplier_id", "00000000-0000-0000-0000-000000000000");
 
-  const { data: history } = await supabase
-    .from("individual_orders")
-    .select(
-      "id, supplier_id, request_kind, status, ordered_at, action_at, delivery_at, order_type, products, is_teeth, sales_cancelled_at, procurement_cancel_disposition, already_ordered"
-    )
-    .eq("request_kind", "zamowienie")
-    .eq("status", DELIVERY_STATS_COMPLETED_STATUS)
-    .order("delivery_at", { ascending: true })
-    .order("id", { ascending: true });
+  const history = await fetchAllRows<DeliveryStatsOrderInput>(() =>
+    supabase
+      .from("individual_orders")
+      .select(
+        "id, supplier_id, request_kind, status, ordered_at, action_at, delivery_at, order_type, products, is_teeth, sales_cancelled_at, procurement_cancel_disposition, already_ordered"
+      )
+      .eq("request_kind", "zamowienie")
+      .eq("status", DELIVERY_STATS_COMPLETED_STATUS)
+      .order("delivery_at", { ascending: true })
+      .order("id", { ascending: true })
+  );
 
   const { bySupplier } = aggregateDeliveryStatsFromOrders(
-    (history ?? []) as DeliveryStatsOrderInput[]
+    history
   );
 
   for (const [supplierId, agg] of bySupplier) {

@@ -25,7 +25,7 @@ export const sidePanelShellClass =
 
 /** Przycisk zamykania panelu — ikonowy, zaokrąglony kafelek. */
 export const sidePanelCloseButtonClass =
-  "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300";
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600";
 
 /** Nagłówek panelu bocznego — spójny padding i border. */
 export const sidePanelHeaderClass =

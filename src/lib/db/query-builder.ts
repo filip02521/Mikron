@@ -1323,6 +1323,9 @@ interface BuilderState {
   ignoreDuplicates: boolean;
 }
 
+/** Kod błędu, gdy select bez jawnego limitu zwróciłby więcej niż DB_MAX_ROWS wierszy. */
+export const ROW_CAP_EXCEEDED_CODE = "OT_ROW_CAP";
+
 function defaultMaxRows(): number {
   const raw = Number(process.env.DB_MAX_ROWS ?? 1000);
   return Number.isFinite(raw) && raw > 0 ? Math.trunc(raw) : 1000;
@@ -1462,10 +1465,21 @@ function buildSelectQuery(
   };
 }
 
+/** Select bez .limit()/.range()/.single() — limit nadaje warstwa DB, nie wywołujący. */
+function hasImplicitRowCap(state: BuilderState): boolean {
+  return (
+    state.mode === "select" &&
+    !state.head &&
+    state.limitCount == null &&
+    state.singleMode === "none"
+  );
+}
+
 function renderLimitOffset(state: BuilderState): string {
   let limit = state.limitCount;
   if (limit == null) {
-    limit = state.singleMode === "none" ? defaultMaxRows() : 2;
+    // Domyślny limit +1: nadmiarowy wiersz zdradza, że wynik byłby ucięty (zob. runOnce).
+    limit = state.singleMode === "none" ? defaultMaxRows() + 1 : 2;
   }
   const offset = state.offset ?? 0;
   return ` LIMIT ${renderInteger(limit)}${offset > 0 ? ` OFFSET ${renderInteger(offset)}` : ""}`;
@@ -1915,15 +1929,17 @@ export class PostgrestQueryBuilder implements PromiseLike<PostgrestListResponse>
 
     const result = await query<Row>(built.rowsText, built.rowsParams);
 
-    if (
-      state.mode === "select" &&
-      !state.head &&
-      state.limitCount == null &&
-      state.singleMode === "none" &&
-      result.rows.length >= defaultMaxRows()
-    ) {
-      // Cichy limit (DB_MAX_ROWS) uciął wynik — dodaj .limit()/stronicowanie albo licz w SQL.
-      console.warn(`[db] wynik ucięty do ${defaultMaxRows()} wierszy bez jawnego .limit(): ${built.rowsText.slice(0, 160)}`);
+    if (hasImplicitRowCap(state) && result.rows.length > defaultMaxRows()) {
+      // Błąd zamiast cichego ucięcia: niejawny limit to bezpiecznik, nie stronicowanie.
+      const max = defaultMaxRows();
+      const sql = built.rowsText.slice(0, 200);
+      console.error(`[db] wynik przekracza ${max} wierszy bez jawnego .limit()/.range(): ${sql}`);
+      return this.errorResponse({
+        message: `Wynik zapytania do ${state.table} przekracza ${max} wierszy bez jawnego .limit()/.range() — dodaj limit, stronicowanie (fetchAllRows) albo licz w SQL`,
+        code: ROW_CAP_EXCEEDED_CODE,
+        details: sql,
+        hint: null,
+      });
     }
 
     if (state.mode !== "select" && !state.returning) {

@@ -1,4 +1,4 @@
-import { Spinner } from "@/components/ui/Spinner";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 export function AuthFormStatus({
   label,
@@ -13,7 +13,7 @@ export function AuthFormStatus({
       aria-live="polite"
       className={className ?? "flex flex-col items-center gap-3 py-8 text-center"}
     >
-      <Spinner size="md" />
+      <BrandLoader size="md" />
       <p className="text-sm text-slate-500">{label}</p>
     </div>
   );

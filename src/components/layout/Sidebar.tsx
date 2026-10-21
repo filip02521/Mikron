@@ -100,7 +100,7 @@ function useLocalStorageCollapsed(
 
 /** Fokus tylko z klawiatury: klik myszą nie zostawia ramki na pozycji menu. */
 const sidebarFocusClass =
-  "focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40";
+  "focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600";
 
 function NavLink({
   item,

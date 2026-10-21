@@ -1,5 +1,8 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 
+/** Partia na przebieg — czyszczenie zeruje ścieżki, więc kolejny przebieg bierze resztę. */
+const OCR_CLEANUP_BATCH = 1000;
+
 export type TeethOcrCleanupResult = {
   scanned: number;
   imagesRemoved: number;
@@ -30,7 +33,9 @@ export async function cleanupStaleTeethOcrImages(): Promise<TeethOcrCleanupResul
     .select("id, teeth_ocr_image_path")
     .eq("is_teeth", true)
     .not("teeth_ocr_image_path", "is", null)
-    .not("sales_cancelled_at", "is", null);
+    .not("sales_cancelled_at", "is", null)
+    .order("id", { ascending: true })
+    .limit(OCR_CLEANUP_BATCH);
 
   if (cancelledErr) {
     errors.push(`cancelled query: ${cancelledErr.message}`);
@@ -49,7 +54,9 @@ export async function cleanupStaleTeethOcrImages(): Promise<TeethOcrCleanupResul
     .eq("status", "Weryfikacja")
     .not("teeth_ocr_image_path", "is", null)
     .is("sales_cancelled_at", null)
-    .lt("created_at", staleCutoffIso);
+    .lt("created_at", staleCutoffIso)
+    .order("id", { ascending: true })
+    .limit(OCR_CLEANUP_BATCH);
 
   if (staleErr) {
     errors.push(`stale query: ${staleErr.message}`);

@@ -75,6 +75,8 @@ export const ZD_ESTIMATE_MISSING_SKU_FETCH_CONCURRENCY = 4;
 export type ManualZdEstimateLine = {
   /** Profil sprzedaży 12 × 30 dni (znacznik skok / rzadki, wygładzenie). */
   salesProfile?: ZdSalesProfileLineMeta;
+  /** Strategia testowa: średnia 90 d podniosła tempo (szt / dzień przed i po). */
+  demandFloor?: { sales90: number; rateBefore: number; rateAfter: number };
   tw_Id: number;
   tw_Symbol: string;
   tw_Nazwa: string;
@@ -404,6 +406,9 @@ export function mapZdEstimateLineToManual(
     doZamowieniaReczne,
     wkladZk: Math.max(0, doZamowieniaApi - doZamowieniaReczne),
     ...(salesProfile ? { salesProfile } : {}),
+    ...((line as { demandFloor?: ManualZdEstimateLine["demandFloor"] }).demandFloor
+      ? { demandFloor: (line as { demandFloor?: ManualZdEstimateLine["demandFloor"] }).demandFloor }
+      : {}),
   };
 }
 

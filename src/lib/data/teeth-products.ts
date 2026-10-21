@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { fetchAllRows } from "@/lib/data/fetch-all-rows";
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import {
   parseTeethManufacturer,
@@ -51,25 +52,28 @@ export const fetchTeethProducts = cache(async function fetchTeethProducts(): Pro
   if (!hasSupabaseConfig()) return [];
 
   const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("prosba_teeth_products")
-    .select("subiekt_tw_id, symbol, name, plu, note, manufacturer, product_line, kind, created_at, updated_at")
-    .order("name")
-    .order("symbol");
-
-  if (error) {
-    if (error.message.includes("manufacturer") || error.message.includes("product_line") || error.code === "42703") {
-      const { data: fallback, error: fallbackErr } = await supabase
+  const readAll = (cols: string) =>
+    fetchAllRows<Record<string, unknown>>(() =>
+      supabase
         .from("prosba_teeth_products")
-        .select("subiekt_tw_id, symbol, name, plu, note, manufacturer, kind, created_at, updated_at")
+        .select(cols)
         .order("name")
-        .order("symbol");
-      if (fallbackErr) throw new Error(fallbackErr.message);
-      return (fallback ?? []).map((row) => mapRow(row as Record<string, unknown>));
+        .order("symbol")
+        .order("subiekt_tw_id")
+    );
+  try {
+    return (
+      await readAll("subiekt_tw_id, symbol, name, plu, note, manufacturer, product_line, kind, created_at, updated_at")
+    ).map(mapRow);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    if (!message.includes("manufacturer") && !message.includes("product_line") && !message.includes("does not exist")) {
+      throw e;
     }
-    throw new Error(error.message);
+    return (
+      await readAll("subiekt_tw_id, symbol, name, plu, note, manufacturer, kind, created_at, updated_at")
+    ).map(mapRow);
   }
-  return (data ?? []).map((row) => mapRow(row as Record<string, unknown>));
 });
 
 export async function fetchTeethProductTwIds(): Promise<number[]> {

@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ModalShell } from "@/components/ui/ModalShell";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { formatPlDate } from "@/lib/display-labels";
@@ -243,7 +244,7 @@ export function ZdEstimateSnapshotsModal({
           aria-live="polite"
           aria-busy="true"
         >
-          <Spinner />
+          <BrandLoader size="md" />
           <p className="text-sm text-slate-500">
             {ZD_ESTIMATE_UI.snapshotsLoadingList}
           </p>

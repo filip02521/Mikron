@@ -3,6 +3,8 @@
  *   npx tsx scripts/audit-delivery-stats-live.ts
  */
 import { fetchDeliveryStatsDiagnostics } from "../src/lib/data/delivery-stats-diagnostics";
+import { fetchAllRows } from "../src/lib/data/fetch-all-rows";
+import type { Row } from "../src/lib/db/query-builder";
 import { createAdminClient, hasSupabaseConfig } from "../src/lib/supabase/admin";
 import { aggregateDeliveryStatsFromOrders } from "../src/lib/orders/delivery-stats-aggregation";
 import { DELIVERY_STATS_COMPLETED_STATUS } from "../src/lib/orders/delivery-stats-aggregation";
@@ -198,14 +200,17 @@ async function main() {
   }
   console.log("\n=== ROZKŁAD DNI ROBOCZYCH ===", buckets);
 
-  const { data: orders } = await supabase
-    .from("individual_orders")
-    .select(
-      "id, supplier_id, request_kind, status, ordered_at, action_at, delivery_at, order_type, products"
-    )
-    .eq("request_kind", "zamowienie")
-    .eq("status", DELIVERY_STATS_COMPLETED_STATUS);
-  const { skipped } = aggregateDeliveryStatsFromOrders(orders ?? []);
+  const orders = await fetchAllRows<Row>(() =>
+    supabase
+      .from("individual_orders")
+      .select(
+        "id, supplier_id, request_kind, status, ordered_at, action_at, delivery_at, order_type, products"
+      )
+      .eq("request_kind", "zamowienie")
+      .eq("status", DELIVERY_STATS_COMPLETED_STATUS)
+      .order("id", { ascending: true })
+  );
+  const { skipped } = aggregateDeliveryStatsFromOrders(orders as never);
   const reasons: Record<string, number> = {};
   for (const row of skipped) {
     reasons[row.reason] = (reasons[row.reason] ?? 0) + 1;
@@ -310,12 +315,15 @@ async function main() {
       .eq("supplier_id", supplier.id)
       .maybeSingle();
     console.log("delivery_stats:", stats);
-    const { data: ordersForSup } = await supabase
-      .from("individual_orders")
-      .select("products, ordered_at, action_at, delivery_at, order_type")
-      .eq("supplier_id", supplier.id)
-      .eq("status", DELIVERY_STATS_COMPLETED_STATUS)
-      .order("delivery_at", { ascending: true });
+    const ordersForSup = await fetchAllRows<Row>(() =>
+      supabase
+        .from("individual_orders")
+        .select("products, ordered_at, action_at, delivery_at, order_type")
+        .eq("supplier_id", supplier.id)
+        .eq("status", DELIVERY_STATS_COMPLETED_STATUS)
+        .order("delivery_at", { ascending: true })
+        .order("id", { ascending: true })
+    );
     const { samples: supSamples } = aggregateDeliveryStatsFromOrders(
       (ordersForSup ?? []).map((o, i) => ({
         id: `row-${i}`,

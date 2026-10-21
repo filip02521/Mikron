@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import { Spinner } from "@/components/ui/Spinner";
 import { ModalShell } from "@/components/ui/ModalShell";
 import {
@@ -489,7 +490,7 @@ export function TeethOcrWizard({
         {/* Detecting */}
         {step === "detecting" && (
           <div className="flex animate-[fadeIn_0.2s_ease-out] flex-col items-center gap-3 py-8">
-            <Spinner size="md" />
+            <BrandLoader size="md" />
             <p className="text-sm text-slate-600">Rozpoznaję linie produktów na kartce…</p>
           </div>
         )}

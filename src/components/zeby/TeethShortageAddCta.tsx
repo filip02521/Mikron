@@ -49,7 +49,7 @@ export function TeethShortageAddCta({
         "shadow-[var(--shadow-brand)] ring-1 ring-indigo-400/35",
         "transition-[filter,transform] hover:brightness-[1.03] active:scale-[0.98]",
         "disabled:pointer-events-none disabled:opacity-50",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2",
         compact ? "h-10 gap-2 px-2.5 sm:gap-2.5 sm:px-3" : "gap-3 px-4 py-2.5",
       )}
     >

@@ -188,7 +188,12 @@ async function loadIncoming(twIds: readonly number[]): Promise<Map<number, Prosb
   // Pary opakowanie↔sztuka: ZD bywa na drugiej karcie — jak przy stanie magazynu.
   const pairs: ZdPairMatchIndex = await loadZdPairMatchIndex().catch(() => new Map());
   const fetchIds = expandTwIdsWithPairTwins(twIds, pairs);
-  const packaging = await loadPackaging(fetchIds);
+  const packagingRows = await loadPackaging(fetchIds);
+  // Opakowanie z pary: karta paczki zostaje w paczkach — mergePairIncoming mnoży przez N pary raz
+  // (przeliczenie przez opakowanie N = ratio dawało ratio² sztuk „w drodze”).
+  const packaging = new Map(
+    [...packagingRows].filter(([twId]) => pairs.get(twId)?.role !== "pack")
+  );
 
   const rows = await withBudget(
     mapLimit(fetchIds, SUBIEKT_CONCURRENCY, async (twId) => {

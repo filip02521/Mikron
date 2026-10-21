@@ -46,6 +46,7 @@ predicate isAuthFunction(string fnName) {
     "salesPersonIdForAction",
     "salesReporterForAction",
     "operationsUserOrNull",
+    "zdEstimateUiSessionUser",
     // Bootstrap action uses setup token instead of session auth
     "validateSetupToken",
     // Delegate functions: call auth internally but CodeQL AST analysis

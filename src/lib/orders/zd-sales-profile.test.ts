@@ -3,6 +3,7 @@ import { mapZdEstimateLineToManual } from "@/lib/orders/zd-estimate-manual";
 import {
   applyZdSalesProfileToLine,
   classifyZdSalesProfile,
+  formatZdSalesProfileHeadline,
   resolveZdSalesProfile,
   zdSalesProfileWindows,
 } from "@/lib/orders/zd-sales-profile";
@@ -143,5 +144,34 @@ describe("wiersz Kreatora z profilem", () => {
     const on = resolveZdSalesProfile({ windows: STEADY, sprzedazOkres: 11, dniOkresu: 30, prosbaPieces: 0, smoothing: true });
     expect(mapZdEstimateLineToManual(applyZdSalesProfileToLine(steadyLine, off, 0), { ...opts, history }).salesTrackReasons).toContain("sales_spike");
     expect(mapZdEstimateLineToManual(applyZdSalesProfileToLine(steadyLine, on, 0), { ...opts, history }).salesTrackReasons).not.toContain("sales_spike");
+  });
+});
+
+describe("jednorazowy skok — przypadki z danych (10.2026)", () => {
+  const kind = (w: number[]) =>
+    classifyZdSalesProfile({ windows: w, currentSales: w[w.length - 1]!, currentDays: 30 }).kind;
+
+  it("towar sprzedawany od pół roku: zera sprzed wprowadzenia nie zaniżają typowego miesiąca", () => {
+    expect(kind([0, 0, 0, 0, 0, 0, 3, 7, 11, 9, 0, 9])).toBe("steady");
+  });
+
+  it("takie miesiące już były → sprzedaż falami, nie skok, bez wygładzenia", () => {
+    expect(kind([5, 1, 1, 5, 10, 8, 9, 0, 3, 1, 3, 10])).toBe("lumpy");
+    expect(kind([17, 31, 17, 6, 0, 51, 18, 2, 54, 62, 6, 71])).toBe("lumpy");
+    const meta = resolveZdSalesProfile({
+      windows: [0, 0, 0, 0, 0, 2, 0, 0, 16, 20, 0, 11],
+      sprzedazOkres: 11,
+      dniOkresu: 30,
+      prosbaPieces: 0,
+      smoothing: true,
+    });
+    expect(meta.kind).toBe("lumpy");
+    expect(meta.applied).toBe(false);
+    expect(formatZdSalesProfileHeadline(meta)).toContain("falami");
+  });
+
+  it("miesiąc wyraźnie ponad wszystko wcześniej zostaje skokiem", () => {
+    expect(kind([1, 3, 1, 3, 0, 2, 1, 4, 4, 2, 1, 8])).toBe("spike");
+    expect(kind([13, 5, 3, 26, 13, 9, 13, 1, 10, 5, 10, 51])).toBe("spike");
   });
 });

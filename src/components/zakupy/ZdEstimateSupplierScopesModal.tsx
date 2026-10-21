@@ -33,6 +33,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Input, Select } from "@/components/ui/Field";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { formatPlDate } from "@/lib/display-labels";
@@ -1170,7 +1171,7 @@ export function ZdEstimateSupplierScopesModal({
 
       {listLoading ? (
         <div className="flex flex-col items-center justify-center gap-3 py-12" role="status" aria-live="polite" aria-busy="true">
-          <Spinner />
+          <BrandLoader size="md" />
           <p className="text-sm text-slate-500">{ZD_ESTIMATE_UI.supplierScopesLoading}</p>
         </div>
       ) : supplierCards.length === 0 && !adding ? (

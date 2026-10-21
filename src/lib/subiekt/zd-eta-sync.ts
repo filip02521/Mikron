@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { query } from "@/lib/db/pool";
 import { fetchDeliveryStats } from "@/lib/data/queries";
 import { normalizeIndividualOrders } from "@/lib/data/normalize-order";
 import {
@@ -555,15 +556,16 @@ function supplierHasSubiektKh(supplier: SupplierRef | undefined): boolean {
 
 /** kh_Id z indeksu ZD (aliasy kontrahenta widoczne w katalogu, np. dwie nazwy Marrodent). */
 export async function loadExtraKhIdsBySupplierIdFromZdIndex(): Promise<Map<string, number[]>> {
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("subiekt_zd_index")
-    .select("supplier_id, subiekt_kh_id")
-    .not("supplier_id", "is", null);
-  if (error) throw new Error(error.message);
+  // Tylko pary (dostawca, kh) — DISTINCT w bazie zamiast wszystkich dokumentów
+  // (bez stronicowania query builder ucinał po 1000 i aliasy kh dalej w tabeli ginęły).
+  const { rows: data } = await query<{ supplier_id: string | null; subiekt_kh_id: number }>(
+    `SELECT DISTINCT supplier_id, subiekt_kh_id
+       FROM subiekt_zd_index
+      WHERE supplier_id IS NOT NULL`
+  );
 
   const map = new Map<string, Set<number>>();
-  for (const row of data ?? []) {
+  for (const row of data) {
     const supplierId = (row as { supplier_id: string | null }).supplier_id;
     const kh = Math.trunc(Number((row as { subiekt_kh_id: number }).subiekt_kh_id));
     if (!supplierId || !Number.isFinite(kh) || kh <= 0) continue;

@@ -36,13 +36,6 @@ describe("zd-estimate-ui-session-snapshot", () => {
       missingPartnerTwIds: [],
       missingBomTwIds: [],
       paramInfo: {},
-      exclusions: [],
-      onRequests: [],
-      packaging: [],
-      minStock: [],
-      productPairs: [],
-      productBoms: [],
-      teethTwIds: [],
       boostPreset: "standard",
       appliedBoostPreset: "standard",
       boostNeedsRecount: false,
@@ -132,13 +125,6 @@ describe("zd-estimate-ui-session-snapshot", () => {
       missingPartnerTwIds: [],
       missingBomTwIds: [],
       paramInfo: {},
-      exclusions: [],
-      onRequests: [],
-      packaging: [],
-      minStock: [],
-      productPairs: [],
-      productBoms: [],
-      teethTwIds: [],
       boostPreset: "gentle",
       scopeMode: "grupa",
       selectedGroup: null,
@@ -223,5 +209,49 @@ describe("zd-estimate-external-session peek", () => {
       JSON.stringify(token)
     );
     expect(peekZdEstimateExternalSessionToken()?.sessionId).toBe("s1");
+  });
+});
+
+describe("zd-estimate-ui-session-snapshot — reguły z bazy", () => {
+  it("snapshot sprzed zmiany (z kopiami reguł) nadal się parsuje, a kopie są odrzucane", () => {
+    const legacy = {
+      schemaVersion: ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION,
+      linesBase: [],
+      lines: [],
+      scopeMode: "cecha",
+      boostPreset: "standard",
+      dataOd: "2026-01-01",
+      dataDo: "2026-01-31",
+      dniZapasu: "14",
+      meta: {
+        pagesFetched: 1,
+        totalCountApi: 1,
+        truncated: false,
+        ordersBaseUrl: "http://test",
+        durationMs: 1,
+        totalFromSubiekt: 1,
+      },
+      exclusions: [{ subiektTwId: 1 }],
+      onRequests: [{ subiektTwId: 2 }],
+      packaging: [{ subiektTwId: 3, unitsPerPackage: 10 }],
+      minStock: [{ subiektTwId: 4, minStockSzt: 5 }],
+      productPairs: [{ packTwId: 5, pieceTwId: 6, unitsPerPack: 2 }],
+      productBoms: [{ parentTwId: 7 }],
+      teethTwIds: [8],
+    };
+    const parsed = parseZdEstimateUiSessionSnapshot(legacy);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.scopeMode).toBe("cecha");
+    for (const key of [
+      "exclusions",
+      "onRequests",
+      "packaging",
+      "minStock",
+      "productPairs",
+      "productBoms",
+      "teethTwIds",
+    ]) {
+      expect(parsed).not.toHaveProperty(key);
+    }
   });
 });

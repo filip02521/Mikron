@@ -6,6 +6,8 @@
  *   npx tsx --env-file=.env.local scripts/backfill-informacja-legacy-rows.ts --apply
  */
 import { createAdminClient as createClient } from "../src/lib/db/admin";
+import { fetchAllRows } from "../src/lib/data/fetch-all-rows";
+import type { Row } from "../src/lib/db/query-builder";
 import { shouldTreatAsInformacjaOnly } from "../src/lib/orders/informacja-import-rules";
 import { INFORMACJA_NO_QUANTITY } from "../src/lib/orders/individual";
 
@@ -26,14 +28,15 @@ async function main() {
     .maybeSingle();
   const stanSalesPersonId = stanPerson?.id ?? null;
 
-  const { data: rows, error } = await supabase
-    .from("individual_orders")
-    .select(
-      "id, quantity, sales_person_id, status, order_type, ordered_at, request_kind, informacja_queue_via_daily_panel"
-    )
-    .eq("request_kind", "zamowienie");
-
-  if (error) throw new Error(error.message);
+  const rows = await fetchAllRows<Row>(() =>
+    supabase
+      .from("individual_orders")
+      .select(
+        "id, quantity, sales_person_id, status, order_type, ordered_at, request_kind, informacja_queue_via_daily_panel"
+      )
+      .eq("request_kind", "zamowienie")
+      .order("id", { ascending: true })
+  );
 
   const candidates = (rows ?? []).filter((row) =>
     shouldTreatAsInformacjaOnly({

@@ -1,4 +1,5 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
+import { fetchAllRowsResult } from "@/lib/data/fetch-all-rows";
 import {
   buildDeliveryStatsDiagnostics,
   type DeliveryStatsDiagnostics,
@@ -28,15 +29,17 @@ export async function fetchDeliveryStatsDiagnostics(): Promise<DeliveryStatsDiag
       .select("id, name, stats_mode, is_active")
       .order("name"),
     supabase.from("delivery_stats").select("*"),
-    supabase
-      .from("individual_orders")
-      .select(
-        "id, supplier_id, request_kind, status, ordered_at, action_at, delivery_at, order_type, products, is_teeth, sales_cancelled_at, procurement_cancel_disposition, already_ordered"
-      )
-      .eq("request_kind", "zamowienie")
-      .eq("status", DELIVERY_STATS_COMPLETED_STATUS)
-      .order("delivery_at", { ascending: true })
-      .order("id", { ascending: true }),
+    fetchAllRowsResult<DeliveryStatsOrderInput>(() =>
+      supabase
+        .from("individual_orders")
+        .select(
+          "id, supplier_id, request_kind, status, ordered_at, action_at, delivery_at, order_type, products, is_teeth, sales_cancelled_at, procurement_cancel_disposition, already_ordered"
+        )
+        .eq("request_kind", "zamowienie")
+        .eq("status", DELIVERY_STATS_COMPLETED_STATUS)
+        .order("delivery_at", { ascending: true })
+        .order("id", { ascending: true })
+    ),
     supabase
       .from("delivery_stats_skip_events")
       .select("reason")

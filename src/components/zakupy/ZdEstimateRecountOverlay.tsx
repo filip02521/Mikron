@@ -1,6 +1,6 @@
 "use client";
 
-import { Spinner } from "@/components/ui/Spinner";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import { cn } from "@/lib/cn";
 import { zdEstimateRecountOverlayPlaceClass } from "@/lib/ui/ontime-theme";
 
@@ -56,10 +56,7 @@ export function ZdEstimateRecountOverlay({
       <div className="zd-est-recount-overlay__card relative mx-4 w-full max-w-[22rem] overflow-hidden rounded-lg border border-slate-200/90 bg-white/95 px-5 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_18px_40px_-16px_rgba(15,23,42,0.28)] ring-1 ring-slate-900/[0.04] backdrop-blur-sm">
         <div className="flex items-start gap-3.5">
           <span className="zd-est-loading-status-icon mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-full bg-indigo-50 ring-1 ring-indigo-100/90">
-            <Spinner
-              size="sm"
-              className="border-indigo-200 border-t-indigo-600"
-            />
+            <BrandLoader size="sm" tile={false} />
           </span>
           <div className="min-w-0 flex-1 pt-0.5">
             <p className="text-[0.9375rem] font-semibold leading-snug tracking-tight text-slate-900">

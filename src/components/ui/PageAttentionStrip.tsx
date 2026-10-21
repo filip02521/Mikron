@@ -148,9 +148,12 @@ export function PageAttentionStripCta({
   href,
   onClick,
   type = "button",
+  disabled,
   "aria-label": ariaLabel,
 }: CtaCommon & {
   href?: string;
+  /** Tylko dla przycisku (np. trwa liczenie). */
+  disabled?: boolean;
   onClick?: (event: MouseEvent<HTMLElement>) => void;
   type?: ButtonHTMLAttributes<HTMLButtonElement>["type"];
   "aria-label"?: string;
@@ -161,6 +164,7 @@ export function PageAttentionStripCta({
     // Odpowiedź na wciśnięcie od razu (pointer-down), nie dopiero po kliknięciu.
     "motion-safe:active:scale-[0.97] motion-safe:active:duration-75",
     TONE_CTA[tone],
+    "disabled:pointer-events-none disabled:opacity-60",
     compact ? "h-7" : "h-8",
     className
   );
@@ -184,6 +188,7 @@ export function PageAttentionStripCta({
       type={type}
       className={classes}
       onClick={onClick}
+      disabled={disabled}
       aria-label={ariaLabel}
     >
       {children}

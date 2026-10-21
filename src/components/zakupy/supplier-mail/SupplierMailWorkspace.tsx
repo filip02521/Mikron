@@ -1300,7 +1300,7 @@ function MessageCard({ m, aiAvailable = false, onForward }: { m: ConversationMes
                   type="button"
                   onClick={() => setPreview(a)}
                   title={a.filename}
-                  className="block overflow-hidden rounded-md ring-1 ring-slate-200 transition-shadow hover:ring-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45"
+                  className="block overflow-hidden rounded-md ring-1 ring-slate-200 transition-shadow hover:ring-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
                 >
                   {/* Załącznik z własnego API za sesją — next/image nie ma tu czego optymalizować. */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1332,7 +1332,7 @@ function MessageCard({ m, aiAvailable = false, onForward }: { m: ConversationMes
                     type="button"
                     onClick={() => setPreview(a)}
                     title={a.filename}
-                    className="block rounded-md ring-1 ring-slate-200 hover:ring-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45"
+                    className="block rounded-md ring-1 ring-slate-200 hover:ring-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={attachmentUrl(m.id, a.attachmentId)} alt={a.filename} loading="lazy" className="h-10 max-w-[9rem] rounded-md bg-white object-contain" />

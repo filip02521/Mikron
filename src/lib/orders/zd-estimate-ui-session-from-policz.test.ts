@@ -58,6 +58,35 @@ const meta = {
 };
 
 describe("buildZdEstimateUiSessionSnapshotFromPolicz", () => {
+  it("porównanie strategii i czas dostawy przeżywają zapis i odczyt sesji", () => {
+    const classicCompare = { byTwId: { 1: { units: 14, pieces: 14 } }, lineCount: 1, pieces: 14 };
+    const snapshot = buildZdEstimateUiSessionSnapshotFromPolicz({
+      mode: "cecha",
+      grupaId: null,
+      cechaId: 2717,
+      scopeLabel: "Polkard",
+      supplierId: "sup-1",
+      dniZapasu: 25,
+      dataOd: "2026-09-21",
+      dataDo: "2026-10-20",
+      zapasMin: 0,
+      result: emptyResult([line()]),
+      historyByTwId: [],
+      historyFetchFailed: false,
+      pendingIndividuals: [],
+      pendingIndividualsTruncated: false,
+      pendingIndividualsError: null,
+      meta,
+      boostPreset: "standard",
+      leadDays: 2,
+      classicCompare,
+      seed: null,
+    });
+    const parsed = parseZdEstimateUiSessionSnapshot(JSON.parse(JSON.stringify(snapshot)));
+    expect(parsed?.classicCompare).toEqual(classicCompare);
+    expect(parsed?.leadDays).toBe(2);
+  });
+
   it("buduje sesję cechy (Ivoclar) z mode/cechaId bez seeda UI", () => {
     const snapshot = buildZdEstimateUiSessionSnapshotFromPolicz({
       mode: "cecha",
@@ -76,13 +105,6 @@ describe("buildZdEstimateUiSessionSnapshotFromPolicz", () => {
       pendingIndividualsTruncated: false,
       pendingIndividualsError: null,
       meta,
-      exclusions: [],
-      onRequests: [],
-      packaging: [],
-      minStock: [],
-      productPairs: [],
-      productBoms: [],
-      teethTwIds: [],
       boostPreset: "standard",
       seed: null,
     });
@@ -116,13 +138,6 @@ describe("buildZdEstimateUiSessionSnapshotFromPolicz", () => {
       pendingIndividualsTruncated: false,
       pendingIndividualsError: "boom",
       meta,
-      exclusions: [],
-      onRequests: [],
-      packaging: [],
-      minStock: [],
-      productPairs: [],
-      productBoms: [],
-      teethTwIds: [9],
       boostPreset: "standard",
       seed: {
         selectedCecha: {
@@ -152,7 +167,8 @@ describe("buildZdEstimateUiSessionSnapshotFromPolicz", () => {
     expect(snapshot.showAdvanced).toBe(true);
     expect(snapshot.sortKey).toBe("symbol");
     expect(snapshot.pendingIndividualsError).toBe("boom");
-    expect(snapshot.teethTwIds).toEqual([9]);
+    // Reguły z bazy nie trafiają do snapshotu — restore bierze świeże.
+    expect(snapshot).not.toHaveProperty("teethTwIds");
     expect(parseZdEstimateUiSessionSnapshot(snapshot)).not.toBeNull();
   });
 
@@ -174,13 +190,6 @@ describe("buildZdEstimateUiSessionSnapshotFromPolicz", () => {
       pendingIndividualsTruncated: true,
       pendingIndividualsError: null,
       meta: { ...meta, totalFromSubiekt: 1 },
-      exclusions: [],
-      onRequests: [],
-      packaging: [],
-      minStock: [],
-      productPairs: [],
-      productBoms: [],
-      teethTwIds: [],
       boostPreset: "standard",
     });
 
@@ -229,13 +238,6 @@ describe("buildZdEstimateUiSessionSnapshotFromPolicz", () => {
       pendingIndividualsTruncated: false,
       pendingIndividualsError: null,
       meta,
-      exclusions: [],
-      onRequests: [],
-      packaging: [],
-      minStock: [],
-      productPairs: [],
-      productBoms: [],
-      teethTwIds: [],
       boostPreset: "standard",
     });
 

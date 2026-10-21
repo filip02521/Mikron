@@ -3,6 +3,8 @@
  * Usage: npx tsx scripts/compare-csv-warehouse.ts "/path/to/file.csv"
  */
 import { readFileSync } from "fs";
+import { fetchAllRows } from "../src/lib/data/fetch-all-rows";
+import type { Row } from "../src/lib/db/query-builder";
 import { createAdminClient as createClient } from "../src/lib/db/admin";
 import { buildWarehouseInventoryRow } from "../src/lib/orders/warehouse-inventory";
 import type { IndividualOrder } from "../src/types/database";
@@ -67,32 +69,36 @@ async function main() {
     for (const row of data ?? []) dbById.set(row.id, row as IndividualOrder);
   }
 
-  const { data: whAll, error: whErr } = await s
-    .from("individual_orders")
-    .select(
-      "id, status, quantity, delivered_quantity, sales_acknowledged_at, sales_cancelled_at, request_kind, warehouse_shelf, products"
-    )
-    .in("status", ["Zrealizowane", "Czesciowo_zrealizowane"])
-    .is("sales_acknowledged_at", null)
-    .is("sales_cancelled_at", null);
-  if (whErr) throw whErr;
+  const whAll = await fetchAllRows<Row>(() =>
+    s
+      .from("individual_orders")
+      .select(
+        "id, status, quantity, delivered_quantity, sales_acknowledged_at, sales_cancelled_at, request_kind, warehouse_shelf, products"
+      )
+      .in("status", ["Zrealizowane", "Czesciowo_zrealizowane"])
+      .is("sales_acknowledged_at", null)
+      .is("sales_cancelled_at", null)
+      .order("id", { ascending: true })
+  );
 
   const whIds = new Set(
-    (whAll ?? [])
+    whAll
       .filter((o) => buildWarehouseInventoryRow(o as IndividualOrder))
       .map((o) => o.id)
   );
 
-  const { data: dqAll, error: dqErr } = await s
-    .from("individual_orders")
-    .select("id, status, request_kind, sales_cancelled_at, supplier_id")
-    .eq("request_kind", "zamowienie")
-    .in("status", ["Zamowione", "Czesciowo_zrealizowane"])
-    .is("sales_cancelled_at", null)
-    .not("supplier_id", "is", null);
-  if (dqErr) throw dqErr;
+  const dqAll = await fetchAllRows<Row>(() =>
+    s
+      .from("individual_orders")
+      .select("id, status, request_kind, sales_cancelled_at, supplier_id")
+      .eq("request_kind", "zamowienie")
+      .in("status", ["Zamowione", "Czesciowo_zrealizowane"])
+      .is("sales_cancelled_at", null)
+      .not("supplier_id", "is", null)
+      .order("id", { ascending: true })
+  );
 
-  const dqIds = new Set((dqAll ?? []).map((o) => o.id));
+  const dqIds = new Set(dqAll.map((o) => o.id));
 
   console.log("=== PODSUMOWANIE ===");
   console.log("CSV wierszy (z ID):", csvRows.length);

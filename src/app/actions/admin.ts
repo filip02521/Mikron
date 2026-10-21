@@ -98,7 +98,7 @@ import {
 import {
   parseWarehouseShipmentForm,
 } from "@/lib/warehouse/delivery-carriers";
-import { assertWarehouseCarrierSlug } from "@/app/actions/warehouse-carriers";
+import { assertWarehouseCarrierSlug } from "@/lib/data/warehouse-carriers";
 import type { IndividualRequestKind, SupplierLocation, StatsMode } from "@/types/database";
 import {
   clampOptionalText,

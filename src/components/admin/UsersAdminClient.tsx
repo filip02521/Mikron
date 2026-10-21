@@ -61,7 +61,7 @@ function roleFilterChipClass(active: boolean): string {
   return cn(
     "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
     active
-      ? "bg-slate-900 text-white"
+      ? "bg-indigo-50 text-indigo-900 ring-1 ring-inset ring-indigo-200"
       : "bg-slate-100 text-slate-600 hover:bg-slate-200"
   );
 }

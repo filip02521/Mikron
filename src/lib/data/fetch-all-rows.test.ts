@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fetchAllRows } from "./fetch-all-rows";
+import { fetchAllRows, fetchAllRowsResult } from "./fetch-all-rows";
 
 function fakeTable(total: number) {
   const rows = Array.from({ length: total }, (_, i) => ({ id: i + 1 }));
@@ -37,5 +37,17 @@ describe("fetchAllRows", () => {
       range: async () => ({ data: null, error: { message: "boom" } }),
     });
     await expect(fetchAllRows(build)).rejects.toThrow("boom");
+  });
+});
+
+describe("fetchAllRowsResult", () => {
+  it("błąd strony → { data: null, error } zamiast throw", async () => {
+    const build = () => ({
+      range: async () => ({ data: null, error: { message: "column x does not exist" } }),
+    });
+    expect(await fetchAllRowsResult(build)).toEqual({
+      data: null,
+      error: { message: "column x does not exist" },
+    });
   });
 });

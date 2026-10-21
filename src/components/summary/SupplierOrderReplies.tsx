@@ -57,7 +57,7 @@ export function MailReplyPreview({ reply }: { reply: GmailReply }) {
 }
 
 export const mailLinkClass =
-  "inline-flex min-h-8 items-center rounded px-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45";
+  "inline-flex min-h-8 items-center rounded px-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600";
 
 /** Karta dostawcy: ZD wysłane z OnTime i czy dostawca odpisał (wątek w Gmailu nadawcy). */
 export function SupplierOrderReplies({ supplierId }: { supplierId: string }) {

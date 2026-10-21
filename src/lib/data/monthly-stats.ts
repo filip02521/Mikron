@@ -1,4 +1,5 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/data/fetch-all-rows";
 import {
   buildMonthlyMomComparison,
   defaultMonthlySummaryMonthKey,
@@ -99,30 +100,23 @@ function assertNoError(label: string, error: { message: string } | null): void {
   }
 }
 
-/** Limit strony PostgREST / Supabase — bez .range wyniki są ucinane po cichu. */
+/** Strona listy miesięcy (stronicowanie z wczesnym wyjściem). */
 const SUPABASE_PAGE = 1000;
 
 /**
- * Pobiera wszystkie wiersze zapytania stronicując po {@link SUPABASE_PAGE}.
- * `build` musi zwracać świeży builder z tymi samymi filtrami (range dokładany tutaj).
+ * Wszystkie wiersze zapytania przez {@link fetchAllRows}; błąd z etykietą sekcji.
+ * `build` musi zwracać świeży builder z tymi samymi filtrami i stabilnym sortowaniem.
  */
 async function fetchAllPaged<T>(
   label: string,
-  // PostgREST builder jest thenable po .range — typ generyczny z joinów jest zbyt wąski.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  build: () => { range: (from: number, to: number) => any }
+  build: Parameters<typeof fetchAllRows>[0]
 ): Promise<T[]> {
-  const out: T[] = [];
-  let offset = 0;
-  for (;;) {
-    const res = await build().range(offset, offset + SUPABASE_PAGE - 1);
-    assertNoError(label, res.error ?? null);
-    const batch = (res.data ?? []) as T[];
-    out.push(...batch);
-    if (batch.length < SUPABASE_PAGE) break;
-    offset += SUPABASE_PAGE;
+  try {
+    return await fetchAllRows<T>(build);
+  } catch (e) {
+    assertNoError(label, { message: e instanceof Error ? e.message : String(e) });
+    throw e;
   }
-  return out;
 }
 
 function emptyDepartments(): {
@@ -272,6 +266,7 @@ async function fetchMonthDepartments(monthKey: string): Promise<{
           )
           .gte("action_at", wawStart)
           .lt("action_at", wawEnd)
+          .order("id", { ascending: true })
       ),
       fetchAllPaged<ZkRow>("ZK zamknięte", () =>
         supabase
@@ -279,6 +274,7 @@ async function fetchMonthDepartments(monthKey: string): Promise<{
           .select("id, sales_person_id")
           .gte("closed_at", wawStart)
           .lt("closed_at", wawEnd)
+          .order("id", { ascending: true })
       ),
       fetchAllPaged<ZkRow>("ZK otwarte", () =>
         supabase
@@ -287,6 +283,7 @@ async function fetchMonthDepartments(monthKey: string): Promise<{
           .lt("created_at", wawEnd)
           .or(`closed_at.is.null,closed_at.gte.${wawEnd}`)
           .or(`archived_at.is.null,archived_at.gte.${wawEnd}`)
+          .order("id", { ascending: true })
       ),
       fetchAllPaged<ReceiptRow>("przyjęcia", () =>
         supabase
@@ -296,6 +293,7 @@ async function fetchMonthDepartments(monthKey: string): Promise<{
           )
           .gte("received_date", `${monthKey}-01`)
           .lte("received_date", monthEndDateString(monthKey))
+          .order("id", { ascending: true })
       ),
       supabase.from("sales_people").select("id, name, email").order("name"),
       supabase
@@ -583,6 +581,7 @@ async function fetchMonthTotalsOnly(monthKey: string) {
           )
           .gte("action_at", wawStart)
           .lt("action_at", wawEnd)
+          .order("id", { ascending: true })
       ),
       fetchAllPaged<ZkMomRow>("MoM ZK zamknięte", () =>
         supabase
@@ -590,6 +589,7 @@ async function fetchMonthTotalsOnly(monthKey: string) {
           .select("sales_person_id")
           .gte("closed_at", wawStart)
           .lt("closed_at", wawEnd)
+          .order("id", { ascending: true })
       ),
       fetchAllPaged<ZkMomRow>("MoM ZK otwarte", () =>
         supabase
@@ -598,6 +598,7 @@ async function fetchMonthTotalsOnly(monthKey: string) {
           .lt("created_at", wawEnd)
           .or(`closed_at.is.null,closed_at.gte.${wawEnd}`)
           .or(`archived_at.is.null,archived_at.gte.${wawEnd}`)
+          .order("id", { ascending: true })
       ),
       fetchAllPaged<ReceiptMomRow>("MoM przyjęcia", () =>
         supabase
@@ -605,6 +606,7 @@ async function fetchMonthTotalsOnly(monthKey: string) {
           .select("package_count, pallet_count")
           .gte("received_date", `${monthKey}-01`)
           .lte("received_date", monthEndDateString(monthKey))
+          .order("id", { ascending: true })
       ),
       supabase.from("sales_people").select("id, name"),
       supabase

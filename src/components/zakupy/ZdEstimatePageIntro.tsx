@@ -178,10 +178,14 @@ export function ZdEstimatePageIntro({
                   className={cn(
                     zdEstimateHostBadgeClass,
                     host.isLive
-                      ? "ring-1 ring-amber-300/60"
-                      : "ring-1 ring-emerald-300/50"
+                      ? "ring-1 ring-inset ring-amber-200"
+                      : "ring-1 ring-inset ring-emerald-200"
                   )}
                 >
+                  <span
+                    aria-hidden
+                    className={cn("size-1.5 rounded-full", host.isLive ? "bg-amber-500" : "bg-emerald-500")}
+                  />
                   {zdEstimateHostBadgeLabel({
                     isLive: host.isLive,
                     port: host.port,

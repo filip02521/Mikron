@@ -9,6 +9,8 @@
  *   npx tsx scripts/sync-sales-people-sprzedaz.ts [ścieżka.csv] --apply
  */
 import { readFileSync, copyFileSync, mkdirSync } from "fs";
+import { fetchAllRows } from "../src/lib/data/fetch-all-rows";
+import type { Row } from "../src/lib/db/query-builder";
 import { resolve } from "path";
 import { createAdminClient as createClient } from "../src/lib/db/admin";
 import { parseCsv } from "./lib/parse-csv";
@@ -184,12 +186,15 @@ async function main() {
     if (!apply) continue;
 
     if (m.orderCount > 0) {
-      const { data: orders } = await supabase
-        .from("individual_orders")
-        .select("id, sales_client_name")
-        .eq("sales_person_id", m.from.id);
+      const orders = await fetchAllRows<Row>(() =>
+        supabase
+          .from("individual_orders")
+          .select("id, sales_client_name")
+          .eq("sales_person_id", m.from.id)
+          .order("id", { ascending: true })
+      );
 
-      for (const o of orders ?? []) {
+      for (const o of orders) {
         const patch: { sales_person_id: string; sales_client_name?: string } = {
           sales_person_id: m.toId,
         };

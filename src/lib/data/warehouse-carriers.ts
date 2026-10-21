@@ -72,3 +72,18 @@ export async function countWarehouseCarrierUsage(slug: string): Promise<number> 
 
   return (receipts.count ?? 0) + (hints.count ?? 0) + (suppliers.count ?? 0);
 }
+
+/** Walidacja sluga kuriera po stronie serwera (nie server action — bez publicznego endpointu). */
+export async function assertWarehouseCarrierSlug(
+  slug: string
+): Promise<string> {
+  const trimmed = slug.trim();
+  const carriers = await fetchWarehouseCarriers();
+  const match = carriers.find((carrier) => carrier.slug === trimmed);
+  if (!match) {
+    throw new Error(
+      `Nieprawidłowy kurier „${slug}". Odśwież stronę i wybierz kuriera z listy.`
+    );
+  }
+  return trimmed;
+}

@@ -1,4 +1,4 @@
-import { Spinner } from "@/components/ui/Spinner";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import { cn } from "@/lib/cn";
 
 /** Spinner w karcie auth — bez powielania tekstu z nagłówka strony. */
@@ -14,7 +14,7 @@ export function AuthBootLoadingState({ className }: { className?: string }) {
       aria-busy="true"
       aria-label="Ładowanie panelu"
     >
-      <Spinner size="lg" />
+      <BrandLoader size="lg" />
       <span className="sr-only">Ładowanie panelu</span>
     </div>
   );

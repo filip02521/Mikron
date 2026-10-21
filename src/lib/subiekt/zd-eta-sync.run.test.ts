@@ -129,6 +129,10 @@ function zdDoc(
   };
 }
 
+vi.mock("@/lib/db/pool", () => ({
+  query: vi.fn(async () => ({ rows: [{ supplier_id: "s1", subiekt_kh_id: 9001 }] })),
+}));
+
 vi.mock("@/lib/supabase/admin", () => ({
   hasSupabaseConfig: () => true,
   createAdminClient: () => ({

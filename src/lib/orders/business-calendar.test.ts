@@ -43,3 +43,13 @@ describe("countBusinessDaysInclusive", () => {
     expect(countBusinessDaysInclusive("2026-10-10", "2026-10-11")).toBe(0);
   });
 });
+
+describe("Wigilia (wolna od 2025)", () => {
+  it("24.12.2026 nie jest dniem roboczym, przesunięcie na 28.12", () => {
+    expect(isBusinessDay(new Date(2026, 11, 24))).toBe(false);
+    expect(formatDateString(snapToBusinessDay(new Date(2026, 11, 24)))).toBe("2026-12-28");
+  });
+  it("24.12.2024 był jeszcze dniem roboczym", () => {
+    expect(isBusinessDay(new Date(2024, 11, 24))).toBe(true);
+  });
+});

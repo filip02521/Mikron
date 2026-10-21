@@ -461,3 +461,14 @@ describe("mapProsbaReservedOverlapDto", () => {
     expect([...map.keys()]).toEqual([10]);
   });
 });
+
+describe("computeProsbaZkReservationDedupe: kolejność próśb nie zmienia wyniku", () => {
+  const A = { orderId: "A", qty: 3, salesClientKhId: 5, sourceZkNumber: "ZK 100/M/10/2026" };
+  const B = { orderId: "B", qty: 3, salesClientKhId: 5, sourceZkNumber: null };
+  const reserved = [{ quantity: 3, clientKhId: 5, zkNumber: "ZK 100/M/10/2026" }];
+  it("rezerwacja własnego ZK prośby A to ulga, także gdy B (bez ZK) jest pierwsza", () => {
+    const want = { extraOverlap: 0, stockNeedRelief: 3 };
+    expect(computeProsbaZkReservationDedupe([A, B], reserved)).toEqual(want);
+    expect(computeProsbaZkReservationDedupe([B, A], reserved)).toEqual(want);
+  });
+});

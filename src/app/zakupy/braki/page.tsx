@@ -49,6 +49,7 @@ async function loadPanel(supplierId: string | null) {
         scopesTotal: run.scopesTotal,
         scopesDone: run.scopesDone.length,
         failures: run.scopesFailed.map((f) => ({
+          supplierId: f.supplierId,
           supplierName: f.supplierName,
           message: f.message,
         })),

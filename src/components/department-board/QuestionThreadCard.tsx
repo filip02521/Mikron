@@ -413,7 +413,7 @@ export function QuestionThreadCard({
           type="button"
           className={cn(
             "min-w-0 flex-1 text-left py-3 sm:py-3.5",
-            "rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/25",
+            "rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
             boardQuestionRowHeaderClass
           )}
           onClick={toggleExpanded}

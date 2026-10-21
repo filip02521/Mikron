@@ -310,6 +310,14 @@ Albo dokumentacja estimate, albo nowe pola:
 
 ---
 
+### P2 — przyjęcia towaru (PZ / FZ) z datą (karta produktu w kreatorze ZD)
+
+**Po co:** reguła „towar przelotowy” — dostawa sprzedana w kilka dni jednemu klientowi.
+
+**Jest (sprawdzone 2026-10-20, live :5080):** sprzedaż towaru dokument po dokumencie z klientem i datą — `GET /orders/zd/estimate/{towarId}` (`rola`: fs, pa, wzNiepowiazane, zw). OnTime używa tego w karcie produktu. Zamówienia u dostawcy: linie ZD z `/documents/zd/{id}` (nocny odczyt → `zd_purchase_lines`).
+
+**Brakuje:** daty **przyjęcia** dostawy (PZ/FZ) per towar — ZD ma datę zamówienia, nie przyjęcia. Prośba: `rola=pz` (albo `fz`) w `/orders/zd/estimate/{towarId}`: `dok_DataWyst` / `dok_DataMag`, ilość, dostawca.
+
 ## 4. Czego **nie** trzeba w API Subiekta
 
 | Element | Gdzie |

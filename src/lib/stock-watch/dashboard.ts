@@ -1,10 +1,17 @@
 import {
   compareStockWatchAlerts,
   computeStockHealthScore,
+  isStockWatchCriticalNoIncoming,
   isStockWatchEmptyNoIncoming,
 } from "@/lib/stock-watch/analysis";
 import type { StockWatchItem, StockWatchSupplierOrder } from "@/lib/stock-watch/data";
 import { stockWatchHorizonExtends } from "@/lib/stock-watch/signal";
+import {
+  compareStockWatchSupplierUrgency,
+  stockWatchSupplierPriority,
+  type StockWatchPriority,
+  type StockWatchSupplierCounts,
+} from "@/lib/stock-watch/priority";
 
 /** Wiersz przekazywany do klienta — tylko pola używane w UI. */
 export type StockWatchRowView = Pick<
@@ -71,13 +78,29 @@ export type StockWatchSupplierProposal = {
   warnings: string[];
 };
 
+/** Wiersz tablicy dostawców — jeden na dostawcę, z priorytetem „co najpierw”. */
+export type StockWatchSupplierBoardRow = StockWatchSupplierCounts & {
+  supplierId: string;
+  supplierName: string;
+  priority: StockWatchPriority;
+  /** Wartość listy „Do ZD” (0 bez propozycji). */
+  orderValue: number;
+  proposal: StockWatchSupplierProposal | null;
+  /** Pilne towary dostawcy (brak, ≤ 48 h, przed dostawą, przed kolejną dostawą), od najpilniejszego. */
+  urgentRows: StockWatchRowView[];
+  urgentTotal: number;
+};
+
 export type StockWatchDashboard = {
   health: { score: number; active: number; ok: number };
   counts: {
     outOfStock: number;
     /** Brak na stanie i open ZD = 0 — nic nie jedzie. */
     emptyNoIncoming: number;
+    /** ≤ 48 h i nic nie jedzie. */
     critical: number;
+    /** ≤ 48 h, ale otwarte ZD zdąży — czeka na dostawę. */
+    criticalInTransit: number;
     warning: number;
     ok: number;
     noSales: number;
@@ -90,6 +113,10 @@ export type StockWatchDashboard = {
   };
   alerts: StockWatchRowView[];
   proposals: StockWatchSupplierProposal[];
+  /** Tablica dostawców od najpilniejszego; dostawcy bez braków i bez listy „Do ZD” pominięci. */
+  suppliers: StockWatchSupplierBoardRow[];
+  /** Analizowani dostawcy bez niczego do zrobienia. */
+  quietSupplierCount: number;
   topVelocity: StockWatchRowView[];
   flagged: StockWatchRowView[];
   totals: { proposalValue: number; proposalLines: number; itemCount: number; supplierCount: number };
@@ -97,6 +124,7 @@ export type StockWatchDashboard = {
 
 export const STOCK_WATCH_ALERT_LIMIT = 60;
 export const STOCK_WATCH_TOP_VELOCITY = 20;
+export const STOCK_WATCH_SUPPLIER_ROW_LIMIT = 40;
 
 export function toStockWatchRowView(item: StockWatchItem): StockWatchRowView {
   return {
@@ -174,6 +202,7 @@ export function buildStockWatchDashboard(
     outOfStock: 0,
     emptyNoIncoming: 0,
     critical: 0,
+    criticalInTransit: 0,
     warning: 0,
     ok: 0,
     noSales: 0,
@@ -185,15 +214,18 @@ export function buildStockWatchDashboard(
     if (item.status === "out_of_stock") {
       counts.outOfStock += 1;
       if (isStockWatchEmptyNoIncoming(item)) counts.emptyNoIncoming += 1;
-    } else if (item.status === "critical") counts.critical += 1;
+    } else if (item.status === "critical") {
+      if (isStockWatchCriticalNoIncoming(item)) counts.critical += 1;
+      else if (item.deliveryRisk !== "before_delivery") counts.criticalInTransit += 1;
+    }
     else if (item.status === "warning") counts.warning += 1;
     else if (item.status === "ok") counts.ok += 1;
     else counts.noSales += 1;
-    // Bez dublowania z „brak” i „≤ 48 h” — te są już wyżej w liczbach.
+    // Bez dublowania z „brak” i „≤ 48 h bez dostawy” — te są już wyżej w liczbach.
     if (
       item.deliveryRisk === "before_delivery" &&
       item.status !== "out_of_stock" &&
-      item.status !== "critical"
+      !isStockWatchCriticalNoIncoming(item)
     ) {
       counts.beforeDelivery += 1;
     }
@@ -207,10 +239,14 @@ export function buildStockWatchDashboard(
   const alertSource = opts.alertsSupplierId
     ? items.filter((i) => i.supplierId === opts.alertsSupplierId && i.rule === "standard")
     : standard;
+  // Jak liczniki: ≤ 48 h z dostawą w drodze nie jest „do zamówienia dziś”
+  // (trafia do „przed dostawą” tylko, gdy dostawa nie zdąży).
+  const isAlertNow = (i: StockWatchItem) =>
+    i.status === "out_of_stock" || isStockWatchCriticalNoIncoming(i);
   const alerts = [
-    ...alertSource.filter(isOutOrCritical).sort(compareStockWatchAlerts).slice(0, STOCK_WATCH_ALERT_LIMIT),
+    ...alertSource.filter(isAlertNow).sort(compareStockWatchAlerts).slice(0, STOCK_WATCH_ALERT_LIMIT),
     ...alertSource
-      .filter((i) => !isOutOrCritical(i) && i.deliveryRisk === "before_delivery")
+      .filter((i) => !isAlertNow(i) && i.deliveryRisk === "before_delivery")
       .sort(compareStockWatchAlerts)
       .slice(0, STOCK_WATCH_ALERT_LIMIT),
   ].map(toStockWatchRowView);
@@ -296,6 +332,72 @@ export function buildStockWatchDashboard(
       b.orderValue - a.orderValue
   );
 
+  // Tablica dostawców. Towar ze wspólnego zakresu dwóch dostawców liczy się tylko u jednego —
+  // tego samego, co w sygnałach (uniqueByProduct: wygrywa dostawca z pozycją „Do ZD”).
+  // Inaczej oba wiersze pokazałyby tę samą dziurę i zachęcały do podwójnego zamówienia.
+  const ownerByTw = new Map(products.map((p) => [p.subiektTwId, p.supplierId]));
+  const proposalById = new Map(proposals.map((p) => [p.supplierId, p]));
+  const suppliers: StockWatchSupplierBoardRow[] = [];
+  let quietSupplierCount = 0;
+  // Także dostawcy z samą propozycją (np. same ostrzeżenia, brak towarów po filtrze nazw).
+  const boardSupplierIds = new Set([...itemsBySupplier.keys(), ...proposalById.keys()]);
+  for (const supplierId of boardSupplierIds) {
+    const supplierItems = itemsBySupplier.get(supplierId) ?? [];
+    const c: StockWatchSupplierCounts = {
+      emptyNoIncoming: 0,
+      outOfStock: 0,
+      critical: 0,
+      criticalInTransit: 0,
+      atRiskBeforeDelivery: 0,
+      beforeDelivery: 0,
+      beforeNextDelivery: 0,
+      warning: 0,
+      lineCount: proposalById.get(supplierId)?.lineCount ?? 0,
+      dataWarnings: proposalById.get(supplierId)?.warnings.length ?? 0,
+    };
+    const urgent: StockWatchItem[] = [];
+    for (const i of supplierItems) {
+      if (i.rule !== "standard" || ownerByTw.get(i.subiektTwId) !== supplierId) continue;
+      if (i.status === "out_of_stock") {
+        c.outOfStock += 1;
+        if (isStockWatchEmptyNoIncoming(i)) c.emptyNoIncoming += 1;
+      } else if (i.status === "critical") {
+        if (isStockWatchCriticalNoIncoming(i)) c.critical += 1;
+        else if (i.deliveryRisk !== "before_delivery") c.criticalInTransit += 1;
+      } else if (i.status === "warning") c.warning += 1;
+      if (i.deliveryRisk === "before_delivery") c.atRiskBeforeDelivery += 1;
+      if (
+        i.deliveryRisk === "before_delivery" &&
+        i.status !== "out_of_stock" &&
+        !isStockWatchCriticalNoIncoming(i)
+      ) {
+        c.beforeDelivery += 1;
+      }
+      else if (i.deliveryRisk === "before_next_delivery") c.beforeNextDelivery += 1;
+      if (isOutOrCritical(i) || i.deliveryRisk != null) urgent.push(i);
+    }
+    const priority = stockWatchSupplierPriority(c);
+    if (!priority) {
+      quietSupplierCount += 1;
+      continue;
+    }
+    const proposal = proposalById.get(supplierId) ?? null;
+    suppliers.push({
+      ...c,
+      supplierId,
+      supplierName: supplierItems[0]?.supplierName ?? proposal?.supplierName ?? "Dostawca",
+      priority,
+      orderValue: proposal?.orderValue ?? 0,
+      proposal,
+      urgentRows: urgent
+        .sort(compareStockWatchAlerts)
+        .slice(0, STOCK_WATCH_SUPPLIER_ROW_LIMIT)
+        .map(toStockWatchRowView),
+      urgentTotal: urgent.length,
+    });
+  }
+  suppliers.sort(compareStockWatchSupplierUrgency);
+
   const topVelocity = products
     .filter((i) => i.rule !== "excluded" && i.velocityDaily > 0)
     .sort((a, b) => b.velocityDaily - a.velocityDaily)
@@ -312,6 +414,8 @@ export function buildStockWatchDashboard(
     counts,
     alerts,
     proposals,
+    suppliers,
+    quietSupplierCount,
     topVelocity,
     flagged,
     totals: {

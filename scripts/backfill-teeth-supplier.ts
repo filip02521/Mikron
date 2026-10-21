@@ -7,6 +7,8 @@
  * Run: npx tsx scripts/backfill-teeth-supplier.ts
  */
 import { createAdminClient as createClient } from "../src/lib/db/admin";
+import { fetchAllRows } from "../src/lib/data/fetch-all-rows";
+import type { Row } from "../src/lib/db/query-builder";
 import { fetchTeethProductInfo } from "../src/lib/data/teeth-products";
 import { fetchSuppliersForForm } from "../src/lib/data/queries";
 import { resolveSupplierForTeethManufacturer } from "../src/lib/orders/teeth-ocr-prosba-prefill";
@@ -30,14 +32,18 @@ async function main() {
   }
 
   // Fetch all teeth orders with null supplier_id
-  const { data, error } = await supabase
-    .from("individual_orders")
-    .select("id, subiekt_tw_id, status")
-    .eq("is_teeth", true)
-    .is("supplier_id", null);
-
-  if (error) {
-    console.error("Failed to fetch teeth orders:", error.message);
+  let data: Row[];
+  try {
+    data = await fetchAllRows<Row>(() =>
+      supabase
+        .from("individual_orders")
+        .select("id, subiekt_tw_id, status")
+        .eq("is_teeth", true)
+        .is("supplier_id", null)
+        .order("id", { ascending: true })
+    );
+  } catch (error) {
+    console.error("Failed to fetch teeth orders:", error instanceof Error ? error.message : error);
     process.exit(1);
   }
 

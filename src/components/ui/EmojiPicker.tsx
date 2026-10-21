@@ -95,7 +95,7 @@ export function EmojiPicker({
               type="button"
               onClick={() => insert(e)}
               aria-label={`Wstaw ${e}`}
-              className="flex h-7 w-7 items-center justify-center rounded text-lg leading-none transition-colors hover:bg-white active:scale-95 motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45"
+              className="flex h-7 w-7 items-center justify-center rounded text-lg leading-none transition-colors hover:bg-white active:scale-95 motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
             >
               {e}
             </button>

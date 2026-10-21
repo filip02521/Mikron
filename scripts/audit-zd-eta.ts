@@ -5,6 +5,8 @@
  *   npx tsx scripts/audit-zd-eta.ts [sales_person_id]
  */
 import { createAdminClient } from "../src/lib/supabase/admin";
+import { fetchAllRows } from "../src/lib/data/fetch-all-rows";
+import type { Row } from "../src/lib/db/query-builder";
 import { normalizeIndividualOrders } from "../src/lib/data/normalize-order";
 import { loadAppSupplierRefsWithAliases } from "../src/lib/data/supplier-subiekt-kh";
 import { diagnoseZdEtaCandidates, diagnoseZdEtaForOrder } from "../src/lib/subiekt/zd-eta-diagnose";
@@ -115,11 +117,13 @@ async function loadKhContext() {
   const suppliers = await loadAppSupplierRefsWithAliases();
   const supplierById = new Map(suppliers.map((s) => [s.id, s]));
   const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("subiekt_zd_index")
-    .select("supplier_id, subiekt_kh_id")
-    .not("supplier_id", "is", null);
-  if (error) throw new Error(error.message);
+  const data = await fetchAllRows<Row>(() =>
+    supabase
+      .from("subiekt_zd_index")
+      .select("supplier_id, subiekt_kh_id")
+      .not("supplier_id", "is", null)
+      .order("dok_id", { ascending: true })
+  );
   const extraKhBySupplierId = new Map<string, number[]>();
   for (const row of data ?? []) {
     const supplierId = (row as { supplier_id: string | null }).supplier_id;

@@ -58,6 +58,7 @@ export function ZdEstimatePackagingCell({
       ? formatZdPackTableRatioLabel(label)
       : "×N"
     : null;
+  // Trzecia linia tylko gdy coś mówi: domyślne „paczki” to szum w każdym wierszu.
   const modeSub = !qty.hasPackaging
     ? "ustaw"
     : conflict
@@ -65,7 +66,7 @@ export function ZdEstimatePackagingCell({
       : packagesMode
         ? orderMult != null
           ? `co ${orderMult}`
-          : "paczki"
+          : null
         : "dobicie";
 
   return (
@@ -106,6 +107,7 @@ export function ZdEstimatePackagingCell({
           {ratio}
         </span>
       ) : null}
+      {modeSub ? (
       <span
         className={cn(
           "zd-est-pack-cell-sub text-[10px] font-medium leading-none tracking-tight",
@@ -117,6 +119,7 @@ export function ZdEstimatePackagingCell({
       >
         {modeSub}
       </span>
+      ) : null}
     </button>
   );
 }

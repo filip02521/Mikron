@@ -188,7 +188,7 @@ export function LoginAccountPicker({
           onKeyDown={handleListKeyDown}
           className={cn(
             LOGIN_ACCOUNT_LISTBOX_CLASS,
-            "divide-y divide-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-indigo-500/70"
+            "divide-y divide-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-indigo-600"
           )}
         >
           {awaitingSearch ? (

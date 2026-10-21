@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   snapshotHeaderMatchesHistoryFilters,
-  snapshotHistoryScopeOrFilter,
 } from "@/lib/data/zd-estimate-order-snapshots";
 import { listZdEstimateSupplierKhIds } from "@/lib/orders/zd-estimate-create-zd";
 import {
@@ -47,20 +46,6 @@ describe("listZdEstimateSupplierKhIds", () => {
         additionalKhIds: [99],
       })
     ).toEqual([99]);
-  });
-});
-
-describe("snapshotHistoryScopeOrFilter", () => {
-  it("cecha: match XOR legacy null", () => {
-    expect(snapshotHistoryScopeOrFilter({ mode: "cecha", cechaId: 5 })).toBe(
-      "and(scope_mode.eq.cecha,cecha_id.eq.5),scope_mode.is.null"
-    );
-  });
-
-  it("grupa: match XOR legacy null", () => {
-    expect(snapshotHistoryScopeOrFilter({ mode: "grupa", grtId: 42 })).toBe(
-      "and(scope_mode.eq.grupa,grt_id.eq.42),scope_mode.is.null"
-    );
   });
 });
 

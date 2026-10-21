@@ -184,7 +184,7 @@ export function ManagerPreviewBanner({
               className={cn(
                 salesTouchTargetClass,
                 "inline-flex items-center rounded-md px-2.5 text-xs font-medium transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 focus-visible:ring-offset-1",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-1",
                 current
                   ? "bg-indigo-50 text-indigo-900 ring-1 ring-inset ring-indigo-200"
                   : "text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50"

@@ -149,7 +149,7 @@ export function ScheduleSupplierActionBar({
             : cn(
                 buttonGroupItemClass,
                 panelSegmentPrimaryClass,
-                "focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/50"
+                "focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
               )
         }
         onClick={markOrdered}

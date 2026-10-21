@@ -13,6 +13,8 @@
  * Zamówione / Zamówienie Główne → data zamówienia; Przesunięte o N tyg. → shift_date z DATA NAST. ZAM.
  */
 import { createAdminClient as createClient } from "../src/lib/db/admin";
+import { fetchAllRows } from "../src/lib/data/fetch-all-rows";
+import type { Row } from "../src/lib/db/query-builder";
 import { existsSync, readdirSync, readFileSync } from "fs";
 import { join } from "path";
 import { parseCsv, headerIndex } from "./lib/parse-csv";
@@ -518,11 +520,14 @@ async function backfillNormalHistorySupplierIds(
   const supplierI = headerIndex(h, "DOSTAWCA", "DOSTAWCY", "SUPPLIER");
   const actionI = headerIndex(h, "AKCJA", "ACTION", "Zdarzenie");
 
-  const { data: nullRows } = await supabase
-    .from("normal_order_history")
-    .select("id, action_at, user_email, action")
-    .is("supplier_id", null);
-  if (!nullRows?.length) return;
+  const nullRows = await fetchAllRows<Row>(() =>
+    supabase
+      .from("normal_order_history")
+      .select("id, action_at, user_email, action")
+      .is("supplier_id", null)
+      .order("id", { ascending: true })
+  );
+  if (!nullRows.length) return;
 
   const csvByKey = new Map<string, string>();
   for (let i = 1; i < grid.length; i++) {

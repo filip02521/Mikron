@@ -4,16 +4,19 @@ import {
   repairTeethOrdersFromVerification,
 } from "./repair-incomplete-orders";
 
+/** Łańcuch odczytu stronami: select → filtry → order → range (pierwsza strona = całość). */
+function readChain(rows: Record<string, unknown>[]) {
+  const chain: Record<string, ReturnType<typeof vi.fn>> = {};
+  for (const m of ["select", "eq", "in", "order"]) chain[m] = vi.fn(() => chain);
+  chain.range = vi.fn().mockResolvedValue({ data: rows, error: null });
+  return chain;
+}
+
 function mockSupabase(rows: Record<string, unknown>[]) {
   const inMock = vi.fn().mockResolvedValue({ error: null });
   const updateMock = vi.fn().mockReturnValue({ in: inMock });
   return {
-    from: vi.fn(() => ({
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      in: vi.fn().mockResolvedValue({ data: rows, error: null }),
-      update: updateMock,
-    })),
+    from: vi.fn(() => ({ ...readChain(rows), update: updateMock })),
     updateMock,
     inMock,
   };
@@ -77,18 +80,9 @@ describe("repairTeethOrdersFromVerification", () => {
   it("przywraca zęby ze statusu Weryfikacja do Nowe (pomija OCR pending)", async () => {
     const inMock = vi.fn().mockResolvedValue({ error: null });
     const updateMock = vi.fn().mockReturnValue({ in: inMock });
-    const selectChain = {
-      eq: vi.fn(),
-    };
-    selectChain.eq
-      .mockReturnValueOnce(selectChain)
-      .mockReturnValueOnce(selectChain)
-      .mockResolvedValueOnce({ data: [{ id: "teeth-v1" }], error: null });
+    const selectChain = readChain([{ id: "teeth-v1" }]);
     const supabase = {
-      from: vi.fn(() => ({
-        select: vi.fn().mockReturnValue(selectChain),
-        update: updateMock,
-      })),
+      from: vi.fn(() => ({ ...selectChain, update: updateMock })),
       updateMock,
       inMock,
     };

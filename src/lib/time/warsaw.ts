@@ -25,6 +25,15 @@ const dateTimeFormatter = new Intl.DateTimeFormat("pl-PL", {
   minute: "2-digit",
 });
 
+// Jeden formatter na moduł — tworzenie Intl.DateTimeFormat przy każdym wywołaniu kosztuje ~60 µs
+// (wywoływane m.in. w komparatorach sortowania ETA).
+const dateKeyFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 export function warsawNowParts(date = new Date()): {
   hour: number;
   weekday: string;
@@ -33,12 +42,7 @@ export function warsawNowParts(date = new Date()): {
 } {
   const weekday = weekdayFormatter.format(date);
   const hour = parseInt(hourFormatter.format(date), 10);
-  const dateKey = new Intl.DateTimeFormat("en-CA", {
-    timeZone: TZ,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
+  const dateKey = dateKeyFormatter.format(date);
 
   const isWeekend = weekday === "Sat" || weekday === "Sun";
 

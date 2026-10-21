@@ -41,3 +41,8 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
 ) {
   return getPool().query<T>(text, params);
 }
+
+/** Tabela jeszcze nie istnieje (migracja niewgrana) — kod Postgresa 42P01. */
+export function isUndefinedTableError(e: unknown): boolean {
+  return typeof e === "object" && e != null && (e as { code?: unknown }).code === "42P01";
+}

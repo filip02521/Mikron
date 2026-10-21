@@ -199,7 +199,14 @@ export async function fetchAllReservedZkRowsForTwId(input: {
     scannedApiRows += batch.length;
     reserved.push(...collectZdEstimateReservedZkRows(batch));
 
-    totalPages = Math.max(1, Math.trunc(Number(pagination?.totalPages) || 1));
+    const apiTotal = Math.trunc(Number(pagination?.totalPages));
+    // Bez totalPages w odpowiedzi: czytaj dalej, dopóki strony są pełne (inaczej cicho tylko strona 1).
+    totalPages =
+      Number.isFinite(apiTotal) && apiTotal >= 1
+        ? apiTotal
+        : batch.length >= pageSize
+          ? page + 1
+          : page;
     if (page >= totalPages) break;
     page += 1;
   }

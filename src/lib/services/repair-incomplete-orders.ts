@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@/lib/db/admin";
+import { fetchAllRows } from "@/lib/data/fetch-all-rows";
 import { isProcurementDraftReady } from "@/lib/orders/procurement-readiness";
 import { isTeethZamowienie } from "@/lib/teeth/teeth-lifecycle";
 import type { IndividualOrderStatus, IndividualRequestKind, IndividualOrder } from "@/types/database";
@@ -16,15 +17,16 @@ const REPAIR_STATUSES: IndividualOrderStatus[] = [
 export async function repairTeethOrdersFromVerification(
   supabase: SupabaseClient
 ): Promise<number> {
-  const { data, error } = await supabase
-    .from("individual_orders")
-    .select("id, subiekt_tw_id, supplier_id")
-    .eq("is_teeth", true)
-    .eq("status", "Weryfikacja")
-    .eq("teeth_ocr_pending", false);
-
-  if (error) throw new Error(error.message);
-  const ids = (data ?? []).map((r) => String(r.id));
+  const data = await fetchAllRows<{ id: string; subiekt_tw_id: number | null; supplier_id: string | null }>(() =>
+    supabase
+      .from("individual_orders")
+      .select("id, subiekt_tw_id, supplier_id")
+      .eq("is_teeth", true)
+      .eq("status", "Weryfikacja")
+      .eq("teeth_ocr_pending", false)
+      .order("id", { ascending: true })
+  );
+  const ids = data.map((r) => String(r.id));
   if (!ids.length) return 0;
 
   // Auto-przypisz dostawcę dla zębów bez supplier_id na podstawie producenta
@@ -63,17 +65,18 @@ export async function repairTeethOrdersFromVerification(
 export async function repairIncompleteIndividualOrders(
   supabase: SupabaseClient
 ): Promise<number> {
-  const { data, error } = await supabase
-    .from("individual_orders")
-    .select(
-      "id, supplier_id, symbol, products, mikran_code, quantity, request_kind, status, is_teeth"
-    )
-    .eq("request_kind", "zamowienie")
-    .in("status", REPAIR_STATUSES);
+  const data = await fetchAllRows<IndividualOrder>(() =>
+    supabase
+      .from("individual_orders")
+      .select(
+        "id, supplier_id, symbol, products, mikran_code, quantity, request_kind, status, is_teeth"
+      )
+      .eq("request_kind", "zamowienie")
+      .in("status", REPAIR_STATUSES)
+      .order("id", { ascending: true })
+  );
 
-  if (error) throw new Error(error.message);
-
-  const toFix = (data ?? []).filter((r) => {
+  const toFix = data.filter((r) => {
     if (isTeethZamowienie(r as IndividualOrder)) return false;
     const kind = (r.request_kind ?? "zamowienie") as IndividualRequestKind;
     return !isProcurementDraftReady({
