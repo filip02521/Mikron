@@ -19,6 +19,7 @@ import { formatQty, type ManualZdEstimateLine } from "@/lib/orders/zd-estimate-m
 import {
   formatZdPackDialogPreview,
   isPackagingPackagesMode,
+  piecesArrivingForZdUnitsFromQty,
   type ZdPackOrderQty,
 } from "@/lib/orders/zd-estimate-packaging";
 import { zdEstimateDaysOfCover } from "@/lib/orders/zd-estimate-sort";
@@ -84,7 +85,7 @@ export function ZdEstimateProductCard({
   minStockSzt,
   overrideZdUnits,
   leadDays,
-  compareZdUnits = null,
+  comparePieces = null,
   supplierName,
   status,
   position,
@@ -103,8 +104,8 @@ export function ZdEstimateProductCard({
   minStockSzt?: number | null;
   overrideZdUnits?: number | null;
   leadDays?: number | null;
-  /** Strategia testowa: jednostki ZD wg „jak dotąd” (null = bez porównania). */
-  compareZdUnits?: number | null;
+  /** Strategia testowa: sztuki wg „jak dotąd” (null = bez porównania). */
+  comparePieces?: number | null;
   supplierName?: string | null;
   status: { excluded: boolean; onRequest: boolean };
   /** Pozycja na bieżącej (przefiltrowanej) liście. */
@@ -314,10 +315,9 @@ export function ZdEstimateProductCard({
             <p className={cn("mt-0.5 text-xs", lead != null && days != null && days < lead ? "text-red-700" : "text-slate-600")}>
               {coverLine}
             </p>
-            {compareZdUnits != null && compareZdUnits !== shownUnits ? (
+            {comparePieces != null && Math.round(comparePieces) !== piecesArrivingForZdUnitsFromQty(shownUnits, qty) ? (
               <p className="mt-1 text-xs tabular-nums text-slate-600">
-                Strategia „jak dotąd”: {formatQty(compareZdUnits)}{" "}
-                {qty.hasPackaging && isPackagingPackagesMode(qty.documentUnitMode) ? label : "szt"}
+                Strategia „jak dotąd”: {formatQty(comparePieces)} szt
               </p>
             ) : null}
           </section>

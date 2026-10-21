@@ -223,8 +223,8 @@ export type ZdEstimateTableRowProps = {
   packLookup: PackagingLookup | null;
   /** Czas dostawy dostawcy (dni) — kreska na minipasku „Starczy”. */
   leadDays?: number | null;
-  /** Strategia testowa: jednostki ZD wg „jak dotąd” (null = bez porównania). */
-  compareZdUnits?: number | null;
+  /** Strategia testowa: sztuki wg „jak dotąd” (null = bez porównania). */
+  comparePieces?: number | null;
   individualExtra: ZdEstimateIndividualTwExtra | null;
   /** Prośby po dedupe z rezerwacjami (wejście Do ZD). */
   individualExtraPieces: number;
@@ -289,7 +289,7 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
   packRow,
   packLookup,
   leadDays = null,
-  compareZdUnits = null,
+  comparePieces = null,
   individualExtra,
   individualExtraPieces,
   stockNeedReliefPieces,
@@ -539,7 +539,7 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
           accepted={reviewAccepted}
           detailHint={salesTrackTitle}
           onAccept={pendingReview ? () => onAcceptReview(l.tw_Id) : undefined}
-          compareZdUnits={compareZdUnits}
+          comparePieces={comparePieces}
         />
       </td>
       {optionalColumns.map((col) => {

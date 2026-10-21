@@ -64,7 +64,8 @@ export function applyZdDemandFloorToLine<
     ...line,
     sprzedazOkres: rateAfter * days,
     sprzedazDziennie: rateAfter,
-    celZapasu: celRaw + (rateAfter - rateBefore) * Math.max(1, input.dniZapasu),
+    // Zaokrąglenie do 1e-6 — szum zmiennoprzecinkowy przesuwa progi podążania za sprzedażą.
+    celZapasu: Math.round((celRaw + (rateAfter - rateBefore) * Math.max(1, input.dniZapasu)) * 1e6) / 1e6,
     demandFloor: { sales90: input.sales90, rateBefore, rateAfter },
   };
 }
@@ -75,3 +76,53 @@ export type ZdClassicCompare = {
   lineCount: number;
   pieces: number;
 };
+
+type SalesLine = { sprzedazOkres?: number | null; sprzedazDziennie?: number | null };
+
+/**
+ * Podłoga 90 d dla PARY: popyt pary to sztuki + paczki × przelicznik, więc podłoga liczy się raz
+ * dla pary (nie max(paczki) + max(sztuki), co zawyżałoby cel). Gdy średnia 90 d pary jest wyższa,
+ * obie strony dostają ten sam współczynnik; bez sprzedaży w oknie tempo idzie na stronę sztuk.
+ * Zwraca null, gdy podłoga nic nie zmienia. `floor` — w sztukach pary (krok „Dlaczego tyle”).
+ */
+export function applyZdPairDemandFloor<P extends SalesLine, Q extends SalesLine>(input: {
+  policy: ZdSupplierOrderPolicy;
+  pack: P;
+  piece: Q | null;
+  unitsPerPack: number;
+  /** Sprzedaż pary w sztukach z ostatnich 90 dni (profil łączny). */
+  sales90: number | null;
+  dniOkresu: number;
+}): { pack: P; piece: Q | null; floor: { sales90: number; rateBefore: number; rateAfter: number } } | null {
+  if (input.policy.strategy !== "max30_90" || input.sales90 == null) return null;
+  const ratio = Math.max(1, Number(input.unitsPerPack) || 1);
+  const days = Math.max(1, input.dniOkresu);
+  const packSales = Math.max(0, Number(input.pack.sprzedazOkres) || 0);
+  const pieceSales = input.piece ? Math.max(0, Number(input.piece.sprzedazOkres) || 0) : 0;
+  const rawSales = packSales * ratio + pieceSales;
+  const rateBefore = rawSales / days;
+  const rateAfter = input.sales90 / 90;
+  if (!(rateAfter > rateBefore + 1e-9)) return null;
+  const floor = { sales90: input.sales90, rateBefore, rateAfter };
+  if (rawSales > 0) {
+    const f = rateAfter / rateBefore;
+    const scale = <T extends SalesLine>(l: T): T => ({
+      ...l,
+      sprzedazOkres: Math.max(0, Number(l.sprzedazOkres) || 0) * f,
+      sprzedazDziennie: (Math.max(0, Number(l.sprzedazOkres) || 0) * f) / days,
+    });
+    return { pack: scale(input.pack), piece: input.piece ? scale(input.piece) : null, floor };
+  }
+  if (input.piece) {
+    return {
+      pack: input.pack,
+      piece: { ...input.piece, sprzedazOkres: rateAfter * days, sprzedazDziennie: rateAfter },
+      floor,
+    };
+  }
+  return {
+    pack: { ...input.pack, sprzedazOkres: (rateAfter * days) / ratio, sprzedazDziennie: rateAfter / ratio },
+    piece: null,
+    floor,
+  };
+}

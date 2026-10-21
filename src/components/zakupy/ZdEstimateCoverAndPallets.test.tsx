@@ -70,14 +70,25 @@ describe("ZdEstimateDoZdCell — porównanie ze strategią „jak dotąd”", ()
 
   it("inna ilość → „dotąd N” z przekreśloną liczbą; ta sama albo brak porównania → nic", () => {
     const qty = computeZdPackOrderQty(10, 1, "op.");
-    const a = render(<ZdEstimateDoZdCell qty={qty} compareZdUnits={14} />);
-    expect(a.container.querySelector(".zd-est-dozd-compare")?.textContent).toBe("dotąd 14");
+    const a = render(<ZdEstimateDoZdCell qty={qty} comparePieces={14} />);
+    expect(a.container.querySelector(".zd-est-dozd-compare")?.textContent).toBe("dotąd 14 szt");
     expect(a.container.querySelector(".zd-est-dozd-compare s")?.textContent).toBe("14");
     cleanup();
-    const b = render(<ZdEstimateDoZdCell qty={qty} compareZdUnits={qty.zdUnits} />);
+    const b = render(<ZdEstimateDoZdCell qty={qty} comparePieces={qty.piecesArriving} />);
     expect(b.container.querySelector(".zd-est-dozd-compare")).toBeNull();
     cleanup();
     const c = render(<ZdEstimateDoZdCell qty={qty} />);
     expect(c.container.querySelector(".zd-est-dozd-compare")).toBeNull();
+  });
+});
+
+describe("ZdEstimateDoZdCell — porównanie w sztukach przy zmianie opakowania", () => {
+  afterEach(() => cleanup());
+
+  it("to samo w sztukach, choć wiersz jest teraz w opakowaniach → bez znacznika", () => {
+    // „jak dotąd” 120 szt; po Policz ustawione opakowanie 12 szt → 10 op. = 120 szt
+    const qty = computeZdPackOrderQty(120, 12, "op.", "packages");
+    const r = render(<ZdEstimateDoZdCell qty={qty} comparePieces={120} />);
+    expect(r.container.querySelector(".zd-est-dozd-compare")).toBeNull();
   });
 });

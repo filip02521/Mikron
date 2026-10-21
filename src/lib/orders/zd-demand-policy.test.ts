@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   applyZdDemandFloorToLine,
+  applyZdPairDemandFloor,
   effectiveDniZapasu,
   sales90FromProfile,
   ZD_SUPPLIER_ORDER_POLICY_CLASSIC,
@@ -43,5 +44,45 @@ describe("zd-demand-policy", () => {
     expect(applyZdDemandFloorToLine(line, { policy: test, sales90: 30, dniOkresu: 30, dniZapasu: 21 })).toBe(line);
     expect(applyZdDemandFloorToLine(line, { policy: ZD_SUPPLIER_ORDER_POLICY_CLASSIC, sales90: 900, dniOkresu: 30, dniZapasu: 21 })).toBe(line);
     expect(applyZdDemandFloorToLine(line, { policy: test, sales90: null, dniOkresu: 30, dniZapasu: 21 })).toBe(line);
+  });
+});
+
+describe("applyZdPairDemandFloor — para jako jeden popyt", () => {
+  it("jeden współczynnik dla pary, nie max(paczki) + max(sztuki)", () => {
+    // N=10: okno 30 d = 0 op. + 30 szt (30 szt), 90 d pary = 9 op. × 10 + 30 szt = 120 szt → 40 szt / 30 d
+    const r = applyZdPairDemandFloor({
+      policy: test,
+      pack: { sprzedazOkres: 0, sprzedazDziennie: 0 },
+      piece: { sprzedazOkres: 30, sprzedazDziennie: 1 },
+      unitsPerPack: 10,
+      sales90: 120,
+      dniOkresu: 30,
+    })!;
+    const pairSales = (r.pack.sprzedazOkres ?? 0) * 10 + (r.piece?.sprzedazOkres ?? 0);
+    expect(pairSales).toBeCloseTo(40); // per strona dałoby 30 + 30 = 60
+    expect(r.floor).toMatchObject({ sales90: 120, rateBefore: 1 });
+    expect(r.floor.rateAfter).toBeCloseTo(120 / 90);
+  });
+
+  it("brak sprzedaży w oknie — tempo 90 d idzie na stronę sztuk", () => {
+    const r = applyZdPairDemandFloor({
+      policy: test,
+      pack: { sprzedazOkres: 0 },
+      piece: { sprzedazOkres: 0 },
+      unitsPerPack: 100,
+      sales90: 900,
+      dniOkresu: 30,
+    })!;
+    expect(r.pack.sprzedazOkres).toBe(0);
+    expect(r.piece?.sprzedazOkres).toBeCloseTo(300);
+  });
+
+  it("okno wyższe niż średnia 90 d albo classic — bez zmian", () => {
+    const pack = { sprzedazOkres: 5 };
+    const piece = { sprzedazOkres: 100 };
+    expect(applyZdPairDemandFloor({ policy: test, pack, piece, unitsPerPack: 10, sales90: 300, dniOkresu: 30 })).toBeNull();
+    expect(
+      applyZdPairDemandFloor({ policy: ZD_SUPPLIER_ORDER_POLICY_CLASSIC, pack, piece, unitsPerPack: 10, sales90: 9000, dniOkresu: 30 })
+    ).toBeNull();
   });
 });

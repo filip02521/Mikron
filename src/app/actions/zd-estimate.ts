@@ -9,11 +9,7 @@ import {
   upsertZdSupplierOrderPolicy,
   type ZdSupplierOrderPolicyRow,
 } from "@/lib/data/zd-supplier-order-policy";
-import {
-  ZD_SUPPLIER_ORDER_POLICY_CLASSIC,
-  type ZdClassicCompare,
-  type ZdDemandStrategy,
-} from "@/lib/orders/zd-demand-policy";
+import type { ZdClassicCompare, ZdDemandStrategy } from "@/lib/orders/zd-demand-policy";
 import { buildZdOrderList } from "@/lib/orders/zd-order-list";
 import {
   decideZdAutoProposal,
@@ -386,9 +382,8 @@ export type ZdEstimateRunResult =
       horizon?: import("@/lib/orders/zd-order-horizon").ZdOrderHorizon | null;
       /** Czas dostawy dostawcy (dni) — także bez opcji horyzontu; kreska w „Starczy”. */
       leadDays?: number | null;
-      /** Strategia dostawcy użyta w tym Policz (classic = jak dotąd) i ile pozycji podniosła podłoga 90 d. */
+      /** Strategia dostawcy użyta w tym Policz (classic = jak dotąd). */
       orderPolicy?: import("@/lib/orders/zd-demand-policy").ZdSupplierOrderPolicy;
-      demandFloorCount?: number;
       /** Strategia testowa: ilości „jak dotąd” na tym samym zakresie (twId → jednostki ZD / sztuki). */
       classicCompare?: ZdClassicCompare | null;
       /** Opcja wygładzenia przy tym Policz + ile pozycji zmieniła (null = profil niedostępny). */
@@ -1344,9 +1339,12 @@ export async function actionFetchZdEstimateProductHistory(input: {
 }
 
 /** Lista „Do ZD” strategii „jak dotąd” (te same reguły co nocny przebieg) do porównania w Kreatorze. */
-function summarizeClassicCompare(e: Extract<Awaited<ReturnType<typeof runZdOrderEngine>>, { ok: true }>): ZdClassicCompare {
+function summarizeClassicCompare(
+  e: Extract<Awaited<ReturnType<typeof runZdOrderEngine>>, { ok: true }>,
+  lines: ManualZdEstimateResult["pozycje"]
+): ZdClassicCompare {
   const list = buildZdOrderList({
-    lines: e.result.pozycje,
+    lines,
     packagingLookup: e.packagingLookup,
     hardExcludedTwIds: e.hardExcludedTwIds,
     onRequestTwIds: e.onRequestTwIds,
@@ -1668,18 +1666,8 @@ export async function actionRunZdEstimateManual(
       salesSmoothing: input.salesSmoothing === true,
       salesProfileRefresh: "background" as const,
     };
-    // Strategia testowa: równolegle „jak dotąd” na tym samym zakresie — do porównania w tabeli.
-    // Błąd strategii → silnik sam pokaże „reguły niedostępne” (bez orderPolicy wczyta ją ponownie).
-    const policyRow = engineInput.supplierId
-      ? await fetchZdSupplierOrderPolicy(engineInput.supplierId).catch(() => null)
-      : null;
-    const [engine, classicEngine] = await Promise.all([
-      runZdOrderEngine({ ...engineInput, ...(policyRow ? { orderPolicy: policyRow } : {}), onProgress: touchProgress }),
-      policyRow && policyRow.strategy !== "classic"
-        ? runZdOrderEngine({ ...engineInput, orderPolicy: ZD_SUPPLIER_ORDER_POLICY_CLASSIC }).catch(() => null)
-        : Promise.resolve(null),
-    ]);
-    const classicCompare = classicEngine?.ok ? summarizeClassicCompare(classicEngine) : null;
+    // Strategia testowa: „jak dotąd” liczone z tego samego pobrania (porównanie w tabeli).
+    const engine = await runZdOrderEngine({ ...engineInput, compareClassic: true, onProgress: touchProgress });
     if (!engine.ok) {
       failProgress(engine.feedback.message);
       return {
@@ -1688,6 +1676,12 @@ export async function actionRunZdEstimateManual(
         feedback: engine.feedback,
       };
     }
+    const classicCompare = engine.classicResult ? summarizeClassicCompare(engine, engine.classicResult.pozycje) : null;
+    // Strategia testowa ma własne dni zapasu i nie wygładza — horyzont „Do dostawy” i „Wygładź”
+    // nie zostały użyte, więc nie raportujemy ich jako zastosowanych (komunikaty w Kreatorze).
+    const strategyActive = engine.orderPolicy.strategy !== "classic";
+    const appliedHorizon = strategyActive ? null : horizon;
+    const smoothingApplied = input.salesSmoothing === true && !strategyActive;
     const {
       result,
       historyByTwId,
@@ -1780,8 +1774,8 @@ export async function actionRunZdEstimateManual(
         productBoms,
         teethTwIds,
         boostPreset,
-        horizon,
-        salesSmoothingEnabled: input.salesSmoothing === true,
+        horizon: appliedHorizon,
+        salesSmoothingEnabled: smoothingApplied,
         salesSmoothing: engine.salesSmoothing,
         unitPriceByTwId,
         leadDays,
@@ -1821,12 +1815,11 @@ export async function actionRunZdEstimateManual(
       scopesIncluded: engine.scopesIncluded,
       assignedElsewhere: engine.assignedElsewhere,
       otherSupplierHintByTwId: engine.otherSupplierHintByTwId,
-      horizon,
+      horizon: appliedHorizon,
       leadDays,
       orderPolicy: engine.orderPolicy,
-      demandFloorCount: engine.demandFloorCount,
       classicCompare,
-      salesSmoothingEnabled: input.salesSmoothing === true,
+      salesSmoothingEnabled: smoothingApplied,
       salesSmoothing: engine.salesSmoothing,
       unitPriceByTwId,
       exclusions,

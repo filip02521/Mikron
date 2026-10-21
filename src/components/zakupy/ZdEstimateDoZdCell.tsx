@@ -11,6 +11,7 @@ import {
   isPackagingPackagesMode,
   isZdUnitsMultipleOfOrderMultiple,
   piecesArrivingForZdUnits,
+  piecesArrivingForZdUnitsFromQty,
   type ZdPackOrderQty,
 } from "@/lib/orders/zd-estimate-packaging";
 import { formatZdEstimateTableQty } from "@/lib/orders/zd-estimate-table-qty";
@@ -38,7 +39,7 @@ export function ZdEstimateDoZdCell({
   accepted = false,
   detailHint,
   onAccept,
-  compareZdUnits,
+  comparePieces,
 }: {
   qty: ZdPackOrderQty;
   excluded?: boolean;
@@ -53,8 +54,11 @@ export function ZdEstimateDoZdCell({
   accepted?: boolean;
   detailHint?: string;
   onAccept?: () => void;
-  /** Strategia testowa: jednostki ZD wg strategii „jak dotąd” (null = bez porównania). */
-  compareZdUnits?: number | null;
+  /**
+   * Strategia testowa: sztuki wg „jak dotąd” (null = bez porównania). W sztukach, bo opakowanie
+   * wiersza może się zmienić po Policz (jednostki ZD z porównania byłyby wtedy w innej mierze).
+   */
+  comparePieces?: number | null;
 }) {
   const [focused, setFocused] = useState(false);
   const [draft, setDraft] = useState("");
@@ -311,14 +315,14 @@ export function ZdEstimateDoZdCell({
       </span>
     ) : null;
 
-  const unitShort = packagesMode ? qty.packageLabel.trim() || "op." : "szt";
+  const currentPieces = piecesArrivingForZdUnitsFromQty(displayUnits, qty);
   const compareChip =
-    compareZdUnits != null && compareZdUnits !== displayUnits ? (
+    comparePieces != null && Math.round(comparePieces) !== currentPieces ? (
       <span
         className="zd-est-dozd-compare"
-        title={`Strategia „jak dotąd”: ${formatQty(compareZdUnits)} ${unitShort} (teraz ${formatQty(displayUnits)})`}
+        title={`Strategia „jak dotąd”: ${formatQty(comparePieces)} szt (teraz ${formatQty(currentPieces)} szt)`}
       >
-        dotąd <s>{formatQty(compareZdUnits)}</s>
+        dotąd <s>{formatQty(comparePieces)}</s> szt
       </span>
     ) : null;
 

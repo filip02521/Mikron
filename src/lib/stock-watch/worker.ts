@@ -454,7 +454,8 @@ async function computeSupplierOrder(input: {
       velocityTrend: null,
       daysOfCover: signal.daysOfCover,
       runOutDate: signal.runOutDate,
-      bufferDays: dniZapasu,
+      // Dni celu faktycznie użyte (strategia dostawcy może je nadpisać); okno sprzedaży zostaje.
+      bufferDays: engine.dniZapasuUsed,
       targetQty: round(num(line.celZapasuTracked), 2),
       minStockQty: minStock,
       inOrder: order != null,
@@ -480,7 +481,7 @@ async function computeSupplierOrder(input: {
     runId,
     scopeMode: scope.mode,
     scopeId,
-    dniZapasu,
+    dniZapasu: engine.dniZapasuUsed,
     dataOd: window.dataOd,
     dataDo: window.dataDo,
     lineCount: list.lines.length,

@@ -7862,9 +7862,9 @@ export function ZdEstimateWorkbench({
                           packRow={packagingMap.get(l.tw_Id) ?? null}
                           packLookup={packagingLookup.get(l.tw_Id) ?? null}
                           leadDays={policzScopeInfo?.leadDays ?? policzScopeInfo?.horizon?.leadDays ?? null}
-                          compareZdUnits={
+                          comparePieces={
                             policzScopeInfo?.classicCompare
-                              ? (policzScopeInfo.classicCompare.byTwId[l.tw_Id]?.units ?? 0)
+                              ? (policzScopeInfo.classicCompare.byTwId[l.tw_Id]?.pieces ?? 0)
                               : null
                           }
                           individualExtra={
@@ -8474,8 +8474,8 @@ export function ZdEstimateWorkbench({
                 minStockSzt={minSt}
                 overrideZdUnits={qtyOverrideByTwId[l.tw_Id]}
                 leadDays={policzScopeInfo?.leadDays ?? policzScopeInfo?.horizon?.leadDays ?? null}
-                compareZdUnits={
-                  policzScopeInfo?.classicCompare ? (policzScopeInfo.classicCompare.byTwId[l.tw_Id]?.units ?? 0) : null
+                comparePieces={
+                  policzScopeInfo?.classicCompare ? (policzScopeInfo.classicCompare.byTwId[l.tw_Id]?.pieces ?? 0) : null
                 }
                 supplierName={selectedSupplier?.name ?? null}
                 status={{
@@ -8804,7 +8804,8 @@ export function ZdEstimateWorkbench({
                 minStockByTwIdForRefresh
               );
               setLinesBase(bumped);
-              const dni = Math.round(Number(dniZapasu));
+              // Dni z ostatniego Policz (strategia dostawcy może je nadpisać), nie z formularza.
+              const dni = Math.round(Number(paramInfo?.dniZapasu ?? dniZapasu));
               const dniOkresuRaw = paramInfo?.dniOkresu;
               const dniOkresu =
                 dniOkresuRaw != null && Number.isFinite(Number(dniOkresuRaw))
@@ -9006,7 +9007,8 @@ export function ZdEstimateWorkbench({
                 minStockByTwIdForRefresh
               );
               setLinesBase(bumped);
-              const dni = Math.round(Number(dniZapasu));
+              // Dni z ostatniego Policz (strategia dostawcy może je nadpisać), nie z formularza.
+              const dni = Math.round(Number(paramInfo?.dniZapasu ?? dniZapasu));
               const dniOkresuRaw = paramInfo?.dniOkresu;
               const dniOkresu =
                 dniOkresuRaw != null && Number.isFinite(Number(dniOkresuRaw))
