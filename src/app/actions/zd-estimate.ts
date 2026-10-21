@@ -1557,6 +1557,8 @@ export async function actionAcceptZdAutoProposal(input: {
       individualServiceOrderIds: built.individualServiceOrderIds,
     });
     if (!res.ok) return { ok: false, message: res.message, title: res.title };
+    // Karta propozycji znika z panelu dziennego także u innych osób.
+    revalidateAfterZdEstimateMark();
 
     const markFreeze = buildZdPostCreateMarkFreeze({
       catalogOrderIds: res.acceptedCatalogOrderIds ?? built.individualCatalogOrderIds,
