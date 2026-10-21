@@ -660,3 +660,12 @@ export function formatSalesTrackHint(
       : "";
   return `${sign}${q} szt (śledzenie: ${why}${review}${holdNote})`;
 }
+
+/**
+ * Zapas minimalny (zapasMin) to twarda podłoga celu: korekty za sprzedażą i historią tną
+ * procent całego celu, a zapas bezpieczeństwa ma zostać. Nie podnosi ponad cel bazowy.
+ */
+export function floorCelTrackedAtZapasMin(celTracked: number, celBase: number, zapasMin: number | null | undefined): number {
+  const min = Math.min(Math.max(0, asFinite(celBase)), Math.max(0, asFinite(zapasMin)));
+  return Math.max(asFinite(celTracked), min);
+}

@@ -131,3 +131,35 @@ describe("Komplet ze sprzedaży składników - luźne sztuki na stanie", () => {
     expect(run(36, 0)).toBe(6);
   });
 });
+
+describe("zapas minimalny - twarda podłoga celu", () => {
+  it("cięcie za grube pokrycie nie schodzi poniżej zapasMin", () => {
+    const res = buildManualZdEstimateResult(
+      { dniZapasu: 30, dniOkresu: 30, zapasMin: 10 },
+      // Rzadka sprzedaż i duży stan → cięcia; cel z API = 1 + 10.
+      [{ tw_Id: 1, tw_Symbol: "A", sprzedazOkres: 1, sprzedazDziennie: 1 / 30, dostepne: 5, celZapasu: 11 }],
+      { salesTrack: true, salesTrackCuts: true, historyByTwId: new Map([[1, { lastOrderedQty: 100, linkedAt: new Date(Date.now() - 40 * 86_400_000).toISOString() }]]) }
+    );
+    const a = res.pozycje[0]!;
+    expect(a.salesTrackReasons.length).toBeGreaterThan(0);
+    expect(a.celZapasuTracked).toBeGreaterThanOrEqual(10);
+    expect(a.doZamowieniaReczne).toBe(5);
+  });
+
+  it("para: podłoga w sztukach pary", () => {
+    const res = buildManualZdEstimateResult(
+      { dniZapasu: 30, dniOkresu: 30, zapasMin: 10 },
+      [
+        { tw_Id: 1, tw_Symbol: "KARTON", sprzedazOkres: 0, dostepne: 0, celZapasu: 0 },
+        { tw_Id: 2, tw_Symbol: "SZT", sprzedazOkres: 1, dostepne: 5, celZapasu: 0 },
+      ],
+      {
+        salesTrack: true,
+        salesTrackCuts: true,
+        productPairs: [{ packTwId: 1, pieceTwId: 2, unitsPerPack: 10 }],
+        historyByTwId: new Map([[1, { lastOrderedQty: 100, linkedAt: new Date(Date.now() - 40 * 86_400_000).toISOString() }]]),
+      }
+    );
+    expect(res.pozycje.find((p) => p.tw_Id === 1)!.celZapasuTracked).toBeGreaterThanOrEqual(10);
+  });
+});

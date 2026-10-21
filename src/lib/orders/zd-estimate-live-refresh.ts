@@ -81,6 +81,7 @@ export function refreshZdEstimateLinesWithPairs(input: {
   const safeBase = coerceZdEstimateLinesBase(input.linesBase);
   const remappedBase = mapZdEstimateLinesSolo(safeBase, {
     dniZapasu: input.options.dniZapasu,
+    zapasMin: input.options.zapasMin,
     dniOkresu: input.options.dniOkresu,
     salesTrack: input.options.salesTrack,
     salesTrackCuts: input.options.salesTrackCuts,

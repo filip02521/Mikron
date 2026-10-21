@@ -12,6 +12,7 @@ import {
 } from "@/lib/orders/zd-estimate-history-track";
 import {
   computeSalesTrackedCel,
+  floorCelTrackedAtZapasMin,
   reconcileSalesTrackQtyMetaAfterHistory,
   resolveSprzedazDziennie,
   type SalesTrackReason,
@@ -267,6 +268,14 @@ export function applyZdEstimatePairs(
           salesTrackHeldExtraQty = reconciled.salesTrackHeldExtraQty;
           salesTrackAllowedExtraQty = reconciled.salesTrackAllowedExtraQty;
         }
+      }
+    }
+
+    if (!partnerMissing) {
+      const floored = floorCelTrackedAtZapasMin(celTracked, celBase, zapasMin);
+      if (floored !== celTracked) {
+        celTracked = floored;
+        salesTrackDelta = celTracked - celBase;
       }
     }
 

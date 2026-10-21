@@ -20,6 +20,7 @@ import {
 } from "@/lib/orders/zd-estimate-bom-policy";
 import {
   computeSalesTrackedCel,
+  floorCelTrackedAtZapasMin,
   reconcileSalesTrackQtyMetaAfterHistory,
   resolveSprzedazDziennie,
   type SalesTrackReason,
@@ -713,6 +714,12 @@ export function rematerializeSoloAfterBom(
           salesTrackAllowedExtraQty = reconciled.salesTrackAllowedExtraQty;
         }
       }
+    }
+
+    const floored = floorCelTrackedAtZapasMin(celTracked, celBase, zapasMin);
+    if (floored !== celTracked) {
+      celTracked = floored;
+      salesTrackDelta = celTracked - celBase;
     }
 
     const doZamowieniaReczne = computeManualOrderQty({

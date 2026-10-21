@@ -23,6 +23,7 @@ import type { OrderInterval } from "@/lib/orders/dates";
 import { resolveSupplierInterval } from "@/lib/orders/dates";
 import {
   computeSalesTrackedCel,
+  floorCelTrackedAtZapasMin,
   reconcileSalesTrackQtyMetaAfterHistory,
   resolveSprzedazDziennie,
   type SalesTrackReason,
@@ -224,6 +225,8 @@ export function computeManualOrderQty(input: {
 export type MapZdEstimateLineOptions = {
   /** Dni zapasu dostawcy / run — do oceny cienkiego pokrycia. */
   dniZapasu?: number | null;
+  /** Zapas minimalny z Kreatora — twarda podłoga celu po korektach. */
+  zapasMin?: number | null;
   /** Długość okna FS z API — fallback tempa dziennego. */
   dniOkresu?: number | null;
   /** Domyślnie true — podążanie za sprzedażą. */
@@ -367,6 +370,12 @@ export function mapZdEstimateLineToManual(
     }
   }
 
+  const floored = floorCelTrackedAtZapasMin(celTracked, celZapasu, options?.zapasMin);
+  if (floored !== celTracked) {
+    celTracked = floored;
+    salesTrackDelta = celTracked - celZapasu;
+  }
+
   const doZamowieniaReczne = computeManualOrderQty({
     celZapasu: celTracked,
     dostepne,
@@ -414,6 +423,7 @@ export function mapZdEstimateLineToManual(
 
 export type ZdEstimateSoloMapOptions = {
   dniZapasu: number;
+  zapasMin?: number | null;
   dniOkresu?: number | null;
   salesTrack?: boolean;
   salesTrackCuts?: boolean;
@@ -465,6 +475,7 @@ export function mapZdEstimateLinesSolo(
     const minStock = minStockByTwId?.get(twId) ?? 0;
     return mapZdEstimateLineToManual(line, {
       dniZapasu,
+      zapasMin: options.zapasMin,
       dniOkresu: options.dniOkresu,
       salesTrack: inPair ? false : options.salesTrack,
       salesTrackCuts: inPair ? false : options.salesTrackCuts,
@@ -549,6 +560,7 @@ export function buildManualZdEstimateResult(
     (parametry.zapasMin != null ? Number(parametry.zapasMin) : 0);
 
   const mapped = mapZdEstimateLinesSolo(lines, {
+    zapasMin,
     dniZapasu,
     dniOkresu,
     salesTrack: options?.salesTrack,
