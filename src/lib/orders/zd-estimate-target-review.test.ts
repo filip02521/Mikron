@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { computeSalesTrackedCel } from "@/lib/orders/zd-estimate-sales-track";
 import { buildManualZdEstimateResult, zdEstimateWindowDays } from "@/lib/orders/zd-estimate-manual";
+import { previewZdOrderForMinStock } from "@/lib/orders/zd-estimate-packaging";
 
 describe("cel zapasu - niezależność od długości okna sprzedaży", () => {
   const at = (sprzedazOkres: number, dniOkresu: number, celZapasu: number, dostepne: number) =>
@@ -161,5 +162,54 @@ describe("zapas minimalny - twarda podłoga celu", () => {
       }
     );
     expect(res.pozycje.find((p) => p.tw_Id === 1)!.celZapasuTracked).toBeGreaterThanOrEqual(10);
+  });
+});
+
+describe("okno „Minimum stanów” - podgląd jak tabela", () => {
+  const base = {
+    tw_Id: 5,
+    tw_Symbol: "PLYN",
+    tw_Nazwa: "Płyn",
+    tw_IdGrupa: null,
+    grt_Nazwa: "-",
+    tw_Stan: 4,
+    tw_StanRez: 0,
+    dostepne: 4,
+    sprzedazOkres: 0,
+    wzNiepowiazaneOkres: 0,
+    sprzedazDziennie: 0,
+    celZapasu: 0,
+    celZapasuTracked: 0,
+    salesTrackDelta: 0,
+    salesTrackReasons: [],
+    salesTrackConfidence: 0,
+    salesTrackQtyReview: false,
+    salesTrackHeldExtraQty: 0,
+    salesTrackAllowedExtraQty: 0,
+    otwarteZkBezRez: 0,
+    otwarteZkZarezerwowane: 0,
+    // 1 karton w drodze = 12 szt.
+    otwarteZd: 1,
+    doZamowieniaApi: 0,
+    doZamowieniaReczne: 0,
+    wkladZk: 0,
+    pair: null,
+    bom: null,
+  } as const;
+  const packaging = { unitsPerPackage: 12, packageLabel: "karton", documentUnitMode: "packages" as const };
+
+  it("otwarte ZD w kartonach liczone w sztukach, Do ZD w kartonach", () => {
+    const now = previewZdOrderForMinStock({ ...base, salesTrackReasons: [] }, 0, { packaging });
+    const withMin = previewZdOrderForMinStock({ ...base, salesTrackReasons: [] }, 40, { packaging });
+    expect(now.openZdPieces).toBe(12);
+    expect(now.zdUnits).toBe(0);
+    // 40 − 4 − 12 = 24 szt = 2 kartony.
+    expect(withMin.zdUnits).toBe(2);
+    expect(withMin.label).toBe("2 karton");
+  });
+
+  it("prośba wliczona jak w tabeli", () => {
+    const withMin = previewZdOrderForMinStock({ ...base, salesTrackReasons: [] }, 40, { packaging, extraPieces: 12 });
+    expect(withMin.zdUnits).toBe(3);
   });
 });

@@ -231,6 +231,7 @@ import {
   individualExtraPiecesForTw,
   isPackagingPackagesMode,
   piecesArrivingForZdUnitsFromQty,
+  previewZdOrderForMinStock,
   resolveOrderQtyForLine,
   zdDocumentUnitsToPieces,
   orderableLinesToTsv,
@@ -2286,6 +2287,36 @@ export function ZdEstimateWorkbench({
     extraOverlapByTwId,
     minStockByTwIdForRefresh,
   ]);
+
+  /**
+   * Okno „Minimum stanów”: Do ZD dla danego minimum tym samym liczeniem co tabela
+   * (opakowania, prośby, ulgi rezerwacji). Wiersz sztuki pary liczy na paczce.
+   */
+  const previewMinStockOrder = useCallback(
+    (row: ManualZdEstimateLine, minStockSzt: number) => {
+      const l =
+        row.pair?.role === "piece" && !row.pair.partnerMissing
+          ? lines?.find((x) => x.tw_Id === row.pair!.twinTwId) ?? row
+          : row;
+      return previewZdOrderForMinStock(l, minStockSzt, {
+        packaging: packagingLookup.get(l.tw_Id) ?? null,
+        extraPieces: individualExtraPiecesForTw(l.tw_Id, individualExtraByTwId),
+        extraOnly: extraOnlyTwIds.has(l.tw_Id),
+        extrasPolicy,
+        stockNeedReliefPieces: individualExtraPiecesForTw(l.tw_Id, stockNeedReliefByTwId),
+        extraOverlapPieces: individualExtraPiecesForTw(l.tw_Id, extraOverlapByTwId),
+      });
+    },
+    [
+      lines,
+      packagingLookup,
+      individualExtraByTwId,
+      extraOnlyTwIds,
+      extrasPolicy,
+      stockNeedReliefByTwId,
+      extraOverlapByTwId,
+    ]
+  );
 
   /** Podsumowanie listy „Do ZD” (z nadpisaniami): pozycje, sztuki, wartość z cen ZD. */
   const orderSummary = useMemo(() => {
@@ -8635,6 +8666,7 @@ export function ZdEstimateWorkbench({
       <ZdEstimateMinStockDialog
         open={minStockCandidate != null}
         line={minStockCandidate}
+        previewOrder={previewMinStockOrder}
         existingMinSzt={
           minStockCandidate
             ? minStockByTwIdForRefresh.get(minStockCandidate.tw_Id) ?? 0
