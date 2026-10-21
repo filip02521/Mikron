@@ -144,8 +144,16 @@ export function VelocityCell({
 export function OrderQty({
   row,
 }: {
-  row: Pick<StockWatchRowView, "inOrder" | "orderZdUnits" | "orderUnitLabel" | "orderPieces">;
+  row: Pick<StockWatchRowView, "inOrder" | "orderZdUnits" | "orderUnitLabel" | "orderPieces"> &
+    Partial<Pick<StockWatchRowView, "bomRole">>;
 }) {
+  if (row.bomRole === "assembled_parent") {
+    return (
+      <span className="whitespace-nowrap text-xs text-slate-500" title="Zestaw „Składamy” - na ZD idą jego składniki">
+        składniki
+      </span>
+    );
+  }
   if (!row.inOrder || row.orderZdUnits <= 0) {
     return (
       <span className="whitespace-nowrap text-xs text-slate-500" title="Poza listą „Do ZD” - pokryte stanem / otwartymi ZD albo reguła">

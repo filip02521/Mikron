@@ -311,9 +311,12 @@ describe("Braki — komplety kupowane (separate)", () => {
       [separate(MIX, "kit_from_components", [[A, 6], [B, 6]])]
     );
     const a = rows.get(A)!;
-    // Stan kompletu zjada też jego własna sprzedaż — rozłożenie tylko jako podpowiedź.
-    expect(a.assembly).toMatchObject({ kind: "disassemble", qty: 12, coversDemand: false, actionable: false });
-    expect(a.status).toBe("out_of_stock");
+    // MIX bez własnej sprzedaży: jego stan to stan kolorów — 12 szt. A z rozłożenia.
+    expect(a.assembly).toMatchObject({ kind: "disassemble", qty: 12, coversDemand: true, actionable: true });
+    expect(a.status).not.toBe("out_of_stock");
+    expect(a.daysOfCover).toBe(24);
+    // Zamawia się komplet, nie kolor.
+    expect(a.orderable).toBe(false);
     expect(rows.get(B)!.status).not.toBe("to_assemble");
   });
 
@@ -338,6 +341,43 @@ describe("Braki — komplety kupowane (separate)", () => {
     );
     expect(rows.get(A)!.assembly).toBeNull();
     expect(rows.get(A)!.status).toBe("out_of_stock");
+  });
+});
+
+describe("Braki — wspólne składniki i sztuka pary w składzie", () => {
+  it("dwa zestawy na tej samej części nie liczą jej w całości każdy", () => {
+    const K2 = 101;
+    const rows = run(
+      [
+        sub(KIT, "KIT", { sprzedazOkres: 30 }),
+        sub(K2, "K2", { sprzedazOkres: 30 }),
+        sub(A, "A", { dostepne: 40 }),
+      ],
+      [assemble(KIT, [[A, 1]]), assemble(K2, [[A, 1]])]
+    );
+    expect(rows.get(A)!.daysOfCover).toBe(20);
+    expect(rows.get(KIT)!.assembly?.qty).toBe(20);
+    expect(rows.get(KIT)!.daysOfCover).toBe(20);
+    expect(rows.get(K2)!.daysOfCover).toBe(20);
+  });
+
+  it("sztuka pary jako składnik: stan i ZD zestawu nie lądują na półce paczki", () => {
+    const P = 10;
+    const PS = 11;
+    const rows = run(
+      [
+        sub(KIT, "KIT", { dostepne: 4, otwarteZd: 50 }),
+        sub(P, "P", { sprzedazOkres: 3 }),
+        sub(PS, "PS"),
+      ],
+      [assemble(KIT, [[PS, 1]])],
+      { pairs: [{ packTwId: P, pieceTwId: PS, unitsPerPack: 10 }] }
+    );
+    const p = rows.get(P)!;
+    expect(p.availableQty).toBe(0);
+    expect(p.openZdQty).toBe(50);
+    expect(p.assembly).toMatchObject({ kind: "disassemble", qty: 4 });
+    expect(rows.get(PS)!.availableQty).toBe(0);
   });
 });
 

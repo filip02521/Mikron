@@ -837,7 +837,7 @@ function AssemblySection({
         <EmptyState
           icon={<IconAlertCircle size={26} strokeWidth={1.75} />}
           title="Nic do kompletacji"
-          description="Żaden zestaw ze składów Kreatora ZD nie czeka na złożenie z części na stanie."
+          description="Żaden zestaw ze składów Kreatora ZD nie czeka na złożenie z części ani na rozłożenie kompletu."
         />
       </Card>
     );

@@ -186,6 +186,14 @@ function uniqueByProduct(items: readonly StockWatchItem[]): StockWatchItem[] {
   return [...byTw.values()];
 }
 
+/**
+ * Zestaw „Składamy” nie idzie na ZD — jego brak niosą składniki (tempo z popytem zestawu).
+ * Liczony osobno dawałby N+1 pilnych pozycji przy jednym niedoborze; zostaje tylko w kompletacji.
+ */
+function isAssembledKitRow(item: Pick<StockWatchItem, "bomRole">): boolean {
+  return item.bomRole === "assembled_parent";
+}
+
 function proposalWarnings(order: StockWatchSupplierOrder): string[] {
   const out: string[] = [];
   if (order.explodeBomIncomplete) out.push("Brakuje danych kompletów (BOM) - Kreator pokaże pustą listę.");
@@ -226,6 +234,10 @@ export function buildStockWatchDashboard(
   };
   const standard = products.filter((i) => i.rule === "standard");
   for (const item of standard) {
+    if (isAssembledKitRow(item)) {
+      if (item.status === "to_assemble") counts.toAssemble += 1;
+      continue;
+    }
     if (item.status === "out_of_stock") {
       counts.outOfStock += 1;
       if (isStockWatchEmptyNoIncoming(item)) counts.emptyNoIncoming += 1;
@@ -252,9 +264,10 @@ export function buildStockWatchDashboard(
   // inaczej przy setkach braków sygnał czasu dostawy nigdy by się nie zmieścił.
   const isOutOrCritical = (i: StockWatchItem) =>
     i.status === "out_of_stock" || i.status === "critical";
-  const alertSource = opts.alertsSupplierId
+  const assemblySource = opts.alertsSupplierId
     ? items.filter((i) => i.supplierId === opts.alertsSupplierId && i.rule === "standard")
     : standard;
+  const alertSource = assemblySource.filter((i) => !isAssembledKitRow(i));
   // Jak liczniki: ≤ 48 h z dostawą w drodze nie jest „do zamówienia dziś”
   // (trafia do „przed dostawą” tylko, gdy dostawa nie zdąży).
   const isAlertNow = (i: StockWatchItem) =>
@@ -267,7 +280,7 @@ export function buildStockWatchDashboard(
       .slice(0, STOCK_WATCH_ALERT_LIMIT),
   ].map(toStockWatchRowView);
 
-  const assembly = alertSource
+  const assembly = assemblySource
     .filter((i) => i.status === "to_assemble")
     .sort(compareStockWatchAlerts)
     .slice(0, STOCK_WATCH_ALERT_LIMIT)
@@ -380,6 +393,7 @@ export function buildStockWatchDashboard(
     const urgent: StockWatchItem[] = [];
     for (const i of supplierItems) {
       if (i.rule !== "standard" || ownerByTw.get(i.subiektTwId) !== supplierId) continue;
+      if (isAssembledKitRow(i)) continue;
       if (i.status === "out_of_stock") {
         c.outOfStock += 1;
         if (isStockWatchEmptyNoIncoming(i)) c.emptyNoIncoming += 1;
@@ -420,8 +434,9 @@ export function buildStockWatchDashboard(
   }
   suppliers.sort(compareStockWatchSupplierUrgency);
 
+  // Sprzedaż zestawu jest już w tempie składników — w rotacji byłaby dwa razy.
   const topVelocity = products
-    .filter((i) => i.rule !== "excluded" && i.velocityDaily > 0)
+    .filter((i) => i.rule !== "excluded" && i.velocityDaily > 0 && !isAssembledKitRow(i))
     .sort((a, b) => b.velocityDaily - a.velocityDaily)
     .slice(0, STOCK_WATCH_TOP_VELOCITY)
     .map(toStockWatchRowView);
@@ -432,7 +447,7 @@ export function buildStockWatchDashboard(
     .map(toStockWatchRowView);
 
   return {
-    health: computeStockHealthScore(products),
+    health: computeStockHealthScore(products.filter((i) => !isAssembledKitRow(i))),
     counts,
     alerts,
     assembly,

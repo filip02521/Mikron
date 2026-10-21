@@ -350,3 +350,22 @@ describe("≤ 48 h z towarem w drodze nie jest „do zamówienia dziś”", () =
     expect(d.suppliers[0]?.priority).toBe("today");
   });
 });
+
+describe("zestaw „Składamy” w liczbach panelu", () => {
+  it("brak zestawu nie jest osobną pilną pozycją - niosą go składniki", () => {
+    const d = buildStockWatchDashboard(
+      [
+        item({ subiektTwId: 100, bomRole: "assembled_parent", status: "out_of_stock", availableQty: 0 }),
+        item({ subiektTwId: 1, bomRole: "component", status: "out_of_stock", availableQty: 0, inOrder: true }),
+        item({ subiektTwId: 101, bomRole: "assembled_parent", status: "to_assemble", availableQty: 0 }),
+      ],
+      [order({ lineCount: 1 })]
+    );
+    expect(d.counts.outOfStock).toBe(1);
+    expect(d.alerts.map((r) => r.subiektTwId)).toEqual([1]);
+    expect(d.counts.toAssemble).toBe(1);
+    expect(d.assembly.map((r) => r.subiektTwId)).toEqual([101]);
+    expect(d.topVelocity.some((r) => r.bomRole === "assembled_parent")).toBe(false);
+    expect(d.suppliers[0]?.outOfStock).toBe(1);
+  });
+});

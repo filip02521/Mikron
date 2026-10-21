@@ -75,7 +75,8 @@ export type StockWatchAssembly = {
 };
 
 export type StockWatchBomView = {
-  role: StockWatchBomRole;
+  /** null = paczka pary bez własnej roli (składnikiem jest jej sztuka). */
+  role: StockWatchBomRole | null;
   /** Dostępne z karty, bez wkładu kompletów. */
   availableQty: number;
   /** Otwarte ZD w sztukach karty, z towarem w drodze z kompletów (×ilość). */
@@ -157,7 +158,8 @@ function supplyOf(
     const ratio = Math.max(1, finite(line.pair.unitsPerPack));
     if (pack) {
       now += rawAvailableQty(pack) * ratio;
-      incoming += openZdPieces(ctx, pack.tw_Id) * ratio;
+      // Jak pokrycie pary w Kreatorze: ZD paczki × przelicznik (bez opakowań karty).
+      incoming += Math.max(0, finite(pack.otwarteZd)) * ratio;
     }
   }
   let missing = false;
@@ -213,6 +215,24 @@ function buildable(
   return { now, incoming: Math.max(now, incoming), missing, limits };
 }
 
+/**
+ * Część wspólna kilku zestawów (albo sprzedawana też sama) nie starczy każdemu zestawowi
+ * w całości: tempo składnika z Kreatora ma już popyt wszystkich zestawów. Zestaw może liczyć
+ * na tyle dni, ile starczy składnika — dni × tempo zestawu.
+ */
+function capByComponentCover(ctx: StockWatchBomContext, b: Buildable, kitVelocity: number): Buildable {
+  if (!(kitVelocity > 0)) return b;
+  let cap = Infinity;
+  for (const l of b.limits) {
+    const compVelocity = Math.max(0, finite(ctx.byTw.get(l.twId)?.sprzedazDziennie));
+    if (compVelocity > 1e-9) cap = Math.min(cap, (l.supply / compVelocity) * kitVelocity);
+  }
+  if (!Number.isFinite(cap)) return b;
+  // Tolerancja na szum zmiennoprzecinkowy (dni × tempo wraca do pełnej liczby zestawów).
+  const now = Math.min(b.now, Math.floor(cap + 1e-6));
+  return { ...b, now, incoming: Math.max(now, b.incoming - (b.now - now)) };
+}
+
 function buildableNote(b: Buildable): string {
   return b.limits
     .map((l) => `${l.symbol} ×${l.perKit}: ${round(l.supply, 2)} szt`)
@@ -258,7 +278,7 @@ function kitCoverByComponent(ctx: StockWatchBomContext): Map<number, KitCover> {
       cur.stock += stock;
       cur.zd += zd;
     }
-    cur.kits.add(kit);
+    if (stock > 0 || zd > 0) cur.kits.add(kit);
     out.set(cid, cur);
   };
   for (const bom of ctx.boms) {
@@ -272,13 +292,19 @@ function kitCoverByComponent(ctx: StockWatchBomContext): Map<number, KitCover> {
     const explodeCover = allocation === "explode" && bom.stockAsCover !== false;
     const kitSplits = allocation === "separate" && (target === "kit_only" || target === "kit_from_components");
     if (!explodeCover && !kitSplits) continue;
+    // Komplet bez własnej sprzedaży (MIX: popyt to tylko kolory) — jego stan to stan kolorów.
+    const kitOwnSales =
+      target === "kit_from_components"
+        ? finite(parent.bom?.kitOwnSales ?? parent.sprzedazOkres)
+        : finite(parent.sprzedazOkres);
+    const separateOnly = kitSplits && kitOwnSales > 0;
     // Komplet bywa składnikiem innego zestawu — jego `dostepne` ma wtedy doliczone pokrycie.
     const stock = Math.max(0, rawAvailableQty(parent));
     const zd = openZdPieces(ctx, parentId);
     for (const comp of bom.components) {
       const cid = tw(comp.componentTwId);
       const q = Math.trunc(finite(comp.qtyPerParent));
-      if (cid > 0 && q >= 1) add(cid, stock * q, zd * q, parentId, kitSplits, 0);
+      if (cid > 0 && q >= 1) add(cid, stock * q, zd * q, parentId, separateOnly, 0);
     }
   }
   return out;
@@ -358,7 +384,7 @@ function pairComponentView(
     kits: new Set([...(packKit?.kits ?? []), ...(pieceKit?.kits ?? [])]),
   };
   return {
-    role: "component",
+    role: pack.bom?.role ?? null,
     availableQty,
     openZdQty: round(ownZd + kitZd, 3),
     velocityDaily: Math.max(0, finite(pack.sprzedazDziennie)),
@@ -377,16 +403,28 @@ export function resolveStockWatchBomViews(ctx: StockWatchBomContext): Map<number
   const kitCover = kitCoverByComponent(ctx);
 
   for (const line of ctx.byTw.values()) {
-    const role = line.bom?.role;
-    if (!role) continue;
+    // Para przed rolą: składnikiem bywa tylko sztuka, a stan liczy wiersz paczki.
     if (line.pair && !line.pair.partnerMissing) {
       if (line.pair.role === "pack") {
         const view = pairComponentView(ctx, kitCover, line);
         if (view) out.set(line.tw_Id, view);
+      } else if (line.bom?.role === "component") {
+        // Sztuka pary: popyt na paczce; tu tylko stan karty bez wkładu kompletów.
+        out.set(line.tw_Id, {
+          role: "component",
+          availableQty: rawAvailableQty(line),
+          openZdQty: round(openZdPieces(ctx, line.tw_Id), 3),
+          velocityDaily: 0,
+          salesPeriodQty: 0,
+          targetQty: 0,
+          assembly: null,
+          orderable: false,
+        });
       }
-      // Sztuka pary: popyt i stan liczy wiersz paczki.
       continue;
     }
+    const role = line.bom?.role;
+    if (!role) continue;
     const ownAvailable = rawAvailableQty(line);
     const ownZd = openZdPieces(ctx, line.tw_Id);
     const baseVelocity = Math.max(0, finite(line.sprzedazDziennie));
@@ -400,7 +438,7 @@ export function resolveStockWatchBomViews(ctx: StockWatchBomContext): Map<number
         fallbackDniOkresu: ctx.fallbackDniOkresu,
       });
       const b = buildable(ctx, parents, line.tw_Id, 0);
-      const fromParts = b && !b.missing ? b : null;
+      const fromParts = b && !b.missing ? capByComponentCover(ctx, b, velocity) : null;
       out.set(line.tw_Id, {
         role,
         availableQty: ownAvailable,
@@ -449,7 +487,8 @@ export function resolveStockWatchBomViews(ctx: StockWatchBomContext): Map<number
       salesPeriodQty: Math.max(0, finite(line.sprzedazOkres)),
       targetQty: null,
       assembly: disassembly(ctx, cover, cover?.stock ?? 0, cover?.separateStock ?? 0, componentOwnSales(line)),
-      orderable: true,
+      // Zablokowany składnik (Tylko komplet / MIX) zamawia się kompletem — bez ryzyka dostawy.
+      orderable: !(line.bom?.purchaseBlocked && !(finite(line.bom?.contributionSales) > 0)),
     });
   }
   return out;
