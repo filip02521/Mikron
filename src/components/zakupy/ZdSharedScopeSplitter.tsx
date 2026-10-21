@@ -12,6 +12,7 @@ import {
   zdSplitAlignPairs,
   zdSplitApplyHistory,
   zdSplitAssign,
+  zdSplitHistoryFillCount,
   zdSplitImpact,
   zdSplitPairMismatch,
   zdSplitPairMismatchCount,
@@ -21,6 +22,7 @@ import {
   zdSplitCounts,
   zdSplitRangeSelect,
   zdSplitShortName,
+  zdSplitShortNames,
   zdSplitValue,
   zdSplitVisible,
   type ZdSplitFilter,
@@ -265,6 +267,10 @@ export function ZdSharedScopeSplitter({
   const [includeAll, setIncludeAll] = useState(false);
   /** Tylko zmiany użytkownika; brak klucza = zapisane przypisanie. */
   const [edits, setEdits] = useState<Record<number, string>>({});
+  const editsRef = useRef(edits);
+  useEffect(() => {
+    editsRef.current = edits;
+  }, [edits]);
   const [filter, setFilter] = useState<ZdSplitFilter>({ kind: "all" });
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Set<number>>(() => new Set());
@@ -281,6 +287,7 @@ export function ZdSharedScopeSplitter({
     onDirtyRef.current = onDirtyChange;
   }, [onError, onDirtyChange]);
 
+  const supplierKey = scope.supplierIds.join(",");
   useEffect(() => {
     let cancelled = false;
     startLoad(async () => {
@@ -297,26 +304,35 @@ export function ZdSharedScopeSplitter({
       }
       setProducts(res.products);
       setTruncated(res.truncated);
+      // Dostawca mógł zniknąć z zakresu (odświeżenie okna) — takich zmian serwer nie przyjmie.
+      const allowed = new Set(supplierKey.split(","));
+      const prev = editsRef.current;
+      const kept = Object.entries(prev).filter(([, v]) => v === "" || allowed.has(v));
+      const dropped = Object.keys(prev).length - kept.length;
+      if (dropped > 0) {
+        setEdits(Object.fromEntries(kept));
+        onErrorRef.current(
+          `Pominięto ${dropped} ${plWord(dropped, "zmianę", "zmiany", "zmian")} - dostawca nie ma już tego zakresu.`
+        );
+      }
     });
     return () => {
       cancelled = true;
     };
-  }, [scope.mode, scope.scopeId, includeAll]);
+    // Zmiana dostawców zakresu (odświeżenie okna) przeładowuje historię ZD per dostawca.
+  }, [scope.mode, scope.scopeId, includeAll, supplierKey]);
 
-  const options = useMemo<Option[]>(
-    () =>
-      scope.supplierIds.map((id, i) => {
-        const name = suppliers.find((s) => s.id === id)?.name?.trim() || id;
-        return {
-          id,
-          name,
-          short: zdSplitShortName(name),
-          key: String(i + 1),
-          swatch: SUPPLIER_SWATCHES[i % SUPPLIER_SWATCHES.length],
-        };
-      }),
-    [scope.supplierIds, suppliers]
-  );
+  const options = useMemo<Option[]>(() => {
+    const names = scope.supplierIds.map((id) => suppliers.find((s) => s.id === id)?.name?.trim() || id);
+    const shorts = zdSplitShortNames(names);
+    return scope.supplierIds.map((id, i) => ({
+      id,
+      name: names[i],
+      short: shorts[i],
+      key: String(i + 1),
+      swatch: SUPPLIER_SWATCHES[i % SUPPLIER_SWATCHES.length],
+    }));
+  }, [scope.supplierIds, suppliers]);
   const impactLabel = (value: string) => (value === "" ? "bez przypisania" : nameOf(value));
   const nameOf = (id: string) =>
     options.find((o) => o.id === id)?.name ?? suppliers.find((s) => s.id === id)?.name ?? "inny dostawca";
@@ -331,7 +347,11 @@ export function ZdSharedScopeSplitter({
   );
   const splitCtx = useMemo(() => ({ byTw, scopeSupplierIds: scope.supplierIds }), [byTw, scope.supplierIds]);
   const pairMismatchCount = useMemo(() => zdSplitPairMismatchCount(all, edits, byTw), [all, edits, byTw]);
-  const alignablePairs = useMemo(() => zdSplitAlignablePairs(all, edits, byTw), [all, edits, byTw]);
+  const alignablePairs = useMemo(
+    () => zdSplitAlignablePairs(all, edits, byTw, scope.supplierIds),
+    [all, edits, byTw, scope.supplierIds]
+  );
+  const historyFill = useMemo(() => zdSplitHistoryFillCount(all, edits), [all, edits]);
   const impact = useMemo(() => zdSplitImpact(all, edits), [all, edits]);
   const outsideCount = useMemo(
     () =>
@@ -359,6 +379,8 @@ export function ZdSharedScopeSplitter({
   useEffect(() => {
     onDirtyRef.current(changed.length);
   }, [changed.length]);
+  // Panel znika (np. zakres przestał być wspólny) — jego zmian już nie ma, rodzic nie może o nie pytać.
+  useEffect(() => () => onDirtyRef.current(0), []);
 
   const selectedVisible = visibleIds.filter((id) => selected.has(id));
   const allVisibleSelected = visibleIds.length > 0 && selectedVisible.length === visibleIds.length;
@@ -377,7 +399,8 @@ export function ZdSharedScopeSplitter({
 
   const applyHistory = (ids?: ReadonlySet<number>) => {
     touch();
-    setEdits((prev) => zdSplitApplyHistory(prev, all, ids));
+    // Bez zaznaczenia uzupełniamy tylko puste — zapisane decyzje zostają.
+    setEdits((prev) => zdSplitApplyHistory(prev, all, ids, { onlyUnassigned: !ids }));
   };
 
   const toggleRow = (tw: number, shift: boolean) => {
@@ -420,8 +443,6 @@ export function ZdSharedScopeSplitter({
     const items = changed.map((p) => ({
       subiektTwId: p.subiektTwId,
       supplierId: zdSplitValue(edits, p) || null,
-      twSymbol: p.twSymbol,
-      twNazwa: p.twNazwa,
     }));
     startSave(async () => {
       const res = await actionSetZdProductAssignments({ items });
@@ -522,23 +543,23 @@ export function ZdSharedScopeSplitter({
                 disabled={busy}
                 onClick={() => {
                   touch();
-                  setEdits((prev) => zdSplitAlignPairs(all, prev, byTw));
+                  setEdits((prev) => zdSplitAlignPairs(all, prev, byTw, scope.supplierIds));
                 }}
                 title="Sztuki dostają dostawcę paczki (paczka bez przypisania przejmuje dostawcę sztuk) - inaczej para nie znika u pozostałych dostawców"
               >
                 Wyrównaj pary ({alignablePairs})
               </Button>
             ) : null}
-            {hasHistory ? (
+            {historyFill > 0 ? (
               <Button
                 type="button"
                 size="sm"
                 variant="secondary"
                 disabled={busy}
                 onClick={() => applyHistory()}
-                title="Każdy towar z historią ZD dostaje dostawcę, u którego zamawiasz go najczęściej"
+                title="Towary bez przypisania dostają dostawcę, u którego zamawiasz je najczęściej. Zapisane decyzje zostają bez zmian."
               >
-                Wszystkie wg historii ZD
+                Uzupełnij wg historii ZD ({historyFill})
               </Button>
             ) : null}
           </div>
@@ -842,7 +863,7 @@ export function ZdSharedScopeSplitter({
                               <span key={sid}>
                                 {i > 0 ? <span className="text-slate-300"> · </span> : null}
                                 <span className={cn(sid === p.suggestedSupplierId && "font-medium text-slate-900")}>
-                                  {zdSplitShortName(nameOf(sid))}
+                                  {options.find((o) => o.id === sid)?.short ?? zdSplitShortName(nameOf(sid))}
                                 </span>{" "}
                                 <span className="tabular-nums text-slate-500">{n}×</span>
                               </span>
@@ -888,7 +909,9 @@ export function ZdSharedScopeSplitter({
         ) : null}
         {truncated ? (
           <p className="px-6 pb-4 text-center text-xs text-slate-500">
-            Zakres ma więcej towarów - pokazuję pierwsze {all.length}. Zawęź wyszukiwaniem w Subiekcie albo wyłącz towary bez historii.
+            {includeAll
+              ? `Zakres ma więcej towarów - pokazuję ${all.length}: najpierw z historią ZD i przypisaniem, potem najnowsze. Wyłącz „Także towary bez historii ZD”, żeby zobaczyć tylko zamawiane.`
+              : `Zakres ma ponad ${all.length} towarów z historią ZD lub przypisaniem - pokazuję ${all.length} najnowszych w katalogu. Starsze towary są poza listą - podziel zakres na mniejsze grupy lub cechy.`}
           </p>
         ) : null}
         {loading && products != null ? (

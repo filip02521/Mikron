@@ -7,6 +7,7 @@ import {
   findZdSharedScopes,
   loadZdScopeInsights,
   loadZdSharedScopeProducts,
+  loadZdProductAssignments,
   loadZdSharedScopeStats,
   loadZdTwScopeFacts,
   setZdProductAssignments,
@@ -113,27 +114,33 @@ const MAX_ASSIGNMENTS_PER_SAVE = 5000;
  * symbol i nazwę bierze z katalogu, nie od klienta.
  */
 export async function actionSetZdProductAssignments(input: {
-  items: { subiektTwId: number; supplierId: string | null; twSymbol?: string | null; twNazwa?: string }[];
+  items: { subiektTwId: number; supplierId: string | null }[];
 }): Promise<Result<object>> {
   const user = await requireZdEstimateAdmin("mutate");
-  const items = (Array.isArray(input.items) ? input.items : [])
+  const raw = Array.isArray(input.items) ? input.items : [];
+  if (raw.length > MAX_ASSIGNMENTS_PER_SAVE) {
+    return { ok: false, message: `Za dużo towarów naraz (max ${MAX_ASSIGNMENTS_PER_SAVE}).` };
+  }
+  const items = raw
     .map((i) => ({
       subiektTwId: Math.trunc(Number(i.subiektTwId)),
       supplierId: typeof i.supplierId === "string" && i.supplierId.trim() ? i.supplierId.trim() : null,
     }))
-    .filter((i) => Number.isSafeInteger(i.subiektTwId) && i.subiektTwId > 0);
+    .filter((i) => Number.isSafeInteger(i.subiektTwId) && i.subiektTwId > 0 && i.subiektTwId <= 2_147_483_647);
   if (!items.length) return { ok: false, message: "Brak towarów do zapisania." };
-  if (items.length > MAX_ASSIGNMENTS_PER_SAVE) {
-    return { ok: false, message: `Za dużo towarów naraz (max ${MAX_ASSIGNMENTS_PER_SAVE}).` };
-  }
   try {
-    const [shared, facts] = await Promise.all([
+    const twIds = items.map((i) => i.subiektTwId);
+    const unassignIds = items.filter((i) => !i.supplierId).map((i) => i.subiektTwId);
+    const [shared, facts, existing] = await Promise.all([
       listZdEstimateSupplierScopes().then(findZdSharedScopes),
-      loadZdTwScopeFacts(items.map((i) => i.subiektTwId)),
+      loadZdTwScopeFacts(twIds),
+      // Zapisane przypisania potrzebne tylko do zdejmowania (towar ze zniesionego zakresu).
+      unassignIds.length ? loadZdProductAssignments(unassignIds) : Promise.resolve(new Map()),
     ]);
     const rows = [];
     for (const item of items) {
       const f = facts.get(item.subiektTwId);
+      const label = f?.symbol ?? `#${item.subiektTwId}`;
       const owners = new Set(
         shared
           .filter((sh) =>
@@ -141,13 +148,18 @@ export async function actionSetZdProductAssignments(input: {
           )
           .flatMap((sh) => sh.supplierIds)
       );
-      if (!f || owners.size === 0) {
-        return { ok: false, message: "Część towarów nie należy już do wspólnego zakresu - odśwież listę." };
+      if (!item.supplierId) {
+        // Zdjęcie przypisania tylko przywraca widoczność u wszystkich — dozwolone także dla
+        // towaru, którego zakres przestał być wspólny (inaczej zostałby osierocony).
+        if (!f || (owners.size === 0 && !existing.has(item.subiektTwId))) {
+          return { ok: false, message: `Towar ${label} nie należy do wspólnego zakresu - odśwież listę.` };
+        }
+      } else if (!f || owners.size === 0) {
+        return { ok: false, message: `Towar ${label} nie należy już do wspólnego zakresu - odśwież listę.` };
+      } else if (!owners.has(item.supplierId)) {
+        return { ok: false, message: `Towar ${label}: wybrany dostawca nie ma tego zakresu - odśwież listę.` };
       }
-      if (item.supplierId && !owners.has(item.supplierId)) {
-        return { ok: false, message: "Wybrany dostawca nie ma tego zakresu - odśwież listę." };
-      }
-      rows.push({ ...item, twSymbol: f.symbol, twNazwa: f.name });
+      rows.push({ ...item, twSymbol: f?.symbol ?? null, twNazwa: f?.name ?? "" });
     }
     await setZdProductAssignments(rows, user.id);
     return { ok: true };

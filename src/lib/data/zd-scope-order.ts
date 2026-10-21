@@ -1,4 +1,4 @@
-import { query } from "@/lib/db/pool";
+import { query, withClient } from "@/lib/db/pool";
 import {
   groupZdEstimateScopesBySupplier,
   listZdEstimateSupplierScopes,
@@ -165,15 +165,23 @@ export async function setZdProductAssignments(
   }[],
   updatedBy: string | null
 ): Promise<void> {
-  const toDelete = items.filter((i) => !i.supplierId).map((i) => i.subiektTwId);
-  const toSet = items.filter((i) => i.supplierId);
-  if (toDelete.length) {
-    await query(`DELETE FROM zd_product_supplier_assignments WHERE subiekt_tw_id = ANY($1::int[])`, [
-      toDelete,
-    ]);
-  }
-  if (toSet.length) {
-    await query(
+  // Ostatni wpis dla towaru wygrywa — duplikat w jednym INSERT ... ON CONFLICT to błąd 21000.
+  const byTw = new Map(items.map((i) => [i.subiektTwId, i]));
+  const unique = [...byTw.values()];
+  const toDelete = unique.filter((i) => !i.supplierId).map((i) => i.subiektTwId);
+  const toSet = unique.filter((i) => i.supplierId);
+  // Usunięcia i zapisy razem albo wcale — bez połowicznego zapisu przy błędzie.
+  await withClient(async (client) => {
+    await client.query("BEGIN");
+    try {
+      if (toDelete.length) {
+        await client.query(
+          `DELETE FROM zd_product_supplier_assignments WHERE subiekt_tw_id = ANY($1::int[])`,
+          [toDelete]
+        );
+      }
+      if (toSet.length) {
+        await client.query(
       `INSERT INTO zd_product_supplier_assignments
          (subiekt_tw_id, supplier_id, tw_symbol, tw_nazwa, updated_at, updated_by)
        SELECT t.tw, t.sid::uuid, t.sym, COALESCE(t.nm, ''), now(), $2
@@ -195,8 +203,14 @@ export async function setZdProductAssignments(
         ),
         updatedBy,
       ]
-    );
-  }
+        );
+      }
+      await client.query("COMMIT");
+    } catch (e) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw e;
+    }
+  });
 }
 
 export type ZdSharedScopeProduct = {
@@ -245,7 +259,7 @@ export async function loadZdSharedScopeProducts(input: {
       SELECT 1 FROM product_supplier_links l2
        WHERE l2.subiekt_tw_id = i.subiekt_tw_id AND l2.supplier_id = ANY($2::uuid[])
          AND l2.order_count > 0))`;
-  const historyFilter = input.includeAll ? "" : `AND ${relevant}`;
+  const historyFilter = input.includeAll ? "" : "WHERE x.is_relevant";
   const res = await query<{
     subiekt_tw_id: number;
     symbol: string | null;
@@ -257,15 +271,18 @@ export async function loadZdSharedScopeProducts(input: {
     assigned_at: Date | string | null;
     assigned_by: string | null;
   }>(
-    `WITH tw AS (
+    `WITH x AS (
        SELECT i.subiekt_tw_id, a.supplier_id AS assigned, a.updated_at AS assigned_at,
-              split_part(pr.email, '@', 1) AS assigned_by
+              split_part(pr.email, '@', 1) AS assigned_by, ${relevant} AS is_relevant
          FROM subiekt_product_scope_index i
          LEFT JOIN zd_product_supplier_assignments a ON a.subiekt_tw_id = i.subiekt_tw_id
          LEFT JOIN profiles pr ON pr.id = a.updated_by
-        WHERE ${scopeFilter} ${historyFilter}
-        -- Przy limicie najpierw towary z historią ZD / przypisaniem, potem reszta zakresu.
-        ORDER BY ${relevant} DESC, i.subiekt_tw_id
+        WHERE ${scopeFilter}
+     ),
+     tw AS (
+       SELECT * FROM x ${historyFilter}
+        -- Przy limicie najpierw towary z historią ZD / przypisaniem, potem najnowsze w katalogu.
+        ORDER BY x.is_relevant DESC, x.subiekt_tw_id DESC
         LIMIT $3
      )
      SELECT tw.subiekt_tw_id, p.symbol, p.name, l.supplier_id, l.order_count, l.last_action_at,
@@ -273,7 +290,8 @@ export async function loadZdSharedScopeProducts(input: {
        FROM tw
        LEFT JOIN subiekt_products p ON p.subiekt_tw_id = tw.subiekt_tw_id
        LEFT JOIN product_supplier_links l
-         ON l.subiekt_tw_id = tw.subiekt_tw_id AND l.supplier_id = ANY($2::uuid[])`,
+         ON l.subiekt_tw_id = tw.subiekt_tw_id AND l.supplier_id = ANY($2::uuid[])
+      ORDER BY tw.is_relevant DESC, tw.subiekt_tw_id DESC`,
     [input.scopeId, [...input.supplierIds], ZD_SHARED_SCOPE_PRODUCTS_LIMIT + 1]
   );
   const byTw = new Map<number, ZdSharedScopeProduct>();
@@ -318,9 +336,10 @@ export async function loadZdSharedScopeProducts(input: {
     }
     p.suggestedSupplierId = best?.[0] ?? null;
   }
+  // Obcinamy w kolejności z SQL (istotne pierwsze), dopiero potem sortujemy po symbolu.
   const products = [...byTw.values()]
-    .sort((a, b) => (a.twSymbol ?? "").localeCompare(b.twSymbol ?? "", "pl"))
-    .slice(0, ZD_SHARED_SCOPE_PRODUCTS_LIMIT);
+    .slice(0, ZD_SHARED_SCOPE_PRODUCTS_LIMIT)
+    .sort((a, b) => (a.twSymbol ?? "").localeCompare(b.twSymbol ?? "", "pl"));
   const pairs = await loadZdPairsForTw(products.map((p) => p.subiektTwId));
   for (const p of products) p.pair = pairs.get(p.subiektTwId) ?? null;
   return { products, truncated };

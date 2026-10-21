@@ -5,6 +5,7 @@ import {
   zdSplitAlignablePairs,
   zdSplitAlignPairs,
   zdSplitAssign,
+  zdSplitHistoryFillCount,
   zdSplitImpact,
   zdSplitPairMismatch,
   zdSplitPairMismatchCount,
@@ -14,6 +15,7 @@ import {
   zdSplitDraftFrom,
   zdSplitRangeSelect,
   zdSplitShortName,
+  zdSplitShortNames,
   zdSplitVisible,
 } from "@/lib/orders/zd-shared-scope-split";
 
@@ -72,6 +74,11 @@ describe("zd-shared-scope-split", () => {
     const draft = zdSplitDraftFrom(products);
     expect(zdSplitApplyHistory(draft, products)).toEqual({ 1: A, 2: B, 3: "", 4: A });
     expect(zdSplitApplyHistory(draft, products, new Set([4]))).toEqual({ 1: "", 2: B, 3: "", 4: A });
+    // „Dla wszystkich” nie nadpisuje zapisanych decyzji (4 zostaje u B).
+    expect(zdSplitApplyHistory({}, products, undefined, { onlyUnassigned: true })).toEqual({ 1: A });
+    expect(zdSplitHistoryFillCount(products, {})).toBe(1);
+    // Jawne zdjęcie zapisanego przypisania (2: B → "") nie jest nadpisywane historią.
+    expect(zdSplitApplyHistory({ 2: "" }, products, undefined, { onlyUnassigned: true })).toEqual({ 1: A, 2: "" });
   });
 
   it("liczniki per dostawca", () => {
@@ -139,8 +146,8 @@ describe("zd-shared-scope-split", () => {
     expect(zdSplitVisible(list, draft, { kind: "pair" }, "", ctx).map((p) => p.subiektTwId)).toEqual([10, 11, 12]);
     // Para 10/11 liczona raz, 12 z drugą stroną spoza listy osobno; wyrównać da się tylko 10/11.
     expect(zdSplitPairMismatchCount(list, draft, byTw)).toBe(2);
-    expect(zdSplitAlignablePairs(list, draft, byTw)).toBe(1);
-    const aligned = zdSplitAlignPairs(list, draft, byTw);
+    expect(zdSplitAlignablePairs(list, draft, byTw, [A, B])).toBe(1);
+    const aligned = zdSplitAlignPairs(list, draft, byTw, [A, B]);
     expect(aligned[11]).toBe(A);
     expect(zdSplitPairMismatch(piece, aligned, byTw)).toBe(false);
     expect(aligned[99]).toBeUndefined();
@@ -154,7 +161,26 @@ describe("zd-shared-scope-split", () => {
     });
     const list = [pack, piece];
     const byTw = new Map(list.map((p) => [p.subiektTwId, p]));
-    const aligned = zdSplitAlignPairs(list, {}, byTw);
+    const aligned = zdSplitAlignPairs(list, {}, byTw, [A, B]);
     expect(aligned).toEqual({ 20: B });
+  });
+
+  it("wyrównanie pomija dostawcę spoza zakresu (serwer by go odrzucił)", () => {
+    const C = "cccccccc-0000-0000-0000-000000000003";
+    const pack = product(30, {
+      assignedSupplierId: C,
+      pair: { role: "pack", otherTwId: 31, otherSymbol: null, otherAssignedSupplierId: null },
+    });
+    const piece = product(31, { pair: { role: "piece", otherTwId: 30, otherSymbol: null, otherAssignedSupplierId: C } });
+    const list = [pack, piece];
+    const byTw = new Map(list.map((p) => [p.subiektTwId, p]));
+    expect(zdSplitAlignPairs(list, {}, byTw, [A, B])).toEqual({});
+    expect(zdSplitAlignablePairs(list, {}, byTw, [A, B])).toBe(0);
+  });
+
+  it("krótkie nazwy: kolizja skrótu daje pełne nazwy", () => {
+    expect(
+      zdSplitShortNames(["Dentsply Sirona Polska Sp. z o.o.", "Dentsply Sirona Deutschland GmbH", "Komet"])
+    ).toEqual(["Dentsply Sirona Polska Sp. z o.o.", "Dentsply Sirona Deutschland GmbH", "Komet"]);
   });
 });

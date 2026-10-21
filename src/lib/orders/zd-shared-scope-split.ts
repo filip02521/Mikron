@@ -110,18 +110,44 @@ export function zdSplitAssign(
   return next;
 }
 
-/** Ustawia dostawcę z historii ZD; towary bez historii zostają bez zmian. */
+/**
+ * Ustawia dostawcę z historii ZD; towary bez historii zostają bez zmian.
+ * `onlyUnassigned` — nie nadpisuje wcześniejszych decyzji (akcja „dla wszystkich”);
+ * dla jawnie zaznaczonych wierszy nadpisujemy.
+ */
 export function zdSplitApplyHistory(
   draft: ZdSplitDraft,
   products: readonly ZdSharedScopeProduct[],
-  twIds?: ReadonlySet<number>
+  twIds?: ReadonlySet<number>,
+  opts?: { onlyUnassigned?: boolean }
 ): Record<number, string> {
   const next: Record<number, string> = { ...draft };
   for (const p of products) {
     if (twIds && !twIds.has(p.subiektTwId)) continue;
+    // Tylko towary bez decyzji: puste w szkicu i w zapisie (jawne zdjęcie przypisania zostaje).
+    if (opts?.onlyUnassigned && (zdSplitValue(draft, p) !== "" || p.assignedSupplierId)) continue;
     if (p.suggestedSupplierId) next[p.subiektTwId] = p.suggestedSupplierId;
   }
   return next;
+}
+
+/** Ile towarów bez przypisania dostanie dostawcę z historii ZD. */
+export function zdSplitHistoryFillCount(
+  products: readonly ZdSharedScopeProduct[],
+  draft: ZdSplitDraft
+): number {
+  return products.filter(
+    (p) => p.suggestedSupplierId && zdSplitValue(draft, p) === "" && !p.assignedSupplierId
+  ).length;
+}
+
+/**
+ * Krótkie etykiety dostawców zakresu. Gdy skrót się powtarza (np. dwie spółki
+ * „Dentsply Sirona …”), te dostawcy dostają pełną nazwę — przyciski muszą być rozróżnialne.
+ */
+export function zdSplitShortNames(names: readonly string[]): string[] {
+  const shorts = names.map((n) => zdSplitShortName(n));
+  return shorts.map((s, i) => (shorts.indexOf(s) !== i || shorts.lastIndexOf(s) !== i ? names[i] : s));
 }
 
 /**
@@ -254,15 +280,21 @@ export function zdSplitPairMismatchCount(
   return keys.size;
 }
 
-/** Pary z obiema stronami na liście i różnym wyborem — tylko te da się wyrównać tutaj. */
+/** Pary, które `zdSplitAlignPairs` faktycznie wyrówna (licznik na przycisku). */
 export function zdSplitAlignablePairs(
   products: readonly ZdSharedScopeProduct[],
   draft: ZdSplitDraft,
-  byTw: ReadonlyMap<number, ZdSharedScopeProduct>
+  byTw: ReadonlyMap<number, ZdSharedScopeProduct>,
+  scopeSupplierIds: readonly string[]
 ): number {
-  return products.filter(
-    (p) => p.pair?.role === "pack" && byTw.has(p.pair.otherTwId) && zdSplitPairMismatch(p, draft, byTw)
-  ).length;
+  return products.filter((pack) => {
+    if (pack.pair?.role !== "pack") return false;
+    const piece = byTw.get(pack.pair.otherTwId);
+    if (!piece) return false;
+    const packValue = zdSplitValue(draft, pack);
+    const pieceValue = zdSplitValue(draft, piece);
+    return packValue !== pieceValue && scopeSupplierIds.includes(packValue || pieceValue);
+  }).length;
 }
 
 /**
@@ -272,7 +304,8 @@ export function zdSplitAlignablePairs(
 export function zdSplitAlignPairs(
   products: readonly ZdSharedScopeProduct[],
   draft: ZdSplitDraft,
-  byTw: ReadonlyMap<number, ZdSharedScopeProduct>
+  byTw: ReadonlyMap<number, ZdSharedScopeProduct>,
+  scopeSupplierIds: readonly string[]
 ): Record<number, string> {
   const next: Record<number, string> = { ...draft };
   for (const pack of products) {
@@ -283,6 +316,9 @@ export function zdSplitAlignPairs(
     const packValue = zdSplitValue(draft, pack);
     const pieceValue = zdSplitValue(draft, piece);
     if (packValue === pieceValue) continue;
+    const target = packValue || pieceValue;
+    // Dostawcy spoza zakresu serwer nie przyjmie — taką parę trzeba rozstrzygnąć ręcznie.
+    if (!scopeSupplierIds.includes(target)) continue;
     if (packValue) next[piece.subiektTwId] = packValue;
     else next[pack.subiektTwId] = pieceValue;
   }

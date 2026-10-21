@@ -321,8 +321,20 @@ export function ZdEstimateSupplierScopesModal({
   const [addDraft, setAddDraft] = useState<ScopeDraft>(emptyDraft);
   const [sharedKey, setSharedKey] = useState<string | null>(null);
   const [splitDirty, setSplitDirty] = useState(0);
+  /** Niezapisane zmiany zakresu, który po odświeżeniu przestał być wspólny. */
+  const [lostSplitEdits, setLostSplitEdits] = useState(0);
+  // Stan z chwili odpowiedzi serwera, nie z domknięcia — po zapisie licznik zdąży spaść do 0.
+  const splitDirtyRef = useRef(0);
+  const sharedKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    splitDirtyRef.current = splitDirty;
+    sharedKeyRef.current = sharedKey;
+  }, [splitDirty, sharedKey]);
 
-  const applyOrder = (res: Extract<Awaited<ReturnType<typeof actionLoadZdScopeOrder>>, { ok: true }>) =>
+  const applyOrder = (res: Extract<Awaited<ReturnType<typeof actionLoadZdScopeOrder>>, { ok: true }>) => {
+    // Domyślny wspólny zakres wybieramy raz, jawnie — potem nie zmienia się sam.
+    const first = res.sharedScopes[0];
+    if (first) setSharedKey((prev) => prev ?? sharedKeyOf(first.mode, first.scopeId));
     setOrder({
       indexSyncedAt: res.indexSyncedAt,
       insights: new Map(res.insights.map((i) => [i.supplierId, i])),
@@ -330,6 +342,7 @@ export function ZdEstimateSupplierScopesModal({
       sharedStats: new Map(res.sharedScopeStats.map((s) => [sharedKeyOf(s.mode, s.scopeId), s])),
       indexSyncRunning: res.indexSyncRunning,
     });
+  };
 
   // Podpowiedzi i postęp odświeżamy w tle — bez nakładki „Zapisuję…”.
   const reloadOrder = () => {
@@ -338,6 +351,10 @@ export function ZdEstimateSupplierScopesModal({
       if (!res.ok) {
         onError(res.message);
         return;
+      }
+      const key = sharedKeyRef.current;
+      if (key && !res.sharedScopes.some((sh) => sharedKeyOf(sh.mode, sh.scopeId) === key)) {
+        setLostSplitEdits(splitDirtyRef.current);
       }
       applyOrder(res);
     });
@@ -351,6 +368,7 @@ export function ZdEstimateSupplierScopesModal({
     setAddDraft(emptyDraft());
     setSharedKey(null);
     setSplitDirty(0);
+    setLostSplitEdits(0);
   };
 
   /** Niezapisane rozdzielanie ginie przy zmianie zakresu, zakładki i zamknięciu. */
@@ -477,10 +495,10 @@ export function ZdEstimateSupplierScopesModal({
     () => new Set(allShared.map((sh) => sharedKeyOf(sh.mode, sh.scopeId))),
     [allShared]
   );
-  const activeShared =
-    // Domyślny zakres bierzemy z pełnej listy — z przefiltrowanej filtr zmieniałby aktywny
-    // zakres, a remount panelu gubiłby niezapisane przypisania bez pytania.
-    allShared.find((sh) => sharedKeyOf(sh.mode, sh.scopeId) === sharedKey) ?? allShared[0] ?? null;
+  // Aktywny zakres jest zawsze jawnie wybrany (sharedKey) — domyślny z przefiltrowanej
+  // listy albo po odświeżeniu zmieniałby się sam, a remount panelu gubiłby zmiany bez pytania.
+  const activeShared = allShared.find((sh) => sharedKeyOf(sh.mode, sh.scopeId) === sharedKey) ?? null;
+  const sharedGone = sharedKey != null && activeShared == null && order != null;
   const activeSharedKey = activeShared ? sharedKeyOf(activeShared.mode, activeShared.scopeId) : null;
 
   const insightFor = (supplierId: string) => order?.insights.get(supplierId);
@@ -488,12 +506,18 @@ export function ZdEstimateSupplierScopesModal({
   const switchTab = async (next: Tab) => {
     if (next === tab) return;
     if (tab === "shared" && !(await confirmDiscardSplit())) return;
+    // Brak wyboru albo zakres, który przestał być wspólny — wracamy do pierwszego na liście.
+    if (next === "shared" && (sharedKey == null || sharedGone)) {
+      setSharedKey(allShared[0] ? sharedKeyOf(allShared[0].mode, allShared[0].scopeId) : null);
+      setLostSplitEdits(0);
+    }
     setTab(next);
   };
 
   const openShared = async (key: string) => {
     if (key === activeSharedKey && tab === "shared") return;
     if (!(await confirmDiscardSplit())) return;
+    setLostSplitEdits(0);
     setSharedKey(key);
     setTab("shared");
   };
@@ -915,7 +939,22 @@ export function ZdEstimateSupplierScopesModal({
                   onDirtyChange={setSplitDirty}
                   onSaved={reloadOrder}
                 />
-              ) : null}
+              ) : (
+                <div className="px-6 py-16 text-center" role="status">
+                  <p className="text-sm font-medium text-slate-900">
+                    {sharedGone ? "Ten zakres nie jest już wspólny" : "Wybierz zakres z listy"}
+                  </p>
+                  {sharedGone ? (
+                    <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">
+                      Mapowanie zmieniło się w międzyczasie - ta grupa lub cecha nie jest już przypisana kilku
+                      dostawcom. Zapisane przypisania jej towarów zostają.
+                      {lostSplitEdits > 0
+                        ? ` ${lostSplitEdits} ${plWord(lostSplitEdits, "niezapisana zmiana przepadła", "niezapisane zmiany przepadły", "niezapisanych zmian przepadło")}.`
+                        : null}
+                    </p>
+                  ) : null}
+                </div>
+              )}
             </section>
           </div>
         )
