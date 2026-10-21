@@ -134,7 +134,7 @@ export function zdSplitRangeSelect(
  * Krótka etykieta dostawcy na przycisku w wierszu (pełna nazwa w title):
  * bez formy prawnej, całe słowa do `max` znaków — bez wielokropka (DESIGN.md).
  */
-export function zdSplitShortName(name: string, max = 16): string {
+export function zdSplitShortName(name: string, max = 18): string {
   const clean = name
     .replace(/\s+/g, " ")
     .replace(/[\s,]+(sp\.?\s*z\s*o\.?\s*o\.?|sp\.?\s*k\.?|sp\.?\s*j\.?|s\.?\s*a\.?|s\.?\s*c\.?)\s*$/i, "")
@@ -147,5 +147,6 @@ export function zdSplitShortName(name: string, max = 16): string {
     if (`${out} ${w}`.length > max) break;
     out = `${out} ${w}`;
   }
-  return out;
+  // „Hager &” albo „Dental -” urwane na łączniku czyta się gorzej niż samo pierwsze słowo.
+  return out.replace(/\s+(&|\+|-|i|and|und)$/i, "");
 }

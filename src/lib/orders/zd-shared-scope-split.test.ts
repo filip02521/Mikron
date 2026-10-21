@@ -81,6 +81,8 @@ describe("zd-shared-scope-split", () => {
     expect(zdSplitShortName("Ivoclar Vivadent Sp. z o.o.")).toBe("Ivoclar Vivadent");
     expect(zdSplitShortName("Dentsply Sirona Polska S.A.")).toBe("Dentsply Sirona");
     expect(zdSplitShortName("Komet")).toBe("Komet");
+    expect(zdSplitShortName("Hager & Meisinger GmbH")).toBe("Hager & Meisinger");
+    expect(zdSplitShortName("Hager & Meisingerowie Dental")).toBe("Hager");
     expect(zdSplitShortName("Superlongsuppliername International")).toBe("Superlongsuppliername");
   });
 });

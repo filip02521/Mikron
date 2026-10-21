@@ -198,6 +198,7 @@ export function ZdSharedScopeSplitter({
 }) {
   const searchId = useId();
   const searchRef = useRef<HTMLInputElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const [loading, startLoad] = useTransition();
   const [saving, startSave] = useTransition();
   const [products, setProducts] = useState<ZdSharedScopeProduct[] | null>(null);
@@ -299,6 +300,8 @@ export function ZdSharedScopeSplitter({
       return next;
     });
     setAnchor(tw);
+    // Klik w komórkę nie daje fokusu — bez tego skróty 1–9 / 0 / H nie działają.
+    if (!rootRef.current?.contains(document.activeElement)) rootRef.current?.focus({ preventScroll: true });
   };
 
   const toggleAllVisible = () => {
@@ -387,7 +390,9 @@ export function ZdSharedScopeSplitter({
 
   return (
     <div
-      className="flex min-h-0 flex-1 flex-col"
+      ref={rootRef}
+      tabIndex={-1}
+      className="flex min-w-0 flex-col outline-none lg:min-h-0 lg:flex-1"
       onKeyDown={onKeyDown}
       aria-busy={busy || undefined}
     >
@@ -422,7 +427,11 @@ export function ZdSharedScopeSplitter({
           ) : null}
         </div>
 
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtr towarów">
+        <div
+          className="-mx-5 flex gap-1.5 overflow-x-auto px-5 [scrollbar-width:thin] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+          role="group"
+          aria-label="Filtr towarów"
+        >
           <FilterChip active={filterIs({ kind: "all" })} count={all.length} onClick={() => changeFilter({ kind: "all" })}>
             Wszystkie
           </FilterChip>
@@ -515,7 +524,7 @@ export function ZdSharedScopeSplitter({
         </div>
       </div>
 
-      <div className="relative min-h-0 flex-1 overflow-auto">
+      <div className="relative min-w-0 overflow-x-auto lg:min-h-0 lg:flex-1 lg:overflow-auto">
         {products == null ? (
           <div className="flex items-center justify-center gap-2 py-16 text-sm text-slate-500" role="status">
             <Spinner size="sm" /> Wczytuję towary zakresu…
@@ -561,11 +570,13 @@ export function ZdSharedScopeSplitter({
                     }
                   />
                 </th>
-                <th className="border-b border-slate-200 px-2 py-2.5 font-medium">Towar</th>
-                <th className="hidden border-b border-slate-200 px-2 py-2.5 font-medium md:table-cell">
+                <th className="w-full border-b border-slate-200 px-2 py-2.5 font-medium">Towar</th>
+                <th className="hidden w-64 border-b border-slate-200 px-2 py-2.5 font-medium md:table-cell">
                   Historia ZD
                 </th>
-                <th className="border-b border-slate-200 py-2.5 pl-2 pr-5 font-medium sm:pr-6">Zamawiaj u</th>
+                <th className="w-px whitespace-nowrap border-b border-slate-200 py-2.5 pl-2 pr-5 font-medium sm:pr-6">
+                  Zamawiaj u
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -581,6 +592,10 @@ export function ZdSharedScopeSplitter({
                   <tr
                     key={tw}
                     aria-selected={isSelected}
+                    onMouseDown={(e) => {
+                      // Shift+klik zaznacza wiersze, nie tekst między nimi.
+                      if (e.shiftKey) e.preventDefault();
+                    }}
                     onClick={(e) => {
                       if ((e.target as HTMLElement).closest("button, select, input, a")) return;
                       toggleRow(tw, e.shiftKey);
@@ -618,7 +633,7 @@ export function ZdSharedScopeSplitter({
                         {p.twNazwa || "-"}
                       </p>
                     </td>
-                    <td className="hidden px-2 py-2 align-middle text-xs text-slate-600 md:table-cell">
+                    <td className="hidden max-w-64 px-2 py-2 align-middle text-xs text-slate-600 md:table-cell">
                       {history.length ? (
                         <>
                           <p className="truncate">
@@ -678,7 +693,7 @@ export function ZdSharedScopeSplitter({
         ) : null}
       </div>
 
-      <div className="flex shrink-0 flex-col gap-3 border-t border-slate-200 bg-white px-5 py-3 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+      <div className="sticky bottom-0 z-10 flex shrink-0 flex-col gap-3 border-t border-slate-200 bg-white px-5 py-3 sm:px-6 lg:static lg:flex-row lg:items-center lg:justify-between">
         {selectionSet.size > 0 ? (
           <div className="flex min-w-0 flex-wrap items-center gap-2" role="toolbar" aria-label="Akcje dla zaznaczonych">
             <span className="text-sm font-medium tabular-nums text-slate-900">
@@ -724,7 +739,7 @@ export function ZdSharedScopeSplitter({
             </Button>
           </div>
         ) : (
-          <p className="text-xs leading-relaxed text-slate-500">
+          <p className={cn("text-xs leading-relaxed text-slate-500", savedCount == null && "hidden sm:block")}>
             {savedCount != null && changed.length === 0 ? (
               <span className="font-medium text-emerald-700">
                 Zapisano {savedCount} {plWord(savedCount, "zmianę", "zmiany", "zmian")} - działa od kolejnego „Policz”.

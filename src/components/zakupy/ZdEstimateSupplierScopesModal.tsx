@@ -853,10 +853,10 @@ export function ZdEstimateSupplierScopesModal({
             />
           </div>
         ) : (
-          <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] lg:grid-cols-[17rem_minmax(0,1fr)] lg:grid-rows-1">
+          <div className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[17rem_minmax(0,1fr)] lg:overflow-hidden">
             <nav
               aria-label="Wspólne zakresy"
-              className="max-h-44 overflow-y-auto border-b border-slate-100 bg-slate-50/60 p-2 lg:max-h-none lg:border-b-0 lg:border-r"
+              className="border-b border-slate-100 bg-slate-50/60 p-2 lg:min-h-0 lg:overflow-y-auto lg:border-b-0 lg:border-r"
             >
               {sharedScopes.length === 0 ? (
                 <p className="px-3 py-4 text-sm text-slate-500">Brak zakresów pasujących do filtra.</p>
@@ -903,7 +903,7 @@ export function ZdEstimateSupplierScopesModal({
                 </ul>
               )}
             </nav>
-            <section className="flex min-h-0 flex-col" aria-label="Rozdzielanie towarów">
+            <section className="flex min-w-0 flex-col lg:min-h-0" aria-label="Rozdzielanie towarów">
               {activeShared ? (
                 <ZdSharedScopeSplitter
                   key={activeSharedKey}
