@@ -436,6 +436,11 @@ export type ZdOrderEngineInput = {
   /** Dostawca OnTime — historia snapshotów (kh + aliasy) i prośby. Bez → bez historii i próśb. */
   supplierId: string | null;
   dniZapasu: number;
+  /**
+   * Czas dostawy i dni do kolejnego zamówienia (jak horyzont „do kolejnej dostawy”) —
+   * strategia z własnymi dniami celu liczy co najmniej cykl + dostawę.
+   */
+  orderTiming?: { leadDays: number; nextOrderDays: number } | null;
   dataOd: string;
   dataDo: string;
   zapasMin: number;
@@ -554,7 +559,7 @@ export async function runZdOrderEngine(
       return { ok: false, feedback };
     }
   }
-  const dniZapasu = effectiveDniZapasu(orderPolicy, input.dniZapasu);
+  const dniZapasu = effectiveDniZapasu(orderPolicy, input.dniZapasu, input.orderTiming);
 
   // Pełna lista towarów zakresu z Subiekta (nie tylko braki API / nie nasza baza).
   // Echo filtra zaraz po 1. stronie — bez tego stary API mógłby dociągnąć cały katalog.

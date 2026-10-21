@@ -359,6 +359,7 @@ async function computeSupplierOrder(input: {
         : { mode: "cecha", grupaId: null, cechaId: scopeId },
     supplierId: supplier.id,
     dniZapasu,
+    orderTiming: horizon ? { leadDays: horizon.leadDays, nextOrderDays: horizon.nextOrderDays } : null,
     dataOd: window.dataOd,
     dataDo: window.dataDo,
     zapasMin: ZD_ESTIMATE_UI_PREFS_DEFAULTS.zapasMin,

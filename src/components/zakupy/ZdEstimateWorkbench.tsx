@@ -6304,7 +6304,12 @@ export function ZdEstimateWorkbench({
               scopeMode={scopeMode}
               scopeName={scopeLabel}
               stockLabel={policyTargetDays != null ? null : stockLabel}
-              dniZapasu={policyTargetDays != null ? String(policyTargetDays) : dniZapasu}
+              dniZapasu={
+                policyTargetDays != null
+                  ? // Po Policz: dni faktycznie użyte (strategia liczy co najmniej cykl + dostawę).
+                    String(lines ? Math.max(policyTargetDays, Math.round(Number(paramInfo?.dniZapasu) || 0)) : policyTargetDays)
+                  : dniZapasu
+              }
               supplierLabel={supplierLabel}
               dataOd={dataOd}
               dataDo={dataDo}

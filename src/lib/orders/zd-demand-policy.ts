@@ -28,9 +28,33 @@ export const ZD_SUPPLIER_ORDER_POLICY_CLASSIC: ZdSupplierOrderPolicy = {
 /** Okna profilu do średniej (3 × 30 d = 90 d). */
 export const ZD_DEMAND_FLOOR_WINDOWS = 3;
 
-export function effectiveDniZapasu(policy: ZdSupplierOrderPolicy, supplierDniZapasu: number): number {
+/**
+ * Bufor na wahania sprzedaży w czasie dostawy (część czasu dostawy). Symulacja 15 mies.,
+ * cykl 7 d, dostawa 30 d, sprzedaż ±80% dziennie: bez bufora 24 dni braku na 450, z 25% — 0,
+ * średni stan 16 dni sprzedaży (mniej niż dostawca z dostawą 5 d). Przy krótkiej dostawie
+ * bufor jest pomijalny, bo i tak wygrywają dni strategii.
+ */
+export const ZD_STRATEGY_LEAD_SAFETY_SHARE = 0.25;
+
+/**
+ * Dni celu. Strategia z własnymi dniami: zamówienie musi starczyć do przyjazdu NASTĘPNEJ
+ * dostawy — cykl zamawiania (propozycje co N dni, inaczej harmonogram dostawcy) + czas
+ * dostawy + bufor. Dni strategii to minimum: przy 25 dniach, cyklu 3 i dostawie 30 dni
+ * towar kończyłby się w każdym cyklu.
+ */
+export function effectiveDniZapasu(
+  policy: ZdSupplierOrderPolicy,
+  supplierDniZapasu: number,
+  timing?: { leadDays: number; nextOrderDays: number } | null
+): number {
   const t = Number(policy.targetDays);
-  return Number.isFinite(t) && t >= 1 ? Math.round(t) : supplierDniZapasu;
+  if (!(Number.isFinite(t) && t >= 1)) return supplierDniZapasu;
+  const target = Math.round(t);
+  if (!timing) return target;
+  const cycle = Number(policy.cycleDays);
+  const cycleDays = Number.isFinite(cycle) && cycle >= 1 ? Math.round(cycle) : Math.max(0, Math.round(timing.nextOrderDays));
+  const lead = Math.max(0, Math.round(timing.leadDays));
+  return Math.max(target, cycleDays + lead + Math.round(lead * ZD_STRATEGY_LEAD_SAFETY_SHARE));
 }
 
 /** Sprzedaż z ostatnich 90 dni z profilu (12 okien po 30 d, od najstarszego). */

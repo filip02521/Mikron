@@ -1699,6 +1699,9 @@ export async function actionRunZdEstimateManual(
       scope,
       supplierId: String(input.supplierId ?? "").trim() || null,
       dniZapasu: horizon ? horizon.horizonDays : dniZapasu,
+      orderTiming: supplierHorizon
+        ? { leadDays: supplierHorizon.leadDays, nextOrderDays: supplierHorizon.nextOrderDays }
+        : null,
       dataOd,
       dataDo,
       zapasMin,
