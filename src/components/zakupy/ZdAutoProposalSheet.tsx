@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { actionAcceptZdAutoProposal, actionCreateZdAutoProposalNow } from "@/app/actions/zd-estimate";
-import { IconAlertCircle, IconCircleCheck, IconTrash2, IconUndoLeft, IconX } from "@/components/icons/StrokeIcons";
+import { IconAlertCircle, IconCheck, IconCircleCheck, IconTrash2, IconUndoLeft, IconX } from "@/components/icons/StrokeIcons";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { FOCUSABLE_SELECTOR } from "@/components/ui/ModalShell";
@@ -68,6 +68,81 @@ function PhaseProgress({ phase }: { phase: Phase }) {
           </span>
         </li>
       ))}
+    </ol>
+  );
+}
+
+type StepStatus = "idle" | "running" | "ok" | "error";
+type Step = { key: string; title: string; detail: React.ReactNode; status: StepStatus; message?: string; onRetry?: () => void };
+
+/**
+ * Pionowa oś działań: węzeł ze stanem, szyna zielenieje po każdym zakończonym kroku.
+ * Krok w toku ma animowane logo OnTime (systemowe ładowanie), pod nim pierścień na 250 ms,
+ * zanim logo się pojawi — węzeł nigdy nie jest pusty.
+ */
+function ActionTimeline({ steps }: { steps: Step[] }) {
+  return (
+    <ol className="relative" aria-label="Działania po zatwierdzeniu">
+      {steps.map((s, i) => {
+        const last = i === steps.length - 1;
+        return (
+          <li key={s.key} className="relative flex gap-3 pb-5 last:pb-0" aria-current={s.status === "running" ? "step" : undefined}>
+            {!last ? (
+              <span
+                aria-hidden
+                className={cn(
+                  "absolute top-9 bottom-1 left-4 w-px -translate-x-1/2 transition-colors duration-300 motion-reduce:transition-none",
+                  s.status === "ok" ? "bg-emerald-300" : "bg-slate-200"
+                )}
+              />
+            ) : null}
+            <span aria-hidden className="relative z-[1] flex size-8 shrink-0 items-center justify-center">
+              {s.status === "running" ? (
+                <>
+                  <span className="absolute inset-0 rounded-full ring-2 ring-indigo-200" />
+                  <BrandLoader size="md" className="relative" />
+                </>
+              ) : (
+                <span
+                  className={cn(
+                    "flex size-8 items-center justify-center rounded-full text-xs font-semibold tabular-nums transition-colors duration-200 motion-reduce:transition-none",
+                    s.status === "ok" && "bg-emerald-600 text-white",
+                    s.status === "error" && "bg-red-600 text-white",
+                    s.status === "idle" && "bg-white text-slate-500 ring-1 ring-slate-300"
+                  )}
+                >
+                  {s.status === "ok" ? (
+                    <IconCheck size={15} strokeWidth={2.5} />
+                  ) : s.status === "error" ? (
+                    <IconAlertCircle size={15} />
+                  ) : (
+                    i + 1
+                  )}
+                </span>
+              )}
+            </span>
+            <div className="min-w-0 flex-1 pt-1">
+              <p className={cn("text-sm font-semibold", s.status === "idle" ? "text-slate-600" : "text-slate-900")}>{s.title}</p>
+              <div className={cn("mt-0.5 leading-snug", s.status === "idle" ? "text-xs text-slate-500" : "text-sm text-slate-600")}>
+                {s.detail}
+              </div>
+              {s.message ? (
+                <p
+                  className={cn("mt-1 text-sm", s.status === "error" ? "text-red-700" : "text-slate-700")}
+                  role={s.status === "error" ? "alert" : undefined}
+                >
+                  {s.message}
+                </p>
+              ) : null}
+              {s.onRetry ? (
+                <Button type="button" size="sm" variant="secondary" className="mt-2" onClick={s.onRetry}>
+                  Spróbuj ponownie
+                </Button>
+              ) : null}
+            </div>
+          </li>
+        );
+      })}
     </ol>
   );
 }
@@ -137,6 +212,8 @@ export function ZdAutoProposalSheet({
   const [fresh, setFresh] = useState<ZdAutoProposal | null>(null);
   const [edits, setEdits] = useState<Record<string, number>>({});
   const [createError, setCreateError] = useState<string | null>(null);
+  /** Numer utworzonego ZD — krok „ZD w Subiekcie” chwilę zielony, zanim przejdzie do wysyłki. */
+  const [createdNr, setCreatedNr] = useState<string | null>(null);
   const [session, setSession] = useState<ZdPostCreateSession | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const started = useRef(false);
@@ -206,9 +283,12 @@ export function ZdAutoProposalSheet({
           setPhase("review");
           return setCreateError(r.title ? `${r.title}: ${r.message}` : r.message);
         }
-        setSession(r.session);
-        setPhase("send");
+        setCreatedNr(r.session.dokNrPelny ?? "ZD");
         router.refresh();
+        window.setTimeout(() => {
+          setSession(r.session);
+          setPhase("send");
+        }, 700);
       },
       () => {
         // Wynik nieznany (zerwane połączenie) — ZD mogło powstać; bez ślepego ponawiania.
@@ -242,6 +322,53 @@ export function ZdAutoProposalSheet({
   const shown = diff.filter((d) =>
     filter === "changes" ? d.change !== "same" : filter === "edited" ? String(d.line.twId) in edits : true
   );
+
+  // Oczekiwanie (przeliczenie, zapis w Subiekcie) pokazuje oś działań zamiast listy.
+  const showTimeline = !fresh || creating;
+  const prosbaLines = activeLines.filter((l) => l.prosbaPieces > 0).length;
+  const cycle = morning.policy.cycleDays;
+  const steps: Step[] = [
+    {
+      key: "recompute",
+      title: "Przeliczenie na aktualnych stanach",
+      status: recompute.status,
+      message: recompute.status === "error" ? recompute.message : undefined,
+      onRetry: recompute.status === "error" ? runRecompute : undefined,
+      detail:
+        recompute.status === "ok"
+          ? `${activeLines.length} ${polishPluralWord(activeLines.length, "pozycja", "pozycje", "pozycji")} · ${
+              changes.length ? `${changes.length} ${polishPluralWord(changes.length, "zmiana", "zmiany", "zmian")} wobec rana` : "bez zmian wobec rana"
+            }${editedCount ? ` · ${editedCount} ${polishPluralWord(editedCount, "poprawiona", "poprawione", "poprawionych")}` : ""}.`
+          : "Stany, prośby i strategia dostawcy - tak jak „Policz” w Kreatorze. Zwykle kilkanaście sekund.",
+    },
+    {
+      key: "create",
+      title: "Utworzenie ZD w Subiekcie",
+      status: createdNr ? "ok" : creating ? "running" : "idle",
+      message: createdNr ? `Utworzono ${createdNr}.` : undefined,
+      detail: creating && !createdNr
+        ? "Subiekt zapisuje dokument - przy dużym zamówieniu do 3 minut. Nie zamykaj panelu."
+        : "W aktualnej bazie Subiekta, z ilościami z listy.",
+    },
+    { key: "mail", title: "Mail z zamówieniem do dostawcy", status: "idle", detail: "Podgląd i poprawki przed wysłaniem." },
+    { key: "termin", title: "Termin realizacji na ZD", status: "idle", detail: "Przewidywana dostawa, ustawiana zaraz po wysyłce." },
+    {
+      key: "glowne",
+      title: "Prośby handlowców",
+      status: "idle",
+      detail: !fresh
+        ? "Prośby z listy oznaczę jako zamówione (Główne)."
+        : prosbaLines
+          ? `${prosbaLines} ${polishPluralWord(prosbaLines, "pozycja", "pozycje", "pozycji")} z prośbami - oznaczę je jako zamówione (Główne).`
+          : "Brak próśb na tej liście.",
+    },
+    {
+      key: "plan",
+      title: "Plan zamówień",
+      status: "idle",
+      detail: `${supplierName} oznaczony jako zamówiony${cycle ? `; kolejna propozycja za ${cycle} ${polishPluralWord(cycle, "dzień", "dni", "dni")}` : ""}.`,
+    },
+  ];
 
   // Portal: panel w grupie uwagi dziedziczył jej kontekst warstw — telefon zakrywał go paskami aplikacji.
   return createPortal(
@@ -306,14 +433,9 @@ export function ZdAutoProposalSheet({
             </div>
           ) : (
             <div className="space-y-4">
-              {recompute.status === "running" ? null : recompute.status === "error" ? (
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-red-50 px-3 py-2.5 text-sm text-red-700" role="alert">
-                  <span className="flex items-center gap-2">
-                    <IconAlertCircle size={16} aria-hidden /> {recompute.message}
-                  </span>
-                  <Button type="button" size="sm" variant="secondary" onClick={runRecompute}>
-                    Przelicz ponownie
-                  </Button>
+              {showTimeline ? (
+                <div role="status" aria-live="polite" className="rounded-lg border border-slate-200 px-4 py-4">
+                  <ActionTimeline steps={steps} />
                 </div>
               ) : (
                 <p className="text-sm text-slate-600">
@@ -331,7 +453,7 @@ export function ZdAutoProposalSheet({
                 </p>
               ) : null}
 
-              {fresh ? (
+              {fresh && !showTimeline ? (
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <SegmentedControl
                     value={filter}
@@ -360,24 +482,9 @@ export function ZdAutoProposalSheet({
                 </div>
               ) : null}
 
-              {!fresh ? (
-                recompute.status === "running" ? (
-                  // Systemowe ładowanie OnTime (DESIGN.md: dłuższe ładowanie = logo, nie szkielet).
-                  <div className="flex flex-col items-center gap-3 py-16 text-center" role="status">
-                    <BrandLoader size="lg" />
-                    <p className="text-sm font-medium text-slate-900">Przeliczam na stanach z tej chwili…</p>
-                    <p className="max-w-xs text-xs text-slate-500">Stany, prośby i strategia dostawcy - jak „Policz” w Kreatorze. Zwykle kilkanaście sekund.</p>
-                  </div>
-                ) : null
-              ) : (
+              {showTimeline || !fresh ? null : (
                 <>
-                  {creating ? (
-                    <div className="flex items-center gap-3 rounded-md bg-indigo-50 px-3 py-2.5 text-sm text-slate-900" role="status">
-                      <BrandLoader size="sm" />
-                      <span>Tworzę ZD w Subiekcie - przy dużym zamówieniu do 3 minut. Nie zamykaj panelu.</span>
-                    </div>
-                  ) : null}
-                  <ul className={cn("divide-y divide-slate-100 rounded-lg border border-slate-200", creating && "pointer-events-none opacity-60")}>
+                  <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
                     {shown.length === 0 ? (
                       <li className="px-3 py-6 text-center text-sm text-slate-500">Brak pozycji w tym widoku.</li>
                     ) : null}
@@ -451,6 +558,7 @@ export function ZdAutoProposalSheet({
                   </ul>
                 </>
               )}
+              {creating ? null : (
               <p className="text-xs text-slate-500">
                 Brakuje towaru?{" "}
                 <a className="font-medium text-indigo-700 underline underline-offset-2" href={`/zakupy/szacunek?supplierId=${encodeURIComponent(supplierId)}`}>
@@ -458,6 +566,7 @@ export function ZdAutoProposalSheet({
                 </a>
                 .
               </p>
+              )}
             </div>
           )}
         </div>
@@ -481,7 +590,7 @@ export function ZdAutoProposalSheet({
                   <Spinner size="sm" /> Tworzę ZD w Subiekcie…
                 </span>
               ) : (
-                `Zatwierdź i utwórz ZD (${activeLines.length})`
+                fresh ? `Zatwierdź i utwórz ZD (${activeLines.length})` : "Zatwierdź i utwórz ZD"
               )}
             </Button>
           </footer>
