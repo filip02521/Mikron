@@ -210,6 +210,8 @@ export function ZdAutoProposalSheet({
   const [fresh, setFresh] = useState<ZdAutoProposal | null>(null);
   const [edits, setEdits] = useState<Record<string, number>>({});
   const [createError, setCreateError] = useState<string | null>(null);
+  /** Subiekt nie potwierdził zapisu (timeout, zerwane połączenie) — ZD mogło powstać; jak w Kreatorze bez ponowienia. */
+  const [createLocked, setCreateLocked] = useState(false);
   /** Numer utworzonego ZD — krok „ZD w Subiekcie” chwilę zielony, zanim przejdzie do wysyłki. */
   const [createdNr, setCreatedNr] = useState<string | null>(null);
   /** Po przeliczeniu krok 1 chwilę pokazuje sukces (logo się domyka), dopiero potem lista. */
@@ -281,13 +283,14 @@ export function ZdAutoProposalSheet({
   }, []);
 
   const runCreate = () => {
-    if (!fresh) return;
+    if (!fresh || createLocked) return;
     setCreateError(null);
     setPhase("creating");
     void actionAcceptZdAutoProposal({ supplierId, proposalId: fresh.id, edits }).then(
       (r) => {
         if (!r.ok) {
           setPhase("review");
+          if (r.unknownOutcome) setCreateLocked(true);
           return setCreateError(r.title ? `${r.title}: ${r.message}` : r.message);
         }
         setCreatedNr(r.session.dokNrPelny ?? "ZD");
@@ -300,7 +303,8 @@ export function ZdAutoProposalSheet({
       () => {
         // Wynik nieznany (zerwane połączenie) — ZD mogło powstać; bez ślepego ponawiania.
         setPhase("review");
-        setCreateError("Brak odpowiedzi serwera. Sprawdź w Kreatorze ZD, czy dokument powstał, zanim spróbujesz ponownie.");
+        setCreateLocked(true);
+        setCreateError("Brak odpowiedzi serwera.");
       }
     );
   };
@@ -317,6 +321,8 @@ export function ZdAutoProposalSheet({
       return copy;
     });
 
+  // Porównanie z propozycją, którą widziała karta (nie zawsze poranna — panel mógł już przeliczać).
+  const since = `propozycji z ${formatWhen(morning.createdAt)}`;
   const diff = fresh ? diffZdAutoProposalLines(morning.lines, fresh.lines) : [];
   const editedCount = Object.keys(edits).length;
   const changes = diff.filter((d) => d.change !== "same");
@@ -344,7 +350,7 @@ export function ZdAutoProposalSheet({
       detail:
         recompute.status === "ok"
           ? `${activeLines.length} ${polishPluralWord(activeLines.length, "pozycja", "pozycje", "pozycji")} · ${
-              changes.length ? `${changes.length} ${polishPluralWord(changes.length, "zmiana", "zmiany", "zmian")} wobec rana` : "bez zmian wobec rana"
+              changes.length ? `${changes.length} ${polishPluralWord(changes.length, "zmiana", "zmiany", "zmian")} wobec ${since}` : `bez zmian wobec ${since}`
             }${editedCount ? ` · ${editedCount} ${polishPluralWord(editedCount, "poprawiona", "poprawione", "poprawionych")}` : ""}.`
           : "Stany, prośby i strategia dostawcy - tak jak „Policz” w Kreatorze. Zwykle kilkanaście sekund.",
     },
@@ -448,13 +454,24 @@ export function ZdAutoProposalSheet({
                 <p className="text-sm text-slate-600">
                   Przeliczone na stanach z tej chwili.{" "}
                   {changes.length
-                    ? `Wobec rana ${changes.length} ${polishPluralWord(changes.length, "zmiana", "zmiany", "zmian")}.`
-                    : "Bez zmian wobec rana."}{" "}
+                    ? `Wobec ${since}: ${changes.length} ${polishPluralWord(changes.length, "zmiana", "zmiany", "zmian")}.`
+                    : `Bez zmian wobec ${since}.`}{" "}
                   Popraw ilości, jeśli trzeba - zatwierdzisz dokładnie to, co widzisz.
                 </p>
               )}
 
-              {createError ? (
+              {createLocked ? (
+                <div className="flex items-start gap-2 rounded-md bg-amber-50 px-3 py-2.5 text-sm text-amber-900" role="alert">
+                  <IconAlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden />
+                  <p>
+                    {createError ? `${createError} ` : ""}Subiekt nie potwierdził zapisu - ZD mogło powstać. Sprawdź listę ZD w{" "}
+                    <a className="font-medium underline underline-offset-2" href={`/zakupy/szacunek?supplierId=${encodeURIComponent(supplierId)}`}>
+                      Kreatorze ZD
+                    </a>{" "}
+                    i powiąż dokument; ponowne zatwierdzenie stąd jest zablokowane, żeby nie powstało drugie ZD.
+                  </p>
+                </div>
+              ) : createError ? (
                 <p className="flex items-start gap-2 rounded-md bg-red-50 px-3 py-2.5 text-sm text-red-700" role="alert">
                   <IconAlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden /> {createError}
                 </p>
@@ -469,7 +486,7 @@ export function ZdAutoProposalSheet({
                     density="compact"
                     options={[
                       { value: "all", label: `Wszystkie (${diff.length})` },
-                      { value: "changes", label: `Od rana (${changes.length})` },
+                      { value: "changes", label: `Zmiany (${changes.length})` },
                       { value: "edited", label: `Poprawione (${editedCount})` },
                     ]}
                   />
@@ -521,12 +538,16 @@ export function ZdAutoProposalSheet({
                             <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
                               <span className="font-mono">{l.symbol}</span>
                               {l.prosbaPieces > 0 ? <span>prośby {formatQty(l.prosbaPieces)} szt</span> : null}
-                              {change === "added" ? <Badge variant="info">nowa od rana</Badge> : null}
+                              {change === "added" ? <Badge variant="info">nowa</Badge> : null}
                               {change === "changed" && beforeUnits != null ? (
-                                <Badge variant="warning">rano {formatQty(beforeUnits)}</Badge>
+                                <Badge variant="warning">było {formatQty(beforeUnits)}</Badge>
                               ) : null}
-                              {change === "removed" ? <Badge>wypadła od rana</Badge> : null}
+                              {change === "removed" ? <Badge>wypadła</Badge> : null}
                               {editedByMe && !removedByMe ? <Badge variant="info">automat: {formatQty(l.zdUnits)}</Badge> : null}
+                              {/* Prośby i tak pójdą jako zamówione (Główne) — ręczna ilość poniżej nich to pomyłka albo świadoma decyzja. */}
+                              {!removedByMe && change !== "removed" && l.prosbaPieces > 0 && l.zdUnits > 0 && (l.pieces / l.zdUnits) * units < l.prosbaPieces ? (
+                                <Badge variant="warning">mniej niż prośby</Badge>
+                              ) : null}
                             </p>
                           </div>
                           {change === "removed" ? (
@@ -591,7 +612,7 @@ export function ZdAutoProposalSheet({
                 </>
               ) : null}
             </p>
-            <Button type="button" className="min-h-11 sm:min-h-10" onClick={runCreate} disabled={!fresh || creating || activeLines.length === 0}>
+            <Button type="button" className="min-h-11 sm:min-h-10" onClick={runCreate} disabled={!fresh || creating || createLocked || activeLines.length === 0}>
               {creating ? (
                 <span className="inline-flex items-center gap-2">
                   <Spinner size="sm" /> Tworzę ZD w Subiekcie…

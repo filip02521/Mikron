@@ -1514,7 +1514,8 @@ export async function actionAcceptZdAutoProposal(input: {
   edits?: Record<string, number> | null;
 }): Promise<
   | { ok: true; session: ZdPostCreateSession }
-  | { ok: false; message: string; title?: string }
+  /** unknownOutcome: Subiekt nie potwierdził zapisu w czasie — ZD mogło powstać, bez ponowienia. */
+  | { ok: false; message: string; title?: string; unknownOutcome?: boolean }
 > {
   await requireZdEstimateAdmin("mutate");
   const supplierId = String(input.supplierId ?? "").trim();
@@ -1575,7 +1576,7 @@ export async function actionAcceptZdAutoProposal(input: {
       individualCatalogOrderIds: built.individualCatalogOrderIds,
       individualServiceOrderIds: built.individualServiceOrderIds,
     });
-    if (!res.ok) return { ok: false, message: res.message, title: res.title };
+    if (!res.ok) return { ok: false, message: res.message, title: res.title, unknownOutcome: res.code === "timeout" };
     // Karta propozycji znika z panelu dziennego także u innych osób.
     revalidateAfterZdEstimateMark();
 
