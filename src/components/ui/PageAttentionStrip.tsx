@@ -39,6 +39,7 @@ export function PageAttentionStrip({
   icon,
   title,
   hint,
+  hintClassName,
   actions,
   edge = "inset",
   density = "comfortable",
@@ -49,6 +50,8 @@ export function PageAttentionStrip({
   icon: ReactNode;
   title: ReactNode;
   hint?: ReactNode;
+  /** Np. `max-sm:hidden` — podpowiedź (z myślnikiem) tylko od `sm`. */
+  hintClassName?: string;
   actions?: ReactNode;
   edge?: PageAttentionStripEdge;
   density?: PageAttentionStripDensity;
@@ -69,7 +72,7 @@ export function PageAttentionStrip({
         className
       )}
     >
-      <div className="flex min-w-0 items-center gap-2.5">
+      <div className="flex min-w-[min(100%,14rem)] flex-1 items-center gap-2.5">
         <span
           className={cn(
             "flex shrink-0 items-center justify-center rounded-md",
@@ -88,12 +91,13 @@ export function PageAttentionStrip({
         >
           <span className={cn("font-semibold", TONE_TITLE[tone])}>{title}</span>
           {hint != null && hint !== "" ? (
-            <span className="text-slate-600"> - {hint}</span>
+            <span className={cn("text-slate-600", hintClassName)}> - {hint}</span>
           ) : null}
         </p>
       </div>
       {actions ? (
-        <div className="flex shrink-0 flex-wrap items-center gap-1.5">{actions}</div>
+        // ml-auto: zawinięte pod tekst akcje zostają po prawej, nie lądują przy ikonie.
+        <div className="ml-auto flex shrink-0 flex-wrap items-center gap-1.5">{actions}</div>
       ) : null}
     </div>
   );
