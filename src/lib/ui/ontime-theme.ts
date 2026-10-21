@@ -413,11 +413,9 @@ export const zdEstimateToolbarActionsClusterClass = cn(
   zdEstimateChromeControlHeightClass
 );
 
-/** LIVE / host badge w top barze — h-8, wyśrodkowany. */
-export const zdEstimateHostBadgeClass = cn(
-  "inline-flex items-center rounded-md px-1.5 py-0 text-[10px] font-semibold leading-none tabular-nums",
-  zdEstimateChromeControlHeightClass
-);
+/** LIVE / host badge w top barze — odznaka statusu h-6 z kropką, wyśrodkowana w slocie h-8. */
+export const zdEstimateHostBadgeClass =
+  "inline-flex h-6 items-center gap-1.5 rounded-md px-2 py-0 text-[11px] font-semibold leading-none tabular-nums";
 
 /** Ikona-only w belce (Więcej). */
 export const zdEstimateToolbarIconClass = cn(

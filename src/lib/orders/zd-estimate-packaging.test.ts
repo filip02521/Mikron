@@ -1153,6 +1153,12 @@ describe("Na prośbę + minimum stanów: minimum to poziom, nie ilość", () => 
 });
 
 describe("formatZdPackDialogPreview", () => {
+  it("bez opakowania: same sztuki, bez „× op.”", () => {
+    const q = computeZdPackOrderQty(9, null);
+    expect(q.hasPackaging).toBe(false);
+    expect(formatZdPackDialogPreview(q).orderLine).toMatch(/: 9 szt$/);
+  });
+
   it("worek z pary, co 36: liczba worków, sztuki i palety", () => {
     const q = computeZdPackOrderQty(15, 5, "worek", "packages", 36);
     expect(formatZdPackDialogPreview(q)).toEqual({

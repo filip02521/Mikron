@@ -13,7 +13,8 @@ import { operationsAutoRefreshStore as autoRefreshStore } from "@/lib/client/ope
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { SystemNotice } from "@/components/ui/SystemNotice";
+import { IconBell } from "@/components/icons/StrokeIcons";
+import { PageAttentionStrip, PageAttentionStripCta } from "@/components/ui/PageAttentionStrip";
 import { systemNoticePanelStripClass } from "@/lib/ui/ontime-theme";
 import { MICROCOPY } from "@/lib/ui/microcopy";
 import { redirectToLoginIfUnauthorizedStatus } from "@/lib/auth/session-login-redirect";
@@ -371,14 +372,16 @@ export function OperationsUpdatesBanner() {
   if (!ctx?.hasUpdates || isOperationsPrimaryLiveRefreshPath(pathname)) return null;
 
   return (
-    <SystemNotice
-      variant="action"
+    // Ten sam pasek co „otwarte pytania” (jedna rodzina powiadomień), ton Petrol = informacja.
+    <PageAttentionStrip
+      tone="violet"
+      icon={<IconBell size={16} strokeWidth={2.25} />}
       title="Są nowe prośby lub zmiany w panelu dziennym"
-      description={MICROCOPY.notices.operationsUpdates}
-      action={
-        <Button type="button" size="sm" className="min-h-10 shrink-0" onClick={ctx.refreshNow}>
+      hint={MICROCOPY.notices.operationsUpdates}
+      actions={
+        <PageAttentionStripCta tone="violet" chevron={false} onClick={ctx.refreshNow}>
           {MICROCOPY.actions.refresh}
-        </Button>
+        </PageAttentionStripCta>
       }
     />
   );

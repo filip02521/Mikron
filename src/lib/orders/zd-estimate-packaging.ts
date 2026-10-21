@@ -345,6 +345,9 @@ export function formatZdPackDialogPreview(qty: ZdPackOrderQty): {
   const need = `${ZD_ESTIMATE_UI.packagingNeedLabel} ${formatQty(qty.piecesNeeded)} szt`;
   const surplus = qty.piecesArriving - qty.piecesNeeded;
   const needLine = surplus > 0 ? `${need} · zapas ${formatQty(surplus)} szt` : need;
+  if (!qty.hasPackaging) {
+    return { orderLine: `${ZD_ESTIMATE_UI.packagingOrderLabel}: ${formatQty(qty.zdUnits)} szt`, needLine };
+  }
   if (!isPackagingPackagesMode(qty.documentUnitMode)) {
     return {
       orderLine: `${ZD_ESTIMATE_UI.packagingOrderLabel}: ${formatQty(qty.zdUnits)} szt (pełne opakowania po ${qty.unitsPerPackage} szt)`,
@@ -372,6 +375,8 @@ const ZD_PACK_COMPACT_LABEL_BY_KEY: Record<string, string> = {
   op: "op.",
   karton: "kart.",
   paczka: "pac.",
+  worek: "wor.",
+  worki: "wor.",
   zbiorcze: "zb.",
   zb: "zb.",
   "zb.": "zb.",

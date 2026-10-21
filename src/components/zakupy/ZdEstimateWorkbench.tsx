@@ -53,7 +53,15 @@ import {
   type ZdEstimateCechaOption,
   type ZdEstimateGroupOption,
   type ZdEstimateSupplierOption,
+  actionGetZdSupplierOrderPolicy,
 } from "@/app/actions/zd-estimate";
+import {
+  ZdSupplierOrderPolicyChip,
+  ZdSupplierOrderPolicyDialog,
+} from "@/components/zakupy/ZdSupplierOrderPolicyDialog";
+import type { ZdSupplierOrderPolicyRow } from "@/lib/data/zd-supplier-order-policy";
+import type { ZdClassicCompare } from "@/lib/orders/zd-demand-policy";
+import { ZdAutoProposalBanner } from "@/components/zakupy/ZdAutoProposalBanner";
 import {
   policyForBoostPreset,
   ZD_BOOST_POWER_DEFAULT,
@@ -220,8 +228,10 @@ import {
 import {
   filterOrderableLinesWithPackaging,
   individualExtraPiecesForTw,
+  isPackagingPackagesMode,
   piecesArrivingForZdUnitsFromQty,
   resolveOrderQtyForLine,
+  zdDocumentUnitsToPieces,
   orderableLinesToTsv,
   pruneZdDocumentUnitOverrides,
 } from "@/lib/orders/zd-estimate-packaging";
@@ -315,12 +325,14 @@ import { ZdEstimateExcludeDialog } from "@/components/zakupy/ZdEstimateExcludeDi
 import { ZdEstimateLinkZdDialog } from "@/components/zakupy/ZdEstimateLinkZdDialog";
 import { ZdEstimateCreateZdDialog } from "@/components/zakupy/ZdEstimateCreateZdDialog";
 import { ZdEstimatePostCreatePanel } from "@/components/zakupy/ZdEstimatePostCreatePanel";
+import { ZdEstimateProductCard } from "@/components/zakupy/ZdEstimateProductCard";
 import { ZdEstimatePackagingDialog } from "@/components/zakupy/ZdEstimatePackagingDialog";
 import { ZdEstimateMinStockDialog } from "@/components/zakupy/ZdEstimateMinStockDialog";
 import type { ZdPairSeedProduct } from "@/components/zakupy/ZdEstimatePairsModal";
 import type { ZdBomSeedProduct } from "@/components/zakupy/ZdEstimateBomsModal";
 import {
   ZdEstimateTableRow,
+  handleZdEstimateRowArrowKeys,
   zdEstimateFlowColumnClass,
 } from "@/components/zakupy/ZdEstimateTableRow";
 import { useStableCallback } from "@/hooks/useStableCallback";
@@ -401,6 +413,7 @@ import {
   OverflowMenuItem,
   OverflowMenuLabel,
 } from "@/components/ui/OverflowMenu";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import { Spinner } from "@/components/ui/Spinner";
 import {
   IconAlertCircle,
@@ -1120,8 +1133,12 @@ export function ZdEstimateWorkbench({
     otherSupplierHintByTwId: Record<number, string>;
     /** Rozbicie horyzontu, gdy Policz liczył z czasem dostawy. */
     horizon: ZdOrderHorizon | null;
+    /** Czas dostawy dostawcy (dni) z Policz — kreska w kolumnie „Starczy”. */
+    leadDays?: number | null;
     /** Ile pozycji zmieniło wygładzenie (null = opcja wyłączona). */
     salesSmoothing?: ZdSalesSmoothingSummary | null;
+    /** Strategia testowa: lista „jak dotąd” na tym samym zakresie (porównanie w tabeli). */
+    classicCompare?: ZdClassicCompare | null;
   } | null>(null);
   const [extrasPolicy, setExtrasPolicy] = useState<ZdEstimateExtrasPolicy>(
     () =>
@@ -1861,6 +1878,23 @@ export function ZdEstimateWorkbench({
     [bootstrap.suppliers, supplierId]
   );
 
+  // Strategia zamawiania dostawcy (chip przy zakresie). Brak/błąd = „jak dotąd” w etykiecie.
+  const [supplierPolicy, setSupplierPolicy] = useState<{ supplierId: string; policy: ZdSupplierOrderPolicyRow } | null>(null);
+  const [supplierPolicyOpen, setSupplierPolicyOpen] = useState(false);
+  useEffect(() => {
+    if (!supplierId) return;
+    let cancelled = false;
+    void actionGetZdSupplierOrderPolicy({ supplierId }).then((r) => {
+      if (!cancelled && r.ok) setSupplierPolicy({ supplierId, policy: r.policy });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [supplierId]);
+  const currentSupplierPolicy = supplierPolicy && supplierPolicy.supplierId === supplierId ? supplierPolicy.policy : null;
+  const policyTargetDays =
+    currentSupplierPolicy?.strategy === "max30_90" && currentSupplierPolicy.targetDays ? currentSupplierPolicy.targetDays : null;
+
   const createKhResolution = useMemo(() => {
     if (!selectedSupplier) return null;
     return resolveZdCreateKhId({
@@ -2244,6 +2278,7 @@ export function ZdEstimateWorkbench({
     let pieces = 0;
     let value = 0;
     let unpriced = 0;
+    let pallets = 0;
     for (const l of orderableLines) {
       const qty = resolveOrderQtyForLine(
         l,
@@ -2265,8 +2300,17 @@ export function ZdEstimateWorkbench({
       const price = unitPriceByTwId[l.tw_Id];
       if (price != null && price > 0) value += linePieces * price;
       else unpriced += 1;
+      // Jak znacznik „N pal.” w wierszu: tylko pełne wielokrotności palety.
+      if (
+        qty.hasPackaging &&
+        isPackagingPackagesMode(qty.documentUnitMode) &&
+        qty.orderMultiple >= 2 &&
+        units % qty.orderMultiple === 0
+      ) {
+        pallets += units / qty.orderMultiple;
+      }
     }
-    return { count, pieces, value, unpriced };
+    return { count, pieces, value, unpriced, pallets };
   }, [
     orderableLines,
     packagingLookup,
@@ -2279,6 +2323,17 @@ export function ZdEstimateWorkbench({
     qtyOverrideMap,
     unitPriceByTwId,
   ]);
+
+  const classicCompareSummary = useMemo(() => {
+    const c = policzScopeInfo?.classicCompare;
+    if (!c) return null;
+    let value = 0;
+    for (const [tw, v] of Object.entries(c.byTwId)) {
+      const price = unitPriceByTwId[Number(tw)];
+      if (price != null && price > 0) value += v.pieces * price;
+    }
+    return { lineCount: c.lineCount, pieces: c.pieces, value };
+  }, [policzScopeInfo, unitPriceByTwId]);
 
   const segmentFilteredLines = useMemo(() => {
     if (!lines) return [];
@@ -2720,6 +2775,8 @@ export function ZdEstimateWorkbench({
         salesSmoothingEnabled: salesSmoothing,
         salesSmoothing: policzScopeInfo?.salesSmoothing ?? null,
         unitPriceByTwId,
+        leadDays: policzScopeInfo?.leadDays ?? null,
+        classicCompare: policzScopeInfo?.classicCompare ?? null,
         boostNeedsRecount,
         scopeMode,
         selectedGroup,
@@ -2972,15 +3029,18 @@ export function ZdEstimateWorkbench({
       setMissingBomTwIds(restored.missingBomTwIds);
       setHistoryByTwId(historyMapFromEntries(payload.historyByTwId));
       setHistoryFetchFailed(Boolean(payload.historyFetchFailed));
-      // Z sesji: tylko horyzont (zakresy / podpowiedzi ZD wrócą przy kolejnym Policz).
+      // Z sesji: horyzont, czas dostawy, wygładzenie i porównanie strategii
+      // (zakresy / podpowiedzi ZD wrócą przy kolejnym Policz).
       setPoliczScopeInfo(
-        payload.horizon || payload.salesSmoothing
+        payload.horizon || payload.salesSmoothing || payload.classicCompare || payload.leadDays != null
           ? {
               scopesIncluded: [],
               assignedElsewhere: [],
               otherSupplierHintByTwId: {},
               horizon: payload.horizon ?? null,
+              leadDays: payload.leadDays ?? null,
               salesSmoothing: payload.salesSmoothingEnabled ? payload.salesSmoothing ?? null : null,
+              classicCompare: payload.classicCompare ?? null,
             }
           : null
       );
@@ -3977,7 +4037,9 @@ export function ZdEstimateWorkbench({
           assignedElsewhere: res.assignedElsewhere ?? [],
           otherSupplierHintByTwId: res.otherSupplierHintByTwId ?? {},
           horizon: res.horizon ?? null,
+          leadDays: res.leadDays ?? null,
           salesSmoothing: res.salesSmoothingEnabled ? res.salesSmoothing ?? null : null,
+          classicCompare: res.classicCompare ?? null,
         });
         setUnitPriceByTwId(res.unitPriceByTwId ?? {});
         setHorizonNeedsRecount(false);
@@ -5827,9 +5889,11 @@ export function ZdEstimateWorkbench({
           subiektTwId: c.twId,
           twSymbol: line?.tw_Symbol ?? c.symbol,
           twNazwa: line?.tw_Nazwa ?? c.nazwa,
-          // Tylko N i tryb z pary — etykieta, palety i notatka zostają (bez zmian).
+          // Tylko N i tryb z pary — palety i notatka zostają (bez zmian). Etykieta też,
+          // chyba że to „paleta”: paczka z pary to opakowanie, nie paleta (jak w oknie opakowania).
           unitsPerPackage: c.pairUnitsPerPack,
           documentUnitMode: "packages",
+          ...(/^pal/i.test(packagingMap.get(c.twId)?.packageLabel.trim() ?? "") ? { packageLabel: "op." } : {}),
         });
         if (!res.ok) {
           reportError(res.message);
@@ -6054,6 +6118,9 @@ export function ZdEstimateWorkbench({
   // Stabilne handlery wierszy — `ZdEstimateTableRow` (memo) nie renderuje się przy niezwiązanych zmianach.
   const handleRowToggleSelected = useStableCallback(toggleRowSelected);
   const handleRowRestore = useStableCallback(restoreLine);
+  // Karta produktu (panel boczny) — otwierana nazwą w wierszu.
+  const [productCardTwId, setProductCardTwId] = useState<number | null>(null);
+  const handleOpenProduct = useStableCallback((twId: number) => setProductCardTwId(twId));
   const handleRowMarkOnRequest = useStableCallback(markOnRequestLine);
   const handleRowClearOnRequest = useStableCallback(clearOnRequestLine);
   const handleRowSessionInclude = useStableCallback(setSessionIncludeTwId);
@@ -6194,7 +6261,7 @@ export function ZdEstimateWorkbench({
           aria-live="polite"
           aria-busy="true"
         >
-          <Spinner className="size-6 text-slate-500" />
+          <BrandLoader size="lg" />
           <p className="text-sm font-medium text-slate-700">
             Przywracanie listy…
           </p>
@@ -6216,11 +6283,16 @@ export function ZdEstimateWorkbench({
               density={prepFormOpen && scopeSelected ? "short" : "full"}
               scopeMode={scopeMode}
               scopeName={scopeLabel}
-              stockLabel={stockLabel}
-              dniZapasu={dniZapasu}
+              stockLabel={policyTargetDays != null ? null : stockLabel}
+              dniZapasu={policyTargetDays != null ? String(policyTargetDays) : dniZapasu}
               supplierLabel={supplierLabel}
               dataOd={dataOd}
               dataDo={dataDo}
+              trailing={
+                selectedSupplier ? (
+                  <ZdSupplierOrderPolicyChip policy={currentSupplierPolicy} onClick={() => setSupplierPolicyOpen(true)} />
+                ) : null
+              }
             />
           ) : null
         }
@@ -6320,6 +6392,9 @@ export function ZdEstimateWorkbench({
             : null,
         }}
       />
+      {selectedSupplier && currentSupplierPolicy?.strategy === "max30_90" ? (
+        <ZdAutoProposalBanner key={selectedSupplier.id} supplierId={selectedSupplier.id} supplierName={selectedSupplier.name} />
+      ) : null}
       {launchReadyMessage ? (
         <Toast
           tone="success"
@@ -7766,7 +7841,7 @@ export function ZdEstimateWorkbench({
                       </th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody onKeyDown={handleZdEstimateRowArrowKeys}>
                     {tableVirtual.enabled && tableVirtual.paddingTop > 0 ? (
                       <tr aria-hidden>
                         <td
@@ -7827,6 +7902,12 @@ export function ZdEstimateWorkbench({
                           nameHit={nameAutoByTwId.get(l.tw_Id)}
                           packRow={packagingMap.get(l.tw_Id) ?? null}
                           packLookup={packagingLookup.get(l.tw_Id) ?? null}
+                          leadDays={policzScopeInfo?.leadDays ?? policzScopeInfo?.horizon?.leadDays ?? null}
+                          comparePieces={
+                            policzScopeInfo?.classicCompare
+                              ? (policzScopeInfo.classicCompare.byTwId[l.tw_Id]?.pieces ?? 0)
+                              : null
+                          }
                           individualExtra={
                             individualBundle.byTwId.get(l.tw_Id) ?? null
                           }
@@ -7848,6 +7929,7 @@ export function ZdEstimateWorkbench({
                           reviewAccepted={Boolean(acceptedReviewTwIds[l.tw_Id])}
                           onToggleSelected={handleRowToggleSelected}
                           onEditPackaging={setPackagingCandidate}
+                          onOpenProduct={handleOpenProduct}
                           onEditMinStock={setMinStockCandidate}
                           onExclude={setExcludeCandidate}
                           onRestore={handleRowRestore}
@@ -8065,8 +8147,35 @@ export function ZdEstimateWorkbench({
                         </strong>
                       </>
                     ) : null}
+                    {orderSummary.pallets > 0 ? (
+                      <>
+                        <span aria-hidden>·</span>
+                        {orderSummary.pallets} pal.
+                      </>
+                    ) : null}
                     {orderSummary.unpriced > 0 ? (
                       <span className="text-slate-500">· {orderSummary.unpriced} bez ceny</span>
+                    ) : null}
+                    {policyTargetDays != null && !classicCompareSummary ? (
+                      // Lista policzona przed włączeniem strategii (albo przywrócona z sesji) — liczby są „jak dotąd”.
+                      <button
+                        type="button"
+                        onClick={() => runEstimate()}
+                        disabled={busy}
+                        title="Lista jest jeszcze policzona strategią „jak dotąd”. Przelicz, żeby zobaczyć ilości strategii testowej i porównanie."
+                        className="ml-1 inline-flex items-center gap-1 border-l border-slate-200 pl-2 font-medium text-indigo-800 hover:text-indigo-950 disabled:opacity-60"
+                      >
+                        Przelicz wg strategii
+                      </button>
+                    ) : null}
+                    {classicCompareSummary ? (
+                      <span
+                        className="ml-1 border-l border-slate-200 pl-2 text-slate-500"
+                        title="Ta sama lista policzona strategią „jak dotąd” (bez Twoich zmian ilości)"
+                      >
+                        jak dotąd {classicCompareSummary.lineCount} poz. · {classicCompareSummary.pieces.toLocaleString("pl-PL")} szt
+                        {classicCompareSummary.value > 0 ? ` · ok. ${Math.round(classicCompareSummary.value).toLocaleString("pl-PL")} zł` : ""}
+                      </span>
                     ) : null}
                   </span>
                 ) : null}
@@ -8368,6 +8477,84 @@ export function ZdEstimateWorkbench({
         onClear={confirmBulkClearPackaging}
       />
 
+      {productCardTwId != null
+        ? (() => {
+            const idx = visibleLines.findIndex((x) => x.tw_Id === productCardTwId);
+            const l = idx >= 0 ? visibleLines[idx]! : lines?.find((x) => x.tw_Id === productCardTwId);
+            if (!l) return null;
+            const canonical = retargetTwIdToPackIfPiece(l.tw_Id, productPairs).twId;
+            const extraOnly = extraOnlyTwIds.has(canonical);
+            const pack = packagingLookup.get(l.tw_Id) ?? null;
+            const extra = individualExtraPiecesForTw(l.tw_Id, individualExtraByTwId);
+            const minSt = minStockByTwIdForRefresh.get(l.tw_Id);
+            const qty = resolveOrderQtyForLine(
+              l,
+              pack,
+              extra,
+              extraOnly,
+              extrasPolicy,
+              individualExtraPiecesForTw(l.tw_Id, stockNeedReliefByTwId),
+              individualExtraPiecesForTw(l.tw_Id, extraOverlapByTwId),
+              minSt
+            );
+            const prev = idx > 0 ? visibleLines[idx - 1] : undefined;
+            const next = idx >= 0 && idx < visibleLines.length - 1 ? visibleLines[idx + 1] : undefined;
+            const canMutate = !busy && exclusionsTrusted && onRequestTrusted;
+            return (
+              <ZdEstimateProductCard
+                line={l}
+                qty={qty}
+                openZdPieces={zdDocumentUnitsToPieces(
+                  Math.max(0, Number(l.otwarteZd) || 0),
+                  pack?.unitsPerPackage,
+                  pack?.documentUnitMode ?? "packages"
+                )}
+                extraPieces={extra}
+                extraOnly={extraOnly}
+                extrasPolicy={extrasPolicy}
+                minStockSzt={minSt}
+                overrideZdUnits={qtyOverrideByTwId[l.tw_Id]}
+                leadDays={policzScopeInfo?.leadDays ?? policzScopeInfo?.horizon?.leadDays ?? null}
+                comparePieces={
+                  policzScopeInfo?.classicCompare ? (policzScopeInfo.classicCompare.byTwId[l.tw_Id]?.pieces ?? 0) : null
+                }
+                supplierName={selectedSupplier?.name ?? null}
+                status={{
+                  excluded: orderExcludedTwIds.has(l.tw_Id),
+                  onRequest: onRequestTrusted && onRequestTwIds.has(canonical),
+                }}
+                position={{ index: Math.max(0, idx), total: visibleLines.length }}
+                onPrev={prev ? () => setProductCardTwId(prev.tw_Id) : undefined}
+                onNext={next ? () => setProductCardTwId(next.tw_Id) : undefined}
+                onClose={() => setProductCardTwId(null)}
+                canMutate={canMutate}
+                actions={{
+                  onEditPackaging: packagingTrusted ? () => setPackagingCandidate(l) : undefined,
+                  onEditMinStock: () => setMinStockCandidate(l),
+                  onMarkOnRequest: () => handleRowMarkOnRequest(l),
+                  onClearOnRequest: () => handleRowClearOnRequest(canonical),
+                  onExclude: () => setExcludeCandidate(l),
+                  onRestore: () => handleRowRestore(l.tw_Id),
+                }}
+              />
+            );
+          })()
+        : null}
+
+      {supplierPolicyOpen && selectedSupplier ? (
+        <ZdSupplierOrderPolicyDialog
+          supplierId={selectedSupplier.id}
+          supplierName={selectedSupplier.name}
+          policy={currentSupplierPolicy}
+          onClose={() => setSupplierPolicyOpen(false)}
+          onSaved={(policy) => {
+            setSupplierPolicy({ supplierId: selectedSupplier.id, policy });
+            setSupplierPolicyOpen(false);
+            // Lista już policzona → przelicz od razu nową strategią (z porównaniem „jak dotąd”).
+            if (lines) runEstimate();
+          }}
+        />
+      ) : null}
       <ZdEstimatePackagingDialog
         open={packagingCandidate != null}
         line={packagingCandidate}
@@ -8658,7 +8845,8 @@ export function ZdEstimateWorkbench({
                 minStockByTwIdForRefresh
               );
               setLinesBase(bumped);
-              const dni = Math.round(Number(dniZapasu));
+              // Dni z ostatniego Policz (strategia dostawcy może je nadpisać), nie z formularza.
+              const dni = Math.round(Number(paramInfo?.dniZapasu ?? dniZapasu));
               const dniOkresuRaw = paramInfo?.dniOkresu;
               const dniOkresu =
                 dniOkresuRaw != null && Number.isFinite(Number(dniOkresuRaw))
@@ -8860,7 +9048,8 @@ export function ZdEstimateWorkbench({
                 minStockByTwIdForRefresh
               );
               setLinesBase(bumped);
-              const dni = Math.round(Number(dniZapasu));
+              // Dni z ostatniego Policz (strategia dostawcy może je nadpisać), nie z formularza.
+              const dni = Math.round(Number(paramInfo?.dniZapasu ?? dniZapasu));
               const dniOkresuRaw = paramInfo?.dniOkresu;
               const dniOkresu =
                 dniOkresuRaw != null && Number.isFinite(Number(dniOkresuRaw))

@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import { polishPlural } from "@/lib/email/polish-plural";
 import { formatQty } from "@/lib/orders/zd-estimate-manual";
 import {
   formatZdPackCompactLabel,
@@ -11,6 +12,7 @@ import {
   isPackagingPackagesMode,
   isZdUnitsMultipleOfOrderMultiple,
   piecesArrivingForZdUnits,
+  piecesArrivingForZdUnitsFromQty,
   type ZdPackOrderQty,
 } from "@/lib/orders/zd-estimate-packaging";
 import { formatZdEstimateTableQty } from "@/lib/orders/zd-estimate-table-qty";
@@ -38,6 +40,7 @@ export function ZdEstimateDoZdCell({
   accepted = false,
   detailHint,
   onAccept,
+  comparePieces,
 }: {
   qty: ZdPackOrderQty;
   excluded?: boolean;
@@ -52,6 +55,11 @@ export function ZdEstimateDoZdCell({
   accepted?: boolean;
   detailHint?: string;
   onAccept?: () => void;
+  /**
+   * Strategia testowa: sztuki wg „jak dotąd” (null = bez porównania). W sztukach, bo opakowanie
+   * wiersza może się zmienić po Policz (jednostki ZD z porównania byłyby wtedy w innej mierze).
+   */
+  comparePieces?: number | null;
 }) {
   const [focused, setFocused] = useState(false);
   const [draft, setDraft] = useState("");
@@ -289,9 +297,41 @@ export function ZdEstimateDoZdCell({
       piecesSubline
     ) : null;
 
+  // Pełne palety widać bez otwierania okna opakowania („2 pal.” przy 72 workach, paleta 36).
+  const palletCount =
+    packagesMode &&
+    qty.orderMultiple >= 2 &&
+    displayUnits > 0 &&
+    !editingBlank &&
+    isZdUnitsMultipleOfOrderMultiple(displayUnits, qty.orderMultiple)
+      ? displayUnits / qty.orderMultiple
+      : null;
+  const palletChip =
+    palletCount != null ? (
+      <span
+        className="zd-est-dozd-pallets"
+        title={`${polishPlural(palletCount, "pełna paleta", "pełne palety", "pełnych palet")} po ${qty.orderMultiple} ${qty.packageLabel.trim() || "op."}`}
+      >
+        {palletCount} pal.
+      </span>
+    ) : null;
+
+  const currentPieces = piecesArrivingForZdUnitsFromQty(displayUnits, qty);
+  const compareChip =
+    comparePieces != null && Math.round(comparePieces) !== currentPieces ? (
+      <span
+        className="zd-est-dozd-compare"
+        title={`Strategia „jak dotąd”: ${formatQty(comparePieces)} szt (teraz ${formatQty(currentPieces)} szt)`}
+      >
+        dotąd <s>{formatQty(comparePieces)}</s> szt
+      </span>
+    ) : null;
+
   const hintLine =
-    primaryHint || reviewAcceptAside ? (
+    primaryHint || reviewAcceptAside || palletChip || compareChip ? (
       <span className="zd-est-dozd-hint-row">
+        {compareChip}
+        {palletChip}
         {primaryHint}
         {reviewAcceptAside}
       </span>

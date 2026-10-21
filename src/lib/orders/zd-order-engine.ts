@@ -72,6 +72,15 @@ import {
   fetchSubiektZdEstimateAll,
   fetchSubiektZdEstimateZkPage,
 } from "@/lib/subiekt/api";
+import { fetchZdSupplierOrderPolicy } from "@/lib/data/zd-supplier-order-policy";
+import {
+  applyZdDemandFloorToLine,
+  applyZdPairDemandFloor,
+  effectiveDniZapasu,
+  sales90FromProfile,
+  ZD_SUPPLIER_ORDER_POLICY_CLASSIC,
+  type ZdSupplierOrderPolicy,
+} from "@/lib/orders/zd-demand-policy";
 import { requireZdEstimateSnapshotHostKind } from "@/lib/subiekt/config";
 import { getSubiektFeedback, type SubiektFeedback } from "@/lib/subiekt/feedback";
 import { assertZdEstimateFilterEcho } from "@/lib/orders/zd-estimate-scope";
@@ -422,6 +431,16 @@ export type ZdOrderEngineInput = {
   salesSmoothing?: boolean;
   /** Kreator: "background" (nie czeka na odświeżenie profilu do 14 dni). Nocny przebieg: "sync". */
   salesProfileRefresh?: "sync" | "background";
+  /**
+   * Strategia dostawcy (zd_supplier_order_policy). Brak = wczytana z bazy dla `supplierId`
+   * (bez dostawcy: classic). Podgląd / testy mogą ją podać wprost.
+   */
+  orderPolicy?: ZdSupplierOrderPolicy;
+  /**
+   * Strategia testowa: policz też „jak dotąd” z tego samego pobrania (cel przeliczony na dni
+   * wywołującego, bez podłogi i bez wygładzenia) — porównanie w Kreatorze bez drugiego przebiegu.
+   */
+  compareClassic?: boolean;
   onProgress?: (patch: ZdOrderEngineProgressPatch) => void;
 };
 
@@ -465,6 +484,12 @@ export type ZdOrderEngineOutput = {
   teethTwIds: number[];
   boostPreset: ZdBoostPowerPreset;
   extrasPolicy: ZdEstimateExtrasPolicy;
+  /** Strategia, z którą liczono (classic = jak dotąd); dni zapasu już z niej. */
+  orderPolicy: ZdSupplierOrderPolicy;
+  /** Dni zapasu faktycznie użyte w celu (strategia może nadpisać dni wywołującego / horyzont). */
+  dniZapasuUsed: number;
+  /** „Jak dotąd” dla porównania (tylko przy compareClassic i strategii innej niż classic). */
+  classicResult: ManualZdEstimateResult | null;
   /** Wykluczenia twarde (DB ∪ auto z nazwy ∪ zęby) na pozycjach wyniku. */
   hardExcludedTwIds: Set<number>;
   onRequestTwIds: Set<number>;
@@ -493,10 +518,26 @@ export async function runZdOrderEngine(
   | ({ ok: true } & ZdOrderEngineOutput)
   | { ok: false; feedback: SubiektFeedback }
 > {
-  const { scope, dniZapasu, dataOd, dataDo, zapasMin } = input;
+  const { scope, dataOd, dataDo, zapasMin } = input;
   const touchProgress = (patch: ZdOrderEngineProgressPatch) => {
     input.onProgress?.(patch);
   };
+
+  // Strategia przed pobraniem listy: Subiekt liczy cel z dni zapasu już w zapytaniu.
+  let orderPolicy: ZdSupplierOrderPolicy = input.orderPolicy ?? ZD_SUPPLIER_ORDER_POLICY_CLASSIC;
+  if (!input.orderPolicy && input.supplierId) {
+    try {
+      orderPolicy = await fetchZdSupplierOrderPolicy(input.supplierId);
+    } catch (e) {
+      const feedback = getSubiektFeedback("empty_query", {
+        title: "Strategia dostawcy niedostępna",
+        message: `Lista nie została pokazana - bez strategii dostawcy ilości mogłyby być liczone inaczej niż w propozycji automatu. ${userFacingErrorText(e, "Nie udało się wczytać strategii dostawcy.")}`,
+        hint: "Odśwież stronę lub spróbuj ponownie za chwilę.",
+      });
+      return { ok: false, feedback };
+    }
+  }
+  const dniZapasu = effectiveDniZapasu(orderPolicy, input.dniZapasu);
 
   // Pełna lista towarów zakresu z Subiekta (nie tylko braki API / nie nasza baza).
   // Echo filtra zaraz po 1. stronie — bez tego stary API mógłby dociągnąć cały katalog.
@@ -969,10 +1010,14 @@ export async function runZdOrderEngine(
   const salesTrackPolicy = policyForBoostPreset(boostPreset);
 
   // Profil sprzedaży: znaczniki zawsze, wygładzenie przy opcji. Profil jest w jednostkach
-  // karty jak sprzedaż. Pary i komplety liczą popyt łącznie (składnik + wkład kompletów),
-  // a profil zna tylko własną sprzedaż towaru — bez profilu, żeby znacznik nie przeczył liczbom.
+  // karty jak sprzedaż. Komplety (BOM) liczą popyt łącznie ze wkładem kompletów, a profil zna
+  // tylko własną sprzedaż towaru — bez profilu, żeby znacznik nie przeczył liczbom. Pary dostają
+  // profil łączny (niżej), bo ich sprzedaż w tabeli to sztuki + paczki × przelicznik.
   // Prośby odejmujemy tylko bez opakowań (prośba w sztukach, sprzedaż w jednostkach karty).
   let salesSmoothing: ZdSalesSmoothingSummary | null = null;
+  /** Linie przed podłogą strategii — „jak dotąd” liczone z tego samego pobrania (porównanie). */
+  const classicBase: typeof mergedPozycje | null =
+    input.compareClassic && orderPolicy.strategy !== "classic" ? mergedPozycje.slice() : null;
   {
     const profilesReady = Promise.all([primaryProfiles, extraProfiles]);
     // Profil z bazy jest gotowy od razu — etap „profil” tylko, gdy naprawdę liczymy.
@@ -997,7 +1042,8 @@ export async function runZdOrderEngine(
         compositeTwIds.add(bom.parentTwId);
         for (const c of bom.components) compositeTwIds.add(c.componentTwId);
       }
-      const smoothing = input.salesSmoothing === true;
+      // Strategia max30_90 zastępuje wygładzenie (backtest: wygładzenie nie poprawiało wyniku).
+      const smoothing = input.salesSmoothing === true && orderPolicy.strategy === "classic";
       const prosbaInPieces = (tw: number) =>
         smoothing &&
         !compositeTwIds.has(tw) &&
@@ -1014,24 +1060,76 @@ export async function runZdOrderEngine(
           ? Number(fetched.parametry.dniOkresu)
           : Math.round((Date.parse(dataDo) - Date.parse(dataOd)) / 86_400_000) + 1;
       salesSmoothing = { spike: 0, rare: 0, prosba: 0, failed: anyFailed };
+      // Para to jeden popyt (sztuki + paczki × przelicznik): podłoga i profil liczone dla pary,
+      // nie dla każdej strony osobno (inaczej max(paczki) + max(sztuki) zawyżałby cel).
+      const pairTwIds = new Set(productPairs.flatMap((p) => [p.packTwId, p.pieceTwId]));
+      const rawSalesByTw = new Map(
+        mergedPozycje.map((p) => [Math.trunc(Number(p.tw_Id) || 0), Number(p.sprzedazOkres) || 0])
+      );
       for (let i = 0; i < mergedPozycje.length; i += 1) {
         const line = mergedPozycje[i]!;
         const tw = Math.trunc(Number(line.tw_Id) || 0);
         const windows = profiles.get(tw);
+        if (windows && orderPolicy.strategy !== "classic" && !pairTwIds.has(tw)) {
+          const floored = applyZdDemandFloorToLine(line, {
+            policy: orderPolicy,
+            sales90: sales90FromProfile(windows),
+            dniOkresu,
+            dniZapasu,
+          });
+          if (floored !== line) {
+            mergedPozycje[i] = floored;
+          }
+        }
         if (!windows || compositeTwIds.has(tw)) continue;
         const meta = resolveZdSalesProfile({
           windows,
+          // Profil (znaczniki) z prawdziwej sprzedaży, nie z podłogi strategii.
           sprzedazOkres: Number(line.sprzedazOkres) || 0,
           dniOkresu,
           prosbaPieces: prosbaPieces.get(tw) ?? 0,
           smoothing,
         });
-        mergedPozycje[i] = applyZdSalesProfileToLine(line, meta, zapasMin);
+        mergedPozycje[i] = applyZdSalesProfileToLine(mergedPozycje[i]!, meta, zapasMin);
         if (meta.applied) {
           if (meta.kind === "spike") salesSmoothing.spike += 1;
           else if (meta.kind === "rare") salesSmoothing.rare += 1;
           if (meta.prosbaPieces > 0) salesSmoothing.prosba += 1;
         }
+      }
+      const indexByTw = new Map(mergedPozycje.map((p, idx) => [Math.trunc(Number(p.tw_Id) || 0), idx]));
+      const bomTwIds = new Set(bomRefs.flatMap((b) => [b.parentTwId, ...b.components.map((c) => c.componentTwId)]));
+      for (const pair of productPairs) {
+        const packIdx = indexByTw.get(pair.packTwId);
+        if (packIdx == null) continue;
+        const pieceIdx = indexByTw.get(pair.pieceTwId);
+        const packW = profiles.get(pair.packTwId);
+        const pieceW = pieceIdx != null ? profiles.get(pair.pieceTwId) : undefined;
+        // Strona pary na liście bez profilu (inny zakres) — wykres i podłoga zaniżyłyby sprzedaż.
+        if (!packW || (pieceIdx != null && !pieceW)) continue;
+        const ratio = Math.max(1, Number(pair.unitsPerPack) || 1);
+        const windows = packW.map((v, k) => Math.max(0, pieceW?.[k] ?? 0) + Math.max(0, v) * ratio);
+        const rawSales =
+          Math.max(0, rawSalesByTw.get(pair.packTwId) ?? 0) * ratio +
+          (pieceIdx != null ? Math.max(0, rawSalesByTw.get(pair.pieceTwId) ?? 0) : 0);
+        // Profil łączny na wierszu paczki (sprzedaż pary w tabeli jest łączna). Para w komplecie
+        // (BOM) bez profilu: jej sprzedaż ma wkład kompletów, którego profil nie zna.
+        if (!bomTwIds.has(pair.packTwId) && !bomTwIds.has(pair.pieceTwId)) {
+          const meta = resolveZdSalesProfile({ windows, sprzedazOkres: rawSales, dniOkresu, prosbaPieces: 0, smoothing: false });
+          mergedPozycje[packIdx] = { ...mergedPozycje[packIdx]!, salesProfile: meta };
+        }
+        const floored = applyZdPairDemandFloor({
+          policy: orderPolicy,
+          pack: mergedPozycje[packIdx]!,
+          piece: pieceIdx != null ? mergedPozycje[pieceIdx]! : null,
+          unitsPerPack: ratio,
+          sales90: sales90FromProfile(windows),
+          dniOkresu,
+        });
+        if (!floored) continue;
+        // Krok „Dlaczego tyle” w sztukach pary, na wierszu paczki (scalony wiersz go przejmuje).
+        mergedPozycje[packIdx] = { ...floored.pack, demandFloor: floored.floor };
+        if (pieceIdx != null && floored.piece) mergedPozycje[pieceIdx] = floored.piece;
       }
     }
   }
@@ -1050,6 +1148,38 @@ export async function runZdOrderEngine(
     salesTrackPolicy,
     minStockByTwId,
   });
+
+  // „Jak dotąd”: Subiekt liczył cel na dniach strategii (cel ≈ tempo × dni + zapasMin),
+  // więc przeliczamy go na dni wywołującego; reszta reguł (historia, pary, BOM) ta sama.
+  const classicDays = input.dniZapasu;
+  const dniOkresuCompare =
+    Number(fetched.parametry.dniOkresu) > 0
+      ? Number(fetched.parametry.dniOkresu)
+      : Math.round((Date.parse(dataDo) - Date.parse(dataOd)) / 86_400_000) + 1;
+  const classicResult = classicBase
+    ? buildManualZdEstimateResult(
+        { ...fetched.parametry, dniZapasu: classicDays },
+        classicBase.map((l) => {
+          const rate = Math.max(0, Number(l.sprzedazOkres) || 0) / Math.max(1, dniOkresuCompare);
+          // Zaokrąglenie do 1e-6: szum zmiennoprzecinkowy przesuwał progi podążania za sprzedażą.
+          const cel = Math.max(0, (Number(l.celZapasu) || 0) + rate * (classicDays - dniZapasu));
+          return { ...l, celZapasu: Math.round(cel * 1e6) / 1e6 };
+        }),
+        {
+          onlyManualBraki: false,
+          historyByTwId,
+          packagingByTwId,
+          productPairs,
+          productBoms: bomRefs,
+          missingPartnerTwIds,
+          missingBomTwIds,
+          excludedTwIds: bakeExcludedPreview,
+          zapasMin,
+          salesTrackPolicy,
+          minStockByTwId,
+        }
+      )
+    : null;
 
   // Towary ze wspólnego zakresu przypisane innemu dostawcy znikają z listy.
   // Para znika tylko w całości (obie strony przypisane gdzie indziej) — inaczej
@@ -1083,6 +1213,10 @@ export async function runZdOrderEngine(
     if (hidden.size) {
       result.pozycje = result.pozycje.filter((p) => !hidden.has(p.tw_Id));
       result.pozycjeBase = result.pozycjeBase.filter((p) => !hidden.has(p.tw_Id));
+      if (classicResult) {
+        classicResult.pozycje = classicResult.pozycje.filter((p) => !hidden.has(p.tw_Id));
+        classicResult.pozycjeBase = classicResult.pozycjeBase.filter((p) => !hidden.has(p.tw_Id));
+      }
     }
   }
 
@@ -1241,6 +1375,9 @@ export async function runZdOrderEngine(
     bomRefs,
     teethTwIds,
     boostPreset,
+    orderPolicy,
+    dniZapasuUsed: dniZapasu,
+    classicResult,
     extrasPolicy,
     hardExcludedTwIds: hardBase,
     onRequestTwIds: onRequestIds,

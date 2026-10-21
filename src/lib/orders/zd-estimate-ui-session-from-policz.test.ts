@@ -58,6 +58,35 @@ const meta = {
 };
 
 describe("buildZdEstimateUiSessionSnapshotFromPolicz", () => {
+  it("porównanie strategii i czas dostawy przeżywają zapis i odczyt sesji", () => {
+    const classicCompare = { byTwId: { 1: { units: 14, pieces: 14 } }, lineCount: 1, pieces: 14 };
+    const snapshot = buildZdEstimateUiSessionSnapshotFromPolicz({
+      mode: "cecha",
+      grupaId: null,
+      cechaId: 2717,
+      scopeLabel: "Polkard",
+      supplierId: "sup-1",
+      dniZapasu: 25,
+      dataOd: "2026-09-21",
+      dataDo: "2026-10-20",
+      zapasMin: 0,
+      result: emptyResult([line()]),
+      historyByTwId: [],
+      historyFetchFailed: false,
+      pendingIndividuals: [],
+      pendingIndividualsTruncated: false,
+      pendingIndividualsError: null,
+      meta,
+      boostPreset: "standard",
+      leadDays: 2,
+      classicCompare,
+      seed: null,
+    });
+    const parsed = parseZdEstimateUiSessionSnapshot(JSON.parse(JSON.stringify(snapshot)));
+    expect(parsed?.classicCompare).toEqual(classicCompare);
+    expect(parsed?.leadDays).toBe(2);
+  });
+
   it("buduje sesję cechy (Ivoclar) z mode/cechaId bez seeda UI", () => {
     const snapshot = buildZdEstimateUiSessionSnapshotFromPolicz({
       mode: "cecha",

@@ -1,6 +1,6 @@
 "use client";
 
-import { Spinner } from "@/components/ui/Spinner";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import { cn } from "@/lib/cn";
 
 /** Skeleton pozycji podczas wczytywania prefillu ZK na /prosba. */
@@ -28,7 +28,7 @@ export function ProsbaZkPrefillLoading({
       )}
     >
       <div className="flex items-start gap-3">
-        <Spinner size="md" className="mt-0.5" />
+        <BrandLoader size="md" className="mt-0.5" />
         <div className="min-w-0 flex-1 space-y-1.5">
           <p className="text-sm font-semibold text-slate-900">{title}</p>
           <p className="text-xs leading-relaxed text-slate-500">

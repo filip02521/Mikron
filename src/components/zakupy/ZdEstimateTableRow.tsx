@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, memo } from "react";
+import { Fragment, memo, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { ZdEstimateOptionalColumn } from "@/lib/orders/zd-estimate-prefs";
 import type { ZdEstimateExtrasPolicy } from "@/lib/orders/zd-estimate-extras-policy";
 import type { ZdEstimatePackagingRow } from "@/lib/data/zd-estimate-packaging";
@@ -34,17 +34,44 @@ import { ZdEstimateNameMetaStack } from "@/components/zakupy/ZdEstimateNameMetaS
 import { ZdEstimateQtyValue } from "@/components/zakupy/ZdEstimateQtyValue";
 import { ZdEstimateReservationsCell } from "@/components/zakupy/ZdEstimateReservationsCell";
 import { ZdEstimateRowActions } from "@/components/zakupy/ZdEstimateRowActions";
+import { ZdSalesProfileCardContent, ZdSalesSparkline } from "@/components/zakupy/ZdSalesSparkline";
+import { HoverCard } from "@/components/ui/HoverCard";
 import { cn } from "@/lib/cn";
 import { formatZdSalesProfileHint } from "@/lib/orders/zd-sales-profile";
 import { checkboxBrandClass } from "@/lib/ui/ontime-theme";
 import { askConfirm } from "@/components/ui/ConfirmHost";
 
 /** Kolumny przepływu (Dost. → Sprzed. → Cel → Otwarte) — wspólne dla nagłówka i wierszy. */
-/** „Starczy na” — dni do wyczerpania (dostępne / sprzedaż dziennie). */
-function ZdEstimateCoverCell({
+/** „Starczy na” — dni do wyczerpania (dostępne / sprzedaż dziennie) i minipasek z kreską czasu dostawy. */
+const PRODUCT_NAME_LINK = "button.zd-est-product-name--link";
+
+/**
+ * ↑/↓ w tabeli: fokus na nazwę poprzedniego / następnego towaru (Enter otwiera kartę).
+ * Pola liczbowe i tekstowe zachowują własne strzałki.
+ */
+export function handleZdEstimateRowArrowKeys(e: ReactKeyboardEvent<HTMLElement>) {
+  if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+  if (e.defaultPrevented) return; // menu / widget obsłużył strzałki sam
+  if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+  const t = e.target;
+  if (!(t instanceof HTMLElement) || t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+  let row = t.closest("tr")?.[e.key === "ArrowDown" ? "nextElementSibling" : "previousElementSibling"] ?? null;
+  while (row && !row.querySelector(PRODUCT_NAME_LINK)) {
+    row = row[e.key === "ArrowDown" ? "nextElementSibling" : "previousElementSibling"];
+  }
+  const target = row?.querySelector<HTMLButtonElement>(PRODUCT_NAME_LINK);
+  if (!target) return;
+  e.preventDefault();
+  target.focus();
+  target.scrollIntoView({ block: "nearest" });
+}
+
+export function ZdEstimateCoverCell({
   line,
+  leadDays,
 }: {
   line: Pick<ManualZdEstimateLine, "dostepne" | "sprzedazDziennie">;
+  leadDays?: number | null;
 }) {
   const days = zdEstimateDaysOfCover(line);
   if (days == null) {
@@ -56,16 +83,35 @@ function ZdEstimateCoverCell({
   }
   const tone = days <= 0 ? "out" : days <= 2 ? "critical" : days <= 14 ? "low" : "ok";
   const label = days <= 0 ? "brak" : days < 10 ? `${days.toLocaleString("pl-PL", { maximumFractionDigits: 1 })} d` : `${Math.round(days)} d`;
+  const lead = leadDays != null && leadDays > 0 ? leadDays : null;
+  const shortOfDelivery = lead != null && days < lead;
+  const base =
+    days <= 0
+      ? "Brak towaru dostępnego (stan − rezerwacje ≤ 0), a towar się sprzedaje"
+      : `Przy obecnej sprzedaży (${formatQty(line.sprzedazDziennie)} szt/dzień) dostępny stan wystarczy na ok. ${label}`;
+  const title =
+    lead == null
+      ? base
+      : `${base}. Dostawa od dostawcy ~${lead} d - ${shortOfDelivery ? "zabraknie przed dostawą" : "starczy do dostawy"}.`;
+  // Skala paska: 2 × czas dostawy (min. 14 d) — kreska dostawy w połowie, dłuższy zapas = pełny pasek.
+  const scale = lead != null ? Math.max(14, lead * 2) : null;
   return (
-    <span
-      className={cn("zd-est-cover", `zd-est-cover--${tone}`)}
-      title={
-        days <= 0
-          ? "Brak towaru dostępnego (stan − rezerwacje ≤ 0), a towar się sprzedaje"
-          : `Przy obecnej sprzedaży (${formatQty(line.sprzedazDziennie)} szt/dzień) dostępny stan wystarczy na ok. ${label}`
-      }
-    >
-      {label}
+    <span className="zd-est-cover-wrap" title={title}>
+      <span className={cn("zd-est-cover", `zd-est-cover--${tone}`)}>{label}</span>
+      {scale != null && lead != null ? (
+        <span className="zd-est-cover-track" aria-hidden>
+          <span
+            className={cn("zd-est-cover-fill", shortOfDelivery && "zd-est-cover-fill--short")}
+            style={{ width: `${Math.min(100, (Math.max(0, days) / scale) * 100)}%` }}
+          />
+          <span className="zd-est-cover-lead" style={{ left: `${(lead / scale) * 100}%` }} />
+        </span>
+      ) : null}
+      {lead != null ? (
+        <span className="sr-only">
+          {shortOfDelivery ? `Zabraknie przed dostawą (~${lead} d)` : `Starczy do dostawy (~${lead} d)`}
+        </span>
+      ) : null}
     </span>
   );
 }
@@ -84,9 +130,15 @@ function ZdEstimateSalesProfileBadge({
   const hint = formatZdSalesProfileHint(profile);
   if (profile.kind === "spike") {
     return (
-      <span className="zd-est-profile-badge zd-est-profile-badge--spike" title={hint}>
+      <HoverCard
+        ariaLabel={hint}
+        width={300}
+        estimatedHeight={150}
+        triggerClassName="zd-est-profile-badge zd-est-profile-badge--spike"
+        content={<ZdSalesProfileCardContent profile={profile} />}
+      >
         {profile.applied ? "skok · wygładzony" : "jednorazowy skok?"}
-      </span>
+      </HoverCard>
     );
   }
   if (onRequest) return null;
@@ -169,6 +221,10 @@ export type ZdEstimateTableRowProps = {
 
   packRow: ZdEstimatePackagingRow | null;
   packLookup: PackagingLookup | null;
+  /** Czas dostawy dostawcy (dni) — kreska na minipasku „Starczy”. */
+  leadDays?: number | null;
+  /** Strategia testowa: sztuki wg „jak dotąd” (null = bez porównania). */
+  comparePieces?: number | null;
   individualExtra: ZdEstimateIndividualTwExtra | null;
   /** Prośby po dedupe z rezerwacjami (wejście Do ZD). */
   individualExtraPieces: number;
@@ -182,6 +238,8 @@ export type ZdEstimateTableRowProps = {
 
   onToggleSelected: (twId: number, shiftKey: boolean) => void;
   onEditPackaging: (line: ManualZdEstimateLine) => void;
+  /** Otwiera kartę produktu (panel boczny). */
+  onOpenProduct?: (twId: number) => void;
   onEditMinStock: (line: ManualZdEstimateLine) => void;
   onExclude: (line: ManualZdEstimateLine) => void;
   onRestore: (twId: number) => void;
@@ -230,6 +288,8 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
   nameHit,
   packRow,
   packLookup,
+  leadDays = null,
+  comparePieces = null,
   individualExtra,
   individualExtraPieces,
   stockNeedReliefPieces,
@@ -240,6 +300,7 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
   reviewAccepted,
   onToggleSelected,
   onEditPackaging,
+  onOpenProduct,
   onEditMinStock,
   onExclude,
   onRestore,
@@ -389,7 +450,18 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
         )}
         title={l.tw_Nazwa}
       >
-        <span className="zd-est-product-name">{l.tw_Nazwa}</span>
+        {onOpenProduct ? (
+          <button
+            type="button"
+            className="zd-est-product-name zd-est-product-name--link"
+            onClick={() => onOpenProduct(l.tw_Id)}
+            aria-label={`${l.tw_Nazwa} - pokaż kartę produktu`}
+          >
+            {l.tw_Nazwa}
+          </button>
+        ) : (
+          <span className="zd-est-product-name">{l.tw_Nazwa}</span>
+        )}
         <span className="zd-est-name-meta">
           <ZdEstimateNameMetaStack
             pairMeta={pairMeta}
@@ -467,6 +539,7 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
           accepted={reviewAccepted}
           detailHint={salesTrackTitle}
           onAccept={pendingReview ? () => onAcceptReview(l.tw_Id) : undefined}
+          comparePieces={comparePieces}
         />
       </td>
       {optionalColumns.map((col) => {
@@ -483,7 +556,7 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
                 key={col}
                 className={cn("zd-estimate-num-col zd-estimate-cover-col whitespace-nowrap", sectionCls)}
               >
-                <ZdEstimateCoverCell line={l} />
+                <ZdEstimateCoverCell line={l} leadDays={leadDays} />
               </td>
             );
           case "value": {
@@ -613,6 +686,9 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
                     }
                   />
                 )}
+                {l.salesProfile && l.salesProfile.windows.length > 0 ? (
+                  <ZdSalesSparkline profile={l.salesProfile} />
+                ) : null}
               </td>
             );
           case "target":

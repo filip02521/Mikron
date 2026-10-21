@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { IconCircleCheck } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { buildZdEstimateScopeFactParts } from "@/lib/orders/zd-estimate-scope-facts";
@@ -33,6 +34,7 @@ export function ZdEstimatePrepScopeFacts({
   tone = "ready",
   /** toolbar: bez zapas/okna gdy edytory są w karcie prep. */
   density = "full",
+  trailing,
   className,
 }: {
   variant: "inline" | "toolbar" | "card";
@@ -47,6 +49,8 @@ export function ZdEstimatePrepScopeFacts({
   caption?: string | null;
   tone?: "ready" | "warn";
   density?: "full" | "short";
+  /** Toolbar: element na końcu linii (np. strategia dostawcy) — tuż za tekstem, nie przy prawej krawędzi. */
+  trailing?: ReactNode;
   className?: string;
 }) {
   const parts = buildZdEstimateScopeFactParts({
@@ -74,15 +78,19 @@ export function ZdEstimatePrepScopeFacts({
         aria-label="Parametry zakresu"
         title={short ? [parts.primary, parts.supplier].filter(Boolean).join(" · ") : parts.summaryTitle}
       >
-        <span className={zdEstimateScopeFactPrimaryClass}>
+        {/* Nazwa zakresu ważniejsza niż daty — przy wąskim ekranie ucina się linia meta, nie dostawca. */}
+        <span className={cn(zdEstimateScopeFactPrimaryClass, "shrink-0")}>
           <span className="mr-1.5 shrink-0 font-medium text-indigo-700/70">
             {zdEstimateScopeKindLabel(scopeMode)}
           </span>
           <span className="min-w-0 truncate">{parts.primary}</span>
         </span>
         {metaBits.length > 0 ? (
-          <p className={zdEstimateScopeFactMetaClass}>{metaBits.join(" · ")}</p>
+          <p className={cn(zdEstimateScopeFactMetaClass, trailing ? "flex-initial" : null)}>
+            <span className="min-w-0 truncate">{metaBits.join(" · ")}</span>
+          </p>
         ) : null}
+        {trailing}
       </div>
     );
   }
