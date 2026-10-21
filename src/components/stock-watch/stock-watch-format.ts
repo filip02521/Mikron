@@ -39,6 +39,17 @@ export function formatCover(daysOfCover: number | null, status: StockWatchStatus
   return `${days} dni`;
 }
 
+/** „złóż 4 kpl z części” / „rozłóż komplet: 12 szt”. */
+export function formatAssembly(row: {
+  assemblyKind: "assemble" | "disassemble" | null;
+  assemblyQty: number | null;
+}): string | null {
+  if (!row.assemblyKind || !(row.assemblyQty != null && row.assemblyQty > 0)) return null;
+  return row.assemblyKind === "assemble"
+    ? `złóż ${formatQtyPl(row.assemblyQty)} kpl z części`
+    : `rozłóż komplet: ${formatQtyPl(row.assemblyQty)} szt`;
+}
+
 export function formatRunOutDate(date: string | null): string | null {
   if (!date) return null;
   const [y, m, d] = date.split("-");
@@ -47,10 +58,11 @@ export function formatRunOutDate(date: string | null): string | null {
 
 export const STOCK_WATCH_STATUS_META: Record<
   StockWatchStatus,
-  { label: string; badge: "danger" | "warning" | "success" | "default"; dot: string; bar: string }
+  { label: string; badge: "danger" | "warning" | "success" | "info" | "default"; dot: string; bar: string }
 > = {
   out_of_stock: { label: "Brak", badge: "danger", dot: "bg-red-600", bar: "bg-red-500" },
   critical: { label: "≤ 48 h", badge: "danger", dot: "bg-red-500", bar: "bg-red-400" },
+  to_assemble: { label: "Do kompletacji", badge: "info", dot: "bg-indigo-500", bar: "bg-indigo-400" },
   warning: { label: "Poniżej celu", badge: "warning", dot: "bg-amber-500", bar: "bg-amber-400" },
   ok: { label: "W normie", badge: "success", dot: "bg-emerald-500", bar: "bg-emerald-500" },
   no_sales: { label: "Bez sprzedaży", badge: "default", dot: "bg-slate-300", bar: "bg-slate-300" },

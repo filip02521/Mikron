@@ -28,9 +28,37 @@ export const ZD_SUPPLIER_ORDER_POLICY_CLASSIC: ZdSupplierOrderPolicy = {
 /** Okna profilu do średniej (3 × 30 d = 90 d). */
 export const ZD_DEMAND_FLOOR_WINDOWS = 3;
 
-export function effectiveDniZapasu(policy: ZdSupplierOrderPolicy, supplierDniZapasu: number): number {
+/**
+ * Bufor na wahania sprzedaży w czasie dostawy (część czasu dostawy). Symulacja 15 mies.,
+ * cykl 7 d, dostawa 30 d, sprzedaż ±80% dziennie: bez bufora 24 dni braku na 450, z 25% — 0,
+ * średni stan 16 dni sprzedaży (mniej niż dostawca z dostawą 5 d). Przy krótkiej dostawie
+ * bufor jest pomijalny, bo i tak wygrywają dni strategii.
+ */
+export const ZD_STRATEGY_LEAD_SAFETY_SHARE = 0.25;
+
+/**
+ * Dni celu. Strategia z własnymi dniami: zamówienie musi starczyć do przyjazdu NASTĘPNEJ
+ * dostawy — cykl zamawiania (propozycje co N dni, inaczej harmonogram dostawcy) + czas
+ * dostawy + bufor. Dni strategii to minimum: przy 25 dniach, cyklu 3 i dostawie 30 dni
+ * towar kończyłby się w każdym cyklu.
+ */
+export function effectiveDniZapasu(
+  policy: ZdSupplierOrderPolicy,
+  supplierDniZapasu: number,
+  timing?: { leadDays: number; nextOrderDays: number } | null
+): number {
   const t = Number(policy.targetDays);
-  return Number.isFinite(t) && t >= 1 ? Math.round(t) : supplierDniZapasu;
+  if (!(Number.isFinite(t) && t >= 1)) return supplierDniZapasu;
+  const target = Math.round(t);
+  if (!timing) return target;
+  const cycle = Number(policy.cycleDays);
+  const next = Number(timing.nextOrderDays);
+  const cycleDays = Number.isFinite(cycle) && cycle >= 1 ? Math.round(cycle) : Number.isFinite(next) ? Math.max(0, Math.round(next)) : 0;
+  const leadRaw = Number(timing.leadDays);
+  // Brak / zły czas dostawy — tylko dni strategii (NaN zatrułby każdy cel).
+  if (!Number.isFinite(leadRaw)) return target;
+  const lead = Math.max(0, Math.round(leadRaw));
+  return Math.max(target, cycleDays + lead + Math.round(lead * ZD_STRATEGY_LEAD_SAFETY_SHARE));
 }
 
 /** Sprzedaż z ostatnich 90 dni z profilu (12 okien po 30 d, od najstarszego). */
@@ -125,4 +153,75 @@ export function applyZdPairDemandFloor<P extends SalesLine, Q extends SalesLine>
     piece: null,
     floor,
   };
+}
+
+/**
+ * Podłoga 90 d dla składników zestawów „Składamy”: expand dokłada składnikowi sprzedaż
+ * zestawu × ilość, więc podłoga per linia dałaby max(składnik) + ilość × max(zestaw).
+ * Tu raz, na łącznym popycie (własne + Σ ilość × zestaw); składnik dostaje tylko dopełnienie
+ * do podłogi (wkład zestawów doliczy expand). Zestaw w zestawie, składnik w parze i brak
+ * profilu którejkolwiek strony — bez łącznej podłogi (składnik wraca do własnej, per linia).
+ * Zmienia `lines` w miejscu; zwraca składniki obsłużone tutaj (bez podłogi per linia).
+ */
+export function applyZdBomDemandFloor<
+  T extends {
+    tw_Id: number;
+    sprzedazOkres?: number | null;
+    sprzedazDziennie?: number | null;
+    celZapasu?: number | null;
+  },
+>(input: {
+  lines: T[];
+  explodeBoms: readonly { parentTwId: number; components: readonly { componentTwId: number; qtyPerParent: number }[] }[];
+  profiles: ReadonlyMap<number, readonly number[]>;
+  /** Sprzedaż w oknie przed podłogą. */
+  rawSalesByTw: ReadonlyMap<number, number>;
+  pairTwIds: ReadonlySet<number>;
+  policy: ZdSupplierOrderPolicy;
+  dniOkresu: number;
+  dniZapasu: number;
+}): Set<number> {
+  const handled = new Set<number>();
+  if (input.policy.strategy !== "max30_90") return handled;
+  const days = Math.max(1, input.dniOkresu);
+  const indexByTw = new Map(input.lines.map((l, i) => [Math.trunc(Number(l.tw_Id) || 0), i]));
+  const parentIds = new Set(input.explodeBoms.map((b) => b.parentTwId));
+  const termsByComponent = new Map<number, { parentTwId: number; qty: number }[]>();
+  for (const bom of input.explodeBoms) {
+    if (!indexByTw.has(bom.parentTwId)) continue;
+    for (const c of bom.components) {
+      const list = termsByComponent.get(c.componentTwId) ?? [];
+      list.push({ parentTwId: bom.parentTwId, qty: Math.max(1, Math.trunc(c.qtyPerParent)) });
+      termsByComponent.set(c.componentTwId, list);
+    }
+  }
+  for (const [cid, terms] of termsByComponent) {
+    const idx = indexByTw.get(cid);
+    if (idx == null || input.pairTwIds.has(cid) || parentIds.has(cid)) continue;
+    if (terms.some((t) => termsByComponent.has(t.parentTwId))) continue;
+    const own = input.profiles.get(cid);
+    const kitWindows = terms.map((t) => input.profiles.get(t.parentTwId));
+    if (!own || kitWindows.some((w) => !w)) continue;
+    handled.add(cid);
+    const combined = own.map(
+      (v, k) => Math.max(0, v) + terms.reduce((sum, t, i) => sum + t.qty * Math.max(0, kitWindows[i]![k] ?? 0), 0)
+    );
+    const kitRaw = terms.reduce((sum, t) => sum + t.qty * Math.max(0, input.rawSalesByTw.get(t.parentTwId) ?? 0), 0);
+    const ownRaw = Math.max(0, input.rawSalesByTw.get(cid) ?? 0);
+    const line = input.lines[idx]!;
+    const floored = applyZdDemandFloorToLine(
+      { sprzedazOkres: ownRaw + kitRaw, sprzedazDziennie: (ownRaw + kitRaw) / days, celZapasu: line.celZapasu },
+      { policy: input.policy, sales90: sales90FromProfile(combined), dniOkresu: days, dniZapasu: input.dniZapasu }
+    );
+    if (!floored.demandFloor) continue;
+    const ownAfter = Math.max(ownRaw, (Number(floored.sprzedazOkres) || 0) - kitRaw);
+    input.lines[idx] = {
+      ...line,
+      sprzedazOkres: ownAfter,
+      sprzedazDziennie: ownAfter / days,
+      celZapasu: floored.celZapasu,
+      demandFloor: floored.demandFloor,
+    };
+  }
+  return handled;
 }

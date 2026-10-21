@@ -251,8 +251,14 @@ import {
   type ZdEstimateReservationsSummary,
   type ZdEstimateReservedZkRow,
 } from "@/lib/orders/zd-estimate-reservations";
+import { fetchOwnAvailableByTwIds } from "@/lib/orders/fetch-prosba-line-stock";
 import {
+  buildZdOverlapReservationSources,
+  mergeReservedSlicesBySources,
+  overlapCapKitTwIds,
+  reservationSourceTwIds,
   type ZdEstimateReservedOverlapSlice,
+  type ZdOverlapReservationSources,
 } from "@/lib/orders/zd-estimate-prosba-reservation-overlap";
 
 export type ZdEstimateHistoryEntryDto = {
@@ -1531,6 +1537,8 @@ export async function actionSaveZdSupplierOrderPolicy(input: {
  */
 export async function actionFetchZdEstimateProsbaReservationOverlap(input: {
   twIds: number[];
+  /** Karty źródłowe rezerwacji (para, zestaw „Składamy”) — jak w Policz na serwerze. */
+  sources?: [number, { twId: number; factor: number; capQty?: number }[]][];
 }): Promise<
   | {
       ok: true;
@@ -1550,9 +1558,31 @@ export async function actionFetchZdEstimateProsbaReservationOverlap(input: {
     return { ok: false, message: orders.message, feedback };
   }
 
-  const twIds = Array.isArray(input.twIds) ? input.twIds : [];
+  // Limity wejścia z przeglądarki: lista kandydatów i źródła rezerwacji (para + kilka zestawów).
+  const twIds = (Array.isArray(input.twIds) ? input.twIds : [])
+    .map((t) => Math.trunc(Number(t)) || 0)
+    .filter((t) => t > 0)
+    .slice(0, 2000);
+  const sources: ZdOverlapReservationSources = new Map();
+  for (const entry of (Array.isArray(input.sources) ? input.sources : []).slice(0, 2000)) {
+    const target = Math.trunc(Number(entry?.[0])) || 0;
+    const list = (Array.isArray(entry?.[1]) ? entry[1] : [])
+      .slice(0, 50)
+      .map((x) => {
+        // capQty: limit rezerwacji zestawu (pokrycie wyłączone) — bez niego podgląd odejmowałby
+        // wszystkie rezerwacje zestawu, a Policz i Utwórz ZD tylko część ponad stan.
+        const cap = Number(x?.capQty);
+        return {
+          twId: Math.trunc(Number(x?.twId)) || 0,
+          factor: Number(x?.factor) || 0,
+          ...(x?.capQty != null && Number.isFinite(cap) && cap >= 0 ? { capQty: cap } : {}),
+        };
+      })
+      .filter((x) => x.twId > 0 && x.factor > 0 && x.factor <= 1_000_000);
+    if (target > 0 && list.length) sources.set(target, list);
+  }
   try {
-    const fetched = await fetchReservedOverlapSlicesByTwIds(twIds);
+    const fetched = await fetchReservedOverlapSlicesByTwIds(reservationSourceTwIds(twIds, sources).slice(0, 2000));
     // Przy błędach per-tw zwracamy ok:false żeby Workbench nie trzymał
     // „pustego resolve” i mógł spróbować ponownie.
     if (fetched.hadFetchErrors) {
@@ -1564,7 +1594,7 @@ export async function actionFetchZdEstimateProsbaReservationOverlap(input: {
     }
     return {
       ok: true,
-      reservedByTwId: reservedOverlapMapToDto(fetched.reservedByTwId),
+      reservedByTwId: reservedOverlapMapToDto(mergeReservedSlicesBySources(fetched.reservedByTwId, twIds, sources)),
     };
   } catch (e) {
     const feedback = feedbackFromException(e);
@@ -1685,6 +1715,9 @@ export async function actionRunZdEstimateManual(
       scope,
       supplierId: String(input.supplierId ?? "").trim() || null,
       dniZapasu: horizon ? horizon.horizonDays : dniZapasu,
+      orderTiming: supplierHorizon
+        ? { leadDays: supplierHorizon.leadDays, nextOrderDays: supplierHorizon.nextOrderDays }
+        : null,
       dataOd,
       dataDo,
       zapasMin,
@@ -1706,7 +1739,10 @@ export async function actionRunZdEstimateManual(
     // Strategia testowa ma własne dni zapasu i nie wygładza — horyzont „Do dostawy” i „Wygładź”
     // nie zostały użyte, więc nie raportujemy ich jako zastosowanych (komunikaty w Kreatorze).
     const strategyActive = engine.orderPolicy.strategy !== "classic";
-    const appliedHorizon = strategyActive ? null : horizon;
+    // Horyzont zastosowany = silnik liczył na jego dniach (strategia bez własnych dni celu też).
+    // Strategia z własnymi dniami celu (effectiveDniZapasu) pomija horyzont — równe dni to przypadek.
+    const strategyOwnDays = Number(engine.orderPolicy.targetDays) >= 1;
+    const appliedHorizon = horizon && !strategyOwnDays ? horizon : null;
     const smoothingApplied = input.salesSmoothing === true && !strategyActive;
     const {
       result,
@@ -3537,12 +3573,22 @@ export async function actionCreateZdFromEstimate(input: {
   // Dedupe prośba↔rez. ZK przed ensureCover — inaczej serwer podbija qty z powrotem.
   // coverLines: fetch ZK tylko gdy ilosc < minZd(raw); scoped extras bez zmian.
   const tOverlap = performance.now();
+  // Stan kart „Składamy” bez pokrycia — jak dostepneByTw w Policz; bez niego limit rezerwacji
+  // zestawu wynosi 0 i ZD dostaje prośbę drugi raz. Brak odpowiedzi = limit 0 (jak dotąd).
+  const kitDostepneByTw = await fetchOwnAvailableByTwIds(overlapCapKitTwIds(bomsForExtras)).catch(
+    () => new Map<number, number>()
+  );
   const overlapForCreate = await resolveIndividualExtrasWithReservationOverlap({
     byTwId: extrasBundle.byTwId,
     twIdsFilter: createdTwIds,
     coverLines: linesCheck.lines,
     unitsPerPackageByTwId,
     packagingModeByTwId,
+    reservationSources: buildZdOverlapReservationSources({
+      pairs: pairsForExtras,
+      boms: bomRowsToRefs(bomsForExtras),
+      dostepneByTw: kitDostepneByTw,
+    }),
   });
   msOverlap = Math.round(performance.now() - tOverlap);
   overlapCandidateCount = overlapForCreate.candidateTwIds.length;

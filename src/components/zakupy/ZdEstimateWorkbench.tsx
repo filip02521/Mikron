@@ -209,6 +209,7 @@ import {
 import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
 import {
   DEFAULT_DNI_ZAPASU,
+  zdEstimateWindowDays,
   salesWindowFromDniZapasu,
 } from "@/lib/orders/zd-estimate-manual";
 import {
@@ -230,6 +231,7 @@ import {
   individualExtraPiecesForTw,
   isPackagingPackagesMode,
   piecesArrivingForZdUnitsFromQty,
+  previewZdOrderForMinStock,
   resolveOrderQtyForLine,
   zdDocumentUnitsToPieces,
   orderableLinesToTsv,
@@ -249,7 +251,9 @@ import {
   type ZdEstimatePendingIndividualOrder,
 } from "@/lib/orders/zd-estimate-individual";
 import {
+  buildZdOverlapReservationSources,
   collectTwIdsNeedingProsbaReservationOverlap,
+  linesWithReservationSources,
   mapProsbaReservedOverlapDto,
   resolveProsbaReservationDedupeMaps,
   type ZdEstimateReservedOverlapSlice,
@@ -287,6 +291,7 @@ import { coerceZdEstimateLinesBase } from "@/lib/orders/zd-estimate-lines-base";
 import {
   defaultDirForZdEstimateSortKey,
   sortZdEstimateLines,
+  zdLineAvailablePieces,
   type ZdEstimateListSortDir,
   type ZdEstimateListSortKey,
 } from "@/lib/orders/zd-estimate-sort";
@@ -2102,18 +2107,33 @@ export function ZdEstimateWorkbench({
     [catalogExtrasBundle, reclassifyExcludedTwIds]
   );
 
+  // Para / zestaw „Składamy”: ZK klienta na innej karcie niż prośba — jak w Policz na serwerze.
+  const prosbaReservationSources = useMemo(
+    () =>
+      buildZdOverlapReservationSources({
+        pairs: productPairs,
+        boms: bomRowsToRefs(productBoms),
+        dostepneByTw: new Map((linesBase ?? lines ?? []).map((l) => [l.tw_Id, Number(l.dostepne) || 0])),
+      }),
+    [productPairs, productBoms, linesBase, lines]
+  );
+
   /** Kandydaci overlap z katalogu (przed reclassify) — stabilne vs on-request. */
   const prosbaOverlapCandidateTwIds = useMemo(() => {
     if (!lines?.length) return [] as number[];
     if (!catalogExtrasBundle.byTwId.size) return [] as number[];
     return collectTwIdsNeedingProsbaReservationOverlap({
       extraTwIds: catalogRawExtraByTwId.keys(),
-      lines,
+      lines: linesWithReservationSources(lines, prosbaReservationSources),
       byTwId: catalogExtrasBundle.byTwId,
     });
-  }, [lines, catalogRawExtraByTwId, catalogExtrasBundle.byTwId]);
+  }, [lines, catalogRawExtraByTwId, catalogExtrasBundle.byTwId, prosbaReservationSources]);
 
-  const prosbaOverlapCandidateKey = prosbaOverlapCandidateTwIds.join(",");
+  // Klucz także ze źródeł rezerwacji: zmiana przelicznika pary / ilości w zestawie zmienia
+  // jednostki scalonych rezerwacji przy tym samym zbiorze kandydatów.
+  const prosbaOverlapCandidateKey = `${prosbaOverlapCandidateTwIds.join(",")}|${JSON.stringify(
+    prosbaOverlapCandidateTwIds.map((tw) => prosbaReservationSources.get(tw) ?? null)
+  )}`;
 
   if (!prosbaOverlapCandidateTwIds.length && prosbaReservedByTwId != null) {
     setProsbaReservedByTwId(null);
@@ -2131,7 +2151,13 @@ export function ZdEstimateWorkbench({
     let cancelled = false;
     const twIds = [...prosbaOverlapCandidateTwIds];
     void (async () => {
-      const res = await actionFetchZdEstimateProsbaReservationOverlap({ twIds });
+      const res = await actionFetchZdEstimateProsbaReservationOverlap({
+        twIds,
+        sources: twIds.flatMap((tw) => {
+          const src = prosbaReservationSources.get(tw);
+          return src ? [[tw, src] as [number, { twId: number; factor: number; capQty?: number }[]]] : [];
+        }),
+      });
       if (cancelled) return;
       if (!res.ok) {
         // Fail-open: pusta mapa = resolve OK bez ZK.
@@ -2271,6 +2297,38 @@ export function ZdEstimateWorkbench({
     extraOverlapByTwId,
     minStockByTwIdForRefresh,
   ]);
+
+  /**
+   * Okno „Minimum stanów”: Do ZD dla danego minimum tym samym liczeniem co tabela
+   * (opakowania, prośby, ulgi rezerwacji). Wiersz sztuki pary liczy na paczce.
+   */
+  const previewMinStockOrder = useCallback(
+    (row: ManualZdEstimateLine, minStockSzt: number) => {
+      const l =
+        row.pair?.role === "piece" && !row.pair.partnerMissing
+          ? lines?.find((x) => x.tw_Id === row.pair!.twinTwId) ?? row
+          : row;
+      const order = previewZdOrderForMinStock(l, minStockSzt, {
+        packaging: packagingLookup.get(l.tw_Id) ?? null,
+        extraPieces: individualExtraPiecesForTw(l.tw_Id, individualExtraByTwId),
+        extraOnly: extraOnlyTwIds.has(l.tw_Id),
+        extrasPolicy,
+        stockNeedReliefPieces: individualExtraPiecesForTw(l.tw_Id, stockNeedReliefByTwId),
+        extraOverlapPieces: individualExtraPiecesForTw(l.tw_Id, extraOverlapByTwId),
+      });
+      // Stan z tej samej linii co Do ZD — przy sztuce pary to cała para, nie sama sztuka.
+      return { ...order, availablePieces: zdLineAvailablePieces(l) };
+    },
+    [
+      lines,
+      packagingLookup,
+      individualExtraByTwId,
+      extraOnlyTwIds,
+      extrasPolicy,
+      stockNeedReliefByTwId,
+      extraOverlapByTwId,
+    ]
+  );
 
   /** Podsumowanie listy „Do ZD” (z nadpisaniami): pozycje, sztuki, wartość z cen ZD. */
   const orderSummary = useMemo(() => {
@@ -3039,7 +3097,10 @@ export function ZdEstimateWorkbench({
               otherSupplierHintByTwId: {},
               horizon: payload.horizon ?? null,
               leadDays: payload.leadDays ?? null,
-              salesSmoothing: payload.salesSmoothingEnabled ? payload.salesSmoothing ?? null : null,
+              salesSmoothing:
+                payload.salesSmoothingEnabled || payload.salesSmoothing?.failed
+                  ? payload.salesSmoothing ?? null
+                  : null,
               classicCompare: payload.classicCompare ?? null,
             }
           : null
@@ -4038,7 +4099,9 @@ export function ZdEstimateWorkbench({
           otherSupplierHintByTwId: res.otherSupplierHintByTwId ?? {},
           horizon: res.horizon ?? null,
           leadDays: res.leadDays ?? null,
-          salesSmoothing: res.salesSmoothingEnabled ? res.salesSmoothing ?? null : null,
+          // Strategia nie wygładza, ale bez profilu traci podłogę 90 d — awarię pokazujemy zawsze.
+          salesSmoothing:
+            res.salesSmoothingEnabled || res.salesSmoothing?.failed ? res.salesSmoothing ?? null : null,
           classicCompare: res.classicCompare ?? null,
         });
         setUnitPriceByTwId(res.unitPriceByTwId ?? {});
@@ -6069,6 +6132,11 @@ export function ZdEstimateWorkbench({
     });
   };
 
+  const pairTwinTwId = (line: ManualZdEstimateLine): number | null =>
+    line.pair && !line.pair.partnerMissing ? line.pair.twinTwId : null;
+  const pairPackTwId = (line: ManualZdEstimateLine): number =>
+    line.pair?.role === "piece" && !line.pair.partnerMissing ? line.pair.twinTwId : line.tw_Id;
+
   const saveMinStock = (value: number, note: string) => {
     const line = minStockCandidate;
     if (!line) return;
@@ -6088,7 +6156,12 @@ export function ZdEstimateWorkbench({
           reportError(res.message);
           return;
         }
-        applyMinStockLive(res.minStock);
+        // Para: minimum pary = jedna wartość. Wpis z drugiej karty (max z obu) zablokowałby
+        // obniżenie — usuwamy go.
+        const twin = pairTwinTwId(line);
+        const final = twin != null ? await actionDeleteZdEstimateMinStock(twin) : res;
+        applyMinStockLive(final.ok ? final.minStock : res.minStock);
+        if (!final.ok) reportError(final.message);
         setMinStockCandidate(null);
       } finally {
         setMutatingTwId(null);
@@ -6102,7 +6175,9 @@ export function ZdEstimateWorkbench({
     setMutatingTwId(line.tw_Id);
     startMutate(async () => {
       try {
-        const res = await actionDeleteZdEstimateMinStock(line.tw_Id);
+        const twin = pairTwinTwId(line);
+        const first = await actionDeleteZdEstimateMinStock(line.tw_Id);
+        const res = first.ok && twin != null ? await actionDeleteZdEstimateMinStock(twin) : first;
         if (!res.ok) {
           reportError(res.message);
           return;
@@ -6284,7 +6359,12 @@ export function ZdEstimateWorkbench({
               scopeMode={scopeMode}
               scopeName={scopeLabel}
               stockLabel={policyTargetDays != null ? null : stockLabel}
-              dniZapasu={policyTargetDays != null ? String(policyTargetDays) : dniZapasu}
+              dniZapasu={
+                policyTargetDays != null
+                  ? // Po Policz: dni faktycznie użyte (strategia liczy co najmniej cykl + dostawę).
+                    String(lines ? Math.max(policyTargetDays, Math.round(Number(paramInfo?.dniZapasu) || 0)) : policyTargetDays)
+                  : dniZapasu
+              }
               supplierLabel={supplierLabel}
               dataOd={dataOd}
               dataDo={dataDo}
@@ -6901,7 +6981,8 @@ export function ZdEstimateWorkbench({
               {policzScopeInfo.salesSmoothing.failed ? (
                 <p className="text-sm leading-snug">
                   Nie udało się pobrać sprzedaży z 12 miesięcy dla całego zakresu lub jego części - te
-                  pozycje liczone jak dotąd. Przelicz ponownie za chwilę.
+                  pozycje liczone jak dotąd (bez wygładzenia i bez średniej 90 dni strategii). Przelicz
+                  ponownie za chwilę.
                 </p>
               ) : null}
               {formatZdSalesSmoothingSummary(policzScopeInfo.salesSmoothing) ? (
@@ -8609,9 +8690,11 @@ export function ZdEstimateWorkbench({
       <ZdEstimateMinStockDialog
         open={minStockCandidate != null}
         line={minStockCandidate}
+        previewOrder={previewMinStockOrder}
         existingMinSzt={
           minStockCandidate
-            ? minStockByTwIdForRefresh.get(minStockCandidate.tw_Id) ?? 0
+            ? // Para: minimum pary trzymane na paczce (większe z obu kart).
+              minStockByTwIdForRefresh.get(pairPackTwId(minStockCandidate)) ?? 0
             : 0
         }
         pending={mutating && minStockCandidate != null}
@@ -8847,11 +8930,10 @@ export function ZdEstimateWorkbench({
               setLinesBase(bumped);
               // Dni z ostatniego Policz (strategia dostawcy może je nadpisać), nie z formularza.
               const dni = Math.round(Number(paramInfo?.dniZapasu ?? dniZapasu));
-              const dniOkresuRaw = paramInfo?.dniOkresu;
-              const dniOkresu =
-                dniOkresuRaw != null && Number.isFinite(Number(dniOkresuRaw))
-                  ? Number(dniOkresuRaw)
-                  : null;
+              // Jak Policz i odświeżenie na żywo: bez dniOkresu z API — dni z dat okna.
+              const dniOkresu = zdEstimateWindowDays(
+                paramInfo as Parameters<typeof zdEstimateWindowDays>[0]
+              );
               const { lines: nextLines, missingPartnerTwIds, missingBomTwIds } =
                 refreshZdEstimateLinesWithPairs({
                   linesBase: bumped,
@@ -9050,11 +9132,10 @@ export function ZdEstimateWorkbench({
               setLinesBase(bumped);
               // Dni z ostatniego Policz (strategia dostawcy może je nadpisać), nie z formularza.
               const dni = Math.round(Number(paramInfo?.dniZapasu ?? dniZapasu));
-              const dniOkresuRaw = paramInfo?.dniOkresu;
-              const dniOkresu =
-                dniOkresuRaw != null && Number.isFinite(Number(dniOkresuRaw))
-                  ? Number(dniOkresuRaw)
-                  : null;
+              // Jak Policz i odświeżenie na żywo: bez dniOkresu z API — dni z dat okna.
+              const dniOkresu = zdEstimateWindowDays(
+                paramInfo as Parameters<typeof zdEstimateWindowDays>[0]
+              );
               const { lines: nextLines, missingPartnerTwIds, missingBomTwIds } =
                 refreshZdEstimateLinesWithPairs({
                   linesBase: bumped,

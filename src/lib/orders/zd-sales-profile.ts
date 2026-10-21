@@ -99,7 +99,11 @@ export function classifyZdSalesProfile(input: {
   const life = firstPrev < 0 ? prev : prev.slice(firstPrev);
   const typicalMonthly = median(life);
   const robustMonthly = Math.max(typicalMonthly, percentile(life, 0.75));
-  const meanMonthly = w.length ? w.reduce((a, b) => a + b, 0) / w.length : 0;
+  // Średnia od pierwszej sprzedaży: miesiące sprzed wprowadzenia towaru nie zaniżają tempa
+  // (nowość z jedną sprzedażą w bieżącym oknie dostawała 1/12).
+  const firstAny = w.findIndex((x) => x > 0);
+  const sinceFirst = firstAny < 0 ? w : w.slice(firstAny);
+  const meanMonthly = sinceFirst.length ? sinceFirst.reduce((a, b) => a + b, 0) / sinceFirst.length : 0;
   const activeWindows = w.filter((x) => x > 0).length;
   const base = { activeWindows, typicalMonthly, robustMonthly, meanMonthly, currentMonthly };
 
@@ -132,10 +136,12 @@ export function resolveZdSalesProfile(input: {
   dniOkresu: number;
   prosbaPieces: number;
   smoothing: boolean;
+  /** Odejmij prośby także bez wygładzenia (strategia z podłogą 90 d). */
+  subtractProsba?: boolean;
 }): ZdSalesProfileLineMeta {
   const raw = Math.max(0, input.sprzedazOkres);
   const prosba = Math.min(raw, Math.max(0, input.prosbaPieces));
-  const afterProsba = input.smoothing ? raw - prosba : raw;
+  const afterProsba = input.smoothing || input.subtractProsba ? raw - prosba : raw;
   const c = classifyZdSalesProfile({
     windows: input.windows,
     currentSales: afterProsba,

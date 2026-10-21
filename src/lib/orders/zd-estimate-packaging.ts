@@ -324,6 +324,61 @@ export function resolveOrderQtyForLine(
   return computeZdPackOrderQty(piecesNeeded, pack, label, mode, orderMult);
 }
 
+/**
+ * Okno „Minimum stanów”: Do ZD dla danego minimum tym samym liczeniem co tabela —
+ * jednostki dokumentu (opakowania, wielokrotność), prośby, ulgi rezerwacji. Para: brak
+ * przeliczony z pokrycia pary w sztukach. `openZdPieces` — otwarte ZD w sztukach (para: obu kart).
+ */
+export function previewZdOrderForMinStock(
+  line: ManualZdEstimateLine,
+  minStockSzt: number,
+  ctx: {
+    packaging?: PackagingLookup | null;
+    extraPieces?: number;
+    extraOnly?: boolean;
+    extrasPolicy?: ZdEstimateExtrasPolicy;
+    stockNeedReliefPieces?: number;
+    extraOverlapPieces?: number;
+  }
+): { zdUnits: number; label: string; openZdPieces: number } {
+  const pair = line.pair?.role === "pack" && !line.pair.partnerMissing ? line.pair : null;
+  const forQty = pair
+    ? {
+        ...line,
+        doZamowieniaReczne: computeManualOrderQty({
+          celZapasu: line.celZapasuTracked ?? line.celZapasu,
+          dostepne: pair.coverSzt,
+          otwarteZd: 0,
+          minStockSzt,
+        }),
+      }
+    : line;
+  const qty = resolveOrderQtyForLine(
+    forQty,
+    ctx.packaging ?? null,
+    ctx.extraPieces,
+    ctx.extraOnly === true,
+    ctx.extrasPolicy ?? "sum",
+    ctx.stockNeedReliefPieces ?? 0,
+    ctx.extraOverlapPieces ?? 0,
+    minStockSzt
+  );
+  const available = pair
+    ? (Number(pair.pieceDostepne) || 0) + (Number(pair.packDostepne) || 0) * Math.max(1, Number(pair.unitsPerPack) || 1)
+    : Number(line.dostepne) || 0;
+  return {
+    zdUnits: qty.zdUnits,
+    label: formatZdPackDocumentLabel(qty) ?? `${qty.zdUnits} szt`,
+    openZdPieces: pair
+      ? Math.max(0, pair.coverSzt - available)
+      : zdDocumentUnitsToPieces(
+          Math.max(0, Number(line.otwarteZd) || 0),
+          ctx.packaging?.unitsPerPackage,
+          packagingDocumentMode(ctx.packaging)
+        ),
+  };
+}
+
 /** Etykiety presetów w dialogach opakowania (tylko prezentacja). */
 export const ZD_PACKAGING_LABEL_PRESETS = [
   "op.",

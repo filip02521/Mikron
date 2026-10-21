@@ -29,6 +29,7 @@ import type { StockWatchDashboard, StockWatchRowView } from "@/lib/stock-watch/d
 import { isStockWatchEmptyNoIncoming } from "@/lib/stock-watch/analysis";
 import { StockSupplierBoard } from "@/components/stock-watch/StockSupplierBoard";
 import {
+  AssemblyTag,
   CoverChip,
   formatWhen,
   IncomingTag,
@@ -39,7 +40,12 @@ import {
 import { buildStockWatchStatusLine } from "@/lib/stock-watch/status-line";
 import { StockCoverBar } from "@/components/stock-watch/StockCoverBar";
 import { StockRuleControl, StockRuleMenu } from "@/components/stock-watch/StockRuleControl";
-import { formatPln, formatVelocity, STOCK_WATCH_RULE_META } from "@/components/stock-watch/stock-watch-format";
+import {
+  formatPln,
+  formatQtyPl,
+  formatVelocity,
+  STOCK_WATCH_RULE_META,
+} from "@/components/stock-watch/stock-watch-format";
 
 export type StockWatchRunSummary = {
   status: "running" | "ok" | "partial" | "failed";
@@ -53,8 +59,8 @@ export type StockWatchRunSummary = {
   failures: { supplierId: string; supplierName: string; message: string }[];
 };
 
-type TabId = "alerts" | "suppliers" | "rotation" | "rules";
-const TAB_IDS: readonly TabId[] = ["suppliers", "alerts", "rotation", "rules"];
+type TabId = "alerts" | "suppliers" | "assembly" | "rotation" | "rules";
+const TAB_IDS: readonly TabId[] = ["suppliers", "alerts", "assembly", "rotation", "rules"];
 type AlertFilter = "all" | "empty_no_incoming" | "out_of_stock" | "critical" | "before_delivery";
 const ALERT_FILTER_IDS: readonly AlertFilter[] = [
   "all",
@@ -106,7 +112,7 @@ export function StockWatchPanel({
   initialSupplierId?: string | null;
   /** Nazwa z wyników analizy — także gdy dostawca nie ma nic do zamówienia. */
   initialSupplierName?: string | null;
-  /** `?tab=alerts|suppliers|rotation|rules` */
+  /** `?tab=alerts|suppliers|assembly|rotation|rules` */
   initialTab?: string | null;
   /** `?filtr=puste` — same produkty bez stanu i bez otwartego ZD. */
   initialAlertFilter?: string | null;
@@ -161,6 +167,10 @@ export function StockWatchPanel({
     () => (supplierId ? dashboard.alerts.filter((r) => r.supplierId === supplierId) : dashboard.alerts),
     [dashboard.alerts, supplierId]
   );
+  const assemblyRows = useMemo(
+    () => (supplierId ? dashboard.assembly.filter((r) => r.supplierId === supplierId) : dashboard.assembly),
+    [dashboard.assembly, supplierId]
+  );
   const boardRows = useMemo(
     () =>
       supplierId ? dashboard.suppliers.filter((s) => s.supplierId === supplierId) : dashboard.suppliers,
@@ -214,6 +224,7 @@ export function StockWatchPanel({
   const tabs: { id: TabId; label: string; count?: number; tone?: "danger" | "warning" }[] = [
     { id: "suppliers", label: "Dostawcy", count: boardRows.length },
     { id: "alerts", label: "Wszystkie braki", count: alerts.length, tone: "danger" },
+    { id: "assembly", label: "Kompletacja", count: assemblyRows.length },
     { id: "rotation", label: "Rotacja", count: dashboard.topVelocity.length },
     { id: "rules", label: "Reguły", count: dashboard.flagged.length },
   ];
@@ -416,6 +427,8 @@ export function StockWatchPanel({
                 filtered={supplierId != null}
                 onOpenList={openSupplierList}
               />
+            ) : tab === "assembly" ? (
+              <AssemblySection rows={assemblyRows} canMutate={canMutate} onError={setError} />
             ) : tab === "rotation" ? (
               <RotationSection rows={dashboard.topVelocity} canMutate={canMutate} onError={setError} />
             ) : (
@@ -494,7 +507,11 @@ function StatusPanel({
               : "Listy „Do ZD” są puste. "}
             <span className="text-slate-500">
               W normie {health.score}% towarów ze sprzedażą
-              {counts.noSales > 0 ? ` · ${counts.noSales} bez sprzedaży` : ""}.
+              {counts.noSales > 0 ? ` · ${counts.noSales} bez sprzedaży` : ""}
+              {counts.toAssemble > 0
+                ? ` · ${counts.toAssemble} do kompletacji w Subiekcie (bez zamawiania)`
+                : ""}
+              .
             </span>
           </p>
         </div>
@@ -800,6 +817,103 @@ function AlertsSection({
           </TableScroll>
         </>
       )}
+    </Card>
+  );
+}
+
+/** Zestawy do złożenia z części / składniki do wyjęcia z kompletu — dokument w Subiekcie, nie ZD. */
+function AssemblySection({
+  rows,
+  canMutate,
+  onError,
+}: {
+  rows: StockWatchRowView[];
+  canMutate: boolean;
+  onError: (message: string) => void;
+}) {
+  if (rows.length === 0) {
+    return (
+      <Card>
+        <EmptyState
+          icon={<IconAlertCircle size={26} strokeWidth={1.75} />}
+          title="Nic do kompletacji"
+          description="Żaden zestaw ze składów Kreatora ZD nie czeka na złożenie z części ani na rozłożenie kompletu."
+        />
+      </Card>
+    );
+  }
+  return (
+    <Card padding={false} className="overflow-hidden">
+      <div className="border-b border-slate-100 px-4 py-3.5 sm:px-5">
+        <h2 className="text-sm font-semibold text-slate-900">
+          Do kompletacji w Subiekcie{" "}
+          <span className="font-normal tabular-nums text-slate-400">({rows.length})</span>
+        </h2>
+        <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+          Własny stan karty pusty albo na wyczerpaniu, ale części (albo komplety) leżą na magazynie. Zrób
+          dokument kompletacji - nie zamawiaj. Składy ustawiasz w Kreatorze ZD.
+        </p>
+      </div>
+      <TableScroll className="sm:px-0 sm:pb-0">
+        <DataTable className="min-w-[760px]">
+          <thead>
+            <tr>
+              <th scope="col">Towar</th>
+              <th scope="col" className="text-right" title="Dostępne na karcie (stan - rezerwacje)">
+                Stan karty
+              </th>
+              <th scope="col">Kompletacja</th>
+              <th scope="col" className="text-right" title="Średnia dzienna sprzedaż (szt/dzień) z okna Kreatora ZD">
+                Rotacja
+              </th>
+              <th scope="col" title="Po kompletacji">Starczy na</th>
+              {canMutate ? (
+                <th scope="col">
+                  <span className="sr-only">Reguła</span>
+                </th>
+              ) : null}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={`${row.supplierId}:${row.subiektTwId}`}>
+                <td>
+                  <ProductCell row={row} />
+                  <p className="max-w-[16rem] truncate text-xs font-medium text-slate-600">{row.supplierName ?? "-"}</p>
+                </td>
+                <td className="text-right tabular-nums text-sm font-semibold text-slate-900">
+                  {formatQtyPl(row.availableQty)}
+                </td>
+                <td>
+                  <AssemblyTag row={row} />
+                  {row.assemblyNote ? (
+                    <p className="mt-0.5 max-w-[22rem] truncate text-[11px] text-slate-500" title={row.assemblyNote}>
+                      {row.assemblyNote}
+                    </p>
+                  ) : null}
+                </td>
+                <td>
+                  <VelocityCell row={row} />
+                </td>
+                <td>
+                  <CoverChip row={{ ...row, assemblyKind: null }} />
+                </td>
+                {canMutate ? (
+                  <td className="text-right">
+                    <StockRuleMenu
+                      subiektTwId={row.subiektTwId}
+                      twSymbol={row.twSymbol}
+                      twNazwa={row.twNazwa}
+                      rule={row.rule}
+                      onError={onError}
+                    />
+                  </td>
+                ) : null}
+              </tr>
+            ))}
+          </tbody>
+        </DataTable>
+      </TableScroll>
     </Card>
   );
 }

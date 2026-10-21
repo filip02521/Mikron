@@ -23,9 +23,9 @@ import {
   DEFAULT_DNI_ZAPASU,
   salesWindowFromDniZapasu,
   stockPeriodToDniZapasu,
+  zdEstimateWindowDays,
 } from "@/lib/orders/zd-estimate-manual";
 import { ZD_ESTIMATE_UI_PREFS_DEFAULTS } from "@/lib/orders/zd-estimate-prefs";
-import { zdDocumentUnitsToPieces } from "@/lib/orders/zd-estimate-units";
 import { runZdOrderEngine } from "@/lib/orders/zd-order-engine";
 import { zdDeliveryRisk, type ZdOrderHorizon } from "@/lib/orders/zd-order-horizon";
 import { loadZdOrderHorizons } from "@/lib/orders/zd-order-horizon-load";
@@ -40,7 +40,8 @@ import { fetchZdSupplierOrderPolicy } from "@/lib/data/zd-supplier-order-policy"
 import { warsawDateKeyFromIso, warsawNowParts } from "@/lib/time/warsaw";
 import { classifySubiektException, feedbackFromException } from "@/lib/subiekt/feedback";
 import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
-import { analyzeStockWatchItem, pairStockPieces, unitPricePerPiece } from "@/lib/stock-watch/analysis";
+import { analyzeStockWatchItem, unitPricePerPiece } from "@/lib/stock-watch/analysis";
+import { resolveStockWatchBomViews, resolveStockWatchLineFigures } from "@/lib/stock-watch/bom-stock";
 import {
   createStockWatchRun,
   getLatestStockWatchRun,
@@ -57,6 +58,7 @@ import {
   type StockWatchScopeFailure,
 } from "@/lib/stock-watch/data";
 import { harvestZdPurchasePrices } from "@/lib/stock-watch/price-harvest";
+import { pruneStockDailyHistory, recordStockDailySnapshot } from "@/lib/stock-watch/stock-history";
 import { getScopeIndexSyncedAt, syncSubiektScopeIndex } from "@/lib/orders/zd-scope-index";
 
 /** Budżet jednego wywołania crona (route ma maxDuration 900 s). */
@@ -159,6 +161,7 @@ export async function runStockWatchWorker(input: {
     if (!locked) return { ok: true, skipped: true, reason: "lock_held" };
 
     const todayKey = warsawNowParts().dateKey;
+    const snapshotWindow = isWarsawStockWatchWindow();
     const [scopes, suppliers] = await Promise.all([
       listZdEstimateSupplierScopes(),
       fetchSuppliersWithSchedules(undefined, { activeOnly: true }),
@@ -248,6 +251,9 @@ export async function runStockWatchWorker(input: {
           horizon: horizons.get(supplier.id) ?? null,
           // Propozycje ZD automatu tylko z nocnego przebiegu (nie z odświeżenia po ZD).
           proposalTodayKey: todayKey,
+          // Poranny stan tylko z cronu w oknie 5:00–6:59 — ?force=1 w ciągu dnia zapisałby stan
+          // po sprzedaży jako „poranny” (pierwszy zapis dnia wygrywa) i zawyżył dni braku.
+          ...(input.trigger === "cron" && snapshotWindow ? { stockSnapshotDayKey: todayKey } : {}),
         });
         itemsWritten += outcome.itemsWritten;
         if (outcome.message) {
@@ -278,6 +284,7 @@ export async function runStockWatchWorker(input: {
     }
 
     await pruneStaleStockWatchItems(STALE_ITEM_DAYS);
+    await pruneStockDailyHistory().catch((e) => console.error("[stock-watch] historia stanów prune", e));
     const scopeIndex = timedOut ? null : await maybeSyncScopeIndex(deadlineMs);
 
     const status: StockWatchRun["status"] = timedOut
@@ -341,6 +348,8 @@ async function computeSupplierOrder(input: {
   proposalTodayKey?: string;
   /** „Przygotuj teraz” w Kreatorze — bez czekania na cykl. */
   proposalForce?: boolean;
+  /** Dzień porannego zapisu historii stanów — tylko nocny przebieg z crona. */
+  stockSnapshotDayKey?: string;
 }): Promise<{ itemsWritten: number; message: string | null; proposal?: ZdAutoProposalOutcome }> {
   const { scope, supplier, runId, salesEndDate, prices, horizon } = input;
   const scopeId = (scope.mode === "grupa" ? scope.grupaId : scope.cechaId) ?? 0;
@@ -358,6 +367,7 @@ async function computeSupplierOrder(input: {
         : { mode: "cecha", grupaId: null, cechaId: scopeId },
     supplierId: supplier.id,
     dniZapasu,
+    orderTiming: horizon ? { leadDays: horizon.leadDays, nextOrderDays: horizon.nextOrderDays } : null,
     dataOd: window.dataOd,
     dataDo: window.dataDo,
     zapasMin: ZD_ESTIMATE_UI_PREFS_DEFAULTS.zapasMin,
@@ -397,35 +407,51 @@ async function computeSupplierOrder(input: {
   const monitored = engine.result.pozycje.filter(
     (line) => !teeth.has(line.tw_Id) && !isZdNameAutoExcluded(String(line.tw_Nazwa ?? ""))
   );
+  // Opakowania z karty (bez nadpisania parą) — otwarte ZD w sztukach karty, jak w Kreatorze.
+  const cardPackaging = new Map(
+    engine.packaging.map((row) => [
+      row.subiektTwId,
+      { unitsPerPackage: row.unitsPerPackage, documentUnitMode: row.documentUnitMode },
+    ])
+  );
+  // Okno jak w silniku (bez dniOkresu z API — z dat): tempo zestawu i składników w tej samej skali.
+  const dniOkresu = zdEstimateWindowDays(engine.result.parametry) ?? NaN;
+  const bomViews = resolveStockWatchBomViews({
+    byTw: new Map(engine.result.pozycje.map((l) => [l.tw_Id, l])),
+    boms: engine.bomRefs,
+    packagingByTwId: cardPackaging,
+    dniOkresu: Number.isFinite(dniOkresu) && dniOkresu > 0 ? dniOkresu : null,
+    fallbackDniOkresu: dniZapasu,
+  });
   const rows: StockWatchItemWrite[] = monitored.map((line) => {
     const tw = line.tw_Id;
-    const pack = engine.packagingLookup.get(tw) ?? null;
-    const unitPrice = unitPricePerPiece(prices.get(tw)?.priceNet ?? null, pack);
-    const minStock = engine.minStockByTwId.get(tw) ?? null;
-    const pairStock = pairStockPieces(line.pair);
-    const availableQty = pairStock?.availableQty ?? num(line.dostepne);
-    const openZdQty =
-      pairStock?.openZdQty ??
-      zdDocumentUnitsToPieces(
-        Math.max(0, num(line.otwarteZd)),
-        pack?.unitsPerPackage,
-        pack?.documentUnitMode ?? "packages"
-      );
+    // Cena: przy parze paczka↔sztuka lookup ma przelicznik pary, więc wychodzi za sztukę (tempo pary).
+    const unitPrice = unitPricePerPiece(prices.get(tw)?.priceNet ?? null, engine.packagingLookup.get(tw) ?? null);
+    // Sztuka pary: minimum pary liczy się na paczce (scalone w silniku) — tu byłoby drugi raz,
+    // na samym stanie karty sztuki.
+    const minStock =
+      line.pair?.role === "piece" && !line.pair.partnerMissing ? null : (engine.minStockByTwId.get(tw) ?? null);
+    const figures = resolveStockWatchLineFigures(line, bomViews.get(tw) ?? null, cardPackaging.get(tw) ?? null);
+    const { availableQty, openZdQty, targetQty, assembly } = figures;
+    const velocity = figures.velocityDaily;
     const signal = analyzeStockWatchItem({
       availableQty,
       openZdQty,
-      velocityDaily: num(line.sprzedazDziennie),
-      targetQty: num(line.celZapasuTracked),
+      velocityDaily: velocity,
+      targetQty,
       minStockQty: minStock,
       unitPriceNet: unitPrice,
       salesEndDate,
+      assemblyQty: assembly?.coversDemand ? assembly.qty : 0,
+      assemblyActionable: assembly?.actionable === true,
     });
     const order = orderByTw.get(tw) ?? null;
-    const velocity = Math.max(0, num(line.sprzedazDziennie));
+    const coverNow = Math.max(0, availableQty + (assembly?.coversDemand ? assembly.qty : 0));
+    // Zestaw „Składamy” nie idzie na ZD — ryzyko dostawy pokazują jego składniki.
     const deliveryRisk =
-      horizon && velocity > 0
+      horizon && velocity > 0 && figures.orderable
         ? zdDeliveryRisk({
-            daysOfCoverWithIncoming: (Math.max(0, availableQty) + openZdQty) / velocity,
+            daysOfCoverWithIncoming: (coverNow + openZdQty) / velocity,
             horizon,
           })
         : null;
@@ -452,15 +478,15 @@ async function computeSupplierOrder(input: {
       availableQty,
       openZdQty: round(openZdQty, 3),
       openZkUnreservedQty: num(line.otwarteZkBezRez),
-      salesPeriodQty: num(line.sprzedazOkres),
+      salesPeriodQty: figures.salesPeriodQty,
       salesPeriodDays: dniZapasu,
-      velocityDaily: round(Math.max(0, num(line.sprzedazDziennie)), 4),
+      velocityDaily: round(velocity, 4),
       velocityTrend: null,
       daysOfCover: signal.daysOfCover,
       runOutDate: signal.runOutDate,
       // Dni celu faktycznie użyte (strategia dostawcy może je nadpisać); okno sprzedaży zostaje.
       bufferDays: engine.dniZapasuUsed,
-      targetQty: round(num(line.celZapasuTracked), 2),
+      targetQty: round(targetQty, 2),
       minStockQty: minStock,
       inOrder: order != null,
       orderZdUnits: order?.zdUnits ?? 0,
@@ -476,10 +502,29 @@ async function computeSupplierOrder(input: {
       dailyValue: signal.dailyValue,
       deliveryRisk,
       status: signal.status,
+      bomRole: figures.bomRole,
+      pairRole: line.pair && !line.pair.partnerMissing ? line.pair.role : null,
+      assemblyKind: assembly?.kind ?? null,
+      assemblyQty: assembly ? round(assembly.qty, 3) : null,
+      assemblyNote: assembly?.note ?? null,
     };
   });
 
   const itemsWritten = await replaceSupplierStockWatchItems(supplier.id, runId, rows);
+  // Dzienna historia stanów (tylko nocny przebieg z crona — ręczne „Przelicz teraz” i
+  // „Przygotuj teraz” bywają w trakcie dnia, a pierwszy zapis dnia wygrywa):
+  // stan karty sprzed składów i par. Błąd (np. bez migracji 192) nie psuje analizy.
+  if (input.stockSnapshotDayKey) {
+    await recordStockDailySnapshot(
+      input.stockSnapshotDayKey,
+      engine.result.pozycjeBase.map((l) => ({
+        twId: l.tw_Id,
+        stock: num(l.tw_Stan),
+        reserved: num(l.tw_StanRez),
+        available: num(l.dostepne),
+      }))
+    ).catch((e) => console.error("[stock-watch] historia stanów", supplier.id, e));
+  }
   await upsertStockWatchSupplierOrder({
     supplierId: supplier.id,
     runId,
@@ -506,6 +551,9 @@ async function computeSupplierOrder(input: {
   let proposal: ZdAutoProposalOutcome | undefined;
   if (input.proposalTodayKey && engine.fetch.truncated) {
     proposal = { kind: "skipped", reason: "Lista z Subiekta niepełna (limit stron) - propozycja nie powstała." };
+  } else if (input.proposalTodayKey && engine.orderPolicy.strategy !== "classic" && engine.salesSmoothing?.failed) {
+    // Bez profilu 12 mies. strategia liczy bez podłogi 90 d — propozycja byłaby zaniżona.
+    proposal = { kind: "skipped", reason: "Profil sprzedaży z 12 miesięcy niedostępny - propozycja nie powstała." };
   } else if (input.proposalTodayKey && list.explodeBomIncomplete) {
     proposal = { kind: "skipped", reason: "Brakuje danych kompletów (BOM) - Kreator pokazałby pustą listę." };
   } else if (input.proposalTodayKey) {
@@ -515,6 +563,7 @@ async function computeSupplierOrder(input: {
       todayKey: input.proposalTodayKey,
       dataOd: window.dataOd,
       dataDo: window.dataDo,
+      dniZapasuUsed: engine.dniZapasuUsed,
       lines: list.lines
         .filter((l) => l.zdUnits > 0)
         .map((l) => ({
@@ -559,6 +608,8 @@ async function maybeCreateAutoProposal(input: {
   todayKey: string;
   dataOd: string;
   dataDo: string;
+  /** Dni celu faktycznie użyte (strategia: co najmniej cykl + dostawa + bufor). */
+  dniZapasuUsed: number;
   lines: ZdAutoProposalLine[];
 }): Promise<ZdAutoProposalOutcome> {
   try {
@@ -572,7 +623,8 @@ async function maybeCreateAutoProposal(input: {
     }
     const created = await createZdAutoProposal({
       supplierId: input.supplierId,
-      policy: { strategy: policy.strategy, targetDays: policy.targetDays, cycleDays: policy.cycleDays },
+      // targetDays = dni faktycznie użyte w tej propozycji (baner pokazuje je zamiast ustawienia).
+      policy: { strategy: policy.strategy, targetDays: input.dniZapasuUsed, cycleDays: policy.cycleDays },
       dataOd: input.dataOd,
       dataDo: input.dataDo,
       lines: input.lines,

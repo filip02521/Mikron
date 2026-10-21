@@ -43,6 +43,12 @@ export const ZD_SALES_SPIKE_TRACK = {
   minCelRatio: 0.5,
   /** Min. dni okna sprzedaży do oceny skoku. */
   minWindowDays: 7,
+  /**
+   * Ostatnie ZD starsze niż tyle × max(dni zapasu, okno) nie mówi nic o dzisiejszym tempie.
+   */
+  maxHistoryAgeFactor: 2,
+  /** Min. pokrycie (stan + ZD) jako część dni zapasu, żeby ciąć skok. */
+  minCoverShare: 0.5,
 } as const;
 
 export type HistoryTrackInput = {
@@ -107,12 +113,17 @@ export function estimateSoldSinceLink(input: {
   sprzedazOkres: number;
   sprzedazDziennie: number;
   daysSinceLink: number;
+  /** Długość okna FS; ZD starsze niż okno — sprzedaż od linku wykracza poza okno. */
+  windowDays?: number | null;
 }): number {
   const soldWindow = Math.max(0, input.sprzedazOkres);
   const days = Math.max(0, input.daysSinceLink);
   const tempo = Math.max(0, input.sprzedazDziennie);
   if (!(days > 0)) return 0;
   if (tempo > 1e-9) {
+    const windowDays = Number(input.windowDays);
+    // Duży zakup (paleta, kilka okien) — limit sprzedażą okna udawałby „wolno schodzi”.
+    if (Number.isFinite(windowDays) && windowDays > 0 && days > windowDays) return tempo * days;
     return Math.min(soldWindow, tempo * days);
   }
   return soldWindow;
@@ -172,6 +183,15 @@ export function applySalesSpikeCut(
   if (windowDays < p.minWindowDays) return empty();
   if (!(celIn > 0) || !(celBase > 0)) return empty();
   if (!(expectedWindowSales > 0)) return empty();
+  // Ilość ostatniego ZD to dokładka netto (cel − stan wtedy), nie popyt — stare ZD nic nie mówi.
+  const daysSinceLink = daysBetween(input.linkedAt, input.nowMs ?? Date.now());
+  if (daysSinceLink > p.maxHistoryAgeFactor * Math.max(windowDays, Math.round(input.dniZapasu))) {
+    return empty();
+  }
+  // Bez profilu 12 mies. dokładki nie odróżnimy od skoku. Przy cienkim stanie cięcie
+  // gwarantuje brak (36 → 23 szt. przy stanie 0), więc tniemy tylko, gdy stan i tak starcza.
+  const tempo = Math.max(0, input.sprzedazDziennie);
+  if (tempo > 1e-9 && input.coverStock / tempo < input.dniZapasu * p.minCoverShare) return empty();
 
   const spikeRatio = sprzedazOkres / expectedWindowSales;
   if (!(spikeRatio >= p.spikeRatioFloor)) return empty();
@@ -216,6 +236,7 @@ export function applyHistorySlowCut(
     sprzedazOkres: input.sprzedazOkres,
     sprzedazDziennie: input.sprzedazDziennie,
     daysSinceLink,
+    windowDays: resolveWindowDays({ dniOkresu: input.dniOkresu, dniZapasu: input.dniZapasu }),
   });
   const celBase = Math.max(0, input.celBase);
   const celIn = Math.max(0, input.celTracked);

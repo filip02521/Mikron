@@ -13,6 +13,7 @@ import {
 import {
   DEFAULT_DNI_ZAPASU,
   mapZdEstimateLinesSolo,
+  zdEstimateWindowDays,
   type ManualZdEstimateLine,
 } from "@/lib/orders/zd-estimate-manual";
 import { mergeZdEstimateExcludedTwIds } from "@/lib/orders/zd-estimate-name-exclude";
@@ -80,6 +81,7 @@ export function refreshZdEstimateLinesWithPairs(input: {
   const safeBase = coerceZdEstimateLinesBase(input.linesBase);
   const remappedBase = mapZdEstimateLinesSolo(safeBase, {
     dniZapasu: input.options.dniZapasu,
+    zapasMin: input.options.zapasMin,
     dniOkresu: input.options.dniOkresu,
     salesTrack: input.options.salesTrack,
     salesTrackCuts: input.options.salesTrackCuts,
@@ -147,13 +149,11 @@ export function zdEstimateRefreshDays(
   const dni = Math.round(
     Number.isFinite(serverDni) && serverDni >= 1 ? serverDni : Number(dniZapasuForm)
   );
-  const dniOkresuRaw = paramInfo?.dniOkresu;
   return {
     dniZapasu: Number.isFinite(dni) && dni >= 1 ? dni : DEFAULT_DNI_ZAPASU,
-    dniOkresu:
-      dniOkresuRaw != null && Number.isFinite(Number(dniOkresuRaw))
-        ? Number(dniOkresuRaw)
-        : null,
+    dniOkresu: zdEstimateWindowDays(
+      paramInfo as Parameters<typeof zdEstimateWindowDays>[0]
+    ),
   };
 }
 

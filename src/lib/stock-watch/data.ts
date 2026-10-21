@@ -7,6 +7,7 @@ import type {
 import type { ZdDeliveryRisk } from "@/lib/orders/zd-order-horizon";
 import { isZdNameAutoExcluded } from "@/lib/orders/zd-estimate-name-exclude";
 import { buildStockWatchDashboard } from "@/lib/stock-watch/dashboard";
+import type { StockWatchAssemblyKind, StockWatchBomRole } from "@/lib/stock-watch/bom-stock";
 
 /** pg zwraca `numeric` jako string — normalizacja w jednym miejscu. */
 function num(value: unknown): number {
@@ -230,6 +231,14 @@ export type StockWatchItemWrite = {
   /** Sygnał z czasu dostawy — bez wpływu na ilość. */
   deliveryRisk: ZdDeliveryRisk | null;
   status: StockWatchStatus;
+  /** Rola w składzie z Kreatora (zestaw „Składamy”, komplet kupowany, składnik). */
+  bomRole: StockWatchBomRole | null;
+  /** Strona pary paczka↔sztuka (stan liczony w sztukach na paczce). */
+  pairRole: "pack" | "piece" | null;
+  /** Co da kompletacja w Subiekcie bez zakupu: złożenie zestawu / rozłożenie kompletu. */
+  assemblyKind: StockWatchAssemblyKind | null;
+  assemblyQty: number | null;
+  assemblyNote: string | null;
 };
 
 const ITEM_COLUMNS = [
@@ -266,6 +275,46 @@ const ITEM_COLUMNS = [
   "delivery_risk",
   "status",
 ] as const;
+
+/** Kolumny z migracji 191 — zapisywane tylko, gdy migracja jest na bazie. */
+const ITEM_BOM_COLUMNS = [
+  "bom_role",
+  "pair_role",
+  "assembly_kind",
+  "assembly_qty",
+  "assembly_note",
+] as const;
+
+let bomColumnsReady: Promise<boolean> | null = null;
+
+/**
+ * Czy baza ma kolumny kompletacji (191_stock_watch_bom.sql). Bez nich worker zapisuje
+ * jak dotąd, a „Do kompletacji” idzie jako „W normie” (stary CHECK statusu) — żaden
+ * fałszywy brak, tylko bez osobnej listy. Wynik pozytywny trzymamy do końca procesu.
+ */
+async function hasStockWatchBomColumns(): Promise<boolean> {
+  bomColumnsReady ??= query<{ n: string }>(
+    `SELECT count(*)::text AS n
+       FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'stock_watch_items'
+        AND column_name = ANY($1::text[])`,
+    [[...ITEM_BOM_COLUMNS]]
+  )
+    .then((r) => Number(r.rows[0]?.n) === ITEM_BOM_COLUMNS.length)
+    .then(
+      (ok) => {
+        if (!ok) bomColumnsReady = null;
+        return ok;
+      },
+      (e) => {
+        // Błąd bazy ≠ brak migracji: zapis bez kolumn zostawiłby stare dane kompletacji
+        // przy nowym statusie (ON CONFLICT). Zakres pada jak przy innym błędzie zapisu.
+        bomColumnsReady = null;
+        throw e;
+      }
+    );
+  return bomColumnsReady;
+}
 
 function itemValues(item: StockWatchItemWrite): unknown[] {
   return [
@@ -304,6 +353,10 @@ function itemValues(item: StockWatchItemWrite): unknown[] {
   ];
 }
 
+function itemBomValues(item: StockWatchItemWrite): unknown[] {
+  return [item.bomRole, item.pairRole, item.assemblyKind, item.assemblyQty, item.assemblyNote];
+}
+
 /**
  * Zastępuje wynik dostawcy: upsert bieżącej listy, usunięcie towarów,
  * których w tym przebiegu już nie ma (lista = to, co policzył silnik).
@@ -315,7 +368,10 @@ export async function replaceSupplierStockWatchItems(
 ): Promise<number> {
   let written = 0;
   const chunkSize = 200;
-  const updates = ITEM_COLUMNS.filter((c) => c !== "subiekt_tw_id" && c !== "supplier_id")
+  const withBom = await hasStockWatchBomColumns();
+  const columns: readonly string[] = withBom ? [...ITEM_COLUMNS, ...ITEM_BOM_COLUMNS] : ITEM_COLUMNS;
+  const updates = columns
+    .filter((c) => c !== "subiekt_tw_id" && c !== "supplier_id")
     .map((c) => `${c} = EXCLUDED.${c}`)
     .concat("computed_at = now()")
     .join(", ");
@@ -323,14 +379,17 @@ export async function replaceSupplierStockWatchItems(
     const chunk = items.slice(start, start + chunkSize);
     const params: unknown[] = [];
     const tuples = chunk.map((item) => {
-      const placeholders = itemValues(item).map((v) => {
+      const values = withBom
+        ? [...itemValues(item), ...itemBomValues(item)]
+        : itemValues({ ...item, status: item.status === "to_assemble" ? "ok" : item.status });
+      const placeholders = values.map((v) => {
         params.push(v);
         return `$${params.length}`;
       });
       return `(${placeholders.join(", ")}, now())`;
     });
     const res = await query(
-      `INSERT INTO stock_watch_items (${ITEM_COLUMNS.join(", ")}, computed_at)
+      `INSERT INTO stock_watch_items (${columns.join(", ")}, computed_at)
        VALUES ${tuples.join(", ")}
        ON CONFLICT (supplier_id, subiekt_tw_id) DO UPDATE SET ${updates}`,
       params
@@ -434,6 +493,15 @@ function mapItem(row: ItemRow): StockWatchItem {
         ? row.delivery_risk
         : null,
     status: row.status as StockWatchStatus,
+    bomRole:
+      row.bom_role === "assembled_parent" || row.bom_role === "purchased_kit" || row.bom_role === "component"
+        ? row.bom_role
+        : null,
+    pairRole: row.pair_role === "pack" || row.pair_role === "piece" ? row.pair_role : null,
+    assemblyKind:
+      row.assembly_kind === "assemble" || row.assembly_kind === "disassemble" ? row.assembly_kind : null,
+    assemblyQty: numOrNull(row.assembly_qty),
+    assemblyNote: (row.assembly_note as string | null) ?? null,
     computedAt: iso(row.computed_at) ?? "",
     supplierName: (row.supplier_name as string | null) ?? null,
     rule,

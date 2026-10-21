@@ -36,6 +36,25 @@ async function mapWithConcurrency<T>(
   await Promise.all(Array.from({ length: workers }, () => worker()));
 }
 
+/**
+ * Dostępne (stan − rezerwacje) własnych kart, bez łączenia par — jak `dostepne` w Policz.
+ * Brak odpowiedzi dla karty = brak wpisu w mapie.
+ */
+export async function fetchOwnAvailableByTwIds(twIds: readonly number[]): Promise<Map<number, number>> {
+  const out = new Map<number, number>();
+  const unique = [...new Set(twIds.filter((id) => Number.isFinite(id) && id > 0).map((id) => Math.trunc(id)))];
+  if (!unique.length || !isSubiektConfigured()) return out;
+  await mapWithConcurrency(unique, PROSBA_STOCK_FETCH_MAX_CONCURRENT, async (id) => {
+    try {
+      const snap = stockSnapshotFromSubiektProduct(await getSubiektProduct(id));
+      if (snap) out.set(id, snap.available);
+    } catch {
+      /* pojedynczy towar — pomijamy */
+    }
+  });
+  return out;
+}
+
 /** Batch stanu magazynowego po tw_Id (serwer / Server Action). */
 export async function fetchProsbaLineStock(
   twIds: number[]

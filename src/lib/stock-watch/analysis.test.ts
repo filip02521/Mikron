@@ -36,6 +36,34 @@ describe("analyzeStockWatchItem", () => {
     expect(analyzeStockWatchItem(input({ availableQty: -3 })).daysOfCover).toBe(0);
   });
 
+  it("kompletacja: pusta karta, ale części starczą → to_assemble, dni po złożeniu", () => {
+    const r = analyzeStockWatchItem(
+      input({ availableQty: 0, targetQty: 0, assemblyQty: 10, assemblyActionable: true })
+    );
+    expect(r.status).toBe("to_assemble");
+    expect(r.daysOfCover).toBe(10);
+    expect(r.runOutDate).toBe("2026-10-12");
+  });
+
+  it("kompletacja nie ukrywa braku: po złożeniu nadal ≤ 48 h → critical", () => {
+    expect(
+      analyzeStockWatchItem(input({ availableQty: 0, assemblyQty: 2, assemblyActionable: true })).status
+    ).toBe("critical");
+  });
+
+  it("kompletacja bez działania (np. składnik tylko w zestawach) liczy się do pokrycia, bez to_assemble", () => {
+    expect(
+      analyzeStockWatchItem(input({ availableQty: 0, targetQty: 0, assemblyQty: 10, assemblyActionable: false }))
+        .status
+    ).toBe("ok");
+  });
+
+  it("własny stan na długo — kompletacja nie zmienia statusu", () => {
+    expect(
+      analyzeStockWatchItem(input({ availableQty: 20, assemblyQty: 10, assemblyActionable: true })).status
+    ).toBe("ok");
+  });
+
   it("warning gdy dostępne + otwarte ZD < cel z Kreatora", () => {
     expect(analyzeStockWatchItem(input({ availableQty: 5, openZdQty: 3 })).status).toBe("warning");
     expect(analyzeStockWatchItem(input({ availableQty: 5, openZdQty: 9 })).status).toBe("ok");
