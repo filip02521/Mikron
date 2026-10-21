@@ -6,6 +6,7 @@
 
 import { query } from "@/lib/db/pool";
 import { fetchSubiektZdEstimateAll } from "@/lib/subiekt/api";
+import { assertZdEstimateFilterEcho } from "@/lib/orders/zd-estimate-scope";
 import { parseOrderQuantity } from "@/lib/orders/individual";
 import { ZD_SALES_PROFILE, zdSalesProfileWindows } from "@/lib/orders/zd-sales-profile";
 
@@ -54,14 +55,31 @@ async function computeScopeProfiles(
   endDate: string
 ): Promise<Map<number, number[]>> {
   const windows = zdSalesProfileWindows(endDate);
-  const fetchWindow = (w: { dataOd: string; dataDo: string }) =>
-    fetchSubiektZdEstimateAll({
-      ...(scope.mode === "grupa" ? { grupaId: scope.id } : { cechaId: scope.id }),
-      dataOd: w.dataOd,
-      dataDo: w.dataDo,
-      dniZapasu: ZD_SALES_PROFILE.windowDays,
-      tylkoBraki: false,
-    });
+  const fetchWindow = async (w: { dataOd: string; dataDo: string }) => {
+    const res = await fetchSubiektZdEstimateAll(
+      {
+        ...(scope.mode === "grupa" ? { grupaId: scope.id } : { cechaId: scope.id }),
+        dataOd: w.dataOd,
+        dataDo: w.dataDo,
+        dniZapasu: ZD_SALES_PROFILE.windowDays,
+        tylkoBraki: false,
+      },
+      {
+        // Jak lista główna: bez potwierdzonego filtra okno mogłoby być całym katalogiem.
+        validateFirstPage: ({ parametry }) =>
+          assertZdEstimateFilterEcho({
+            mode: scope.mode,
+            expectedGrupaId: scope.mode === "grupa" ? scope.id : null,
+            expectedCechaId: scope.mode === "cecha" ? scope.id : null,
+            parametry,
+          }),
+      }
+    );
+    // Niepełne okno = zera dla brakujących towarów → fałszywe skoki i niższa podłoga 90 d,
+    // zapisane na dni. Lepiej oznaczyć profil jako niedostępny.
+    if (res.truncated) throw new Error(`Profil sprzedaży: okno ${w.dataOd}–${w.dataDo} niepełne.`);
+    return res;
+  };
   const results: Awaited<ReturnType<typeof fetchWindow>>[] = [];
   for (let i = 0; i < windows.length; i += WINDOW_CONCURRENCY) {
     const chunk = windows.slice(i, i + WINDOW_CONCURRENCY);

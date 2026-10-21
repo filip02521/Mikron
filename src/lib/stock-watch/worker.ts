@@ -523,6 +523,9 @@ async function computeSupplierOrder(input: {
   let proposal: ZdAutoProposalOutcome | undefined;
   if (input.proposalTodayKey && engine.fetch.truncated) {
     proposal = { kind: "skipped", reason: "Lista z Subiekta niepełna (limit stron) - propozycja nie powstała." };
+  } else if (input.proposalTodayKey && engine.orderPolicy.strategy !== "classic" && engine.salesSmoothing?.failed) {
+    // Bez profilu 12 mies. strategia liczy bez podłogi 90 d — propozycja byłaby zaniżona.
+    proposal = { kind: "skipped", reason: "Profil sprzedaży z 12 miesięcy niedostępny - propozycja nie powstała." };
   } else if (input.proposalTodayKey && list.explodeBomIncomplete) {
     proposal = { kind: "skipped", reason: "Brakuje danych kompletów (BOM) - Kreator pokazałby pustą listę." };
   } else if (input.proposalTodayKey) {

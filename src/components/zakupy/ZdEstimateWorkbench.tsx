@@ -3039,7 +3039,10 @@ export function ZdEstimateWorkbench({
               otherSupplierHintByTwId: {},
               horizon: payload.horizon ?? null,
               leadDays: payload.leadDays ?? null,
-              salesSmoothing: payload.salesSmoothingEnabled ? payload.salesSmoothing ?? null : null,
+              salesSmoothing:
+                payload.salesSmoothingEnabled || payload.salesSmoothing?.failed
+                  ? payload.salesSmoothing ?? null
+                  : null,
               classicCompare: payload.classicCompare ?? null,
             }
           : null
@@ -4038,7 +4041,9 @@ export function ZdEstimateWorkbench({
           otherSupplierHintByTwId: res.otherSupplierHintByTwId ?? {},
           horizon: res.horizon ?? null,
           leadDays: res.leadDays ?? null,
-          salesSmoothing: res.salesSmoothingEnabled ? res.salesSmoothing ?? null : null,
+          // Strategia nie wygładza, ale bez profilu traci podłogę 90 d — awarię pokazujemy zawsze.
+          salesSmoothing:
+            res.salesSmoothingEnabled || res.salesSmoothing?.failed ? res.salesSmoothing ?? null : null,
           classicCompare: res.classicCompare ?? null,
         });
         setUnitPriceByTwId(res.unitPriceByTwId ?? {});
@@ -6901,7 +6906,8 @@ export function ZdEstimateWorkbench({
               {policzScopeInfo.salesSmoothing.failed ? (
                 <p className="text-sm leading-snug">
                   Nie udało się pobrać sprzedaży z 12 miesięcy dla całego zakresu lub jego części - te
-                  pozycje liczone jak dotąd. Przelicz ponownie za chwilę.
+                  pozycje liczone jak dotąd (bez wygładzenia i bez średniej 90 dni strategii). Przelicz
+                  ponownie za chwilę.
                 </p>
               ) : null}
               {formatZdSalesSmoothingSummary(policzScopeInfo.salesSmoothing) ? (

@@ -1706,7 +1706,8 @@ export async function actionRunZdEstimateManual(
     // Strategia testowa ma własne dni zapasu i nie wygładza — horyzont „Do dostawy” i „Wygładź”
     // nie zostały użyte, więc nie raportujemy ich jako zastosowanych (komunikaty w Kreatorze).
     const strategyActive = engine.orderPolicy.strategy !== "classic";
-    const appliedHorizon = strategyActive ? null : horizon;
+    // Horyzont zastosowany = silnik liczył na jego dniach (strategia bez własnych dni celu też).
+    const appliedHorizon = horizon && engine.dniZapasuUsed === horizon.horizonDays ? horizon : null;
     const smoothingApplied = input.salesSmoothing === true && !strategyActive;
     const {
       result,

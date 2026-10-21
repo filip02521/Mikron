@@ -31,6 +31,7 @@ import { policyForBoostPreset, type ZdBoostPowerPreset } from "@/lib/orders/zd-e
 import { fetchZdProductPairs, type ZdProductPairRow } from "@/lib/data/zd-product-pairs";
 import { fetchZdProductBoms, type ZdProductBomRow } from "@/lib/data/zd-product-boms";
 import { bomRowsToRefs, type ZdProductBomRef } from "@/lib/orders/zd-estimate-bom";
+import { normalizeDemandAllocation } from "@/lib/orders/zd-estimate-bom-policy";
 import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
 import { collectMissingZdBomTwIds } from "@/lib/orders/zd-estimate-live-refresh";
 import { normalizeIndividualOrders } from "@/lib/data/normalize-order";
@@ -78,6 +79,7 @@ import {
   applyZdPairDemandFloor,
   effectiveDniZapasu,
   sales90FromProfile,
+  applyZdBomDemandFloor,
   ZD_SUPPLIER_ORDER_POLICY_CLASSIC,
   type ZdSupplierOrderPolicy,
 } from "@/lib/orders/zd-demand-policy";
@@ -1044,11 +1046,16 @@ export async function runZdOrderEngine(
       }
       // Strategia max30_90 zastępuje wygładzenie (backtest: wygładzenie nie poprawiało wyniku).
       const smoothing = input.salesSmoothing === true && orderPolicy.strategy === "classic";
+      // Sprzedaż pod prośbę była już zamówiona jako dodatek do prośby — nie jest popytem na zapas.
+      // Strategia zastępuje wygładzenie, ale odejmowanie próśb musi zostać (inaczej podłoga 90 d
+      // ciągnie jednorazową prośbę jeszcze przez dwa miesiące).
+      const strategyActive = orderPolicy.strategy !== "classic";
+      const subtractProsba = smoothing || strategyActive;
       const prosbaInPieces = (tw: number) =>
-        smoothing &&
+        subtractProsba &&
         !compositeTwIds.has(tw) &&
         !((packagingByTwId.get(tw)?.unitsPerPackage ?? 1) > 1);
-      const prosbaPieces = smoothing
+      const prosbaPieces = subtractProsba
         ? await loadDeliveredProsbaPiecesByTwId({
             twIds: mergedPozycje.map((p) => Math.trunc(Number(p.tw_Id) || 0)).filter(prosbaInPieces),
             dataOd,
@@ -1063,6 +1070,14 @@ export async function runZdOrderEngine(
       // Para to jeden popyt (sztuki + paczki × przelicznik): podłoga i profil liczone dla pary,
       // nie dla każdej strony osobno (inaczej max(paczki) + max(sztuki) zawyżałby cel).
       const pairTwIds = new Set(productPairs.flatMap((p) => [p.packTwId, p.pieceTwId]));
+      // „Składamy”: popyt zestawu schodzi na składniki (sprzedaż × ilość). Podłoga per linia
+      // dałaby max(składnik) + ilość × max(zestaw) — liczymy ją raz, na łącznym popycie składnika.
+      const explodeBoms = bomRefs.filter(
+        (b) => normalizeDemandAllocation(b.demandAllocation) === "explode" && b.components.length > 0
+      );
+      const explodeTwIds = new Set(
+        explodeBoms.flatMap((b) => [b.parentTwId, ...b.components.map((c) => c.componentTwId)])
+      );
       const rawSalesByTw = new Map(
         mergedPozycje.map((p) => [Math.trunc(Number(p.tw_Id) || 0), Number(p.sprzedazOkres) || 0])
       );
@@ -1070,10 +1085,29 @@ export async function runZdOrderEngine(
         const line = mergedPozycje[i]!;
         const tw = Math.trunc(Number(line.tw_Id) || 0);
         const windows = profiles.get(tw);
-        if (windows && orderPolicy.strategy !== "classic" && !pairTwIds.has(tw)) {
-          const floored = applyZdDemandFloorToLine(line, {
+        if (windows && strategyActive && !pairTwIds.has(tw) && !explodeTwIds.has(tw)) {
+          let base = line;
+          let floorWindows: readonly number[] = windows;
+          const prosba = prosbaPieces.get(tw) ?? 0;
+          if (prosba > 0 && !compositeTwIds.has(tw)) {
+            const pm = resolveZdSalesProfile({
+              windows,
+              sprzedazOkres: Number(line.sprzedazOkres) || 0,
+              dniOkresu,
+              prosbaPieces: prosba,
+              smoothing: false,
+              subtractProsba: true,
+            });
+            base = applyZdSalesProfileToLine(line, pm, zapasMin);
+            // Bieżące okno profilu też zawiera sprzedaż pod prośby.
+            floorWindows = windows.map((v, k) =>
+              k === windows.length - 1 ? Math.max(0, v - pm.prosbaPieces) : v
+            );
+            if (pm.applied) salesSmoothing.prosba += 1;
+          }
+          const floored = applyZdDemandFloorToLine(base, {
             policy: orderPolicy,
-            sales90: sales90FromProfile(windows),
+            sales90: sales90FromProfile(floorWindows),
             dniOkresu,
             dniZapasu,
           });
@@ -1098,6 +1132,16 @@ export async function runZdOrderEngine(
         }
       }
       const indexByTw = new Map(mergedPozycje.map((p, idx) => [Math.trunc(Number(p.tw_Id) || 0), idx]));
+      applyZdBomDemandFloor({
+        lines: mergedPozycje,
+        explodeBoms,
+        profiles,
+        rawSalesByTw,
+        pairTwIds,
+        policy: orderPolicy,
+        dniOkresu,
+        dniZapasu,
+      });
       const bomTwIds = new Set(bomRefs.flatMap((b) => [b.parentTwId, ...b.components.map((c) => c.componentTwId)]));
       for (const pair of productPairs) {
         const packIdx = indexByTw.get(pair.packTwId);

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { buildManualZdEstimateResult } from "@/lib/orders/zd-estimate-manual";
 import {
+  applyZdBomDemandFloor,
   applyZdDemandFloorToLine,
   applyZdPairDemandFloor,
   effectiveDniZapasu,
@@ -84,5 +86,73 @@ describe("applyZdPairDemandFloor — para jako jeden popyt", () => {
     expect(
       applyZdPairDemandFloor({ policy: ZD_SUPPLIER_ORDER_POLICY_CLASSIC, pack, piece, unitsPerPack: 10, sales90: 9000, dniOkresu: 30 })
     ).toBeNull();
+  });
+});
+
+describe("podłoga 90 d dla składników zestawów „Składamy”", () => {
+  const policy: ZdSupplierOrderPolicy = { strategy: "max30_90", targetDays: 30, cycleDays: 3 };
+  const zeros = (n: number) => Array.from({ length: n }, () => 0);
+
+  it("jedna podłoga na łącznym popycie, nie max(składnik) + max(zestaw)", () => {
+    // Zestaw: 30 w tym oknie, wcześniej 0. Składnik: 0 teraz, 45 + 45 w dwóch oknach przed.
+    const lines = [
+      { tw_Id: 100, tw_Symbol: "KIT", sprzedazOkres: 30, sprzedazDziennie: 1, celZapasu: 30, dostepne: 0 },
+      { tw_Id: 1, tw_Symbol: "A", sprzedazOkres: 0, sprzedazDziennie: 0, celZapasu: 0, dostepne: 0 },
+    ];
+    applyZdBomDemandFloor({
+      lines,
+      explodeBoms: [{ parentTwId: 100, components: [{ componentTwId: 1, qtyPerParent: 1 }] }],
+      profiles: new Map([
+        [100, [...zeros(11), 30]],
+        [1, [...zeros(9), 45, 45, 0]],
+      ]),
+      rawSalesByTw: new Map([
+        [100, 30],
+        [1, 0],
+      ]),
+      pairTwIds: new Set(),
+      policy,
+      dniOkresu: 30,
+      dniZapasu: 30,
+    });
+    // Łącznie: max(30 w 30 d, 120 w 90 d → 40) = 40; zestaw dołoży 30 w expand.
+    expect(lines[1]!.sprzedazOkres).toBeCloseTo(10);
+    expect(lines[0]!.sprzedazOkres).toBe(30);
+    const res = buildManualZdEstimateResult({ dniZapasu: 30, dniOkresu: 30, zapasMin: 0 }, lines, {
+      salesTrack: false,
+      productBoms: [
+        {
+          parentTwId: 100,
+          stockAsCover: true,
+          demandAllocation: "explode",
+          purchaseTarget: "components",
+          components: [{ componentTwId: 1, qtyPerParent: 1 }],
+        },
+      ],
+    });
+    const a = res.pozycje.find((p) => p.tw_Id === 1)!;
+    expect(a.sprzedazOkres).toBeCloseTo(40);
+    expect(a.doZamowieniaReczne).toBe(40);
+  });
+
+  it("brak profilu zestawu — bez podłogi (łączna średnia byłaby zaniżona)", () => {
+    const lines = [
+      { tw_Id: 100, sprzedazOkres: 30, celZapasu: 30 },
+      { tw_Id: 1, sprzedazOkres: 0, celZapasu: 0 },
+    ];
+    applyZdBomDemandFloor({
+      lines,
+      explodeBoms: [{ parentTwId: 100, components: [{ componentTwId: 1, qtyPerParent: 1 }] }],
+      profiles: new Map([[1, [...zeros(9), 45, 45, 0]]]),
+      rawSalesByTw: new Map([
+        [100, 30],
+        [1, 0],
+      ]),
+      pairTwIds: new Set(),
+      policy,
+      dniOkresu: 30,
+      dniZapasu: 30,
+    });
+    expect(lines[1]!.sprzedazOkres).toBe(0);
   });
 });
