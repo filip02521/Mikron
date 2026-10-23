@@ -1,11 +1,13 @@
 /**
  * Minimum zamówienia i próg darmowej dostawy dla propozycji ZD automatu (zadanie 5, TASKS.md;
  * spec §3.4, §4.1). Właściciel statusu `deferred` i `deferredReason`. Cena zakupu = kartotekowa
- * z API (`GET /products/{id}/price/catalog`), fallback cena z ostatniego ZD.
+ * z API (`GET /products/{id}/price/catalog`), fallback cena z ostatniego ZD — `priceNet` każdej propozycji,
+ * także dostawcy bez minimum i progu (jedno znaczenie pola dla panelu i KPI).
  *
  * Kolejność (po bezpiecznikach — dodane linie nie mają flag):
- * Linia pilna = pozycja (dostępne + otwarte ZD) / tempo < cykl + czas dostawy: odłożenie przesuwa
- * zamówienie o cały cykl, więc taki towar skończyłby się przed kolejną dostawą.
+ * Linia pilna = prośba handlowca (towar pod klienta, niezależnie od tempa) albo pozycja (dostępne +
+ * otwarte ZD) / tempo < cykl + czas dostawy: odłożenie przesuwa zamówienie o cały cykl, więc taki
+ * towar skończyłby się przed kolejną dostawą.
  * 1. Poniżej minimum (PLN), bez linii pilnych → odłożona. Z pilnymi → idzie, powód w `notes`.
  * 2. Poniżej progu darmowej dostawy: brakuje ≤ 15% → dopełnienie (A/B, najmniej dni pokrycia,
  *    każdy towar najwyżej do celu + tempo × cykl). Nadal poniżej progu i bez pilnych → odłożona
@@ -57,12 +59,6 @@ export type ZdProposalMinimumResult = {
 const round2 = (v: number) => Math.round(v * 100) / 100;
 const zl = formatZdMinimumZl;
 
-/** Dni pokrycia = dostępne / tempo; bez tempa — nieskończone (nic się nie kończy). */
-function coverDays(line: ZdOrderListLine["line"]): number {
-  const v = Number(line.sprzedazDziennie) || 0;
-  return v > 0 ? (Number(line.dostepne) || 0) / v : Number.POSITIVE_INFINITY;
-}
-
 type PackagingMap = ZdProposalHookContext["engine"]["packagingLookup"];
 
 /** Pozycja w sztukach bez tej propozycji: dostępne + otwarte ZD (para: pokrycie obu kart, ZD już w nim). */
@@ -70,6 +66,12 @@ function positionPieces(line: ZdOrderListLine["line"], packaging: PackagingMap):
   if (line.pair?.role === "pack") return Number(line.pair.coverSzt) || 0;
   const pack = packaging.get(line.tw_Id);
   return (Number(line.dostepne) || 0) + zdDocumentUnitsToPieces(line.otwarteZd, pack?.unitsPerPackage, pack?.documentUnitMode);
+}
+
+/** Dni pokrycia = pozycja / tempo; bez tempa — nieskończone (nic się nie kończy). */
+function coverDays(line: ZdOrderListLine["line"], packaging: PackagingMap): number {
+  const v = Number(line.sprzedazDziennie) || 0;
+  return v > 0 ? positionPieces(line, packaging) / v : Number.POSITIVE_INFINITY;
 }
 
 const valueOf = (lines: readonly ZdAutoProposalLine[]) =>
@@ -87,8 +89,6 @@ export async function decideZdProposalMinimum(
     notes.push(`Minimum dostawcy w ${String(deps.terms.minOrderCurrency).trim()} - reguła minimum pominięta (wartość liczona w zł).`);
   }
   const thr = Number(deps.terms.freeShippingThreshold) > 0 ? Number(deps.terms.freeShippingThreshold) : null;
-  if (!minApplies && thr == null) return ok(ctx.lines);
-
   const packaging = ctx.engine.packagingLookup;
   const catalog = new Map<number, number>();
   let catalogFailed = false;
@@ -109,6 +109,7 @@ export async function decideZdProposalMinimum(
 
   await loadPrices(ctx.lines.map((l) => l.twId));
   const lines = ctx.lines.map((l) => ({ ...l, priceNet: priceOf(l.twId) }));
+  if (!minApplies && thr == null) return ok(lines);
   const unpriced = lines.filter((l) => l.priceNet == null).length;
   const value = valueOf(lines);
   if (unpriced > 0) {
@@ -122,11 +123,11 @@ export async function decideZdProposalMinimum(
   const cycleDays = deps.cycleDays ?? ZD_MINIMUM_DEFAULT_DAYS;
   const urgentDays = cycleDays + (ctx.horizon?.leadDays ?? ZD_MINIMUM_DEFAULT_DAYS);
   const urgent = lines.filter((l) => {
+    if (l.prosbaPieces > 0) return true;
     const row = listByTw.get(l.twId);
-    const v = Number(row?.line.sprzedazDziennie) || 0;
-    return row != null && v > 0 && positionPieces(row.line, packaging) / v < urgentDays;
+    return row != null && coverDays(row.line, packaging) < urgentDays;
   }).length;
-  const urgentWhy = `${urgent} ${polishPluralWord(urgent, "pozycja skończyłaby", "pozycje skończyłyby", "pozycji skończyłoby")} się przed kolejną dostawą`;
+  const urgentWhy = `${urgent} ${polishPluralWord(urgent, "pozycja pilna", "pozycje pilne", "pozycji pilnych")} (prośba albo koniec stanu przed kolejną dostawą)`;
 
   if (minApplies && value < min) {
     if (!urgent) {
@@ -199,7 +200,7 @@ async function topUp(input: {
   }
   // Pusta klasyfikacja = bez filtra; inaczej tylko A/B (towar bez klasy też odpada).
   if (abc.size > 0) candidates = candidates.filter((c) => ["A", "B"].includes(abc.get(c.line.tw_Id) ?? ""));
-  candidates.sort((a, b) => coverDays(a.line) - coverDays(b.line) || a.line.tw_Id - b.line.tw_Id);
+  candidates.sort((a, b) => coverDays(a.line, packaging) - coverDays(b.line, packaging) || a.line.tw_Id - b.line.tw_Id);
 
   const out = new Map(input.lines.map((l) => [l.twId, l]));
   const added: number[] = [];

@@ -105,13 +105,32 @@ function deps(input: {
 const calm = row(1, { dostepne: 100, v: 1, cel: 25, zdUnits: 10, pieces: 10 });
 
 describe("decideZdProposalMinimum — minimum", () => {
-  it("bez minimum i progu nie czyta cen i nic nie zmienia", async () => {
-    const { d, readCatalogPrices } = deps({});
-    const c = ctx({ lines: [pl(1, 10)], rows: [calm], lastZd: { 1: 40 } });
-    const r = await decideZdProposalMinimum(c, d);
+  it("bez minimum i progu: ok, ale priceNet też = kartotekowa (fallback ostatnie ZD)", async () => {
+    const { d, readCatalogPrices } = deps({ catalog: { 1: 50 } });
+    const other = row(2, { dostepne: 100, v: 1, zdUnits: 1, pieces: 1 });
+    const r = await decideZdProposalMinimum(ctx({ lines: [pl(1, 10), pl(2, 1)], rows: [calm, other], lastZd: { 1: 40, 2: 7 } }), d);
     expect(r.outcome).toEqual({ kind: "ok" });
-    expect(r.lines).toBe(c.lines);
-    expect(readCatalogPrices).not.toHaveBeenCalled();
+    expect(r.lines.map((l) => l.priceNet)).toEqual([50, 7]);
+    expect(readCatalogPrices).toHaveBeenCalledWith([1, 2]);
+  });
+
+  it("prośba handlowca jest pilna niezależnie od tempa — propozycja z samą prośbą nie jest odkładana", async () => {
+    const prosba = row(2, { dostepne: 0, v: 0, zdUnits: 2, pieces: 2 });
+    const { d } = deps({ min: 500, catalog: { 2: 10 } });
+    const r = await decideZdProposalMinimum(ctx({ lines: [{ ...pl(2, 2), prosbaPieces: 2 }], rows: [prosba] }), d);
+    expect(r.outcome).toEqual({ kind: "ok" });
+    const free = await decideZdProposalMinimum(ctx({ lines: [{ ...pl(2, 2), prosbaPieces: 2 }], rows: [prosba] }), deps({ free: 1000, catalog: { 2: 10 } }).d);
+    expect(free.outcome).toEqual({ kind: "ok" });
+  });
+
+  it("dopełnienie sortuje po pozycji z otwartymi ZD — towar z dużym ZD w drodze nie wchodzi pierwszy", async () => {
+    const base = row(1, { dostepne: 100, v: 1, cel: 25, zdUnits: 85, pieces: 85 });
+    const inTransit = row(2, { dostepne: 1, v: 1, cel: 30, otwarteZd: 20 }); // 21 dni
+    const low = row(3, { dostepne: 4, v: 1, cel: 30 }); // 4 dni
+    const { d } = deps({ free: 1000, catalog: { 1: 10, 2: 10, 3: 10 } });
+    const r = await decideZdProposalMinimum(ctx({ lines: [pl(1, 85)], rows: [base, inTransit, low] }), d);
+    if (r.outcome.kind !== "topped_up") throw new Error(r.outcome.kind);
+    expect(r.outcome.addedTwIds).toEqual([3]);
   });
 
   it("dokładnie minimum → idzie (cena kartotekowa ma pierwszeństwo przed ostatnim ZD)", async () => {
@@ -132,7 +151,7 @@ describe("decideZdProposalMinimum — minimum", () => {
     const { d } = deps({ min: 500, catalog: { 1: 10, 2: 10 } });
     const r = await decideZdProposalMinimum(ctx({ lines: [pl(1, 10), pl(2, 5)], rows: [calm, urgent] }), d);
     expect(r.outcome).toEqual({ kind: "ok" });
-    expect(r.notes.join(" ")).toContain("Poniżej minimum 500 zł (150 zł) - idzie, bo 1 pozycja skończyłaby się przed kolejną dostawą");
+    expect(r.notes.join(" ")).toContain("Poniżej minimum 500 zł (150 zł) - idzie, bo 1 pozycja pilna (prośba albo koniec stanu przed kolejną dostawą)");
   });
 
   // Cykl 7 + dostawa 7 = 14 dni: odłożenie o cykl nie może zostawić towaru bez stanu przed kolejną dostawą.

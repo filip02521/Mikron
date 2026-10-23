@@ -13,7 +13,7 @@ export type ZdAutoProposalLine = {
   /** Sztuki po dostawie. */
   pieces: number;
   unitLabel: string;
-  /** Cena netto za sztukę (ostatnie ZD; u dostawcy z minimum / progiem kartotekowa — zadanie 5); null = bez ceny. */
+  /** Cena netto za sztukę: kartotekowa z Subiekta, fallback ostatnie ZD (zadanie 5); null = bez ceny. */
   priceNet: number | null;
   /** Z tego sztuki z próśb handlowców. */
   prosbaPieces: number;
