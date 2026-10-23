@@ -26,6 +26,12 @@ export const ZD_GUARD_PEAK_DOC_SHARE = 0.6;
 /** …i ilość ponad tyle × (tempo 90 d × dni celu). */
 export const ZD_GUARD_PEAK_QTY_FACTOR = 2;
 export const ZD_GUARD_PEAK_WINDOW_DAYS = 30;
+/**
+ * Pik tylko dla towarów, które rotują: przy rzadkiej sprzedaży jeden dokument to zawsze ~100%.
+ * Próg sztuk jak „skok” profilu 12 okien (docs/zamowienia-jeden-silnik.md §3.3a); wartość — gdy jest cena.
+ */
+export const ZD_GUARD_PEAK_MIN_SALES_30D = 5;
+export const ZD_GUARD_PEAK_MIN_LINE_VALUE = 200;
 /** Skok: ilość ponad tyle × średnia z ostatnich ZD towaru u dostawcy. */
 export const ZD_GUARD_JUMP_FACTOR = 3;
 export const ZD_GUARD_JUMP_HISTORY = 4;
@@ -75,9 +81,17 @@ export function zdPeakDocShare(docs: readonly ZdGuardSaleDoc[]): { maxDoc: numbe
 
 const stockPieces = (f: ZdGuardLineFacts) => Math.max(0, f.pieces - Math.max(0, f.prosbaPieces));
 
-/** Drugi warunek piku (ilość) — tylko te linie pytają Subiekta o dokumenty. */
-export function zdPeakQtyExceeded(f: ZdGuardLineFacts, dniZapasu: number): boolean {
-  if (f.tempo90 == null) return false;
+/** Sprzedaż z ostatniego okna profilu (30 d); null = brak profilu. */
+const sales30 = (f: ZdGuardLineFacts) => (f.windows?.length ? Math.max(0, f.windows[f.windows.length - 1] ?? 0) : null);
+
+/**
+ * Kandydat na pik: towar rotuje (sprzedaż 30 d ≥ 5 szt, linia ≥ 200 zł, gdy jest cena) i ilość
+ * ponad 2× tempo 90 d × dni celu. Tylko te linie pytają Subiekta o dokumenty.
+ */
+export function zdPeakCandidate(f: ZdGuardLineFacts, dniZapasu: number): boolean {
+  const s30 = sales30(f);
+  if (f.tempo90 == null || s30 == null || s30 < ZD_GUARD_PEAK_MIN_SALES_30D) return false;
+  if (f.priceNet != null && f.priceNet * f.pieces < ZD_GUARD_PEAK_MIN_LINE_VALUE) return false;
   return stockPieces(f) > ZD_GUARD_PEAK_QTY_FACTOR * f.tempo90 * dniZapasu;
 }
 
@@ -127,10 +141,10 @@ export function zdLineGuardFlags(
     }
   }
   const p = input.peak;
-  if (p && p !== "error" && p.total > 0 && p.maxDoc > ZD_GUARD_PEAK_DOC_SHARE * p.total && zdPeakQtyExceeded(f, dni)) {
+  if (p && p !== "error" && p.total > 0 && p.maxDoc > ZD_GUARD_PEAK_DOC_SHARE * p.total && zdPeakCandidate(f, dni)) {
     add(
       "peak",
-      `Jeden dokument to ${Math.round((p.maxDoc / p.total) * 100)}% sprzedaży 30 d; zamówienie ${qty(stock)} szt > ` +
+      `Jeden dokument to ${Math.round((p.maxDoc / p.total) * 100)}% z ${qty(p.total)} szt sprzedaży 30 d; zamówienie ${qty(stock)} szt > ` +
         `${qty(ZD_GUARD_PEAK_QTY_FACTOR * f.tempo90! * dni)} szt (2× tempo 90 d × ${dni} d).`
     );
   }
@@ -234,7 +248,7 @@ export async function applyZdProposalGuards(
       };
     });
     // Pik: Subiekt tylko dla linii, które przekroczyły próg ilości (zwykle kilka na dostawcę).
-    const peakIdx = facts.flatMap((f, i) => (f && zdPeakQtyExceeded(f, ctx.dniZapasuUsed) ? [i] : []));
+    const peakIdx = facts.flatMap((f, i) => (f && zdPeakCandidate(f, ctx.dniZapasuUsed) ? [i] : []));
     const peak = new Map<number, { maxDoc: number; total: number } | "error">();
     const window = zdPeakWindow(ctx.dataDo);
     await mapPool(peakIdx.slice(0, ZD_GUARD_PEAK_MAX_FETCHES), ZD_GUARD_PEAK_CONCURRENCY, async (i) => {

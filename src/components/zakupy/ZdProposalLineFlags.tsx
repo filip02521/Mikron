@@ -8,7 +8,7 @@ import { ZD_PROPOSAL_LINE_FLAG_LABEL, type ZdProposalLineFlag } from "@/lib/orde
 /** Krótko, dlaczego bezpiecznik oznaczył linię (progi z `zd-proposal-guards.ts`). */
 export const ZD_PROPOSAL_LINE_FLAG_WHY: Record<ZdProposalLineFlag, string> = {
   ceiling: "Stan, otwarte ZD i to zamówienie dają więcej niż tempo sprzedaży × (dni celu + 30 dni).",
-  peak: "Jeden dokument to ponad 60% sprzedaży z 30 dni, a ilość przekracza 2× tempo z 90 dni × dni celu.",
+  peak: "Jeden dokument to ponad 60% sprzedaży z 30 dni, a ilość przekracza 2× tempo z 90 dni × dni celu (tylko towary, które sprzedały w 30 dni co najmniej 5 szt, pozycje od 200 zł).",
   jump: "Ilość ponad 3× średnia z 4 ostatnich ZD tego towaru u dostawcy.",
   new_item: "Pierwsza sprzedaż mniej niż 13 tygodni temu, a pozycja jest warta ponad 500 zł.",
   missing_data: "Brak tempa sprzedaży, ceny albo czasu dostawy - ilości nie dało się sprawdzić.",

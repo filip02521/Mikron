@@ -32,7 +32,7 @@ const facts = (over: Partial<ZdGuardLineFacts> = {}): ZdGuardLineFacts => ({
   available: 0,
   openZd: 0,
   minStock: null,
-  windows: [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+  windows: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6],
   recentZdUnits: [],
   ...over,
 });
@@ -69,8 +69,18 @@ describe("pik", () => {
   it("dokument > 60% i ilość > 2× tempo 90 d × dni — flaga", () => {
     expect(flags({ pieces: 51 }, { peak: share(61, 100) })).toContain("peak");
     expect(zdLineGuardFlags(facts({ pieces: 51 }), { ...base, peak: share(72, 100) }).notes.peak).toBe(
-      "Jeden dokument to 72% sprzedaży 30 d; zamówienie 51 szt > 50 szt (2× tempo 90 d × 25 d)."
+      "Jeden dokument to 72% z 100 szt sprzedaży 30 d; zamówienie 51 szt > 50 szt (2× tempo 90 d × 25 d)."
     );
+  });
+  it("wolna rotacja: sprzedaż 30 d 4 szt — bez flagi; 5 szt — flaga", () => {
+    const last = (n: number) => [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, n];
+    expect(flags({ pieces: 51, windows: last(4) }, { peak: share(61, 100) })).not.toContain("peak");
+    expect(flags({ pieces: 51, windows: last(5) }, { peak: share(61, 100) })).toContain("peak");
+  });
+  it("wartość linii 199 zł — bez flagi; 200 zł — flaga; bez ceny tylko warunek sztuk", () => {
+    expect(flags({ pieces: 100, priceNet: 1.99 }, { peak: share(61, 100) })).not.toContain("peak");
+    expect(flags({ pieces: 100, priceNet: 2 }, { peak: share(61, 100) })).toContain("peak");
+    expect(flags({ pieces: 51, priceNet: null }, { peak: share(61, 100) })).toEqual(["peak", "missing_data"]);
   });
   it("bez sprzedaży w oknie albo bez profilu — bez flagi", () => {
     expect(flags({ pieces: 51 }, { peak: share(0, 0) })).not.toContain("peak");
@@ -184,10 +194,11 @@ function ctxOf(lines: ZdAutoProposalLine[], pozycje: ReturnType<typeof engineLin
     dataDo: "2026-03-01",
   } as unknown as ZdProposalHookContext;
 }
+const rotating = [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9];
 const inputs = (over = {}) => ({
   recentZdUnitsByTw: new Map<number, number[]>(),
   recentOrderValues: [] as number[],
-  profileWindowsByTw: new Map<number, number[]>(),
+  profileWindowsByTw: new Map<number, number[]>([1, 2, 3].map((tw) => [tw, rotating])),
   ...over,
 });
 
@@ -198,20 +209,28 @@ describe("applyZdProposalGuards", () => {
   it("Subiekt pytany tylko o linie ponad próg ilości piku; ilości bez zmian", async () => {
     vi.mocked(loadZdProposalGuardInputs).mockResolvedValue(inputs());
     vi.mocked(fetchSubiektProductSalesDocs).mockResolvedValue({ rows: [doc(7, 40), doc(8, 10)], truncated: false });
-    const out = await applyZdProposalGuards(ctxOf([proposalLine(1, 10), proposalLine(2, 51)], [engineLine(1), engineLine(2)]));
+    // Linia 3: ilość ponad próg, ale towar rzadko schodzi (4 szt w 30 d) — bez zapytania.
+    const slow = new Map([[3, [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 4]]]);
+    vi.mocked(loadZdProposalGuardInputs).mockResolvedValue(
+      inputs({ profileWindowsByTw: new Map([...inputs().profileWindowsByTw, ...slow]) })
+    );
+    const out = await applyZdProposalGuards(
+      ctxOf([proposalLine(1, 10), proposalLine(2, 51, { priceNet: 5 }), proposalLine(3, 51, { priceNet: 5 })], [engineLine(1), engineLine(2), engineLine(3)])
+    );
     expect(fetchSubiektProductSalesDocs).toHaveBeenCalledTimes(1);
     expect(fetchSubiektProductSalesDocs).toHaveBeenCalledWith({ towarId: 2, dataOd: "2026-01-31", dataDo: "2026-03-01" });
     expect(out.lines[0]!.flags).toBeUndefined();
     expect(out.lines[1]!.flags).toEqual(["peak"]);
-    expect(out.lines[1]!.flagNotes?.peak).toContain("80% sprzedaży 30 d");
-    expect(out.lines.map((l) => l.pieces)).toEqual([10, 51]);
+    expect(out.lines[1]!.flagNotes?.peak).toContain("80% z 50 szt sprzedaży 30 d");
+    expect(out.lines[2]!.flags).toBeUndefined();
+    expect(out.lines.map((l) => l.pieces)).toEqual([10, 51, 51]);
   });
 
   it("niepełna lista dokumentów (błąd zapytania) — linia z brakiem danych, propozycja dalej", async () => {
     vi.mocked(loadZdProposalGuardInputs).mockResolvedValue(inputs());
     vi.mocked(fetchSubiektProductSalesDocs).mockResolvedValue({ rows: [doc(7, 40)], truncated: true });
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const out = await applyZdProposalGuards(ctxOf([proposalLine(2, 51)], [engineLine(2)]));
+    const out = await applyZdProposalGuards(ctxOf([proposalLine(2, 51, { priceNet: 5 })], [engineLine(2)]));
     expect(out.lines[0]!.flags).toEqual(["missing_data"]);
   });
 
