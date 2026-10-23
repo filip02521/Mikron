@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { fieldControlClass } from "@/components/ui/Field";
 import { PageAttentionStrip, PageAttentionStripCta } from "@/components/ui/PageAttentionStrip";
 import { ZdAutoProposalSheet } from "@/components/zakupy/ZdAutoProposalSheet";
+import { ZdProposalMinimumNotice } from "@/components/zakupy/ZdProposalMinimumNotice";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 import { ModalShell } from "@/components/ui/ModalShell";
 import type { ZdAutoProposal } from "@/lib/data/zd-auto-proposals";
@@ -211,6 +212,7 @@ export function ZdAutoProposalBanner({
             Policz w Kreatorze liczy tak samo - popraw ilości w tabeli i Utwórz ZD; propozycja zapisze się jako
             zaakceptowana razem z Twoimi zmianami.
           </p>
+          <ZdProposalMinimumNotice proposal={latest} />
           <ul className="divide-y divide-slate-100 rounded-md border border-slate-200">
             {latest.lines.map((l) => (
               <li key={l.twId} className="flex items-baseline justify-between gap-3 px-3 py-1.5 text-sm">
@@ -218,6 +220,7 @@ export function ZdAutoProposalBanner({
                   <span className="mr-2 font-mono text-xs text-slate-500">{l.symbol}</span>
                   {l.nazwa}
                   {l.floor ? <span className="ml-2 text-xs text-indigo-700">średnia 90 d</span> : null}
+                  {l.topUpUnits ? <span className="ml-2 text-xs text-indigo-700">dopełnienie</span> : null}
                   {l.prosbaPieces > 0 ? (
                     <span className="ml-2 text-xs text-slate-500">w tym prośby {formatQty(l.prosbaPieces)} szt</span>
                   ) : null}
@@ -240,7 +243,9 @@ export function ZdAutoProposalBanner({
                       <span className="text-slate-700">
                         <span className="tabular-nums">{formatDateTimePl(p.createdAt)}</span> · {p.lineCount} poz. ·{" "}
                         {STATUS_LABEL[p.status]}
-                        {p.decisionNote ? <span className="text-slate-500"> - {p.decisionNote}</span> : null}
+                        {p.decisionNote ?? p.deferredReason ? (
+                          <span className="text-slate-500"> - {p.decisionNote ?? p.deferredReason}</span>
+                        ) : null}
                       </span>
                       {d ? (
                         <span className="shrink-0 text-xs tabular-nums text-slate-600">
