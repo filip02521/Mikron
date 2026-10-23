@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { fieldControlClass } from "@/components/ui/Field";
 import { PageAttentionStrip, PageAttentionStripCta } from "@/components/ui/PageAttentionStrip";
 import { ZdAutoProposalSheet } from "@/components/zakupy/ZdAutoProposalSheet";
+import { ZdProposalFlagsSummary, ZdProposalLineFlags } from "@/components/zakupy/ZdProposalLineFlags";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 import { ModalShell } from "@/components/ui/ModalShell";
 import type { ZdAutoProposal } from "@/lib/data/zd-auto-proposals";
@@ -211,6 +212,7 @@ export function ZdAutoProposalBanner({
             Policz w Kreatorze liczy tak samo - popraw ilości w tabeli i Utwórz ZD; propozycja zapisze się jako
             zaakceptowana razem z Twoimi zmianami.
           </p>
+          <ZdProposalFlagsSummary proposal={latest} />
           <ul className="divide-y divide-slate-100 rounded-md border border-slate-200">
             {latest.lines.map((l) => (
               <li key={l.twId} className="flex items-baseline justify-between gap-3 px-3 py-1.5 text-sm">
@@ -221,6 +223,7 @@ export function ZdAutoProposalBanner({
                   {l.prosbaPieces > 0 ? (
                     <span className="ml-2 text-xs text-slate-500">w tym prośby {formatQty(l.prosbaPieces)} szt</span>
                   ) : null}
+                  {l.flags?.length ? <span className="ml-2"><ZdProposalLineFlags flags={l.flags} /></span> : null}
                 </span>
                 <span className="shrink-0 tabular-nums font-medium text-slate-900">
                   {formatQty(l.zdUnits)} {l.unitLabel}

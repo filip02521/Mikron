@@ -13,7 +13,7 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Spinner } from "@/components/ui/Spinner";
 import { BrandStepMark } from "@/components/ui/BrandStepMark";
 import { ZdEstimatePostCreatePanel } from "@/components/zakupy/ZdEstimatePostCreatePanel";
-import { ZdProposalLineFlags } from "@/components/zakupy/ZdProposalLineFlags";
+import { ZdProposalFlagsSummary, ZdProposalLineFlags } from "@/components/zakupy/ZdProposalLineFlags";
 import { ZdProposalMinimumNotice } from "@/components/zakupy/ZdProposalMinimumNotice";
 import { cn } from "@/lib/cn";
 import type { ZdAutoProposal, ZdAutoProposalLine } from "@/lib/data/zd-auto-proposals";
@@ -495,6 +495,7 @@ export function ZdAutoProposalSheet({
               ) : null}
 
               {!showTimeline ? <ZdProposalMinimumNotice proposal={fresh ?? morning} /> : null}
+              {fresh && !showTimeline ? <ZdProposalFlagsSummary proposal={fresh} /> : null}
 
               {fresh && !showTimeline ? (
                 <div className="flex flex-wrap items-center justify-between gap-2">
