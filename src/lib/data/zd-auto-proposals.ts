@@ -1,5 +1,6 @@
 import { query } from "@/lib/db/pool";
 import { dateToIso } from "@/lib/orders/dates";
+import type { ZdProposalFlag, ZdProposalLineFlag } from "@/lib/orders/zd-automat-contract";
 import type { ZdSupplierOrderPolicy } from "@/lib/orders/zd-demand-policy";
 
 /** Linia propozycji automatu — to, co Kreator pokazałby w „Do ZD” tego ranka. */
@@ -23,9 +24,11 @@ export type ZdAutoProposalLine = {
   /** Cel i korekta śledzenia sprzedaży w chwili propozycji — zapis ZD w historii jak z Kreatora. */
   celAtLink?: number | null;
   deltaAtLink?: number | null;
+  /** Bezpieczniki (zadanie 4) — linia z flagą wymaga akceptacji człowieka. */
+  flags?: ZdProposalLineFlag[];
 };
 
-export type ZdAutoProposalStatus = "pending" | "accepted" | "rejected" | "expired";
+export type ZdAutoProposalStatus = "pending" | "accepted" | "rejected" | "expired" | "deferred";
 
 export type ZdAutoProposal = {
   id: string;
@@ -45,6 +48,10 @@ export type ZdAutoProposal = {
   finalLines: Record<string, number> | null;
   /** Prośby-usługi (bez towaru na liście zakresu); null = propozycja sprzed migracji 193. */
   serviceOrderIds: string[] | null;
+  /** Powód odłożenia (status deferred, zadanie 5); null = nie odłożona albo przed migracją 194. */
+  deferredReason: string | null;
+  /** Flagi całej propozycji (zadanie 4); [] przed migracją 194. */
+  flags: ZdProposalFlag[];
 };
 
 type Row = {
@@ -63,6 +70,8 @@ type Row = {
   dok_id: number | null;
   final_lines: Record<string, number> | null;
   service_order_ids: unknown;
+  deferred_reason: unknown;
+  flags: unknown;
 };
 
 const iso = (v: Date | string) => new Date(v).toISOString();
@@ -88,12 +97,16 @@ function map(r: Row): ZdAutoProposal {
     serviceOrderIds: Array.isArray(r.service_order_ids)
       ? r.service_order_ids.filter((x): x is string => typeof x === "string" && x.length > 0)
       : null,
+    deferredReason: typeof r.deferred_reason === "string" && r.deferred_reason ? r.deferred_reason : null,
+    flags: Array.isArray(r.flags) ? r.flags.filter((x): x is ZdProposalFlag => x === "order_value_jump") : [],
   };
 }
 
 const SELECT = `SELECT id, supplier_id, created_at, policy, data_od, data_do, lines, line_count, value_net,
                        status, decided_at, decision_note, dok_id, final_lines,
-                       to_jsonb(zd_auto_proposals.*) -> 'service_order_ids' AS service_order_ids
+                       to_jsonb(zd_auto_proposals.*) -> 'service_order_ids' AS service_order_ids,
+                       to_jsonb(zd_auto_proposals.*) ->> 'deferred_reason' AS deferred_reason,
+                       to_jsonb(zd_auto_proposals.*) -> 'flags' AS flags
                   FROM zd_auto_proposals`;
 
 /** Czy minął cykl od ostatniej propozycji (dni kalendarzowe wg dat Warszawy). */
@@ -132,6 +145,10 @@ export async function createZdAutoProposal(input: {
   dataDo: string;
   lines: ZdAutoProposalLine[];
   serviceOrderIds: string[];
+  /** Zadanie 5: odłożona (minimum / próg darmowej dostawy) zamiast czekającej. */
+  deferredReason?: string | null;
+  /** Zadanie 4: flagi całej propozycji. */
+  flags?: ZdProposalFlag[];
 }): Promise<ZdAutoProposal> {
   await query(
     `UPDATE zd_auto_proposals SET status = 'expired', decided_at = now()
@@ -144,7 +161,9 @@ export async function createZdAutoProposal(input: {
      VALUES ($1, $2::jsonb, $3::date, $4::date, $5::jsonb, $6, $7)
      RETURNING id, supplier_id, created_at, policy, data_od, data_do, lines, line_count, value_net,
                status, decided_at, decision_note, dok_id, final_lines,
-               to_jsonb(zd_auto_proposals.*) -> 'service_order_ids' AS service_order_ids`,
+               to_jsonb(zd_auto_proposals.*) -> 'service_order_ids' AS service_order_ids,
+                       to_jsonb(zd_auto_proposals.*) ->> 'deferred_reason' AS deferred_reason,
+                       to_jsonb(zd_auto_proposals.*) -> 'flags' AS flags`,
     [
       input.supplierId,
       JSON.stringify(input.policy),
@@ -165,6 +184,26 @@ export async function createZdAutoProposal(input: {
     created.serviceOrderIds = [...input.serviceOrderIds];
   } catch (e) {
     console.error("[zd-auto-proposals] usługi propozycji (migracja 193?)", e);
+  }
+  // Osobno, jak wyżej: bez migracji 194 propozycja zostaje czekająca, bez flag.
+  if (input.deferredReason || input.flags?.length) {
+    try {
+      await query(
+        `UPDATE zd_auto_proposals
+            SET flags = $2::jsonb,
+                status = CASE WHEN $3::text IS NULL THEN status ELSE 'deferred' END,
+                deferred_reason = $3::text
+          WHERE id = $1`,
+        [created.id, JSON.stringify(input.flags ?? []), input.deferredReason ?? null]
+      );
+      created.flags = [...(input.flags ?? [])];
+      if (input.deferredReason) {
+        created.status = "deferred";
+        created.deferredReason = input.deferredReason;
+      }
+    } catch (e) {
+      console.error("[zd-auto-proposals] flagi / odłożenie propozycji (migracja 194?)", e);
+    }
   }
   return created;
 }

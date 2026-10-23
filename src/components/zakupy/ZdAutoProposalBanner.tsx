@@ -39,6 +39,7 @@ const STATUS_LABEL: Record<ZdAutoProposal["status"], string> = {
   accepted: "zaakceptowana",
   rejected: "odrzucona",
   expired: "wygasła",
+  deferred: "odłożona",
 };
 
 /** Różnice propozycja → utworzone ZD (jednostki ZD) do historii. */

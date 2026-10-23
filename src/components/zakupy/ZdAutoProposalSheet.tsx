@@ -13,6 +13,8 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Spinner } from "@/components/ui/Spinner";
 import { BrandStepMark } from "@/components/ui/BrandStepMark";
 import { ZdEstimatePostCreatePanel } from "@/components/zakupy/ZdEstimatePostCreatePanel";
+import { ZdProposalLineFlags } from "@/components/zakupy/ZdProposalLineFlags";
+import { ZdProposalMinimumNotice } from "@/components/zakupy/ZdProposalMinimumNotice";
 import { cn } from "@/lib/cn";
 import type { ZdAutoProposal, ZdAutoProposalLine } from "@/lib/data/zd-auto-proposals";
 import { polishPluralWord } from "@/lib/email/polish-plural";
@@ -492,6 +494,8 @@ export function ZdAutoProposalSheet({
                 </p>
               ) : null}
 
+              {!showTimeline ? <ZdProposalMinimumNotice proposal={fresh ?? morning} /> : null}
+
               {fresh && !showTimeline ? (
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <SegmentedControl
@@ -553,6 +557,7 @@ export function ZdAutoProposalSheet({
                             <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
                               <span className="font-mono">{l.symbol}</span>
                               {l.prosbaPieces > 0 ? <span>prośby {formatQty(l.prosbaPieces)} szt</span> : null}
+                              <ZdProposalLineFlags flags={l.flags} />
                               {change === "added" ? <Badge variant="info">nowa</Badge> : null}
                               {change === "changed" && beforeUnits != null ? (
                                 <Badge variant="warning">było {formatQty(beforeUnits)}</Badge>
