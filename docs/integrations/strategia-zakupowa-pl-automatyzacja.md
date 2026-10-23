@@ -430,3 +430,24 @@ W lokalnej kopii zmienia to skład KPI (37 dostawców): wchodzą DT Shop i PiDen
   „Do sprawdzenia (N)” i takie pozycje na górze; `/zakupy/automat` zaczyna od zdania stanu, dzieli dostawców w
   automacie i pozostałych, pokazuje stopień i gotowość do auto-zatwierdzania, nie twierdzi „braki poniżej 5%” bez
   historii stanów; dialog strategii — domyślnie co 7 dni, „Automat ZD” zamiast „Strategia testowa”, aktualny backtest.
+
+### 10.4. DT Shop (Lokalizacja POLSKA, adres w Subiekcie: Niemcy) — backtest roczny
+
+Kontrahent „DT&Shop Polska”, Bad Bocklet (DE), NIP DE; dostawa jak krajowa (mediana 3 dni rob., p90 pierwszej
+dostawy 4). Dane: 40 SKU (29 aktywnych), 0 bez ceny, rozchód bez sprzedaży 4,5%, sprzedaż 104% raportu asortymentowego.
+Czas dostawy = pierwsza dostawa.
+
+| Wariant | Zero na zdjęciu tyg. | Śr. zapas | ZD / rok | Mediana ZD |
+|---|---|---|---|---|
+| Rzeczywistość (co 6 tyg.) | 9,6% | 14 tys. zł | — | — |
+| Kreator dziś (30 d) | 29,5% | 7 tys. zł | 9 | 3,7 tys. zł |
+| **`max30_90`, co 7 d, cel 25** | **6,0%** | **11 tys. zł** | 50 | 0,8 tys. zł |
+| `max30_90`, co 14 d | 8,6% | — | 27 | 1,7 tys. zł |
+| `max30_90`, co 21 d | 11,3% | — | 18 | 3,0 tys. zł |
+
+Co 7 dni: −38% braków i −21% zapasu wobec rzeczywistości (pesymistycznie 6,4%). Przy wysyłce z Niemiec koszt paczki
+może przeważyć — wtedy co 14 dni (nadal lepiej niż dziś) albo próg darmowej dostawy w karcie (małe ZD bez pilnych
+pozycji przejdą na kolejny tydzień).
+
+**Faza I (9 dostawców + DT Shop, bez Ivoclar), co 7 d, cel 25:** 5,5% zera przy 0,32 mln zł wobec 10,5% przy
+0,44 mln w rzeczywistości (−48% braków, −27% zapasu); nie gorszy od rzeczywistości u 8/10.
