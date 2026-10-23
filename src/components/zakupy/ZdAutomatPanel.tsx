@@ -19,6 +19,8 @@ import {
 } from "@/app/actions/zd-automat";
 import type { ZdAutomatKpiSupplier, ZdKpiWeeklyMetrics } from "@/lib/data/zd-kpi-weekly";
 import type { ZdSkuClassSummary } from "@/lib/data/zd-sku-class-sync";
+import type { ZdAutomatSupplierRow } from "@/lib/data/zd-automat-suppliers";
+import { ZdAutomatSuppliers } from "@/components/zakupy/ZdAutomatSuppliers";
 import { formatWarsawDateTime } from "@/lib/time/warsaw";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 import { cn } from "@/lib/cn";
@@ -368,10 +370,12 @@ function KpiTable({ rows, keys, automat }: { rows: ZdAutomatKpiSupplier[]; keys:
 export function ZdAutomatPanel({
   kpi,
   classes,
+  suppliers,
   canRecompute,
 }: {
   kpi: { suppliers: ZdAutomatKpiSupplier[]; computedAt: string | null; running: boolean };
   classes: ZdSkuClassSummary;
+  suppliers: ZdAutomatSupplierRow[];
   canRecompute: boolean;
 }) {
   const router = useRouter();
@@ -430,10 +434,12 @@ export function ZdAutomatPanel({
 
       <AutomatStatus rows={rows} kpiComputed={Boolean(latest)} />
 
+      <ZdAutomatSuppliers rows={suppliers} canManage />
+
       <Card padding={false}>
         <CardHeader
           inset
-          title="Dostawcy w automacie"
+          title="KPI dostawców w automacie"
           description={`${dostawcy(automatRows.length)} · ${latest ? `tydzień ${dayMonth(latest.weekStart)}–${dayMonth(latest.weekEnd)}${kpi.computedAt ? ` · policzone ${formatWarsawDateTime(kpi.computedAt)}` : ""}` : "KPI jeszcze nie policzone (cron w poniedziałek 7:00)"}`}
         />
         {automatRows.length ? (
