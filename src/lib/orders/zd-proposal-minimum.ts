@@ -121,7 +121,7 @@ export async function decideZdProposalMinimum(
 
   const listByTw = new Map(ctx.list.lines.map((l) => [l.line.tw_Id, l]));
   const cycleDays = deps.cycleDays ?? ZD_MINIMUM_DEFAULT_DAYS;
-  const urgentDays = cycleDays + (ctx.horizon?.leadDays ?? ZD_MINIMUM_DEFAULT_DAYS);
+  const urgentDays = cycleDays + (ctx.horizon?.automatLeadDays ?? ctx.horizon?.leadDays ?? ZD_MINIMUM_DEFAULT_DAYS);
   const urgent = lines.filter((l) => {
     if (l.prosbaPieces > 0) return true;
     const row = listByTw.get(l.twId);

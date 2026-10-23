@@ -1482,7 +1482,7 @@ export async function actionCreateZdAutoProposalNow(input: {
     }
     if (p.kind === "skipped") return { ok: false, message: p.reason };
     if (p.kind === "error") return { ok: false, message: `Nie udało się zapisać propozycji: ${p.message}` };
-    return { ok: false, message: "Strategia testowa jest wyłączona dla tego dostawcy." };
+    return { ok: false, message: "Automat ZD jest wyłączony dla tego dostawcy - włącz go w Strategii dostawcy." };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się przygotować propozycji.") };
   }
@@ -1905,7 +1905,7 @@ export async function actionRunZdEstimateManual(
       supplierId: String(input.supplierId ?? "").trim() || null,
       dniZapasu: horizon ? horizon.horizonDays : dniZapasu,
       orderTiming: supplierHorizon
-        ? { leadDays: supplierHorizon.leadDays, nextOrderDays: supplierHorizon.nextOrderDays }
+        ? { leadDays: supplierHorizon.automatLeadDays, nextOrderDays: supplierHorizon.nextOrderDays }
         : null,
       dataOd,
       dataDo,

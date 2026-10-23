@@ -230,11 +230,30 @@ export type ZdKpiWeeklyMetrics = {
 // Przebieg (cron / ręcznie)
 // ---------------------------------------------------------------------------
 
-type KpiSupplier = { id: string; name: string; minOrderValue: number | null; scopes: ZdScopeRef[] };
+type KpiSupplier = {
+  id: string;
+  name: string;
+  minOrderValue: number | null;
+  scopes: ZdScopeRef[];
+  /** Strategia ≠ classic = dostawca w automacie propozycji; null = tylko polski dostawca (pomiar). */
+  automat: { autoLevel: number; cycleDays: number | null } | null;
+};
 
 async function loadKpiSuppliers(): Promise<KpiSupplier[]> {
-  const res = await query<{ id: string; name: string; min_order_value: string | null; mode: "grupa" | "cecha"; scope_id: number }>(
-    `SELECT s.id, s.name, s.min_order_value, z.mode, COALESCE(z.grupa_id, z.cecha_id) AS scope_id
+  const res = await query<{
+    id: string;
+    name: string;
+    min_order_value: string | null;
+    mode: "grupa" | "cecha";
+    scope_id: number;
+    strategy: string | null;
+    auto_level: string | null;
+    auto_proposals: boolean | null;
+    cycle_days: number | null;
+  }>(
+    // auto_level przez to_jsonb: baza bez migracji 194 czyta się dalej (stopień z auto_proposals).
+    `SELECT s.id, s.name, s.min_order_value, z.mode, COALESCE(z.grupa_id, z.cecha_id) AS scope_id,
+            p.strategy, to_jsonb(p.*) ->> 'auto_level' AS auto_level, p.auto_proposals, p.cycle_days
        FROM suppliers s
        JOIN zd_estimate_supplier_scopes z ON z.supplier_id = s.id
        LEFT JOIN zd_supplier_order_policy p ON p.supplier_id = s.id
@@ -249,6 +268,13 @@ async function loadKpiSuppliers(): Promise<KpiSupplier[]> {
       name: r.name,
       minOrderValue: r.min_order_value != null ? Number(r.min_order_value) : null,
       scopes: [],
+      automat:
+        r.strategy && r.strategy !== "classic"
+          ? {
+              autoLevel: Math.max(Number(r.auto_level) || 0, r.auto_proposals ? 1 : 0),
+              cycleDays: r.cycle_days != null ? Number(r.cycle_days) : null,
+            }
+          : null,
     };
     s.scopes.push({ mode: r.mode, scopeId: Number(r.scope_id) });
     out.set(r.id, s);
@@ -425,6 +451,8 @@ export async function runZdKpiWeekly(opts: { today?: string } = {}): Promise<
 export type ZdAutomatKpiSupplier = {
   supplierId: string;
   name: string;
+  /** null = polski dostawca poza automatem (tylko pomiar rotacji i braków). */
+  automat: { autoLevel: number; cycleDays: number | null } | null;
   /** Najnowszy tydzień pierwszy, najwyżej 4. */
   weeks: ZdKpiWeeklyMetrics[];
 };
@@ -448,6 +476,7 @@ export async function loadZdAutomatKpi(): Promise<{
     ),
   ]);
   const names = new Map(eligible.map((s) => [s.id, s.name]));
+  const automatOf = new Map(eligible.map((s) => [s.id, s.automat]));
   const missing = [...new Set(rows.rows.map((r) => r.supplier_id))].filter((id) => !names.has(id));
   if (missing.length) {
     const extra = await query<{ id: string; name: string }>(`SELECT id, name FROM suppliers WHERE id = ANY($1::uuid[])`, [missing]);
@@ -461,7 +490,7 @@ export async function loadZdAutomatKpi(): Promise<{
   }
   return {
     suppliers: [...bySupplier]
-      .map(([supplierId, weeks]) => ({ supplierId, name: names.get(supplierId) ?? "", weeks }))
+      .map(([supplierId, weeks]) => ({ supplierId, name: names.get(supplierId) ?? "", automat: automatOf.get(supplierId) ?? null, weeks }))
       .sort((a, b) => a.name.localeCompare(b.name, "pl")),
     computedAt: at ? new Date(at).toISOString() : null,
     running: Boolean(lock.rows[0]?.running),

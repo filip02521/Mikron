@@ -31,7 +31,7 @@ import {
 import { useAnimatedClose } from "@/lib/ui/use-animated-close";
 
 type Phase = "review" | "creating" | "send";
-type Filter = "all" | "changes" | "edited";
+type Filter = "all" | "flagged" | "changes" | "edited";
 
 const zl = (v: number) => `${Math.round(v).toLocaleString("pl-PL")} zł`;
 
@@ -334,9 +334,20 @@ export function ZdAutoProposalSheet({
     (a, l) => a + (l.priceNet != null && l.zdUnits > 0 ? l.priceNet * (l.pieces / l.zdUnits) * unitsOf(l) : 0),
     0
   );
-  const shown = diff.filter((d) =>
-    filter === "changes" ? d.change !== "same" : filter === "edited" ? String(d.line.twId) in edits : true
-  );
+  const isFlagged = (d: (typeof diff)[number]) => d.change !== "removed" && Boolean(d.line.flags?.length);
+  const flaggedCount = diff.filter(isFlagged).length;
+  // Pozycje z bezpiecznikiem na górze — przy 40+ pozycjach nie trzeba ich szukać.
+  const shown = diff
+    .filter((d) =>
+      filter === "flagged"
+        ? isFlagged(d)
+        : filter === "changes"
+          ? d.change !== "same"
+          : filter === "edited"
+            ? String(d.line.twId) in edits
+            : true
+    )
+    .sort((a, b) => Number(isFlagged(b)) - Number(isFlagged(a)));
 
   // Oczekiwanie (przeliczenie, zapis w Subiekcie) pokazuje oś działań zamiast listy.
   const showTimeline = !fresh || !listReady || creating;
@@ -508,6 +519,7 @@ export function ZdAutoProposalSheet({
                     density="compact"
                     options={[
                       { value: "all", label: `Wszystkie (${diff.length})` },
+                      ...(flaggedCount ? [{ value: "flagged" as const, label: `Do sprawdzenia (${flaggedCount})` }] : []),
                       { value: "changes", label: `Zmiany (${changes.length})` },
                       { value: "edited", label: `Poprawione (${editedCount})` },
                     ]}

@@ -43,6 +43,8 @@ export const ZD_GUARD_NEW_ITEM_MIN_VALUE = 500;
 export const ZD_GUARD_ORDER_VALUE_FACTOR = 2;
 export const ZD_GUARD_ORDER_VALUE_HISTORY = 6;
 export const ZD_GUARD_ORDER_VALUE_MIN_HISTORY = 3;
+/** …i tylko od takiej wartości (zł): przy małych ZD „2× mediany” to kilkaset złotych, nie sygnał. */
+export const ZD_GUARD_ORDER_VALUE_MIN_ZL = 2000;
 /** Najwyżej tyle linii pyta Subiekta o dokumenty sprzedaży (pik); reszta kandydatów = `missing_data`. */
 export const ZD_GUARD_PEAK_MAX_FETCHES = 40;
 export const ZD_GUARD_PEAK_CONCURRENCY = 4;
@@ -110,6 +112,8 @@ export function median(values: readonly number[]): number {
 type ZdLineGuardResult = { flags: ZdProposalLineFlag[]; notes: Partial<Record<ZdProposalLineFlag, string>> };
 
 const qty = (n: number) => formatQty(Math.round(n * 10) / 10);
+/** Tempo czytelnie: „3 szt/d”, a przy wolnej rotacji „1 szt / 60 d” zamiast „0 szt/d”. */
+const tempoText = (t: number) => (t > 0 && t < 0.1 ? `1 szt / ${Math.round(1 / t)} d` : `${qty(t)} szt/d`);
 const zl = (n: number) => `${Math.round(n).toLocaleString("pl-PL")} zł`;
 
 /**
@@ -132,11 +136,14 @@ export function zdLineGuardFlags(
     const byTempo = f.tempo * (dni + ZD_GUARD_CEILING_EXTRA_DAYS);
     const ceiling = Math.max(byTempo, f.minStock ?? 0);
     const after = f.available + f.openZd + stock;
-    if (stock > 0 && after > ceiling) {
+    // Jedna jednostka zamówienia (sztuka albo opakowanie) mniej musi nadal przekraczać sufit — inaczej
+    // to tylko zaokrąglenie do całej sztuki / paczki (wolno rotujący towar zawsze „przekroczy” ułamek).
+    const step = f.zdUnits > 0 ? f.pieces / f.zdUnits : 1;
+    if (stock > 0 && after - step > ceiling) {
       add(
         "ceiling",
         `Stan, otwarte ZD i zamówienie: ${qty(after)} szt > sufit ${qty(ceiling)} szt ` +
-          (ceiling > byTempo ? "(minimum z Kreatora)." : `(tempo ${qty(f.tempo)} szt/d × ${dni + ZD_GUARD_CEILING_EXTRA_DAYS} d).`)
+          (ceiling > byTempo ? "(minimum z Kreatora)." : `(tempo ${tempoText(f.tempo)} × ${dni + ZD_GUARD_CEILING_EXTRA_DAYS} d).`)
       );
     }
   }
@@ -172,7 +179,7 @@ export function zdLineGuardFlags(
 export function zdOrderValueJump(value: number, recentOrderValues: readonly number[]): boolean {
   const hist = recentOrderValues.slice(0, ZD_GUARD_ORDER_VALUE_HISTORY);
   if (hist.length < ZD_GUARD_ORDER_VALUE_MIN_HISTORY) return false;
-  return value > ZD_GUARD_ORDER_VALUE_FACTOR * median(hist);
+  return value > ZD_GUARD_ORDER_VALUE_MIN_ZL && value > ZD_GUARD_ORDER_VALUE_FACTOR * median(hist);
 }
 
 const withFlags = (l: ZdAutoProposalLine, r: ZdLineGuardResult): ZdAutoProposalLine =>

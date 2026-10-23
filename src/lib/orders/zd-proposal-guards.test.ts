@@ -42,20 +42,35 @@ const flags = (over: Partial<ZdGuardLineFacts>, input: Partial<Parameters<typeof
 
 describe("sufit", () => {
   // tempo 1 × (25 + 30) = 55 sztuk.
-  it("dokładnie na suficie — bez flagi; sztuka ponad — flaga", () => {
-    expect(flags({ available: 20, openZd: 15, pieces: 20 })).not.toContain("ceiling");
-    expect(flags({ available: 20, openZd: 15, pieces: 21 })).toContain("ceiling");
+  it("ponad sufit o więcej niż jedną jednostkę zamówienia — flaga; o jedną sztukę — zaokrąglenie", () => {
+    expect(flags({ available: 20, openZd: 15, pieces: 20, zdUnits: 20 })).not.toContain("ceiling");
+    expect(flags({ available: 20, openZd: 15, pieces: 21, zdUnits: 21 })).not.toContain("ceiling");
+    expect(flags({ available: 20, openZd: 15, pieces: 22, zdUnits: 22 })).toContain("ceiling");
+  });
+  it("wolno rotujący towar: 2 szt przy suficie 1,6 szt to zaokrąglenie (audyt: 137/137 fałszywych flag u Ivoclar)", () => {
+    const r = zdLineGuardFlags(facts({ tempo: 1 / 60, pieces: 2, zdUnits: 2 }), { ...base, dniZapasu: 66 });
+    expect(r.flags).not.toContain("ceiling");
+    expect(flags({ tempo: 1 / 60, pieces: 4, zdUnits: 4 }, { dniZapasu: 66 })).toContain("ceiling");
+  });
+  it("opakowanie: nadwyżka do pełnej paczki bez flagi, druga paczka ponad sufit — flaga", () => {
+    // tempo 0,1 × 55 d = 5,5 szt; paczka 12 szt.
+    expect(flags({ tempo: 0.1, pieces: 12, zdUnits: 1 })).not.toContain("ceiling");
+    expect(flags({ tempo: 0.1, pieces: 24, zdUnits: 2 })).toContain("ceiling");
+  });
+  it("notatka wolnej rotacji pokazuje tempo jako 1 szt / N dni", () => {
+    const r = zdLineGuardFlags(facts({ tempo: 1 / 60, pieces: 4, zdUnits: 4 }), { ...base, dniZapasu: 66 });
+    expect(r.notes.ceiling).toBe("Stan, otwarte ZD i zamówienie: 4 szt > sufit 1,6 szt (tempo 1 szt / 60 d × 96 d).");
   });
   it("sztuki z próśb nie liczą się do sufitu", () => {
     expect(flags({ available: 20, openZd: 15, pieces: 30, prosbaPieces: 10 })).not.toContain("ceiling");
   });
   it("notatka z liczbami: po dostawie vs sufit i tempo", () => {
-    const r = zdLineGuardFlags(facts({ available: 20, openZd: 15, pieces: 21 }), base);
-    expect(r.notes.ceiling).toBe("Stan, otwarte ZD i zamówienie: 56 szt > sufit 55 szt (tempo 1 szt/d × 55 d).");
+    const r = zdLineGuardFlags(facts({ available: 20, openZd: 15, pieces: 22, zdUnits: 22 }), base);
+    expect(r.notes.ceiling).toBe("Stan, otwarte ZD i zamówienie: 57 szt > sufit 55 szt (tempo 1 szt/d × 55 d).");
   });
   it("minimum z Kreatora podnosi sufit", () => {
-    expect(flags({ tempo: 0, pieces: 8, minStock: 8 })).not.toContain("ceiling");
-    expect(flags({ tempo: 0, pieces: 9, minStock: 8 })).toContain("ceiling");
+    expect(flags({ tempo: 0, pieces: 9, zdUnits: 9, minStock: 8 })).not.toContain("ceiling");
+    expect(flags({ tempo: 0, pieces: 10, zdUnits: 10, minStock: 8 })).toContain("ceiling");
   });
 });
 
@@ -150,11 +165,15 @@ describe("wartość ZD", () => {
     expect(zdOrderValueJump(1e9, [1, 1])).toBe(false);
   });
   it("granica 2× mediany 6 ostatnich (starsze pomijane)", () => {
-    // mediana [100, 300, 200, 100, 300, 200] = 200 → próg 400.
-    const hist = [100, 300, 200, 100, 300, 200, 99999];
-    expect(zdOrderValueJump(400, hist)).toBe(false);
-    expect(zdOrderValueJump(401, hist)).toBe(true);
+    // mediana [1000, 3000, 2000, 1000, 3000, 2000] = 2000 → próg 4000.
+    const hist = [1000, 3000, 2000, 1000, 3000, 2000, 99999];
+    expect(zdOrderValueJump(4000, hist)).toBe(false);
+    expect(zdOrderValueJump(4001, hist)).toBe(true);
     expect(median([3, 1, 2])).toBe(2);
+  });
+  it("małe ZD: 2× mediany poniżej 2000 zł to nie sygnał (audyt: POL-INTECH 1181 zł)", () => {
+    expect(zdOrderValueJump(1181, [300, 400, 500])).toBe(false);
+    expect(zdOrderValueJump(2001, [300, 400, 500])).toBe(true);
   });
 });
 
@@ -235,8 +254,9 @@ describe("applyZdProposalGuards", () => {
   });
 
   it("wartość ZD > 2× mediany ostatnich ZD dostawcy — flaga propozycji", async () => {
-    vi.mocked(loadZdProposalGuardInputs).mockResolvedValue(inputs({ recentOrderValues: [10, 10, 10] }));
-    const out = await applyZdProposalGuards(ctxOf([proposalLine(1, 11)], [engineLine(1)]));
+    // 1100 szt × 2 zł = 2200 zł > 2× mediany 1000 zł i > 2000 zł.
+    vi.mocked(loadZdProposalGuardInputs).mockResolvedValue(inputs({ recentOrderValues: [1000, 1000, 1000] }));
+    const out = await applyZdProposalGuards(ctxOf([proposalLine(1, 1100)], [engineLine(1)]));
     expect(out.proposalFlags).toEqual(["order_value_jump"]);
   });
 

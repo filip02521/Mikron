@@ -4,7 +4,9 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Alert } from "@/components/ui/Alert";
 import { BrandLoader } from "@/components/ui/BrandLoader";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { Field, Input, Select } from "@/components/ui/Field";
@@ -19,10 +21,21 @@ import type { ZdAutomatKpiSupplier, ZdKpiWeeklyMetrics } from "@/lib/data/zd-kpi
 import type { ZdSkuClassSummary } from "@/lib/data/zd-sku-class-sync";
 import { formatWarsawDateTime } from "@/lib/time/warsaw";
 import { polishPluralWord } from "@/lib/email/polish-plural";
+import { cn } from "@/lib/cn";
+import {
+  ZD_AUTOMAT_OOS_A_ALERT_PCT,
+  ZD_AUTOMAT_READY_WEEKS,
+  buildZdAutomatStatus,
+  zdAutomatOosAlert,
+  zdAutomatReadiness,
+} from "@/lib/orders/zd-automat-status";
 
 const nf0 = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 });
 const nf1 = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 1 });
 const zl = (v: number) => `${nf0.format(v)}\u00a0zł`;
+const nf2 = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 2 });
+/** Dopiski w wąskich kolumnach: od 100 tys. zł w milionach („2,08 mln zł”). */
+const zlShort = (v: number) => (Math.abs(v) >= 100_000 ? `${nf2.format(v / 1_000_000)}\u00a0mln\u00a0zł` : zl(v));
 const pct = (v: number | null) => (v == null ? null : `${nf1.format(v)}%`);
 /** „1 towar”, „3 towary”, „5 towarów” — liczba w formacie pl-PL. */
 const count = (n: number, one: string, few: string, many: string) => `${nf0.format(n)} ${polishPluralWord(n, one, few, many)}`;
@@ -33,6 +46,10 @@ const dayMonth = (key: string) => `${key.slice(8, 10)}.${key.slice(5, 7)}`;
 type Kpi = {
   key: string;
   label: string;
+  /** Definicja w dymku przy nagłówku kolumny. */
+  help: string;
+  /** Kolumna ma sens także u polskich dostawców spoza automatu (pomiar bez propozycji). */
+  measured?: boolean;
   /** Wartość do pokazania; null = brak danych w tym tygodniu. */
   value: (m: ZdKpiWeeklyMetrics) => string | null;
   /** Dopisek pod wartością bieżącego tygodnia. */
@@ -44,6 +61,8 @@ const KPIS: Kpi[] = [
   {
     key: "oos",
     label: "Braki A",
+    help: `% dni-towarów klasy A z dostępnym stanem ≤ 0 (historia stanów z nocnego przebiegu „Braki i zamówienia”). Alarm od ${ZD_AUTOMAT_OOS_A_ALERT_PCT}%.`,
+    measured: true,
     value: (m) => pct(m.oosA.pct),
     note: (m) => (m.oosA.skuDays ? `${m.oosA.zeroDays} z ${m.oosA.skuDays} dni-towarów` : null),
     empty: "brak historii stanów",
@@ -51,20 +70,25 @@ const KPIS: Kpi[] = [
   {
     key: "rotation",
     label: "Rotacja",
+    help: "Wartość zapasu (stan × cena kartotekowa, bez niej cena z ostatniego ZD) / dzienny koszt sprzedaży z 90 dni. Zdjęcie z dnia przeliczenia.",
+    measured: true,
     value: (m) => (m.rotation.days == null ? null : `${nf0.format(m.rotation.days)} dni`),
-    note: (m) => `zapas ${zl(m.rotation.stockValue)}`,
+    note: (m) => `zapas ${zlShort(m.rotation.stockValue)}`,
     empty: "bez sprzedaży",
   },
   {
     key: "dead",
     label: "Martwy zapas",
+    help: "Wartość towarów na stanie bez sprzedaży od 180 dni. Zdjęcie z dnia przeliczenia.",
+    measured: true,
     value: (m) => zl(m.deadStock.value),
     note: (m) => (m.deadStock.skus ? towary(m.deadStock.skus) : null),
     empty: "—",
   },
   {
     key: "correction",
-    label: "Korekta człowieka",
+    label: "Korekta",
+    help: `Korekta człowieka: % wartości propozycji zmienionej przy tworzeniu ZD. Poniżej 10% przez ${ZD_AUTOMAT_READY_WEEKS} tygodnie = gotowość do auto-zatwierdzania.`,
     value: (m) => pct(m.humanCorrection.pct),
     note: (m) => (m.humanCorrection.proposals ? `${nf0.format(m.humanCorrection.proposals)} ZD z propozycji` : null),
     empty: "brak ZD z propozycji",
@@ -72,20 +96,22 @@ const KPIS: Kpi[] = [
   {
     key: "deferred",
     label: "Odłożone",
+    help: "% propozycji tygodnia odłożonych na kolejny cykl (poniżej minimum albo progu darmowej dostawy, bez pozycji pilnych).",
     value: (m) => pct(m.minima.deferredPct),
     note: (m) => (m.minima.proposals ? `${m.minima.deferred} z ${count(m.minima.proposals, "propozycji", "propozycji", "propozycji")}` : null),
     empty: "brak propozycji",
   },
   {
     key: "minimum",
-    label: "ZD ≥ minimum",
+    label: "Minimum",
+    help: "ZD ≥ minimum: % ZD z propozycji w tym tygodniu z wartością co najmniej minimum zamówienia dostawcy.",
     value: (m) => pct(m.minima.aboveMinPct),
     note: (m) => (m.minima.accepted ? `${m.minima.acceptedAboveMin} z ${m.minima.accepted} ZD` : null),
     empty: "brak minimum lub ZD",
   },
 ];
 
-function KpiCell({ kpi, weeks }: { kpi: Kpi; weeks: ZdKpiWeeklyMetrics[] }) {
+function KpiCell({ kpi, weeks, alert = false }: { kpi: Kpi; weeks: ZdKpiWeeklyMetrics[]; alert?: boolean }) {
   const [now, ...prev] = weeks;
   if (!now) return <td className="text-slate-400">—</td>;
   const value = kpi.value(now);
@@ -99,7 +125,7 @@ function KpiCell({ kpi, weeks }: { kpi: Kpi; weeks: ZdKpiWeeklyMetrics[] }) {
           —<span className="sr-only"> {kpi.empty}</span>
         </span>
       ) : (
-        <span className="whitespace-nowrap font-semibold text-slate-900">{value}</span>
+        <span className={cn("whitespace-nowrap font-semibold", alert ? "text-amber-800" : "text-slate-900")}>{value}</span>
       )}
       {note ? <span className="block text-xs text-slate-500">{note}</span> : null}
       {trend.length ? (
@@ -230,6 +256,115 @@ function OverrideForm({ onDone }: { onDone: (message: string) => void }) {
   );
 }
 
+
+function KpiHead({ label, help, align }: { label: string; help: string; align?: "right" }) {
+  return (
+    <th className={align === "right" ? "text-right" : undefined}>
+      <span className="inline-flex items-center gap-1 whitespace-nowrap">
+        {label}
+        <HelpHintBubble message={help} ariaLabel={`Co znaczy: ${label}`} />
+      </span>
+    </th>
+  );
+}
+
+function supplierMeta(r: ZdAutomatKpiSupplier): string {
+  const w = r.weeks[0];
+  const parts = [
+    r.automat ? `stopień ${r.automat.autoLevel}${r.automat.cycleDays ? ` · co ${r.automat.cycleDays} dni` : ""}` : null,
+    w ? `${towary(w.skus)}, ${nf0.format(w.skusA)} A` : null,
+  ];
+  return parts.filter(Boolean).join(" · ");
+}
+
+function ReadinessCell({ row }: { row: ZdAutomatKpiSupplier }) {
+  const r = zdAutomatReadiness(row);
+  if (!r) return <td className="text-slate-400">—</td>;
+  return (
+    <td className="align-top">
+      {r.kind === "ready" ? (
+        <Badge variant="success">gotowy do stopnia 3</Badge>
+      ) : r.kind === "auto" ? (
+        <Badge variant="info">auto-zatwierdzanie</Badge>
+      ) : r.kind === "progress" ? (
+        <Badge>
+          {r.weeksOk} z {ZD_AUTOMAT_READY_WEEKS} tyg.
+        </Badge>
+      ) : (
+        <span className="whitespace-nowrap text-sm text-slate-600">{r.reason}</span>
+      )}
+    </td>
+  );
+}
+
+function AutomatStatus({ rows, kpiComputed }: { rows: ZdAutomatKpiSupplier[]; kpiComputed: boolean }) {
+  const s = buildZdAutomatStatus(rows, kpiComputed);
+  const dot = s.tone === "warning" ? "bg-amber-500" : s.tone === "success" ? "bg-emerald-600" : "bg-slate-400";
+  return (
+    <Card padding={false}>
+      <div className="p-4 sm:p-5" role="status">
+        <p className="flex items-start gap-2.5 text-lg font-semibold leading-snug tracking-tight text-balance text-slate-900 lg:text-xl">
+          <span className={cn("mt-2 size-2.5 shrink-0 rounded-full", dot)} aria-hidden />
+          {s.headline}
+        </p>
+        <p className="mt-1 max-w-3xl pl-5 text-sm leading-relaxed text-slate-600">{s.detail}</p>
+      </div>
+    </Card>
+  );
+}
+
+const AUTOMAT_KPIS = ["oos", "correction", "deferred", "minimum", "rotation", "dead"];
+const MEASURED_KPIS = KPIS.filter((k) => k.measured).map((k) => k.key);
+const kpiByKey = new Map(KPIS.map((k) => [k.key, k]));
+
+function KpiTable({ rows, keys, automat }: { rows: ZdAutomatKpiSupplier[]; keys: string[]; automat: boolean }) {
+  const cols = keys.map((k) => kpiByKey.get(k)!);
+  return (
+    <TableScroll>
+      <DataTable className={cn("kpi-table", automat ? "min-w-[840px]" : "min-w-[640px]")}>
+        <thead>
+          <tr>
+            <th>Dostawca</th>
+            {cols.slice(0, automat ? 2 : cols.length).map((k) => (
+              <KpiHead key={k.key} label={k.label} help={k.help} />
+            ))}
+            {automat ? (
+              <KpiHead
+                label="Gotowość"
+                help={`Auto-zatwierdzanie (stopień 3) po ${ZD_AUTOMAT_READY_WEEKS} kolejnych tygodniach z korektą człowieka poniżej 10%. Stopień zmieniasz w Strategii dostawcy w Kreatorze ZD.`}
+              />
+            ) : null}
+            {automat ? cols.slice(2).map((k) => <KpiHead key={k.key} label={k.label} help={k.help} />) : null}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => {
+            const alert = zdAutomatOosAlert(r);
+            const cells = cols.map((k) => <KpiCell key={k.key} kpi={k} weeks={r.weeks} alert={k.key === "oos" && alert} />);
+            return (
+              <tr key={r.supplierId}>
+                <td className="min-w-[11rem] max-w-[14rem] align-top">
+                  <span className="font-medium text-slate-900">{r.name}</span>
+                  <span className="block text-xs text-slate-500">{supplierMeta(r) || "brak KPI w tym tygodniu"}</span>
+                </td>
+                {automat ? (
+                  <>
+                    {cells.slice(0, 2)}
+                    <ReadinessCell row={r} />
+                    {cells.slice(2)}
+                  </>
+                ) : (
+                  cells
+                )}
+              </tr>
+            );
+          })}
+        </tbody>
+      </DataTable>
+    </TableScroll>
+  );
+}
+
 export function ZdAutomatPanel({
   kpi,
   classes,
@@ -245,9 +380,12 @@ export function ZdAutomatPanel({
   const [pending, start] = useTransition();
   const running = started || kpi.running || classes.running;
 
-  const rows = [...kpi.suppliers].sort(
-    (a, b) => (b.weeks[0]?.rotation.stockValue ?? -1) - (a.weeks[0]?.rotation.stockValue ?? -1)
-  );
+  const byStock = (a: ZdAutomatKpiSupplier, b: ZdAutomatKpiSupplier) =>
+    (b.weeks[0]?.rotation.stockValue ?? -1) - (a.weeks[0]?.rotation.stockValue ?? -1);
+  const rows = [...kpi.suppliers].sort(byStock);
+  // Alarm braków na górze, potem wartość zapasu.
+  const automatRows = rows.filter((r) => r.automat).sort((a, b) => Number(zdAutomatOosAlert(b)) - Number(zdAutomatOosAlert(a)));
+  const otherRows = rows.filter((r) => !r.automat);
   const latest = rows.find((r) => r.weeks[0])?.weeks[0];
   const totalSkus = Object.values(classes.counts).reduce((a, b) => a + b, 0);
 
@@ -255,7 +393,7 @@ export function ZdAutomatPanel({
     <div className="space-y-4">
       <PageHeader
         title="Automat ZD"
-        description="KPI tygodniowe dostawców w automacie propozycji i klasy towarów ze zmapowanych zakresów. Klasy nie zmieniają ilości w propozycjach — służą do pomiaru i kolejności przeglądu."
+        description="Jak automat zamawia u polskich dostawców: braki klasy A, zapas i to, ile poprawiasz w propozycjach. Klasy ABC/XYZ służą do pomiaru i kolejności przeglądu — nie zmieniają ilości."
         actions={
           canRecompute ? (
             <Button
@@ -290,59 +428,43 @@ export function ZdAutomatPanel({
 
       {notice ? <Alert tone={notice.tone}>{notice.text}</Alert> : null}
 
+      <AutomatStatus rows={rows} kpiComputed={Boolean(latest)} />
+
       <Card padding={false}>
         <CardHeader
           inset
-          title="KPI tygodniowe"
-          description={
-            latest
-              ? `${dostawcy(rows.length)} · tydzień ${dayMonth(latest.weekStart)}–${dayMonth(latest.weekEnd)}${
-                  kpi.computedAt ? ` · policzone ${formatWarsawDateTime(kpi.computedAt)}` : ""
-                }`
-              : `${dostawcy(rows.length)} w automacie · KPI jeszcze nie policzone (cron w poniedziałek 7:00)`
-          }
+          title="Dostawcy w automacie"
+          description={`${dostawcy(automatRows.length)} · ${latest ? `tydzień ${dayMonth(latest.weekStart)}–${dayMonth(latest.weekEnd)}${kpi.computedAt ? ` · policzone ${formatWarsawDateTime(kpi.computedAt)}` : ""}` : "KPI jeszcze nie policzone (cron w poniedziałek 7:00)"}`}
         />
-        {rows.length ? (
-          <TableScroll>
-            <DataTable className="min-w-[960px]">
-              <thead>
-                <tr>
-                  <th>Dostawca</th>
-                  <th className="text-right">Towary (A)</th>
-                  {KPIS.map((k) => (
-                    <th key={k.key}>{k.label}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.supplierId}>
-                    <td className="min-w-[11rem] align-top font-medium text-slate-900">{r.name}</td>
-                    <td className="align-top text-right">
-                      {r.weeks[0] ? `${nf0.format(r.weeks[0].skus)} (${nf0.format(r.weeks[0].skusA)})` : "—"}
-                    </td>
-                    {KPIS.map((k) => (
-                      <KpiCell key={k.key} kpi={k} weeks={r.weeks} />
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </DataTable>
-          </TableScroll>
+        {automatRows.length ? (
+          <KpiTable rows={automatRows} keys={AUTOMAT_KPIS} automat />
         ) : (
           <p className="px-6 pb-6 text-sm text-slate-600 sm:px-7">
-            Brak dostawców w automacie: ustaw strategię propozycji albo kraj Polska w karcie dostawcy.
+            Nikt jeszcze nie zamawia przez automat. Włącz strategię propozycji w Kreatorze ZD (Strategia dostawcy).
           </p>
         )}
-        <p className="px-6 pb-6 text-xs leading-relaxed text-slate-500 sm:px-7">
-          „—” = brak danych w tym tygodniu (najedź, żeby zobaczyć powód). Braki A — % dni-towarów klasy A z dostępnym ≤ 0
-          (historia stanów z nocnego przebiegu „Braki i zamówienia”). Rotacja — wartość zapasu (stan ×
-          cena kartotekowa, bez niej cena z ostatniego ZD) / dzienny koszt sprzedaży z 90 dni. Martwy zapas — wartość
-          towarów na stanie bez sprzedaży 180 dni. Korekta człowieka — % wartości propozycji zmienionej przy tworzeniu ZD. Odłożone i ZD ≥ minimum — z propozycji
-          automatu w tym tygodniu.
-          Zapas i martwy zapas to zdjęcie z dnia przeliczenia.
+        <p className="px-6 pb-6 pt-3 text-xs text-slate-500 sm:px-7">
+          „—” = brak danych w tym tygodniu; najedź na kreskę, żeby zobaczyć powód. Definicje — znak zapytania przy nagłówku.
         </p>
       </Card>
+
+      {otherRows.length ? (
+        <details className="group rounded-[var(--radius-panel)] border border-slate-200 bg-white shadow-[var(--shadow-card-elevated)]">
+          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-[var(--radius-panel)] px-6 py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 sm:px-7 [&::-webkit-details-marker]:hidden">
+            <span>
+              <span className="block text-base font-semibold text-slate-900">Pozostali polscy dostawcy</span>
+              <span className="block text-sm text-slate-600">
+                {dostawcy(otherRows.length)} poza automatem — pomiar rotacji, martwego zapasu i braków przed włączeniem
+              </span>
+            </span>
+            <span className="shrink-0 text-sm font-medium text-indigo-700 group-open:hidden">Pokaż</span>
+            <span className="hidden shrink-0 text-sm font-medium text-indigo-700 group-open:inline">Zwiń</span>
+          </summary>
+          <div className="border-t border-slate-100">
+            <KpiTable rows={otherRows} keys={MEASURED_KPIS} automat={false} />
+          </div>
+        </details>
+      ) : null}
 
       <Card padding={false}>
         <CardHeader
@@ -382,7 +504,9 @@ export function ZdAutomatPanel({
                   <th>Dostawca</th>
                   <th>Klasa</th>
                   <th>Powód</th>
-                  <th />
+                  <th>
+                    <span className="sr-only">Akcja</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>

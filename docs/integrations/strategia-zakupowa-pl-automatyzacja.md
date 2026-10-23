@@ -371,3 +371,54 @@ zaokrąglenie do opakowań i wielokrotności z Kreatora, popyt kompletów „exp
 3. **Komplety:** w lokalnej bazie 10 kompletów „explode”; rozchód kompletacji na produkcji trzeba sprawdzić
    (zakres kompletów w Kreatorze) przed stopniem 3 u dostawców z zestawami (Ivoclar, Denon).
 4. Cykl 3 d jest lepszy o 0,7 pp, ale daje 2× więcej ZD (mediana 1,7 tys. zł) — tylko bez kosztu dostawy.
+
+## 10. Audyt na prawdziwych danych (2026-10-23, wieczór)
+
+Propozycje „Przygotuj teraz” dla 10 dostawców (Subiekt LIVE, lokalna baza), scenariusze minimum/progu, przegląd UI.
+
+### 10.1. Czas dostawy automatu = pierwsza dostawa, nie pełna realizacja
+
+Próbki OnTime (`delivery_stats_samples`, ZD → FZ) mają dwa czasy: do **pierwszej** dostawy i do **ostatniej**
+FZ zamówienia. p90 pełnej realizacji wydłużają pojedyncze pozycje z zaległości (Ivoclar: ZD z 28.11.2024 przyszło
+po 7 dniach rob., ostatnia pozycja po 93) — a one i tak wiszą w otwartych ZD, więc liczenie ich w celu podbijało
+zapas **wszystkich** towarów dostawcy (Ivoclar: cel 66 dni, propozycja 327 tys. zł / 452 pozycje).
+
+| Dostawca | p90 pełna realizacja (dni rob.) | p90 pierwsza dostawa |
+|---|---|---|
+| Ivoclar (EXCEL) | 30 | 17 |
+| DT Shop, Makromed, Amadar | 7–8 | 3–4 |
+| Kol-Dental, Denon | 5 | 3 |
+| Pozostali | 2–4 | 2–4 |
+
+**Zmiana:** `ZdOrderHorizon.automatLeadDays` = p90 do pierwszej dostawy (od 5 próbek; nigdy dłuższy niż `leadDays`)
+— cel `max30_90` i pilność przy minimum. Kreator „Do kolejnej dostawy”, ETA w panelu i sygnały Braki bez zmian.
+**Efekt:** Ivoclar cel 40 dni, 47 pozycji, 73 tys. zł. Backtest roczny (cykl 7 d, cel 25):
+
+| Wariant | Zero na zdjęciu tyg. | Śr. zapas | Ivoclar: zero / zapas |
+|---|---|---|---|
+| Rzeczywistość | 6,1% | 2,73 mln | 3,9% / 2,30 mln |
+| czas = pełna realizacja (§9) | 3,6% | 2,29 mln | 2,1% / 1,99 mln |
+| **czas = pierwsza dostawa** | **4,0%** | **1,63 mln** | **3,3% / 1,32 mln** |
+| pesymistycznie (cel z pierwszej, towar dopiero z ostatnią) | 5,4% | 1,56 mln | 4,9% / 1,26 mln |
+
+### 10.2. Kto jest „polskim dostawcą”
+
+OnTime ma własny podział (karta dostawcy → Lokalizacja: Polska / Zagranica / Import, z arkusza zamówień). Kraj
+z Subiekta to adres rozliczeniowy. Rozjazd w 7 przypadkach: **Ivoclar (EXCEL), Dentsply Sirona, Medin** — w OnTime
+ZAGRANICA, w Subiekcie Polska; **DT Shop, Ormco, PiDental, Sklep ABC-RC** — w OnTime POLSKA, w Subiekcie zagranica.
+Bez Ivoclar (9 dostawców POLSKA) backtest roczny: 6,4% zera przy 0,29 mln wobec 10,5% przy 0,43 mln w rzeczywistości.
+**Do decyzji:** który podział wyznacza Fazę I (rekomendacja: Lokalizacja z OnTime; kraj z Subiekta jako kontrola).
+
+### 10.3. Poprawki z audytu
+
+- **Bezpieczniki:** „ponad sufit” liczony po odjęciu jednej jednostki zamówienia — wszystkie 137/137 flag u Ivoclar
+  były zaokrągleniem 1–2 szt. wolno rotującego towaru; tempo w notatce „1 szt / 60 d” zamiast „0 szt/d”.
+  „Wartość ZD 2× większa” od 2000 zł (POL-INTECH 1181 zł to nie sygnał). Po poprawkach Ivoclar: 10 flag
+  (9 nowości, 1 skok), Denon: 0 + wartość nietypowa.
+- **Ceny:** kartotekowa ≠ ostatnie ZD o > 5% u 3–6 pozycji na dostawcę (podwyżki od ostatniego ZD) — zgodnie z decyzją.
+- **Minimum/próg (Kol-Dental, realne ceny):** minimum 3× → idzie (2 pozycje pilne); próg +10% → dopełnienie 1 pozycją;
+  próg +50% → bez dopełnienia, idzie (pilne); minimum w EUR → reguła pominięta. Zgodnie ze specyfikacją.
+- **UI:** wiersz w panelu dziennym mówi „N do sprawdzenia · wartość nietypowo wysoka”; panel akceptacji ma filtr
+  „Do sprawdzenia (N)” i takie pozycje na górze; `/zakupy/automat` zaczyna od zdania stanu, dzieli dostawców w
+  automacie i pozostałych, pokazuje stopień i gotowość do auto-zatwierdzania, nie twierdzi „braki poniżej 5%” bez
+  historii stanów; dialog strategii — domyślnie co 7 dni, „Automat ZD” zamiast „Strategia testowa”, aktualny backtest.

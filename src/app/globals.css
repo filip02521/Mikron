@@ -500,6 +500,24 @@ select:disabled,
   background-color: var(--color-slate-50);
 }
 
+/* Tabela wskaźników (KPI) — wiele kolumn liczb: węższe odstępy, ten sam rytm wierszy */
+.data-table.kpi-table th,
+.data-table.kpi-table td {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  vertical-align: top;
+}
+
+.data-table.kpi-table th:first-child,
+.data-table.kpi-table td:first-child {
+  padding-left: 1.5rem;
+}
+
+.data-table.kpi-table th:last-child,
+.data-table.kpi-table td:last-child {
+  padding-right: 1.5rem;
+}
+
 /* Kolejka realizacji — zwarte wiersze */
 .data-table.queue-table th,
 .data-table.queue-table td {

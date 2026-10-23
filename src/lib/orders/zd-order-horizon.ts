@@ -35,6 +35,13 @@ export type ZdOrderHorizon = {
   stockDays: number;
   leadBusinessDays: number | null;
   leadDays: number;
+  /**
+   * Czas dostawy dla celu automatu ZD (max30_90) i pilności przy minimum: p90 do PIERWSZEJ dostawy.
+   * `leadDays` (p90 pełnej realizacji) wydłużają pojedyncze pozycje z zaległości — one i tak wiszą
+   * w otwartych ZD, więc liczenie ich w celu podbijało zapas wszystkich towarów dostawcy
+   * (audyt 2026-10-23: Ivoclar 30 vs 17 dni rob.). Brak próbek pierwszej dostawy → `leadDays`.
+   */
+  automatLeadDays: number;
   leadSource: ZdLeadTimeSource;
   leadSampleCount: number;
   nextOrderDate: string | null;
@@ -61,7 +68,7 @@ export function resolveZdOrderHorizon(input: {
   nextOrderDate: string | null;
   interval: OrderInterval | null;
   /** Kwantyle czasu dostawy (dni robocze) dla zamówień „Główne”. */
-  lead: { p50: number | null; p90: number | null; nOrders: number } | null;
+  lead: { p50: number | null; p90: number | null; nOrders: number; p90FirstReceipt?: number | null } | null;
 }): ZdOrderHorizon {
   const stockDays = Math.max(1, Math.round(input.stockDays));
 
@@ -78,6 +85,11 @@ export function resolveZdOrderHorizon(input: {
     leadBusinessDays != null
       ? businessToCalendarDays(input.todayKey, leadBusinessDays)
       : ZD_HORIZON_DEFAULT_LEAD_DAYS;
+  const firstP90 = input.lead?.p90FirstReceipt;
+  const automatLeadDays =
+    firstP90 != null && (input.lead?.nOrders ?? 0) >= ZD_HORIZON_MIN_SAMPLES_P90
+      ? Math.min(leadDays, businessToCalendarDays(input.todayKey, firstP90))
+      : leadDays;
 
   // Kolejne zamówienie PO dzisiejszym: gdy plan wypada dziś / jest zaległy,
   // to właśnie składamy to zamówienie — następne liczymy z interwału.
@@ -108,6 +120,7 @@ export function resolveZdOrderHorizon(input: {
     stockDays,
     leadBusinessDays,
     leadDays,
+    automatLeadDays,
     leadSource,
     leadSampleCount: input.lead?.nOrders ?? 0,
     nextOrderDate,

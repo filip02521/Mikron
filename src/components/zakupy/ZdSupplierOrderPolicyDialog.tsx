@@ -3,7 +3,7 @@
 import { useId, useState, useTransition } from "react";
 import { actionSaveZdSupplierOrderPolicy } from "@/app/actions/zd-estimate";
 import { Button } from "@/components/ui/Button";
-import { Input, Select } from "@/components/ui/Field";
+import { Field, Input, Select } from "@/components/ui/Field";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
@@ -14,7 +14,7 @@ import type { ZdDemandStrategy } from "@/lib/orders/zd-demand-policy";
 /** Stopnie autonomii (spec §4.4); `soon` = zapisany, ale działa dopiero od wdrożenia tej części. */
 export const ZD_AUTO_LEVEL_OPTIONS: { value: ZdAutoLevel; label: string; body: string; soon?: string }[] = [
   { value: 0, label: "0 · Ręcznie", body: "Nic nie powstaje samo - Przygotuj ZD liczy na żywo, jak dotąd." },
-  { value: 1, label: "1 · Propozycja ZD", body: "Propozycja powstaje sama i czeka w Kreatorze na akceptację - nic nie jest wysyłane samo." },
+  { value: 1, label: "1 · Propozycja ZD", body: "Propozycja powstaje sama i czeka na akceptację w panelu dziennym i w Kreatorze - nic nie jest wysyłane samo." },
   {
     value: 2,
     label: "2 · Okno handlowców",
@@ -30,12 +30,12 @@ export const ZD_AUTO_LEVEL_OPTIONS: { value: ZdAutoLevel; label: string; body: s
   { value: 4, label: "4 · Auto-mail", body: "Zatwierdzone ZD idzie mailem z PDF do dostawcy bez klikania.", soon: "auto-maila do dostawcy" },
 ];
 
-/** Wartości startowe testu — wynik backtestu Polkardu (10.2025–10.2026). */
-export const ZD_TEST_POLICY_DEFAULTS = { targetDays: 25, cycleDays: 3 } as const;
+/** Wartości startowe — backtest roczny polskich dostawców (spec §9): cel 25 dni, ZD co 7 dni. */
+export const ZD_TEST_POLICY_DEFAULTS = { targetDays: 25, cycleDays: 7 } as const;
 
 export function zdSupplierPolicyLabel(p: Pick<ZdSupplierOrderPolicyRow, "strategy" | "targetDays" | "cycleDays" | "autoProposals"> | null): string {
   if (!p || p.strategy === "classic") return "Strategia: jak dotąd";
-  const parts = ["Strategia testowa"];
+  const parts = ["Automat ZD"];
   if (p.targetDays) parts.push(`${p.targetDays} ${polishPluralWord(p.targetDays, "dzień", "dni", "dni")} zapasu`);
   if (p.cycleDays) parts.push(p.cycleDays === 1 ? "codziennie" : `co ${p.cycleDays} dni`);
   if (p.autoProposals) parts.push("propozycje");
@@ -46,8 +46,8 @@ export function zdSupplierPolicyLabel(p: Pick<ZdSupplierOrderPolicyRow, "strateg
 export function zdSupplierPolicyShortLabel(p: Pick<ZdSupplierOrderPolicyRow, "strategy" | "cycleDays"> | null): string {
   if (!p || p.strategy === "classic") return "Strategia: jak dotąd";
   return p.cycleDays
-    ? `Strategia testowa · ZD ${p.cycleDays === 1 ? "codziennie" : `co ${p.cycleDays} dni`}`
-    : "Strategia testowa";
+    ? `Automat ZD · ${p.cycleDays === 1 ? "codziennie" : `co ${p.cycleDays} dni`}`
+    : "Automat ZD";
 }
 
 /** Cichy przycisk na końcu linii faktów zakresu — strategia dostawcy, otwiera ustawienia. */
@@ -191,64 +191,39 @@ export function ZdSupplierOrderPolicyDialog({
         {option("classic", "Jak dotąd", "Cel = sprzedaż z okna Kreatora × dni zapasu dostawcy.")}
         {option(
           "max30_90",
-          "Test: częstsze ZD, krótszy zapas, podłoga 90 dni",
+          "Automat: częstsze ZD, podłoga 90 dni",
           "Tempo nie niższe niż średnia z 90 dni (towar, który miał słabszy miesiąc, nie znika ze stanu). Cel na mniej dni, zamawiane częściej - jednorazowa duża sprzedaż wraca na ZD tylko w części."
         )}
       </div>
 
       {test ? (
         <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label htmlFor={daysId} className="text-xs font-medium text-slate-700">
-              Dni zapasu w celu
-            </label>
-            <Input id={daysId} inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value)} className="mt-1" />
-          </div>
-          <div>
-            <label htmlFor={cycleId} className="text-xs font-medium text-slate-700">
-              ZD co ile dni
-            </label>
-            <Input id={cycleId} inputMode="numeric" value={cycle} onChange={(e) => setCycle(e.target.value)} className="mt-1" />
-          </div>
-          <div className="sm:col-span-2">
-            <label htmlFor={levelId} className="text-xs font-medium text-slate-700">
-              Automat ZD
-            </label>
-            <Select
-              id={levelId}
-              value={level}
-              onChange={(e) => setLevel(Number(e.target.value) as ZdAutoLevel)}
-              className="mt-1"
-            >
+          <Field label="Dni zapasu w celu" hint="Minimum — przy długiej dostawie cel rośnie sam.">
+            <Input id={daysId} inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value)} />
+          </Field>
+          <Field label="ZD co ile dni" hint="Dla polskich dostawców: 7.">
+            <Input id={cycleId} inputMode="numeric" value={cycle} onChange={(e) => setCycle(e.target.value)} />
+          </Field>
+          <Field label="Stopień automatu" className="sm:col-span-2">
+            <Select id={levelId} value={level} onChange={(e) => setLevel(Number(e.target.value) as ZdAutoLevel)}>
               {ZD_AUTO_LEVEL_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
               ))}
             </Select>
-            <p className="mt-1 text-xs leading-relaxed text-slate-600">
+            <p className="text-xs leading-relaxed text-slate-600">
               {ZD_AUTO_LEVEL_OPTIONS[level].body}
               {level >= 1
                 ? ` Propozycja ${parseDays(cycle, 1, 60) === 1 ? "codziennie" : `co ${parseDays(cycle, 1, 60) ?? "…"} dni`}.`
                 : ""}
             </p>
-          </div>
+          </Field>
           {level >= 2 ? (
             <>
-              <div>
-                <label htmlFor={cutoffId} className="text-xs font-medium text-slate-700">
-                  Do której handlowcy dokładają
-                </label>
-                <Input
-                  id={cutoffId}
-                  type="time"
-                  step={60}
-                  value={cutoff}
-                  onChange={(e) => setCutoff(e.target.value)}
-                  className="mt-1"
-                />
-                <span className="mt-1 block text-xs text-slate-500">Dzień przed wysyłką ZD.</span>
-              </div>
+              <Field label="Do której handlowcy dokładają" hint="Dzień przed wysyłką ZD.">
+                <Input id={cutoffId} type="time" step={60} value={cutoff} onChange={(e) => setCutoff(e.target.value)} />
+              </Field>
               <p className="rounded-md bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900 sm:col-span-2">
                 Zapisane, ale działa od wdrożenia {ZD_AUTO_LEVEL_OPTIONS[level].soon}. Do tego czasu propozycja czeka
                 na akceptację jak w stopniu 1.
@@ -259,10 +234,10 @@ export function ZdSupplierOrderPolicyDialog({
       ) : null}
 
       <p className="rounded-md bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-600">
-        Backtest 10.2025-10.2026: przy dostawie do 3 dni (27 dostawców) strategia testowa dała mniej dni bez towaru i
-        mniejszy zapas niż rzeczywistość (Polkard, 25 dni co 3 dni: −33% dni bez towaru, −33% zapasu). Przy dłuższej
-        dostawie cel rośnie sam: co najmniej cykl zamawiania + czas dostawy + 25% czasu dostawy (dni wyżej to
-        minimum). Zmiana działa od następnego Policz.
+        Backtest roczny 10.2025-10.2026 na 9 polskich dostawcach: ZD co 7 dni z celem 25 dni dały o 39% mniej
+        towarów z zerowym stanem i o 33% mniejszy zapas niż rzeczywistość. Przy dłuższej dostawie cel rośnie sam: co
+        najmniej cykl zamawiania + czas dostawy + 25% czasu dostawy (dni wyżej to minimum). Zmiana działa od następnego
+        Policz.
       </p>
       {savedWithWarning ? (
         <p className="rounded-md bg-amber-50 px-3 py-2 text-sm leading-relaxed text-amber-900" role="status">

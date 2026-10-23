@@ -29,7 +29,8 @@ export function leadAt(samples, dayKey) {
   const cutKey = cut.toISOString().slice(0, 10);
   let win = before.filter((s) => s.d >= cutKey);
   if (win.length < 5) win = before.slice(0, 5);
-  const bd = win.map((s) => s.bd).sort((a, b) => a - b);
+  const pick = (s) => (process.env.BT_LEAD === "first" ? Math.min(s.bd, s.bf ?? s.bd) : s.bd);
+  const bd = win.map(pick).sort((a, b) => a - b);
   const p = bd.length >= 5 ? nearestRank(bd, 0.9) : bd.length ? nearestRank(bd, 0.5) : null;
   return p == null ? 7 : businessToCalendar(dayKey, p);
 }
@@ -39,7 +40,8 @@ export function realizedLead(samples, dayKey) {
   let best = samples[0], bestD = Infinity;
   const t = Date.parse(dayKey);
   for (const s of samples) { const dd = Math.abs(Date.parse(s.d) - t); if (dd < bestD) { bestD = dd; best = s; } }
-  return Math.max(1, businessToCalendar(dayKey, best.bd));
+  const bd = process.env.BT_ARRIVAL === "first" ? Math.min(best.bd, best.bf ?? best.bd) : best.bd;
+  return Math.max(1, businessToCalendar(dayKey, bd));
 }
 /** Jak computeZdPackOrderQty: sztuki w górę do opakowania; w trybie paczek też do wielokrotności paczek. */
 export function packRound(pieces, pack) {
@@ -171,7 +173,9 @@ if (process.argv[1] === new URL(import.meta.url).pathname) {
   const bomByComponent = new Map();
   for (const [parent, comp, qty, target] of bom) if (target === "components") bomByComponent.set(comp, [...(bomByComponent.get(comp) ?? []), [parent, Number(qty) || 1]]);
   console.log(`komplety explode: ${explodeParents.size}, składniki: ${bomByComponent.size}; BT_OUTFLOW=${process.env.BT_OUTFLOW ?? "0"}`);
-  const files = fs.readdirSync(DIR).filter((f) => /^\d+\.json$/.test(f));
+  // BT_EXCLUDE=2738 — pomiń zakresy (cecha) z listy, np. dostawcę oznaczonego w OnTime jako ZAGRANICA.
+  const exclude = new Set(String(process.env.BT_EXCLUDE ?? "").split(",").filter(Boolean));
+  const files = fs.readdirSync(DIR).filter((f) => /^\d+\.json$/.test(f) && !exclude.has(f.replace(".json", "")));
   const pct = (a, b) => (b ? ((100 * a) / b).toFixed(1) + "%" : "—");
   const mln = (x) => (x / 1e6).toFixed(2);
   const tot = Object.fromEntries(VARIANTS.map(([n]) => [n, { dV: 0, sV: 0, oos: 0, sd: 0, stockV: 0, nOrd: 0, ordV: [], snapOos: 0, snapN: 0, q: [0, 0, 0, 0].map(() => ({ dV: 0, sV: 0, oos: 0, sd: 0, stockV: 0 })) }]));
