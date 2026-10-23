@@ -323,7 +323,7 @@ Najważniejszy komponent produktu (`DataTable`, klasa `.data-table`).
 - **Nagłówek:** tło `well`, Column Header (13px, 500, `slate-500`, zdaniowo), linia `line` pod spodem, bez zawijania.
 - **Komórki:** padding 1rem 1.25rem (1.5rem przy krawędziach karty), Body Dense w `slate-600`, linie `line-soft` między wierszami.
 - **Hover wiersza:** tło `well`. Bez paska z boku.
-- **Wersje zwarte:** kolejka realizacji (`.queue-table`, 13px, nagłówek sticky) i Kreator ZD (`.zd-estimate-table`) mają mniejsze paddingi, te same zasady.
+- **Wersje zwarte:** kolejka realizacji (`.queue-table`, 13px, nagłówek sticky), Kreator ZD (`.zd-estimate-table`) i tabele wskaźników z wieloma kolumnami liczb (`.kpi-table`, odstępy 0.75rem, wyrównanie do góry) mają mniejsze paddingi, te same zasady.
 - **Zmiana wartości:** stara wartość przekreślona w `slate-500`, nowa w `slate-900` waga 600, obok procent zmiany w `slate-500`; zmiana powyżej 5% w `amber-700` waga 600.
 
 ### Segmented Control

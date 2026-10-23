@@ -417,6 +417,15 @@ function operationsOrderingItems(role: UserRole, badges: Pick<NavBadges, "suppli
       mobileSlot: "overflow",
     });
     items.push({
+      href: "/zakupy/automat",
+      label: "Automat ZD",
+      description: "KPI dostawców i klasy ABC/XYZ towarów",
+      icon: "chartTrend",
+      tone: "violet",
+      tier: "compact",
+      mobileSlot: "overflow",
+    });
+    items.push({
       href: "/zakupy/cenniki",
       label: "Cenniki",
       description: "Ceny z cennika dostawcy do Subiekta",
@@ -1085,6 +1094,7 @@ export function pageTitle(pathname: string): string {
   if (pathname.startsWith("/zakupy/szacunek")) return "Kreator ZD";
   if (pathname.startsWith("/zakupy/braki")) return "Braki i zamówienia";
   if (pathname.startsWith("/zakupy/cenniki")) return "Cenniki";
+  if (pathname.startsWith("/zakupy/automat")) return "Automat ZD";
   if (pathname.startsWith("/zakupy/asystent")) return "Asystent";
   if (pathname.startsWith("/zakupy/raporty-ivoclar")) return "Raporty Ivoclar (przeniesione)";
   if (pathname === "/urlopy" || pathname.startsWith("/urlopy/")) {

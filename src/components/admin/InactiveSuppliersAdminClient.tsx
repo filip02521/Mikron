@@ -281,11 +281,20 @@ export function InactiveSuppliersAdminClient({
             onChange={setForm}
             onPatchCycleFields={patchCycleFields}
             carrierOptions={warehouseCarriers}
-            onSubiektLinked={(khId) => {
-              setForm((f) => ({ ...f, subiekt_kh_id: khId }));
+            onSubiektLinked={(khId, country) => {
+              setForm((f) => ({ ...f, subiekt_kh_id: khId, subiekt_country: country }));
               if (form.id) {
                 setRows((list) =>
-                  list.map((r) => (r.id === form.id ? { ...r, subiekt_kh_id: khId } : r))
+                  list.map((r) =>
+                    r.id === form.id
+                      ? {
+                          ...r,
+                          subiekt_kh_id: khId,
+                          subiekt_country_id: country?.id ?? null,
+                          subiekt_country_name: country?.name ?? null,
+                        }
+                      : r
+                  )
                 );
               }
             }}

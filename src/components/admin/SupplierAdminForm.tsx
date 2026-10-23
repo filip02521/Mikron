@@ -21,6 +21,8 @@ import {
 import { TeethSupplierScheduleFields } from "@/components/teeth/TeethSupplierScheduleFields";
 import { SupplierCustomsDocuments } from "@/components/admin/SupplierCustomsDocuments";
 import { MIN_ORDER_CURRENCY_OPTIONS } from "@/lib/suppliers/min-order-currency";
+import { SupplierFreeShippingField } from "@/components/admin/SupplierFreeShippingField";
+import type { SubiektCountry } from "@/lib/suppliers/subiekt-country";
 
 export type SupplierAdminFormState = {
   id?: string;
@@ -43,6 +45,10 @@ export type SupplierAdminFormState = {
   min_order_value: number | null;
   /** Symbol waluty dla min_order_value (np. PLN, EUR). Puste = brak. */
   min_order_currency: string;
+  /** Próg darmowej dostawy (zł netto). null = brak progu. */
+  free_shipping_threshold: number | null;
+  /** Kraj z Subiekta — tylko do odczytu (zapisuje sync, nie formularz). */
+  subiekt_country: SubiektCountry | null;
 };
 
 export function SupplierAdminForm({
@@ -63,7 +69,7 @@ export function SupplierAdminForm({
   onPatchCycleFields: (
     patch: Partial<Pick<SupplierAdminFormState, "stock_raw" | "interval_raw" | "extra_info">>
   ) => void;
-  onSubiektLinked?: (khId: number | null) => void;
+  onSubiektLinked?: (khId: number | null, country: SubiektCountry | null) => void;
   carrierOptions?: WarehouseCarrierRow[];
   /** Sekcja cyklu zębów — karty dostawców z ?tor=zeby */
   showTeethSchedule?: boolean;
@@ -92,7 +98,9 @@ export function SupplierAdminForm({
             supplierId={form.id}
             supplierName={form.name}
             subiektKhId={form.subiekt_kh_id}
-            onLinked={(khId) => onSubiektLinked?.(khId)}
+            country={form.subiekt_country}
+            supplierLocation={form.location}
+            onLinked={(khId, country) => onSubiektLinked?.(khId, country)}
           />
         </div>
       ) : null}
@@ -214,6 +222,11 @@ export function SupplierAdminForm({
             </Select>
           </div>
         </Field>
+        <SupplierFreeShippingField
+          value={form.free_shipping_threshold}
+          disabled={fieldDisabled}
+          onChange={(v) => onChange({ ...form, free_shipping_threshold: v })}
+        />
       </SupplierFormSection>
 
       <div className={teethLane ? "rounded-lg border border-slate-200 bg-slate-50/50 p-4 opacity-60 sm:col-span-2" : "rounded-lg border border-indigo-200/50 bg-indigo-50/30 p-4 sm:col-span-2"}>

@@ -38,6 +38,9 @@ const proposal = (supplierId: string, supplierName: string): DailyZdProposal => 
   dokId: null,
   finalLines: null,
   serviceOrderIds: [],
+  deferredReason: null,
+  flags: [],
+  supplierTerms: null,
 });
 
 function Outside({ scheduled }: { scheduled: string[] }) {
@@ -64,5 +67,14 @@ describe("DailyZdProposals", () => {
     expect(screen.getByText(/automat co 3 dni/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Sprawdź i zatwierdź" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Odrzuć" })).toBeTruthy();
+    expect(screen.queryByText(/do sprawdzenia/)).toBeNull();
+  });
+
+  it("bezpieczniki automatu widać w wierszu", () => {
+    const p = proposal("s1", "Polkard");
+    p.flags = ["order_value_jump"];
+    p.lines[0] = { ...p.lines[0]!, flags: ["peak"] };
+    render(<DailyZdProposalNotice proposal={p} />);
+    expect(screen.getByText("1 do sprawdzenia · wartość nietypowo wysoka")).toBeTruthy();
   });
 });

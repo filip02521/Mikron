@@ -63,6 +63,13 @@ export function DailyZdProposalNotice({ proposal, className }: { proposal: Daily
   const noteId = useId();
   const pieces = proposal.lines.reduce((a, l) => a + l.pieces, 0);
   const cycle = proposal.policy.cycleDays;
+  // Bezpieczniki automatu: pozycje do sprawdzenia i nietypowo wysoka wartość — widać już w wierszu.
+  const flaggedCount = proposal.lines.filter((l) => l.flags?.length).length;
+  const valueJump = proposal.flags.includes("order_value_jump");
+  const warnings = [
+    flaggedCount ? `${flaggedCount} do sprawdzenia` : null,
+    valueJump ? "wartość nietypowo wysoka" : null,
+  ].filter(Boolean);
 
   const reject = () => {
     setError(null);
@@ -98,6 +105,9 @@ export function DailyZdProposalNotice({ proposal, className }: { proposal: Daily
                 · automat{cycle ? ` co ${cycle} ${polishPluralWord(cycle, "dzień", "dni", "dni")}` : ""}, {formatWhen(proposal.createdAt)}
               </span>
             </p>
+            {warnings.length ? (
+              <p className="mt-0.5 text-xs font-medium leading-snug text-amber-800">{warnings.join(" · ")}</p>
+            ) : null}
           </div>
         </div>
         <div className="flex shrink-0 items-center justify-end gap-1.5">
