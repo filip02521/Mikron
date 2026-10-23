@@ -11,11 +11,12 @@ import fs from "node:fs";
 import path from "node:path";
 
 const B = "http://192.168.0.140:5080/api/v1";
-const DIR = path.join(path.dirname(new URL(import.meta.url).pathname), "data");
-const SALES_FROM = "2025-04-01";
-const SALES_TO = "2026-10-22";
-const SIM_START = "2026-04-22"; // stock on this day = start position
-const TRAIN_FROM = "2025-04-23";
+// BT_DATA=data-1y BT_SALES_FROM=2024-10-01 BT_SIM_START=2025-10-22 node fetch.mjs — backtest roczny
+const DIR = path.join(path.dirname(new URL(import.meta.url).pathname), process.env.BT_DATA ?? "data");
+const SALES_FROM = process.env.BT_SALES_FROM ?? "2025-04-01";
+const SALES_TO = process.env.BT_SALES_TO ?? "2026-10-22";
+const SIM_START = process.env.BT_SIM_START ?? "2026-04-22"; // stock on this day = start position
+const TRAIN_FROM = (() => { const d = new Date(SIM_START + "T12:00:00Z"); d.setUTCFullYear(d.getUTCFullYear() - 1); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); })();
 
 async function get(url, tries = 4) {
   for (let i = 0; ; i++) {
