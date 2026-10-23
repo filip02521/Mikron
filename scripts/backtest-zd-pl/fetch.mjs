@@ -6,7 +6,7 @@
 //    where d.supplier_id = s.id and d.order_type = 'Glowne' and d.placement_date >= '2025-01-01') lead_bd
 //   from suppliers s join zd_estimate_supplier_scopes z on z.supplier_id = s.id
 //   where s.subiekt_kh_id in (...)) x" > data/suppliers.json)
-// Potem: node sim.test.mjs && node sim.mjs. Wyniki: docs/integrations/strategia-zakupowa-pl-automatyzacja.md §8.
+// Potem: node sim.check.mjs && node sim.mjs. Wyniki: docs/integrations/strategia-zakupowa-pl-automatyzacja.md §8.
 import fs from "node:fs";
 import path from "node:path";
 

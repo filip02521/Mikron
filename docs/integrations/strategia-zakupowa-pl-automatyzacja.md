@@ -135,11 +135,15 @@ i > mediana + 3·MAD, liczony jako mediana + 3·MAD.
 Po policzeniu wszystkich linii dostawcy:
 
 1. `wartość = Σ qty × cena_zakupu`.
-2. Jeśli `wartość < min_order_value` → **nie wysyłać**, chyba że jest linia „pilna”
-   (pokrycie < L̄). Bez pilnych: przesunąć na kolejny cykl i zapisać powód.
-3. Jeśli `wartość < free_shipping_threshold` i brakuje ≤ 15% → **dopełnić** towarami A/B tego
-   dostawcy w kolejności „najmniej dni pokrycia”, każdy najwyżej do `S + d̄·R` (jeden cykl zapasu
-   więcej). Jeśli brakuje > 15% → koszt dostawy zamiast mrożenia kapitału; wysłać bez dopełnienia.
+2. **Linia pilna** = (dostępne + otwarte ZD) / tempo < cykl + czas dostawy — odłożenie przesuwa
+   zamówienie o cały cykl, więc towar musi wytrzymać do kolejnej dostawy.
+3. `wartość < min_order_value` (PLN; inna waluta → reguła pominięta) albo `wartość < free_shipping_threshold`:
+   - brakuje do progu darmowej dostawy ≤ 15% → **dopełnić** towarami A/B tego dostawcy w kolejności
+     „najmniej dni pokrycia”, każdy najwyżej do celu + tempo × cykl; dopełnienie, które nie dojdzie do progu,
+     nic nie dodaje;
+   - inaczej, bez linii pilnych → **odłożyć** (`deferred`) na kolejny cykl z powodem;
+   - z liniami pilnymi → wysłać mimo minimum/progu, powód w logu.
+   Linia bez ceny → propozycji nie odkładamy i nie dopełniamy (wartość nieznana).
 
 ### 3.5. Bezpieczniki
 
@@ -261,7 +265,7 @@ po pomiarze na żywo. Szczegółowy plan zadań: `TASKS.md` → „Automat ZD �
 
 ## 8. Backtest — 10 polskich dostawców (2026-10-23)
 
-**Skrypt:** `scripts/backtest-zd-pl/` (`fetch.mjs` — tylko GET do Subiekta; `sim.mjs`; `sim.test.mjs`).
+**Skrypt:** `scripts/backtest-zd-pl/` (`fetch.mjs` — tylko GET do Subiekta; `sim.mjs`; `sim.check.mjs` — self-check, `node sim.check.mjs`).
 **Okres:** 26 tygodni, 23.04–22.10.2026; uczenie na 12 mies. przed każdym dniem decyzji (bez zaglądania w przyszłość).
 **Dostawcy (kraj `Polska` w Subiekcie, zakres zmapowany, ≥ 31 próbek czasu dostawy):** Everall7, Ivoclar (EXCEL),
 Denon Dental, Polkard BIS, Amadar, Kol-Dental, POL-INTECH, Hansen Dental, Makromed, Formed — 2 302 SKU.
