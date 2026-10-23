@@ -63,7 +63,35 @@ const VARIANTS = [
   ["P2 R7 bez podłogi 90", { kind: "P2", R: 7, target: 25, noFloor: true }],
 ];
 
-function simulate(ds, v, sup, packaging) {
+/**
+ * Popyt dzienny towaru: sprzedaż + (komplety „explode”) sprzedaż kompletu × ilość składnika
+ * + (BT_OUTFLOW=1) rozchód bez sprzedaży z bilansu remanentów — test odporności na lukę w danych.
+ */
+function demandLines(ds, bomByComponent, explodeParents) {
+  const out = new Map();
+  for (const p of ds.products) out.set(p.id, (ds.sales[p.id] ?? []).map(([k, q]) => [toIdx(k), q]).filter(([, q]) => q > 0));
+  for (const [comp, parents] of bomByComponent) {
+    if (!out.has(comp)) continue;
+    for (const [parent, qty] of parents) for (const [k, q] of ds.sales[parent] ?? []) if (q > 0) out.get(comp).push([toIdx(k), q * qty]);
+  }
+  if (process.env.BT_OUTFLOW === "1") {
+    const days = Object.keys(ds.stock).sort();
+    for (const p of ds.products) {
+      const lines = out.get(p.id);
+      for (let i = 0; i + 1 < days.length; i++) {
+        const a = toIdx(days[i]), b = toIdx(days[i + 1]);
+        const qa = ds.stock[days[i]][p.id]?.[0] ?? 0, qb = ds.stock[days[i + 1]][p.id]?.[0] ?? 0;
+        const sold = lines.filter(([d]) => d > a && d <= b).reduce((x, [, q]) => x + q, 0);
+        const hidden = -(qb - qa + sold);
+        if (hidden > 1e-9) for (let d = a + 1; d <= b; d++) lines.push([d, hidden / (b - a)]);
+      }
+    }
+  }
+  for (const id of explodeParents) out.delete(id);
+  return out;
+}
+
+function simulate(ds, v, sup, packaging, demand) {
   const R = v.R ?? (sup.interval_weeks || 1) * 7;
   const samples = sup.lead ?? [];
   const start = ds.stock[Object.keys(ds.stock).sort()[0]] ?? {};
@@ -72,8 +100,8 @@ function simulate(ds, v, sup, packaging) {
   // Te same daty decyzji dla wszystkich towarów dostawcy
   const leadCache = new Map(), realCache = new Map();
   for (const p of ds.products) {
-    if (!p.cost) continue;
-    const lines = (ds.sales[p.id] ?? []).map(([k, q]) => [toIdx(k), q]).filter(([, q]) => q > 0);
+    if (!p.cost || !demand.has(p.id)) continue;
+    const lines = demand.get(p.id);
     const daily = new Array(SIM_DAYS).fill(0);
     for (const [i, q] of lines) if (i >= 0 && i < SIM_DAYS) daily[i] += q;
     let stock = Math.max(0, start[p.id]?.[0] ?? 0);
@@ -138,6 +166,11 @@ export function load(file) {
 if (process.argv[1] === new URL(import.meta.url).pathname) {
   const sups = JSON.parse(fs.readFileSync(path.join(DIR, "suppliers-lead.json"), "utf8"));
   const packaging = JSON.parse(fs.readFileSync(path.join(DIR, "packaging.json"), "utf8"));
+  const bom = fs.existsSync(path.join(DIR, "bom.json")) ? JSON.parse(fs.readFileSync(path.join(DIR, "bom.json"), "utf8")) ?? [] : [];
+  const explodeParents = new Set(bom.filter((b) => b[3] === "components").map((b) => b[0]));
+  const bomByComponent = new Map();
+  for (const [parent, comp, qty, target] of bom) if (target === "components") bomByComponent.set(comp, [...(bomByComponent.get(comp) ?? []), [parent, Number(qty) || 1]]);
+  console.log(`komplety explode: ${explodeParents.size}, składniki: ${bomByComponent.size}; BT_OUTFLOW=${process.env.BT_OUTFLOW ?? "0"}`);
   const files = fs.readdirSync(DIR).filter((f) => /^\d+\.json$/.test(f));
   const pct = (a, b) => (b ? ((100 * a) / b).toFixed(1) + "%" : "—");
   const mln = (x) => (x / 1e6).toFixed(2);
@@ -148,9 +181,10 @@ if (process.argv[1] === new URL(import.meta.url).pathname) {
     const ds = load(path.join(DIR, f));
     const sup = sups.find((s) => s.cecha_id === ds.supplier.cecha_id);
     const r = reality(ds); real.oos += r.oos; real.n += r.n; real.v += r.v;
+    const demand = demandLines(ds, bomByComponent, explodeParents);
     const row = { name: sup.name, real: r };
     for (const [n, v] of VARIANTS) {
-      const s = simulate(ds, v, sup, packaging); row[n] = s;
+      const s = simulate(ds, v, sup, packaging, demand); row[n] = s;
       const t = tot[n]; for (const k of ["dV", "sV", "oos", "sd", "snapOos", "snapN"]) t[k] += s[k];
       t.stockV += s.stockV / SIM_DAYS; t.nOrd += s.orders.size; t.ordV.push(...s.orders.values());
       s.q.forEach((qq, i) => { for (const k of ["dV", "sV", "oos", "sd"]) t.q[i][k] += qq[k]; t.q[i].stockV += qq.stockV / (SIM_DAYS / 4); });

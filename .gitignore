@@ -62,3 +62,4 @@ data/handoff/
 scripts/backtest-zd-pl/data/
 scripts/backtest-zd-pl/result.json
 scripts/backtest-zd-pl/data-1y/
+scripts/backtest-zd-pl/out-*.txt
