@@ -448,6 +448,7 @@ Czas dostawy = pierwsza dostawa.
 Co 7 dni: −38% braków i −21% zapasu wobec rzeczywistości (pesymistycznie 6,4%). Przy wysyłce z Niemiec koszt paczki
 może przeważyć — wtedy co 14 dni (nadal lepiej niż dziś) albo próg darmowej dostawy w karcie (małe ZD bez pilnych
 pozycji przejdą na kolejny tydzień).
+**Decyzja 2026-10-23: DT Shop co 14 dni** (pozostali polscy dostawcy co 7).
 
 **Faza I (9 dostawców + DT Shop, bez Ivoclar), co 7 d, cel 25:** 5,5% zera przy 0,32 mln zł wobec 10,5% przy
 0,44 mln w rzeczywistości (−48% braków, −27% zapasu); nie gorszy od rzeczywistości u 8/10.
