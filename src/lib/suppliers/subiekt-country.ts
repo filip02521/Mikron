@@ -2,7 +2,7 @@
  * Kraj dostawcy z kartoteki Subiekta (`adr_IdPanstwo`, `adr_Panstwo`). Bez I/O — serwer i klient.
  * Zapis: `src/lib/data/supplier-country-sync.ts`.
  */
-import { SUBIEKT_COUNTRY_ID_POLAND } from "@/lib/orders/zd-automat-contract";
+import { SUBIEKT_COUNTRY_ID_POLAND, ZD_AUTOMAT_SUPPLIER_LOCATION } from "@/lib/orders/zd-automat-contract";
 
 export type SubiektCountry = { id: number; name: string | null };
 
@@ -25,4 +25,13 @@ export function supplierCountryLabel(id: number | null | undefined, name: string
   if (id == null) return null;
   if (isPolandCountryId(id)) return "Polska";
   return name?.trim() || `kraj nr ${id}`;
+}
+
+/**
+ * Kraj z adresu w Subiekcie nie zgadza się z Lokalizacją w OnTime (Polska vs reszta). Automat ZD liczy
+ * „polskich” wg Lokalizacji — rozjazd to sygnał do sprawdzenia karty, nie błąd. Brak któregoś z pól = brak rozjazdu.
+ */
+export function supplierCountryMismatchesLocation(countryId: number | null | undefined, location: string | null | undefined): boolean {
+  if (countryId == null || !location) return false;
+  return (location === ZD_AUTOMAT_SUPPLIER_LOCATION) !== isPolandCountryId(countryId);
 }

@@ -17,13 +17,15 @@ import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { formatSubiektKontrahentLabel } from "@/lib/subiekt/match-supplier";
 import type { SubiektKontrahent } from "@/lib/subiekt/types";
 import type { SupplierSubiektKhAliasRow } from "@/lib/data/supplier-subiekt-kh";
-import { supplierCountryLabel, type SubiektCountry } from "@/lib/suppliers/subiekt-country";
+import { supplierCountryLabel, supplierCountryMismatchesLocation, type SubiektCountry } from "@/lib/suppliers/subiekt-country";
+import { ZD_AUTOMAT_SUPPLIER_LOCATION } from "@/lib/orders/zd-automat-contract";
 
 export function SupplierSubiektLinkField({
   supplierId,
   supplierName,
   subiektKhId,
   country,
+  supplierLocation,
   onLinked,
 }: {
   supplierId: string;
@@ -31,9 +33,13 @@ export function SupplierSubiektLinkField({
   subiektKhId: number | null;
   /** Kraj zapisany z kartoteki Subiekta (null = jeszcze nieodczytany). */
   country?: SubiektCountry | null;
+  /** Lokalizacja OnTime (POLSKA / ZAGRANICA / IMPORT) — porównanie z krajem z Subiektu. */
+  supplierLocation?: string | null;
   onLinked?: (khId: number | null, country: SubiektCountry | null) => void;
 }) {
   const countryLabel = supplierCountryLabel(country?.id, country?.name);
+  // Automat ZD liczy „polskich” wg Lokalizacji; kraj z Subiektu (adres rozliczeniowy) tylko kontroluje.
+  const countryMismatch = supplierCountryMismatchesLocation(country?.id, supplierLocation);
   const [query, setQuery] = useState(supplierName);
   const [results, setResults] = useState<SubiektKontrahent[]>([]);
   const [feedback, setFeedback] = useState<SubiektFeedback | null>(null);
@@ -147,13 +153,21 @@ export function SupplierSubiektLinkField({
             </p>
           </div>
         </div>
-      ) : (
+      ) : null}
+      {subiektKhId != null && countryMismatch ? (
+        <p className="rounded-md bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
+          W Subiekcie adres: {countryLabel}, a Lokalizacja w OnTime:{" "}
+          {supplierLocation === ZD_AUTOMAT_SUPPLIER_LOCATION ? "Polska" : supplierLocation === "IMPORT" ? "Import" : "Zagranica"}. Automat ZD
+          liczy dostawcę wg Lokalizacji — sprawdź, czy jest ustawiona dobrze.
+        </p>
+      ) : null}
+      {subiektKhId == null ? (
         <p className="text-xs leading-relaxed text-slate-500">
           Wyszukaj kontrahenta po nazwie w Subiekcie i ustaw jako głównego albo dodaj dodatkowego
           (np. po zmianie firmy) - indeks ZD dopasuje dokumenty z każdej z tych kart do tego
           dostawcy.
         </p>
-      )}
+      ) : null}
 
       {aliases.length > 0 ? (
         <div className="space-y-1.5">

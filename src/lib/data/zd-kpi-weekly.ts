@@ -3,7 +3,7 @@
  * Właściciel znaczeń `zd_kpi_weekly`. Tylko GET do Subiekta.
  *
  * Dostawcy: z polityką ≠ classic (`zd_supplier_order_policy`) albo z Polski
- * (`suppliers.subiekt_country_id = 1`, zadanie 2 — bez tej kolumny zostaje sama polityka).
+ * (Lokalizacja OnTime `suppliers.location = 'POLSKA'`, decyzja 2026-10-23 — nie kraj z adresu w Subiekcie).
  * Populacja towarów = `zd_sku_class` dostawcy (zmapowane zakresy), klasa = nadpisanie ?? policzona.
  */
 import { query } from "@/lib/db/pool";
@@ -18,7 +18,7 @@ import { fetchZdEstimatePackaging, type ZdEstimatePackagingRow } from "@/lib/dat
 import { fetchZdProductPairs, type ZdProductPairRow } from "@/lib/data/zd-product-pairs";
 import { unitPricePerPiece, type StockWatchPackaging } from "@/lib/stock-watch/analysis";
 import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
-import { SUBIEKT_COUNTRY_ID_POLAND, type ZdAbc } from "@/lib/orders/zd-automat-contract";
+import { ZD_AUTOMAT_SUPPLIER_LOCATION, type ZdAbc } from "@/lib/orders/zd-automat-contract";
 import {
   fetchZdAsortyment,
   subiektOrdersConfig,
@@ -257,9 +257,9 @@ async function loadKpiSuppliers(): Promise<KpiSupplier[]> {
        FROM suppliers s
        JOIN zd_estimate_supplier_scopes z ON z.supplier_id = s.id
        LEFT JOIN zd_supplier_order_policy p ON p.supplier_id = s.id
-      WHERE (p.strategy IS NOT NULL AND p.strategy <> 'classic') OR s.subiekt_country_id = $1
+      WHERE (p.strategy IS NOT NULL AND p.strategy <> 'classic') OR s.location = $1
       ORDER BY s.name`,
-    [SUBIEKT_COUNTRY_ID_POLAND]
+    [ZD_AUTOMAT_SUPPLIER_LOCATION]
   );
   const out = new Map<string, KpiSupplier>();
   for (const r of res.rows) {

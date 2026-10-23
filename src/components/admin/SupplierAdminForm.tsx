@@ -99,6 +99,7 @@ export function SupplierAdminForm({
             supplierName={form.name}
             subiektKhId={form.subiekt_kh_id}
             country={form.subiekt_country}
+            supplierLocation={form.location}
             onLinked={(khId, country) => onSubiektLinked?.(khId, country)}
           />
         </div>

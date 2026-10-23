@@ -205,6 +205,7 @@ function SupplierEditModalInner({
               supplierName={form.name}
               subiektKhId={form.subiekt_kh_id}
               country={form.subiekt_country}
+            supplierLocation={form.location}
               onLinked={(khId, country) =>
                 setForm((f) => ({ ...f, subiekt_kh_id: khId, subiekt_country: country }))
               }

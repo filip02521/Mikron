@@ -407,7 +407,10 @@ OnTime ma własny podział (karta dostawcy → Lokalizacja: Polska / Zagranica /
 z Subiekta to adres rozliczeniowy. Rozjazd w 7 przypadkach: **Ivoclar (EXCEL), Dentsply Sirona, Medin** — w OnTime
 ZAGRANICA, w Subiekcie Polska; **DT Shop, Ormco, PiDental, Sklep ABC-RC** — w OnTime POLSKA, w Subiekcie zagranica.
 Bez Ivoclar (9 dostawców POLSKA) backtest roczny: 6,4% zera przy 0,29 mln wobec 10,5% przy 0,43 mln w rzeczywistości.
-**Do decyzji:** który podział wyznacza Fazę I (rekomendacja: Lokalizacja z OnTime; kraj z Subiekta jako kontrola).
+**Decyzja 2026-10-23 (Filip): Fazę I wyznacza Lokalizacja z OnTime** (`suppliers.location = 'POLSKA'`, stała
+`ZD_AUTOMAT_SUPPLIER_LOCATION`). Kraj z Subiekta zostaje jako kontrola: karta dostawcy pokazuje rozjazd na bursztynowo.
+W lokalnej kopii zmienia to skład KPI (37 dostawców): wchodzą DT Shop i PiDental, wypadają Ivoclar (EXCEL) i Dentsply Sirona.
+**Ivoclar nie jest w Fazie I** — liczby Fazy I to wariant „bez Ivoclar” powyżej.
 
 ### 10.3. Poprawki z audytu
 

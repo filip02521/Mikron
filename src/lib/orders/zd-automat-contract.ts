@@ -7,7 +7,12 @@
  * - status `deferred` + `deferredReason` propozycji — zadanie 5 (minimum / darmowa dostawa).
  * - `ZdAbc`/`ZdXyz` i tabela `zd_sku_class` — zadanie 7.
  * - kraj dostawcy, `autoLevel`, `cutoffTime`, `freeShippingThreshold` — zadanie 2.
+ * - „polski dostawca” (Faza I) = Lokalizacja w OnTime `suppliers.location = 'POLSKA'` (decyzja 2026-10-23);
+ *   kraj z Subiektu to adres rozliczeniowy — tylko kontrola rozjazdu w karcie dostawcy.
  */
+
+/** Lokalizacja OnTime, która wyznacza polskich dostawców automatu (Faza I). */
+export const ZD_AUTOMAT_SUPPLIER_LOCATION = "POLSKA";
 
 /** Kod kraju Polska w słowniku Subiekta (`sl_Panstwo`, `adr_IdPanstwo`). */
 export const SUBIEKT_COUNTRY_ID_POLAND = 1;
