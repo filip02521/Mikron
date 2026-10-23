@@ -1676,7 +1676,9 @@ export async function actionSaveZdSupplierOrderPolicy(input: {
   autoLevel: ZdAutoLevel;
   /** „HH:MM” — odcięcie dla handlowców (dzień przed wysyłką). */
   cutoffTime: string;
-}): Promise<{ ok: true; policy: ZdSupplierOrderPolicyRow } | { ok: false; message: string }> {
+}): Promise<
+  { ok: true; policy: ZdSupplierOrderPolicyRow; warning: string | null } | { ok: false; message: string }
+> {
   const user = await requireZdEstimateAdmin("mutate");
   const supplierId = String(input.supplierId ?? "").trim();
   if (!UUID_RE.test(supplierId)) return { ok: false, message: "Nieprawidłowy dostawca." };
@@ -1692,7 +1694,7 @@ export async function actionSaveZdSupplierOrderPolicy(input: {
   if (autoLevel > 0 && strategy === "classic") return { ok: false, message: "Propozycje automatu wymagają strategii testowej." };
   if (autoLevel > 0 && cycle == null) return { ok: false, message: "Propozycje automatu wymagają cyklu (co ile dni)." };
   try {
-    const policy = await upsertZdSupplierOrderPolicy({
+    const { policy, warning } = await upsertZdSupplierOrderPolicy({
       supplierId,
       strategy,
       targetDays: strategy === "classic" ? null : days,
@@ -1702,7 +1704,7 @@ export async function actionSaveZdSupplierOrderPolicy(input: {
       cutoffTime,
       updatedBy: user.id,
     });
-    return { ok: true, policy };
+    return { ok: true, policy, warning };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się zapisać strategii dostawcy.") };
   }

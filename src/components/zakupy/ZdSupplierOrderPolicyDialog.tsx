@@ -110,6 +110,8 @@ export function ZdSupplierOrderPolicyDialog({
   const [level, setLevel] = useState<ZdAutoLevel>(policy?.autoLevel ?? 0);
   const [cutoff, setCutoff] = useState(policy?.cutoffTime ?? "14:00");
   const [error, setError] = useState<string | null>(null);
+  /** Zapis bez części pól (baza bez migracji 194) — dialog zostaje z ostrzeżeniem, zamknięcie oddaje politykę. */
+  const [savedWithWarning, setSavedWithWarning] = useState<{ policy: ZdSupplierOrderPolicyRow; warning: string } | null>(null);
   const [pending, startTransition] = useTransition();
   const test = strategy === "max30_90";
 
@@ -131,6 +133,7 @@ export function ZdSupplierOrderPolicyDialog({
         cutoffTime: cutoffOk ? cutoff : (policy?.cutoffTime ?? "14:00"),
       });
       if (!res.ok) return setError(res.message);
+      if (res.warning) return setSavedWithWarning({ policy: res.policy, warning: res.warning });
       onSaved(res.policy);
     });
   };
@@ -159,21 +162,29 @@ export function ZdSupplierOrderPolicyDialog({
   return (
     <ModalShell
       open
-      onClose={onClose}
+      onClose={savedWithWarning ? () => onSaved(savedWithWarning.policy) : onClose}
       title={`Strategia zamawiania - ${supplierName}`}
       size="md"
       bodyClassName="space-y-4 px-5 py-5 sm:px-6"
       loadingMessage={pending ? "Zapisuję…" : null}
       disableBackdropClose={pending}
       footer={
-        <div className="flex w-full justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onClose} disabled={pending}>
-            Anuluj
-          </Button>
-          <Button type="button" onClick={save} disabled={pending}>
-            Zapisz
-          </Button>
-        </div>
+        savedWithWarning ? (
+          <div className="flex w-full justify-end">
+            <Button type="button" onClick={() => onSaved(savedWithWarning.policy)}>
+              Rozumiem
+            </Button>
+          </div>
+        ) : (
+          <div className="flex w-full justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={onClose} disabled={pending}>
+              Anuluj
+            </Button>
+            <Button type="button" onClick={save} disabled={pending}>
+              Zapisz
+            </Button>
+          </div>
+        )
       }
     >
       <div className="space-y-2" role="radiogroup" aria-label="Strategia">
@@ -253,6 +264,11 @@ export function ZdSupplierOrderPolicyDialog({
         dostawie cel rośnie sam: co najmniej cykl zamawiania + czas dostawy + 25% czasu dostawy (dni wyżej to
         minimum). Zmiana działa od następnego Policz.
       </p>
+      {savedWithWarning ? (
+        <p className="rounded-md bg-amber-50 px-3 py-2 text-sm leading-relaxed text-amber-900" role="status">
+          {savedWithWarning.warning}
+        </p>
+      ) : null}
       {error ? (
         <p className="text-sm text-red-700" role="alert">
           {error}

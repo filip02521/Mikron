@@ -108,26 +108,44 @@ export async function upsertZdSupplierOrderPolicy(input: {
   autoLevel: ZdAutoLevel;
   cutoffTime: string;
   updatedBy: string | null;
-}): Promise<ZdSupplierOrderPolicyRow> {
-  await query(
-    `INSERT INTO zd_supplier_order_policy
-       (supplier_id, strategy, target_days, cycle_days, auto_proposals, auto_level, cutoff_time, updated_at, updated_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7::time, now(), $8)
-     ON CONFLICT (supplier_id) DO UPDATE SET
-       strategy = EXCLUDED.strategy, target_days = EXCLUDED.target_days, cycle_days = EXCLUDED.cycle_days,
-       auto_proposals = EXCLUDED.auto_proposals, auto_level = EXCLUDED.auto_level, cutoff_time = EXCLUDED.cutoff_time,
-       updated_at = now(), updated_by = EXCLUDED.updated_by`,
-    [
-      input.supplierId,
-      parseStrategy(input.strategy),
-      intOrNull(input.targetDays, 1, 180),
-      intOrNull(input.cycleDays, 1, 60),
-      input.autoProposals === true,
-      parseZdAutoLevel(input.autoLevel),
-      parseZdCutoffTime(input.cutoffTime) ?? ZD_DEFAULT_CUTOFF_TIME,
-      input.updatedBy,
-    ]
-  );
-  return fetchZdSupplierOrderPolicy(input.supplierId);
+}): Promise<{ policy: ZdSupplierOrderPolicyRow; warning: string | null }> {
+  const autoLevel = parseZdAutoLevel(input.autoLevel);
+  const cutoffTime = parseZdCutoffTime(input.cutoffTime) ?? ZD_DEFAULT_CUTOFF_TIME;
+  const base = [
+    input.supplierId,
+    parseStrategy(input.strategy),
+    intOrNull(input.targetDays, 1, 180),
+    intOrNull(input.cycleDays, 1, 60),
+    input.autoProposals === true,
+    input.updatedBy,
+  ];
+  let warning: string | null = null;
+  try {
+    await query(
+      `INSERT INTO zd_supplier_order_policy
+         (supplier_id, strategy, target_days, cycle_days, auto_proposals, updated_by, auto_level, cutoff_time, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::time, now())
+       ON CONFLICT (supplier_id) DO UPDATE SET
+         strategy = EXCLUDED.strategy, target_days = EXCLUDED.target_days, cycle_days = EXCLUDED.cycle_days,
+         auto_proposals = EXCLUDED.auto_proposals, auto_level = EXCLUDED.auto_level, cutoff_time = EXCLUDED.cutoff_time,
+         updated_at = now(), updated_by = EXCLUDED.updated_by`,
+      [...base, autoLevel, cutoffTime]
+    );
+  } catch (e) {
+    // Kod przed migracją 194 (wgrywana ręcznie z panelu): strategia zapisuje się jak dotąd, stopień 1 niesie auto_proposals.
+    if ((e as { code?: unknown } | null)?.code !== "42703") throw e;
+    await query(
+      `INSERT INTO zd_supplier_order_policy (supplier_id, strategy, target_days, cycle_days, auto_proposals, updated_by, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, now())
+       ON CONFLICT (supplier_id) DO UPDATE SET
+         strategy = EXCLUDED.strategy, target_days = EXCLUDED.target_days, cycle_days = EXCLUDED.cycle_days,
+         auto_proposals = EXCLUDED.auto_proposals, updated_at = now(), updated_by = EXCLUDED.updated_by`,
+      base
+    );
+    if (autoLevel > 1 || cutoffTime !== ZD_DEFAULT_CUTOFF_TIME) {
+      warning = "Zapisano bez stopnia automatu i godziny odcięcia - baza nie ma jeszcze migracji 194_zd_automat_pl.sql (Admin → Migracje).";
+    }
+  }
+  return { policy: await fetchZdSupplierOrderPolicy(input.supplierId), warning };
 }
 
