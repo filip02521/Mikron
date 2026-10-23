@@ -14,6 +14,9 @@ import type { SubiektConfig } from "@/lib/subiekt/config";
 import { SUBIEKT_PATHS } from "@/lib/subiekt/paths";
 import { subiektQueryString } from "@/lib/subiekt/query";
 import { readPrices } from "@/lib/price-lists/subiekt-prices";
+import { fetchZdEstimatePackaging, type ZdEstimatePackagingRow } from "@/lib/data/zd-estimate-packaging";
+import { fetchZdProductPairs, type ZdProductPairRow } from "@/lib/data/zd-product-pairs";
+import { unitPricePerPiece, type StockWatchPackaging } from "@/lib/stock-watch/analysis";
 import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
 import { SUBIEKT_COUNTRY_ID_POLAND, type ZdAbc } from "@/lib/orders/zd-automat-contract";
 import {
@@ -58,6 +61,26 @@ export function zdKpiOosA(rows: ReadonlyArray<{ twId: number; available: number 
     if (r.available <= 0) zeroDays++;
   }
   return { pct: pct(zeroDays, skuDays), zeroDays, skuDays };
+}
+
+/**
+ * Cena z ostatniego ZD za sztukę karty: `product_purchase_prices` jest w jednostce dokumentu ZD
+ * (przy opakowaniach — za paczkę), a stan w sztukach. Opakowania i pary jak w Kreatorze (pary wygrywają).
+ */
+export function zdKpiLastZdPricePerPiece(
+  prices: ReadonlyArray<{ twId: number; priceNet: number }>,
+  packaging: ReadonlyArray<Pick<ZdEstimatePackagingRow, "subiektTwId" | "unitsPerPackage" | "documentUnitMode">>,
+  pairs: ReadonlyArray<Pick<ZdProductPairRow, "packTwId" | "unitsPerPack">>
+): Map<number, number> {
+  const pkg = new Map<number, StockWatchPackaging>();
+  for (const r of packaging) pkg.set(r.subiektTwId, { unitsPerPackage: r.unitsPerPackage, documentUnitMode: r.documentUnitMode });
+  for (const p of pairs) pkg.set(p.packTwId, { unitsPerPackage: p.unitsPerPack, documentUnitMode: "packages" });
+  const out = new Map<number, number>();
+  for (const p of prices) {
+    const unit = unitPricePerPiece(p.priceNet, pkg.get(p.twId) ?? null);
+    if (unit != null) out.set(p.twId, unit);
+  }
+  return out;
 }
 
 export type ZdKpiStockItem = {
@@ -361,10 +384,16 @@ export async function runZdKpiWeekly(opts: { today?: string } = {}): Promise<
     const cfg = subiektOrdersConfig();
     const suppliers = await loadKpiSuppliers();
     base.suppliers = suppliers.length;
-    const prices = await query<{ tw: number; price: string }>(
-      `SELECT subiekt_tw_id AS tw, price_net AS price FROM product_purchase_prices`
+    const [prices, packaging, pairs] = await Promise.all([
+      query<{ tw: number; price: string }>(`SELECT subiekt_tw_id AS tw, price_net AS price FROM product_purchase_prices`),
+      fetchZdEstimatePackaging(),
+      fetchZdProductPairs(),
+    ]);
+    const lastZdPrice = zdKpiLastZdPricePerPiece(
+      prices.rows.map((r) => ({ twId: Number(r.tw), priceNet: Number(r.price) })),
+      packaging,
+      pairs
     );
-    const lastZdPrice = new Map(prices.rows.map((r) => [Number(r.tw), Number(r.price)]));
     for (const s of suppliers) {
       try {
         const metrics = await computeSupplierKpi(cfg, s, week, today, lastZdPrice);

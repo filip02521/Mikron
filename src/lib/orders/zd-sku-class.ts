@@ -3,6 +3,10 @@
  * `docs/integrations/strategia-zakupowa-pl-automatyzacja.md` §3.2. Czyste funkcje, bez I/O.
  * Klasy NIE sterują ilościami (backtest §8.2) — służą KPI, flagom i kolejności przeglądu.
  * Wzorzec: `scripts/backtest-zd-pl/sim.mjs` (`demandStats`, `abcByMargin`).
+ *
+ * N (nowość) = pierwsza sprzedaż w oknie linii (2 lata) mniej niż 91 dni (13 tygodni) przed dniem
+ * przeliczenia. Towar bez żadnej sprzedaży to Z, nie N — inaczej niż w backteście, gdzie brak
+ * sprzedaży liczył się jako nowość (stąd tam więcej N).
  */
 import type { ZdAbc, ZdXyz } from "@/lib/orders/zd-automat-contract";
 
@@ -93,4 +97,34 @@ export function zdEffectiveClass(row: {
   overrideXyz: ZdXyz | null;
 }): { abc: ZdAbc; xyz: ZdXyz } {
   return { abc: row.overrideAbc ?? row.abc, xyz: row.overrideXyz ?? row.xyz };
+}
+
+/** Spadek liczby towarów ponad ten ułamek względem tabeli = podejrzany indeks zakresów, bez usuwania. */
+export const ZD_SKU_CLASS_MAX_DROP = 0.3;
+
+/**
+ * Bramka zapisu przeliczenia: pusty indeks zakresów (`subiekt_product_scope_index` nieświeży albo
+ * job indeksu padł) nie może skasować wszystkich klas. `write: false` → przerwij bez zapisu i bez DELETE;
+ * `deleteStale: false` → zapisz, ale nie usuwaj wierszy spoza przebiegu.
+ */
+export function zdSkuClassWriteGuard(input: { scopes: number; towary: number; existingRows: number }): {
+  write: boolean;
+  deleteStale: boolean;
+  reason: string | null;
+} {
+  if (input.scopes > 0 && input.towary === 0) {
+    return {
+      write: false,
+      deleteStale: false,
+      reason: `Zakresy dostawców (${input.scopes}) bez towarów w indeksie zakresów — przeliczenie przerwane, klasy bez zmian.`,
+    };
+  }
+  if (input.existingRows > 0 && input.towary < input.existingRows * (1 - ZD_SKU_CLASS_MAX_DROP)) {
+    return {
+      write: true,
+      deleteStale: false,
+      reason: `Towarów w zakresach ${input.towary} wobec ${input.existingRows} w tabeli (spadek > ${ZD_SKU_CLASS_MAX_DROP * 100}%) — stare wiersze zostawione.`,
+    };
+  }
+  return { write: true, deleteStale: true, reason: null };
 }

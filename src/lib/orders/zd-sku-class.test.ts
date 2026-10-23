@@ -5,6 +5,7 @@ import {
   zdDayDiff,
   zdEffectiveClass,
   zdSaleLinesFromEstimateDocs,
+  zdSkuClassWriteGuard,
   zdWeeklySales,
 } from "./zd-sku-class";
 
@@ -141,5 +142,30 @@ describe("zd-sku-class — ABC wg zysku", () => {
 describe("zd-sku-class — nadpisanie", () => {
   it("nadpisanie wygrywa, brak nadpisania zostawia policzoną", () => {
     expect(zdEffectiveClass({ abc: "C", xyz: "Z", overrideAbc: "A", overrideXyz: null })).toEqual({ abc: "A", xyz: "Z" });
+  });
+});
+
+describe("zd-sku-class — bramka zapisu", () => {
+  it("zakresy bez towarów (pusty indeks) → bez zapisu i bez usuwania", () => {
+    expect(zdSkuClassWriteGuard({ scopes: 52, towary: 0, existingRows: 5100 })).toMatchObject({
+      write: false,
+      deleteStale: false,
+    });
+  });
+
+  it("spadek > 30% względem tabeli → zapis bez usuwania, z powodem", () => {
+    const g = zdSkuClassWriteGuard({ scopes: 52, towary: 3500, existingRows: 5100 });
+    expect(g).toMatchObject({ write: true, deleteStale: false });
+    expect(g.reason).toContain("3500");
+  });
+
+  it("normalny przebieg (także pierwszy, pusta tabela) → zapis i usuwanie", () => {
+    expect(zdSkuClassWriteGuard({ scopes: 52, towary: 4000, existingRows: 5100 })).toEqual({
+      write: true,
+      deleteStale: true,
+      reason: null,
+    });
+    expect(zdSkuClassWriteGuard({ scopes: 52, towary: 5100, existingRows: 0 }).deleteStale).toBe(true);
+    expect(zdSkuClassWriteGuard({ scopes: 0, towary: 0, existingRows: 0 }).write).toBe(true);
   });
 });

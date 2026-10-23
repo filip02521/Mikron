@@ -20,6 +20,7 @@ import {
   zdClassifyAbcByProfit,
   zdClassifyXyz,
   zdSaleLinesFromEstimateDocs,
+  zdSkuClassWriteGuard,
   zdWeeklySales,
   type ZdSaleLine,
 } from "@/lib/orders/zd-sku-class";
@@ -133,10 +134,14 @@ export async function fetchZdAsortyment(
   return out;
 }
 
-/** Linie sprzedaży jednego towaru (`sprzedazOkres`) — wszystkie strony. */
+/**
+ * Linie sprzedaży jednego towaru (`sprzedazOkres`) — wszystkie strony. Więcej stron niż limit = błąd
+ * (towar trafia do `failed`, stara klasa zostaje) — tygodnie z niepełnej listy zaniżyłyby sprzedaż.
+ */
 async function fetchSaleLines(cfg: SubiektConfig, twId: number, dataOd: string, dataDo: string): Promise<ZdSaleLine[]> {
   const out: ZdSaleLine[] = [];
-  for (let page = 1, total = 1; page <= total && page <= ESTIMATE_MAX_PAGES; page++) {
+  for (let page = 1, total = 1; page <= total; page++) {
+    if (page > ESTIMATE_MAX_PAGES) throw new Error(`ponad ${ESTIMATE_MAX_PAGES} stron linii sprzedaży`);
     const qs = subiektQueryString({ dataOd, dataDo, page, pageSize: ESTIMATE_PAGE_SIZE });
     const j = await withSubiektRetry(() =>
       subiektJson<{
@@ -173,6 +178,8 @@ export type ZdSkuClassSyncResult = {
   failed: number;
   written: number;
   removed: number;
+  /** Powód pominięcia usuwania wierszy spoza przebiegu (podejrzany spadek liczby towarów); null = usunięte. */
+  deleteSkipped: string | null;
   counts: Record<string, number>;
   durationMs: number;
   error?: string;
@@ -185,13 +192,21 @@ export async function runZdSkuClassSync(opts: { asOf?: string } = {}): Promise<
   const t0 = Date.now();
   const asOf = opts.asOf ?? todayDateKeyInWarsaw();
   const base: ZdSkuClassSyncResult = {
-    ok: false, asOf, scopes: 0, towary: 0, withSales: 0, failed: 0, written: 0, removed: 0, counts: {}, durationMs: 0,
+    ok: false, asOf, scopes: 0, towary: 0, withSales: 0, failed: 0, written: 0, removed: 0, deleteSkipped: null, counts: {}, durationMs: 0,
   };
   try {
     const cfg = subiektOrdersConfig();
     const { scopes, towary } = await loadZdScopeTowary();
     base.scopes = scopes.length;
     base.towary = towary.length;
+    const existing = await query<{ n: number }>(`SELECT count(*)::int AS n FROM zd_sku_class`);
+    const guard = zdSkuClassWriteGuard({
+      scopes: scopes.length,
+      towary: towary.length,
+      existingRows: Number(existing.rows[0]?.n ?? 0),
+    });
+    if (!guard.write) return { ...base, durationMs: Date.now() - t0, error: guard.reason ?? "przeliczenie przerwane" };
+    base.deleteSkipped = guard.deleteStale ? null : guard.reason;
     const dataDo = addDays(asOf, -1);
 
     // ABC: zysk 12 mies. per towar (towar z kilku zakresów — ten sam wiersz, bierzemy raz).
@@ -282,6 +297,10 @@ export async function runZdSkuClassSync(opts: { asOf?: string } = {}): Promise<
               ),
             ]
           );
+        }
+        if (!guard.deleteStale) {
+          await client.query("COMMIT");
+          return 0;
         }
         // Towar, który wypadł z zakresów, znika — chyba że ma ręczne nadpisanie (decyzja człowieka zostaje).
         const del = await client.query(

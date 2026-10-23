@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   zdKpiFinalValue,
   zdKpiHumanCorrection,
+  zdKpiLastZdPricePerPiece,
   zdKpiMinima,
   zdKpiOosA,
   zdKpiStock,
@@ -110,5 +111,31 @@ describe("zd-kpi-weekly — minima", () => {
 
   it("dostawca bez minimum — brak % minimum", () => {
     expect(zdKpiMinima([proposal({})], null).aboveMinPct).toBeNull();
+  });
+});
+
+describe("zd-kpi-weekly — cena z ostatniego ZD za sztukę", () => {
+  it("opakowanie w trybie paczek dzieli cenę; tryb wielokrotności sztuk i brak opakowania zostawia; para wygrywa", () => {
+    const m = zdKpiLastZdPricePerPiece(
+      [
+        { twId: 1, priceNet: 100 },
+        { twId: 2, priceNet: 100 },
+        { twId: 3, priceNet: 100 },
+        { twId: 4, priceNet: 60 },
+        { twId: 5, priceNet: 0 },
+      ],
+      [
+        { subiektTwId: 1, unitsPerPackage: 10, documentUnitMode: "packages" },
+        { subiektTwId: 2, unitsPerPackage: 10, documentUnitMode: "pieces_multiple" },
+        { subiektTwId: 4, unitsPerPackage: 2, documentUnitMode: "pieces_multiple" },
+      ],
+      [{ packTwId: 4, unitsPerPack: 6 }]
+    );
+    expect(m.get(1)).toBe(10);
+    expect(m.get(2)).toBe(100);
+    expect(m.get(3)).toBe(100);
+    expect(m.get(4)).toBe(10);
+    // Cena 0 = brak ceny → towar liczony w „bez ceny”.
+    expect(m.has(5)).toBe(false);
   });
 });
