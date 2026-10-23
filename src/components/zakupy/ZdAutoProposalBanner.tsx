@@ -223,7 +223,7 @@ export function ZdAutoProposalBanner({
                   {l.prosbaPieces > 0 ? (
                     <span className="ml-2 text-xs text-slate-500">w tym prośby {formatQty(l.prosbaPieces)} szt</span>
                   ) : null}
-                  {l.flags?.length ? <span className="ml-2"><ZdProposalLineFlags flags={l.flags} /></span> : null}
+                  {l.flags?.length ? <span className="ml-2"><ZdProposalLineFlags flags={l.flags} notes={l.flagNotes} /></span> : null}
                 </span>
                 <span className="shrink-0 tabular-nums font-medium text-slate-900">
                   {formatQty(l.zdUnits)} {l.unitLabel}

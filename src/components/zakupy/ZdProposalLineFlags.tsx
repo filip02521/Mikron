@@ -14,8 +14,17 @@ export const ZD_PROPOSAL_LINE_FLAG_WHY: Record<ZdProposalLineFlag, string> = {
   missing_data: "Brak tempa sprzedaży, ceny albo czasu dostawy - ilości nie dało się sprawdzić.",
 };
 
-/** Bezpieczniki linii propozycji (zadanie 4): odznaki i dymek z powodem. Linia nie jest blokowana. */
-export function ZdProposalLineFlags({ flags }: { flags?: ZdProposalLineFlag[] }) {
+/**
+ * Bezpieczniki linii propozycji (zadanie 4): odznaki i dymek z powodem — z liczbami linii, gdy są
+ * `notes` (propozycje sprzed notatek: sama reguła). Linia nie jest blokowana.
+ */
+export function ZdProposalLineFlags({
+  flags,
+  notes,
+}: {
+  flags?: ZdProposalLineFlag[];
+  notes?: Partial<Record<ZdProposalLineFlag, string>>;
+}) {
   if (!flags?.length) return null;
   return (
     <span className="inline-flex flex-wrap items-center gap-1">
@@ -27,7 +36,7 @@ export function ZdProposalLineFlags({ flags }: { flags?: ZdProposalLineFlag[] })
       <HelpHintBubble
         tone="warning"
         ariaLabel="Dlaczego do sprawdzenia"
-        message={flags.map((f) => `${ZD_PROPOSAL_LINE_FLAG_LABEL[f]}: ${ZD_PROPOSAL_LINE_FLAG_WHY[f]}`).join(" ")}
+        message={flags.map((f) => `${ZD_PROPOSAL_LINE_FLAG_LABEL[f]}: ${notes?.[f] ?? ZD_PROPOSAL_LINE_FLAG_WHY[f]}`).join(" ")}
       />
     </span>
   );

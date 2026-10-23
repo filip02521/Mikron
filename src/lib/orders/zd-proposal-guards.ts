@@ -14,7 +14,7 @@ import {
 } from "@/lib/data/zd-proposal-guard-inputs";
 import type { ZdProposalFlag, ZdProposalLineFlag } from "@/lib/orders/zd-automat-contract";
 import { sales90FromProfile } from "@/lib/orders/zd-demand-policy";
-import { zdEstimateWindowDays } from "@/lib/orders/zd-estimate-manual";
+import { formatQty, zdEstimateWindowDays } from "@/lib/orders/zd-estimate-manual";
 import type { ZdProposalHookContext } from "@/lib/orders/zd-proposal-hook-context";
 import { resolveStockWatchBomViews, resolveStockWatchLineFigures } from "@/lib/stock-watch/bom-stock";
 import { mapPool } from "@/lib/async/map-pool";
@@ -93,34 +93,65 @@ export function median(values: readonly number[]): number {
   return s.length % 2 ? s[mid]! : (s[mid - 1]! + s[mid]!) / 2;
 }
 
+type ZdLineGuardResult = { flags: ZdProposalLineFlag[]; notes: Partial<Record<ZdProposalLineFlag, string>> };
+
+const qty = (n: number) => formatQty(Math.round(n * 10) / 10);
+const zl = (n: number) => `${Math.round(n).toLocaleString("pl-PL")} zł`;
+
 /**
- * Flagi jednej linii. `peak`: dokumenty sprzedaży 30 d — null = nie pytano (ilość nie przekroczyła
- * progu), "error" = zapytanie nie wyszło.
+ * Flagi jednej linii i krótkie notatki z liczbami (sztuki karty, zł) do dymka w panelu.
+ * `peak`: dokumenty sprzedaży 30 d — null = nie pytano (ilość nie przekroczyła progu),
+ * "error" = zapytanie nie wyszło.
  */
 export function zdLineGuardFlags(
   f: ZdGuardLineFacts,
   input: { dniZapasu: number; hasHorizon: boolean; peak: { maxDoc: number; total: number } | null | "error" }
-): ZdProposalLineFlag[] {
-  const flags: ZdProposalLineFlag[] = [];
+): ZdLineGuardResult {
+  const out: ZdLineGuardResult = { flags: [], notes: {} };
+  const add = (flag: ZdProposalLineFlag, note: string) => {
+    out.flags.push(flag);
+    out.notes[flag] = note;
+  };
   const dni = input.dniZapasu;
+  const stock = stockPieces(f);
   if (f.tempo != null) {
-    const ceiling = Math.max(f.tempo * (dni + ZD_GUARD_CEILING_EXTRA_DAYS), f.minStock ?? 0);
-    if (stockPieces(f) > 0 && f.available + f.openZd + stockPieces(f) > ceiling) flags.push("ceiling");
+    const byTempo = f.tempo * (dni + ZD_GUARD_CEILING_EXTRA_DAYS);
+    const ceiling = Math.max(byTempo, f.minStock ?? 0);
+    const after = f.available + f.openZd + stock;
+    if (stock > 0 && after > ceiling) {
+      add(
+        "ceiling",
+        `Stan, otwarte ZD i zamówienie: ${qty(after)} szt > sufit ${qty(ceiling)} szt ` +
+          (ceiling > byTempo ? "(minimum z Kreatora)." : `(tempo ${qty(f.tempo)} szt/d × ${dni + ZD_GUARD_CEILING_EXTRA_DAYS} d).`)
+      );
+    }
   }
   const p = input.peak;
   if (p && p !== "error" && p.total > 0 && p.maxDoc > ZD_GUARD_PEAK_DOC_SHARE * p.total && zdPeakQtyExceeded(f, dni)) {
-    flags.push("peak");
+    add(
+      "peak",
+      `Jeden dokument to ${Math.round((p.maxDoc / p.total) * 100)}% sprzedaży 30 d; zamówienie ${qty(stock)} szt > ` +
+        `${qty(ZD_GUARD_PEAK_QTY_FACTOR * f.tempo90! * dni)} szt (2× tempo 90 d × ${dni} d).`
+    );
   }
   const hist = f.recentZdUnits.slice(0, ZD_GUARD_JUMP_HISTORY);
   if (hist.length >= ZD_GUARD_JUMP_MIN_HISTORY) {
     const avg = hist.reduce((a, x) => a + x, 0) / hist.length;
-    if (f.zdUnits > ZD_GUARD_JUMP_FACTOR * avg) flags.push("jump");
+    if (f.zdUnits > ZD_GUARD_JUMP_FACTOR * avg) {
+      add("jump", `Zamówienie ${qty(f.zdUnits)} > 3× średnia ${qty(avg)} z ${hist.length} ostatnich ZD tego towaru.`);
+    }
   }
   if (f.priceNet != null && f.priceNet * f.pieces > ZD_GUARD_NEW_ITEM_MIN_VALUE && zdIsNewItem(f.windows)) {
-    flags.push("new_item");
+    add("new_item", `Pierwsza sprzedaż mniej niż 13 tygodni temu; pozycja warta ${zl(f.priceNet * f.pieces)}.`);
   }
-  if (f.tempo == null || f.priceNet == null || !input.hasHorizon || p === "error") flags.push("missing_data");
-  return flags;
+  const missing = [
+    f.tempo == null ? "tempa sprzedaży" : null,
+    f.priceNet == null ? "ceny zakupu" : null,
+    input.hasHorizon ? null : "czasu dostawy",
+    p === "error" ? "dokumentów sprzedaży z Subiekta" : null,
+  ].filter(Boolean);
+  if (missing.length) add("missing_data", `Brak: ${missing.join(", ")}.`);
+  return out;
 }
 
 /** Wartość propozycji ponad 2× mediana ostatnich ZD dostawcy (najnowsze pierwsze; < 3 ZD = bez flagi). */
@@ -130,8 +161,9 @@ export function zdOrderValueJump(value: number, recentOrderValues: readonly numb
   return value > ZD_GUARD_ORDER_VALUE_FACTOR * median(hist);
 }
 
-const withFlag = (l: ZdAutoProposalLine, flags: ZdProposalLineFlag[]): ZdAutoProposalLine =>
-  flags.length ? { ...l, flags } : l;
+const withFlags = (l: ZdAutoProposalLine, r: ZdLineGuardResult): ZdAutoProposalLine =>
+  r.flags.length ? { ...l, flags: r.flags, flagNotes: r.notes } : l;
+const missingData = (note: string): ZdLineGuardResult => ({ flags: ["missing_data"], notes: { missing_data: note } });
 
 /** Okno piku: 30 dni kalendarzowych kończące się na `dataDo` (włącznie). */
 export function zdPeakWindow(dataDo: string): { dataOd: string; dataDo: string } {
@@ -216,8 +248,8 @@ export async function applyZdProposalGuards(
 
     const lines = ctx.lines.map((l, i) => {
       const f = facts[i];
-      if (!f) return withFlag(l, ["missing_data"]);
-      return withFlag(l, zdLineGuardFlags(f, { dniZapasu: ctx.dniZapasuUsed, hasHorizon: ctx.horizon != null, peak: peak.get(i) ?? null }));
+      if (!f) return withFlags(l, missingData("Towaru nie ma na liście silnika - ilości nie dało się sprawdzić."));
+      return withFlags(l, zdLineGuardFlags(f, { dniZapasu: ctx.dniZapasuUsed, hasHorizon: ctx.horizon != null, peak: peak.get(i) ?? null }));
     });
     const value = ctx.lines.reduce((a, l) => a + (l.priceNet != null ? l.priceNet * l.pieces : 0), 0);
     return {
@@ -227,6 +259,6 @@ export async function applyZdProposalGuards(
   } catch (e) {
     // Propozycja powstaje dalej — bez sprawdzenia każda linia idzie do człowieka.
     console.error("[zd-guards] bezpieczniki", ctx.supplierId, e);
-    return { lines: ctx.lines.map((l) => withFlag(l, ["missing_data"])), proposalFlags: [] };
+    return { lines: ctx.lines.map((l) => withFlags(l, missingData("Nie udało się odczytać danych bezpieczników."))), proposalFlags: [] };
   }
 }

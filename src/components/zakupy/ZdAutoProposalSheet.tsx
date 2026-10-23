@@ -558,7 +558,7 @@ export function ZdAutoProposalSheet({
                             <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
                               <span className="font-mono">{l.symbol}</span>
                               {l.prosbaPieces > 0 ? <span>prośby {formatQty(l.prosbaPieces)} szt</span> : null}
-                              <ZdProposalLineFlags flags={l.flags} />
+                              <ZdProposalLineFlags flags={l.flags} notes={l.flagNotes} />
                               {change === "added" ? <Badge variant="info">nowa</Badge> : null}
                               {change === "changed" && beforeUnits != null ? (
                                 <Badge variant="warning">było {formatQty(beforeUnits)}</Badge>

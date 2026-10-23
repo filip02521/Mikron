@@ -26,6 +26,8 @@ export type ZdAutoProposalLine = {
   deltaAtLink?: number | null;
   /** Bezpieczniki (zadanie 4) — linia z flagą wymaga akceptacji człowieka. */
   flags?: ZdProposalLineFlag[];
+  /** Krótko, z liczbami, dlaczego bezpiecznik oznaczył linię (zadanie 4); brak = stara propozycja. */
+  flagNotes?: Partial<Record<ZdProposalLineFlag, string>>;
 };
 
 export type ZdAutoProposalStatus = "pending" | "accepted" | "rejected" | "expired" | "deferred";

@@ -31,6 +31,13 @@ describe("ZdProposalLineFlags", () => {
     expect(container.textContent).toContain("brak danych");
     expect(getByRole("button", { name: "Dlaczego do sprawdzenia" })).toBeTruthy();
   });
+  it("dymek: notatka z liczbami zamiast samej reguły, gdy jest", async () => {
+    const { getByRole, findByText } = render(
+      <ZdProposalLineFlags flags={["jump"]} notes={{ jump: "Zamówienie 40 > 3× średnia 10 z 4 ostatnich ZD tego towaru." }} />
+    );
+    getByRole("button", { name: "Dlaczego do sprawdzenia" }).click();
+    expect(await findByText(/Zamówienie 40 > 3× średnia 10/)).toBeTruthy();
+  });
 });
 
 describe("ZdProposalFlagsSummary", () => {

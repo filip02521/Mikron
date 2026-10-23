@@ -38,7 +38,7 @@ const facts = (over: Partial<ZdGuardLineFacts> = {}): ZdGuardLineFacts => ({
 });
 const base = { dniZapasu: 25, hasHorizon: true, peak: null };
 const flags = (over: Partial<ZdGuardLineFacts>, input: Partial<Parameters<typeof zdLineGuardFlags>[1]> = {}) =>
-  zdLineGuardFlags(facts(over), { ...base, ...input });
+  zdLineGuardFlags(facts(over), { ...base, ...input }).flags;
 
 describe("sufit", () => {
   // tempo 1 × (25 + 30) = 55 sztuk.
@@ -48,6 +48,10 @@ describe("sufit", () => {
   });
   it("sztuki z próśb nie liczą się do sufitu", () => {
     expect(flags({ available: 20, openZd: 15, pieces: 30, prosbaPieces: 10 })).not.toContain("ceiling");
+  });
+  it("notatka z liczbami: po dostawie vs sufit i tempo", () => {
+    const r = zdLineGuardFlags(facts({ available: 20, openZd: 15, pieces: 21 }), base);
+    expect(r.notes.ceiling).toBe("Stan, otwarte ZD i zamówienie: 56 szt > sufit 55 szt (tempo 1 szt/d × 55 d).");
   });
   it("minimum z Kreatora podnosi sufit", () => {
     expect(flags({ tempo: 0, pieces: 8, minStock: 8 })).not.toContain("ceiling");
@@ -64,6 +68,9 @@ describe("pik", () => {
   });
   it("dokument > 60% i ilość > 2× tempo 90 d × dni — flaga", () => {
     expect(flags({ pieces: 51 }, { peak: share(61, 100) })).toContain("peak");
+    expect(zdLineGuardFlags(facts({ pieces: 51 }), { ...base, peak: share(72, 100) }).notes.peak).toBe(
+      "Jeden dokument to 72% sprzedaży 30 d; zamówienie 51 szt > 50 szt (2× tempo 90 d × 25 d)."
+    );
   });
   it("bez sprzedaży w oknie albo bez profilu — bez flagi", () => {
     expect(flags({ pieces: 51 }, { peak: share(0, 0) })).not.toContain("peak");
@@ -122,6 +129,9 @@ describe("brak danych", () => {
     expect(flags({ tempo: null })).toEqual(["missing_data"]);
     expect(flags({ priceNet: null })).toEqual(["missing_data"]);
     expect(flags({}, { hasHorizon: false })).toEqual(["missing_data"]);
+    expect(zdLineGuardFlags(facts({ priceNet: null }), { ...base, hasHorizon: false }).notes.missing_data).toBe(
+      "Brak: ceny zakupu, czasu dostawy."
+    );
   });
 });
 
@@ -193,6 +203,7 @@ describe("applyZdProposalGuards", () => {
     expect(fetchSubiektProductSalesDocs).toHaveBeenCalledWith({ towarId: 2, dataOd: "2026-01-31", dataDo: "2026-03-01" });
     expect(out.lines[0]!.flags).toBeUndefined();
     expect(out.lines[1]!.flags).toEqual(["peak"]);
+    expect(out.lines[1]!.flagNotes?.peak).toContain("80% sprzedaży 30 d");
     expect(out.lines.map((l) => l.pieces)).toEqual([10, 51]);
   });
 
@@ -223,6 +234,15 @@ describe("applyZdProposalGuards", () => {
     });
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const out = await applyZdProposalGuards(ctxOf([proposalLine(1, 5)], [engineLine(1)]));
-    expect(out).toEqual({ lines: [{ ...proposalLine(1, 5), flags: ["missing_data"] }], proposalFlags: [] });
+    expect(out).toEqual({
+      lines: [
+        {
+          ...proposalLine(1, 5),
+          flags: ["missing_data"],
+          flagNotes: { missing_data: "Nie udało się odczytać danych bezpieczników." },
+        },
+      ],
+      proposalFlags: [],
+    });
   });
 });
