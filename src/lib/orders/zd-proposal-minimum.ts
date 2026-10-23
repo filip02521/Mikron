@@ -4,7 +4,7 @@
  * z API (`GET /products/{id}/price/catalog`), fallback cena z ostatniego ZD — `priceNet` każdej propozycji,
  * także dostawcy bez minimum i progu (jedno znaczenie pola dla panelu i KPI).
  *
- * Kolejność (po bezpiecznikach — dodane linie nie mają flag):
+ * Kolejność (przed bezpiecznikami — dodane linie też dostają flagi):
  * Linia pilna = prośba handlowca (towar pod klienta, niezależnie od tempa) albo pozycja (dostępne +
  * otwarte ZD) / tempo < cykl + czas dostawy: odłożenie przesuwa zamówienie o cały cykl, więc taki
  * towar skończyłby się przed kolejną dostawą.

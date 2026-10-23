@@ -318,3 +318,55 @@ Ivoclar (82% wartości zapasu): 2,2% vs 4,0% przy 2,13 vs 2,15 mln. Hansen: 1,5%
 - ZD otwarte na 22.04 pominięte (start z samym stanem) — pierwsze tygodnie zaniżają zapas wszystkich strategii.
 - Rytm, czasy dostaw i zakresy z lokalnej kopii bazy (próbki do 03.10.2026), nie z produkcji.
 - Koszt dostawy na ZD nieuwzględniony (brak danych) — dlatego cykl 7 d, nie 3 d.
+
+## 9. Backtest roczny i weryfikacja danych (2026-10-23)
+
+**Skrypty:** `scripts/backtest-zd-pl/sim1y.mjs`, `verify1y.mjs`, test zgodności z silnikiem `engine-parity.test.ts`
+(dni celu = `effectiveDniZapasu`, zaokrąglenie = `computeZdPackOrderQty`, p90 nearest-rank — 3/3).
+Dane: `BT_DATA=data-1y BT_SALES_FROM=2024-10-01 BT_SIM_START=2025-10-22 node fetch.mjs`.
+**Okres:** 365 dni, 23.10.2025–22.10.2026, te same 10 dostawców (2 284 SKU, 1 331 aktywnych).
+
+Wierniej niż §8: czas dostawy jak silnik (p90 z próbek z 24 mies. **sprzed** dnia decyzji, wszystkie typy
+zamówień — statystyka „łącznie”), realizacja = czas prawdziwego zamówienia złożonego najbliżej tego dnia,
+zaokrąglenie do opakowań i wielokrotności z Kreatora, popyt kompletów „explode” rozpisany na składniki.
+
+### 9.1. Weryfikacja danych
+
+| Kontrola | Wynik | Wniosek |
+|---|---|---|
+| Bilans: stan(t+7) − stan(t) + sprzedaż = przyjęcia | rozchód bez sprzedaży 5,9% sztuk, **15% wartości**; 2,7% tygodni-SKU | głównie **kompletacja** (P310 + VP3, Vertex 4 kg + płyn, ProBase polimer + monomer): składnik schodzi ze stanu, sprzedaje się komplet |
+| Nasza sprzedaż / raport asortymentowy (rok uczenia) | 111% | różnica = WZ niepowiązane (my liczymy, raport nie) i korekty/zwroty (raport odejmuje) — zgodne z definicją silnika |
+| Linie ujemne w danych | 0 z 116 148 | zwroty nie zaniżają popytu |
+| Towary bez ceny magazynowej | 155 z 2 284 (6,8%) | pominięte w wycenie zapasu — tak samo dla każdej strategii |
+
+### 9.2. Wynik roczny
+
+| Strategia | Zero na zdjęciu tyg. | Dni z brakiem | Obsłużona sprzedaż | Śr. zapas | ZD / rok | Mediana ZD |
+|---|---|---|---|---|---|---|
+| **Rzeczywistość** | **6,1%** | — | — | **2,73 mln** | — | — |
+| Kreator dziś (30 d) | 12,1% | 12,7% | 84,9% | 1,22 mln | 231 | 13,5 tys. |
+| Kreator 60 d | 6,2% | 6,5% | 93,4% | 1,82 mln | 232 | 16,3 tys. |
+| `max30_90`, cykl dostawcy | 5,0% | 5,4% | 93,3% | 2,26 mln | 231 | 14,3 tys. |
+| **`max30_90`, cykl 7 d, cel 25** | **3,6%** | **3,9%** | **95,5%** | **2,29 mln** | 482 | 3,8 tys. |
+| `max30_90`, cykl 7 d, cel 20 / 30 | 4,2% / 3,4% | 4,7% / 3,7% | 94,3% / 96,1% | 2,23 / 2,33 mln | 483 | 3,7 tys. |
+| `max30_90`, cykl 3 d | 2,9% | 3,3% | 96,2% | 2,25 mln | 979 | 1,7 tys. |
+| cykl 7 d bez podłogi 90 d | 4,4% | 4,8% | 95,1% | 2,26 mln | 479 | 3,8 tys. |
+
+- **Kwartały (dni z brakiem, cykl 7 d):** 4,7% · 4,0% · 5,0% · 2,1% — wygrywa z Kreatorem (10,3 · 13,6 · 17,7 · 9,4)
+  w każdym kwartale, także w lecie (Q3), gdzie Kreator ma najgorszy wynik.
+- **Na dostawcę (cykl 7 d vs rzeczywistość):** nie gorszy w brakach **i** zapasie u **8/10**. Gorszy w brakach:
+  **Denon** (10,5% vs 7,5%, przy zapasie 101 vs 191 tys.) i Polkard (8,4% vs 9,9% — lepszy w brakach, zapas 13 vs 14 tys., ok).
+  Denon ma najwięcej kompletów (Vertex) — popyt składników jest w danych najsłabiej widoczny.
+- **Test odporności (BT_OUTFLOW=1, cały rozchód bez sprzedaży doliczony jako popyt):** cykl 7 d 3,4% zera
+  przy 2,53 mln vs rzeczywistość 6,1% przy 2,73 mln; 7/10 dostawców nie gorszych. Wniosek się trzyma.
+- **Podłoga 90 d** daje −0,8 pp zera przy +1% zapasu; **cel 25 d** jest punktem przegięcia (20 → 25: −0,6 pp,
+  25 → 30: −0,2 pp przy +2% zapasu).
+
+### 9.3. Wnioski i warunki wdrożenia
+
+1. **Strategia potwierdzona na roku:** `max30_90`, cykl 7 dni, cel 25 dni — ok. −40% braków wobec rzeczywistości
+   przy −16% zapasu; −70% braków wobec dzisiejszego Kreatora (który trzyma za mało).
+2. **Denon: stopień 1 (akceptacja ręczna)** do czasu uzupełnienia kompletów Vertex w Kreatorze (popyt składników).
+3. **Komplety:** w lokalnej bazie 10 kompletów „explode”; rozchód kompletacji na produkcji trzeba sprawdzić
+   (zakres kompletów w Kreatorze) przed stopniem 3 u dostawców z zestawami (Ivoclar, Denon).
+4. Cykl 3 d jest lepszy o 0,7 pp, ale daje 2× więcej ZD (mediana 1,7 tys. zł) — tylko bez kosztu dostawy.

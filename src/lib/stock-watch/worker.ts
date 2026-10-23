@@ -655,15 +655,17 @@ async function maybeCreateAutoProposal(input: {
       dniZapasuUsed: input.dniZapasuUsed,
       dataDo: input.dataDo,
     };
-    const guarded = await applyZdProposalGuards(ctx);
-    const minimum = await applyZdProposalMinimum({ ...ctx, lines: guarded.lines });
+    // Najpierw ceny kartotekowe i minimum (dopełnienie dodaje linie), potem bezpieczniki na końcowej liście —
+    // flagi wartościowe liczą się z tej samej ceny, którą zapisuje propozycja, a dopełnienie też jest sprawdzone.
+    const minimum = await applyZdProposalMinimum(ctx);
+    const guarded = await applyZdProposalGuards({ ...ctx, lines: minimum.lines });
     const created = await createZdAutoProposal({
       supplierId: input.supplierId,
       // targetDays = dni faktycznie użyte w tej propozycji (baner pokazuje je zamiast ustawienia).
       policy: { strategy: policy.strategy, targetDays: input.dniZapasuUsed, cycleDays: policy.cycleDays },
       dataOd: input.dataOd,
       dataDo: input.dataDo,
-      lines: minimum.lines,
+      lines: guarded.lines,
       serviceOrderIds: input.serviceOrderIds,
       flags: guarded.proposalFlags,
       deferredReason: minimum.outcome.kind === "deferred" ? minimum.outcome.reason : null,
