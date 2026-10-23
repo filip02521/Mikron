@@ -4,6 +4,8 @@
  * z API (`GET /products/{id}/price/catalog`), fallback cena z ostatniego ZD.
  *
  * Kolejność (po bezpiecznikach — dodane linie nie mają flag):
+ * Linia pilna = pozycja (dostępne + otwarte ZD) / tempo < cykl + czas dostawy: odłożenie przesuwa
+ * zamówienie o cały cykl, więc taki towar skończyłby się przed kolejną dostawą.
  * 1. Poniżej minimum (PLN), bez linii pilnych → odłożona. Z pilnymi → idzie, powód w `notes`.
  * 2. Poniżej progu darmowej dostawy: brakuje ≤ 15% → dopełnienie (A/B, najmniej dni pokrycia,
  *    każdy towar najwyżej do celu + tempo × cykl). Nadal poniżej progu i bez pilnych → odłożona
@@ -61,6 +63,15 @@ function coverDays(line: ZdOrderListLine["line"]): number {
   return v > 0 ? (Number(line.dostepne) || 0) / v : Number.POSITIVE_INFINITY;
 }
 
+type PackagingMap = ZdProposalHookContext["engine"]["packagingLookup"];
+
+/** Pozycja w sztukach bez tej propozycji: dostępne + otwarte ZD (para: pokrycie obu kart, ZD już w nim). */
+function positionPieces(line: ZdOrderListLine["line"], packaging: PackagingMap): number {
+  if (line.pair?.role === "pack") return Number(line.pair.coverSzt) || 0;
+  const pack = packaging.get(line.tw_Id);
+  return (Number(line.dostepne) || 0) + zdDocumentUnitsToPieces(line.otwarteZd, pack?.unitsPerPackage, pack?.documentUnitMode);
+}
+
 const valueOf = (lines: readonly ZdAutoProposalLine[]) =>
   round2(lines.reduce((a, l) => a + (l.priceNet != null ? l.priceNet * l.pieces : 0), 0));
 
@@ -108,12 +119,14 @@ export async function decideZdProposalMinimum(
   }
 
   const listByTw = new Map(ctx.list.lines.map((l) => [l.line.tw_Id, l]));
-  const leadDays = ctx.horizon?.leadDays ?? ZD_MINIMUM_DEFAULT_DAYS;
+  const cycleDays = deps.cycleDays ?? ZD_MINIMUM_DEFAULT_DAYS;
+  const urgentDays = cycleDays + (ctx.horizon?.leadDays ?? ZD_MINIMUM_DEFAULT_DAYS);
   const urgent = lines.filter((l) => {
     const row = listByTw.get(l.twId);
-    return row != null && coverDays(row.line) < leadDays;
+    const v = Number(row?.line.sprzedazDziennie) || 0;
+    return row != null && v > 0 && positionPieces(row.line, packaging) / v < urgentDays;
   }).length;
-  const urgentWhy = `${urgent} ${polishPluralWord(urgent, "pozycja kończy", "pozycje kończą", "pozycji kończy")} się przed dostawą`;
+  const urgentWhy = `${urgent} ${polishPluralWord(urgent, "pozycja skończyłaby", "pozycje skończyłyby", "pozycji skończyłoby")} się przed kolejną dostawą`;
 
   if (minApplies && value < min) {
     if (!urgent) {
@@ -125,7 +138,7 @@ export async function decideZdProposalMinimum(
   if (thr != null && value < thr) {
     const gap = round2(thr - value);
     if (gap <= thr * ZD_TOP_UP_MAX_GAP_SHARE + 1e-9) {
-      const top = await topUp({ ctx, lines, gap, cycleDays: deps.cycleDays ?? ZD_MINIMUM_DEFAULT_DAYS, deps, loadPrices, priceOf, notes });
+      const top = await topUp({ ctx, lines, gap, cycleDays, deps, loadPrices, priceOf, notes });
       if (top) {
         const after = valueOf(top.lines);
         return {
@@ -203,9 +216,7 @@ async function topUp(input: {
       const pair = line.pair?.role === "pack" ? line.pair : null;
       const units = pair ? pair.unitsPerPack : pack?.unitsPerPackage;
       const mode = pair ? "packages" : pack?.documentUnitMode;
-      const position = pair
-        ? pair.coverSzt
-        : (Number(line.dostepne) || 0) + zdDocumentUnitsToPieces(line.otwarteZd, pack?.unitsPerPackage, pack?.documentUnitMode);
+      const position = positionPieces(line, packaging);
       const cel = Number(line.celZapasuTracked ?? line.celZapasu) || 0;
       // Najwyżej jeden cykl zapasu ponad cel (S + d̄·R), liczony od pozycji bez tej propozycji.
       const capPieces = Math.ceil(cel + Number(line.sprzedazDziennie) * cycleDays - position - 1e-9);

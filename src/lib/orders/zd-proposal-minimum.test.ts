@@ -127,26 +127,42 @@ describe("decideZdProposalMinimum — minimum", () => {
     expect(r.outcome).toEqual({ kind: "deferred", reason: "Minimum 500 zł, propozycja 499,99 zł - przesunięta na kolejny cykl." });
   });
 
-  it("poniżej minimum z pilną linią (pokrycie < czas dostawy) → idzie, powód w notes", async () => {
-    const urgent = row(2, { dostepne: 6, v: 1, cel: 25, zdUnits: 5, pieces: 5 }); // 6 dni < 7
+  it("poniżej minimum z pilną linią (pokrycie < cykl + dostawa) → idzie, powód w notes", async () => {
+    const urgent = row(2, { dostepne: 6, v: 1, cel: 25, zdUnits: 5, pieces: 5 }); // 6 dni < 7 + 7
     const { d } = deps({ min: 500, catalog: { 1: 10, 2: 10 } });
     const r = await decideZdProposalMinimum(ctx({ lines: [pl(1, 10), pl(2, 5)], rows: [calm, urgent] }), d);
     expect(r.outcome).toEqual({ kind: "ok" });
-    expect(r.notes.join(" ")).toContain("Poniżej minimum 500 zł (150 zł) - idzie, bo 1 pozycja kończy się przed dostawą");
+    expect(r.notes.join(" ")).toContain("Poniżej minimum 500 zł (150 zł) - idzie, bo 1 pozycja skończyłaby się przed kolejną dostawą");
   });
 
-  it("pokrycie równe czasowi dostawy to jeszcze nie pilna", async () => {
-    const edge = row(2, { dostepne: 7, v: 1, cel: 25, zdUnits: 5, pieces: 5 });
+  // Cykl 7 + dostawa 7 = 14 dni: odłożenie o cykl nie może zostawić towaru bez stanu przed kolejną dostawą.
+  it.each([
+    [13, "ok"],
+    [14, "deferred"],
+    [15, "deferred"],
+  ] as const)("granica pilności R + L: pokrycie %i dni → %s", async (days, kind) => {
+    const edge = row(2, { dostepne: days * 2, v: 2, cel: 25, zdUnits: 5, pieces: 5 });
     const { d } = deps({ min: 500, catalog: { 2: 10 } });
     const r = await decideZdProposalMinimum(ctx({ lines: [pl(2, 5)], rows: [edge] }), d);
+    expect(r.outcome.kind).toBe(kind);
+  });
+
+  it("pokrycie liczy otwarte ZD w sztukach (opakowania × szt.)", async () => {
+    // 5 szt + 2 op. × 5 szt = 15 dni ≥ 14 → odłożona; bez przeliczenia opakowań byłoby 7 dni (pilna).
+    const inTransit = row(2, { dostepne: 5, v: 1, cel: 25, otwarteZd: 2, zdUnits: 1, pieces: 5 });
+    const { d } = deps({ min: 500, catalog: { 2: 50 } });
+    const r = await decideZdProposalMinimum(
+      ctx({ lines: [pl(2, 5)], rows: [inTransit], packaging: { 2: { unitsPerPackage: 5, documentUnitMode: "packages" } } }),
+      d
+    );
     expect(r.outcome.kind).toBe("deferred");
   });
 
-  it("brak horyzontu → czas dostawy 7 dni", async () => {
-    const six = row(2, { dostepne: 6, v: 1, cel: 25, zdUnits: 5, pieces: 5 });
+  it("brak horyzontu → dostawa 7 dni; krótsza dostawa zawęża pilność", async () => {
+    const thirteen = row(2, { dostepne: 13, v: 1, cel: 25, zdUnits: 5, pieces: 5 });
     const { d } = deps({ min: 500, catalog: { 2: 10 } });
-    const r = await decideZdProposalMinimum(ctx({ lines: [pl(2, 5)], rows: [six], leadDays: null }), d);
-    expect(r.outcome).toEqual({ kind: "ok" });
+    expect((await decideZdProposalMinimum(ctx({ lines: [pl(2, 5)], rows: [thirteen], leadDays: null }), d)).outcome.kind).toBe("ok");
+    expect((await decideZdProposalMinimum(ctx({ lines: [pl(2, 5)], rows: [thirteen], leadDays: 3 }), d)).outcome.kind).toBe("deferred");
   });
 
   it("minimum w innej walucie → reguła pominięta, powód w notes", async () => {
