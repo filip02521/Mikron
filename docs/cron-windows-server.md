@@ -24,6 +24,8 @@ Opcjonalnie: `INFORMACJA_STOCK_AUTO_ENABLED=1` w `.env.local`, aby włączyć au
 | `catalog-zd-sync` | `/api/cron/catalog-zd-sync` | **codziennie 02:00–04:40 co 20 min** | Indeks ZD + import katalogu (noc) |
 | `stock-watch` | `/api/cron/stock-watch` | **codziennie 05:30–06:30 co 20 min** | Braki i zamówienia: ceny z ZD + lista „Do ZD” silnikiem Kreatora per dostawca (panel `/zakupy/braki`) |
 | `subiekt-lead-times` | `/api/cron/subiekt-lead-times` | **codziennie 01:30** | Czasy dostaw ZD → FZ z Subiekta (ostatnie 18 mies.) i przeliczenie ETA, potem kraj dostawców z kartoteki Subiekta (`suppliers.subiekt_country_*`); `?full=1` = cała historia od 2006 (~5 min) |
+| `zd-sku-class` | `/api/cron/zd-sku-class` | **1. dnia miesiąca 00:30** | Klasy ABC (zysk 12 mies.) / XYZ (52 tygodnie) towarów zmapowanych zakresów → `zd_sku_class` (~3 min lokalnie na 5 100 towarów); panel `/zakupy/automat` |
+| `zd-kpi-weekly` | `/api/cron/zd-kpi-weekly` | **pn 07:00** | KPI automatu ZD za miniony tydzień (braki A, rotacja, martwy zapas, korekta, minima) → `zd_kpi_weekly` |
 | `morning-sync` | `/api/cron/morning-sync` | **ręcznie** | Tylko przeliczenie harmonogramów (serwis / test) |
 
 Ivoclar weekly: **OnTime Raporty** (nie instalować `scheduled-mails` na OT). Endpoint `/api/cron/scheduled-mails` w OT to legacy no-op; stare SchTasks `OnTime Cron Scheduled Mails *` są usuwane przy `-Install` (lista legacy). Logi: `/admin/mail`. Zob. `docs/CUTOVER-IVOCLAR.md`.

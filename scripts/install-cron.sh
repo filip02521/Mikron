@@ -13,7 +13,7 @@
 #   --output FILE       plik wyjściowy (domyślnie /tmp/system-dostaw.cron)
 #   --base URL          baza HTTP aplikacji (domyślnie http://127.0.0.1:PORT)
 #   --from-env FILE     wczytaj env z innego pliku zamiast .env.local
-#   --test [JOB]        wywołaj endpoint (morning|process-deliveries|informacja-stock-sync|catalog-zd-sync|stock-watch|subiekt-lead-times|zd-eta-sync|morning-sync)
+#   --test [JOB]        wywołaj endpoint (morning|process-deliveries|informacja-stock-sync|catalog-zd-sync|stock-watch|subiekt-lead-times|zd-sku-class|zd-kpi-weekly|zd-eta-sync|morning-sync)
 #   --force             przy --test dodaj ?force=1 (pomija okna czasowe)
 #
 set -euo pipefail
@@ -102,9 +102,11 @@ cron_path_for_job() {
     catalog-zd-sync) echo "/api/cron/catalog-zd-sync" ;;
     stock-watch) echo "/api/cron/stock-watch" ;;
     subiekt-lead-times) echo "/api/cron/subiekt-lead-times" ;;
+    zd-sku-class) echo "/api/cron/zd-sku-class" ;;
+    zd-kpi-weekly) echo "/api/cron/zd-kpi-weekly" ;;
     zd-eta-sync) echo "/api/cron/zd-eta-sync" ;;
     morning-sync) echo "/api/cron/morning-sync" ;;
-    *) die "Nieznany job: $1 (morning|process-deliveries|informacja-stock-sync|catalog-zd-sync|stock-watch|subiekt-lead-times|zd-eta-sync|morning-sync)" ;;
+    *) die "Nieznany job: $1 (morning|process-deliveries|informacja-stock-sync|catalog-zd-sync|stock-watch|subiekt-lead-times|zd-sku-class|zd-kpi-weekly|zd-eta-sync|morning-sync)" ;;
   esac
 }
 
@@ -165,6 +167,12 @@ BASE=${BASE_URL}
 # Noc 01:30 — czasy dostaw ZD → FZ z Subiekta (ostatnie 18 mies.) + przeliczenie ETA
 30 1 * * * root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/subiekt-lead-times" >> /var/log/system-dostaw-catalog.log 2>&1
 
+# 1. dnia miesiąca 00:30 — klasy ABC/XYZ towarów zmapowanych zakresów (kilkanaście minut)
+30 0 1 * * root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/zd-sku-class" >> /var/log/system-dostaw-catalog.log 2>&1
+
+# Pon 07:00 — KPI automatu ZD za miniony tydzień (po stock-watch, który zapisuje historię stanów)
+0 7 * * 1 root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/zd-kpi-weekly" >> /var/log/system-dostaw-cron.log 2>&1
+
 # Noc 05:30–06:30 co 20 min — braki i zamówienia (rotacja, propozycje; do ~12 min na wywołanie)
 30 5 * * * root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/stock-watch" >> /var/log/system-dostaw-catalog.log 2>&1
 50 5 * * * root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/stock-watch" >> /var/log/system-dostaw-catalog.log 2>&1
@@ -189,6 +197,8 @@ log "  08–18 pn–pt    → /api/cron/zd-eta-sync (8,10,12,14,16,18)"
 log "  02:00–04:40     → /api/cron/catalog-zd-sync (co 20 min, noc, Subiekt LAN)"
 log "  01:30           → /api/cron/subiekt-lead-times (czasy dostaw ZD → FZ, kraj dostawców)"
 log "  05:30–06:30     → /api/cron/stock-watch (co 20 min, braki i zamówienia)"
+log "  00:30 1. dnia   → /api/cron/zd-sku-class (klasy ABC/XYZ, miesięcznie)"
+log "  07:00 pn        → /api/cron/zd-kpi-weekly (KPI automatu ZD)"
 log "  (Ivoclar weekly → OnTime Raporty; OT /api/cron/scheduled-mails = no-op)"
 log ""
 log "Baza HTTP: ${BASE_URL}"
