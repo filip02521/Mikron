@@ -354,8 +354,9 @@ zaokrąglenie do opakowań i wielokrotności z Kreatora, popyt kompletów „exp
 
 - **Kwartały (dni z brakiem, cykl 7 d):** 4,7% · 4,0% · 5,0% · 2,1% — wygrywa z Kreatorem (10,3 · 13,6 · 17,7 · 9,4)
   w każdym kwartale, także w lecie (Q3), gdzie Kreator ma najgorszy wynik.
-- **Na dostawcę (cykl 7 d vs rzeczywistość):** nie gorszy w brakach **i** zapasie u **8/10**. Gorszy w brakach:
-  **Denon** (10,5% vs 7,5%, przy zapasie 101 vs 191 tys.) i Polkard (8,4% vs 9,9% — lepszy w brakach, zapas 13 vs 14 tys., ok).
+- **Na dostawcę (cykl 7 d vs rzeczywistość):** nie gorszy w brakach **i** zapasie u **8/10**. Nie zaliczają:
+  **Denon** — więcej braków (10,5% vs 7,5%) przy zapasie 101 vs 191 tys., i **Makromed** — braki niższe (3,1% vs 3,4%),
+  zapas minimalnie wyższy (34 vs 34 tys. po zaokrągleniu).
   Denon ma najwięcej kompletów (Vertex) — popyt składników jest w danych najsłabiej widoczny.
 - **Test odporności (BT_OUTFLOW=1, cały rozchód bez sprzedaży doliczony jako popyt):** cykl 7 d 3,4% zera
   przy 2,53 mln vs rzeczywistość 6,1% przy 2,73 mln; 7/10 dostawców nie gorszych. Wniosek się trzyma.
