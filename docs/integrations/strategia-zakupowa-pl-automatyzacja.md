@@ -367,7 +367,12 @@ zaokrąglenie do opakowań i wielokrotności z Kreatora, popyt kompletów „exp
 
 1. **Strategia potwierdzona na roku:** `max30_90`, cykl 7 dni, cel 25 dni — ok. −40% braków wobec rzeczywistości
    przy −16% zapasu; −70% braków wobec dzisiejszego Kreatora (który trzyma za mało).
-2. **Denon: stopień 1 (akceptacja ręczna)** do czasu uzupełnienia kompletów Vertex w Kreatorze (popyt składników).
+2. **Denon — korekta 2026-10-23:** komplety i pary są w OnTime skonfigurowane (zestawy Vertex 4 kg + 2×1 L jako
+   „zamawiaj jak sprzedany” — RS, CP i Castavaria są na ZD od Denonu jako zestawy; kartony Wirofine/Bellavest i stopy
+   1 kg ↔ 1 szt jako pary). Rozchód bez sprzedaży (15% wartości) to przeliczenia karton ↔ sztuka i kompletacja,
+   których **backtest** nie odwzorowuje (silnik tak) — słabszy wynik Denonu to ograniczenie backtestu, nie braki
+   w konfiguracji. Do sprawdzenia: zestaw Orthoplast (bez ZD od roku, 109 szt przyjęć) — jeśli składany w Subiekcie,
+   ustawić „rozpisz na składniki”.
 3. **Komplety:** w lokalnej bazie 10 kompletów „explode”; rozchód kompletacji na produkcji trzeba sprawdzić
    (zakres kompletów w Kreatorze) przed stopniem 3 u dostawców z zestawami (Ivoclar, Denon).
 4. Cykl 3 d jest lepszy o 0,7 pp, ale daje 2× więcej ZD (mediana 1,7 tys. zł) — tylko bez kosztu dostawy.

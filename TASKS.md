@@ -38,8 +38,8 @@ Spec: `docs/integrations/strategia-zakupowa-pl-automatyzacja.md` (decyzje §7, b
 - [x] 7. Klasy ABC (zysk z `asortyment`, 12 mies.) / XYZ (52 tyg.) → `zd_sku_class`, cron miesięczny; KPI §5 (braki A, rotacja, martwy zapas, korekta człowieka, minima). Kryterium: KPI tygodniowe na panelu zakupów zgodne z ręcznym SQL na próbce.
 - [ ] 8. Auto-zatwierdzenie (stopień 3) — ta sama ścieżka co klik (`create_attempted_at`), tylko linie bez flag; najpierw 2–3 dostawcy z korektą < 10% przez 4 cykle. Kryterium: 4 cykle bez duplikatu ZD; automatyczne cofnięcie stopnia po brakach A / nieudanym create.
 - [ ] 9. Auto-mail z PDF ZD (stopień 4) przez pocztę dostawców. Kryterium: 4 cykle bez reklamacji.
-- [ ] 10. Denon i Amadar: przed stopniem 3 przejrzeć SKU, które w backteście tracą (braki wyższe niż w rzeczywistości).
+- [ ] 10. Przed stopniem 3: zestaw Vertex Orthoplast 4 kg + 2×1 L (bez ZD od roku) — kupowany czy składany w Subiekcie? Składany → komplet „rozpisz na składniki”. Backtest: dodać pary paczka↔sztuka (dziś ich nie modeluje, stąd gorszy Denon).
 - [ ] API (Tomasz, równolegle): `sales/weekly` z max-z-dokumentu, cena zakupu, `tw_StanMin/Maks/IdPodstDostawca` w `/products`.
 
 Kolejność: 1 → 3; 6 po 4; 8 po 6 i 4 cyklach pomiaru; 9 po 8.
-- Zadania 2, 4, 5, 7 zrobione zespołem (4 sesje), scalone 2026-10-23 po audycie; backtest roczny potwierdził strategię (spec §9). Denon do stopnia 1 do czasu kompletów Vertex.
+- Zadania 2, 4, 5, 7 zrobione zespołem (4 sesje), scalone 2026-10-23 po audycie; backtest roczny potwierdził strategię (spec §9).
