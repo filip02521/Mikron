@@ -1422,7 +1422,8 @@ async function acceptPendingAutoProposal(input: {
       }
       return;
     }
-    if (latest.status !== "pending") return;
+    // Odłożona (minimum) też: ZD z Kreatora to świadoma decyzja „mimo to”.
+    if (latest.status !== "pending" && latest.status !== "deferred") return;
     await decideZdAutoProposal({
       id: latest.id,
       supplierId: input.supplierId,
@@ -1520,6 +1521,8 @@ export async function actionAcceptZdAutoProposal(input: {
   proposalId: string;
   /** Korekty z panelu: twId → jednostki ZD (0 = usuń); tylko towary z propozycji. */
   edits?: Record<string, number> | null;
+  /** Odłożona propozycja (minimum / darmowa dostawa) — tylko po jawnym „Utwórz ZD mimo to”. */
+  acceptDeferred?: boolean;
 }): Promise<
   | { ok: true; session: ZdPostCreateSession }
   /** unknownOutcome: Subiekt nie potwierdził zapisu w czasie — ZD mogło powstać, bez ponowienia. */
@@ -1539,8 +1542,15 @@ export async function actionAcceptZdAutoProposal(input: {
   try {
     const proposal = await fetchLatestZdAutoProposal(supplierId);
     // Tylko aktualna, czekająca propozycja — inna zakładka mogła ją przeliczyć albo odrzucić.
-    if (!proposal || proposal.id !== proposalId || proposal.status !== "pending") {
-      return { ok: false, message: "Propozycja zmieniła się w międzyczasie - przelicz ją ponownie." };
+    const open = proposal?.status === "pending" || (proposal?.status === "deferred" && input.acceptDeferred === true);
+    if (!proposal || proposal.id !== proposalId || !open) {
+      return {
+        ok: false,
+        message:
+          proposal?.id === proposalId && proposal.status === "deferred"
+            ? "Propozycja jest odłożona na kolejny cykl - zatwierdź ją świadomie „mimo to”."
+            : "Propozycja zmieniła się w międzyczasie - przelicz ją ponownie.",
+      };
     }
     const scope = groupZdEstimateScopesBySupplier(await listZdEstimateSupplierScopes()).get(supplierId)?.[0];
     if (!scope) return { ok: false, message: "Dostawca nie ma zakresu w Kreatorze ZD." };

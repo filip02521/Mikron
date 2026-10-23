@@ -13,7 +13,7 @@ export type ZdAutoProposalLine = {
   /** Sztuki po dostawie. */
   pieces: number;
   unitLabel: string;
-  /** Cena netto za sztukę (ostatnie ZD); null = bez ceny. */
+  /** Cena netto za sztukę: kartotekowa z Subiekta, fallback ostatnie ZD (zadanie 5); null = bez ceny. */
   priceNet: number | null;
   /** Z tego sztuki z próśb handlowców. */
   prosbaPieces: number;
@@ -28,6 +28,8 @@ export type ZdAutoProposalLine = {
   flags?: ZdProposalLineFlag[];
   /** Krótko, z liczbami, dlaczego bezpiecznik oznaczył linię (zadanie 4); brak = stara propozycja. */
   flagNotes?: Partial<Record<ZdProposalLineFlag, string>>;
+  /** Zadanie 5: jednostki ZD dołożone do progu darmowej dostawy (cała linia, gdy = zdUnits). */
+  topUpUnits?: number;
 };
 
 export type ZdAutoProposalStatus = "pending" | "accepted" | "rejected" | "expired" | "deferred";
@@ -54,6 +56,14 @@ export type ZdAutoProposal = {
   deferredReason: string | null;
   /** Flagi całej propozycji (zadanie 4); [] przed migracją 194. */
   flags: ZdProposalFlag[];
+  /** Minimum i próg darmowej dostawy dostawcy (dziś, nie z chwili propozycji) — komunikat w panelu. */
+  supplierTerms: ZdAutoProposalSupplierTerms | null;
+};
+
+export type ZdAutoProposalSupplierTerms = {
+  minOrderValue: number | null;
+  minOrderCurrency: string | null;
+  freeShippingThreshold: number | null;
 };
 
 type Row = {
@@ -74,7 +84,10 @@ type Row = {
   service_order_ids: unknown;
   deferred_reason: unknown;
   flags: unknown;
+  supplier_terms?: { min?: unknown; currency?: unknown; free?: unknown } | null;
 };
+
+const numOrNull = (v: unknown) => (v != null && Number(v) > 0 ? Number(v) : null);
 
 const iso = (v: Date | string) => new Date(v).toISOString();
 // pg zwraca kolumnę date jako lokalną północ — toISOString() cofałby datę o dzień (Warszawa, UTC+1/+2).
@@ -101,6 +114,13 @@ function map(r: Row): ZdAutoProposal {
       : null,
     deferredReason: typeof r.deferred_reason === "string" && r.deferred_reason ? r.deferred_reason : null,
     flags: Array.isArray(r.flags) ? r.flags.filter((x): x is ZdProposalFlag => x === "order_value_jump") : [],
+    supplierTerms: r.supplier_terms
+      ? {
+          minOrderValue: numOrNull(r.supplier_terms.min),
+          minOrderCurrency: typeof r.supplier_terms.currency === "string" ? r.supplier_terms.currency : null,
+          freeShippingThreshold: numOrNull(r.supplier_terms.free),
+        }
+      : null,
   };
 }
 
@@ -108,7 +128,10 @@ const SELECT = `SELECT id, supplier_id, created_at, policy, data_od, data_do, li
                        status, decided_at, decision_note, dok_id, final_lines,
                        to_jsonb(zd_auto_proposals.*) -> 'service_order_ids' AS service_order_ids,
                        to_jsonb(zd_auto_proposals.*) ->> 'deferred_reason' AS deferred_reason,
-                       to_jsonb(zd_auto_proposals.*) -> 'flags' AS flags
+                       to_jsonb(zd_auto_proposals.*) -> 'flags' AS flags,
+                       (SELECT jsonb_build_object('min', s.min_order_value, 'currency', s.min_order_currency,
+                                                  'free', to_jsonb(s.*) -> 'free_shipping_threshold')
+                          FROM suppliers s WHERE s.id = zd_auto_proposals.supplier_id) AS supplier_terms
                   FROM zd_auto_proposals`;
 
 /** Czy minął cykl od ostatniej propozycji (dni kalendarzowe wg dat Warszawy). */
@@ -139,7 +162,7 @@ export async function listZdAutoProposals(supplierId: string, limit = 20): Promi
   return res.rows.map(map);
 }
 
-/** Nowa propozycja; poprzednia czekająca wygasa (jedna aktualna na dostawcę). */
+/** Nowa propozycja; poprzednia czekająca albo odłożona wygasa (jedna aktualna na dostawcę). */
 export async function createZdAutoProposal(input: {
   supplierId: string;
   policy: ZdSupplierOrderPolicy;
@@ -154,7 +177,7 @@ export async function createZdAutoProposal(input: {
 }): Promise<ZdAutoProposal> {
   await query(
     `UPDATE zd_auto_proposals SET status = 'expired', decided_at = now()
-      WHERE supplier_id = $1 AND status = 'pending'`,
+      WHERE supplier_id = $1 AND status IN ('pending', 'deferred')`,
     [input.supplierId]
   );
   const valueNet = input.lines.reduce((a, l) => a + (l.priceNet != null ? l.priceNet * l.pieces : 0), 0);
@@ -219,7 +242,7 @@ export async function claimZdAutoProposalCreate(id: string, supplierId: string):
   try {
     const res = await query(
       `UPDATE zd_auto_proposals SET create_attempted_at = now()
-        WHERE id = $1 AND supplier_id = $2 AND status = 'pending' AND create_attempted_at IS NULL`,
+        WHERE id = $1 AND supplier_id = $2 AND status IN ('pending', 'deferred') AND create_attempted_at IS NULL`,
       [id, supplierId]
     );
     return (res.rowCount ?? 0) > 0 ? "claimed" : "busy";
@@ -231,22 +254,22 @@ export async function claimZdAutoProposalCreate(id: string, supplierId: string):
 
 /** Create zakończony pewną porażką (Subiekt odrzucił dokument) — propozycję można zatwierdzić ponownie. */
 export async function releaseZdAutoProposalCreate(id: string): Promise<void> {
-  await query(`UPDATE zd_auto_proposals SET create_attempted_at = NULL WHERE id = $1 AND status = 'pending'`, [id]).catch(
+  await query(`UPDATE zd_auto_proposals SET create_attempted_at = NULL WHERE id = $1 AND status IN ('pending', 'deferred')`, [id]).catch(
     (e: unknown) => console.error("[zd-auto-proposals] zwolnienie blokady", id, e)
   );
 }
 
-/** Na aktualnych stanach nie ma nic do zamówienia — czekająca propozycja jest nieaktualna. */
+/** Na aktualnych stanach nie ma nic do zamówienia — czekająca albo odłożona propozycja jest nieaktualna. */
 export async function expirePendingZdAutoProposals(supplierId: string): Promise<number> {
   const res = await query(
     `UPDATE zd_auto_proposals SET status = 'expired', decided_at = now()
-      WHERE supplier_id = $1 AND status = 'pending'`,
+      WHERE supplier_id = $1 AND status IN ('pending', 'deferred')`,
     [supplierId]
   );
   return res.rowCount ?? 0;
 }
 
-/** Decyzja Filipa. Tylko czekająca propozycja — druga decyzja nic nie zmienia (false). */
+/** Decyzja Filipa. Czekająca albo odłożona (zatwierdzenie „mimo to” sprawdza akcja) — druga decyzja nic nie zmienia (false). */
 export async function decideZdAutoProposal(input: {
   id: string;
   supplierId: string;
@@ -260,7 +283,7 @@ export async function decideZdAutoProposal(input: {
     `UPDATE zd_auto_proposals
         SET status = $3, decision_note = $4, decided_by = $5, decided_at = now(),
             dok_id = $6, final_lines = $7::jsonb
-      WHERE id = $1 AND supplier_id = $2 AND status = 'pending'`,
+      WHERE id = $1 AND supplier_id = $2 AND status IN ('pending', 'deferred')`,
     [
       input.id,
       input.supplierId,
@@ -300,7 +323,7 @@ export async function addZdAutoProposalFinalLines(input: {
   return (res.rowCount ?? 0) > 0;
 }
 
-/** Panel dzienny: dostawcy z propozycją ZD czekającą na decyzję (najstarsza pierwsza). */
+/** Panel dzienny: dostawcy z propozycją ZD czekającą na decyzję (najstarsza pierwsza). Odłożone nie — czekają na kolejny cykl. */
 export async function listPendingZdAutoProposalSuppliers(): Promise<Array<{ supplierId: string; supplierName: string }>> {
   const res = await query<{ supplier_id: string; name: string }>(
     `SELECT DISTINCT ON (a.supplier_id) a.supplier_id, s.name, a.created_at

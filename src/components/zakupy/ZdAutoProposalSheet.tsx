@@ -288,7 +288,7 @@ export function ZdAutoProposalSheet({
     if (!fresh || createLocked) return;
     setCreateError(null);
     setPhase("creating");
-    void actionAcceptZdAutoProposal({ supplierId, proposalId: fresh.id, edits }).then(
+    void actionAcceptZdAutoProposal({ supplierId, proposalId: fresh.id, edits, acceptDeferred: fresh.status === "deferred" }).then(
       (r) => {
         if (!r.ok) {
           setPhase("review");
@@ -494,7 +494,9 @@ export function ZdAutoProposalSheet({
                 </p>
               ) : null}
 
-              {!showTimeline ? <ZdProposalMinimumNotice proposal={fresh ?? morning} /> : null}
+              {!showTimeline ? (
+                <ZdProposalMinimumNotice proposal={fresh ?? morning} value={fresh ? value : undefined} lines={fresh ? activeLines : undefined} />
+              ) : null}
               {fresh && !showTimeline ? <ZdProposalFlagsSummary proposal={fresh} /> : null}
 
               {fresh && !showTimeline ? (
@@ -559,6 +561,7 @@ export function ZdAutoProposalSheet({
                               <span className="font-mono">{l.symbol}</span>
                               {l.prosbaPieces > 0 ? <span>prośby {formatQty(l.prosbaPieces)} szt</span> : null}
                               <ZdProposalLineFlags flags={l.flags} notes={l.flagNotes} />
+                              {l.topUpUnits ? <Badge variant="info">dopełnienie do darmowej dostawy</Badge> : null}
                               {change === "added" ? <Badge variant="info">nowa</Badge> : null}
                               {change === "changed" && beforeUnits != null ? (
                                 <Badge variant="warning">było {formatQty(beforeUnits)}</Badge>
@@ -639,7 +642,9 @@ export function ZdAutoProposalSheet({
                   <Spinner size="sm" /> Tworzę ZD w Subiekcie…
                 </span>
               ) : (
-                fresh ? `Zatwierdź i utwórz ZD (${activeLines.length})` : "Zatwierdź i utwórz ZD"
+                fresh?.status === "deferred"
+                  ? `Utwórz ZD mimo odłożenia (${activeLines.length})`
+                  : fresh ? `Zatwierdź i utwórz ZD (${activeLines.length})` : "Zatwierdź i utwórz ZD"
               )}
             </Button>
           </footer>
