@@ -13,7 +13,7 @@ param(
   [switch]$Install,
   [switch]$Uninstall,
   [switch]$Test,
-  [ValidateSet("morning", "process-deliveries", "informacja-stock-sync", "catalog-zd-sync", "stock-watch", "subiekt-lead-times", "zd-eta-sync", "morning-sync")]
+  [ValidateSet("morning", "process-deliveries", "informacja-stock-sync", "catalog-zd-sync", "stock-watch", "subiekt-lead-times", "zd-sku-class", "zd-kpi-weekly", "zd-eta-sync", "morning-sync")]
   [string]$Job = "morning",
   [switch]$Force,
   [switch]$List
@@ -33,7 +33,9 @@ $TaskNames = @(
   "OnTime Cron Process Deliveries",
   "OnTime Cron Informacja Stock Sync",
   "OnTime Cron ZD ETA Sync",
-  "OnTime Cron Subiekt Lead Times"
+  "OnTime Cron Subiekt Lead Times",
+  "OnTime Cron ZD SKU Class",
+  "OnTime Cron ZD KPI Weekly"
 ) + ($CatalogZdSyncSlots | ForEach-Object { "OnTime Cron Catalog ZD Sync $_" }) +
   ($StockWatchSlots | ForEach-Object { "OnTime Cron Stock Watch $_" })
 $LegacyTaskNames = @(
@@ -306,6 +308,20 @@ function Install-CronScheduledTasks {
   New-SchTasksCronTask "OnTime Cron Subiekt Lead Times" @(
     "/Create", "/F", "/TN", "OnTime Cron Subiekt Lead Times", "/TR", $trLeadTimes,
     "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "DAILY", "/ST", "01:30"
+  )
+
+  # Klasy ABC/XYZ — raz w miesiącu, przed czasami dostaw (01:30) i katalogiem (02:00).
+  $trSkuClass = Get-CronInvokeCommand -Root $Root -JobName "zd-sku-class"
+  New-SchTasksCronTask "OnTime Cron ZD SKU Class" @(
+    "/Create", "/F", "/TN", "OnTime Cron ZD SKU Class", "/TR", $trSkuClass,
+    "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "MONTHLY", "/D", "1", "/ST", "00:30"
+  )
+
+  # KPI automatu ZD — poniedziałek po stock-watch (05:30–06:30 zapisuje historię stanów).
+  $trKpiWeekly = Get-CronInvokeCommand -Root $Root -JobName "zd-kpi-weekly"
+  New-SchTasksCronTask "OnTime Cron ZD KPI Weekly" @(
+    "/Create", "/F", "/TN", "OnTime Cron ZD KPI Weekly", "/TR", $trKpiWeekly,
+    "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "WEEKLY", "/D", "MON", "/ST", "07:00"
   )
 
   $trStockWatch = Get-CronInvokeCommand -Root $Root -JobName "stock-watch"
