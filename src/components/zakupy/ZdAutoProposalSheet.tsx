@@ -13,6 +13,8 @@ import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Spinner } from "@/components/ui/Spinner";
 import { BrandStepMark } from "@/components/ui/BrandStepMark";
 import { ZdEstimatePostCreatePanel } from "@/components/zakupy/ZdEstimatePostCreatePanel";
+import { ZdProposalFlagsSummary, ZdProposalLineFlags } from "@/components/zakupy/ZdProposalLineFlags";
+import { ZdProposalMinimumNotice } from "@/components/zakupy/ZdProposalMinimumNotice";
 import { cn } from "@/lib/cn";
 import type { ZdAutoProposal, ZdAutoProposalLine } from "@/lib/data/zd-auto-proposals";
 import { polishPluralWord } from "@/lib/email/polish-plural";
@@ -29,7 +31,7 @@ import {
 import { useAnimatedClose } from "@/lib/ui/use-animated-close";
 
 type Phase = "review" | "creating" | "send";
-type Filter = "all" | "changes" | "edited";
+type Filter = "all" | "flagged" | "changes" | "edited";
 
 const zl = (v: number) => `${Math.round(v).toLocaleString("pl-PL")} zł`;
 
@@ -286,7 +288,7 @@ export function ZdAutoProposalSheet({
     if (!fresh || createLocked) return;
     setCreateError(null);
     setPhase("creating");
-    void actionAcceptZdAutoProposal({ supplierId, proposalId: fresh.id, edits }).then(
+    void actionAcceptZdAutoProposal({ supplierId, proposalId: fresh.id, edits, acceptDeferred: fresh.status === "deferred" }).then(
       (r) => {
         if (!r.ok) {
           setPhase("review");
@@ -332,9 +334,20 @@ export function ZdAutoProposalSheet({
     (a, l) => a + (l.priceNet != null && l.zdUnits > 0 ? l.priceNet * (l.pieces / l.zdUnits) * unitsOf(l) : 0),
     0
   );
-  const shown = diff.filter((d) =>
-    filter === "changes" ? d.change !== "same" : filter === "edited" ? String(d.line.twId) in edits : true
-  );
+  const isFlagged = (d: (typeof diff)[number]) => d.change !== "removed" && Boolean(d.line.flags?.length);
+  const flaggedCount = diff.filter(isFlagged).length;
+  // Pozycje z bezpiecznikiem na górze — przy 40+ pozycjach nie trzeba ich szukać.
+  const shown = diff
+    .filter((d) =>
+      filter === "flagged"
+        ? isFlagged(d)
+        : filter === "changes"
+          ? d.change !== "same"
+          : filter === "edited"
+            ? String(d.line.twId) in edits
+            : true
+    )
+    .sort((a, b) => Number(isFlagged(b)) - Number(isFlagged(a)));
 
   // Oczekiwanie (przeliczenie, zapis w Subiekcie) pokazuje oś działań zamiast listy.
   const showTimeline = !fresh || !listReady || creating;
@@ -492,6 +505,11 @@ export function ZdAutoProposalSheet({
                 </p>
               ) : null}
 
+              {!showTimeline ? (
+                <ZdProposalMinimumNotice proposal={fresh ?? morning} value={fresh ? value : undefined} lines={fresh ? activeLines : undefined} />
+              ) : null}
+              {fresh && !showTimeline ? <ZdProposalFlagsSummary proposal={fresh} /> : null}
+
               {fresh && !showTimeline ? (
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <SegmentedControl
@@ -501,6 +519,7 @@ export function ZdAutoProposalSheet({
                     density="compact"
                     options={[
                       { value: "all", label: `Wszystkie (${diff.length})` },
+                      ...(flaggedCount ? [{ value: "flagged" as const, label: `Do sprawdzenia (${flaggedCount})` }] : []),
                       { value: "changes", label: `Zmiany (${changes.length})` },
                       { value: "edited", label: `Poprawione (${editedCount})` },
                     ]}
@@ -553,6 +572,8 @@ export function ZdAutoProposalSheet({
                             <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
                               <span className="font-mono">{l.symbol}</span>
                               {l.prosbaPieces > 0 ? <span>prośby {formatQty(l.prosbaPieces)} szt</span> : null}
+                              <ZdProposalLineFlags flags={l.flags} notes={l.flagNotes} />
+                              {l.topUpUnits ? <Badge variant="info">dopełnienie do darmowej dostawy</Badge> : null}
                               {change === "added" ? <Badge variant="info">nowa</Badge> : null}
                               {change === "changed" && beforeUnits != null ? (
                                 <Badge variant="warning">było {formatQty(beforeUnits)}</Badge>
@@ -633,7 +654,9 @@ export function ZdAutoProposalSheet({
                   <Spinner size="sm" /> Tworzę ZD w Subiekcie…
                 </span>
               ) : (
-                fresh ? `Zatwierdź i utwórz ZD (${activeLines.length})` : "Zatwierdź i utwórz ZD"
+                fresh?.status === "deferred"
+                  ? `Utwórz ZD mimo odłożenia (${activeLines.length})`
+                  : fresh ? `Zatwierdź i utwórz ZD (${activeLines.length})` : "Zatwierdź i utwórz ZD"
               )}
             </Button>
           </footer>

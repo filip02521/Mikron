@@ -37,7 +37,7 @@ export async function loadZdOrderHorizons(input: {
         onDemand: isSupplierOrderOnDemand(s),
         nextOrderDate: s.schedule?.computed_next_date ?? null,
         interval: resolveSupplierInterval(s.interval_raw, s.interval_weeks),
-        lead: bucket ? { p50: bucket.p50, p90: bucket.p90, nOrders: bucket.nOrders } : null,
+        lead: bucket ? { p50: bucket.p50, p90: bucket.p90, nOrders: bucket.nOrders, p90FirstReceipt: bucket.firstReceiptP90 } : null,
       })
     );
   }

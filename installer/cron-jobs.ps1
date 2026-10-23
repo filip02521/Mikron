@@ -45,6 +45,18 @@ $script:CronJobDefinitions = @(
     Schedule = "codziennie 01:30"
   },
   @{
+    Id = "zd-sku-class"
+    Path = "/api/cron/zd-sku-class"
+    Label = "Klasy ABC/XYZ towarów zmapowanych zakresów (Subiekt w LAN, kilkanaście minut)"
+    Schedule = "1. dnia miesiąca 00:30"
+  },
+  @{
+    Id = "zd-kpi-weekly"
+    Path = "/api/cron/zd-kpi-weekly"
+    Label = "KPI automatu ZD za miniony tydzień (Subiekt w LAN)"
+    Schedule = "pn 07:00"
+  },
+  @{
     Id = "morning-sync"
     Path = "/api/cron/morning-sync"
     Label = "Tylko przeliczenie harmonogramów (test / serwis)"

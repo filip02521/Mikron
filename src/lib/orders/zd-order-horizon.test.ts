@@ -28,6 +28,20 @@ describe("resolveZdOrderHorizon", () => {
     lead: { p50: 5, p90: 15, nOrders: 8 },
   };
 
+  it("automat: czas do pierwszej dostawy zamiast pełnej realizacji (zaległe pozycje wiszą w otwartych ZD)", () => {
+    // pełna realizacja p90 30 dni rob. (jedna pozycja z zaległości), pierwsza dostawa p90 5 dni rob.
+    const h = resolveZdOrderHorizon({ ...base, lead: { p50: 5, p90: 30, nOrders: 8, p90FirstReceipt: 5 } });
+    expect(h.leadDays).toBeGreaterThan(40);
+    expect(h.automatLeadDays).toBe(7);
+  });
+  it("automat bez próbek pierwszej dostawy albo przy < 5 zamówieniach — jak leadDays; nigdy dłużej niż leadDays", () => {
+    expect(resolveZdOrderHorizon(base).automatLeadDays).toBe(resolveZdOrderHorizon(base).leadDays);
+    const few = resolveZdOrderHorizon({ ...base, lead: { p50: 5, p90: 15, nOrders: 3, p90FirstReceipt: 2 } });
+    expect(few.automatLeadDays).toBe(few.leadDays);
+    const odd = resolveZdOrderHorizon({ ...base, lead: { p50: 5, p90: 3, nOrders: 8, p90FirstReceipt: 9 } });
+    expect(odd.automatLeadDays).toBe(odd.leadDays);
+  });
+
   it("horyzont = do następnego zamówienia + p90 dostawy, gdy dłuższy niż zapas", () => {
     const h = resolveZdOrderHorizon(base);
     expect(h).toEqual(

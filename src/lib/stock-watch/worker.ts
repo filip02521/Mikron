@@ -29,6 +29,9 @@ import { ZD_ESTIMATE_UI_PREFS_DEFAULTS } from "@/lib/orders/zd-estimate-prefs";
 import { runZdOrderEngine } from "@/lib/orders/zd-order-engine";
 import { zdDeliveryRisk, type ZdOrderHorizon } from "@/lib/orders/zd-order-horizon";
 import { loadZdOrderHorizons } from "@/lib/orders/zd-order-horizon-load";
+import type { ZdProposalHookContext } from "@/lib/orders/zd-proposal-hook-context";
+import { applyZdProposalGuards } from "@/lib/orders/zd-proposal-guards";
+import { applyZdProposalMinimum } from "@/lib/orders/zd-proposal-minimum";
 import { buildZdOrderList } from "@/lib/orders/zd-order-list";
 import { zdAutoProposalBlockReason } from "@/lib/orders/zd-auto-proposal-create";
 import { collectZdPackagingPairConflicts } from "@/lib/orders/zd-estimate-packaging-pair-conflict";
@@ -369,7 +372,7 @@ async function computeSupplierOrder(input: {
         : { mode: "cecha", grupaId: null, cechaId: scopeId },
     supplierId: supplier.id,
     dniZapasu,
-    orderTiming: horizon ? { leadDays: horizon.leadDays, nextOrderDays: horizon.nextOrderDays } : null,
+    orderTiming: horizon ? { leadDays: horizon.automatLeadDays, nextOrderDays: horizon.nextOrderDays } : null,
     dataOd: window.dataOd,
     dataDo: window.dataDo,
     zapasMin: ZD_ESTIMATE_UI_PREFS_DEFAULTS.zapasMin,
@@ -597,6 +600,7 @@ async function computeSupplierOrder(input: {
           deltaAtLink: l.line.salesTrackDelta,
         })),
       serviceOrderIds: list.serviceOrderIds,
+      hook: { list, engine, horizon, prices },
     });
   }
 
@@ -632,6 +636,8 @@ async function maybeCreateAutoProposal(input: {
   dniZapasuUsed: number;
   lines: ZdAutoProposalLine[];
   serviceOrderIds: string[];
+  /** Kontekst bezpieczników (zad. 4) i minimum (zad. 5). */
+  hook: Pick<ZdProposalHookContext, "list" | "engine" | "horizon" | "prices">;
 }): Promise<ZdAutoProposalOutcome> {
   try {
     const policy = await fetchZdSupplierOrderPolicy(input.supplierId);
@@ -642,14 +648,27 @@ async function maybeCreateAutoProposal(input: {
     if (!input.force && !isZdAutoProposalDue({ cycleDays: policy.cycleDays, lastCreatedDateKey: lastKey, todayKey: input.todayKey })) {
       return { kind: "not_due" };
     }
+    const ctx: ZdProposalHookContext = {
+      ...input.hook,
+      supplierId: input.supplierId,
+      lines: input.lines,
+      dniZapasuUsed: input.dniZapasuUsed,
+      dataDo: input.dataDo,
+    };
+    // Najpierw ceny kartotekowe i minimum (dopełnienie dodaje linie), potem bezpieczniki na końcowej liście —
+    // flagi wartościowe liczą się z tej samej ceny, którą zapisuje propozycja, a dopełnienie też jest sprawdzone.
+    const minimum = await applyZdProposalMinimum(ctx);
+    const guarded = await applyZdProposalGuards({ ...ctx, lines: minimum.lines });
     const created = await createZdAutoProposal({
       supplierId: input.supplierId,
       // targetDays = dni faktycznie użyte w tej propozycji (baner pokazuje je zamiast ustawienia).
       policy: { strategy: policy.strategy, targetDays: input.dniZapasuUsed, cycleDays: policy.cycleDays },
       dataOd: input.dataOd,
       dataDo: input.dataDo,
-      lines: input.lines,
+      lines: guarded.lines,
       serviceOrderIds: input.serviceOrderIds,
+      flags: guarded.proposalFlags,
+      deferredReason: minimum.outcome.kind === "deferred" ? minimum.outcome.reason : null,
     });
     return { kind: "created", id: created.id };
   } catch (e) {
