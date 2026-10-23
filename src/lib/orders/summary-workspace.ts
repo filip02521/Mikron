@@ -87,6 +87,10 @@ export type SupplierSummaryMeta = {
   min_order_value?: number | null;
   /** Symbol waluty dla min_order_value (np. PLN, EUR). */
   min_order_currency?: string | null;
+  /** Próg darmowej dostawy (zł netto). NULL = brak progu. */
+  free_shipping_threshold?: number | null;
+  subiekt_country_id?: number | null;
+  subiekt_country_name?: string | null;
 };
 
 export type ForSomeoneLine = {
@@ -237,6 +241,9 @@ function toMeta(s: SupplierWithSchedule): SupplierSummaryMeta {
     min_order_value:
       s.min_order_value != null ? Number(s.min_order_value) : null,
     min_order_currency: s.min_order_currency ?? null,
+    free_shipping_threshold: s.free_shipping_threshold != null ? Number(s.free_shipping_threshold) : null,
+    subiekt_country_id: s.subiekt_country_id ?? null,
+    subiekt_country_name: s.subiekt_country_name ?? null,
   };
 }
 
@@ -274,6 +281,9 @@ function ensureSupplierMetaFromOrders(
       min_order_value:
         s.min_order_value != null ? Number(s.min_order_value) : null,
       min_order_currency: s.min_order_currency ?? null,
+      free_shipping_threshold: s.free_shipping_threshold != null ? Number(s.free_shipping_threshold) : null,
+      subiekt_country_id: s.subiekt_country_id ?? null,
+      subiekt_country_name: s.subiekt_country_name ?? null,
     };
   }
 }

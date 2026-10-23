@@ -11,6 +11,8 @@ import {
   requireSupplierManagement,
 } from "@/lib/auth";
 import { indexOrderLineToProductCatalog } from "@/lib/data/product-catalog";
+import { syncSupplierCountry } from "@/lib/data/supplier-country-sync";
+import type { SubiektCountry } from "@/lib/suppliers/subiekt-country";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { searchSubiektKontrahenci, searchSubiektProducts } from "@/lib/subiekt/api";
 import {
@@ -852,7 +854,7 @@ export async function actionSubiektLookupSupplier(
 export async function actionSetSupplierSubiektKhId(
   supplierId: string,
   subiektKhId: number | null
-): Promise<{ ok: true } | { ok: false; feedback: SubiektFeedback }> {
+): Promise<{ ok: true; country: SubiektCountry | null } | { ok: false; feedback: SubiektFeedback }> {
   await requireSupplierManagement("mutate");
 
   if (subiektKhId != null && (!Number.isFinite(subiektKhId) || subiektKhId <= 0)) {
@@ -883,6 +885,15 @@ export async function actionSetSupplierSubiektKhId(
       .eq("subiekt_kh_id", Math.trunc(subiektKhId));
   }
 
+  const { data: prev, error: prevError } = await supabase
+    .from("suppliers")
+    .select("subiekt_kh_id")
+    .eq("id", supplierId)
+    .maybeSingle();
+  if (prevError) {
+    return { ok: false, feedback: feedbackFromException(new Error(prevError.message)) };
+  }
+
   const { error } = await supabase
     .from("suppliers")
     .update({
@@ -906,9 +917,18 @@ export async function actionSetSupplierSubiektKhId(
     };
   }
 
+  // Kraj od razu (automat ZD PL); błąd odczytu nie cofa powiązania — dociągnie nocny cron.
+  let country: SubiektCountry | null = null;
+  try {
+    const khChanged = prev?.subiekt_kh_id == null || Math.trunc(Number(prev.subiekt_kh_id)) !== subiektKhId;
+    country = await syncSupplierCountry(supplierId, subiektKhId, { clearOnMiss: khChanged });
+  } catch (e) {
+    console.error("[actionSetSupplierSubiektKhId] kraj z Subiekta", e instanceof Error ? e.message : e);
+  }
+
   revalidateSupplierSubiektKhCaches();
 
-  return { ok: true };
+  return { ok: true, country };
 }
 
 function revalidateSupplierSubiektKhCaches() {
