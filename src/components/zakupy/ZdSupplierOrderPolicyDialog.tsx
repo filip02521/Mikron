@@ -3,13 +3,32 @@
 import { useId, useState, useTransition } from "react";
 import { actionSaveZdSupplierOrderPolicy } from "@/app/actions/zd-estimate";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Field";
+import { Input, Select } from "@/components/ui/Field";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 import { polishPluralWord } from "@/lib/email/polish-plural";
-import type { ZdSupplierOrderPolicyRow } from "@/lib/data/zd-supplier-order-policy";
+import type { ZdAutoLevel, ZdSupplierOrderPolicyRow } from "@/lib/data/zd-supplier-order-policy";
 import type { ZdDemandStrategy } from "@/lib/orders/zd-demand-policy";
+
+/** Stopnie autonomii (spec §4.4); `soon` = zapisany, ale działa dopiero od wdrożenia tej części. */
+export const ZD_AUTO_LEVEL_OPTIONS: { value: ZdAutoLevel; label: string; body: string; soon?: string }[] = [
+  { value: 0, label: "0 · Ręcznie", body: "Nic nie powstaje samo - Przygotuj ZD liczy na żywo, jak dotąd." },
+  { value: 1, label: "1 · Propozycja ZD", body: "Propozycja powstaje sama i czeka w Kreatorze na akceptację - nic nie jest wysyłane samo." },
+  {
+    value: 2,
+    label: "2 · Okno handlowców",
+    body: "Handlowcy dokładają do propozycji do godziny odcięcia, potem propozycja jest zamrażana i przeliczana. Zakupy zatwierdzają.",
+    soon: "okna handlowców",
+  },
+  {
+    value: 3,
+    label: "3 · Auto-zatwierdzanie",
+    body: "Linie bez flag bezpieczników zatwierdzają się same, zakupy widzą tylko wyjątki.",
+    soon: "auto-zatwierdzania",
+  },
+  { value: 4, label: "4 · Auto-mail", body: "Zatwierdzone ZD idzie mailem z PDF do dostawcy bez klikania.", soon: "auto-maila do dostawcy" },
+];
 
 /** Wartości startowe testu — wynik backtestu Polkardu (10.2025–10.2026). */
 export const ZD_TEST_POLICY_DEFAULTS = { targetDays: 25, cycleDays: 3 } as const;
@@ -83,11 +102,16 @@ export function ZdSupplierOrderPolicyDialog({
 }) {
   const daysId = useId();
   const cycleId = useId();
+  const levelId = useId();
+  const cutoffId = useId();
   const [strategy, setStrategy] = useState<ZdDemandStrategy>(policy?.strategy ?? "classic");
   const [days, setDays] = useState(String(policy?.targetDays ?? ZD_TEST_POLICY_DEFAULTS.targetDays));
   const [cycle, setCycle] = useState(String(policy?.cycleDays ?? ZD_TEST_POLICY_DEFAULTS.cycleDays));
-  const [auto, setAuto] = useState(policy?.autoProposals ?? false);
+  const [level, setLevel] = useState<ZdAutoLevel>(policy?.autoLevel ?? 0);
+  const [cutoff, setCutoff] = useState(policy?.cutoffTime ?? "14:00");
   const [error, setError] = useState<string | null>(null);
+  /** Zapis bez części pól (baza bez migracji 194) — dialog zostaje z ostrzeżeniem, zamknięcie oddaje politykę. */
+  const [savedWithWarning, setSavedWithWarning] = useState<{ policy: ZdSupplierOrderPolicyRow; warning: string } | null>(null);
   const [pending, startTransition] = useTransition();
   const test = strategy === "max30_90";
 
@@ -96,6 +120,8 @@ export function ZdSupplierOrderPolicyDialog({
     const cycleDays = test ? parseDays(cycle, 1, 60) : null;
     if (test && targetDays == null) return setError("Dni zapasu: liczba całkowita od 1 do 180.");
     if (test && cycleDays == null) return setError("Co ile dni: liczba całkowita od 1 do 60.");
+    const cutoffOk = /^\d{2}:\d{2}$/.test(cutoff);
+    if (test && level >= 2 && !cutoffOk) return setError("Podaj godzinę odcięcia, np. 14:00.");
     setError(null);
     startTransition(async () => {
       const res = await actionSaveZdSupplierOrderPolicy({
@@ -103,9 +129,11 @@ export function ZdSupplierOrderPolicyDialog({
         strategy,
         targetDays,
         cycleDays,
-        autoProposals: test && auto,
+        autoLevel: test ? level : 0,
+        cutoffTime: cutoffOk ? cutoff : (policy?.cutoffTime ?? "14:00"),
       });
       if (!res.ok) return setError(res.message);
+      if (res.warning) return setSavedWithWarning({ policy: res.policy, warning: res.warning });
       onSaved(res.policy);
     });
   };
@@ -134,21 +162,29 @@ export function ZdSupplierOrderPolicyDialog({
   return (
     <ModalShell
       open
-      onClose={onClose}
+      onClose={savedWithWarning ? () => onSaved(savedWithWarning.policy) : onClose}
       title={`Strategia zamawiania - ${supplierName}`}
       size="md"
       bodyClassName="space-y-4 px-5 py-5 sm:px-6"
       loadingMessage={pending ? "Zapisuję…" : null}
       disableBackdropClose={pending}
       footer={
-        <div className="flex w-full justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onClose} disabled={pending}>
-            Anuluj
-          </Button>
-          <Button type="button" onClick={save} disabled={pending}>
-            Zapisz
-          </Button>
-        </div>
+        savedWithWarning ? (
+          <div className="flex w-full justify-end">
+            <Button type="button" onClick={() => onSaved(savedWithWarning.policy)}>
+              Rozumiem
+            </Button>
+          </div>
+        ) : (
+          <div className="flex w-full justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={onClose} disabled={pending}>
+              Anuluj
+            </Button>
+            <Button type="button" onClick={save} disabled={pending}>
+              Zapisz
+            </Button>
+          </div>
+        )
       }
     >
       <div className="space-y-2" role="radiogroup" aria-label="Strategia">
@@ -174,14 +210,51 @@ export function ZdSupplierOrderPolicyDialog({
             </label>
             <Input id={cycleId} inputMode="numeric" value={cycle} onChange={(e) => setCycle(e.target.value)} className="mt-1" />
           </div>
-          <label className="flex items-start gap-2 text-sm text-slate-800 sm:col-span-2">
-            <input type="checkbox" className="mt-0.5" checked={auto} onChange={(e) => setAuto(e.target.checked)} />
-            <span>
-              Przygotowuj propozycję ZD automatycznie{" "}
-              {parseDays(cycle, 1, 60) === 1 ? "codziennie" : `co ${parseDays(cycle, 1, 60) ?? "…"} dni`}
-              <span className="block text-xs text-slate-500">Propozycja czeka w Kreatorze na akceptację - nic nie jest wysyłane samo.</span>
-            </span>
-          </label>
+          <div className="sm:col-span-2">
+            <label htmlFor={levelId} className="text-xs font-medium text-slate-700">
+              Automat ZD
+            </label>
+            <Select
+              id={levelId}
+              value={level}
+              onChange={(e) => setLevel(Number(e.target.value) as ZdAutoLevel)}
+              className="mt-1"
+            >
+              {ZD_AUTO_LEVEL_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+            <p className="mt-1 text-xs leading-relaxed text-slate-600">
+              {ZD_AUTO_LEVEL_OPTIONS[level].body}
+              {level >= 1
+                ? ` Propozycja ${parseDays(cycle, 1, 60) === 1 ? "codziennie" : `co ${parseDays(cycle, 1, 60) ?? "…"} dni`}.`
+                : ""}
+            </p>
+          </div>
+          {level >= 2 ? (
+            <>
+              <div>
+                <label htmlFor={cutoffId} className="text-xs font-medium text-slate-700">
+                  Do której handlowcy dokładają
+                </label>
+                <Input
+                  id={cutoffId}
+                  type="time"
+                  step={60}
+                  value={cutoff}
+                  onChange={(e) => setCutoff(e.target.value)}
+                  className="mt-1"
+                />
+                <span className="mt-1 block text-xs text-slate-500">Dzień przed wysyłką ZD.</span>
+              </div>
+              <p className="rounded-md bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900 sm:col-span-2">
+                Zapisane, ale działa od wdrożenia {ZD_AUTO_LEVEL_OPTIONS[level].soon}. Do tego czasu propozycja czeka
+                na akceptację jak w stopniu 1.
+              </p>
+            </>
+          ) : null}
         </div>
       ) : null}
 
@@ -191,6 +264,11 @@ export function ZdSupplierOrderPolicyDialog({
         dostawie cel rośnie sam: co najmniej cykl zamawiania + czas dostawy + 25% czasu dostawy (dni wyżej to
         minimum). Zmiana działa od następnego Policz.
       </p>
+      {savedWithWarning ? (
+        <p className="rounded-md bg-amber-50 px-3 py-2 text-sm leading-relaxed text-amber-900" role="status">
+          {savedWithWarning.warning}
+        </p>
+      ) : null}
       {error ? (
         <p className="text-sm text-red-700" role="alert">
           {error}

@@ -17,18 +17,23 @@ import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { formatSubiektKontrahentLabel } from "@/lib/subiekt/match-supplier";
 import type { SubiektKontrahent } from "@/lib/subiekt/types";
 import type { SupplierSubiektKhAliasRow } from "@/lib/data/supplier-subiekt-kh";
+import { supplierCountryLabel, type SubiektCountry } from "@/lib/suppliers/subiekt-country";
 
 export function SupplierSubiektLinkField({
   supplierId,
   supplierName,
   subiektKhId,
+  country,
   onLinked,
 }: {
   supplierId: string;
   supplierName: string;
   subiektKhId: number | null;
-  onLinked?: (khId: number | null) => void;
+  /** Kraj zapisany z kartoteki Subiekta (null = jeszcze nieodczytany). */
+  country?: SubiektCountry | null;
+  onLinked?: (khId: number | null, country: SubiektCountry | null) => void;
 }) {
+  const countryLabel = supplierCountryLabel(country?.id, country?.name);
   const [query, setQuery] = useState(supplierName);
   const [results, setResults] = useState<SubiektKontrahent[]>([]);
   const [feedback, setFeedback] = useState<SubiektFeedback | null>(null);
@@ -77,7 +82,7 @@ export function SupplierSubiektLinkField({
       setLinkedLabel(formatSubiektKontrahentLabel(k));
       setResults([]);
       setFeedback(null);
-      onLinked?.(k.kh_Id);
+      onLinked?.(k.kh_Id, res.country);
       reloadAliases();
     });
   };
@@ -116,7 +121,7 @@ export function SupplierSubiektLinkField({
         return;
       }
       setLinkedLabel(null);
-      onLinked?.(null);
+      onLinked?.(null, null);
     });
   };
 
@@ -135,7 +140,10 @@ export function SupplierSubiektLinkField({
               {kontrahentDisplayName(linkedLabel, subiektKhId)}
             </p>
             <p className="text-[11px] text-indigo-600/80">
-              id {subiektKhId}
+              id {subiektKhId} ·{" "}
+              {countryLabel
+                ? `kraj z Subiekta: ${countryLabel}`
+                : "kraj z Subiekta jeszcze nieodczytany - uzupełni się w nocy"}
             </p>
           </div>
         </div>

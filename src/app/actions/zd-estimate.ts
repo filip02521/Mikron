@@ -7,7 +7,9 @@ import type { SupplierLocation } from "@/types/database";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import {
   fetchZdSupplierOrderPolicy,
+  parseZdCutoffTime,
   upsertZdSupplierOrderPolicy,
+  type ZdAutoLevel,
   type ZdSupplierOrderPolicyRow,
 } from "@/lib/data/zd-supplier-order-policy";
 import type { ZdClassicCompare, ZdDemandStrategy } from "@/lib/orders/zd-demand-policy";
@@ -1670,8 +1672,13 @@ export async function actionSaveZdSupplierOrderPolicy(input: {
   strategy: ZdDemandStrategy;
   targetDays: number | null;
   cycleDays: number | null;
-  autoProposals: boolean;
-}): Promise<{ ok: true; policy: ZdSupplierOrderPolicyRow } | { ok: false; message: string }> {
+  /** 0 = bez propozycji automatu; 1+ = propozycje (`auto_proposals`), 2–4 zapisane na kolejne wdrożenia. */
+  autoLevel: ZdAutoLevel;
+  /** „HH:MM” — odcięcie dla handlowców (dzień przed wysyłką). */
+  cutoffTime: string;
+}): Promise<
+  { ok: true; policy: ZdSupplierOrderPolicyRow; warning: string | null } | { ok: false; message: string }
+> {
   const user = await requireZdEstimateAdmin("mutate");
   const supplierId = String(input.supplierId ?? "").trim();
   if (!UUID_RE.test(supplierId)) return { ok: false, message: "Nieprawidłowy dostawca." };
@@ -1680,17 +1687,24 @@ export async function actionSaveZdSupplierOrderPolicy(input: {
   const cycle = input.cycleDays == null ? null : Math.trunc(Number(input.cycleDays));
   if (days != null && !(days >= 1 && days <= 180)) return { ok: false, message: "Dni zapasu: od 1 do 180." };
   if (cycle != null && !(cycle >= 1 && cycle <= 60)) return { ok: false, message: "Co ile dni: od 1 do 60." };
-  if (input.autoProposals && cycle == null) return { ok: false, message: "Propozycje automatu wymagają cyklu (co ile dni)." };
+  const autoLevel = Number(input.autoLevel);
+  if (!(Number.isInteger(autoLevel) && autoLevel >= 0 && autoLevel <= 4)) return { ok: false, message: "Stopień automatu: od 0 do 4." };
+  const cutoffTime = parseZdCutoffTime(input.cutoffTime);
+  if (!cutoffTime) return { ok: false, message: "Godzina odcięcia: format GG:MM." };
+  if (autoLevel > 0 && strategy === "classic") return { ok: false, message: "Propozycje automatu wymagają strategii testowej." };
+  if (autoLevel > 0 && cycle == null) return { ok: false, message: "Propozycje automatu wymagają cyklu (co ile dni)." };
   try {
-    const policy = await upsertZdSupplierOrderPolicy({
+    const { policy, warning } = await upsertZdSupplierOrderPolicy({
       supplierId,
       strategy,
       targetDays: strategy === "classic" ? null : days,
       cycleDays: cycle,
-      autoProposals: input.autoProposals === true,
+      autoProposals: autoLevel >= 1,
+      autoLevel: autoLevel as ZdAutoLevel,
+      cutoffTime,
       updatedBy: user.id,
     });
-    return { ok: true, policy };
+    return { ok: true, policy, warning };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się zapisać strategii dostawcy.") };
   }
