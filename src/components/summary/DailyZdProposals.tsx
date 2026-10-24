@@ -66,6 +66,18 @@ export function DailyZdProposalNotice({ proposal, className }: { proposal: Daily
   // Bezpieczniki automatu: pozycje do sprawdzenia i nietypowo wysoka wartość — widać już w wierszu.
   const flaggedCount = proposal.lines.filter((l) => l.flags?.length).length;
   const valueJump = proposal.flags.includes("order_value_jump");
+  // Prośby handlowców: klienci czekają na te pozycje — widać przed otwarciem panelu.
+  const prosbaLines = proposal.lines.filter((l) => l.prosbaPieces > 0);
+  const prosbaPieces = prosbaLines.reduce((a, l) => a + l.prosbaPieces, 0);
+  const serviceCount = proposal.serviceOrderIds?.length ?? 0;
+  const prosbaText = [
+    prosbaLines.length
+      ? `na prośbę: ${prosbaLines.length} ${polishPluralWord(prosbaLines.length, "pozycja", "pozycje", "pozycji")} (${formatQty(prosbaPieces)} szt)`
+      : null,
+    serviceCount ? `${serviceCount} ${polishPluralWord(serviceCount, "prośba", "prośby", "próśb")} poza listą (usługi w uwagach ZD)` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
   const warnings = [
     flaggedCount ? `${flaggedCount} do sprawdzenia` : null,
     valueJump ? "wartość nietypowo wysoka" : null,
@@ -95,16 +107,18 @@ export function DailyZdProposalNotice({ proposal, className }: { proposal: Daily
           </span>
           <div className="min-w-0">
             <p className="text-sm font-semibold leading-snug text-slate-900">Zamówienie gotowe do potwierdzenia</p>
-            <p className="mt-0.5 text-xs leading-snug text-slate-600">
-              <span className="tabular-nums">
-                {proposal.lineCount} {polishPluralWord(proposal.lineCount, "pozycja", "pozycje", "pozycji")} · {formatQty(pieces)} szt ·
-                ok. {zl(proposal.valueNet)}
-              </span>
-              <span className="text-slate-500">
-                {" "}
-                · automat{cycle ? ` co ${cycle} ${polishPluralWord(cycle, "dzień", "dni", "dni")}` : ""}, {formatWhen(proposal.createdAt)}
-              </span>
+            {/* Liczby łamią się tylko na kropkach; skąd i kiedy — osobna, cichsza linia. */}
+            <p className="mt-0.5 text-xs leading-snug text-slate-600 tabular-nums">
+              <span className="whitespace-nowrap">
+                {proposal.lineCount} {polishPluralWord(proposal.lineCount, "pozycja", "pozycje", "pozycji")},
+              </span>{" "}
+              <span className="whitespace-nowrap">{formatQty(pieces)} szt,</span>{" "}
+              <span className="whitespace-nowrap">ok. {zl(proposal.valueNet)}</span>
             </p>
+            <p className="text-xs leading-snug text-slate-500">
+              automat{cycle ? ` co ${cycle} ${polishPluralWord(cycle, "dzień", "dni", "dni")}` : ""} · {formatWhen(proposal.createdAt)}
+            </p>
+            {prosbaText ? <p className="mt-0.5 text-xs leading-snug text-emerald-800">{prosbaText}</p> : null}
             {warnings.length ? (
               <p className="mt-0.5 text-xs font-medium leading-snug text-amber-800">{warnings.join(" · ")}</p>
             ) : null}
@@ -118,7 +132,8 @@ export function DailyZdProposalNotice({ proposal, className }: { proposal: Daily
           >
             Odrzuć
           </button>
-          <Button type="button" size="sm" className="min-h-10 sm:min-h-8" onClick={() => setReviewing(true)}>
+          {/* Obrysowany, nie pełny: na panelu jest jedna pełna akcja główna, a zamówień automatu bywa kilka. */}
+          <Button type="button" variant="outline" size="sm" className="min-h-10 font-semibold sm:min-h-8" onClick={() => setReviewing(true)}>
             Sprawdź i zatwierdź
           </Button>
         </div>

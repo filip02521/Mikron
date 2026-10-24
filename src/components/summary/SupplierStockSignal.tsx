@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { Fragment } from "react";
+import { buttonClass } from "@/components/ui/Button";
 import { warsawTodayDateKey } from "@/lib/warehouse/delivery-receipts-shared";
 import { createContext, useContext, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
@@ -87,6 +89,23 @@ export function stockSignalOrderSummary(s: StockWatchSupplierSignal): string {
 export function stockSignalBeforeDeliveryLabel(count: number): string {
   return `${count} ${polishPluralWord(count, "towar", "towary", "towarów")} ${polishPluralWord(
     count,
+    "skończy",
+    "skończą",
+    "skończy"
+  )} się przed dostawą`;
+}
+
+/**
+ * Ryzyko przed dostawą bez liczenia pilnych drugi raz: licznik „przed dostawą” jest szeroki (obejmuje brak
+ * i ≤ 48 h), więc przy pilnych pokazujemy tylko kolejne — „2 pilne · 1 kolejny skończy się przed dostawą”.
+ */
+export function stockSignalBeforeDeliveryRest(s: Pick<StockWatchSupplierSignal, "criticalCount" | "beforeDeliveryCount">): string | null {
+  if (s.beforeDeliveryCount <= 0) return null;
+  if (s.criticalCount <= 0) return stockSignalBeforeDeliveryLabel(s.beforeDeliveryCount);
+  const rest = s.beforeDeliveryCount - s.criticalCount;
+  if (rest <= 0) return null;
+  return `${rest} ${polishPluralWord(rest, "kolejny", "kolejne", "kolejnych")} ${polishPluralWord(
+    rest,
     "skończy",
     "skończą",
     "skończy"
@@ -200,8 +219,8 @@ export function SupplierStockSummary({
             ) : null}
             <span className="font-medium tabular-nums text-slate-800">{stockSignalOrderSummary(s)}</span>
           </p>
-          {s.beforeDeliveryCount > 0 ? (
-            <p className="mt-0.5 text-red-700">{stockSignalBeforeDeliveryLabel(s.beforeDeliveryCount)}</p>
+          {stockSignalBeforeDeliveryRest(s) ? (
+            <p className="mt-0.5 text-red-700">{stockSignalBeforeDeliveryRest(s)}</p>
           ) : null}
           {urgent ? (
             <p className="mt-0.5 truncate text-slate-600" title={urgent.full}>
@@ -262,28 +281,66 @@ export function SupplierStockSignal({
   }
 
   const urgent = stockSignalMostUrgent(s);
+  const risk = stockSignalBeforeDeliveryRest(s);
   // Tylko pozycje zagrożone przed dostawą — „Przygotuj ZD” od razu z horyzontem dostawy.
   const prepareWithHorizon = stockWatchPrepareZdUsesHorizon(s);
   const horizon = stockWatchHorizonExtends(s) && s.beforeDeliveryCount > 0 && !prepareWithHorizon;
 
-  return (
-    <div className={cn("min-w-0 text-xs", className)}>
-      <p
-        className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5"
-        title={`${asOf} Liczba pozycji i wartość jak w Kreatorze ZD (ostatnie ceny z ZD).`}
+  // Linia 1 — stan: pilne (link do Braki), kolejne zagrożone przed dostawą, najpilniejszy towar, wiek analizy.
+  const status = [
+    s.criticalCount > 0 ? (
+      <Link
+        key="urgent"
+        href={brakiSupplierHref(supplierId)}
+        className="rounded-md bg-red-50 px-1.5 font-medium text-red-800 transition-colors duration-150 hover:bg-red-100"
+        title="Pokaż pilne pozycje w panelu Braki"
       >
-        {s.criticalCount > 0 ? (
-          <Link
-            href={brakiSupplierHref(supplierId)}
-            className="rounded-md bg-red-50 px-1.5 font-medium text-red-800 hover:bg-red-100"
-            title="Pokaż pilne pozycje w panelu Braki"
-          >
-            {stockSignalUrgentLabel(s.criticalCount)}
-          </Link>
-        ) : null}
-        {hidePrepare ? null : s.criticalCount > 0 ? (
-          <span className="font-medium tabular-nums text-slate-700">{stockSignalOrderSummary(s)}</span>
-        ) : (
+        {stockSignalUrgentLabel(s.criticalCount)}
+      </Link>
+    ) : null,
+    risk ? (
+      <span key="risk" className="font-medium text-red-700">
+        {risk}
+      </span>
+    ) : null,
+    urgent ? (
+      <span key="most" className="min-w-0 max-w-full truncate" title={urgent.full}>
+        najpilniej {urgent.label} ({urgent.cover})
+      </span>
+    ) : null,
+    // W wierszu tylko data — pełne ostrzeżenie w dymku; przy nieudanej nocy powtarzało się w każdym wierszu.
+    stale ? (
+      <span key="stale" title={stockSignalStaleNote(s)}>
+        analiza z {stockSignalComputedDay(s) ?? "-"}
+      </span>
+    ) : null,
+  ].filter(Boolean);
+
+  return (
+    <div className={cn("min-w-0 space-y-1 text-xs", className)}>
+      {status.length ? (
+        <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-slate-500" title={asOf}>
+          {/* Kropka trzyma się poprzedniego elementu — przy zawinięciu linia nie zaczyna się od „·”. */}
+          {status.map((node, i) =>
+            i < status.length - 1 ? (
+              <span key={i} className="inline-flex min-w-0 max-w-full items-center gap-1.5">
+                {node}
+                <span aria-hidden className="text-slate-300">
+                  ·
+                </span>
+              </span>
+            ) : (
+              <Fragment key={i}>{node}</Fragment>
+            )
+          )}
+        </p>
+      ) : null}
+      {/* Linia 2 — zamówienie: co i za ile, i jedna droga do ZD. Gotowe zamówienie automatu ją zastępuje. */}
+      {hidePrepare ? null : (
+        <p
+          className="flex flex-wrap items-center gap-x-2 gap-y-1"
+          title={`${asOf} Liczba pozycji i wartość jak w Kreatorze ZD (ostatnie ceny z ZD).`}
+        >
           <Link
             href={brakiSupplierHref(supplierId)}
             className="font-medium tabular-nums text-slate-700 underline-offset-2 hover:text-slate-900 hover:underline"
@@ -291,42 +348,26 @@ export function SupplierStockSignal({
           >
             {stockSignalOrderSummary(s)}
           </Link>
-        )}
-        {canPrepareZd && !hidePrepare ? (
-          <Link
-            href={buildZdEstimateLaunchHref(supplierId, prepareWithHorizon ? { leadTimeHorizon: true } : undefined)}
-            className={linkClass}
-          >
-            Przygotuj ZD
-          </Link>
-        ) : null}
-        {canPrepareZd && horizon && !hidePrepare ? (
-          <Link
-            href={buildZdEstimateLaunchHref(supplierId, { leadTimeHorizon: true })}
-            className={linkClass}
-            title={stockSignalHorizonTitle(s)}
-            aria-label="Przygotuj ZD do kolejnej dostawy"
-          >
-            do kolejnej dostawy
-          </Link>
-        ) : null}
-      </p>
-      {s.beforeDeliveryCount > 0 || urgent || stale ? (
-        <p className="mt-0.5 flex min-w-0 flex-wrap gap-x-1.5 text-slate-500 [&>*+*]:before:content-['·_']">
-          {s.beforeDeliveryCount > 0 ? (
-            <span className="text-red-700">{stockSignalBeforeDeliveryLabel(s.beforeDeliveryCount)}</span>
+          {canPrepareZd ? (
+            <Link
+              href={buildZdEstimateLaunchHref(supplierId, prepareWithHorizon ? { leadTimeHorizon: true } : undefined)}
+              className={buttonClass("outline", "sm", "font-semibold max-sm:min-h-10")}
+            >
+              Przygotuj ZD
+            </Link>
           ) : null}
-          {urgent ? (
-            <span className="min-w-0 max-w-full truncate" title={urgent.full}>
-              najpilniej {urgent.label} ({urgent.cover})
-            </span>
-          ) : null}
-          {/* W wierszu tylko data — pełne ostrzeżenie w dymku; przy nieudanej nocy powtarzało się w każdym wierszu. */}
-          {stale ? (
-            <span title={stockSignalStaleNote(s)}>analiza z {stockSignalComputedDay(s) ?? "-"}</span>
+          {canPrepareZd && horizon ? (
+            <Link
+              href={buildZdEstimateLaunchHref(supplierId, { leadTimeHorizon: true })}
+              className={linkClass}
+              title={stockSignalHorizonTitle(s)}
+              aria-label="Przygotuj ZD do kolejnej dostawy"
+            >
+              do kolejnej dostawy
+            </Link>
           ) : null}
         </p>
-      ) : null}
+      )}
     </div>
   );
 }
