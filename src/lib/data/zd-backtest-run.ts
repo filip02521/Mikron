@@ -26,6 +26,7 @@ import { fetchZdBoostPowerPreset } from "@/lib/data/zd-estimate-boost-preset";
 import { boostPresetDef, policyForBoostPreset } from "@/lib/orders/zd-estimate-boost-presets";
 import { parseOrderQuantity } from "@/lib/orders/individual";
 import { isPlnCurrency } from "@/lib/orders/zd-proposal-minimum-notice";
+import { loadSubiektLeadRowsBySupplier } from "@/lib/data/subiekt-automat-lead";
 import type { StatsMode } from "@/types/database";
 import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
 import {
@@ -596,11 +597,16 @@ export async function loadZdBacktestData(
       WHERE supplier_id = $1 AND deleted_at IS NULL AND NOT is_teeth`,
     [supplierId]
   );
-  const lead: ZdBacktestLeadSample[] = leadRes.rows.map((r) => ({
-    ...r,
-    business_days_full: Number(r.business_days_full),
-    business_days_first: r.business_days_first == null ? null : Number(r.business_days_first),
-  }));
+  // Dostawca „OSOBNO”: automat liczy czas dostawy ze wszystkich ZD → FZ z Subiekta (jak `loadZdOrderHorizons`).
+  const osobnoRows = statsMode === "OSOBNO" ? (await loadSubiektLeadRowsBySupplier([supplierId])).get(supplierId) ?? [] : [];
+  const lead: ZdBacktestLeadSample[] = osobnoRows.length
+    ? osobnoRows
+    : leadRes.rows.map((r) => ({
+        ...r,
+        business_days_full: Number(r.business_days_full),
+        business_days_first: r.business_days_first == null ? null : Number(r.business_days_first),
+      }));
+  const leadStatsMode: StatsMode = osobnoRows.length ? "LACZNIE" : statsMode;
   const minStock = withPairMinStock(minStockRowsToMap(minStockRows), [...pairByPack].map(([packTwId, v]) => ({ packTwId, pieceTwId: v.piece })));
   const activeFrom = addDaysKey(simStart, -182);
   const products: ZdBacktestProduct[] = [...demand.keys()].map((id) => ({
@@ -639,7 +645,7 @@ export async function loadZdBacktestData(
     snapshots,
     historySnapshots,
     lead,
-    statsMode,
+    statsMode: leadStatsMode,
     trackPolicy,
     orderTerms,
   };
