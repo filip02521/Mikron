@@ -4,7 +4,7 @@ import { useId, useState, useTransition } from "react";
 import { actionSaveZdSupplierOrderPolicy } from "@/app/actions/zd-estimate";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/Field";
-import { ModalShell } from "@/components/ui/ModalShell";
+import { ModalShell, type ModalTier } from "@/components/ui/ModalShell";
 import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 import { polishPluralWord } from "@/lib/email/polish-plural";
@@ -93,12 +93,15 @@ export function ZdSupplierOrderPolicyDialog({
   policy,
   onClose,
   onSaved,
+  tier,
 }: {
   supplierId: string;
   supplierName: string;
   policy: ZdSupplierOrderPolicyRow | null;
   onClose: () => void;
   onSaved: (policy: ZdSupplierOrderPolicyRow) => void;
+  /** `top` — nad panelem karty dostawcy (z-[60]). */
+  tier?: ModalTier;
 }) {
   const daysId = useId();
   const cycleId = useId();
@@ -165,6 +168,7 @@ export function ZdSupplierOrderPolicyDialog({
       onClose={savedWithWarning ? () => onSaved(savedWithWarning.policy) : onClose}
       title={`Strategia zamawiania - ${supplierName}`}
       size="md"
+      tier={tier}
       bodyClassName="space-y-4 px-5 py-5 sm:px-6"
       loadingMessage={pending ? "Zapisuję…" : null}
       disableBackdropClose={pending}

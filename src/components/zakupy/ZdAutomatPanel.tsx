@@ -4,138 +4,45 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Alert } from "@/components/ui/Alert";
 import { BrandLoader } from "@/components/ui/BrandLoader";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Spinner } from "@/components/ui/Spinner";
 import {
   actionClearZdSkuClassOverride,
   actionSetZdSkuClassOverride,
   actionStartZdAutomatRecompute,
 } from "@/app/actions/zd-automat";
-import type { ZdAutomatKpiSupplier, ZdKpiWeeklyMetrics } from "@/lib/data/zd-kpi-weekly";
+import type { ZdAutomatKpiSupplier } from "@/lib/data/zd-kpi-weekly";
 import type { ZdSkuClassSummary } from "@/lib/data/zd-sku-class-sync";
+import type { ZdAutomatSupplierRow } from "@/lib/data/zd-automat-suppliers";
+import { zdInAutomat } from "@/components/zakupy/ZdAutomatCardSection";
+import {
+  ZdAutomatSuppliers,
+  zdAutomatRowOf,
+  type ZdAutomatSupplierFilter,
+  type ZdAutomatSupplierView,
+} from "@/components/zakupy/ZdAutomatSuppliers";
 import { formatWarsawDateTime } from "@/lib/time/warsaw";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 import { cn } from "@/lib/cn";
 import {
-  ZD_AUTOMAT_OOS_A_ALERT_PCT,
-  ZD_AUTOMAT_READY_WEEKS,
+  buildZdAutomatCheckStatus,
   buildZdAutomatStatus,
+  zdAutomatCheckReasons,
   zdAutomatOosAlert,
-  zdAutomatReadiness,
+  type ZdAutomatCheckInput,
 } from "@/lib/orders/zd-automat-status";
 
 const nf0 = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 });
 const nf1 = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 1 });
 const zl = (v: number) => `${nf0.format(v)}\u00a0zł`;
-const nf2 = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 2 });
-/** Dopiski w wąskich kolumnach: od 100 tys. zł w milionach („2,08 mln zł”). */
-const zlShort = (v: number) => (Math.abs(v) >= 100_000 ? `${nf2.format(v / 1_000_000)}\u00a0mln\u00a0zł` : zl(v));
-const pct = (v: number | null) => (v == null ? null : `${nf1.format(v)}%`);
 /** „1 towar”, „3 towary”, „5 towarów” — liczba w formacie pl-PL. */
-const count = (n: number, one: string, few: string, many: string) => `${nf0.format(n)} ${polishPluralWord(n, one, few, many)}`;
-const towary = (n: number) => count(n, "towar", "towary", "towarów");
-const dostawcy = (n: number) => count(n, "dostawca", "dostawcy", "dostawców");
+const towary = (n: number) => `${nf0.format(n)} ${polishPluralWord(n, "towar", "towary", "towarów")}`;
 const dayMonth = (key: string) => `${key.slice(8, 10)}.${key.slice(5, 7)}`;
-
-type Kpi = {
-  key: string;
-  label: string;
-  /** Definicja w dymku przy nagłówku kolumny. */
-  help: string;
-  /** Kolumna ma sens także u polskich dostawców spoza automatu (pomiar bez propozycji). */
-  measured?: boolean;
-  /** Wartość do pokazania; null = brak danych w tym tygodniu. */
-  value: (m: ZdKpiWeeklyMetrics) => string | null;
-  /** Dopisek pod wartością bieżącego tygodnia. */
-  note?: (m: ZdKpiWeeklyMetrics) => string | null;
-  empty: string;
-};
-
-const KPIS: Kpi[] = [
-  {
-    key: "oos",
-    label: "Braki A",
-    help: `% dni-towarów klasy A z dostępnym stanem ≤ 0 (historia stanów z nocnego przebiegu „Braki i zamówienia”). Alarm od ${ZD_AUTOMAT_OOS_A_ALERT_PCT}%.`,
-    measured: true,
-    value: (m) => pct(m.oosA.pct),
-    note: (m) => (m.oosA.skuDays ? `${m.oosA.zeroDays} z ${m.oosA.skuDays} dni-towarów` : null),
-    empty: "brak historii stanów",
-  },
-  {
-    key: "rotation",
-    label: "Rotacja",
-    help: "Wartość zapasu (stan × cena kartotekowa, bez niej cena z ostatniego ZD) / dzienny koszt sprzedaży z 90 dni. Zdjęcie z dnia przeliczenia.",
-    measured: true,
-    value: (m) => (m.rotation.days == null ? null : `${nf0.format(m.rotation.days)} dni`),
-    note: (m) => `zapas ${zlShort(m.rotation.stockValue)}`,
-    empty: "bez sprzedaży",
-  },
-  {
-    key: "dead",
-    label: "Martwy zapas",
-    help: "Wartość towarów na stanie bez sprzedaży od 180 dni. Zdjęcie z dnia przeliczenia.",
-    measured: true,
-    value: (m) => zl(m.deadStock.value),
-    note: (m) => (m.deadStock.skus ? towary(m.deadStock.skus) : null),
-    empty: "—",
-  },
-  {
-    key: "correction",
-    label: "Korekta",
-    help: `Korekta człowieka: % wartości propozycji zmienionej przy tworzeniu ZD. Poniżej 10% przez ${ZD_AUTOMAT_READY_WEEKS} tygodnie = gotowość do auto-zatwierdzania.`,
-    value: (m) => pct(m.humanCorrection.pct),
-    note: (m) => (m.humanCorrection.proposals ? `${nf0.format(m.humanCorrection.proposals)} ZD z propozycji` : null),
-    empty: "brak ZD z propozycji",
-  },
-  {
-    key: "deferred",
-    label: "Odłożone",
-    help: "% propozycji tygodnia odłożonych na kolejny cykl (poniżej minimum albo progu darmowej dostawy, bez pozycji pilnych).",
-    value: (m) => pct(m.minima.deferredPct),
-    note: (m) => (m.minima.proposals ? `${m.minima.deferred} z ${count(m.minima.proposals, "propozycji", "propozycji", "propozycji")}` : null),
-    empty: "brak propozycji",
-  },
-  {
-    key: "minimum",
-    label: "Minimum",
-    help: "ZD ≥ minimum: % ZD z propozycji w tym tygodniu z wartością co najmniej minimum zamówienia dostawcy.",
-    value: (m) => pct(m.minima.aboveMinPct),
-    note: (m) => (m.minima.accepted ? `${m.minima.acceptedAboveMin} z ${m.minima.accepted} ZD` : null),
-    empty: "brak minimum lub ZD",
-  },
-];
-
-function KpiCell({ kpi, weeks, alert = false }: { kpi: Kpi; weeks: ZdKpiWeeklyMetrics[]; alert?: boolean }) {
-  const [now, ...prev] = weeks;
-  if (!now) return <td className="text-slate-400">—</td>;
-  const value = kpi.value(now);
-  const note = kpi.note?.(now);
-  const trendValues = prev.map((m) => kpi.value(m)).reverse();
-  const trend = trendValues.some((v) => v != null) ? trendValues.map((v) => v ?? "—") : [];
-  return (
-    <td className="align-top">
-      {value == null ? (
-        <span className="text-slate-400" title={kpi.empty}>
-          —<span className="sr-only"> {kpi.empty}</span>
-        </span>
-      ) : (
-        <span className={cn("whitespace-nowrap font-semibold", alert ? "text-amber-800" : "text-slate-900")}>{value}</span>
-      )}
-      {note ? <span className="block text-xs text-slate-500">{note}</span> : null}
-      {trend.length ? (
-        <span className="block text-xs text-slate-500" title="Poprzednie tygodnie, od najstarszego">
-          wcześniej: {trend.join(" · ")}
-        </span>
-      ) : null}
-    </td>
-  );
-}
 
 const ABC = ["A", "B", "C"] as const;
 const XYZ = ["X", "Y", "Z", "N"] as const;
@@ -256,123 +163,81 @@ function OverrideForm({ onDone }: { onDone: (message: string) => void }) {
   );
 }
 
+type View = "suppliers" | "classes";
 
-function KpiHead({ label, help, align }: { label: string; help: string; align?: "right" }) {
-  return (
-    <th className={align === "right" ? "text-right" : undefined}>
-      <span className="inline-flex items-center gap-1 whitespace-nowrap">
-        {label}
-        <HelpHintBubble message={help} ariaLabel={`Co znaczy: ${label}`} />
-      </span>
-    </th>
+/** Wejście reguł „do sprawdzenia” z wiersza pulpitu (ten sam zestaw dla wiersza i zdania stanu). */
+function checkInput(v: ZdAutomatSupplierRow & { weeks: ZdAutomatSupplierView["weeks"] }): ZdAutomatCheckInput {
+  return {
+    name: v.name,
+    inAutomat: zdInAutomat(v),
+    active: v.isActive,
+    hasScope: v.hasScope,
+    policy: { cycleDays: v.policy.cycleDays, targetDays: v.policy.targetDays },
+    backtest: v.backtest,
+    oosAlert: zdAutomatOosAlert(zdAutomatRowOf(v)),
+  };
+}
+
+/** Dostawcy z zakresem w Kreatorze + ich KPI tygodnia i powody „do sprawdzenia” — jeden wiersz na dostawcę. */
+function buildSupplierViews(suppliers: ZdAutomatSupplierRow[], kpi: ZdAutomatKpiSupplier[], nowMs: number): ZdAutomatSupplierView[] {
+  const weeksById = new Map(kpi.map((k) => [k.supplierId, k.weeks]));
+  const views = suppliers.map((s) => {
+    const view = { ...s, weeks: weeksById.get(s.id) ?? [], checkReasons: [] as string[] };
+    view.checkReasons = zdAutomatCheckReasons(checkInput(view), nowMs);
+    return view;
+  });
+  const stock = (v: ZdAutomatSupplierView) => v.weeks[0]?.rotation.stockValue ?? -1;
+  // Do sprawdzenia na górze, potem automat, potem wartość zapasu.
+  return views.sort(
+    (a, b) =>
+      Number(b.checkReasons.length > 0) - Number(a.checkReasons.length > 0) ||
+      Number(zdInAutomat(b)) - Number(zdInAutomat(a)) ||
+      stock(b) - stock(a) ||
+      a.name.localeCompare(b.name, "pl")
   );
 }
 
-function supplierMeta(r: ZdAutomatKpiSupplier): string {
-  const w = r.weeks[0];
-  const parts = [
-    r.automat ? `stopień ${r.automat.autoLevel}${r.automat.cycleDays ? ` · co ${r.automat.cycleDays} dni` : ""}` : null,
-    w ? `${towary(w.skus)}, ${nf0.format(w.skusA)} A` : null,
-  ];
-  return parts.filter(Boolean).join(" · ");
-}
-
-function ReadinessCell({ row }: { row: ZdAutomatKpiSupplier }) {
-  const r = zdAutomatReadiness(row);
-  if (!r) return <td className="text-slate-400">—</td>;
-  return (
-    <td className="align-top">
-      {r.kind === "ready" ? (
-        <Badge variant="success">gotowy do stopnia 3</Badge>
-      ) : r.kind === "auto" ? (
-        <Badge variant="info">auto-zatwierdzanie</Badge>
-      ) : r.kind === "progress" ? (
-        <Badge>
-          {r.weeksOk} z {ZD_AUTOMAT_READY_WEEKS} tyg.
-        </Badge>
-      ) : (
-        <span className="whitespace-nowrap text-sm text-slate-600">{r.reason}</span>
-      )}
-    </td>
-  );
-}
-
-function AutomatStatus({ rows, kpiComputed }: { rows: ZdAutomatKpiSupplier[]; kpiComputed: boolean }) {
-  const s = buildZdAutomatStatus(rows, kpiComputed);
-  const dot = s.tone === "warning" ? "bg-amber-500" : s.tone === "success" ? "bg-emerald-600" : "bg-slate-400";
+function StatusPanel({
+  tone,
+  headline,
+  detail,
+  action,
+}: {
+  tone: "success" | "warning" | "neutral";
+  headline: string;
+  detail: string;
+  action?: React.ReactNode;
+}) {
+  const dot = tone === "warning" ? "bg-amber-500" : tone === "success" ? "bg-emerald-600" : "bg-slate-400";
   return (
     <Card padding={false}>
-      <div className="p-4 sm:p-5" role="status">
-        <p className="flex items-start gap-2.5 text-lg font-semibold leading-snug tracking-tight text-balance text-slate-900 lg:text-xl">
-          <span className={cn("mt-2 size-2.5 shrink-0 rounded-full", dot)} aria-hidden />
-          {s.headline}
-        </p>
-        <p className="mt-1 max-w-3xl pl-5 text-sm leading-relaxed text-slate-600">{s.detail}</p>
+      <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5" role="status">
+        <div className="min-w-0">
+          <p className="flex items-start gap-2.5 text-lg font-semibold leading-snug tracking-tight text-balance text-slate-900 lg:text-xl">
+            <span className={cn("mt-2 size-2.5 shrink-0 rounded-full", dot)} aria-hidden />
+            {headline}
+          </p>
+          <p className="mt-1 max-w-3xl pl-5 text-sm leading-relaxed text-slate-600">{detail}</p>
+        </div>
+        {action ? <div className="shrink-0 sm:pl-0">{action}</div> : null}
       </div>
     </Card>
-  );
-}
-
-const AUTOMAT_KPIS = ["oos", "correction", "deferred", "minimum", "rotation", "dead"];
-const MEASURED_KPIS = KPIS.filter((k) => k.measured).map((k) => k.key);
-const kpiByKey = new Map(KPIS.map((k) => [k.key, k]));
-
-function KpiTable({ rows, keys, automat }: { rows: ZdAutomatKpiSupplier[]; keys: string[]; automat: boolean }) {
-  const cols = keys.map((k) => kpiByKey.get(k)!);
-  return (
-    <TableScroll>
-      <DataTable className={cn("kpi-table", automat ? "min-w-[840px]" : "min-w-[640px]")}>
-        <thead>
-          <tr>
-            <th>Dostawca</th>
-            {cols.slice(0, automat ? 2 : cols.length).map((k) => (
-              <KpiHead key={k.key} label={k.label} help={k.help} />
-            ))}
-            {automat ? (
-              <KpiHead
-                label="Gotowość"
-                help={`Auto-zatwierdzanie (stopień 3) po ${ZD_AUTOMAT_READY_WEEKS} kolejnych tygodniach z korektą człowieka poniżej 10%. Stopień zmieniasz w Strategii dostawcy w Kreatorze ZD.`}
-              />
-            ) : null}
-            {automat ? cols.slice(2).map((k) => <KpiHead key={k.key} label={k.label} help={k.help} />) : null}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => {
-            const alert = zdAutomatOosAlert(r);
-            const cells = cols.map((k) => <KpiCell key={k.key} kpi={k} weeks={r.weeks} alert={k.key === "oos" && alert} />);
-            return (
-              <tr key={r.supplierId}>
-                <td className="min-w-[11rem] max-w-[14rem] align-top">
-                  <span className="font-medium text-slate-900">{r.name}</span>
-                  <span className="block text-xs text-slate-500">{supplierMeta(r) || "brak KPI w tym tygodniu"}</span>
-                </td>
-                {automat ? (
-                  <>
-                    {cells.slice(0, 2)}
-                    <ReadinessCell row={r} />
-                    {cells.slice(2)}
-                  </>
-                ) : (
-                  cells
-                )}
-              </tr>
-            );
-          })}
-        </tbody>
-      </DataTable>
-    </TableScroll>
   );
 }
 
 export function ZdAutomatPanel({
   kpi,
   classes,
+  suppliers,
   canRecompute,
+  cardsHref,
 }: {
   kpi: { suppliers: ZdAutomatKpiSupplier[]; computedAt: string | null; running: boolean };
   classes: ZdSkuClassSummary;
+  suppliers: ZdAutomatSupplierRow[];
   canRecompute: boolean;
+  /** Karty dostawców tej roli — przejście z wiersza do karty (`?karta=<id>`). */
+  cardsHref: string;
 }) {
   const router = useRouter();
   const [started, setStarted] = useState(false);
@@ -380,23 +245,34 @@ export function ZdAutomatPanel({
   const [pending, start] = useTransition();
   const running = started || kpi.running || classes.running;
 
-  const byStock = (a: ZdAutomatKpiSupplier, b: ZdAutomatKpiSupplier) =>
-    (b.weeks[0]?.rotation.stockValue ?? -1) - (a.weeks[0]?.rotation.stockValue ?? -1);
-  const rows = [...kpi.suppliers].sort(byStock);
-  // Alarm braków na górze, potem wartość zapasu.
-  const automatRows = rows.filter((r) => r.automat).sort((a, b) => Number(zdAutomatOosAlert(b)) - Number(zdAutomatOosAlert(a)));
-  const otherRows = rows.filter((r) => !r.automat);
-  const latest = rows.find((r) => r.weeks[0])?.weeks[0];
+  // Wiek backtestu liczony od chwili otwarcia strony (stały między renderami).
+  const [nowMs] = useState(() => Date.now());
+  const views = buildSupplierViews(suppliers, kpi.suppliers, nowMs);
+  const automatCount = views.filter(zdInAutomat).length;
+  const [view, setView] = useState<View>("suppliers");
+  const [filter, setFilter] = useState<ZdAutomatSupplierFilter>(automatCount ? "automat" : "pl");
+  const [q, setQ] = useState("");
+
+  const latest = kpi.suppliers.find((r) => r.weeks[0])?.weeks[0];
   const totalSkus = Object.values(classes.counts).reduce((a, b) => a + b, 0);
+  const check = buildZdAutomatCheckStatus(
+    views.map(checkInput),
+    nowMs
+  );
+  const status = check ?? buildZdAutomatStatus(views.map(zdAutomatRowOf), Boolean(latest));
+  const kpiWeekLabel = latest
+    ? `KPI za tydzień ${dayMonth(latest.weekStart)}–${dayMonth(latest.weekEnd)}${kpi.computedAt ? ` · policzone ${formatWarsawDateTime(kpi.computedAt)}` : ""}`
+    : "KPI jeszcze nie policzone (cron w poniedziałek 7:00)";
 
   return (
     <div className="space-y-4">
       <PageHeader
         title="Automat ZD"
-        description="Jak automat zamawia u polskich dostawców: braki klasy A, zapas i to, ile poprawiasz w propozycjach. Klasy ABC/XYZ służą do pomiaru i kolejności przeglądu — nie zmieniają ilości."
+        description="Jak automat zamawia u polskich dostawców: rytm i backtest każdego dostawcy, braki klasy A i to, ile poprawiasz w propozycjach. Ustawienia dostawcy zmieniasz tutaj albo w jego karcie."
         actions={
           canRecompute ? (
             <Button
+              variant="secondary"
               disabled={pending || running}
               onClick={() =>
                 start(async () => {
@@ -428,126 +304,134 @@ export function ZdAutomatPanel({
 
       {notice ? <Alert tone={notice.tone}>{notice.text}</Alert> : null}
 
-      <AutomatStatus rows={rows} kpiComputed={Boolean(latest)} />
+      <StatusPanel
+        tone={status.tone}
+        headline={status.headline}
+        detail={status.detail}
+        action={
+          check && !(view === "suppliers" && filter === "check" && !q) ? (
+            <Button
+              className="min-h-11 w-full sm:min-h-10 sm:w-auto"
+              onClick={() => {
+                setView("suppliers");
+                setFilter("check");
+                setQ("");
+              }}
+            >
+              Pokaż {check.count} do sprawdzenia
+            </Button>
+          ) : null
+        }
+      />
 
-      <Card padding={false}>
-        <CardHeader
-          inset
-          title="Dostawcy w automacie"
-          description={`${dostawcy(automatRows.length)} · ${latest ? `tydzień ${dayMonth(latest.weekStart)}–${dayMonth(latest.weekEnd)}${kpi.computedAt ? ` · policzone ${formatWarsawDateTime(kpi.computedAt)}` : ""}` : "KPI jeszcze nie policzone (cron w poniedziałek 7:00)"}`}
-        />
-        {automatRows.length ? (
-          <KpiTable rows={automatRows} keys={AUTOMAT_KPIS} automat />
-        ) : (
-          <p className="px-6 pb-6 text-sm text-slate-600 sm:px-7">
-            Nikt jeszcze nie zamawia przez automat. Włącz strategię propozycji w Kreatorze ZD (Strategia dostawcy).
-          </p>
-        )}
-        <p className="px-6 pb-6 pt-3 text-xs text-slate-500 sm:px-7">
-          „—” = brak danych w tym tygodniu; najedź na kreskę, żeby zobaczyć powód. Definicje — znak zapytania przy nagłówku.
-        </p>
-      </Card>
+      <SegmentedControl
+        value={view}
+        onChange={setView}
+        ariaLabel="Widok automatu"
+        options={[
+          { value: "suppliers", label: "Dostawcy" },
+          { value: "classes", label: "Klasy towarów" },
+        ]}
+      />
 
-      {otherRows.length ? (
-        <details className="group rounded-[var(--radius-panel)] border border-slate-200 bg-white shadow-[var(--shadow-card-elevated)]">
-          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-[var(--radius-panel)] px-6 py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 sm:px-7 [&::-webkit-details-marker]:hidden">
-            <span>
-              <span className="block text-base font-semibold text-slate-900">Pozostali polscy dostawcy</span>
-              <span className="block text-sm text-slate-600">
-                {dostawcy(otherRows.length)} poza automatem — pomiar rotacji, martwego zapasu i braków przed włączeniem
-              </span>
-            </span>
-            <span className="shrink-0 text-sm font-medium text-indigo-700 group-open:hidden">Pokaż</span>
-            <span className="hidden shrink-0 text-sm font-medium text-indigo-700 group-open:inline">Zwiń</span>
-          </summary>
-          <div className="border-t border-slate-100">
-            <KpiTable rows={otherRows} keys={MEASURED_KPIS} automat={false} />
-          </div>
-        </details>
-      ) : null}
+      {view === "suppliers" ? (
+        <ZdAutomatSuppliers
+          rows={views}
+          canManage
+          cardsHref={cardsHref}
+          kpiWeekLabel={kpiWeekLabel}
+          filter={filter}
+          onFilterChange={setFilter}
+          q={q}
+          onQChange={setQ}
+          nowMs={nowMs}
+        />
+      ) : (
+        <>
+          <Card padding={false}>
+            <CardHeader
+              inset
+              title="Rozkład klas"
+              description={
+                classes.computedAt
+                  ? `${towary(totalSkus)} · ABC wg zysku 12 mies. w obrębie dostawcy, XYZ ze sprzedaży 52 tygodni · policzone ${formatWarsawDateTime(classes.computedAt)}. Klasy służą do pomiaru i kolejności przeglądu — nie zmieniają ilości.`
+                  : "Klasy jeszcze nie policzone (cron 1. dnia miesiąca w nocy)."
+              }
+            />
+            {totalSkus ? <ClassMatrix classes={classes} /> : null}
+          </Card>
 
-      <Card padding={false}>
-        <CardHeader
-          inset
-          title="Rozkład klas"
-          description={
-            classes.computedAt
-              ? `${towary(totalSkus)} · ABC wg zysku 12 mies. w obrębie dostawcy, XYZ ze sprzedaży 52 tygodni · policzone ${formatWarsawDateTime(classes.computedAt)}`
-              : "Klasy jeszcze nie policzone (cron 1. dnia miesiąca w nocy)."
-          }
-        />
-        {totalSkus ? <ClassMatrix classes={classes} /> : null}
-      </Card>
-
-      <Card padding={false}>
-        <CardHeader
-          inset
-          title="Nadpisania klas"
-          description={
-            classes.overrides.length
-              ? `${towary(classes.overrides.length)} z ręczną klasą — przeliczenie ${classes.overrides.length === 1 ? "jej" : "ich"} nie zmienia.`
-              : "Ręczna klasa z powodem, np. towar strategiczny mimo niskiego zysku. Przeliczenie jej nie zmienia."
-          }
-        />
-        <OverrideForm
-          onDone={(text) => {
-            setNotice({ tone: "success", text });
-            router.refresh();
-          }}
-        />
-        {classes.overrides.length ? (
-          <TableScroll>
-            <DataTable className="min-w-[640px]">
-              <thead>
-                <tr>
-                  <th>Towar</th>
-                  <th>Dostawca</th>
-                  <th>Klasa</th>
-                  <th>Powód</th>
-                  <th>
-                    <span className="sr-only">Akcja</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {classes.overrides.map((o) => (
-                  <tr key={o.twId}>
-                    <td>
-                      <span className="font-mono text-xs text-slate-700">{o.symbol ?? o.twId}</span>
-                      <span className="block text-slate-900">{o.name}</span>
-                    </td>
-                    <td>{o.supplierName ?? "wspólny zakres"}</td>
-                    <td className="whitespace-nowrap">
-                      <span className="font-semibold text-slate-900">
-                        {o.overrideAbc ?? o.abc}
-                        {o.overrideXyz ?? o.xyz}
-                      </span>
-                      <span className="block text-xs text-slate-500">
-                        policzona {o.abc}
-                        {o.xyz}
-                      </span>
-                    </td>
-                    <td>{o.note}</td>
-                    <td className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={async () => {
-                          const res = await actionClearZdSkuClassOverride(o.twId);
-                          if (!res.ok) setNotice({ tone: "error", text: res.message });
-                          router.refresh();
-                        }}
-                      >
-                        Usuń
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </DataTable>
-          </TableScroll>
-        ) : null}
-      </Card>
+          <Card padding={false}>
+            <CardHeader
+              inset
+              title="Nadpisania klas"
+              description={
+                classes.overrides.length
+                  ? `${towary(classes.overrides.length)} z ręczną klasą — przeliczenie ${classes.overrides.length === 1 ? "jej" : "ich"} nie zmienia.`
+                  : "Ręczna klasa z powodem, np. towar strategiczny mimo niskiego zysku. Przeliczenie jej nie zmienia."
+              }
+            />
+            <OverrideForm
+              onDone={(text) => {
+                setNotice({ tone: "success", text });
+                router.refresh();
+              }}
+            />
+            {classes.overrides.length ? (
+              <TableScroll>
+                <DataTable className="min-w-[640px]">
+                  <thead>
+                    <tr>
+                      <th>Towar</th>
+                      <th>Dostawca</th>
+                      <th>Klasa</th>
+                      <th>Powód</th>
+                      <th>
+                        <span className="sr-only">Akcja</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {classes.overrides.map((o) => (
+                      <tr key={o.twId}>
+                        <td>
+                          <span className="font-mono text-xs text-slate-700">{o.symbol ?? o.twId}</span>
+                          <span className="block text-slate-900">{o.name}</span>
+                        </td>
+                        <td>{o.supplierName ?? "wspólny zakres"}</td>
+                        <td className="whitespace-nowrap">
+                          <span className="font-semibold text-slate-900">
+                            {o.overrideAbc ?? o.abc}
+                            {o.overrideXyz ?? o.xyz}
+                          </span>
+                          <span className="block text-xs text-slate-500">
+                            policzona {o.abc}
+                            {o.xyz}
+                          </span>
+                        </td>
+                        <td>{o.note}</td>
+                        <td className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={async () => {
+                              const res = await actionClearZdSkuClassOverride(o.twId);
+                              if (!res.ok) setNotice({ tone: "error", text: res.message });
+                              router.refresh();
+                            }}
+                          >
+                            Usuń
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </DataTable>
+              </TableScroll>
+            ) : null}
+          </Card>
+        </>
+      )}
     </div>
   );
 }

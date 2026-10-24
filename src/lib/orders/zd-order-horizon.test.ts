@@ -34,6 +34,15 @@ describe("resolveZdOrderHorizon", () => {
     expect(h.leadDays).toBeGreaterThan(40);
     expect(h.automatLeadDays).toBe(7);
   });
+  it("automat u dostawcy „OSOBNO”: ZD → FZ z Subiekta zamiast przyjęć z aplikacji", () => {
+    // przyjęcia w aplikacji: p90 15 dni rob.; ZD → FZ z Subiekta: pełna 6, pierwsza dostawa 3 dni rob.
+    const h = resolveZdOrderHorizon({ ...base, automatLead: { p50: 3, p90: 6, nOrders: 120, p90FirstReceipt: 3 } });
+    expect(h.leadDays).toBe(resolveZdOrderHorizon(base).leadDays);
+    expect(h.automatLeadDays).toBe(3); // poniedziałek + 3 dni rob. = czwartek
+    const few = resolveZdOrderHorizon({ ...base, automatLead: { p50: 3, p90: 6, nOrders: 4, p90FirstReceipt: 3 } });
+    expect(few.automatLeadDays).toBe(resolveZdOrderHorizon(base).automatLeadDays);
+  });
+
   it("automat bez próbek pierwszej dostawy albo przy < 5 zamówieniach — jak leadDays; nigdy dłużej niż leadDays", () => {
     expect(resolveZdOrderHorizon(base).automatLeadDays).toBe(resolveZdOrderHorizon(base).leadDays);
     const few = resolveZdOrderHorizon({ ...base, lead: { p50: 5, p90: 15, nOrders: 3, p90FirstReceipt: 2 } });

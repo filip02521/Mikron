@@ -41,6 +41,13 @@ export function supplierVacationsHref(ctx: SupplierHubContext): string {
   return supplierHubPaths(ctx).vacations;
 }
 
+/** Strony hubu dostawców (karty, nieaktywni, terminy, urlopy) — w menu jedna pozycja „Karty dostawców”. */
+export function isSupplierHubPath(pathname: string): boolean {
+  return (
+    /^\/(zakupy|admin)\/(dostawcy|urlopy)(\/|$)/.test(pathname) || pathname.startsWith("/lokalizacje/")
+  );
+}
+
 export function activeSupplierHubTab(pathname: string): SupplierHubTab {
   if (pathname.includes("/nieaktywni")) return "inactive";
   if (pathname.includes("/urlopy")) return "vacations";

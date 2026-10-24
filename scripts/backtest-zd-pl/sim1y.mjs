@@ -62,6 +62,8 @@ const VARIANTS = [
   ["P2 R7 cel 25 ★", { kind: "P2", R: 7, target: 25 }],
   ["P2 R7 cel 30", { kind: "P2", R: 7, target: 30 }],
   ["P2 R3 cel 25", { kind: "P2", R: 3, target: 25 }],
+  ["P2 R14 cel 25", { kind: "P2", R: 14, target: 25 }],
+  ["P2 R21 cel 25", { kind: "P2", R: 21, target: 25 }],
   ["P2 R7 bez podłogi 90", { kind: "P2", R: 7, target: 25, noFloor: true }],
 ];
 

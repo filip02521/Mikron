@@ -4,6 +4,7 @@
  */
 import type { ZdKpiWeeklyMetrics } from "@/lib/data/zd-kpi-weekly";
 import { polishPluralWord } from "@/lib/email/polish-plural";
+import type { ZdBacktestVerdictKind } from "@/lib/orders/zd-backtest";
 
 /** Braki klasy A od tylu % dni-towarów to sygnał do reakcji (backtest: ~2–4% przy dobrej strategii). */
 export const ZD_AUTOMAT_OOS_A_ALERT_PCT = 5;
@@ -11,6 +12,14 @@ export const ZD_AUTOMAT_OOS_A_ALERT_PCT = 5;
 export const ZD_AUTOMAT_READY_CORRECTION_PCT = 10;
 /** … przez tyle kolejnych tygodni z ZD z propozycji. */
 export const ZD_AUTOMAT_READY_WEEKS = 4;
+
+/** Backtest starszy niż tyle dni nie opisuje już bieżącej sprzedaży — dostawca trafia do „Do sprawdzenia”. */
+export const ZD_AUTOMAT_BACKTEST_STALE_DAYS = 90;
+
+/** Pełne dni od przebiegu backtestu. */
+export function zdBacktestAgeDays(at: string, nowMs = Date.now()): number {
+  return Math.floor((nowMs - new Date(at).getTime()) / 86_400_000);
+}
 
 export type ZdAutomatRow = {
   name: string;
@@ -66,7 +75,7 @@ export function buildZdAutomatStatus(rows: readonly ZdAutomatRow[], kpiComputed:
     return {
       tone: "neutral",
       headline: "Żaden dostawca nie jest jeszcze w automacie",
-      detail: "Włącz strategię propozycji w Kreatorze ZD (Strategia dostawcy); polscy dostawcy poniżej mają już pomiar rotacji i braków.",
+      detail: "Włącz automat w karcie dostawcy albo rozwiń dostawcę w tabeli poniżej (Włącz automat); polscy dostawcy mają już pomiar rotacji i braków.",
     };
   }
   if (!kpiComputed) {
@@ -109,5 +118,76 @@ export function buildZdAutomatStatus(rows: readonly ZdAutomatRow[], kpiComputed:
     tone: "success",
     headline: `Automat bez alarmów: braki A poniżej ${ZD_AUTOMAT_OOS_A_ALERT_PCT}% u ${measured} ${uDostawc(measured)}`,
     detail: `${unmeasured ? `${unmeasured} bez pomiaru braków (brak historii stanów). ` : ""}${readyText}`,
+  };
+}
+
+export const ZD_BACKTEST_VERDICT_LABEL: Record<ZdBacktestVerdictKind, string> = {
+  works: "działa",
+  tradeoff: "kompromis",
+  fails: "nie działa",
+  insufficient: "za mało danych",
+};
+
+export type ZdAutomatCheckInput = {
+  name: string;
+  inAutomat: boolean;
+  /** Nocny przebieg robi propozycje tylko dla aktywnych dostawców z zakresem w Kreatorze. Brak = oba spełnione. */
+  active?: boolean;
+  hasScope?: boolean;
+  /** Bieżące ustawienia automatu — backtest liczony dla innych nie potwierdza tych. */
+  policy?: { cycleDays: number | null; targetDays: number | null };
+  backtest: {
+    status: "queued" | "running" | "done" | "error";
+    verdict: ZdBacktestVerdictKind | null;
+    at: string;
+    params?: { cycleDays: number; targetDays: number };
+  } | null;
+  oosAlert: boolean;
+};
+
+/**
+ * Powody, dla których dostawca w automacie jest „do sprawdzenia”: automat stoi (dostawca nieaktywny albo bez zakresu
+ * w Kreatorze), alarm braków A, brak lub błąd backtestu, werdykt inny niż „działa”, backtest dla innych ustawień niż
+ * bieżące, backtest starszy niż 90 dni (ZD_AUTOMAT_BACKTEST_STALE_DAYS). Liczący się backtest — bez powodu (wynik
+ * w drodze). Dostawca poza automatem — nigdy.
+ */
+export function zdAutomatCheckReasons(row: ZdAutomatCheckInput, nowMs = Date.now()): string[] {
+  if (!row.inAutomat) return [];
+  const out: string[] = [];
+  if (row.active === false) out.push("nieaktywny w karcie - automat stoi");
+  else if (row.hasScope === false) out.push("bez zakresu w Kreatorze - automat stoi");
+  if (row.oosAlert) out.push(`braki A od ${ZD_AUTOMAT_OOS_A_ALERT_PCT}%`);
+  const b = row.backtest;
+  if (!b) out.push("brak backtestu");
+  else if (b.status === "error") out.push("błąd backtestu");
+  else if (b.status === "done") {
+    if (b.verdict && b.verdict !== "works") out.push(`backtest „${ZD_BACKTEST_VERDICT_LABEL[b.verdict]}”`);
+    const p = b.params;
+    if (p && row.policy && (p.cycleDays !== row.policy.cycleDays || p.targetDays !== row.policy.targetDays)) {
+      out.push(`backtest dla innych ustawień (co ${p.cycleDays} / cel ${p.targetDays})`);
+    }
+    const age = zdBacktestAgeDays(b.at, nowMs);
+    if (age > ZD_AUTOMAT_BACKTEST_STALE_DAYS) out.push(`backtest sprzed ${age} dni`);
+  }
+  return out;
+}
+
+/** Zdanie stanu pulpitu, gdy ktoś w automacie jest do sprawdzenia; null = brak takich (zdanie z KPI). */
+export function buildZdAutomatCheckStatus(
+  rows: readonly ZdAutomatCheckInput[],
+  nowMs = Date.now()
+): (ZdAutomatStatus & { count: number }) | null {
+  const inAutomat = rows.filter((r) => r.inAutomat);
+  const flagged = inAutomat
+    .map((r) => ({ name: r.name, reasons: zdAutomatCheckReasons(r, nowMs) }))
+    .filter((r) => r.reasons.length);
+  if (!flagged.length) return null;
+  const shown = flagged.slice(0, 3).map((r) => `${r.name}: ${r.reasons.join(", ")}`);
+  const rest = flagged.length - shown.length;
+  return {
+    tone: "warning",
+    count: flagged.length,
+    headline: `${flagged.length} z ${inAutomat.length} ${uDostawc(inAutomat.length)} w automacie do sprawdzenia`,
+    detail: `${shown.join(" · ")}${rest ? ` · i ${rest} ${polishPluralWord(rest, "inny", "inni", "innych")}` : ""}.`,
   };
 }

@@ -69,6 +69,11 @@ export function resolveZdOrderHorizon(input: {
   interval: OrderInterval | null;
   /** Kwantyle czasu dostawy (dni robocze) dla zamówień „Główne”. */
   lead: { p50: number | null; p90: number | null; nOrders: number; p90FirstReceipt?: number | null } | null;
+  /**
+   * Kwantyle tylko dla automatu: wszystkie ZD → FZ z Subiekta. Dla dostawców „OSOBNO” statystyki główne/uzupełniające
+   * pochodzą z przyjęć w aplikacji (Subiekt ich nie rozróżnia), a automat zamawia jak każde ZD — mierzy ZD → faktura.
+   */
+  automatLead?: { p50: number | null; p90: number | null; nOrders: number; p90FirstReceipt?: number | null } | null;
 }): ZdOrderHorizon {
   const stockDays = Math.max(1, Math.round(input.stockDays));
 
@@ -85,11 +90,17 @@ export function resolveZdOrderHorizon(input: {
     leadBusinessDays != null
       ? businessToCalendarDays(input.todayKey, leadBusinessDays)
       : ZD_HORIZON_DEFAULT_LEAD_DAYS;
-  const firstP90 = input.lead?.p90FirstReceipt;
-  const automatLeadDays =
-    firstP90 != null && (input.lead?.nOrders ?? 0) >= ZD_HORIZON_MIN_SAMPLES_P90
+  const automatLeadDays = (() => {
+    const al = input.automatLead;
+    if (al && al.p90 != null && al.nOrders >= ZD_HORIZON_MIN_SAMPLES_P90) {
+      const full = businessToCalendarDays(input.todayKey, al.p90);
+      return al.p90FirstReceipt != null ? Math.min(full, businessToCalendarDays(input.todayKey, al.p90FirstReceipt)) : full;
+    }
+    const firstP90 = input.lead?.p90FirstReceipt;
+    return firstP90 != null && (input.lead?.nOrders ?? 0) >= ZD_HORIZON_MIN_SAMPLES_P90
       ? Math.min(leadDays, businessToCalendarDays(input.todayKey, firstP90))
       : leadDays;
+  })();
 
   // Kolejne zamówienie PO dzisiejszym: gdy plan wypada dziś / jest zaległy,
   // to właśnie składamy to zamówienie — następne liczymy z interwału.

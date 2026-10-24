@@ -119,6 +119,7 @@ import {
 } from "@/lib/orders/zd-sales-profile";
 import {
   ensureZdSalesProfiles,
+  loadDeliveredProsbaPiecesByFloorWindow,
   loadDeliveredProsbaPiecesByTwId,
   type ZdSalesProfileScope,
 } from "@/lib/orders/zd-sales-profile-load";
@@ -1136,13 +1137,19 @@ export async function runZdOrderEngine(
         subtractProsba &&
         !compositeTwIds.has(tw) &&
         !((packagingByTwId.get(tw)?.unitsPerPackage ?? 1) > 1);
-      const prosbaPieces = subtractProsba
-        ? await loadDeliveredProsbaPiecesByTwId({
-            twIds: mergedPozycje.map((p) => Math.trunc(Number(p.tw_Id) || 0)).filter(prosbaInPieces),
-            dataOd,
-            dataDo,
-          }).catch(() => new Map<number, number>())
-        : new Map<number, number>();
+      const prosbaLoadTwIds = mergedPozycje.map((p) => Math.trunc(Number(p.tw_Id) || 0)).filter(prosbaInPieces);
+      const [prosbaPieces, prosbaByFloorWindow] = await Promise.all([
+        subtractProsba
+          ? loadDeliveredProsbaPiecesByTwId({ twIds: prosbaLoadTwIds, dataOd, dataDo }).catch(() => new Map<number, number>())
+          : new Map<number, number>(),
+        // Podłoga 90 d: prośby z każdego z jej trzech okien profilu, nie tylko z okna Kreatora.
+        // shortcut: okna liczone od dataDo — profil „usable” w Kreatorze (do 14 d starszy) przesuwa je o tyle; nocny przebieg ma świeży.
+        strategyActive
+          ? loadDeliveredProsbaPiecesByFloorWindow({ twIds: prosbaLoadTwIds, endDate: dataDo }).catch(
+              () => new Map<number, number[]>()
+            )
+          : new Map<number, number[]>(),
+      ]);
       const dniOkresu =
         Number(fetched.parametry.dniOkresu) > 0
           ? Number(fetched.parametry.dniOkresu)
@@ -1187,7 +1194,6 @@ export async function runZdOrderEngine(
           !bomFloored.has(tw)
         ) {
           let base = line;
-          let floorWindows: readonly number[] = windows;
           const prosba = prosbaPieces.get(tw) ?? 0;
           if (prosba > 0 && !compositeTwIds.has(tw)) {
             const pm = resolveZdSalesProfile({
@@ -1199,10 +1205,6 @@ export async function runZdOrderEngine(
               subtractProsba: true,
             });
             base = applyZdSalesProfileToLine(line, pm, zapasMin);
-            // Bieżące okno profilu też zawiera sprzedaż pod prośby.
-            floorWindows = windows.map((v, k) =>
-              k === windows.length - 1 ? Math.max(0, v - pm.prosbaPieces) : v
-            );
             if (pm.applied) {
               salesSmoothing.prosba += 1;
               prosbaMetaKept = true;
@@ -1210,7 +1212,7 @@ export async function runZdOrderEngine(
           }
           const floored = applyZdDemandFloorToLine(base, {
             policy: orderPolicy,
-            sales90: sales90FromProfile(floorWindows),
+            sales90: sales90FromProfile(windows, prosbaByFloorWindow.get(tw)),
             dniOkresu,
             dniZapasu,
           });
