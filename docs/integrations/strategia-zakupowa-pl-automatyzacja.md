@@ -490,7 +490,7 @@ Znalezione w silniku (nie w backteście), naprawione 2026-10-24: podłoga 90 d o
 okna 30 d profilu — prośba sprzed 31–90 dni dalej podnosiła tempo przez dwa miesiące. Teraz każde z trzech okien
 podłogi traci prośby dostarczone w jego zakresie (14 d przed najstarszym oknem, do 3 d przed końcem okna; zakresy
 się nie nakładają — `zdProsbaFloorWindowRanges`), okno nie mniej niż 0. Backtest odejmuje sprzedaż pod prośby per
-okno tak samo; wyniki DT Shop i Denon wyżej i tabela §11.1 są sprzed poprawki (przeliczone niżej).
+okno tak samo; przeliczenie 10 dostawców po poprawce (2026-10-24) dało te same werdykty i rekomendacje co tabela §11.1 — prośby to 0–2,6% sprzedaży tych dostawców (różnice ≤ 0,1 pp braków, ≤ 1 tys. zł zapasu).
 
 ### 11.1. Backtest v2 — 10 dostawców z §7 (dane 24.10.2025–23.10.2026)
 
