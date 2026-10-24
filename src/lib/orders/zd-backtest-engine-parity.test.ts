@@ -4,10 +4,11 @@
  * i podłoga 90 d → podążanie za sprzedażą i historia ZD → minimum stanów → Do ZD.
  */
 import { describe, expect, it } from "vitest";
-import { zdBacktestDecideOrder } from "@/lib/orders/zd-backtest";
+import { zdBacktestDecideOrder, zdBacktestPackPieces } from "@/lib/orders/zd-backtest";
 import { applyZdDemandFloorToLine, sales90FromProfile } from "@/lib/orders/zd-demand-policy";
 import { policyForBoostPreset } from "@/lib/orders/zd-estimate-boost-presets";
 import { mapZdEstimateLineToManual } from "@/lib/orders/zd-estimate-manual";
+import { resolveOrderQtyForLine } from "@/lib/orders/zd-estimate-packaging";
 import { applyZdSalesProfileToLine, resolveZdSalesProfile } from "@/lib/orders/zd-sales-profile";
 import { applyStockoutAdjustToLine, computeStockoutSalesFactor, stockoutMetaExcludingProsba } from "@/lib/stock-watch/stock-history";
 import type { SubiektZdEstimateLine } from "@/lib/subiekt/types";
@@ -29,6 +30,8 @@ type Case = {
   preset: "off" | "gentle" | "standard" | "aggressive";
   history: { qty: number; daysAgo: number } | null;
   minStock: number;
+  /** Opakowanie z Kreatora: N sztuk w jednostce ZD, tryb dokumentu, wielokrotność paczek. */
+  pack?: { units: number; mode: "packages" | "pieces_multiple"; mult: number | null };
 };
 
 const base: Case = {
@@ -69,6 +72,12 @@ const cases: Case[] = [
   { ...base, name: "martwy towar", seen: 0.5, floor: [0, 0, 0.5], stock: 3 },
   { ...base, name: "Kreator (classic) — prośby i podłoga nie działają", strategy: "classic", prosba: 10, floor: [80, 80, 40], floorProsba: [0, 0, 10] },
   { ...base, name: "Kreator (classic) z dniami braku", strategy: "classic", stockout: { windowDays: 22, recordedDays: 20, outDays: 6 }, seen: 14, prosba: 4 },
+  { ...base, name: "paczka 10 szt (1 szt na ZD = 10 szt), sprzedaż na sztuki", pack: { units: 10, mode: "packages", mult: null } },
+  { ...base, name: "paczka 10 szt, w drodze 2 paczki (20 szt)", stock: 3, onOrder: 20, pack: { units: 10, mode: "packages", mult: null } },
+  { ...base, name: "paczka 12 szt, mało potrzeba — zaokrąglenie w górę do pełnej paczki", seen: 3, floor: [3, 3, 3], stock: 1, pack: { units: 12, mode: "packages", mult: null } },
+  { ...base, name: "paczka 10 szt, wielokrotność 3 paczek", pack: { units: 10, mode: "packages", mult: 3 } },
+  { ...base, name: "ZD w sztukach, wielokrotność 6 szt", pack: { units: 6, mode: "pieces_multiple", mult: null } },
+  { ...base, name: "paczka 10 szt i minimum stanów", seen: 0, floor: [0, 0, 0], stock: 0, minStock: 4, pack: { units: 10, mode: "packages", mult: null } },
 ];
 
 /** Ścieżka nocnego przebiegu na jednym wierszu z API. */
@@ -83,7 +92,8 @@ function engine(c: Case, nowMs: number): number {
     sprzedazOkres: gross,
     sprzedazDziennie: gross / c.W,
     celZapasu: (gross / c.W) * c.dni,
-    otwarteZd: c.onOrder,
+    // API: otwarte ZD w jednostkach dokumentu — w trybie paczek to paczki.
+    otwarteZd: c.pack?.mode === "packages" ? c.onOrder / c.pack.units : c.onOrder,
     doZamowienia: 0,
   } as SubiektZdEstimateLine;
   if (c.stockout) {
@@ -120,8 +130,21 @@ function engine(c: Case, nowMs: number): number {
     salesTrackPolicy: policyForBoostPreset(c.preset),
     history: c.history ? { lastOrderedQty: c.history.qty, linkedAt: new Date(nowMs - c.history.daysAgo * 86_400_000).toISOString() } : null,
     minStockSzt: c.minStock,
+    unitsPerPackage: c.pack?.units ?? null,
+    documentUnitMode: c.pack?.mode ?? null,
   });
-  return manual.doZamowieniaReczne;
+  if (!c.pack) return manual.doZamowieniaReczne;
+  // Lista „Do ZD”: pełne paczki / wielokrotności — sztuki, które przyjadą.
+  return resolveOrderQtyForLine(
+    manual,
+    { unitsPerPackage: c.pack.units, documentUnitMode: c.pack.mode, orderMultiple: c.pack.mult },
+    0,
+    false,
+    "sum",
+    0,
+    0,
+    c.minStock
+  ).piecesArriving;
 }
 
 describe("decyzja backtestu = nocny przebieg (te same dane)", () => {
@@ -144,7 +167,16 @@ describe("decyzja backtestu = nocny przebieg (te same dane)", () => {
         nowMs,
         minStock: c.minStock,
       });
-      expect(bt.pieces).toBe(engine(c, nowMs));
+      const pieces = c.pack
+        ? zdBacktestPackPieces(bt.pieces, { unitsPerPackage: c.pack.units, documentUnitMode: c.pack.mode, orderMultiple: c.pack.mult })
+        : bt.pieces;
+      expect(pieces).toBe(engine(c, nowMs));
+      if (c.pack && pieces > 0) {
+        // przyjeżdżają pełne paczki (× wielokrotność), nie mniej niż potrzeba
+        const step = c.pack.units * (c.pack.mode === "packages" ? (c.pack.mult ?? 1) : 1);
+        expect(pieces % step).toBe(0);
+        expect(pieces).toBeGreaterThanOrEqual(bt.pieces);
+      }
     });
   }
   it("scenariusze naprawdę coś zmieniają (test nie jest pusty)", () => {

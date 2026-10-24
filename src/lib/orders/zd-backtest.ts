@@ -31,7 +31,11 @@ import { applyZdEstimateHistoryCuts } from "@/lib/orders/zd-estimate-history-tra
 import { computeManualOrderQty } from "@/lib/orders/zd-estimate-manual";
 import { computeZdPackOrderQty } from "@/lib/orders/zd-estimate-packaging";
 import { computeSalesTrackedCel } from "@/lib/orders/zd-estimate-sales-track";
-import type { ZdPackagingDocumentUnitMode } from "@/lib/orders/zd-estimate-units";
+import {
+  normalizePackagingDocumentUnitMode,
+  normalizeUnitsPerPackage,
+  type ZdPackagingDocumentUnitMode,
+} from "@/lib/orders/zd-estimate-units";
 import { resolveZdOrderHorizon, businessToCalendarDays } from "@/lib/orders/zd-order-horizon";
 import { computeStockoutSalesFactor, stockoutMetaExcludingProsba } from "@/lib/stock-watch/stock-history";
 import type { StatsMode } from "@/types/database";
@@ -191,10 +195,19 @@ export function zdBacktestRealizedLead(
   return Math.max(1, businessToCalendarDays(dayKey, bd));
 }
 
-function packRound(pieces: number, pack: ZdBacktestPack | null): number {
+/**
+ * Sztuki, które przyjadą przy zamówieniu `pieces` — jak lista „Do ZD” (`resolveOrderQtyForLine`): pełne paczki
+ * (tryb packages: 1 jednostka ZD = N sztuk), wielokrotność sztuk (pieces_multiple) albo wielokrotność paczek.
+ */
+export function zdBacktestPackPieces(pieces: number, pack: ZdBacktestPack | null): number {
   if (!(pieces > 1e-9)) return 0;
-  return computeZdPackOrderQty(pieces, pack?.unitsPerPackage ?? null, "op.", pack?.documentUnitMode ?? "packages", pack?.orderMultiple ?? null)
-    .piecesArriving;
+  return computeZdPackOrderQty(
+    pieces,
+    normalizeUnitsPerPackage(pack?.unitsPerPackage),
+    "op.",
+    normalizePackagingDocumentUnitMode(pack?.documentUnitMode),
+    pack?.orderMultiple ?? null
+  ).piecesArriving;
 }
 
 const isWeekday = (key: string) => {
@@ -556,7 +569,7 @@ export function simulateZdBacktest(input: ZdBacktestInput, policy: ZdBacktestPol
           nowMs: Date.parse(`${dec.key}T12:00:00Z`),
           minStock: p.minStock ?? 0,
         });
-        const qty = packRound(pieces, p.pack);
+        const qty = zdBacktestPackPieces(pieces, p.pack);
         if (qty > 0) {
           pipe.set(dec.arrive, (pipe.get(dec.arrive) ?? 0) + qty);
           orders.set(t, (orders.get(t) ?? 0) + qty * p.cost);
