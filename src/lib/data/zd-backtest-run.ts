@@ -150,14 +150,23 @@ type RunRow = {
   finished_at: Date | null;
 };
 
+/**
+ * Przebieg „w kolejce / liczy się” starszy niż blokada = przerwany (restart serwera w trakcie `after()`);
+ * bez tego lista i panel czekałyby na niego bez końca.
+ */
+export function zdBacktestRunStale(status: string, createdAt: Date | string, nowMs = Date.now()): boolean {
+  return (status === "queued" || status === "running") && nowMs - new Date(createdAt).getTime() > LOCK_TTL_SEC * 1000;
+}
+const STALE_ERROR = "Przebieg przerwany (restart serwera w trakcie liczenia) - policz ponownie.";
+
 const mapRun = (r: RunRow): ZdBacktestRun => ({
   id: r.id,
   supplierId: r.supplier_id,
-  status: r.status,
+  status: zdBacktestRunStale(r.status, r.created_at) ? "error" : r.status,
   params: r.params,
   progress: r.progress ?? {},
   result: r.result,
-  error: r.error,
+  error: zdBacktestRunStale(r.status, r.created_at) ? STALE_ERROR : r.error,
   createdAt: new Date(r.created_at).toISOString(),
   finishedAt: r.finished_at ? new Date(r.finished_at).toISOString() : null,
 });
@@ -186,7 +195,7 @@ export async function listLatestZdBacktestVerdicts(): Promise<
       res.rows.map((r) => [
         r.supplier_id,
         {
-          status: r.status,
+          status: zdBacktestRunStale(r.status, r.created_at) ? "error" : r.status,
           verdict: r.result?.verdict.kind ?? null,
           headline: r.result?.verdict.headline ?? null,
           at: new Date(r.created_at).toISOString(),
