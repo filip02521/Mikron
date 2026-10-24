@@ -488,3 +488,24 @@ Wynik na nowym modelu (dane do 23.10.2026):
 
 Znalezione w silniku (nie w backteście): podłoga 90 d odejmuje prośby tylko z ostatniego okna 30 d profilu —
 prośba sprzed 31–90 dni dalej podnosi tempo przez dwa miesiące, wbrew komentarzowi w `zd-order-engine.ts`.
+
+### 11.1. Backtest v2 — 10 dostawców z §7 (dane 24.10.2025–23.10.2026)
+
+Ustawienia z decyzji (co 7 / cel 25, DT Shop co 14 / cel 25) i rekomendacja z siatki (koszt roku = utracona marża
++ 20% zapasu). Braki = % dni-towarów bez stanu; „naprawdę” z tygodniowych remanentów.
+
+| Dostawca | Naprawdę | Decyzja §7 | Werdykt | Rekomendacja | Uwagi |
+|---|---|---|---|---|---|
+| Amadar | 13,1% / 28k | 7,4% / 20k | działa | co 14 / cel 15: 9,3% / 16k | ZK 54% sprzedaży |
+| Denon Dental | 5,3% / 190k | 9,1% / 106k | nie działa | co 7 / cel 40: 4,6% / 176k (wrażliwe na opóźnienia) | rozchód bez sprzedaży 11% |
+| DT Shop | 6,4% / 15k | 7,0% / 8k | kompromis | co 14 / cel 35: 4,1% / 12k | |
+| Everall7 | 9,9% / 71k | 5,0% / 69k | działa | = decyzja | rozchód bez sprzedaży 13,5% |
+| Formed | 4,6% / 3k | 2,0% / 3k | działa | co 7 / cel 30: 1,6% / 3k | |
+| Hansen Dental | 5,0% / 31k | 2,7% / 15k | działa | co 7 / cel 35: 0,9% / 17k | |
+| Kol-Dental | 0,8% / 32k | 4,6% / 13k | nie działa | co 14 / cel 60: 0,5% / 34k | decyzja tańsza w koszcie roku (4k vs 7k) |
+| Makromed | 3,8% / 35k | 2,3% / 38k | działa | = decyzja | 5 aktywnych SKU |
+| POL-INTECH | 8,6% / 5k | 3,5% / 4k | działa | co 7 / cel 35: 2,4% / 4k | popyt dopisany za braki 8% |
+| Polkard BIS | 10,0% / 15k | 9,4% / 13k | działa | co 7 / cel 30: 8,5% / 15k | |
+
+Decyzja §7 działa u 7/10; zmiany potrzebne przy Denon, DT Shop, Kol-Dental. Zapas razem: naprawdę 425k, decyzja
+§7 289k, rekomendacje 384k.
