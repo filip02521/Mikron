@@ -34,6 +34,7 @@ import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
 import { panelTypography } from "@/lib/ui/ontime-theme";
 import { prosbaLineStockShellClass } from "@/lib/orders/prosba-line-stock-ui";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 type SearchHit = {
   subiektTwId: number;
@@ -85,7 +86,7 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
       const hay = [row.name, row.symbol ?? "", row.plu ?? "", String(row.subiektTwId), row.note]
         .join(" ")
         .toLowerCase();
-      return hay.includes(q);
+      return matchesSearchWords(hay, q);
     });
   }, [filter, rows]);
 

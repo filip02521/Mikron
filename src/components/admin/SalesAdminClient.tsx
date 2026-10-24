@@ -33,6 +33,7 @@ import { Badge } from "@/components/ui/Badge";
 import { IconPencil, IconTrash2, IconLink, IconUserCog, IconKeyRound } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { brandLinkClass, controlFocusClass, panelChoiceChipClass, panelChoiceChipIdleClass, panelChoiceChipSelectedClass, salesChromeInsetClass } from "@/lib/ui/ontime-theme";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 type FormState = { id?: string; name: string; email: string; groupId: string };
 type GroupFilter = "all" | "none" | string;
@@ -149,11 +150,7 @@ export function SalesAdminClient({
     const q = search.trim().toLowerCase();
     if (!q) return list;
     return list.filter(
-      (r) =>
-        r.name.toLowerCase().includes(q) ||
-        r.email.toLowerCase().includes(q) ||
-        (r.linkedUserEmail?.toLowerCase().includes(q) ?? false) ||
-        (r.groupName?.toLowerCase().includes(q) ?? false)
+      (r) => matchesSearchWords([r.name, r.email, r.linkedUserEmail, r.groupName], q)
     );
   }, [rows, search, groupFilter]);
 

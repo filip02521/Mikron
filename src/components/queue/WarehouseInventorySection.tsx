@@ -57,6 +57,7 @@ import {
   supplierKey,
   type SupplierOrderGroup,
 } from "@/lib/orders/queue-supplier-groups";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 type InventoryFilter = "all" | "stale" | "critical" | "expired" | "unassigned";
 
@@ -241,7 +242,7 @@ export function WarehouseInventorySection({
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
-      return hay.includes(q);
+      return matchesSearchWords(hay, q);
     });
   }, [sortedRows, filter, shelfFilter, supplierFilter, search]);
 

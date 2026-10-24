@@ -39,6 +39,7 @@ import {
   usersManagerGroupsSignature,
 } from "@/lib/users/users-admin-sync";
 import { polishPluralWord } from "@/lib/email/polish-plural";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 type SalesPerson = { id: string; name: string; email: string };
 type SalesGroupOption = { id: string; name: string };
@@ -227,9 +228,7 @@ export function UsersAdminClient({
       );
       const roleForSearch = edit?.role ?? u.role;
       return (
-        u.email.toLowerCase().includes(q) ||
-        ROLE_LABELS[roleForSearch].toLowerCase().includes(q) ||
-        handlowiec.toLowerCase().includes(q)
+        matchesSearchWords([u.email, ROLE_LABELS[roleForSearch], handlowiec], q)
       );
     });
   }, [users, search, roleFilter, edits, salesPeople]);

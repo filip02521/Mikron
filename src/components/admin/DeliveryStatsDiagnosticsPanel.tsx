@@ -32,6 +32,7 @@ import {
   panelChoiceChipSelectedClass,
 } from "@/lib/ui/ontime-theme";
 import { formatWarsawDateTime } from "@/lib/time/warsaw";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 type HealthFilter = "all" | DeliveryStatsHealth | "issues";
 
@@ -304,7 +305,7 @@ export function DeliveryStatsDiagnosticsPanel({
       } else if (healthFilter !== "all" && row.health !== healthFilter) {
         return false;
       }
-      if (q && !row.supplierName.toLowerCase().includes(q)) return false;
+      if (!matchesSearchWords(row.supplierName, q)) return false;
       return true;
     });
   }, [data, search, healthFilter, activeOnly]);

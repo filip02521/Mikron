@@ -41,6 +41,7 @@ import { inactiveSupplierRowClass, inactiveSupplierNameClass } from "@/lib/suppl
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
 import { ZdAutomatPolicyBadge } from "@/components/zakupy/ZdAutomatPolicyNote";
 import type { ZdAutomatPolicySummary } from "@/lib/data/zd-supplier-order-policy";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 export interface ScheduleRow {
   id: string;
@@ -169,7 +170,7 @@ export function LocationScheduleClient({
   const filtered = useMemo(() => {
     let rows = [...initialRows];
     const q = search.trim().toLowerCase();
-    if (q) rows = rows.filter((r) => r.name.toLowerCase().includes(q));
+    if (q) rows = rows.filter((r) => matchesSearchWords(r.name, q));
 
     if (filter === "overdue") rows = rows.filter((r) => isOverdue(r.next_date));
     else if (filter === "week")

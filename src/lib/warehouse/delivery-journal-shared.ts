@@ -1,3 +1,4 @@
+import { matchesSearchWords } from "@/lib/search/keywords";
 /** Helpery UI dziennika dostaw — bezpieczne dla klienta (bez I/O Supabase). */
 
 import { startOfMonth, startOfWeek, subDays } from "date-fns";
@@ -87,7 +88,7 @@ export function matchesDeliveryReceiptQuery(
   ]
     .join(" ")
     .toLowerCase();
-  return haystack.includes(q);
+  return matchesSearchWords(haystack, q);
 }
 
 export function assertJournalSearchRange(

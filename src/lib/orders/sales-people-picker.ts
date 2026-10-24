@@ -1,3 +1,4 @@
+import { matchesSearchWords } from "@/lib/search/keywords";
 export type SalesPersonPickRow = {
   id: string;
   name: string;
@@ -30,8 +31,7 @@ export function filterSalesPeopleByQuery(
   if (!q) return people.slice(0, limit);
   const out: SalesPersonPickRow[] = [];
   for (const p of people) {
-    const hay = `${p.name} ${p.email ?? ""}`.toLowerCase();
-    if (!hay.includes(q)) continue;
+    if (!matchesSearchWords([p.name, p.email], q)) continue;
     out.push(p);
     if (out.length >= limit) break;
   }

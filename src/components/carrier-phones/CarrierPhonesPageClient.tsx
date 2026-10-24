@@ -17,6 +17,8 @@ import { cn } from "@/lib/cn";
 import { userFacingErrorFromUnknown } from "@/lib/ui/user-facing-error";
 import { redirectToLoginIfSessionError } from "@/lib/auth/session-login-redirect";
 import { polishPluralWord } from "@/lib/email/polish-plural";
+import { BrandLoader } from "@/components/ui/BrandLoader";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 export function CarrierPhonesPageClient({
   carriers,
@@ -77,9 +79,9 @@ export function CarrierPhonesPageClient({
     if (!q) return carriers;
     return carriers.filter(
       (c) =>
-        c.label.toLowerCase().includes(q) ||
-        (phonesBySlug.get(c.slug) ?? []).some(
-          (p) => p.phone.includes(q) || p.label.toLowerCase().includes(q),
+        matchesSearchWords(
+          [c.label, ...(phonesBySlug.get(c.slug) ?? []).flatMap((p) => [p.phone, p.label])],
+          q
         ),
     );
   }, [carriers, phonesBySlug, search]);
@@ -150,8 +152,9 @@ export function CarrierPhonesPageClient({
 
       {/* Loading */}
       {pending && phones.length === 0 ? (
-        <div className="flex items-center justify-center py-16">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-emerald-500" />
+        <div className="flex flex-col items-center justify-center gap-2 py-16 text-sm text-slate-500" role="status">
+          <BrandLoader size="md" />
+          Wczytuję kurierów i numery…
         </div>
       ) : filteredCarriers.length === 0 ? (
         <EmptyState

@@ -1,4 +1,5 @@
 import type { SupplierLocation, SupplierWithSchedule } from "@/types/database";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 export const SUPPLIER_LOCATION_OPTIONS: {
   value: SupplierLocation;
@@ -61,7 +62,7 @@ export function filterSuppliersForAdmin(
   }
   const q = search.trim().toLowerCase();
   if (q) {
-    list = list.filter((s) => s.name.toLowerCase().includes(q));
+    list = list.filter((s) => matchesSearchWords(s.name, q));
   }
   if (sortUnlinkedFirst) {
     list = [...list].sort((a, b) => {

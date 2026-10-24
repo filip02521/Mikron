@@ -65,6 +65,7 @@ import type {
 import type { CronRunPayload } from "@/lib/services/cron-run-shared";
 import type { CatalogZdSyncState } from "@/lib/subiekt/catalog-zd-sync-shared";
 import { askConfirm } from "@/components/ui/ConfirmHost";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 type CatalogListMode = "all" | "noSupplier";
 
@@ -375,7 +376,7 @@ export function ProductsCatalogAdminClient({
       ]
         .join(" ")
         .toLowerCase();
-      return parts.includes(q);
+      return matchesSearchWords(parts, q);
     });
   }, [rows, filter, listMode]);
 
