@@ -186,8 +186,17 @@ export async function listLatestZdBacktestVerdicts(): Promise<
   }
 }
 
-/** Nowy przebieg; zwraca null, gdy dla dostawcy już coś się liczy (blokada w bazie). */
-export async function createZdBacktestRun(input: { supplierId: string; params: ZdBacktestParams; userId: string | null }): Promise<string | null> {
+/** Najwyżej tyle przebiegów naraz (każdy pyta Subiekt kilkoma zapytaniami równolegle). */
+const MAX_RUNNING = 3;
+
+/** Nowy przebieg; null = ten dostawca już się liczy, "busy" = liczy się już MAX_RUNNING przebiegów. */
+export async function createZdBacktestRun(input: { supplierId: string; params: ZdBacktestParams; userId: string | null }): Promise<string | null | "busy"> {
+  // Przebieg starszy niż blokada uznajemy za porzucony (restart serwera w trakcie).
+  const busy = await query<{ n: string }>(
+    `SELECT count(*) AS n FROM zd_backtest_runs WHERE status IN ('queued', 'running') AND created_at > now() - make_interval(secs => $1)`,
+    [LOCK_TTL_SEC]
+  );
+  if (Number(busy.rows[0]?.n ?? 0) >= MAX_RUNNING) return "busy";
   if (!(await tryAcquireLock(lockKey(input.supplierId), LOCK_TTL_SEC, "zd_backtest"))) return null;
   try {
     const res = await query<{ id: string }>(

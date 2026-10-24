@@ -35,6 +35,7 @@ export async function actionStartZdBacktest(input: {
       return { ok: false, message: "Dostawca nie ma zakresu (grupy albo cechy) w Kreatorze ZD — backtest nie ma czego liczyć." };
     }
     const runId = await createZdBacktestRun({ supplierId, params: { targetDays, cycleDays }, userId: user.id });
+    if (runId === "busy") return { ok: false, message: "Liczą się już 3 backtesty — poczekaj, aż któryś skończy." };
     if (!runId) return { ok: false, message: "Backtest tego dostawcy już się liczy — poczekaj na wynik." };
     after(() => runZdBacktest(runId));
     return { ok: true, runId };
@@ -50,7 +51,9 @@ export async function actionGetZdBacktestRun(input: {
     await requireZdEstimateAdmin("read");
     const supplierId = String(input.supplierId ?? "").trim();
     if (!UUID.test(supplierId)) return { ok: false, message: "Nieprawidłowy dostawca." };
-    return { ok: true, run: await fetchLatestZdBacktestRun(supplierId) };
+    const run = await fetchLatestZdBacktestRun(supplierId);
+    // Surowy błąd przebiegu (Subiekt, konfiguracja) nie idzie do przeglądarki bez filtra.
+    return { ok: true, run: run?.error ? { ...run, error: userFacingErrorTextFromMessage(run.error) || "błąd po stronie serwera" } : run };
   } catch (e) {
     return { ok: false, message: userFacingErrorTextFromMessage(e instanceof Error ? e.message : String(e)) || "Nie udało się odczytać backtestu." };
   }
