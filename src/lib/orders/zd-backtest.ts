@@ -25,7 +25,7 @@
  */
 import { calculateBusinessDate, formatDateString, parseDateOnly } from "@/lib/orders/dates";
 import { quantilesFromSampleRows, selectSamplesForStats, type DeliveryStatsSampleRow } from "@/lib/orders/delivery-stats-samples";
-import { effectiveDniZapasu } from "@/lib/orders/zd-demand-policy";
+import { effectiveDniZapasu, sales90FromProfile } from "@/lib/orders/zd-demand-policy";
 import type { ZdSalesTrackPolicy } from "@/lib/orders/zd-estimate-boost-presets";
 import { applyZdEstimateHistoryCuts } from "@/lib/orders/zd-estimate-history-track";
 import { computeManualOrderQty } from "@/lib/orders/zd-estimate-manual";
@@ -44,7 +44,7 @@ const dayIndex = (simStart: string, key: string) =>
 
 /** Okno profilu do podłogi tempa (3 × 30 d) — jak `sales90FromProfile`. */
 const FLOOR_DAYS = 90;
-/** Ostatnie okno profilu, z którego silnik odejmuje prośby. */
+/** Okno profilu (podłoga = trzy ostatnie, prośby odejmowane w każdym osobno). */
 const PROFILE_WINDOW_DAYS = 30;
 /** Prośba sprzedana do tylu dni po dostawie (jak `loadDeliveredProsbaPiecesByTwId`). */
 export const ZD_BACKTEST_PROSBA_SALE_DAYS = 14;
@@ -363,7 +363,7 @@ export function zdBacktestImputedShare(input: ZdBacktestInput): number | null {
 
 /**
  * Jedna decyzja jak nocny przebieg, w kolejności silnika: korekta dni braku (bez prośb) → strategia: prośby
- * odjęte, podłoga 90 d (prośby odjęte tylko z ostatniego okna 30 d profilu) → cel = tempo × dni zapasu →
+ * odjęte, podłoga 90 d (prośby odjęte z każdego z trzech okien 30 d profilu) → cel = tempo × dni zapasu →
  * podążanie za sprzedażą → cięcia z historii ZD → minimum stanów i `computeManualOrderQty` (sztuki, przed opakowaniem).
  */
 export function zdBacktestDecideOrder(a: {
@@ -376,9 +376,9 @@ export function zdBacktestDecideOrder(a: {
   seenWindow: number;
   /** Sprzedaż pod prośby w oknie. */
   prosbaWindow: number;
-  /** Cała sprzedaż (z prośbami) z 90 i z ostatnich 30 dni — profil do podłogi. */
-  gross90: number;
-  grossLast30: number;
+  /** Trzy okna 30 d profilu do podłogi (od najstarszego): cała sprzedaż (z prośbami) i sprzedaż pod prośby. */
+  floorGross: readonly number[];
+  floorProsba: readonly number[];
   /** Dni robocze okna z historią stanu; null = bez korekty (para, komplet). */
   stockout: { windowDays: number; recordedDays: number; outDays: number } | null;
   /** Stan − rezerwacje. */
@@ -401,7 +401,7 @@ export function zdBacktestDecideOrder(a: {
   if (a.strategy === "max30_90") {
     const prosba = Math.min(gross, a.prosbaWindow);
     sales = Math.max(0, gross - prosba);
-    const sales90 = a.gross90 - Math.min(prosba, a.grossLast30);
+    const sales90 = sales90FromProfile(a.floorGross, a.floorProsba) ?? 0;
     rate = Math.max(sales / W, sales90 / FLOOR_DAYS);
     sales = rate * W;
   } else {
@@ -494,6 +494,8 @@ export function simulateZdBacktest(input: ZdBacktestInput, policy: ZdBacktestPol
     const out = new Int8Array(H + D);
     out.set(pp.preOut.subarray(0, H));
     const sum = (arr: Float64Array, a: number, b: number) => arr[Math.max(0, b)]! - arr[Math.max(0, a)]!;
+    // Początki okien podłogi (dni przed decyzją), od najstarszego: [i-90, i-60), [i-60, i-30), [i-30, i).
+    const floorStarts = [FLOOR_DAYS, FLOOR_DAYS - PROFILE_WINDOW_DAYS, PROFILE_WINDOW_DAYS];
 
     let stock = Math.max(0, input.snapshots[0]?.qty.get(p.id) ?? 0);
     const pipe = new Map<number, number>();
@@ -544,8 +546,8 @@ export function simulateZdBacktest(input: ZdBacktestInput, policy: ZdBacktestPol
           dniZapasu: dec.dni,
           seenWindow: sum(cumSeen, i - W, i),
           prosbaWindow: sum(cumProsba, i - W, i),
-          gross90: sum(cumSeen, i - FLOOR_DAYS, i) + sum(cumProsba, i - FLOOR_DAYS, i),
-          grossLast30: sum(cumSeen, i - PROFILE_WINDOW_DAYS, i) + sum(cumProsba, i - PROFILE_WINDOW_DAYS, i),
+          floorGross: floorStarts.map((st) => sum(cumSeen, i - st, i - st + PROFILE_WINDOW_DAYS) + sum(cumProsba, i - st, i - st + PROFILE_WINDOW_DAYS)),
+          floorProsba: floorStarts.map((st) => sum(cumProsba, i - st, i - st + PROFILE_WINDOW_DAYS)),
           stockout,
           dostepne,
           onOrder,

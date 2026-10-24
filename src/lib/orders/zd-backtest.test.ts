@@ -105,10 +105,13 @@ describe("simulateZdBacktest — jak nocny przebieg", () => {
     expect(ratio("automat")).toBeLessThan(ratio("kreator"));
   });
 
-  it("jak silnik: podłoga 90 d odejmuje prośby tylko z ostatniego okna 30 d (starsze zostają w podłodze)", () => {
+  it("jak silnik: podłoga 90 d odejmuje prośby z każdego okna 30 d (starsze nie podnoszą zapasu)", () => {
     const prosba = new Map([[1, Array.from({ length: 300 }, (_, i) => [addDaysKey(START, -180 + i), 2] as const)]]);
     const a = simulateZdBacktest(input(), automat());
-    expect(simulateZdBacktest(input({ prosba }), automat()).avgStock).toBeGreaterThan(a.avgStock);
+    expect(simulateZdBacktest(input({ prosba }), automat()).avgStock).toBeCloseTo(a.avgStock, 6);
+    // Jedna duża prośba 45 dni przed decyzjami: bez wpływu na zapas automatu.
+    const once = new Map([[1, [[addDaysKey(START, -45), 60] as const]]]);
+    expect(simulateZdBacktest(input({ prosba: once }), automat()).avgStock).toBeCloseTo(a.avgStock, 6);
   });
 
   it("braki w oknie podnoszą tempo (korekta dni braku), para / komplet bez korekty", () => {

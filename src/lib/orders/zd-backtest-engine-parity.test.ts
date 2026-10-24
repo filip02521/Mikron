@@ -19,8 +19,9 @@ type Case = {
   dni: number;
   seen: number;
   prosba: number;
-  gross90: number;
-  last30: number;
+  /** Trzy okna 30 d profilu do podłogi (od najstarszego): cała sprzedaż i sprzedaż pod prośby. */
+  floor: [number, number, number];
+  floorProsba: [number, number, number];
   stockout: { windowDays: number; recordedDays: number; outDays: number } | null;
   stock: number;
   reserved: number;
@@ -37,8 +38,8 @@ const base: Case = {
   dni: 25,
   seen: 30,
   prosba: 0,
-  gross90: 90,
-  last30: 30,
+  floor: [30, 30, 30],
+  floorProsba: [0, 0, 0],
   stockout: null,
   stock: 20,
   reserved: 0,
@@ -52,19 +53,21 @@ const cases: Case[] = [
   { ...base, name: "zwykły wiersz" },
   { ...base, name: "cienkie pokrycie — podbicie", stock: 2 },
   { ...base, name: "grube pokrycie — cięcie", stock: 80 },
-  { ...base, name: "podłoga 90 d wygrywa", seen: 6, gross90: 120, last30: 6 },
+  { ...base, name: "podłoga 90 d wygrywa", seen: 6, floor: [57, 57, 6] },
   { ...base, name: "dni braku podnoszą tempo", stockout: { windowDays: 22, recordedDays: 22, outDays: 9 }, seen: 12 },
-  { ...base, name: "dni braku i prośby (prośby bez mnożnika)", stockout: { windowDays: 22, recordedDays: 22, outDays: 9 }, seen: 12, prosba: 8, gross90: 70, last30: 20 },
-  { ...base, name: "prośby odjęte z okna i ostatniego okna profilu", prosba: 10, gross90: 100, last30: 40 },
-  { ...base, name: "okno 60 dni", W: 60, dni: 40, seen: 50, gross90: 80, last30: 25 },
+  { ...base, name: "dni braku i prośby (prośby bez mnożnika)", stockout: { windowDays: 22, recordedDays: 22, outDays: 9 }, seen: 12, prosba: 8, floor: [25, 25, 20], floorProsba: [0, 0, 8] },
+  { ...base, name: "prośby odjęte z okna i ostatniego okna profilu", prosba: 10, floor: [30, 30, 40], floorProsba: [0, 0, 10] },
+  { ...base, name: "prośba sprzed 45 dni nie podnosi podłogi", seen: 6, floor: [6, 66, 6], floorProsba: [0, 60, 0] },
+  { ...base, name: "prośby w każdym oknie podłogi (okno nie mniej niż 0)", seen: 6, floor: [40, 20, 46], floorProsba: [10, 30, 40] },
+  { ...base, name: "okno 60 dni", W: 60, dni: 40, seen: 50, floor: [27.5, 27.5, 25] },
   { ...base, name: "dług rezerwacji", stock: 5, reserved: 12 },
   { ...base, name: "w drodze", onOrder: 15, stock: 3 },
-  { ...base, name: "minimum stanów", seen: 0, gross90: 0, last30: 0, stock: 0, minStock: 6 },
+  { ...base, name: "minimum stanów", seen: 0, floor: [0, 0, 0], stock: 0, minStock: 6 },
   { ...base, name: "historia ZD — wolna sprzedaż od ostatniego zamówienia", history: { qty: 60, daysAgo: 20 }, stock: 40 },
   { ...base, name: "preset standard", preset: "standard", stock: 4 },
   { ...base, name: "preset agresywny", preset: "aggressive", stock: 4 },
-  { ...base, name: "martwy towar", seen: 0.5, gross90: 0.5, last30: 0.5, stock: 3 },
-  { ...base, name: "Kreator (classic) — prośby i podłoga nie działają", strategy: "classic", prosba: 10, gross90: 200, last30: 40 },
+  { ...base, name: "martwy towar", seen: 0.5, floor: [0, 0, 0.5], stock: 3 },
+  { ...base, name: "Kreator (classic) — prośby i podłoga nie działają", strategy: "classic", prosba: 10, floor: [80, 80, 40], floorProsba: [0, 0, 10] },
   { ...base, name: "Kreator (classic) z dniami braku", strategy: "classic", stockout: { windowDays: 22, recordedDays: 20, outDays: 6 }, seen: 14, prosba: 4 },
 ];
 
@@ -90,10 +93,8 @@ function engine(c: Case, nowMs: number): number {
   }
   if (c.strategy === "max30_90") {
     // Profil: 12 okien po 30 d; ostatnie trzy dają sprzedaż z 90 d.
-    const mid = (c.gross90 - c.last30) / 2;
-    const windows = [5, 5, 5, 5, 5, 5, 5, 5, 5, mid, mid, c.last30];
+    const windows = [5, 5, 5, 5, 5, 5, 5, 5, 5, ...c.floor];
     let b = line;
-    let floorWindows: readonly number[] = windows;
     if (c.prosba > 0) {
       const pm = resolveZdSalesProfile({
         windows,
@@ -104,11 +105,10 @@ function engine(c: Case, nowMs: number): number {
         subtractProsba: true,
       });
       b = applyZdSalesProfileToLine(line, pm, 0);
-      floorWindows = windows.map((v, k) => (k === windows.length - 1 ? Math.max(0, v - pm.prosbaPieces) : v));
     }
     line = applyZdDemandFloorToLine(b, {
       policy: { strategy: "max30_90", targetDays: c.dni, cycleDays: 7 },
-      sales90: sales90FromProfile(floorWindows),
+      sales90: sales90FromProfile(windows, c.floorProsba),
       dniOkresu: c.W,
       dniZapasu: c.dni,
     });
@@ -134,8 +134,8 @@ describe("decyzja backtestu = nocny przebieg (te same dane)", () => {
         dniZapasu: c.dni,
         seenWindow: c.seen,
         prosbaWindow: c.prosba,
-        gross90: c.gross90,
-        grossLast30: c.last30,
+        floorGross: c.floor,
+        floorProsba: c.floorProsba,
         stockout: c.stockout,
         dostepne: c.stock - c.reserved,
         onOrder: c.onOrder,
