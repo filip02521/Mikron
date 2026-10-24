@@ -14,6 +14,7 @@ import {
   supplierHubPaths,
   supplierHubShellDescription,
 } from "@/lib/supplier-hub";
+import { fetchZdAutomatPolicySummaries } from "@/lib/data/zd-supplier-order-policy";
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/ui/page-metadata";
 
@@ -50,11 +51,17 @@ export default async function LocationPage({
 
   let rows: Awaited<ReturnType<typeof fetchSuppliersWithSchedules>> = [];
   let inactiveCount = 0;
+  let automat: Awaited<ReturnType<typeof fetchZdAutomatPolicySummaries>> = {};
   let loadError: string | null = null;
   try {
-    [rows, inactiveCount] = await Promise.all([
+    [rows, inactiveCount, automat] = await Promise.all([
       fetchSuppliersWithSchedules(location, { activeOnly: false }),
       countInactiveSuppliers(),
+      // Etykieta „Automat ZD” to dodatek — błąd nie zasłania harmonogramu.
+      fetchZdAutomatPolicySummaries().catch((e: unknown) => {
+        logDevPageError("lokalizacje/page automat", e);
+        return {};
+      }),
     ]);
   } catch (error) {
     loadError = userFacingErrorText(error, "Nie udało się wczytać harmonogramów.");
@@ -88,6 +95,7 @@ export default async function LocationPage({
           shift_date: s.schedule?.shift_date ?? null,
           next_date: s.schedule?.computed_next_date ?? null,
           vacation_note: s.schedule?.vacation_note ?? null,
+          automat: automat[s.id] ?? null,
           rowColor:
             s.is_active === false
               ? "#f1f5f9"

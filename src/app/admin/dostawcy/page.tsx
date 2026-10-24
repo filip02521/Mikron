@@ -2,6 +2,7 @@ import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { countInactiveSuppliers, fetchSuppliersWithSchedules } from "@/lib/data/queries";
 import { fetchWarehouseCarriers } from "@/lib/data/warehouse-carriers";
 import { SuppliersAdminClient } from "@/components/admin/SuppliersAdminClient";
+import { loadZdAutomatSuppliersForCards } from "@/lib/data/zd-automat-suppliers";
 import { SuppliersHubShell } from "@/components/admin/SuppliersHubShell";
 import { Alert } from "@/components/ui/Alert";
 import { supplierHubShellDescription } from "@/lib/supplier-hub";
@@ -16,12 +17,15 @@ export default async function DostawcyAdminPage() {
   let suppliers: SupplierWithSchedule[] = [];
   let inactiveCount = 0;
   let warehouseCarriers: Awaited<ReturnType<typeof fetchWarehouseCarriers>> = [];
+  let automat: Awaited<ReturnType<typeof loadZdAutomatSuppliersForCards>> = {};
   let loadError: string | null = null;
   try {
-    [suppliers, inactiveCount, warehouseCarriers] = await Promise.all([
+    // /admin/dostawcy to strona tylko dla admina (layout) — admin ma Kreator ZD.
+    [suppliers, inactiveCount, warehouseCarriers, automat] = await Promise.all([
       fetchSuppliersWithSchedules(),
       countInactiveSuppliers(),
       fetchWarehouseCarriers(),
+      loadZdAutomatSuppliersForCards(true),
     ]);
   } catch (e) {
     loadError = userFacingErrorText(e, "Nie udało się wczytać listy dostawców.");
@@ -37,7 +41,7 @@ export default async function DostawcyAdminPage() {
       inactiveCount={inactiveCount}
     >
       {loadError ? <Alert tone="error">{loadError}</Alert> : null}
-      <SuppliersAdminClient initial={suppliers} allowDelete warehouseCarriers={warehouseCarriers} />
+      <SuppliersAdminClient initial={suppliers} allowDelete warehouseCarriers={warehouseCarriers} automat={automat} canManageAutomat />
     </SuppliersHubShell>
   );
 }

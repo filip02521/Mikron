@@ -7,6 +7,7 @@ import { loadZdAutomatSuppliers } from "@/lib/data/zd-automat-suppliers";
 import { ZdAutomatPanel } from "@/components/zakupy/ZdAutomatPanel";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
 import { adminPageShellClass } from "@/lib/ui/ontime-theme";
+import { supplierHubContextForRole, supplierHubPaths } from "@/lib/supplier-hub";
 
 export const metadata: Metadata = pageMetadataFor("zdAutomat");
 export const dynamic = "force-dynamic";
@@ -18,7 +19,9 @@ export default async function ZdAutomatPage() {
   const [kpi, classes, suppliers] = await Promise.all([loadZdAutomatKpi(), loadZdSkuClassSummary(), loadZdAutomatSuppliers()]);
   return (
     <div className={adminPageShellClass}>
-      <ZdAutomatPanel kpi={kpi} classes={classes} suppliers={suppliers} canRecompute={isAdmin(user.role)} />
+      <ZdAutomatPanel kpi={kpi} classes={classes} suppliers={suppliers} canRecompute={isAdmin(user.role)}
+        cardsHref={supplierHubPaths(supplierHubContextForRole(user.role)).cards}
+      />
     </div>
   );
 }

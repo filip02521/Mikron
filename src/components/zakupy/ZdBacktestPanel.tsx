@@ -6,7 +6,7 @@ import { actionSaveZdSupplierOrderPolicy } from "@/app/actions/zd-estimate";
 import { BrandLoader } from "@/components/ui/BrandLoader";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/Field";
-import { ModalShell } from "@/components/ui/ModalShell";
+import { ModalShell, type ModalTier } from "@/components/ui/ModalShell";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { IconCheck } from "@/components/icons/StrokeIcons";
@@ -14,6 +14,7 @@ import type { ZdBacktestProgress, ZdBacktestResult, ZdBacktestRun } from "@/lib/
 import type { ZdSupplierOrderPolicyRow } from "@/lib/data/zd-supplier-order-policy";
 import type { ZdBacktestGridPoint, ZdBacktestRecommendationTier, ZdBacktestVerdictKind } from "@/lib/orders/zd-backtest";
 import { formatWarsawDateTime } from "@/lib/time/warsaw";
+import { ZD_BACKTEST_VERDICT_LABEL } from "@/lib/orders/zd-automat-status";
 
 const nf0 = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 });
 const nf1 = new Intl.NumberFormat("pl-PL", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -22,12 +23,7 @@ const pct = (v: number | null | undefined) => (v == null ? "—" : `${nf1.format
 const zl = (v: number) => (Math.abs(v) >= 1_000_000 ? `${nf2.format(v / 1_000_000)} mln zł` : Math.abs(v) >= 10_000 ? `${nf0.format(v / 1000)} tys. zł` : `${nf0.format(v)} zł`);
 const dm = (key: string) => `${key.slice(8, 10)}.${key.slice(5, 7)}.${key.slice(0, 4)}`;
 
-export const ZD_BACKTEST_VERDICT_LABEL: Record<ZdBacktestVerdictKind, string> = {
-  works: "działa",
-  tradeoff: "kompromis",
-  fails: "nie działa",
-  insufficient: "za mało danych",
-};
+export { ZD_BACKTEST_VERDICT_LABEL };
 export const ZD_BACKTEST_VERDICT_BADGE: Record<ZdBacktestVerdictKind, "success" | "warning" | "danger" | "default"> = {
   works: "success",
   tradeoff: "warning",
@@ -297,6 +293,7 @@ export function ZdBacktestPanel({
   canManage,
   onClose,
   onChanged,
+  tier,
 }: {
   supplierId: string;
   supplierName: string;
@@ -305,6 +302,8 @@ export function ZdBacktestPanel({
   onClose: () => void;
   /** Po włączeniu automatu albo zakończeniu backtestu — lista odświeża się w tle. */
   onChanged: () => void;
+  /** `top` — nad panelem karty dostawcy (z-[60]). */
+  tier?: ModalTier;
 }) {
   const inAutomat = policy.strategy !== "classic";
   const [targetDays, setTargetDays] = useState(String(policy.targetDays ?? 25));
@@ -462,6 +461,7 @@ export function ZdBacktestPanel({
       open
       onClose={onClose}
       title={`Backtest — ${supplierName}`}
+      tier={tier}
       description="Rok prawdziwej sprzedaży i stanów z Subiekta, liczony tym samym silnikiem co automat. Nic nie zapisuje się w Subiekcie."
       size="xl"
       bodyClassName="space-y-5 px-5 py-5 sm:px-6"

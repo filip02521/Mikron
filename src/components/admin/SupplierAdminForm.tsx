@@ -1,5 +1,7 @@
 "use client";
 
+import { ZD_AUTOMAT_CARD_CYCLE_MEANING, ZdAutomatCardSection, zdInAutomat } from "@/components/zakupy/ZdAutomatCardSection";
+import type { ZdAutomatSupplierRow } from "@/lib/data/zd-automat-suppliers";
 import type { SupplierLocation, StatsMode } from "@/types/database";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { SUPPLIER_LOCATION_OPTIONS } from "@/lib/supplier-locations";
@@ -62,6 +64,7 @@ export function SupplierAdminForm({
   teethLane = false,
   onTeethScheduleToast,
   onToast,
+  automat = null,
 }: {
   form: SupplierAdminFormState;
   disabled?: boolean;
@@ -78,6 +81,8 @@ export function SupplierAdminForm({
   onTeethScheduleToast?: (notice: ToastNotice) => void;
   /** Toast dla sekcji dokumentów odpraw (karty dostawców IMPORT). */
   onToast?: (notice: ToastNotice) => void;
+  /** Dostawca z zakresem w Kreatorze ZD — sekcja „Automat ZD” nad cyklem z karty. */
+  automat?: { row: ZdAutomatSupplierRow; canManage: boolean; onChanged: () => void } | null;
 }) {
   const carriers = activeWarehouseCarrierOptions(
     carrierOptions.length
@@ -229,6 +234,10 @@ export function SupplierAdminForm({
         />
       </SupplierFormSection>
 
+      {automat && !teethLane ? (
+        <ZdAutomatCardSection row={automat.row} canManage={automat.canManage} onChanged={automat.onChanged} />
+      ) : null}
+
       <div className={teethLane ? "rounded-lg border border-slate-200 bg-slate-50/50 p-4 opacity-60 sm:col-span-2" : "rounded-lg border border-indigo-200/50 bg-indigo-50/30 p-4 sm:col-span-2"}>
         <div className="mb-3.5 flex flex-wrap items-start justify-between gap-2">
           <div>
@@ -236,8 +245,9 @@ export function SupplierAdminForm({
               Cykl zamówień
             </p>
             <p className="mt-0.5 text-xs leading-relaxed text-indigo-600/80">
-              Te pola przeliczają terminy w harmonogramie. Daty w cyklu edytujesz osobno w
-              zakładce Terminy.
+              {automat && !teethLane && zdInAutomat(automat.row)
+                ? ZD_AUTOMAT_CARD_CYCLE_MEANING
+                : "Te pola przeliczają terminy w harmonogramie. Daty w cyklu edytujesz osobno w zakładce Terminy."}
             </p>
           </div>
           <FieldHintButton label="Pomoc: cykl zamówień" title="Jak ustawić cykl?">

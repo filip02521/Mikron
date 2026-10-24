@@ -149,3 +149,30 @@ export async function upsertZdSupplierOrderPolicy(input: {
   return { policy: await fetchZdSupplierOrderPolicy(input.supplierId), warning };
 }
 
+
+/** Ustawienia automatu do pokazania obok cyklu z karty (karta dostawcy, Terminy zamówień). */
+export type ZdAutomatPolicySummary = Pick<ZdSupplierOrderPolicyRow, "strategy" | "targetDays" | "cycleDays" | "autoProposals">;
+
+/** Dostawcy w automacie (strategia ≠ jak dotąd): supplier_id → ustawienia. Brak tabeli (migracja 190) → pusto. */
+export async function fetchZdAutomatPolicySummaries(): Promise<Record<string, ZdAutomatPolicySummary>> {
+  try {
+    const res = await query<{ supplier_id: string; strategy: string; target_days: number | null; cycle_days: number | null; auto_proposals: boolean }>(
+      `SELECT supplier_id, strategy, target_days, cycle_days, auto_proposals
+         FROM zd_supplier_order_policy WHERE strategy <> 'classic'`
+    );
+    return Object.fromEntries(
+      res.rows.map((r) => [
+        r.supplier_id,
+        {
+          strategy: r.strategy as ZdDemandStrategy,
+          targetDays: r.target_days == null ? null : Number(r.target_days),
+          cycleDays: r.cycle_days == null ? null : Number(r.cycle_days),
+          autoProposals: r.auto_proposals === true,
+        },
+      ])
+    );
+  } catch (e) {
+    if (isUndefinedTableError(e)) return {};
+    throw e;
+  }
+}
