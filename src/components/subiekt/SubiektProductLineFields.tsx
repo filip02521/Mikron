@@ -1221,8 +1221,9 @@ export function SubiektProductLineFields({
             disabled={disabled || isTeethOrderLine}
             readOnly={isTeethOrderLine}
             maxLength={MAX_QUANTITY_LEN}
-            // /prosba handlowca bez „1” — szary placeholder wyglądał jak wpisana ilość.
-            placeholder={isTeethOrderLine ? "-" : salesProsbaForm ? undefined : "1"}
+            // Bez szarej „1” w każdym formularzu: wyglądała jak wpisana ilość, a pole jest puste. Celowo bez
+            // domyślnej wartości — ilość wpisuje handlowiec (potem nie ma sporu, ile zamawiał).
+            placeholder={isTeethOrderLine ? "-" : undefined}
             inputMode="numeric"
             aria-label="Ilość sztuk"
             value={
