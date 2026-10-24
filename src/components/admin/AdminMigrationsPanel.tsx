@@ -21,6 +21,7 @@ import type {
   MigrationStatus,
   MigrationApplyResult,
 } from "@/lib/db/migrations";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 export function AdminMigrationsPanel() {
   const [status, setStatus] = useState<MigrationStatus | null>(null);
@@ -223,8 +224,8 @@ export function AdminMigrationsPanel() {
 
           {/* Ładowanie / błąd */}
           {loading ? (
-            <div className="flex items-center gap-2 py-4 text-sm text-slate-500">
-              <Spinner size="sm" />
+            <div className="flex items-center gap-2 py-4 text-sm text-slate-500" role="status">
+              <BrandLoader size="sm" tile={false} />
               Sprawdzanie statusu migracji…
             </div>
           ) : null}

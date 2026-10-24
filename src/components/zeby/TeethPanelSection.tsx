@@ -5,6 +5,7 @@ import { cn } from "@/lib/cn";
 import { panelSectionInsetClass, panelSubsectionInsetClass, panelTypography } from "@/lib/ui/ontime-theme";
 import { CardHeader } from "@/components/ui/Card";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
+import { SlowLoadingNote } from "@/components/ui/SlowLoadingNote";
 
 /** Karta sekcji wewnątrz panelu zębów — spójna z panelem dziennym. */
 export function TeethPanelSection({
@@ -133,6 +134,7 @@ export function TeethPanelListSkeleton({ groups = 3 }: { groups?: number }) {
           </div>
         </div>
       ))}
+      <SlowLoadingNote message="Wczytywanie listy trwa dłużej niż zwykle…" className="justify-center" />
     </div>
   );
 }

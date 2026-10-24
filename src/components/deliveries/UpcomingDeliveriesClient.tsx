@@ -37,6 +37,7 @@ import { UpcomingDeliverySummaryTiles } from "@/components/deliveries/UpcomingDe
 import { DeliveryTodaySection } from "@/components/deliveries/DeliveryTodaySection";
 import { DeliveryWeekGrid } from "@/components/deliveries/DeliveryWeekGrid";
 import type { SupplierWithSchedule } from "@/types/database";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 const PRESET_OPTIONS: { value: UpcomingDeliveryRangePreset; label: string }[] = [
   { value: "week", label: "Tydzień" },
@@ -288,7 +289,9 @@ export function UpcomingDeliveriesClient({
               </Button>
             </div>
             {pending ? (
-              <span className="text-[11px] text-slate-400">Ładowanie…</span>
+              <span className="inline-flex items-center gap-1.5 text-xs text-slate-500" role="status">
+                <BrandLoader size="sm" tile={false} /> Wczytuję dostawy…
+              </span>
             ) : null}
           </div>
           {extendedSummary ? <UpcomingDeliverySummaryTiles summary={extendedSummary} /> : null}

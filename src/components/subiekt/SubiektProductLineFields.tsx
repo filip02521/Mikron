@@ -7,7 +7,6 @@ import type { IndividualRequestKind } from "@/types/database";
 import { Field, Input } from "@/components/ui/Field";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Spinner } from "@/components/ui/Spinner";
 import { IconCircleCheck } from "@/components/icons/StrokeIcons";
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
 import {
@@ -79,6 +78,7 @@ import {
   type TeethDualKindCommitSummary,
 } from "@/lib/teeth/teeth-dual-kind";
 import { teethDualCommitToastMessage } from "@/lib/teeth/teeth-builder-copy";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 export type SubiektProductLineValue = Pick<
   ProductLineDraft,
@@ -124,7 +124,7 @@ function SubiektInputLoadingSpinner({ loading }: { loading: boolean }) {
   if (!loading) return null;
   return (
     <span className="pointer-events-none absolute right-2.5 top-1/2 z-[1] -translate-y-1/2">
-      <Spinner size="sm" />
+      <BrandLoader size="sm" tile={false} label="Szukam" />
     </span>
   );
 }

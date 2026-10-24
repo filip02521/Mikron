@@ -5,12 +5,12 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { IconCheck, IconCopy } from "@/components/icons/StrokeIcons";
 import { copyTextToClipboard } from "@/lib/ui/copy-text-to-clipboard";
-import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { formatProsbaZkLinkNumber } from "@/lib/orders/zk-prosba-link-display";
 import { notatnikZkWatchHref } from "@/lib/orders/notatnik-zk-watch-href";
 import { SearchHighlightText } from "@/components/moje/SearchHighlightText";
 import { salesTypography, salesZkLabelClass, salesZkNumberClass } from "@/lib/ui/ontime-theme";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 const ZK_NAV_PENDING_LABEL = "Przechodzę do ZK:";
 
@@ -19,7 +19,6 @@ const chipToneStyles = {
     label: salesZkLabelClass,
     number: salesZkNumberClass,
     pending: "text-violet-800",
-    spinner: "border-slate-200 border-t-violet-600",
     linkHover: "hover:text-violet-800",
   },
   amber: {
@@ -27,7 +26,6 @@ const chipToneStyles = {
       "inline-flex items-center rounded-md bg-amber-100/90 px-1.5 py-0.5 text-[10px] font-medium leading-none text-amber-900 ring-1 ring-inset ring-amber-200/80",
     number: "text-[11px] font-semibold leading-none text-amber-950",
     pending: "text-amber-900",
-    spinner: "border-amber-200 border-t-amber-700",
     linkHover: "hover:text-amber-950",
   },
 } as const;
@@ -216,7 +214,7 @@ export function ZkProsbaLinkChip({
       aria-label={zkPendingMessage(nr)}
       title={zkPendingMessage(nr)}
     >
-      <Spinner size="sm" className={cn("shrink-0", styles.spinner)} />
+      <BrandLoader size="sm" tile={false} />
       <span className="shrink-0 text-[11px] font-medium leading-none">{ZK_NAV_PENDING_LABEL}</span>
       <span className={cn(styles.number, "min-w-0 truncate tabular-nums")}>{nr}</span>
     </span>

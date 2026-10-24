@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Alert } from "@/components/ui/Alert";
-import { Spinner } from "@/components/ui/Spinner";
 import {
   TypeaheadDropdown,
   TypeaheadOption,
@@ -49,6 +48,7 @@ import {
 import type { SubiektProduct } from "@/lib/subiekt/types";
 import { mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
 import { salesTypography } from "@/lib/ui/ontime-theme";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 type LookupPhase = "search" | "loading" | "result";
 
@@ -522,7 +522,7 @@ export function ProductZdLookupModal({
                   />
                   {visibleSuggestLoading ? (
                     <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
-                      <Spinner size="sm" />
+                      <BrandLoader size="sm" tile={false} label="Szukam" />
                     </span>
                   ) : null}
                   <TypeaheadDropdown
@@ -574,8 +574,8 @@ export function ProductZdLookupModal({
               <ProductChip product={selectedProduct} />
 
               {phase === "loading" ? (
-                <div className="flex items-center gap-2 text-slate-500">
-                  <Spinner size="sm" />
+                <div className="flex items-center gap-2 text-slate-500" role="status">
+                  <BrandLoader size="sm" tile={false} />
                   <p className={salesTypography.rowMeta}>Łączymy towar z dokumentami ZD…</p>
                 </div>
               ) : null}

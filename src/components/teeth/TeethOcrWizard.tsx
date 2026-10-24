@@ -599,7 +599,7 @@ export function TeethOcrWizard({
                     className="flex items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5"
                   >
                     {ls.status === "reading" && (
-                      <Spinner size="sm" className="border-slate-200 border-t-indigo-600" />
+                      <BrandLoader size="sm" tile={false} />
                     )}
                     {ls.status === "done" && (
                       <IconCircleCheck size={16} className="text-green-600" />

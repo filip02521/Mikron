@@ -4,9 +4,9 @@ import { useEffect, useReducer, useState } from "react";
 import Image from "next/image";
 import { cn } from "@/lib/cn";
 import { ModalShell } from "@/components/ui/ModalShell";
-import { Spinner } from "@/components/ui/Spinner";
 import { actionGetOcrImageUrl } from "@/app/actions/teeth-orders";
 import { IconAlertCircle } from "@/components/icons/StrokeIcons";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 type FetchState = { status: "idle" | "loading" | "done" | "error"; url: string | null };
 
@@ -65,8 +65,9 @@ export function TeethOcrImage({
           "flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-500",
           className,
         )}
+        role="status"
       >
-        <Spinner size="sm" />
+        <BrandLoader size="sm" tile={false} />
         Wczytywanie zdjęcia…
       </div>
     );

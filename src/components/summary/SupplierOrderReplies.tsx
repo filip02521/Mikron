@@ -4,7 +4,7 @@ import { parseFromHeader } from "@/lib/supplier-mail/match";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { actionSupplierOrderReplies } from "@/app/actions/gmail";
-import { Spinner } from "@/components/ui/Spinner";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import { cn } from "@/lib/cn";
 import type { GmailReply, GmailReplyKind } from "@/lib/google/gmail";
 import { awaitingReplyStatus, businessDaysLabel, businessDaysSince } from "@/lib/suppliers/awaiting-supplier";
@@ -92,7 +92,7 @@ export function SupplierOrderReplies({ supplierId }: { supplierId: string }) {
   if (loading && items == null) {
     return (
       <p className="flex items-center gap-2 text-xs text-slate-500" role="status">
-        <Spinner size="sm" />
+        <BrandLoader size="sm" tile={false} />
         Sprawdzam odpowiedzi w Gmailu…
       </p>
     );

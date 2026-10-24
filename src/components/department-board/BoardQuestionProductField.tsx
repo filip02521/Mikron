@@ -7,7 +7,6 @@ import {
   actionSubiektSuggestionsEnabled,
 } from "@/app/actions/subiekt";
 import { Button } from "@/components/ui/Button";
-import { Spinner } from "@/components/ui/Spinner";
 import { IconCircleCheck, IconPackage } from "@/components/icons/StrokeIcons";
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
 import {
@@ -39,6 +38,7 @@ import { boardQuestionsFieldLabelClass } from "@/lib/department-board/department
 import { NOTATNIK_INPUT_CLASS } from "@/components/notatnik/notatnik-layout";
 import { cn } from "@/lib/cn";
 import type { SubiektProduct } from "@/lib/subiekt/types";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 function typeaheadSectionLabel(
   itemCount: number,
@@ -400,7 +400,7 @@ export function BoardQuestionProductField({
             />
             {enabled && visibleStatus === "loading" ? (
               <span className="pointer-events-none absolute right-2.5 top-1/2 z-[1] -translate-y-1/2">
-                <Spinner size="sm" />
+                <BrandLoader size="sm" tile={false} label="Szukam" />
               </span>
             ) : null}
           </div>

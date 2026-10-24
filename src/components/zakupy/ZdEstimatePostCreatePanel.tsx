@@ -64,6 +64,7 @@ import {
   buttonPrimaryClass,
   controlFocusClass,
 } from "@/lib/ui/ontime-theme";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 /**
  * Panel po utworzeniu bez okna — w panelu bocznym propozycji ZD (tytuł, treść i stopka w miejscu).
@@ -757,7 +758,7 @@ export function ZdEstimatePostCreatePanel({
         {canAct && session.dokId != null ? (
           gmail == null || contactLoading ? (
             <p className="inline-flex items-center gap-2 text-sm text-slate-600" role="status">
-              <Spinner className="size-4" /> Przygotowuję wysyłkę…
+              <BrandLoader size="sm" tile={false} /> Przygotowuję wysyłkę…
             </p>
           ) : (
             <ZdSendWorkspace

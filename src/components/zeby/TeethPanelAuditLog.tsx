@@ -10,6 +10,7 @@ import { panelTypography } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
 import { TeethPanelSection } from "@/components/zeby/TeethPanelSection";
 import { IconClipboardPen } from "@/components/icons/StrokeIcons";
+import { SlowLoadingNote } from "@/components/ui/SlowLoadingNote";
 
 const AUDIT_SECTION_TILE = "bg-sky-100 text-sky-800";
 
@@ -56,10 +57,13 @@ export function TeethPanelAuditLog({
           Nie udało się wczytać dziennika: {error}
         </p>
       ) : !rows ? (
-        <div className="space-y-2 motion-safe:animate-pulse" aria-busy="true">
-          <div className="h-4 w-full max-w-md rounded bg-slate-100" />
-          <div className="h-4 w-full max-w-sm rounded bg-slate-100" />
-          <div className="h-4 w-full max-w-lg rounded bg-slate-100" />
+        <div aria-busy="true">
+          <div className="space-y-2 motion-safe:animate-pulse">
+            <div className="h-4 w-full max-w-md rounded bg-slate-100" />
+            <div className="h-4 w-full max-w-sm rounded bg-slate-100" />
+            <div className="h-4 w-full max-w-lg rounded bg-slate-100" />
+          </div>
+          <SlowLoadingNote message="Wczytywanie dziennika trwa dłużej niż zwykle…" className="mt-3" />
         </div>
       ) : rows.length === 0 ? (
         <p className={cn(panelTypography.caption, "text-slate-600")}>

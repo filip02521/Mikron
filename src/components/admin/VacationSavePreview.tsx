@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { actionPreviewVacationImpact } from "@/app/actions/admin";
 import { formatPlDate, vacationNoteLabel } from "@/lib/display-labels";
 import type { VacationAdminFormState } from "@/components/admin/VacationAdminForm";
-import { Spinner } from "@/components/ui/Spinner";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 type PreviewResponse = Awaited<ReturnType<typeof actionPreviewVacationImpact>>;
 type PreviewSnapshot = NonNullable<PreviewResponse["preview"]>["before"];
@@ -85,7 +85,7 @@ export function VacationSavePreview({
       <p className="font-semibold text-slate-900">Podgląd po zapisie</p>
       {loading ? (
         <p className="mt-2 flex items-center gap-2 text-slate-600">
-          <Spinner size="sm" />
+          <BrandLoader size="sm" tile={false} />
           Liczenie terminu…
         </p>
       ) : validationError ? (

@@ -3,7 +3,6 @@
 import { useEffect, useReducer, useState } from "react";
 import Image from "next/image";
 import { ModalShell } from "@/components/ui/ModalShell";
-import { Spinner } from "@/components/ui/Spinner";
 import {
   IconAlertCircle,
   IconChevronLeft,
@@ -12,6 +11,7 @@ import {
 import { actionGetBoardQuestionImageUrl } from "@/app/actions/department-board";
 import type { DepartmentBoardThreadAttachment } from "@/types/database";
 import { cn } from "@/lib/cn";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 type FetchState = {
   status: "idle" | "loading" | "done" | "error";
@@ -118,10 +118,10 @@ export function BoardQuestionAttachmentsGallery({
 
   if (state.status === "loading" || state.status === "idle") {
     return (
-      <ul className={cn("flex flex-wrap gap-2", className)} aria-label="Wczytywanie zdjęć">
+      <ul className={cn("flex flex-wrap gap-2", className)} aria-label="Wczytywanie zdjęć" aria-busy="true">
         {attachments.map((att) => (
           <li key={att.id} className={cn(thumbClass, "flex items-center justify-center")}>
-            <Spinner size="sm" />
+            <BrandLoader size="sm" tile={false} />
           </li>
         ))}
       </ul>
