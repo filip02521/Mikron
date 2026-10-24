@@ -7,7 +7,9 @@ import type { SupplierLocation } from "@/types/database";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import {
   fetchZdSupplierOrderPolicy,
+  parseZdCutoffTime,
   upsertZdSupplierOrderPolicy,
+  type ZdAutoLevel,
   type ZdSupplierOrderPolicyRow,
 } from "@/lib/data/zd-supplier-order-policy";
 import type { ZdClassicCompare, ZdDemandStrategy } from "@/lib/orders/zd-demand-policy";
@@ -1420,7 +1422,8 @@ async function acceptPendingAutoProposal(input: {
       }
       return;
     }
-    if (latest.status !== "pending") return;
+    // Odłożona (minimum) też: ZD z Kreatora to świadoma decyzja „mimo to”.
+    if (latest.status !== "pending" && latest.status !== "deferred") return;
     await decideZdAutoProposal({
       id: latest.id,
       supplierId: input.supplierId,
@@ -1479,7 +1482,7 @@ export async function actionCreateZdAutoProposalNow(input: {
     }
     if (p.kind === "skipped") return { ok: false, message: p.reason };
     if (p.kind === "error") return { ok: false, message: `Nie udało się zapisać propozycji: ${p.message}` };
-    return { ok: false, message: "Strategia testowa jest wyłączona dla tego dostawcy." };
+    return { ok: false, message: "Automat ZD jest wyłączony dla tego dostawcy - włącz go w karcie dostawcy (sekcja Automat ZD) albo w Strategii dostawcy w Kreatorze." };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się przygotować propozycji.") };
   }
@@ -1518,6 +1521,8 @@ export async function actionAcceptZdAutoProposal(input: {
   proposalId: string;
   /** Korekty z panelu: twId → jednostki ZD (0 = usuń); tylko towary z propozycji. */
   edits?: Record<string, number> | null;
+  /** Odłożona propozycja (minimum / darmowa dostawa) — tylko po jawnym „Utwórz ZD mimo to”. */
+  acceptDeferred?: boolean;
 }): Promise<
   | { ok: true; session: ZdPostCreateSession }
   /** unknownOutcome: Subiekt nie potwierdził zapisu w czasie — ZD mogło powstać, bez ponowienia. */
@@ -1537,8 +1542,15 @@ export async function actionAcceptZdAutoProposal(input: {
   try {
     const proposal = await fetchLatestZdAutoProposal(supplierId);
     // Tylko aktualna, czekająca propozycja — inna zakładka mogła ją przeliczyć albo odrzucić.
-    if (!proposal || proposal.id !== proposalId || proposal.status !== "pending") {
-      return { ok: false, message: "Propozycja zmieniła się w międzyczasie - przelicz ją ponownie." };
+    const open = proposal?.status === "pending" || (proposal?.status === "deferred" && input.acceptDeferred === true);
+    if (!proposal || proposal.id !== proposalId || !open) {
+      return {
+        ok: false,
+        message:
+          proposal?.id === proposalId && proposal.status === "deferred"
+            ? "Propozycja jest odłożona na kolejny cykl - zatwierdź ją świadomie „mimo to”."
+            : "Propozycja zmieniła się w międzyczasie - przelicz ją ponownie.",
+      };
     }
     const scope = groupZdEstimateScopesBySupplier(await listZdEstimateSupplierScopes()).get(supplierId)?.[0];
     if (!scope) return { ok: false, message: "Dostawca nie ma zakresu w Kreatorze ZD." };
@@ -1670,8 +1682,13 @@ export async function actionSaveZdSupplierOrderPolicy(input: {
   strategy: ZdDemandStrategy;
   targetDays: number | null;
   cycleDays: number | null;
-  autoProposals: boolean;
-}): Promise<{ ok: true; policy: ZdSupplierOrderPolicyRow } | { ok: false; message: string }> {
+  /** 0 = bez propozycji automatu; 1+ = propozycje (`auto_proposals`), 2–4 zapisane na kolejne wdrożenia. */
+  autoLevel: ZdAutoLevel;
+  /** „HH:MM” — odcięcie dla handlowców (dzień przed wysyłką). */
+  cutoffTime: string;
+}): Promise<
+  { ok: true; policy: ZdSupplierOrderPolicyRow; warning: string | null } | { ok: false; message: string }
+> {
   const user = await requireZdEstimateAdmin("mutate");
   const supplierId = String(input.supplierId ?? "").trim();
   if (!UUID_RE.test(supplierId)) return { ok: false, message: "Nieprawidłowy dostawca." };
@@ -1680,17 +1697,24 @@ export async function actionSaveZdSupplierOrderPolicy(input: {
   const cycle = input.cycleDays == null ? null : Math.trunc(Number(input.cycleDays));
   if (days != null && !(days >= 1 && days <= 180)) return { ok: false, message: "Dni zapasu: od 1 do 180." };
   if (cycle != null && !(cycle >= 1 && cycle <= 60)) return { ok: false, message: "Co ile dni: od 1 do 60." };
-  if (input.autoProposals && cycle == null) return { ok: false, message: "Propozycje automatu wymagają cyklu (co ile dni)." };
+  const autoLevel = Number(input.autoLevel);
+  if (!(Number.isInteger(autoLevel) && autoLevel >= 0 && autoLevel <= 4)) return { ok: false, message: "Stopień automatu: od 0 do 4." };
+  const cutoffTime = parseZdCutoffTime(input.cutoffTime);
+  if (!cutoffTime) return { ok: false, message: "Godzina odcięcia: format GG:MM." };
+  if (autoLevel > 0 && strategy === "classic") return { ok: false, message: "Propozycje automatu wymagają strategii testowej." };
+  if (autoLevel > 0 && cycle == null) return { ok: false, message: "Propozycje automatu wymagają cyklu (co ile dni)." };
   try {
-    const policy = await upsertZdSupplierOrderPolicy({
+    const { policy, warning } = await upsertZdSupplierOrderPolicy({
       supplierId,
       strategy,
       targetDays: strategy === "classic" ? null : days,
       cycleDays: cycle,
-      autoProposals: input.autoProposals === true,
+      autoProposals: autoLevel >= 1,
+      autoLevel: autoLevel as ZdAutoLevel,
+      cutoffTime,
       updatedBy: user.id,
     });
-    return { ok: true, policy };
+    return { ok: true, policy, warning };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się zapisać strategii dostawcy.") };
   }
@@ -1881,7 +1905,7 @@ export async function actionRunZdEstimateManual(
       supplierId: String(input.supplierId ?? "").trim() || null,
       dniZapasu: horizon ? horizon.horizonDays : dniZapasu,
       orderTiming: supplierHorizon
-        ? { leadDays: supplierHorizon.leadDays, nextOrderDays: supplierHorizon.nextOrderDays }
+        ? { leadDays: supplierHorizon.automatLeadDays, nextOrderDays: supplierHorizon.nextOrderDays }
         : null,
       dataOd,
       dataDo,

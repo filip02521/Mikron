@@ -91,6 +91,24 @@ export const CRON_JOB_DEFINITIONS: CronJobDefinition[] = [
       "ZD → FZ z ostatnich 18 mies.: domyka zamówienia z brakami i przelicza ETA dostawców. Panel: /admin (Czasy dostaw z Subiekta).",
   },
   {
+    id: "zd_sku_class",
+    label: "Klasy ABC/XYZ towarów",
+    schedule: "1. dnia miesiąca 0:30",
+    endpoint: "/api/cron/zd-sku-class",
+    scheduled: true,
+    description:
+      "ABC wg zysku 12 mies. i XYZ ze sprzedaży tygodniowej dla zmapowanych zakresów dostawców (kilkanaście minut). Panel: /zakupy/automat.",
+  },
+  {
+    id: "zd_kpi_weekly",
+    label: "KPI automatu ZD",
+    schedule: "pn 7:00",
+    endpoint: "/api/cron/zd-kpi-weekly",
+    scheduled: true,
+    description:
+      "Braki A, rotacja, martwy zapas, korekta człowieka i minima za miniony tydzień. Panel: /zakupy/automat.",
+  },
+  {
     id: "morning_sync",
     label: "Tylko harmonogramy",
     schedule: "ręcznie (test)",

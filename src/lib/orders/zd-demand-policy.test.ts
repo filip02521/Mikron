@@ -9,6 +9,7 @@ import {
   ZD_SUPPLIER_ORDER_POLICY_CLASSIC,
   type ZdSupplierOrderPolicy,
 } from "./zd-demand-policy";
+import { zdProsbaFloorWindowRanges, zdProsbaPiecesByFloorWindow } from "./zd-sales-profile";
 
 const test: ZdSupplierOrderPolicy = { strategy: "max30_90", targetDays: 21, cycleDays: 3 };
 
@@ -21,6 +22,45 @@ describe("zd-demand-policy", () => {
   it("90 d z ostatnich trzech okien profilu", () => {
     expect(sales90FromProfile([9, 9, 9, 9, 9, 9, 9, 9, 9, 10, 20, 30])).toBe(60);
     expect(sales90FromProfile(null)).toBeNull();
+  });
+
+  it("podłoga 90 d: prośby odjęte z każdego z trzech okien, okno nie mniej niż 0", () => {
+    expect(sales90FromProfile([9, 9, 9, 9, 9, 9, 9, 9, 9, 10, 20, 30], [5, 25, 10])).toBe(25);
+  });
+
+  it("prośba dostarczona 45 dni temu nie podnosi tempa z podłogi 90 d", () => {
+    // 6 szt / 30 d z zapasu w każdym oknie + 60 szt pod prośbę sprzedane w środkowym oknie.
+    const end = "2026-10-23";
+    const windows = [9, 9, 9, 9, 9, 9, 9, 9, 9, 6, 66, 6];
+    const prosba = zdProsbaPiecesByFloorWindow([["2026-09-08", 60]], end);
+    expect(prosba).toEqual([0, 60, 0]);
+    const line = { sprzedazOkres: 6, sprzedazDziennie: 0.2, celZapasu: 0.2 * 21 };
+    const floor = (sales90: number | null) =>
+      applyZdDemandFloorToLine(line, { policy: test, sales90, dniOkresu: 30, dniZapasu: 21 });
+    expect(floor(sales90FromProfile(windows, prosba))).toBe(line);
+    // Dotąd (prośba odjęta tylko z ostatniego okna) podłoga podnosiła tempo do 78/90 d.
+    expect(floor(sales90FromProfile(windows)).sprzedazDziennie).toBeCloseTo(78 / 90, 6);
+  });
+
+  it("okna dostaw próśb: 14 d przed najstarszym, do 3 d przed końcem okna, bez nakładania", () => {
+    expect(zdProsbaFloorWindowRanges("2026-10-23")).toEqual([
+      { from: "2026-07-12", to: "2026-08-21" },
+      { from: "2026-08-22", to: "2026-09-20" },
+      { from: "2026-09-21", to: "2026-10-20" },
+    ]);
+    expect(
+      zdProsbaPiecesByFloorWindow(
+        [
+          ["2026-07-11", 100], // przed zakresem
+          ["2026-07-12", 1],
+          ["2026-08-21", 2],
+          ["2026-08-22", 4],
+          ["2026-10-20", 8],
+          ["2026-10-21", 100], // sprzeda się już po oknie
+        ],
+        "2026-10-23"
+      )
+    ).toEqual([3, 4, 8]);
   });
 
   it("słabszy miesiąc: tempo i cel podniesione do średniej 90 d", () => {

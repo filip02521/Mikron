@@ -1,4 +1,5 @@
 "use client";
+import type { ZdAutomatSupplierRow } from "@/lib/data/zd-automat-suppliers";
 import { toastFromError, toastSuccess, SUPPLIER_TOAST, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
 
 import Link from "next/link";
@@ -76,6 +77,8 @@ export function SuppliersAdminClient({
   warehouseCarriers = [],
   teethScheduleSupplierIds,
   teethScheduleMap,
+  automat = {},
+  canManageAutomat = false,
 }: {
   initial: SupplierWithSchedule[];
   /** Wszyscy dostawcy (nieprzefiltrowani) — do pickera w torze zębów */
@@ -86,6 +89,10 @@ export function SuppliersAdminClient({
   teethScheduleSupplierIds?: string[];
   /** Mapa harmonogramów zębów (supplierId → TeethSupplierSchedule) */
   teethScheduleMap?: Record<string, TeethSupplierSchedule>;
+  /** Dostawcy z zakresem w Kreatorze ZD (supplierId → strategia i ostatni backtest) — sekcja „Automat ZD” w karcie. */
+  automat?: Record<string, ZdAutomatSupplierRow>;
+  /** Zmiana strategii i backtest z karty (dostęp do Kreatora ZD). */
+  canManageAutomat?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -249,12 +256,33 @@ export function SuppliersAdminClient({
       setAppliedPowiazQuery(powiazQuery);
       setPowiazHandled(true);
       startEdit(match);
-      const params = new URLSearchParams(searchParams.toString());
-      params.delete("powiaz");
-      const next = params.toString();
-      router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
     }
   }
+  const powiazInUrl = searchParams.get("powiaz") === "1";
+  useEffect(() => {
+    if (!powiazHandled || !powiazInUrl) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("powiaz");
+    const next = params.toString();
+    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+  }, [powiazHandled, powiazInUrl, searchParams, pathname, router]);
+
+  // ?karta=<id> — wejście z pulpitu Automatu ZD prosto do karty dostawcy.
+  const kartaId = searchParams.get("karta") ?? "";
+  const [appliedKartaId, setAppliedKartaId] = useState("");
+  if (kartaId && kartaId !== appliedKartaId) {
+    setAppliedKartaId(kartaId);
+    const match = rows.find((row) => row.id === kartaId);
+    if (match) startEdit(match);
+  }
+  // Adres bez ?karta= po otwarciu karty (router poza renderem).
+  useEffect(() => {
+    if (!kartaId || kartaId !== appliedKartaId) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("karta");
+    const next = params.toString();
+    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+  }, [kartaId, appliedKartaId, searchParams, pathname, router]);
 
   useEffect(() => {
     if (!formOpen || !form.id) return;
@@ -461,11 +489,25 @@ export function SuppliersAdminClient({
             teethLane={teethLane}
             onTeethScheduleToast={setToast}
             onToast={setToast}
-            onSubiektLinked={(khId) => {
-              setForm((f) => ({ ...f, subiekt_kh_id: khId }));
+            automat={
+              form.id && automat[form.id]
+                ? { row: automat[form.id]!, canManage: canManageAutomat && !readOnly, onChanged: () => router.refresh() }
+                : null
+            }
+            onSubiektLinked={(khId, country) => {
+              setForm((f) => ({ ...f, subiekt_kh_id: khId, subiekt_country: country }));
               if (form.id) {
                 setRows((list) =>
-                  list.map((r) => (r.id === form.id ? { ...r, subiekt_kh_id: khId } : r))
+                  list.map((r) =>
+                    r.id === form.id
+                      ? {
+                          ...r,
+                          subiekt_kh_id: khId,
+                          subiekt_country_id: country?.id ?? null,
+                          subiekt_country_name: country?.name ?? null,
+                        }
+                      : r
+                  )
                 );
               }
             }}

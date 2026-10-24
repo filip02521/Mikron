@@ -57,3 +57,9 @@ data/handoff/
 
 # Skille: dane osobowe i szczegóły spraw tylko lokalnie (repo publiczne)
 .claude/skills/**/*.local.md
+
+# Backtest ZD — surowe dane z Subiekta (id dokumentów i kontrahentów)
+scripts/backtest-zd-pl/data/
+scripts/backtest-zd-pl/result.json
+scripts/backtest-zd-pl/data-1y/
+scripts/backtest-zd-pl/out-*.txt

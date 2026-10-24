@@ -39,6 +39,8 @@ import { IconCalendar, IconClock, IconSun } from "@/components/icons/StrokeIcons
 import { InactiveSupplierBadge } from "@/components/suppliers/InactiveSupplierBadge";
 import { inactiveSupplierRowClass, inactiveSupplierNameClass } from "@/lib/suppliers/active";
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
+import { ZdAutomatPolicyBadge } from "@/components/zakupy/ZdAutomatPolicyNote";
+import type { ZdAutomatPolicySummary } from "@/lib/data/zd-supplier-order-policy";
 
 export interface ScheduleRow {
   id: string;
@@ -50,6 +52,8 @@ export interface ScheduleRow {
   next_date: string | null;
   vacation_note: string | null;
   rowColor: string;
+  /** Dostawca w automacie ZD — propozycje w jego rytmie; termin z harmonogramu tylko przypomina. */
+  automat?: ZdAutomatPolicySummary | null;
 }
 
 type FilterKey = ScheduleTermFilterKey;
@@ -335,6 +339,11 @@ export function LocationScheduleClient({
                             <p className="mt-0.5 flex items-center gap-1 text-[11px] font-normal text-slate-500">
                               <IconClock size={11} className="shrink-0 text-slate-400" />
                               {row.interval_hint}
+                            </p>
+                          ) : null}
+                          {row.automat ? (
+                            <p className="mt-1">
+                              <ZdAutomatPolicyBadge policy={row.automat} />
                             </p>
                           ) : null}
                           <Link

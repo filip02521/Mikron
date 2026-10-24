@@ -49,11 +49,13 @@ describe("isNavItemActive", () => {
     expect(isNavItemActive(pathname, "/zespol/grupy", zespolSiblings)).toBe(true);
   });
 
-  it("podświetla Terminy zamówień na każdej lokalizacji", () => {
-    const siblings = ["/zakupy/dostawcy", "/lokalizacje/POLSKA", "/zakupy/urlopy"];
-    expect(isNavItemActive("/lokalizacje/ZAGRANICA", "/lokalizacje/POLSKA", siblings)).toBe(
-      true
-    );
+  it("Karty dostawców podświetlone na każdej zakładce hubu (terminy, urlopy, nieaktywni)", () => {
+    const siblings = ["/zakupy/dostawcy", "/zakupy/cenniki", "/zakupy/asystent"];
+    for (const pathname of ["/zakupy/dostawcy", "/lokalizacje/ZAGRANICA", "/zakupy/urlopy", "/zakupy/dostawcy/nieaktywni"]) {
+      expect(isNavItemActive(pathname, "/zakupy/dostawcy", siblings)).toBe(true);
+    }
+    expect(isNavItemActive("/zakupy/cenniki", "/zakupy/dostawcy", siblings)).toBe(false);
+    expect(isNavItemActive("/zakupy/urlopy", "/zakupy/dostawcy?tor=zeby", [])).toBe(true);
   });
 
   it("podświetla notatki magazynu na /notatki", () => {
@@ -67,10 +69,11 @@ describe("isNavItemActive", () => {
     expect(isNavItemActive("/zeby/kolejka", "/zeby/kolejka", siblings)).toBe(true);
   });
 
-  it("nie podświetla kart dostawców na /admin/dostawcy/nieaktywni", () => {
-    const pathname = "/admin/dostawcy/nieaktywni";
-    const siblings = ["/admin/dostawcy", "/lokalizacje/POLSKA", "/admin/urlopy"];
-    expect(isNavItemActive(pathname, "/admin/dostawcy", siblings)).toBe(false);
+  it("podświetla karty dostawców admin na nieaktywnych, urlopach i terminach", () => {
+    const siblings = ["/admin/dostawcy", "/zakupy/cenniki", "/zakupy/asystent"];
+    for (const pathname of ["/admin/dostawcy/nieaktywni", "/admin/urlopy", "/lokalizacje/IMPORT"]) {
+      expect(isNavItemActive(pathname, "/admin/dostawcy", siblings)).toBe(true);
+    }
   });
 
   it("podświetla Administracja tylko na hubie system/konta/handlowcy", () => {
@@ -85,9 +88,9 @@ describe("isNavItemActive", () => {
   });
 
   it("podświetla karty dostawców admin w sekcji Dostawcy", () => {
-    const siblings = ["/admin/dostawcy", "/lokalizacje/POLSKA", "/admin/urlopy"];
+    const siblings = ["/admin/dostawcy", "/zakupy/cenniki", "/zakupy/asystent"];
     expect(isNavItemActive("/admin/dostawcy", "/admin/dostawcy", siblings)).toBe(true);
-    expect(isNavItemActive("/admin/urlopy", "/admin/urlopy", siblings)).toBe(true);
+    expect(isNavItemActive("/zakupy/asystent", "/admin/dostawcy", siblings)).toBe(false);
   });
 });
 
@@ -132,8 +135,7 @@ describe("navForRole admin dostawcy", () => {
   it("wskazuje admin ścieżki w sekcji Dostawcy", () => {
     const groups = navForRole("admin");
     const suppliers = groups.find((g) => g.title === NAV_SECTION_SUPPLIERS);
-    expect(suppliers?.items[0]?.href).toBe("/admin/dostawcy");
-    expect(suppliers?.items[2]?.href).toBe("/admin/urlopy");
+    expect(suppliers?.items.map((i) => i.href)).toEqual(["/admin/dostawcy", "/zakupy/cenniki", "/zakupy/asystent"]);
   });
 
   it("admin: ludzie i dostęp (z licznikiem zgłoszeń) osobno od katalogu i poczty", () => {
@@ -249,8 +251,7 @@ describe("navForRole struktura zakupów", () => {
       expect(ordering?.items.map((item) => item.href)).toEqual([
         "/zakupy/szacunek",
         "/zakupy/braki",
-        "/zakupy/cenniki",
-        "/zakupy/asystent",
+        "/zakupy/automat",
         "/zamowienia/nowe",
         "/historia",
       ]);
@@ -263,12 +264,12 @@ describe("navForRole struktura zakupów", () => {
     }
   });
 
-  it("Dostawcy - tylko karty, terminy i urlopy; logistyka osobno", () => {
+  it("Dostawcy - jedno wejście do hubu kart (terminy i urlopy to zakładki), cenniki i poczta; logistyka osobno", () => {
     const suppliers = navForRole("zakupy").find((g) => g.title === NAV_SECTION_SUPPLIERS);
     expect(suppliers?.items.map((i) => i.href)).toEqual([
       "/zakupy/dostawcy",
-      "/lokalizacje/POLSKA",
-      "/zakupy/urlopy",
+      "/zakupy/cenniki",
+      "/zakupy/asystent",
     ]);
     const logistics = navForRole("zakupy").find((g) => g.title === NAV_SECTION_LOGISTICS);
     expect(logistics?.items.map((i) => [i.href, i.icon])).toEqual([

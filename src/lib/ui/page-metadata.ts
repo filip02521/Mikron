@@ -45,6 +45,7 @@ export const PAGE_TITLES = {
   magazynGadki: "Magazyn Gądki",
   zdEstimate: "Kreator ZD",
   stockWatch: "Braki i zamówienia",
+  zdAutomat: "Automat ZD",
   assistant: "Asystent",
   customsClearance: "Odprawy celne",
   priceLists: "Cenniki",
@@ -77,6 +78,7 @@ export const PAGE_DESCRIPTIONS: Partial<Record<keyof typeof PAGE_TITLES, string>
     "Cennik dostawcy do Subiekta - podgląd różnic, kontrola opakowań i VAT, zapis cen z weryfikacją",
   customsClearance:
     "Dane do odprawy celnej importu - opis PL, kod CN, VAT i deklaracje do maila dla agencji",
+  zdAutomat: "Pulpit automatu ZD: rytm, backtest i KPI każdego dostawcy, klasy ABC/XYZ towarów",
   stockWatch:
     "Proaktywne braki: czas do wyczerpania i lista „Do ZD” po dostawcach - liczona jak w Kreatorze ZD",
   assistant:

@@ -22,3 +22,26 @@ Cel: Kreator liczy Polkard wg strategii z backtestu, co 3 dni gotowa propozycja 
 - [x] E. Dziennik decyzji: przy Utwórz ZD z propozycji zapis zaakceptowane / zmienione (propozycja vs ZD per linia) / odrzucone. Kryterium: raport różnic po każdej propozycji.
   - Wynik (20.10.2026, 45 dostawców z rekonstrukcją ≥70%): dostawa ≤3 d → co 3 d + podłoga 90 d wygrywa z rzeczywistością (Polkard 25 d: −33% dni bez towaru, −33% zapasu); podłoga 90 d daje −10–18% dni bez towaru przy +1–2% zapasu. Dostawa >3 d (import) → krótkie cele przegrywają; zostaje „jak dziś”.
 - [ ] F. Pełne testy, review, authz-reviewer (nowe akcje), weryfikacja w przeglądarce; migracje do wgrania na produkcji.
+
+## Automat ZD — polscy dostawcy (Faza I) — 2026-10-23
+
+Spec: `docs/integrations/strategia-zakupowa-pl-automatyzacja.md` (decyzje §7, backtest §8). Silnik bez zmian wzoru:
+`max30_90`, cykl 7 dni. Rozszerzamy automat z Polkardu; ryzyko świadome — każdy stopień autonomii osobno.
+
+- [x] 0. Backtest 10 dostawców PL (`scripts/backtest-zd-pl/`). Kryterium: P2 `max30_90` co 7 d nie gorszy od rzeczywistości w brakach i zapasie u ≥ 7/10 — wynik 7/10, braki 4,1% vs 6,6%, zapas −4%.
+- [ ] 1. Domknąć Polkard (zadanie F wyżej): pełne testy, review, authz-reviewer, migracje 190/193 na produkcji. Kryterium: propozycje Polkardu powstają na produkcji. **Zależy od Filipa (produkcja).**
+- [x] 2. (Decyzja 2026-10-23: „polski” = Lokalizacja OnTime POLSKA, kraj z Subiekta tylko kontrola rozjazdu w karcie.) Flaga „polski dostawca”: `suppliers.subiekt_country_id` z `adr_IdPanstwo` (sync przy dopasowaniu kh_Id) + `free_shipping_threshold`, `zd_supplier_order_policy.auto_level` (0–4), `cutoff_time`. Kryterium: test syncu; karta dostawcy pokazuje kraj; liczba PL = Subiekt.
+- [ ] 3. Włączenie 10 polskich dostawców (decyzja 2026-10-23): Amadar, Denon, Everall7, Formed, Hansen Dental, Kol-Dental, Makromed, POL-INTECH, Polkard BIS — `max30_90`, cel 25, co 7 dni, stopień 1; **DT Shop — co 14 dni** (wysyłka z Niemiec, backtest §10.4). Bez Ivoclar EXCEL. Wcześniej: `max30_90`, `target_days` 25, `cycle_days` 7, `auto_proposals` (stopień 1). Kryterium: dla każdego propozycja = Policz w Kreatorze tego dnia (diff 0); inni dostawcy bez zmian. **Zmiana danych na produkcji — po zgodzie.**
+  - Przed włączeniem: backtest v2 (spec §11) dla każdego z 10 — cel/cykl z rekomendacji, nie stałe 25/7 (DT Shop v2: co 14 / cel 35; Denon: co 7 / cel 40).
+- [x] 8. Silnik: podłoga 90 d odejmuje prośby tylko z ostatniego okna profilu (spec §11) — odjąć prośby z każdego z trzech okien 30 d. Kryterium: test — prośba sprzed 45 dni nie podnosi tempa. Zrobione: prośby per okno (`zdProsbaFloorWindowRanges`, bez nakładania okien), backtest i test zgodności to samo; wyniki §11 (DT Shop, Denon) do przeliczenia.
+- [x] 4. Bezpieczniki §3.5 jako flagi linii (`zd_auto_proposals.lines[].flags`): sufit, pik, skok vs 4 ostatnie ZD, nowość > 500 zł, wartość ZD > 2× mediany, brak danych. Kryterium: test jednostkowy per flaga; flagi widoczne w panelu propozycji.
+- [x] 5. Minimum i próg darmowej dostawy (§3.4): ZD poniżej progu bez pilnych linii → `deferred`; dopełnienie A/B ≤ 15%. Kryterium: testy na granicach progu.
+- [ ] 6. Okno handlowców (stopień 2): statusy `open_for_sales/frozen/held/deferred/sent`, `zd_auto_proposal_events`, prośba z towarem dostawcy → linia propozycji z autorem, limit +50% (bez limitu z ZK), odcięcie 14:00 D−1, sygnał w aplikacji (bez maili), widoczne wszystkie propozycje. Kryterium: e2e — handlowiec dokłada, po 14:00 nie może; zdarzenie w dzienniku.
+- [x] 7. Klasy ABC (zysk z `asortyment`, 12 mies.) / XYZ (52 tyg.) → `zd_sku_class`, cron miesięczny; KPI §5 (braki A, rotacja, martwy zapas, korekta człowieka, minima). Kryterium: KPI tygodniowe na panelu zakupów zgodne z ręcznym SQL na próbce.
+- [ ] 8. Auto-zatwierdzenie (stopień 3) — ta sama ścieżka co klik (`create_attempted_at`), tylko linie bez flag; najpierw 2–3 dostawcy z korektą < 10% przez 4 cykle. Kryterium: 4 cykle bez duplikatu ZD; automatyczne cofnięcie stopnia po brakach A / nieudanym create.
+- [ ] 9. Auto-mail z PDF ZD (stopień 4) przez pocztę dostawców. Kryterium: 4 cykle bez reklamacji.
+- [ ] 10. Przed stopniem 3: zestaw Vertex Orthoplast 4 kg + 2×1 L (bez ZD od roku) — kupowany czy składany w Subiekcie? Składany → komplet „rozpisz na składniki”. Backtest: dodać pary paczka↔sztuka (dziś ich nie modeluje, stąd gorszy Denon).
+- [ ] API (Tomasz, równolegle): `sales/weekly` z max-z-dokumentu, cena zakupu, `tw_StanMin/Maks/IdPodstDostawca` w `/products`.
+
+Kolejność: 1 → 3; 6 po 4; 8 po 6 i 4 cyklach pomiaru; 9 po 8.
+- Zadania 2, 4, 5, 7 zrobione zespołem (4 sesje), scalone 2026-10-23 po audycie; backtest roczny potwierdził strategię (spec §9).
