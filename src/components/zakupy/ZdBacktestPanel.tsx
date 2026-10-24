@@ -12,7 +12,7 @@ import { cn } from "@/lib/cn";
 import { IconCheck } from "@/components/icons/StrokeIcons";
 import type { ZdBacktestProgress, ZdBacktestResult, ZdBacktestRun } from "@/lib/data/zd-backtest-run";
 import type { ZdSupplierOrderPolicyRow } from "@/lib/data/zd-supplier-order-policy";
-import type { ZdBacktestGridPoint, ZdBacktestVerdictKind } from "@/lib/orders/zd-backtest";
+import type { ZdBacktestGridPoint, ZdBacktestRecommendationTier, ZdBacktestVerdictKind } from "@/lib/orders/zd-backtest";
 import { formatWarsawDateTime } from "@/lib/time/warsaw";
 
 const nf0 = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 });
@@ -55,6 +55,18 @@ const PHASES: { key: ZdBacktestProgress["phase"]; title: string; text: string }[
 ];
 
 const CYCLE_OPTIONS = [7, 14, 21];
+
+const REC_TITLE: Record<ZdBacktestRecommendationTier, string> = {
+  works: "Najlepsze ustawienie",
+  delay_sensitive: "Najlepsze przy zwykłych dostawach",
+  more_stock: "Mniej braków za cenę zapasu",
+  lowest_cost: "Najniższy koszt",
+};
+const REC_NOTE: Record<Exclude<ZdBacktestRecommendationTier, "works">, string> = {
+  delay_sensitive: "Żadne ustawienie nie przechodzi testu opóźnionych dostaw — to ma braki i zapas nie gorsze niż dziś.",
+  more_stock: "Żadne ustawienie nie ma braków jak dziś bez większego zapasu — to najtańsze z mniejszymi brakami.",
+  lowest_cost: "Żadne ustawienie nie ma braków nie większych niż dziś — to najtańsze w roku.",
+};
 
 // Kreskowany prowadnik między etykietą a wartością (z 21st.dev ReUI stepper-18): w wierszu items-baseline
 // pusty flex-item ma linię bazową na dole, więc kreska siada na linii tekstu.
@@ -122,7 +134,20 @@ function PhaseStepper({ progress }: { progress: Partial<ZdBacktestProgress> | un
   );
 }
 
-type CompareRow = { key: string; label: string; settings: string; zeroShare: number | null; avgStock: number; orders: number | null; medianOrder: number | null };
+type CompareRow = {
+  key: string;
+  label: string;
+  settings: string;
+  zeroShare: number | null;
+  avgStock: number;
+  orders: number | null;
+  medianOrder: number | null;
+  /** Koszt roku: utracona marża + utrzymanie zapasu (v2). */
+  cost: number | null;
+  lostMargin: number | null;
+};
+
+const COMPARE_GRID = "sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_minmax(0,1fr)_7.5rem_5.5rem]";
 
 /** Porównanie wariantów paskami: długość względem największej wartości w kolumnie, zmiana względem „naprawdę”. */
 function CompareBars({ rows, reality }: { rows: CompareRow[]; reality: CompareRow }) {
@@ -150,10 +175,11 @@ function CompareBars({ rows, reality }: { rows: CompareRow[]; reality: CompareRo
   );
   return (
     <div className="overflow-hidden rounded-lg border border-slate-200">
-      <div className="hidden grid-cols-[minmax(0,13rem)_minmax(0,1fr)_minmax(0,1fr)_6rem] gap-4 bg-slate-50 px-4 py-2 text-[0.8125rem] font-medium text-slate-500 sm:grid">
+      <div className={cn("hidden gap-4 bg-slate-50 px-4 py-2 text-[0.8125rem] font-medium text-slate-500 sm:grid", COMPARE_GRID)}>
         <span>Wariant</span>
         <span>Towary z zerowym stanem</span>
         <span>Średni zapas</span>
+        <span className="text-right" title="Utracona marża na brakach + 20% średniego zapasu rocznie">Koszt roku</span>
         <span className="text-right">ZD w roku</span>
       </div>
       <ul>
@@ -164,7 +190,8 @@ function CompareBars({ rows, reality }: { rows: CompareRow[]; reality: CompareRo
             <li
               key={r.key}
               className={cn(
-                "grid grid-cols-2 gap-x-4 gap-y-2 border-t border-slate-100 px-4 py-3 first:border-t-0 sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)_minmax(0,1fr)_6rem] sm:items-center sm:first:border-t",
+                "grid grid-cols-2 gap-x-4 gap-y-2 border-t border-slate-100 px-4 py-3 first:border-t-0 sm:items-center sm:first:border-t",
+                COMPARE_GRID,
                 strong && "bg-indigo-50/40"
               )}
             >
@@ -174,7 +201,18 @@ function CompareBars({ rows, reality }: { rows: CompareRow[]; reality: CompareRo
               </div>
               {metric("Zerowy stan", pct(r.zeroShare), r.zeroShare ?? 0, maxZero, strong, isReality ? null : delta(r.zeroShare, reality.zeroShare, "pp"))}
               {metric("Średni zapas", zl(r.avgStock), r.avgStock, maxStock, strong, isReality ? null : delta(r.avgStock, reality.avgStock, "%"))}
-              <div className="col-span-2 text-sm tabular-nums text-slate-600 sm:col-span-1 sm:text-right">
+              <div className="text-sm tabular-nums text-slate-600 sm:text-right">
+                {r.cost == null ? (
+                  <span className="hidden text-slate-400 sm:inline">—</span>
+                ) : (
+                  <>
+                    <span className="sm:hidden">Koszt roku: </span>
+                    <span className={cn("font-medium", strong ? "text-indigo-900" : "text-slate-900")}>{zl(r.cost)}</span>
+                    {r.lostMargin ? <span className="block text-xs text-slate-500">braki {zl(r.lostMargin)}</span> : null}
+                  </>
+                )}
+              </div>
+              <div className="text-sm tabular-nums text-slate-600 sm:text-right">
                 {r.orders == null ? (
                   <span className="hidden text-slate-400 sm:inline">—</span>
                 ) : (
@@ -228,7 +266,8 @@ function GridMatrix({ result, onPick }: { result: ZdBacktestResult; onPick: (p: 
                     <button
                       type="button"
                       onClick={() => onPick(g)}
-                      aria-label={`Co ${c} dni, cel ${t} dni: braki ${pct(g.zeroShare)}, zapas ${zl(g.avgStock)}${g.works ? ", działa" : ""}`}
+                      aria-label={`Co ${c} dni, cel ${t} dni: braki ${pct(g.zeroShare)}, zapas ${zl(g.avgStock)}${g.cost != null ? `, koszt roku ${zl(g.cost)}` : ""}${g.works ? ", działa" : ""}`}
+                      title={g.cost != null ? `Koszt roku ${zl(g.cost)}${g.stableQuarters != null ? ` · trzyma w ${g.stableQuarters}/4 kwartałów` : ""}` : undefined}
                       className={cn(
                         "flex w-full cursor-pointer flex-col items-end rounded-md px-2 py-1.5 text-right transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
                         g.works ? "bg-emerald-50 text-emerald-900 hover:bg-emerald-100" : "text-slate-600 hover:bg-slate-50",
@@ -362,21 +401,43 @@ export function ZdBacktestPanel({
           avgStock: result.reality.avgStock,
           orders: null,
           medianOrder: null,
+          // „Naprawdę” obsłużyło z definicji całą zapisaną sprzedaż — koszt nieporównywalny z symulacją.
+          cost: null,
+          lostMargin: null,
         },
         ...[kreator, automat, pessimistic].flatMap((v) =>
           v
-            ? [{ key: v.key, label: v.label, settings: v.settings, zeroShare: v.metrics.zeroShare, avgStock: v.metrics.avgStock, orders: v.metrics.orders, medianOrder: v.metrics.medianOrder }]
+            ? [
+                {
+                  key: v.key,
+                  label: v.label,
+                  settings: v.settings,
+                  zeroShare: v.metrics.zeroShare,
+                  avgStock: v.metrics.avgStock,
+                  orders: v.metrics.orders,
+                  medianOrder: v.metrics.medianOrder,
+                  cost: v.metrics.cost ?? null,
+                  lostMargin: v.metrics.lostMargin ?? null,
+                },
+              ]
             : []
         ),
       ]
     : [];
 
+  // Pola zmienione względem wyniku na ekranie — najpierw policz, nie włączaj starych ustawień.
+  const fieldsChanged = !!result && (Number(targetDays) !== result.params.targetDays || Number(cycleDays) !== result.params.cycleDays);
   const footer = (
     <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
       <Button variant="secondary" onClick={onClose}>
         Zamknij
       </Button>
-      {canManage && result && result.verdict.kind === "works" && !sameAsPolicy(result.params.targetDays, result.params.cycleDays) ? (
+      {canManage && fieldsChanged && !running ? (
+        <Button onClick={() => void start()} disabled={starting}>
+          {starting ? <Spinner /> : null}
+          Policz: co {cycleDays} dni, cel {targetDays} dni
+        </Button>
+      ) : canManage && result && result.verdict.kind === "works" && !sameAsPolicy(result.params.targetDays, result.params.cycleDays) ? (
         <Button onClick={() => void enable(result.params.targetDays, result.params.cycleDays)} disabled={saving}>
           {saving ? <Spinner /> : null}
           Włącz automat: co {result.params.cycleDays} dni, cel {result.params.targetDays} dni
@@ -492,12 +553,14 @@ export function ZdBacktestPanel({
             <section className="flex flex-col gap-3 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between" aria-label="Rekomendacja">
               <div className="text-sm text-indigo-900">
                 <p className="font-semibold">
-                  {rec.works ? "Lepsze ustawienie" : "Najmniej braków"}: co {rec.cycleDays} dni, cel {rec.targetDays} dni
+                  {REC_TITLE[rec.tier ?? (rec.works ? "works" : "lowest_cost")]}: co {rec.cycleDays} dni, cel {rec.targetDays} dni
                 </p>
                 <p className="text-indigo-800">
                   Braki {pct(rec.zeroShare)} (naprawdę {pct(result.reality.zeroShare)}), zapas {zl(rec.avgStock)} (naprawdę {zl(result.reality.avgStock)}),{" "}
                   {nf0.format(rec.orders)} ZD w roku.
-                  {rec.works ? "" : " Żadne ustawienie z siatki nie przechodzi wszystkich warunków."}
+                  {rec.cost != null ? ` Koszt roku ${zl(rec.cost)}${kreator?.metrics.cost != null ? ` (Kreator dziś ${zl(kreator.metrics.cost)})` : ""}.` : ""}
+                  {rec.stableQuarters != null ? ` Trzyma w ${rec.stableQuarters} z 4 kwartałów.` : ""}
+                  {rec.tier && rec.tier !== "works" ? ` ${REC_NOTE[rec.tier]}` : ""}
                 </p>
               </div>
               {canManage ? (
@@ -554,6 +617,27 @@ export function ZdBacktestPanel({
                   tone={result.quality.hiddenOutflowShare >= 10 ? "warning" : undefined}
                 />
               ) : null}
+              {result.model ? <KeyValue label="Okno sprzedaży" value={`${result.model.windowDays} dni (jak Kreator)`} /> : null}
+              {result.model ? <KeyValue label="Podążanie za sprzedażą" value={result.model.trackPreset ?? "wyłączone"} /> : null}
+              {result.quality.imputedShare != null ? (
+                <KeyValue label="Popyt dopisany za braki" value={pct(result.quality.imputedShare)} tone={result.quality.imputedShare >= 15 ? "warning" : undefined} />
+              ) : null}
+              {result.quality.prosbaShare != null ? <KeyValue label="Sprzedaż pod prośby (poza zapasem)" value={pct(result.quality.prosbaShare)} /> : null}
+              {result.quality.zkShare != null ? <KeyValue label="Sprzedaż z zamówień klientów (ZK)" value={pct(result.quality.zkShare)} /> : null}
+              {automat?.metrics.zk ? (
+                <KeyValue
+                  label="ZK wydane po terminie (automat)"
+                  value={
+                    automat.metrics.zk.lateQty
+                      ? `${nf0.format(automat.metrics.zk.lateQty)} z ${nf0.format(automat.metrics.zk.qty)} szt., śr. ${nf1.format(automat.metrics.zk.avgDelayDays ?? 0)} dni`
+                      : `0 z ${nf0.format(automat.metrics.zk.qty)} szt.`
+                  }
+                />
+              ) : null}
+              {result.quality.minStockSkus ? <KeyValue label="Towary z minimum stanów" value={nf0.format(result.quality.minStockSkus)} /> : null}
+              {result.quality.marginActiveShare != null ? (
+                <KeyValue label="Marża dla aktywnych" value={pct(result.quality.marginActiveShare)} tone={result.quality.marginActiveShare < 80 ? "warning" : undefined} />
+              ) : null}
               {result.quality.pairs ? <KeyValue label="Pary paczka↔sztuka" value={nf0.format(result.quality.pairs)} /> : null}
               {result.quality.explodedBoms ? <KeyValue label="Komplety na składniki" value={nf0.format(result.quality.explodedBoms)} /> : null}
             </dl>
@@ -566,7 +650,9 @@ export function ZdBacktestPanel({
             ) : null}
             <p className="text-xs leading-relaxed text-slate-500">
               Werdykt „działa”: braki nie większe niż naprawdę, zapas najwyżej o 10% większy, a przy opóźnionych dostawach braki najwyżej o 1 pp większe.
-              Sprzedaży, której nie było z powodu braków, w danych nie ma — liczby obsłużonej sprzedaży są zawyżone dla każdego wariantu jednakowo.
+              {result.version === 2
+                ? " Każda decyzja liczona jak nocny przebieg: okno dni zapasu dostawcy, korekta dni braku, prośby poza zapasem, rezerwacje z ZK (klient czeka na dostawę, nie przepada), podążanie za sprzedażą, minimum stanów, opakowania, czas dostawy znany w dniu decyzji. Nowy towar dostaje pierwszą dostawę jak naprawdę. Koszt roku = utracona marża na sprzedaży z półki + 20% średniego zapasu; rekomendacja to najniższy koszt wśród ustawień, które działają — najlepiej we wszystkich kwartałach."
+                : " Wynik policzony starszą wersją backtestu — policz ponownie, żeby zobaczyć koszt i ustawienia liczone jak nocny przebieg."}
             </p>
           </section>
         </>

@@ -20,20 +20,34 @@ import { fetchTeethProductTwIdSet } from "@/lib/data/teeth-products";
 import { mergeZdEstimateExcludedTwIds } from "@/lib/orders/zd-estimate-name-exclude";
 import { onRequestTwIdSet } from "@/lib/orders/zd-estimate-on-request";
 import { DEFAULT_DNI_ZAPASU, stockPeriodToDniZapasu } from "@/lib/orders/zd-estimate-manual";
+import { fetchZdEstimateMinStock } from "@/lib/data/zd-estimate-min-stock";
+import { minStockRowsToMap, withPairMinStock } from "@/lib/orders/zd-estimate-min-stock-lookup";
+import { fetchZdBoostPowerPreset } from "@/lib/data/zd-estimate-boost-preset";
+import { boostPresetDef, policyForBoostPreset } from "@/lib/orders/zd-estimate-boost-presets";
+import { parseOrderQuantity } from "@/lib/orders/individual";
+import type { StatsMode } from "@/types/database";
 import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
 import {
   addDaysKey,
   simulateZdBacktest,
   zdBacktestHiddenOutflowShare,
+  zdBacktestImputedShare,
   zdBacktestReality,
   zdBacktestGrid,
+  zdBacktestSplitProsbaSales,
+  zdBacktestStableQuarters,
   zdBacktestVerdict,
+  ZD_BACKTEST_HOLDING_RATE,
+  ZD_BACKTEST_PROSBA_SALE_DAYS,
   type ZdBacktestGridPoint,
   type ZdBacktestInput,
   type ZdBacktestLeadSample,
   type ZdBacktestMetrics,
   type ZdBacktestPack,
   type ZdBacktestProduct,
+  type ZdBacktestReality,
+  type ZdBacktestRecommendationTier,
+  type ZdBacktestSale,
   type ZdBacktestVerdict,
 } from "@/lib/orders/zd-backtest";
 
@@ -56,15 +70,18 @@ export type ZdBacktestVariant = {
 };
 
 export type ZdBacktestResult = {
-  version: 1;
+  /** 2: silnik 1:1 z nocnym przebiegiem (okno dni zapasu, korekta braków, prośby, podążanie, minimum), koszt w rekomendacji. */
+  version: 1 | 2;
   period: { from: string; to: string };
   params: ZdBacktestParams;
-  reality: { zeroShare: number | null; avgStock: number; cycleDays: number };
+  reality: { zeroShare: number | null; avgStock: number; cycleDays: number } & Partial<Omit<ZdBacktestReality, "zeroShare" | "avgStock">>;
   variants: ZdBacktestVariant[];
+  /** Ustawienia modelu (v2). */
+  model?: { windowDays: number; holdingRate: number; trackPreset: string | null; statsMode: StatsMode; automatStableQuarters: number };
   verdict: ZdBacktestVerdict;
   /** Siatka ustawień (cel × cykl) i rekomendacja: najmniejszy zapas wśród działających, inaczej najmniej braków. */
   grid: ZdBacktestGridPoint[];
-  recommended: (ZdBacktestGridPoint & { sameAsParams: boolean }) | null;
+  recommended: (ZdBacktestGridPoint & { sameAsParams: boolean; tier?: ZdBacktestRecommendationTier }) | null;
   quality: {
     skus: number;
     activeSkus: number;
@@ -79,6 +96,16 @@ export type ZdBacktestResult = {
     /** Pominięte jak w silniku: wykluczone (lista, nazwa, zęby) i „tylko na prośbę” (zamawiane pod prośbę, nie na stan). */
     excluded: number;
     onRequest: number;
+    /** v2: popyt dopisany za tygodnie braku (% sprzedaży wartościowo). */
+    imputedShare?: number | null;
+    /** v2: sprzedaż pod prośby wyłączona z popytu na zapas (% sprzedaży wartościowo). */
+    prosbaShare?: number | null;
+    /** v2: towary z minimum stanów. */
+    minStockSkus?: number;
+    /** v2: % aktywnych z marżą (koszt braku). */
+    marginActiveShare?: number;
+    /** v2: sprzedaż z zamówień klientów (FS z wcześniejszego ZK) — % sprzedaży wartościowo. */
+    zkShare?: number | null;
   };
   notes: string[];
 };
@@ -235,22 +262,53 @@ export async function computeZdBacktest(
   params: ZdBacktestParams,
   onProgress: (p: ZdBacktestProgress) => Promise<void> = async () => undefined
 ): Promise<ZdBacktestResult> {
+  const { input, ctx } = await loadZdBacktestData(supplierId, onProgress);
+  return evaluateZdBacktest(input, ctx, params);
+}
+
+/** Wszystko, czego ocena potrzebuje poza wejściem symulacji. */
+export type ZdBacktestContext = {
+  simStart: string;
+  simEnd: string;
+  kreatorDays: number;
+  supplierCycle: number;
+  statsMode: StatsMode;
+  trackPreset: string;
+  names: Map<number, string>;
+  pairs: number;
+  explodedBoms: number;
+  skipped: { excluded: number; onRequest: number };
+};
+
+/** Dane dostawcy z Subiekta i OnTime → wejście symulacji (tylko odczyt). */
+export async function loadZdBacktestData(
+  supplierId: string,
+  onProgress: (p: ZdBacktestProgress) => Promise<void> = async () => undefined
+): Promise<{ input: ZdBacktestInput; ctx: ZdBacktestContext }> {
   const resolved = resolveSubiektOrdersConfig();
   if (!resolved.ok) throw new Error(resolved.message);
   const cfg = resolved.config;
-  const supRes = await query<{ name: string; interval_weeks: string | null; stock_raw: string | null; stock: unknown }>(
-    `SELECT name, interval_weeks, stock_raw, stock FROM suppliers WHERE id = $1`,
+  const supRes = await query<{ name: string; interval_weeks: string | null; stock_raw: string | null; stock: unknown; stats_mode: string | null }>(
+    `SELECT name, interval_weeks, stock_raw, stock, stats_mode FROM suppliers WHERE id = $1`,
     [supplierId]
   );
   const sup = supRes.rows[0];
   if (!sup) throw new Error("Nie ma takiego dostawcy.");
+  const statsMode: StatsMode = sup.stats_mode === "OSOBNO" ? "OSOBNO" : "LACZNIE";
   const scopes = await listZdEstimateSupplierScopesFor(supplierId);
   if (!scopes.length) throw new Error("Dostawca nie ma zakresu (grupy/cechy) w Kreatorze ZD.");
 
+  // Okno sprzedaży i dni zapasu jak nocny przebieg (`supplierStockDays` w stock-watch/worker).
+  const kreatorDays = (() => {
+    const d = stockPeriodToDniZapasu(sup.stock_raw, sup.stock != null ? Number(sup.stock) : null);
+    return d != null && d > 0 ? d : DEFAULT_DNI_ZAPASU;
+  })();
   const today = todayDateKeyInWarsaw();
   const simEnd = addDaysKey(today, -1);
   const simStart = addDaysKey(simEnd, -(SIM_DAYS - 1));
-  const salesFrom = addDaysKey(simStart, -HISTORY_BEFORE_DAYS);
+  // Historia: okno sprzedaży / 90 d przed pierwszą decyzją i „aktywny” = sprzedaż w pół roku przed startem.
+  const historyDays = Math.max(HISTORY_BEFORE_DAYS, Math.max(kreatorDays, 90) + ZD_BACKTEST_PROSBA_SALE_DAYS + 7);
+  const salesFrom = addDaysKey(simStart, -historyDays);
 
   await onProgress({ phase: "products", done: 0, total: scopes.length });
   const ids = new Set<number>();
@@ -266,13 +324,15 @@ export async function computeZdBacktest(
   }
   // Jak silnik zamówień: wykluczone (lista z Kreatora, automatycznie po nazwie, zęby) i „tylko na prośbę”
   // nie są zamawiane na stan — nie symulujemy ich i nie liczymy ich zerowego stanu jako braku.
-  const [exclusions, onRequests, teeth, pairsAll] = await Promise.all([
+  const [exclusions, onRequests, teeth, pairsAll, minStockRows, boostPreset] = await Promise.all([
     fetchZdEstimateExclusions(),
     fetchZdEstimateOnRequests(),
     fetchTeethProductTwIdSet().catch(() => new Set<number>()),
     query<{ pack_tw_id: number; piece_tw_id: number }>(`SELECT pack_tw_id, piece_tw_id FROM zd_product_pairs`).then((r) =>
       r.rows.map((x) => ({ packTwId: Number(x.pack_tw_id), pieceTwId: Number(x.piece_tw_id) }))
     ),
+    fetchZdEstimateMinStock(),
+    fetchZdBoostPowerPreset(),
   ]);
   const excludedIds = mergeZdEstimateExcludedTwIds(names, exclusions.map((e) => e.subiektTwId), { teethTwIds: teeth });
   const onRequestIds = onRequestTwIdSet(onRequests, pairsAll);
@@ -292,6 +352,7 @@ export async function computeZdBacktest(
     [[...ids]]
   );
   const explodeParents = new Set(bomRes.rows.map((r) => Number(r.parent)));
+  const bomComponents = new Set(bomRes.rows.map((r) => Number(r.component)));
   // Pary paczka ↔ sztuka jak silnik (Kreator „Pary”): jedna pozycja w sztukach na karcie paczki —
   // popyt = sprzedaż sztuk + sprzedaż paczek × przelicznik, stan = sztuki + paczki × przelicznik, zamówienie w paczkach.
   const pairRows = (
@@ -314,116 +375,244 @@ export async function computeZdBacktest(
   }
   const salesIds = new Set([...ids, ...explodeParents, ...pieceOfPair]);
 
-  const sales = new Map<number, Array<[string, number]>>();
-  let done = 0;
-  const all = [...salesIds];
-  await onProgress({ phase: "sales", done: 0, total: all.length });
-  await mapPool(all, CONCURRENCY, async (tw) => {
-    const docs = await paged(cfg, SUBIEKT_PATHS.ordersZdEstimateTowar(tw), { dataOd: salesFrom, dataDo: simEnd }, (j) => (j as { data?: { dokumenty?: Array<Record<string, unknown>> } }).data?.dokumenty ?? []);
-    const lines: Array<[string, number]> = [];
-    for (const d of docs) {
-      if (d.wSkladnik !== "sprzedazOkres") continue;
-      const day = String(d.dok_DataWyst ?? "").slice(0, 10);
-      const qty = Number(d.ob_Ilosc);
-      if (/^\d{4}-\d{2}-\d{2}$/.test(day) && qty > 0) lines.push([day, qty]);
-    }
-    sales.set(tw, lines);
-    done++;
-    if (done % 20 === 0 || done === all.length) await onProgress({ phase: "sales", done, total: all.length });
-  });
-  const demand = new Map<number, Array<readonly [string, number]>>();
-  for (const id of ids) if (!explodeParents.has(id)) demand.set(id, [...(sales.get(id) ?? [])]);
-  for (const [packId, { piece, units }] of pairByPack) {
-    demand.set(packId, [
-      ...(sales.get(packId) ?? []).map(([d, q]) => [d, q * units] as const),
-      ...(sales.get(piece) ?? []),
-    ]);
-  }
-  for (const r of bomRes.rows) {
-    const list = demand.get(Number(r.component));
-    if (!list) continue;
-    for (const [day, q] of sales.get(Number(r.parent)) ?? []) list.push([day, q * (Number(r.qty) || 1)]);
-  }
-
-  const dates = weeklyDays(addDaysKey(simStart, -1), simEnd);
-  await onProgress({ phase: "stock", done: 0, total: dates.length });
-  const snapshots: Array<{ day: string; qty: Map<number, number> }> = [];
-  const cost = new Map<number, number>();
-  for (const [i, day] of dates.entries()) {
-    const qty = new Map<number, number>();
-    for (const s of scopes) {
-      const rows = await paged(cfg, SUBIEKT_PATHS.productsRemanent, { ...scopeParam(s), naDzien: day }, (j) => (j as { data?: { pozycje?: Array<{ tw_Id: number; ilosc: number; cenaMag: number }> } }).data?.pozycje ?? []);
-      for (const r of rows) {
-        const tw = Math.trunc(Number(r.tw_Id));
-        qty.set(tw, (qty.get(tw) ?? 0) + (Number(r.ilosc) || 0));
-        if (!cost.has(tw) && Number(r.cenaMag) > 0) cost.set(tw, Number(r.cenaMag));
-      }
-    }
-    snapshots.push({ day, qty });
-    if ((i + 1) % 5 === 0 || i + 1 === dates.length) await onProgress({ phase: "stock", done: i + 1, total: dates.length });
-  }
-
-  const pieceCost = new Map<number, number>();
-  for (const [packId, { piece, units }] of pairByPack) {
-    for (const s of snapshots) s.qty.set(packId, (s.qty.get(packId) ?? 0) * units + (s.qty.get(piece) ?? 0));
-    const c = cost.get(piece) ?? (cost.has(packId) ? cost.get(packId)! / units : undefined);
-    if (c != null) pieceCost.set(packId, c);
-  }
-
-  // Towar, którego cały okres nie było na stanie, nie ma ceny w remanencie — bez niej wypadłby z porównania
-  // (a to właśnie towary z brakami). Zapasowo koszt sprzedaży ÷ ilość z raportu asortymentowego za rok przed końcem.
-  for (const s of scopes) {
-    const rows = await paged(cfg, "/reports/sprzedaz/asortyment", { ...scopeParam(s), dataOd: salesFrom, dataDo: simEnd, zDetalem: true }, (j) =>
-      ((j as { data?: { items?: Array<{ towarId: number; ilosc: number; koszt: number }> } }).data?.items ?? [])
-    );
-    for (const r of rows) {
-      const tw = Math.trunc(Number(r.towarId));
-      if (!cost.has(tw) && Number(r.ilosc) > 0 && Number(r.koszt) > 0) cost.set(tw, Number(r.koszt) / Number(r.ilosc));
-    }
-  }
-  // Para: wycena i zamówienie w sztukach karty paczki (cena sztuki, paczka = przelicznik sztuk).
-  for (const [packId, { piece, units }] of pairByPack) {
-    const c = pieceCost.get(packId) ?? cost.get(piece) ?? (cost.has(packId) ? cost.get(packId)! / units : undefined);
-    if (c != null) cost.set(packId, c);
-  }
-
-  await onProgress({ phase: "simulate", done: 0, total: 1 });
-  const [packRes, leadRes] = await Promise.all([
-    query<{ tw: number; units: number; mode: string | null; mult: number | null }>(
-      `SELECT subiekt_tw_id AS tw, units_per_package AS units, document_unit_mode AS mode, order_multiple AS mult
-         FROM zd_estimate_packaging WHERE subiekt_tw_id = ANY($1::int[])`,
-      [[...ids]]
-    ),
-    query<{ d: string; full: number; first: number | null }>(
-      `SELECT to_char(placement_date, 'YYYY-MM-DD') AS d, business_days_full AS full, business_days_first AS first
-         FROM delivery_stats_samples
-        WHERE supplier_id = $1 AND deleted_at IS NULL AND NOT is_teeth AND source <> 'import'`,
-      [supplierId]
-    ),
-  ]);
+  const packRes = await query<{ tw: number; units: number; mode: string | null; mult: number | null }>(
+    `SELECT subiekt_tw_id AS tw, units_per_package AS units, document_unit_mode AS mode, order_multiple AS mult
+       FROM zd_estimate_packaging WHERE subiekt_tw_id = ANY($1::int[])`,
+    [[...ids]]
+  );
   const pack = new Map<number, ZdBacktestPack>(
     packRes.rows.map((r) => [
       Number(r.tw),
       { unitsPerPackage: Number(r.units), documentUnitMode: r.mode === "pieces_multiple" ? "pieces_multiple" : "packages", orderMultiple: r.mult },
     ])
   );
-  const lead: ZdBacktestLeadSample[] = leadRes.rows.map((r) => ({ placementDate: r.d, fullDays: Number(r.full), firstDays: r.first == null ? null : Number(r.first) }));
+
+  const sales = new Map<number, ZdBacktestSale[]>();
+  const fsIdsOfLine = new Map<number, Array<number | null>>();
+  let done = 0;
+  const all = [...salesIds];
+  await onProgress({ phase: "sales", done: 0, total: all.length });
+  await mapPool(all, CONCURRENCY, async (tw) => {
+    const docs = await paged(cfg, SUBIEKT_PATHS.ordersZdEstimateTowar(tw), { dataOd: salesFrom, dataDo: simEnd }, (j) => (j as { data?: { dokumenty?: Array<Record<string, unknown>> } }).data?.dokumenty ?? []);
+    const lines: ZdBacktestSale[] = [];
+    const fsIds: Array<number | null> = [];
+    for (const d of docs) {
+      if (d.wSkladnik !== "sprzedazOkres") continue;
+      const day = String(d.dok_DataWyst ?? "").slice(0, 10);
+      const qty = Number(d.ob_Ilosc);
+      if (!(/^\d{4}-\d{2}-\d{2}$/.test(day) && qty > 0)) continue;
+      lines.push([day, qty]);
+      fsIds.push(d.rola === "fs" && day >= simStart ? Math.trunc(Number(d.dok_Id)) || null : null);
+    }
+    sales.set(tw, lines);
+    fsIdsOfLine.set(tw, fsIds);
+    done++;
+    if (done % 20 === 0 || done === all.length) await onProgress({ phase: "sales", done, total: all.length });
+  });
+
+  // Zamówienia klientów: FS wystawiona z ZK (`dok_DoDokId`) wcześniejszego niż FS — klient czekał na towar, a
+  // rezerwacja była widoczna od dnia ZK. Lista FS z okresu, po miesiącu (API zwraca najwyżej 200 wierszy na stronę).
+  const zkDayByFs = new Map<number, string>();
+  {
+    const months: Array<[string, string]> = [];
+    for (let m = simStart.slice(0, 7); m <= simEnd.slice(0, 7); ) {
+      const from = m === simStart.slice(0, 7) ? simStart : `${m}-01`;
+      const next = addDaysKey(`${m}-28`, 4).slice(0, 7);
+      const to = next > simEnd.slice(0, 7) ? simEnd : addDaysKey(`${next}-01`, -1);
+      months.push([from, to]);
+      m = next;
+    }
+    await mapPool(months, CONCURRENCY, async ([from, to]) => {
+      const docs = await paged(cfg, SUBIEKT_PATHS.documentsFs, { dataOd: from, dataDo: to }, (j) => (j as { data?: Array<Record<string, unknown>> }).data ?? []);
+      for (const d of docs) {
+        const fsDay = String(d.dok_DataWyst ?? "").slice(0, 10);
+        const zkDay = String(d.dok_DoDokDataWyst ?? "").slice(0, 10);
+        const nr = String(d.dok_DoDokNrPelny ?? "");
+        if (/^ZK/.test(nr) && /^\d{4}-\d{2}-\d{2}$/.test(zkDay) && zkDay < fsDay) zkDayByFs.set(Math.trunc(Number(d.dok_Id)), zkDay);
+      }
+    });
+    for (const [tw, lines] of sales) {
+      const ids = fsIdsOfLine.get(tw) ?? [];
+      sales.set(
+        tw,
+        lines.map((l, k) => {
+          const zk = ids[k] != null ? zkDayByFs.get(ids[k]!) : undefined;
+          return zk ? [l[0], l[1], zk] : l;
+        })
+      );
+    }
+  }
+
+  // Sprzedaż pod prośby (zrealizowane prośby) — z dostaw pod klienta, nie z zapasu. Jak silnik: tylko towary
+  // w sztukach, poza parami i kompletami (tam prośba jest w innych jednostkach niż sprzedaż karty).
+  const prosbaEligible = [...ids].filter(
+    (id) => !pairByPack.has(id) && !bomComponents.has(id) && !explodeParents.has(id) && !((pack.get(id)?.unitsPerPackage ?? 1) > 1)
+  );
+  const prosbyByTw = new Map<number, Array<[string, number]>>();
+  if (prosbaEligible.length) {
+    const pr = await query<{ tw: number; day: string; status: string; quantity: string | null; delivered_quantity: string | null }>(
+      `SELECT subiekt_tw_id AS tw, to_char((delivery_at AT TIME ZONE 'Europe/Warsaw')::date, 'YYYY-MM-DD') AS day,
+              status, quantity, delivered_quantity
+         FROM individual_orders
+        WHERE subiekt_tw_id = ANY($1::int[])
+          AND status IN ('Zrealizowane', 'Czesciowo_zrealizowane')
+          AND delivery_at IS NOT NULL
+          AND (delivery_at AT TIME ZONE 'Europe/Warsaw')::date BETWEEN $2::date AND $3::date`,
+      [prosbaEligible, addDaysKey(salesFrom, -ZD_BACKTEST_PROSBA_SALE_DAYS), simEnd]
+    );
+    for (const r of pr.rows) {
+      const qty =
+        parseOrderQuantity(r.delivered_quantity ?? "") ?? (r.status === "Zrealizowane" ? parseOrderQuantity(r.quantity ?? "") : null) ?? 0;
+      if (!(qty > 0)) continue;
+      const list = prosbyByTw.get(Number(r.tw)) ?? [];
+      list.push([r.day, qty]);
+      prosbyByTw.set(Number(r.tw), list);
+    }
+  }
+  const prosba = new Map<number, Array<readonly [string, number]>>();
+  const demand = new Map<number, ZdBacktestSale[]>();
+  const scaled = (l: ZdBacktestSale, f: number): ZdBacktestSale => (l[2] ? [l[0], l[1] * f, l[2]] : [l[0], l[1] * f]);
+  for (const id of ids) {
+    if (explodeParents.has(id)) continue;
+    const own = sales.get(id) ?? [];
+    const pr = prosbyByTw.get(id);
+    if (pr?.length) {
+      const split = zdBacktestSplitProsbaSales(own, pr);
+      demand.set(id, split.stock);
+      if (split.prosba.length) prosba.set(id, split.prosba);
+    } else demand.set(id, [...own]);
+  }
+  for (const [packId, { piece, units }] of pairByPack) {
+    demand.set(packId, [
+      ...(sales.get(packId) ?? []).map((l) => scaled(l, units)),
+      ...(sales.get(piece) ?? []),
+    ]);
+  }
+  for (const r of bomRes.rows) {
+    const list = demand.get(Number(r.component));
+    if (!list) continue;
+    for (const l of sales.get(Number(r.parent)) ?? []) list.push(scaled(l, Number(r.qty) || 1));
+  }
+
+  // Remanenty: tydzień przed startem do końca (okres) + historia na dni braku w pierwszym oknie.
+  const historyFrom = addDaysKey(simStart, -(Math.max(kreatorDays, 90) + 8));
+  const histDates = weeklyDays(historyFrom, addDaysKey(simStart, -2)).filter((d) => d < addDaysKey(simStart, -1));
+  const dates = weeklyDays(addDaysKey(simStart, -1), simEnd);
+  const allDates = [...histDates, ...dates];
+  await onProgress({ phase: "stock", done: 0, total: allDates.length });
+  const snapshotsAll: Array<{ day: string; qty: Map<number, number> }> = [];
+  const cost = new Map<number, number>();
+  for (const [i, day] of allDates.entries()) {
+    const qty = new Map<number, number>();
+    for (const s of scopes) {
+      const rows = await paged(cfg, SUBIEKT_PATHS.productsRemanent, { ...scopeParam(s), naDzien: day }, (j) => (j as { data?: { pozycje?: Array<{ tw_Id: number; ilosc: number; cenaMag: number }> } }).data?.pozycje ?? []);
+      for (const r of rows) {
+        const tw = Math.trunc(Number(r.tw_Id));
+        qty.set(tw, (qty.get(tw) ?? 0) + (Number(r.ilosc) || 0));
+        if (day >= dates[0]! && !cost.has(tw) && Number(r.cenaMag) > 0) cost.set(tw, Number(r.cenaMag));
+      }
+    }
+    snapshotsAll.push({ day, qty });
+    if ((i + 1) % 5 === 0 || i + 1 === allDates.length) await onProgress({ phase: "stock", done: i + 1, total: allDates.length });
+  }
+
+  const pieceCost = new Map<number, number>();
+  for (const [packId, { piece, units }] of pairByPack) {
+    for (const s of snapshotsAll) s.qty.set(packId, (s.qty.get(packId) ?? 0) * units + (s.qty.get(piece) ?? 0));
+    const c = cost.get(piece) ?? (cost.has(packId) ? cost.get(packId)! / units : undefined);
+    if (c != null) pieceCost.set(packId, c);
+  }
+  const historySnapshots = snapshotsAll.filter((s) => s.day < dates[0]!);
+  const snapshots = snapshotsAll.filter((s) => s.day >= dates[0]!);
+
+  // Towar, którego cały okres nie było na stanie, nie ma ceny w remanencie — bez niej wypadłby z porównania
+  // (a to właśnie towary z brakami). Zapasowo koszt sprzedaży ÷ ilość z raportu asortymentowego. Z tego
+  // samego raportu marża za sztukę (koszt braku).
+  const margin = new Map<number, number>();
+  const asort = new Map<number, { qty: number; zysk: number }>();
+  for (const s of scopes) {
+    const rows = await paged(cfg, "/reports/sprzedaz/asortyment", { ...scopeParam(s), dataOd: salesFrom, dataDo: simEnd, zDetalem: true }, (j) =>
+      ((j as { data?: { items?: Array<{ towarId: number; ilosc: number; koszt: number; zysk?: number }> } }).data?.items ?? [])
+    );
+    for (const r of rows) {
+      const tw = Math.trunc(Number(r.towarId));
+      if (!cost.has(tw) && Number(r.ilosc) > 0 && Number(r.koszt) > 0) cost.set(tw, Number(r.koszt) / Number(r.ilosc));
+      if (!asort.has(tw) && Number(r.ilosc) > 0) asort.set(tw, { qty: Number(r.ilosc), zysk: Number(r.zysk) || 0 });
+    }
+  }
+  for (const [tw, a] of asort) margin.set(tw, Math.max(0, a.zysk / a.qty));
+  // Para: wycena, marża i zamówienie w sztukach karty paczki (cena sztuki, paczka = przelicznik sztuk).
+  for (const [packId, { piece, units }] of pairByPack) {
+    const c = pieceCost.get(packId) ?? cost.get(piece) ?? (cost.has(packId) ? cost.get(packId)! / units : undefined);
+    if (c != null) cost.set(packId, c);
+    const a = asort.get(packId);
+    const b = asort.get(piece);
+    const q = (a?.qty ?? 0) * units + (b?.qty ?? 0);
+    if (q > 0) margin.set(packId, Math.max(0, ((a?.zysk ?? 0) + (b?.zysk ?? 0)) / q));
+  }
+
+  await onProgress({ phase: "simulate", done: 0, total: 1 });
+  const leadRes = await query<ZdBacktestLeadSample>(
+    `SELECT to_char(placement_date, 'YYYY-MM-DD') AS placement_date, to_char(delivery_date, 'YYYY-MM-DD') AS delivery_date,
+            business_days_full, business_days_first, order_type, source
+       FROM delivery_stats_samples
+      WHERE supplier_id = $1 AND deleted_at IS NULL AND NOT is_teeth`,
+    [supplierId]
+  );
+  const lead: ZdBacktestLeadSample[] = leadRes.rows.map((r) => ({
+    ...r,
+    business_days_full: Number(r.business_days_full),
+    business_days_first: r.business_days_first == null ? null : Number(r.business_days_first),
+  }));
+  const minStock = withPairMinStock(minStockRowsToMap(minStockRows), [...pairByPack].map(([packTwId, v]) => ({ packTwId, pieceTwId: v.piece })));
   const activeFrom = addDaysKey(simStart, -182);
   const products: ZdBacktestProduct[] = [...demand.keys()].map((id) => ({
     id,
     cost: cost.get(id) ?? null,
-    active: (demand.get(id) ?? []).some(([d]) => d >= activeFrom && d < simStart),
+    margin: margin.get(id) ?? null,
+    // „Aktywny” po całej sprzedaży (z prośbami) — towar sprzedawany tylko pod prośby i tak jest w ofercie.
+    active: [...(demand.get(id) ?? []), ...(prosba.get(id) ?? [])].some(([d]) => d >= activeFrom && d < simStart),
     pack: pairByPack.has(id)
       ? { unitsPerPackage: pairByPack.get(id)!.units, documentUnitMode: "packages", orderMultiple: pack.get(id)?.orderMultiple ?? null }
       : (pack.get(id) ?? null),
+    minStock: minStock.get(id) ?? 0,
+    composite: pairByPack.has(id) || bomComponents.has(id),
   }));
-  const input: ZdBacktestInput = { simStart, days: SIM_DAYS, products, demand, snapshots, lead };
+  const trackPolicy = policyForBoostPreset(boostPreset);
+  const input: ZdBacktestInput = {
+    simStart,
+    days: SIM_DAYS,
+    windowDays: kreatorDays,
+    products,
+    demand,
+    prosba,
+    snapshots,
+    historySnapshots,
+    lead,
+    statsMode,
+    trackPolicy,
+  };
+  const ctx: ZdBacktestContext = {
+    simStart,
+    simEnd,
+    kreatorDays,
+    supplierCycle: Math.max(1, Math.round((Number(sup.interval_weeks) || 1) * 7)),
+    statsMode,
+    trackPreset: boostPresetDef(boostPreset).label,
+    names: new Map(names.map((n) => [n.tw_Id, n.tw_Nazwa])),
+    pairs: pairByPack.size,
+    explodedBoms: explodeParents.size,
+    skipped,
+  };
+  return { input, ctx };
+}
 
-  const supplierCycle = Math.max(1, Math.round((Number(sup.interval_weeks) || 1) * 7));
-  const kreatorDays = (() => {
-    const d = stockPeriodToDniZapasu(sup.stock_raw, sup.stock != null ? Number(sup.stock) : null);
-    return d != null && d > 0 ? d : DEFAULT_DNI_ZAPASU;
-  })();
+/** Warianty, siatka, werdykt i jakość danych — czyste liczenie na wejściu z `loadZdBacktestData`. */
+export function evaluateZdBacktest(input: ZdBacktestInput, ctx: ZdBacktestContext, params: ZdBacktestParams): ZdBacktestResult {
+  const { simStart, simEnd, kreatorDays, supplierCycle, statsMode } = ctx;
+  const { products, lead } = input;
+  const prosba = input.prosba ?? new Map<number, ReadonlyArray<readonly [string, number]>>();
+  const demand = input.demand;
   const variants: ZdBacktestVariant[] = [
     {
       key: "kreator",
@@ -448,12 +637,40 @@ export async function computeZdBacktest(
   const { grid, recommended } = zdBacktestGrid(input, reality);
   const active = products.filter((p) => p.active);
   const pricedActiveShare = active.length ? (100 * active.filter((p) => p.cost != null).length) / active.length : 0;
+  const marginActiveShare = active.length ? (100 * active.filter((p) => p.margin != null && p.margin > 0).length) / active.length : 0;
   const hiddenOutflowShare = zdBacktestHiddenOutflowShare(input);
+  const imputedShare = zdBacktestImputedShare(input);
+  const zkShare = (() => {
+    let zv = 0;
+    let all = 0;
+    for (const p of products) {
+      if (p.cost == null) continue;
+      for (const l of demand.get(p.id) ?? []) {
+        if (l[0] < simStart) continue;
+        all += l[1] * p.cost;
+        if (l[2]) zv += l[1] * p.cost;
+      }
+    }
+    return all > 0 ? (100 * zv) / all : null;
+  })();
+  const prosbaShare = (() => {
+    let pv = 0;
+    let all = 0;
+    for (const p of products) {
+      if (p.cost == null) continue;
+      const inPeriod = (lines: ReadonlyArray<ZdBacktestSale> | undefined) =>
+        (lines ?? []).reduce((a, [d, q]) => (d >= simStart ? a + q : a), 0);
+      const pq = inPeriod(prosba.get(p.id));
+      pv += pq * p.cost;
+      all += (pq + inPeriod(demand.get(p.id))) * p.cost;
+    }
+    return all > 0 ? (100 * pv) / all : null;
+  })();
   const verdict = zdBacktestVerdict({
     reality,
     automat: variants[1]!.metrics,
     pessimistic: variants[2]!.metrics,
-    quality: { activeSkus: active.length, pricedActiveShare, leadSamples: lead.length },
+    quality: { activeSkus: active.length, pricedActiveShare, leadSamples: lead.filter((l) => l.source !== "import").length },
   });
   const notes: string[] = [];
   if (hiddenOutflowShare != null && hiddenOutflowShare >= 10) {
@@ -461,11 +678,18 @@ export async function computeZdBacktest(
       `${Math.round(hiddenOutflowShare)}% wartości sprzedaży znika ze stanu bez dokumentu sprzedaży (kompletacja, rozbijanie kartonów, RW). Backtest nie liczy tego jako popytu — wynik może być zbyt optymistyczny.`
     );
   }
-  if (pairByPack.size) notes.push(`${pairByPack.size} par paczka ↔ sztuka liczonych razem w sztukach, jak w silniku.`);
-  if (explodeParents.size) notes.push(`${explodeParents.size} kompletów rozpisanych na składniki — ich sprzedaż doliczona do składników.`);
+  if (imputedShare != null && imputedShare >= 1) {
+    notes.push(
+      `W tygodniach, gdy towaru nie było, dopisano popyt ${Math.round(imputedShare)}% sprzedaży (tempo z tygodni ze stanem) — automat musi go obsłużyć, „naprawdę” go stracono.`
+    );
+  }
+  if (marginActiveShare < 80) notes.push(`Marża znana tylko dla ${Math.round(marginActiveShare)}% aktywnych towarów — koszt braków w rekomendacji jest zaniżony.`);
+  if (ctx.pairs) notes.push(`${ctx.pairs} par paczka ↔ sztuka liczonych razem w sztukach, jak w silniku.`);
+  if (ctx.explodedBoms) notes.push(`${ctx.explodedBoms} kompletów rozpisanych na składniki — ich sprzedaż doliczona do składników.`);
 
+  const round1 = (v: number | null) => (v == null ? null : Math.round(v * 10) / 10);
   return {
-    version: 1,
+    version: 2,
     period: { from: simStart, to: simEnd },
     params,
     reality: { ...reality, cycleDays: supplierCycle },
@@ -475,16 +699,28 @@ export async function computeZdBacktest(
     recommended: recommended
       ? { ...recommended, sameAsParams: recommended.targetDays === params.targetDays && recommended.cycleDays === params.cycleDays }
       : null,
+    model: {
+      windowDays: kreatorDays,
+      holdingRate: ZD_BACKTEST_HOLDING_RATE,
+      trackPreset: ctx.trackPreset,
+      statsMode,
+      automatStableQuarters: zdBacktestStableQuarters(variants[1]!.metrics, reality),
+    },
     quality: {
       skus: products.length,
       activeSkus: active.length,
       pricedActiveShare: Math.round(pricedActiveShare * 10) / 10,
-      leadSamples: lead.length,
-      hiddenOutflowShare: hiddenOutflowShare == null ? null : Math.round(hiddenOutflowShare * 10) / 10,
-      pairs: pairByPack.size,
-      explodedBoms: explodeParents.size,
-      excluded: skipped.excluded,
-      onRequest: skipped.onRequest,
+      leadSamples: lead.filter((l) => l.source !== "import").length,
+      hiddenOutflowShare: round1(hiddenOutflowShare),
+      pairs: ctx.pairs,
+      explodedBoms: ctx.explodedBoms,
+      excluded: ctx.skipped.excluded,
+      onRequest: ctx.skipped.onRequest,
+      imputedShare: round1(imputedShare),
+      prosbaShare: round1(prosbaShare),
+      zkShare: round1(zkShare),
+      minStockSkus: products.filter((p) => (p.minStock ?? 0) > 0).length,
+      marginActiveShare: Math.round(marginActiveShare * 10) / 10,
     },
     notes,
   };

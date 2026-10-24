@@ -452,3 +452,39 @@ pozycji przejdą na kolejny tydzień).
 
 **Faza I (9 dostawców + DT Shop, bez Ivoclar), co 7 d, cel 25:** 5,5% zera przy 0,32 mln zł wobec 10,5% przy
 0,44 mln w rzeczywistości (−48% braków, −27% zapasu); nie gorszy od rzeczywistości u 8/10.
+
+## 11. Backtest w aplikacji — audyt zgodności z nocnym przebiegiem (2026-10-24)
+
+Backtest (`/zakupy/automat` → Dostawcy → Backtest; `src/lib/orders/zd-backtest.ts`) liczył prostszy model niż
+nocny przebieg. Różnice i poprawki (wynik v2):
+
+| # | Było | Silnik (nocny przebieg) | Teraz |
+|---|---|---|---|
+| 1 | okno sprzedaży 30 d | okno = dni zapasu dostawcy (`salesWindowFromDniZapasu`, DT Shop 60 d) | jak silnik |
+| 2 | tempo z prawdziwej sprzedaży | system widzi tylko to, co zeszło ze stanu, i koryguje dni braku (`computeStockoutSalesFactor`) | sprzedaż widziana = obsłużona w symulacji + korekta dni braku |
+| 3 | prośby liczone jak popyt na zapas | strategia odejmuje prośby z okna (i z ostatniego okna profilu do podłogi 90 d) | prośby poza zapasem, odejmowane jak silnik |
+| 4 | bez podążania za sprzedażą, historii ZD, minimum | `computeSalesTrackedCel` (preset z ustawień), `applyZdEstimateHistoryCuts`, minimum stanów | te same funkcje |
+| 5 | czas dostawy z próbek złożonych przed decyzją (także jeszcze niedostarczonych), wszystkie typy i źródła | `selectSamplesForStats` → kwantyle zamówień głównych → `automatLeadDays` | tylko dostawy znane w dniu decyzji, ten sam wybór próbek |
+| 6 | zamówienia klientów (ZK) jako nagła sprzedaż z półki | rezerwacja: dostępne = stan − rezerwacje | FS z wcześniejszego ZK (`dok_DoDokId`): rezerwacja od dnia ZK, stan trzymany, brak = klient czeka (opóźnienie, nie utracona marża) |
+| 7 | braki ze zdjęcia tygodniowego w stałej fazie cyklu | — | braki i zapas symulacji liczone dziennie |
+| 8 | popyt z tygodni braku niewidoczny (automat wypadał za dobrze) | — | dopisany z tempa tygodni ze stanem (towar sprzedawany przed i po przerwie, maks. ×2) |
+| 9 | nowy towar bez sprzedaży na starcie nigdy niezamówiony | — | pierwsza dostawa jak naprawdę (wprowadzenie ręczne), potem automat |
+
+Dowód zgodności: `zd-backtest-engine-parity.test.ts` — decyzja backtestu = Do ZD ścieżki silnika (te same funkcje
+w tej samej kolejności) w 17 scenariuszach.
+
+Wybór ustawień: siatka co 7/14/21 × cel 15–60 d; koszt roku = utracona marża na sprzedaży z półki (marża z raportu
+asortymentowego) + 20% średniego zapasu (`ZD_BACKTEST_HOLDING_RATE`). Rekomendacja: najniższy koszt wśród ustawień,
+które działają (braki ≤ dziś, zapas ≤ dziś + 10%, opóźnione dostawy ≤ dziś + 1 pp) i trzymają w ≥ 3 kwartałach;
+gdy żadne — kolejno: bez warunku opóźnień, mniej braków za cenę zapasu, najniższy koszt.
+
+Wynik na nowym modelu (dane do 23.10.2026):
+- **DT Shop** (okno 60 d, ZK 19% sprzedaży): co 14 / cel 25 — kompromis (braki 7,0% vs 6,4%, zapas −42%);
+  rekomendacja **co 14 / cel 35**: braki 4,1%, zapas 11,8 tys. zł (−19%), koszt roku 3,3 tys. zł vs Kreator dziś
+  5,1 tys. zł, 4/4 kwartały.
+- **Denon** (okno 30 d, rozchód bez sprzedaży 11% — kompletacja): co 7 / cel 25 — nie działa (9,1% vs 5,3%);
+  żadne ustawienie nie przechodzi testu opóźnionych dostaw; rekomendacja **co 7 / cel 40** (braki 4,6%, zapas −8%).
+- Cel 25 dla 10 dostawców z §7 trzeba przeliczyć backtestem v2 przed włączeniem na produkcji.
+
+Znalezione w silniku (nie w backteście): podłoga 90 d odejmuje prośby tylko z ostatniego okna 30 d profilu —
+prośba sprzed 31–90 dni dalej podnosi tempo przez dwa miesiące, wbrew komentarzowi w `zd-order-engine.ts`.
