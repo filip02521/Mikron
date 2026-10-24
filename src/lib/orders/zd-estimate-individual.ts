@@ -16,6 +16,7 @@ import {
   type ZdProductPairRef,
 } from "@/lib/orders/zd-product-pair-units";
 import { extractAlphanumericProductCodeFromName } from "@/lib/subiekt/zd-product-name-parse";
+import { effectiveRequestSymbol } from "@/lib/orders/request-completeness";
 import type { IndividualOrder } from "@/types/database";
 import type { ZdEstimateProsbaOverlapContribution } from "@/lib/orders/zd-estimate-prosba-reservation-overlap";
 
@@ -206,7 +207,8 @@ export function matchZdEstimateTwFromOrder(
   byMikran?: Map<string, number>,
   byTw?: Map<number, { tw_Id: number; tw_Symbol: string }>
 ): number | null {
-  const explicitSym = normalizeKey(order.symbol);
+  // Artefakt formularza („S” z „Silikon…”) nie jest symbolem — bez tego prośba trafiała na towar „S”.
+  const explicitSym = normalizeKey(effectiveRequestSymbol(order));
   const mikran = normalizeKey(order.mikranCode);
   const storedTw =
     order.subiektTwId != null && order.subiektTwId > 0

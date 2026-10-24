@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@/lib/db/admin";
+import { isSymbolNamePrefixArtifact } from "@/lib/orders/request-completeness";
 
 function escapeIlike(value: string): string {
   return value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
@@ -13,6 +14,8 @@ export async function resolveOrderLineSubiektTwIdFromCatalog(
     subiektTwId?: number | null;
     symbol?: string | null;
     mikranCode?: string | null;
+    /** Opis z prośby — symbol będący jego początkiem („S” z „Silikon…”) to artefakt, nie symbol towaru. */
+    product?: string | null;
   }
 ): Promise<number | null> {
   const existing =
@@ -21,7 +24,8 @@ export async function resolveOrderLineSubiektTwIdFromCatalog(
 
   const symbolRaw = String(input.symbol ?? "").trim();
   const pluRaw = String(input.mikranCode ?? "").trim();
-  const symbol = symbolRaw && symbolRaw !== "-" ? symbolRaw : "";
+  const symbol =
+    symbolRaw && symbolRaw !== "-" && !isSymbolNamePrefixArtifact(symbolRaw, input.product) ? symbolRaw : "";
   const plu = pluRaw && pluRaw !== "-" ? pluRaw : "";
 
   if (symbol) {
