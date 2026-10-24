@@ -1,5 +1,7 @@
 "use client";
 
+import { ZdAutomatPolicyCardNote } from "@/components/zakupy/ZdAutomatPolicyNote";
+import type { ZdAutomatPolicySummary } from "@/lib/data/zd-supplier-order-policy";
 import type { SupplierLocation, StatsMode } from "@/types/database";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { SUPPLIER_LOCATION_OPTIONS } from "@/lib/supplier-locations";
@@ -62,6 +64,7 @@ export function SupplierAdminForm({
   teethLane = false,
   onTeethScheduleToast,
   onToast,
+  automatPolicy = null,
 }: {
   form: SupplierAdminFormState;
   disabled?: boolean;
@@ -78,6 +81,8 @@ export function SupplierAdminForm({
   onTeethScheduleToast?: (notice: ToastNotice) => void;
   /** Toast dla sekcji dokumentów odpraw (karty dostawców IMPORT). */
   onToast?: (notice: ToastNotice) => void;
+  /** Dostawca w automacie ZD — rytm propozycji pokazany przy cyklu z karty. */
+  automatPolicy?: ZdAutomatPolicySummary | null;
 }) {
   const carriers = activeWarehouseCarrierOptions(
     carrierOptions.length
@@ -259,6 +264,7 @@ export function SupplierAdminForm({
             </ul>
           </FieldHintButton>
         </div>
+        {automatPolicy ? <ZdAutomatPolicyCardNote policy={automatPolicy} /> : null}
         <div className="grid gap-4 sm:grid-cols-2">
           <SupplierCycleField
             key={`interval-${form.id ?? "new"}`}

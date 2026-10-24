@@ -1,4 +1,5 @@
 "use client";
+import type { ZdAutomatPolicySummary } from "@/lib/data/zd-supplier-order-policy";
 import { toastFromError, toastSuccess, SUPPLIER_TOAST, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
 
 import Link from "next/link";
@@ -76,6 +77,7 @@ export function SuppliersAdminClient({
   warehouseCarriers = [],
   teethScheduleSupplierIds,
   teethScheduleMap,
+  automatPolicies = {},
 }: {
   initial: SupplierWithSchedule[];
   /** Wszyscy dostawcy (nieprzefiltrowani) — do pickera w torze zębów */
@@ -86,6 +88,8 @@ export function SuppliersAdminClient({
   teethScheduleSupplierIds?: string[];
   /** Mapa harmonogramów zębów (supplierId → TeethSupplierSchedule) */
   teethScheduleMap?: Record<string, TeethSupplierSchedule>;
+  /** Dostawcy w automacie ZD (supplierId → ustawienia) — ramka przy cyklu w karcie. */
+  automatPolicies?: Record<string, ZdAutomatPolicySummary>;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -461,6 +465,7 @@ export function SuppliersAdminClient({
             teethLane={teethLane}
             onTeethScheduleToast={setToast}
             onToast={setToast}
+            automatPolicy={form.id ? (automatPolicies[form.id] ?? null) : null}
             onSubiektLinked={(khId, country) => {
               setForm((f) => ({ ...f, subiekt_kh_id: khId, subiekt_country: country }));
               if (form.id) {
