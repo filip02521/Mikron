@@ -303,9 +303,9 @@ export function SubiektLeadTimesPanel({ initialData }: { initialData: SubiektLea
                   tone={fromSubiekt ? "success" : "default"}
                 />
                 <PanelSummaryMetric
-                  label="Poprawione daty FZ"
-                  value={(state?.counts?.corrected ?? 0).toLocaleString("pl-PL")}
-                  hint="wpis po zamknięciu miesiąca"
+                  label="Pominięte: FZ z końca miesiąca"
+                  value={(state?.counts?.monthEndExcluded ?? 0).toLocaleString("pl-PL")}
+                  hint="data wpisu po zamknięciu miesiąca, nie przyjęcia"
                 />
                 <PanelSummaryMetric
                   label="Rozbieżne z panelem"

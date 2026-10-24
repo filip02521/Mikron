@@ -11,6 +11,8 @@ import {
   zdBacktestSplitProsbaSales,
   zdBacktestStableQuarters,
   zdBacktestVerdict,
+  zdBacktestApplyOrderTerms,
+  ZD_BACKTEST_ORDER_COST,
   type ZdBacktestInput,
   type ZdBacktestLeadSample,
   type ZdBacktestMetrics,
@@ -61,7 +63,7 @@ describe("simulateZdBacktest — jak nocny przebieg", () => {
     // cel 25 dni × 2 szt × 10 zł = 500 zł — średni zapas w okolicy celu, nie wielokrotność
     expect(m.avgStock).toBeGreaterThan(200);
     expect(m.avgStock).toBeLessThan(700);
-    expect(m.cost).toBeCloseTo(m.avgStock * 0.2 * (112 / 365), 6);
+    expect(m.cost).toBeCloseTo(m.avgStock * 0.2 * (112 / 365) + m.orders * ZD_BACKTEST_ORDER_COST, 6);
   });
 
   it("Kreator: cel = sprzedaż z okna dni zapasu dostawcy (okno 60 d ⇒ zapas ≈ 2× okna 30 d)", () => {
@@ -134,6 +136,33 @@ describe("simulateZdBacktest — jak nocny przebieg", () => {
     const base = input({}, 2, 0);
     const shifted = { ...base, snapshots: base.snapshots.map((s, i) => (i === 0 ? s : { ...s, day: addDaysKey(s.day, 3) })) };
     expect(simulateZdBacktest(shifted, automat()).zeroShare).toBeCloseTo(simulateZdBacktest(base, automat()).zeroShare!, 6);
+  });
+});
+
+describe("minimum zamówienia i darmowa dostawa (jak nocny przebieg)", () => {
+  const prod = (id: number, cost: number) => ({ id, cost, active: true, pack: null });
+  const c = (id: number, qty: number, cost: number, cover: number) => ({ s: { p: prod(id, cost) }, qty, rate: 1, celTracked: 20, position: cover });
+  const ctx = (terms: { minOrderValue: number | null; freeShippingThreshold: number | null }) => ({ terms, cycleDays: 7, leadDays: 3, hasAbc: false });
+  it("poniżej minimum bez pilnych — odłożone; z pilną — idzie", () => {
+    const calm = [c(1, 5, 10, 30), c(2, 3, 10, 40)];
+    expect([...zdBacktestApplyOrderTerms(calm, ctx({ minOrderValue: 500, freeShippingThreshold: null })).values()]).toEqual([0, 0]);
+    const urgent = [c(1, 5, 10, 5), c(2, 3, 10, 40)]; // pokrycie 5 dni < cykl 7 + dostawa 3
+    expect([...zdBacktestApplyOrderTerms(urgent, ctx({ minOrderValue: 500, freeShippingThreshold: null })).values()]).toEqual([5, 3]);
+  });
+  it("brakuje ≤ 15% do darmowej dostawy — dopełnienie od najmniej dni pokrycia, do celu + tempo × cykl", () => {
+    const cand = [c(1, 9, 10, 30), c(2, 0, 10, 8)]; // 90 zł, próg 100 zł
+    const out = zdBacktestApplyOrderTerms(cand, ctx({ minOrderValue: null, freeShippingThreshold: 100 }));
+    expect(out.get(cand[0]!)).toBe(9);
+    expect(out.get(cand[1]!)).toBe(1); // towar z najmniejszym pokryciem dostaje brakujące 10 zł
+  });
+  it("brakuje ponad 15% — bez dopełnienia; bez pilnych odłożone", () => {
+    const cand = [c(1, 5, 10, 30)];
+    expect(zdBacktestApplyOrderTerms(cand, ctx({ minOrderValue: null, freeShippingThreshold: 100 })).get(cand[0]!)).toBe(0);
+  });
+  it("w symulacji: minimum odkłada drobne ZD — mniej zamówień, każde nie mniejsze niż minimum albo pilne", () => {
+    const free = simulateZdBacktest(input(), automat(25, 1));
+    const withMin = simulateZdBacktest(input({ orderTerms: { minOrderValue: 150, freeShippingThreshold: null } }), automat(25, 1));
+    expect(withMin.orders).toBeLessThan(free.orders);
   });
 });
 
