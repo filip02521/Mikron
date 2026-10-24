@@ -421,7 +421,6 @@ import {
   OverflowMenuLabel,
 } from "@/components/ui/OverflowMenu";
 import { BrandLoader } from "@/components/ui/BrandLoader";
-import { Spinner } from "@/components/ui/Spinner";
 import {
   IconAlertCircle,
   IconChartTrend,
@@ -8324,10 +8323,7 @@ export function ZdEstimateWorkbench({
                   )}
                 >
                   {stickyCreateGateCaption.tone === "loading" ? (
-                    <Spinner
-                      size="sm"
-                      className="mt-px h-3 w-3 border-[1.5px] border-indigo-200 border-t-indigo-600"
-                    />
+                    <BrandLoader size="sm" tile={false} className="-my-[3px]" />
                   ) : stickyCreateGateCaption.tone === "error" ? (
                     <IconAlertCircle
                       size={13}
@@ -8813,6 +8809,12 @@ export function ZdEstimateWorkbench({
           onRequests={onRequests}
           onOnRequestsChange={applyOnRequestsLive}
           onError={reportError}
+          scanLines={lines ?? []}
+          supplierName={selectedSupplier?.name ?? null}
+          onMarkLine={(twId) => {
+            const line = lines?.find((l) => l.tw_Id === twId);
+            if (line) handleRowMarkOnRequest(line);
+          }}
         />
       </MountAfterOpen>
 

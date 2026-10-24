@@ -89,6 +89,12 @@ import {
   supplierStockSignalRank,
 } from "@/components/summary/SupplierStockSignal";
 
+// Paleta „Ustawienia towaru” ciągnie kartę produktu Kreatora — ładowana dopiero przy otwarciu.
+const ZdProductSettingsPalette = dynamic(
+  () => import("@/components/zakupy/ZdProductSettings").then((m) => ({ default: m.ZdProductSettingsPalette })),
+  { ssr: false }
+);
+
 export function SummaryWorkspace({
   workspace: workspaceIn,
   stockSignalBySupplierId = {},
@@ -173,6 +179,20 @@ export function SummaryWorkspace({
   );
   const [verificationModalOpen, setVerificationModalOpen] = useState(false);
   const [onDemandOpen, setOnDemandOpen] = useState(false);
+  const [productSettingsOpen, setProductSettingsOpen] = useState(false);
+  // ⌘/Ctrl+K — ustawienia towaru (paleta), także gdy fokus jest w polu wyszukiwania dostawcy.
+  useEffect(() => {
+    if (!canPrepareZd) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey || e.repeat || e.key.toLowerCase() !== "k") return;
+      e.preventDefault();
+      // Nad innym oknem (karta dostawcy, zamówienie automatu) paleta wylądowałaby pod nim — wtedy nic.
+      if (document.querySelector('[aria-modal="true"]')) return;
+      setProductSettingsOpen(true);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [canPrepareZd]);
 
   const verificationCount = verificationOrders.length;
   const exceptionsCount = useMemo(() => countDailyPanelExceptions(workspace), [workspace]);
@@ -449,7 +469,11 @@ export function SummaryWorkspace({
             onSelectSupplier={openSupplier}
             onNewSupplier={() => openEditFor("new")}
             onOpenOnDemand={() => setOnDemandOpen(true)}
+            onOpenProductSettings={canPrepareZd ? () => setProductSettingsOpen(true) : undefined}
           />
+          {canPrepareZd && productSettingsOpen ? (
+            <ZdProductSettingsPalette open={productSettingsOpen} onClose={() => setProductSettingsOpen(false)} canEdit />
+          ) : null}
         </div>
 
         <DailyPanelTabs

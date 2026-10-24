@@ -16,7 +16,7 @@ import {
   OverflowMenuSeparator,
 } from "@/components/ui/OverflowMenu";
 import { useActionPending } from "@/hooks/useActionPending";
-import { IconPlusCircle } from "@/components/icons/StrokeIcons";
+import { IconPackage, IconPlusCircle } from "@/components/icons/StrokeIcons";
 import { PanelDailyHelp } from "@/components/summary/PanelDailyHelp";
 import {
   panelToolbarActionsClass,
@@ -36,6 +36,7 @@ export function DailyPanelActionsBar({
   onSelectSupplier,
   onNewSupplier,
   onOpenOnDemand,
+  onOpenProductSettings,
 }: {
   summary: DailyInboxSummary;
   suppliers: SupplierDirectoryEntry[];
@@ -43,6 +44,8 @@ export function DailyPanelActionsBar({
   onSelectSupplier: (id: string) => void;
   onNewSupplier: () => void;
   onOpenOnDemand?: () => void;
+  /** Ustawienia towaru (⌘/Ctrl+K) — tylko dla ról z Kreatorem ZD. */
+  onOpenProductSettings?: () => void;
 }) {
   const router = useRouter();
   const hubContext = useSupplierHubContext();
@@ -85,6 +88,17 @@ export function DailyPanelActionsBar({
             <IconPlusCircle size={15} />
             Nowa prośba
           </Button>
+          {onOpenProductSettings ? (
+            <button
+              type="button"
+              onClick={onOpenProductSettings}
+              className={panelToolbarIconButtonClass}
+              aria-label="Ustawienia towaru (⌘K)"
+              title="Ustawienia towaru - opakowanie, na prośbę, minimum, notatka (⌘K / Ctrl+K)"
+            >
+              <IconPackage size={17} aria-hidden />
+            </button>
+          ) : null}
           <PanelDailyHelp density="toolbar" />
           <OverflowMenu
             label="Narzędzia panelu"
@@ -93,6 +107,9 @@ export function DailyPanelActionsBar({
             triggerClassName={panelToolbarIconButtonClass}
           >
             <OverflowMenuLabel>Panel</OverflowMenuLabel>
+            {onOpenProductSettings ? (
+              <OverflowMenuItem onClick={onOpenProductSettings}>Ustawienia towaru (⌘K)</OverflowMenuItem>
+            ) : null}
             <OverflowMenuItem onClick={() => router.push("/zakupy/tablica")}>
               Tablica
             </OverflowMenuItem>

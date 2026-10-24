@@ -7,6 +7,7 @@ import type {
 import type { ZdDeliveryRisk } from "@/lib/orders/zd-order-horizon";
 import { isZdNameAutoExcluded } from "@/lib/orders/zd-estimate-name-exclude";
 import { buildStockWatchDashboard } from "@/lib/stock-watch/dashboard";
+import { SUBIEKT_DOC_TYPE_FZ, SUBIEKT_DOC_TYPE_ZD, SUBIEKT_ZD_STATUS_DONE } from "@/lib/orders/subiekt-lead-times";
 import type { StockWatchAssemblyKind, StockWatchBomRole } from "@/lib/stock-watch/bom-stock";
 
 /** pg zwraca `numeric` jako string — normalizacja w jednym miejscu. */
@@ -859,6 +860,17 @@ export type ZdPurchaseLineRow = {
   /** Jednostki dokumentu ZD (przy opakowaniach: paczki). */
   qty: number;
   priceNet: number | null;
+  /**
+   * Pierwsza faktura FZ do tego ZD (także do ZD „resztowego” z niego) — data jak w czasach dostaw:
+   * przyjęcie na magazyn, bez niej wystawienie. null = bez faktury (w drodze albo zamknięte bez FZ).
+   * Tylko w historii karty produktu (listZdPurchaseLinesForTw).
+   */
+  fzDate?: string | null;
+  fzNr?: string | null;
+  /** Ile FZ do tego ZD (dostawy częściowe). */
+  fzCount?: number;
+  /** ZD zrealizowany w Subiekcie — bez FZ to „faktura niepowiązana” (np. przez PZ), nie „w drodze”. null = brak ZD w kopii. */
+  zdDone?: boolean | null;
 };
 
 /**
@@ -901,17 +913,33 @@ export async function upsertZdPurchaseLines(rows: readonly ZdPurchaseLineRow[]):
 export async function listZdPurchaseLinesForTw(
   twIds: readonly number[],
   sinceDate: string,
-  limit = 40
+  limit = 40,
+  /** Wiele towarów naraz (wykrywanie „na prośbę” dla listy) — wyższy sufit niż karta jednego towaru. */
+  maxLimit = 200
 ): Promise<ZdPurchaseLineRow[]> {
   const ids = [...new Set(twIds.map((x) => Math.trunc(x)).filter((x) => x > 0))];
   if (!ids.length) return [];
+  // FZ wskazuje ZD przez do_dok_id (jak w subiekt-lead-times); ZD resztowy wskazuje ZD, z którego powstał.
+  // Data faktury: przyjęcie na magazyn, bez niej wystawienie — „kiedy faktura była wpisana”.
   const res = await query<ItemRow>(
-    `SELECT subiekt_tw_id, dok_id, dok_nr, dok_date, kh_id, qty, price_net
-       FROM zd_purchase_lines
-      WHERE subiekt_tw_id = ANY($1::int[]) AND dok_date >= $2::date
-      ORDER BY dok_date DESC, dok_id DESC
+    `SELECT l.subiekt_tw_id, l.dok_id, l.dok_nr, l.dok_date, l.kh_id, l.qty, l.price_net,
+            f.fz_date, f.fz_nr, f.fz_count, zd.status AS zd_status
+       FROM zd_purchase_lines l
+       LEFT JOIN subiekt_purchase_docs zd ON zd.dok_id = l.dok_id AND zd.typ = $5
+       LEFT JOIN LATERAL (
+         SELECT min(coalesce(fz.data_mag, fz.data_wyst)) AS fz_date,
+                (array_agg(fz.nr_pelny ORDER BY coalesce(fz.data_mag, fz.data_wyst), fz.dok_id))[1] AS fz_nr,
+                count(*) AS fz_count
+           FROM subiekt_purchase_docs fz
+          WHERE fz.typ = $4
+            AND (fz.do_dok_id = l.dok_id
+                 OR fz.do_dok_id IN (SELECT z.dok_id FROM subiekt_purchase_docs z
+                                      WHERE z.typ = $5 AND z.do_dok_id = l.dok_id))
+       ) f ON f.fz_count > 0
+      WHERE l.subiekt_tw_id = ANY($1::int[]) AND l.dok_date >= $2::date
+      ORDER BY coalesce(f.fz_date, l.dok_date) DESC, l.dok_id DESC
       LIMIT $3`,
-    [ids, sinceDate, Math.min(200, Math.max(1, Math.trunc(limit)))]
+    [ids, sinceDate, Math.min(maxLimit, Math.max(1, Math.trunc(limit))), SUBIEKT_DOC_TYPE_FZ, SUBIEKT_DOC_TYPE_ZD]
   );
   return res.rows.map((r) => ({
     subiektTwId: num(r.subiekt_tw_id),
@@ -921,6 +949,10 @@ export async function listZdPurchaseLinesForTw(
     khId: r.kh_id == null ? null : num(r.kh_id),
     qty: num(r.qty),
     priceNet: r.price_net == null ? null : num(r.price_net),
+    fzDate: dateKey(r.fz_date),
+    fzNr: (r.fz_nr as string | null) ?? null,
+    fzCount: r.fz_count == null ? 0 : num(r.fz_count),
+    zdDone: r.zd_status == null ? null : num(r.zd_status) === SUBIEKT_ZD_STATUS_DONE,
   }));
 }
 
