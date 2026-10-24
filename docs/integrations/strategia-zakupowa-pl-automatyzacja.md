@@ -430,3 +430,85 @@ W lokalnej kopii zmienia to skład KPI (37 dostawców): wchodzą DT Shop i PiDen
   „Do sprawdzenia (N)” i takie pozycje na górze; `/zakupy/automat` zaczyna od zdania stanu, dzieli dostawców w
   automacie i pozostałych, pokazuje stopień i gotowość do auto-zatwierdzania, nie twierdzi „braki poniżej 5%” bez
   historii stanów; dialog strategii — domyślnie co 7 dni, „Automat ZD” zamiast „Strategia testowa”, aktualny backtest.
+
+### 10.4. DT Shop (Lokalizacja POLSKA, adres w Subiekcie: Niemcy) — backtest roczny
+
+Kontrahent „DT&Shop Polska”, Bad Bocklet (DE), NIP DE; dostawa jak krajowa (mediana 3 dni rob., p90 pierwszej
+dostawy 4). Dane: 40 SKU (29 aktywnych), 0 bez ceny, rozchód bez sprzedaży 4,5%, sprzedaż 104% raportu asortymentowego.
+Czas dostawy = pierwsza dostawa.
+
+| Wariant | Zero na zdjęciu tyg. | Śr. zapas | ZD / rok | Mediana ZD |
+|---|---|---|---|---|
+| Rzeczywistość (co 6 tyg.) | 9,6% | 14 tys. zł | — | — |
+| Kreator dziś (30 d) | 29,5% | 7 tys. zł | 9 | 3,7 tys. zł |
+| **`max30_90`, co 7 d, cel 25** | **6,0%** | **11 tys. zł** | 50 | 0,8 tys. zł |
+| `max30_90`, co 14 d | 8,6% | — | 27 | 1,7 tys. zł |
+| `max30_90`, co 21 d | 11,3% | — | 18 | 3,0 tys. zł |
+
+Co 7 dni: −38% braków i −21% zapasu wobec rzeczywistości (pesymistycznie 6,4%). Przy wysyłce z Niemiec koszt paczki
+może przeważyć — wtedy co 14 dni (nadal lepiej niż dziś) albo próg darmowej dostawy w karcie (małe ZD bez pilnych
+pozycji przejdą na kolejny tydzień).
+**Decyzja 2026-10-23: DT Shop co 14 dni** (pozostali polscy dostawcy co 7).
+
+**Faza I (9 dostawców + DT Shop, bez Ivoclar), co 7 d, cel 25:** 5,5% zera przy 0,32 mln zł wobec 10,5% przy
+0,44 mln w rzeczywistości (−48% braków, −27% zapasu); nie gorszy od rzeczywistości u 8/10.
+
+## 11. Backtest w aplikacji — audyt zgodności z nocnym przebiegiem (2026-10-24)
+
+Backtest (`/zakupy/automat` → Dostawcy → Backtest; `src/lib/orders/zd-backtest.ts`) liczył prostszy model niż
+nocny przebieg. Różnice i poprawki (wynik v2):
+
+| # | Było | Silnik (nocny przebieg) | Teraz |
+|---|---|---|---|
+| 1 | okno sprzedaży 30 d | okno = dni zapasu dostawcy (`salesWindowFromDniZapasu`, DT Shop 60 d) | jak silnik |
+| 2 | tempo z prawdziwej sprzedaży | system widzi tylko to, co zeszło ze stanu, i koryguje dni braku (`computeStockoutSalesFactor`) | sprzedaż widziana = obsłużona w symulacji + korekta dni braku |
+| 3 | prośby liczone jak popyt na zapas | strategia odejmuje prośby z okna (i z każdego z trzech okien profilu do podłogi 90 d) | prośby poza zapasem, odejmowane jak silnik |
+| 4 | bez podążania za sprzedażą, historii ZD, minimum | `computeSalesTrackedCel` (preset z ustawień), `applyZdEstimateHistoryCuts`, minimum stanów | te same funkcje |
+| 5 | czas dostawy z próbek złożonych przed decyzją (także jeszcze niedostarczonych), wszystkie typy i źródła | `selectSamplesForStats` → kwantyle zamówień głównych → `automatLeadDays` | tylko dostawy znane w dniu decyzji, ten sam wybór próbek |
+| 6 | zamówienia klientów (ZK) jako nagła sprzedaż z półki | rezerwacja: dostępne = stan − rezerwacje | FS z wcześniejszego ZK (`dok_DoDokId`): rezerwacja od dnia ZK, stan trzymany, brak = klient czeka (opóźnienie, nie utracona marża) |
+| 7 | braki ze zdjęcia tygodniowego w stałej fazie cyklu | — | braki i zapas symulacji liczone dziennie |
+| 8 | popyt z tygodni braku niewidoczny (automat wypadał za dobrze) | — | dopisany z tempa tygodni ze stanem (towar sprzedawany przed i po przerwie, maks. ×2) |
+| 9 | nowy towar bez sprzedaży na starcie nigdy niezamówiony | — | pierwsza dostawa jak naprawdę (wprowadzenie ręczne), potem automat |
+
+Dowód zgodności: `zd-backtest-engine-parity.test.ts` — decyzja backtestu = Do ZD ścieżki silnika (te same funkcje
+w tej samej kolejności) w 19 scenariuszach.
+
+Wybór ustawień: siatka co 7/14/21 × cel 15–60 d; koszt roku = utracona marża na sprzedaży z półki (marża z raportu
+asortymentowego) + 20% średniego zapasu (`ZD_BACKTEST_HOLDING_RATE`). Rekomendacja: najniższy koszt wśród ustawień,
+które działają (braki ≤ dziś, zapas ≤ dziś + 10%, opóźnione dostawy ≤ dziś + 1 pp) i trzymają w ≥ 3 kwartałach;
+gdy żadne — kolejno: bez warunku opóźnień, mniej braków za cenę zapasu, najniższy koszt.
+
+Wynik na nowym modelu (dane do 23.10.2026):
+- **DT Shop** (okno 60 d, ZK 19% sprzedaży): co 14 / cel 25 — kompromis (braki 7,0% vs 6,4%, zapas −42%);
+  rekomendacja **co 14 / cel 35**: braki 4,1%, zapas 11,8 tys. zł (−19%), koszt roku 3,3 tys. zł vs Kreator dziś
+  5,1 tys. zł, 4/4 kwartały.
+- **Denon** (okno 30 d, rozchód bez sprzedaży 11% — kompletacja): co 7 / cel 25 — nie działa (9,1% vs 5,3%);
+  żadne ustawienie nie przechodzi testu opóźnionych dostaw; rekomendacja **co 7 / cel 40** (braki 4,6%, zapas −8%).
+- Cel 25 dla 10 dostawców z §7 trzeba przeliczyć backtestem v2 przed włączeniem na produkcji.
+
+Znalezione w silniku (nie w backteście), naprawione 2026-10-24: podłoga 90 d odejmowała prośby tylko z ostatniego
+okna 30 d profilu — prośba sprzed 31–90 dni dalej podnosiła tempo przez dwa miesiące. Teraz każde z trzech okien
+podłogi traci prośby dostarczone w jego zakresie (14 d przed najstarszym oknem, do 3 d przed końcem okna; zakresy
+się nie nakładają — `zdProsbaFloorWindowRanges`), okno nie mniej niż 0. Backtest odejmuje sprzedaż pod prośby per
+okno tak samo; przeliczenie 10 dostawców po poprawce (2026-10-24) dało te same werdykty i rekomendacje co tabela §11.1 — prośby to 0–2,6% sprzedaży tych dostawców (różnice ≤ 0,1 pp braków, ≤ 1 tys. zł zapasu).
+
+### 11.1. Backtest v2 — 10 dostawców z §7 (dane 24.10.2025–23.10.2026)
+
+Ustawienia z decyzji (co 7 / cel 25, DT Shop co 14 / cel 25) i rekomendacja z siatki (koszt roku = utracona marża
++ 20% zapasu). Braki = % dni-towarów bez stanu; „naprawdę” z tygodniowych remanentów.
+
+| Dostawca | Naprawdę | Decyzja §7 | Werdykt | Rekomendacja | Uwagi |
+|---|---|---|---|---|---|
+| Amadar | 13,1% / 28k | 7,4% / 20k | działa | co 14 / cel 15: 9,3% / 16k | ZK 54% sprzedaży |
+| Denon Dental | 5,3% / 190k | 9,1% / 106k | nie działa | co 7 / cel 40: 4,6% / 176k (wrażliwe na opóźnienia) | rozchód bez sprzedaży 11% |
+| DT Shop | 6,4% / 15k | 7,0% / 8k | kompromis | co 14 / cel 35: 4,1% / 12k | |
+| Everall7 | 9,9% / 71k | 5,0% / 69k | działa | = decyzja | rozchód bez sprzedaży 13,5% |
+| Formed | 4,6% / 3k | 2,0% / 3k | działa | co 7 / cel 30: 1,6% / 3k | |
+| Hansen Dental | 5,0% / 31k | 2,7% / 15k | działa | co 7 / cel 35: 0,9% / 17k | |
+| Kol-Dental | 0,8% / 32k | 4,6% / 13k | nie działa | co 14 / cel 60: 0,5% / 34k | decyzja tańsza w koszcie roku (4k vs 7k) |
+| Makromed | 3,8% / 35k | 2,3% / 38k | działa | = decyzja | 5 aktywnych SKU |
+| POL-INTECH | 8,6% / 5k | 3,5% / 4k | działa | co 7 / cel 35: 2,4% / 4k | popyt dopisany za braki 8% |
+| Polkard BIS | 10,0% / 15k | 9,4% / 13k | działa | co 7 / cel 30: 8,5% / 15k | |
+
+Decyzja §7 działa u 7/10; zmiany potrzebne przy Denon, DT Shop, Kol-Dental. Zapas razem: naprawdę 425k, decyzja
+§7 289k, rekomendacje 384k.
