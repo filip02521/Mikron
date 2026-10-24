@@ -1482,7 +1482,7 @@ export async function actionCreateZdAutoProposalNow(input: {
     }
     if (p.kind === "skipped") return { ok: false, message: p.reason };
     if (p.kind === "error") return { ok: false, message: `Nie udało się zapisać propozycji: ${p.message}` };
-    return { ok: false, message: "Automat ZD jest wyłączony dla tego dostawcy - włącz go w Strategii dostawcy." };
+    return { ok: false, message: "Automat ZD jest wyłączony dla tego dostawcy - włącz go w karcie dostawcy (sekcja Automat ZD) albo w Strategii dostawcy w Kreatorze." };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się przygotować propozycji.") };
   }
