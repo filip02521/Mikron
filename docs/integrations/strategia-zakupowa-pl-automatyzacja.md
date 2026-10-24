@@ -512,3 +512,26 @@ Ustawienia z decyzji (co 7 / cel 25, DT Shop co 14 / cel 25) i rekomendacja z si
 
 Decyzja §7 działa u 7/10; zmiany potrzebne przy Denon, DT Shop, Kol-Dental. Zapas razem: naprawdę 425k, decyzja
 §7 289k, rekomendacje 384k.
+
+### 11.2. Backtest v3 — stany dzienne, cykle od codziennie, minimum i koszt ZD (2026-10-24)
+
+Symulacja dzień po dniu dla całego dostawcy; stany z remanentu na każdy dzień; siatka co 1/2/3/5/7/14/21 × cel
+15–60; reguły minimum zamówienia i darmowej dostawy jak nocny przebieg (w bazie dev żaden z 11 nie ma ich
+ustawionych); koszt roku = utracona marża + 20% średniego zapasu + 20 zł za ZD (`ZD_BACKTEST_ORDER_COST`).
+
+| Dostawca | Naprawdę | Obecne ustawienie | Werdykt | Rekomendacja | ZD/rok | Koszt roku |
+|---|---|---|---|---|---|---|
+| Amadar | 13,2% / 28k | co 7 / 25: 7,5% / 20k | działa | co 14 / 15: 9,4% / 16k | 24 | 5k |
+| Denon Dental | 5,2% / 191k | co 7 / 25: 8,4% / 108k | nie działa | co 2 / 35: 5,1% / 151k | 154 | 47k |
+| DT Shop | 6,1% / 15k | co 14 / 25: 7,0% / 9k | kompromis | co 14 / 40: 2,8% / 13k | 27 | 4k |
+| Everall7 | 9,9% / 71k | co 7 / 25: 4,8% / 70k | działa | co 5 / 25: 4,4% / 70k | 73 | 24k |
+| Formed | 4,9% / 3k | co 7 / 25: 2,0% / 3k | działa | co 14 / 30: 3,5% / 3k | 27 | 1k |
+| Hansen Dental | 4,7% / 31k | co 7 / 25: 2,7% / 15k | działa | co 7 / 35: 1,0% / 17k | 48 | 5k |
+| Kol-Dental | 1,1% / 33k | co 7 / 25: 4,2% / 13k | nie działa | co 7 / 45: 0,9% / 24k | 50 | 6k |
+| Makromed | 3,8% / 34k | co 7 / 25: 2,6% / 38k | kompromis | co 3 / 20: 3,7% / 34k | 47 | 8k |
+| POL-INTECH | 7,9% / 5k | co 7 / 25: 3,5% / 4k | działa | co 14 / 35: 3,8% / 4k | 26 | 2k |
+| Polkard | 3,5% / 156k | co 3 / 25: 1,8% / 117k | działa | co 2 / 25: 1,7% / 116k | 154 | 33k |
+| Polkard BIS | 9,5% / 15k | co 7 / 25: 9,1% / 13k | działa | co 5 / 30: 7,8% / 16k | 69 | 6k |
+
+Rozchód bez sprzedaży na stanach dziennych: Everall7 19%, Denon 16%, Kol-Dental 12%, POL-INTECH 12% —
+wynik u nich może być zbyt optymistyczny. Polkard: tylko 15 zmierzonych dostaw.
