@@ -61,10 +61,18 @@ export function effectiveDniZapasu(
   return Math.max(target, cycleDays + lead + Math.round(lead * ZD_STRATEGY_LEAD_SAFETY_SHARE));
 }
 
-/** Sprzedaż z ostatnich 90 dni z profilu (12 okien po 30 d, od najstarszego). */
-export function sales90FromProfile(windows: readonly number[] | null | undefined): number | null {
+/**
+ * Sprzedaż z ostatnich 90 dni z profilu (12 okien po 30 d, od najstarszego). `prosbaByWindow` — sprzedaż pod
+ * prośby w każdym z tych trzech okien (od najstarszego), odjęta per okno (okno nie mniej niż 0).
+ */
+export function sales90FromProfile(
+  windows: readonly number[] | null | undefined,
+  prosbaByWindow?: readonly number[]
+): number | null {
   if (!windows || windows.length < ZD_DEMAND_FLOOR_WINDOWS) return null;
-  return windows.slice(-ZD_DEMAND_FLOOR_WINDOWS).reduce((a, x) => a + Math.max(0, Number(x) || 0), 0);
+  return windows
+    .slice(-ZD_DEMAND_FLOOR_WINDOWS)
+    .reduce((a, x, k) => a + Math.max(0, (Number(x) || 0) - Math.max(0, prosbaByWindow?.[k] ?? 0)), 0);
 }
 
 /**

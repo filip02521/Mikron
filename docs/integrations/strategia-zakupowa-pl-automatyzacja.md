@@ -462,7 +462,7 @@ nocny przebieg. Różnice i poprawki (wynik v2):
 |---|---|---|---|
 | 1 | okno sprzedaży 30 d | okno = dni zapasu dostawcy (`salesWindowFromDniZapasu`, DT Shop 60 d) | jak silnik |
 | 2 | tempo z prawdziwej sprzedaży | system widzi tylko to, co zeszło ze stanu, i koryguje dni braku (`computeStockoutSalesFactor`) | sprzedaż widziana = obsłużona w symulacji + korekta dni braku |
-| 3 | prośby liczone jak popyt na zapas | strategia odejmuje prośby z okna (i z ostatniego okna profilu do podłogi 90 d) | prośby poza zapasem, odejmowane jak silnik |
+| 3 | prośby liczone jak popyt na zapas | strategia odejmuje prośby z okna (i z każdego z trzech okien profilu do podłogi 90 d) | prośby poza zapasem, odejmowane jak silnik |
 | 4 | bez podążania za sprzedażą, historii ZD, minimum | `computeSalesTrackedCel` (preset z ustawień), `applyZdEstimateHistoryCuts`, minimum stanów | te same funkcje |
 | 5 | czas dostawy z próbek złożonych przed decyzją (także jeszcze niedostarczonych), wszystkie typy i źródła | `selectSamplesForStats` → kwantyle zamówień głównych → `automatLeadDays` | tylko dostawy znane w dniu decyzji, ten sam wybór próbek |
 | 6 | zamówienia klientów (ZK) jako nagła sprzedaż z półki | rezerwacja: dostępne = stan − rezerwacje | FS z wcześniejszego ZK (`dok_DoDokId`): rezerwacja od dnia ZK, stan trzymany, brak = klient czeka (opóźnienie, nie utracona marża) |
@@ -471,7 +471,7 @@ nocny przebieg. Różnice i poprawki (wynik v2):
 | 9 | nowy towar bez sprzedaży na starcie nigdy niezamówiony | — | pierwsza dostawa jak naprawdę (wprowadzenie ręczne), potem automat |
 
 Dowód zgodności: `zd-backtest-engine-parity.test.ts` — decyzja backtestu = Do ZD ścieżki silnika (te same funkcje
-w tej samej kolejności) w 17 scenariuszach.
+w tej samej kolejności) w 19 scenariuszach.
 
 Wybór ustawień: siatka co 7/14/21 × cel 15–60 d; koszt roku = utracona marża na sprzedaży z półki (marża z raportu
 asortymentowego) + 20% średniego zapasu (`ZD_BACKTEST_HOLDING_RATE`). Rekomendacja: najniższy koszt wśród ustawień,
@@ -486,8 +486,11 @@ Wynik na nowym modelu (dane do 23.10.2026):
   żadne ustawienie nie przechodzi testu opóźnionych dostaw; rekomendacja **co 7 / cel 40** (braki 4,6%, zapas −8%).
 - Cel 25 dla 10 dostawców z §7 trzeba przeliczyć backtestem v2 przed włączeniem na produkcji.
 
-Znalezione w silniku (nie w backteście): podłoga 90 d odejmuje prośby tylko z ostatniego okna 30 d profilu —
-prośba sprzed 31–90 dni dalej podnosi tempo przez dwa miesiące, wbrew komentarzowi w `zd-order-engine.ts`.
+Znalezione w silniku (nie w backteście), naprawione 2026-10-24: podłoga 90 d odejmowała prośby tylko z ostatniego
+okna 30 d profilu — prośba sprzed 31–90 dni dalej podnosiła tempo przez dwa miesiące. Teraz każde z trzech okien
+podłogi traci prośby dostarczone w jego zakresie (14 d przed najstarszym oknem, do 3 d przed końcem okna; zakresy
+się nie nakładają — `zdProsbaFloorWindowRanges`), okno nie mniej niż 0. Backtest odejmuje sprzedaż pod prośby per
+okno tak samo; wyniki DT Shop i Denon wyżej i tabela §11.1 są sprzed poprawki (przeliczone niżej).
 
 ### 11.1. Backtest v2 — 10 dostawców z §7 (dane 24.10.2025–23.10.2026)
 
