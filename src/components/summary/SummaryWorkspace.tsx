@@ -83,7 +83,7 @@ import type {
   StockWatchSupplierSignal,
 } from "@/lib/stock-watch/data";
 import { StockWatchOffPlanBanner } from "@/components/stock-watch/StockWatchOffPlanBanner";
-import { ZdAutoProposalBanner } from "@/components/zakupy/ZdAutoProposalBanner";
+import { DailyZdProposalsProvider, type DailyZdProposal } from "@/components/summary/DailyZdProposals";
 import {
   SupplierStockSignalsProvider,
   supplierStockSignalRank,
@@ -93,7 +93,7 @@ export function SummaryWorkspace({
   workspace: workspaceIn,
   stockSignalBySupplierId = {},
   offPlanSuppliers = [],
-  autoProposalSuppliers = [],
+  autoProposals = [],
   suppliers,
   supplierDirectory,
   salesPeople,
@@ -111,8 +111,8 @@ export function SummaryWorkspace({
   stockSignalBySupplierId?: Record<string, StockWatchSupplierSignal>;
   /** „Zamów dziś poza planem” — braki przed dostawą u dostawców bez planu na dziś. */
   offPlanSuppliers?: StockWatchOffPlanSupplier[];
-  /** Dostawcy z propozycją ZD automatu do potwierdzenia (tylko role z Kreatorem). */
-  autoProposalSuppliers?: Array<{ supplierId: string; supplierName: string }>;
+  /** Zamówienia automatu do potwierdzenia — w wierszu dostawcy harmonogramu (tylko role z Kreatorem). */
+  autoProposals?: DailyZdProposal[];
   suppliers: OrderFormSupplierOption[];
   supplierDirectory: SupplierDirectoryEntry[];
   salesPeople: { id: string; name: string; email: string }[];
@@ -392,6 +392,7 @@ export function SummaryWorkspace({
 
   return (
     <SupplierStockSignalsProvider signals={stockSignalBySupplierId} canPrepareZd={canPrepareZd}>
+    <DailyZdProposalsProvider proposals={canPrepareZd ? autoProposals : []}>
     <div className={dailyPanelWorkspaceShellClass}>
       {pendingMessage ? (
         <ActionLoadingOverlay message={pendingMessage} variant="viewport" />
@@ -479,11 +480,6 @@ export function SummaryWorkspace({
         <PageAttentionGroup className="mx-3 mb-1 mt-2.5 sm:mx-4 lg:mx-5">
           <BoardQuestionsAttentionNotice edge="row" suppressPathHide />
           {canPrepareZd ? <SupplierMailBounceNotice edge="row" /> : null}
-          {panelView === "dzis" && canPrepareZd
-            ? autoProposalSuppliers.map((p) => (
-                <ZdAutoProposalBanner key={p.supplierId} supplierId={p.supplierId} supplierName={p.supplierName} inDailyPanel />
-              ))
-            : null}
           {panelView === "dzis" && offPlanSuppliers.length > 0 ? (
             <StockWatchOffPlanBanner suppliers={offPlanSuppliers} canPrepareZd={canPrepareZd} />
           ) : null}
@@ -651,6 +647,7 @@ export function SummaryWorkspace({
         run={run}
       />
     </div>
+    </DailyZdProposalsProvider>
     </SupplierStockSignalsProvider>
   );
 }
