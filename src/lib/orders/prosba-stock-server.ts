@@ -9,6 +9,7 @@ import {
 } from "@/lib/orders/prosba-stock-check";
 import { isStockExemptTwId } from "@/lib/orders/teeth-stock-exempt";
 import { fetchProsbaLineStock } from "@/lib/orders/fetch-prosba-line-stock";
+import { prosbaPairStockShort } from "@/lib/orders/prosba-line-stock-ui";
 
 export const PROSBA_STOCK_ACK_REQUIRED_CODE = "PROSBA_SUFFICIENT_STOCK_ACK_REQUIRED";
 
@@ -24,6 +25,7 @@ export type ProsbaStockServerLine = {
   stockSource?: "subiekt" | null;
   pairStockCover?: boolean;
   pairUnitsPerPack?: number | null;
+  pairRole?: "pack" | "piece" | null;
 };
 
 export class ProsbaSufficientStockError extends Error {
@@ -40,9 +42,7 @@ export function formatProsbaServerStockRejectMessage(lines: ProsbaStockServerLin
     const name = line.product?.trim() || line.symbol?.trim() || line.mikranCode?.trim() || "Produkt";
     const qty = line.quantity?.trim() || "?";
     const avail = line.available;
-    const pairHint = line.pairStockCover
-      ? " - cover pary (sztuki + paczki; wystarczy po demontażu)"
-      : "";
+    const pairHint = line.pairStockCover ? ` - ${prosbaPairStockShort(line.pairRole)}` : "";
     const availPart =
       avail != null && Number.isFinite(avail)
         ? ` (stan: ${avail} szt.${pairHint})`
@@ -110,6 +110,7 @@ export async function findProsbaLinesWithSufficientStock(input: {
       stockSource: "subiekt" as const,
       pairStockCover: snap.pairAware === true ? true : undefined,
       pairUnitsPerPack: snap.pairUnitsPerPack ?? null,
+      pairRole: snap.pairAware === true ? (snap.pairRole ?? null) : null,
     };
 
     if (
