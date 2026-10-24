@@ -30,11 +30,15 @@ export function SupplierEditSheet({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !pending) requestClose();
+      if (e.key !== "Escape" || pending) return;
+      // Escape w oknie otwartym z karty (strategia, backtest) zamyka tylko to okno, nie kartę z niezapisanymi zmianami.
+      const dialog = e.target instanceof Element ? e.target.closest('[role="dialog"]') : null;
+      if (dialog && dialog !== panelRef.current) return;
+      requestClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, requestClose, pending]);
+  }, [open, requestClose, pending, panelRef]);
 
   if (!open) return null;
 

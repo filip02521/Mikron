@@ -1,140 +1,249 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { IconSearch } from "@/components/icons/StrokeIcons";
+import { IconChevronDown, IconSearch } from "@/components/icons/StrokeIcons";
 import { Badge } from "@/components/ui/Badge";
-import { BrandLoader } from "@/components/ui/BrandLoader";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { Input } from "@/components/ui/Field";
-import { PanelSummaryMetric } from "@/components/ui/PanelSummaryMetric";
+import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { ZdBacktestPanel, ZD_BACKTEST_VERDICT_BADGE, ZD_BACKTEST_VERDICT_LABEL } from "@/components/zakupy/ZdBacktestPanel";
+import { ZdBacktestState, zdInAutomat } from "@/components/zakupy/ZdAutomatCardSection";
+import { ZdBacktestPanel } from "@/components/zakupy/ZdBacktestPanel";
 import { ZdSupplierOrderPolicyDialog } from "@/components/zakupy/ZdSupplierOrderPolicyDialog";
 import { cn } from "@/lib/cn";
 import type { ZdAutomatSupplierRow } from "@/lib/data/zd-automat-suppliers";
+import type { ZdKpiWeeklyMetrics } from "@/lib/data/zd-kpi-weekly";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 import { ZD_AUTOMAT_SUPPLIER_LOCATION } from "@/lib/orders/zd-automat-contract";
+import {
+  ZD_AUTOMAT_OOS_A_ALERT_PCT,
+  ZD_AUTOMAT_READY_WEEKS,
+  zdAutomatOosAlert,
+  zdAutomatReadiness,
+  type ZdAutomatRow,
+} from "@/lib/orders/zd-automat-status";
 import { supplierCountryLabel, supplierCountryMismatchesLocation } from "@/lib/suppliers/subiekt-country";
-import { formatWarsawDateTime } from "@/lib/time/warsaw";
 
-// Układ wzorowany na 21st.dev „Users List Datatable” (shadcnstore/datatable-1): pasek narzędzi w nagłówku
-// karty, wiersz z monogramem i podpisem, pigułki stanu, stopka z licznikiem — na komponentach OnTime.
+// Pulpit Automatu ZD: jeden wiersz na dostawcę — rytm automatu, ostatni backtest i KPI tygodnia; szczegóły
+// (wszystkie KPI z trendem, akcje, przejście do karty) rozwijają się pod wierszem.
 
-type Filter = "pl" | "automat" | "all";
+export type ZdAutomatSupplierView = ZdAutomatSupplierRow & {
+  /** KPI tygodniowe, najnowszy pierwszy (najwyżej 4). */
+  weeks: ZdKpiWeeklyMetrics[];
+  /** Powody „do sprawdzenia” (pusta lista = w porządku albo poza automatem). */
+  checkReasons: string[];
+};
+
+export type ZdAutomatSupplierFilter = "check" | "automat" | "pl" | "all";
 
 const LOCATION_LABEL: Record<string, string> = { POLSKA: "Polska", ZAGRANICA: "Zagranica", IMPORT: "Import" };
 
-// Jedna siatka dla nagłówka i wierszy: od md cztery kolumny, niżej nazwa i akcje na całą szerokość.
-const ROW_GRID =
-  "grid grid-cols-2 items-start gap-x-4 gap-y-2.5 px-6 md:items-center sm:px-7 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1.1fr)_11.5rem]";
+const nf0 = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 });
+const nf1 = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 1 });
+const nf2 = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 2 });
+const zl = (v: number) => `${nf0.format(v)} zł`;
+/** Dopiski: od 100 tys. zł w milionach („2,08 mln zł”). */
+const zlShort = (v: number) => (Math.abs(v) >= 100_000 ? `${nf2.format(v / 1_000_000)} mln zł` : zl(v));
+const pct = (v: number | null) => (v == null ? null : `${nf1.format(v)}%`);
+const towary = (n: number) => `${nf0.format(n)} ${polishPluralWord(n, "towar", "towary", "towarów")}`;
 
-const inAutomat = (r: ZdAutomatSupplierRow) => r.policy.strategy !== "classic";
-const backtestRunning = (r: ZdAutomatSupplierRow) => r.backtest?.status === "queued" || r.backtest?.status === "running";
+type Kpi = {
+  key: string;
+  label: string;
+  /** Definicja w dymku przy nagłówku. */
+  help: string;
+  value: (m: ZdKpiWeeklyMetrics) => string | null;
+  note?: (m: ZdKpiWeeklyMetrics) => string | null;
+  /** Powód kreski. */
+  empty: string;
+};
 
-function monogram(name: string) {
-  const words = name.replace(/[^\p{L}\p{N}\s-]/gu, " ").split(/[\s-]+/).filter(Boolean);
-  return ((words[0]?.[0] ?? "") + (words[1]?.[0] ?? words[0]?.[1] ?? "")).toLocaleUpperCase("pl");
+const KPIS: Record<"oos" | "rotation" | "dead" | "correction" | "deferred" | "minimum", Kpi> = {
+  oos: {
+    key: "oos",
+    label: "Braki A",
+    help: `% dni-towarów klasy A z dostępnym stanem ≤ 0 (historia stanów z nocnego przebiegu „Braki i zamówienia”). Alarm od ${ZD_AUTOMAT_OOS_A_ALERT_PCT}%.`,
+    value: (m) => pct(m.oosA.pct),
+    note: (m) => (m.oosA.skuDays ? `${m.oosA.zeroDays} z ${m.oosA.skuDays} dni-towarów` : null),
+    empty: "brak historii stanów",
+  },
+  rotation: {
+    key: "rotation",
+    label: "Rotacja",
+    help: "Wartość zapasu (stan × cena kartotekowa, bez niej cena z ostatniego ZD) / dzienny koszt sprzedaży z 90 dni. Zdjęcie z dnia przeliczenia.",
+    value: (m) => (m.rotation.days == null ? null : `${nf0.format(m.rotation.days)} dni`),
+    note: (m) => `zapas ${zlShort(m.rotation.stockValue)}`,
+    empty: "bez sprzedaży",
+  },
+  dead: {
+    key: "dead",
+    label: "Martwy zapas",
+    help: "Wartość towarów na stanie bez sprzedaży od 180 dni. Zdjęcie z dnia przeliczenia.",
+    value: (m) => zl(m.deadStock.value),
+    note: (m) => (m.deadStock.skus ? towary(m.deadStock.skus) : null),
+    empty: "—",
+  },
+  correction: {
+    key: "correction",
+    label: "Korekta",
+    help: `Korekta człowieka: % wartości propozycji zmienionej przy tworzeniu ZD. Poniżej 10% przez ${ZD_AUTOMAT_READY_WEEKS} tygodnie = gotowość do auto-zatwierdzania.`,
+    value: (m) => pct(m.humanCorrection.pct),
+    note: (m) => (m.humanCorrection.proposals ? `${nf0.format(m.humanCorrection.proposals)} ZD z propozycji` : null),
+    empty: "brak ZD z propozycji",
+  },
+  deferred: {
+    key: "deferred",
+    label: "Odłożone",
+    help: "% propozycji tygodnia odłożonych na kolejny cykl (poniżej minimum albo progu darmowej dostawy, bez pozycji pilnych).",
+    value: (m) => pct(m.minima.deferredPct),
+    note: (m) => (m.minima.proposals ? `${m.minima.deferred} z ${m.minima.proposals} propozycji` : null),
+    empty: "brak propozycji",
+  },
+  minimum: {
+    key: "minimum",
+    label: "Minimum",
+    help: "ZD ≥ minimum: % ZD z propozycji w tym tygodniu z wartością co najmniej minimum zamówienia dostawcy.",
+    value: (m) => pct(m.minima.aboveMinPct),
+    note: (m) => (m.minima.accepted ? `${m.minima.acceptedAboveMin} z ${m.minima.accepted} ZD` : null),
+    empty: "brak minimum lub ZD",
+  },
+};
+
+const DETAIL_KPIS = [KPIS.oos, KPIS.correction, KPIS.deferred, KPIS.minimum, KPIS.rotation, KPIS.dead];
+
+export function zdAutomatRowOf(r: Pick<ZdAutomatSupplierView, "name" | "policy" | "weeks">): ZdAutomatRow {
+  return {
+    name: r.name,
+    automat: zdInAutomat(r) ? { autoLevel: r.policy.autoLevel, cycleDays: r.policy.cycleDays } : null,
+    weeks: r.weeks,
+  };
 }
 
-function AutomatCell({ row }: { row: ZdAutomatSupplierRow }) {
-  const p = row.policy;
-  const on = inAutomat(row);
+function KpiValue({ kpi, weeks, alert = false, trend = false }: { kpi: Kpi; weeks: ZdKpiWeeklyMetrics[]; alert?: boolean; trend?: boolean }) {
+  const [now, ...prev] = weeks;
+  const value = now ? kpi.value(now) : null;
+  const note = now ? kpi.note?.(now) : null;
+  const earlier = trend ? prev.map((m) => kpi.value(m)).reverse() : [];
   return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-[11px] font-medium text-slate-500 md:hidden">Automat</span>
-      <span className={cn("inline-flex items-center gap-1.5 text-sm font-medium", on ? "text-emerald-800" : "text-slate-500")}>
-        <span className={cn("size-1.5 rounded-full", on ? "bg-emerald-600" : "bg-slate-300")} aria-hidden />
-        {on ? `w automacie · stopień ${p.autoLevel}` : "poza automatem"}
-      </span>
-      {on ? (
-        <span className="pl-3 text-xs text-slate-500 md:whitespace-nowrap">
-          co {p.cycleDays ?? "?"} dni · cel {p.targetDays ?? "?"} dni
+    <>
+      {value == null ? (
+        <span className="text-slate-500" title={now ? kpi.empty : "KPI jeszcze nie policzone"}>
+          —<span className="sr-only"> {now ? kpi.empty : "KPI jeszcze nie policzone"}</span>
+        </span>
+      ) : (
+        <span className={cn("whitespace-nowrap font-semibold", alert ? "text-amber-800" : "text-slate-900")}>{value}</span>
+      )}
+      {note ? <span className="block text-xs text-slate-500">{note}</span> : null}
+      {earlier.some((v) => v != null) ? (
+        <span className="block text-xs text-slate-500" title="Poprzednie tygodnie, od najstarszego">
+          wcześniej: {earlier.map((v) => v ?? "—").join(" · ")}
         </span>
       ) : null}
-    </div>
+    </>
   );
 }
 
-function BacktestCell({ row }: { row: ZdAutomatSupplierRow }) {
+function KpiHead({ kpi }: { kpi: Pick<Kpi, "label" | "help"> }) {
   return (
-    <div className="flex flex-col items-start gap-0.5">
-      <span className="text-[11px] font-medium text-slate-500 md:hidden">Ostatni backtest</span>
-      <BacktestState row={row} />
-    </div>
+    <th>
+      <span className="inline-flex items-center gap-1 whitespace-nowrap">
+        {kpi.label}
+        <HelpHintBubble message={kpi.help} ariaLabel={`Co znaczy: ${kpi.label}`} />
+      </span>
+    </th>
   );
 }
 
-function BacktestState({ row }: { row: ZdAutomatSupplierRow }) {
-  const b = row.backtest;
-  if (!b) return <span className="text-sm text-slate-400">nie liczony</span>;
-  if (backtestRunning(row)) {
-    return (
-      <span className="inline-flex items-center gap-2 text-sm text-slate-600" role="status">
-        <BrandLoader size="sm" tile={false} /> liczy się…
-      </span>
-    );
-  }
-  if (b.status === "error") return <Badge variant="danger">błąd przebiegu</Badge>;
+function Readiness({ row }: { row: ZdAutomatRow }) {
+  const r = zdAutomatReadiness(row);
+  if (!r) return <span className="text-slate-500">—</span>;
+  if (r.kind === "ready") return <Badge variant="success">gotowy do stopnia 3</Badge>;
+  if (r.kind === "auto") return <Badge variant="info">auto-zatwierdzanie</Badge>;
+  if (r.kind === "progress") return <Badge>{r.weeksOk} z {ZD_AUTOMAT_READY_WEEKS} tyg.</Badge>;
+  return <span className="text-sm text-slate-600">{r.reason}</span>;
+}
+
+function AutomatRhythm({ row }: { row: ZdAutomatSupplierRow }) {
+  const p = row.policy;
+  if (!zdInAutomat(row)) return <span className="text-sm text-slate-500">poza automatem</span>;
   return (
-    <div className="flex flex-col items-start gap-0.5" title={b.headline ?? undefined}>
-      {b.verdict ? <Badge variant={ZD_BACKTEST_VERDICT_BADGE[b.verdict]}>{ZD_BACKTEST_VERDICT_LABEL[b.verdict]}</Badge> : null}
-      <span className="text-xs text-slate-500 md:whitespace-nowrap">
-        co {b.params.cycleDays} d, cel {b.params.targetDays} d · {formatWarsawDateTime(b.at)}
+    <>
+      <span className="whitespace-nowrap font-medium text-slate-900">
+        {p.cycleDays ? (p.cycleDays === 1 ? "codziennie" : `co ${p.cycleDays} dni`) : "rytm ?"} · cel {p.targetDays ?? "?"}
       </span>
-    </div>
+      <span className="block text-xs text-slate-500">stopień {p.autoLevel}</span>
+    </>
   );
 }
 
-export function ZdAutomatSuppliers({ rows, canManage }: { rows: ZdAutomatSupplierRow[]; canManage: boolean }) {
+const COLS = 7;
+
+export function ZdAutomatSuppliers({
+  rows,
+  canManage,
+  cardsHref,
+  kpiWeekLabel,
+  filter,
+  onFilterChange,
+  q,
+  onQChange,
+  nowMs,
+}: {
+  rows: ZdAutomatSupplierView[];
+  canManage: boolean;
+  /** Ścieżka kart dostawców tej roli (`/zakupy/dostawcy` albo `/admin/dostawcy`); `?karta=<id>` otwiera kartę. */
+  cardsHref: string;
+  /** „tydzień 13.10–19.10 · policzone …” albo powód braku KPI. */
+  kpiWeekLabel: string;
+  filter: ZdAutomatSupplierFilter;
+  onFilterChange: (f: ZdAutomatSupplierFilter) => void;
+  /** Szukana nazwa — w rodzicu, żeby akcja zdania stanu („Pokaż N do sprawdzenia”) mogła ją wyczyścić. */
+  q: string;
+  onQChange: (q: string) => void;
+  /** Chwila otwarcia strony — wiek backtestów liczony tak samo w wierszach i w zdaniu stanu. */
+  nowMs: number;
+}) {
   const router = useRouter();
-  const counts = useMemo(() => {
-    const auto = rows.filter(inAutomat);
-    return {
+  const counts = useMemo(
+    () => ({
+      check: rows.filter((r) => r.checkReasons.length).length,
+      automat: rows.filter(zdInAutomat).length,
       pl: rows.filter((r) => r.location === ZD_AUTOMAT_SUPPLIER_LOCATION).length,
-      automat: auto.length,
       all: rows.length,
-      works: auto.filter((r) => r.backtest?.status === "done" && r.backtest.verdict === "works").length,
-      // W automacie bez werdyktu „działa” (brak backtestu, kompromis, nie działa, błąd) — do sprawdzenia.
-      toCheck: auto.filter((r) => !backtestRunning(r) && !(r.backtest?.status === "done" && r.backtest.verdict === "works")).length,
-    };
-  }, [rows]);
-  const [filter, setFilter] = useState<Filter>(counts.automat ? "automat" : "pl");
-  const [q, setQ] = useState("");
-  const [backtestFor, setBacktestFor] = useState<ZdAutomatSupplierRow | null>(null);
-  const [policyFor, setPolicyFor] = useState<ZdAutomatSupplierRow | null>(null);
+    }),
+    [rows]
+  );
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [dialog, setDialog] = useState<{ kind: "policy" | "backtest"; row: ZdAutomatSupplierRow } | null>(null);
   const refresh = useCallback(() => router.refresh(), [router]);
 
   const needle = q.trim().toLocaleLowerCase("pl");
-  const inFilter = rows.filter((r) => filter === "all" || (filter === "pl" ? r.location === ZD_AUTOMAT_SUPPLIER_LOCATION : inAutomat(r)));
+  const inFilter = rows.filter((r) =>
+    filter === "check"
+      ? r.checkReasons.length > 0
+      : filter === "automat"
+        ? zdInAutomat(r)
+        : filter === "pl"
+          ? r.location === ZD_AUTOMAT_SUPPLIER_LOCATION
+          : true
+  );
   const shown = needle ? inFilter.filter((r) => r.name.toLocaleLowerCase("pl").includes(needle)) : inFilter;
 
   return (
     <Card padding={false} className="overflow-hidden">
-      <CardHeader
-        inset
-        title="Dostawcy"
-        description="Włącz automat dostawcy i sprawdź backtestem na roku jego sprzedaży, czy schemat działa — zanim propozycje zaczną powstawać."
-      />
-      <div className="grid grid-cols-1 gap-2 px-6 pb-5 sm:grid-cols-3 sm:px-7">
-        <PanelSummaryMetric label="W automacie" value={counts.automat} hint={`z ${counts.pl} polskich dostawców`} />
-        <PanelSummaryMetric label="Backtest: działa" value={counts.works} hint="w automacie, werdykt ostatniego backtestu" />
-        <PanelSummaryMetric
-          label="Do sprawdzenia"
-          value={counts.toCheck}
-          tone={counts.toCheck ? "warning" : "default"}
-          hint="w automacie bez werdyktu „działa”"
-        />
-      </div>
+      <CardHeader inset title="Dostawcy" description={kpiWeekLabel} />
 
-      <div className="flex flex-col gap-3 border-y border-slate-200 bg-white px-6 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-7">
-        <div className="relative sm:w-72">
-          <IconSearch size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden />
+      <div className="flex flex-col gap-3 border-y border-slate-200 bg-white px-6 py-3 sm:px-7 lg:flex-row lg:items-center lg:justify-between">
+        <div className="relative lg:w-64">
+          <IconSearch size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden />
           <Input
             type="search"
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => onQChange(e.target.value)}
             placeholder="Szukaj dostawcy"
             aria-label="Szukaj dostawcy"
             className="pl-9"
@@ -142,10 +251,14 @@ export function ZdAutomatSuppliers({ rows, canManage }: { rows: ZdAutomatSupplie
         </div>
         <SegmentedControl
           value={filter}
-          onChange={setFilter}
+          onChange={(f) => {
+            onFilterChange(f);
+            setExpanded(null);
+          }}
           ariaLabel="Pokaż dostawców"
           density="compact"
           options={[
+            { value: "check", label: `Do sprawdzenia (${counts.check})` },
             { value: "automat", label: `W automacie (${counts.automat})` },
             { value: "pl", label: `Polscy (${counts.pl})` },
             { value: "all", label: `Wszyscy (${counts.all})` },
@@ -154,62 +267,158 @@ export function ZdAutomatSuppliers({ rows, canManage }: { rows: ZdAutomatSupplie
       </div>
 
       {shown.length ? (
-        <div>
-          <div className={cn(ROW_GRID, "hidden bg-slate-50 py-2.5 text-[0.8125rem] font-medium text-slate-500 md:grid")} aria-hidden>
-            <span>Dostawca</span>
-            <span>Automat</span>
-            <span>Ostatni backtest</span>
-            <span />
-          </div>
-          <ul aria-label="Dostawcy z zakresem w Kreatorze ZD">
-            {shown.map((r) => {
-              const mismatch = supplierCountryMismatchesLocation(r.subiektCountryId, r.location);
-              return (
-                <li key={r.id} className={cn(ROW_GRID, "border-t border-slate-100 py-3 transition-colors duration-150 hover:bg-slate-50/70")}>
-                  <div className="col-span-2 flex min-w-0 items-center gap-3 md:col-span-1">
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-xs font-semibold text-indigo-700" aria-hidden>
-                      {monogram(r.name)}
-                    </span>
-                    <div className="min-w-0">
-                      <button
-                        type="button"
-                        onClick={() => setBacktestFor(r)}
-                        className="cursor-pointer text-left text-sm font-medium text-slate-900 underline-offset-2 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
-                      >
-                        {r.name}
-                      </button>
-                      <p className="text-xs text-slate-500">
-                        {LOCATION_LABEL[r.location] ?? (r.location || "bez lokalizacji")}
-                        {mismatch ? (
-                          <span className="text-amber-800"> · w Subiekcie: {supplierCountryLabel(r.subiektCountryId, r.subiektCountryName)}</span>
+        <TableScroll>
+          <DataTable className="kpi-table min-w-[880px]">
+            <thead>
+              <tr>
+                <th>Dostawca</th>
+                <th>Automat</th>
+                <th>Ostatni backtest</th>
+                <KpiHead kpi={KPIS.oos} />
+                <KpiHead kpi={KPIS.correction} />
+                <KpiHead
+                  kpi={{
+                    label: "Gotowość",
+                    help: `Auto-zatwierdzanie (stopień 3) po ${ZD_AUTOMAT_READY_WEEKS} kolejnych tygodniach z korektą człowieka poniżej 10%. Stopień zmieniasz w ustawieniach automatu dostawcy.`,
+                  }}
+                />
+                <th>
+                  <span className="sr-only">Szczegóły</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map((r) => {
+                const open = expanded === r.id;
+                const auto = zdAutomatRowOf(r);
+                const on = zdInAutomat(r);
+                const mismatch = supplierCountryMismatchesLocation(r.subiektCountryId, r.location);
+                const detailId = `zd-automat-detail-${r.id}`;
+                return (
+                  <Fragment key={r.id}>
+                    <tr className={cn(open && "bg-slate-50")}>
+                      <td className="min-w-[12rem]">
+                        <button
+                          type="button"
+                          aria-expanded={open}
+                          aria-controls={detailId}
+                          onClick={() => setExpanded(open ? null : r.id)}
+                          className="cursor-pointer text-left font-medium text-slate-900 underline-offset-2 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                        >
+                          {r.name}
+                        </button>
+                        <span className="block text-xs text-slate-500">
+                          {LOCATION_LABEL[r.location] ?? (r.location || "bez lokalizacji")}
+                          {r.isActive ? null : " · nieaktywny"}
+                          {mismatch ? (
+                            <span className="text-amber-800"> · w Subiekcie: {supplierCountryLabel(r.subiektCountryId, r.subiektCountryName)}</span>
+                          ) : null}
+                        </span>
+                        {r.checkReasons.length ? (
+                          <span className="mt-1 block text-xs font-medium text-amber-800">{r.checkReasons.join(" · ")}</span>
                         ) : null}
-                      </p>
-                    </div>
-                  </div>
-                  <AutomatCell row={r} />
-                  <BacktestCell row={r} />
-                  <div className="col-span-2 flex gap-1.5 md:col-span-1 md:justify-end">
-                    <Button variant="secondary" size="sm" onClick={() => setBacktestFor(r)}>
-                      Backtest
-                    </Button>
-                    {canManage ? (
-                      <Button variant="ghost" size="sm" onClick={() => setPolicyFor(r)}>
-                        Ustawienia
-                      </Button>
+                      </td>
+                      <td>
+                        <AutomatRhythm row={r} />
+                      </td>
+                      <td>
+                        <ZdBacktestState row={r} nowMs={nowMs} />
+                      </td>
+                      <td>
+                        <KpiValue kpi={KPIS.oos} weeks={r.weeks} alert={zdAutomatOosAlert(auto)} />
+                      </td>
+                      <td>{on ? <KpiValue kpi={KPIS.correction} weeks={r.weeks} /> : <span className="text-slate-500">—</span>}</td>
+                      <td>
+                        <Readiness row={auto} />
+                      </td>
+                      <td className="text-right">
+                        <button
+                          type="button"
+                          aria-label={open ? `Zwiń: ${r.name}` : `Szczegóły: ${r.name}`}
+                          aria-expanded={open}
+                          aria-controls={detailId}
+                          onClick={() => setExpanded(open ? null : r.id)}
+                          className="inline-flex size-11 cursor-pointer items-center sm:size-8 justify-center rounded-md text-slate-500 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                        >
+                          <IconChevronDown open={open} size={16} className="duration-200 motion-reduce:transition-none" />
+                        </button>
+                      </td>
+                    </tr>
+                    {open ? (
+                      <tr id={detailId} className="bg-slate-50 hover:bg-slate-50">
+                        <td colSpan={COLS} className="!pt-0">
+                          {/* Na telefonie tabela przewija się w bok — szczegóły trzymają się widocznej szerokości. */}
+                          <div className="zd-automat-detail-enter space-y-4 border-t border-slate-200 pt-4 max-sm:sticky max-sm:left-6 max-sm:w-[calc(100vw-4.5rem)]">
+                            {!r.weeks.length ? (
+                              <p className="text-sm text-slate-600">
+                                KPI tego dostawcy jeszcze nie policzone - pierwsze w poniedziałek o 7:00 za miniony tydzień.
+                              </p>
+                            ) : (
+                              <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
+                                {DETAIL_KPIS.map((k) => (
+                                  <div key={k.key}>
+                                    <dt className="flex items-center gap-1 text-xs font-medium text-slate-500">
+                                      {k.label}
+                                      <HelpHintBubble message={k.help} ariaLabel={`Co znaczy: ${k.label}`} />
+                                    </dt>
+                                    <dd className="mt-0.5 text-sm">
+                                      {k.key === "oos" || k.key === "rotation" || k.key === "dead" || on ? (
+                                        <KpiValue kpi={k} weeks={r.weeks} alert={k.key === "oos" && zdAutomatOosAlert(auto)} trend />
+                                      ) : (
+                                        <span className="text-slate-500">tylko w automacie</span>
+                                      )}
+                                    </dd>
+                                  </div>
+                                ))}
+                              </dl>
+                            )}
+                            {r.backtest?.headline ? (
+                              <p className="max-w-3xl text-sm leading-relaxed text-slate-700">
+                                <span className="font-medium text-slate-900">Backtest: </span>
+                                {r.backtest.headline}
+                              </p>
+                            ) : null}
+                            <div className="flex flex-wrap items-center gap-2">
+                              {canManage ? (
+                                <>
+                                  <Button variant="secondary" size="sm" className="min-h-11 sm:min-h-0" onClick={() => setDialog({ kind: "policy", row: r })}>
+                                    {on ? "Zmień ustawienia" : "Włącz automat"}
+                                  </Button>
+                                  {r.hasScope ? (
+                                    <Button variant="ghost" size="sm" className="min-h-11 sm:min-h-0" onClick={() => setDialog({ kind: "backtest", row: r })}>
+                                      Backtest
+                                    </Button>
+                                  ) : (
+                                    <span className="text-sm text-slate-600">Backtest po ustawieniu zakresu w Kreatorze ZD</span>
+                                  )}
+                                </>
+                              ) : null}
+                              <Link
+                                href={`${cardsHref}?karta=${r.id}`}
+                                className="text-sm font-medium text-indigo-700 underline-offset-2 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                              >
+                                Karta dostawcy
+                              </Link>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
                     ) : null}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </DataTable>
+        </TableScroll>
       ) : (
         <p className="px-6 py-8 text-center text-sm text-slate-600 sm:px-7">
           {needle
             ? `Brak dostawcy „${q.trim()}” w tym widoku.`
-            : filter === "automat"
-              ? "Nikt jeszcze nie jest w automacie. Przełącz na „Polscy” i uruchom backtest wybranego dostawcy."
-              : "Brak dostawców z zakresem w Kreatorze ZD."}
+            : filter === "check"
+              ? "Wszyscy w automacie mają świeży backtest „działa” i braki A poniżej alarmu."
+              : filter === "automat"
+                ? "Nikt jeszcze nie jest w automacie. Przełącz na „Polscy”, rozwiń dostawcę i uruchom backtest."
+                : "Brak dostawców z zakresem w Kreatorze ZD."}
         </p>
       )}
 
@@ -217,27 +426,27 @@ export function ZdAutomatSuppliers({ rows, canManage }: { rows: ZdAutomatSupplie
         <span>
           Pokazuję {shown.length} z {inFilter.length} {polishPluralWord(inFilter.length, "dostawcy", "dostawców", "dostawców")} z zakresem w Kreatorze ZD
         </span>
-        <span>„Polscy” = Lokalizacja w karcie dostawcy; rozjazd z Subiektem na bursztynowo.</span>
+        <span>„—” = brak danych w tym tygodniu; najedź, żeby zobaczyć powód. „Polscy” = Lokalizacja w karcie dostawcy.</span>
       </div>
 
-      {backtestFor ? (
+      {dialog?.kind === "backtest" ? (
         <ZdBacktestPanel
-          supplierId={backtestFor.id}
-          supplierName={backtestFor.name}
-          policy={backtestFor.policy}
+          supplierId={dialog.row.id}
+          supplierName={dialog.row.name}
+          policy={dialog.row.policy}
           canManage={canManage}
-          onClose={() => setBacktestFor(null)}
+          onClose={() => setDialog(null)}
           onChanged={refresh}
         />
       ) : null}
-      {policyFor ? (
+      {dialog?.kind === "policy" ? (
         <ZdSupplierOrderPolicyDialog
-          supplierId={policyFor.id}
-          supplierName={policyFor.name}
-          policy={policyFor.policy}
-          onClose={() => setPolicyFor(null)}
+          supplierId={dialog.row.id}
+          supplierName={dialog.row.name}
+          policy={dialog.row.policy}
+          onClose={() => setDialog(null)}
           onSaved={() => {
-            setPolicyFor(null);
+            setDialog(null);
             refresh();
           }}
         />

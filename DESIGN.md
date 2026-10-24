@@ -315,6 +315,8 @@ Komponenty bazowe są w `src/components/ui/`. Zanim napiszesz własny przycisk, 
 - **Aktywna pozycja:** tło `petrol-mist`, tekst `petrol-ink`, bez paska z boku.
 - **Liczniki:** pigułki w dwóch poziomach. Wymaga działania: pełny Petrol z białą cyfrą. Informacyjny: `slate-100` z `slate-700`.
 - **Telefon:** dolny pasek z czterema pozycjami i „Więcej”, aktywna zakładka jak w menu bocznym.
+- **Strona z zakładkami to jedna pozycja menu.** Hub z własnymi zakładkami (Karty dostawców: karty, terminy zamówień, urlopy, nieaktywni) ma w menu jedno wejście, podświetlone na każdej zakładce (`isSupplierHubPath` w `supplier-hub.ts`). Zakładki nie wracają do menu jako osobne pozycje.
+- **Grupa menu to jeden temat pracy**, nie jeden ekran: „Zamawianie” to tworzenie i przegląd ZD, „Dostawcy” to wszystko o dostawcy (karty, cenniki, poczta dostawców). Nowa funkcja trafia do istniejącej strony (zakładka, sekcja, rozwinięcie wiersza), zanim dostanie własną pozycję menu.
 
 ### Data Table
 
@@ -330,13 +332,21 @@ Najważniejszy komponent produktu (`DataTable`, klasa `.data-table`).
 
 Przełącznik widoku lub filtra (`SegmentedControl`). Tor `slate-50` z obramowaniem, aktywny segment na białym tle z cieniem kontrolki. Licznik w etykiecie jest przygaszony (`slate-500`). Etykiet nie ucinamy: przy wielu opcjach tor przewija się w poziomie.
 
+### Ustawienia obiektu
+
+Ustawienia jednego obiektu mają jedno okno i jedno miejsce stałe: kartę obiektu. Przykład: strategia automatu ZD dostawcy (`ZdSupplierOrderPolicyDialog`) jest sekcją „Automat ZD” w karcie dostawcy (`ZdAutomatCardSection`). Inne ekrany (Kreator ZD, pulpit Automatu) pokazują stan i otwierają to samo okno; nie mają własnej kopii pól. Okno otwarte nad panelem bocznym używa warstwy `tier="top"` w `ModalShell`, a Escape zamyka tylko to okno, nie panel z niezapisanymi zmianami. Z ekranu przeglądu do karty prowadzi link `?karta=<id>`.
+
+### Pulpit
+
+Ekran przeglądu wielu obiektów (Automat ZD): na górze Status Panel ze zdaniem stanu i jedną akcją, która prowadzi do tego, co wymaga reakcji („Pokaż 2 do sprawdzenia” ustawia filtr tabeli). Pod nim jedna tabela, jeden wiersz na obiekt; ten sam obiekt nie pojawia się w drugiej tabeli. Szczegóły (pełne wskaźniki z trendem, akcje, przejście do karty) rozwijają się pod wierszem. Widok innego rodzaju (Klasy towarów) wybiera przełącznik segmentowy nad tabelą, bez liczników, które powtarzają filtry tabeli.
+
 ### Status Panel
 
 Karta stanu na górze ekranu pracy: zdanie stanu z liczbą („433 pozycje czekają na Twoją decyzję”, z poprawną odmianą liczebnika), jedno zdanie wyjaśnienia i jedna główna akcja po prawej. Na telefonie akcja schodzi pod tekst. Pas uwagi na całą szerokość (`PageAttentionStrip`) służy do pojedynczej sprawy wymagającej reakcji, w tonie `amber`.
 
 ### Ruch
 
-Ruch tylko potwierdza działanie: zmiana tła i obramowania w 150 ms, rozwinięcie panelu w 200–300 ms, krzywa `cubic-bezier(0.22, 1, 0.36, 1)` (szybki start, miękkie wyhamowanie). Elementy są widoczne od razu, bez animacji wejścia przy ładowaniu strony. Każdy ruch ma wariant `motion-reduce`.
+Ruch tylko potwierdza działanie: zmiana tła i obramowania w 150 ms, rozwinięcie panelu w 200–300 ms, krzywa `cubic-bezier(0.22, 1, 0.36, 1)` (szybki start, miękkie wyhamowanie). Elementy są widoczne od razu, bez animacji wejścia przy ładowaniu strony. Każdy ruch ma wariant `motion-reduce`. Ruch to CSS (klasy w `globals.css`, np. `.zd-automat-detail-enter` dla rozwinięcia wiersza). Rive i biblioteki animacji nie wchodzą na ekrany pracy: jedyny animowany znak to `BrandLoader`, a nowy znak w Rive wymaga sprawdzenia CSP produkcji (WASM, `connect-src`).
 
 ### Ładowanie
 
@@ -364,6 +374,7 @@ Zaznaczenie tekstu ma tło `petrol-mist` i tekst `petrol-deep`. Kursor tekstowy 
 - **Do** pokazuj stan tłem, odznaką lub ikoną z tekstem, zawsze w kolorze jego znaczenia.
 - **Do** dawaj każdemu ruchowi wariant `motion-reduce`.
 - **Do** pokazuj każde dłuższe ładowanie animowanym logo (`BrandLoader`) ze zdaniem, co się dzieje.
+- **Do** dawaj stronie z własnymi zakładkami jedną pozycję menu, a ustawienia obiektu trzymaj w jego karcie; inne ekrany pokazują stan i otwierają to samo okno.
 
 ### Don't:
 
@@ -371,6 +382,7 @@ Zaznaczenie tekstu ma tło `petrol-mist` i tekst `petrol-deep`. Kursor tekstowy 
 - **Don't** stawiaj kolorowego paska z boku karty, wiersza, alertu ani pozycji menu.
 - **Don't** buduj ekranu z rzędu kafelków z liczbami, jeśli te liczby są już w zakładkach albo tabeli.
 - **Don't** wkładaj karty do karty.
+- **Don't** pokazuj tego samego obiektu w dwóch tabelach jednego ekranu; szczegóły rozwijaj pod jego wierszem.
 - **Don't** pisz nagłówków kolumn, etykiet ani odznak wersalikami.
 - **Don't** ucinaj etykiet przełączników ani przycisków wielokropkiem.
 - **Don't** używaj `slate-400` do tekstu, który trzeba przeczytać.

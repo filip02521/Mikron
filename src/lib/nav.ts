@@ -4,7 +4,7 @@ import { isSalesManager, canAccessPath } from "@/lib/auth-roles";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
 import { salesManagerNavTeamDescriptions } from "@/lib/sales/team-ui";
 import { isMonthlySummaryAvailable } from "@/lib/data/monthly-stats-shared";
-import { supplierHubPaths } from "@/lib/supplier-hub";
+import { isSupplierHubPath, supplierHubPaths } from "@/lib/supplier-hub";
 import { ROLE_LABELS } from "@/lib/users/labels";
 
 export type NavIconKey =
@@ -165,6 +165,10 @@ export function isNavItemActive(
   if (hrefPath.startsWith("/lokalizacje/") && pathname.startsWith("/lokalizacje/")) {
     return true;
   }
+  // Karty dostawców to wejście do hubu: terminy, urlopy i nieaktywni są jego zakładkami.
+  if (hrefPath.endsWith("/dostawcy") && isSupplierHubPath(pathname) && !pathname.startsWith(hrefPath)) {
+    return true;
+  }
 
   const pathMatches =
     pathname === hrefPath ||
@@ -177,7 +181,6 @@ export function isNavItemActive(
       ));
 
   if (!pathMatches) return false;
-  if (hrefPath.endsWith("/dostawcy") && pathname.includes("/nieaktywni")) return false;
 
   const currentQuery = activeSearch !== undefined ? activeSearch.replace(/^\?/, "") : null;
 
@@ -392,8 +395,8 @@ function operationsTodayItems(
   ];
 }
 
-/** Zamawianie: Kreator ZD (admin + zakupy), formularz grupowy i archiwum zamówień. */
-function operationsOrderingItems(role: UserRole, badges: Pick<NavBadges, "supplierMail"> = {}): NavItem[] {
+/** Zamawianie: Kreator ZD, braki i automat (admin + zakupy), formularz grupowy i archiwum zamówień. */
+function operationsOrderingItems(role: UserRole): NavItem[] {
   const items: NavItem[] = [];
   if (role === "admin" || role === "zakupy") {
     items.push({
@@ -419,31 +422,11 @@ function operationsOrderingItems(role: UserRole, badges: Pick<NavBadges, "suppli
     items.push({
       href: "/zakupy/automat",
       label: "Automat ZD",
-      description: "KPI dostawców i klasy ABC/XYZ towarów",
+      description: "Rytm, backtest i KPI dostawców",
       icon: "chartTrend",
       tone: "violet",
       tier: "compact",
       mobileSlot: "overflow",
-    });
-    items.push({
-      href: "/zakupy/cenniki",
-      label: "Cenniki",
-      description: "Ceny z cennika dostawcy do Subiekta",
-      icon: "catalog",
-      tone: "violet",
-      tier: "compact",
-      mobileSlot: "overflow",
-    });
-    items.push({
-      href: "/zakupy/asystent",
-      label: "Asystent",
-      mobileLabel: "Asystent",
-      description: "Poczta dostawców, przegląd skrzynki i kontrola potwierdzeń OC",
-      icon: "mail",
-      tone: "slate",
-      tier: "compact",
-      mobileSlot: "overflow",
-      badge: badges.supplierMail,
     });
   }
   items.push(
@@ -512,61 +495,51 @@ function operationsTeamItems(badges: {
   ];
 }
 
-function supplierHubItemsForRole(role: UserRole): NavItem[] {
+/**
+ * Dostawcy: hub kart (terminy, urlopy i nieaktywni to jego zakładki — jedna pozycja menu),
+ * a dla admin + zakupy cenniki i poczta dostawców.
+ */
+function supplierHubItemsForRole(role: UserRole, badges: Pick<NavBadges, "supplierMail"> = {}): NavItem[] {
   const compact = {
     tier: "compact" as const,
     mobileSlot: "overflow" as const,
   };
 
-  if (role === "zakupy_zeby") {
-    return [
-      {
-        href: TEETH_SUPPLIERS_PATH,
-        label: "Karty dostawców",
-        description: "Labs i dostawcy zębów",
-        icon: "suppliers",
-        tone: "sky",
-        ...compact,
-      },
-      {
-        href: "/zakupy/urlopy",
-        label: "Urlopy dostawców",
-        description: "Niedostępność dostawcy",
-        icon: "vacation",
-        tone: "sky",
-        ...compact,
-      },
-    ];
-  }
-
   // Admin ma własne ścieżki hubu dostawców (/admin/dostawcy…), zakupy — /zakupy/…
   const paths = role === "admin" ? supplierHubPaths("admin") : null;
-  return [
+  const items: NavItem[] = [
     {
       href: paths?.cards ?? "/zakupy/dostawcy",
       label: "Karty dostawców",
-      description: "Kontakt, zapas, cykl",
+      description: "Karty, terminy zamówień, urlopy",
       icon: "suppliers",
       tone: "sky",
       ...compact,
     },
-    {
-      href: paths?.schedule("POLSKA") ?? "/lokalizacje/POLSKA",
-      label: "Terminy zamówień",
-      description: "PL / ZA / Import",
-      icon: "schedule",
-      tone: "sky",
-      ...compact,
-    },
-    {
-      href: paths?.vacations ?? "/zakupy/urlopy",
-      label: "Urlopy dostawców",
-      description: "Niedostępność dostawcy",
-      icon: "vacation",
-      tone: "sky",
-      ...compact,
-    },
   ];
+  if (role === "admin" || role === "zakupy") {
+    items.push(
+      {
+        href: "/zakupy/cenniki",
+        label: "Cenniki",
+        description: "Ceny z cennika dostawcy do Subiekta",
+        icon: "catalog",
+        tone: "violet",
+        ...compact,
+      },
+      {
+        href: "/zakupy/asystent",
+        label: "Asystent",
+        mobileLabel: "Asystent",
+        description: "Poczta dostawców, przegląd skrzynki i kontrola potwierdzeń OC",
+        icon: "mail",
+        tone: "slate",
+        badge: badges.supplierMail,
+        ...compact,
+      }
+    );
+  }
+  return items;
 }
 
 /** Import i logistyka: odprawy importu, magazyn zewnętrzny i kontakty do kurierów. */
@@ -723,11 +696,11 @@ function adminCatalogMailItems(): NavItem[] {
 function operationsNavGroups(role: UserRole, badges: NavBadges): NavGroup[] {
   const groups: NavGroup[] = [
     { title: NAV_SECTION_TODAY, items: operationsTodayItems(badges) },
-    { title: NAV_SECTION_ORDERING, items: operationsOrderingItems(role, badges) },
+    { title: NAV_SECTION_ORDERING, items: operationsOrderingItems(role) },
     { title: NAV_SECTION_TEAM, items: operationsTeamItems(badges) },
     {
       title: NAV_SECTION_SUPPLIERS,
-      items: supplierHubItemsForRole(role),
+      items: supplierHubItemsForRole(role, badges),
       collapsible: true,
     },
     {

@@ -2196,7 +2196,10 @@ button:focus-visible {
   opacity: 0.85;
 }
 
+/* `relative`: teksty `sr-only` (position: absolute) w szerokiej tabeli zostają w jej scrollporcie — bez tego
+   wychodziły poza przewijany kontener i rozpychały `main` w poziomie na telefonie. Menu w wierszach idą przez portal. */
 .table-scroll {
+  position: relative;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -2966,8 +2969,14 @@ html.ontime-scroll-locked main {
   animation: board-question-expand 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Automat ZD — szczegóły dostawcy pod wierszem tabeli (ten sam ruch co rozwinięcie pytania). */
+.zd-automat-detail-enter {
+  animation: board-question-expand 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .board-question-expanded-enter {
+  .board-question-expanded-enter,
+  .zd-automat-detail-enter {
     animation: none;
   }
 }
