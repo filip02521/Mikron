@@ -16,6 +16,8 @@ import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import { panelSectionInsetClass } from "@/lib/ui/ontime-theme";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import { useProcurementLanePrefs } from "@/components/summary/useProcurementLanePrefs";
+import { useDailyZdProposalsOutside } from "@/components/summary/DailyZdProposals";
+import { useMemo } from "react";
 
 export function DailyTodayView({
   workspace,
@@ -87,7 +89,11 @@ export function DailyTodayView({
   >;
 }) {
   const hasCancelled = workspace.salesCancelledNotices.length > 0;
-  const showEmpty = !hasTodayWork && verificationCount === 0 && !hasCancelled;
+  // Zamówienie automatu u dostawcy bez terminu dziś też jest pracą na dziś (sekcja „Na dziś”).
+  const scheduledIds = useMemo(() => standardUrgentAll.map((i) => i.supplierId), [standardUrgentAll]);
+  const proposalsOutside = useDailyZdProposalsOutside(scheduledIds);
+  const hasWork = hasTodayWork || proposalsOutside.length > 0;
+  const showEmpty = !hasWork && verificationCount === 0 && !hasCancelled;
   const lanePrefs = useProcurementLanePrefs(
     workspace.procurementFlagDefinitions,
     workspace.procurementLaneOrder
@@ -109,7 +115,7 @@ export function DailyTodayView({
                 run={run}
               />
             ) : null}
-            {hasTodayWork ? (
+            {hasWork ? (
               <>
                 {urgentOverdue.length > 0 ? (
                   <UrgentOrdersSection
@@ -190,7 +196,7 @@ export function DailyTodayView({
                   />
                 ) : null}
 
-                {urgentToday.length > 0 ? (
+                {urgentToday.length > 0 || proposalsOutside.length > 0 ? (
                   <UrgentOrdersSection
                     embedded
                     queueStep={queueStepBySection.today}

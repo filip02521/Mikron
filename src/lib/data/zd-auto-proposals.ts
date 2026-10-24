@@ -323,16 +323,27 @@ export async function addZdAutoProposalFinalLines(input: {
   return (res.rowCount ?? 0) > 0;
 }
 
-/** Panel dzienny: dostawcy z propozycją ZD czekającą na decyzję (najstarsza pierwsza). Odłożone nie — czekają na kolejny cykl. */
-export async function listPendingZdAutoProposalSuppliers(): Promise<Array<{ supplierId: string; supplierName: string }>> {
-  const res = await query<{ supplier_id: string; name: string }>(
-    `SELECT DISTINCT ON (a.supplier_id) a.supplier_id, s.name, a.created_at
-       FROM zd_auto_proposals a
-       JOIN suppliers s ON s.id = a.supplier_id
-      WHERE a.status = 'pending'
-      ORDER BY a.supplier_id, a.created_at`
+/**
+ * Panel dzienny: aktualna czekająca propozycja każdego dostawcy (najnowsza) z nazwą dostawcy.
+ * Wiersz harmonogramu pokazuje ją od razu, bez dociągania w przeglądarce. Odłożone (deferred)
+ * nie — czekają na kolejny cykl. Kolumny jak SELECT (bez migracji 193/194 też działa).
+ */
+export async function listPendingZdAutoProposals(): Promise<Array<ZdAutoProposal & { supplierName: string }>> {
+  const res = await query<Row & { supplier_name: string }>(
+    `SELECT DISTINCT ON (p.supplier_id) p.id, p.supplier_id, p.created_at, p.policy, p.data_od, p.data_do, p.lines,
+            p.line_count, p.value_net, p.status, p.decided_at, p.decision_note, p.dok_id, p.final_lines,
+            to_jsonb(p.*) -> 'service_order_ids' AS service_order_ids,
+            to_jsonb(p.*) ->> 'deferred_reason' AS deferred_reason,
+            to_jsonb(p.*) -> 'flags' AS flags,
+            jsonb_build_object('min', s.min_order_value, 'currency', s.min_order_currency,
+                               'free', to_jsonb(s.*) -> 'free_shipping_threshold') AS supplier_terms,
+            s.name AS supplier_name
+       FROM zd_auto_proposals p
+       JOIN suppliers s ON s.id = p.supplier_id
+      WHERE p.status = 'pending'
+      ORDER BY p.supplier_id, p.created_at DESC`
   );
   return res.rows
-    .map((r) => ({ supplierId: r.supplier_id, supplierName: r.name }))
+    .map((r) => ({ ...map(r), supplierName: r.supplier_name }))
     .sort((a, b) => a.supplierName.localeCompare(b.supplierName, "pl"));
 }
