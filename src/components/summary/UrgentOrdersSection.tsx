@@ -5,7 +5,7 @@ import {
   useSupplierStockSignals,
 } from "@/components/summary/SupplierStockSignal";
 import { polishPluralWord } from "@/lib/email/polish-plural";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type { SummaryStandardItem } from "@/lib/orders/summary";
 import { formatDateString } from "@/lib/orders/dates";
 import { locationLabel, vacationNoteLabel } from "@/lib/display-labels";
@@ -50,6 +50,12 @@ import { HelpMenuGlyph, PanelQueueStatDot } from "@/components/ui/UiGlyphs";
 import { DAILY_PANEL_QUEUE_SECTION, dailyPanelQueueSectionScrollClass } from "@/lib/orders/daily-panel-section-anchors";
 import { dailyPanelListBodyClass } from "@/components/summary/daily-panel-list-styles";
 import { ProcurementRequestActionsFooter } from "@/components/summary/ProcurementRequestActionsFooter";
+import {
+  DailyZdProposalNotice,
+  useDailyZdProposal,
+  useDailyZdProposalsOutside,
+  type DailyZdProposal,
+} from "@/components/summary/DailyZdProposals";
 import {
   ProcurementRequestCardHeader,
   ProcurementRequestContextBlock,
@@ -134,6 +140,7 @@ function UrgentCard({
   todayDateKey?: string;
 }) {
   const ui = enrichUrgentItem(item, todayDateKey);
+  const proposal = useDailyZdProposal(item.supplierId);
   const dateLabel = formatDateString(item.nextDate, "dd.MM");
   const isOverdue = ui.statusTitle === "Zaległe";
   const tone = urgentCardTone(isOverdue);
@@ -219,7 +226,9 @@ function UrgentCard({
               }
             />
             <ProcurementRequestContextBlock chips={chips} meta={meta} />
-            <SupplierStockSignal supplierId={item.supplierId} className="mt-0.5" />
+            {/* Gotowe zamówienie automatu zastępuje „Przygotuj ZD” — jedna droga do ZD w wierszu. */}
+            <SupplierStockSignal supplierId={item.supplierId} className="mt-0.5" hidePrepare={proposal != null} />
+            {proposal ? <DailyZdProposalNotice proposal={proposal} className="mt-2" /> : null}
             {detailText ? (
               <p
                 className={cn(
@@ -256,6 +265,38 @@ function UrgentCard({
   );
 }
 
+/**
+ * Zamówienie automatu u dostawcy bez terminu dziś (cykl propozycji nie zgadza się z planem) —
+ * w „Na dziś”, bo to decyzja na dziś; bez akcji harmonogramu (nie ma terminu do zamknięcia).
+ */
+function OutsideScheduleProposalRow({
+  proposal,
+  onOpenSupplier,
+}: {
+  proposal: DailyZdProposal;
+  onOpenSupplier: (id: string) => void;
+}) {
+  return (
+    <article className={urgentListRowClassName}>
+      <div className={urgentCardBodyClass}>
+        <ProcurementRequestCardHeader
+          title={
+            <button
+              type="button"
+              className={cn(panelTypography.rowTitle, urgentSupplierNameLinkClass("today"), "min-w-0 max-w-full truncate")}
+              onClick={() => onOpenSupplier(proposal.supplierId)}
+            >
+              {proposal.supplierName}
+            </button>
+          }
+          trailing={<span className={panelTypography.rowMeta}>poza planem na dziś</span>}
+        />
+        <DailyZdProposalNotice proposal={proposal} className="mt-2" />
+      </div>
+    </article>
+  );
+}
+
 /** Kart widocznych od razu w grupie zaległych / na dziś. */
 const URGENT_GROUP_PREVIEW = 15;
 
@@ -274,6 +315,7 @@ function UrgentGroup({
   onEdit,
   run,
   todayDateKey,
+  leading,
 }: {
   title: string;
   items: SummaryStandardItem[];
@@ -289,9 +331,11 @@ function UrgentGroup({
   onEdit: (id: string) => void;
   run: DailyPanelRunFn;
   todayDateKey?: string;
+  /** Wiersze przed listą (zamówienia automatu u dostawców spoza dzisiejszego planu). */
+  leading?: ReactNode[];
 }) {
   const [expanded, setExpanded] = useState(false);
-  if (!items.length) return null;
+  if (!items.length && !leading?.length) return null;
 
   const isOverdue = variant === "overdue";
   // Długa lista (np. po urlopie) spychała prośby handlowców kilka ekranów niżej.
@@ -305,12 +349,13 @@ function UrgentGroup({
       {!hideHeading ? (
         <div className="flex items-center gap-3">
           <h3 className={urgentGroupHeadingClassName(isOverdue)}>
-            {title} ({items.length})
+            {title} ({items.length + (leading?.length ?? 0)})
           </h3>
           <div className={urgentGroupDividerClassName(isOverdue)} aria-hidden />
         </div>
       ) : null}
       <ul className="divide-y divide-slate-100">
+        {leading?.map((row, i) => <li key={`leading-${i}`}>{row}</li>)}
         {shown.map((item) => (
           <li key={item.supplierId}>
             <UrgentCard
@@ -393,6 +438,11 @@ export function UrgentOrdersSection({
   const showToday = queuePart === "full" || queuePart === "today";
   const overdueItems = showOverdue ? overdue : [];
   const todayItems = showToday ? todayList : [];
+  const allScheduledIds = useMemo(() => items.map((i) => i.supplierId), [items]);
+  const outside = useDailyZdProposalsOutside(allScheduledIds);
+  const outsideRows = showToday
+    ? outside.map((p) => <OutsideScheduleProposalRow key={p.id} proposal={p} onOpenSupplier={onOpenSupplier} />)
+    : [];
   const scopeItems =
     queuePart === "overdue" ? overdueItems : queuePart === "today" ? todayItems : items;
   const scopeIds = useMemo(() => scopeItems.map((i) => i.supplierId), [scopeItems]);
@@ -413,11 +463,11 @@ export function UrgentOrdersSection({
     onBulkOrdered();
   };
 
-  const visibleCount = overdueItems.length + todayItems.length;
+  const visibleCount = overdueItems.length + todayItems.length + outsideRows.length;
   const hideInnerHeading = queuePart !== "full";
   const subsectionTone: DailyPanelSubsectionTone =
     queuePart === "overdue" ? "overdue" : queuePart === "today" ? "today" : "default";
-  const scopeCount = scopeItems.length;
+  const scopeCount = scopeItems.length + (queuePart === "today" ? outsideRows.length : 0);
 
   if (visibleCount === 0) return null;
 
@@ -536,6 +586,7 @@ export function UrgentOrdersSection({
             showTopDivider={queuePart === "full" && overdueItems.length > 0}
             hideHeading={hideInnerHeading}
             items={todayItems}
+            leading={outsideRows}
             supplierMeta={supplierMeta}
             selected={selected}
             isScopePending={isScopePending}
