@@ -54,7 +54,8 @@ const PHASES: { key: ZdBacktestProgress["phase"]; title: string; text: string }[
   { key: "simulate", title: "Symulacja", text: "Symuluję rok zamówień" },
 ];
 
-const CYCLE_OPTIONS = [7, 14, 21];
+const CYCLE_OPTIONS = [1, 2, 3, 5, 7, 14, 21];
+const cycleLabel = (c: number) => (c === 1 ? "codziennie" : `co ${c} dni`);
 
 const REC_TITLE: Record<ZdBacktestRecommendationTier, string> = {
   works: "Najlepsze ustawienie",
@@ -254,7 +255,7 @@ function GridMatrix({ result, onPick }: { result: ZdBacktestResult; onPick: (p: 
           {cycles.map((c) => (
             <tr key={c} className="border-t border-slate-100">
               <th scope="row" className="whitespace-nowrap px-3 py-2 text-left font-medium text-slate-700">
-                {c} dni
+                {c === 1 ? "codziennie" : `${c} dni`}
               </th>
               {targets.map((t) => {
                 const g = at(c, t);
@@ -472,7 +473,7 @@ export function ZdBacktestPanel({
             <Select value={cycleDays} onChange={(e) => setCycleDays(e.target.value)} disabled={running}>
               {[...new Set([...CYCLE_OPTIONS, Number(cycleDays)])].sort((a, b) => a - b).map((c) => (
                 <option key={c} value={String(c)}>
-                  co {c} dni
+                  {cycleLabel(c)}
                 </option>
               ))}
             </Select>
@@ -619,6 +620,14 @@ export function ZdBacktestPanel({
               ) : null}
               {result.model ? <KeyValue label="Okno sprzedaży" value={`${result.model.windowDays} dni (jak Kreator)`} /> : null}
               {result.model ? <KeyValue label="Podążanie za sprzedażą" value={result.model.trackPreset ?? "wyłączone"} /> : null}
+              {result.model?.orderCost != null ? <KeyValue label="Koszt jednego ZD (w koszcie roku)" value={zl(result.model.orderCost)} /> : null}
+              {result.model && "minOrderValue" in result.model ? (
+                <KeyValue
+                  label="Minimum / darmowa dostawa"
+                  value={`${result.model.minOrderValue != null ? zl(result.model.minOrderValue) : "brak"} / ${result.model.freeShippingThreshold != null ? zl(result.model.freeShippingThreshold) : "brak"}`}
+                />
+              ) : null}
+              {result.model?.dailyStock ? <KeyValue label="Stany" value="dzienne (remanent na każdy dzień)" /> : null}
               {result.quality.imputedShare != null ? (
                 <KeyValue label="Popyt dopisany za braki" value={pct(result.quality.imputedShare)} tone={result.quality.imputedShare >= 15 ? "warning" : undefined} />
               ) : null}
@@ -651,7 +660,7 @@ export function ZdBacktestPanel({
             <p className="text-xs leading-relaxed text-slate-500">
               Werdykt „działa”: braki nie większe niż naprawdę, zapas najwyżej o 10% większy, a przy opóźnionych dostawach braki najwyżej o 1 pp większe.
               {result.version === 2
-                ? " Każda decyzja liczona jak nocny przebieg: okno dni zapasu dostawcy, korekta dni braku, prośby poza zapasem, rezerwacje z ZK (klient czeka na dostawę, nie przepada), podążanie za sprzedażą, minimum stanów, opakowania, czas dostawy znany w dniu decyzji. Nowy towar dostaje pierwszą dostawę jak naprawdę. Koszt roku = utracona marża na sprzedaży z półki + 20% średniego zapasu; rekomendacja to najniższy koszt wśród ustawień, które działają — najlepiej we wszystkich kwartałach."
+                ? " Każda decyzja liczona jak nocny przebieg: okno dni zapasu dostawcy, korekta dni braku, prośby poza zapasem, rezerwacje z ZK (klient czeka na dostawę, nie przepada), podążanie za sprzedażą, minimum stanów, opakowania, minimum zamówienia i darmowa dostawa (odłożenie, dopełnienie), czas dostawy znany w dniu decyzji, stany dzienne. Nowy towar dostaje pierwszą dostawę jak naprawdę. Koszt roku = utracona marża na sprzedaży z półki + 20% średniego zapasu + koszt każdego ZD; rekomendacja to najniższy koszt wśród ustawień (od codziennie do co 3 tygodnie), które działają — najlepiej we wszystkich kwartałach. Częściej albo rzadziej z większym zapasem — wygrywa to, co taniej wychodzi w roku."
                 : " Wynik policzony starszą wersją backtestu — policz ponownie, żeby zobaczyć koszt i ustawienia liczone jak nocny przebieg."}
             </p>
           </section>

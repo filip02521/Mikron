@@ -25,6 +25,7 @@ import { minStockRowsToMap, withPairMinStock } from "@/lib/orders/zd-estimate-mi
 import { fetchZdBoostPowerPreset } from "@/lib/data/zd-estimate-boost-preset";
 import { boostPresetDef, policyForBoostPreset } from "@/lib/orders/zd-estimate-boost-presets";
 import { parseOrderQuantity } from "@/lib/orders/individual";
+import { isPlnCurrency } from "@/lib/orders/zd-proposal-minimum-notice";
 import type { StatsMode } from "@/types/database";
 import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
 import {
@@ -38,6 +39,7 @@ import {
   zdBacktestStableQuarters,
   zdBacktestVerdict,
   ZD_BACKTEST_HOLDING_RATE,
+  ZD_BACKTEST_ORDER_COST,
   ZD_BACKTEST_PROSBA_SALE_DAYS,
   type ZdBacktestGridPoint,
   type ZdBacktestInput,
@@ -77,7 +79,18 @@ export type ZdBacktestResult = {
   reality: { zeroShare: number | null; avgStock: number; cycleDays: number } & Partial<Omit<ZdBacktestReality, "zeroShare" | "avgStock">>;
   variants: ZdBacktestVariant[];
   /** Ustawienia modelu (v2). */
-  model?: { windowDays: number; holdingRate: number; trackPreset: string | null; statsMode: StatsMode; automatStableQuarters: number };
+  model?: {
+    windowDays: number;
+    holdingRate: number;
+    trackPreset: string | null;
+    statsMode: StatsMode;
+    automatStableQuarters: number;
+    /** v3: koszt jednego ZD w koszcie roku, minimum i próg dostawcy (zł), stany dzienne. */
+    orderCost?: number;
+    minOrderValue?: number | null;
+    freeShippingThreshold?: number | null;
+    dailyStock?: boolean;
+  };
   verdict: ZdBacktestVerdict;
   /** Siatka ustawień (cel × cykl) i rekomendacja: najmniejszy zapas wśród działających, inaczej najmniej braków. */
   grid: ZdBacktestGridPoint[];
@@ -239,12 +252,6 @@ async function setProgress(runId: string, progress: ZdBacktestProgress) {
   await query(`UPDATE zd_backtest_runs SET progress = $2::jsonb WHERE id = $1`, [runId, JSON.stringify(progress)]);
 }
 
-const weeklyDays = (from: string, to: string) => {
-  const out: string[] = [];
-  for (let d = from; d <= to; d = addDaysKey(d, 7)) out.push(d);
-  return out;
-};
-
 /** Przebieg w tle: dane → warianty → werdykt → zapis. Błąd zapisuje się w wierszu, blokada zawsze puszcza. */
 export async function runZdBacktest(runId: string): Promise<void> {
   const run = await query<RunRow>(`SELECT id, supplier_id, status, params, progress, result, error, created_at, finished_at FROM zd_backtest_runs WHERE id = $1`, [runId]);
@@ -297,8 +304,19 @@ export async function loadZdBacktestData(
   const resolved = resolveSubiektOrdersConfig();
   if (!resolved.ok) throw new Error(resolved.message);
   const cfg = resolved.config;
-  const supRes = await query<{ name: string; interval_weeks: string | null; stock_raw: string | null; stock: unknown; stats_mode: string | null }>(
-    `SELECT name, interval_weeks, stock_raw, stock, stats_mode FROM suppliers WHERE id = $1`,
+  const supRes = await query<{
+    name: string;
+    interval_weeks: string | null;
+    stock_raw: string | null;
+    stock: unknown;
+    stats_mode: string | null;
+    min_order_value: string | null;
+    min_order_currency: string | null;
+    free_shipping_threshold: string | null;
+  }>(
+    `SELECT name, interval_weeks, stock_raw, stock, stats_mode, min_order_value, min_order_currency,
+            to_jsonb(s.*) ->> 'free_shipping_threshold' AS free_shipping_threshold
+       FROM suppliers s WHERE id = $1`,
     [supplierId]
   );
   const sup = supRes.rows[0];
@@ -503,26 +521,36 @@ export async function loadZdBacktestData(
     for (const l of sales.get(Number(r.parent)) ?? []) list.push(scaled(l, Number(r.qty) || 1));
   }
 
-  // Remanenty: tydzień przed startem do końca (okres) + historia na dni braku w pierwszym oknie.
-  const historyFrom = addDaysKey(simStart, -(Math.max(kreatorDays, 90) + 8));
-  const histDates = weeklyDays(historyFrom, addDaysKey(simStart, -2)).filter((d) => d < addDaysKey(simStart, -1));
-  const dates = weeklyDays(addDaysKey(simStart, -1), simEnd);
-  const allDates = [...histDates, ...dates];
+  // Stany dzienne (remanent na każdy dzień): okres + historia na dni braku w pierwszym oknie. Przy dostawcach
+  // zamawianych kilka razy w tygodniu tygodniowe zdjęcie gubi braki z dni pomiędzy.
+  const historyFrom = addDaysKey(simStart, -(Math.max(kreatorDays, 90) + 2));
+  const allDates: string[] = [];
+  for (let d = historyFrom; d <= simEnd; d = addDaysKey(d, 1)) allDates.push(d);
+  const dates = allDates.filter((d) => d >= addDaysKey(simStart, -1));
   await onProgress({ phase: "stock", done: 0, total: allDates.length });
-  const snapshotsAll: Array<{ day: string; qty: Map<number, number> }> = [];
-  const cost = new Map<number, number>();
-  for (const [i, day] of allDates.entries()) {
+  const snapshotsAll: Array<{ day: string; qty: Map<number, number>; price: Map<number, number> }> = [];
+  let stockDone = 0;
+  await mapPool(allDates, CONCURRENCY, async (day) => {
     const qty = new Map<number, number>();
+    const price = new Map<number, number>();
     for (const s of scopes) {
       const rows = await paged(cfg, SUBIEKT_PATHS.productsRemanent, { ...scopeParam(s), naDzien: day }, (j) => (j as { data?: { pozycje?: Array<{ tw_Id: number; ilosc: number; cenaMag: number }> } }).data?.pozycje ?? []);
       for (const r of rows) {
         const tw = Math.trunc(Number(r.tw_Id));
         qty.set(tw, (qty.get(tw) ?? 0) + (Number(r.ilosc) || 0));
-        if (day >= dates[0]! && !cost.has(tw) && Number(r.cenaMag) > 0) cost.set(tw, Number(r.cenaMag));
+        if (Number(r.cenaMag) > 0 && !price.has(tw)) price.set(tw, Number(r.cenaMag));
       }
     }
-    snapshotsAll.push({ day, qty });
-    if ((i + 1) % 5 === 0 || i + 1 === allDates.length) await onProgress({ phase: "stock", done: i + 1, total: allDates.length });
+    snapshotsAll.push({ day, qty, price });
+    stockDone++;
+    if (stockDone % 20 === 0 || stockDone === allDates.length) await onProgress({ phase: "stock", done: stockDone, total: allDates.length });
+  });
+  snapshotsAll.sort((a, b) => a.day.localeCompare(b.day));
+  // Wycena: pierwsza cena magazynowa w okresie (jak wcześniej, od najstarszego dnia).
+  const cost = new Map<number, number>();
+  for (const sn of snapshotsAll) {
+    if (sn.day < dates[0]!) continue;
+    for (const [tw, c] of sn.price) if (!cost.has(tw)) cost.set(tw, c);
   }
 
   const pieceCost = new Map<number, number>();
@@ -588,6 +616,19 @@ export async function loadZdBacktestData(
     composite: pairByPack.has(id) || bomComponents.has(id),
   }));
   const trackPolicy = policyForBoostPreset(boostPreset);
+  // Minimum i próg jak `applyZdProposalMinimum`: minimum tylko w zł; klasy ABC do dopełnienia.
+  const minValue = Number(sup.min_order_value) > 0 ? Number(sup.min_order_value) : null;
+  const minPln = minValue != null && isPlnCurrency(sup.min_order_currency);
+  const orderTerms = {
+    minOrderValue: minPln ? minValue : null,
+    freeShippingThreshold: Number(sup.free_shipping_threshold) > 0 ? Number(sup.free_shipping_threshold) : null,
+  };
+  const abcRes = await query<{ tw: number; abc: "A" | "B" | "C" }>(
+    `SELECT subiekt_tw_id AS tw, coalesce(override_abc, abc) AS abc FROM zd_sku_class WHERE subiekt_tw_id = ANY($1::int[])`,
+    [products.map((p) => p.id)]
+  ).catch(() => ({ rows: [] as Array<{ tw: number; abc: "A" | "B" | "C" }> }));
+  const abcByTw = new Map(abcRes.rows.map((r) => [Number(r.tw), r.abc]));
+  for (const p of products) p.abc = abcByTw.get(p.id) ?? null;
   const input: ZdBacktestInput = {
     simStart,
     days: SIM_DAYS,
@@ -600,6 +641,7 @@ export async function loadZdBacktestData(
     lead,
     statsMode,
     trackPolicy,
+    orderTerms,
   };
   const ctx: ZdBacktestContext = {
     simStart,
@@ -714,6 +756,10 @@ export function evaluateZdBacktest(input: ZdBacktestInput, ctx: ZdBacktestContex
       trackPreset: ctx.trackPreset,
       statsMode,
       automatStableQuarters: zdBacktestStableQuarters(variants[1]!.metrics, reality),
+      orderCost: ZD_BACKTEST_ORDER_COST,
+      minOrderValue: input.orderTerms?.minOrderValue ?? null,
+      freeShippingThreshold: input.orderTerms?.freeShippingThreshold ?? null,
+      dailyStock: input.snapshots.length > 300,
     },
     quality: {
       skus: products.length,
