@@ -544,18 +544,13 @@ export function RequestProductLinesEditor({
                 : "space-y-3"
             )}
           >
+            <div className={cn(prosba && wrapLine && "p-3 sm:p-3.5")}>
+            {/* Numer w przepływie, nie na sztywno: przy sm:p-3.5 pozycja absolutna wchodziła pod etykietę pola. */}
             {prosba && showLineLabel ? (
-              <span className="pointer-events-none absolute left-3 top-2 z-[1] text-[11px] font-semibold tabular-nums text-slate-400">
-                {index + 1}.
-              </span>
+              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide tabular-nums text-slate-500">
+                Pozycja {index + 1}
+              </p>
             ) : null}
-
-            <div
-              className={cn(
-                prosba && wrapLine && "p-3 sm:p-3.5",
-                prosba && showLineLabel && "pt-5"
-              )}
-            >
             <SubiektProductLineFields
               appearance={appearance}
               salesProsbaForm={salesProsbaForm}
