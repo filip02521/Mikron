@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { actionAcceptZdAutoProposal, actionCreateZdAutoProposalNow } from "@/app/actions/zd-estimate";
+import { actionAcceptZdAutoProposal, actionCreateZdAutoProposalNow, actionGetZdAutoProposalProsby } from "@/app/actions/zd-estimate";
 import { IconAlertCircle, IconCircleCheck, IconTrash2, IconUndoLeft, IconX } from "@/components/icons/StrokeIcons";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -15,6 +15,7 @@ import { BrandStepMark } from "@/components/ui/BrandStepMark";
 import { ZdEstimatePostCreatePanel } from "@/components/zakupy/ZdEstimatePostCreatePanel";
 import { ZdProposalFlagsSummary, ZdProposalLineFlags } from "@/components/zakupy/ZdProposalLineFlags";
 import { ZdProposalMinimumNotice } from "@/components/zakupy/ZdProposalMinimumNotice";
+import { ZdProposalProsbaList, ZdProposalProsbaToggle, type ZdProposalProsbyState } from "@/components/zakupy/ZdProposalProsby";
 import { cn } from "@/lib/cn";
 import type { ZdAutoProposal, ZdAutoProposalLine } from "@/lib/data/zd-auto-proposals";
 import { polishPluralWord } from "@/lib/email/polish-plural";
@@ -31,7 +32,7 @@ import {
 import { useAnimatedClose } from "@/lib/ui/use-animated-close";
 
 type Phase = "review" | "creating" | "send";
-type Filter = "all" | "flagged" | "changes" | "edited";
+type Filter = "all" | "flagged" | "prosby" | "changes" | "edited";
 
 const zl = (v: number) => `${Math.round(v).toLocaleString("pl-PL")} zł`;
 
@@ -220,6 +221,10 @@ export function ZdAutoProposalSheet({
   const [listReady, setListReady] = useState(false);
   const [session, setSession] = useState<ZdPostCreateSession | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
+  /** Prośby przy pozycjach — wczytane dla propozycji `id`; inna propozycja (przeliczenie) = wczytuje się. */
+  const [prosby, setProsby] = useState<ZdProposalProsbyState | null>(null);
+  const [prosbyAttempt, setProsbyAttempt] = useState(0);
+  const [openProsba, setOpenProsba] = useState<number | null>(null);
   const started = useRef(false);
   const recomputeSeq = useRef(0);
   useBodyScrollLock(true);
@@ -284,6 +289,24 @@ export function ZdAutoProposalSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const freshId = fresh?.id ?? null;
+  const freshHasProsby = Boolean(fresh?.lines.some((l) => l.prosbaPieces > 0));
+  useEffect(() => {
+    if (!freshId || !freshHasProsby) return;
+    let alive = true;
+    void actionGetZdAutoProposalProsby({ supplierId, proposalId: freshId }).then(
+      (r) => {
+        if (!alive) return;
+        setProsby(r.ok ? { id: freshId, status: "ok", byTwId: r.byTwId, truncated: r.truncated } : { id: freshId, status: "error", message: r.message });
+      },
+      () => alive && setProsby({ id: freshId, status: "error", message: "Nie udało się wczytać próśb." })
+    );
+    return () => {
+      alive = false;
+    };
+  }, [freshId, freshHasProsby, supplierId, prosbyAttempt]);
+  const prosbyState = prosby && prosby.id === freshId ? prosby : null;
+
   const runCreate = () => {
     if (!fresh || createLocked) return;
     setCreateError(null);
@@ -336,12 +359,16 @@ export function ZdAutoProposalSheet({
   );
   const isFlagged = (d: (typeof diff)[number]) => d.change !== "removed" && Boolean(d.line.flags?.length);
   const flaggedCount = diff.filter(isFlagged).length;
+  const hasProsba = (d: (typeof diff)[number]) => d.change !== "removed" && d.line.prosbaPieces > 0;
+  const prosbaCount = diff.filter(hasProsba).length;
   // Pozycje z bezpiecznikiem na górze — przy 40+ pozycjach nie trzeba ich szukać.
   const shown = diff
     .filter((d) =>
       filter === "flagged"
         ? isFlagged(d)
-        : filter === "changes"
+        : filter === "prosby"
+          ? hasProsba(d)
+          : filter === "changes"
           ? d.change !== "same"
           : filter === "edited"
             ? String(d.line.twId) in edits
@@ -520,6 +547,7 @@ export function ZdAutoProposalSheet({
                     options={[
                       { value: "all", label: `Wszystkie (${diff.length})` },
                       ...(flaggedCount ? [{ value: "flagged" as const, label: `Do sprawdzenia (${flaggedCount})` }] : []),
+                      ...(prosbaCount ? [{ value: "prosby" as const, label: `Na prośbę (${prosbaCount})` }] : []),
                       { value: "changes", label: `Zmiany (${changes.length})` },
                       { value: "edited", label: `Poprawione (${editedCount})` },
                     ]}
@@ -571,7 +599,17 @@ export function ZdAutoProposalSheet({
                             </p>
                             <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
                               <span className="font-mono">{l.symbol}</span>
-                              {l.prosbaPieces > 0 ? <span>prośby {formatQty(l.prosbaPieces)} szt</span> : null}
+                              {l.prosbaPieces > 0 && change !== "removed" ? (
+                                <ZdProposalProsbaToggle
+                                  prosbaPieces={l.prosbaPieces}
+                                  linePieces={l.zdUnits > 0 ? (l.pieces / l.zdUnits) * units : 0}
+                                  packaged={l.zdUnits > 0 && l.pieces !== l.zdUnits}
+                                  requests={prosbyState?.status === "ok" ? (prosbyState.byTwId[String(l.twId)] ?? []) : null}
+                                  open={openProsba === l.twId}
+                                  controls={`zd-prosby-${l.twId}`}
+                                  onToggle={() => setOpenProsba((cur) => (cur === l.twId ? null : l.twId))}
+                                />
+                              ) : null}
                               <ZdProposalLineFlags flags={l.flags} notes={l.flagNotes} />
                               {l.topUpUnits ? <Badge variant="info">dopełnienie do darmowej dostawy</Badge> : null}
                               {change === "added" ? <Badge variant="info">nowa</Badge> : null}
@@ -616,6 +654,17 @@ export function ZdAutoProposalSheet({
                               </button>
                             </div>
                           )}
+                          {openProsba === l.twId && l.prosbaPieces > 0 && change !== "removed" ? (
+                            <ZdProposalProsbaList
+                              id={`zd-prosby-${l.twId}`}
+                              state={prosbyState}
+                              requests={prosbyState?.status === "ok" ? (prosbyState.byTwId[String(l.twId)] ?? []) : []}
+                              onRetry={() => {
+                                setProsby(null);
+                                setProsbyAttempt((n) => n + 1);
+                              }}
+                            />
+                          ) : null}
                         </li>
                       );
                     })}

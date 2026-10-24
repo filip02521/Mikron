@@ -1508,6 +1508,71 @@ export async function actionRejectZdAutoProposal(input: {
   }
 }
 
+/** Prośba handlowca przy pozycji propozycji — kto, ile i dla kogo czeka na towar. */
+export type ZdAutoProposalProsba = {
+  orderId: string;
+  salesPersonName: string;
+  qty: number;
+  clientName: string | null;
+  zkNumber: string | null;
+  note: string | null;
+  /** Nazwa z prośby, gdy dopasowana po kodzie/parze do innego zapisu niż nazwa towaru. */
+  products: string;
+};
+
+/**
+ * Panel propozycji: prośby handlowców przy pozycjach — to samo dopasowanie, które „Utwórz ZD” zrobi przy
+ * zatwierdzeniu (bieżące prośby „Nowe”, pary i zestawy jak w Kreatorze). Tylko odczyt.
+ */
+export async function actionGetZdAutoProposalProsby(input: {
+  supplierId: string;
+  proposalId: string;
+}): Promise<
+  | { ok: true; byTwId: Record<string, ZdAutoProposalProsba[]>; truncated: boolean }
+  | { ok: false; message: string }
+> {
+  try {
+    await requireZdEstimateAdmin("read");
+    const supplierId = String(input.supplierId ?? "").trim();
+    const proposalId = String(input.proposalId ?? "").trim();
+    if (!UUID_RE.test(supplierId) || !UUID_RE.test(proposalId)) return { ok: false, message: "Nieprawidłowa propozycja." };
+    const proposal = await fetchLatestZdAutoProposal(supplierId);
+    if (!proposal || proposal.id !== proposalId) return { ok: false, message: "Propozycja zmieniła się w międzyczasie - przelicz ją ponownie." };
+    const scope = groupZdEstimateScopesBySupplier(await listZdEstimateSupplierScopes()).get(supplierId)?.[0];
+    if (!scope) return { ok: false, message: "Dostawca nie ma zakresu w Kreatorze ZD." };
+    const [pending, pairs, boms, teeth] = await Promise.all([
+      fetchZdEstimatePendingIndividualOrders(supplierId),
+      fetchZdProductPairs(),
+      fetchZdProductBoms(),
+      fetchTeethProductTwIdSet(),
+    ]);
+    const built = buildZdCreateInputFromAutoProposal({
+      lines: proposal.lines,
+      scope,
+      pendingOrders: pending.orders,
+      serviceOrderIds: proposal.serviceOrderIds,
+      pairs,
+      boms: bomRowsToRefs(boms),
+      teethTwIds: teeth,
+    });
+    const byTwId: Record<string, ZdAutoProposalProsba[]> = {};
+    for (const [twId, extra] of built.extras.byTwId) {
+      byTwId[String(twId)] = extra.requests.map((r) => ({
+        orderId: r.orderId,
+        salesPersonName: r.salesPersonName,
+        qty: r.qty,
+        clientName: r.salesClientName ?? null,
+        zkNumber: r.sourceZkNumber ?? null,
+        note: r.requestNote,
+        products: r.products,
+      }));
+    }
+    return { ok: true, byTwId, truncated: pending.truncated };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się wczytać próśb.") };
+  }
+}
+
 /**
  * Panel dzienny: „Akceptuj” propozycję automatu — tworzy ZD z jej linii tak, jak Kreator
  * zrobiłby z tej listy (zakres dostawcy, prośby katalogowe i usługi). Zwraca sesję panelu po

@@ -31,6 +31,8 @@ export type ZdEstimateIndividualRequestRef = {
   /** kh_Id klienta — do dedupe vs rez. ZK. */
   salesClientKhId?: number | null;
   sourceZkNumber?: string | null;
+  /** Klient z prośby (nazwa wpisana przez handlowca) — do podglądu, kto czeka na towar. */
+  salesClientName?: string | null;
 };
 
 export type ZdEstimateIndividualTwExtra = {
@@ -71,6 +73,8 @@ export type ZdEstimatePendingIndividualOrder = {
   salesClientKhId?: number | null;
   /** Numer ZK przy złożeniu prośby — zapasowy match gdy brak kh_Id. */
   sourceZkNumber?: string | null;
+  /** Klient z prośby — tylko do podglądu. */
+  salesClientName?: string | null;
 };
 
 export type ZdEstimateIndividualBundle = {
@@ -126,6 +130,7 @@ export function mapIndividualOrderToPendingDto(
     requestNote: order.sales_request_note?.trim() || null,
     salesClientKhId,
     sourceZkNumber,
+    salesClientName: order.sales_client_name?.trim() || null,
   };
 }
 
@@ -143,6 +148,7 @@ function toRequestRef(
     requestNote: order.requestNote,
     salesClientKhId: order.salesClientKhId ?? null,
     sourceZkNumber: order.sourceZkNumber ?? null,
+    salesClientName: order.salesClientName ?? null,
   };
 }
 
