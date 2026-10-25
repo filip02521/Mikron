@@ -9,7 +9,6 @@ import { CustomsMailPanel } from "@/components/zakupy/customs/CustomsMailPanel";
 import { DhlShipmentsPanel } from "@/components/zakupy/customs/DhlShipmentsPanel";
 import { loadDhlShipments } from "@/lib/customs/dhl-data";
 import { loadCustomsMail } from "@/lib/supplier-mail/data";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { isCustomsAiConfigured } from "@/lib/customs/customs-ai";
 import { pageMetadataFor, PAGE_DESCRIPTIONS, PAGE_TITLES } from "@/lib/ui/page-metadata";
 import { adminPageShellClass } from "@/lib/ui/ontime-theme";
@@ -33,17 +32,16 @@ export default async function CustomsClearancesPage() {
 
   return (
     <div className={adminPageShellClass}>
-      <PageHeader
-        title={PAGE_TITLES.customsClearance}
-        description={PAGE_DESCRIPTIONS.customsClearance}
-      />
-      {dhl ? <DhlShipmentsPanel shipments={dhl} suppliers={suppliers} /> : null}
-      <CustomsMailPanel threads={agencyMail} />
       <CustomsClearanceListClient
         suppliers={suppliers}
         clearances={clearances}
         aiEnabled={isCustomsAiConfigured()}
-      />
+        title={PAGE_TITLES.customsClearance}
+        description={PAGE_DESCRIPTIONS.customsClearance}
+      >
+        {dhl ? <DhlShipmentsPanel shipments={dhl} suppliers={suppliers} /> : null}
+        <CustomsMailPanel threads={agencyMail} />
+      </CustomsClearanceListClient>
     </div>
   );
 }

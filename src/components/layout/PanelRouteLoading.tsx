@@ -47,7 +47,7 @@ export function PanelDailyRouteLoadingSkeleton({
     <div
       className={cn(
         panelWorkspaceShellClass,
-        "rounded-lg border border-slate-200 bg-white p-6 sm:p-8"
+        "rounded-[var(--radius-panel)] border border-slate-200 bg-[var(--card)] p-6 shadow-[var(--shadow-card)] sm:p-8"
       )}
       aria-busy="true"
       aria-label={label}
@@ -84,7 +84,7 @@ export function PanelSalesRouteLoadingSkeleton({
         <PulseBlock className="h-9 w-24" />
         <PulseBlock className="h-9 w-9 rounded-md" />
       </div>
-      <div className="overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]">
+      <div className="overflow-hidden rounded-[var(--radius-panel)] border border-slate-200 bg-[var(--card)] shadow-[var(--shadow-card)]">
         <PanelCardSkeletonHeader titleClassName="h-5 w-48" />
         <div className="border-b border-slate-100 px-3 py-3 sm:px-4">
           <PulseBlock className="h-11 rounded-md" />
@@ -117,7 +117,7 @@ export function PanelWarehouseRouteLoadingSkeleton({
       aria-label={label}
       role="status"
     >
-      <div className="overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]">
+      <div className="overflow-hidden rounded-[var(--radius-panel)] border border-slate-200 bg-[var(--card)] shadow-[var(--shadow-card)]">
         <PanelCardSkeletonHeader titleClassName="h-5 w-44" />
         <div className="flex gap-2 border-b border-slate-100 px-3 py-2.5 sm:px-4">
           <PulseBlock className="h-8 w-24 rounded-md bg-slate-200" />
@@ -158,7 +158,7 @@ export function PanelFormRouteLoadingSkeleton({
       aria-label={label}
       role="status"
     >
-      <div className="overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]">
+      <div className="overflow-hidden rounded-[var(--radius-panel)] border border-slate-200 bg-[var(--card)] shadow-[var(--shadow-card)]">
         <PanelCardSkeletonHeader titleClassName="h-5 w-36" />
         <div className="space-y-4 px-3 py-5 sm:px-4">
           <PulseBlock className="h-10 rounded-md" />

@@ -7,6 +7,7 @@ import { zespolLoadErrorMessage } from "@/lib/sales/zespol-load-errors";
 import { SalesAdminClient } from "@/components/admin/SalesAdminClient";
 import { SalesTeamSubnav } from "@/components/sales/SalesTeamSubnav";
 import { SalesTeamWorkspace } from "@/components/sales/SalesTeamWorkspace";
+import { Card } from "@/components/ui/Card";
 import { SystemNotice } from "@/components/ui/SystemNotice";
 
 import type { Metadata } from "next";
@@ -32,7 +33,6 @@ export default async function ZespolHandlowcyPage() {
       title={copy.title}
       description={copy.description}
       hint={SALES_PAGE_HEADER_HINTS.teamHandlowcy}
-      iconKey="teamAccounts"
       subnav={<SalesTeamSubnav />}
       notices={
         loadError ? (
@@ -46,6 +46,7 @@ export default async function ZespolHandlowcyPage() {
       }
     >
       {loadError ? null : (
+        <Card>
         <SalesAdminClient
           initial={rows}
           groups={groups}
@@ -54,6 +55,7 @@ export default async function ZespolHandlowcyPage() {
           requireGroupOnCreate={teamUi.isManager && teamUi.hasTeamScope}
           embeddedInTeamWorkspace
         />
+        </Card>
       )}
     </SalesTeamWorkspace>
   );

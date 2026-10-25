@@ -5,18 +5,10 @@ import { Fragment, useCallback, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { actionSetWarehouseShelf, actionClearFromShelf, actionRevertToPending } from "@/app/actions/admin";
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
-import { SectionListLabel } from "@/components/ui/SectionListLabel";
-import {
-  IconAlertCircle,
-  IconClipboardList,
-  IconClock,
-  IconPackageCheck,
-  IconWarehouse,
-  IconX,
-  IconUndoLeft,
-} from "@/components/icons/StrokeIcons";
+import { Card, CardHeader } from "@/components/ui/Card";
+import { IconX, IconUndoLeft } from "@/components/icons/StrokeIcons";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 import { QueueGroupExpandControl } from "@/components/queue/QueueGroupExpandControl";
-import { QueueMetricTab } from "@/components/queue/QueueMetricTab";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { Button } from "@/components/ui/Button";
@@ -28,7 +20,6 @@ import { SupplierGroupHeaderRow } from "@/components/queue/SupplierGroupHeaderRo
 import { cn } from "@/lib/cn";
 import {
   QUEUE_LIST_BODY_CLASS,
-  queueToolbarFieldLabelClass,
   queueToolbarInputClass,
   queueToolbarShellClass,
 } from "@/lib/ui/queue-panel-styles";
@@ -52,7 +43,6 @@ import { countOrdersBySupplier } from "@/lib/orders/supplier-filter-summary";
 import { buildSupplierGroupMetrics, formatSupplierGroupHeaderSummary } from "@/lib/orders/supplier-group-metrics";
 import { useSupplierGroupCollapse } from "@/lib/orders/use-supplier-group-collapse";
 import {
-  queueSupplierLeadingCellClass,
   queueSupplierRowClass,
   supplierKey,
   type SupplierOrderGroup,
@@ -60,6 +50,18 @@ import {
 import { matchesSearchWords } from "@/lib/search/keywords";
 
 type InventoryFilter = "all" | "stale" | "critical" | "expired" | "unassigned";
+
+const INVENTORY_FILTERS: { value: InventoryFilter; label: string; title: string }[] = [
+  { value: "all", label: "Wszystkie", title: "Wszystkie pozycje na regale" },
+  { value: "stale", label: "≥ 3 dni", title: "Pozycje czekające co najmniej 3 dni robocze" },
+  { value: "critical", label: "≥ 7 dni", title: "Pozycje czekające co najmniej 7 dni roboczych" },
+  {
+    value: "expired",
+    label: "≥ 21 dni",
+    title: "Pozycje czekające co najmniej 21 dni roboczych - zaraz automatycznie potwierdzone",
+  },
+  { value: "unassigned", label: "Bez regału", title: "Pozycje bez przypisanego regału" },
+];
 
 function ShelfEditor({
   initial,
@@ -133,7 +135,7 @@ function WaitingBadge({ row }: { row: WarehouseInventoryRow }) {
           ? "bg-amber-100 text-amber-900"
           : "bg-slate-100 text-slate-700";
   return (
-    <span className={cn("inline-block rounded px-1.5 py-0.5 text-[11px] font-medium tabular-nums", tone)}>
+    <span className={cn("inline-block rounded px-1.5 py-0.5 text-[0.6875rem] font-medium tabular-nums", tone)}>
       {waitingLabel(row)}
     </span>
   );
@@ -190,11 +192,15 @@ export function WarehouseInventorySection({
     [deliveryQueueOrders, orders]
   );
   const summary = useMemo(() => summarizeWarehouseInventory(rows), [rows]);
+  const filterCounts: Record<InventoryFilter, number> = {
+    all: summary.total,
+    stale: summary.staleWarn + summary.staleCritical + summary.staleExpired,
+    critical: summary.staleCritical,
+    expired: summary.staleExpired,
+    unassigned: summary.unassignedShelf,
+  };
   const supplierChips = useMemo(() => countOrdersBySupplier(rows.map((r) => r.order)), [rows]);
 
-  const setInventoryFilter = useCallback((next: InventoryFilter) => {
-    setFilter((prev) => (prev === next && next !== "all" ? "all" : next));
-  }, []);
 
   const summaryKey = `${summary.staleWarn}:${summary.staleCritical}:${summary.staleExpired}:${summary.unassignedShelf}`;
   const [appliedSummaryKey, setAppliedSummaryKey] = useState(summaryKey);
@@ -351,17 +357,11 @@ export function WarehouseInventorySection({
             isPartial: row.kind === "pickup_partial",
             isFirstInSupplierGroup: false,
           }),
-          row.waitingLevel === "expired" && "ring-1 ring-inset ring-purple-200/80",
-          row.waitingLevel === "critical" && "ring-1 ring-inset ring-rose-200/80",
-          row.waitingLevel === "warn" && "ring-1 ring-inset ring-amber-100"
+          (row.waitingLevel === "expired" || row.waitingLevel === "critical") && "bg-red-50/60",
+          row.waitingLevel === "warn" && "bg-amber-50/60"
         )}
       >
-        <td
-          className={cn(
-            "align-top",
-            queueSupplierLeadingCellClass(groupIndex, { variant: "informacja" })
-          )}
-        >
+        <td className="align-top">
           <ShelfEditor
             key={`${o.id}:${row.shelfLabel}`}
             initial={row.shelfLabel}
@@ -382,10 +382,10 @@ export function WarehouseInventorySection({
             {o.products}
           </p>
           {o.symbol && o.symbol !== "-" ? (
-            <p className="truncate text-[11px] text-slate-500">{o.symbol}</p>
+            <p className="truncate text-[0.6875rem] text-slate-500">{o.symbol}</p>
           ) : null}
           {crossLabel ? (
-            <p className="mt-0.5 line-clamp-1 text-[10px] font-medium text-amber-800">{crossLabel}</p>
+            <p className="mt-0.5 line-clamp-1 text-[0.625rem] font-medium text-amber-800">{crossLabel}</p>
           ) : null}
         </td>
         <td className="align-top min-w-[6rem] max-w-[10rem]">
@@ -394,7 +394,7 @@ export function WarehouseInventorySection({
           </p>
           {o.sales_client_name?.trim() ? (
             <p
-              className="truncate text-[11px] text-slate-600"
+              className="truncate text-[0.6875rem] text-slate-600"
               title={o.sales_client_name.trim()}
             >
               {o.sales_client_name.trim()}
@@ -407,7 +407,7 @@ export function WarehouseInventorySection({
             <WaitingBadge row={row} />
             <span
               className={cn(
-                "inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold",
+                "inline-block rounded px-1.5 py-0.5 text-[0.625rem] font-semibold",
                 row.kind === "pickup_full"
                   ? "bg-emerald-100 text-emerald-900"
                   : row.kind === "pickup_partial"
@@ -426,7 +426,7 @@ export function WarehouseInventorySection({
                 type="button"
                 disabled={pending || clearPending || revertPending}
                 onClick={() => setRevertConfirmId(o.id)}
-                className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-40"
+                className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[0.6875rem] font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-40"
                 title="Cofnij przyjęcie - wróci do kolejki oczekujących"
               >
                 <IconUndoLeft size={13} />
@@ -436,7 +436,7 @@ export function WarehouseInventorySection({
                 type="button"
                 disabled={pending || clearPending || revertPending}
                 onClick={() => setClearConfirmId(o.id)}
-                className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-40"
+                className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[0.6875rem] font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-40"
                 title="Zdejmij z regału"
               >
                 <IconX size={13} />
@@ -450,89 +450,37 @@ export function WarehouseInventorySection({
   };
 
   return (
-    <section id="inwentaryzacja" className="scroll-mt-20 border-t border-slate-100">
+    <Card padding={false} className="overflow-hidden">
+    <section id="inwentaryzacja" className="scroll-mt-20">
       {toast ? <NoticeToast notice={toast} onDismiss={() => setToast(null)} /> : null}
 
-      <SectionListLabel
-        domain="panel"
+      <CardHeader
+        inset
+        density="compact"
         title="Inwentaryzacja regału"
-        hint="Co czeka na odbiór - grupy po dostawcy, regale lub handlowcu"
-        hintMode="tooltip"
-        count={rows.length}
-        accent="emerald"
-        icon={<IconClipboardList size={17} />}
-        tileClassName="bg-emerald-100 text-emerald-800"
+        description="Co czeka na odbiór, w grupach po dostawcy, regale lub handlowcu."
       />
 
-      <div className={cn("space-y-2.5 border-b border-slate-100", panelSectionInsetClass)}>
-        <div
-          role="tablist"
-          aria-label="Filtr inwentaryzacji"
-          className="grid grid-cols-2 gap-1.5 sm:grid-cols-5 sm:gap-2"
-        >
-          <QueueMetricTab
-            active={filter === "all"}
-            count={summary.total}
-            label="Wszystkie"
-            hint={
-              supplierChips.length > 0
-                ? `${supplierChips.length} ${supplierChips.length === 1 ? "dostawca" : "dostawców"}`
-                : "pełna lista"
-            }
-            icon={<IconPackageCheck size={14} />}
-            tileClassName="bg-emerald-100 text-emerald-800"
-            title="Wszystkie pozycje na regale"
-            onClick={() => setInventoryFilter("all")}
-          />
-          <QueueMetricTab
-            active={filter === "stale"}
-            count={summary.staleWarn + summary.staleCritical + summary.staleExpired}
-            label="≥ 3 dni"
-            hint="czeka na odbiór"
-            icon={<IconClock size={14} />}
-            tileClassName="bg-amber-100 text-amber-800"
-            title="Pozycje czekające co najmniej 3 dni robocze"
-            onClick={() => setInventoryFilter("stale")}
-            disabled={summary.staleWarn + summary.staleCritical + summary.staleExpired === 0}
-          />
-          <QueueMetricTab
-            active={filter === "critical"}
-            count={summary.staleCritical}
-            label="≥ 7 dni"
-            hint="pilne do odbioru"
-            icon={<IconAlertCircle size={14} />}
-            tileClassName="bg-rose-100 text-rose-800"
-            title="Pozycje czekające co najmniej 7 dni roboczych"
-            onClick={() => setInventoryFilter("critical")}
-            disabled={summary.staleCritical === 0}
-          />
-          <QueueMetricTab
-            active={filter === "expired"}
-            count={summary.staleExpired}
-            label="≥ 21 dni"
-            hint="zaraz auto-ack"
-            icon={<IconAlertCircle size={14} />}
-            tileClassName="bg-purple-100 text-purple-800"
-            title="Pozycje czekające co najmniej 21 dni roboczych - zaraz automatycznie potwierdzone"
-            onClick={() => setInventoryFilter("expired")}
-            disabled={summary.staleExpired === 0}
-          />
-          <QueueMetricTab
-            active={filter === "unassigned"}
-            count={summary.unassignedShelf}
-            label="Bez regału"
-            hint="brak lokalizacji"
-            icon={<IconWarehouse size={14} />}
-            tileClassName="bg-sky-100 text-sky-800"
-            title="Pozycje bez przypisanego regału"
-            onClick={() => setInventoryFilter("unassigned")}
-            disabled={summary.unassignedShelf === 0}
-          />
-        </div>
+      <div className={cn("space-y-3 border-b border-slate-100", panelSectionInsetClass)}>
+        <SegmentedControl<InventoryFilter>
+          ariaLabel="Filtr inwentaryzacji"
+          value={filter}
+          onChange={setFilter}
+          options={INVENTORY_FILTERS.map((f) => ({
+            value: f.value,
+            title: f.title,
+            label: (
+              <>
+                {f.label}{" "}
+                <span className="tabular-nums text-slate-500">{filterCounts[f.value]}</span>
+              </>
+            ),
+          }))}
+        />
 
         <div className={queueToolbarShellClass}>
-          <label className="min-w-0 flex-1">
-            <span className={queueToolbarFieldLabelClass}>Szukaj</span>
+          <label className="min-w-0 flex-1 sm:max-w-xs">
+            <span className="sr-only">Szukaj na regale</span>
             <input
               type="search"
               value={search}
@@ -541,35 +489,32 @@ export function WarehouseInventorySection({
               className={cn(queueToolbarInputClass, controlFocusClass)}
             />
           </label>
-          <label className="w-full sm:w-36">
-            <span className={queueToolbarFieldLabelClass}>Regał</span>
-            <select
-              value={shelfFilter}
-              onChange={(e) => setShelfFilter(e.target.value)}
-              className={cn(queueToolbarInputClass, controlFocusClass)}
-            >
-              <option value="">Wszystkie</option>
-              {shelfOptions.map((s) => (
-                <option key={s} value={s}>
-                  {s} ({summary.byShelf.find((x) => x.shelf === s)?.count ?? 0})
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="w-full sm:w-auto sm:shrink-0">
-            <span className={queueToolbarFieldLabelClass}>Grupuj</span>
-            <SegmentedControl<WarehouseInventorySortMode>
-              ariaLabel="Grupowanie inwentaryzacji"
-              value={sortMode}
-              onChange={setSortMode}
-              className="w-full sm:w-auto"
-              options={[
-                { value: "supplier", label: "Dostawca" },
-                { value: "shelf", label: "Regał" },
-                { value: "sales", label: "Handlowiec" },
-              ]}
-            />
-          </div>
+          <select
+            aria-label="Regał"
+            value={shelfFilter}
+            onChange={(e) => setShelfFilter(e.target.value)}
+            className={cn(queueToolbarInputClass, controlFocusClass, "sm:w-40")}
+          >
+            <option value="">Wszystkie regały</option>
+            {shelfOptions.map((s) => (
+              <option key={s} value={s}>
+                {s} ({summary.byShelf.find((x) => x.shelf === s)?.count ?? 0})
+              </option>
+            ))}
+          </select>
+          <SegmentedControl<WarehouseInventorySortMode>
+            ariaLabel="Grupuj według"
+            value={sortMode}
+            onChange={setSortMode}
+            options={[
+              { value: "supplier", label: "Dostawca" },
+              { value: "shelf", label: "Regał" },
+              { value: "sales", label: "Handlowiec" },
+            ]}
+          />
+          <p className="text-[0.6875rem] tabular-nums text-slate-500 sm:ml-auto" aria-live="polite">
+            {filtered.length} {polishPluralWord(filtered.length, "pozycja", "pozycje", "pozycji")}
+          </p>
         </div>
 
         <SupplierFilterChips
@@ -679,5 +624,6 @@ export function WarehouseInventorySection({
         }}
       />
     </section>
+    </Card>
   );
 }

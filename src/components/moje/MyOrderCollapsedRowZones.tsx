@@ -60,7 +60,7 @@ export function MyOrderCollapsedRowZones({
         />
         {showInlineLineCountBadge && row.lineCount > 1 ? (
           <span
-            className="shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-indigo-700"
+            className="shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-[0.6875rem] font-semibold tabular-nums text-indigo-700"
             title={`${myOrderCollapsedProductSummary(row, listKind)} w prośbie - rozwiń, aby zobaczyć`}
           >
             +{row.lineCount - 1}

@@ -134,7 +134,7 @@ export function TeethSpecFields({
   };
 
   const tight = builderMode || compact;
-  const chipPad = tight ? "px-1.5 py-0.5 text-[11px]" : "px-2 py-0.5 text-xs";
+  const chipPad = tight ? "px-1.5 py-0.5 text-[0.6875rem]" : "px-2 py-0.5 text-xs";
   const sectionGap = tight ? "space-y-1.5" : "space-y-3";
   const choicePad = tight ? "px-3 py-1 text-xs" : "px-4 py-1.5 text-sm";
 
@@ -356,7 +356,7 @@ export function TeethSpecPreview({
 
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
   return (
-    <p className="mb-1 text-[10px] font-semibold text-slate-500">
+    <p className="mb-1 text-[0.625rem] font-semibold text-slate-500">
       {children}
       {required ? <span className="ml-1 text-rose-500">*</span> : null}
     </p>

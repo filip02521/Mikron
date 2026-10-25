@@ -24,7 +24,7 @@ import { SupplierFilterChips } from "@/components/queue/SupplierFilterChips";
 import { ReceiveQueueSearchField } from "@/components/queue/ReceiveQueueSearchField";
 import { ReceiveQueueActiveFilters } from "@/components/queue/ReceiveQueueActiveFilters";
 import { ZdReceiveFilterModal } from "@/components/queue/ZdReceiveFilterModal";
-import { IconClipboardList, IconChevronDown, IconSearch } from "@/components/icons/StrokeIcons";
+import { IconCircleCheck, IconClipboardList } from "@/components/icons/StrokeIcons";
 import { SupplierGroupHeaderRow } from "@/components/queue/SupplierGroupHeaderRow";
 import { ReceiveQueueGroupMenu } from "@/components/queue/receive-queue/ReceiveQueueGroupMenu";
 import { ReceiveQueueRow } from "@/components/queue/receive-queue/ReceiveQueueRow";
@@ -46,12 +46,10 @@ import {
   receiveQueueTargetQuantity,
 } from "@/lib/orders/sales-cancel";
 import { warehouseCancelFulfillToast } from "@/lib/orders/warehouse-cancel-fulfillment";
-import { checkboxBrandClass } from "@/lib/ui/ontime-theme";
+import { brandLinkClass, checkboxBrandClass, controlFocusClass } from "@/lib/ui/ontime-theme";
 import { MICROCOPY } from "@/lib/ui/microcopy";
 import {
   QUEUE_LIST_BODY_CLASS,
-  receiveQueueToolbarSectionClass,
-  queueToolbarFieldLabelClass,
   queueToolbarControlClass,
 } from "@/lib/ui/queue-panel-styles";
 import { InlineCheck } from "@/components/ui/UiGlyphs";
@@ -71,8 +69,11 @@ import {
 import { cn } from "@/lib/cn";
 import {
   panelChoiceChipClass,
-  panelChoiceChipSuccessSelectedClass,
+  panelChoiceChipIdleClass,
+  panelChoiceChipSelectedClass,
 } from "@/lib/ui/ontime-theme";
+import { Alert } from "@/components/ui/Alert";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 import {
   informacjaProductKey,
   orderIdsInProductGroup,
@@ -139,7 +140,6 @@ export function ReceiveQueueTable({
   const [productSearchResetToken, setProductSearchResetToken] = useState(0);
   const [zdFilter, setZdFilter] = useState<ZdReceiveFilterState | null>(null);
   const [zdModalOpen, setZdModalOpen] = useState(false);
-  const [searchCollapsed, setSearchCollapsed] = useState(true);
   const supplierBeforeZdRef = useRef<string | undefined>(undefined);
   const [batchSaveConfirm, setBatchSaveConfirm] = useState<{
     orderIds: string[];
@@ -304,18 +304,6 @@ export function ReceiveQueueTable({
   }, [productSearchActive, supplierGroupsSignature]);
 
   useEffect(() => {
-    if (!hasActiveFilters) return;
-    let cancelled = false;
-    queueMicrotask(() => {
-      if (cancelled) return;
-      setSearchCollapsed(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [hasActiveFilters]);
-
-  useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const supplierParam = params.get("supplier")?.trim();
@@ -324,7 +312,6 @@ export function ReceiveQueueTable({
     queueMicrotask(() => {
       if (cancelled) return;
       setSupplierFilter(supplierParam);
-      setSearchCollapsed(false);
       // Zdejmij tylko ?supplier= — zostaw #kolejka-przyjecie (router.replace("/kolejka") kasował hash).
       const url = new URL(window.location.href);
       url.searchParams.delete("supplier");
@@ -344,12 +331,10 @@ export function ReceiveQueueTable({
       const name = receiveFocus.supplierName?.trim();
       if (name && name !== "-") {
         setSupplierFilter(name);
-        setSearchCollapsed(false);
-        setZdFilter(null);
+          setZdFilter(null);
       } else {
         setSupplierFilter("");
-        setSearchCollapsed(false);
-      }
+        }
     });
     return () => {
       cancelled = true;
@@ -716,190 +701,127 @@ export function ReceiveQueueTable({
   );
 
   const toolbar = (
-    <div className="border-b border-slate-100 px-3 py-3 sm:px-4 lg:px-6">
-      <div className="space-y-3">
-        {showInformacjaAutoHint ? (
-          <p className="rounded-lg border border-sky-100 bg-sky-50/80 px-3 py-2 text-xs leading-relaxed text-sky-900">
-            {INFORMACJA_AUTO_STOCK_QUEUE_HINT}
-          </p>
-        ) : null}
-        <div className={receiveQueueToolbarSectionClass}>
-          <div className="flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => setSearchCollapsed((v) => !v)}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 transition hover:text-slate-900"
-              aria-expanded={!searchCollapsed}
-              aria-controls="receive-search-panel"
-            >
-              <IconSearch size={15} className="shrink-0 text-slate-400" />
-              <span>Wyszukiwanie</span>
-              {hasActiveFilters ? (
-                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-md bg-indigo-100 px-1 text-[10px] font-bold text-indigo-700">
-                  {productSearchActive ? 1 : 0}
-                  {zdFilter ? (productSearchActive ? 1 : 1) : 0}
-                </span>
-              ) : null}
-              <IconChevronDown
-                open={!searchCollapsed}
-                size={16}
-                className="shrink-0 text-slate-400 transition-transform"
-              />
-            </button>
-            {searchCollapsed && hasActiveFilters ? (
-              <div className="flex flex-wrap items-center gap-1.5">
-                {productSearchActive ? (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-700">
-                    Szukaj: {productSearch.trim()}
-                  </span>
-                ) : null}
-                {zdFilter ? (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2 py-1 text-[11px] font-medium text-emerald-800">
-                    ZD: {zdFilter.docNumber}
-                  </span>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
+    <div className="space-y-3 border-b border-slate-100 px-3 py-3 sm:px-4 lg:px-6">
+      {showInformacjaAutoHint ? (
+        <Alert tone="info">{INFORMACJA_AUTO_STOCK_QUEUE_HINT}</Alert>
+      ) : null}
 
-          {!searchCollapsed ? (
-            <div id="receive-search-panel" className="mt-3 space-y-3">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_12rem] sm:items-end">
-                <ReceiveQueueSearchField
-                  key={`receive-product-search-${productSearchResetToken}`}
-                  onDebouncedChange={setProductSearch}
-                />
-                <div className="flex min-w-0 flex-col">
-                  <span className={queueToolbarFieldLabelClass}>Dokument ZD</span>
-                  <button
-                    type="button"
-                    onClick={() => setZdModalOpen(true)}
-                    className={cn(
-                      panelChoiceChipClass,
-                      queueToolbarControlClass,
-                      zdFilter
-                        ? panelChoiceChipSuccessSelectedClass
-                        : "border-emerald-200/90 bg-emerald-50/60 text-emerald-900 hover:bg-emerald-50",
-                      "inline-flex w-full items-center justify-center gap-2 px-3 font-semibold",
-                    )}
-                  >
-                    <IconClipboardList size={16} className="shrink-0" aria-hidden />
-                    <span className="truncate">Szukaj ZD</span>
-                  </button>
-                </div>
-              </div>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <ReceiveQueueSearchField
+          key={`receive-product-search-${productSearchResetToken}`}
+          onDebouncedChange={setProductSearch}
+        />
+        <button
+          type="button"
+          onClick={() => setZdModalOpen(true)}
+          aria-pressed={Boolean(zdFilter)}
+          className={cn(
+            panelChoiceChipClass,
+            queueToolbarControlClass,
+            zdFilter ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass,
+            "inline-flex shrink-0 items-center justify-center gap-2 px-3 text-sm",
+          )}
+        >
+          <IconClipboardList size={16} className="shrink-0" aria-hidden />
+          {zdFilter ? `ZD ${zdFilter.docNumber}` : "Szukaj ZD"}
+        </button>
+        <p className="text-[0.6875rem] tabular-nums text-slate-500 sm:ml-auto" aria-live="polite">
+          {filtered.length} {polishPluralWord(filtered.length, "pozycja", "pozycje", "pozycji")}
+        </p>
+      </div>
 
-              {hasActiveFilters ? (
-                <div className="space-y-2 border-t border-slate-100 pt-3">
-                  <ReceiveQueueActiveFilters
-                    productSearch={productSearch}
-                    onClearProductSearch={clearProductSearch}
-                    zdFilter={zdFilter}
-                    onClearZdFilter={clearZdFilter}
-                  />
-                  <div className="space-y-0.5">
-                    {productSearchActive ? (
-                      <p className="text-[11px] font-medium text-slate-700">
-                        {receiveQueueSearchToolbarLabel(
-                          filtered.length,
-                          zdScoped.length,
-                          productSearch
-                        )}
-                      </p>
-                    ) : null}
-                    {zdFilter ? (
-                      <>
-                        <p className="text-[11px] font-medium text-emerald-800">
-                          {zdFilterToolbarLabel(filtered.length, supplierFiltered.length)}
-                        </p>
-                        {zdFilterUnmatchedLinesLabel(zdUnmatchedLineCount) ? (
-                          <p className="text-[10px] text-amber-800">
-                            {zdFilterUnmatchedLinesLabel(zdUnmatchedLineCount)}
-                          </p>
-                        ) : null}
-                      </>
-                    ) : null}
-                  </div>
-                </div>
+      {hasActiveFilters ? (
+        <div className="space-y-1">
+          <ReceiveQueueActiveFilters
+            productSearch={productSearch}
+            onClearProductSearch={clearProductSearch}
+            zdFilter={zdFilter}
+            onClearZdFilter={clearZdFilter}
+          />
+          {productSearchActive ? (
+            <p className="text-[0.6875rem] font-medium text-slate-700">
+              {receiveQueueSearchToolbarLabel(filtered.length, zdScoped.length, productSearch)}
+            </p>
+          ) : null}
+          {zdFilter ? (
+            <>
+              <p className="text-[0.6875rem] font-medium text-slate-700">
+                {zdFilterToolbarLabel(filtered.length, supplierFiltered.length)}
+              </p>
+              {zdFilterUnmatchedLinesLabel(zdUnmatchedLineCount) ? (
+                <p className="text-[0.6875rem] text-amber-800">
+                  {zdFilterUnmatchedLinesLabel(zdUnmatchedLineCount)}
+                </p>
               ) : null}
-            </div>
+            </>
           ) : null}
         </div>
+      ) : null}
 
-        <div className={receiveQueueToolbarSectionClass}>
-          <SupplierFilterChips
-            chips={supplierChips}
-            value={supplierFilter}
-            onChange={(next) => {
-              setSupplierFilter(next);
-              if (zdFilter && next !== zdFilter.supplierName) {
-                setZdFilter(null);
-              }
-            }}
-            totalLabel="Wszyscy"
-          />
-        </div>
+      <SupplierFilterChips
+        chips={supplierChips}
+        value={supplierFilter}
+        onChange={(next) => {
+          setSupplierFilter(next);
+          if (zdFilter && next !== zdFilter.supplierName) {
+            setZdFilter(null);
+          }
+        }}
+        totalLabel="Wszyscy"
+      />
 
-        {availableCount > 0 && !stockAlertLoading ? (
-          <div className="flex items-center gap-2 rounded-lg bg-emerald-50/70 px-3 py-2 text-[11px] font-medium text-emerald-900 ring-1 ring-inset ring-emerald-200/50">
-            <svg aria-hidden viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" className="size-4 shrink-0 text-emerald-700">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 8.5l3 3 7-7" />
-            </svg>
-            <span>
-              {availableCount} {availableCount === 1 ? "pozycja jest na stanie" : availableCount <= 4 ? "pozycje są na stanie" : "pozycji jest na stanie"} Subiekta - oznacz przyjęcie i przygotuj na regale.
-            </span>
-            {!stockAvailableOnly ? (
-              <button
-                type="button"
-                onClick={() => setStockAvailableOnly(true)}
-                className="ml-auto shrink-0 rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-900 transition hover:bg-emerald-200"
-              >
-                Pokaż tylko na stanie
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setStockAvailableOnly(false)}
-                className="ml-auto shrink-0 rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-900 transition hover:bg-emerald-200"
-              >
-                Pokaż wszystkie
-              </button>
+      {availableCount > 0 && !stockAlertLoading ? (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md bg-emerald-50 px-3 py-2 text-[0.8125rem] text-emerald-800">
+          <IconCircleCheck size={16} className="shrink-0 text-emerald-600" aria-hidden />
+          <span className="min-w-0 flex-1">
+            {availableCount} {polishPluralWord(availableCount, "pozycja jest", "pozycje są", "pozycji jest")} na stanie
+            Subiekta. Oznacz przyjęcie i przygotuj na regale.
+          </span>
+          <button
+            type="button"
+            aria-pressed={stockAvailableOnly}
+            onClick={() => setStockAvailableOnly((v) => !v)}
+            className={cn(
+              controlFocusClass,
+              "inline-flex min-h-11 shrink-0 items-center rounded-md px-2.5 text-xs font-medium text-emerald-800 underline-offset-2 transition hover:bg-emerald-100 hover:underline sm:min-h-8",
             )}
-          </div>
-        ) : null}
+          >
+            {stockAvailableOnly ? "Pokaż wszystkie" : "Pokaż tylko na stanie"}
+          </button>
+        </div>
+      ) : null}
 
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-md border border-slate-100 bg-slate-50/60 px-3 py-2">
-          <p className="min-w-0 text-[10px] leading-relaxed text-slate-500">
-            <span className="inline-flex items-center gap-1">
-              <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
-              zamówienie: wpisz ilość, Enter lub{" "}
-              <InlineCheck size={10} className="inline align-[-2px]" />
-            </span>
-            <span className="mx-1.5 text-slate-300" aria-hidden>
-              ·
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <span className="size-1.5 shrink-0 rounded-full bg-sky-500" aria-hidden />
-              informacja: przycisk powiadomienia lub zaznaczenie wielu
-            </span>
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            {zdFilter && filtered.length > 0 ? (
-              <button
-                type="button"
-                onClick={selectAllZdMatches}
-                className="text-[10px] font-medium text-emerald-700 transition hover:text-emerald-900"
-              >
-                Zaznacz wszystkie pasujące
-              </button>
-            ) : null}
-            <QueueGroupExpandControl
-              groupCount={supplierGroups.length}
-              allExpanded={collapse.allExpanded}
-              onExpandAll={collapse.expandAll}
-              onCollapseAll={collapse.collapseAll}
-            />
-          </div>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <p className="min-w-0 text-[0.6875rem] leading-relaxed text-slate-500">
+          <span className="inline-flex items-center gap-1">
+            <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+            zamówienie: wpisz ilość, Enter lub{" "}
+            <InlineCheck size={10} className="inline align-[-2px]" />
+          </span>
+          <span className="mx-1.5 text-slate-300" aria-hidden>
+            ·
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="size-1.5 shrink-0 rounded-full bg-sky-500" aria-hidden />
+            informacja: przycisk powiadomienia lub zaznaczenie wielu
+          </span>
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          {zdFilter && filtered.length > 0 ? (
+            <button
+              type="button"
+              onClick={selectAllZdMatches}
+              className={cn(brandLinkClass, "inline-flex min-h-11 items-center text-xs sm:min-h-8")}
+            >
+              Zaznacz wszystkie pasujące
+            </button>
+          ) : null}
+          <QueueGroupExpandControl
+            groupCount={supplierGroups.length}
+            allExpanded={collapse.allExpanded}
+            onExpandAll={collapse.expandAll}
+            onCollapseAll={collapse.collapseAll}
+          />
         </div>
       </div>
     </div>
@@ -1052,9 +974,9 @@ export function ReceiveQueueTable({
                   onChange={(e) => toggleAll(e.target.checked)}
                 />
               </th>
-              <th className="bg-slate-50/95 px-2 py-2.5 text-left text-[11px] font-semibold text-slate-500">Handlowiec</th>
-              <th className="bg-slate-50/95 px-2 py-2.5 text-left text-[11px] font-semibold text-slate-500">Produkt</th>
-              <th className="w-[9.5rem] bg-slate-50/95 px-2 py-2.5 text-right text-[11px] font-semibold text-slate-500">Realizacja</th>
+              <th className="bg-slate-50/95 px-2 py-2.5 text-left text-[0.6875rem] font-semibold text-slate-500">Handlowiec</th>
+              <th className="bg-slate-50/95 px-2 py-2.5 text-left text-[0.6875rem] font-semibold text-slate-500">Produkt</th>
+              <th className="w-[9.5rem] bg-slate-50/95 px-2 py-2.5 text-right text-[0.6875rem] font-semibold text-slate-500">Realizacja</th>
             </tr>
           </thead>
           <ReceiveQueueVirtualTbody

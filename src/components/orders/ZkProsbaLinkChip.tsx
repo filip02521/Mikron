@@ -23,8 +23,8 @@ const chipToneStyles = {
   },
   amber: {
     label:
-      "inline-flex items-center rounded-md bg-amber-100/90 px-1.5 py-0.5 text-[10px] font-medium leading-none text-amber-900 ring-1 ring-inset ring-amber-200/80",
-    number: "text-[11px] font-semibold leading-none text-amber-950",
+      "inline-flex items-center rounded-md bg-amber-100/90 px-1.5 py-0.5 text-[0.625rem] font-medium leading-none text-amber-900 ring-1 ring-inset ring-amber-200/80",
+    number: "text-[0.6875rem] font-semibold leading-none text-amber-950",
     pending: "text-amber-900",
     linkHover: "hover:text-amber-950",
   },
@@ -95,7 +95,7 @@ function ZkNumberCopyButton({ nr }: { nr: string }) {
         <span
           role="status"
           className={cn(
-            "pointer-events-none absolute bottom-full left-1/2 z-20 mb-1 -translate-x-1/2 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] font-medium text-white shadow-sm",
+            "pointer-events-none absolute bottom-full left-1/2 z-20 mb-1 -translate-x-1/2 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[0.6875rem] font-medium text-white shadow-sm",
             "transition-[opacity,translate] duration-150 ease-out starting:translate-y-0.5 starting:opacity-0",
             state === "copied" ? "bg-slate-900" : "bg-red-700"
           )}
@@ -206,7 +206,7 @@ export function ZkProsbaLinkChip({
   const content = pending ? (
     <span
       className={cn(
-        "inline-flex min-w-0 max-w-full items-center gap-1.5 text-[11px]",
+        "inline-flex min-w-0 max-w-full items-center gap-1.5 text-[0.6875rem]",
         styles.pending
       )}
       role="status"
@@ -215,7 +215,7 @@ export function ZkProsbaLinkChip({
       title={zkPendingMessage(nr)}
     >
       <BrandLoader size="sm" tile={false} />
-      <span className="shrink-0 text-[11px] font-medium leading-none">{ZK_NAV_PENDING_LABEL}</span>
+      <span className="shrink-0 text-[0.6875rem] font-medium leading-none">{ZK_NAV_PENDING_LABEL}</span>
       <span className={cn(styles.number, "min-w-0 truncate tabular-nums")}>{nr}</span>
     </span>
   ) : (

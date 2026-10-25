@@ -283,7 +283,7 @@ export function ZdEstimateProductCard({
         ref={(el) => {
           panelRef.current = el;
         }}
-        className="panel-slide-enter fixed inset-y-0 right-0 z-[49] flex w-full max-w-xl flex-col border-l border-slate-200/80 bg-white shadow-2xl"
+        className="panel-slide-enter fixed inset-y-0 right-0 z-[49] flex w-full max-w-xl flex-col border-l border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -397,7 +397,7 @@ export function ZdEstimateProductCard({
 
           {line.salesProfile && line.salesProfile.windows.length > 0 ? (
             <section aria-labelledby={`${titleId}-sales`}>
-              <h3 id={`${titleId}-sales`} className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <h3 id={`${titleId}-sales`} className="text-xs font-semibold text-slate-600">
                 Sprzedaż i nasze ZD
               </h3>
               <div className="mt-1.5 text-xs leading-relaxed text-slate-800">
@@ -410,7 +410,7 @@ export function ZdEstimateProductCard({
 
           {pairStockRows.length > 0 ? (
             <section aria-labelledby={`${titleId}-stock`}>
-              <h3 id={`${titleId}-stock`} className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <h3 id={`${titleId}-stock`} className="text-xs font-semibold text-slate-600">
                 Stan pary
               </h3>
               <dl className="mt-1.5 grid grid-cols-3 gap-px overflow-hidden rounded-md border border-slate-200 bg-slate-200 text-sm">
@@ -425,7 +425,7 @@ export function ZdEstimateProductCard({
           ) : null}
 
           <section aria-labelledby={`${titleId}-why`}>
-            <h3 id={`${titleId}-why`} className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+            <h3 id={`${titleId}-why`} className="text-xs font-semibold text-slate-600">
               Dlaczego tyle
             </h3>
             <ol className="mt-1.5 divide-y divide-slate-100 rounded-md border border-slate-200">

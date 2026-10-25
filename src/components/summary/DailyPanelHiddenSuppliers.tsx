@@ -46,7 +46,7 @@ export function DailyPanelHiddenSuppliers({
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-slate-900">
               Poza listą harmonogramu
-              <span className="ml-1.5 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-slate-600">
+              <span className="ml-1.5 rounded-md bg-slate-100 px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums text-slate-600">
                 {report.suppliers.length}
               </span>
             </p>
@@ -60,7 +60,7 @@ export function DailyPanelHiddenSuppliers({
           const meta = DAILY_PANEL_HIDDEN_REASON_META[reason];
           return (
             <div key={reason}>
-              <p className="text-[11px] font-semibold text-slate-500">
+              <p className="text-[0.6875rem] font-semibold text-slate-500">
                 {meta.sectionTitle}
                 <span className="ml-1.5 font-normal normal-case tracking-normal text-slate-400">
                   ({items.length})
@@ -83,7 +83,7 @@ export function DailyPanelHiddenSuppliers({
                       >
                         {row.supplierName}
                       </button>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-[0.6875rem] text-slate-500">
                         {row.locationLabel}
                         {row.nextDateLabel ? ` · termin ${row.nextDateLabel}` : ""}
                       </p>

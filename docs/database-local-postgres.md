@@ -1,6 +1,6 @@
 # Lokalny PostgreSQL (OnTime)
 
-Migracja z Supabase Cloud → PostgreSQL 16 na Windows Server (LAN).
+PostgreSQL 16 na Windows Server (LAN) — produkcja i dev. Supabase Cloud jest odłączony; opis cutoveru niżej zostaje jako historia.
 
 ## Architektura
 

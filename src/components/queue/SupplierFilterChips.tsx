@@ -5,9 +5,6 @@ import { cn } from "@/lib/cn";
 import type { SupplierCountChip } from "@/lib/orders/supplier-filter-summary";
 import { DeliveryJournalSearchField } from "@/components/queue/delivery-journal/DeliveryJournalSearchField";
 import {
-  queueToolbarFieldLabelClass,
-} from "@/lib/ui/queue-panel-styles";
-import {
   panelChoiceChipClass,
   panelChoiceChipIdleClass,
   panelChoiceChipSelectedClass,
@@ -24,8 +21,8 @@ function SupplierChip({
   active,
   onClick,
   title,
-  activeClass = panelChoiceChipSuccessSelectedClass,
-  activeCountClass = "bg-emerald-100/80 text-emerald-900",
+  activeClass = panelChoiceChipSelectedClass,
+  activeCountClass = "bg-white text-indigo-700",
 }: {
   label: string;
   count?: number;
@@ -43,7 +40,7 @@ function SupplierChip({
       onClick={onClick}
       className={cn(
         panelChoiceChipClass,
-        "inline-flex max-w-[14rem] shrink-0 items-center gap-1.5 px-2.5 py-1.5 transition",
+        "inline-flex min-h-11 max-w-[14rem] shrink-0 items-center gap-1.5 px-2.5 py-1.5 transition sm:min-h-8",
         active ? activeClass : panelChoiceChipIdleClass
       )}
     >
@@ -51,7 +48,7 @@ function SupplierChip({
       {count !== undefined ? (
         <span
           className={cn(
-            "shrink-0 rounded px-1 py-px text-[10px] font-semibold tabular-nums",
+            "shrink-0 rounded px-1 py-px text-[0.625rem] font-semibold tabular-nums",
             active ? activeCountClass : "bg-slate-100 text-slate-600"
           )}
         >
@@ -69,7 +66,7 @@ export function SupplierFilterChips({
   totalLabel = "Wszyscy",
   fieldLabel = "Dostawca",
   className,
-  accentVariant = "emerald",
+  accentVariant = "indigo",
 }: {
   chips: SupplierCountChip[];
   value: string;
@@ -125,26 +122,20 @@ export function SupplierFilterChips({
   const hiddenCount =
     canCollapse && !expanded ? Math.max(0, filteredChips.length - visibleChips.length) : 0;
 
+  // Wybrany chip filtra jest zawsze w Petrolu (DESIGN.md → „Jedno wybrane”); emerald zostaje dla zgodności wywołań.
   const activeClass =
-    accentVariant === "indigo"
-      ? panelChoiceChipSelectedClass
-      : panelChoiceChipSuccessSelectedClass;
+    accentVariant === "indigo" ? panelChoiceChipSelectedClass : panelChoiceChipSuccessSelectedClass;
   const activeCountClass =
-    accentVariant === "indigo"
-      ? "bg-indigo-100/80 text-indigo-900"
-      : "bg-emerald-100/80 text-emerald-900";
+    accentVariant === "indigo" ? "bg-white text-indigo-700" : "bg-emerald-100/80 text-emerald-900";
   const clearFilterClass =
-    accentVariant === "indigo"
-      ? "text-[10px] font-medium text-indigo-700 transition hover:text-indigo-900"
-      : "text-[10px] font-medium text-emerald-700 transition hover:text-emerald-900";
+    "inline-flex min-h-11 items-center text-xs font-medium text-indigo-700 underline-offset-2 transition hover:text-indigo-900 hover:underline sm:min-h-0";
 
   if (chips.length === 0) return null;
 
   return (
     <div className={cn("min-w-0 flex-1", className)}>
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className={queueToolbarFieldLabelClass}>{fieldLabel}</span>
-        {value ? (
+      {value ? (
+        <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
           <button
             type="button"
             onClick={clearFilter}
@@ -152,14 +143,14 @@ export function SupplierFilterChips({
           >
             Wyczyść filtr
           </button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       {showSearch ? (
-        <div className="mt-2">
+        <div className="sm:max-w-xs">
           <DeliveryJournalSearchField
             id="receive-supplier-chip-search"
-            label="Filtruj dostawców"
+            label={`Filtruj: ${fieldLabel.toLowerCase()}`}
             hideLabel
             value={query}
             onChange={setQuery}
@@ -171,12 +162,12 @@ export function SupplierFilterChips({
 
       <div
         className={cn(
-          showSearch ? "mt-2" : "mt-1.5",
+          showSearch ? "mt-2" : null,
           "flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
           "sm:flex-wrap sm:overflow-visible"
         )}
         role="group"
-        aria-label="Filtr dostawcy"
+        aria-label={`Filtr: ${fieldLabel.toLowerCase()}`}
       >
         <SupplierChip
           label={totalLabel}
@@ -204,7 +195,7 @@ export function SupplierFilterChips({
             className={cn(
               panelChoiceChipClass,
               panelChoiceChipIdleClass,
-              "shrink-0 px-2.5 py-1.5 text-xs"
+              "min-h-11 shrink-0 px-2.5 py-1.5 text-xs sm:min-h-8"
             )}
           >
             +{hiddenCount} więcej
@@ -217,7 +208,7 @@ export function SupplierFilterChips({
             className={cn(
               panelChoiceChipClass,
               panelChoiceChipIdleClass,
-              "shrink-0 px-2.5 py-1.5 text-xs"
+              "min-h-11 shrink-0 px-2.5 py-1.5 text-xs sm:min-h-8"
             )}
           >
             Zwiń listę
@@ -226,7 +217,7 @@ export function SupplierFilterChips({
       </div>
 
       {query && filteredChips.length === 0 ? (
-        <p className="mt-1.5 text-[11px] text-slate-500">Brak dostawcy pasującego do wyszukiwania.</p>
+        <p className="mt-1.5 text-[0.6875rem] text-slate-500">Brak dostawcy pasującego do wyszukiwania.</p>
       ) : null}
     </div>
   );

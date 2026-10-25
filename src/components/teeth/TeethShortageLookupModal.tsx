@@ -93,7 +93,7 @@ function VariantMeta({
       {parts.map((part) => (
         <span
           key={part}
-          className="rounded-md bg-white/90 px-1.5 py-0.5 text-[11px] font-medium text-slate-700 ring-1 ring-slate-200/80"
+          className="rounded-md bg-white/90 px-1.5 py-0.5 text-[0.6875rem] font-medium text-slate-700 ring-1 ring-slate-200/80"
         >
           {part}
         </span>
@@ -140,7 +140,7 @@ function ShortageLookupRow({
         </div>
         <span
           className={cn(
-            "shrink-0 rounded-md px-2 py-0.5 text-[11px] font-medium ring-1",
+            "shrink-0 rounded-md px-2 py-0.5 text-[0.6875rem] font-medium ring-1",
             teethShortageAvailabilityBadgeClass(shortage.availableFrom, todayKey),
           )}
         >
@@ -155,7 +155,7 @@ function ShortageLookupRow({
       />
 
       {note ? (
-        <p className="mt-2 rounded-md border border-amber-200/70 bg-amber-50/70 px-2.5 py-1.5 text-[11px] leading-snug text-amber-950">
+        <p className="mt-2 rounded-md border border-amber-200/70 bg-amber-50/70 px-2.5 py-1.5 text-[0.6875rem] leading-snug text-amber-950">
           <span className="font-semibold text-amber-900/80">Uwaga: </span>
           {note}
         </p>
@@ -192,7 +192,7 @@ export function TeethShortageLookupButton({
       >
         <IconAlertCircle size={14} strokeWidth={2.25} className="text-amber-700" />
         Braki zębowe
-        <span className="rounded-md bg-amber-100/90 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-amber-900">
+        <span className="rounded-md bg-amber-100/90 px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums text-amber-900">
           {shortages.length}
         </span>
       </Button>
@@ -303,7 +303,7 @@ export function TeethShortageLookupModal({
       bodyClassName="space-y-3 px-4 py-3 sm:px-5 sm:py-4"
       footer={
         <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[11px] leading-snug text-slate-500">
+          <p className="text-[0.6875rem] leading-snug text-slate-500">
             To tylko informacja - możesz wysłać prośbę mimo braku.
           </p>
           <Button variant="secondary" onClick={onClose} className="self-end sm:self-auto">
@@ -326,7 +326,7 @@ export function TeethShortageLookupModal({
                 ? "1 aktywny brak u dostawcy"
                 : `${filterCounts.all} aktywnych braków u dostawców`}
             </p>
-            <p className="mt-0.5 text-[11px] leading-snug text-amber-900/85">
+            <p className="mt-0.5 text-[0.6875rem] leading-snug text-amber-900/85">
               Sprawdź kolor i fason przed wysłaniem - albo użyj wyszukiwarki poniżej.
             </p>
           </div>
@@ -381,7 +381,7 @@ export function TeethShortageLookupModal({
           {hasActiveFilters ? (
             <button
               type="button"
-              className="ml-0.5 text-[11px] font-medium text-slate-500 underline-offset-2 hover:text-slate-800 hover:underline"
+              className="ml-0.5 text-[0.6875rem] font-medium text-slate-500 underline-offset-2 hover:text-slate-800 hover:underline"
               onClick={() => {
                 setQuery("");
                 setAvailabilityFilter("all");
@@ -395,13 +395,13 @@ export function TeethShortageLookupModal({
       </div>
 
       <div className="flex items-baseline justify-between gap-2">
-        <p className="text-[11px] font-medium text-slate-500">
+        <p className="text-[0.6875rem] font-medium text-slate-500">
           {filtered.length === shortages.length
             ? "Lista braków"
             : `Wyniki: ${filtered.length} z ${shortages.length}`}
         </p>
         {filtered.length > 0 ? (
-          <p className="text-[10px] text-slate-400">Najpierw bez daty, potem minione terminy</p>
+          <p className="text-[0.625rem] text-slate-500">Najpierw bez daty, potem minione terminy</p>
         ) : null}
       </div>
 

@@ -10,7 +10,9 @@ import type {
   TeethSupplierSchedule,
 } from "@/types/database";
 import { SalesPlanWeekStrip } from "@/components/plan/SalesPlanWeekStrip";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BackChevron } from "@/components/ui/UiGlyphs";
 import { Badge } from "@/components/ui/Badge";
@@ -34,14 +36,12 @@ import { leadTimeDisplayFromQuantiles } from "@/lib/orders/delivery-eta-quantile
 import { prosbaHref } from "@/lib/orders/prosba-url";
 import { useSalesPreviewHref } from "@/lib/nav/use-sales-preview-href";
 import {
-  IconCalendar,
   IconChevronDown,
   IconClipboardList,
   IconPlusCircle,
   PlanSectionIcon,
   planSectionIconTileClass,
 } from "@/components/icons/StrokeIcons";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { cn } from "@/lib/cn";
 import {
   buttonPrimaryClass,
@@ -223,7 +223,7 @@ function SalesSupplierRow({
             >
               {insight.name}
             </span>
-            <span className="shrink-0 rounded bg-slate-100/90 px-1 py-px text-[10px] font-medium text-slate-500">
+            <span className="shrink-0 rounded bg-slate-100/90 px-1 py-px text-[0.625rem] font-medium text-slate-500">
               {locationLabel(insight.location)}
             </span>
           </div>
@@ -290,18 +290,18 @@ function SalesSupplierRow({
             <SupplierVacationNowChip window={insight.vacationWindow} compact />
           ) : null}
           {insight.orderOnDemand ? (
-            <Badge variant="default" className="px-1.5 py-0 text-[10px]">
+            <Badge variant="default" className="px-1.5 py-0 text-[0.625rem]">
               {C.labelOnDemand}
             </Badge>
           ) : null}
           {insight.activeShift && !insight.isOverdue ? (
-            <Badge variant="info" className="px-1.5 py-0 text-[10px]">
+            <Badge variant="info" className="px-1.5 py-0 text-[0.625rem]">
               {C.labelShifted}
             </Badge>
           ) : null}
           {hasOpenRequests ? (
             <span title={salesPlanOpenRequestsLabel(openOrderCount!)}>
-              <Badge variant="info" className="px-1.5 py-0 text-[10px] tabular-nums">
+              <Badge variant="info" className="px-1.5 py-0 text-[0.625rem] tabular-nums">
                 {openOrderCount}
               </Badge>
             </span>
@@ -519,16 +519,13 @@ function SalesPlanViewFallback({
 }: Pick<ComponentProps<typeof SalesPlanViewContent>, "error" | "pageTitle">) {
   return (
     <div className={salesPageShellClass}>
+      <PageHeader title={pageTitle} hint={C.headerHint} hintAriaLabel={C.headerHintAria} className="mb-0" />
       {error ? <Alert tone="warning">{error}</Alert> : null}
       <Card padding={false} className="overflow-hidden">
-        <CardHeader
-          inset
-          density="compact"
-          title={pageTitle}
-          hint={C.headerHint}
-          hintAriaLabel={C.headerHintAria}
-        />
-        <div className="px-4 py-12 text-center text-sm text-slate-500">{C.loading}</div>
+        <div role="status" className="flex flex-col items-center gap-3 px-4 py-12 text-center text-sm text-slate-500">
+          <BrandLoader size="md" />
+          {C.loading}
+        </div>
       </Card>
     </div>
   );
@@ -669,26 +666,37 @@ function SalesPlanViewContent({
 
   return (
     <div className={salesPageShellClass}>
-      <Card padding={false} className="overflow-hidden">
-        <CardHeader
-          inset
-          density="compact"
-          leading={
-            <SectionHeadingIcon tileClassName="bg-indigo-100 text-indigo-800">
-              <IconCalendar size={20} />
-            </SectionHeadingIcon>
-          }
-          title={pageTitle}
-          hint={C.headerHint}
-          hintAriaLabel={C.headerHintAria}
-          action={<PlanGuide />}
-        />
+      <PageHeader
+        title={pageTitle}
+        hint={C.headerHint}
+        hintAriaLabel={C.headerHintAria}
+        className="mb-0"
+        actions={
+          <>
+            <PlanGuide />
+            <Link
+              href={previewHref("/moje")}
+              className={cn(planLinkButtonClass("secondary"), "gap-1.5")}
+            >
+              <IconClipboardList size={16} />
+              {C.ctaMyOrders}
+            </Link>
+            {!adminReadOnlyPreview ? (
+              <Link
+                href={previewHref("/prosba")}
+                className={cn(planLinkButtonClass("primary"), "gap-1.5")}
+              >
+                <IconPlusCircle size={16} />
+                {C.ctaNewRequest}
+              </Link>
+            ) : null}
+          </>
+        }
+      />
 
-        {error ? (
-          <Alert tone="warning" className={cn(salesChromeInsetClass, "mt-0")}>
-            {error}
-          </Alert>
-        ) : null}
+      {error ? <Alert tone="warning">{error}</Alert> : null}
+
+      <Card padding={false} className="overflow-hidden">
 
         <NotatnikListFilterBar
           visibleLabel={C.searchVisibleLabel}
@@ -803,56 +811,21 @@ function SalesPlanViewContent({
           </section>
         )}
 
-        {!tourPreview ? (
+      </Card>
+
+      {!tourPreview ? (
+        <Card padding={false} className="overflow-hidden">
           <SalesPlanWeekStrip
             thisWeekDays={workspace.thisWeekDays}
             nextWeekDays={workspace.nextWeekDays}
             prioritySupplierIds={prioritySupplierIds}
           />
-        ) : null}
+        </Card>
+      ) : null}
 
-        <div
-          className={cn(
-            "flex flex-col gap-2.5 border-t border-slate-100 bg-slate-50/90 py-3 sm:flex-row sm:items-center sm:justify-between",
-            salesChromeInsetClass
-          )}
-        >
-          <p className="text-xs leading-relaxed text-slate-500">
-            {adminReadOnlyPreview ? (
-              C.footerAdmin
-            ) : (
-              <>
-                {C.footerDefaultPrefix}
-                <Link
-                  href={previewHref("/moje")}
-                  className="font-medium text-indigo-700 hover:underline"
-                >
-                  {C.ctaMyOrders}
-                </Link>
-                {C.footerDefaultSuffix}
-              </>
-            )}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {!adminReadOnlyPreview ? (
-              <Link
-                href={previewHref("/prosba")}
-                className={cn(planLinkButtonClass("primary"), "gap-1.5")}
-              >
-                <IconPlusCircle size={16} />
-                {C.ctaNewRequest}
-              </Link>
-            ) : null}
-            <Link
-              href={previewHref("/moje")}
-              className={cn(planLinkButtonClass("secondary"), "gap-1.5")}
-            >
-              <IconClipboardList size={16} />
-              {C.ctaMyOrders}
-            </Link>
-          </div>
-        </div>
-      </Card>
+      {adminReadOnlyPreview ? (
+        <p className="text-xs leading-relaxed text-slate-500">{C.footerAdmin}</p>
+      ) : null}
       <AppBrandContentFooter mobileOnly variant="page" />
     </div>
   );

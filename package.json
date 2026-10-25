@@ -23,6 +23,7 @@
     "audit:service-role": "tsx scripts/audit-service-role.ts",
     "audit:db-access": "tsx scripts/audit-db-access.ts",
     "audit:server-action-redirect": "tsx scripts/audit-server-action-redirect.ts",
+    "audit:design": "tsx scripts/audit-design-tokens.ts",
     "verify:deploy": "npm run verify:auth-env && npm run verify:db-env && npm run audit:admin-mutations && npm run audit:db-access && npm run audit:server-action-redirect",
     "verify:deploy:postgres": "npm run db:migrate && npm run verify:deploy",
     "cutover:export": "tsx scripts/cutover/run-dry-run.ts export",
@@ -112,7 +113,7 @@
     "drizzle-kit": "^0.31.11",
     "eslint": "^10",
     "eslint-config-next": "16.4.2",
-    "happy-dom": "^21.0.3",
+    "happy-dom": "^21.0.4",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "vitest": "^5.0.5"

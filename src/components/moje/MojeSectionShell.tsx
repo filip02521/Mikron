@@ -7,7 +7,6 @@ import {
   mojeSectionDomId,
   mojeSectionHeadingDomId,
 } from "@/lib/orders/moje-section-focus";
-import { mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
 
 type HeaderSlot = { el: HTMLElement | null; setEl: (el: HTMLElement | null) => void };
 
@@ -24,7 +23,7 @@ export function useMojeSectionHeaderSlot(): HTMLElement | null {
   return useContext(HeaderSlotContext)?.el ?? null;
 }
 
-/** Karta sekcji listy /moje — cel scrollu i podświetlenia Start dnia. */
+/** Sekcja listy /moje w karcie listy (bez własnej ramki) — cel scrollu i podświetlenia Start dnia. */
 export function MojeSectionShell({
   sectionIcon,
   children,
@@ -40,7 +39,7 @@ export function MojeSectionShell({
     <HeaderSlotContext.Provider value={slot}>
       <div
         id={mojeSectionDomId(sectionIcon)}
-        className={cn(mojeShipmentSectionShellClass, "scroll-mt-24", className)}
+        className={cn("scroll-mt-24 bg-white", className)}
         aria-labelledby={mojeSectionHeadingDomId(sectionIcon)}
       >
         {children}

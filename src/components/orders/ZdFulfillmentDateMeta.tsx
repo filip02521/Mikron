@@ -171,7 +171,7 @@ export function ZdFulfillmentDateMeta({
         </DeliveryTimingMeta>
         {withoutZdCount > 0 ? (
           <span
-            className="inline-flex max-w-full items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-amber-900 ring-1 ring-inset ring-amber-200/80"
+            className="inline-flex max-w-full items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[0.6875rem] font-semibold leading-none text-amber-900 ring-1 ring-inset ring-amber-200/80"
             title="Szczegóły i szacunek z historii po rozwinięciu"
           >
             {withoutZdCount} z {lines.length} bez terminu
@@ -231,7 +231,7 @@ export function ZdFulfillmentDateMeta({
                   pendingConfirmation={slot.pendingConfirmation ?? pendingConfirmation}
                   inline={inline}
                 />
-                <span className="max-w-full truncate text-[11px] font-medium text-slate-500">
+                <span className="max-w-full truncate text-[0.6875rem] font-medium text-slate-500">
                   {slot.dokNr}
                 </span>
               </div>
@@ -240,7 +240,7 @@ export function ZdFulfillmentDateMeta({
         ) : primaryDisplay ? (
           <>
             <DeliveryDateMetaValue display={primaryDisplay} className="max-w-full" inline={inline} />
-            <span className="max-w-full truncate text-[11px] font-medium text-slate-500">
+            <span className="max-w-full truncate text-[0.6875rem] font-medium text-slate-500">
               {fulfillment.dokNr}
             </span>
           </>

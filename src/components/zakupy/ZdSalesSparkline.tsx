@@ -81,7 +81,7 @@ function ZdSalesProfileChart({
             <span
               className={cn(
                 // Nad przerywaną linią typowego miesiąca: tło dymka/karty, żeby linia nie przecinała liczby.
-                "relative z-[1] mb-0.5 rounded-sm bg-white px-0.5 text-[10px] leading-none tabular-nums",
+                "relative z-[1] mb-0.5 rounded-sm bg-white px-0.5 text-[0.625rem] leading-none tabular-nums",
                 i === last ? "font-semibold text-slate-900" : v > 0 ? "text-slate-600" : "text-slate-400"
               )}
             >
@@ -107,7 +107,7 @@ function ZdSalesProfileChart({
         </span>
       ) : null}
       <span
-        className={cn("grid gap-1 pt-0.5 text-center text-[10px] leading-none", byWindow.size > 0 ? "" : "border-t border-slate-300")}
+        className={cn("grid gap-1 pt-0.5 text-center text-[0.625rem] leading-none", byWindow.size > 0 ? "" : "border-t border-slate-300")}
         style={cols}
         aria-hidden
       >
@@ -139,7 +139,7 @@ export function ZdSalesProfileCardContent({
         <span className="mt-0.5 block text-slate-600">{notes}</span>
       ) : null}
       <ZdSalesProfileChart profile={profile} orders={orders} />
-      <span className="mt-1 block text-[11px] text-slate-500">
+      <span className="mt-1 block text-[0.6875rem] text-slate-500">
         12 okien po 30 dni · przerywana linia = typowy miesiąc
         {profile.typicalMonthly > 0
           ? ` (~${formatQty(profile.typicalMonthly)} szt)`

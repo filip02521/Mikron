@@ -1,5 +1,7 @@
 # Braki API Subiekta pod ABC/XYZ + ROP/EOQ (OnTime)
 
+> **Status (2026-10-25): częściowo zrobione inną drogą.** Klasy ABC (zysk 12 mies.) / XYZ (52 tygodnie) liczy OnTime miesięcznie do `zd_sku_class` (`src/lib/data/zd-sku-class-sync.ts`, cron `zd-sku-class`) z dokumentów towaru z `GET /orders/zd/estimate/{towarId}`, nie z proponowanego `GET /orders/sales/weekly`. Czasy dostaw liczy OnTime z par ZD → FZ (cron `subiekt-lead-times`), nie z `GET /orders/lead-time/stats`. Strategia ilości: `docs/integrations/strategia-zakupowa-pl-automatyzacja.md`. ROP/EOQ — nie wdrożone (brak w kodzie).
+
 **Dla:** Tomasz (API Subiekta)  
 **Host:** `http://192.168.0.140:5080/api/v1`  
 **Kontekst:** kreator ZD w OnTime (`/zakupy/szacunek`) + planowana matryca ABC/XYZ i algorytmy zamówień (Wilson / ROP / Croston / Min-Max).  
@@ -327,7 +329,7 @@ Albo dokumentacja estimate, albo nowe pola:
 | \(S\), \(i\) (holding %) | OnTime (per dostawca) |
 | Holt-Winters / Prophet / XGBoost | OnTime (po serii z API) |
 | Min-Max `max_stock_level` | OnTime |
-| Persist matrycy ABC/XYZ + cron miesięczny | OnTime (Supabase) |
+| Persist matrycy ABC/XYZ + cron miesięczny | OnTime (PostgreSQL, `zd_sku_class`) |
 | Create ZD | już: `POST /documents/zd/create` |
 | Korekty „sales track” / historia snapshotów ZD | już w OnTime (nie API) |
 

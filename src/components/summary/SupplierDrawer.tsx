@@ -397,7 +397,7 @@ export function SupplierDrawer({
             )}
           >
             <div className="min-w-0">
-              <p className="text-[11px] font-medium opacity-75">
+              <p className="text-[0.6875rem] font-medium opacity-75">
                 {supplier.order_on_demand ? "Zamówienie na żądanie" : "Następne zamówienie"}
               </p>
               <p className="mt-0.5 text-base font-semibold tabular-nums">
@@ -409,7 +409,7 @@ export function SupplierDrawer({
             </div>
             {supplier.shift_date ? (
               <span
-                className="shrink-0 rounded-md bg-white/70 px-2 py-1 text-[11px] font-medium text-slate-600 ring-1 ring-inset ring-slate-200"
+                className="shrink-0 rounded-md bg-white/70 px-2 py-1 text-[0.6875rem] font-medium text-slate-600 ring-1 ring-inset ring-slate-200"
                 title="Termin przesunięty ręcznie"
               >
                 przesunięte ręcznie
@@ -458,7 +458,7 @@ export function SupplierDrawer({
                 {!rowPending ? (
                   <kbd
                     className={cn(
-                      "ml-1 hidden rounded border px-1 text-[10px] font-semibold leading-4 sm:inline",
+                      "ml-1 hidden rounded border px-1 text-[0.625rem] font-semibold leading-4 sm:inline",
                       zdFirst ? "border-slate-300" : "border-white/30"
                     )}
                   >
@@ -702,7 +702,7 @@ export function SupplierDrawer({
                 <IconArchive size={14} className="shrink-0 text-slate-500" />
                 <span className="min-w-0">
                   <span className="block text-sm font-medium text-slate-800">Zamówienia standardowe</span>
-                  <span className="block text-[11px] text-slate-500">z panelu dziennego</span>
+                  <span className="block text-[0.6875rem] text-slate-500">z panelu dziennego</span>
                 </span>
               </Link>
               <Link
@@ -713,7 +713,7 @@ export function SupplierDrawer({
                 <IconClipboardList size={14} className="shrink-0 text-slate-500" />
                 <span className="min-w-0">
                   <span className="block text-sm font-medium text-slate-800">Prośby indywidualne</span>
-                  <span className="block text-[11px] text-slate-500">od handlowców</span>
+                  <span className="block text-[0.6875rem] text-slate-500">od handlowców</span>
                 </span>
               </Link>
             </div>
@@ -765,7 +765,7 @@ function Chip({
     <span
       title={title}
       className={cn(
-        "inline-flex max-w-full items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
+        "inline-flex max-w-full items-center gap-1 rounded-md px-2 py-0.5 text-[0.6875rem] font-medium ring-1 ring-inset",
         CHIP_TONE[tone],
       )}
     >
@@ -861,7 +861,7 @@ function LinkRow({
       <div className="min-w-0 flex-1">
         <p className="text-xs text-slate-500">{label}</p>
         <p className={cn("text-sm font-medium", ok ? "text-slate-900" : "text-amber-800")}>{value}</p>
-        <p className="mt-0.5 text-[11px] text-slate-400">{hint}</p>
+        <p className="mt-0.5 text-[0.6875rem] text-slate-400">{hint}</p>
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
     </div>

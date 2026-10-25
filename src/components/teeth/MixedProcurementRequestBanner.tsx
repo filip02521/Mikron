@@ -16,7 +16,7 @@ export function MixedProcurementRequestBanner({ className }: { className?: strin
       role="note"
     >
       <p className="font-semibold text-indigo-950">{MIXED_PROCUREMENT_REQUEST_BANNER_TITLE}</p>
-      <p className="mt-1 text-[13px] leading-snug text-slate-700">
+      <p className="mt-1 text-[0.8125rem] leading-snug text-slate-700">
         {MIXED_PROCUREMENT_REQUEST_BANNER}
       </p>
     </div>

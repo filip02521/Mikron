@@ -59,7 +59,7 @@ export function TeethPanelOrderHead({
               <TeethProductLineBadge label={productLineLabel} productLine={productLine} />
             ) : null}
             {kindLabel ? (
-              <Badge variant="default" className="rounded-md px-1.5 py-0 text-[10px]">
+              <Badge variant="default" className="rounded-md px-1.5 py-0 text-[0.625rem]">
                 {kindLabel}
               </Badge>
             ) : null}

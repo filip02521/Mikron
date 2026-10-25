@@ -9,6 +9,7 @@ import { actionAddIndividualOrders } from "@/app/actions/admin";
 import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
 import { ACTION_PENDING_SAFETY_FORM_MS } from "@/lib/timing";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import type { FormMessage, TransientNotice } from "@/lib/ui/notice-content";
@@ -22,8 +23,7 @@ import type { WeekDayPlan } from "@/lib/orders/summary-workspace";
 import type { TeethManufacturer, TeethLineDetail, TeethProductLine, TeethKind } from "@/lib/teeth/teeth-catalog";
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
 import { prosbaHref } from "@/lib/orders/prosba-url";
-import { IconLayers, IconPlusCircle, IconUserCog, IconUserGroup } from "@/components/icons/StrokeIcons";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
+import { IconPlusCircle, IconUserCog, IconUserGroup } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
 import { ProsbaFormMetaStrip } from "@/components/orders/ProsbaFormMetaStrip";
@@ -1974,18 +1974,14 @@ export function OrderFormClient({
       {toastSlot}
       {stockConfirmDialog}
 
+      <PageHeader
+        title="Zamówienie grupowe"
+        hint={PROSBA_PAGE_HEADER_HINTS.groupOrder}
+        hintAriaLabel="O zamówieniu grupowym"
+        className="mb-0"
+      />
+
       <Card padding={false}>
-        <CardHeader
-          inset
-          leading={
-            <SectionHeadingIcon tileClassName="bg-violet-100 text-violet-800">
-              <IconLayers size={20} />
-            </SectionHeadingIcon>
-          }
-          title="Zamówienie grupowe"
-          hint={PROSBA_PAGE_HEADER_HINTS.groupOrder}
-          hintAriaLabel="O zamówieniu grupowym"
-        />
 
         <ProsbaFormKeyboardStrip hints={PROCUREMENT_PROSBA_KEYBOARD_HINTS} variant="procurement" />
 

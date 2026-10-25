@@ -91,14 +91,14 @@ export function AdminPreviewDock({
             id={regionId}
             role="region"
             aria-labelledby={titleId}
-            className="mb-1.5 max-h-[min(45dvh,22rem)] overflow-y-auto rounded-md border border-slate-200/90 bg-white p-3 shadow-[var(--shadow-card-elevated)] sm:p-3.5"
+            className="mb-1.5 max-h-[min(45dvh,22rem)] overflow-y-auto rounded-lg border border-slate-200 bg-white p-3 shadow-[var(--shadow-card-elevated)] sm:p-3.5"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p id={titleId} className={noticeTitleInlineClass}>
                   Podgląd panelu: {label}
                   {readOnlyHint ? (
-                    <span className="ml-1.5 text-[11px] font-medium text-slate-500">
+                    <span className="ml-1.5 text-[0.6875rem] font-medium text-slate-500">
                       tylko odczyt
                     </span>
                   ) : null}
@@ -108,7 +108,7 @@ export function AdminPreviewDock({
               <button
                 type="button"
                 className={cn(
-                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-800",
+                  "flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-800 sm:h-9 sm:w-9",
                   controlFocusClass
                 )}
                 aria-label="Zwiń"
@@ -146,10 +146,9 @@ export function AdminPreviewDock({
           )}
           style={{ height: ADMIN_PREVIEW_DOCK_HEIGHT }}
         >
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-violet-100 text-violet-800">
-            <IconEye size={15} />
-          </span>
-          <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-slate-900">
+          {/* Tryb podglądu to stan „Uwaga” (DESIGN.md → Stany): ikona w bursztynie, bez kafla. */}
+          <IconEye size={16} className="shrink-0 text-amber-700" aria-hidden />
+          <span className="min-w-0 flex-1 truncate text-[0.8125rem] font-semibold text-slate-900">
             {collapsedLabel}
           </span>
           <IconChevronDown

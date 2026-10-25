@@ -2,7 +2,7 @@ import { cn } from "@/lib/cn";
 import type { DeliveryScheduleDay } from "@/lib/data/upcoming-deliveries-shared";
 import { UpcomingDeliverySupplierCard } from "@/components/deliveries/UpcomingDeliverySupplierCard";
 import { DeliveryScheduleCard } from "@/components/deliveries/DeliveryScheduleCard";
-import { IconCalendar } from "@/components/icons/StrokeIcons";
+import { IconCalendar, IconCheck } from "@/components/icons/StrokeIcons";
 
 export function DeliveryWeekGrid({
   days,
@@ -50,7 +50,7 @@ function DeliveryWeekDayColumn({
   return (
     <section
       className={cn(
-        "flex min-h-[120px] flex-col transition-colors",
+        "flex min-h-[7.5rem] flex-col transition-colors",
         day.isToday
           ? "bg-sky-50/40"
           : day.isPast
@@ -67,7 +67,7 @@ function DeliveryWeekDayColumn({
         <div className="min-w-0">
           <p
             className={cn(
-              "flex items-center gap-1 text-[10px] font-semibold",
+              "flex items-center gap-1 text-[0.625rem] font-semibold",
               day.isToday ? "text-sky-800" : "text-slate-500"
             )}
           >
@@ -80,31 +80,44 @@ function DeliveryWeekDayColumn({
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           {day.isToday ? (
-            <span className="rounded-md bg-sky-200/80 px-2 py-0.5 text-[10px] font-semibold uppercase text-sky-800">
+            <span className="rounded-md bg-sky-200/80 px-2 py-0.5 text-[0.625rem] font-semibold text-sky-800">
               Dziś
             </span>
           ) : null}
           {totalCount > 0 ? (
             <div className="flex items-center gap-1">
               {receivedCount > 0 ? (
-                <span className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-emerald-700">
-                  ✓{receivedCount}
+                <span
+                  className="inline-flex items-center gap-0.5 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums text-emerald-800"
+                  title={`${receivedCount} przyjętych`}
+                >
+                  <IconCheck size={10} aria-hidden />
+                  <span className="sr-only">przyjęte: </span>
+                  {receivedCount}
                 </span>
               ) : null}
               {partialCount > 0 ? (
-                <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-amber-700">
+                <span
+                  className="rounded-md bg-amber-50 px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums text-amber-900"
+                  title={`${partialCount} częściowo`}
+                >
+                  <span className="sr-only">częściowo: </span>
                   {partialCount}
                 </span>
               ) : null}
               {pendingCount > 0 ? (
-                <span className="rounded-md bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-sky-700">
+                <span
+                  className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums text-slate-700"
+                  title={`${pendingCount} oczekuje`}
+                >
+                  <span className="sr-only">oczekuje: </span>
                   {pendingCount}
                 </span>
               ) : null}
             </div>
           ) : (
-            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-slate-400">
-              0
+            <span className="text-[0.6875rem] tabular-nums text-slate-400" aria-label="Brak dostaw">
+              —
             </span>
           )}
         </div>
@@ -112,9 +125,9 @@ function DeliveryWeekDayColumn({
 
       <div className="flex min-w-0 flex-1 flex-col gap-2 p-2">
         {totalCount === 0 && !pending ? (
-          <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-slate-100 py-4 text-center text-xs text-slate-300">
-            Brak
-          </div>
+          <p className="flex flex-1 items-center justify-center py-4 text-center text-xs text-slate-500">
+            Brak dostaw
+          </p>
         ) : null}
 
         {sortedZdSuppliers.map((supplier) => (
@@ -133,9 +146,6 @@ function DeliveryWeekDayColumn({
           />
         ))}
 
-        {pending && totalCount === 0 ? (
-          <div className="h-14 animate-pulse rounded-lg bg-slate-100" />
-        ) : null}
       </div>
     </section>
   );

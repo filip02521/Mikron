@@ -22,6 +22,9 @@ import type {
   MigrationApplyResult,
 } from "@/lib/db/migrations";
 import { BrandLoader } from "@/components/ui/BrandLoader";
+import { Alert } from "@/components/ui/Alert";
+import { AdminMetrics } from "@/components/admin/AdminMetrics";
+import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
 
 export function AdminMigrationsPanel() {
   const [status, setStatus] = useState<MigrationStatus | null>(null);
@@ -164,39 +167,19 @@ export function AdminMigrationsPanel() {
           }
         />
 
-        <div className="space-y-3 px-3 pb-4 sm:px-4 lg:px-5">
-          {/* Status podsumowania */}
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-md border border-slate-200/90 bg-slate-50/30 px-3 py-2.5">
-              <p className={panelTypography.sectionLabel}>Zastosowane</p>
-              <p className="mt-0.5 text-lg font-semibold text-slate-900">
-                {status?.appliedCount ?? "-"}
-              </p>
-            </div>
-            <div className="rounded-md border border-slate-200/90 bg-slate-50/30 px-3 py-2.5">
-              <p className={panelTypography.sectionLabel}>Oczekujące</p>
-              <p
-                className={cn(
-                  "mt-0.5 text-lg font-semibold",
-                  hasPending ? "text-amber-700" : "text-slate-900",
-                )}
-              >
-                {pendingCount}
-              </p>
-            </div>
-            <div className="rounded-md border border-slate-200/90 bg-slate-50/30 px-3 py-2.5">
-              <p className={panelTypography.sectionLabel}>Pliki w repo</p>
-              <p className="mt-0.5 text-lg font-semibold text-slate-900">
-                {status?.totalFiles ?? "-"}
-              </p>
-            </div>
-          </div>
+        <div className="space-y-4 px-3 py-4 sm:px-4 lg:px-5">
+          <AdminMetrics
+            items={[
+              { label: "Zastosowane", value: status?.appliedCount ?? "-" },
+              { label: "Oczekujące", value: pendingCount, tone: hasPending ? "warning" : "default" },
+              { label: "Pliki w repo", value: status?.totalFiles ?? "-" },
+            ]}
+          />
 
           {/* Inicjalizacja — oznacz migracje do 150 jako wykonane */}
           {!loading && !error && (status?.appliedCount ?? 0) === 0 && hasPending ? (
-            <div className="rounded-md border border-amber-200/80 bg-amber-50/40 px-3 py-2.5 text-sm text-amber-950">
-              <p className="font-medium">Pierwsza konfiguracja na tej bazie</p>
-              <p className="mt-0.5 text-amber-800">
+            <Alert tone="warning" title="Pierwsza konfiguracja na tej bazie">
+              <p>
                 Jeśli baza została założona ręcznie (migracje 1-150 już są w schemacie),
                 oznacz je jako wykonane bez wykonywania SQL. Potem tylko nowe migracje
                 będą faktycznie aplikowane.
@@ -219,7 +202,7 @@ export function AdminMigrationsPanel() {
                   Oznacz 1-152 jako wykonane
                 </Button>
               </div>
-            </div>
+            </Alert>
           ) : null}
 
           {/* Ładowanie / błąd */}
@@ -231,9 +214,8 @@ export function AdminMigrationsPanel() {
           ) : null}
 
           {error ? (
-            <div className="rounded-md border border-red-200/80 bg-red-50/40 px-3 py-2.5 text-sm text-red-900">
-              <p className="font-medium">Błąd pobierania statusu</p>
-              <p className="mt-0.5 text-red-700">{error}</p>
+            <Alert tone="error" title="Nie udało się pobrać statusu migracji">
+              <p>{userFacingErrorTextFromMessage(error)}</p>
               <Button
                 variant="secondary"
                 size="sm"
@@ -242,18 +224,15 @@ export function AdminMigrationsPanel() {
               >
                 Spróbuj ponownie
               </Button>
-            </div>
+            </Alert>
           ) : null}
 
           {/* Brak oczekujących */}
           {!loading && !error && !hasPending ? (
-            <div className="rounded-md border border-emerald-200/80 bg-emerald-50/40 px-3 py-2.5 text-sm text-emerald-900">
-              <p className="font-medium">Baza jest aktualna</p>
-              <p className="mt-0.5 text-emerald-700">
-                Wszystkie migracje z repo są zastosowane. Po nowym pull z GitHub sprawdź
-                ponownie - nowe pliki pojawią się tutaj.
-              </p>
-            </div>
+            <p className="text-sm text-slate-600">
+              Wszystkie migracje z repo są zastosowane. Po nowym pull z GitHub sprawdź
+              ponownie - nowe pliki pojawią się tutaj.
+            </p>
           ) : null}
 
           {/* Lista oczekujących */}
@@ -287,16 +266,16 @@ export function AdminMigrationsPanel() {
               </div>
 
               {/* Lista migracji */}
-              <ul className="divide-y divide-slate-100 rounded-md border border-slate-200/90">
+              <ul className="divide-y divide-slate-100 border-y border-slate-100">
                 {(status?.pending ?? []).map((m) => {
                   const isExpanded = expanded.has(m.filename);
                   const result = results[m.filename];
                   return (
-                    <li key={m.filename} className="px-3 py-2.5">
-                      <div className="flex items-start gap-2">
+                    <li key={m.filename} className="py-2.5">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <p className="truncate text-sm font-medium text-slate-900">
+                            <p className="min-w-0 break-all font-mono text-xs font-medium text-slate-900">
                               {m.filename}
                             </p>
                             {result ? (
@@ -321,7 +300,7 @@ export function AdminMigrationsPanel() {
                             </p>
                           ) : null}
                         </div>
-                        <div className="flex shrink-0 items-center gap-1.5">
+                        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
                           <Button
                             variant="secondary"
                             size="sm"
@@ -339,7 +318,7 @@ export function AdminMigrationsPanel() {
                             Oznacz wykonaną
                           </Button>
                           <Button
-                            variant="primary"
+                            variant="outline"
                             size="sm"
                             disabled={pending}
                             onClick={() => handleApplyOne(m.filename)}

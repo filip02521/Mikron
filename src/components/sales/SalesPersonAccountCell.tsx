@@ -21,7 +21,7 @@ export function SalesPersonAccountCell({
 }) {
   if (!row.linkedUserEmail) {
     return (
-      <Badge variant="warning" className="text-[10px]">
+      <Badge variant="warning" className="text-[0.625rem]">
         Brak konta
       </Badge>
     );
@@ -34,20 +34,20 @@ export function SalesPersonAccountCell({
 
   return (
     <div className="space-y-1">
-      <Badge variant="success" className="text-[10px]">
+      <Badge variant="success" className="text-[0.625rem]">
         Ma konto
       </Badge>
       <p className="text-xs text-slate-600">{row.linkedUserEmail}</p>
-      {created ? <p className="text-[11px] text-slate-400">Konto od: {created}</p> : null}
+      {created ? <p className="text-[0.6875rem] text-slate-400">Konto od: {created}</p> : null}
       {activity ? (
-        <p className="text-[11px] text-slate-500">Ostatnia aktywność: {activity}</p>
+        <p className="text-[0.6875rem] text-slate-500">Ostatnia aktywność: {activity}</p>
       ) : signIn ? (
-        <p className="text-[11px] text-slate-500">Ostatnie logowanie: {signIn}</p>
+        <p className="text-[0.6875rem] text-slate-500">Ostatnie logowanie: {signIn}</p>
       ) : (
-        <p className="text-[11px] text-amber-700">Brak zarejestrowanej aktywności</p>
+        <p className="text-[0.6875rem] text-amber-700">Brak zarejestrowanej aktywności</p>
       )}
       {signInDiffers ? (
-        <p className="text-[11px] text-slate-400">Ostatnie logowanie: {signIn}</p>
+        <p className="text-[0.6875rem] text-slate-400">Ostatnie logowanie: {signIn}</p>
       ) : null}
     </div>
   );

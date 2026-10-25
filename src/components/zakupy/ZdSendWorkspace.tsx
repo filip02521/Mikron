@@ -772,7 +772,7 @@ export function ZdSendWorkspace({
                       <p className="mt-1 text-xs leading-relaxed text-amber-900/90">
                         {ZD_ESTIMATE_UI.zdSendAttachFailedLead}
                       </p>
-                      <p className="mt-1.5 text-[11px] leading-snug text-amber-800/80">
+                      <p className="mt-1.5 text-[0.6875rem] leading-snug text-amber-800/80">
                         {attachment.message}
                       </p>
                       <div className="mt-3 flex flex-wrap gap-2">

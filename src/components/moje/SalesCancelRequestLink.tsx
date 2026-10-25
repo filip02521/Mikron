@@ -8,7 +8,7 @@ export function SalesCancelRequestLink({
   disabled?: boolean;
 }) {
   return (
-    <p className="mt-4 border-t border-dashed border-slate-200 pt-3 text-center text-[11px] leading-relaxed text-slate-500">
+    <p className="mt-4 border-t border-dashed border-slate-200 pt-3 text-center text-[0.6875rem] leading-relaxed text-slate-500">
       Klient się rozmyślił?{" "}
       <button
         type="button"

@@ -106,7 +106,7 @@ export function BoardSupplierReplies({
   }, [retryLater, items, load]);
 
   const recheck = (
-    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
+    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.6875rem] text-slate-500">
       {found && refreshKey !== readKey ? (
         <span className="font-medium text-emerald-800">Dostawca dopisał coś nowego.</span>
       ) : null}
@@ -281,7 +281,7 @@ function SupplierReplyCard({
       ) : null}
       {reply.files?.length && onToggleFile ? (
         <div className="mt-2">
-          <p className="text-[11px] font-medium text-slate-600">Załączniki - dołącz do odpowiedzi dla handlowca:</p>
+          <p className="text-[0.6875rem] font-medium text-slate-600">Załączniki - dołącz do odpowiedzi dla handlowca:</p>
           <ul className="mt-1 flex flex-wrap gap-1.5">
             {reply.files.map((f, i) => {
               const ref = { inquiryId: inquiry.inquiryId, replyId: reply.id, filename: f.filename };
@@ -324,10 +324,10 @@ function SupplierReplyCard({
           </ul>
         </div>
       ) : reply.attachments.length ? (
-        <p className="mt-1 break-all text-[11px] text-slate-500">Załączniki: {reply.attachments.join(", ")}</p>
+        <p className="mt-1 break-all text-[0.6875rem] text-slate-500">Załączniki: {reply.attachments.join(", ")}</p>
       ) : null}
       {olderCount > 0 ? (
-        <p className="mt-1 text-[11px] text-slate-500">Wcześniejsze odpowiedzi ({olderCount}) są w Gmailu.</p>
+        <p className="mt-1 text-[0.6875rem] text-slate-500">Wcześniejsze odpowiedzi ({olderCount}) są w Gmailu.</p>
       ) : null}
 
       <div className="mt-2 flex flex-wrap items-center gap-2">

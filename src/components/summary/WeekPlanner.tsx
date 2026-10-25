@@ -414,7 +414,7 @@ function WeekPlanEmptyCalendar({
             <p
               className={cn(
                 "font-semibold",
-                density === "compact" ? "text-[10px]" : "text-[10px]",
+                density === "compact" ? "text-[0.625rem]" : "text-[0.625rem]",
                 day.isToday ? "text-slate-800" : "text-slate-500"
               )}
             >
@@ -424,7 +424,7 @@ function WeekPlanEmptyCalendar({
               {day.dateLabel}
             </p>
             {day.isToday ? (
-              <Badge variant="info" className="mt-1.5 px-2 py-0 text-[9px] uppercase">
+              <Badge variant="info" className="mt-1.5 px-2 py-0 text-[0.5625rem]">
                 Dziś
               </Badge>
             ) : null}
@@ -546,7 +546,7 @@ function DayColumn({
           <p
             className={cn(
               "font-semibold",
-              density === "compact" ? "text-[10px]" : "text-xs",
+              density === "compact" ? "text-[0.625rem]" : "text-xs",
               day.isToday ? "text-slate-800" : "text-slate-500"
             )}
           >
@@ -558,16 +558,16 @@ function DayColumn({
         </div>
         <div className="flex flex-col items-end gap-1">
           {day.isToday ? (
-            <Badge variant="info" className="px-2 py-0 text-[10px] uppercase">
+            <Badge variant="info" className="px-2 py-0 text-[0.625rem]">
               Dziś
             </Badge>
           ) : null}
           {planningMode && !droppable ? (
-            <span className="text-[10px] text-slate-400">Tylko odczyt</span>
+            <span className="text-[0.625rem] text-slate-400">Tylko odczyt</span>
           ) : null}
           <span
             className={cn(
-              "rounded-md px-2 py-0.5 text-[10px] font-semibold tabular-nums",
+              "rounded-md px-2 py-0.5 text-[0.625rem] font-semibold tabular-nums",
               day.items.length > 0
                 ? "bg-slate-200/80 text-slate-700"
                 : "text-slate-400"
@@ -683,7 +683,7 @@ function PlannerCard({
       <div className="flex flex-wrap items-center gap-1.5">
         {supplierTitle}
         {isOverdue && !isMoved ? (
-          <Badge variant={urgentStatusBadgeVariant(true)} className="text-[10px]">
+          <Badge variant={urgentStatusBadgeVariant(true)} className="text-[0.625rem]">
             Zaległe
           </Badge>
         ) : null}
@@ -698,7 +698,7 @@ function PlannerCard({
         ) : null}
       </p>
       {isMoved && movedLabel ? (
-        <p className="mt-0.5 inline-flex flex-wrap items-center gap-1 text-[10px] font-medium text-amber-800">
+        <p className="mt-0.5 inline-flex flex-wrap items-center gap-1 text-[0.625rem] font-medium text-amber-800">
           Przeniesiono
           <FlowChevron size={10} className="text-amber-500/80" />
           {movedLabel}
@@ -739,7 +739,7 @@ function PlannerCard({
         className={cn(
           panelRowGroupClass("text-sm transition"),
           urgentCardClassName(isOverdue && !isMoved),
-          isMoved && "border-slate-200 border-l-2 border-l-amber-400 bg-white",
+          isMoved && "border-slate-200 bg-amber-50/60",
           isDragging && "opacity-50",
           rowPending && rowPendingRingClass
         )}

@@ -6,7 +6,7 @@ Przyczyna: `npm ci` uruchomione przy **`NODE_ENV=production`** pomija `devDepend
 
 ## Rozwiązanie w repo (wielowarstwowe)
 
-1. **Kluczowe pakiety build w `dependencies`:** `tailwindcss`, `@tailwindcss/postcss`, `typescript`.
+1. **Kluczowe pakiety build w `dependencies`:** `tailwindcss`, `@tailwindcss/postcss` (`typescript` jest dziś w `devDependencies` — dlatego punkt 2 jest obowiązkowy).
 2. **Skrypt `npm run deps:ci`:** `npm ci --include=dev` — zawsze instaluje pełny zestaw modułów.
 3. **Deploy skrypty** czyszczą `NODE_ENV` przed instalacją i sprawdzają kompletność `node_modules` (`next`, `tailwindcss`, `@tailwindcss/postcss`, `typescript`).
 4. Wspólny moduł: `installer/npm-ci-for-build.ps1` (używany przez `install-windows-service.ps1` i `nightly-deploy.ps1`).

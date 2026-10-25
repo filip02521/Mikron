@@ -117,7 +117,7 @@ function DefRow({
           <div className="flex shrink-0 flex-col gap-0.5">
             <button
               type="button"
-              className="rounded px-1 text-[10px] text-slate-500 hover:bg-slate-100 disabled:opacity-40"
+              className="rounded px-1 text-[0.625rem] text-slate-500 hover:bg-slate-100 disabled:opacity-40"
               disabled={pending || index === 0}
               title={PROCUREMENT_REQUEST_FLAG_COPY.manageMoveUp}
               onClick={() => onMove(-1)}
@@ -126,7 +126,7 @@ function DefRow({
             </button>
             <button
               type="button"
-              className="rounded px-1 text-[10px] text-slate-500 hover:bg-slate-100 disabled:opacity-40"
+              className="rounded px-1 text-[0.625rem] text-slate-500 hover:bg-slate-100 disabled:opacity-40"
               disabled={pending || index >= total - 1}
               title={PROCUREMENT_REQUEST_FLAG_COPY.manageMoveDown}
               onClick={() => onMove(1)}
@@ -157,7 +157,7 @@ function DefRow({
         {dirty ? (
           <Button
             size="sm"
-            className="min-h-8 text-[11px]"
+            className="min-h-8 text-[0.6875rem]"
             disabled={pending || !label.trim()}
             onClick={() => onSave({ label: label.trim(), color })}
           >
@@ -167,7 +167,7 @@ function DefRow({
         <Button
           size="sm"
           variant="ghost"
-          className="min-h-8 text-[11px]"
+          className="min-h-8 text-[0.6875rem]"
           disabled={pending}
           onClick={onToggleActive}
         >
@@ -179,7 +179,7 @@ function DefRow({
           <Button
             size="sm"
             variant="ghost"
-            className="min-h-8 text-[11px] text-rose-700"
+            className="min-h-8 text-[0.6875rem] text-rose-700"
             disabled={pending}
             onClick={onDelete}
           >
@@ -304,7 +304,7 @@ export function ProcurementFlagDefinitionsManageModal({
 
         {inactive.length ? (
           <div className="space-y-2">
-            <p className={cn(panelTypography.caption, "font-semibold uppercase")}>
+            <p className={cn(panelTypography.caption, "font-semibold")}>
               {PROCUREMENT_REQUEST_FLAG_COPY.manageInactiveSection}
             </p>
             <ul className="max-h-40 space-y-2 overflow-y-auto">
@@ -345,7 +345,7 @@ export function ProcurementFlagDefinitionsManageModal({
         ) : null}
 
         <div className="space-y-2 rounded-md border border-dashed border-slate-300 p-3">
-          <p className="text-[11px] font-medium text-slate-600">
+          <p className="text-[0.6875rem] font-medium text-slate-600">
             {PROCUREMENT_REQUEST_FLAG_COPY.manageAdd}
             {!canAdd
               ? ` (limit ${MAX_PROCUREMENT_FLAG_DEFINITIONS})`

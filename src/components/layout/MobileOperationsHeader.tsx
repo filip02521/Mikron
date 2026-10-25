@@ -8,12 +8,8 @@ import { mobileSalesHeaderClass } from "@/lib/ui/ontime-theme";
 import { NavIcon } from "@/components/icons/NavIcon";
 import {
   labelForProcurementWorkspace,
-  workspaceToneBg,
-  workspaceToneRing,
-  workspaceToneText,
   type ProcurementWorkspace,
 } from "@/lib/auth/procurement-workspace";
-import { cn } from "@/lib/cn";
 
 export function MobileOperationsHeader({
   role,
@@ -36,12 +32,7 @@ export function MobileOperationsHeader({
         />
         {procurementWorkspace ? (
           <span
-            className={cn(
-              "ml-auto flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset",
-              workspaceToneBg(procurementWorkspace),
-              workspaceToneRing(procurementWorkspace),
-              workspaceToneText(procurementWorkspace),
-            )}
+            className="ml-auto flex shrink-0 items-center gap-1.5 rounded-md bg-slate-100 px-2 py-1 text-[0.6875rem] font-semibold text-slate-700"
           >
             <NavIcon
               navKey={
@@ -62,7 +53,7 @@ export function MobileOperationsHeader({
         <button
           type="button"
           onClick={() => void signOutToLogin()}
-          className="min-h-10 shrink-0 cursor-pointer rounded-md border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50"
+          className="min-h-11 shrink-0 cursor-pointer rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
         >
           Wyloguj
         </button>

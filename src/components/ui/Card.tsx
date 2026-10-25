@@ -1,5 +1,6 @@
 import { cn } from "@/lib/cn";
 import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
+import { sectionTitleClass } from "@/lib/ui/ontime-theme";
 
 export function Card({
   children,
@@ -13,8 +14,8 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-[var(--radius-panel)] border border-slate-200 bg-[var(--card)] shadow-[var(--shadow-card-elevated)]",
-        padding && "p-6 sm:p-7",
+        "rounded-[var(--radius-panel)] border border-slate-200 bg-[var(--card)] shadow-[var(--shadow-card)]",
+        padding && "p-5 sm:p-6",
         className
       )}
     >
@@ -61,19 +62,19 @@ export function CardHeader({
 
   const titleClass = cn(
     density === "micro"
-      ? "text-[13px] font-semibold tracking-tight text-slate-900"
+      ? "text-[0.8125rem] font-semibold tracking-tight text-slate-900"
       : density === "compact"
         ? "text-base font-semibold tracking-tight text-slate-900"
-        : "text-lg font-semibold tracking-tight text-slate-900 lg:text-xl",
+        : sectionTitleClass,
     titleClassName
   );
 
   const descriptionClass = cn(
     density === "micro"
-      ? "mt-0.5 text-[11px] leading-snug text-slate-500"
+      ? "mt-0.5 text-[0.6875rem] leading-snug text-slate-500"
       : density === "compact"
         ? "mt-1 text-xs leading-relaxed text-slate-500"
-        : "mt-1.5 text-sm leading-snug text-slate-500 sm:leading-relaxed lg:text-base lg:leading-relaxed",
+        : "mt-1 text-sm leading-relaxed text-slate-600",
     descriptionClassName
   );
 
@@ -85,8 +86,8 @@ export function CardHeader({
       ? "px-3 py-1.5 sm:px-4 lg:px-5"
       : density === "compact"
         ? "px-3 pb-3 pt-4 sm:px-4 sm:pb-4 sm:pt-4"
-        : "px-4 pb-4 pt-5 sm:px-6 sm:pb-5 sm:pt-6 lg:px-8 lg:pb-6 lg:pt-7"
-    : "mb-6 pb-5";
+        : "px-5 py-4 sm:px-6"
+    : "mb-5 pb-4";
 
   const titleNode = (
     <div className="flex min-w-0 flex-wrap items-center gap-1.5">

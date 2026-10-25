@@ -28,7 +28,7 @@ export type ZdProductHistoryState =
 const SALES_LIST_MAX = 8;
 const PURCHASES_LIST_MAX = 6;
 
-const headingClass = "text-xs font-semibold uppercase tracking-wide text-slate-600";
+const headingClass = "text-xs font-semibold text-slate-600";
 const listClass = "mt-1.5 divide-y divide-slate-100 rounded-md border border-slate-200";
 const rowClass = "flex items-baseline justify-between gap-3 px-3 py-1.5 text-sm";
 
