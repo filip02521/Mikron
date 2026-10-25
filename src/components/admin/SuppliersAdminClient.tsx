@@ -653,7 +653,7 @@ export function SuppliersAdminClient({
                           {!teethLane ? (
                             <Link
                               href={scheduleHref(s.location, s.name)}
-                              className={cn(panelTextLinkClass, "ml-3 mt-2 inline-flex items-center gap-1 text-xs md:ml-0 md:mt-0 md:text-sm")}
+                              className={cn(panelTextLinkClass, "ml-3 inline-flex min-h-10 items-center gap-1 text-xs md:ml-0 md:min-h-0 md:text-sm")}
                             >
                               Terminy
                               <LinkChevron size={12} tone="brand" />

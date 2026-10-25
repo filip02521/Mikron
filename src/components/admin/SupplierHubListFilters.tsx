@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { Input } from "@/components/ui/Field";
 import { SupplierLocationFilters } from "@/components/admin/SupplierLocationFilters";
-import { SupplierHubFilterChip, SupplierSubiektFilters } from "@/components/admin/SupplierSubiektFilters";
+import { AdminFilterChip } from "@/components/admin/AdminFilterChip";
+import { SupplierSubiektFilters } from "@/components/admin/SupplierSubiektFilters";
 import { cn } from "@/lib/cn";
 import { supplierHubPaths, type SupplierHubContext } from "@/lib/supplier-hub";
 import {
@@ -174,7 +175,7 @@ export function ScheduleTermFilters({
   return (
     <div className={cn("flex flex-wrap gap-1.5", className)} role="group" aria-label="Filtr statusu terminu">
       {SCHEDULE_TERM_OPTIONS.map((opt) => (
-        <SupplierHubFilterChip
+        <AdminFilterChip
           key={opt.value}
           active={value === opt.value}
           label={opt.label}

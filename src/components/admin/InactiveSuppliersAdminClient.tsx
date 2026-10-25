@@ -399,7 +399,7 @@ export function InactiveSuppliersAdminClient({
                           </p>
                           <Link
                             href={scheduleHref(s.location, s.name)}
-                            className={cn(panelTextLinkClass, "mt-2 inline-flex items-center gap-1 text-xs md:mt-0 md:text-sm")}
+                            className={cn(panelTextLinkClass, "inline-flex min-h-10 items-center gap-1 text-xs md:min-h-0 md:text-sm")}
                           >
                             Terminy
                             <LinkChevron size={12} tone="brand" />

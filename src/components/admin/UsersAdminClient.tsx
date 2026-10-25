@@ -39,6 +39,8 @@ import {
   usersManagerGroupsSignature,
 } from "@/lib/users/users-admin-sync";
 import { polishPluralWord } from "@/lib/email/polish-plural";
+import { AdminFilterChip } from "@/components/admin/AdminFilterChip";
+import { OverflowMenu, OverflowMenuItem } from "@/components/ui/OverflowMenu";
 import { matchesSearchWords } from "@/lib/search/keywords";
 
 type SalesPerson = { id: string; name: string; email: string };
@@ -55,15 +57,6 @@ function salesPersonLabel(
     salesPeople.find((p) => p.id === salesPersonId)?.name ??
     salesPersonName ??
     "-"
-  );
-}
-
-function roleFilterChipClass(active: boolean): string {
-  return cn(
-    "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-    active
-      ? "bg-indigo-50 text-indigo-900 ring-1 ring-inset ring-indigo-200"
-      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
   );
 }
 
@@ -696,7 +689,7 @@ export function UsersAdminClient({
                           })}
                         </div>
                       ) : (
-                        <span className="text-xs text-amber-700">Brak grup w systemie</span>
+                        <span className="text-xs text-amber-800">Brak grup w systemie</span>
                       )}
                       {accessModalManagerNeedsGroups ? (
                         <p className="text-xs text-amber-700">
@@ -1170,36 +1163,40 @@ export function UsersAdminClient({
             }
           />
 
-          <div className="space-y-3 border-b border-slate-100 px-3 py-3 sm:px-4 lg:px-5">
-            <div className="flex flex-wrap gap-1.5">
-              <button
-                type="button"
-                onClick={() => setRoleFilter("all")}
-                className={roleFilterChipClass(roleFilter === "all")}
-              >
-                Wszyscy ({users.length})
-              </button>
-              {ROLE_OPTIONS.map((o) => {
-                const count = roleCounts[o.value] ?? 0;
-                if (!count) return null;
-                return (
-                  <button
-                    key={o.value}
-                    type="button"
-                    onClick={() => setRoleFilter(o.value)}
-                    className={roleFilterChipClass(roleFilter === o.value)}
-                  >
-                    {o.label} ({count})
-                  </button>
-                );
-              })}
+          <div className="border-b border-slate-100 px-3 py-3 sm:px-4 lg:px-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                placeholder="Szukaj po e-mailu, roli lub handlowcu…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                aria-label="Szukaj użytkowników"
+                className="w-full sm:max-w-xs"
+              />
+              <div className="flex flex-wrap gap-1.5" role="group" aria-label="Rola">
+                <AdminFilterChip
+                  active={roleFilter === "all"}
+                  label="Wszyscy"
+                  count={users.length}
+                  onClick={() => setRoleFilter("all")}
+                />
+                {ROLE_OPTIONS.map((o) => {
+                  const count = roleCounts[o.value] ?? 0;
+                  if (!count) return null;
+                  return (
+                    <AdminFilterChip
+                      key={o.value}
+                      active={roleFilter === o.value}
+                      label={o.label}
+                      count={count}
+                      onClick={() => setRoleFilter(o.value)}
+                    />
+                  );
+                })}
+              </div>
+              <p className="ml-auto text-[0.6875rem] tabular-nums text-slate-500" aria-live="polite">
+                {filteredUsers.length} {polishPluralWord(filteredUsers.length, "konto", "konta", "kont")}
+              </p>
             </div>
-            <Input
-              placeholder="Szukaj po e-mailu, roli lub handlowcu…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              aria-label="Szukaj użytkowników"
-            />
           </div>
 
           {!filteredUsers.length ? (
@@ -1213,15 +1210,7 @@ export function UsersAdminClient({
             />
           ) : (
             <TableScroll>
-              <DataTable className="min-w-[1180px]">
-                <colgroup>
-                  <col className="w-[23%]" />
-                  <col className="w-[26%]" />
-                  <col className="w-[18%]" />
-                  <col className="w-[18%]" />
-                  <col className="w-[9%]" />
-                  <col className="w-[180px]" />
-                </colgroup>
+              <DataTable className="min-w-[56rem]">
                 <thead>
                   <tr>
                     <th>E-mail</th>
@@ -1258,9 +1247,9 @@ export function UsersAdminClient({
                     return (
                       <tr
                         key={u.id}
-                        className={isDirty ? "bg-amber-50/60" : undefined}
+                        className={isDirty ? "bg-amber-50" : undefined}
                       >
-                        <td className="align-top">
+                        <td className="min-w-[14rem] align-top">
                           <div className="space-y-1">
                             <div className="break-all font-medium text-slate-900">
                               {u.email}
@@ -1293,11 +1282,11 @@ export function UsersAdminClient({
                                 {u.mailCenterModuleEnabled ? "Aktywne" : "Wyłączone"}
                               </Badge>
                             </div>
-                            <p className="text-xs leading-relaxed text-slate-500">
-                              {isDirty
-                                ? "Masz lokalne zmiany w uprawnieniach tego konta."
-                                : "Rola i dostęp są zapisane zgodnie z aktualnym stanem konta."}
-                            </p>
+                            {isDirty ? (
+                              <p className="text-xs leading-relaxed text-amber-800">
+                                Masz lokalne zmiany w uprawnieniach tego konta.
+                              </p>
+                            ) : null}
                           </div>
                         </td>
                         <td className="align-top">
@@ -1317,7 +1306,7 @@ export function UsersAdminClient({
                                   .map((g) => (
                                     <span
                                       key={g.id}
-                                      className="rounded-md border border-indigo-200/70 bg-indigo-50/60 px-2 py-0.5 text-[0.6875rem] font-medium text-indigo-700"
+                                      className="rounded-md bg-slate-100 px-2 py-0.5 text-[0.6875rem] font-medium text-slate-700"
                                     >
                                       {g.name}
                                     </span>
@@ -1342,7 +1331,7 @@ export function UsersAdminClient({
                                       return (
                                         <span
                                           key={workspace}
-                                          className="rounded-md border border-indigo-200/70 bg-indigo-50/60 px-2 py-0.5 text-[0.6875rem] font-medium text-indigo-700"
+                                          className="rounded-md bg-slate-100 px-2 py-0.5 text-[0.6875rem] font-medium text-slate-700"
                                         >
                                           {option?.label ?? workspace}
                                         </span>
@@ -1351,11 +1340,11 @@ export function UsersAdminClient({
                                   </div>
                                 </div>
                               ) : (
-                                <span className="text-slate-400">Brak przypisań</span>
+                                <span className="text-slate-500">Brak przypisań</span>
                               )}
                             </div>
                           ) : displayRole === "sales_manager" ? (
-                            <span className="text-xs text-amber-700">Brak grup w systemie</span>
+                            <span className="text-xs text-amber-800">Brak grup w systemie</span>
                           ) : (
                             <span className="text-slate-400">-</span>
                           )}
@@ -1364,52 +1353,43 @@ export function UsersAdminClient({
                           {u.lastSignInAt
                             ? formatPlDate(u.lastSignInAt.slice(0, 10))
                             : (
-                              <span className="text-slate-400">Nigdy</span>
+                              <span className="text-slate-500">Nigdy</span>
                             )}
                         </td>
                         <td className="align-top">
-                          <div className="flex min-w-[156px] flex-col items-stretch gap-2">
-                            <div className="grid grid-cols-1 gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="justify-center"
-                                onClick={() => setAccessModalUserId(u.id)}
-                              >
-                                Edytuj
-                              </Button>
-                              {isDirty ? (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="justify-center"
-                                  disabled={pending}
-                                  onClick={() => resetUserDraft(u, savedManagerGroups)}
-                                >
-                                  Cofnij
-                                </Button>
-                              ) : null}
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                className="justify-center"
-                                disabled={pending || displayRole === "admin"}
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setAccessModalUserId(u.id)}
+                            >
+                              Edytuj
+                            </Button>
+                            <OverflowMenu
+                              label={`Akcje konta: ${u.email}`}
+                              align="end"
+                              iconOnly
+                              disabled={pending}
+                              triggerClassName="h-11 w-11 sm:h-8 sm:w-8"
+                            >
+                              <OverflowMenuItem
+                                disabled={displayRole === "admin"}
+                                title={displayRole === "admin" ? "Administrator ma wszystkie moduły" : undefined}
                                 onClick={() => openModuleModalForUser(u)}
                               >
                                 Moduły
-                              </Button>
-                              {!isSelf ? (
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  disabled={pending}
-                                  className="justify-center text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-                                  onClick={() => setDeleteTarget(u)}
-                                >
-                                  Usuń
-                                </Button>
+                              </OverflowMenuItem>
+                              {isDirty ? (
+                                <OverflowMenuItem onClick={() => resetUserDraft(u, savedManagerGroups)}>
+                                  Cofnij zmiany
+                                </OverflowMenuItem>
                               ) : null}
-                            </div>
+                              {!isSelf ? (
+                                <OverflowMenuItem danger onClick={() => setDeleteTarget(u)}>
+                                  Usuń konto
+                                </OverflowMenuItem>
+                              ) : null}
+                            </OverflowMenu>
                           </div>
                         </td>
                       </tr>
