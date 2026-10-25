@@ -35,7 +35,7 @@ export function SupplierFormSection({
               {title}
             </span>
             {description ? (
-              <span className="mt-0.5 block text-xs font-normal normal-case tracking-normal text-slate-400">
+              <span className="mt-0.5 block text-xs font-normal text-slate-500">
                 {description}
               </span>
             ) : null}

@@ -14,6 +14,7 @@ import {
 import { TEETH_LINE_DEFINITIONS } from "@/lib/teeth/teeth-lines-data";
 import type { TeethProductLine, TeethGroupDraft } from "@/lib/teeth/teeth-catalog";
 import { cn } from "@/lib/cn";
+import { plPozycja } from "@/lib/ui/polish-plurals";
 import { saveTeethOcrProsbaPrefill } from "@/lib/orders/teeth-ocr-prosba-prefill";
 import {
   TEETH_VISION_DETECT_CLIENT_TIMEOUT_MS,
@@ -75,21 +76,24 @@ const STEP_LABELS = ["Wgraj zdjęcie", "Wykrywanie", "Potwierdzenie", "Odczyt"] 
 function StepIndicator({ currentStep }: { currentStep: "detecting" | "review" | "reading" | "done" }) {
   const stepIndex = currentStep === "detecting" ? 1 : currentStep === "review" ? 2 : currentStep === "reading" ? 3 : 3;
   return (
-    <div className="flex items-center gap-1.5 px-5 py-3 sm:px-6">
+    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 px-5 py-3 sm:px-6">
       {STEP_LABELS.map((label, i) => (
         <div key={label} className="flex items-center gap-1.5">
           <span
-            className={`flex h-5 w-5 items-center justify-center rounded-full text-[0.625rem] font-semibold ${
-              i <= stepIndex
-                ? "bg-indigo-600 text-white"
-                : "bg-slate-100 text-slate-400"
-            }`}
+            className={cn(
+              "flex h-5 w-5 items-center justify-center rounded-full text-[0.625rem] font-semibold tabular-nums",
+              i < stepIndex
+                ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
+                : i === stepIndex
+                  ? "bg-white text-indigo-700 ring-2 ring-indigo-500"
+                  : "bg-slate-100 text-slate-500",
+            )}
           >
             {i + 1}
           </span>
           <span
             className={`text-[0.6875rem] font-medium ${
-              i <= stepIndex ? "text-slate-700" : "text-slate-400"
+              i <= stepIndex ? "text-slate-700" : "text-slate-500"
             }`}
           >
             {label}
@@ -436,7 +440,7 @@ export function TeethOcrWizard({
         {(step === "idle" || step === "uploading") && (
           <div
             className={cn(
-              "flex flex-col items-center gap-4 rounded-xl border-2 border-dashed py-10 transition-colors duration-200",
+              "flex flex-col items-center gap-4 rounded-lg border-2 border-dashed py-10 transition-colors duration-200",
               isDragging
                 ? "border-indigo-400 bg-indigo-50/60"
                 : "border-slate-200 bg-slate-50/40",
@@ -464,13 +468,14 @@ export function TeethOcrWizard({
               </Button>
               <span className="group relative inline-flex">
                 <span
-                  className="cursor-help rounded bg-indigo-50 px-1.5 py-0.5 text-[0.5625rem] font-semibold text-indigo-400 transition-colors group-hover:bg-indigo-100"
+                  tabIndex={0}
+                  className="cursor-help rounded-md bg-indigo-50 px-1.5 py-0.5 text-[0.625rem] font-semibold text-indigo-700 transition-colors group-hover:bg-indigo-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
                 >
                   Beta
                 </span>
                 <span
                   role="tooltip"
-                  className="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 hidden w-max max-w-[min(100vw,18rem)] rounded-md border border-indigo-200/90 bg-indigo-50/95 px-2.5 py-1.5 text-[0.6875rem] font-medium leading-relaxed text-indigo-900 shadow-md group-hover:block group-focus-within:block"
+                  className="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 hidden w-max max-w-[min(100vw,18rem)] rounded-md border border-indigo-200/90 bg-indigo-50/95 px-2.5 py-1.5 text-[0.6875rem] font-medium leading-relaxed text-indigo-900 shadow-[var(--shadow-elevated)] group-hover:block group-focus-within:block"
                 >
                   To funkcja testowa - sczytywanie listy zębów ze zdjęcia za pomocą AI. Wynik zawsze sprawdź przed zapisaniem.
                 </span>
@@ -481,7 +486,7 @@ export function TeethOcrWizard({
                 ? "Upuść zdjęcie tutaj"
                 : "Zrób zdjęcie odręcznie wypełnionej kartki zamówienia zębów lub przeciągnij plik tutaj."}
             </p>
-            <p className="text-center text-[0.6875rem] text-slate-400">
+            <p className="text-center text-[0.6875rem] text-slate-500">
               System najpierw rozpozna linie produktów, a potem odczyta pozycje.
             </p>
           </div>
@@ -602,10 +607,10 @@ export function TeethOcrWizard({
                       <BrandLoader size="sm" tile={false} />
                     )}
                     {ls.status === "done" && (
-                      <IconCircleCheck size={16} className="text-green-600" />
+                      <IconCircleCheck size={16} className="text-emerald-600" />
                     )}
                     {ls.status === "error" && (
-                      <IconAlertCircle size={16} className="text-red-500" />
+                      <IconAlertCircle size={16} className="text-red-600" />
                     )}
                     <div className="flex-1 min-w-0">
                       <span className="text-sm font-medium text-slate-800">
@@ -615,13 +620,13 @@ export function TeethOcrWizard({
                         <span className="ml-2 text-xs text-slate-500">Odczytuję…</span>
                       )}
                       {ls.status === "done" && (
-                        <span className="ml-2 text-xs text-green-600">
-                          ✓ {ls.groupCount} {ls.groupCount === 1 ? "pozycja" : "pozycji"}
+                        <span className="ml-2 text-xs text-emerald-800">
+                          {ls.groupCount} {plPozycja(ls.groupCount)}
                         </span>
                       )}
                       {ls.status === "error" && (
-                        <span className="ml-2 text-xs text-red-500">
-                          ✗ {ls.error ?? "Nie odczytano"}
+                        <span className="ml-2 text-xs text-red-700">
+                          {ls.error ?? "Nie odczytano"}
                         </span>
                       )}
                     </div>
@@ -664,7 +669,7 @@ export function TeethOcrWizard({
                       className={`text-xs font-medium ${
                         ls.status === "done"
                           ? "text-green-600"
-                          : "text-red-500"
+                          : "text-red-700"
                       }`}
                     >
                       {ls.status === "done"

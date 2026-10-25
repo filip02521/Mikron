@@ -114,7 +114,7 @@ export function SupplierQuickActionsMenu({
         ref={panelRef}
         id={`supplier-menu-${supplierId}`}
         role="menu"
-        className="fixed z-[100] min-w-[200px] overflow-y-auto overscroll-y-contain rounded-md border border-slate-200 bg-white py-1 shadow-lg"
+        className="fixed z-[200] min-w-[200px] overflow-y-auto overscroll-y-contain rounded-md border border-slate-200 bg-white py-1 shadow-[var(--shadow-elevated)]"
         style={{
           top: pos.top,
           left: pos.left,

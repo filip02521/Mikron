@@ -78,7 +78,7 @@ const PRIORITY_META: Record<
   },
 };
 
-const COLS = 9;
+const COLS = 8;
 const thClass = "whitespace-nowrap px-3 py-2.5";
 
 function nextOrderText(row: StockWatchSupplierBoardRow): string | null {
@@ -96,7 +96,7 @@ function PriorityChip({ priority }: { priority: StockWatchPriority }) {
   const meta = PRIORITY_META[priority];
   return (
     <span
-      className={cn("inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-1.5 py-0.5 text-xs font-semibold", meta.chip)}
+      className={cn("inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-1.5 py-0.5 text-xs font-medium", meta.chip)}
       title={meta.hint}
     >
       <span className={cn("size-1.5 shrink-0 rounded-full", meta.dot)} aria-hidden />
@@ -109,7 +109,7 @@ function PriorityChip({ priority }: { priority: StockWatchPriority }) {
 function Count({ value, alarm, sub }: { value: number; alarm?: boolean; sub?: string | null }) {
   if (value <= 0) {
     return (
-      <span className="text-slate-300">
+      <span className="text-slate-400">
         <span aria-hidden>–</span>
         <span className="sr-only">0</span>
       </span>
@@ -380,39 +380,37 @@ export function StockSupplierBoard({
 
   return (
     <Card padding={false} className="overflow-hidden">
-      <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3.5 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
-        <div className="min-w-0 overflow-x-auto">
-          <SegmentedControl
-            value={tier}
-            onChange={setTier}
-            ariaLabel="Priorytet dostawców"
-            density="compact"
-            options={tierOptions}
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-3.5 sm:px-5">
+        <SegmentedControl
+          value={tier}
+          onChange={setTier}
+          ariaLabel="Priorytet dostawców"
+          density="compact"
+          options={tierOptions}
+        />
+        <label className="relative order-first block w-full sm:order-none sm:w-60">
+          <span className="sr-only">Szukaj dostawcy</span>
+          <IconSearch
+            size={15}
+            strokeWidth={2}
+            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+            aria-hidden
           />
-        </div>
-        <div className="flex items-center gap-3">
-          <label className="relative block w-full lg:w-60">
-            <span className="sr-only">Szukaj dostawcy</span>
-            <IconSearch
-              size={15}
-              strokeWidth={2}
-              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
-              aria-hidden
-            />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Szukaj dostawcy"
-              className="h-10 w-full rounded-md border border-slate-200 bg-white pl-8 pr-3 text-base text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:h-9 sm:text-sm"
-            />
-          </label>
-          {quietSupplierCount > 0 ? (
-            <span className="hidden shrink-0 text-xs text-slate-500 lg:inline" title="Analizowani dostawcy bez braków i bez listy „Do ZD”">
-              + {quietSupplierCount} bez braków
-            </span>
-          ) : null}
-        </div>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Szukaj dostawcy"
+            className="h-11 w-full rounded-md border border-slate-200 bg-white pl-8 pr-3 text-base text-slate-900 shadow-sm placeholder:text-slate-400 hover:border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:h-8 sm:text-sm"
+          />
+        </label>
+        <span
+          className="ml-auto shrink-0 text-[0.6875rem] tabular-nums text-slate-500"
+          title={quietSupplierCount > 0 ? "Analizowani dostawcy bez braków i bez listy „Do ZD” nie są na liście" : undefined}
+        >
+          {polishPlural(visible.length, "dostawca", "dostawcy", "dostawców")}
+          {quietSupplierCount > 0 ? ` · ${quietSupplierCount} bez braków` : ""}
+        </span>
       </div>
 
       {visible.length === 0 ? (
@@ -466,7 +464,7 @@ export function StockSupplierBoard({
                   </button>
                   {canMutate && r.priority !== "waiting" ? (
                     <div className="px-4 pb-3">
-                      <Link href={stockWatchSupplierRowHref(r)} className={cn(secondaryLinkClass, "h-10 w-full")}>
+                      <Link href={stockWatchSupplierRowHref(r)} className={cn(secondaryLinkClass, "h-11 w-full")}>
                         Przygotuj ZD
                       </Link>
                     </div>
@@ -482,14 +480,13 @@ export function StockSupplierBoard({
           </ul>
 
           {/* Desktop: jedna zwarta tabela */}
-          <div className="hidden overflow-x-auto md:block">
+          <div className="relative hidden overflow-x-auto md:block">
             <table className="w-full min-w-[780px] text-sm">
               <thead>
                 <tr className="bg-slate-50 text-xs font-semibold text-slate-500">
                   <th scope="col" className="w-10 py-2.5 pl-4">
                     <span className="sr-only">Rozwiń</span>
                   </th>
-                  <th scope="col" className={cn(thClass, "text-left")}>Priorytet</th>
                   <th scope="col" className={cn(thClass, "text-left")}>Dostawca</th>
                   <th scope="col" className={cn(thClass, "text-right")} title="Zero na stanie i nic na otwartych ZD">
                     Puste
@@ -516,7 +513,7 @@ export function StockSupplierBoard({
               {visible.map((r, i) => {
                 const open = expanded.has(r.supplierId);
                 const detailId = `dostawca-d-${r.supplierId}`;
-                const newTier = tier === "all" && (i === 0 || visible[i - 1]!.priority !== r.priority);
+                const newTier = (i === 0 || visible[i - 1]!.priority !== r.priority);
                 return (
                   <tbody key={r.supplierId} id={`dostawca-${r.supplierId}`} className="scroll-mt-16">
                     {newTier ? (
@@ -564,10 +561,7 @@ export function StockSupplierBoard({
                           />
                         </button>
                       </td>
-                      <td className="px-3 py-2.5 align-middle">
-                        <PriorityChip priority={r.priority} />
-                      </td>
-                      <td className="max-w-[15rem] px-3 py-2.5 align-middle">
+                      <td className="max-w-[16rem] px-3 py-2.5 align-middle">
                         <span className="block truncate font-semibold text-slate-900" title={r.supplierName}>
                           {r.supplierName}
                         </span>
@@ -610,7 +604,7 @@ export function StockSupplierBoard({
                             ) : null}
                           </span>
                         ) : (
-                          <span className="text-slate-300">–</span>
+                          <span className="text-slate-400">–</span>
                         )}
                       </td>
                       <td className="px-3 py-2.5 pr-4 text-right align-middle">

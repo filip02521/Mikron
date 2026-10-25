@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { IconBell, IconSun, IconX } from "@/components/icons/StrokeIcons";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
+import { IconBell, IconX } from "@/components/icons/StrokeIcons";
 import { SalesDayStartItemRow } from "@/components/sales/SalesDayStartItemRow";
 import { useSalesInbox } from "@/components/sales/SalesInboxContext";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
@@ -23,7 +22,6 @@ import {
 import {
   brandLinkClass,
   salesTypography,
-  sectionIconTileBrandClass,
 } from "@/lib/ui/ontime-theme";
 import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 import { sidePanelBackdropClass, sidePanelCloseButtonClass, sidePanelHeaderClass } from "@/lib/ui/surfaces";
@@ -127,9 +125,6 @@ export function SalesInboxPanel({
         <header className={sidePanelHeaderClass}>
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
-              <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
-                <IconSun size={20} />
-              </SectionHeadingIcon>
               <div className="min-w-0 flex-1">
                 <h2 className="text-lg font-semibold text-slate-900">Pilne sprawy</h2>
                 <p className={cn("mt-0.5 text-sm leading-relaxed", salesTypography.sectionHint)}>

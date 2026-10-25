@@ -5,7 +5,7 @@ import { useSyncRelativeTime } from "@/hooks/useSyncRelativeTime";
 import { cn } from "@/lib/cn";
 import { panelTypography } from "@/lib/ui/ontime-theme";
 
-/** Stan live sync — pod zakładkami na wszystkich widokach panelu. */
+/** Stan live sync — obok przełącznika widoku, na wszystkich widokach panelu. */
 export function DailyPanelSyncControl({ embedded = false }: { embedded?: boolean }) {
   const ctx = useOperationsUpdates();
   const syncLabel = useSyncRelativeTime(

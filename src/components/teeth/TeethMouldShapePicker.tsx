@@ -219,11 +219,11 @@ function ShapeSectionHeader({
           />
         </span>
       ) : null}
-      <p className="text-[0.5625rem] font-semibold leading-tight text-slate-600">
+      <p className="text-[0.625rem] font-semibold leading-tight text-slate-600">
         {group.label}
       </p>
       {group.hint ? (
-        <p className="text-[0.5rem] leading-tight text-slate-400">{group.hint}</p>
+        <p className="text-[0.625rem] leading-tight text-slate-500">{group.hint}</p>
       ) : null}
     </div>
   );

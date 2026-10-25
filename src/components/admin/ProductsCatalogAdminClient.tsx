@@ -20,6 +20,8 @@ import type { ZdUnmappedKhReport } from "@/lib/subiekt/zd-unmapped-kh-shared";
 import { ProductCatalogSupplierAssign } from "@/components/admin/ProductCatalogSupplierAssign";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Field";
+import { Card, CardHeader } from "@/components/ui/Card";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { FlowSteps } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
@@ -1002,16 +1004,7 @@ export function ProductsCatalogAdminClient({
         <NoticeToast notice={toast} onDismiss={() => setToast(null)} />
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-end gap-2 border-b border-slate-100 px-3 pb-3 sm:px-4 lg:px-5">
-        <Button variant="secondary" onClick={backfillFromSymbol} disabled={pending}>
-          Uzupełnij z symbolu (Subiekt)
-        </Button>
-        <Button variant="secondary" onClick={rebuild} disabled={pending}>
-          Odbuduj z historii
-        </Button>
-      </div>
-
-      <div className="space-y-4">
+      <div className="space-y-6">
         <CatalogZdSyncStatusPanel
           catalogSync={catalogSync}
           pending={pending}
@@ -1022,7 +1015,25 @@ export function ProductsCatalogAdminClient({
           syncRunning={catalogSync?.state?.status === "running"}
         />
 
-        <div className="rounded-md border border-slate-200/90 bg-slate-50/30 p-3 sm:p-4">
+        <Card padding={false} className="overflow-hidden">
+        <CardHeader
+          inset
+          density="compact"
+          title="Import i mapowanie"
+          description="Skąd katalog wie, który dostawca ma dany towar: indeks ZD, import po dostawcach i historia próśb."
+          actionAlign="inline"
+          action={
+            <>
+              <Button variant="secondary" size="sm" onClick={backfillFromSymbol} disabled={pending}>
+                Uzupełnij z symbolu (Subiekt)
+              </Button>
+              <Button variant="secondary" size="sm" onClick={rebuild} disabled={pending}>
+                Odbuduj z historii
+              </Button>
+            </>
+          }
+        />
+        <div className="px-3 py-4 sm:px-4 lg:px-5">
           <p className="text-sm font-semibold text-slate-900">
             <FlowSteps steps={["Indeks ZD", "dostawca"]} chevronClassName="text-indigo-300" />
           </p>
@@ -1031,7 +1042,7 @@ export function ProductsCatalogAdminClient({
           </p>
           <div className="mt-2 flex flex-wrap items-end gap-2">
             <div className="min-w-[10rem]">
-              <label className="text-[0.6875rem] font-semibold text-slate-500">
+              <label className="mb-1 block text-xs font-semibold text-slate-600">
                 Zakres (mies. wstecz)
               </label>
               <Select
@@ -1151,7 +1162,7 @@ export function ProductsCatalogAdminClient({
               (supplierStats ?? [])
                 .filter((s) => (s.linksTotal ?? 0) === 0)
                 .map((s) => (
-                  <div key={s.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50/70 px-3 py-2">
+                  <div key={s.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-900">{s.name}</p>
                       <p className="text-xs text-slate-500">
@@ -1213,7 +1224,7 @@ export function ProductsCatalogAdminClient({
           </p>
           <div className="mt-2 flex flex-wrap items-end gap-2">
             <div className="min-w-[10rem]">
-              <label className="text-[0.6875rem] font-semibold text-slate-500">
+              <label className="mb-1 block text-xs font-semibold text-slate-600">
                 Zakres (mies. wstecz)
               </label>
               <Select
@@ -1310,7 +1321,7 @@ export function ProductsCatalogAdminClient({
 
           <div className="mt-2 flex flex-wrap items-end gap-2">
             <div className="min-w-[10rem]">
-              <label className="text-[0.6875rem] font-semibold text-slate-500">
+              <label className="mb-1 block text-xs font-semibold text-slate-600">
                 Zakres (mies. wstecz)
               </label>
               <Select
@@ -1327,20 +1338,21 @@ export function ProductsCatalogAdminClient({
           </div>
 
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-            <select
+            <Select
+              aria-label="Dostawca do importu"
               value={importSupplierId}
               onChange={(e) => {
                 stopTickLoop();
                 setImportSupplierId(e.target.value);
               }}
-              className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100/90 sm:max-w-[26rem]"
+              className="sm:max-w-[26rem]"
             >
               {suppliers.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name} (kh_Id {s.subiekt_kh_id})
                 </option>
               ))}
-            </select>
+            </Select>
 
             <div className="flex flex-wrap gap-2">
               <Button
@@ -1428,54 +1440,58 @@ export function ProductsCatalogAdminClient({
             ) : null}
           </div>
         </div>
+        </Card>
       </div>
 
-      <div className="px-6 pb-3">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => switchListMode("all")}
-              className={cn(
-                "rounded-md px-3 py-1 text-xs font-semibold transition",
-                listMode === "all"
-                  ? "bg-indigo-600 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-              )}
-            >
-              Wszystkie ({coverage.totalProducts})
-            </button>
-            <button
-              type="button"
-              onClick={() => switchListMode("noSupplier")}
-              className={cn(
-                "rounded-md px-3 py-1 text-xs font-semibold transition",
-                listMode === "noSupplier"
-                  ? "bg-amber-600 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-              )}
-            >
-              Bez dostawcy ({coverage.withoutSupplier})
-            </button>
-          </div>
+      <Card padding={false} className="overflow-hidden">
+      <CardHeader
+        inset
+        density="compact"
+        title="Produkty"
+        description="Zaznacz checkboxem, aby przypisać dostawcę grupowo."
+        actionAlign="inline"
+        action={
           <Button variant="secondary" size="sm" onClick={refreshCoverage} disabled={pending}>
             Odśwież liczniki
           </Button>
-        </div>
+        }
+      />
+      <div className="space-y-2 border-b border-slate-100 px-3 py-3 sm:px-4 lg:px-5">
+        <div className="flex flex-wrap items-center gap-2">
+          <SegmentedControl<"all" | "noSupplier">
+            value={listMode}
+            onChange={(mode) => switchListMode(mode)}
+            ariaLabel="Zakres listy produktów"
+            options={[
+              {
+                value: "all",
+                label: (
+                  <>
+                    Wszystkie <span className="tabular-nums text-slate-500">{coverage.totalProducts}</span>
+                  </>
+                ),
+              },
+              {
+                value: "noSupplier",
+                label: (
+                  <>
+                    Bez dostawcy <span className="tabular-nums text-slate-500">{coverage.withoutSupplier}</span>
+                  </>
+                ),
+              },
+            ]}
+          />
         {listMode === "noSupplier" ? (
-          <p className="mb-2 text-xs text-amber-900/90">
+          <p className="order-last w-full text-xs text-amber-900">
             Produkty w katalogu bez wpisu w{" "}
             <span className="font-mono">product_supplier_links</span> - uzupełnij importem ZD lub
             przypisaniem przy weryfikacji prośby lub ręcznie poniżej (lista dostawców).
           </p>
         ) : null}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
           {listMode === "all" ? (
-            <div className="sm:w-64">
-              <label className="mb-1 block text-[0.6875rem] font-semibold text-slate-500">
-                Dostawca
-              </label>
+            <div className="w-full sm:w-56">
               <Select
+                aria-label="Dostawca"
                 value={supplierFilter}
                 onChange={(e) => handleSupplierFilterChange(e.target.value)}
                 disabled={pending}
@@ -1489,30 +1505,26 @@ export function ProductsCatalogAdminClient({
               </Select>
             </div>
           ) : null}
-          <div className="min-w-0 flex-1">
-            {listMode === "all" ? (
-              <label className="mb-1 block text-[0.6875rem] font-semibold text-slate-500">
-                Szukaj
-              </label>
-            ) : null}
+          <div className="w-full min-w-0 sm:max-w-xs sm:flex-1">
             <Input
+              type="search"
+              aria-label="Szukaj produktu"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              placeholder="Szukaj: tw_Id / symbol / nazwa / kod / dostawca / notatka…"
+              placeholder="Szukaj: symbol, nazwa, tw_Id…"
             />
           </div>
         </div>
-        <p className="mt-2 text-xs text-slate-500">
+        <p className="text-[0.6875rem] text-slate-500">
           {listMode === "noSupplier" ? "Raport: bez dostawcy · " : ""}
           {listMode === "all" && supplierFilter
             ? `Filtr: ${filteredSupplierName ?? "dostawca"} · `
             : ""}
           Pokazuję {filtered.length} z {rows.length} (wczytane: {loaded}/{total}
-          {listMode === "all" ? ` · z mapą: ${coverage.withSupplier}` : ""}). Zaznacz
-          checkboxem, aby przypisać dostawcę grupowo.
+          {listMode === "all" ? ` · z mapą: ${coverage.withSupplier}` : ""}).
         </p>
         {canLoadMore ? (
-          <div className="mt-3">
+          <div className="pt-1">
             <Button type="button" variant="secondary" size="sm" disabled={pending} onClick={loadMore}>
               Załaduj więcej
             </Button>
@@ -1521,7 +1533,7 @@ export function ProductsCatalogAdminClient({
       </div>
 
       {selectedCount > 0 ? (
-        <div className="px-6 pb-3">
+        <div className="px-3 pt-3 sm:px-4 lg:px-5">
           <ProductCatalogBulkAssignBar
             selectedCount={selectedCount}
             visibleCount={filtered.length}
@@ -1537,10 +1549,9 @@ export function ProductsCatalogAdminClient({
         </div>
       ) : null}
 
-      <div className="border-t border-slate-100">
+      <div>
         <div
-          className="hidden border-b border-slate-100 bg-slate-50/90 px-4 py-2 text-[0.6875rem] font-semibold text-slate-500 lg:grid lg:grid-cols-[auto_minmax(0,1fr)_minmax(220px,1fr)_minmax(140px,180px)] lg:items-center lg:gap-3"
-          aria-hidden
+          className="hidden border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-[0.8125rem] font-medium text-slate-500 lg:grid lg:grid-cols-[auto_minmax(0,1fr)_minmax(220px,1fr)_minmax(140px,180px)] lg:items-center lg:gap-3"
         >
           <span className="flex w-9 justify-center">
             <input
@@ -1553,9 +1564,9 @@ export function ProductsCatalogAdminClient({
               aria-label="Zaznacz wszystkie widoczne produkty"
             />
           </span>
-          <span>Produkt</span>
-          <span>Dostawca</span>
-          <span>Notatka</span>
+          <span aria-hidden>Produkt</span>
+          <span aria-hidden>Dostawca</span>
+          <span aria-hidden>Notatka</span>
         </div>
         <ul className="divide-y divide-slate-100">
           {filtered.map((r) => {
@@ -1638,6 +1649,7 @@ export function ProductsCatalogAdminClient({
           <div className="px-4 py-8 text-sm text-slate-600">Brak wyników.</div>
         ) : null}
       </div>
+      </Card>
     </>
   );
 }

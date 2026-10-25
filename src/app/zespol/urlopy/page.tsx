@@ -15,6 +15,7 @@ import { zespolLoadErrorMessage } from "@/lib/sales/zespol-load-errors";
 import { VacationCalendar } from "@/components/settings/VacationCalendar";
 import { SalesTeamSubnav } from "@/components/sales/SalesTeamSubnav";
 import { SalesTeamWorkspace } from "@/components/sales/SalesTeamWorkspace";
+import { Card } from "@/components/ui/Card";
 import { SystemNotice } from "@/components/ui/SystemNotice";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { IconSun } from "@/components/icons/StrokeIcons";
@@ -94,7 +95,6 @@ export default async function ZespolUrlopyPage() {
           ? "Zastępca widzi panel przez przełącznik w /moje z parametrem ?dla="
           : undefined
       }
-      iconKey={isManager ? "team" : "vacation"}
       subnav={isManager ? <SalesTeamSubnav /> : null}
       notices={
         loadError ? (
@@ -107,6 +107,7 @@ export default async function ZespolUrlopyPage() {
         ) : null
       }
     >
+      <Card>
       {!salesPeopleForCalendar.length ? (
         isManager ? (
           <p className="py-6 text-center text-sm text-slate-500">
@@ -132,6 +133,7 @@ export default async function ZespolUrlopyPage() {
           todayDateKey={todayDateKeyInWarsaw()}
         />
       )}
+      </Card>
     </SalesTeamWorkspace>
   );
 

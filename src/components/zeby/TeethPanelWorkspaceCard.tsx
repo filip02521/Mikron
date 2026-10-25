@@ -2,19 +2,18 @@
 
 import type { ReactNode } from "react";
 import { Card } from "@/components/ui/Card";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
+import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { TeethPanelContentFooter } from "@/components/zeby/TeethPanelContentFooter";
-import { cn } from "@/lib/cn";
-import { TEETH_KOLEJKA_ICON_TILE } from "@/lib/teeth/teeth-panel-shell";
+import { TeethPanelHowItWorksContent } from "@/components/zeby/TeethPanelHowItWorks";
 
 /** Szerokość obszaru roboczego panelu zębów — tabele specyfikacji potrzebują miejsca. */
 export const teethWorkspaceShellClass = "relative mx-auto w-full max-w-5xl";
 
+/** Ekran panelu zębów: nagłówek na tle (DESIGN.md → Anatomia ekranu), treść, stopka. */
 export function TeethPanelWorkspaceCard({
   title,
   hint,
-  icon,
-  iconTileClassName = TEETH_KOLEJKA_ICON_TILE,
   headerAside,
   children,
   showFooter = true,
@@ -24,10 +23,6 @@ export function TeethPanelWorkspaceCard({
   title: string;
   /** Jedno zdanie pod tytułem: co tu robię. */
   hint?: string;
-  /** @deprecated Opis jest widoczny wprost pod tytułem. */
-  hintAriaLabel?: string;
-  icon: ReactNode;
-  iconTileClassName?: string;
   headerAside?: ReactNode;
   children: ReactNode;
   showFooter?: boolean;
@@ -37,24 +32,28 @@ export function TeethPanelWorkspaceCard({
   bare?: boolean;
 }) {
   return (
-    <div className={cn(teethWorkspaceShellClass, "space-y-4")}>
+    <div className={teethWorkspaceShellClass}>
       {beforeCard}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-start gap-3 sm:items-center">
-          <SectionHeadingIcon tileClassName={iconTileClassName}>{icon}</SectionHeadingIcon>
-          <div className="min-w-0">
-            <h1 className="text-xl font-semibold tracking-tight text-slate-900">{title}</h1>
-            {hint ? (
-              <p className="mt-0.5 max-w-2xl text-xs leading-snug text-slate-500 sm:text-sm">{hint}</p>
-            ) : null}
-          </div>
-        </div>
-        {headerAside ? <div className="flex shrink-0 items-center gap-2">{headerAside}</div> : null}
-      </header>
-
+      <PageHeader
+        title={title}
+        description={hint}
+        help={
+          <HelpPopover
+            label="Pomoc - panel zębów"
+            title="Panel zębów"
+            shortLabel=""
+            icon={<GuideIcon />}
+            align="left"
+            buttonClassName="size-11 justify-center border-0 bg-transparent p-0 shadow-none hover:bg-slate-100 sm:size-8"
+          >
+            <TeethPanelHowItWorksContent />
+          </HelpPopover>
+        }
+        actions={headerAside}
+      />
 
       {bare ? (
-        <div id="teeth-panel-main" className="space-y-4">
+        <div id="teeth-panel-main" className="space-y-5">
           {children}
         </div>
       ) : (
@@ -62,11 +61,7 @@ export function TeethPanelWorkspaceCard({
           <div id="teeth-panel-main">{children}</div>
         </Card>
       )}
-      {showFooter ? (
-        <div className="overflow-hidden rounded-lg">
-          <TeethPanelContentFooter />
-        </div>
-      ) : null}
+      {showFooter ? <TeethPanelContentFooter /> : null}
     </div>
   );
 }

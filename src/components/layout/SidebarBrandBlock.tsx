@@ -83,7 +83,7 @@ export function SidebarBrandBlock({
         <div className="min-w-0 flex-1">
           <OnTimeWordmark className="pr-7 text-[1.0625rem] font-semibold leading-none tracking-[-0.02em]" />
           {/* design-ok: hasło w bloku marki menu bocznego (część logotypu) */}
-          <p className="mt-1 whitespace-nowrap text-[0.53125rem] font-semibold uppercase leading-none tracking-[0.1em] text-slate-500">
+          <p className="mt-1 whitespace-nowrap text-[0.625rem] font-semibold uppercase leading-none tracking-[0.08em] text-slate-500">
             {ONTIME_TAGLINE_SHORT}
           </p>
         </div>

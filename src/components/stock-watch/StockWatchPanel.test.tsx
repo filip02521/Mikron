@@ -102,8 +102,7 @@ function order(over: Partial<StockWatchSupplierOrder>): StockWatchSupplierOrder 
   };
 }
 
-const dashboard = buildStockWatchDashboard(
-  [
+const dashboardItems = [
     item({}),
     item({
       subiektTwId: 2,
@@ -117,9 +116,9 @@ const dashboard = buildStockWatchDashboard(
       orderZdUnits: 0,
       deliveryRisk: "before_next_delivery",
     }),
-  ],
-  [order({}), order({ supplierId: "n", supplierName: "Dostawca N" })]
-);
+];
+const dashboardOrders = [order({}), order({ supplierId: "n", supplierName: "Dostawca N" })];
+const dashboard = buildStockWatchDashboard(dashboardItems, dashboardOrders);
 
 function renderPanel(props: Partial<Parameters<typeof StockWatchPanel>[0]> = {}) {
   return render(
@@ -158,10 +157,36 @@ describe("StockWatchPanel", () => {
     expect(replace).toHaveBeenCalledWith("/zakupy/braki?dostawca=a&tab=alerts", { scroll: false });
   });
 
+  it("'Puste · bez dostawy' is a filter chip in the list's filter row", () => {
+    renderPanel({ initialTab: "alerts" });
+    const chip = screen.getByRole("button", { name: /Puste · bez dostawy/ });
+    expect(chip.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(chip);
+    expect(chip.getAttribute("aria-pressed")).toBe("true");
+    expect(replace).toHaveBeenLastCalledWith("/zakupy/braki?filtr=puste", { scroll: false });
+    expect(screen.getAllByRole("status").some((s) => s.textContent === "1 pozycja")).toBe(true);
+  });
+
   it("expands a 'Wkrótce' supplier into its next-delivery risks", () => {
     renderPanel({ initialSupplierId: "n", initialSupplierName: "Dostawca N" });
     const desktop = screen.getAllByRole("table")[0]!;
     expect(within(desktop).getAllByText("N-1").length).toBeGreaterThan(0);
     expect(screen.queryByText(/towar jedzie/)).toBeNull();
+  });
+
+  it("supplier list shows the same urgent rows as the board row, incl. 'Przed kolejną'", () => {
+    renderPanel({
+      dashboard: buildStockWatchDashboard(dashboardItems, dashboardOrders, { alertsSupplierId: "n" }),
+      initialSupplierId: "n",
+      initialSupplierName: "Dostawca N",
+      initialTab: "alerts",
+    });
+    expect(screen.getByRole("heading", { name: "Pilne u dostawcy" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Przed kolejną/ })).toBeTruthy();
+    expect(screen.getAllByText("N-1").length).toBeGreaterThan(0);
+    cleanup();
+    renderPanel({ initialTab: "alerts" });
+    expect(screen.getByRole("heading", { name: "Do zamówienia dziś" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Przed kolejną/ })).toBeNull();
   });
 });
