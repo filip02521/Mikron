@@ -2,7 +2,7 @@
 
 Dokument dla modelu AI (lub zespołu), który ma zbudować **podobny projekt wizualnie i technicznie**, ale w **innej dziedzinie biznesowej**. Opisuje wzorce, nie logikę domenową (dostawcy, magazyn itd.).
 
-Szczegóły palety i komponentów: [DESIGN.md](../DESIGN.md). Stos ogólny: [README.md](../README.md).
+Zasady wizualne (paleta, typografia, komponenty, układ ekranu, ładowanie, ikony, ruch): [DESIGN.md](../DESIGN.md) — jedyne źródło, tu ich nie powtarzamy. Użytkownicy i cel produktu: [PRODUCT.md](../PRODUCT.md). Stos ogólny: [README.md](../README.md).
 
 ---
 
@@ -17,167 +17,59 @@ Szczegóły palety i komponentów: [DESIGN.md](../DESIGN.md). Stos ogólny: [REA
 | Stylowanie | **Tailwind CSS** v4 | `@import "tailwindcss"` w `globals.css`, `@theme inline` |
 | PostCSS | `@tailwindcss/postcss` | `postcss.config.mjs` |
 | Merge klas | **tailwind-merge** | helper `cn()` w `src/lib/cn.ts` |
-| Walidacja | **Zod** | formularze, API, env |
 | Daty | **date-fns** | strefa `Europe/Warsaw` w logice biznesowej |
-| Baza + auth | **Supabase** | PostgreSQL, Auth, RLS, `@supabase/ssr` |
-| E-mail | **Amazon SES SMTP** | opcjonalnie (`SMTP_*`) |
+| Baza | **PostgreSQL 16** | `pg` (node-postgres) w `src/lib/db/`; klient w stylu PostgREST (`from().select()`) to własna warstwa `src/lib/db/query-builder.ts`; schemat Drizzle w `src/lib/db/schema.ts` częściowy |
+| Auth | **lokalna** | `app_users` / `app_sessions`, cookie `ontime_session` (`src/lib/auth-local/`); RLS wyłączone, autoryzacja w kodzie aplikacji |
+| E-mail | **Amazon SES SMTP** | `nodemailer`, opcjonalnie (`SMTP_*`) |
 | Testy jednostkowe | **Vitest** + happy-dom | logika w `src/lib/` |
 | Testy E2E | **Playwright** | Chromium |
 | Deploy (LAN) | Windows NSSM + nginx reverse proxy | `installer/` |
 
-**Czego nie ma:** shadcn/ui, Radix, MUI, Chakra, styled-components, CSS Modules jako główny system. UI jest **własne, lekkie komponenty** + tokeny w `ontime-theme.ts`.
+**Czego nie ma:** shadcn/ui, Radix, MUI, Chakra, styled-components, CSS Modules jako główny system, Supabase. UI to **własne, lekkie komponenty** + klasy w `src/lib/ui/ontime-theme.ts`.
 
 ---
 
-## 2. Tożsamość wizualna (marka)
+## 2. Interfejs — gdzie co jest w kodzie
 
-Paleta, typografia, cienie, kształty i zasady komponentów: [`DESIGN.md`](../DESIGN.md) — jedyne źródło. W skrócie: grafit + jeden akcent Petrol (`#0f7380`), statusy tylko zielony / bursztyn / czerwony, Geist + Geist Mono; ciemny gradient tylko na ekranach logowania.
+Reguły: [DESIGN.md](../DESIGN.md). Tu tylko mapa plików do odtworzenia w nowym projekcie.
 
----
-
-## 3. Tokeny CSS (`src/app/globals.css`)
-
-Skopiuj strukturę `:root` i dostosuj hex marki:
-
-```css
-:root {
-  --brand-indigo: #0f7380;        /* Petrol — jedyny akcent (nazwa historyczna) */
-  --brand-indigo-hover: #0d5d67;
-  --brand-sky: var(--brand-indigo);
-  --background: #f3f5f7;
-  --foreground: #151920;
-  --card: #ffffff;
-  --card-border: #e1e4e9;
-  --primary: var(--brand-indigo);
-  --primary-muted: #edf7f8;
-  --radius: 0.375rem;
-  --radius-panel: 0.625rem;
-  --shadow-card-elevated: 0 1px 2px rgba(21, 25, 32, 0.05), 0 6px 20px -8px rgba(21, 25, 32, 0.12);
-  --shadow-brand: 0 4px 14px -6px rgba(15, 115, 128, 0.25);
-}
-```
-
-Palety Tailwinda są przemapowane w `@theme`: `slate-*` = grafit, `indigo-*` = Petrol, a pozostałe rodziny (violet, blue, cyan, sky…) wskazują na Petrol lub grafit, żeby w UI został jeden akcent.
-
-W nowym projekcie zmień nazwy prefiksów (`--brand-*`) i ewentualnie odcień, ale **zachowaj** rozdzielenie: tokeny CSS → `@theme` → klasy w `*-theme.ts`.
+| Warstwa | Plik / katalog | Uwagi |
+|---------|----------------|-------|
+| Tokeny CSS | `src/app/globals.css` | `:root` → `@theme` → klasy; palety Tailwinda przemapowane na jeden akcent |
+| Klasy motywu | `src/lib/ui/ontime-theme.ts` | w nowym projekcie np. `app-theme.ts`; zamiast surowych kolorów w komponentach — import stąd albo `var(--primary)` |
+| Prymitywy | `src/components/ui/` | `Button`, `Field`, `Card`, `ModalShell`, `SegmentedControl`, `SystemNotice`, `BrandLoader`… |
+| Ikony | `src/components/icons/StrokeIcons.tsx` | własne SVG stroke, bez paczki ikon |
+| Shell i nawigacja | `src/components/layout/` | `AppShell` → `AppShellClient`, `Sidebar`, `MobileSalesNav`, `MobileOperationsNav` |
+| Ekrany logowania / 404 | `src/components/brand/BrandMomentLayout.tsx` | bez sidebara (`isAuthLayoutPath`) |
+| Znak marki | `src/lib/ui/brand-app-icon-svg.ts` | opis: `docs/brand/README.md` |
 
 ---
 
-## 4. Warstwa motywu (`src/lib/ui/ontime-theme.ts`)
+## 3. Wzorce ekranów (do sklonowania koncepcyjnie)
 
-Centralny plik klas Tailwind (nie komponentów). W nowym projekcie nazwij np. `app-theme.ts`.
+Anatomia ekranu (nagłówek, zakładki, panele, stany): DESIGN.md → Layout → Anatomia ekranu.
 
-### Kluczowe eksporty do odtworzenia
+| Wzorzec | Przykład w OnTime |
+|---------|-------------------|
+| **Panel operacyjny** | `/podsumowanie` |
+| **Kolejka / inbox** | `/kolejka`, `/weryfikacja` |
+| **Lista użytkownika** | `/moje` |
+| **Formularz prośby** | `/prosba` |
+| **Hub admina** | `/admin/*` |
+| **Tablica / feed** | `/tablica` |
+| **Plan / kalendarz** | `/plan` |
 
-| Klasa / funkcja | Rola |
-|-----------------|------|
-| `appShellClass`, `appMainClass`, `appMainInsetClass` | Shell aplikacji |
-| `sidebarShellClass`, `navLinkActiveClass`, `sidebarNavToneActiveClass(tone)` | Sidebar desktop |
-| `surfaceCardClass` | Karty sekcji |
-| `buttonPrimaryClass` | Gradient primary |
-| `brandMarkAppClass`, `brandIconTileClass` | Logo / ikona sekcji |
-| `panelStickyChromeClass` | Sticky nagłówek zakładek |
-| `panelWorkspaceShellClass` | Wąska kolumna operacji (`max-w-3xl`) |
-| `salesWorkspaceShellClass`, `salesTeamShellClass` | Widoki użytkownika końcowego |
-| `adminPageShellClass` | Szersze tabele admina |
-| `mobileSalesNavClass`, `mobileNavLinkActiveClass` | Dolny pasek mobile |
-| `systemNoticeTourClass`, `systemNoticeActionClass` | Banery systemowe |
-| `roleBadgeClass(role)` | Plakietki ról |
-
-**Wzorzec:** zamiast losowych `indigo-600` w komponentach — import z `*-theme.ts` lub tokenów CSS `var(--primary)`.
+Każdy ekran: `page.tsx` (server, dane) + `*Client.tsx` (interakcja) + opcjonalnie `loading.tsx` (ładowanie wg DESIGN.md → Ładowanie).
 
 ---
 
-## 5. Biblioteka komponentów UI (`src/components/ui/`)
-
-Lekkie prymitywy — buduj ekrany z nich, nie z biblioteki zewnętrznej.
-
-| Komponent | Zastosowanie |
-|-----------|--------------|
-| `Button` | `primary` \| `secondary` \| `outline` \| `ghost` \| `danger`; rozmiary `sm` \| `md` \| `lg` |
-| `Field`, `Input` | Formularze z etykietą i błędem |
-| `Card` | Obudowa sekcji |
-| `Badge` | Statusy, liczniki |
-| `Alert` | Błędy inline |
-| `SystemNotice` | Banery: `pinned`, `action`, `tour` |
-| `ModalShell`, `ConfirmDialog` | Modale |
-| `EmptyState` | Puste listy z CTA |
-| `PageHeader` | Tytuł + akcje strony |
-| `SectionTabNav`, `SegmentedControl` | Zakładki |
-| `DataTable` | Tabele z nagłówkami |
-| `Toast`, `UndoToast` | Powiadomienia + cofnięcie |
-| `Spinner`, `ActionLoadingOverlay` | Ładowanie |
-| `HelpBlock`, `HelpPopover` | Pomoc kontekstowa |
-| `TypeaheadDropdown` | Wyszukiwanie z listą |
-| `OverflowMenu` | Menu „⋯” |
-| `AppBrandMark` | Logo zegar OnTime |
-| `Kbd` | Skróty klawiszowe |
-
-**Button primary** używa `buttonPrimaryClass` z motywu — jeden punkt zmiany gradientu.
-
----
-
-## 6. Ikony
-
-- **Własne SVG** w `src/components/icons/StrokeIcons.tsx` — styl **stroke** (Lucide-like), `strokeWidth={2}`, `viewBox="0 0 24 24"`.
-- Brak paczki `lucide-react` — ikony są inline dla kontroli rozmiaru i spójności.
-- Kafelki sekcji: `sectionIconTileBrandClass` (gradient) lub wariant soft.
-
-W nowym projekcie: skopiuj wzorzec `Svg` + eksporty nazwane; dodawaj ikony per domena.
-
----
-
-## 7. Layout aplikacji
-
-### Desktop
-
-```
-┌─────────────┬──────────────────────────────────┐
-│  Sidebar    │  Main (scroll)                   │
-│  (fixed)    │  - banery (preview, tour, sync)  │
-│             │  - treść strony (max-width shell) │
-└─────────────┴──────────────────────────────────┘
-```
-
-- `AppShell` (server) → `AppShellClient` (client): role, preview admina, onboarding.
-- `Sidebar.tsx` — grupy nawigacji, badge liczników, tony semantyczne (`NavTone`).
-- Treść: `appMainInsetClass` = `px-3 py-5 sm:px-4 lg:px-5`.
-
-### Mobile
-
-- **Handlowiec:** `MobileSalesHeader` + treść + `MobileSalesNav` (4 zakładki + „Więcej”).
-- **Operacje (zakupy/magazyn):** `MobileOperationsHeader` + `MobileOperationsNav`.
-- Aktywna zakładka = ten sam język co aktywny link sidebara (biała karta + ring).
-- `min-h-11` na dotyk (44px).
-
-### Auth
-
-- Bez sidebara (`isAuthLayoutPath`) — pełny ekran gradient + karta (`BrandMomentLayout`).
-- Po logowaniu: krótki ekran `auth/entering` (spinner marki).
-
----
-
-## 8. Wzorce ekranów (do sklonowania koncepcyjnie)
-
-| Wzorzec | Przykład w OnTime | Elementy |
-|---------|-------------------|----------|
-| **Panel operacyjny** | `/podsumowanie` | sticky tabs, pasek postępu, sekcje w kartach, footer akcji |
-| **Kolejka / inbox** | `/kolejka`, `/weryfikacja` | tabela, filtry chip, selection bar |
-| **Lista użytkownika** | `/moje` | wiersze rozwijane, akcje inline, empty guide |
-| **Formularz prośby** | `/prosba` | sekcje `ProsbaFormSection`, meta strip, toolbar |
-| **Hub admina** | `/admin/*` | szersza kolumna, `adminHubBodyClass`, tabele |
-| **Tablica / feed** | `/tablica` | karty wątków, pinned strip |
-| **Plan / kalendarz** | `/plan` | siatka tygodnia `weekPlannerGridClass` |
-
-Każdy ekran: `page.tsx` (server, dane) + `*Client.tsx` (interakcja) + opcjonalnie `loading.tsx` (skeleton).
-
----
-
-## 9. Architektura kodu (poza UI)
+## 4. Architektura kodu (poza UI)
 
 ```
 src/
   app/              # trasy Next.js (App Router)
+    actions/        # Server Actions (mutacje)
+    api/            # trasy API, w tym api/cron
   components/
     ui/             # prymitywy
     layout/         # shell, sidebar, mobile nav
@@ -185,63 +77,53 @@ src/
     [domena]/       # ekrany biznesowe
   lib/
     ui/             # ontime-theme.ts, brand.ts
-    auth/           # sesja, role, login flow
-    data/           # zapytania Supabase
+    auth/, auth-local/  # sesja, role, login flow
+    db/             # pool pg, query builder
+    data/           # zapytania do bazy
     [domena]/       # logika biznesowa (bez React)
+  proxy.ts          # routing, sesja, role
   types/            # typy DB
 ```
 
 - **Server Components** domyślnie; `"use client"` tylko przy stanie, eventach, hookach.
-- **Server Actions** w `src/app/actions/` — mutacje z rewalidacją.
+- **Server Actions** w `src/app/actions/` — każda zaczyna od strażnika roli (`require*()`), patrz `SECURITY.md`.
 - **Logika biznesowa** w `src/lib/` — testowalna przez Vitest bez DOM.
 
 ---
 
-## 10. Auth i role (szkielet)
+## 5. Auth i role (szkielet)
 
-- Supabase Auth + tabela `profiles` (rola, `sales_person_id`, flagi onboardingu).
-- Role: `admin`, `zakupy`, `magazyn`, `sales`, `sales_manager` — nawigacja filtrowana po roli.
-- `DEV_ADMIN_MODE` tylko dev — nie na produkcji.
-- Ciasteczka sesji: `src/lib/supabase/cookie-options.ts` — `Secure` przy HTTPS.
+- Lokalne konta: `app_users` + `app_sessions`, profil w `profiles` (rola, `sales_person_id`, obszary robocze, flagi onboardingu).
+- Role (`UserRole` w `src/types/database.ts`): `admin`, `zakupy`, `zakupy_zeby`, `magazyn`, `sales`, `sales_manager` — nawigacja filtrowana po roli (`src/lib/nav.ts`), dostęp opisany w `SECURITY.md`.
+- `DEV_ADMIN_MODE` nie jest czytany przez kod aplikacji (tylko `scripts/setup-check.ts`) — nie ma trybu bez logowania.
+- Ciasteczka sesji: `src/lib/auth-local/cookies.ts` — `Secure` na produkcji przy `https://`.
 - `NEXT_PUBLIC_APP_URL` = dokładny URL w przeglądarce (krytyczne za nginx).
 
 ---
 
-## 11. UX — powtarzalne zachowania
+## 6. Checklist: nowy projekt „jak OnTime”
 
-- **Undo toast** — cofnięcie akcji przez ~10 s (`UndoToast`).
-- **Keyboard shortcuts** — `KeyboardShortcutsHint`, `Kbd`.
-- **Onboarding tour** — panel boczny + `SystemNotice variant="tour"` + blokada nawigacji.
-- **Empty states** — ilustracja tekstowa + przycisk CTA, nie pusta tabela.
-- **Loading** — `loading.tsx` per route, `PanelRouteLoading`, `Spinner`.
-- **Pomoc** — `HelpPopover` / `HelpBlock` przy złożonych panelach.
-- **Sync strip** — delikatny pasek „odświeżono / synchronizuj”.
-
----
-
-## 12. Checklist: nowy projekt „jak OnTime”
-
-### Faza 1 — szkielet (dzień 1)
+### Faza 1 — szkielet
 
 - [ ] `create-next-app` + TypeScript + Tailwind v4 + App Router
-- [ ] Skopiuj strukturę `globals.css` (tokeny + gradient body)
+- [ ] Skopiuj strukturę `globals.css` (tokeny) i reguły z DESIGN.md
 - [ ] `cn.ts` + `app-theme.ts` (na bazie `ontime-theme.ts`)
-- [ ] `Button`, `Field`, `Card`, `PageHeader`, `SystemNotice`
-- [ ] `layout.tsx` z Geist + `AppShell` (sidebar + main)
+- [ ] Prymitywy z `src/components/ui/` potrzebne pierwszemu ekranowi
+- [ ] `layout.tsx` z fontami + `AppShell` (sidebar + main)
 - [ ] Ekran logowania w stylu `BrandMomentLayout`
 
 ### Faza 2 — nawigacja
 
-- [ ] Sidebar z grupami i `NavTone`
-- [ ] Mobile bottom nav (4 + overflow)
-- [ ] `roleBadgeClass` i filtrowanie menu po roli
+- [ ] Sidebar z grupami
+- [ ] Mobile bottom nav (4 + „Więcej”)
+- [ ] Filtrowanie menu po roli
 
 ### Faza 3 — domena
 
-- [ ] Supabase schema + RLS
-- [ ] 1 panel operacyjny (sticky tabs + karty)
+- [ ] Schemat PostgreSQL (migracje SQL) + strażnicy ról w akcjach
+- [ ] 1 panel operacyjny
 - [ ] 1 lista użytkownika + 1 formularz
-- [ ] Empty states + loading routes
+- [ ] Puste stany + ładowanie tras
 
 ### Faza 4 — produkcja
 
@@ -251,12 +133,12 @@ src/
 
 ---
 
-## 13. Co skopiować dosłownie vs co zmienić
+## 7. Co skopiować dosłownie vs co zmienić
 
 | Skopiuj | Zmień pod nową domenę |
 |---------|-------------------------|
-| `globals.css` tokeny (kolory marki) | Nazwa produktu, hex marki |
-| `ontime-theme.ts` struktura klas | Nazwa pliku, `max-width` shelli |
+| `globals.css` tokeny | Nazwa produktu, odcień akcentu |
+| `ontime-theme.ts` struktura klas | Nazwa pliku, szerokości shelli |
 | `components/ui/*` | Teksty, warianty jeśli potrzeba |
 | `cn.ts`, layout shell | Pozycje menu, ikony |
 | Wzorzec RSC + Client + Actions | Tabele, endpointy, reguły biznesowe |
@@ -265,21 +147,20 @@ src/
 
 ---
 
-## 14. Prompt startowy dla modelu AI
+## 8. Prompt startowy dla modelu AI
 
 Możesz wkleić do nowego czatu:
 
 ```
-Zbuduj aplikację webową B2B w stylu projektu OnTime (docs/stack-and-ui-blueprint.md):
+Zbuduj aplikację webową B2B w stylu projektu OnTime (docs/stack-and-ui-blueprint.md, DESIGN.md):
 
 - Next.js 16 App Router, React 19, TypeScript, Tailwind v4
-- Paleta: indigo + sky, jasne tło, ciemny gradient tylko na login
+- System wizualny z DESIGN.md: grafit + jeden akcent, statusy tylko zielony / bursztyn / czerwony
 - Własne lekkie komponenty UI (Button, Card, SystemNotice…) — bez shadcn/MUI
 - Tokeny CSS w globals.css + centralny plik app-theme.ts z klasami Tailwind
-- Layout: sidebar desktop + dolny pasek mobile, max-w-3xl na panele operacyjne
+- Layout: sidebar desktop + dolny pasek mobile
 - Ikony: własne SVG stroke w jednym pliku
-- Supabase auth + role w profiles
-- Semantyka kolorów: amber=zaległe, emerald=sukces, violet/sky=informacja
+- PostgreSQL + lokalne logowanie (sesja w cookie), role w profilu, autoryzacja w akcjach serwera
 
 Domena: [OPIS NOWEJ DZIEDZINY]
 Główne ekrany: [LISTA]
@@ -288,13 +169,13 @@ Role użytkowników: [LISTA]
 
 ---
 
-## 15. Pliki referencyjne (najważniejsze)
+## 9. Pliki referencyjne (najważniejsze)
 
 | Plik | Po co |
 |------|--------|
+| `DESIGN.md` | System wizualny: tokeny, typografia, komponenty, zasady |
 | `src/app/globals.css` | Tokeny, tło, typografia |
 | `src/lib/ui/ontime-theme.ts` | Wszystkie klasy powtarzalne |
-| `DESIGN.md` | System wizualny: tokeny, typografia, komponenty, zasady |
 | `src/components/ui/Button.tsx` | Wzorzec wariantów |
 | `src/components/layout/AppShellClient.tsx` | Shell + mobile |
 | `src/components/layout/Sidebar.tsx` | Nawigacja desktop |

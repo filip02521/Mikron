@@ -1,5 +1,7 @@
 # Odprawa celna importu — plan
 
+> **Status: zrobione (etapy 1–4).** Ekran `/zakupy/odprawy` (`src/app/zakupy/odprawy/`), logika `src/lib/customs/`, migracje `158_customs_clearance.sql`, `159_customs_clearance_agency_email.sql`; później doszły odprawy DHL z maili (`179_customs_dhl_shipments.sql`, opis w `docs/wdrozenie-gmail-poczta-dostawcow.md`). Wysyłka do agencji idzie z Gmaila osoby wysyłającej.
+
 Cel: z ZD (Subiekt) i faktury dostawcy spoza UE przygotować dane dla agencji celnej —
 opis PL, materiał, kod CN, stawka VAT, załączniki — w formacie maila, którego już
 używamy (przykład: Aswad, faktura AI/3177/26), plus Excel i edycja w aplikacji.

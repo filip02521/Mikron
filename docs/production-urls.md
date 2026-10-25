@@ -28,16 +28,9 @@ npm run start
 # lub restart usługi systemd
 ```
 
-## Supabase — Authentication → URL Configuration
+## Logowanie
 
-| Pole | Wartość |
-|------|---------|
-| **Site URL** | `http://ontime.mikran.pl:3000` |
-| **Redirect URLs** | `http://ontime.mikran.pl:3000/**` |
-| | `http://ontime.mikran.pl/**` (gdy proxy na 80) |
-| | `http://192.168.0.140:3000/**` (fallback IP) |
-
-Lista wygenerowana z env: `npm run setup-check`
+Logowanie jest lokalne (cookie `ontime_session`) — nie ma zewnętrznych adresów przekierowań. Jedyny adres do zgrania poza `.env`: przekierowanie OAuth Gmaila w Google Cloud (`/api/google/callback`, tabela niżej). `npm run setup-check` sprawdza env i wypisuje `APP_URL`.
 
 ## Skąd biorą się linki
 
@@ -48,10 +41,10 @@ Lista wygenerowana z env: `npm run setup-check`
 | Ciasteczka sesji | ten sam host co w przeglądarce |
 | Powrót z logowania Google (Gmail) | `getAppUrl()` → `/api/google/callback` — musi zgadzać się z Google Cloud |
 
-Wcześniejszy błąd produkcji: `NEXT_PUBLIC_APP_URL=http://192.168.10.173:3000` (stary Mac dev) — Supabase przekierowywał na nieistniejący host.
+Wcześniejszy błąd produkcji: `NEXT_PUBLIC_APP_URL=http://192.168.10.173:3000` (stary Mac dev) — linki z maili i resetu hasła prowadziły na nieistniejący host.
 
 ## Weryfikacja
 
-1. `npm run setup-check` — sprawdza env i wypisuje Redirect URLs  
+1. `npm run setup-check` — sprawdza env i wypisuje `APP_URL`  
 2. Admin → Użytkownicy → **Wygeneruj link resetu hasła** → otwórz w przeglądarce  
 3. Powinno trafić na `/ustaw-haslo` z aktywnym formularzem (nie komunikat „Otwórz link zaproszenia…”)

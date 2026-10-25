@@ -1,5 +1,7 @@
 # Checklist zamknięcia migracji (zał. Q)
 
+> **Status: częściowo zrobione.** Kod przeszedł na PostgreSQL w commicie `ec2624dd` (2026-09-05), produkcja działa na lokalnym PostgreSQL (AGENTS.md), w zależnościach nie ma już `@supabase/*` (`package.json`, 2026-10-25). Pozycje „Produkcja Windows” i „Definition of Done” poza zaznaczoną: **niezweryfikowane** — sprawdzone tylko repo i historia git, bez dostępu do produkcji.
+
 ## Dry-run (staging / dev Mac) — wykonane 2026-09-01
 
 - [x] `npm run cutover:dry-run` — export + import PASS
@@ -25,5 +27,5 @@
 
 - [ ] Produkcja na lokalnym PG ≥14 dni
 - [ ] `npm run verify:deploy` green na `.env` produkcyjnym
-- [ ] Brak żywych importów `@supabase/*` w runtime
+- [x] Brak żywych importów `@supabase/*` w runtime (warstwa zgodna z PostgREST: `src/lib/db/query-builder.ts` na `pg`)
 - [ ] Dokumentacja: ten plik + `docs/cutover-postgres.md` + `docs/database-local-postgres.md`
