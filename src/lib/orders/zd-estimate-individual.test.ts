@@ -91,6 +91,15 @@ describe("overlapContributions w buildIndividualEstimateExtras", () => {
 });
 
 describe("matchZdEstimateTwFromOrder", () => {
+  it("prośba wpisana ręcznie z artefaktem „S” nie trafia na towar o symbolu S", () => {
+    const bySymbol = new Map([["s", 677]]);
+    const byTw = new Map([[677, { tw_Id: 677, tw_Symbol: "S" }]]);
+    const o = pending({ id: "p", symbol: "S", products: "Silikon wyciskowy", subiektTwId: null });
+    expect(matchZdEstimateTwFromOrder(o, bySymbol, new Map(), byTw)).toBeNull();
+    // Prawdziwy symbol przed nazwą działa jak dotąd.
+    expect(matchZdEstimateTwFromOrder({ ...o, products: "S kieliszek" }, bySymbol, new Map(), byTw)).toBe(677);
+  });
+
   it("przypięty towar bez symbolu wygrywa z kodem innego towaru w nazwie", () => {
     const bySymbol = new Map([["fr-01", 111], ["ab123", 222]]);
     const byTw = new Map([

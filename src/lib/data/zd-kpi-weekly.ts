@@ -19,6 +19,8 @@ import { fetchZdProductPairs, type ZdProductPairRow } from "@/lib/data/zd-produc
 import { unitPricePerPiece, type StockWatchPackaging } from "@/lib/stock-watch/analysis";
 import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
 import { ZD_AUTOMAT_SUPPLIER_LOCATION, type ZdAbc } from "@/lib/orders/zd-automat-contract";
+import { zdAutomatLevelRollback } from "@/lib/orders/zd-automat-status";
+import { rollbackZdAutomatLevel } from "@/lib/data/zd-supplier-order-policy";
 import {
   fetchZdAsortyment,
   subiektOrdersConfig,
@@ -361,9 +363,14 @@ async function computeSupplierKpi(
     lines: ZdKpiProposal["lines"];
     final_lines: Record<string, number> | null;
     deferred: boolean;
+    origin: string | null;
   }>(
-    `SELECT status, lines, final_lines, deferred_reason IS NOT NULL AS deferred FROM zd_auto_proposals
-      WHERE supplier_id = $1 AND (created_at AT TIME ZONE 'Europe/Warsaw')::date BETWEEN $2 AND $3`,
+    // Korekta człowieka liczona od listy automatu (original_lines), nie od przeliczenia w panelu tuż przed ZD;
+    // to_jsonb — kolumny z migracji 199 czytają się także na bazie bez niej (wtedy null).
+    `SELECT p.status, COALESCE(NULLIF(to_jsonb(p)->'original_lines', 'null'::jsonb), p.lines) AS lines, p.final_lines,
+            p.deferred_reason IS NOT NULL AS deferred, to_jsonb(p)->>'origin' AS origin
+       FROM zd_auto_proposals p
+      WHERE p.supplier_id = $1 AND (p.created_at AT TIME ZONE 'Europe/Warsaw')::date BETWEEN $2 AND $3`,
     [s.id, week.start, week.end]
   );
   const proposals: ZdKpiProposal[] = props.rows.map((r) => ({
@@ -383,7 +390,11 @@ async function computeSupplierKpi(
     rotation,
     deadStock,
     humanCorrection: zdKpiHumanCorrection(proposals),
-    minima: zdKpiMinima(proposals, s.minOrderValue),
+    // Minima: propozycje automatu, nie te utworzone w panelu przy przeglądzie (brak otwartej do przeliczenia).
+    minima: zdKpiMinima(
+      proposals.filter((_, i) => props.rows[i]!.origin !== "review"),
+      s.minOrderValue
+    ),
   };
 }
 
@@ -393,6 +404,8 @@ export type ZdKpiWeeklyRunResult = {
   suppliers: number;
   written: number;
   failed: string[];
+  /** Dostawcy, którym braki A cofnęły stopień automatu (spec §4.4). */
+  rolledBack?: Array<{ name: string; from: number; to: number; reason: string }>;
   durationMs: number;
   error?: string;
 };
@@ -430,6 +443,13 @@ export async function runZdKpiWeekly(opts: { today?: string } = {}): Promise<
           [s.id, start, JSON.stringify(metrics)]
         );
         base.written++;
+        // Braki A od progu przy stopniu ≥ 2 — automat cofa się o stopień (najniżej do 1).
+        const rollback = s.automat
+          ? zdAutomatLevelRollback({ autoLevel: s.automat.autoLevel, oosAPct: metrics.oosA.pct, weekStart: start })
+          : null;
+        if (rollback && (await rollbackZdAutomatLevel({ supplierId: s.id, ...rollback }))) {
+          (base.rolledBack ??= []).push({ name: s.name, ...rollback });
+        }
       } catch (e) {
         base.failed.push(s.name);
         console.error("[zd-kpi-weekly]", s.name, e instanceof Error ? e.message : e);

@@ -53,6 +53,7 @@ import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutatio
 import { Badge } from "@/components/ui/Badge";
 import { IconPencil, IconMapPin, IconSearch, IconPlusCircle } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 function scheduleHref(location: SupplierLocation, name: string): string {
   const q = encodeURIComponent(name);
@@ -166,7 +167,7 @@ export function SuppliersAdminClient({
     const needle = teethPickerSearch.trim().toLowerCase();
     return allSuppliers
       .filter((s) => isSupplierActive(s) && !teethScheduleIds.has(s.id))
-      .filter((s) => !needle || s.name.toLowerCase().includes(needle))
+      .filter((s) => matchesSearchWords(s.name, needle))
       .sort((a, b) => a.name.localeCompare(b.name, "pl"));
   }, [teethLane, allSuppliers, teethScheduleIds, teethPickerSearch]);
 

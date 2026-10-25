@@ -14,6 +14,7 @@ import { Field, Input, Select } from "@/components/ui/Field";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Spinner } from "@/components/ui/Spinner";
 import { formatPlDate, vacationNoteLabel } from "@/lib/display-labels";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 type VacationRecord = {
   id: string;
@@ -198,8 +199,8 @@ export function SupplierVacationModal({
       }
     >
       {loadingExisting ? (
-        <div className="flex items-center gap-2 py-6 text-sm text-slate-600">
-          <Spinner size="sm" />
+        <div className="flex items-center gap-2 py-6 text-sm text-slate-600" role="status">
+          <BrandLoader size="sm" tile={false} />
           Wczytywanie urlopów…
         </div>
       ) : (

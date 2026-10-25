@@ -5,7 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 const historyMock = vi.hoisted(() => vi.fn());
-vi.mock("@/app/actions/zd-estimate", () => ({ actionFetchZdEstimateProductHistory: historyMock }));
+vi.mock("@/app/actions/zd-estimate", () => ({
+  actionFetchZdEstimateProductHistory: historyMock,
+  actionGetZdProductNote: vi.fn(async () => ({ ok: true, note: "" })),
+  actionSaveZdProductNote: vi.fn(),
+}));
 import { ZdEstimateProductCard } from "./ZdEstimateProductCard";
 import { computeZdPackOrderQty } from "@/lib/orders/zd-estimate-packaging";
 import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
@@ -102,15 +106,46 @@ describe("ZdEstimateProductCard", () => {
           { rola: "pa", dokNr: "PA 1", date: "2026-05-01", khId: 3306, khSymbol: "PARAGON", khName: "PARAGON", pieces: 2 },
         ],
       },
-      purchases: { ok: true, rows: [{ twId: 10, dokNr: "ZD 41/2026", date: "2026-09-01", qty: 36, priceNet: 52.5 }] },
+      purchases: {
+        ok: true,
+        rows: [
+          { twId: 10, dokNr: "ZD 41/2026", date: "2026-09-01", qty: 36, priceNet: 52.5, fzDate: "2026-09-12", fzNr: "FZ 7/2026", fzCount: 2 },
+          { twId: 10, dokNr: "ZD 50/2026", date: "2026-10-05", qty: 10, priceNet: 52.5, fzDate: null, fzNr: null, fzCount: 0, zdDone: false },
+          { twId: 10, dokNr: "ZD 30/2026", date: "2026-08-05", qty: 10, priceNet: 52.5, fzDate: null, fzNr: null, fzCount: 0, zdDone: true },
+        ],
+      },
     });
     renderCard();
     expect(await screen.findByText("ZD 41/2026")).toBeTruthy();
+    // Data w wierszu to wpis faktury; ZD z datą zamówienia pod spodem; ZD bez FZ — „bez faktury”.
+    expect(screen.getByText("FZ 7/2026")).toBeTruthy();
+    expect(screen.getByText("12.09.2026")).toBeTruthy();
+    expect(screen.getByText("+1 kolejna")).toBeTruthy();
+    expect(screen.getByText(/z 01\.09\.2026/)).toBeTruthy();
+    expect(screen.getByText("w drodze")).toBeTruthy();
+    expect(screen.getByText("zrealizowane, FZ niepowiązana")).toBeTruthy();
     expect(screen.getByText("36 worek")).toBeTruthy();
-    expect(screen.getByText("= 180 szt")).toBeTruthy();
+    expect(screen.getAllByText("= 180 szt").length).toBeGreaterThan(0);
     expect(screen.getByText(/Kupuje głównie Lab Ortho \(96%\)/)).toBeTruthy();
     expect(screen.getByText("Paragon")).toBeTruthy();
     expect(screen.queryByText("W drodze (ZD)")).toBeNull();
+  });
+
+  it("po fakturze jeden klient bierze całą dostawę: podpowiedź „na prośbę” z przyciskiem oznaczenia", async () => {
+    historyMock.mockResolvedValueOnce({
+      sales: {
+        ok: true,
+        truncated: false,
+        rows: [{ rola: "fs", dokNr: "FS 9", date: "2026-08-03", khId: 7, khSymbol: "GABINET", khName: "Gabinet Testowy", pieces: 180 }],
+      },
+      purchases: { ok: true, rows: [{ twId: 10, dokNr: "ZD 41/2026", date: "2026-07-20", qty: 36, priceNet: null, fzDate: "2026-07-23", fzNr: "FZ 7", fzCount: 1 }] },
+    });
+    const onMarkOnRequest = vi.fn();
+    renderCard({ actions: { onMarkOnRequest } });
+    expect(await screen.findByText("Wygląda na towar na prośbę")).toBeTruthy();
+    expect(screen.getByText(/1 z 1 dostaw .* jeden klient \(najczęściej Gabinet Testowy\) - to 100% sprzedaży\./)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Oznacz „tylko na prośbę”" }));
+    expect(onMarkOnRequest).toHaveBeenCalledOnce();
   });
 
   it("błąd sprzedaży nie psuje zakupów ani reszty karty", async () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
-import { Spinner } from "@/components/ui/Spinner";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { cn } from "@/lib/cn";
 
@@ -26,8 +26,9 @@ export function ProsbaLineFieldMessages({
             <p
               key={`resolving-${i}`}
               className="inline-flex items-center gap-2 text-xs text-slate-600"
+              role="status"
             >
-              <Spinner size="sm" className="shrink-0" />
+              <BrandLoader size="sm" tile={false} />
               Dopasowuję dostawcę…
             </p>
           );

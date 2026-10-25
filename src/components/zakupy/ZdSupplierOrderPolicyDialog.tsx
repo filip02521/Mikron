@@ -30,6 +30,12 @@ export const ZD_AUTO_LEVEL_OPTIONS: { value: ZdAutoLevel; label: string; body: s
   { value: 4, label: "4 · Auto-mail", body: "Zatwierdzone ZD idzie mailem z PDF do dostawcy bez klikania.", soon: "auto-maila do dostawcy" },
 ];
 
+/** „stopień 2 · Okno handlowców (na razie jak 1)” — stopnie 2–4 są zapisane, ale do wdrożenia działają jak 1. */
+export function zdAutoLevelLabel(level: number): string {
+  const o = ZD_AUTO_LEVEL_OPTIONS.find((x) => x.value === level);
+  return `stopień ${o?.label ?? level}${o?.soon ? " (na razie jak 1)" : ""}`;
+}
+
 /** Wartości startowe — backtest roczny polskich dostawców (spec §9): cel 25 dni, ZD co 7 dni. */
 export const ZD_TEST_POLICY_DEFAULTS = { targetDays: 25, cycleDays: 7 } as const;
 
@@ -205,7 +211,7 @@ export function ZdSupplierOrderPolicyDialog({
           <Field label="Dni zapasu w celu" hint="Minimum — przy długiej dostawie cel rośnie sam.">
             <Input id={daysId} inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value)} />
           </Field>
-          <Field label="ZD co ile dni" hint="Dla polskich dostawców: 7.">
+          <Field label="ZD co ile dni" hint="Dla polskich dostawców: 7. Propozycje tylko w dni robocze - termin w weekend lub święto przechodzi na następny dzień roboczy.">
             <Input id={cycleId} inputMode="numeric" value={cycle} onChange={(e) => setCycle(e.target.value)} />
           </Field>
           <Field label="Stopień automatu" className="sm:col-span-2">

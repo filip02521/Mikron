@@ -32,7 +32,7 @@ describe("resolveSalesPersonEmailById", () => {
             select: vi.fn(() => ({
               eq: vi.fn(() => ({
                 maybeSingle: vi.fn().mockResolvedValue({
-                  data: { email: "filip02521@wp.pl" },
+                  data: { email: "stanislaw.wrona@mikran.com" },
                 }),
               })),
             })),
@@ -45,7 +45,7 @@ describe("resolveSalesPersonEmailById", () => {
     const res = await resolveSalesPersonEmailById(supabase as never, "sp-stan");
     expect(res).toEqual({
       personId: "sp-stan",
-      email: "filip02521@wp.pl",
+      email: "stanislaw.wrona@mikran.com",
       name: "STAN",
     });
   });

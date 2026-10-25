@@ -44,6 +44,7 @@ import { cn } from "@/lib/cn";
 import { formatPlDate } from "@/lib/display-labels";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 import { panelTypography } from "@/lib/ui/ontime-theme";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 const MIN_STOCK_MAX = 1_000_000;
 
@@ -407,7 +408,7 @@ export function ZdEstimateMinStockModal({
       ]
         .join(" ")
         .toLowerCase();
-      return hay.includes(q);
+      return matchesSearchWords(hay, q);
     });
     const dir = sortDir === "asc" ? 1 : -1;
     return [...list].sort((a, b) => {

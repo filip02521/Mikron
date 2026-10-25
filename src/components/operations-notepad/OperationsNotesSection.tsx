@@ -48,6 +48,7 @@ import { DragHandleGlyph, PinGlyph } from "@/components/ui/UiGlyphs";
 import { IconGripVertical } from "@/components/icons/StrokeIcons";
 import { RichNoteEditor } from "@/components/notatnik/RichNoteEditor";
 import { NoteBodyDisplay } from "@/components/notatnik/NoteBodyDisplay";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 export const NOTATNIK_KEYBOARD_HINTS = [
   { keys: ["N"], label: "nowa notatka" },
@@ -508,9 +509,7 @@ export function OperationsNotesSection({
     () =>
       needle
         ? sorted.filter(
-            (note) =>
-              note.body.toLowerCase().includes(needle) ||
-              note.title?.toLowerCase().includes(needle)
+            (note) => matchesSearchWords([note.body, note.title], needle)
           )
         : sorted,
     [sorted, needle]

@@ -11,9 +11,9 @@ import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { Input } from "@/components/ui/Field";
 import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { ZdBacktestState, zdInAutomat } from "@/components/zakupy/ZdAutomatCardSection";
+import { ZdBacktestState, formatRollbackDay, zdInAutomat } from "@/components/zakupy/ZdAutomatCardSection";
 import { ZdBacktestPanel } from "@/components/zakupy/ZdBacktestPanel";
-import { ZdSupplierOrderPolicyDialog } from "@/components/zakupy/ZdSupplierOrderPolicyDialog";
+import { ZdSupplierOrderPolicyDialog, zdAutoLevelLabel } from "@/components/zakupy/ZdSupplierOrderPolicyDialog";
 import { cn } from "@/lib/cn";
 import type { ZdAutomatSupplierRow } from "@/lib/data/zd-automat-suppliers";
 import type { ZdKpiWeeklyMetrics } from "@/lib/data/zd-kpi-weekly";
@@ -27,6 +27,7 @@ import {
   type ZdAutomatRow,
 } from "@/lib/orders/zd-automat-status";
 import { supplierCountryLabel, supplierCountryMismatchesLocation } from "@/lib/suppliers/subiekt-country";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 // Pulpit Automatu ZD: jeden wiersz na dostawcę — rytm automatu, ostatni backtest i KPI tygodnia; szczegóły
 // (wszystkie KPI z trendem, akcje, przejście do karty) rozwijają się pod wierszem.
@@ -175,7 +176,12 @@ function AutomatRhythm({ row }: { row: ZdAutomatSupplierRow }) {
       <span className="whitespace-nowrap font-medium text-slate-900">
         {p.cycleDays ? (p.cycleDays === 1 ? "codziennie" : `co ${p.cycleDays} dni`) : "rytm ?"} · cel {p.targetDays ?? "?"}
       </span>
-      <span className="block text-xs text-slate-500">stopień {p.autoLevel}</span>
+      <span className="block text-xs text-slate-500">{zdAutoLevelLabel(p.autoLevel)}</span>
+      {row.levelRollback ? (
+        <span className="block text-xs text-amber-800" title={row.levelRollback.reason}>
+          obniżony {formatRollbackDay(row.levelRollback.at)} (braki A)
+        </span>
+      ) : null}
     </>
   );
 }
@@ -231,7 +237,7 @@ export function ZdAutomatSuppliers({
           ? r.location === ZD_AUTOMAT_SUPPLIER_LOCATION
           : true
   );
-  const shown = needle ? inFilter.filter((r) => r.name.toLocaleLowerCase("pl").includes(needle)) : inFilter;
+  const shown = needle ? inFilter.filter((r) => matchesSearchWords(r.name, needle)) : inFilter;
 
   return (
     <Card padding={false} className="overflow-hidden">

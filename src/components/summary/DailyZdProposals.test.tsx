@@ -41,6 +41,11 @@ const proposal = (supplierId: string, supplierName: string): DailyZdProposal => 
   deferredReason: null,
   flags: [],
   supplierTerms: null,
+  origin: "night",
+  refreshedAt: null,
+  originalLines: null,
+  createAttemptedAt: null,
+  createOutcomeNote: null,
 });
 
 function Outside({ scheduled }: { scheduled: string[] }) {

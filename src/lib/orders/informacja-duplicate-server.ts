@@ -111,6 +111,7 @@ export async function assertNoDuplicateInformacjaEntries(
         subiektTwId: entry.subiektTwId,
         symbol: entry.symbol,
         mikranCode: entry.mikranCode,
+        product: entry.product,
       });
       return { ...base, subiektTwId };
     })

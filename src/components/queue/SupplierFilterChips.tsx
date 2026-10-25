@@ -13,6 +13,7 @@ import {
   panelChoiceChipSelectedClass,
   panelChoiceChipSuccessSelectedClass,
 } from "@/lib/ui/ontime-theme";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 const SEARCH_THRESHOLD = 7;
 const COLLAPSED_VISIBLE = 5;
@@ -92,7 +93,7 @@ export function SupplierFilterChips({
   const filteredChips = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return chips;
-    return chips.filter((c) => c.key.toLowerCase().includes(q));
+    return chips.filter((c) => matchesSearchWords(c.key, q));
   }, [chips, query]);
 
   const showSearch = chips.length >= SEARCH_THRESHOLD;

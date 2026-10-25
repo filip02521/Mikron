@@ -25,6 +25,7 @@ import type { StockWatchSupplierBoardRow } from "@/lib/stock-watch/dashboard";
 import { STOCK_WATCH_PRIORITY_ORDER, type StockWatchPriority } from "@/lib/stock-watch/priority";
 import { stockWatchHorizonDays } from "@/lib/stock-watch/signal";
 import { stockWatchProposalUsesHorizon, stockWatchSupplierRowHref } from "@/lib/stock-watch/status-line";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 type TierFilter = "all" | StockWatchPriority;
 
@@ -341,7 +342,7 @@ export function StockSupplierBoard({
 
   const q = query.trim().toLocaleLowerCase("pl");
   const visible = rows.filter(
-    (r) => (tier === "all" || r.priority === tier) && (!q || r.supplierName.toLocaleLowerCase("pl").includes(q))
+    (r) => (tier === "all" || r.priority === tier) && (!q || matchesSearchWords(r.supplierName, q))
   );
 
   const toggle = (id: string) =>

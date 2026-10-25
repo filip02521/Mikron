@@ -25,6 +25,7 @@ import {
   salesTypography,
 } from "@/lib/ui/ontime-theme";
 import { warsawNowParts } from "@/lib/time/warsaw";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 type AvailabilityFilter = "all" | "undated" | "past" | "noted";
 
@@ -272,7 +273,7 @@ export function TeethShortageLookupModal({
           .filter(Boolean)
           .join(" ")
           .toLowerCase();
-        return hay.includes(q);
+        return matchesSearchWords(hay, q);
       })
       .slice()
       .sort((a, b) => {

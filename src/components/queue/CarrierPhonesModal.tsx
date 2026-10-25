@@ -28,6 +28,7 @@ import { redirectToLoginIfSessionError } from "@/lib/auth/session-login-redirect
 import { panelTypography } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
 import { polishPluralWord } from "@/lib/email/polish-plural";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 type PhoneFormState = {
   label: string;
@@ -112,8 +113,10 @@ export function CarrierPhonesModal({
     if (!q) return carriers;
     return carriers.filter(
       (c) =>
-        c.label.toLowerCase().includes(q) ||
-        (phonesBySlug.get(c.slug) ?? []).some((p) => p.phone.includes(q) || p.label.toLowerCase().includes(q)),
+        matchesSearchWords(
+          [c.label, ...(phonesBySlug.get(c.slug) ?? []).flatMap((p) => [p.phone, p.label])],
+          q
+        ),
     );
   }, [carriers, phonesBySlug, search]);
 

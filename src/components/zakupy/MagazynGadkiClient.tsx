@@ -76,6 +76,7 @@ import {
   panelTypography,
   sectionIconTileBrandClass,
 } from "@/lib/ui/ontime-theme";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 export type GadkiSyncBanner = {
   changes: { zkNumber: string; text: string }[];
@@ -100,7 +101,7 @@ function matchesSearch(line: ExternalWarehouseLineDto, q: string): boolean {
   if (!q) return true;
   const hay =
     `${line.symbol ?? ""} ${line.product} ${line.note ?? ""} ${line.lineNote ?? ""} ${line.palletLabel ?? ""}`.toLowerCase();
-  return hay.includes(q);
+  return matchesSearchWords(hay, q);
 }
 
 function GadkiSection({

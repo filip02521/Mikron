@@ -82,6 +82,7 @@ import {
   stockSignalHasWork,
   useSupplierStockSignals,
 } from "@/components/summary/SupplierStockSignal";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 /** Link wyglądający jak `Button` size="sm" (bez zagnieżdżania <button> w <a>), cel ≥ 36 px. */
 const LINK_BUTTON_VARIANT = {
@@ -653,9 +654,9 @@ export function SupplierDrawer({
             icon={<IconClock size={14} />}
           >
             {historyLoading ? (
-              <div className="flex items-center gap-2 text-sm text-slate-400">
-                <span className="h-3 w-3 animate-pulse rounded-full bg-slate-300" />
-                Ładowanie historii…
+              <div className="flex items-center gap-2 text-sm text-slate-500" role="status">
+                <BrandLoader size="sm" tile={false} />
+                Wczytuję historię…
               </div>
             ) : history.length === 0 ? (
               <p className="text-sm text-slate-400">Brak zapisów w historii.</p>

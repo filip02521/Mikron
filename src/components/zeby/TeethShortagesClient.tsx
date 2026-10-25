@@ -48,6 +48,7 @@ import {
 import { toastError, toastSuccess, type ToastNotice } from "@/lib/ui/notice-copy";
 import { warsawNowParts } from "@/lib/time/warsaw";
 import type { TeethSupplierShortageWithSupplier } from "@/types/database";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 function FilterChip({
   label,
@@ -119,7 +120,7 @@ export function TeethShortagesClient({
           .filter(Boolean)
           .join(" ")
           .toLowerCase();
-        return hay.includes(q);
+        return matchesSearchWords(hay, q);
       })
       .slice()
       .sort((a, b) => {

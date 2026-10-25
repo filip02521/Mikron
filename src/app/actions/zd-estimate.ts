@@ -1,6 +1,14 @@
 "use server";
 
-import { isUndefinedTableError } from "@/lib/db/pool";
+import { isUndefinedTableError, query } from "@/lib/db/pool";
+import {
+  detectOnRequestPattern,
+  isOnRequestDeliveryArrived,
+  onRequestCustomerKey,
+  onRequestDeliveryDate,
+  onRequestPatternSummary,
+} from "@/lib/orders/zd-on-request-detect";
+import { fetchSubiektProductNote, saveSubiektProductNote } from "@/lib/data/product-catalog";
 import { refreshStockWatchAfterOrder } from "@/lib/stock-watch/refresh-after-order";
 import { createZdAutoProposalNow, zdAutoProposalNowInFlight } from "@/lib/stock-watch/worker";
 import type { SupplierLocation } from "@/types/database";
@@ -20,6 +28,7 @@ import {
   claimZdAutoProposalCreate,
   expirePendingZdAutoProposals,
   fetchLatestZdAutoProposal,
+  fetchZdAutoProposalById,
   releaseZdAutoProposalCreate,
   listZdAutoProposals,
   type ZdAutoProposal,
@@ -1276,6 +1285,197 @@ export async function actionFetchZdEstimateProductReservations(input: {
   }
 }
 
+/** Podpowiedź z historii: towar wygląda na „na prośbę” albo oznaczony „na prośbę” sprzedaje się jak magazynowy. */
+export type ZdOnRequestHint = {
+  twId: number;
+  summary: string;
+  deliveries: number;
+  takenWhole: number;
+  salesShare: number;
+  customers: number;
+};
+
+/** Ile towarów listy sprawdzamy w Subiekcie jednym kliknięciem (każdy to osobne zapytanie o sprzedaż). */
+const ZD_ON_REQUEST_SCAN_MAX = 150;
+
+/**
+ * Kreator → „Tylko na prośbę” → Podpowiedzi: towary bieżącej listy, które po fakturze zakupu w kilka dni bierze
+ * w całości jeden klient (kandydaci do oznaczenia), i oznaczone, które kupuje wielu klientów. Tylko odczyt.
+ */
+export async function actionScanZdOnRequestHints(input: { twIds: number[] }): Promise<
+  | { ok: true; candidates: ZdOnRequestHint[]; stockLike: ZdOnRequestHint[]; checked: number; skipped: number }
+  | { ok: false; message: string }
+> {
+  try {
+    await requireZdEstimateAdmin("read");
+    const ids = [...new Set((input.twIds ?? []).map((x) => Math.trunc(Number(x))).filter((x) => Number.isSafeInteger(x) && x > 0))].slice(0, 2000);
+    if (!ids.length) return { ok: true, candidates: [], stockLike: [], checked: 0, skipped: 0 };
+    const dataDo = warsawDateKeyDaysAgo(0);
+    const dataOd = warsawDateKeyDaysAgo(548);
+    const [lines, marked, packaging] = await Promise.all([
+      listZdPurchaseLinesForTw(ids, dataOd, 20_000, 20_000),
+      query<{ tw: number }>(`SELECT subiekt_tw_id AS tw FROM zd_estimate_on_request WHERE subiekt_tw_id = ANY($1::int[])`, [ids]),
+      query<{ tw: number; units: number; mode: string | null }>(
+        `SELECT subiekt_tw_id AS tw, units_per_package AS units, document_unit_mode AS mode
+           FROM zd_estimate_packaging WHERE subiekt_tw_id = ANY($1::int[])`,
+        [ids]
+      ),
+    ]);
+    const markedSet = new Set(marked.rows.map((r) => Number(r.tw)));
+    // ZD w paczkach: linia ZD w paczkach, sprzedaż w sztukach.
+    const factor = new Map(packaging.rows.map((r) => [Number(r.tw), r.mode === "packages" ? Number(r.units) || 1 : 1]));
+    const byTw = new Map<number, typeof lines>();
+    for (const l of lines) {
+      const list = byTw.get(l.subiektTwId);
+      if (list) list.push(l);
+      else byTw.set(l.subiektTwId, [l]);
+    }
+    // Kandydaci: nieoznaczone z dostawą w historii; oznaczone — wszystkie (czy nie są magazynowe).
+    const toCheck = ids.filter((tw) => markedSet.has(tw) || (byTw.get(tw)?.length ?? 0) > 0);
+    const checkNow = toCheck.slice(0, ZD_ON_REQUEST_SCAN_MAX);
+    const candidates: ZdOnRequestHint[] = [];
+    const stockLike: ZdOnRequestHint[] = [];
+    let next = 0;
+    const worker = async () => {
+      while (next < checkNow.length) {
+        const tw = checkNow[next++]!;
+        const sales = await fetchSubiektProductSalesDocs({ towarId: tw, dataOd, dataDo }).catch(() => null);
+        if (!sales) continue;
+        const f = factor.get(tw) ?? 1;
+        const p = detectOnRequestPattern(
+          (byTw.get(tw) ?? [])
+            .filter(isOnRequestDeliveryArrived)
+            .map((l) => ({ date: onRequestDeliveryDate({ fzDate: l.fzDate, zdDate: l.dokDate }) ?? "", pieces: l.qty * f })),
+          sales.rows.map((s, i) => ({
+            date: s.date,
+            khKey: onRequestCustomerKey(s, s.dokId || i),
+            khName: s.khName || s.khSymbol || null,
+            pieces: s.qty,
+          })),
+          dataDo
+        );
+        const hint: ZdOnRequestHint = {
+          twId: tw,
+          summary: onRequestPatternSummary(p),
+          deliveries: p.deliveries,
+          takenWhole: p.takenWhole,
+          salesShare: p.salesShare,
+          customers: p.customers,
+        };
+        if (!markedSet.has(tw) && p.likely) candidates.push(hint);
+        else if (markedSet.has(tw) && p.stockLike && !p.likely) stockLike.push(hint);
+      }
+    };
+    await Promise.all(Array.from({ length: 4 }, worker));
+    candidates.sort((a, b) => b.salesShare - a.salesShare || b.takenWhole - a.takenWhole);
+    stockLike.sort((a, b) => b.customers - a.customers);
+    return { ok: true, candidates, stockLike, checked: checkNow.length, skipped: toCheck.length - checkNow.length };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się sprawdzić listy.") };
+  }
+}
+
+/** Ustawienia zamawiania jednego towaru — panel dzienny → „Ustawienia towaru”, bez liczenia listy Kreatora. */
+export type ZdProductSettings = {
+  twId: number;
+  /** Tryb: zwykłe liczenie, tylko na prośbę, wykluczony z ZD. */
+  mode: "normal" | "onRequest" | "excluded";
+  modeNote: string;
+  packaging: { unitsPerPackage: number; packageLabel: string; documentUnitMode: ZdPackagingDocumentUnitMode | null; orderMultiple: number | null } | null;
+  minStockSzt: number | null;
+  /** Para opakowanie ↔ sztuka (edycja w Kreatorze → Reguły → Pary). */
+  pair: { role: "pack" | "piece"; twinTwId: number; twinSymbol: string | null; twinNazwa: string; unitsPerPack: number } | null;
+  note: string;
+};
+
+export async function actionGetZdProductSettings(input: { twId: number }): Promise<
+  { ok: true; settings: ZdProductSettings } | { ok: false; message: string }
+> {
+  try {
+    await requireZdEstimateAdmin("read");
+    const twId = Math.trunc(Number(input.twId));
+    if (!Number.isSafeInteger(twId) || twId <= 0) return { ok: false, message: "Nieprawidłowy identyfikator towaru." };
+    const { fetchZdEstimateMinStockOne } = await import("@/lib/data/zd-estimate-min-stock");
+    const { fetchZdEstimatePackagingOne } = await import("@/lib/data/zd-estimate-packaging");
+    const { fetchZdProductPairByTwId } = await import("@/lib/data/zd-product-pairs");
+    const [exclusion, onRequest, packaging, minStock, pair, note] = await Promise.all([
+      fetchZdEstimateExclusion(twId),
+      fetchZdEstimateOnRequest(twId),
+      fetchZdEstimatePackagingOne(twId),
+      fetchZdEstimateMinStockOne(twId),
+      fetchZdProductPairByTwId(twId),
+      fetchSubiektProductNote(twId),
+    ]);
+    const isPack = pair?.packTwId === twId;
+    return {
+      ok: true,
+      settings: {
+        twId,
+        mode: exclusion ? "excluded" : onRequest ? "onRequest" : "normal",
+        modeNote: exclusion?.note ?? onRequest?.note ?? "",
+        packaging: packaging
+          ? {
+              unitsPerPackage: packaging.unitsPerPackage,
+              packageLabel: packaging.packageLabel,
+              documentUnitMode: packaging.documentUnitMode ?? null,
+              orderMultiple: packaging.orderMultiple ?? null,
+            }
+          : null,
+        minStockSzt: minStock?.minStockSzt ?? null,
+        pair: pair
+          ? {
+              role: isPack ? "pack" : "piece",
+              twinTwId: isPack ? pair.pieceTwId : pair.packTwId,
+              twinSymbol: isPack ? pair.pieceSymbol : pair.packSymbol,
+              twinNazwa: isPack ? pair.pieceNazwa : pair.packNazwa,
+              unitsPerPack: pair.unitsPerPack,
+            }
+          : null,
+        note,
+      },
+    };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się wczytać ustawień towaru.") };
+  }
+}
+
+const ZD_PRODUCT_NOTE_MAX_LEN = 1000;
+
+/** Karta produktu w Kreatorze: notatka zakupów przy towarze (progi cenowe, uwagi do zamawiania). */
+export async function actionGetZdProductNote(input: { twId: number }): Promise<{ ok: true; note: string } | { ok: false; message: string }> {
+  try {
+    await requireZdEstimateAdmin("read");
+    const twId = Math.trunc(Number(input.twId));
+    if (!Number.isSafeInteger(twId) || twId <= 0) return { ok: false, message: "Nieprawidłowy identyfikator towaru." };
+    return { ok: true, note: await fetchSubiektProductNote(twId) };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się wczytać notatki.") };
+  }
+}
+
+export async function actionSaveZdProductNote(input: {
+  twId: number;
+  note: string;
+  symbol?: string | null;
+  name?: string | null;
+}): Promise<{ ok: true; note: string } | { ok: false; message: string }> {
+  try {
+    await requireZdEstimateAdmin("mutate");
+    const twId = Math.trunc(Number(input.twId));
+    if (!Number.isSafeInteger(twId) || twId <= 0) return { ok: false, message: "Nieprawidłowy identyfikator towaru." };
+    const note = String(input.note ?? "").trim();
+    if (note.length > ZD_PRODUCT_NOTE_MAX_LEN) {
+      return { ok: false, message: `Notatka może mieć najwyżej ${ZD_PRODUCT_NOTE_MAX_LEN} znaków.` };
+    }
+    const clip = (v: string | null | undefined) => (v == null ? null : String(v).trim().slice(0, 200) || null);
+    await saveSubiektProductNote({ subiektTwId: twId, note, symbol: clip(input.symbol), name: clip(input.name) });
+    revalidatePath("/admin/produkty");
+    return { ok: true, note };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się zapisać notatki.") };
+  }
+}
+
 /**
  * Karta produktu: sprzedaż dokument po dokumencie (Subiekt, 12 mies.) i nasze zakupy (linie ZD
  * z nocnego harvestu). Para: obie strony, sprzedaż paczek przeliczona na sztuki.
@@ -1349,6 +1549,10 @@ export async function actionFetchZdEstimateProductHistory(input: {
           date: r.dokDate,
           qty: r.qty,
           priceNet: r.priceNet,
+          fzDate: r.fzDate ?? null,
+          fzNr: r.fzNr ?? null,
+          fzCount: r.fzCount ?? 0,
+          zdDone: r.zdDone ?? null,
         })),
       };
     } catch (e) {
@@ -1404,10 +1608,18 @@ async function acceptPendingAutoProposal(input: {
   dokId: number;
   createLines: ReadonlyArray<{ twId: number; ilosc: number }>;
   userId: string;
+  /**
+   * ZD z panelu „Sprawdź i zatwierdź”: ta konkretna propozycja (zajęta blokadą tworzenia), nie najnowsza —
+   * w międzyczasie mogła powstać nowsza, a zatwierdzona jest ta, którą człowiek oglądał.
+   */
+  proposalId?: string | null;
 }): Promise<void> {
   if (!UUID_RE.test(input.supplierId)) return;
   try {
-    const latest = await fetchLatestZdAutoProposal(input.supplierId);
+    const latest = input.proposalId
+      ? await fetchZdAutoProposalById(input.proposalId)
+      : await fetchLatestZdAutoProposal(input.supplierId);
+    if (latest && latest.supplierId !== input.supplierId) return;
     if (!latest) return;
     const finalLines: Record<string, number> = {};
     for (const l of input.createLines) finalLines[String(l.twId)] = (finalLines[String(l.twId)] ?? 0) + l.ilosc;
@@ -1456,6 +1668,8 @@ export async function actionListZdAutoProposals(input: {
 /** „Przygotuj propozycję teraz” — przelicza dostawcę strategią testową i zapisuje propozycję. */
 export async function actionCreateZdAutoProposalNow(input: {
   supplierId: string;
+  /** Panel „Sprawdź i zatwierdź”: przelicz tę propozycję w miejscu zamiast tworzyć nową. */
+  refreshProposalId?: string | null;
 }): Promise<{ ok: true; proposal: ZdAutoProposal | null } | { ok: false; message: string }> {
   await requireZdEstimateAdmin("mutate");
   const supplierId = String(input.supplierId ?? "").trim();
@@ -1463,7 +1677,8 @@ export async function actionCreateZdAutoProposalNow(input: {
   try {
     const policy = await fetchZdSupplierOrderPolicy(supplierId);
     if (policy.strategy === "classic") return { ok: false, message: "Najpierw włącz strategię testową dla dostawcy." };
-    const result = await createZdAutoProposalNow(supplierId);
+    const refreshId = String(input.refreshProposalId ?? "").trim();
+    const result = await createZdAutoProposalNow(supplierId, { refreshProposalId: UUID_RE.test(refreshId) ? refreshId : null });
     if (result.status !== "ok") {
       const why = {
         no_scope: "Dostawca nie ma zakresu (grupy / cechy) w Kreatorze.",
@@ -1474,7 +1689,7 @@ export async function actionCreateZdAutoProposalNow(input: {
     }
     const p = result.proposal;
     if (!p) return { ok: false, message: "Propozycja nie została policzona - spróbuj ponownie." };
-    if (p.kind === "created") return { ok: true, proposal: await fetchLatestZdAutoProposal(supplierId) };
+    if (p.kind === "created") return { ok: true, proposal: await fetchZdAutoProposalById(p.id) };
     if (p.kind === "nothing_to_order") {
       // Rano była propozycja, teraz nic do zamówienia — karta w panelu dziennym nie może czekać dalej.
       if ((await expirePendingZdAutoProposals(supplierId)) > 0) revalidateAfterZdEstimateMark();
@@ -1536,8 +1751,8 @@ export async function actionGetZdAutoProposalProsby(input: {
     const supplierId = String(input.supplierId ?? "").trim();
     const proposalId = String(input.proposalId ?? "").trim();
     if (!UUID_RE.test(supplierId) || !UUID_RE.test(proposalId)) return { ok: false, message: "Nieprawidłowa propozycja." };
-    const proposal = await fetchLatestZdAutoProposal(supplierId);
-    if (!proposal || proposal.id !== proposalId) return { ok: false, message: "Propozycja zmieniła się w międzyczasie - przelicz ją ponownie." };
+    const proposal = await fetchZdAutoProposalById(proposalId);
+    if (!proposal || proposal.supplierId !== supplierId) return { ok: false, message: "Propozycja zmieniła się w międzyczasie - przelicz ją ponownie." };
     const scope = groupZdEstimateScopesBySupplier(await listZdEstimateSupplierScopes()).get(supplierId)?.[0];
     if (!scope) return { ok: false, message: "Dostawca nie ma zakresu w Kreatorze ZD." };
     const [pending, pairs, boms, teeth] = await Promise.all([
@@ -1605,10 +1820,11 @@ export async function actionAcceptZdAutoProposal(input: {
   }
   acceptingProposalIds.add(proposalId);
   try {
-    const proposal = await fetchLatestZdAutoProposal(supplierId);
-    // Tylko aktualna, czekająca propozycja — inna zakładka mogła ją przeliczyć albo odrzucić.
+    // Ta propozycja, wciąż otwarta — przeliczenie w panelu zmienia ją w miejscu, a nowsza wygasza starsze.
+    const found = await fetchZdAutoProposalById(proposalId);
+    const proposal = found?.supplierId === supplierId ? found : null;
     const open = proposal?.status === "pending" || (proposal?.status === "deferred" && input.acceptDeferred === true);
-    if (!proposal || proposal.id !== proposalId || !open) {
+    if (!proposal || !open) {
       return {
         ok: false,
         message:
@@ -1672,6 +1888,7 @@ export async function actionAcceptZdAutoProposal(input: {
       confirmLiveCreate: true,
       individualCatalogOrderIds: built.individualCatalogOrderIds,
       individualServiceOrderIds: built.individualServiceOrderIds,
+      autoProposalId: proposal.id,
       });
     } catch (e) {
       // Wyjątek w trakcie zapisu = wynik nieznany; blokada w bazie zostaje.
@@ -3655,6 +3872,8 @@ export async function actionCreateZdFromEstimate(input: {
   consumedOrderIds?: string[] | null;
   /** @deprecated użyj catalog + service; łączona lista nadal akceptowana. */
   individualOrderIds?: string[] | null;
+  /** Panel propozycji automatu: ZD zatwierdza tę propozycję (nie najnowszą dostawcy). */
+  autoProposalId?: string | null;
 }): Promise<ZdEstimateCreateZdResult> {
   const user = await requireZdEstimateAdmin("mutate");
   const orders = resolveSubiektOrdersConfig();
@@ -4110,10 +4329,11 @@ export async function actionCreateZdFromEstimate(input: {
     acceptedCatalogOrderIds: catalogIds,
   });
 
-  const acceptInput = { supplierId: input.supplierId, dokId, createLines, userId: user.id };
+  const autoProposalId = typeof input.autoProposalId === "string" && UUID_RE.test(input.autoProposalId) ? input.autoProposalId : null;
+  const acceptInput = { supplierId: input.supplierId, dokId, createLines, userId: user.id, proposalId: autoProposalId };
   await acceptPendingAutoProposal(acceptInput);
-  // „Przygotuj teraz” w toku: propozycja powstanie po tym ZD — to ZD na nią odpowiada.
-  const proposalRun = zdAutoProposalNowInFlight(input.supplierId);
+  // „Przygotuj teraz” w toku: propozycja powstanie po tym ZD — to ZD na nią odpowiada (Kreator, nie panel propozycji).
+  const proposalRun = autoProposalId ? null : zdAutoProposalNowInFlight(input.supplierId);
   if (proposalRun) void proposalRun.then(() => acceptPendingAutoProposal(acceptInput), () => undefined);
 
   let dokNrPelny = `ZD/${dokId}`;
@@ -5709,3 +5929,38 @@ export async function actionDeleteZdEstimateUiSession(input: {
   return { ok: true };
 }
 
+
+/** Klasa towaru w Kreatorze: ABC (zysk 12 mies.) × XYZ (zmienność), z ręcznym nadpisaniem z pulpitu automatu. */
+export type ZdEstimateSkuClass = { abc: "A" | "B" | "C"; xyz: "X" | "Y" | "Z" | "N"; overridden: boolean };
+
+/**
+ * Kreator ZD → kolumna „Klasa” i kolejność przeglądu (A najpierw). Klasy nie zmieniają ilości (spec §8.2).
+ * Tylko odczyt; bez migracji 194 / bez przeliczonych klas — pusto.
+ */
+export async function actionFetchZdEstimateSkuClasses(input: { twIds: number[] }): Promise<
+  { ok: true; classes: Record<string, ZdEstimateSkuClass> } | { ok: false; message: string }
+> {
+  try {
+    await requireZdEstimateAdmin("read");
+    const ids = [...new Set((input.twIds ?? []).map((x) => Math.trunc(Number(x))).filter((x) => Number.isSafeInteger(x) && x > 0))].slice(0, 5000);
+    if (!ids.length) return { ok: true, classes: {} };
+    const res = await query<{ tw: number; abc: string; xyz: string; overridden: boolean }>(
+      `SELECT subiekt_tw_id AS tw, COALESCE(override_abc, abc) AS abc, COALESCE(override_xyz, xyz) AS xyz,
+              (override_abc IS NOT NULL OR override_xyz IS NOT NULL) AS overridden
+         FROM zd_sku_class WHERE subiekt_tw_id = ANY($1::int[])`,
+      [ids]
+    );
+    const classes: Record<string, ZdEstimateSkuClass> = {};
+    for (const r of res.rows) {
+      classes[String(r.tw)] = {
+        abc: r.abc.trim() as ZdEstimateSkuClass["abc"],
+        xyz: r.xyz.trim() as ZdEstimateSkuClass["xyz"],
+        overridden: r.overridden === true,
+      };
+    }
+    return { ok: true, classes };
+  } catch (e) {
+    if (isUndefinedTableError(e)) return { ok: true, classes: {} };
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się wczytać klas towarów.") };
+  }
+}

@@ -1,3 +1,4 @@
+import { matchesSearchWords } from "@/lib/search/keywords";
 /**
  * Rozdzielanie towarów wspólnego zakresu między dostawców — czysta logika panelu.
  *
@@ -45,8 +46,7 @@ export function zdSplitChanged(
 function matchesQuery(p: ZdSharedScopeProduct, q: string): boolean {
   if (!q) return true;
   return (
-    (p.twSymbol ?? "").toLowerCase().includes(q) ||
-    p.twNazwa.toLowerCase().includes(q) ||
+    matchesSearchWords([p.twSymbol, p.twNazwa], q) ||
     String(p.subiektTwId) === q
   );
 }

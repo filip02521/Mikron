@@ -26,6 +26,7 @@ import {
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 import { controlFocusClass, panelTypography } from "@/lib/ui/ontime-theme";
 import { ZdPackagingLabelPresets } from "@/components/zakupy/ZdPackagingLabelPresets";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 export function ZdEstimatePackagingModal({
   open,
@@ -73,7 +74,7 @@ export function ZdEstimatePackagingModal({
       ]
         .join(" ")
         .toLowerCase();
-      return hay.includes(q);
+      return matchesSearchWords(hay, q);
     });
   }, [packaging, query]);
 

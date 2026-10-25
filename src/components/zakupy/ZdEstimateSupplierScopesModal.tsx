@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
+import { matchesSearchWords } from "@/lib/search/keywords";
 import {
   actionDeleteZdEstimateSupplierScope,
   actionListZdEstimateSupplierScopes,
@@ -464,14 +465,7 @@ export function ZdEstimateSupplierScopesModal({
       }))
       .filter(
         (c) =>
-          !filterText ||
-          c.name.toLowerCase().includes(filterText) ||
-          c.rows.some(
-            (s) =>
-              s.label.toLowerCase().includes(filterText) ||
-              String(s.grupaId ?? "").includes(filterText) ||
-              String(s.cechaId ?? "").includes(filterText)
-          )
+          matchesSearchWords([c.name, ...c.rows.flatMap((s) => [s.label, s.grupaId, s.cechaId])], filterText)
       )
       .sort((a, b) => a.name.localeCompare(b.name, "pl"));
   }, [scopesBySupplier, suppliers, filterText]);
@@ -482,14 +476,12 @@ export function ZdEstimateSupplierScopesModal({
   );
   const allUnmapped = liveCoverage?.unmapped ?? [];
   const liveUnmapped = allUnmapped.filter(
-    (s) => !filterText || s.supplierName.toLowerCase().includes(filterText)
+    (s) => matchesSearchWords(s.supplierName, filterText)
   );
   const allShared = useMemo(() => order?.sharedScopes ?? [], [order]);
   const sharedScopes = allShared.filter(
     (sh) =>
-      !filterText ||
-      sh.label.toLowerCase().includes(filterText) ||
-      sh.supplierIds.some((sid) => supplierLabel(suppliers, sid).toLowerCase().includes(filterText))
+      matchesSearchWords([sh.label, ...sh.supplierIds.map((sid) => supplierLabel(suppliers, sid))], filterText)
   );
   const sharedKeys = useMemo(
     () => new Set(allShared.map((sh) => sharedKeyOf(sh.mode, sh.scopeId))),

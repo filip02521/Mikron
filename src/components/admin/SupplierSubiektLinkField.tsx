@@ -12,7 +12,7 @@ import { kontrahentDisplayName } from "@/lib/subiekt/kontrahent-display";
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
-import { Spinner } from "@/components/ui/Spinner";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { formatSubiektKontrahentLabel } from "@/lib/subiekt/match-supplier";
 import type { SubiektKontrahent } from "@/lib/subiekt/types";
@@ -231,8 +231,8 @@ export function SupplierSubiektLinkField({
       </div>
 
       {pending ? (
-        <p className="flex items-center gap-2 text-xs text-slate-500">
-          <Spinner size="sm" /> Łączenie…
+        <p className="flex items-center gap-2 text-xs text-slate-500" role="status">
+          <BrandLoader size="sm" tile={false} /> Łączenie…
         </p>
       ) : null}
 

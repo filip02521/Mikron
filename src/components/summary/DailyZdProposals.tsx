@@ -24,6 +24,11 @@ export function DailyZdProposalsProvider({ proposals, children }: { proposals: D
   return <DailyZdProposalsContext.Provider value={map}>{children}</DailyZdProposalsContext.Provider>;
 }
 
+/** Wszystkie czekające propozycje (dostawca → propozycja) — decyzja w handlerze bez efektu. */
+export function useDailyZdProposalMap(): ReadonlyMap<string, DailyZdProposal> {
+  return useContext(DailyZdProposalsContext);
+}
+
 export function useDailyZdProposal(supplierId: string): DailyZdProposal | null {
   return useContext(DailyZdProposalsContext).get(supplierId) ?? null;
 }

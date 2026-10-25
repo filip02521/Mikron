@@ -1,6 +1,7 @@
 "use server";
 
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
+import { isSymbolNamePrefixArtifact } from "@/lib/orders/request-completeness";
 // @service-role-ok — autoryzacja require*(); service role z pełnym scope po warstwie aplikacji.
 
 import { revalidatePath } from "next/cache";
@@ -430,6 +431,8 @@ export async function actionBackfillOrdersSubiektTwIdFromSymbol(options?: {
     scanned += 1;
     const sym = normalizeSymbol(o.symbol);
     if (!sym) continue;
+    // „S” z pierwszej litery „Silikon…” to artefakt formularza — po nim prośba dostawała towar „S” na stałe.
+    if (isSymbolNamePrefixArtifact(o.symbol, o.products)) continue;
 
     try {
       const res = await searchSubiektProducts({ symbol: o.symbol.trim(), pageSize: 12, page: 1 });

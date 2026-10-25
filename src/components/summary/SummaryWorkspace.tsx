@@ -84,16 +84,27 @@ import type {
 } from "@/lib/stock-watch/data";
 import { StockWatchOffPlanBanner } from "@/components/stock-watch/StockWatchOffPlanBanner";
 import { DailyZdProposalsProvider, type DailyZdProposal } from "@/components/summary/DailyZdProposals";
+import { DailyZdAutomatSection } from "@/components/summary/DailyZdAutomatSection";
+import type { ZdAutomatDailyData } from "@/lib/orders/zd-automat-daily";
 import {
   SupplierStockSignalsProvider,
   supplierStockSignalRank,
 } from "@/components/summary/SupplierStockSignal";
+
+// Paleta „Ustawienia towaru” ciągnie kartę produktu Kreatora — ładowana dopiero przy otwarciu.
+const ZdProductSettingsPalette = dynamic(
+  () => import("@/components/zakupy/ZdProductSettings").then((m) => ({ default: m.ZdProductSettingsPalette })),
+  { ssr: false }
+);
 
 export function SummaryWorkspace({
   workspace: workspaceIn,
   stockSignalBySupplierId = {},
   offPlanSuppliers = [],
   autoProposals = [],
+  zdAutomat = null,
+  nowIso,
+  supplierCardsHref = "/zakupy/dostawcy",
   suppliers,
   supplierDirectory,
   salesPeople,
@@ -113,6 +124,12 @@ export function SummaryWorkspace({
   offPlanSuppliers?: StockWatchOffPlanSupplier[];
   /** Zamówienia automatu do potwierdzenia — w wierszu dostawcy harmonogramu (tylko role z Kreatorem). */
   autoProposals?: DailyZdProposal[];
+  /** Sekcja „Automat ZD” (dostawcy w automacie, ostatnie propozycje, nocny przebieg); null = brak sekcji. */
+  zdAutomat?: ZdAutomatDailyData | null;
+  /** Czas z serwera dla sekcji Automat ZD — ten sam wynik na serwerze i w przeglądarce. */
+  nowIso?: string;
+  /** Karty dostawców dla roli (admin / zakupy) — link „Ustawienia” w sekcji Automat ZD. */
+  supplierCardsHref?: string;
   suppliers: OrderFormSupplierOption[];
   supplierDirectory: SupplierDirectoryEntry[];
   salesPeople: { id: string; name: string; email: string }[];
@@ -173,6 +190,20 @@ export function SummaryWorkspace({
   );
   const [verificationModalOpen, setVerificationModalOpen] = useState(false);
   const [onDemandOpen, setOnDemandOpen] = useState(false);
+  const [productSettingsOpen, setProductSettingsOpen] = useState(false);
+  // ⌘/Ctrl+K — ustawienia towaru (paleta), także gdy fokus jest w polu wyszukiwania dostawcy.
+  useEffect(() => {
+    if (!canPrepareZd) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey || e.repeat || e.key.toLowerCase() !== "k") return;
+      e.preventDefault();
+      // Nad innym oknem (karta dostawcy, zamówienie automatu) paleta wylądowałaby pod nim — wtedy nic.
+      if (document.querySelector('[aria-modal="true"]')) return;
+      setProductSettingsOpen(true);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [canPrepareZd]);
 
   const verificationCount = verificationOrders.length;
   const exceptionsCount = useMemo(() => countDailyPanelExceptions(workspace), [workspace]);
@@ -449,7 +480,11 @@ export function SummaryWorkspace({
             onSelectSupplier={openSupplier}
             onNewSupplier={() => openEditFor("new")}
             onOpenOnDemand={() => setOnDemandOpen(true)}
+            onOpenProductSettings={canPrepareZd ? () => setProductSettingsOpen(true) : undefined}
           />
+          {canPrepareZd && productSettingsOpen ? (
+            <ZdProductSettingsPalette open={productSettingsOpen} onClose={() => setProductSettingsOpen(false)} canEdit />
+          ) : null}
         </div>
 
         <DailyPanelTabs
@@ -529,6 +564,11 @@ export function SummaryWorkspace({
             notify={notify}
             etaUseP50={etaUseP50}
             etaQuantilesBySupplierId={etaQuantilesBySupplierId}
+            automat={
+              canPrepareZd && zdAutomat && zdAutomat.suppliers.length > 0 && nowIso ? (
+                <DailyZdAutomatSection data={zdAutomat} nowIso={nowIso} cardsHref={supplierCardsHref} />
+              ) : null
+            }
           />
         ) : null}
 
