@@ -28,6 +28,7 @@ import {
   claimZdAutoProposalCreate,
   expirePendingZdAutoProposals,
   fetchLatestZdAutoProposal,
+  fetchZdAutoProposalById,
   releaseZdAutoProposalCreate,
   listZdAutoProposals,
   type ZdAutoProposal,
@@ -1607,10 +1608,18 @@ async function acceptPendingAutoProposal(input: {
   dokId: number;
   createLines: ReadonlyArray<{ twId: number; ilosc: number }>;
   userId: string;
+  /**
+   * ZD z panelu „Sprawdź i zatwierdź”: ta konkretna propozycja (zajęta blokadą tworzenia), nie najnowsza —
+   * w międzyczasie mogła powstać nowsza, a zatwierdzona jest ta, którą człowiek oglądał.
+   */
+  proposalId?: string | null;
 }): Promise<void> {
   if (!UUID_RE.test(input.supplierId)) return;
   try {
-    const latest = await fetchLatestZdAutoProposal(input.supplierId);
+    const latest = input.proposalId
+      ? await fetchZdAutoProposalById(input.proposalId)
+      : await fetchLatestZdAutoProposal(input.supplierId);
+    if (latest && latest.supplierId !== input.supplierId) return;
     if (!latest) return;
     const finalLines: Record<string, number> = {};
     for (const l of input.createLines) finalLines[String(l.twId)] = (finalLines[String(l.twId)] ?? 0) + l.ilosc;
@@ -1659,6 +1668,8 @@ export async function actionListZdAutoProposals(input: {
 /** „Przygotuj propozycję teraz” — przelicza dostawcę strategią testową i zapisuje propozycję. */
 export async function actionCreateZdAutoProposalNow(input: {
   supplierId: string;
+  /** Panel „Sprawdź i zatwierdź”: przelicz tę propozycję w miejscu zamiast tworzyć nową. */
+  refreshProposalId?: string | null;
 }): Promise<{ ok: true; proposal: ZdAutoProposal | null } | { ok: false; message: string }> {
   await requireZdEstimateAdmin("mutate");
   const supplierId = String(input.supplierId ?? "").trim();
@@ -1666,7 +1677,8 @@ export async function actionCreateZdAutoProposalNow(input: {
   try {
     const policy = await fetchZdSupplierOrderPolicy(supplierId);
     if (policy.strategy === "classic") return { ok: false, message: "Najpierw włącz strategię testową dla dostawcy." };
-    const result = await createZdAutoProposalNow(supplierId);
+    const refreshId = String(input.refreshProposalId ?? "").trim();
+    const result = await createZdAutoProposalNow(supplierId, { refreshProposalId: UUID_RE.test(refreshId) ? refreshId : null });
     if (result.status !== "ok") {
       const why = {
         no_scope: "Dostawca nie ma zakresu (grupy / cechy) w Kreatorze.",
@@ -1677,7 +1689,7 @@ export async function actionCreateZdAutoProposalNow(input: {
     }
     const p = result.proposal;
     if (!p) return { ok: false, message: "Propozycja nie została policzona - spróbuj ponownie." };
-    if (p.kind === "created") return { ok: true, proposal: await fetchLatestZdAutoProposal(supplierId) };
+    if (p.kind === "created") return { ok: true, proposal: await fetchZdAutoProposalById(p.id) };
     if (p.kind === "nothing_to_order") {
       // Rano była propozycja, teraz nic do zamówienia — karta w panelu dziennym nie może czekać dalej.
       if ((await expirePendingZdAutoProposals(supplierId)) > 0) revalidateAfterZdEstimateMark();
@@ -1739,8 +1751,8 @@ export async function actionGetZdAutoProposalProsby(input: {
     const supplierId = String(input.supplierId ?? "").trim();
     const proposalId = String(input.proposalId ?? "").trim();
     if (!UUID_RE.test(supplierId) || !UUID_RE.test(proposalId)) return { ok: false, message: "Nieprawidłowa propozycja." };
-    const proposal = await fetchLatestZdAutoProposal(supplierId);
-    if (!proposal || proposal.id !== proposalId) return { ok: false, message: "Propozycja zmieniła się w międzyczasie - przelicz ją ponownie." };
+    const proposal = await fetchZdAutoProposalById(proposalId);
+    if (!proposal || proposal.supplierId !== supplierId) return { ok: false, message: "Propozycja zmieniła się w międzyczasie - przelicz ją ponownie." };
     const scope = groupZdEstimateScopesBySupplier(await listZdEstimateSupplierScopes()).get(supplierId)?.[0];
     if (!scope) return { ok: false, message: "Dostawca nie ma zakresu w Kreatorze ZD." };
     const [pending, pairs, boms, teeth] = await Promise.all([
@@ -1808,10 +1820,11 @@ export async function actionAcceptZdAutoProposal(input: {
   }
   acceptingProposalIds.add(proposalId);
   try {
-    const proposal = await fetchLatestZdAutoProposal(supplierId);
-    // Tylko aktualna, czekająca propozycja — inna zakładka mogła ją przeliczyć albo odrzucić.
+    // Ta propozycja, wciąż otwarta — przeliczenie w panelu zmienia ją w miejscu, a nowsza wygasza starsze.
+    const found = await fetchZdAutoProposalById(proposalId);
+    const proposal = found?.supplierId === supplierId ? found : null;
     const open = proposal?.status === "pending" || (proposal?.status === "deferred" && input.acceptDeferred === true);
-    if (!proposal || proposal.id !== proposalId || !open) {
+    if (!proposal || !open) {
       return {
         ok: false,
         message:
@@ -1875,6 +1888,7 @@ export async function actionAcceptZdAutoProposal(input: {
       confirmLiveCreate: true,
       individualCatalogOrderIds: built.individualCatalogOrderIds,
       individualServiceOrderIds: built.individualServiceOrderIds,
+      autoProposalId: proposal.id,
       });
     } catch (e) {
       // Wyjątek w trakcie zapisu = wynik nieznany; blokada w bazie zostaje.
@@ -3858,6 +3872,8 @@ export async function actionCreateZdFromEstimate(input: {
   consumedOrderIds?: string[] | null;
   /** @deprecated użyj catalog + service; łączona lista nadal akceptowana. */
   individualOrderIds?: string[] | null;
+  /** Panel propozycji automatu: ZD zatwierdza tę propozycję (nie najnowszą dostawcy). */
+  autoProposalId?: string | null;
 }): Promise<ZdEstimateCreateZdResult> {
   const user = await requireZdEstimateAdmin("mutate");
   const orders = resolveSubiektOrdersConfig();
@@ -4313,10 +4329,11 @@ export async function actionCreateZdFromEstimate(input: {
     acceptedCatalogOrderIds: catalogIds,
   });
 
-  const acceptInput = { supplierId: input.supplierId, dokId, createLines, userId: user.id };
+  const autoProposalId = typeof input.autoProposalId === "string" && UUID_RE.test(input.autoProposalId) ? input.autoProposalId : null;
+  const acceptInput = { supplierId: input.supplierId, dokId, createLines, userId: user.id, proposalId: autoProposalId };
   await acceptPendingAutoProposal(acceptInput);
-  // „Przygotuj teraz” w toku: propozycja powstanie po tym ZD — to ZD na nią odpowiada.
-  const proposalRun = zdAutoProposalNowInFlight(input.supplierId);
+  // „Przygotuj teraz” w toku: propozycja powstanie po tym ZD — to ZD na nią odpowiada (Kreator, nie panel propozycji).
+  const proposalRun = autoProposalId ? null : zdAutoProposalNowInFlight(input.supplierId);
   if (proposalRun) void proposalRun.then(() => acceptPendingAutoProposal(acceptInput), () => undefined);
 
   let dokNrPelny = `ZD/${dokId}`;

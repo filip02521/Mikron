@@ -77,6 +77,17 @@ export function zdAutomatLevelRollback(input: {
   };
 }
 
+/** Spec §4.4: nieudane utworzenie ZD (Subiekt nie potwierdził, ZD nie powstało) cofa stopień ≥ 2 o jeden, najniżej do 1. */
+export function zdAutomatCreateFailRollback(input: { autoLevel: number; attemptDay: string }): { from: number; to: number; reason: string } | null {
+  if (!(input.autoLevel > ZD_AUTOMAT_ROLLBACK_FLOOR)) return null;
+  const [, m, d] = input.attemptDay.split("-");
+  return {
+    from: input.autoLevel,
+    to: Math.max(ZD_AUTOMAT_ROLLBACK_FLOOR, input.autoLevel - 1),
+    reason: `nieudane utworzenie ZD ${d}.${m} (Subiekt nie potwierdził zapisu)`,
+  };
+}
+
 export function zdAutomatOosAlert(row: ZdAutomatRow): boolean {
   const pct = row.weeks[0]?.oosA.pct;
   return row.automat != null && pct != null && pct >= ZD_AUTOMAT_OOS_A_ALERT_PCT;

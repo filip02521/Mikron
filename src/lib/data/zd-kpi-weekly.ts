@@ -363,9 +363,14 @@ async function computeSupplierKpi(
     lines: ZdKpiProposal["lines"];
     final_lines: Record<string, number> | null;
     deferred: boolean;
+    origin: string | null;
   }>(
-    `SELECT status, lines, final_lines, deferred_reason IS NOT NULL AS deferred FROM zd_auto_proposals
-      WHERE supplier_id = $1 AND (created_at AT TIME ZONE 'Europe/Warsaw')::date BETWEEN $2 AND $3`,
+    // Korekta człowieka liczona od listy automatu (original_lines), nie od przeliczenia w panelu tuż przed ZD;
+    // to_jsonb — kolumny z migracji 199 czytają się także na bazie bez niej (wtedy null).
+    `SELECT p.status, COALESCE(NULLIF(to_jsonb(p)->'original_lines', 'null'::jsonb), p.lines) AS lines, p.final_lines,
+            p.deferred_reason IS NOT NULL AS deferred, to_jsonb(p)->>'origin' AS origin
+       FROM zd_auto_proposals p
+      WHERE p.supplier_id = $1 AND (p.created_at AT TIME ZONE 'Europe/Warsaw')::date BETWEEN $2 AND $3`,
     [s.id, week.start, week.end]
   );
   const proposals: ZdKpiProposal[] = props.rows.map((r) => ({
@@ -385,7 +390,11 @@ async function computeSupplierKpi(
     rotation,
     deadStock,
     humanCorrection: zdKpiHumanCorrection(proposals),
-    minima: zdKpiMinima(proposals, s.minOrderValue),
+    // Minima: propozycje automatu, nie te utworzone w panelu przy przeglądzie (brak otwartej do przeliczenia).
+    minima: zdKpiMinima(
+      proposals.filter((_, i) => props.rows[i]!.origin !== "review"),
+      s.minOrderValue
+    ),
   };
 }
 

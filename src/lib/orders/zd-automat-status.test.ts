@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ZdKpiWeeklyMetrics } from "@/lib/data/zd-kpi-weekly";
 import {
+  zdAutomatCreateFailRollback,
   zdAutomatLevelRollback,
   buildZdAutomatCheckStatus,
   buildZdAutomatStatus,
@@ -137,5 +138,18 @@ describe("cofnięcie stopnia po brakach A", () => {
   it("braki poniżej progu albo bez pomiaru — bez zmiany", () => {
     expect(zdAutomatLevelRollback({ autoLevel: 3, oosAPct: 4.99, weekStart: "2026-10-19" })).toBeNull();
     expect(zdAutomatLevelRollback({ autoLevel: 3, oosAPct: null, weekStart: "2026-10-19" })).toBeNull();
+  });
+});
+
+describe("zdAutomatCreateFailRollback", () => {
+  it("nieudane utworzenie ZD cofa stopień ≥ 2 o jeden", () => {
+    expect(zdAutomatCreateFailRollback({ autoLevel: 2, attemptDay: "2026-10-23" })).toEqual({
+      from: 2,
+      to: 1,
+      reason: "nieudane utworzenie ZD 23.10 (Subiekt nie potwierdził zapisu)",
+    });
+  });
+  it("stopień 1 i niżej zostaje", () => {
+    expect(zdAutomatCreateFailRollback({ autoLevel: 1, attemptDay: "2026-10-23" })).toBeNull();
   });
 });

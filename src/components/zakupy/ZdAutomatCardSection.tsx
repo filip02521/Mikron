@@ -6,7 +6,7 @@ import { BrandLoader } from "@/components/ui/BrandLoader";
 import { Button } from "@/components/ui/Button";
 import { ZdBacktestPanel, ZD_BACKTEST_VERDICT_BADGE, ZD_BACKTEST_VERDICT_LABEL } from "@/components/zakupy/ZdBacktestPanel";
 import {
-  ZD_AUTO_LEVEL_OPTIONS,
+  zdAutoLevelLabel,
   ZdSupplierOrderPolicyDialog,
 } from "@/components/zakupy/ZdSupplierOrderPolicyDialog";
 import type { ZdAutomatSupplierRow } from "@/lib/data/zd-automat-suppliers";
@@ -56,11 +56,6 @@ export function ZdBacktestState({ row, nowMs: nowProp }: { row: Pick<ZdAutomatSu
   );
 }
 
-function levelLabel(level: number): string {
-  const label = ZD_AUTO_LEVEL_OPTIONS.find((o) => o.value === level)?.label ?? String(level);
-  return `stopień ${label}`;
-}
-
 /**
  * Sekcja „Automat ZD” w karcie dostawcy — jedno miejsce na ustawienia dostawcy: stan automatu, ostatni backtest
  * i te same okna co w Kreatorze i na pulpicie Automatu (nad panelem karty, warstwa `top`).
@@ -91,7 +86,7 @@ export function ZdAutomatCardSection({
               "W automacie",
               p.cycleDays ? (p.cycleDays === 1 ? "codziennie" : `co ${p.cycleDays} dni`) : null,
               p.targetDays ? `cel ${p.targetDays} dni zapasu` : null,
-              levelLabel(p.autoLevel),
+              zdAutoLevelLabel(p.autoLevel),
             ]
               .filter(Boolean)
               .join(" · ")

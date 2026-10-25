@@ -158,3 +158,32 @@ describe("etykiety", () => {
     ).toBe("ZD 512/10 · śr 21.10");
   });
 });
+
+describe("kotwica cyklu (audyt K1)", () => {
+  const p = (id: string, key: string, extra: Partial<ZdAutomatDailySupplier["proposals"][number]> = {}) => ({
+    id,
+    createdAt: proposalAt(key),
+    status: "expired" as const,
+    lineCount: 1,
+    valueNet: 10,
+    dokNr: null,
+    ...extra,
+  });
+  it("przeliczenie w panelu i niezatwierdzone „Przygotuj teraz” nie przesuwają terminu", () => {
+    const s = supplier({
+      proposals: [p("r", "2026-10-26", { origin: "review" }), p("m", "2026-10-25", { origin: "manual" }), p("n", "2026-10-24", { origin: "night" })],
+    });
+    // Nocna 24.10 + cykl 3 = 27.10, nie 29.10 od przeliczenia.
+    expect(zdAutomatNextProposalKey(s, { todayKey: TODAY, nightPassed: true })).toBe("2026-10-27");
+  });
+  it("zatwierdzona ręczna propozycja jest kotwicą (zamówienie złożone)", () => {
+    const s = supplier({ proposals: [p("m", "2026-10-26", { origin: "manual", status: "accepted" }), p("n", "2026-10-22", { origin: "night" })] });
+    expect(zdAutomatNextProposalKey(s, { todayKey: TODAY, nightPassed: true })).toBe("2026-10-29");
+  });
+  it("niepotwierdzone tworzenie ZD — osobny komunikat i etykieta", () => {
+    const pending = p("x", TODAY, { status: "pending", origin: "night", createAttemptedAt: `${TODAY}T08:00:00.000Z` });
+    const st = buildZdAutomatDailyStatus({ suppliers: [supplier({ proposals: [pending] })], run: doneRun }, { todayKey: TODAY, nowMinutes: 9 * 60 });
+    expect(st?.headline).toBe("Tworzenie ZD Polkard niepotwierdzone");
+    expect(zdAutomatLastResultLabel(pending, TODAY)).toBe("tworzenie ZD niepotwierdzone · dziś");
+  });
+});

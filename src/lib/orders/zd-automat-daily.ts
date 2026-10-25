@@ -16,7 +16,19 @@ export type ZdAutomatDailyProposal = {
   valueNet: number;
   /** Numer ZD utworzonego z propozycji (zatwierdzona). */
   dokNr: string | null;
+  /** Skąd propozycja (migracja 199); null = nocna albo sprzed migracji. */
+  origin?: "night" | "manual" | "review" | null;
+  /** Tworzenie ZD rozpoczęte, bez potwierdzenia z Subiekta (timeout) — czeka na uzgodnienie. */
+  createAttemptedAt?: string | null;
 };
+
+/**
+ * Kotwica cyklu: najnowsza nocna (albo sprzed migracji 199) lub zatwierdzona — jak worker
+ * (`fetchZdAutoProposalCycleAnchorKey`). Przeliczenie w panelu ani niezatwierdzone „Przygotuj teraz” jej nie przesuwa.
+ */
+export function zdAutomatCycleAnchor(proposals: readonly ZdAutomatDailyProposal[]): ZdAutomatDailyProposal | undefined {
+  return proposals.find((p) => p.origin == null || p.origin === "night" || p.status === "accepted");
+}
 
 /** Wynik ostatniej próby propozycji (nocny przebieg albo „Przygotuj teraz”) — `ZdAutoProposalOutcome` z workera. */
 export type ZdAutomatDailyAttemptKind = "created" | "nothing_to_order" | "not_due" | "disabled" | "skipped" | "error";
@@ -133,7 +145,7 @@ export function zdAutomatNextProposalKey(
   ctx: { todayKey: string; nightPassed: boolean }
 ): string | null {
   if (zdAutomatStopReason(s)) return null;
-  const last = s.proposals[0];
+  const last = zdAutomatCycleAnchor(s.proposals);
   const firstPossible = ctx.nightPassed ? addDaysToKey(ctx.todayKey, 1) : ctx.todayKey;
   if (!last) return nextZdAutomatWorkdayKey(firstPossible);
   const due = addDaysToKey(warsawKeyFromIso(last.createdAt), s.cycleDays!);
@@ -189,7 +201,7 @@ export function zdAutomatLastResultLabel(p: ZdAutomatDailyProposal | undefined, 
   const day = formatAutomatDay(warsawKeyFromIso(p.createdAt), todayKey);
   switch (p.status) {
     case "pending":
-      return `czeka od ${day}`;
+      return p.createAttemptedAt ? `tworzenie ZD niepotwierdzone · ${day}` : `czeka od ${day}`;
     case "accepted":
       return p.dokNr ? `${p.dokNr} · ${day}` : `zatwierdzona · ${day}`;
     case "rejected":
@@ -247,6 +259,15 @@ export function buildZdAutomatDailyStatus(
   if (pending.length) {
     const first = pending[0]!;
     const expires = first.v.nextKey ? `, wygaśnie przy następnej (${formatAutomatDay(first.v.nextKey, ctx.todayKey)})` : "";
+    if (pending.length === 1 && first.v.pending!.createAttemptedAt) {
+      // Timeout Subiekta przy tworzeniu ZD: wynik nieznany — nocny przebieg uzgodni go z dokumentami w Subiekcie.
+      return {
+        tone: "warning",
+        headline: `Tworzenie ZD ${first.s.name} niepotwierdzone`,
+        detail: `Subiekt nie potwierdził zapisu - sprawdź w Subiekcie, czy ZD powstało, zanim zamówisz ponownie. Nocny przebieg uzgodni propozycję sam. ${nightText}`.trim(),
+        action: { kind: "review", supplierId: first.s.id, label: "Sprawdź propozycję" },
+      };
+    }
     return {
       tone: "warning",
       headline:

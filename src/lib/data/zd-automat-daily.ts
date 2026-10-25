@@ -42,11 +42,15 @@ export async function loadZdAutomatDaily(): Promise<ZdAutomatDailyData> {
         line_count: number;
         value_net: string | number;
         dok_nr: string | null;
+        origin: string | null;
+        create_attempted_at: string | null;
       }>(
-        `SELECT x.supplier_id, x.id, x.created_at, x.status, x.line_count, x.value_net, d.nr_pelny AS dok_nr
-           FROM (SELECT supplier_id, id, created_at, status, line_count, value_net, dok_id,
+        // to_jsonb: kolumny z migracji 193/199 czytają się także na bazie bez nich (wtedy null).
+        `SELECT x.supplier_id, x.id, x.created_at, x.status, x.line_count, x.value_net, d.nr_pelny AS dok_nr,
+                x.extra->>'origin' AS origin, x.extra->>'create_attempted_at' AS create_attempted_at
+           FROM (SELECT supplier_id, id, created_at, status, line_count, value_net, dok_id, to_jsonb(p) AS extra,
                         row_number() OVER (PARTITION BY supplier_id ORDER BY created_at DESC) AS rn
-                   FROM zd_auto_proposals WHERE supplier_id = ANY($1::uuid[])) x
+                   FROM zd_auto_proposals p WHERE supplier_id = ANY($1::uuid[])) x
            LEFT JOIN subiekt_purchase_docs d ON d.dok_id = x.dok_id AND d.typ = $3
           WHERE x.rn <= $2
           ORDER BY x.supplier_id, x.created_at DESC`,
@@ -64,6 +68,8 @@ export async function loadZdAutomatDaily(): Promise<ZdAutomatDailyData> {
         lineCount: Number(p.line_count) || 0,
         valueNet: Number(p.value_net) || 0,
         dokNr: p.dok_nr?.trim() || null,
+        origin: p.origin === "night" || p.origin === "manual" || p.origin === "review" ? p.origin : null,
+        createAttemptedAt: p.create_attempted_at ? new Date(p.create_attempted_at).toISOString() : null,
       });
       bySupplier.set(p.supplier_id, list);
     }
