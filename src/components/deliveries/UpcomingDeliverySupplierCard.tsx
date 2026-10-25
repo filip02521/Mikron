@@ -17,6 +17,7 @@ import {
   IconTruck,
   IconCircleCheck,
   IconClock,
+  IconCheck,
 } from "@/components/icons/StrokeIcons";
 
 function shipmentFormLabel(value: string): string {
@@ -49,14 +50,11 @@ function statusLabel(status: IndividualOrderStatus): string {
   }
 }
 
-function MiniStat({ label, value, compact = false }: { label: string; value: string | number; compact?: boolean }) {
+function MiniStat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className={cn(
-      "rounded-lg border border-slate-200/70 bg-slate-50/80 text-left shadow-[var(--shadow-card)]",
-      compact ? "px-2 py-1.5" : "px-2.5 py-2"
-    )}>
-      <p className="text-[0.625rem] font-medium text-slate-500">{label}</p>
-      <p className="mt-0.5 text-sm font-semibold tabular-nums text-slate-900">{value}</p>
+    <div className="min-w-0">
+      <dt className="text-[0.6875rem] text-slate-500">{label}</dt>
+      <dd className="text-sm font-semibold tabular-nums text-slate-900">{value}</dd>
     </div>
   );
 }
@@ -127,11 +125,11 @@ function statusProgressTrack(status: DeliveryStatus): string {
 function cardBorder(status: DeliveryStatus): string {
   switch (status) {
     case "received":
-      return "border-emerald-200/80 bg-emerald-50/20";
+      return "bg-emerald-50/70";
     case "partial":
-      return "border-amber-200/80 bg-amber-50/15";
+      return "bg-amber-50/70";
     default:
-      return "border-slate-200/80 bg-white";
+      return "bg-slate-50 hover:bg-slate-100";
   }
 }
 
@@ -159,7 +157,8 @@ export function UpcomingDeliverySupplierCard({
 
   return (
     <div className={cn(
-      "rounded-lg border shadow-sm transition hover:shadow-md",
+      // Blok `well` w karcie planu: bez ramki i cienia (DESIGN.md → Cards, karta w karcie).
+      "rounded-lg transition-colors duration-150",
       cardBorder(deliveryStatus)
     )}>
       <button
@@ -214,7 +213,7 @@ export function UpcomingDeliverySupplierCard({
                   : ""}
               </span>
             ) : (
-              <span className={cn("text-slate-400", compact ? "text-[0.625rem]" : "text-[0.6875rem]")}>brak prognozy kuriera</span>
+              <span className={cn("text-slate-500", compact ? "text-[0.625rem]" : "text-[0.6875rem]")}>brak prognozy kuriera</span>
             )}
           </div>
           {supplier.salesPeople.length > 0 && !compact ? (
@@ -246,20 +245,12 @@ export function UpcomingDeliverySupplierCard({
 
       {expanded ? (
         <div className={cn("border-t border-slate-100", compact ? "px-2.5 py-2.5" : "px-3 py-3 sm:px-4")}>
-          <div className={cn("mb-3 grid gap-2", compact ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4")}>
-            <MiniStat label="Pozycje" value={supplier.positionCount} compact={compact} />
-            <MiniStat label="Sztuki" value={supplier.totalQuantity} compact={compact} />
-            <MiniStat
-              label="Paczki"
-              value={supplier.carrierHint?.typicalPackageCount ?? "-"}
-              compact={compact}
-            />
-            <MiniStat
-              label="Palety"
-              value={supplier.carrierHint?.typicalPalletCount ?? "-"}
-              compact={compact}
-            />
-          </div>
+          <dl className={cn("mb-3 grid gap-2", compact ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4")}>
+            <MiniStat label="Pozycje" value={supplier.positionCount} />
+            <MiniStat label="Sztuki" value={supplier.totalQuantity} />
+            <MiniStat label="Paczki" value={supplier.carrierHint?.typicalPackageCount ?? "-"} />
+            <MiniStat label="Palety" value={supplier.carrierHint?.typicalPalletCount ?? "-"} />
+          </dl>
           {deliveryProgress > 0 ? (
             <div className="mb-3">
               <div className="mb-1 flex items-center justify-between">
@@ -328,9 +319,9 @@ export function UpcomingDeliverySupplierCard({
                         {orderComplete ? "Odebrane" : orderPartial ? `${orderDelivered}/${orderQty}` : statusLabel(order.status)}
                       </span>
                     </div>
-                    <p className={cn("mt-0.5 truncate", orderComplete ? "text-slate-400 line-through" : "text-slate-600")}>{order.products}</p>
+                    <p className={cn("mt-0.5 truncate", orderComplete ? "text-slate-500 line-through" : "text-slate-600")}>{order.products}</p>
                     {order.sales_person?.name ? (
-                      <p className="mt-0.5 text-[0.625rem] text-slate-400">
+                      <p className="mt-0.5 text-[0.6875rem] text-slate-500">
                         {order.sales_person.name}
                       </p>
                     ) : null}
@@ -342,8 +333,10 @@ export function UpcomingDeliverySupplierCard({
                         odebrano {order.delivered_quantity}
                       </span>
                     ) : orderComplete ? (
-                      <span className="block text-[0.625rem] font-normal text-emerald-600">
-                        ✓ {order.delivered_quantity}
+                      <span className="flex items-center justify-end gap-0.5 text-[0.625rem] font-normal text-emerald-700">
+                        <IconCheck size={11} aria-hidden />
+                        <span className="sr-only">odebrano </span>
+                        {order.delivered_quantity}
                       </span>
                     ) : null}
                   </span>
