@@ -11,10 +11,7 @@ import {
 } from "@/lib/client/toast-notification-sound";
 import { unlockNotificationSound } from "@/lib/client/notification-sound";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { IconBell } from "@/components/icons/StrokeIcons";
-import { cn } from "@/lib/cn";
-import { salesChromeInsetClass } from "@/lib/ui/ontime-theme";
+import { SettingToggleRow, settingRowsClass } from "@/components/settings/SettingToggleRow";
 import type { UserRole } from "@/types/database";
 
 type NotificationSettingsSectionProps = {
@@ -53,92 +50,35 @@ export function NotificationSettingsSection({ role }: NotificationSettingsSectio
     <Card padding={false} className="overflow-hidden">
       <CardHeader
         inset
-        density="compact"
         title="Powiadomienia dźwiękowe"
         description="Ustaw powiadomienia dźwiękowe dla swojego panelu."
-        leading={
-          <SectionHeadingIcon tileClassName="bg-amber-100 text-amber-800">
-            <IconBell size={20} />
-          </SectionHeadingIcon>
-        }
       />
-      <div className={cn(salesChromeInsetClass, "space-y-2.5 py-3.5")}>
+      <div className={settingRowsClass}>
         {isSales ? (
-          <label
-            className={cn(
-              "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-colors",
-              salesSound
-                ? "border-indigo-200/80 bg-indigo-50/40"
-                : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40"
-            )}
-          >
-            <span className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium text-slate-800">Dźwięk przy odpowiedzi na Tablicy</span>
-              <span className="text-[0.6875rem] leading-snug text-slate-400">
-                Odtwarza dźwięk, gdy dział zakupów odpowie na Twoje pytanie
-              </span>
-            </span>
-            <input
-              type="checkbox"
-              role="switch"
-              aria-checked={salesSound}
-              aria-label="Powiadomienie dźwiękowe przy odpowiedzi na pytanie na Tablicy"
-              checked={salesSound}
-              onChange={(e) => setSalesSound(e.target.checked)}
-              className="toggle-switch toggle-indigo"
-            />
-          </label>
-        ) : null}
-
-        {isOperations ? (
-          <label
-            className={cn(
-              "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-colors",
-              opsSound
-                ? "border-indigo-200/80 bg-indigo-50/40"
-                : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40"
-            )}
-          >
-            <span className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium text-slate-800">Dźwięk przy pytaniu</span>
-              <span className="text-[0.6875rem] leading-snug text-slate-400">Odtwarza dźwięk, gdy handlowiec doda pytanie na tablicy</span>
-            </span>
-            <input
-              type="checkbox"
-              role="switch"
-              aria-checked={opsSound}
-              aria-label="Powiadomienie dźwiękowe, gdy handlowiec doda pytanie na tablicy"
-              checked={opsSound}
-              onChange={(e) => setOpsSound(e.target.checked)}
-              className="toggle-switch toggle-indigo"
-            />
-          </label>
-        ) : null}
-
-        <label
-          className={cn(
-            "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-colors",
-            toastSound
-              ? "border-indigo-200/80 bg-indigo-50/40"
-              : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40"
-          )}
-        >
-          <span className="flex flex-col gap-0.5">
-            <span className="text-sm font-medium text-slate-800">Dźwięk toastów</span>
-            <span className="text-[0.6875rem] leading-snug text-slate-400">
-              Odtwarza dźwięk przy komunikatach potwierdzenia i cofania
-            </span>
-          </span>
-          <input
-            type="checkbox"
-            role="switch"
-            aria-checked={toastSound}
-            aria-label="Powiadomienie dźwiękowe przy toastach"
-            checked={toastSound}
-            onChange={(e) => setToastSound(e.target.checked)}
-            className="toggle-switch toggle-indigo"
+          <SettingToggleRow
+            label="Dźwięk przy odpowiedzi na Tablicy"
+            description="Odtwarza dźwięk, gdy dział zakupów odpowie na Twoje pytanie"
+            ariaLabel="Powiadomienie dźwiękowe przy odpowiedzi na pytanie na Tablicy"
+            checked={salesSound}
+            onChange={setSalesSound}
           />
-        </label>
+        ) : null}
+        {isOperations ? (
+          <SettingToggleRow
+            label="Dźwięk przy pytaniu"
+            description="Odtwarza dźwięk, gdy handlowiec doda pytanie na tablicy"
+            ariaLabel="Powiadomienie dźwiękowe, gdy handlowiec doda pytanie na tablicy"
+            checked={opsSound}
+            onChange={setOpsSound}
+          />
+        ) : null}
+        <SettingToggleRow
+          label="Dźwięk toastów"
+          description="Odtwarza dźwięk przy komunikatach potwierdzenia i cofania"
+          ariaLabel="Powiadomienie dźwiękowe przy toastach"
+          checked={toastSound}
+          onChange={setToastSound}
+        />
       </div>
     </Card>
   );

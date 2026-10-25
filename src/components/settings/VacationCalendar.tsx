@@ -701,7 +701,7 @@ export function VacationCalendar({
 
                   {period.note ? (
                     <div className="rounded-md border border-slate-100 bg-white px-2.5 py-2">
-                      <p className="text-[0.625rem] font-semibold text-slate-400">Notatka</p>
+                      <p className="text-[0.6875rem] font-semibold text-slate-500">Notatka</p>
                       <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{period.note}</p>
                     </div>
                   ) : null}
@@ -732,7 +732,7 @@ export function VacationCalendar({
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-7 px-2 text-xs text-rose-600"
+                              className="h-7 px-2 text-xs text-red-700"
                               onClick={() =>
                                 setDeleteTarget({
                                   kind: "delegation",
@@ -798,7 +798,7 @@ export function VacationCalendar({
                         Wyznacz zastępcę
                       </Button>
                     ) : (
-                      <span className="text-xs text-slate-400">Brak zastępcy</span>
+                      <span className="text-xs text-slate-500">Brak zastępcy</span>
                     )}
                   </div>
 
@@ -818,7 +818,7 @@ export function VacationCalendar({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="flex-1 justify-center gap-1.5 text-rose-600 hover:text-rose-700 hover:bg-rose-50/60"
+                          className="flex-1 justify-center gap-1.5 text-red-700 hover:text-red-800 hover:bg-red-50"
                           onClick={() => {
                             setDeleteTarget({
                               kind: "vacation",
@@ -960,7 +960,7 @@ export function VacationCalendar({
             key={label}
             className={cn(
               "border-b border-r border-slate-100 px-1.5 py-2.5 text-center font-semibold text-[0.625rem]",
-              idx >= 5 ? "bg-slate-100/60 text-slate-400" : "text-slate-400"
+              idx >= 5 ? "bg-slate-100/60 text-slate-500" : "text-slate-500"
             )}
           >
             {label}
@@ -981,7 +981,7 @@ export function VacationCalendar({
             const bgClasses = cn(
               !cell.isCurrentMonth && "bg-slate-50/20",
               cell.isWeekend && vacationWeekendCellClass,
-              cell.isToday && "bg-sky-50/40 ring-1 ring-inset ring-sky-200/40"
+              cell.isToday && "bg-indigo-50/40"
             );
 
             return (
@@ -999,7 +999,7 @@ export function VacationCalendar({
                       cell.isToday
                         ? "-m-0.5 flex size-5 items-center justify-center rounded-full bg-indigo-600 text-white"
                         : cell.isCurrentMonth
-                          ? cell.isWeekend ? "text-slate-400" : "text-slate-900"
+                          ? cell.isWeekend ? "text-slate-500" : "text-slate-900"
                           : "text-slate-300"
                     )}
                   >
@@ -1007,7 +1007,7 @@ export function VacationCalendar({
                   </span>
                   {cell.isWeekend ? <span className="sr-only">, weekend</span> : null}
                   {cell.isToday ? (
-                    <Badge variant="info" className="hidden text-[0.5625rem] sm:inline-flex">Dziś</Badge>
+                    <Badge variant="info" className="hidden text-[0.625rem] sm:inline-flex">Dziś</Badge>
                   ) : null}
                 </div>
                 {cell.isCurrentMonth && cell.periods.length > 0 ? (
