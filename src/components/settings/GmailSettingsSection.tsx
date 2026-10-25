@@ -3,13 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 import { actionDisconnectGmail, actionSaveEmailSignature } from "@/app/actions/gmail";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { IconMail } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { settingCardInsetClass } from "@/components/settings/SettingToggleRow";
 import { cn } from "@/lib/cn";
 import { EMAIL_SIGNATURE_MAX } from "@/lib/email/signature";
-import { buttonPrimaryClass, controlFocusClass, salesChromeInsetClass } from "@/lib/ui/ontime-theme";
+import { buttonPrimaryClass, controlFocusClass } from "@/lib/ui/ontime-theme";
 
 const SIGNATURE_PLACEHOLDER = "Pozdrawiam / Best regards\nImię Nazwisko\nDział dostaw\ntel. 61 847 58 58\nMikran sp. z o.o.";
 
@@ -68,22 +68,15 @@ export function GmailSettingsSection({
     <Card padding={false} className="overflow-hidden">
       <CardHeader
         inset
-        density="compact"
         title="Gmail"
         description="Wysyłanie zamówień i odpowiedzi do dostawców z Twojej skrzynki. OnTime czyta tylko maile od adresów i domen z kart dostawców (Poczta dostawców w Asystencie) - reszty poczty nie przegląda."
-        leading={
-          <SectionHeadingIcon tileClassName="bg-indigo-100 text-indigo-800">
-            <IconMail size={20} />
-          </SectionHeadingIcon>
-        }
       />
       {unavailable ? (
-        <p className={cn(salesChromeInsetClass, "py-3.5 text-sm text-rose-800")} role="alert">
-          Nie udało się odczytać połączenia z Gmailem. Sprawdź migrację 172 (google_mail_connections, profiles.email_signature)
-          i log serwera.
+        <p className={cn(settingCardInsetClass, "text-sm text-red-700")} role="alert">
+          Nie udało się odczytać połączenia z Gmailem. Odśwież stronę; jeśli to nie pomoże, zgłoś problem administratorowi.
         </p>
       ) : (
-        <div className={cn(salesChromeInsetClass, "flex flex-col gap-3 py-3.5 sm:flex-row sm:items-center sm:justify-between")}>
+        <div className={cn(settingCardInsetClass, "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between")}>
           {connectedEmail ? (
             <>
               <p className="text-sm text-slate-700">
@@ -132,16 +125,16 @@ export function GmailSettingsSection({
         </div>
       )}
       {error ? (
-        <p className={cn(salesChromeInsetClass, "pb-3 text-sm text-rose-800")} role="alert">
+        <p className={cn(settingCardInsetClass, "pt-0 text-sm text-red-700")} role="alert">
           {error}
         </p>
       ) : null}
       {connectedEmail ? (
-        <div className={cn(salesChromeInsetClass, "space-y-2 border-t border-slate-100 py-3.5")}>
-          <label htmlFor={signatureId} className="text-sm font-medium text-slate-800">
+        <div className={cn(settingCardInsetClass, "space-y-2 border-t border-slate-100")}>
+          <label htmlFor={signatureId} className="text-sm font-medium text-slate-900">
             Podpis w mailach z OnTime
           </label>
-          <p className="text-[0.6875rem] leading-snug text-slate-400">
+          <p className="text-xs leading-snug text-slate-500">
             Gmail nie dokleja tu podpisu ze skrzynki — ten tekst trafi na koniec treści zamówienia (możesz go zmienić
             przed wysyłką).
           </p>
