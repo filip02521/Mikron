@@ -54,7 +54,13 @@ const COLUMNS: ZdEstimateOptionalColumn[] = ["cover", "available", "sales", "tar
 const SECTION_STARTS = new Set<ZdEstimateOptionalColumn>(["available"]);
 
 /** Uproszczony rodzic jak w kreatorze: per-wiersz wartości + stabilne handlery. */
-function Harness() {
+function Harness({
+  columns = COLUMNS,
+  classes,
+}: {
+  columns?: ZdEstimateOptionalColumn[];
+  classes?: Record<number, { abc: string; xyz: string; overridden: boolean }>;
+} = {}) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Record<number, boolean>>({});
   const [overrides, setOverrides] = useState<Record<number, number>>({});
@@ -96,7 +102,7 @@ function Harness() {
               rowIndex={rowIndex}
               virtualized={false}
               showPackagingColumn
-              optionalColumns={COLUMNS}
+              optionalColumns={columns}
               columnSectionStarts={SECTION_STARTS}
               busy={false}
               mutating={false}
@@ -133,6 +139,7 @@ function Harness() {
               onSessionInclude={noop}
               onOverrideChange={handleOverride}
               onAcceptReview={noop}
+              skuClass={classes?.[l.tw_Id] ?? null}
             />
           ))}
         </tbody>
@@ -175,5 +182,22 @@ describe("ZdEstimateTableRow (memo)", () => {
     render(<Harness />);
     fireEvent.click(screen.getByText("override-2"));
     expect(counts()).toEqual([1, 2, 1]);
+  });
+});
+
+describe("ZdEstimateTableRow — kolumna Klasa", () => {
+  afterEach(() => cleanup());
+
+  it("pokazuje ABC+XYZ z opisem, nadpisanie gwiazdką, brak klasy jako —", () => {
+    const { container } = render(
+      <Harness
+        columns={["abcClass", "available"]}
+        classes={{ 1: { abc: "A", xyz: "X", overridden: false }, 2: { abc: "C", xyz: "Z", overridden: true } }}
+      />
+    );
+    const cells = [...container.querySelectorAll("td.zd-estimate-class-col")];
+    expect(cells.map((c) => c.textContent)).toEqual(["AX", "CZ*", "—"]);
+    expect(cells[0]!.getAttribute("title")).toBe("Klasa AX: 80% zysku, sprzedaż równa");
+    expect(cells[1]!.getAttribute("title")).toContain("(nadpisana ręcznie)");
   });
 });

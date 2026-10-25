@@ -5912,3 +5912,38 @@ export async function actionDeleteZdEstimateUiSession(input: {
   return { ok: true };
 }
 
+
+/** Klasa towaru w Kreatorze: ABC (zysk 12 mies.) × XYZ (zmienność), z ręcznym nadpisaniem z pulpitu automatu. */
+export type ZdEstimateSkuClass = { abc: "A" | "B" | "C"; xyz: "X" | "Y" | "Z" | "N"; overridden: boolean };
+
+/**
+ * Kreator ZD → kolumna „Klasa” i kolejność przeglądu (A najpierw). Klasy nie zmieniają ilości (spec §8.2).
+ * Tylko odczyt; bez migracji 194 / bez przeliczonych klas — pusto.
+ */
+export async function actionFetchZdEstimateSkuClasses(input: { twIds: number[] }): Promise<
+  { ok: true; classes: Record<string, ZdEstimateSkuClass> } | { ok: false; message: string }
+> {
+  try {
+    await requireZdEstimateAdmin("read");
+    const ids = [...new Set((input.twIds ?? []).map((x) => Math.trunc(Number(x))).filter((x) => Number.isSafeInteger(x) && x > 0))].slice(0, 5000);
+    if (!ids.length) return { ok: true, classes: {} };
+    const res = await query<{ tw: number; abc: string; xyz: string; overridden: boolean }>(
+      `SELECT subiekt_tw_id AS tw, COALESCE(override_abc, abc) AS abc, COALESCE(override_xyz, xyz) AS xyz,
+              (override_abc IS NOT NULL OR override_xyz IS NOT NULL) AS overridden
+         FROM zd_sku_class WHERE subiekt_tw_id = ANY($1::int[])`,
+      [ids]
+    );
+    const classes: Record<string, ZdEstimateSkuClass> = {};
+    for (const r of res.rows) {
+      classes[String(r.tw)] = {
+        abc: r.abc.trim() as ZdEstimateSkuClass["abc"],
+        xyz: r.xyz.trim() as ZdEstimateSkuClass["xyz"],
+        overridden: r.overridden === true,
+      };
+    }
+    return { ok: true, classes };
+  } catch (e) {
+    if (isUndefinedTableError(e)) return { ok: true, classes: {} };
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się wczytać klas towarów.") };
+  }
+}

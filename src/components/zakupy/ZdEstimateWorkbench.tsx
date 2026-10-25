@@ -55,6 +55,8 @@ import {
   type ZdEstimateGroupOption,
   type ZdEstimateSupplierOption,
   actionGetZdSupplierOrderPolicy,
+  actionFetchZdEstimateSkuClasses,
+  type ZdEstimateSkuClass,
 } from "@/app/actions/zd-estimate";
 import {
   ZdSupplierOrderPolicyChip,
@@ -1355,6 +1357,29 @@ export function ZdEstimateWorkbench({
     });
   });
   const [lines, setLines] = useState<ManualZdEstimateLine[] | null>(null);
+  // Klasy ABC/XYZ towarów listy (kolumna „Klasa”, kolejność przeglądu) — nie zmieniają ilości.
+  const [skuClassByTwId, setSkuClassByTwId] = useState<ReadonlyMap<number, ZdEstimateSkuClass>>(() => new Map());
+  const skuClassTwKey = useMemo(
+    () => (lines ?? []).map((l) => l.tw_Id).sort((a, b) => a - b).join(","),
+    [lines]
+  );
+  useEffect(() => {
+    if (!skuClassTwKey) return;
+    let cancelled = false;
+    void actionFetchZdEstimateSkuClasses({ twIds: skuClassTwKey.split(",").map(Number) })
+      .then((r) => {
+        if (cancelled || !r.ok) return;
+        setSkuClassByTwId(new Map(Object.entries(r.classes).map(([tw, c]) => [Number(tw), c])));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [skuClassTwKey]);
+  const abcByTwId = useMemo(
+    () => new Map([...skuClassByTwId].map(([tw, c]) => [tw, c.abc as string])),
+    [skuClassByTwId]
+  );
   /** Snapshot przed merge par — do live refresh po zmianie par/opakowań. */
   const [linesBase, setLinesBase] = useState<ManualZdEstimateLine[] | null>(
     null
@@ -2460,7 +2485,8 @@ export function ZdEstimateWorkbench({
       extrasPolicy,
       stockNeedReliefByTwId,
       extraOverlapByTwId,
-      minStockByTwIdForRefresh
+      minStockByTwIdForRefresh,
+      abcByTwId
     );
   }, [
     segmentFilteredLines,
@@ -2475,6 +2501,7 @@ export function ZdEstimateWorkbench({
     stockNeedReliefByTwId,
     extraOverlapByTwId,
     minStockByTwIdForRefresh,
+    abcByTwId,
   ]);
 
   const {
@@ -7827,6 +7854,20 @@ export function ZdEstimateWorkbench({
                                 hint="Dni do wyczerpania: dostępne ÷ sprzedaż dziennie. Sortowanie rosnąco = najpilniejsze."
                               />
                             );
+                          case "abcClass":
+                            return (
+                              <ZdEstimateSortableTh
+                                key={col}
+                                label="Klasa"
+                                field="abc"
+                                sortKey={sortKey}
+                                sortDir={sortDir}
+                                onSort={handleSort}
+                                className={cn("zd-estimate-class-col", sectionCls)}
+                                align="center"
+                                hint="Klasa towaru: ABC wg zysku z 12 mies., XYZ wg zmienności sprzedaży (N = nowość). Sortowanie: A najpierw, w klasie największe Do ZD. Nie zmienia ilości."
+                              />
+                            );
                           case "value":
                             return (
                               <th
@@ -8042,6 +8083,7 @@ export function ZdEstimateWorkbench({
                           otherSupplierHint={policzScopeInfo?.otherSupplierHintByTwId[l.tw_Id] ?? null}
                           prosbyElsewhere={policzScopeInfo?.prosbyElsewhereByTwId?.[l.tw_Id] ?? null}
                           unitPriceNet={unitPriceByTwId[l.tw_Id] ?? null}
+                          skuClass={skuClassByTwId.get(l.tw_Id) ?? null}
                         />
                       );
                     })}
