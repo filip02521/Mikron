@@ -1,6 +1,6 @@
 # Tablica działu — plan produktu i UX
 
-> **Status:** szkic na branchu `feature/department-board`  
+> **Status: zrobione (faza 1), rozbudowane poza plan.** Ekrany `/tablica` i `/zakupy/tablica`, tabele `department_board_threads` / `_posts` / `_reads` (migracja `057_department_board.sql`), potem towar w pytaniu (073), zamykanie wątku (080), zdjęcia w pytaniach i odpowiedziach (133, 166), pliki dostawcy (182). Sekcja „RLS” niżej jest nieaktualna: RLS jest wyłączone, uprawnienia sprawdzają akcje serwera (`SECURITY.md`). Zasady wyglądu: `DESIGN.md`. Fazy 2–3 — niezweryfikowane pozycja po pozycji.  
 > **Cel:** jeden kanał komunikacji zakupy ↔ handlowcy — ogłoszenia (jednokierunkowe) + pytania widoczne dla wszystkich.
 
 ---

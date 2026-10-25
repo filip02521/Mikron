@@ -15,7 +15,7 @@ Wewnętrzni pracownicy Mikranu, wszyscy na równi ważni dla tego, czy OnTime �
 - **Magazyn** — przyjęcia dostaw i kolejka realizacji, z telefonu w sieci LAN.
 - **Kierownik sprzedaży / admin** — pilnowanie terminów i braków zespołu, konfiguracja (dostawcy, lokalizacje, grafiki, mapowania z Subiektem, konta).
 
-Role w kodzie: `src/lib/nav.ts`. Zdarzają się zastępstwa (osoba spoza działu przejmuje cudze obowiązki).
+Role w kodzie: `UserRole` w `src/types/database.ts` (`admin`, `zakupy`, `zakupy_zeby`, `magazyn`, `sales`, `sales_manager`), menu wg roli w `src/lib/nav.ts`, uprawnienia w `SECURITY.md`. Zdarzają się zastępstwa (osoba spoza działu przejmuje cudze obowiązki).
 
 ## Product Purpose
 

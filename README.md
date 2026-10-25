@@ -11,7 +11,14 @@ Aplikacja webowa zastępująca arkusz Google Sheets — zarządzanie cyklicznymi
 
 ## Szybki start
 
-1. Skopiuj `.env.example` → `.env.local` i ustaw `DATABASE_URL`, `SESSION_SECRET`, `STORAGE_ROOT`.
+1. Zainstaluj zależności i skopiuj env:
+
+```bash
+nvm use          # opcjonalnie — wersja z .nvmrc (24)
+npm install
+cp .env.example .env.local   # ustaw DATABASE_URL, DATABASE_MIGRATE_URL, SESSION_SECRET, STORAGE_ROOT
+```
+
 2. Uruchom bazę i migracje:
 
 ```bash
@@ -22,13 +29,9 @@ npm run setup-check
 
 Szczegóły: [docs/database-local-postgres.md](docs/database-local-postgres.md).
 
-3. Zainstaluj zależności i uruchom dev:
+3. Uruchom dev:
 
 ```bash
-nvm use          # opcjonalnie — wersja z .nvmrc (24)
-npm install
-cp .env.example .env.local
-npm run setup-check
 npm run dev
 ```
 
@@ -61,6 +64,8 @@ npm run migrate -- ./data
 | `/moje` | Widok handlowca |
 | `/admin` | Synchronizacja, raporty, status systemu, test integracji Subiekt |
 
+To wybór, nie pełna lista: pozostałe moduły (Kreator ZD `/zakupy/szacunek`, braki, automat, odprawy, cenniki, tablica, zęby, urlopy…) i to, kto je widzi, wynikają z menu wg roli w `src/lib/nav.ts`. Kto z nich korzysta i po co: [PRODUCT.md](PRODUCT.md).
+
 ## Dostawcy nieaktywni i import harmonogramów
 
 Szczegóły: [docs/suppliers-active-inactive.md](docs/suppliers-active-inactive.md)
@@ -85,13 +90,7 @@ Migracja `039_supplier_is_active.sql` — kolumna `is_active` na `suppliers`.
 
 Nagłówek: `Authorization: Bearer <CRON_SECRET>`
 
-| Kiedy (Europe/Warsaw, pn–pt) | Endpoint | Co robi |
-|------------------------------|----------|---------|
-| **6:00** | `/api/cron/morning` | Przelicza terminy dostawców (panel dzienny), domyka kolejkę realizacji |
-| **Co godzinę 8:00–18:59** | `/api/cron/process-deliveries` | Zapasowe domknięcie dostaw z kolejki |
-| **Co godzinę 8:00–18:59** | `/api/cron/informacja-stock-sync` | Auto-powiadomienia prośby „Powiadom, gdy będzie na magazynie” (stan Subiekta) |
-| **8, 10, 12, 14, 16, 18** | `/api/cron/zd-eta-sync` | Backup sync terminów ZD na prośbach |
-| **Noc (2:00–4:40 co 20 min)** | `/api/cron/catalog-zd-sync` | Indeks ZD + import do katalogu produktów (wymaga Subiekta w LAN) |
+Pełna lista zadań z harmonogramem i opisem (10 jobów: panel dzienny, dostawy, powiadomienia ze stanu, terminy ZD, nocny katalog, braki, czasy dostaw, klasy ABC/XYZ, KPI automatu ZD, ręczny sync harmonogramów): [docs/cron-windows-server.md](docs/cron-windows-server.md). Źródło nazw jobów: `installer/cron-jobs.ps1` (Windows) i `scripts/install-cron.sh` (Linux).
 
 Raport Ivoclar (Sellout + Inventory): generowanie i wysyłka w **OnTime Raporty**. W OnTime tylko odczyt logów: **Administracja → Wysyłki Ivoclar** (`/admin/mail`). Zob. `docs/CUTOVER-IVOCLAR.md`.
 
@@ -169,7 +168,6 @@ Docs: [docs/database-local-postgres.md](docs/database-local-postgres.md), [docs/
 
 ## Role użytkowników
 
-- **admin** — pełny dostęp (tabela `profiles`, `role = admin`)
-- **sales** — własne zamówienia (`sales_person_id` w profilu)
+Role: `admin`, `zakupy`, `zakupy_zeby`, `magazyn`, `sales`, `sales_manager` (`profiles.role`; handlowiec ma `sales_person_id`). Co każda rola może: [SECURITY.md](SECURITY.md); menu wg roli: `src/lib/nav.ts`.
 
-W developmencie: `DEV_ADMIN_MODE=true` omija wymóg logowania.
+`DEV_ADMIN_MODE` (wpisywany przez `scripts/server-setup.sh`) nie jest dziś czytany przez kod aplikacji, tylko przez komunikat w `npm run setup-check` — logowanie działa zawsze.

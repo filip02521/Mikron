@@ -1,5 +1,7 @@
 # API Subiekta — ustawianie cen według cennika dostawcy
 
+> **Status: częściowo zrobione, w innym kształcie niż spec.** API dostało `PUT /products/{id}/price/catalog/levels/{level}` (zapis netto jednego poziomu bez Sfery) i listę `GET /products/prices`; OnTime sprawdza obecność zapisu w `/examples` hosta i bez niego zapisuje tylko kartotekową przez Sferę (`src/lib/price-lists/subiekt-prices.ts`). Według komentarza w kodzie zapis poziomu jest na `:5082` od 2026-10-06, na `:5080` jeszcze nie — stan hostów dziś **niezweryfikowany** (brak LAN). `PUT /products/{id}/prices` z `expected[]` i `POST /products/prices/batch` z tej specyfikacji nie są używane w kodzie.
+
 **Dla:** Tomasz (API Subiekta)
 **Host testowy:** `http://192.168.0.140:5082/api/v1` (najpierw tu), potem live `:5080`
 **Kontekst:** OnTime → Zakupy → Cenniki. Użytkownik wgrywa cennik dostawcy (np. Ivoclar, 2814 pozycji), OnTime dopasowuje towary po `tw_Symbol` w obrębie cechy dostawcy, pokazuje różnice, a po zatwierdzeniu zapisuje ceny w Subiekcie.

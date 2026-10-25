@@ -1,5 +1,7 @@
 # Cutover T0 — Supabase → lokalny PostgreSQL
 
+> **Status: zrobione (historia).** Produkcja działa na lokalnym PostgreSQL (AGENTS.md); kod przeszedł w `ec2624dd` (2026-09-05). Dokument zostaje jako runbook na wypadek powtórki. Stan pozycji produkcyjnych: `docs/migration-closure-checklist.md`.
+
 Pełna ścieżka danych A→B (plan v5.1). **Dry-run na Macu zakończony PASS** (2026-09-01).
 
 ## Macierz M1–M7 (warunki przed produkcją)
