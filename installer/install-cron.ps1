@@ -32,10 +32,7 @@ $TaskNames = @(
   "OnTime Cron Morning",
   "OnTime Cron Process Deliveries",
   "OnTime Cron Informacja Stock Sync",
-  "OnTime Cron ZD ETA Sync",
-  "OnTime Cron Subiekt Lead Times",
-  "OnTime Cron ZD SKU Class",
-  "OnTime Cron ZD KPI Weekly"
+  "OnTime Cron ZD ETA Sync"
 ) + ($CatalogZdSyncSlots | ForEach-Object { "OnTime Cron Catalog ZD Sync $_" }) +
   ($StockWatchSlots | ForEach-Object { "OnTime Cron Stock Watch $_" })
 $LegacyTaskNames = @(
@@ -45,7 +42,8 @@ $LegacyTaskNames = @(
   "OnTime Cron Scheduled Mails 0800",
   "OnTime Cron Scheduled Mails 0900",
   "OnTime Cron ZD SKU Class",
-  "OnTime Cron ZD KPI Weekly"
+  "OnTime Cron ZD KPI Weekly",
+  "OnTime Cron Subiekt Lead Times"
 )
 
 function Write-Step([string]$Message) {
@@ -305,12 +303,7 @@ function Install-CronScheduledTasks {
     )
   }
 
-  # Czasy dostaw ZD → FZ — przed oknem katalogu (02:00), ~1 min.
-  $trLeadTimes = Get-CronInvokeCommand -Root $Root -JobName "subiekt-lead-times"
-  New-SchTasksCronTask "OnTime Cron Subiekt Lead Times" @(
-    "/Create", "/F", "/TN", "OnTime Cron Subiekt Lead Times", "/TR", $trLeadTimes,
-    "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "DAILY", "/ST", "01:30"
-  )
+  # Czasy dostaw ZD → FZ liczy catalog-zd-sync raz dziennie w swoim oknie (bez osobnego zadania).
 
   # Klasy ABC/XYZ i KPI automatu ZD liczy stock-watch po swoim przebiegu (bez osobnych zadań).
   $trStockWatch = Get-CronInvokeCommand -Root $Root -JobName "stock-watch"

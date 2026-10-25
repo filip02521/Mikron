@@ -547,7 +547,7 @@ Po wdrożeniu main z #230–#232:
    `stock-watch` po porannym przebiegu braków (zmiana 2026-10-25; wcześniej osobne zadania Windows, których
    `install-cron.ps1` na serwerze nie dodał). Pierwszy poranek po wdrożeniu nadrobi oba.
 3. **Pierwsze klasy ABC/XYZ i KPI**: `/zakupy/automat` → „Przelicz” (admin) — bez czekania na 1. dzień miesiąca.
-4. **Czasy dostaw**: nocny `subiekt-lead-times` (01:30) sam przeliczy próbki z nową regułą końca miesiąca.
+4. **Czasy dostaw**: nocny `subiekt-lead-times` (w ramach `catalog-zd-sync`, 02:00–04:40) sam przeliczy próbki z nową regułą końca miesiąca.
 5. **Strategia dostawców**: rekomendacje z §11.2 (stopień 1 — propozycje do akceptacji). Przed zapisem sprawdzić
    w karcie dostawcy minimum zamówienia i próg darmowej dostawy — backtest liczył bez nich.
 
