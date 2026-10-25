@@ -176,3 +176,26 @@ export async function fetchZdAutomatPolicySummaries(): Promise<Record<string, Zd
     throw e;
   }
 }
+
+/**
+ * Wynik próby propozycji automatu (nocny przebieg, „Przygotuj teraz”) — panel dzienny pokazuje, czemu dziś nic
+ * nie powstało. Tylko dostawcy w automacie (wiersz z polityką ≠ classic). Baza bez migracji 197 → bez zapisu.
+ * Błąd zapisu nie przerywa przebiegu (log).
+ */
+export async function recordZdAutomatAttempt(
+  supplierId: string,
+  outcome: { kind: "created" | "nothing_to_order" | "not_due" | "disabled" | "skipped" | "error"; detail?: string | null }
+): Promise<void> {
+  try {
+    await query(
+      `UPDATE zd_supplier_order_policy
+          SET last_attempt_at = now(), last_attempt_kind = $2, last_attempt_detail = $3
+        WHERE supplier_id = $1 AND strategy <> 'classic'`,
+      [supplierId, outcome.kind, outcome.detail?.trim().slice(0, 500) || null]
+    );
+  } catch (e) {
+    const code = (e as { code?: string } | null)?.code;
+    if (isUndefinedTableError(e) || code === "42703") return;
+    console.error("[automat ZD] zapis wyniku próby", supplierId, e);
+  }
+}

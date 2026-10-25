@@ -419,7 +419,7 @@ export function ZdAutoProposalSheet({
       key: "plan",
       title: "Plan zamówień",
       status: "idle",
-      detail: `${supplierName} oznaczony jako zamówiony${cycle ? `; kolejna propozycja za ${cycle} ${polishPluralWord(cycle, "dzień", "dni", "dni")}` : ""}.`,
+      detail: `${supplierName} oznaczony jako zamówiony${cycle ? `; kolejna propozycja za ${cycle} ${polishPluralWord(cycle, "dzień", "dni", "dni")}, w dzień roboczy` : ""}.`,
     },
   ];
 

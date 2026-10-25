@@ -41,7 +41,8 @@ import {
   isZdAutoProposalDue,
   type ZdAutoProposalLine,
 } from "@/lib/data/zd-auto-proposals";
-import { fetchZdSupplierOrderPolicy } from "@/lib/data/zd-supplier-order-policy";
+import { fetchZdSupplierOrderPolicy, recordZdAutomatAttempt } from "@/lib/data/zd-supplier-order-policy";
+import { isZdAutomatWorkday } from "@/lib/orders/zd-automat-daily";
 import { warsawDateKeyFromIso, warsawNowParts } from "@/lib/time/warsaw";
 import { classifySubiektException, feedbackFromException } from "@/lib/subiekt/feedback";
 import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
@@ -277,6 +278,8 @@ export async function runStockWatchWorker(input: {
             ? userFacingErrorTextFromMessage(e instanceof Error ? e.message : String(e))
             : feedbackFromException(e).message;
         console.error("[stock-watch] scope", scope.supplierId, message, e);
+        // Panel dzienny → Automat ZD: dziś bez propozycji przez błąd, nie „nic do zamówienia”.
+        await recordZdAutomatAttempt(scope.supplierId, { kind: "error", detail: message });
         scopesFailed.push({
           supplierId: scope.supplierId,
           supplierName: supplier.name,
@@ -603,6 +606,12 @@ async function computeSupplierOrder(input: {
       hook: { list, engine, horizon, prices },
     });
   }
+  if (proposal) {
+    await recordZdAutomatAttempt(supplier.id, {
+      kind: proposal.kind,
+      detail: proposal.kind === "skipped" ? proposal.reason : proposal.kind === "error" ? proposal.message : null,
+    });
+  }
 
   return {
     itemsWritten,
@@ -642,6 +651,9 @@ async function maybeCreateAutoProposal(input: {
   try {
     const policy = await fetchZdSupplierOrderPolicy(input.supplierId);
     if (policy.strategy === "classic" || (!policy.autoProposals && !input.force)) return { kind: "disabled" };
+    // Dni robocze: w weekend i święto propozycja (a za nią mail do dostawcy) czeka do najbliższego dnia roboczego.
+    // „Przygotuj teraz” (force) działa zawsze — to decyzja człowieka.
+    if (!input.force && !isZdAutomatWorkday(input.todayKey)) return { kind: "not_due" };
     if (input.lines.length === 0) return { kind: "nothing_to_order" };
     const last = await fetchLatestZdAutoProposal(input.supplierId);
     const lastKey = last ? warsawDateKeyFromIso(last.createdAt) : null;

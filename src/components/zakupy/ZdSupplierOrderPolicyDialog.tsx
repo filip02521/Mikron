@@ -205,7 +205,7 @@ export function ZdSupplierOrderPolicyDialog({
           <Field label="Dni zapasu w celu" hint="Minimum — przy długiej dostawie cel rośnie sam.">
             <Input id={daysId} inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value)} />
           </Field>
-          <Field label="ZD co ile dni" hint="Dla polskich dostawców: 7.">
+          <Field label="ZD co ile dni" hint="Dla polskich dostawców: 7. Propozycje tylko w dni robocze - termin w weekend lub święto przechodzi na następny dzień roboczy.">
             <Input id={cycleId} inputMode="numeric" value={cycle} onChange={(e) => setCycle(e.target.value)} />
           </Field>
           <Field label="Stopień automatu" className="sm:col-span-2">
