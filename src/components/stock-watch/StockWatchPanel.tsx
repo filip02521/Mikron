@@ -66,13 +66,14 @@ export type StockWatchRunSummary = {
 
 type TabId = "alerts" | "suppliers" | "assembly" | "rotation" | "rules";
 const TAB_IDS: readonly TabId[] = ["suppliers", "alerts", "assembly", "rotation", "rules"];
-type AlertFilter = "all" | "empty_no_incoming" | "out_of_stock" | "critical" | "before_delivery";
+type AlertFilter = "all" | "empty_no_incoming" | "out_of_stock" | "critical" | "before_delivery" | "before_next_delivery";
 const ALERT_FILTER_IDS: readonly AlertFilter[] = [
   "all",
   "empty_no_incoming",
   "out_of_stock",
   "critical",
   "before_delivery",
+  "before_next_delivery",
 ];
 
 function isTabId(v: string | null | undefined): v is TabId {
@@ -95,6 +96,7 @@ function matchesAlertFilter(row: StockWatchRowView, filter: AlertFilter): boolea
   if (filter === "all") return true;
   if (filter === "empty_no_incoming") return isStockWatchEmptyNoIncoming(row);
   if (filter === "before_delivery") return row.deliveryRisk === "before_delivery";
+  if (filter === "before_next_delivery") return row.deliveryRisk === "before_next_delivery";
   return row.status === filter;
 }
 
@@ -411,6 +413,7 @@ export function StockWatchPanel({
                 emptyNoIncomingTotal={
                   supplierId ? emptyNoIncomingCount : dashboard.counts.emptyNoIncoming
                 }
+                supplierView={supplierId != null}
                 onFilterChange={(filter) => {
                   setAlertFilter(filter);
                   syncBrakiUrl({ filter, tab: "alerts" });
@@ -577,6 +580,7 @@ function AlertsSection({
   filter,
   emptyNoIncomingTotal,
   onFilterChange: setFilter,
+  supplierView = false,
   canMutate,
   onError,
 }: {
@@ -584,10 +588,13 @@ function AlertsSection({
   filter: AlertFilter;
   emptyNoIncomingTotal: number;
   onFilterChange: (filter: AlertFilter) => void;
+  /** Lista jednego dostawcy — te same pozycje co jego wiersz na tablicy, także przed kolejną dostawą. */
+  supplierView?: boolean;
   canMutate: boolean;
   onError: (message: string) => void;
 }) {
   const emptyOnly = filter === "empty_no_incoming";
+  const nextDeliveryCount = rows.filter((r) => r.deliveryRisk === "before_next_delivery").length;
   const segmentValue: Exclude<AlertFilter, "empty_no_incoming"> =
     filter === "empty_no_incoming" ? "all" : filter;
   const visible = rows.filter((r) => matchesAlertFilter(r, filter));
@@ -608,11 +615,15 @@ function AlertsSection({
     <Card padding={false} className="overflow-hidden">
       <div className="space-y-3 border-b border-slate-100 px-4 py-3.5 sm:px-5">
         <div className="min-w-0">
-          <h2 className="text-base font-semibold tracking-[-0.01em] text-slate-900">Do zamówienia dziś</h2>
+          <h2 className="text-base font-semibold tracking-[-0.01em] text-slate-900">
+            {supplierView ? "Pilne u dostawcy" : "Do zamówienia dziś"}
+          </h2>
           <p className="mt-0.5 text-sm leading-relaxed text-slate-600">
             {emptyOnly
               ? "Tylko dziury na półce: zero dostępnych i nic w otwartych ZD."
-              : "Brak, ≤ 48 h i „przed dostawą”. Filtr „Puste · bez dostawy” odcina towar, który już jedzie."}
+              : supplierView
+                ? "Te same pozycje, które liczy wiersz dostawcy: brak, ≤ 48 h, przed dostawą i przed kolejną dostawą."
+                : "Brak, ≤ 48 h i „przed dostawą”. Filtr „Puste · bez dostawy” odcina towar, który już jedzie."}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -631,6 +642,9 @@ function AlertsSection({
               },
               { value: "critical", label: "≤ 48 h" },
               { value: "before_delivery", label: "Przed dostawą" },
+              ...(supplierView && nextDeliveryCount > 0
+                ? [{ value: "before_next_delivery" as const, label: "Przed kolejną", title: "Skończy się przed kolejną dostawą" }]
+                : []),
             ]}
           />
           <EmptyShelfChip
