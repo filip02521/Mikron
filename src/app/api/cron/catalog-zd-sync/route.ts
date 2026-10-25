@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { authorizeCronRequest } from "@/lib/services/cron-auth";
+import { runSubiektLeadTimesCatchUp } from "@/lib/data/subiekt-lead-times-catchup";
 import { recordCronRun, type CronRunPayload } from "@/lib/services/cron-run-log";
 import {
   CATALOG_ZD_SYNC_CRON_BUDGET_MS,
@@ -30,6 +31,18 @@ export async function GET(request: NextRequest) {
       skipped: true,
       reason: "outside_warsaw_night_window",
       warsaw: warsawCronContext(),
+    });
+  }
+
+  // Czasy dostaw ZD → FZ raz na dzień, w tle po odpowiedzi slotu — przed stock-watch (5:30), który z nich korzysta.
+  if (!force) {
+    after(async () => {
+      try {
+        const leadTimes = await runSubiektLeadTimesCatchUp();
+        if (leadTimes !== "not_due") console.info("[catalog-zd-sync] czasy dostaw z Subiekta", leadTimes);
+      } catch (e) {
+        console.error("[catalog-zd-sync] czasy dostaw z Subiekta", e);
+      }
     });
   }
 
