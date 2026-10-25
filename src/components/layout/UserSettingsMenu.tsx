@@ -125,24 +125,30 @@ export function UserSettingsMenu({
     : "?";
   const roleLineLabel = workspaceSubtitle ?? (role ? ROLE_LABELS[role] : null);
 
+  // Nagłówek mobilny: jedna linia „kto · rola” pod znakiem OnTime — kto się skraca, rola zostaje widoczna.
+  const compactRole = role
+    ? [roleLineLabel ?? ROLE_LABELS[role], userAssignmentLabel?.trim() || null].filter(Boolean).join(" · ")
+    : null;
+  // Obok przycisków nagłówka jest ~150 px: imię albo część e-maila przed „@”; pełny e-mail w podpowiedzi.
+  const compactWho = displayName || userEmail?.trim().split("@")[0] || primaryLabel;
   const triggerContent = compact ? (
-    <div className="min-w-0 flex-1 text-left">
-      {primaryLabel ? (
-        <p className="truncate text-[11px] font-semibold leading-tight text-slate-900">
-          {primaryLabel}
-        </p>
+    <p
+      className="flex min-w-0 flex-1 items-baseline gap-1 text-left text-xs leading-tight"
+      title={[primaryLabel, userEmail && userEmail !== primaryLabel ? userEmail : null, compactRole].filter(Boolean).join(" · ")}
+    >
+      {compactWho ? (
+        <span className="min-w-0 truncate font-medium text-slate-800">
+          {compactWho}
+          {userEmail && compactWho !== userEmail ? <span className="sr-only"> ({userEmail})</span> : null}
+        </span>
       ) : null}
-      {role ? (
-        <p className="min-w-0">
-          <LoginAccountRoleLine
-            role={role}
-            roleLabel={roleLineLabel ?? ROLE_LABELS[role]}
-            assignmentLabel={userAssignmentLabel}
-            compact
-          />
-        </p>
+      {compactWho && compactRole ? (
+        <span className="shrink-0 text-slate-400" aria-hidden>
+          ·
+        </span>
       ) : null}
-    </div>
+      {compactRole ? <span className="min-w-0 max-w-[55%] shrink-0 truncate text-slate-500">{compactRole}</span> : null}
+    </p>
   ) : (
     <div className="flex min-w-0 flex-1 items-center gap-3">
       <span
@@ -221,7 +227,7 @@ export function UserSettingsMenu({
           <div
             className={cn(
               "flex w-full min-w-0 items-center gap-2 rounded-md",
-              compact ? "px-1 py-0.5" : "px-1 py-1"
+              compact ? "" : "px-1 py-1"
             )}
           >
             {triggerContent}
@@ -285,7 +291,7 @@ export function UserSettingsMenu({
       <div
         className={cn(
           "flex w-full min-w-0 items-center gap-2 rounded-md",
-          compact ? "px-1 py-0.5" : "px-1 py-1"
+          compact ? "" : "px-1 py-1"
         )}
       >
         {triggerContent}

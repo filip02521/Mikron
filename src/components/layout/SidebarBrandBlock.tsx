@@ -117,7 +117,7 @@ export function MobileBrandBlock({
     <div className="flex min-w-0 items-center gap-2.5">
       <AppBrandMark size="sm" variant="light" className="shrink-0" />
       <div className="min-w-0 flex-1">
-        <OnTimeWordmark size="sm" />
+        <OnTimeWordmark className="text-[15px] leading-none" size="sm" />
         <SidebarUserRow
           role={role}
           userEmail={userEmail}
