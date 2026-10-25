@@ -70,7 +70,12 @@ const QUEUE_SECTION_ID: Record<Exclude<UrgentQueuePart, "full">, string> = {
 
 function SectionHelp() {
   return (
-    <HelpPopover label="Pomoc - zaległe i na dziś" title="Zaległe i na dziś" shortLabel="Pomoc">
+    <HelpPopover
+      label="Pomoc - zaległe i na dziś"
+      title="Zaległe i na dziś"
+      shortLabel="Pomoc"
+      buttonClassName="min-h-11 sm:min-h-0"
+    >
       <HelpBlock title="Co oznaczają sekcje">
         <ul className="list-disc space-y-1.5 pl-4">
           <li className="inline-flex flex-wrap items-center gap-1.5">
@@ -493,7 +498,7 @@ export function UrgentOrdersSection({
     showBulkToolbar && scopeIds.length > 0 ? (
       <div className="flex flex-wrap items-center justify-end gap-2">
         <SectionHelp />
-        <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-slate-600 sm:min-h-0">
           <input
             type="checkbox"
             className={cn("h-4 w-4", checkboxBrandClass)}
@@ -505,7 +510,7 @@ export function UrgentOrdersSection({
         <Button
           size="sm"
           disabled={isBulkPending || selectedCount === 0}
-          className="h-7"
+          className="h-11 sm:h-7"
           onClick={handleBulkClick}
         >
           Zamówione ({selectedCount})

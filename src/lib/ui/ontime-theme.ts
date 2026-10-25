@@ -1026,8 +1026,7 @@ export const panelNoticeTriggerDefaultClass =
   "border-indigo-100/85 bg-indigo-50/35 hover:border-indigo-200/75 hover:bg-indigo-50/55";
 
 /** Pasek akcji w nagłówku panelu dziennego (wyszukiwarka + przyciski) */
-export const panelToolbarShellClass =
-  "flex w-full min-w-0 items-center rounded-md border border-indigo-100/75 bg-indigo-50/35 p-2 shadow-sm";
+export const panelToolbarShellClass = "flex w-full min-w-0 items-center";
 
 export const panelToolbarRowClass =
   "flex w-full min-w-0 flex-col gap-2 md:flex-row md:items-center";
@@ -1039,7 +1038,7 @@ export const panelToolbarSearchInputClass =
   "h-9 w-full rounded-md border border-indigo-100/80 bg-white px-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100/90";
 
 export const panelToolbarActionsClass =
-  "flex shrink-0 flex-wrap items-center justify-stretch gap-1.5 md:justify-end md:border-l md:border-indigo-100/75 md:pl-2.5";
+  "flex shrink-0 flex-wrap items-center justify-stretch gap-1.5 md:justify-end";
 
 export const panelToolbarTextButtonClass =
   "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-indigo-100/80 bg-white px-2.5 text-xs font-medium text-indigo-800/85 shadow-sm transition hover:border-indigo-200/80 hover:bg-indigo-50/45 hover:text-indigo-950";

@@ -20,7 +20,6 @@ import { IconPackage, IconPlusCircle } from "@/components/icons/StrokeIcons";
 import { PanelDailyHelp } from "@/components/summary/PanelDailyHelp";
 import {
   panelToolbarActionsClass,
-  panelToolbarIconButtonClass,
   panelToolbarRowClass,
   panelToolbarSearchWrapClass,
   panelToolbarShellClass,
@@ -28,6 +27,10 @@ import {
 import { cn } from "@/lib/cn";
 import { useSupplierHubContext } from "@/components/layout/AppRoleContext";
 import { supplierHubPaths, supplierVacationsHref } from "@/lib/supplier-hub";
+
+/** Przycisk z ikoną w pasku panelu — styl Secondary, 44 px na telefonie. */
+export const dailyToolbarIconButtonClass =
+  "inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 shadow-sm transition-colors duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50 md:h-9 md:w-9";
 
 export function DailyPanelActionsBar({
   summary,
@@ -92,7 +95,7 @@ export function DailyPanelActionsBar({
             <button
               type="button"
               onClick={onOpenProductSettings}
-              className={panelToolbarIconButtonClass}
+              className={dailyToolbarIconButtonClass}
               aria-label="Ustawienia towaru (⌘K)"
               title="Ustawienia towaru - opakowanie, na prośbę, minimum, notatka (⌘K / Ctrl+K)"
             >
@@ -104,7 +107,7 @@ export function DailyPanelActionsBar({
             label="Narzędzia panelu"
             iconOnly
             align="end"
-            triggerClassName={panelToolbarIconButtonClass}
+            triggerClassName={dailyToolbarIconButtonClass}
           >
             <OverflowMenuLabel>Panel</OverflowMenuLabel>
             {onOpenProductSettings ? (

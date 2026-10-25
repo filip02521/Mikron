@@ -183,13 +183,13 @@ function SupplierRow({
         <CycleStrip proposals={s.proposals} todayKey={todayKey} />
         <span className="flex gap-1 sm:justify-end">
           {view.pending ? (
-            <Button type="button" variant="outline" size="sm" className="min-h-10 sm:min-h-8" onClick={() => onReview(s.id)}>
+            <Button type="button" variant="outline" size="sm" className="min-h-11 sm:min-h-8" onClick={() => onReview(s.id)}>
               Sprawdź
             </Button>
           ) : null}
           <Link
             href={`${cardsHref}?karta=${encodeURIComponent(s.id)}`}
-            className="inline-flex min-h-10 items-center rounded-md px-2.5 text-xs font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 sm:min-h-8"
+            className="inline-flex min-h-11 items-center rounded-md px-2.5 text-xs font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 sm:min-h-8"
           >
             Ustawienia
           </Link>
@@ -280,7 +280,7 @@ export function DailyZdAutomatSection({
   const warning = status.tone === "warning";
 
   return (
-    <section aria-labelledby={titleId} className={cn(dailyPanelQueueShellClass(), "mb-3")}>
+    <section aria-labelledby={titleId} className={dailyPanelQueueShellClass()}>
       <div className={cn("flex flex-col gap-3 py-3 sm:flex-row sm:items-start sm:justify-between", panelSubsectionInsetClass)}>
         <div className="flex min-w-0 items-start gap-2.5">
           <span
@@ -305,7 +305,7 @@ export function DailyZdAutomatSection({
               type="button"
               variant="outline"
               size="sm"
-              className="min-h-10 sm:min-h-8"
+              className="min-h-11 sm:min-h-8"
               onClick={() => (status.action!.kind === "review" ? review(status.action!.supplierId) : reveal(status.action!.supplierId))}
             >
               {status.action.label}
@@ -316,7 +316,7 @@ export function DailyZdAutomatSection({
             aria-expanded={open}
             aria-controls={listId}
             onClick={() => toggle(!open)}
-            className="inline-flex min-h-10 items-center gap-1 rounded-md px-2 text-xs font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 sm:min-h-8"
+            className="inline-flex min-h-11 items-center gap-1 rounded-md px-2 text-xs font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 sm:min-h-8"
           >
             {open ? "Zwiń" : `Dostawcy (${data.suppliers.length})`}
             <IconChevronDown

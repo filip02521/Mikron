@@ -10,7 +10,8 @@ import type { SummaryStandardItem } from "@/lib/orders/summary";
 import { actionBulkOrdered } from "@/app/actions/admin";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { UndoToast } from "@/components/ui/UndoToast";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { SupplierDrawer } from "@/components/summary/SupplierDrawer";
 import { QuickOrderModal } from "@/components/summary/QuickOrderModal";
 import dynamic from "next/dynamic";
@@ -41,7 +42,8 @@ import { DailyPanelTabs } from "@/components/summary/DailyPanelTabs";
 import { useDailyPanelView } from "@/hooks/useDailyPanelView";
 import { useDailyPanelFreshHighlight } from "@/hooks/useDailyPanelFreshHighlight";
 import { useDailyPanelRunner } from "@/components/summary/useDailyPanelRunner";
-import { DailyPanelStickyFooter } from "@/components/summary/DailyPanelStickyFooter";
+import { DailyPanelStatusBand } from "@/components/summary/DailyPanelStatusBand";
+import { DailyPanelSyncControl } from "@/components/summary/DailyPanelSyncControl";
 import { DailyPanelContentFooter } from "@/components/summary/DailyPanelContentFooter";
 import { DailyTodayView } from "@/components/summary/DailyTodayView";
 import { leadTimeDisplayFromQuantiles } from "@/lib/orders/delivery-eta-quantiles-shared";
@@ -57,21 +59,10 @@ import { BoardQuestionsAttentionNotice } from "@/components/department-board/Boa
 import { SupplierMailBounceNotice } from "@/components/summary/SupplierMailBounceNotice";
 import { DailyPanelVerificationBanner } from "@/components/summary/DailyPanelVerificationBanner";
 import { PageAttentionGroup } from "@/components/ui/PageAttentionStrip";
-import {
-  IconLayoutPanel,
-} from "@/components/icons/StrokeIcons";
 import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import {
-  brandIconTileClass,
-  panelChromeInsetClass,
-  panelSectionInsetClass,
-  panelStickyChromeClass,
-  dailyPanelWorkspaceShellClass,
-} from "@/lib/ui/ontime-theme";
+import { dailyPanelWorkspaceShellClass } from "@/lib/ui/ontime-theme";
 import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
-import { cn } from "@/lib/cn";
 import type { TeethSupplierLaneSnapshot } from "@/lib/data/teeth-schedule-shared";
 import {
   DAILY_PANEL_MARK_ORDERED_PENDING_OVERLAY,
@@ -452,27 +443,15 @@ export function SummaryWorkspace({
           )
         : null}
 
-      <Card padding={false} className="overflow-x-clip">
-        <CardHeader
-          inset
-          density="compact"
-          leading={
-            <SectionHeadingIcon tileClassName={brandIconTileClass}>
-              <IconLayoutPanel size={20} />
-            </SectionHeadingIcon>
-          }
-          title="Panel dzienny"
-          hint={SALES_PAGE_HEADER_HINTS.dailyPanel}
-          hintAriaLabel="O panelu dziennym"
-        />
+      <PageHeader
+        title="Panel dzienny"
+        hint={SALES_PAGE_HEADER_HINTS.dailyPanel}
+        hintAriaLabel="O panelu dziennym"
+        className="mb-3"
+      />
 
-        <div
-          className={cn(
-            panelStickyChromeClass,
-            panelChromeInsetClass,
-            "flex items-center py-2.5 sm:py-3"
-          )}
-        >
+      {/* Szukanie i akcje zostają pod ręką przy przewijaniu kolejki — sticky na tle, bez ramki. */}
+      <div className="sticky top-0 z-20 -mx-1 flex items-center bg-[var(--background)]/90 px-1 py-2 backdrop-blur-sm">
           <DailyPanelActionsBar
             summary={inboxSummary}
             suppliers={supplierDirectory}
@@ -487,6 +466,7 @@ export function SummaryWorkspace({
           ) : null}
         </div>
 
+      <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <DailyPanelTabs
           active={panelView}
           todayCount={todayQueueCount}
@@ -495,9 +475,16 @@ export function SummaryWorkspace({
           exceptionsCount={exceptionsCount}
           hideVerificationBadge={hideVerificationDup}
           onChange={setPanelView}
-          footer={<OperationsPanelRefreshStrip />}
-          afterFooter={
-            <DailyPanelStickyFooter
+        />
+        <DailyPanelSyncControl />
+      </div>
+
+      <div className="mt-5 space-y-6">
+        <OperationsPanelRefreshStrip />
+        {/* Status Panel: stan kolejki dnia — karta nad listami (tylko widok Dziś). */}
+        {panelView === "dzis" ? (
+          <Card padding={false}>
+            <DailyPanelStatusBand
               view={panelView}
               summary={inboxSummary}
               dayProgress={dayProgress}
@@ -508,11 +495,10 @@ export function SummaryWorkspace({
               cancelledCount={workspace.salesCancelledNotices.length}
               onOpenOnDemand={() => setOnDemandOpen(true)}
             />
-          }
-        />
+          </Card>
+        ) : null}
 
-        {/* Sygnały w jednej ramce z wcięciem — jak „Kolejka” i listy pod spodem. */}
-        <PageAttentionGroup className="mx-3 mb-1 mt-2.5 sm:mx-4 lg:mx-5">
+        <PageAttentionGroup>
           <BoardQuestionsAttentionNotice edge="row" suppressPathHide />
           {canPrepareZd ? <SupplierMailBounceNotice edge="row" /> : null}
           {panelView === "dzis" && offPlanSuppliers.length > 0 ? (
@@ -590,7 +576,7 @@ export function SummaryWorkspace({
             id="panel-view-wyjatki"
             role="tabpanel"
             aria-labelledby="panel-tab-wyjatki"
-            className={cn("space-y-3", panelSectionInsetClass)}
+            className="space-y-6"
           >
             <DailyPanelExceptionsView
                 workspace={workspace}
@@ -604,7 +590,7 @@ export function SummaryWorkspace({
         ) : null}
 
         <DailyPanelContentFooter />
-      </Card>
+      </div>
 
       <SupplierDrawer
         supplier={drawerSupplier}

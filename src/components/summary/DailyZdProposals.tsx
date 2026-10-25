@@ -132,7 +132,7 @@ export function DailyZdProposalNotice({ proposal, className }: { proposal: Daily
         <div className="flex shrink-0 items-center justify-end gap-1.5">
           <button
             type="button"
-            className="inline-flex h-10 items-center rounded-md px-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-white hover:text-slate-900 sm:h-8 sm:text-xs"
+            className="inline-flex h-11 items-center rounded-md px-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-white hover:text-slate-900 sm:h-8 sm:text-xs"
             onClick={() => setRejecting(true)}
           >
             Odrzuć
