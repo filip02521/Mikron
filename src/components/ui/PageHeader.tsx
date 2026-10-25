@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
 import { BackChevron } from "@/components/ui/UiGlyphs";
+import { pageTitleClass } from "@/lib/ui/ontime-theme";
 
 /**
  * Nagłówek strony — leży na tle (`canvas`), nie w karcie, bez kafla ikony (DESIGN.md → Layout, Anatomia ekranu).
@@ -48,7 +49,7 @@ export function PageHeader({
         ) : null}
         {badge}
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-          <h1 className="text-2xl font-semibold leading-tight tracking-[-0.02em] text-slate-900">{title}</h1>
+          <h1 className={pageTitleClass}>{title}</h1>
           {help}
           {hint ? <HelpHintBubble message={hint} tone="slate" size="md" ariaLabel={hintAriaLabel} /> : null}
         </div>

@@ -49,6 +49,14 @@ export const navLinkIdleClass = cn(
   `${navFineHover}text-slate-900`
 );
 
+/** Tytuł strony (DESIGN.md → Headline): Inter Tight 700, jeden na ekran. */
+export const pageTitleClass =
+  "font-display text-[1.75rem] font-bold leading-tight tracking-[-0.015em] text-slate-900";
+
+/** Tytuł sekcji i karty (DESIGN.md → Section): Inter Tight 700. */
+export const sectionTitleClass =
+  "font-display text-lg font-bold leading-snug tracking-[-0.01em] text-slate-900";
+
 /** Sidebar — nagłówek grupy nawigacji (design-ok: Nav Group, jedyne wersaliki w aplikacji). */
 export const sidebarNavSectionTitleClass =
   "px-3 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-slate-500";
@@ -633,10 +641,12 @@ export const panelSubsectionInsetClass = "px-3 sm:px-4 lg:px-5";
  * Skala typografii panelu dziennego — płaska, bez powiększania na lg+ (wąska kolumna).
  */
 export const panelTypography = {
+  // Tytuł bloku w karcie lub komunikatu (14/600). Sekcja strony: sectionTitleClass / CardHeader.
   sectionTitle: "text-sm font-semibold text-slate-900",
   sectionLabel: "text-[0.6875rem] font-semibold text-slate-600",
-  rowTitle: "text-sm font-semibold leading-snug text-slate-900",
-  rowMeta: "text-xs leading-snug text-slate-500",
+  // Item (DESIGN.md): nazwa pozycji 15/600, metadane 13/400.
+  rowTitle: "text-[0.9375rem] font-semibold leading-snug text-slate-900",
+  rowMeta: "text-[0.8125rem] leading-snug text-slate-500",
   caption: "text-[0.6875rem] leading-snug text-slate-500",
   chrome: "text-xs leading-snug text-slate-600",
   sectionDesc: "text-xs leading-relaxed text-slate-500",

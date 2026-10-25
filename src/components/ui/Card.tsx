@@ -1,5 +1,6 @@
 import { cn } from "@/lib/cn";
 import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
+import { sectionTitleClass } from "@/lib/ui/ontime-theme";
 
 export function Card({
   children,
@@ -64,7 +65,7 @@ export function CardHeader({
       ? "text-[0.8125rem] font-semibold tracking-tight text-slate-900"
       : density === "compact"
         ? "text-base font-semibold tracking-tight text-slate-900"
-        : "text-base font-semibold tracking-[-0.01em] text-slate-900",
+        : sectionTitleClass,
     titleClassName
   );
 

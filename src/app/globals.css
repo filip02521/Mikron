@@ -102,6 +102,7 @@ html[data-sidebar="collapsed"] .sb-link .sb-link-icon {
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-inter-tight);
 }
 
 /* ——— Motyw OnTime: chłodny grafit + petrol (teal) ———
@@ -352,6 +353,11 @@ body {
 /* Fokus z klawiatury: jeden pierścień Petrol tam, gdzie komponent nie rysuje własnego.
    W @layer base, żeby klasy komponentów (outline-none + ring) wygrywały. */
 @layer base {
+  /* Nagłówek kolumny: 500 (DESIGN.md → Column Header), nie domyślne 700 przeglądarki. */
+  th {
+    font-weight: 500;
+  }
+
   :where(a[href], button, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
     outline: 2px solid var(--color-indigo-600);
     outline-offset: 2px;
