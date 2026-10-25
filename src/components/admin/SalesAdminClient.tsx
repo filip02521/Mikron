@@ -251,6 +251,7 @@ export function SalesAdminClient({
             <AddButton
               variant="outline"
               size="sm"
+              className="max-sm:min-h-11"
               onClick={openCreateForm}
               disabled={createDisabled}
               title={createDisabled ? "Brak przypisanych grup - poproś administratora" : undefined}
@@ -272,7 +273,7 @@ export function SalesAdminClient({
         )}
       >
         <Input
-          placeholder="Szukaj po imieniu, e-mailu, grupie lub koncie…"
+          placeholder="Szukaj: imię, e-mail, grupa…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           aria-label="Szukaj handlowców"

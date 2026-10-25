@@ -775,7 +775,7 @@ export function UsersAdminClient({
                   </p>
                   <div className="mt-2 space-y-2 text-sm text-slate-700">
                     <div className="flex items-center justify-between gap-3">
-                      <span>E-mail</span>
+                      <span className="shrink-0">E-mail</span>
                       <span className="break-all text-right font-medium text-slate-900">
                         {accessModalUser.email}
                       </span>
@@ -1151,7 +1151,7 @@ export function UsersAdminClient({
                   <Badge variant="warning">{unsavedCount} do zapisu</Badge>
                 ) : null}
                 {!createOpen ? (
-                  <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
+                  <Button variant="outline" size="sm" className="max-sm:min-h-11" onClick={() => setCreateOpen(true)}>
                     + Nowe konto
                   </Button>
                 ) : null}
@@ -1162,7 +1162,7 @@ export function UsersAdminClient({
           <div className="border-b border-slate-100 px-3 py-3 sm:px-4 lg:px-5">
             <div className="flex flex-wrap items-center gap-2">
               <Input
-                placeholder="Szukaj po e-mailu, roli lub handlowcu…"
+                placeholder="Szukaj: e-mail, rola, handlowiec…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 aria-label="Szukaj użytkowników"
@@ -1206,14 +1206,14 @@ export function UsersAdminClient({
             />
           ) : (
             <TableScroll>
-              <DataTable className="min-w-[56rem]">
+              <DataTable>
                 <thead>
                   <tr>
                     <th>E-mail</th>
                     <th>Uprawnienia</th>
                     <th>Handlowiec</th>
-                    <th>Grupy (kierownik)</th>
-                    <th>Ostatnie logowanie</th>
+                    <th className="max-xl:!hidden">Grupy</th>
+                    <th>Logowanie</th>
                     <th />
                   </tr>
                 </thead>
@@ -1245,7 +1245,7 @@ export function UsersAdminClient({
                         key={u.id}
                         className={isDirty ? "bg-amber-50" : undefined}
                       >
-                        <td className="min-w-[14rem] align-top">
+                        <td className="min-w-[12rem] align-top">
                           <div className="space-y-1">
                             <div className="break-all font-medium text-slate-900">
                               {u.email}
@@ -1268,15 +1268,11 @@ export function UsersAdminClient({
                               <span className={roleBadgeClass(displayRole)}>
                                 {ROLE_LABELS[displayRole]}
                               </span>
-                              <Badge
-                                variant={
-                                  u.mailCenterModuleEnabled ? "success" : "default"
-                                }
-                                className="whitespace-nowrap"
-                              >
-                                Wysyłki Ivoclar:{" "}
-                                {u.mailCenterModuleEnabled ? "Aktywne" : "Wyłączone"}
-                              </Badge>
+                              {u.mailCenterModuleEnabled ? (
+                                <Badge variant="success" className="whitespace-nowrap">
+                                  Wysyłki Ivoclar
+                                </Badge>
+                              ) : null}
                             </div>
                             {isDirty ? (
                               <p className="text-xs leading-relaxed text-amber-800">
@@ -1290,7 +1286,7 @@ export function UsersAdminClient({
                             {linkedSalesPersonName}
                           </span>
                         </td>
-                        <td className="align-top">
+                        <td className="align-top max-xl:!hidden">
                           {displayRole === "sales_manager" && salesGroups.length ? (
                             <div className="space-y-2">
                               <p className="text-xs font-medium text-slate-600">
