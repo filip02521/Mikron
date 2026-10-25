@@ -43,7 +43,9 @@ $LegacyTaskNames = @(
   "OnTime Cron Catalog ZD Sync Continue",
   "OnTime Cron Scheduled Mails 0700",
   "OnTime Cron Scheduled Mails 0800",
-  "OnTime Cron Scheduled Mails 0900"
+  "OnTime Cron Scheduled Mails 0900",
+  "OnTime Cron ZD SKU Class",
+  "OnTime Cron ZD KPI Weekly"
 )
 
 function Write-Step([string]$Message) {
@@ -310,20 +312,7 @@ function Install-CronScheduledTasks {
     "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "DAILY", "/ST", "01:30"
   )
 
-  # Klasy ABC/XYZ — raz w miesiącu, przed czasami dostaw (01:30) i katalogiem (02:00).
-  $trSkuClass = Get-CronInvokeCommand -Root $Root -JobName "zd-sku-class"
-  New-SchTasksCronTask "OnTime Cron ZD SKU Class" @(
-    "/Create", "/F", "/TN", "OnTime Cron ZD SKU Class", "/TR", $trSkuClass,
-    "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "MONTHLY", "/D", "1", "/ST", "00:30"
-  )
-
-  # KPI automatu ZD — poniedziałek po stock-watch (05:30–06:30 zapisuje historię stanów).
-  $trKpiWeekly = Get-CronInvokeCommand -Root $Root -JobName "zd-kpi-weekly"
-  New-SchTasksCronTask "OnTime Cron ZD KPI Weekly" @(
-    "/Create", "/F", "/TN", "OnTime Cron ZD KPI Weekly", "/TR", $trKpiWeekly,
-    "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "WEEKLY", "/D", "MON", "/ST", "07:00"
-  )
-
+  # Klasy ABC/XYZ i KPI automatu ZD liczy stock-watch po swoim przebiegu (bez osobnych zadań).
   $trStockWatch = Get-CronInvokeCommand -Root $Root -JobName "stock-watch"
   foreach ($slot in @("05:30", "05:50", "06:10", "06:30")) {
     $slotId = $slot.Replace(":", "")
