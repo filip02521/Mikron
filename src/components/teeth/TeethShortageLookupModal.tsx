@@ -401,7 +401,7 @@ export function TeethShortageLookupModal({
             : `Wyniki: ${filtered.length} z ${shortages.length}`}
         </p>
         {filtered.length > 0 ? (
-          <p className="text-[0.625rem] text-slate-400">Najpierw bez daty, potem minione terminy</p>
+          <p className="text-[0.625rem] text-slate-500">Najpierw bez daty, potem minione terminy</p>
         ) : null}
       </div>
 

@@ -19,7 +19,7 @@ import { teethColorSwatch } from "@/lib/teeth/teeth-color-swatches";
 import type { ModalSize } from "@/components/ui/ModalShell";
 import { cn } from "@/lib/cn";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
-import { IconAlertCircle, IconPlusCircle, IconPencil } from "@/components/icons/StrokeIcons";
+import { IconAlertCircle, IconCheck, IconPlusCircle, IconPencil } from "@/components/icons/StrokeIcons";
 
 /** Spójny styl komunikatu ostrzegawczego w modalu zębów. */
 export const teethBuilderAlertClass =
@@ -90,17 +90,17 @@ export function TeethBuilderStepFlow({ steps }: { steps: TeethBuilderStep[] }) {
               "hover:ring-2 hover:ring-indigo-200/50",
               step.done
                 ? "bg-indigo-50 text-indigo-800 ring-1 ring-indigo-200/70"
-                : "text-slate-400 hover:text-slate-600",
+                : "text-slate-500 hover:text-slate-700",
             )}
           >
             <span
               className={cn(
-                "flex size-3.5 shrink-0 items-center justify-center rounded-full text-[0.5625rem] font-semibold",
-                step.done ? "bg-indigo-600 text-white" : "bg-slate-200/80 text-slate-500",
+                "flex size-4 shrink-0 items-center justify-center rounded-full text-[0.625rem] font-semibold",
+                step.done ? "bg-white text-indigo-700 ring-1 ring-indigo-200" : "bg-slate-200/80 text-slate-600",
               )}
               aria-hidden="true"
             >
-              {step.done ? "✓" : step.number}
+              {step.done ? <IconCheck size={10} strokeWidth={3} /> : step.number}
             </span>
             {step.label}
           </button>
@@ -233,7 +233,7 @@ export function TeethBuilderGroupList({
                 </span>
               ) : null}
               {effectiveKind ? (
-                <span className="rounded bg-slate-100 px-1 py-0.5 text-[0.5625rem] font-medium text-slate-500">
+                <span className="rounded bg-slate-100 px-1 py-0.5 text-[0.625rem] font-medium text-slate-600">
                   {TEETH_KIND_LABELS[effectiveKind].toLowerCase()}
                 </span>
               ) : null}

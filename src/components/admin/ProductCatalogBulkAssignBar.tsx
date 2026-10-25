@@ -32,7 +32,7 @@ export function ProductCatalogBulkAssignBar({
   return (
     <div
       className={cn(
-        "mb-3 rounded-lg border border-indigo-200/80 bg-indigo-50/75 px-3 py-2.5",
+        "rounded-lg bg-indigo-50 px-3 py-2.5",
         "shadow-sm "
       )}
       role="region"
@@ -72,7 +72,7 @@ export function ProductCatalogBulkAssignBar({
 
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end">
           <div className="min-w-[min(100%,14rem)] flex-1 sm:max-w-xs">
-            <label className="mb-1 block text-[0.6875rem] font-medium text-indigo-950" htmlFor="bulk-supplier">
+            <label className="mb-1 block text-xs font-semibold text-indigo-900" htmlFor="bulk-supplier">
               Dostawca dla zaznaczonych
             </label>
             <Select

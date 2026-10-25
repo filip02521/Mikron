@@ -115,7 +115,7 @@ export function TeethOrderFileUpload({
             type="button"
             disabled={pending}
             onClick={handleDownload}
-            className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-md border border-indigo-200 bg-white px-2 py-1 text-[0.6875rem] font-medium text-indigo-800 shadow-sm transition-colors hover:bg-indigo-50 disabled:opacity-50"
+            className="inline-flex min-h-11 min-w-0 max-w-full items-center gap-1 rounded-md border border-indigo-200 bg-white px-2 py-1 text-xs font-medium sm:min-h-8 text-indigo-800 shadow-sm transition-colors hover:bg-indigo-50 disabled:opacity-50"
             title={`Pobierz: ${fileName}`}
           >
             {pending ? (
@@ -130,8 +130,9 @@ export function TeethOrderFileUpload({
               type="button"
               disabled={pending}
               onClick={handleRemove}
-              className="inline-flex shrink-0 items-center rounded-md border border-slate-200 bg-white p-1 text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-red-600 disabled:opacity-50"
+              className="inline-flex size-11 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-red-600 disabled:opacity-50 sm:size-8"
               title="Usuń plik z całej grupy dostawcy"
+              aria-label="Usuń plik zamówienia z całej grupy dostawcy"
             >
               <IconTrash2 size={13} strokeWidth={2} />
             </button>
@@ -147,7 +148,7 @@ export function TeethOrderFileUpload({
 
   if (locked) {
     return (
-      <span className="text-[0.6875rem] text-slate-400" title="Plik niedostępny">
+      <span className="text-[0.6875rem] text-slate-500" title="Plik niedostępny">
         -
       </span>
     );
@@ -167,9 +168,9 @@ export function TeethOrderFileUpload({
         disabled={pending}
         onClick={() => inputRef.current?.click()}
         className={cn(
-          "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[0.6875rem] font-medium shadow-sm transition-colors disabled:opacity-50",
+          "inline-flex min-h-11 items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium shadow-sm transition-colors disabled:opacity-50 sm:min-h-8",
           required
-            ? "border-indigo-300 bg-indigo-600 text-white hover:bg-indigo-700"
+            ? "border-indigo-200 bg-indigo-50 text-indigo-800 hover:bg-indigo-100"
             : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900"
         )}
         title="Załącz jeden plik zamówienia (Excel, PDF lub XML) na grupę dostawcy - wymagany przed oznaczeniem"

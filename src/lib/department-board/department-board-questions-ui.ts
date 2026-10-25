@@ -11,7 +11,7 @@ export const boardQuestionsStatusTrackClass =
   "flex w-full flex-wrap gap-0.5 rounded-lg border border-slate-200/90 bg-slate-100/70 p-0.5 sm:flex-nowrap";
 
 export const boardQuestionsStatusChipClass =
-  "inline-flex min-h-9 flex-auto cursor-pointer whitespace-nowrap sm:min-w-0 sm:flex-1 items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[0.6875rem] font-semibold leading-none transition sm:min-h-8 sm:px-2.5 sm:text-xs";
+  "inline-flex min-h-11 flex-auto cursor-pointer whitespace-nowrap sm:min-w-0 sm:flex-1 items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[0.6875rem] font-semibold leading-none transition sm:min-h-8 sm:px-2.5 sm:text-xs";
 
 export const boardQuestionsStatusChipIdleClass =
   "text-slate-600 hover:bg-white/80 hover:text-slate-900";
@@ -21,9 +21,6 @@ export const boardQuestionsStatusChipActiveClass =
 
 export const boardQuestionsAttentionRowClass =
   "flex flex-wrap items-center gap-2";
-
-export const boardQuestionsAttentionLabelClass =
-  "shrink-0 text-[0.625rem] font-semibold text-slate-400";
 
 export const boardQuestionsAttentionChipClass =
   "inline-flex min-h-8 shrink-0 cursor-pointer items-center gap-1 rounded-md border px-2.5 py-1 text-[0.6875rem] font-semibold leading-none transition";

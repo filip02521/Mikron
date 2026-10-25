@@ -7,8 +7,9 @@ export const zkWatchRowActionHeightClass = "h-8";
 /** Kontener akcji po prawej stronie wiersza ZK. */
 export const zkWatchRowActionBarClass = "flex items-center justify-end gap-1.5";
 
+// hit-target: pole dotyku 44 px przy palcu bez zmiany wyglądu gęstego wiersza (DESIGN.md → Ikony).
 const zkWatchRowActionTextBaseClass = cn(
-  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 font-medium transition-colors",
+  "hit-target inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 font-medium transition-colors",
   "rounded-md leading-none text-[0.6875rem] sm:text-xs",
   "disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50",
   "aria-disabled:pointer-events-none aria-disabled:opacity-50",
@@ -46,7 +47,7 @@ export const zkWatchRowActionStatusClass = cn(
 /** Ikona ⋮, kalendarz itd. — kwadrat dopasowany do wysokości CTA tekstowych. */
 export const zkWatchRowActionIconClass = cn(
   panelToolbarIconButtonClass,
-  "relative h-8 w-8 shrink-0"
+  "hit-target relative h-8 w-8 shrink-0"
 );
 
 export function zkWatchRowFollowUpIconClass({

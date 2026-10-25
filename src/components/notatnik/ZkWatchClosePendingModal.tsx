@@ -143,7 +143,7 @@ export function ZkWatchClosePendingModal({
       {/* Status banner */}
       <div
         className={cn(
-          "flex items-center gap-2.5 rounded-xl px-3.5 py-3 text-sm font-medium",
+          "flex items-center gap-2.5 rounded-lg px-3.5 py-3 text-sm font-medium",
           phase === "confirming" && "bg-sky-50 text-sky-900",
           phase === "done" && "bg-emerald-50 text-emerald-900",
           phase === "error" && "bg-rose-50 text-rose-900"
@@ -171,12 +171,12 @@ export function ZkWatchClosePendingModal({
 
       {/* Items list */}
       <div>
-        <p className="mb-2 text-xs font-medium text-slate-400">
+        <p className="mb-2 text-xs font-medium text-slate-500">
           Pozycje ({items.length})
         </p>
         <ul
           className={cn(
-            "divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200/80 bg-white",
+            "divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200/80 bg-white",
             refreshing && "opacity-60"
           )}
           aria-busy={refreshing || undefined}
@@ -193,7 +193,7 @@ export function ZkWatchClosePendingModal({
                 <p className="mt-0.5 text-xs text-slate-500">
                   {[item.symbol, item.quantityLabel].filter(Boolean).join(" · ")}
                 </p>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-slate-500">
                   {item.statusLabel}
                 </p>
               </div>

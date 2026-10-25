@@ -5,7 +5,6 @@ import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
 import { HowItWorksContent } from "@/components/summary/HowItWorks";
 import { IconCalendarRange } from "@/components/icons/StrokeIcons";
 
-import { panelToolbarTextButtonClass } from "@/lib/ui/ontime-theme";
 import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 
@@ -17,11 +16,11 @@ export function PanelDailyHelp({
 }) {
   const toolbarButton =
     density === "toolbar"
-      ? cn(panelToolbarTextButtonClass, "shadow-none hover:shadow-sm")
+      ? "inline-flex h-11 min-w-11 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm transition-colors duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 sm:h-10 sm:min-w-10"
       : undefined;
 
   return (
-    <div className={cn("flex items-center gap-1.5", density === "default" && "flex-wrap gap-2")}>
+    <div className={cn("flex items-center gap-2", density === "default" && "flex-wrap")}>
       <Link
         href="/lokalizacje/POLSKA"
         className={cn(

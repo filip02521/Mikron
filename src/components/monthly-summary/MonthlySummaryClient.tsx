@@ -9,12 +9,11 @@ import {
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/cn";
-import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import {
   controlFocusClass,
   buttonPrimaryClass,
-  brandGradientTextClass,
-  panelStickyChromeClass,
   surfaceCardClass,
 } from "@/lib/ui/ontime-theme";
 import type {
@@ -217,7 +216,7 @@ function MonthSelector({
           disabled={disabled || !canPrev}
           onClick={() => prevKey && onSelect(prevKey)}
           className={cn(
-            "inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors",
+            "inline-flex h-11 w-11 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors sm:h-9 sm:w-9",
             controlFocusClass,
             "hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
           )}
@@ -236,7 +235,7 @@ function MonthSelector({
           disabled={disabled}
           onChange={(e) => onSelect(e.target.value)}
           className={cn(
-            "h-9 max-w-[11rem] rounded-lg border border-slate-200 bg-white px-2.5 text-sm font-medium text-slate-800",
+            "h-11 max-w-[11rem] rounded-md border border-slate-200 bg-white px-2.5 text-base font-medium text-slate-800 shadow-sm sm:h-9 sm:text-sm",
             controlFocusClass,
             "disabled:cursor-not-allowed disabled:opacity-60"
           )}
@@ -256,7 +255,7 @@ function MonthSelector({
           disabled={disabled || !canNext || !nextCandidate}
           onClick={() => nextCandidate && onSelect(nextCandidate)}
           className={cn(
-            "inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors",
+            "inline-flex h-11 w-11 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors sm:h-9 sm:w-9",
             controlFocusClass,
             "hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
           )}
@@ -298,84 +297,44 @@ function StickyDepartmentTabs({
     }
   }
 
+  // Zakładki strony (DESIGN.md → SectionTabNav): podkreślenie 2px, licznik jako odznaka Tiny.
   return (
-    <div className="px-5 py-3">
-      <p className="mb-2 text-[0.625rem] font-semibold text-slate-400">
-        Działy · {stats.monthLabel}
-      </p>
-      <div
-        className="grid grid-cols-2 gap-2 sm:grid-cols-4"
-        role="tablist"
-        aria-label="Działy podsumowania"
-        onKeyDown={handleKeyDown}
-      >
-        {TAB_ORDER.map((tab) => {
-          const isActive = active === tab;
-          const meta = TAB_META[tab];
-          const preview = tabPreview(stats, tab);
-          return (
-            <button
-              key={tab}
-              type="button"
-              role="tab"
-              id={`monthly-tab-${tab}`}
-              aria-selected={isActive}
-              aria-controls={`monthly-panel-${tab}`}
-              tabIndex={isActive ? 0 : -1}
-              title={meta.hint}
-              onClick={() => onChange(tab)}
-              className={cn(
-                "group flex flex-col items-stretch gap-1 rounded-lg px-2.5 py-2 text-left transition sm:flex-row sm:items-center sm:gap-2",
-                controlFocusClass,
-                isActive
-                  ? cn("bg-white shadow-sm ring-2", meta.accentRing, "ring-offset-1")
-                  : "bg-slate-50/90 ring-1 ring-inset ring-slate-200/80 hover:bg-white hover:ring-slate-300 hover:shadow-sm"
-              )}
-            >
-              <span
-                className={cn(
-                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
-                  isActive ? meta.accentSoft : "bg-white ring-1 ring-slate-200/80",
-                  isActive ? meta.accent : "text-slate-400 group-hover:text-slate-600"
-                )}
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden
-                >
-                  <path d={meta.icon} />
-                </svg>
-              </span>
-              <span className="min-w-0 flex-1">
-                <span
-                  className={cn(
-                    "block truncate text-xs font-semibold sm:text-sm",
-                    isActive ? "text-slate-900" : "text-slate-700"
-                  )}
-                >
-                  {meta.label}
-                </span>
-                <span className="hidden text-[0.625rem] text-slate-500 lg:block">{meta.hint}</span>
-              </span>
-              <span
-                className={cn(
-                  "text-sm font-semibold tabular-nums",
-                  isActive ? meta.accent : "text-slate-700"
-                )}
-              >
-                {preview.value}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+    <div
+      className="flex gap-5 overflow-x-auto border-b border-slate-200 [scrollbar-width:none]"
+      role="tablist"
+      aria-label="Działy podsumowania"
+      onKeyDown={handleKeyDown}
+    >
+      {TAB_ORDER.map((tab) => {
+        const isActive = active === tab;
+        const meta = TAB_META[tab];
+        const preview = tabPreview(stats, tab);
+        return (
+          <button
+            key={tab}
+            type="button"
+            role="tab"
+            id={`monthly-tab-${tab}`}
+            aria-selected={isActive}
+            aria-controls={`monthly-panel-${tab}`}
+            tabIndex={isActive ? 0 : -1}
+            title={meta.hint}
+            onClick={() => onChange(tab)}
+            className={cn(
+              "-mb-px inline-flex min-h-11 shrink-0 items-center gap-1.5 border-b-2 px-1 text-sm font-medium whitespace-nowrap transition-colors duration-150",
+              controlFocusClass,
+              isActive
+                ? "border-indigo-600 text-slate-900"
+                : "border-transparent text-slate-600 hover:text-slate-900"
+            )}
+          >
+            {meta.label}
+            <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums text-slate-700">
+              {preview.value}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -384,37 +343,18 @@ function HighlightCard({
   eyebrow,
   title,
   children,
-  gradientClass,
-  ringClass,
-  iconBgClass,
-  iconPath,
 }: {
   eyebrow: string;
   title: string;
   children: ReactNode;
-  gradientClass: string;
-  ringClass: string;
-  iconBgClass: string;
-  iconPath: string;
 }) {
   return (
-    <div className={cn("relative rounded-xl p-5 ring-1 ring-inset", gradientClass, ringClass)}>
-      <div className="relative flex items-center gap-4">
-        <span
-          className={cn(
-            "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white shadow-md",
-            iconBgClass
-          )}
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d={iconPath} />
-          </svg>
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[0.6875rem] font-semibold text-slate-600/80">{eyebrow}</p>
-          <p className="mt-0.5 truncate text-lg font-semibold text-slate-900">{title}</p>
-          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">{children}</div>
-        </div>
+    <div className={cn(surfaceCardClass, "p-5")}>
+      {/* Nazwa najpierw, rola pod nią — bez etykiety nad nagłówkiem (craft floor: bez „eyebrow”). */}
+      <div className="min-w-0">
+        <p className="truncate text-lg font-semibold text-slate-900">{title}</p>
+        <p className="mt-0.5 text-sm text-slate-600">{eyebrow}</p>
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">{children}</div>
       </div>
     </div>
   );
@@ -504,10 +444,6 @@ function SalesTab({
         <HighlightCard
           eyebrow="Lider miesiąca"
           title={top.salesPersonName}
-          gradientClass="bg-white"
-          ringClass="ring-indigo-200/60"
-          iconBgClass="bg-indigo-600"
-          iconPath="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"
         >
           <span>{formatZlozoneProsby(top.requestsCreated)}</span>
           <span className="text-emerald-700">{formatZrealizowaneProsby(top.requestsCompleted)}</span>
@@ -774,10 +710,6 @@ function DeliveryTab({
         <HighlightCard
           eyebrow="Kurier z największą liczbą przyjęć"
           title={warehouseCarrierLabel(topCarrier.carrier)}
-          gradientClass="bg-white"
-          ringClass="ring-emerald-200/60"
-          iconBgClass="bg-indigo-600"
-          iconPath="M3 7h11v10H3zM14 10h4l3 3v4h-7"
         >
           <span>
             <strong className="tabular-nums text-slate-900">{topCarrier.count}</strong>
@@ -1052,10 +984,6 @@ function ProcurementTab({
         <HighlightCard
           eyebrow="Najbardziej aktywny dostawca"
           title={topSupplier.supplierName}
-          gradientClass="bg-white"
-          ringClass="ring-amber-200/60"
-          iconBgClass="bg-indigo-600"
-          iconPath="M3 3h2l2.4 12.5a2 2 0 002 1.5h7.7a2 2 0 002-1.6L21 8H6"
         >
           <span>
             <strong className="tabular-nums text-slate-900">{topSupplier.orders}</strong>
@@ -1177,10 +1105,6 @@ function TeethTab({
         <HighlightCard
           eyebrow="Najbardziej aktywny dostawca zębów"
           title={topSupplier.supplierName}
-          gradientClass="bg-white"
-          ringClass="ring-violet-200/60"
-          iconBgClass="bg-indigo-600"
-          iconPath="M12 3c2.5 2 4 4.5 4 7.5S14 17 12 21c-2-4-4-7-4-10.5S9.5 5 12 3z"
         >
           <span>
             <strong className="tabular-nums text-slate-900">{topSupplier.orders}</strong>
@@ -1267,96 +1191,54 @@ export function MonthlySummaryClient({
   }
 
   return (
-    <div className="relative mx-auto w-full max-w-4xl space-y-5 2xl:max-w-5xl">
-      <Card padding={false}>
-        <header className="relative border-b border-slate-100 px-5 py-5">
-          <div className="relative space-y-3.5">
-            <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
-              <div className="flex min-w-0 items-center gap-2.5">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md ">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <path d="M3 3v18h18" />
-                    <path d="M7 14l4-4 3 3 5-5" />
-                  </svg>
-                </span>
-                <div className="min-w-0">
-                  <h1 className={cn("text-xl font-semibold tracking-tight", brandGradientTextClass)}>
-                    Podsumowanie miesiąca
-                  </h1>
-                  <p className="mt-0.5 text-sm font-medium text-slate-500">{stats.monthLabel}</p>
-                </div>
-              </div>
+    <div className="relative mx-auto w-full max-w-4xl 2xl:max-w-5xl">
+      <PageHeader
+        title="Podsumowanie miesiąca"
+        description={<span className="italic">„{quote}”</span>}
+        className="mb-4"
+        actions={
+          <MonthSelector
+            availableMonths={stats.availableMonths}
+            currentKey={stats.monthKey}
+            onSelect={handleMonthSelect}
+            disabled={isMonthPending}
+          />
+        }
+      />
 
-              <MonthSelector
-                availableMonths={stats.availableMonths}
-                currentKey={stats.monthKey}
-                onSelect={handleMonthSelect}
-                disabled={isMonthPending}
-              />
-            </div>
+      <div className="sticky top-0 z-20 bg-[var(--background)]/90 backdrop-blur-sm">
+        <StickyDepartmentTabs active={activeTab} onChange={handleTabChange} stats={stats} />
+      </div>
 
-            <blockquote className="max-w-2xl border-t border-slate-100/90 pt-3.5 sm:pl-[3.125rem]">
-              <p className="text-[0.8125rem] leading-[1.55] text-slate-400">
-                <span className="select-none text-slate-300" aria-hidden>
-                  „
-                </span>
-                <span className="italic">{quote}</span>
-                <span className="select-none text-slate-300" aria-hidden>
-                  ”
-                </span>
-              </p>
-            </blockquote>
-          </div>
-        </header>
-
-        {/*
-          Sticky musi mieć rodzica obejmującego także treść działu —
-          bez overflow:hidden na przodkach (Card / sticky chrome).
-        */}
-        <div className="bg-slate-50/80">
-          <div className="px-5 pt-4">
-            <p className="text-[0.6875rem] font-semibold text-slate-500">
-              Wybierz dział
-            </p>
-            <p className="mt-0.5 text-sm text-slate-600">
-              Cztery widoki miesiąca - przełącz bez przeładowania danych.
-            </p>
-          </div>
-
-          <div className={cn(panelStickyChromeClass, "z-20")}>
-            <StickyDepartmentTabs active={activeTab} onChange={handleTabChange} stats={stats} />
-          </div>
-
-          <div
-            className={cn(
-              "bg-white p-5 transition-opacity duration-200",
-              isMonthPending && "pointer-events-none opacity-50"
-            )}
-            role="tabpanel"
-            id={`monthly-panel-${activeTab}`}
-            aria-labelledby={`monthly-tab-${activeTab}`}
-            aria-busy={isMonthPending}
-          >
-            {isMonthPending ? (
-              <p className="mb-4 text-sm font-medium text-indigo-600" aria-live="polite">
-                Ładowanie miesiąca…
-              </p>
-            ) : null}
-            {activeTab === "handlowcy" ? (
-              <SalesTab stats={stats} onMonthSelect={handleMonthSelect} />
-            ) : null}
-            {activeTab === "dostawy" ? (
-              <DeliveryTab stats={stats} onMonthSelect={handleMonthSelect} />
-            ) : null}
-            {activeTab === "zakupy" ? (
-              <ProcurementTab stats={stats} onMonthSelect={handleMonthSelect} />
-            ) : null}
-            {activeTab === "zeby" ? (
-              <TeethTab stats={stats} onMonthSelect={handleMonthSelect} />
-            ) : null}
-          </div>
-        </div>
-      </Card>
+      <div
+        className={cn(
+          "mt-5 transition-opacity duration-200",
+          isMonthPending && "pointer-events-none opacity-50"
+        )}
+        role="tabpanel"
+        id={`monthly-panel-${activeTab}`}
+        aria-labelledby={`monthly-tab-${activeTab}`}
+        aria-busy={isMonthPending}
+      >
+        {isMonthPending ? (
+          <p className="mb-4 flex items-center gap-2 text-sm text-slate-600" role="status">
+            <BrandLoader size="sm" />
+            Wczytuję wybrany miesiąc…
+          </p>
+        ) : null}
+        {activeTab === "handlowcy" ? (
+          <SalesTab stats={stats} onMonthSelect={handleMonthSelect} />
+        ) : null}
+        {activeTab === "dostawy" ? (
+          <DeliveryTab stats={stats} onMonthSelect={handleMonthSelect} />
+        ) : null}
+        {activeTab === "zakupy" ? (
+          <ProcurementTab stats={stats} onMonthSelect={handleMonthSelect} />
+        ) : null}
+        {activeTab === "zeby" ? (
+          <TeethTab stats={stats} onMonthSelect={handleMonthSelect} />
+        ) : null}
+      </div>
     </div>
   );
 }

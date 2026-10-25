@@ -11,12 +11,12 @@ import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import { Spinner } from "@/components/ui/Spinner";
 import {
   IconAlertCircle,
   IconChartTrend,
   IconSearch,
-  IconSettings,
   IconTruck,
 } from "@/components/icons/StrokeIcons";
 import {
@@ -24,7 +24,12 @@ import {
   actionStartStockWatchRun,
 } from "@/app/actions/stock-watch";
 import { polishPluralWord, polishPozycjeLabel } from "@/lib/email/polish-plural";
-import { buttonPrimaryClass } from "@/lib/ui/ontime-theme";
+import {
+  buttonPrimaryClass,
+  panelChoiceChipClass,
+  panelChoiceChipIdleClass,
+  panelChoiceChipSelectedClass,
+} from "@/lib/ui/ontime-theme";
 import type { StockWatchDashboard, StockWatchRowView } from "@/lib/stock-watch/dashboard";
 import { isStockWatchEmptyNoIncoming } from "@/lib/stock-watch/analysis";
 import { StockSupplierBoard } from "@/components/stock-watch/StockSupplierBoard";
@@ -61,13 +66,14 @@ export type StockWatchRunSummary = {
 
 type TabId = "alerts" | "suppliers" | "assembly" | "rotation" | "rules";
 const TAB_IDS: readonly TabId[] = ["suppliers", "alerts", "assembly", "rotation", "rules"];
-type AlertFilter = "all" | "empty_no_incoming" | "out_of_stock" | "critical" | "before_delivery";
+type AlertFilter = "all" | "empty_no_incoming" | "out_of_stock" | "critical" | "before_delivery" | "before_next_delivery";
 const ALERT_FILTER_IDS: readonly AlertFilter[] = [
   "all",
   "empty_no_incoming",
   "out_of_stock",
   "critical",
   "before_delivery",
+  "before_next_delivery",
 ];
 
 function isTabId(v: string | null | undefined): v is TabId {
@@ -90,6 +96,7 @@ function matchesAlertFilter(row: StockWatchRowView, filter: AlertFilter): boolea
   if (filter === "all") return true;
   if (filter === "empty_no_incoming") return isStockWatchEmptyNoIncoming(row);
   if (filter === "before_delivery") return row.deliveryRisk === "before_delivery";
+  if (filter === "before_next_delivery") return row.deliveryRisk === "before_next_delivery";
   return row.status === filter;
 }
 
@@ -334,7 +341,7 @@ export function StockWatchPanel({
           <div
             role="tablist"
             aria-label="Sekcje panelu braków"
-            className="sticky top-0 z-10 -mx-1 flex gap-0.5 overflow-x-auto rounded-lg border border-slate-200/90 bg-white/95 p-1 shadow-[0_1px_0_rgba(15,23,42,0.04)] backdrop-blur-sm supports-[backdrop-filter]:bg-white/80"
+            className="sticky top-0 z-10 flex gap-5 overflow-x-auto border-b border-slate-200 bg-[var(--background)]/90 backdrop-blur-sm [-ms-overflow-style:none] [scrollbar-width:none] sm:gap-6 [&::-webkit-scrollbar]:hidden"
           >
             {tabs.map((t) => {
               const active = t.id === tab;
@@ -353,22 +360,18 @@ export function StockWatchPanel({
                   }}
                   onKeyDown={onTabKeyDown}
                   className={cn(
-                    "inline-flex min-h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-[background-color,color,box-shadow] duration-150 ease-out sm:min-h-9",
+                    "-mb-px inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-1.5 border-b-2 px-0.5 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-600 sm:min-h-10",
                     active
-                      ? "bg-indigo-50 text-indigo-900 ring-1 ring-inset ring-indigo-200"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                      ? "border-indigo-600 text-slate-900"
+                      : "border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900"
                   )}
                 >
                   {t.label}
                   {t.count != null && t.count > 0 ? (
                     <span
                       className={cn(
-                        "rounded px-1.5 py-0.5 text-[0.6875rem] font-semibold tabular-nums",
-                        active
-                          ? "bg-white text-indigo-700"
-                          : t.tone === "danger"
-                            ? "bg-red-50 text-red-700"
-                            : "bg-slate-100 text-slate-600"
+                        "inline-flex min-w-[1.25rem] items-center justify-center rounded-md px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums",
+                        t.tone === "danger" ? "bg-red-50 text-red-800" : "bg-slate-100 text-slate-600"
                       )}
                     >
                       {t.count}
@@ -381,12 +384,12 @@ export function StockWatchPanel({
 
           {supplierName ? (
             <div className="flex flex-wrap items-center gap-2 px-0.5">
-              <span className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50/80 py-0.5 pl-2.5 pr-1 text-xs font-medium text-slate-800">
+              <span className="inline-flex items-center gap-1 rounded-md bg-indigo-50 py-0.5 pl-2.5 pr-0.5 text-xs font-medium text-indigo-900 ring-1 ring-inset ring-indigo-200">
                 Dostawca: {supplierName}
                 <button
                   type="button"
                   onClick={clearSupplier}
-                  className="inline-flex size-7 cursor-pointer items-center justify-center rounded text-slate-500 transition-colors hover:bg-white hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                  className="inline-flex size-10 cursor-pointer items-center justify-center rounded text-indigo-700 transition-colors hover:bg-white hover:text-indigo-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 sm:size-7"
                   aria-label={`Usuń filtr dostawcy ${supplierName}`}
                 >
                   ×
@@ -410,6 +413,7 @@ export function StockWatchPanel({
                 emptyNoIncomingTotal={
                   supplierId ? emptyNoIncomingCount : dashboard.counts.emptyNoIncoming
                 }
+                supplierView={supplierId != null}
                 onFilterChange={(filter) => {
                   setAlertFilter(filter);
                   syncBrakiUrl({ filter, tab: "alerts" });
@@ -494,7 +498,7 @@ function StatusPanel({
     <Card padding={false}>
       <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-5">
         <div className="min-w-0" role="status">
-          <p className="flex items-start gap-2.5 text-lg font-semibold leading-snug tracking-tight text-slate-900 text-balance lg:text-xl">
+          <p className="flex items-start gap-2.5 text-lg font-semibold leading-snug tracking-[-0.015em] text-slate-900 text-balance">
             <span className={cn("mt-2 size-2.5 shrink-0 rounded-full", dot)} aria-hidden />
             {line.headline}
           </p>
@@ -520,7 +524,7 @@ function StatusPanel({
             <Link
               href={line.focus.href}
               className={cn(
-                "inline-flex h-10 cursor-pointer items-center justify-center rounded-md px-4 text-sm font-semibold transition-[transform,background-color] duration-150 ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-1",
+                "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-md px-4 text-sm font-medium sm:min-h-10 transition-[transform,background-color] duration-150 ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-1",
                 buttonPrimaryClass
               )}
             >
@@ -534,8 +538,8 @@ function StatusPanel({
   );
 }
 
-/** Przełącznik: same produkty bez stanu i bez otwartego ZD. */
-function EmptyShelfSwitch({
+/** Chip filtra: same produkty bez stanu i bez otwartego ZD. */
+function EmptyShelfChip({
   checked,
   count,
   onChange,
@@ -547,41 +551,26 @@ function EmptyShelfSwitch({
   return (
     <button
       type="button"
-      role="switch"
-      aria-checked={checked}
+      aria-pressed={checked}
       onClick={() => onChange(!checked)}
       className={cn(
-        "inline-flex min-h-10 w-full cursor-pointer items-center gap-2.5 rounded-md border px-3 py-2 text-left transition-[border-color,background-color,box-shadow] duration-150 ease-out sm:w-auto sm:min-h-9 sm:py-1.5",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 active:scale-[0.99]",
-        checked
-          ? "border-red-300 bg-red-50/95 text-red-950 shadow-sm ring-1 ring-red-200/70"
-          : "border-slate-200 bg-white text-slate-800 hover:border-slate-300 hover:bg-slate-50"
+        panelChoiceChipClass,
+        "inline-flex min-h-10 cursor-pointer items-center gap-1.5 py-1.5 sm:min-h-8",
+        checked ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass
       )}
       title="Pokaż tylko towary bez stanu dostępnego i bez sztuk na otwartych ZD"
     >
-      <span
-        className={cn(
-          "relative h-5 w-9 shrink-0 rounded-full transition-colors duration-150 ease-out",
-          checked ? "bg-red-600" : "bg-slate-300"
-        )}
-        aria-hidden
-      >
+      Puste · bez dostawy
+      {count > 0 ? (
         <span
           className={cn(
-            "absolute top-0.5 size-4 rounded-full bg-white shadow-sm transition-transform duration-150 ease-out",
-            checked ? "translate-x-4" : "translate-x-0.5"
+            "rounded px-1 text-[0.6875rem] font-semibold tabular-nums",
+            checked ? "bg-white text-indigo-700" : "text-slate-500"
           )}
-        />
-      </span>
-      <span className="min-w-0">
-        <span className="block text-xs font-semibold leading-tight">Puste · bez dostawy</span>
-        <span className={cn("block text-[0.6875rem] leading-tight", checked ? "text-red-800/80" : "text-slate-500")}>
-          Bez stanu i bez ZD w drodze
-          {count > 0 ? (
-            <span className="ml-1 font-semibold tabular-nums">({count})</span>
-          ) : null}
+        >
+          {count}
         </span>
-      </span>
+      ) : null}
     </button>
   );
 }
@@ -591,6 +580,7 @@ function AlertsSection({
   filter,
   emptyNoIncomingTotal,
   onFilterChange: setFilter,
+  supplierView = false,
   canMutate,
   onError,
 }: {
@@ -598,10 +588,13 @@ function AlertsSection({
   filter: AlertFilter;
   emptyNoIncomingTotal: number;
   onFilterChange: (filter: AlertFilter) => void;
+  /** Lista jednego dostawcy — te same pozycje co jego wiersz na tablicy, także przed kolejną dostawą. */
+  supplierView?: boolean;
   canMutate: boolean;
   onError: (message: string) => void;
 }) {
   const emptyOnly = filter === "empty_no_incoming";
+  const nextDeliveryCount = rows.filter((r) => r.deliveryRisk === "before_next_delivery").length;
   const segmentValue: Exclude<AlertFilter, "empty_no_incoming"> =
     filter === "empty_no_incoming" ? "all" : filter;
   const visible = rows.filter((r) => matchesAlertFilter(r, filter));
@@ -621,54 +614,51 @@ function AlertsSection({
   return (
     <Card padding={false} className="overflow-hidden">
       <div className="space-y-3 border-b border-slate-100 px-4 py-3.5 sm:px-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex min-w-0 items-start gap-2">
-            <span className="mt-0.5 text-red-600" aria-hidden>
-              <IconAlertCircle size={16} strokeWidth={2} />
-            </span>
-            <div className="min-w-0">
-              <h2 className="text-sm font-semibold text-slate-900">Do zamówienia dziś</h2>
-              <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
-                {emptyOnly
-                  ? "Tylko dziury na półce: zero dostępnych i nic w otwartych ZD."
-                  : "Brak, ≤ 48 h i „przed dostawą”. Przełącznik po prawej odcina towar, który już jedzie."}
-              </p>
-            </div>
-          </div>
-          <EmptyShelfSwitch
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold tracking-[-0.01em] text-slate-900">
+            {supplierView ? "Pilne u dostawcy" : "Do zamówienia dziś"}
+          </h2>
+          <p className="mt-0.5 text-sm leading-relaxed text-slate-600">
+            {emptyOnly
+              ? "Tylko dziury na półce: zero dostępnych i nic w otwartych ZD."
+              : supplierView
+                ? "Te same pozycje, które liczy wiersz dostawcy: brak, ≤ 48 h, przed dostawą i przed kolejną dostawą."
+                : "Brak, ≤ 48 h i „przed dostawą”. Filtr „Puste · bez dostawy” odcina towar, który już jedzie."}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <SegmentedControl
+            value={segmentValue}
+            onChange={setFilter}
+            ariaLabel="Filtr alertów"
+            density="compact"
+            disabled={emptyOnly}
+            options={[
+              { value: "all", label: `Wszystkie ${rows.length}` },
+              {
+                value: "out_of_stock",
+                label: "Brak",
+                title: "Stan dostępny ≤ 0 (także z towarem w drodze)",
+              },
+              { value: "critical", label: "≤ 48 h" },
+              { value: "before_delivery", label: "Przed dostawą" },
+              ...(supplierView && nextDeliveryCount > 0
+                ? [{ value: "before_next_delivery" as const, label: "Przed kolejną", title: "Skończy się przed kolejną dostawą" }]
+                : []),
+            ]}
+          />
+          <EmptyShelfChip
             checked={emptyOnly}
             count={emptyNoIncomingTotal}
             onChange={(on) => setFilter(on ? "empty_no_incoming" : "all")}
           />
-        </div>
-        <SegmentedControl
-          value={segmentValue}
-          onChange={setFilter}
-          ariaLabel="Filtr alertów"
-          density="compact"
-          className="w-full"
-          disabled={emptyOnly}
-          options={[
-            { value: "all", label: `Wszystkie (${rows.length})` },
-            {
-              value: "out_of_stock",
-              label: "Brak",
-              title: "Stan dostępny ≤ 0 (także z towarem w drodze)",
-            },
-            { value: "critical", label: "≤ 48 h" },
-            { value: "before_delivery", label: "Przed dostawą" },
-          ]}
-        />
-        {emptyOnly ? (
-          <p className="text-[0.6875rem] leading-snug text-red-800/90" role="status">
-            Widoczne:{" "}
-            <strong className="tabular-nums">{visible.length}</strong>
-            {emptyNoIncomingTotal > visible.length
-              ? ` z ${emptyNoIncomingTotal} (lista pokazuje najpilniejsze)`
+          <span className="ml-auto text-[0.6875rem] tabular-nums text-slate-500" role="status">
+            {polishPozycjeLabel(visible.length)}
+            {emptyOnly && emptyNoIncomingTotal > visible.length
+              ? ` z ${emptyNoIncomingTotal} (najpilniejsze)`
               : null}
-            . Wyłącz przełącznik, żeby zobaczyć też braki z towarem w drodze.
-          </p>
-        ) : null}
+          </span>
+        </div>
       </div>
 
       {visible.length === 0 ? (
@@ -678,8 +668,8 @@ function AlertsSection({
             title={emptyOnly ? "Nie ma pustych półek bez dostawy" : "Brak pozycji w tym filtrze"}
             description={
               emptyOnly
-                ? "Każdy brak ma już otwarte ZD albo nie ma braków w tej liście. Wyłącz przełącznik albo sprawdź zakładkę „Dostawcy”."
-                : "Zmień filtr albo wyłącz przełącznik „Puste · bez dostawy”."
+                ? "Każdy brak ma już otwarte ZD albo nie ma braków w tej liście. Wyłącz filtr albo sprawdź zakładkę „Dostawcy”."
+                : "Zmień filtr albo wyłącz „Puste · bez dostawy”."
             }
             action={
               emptyOnly ? (
@@ -703,7 +693,7 @@ function AlertsSection({
               return (
                 <li
                   key={`${row.supplierId}:${row.subiektTwId}`}
-                  className={cn("flex gap-3 px-4 py-3", emptyShelf && "bg-red-50/30 shadow-[inset_3px_0_0_0_#ef4444]")}
+                  className={cn("flex gap-3 px-4 py-3", emptyShelf && "bg-red-50/50")}
                 >
                   <div className="min-w-0 flex-1">
                     <ProductCell row={row} />
@@ -731,7 +721,7 @@ function AlertsSection({
             })}
           </ul>
           <TableScroll className="hidden sm:block sm:px-0 sm:pb-0">
-            <DataTable className="min-w-[800px]">
+            <DataTable className="kpi-table min-w-[760px]">
               <thead>
                 <tr>
                   <th scope="col">Towar</th>
@@ -748,7 +738,7 @@ function AlertsSection({
                     className="text-right"
                     title="Wartość dziennej sprzedaży: rotacja × ostatnia cena zakupu z ZD"
                   >
-                    Sprzedaż zł / dzień
+                    zł / dzień
                   </th>
                   {canMutate ? (
                     <th scope="col">
@@ -763,7 +753,7 @@ function AlertsSection({
                   return (
                     <tr
                       key={`${row.supplierId}:${row.subiektTwId}`}
-                      className={cn(emptyShelf && "bg-red-50/35 [&>td:first-child]:shadow-[inset_3px_0_0_0_#ef4444]")}
+                      className={cn(emptyShelf && "bg-red-50/50")}
                     >
                       <td>
                         <ProductCell row={row} />
@@ -845,17 +835,17 @@ function AssemblySection({
   return (
     <Card padding={false} className="overflow-hidden">
       <div className="border-b border-slate-100 px-4 py-3.5 sm:px-5">
-        <h2 className="text-sm font-semibold text-slate-900">
+        <h2 className="text-base font-semibold tracking-[-0.01em] text-slate-900">
           Do kompletacji w Subiekcie{" "}
-          <span className="font-normal tabular-nums text-slate-400">({rows.length})</span>
+          <span className="font-normal tabular-nums text-slate-500">({rows.length})</span>
         </h2>
-        <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+        <p className="mt-0.5 text-sm leading-relaxed text-slate-600">
           Własny stan karty pusty albo na wyczerpaniu, ale części (albo komplety) leżą na magazynie. Zrób
           dokument kompletacji - nie zamawiaj. Składy ustawiasz w Kreatorze ZD.
         </p>
       </div>
       <TableScroll className="sm:px-0 sm:pb-0">
-        <DataTable className="min-w-[760px]">
+        <DataTable className="kpi-table min-w-[720px]">
           <thead>
             <tr>
               <th scope="col">Towar</th>
@@ -930,17 +920,17 @@ function RotationSection({
   return (
     <Card padding={false} className="overflow-hidden">
       <div className="border-b border-slate-100 px-4 py-3.5 sm:px-5">
-        <h2 className="text-sm font-semibold text-slate-900">
+        <h2 className="text-base font-semibold tracking-[-0.01em] text-slate-900">
           Najlepiej sprzedawane{" "}
-          <span className="font-normal tabular-nums text-slate-400">({rows.length})</span>
+          <span className="font-normal tabular-nums text-slate-500">({rows.length})</span>
         </h2>
-        <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+        <p className="mt-0.5 text-sm leading-relaxed text-slate-600">
           Pasek: stan względem celu zapasu (rotacja × dni zapasu). Kreska = 100% celu, kreskowanie = towar w
           drodze.
         </p>
       </div>
       <TableScroll className="sm:px-0 sm:pb-0">
-        <DataTable className="min-w-[760px]">
+        <DataTable className="kpi-table min-w-[720px]">
           <thead>
             <tr>
               <th scope="col" className="w-10 text-right">#</th>
@@ -954,7 +944,7 @@ function RotationSection({
           <tbody>
             {rows.map((row, i) => (
               <tr key={row.subiektTwId}>
-                <td className="text-right text-xs font-semibold tabular-nums text-slate-400">{i + 1}</td>
+                <td className="text-right text-xs font-medium tabular-nums text-slate-500">{i + 1}</td>
                 <td>
                   <ProductCell row={row} />
                   <p className="truncate text-xs text-slate-500">{row.supplierName}</p>
@@ -1048,8 +1038,8 @@ function RulesSection({
       <Card padding={false} className="p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">Reguły towarów</h2>
-            <p className="mt-0.5 max-w-xl text-xs text-slate-500">
+            <h2 className="text-base font-semibold tracking-[-0.01em] text-slate-900">Reguły towarów</h2>
+            <p className="mt-0.5 max-w-xl text-sm leading-relaxed text-slate-600">
               Te same flagi co w kreatorze ZD - zmiana działa w obu miejscach od razu.{" "}
               <strong>Standard</strong>: pełny automat. <strong>Na prośbę</strong>: tylko pod klienta, bez zapasu.{" "}
               <strong>Wyklucz</strong>: ignorowany, bez alertów.
@@ -1067,9 +1057,13 @@ function RulesSection({
               value={term}
               onChange={(e) => setTerm(e.target.value)}
               placeholder="Symbol albo nazwa (min. 2 znaki)"
-              className="h-10 w-full rounded-md border border-slate-200 bg-white pl-8 pr-3 text-sm outline-none ring-indigo-200 focus:border-indigo-300 focus:ring-2"
+              className="h-11 w-full rounded-md border border-slate-200 bg-white pl-8 pr-9 text-base text-slate-900 shadow-sm placeholder:text-slate-400 hover:border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:h-10 sm:text-sm"
             />
-            {searching ? <Spinner size="sm" className="absolute right-2.5 top-1/2 -translate-y-1/2" /> : null}
+            {searching ? (
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                <BrandLoader size="sm" label="Szukam towarów" />
+              </span>
+            ) : null}
           </label>
         </div>
         {shown ? (
@@ -1085,15 +1079,14 @@ function RulesSection({
 
       {(["on_request", "excluded"] as const).map((rule) => (
         <Card key={rule} padding={false} className="overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-5">
+          <div className="border-b border-slate-100 px-4 py-3 sm:px-5">
             <div>
-              <h3 className="text-sm font-semibold text-slate-900">
+              <h3 className="text-base font-semibold tracking-[-0.01em] text-slate-900">
                 {STOCK_WATCH_RULE_META[rule].label}{" "}
-                <span className="font-normal tabular-nums text-slate-400">({groups[rule].length})</span>
+                <span className="font-normal tabular-nums text-slate-500">({groups[rule].length})</span>
               </h3>
-              <p className="text-xs text-slate-500">{STOCK_WATCH_RULE_META[rule].description}</p>
+              <p className="mt-0.5 text-sm text-slate-600">{STOCK_WATCH_RULE_META[rule].description}</p>
             </div>
-            <IconSettings size={16} className="text-slate-300" />
           </div>
           {groups[rule].length === 0 ? (
             <p className="px-4 py-4 text-sm text-slate-500 sm:px-5">Brak towarów z tą regułą w analizowanych zakresach.</p>

@@ -2,10 +2,8 @@
 
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { IconChevronDown } from "@/components/icons/StrokeIcons";
-import { mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
-import { panelTypography, salesTypography, sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
+import { panelTypography, salesTypography } from "@/lib/ui/ontime-theme";
 
 export function NotatnikCollapsible({
   title,
@@ -18,7 +16,6 @@ export function NotatnikCollapsible({
   highlight,
   badge,
   icon,
-  tileClassName = sectionIconTileBrandClass,
   domain = "sales",
 }: {
   title: string;
@@ -31,7 +28,6 @@ export function NotatnikCollapsible({
   highlight?: boolean;
   badge?: ReactNode;
   icon: ReactNode;
-  tileClassName?: string;
   domain?: "sales" | "panel";
 }) {
   const titleClass =
@@ -46,8 +42,8 @@ export function NotatnikCollapsible({
   return (
     <section
       className={cn(
-        mojeShipmentSectionShellClass,
-        highlight && !open && "ring-1 ring-amber-200/90",
+        "bg-white",
+        highlight && !open && "bg-amber-50/40",
         className
       )}
     >
@@ -58,7 +54,9 @@ export function NotatnikCollapsible({
         className="flex w-full items-start justify-between gap-2 border-b border-indigo-100/70 bg-indigo-50/25 px-3 py-2 text-left transition hover:bg-indigo-50/40 sm:px-4"
       >
         <div className="flex min-w-0 flex-1 items-start gap-2.5">
-          <SectionHeadingIcon tileClassName={tileClassName}>{icon}</SectionHeadingIcon>
+          <span className="mt-0.5 shrink-0 text-slate-500" aria-hidden>
+            {icon}
+          </span>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className={titleClass}>

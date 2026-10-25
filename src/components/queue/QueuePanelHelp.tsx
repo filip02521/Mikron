@@ -1,6 +1,8 @@
 "use client";
 
-import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
+import { HelpPopover } from "@/components/ui/HelpPopover";
+import { IconHelpCircle } from "@/components/icons/StrokeIcons";
+import { pageHelpIconButtonClass } from "@/lib/ui/queue-panel-styles";
 import { HelpBlock } from "@/components/ui/HelpBlock";
 import { InlineCheck } from "@/components/ui/UiGlyphs";
 
@@ -9,8 +11,10 @@ export function QueuePanelHelp() {
     <HelpPopover
       label="Pomoc - magazyn i regał"
       title="Przyjęcie towaru"
-      shortLabel="Pomoc"
-      icon={<GuideIcon />}
+      shortLabel=""
+      icon={<IconHelpCircle size={18} />}
+      align="left"
+      buttonClassName={pageHelpIconButtonClass}
     >
       <HelpBlock title="Kolejka przyjęcia">
         <ul className="list-disc space-y-1.5 pl-4">

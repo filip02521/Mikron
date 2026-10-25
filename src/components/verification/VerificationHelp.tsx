@@ -1,6 +1,8 @@
 "use client";
 
-import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
+import { HelpPopover } from "@/components/ui/HelpPopover";
+import { IconHelpCircle } from "@/components/icons/StrokeIcons";
+import { pageHelpIconButtonClass } from "@/lib/ui/queue-panel-styles";
 import { HelpBlock } from "@/components/ui/HelpBlock";
 
 export function VerificationHelp() {
@@ -8,8 +10,10 @@ export function VerificationHelp() {
     <HelpPopover
       label="Pomoc - weryfikacja próśb"
       title="Weryfikacja zgłoszeń"
-      shortLabel="Pomoc"
-      icon={<GuideIcon />}
+      shortLabel=""
+      icon={<IconHelpCircle size={18} />}
+      align="left"
+      buttonClassName={pageHelpIconButtonClass}
     >
       <HelpBlock title="Co tu jest">
         <p>

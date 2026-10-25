@@ -14,7 +14,6 @@ export default async function AdminTeethProductsPage() {
     <AdminSecondaryShell
       title="Produkty zębne"
       description="Lista towarów z wyłączoną kontrolą stanu magazynowego przy prośbach o zamówienie. Identyfikatory wczytywane z Subiekta (tw_Id)."
-      iconKey="catalog"
       backHref="/admin/produkty"
       backLabel="Katalog produktów"
     >

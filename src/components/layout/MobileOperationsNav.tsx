@@ -19,11 +19,11 @@ import { NavIcon, navIconTileActiveClassForTone, navIconTileClassForTone } from 
 import { MobileNavOverflowSheet } from "@/components/layout/MobileNavOverflowSheet";
 import {
   mobileNavAttentionIdleClass,
+  mobileNavLinkActiveClass,
   mobileNavLinkBaseClass,
   mobileNavLinkIdleClass,
   mobileSalesNavClass,
   sidebarNavBadgeClassForTone,
-  sidebarNavToneActiveClass,
 } from "@/lib/ui/ontime-theme";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
 import { ProcurementWorkspaceSwitcher } from "@/components/layout/ProcurementWorkspaceSwitcher";
@@ -112,7 +112,7 @@ export function MobileOperationsNav({
                   mobileNavLinkBaseClass,
                   "px-1",
                   active
-                    ? sidebarNavToneActiveClass(item.tone)
+                    ? mobileNavLinkActiveClass
                     : attentionIdle
                       ? mobileNavAttentionIdleClass
                       : mobileNavLinkIdleClass
@@ -134,7 +134,7 @@ export function MobileOperationsNav({
                   {attentionBadge > 0 && !active ? (
                     <span
                       className={cn(
-                        "absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[0.5625rem] font-semibold leading-none tabular-nums ring-2 ring-white",
+                        "absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[0.625rem] font-semibold leading-none tabular-nums ring-2 ring-white",
                         sidebarNavBadgeClassForTone(displayTone, false)
                       )}
                     >

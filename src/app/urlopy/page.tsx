@@ -3,11 +3,9 @@ import { getSessionUser } from "@/lib/auth";
 import { isAdmin, isSalesAccount } from "@/lib/auth-roles";
 import { fetchAllNonSalesStaff, fetchStaffVacationPeriods } from "@/lib/data/staff-vacation-periods";
 import { StaffVacationCalendar } from "@/components/staff/StaffVacationCalendar";
-import { Card, CardHeader } from "@/components/ui/Card";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { NavIcon } from "@/components/icons/NavIcon";
+import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
-import { salesCardBodyClass, sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
 import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
@@ -35,32 +33,27 @@ export default async function StaffUrlopyPage() {
   }
 
   return (
-    <Card padding={false} className="overflow-hidden">
-      <CardHeader
-        inset
-        density="compact"
-        leading={
-          <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
-            <NavIcon navKey="vacation" size={20} />
-          </SectionHeadingIcon>
-        }
+    <>
+      <PageHeader
         title="Urlopy - zespół"
-        description="Sprawdź kto z zespołu jest na urlopie i zaplanuj swój. Cały zespół widzi urlopy na wzajem."
+        description="Sprawdź, kto z zespołu jest na urlopie, i zaplanuj swój. Cały zespół widzi urlopy nawzajem."
       />
-      <div className={salesCardBodyClass}>
-        {loadError ? (
-          <p className="py-4 text-center text-sm text-rose-600">{loadError}</p>
-        ) : (
-          <StaffVacationCalendar
-            staff={staff}
-            periodsByUser={periodsByUser}
-            currentUserId={user.id}
-            isAdmin={adminMode}
-            todayDateKey={todayDateKeyInWarsaw()}
-          />
-        )}
-      </div>
+      <Card>
+        <div>
+          {loadError ? (
+            <p className="py-4 text-center text-sm text-red-700" role="alert">{loadError}</p>
+          ) : (
+            <StaffVacationCalendar
+              staff={staff}
+              periodsByUser={periodsByUser}
+              currentUserId={user.id}
+              isAdmin={adminMode}
+              todayDateKey={todayDateKeyInWarsaw()}
+            />
+          )}
+        </div>
+      </Card>
       <AppBrandContentFooter mobileOnly variant="page" />
-    </Card>
+    </>
   );
 }

@@ -1,22 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { SectionTabNav } from "@/components/ui/SectionTabNav";
 import { Alert } from "@/components/ui/Alert";
 import { UndoToast } from "@/components/ui/UndoToast";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { NOTEPAD_UNDO_TOAST, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
-import { IconNotepad, IconArchive, IconClipboardPen, IconUsers } from "@/components/icons/StrokeIcons";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import {
-  panelChromeInsetClass,
-  panelChoiceChipClass,
-  panelChoiceChipIdleClass,
-  panelChoiceChipSelectedClass,
-  sectionIconTileBrandClass,
-} from "@/lib/ui/ontime-theme";
+import { IconArchive, IconClipboardPen, IconUsers } from "@/components/icons/StrokeIcons";
 import {
   collectOperationsTodayTasks,
   type OperationsNotepadData,
@@ -50,7 +43,6 @@ import { NotatnikPanel } from "@/components/notatnik/NotatnikPanel";
 import { NotatnikCollapsible } from "@/components/notatnik/NotatnikCollapsible";
 import { SalesKeyboardShortcutsStrip } from "@/components/sales/SalesKeyboardShortcutsStrip";
 import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
-import { cn } from "@/lib/cn";
 import { isEditableKeyboardTarget } from "@/lib/platform/editable-keyboard-target";
 import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
 import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
@@ -304,70 +296,33 @@ export function OperationsNotepadClient({
           undoShortcut={undoShortcut}
         />
       ) : null}
-      <Card padding={false} className="overflow-visible">
-        <CardHeader
-          inset
-          density="compact"
-          title="Notatki"
-          hint={SALES_PAGE_HEADER_HINTS.operationsNotepad}
-          hintAriaLabel="O notatkach operacyjnych"
-          leading={
-            <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
-              <IconNotepad size={20} />
-            </SectionHeadingIcon>
-          }
-        />
+      {/* Nagłówek i zakładki działów na tle, treść w karcie (DESIGN.md → Anatomia ekranu). */}
+      <PageHeader
+        title="Notatki"
+        hint={SALES_PAGE_HEADER_HINTS.operationsNotepad}
+        hintAriaLabel="O notatkach operacyjnych"
+        description={allowedDepartments.length > 1 ? undefined : `Dział: ${deptLabel}`}
+      />
 
+      {allowedDepartments.length > 1 ? (
+        <SectionTabNav
+          ariaLabel="Dział"
+          activeTab={department}
+          tabs={allowedDepartments.map((d) => ({
+            id: d,
+            label: OPERATIONS_DEPARTMENT_LABELS[d],
+            hint: `Notatki działu ${OPERATIONS_DEPARTMENT_LABELS[d]}`,
+            href: `/notatki?dzial=${d}`,
+            badgeCount: deptBadges[d] ?? 0,
+          }))}
+        />
+      ) : null}
+
+      <Card padding={false} className="overflow-visible">
         <SalesKeyboardShortcutsStrip items={NOTATNIK_KEYBOARD_HINTS} embedded />
 
-        {allowedDepartments.length > 1 ? (
-          <div
-            className={cn(
-              panelChromeInsetClass,
-              "flex flex-wrap items-center gap-2 border-b border-slate-100 py-2.5 sm:py-3"
-            )}
-            role="group"
-            aria-label="Dział"
-          >
-            <span className="text-xs font-medium text-slate-500">Dział</span>
-            {allowedDepartments.map((d) => {
-              const deptCount = deptBadges[d] ?? 0;
-              return (
-                <Link
-                  key={d}
-                  href={`/notatki?dzial=${d}`}
-                  aria-current={d === department ? "page" : undefined}
-                  className={cn(
-                    panelChoiceChipClass,
-                    "min-h-9 py-2 sm:min-h-0",
-                    d === department ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass
-                  )}
-                >
-                  {OPERATIONS_DEPARTMENT_LABELS[d]}
-                  {deptCount > 0 ? (
-                    <span
-                      className={cn(
-                        "ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-[0.625rem] font-semibold tabular-nums",
-                        d === department
-                          ? "bg-indigo-600 text-white"
-                          : "bg-indigo-100 text-indigo-700",
-                      )}
-                    >
-                      {deptCount}
-                    </span>
-                  ) : null}
-                </Link>
-              );
-            })}
-          </div>
-        ) : (
-          <div className={cn(panelChromeInsetClass, "border-b border-slate-100 py-2 text-xs text-slate-600")}>
-            Dział: <span className="font-medium text-slate-900">{deptLabel}</span>
-          </div>
-        )}
-
         {loadError ? (
-          <Alert tone="error" className="mx-3 mt-3 sm:mx-4">
+          <Alert tone="error" className="mx-3 my-3 sm:mx-4">
             {loadError}
           </Alert>
         ) : null}
@@ -378,7 +333,8 @@ export function OperationsNotepadClient({
           embedded
         />
 
-        <div className="space-y-3 p-3 sm:p-4">
+        {/* Sekcje w jednej karcie oddziela linia, nie własna ramka (DESIGN.md → bez karty w karcie). */}
+        <div className="divide-y divide-slate-200/80 border-t border-slate-200/80">
           <NotatnikPanel
             domain="panel"
             title="Prywatne"
@@ -415,7 +371,6 @@ export function OperationsNotepadClient({
             description={`Tablica działu ${deptLabel} - zespół może edytować, archiwizować i przestawiać te notatki.`}
             count={publicNotes.length || undefined}
             icon={<IconUsers size={17} />}
-            tileClassName="bg-sky-100 text-sky-800"
             className="overflow-visible"
             bodyClassName="overflow-visible"
           >
@@ -449,7 +404,6 @@ export function OperationsNotepadClient({
               open={showArchive}
               onToggle={() => setShowArchive((v) => !v)}
               icon={<IconArchive size={17} />}
-              tileClassName="bg-slate-100 text-slate-600"
             >
               <OperationsArchivedNotesSection
                 notes={archivedNotes}

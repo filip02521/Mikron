@@ -7,8 +7,12 @@ import {
   type SupplierLocationFilter,
 } from "@/lib/supplier-locations";
 
-function segmentLabel(base: string, count: number): string {
-  return `${base} (${count})`;
+function segmentLabel(base: string, count: number) {
+  return (
+    <>
+      {base} <span className="tabular-nums text-slate-500">{count}</span>
+    </>
+  );
 }
 
 export function SupplierLocationFilters({
@@ -24,14 +28,11 @@ export function SupplierLocationFilters({
 }) {
   return (
     <div className={className}>
-      <p className="mb-2 text-xs font-semibold text-slate-500">
-        Lokalizacja
-      </p>
       <SegmentedControl
-        className="w-full max-w-full flex-wrap"
+        className="max-w-full"
         value={value}
         onChange={onChange}
-        ariaLabel="Filtr lokalizacji na liście kart"
+        ariaLabel="Lokalizacja dostawcy"
         touchFriendly
         options={[
         {
