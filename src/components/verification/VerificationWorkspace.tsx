@@ -1,4 +1,6 @@
 "use client";
+import { HelpPopover } from "@/components/ui/HelpPopover";
+import { KeyboardShortcutsHint } from "@/components/ui/KeyboardShortcutsHint";
 import { ADMIN_PREVIEW_TOAST, REQUEST_EDIT_FORM, VERIFICATION_TOAST, formMessageToToast, toastFromError, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
 
 import { useState, useTransition, useEffect, useMemo, useRef, useCallback } from "react";
@@ -44,7 +46,6 @@ import { VerificationInformacjaPathPanel, VerificationPathBadge } from "@/compon
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
 import { ProsbaFormReadiness } from "@/components/orders/ProsbaFormReadiness";
 import {
-  ProsbaFormKeyboardStrip,
   ProsbaFormProductsSection,
   ProsbaFormRequestKindSection,
 } from "@/components/orders/ProsbaFormSharedSections";
@@ -569,6 +570,20 @@ export function VerificationWorkspace({
     });
   };
 
+  // Skróty jako link w nagłówku formularza (bez osobnego pudełka); telefon nie ma klawiatury.
+  const shortcutsHelp = (
+    <HelpPopover
+      label="Skróty klawiszowe"
+      title="Skróty klawiszowe"
+      shortLabel="Skróty"
+      align="right"
+      className="hidden sm:inline-flex"
+      buttonClassName="border-0 bg-transparent px-0 shadow-none text-[0.8125rem] font-medium text-indigo-800 hover:underline"
+    >
+      <KeyboardShortcutsHint items={PROCUREMENT_PROSBA_KEYBOARD_HINTS.filter((h) => h.keys[0] !== "+")} compact />
+    </HelpPopover>
+  );
+
   const workspaceBody =
     !orders.length ? (
       <EmptyState
@@ -600,17 +615,20 @@ export function VerificationWorkspace({
           >
             {inModal ? (
               <div className="border-b border-slate-100 px-4 py-3">
-                <h3 className="text-sm font-semibold text-slate-900">Uzupełnij dane</h3>
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-slate-900">Uzupełnij dane</h3>
+                  {shortcutsHelp}
+                </div>
                 <p className="mt-0.5 text-xs text-slate-600">
                   Zgłoszenie od {active.sales_person?.name ?? "handlowca"}
                 </p>
               </div>
             ) : (
-              <div className="border-b border-slate-100 bg-slate-50/40 px-3 py-3 sm:px-4">
+              <div className="border-b border-slate-100 px-3 py-3 sm:px-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className={panelTypography.sectionLabel}>Uzupełnianie prośby</p>
-                    <p className="mt-0.5 text-sm font-semibold text-slate-900">
+                    <p className={cn("mt-0.5", panelTypography.rowTitle)}>
                       {active.sales_person?.name ?? "Handlowiec"}
                     </p>
                     <p className={cn("mt-0.5", panelTypography.sectionDesc)}>
@@ -618,9 +636,12 @@ export function VerificationWorkspace({
                       {informacjaUi ? ` · ${informacjaUi.badgeLabel}` : ""}
                     </p>
                   </div>
-                  {informacjaUi ? (
-                    <VerificationPathBadge ui={informacjaUi} className="shrink-0 text-[0.625rem]" />
-                  ) : null}
+                  <div className="flex shrink-0 items-center gap-2">
+                    {informacjaUi ? (
+                      <VerificationPathBadge ui={informacjaUi} className="shrink-0 text-[0.625rem]" />
+                    ) : null}
+                    {shortcutsHelp}
+                  </div>
                 </div>
                 {normalizeSalesClientName(active.sales_client_name) ? (
                   <MyOrderAssignedClient
@@ -644,11 +665,6 @@ export function VerificationWorkspace({
                   : cn("space-y-4", panelSectionInsetClass, "pb-2")
               }
             >
-              <ProsbaFormKeyboardStrip
-                hints={PROCUREMENT_PROSBA_KEYBOARD_HINTS.filter((h) => h.keys[0] !== "+")}
-                variant="procurement"
-              />
-
               <ProsbaFormRequestKindSection
                 value={form.requestKind}
                 disabled={pending}

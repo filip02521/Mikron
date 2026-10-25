@@ -1,12 +1,14 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { HelpPopover } from "@/components/ui/HelpPopover";
 import { IconHelpCircle } from "@/components/icons/StrokeIcons";
 import { pageHelpIconButtonClass } from "@/lib/ui/queue-panel-styles";
 import { HelpBlock } from "@/components/ui/HelpBlock";
 import { InlineCheck } from "@/components/ui/UiGlyphs";
 
-export function QueuePanelHelp() {
+/** `links`: odnośniki do panelu dziennego / zębów — w pomocy, nie w opisie pod tytułem. */
+export function QueuePanelHelp({ links }: { links?: ReactNode } = {}) {
   return (
     <HelpPopover
       label="Pomoc - magazyn i regał"
@@ -16,6 +18,7 @@ export function QueuePanelHelp() {
       align="left"
       buttonClassName={pageHelpIconButtonClass}
     >
+      {links ? <p className="mb-3 text-sm leading-relaxed text-slate-700">{links}</p> : null}
       <HelpBlock title="Kolejka przyjęcia">
         <ul className="list-disc space-y-1.5 pl-4">
           <li>Lista pogrupowana po dostawcy (domyślnie zwinięta).</li>

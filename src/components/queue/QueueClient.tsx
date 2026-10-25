@@ -3,7 +3,7 @@
 import { useMemo, useState, useCallback, useEffect } from "react";
 import type { IndividualOrder, SupplierWithSchedule } from "@/types/database";
 import Link from "next/link";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { QueuePanelHelp } from "@/components/queue/QueuePanelHelp";
 import { NoticeToast } from "@/components/ui/NoticeToast";
@@ -12,7 +12,7 @@ import { Alert } from "@/components/ui/Alert";
 import { QueuePanelToolbar, type QueueView } from "@/components/queue/QueuePanelToolbar";
 import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
 import { brandLinkClass, panelWorkspaceShellClass } from "@/lib/ui/ontime-theme";
-import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 import { ReceiveQueueTable, type ReceiveQueueToast } from "@/components/queue/ReceiveQueueTable";
 import { WarehouseInventorySection } from "@/components/queue/WarehouseInventorySection";
 import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
@@ -204,10 +204,6 @@ export function QueueClient({
   const partialCount = inboxSummary.partialCount;
   const cancelLabelled = inboxSummary.cancelLabelledCount;
 
-  const receiveHint = receiveQueue.length
-    ? `${pickupReadyCount} na regale do odbioru · ${inboxSummary.zamowienieCount} zamówień · ${inboxSummary.informacjaCount} informacji · ${partialCount} częściowo${cancelLabelled ? ` · ${cancelLabelled} z rezygnacją` : ""}`
-    : "Po zamówieniu u dostawcy w panelu dziennym";
-
   const crossLinks =
     showDailyPanelLink || showTeethLink ? (
       <>
@@ -247,13 +243,7 @@ export function QueueClient({
 
       <PageHeader
         title="Przyjęcie towaru"
-        help={<QueuePanelHelp />}
-        description={
-          <>
-            {SALES_PAGE_HEADER_HINTS.queue}
-            {crossLinks ? <> {crossLinks}</> : null}
-          </>
-        }
+        help={<QueuePanelHelp links={crossLinks} />}
         className="mb-4"
       />
 
@@ -265,6 +255,23 @@ export function QueueClient({
           journal: deliveryJournal.summary.receiptCount,
           inventory: inventoryCount,
         }}
+        hints={{
+          receive: receiveQueue.length
+            ? [
+                `${inboxSummary.zamowienieCount} ${polishPluralWord(inboxSummary.zamowienieCount, "zamówienie", "zamówienia", "zamówień")}`,
+                inboxSummary.informacjaCount ? `${inboxSummary.informacjaCount} inf.` : null,
+                pickupReadyCount ? `${pickupReadyCount} na regale` : null,
+                partialCount ? `${partialCount} częściowo` : null,
+                cancelLabelled ? `${cancelLabelled} z rezygnacją` : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")
+            : "nic nie czeka",
+          journal: deliveryJournal.summary.receiptCount
+            ? `${deliveryJournal.summary.receiptCount} ${polishPluralWord(deliveryJournal.summary.receiptCount, "dostawa", "dostawy", "dostaw")} dziś`
+            : "brak wpisów dziś",
+          inventory: inventoryCount ? "czeka na odbiór" : "regał pusty",
+        }}
       />
 
       <div
@@ -274,14 +281,7 @@ export function QueueClient({
         hidden={view !== "receive"}
       >
         <Card padding={false} className="overflow-hidden">
-          <section id="kolejka-przyjecie" className="scroll-mt-20">
-            <CardHeader
-              inset
-              density="compact"
-              actionAlign="inline"
-              title="Kolejka przyjęcia"
-              description={receiveHint}
-            />
+          <section id="kolejka-przyjecie" aria-label="Kolejka przyjęcia" className="scroll-mt-20">
             <ReceiveQueueTable
               deliveryOrders={orders}
               informacjaOrders={informacjaOrders}

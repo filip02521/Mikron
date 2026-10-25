@@ -11,7 +11,6 @@ describe("sales-page-ui-copy", () => {
     expect(SALES_PAGE_HEADER_HINTS.dailyPanel).toContain("Kolejka");
     expect(SALES_PAGE_HEADER_HINTS.zk).toContain("Archiwum");
     expect(SALES_PAGE_HEADER_HINTS.verification).toContain("prośby");
-    expect(SALES_PAGE_HEADER_HINTS.queue).toContain("przyjęcia");
   });
 
   it("buduje hint historii z parametrami retencji", () => {
