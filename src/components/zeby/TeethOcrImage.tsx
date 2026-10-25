@@ -93,7 +93,7 @@ export function TeethOcrImage({
         type="button"
         onClick={() => setZoomOpen(true)}
         className={cn(
-          "group relative block cursor-zoom-in overflow-hidden rounded-lg border border-slate-200 bg-slate-50 transition-shadow hover:shadow-md",
+          "group relative block cursor-zoom-in overflow-hidden rounded-lg border border-slate-200 bg-slate-50 transition-colors hover:border-slate-300",
           className,
         )}
         title="Kliknij aby powiększyć"
