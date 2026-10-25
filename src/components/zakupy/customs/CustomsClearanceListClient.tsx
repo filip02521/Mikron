@@ -19,6 +19,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input, Select, fieldControlClass } from "@/components/ui/Field";
 import { SHIPMENT_STAGE_LABEL, shipmentAlerts, shipmentStage, todayInWarsaw } from "@/lib/customs/customs-shipment";
 import { ALERT_BADGE, STAGE_BADGE } from "./CustomsShipmentCard";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 function formatDate(value: string | null): string {
   if (!value) return "-";
@@ -71,7 +72,7 @@ export function CustomsClearanceListClient({
         (c) =>
           (!filterSupplier || c.supplierName === filterSupplier) &&
           (!filterStatus || c.status === filterStatus) &&
-          (!q || `${c.invoiceNumber} ${c.zdNumber ?? ""} ${c.shipment.transportRef}`.toLowerCase().includes(q))
+          matchesSearchWords([c.invoiceNumber, c.zdNumber, c.shipment.transportRef], q)
       )
       .map((c) => ({
         ...c,

@@ -38,6 +38,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { formatPlDate } from "@/lib/display-labels";
 import { zdEstimatePlCountWord as plWord } from "@/lib/orders/zd-estimate-ui-copy";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 const PAGE = 300;
 /** Powyżej tylu dostawców wybór w wierszu jest listą — przyciski przestają się mieścić. */
@@ -724,8 +725,8 @@ export function ZdSharedScopeSplitter({
 
       <div className="relative min-w-0 overflow-x-auto lg:min-h-0 lg:flex-1 lg:overflow-auto">
         {products == null ? (
-          <div className="flex items-center justify-center gap-2 py-16 text-sm text-slate-500" role="status">
-            <Spinner size="sm" /> Wczytuję towary zakresu…
+          <div className="flex flex-col items-center justify-center gap-2 py-16 text-sm text-slate-500" role="status">
+            <BrandLoader size="md" /> Wczytuję towary zakresu…
           </div>
         ) : all.length === 0 ? (
           <div className="px-6 py-16 text-center">
@@ -917,7 +918,7 @@ export function ZdSharedScopeSplitter({
         {loading && products != null ? (
           <div className="pointer-events-none absolute inset-x-0 top-12 flex justify-center">
             <span className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 shadow-sm">
-              <Spinner size="sm" /> Odświeżam listę…
+              <BrandLoader size="sm" tile={false} /> Odświeżam listę…
             </span>
           </div>
         ) : null}

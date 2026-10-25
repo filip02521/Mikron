@@ -1,3 +1,4 @@
+import { matchesSearchWords } from "@/lib/search/keywords";
 /** Warianty frazy do wyszukiwania dostawcy (Subiekt + lista w aplikacji). */
 
 function pushUnique(out: string[], value: string) {
@@ -28,7 +29,7 @@ export function supplierNameMatchesQuery(name: string, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
   const normalizedName = name.toLowerCase();
-  if (normalizedName.includes(q)) return true;
+  if (normalizedName.includes(q) || matchesSearchWords(name, query)) return true;
   return expandSupplierSearchQueries(query).some((variant) =>
     normalizedName.includes(variant.toLowerCase())
   );

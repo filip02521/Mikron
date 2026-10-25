@@ -3,6 +3,7 @@ import type { WeekDayPlan } from "@/lib/orders/summary-workspace";
 import type { SupplierWithSchedule } from "@/types/database";
 import { getVacationMessage } from "@/lib/orders/colors";
 import { todayInWarsaw } from "@/lib/time/warsaw";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 export const PLAN_PREVIEW_SUPPLIER_LIMIT = 8;
 export const SALES_PLAN_SEARCH_LIMIT = 25;
@@ -116,7 +117,7 @@ export function matchSuppliersByQuery(
 ): SupplierWithSchedule[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
-  return suppliers.filter((s) => s.name.toLowerCase().includes(q));
+  return suppliers.filter((s) => matchesSearchWords(s.name, q));
 }
 
 export function matchSuppliersForSalesPlanSearch(

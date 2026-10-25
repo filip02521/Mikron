@@ -1,6 +1,14 @@
 "use server";
 
-import { isUndefinedTableError } from "@/lib/db/pool";
+import { isUndefinedTableError, query } from "@/lib/db/pool";
+import {
+  detectOnRequestPattern,
+  isOnRequestDeliveryArrived,
+  onRequestCustomerKey,
+  onRequestDeliveryDate,
+  onRequestPatternSummary,
+} from "@/lib/orders/zd-on-request-detect";
+import { fetchSubiektProductNote, saveSubiektProductNote } from "@/lib/data/product-catalog";
 import { refreshStockWatchAfterOrder } from "@/lib/stock-watch/refresh-after-order";
 import { createZdAutoProposalNow, zdAutoProposalNowInFlight } from "@/lib/stock-watch/worker";
 import type { SupplierLocation } from "@/types/database";
@@ -1276,6 +1284,197 @@ export async function actionFetchZdEstimateProductReservations(input: {
   }
 }
 
+/** Podpowiedź z historii: towar wygląda na „na prośbę” albo oznaczony „na prośbę” sprzedaje się jak magazynowy. */
+export type ZdOnRequestHint = {
+  twId: number;
+  summary: string;
+  deliveries: number;
+  takenWhole: number;
+  salesShare: number;
+  customers: number;
+};
+
+/** Ile towarów listy sprawdzamy w Subiekcie jednym kliknięciem (każdy to osobne zapytanie o sprzedaż). */
+const ZD_ON_REQUEST_SCAN_MAX = 150;
+
+/**
+ * Kreator → „Tylko na prośbę” → Podpowiedzi: towary bieżącej listy, które po fakturze zakupu w kilka dni bierze
+ * w całości jeden klient (kandydaci do oznaczenia), i oznaczone, które kupuje wielu klientów. Tylko odczyt.
+ */
+export async function actionScanZdOnRequestHints(input: { twIds: number[] }): Promise<
+  | { ok: true; candidates: ZdOnRequestHint[]; stockLike: ZdOnRequestHint[]; checked: number; skipped: number }
+  | { ok: false; message: string }
+> {
+  try {
+    await requireZdEstimateAdmin("read");
+    const ids = [...new Set((input.twIds ?? []).map((x) => Math.trunc(Number(x))).filter((x) => Number.isSafeInteger(x) && x > 0))].slice(0, 2000);
+    if (!ids.length) return { ok: true, candidates: [], stockLike: [], checked: 0, skipped: 0 };
+    const dataDo = warsawDateKeyDaysAgo(0);
+    const dataOd = warsawDateKeyDaysAgo(548);
+    const [lines, marked, packaging] = await Promise.all([
+      listZdPurchaseLinesForTw(ids, dataOd, 20_000, 20_000),
+      query<{ tw: number }>(`SELECT subiekt_tw_id AS tw FROM zd_estimate_on_request WHERE subiekt_tw_id = ANY($1::int[])`, [ids]),
+      query<{ tw: number; units: number; mode: string | null }>(
+        `SELECT subiekt_tw_id AS tw, units_per_package AS units, document_unit_mode AS mode
+           FROM zd_estimate_packaging WHERE subiekt_tw_id = ANY($1::int[])`,
+        [ids]
+      ),
+    ]);
+    const markedSet = new Set(marked.rows.map((r) => Number(r.tw)));
+    // ZD w paczkach: linia ZD w paczkach, sprzedaż w sztukach.
+    const factor = new Map(packaging.rows.map((r) => [Number(r.tw), r.mode === "packages" ? Number(r.units) || 1 : 1]));
+    const byTw = new Map<number, typeof lines>();
+    for (const l of lines) {
+      const list = byTw.get(l.subiektTwId);
+      if (list) list.push(l);
+      else byTw.set(l.subiektTwId, [l]);
+    }
+    // Kandydaci: nieoznaczone z dostawą w historii; oznaczone — wszystkie (czy nie są magazynowe).
+    const toCheck = ids.filter((tw) => markedSet.has(tw) || (byTw.get(tw)?.length ?? 0) > 0);
+    const checkNow = toCheck.slice(0, ZD_ON_REQUEST_SCAN_MAX);
+    const candidates: ZdOnRequestHint[] = [];
+    const stockLike: ZdOnRequestHint[] = [];
+    let next = 0;
+    const worker = async () => {
+      while (next < checkNow.length) {
+        const tw = checkNow[next++]!;
+        const sales = await fetchSubiektProductSalesDocs({ towarId: tw, dataOd, dataDo }).catch(() => null);
+        if (!sales) continue;
+        const f = factor.get(tw) ?? 1;
+        const p = detectOnRequestPattern(
+          (byTw.get(tw) ?? [])
+            .filter(isOnRequestDeliveryArrived)
+            .map((l) => ({ date: onRequestDeliveryDate({ fzDate: l.fzDate, zdDate: l.dokDate }) ?? "", pieces: l.qty * f })),
+          sales.rows.map((s, i) => ({
+            date: s.date,
+            khKey: onRequestCustomerKey(s, s.dokId || i),
+            khName: s.khName || s.khSymbol || null,
+            pieces: s.qty,
+          })),
+          dataDo
+        );
+        const hint: ZdOnRequestHint = {
+          twId: tw,
+          summary: onRequestPatternSummary(p),
+          deliveries: p.deliveries,
+          takenWhole: p.takenWhole,
+          salesShare: p.salesShare,
+          customers: p.customers,
+        };
+        if (!markedSet.has(tw) && p.likely) candidates.push(hint);
+        else if (markedSet.has(tw) && p.stockLike && !p.likely) stockLike.push(hint);
+      }
+    };
+    await Promise.all(Array.from({ length: 4 }, worker));
+    candidates.sort((a, b) => b.salesShare - a.salesShare || b.takenWhole - a.takenWhole);
+    stockLike.sort((a, b) => b.customers - a.customers);
+    return { ok: true, candidates, stockLike, checked: checkNow.length, skipped: toCheck.length - checkNow.length };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się sprawdzić listy.") };
+  }
+}
+
+/** Ustawienia zamawiania jednego towaru — panel dzienny → „Ustawienia towaru”, bez liczenia listy Kreatora. */
+export type ZdProductSettings = {
+  twId: number;
+  /** Tryb: zwykłe liczenie, tylko na prośbę, wykluczony z ZD. */
+  mode: "normal" | "onRequest" | "excluded";
+  modeNote: string;
+  packaging: { unitsPerPackage: number; packageLabel: string; documentUnitMode: ZdPackagingDocumentUnitMode | null; orderMultiple: number | null } | null;
+  minStockSzt: number | null;
+  /** Para opakowanie ↔ sztuka (edycja w Kreatorze → Reguły → Pary). */
+  pair: { role: "pack" | "piece"; twinTwId: number; twinSymbol: string | null; twinNazwa: string; unitsPerPack: number } | null;
+  note: string;
+};
+
+export async function actionGetZdProductSettings(input: { twId: number }): Promise<
+  { ok: true; settings: ZdProductSettings } | { ok: false; message: string }
+> {
+  try {
+    await requireZdEstimateAdmin("read");
+    const twId = Math.trunc(Number(input.twId));
+    if (!Number.isSafeInteger(twId) || twId <= 0) return { ok: false, message: "Nieprawidłowy identyfikator towaru." };
+    const { fetchZdEstimateMinStockOne } = await import("@/lib/data/zd-estimate-min-stock");
+    const { fetchZdEstimatePackagingOne } = await import("@/lib/data/zd-estimate-packaging");
+    const { fetchZdProductPairByTwId } = await import("@/lib/data/zd-product-pairs");
+    const [exclusion, onRequest, packaging, minStock, pair, note] = await Promise.all([
+      fetchZdEstimateExclusion(twId),
+      fetchZdEstimateOnRequest(twId),
+      fetchZdEstimatePackagingOne(twId),
+      fetchZdEstimateMinStockOne(twId),
+      fetchZdProductPairByTwId(twId),
+      fetchSubiektProductNote(twId),
+    ]);
+    const isPack = pair?.packTwId === twId;
+    return {
+      ok: true,
+      settings: {
+        twId,
+        mode: exclusion ? "excluded" : onRequest ? "onRequest" : "normal",
+        modeNote: exclusion?.note ?? onRequest?.note ?? "",
+        packaging: packaging
+          ? {
+              unitsPerPackage: packaging.unitsPerPackage,
+              packageLabel: packaging.packageLabel,
+              documentUnitMode: packaging.documentUnitMode ?? null,
+              orderMultiple: packaging.orderMultiple ?? null,
+            }
+          : null,
+        minStockSzt: minStock?.minStockSzt ?? null,
+        pair: pair
+          ? {
+              role: isPack ? "pack" : "piece",
+              twinTwId: isPack ? pair.pieceTwId : pair.packTwId,
+              twinSymbol: isPack ? pair.pieceSymbol : pair.packSymbol,
+              twinNazwa: isPack ? pair.pieceNazwa : pair.packNazwa,
+              unitsPerPack: pair.unitsPerPack,
+            }
+          : null,
+        note,
+      },
+    };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się wczytać ustawień towaru.") };
+  }
+}
+
+const ZD_PRODUCT_NOTE_MAX_LEN = 1000;
+
+/** Karta produktu w Kreatorze: notatka zakupów przy towarze (progi cenowe, uwagi do zamawiania). */
+export async function actionGetZdProductNote(input: { twId: number }): Promise<{ ok: true; note: string } | { ok: false; message: string }> {
+  try {
+    await requireZdEstimateAdmin("read");
+    const twId = Math.trunc(Number(input.twId));
+    if (!Number.isSafeInteger(twId) || twId <= 0) return { ok: false, message: "Nieprawidłowy identyfikator towaru." };
+    return { ok: true, note: await fetchSubiektProductNote(twId) };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się wczytać notatki.") };
+  }
+}
+
+export async function actionSaveZdProductNote(input: {
+  twId: number;
+  note: string;
+  symbol?: string | null;
+  name?: string | null;
+}): Promise<{ ok: true; note: string } | { ok: false; message: string }> {
+  try {
+    await requireZdEstimateAdmin("mutate");
+    const twId = Math.trunc(Number(input.twId));
+    if (!Number.isSafeInteger(twId) || twId <= 0) return { ok: false, message: "Nieprawidłowy identyfikator towaru." };
+    const note = String(input.note ?? "").trim();
+    if (note.length > ZD_PRODUCT_NOTE_MAX_LEN) {
+      return { ok: false, message: `Notatka może mieć najwyżej ${ZD_PRODUCT_NOTE_MAX_LEN} znaków.` };
+    }
+    const clip = (v: string | null | undefined) => (v == null ? null : String(v).trim().slice(0, 200) || null);
+    await saveSubiektProductNote({ subiektTwId: twId, note, symbol: clip(input.symbol), name: clip(input.name) });
+    revalidatePath("/admin/produkty");
+    return { ok: true, note };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się zapisać notatki.") };
+  }
+}
+
 /**
  * Karta produktu: sprzedaż dokument po dokumencie (Subiekt, 12 mies.) i nasze zakupy (linie ZD
  * z nocnego harvestu). Para: obie strony, sprzedaż paczek przeliczona na sztuki.
@@ -1349,6 +1548,10 @@ export async function actionFetchZdEstimateProductHistory(input: {
           date: r.dokDate,
           qty: r.qty,
           priceNet: r.priceNet,
+          fzDate: r.fzDate ?? null,
+          fzNr: r.fzNr ?? null,
+          fzCount: r.fzCount ?? 0,
+          zdDone: r.zdDone ?? null,
         })),
       };
     } catch (e) {

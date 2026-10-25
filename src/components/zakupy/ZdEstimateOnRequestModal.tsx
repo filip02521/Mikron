@@ -15,6 +15,8 @@ import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { formatPlDate } from "@/lib/display-labels";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
+import { ZdOnRequestHints } from "@/components/zakupy/ZdOnRequestHints";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 type GroupFilter = "all" | string;
 
@@ -184,12 +186,20 @@ export function ZdEstimateOnRequestModal({
   onRequests,
   onOnRequestsChange,
   onError,
+  scanLines = [],
+  supplierName = null,
+  onMarkLine,
 }: {
   open: boolean;
   onClose: () => void;
   onRequests: ZdEstimateOnRequestRow[];
   onOnRequestsChange: (rows: ZdEstimateOnRequestRow[]) => void;
   onError: (message: string) => void;
+  /** Bieżąca lista Kreatora — podpowiedzi „na prośbę” z historii sprzedaży i dostaw. */
+  scanLines?: ReadonlyArray<{ tw_Id: number; tw_Symbol: string | null; tw_Nazwa: string | null }>;
+  supplierName?: string | null;
+  /** Oznaczenie pozycji listy (to samo co ⋮ → Tylko na prośbę). Bez niego sekcji podpowiedzi nie ma. */
+  onMarkLine?: (twId: number) => void;
 }) {
   const searchId = useId();
   const searchRef = useRef<HTMLInputElement>(null);
@@ -225,7 +235,7 @@ export function ZdEstimateOnRequestModal({
       ]
         .join(" ")
         .toLowerCase();
-      return hay.includes(q);
+      return matchesSearchWords(hay, q);
     });
   }, [onRequests, query, groupFilter]);
 
@@ -319,6 +329,17 @@ export function ZdEstimateOnRequestModal({
           </div>
         </div>
       </div>
+
+      {onMarkLine ? (
+        <ZdOnRequestHints
+          lines={scanLines}
+          supplierName={supplierName}
+          markedTwIds={new Set(onRequests.map((r) => r.subiektTwId))}
+          onMark={onMarkLine}
+          onClear={clear}
+          disabled={pending}
+        />
+      ) : null}
 
       <div className="space-y-2.5">
         <label htmlFor={searchId} className="block text-xs font-medium text-slate-600">

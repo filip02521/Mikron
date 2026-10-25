@@ -11,6 +11,10 @@ import {
   type ZdProductSaleRow,
 } from "@/lib/orders/zd-product-history";
 import { cn } from "@/lib/cn";
+import { warsawDateKeyDaysAgo } from "@/lib/time/warsaw";
+
+/** Ile dni otwarty ZD bez faktury pokazujemy jako „w drodze”. */
+const ZD_IN_TRANSIT_MAX_DAYS = 60;
 
 export type ZdProductHistoryState =
   | { status: "loading" }
@@ -133,7 +137,10 @@ export function ZdProductSalesSections({ state, titleId }: { state: ZdProductHis
   );
 }
 
-/** Nasze zakupy: wszystkie ZD z tym towarem (także spoza Kreatora), z nocnego odczytu ZD. */
+/**
+ * Nasze zakupy: wszystkie ZD z tym towarem (także spoza Kreatora), z nocnego odczytu ZD. Data w wierszu to wpis
+ * faktury FZ (kiedy towar przyszedł), ZD z datą zamówienia pod spodem; bez FZ — data ZD i „bez faktury”.
+ */
 export function ZdProductPurchasesSection({
   state,
   titleId,
@@ -155,7 +162,7 @@ export function ZdProductPurchasesSection({
   return (
     <section aria-labelledby={`${titleId}-buy`}>
       <h3 id={`${titleId}-buy`} className={headingClass}>
-        Nasze zakupy (ZD, 12 mies.)
+        Nasze zakupy (12 mies.)
       </h3>
       {state.status === "loading" ? (
         <Loading>Wczytuję zakupy…</Loading>
@@ -176,11 +183,44 @@ export function ZdProductPurchasesSection({
           <ul className={listClass}>
             {purchases.rows.slice(0, PURCHASES_LIST_MAX).map((r) => {
               const u = unitFor(r);
+              // Otwarty ZD bez faktury jest „w drodze” tylko przez jakiś czas — starszy to raczej porzucony.
+              const inTransitSince = warsawDateKeyDaysAgo(ZD_IN_TRANSIT_MAX_DAYS);
               return (
                 <li key={`${r.dokNr}-${r.twId ?? ""}`} className={rowClass}>
-                  <span className="min-w-0 truncate text-slate-700">
-                    <span className="tabular-nums">{formatDatePlKey(r.date)}</span>
-                    {r.dokNr ? <span className="ml-2 font-mono text-xs text-slate-500">{r.dokNr}</span> : null}
+                  <span className="min-w-0 text-slate-700">
+                    {r.fzDate ? (
+                      <span className="block truncate" title="Data wpisu faktury (przyjęcie towaru)">
+                        <span className="tabular-nums">{formatDatePlKey(r.fzDate)}</span>
+                        {r.fzNr ? <span className="ml-2 font-mono text-xs text-slate-500">{r.fzNr}</span> : null}
+                        {(r.fzCount ?? 0) > 1 ? (
+                          <span className="ml-1.5 text-xs text-slate-500">
+                            +{(r.fzCount ?? 0) - 1} {polishPluralWord((r.fzCount ?? 0) - 1, "kolejna", "kolejne", "kolejnych")}
+                          </span>
+                        ) : null}
+                      </span>
+                    ) : (
+                      <span className="block truncate">
+                        <span className="tabular-nums">{formatDatePlKey(r.date)}</span>
+                        {r.zdDone ? (
+                          <span
+                            className="ml-1.5 text-xs text-slate-500"
+                            title="ZD zrealizowane w Subiekcie, ale faktura nie jest z nim powiązana w kopii dokumentów (np. przez PZ) - daty wpisu nie znamy."
+                          >
+                            zrealizowane, FZ niepowiązana
+                          </span>
+                        ) : r.zdDone === false && r.date != null && r.date >= inTransitSince ? (
+                          <span className="ml-1.5 text-xs font-medium text-amber-800">w drodze</span>
+                        ) : (
+                          <span className="ml-1.5 text-xs text-slate-500">bez faktury</span>
+                        )}
+                      </span>
+                    )}
+                    {r.dokNr ? (
+                      <span className="block truncate text-xs text-slate-500">
+                        <span className="font-mono">{r.dokNr}</span>
+                        {r.fzDate && r.date ? <span className="tabular-nums"> z {formatDatePlKey(r.date)}</span> : null}
+                      </span>
+                    ) : null}
                   </span>
                   <span className="shrink-0 tabular-nums">
                     <span className="font-medium text-slate-900">

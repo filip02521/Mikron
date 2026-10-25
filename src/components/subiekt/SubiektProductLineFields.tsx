@@ -7,8 +7,7 @@ import type { IndividualRequestKind } from "@/types/database";
 import { Field, Input } from "@/components/ui/Field";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Spinner } from "@/components/ui/Spinner";
-import { IconCircleCheck } from "@/components/icons/StrokeIcons";
+import { IconCircleCheck, IconPackage } from "@/components/icons/StrokeIcons";
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
 import {
   TYPEAHEAD_KEYBOARD_HINT,
@@ -79,6 +78,7 @@ import {
   type TeethDualKindCommitSummary,
 } from "@/lib/teeth/teeth-dual-kind";
 import { teethDualCommitToastMessage } from "@/lib/teeth/teeth-builder-copy";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 export type SubiektProductLineValue = Pick<
   ProductLineDraft,
@@ -124,7 +124,7 @@ function SubiektInputLoadingSpinner({ loading }: { loading: boolean }) {
   if (!loading) return null;
   return (
     <span className="pointer-events-none absolute right-2.5 top-1/2 z-[1] -translate-y-1/2">
-      <Spinner size="sm" />
+      <BrandLoader size="sm" tile={false} label="Szukam" />
     </span>
   );
 }
@@ -165,6 +165,26 @@ function SubiektLinkedLineBanner({
       {symbol?.trim() ? (
         <span className="text-emerald-600/90">· {symbol.trim()}</span>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Prośba z nazwą spoza listy Subiekta. Ten sam kształt co „Powiązano z Subiektem”, ale w Petrolu: to też
+ * poprawna droga (nowy towar), a nie błąd do poprawienia.
+ */
+function SubiektNewProductBanner() {
+  return (
+    <div role="status" className="mt-1.5 flex items-start gap-2 rounded-md bg-indigo-50/70 px-2.5 py-2">
+      <span className="mt-px flex size-6 shrink-0 items-center justify-center rounded-md bg-white text-indigo-700 ring-1 ring-indigo-200/80">
+        <IconPackage size={14} aria-hidden />
+      </span>
+      <div className="min-w-0 text-xs leading-snug">
+        <p className="font-semibold text-indigo-900">Nowy towar spoza Subiektu - tak też możesz wysłać</p>
+        <p className="mt-0.5 text-slate-600">
+          Wystarczy nazwa, zakupy dopiszą resztę. Towar jest w Subiekcie? Wybierz go z listy - zobaczysz stan.
+        </p>
+      </div>
     </div>
   );
 }
@@ -1084,6 +1104,11 @@ export function SubiektProductLineFields({
             ) : null}
           </div>
         </Field>
+        {/* Prośba z nazwą spoza listy: handlowiec ma wiedzieć, że nowego towaru nie musi wiązać z Subiektem. */}
+        {prosba && !isInformacja && typeaheadEnabled && !linkedFromSubiekt && !typeaheadPanelVisible &&
+        value.product.trim().length >= 2 ? (
+          <SubiektNewProductBanner />
+        ) : null}
         {/* Poza <label> Field — przycisk w labelu psuje nazwę dostępności. */}
         {linkedFromSubiekt ? (
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -1196,8 +1221,9 @@ export function SubiektProductLineFields({
             disabled={disabled || isTeethOrderLine}
             readOnly={isTeethOrderLine}
             maxLength={MAX_QUANTITY_LEN}
-            // /prosba handlowca bez „1” — szary placeholder wyglądał jak wpisana ilość.
-            placeholder={isTeethOrderLine ? "-" : salesProsbaForm ? undefined : "1"}
+            // Bez szarej „1” w każdym formularzu: wyglądała jak wpisana ilość, a pole jest puste. Celowo bez
+            // domyślnej wartości — ilość wpisuje handlowiec (potem nie ma sporu, ile zamawiał).
+            placeholder={isTeethOrderLine ? "-" : undefined}
             inputMode="numeric"
             aria-label="Ilość sztuk"
             value={

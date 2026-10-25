@@ -532,7 +532,13 @@ export async function loadProsbyElsewhereByTwIds(input: {
         AND coalesce(o.is_teeth, false) = false
         AND coalesce(o.request_kind, 'zamowienie') = 'zamowienie'
         AND o.supplier_id IS DISTINCT FROM $1::uuid
-        AND (o.subiekt_tw_id = ANY($2::int[]) OR lower(btrim(o.symbol)) = ANY($3::text[]))
+        AND (o.subiekt_tw_id = ANY($2::int[])
+             OR (lower(btrim(o.symbol)) = ANY($3::text[])
+                 -- Bez artefaktu formularza: „S” z pierwszej litery „Silikon…” (prośba bez towaru) to nie symbol.
+                 AND NOT (o.subiekt_tw_id IS NULL
+                          AND length(btrim(o.products)) > length(btrim(o.symbol))
+                          AND starts_with(lower(btrim(o.products)), lower(btrim(o.symbol)))
+                          AND substr(btrim(o.products), length(btrim(o.symbol)) + 1, 1) ~ '[[:alnum:]]')))
       GROUP BY 1, 2, 3`,
     [input.supplierId, ids, [...twBySymbol.keys()]]
   );

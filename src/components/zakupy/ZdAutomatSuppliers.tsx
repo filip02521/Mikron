@@ -27,6 +27,7 @@ import {
   type ZdAutomatRow,
 } from "@/lib/orders/zd-automat-status";
 import { supplierCountryLabel, supplierCountryMismatchesLocation } from "@/lib/suppliers/subiekt-country";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 // Pulpit Automatu ZD: jeden wiersz na dostawcę — rytm automatu, ostatni backtest i KPI tygodnia; szczegóły
 // (wszystkie KPI z trendem, akcje, przejście do karty) rozwijają się pod wierszem.
@@ -231,7 +232,7 @@ export function ZdAutomatSuppliers({
           ? r.location === ZD_AUTOMAT_SUPPLIER_LOCATION
           : true
   );
-  const shown = needle ? inFilter.filter((r) => r.name.toLocaleLowerCase("pl").includes(needle)) : inFilter;
+  const shown = needle ? inFilter.filter((r) => matchesSearchWords(r.name, needle)) : inFilter;
 
   return (
     <Card padding={false} className="overflow-hidden">

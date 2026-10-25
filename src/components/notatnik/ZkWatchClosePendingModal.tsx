@@ -15,7 +15,8 @@ import {
   type ZkWatchPendingAckItem,
 } from "@/lib/sales/zk-watch-close-pending";
 import type { SalesZkWatch } from "@/types/database";
-import { IconCircleCheck, IconClock } from "@/components/icons/StrokeIcons";
+import { IconCircleCheck } from "@/components/icons/StrokeIcons";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 function polishCountLabel(
   n: number,
@@ -149,7 +150,7 @@ export function ZkWatchClosePendingModal({
         )}
       >
         {phase === "confirming" ? (
-          <IconClock size={18} className="shrink-0 animate-spin text-sky-600" />
+          <BrandLoader size="sm" tile={false} />
         ) : phase === "done" ? (
           <IconCircleCheck size={18} className="shrink-0 text-emerald-600" />
         ) : null}

@@ -5,7 +5,6 @@ import type { KeyboardEvent } from "react";
 import { actionSubiektSuggestClients } from "@/app/actions/subiekt";
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { Input } from "@/components/ui/Field";
-import { Spinner } from "@/components/ui/Spinner";
 import {
   TypeaheadDropdown,
   TypeaheadOption,
@@ -24,6 +23,7 @@ import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { prosbaLineSubiektFeedback } from "@/lib/orders/consolidate-form-status";
 import type { SubiektKontrahent } from "@/lib/subiekt/types";
 import { cn } from "@/lib/cn";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 const KEYBOARD_HINT = "↑↓ wybierz · Enter zatwierdź · Esc zamknij";
 
@@ -236,7 +236,7 @@ export function SubiektClientNameField({
         />
         {enabled && visibleStatus === "loading" ? (
           <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
-            <Spinner size="sm" />
+            <BrandLoader size="sm" tile={false} label="Szukam" />
           </span>
         ) : null}
         {clientKhId != null && clientKhId > 0 && !typeaheadPanelVisible ? (

@@ -31,6 +31,7 @@ import {
   type PriceFlag,
 } from "@/lib/price-lists/price-list";
 import { formatDate, HostBadge } from "./PriceListsClient";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 type Filter = "selected" | "review" | "problems" | "applied" | "restored" | "unchanged" | "not_in_list" | "withdrawn" | "all";
 
@@ -276,7 +277,7 @@ export function PriceListReviewClient({
   const visible = useMemo(() => {
     const q = fold(query.trim());
     return items.filter(
-      (it) => inFilter(it, activeFilter) && (!q || fold(`${it.symbol} ${it.name} ${it.listName ?? ""}`).includes(q))
+      (it) => inFilter(it, activeFilter) && matchesSearchWords([it.symbol, it.name, it.listName], q)
     );
   }, [items, activeFilter, query]);
   // Problemy: największe rozbieżności najpierw — różnice o grosz nie zasłaniają prawdziwych.

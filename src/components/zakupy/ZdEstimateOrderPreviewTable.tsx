@@ -7,6 +7,7 @@ import type { ZdCreatePreviewLine } from "@/lib/orders/zd-estimate-create-zd";
 import type { ZdPostCreateLineSnap } from "@/lib/orders/zd-estimate-post-create";
 import { controlFocusClass, panelTypography, zdEstimateRadiusNestedClass } from "@/lib/ui/ontime-theme";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 export type ZdEstimateOrderPreviewRow = ZdCreatePreviewLine;
 
@@ -57,7 +58,7 @@ export function ZdEstimateOrderPreviewTable({
     if (!q) return lines;
     return lines.filter((l) => {
       const hay = `${l.symbol} ${l.plu ?? ""} ${l.nazwa}`.toLowerCase();
-      return hay.includes(q);
+      return matchesSearchWords(hay, q);
     });
   }, [lines, q]);
 

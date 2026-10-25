@@ -14,6 +14,7 @@ import {
   stockWatchSignalStale,
   type StockWatchSupplierSignal,
 } from "@/lib/stock-watch/signal";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 type Option = { id: string; name: string; stockLabel: string };
 
@@ -63,7 +64,7 @@ export function ZdEstimateSupplierPicker({
 
   const options = useMemo(() => {
     const q = fold(query.trim());
-    const list = q ? suppliers.filter((s) => fold(s.name).includes(q)) : [...suppliers];
+    const list = q ? suppliers.filter((s) => matchesSearchWords(s.name, q)) : [...suppliers];
     list.sort(
       (a, b) =>
         supplierStockSignalRank(signals[b.id]) - supplierStockSignalRank(signals[a.id]) ||

@@ -10,7 +10,7 @@ import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
 import type { IndividualRequestKind } from "@/types/database";
 import { IconCircleCheck } from "@/components/icons/StrokeIcons";
-import { Spinner } from "@/components/ui/Spinner";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import { FormNoticeMessage } from "@/components/ui/FormNoticeMessage";
 import type { FormMessage } from "@/lib/ui/notice-content";
 import { cn } from "@/lib/cn";
@@ -136,8 +136,8 @@ export function ProcurementFormReadiness({
         </ul>
 
         {resolvingSupplier ? (
-          <p className="mt-2 flex items-center gap-2 text-xs text-indigo-800">
-            <Spinner size="sm" />
+          <p className="mt-2 flex items-center gap-2 text-xs text-indigo-800" role="status">
+            <BrandLoader size="sm" tile={false} />
             Sprawdzam dostawcę w bazie…
           </p>
         ) : null}

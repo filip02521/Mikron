@@ -4,6 +4,12 @@ import {
   panelWorkspaceShellClass,
   salesPageShellClass,
 } from "@/lib/ui/ontime-theme";
+import { SlowLoadingNote } from "@/components/ui/SlowLoadingNote";
+
+/** „Ładowanie panelu dziennego trwa dłużej niż zwykle…” — pojawia się po 3 s pod szkieletem. */
+function SlowNote({ label, className }: { label: string; className?: string }) {
+  return <SlowLoadingNote message={`${label} trwa dłużej niż zwykle…`} className={cn("justify-center", className)} />;
+}
 
 function PulseBlock({ className }: { className?: string }) {
   return (
@@ -41,19 +47,22 @@ export function PanelDailyRouteLoadingSkeleton({
     <div
       className={cn(
         panelWorkspaceShellClass,
-        "rounded-lg border border-slate-200 bg-white p-6 motion-safe:animate-pulse sm:p-8"
+        "rounded-lg border border-slate-200 bg-white p-6 sm:p-8"
       )}
       aria-busy="true"
       aria-label={label}
       role="status"
     >
-      <div className="h-6 w-48 rounded bg-slate-200" />
-      <div className="mt-3 h-4 max-w-lg rounded bg-slate-100" />
-      <div className="mt-6 flex gap-2">
-        <div className="h-10 w-24 rounded-md bg-slate-100" />
-        <div className="h-10 w-24 rounded-md bg-slate-100" />
-        <div className="h-10 w-24 rounded-md bg-slate-100" />
+      <div className="motion-safe:animate-pulse">
+        <div className="h-6 w-48 rounded bg-slate-200" />
+        <div className="mt-3 h-4 max-w-lg rounded bg-slate-100" />
+        <div className="mt-6 flex gap-2">
+          <div className="h-10 w-24 rounded-md bg-slate-100" />
+          <div className="h-10 w-24 rounded-md bg-slate-100" />
+          <div className="h-10 w-24 rounded-md bg-slate-100" />
+        </div>
       </div>
+      <SlowNote label={label} className="mt-6" />
     </div>
   );
 }
@@ -90,6 +99,7 @@ export function PanelSalesRouteLoadingSkeleton({
           </div>
         ))}
       </div>
+      <SlowNote label={label} />
     </div>
   );
 }
@@ -130,6 +140,7 @@ export function PanelWarehouseRouteLoadingSkeleton({
           </div>
         ))}
       </div>
+      <SlowNote label={label} />
     </div>
   );
 }
@@ -156,6 +167,7 @@ export function PanelFormRouteLoadingSkeleton({
           <PulseBlock className="h-11 w-full rounded-md bg-slate-200" />
         </div>
       </div>
+      <SlowNote label={label} />
     </div>
   );
 }
@@ -187,6 +199,7 @@ export function PanelAdminRouteLoadingSkeleton({
           </div>
         ))}
       </div>
+      <SlowNote label={label} />
     </div>
   );
 }

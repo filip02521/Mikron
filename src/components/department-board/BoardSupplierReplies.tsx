@@ -9,7 +9,7 @@ import {
 import type { BoardSupplierFileRef } from "@/app/actions/department-board";
 import { IconPaperclip } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
-import { Spinner } from "@/components/ui/Spinner";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import { cn } from "@/lib/cn";
 import {
   BOARD_SUPPLIER_FILE_MAX_BYTES,
@@ -135,7 +135,7 @@ export function BoardSupplierReplies({
   if (items == null) {
     return (
       <p className="flex items-center gap-2 text-xs text-slate-500" role="status">
-        <Spinner size="sm" />
+        <BrandLoader size="sm" tile={false} />
         Sprawdzam odpowiedź dostawcy w Gmailu…
       </p>
     );

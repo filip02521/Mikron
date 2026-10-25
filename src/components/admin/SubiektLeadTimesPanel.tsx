@@ -30,6 +30,7 @@ import {
 } from "@/lib/ui/ontime-theme";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { askConfirm } from "@/components/ui/ConfirmHost";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 const STATUS: Record<
   SubiektLeadTimeSupplierStatus,
@@ -225,7 +226,7 @@ export function SubiektLeadTimesPanel({ initialData }: { initialData: SubiektLea
     if (!data) return [];
     const q = search.trim().toLowerCase();
     return data.suppliers.filter((row) => {
-      if (q && !row.name.toLowerCase().includes(q)) return false;
+      if (!matchesSearchWords(row.name, q)) return false;
       if (filter === "subiekt") return row.status === "subiekt" || row.status === "subiekt_old";
       if (filter === "diff") return isDiff(row);
       if (filter === "other") return row.status !== "subiekt" && row.status !== "subiekt_old" && row.isActive;

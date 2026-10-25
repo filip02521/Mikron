@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { actionLookupZdProductPairForTwId } from "@/app/actions/zd-estimate";
 
 /**
- * Hint przy wyborze SKU w prośbie — para montaż/demontaż (qty nadal w sztukach).
+ * Podpowiedź przy wyborze towaru w prośbie, gdy towar ma dwie wersje: opakowanie zbiorcze i pojedyncze sztuki.
+ * Mówi handlowcowi, którą wybrać — bez słów „para”, „demontaż” (ilość zawsze w jednostkach wybranego towaru).
  */
 export function ProsbaPairHint({
   twId,
@@ -30,12 +31,15 @@ export function ProsbaPairHint({
         }
         const p = res.pair;
         if (res.role === "piece") {
+          const pack = p.packSymbol ?? "opakowanie zbiorcze";
           setText(
-            `Para z paczką ${p.packSymbol ?? `tw ${p.packTwId}`} (${p.unitsPerPack} szt/pacz.). Zamawiasz sztuki - ZD zwykle idzie na paczki.`
+            `Ten towar jest też w opakowaniu zbiorczym ${pack} (${p.unitsPerPack} szt.). Wpisz ilość w sztukach - stan liczy obie wersje.`
           );
         } else {
           setText(
-            `Para ze sztukami ${p.pieceSymbol ?? `tw ${p.pieceTwId}`} (${p.unitsPerPack} szt/pacz.). Prośby handlowe zwykle w sztukach.`
+            p.pieceSymbol
+              ? `To opakowanie zbiorcze: 1 op. = ${p.unitsPerPack} × ${p.pieceSymbol}. Klient chce pojedyncze sztuki? Wybierz ${p.pieceSymbol}.`
+              : `To opakowanie zbiorcze (${p.unitsPerPack} szt.). Klient chce pojedyncze sztuki? Wybierz wersję pojedynczą.`
           );
         }
       } catch {

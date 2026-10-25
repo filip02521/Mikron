@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { matchesSearchWords } from "@/lib/search/keywords";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   actionMailForward,
@@ -48,6 +49,7 @@ import { formatFileSize } from "@/components/mail/MailPreview";
 import { isInlineImage, isPreviewableImage } from "@/lib/mail/attachments";
 import { splitEmphasis } from "@/lib/mail/emphasis";
 import { looksPolish } from "@/lib/supplier-mail/polish";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 type Scope = "mine" | "all";
 /** Kolumna tablicy albo półka: „Do przejrzenia” (nieznani nadawcy — sprawa czy nie), „Oferty” (reklamy dostawców). */
@@ -126,16 +128,9 @@ const inheritKeyOf = (i: BoardItem) =>
     ? `${i.ref.conv.caseKind}:${i.ref.conv.caseId}`
     : null;
 
-/** Bez wielkości liter i polskich znaków — „zolw” znajdzie „Żółw”. */
-const fold = (t: string) => t.toLocaleLowerCase("pl").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ł/g, "l");
-
 function matchesSearch(i: BoardItem, q: string): boolean {
   const conv = i.ref.type === "conv" ? i.ref.conv : null;
-  const hay = [itemTitle(i), itemSubject(i), i.note, i.waitingOn, conv?.zdLabel ?? "", conv?.snippet ?? "", conv?.lastFromEmail ?? ""].join(" ");
-  return fold(q)
-    .split(/\s+/)
-    .filter(Boolean)
-    .every((w) => fold(hay).includes(w));
+  return matchesSearchWords([itemTitle(i), itemSubject(i), i.note, i.waitingOn, conv?.zdLabel, conv?.snippet, conv?.lastFromEmail], q);
 }
 
 /** 1 sprawa, 2–4 sprawy, 5+ spraw (12–14 też „spraw”). */
@@ -503,7 +498,7 @@ export function SupplierMailWorkspace({
           <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-slate-500" role="status" aria-live="polite">
             {syncing ? (
               <>
-                <Spinner size="sm" /> Sprawdzam skrzynkę…
+                <BrandLoader size="sm" tile={false} /> Sprawdzam skrzynkę…
               </>
             ) : (
               <>
@@ -1140,7 +1135,7 @@ function ConversationDetail({
           ) : null}
           {!messages && !error ? (
             <p className="flex items-center gap-2 text-sm text-slate-500" role="status">
-              <Spinner size="sm" /> Wczytuję treść z Gmaila…
+              <BrandLoader size="sm" tile={false} /> Wczytuję treść z Gmaila…
             </p>
           ) : null}
           {messages?.map((m) => (

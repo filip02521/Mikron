@@ -16,6 +16,7 @@ import { formatPlDate } from "@/lib/display-labels";
 import { normalizeUnitsPerPack } from "@/lib/orders/zd-product-pair-units";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 export type ZdPairSeedProduct = {
   twId: number;
@@ -108,7 +109,7 @@ export function ZdEstimatePairsModal({
       ]
         .join(" ")
         .toLowerCase();
-      return hay.includes(q);
+      return matchesSearchWords(hay, q);
     });
   }, [pairs, query]);
 

@@ -7,6 +7,7 @@ import {
 } from "@/lib/teeth/teeth-panel-order-readiness";
 import { teethQueueOrderNeedsHeaderData } from "@/lib/teeth/teeth-queue-gate";
 import type { IndividualOrderTeethDetail } from "@/types/database";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 export { groupTeethItemsBySupplier };
 
@@ -210,14 +211,8 @@ export function filterTeethHistoryGroups(
     );
     const filteredOrders = orders.filter((item) => {
       if (!matchesTeethItemFilters(item, historyFilters, ctx)) return false;
-      if (searchLower) {
-        const productMatch = (item.products ?? "").toLowerCase().includes(searchLower);
-        const detailsMatch = (item.teeth_details ?? []).some((d) =>
-          [d.color, d.mould, d.jaw, d.kind].filter(Boolean).some((v) => v!.toLowerCase().includes(searchLower))
-        );
-        const salesMatch = (item.sales_person_name ?? "").toLowerCase().includes(searchLower);
-        if (!productMatch && !detailsMatch && !salesMatch) return false;
-      }
+      const details = (item.teeth_details ?? []).flatMap((d) => [d.color, d.mould, d.jaw, d.kind]);
+      if (!matchesSearchWords([item.products, ...details, item.sales_person_name], searchLower)) return false;
       return true;
     });
     if (filteredOrders.length === 0) continue;

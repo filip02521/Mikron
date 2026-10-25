@@ -20,6 +20,7 @@ import {
 } from "@/lib/orders/sales-cancel";
 import type { IndividualOrder, IndividualRequestKind } from "@/types/database";
 import type { SalesZkWatch } from "@/types/database";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 export { clientLabelsMatch, clientLabelsMatchExact } from "@/lib/orders/sales-client-match";
 
@@ -569,12 +570,7 @@ export function filterZkWatchesByClientQuery(
 ): SalesZkWatch[] {
   const q = normalizeMyOrderSearchText(query);
   if (!q) return watches;
-  return watches.filter((w) => {
-    const label = normalizeMyOrderSearchText(w.client_label);
-    const zk = normalizeMyOrderSearchText(w.zk_number);
-    const products = normalizeMyOrderSearchText(w.line_summary ?? "");
-    return label.includes(q) || zk.includes(q) || products.includes(q);
-  });
+  return watches.filter((w) => matchesSearchWords([w.client_label, w.zk_number, w.line_summary], q));
 }
 
 export function computeZkWatchLineCoverage(
