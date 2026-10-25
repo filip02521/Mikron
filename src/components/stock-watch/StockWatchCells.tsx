@@ -35,7 +35,7 @@ export function formatWhen(iso: string | null): string {
 export function ProductCell({ row }: { row: Pick<StockWatchRowView, "twSymbol" | "twNazwa" | "grtNazwa"> }) {
   return (
     <div className="min-w-0 max-w-[16rem]">
-      <p className="truncate font-mono text-[13px] font-semibold text-slate-900" title={row.twSymbol ?? undefined}>
+      <p className="truncate font-mono text-[0.8125rem] font-semibold text-slate-900" title={row.twSymbol ?? undefined}>
         {row.twSymbol ?? "-"}
       </p>
       <p className="truncate text-xs text-slate-500" title={row.twNazwa}>
@@ -134,7 +134,7 @@ export function VelocityCell({
     <div className="whitespace-nowrap text-right tabular-nums">
       <span className="font-semibold text-slate-900">{formatVelocity(row.velocityDaily)}</span>
       <span className="text-xs text-slate-500">/d</span>
-      <p className="text-[11px] text-slate-500" title="Sprzedaż w oknie Kreatora (dni zapasu dostawcy)">
+      <p className="text-[0.6875rem] text-slate-500" title="Sprzedaż w oknie Kreatora (dni zapasu dostawcy)">
         {formatQtyPl(row.salesPeriodQty)} szt / {row.salesPeriodDays} d
       </p>
     </div>

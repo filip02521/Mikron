@@ -347,7 +347,7 @@ export function OperationsNotepadClient({
                   {deptCount > 0 ? (
                     <span
                       className={cn(
-                        "ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-[10px] font-bold tabular-nums",
+                        "ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-[0.625rem] font-bold tabular-nums",
                         d === department
                           ? "bg-indigo-600 text-white"
                           : "bg-indigo-100 text-indigo-700",

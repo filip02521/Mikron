@@ -46,7 +46,7 @@ export function DeliveryScheduleCard({
             <span
               className={cn(
                 "shrink-0 rounded-full font-semibold",
-                compact ? "px-1.5 py-0 text-[9px] leading-tight" : "px-2 py-0.5 text-[10px]",
+                compact ? "px-1.5 py-0 text-[0.5625rem] leading-tight" : "px-2 py-0.5 text-[0.625rem]",
                 supplier.isOverduePlan
                   ? "bg-rose-100 text-rose-700"
                   : "bg-indigo-100 text-indigo-700"
@@ -62,7 +62,7 @@ export function DeliveryScheduleCard({
             </p>
           ) : null}
           {vacationText ? (
-            <p className={cn("inline-flex items-center gap-1 text-amber-600", compact ? "mt-0.5 text-[10px]" : "mt-0.5 text-[10px]")}>
+            <p className={cn("inline-flex items-center gap-1 text-amber-600", compact ? "mt-0.5 text-[0.625rem]" : "mt-0.5 text-[0.625rem]")}>
               <IconSun size={compact ? 11 : 12} className="text-amber-500" />
               {vacationText}
             </p>

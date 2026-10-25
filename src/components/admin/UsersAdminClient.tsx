@@ -69,7 +69,7 @@ function roleFilterChipClass(active: boolean): string {
 
 function managerGroupToggleClass(active: boolean): string {
   return cn(
-    "rounded-md border px-2 py-0.5 text-[11px] font-medium leading-tight transition-colors",
+    "rounded-md border px-2 py-0.5 text-[0.6875rem] font-medium leading-tight transition-colors",
     active
       ? "border-indigo-200/70 bg-indigo-50/80 text-indigo-700"
       : "border-slate-200/70 bg-slate-50/50 text-slate-500 hover:border-slate-300 hover:bg-slate-100/70"
@@ -497,7 +497,7 @@ export function UsersAdminClient({
           <div className="space-y-5">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-xl border border-slate-200/70 bg-slate-50/70 p-3">
-                <p className="text-[11px] font-semibold text-slate-500">
+                <p className="text-[0.6875rem] font-semibold text-slate-500">
                   Rola
                 </p>
                 <div className="mt-2">
@@ -507,7 +507,7 @@ export function UsersAdminClient({
                     {accessModalIsDirty ? (
                       <Badge
                         variant="warning"
-                        className="mt-2 block text-[10px]"
+                        className="mt-2 block text-[0.625rem]"
                       >
                         Niezapisane zmiany
                       </Badge>
@@ -515,7 +515,7 @@ export function UsersAdminClient({
                 </div>
               </div>
               <div className="rounded-xl border border-slate-200/70 bg-slate-50/70 p-3">
-                <p className="text-[11px] font-semibold text-slate-500">
+                <p className="text-[0.6875rem] font-semibold text-slate-500">
                   Powiązanie
                 </p>
                 <p className="mt-2 text-sm font-medium text-slate-900">
@@ -523,7 +523,7 @@ export function UsersAdminClient({
                 </p>
               </div>
               <div className="rounded-xl border border-slate-200/70 bg-slate-50/70 p-3">
-                <p className="text-[11px] font-semibold text-slate-500">
+                <p className="text-[0.6875rem] font-semibold text-slate-500">
                   Moduły
                 </p>
                 <p className="mt-2 text-sm font-medium text-slate-900">
@@ -531,7 +531,7 @@ export function UsersAdminClient({
                 </p>
               </div>
               <div className="rounded-xl border border-slate-200/70 bg-slate-50/70 p-3">
-                <p className="text-[11px] font-semibold text-slate-500">
+                <p className="text-[0.6875rem] font-semibold text-slate-500">
                   Ostatnie logowanie
                 </p>
                 <p className="mt-2 text-sm font-medium text-slate-900">
@@ -546,7 +546,7 @@ export function UsersAdminClient({
               <div className="space-y-4">
                 <section className="space-y-4 rounded-xl border border-slate-200/70 bg-white/70 p-4">
                   <div className="space-y-1">
-                    <p className="text-[11px] font-semibold text-slate-500">
+                    <p className="text-[0.6875rem] font-semibold text-slate-500">
                       Dostęp
                     </p>
                     <p className="text-sm text-slate-600">
@@ -591,7 +591,7 @@ export function UsersAdminClient({
 
                 <section className="space-y-4 rounded-xl border border-slate-200/70 bg-white/70 p-4">
                   <div className="space-y-1">
-                    <p className="text-[11px] font-semibold text-slate-500">
+                    <p className="text-[0.6875rem] font-semibold text-slate-500">
                       Powiązania i przypisania
                     </p>
                     <p className="text-sm text-slate-600">
@@ -781,7 +781,7 @@ export function UsersAdminClient({
                 </div>
 
                 <div className="rounded-lg border border-slate-200/70 bg-white/80 p-3">
-                  <p className="text-[11px] font-semibold text-slate-500">
+                  <p className="text-[0.6875rem] font-semibold text-slate-500">
                     Stan konta
                   </p>
                   <div className="mt-2 space-y-2 text-sm text-slate-700">
@@ -900,7 +900,7 @@ export function UsersAdminClient({
               </div>
             </div>
 
-            <p className="text-[11px] leading-snug text-slate-500">
+            <p className="text-[0.6875rem] leading-snug text-slate-500">
               Panel jest przygotowany do dodania kolejnych modułów: wystarczy dopiąć kolejne sekcje “toggle” w tym miejscu
               i podłączyć osobne server actions.
             </p>
@@ -1271,7 +1271,7 @@ export function UsersAdminClient({
                               ) : null}
                             </div>
                             {isDirty ? (
-                              <Badge variant="warning" className="text-[10px]">
+                              <Badge variant="warning" className="text-[0.625rem]">
                                 Niezapisane zmiany
                               </Badge>
                             ) : null}
@@ -1317,7 +1317,7 @@ export function UsersAdminClient({
                                   .map((g) => (
                                     <span
                                       key={g.id}
-                                      className="rounded-md border border-indigo-200/70 bg-indigo-50/60 px-2 py-0.5 text-[11px] font-medium text-indigo-700"
+                                      className="rounded-md border border-indigo-200/70 bg-indigo-50/60 px-2 py-0.5 text-[0.6875rem] font-medium text-indigo-700"
                                     >
                                       {g.name}
                                     </span>
@@ -1342,7 +1342,7 @@ export function UsersAdminClient({
                                       return (
                                         <span
                                           key={workspace}
-                                          className="rounded-md border border-indigo-200/70 bg-indigo-50/60 px-2 py-0.5 text-[11px] font-medium text-indigo-700"
+                                          className="rounded-md border border-indigo-200/70 bg-indigo-50/60 px-2 py-0.5 text-[0.6875rem] font-medium text-indigo-700"
                                         >
                                           {option?.label ?? workspace}
                                         </span>

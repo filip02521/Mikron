@@ -74,7 +74,7 @@ function ProcurementCancelNoteEditModalForm({
           otrzyma powiadomienie e-mail.
         </p>
         <label className="block">
-          <span className="text-[11px] font-medium text-slate-600">
+          <span className="text-[0.6875rem] font-medium text-slate-600">
             Wiadomość dla handlowca (opcjonalnie)
           </span>
           <textarea

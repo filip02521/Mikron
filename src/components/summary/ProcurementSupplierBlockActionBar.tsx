@@ -41,7 +41,7 @@ function ActionCount({
   return (
     <span
       className={cn(
-        "ml-1 inline-flex min-w-[1.15rem] justify-center rounded px-1 text-[10px] font-bold tabular-nums",
+        "ml-1 inline-flex min-w-[1.15rem] justify-center rounded px-1 text-[0.625rem] font-bold tabular-nums",
         variant === "primary"
           ? "bg-white/25 text-white ring-1 ring-inset ring-white/35"
           : isStockOut
@@ -183,7 +183,7 @@ export function ProcurementSupplierBlockActionBar({
               isStockOut
                 ? "bg-amber-600 text-white hover:bg-amber-700"
                 : panelSegmentPrimaryClass,
-              "min-w-0 flex-1 whitespace-nowrap px-2 text-[12px]",
+              "min-w-0 flex-1 whitespace-nowrap px-2 text-[0.75rem]",
               "transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50"
             )}
             title={glowneTitle}
@@ -198,7 +198,7 @@ export function ProcurementSupplierBlockActionBar({
             className={cn(
               buttonGroupItemClass,
               panelSegmentOutlineClass,
-              "min-w-0 flex-1 whitespace-nowrap px-2 text-[12px]",
+              "min-w-0 flex-1 whitespace-nowrap px-2 text-[0.75rem]",
               hasInfoViaPanel && "px-1.5",
               isStockOut && "text-amber-950 hover:bg-amber-50"
             )}

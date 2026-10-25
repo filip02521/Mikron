@@ -16,7 +16,7 @@ export function TeethProcurementRequestBanner({ className }: { className?: strin
       role="note"
     >
       <p className="font-semibold text-violet-900">{TEETH_EDIT_REQUEST_TITLE}</p>
-      <p className="mt-1 text-[13px] leading-snug text-violet-900/90">
+      <p className="mt-1 text-[0.8125rem] leading-snug text-violet-900/90">
         {TEETH_EDIT_REQUEST_BANNER}
       </p>
     </div>

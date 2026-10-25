@@ -99,7 +99,7 @@ function SupplierDetailPanel({ row }: { row: DeliveryStatsSupplierDiagnostic }) 
             <li key={note}>{note}</li>
           ))}
         </ul>
-        <p className="mt-2 text-[11px] text-slate-500">
+        <p className="mt-2 text-[0.6875rem] text-slate-500">
           Historia: {row.historyOrderCount} zrealizowanych w pełni · {row.unusedOrderCount}{" "}
           pominiętych (duplikaty dnia, brak daty, typ None itd.)
         </p>
@@ -108,7 +108,7 @@ function SupplierDetailPanel({ row }: { row: DeliveryStatsSupplierDiagnostic }) 
       <div className="overflow-x-auto rounded-md border border-slate-200/80 bg-white">
         <table className="min-w-full text-left">
           <thead>
-            <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] text-slate-500">
+            <tr className="border-b border-slate-100 bg-slate-50/80 text-[0.6875rem] text-slate-500">
               <th className="px-2 py-2 font-semibold">Pole</th>
               <th className="px-2 py-2 font-semibold">W bazie (delivery_stats)</th>
               <th className="px-2 py-2 font-semibold">Z historii (przeliczone)</th>
@@ -145,7 +145,7 @@ function SupplierDetailPanel({ row }: { row: DeliveryStatsSupplierDiagnostic }) 
           </div>
           <table className="min-w-full text-left">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] text-slate-500">
+              <tr className="border-b border-slate-100 bg-slate-50/80 text-[0.6875rem] text-slate-500">
                 <th className="px-2 py-2 font-semibold">Zamówienie</th>
                 <th className="px-2 py-2 font-semibold">Data zam.</th>
                 <th className="px-2 py-2 font-semibold">Dostawa</th>
@@ -156,7 +156,7 @@ function SupplierDetailPanel({ row }: { row: DeliveryStatsSupplierDiagnostic }) 
             <tbody className="divide-y divide-slate-100">
               {visibleSamples.map((sample) => (
                 <tr key={sample.dedupKey}>
-                  <td className="px-2 py-1.5 font-mono text-[11px] text-slate-600">
+                  <td className="px-2 py-1.5 font-mono text-[0.6875rem] text-slate-600">
                     {sample.orderId.slice(0, 8)}…
                   </td>
                   <td className="px-2 py-1.5 text-xs tabular-nums text-slate-800">
@@ -213,7 +213,7 @@ function SupplierRow({
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-slate-900">{row.supplierName}</p>
               {!row.isActive ? (
-                <p className="text-[11px] text-slate-500">Nieaktywny</p>
+                <p className="text-[0.6875rem] text-slate-500">Nieaktywny</p>
               ) : null}
             </div>
           </div>
@@ -540,7 +540,7 @@ export function DeliveryStatsDiagnosticsPanel({
           <div className="overflow-x-auto rounded-md border border-slate-200/90">
             <table className="min-w-full text-left">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/90 text-[11px] text-slate-500">
+                <tr className="border-b border-slate-200 bg-slate-50/90 text-[0.6875rem] text-slate-500">
                   <th className="px-2 py-2.5 font-semibold sm:px-3">Dostawca</th>
                   <th className="px-2 py-2.5 font-semibold sm:px-3">Status</th>
                   <th className="hidden px-2 py-2.5 font-semibold md:table-cell sm:px-3">Tryb</th>

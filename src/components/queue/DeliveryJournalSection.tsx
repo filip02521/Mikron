@@ -355,7 +355,7 @@ function ReceiptFormFields({
           ))}
         </Select>
         {carrierHintLabel ? (
-          <p className="mt-1.5 rounded-md border border-emerald-100 bg-emerald-50/80 px-2.5 py-1.5 text-[11px] leading-snug text-emerald-800">
+          <p className="mt-1.5 rounded-md border border-emerald-100 bg-emerald-50/80 px-2.5 py-1.5 text-[0.6875rem] leading-snug text-emerald-800">
             {carrierHintLabel}
           </p>
         ) : null}
@@ -687,11 +687,11 @@ export function DeliveryJournalSection({
                       <>
                         {" "}
                         Skrót zapisu:{" "}
-                        <kbd className="rounded border border-slate-200 bg-white px-1 font-mono text-[10px]">
+                        <kbd className="rounded border border-slate-200 bg-white px-1 font-mono text-[0.625rem]">
                           Ctrl
                         </kbd>
                         +
-                        <kbd className="rounded border border-slate-200 bg-white px-1 font-mono text-[10px]">
+                        <kbd className="rounded border border-slate-200 bg-white px-1 font-mono text-[0.625rem]">
                           Enter
                         </kbd>
                         .
@@ -853,7 +853,7 @@ export function DeliveryJournalSection({
                 <Button variant="primary" size="sm" disabled={pending} onClick={submitNew}>
                   Zapisz i kolejna
                 </Button>
-                <span className="text-[11px] text-slate-500">Ctrl+Enter - zapisz bez myszy</span>
+                <span className="text-[0.6875rem] text-slate-500">Ctrl+Enter - zapisz bez myszy</span>
               </div>
             </div>
           ) : null}

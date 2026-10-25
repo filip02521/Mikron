@@ -184,7 +184,7 @@ function NavLink({
         <span className="sb-full min-w-0 flex-1">
           <span
             className={cn(
-              "block truncate text-[13px] leading-6",
+              "block truncate text-[0.8125rem] leading-6",
               active ? "font-semibold text-slate-900" : "font-medium text-slate-700"
             )}
           >
@@ -215,7 +215,7 @@ function NavLink({
         {hasBadge ? (
           <span
             className={cn(
-              "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold leading-none tabular-nums",
+              "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[0.6875rem] font-semibold leading-none tabular-nums",
               sidebarNavBadgeClassForTone(displayTone, active)
             )}
           >
@@ -334,7 +334,7 @@ function CollapsibleNavSection({
           />
         ) : null}
         {totalBadge > 0 ? (
-          <span className="shrink-0 text-[10px] font-semibold tabular-nums text-slate-500">
+          <span className="shrink-0 text-[0.625rem] font-semibold tabular-nums text-slate-500">
             {totalBadge > 99 ? "99+" : totalBadge}
           </span>
         ) : null}
@@ -601,10 +601,10 @@ export function Sidebar({
             />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] leading-tight text-slate-500">
+            <p className="text-[0.6875rem] leading-tight text-slate-500">
               Obszar pracy
             </p>
-            <p className="truncate text-[13px] font-semibold leading-tight text-slate-900">
+            <p className="truncate text-[0.8125rem] font-semibold leading-tight text-slate-900">
               {labelForProcurementWorkspace(procurementWorkspace)}
             </p>
           </div>

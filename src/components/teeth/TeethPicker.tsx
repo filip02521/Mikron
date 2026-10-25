@@ -101,7 +101,7 @@ export function TeethPicker({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[11px] font-semibold text-slate-600">
+        <span className="text-[0.6875rem] font-semibold text-slate-600">
           {label ?? "Zęby"}
           {safeQty > 1 && (
             <span className="ml-1.5 font-normal normal-case text-slate-400">
@@ -116,7 +116,7 @@ export function TeethPicker({
             onClick={handleToggleAllSame}
             className={cn(
               panelChoiceChipClass,
-              "px-2 py-1 text-[11px]",
+              "px-2 py-1 text-[0.6875rem]",
               allSame ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass,
               disabled && "cursor-not-allowed opacity-50",
             )}
@@ -129,7 +129,7 @@ export function TeethPicker({
       {allSame ? (
         <div className="rounded-md border border-slate-200 bg-white p-3">
           {safeQty > 1 ? (
-            <p className="mb-3 text-[11px] font-semibold text-slate-500">
+            <p className="mb-3 text-[0.6875rem] font-semibold text-slate-500">
               Wszystkie {safeQty} klapki
             </p>
           ) : null}
@@ -204,7 +204,7 @@ function KlapkaWizard({
                 onClick={() => onActiveChange(i)}
                 aria-label={`Klapka ${i + 1}${complete ? " - gotowa" : " - do uzupełnienia"}`}
                 className={cn(
-                  "flex size-6 items-center justify-center rounded text-[11px] font-bold tabular-nums transition-colors",
+                  "flex size-6 items-center justify-center rounded text-[0.6875rem] font-bold tabular-nums transition-colors",
                   isActive
                     ? "bg-violet-600 text-white ring-2 ring-violet-300"
                     : complete
@@ -224,13 +224,13 @@ function KlapkaWizard({
             );
           })}
         </div>
-        <span className="ml-auto shrink-0 text-[11px] font-semibold text-slate-500 tabular-nums">
+        <span className="ml-auto shrink-0 text-[0.6875rem] font-semibold text-slate-500 tabular-nums">
           {completedCount}/{total}
         </span>
       </div>
 
       <div className="rounded-md border border-slate-200 bg-white p-3">
-        <p className="mb-3 text-[11px] font-semibold text-slate-500">
+        <p className="mb-3 text-[0.6875rem] font-semibold text-slate-500">
           Klapka {activeKlapka + 1} z {total}
         </p>
         <TeethSpecFields

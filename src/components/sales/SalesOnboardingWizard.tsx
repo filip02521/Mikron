@@ -91,7 +91,7 @@ function TourStepContent({
             <span className="line-clamp-2">{step.bullets[0]}</span>
           </p>
         ) : null}
-        <p className="text-[11px] font-medium text-indigo-700">
+        <p className="text-[0.6875rem] font-medium text-indigo-700">
           Rozwiń, aby zobaczyć {step.bullets.length}{" "}
           {step.bullets.length === 1
             ? "punkt"
@@ -112,7 +112,7 @@ function TourStepContent({
 
       <ul className="space-y-2">
         {step.bullets.map((bullet) => (
-          <li key={bullet} className="flex gap-2 text-xs leading-relaxed text-slate-700 md:text-[13px]">
+          <li key={bullet} className="flex gap-2 text-xs leading-relaxed text-slate-700 md:text-[0.8125rem]">
             <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-500" aria-hidden />
             <span>{bullet}</span>
           </li>
@@ -120,13 +120,13 @@ function TourStepContent({
       </ul>
 
       {step.tip ? (
-        <p className="rounded-md border border-indigo-100 bg-indigo-50/60 px-2.5 py-2 text-[11px] leading-relaxed text-indigo-950">
+        <p className="rounded-md border border-indigo-100 bg-indigo-50/60 px-2.5 py-2 text-[0.6875rem] leading-relaxed text-indigo-950">
           <strong className="font-semibold">Wskazówka:</strong> {step.tip}
         </p>
       ) : null}
 
       {previewMode === "live" ? (
-        <p className="rounded-md border border-slate-200/90 bg-white/80 px-2.5 py-2 text-[11px] leading-relaxed text-slate-600">
+        <p className="rounded-md border border-slate-200/90 bg-white/80 px-2.5 py-2 text-[0.6875rem] leading-relaxed text-slate-600">
           Na ekranie widać tę zakładkę z{" "}
           <strong className="font-medium text-slate-700">przykładowymi danymi</strong>. Możesz
           przewinąć stronę i obejrzeć układ.
@@ -134,7 +134,7 @@ function TourStepContent({
       ) : null}
 
       {previewMode === "finish" ? (
-        <p className="rounded-md border border-emerald-200/90 bg-emerald-50/80 px-2.5 py-2 text-[11px] leading-relaxed text-emerald-950">
+        <p className="rounded-md border border-emerald-200/90 bg-emerald-50/80 px-2.5 py-2 text-[0.6875rem] leading-relaxed text-emerald-950">
           Kliknij „Zakończ wprowadzenie”, aby wejść do panelu ze{" "}
           <strong className="font-medium">swoimi danymi</strong>. Przykładowe wpisy znikną.
         </p>
@@ -170,7 +170,7 @@ function WelcomeStepContent({
         ))}
       </ul>
       <div className="rounded-lg border border-slate-200/90 bg-slate-50/80 p-3 sm:p-4">
-        <p className="mb-2 text-[10px] font-semibold text-slate-500">
+        <p className="mb-2 text-[0.625rem] font-semibold text-slate-500">
           Mapa na start
         </p>
         <SalesOnboardingPanelPreview stepId={step.id} />
@@ -264,7 +264,7 @@ export function SalesOnboardingWizard() {
           <div className="relative z-[1] border-b border-slate-100 bg-white/80 px-4 py-4 sm:px-6">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[10px] font-semibold text-indigo-600/90">
+                <p className="text-[0.625rem] font-semibold text-indigo-600/90">
                   Wprowadzenie · OnTime
                 </p>
                 <p className="mt-0.5 text-xs text-slate-500">
@@ -335,14 +335,14 @@ export function SalesOnboardingWizard() {
     >
       <div className="relative z-[2] hidden shrink-0 rounded-t-lg bg-indigo-600 px-3 py-2 text-center md:block">
         <p className="text-xs font-semibold text-white">Panel wprowadzenia</p>
-        <p className="inline-flex items-center justify-center gap-1 text-[11px] text-indigo-100">
+        <p className="inline-flex items-center justify-center gap-1 text-[0.6875rem] text-indigo-100">
           Przechodź kroki przyciskiem „Dalej”
           <LinkChevron size={13} tone="inherit" className="text-indigo-100" />
         </p>
       </div>
 
       <div className="relative z-[2] shrink-0 rounded-t-lg bg-indigo-600 px-3 py-1.5 text-center md:hidden">
-        <p className="text-[11px] font-semibold text-white">Panel wprowadzenia · użyj „Dalej” poniżej</p>
+        <p className="text-[0.6875rem] font-semibold text-white">Panel wprowadzenia · użyj „Dalej” poniżej</p>
       </div>
 
       <BrandCardAccent className="pointer-events-none absolute -right-8 -top-8 h-20 w-24 opacity-50" />
@@ -350,7 +350,7 @@ export function SalesOnboardingWizard() {
       <div className="relative z-[1] shrink-0 border-b border-slate-100/90 px-3 py-2.5 sm:px-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold text-indigo-600/90">
+            <p className="text-[0.625rem] font-semibold text-indigo-600/90">
               Tour · krok {stepIndex + 1}/{steps.length}
             </p>
             <p className="truncate text-xs font-medium text-slate-700">{step.title}</p>

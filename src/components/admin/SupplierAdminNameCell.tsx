@@ -38,17 +38,17 @@ export function SupplierAdminNameCell({
           </span>
           {trailingBadge}
           {!teethLane && isSupplierOrderOnDemand(s) ? (
-            <Badge variant="info" className="text-[10px]">
+            <Badge variant="info" className="text-[0.625rem]">
               Na żądanie
             </Badge>
           ) : null}
           {s.subiekt_kh_id == null ? (
-            <Badge variant="warning" className="text-[10px]">
+            <Badge variant="warning" className="text-[0.625rem]">
               Bez Subiekta
             </Badge>
           ) : null}
           {isEditing ? (
-            <Badge variant="info" className="text-[10px]">
+            <Badge variant="info" className="text-[0.625rem]">
               Edycja
             </Badge>
           ) : null}

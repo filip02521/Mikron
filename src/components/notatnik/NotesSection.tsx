@@ -255,7 +255,7 @@ const NoteCard = memo(function NoteCard({
           ) : null}
           {readOnly ? (
             note.title?.trim() ? (
-              <h3 className="pr-4 text-[13px] font-bold leading-snug text-slate-900">{note.title}</h3>
+              <h3 className="pr-4 text-[0.8125rem] font-bold leading-snug text-slate-900">{note.title}</h3>
             ) : null
           ) : (
             <input
@@ -270,7 +270,7 @@ const NoteCard = memo(function NoteCard({
               placeholder="Tytuł (wymagany)"
               aria-required
               className={cn(
-                "w-full bg-transparent pr-4 text-[13px] font-bold leading-snug text-slate-900 outline-none placeholder:text-slate-400/70"
+                "w-full bg-transparent pr-4 text-[0.8125rem] font-bold leading-snug text-slate-900 outline-none placeholder:text-slate-400/70"
               )}
             />
           )}
@@ -333,7 +333,7 @@ const NoteCard = memo(function NoteCard({
             <NoteFollowUpControl value={followUpAt} onChange={() => {}} disabled />
           </div>
         ) : null}
-      {error ? <p className="px-2.5 pb-2 text-[11px] text-red-700">{error}</p> : null}
+      {error ? <p className="px-2.5 pb-2 text-[0.6875rem] text-red-700">{error}</p> : null}
       </article>
     </NoteStickyFrame>
   );
@@ -712,7 +712,7 @@ export function NotesSection({
                 </span>
               </Button>
             ) : composeExpanded ? (
-              <p className="text-[13px] font-semibold text-slate-900">
+              <p className="text-[0.8125rem] font-semibold text-slate-900">
                 {NOTATNIK_NOTES_SECTION_COPY.newNoteTitle}
               </p>
             ) : null}
@@ -747,7 +747,7 @@ export function NotesSection({
           {!readOnly && composeExpanded ? composeForm : null}
 
           {canDrag && filtered.length > 1 ? (
-            <p className="inline-flex flex-wrap items-center gap-1 text-[10px] text-slate-400">
+            <p className="inline-flex flex-wrap items-center gap-1 text-[0.625rem] text-slate-400">
               {NOTATNIK_NOTES_SECTION_COPY.dragHintBefore}
               <DragHandleGlyph />
               ) w sekcji — między przypiętymi a zwykłymi nie da się przenieść.

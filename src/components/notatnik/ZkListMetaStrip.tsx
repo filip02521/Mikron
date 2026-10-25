@@ -28,7 +28,7 @@ function ZkListStats({
         <span className={salesTypography.statValue}>{filteredWatchCount}</span>
         {" z "}
         <span className={salesTypography.statValue}>{watchCount}</span>
-        <span className="ml-2 inline-flex rounded-md bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-900">
+        <span className="ml-2 inline-flex rounded-md bg-sky-100 px-2 py-0.5 text-[0.6875rem] font-semibold text-sky-900">
           szukaj
         </span>
       </p>
@@ -102,19 +102,19 @@ function ZkListMetaActions({
       {hasBadges ? (
         <div className="flex flex-wrap items-center gap-1.5">
           {newLinesWatchCount > 0 ? (
-            <Badge variant="warning" className="text-[10px]">
+            <Badge variant="warning" className="text-[0.625rem]">
               {newLinesWatchCount === 1
                 ? "1 ZK z nową pozycją"
                 : `${newLinesWatchCount} ZK z nowymi pozycjami`}
             </Badge>
           ) : null}
           {unseenRegalWatchCount > 0 ? (
-            <Badge variant="info" className="text-[10px]">
+            <Badge variant="info" className="text-[0.625rem]">
               {formatZkUnseenRegalBadge(unseenRegalWatchCount)}
             </Badge>
           ) : null}
           {followUpCount > 0 ? (
-            <Badge variant="warning" className="text-[10px]">
+            <Badge variant="warning" className="text-[0.625rem]">
               {followUpCount}{" "}
               {polishPluralWord(followUpCount, "przypomnienie", "przypomnienia", "przypomnień")}
             </Badge>

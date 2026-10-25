@@ -606,12 +606,12 @@ export function TeethReceiveLinesPanel({
             />
             <span className="text-xs font-semibold text-slate-700">Filtry i wyszukiwanie</span>
             {productSearchActive || productLineFilter ? (
-              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-md bg-indigo-100 px-1 text-[10px] font-bold tabular-nums text-indigo-700">
+              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-md bg-indigo-100 px-1 text-[0.625rem] font-bold tabular-nums text-indigo-700">
                 {[productSearchActive, Boolean(productLineFilter)].filter(Boolean).length}
               </span>
             ) : null}
             {productLineFilter ? (
-              <span className="hidden truncate text-[11px] text-slate-500 sm:inline">
+              <span className="hidden truncate text-[0.6875rem] text-slate-500 sm:inline">
                 {productLineFilter}
               </span>
             ) : null}
@@ -625,7 +625,7 @@ export function TeethReceiveLinesPanel({
                   setProductLineFilter("");
                   clearProductSearch();
                 }}
-                className="text-[10px] font-medium text-indigo-700 transition hover:text-indigo-900"
+                className="text-[0.625rem] font-medium text-indigo-700 transition hover:text-indigo-900"
               >
                 Wyczyść
               </button>
@@ -648,7 +648,7 @@ export function TeethReceiveLinesPanel({
                     zdFilter={null}
                     onClearZdFilter={() => {}}
                   />
-                  <p className="text-[11px] font-medium text-slate-700">
+                  <p className="text-[0.6875rem] font-medium text-slate-700">
                     {receiveQueueSearchToolbarLabel(filtered.length, zdScoped.length, productSearch)}
                   </p>
                 </div>

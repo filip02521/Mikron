@@ -199,7 +199,7 @@ export function ProsbaFormReadiness({
             {view.subline ? (
               <span className="hidden text-slate-400 sm:inline">· {view.subline}</span>
             ) : null}
-            <span className="ml-0.5 text-[11px] text-slate-400 group-open:hidden">· pokaż kroki</span>
+            <span className="ml-0.5 text-[0.6875rem] text-slate-400 group-open:hidden">· pokaż kroki</span>
           </summary>
 
           <div className="mt-1.5 pl-5">
@@ -239,7 +239,7 @@ export function ProsbaFormReadiness({
             ) : null}
           </div>
           {view.canSubmit ? (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-200/80">
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-white/80 px-2.5 py-1 text-[0.6875rem] font-semibold text-emerald-800 ring-1 ring-emerald-200/80">
               Wyślij
               <SubmitHintChevron />
             </span>

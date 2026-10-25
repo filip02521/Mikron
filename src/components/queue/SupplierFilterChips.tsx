@@ -51,7 +51,7 @@ function SupplierChip({
       {count !== undefined ? (
         <span
           className={cn(
-            "shrink-0 rounded px-1 py-px text-[10px] font-semibold tabular-nums",
+            "shrink-0 rounded px-1 py-px text-[0.625rem] font-semibold tabular-nums",
             active ? activeCountClass : "bg-slate-100 text-slate-600"
           )}
         >
@@ -135,8 +135,8 @@ export function SupplierFilterChips({
       : "bg-emerald-100/80 text-emerald-900";
   const clearFilterClass =
     accentVariant === "indigo"
-      ? "text-[10px] font-medium text-indigo-700 transition hover:text-indigo-900"
-      : "text-[10px] font-medium text-emerald-700 transition hover:text-emerald-900";
+      ? "text-[0.625rem] font-medium text-indigo-700 transition hover:text-indigo-900"
+      : "text-[0.625rem] font-medium text-emerald-700 transition hover:text-emerald-900";
 
   if (chips.length === 0) return null;
 
@@ -226,7 +226,7 @@ export function SupplierFilterChips({
       </div>
 
       {query && filteredChips.length === 0 ? (
-        <p className="mt-1.5 text-[11px] text-slate-500">Brak dostawcy pasującego do wyszukiwania.</p>
+        <p className="mt-1.5 text-[0.6875rem] text-slate-500">Brak dostawcy pasującego do wyszukiwania.</p>
       ) : null}
     </div>
   );

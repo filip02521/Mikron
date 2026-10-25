@@ -61,7 +61,7 @@ export function UpcomingDeliveryDayCard({ day }: { day: UpcomingDeliveryDay }) {
         </div>
         <span
           className={cn(
-            "shrink-0 rounded px-2 py-0.5 text-[10px] font-bold",
+            "shrink-0 rounded px-2 py-0.5 text-[0.625rem] font-bold",
             dayBadgeClass(day)
           )}
         >

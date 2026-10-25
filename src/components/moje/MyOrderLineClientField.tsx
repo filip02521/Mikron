@@ -49,7 +49,7 @@ export function MyOrderLineClientField({
       >
         <MyOrderAssignedClient name={trimmed} clientKhId={clientKhId} className="min-w-0" />
         {/* hit-target: 44 px pod palcem; odstęp, żeby strefy „Zmień” i „Usuń” się nie nakładały. */}
-        <span className="inline-flex shrink-0 items-center gap-4 text-[11px]">
+        <span className="inline-flex shrink-0 items-center gap-4 text-[0.6875rem]">
           <button
             type="button"
             disabled={disabled}
@@ -80,7 +80,7 @@ export function MyOrderLineClientField({
       disabled={disabled}
       onClick={onStartEdit}
       className={cn(
-        "hit-target mt-1 text-left text-[11px] font-medium disabled:opacity-50",
+        "hit-target mt-1 text-left text-[0.6875rem] font-medium disabled:opacity-50",
         brandLinkSubtleClass,
         className
       )}

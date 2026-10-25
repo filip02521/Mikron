@@ -141,7 +141,7 @@ export function GmailSettingsSection({
           <label htmlFor={signatureId} className="text-sm font-medium text-slate-800">
             Podpis w mailach z OnTime
           </label>
-          <p className="text-[11px] leading-snug text-slate-400">
+          <p className="text-[0.6875rem] leading-snug text-slate-400">
             Gmail nie dokleja tu podpisu ze skrzynki — ten tekst trafi na koniec treści zamówienia (możesz go zmienić
             przed wysyłką).
           </p>

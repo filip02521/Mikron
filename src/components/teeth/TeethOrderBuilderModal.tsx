@@ -352,14 +352,14 @@ function TeethDualKindOrderBuilderModal({
             </Button>
             <span className="group relative inline-flex">
               <span
-                className="cursor-help rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold text-indigo-400 transition-colors group-hover:bg-indigo-100"
+                className="cursor-help rounded bg-indigo-50 px-1.5 py-0.5 text-[0.5625rem] font-bold text-indigo-400 transition-colors group-hover:bg-indigo-100"
                 aria-label="Funkcja testowa - sczytywanie zębów ze zdjęcia za pomocą AI"
               >
                 Beta
               </span>
               <span
                 role="tooltip"
-                className="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 hidden w-max max-w-[min(100vw,18rem)] rounded-md border border-indigo-200/90 bg-indigo-50/95 px-2.5 py-1.5 text-[11px] font-medium leading-relaxed text-indigo-900 shadow-md group-hover:block group-focus-within:block"
+                className="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 hidden w-max max-w-[min(100vw,18rem)] rounded-md border border-indigo-200/90 bg-indigo-50/95 px-2.5 py-1.5 text-[0.6875rem] font-medium leading-relaxed text-indigo-900 shadow-md group-hover:block group-focus-within:block"
               >
                 To funkcja testowa - sczytywanie listy zębów ze zdjęcia za pomocą AI. Może jeszcze nie działać prawidłowo we wszystkich przypadkach. Wynik zawsze sprawdź przed zapisaniem.
               </span>
@@ -392,7 +392,7 @@ function TeethDualKindOrderBuilderModal({
             </div>
           </div>
           {previewMessage ? (
-            <p className="text-[11px] font-medium text-slate-500">{previewMessage}</p>
+            <p className="text-[0.6875rem] font-medium text-slate-500">{previewMessage}</p>
           ) : null}
           {shortageHits.length > 0 ? (
             <TeethShortageWarningBanner hits={shortageHits} compact />
@@ -431,7 +431,7 @@ function TeethDualKindOrderBuilderModal({
             <p className="text-xs font-semibold text-slate-800">
               {TEETH_DUAL_KIND_LABELS[activeKind]}
             </p>
-            <span className="text-[10px] font-medium tabular-nums text-indigo-700">
+            <span className="text-[0.625rem] font-medium tabular-nums text-indigo-700">
               {activeCount} szt. na liście
             </span>
           </div>
@@ -502,14 +502,14 @@ function TeethDualKindToggle({
   return (
     <div className="space-y-1.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[10px] font-semibold text-slate-500">Typ</p>
+        <p className="text-[0.625rem] font-semibold text-slate-500">Typ</p>
         {saveBlockReason ? (
           <span className={teethBuilderAlertClass} role="status">
             <IconAlertCircle size={12} />
             {saveBlockReason}
           </span>
         ) : anteriorCount > 0 || posteriorCount > 0 ? (
-          <span className="inline-flex items-center gap-1 rounded-md border border-indigo-200/80 bg-indigo-50/80 px-2 py-0.5 text-[11px] font-medium text-indigo-700" role="status">
+          <span className="inline-flex items-center gap-1 rounded-md border border-indigo-200/80 bg-indigo-50/80 px-2 py-0.5 text-[0.6875rem] font-medium text-indigo-700" role="status">
             <IconCircleCheck size={12} />
             Gotowe do zapisu
           </span>
@@ -537,7 +537,7 @@ function TeethDualKindToggle({
             >
               {TEETH_DUAL_KIND_LABELS[kind]}
               {count > 0 ? (
-                <span className="ml-1.5 text-[11px] font-medium tabular-nums opacity-90">
+                <span className="ml-1.5 text-[0.6875rem] font-medium tabular-nums opacity-90">
                   · {count} szt.
                 </span>
               ) : null}
@@ -744,14 +744,14 @@ function TeethSingleKindOrderBuilderModal({
             </Button>
             <span className="group relative inline-flex">
               <span
-                className="cursor-help rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold text-indigo-400 transition-colors group-hover:bg-indigo-100"
+                className="cursor-help rounded bg-indigo-50 px-1.5 py-0.5 text-[0.5625rem] font-bold text-indigo-400 transition-colors group-hover:bg-indigo-100"
                 aria-label="Funkcja testowa - sczytywanie zębów ze zdjęcia za pomocą AI"
               >
                 Beta
               </span>
               <span
                 role="tooltip"
-                className="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 hidden w-max max-w-[min(100vw,18rem)] rounded-md border border-indigo-200/90 bg-indigo-50/95 px-2.5 py-1.5 text-[11px] font-medium leading-relaxed text-indigo-900 shadow-md group-hover:block group-focus-within:block"
+                className="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 hidden w-max max-w-[min(100vw,18rem)] rounded-md border border-indigo-200/90 bg-indigo-50/95 px-2.5 py-1.5 text-[0.6875rem] font-medium leading-relaxed text-indigo-900 shadow-md group-hover:block group-focus-within:block"
               >
                 To funkcja testowa - sczytywanie listy zębów ze zdjęcia za pomocą AI. Może jeszcze nie działać prawidłowo we wszystkich przypadkach. Wynik zawsze sprawdź przed zapisaniem.
               </span>

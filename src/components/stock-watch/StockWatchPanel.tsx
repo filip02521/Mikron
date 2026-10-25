@@ -363,7 +363,7 @@ export function StockWatchPanel({
                   {t.count != null && t.count > 0 ? (
                     <span
                       className={cn(
-                        "rounded px-1.5 py-0.5 text-[11px] font-semibold tabular-nums",
+                        "rounded px-1.5 py-0.5 text-[0.6875rem] font-semibold tabular-nums",
                         active
                           ? "bg-white text-indigo-700"
                           : t.tone === "danger"
@@ -575,7 +575,7 @@ function EmptyShelfSwitch({
       </span>
       <span className="min-w-0">
         <span className="block text-xs font-semibold leading-tight">Puste · bez dostawy</span>
-        <span className={cn("block text-[11px] leading-tight", checked ? "text-red-800/80" : "text-slate-500")}>
+        <span className={cn("block text-[0.6875rem] leading-tight", checked ? "text-red-800/80" : "text-slate-500")}>
           Bez stanu i bez ZD w drodze
           {count > 0 ? (
             <span className="ml-1 font-semibold tabular-nums">({count})</span>
@@ -660,7 +660,7 @@ function AlertsSection({
           ]}
         />
         {emptyOnly ? (
-          <p className="text-[11px] leading-snug text-red-800/90" role="status">
+          <p className="text-[0.6875rem] leading-snug text-red-800/90" role="status">
             Widoczne:{" "}
             <strong className="tabular-nums">{visible.length}</strong>
             {emptyNoIncomingTotal > visible.length
@@ -887,7 +887,7 @@ function AssemblySection({
                 <td>
                   <AssemblyTag row={row} />
                   {row.assemblyNote ? (
-                    <p className="mt-0.5 max-w-[22rem] truncate text-[11px] text-slate-500" title={row.assemblyNote}>
+                    <p className="mt-0.5 max-w-[22rem] truncate text-[0.6875rem] text-slate-500" title={row.assemblyNote}>
                       {row.assemblyNote}
                     </p>
                   ) : null}
@@ -975,7 +975,7 @@ function RotationSection({
                       minStock: row.minStockQty,
                     }}
                   />
-                  <p className="text-[11px] text-slate-500">cel na {row.salesPeriodDays} dni</p>
+                  <p className="text-[0.6875rem] text-slate-500">cel na {row.salesPeriodDays} dni</p>
                 </td>
                 <td>
                   <CoverChip row={row} />
@@ -1132,7 +1132,7 @@ function RuleTable({
             <tr key={row.subiektTwId}>
               <td>
                 <ProductCell row={row} />
-                {row.ruleNote ? <p className="max-w-[16rem] truncate text-[11px] italic text-slate-500">„{row.ruleNote}”</p> : null}
+                {row.ruleNote ? <p className="max-w-[16rem] truncate text-[0.6875rem] italic text-slate-500">„{row.ruleNote}”</p> : null}
               </td>
               <td className="max-w-[10rem] truncate text-sm text-slate-700">{row.supplierName ?? "-"}</td>
               <td>

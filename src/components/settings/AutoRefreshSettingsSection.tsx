@@ -93,7 +93,7 @@ export function AutoRefreshSettingsSection({ role }: AutoRefreshSettingsSectionP
               <span className="text-sm font-medium text-slate-800">
                 Auto przy zmianach (panel sprzedaży)
               </span>
-              <span className="text-[11px] leading-snug text-slate-400">
+              <span className="text-[0.6875rem] leading-snug text-slate-400">
                 „Moje” i notatnik odświeżają się zawsze. Ta opcja odświeża też pozostałe
                 strony sprzedaży zaraz po wykryciu zmian.
               </span>
@@ -123,7 +123,7 @@ export function AutoRefreshSettingsSection({ role }: AutoRefreshSettingsSectionP
               <span className="text-sm font-medium text-slate-800">
                 Auto przy zmianach (panel operacji)
               </span>
-              <span className="text-[11px] leading-snug text-slate-400">
+              <span className="text-[0.6875rem] leading-snug text-slate-400">
                 Dziś, weryfikacja i tablica odświeżają się zawsze. Ta opcja obejmuje też
                 pozostałe strony (kolejka, historia…) zaraz po wykryciu zmian.
               </span>
@@ -153,7 +153,7 @@ export function AutoRefreshSettingsSection({ role }: AutoRefreshSettingsSectionP
               <span className="text-sm font-medium text-slate-800">
                 Auto przy zmianach (panel zębów)
               </span>
-              <span className="text-[11px] leading-snug text-slate-400">
+              <span className="text-[0.6875rem] leading-snug text-slate-400">
                 Ścieżki /zeby odświeżają się zawsze. Ta opcja obejmuje też pozostałe strony
                 zaraz po wykryciu zmian.
               </span>

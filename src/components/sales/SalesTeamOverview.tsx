@@ -157,11 +157,11 @@ function SalesPersonCard({
             <div className="flex min-w-0 items-center gap-2">
               <h3 className={cn(salesTypography.rowTitle, "truncate")}>{row.name}</h3>
               {isSelf ? (
-                <Badge variant="info" className="shrink-0 text-[10px]">
+                <Badge variant="info" className="shrink-0 text-[0.625rem]">
                   Ty
                 </Badge>
               ) : row.groupName ? (
-                <Badge variant="default" className="shrink-0 text-[10px]">
+                <Badge variant="default" className="shrink-0 text-[0.625rem]">
                   {row.groupName}
                 </Badge>
               ) : null}
@@ -380,11 +380,11 @@ export function SalesTeamOverview({
                   {title}
                 </h2>
                 {sectionFollowUpDue > 0 ? (
-                  <Badge variant="info" className="text-[10px]">
+                  <Badge variant="info" className="text-[0.625rem]">
                     {formatPrzypomnienieCount(sectionFollowUpDue)}
                   </Badge>
                 ) : sectionPending > 0 ? (
-                  <Badge variant="warning" className="text-[10px]">
+                  <Badge variant="warning" className="text-[0.625rem]">
                     {sectionPending} ZK na towar
                   </Badge>
                 ) : null}

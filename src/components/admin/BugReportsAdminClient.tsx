@@ -55,7 +55,7 @@ function ReportNote({
     <article
       className={cn(
         "relative border-2 border-dashed border-neutral-800 bg-[#fff9bf] p-4 shadow-[4px_4px_0_#1f2937]",
-        "font-mono text-[13px] leading-relaxed text-neutral-900",
+        "font-mono text-[0.8125rem] leading-relaxed text-neutral-900",
         report.status === "closed" && "opacity-75"
       )}
       style={{
@@ -64,16 +64,16 @@ function ReportNote({
     >
       <div className="mb-3 flex flex-wrap items-start justify-between gap-2 border-b border-dashed border-neutral-600 pb-2">
         <div>
-          <p className="text-[11px] text-neutral-600">
+          <p className="text-[0.6875rem] text-neutral-600">
             od: {report.reporter_name}
           </p>
-          <p className="text-[11px] text-neutral-700">
+          <p className="text-[0.6875rem] text-neutral-700">
             {report.reporter_email ?? "-"} · {formatWhen(report.created_at)}
           </p>
         </div>
         <span
           className={cn(
-            "inline-block px-2 py-0.5 text-[10px] font-bold",
+            "inline-block px-2 py-0.5 text-[0.625rem] font-bold",
             STATUS_STAMP[report.status]
           )}
         >
@@ -83,7 +83,7 @@ function ReportNote({
 
       <p className="mb-3 whitespace-pre-wrap">{report.message}</p>
 
-      <dl className="mb-3 space-y-1 text-[11px] text-neutral-700">
+      <dl className="mb-3 space-y-1 text-[0.6875rem] text-neutral-700">
         <div>
           <dt className="inline font-bold">strona:</dt>{" "}
           <dd className="inline break-all">{report.page_path}</dd>
@@ -97,7 +97,7 @@ function ReportNote({
       </dl>
 
       <div className="space-y-2 border-t border-dotted border-neutral-500 pt-3">
-        <label className="block text-[10px] text-neutral-600">
+        <label className="block text-[0.625rem] text-neutral-600">
           status (admin)
           <select
             value={status}
@@ -110,7 +110,7 @@ function ReportNote({
             <option value="closed">zamknięte</option>
           </select>
         </label>
-        <label className="block text-[10px] text-neutral-600">
+        <label className="block text-[0.625rem] text-neutral-600">
           notatka wewnętrzna
           <textarea
             rows={2}
@@ -125,11 +125,11 @@ function ReportNote({
           type="button"
           onClick={() => save()}
           disabled={pending}
-          className="border-2 border-neutral-900 bg-neutral-900 px-3 py-1.5 text-[11px] font-bold text-[#fff9bf] hover:bg-neutral-700 disabled:opacity-50"
+          className="border-2 border-neutral-900 bg-neutral-900 px-3 py-1.5 text-[0.6875rem] font-bold text-[#fff9bf] hover:bg-neutral-700 disabled:opacity-50"
         >
           {pending ? "zapisuję…" : "zapisz"}
         </button>
-        {error ? <p className="text-[11px] text-red-800">{error}</p> : null}
+        {error ? <p className="text-[0.6875rem] text-red-800">{error}</p> : null}
       </div>
     </article>
   );
@@ -159,7 +159,7 @@ export function BugReportsAdminClient({
       }}
     >
       <header className="mb-5 border-b-4 border-neutral-800 pb-3 font-mono">
-        <p className="text-[10px] font-bold text-red-700">
+        <p className="text-[0.625rem] font-bold text-red-700">
           {"/// poza design systemem ///"}
         </p>
         <p className="mt-2 max-w-2xl text-xs leading-relaxed text-neutral-700">
@@ -171,7 +171,7 @@ export function BugReportsAdminClient({
         </p>
       </header>
 
-      <div className="mb-5 flex flex-wrap gap-2 font-mono text-[11px] uppercase">
+      <div className="mb-5 flex flex-wrap gap-2 font-mono text-[0.6875rem] uppercase">
         {(
           [
             ["open", `nowe (${reports.filter((r) => r.status === "open").length})`],

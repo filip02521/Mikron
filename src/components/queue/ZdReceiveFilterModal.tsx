@@ -116,10 +116,10 @@ function ZdReceiveCandidateList({
                   <span className="text-xs text-slate-600">{candidate.supplierLabel}</span>
                 ) : null}
                 {issued ? (
-                  <span className="mt-0.5 text-[11px] text-slate-500">Wystawiono {issued}</span>
+                  <span className="mt-0.5 text-[0.6875rem] text-slate-500">Wystawiono {issued}</span>
                 ) : null}
                 {resolving ? (
-                  <span className="mt-0.5 text-[11px] font-medium text-emerald-800">Wczytywanie…</span>
+                  <span className="mt-0.5 text-[0.6875rem] font-medium text-emerald-800">Wczytywanie…</span>
                 ) : null}
               </button>
             </li>
@@ -379,7 +379,7 @@ export function ZdReceiveFilterModal({
                 )}
               />
             </div>
-            <p className="mt-1 text-[11px] text-slate-500">
+            <p className="mt-1 text-[0.6875rem] text-slate-500">
               Krótki kod (min. 2 znaki) pokaże listę ZD z ostatnich 6 miesięcy - wybierz właściwy
               dokument. Pełny numer (np. 123/2026) szuka do 2 lat wstecz.
             </p>
@@ -389,7 +389,7 @@ export function ZdReceiveFilterModal({
             <button
               type="button"
               className={cn(
-                "inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-800",
+                "inline-flex items-center gap-1.5 text-[0.6875rem] font-medium text-emerald-800",
                 brandLinkClass
               )}
               onClick={() => setHelpOpen((v) => !v)}
@@ -399,7 +399,7 @@ export function ZdReceiveFilterModal({
               Jak szukać?
             </button>
             {helpOpen ? (
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-[11px] leading-relaxed text-slate-600">
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-[0.6875rem] leading-relaxed text-slate-600">
                 <li>Krótki kod, np. 81 - lista ZD z ostatnich 6 miesięcy (nawet jeden wynik)</li>
                 <li>Pełny numer: 123/2026 - szuka do 2 lat wstecz i zawęża kolejkę, gdy jednoznaczny</li>
                 <li>Możesz łączyć filtr ZD z wyszukiwarką towaru nad listą</li>
@@ -449,12 +449,12 @@ export function ZdReceiveFilterModal({
                 ) : null}
               </p>
               {zdFilterUnmatchedLinesLabel(preview.unmatchedLineCount) ? (
-                <p className="mt-1 text-[11px] text-amber-800">
+                <p className="mt-1 text-[0.6875rem] text-amber-800">
                   {zdFilterUnmatchedLinesLabel(preview.unmatchedLineCount)}
                 </p>
               ) : null}
               {preview.matchCount === 0 ? (
-                <p className="mt-1 text-[11px] text-amber-800">
+                <p className="mt-1 text-[0.6875rem] text-amber-800">
                   Na tym ZD nie ma pozycji oczekujących w przyjęciu - możesz anulować lub
                   sprawdzić inny numer.
                 </p>

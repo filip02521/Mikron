@@ -318,14 +318,14 @@ export function TeethShortagesClient({
                         </span>
                         <span
                           className={cn(
-                            "rounded-md px-1.5 py-0.5 text-[11px] font-medium ring-1",
+                            "rounded-md px-1.5 py-0.5 text-[0.6875rem] font-medium ring-1",
                             teethShortageAvailabilityBadgeClass(row.available_from, todayKey),
                           )}
                         >
                           {teethShortageAvailabilityBadgeLabel(row.available_from, todayKey)}
                         </span>
                         {!row.active ? (
-                          <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
+                          <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[0.6875rem] font-medium text-slate-600">
                             Nieaktywny
                           </span>
                         ) : null}
@@ -338,7 +338,7 @@ export function TeethShortagesClient({
                         {kindLabel ? ` · ${kindLabel}` : ""}
                       </p>
                       {row.note ? (
-                        <p className="text-[11px] leading-snug text-amber-900/90">
+                        <p className="text-[0.6875rem] leading-snug text-amber-900/90">
                           <span className="font-medium text-amber-950/80">Uwaga: </span>
                           {row.note}
                         </p>

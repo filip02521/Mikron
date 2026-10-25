@@ -40,12 +40,12 @@ function addDaysStr(days: number): string {
 function statusBadge(startDate: string, endDate: string) {
   const today = todayStr();
   if (today < startDate) {
-    return <Badge variant="default" className="text-[11px]">Nadchodzące</Badge>;
+    return <Badge variant="default" className="text-[0.6875rem]">Nadchodzące</Badge>;
   }
   if (today > endDate) {
-    return <Badge variant="default" className="text-[11px] opacity-60">Zakończone</Badge>;
+    return <Badge variant="default" className="text-[0.6875rem] opacity-60">Zakończone</Badge>;
   }
-  return <Badge variant="success" className="text-[11px]">Aktywne</Badge>;
+  return <Badge variant="success" className="text-[0.6875rem]">Aktywne</Badge>;
 }
 
 export function SelfDelegationManager({

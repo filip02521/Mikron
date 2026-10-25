@@ -195,7 +195,7 @@ export function MobileNavOverflowSheet({
                         {hasBadge ? (
                           <span
                             className={cn(
-                              "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold leading-none tabular-nums",
+                              "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[0.6875rem] font-semibold leading-none tabular-nums",
                               sidebarNavBadgeClassForTone(displayTone, active)
                             )}
                           >
@@ -254,7 +254,7 @@ export function MobileNavOverflowSheet({
             {overflowAttentionBadge > 0 && !activeInOverflow ? (
               <span
                 className={cn(
-                  "absolute -right-1.5 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-md px-0.5 text-[8px] font-bold tabular-nums",
+                  "absolute -right-1.5 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-md px-0.5 text-[0.5rem] font-bold tabular-nums",
                   mobileNavBadgeClass
                 )}
               >

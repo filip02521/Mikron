@@ -402,7 +402,7 @@ export function SubiektLeadTimesPanel({ initialData }: { initialData: SubiektLea
               <div className="overflow-x-auto rounded-md border border-slate-200/90">
                 <table className="min-w-full text-left">
                   <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50/90 text-[11px] text-slate-500">
+                    <tr className="border-b border-slate-200 bg-slate-50/90 text-[0.6875rem] text-slate-500">
                       <th className="px-2 py-2.5 font-semibold sm:px-3">Dostawca</th>
                       <th className="px-2 py-2.5 font-semibold sm:px-3">Źródło ETA</th>
                       <th className="px-2 py-2.5 font-semibold sm:px-3" title="Mediana dni roboczych do pełnej dostawy">Typowo</th>

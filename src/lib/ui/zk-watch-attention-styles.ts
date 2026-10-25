@@ -8,7 +8,7 @@ import { cn } from "@/lib/cn";
 export const zkWatchRowInlineBadgeClass = cn(
   "inline-flex shrink-0 items-center gap-1",
   "h-5 max-w-[14rem] rounded-md px-1.5",
-  "text-[10px] font-medium leading-none"
+  "text-[0.625rem] font-medium leading-none"
 );
 
 /** Mocniejszy chip (akcja / pilne). */

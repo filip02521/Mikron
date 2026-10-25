@@ -193,7 +193,7 @@ export function CatalogZdSyncStatusPanel({
 
         {summary.progressPercent != null ? (
           <div>
-            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
+            <div className="flex items-center justify-between text-[0.6875rem] font-semibold text-slate-500">
               <span>Postęp szacunkowy</span>
               <span className="tabular-nums text-slate-800">{summary.progressPercent}%</span>
             </div>

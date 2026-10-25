@@ -78,7 +78,7 @@ export function InformacjaFlowPicker({
               <span className="block text-sm font-semibold leading-snug text-slate-900">
                 {flow.label}
               </span>
-              <span className="mt-0.5 block text-[11px] leading-snug text-slate-600 line-clamp-1 sm:text-xs sm:leading-relaxed sm:line-clamp-none">
+              <span className="mt-0.5 block text-[0.6875rem] leading-snug text-slate-600 line-clamp-1 sm:text-xs sm:leading-relaxed sm:line-clamp-none">
                 {flow.short}
               </span>
             </span>

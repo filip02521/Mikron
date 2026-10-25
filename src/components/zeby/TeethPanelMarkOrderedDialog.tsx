@@ -51,7 +51,7 @@ function MarkPlanPreview({ plan, scope }: { plan: TeethMarkPlan; scope: TeethMar
                 {row.who}
                 {row.context ? <span className="font-normal text-slate-500"> · {row.context}</span> : null}
               </p>
-              <p className="truncate text-[11px] text-slate-500">{row.lineLabel}</p>
+              <p className="truncate text-[0.6875rem] text-slate-500">{row.lineLabel}</p>
             </div>
             <span
               className={cn(

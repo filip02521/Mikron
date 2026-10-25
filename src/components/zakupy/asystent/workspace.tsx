@@ -27,7 +27,7 @@ export const listColumnClass = "min-h-0 border-slate-200 lg:overflow-y-auto lg:b
 export const railTabsClass =
   "flex min-w-0 gap-1 overflow-x-auto p-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden 2xl:flex-col 2xl:overflow-visible";
 
-export const railGroupLabelClass ="px-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500";
+export const railGroupLabelClass ="px-2 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-slate-500";
 
 /** Pozycja szyny: aktywna jak segment (biała, lekki cień) — ten sam język co przełączniki w aplikacji. */
 export function railItemClass(active: boolean): string {
@@ -45,7 +45,7 @@ export function RailCount({ value, tone = "neutral" }: { value: number; tone?: "
   return (
     <span
       className={cn(
-        "min-w-5 rounded-full px-1.5 py-px text-center text-[11px] font-medium tabular-nums",
+        "min-w-5 rounded-full px-1.5 py-px text-center text-[0.6875rem] font-medium tabular-nums",
         tone === "attention" && value
           ? "bg-amber-100 text-amber-900"
           : tone === "info" && value

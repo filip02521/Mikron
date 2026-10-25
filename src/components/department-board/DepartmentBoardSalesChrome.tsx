@@ -162,7 +162,7 @@ function StatusFilterChip({
           ? boardQuestionsStatusChipClass
           : cn(
               panelChoiceChipClass,
-              "inline-flex min-h-10 shrink-0 cursor-pointer items-center gap-1 px-2.5 py-1.5 text-[11px] sm:min-h-8"
+              "inline-flex min-h-10 shrink-0 cursor-pointer items-center gap-1 px-2.5 py-1.5 text-[0.6875rem] sm:min-h-8"
             ),
         compact
           ? active

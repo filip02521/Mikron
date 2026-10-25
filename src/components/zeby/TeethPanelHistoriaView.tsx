@@ -71,7 +71,7 @@ function HistoryStateSummary({ items }: { items: TeethQueueItem[] }) {
         <span
           key={state}
           className={cn(
-            "rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ring-1 ring-inset",
+            "rounded-md px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums ring-1 ring-inset",
             TEETH_HISTORY_STATE_META[state].badge,
           )}
         >

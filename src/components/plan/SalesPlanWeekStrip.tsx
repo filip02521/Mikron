@@ -146,11 +146,11 @@ function DayColumn({
     >
       <header className="border-b border-slate-100 px-2 py-1.5">
         <div className="flex items-center justify-between gap-1">
-          <p className="text-[10px] font-semibold text-slate-500">
+          <p className="text-[0.625rem] font-semibold text-slate-500">
             {day.weekdayLabel}
           </p>
           {day.isToday ? (
-            <Badge variant="info" className="px-1.5 py-0 text-[9px] uppercase">
+            <Badge variant="info" className="px-1.5 py-0 text-[0.5625rem] uppercase">
               {C.weekToday}
             </Badge>
           ) : null}
@@ -159,7 +159,7 @@ function DayColumn({
       </header>
       <ul className="flex flex-1 flex-col gap-1 p-1.5">
         {!day.items.length ? (
-          <li className="flex flex-1 items-center justify-center px-1 py-3 text-center text-[10px] text-slate-400">
+          <li className="flex flex-1 items-center justify-center px-1 py-3 text-center text-[0.625rem] text-slate-400">
             -
           </li>
         ) : (
@@ -170,7 +170,7 @@ function DayColumn({
               <li
                 key={`${day.dateKey}-${item.supplierId}-${item.scheduleId}`}
                 className={cn(
-                  "truncate rounded px-1.5 py-1 text-[11px] leading-snug",
+                  "truncate rounded px-1.5 py-1 text-[0.6875rem] leading-snug",
                   mine
                     ? "bg-indigo-50 font-medium text-indigo-950"
                     : "bg-slate-50 text-slate-700",

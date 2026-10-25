@@ -61,9 +61,9 @@ export function QueueMetricTab({
         {icon}
       </SectionHeadingIcon>
       <p className={cn(panelTypography.statValue, "text-lg sm:text-xl")}>{count}</p>
-      <p className="mt-0.5 text-[11px] font-medium text-slate-700 sm:text-xs">{label}</p>
+      <p className="mt-0.5 text-[0.6875rem] font-medium text-slate-700 sm:text-xs">{label}</p>
       {hint ? (
-        <p className="mt-0.5 line-clamp-2 text-[10px] leading-snug text-slate-500">{hint}</p>
+        <p className="mt-0.5 line-clamp-2 text-[0.625rem] leading-snug text-slate-500">{hint}</p>
       ) : null}
     </>
   );

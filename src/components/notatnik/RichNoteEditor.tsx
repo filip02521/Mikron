@@ -353,7 +353,7 @@ export function RichNoteEditor({
           data-placeholder={placeholder}
           className={cn(
             "rich-note-editor min-h-[2.5rem] w-full outline-none",
-            "text-[13px] leading-relaxed text-slate-900",
+            "text-[0.8125rem] leading-relaxed text-slate-900",
             "[&_strong]:font-semibold [&_strong]:text-slate-900",
             "[&_em]:italic",
             "[&_u]:underline [&_span[data-underline=true]]:underline",

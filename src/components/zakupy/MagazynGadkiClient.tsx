@@ -663,7 +663,7 @@ export function MagazynGadkiClient({
                           {link.clientLabel || "-"}
                           {link.label ? ` · ${link.label}` : ""}
                         </p>
-                        <p className="mt-1 text-[11px] tabular-nums text-slate-400">
+                        <p className="mt-1 text-[0.6875rem] tabular-nums text-slate-400">
                           {new Set(link.lines.map((l) => l.key)).size} poz.
                           {link.lastSyncedAt
                             ? ` · ${link.syncError ? "stan z" : "aktualne na"} ${formatWarsawDateTime(link.lastSyncedAt)}`
@@ -786,7 +786,7 @@ export function MagazynGadkiClient({
                           <h3 className="text-sm font-semibold tracking-tight text-slate-900">
                             {link.zkNumber}
                           </h3>
-                          <span className="inline-flex items-center rounded-md bg-white/90 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-emerald-800 ring-1 ring-inset ring-emerald-200/70">
+                          <span className="inline-flex items-center rounded-md bg-white/90 px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums text-emerald-800 ring-1 ring-inset ring-emerald-200/70">
                             {uniquePozCount}
                             {deferredSearch
                               ? ` / ${new Set(link.lines.map((l) => l.key)).size}`
@@ -794,7 +794,7 @@ export function MagazynGadkiClient({
                             poz.
                           </span>
                           {labeledPalletCount > 0 ? (
-                            <span className="inline-flex items-center gap-1 rounded-md bg-white/90 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 ring-1 ring-inset ring-slate-200/80">
+                            <span className="inline-flex items-center gap-1 rounded-md bg-white/90 px-1.5 py-0.5 text-[0.625rem] font-medium text-slate-600 ring-1 ring-inset ring-slate-200/80">
                               <IconLayers size={10} className="text-emerald-700/70" />
                               {labeledPalletCount}{" "}
                               {labeledPalletCount === 1 ? "paleta" : "palet"}
@@ -848,7 +848,7 @@ export function MagazynGadkiClient({
                               <div className="flex items-center gap-2">
                                 <span
                                   className={cn(
-                                    "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold tracking-wide",
+                                    "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[0.6875rem] font-semibold tracking-wide",
                                     isUnassigned
                                       ? "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200/80"
                                       : "bg-emerald-50 text-emerald-900 ring-1 ring-inset ring-emerald-200/80"
@@ -859,7 +859,7 @@ export function MagazynGadkiClient({
                                   ) : null}
                                   {group.title}
                                 </span>
-                                <span className="text-[11px] tabular-nums text-slate-400">
+                                <span className="text-[0.6875rem] tabular-nums text-slate-400">
                                   {group.lines.length}{" "}
                                   {group.lines.length === 1 ? "wiersz" : "wiersze"}
                                 </span>
@@ -924,10 +924,10 @@ export function MagazynGadkiClient({
                       {orphanVisible.length > 0 ? (
                         <div className="space-y-2.5 rounded-lg border border-amber-200/90 bg-amber-50/90 p-3.5">
                           <div className="flex items-center gap-2">
-                            <span className="inline-flex items-center rounded-md bg-amber-100/90 px-2 py-0.5 text-[10px] font-bold text-amber-900 ring-1 ring-inset ring-amber-200/80">
+                            <span className="inline-flex items-center rounded-md bg-amber-100/90 px-2 py-0.5 text-[0.625rem] font-bold text-amber-900 ring-1 ring-inset ring-amber-200/80">
                               Usunięte z ZK
                             </span>
-                            <span className="text-[11px] text-amber-800/80">
+                            <span className="text-[0.6875rem] text-amber-800/80">
                               Meta zachowana - możesz usunąć ręcznie
                             </span>
                           </div>
@@ -1149,7 +1149,7 @@ export function MagazynGadkiClient({
                         <p className="whitespace-pre-wrap leading-relaxed text-slate-800">
                           {note.body}
                         </p>
-                        <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500">
+                        <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.6875rem] text-slate-500">
                           <time className="tabular-nums" dateTime={note.createdAt}>
                             {formatWarsawDateTime(note.createdAt)}
                           </time>
@@ -1295,7 +1295,7 @@ export function MagazynGadkiClient({
                           <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
                             <span
                               className={cn(
-                                "inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold",
+                                "inline-flex rounded px-1.5 py-0.5 text-[0.625rem] font-semibold",
                                 row.kind === "qty_changed" &&
                                   "bg-amber-50 text-amber-900 ring-1 ring-inset ring-amber-200/80",
                                 row.kind === "lines_removed" &&
@@ -1327,7 +1327,7 @@ export function MagazynGadkiClient({
                           </span>
                         </div>
                         <time
-                          className="shrink-0 text-[11px] tabular-nums text-slate-500"
+                          className="shrink-0 text-[0.6875rem] tabular-nums text-slate-500"
                           dateTime={row.createdAt}
                         >
                           {formatWarsawDateTime(row.createdAt)}
@@ -1456,7 +1456,7 @@ function LineStatusChip({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold",
+        "inline-flex items-center rounded px-1.5 py-0.5 text-[0.625rem] font-semibold",
         tone === "emerald" && "bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200/70",
         tone === "amber" && "bg-amber-50 text-amber-900 ring-1 ring-inset ring-amber-200/80",
         tone === "slate" && "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200/80",
@@ -1530,7 +1530,7 @@ function LineRow({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
             {line.symbol ? (
-              <span className="rounded bg-slate-100/90 px-1.5 py-0.5 font-mono text-[10px] font-medium text-slate-600 ring-1 ring-inset ring-slate-200/70">
+              <span className="rounded bg-slate-100/90 px-1.5 py-0.5 font-mono text-[0.625rem] font-medium text-slate-600 ring-1 ring-inset ring-slate-200/70">
                 {line.symbol}
               </span>
             ) : null}
@@ -1545,7 +1545,7 @@ function LineRow({
             {canMutate && line.palletLabel && !editingOpen ? (
               <span
                 className={cn(
-                  "inline-flex max-w-[8rem] truncate rounded-md bg-emerald-50/80 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200/70",
+                  "inline-flex max-w-[8rem] truncate rounded-md bg-emerald-50/80 px-1.5 py-0.5 text-[0.625rem] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200/70",
                   "[@media(hover:hover)_and_(pointer:fine)]:group-hover:hidden"
                 )}
               >
@@ -1583,7 +1583,7 @@ function LineRow({
             )
           ) : null}
           {isSplit && lineQtyLabel ? (
-            <p className="mt-1 text-[11px] tabular-nums text-slate-400">
+            <p className="mt-1 text-[0.6875rem] tabular-nums text-slate-400">
               {lineQtyLabel}
             </p>
           ) : null}
@@ -1599,7 +1599,7 @@ function LineRow({
                 : "-"}
             </span>
             {line.quantity != null ? (
-              <span className="ml-1 text-[11px] font-medium text-slate-400">
+              <span className="ml-1 text-[0.6875rem] font-medium text-slate-400">
                 szt.
               </span>
             ) : null}
@@ -1911,13 +1911,13 @@ function SplitSharesEditor({
             </span>
           ) : null}
         </p>
-        <p className="text-[11px] leading-snug text-slate-500">
+        <p className="text-[0.6875rem] leading-snug text-slate-500">
           Każdy udział ma własną nazwę, ilość i opcjonalną notatkę. Wpisy zostają
           przy syncu ZK.
         </p>
       </div>
       {line.overAllocated ? (
-        <p className="rounded-md border border-amber-200/80 bg-amber-50 px-2.5 py-1.5 text-[11px] font-medium text-amber-900">
+        <p className="rounded-md border border-amber-200/80 bg-amber-50 px-2.5 py-1.5 text-[0.6875rem] font-medium text-amber-900">
           Ilość w ZK jest mniejsza niż suma udziałów - wpisy zachowane; popraw
           ilości albo wyczyść rozbicie.
         </p>
@@ -1929,7 +1929,7 @@ function SplitSharesEditor({
             className="space-y-1.5 rounded-lg border border-emerald-100/80 bg-white p-2.5 shadow-sm shadow-slate-950/[0.02]"
           >
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-[10px] font-bold tabular-nums text-emerald-800 ring-1 ring-inset ring-emerald-200/70">
+              <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-[0.625rem] font-bold tabular-nums text-emerald-800 ring-1 ring-inset ring-emerald-200/70">
                 {idx + 1}
               </span>
               <input
@@ -2004,7 +2004,7 @@ function SplitSharesEditor({
           <option key={p} value={p} />
         ))}
       </datalist>
-      <div className="flex flex-wrap items-center gap-2 rounded-md bg-white/80 px-2.5 py-1.5 text-[11px] tabular-nums text-slate-600 ring-1 ring-inset ring-emerald-100/80">
+      <div className="flex flex-wrap items-center gap-2 rounded-md bg-white/80 px-2.5 py-1.5 text-[0.6875rem] tabular-nums text-slate-600 ring-1 ring-inset ring-emerald-100/80">
         <span>
           Suma:{" "}
           <span className="font-semibold text-slate-900">

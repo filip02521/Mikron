@@ -70,35 +70,35 @@ function buildIssueBadges(
 
   if (variant === "queue" && item.request_kind === "informacja") {
     badges.push(
-      <Badge key="info" variant="default" className="text-[10px]">
+      <Badge key="info" variant="default" className="text-[0.625rem]">
         Informacja
       </Badge>,
     );
   }
   if (needsHeaderData) {
     badges.push(
-      <Badge key="header" variant="warning" className="text-[10px]">
+      <Badge key="header" variant="warning" className="text-[0.625rem]">
         {TEETH_QUEUE_HEADER_DATA_LABEL}
       </Badge>,
     );
   }
   if (showMissingList) {
     badges.push(
-      <Badge key="missing" variant="warning" className="text-[10px]">
+      <Badge key="missing" variant="warning" className="text-[0.625rem]">
         Brak listy
       </Badge>,
     );
   }
   if (showIncomplete) {
     badges.push(
-      <Badge key="incomplete" variant="warning" className="text-[10px]">
+      <Badge key="incomplete" variant="warning" className="text-[0.625rem]">
         Lista niekompletna
       </Badge>,
     );
   }
   if (variant === "history") {
     badges.push(
-      <Badge key="status" variant="default" className="text-[10px]">
+      <Badge key="status" variant="default" className="text-[0.625rem]">
         {historyStatusLabel(item)}
       </Badge>,
     );

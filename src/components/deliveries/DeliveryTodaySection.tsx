@@ -24,7 +24,7 @@ export function DeliveryTodaySection({
           <p className="text-sm font-semibold text-slate-900">
             Dziś - <span className="font-normal text-slate-600">{todayDay.dateLabel}</span>
           </p>
-          <p className="text-[11px] text-slate-500">
+          <p className="text-[0.6875rem] text-slate-500">
             {totalCount > 0
               ? `${zdSuppliers.length} dostaw ZD · ${scheduledSuppliers.length} planowych${
                   zdSuppliers.some((s) => s.isOverdueDeadline)

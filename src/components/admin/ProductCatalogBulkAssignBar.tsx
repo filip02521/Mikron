@@ -45,10 +45,10 @@ export function ProductCatalogBulkAssignBar({
               ? "1 zaznaczony produkt"
               : `${selectedCount} zaznaczonych produktów`}
           </p>
-          <p className="mt-0.5 text-[11px] leading-snug text-indigo-900/80">
+          <p className="mt-0.5 text-[0.6875rem] leading-snug text-indigo-900/80">
             Wybrany dostawca stanie się głównym w katalogu dla zaznaczonych pozycji.
           </p>
-          <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
+          <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[0.6875rem]">
             {visibleCount > 0 && !allVisibleSelected ? (
               <button
                 type="button"
@@ -72,7 +72,7 @@ export function ProductCatalogBulkAssignBar({
 
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end">
           <div className="min-w-[min(100%,14rem)] flex-1 sm:max-w-xs">
-            <label className="mb-1 block text-[11px] font-medium text-indigo-950" htmlFor="bulk-supplier">
+            <label className="mb-1 block text-[0.6875rem] font-medium text-indigo-950" htmlFor="bulk-supplier">
               Dostawca dla zaznaczonych
             </label>
             <Select

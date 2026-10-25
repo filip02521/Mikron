@@ -23,7 +23,7 @@ function FormatButton({
       aria-label={title}
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
-      className="inline-flex h-5 min-w-5 items-center justify-center rounded px-1 text-[10px] font-semibold text-slate-400 transition hover:bg-slate-100/80 hover:text-slate-700 disabled:opacity-40"
+      className="inline-flex h-5 min-w-5 items-center justify-center rounded px-1 text-[0.625rem] font-semibold text-slate-400 transition hover:bg-slate-100/80 hover:text-slate-700 disabled:opacity-40"
     >
       {label}
     </button>

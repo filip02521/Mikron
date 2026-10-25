@@ -57,7 +57,7 @@ export function NotFoundScreen({
           </span>
 
           <div className="relative z-[1]">
-            <p className="text-[11px] font-semibold text-sky-700/90">
+            <p className="text-[0.6875rem] font-semibold text-sky-700/90">
               Strona niedostępna
             </p>
 

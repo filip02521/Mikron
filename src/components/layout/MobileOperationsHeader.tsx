@@ -37,7 +37,7 @@ export function MobileOperationsHeader({
         {procurementWorkspace ? (
           <span
             className={cn(
-              "ml-auto flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset",
+              "ml-auto flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[0.6875rem] font-bold ring-1 ring-inset",
               workspaceToneBg(procurementWorkspace),
               workspaceToneRing(procurementWorkspace),
               workspaceToneText(procurementWorkspace),

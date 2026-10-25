@@ -37,7 +37,7 @@ function StepRow({ step }: { step: ProcurementReadinessStep }) {
       <StepIcon state={step.state} />
       <div className="min-w-0 flex-1">
         <p className="text-xs font-medium text-slate-800">{step.label}</p>
-        <p className="text-[11px] leading-snug text-slate-500">{step.detail}</p>
+        <p className="text-[0.6875rem] leading-snug text-slate-500">{step.detail}</p>
       </div>
     </li>
   );
@@ -122,7 +122,7 @@ export function ProcurementFormReadiness({
             {view.headline}
           </p>
           {view.canSubmit ? (
-            <span className="text-[11px] font-medium text-emerald-800">Gotowe do zapisu</span>
+            <span className="text-[0.6875rem] font-medium text-emerald-800">Gotowe do zapisu</span>
           ) : null}
         </div>
         {view.subline ? (

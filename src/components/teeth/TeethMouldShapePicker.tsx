@@ -48,7 +48,7 @@ export function TeethMouldShapePicker({
   }, [productLine, kind]);
   const allMoulds = useMemo(() => groups.flatMap((g) => g.moulds), [groups]);
   const groupedLayout = groups.length > 1;
-  const chipPad = builderMode || compact ? "px-1.5 py-0.5 text-[11px]" : "px-2 py-0.5 text-xs";
+  const chipPad = builderMode || compact ? "px-1.5 py-0.5 text-[0.6875rem]" : "px-2 py-0.5 text-xs";
 
   const [customMouldOpen, setCustomMouldOpen] = useState(false);
 
@@ -70,7 +70,7 @@ export function TeethMouldShapePicker({
 
   return (
     <div className={cn("space-y-1.5", compact && "space-y-1")}>
-      <p className="text-[10px] font-semibold text-slate-500">
+      <p className="text-[0.625rem] font-semibold text-slate-500">
         Fason
         {required && !mould?.trim() ? <span className="ml-0.5 text-rose-500">*</span> : null}
       </p>
@@ -219,11 +219,11 @@ function ShapeSectionHeader({
           />
         </span>
       ) : null}
-      <p className="text-[9px] font-semibold leading-tight text-slate-600">
+      <p className="text-[0.5625rem] font-semibold leading-tight text-slate-600">
         {group.label}
       </p>
       {group.hint ? (
-        <p className="text-[8px] leading-tight text-slate-400">{group.hint}</p>
+        <p className="text-[0.5rem] leading-tight text-slate-400">{group.hint}</p>
       ) : null}
     </div>
   );

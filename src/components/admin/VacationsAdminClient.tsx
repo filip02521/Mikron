@@ -132,7 +132,7 @@ function VacationRowsTable({
   return (
     <>
       <div
-        className="hidden border-b border-slate-100 bg-slate-50/90 px-4 py-2 text-[11px] font-semibold text-slate-500 md:grid md:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(88px,120px))_minmax(88px,100px)_minmax(88px,120px)] md:gap-3 lg:px-5"
+        className="hidden border-b border-slate-100 bg-slate-50/90 px-4 py-2 text-[0.6875rem] font-semibold text-slate-500 md:grid md:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(88px,120px))_minmax(88px,100px)_minmax(88px,120px)] md:gap-3 lg:px-5"
         aria-hidden
       >
         <span>Dostawca</span>
@@ -168,7 +168,7 @@ function VacationRowsTable({
                   <span className="block font-medium text-slate-900 hover:text-indigo-800 hover:underline md:truncate">
                     {name}
                     {isEditing ? (
-                      <Badge variant="info" className="ml-2 text-[10px]">
+                      <Badge variant="info" className="ml-2 text-[0.625rem]">
                         Edycja
                       </Badge>
                     ) : null}
@@ -532,7 +532,7 @@ export function VacationsAdminClient({
           title={`Aktywne urlopy (${activeRows.length})`}
           description="Kliknij wiersz lub Edytuj, aby zmienić okres. Po zapisie system przelicza terminy."
           action={
-            <Field label="Sortuj" labelClassName="text-[10px] text-slate-500">
+            <Field label="Sortuj" labelClassName="text-[0.625rem] text-slate-500">
               <Select
                 value={`${sortState.field}-${sortState.direction}`}
                 onChange={(e) => {
@@ -576,7 +576,7 @@ export function VacationsAdminClient({
             title={`Wyłączone (przyszłe) (${scheduledRows.length})`}
             description="Zapisane okresy bez wpływu na harmonogram - można je ponownie włączyć."
             action={
-              <Field label="Sortuj" labelClassName="text-[10px] text-slate-500">
+              <Field label="Sortuj" labelClassName="text-[0.625rem] text-slate-500">
                 <Select
                   value={`${sortState.field}-${sortState.direction}`}
                   onChange={(e) => {
@@ -636,7 +636,7 @@ export function VacationsAdminClient({
             <p className="pb-2 text-xs text-slate-500">
               Zakończone wpisy można edytować albo trwale usunąć, żeby uporządkować listę.
             </p>
-            <Field label="Sortuj" labelClassName="text-[10px] text-slate-500">
+            <Field label="Sortuj" labelClassName="text-[0.625rem] text-slate-500">
               <Select
                 value={`${sortState.field}-${sortState.direction}`}
                 onChange={(e) => {

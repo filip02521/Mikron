@@ -39,12 +39,12 @@ function addDaysStr(days: number): string {
 function statusBadge(startDate: string, endDate: string) {
   const today = todayStr();
   if (today < startDate) {
-    return <Badge variant="default" className="text-[10px]">Nadchodzący</Badge>;
+    return <Badge variant="default" className="text-[0.625rem]">Nadchodzący</Badge>;
   }
   if (today > endDate) {
-    return <Badge variant="default" className="text-[10px] opacity-60">Zakończony</Badge>;
+    return <Badge variant="default" className="text-[0.625rem] opacity-60">Zakończony</Badge>;
   }
-  return <Badge variant="success" className="text-[10px]">Trwa teraz</Badge>;
+  return <Badge variant="success" className="text-[0.625rem]">Trwa teraz</Badge>;
 }
 
 function formatRangeLabel(startDate: string, endDate: string): string {
@@ -225,7 +225,7 @@ export function VacationPeriodsSection({
                   </p>
                   <p className={cn(salesTypography.rowMeta, "mt-0.5 flex items-center gap-2")}>
                     {statusBadge(p.startDate, p.endDate)}
-                    <Badge variant="default" className="text-[10px]">
+                    <Badge variant="default" className="text-[0.625rem]">
                       {staffVacationCategoryLabel(p.category)}
                     </Badge>
                     {p.note ? <span className="text-slate-500">{p.note}</span> : null}

@@ -72,7 +72,7 @@ export function MomBadge({
   if (flat) {
     return (
       <span
-        className="inline-flex items-center gap-1 rounded-md bg-slate-100/90 px-1.5 py-0.5 text-[10px] font-medium text-slate-500"
+        className="inline-flex items-center gap-1 rounded-md bg-slate-100/90 px-1.5 py-0.5 text-[0.625rem] font-medium text-slate-500"
         title={`Bez zmian względem: ${previousLabel}`}
       >
         bez zmian · {vs}
@@ -84,7 +84,7 @@ export function MomBadge({
     return (
       <span
         className={cn(
-          "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold",
+          "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[0.625rem] font-semibold",
           good ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"
         )}
         title={`W ${previousLabel}: 0`}
@@ -107,7 +107,7 @@ export function MomBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+        "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums",
         good && "bg-emerald-50 text-emerald-700",
         bad && "bg-amber-50 text-amber-800",
         !good && !bad && "bg-slate-100 text-slate-600"
@@ -152,7 +152,7 @@ export function KpiCard({
         t.ring
       )}
     >
-      <p className="text-[10px] font-semibold text-slate-500">{label}</p>
+      <p className="text-[0.625rem] font-semibold text-slate-500">{label}</p>
       {value == null ? (
         <p className="mt-1.5 flex h-6 items-end text-sm font-medium text-slate-500">Brak danych</p>
       ) : (
@@ -168,7 +168,7 @@ export function KpiCard({
           />
         </div>
       ) : null}
-      {hint ? <p className="mt-1.5 text-[11px] leading-snug text-slate-500">{hint}</p> : null}
+      {hint ? <p className="mt-1.5 text-[0.6875rem] leading-snug text-slate-500">{hint}</p> : null}
       {progress != null ? (
         <div className="mt-2.5 h-1 overflow-hidden rounded-full bg-slate-200/60">
           <div
@@ -218,7 +218,7 @@ export function ShareBar({
         />
       </div>
       {showLabel ? (
-        <span className="shrink-0 text-[10px] tabular-nums text-slate-500">{sharePct}%</span>
+        <span className="shrink-0 text-[0.625rem] tabular-nums text-slate-500">{sharePct}%</span>
       ) : null}
     </div>
   );

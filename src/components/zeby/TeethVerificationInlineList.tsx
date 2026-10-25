@@ -216,7 +216,7 @@ function OrderRows({
       ) : null}
       {order.specs.length === 0 ? (
         <tr className="border-b border-slate-100">
-          <td colSpan={4} className="py-1 pl-1 pr-1 text-[11px] text-slate-400">
+          <td colSpan={4} className="py-1 pl-1 pr-1 text-[0.6875rem] text-slate-400">
             Brak pozycji zębów
           </td>
         </tr>
@@ -285,12 +285,12 @@ function KindSectionHeader({ label, hasJaw }: { label: string; hasJaw: boolean }
     <>
       <tr className="border-b border-slate-100 bg-slate-50/40">
         <td className="py-0.5 px-1" colSpan={hasJaw ? 4 : 3}>
-          <span className="text-[10px] font-semibold text-slate-500">
+          <span className="text-[0.625rem] font-semibold text-slate-500">
             {label}
           </span>
         </td>
       </tr>
-      <tr className="border-b border-slate-200/60 text-[9px] font-medium text-slate-400">
+      <tr className="border-b border-slate-200/60 text-[0.5625rem] font-medium text-slate-400">
         <th className="py-0.5 px-1 font-medium">Kolor</th>
         <th className="py-0.5 px-1 font-medium">Fason</th>
         {hasJaw ? <th className="py-0.5 px-1 font-medium">Szczęka</th> : null}

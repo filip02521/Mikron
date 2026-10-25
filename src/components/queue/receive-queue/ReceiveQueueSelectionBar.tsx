@@ -35,7 +35,7 @@ export function ReceiveQueueSelectionBar({
       role="status"
     >
       <span className="inline-flex items-center gap-1.5 text-xs font-bold text-violet-950">
-        <span className="flex size-5 items-center justify-center rounded-full bg-violet-200/80 text-[10px] font-bold text-violet-800" aria-hidden>
+        <span className="flex size-5 items-center justify-center rounded-full bg-violet-200/80 text-[0.625rem] font-bold text-violet-800" aria-hidden>
           {total}
         </span>
         zaznaczono

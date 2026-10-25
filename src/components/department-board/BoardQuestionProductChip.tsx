@@ -30,7 +30,7 @@ export function BoardQuestionProductChip({
       <IconPackage size={compact ? 12 : 13} className="shrink-0 text-slate-500" aria-hidden />
       <span className="min-w-0 truncate">{label}</span>
       {!compact && mikran ? (
-        <span className="shrink-0 text-[10px] font-normal text-slate-500">
+        <span className="shrink-0 text-[0.625rem] font-normal text-slate-500">
           · {mikran}
         </span>
       ) : null}

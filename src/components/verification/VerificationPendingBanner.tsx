@@ -72,7 +72,7 @@ export function VerificationPendingBanner({
             {MISSING_FIELDS.map((label) => (
               <li
                 key={label}
-                className="rounded-md border border-amber-200/90 bg-white/90 px-2 py-0.5 text-[11px] font-semibold text-amber-900/85"
+                className="rounded-md border border-amber-200/90 bg-white/90 px-2 py-0.5 text-[0.6875rem] font-semibold text-amber-900/85"
               >
                 {label}
               </li>

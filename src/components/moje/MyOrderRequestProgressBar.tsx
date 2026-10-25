@@ -68,7 +68,7 @@ export function MyOrderRequestProgressBar({
               <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
                 <span
                   className={cn(
-                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold tabular-nums",
+                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[0.6875rem] font-bold tabular-nums",
                     step.state === "done" && palette.done,
                     step.state === "current" && palette.current,
                     step.state === "upcoming" && palette.upcoming,
@@ -86,7 +86,7 @@ export function MyOrderRequestProgressBar({
                 </span>
                 <span
                   className={cn(
-                    "max-w-[5rem] text-center text-[11px] font-medium leading-tight sm:max-w-none",
+                    "max-w-[5rem] text-center text-[0.6875rem] font-medium leading-tight sm:max-w-none",
                     step.state === "current" && palette.labelCurrent,
                     step.state === "done" && palette.labelDone,
                     step.state === "upcoming" && palette.labelUpcoming,
@@ -98,7 +98,7 @@ export function MyOrderRequestProgressBar({
                 {step.date ? (
                   <span
                     className={cn(
-                      "text-[11px] tabular-nums leading-tight text-slate-500",
+                      "text-[0.6875rem] tabular-nums leading-tight text-slate-500",
                       step.state === "cancelled" && "text-red-600"
                     )}
                   >

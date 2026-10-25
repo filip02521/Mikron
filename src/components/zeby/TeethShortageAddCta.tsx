@@ -87,11 +87,11 @@ export function TeethShortageAddCta({
           {label}
         </span>
         {compact ? (
-          <span className="hidden text-[10px] font-medium text-indigo-50/90 sm:block">
+          <span className="hidden text-[0.625rem] font-medium text-indigo-50/90 sm:block">
             {TEETH_BRAKI_ADD_COPY.ctaHint}
           </span>
         ) : (
-          <span className="mt-0.5 text-[11px] font-medium text-indigo-50/90">
+          <span className="mt-0.5 text-[0.6875rem] font-medium text-indigo-50/90">
             {TEETH_BRAKI_ADD_COPY.ctaHint}
           </span>
         )}

@@ -623,7 +623,7 @@ export function VerificationWorkspace({
                     </p>
                   </div>
                   {informacjaUi ? (
-                    <VerificationPathBadge ui={informacjaUi} className="shrink-0 text-[10px]" />
+                    <VerificationPathBadge ui={informacjaUi} className="shrink-0 text-[0.625rem]" />
                   ) : null}
                 </div>
                 {normalizeSalesClientName(active.sales_client_name) ? (

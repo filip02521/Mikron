@@ -339,7 +339,7 @@ export function InactiveSuppliersAdminClient({
           ) : (
             <>
               <div
-                className="hidden border-b border-slate-100 bg-slate-50/90 px-4 py-2 text-[11px] font-semibold text-slate-500 md:grid md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(100px,120px)_minmax(88px,100px)_minmax(120px,160px)] md:gap-3 lg:px-5"
+                className="hidden border-b border-slate-100 bg-slate-50/90 px-4 py-2 text-[0.6875rem] font-semibold text-slate-500 md:grid md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(100px,120px)_minmax(88px,100px)_minmax(120px,160px)] md:gap-3 lg:px-5"
                 aria-hidden
               >
                 <span>Dostawca</span>
@@ -371,7 +371,7 @@ export function InactiveSuppliersAdminClient({
                               supplier={s}
                               isEditing={isEditing}
                               onEdit={() => startEdit(s)}
-                              trailingBadge={<InactiveSupplierBadge className="text-[10px]" />}
+                              trailingBadge={<InactiveSupplierBadge className="text-[0.625rem]" />}
                             />
                             <p className="mt-1.5 flex items-center gap-1 text-xs text-slate-500 md:mt-1">
                               <IconMapPin size={12} className="shrink-0 text-slate-400" />

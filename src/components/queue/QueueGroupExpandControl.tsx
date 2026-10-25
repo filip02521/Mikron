@@ -24,7 +24,7 @@ export function QueueGroupExpandControl({
       onClick={() => (allExpanded ? onCollapseAll() : onExpandAll())}
       className={cn(
         panelTextLinkClass,
-        "inline-flex shrink-0 items-center gap-1 text-[10px] font-medium transition hover:underline",
+        "inline-flex shrink-0 items-center gap-1 text-[0.625rem] font-medium transition hover:underline",
         className,
       )}
     >

@@ -88,13 +88,13 @@ const tierTitleClass: Record<EntryTier, string> = {
 const tierDescClass: Record<EntryTier, string> = {
   highlight: "text-sm leading-relaxed text-slate-600",
   normal: "text-xs leading-relaxed text-slate-600",
-  minor: "text-[11px] leading-relaxed text-slate-500",
+  minor: "text-[0.6875rem] leading-relaxed text-slate-500",
 };
 
 const tierBadgeClass: Record<EntryTier, string> = {
   highlight: "rounded-md px-2.5 py-0.5 text-xs font-semibold",
-  normal: "rounded-md px-2 py-0.5 text-[11px] font-semibold",
-  minor: "rounded-md px-1.5 py-0.5 text-[10px] font-semibold",
+  normal: "rounded-md px-2 py-0.5 text-[0.6875rem] font-semibold",
+  minor: "rounded-md px-1.5 py-0.5 text-[0.625rem] font-semibold",
 };
 
 const tierLinkClass: Record<EntryTier, string> = {
@@ -103,7 +103,7 @@ const tierLinkClass: Record<EntryTier, string> = {
   normal:
     "inline-flex items-center gap-1 text-xs font-medium text-indigo-700 transition-colors hover:text-indigo-900 hover:underline underline-offset-2",
   minor:
-    "inline-flex items-center gap-1 text-[11px] font-medium text-indigo-600 transition-colors hover:text-indigo-800",
+    "inline-flex items-center gap-1 text-[0.6875rem] font-medium text-indigo-600 transition-colors hover:text-indigo-800",
 };
 
 const tierGapClass: Record<EntryTier, string> = {
@@ -215,7 +215,7 @@ export function ChangelogModal({
           <>
             {highlights.length > 0 && (
               <section className="space-y-2.5">
-                <h4 className="text-[11px] font-semibold text-indigo-700">
+                <h4 className="text-[0.6875rem] font-semibold text-indigo-700">
                   {SECTION_LABELS.highlight}
                 </h4>
                 {highlights.map((entry) => (
@@ -236,7 +236,7 @@ export function ChangelogModal({
                 {highlights.length > 0 && (
                   <div className="border-t border-slate-100" />
                 )}
-                <h4 className="text-[11px] font-semibold text-slate-600">
+                <h4 className="text-[0.6875rem] font-semibold text-slate-600">
                   {SECTION_LABELS.normal}
                 </h4>
                 <div className="space-y-2">
@@ -259,7 +259,7 @@ export function ChangelogModal({
                 {(highlights.length > 0 || normals.length > 0) && (
                   <div className="border-t border-slate-100" />
                 )}
-                <h4 className="text-[11px] font-semibold text-slate-400">
+                <h4 className="text-[0.6875rem] font-semibold text-slate-400">
                   {SECTION_LABELS.minor}
                 </h4>
                 <div className="space-y-1.5">

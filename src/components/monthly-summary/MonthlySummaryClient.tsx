@@ -300,7 +300,7 @@ function StickyDepartmentTabs({
 
   return (
     <div className="px-5 py-3">
-      <p className="mb-2 text-[10px] font-semibold text-slate-400">
+      <p className="mb-2 text-[0.625rem] font-semibold text-slate-400">
         Działy · {stats.monthLabel}
       </p>
       <div
@@ -362,7 +362,7 @@ function StickyDepartmentTabs({
                 >
                   {meta.label}
                 </span>
-                <span className="hidden text-[10px] text-slate-500 lg:block">{meta.hint}</span>
+                <span className="hidden text-[0.625rem] text-slate-500 lg:block">{meta.hint}</span>
               </span>
               <span
                 className={cn(
@@ -411,7 +411,7 @@ function HighlightCard({
           </svg>
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold text-slate-600/80">{eyebrow}</p>
+          <p className="text-[0.6875rem] font-semibold text-slate-600/80">{eyebrow}</p>
           <p className="mt-0.5 truncate text-lg font-bold text-slate-900">{title}</p>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">{children}</div>
         </div>
@@ -422,7 +422,7 @@ function HighlightCard({
 
 function MetricSourceHint() {
   return (
-    <p className="mt-2 text-[11px] leading-snug text-slate-400">{MONTHLY_STATS_ACTION_AT_HINT}</p>
+    <p className="mt-2 text-[0.6875rem] leading-snug text-slate-400">{MONTHLY_STATS_ACTION_AT_HINT}</p>
   );
 }
 
@@ -445,7 +445,7 @@ function SalesTab({
   return (
     <div className="space-y-5">
       <div>
-        <p className="mb-2 text-[11px] font-semibold text-slate-500">
+        <p className="mb-2 text-[0.6875rem] font-semibold text-slate-500">
           Kluczowe wskaźniki
         </p>
         <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
@@ -516,7 +516,7 @@ function SalesTab({
       ) : null}
 
       <div>
-        <p className="mb-2 text-[11px] font-semibold text-slate-500">
+        <p className="mb-2 text-[0.6875rem] font-semibold text-slate-500">
           Szczegóły
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
@@ -527,7 +527,7 @@ function SalesTab({
             tone="sky"
           />
         </div>
-        <p className="mt-1.5 text-[11px] text-slate-400">
+        <p className="mt-1.5 text-[0.6875rem] text-slate-400">
           Otwarte ZK = dokumenty utworzone przed końcem miesiąca, które wtedy jeszcze nie były
           zamknięte ani zarchiwizowane (backlog).
         </p>
@@ -599,7 +599,7 @@ function SalesTab({
                         barClassName="bg-indigo-400"
                         showLabel={false}
                       />
-                      <p className="mt-1 text-[11px] text-slate-500">
+                      <p className="mt-1 text-[0.6875rem] text-slate-500">
                         {share}% wszystkich próśb
                         <span className="mx-1.5 text-slate-300">·</span>
                         <span className="tabular-nums text-emerald-700">{s.requestsCompleted}</span>
@@ -608,7 +608,7 @@ function SalesTab({
                         <span className="mx-1.5 text-slate-300">·</span>
                         {rate}% skuteczności
                       </p>
-                      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-slate-500">
+                      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[0.6875rem] text-slate-500">
                         <span>
                           <strong className="tabular-nums text-amber-700">{s.requestsCancelled}</strong>
                           {" "}
@@ -635,7 +635,7 @@ function SalesTab({
           <div className="hidden md:block">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 text-left text-[11px] text-slate-500">
+                <tr className="border-b border-slate-100 text-left text-[0.6875rem] text-slate-500">
                   <th className="px-4 py-2.5 font-medium">Miejsce</th>
                   <th className="px-4 py-2.5 font-medium">Handlowiec</th>
                   <th className="px-4 py-2.5 text-right font-medium">Złożone</th>
@@ -686,7 +686,7 @@ function SalesTab({
                               style={{ width: `${barVsLeader}%` }}
                             />
                           </div>
-                          <span className="text-[10px] tabular-nums text-slate-500">
+                          <span className="text-[0.625rem] tabular-nums text-slate-500">
                             {rate}% skuteczności
                           </span>
                         </div>
@@ -731,7 +731,7 @@ function DeliveryTab({
   return (
     <div className="space-y-5">
       <div>
-        <p className="mb-2 text-[11px] font-semibold text-slate-500">
+        <p className="mb-2 text-[0.6875rem] font-semibold text-slate-500">
           Kluczowe wskaźniki
         </p>
         <div className="grid gap-2.5 sm:grid-cols-3">
@@ -821,7 +821,7 @@ function DeliveryTab({
                     barClassName="bg-sky-400"
                     showLabel={false}
                   />
-                  <p className="mt-1 text-[11px] text-slate-500">{share}% przyjęć</p>
+                  <p className="mt-1 text-[0.6875rem] text-slate-500">{share}% przyjęć</p>
                 </div>
               );
             })}
@@ -858,7 +858,7 @@ function DeliveryTab({
                       barClassName="bg-emerald-400"
                       showLabel={false}
                     />
-                    <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-[11px] text-slate-500">
+                    <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-[0.6875rem] text-slate-500">
                       <span>{share}% wszystkich przyjęć</span>
                       <span>{formatPaczki(c.packages)}</span>
                       <span>{formatPalety(c.pallets)}</span>
@@ -941,7 +941,7 @@ function SupplierRanking({
                   barClassName="bg-amber-400"
                   showLabel={false}
                 />
-                <div className="mt-1 text-[11px] text-slate-500">
+                <div className="mt-1 text-[0.6875rem] text-slate-500">
                   {share}% wszystkich zamówień
                   <span className="mx-1.5 text-slate-300">·</span>
                   <strong className="tabular-nums text-emerald-700">{s.completed}</strong>
@@ -956,7 +956,7 @@ function SupplierRanking({
         })}
       </div>
       {suppliers.some((s) => s.isRemainder) ? (
-        <p className="border-t border-slate-100 px-4 py-2 text-[11px] text-slate-400">
+        <p className="border-t border-slate-100 px-4 py-2 text-[0.6875rem] text-slate-400">
           Top 15 dostawców; pozostali są zsumowani w wierszu zbiorczym.
         </p>
       ) : null}
@@ -986,7 +986,7 @@ function ProcurementTab({
   return (
     <div className="space-y-5">
       <div>
-        <p className="mb-2 text-[11px] font-semibold text-slate-500">
+        <p className="mb-2 text-[0.6875rem] font-semibold text-slate-500">
           Kluczowe wskaźniki
         </p>
         <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
@@ -1071,7 +1071,7 @@ function ProcurementTab({
       ) : null}
 
       <div>
-        <p className="mb-2 text-[11px] font-semibold text-slate-500">
+        <p className="mb-2 text-[0.6875rem] font-semibold text-slate-500">
           Szczegóły
         </p>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -1122,7 +1122,7 @@ function TeethTab({
   return (
     <div className="space-y-5">
       <div>
-        <p className="mb-2 text-[11px] font-semibold text-slate-500">
+        <p className="mb-2 text-[0.6875rem] font-semibold text-slate-500">
           Kluczowe wskaźniki
         </p>
         <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
@@ -1196,7 +1196,7 @@ function TeethTab({
       ) : null}
 
       <div>
-        <p className="mb-2 text-[11px] font-semibold text-slate-500">
+        <p className="mb-2 text-[0.6875rem] font-semibold text-slate-500">
           Szczegóły
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
@@ -1296,7 +1296,7 @@ export function MonthlySummaryClient({
             </div>
 
             <blockquote className="max-w-2xl border-t border-slate-100/90 pt-3.5 sm:pl-[3.125rem]">
-              <p className="text-[13px] leading-[1.55] text-slate-400">
+              <p className="text-[0.8125rem] leading-[1.55] text-slate-400">
                 <span className="select-none text-slate-300" aria-hidden>
                   „
                 </span>
@@ -1315,7 +1315,7 @@ export function MonthlySummaryClient({
         */}
         <div className="bg-slate-50/80">
           <div className="px-5 pt-4">
-            <p className="text-[11px] font-semibold text-slate-500">
+            <p className="text-[0.6875rem] font-semibold text-slate-500">
               Wybierz dział
             </p>
             <p className="mt-0.5 text-sm text-slate-600">

@@ -106,7 +106,7 @@ function TypeaheadDropdownPanel({
         <li className="px-3 py-2.5 text-sm text-slate-600">{emptyMessage}</li>
       ) : null}
       {footer ? (
-        <li className="sticky bottom-0 border-t border-slate-100 bg-slate-50/95 px-3 py-1.5 text-[10px] leading-snug text-slate-500">
+        <li className="sticky bottom-0 border-t border-slate-100 bg-slate-50/95 px-3 py-1.5 text-[0.625rem] leading-snug text-slate-500">
           {footer}
         </li>
       ) : null}
@@ -236,7 +236,7 @@ export function TypeaheadDropdown({
 
 export function TypeaheadSectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <li className="px-3 pb-0.5 pt-2 text-[10px] font-bold text-indigo-600/80">
+    <li className="px-3 pb-0.5 pt-2 text-[0.625rem] font-bold text-indigo-600/80">
       {children}
     </li>
   );
@@ -315,7 +315,7 @@ export function TypeaheadOption({
         <span className="flex items-start justify-between gap-2">
           <span className="font-medium">{title}</span>
           {badge ? (
-            <span className="shrink-0 rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-800">
+            <span className="shrink-0 rounded-md bg-indigo-50 px-1.5 py-0.5 text-[0.625rem] font-semibold text-indigo-800">
               {badge}
             </span>
           ) : null}

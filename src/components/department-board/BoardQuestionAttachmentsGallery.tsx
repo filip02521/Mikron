@@ -132,7 +132,7 @@ export function BoardQuestionAttachmentsGallery({
     return (
       <div
         className={cn(
-          "flex items-center gap-1.5 rounded-md border border-amber-200/80 bg-amber-50/80 px-2.5 py-1.5 text-[11px] font-medium text-amber-800",
+          "flex items-center gap-1.5 rounded-md border border-amber-200/80 bg-amber-50/80 px-2.5 py-1.5 text-[0.6875rem] font-medium text-amber-800",
           className
         )}
       >
@@ -168,7 +168,7 @@ export function BoardQuestionAttachmentsGallery({
                   unoptimized
                   className="object-cover"
                 />
-                <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-black/45 px-1.5 py-1 text-[10px] font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
+                <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-black/45 px-1.5 py-1 text-[0.625rem] font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
                   Powiększ
                 </span>
               </button>
@@ -196,7 +196,7 @@ export function BoardQuestionAttachmentsGallery({
                 Otwórz w pełnym rozmiarze
               </a>
               {canBrowse ? (
-                <span className="hidden text-[11px] text-slate-400 sm:inline">
+                <span className="hidden text-[0.6875rem] text-slate-400 sm:inline">
                   Strzałki ← → przełączają zdjęcia
                 </span>
               ) : null}

@@ -333,11 +333,11 @@ export function LocationScheduleClient({
                           <p className="flex flex-wrap items-center gap-2">
                             <span>{row.name}</span>
                             {!row.is_active ? (
-                              <InactiveSupplierBadge className="text-[10px]" />
+                              <InactiveSupplierBadge className="text-[0.625rem]" />
                             ) : null}
                           </p>
                           {row.interval_hint ? (
-                            <p className="mt-0.5 flex items-center gap-1 text-[11px] font-normal text-slate-500">
+                            <p className="mt-0.5 flex items-center gap-1 text-[0.6875rem] font-normal text-slate-500">
                               <IconClock size={11} className="shrink-0 text-slate-400" />
                               {row.interval_hint}
                             </p>
@@ -468,7 +468,7 @@ function DateCell({
             if (next !== (value ?? null)) onSave(next);
           }}
         />
-        <p className="flex items-center gap-1 text-[10px] text-slate-500 tabular-nums">
+        <p className="flex items-center gap-1 text-[0.625rem] text-slate-500 tabular-nums">
           <IconCalendar size={10} className="shrink-0 text-slate-400" />
           {hint}
         </p>

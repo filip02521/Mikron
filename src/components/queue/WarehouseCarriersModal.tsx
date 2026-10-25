@@ -209,7 +209,7 @@ export function WarehouseCarriersModal({
                         <Badge variant="default">Ukryty</Badge>
                       ) : null}
                     </div>
-                    <p className="text-[11px] text-slate-400">Kolejność: {carrier.sortOrder}</p>
+                    <p className="text-[0.6875rem] text-slate-400">Kolejność: {carrier.sortOrder}</p>
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     <Button

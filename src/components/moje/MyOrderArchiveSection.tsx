@@ -189,7 +189,7 @@ export function MyOrderArchiveSection({
             </div>
           )}
           {visibleRows.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-slate-100 px-4 py-2 text-[11px] text-slate-500" aria-label="Znaczenie kolorów w archiwum">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-slate-100 px-4 py-2 text-[0.6875rem] text-slate-500" aria-label="Znaczenie kolorów w archiwum">
               <span className="inline-flex items-center gap-1.5">
                 <span className="h-3 w-1 shrink-0 rounded-full bg-emerald-300" aria-hidden />
                 <span>Zrealizowane</span>

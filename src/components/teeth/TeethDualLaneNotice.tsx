@@ -28,7 +28,7 @@ export function TeethDualLaneNotice({
       role="note"
     >
       <p className="font-semibold text-violet-900">{TEETH_DUAL_LANE_COPY.dailyPanelNoticeTitle}</p>
-      <p className="mt-1 text-[13px] leading-snug text-violet-900/90">
+      <p className="mt-1 text-[0.8125rem] leading-snug text-violet-900/90">
         {TEETH_DUAL_LANE_COPY.dailyPanelNoticeBody}
       </p>
       <p className="mt-2 font-medium text-violet-950">{copy.primary}</p>

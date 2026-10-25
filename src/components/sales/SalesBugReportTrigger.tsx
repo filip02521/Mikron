@@ -113,7 +113,7 @@ export function SalesBugReportTrigger({ className }: { className?: string }) {
                 disabled={pending}
               />
             </Field>
-            <p className="text-[11px] text-slate-500">Strona: {pathname}</p>
+            <p className="text-[0.6875rem] text-slate-500">Strona: {pathname}</p>
             {error ? <p className="text-xs text-red-700">{error}</p> : null}
           </div>
         )}

@@ -40,7 +40,7 @@ export function ProcurementWorkspaceSwitcher({
 
   return (
     <div className="mb-3">
-      <p className="mb-1.5 px-3 text-[10px] font-semibold text-slate-400">
+      <p className="mb-1.5 px-3 text-[0.625rem] font-semibold text-slate-400">
         Przełącz obszar
       </p>
       {error ? (
@@ -96,7 +96,7 @@ export function ProcurementWorkspaceSwitcher({
               <NavIcon navKey={iconKey} size={stacked ? 16 : 14} />
               <span
                 className={cn(
-                  "min-w-0 truncate text-[11px] font-medium leading-tight",
+                  "min-w-0 truncate text-[0.6875rem] font-medium leading-tight",
                   stacked && "flex-1",
                   isActive ? cn("font-semibold", workspaceToneText(opt.value)) : "text-slate-600"
                 )}

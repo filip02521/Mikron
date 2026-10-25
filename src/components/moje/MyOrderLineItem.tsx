@@ -85,7 +85,7 @@ function CopyBadge({
             : `${title} - kliknij, aby skopiować`
       }
       className={cn(
-        "shrink-0 cursor-pointer rounded px-1 py-0.5 font-mono text-[11px] font-semibold transition-colors",
+        "shrink-0 cursor-pointer rounded px-1 py-0.5 font-mono text-[0.6875rem] font-semibold transition-colors",
         className,
         copied && "ring-2 ring-emerald-400",
         failed && "ring-2 ring-red-400"
@@ -360,7 +360,7 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
           deliveredQuantity={line.deliveredQuantity}
           triggerSize="sm"
           triggerVariant="ghost"
-          triggerClassName="text-[11px] font-medium text-indigo-700 hover:text-indigo-900"
+          triggerClassName="text-[0.6875rem] font-medium text-indigo-700 hover:text-indigo-900"
         />
       ) : null}
       {line.teethOrderFileName ? (
@@ -376,7 +376,7 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
     badge ? (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-semibold ring-1",
+        "inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[0.6875rem] font-semibold ring-1",
         badge.className
       )}
     >
@@ -439,7 +439,7 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
             {showPerLineLaneBadge ? (
               <MyOrderProductLaneBadge
                 laneKind={line.isTeeth ? "teeth" : "regular"}
-                className="px-1 py-0 text-[11px]"
+                className="px-1 py-0 text-[0.6875rem]"
               />
             ) : null}
             {lineQuantityLabel ? (
@@ -479,7 +479,7 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
               {detailParts.length > 0 ? (
                 <p
                   className={cn(
-                    "text-[11px] leading-relaxed text-slate-500",
+                    "text-[0.6875rem] leading-relaxed text-slate-500",
                     emphasizeStock && onStock && "font-medium text-emerald-800",
                     emphasizeStock && partial && "font-medium text-sky-900"
                   )}

@@ -89,12 +89,12 @@ export function ProductCatalogSupplierAssign({
       </p>
       <div className="mt-2">{controls}</div>
       {row.topSupplier && unchanged ? (
-        <p className="mt-1.5 text-[11px] text-slate-500">
+        <p className="mt-1.5 text-[0.6875rem] text-slate-500">
           Wybierz innego dostawcę z listy - stanie się głównym w katalogu (starsze mapowania
           zostają w historii).
         </p>
       ) : (
-        <p className="mt-1.5 text-[11px] text-slate-500">
+        <p className="mt-1.5 text-[0.6875rem] text-slate-500">
           Zapis w bazie katalogu; prośby w weryfikacji z tym towarem dostaną dostawcę automatycznie,
           jeśli brakowało tylko mapowania.
         </p>
