@@ -54,6 +54,11 @@ function formatWhen(iso: string): string {
 
 const zl = (v: number) => `${Math.round(v).toLocaleString("pl-PL")} zł`;
 
+/** Kotwica bloku propozycji w wierszu — cel „Pokaż w kolejce” z sekcji Automat ZD. */
+export function dailyZdProposalAnchorId(supplierId: string): string {
+  return `zd-propozycja-${supplierId}`;
+}
+
 /**
  * Zamówienie automatu w wierszu dostawcy harmonogramu: co jest gotowe, „Sprawdź i zatwierdź”
  * (panel boczny: przeliczenie, korekta, ZD w Subiekcie, wysyłka) i „Odrzuć” z powodem.
@@ -101,8 +106,9 @@ export function DailyZdProposalNotice({ proposal, className }: { proposal: Daily
   return (
     <>
       <div
+        id={dailyZdProposalAnchorId(proposal.supplierId)}
         className={cn(
-          "flex flex-col gap-2.5 rounded-md bg-indigo-50/70 px-3 py-2.5 sm:flex-row sm:items-center sm:gap-3",
+          "flex scroll-mt-28 flex-col gap-2.5 rounded-md bg-indigo-50/70 px-3 py-2.5 transition-shadow duration-300 sm:flex-row sm:items-center sm:gap-3",
           className
         )}
       >
