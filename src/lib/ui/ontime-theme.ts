@@ -671,7 +671,8 @@ export const panelSubsectionInsetClass = "px-3 sm:px-4 lg:px-5";
  * Skala typografii panelu dziennego — płaska, bez powiększania na lg+ (wąska kolumna).
  */
 export const panelTypography = {
-  sectionTitle: sectionTitleClass,
+  // Tytuł bloku w karcie lub komunikatu (14/600). Sekcja strony: sectionTitleClass / CardHeader.
+  sectionTitle: "text-sm font-semibold text-slate-900",
   sectionLabel: "text-[0.6875rem] font-semibold text-slate-600",
   // Item (DESIGN.md): nazwa pozycji 15/600, metadane 13/400.
   rowTitle: "text-[0.9375rem] font-semibold leading-snug text-slate-900",

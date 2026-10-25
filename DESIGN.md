@@ -30,15 +30,15 @@ colors:
   danger-ink-deep: "#991b1b"
 typography:
   headline:
-    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "1.5rem"
-    fontWeight: 600
-    lineHeight: 1.25
-    letterSpacing: "-0.02em"
+    fontFamily: "Inter Tight, Geist, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "1.75rem"
+    fontWeight: 700
+    lineHeight: 1.2
+    letterSpacing: "-0.025em"
   section:
-    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Inter Tight, Geist, ui-sans-serif, system-ui, sans-serif"
     fontSize: "1.125rem"
-    fontWeight: 600
+    fontWeight: 700
     lineHeight: 1.35
     letterSpacing: "-0.015em"
   title:
@@ -47,6 +47,16 @@ typography:
     fontWeight: 600
     lineHeight: 1.4
     letterSpacing: "-0.01em"
+  item:
+    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "0.9375rem"
+    fontWeight: 600
+    lineHeight: 1.35
+  meta:
+    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "0.8125rem"
+    fontWeight: 400
+    lineHeight: 1.4
   body:
     fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.9375rem"
@@ -260,19 +270,22 @@ Na kolorowym tle tekst pomocniczy bierz z tej samej rodziny (np. `amber-800` na 
 
 ## Typography
 
-**Krój:** Geist w całym interfejsie, Geist Mono dla numerów katalogowych, symboli i kodów. Oba ładuje `next/font`, dostępne jako `font-sans` i `font-mono`.
+**Krój:** Inter Tight 700 (`font-display`) tylko w tytule strony i tytułach sekcji. Geist (`font-sans`) w całej reszcie interfejsu, Geist Mono (`font-mono`) dla numerów katalogowych, symboli i kodów. Wszystkie trzy ładuje `next/font` w `src/app/layout.tsx`.
 
-Hierarchię budują rozmiar i waga, nie zmiana kroju ani koloru. Waga 600 to tytuły i etykiety, 500 to przyciski, nagłówki kolumn i odznaki, 400 cała reszta. Wyższe wagi nie występują. Skala jest ciasna (krok 1.125–1.33): 10 · 11 · 12 · 13 · 14 · 15 · 16 · 18 · 24px. Tytuł strony nie rośnie na dużym ekranie: aplikacja to narzędzie, nie strona promocyjna.
+Na każdym ekranie musi być widać od razu, co jest ważne. Dlatego są cztery wyraźne stopnie i każdy ma jedną rolę: tytuł strony (28px, Inter Tight 700), tytuł sekcji (18px, Inter Tight 700), nazwa pozycji w liście (15px, Geist 600), metadane (13px, Geist 400). Element, który nie jest żadnym z nich, nie udaje go wagą ani rozmiarem. Liczba, przycisk albo etykieta nie dostaje 600 tylko po to, żeby się wyróżnić; wyróżnia go kolor stanu albo miejsce. Waga 700 występuje tylko w `font-display`. 600 mają nazwy pozycji, tytuły bloków i etykiety pól, 500 przyciski, nagłówki kolumn i odznaki, a 400 cała reszta. Tytuł strony nie rośnie na dużym ekranie: aplikacja to narzędzie, nie strona promocyjna.
 
 ### Hierarchy
 
-- **Headline** (600, `text-2xl` 1.5rem, tracking −0.02em): tytuł strony w `PageHeader`, na każdej szerokości. Jeden na ekran.
-- **Section** (600, `text-lg` 1.125rem, tracking −0.015em): nagłówek sekcji leżącej na tle, między kartami (np. „Zaległe”, „Na jutro”).
-- **Title** (600, `text-base` 1rem, tracking −0.01em): tytuł karty w `CardHeader`. Wariant `micro` (chrome Kreatora ZD) 13px.
+- **Headline** (`pageTitleClass`: Inter Tight 700, `text-[1.75rem]`, tracking −0.025em): tytuł strony w `PageHeader`, na każdej szerokości. Jeden na ekran.
+- **Section** (`sectionTitleClass`: Inter Tight 700, `text-lg`, tracking −0.015em): tytuł karty w `CardHeader` i nagłówek sekcji na tle („Zaległe”, „Prośby handlowców”, „Pilne u dostawcy”). Licznik obok tytułu pisz w Meta, nie w wadze tytułu.
+- **Title** (Geist 600, `text-base`): tytuł karty w gęstym kontekście (`CardHeader density="compact"`, panel boczny, okno). Wariant `micro` (chrome Kreatora ZD) 13px.
+- **Item** (`panelTypography.rowTitle`: Geist 600, `text-[0.9375rem]`): nazwa pozycji w liście lub tabeli: dostawca, towar, osoba, dokument.
+- **Meta** (`panelTypography.rowMeta`: Geist 400, `text-[0.8125rem]`, `slate-500`): linia pod nazwą pozycji: kraj, kanał, data analizy, ilości.
+- **Block** (`panelTypography.sectionTitle`: Geist 600, `text-sm`): tytuł bloku wewnątrz karty i tytuł komunikatu.
 - **Body** (400, 0.9375rem, 1.55): tekst aplikacji, opisy, komunikaty. Opis pod tytułem strony ma szerokość max 48rem.
 - **Body Dense** (400, 0.875rem, 1.45, cyfry tabelaryczne): komórki tabel, pola od `sm`, podpowiedzi.
 - **Label** (600, 0.75rem): etykieta pola formularza, kolor `slate-600`.
-- **Micro** (500 lub 600, `text-[0.6875rem]`, czyli 11px przy bazie 16px): metadane w wierszu listy, liczniki przy etykiecie, podpis pod wartością, etykieta w dolnym pasku telefonu. Najmniejszy rozmiar do czytania.
+- **Micro** (500 lub 600, `text-[0.6875rem]`, czyli 11px przy bazie 16px): liczniki przy etykiecie, podpis pod wartością, etykieta w dolnym pasku telefonu. Najmniejszy rozmiar do czytania.
 - **Tiny** (600, `text-[0.625rem]`, 10px): tylko krótka treść w pigułce lub odznace (licznik, „Dziś”, skrót stanu). Zdania nigdy.
 - **Column Header** (500, 0.8125rem, `slate-500`): nagłówek kolumny tabeli. Pisany zdaniowo, bez wersalików.
 - **Nav Group** (600, 11px, tracking 0.08em, wersaliki, `slate-500`): nagłówek grupy w menu bocznym. Jedyne miejsce na wersaliki z rozstrzeleniem.
@@ -284,7 +297,7 @@ Rozmiar bazowy zależy od ustawienia użytkownika: `html[data-font-scale]` podno
 
 **Cyfry w kolumnie.** Kwoty, ilości, procenty i daty w tabelach i licznikach mają cyfry o stałej szerokości. `.data-table` włącza je sama; poza tabelą dodaj `tabular-nums`.
 
-**Wagi do 600.** `font-semibold` to najcięższa waga; `font-bold` i cięższe nie występują (pilnuje `audit:design`).
+**700 tylko w tytułach.** `font-bold` występuje wyłącznie razem z `font-display` w tej samej klasie (Headline, Section). Poza nimi najcięższa waga to `font-semibold`. Pilnuje tego `audit:design`. Nagłówki kolumn `<th>` mają 500 z `globals.css`, nie domyślne 700 przeglądarki.
 
 **Wersaliki tylko w menu.** Nagłówki kolumn, etykiety pól i odznaki pisz normalnie. Wersaliki z rozstrzeleniem są tylko w nagłówkach grup menu bocznego (`sidebarNavSectionTitleClass`) i w szynie grup asystenta. Uzasadniony wyjątek (kod w monospace, logotyp) dostaje komentarz `design-ok: <powód>` nad linią, inaczej audyt go odrzuci.
 
@@ -376,7 +389,7 @@ Pełny Petrol nigdy nie oznacza „wybrane”: należy do głównej akcji i licz
 
 - **Promień:** 10px. **Tło:** `card` na `canvas`. **Obramowanie:** 1px `line`. **Cień:** Karta i kontrolka.
 - **Padding:** 1.25rem, od `sm` 1.5rem. Karta z tabelą ma `padding={false}`, a tabela dochodzi do krawędzi.
-- **Nagłówek (`CardHeader`):** tytuł Title, opcjonalny opis (`slate-600`, Body Dense) i akcja po prawej; od treści oddziela go linia `line-soft`. Bez kafla ikony: kafel jest tylko w `EmptyState` i w momentach marki.
+- **Nagłówek (`CardHeader`):** tytuł Section (w gęstym kontekście Title), opcjonalny opis (`slate-600`, Body Dense) i akcja po prawej; od treści oddziela go linia `line-soft`. Bez kafla ikony: kafel jest tylko w `EmptyState` i w momentach marki.
 - Karta w karcie jest zakazana. Wewnątrz karty grupuj odstępem, linią albo blokiem `well` bez cienia i bez obramowania.
 
 ### Inputs / Fields
@@ -554,6 +567,7 @@ Stan na 25.10.2026, z wyszukiwania w `src/` (bez testów). Przy każdej zmianie 
 
 | Reguła | Wystąpienia | Uwagi |
 |---|---|---|
+| Nagłówki poza `PageHeader` / `CardHeader` | 71 `<h1>`–`<h3>` w 54 plikach | ręczne `font-semibold`; tytuł strony → `pageTitleClass`, sekcja → `sectionTitleClass`, blok → `panelTypography.sectionTitle` |
 | `slate-400` tylko pomocniczo | 383 w 170 plikach | część to ikony i „—” (dozwolone); tekst do przeczytania → `slate-500` |
 | Promień do 10px | `rounded-xl` i większe: 52 w 26 plikach | karta ma 10px, element w karcie mniej |
 | Słownik cieni | `shadow-md` i większe: 46 w 34 plikach | zamień na `var(--shadow-*)` |
