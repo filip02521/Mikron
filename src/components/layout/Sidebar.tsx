@@ -44,6 +44,7 @@ import {
   IconSidebarExpand,
 } from "@/components/icons/StrokeIcons";
 import { AppBrandMark } from "@/components/ui/AppBrandMark";
+import { buttonClass } from "@/components/ui/Button";
 import { useSidebarCollapsed, useSidebarCollapseShortcut } from "@/lib/ui/sidebar-collapse";
 import type { VacationDelegationRow } from "@/lib/data/vacation-delegations";
 import { useSalesNavLocked } from "@/components/sales/SalesOnboardingContext";
@@ -657,10 +658,8 @@ export function Sidebar({
         {showLoginLink ? (
           <Link
             href="/login"
-            className={cn(
-              // Na 404 dla gościa główna akcja jest w karcie; tu przycisk drugorzędny (jedna główna na ekran).
-              "inline-flex w-full min-h-10 items-center justify-center rounded-md border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
-            )}
+            // Na 404 dla gościa główna akcja jest w karcie; tu przycisk drugorzędny (jedna główna na ekran).
+            className={buttonClass("secondary", "md", "w-full min-h-10")}
           >
             Zaloguj się
           </Link>

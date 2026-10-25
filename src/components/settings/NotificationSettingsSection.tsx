@@ -58,7 +58,6 @@ export function NotificationSettingsSection({ role }: NotificationSettingsSectio
           <SettingToggleRow
             label="Dźwięk przy odpowiedzi na Tablicy"
             description="Odtwarza dźwięk, gdy dział zakupów odpowie na Twoje pytanie"
-            ariaLabel="Powiadomienie dźwiękowe przy odpowiedzi na pytanie na Tablicy"
             checked={salesSound}
             onChange={setSalesSound}
           />
@@ -67,15 +66,13 @@ export function NotificationSettingsSection({ role }: NotificationSettingsSectio
           <SettingToggleRow
             label="Dźwięk przy pytaniu"
             description="Odtwarza dźwięk, gdy handlowiec doda pytanie na tablicy"
-            ariaLabel="Powiadomienie dźwiękowe, gdy handlowiec doda pytanie na tablicy"
             checked={opsSound}
             onChange={setOpsSound}
           />
         ) : null}
         <SettingToggleRow
-          label="Dźwięk toastów"
+          label="Dźwięk potwierdzeń"
           description="Odtwarza dźwięk przy komunikatach potwierdzenia i cofania"
-          ariaLabel="Powiadomienie dźwiękowe przy toastach"
           checked={toastSound}
           onChange={setToastSound}
         />

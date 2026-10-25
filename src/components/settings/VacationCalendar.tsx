@@ -846,7 +846,7 @@ export function VacationCalendar({
       {toast ? <NoticeToast notice={toast} onDismiss={dismiss} /> : null}
 
       <div className="mb-3 flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-1.5 rounded-lg border border-slate-200/70 bg-slate-50/40 p-1">
+        <div className="flex items-center gap-1.5 rounded-md bg-slate-50 p-1">
           <Button variant="ghost" size="sm" onClick={goToPrevMonth} aria-label="Poprzedni miesiąc" className="h-8 w-8 p-0">
             <IconChevronLeft size={16} />
           </Button>
@@ -875,7 +875,7 @@ export function VacationCalendar({
       </div>
 
       {vacationFormOpen && canEdit ? (
-        <div className="mb-3 space-y-3 rounded-lg border border-slate-200/80 bg-slate-50/40 p-3.5 shadow-sm shadow-slate-200/40">
+        <div className="mb-3 space-y-3 rounded-md bg-slate-50 p-3.5">
           {editableSalesPersonId ? (
             <div className="flex items-center gap-2 rounded-md bg-indigo-50/70 px-3 py-2 text-xs font-medium text-indigo-700 ring-1 ring-indigo-100/60">
               <IconSun size={14} className="shrink-0" />

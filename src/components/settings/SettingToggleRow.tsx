@@ -2,14 +2,12 @@
 export function SettingToggleRow({
   label,
   description,
-  ariaLabel,
   checked,
   onChange,
   disabled = false,
 }: {
   label: string;
   description?: React.ReactNode;
-  ariaLabel?: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
   disabled?: boolean;
@@ -25,8 +23,6 @@ export function SettingToggleRow({
       <input
         type="checkbox"
         role="switch"
-        aria-checked={checked}
-        aria-label={ariaLabel}
         checked={checked}
         disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}

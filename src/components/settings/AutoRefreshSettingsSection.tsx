@@ -73,27 +73,24 @@ export function AutoRefreshSettingsSection({ role }: AutoRefreshSettingsSectionP
       <div className={settingRowsClass}>
         {showSales ? (
           <SettingToggleRow
-            label="Auto przy zmianach (panel sprzedaży)"
+            label="Odświeżaj pozostałe strony po zmianach"
             description="„Moje” i notatnik odświeżają się zawsze. Ta opcja odświeża też pozostałe strony sprzedaży zaraz po wykryciu zmian."
-            ariaLabel="Automatyczne odświeżanie panelu sprzedaży przy wykrytych zmianach"
             checked={salesValue}
             onChange={setSales}
           />
         ) : null}
         {showOps ? (
           <SettingToggleRow
-            label="Auto przy zmianach (panel operacji)"
+            label="Odświeżaj pozostałe strony po zmianach"
             description="Dziś, weryfikacja i tablica odświeżają się zawsze. Ta opcja obejmuje też pozostałe strony (kolejka, historia…) zaraz po wykryciu zmian."
-            ariaLabel="Automatyczne odświeżanie panelu operacji przy wykrytych zmianach"
             checked={opsValue}
             onChange={setOps}
           />
         ) : null}
         {showTeeth ? (
           <SettingToggleRow
-            label="Auto przy zmianach (panel zębów)"
+            label="Odświeżaj pozostałe strony po zmianach"
             description="Strony panelu zębów odświeżają się zawsze. Ta opcja obejmuje też pozostałe strony zaraz po wykryciu zmian."
-            ariaLabel="Automatyczne odświeżanie panelu zębów przy wykrytych zmianach"
             checked={teethValue}
             onChange={setTeeth}
           />

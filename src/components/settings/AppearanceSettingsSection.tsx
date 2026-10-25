@@ -61,7 +61,6 @@ export function AppearanceSettingsSection({
         <SettingToggleRow
           label="Jednolite tło"
           description="Ukrywa okręgi w tle aplikacji - czyste, jednolite tło"
-          ariaLabel="Jednolite tło - ukrywa okręgi w tle aplikacji"
           checked={optimisticBg}
           onChange={toggleBackground}
         />

@@ -49,16 +49,8 @@ export function NotFoundScreen({
         >
           <BrandCardAccent className="absolute -right-6 -top-6 h-36 w-44 text-indigo-600" />
 
-          {/* Znak 404 — tło typograficzne, nie konkuruje z marką */}
-          <span
-            className="pointer-events-none absolute inset-x-0 top-3 select-none text-center text-[4.5rem] font-semibold leading-none tracking-tighter text-slate-900/[0.04] sm:top-2 sm:text-[5.5rem]"
-            aria-hidden
-          >
-            404
-          </span>
-
           <div className="relative z-[1]">
-            <h1 className="pt-6 text-2xl font-semibold leading-tight tracking-[-0.02em] text-slate-900">
+            <h1 className="text-2xl font-semibold leading-tight tracking-[-0.02em] text-slate-900">
               Nie znaleziono strony
             </h1>
 

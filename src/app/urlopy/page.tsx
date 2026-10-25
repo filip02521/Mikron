@@ -38,8 +38,8 @@ export default async function StaffUrlopyPage() {
         title="Urlopy - zespół"
         description="Sprawdź, kto z zespołu jest na urlopie, i zaplanuj swój. Cały zespół widzi urlopy nawzajem."
       />
-      <Card padding={false} className="overflow-hidden">
-        <div className="p-3 sm:p-4">
+      <Card>
+        <div>
           {loadError ? (
             <p className="py-4 text-center text-sm text-red-700" role="alert">{loadError}</p>
           ) : (

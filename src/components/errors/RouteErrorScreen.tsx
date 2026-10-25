@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonClass } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { cn } from "@/lib/cn";
 import { salesPageShellClass } from "@/lib/ui/ontime-theme";
@@ -44,7 +44,7 @@ export function RouteErrorScreen({
           </Button>
           <Link
             href={homeHref}
-            className="inline-flex min-h-11 items-center rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 sm:min-h-9"
+            className={buttonClass("secondary", "sm", "min-h-11 sm:min-h-9")}
           >
             {homeLabel}
           </Link>
