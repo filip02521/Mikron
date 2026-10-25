@@ -6,14 +6,7 @@ import {
   dailyPanelViewLabel,
   type DailyPanelView,
 } from "@/lib/orders/daily-panel-view";
-import {
-  panelChromeInsetClass,
-  panelTabIdleClass,
-  panelTabsChromeClass,
-  panelTypography,
-  tabBadgeSelectedClass,
-  tabSelectedClass,
-} from "@/lib/ui/ontime-theme";
+
 
 const TAB_ORDER: DailyPanelView[] = ["dzis", "tydzien", "wyjatki"];
 
@@ -25,8 +18,6 @@ export function DailyPanelTabs({
   exceptionsCount = 0,
   hideVerificationBadge = false,
   onChange,
-  footer,
-  afterFooter,
 }: {
   active: DailyPanelView;
   todayCount: number;
@@ -35,9 +26,6 @@ export function DailyPanelTabs({
   hideVerificationBadge?: boolean;
   exceptionsCount?: number;
   onChange: (view: DailyPanelView) => void;
-  footer?: React.ReactNode;
-  /** Pod stopką zakładek (np. pasek statusu Dziś) — scrolluje z treścią. */
-  afterFooter?: React.ReactNode;
 }) {
   const tabRefs = useRef<Partial<Record<DailyPanelView, HTMLButtonElement | null>>>({});
 
@@ -89,15 +77,12 @@ export function DailyPanelTabs({
   const showVerificationChip =
     !hideVerificationBadge && verificationCount > 0;
 
+  // Przełącznik widoku w stylu SegmentedControl (DESIGN.md → „Jedno wybrane”), z semantyką zakładek i strzałkami.
   return (
-    <div className={panelTabsChromeClass}>
       <div
         role="tablist"
         aria-label="Widoki panelu dziennego"
-        className={cn(
-          "flex gap-2 overflow-x-auto py-2 [-ms-overflow-style:none] [scrollbar-width:none] sm:py-2.5 [&::-webkit-scrollbar]:hidden",
-          panelChromeInsetClass
-        )}
+        className="flex w-full max-w-full overflow-x-auto overscroll-x-contain rounded-md border border-slate-200/90 bg-slate-50/90 p-0.5 [scrollbar-width:thin] sm:inline-flex sm:w-auto"
       >
       {TAB_ORDER.map((id) => {
         const selected = active === id;
@@ -118,40 +103,28 @@ export function DailyPanelTabs({
             onClick={() => onChange(id)}
             onKeyDown={(e) => handleKeyDown(e, id)}
             className={cn(
-              "flex min-h-11 shrink-0 items-center gap-2 rounded-md border px-3 py-2 transition sm:min-h-9 sm:py-1.5",
-              panelTypography.tab,
-              selected ? tabSelectedClass : panelTabIdleClass
+              "flex min-h-11 flex-1 shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-[5px] px-3 text-sm font-medium transition-[background-color,color,box-shadow] duration-150 ease-out sm:min-h-8 sm:flex-none",
+              selected
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-600 hover:bg-white/70 hover:text-slate-900"
             )}
           >
             {dailyPanelViewLabel(id)}
             {count !== undefined && count > 0 ? (
-              <span
-                className={cn(
-                  "rounded-md px-2 py-0.5 tabular-nums",
-                  panelTypography.tabBadge,
-                  selected ? tabBadgeSelectedClass : "bg-slate-100 text-slate-700"
-                )}
-              >
-                {count}
-              </span>
+              <span className="text-xs font-normal tabular-nums text-slate-500">{count}</span>
             ) : null}
             {verificationBadge > 0 ? (
               <span
-                className={cn(
-                  "rounded-md px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums",
-                  selected ? "bg-amber-200 text-amber-950" : "bg-amber-100 text-amber-900"
-                )}
+                className="rounded-md bg-amber-50 px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums text-amber-900"
                 title="Zgłoszenia do uzupełnienia w weryfikacji"
               >
                 {verificationBadge}
+                <span className="sr-only"> do weryfikacji</span>
               </span>
             ) : null}
           </button>
         );
       })}
       </div>
-      {footer}
-      {afterFooter}
-    </div>
   );
 }

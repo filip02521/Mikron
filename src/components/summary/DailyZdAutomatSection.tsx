@@ -2,12 +2,9 @@
 
 import Link from "next/link";
 import { useId, useMemo, useState, useSyncExternalStore } from "react";
-import { useRouter } from "next/navigation";
-import { IconChevronDown, IconClock } from "@/components/icons/StrokeIcons";
+import { IconChevronDown } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
-import { dailyPanelQueueShellClass } from "@/components/summary/DailyPanelSubsectionBar";
-import { useDailyZdProposalMap } from "@/components/summary/DailyZdProposals";
-import { ZdAutoProposalSheet } from "@/components/zakupy/ZdAutoProposalSheet";
+import { dailyZdProposalAnchorId } from "@/components/summary/DailyZdProposals";
 import { cn } from "@/lib/cn";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 import {
@@ -26,7 +23,7 @@ import {
   type ZdAutomatDailySupplier,
   type ZdAutomatSupplierView,
 } from "@/lib/orders/zd-automat-daily";
-import { panelSubsectionInsetClass, panelTypography } from "@/lib/ui/ontime-theme";
+import { panelSubsectionInsetClass } from "@/lib/ui/ontime-theme";
 
 const OPEN_KEY = "ontime:daily-automat-open";
 
@@ -109,14 +106,12 @@ function SupplierRow({
   view,
   todayKey,
   highlighted,
-  onReview,
   cardsHref,
 }: {
   s: ZdAutomatDailySupplier;
   view: ZdAutomatSupplierView;
   todayKey: string;
   highlighted: boolean;
-  onReview: (supplierId: string) => void;
   /** Karty dostawców — ustawienia automatu są w karcie (`?karta=<id>`), jak z pulpitu automatu. */
   cardsHref: string;
 }) {
@@ -182,14 +177,9 @@ function SupplierRow({
       <div className="flex items-center justify-between gap-2 sm:contents">
         <CycleStrip proposals={s.proposals} todayKey={todayKey} />
         <span className="flex gap-1 sm:justify-end">
-          {view.pending ? (
-            <Button type="button" variant="outline" size="sm" className="min-h-10 sm:min-h-8" onClick={() => onReview(s.id)}>
-              Sprawdź
-            </Button>
-          ) : null}
           <Link
             href={`${cardsHref}?karta=${encodeURIComponent(s.id)}`}
-            className="inline-flex min-h-10 items-center rounded-md px-2.5 text-xs font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 sm:min-h-8"
+            className="inline-flex min-h-11 items-center rounded-md px-2.5 text-xs font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 sm:min-h-8"
           >
             Ustawienia
           </Link>
@@ -200,9 +190,9 @@ function SupplierRow({
 }
 
 /**
- * Panel dzienny → „Dziś”: automat ZD w jednym miejscu — zdanie stanu (czeka propozycja, automat stoi, nocny przebieg),
- * a po rozwinięciu dostawcy z ostatnim wynikiem, następną propozycją i ostatnimi cyklami. Tylko stan: ustawienia są
- * w karcie dostawcy (to samo okno), a propozycję zatwierdza ten sam panel co w wierszu harmonogramu.
+ * Panel dzienny → „Dziś”: automat ZD jako jedna linia stanu (czeka propozycja, automat stoi, nocny przebieg).
+ * Decyzja o propozycji zapada tylko w wierszu dostawcy w kolejce („Sprawdź i zatwierdź”) — tu „Pokaż w kolejce”
+ * przewija do tego wiersza. „Dostawcy (N)” rozwija stan automatu u każdego dostawcy; ustawienia są w karcie dostawcy.
  */
 export function DailyZdAutomatSection({
   data,
@@ -215,16 +205,12 @@ export function DailyZdAutomatSection({
   /** Karty dostawców (link „Ustawienia” → karta dostawcy z sekcją Automat ZD). */
   cardsHref: string;
 }) {
-  const router = useRouter();
   const titleId = useId();
   const listId = useId();
   const storedOpen = useSyncExternalStore(subscribeStorage, readStoredOpen, () => false);
   const [openOverride, setOpenOverride] = useState<boolean | null>(null);
   const open = openOverride ?? storedOpen;
   const [highlight, setHighlight] = useState<string | null>(null);
-  const [reviewId, setReviewId] = useState<string | null>(null);
-  const proposals = useDailyZdProposalMap();
-  const reviewProposal = reviewId ? (proposals.get(reviewId) ?? null) : null;
 
   const toggle = (next: boolean) => {
     setOpenOverride(next);
@@ -248,67 +234,83 @@ export function DailyZdAutomatSection({
   }, [nowIso]);
 
   const status = buildZdAutomatDailyStatus(data, { todayKey, nowMinutes });
-  const nightPassed = zdAutomatNightPassed(zdAutomatNightRunState(data.run, todayKey, nowMinutes));
-  const rows = useMemo(() => {
-    const ctx = { todayKey, nightPassed };
-    const rank = (v: ZdAutomatSupplierView) => (v.pending ? 0 : v.stopReason || v.attemptProblem ? 1 : 2);
-    return data.suppliers
-      .map((s) => ({ s, view: zdAutomatSupplierView(s, ctx) }))
+  const night = zdAutomatNightRunState(data.run, todayKey, nowMinutes);
+  const nightPassed = zdAutomatNightPassed(night);
+  const rank = (v: ZdAutomatSupplierView) => (v.pending ? 0 : v.stopReason || v.attemptProblem ? 1 : 2);
+  const rows = data.suppliers
+      .map((s) => ({ s, view: zdAutomatSupplierView(s, { todayKey, nightPassed }) }))
       .sort(
         (a, b) =>
           rank(a.view) - rank(b.view) ||
           (a.view.nextKey ?? "9999").localeCompare(b.view.nextKey ?? "9999") ||
           a.s.name.localeCompare(b.s.name, "pl")
       );
-  }, [data.suppliers, todayKey, nightPassed]);
 
   if (!status) return null;
 
+  const smooth = (): ScrollBehavior =>
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
   const reveal = (supplierId: string) => {
     toggle(true);
     setHighlight(supplierId);
     requestAnimationFrame(() =>
-      document.getElementById(`automat-zd-${supplierId}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" })
+      document.getElementById(`automat-zd-${supplierId}`)?.scrollIntoView({ block: "nearest", behavior: smooth() })
     );
   };
-  const review = (supplierId: string) => {
-    // Propozycja jest w danych panelu (czekające) — ten sam panel boczny co w wierszu harmonogramu.
-    // Gdy jej tam nie ma (np. zatwierdzona w innej karcie) — pokaż dostawcę zamiast nic nie robić.
-    if (proposals.has(supplierId)) setReviewId(supplierId);
-    else reveal(supplierId);
+  /** Przewija do bloku propozycji w wierszu dostawcy i na chwilę go obrysowuje; bez wiersza — pokazuje dostawcę na liście. */
+  const showInQueue = (supplierId: string) => {
+    const el = document.getElementById(dailyZdProposalAnchorId(supplierId));
+    if (!el) return reveal(supplierId);
+    el.scrollIntoView({ block: "center", behavior: smooth() });
+    el.classList.add("ring-2", "ring-indigo-300");
+    window.setTimeout(() => el.classList.remove("ring-2", "ring-indigo-300"), 2000);
+    el.querySelector<HTMLButtonElement>("button:last-of-type")?.focus({ preventScroll: true });
   };
   const warning = status.tone === "warning";
+  // Czekająca propozycja: w linii tylko termin wygaśnięcia i stan nocnego przebiegu — szczegóły są w wierszu kolejki.
+  // Niepotwierdzone tworzenie ZD i pozostałe stany zostają z pełnym opisem (tylko tu je widać).
+  const firstPending = rows.find((r) => r.view.pending)?.view;
+  const detail =
+    status.action?.kind === "review" && firstPending && !firstPending.pending!.createAttemptedAt
+      ? [
+          firstPending.nextKey ? `wygasa ${formatAutomatDay(firstPending.nextKey, todayKey)}` : null,
+          night.kind === "missing"
+            ? `dziś bez nocnego przebiegu${night.lastRunDate ? ` (ostatni ${formatAutomatDay(night.lastRunDate, todayKey)})` : ""}`
+            : night.kind === "done" && night.failed
+              ? "nocny przebieg z błędem"
+              : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : status.detail;
 
   return (
-    <section aria-labelledby={titleId} className={cn(dailyPanelQueueShellClass(), "mb-3")}>
-      <div className={cn("flex flex-col gap-3 py-3 sm:flex-row sm:items-start sm:justify-between", panelSubsectionInsetClass)}>
-        <div className="flex min-w-0 items-start gap-2.5">
-          <span
-            aria-hidden
-            className={cn(
-              "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md ring-1",
-              warning ? "bg-amber-50 text-amber-800 ring-amber-200" : "bg-indigo-50 text-indigo-700 ring-indigo-100"
-            )}
-          >
-            <IconClock size={16} />
+    <section
+      aria-labelledby={titleId}
+      className={cn(
+        "overflow-hidden rounded-[var(--radius-panel)] border shadow-[var(--shadow-card)]",
+        warning ? "border-amber-200 bg-amber-50" : "border-slate-200 bg-[var(--card)]"
+      )}
+    >
+      <div className={cn("flex flex-col gap-2 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4", panelSubsectionInsetClass)}>
+        <p role="status" className={cn("min-w-0 text-sm leading-snug", warning ? "text-amber-900" : "text-slate-600")}>
+          <span id={titleId} className={cn("font-semibold", warning ? "text-amber-950" : "text-slate-900")}>
+            {status.headline}
           </span>
-          <div className="min-w-0" role="status">
-            <h3 id={titleId} className={cn(panelTypography.sectionTitle, warning && "text-amber-950")}>
-              {status.headline}
-            </h3>
-            <p className={cn("mt-0.5", panelTypography.caption, warning && "text-amber-900")}>{status.detail}</p>
-          </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5 self-end sm:self-start">
+          {detail ? <> · {detail}</> : null}
+        </p>
+        <div className="flex shrink-0 items-center gap-1.5 self-end sm:self-auto">
           {status.action ? (
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className="min-h-10 sm:min-h-8"
-              onClick={() => (status.action!.kind === "review" ? review(status.action!.supplierId) : reveal(status.action!.supplierId))}
+              className="min-h-11 sm:min-h-8"
+              onClick={() =>
+                status.action!.kind === "review" ? showInQueue(status.action!.supplierId) : reveal(status.action!.supplierId)
+              }
             >
-              {status.action.label}
+              {status.action.kind === "review" ? "Pokaż w kolejce" : status.action.label}
             </Button>
           ) : null}
           <button
@@ -316,7 +318,7 @@ export function DailyZdAutomatSection({
             aria-expanded={open}
             aria-controls={listId}
             onClick={() => toggle(!open)}
-            className="inline-flex min-h-10 items-center gap-1 rounded-md px-2 text-xs font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 sm:min-h-8"
+            className="inline-flex min-h-11 items-center gap-1 rounded-md px-2 text-xs font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-900/5 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 sm:min-h-8"
           >
             {open ? "Zwiń" : `Dostawcy (${data.suppliers.length})`}
             <IconChevronDown
@@ -329,7 +331,7 @@ export function DailyZdAutomatSection({
       </div>
 
       {open ? (
-        <div id={listId} className="zd-automat-detail-enter border-t border-slate-100">
+        <div id={listId} className="zd-automat-detail-enter border-t border-slate-200 bg-[var(--card)]">
           <div
             aria-hidden
             className={cn(
@@ -351,7 +353,6 @@ export function DailyZdAutomatSection({
                 view={view}
                 todayKey={todayKey}
                 highlighted={highlight === s.id}
-                onReview={review}
                 cardsHref={cardsHref}
               />
             ))}
@@ -379,18 +380,6 @@ export function DailyZdAutomatSection({
             </Link>
           </div>
         </div>
-      ) : null}
-
-      {reviewId && reviewProposal ? (
-        <ZdAutoProposalSheet
-          supplierId={reviewProposal.supplierId}
-          supplierName={reviewProposal.supplierName}
-          morning={reviewProposal}
-          onClose={() => {
-            setReviewId(null);
-            router.refresh();
-          }}
-        />
       ) : null}
     </section>
   );

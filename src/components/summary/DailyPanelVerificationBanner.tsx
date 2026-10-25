@@ -42,7 +42,7 @@ export function DailyPanelVerificationBanner({
         <>
           <Link
             href="/weryfikacja"
-            className="inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-amber-900/80 transition-colors hover:text-amber-950 hover:underline"
+            className="inline-flex h-11 items-center rounded-md px-2 text-xs sm:h-8 font-medium text-amber-900/80 transition-colors hover:text-amber-950 hover:underline"
           >
             Pełny widok
           </Link>

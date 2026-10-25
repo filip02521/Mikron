@@ -16,7 +16,7 @@ import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
-import { IconPencil, IconTrash2, IconUsers } from "@/components/icons/StrokeIcons";
+import { IconPencil, IconTrash2 } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { salesChromeInsetClass, salesTypography } from "@/lib/ui/ontime-theme";
 
@@ -129,23 +129,16 @@ export function SalesGroupsClient({
         description="Dodaj Sklep, Biuro lub własne działy - potem przypisz handlowców."
       />
     ) : (
-      <ul className="space-y-1.5 p-2 sm:p-3 lg:p-4">
+      <ul className="divide-y divide-slate-100">
         {groups.map((g) => (
           <li
             key={g.id}
             className={cn(
-              "rounded-lg border border-slate-100 bg-white px-3 py-3 transition sm:px-4 lg:px-5",
-              "hover:border-slate-200 hover:shadow-sm"
+              "px-5 py-3 transition-colors hover:bg-slate-50 sm:px-6"
             )}
           >
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
               <div className="flex min-w-0 items-center gap-2.5">
-                <span
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-100/60"
-                  aria-hidden
-                >
-                  <IconUsers size={15} />
-                </span>
                 <div className="min-w-0">
                   <p className={salesTypography.rowTitle}>{g.name}</p>
                   <p
