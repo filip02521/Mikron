@@ -369,3 +369,36 @@ describe("zestaw „Składamy” w liczbach panelu", () => {
     expect(d.suppliers[0]?.outOfStock).toBe(1);
   });
 });
+
+describe("buildStockWatchDashboard — wiersz dostawcy zgodny z „Lista braków dostawcy”", () => {
+  // Wiersz pisze „Pokazano X najpilniejszych z N — pełna lista w »Lista braków dostawcy«”:
+  // N i pokazane pozycje muszą być dokładnie tą listą (zgłoszenie: 45 w wierszu, 32 na liście).
+  const many = Array.from({ length: 70 }, (_, i) =>
+    item({ subiektTwId: 2000 + i, supplierId: "s1", status: "out_of_stock", availableQty: 0, daysOfCover: 0 })
+  );
+  const mixed = [
+    ...many,
+    item({ subiektTwId: 1, supplierId: "s1", status: "warning", deliveryRisk: "before_next_delivery", daysOfCover: 12 }),
+    item({ subiektTwId: 2, supplierId: "s1", status: "critical", openZdQty: 5, daysOfCover: 1 }),
+    item({ subiektTwId: 3, supplierId: "s1", status: "warning", deliveryRisk: "before_delivery", daysOfCover: 4 }),
+    item({ subiektTwId: 4, supplierId: "s1", status: "critical", openZdQty: 0, daysOfCover: 1 }),
+    // Wspólny towar: liczy się u właściciela (s2 ma go w ZD), nie u s1.
+    item({ subiektTwId: 5, supplierId: "s1", status: "out_of_stock", availableQty: 0 }),
+    item({ subiektTwId: 5, supplierId: "s2", supplierName: "Dostawca 2", status: "out_of_stock", availableQty: 0, inOrder: true, orderZdUnits: 2, orderPieces: 2 }),
+  ];
+
+  it("licznik i pokazane pozycje wiersza = lista dostawcy po filtrze", () => {
+    const board = buildStockWatchDashboard(mixed, []);
+    for (const row of board.suppliers.filter((s) => s.urgentTotal > 0)) {
+      const list = buildStockWatchDashboard(mixed, [], { alertsSupplierId: row.supplierId }).alerts;
+      expect(list.length, row.supplierId).toBe(row.urgentTotal);
+      const listTw = new Set(list.map((r) => r.subiektTwId));
+      for (const r of row.urgentRows) expect(listTw.has(r.subiektTwId), `${row.supplierId}/${r.subiektTwId}`).toBe(true);
+    }
+  });
+
+  it("lista jednego dostawcy nie jest ucinana do globalnego limitu", () => {
+    const list = buildStockWatchDashboard(mixed, [], { alertsSupplierId: "s1" }).alerts;
+    expect(list.filter((r) => r.status === "out_of_stock").length).toBe(70);
+  });
+});
