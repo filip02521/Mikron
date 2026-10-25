@@ -93,7 +93,7 @@ export function MobileOperationsNav({
             : "Nawigacja działu zakupów"
       }
     >
-      <ul className="mx-auto flex max-w-lg items-stretch justify-around gap-0.5 px-0.5">
+      <ul className="mx-auto flex max-w-lg items-stretch justify-around gap-0.5 px-0.5 py-0.5">
         {primaryItems.map((item) => {
           const active = isNavItemActive(pathname, item.href, allPrimaryHrefs);
           const attentionBadge = item.badge != null && item.badge > 0 ? item.badge : 0;
