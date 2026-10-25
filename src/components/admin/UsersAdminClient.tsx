@@ -488,8 +488,8 @@ export function UsersAdminClient({
       >
         {accessModalUser && accessModalEdit && accessModalRole ? (
           <div className="space-y-5">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-xl border border-slate-200/70 bg-slate-50/70 p-3">
+            <div className="grid gap-x-6 gap-y-3 border-b border-slate-100 pb-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="min-w-0">
                 <p className="text-[0.6875rem] font-semibold text-slate-500">
                   Rola
                 </p>
@@ -507,7 +507,7 @@ export function UsersAdminClient({
                     ) : null}
                 </div>
               </div>
-              <div className="rounded-xl border border-slate-200/70 bg-slate-50/70 p-3">
+              <div className="min-w-0">
                 <p className="text-[0.6875rem] font-semibold text-slate-500">
                   Powiązanie
                 </p>
@@ -515,7 +515,7 @@ export function UsersAdminClient({
                   {accessModalLinkedSalesPerson}
                 </p>
               </div>
-              <div className="rounded-xl border border-slate-200/70 bg-slate-50/70 p-3">
+              <div className="min-w-0">
                 <p className="text-[0.6875rem] font-semibold text-slate-500">
                   Moduły
                 </p>
@@ -523,7 +523,7 @@ export function UsersAdminClient({
                   {accessModalUser.mailCenterModuleEnabled ? "1 aktywny" : "Brak aktywnych"}
                 </p>
               </div>
-              <div className="rounded-xl border border-slate-200/70 bg-slate-50/70 p-3">
+              <div className="min-w-0">
                 <p className="text-[0.6875rem] font-semibold text-slate-500">
                   Ostatnie logowanie
                 </p>
@@ -535,13 +535,11 @@ export function UsersAdminClient({
               </div>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-              <div className="space-y-4">
-                <section className="space-y-4 rounded-xl border border-slate-200/70 bg-white/70 p-4">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+              <div className="space-y-6 divide-y divide-slate-100 [&>*+*]:pt-6">
+                <section className="space-y-4">
                   <div className="space-y-1">
-                    <p className="text-[0.6875rem] font-semibold text-slate-500">
-                      Dostęp
-                    </p>
+                    <h3 className="text-sm font-semibold text-slate-900">Dostęp</h3>
                     <p className="text-sm text-slate-600">
                       Określ rolę konta i zakres dostępu w systemie.
                     </p>
@@ -582,11 +580,9 @@ export function UsersAdminClient({
                   </Button>
                 </section>
 
-                <section className="space-y-4 rounded-xl border border-slate-200/70 bg-white/70 p-4">
+                <section className="space-y-4">
                   <div className="space-y-1">
-                    <p className="text-[0.6875rem] font-semibold text-slate-500">
-                      Powiązania i przypisania
-                    </p>
+                    <h3 className="text-sm font-semibold text-slate-900">Powiązania i przypisania</h3>
                     <p className="text-sm text-slate-600">
                       Ustal przypięcia do handlowca oraz grup odpowiednich dla roli.
                     </p>
@@ -701,7 +697,7 @@ export function UsersAdminClient({
                 </section>
               </div>
 
-              <div className="space-y-4 rounded-xl border border-slate-200/70 bg-slate-50/70 p-4">
+              <div className="space-y-4 rounded-lg bg-slate-50 p-4">
                 <div>
                   <p className="text-sm font-medium text-slate-900">Operacje na koncie</p>
                   <p className="mt-1 text-xs leading-relaxed text-slate-500">
@@ -773,7 +769,7 @@ export function UsersAdminClient({
                   ) : null}
                 </div>
 
-                <div className="rounded-lg border border-slate-200/70 bg-white/80 p-3">
+                <div className="border-t border-slate-200 pt-3">
                   <p className="text-[0.6875rem] font-semibold text-slate-500">
                     Stan konta
                   </p>
@@ -867,7 +863,7 @@ export function UsersAdminClient({
       >
         {moduleModalUser ? (
           <div className="space-y-4">
-            <div className="rounded-lg border border-slate-200/70 bg-white/60 p-3">
+            <div className="rounded-lg bg-slate-50 p-3">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-900">
