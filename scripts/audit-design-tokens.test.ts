@@ -11,6 +11,10 @@ describe("audit-design-tokens", () => {
   it("przepuszcza rem, semibold i podobne nazwy klas", () => {
     expect(ids("src/components/A.tsx", `<p className="font-semibold text-[0.6875rem] normal-case">x</p>`)).toEqual([]);
   });
+  it("700 tylko z font-display w tej samej klasie", () => {
+    expect(ids("src/components/A.tsx", `<h2 className="font-display text-lg font-bold">x</h2>`)).toEqual([]);
+    expect(ids("src/components/A.tsx", `<h2 className="text-lg font-bold">x</h2>`)).toEqual(["waga"]);
+  });
   it("px dozwolone w Kreatorze ZD: plik zd-estimate* i eksport zdEstimate* w ontime-theme", () => {
     expect(ids("src/components/zakupy/ZdEstimateTable.tsx", `"text-[11px]"`)).toEqual([]);
     const theme = `export const zdEstimateChipClass =\n  "text-[11px]";\nexport const salesClass =\n  "text-[11px]";`;
