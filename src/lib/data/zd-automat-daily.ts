@@ -11,6 +11,7 @@ import type {
   ZdAutomatDailySupplier,
 } from "@/lib/orders/zd-automat-daily";
 import { getLatestStockWatchRun } from "@/lib/stock-watch/data";
+import { zdLevelRollbackFromPolicyJson } from "@/lib/data/zd-automat-suppliers";
 
 /** Ile ostatnich propozycji na dostawcę (kreski „Ostatnie cykle”). */
 export const ZD_AUTOMAT_DAILY_HISTORY = 8;
@@ -79,6 +80,7 @@ export async function loadZdAutomatDaily(): Promise<ZdAutomatDailyData> {
           autoProposals: p.auto_proposals === true,
           cycleDays: Number.isFinite(cycle) ? cycle : null,
           proposals: bySupplier.get(r.id) ?? [],
+          levelRollback: zdLevelRollbackFromPolicyJson(p),
           lastAttempt:
             kind && p.last_attempt_at
               ? {

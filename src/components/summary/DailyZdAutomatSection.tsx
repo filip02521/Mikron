@@ -136,6 +136,11 @@ function SupplierRow({
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-slate-900">{s.name}</p>
         <p className="text-xs text-slate-600">{cycle}</p>
+        {s.levelRollback ? (
+          <p className="text-xs text-amber-800" title={s.levelRollback.reason}>
+            stopień obniżony {formatAutomatDay(warsawKeyFromIso(s.levelRollback.at), todayKey)} (braki A)
+          </p>
+        ) : null}
       </div>
 
       {problem ? (

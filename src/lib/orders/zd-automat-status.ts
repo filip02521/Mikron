@@ -53,6 +53,30 @@ export function zdAutomatReadiness(row: ZdAutomatRow): ZdAutomatReadiness | null
   return { kind: "not_yet", reason: `korekta ${String(now.pct).replace(".", ",")}% ≥ ${ZD_AUTOMAT_READY_CORRECTION_PCT}%` };
 }
 
+/** Najniższy stopień, do którego cofa automat — 1 = propozycje zatwierdza człowiek (0 wyłączyłby propozycje). */
+export const ZD_AUTOMAT_ROLLBACK_FLOOR = 1;
+
+/**
+ * Cofnięcie stopnia po brakach A (spec §4.4): tydzień z brakami A od ZD_AUTOMAT_OOS_A_ALERT_PCT przy stopniu ≥ 2
+ * obniża stopień o jeden, najniżej do 1. Kolejny tydzień z alarmem — o kolejny. null = bez zmiany.
+ */
+export function zdAutomatLevelRollback(input: {
+  autoLevel: number;
+  oosAPct: number | null;
+  weekStart: string;
+}): { from: number; to: number; reason: string } | null {
+  const pct = input.oosAPct;
+  if (pct == null || pct < ZD_AUTOMAT_OOS_A_ALERT_PCT) return null;
+  if (!(input.autoLevel > ZD_AUTOMAT_ROLLBACK_FLOOR)) return null;
+  const to = Math.max(ZD_AUTOMAT_ROLLBACK_FLOOR, input.autoLevel - 1);
+  const [, m, d] = input.weekStart.split("-");
+  return {
+    from: input.autoLevel,
+    to,
+    reason: `braki A ${String(pct).replace(".", ",")}% w tygodniu od ${d}.${m} (próg ${ZD_AUTOMAT_OOS_A_ALERT_PCT}%)`,
+  };
+}
+
 export function zdAutomatOosAlert(row: ZdAutomatRow): boolean {
   const pct = row.weeks[0]?.oosA.pct;
   return row.automat != null && pct != null && pct >= ZD_AUTOMAT_OOS_A_ALERT_PCT;

@@ -21,6 +21,11 @@ export const ZD_AUTOMAT_CARD_CYCLE_MEANING =
   "Ilości w ZD liczy automat (sekcja wyżej). Częstotliwość wyznacza tylko przypomnienia w Terminach zamówień, a Zapas - okno sprzedaży, z którego automat liczy tempo.";
 
 export const zdInAutomat = (row: Pick<ZdAutomatSupplierRow, "policy">) => row.policy.strategy !== "classic";
+
+/** „27.10” — dzień automatycznego cofnięcia stopnia (Warszawa). */
+export function formatRollbackDay(iso: string): string {
+  return new Date(iso).toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw", day: "2-digit", month: "2-digit" });
+}
 export const zdBacktestRunning = (row: Pick<ZdAutomatSupplierRow, "backtest">) =>
   row.backtest?.status === "queued" || row.backtest?.status === "running";
 
@@ -92,6 +97,12 @@ export function ZdAutomatCardSection({
               .join(" · ")
           : "Poza automatem - ZD liczysz w Kreatorze jak dotąd"}
       </p>
+      {on && row.levelRollback ? (
+        <p className="mt-1.5 rounded-md bg-amber-50 px-2.5 py-1.5 text-xs leading-snug text-amber-900">
+          Stopień obniżony automatycznie {formatRollbackDay(row.levelRollback.at)}: {row.levelRollback.reason}. Podniesiesz go
+          w ustawieniach, gdy braki spadną.
+        </p>
+      ) : null}
       <div className="mt-2 flex flex-wrap items-start gap-x-2 gap-y-1 text-sm text-slate-600">
         <span>Ostatni backtest:</span>
         <ZdBacktestState row={row} />

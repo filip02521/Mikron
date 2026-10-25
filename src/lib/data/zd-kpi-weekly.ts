@@ -19,6 +19,8 @@ import { fetchZdProductPairs, type ZdProductPairRow } from "@/lib/data/zd-produc
 import { unitPricePerPiece, type StockWatchPackaging } from "@/lib/stock-watch/analysis";
 import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
 import { ZD_AUTOMAT_SUPPLIER_LOCATION, type ZdAbc } from "@/lib/orders/zd-automat-contract";
+import { zdAutomatLevelRollback } from "@/lib/orders/zd-automat-status";
+import { rollbackZdAutomatLevel } from "@/lib/data/zd-supplier-order-policy";
 import {
   fetchZdAsortyment,
   subiektOrdersConfig,
@@ -393,6 +395,8 @@ export type ZdKpiWeeklyRunResult = {
   suppliers: number;
   written: number;
   failed: string[];
+  /** Dostawcy, którym braki A cofnęły stopień automatu (spec §4.4). */
+  rolledBack?: Array<{ name: string; from: number; to: number; reason: string }>;
   durationMs: number;
   error?: string;
 };
@@ -430,6 +434,13 @@ export async function runZdKpiWeekly(opts: { today?: string } = {}): Promise<
           [s.id, start, JSON.stringify(metrics)]
         );
         base.written++;
+        // Braki A od progu przy stopniu ≥ 2 — automat cofa się o stopień (najniżej do 1).
+        const rollback = s.automat
+          ? zdAutomatLevelRollback({ autoLevel: s.automat.autoLevel, oosAPct: metrics.oosA.pct, weekStart: start })
+          : null;
+        if (rollback && (await rollbackZdAutomatLevel({ supplierId: s.id, ...rollback }))) {
+          (base.rolledBack ??= []).push({ name: s.name, ...rollback });
+        }
       } catch (e) {
         base.failed.push(s.name);
         console.error("[zd-kpi-weekly]", s.name, e instanceof Error ? e.message : e);

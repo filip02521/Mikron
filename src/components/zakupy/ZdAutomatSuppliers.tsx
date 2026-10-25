@@ -11,7 +11,7 @@ import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { Input } from "@/components/ui/Field";
 import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { ZdBacktestState, zdInAutomat } from "@/components/zakupy/ZdAutomatCardSection";
+import { ZdBacktestState, formatRollbackDay, zdInAutomat } from "@/components/zakupy/ZdAutomatCardSection";
 import { ZdBacktestPanel } from "@/components/zakupy/ZdBacktestPanel";
 import { ZdSupplierOrderPolicyDialog } from "@/components/zakupy/ZdSupplierOrderPolicyDialog";
 import { cn } from "@/lib/cn";
@@ -177,6 +177,11 @@ function AutomatRhythm({ row }: { row: ZdAutomatSupplierRow }) {
         {p.cycleDays ? (p.cycleDays === 1 ? "codziennie" : `co ${p.cycleDays} dni`) : "rytm ?"} · cel {p.targetDays ?? "?"}
       </span>
       <span className="block text-xs text-slate-500">stopień {p.autoLevel}</span>
+      {row.levelRollback ? (
+        <span className="block text-xs text-amber-800" title={row.levelRollback.reason}>
+          obniżony {formatRollbackDay(row.levelRollback.at)} (braki A)
+        </span>
+      ) : null}
     </>
   );
 }

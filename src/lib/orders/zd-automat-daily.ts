@@ -33,6 +33,8 @@ export type ZdAutomatDailySupplier = {
   /** Najnowsza pierwsza, najwyżej kilka ostatnich. */
   proposals: ZdAutomatDailyProposal[];
   lastAttempt: ZdAutomatDailyAttempt | null;
+  /** Stopień cofnięty automatycznie przez braki A (do następnej ręcznej zmiany ustawień). */
+  levelRollback?: { at: string; reason: string } | null;
 };
 
 export type ZdAutomatDailyRun = {

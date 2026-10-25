@@ -199,3 +199,29 @@ export async function recordZdAutomatAttempt(
     console.error("[automat ZD] zapis wyniku próby", supplierId, e);
   }
 }
+
+/**
+ * Cofnięcie stopnia automatu (tygodniowe KPI, braki A). Tylko gdy stopień jest nadal `from` — ręczna zmiana zrobiona
+ * w międzyczasie wygrywa. Bez zmiany `updated_at`: notatka o cofnięciu jest widoczna do następnej ręcznej zmiany.
+ * Baza bez migracji 198 — sam stopień, bez powodu. Zwraca, czy stopień się zmienił.
+ */
+export async function rollbackZdAutomatLevel(input: { supplierId: string; from: number; to: number; reason: string }): Promise<boolean> {
+  const params = [input.supplierId, input.from, input.to];
+  try {
+    const res = await query(
+      `UPDATE zd_supplier_order_policy
+          SET auto_level = $3, auto_level_changed_at = now(), auto_level_change_reason = $4
+        WHERE supplier_id = $1 AND auto_level = $2 AND strategy <> 'classic'`,
+      [...params, input.reason.slice(0, 300)]
+    );
+    return (res.rowCount ?? 0) > 0;
+  } catch (e) {
+    if ((e as { code?: string } | null)?.code !== "42703") throw e;
+    const res = await query(
+      `UPDATE zd_supplier_order_policy SET auto_level = $3
+        WHERE supplier_id = $1 AND auto_level = $2 AND strategy <> 'classic'`,
+      params
+    );
+    return (res.rowCount ?? 0) > 0;
+  }
+}
