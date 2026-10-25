@@ -65,7 +65,7 @@ export function ZdUnmappedKhPanel({
   };
 
   return (
-    <div className="mt-4 rounded-md border border-amber-200/80 bg-amber-50/40 p-3">
+    <div className="mt-4 rounded-lg bg-amber-50 p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-slate-900">
@@ -146,7 +146,7 @@ export function ZdUnmappedKhPanel({
                     <tr key={row.subiektKhId} className="align-top text-slate-800">
                       <td className="px-3 py-2">
                         <span className="font-medium leading-snug">{display}</span>
-                        <span className="mt-0.5 block font-mono text-[0.625rem] text-slate-400">
+                        <span className="mt-0.5 block font-mono text-[0.625rem] text-slate-500">
                           id {row.subiektKhId}
                         </span>
                         {row.sampleDocNumbers.length > 0 ? (
