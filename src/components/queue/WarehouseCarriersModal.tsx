@@ -161,7 +161,7 @@ export function WarehouseCarriersModal({
           </div>
 
           {formOpen ? (
-            <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+            <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3">
               <div className="grid gap-3 sm:grid-cols-[1fr_7rem_auto] sm:items-end">
                 <Field label="Nazwa">
                   <Input
@@ -196,7 +196,7 @@ export function WarehouseCarriersModal({
           {sorted.length === 0 ? (
             <EmptyState title="Brak kurierów" description="Dodaj pierwszego kuriera do listy." />
           ) : (
-            <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
+            <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
               {sorted.map((carrier) => (
                 <li
                   key={carrier.slug}
@@ -209,7 +209,7 @@ export function WarehouseCarriersModal({
                         <Badge variant="default">Ukryty</Badge>
                       ) : null}
                     </div>
-                    <p className="text-[0.6875rem] text-slate-400">Kolejność: {carrier.sortOrder}</p>
+                    <p className="text-[0.6875rem] text-slate-500">Kolejność: {carrier.sortOrder}</p>
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     <Button

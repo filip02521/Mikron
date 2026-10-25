@@ -36,10 +36,6 @@ export function sidebarNavToneActiveClass(tone: NavTone): string {
   return "border border-transparent text-slate-900";
 }
 
-/** @deprecated Użyj {@link sidebarNavToneActiveClass} z tonem pozycji. */
-export const navLinkActiveClass =
-  "border border-transparent bg-indigo-100/55 text-slate-900 shadow-sm ";
-
 /** Ogranicza :hover do precyzyjnego wskaźnika (mysz) — mniej artefaktów w Chrome przy szybkim ruchu. */
 const navFineHover =
   "[@media(hover:hover)_and_(pointer:fine)]:hover:" as const;
@@ -60,32 +56,6 @@ export const sidebarNavSectionTitleClass =
 /** Sidebar — separator między grupami (subtelny). */
 export const sidebarNavSectionDividerClass = "mt-2.5 pt-2.5";
 
-/** Sidebar — wyróżniony punkt startowy (Panel / Moje) w stanie spoczynku. */
-export const sidebarNavPrimaryHighlightIdleClass = cn(
-  `${navFineHover}bg-indigo-50/45`
-);
-
-/** Delikatne tło powierzchni wg tonu — spoczynek (sidebar). */
-export function navToneSurfaceIdleClass(tone: NavTone): string {
-  switch (tone) {
-    case "amber":
-      return "bg-amber-50/35";
-    case "orange":
-      return "bg-orange-50/40";
-    case "emerald":
-      return "bg-emerald-50/35";
-    case "sky":
-      return "bg-sky-50/35";
-    case "violet":
-      return "bg-violet-50/35";
-    case "slate":
-      return "bg-slate-50/45";
-    case "indigo":
-    default:
-      return "bg-indigo-50/30";
-  }
-}
-
 /** Sidebar — trwałe wyróżnienie uwagi (przypomnienia Notatnik / ZK) w spoczynku. */
 export const sidebarNavAttentionIdleClass = cn(
   // Przypomnienia sygnalizuje sam licznik (amber), bez obramowanego tła wiersza.
@@ -94,11 +64,11 @@ export const sidebarNavAttentionIdleClass = cn(
   `${navFineHover}text-slate-900`
 );
 
-/** Mobile — trwałe wyróżnienie uwagi (przypomnienia Notatnik / ZK) w spoczynku. */
+/** Mobile — przypomnienia (Notatnik / ZK) w spoczynku: sygnalizuje je licznik, jak w menu bocznym. */
 export const mobileNavAttentionIdleClass = cn(
-  "border border-transparent bg-amber-50/60 text-amber-950",
-  `${navFineHover}bg-amber-50/80`,
-  `${navFineHover}text-amber-950`
+  "border border-transparent text-slate-600",
+  `${navFineHover}bg-slate-100`,
+  `${navFineHover}text-slate-900`
 );
 
 /** Sidebar — delikatne tło wiersza primary wg tonu semantycznego (Dziś). Tylko na hover. */
@@ -765,25 +735,23 @@ export const informacjaSurfaceClass =
 /** Mobile — widok handlowca */
 /** Nagłówek mobilny: odstęp u góry i u dołu równy (treść na środku paska); u góry co najmniej bezpieczna strefa ekranu. */
 export const mobileSalesHeaderClass =
-  "relative sticky top-0 z-30 flex shrink-0 min-h-14 items-center justify-between gap-3 border-b border-slate-200/80 bg-[var(--card)]/95 px-4 shadow-[var(--shadow-card-elevated)] backdrop-blur-md md:hidden pb-2 pt-[max(0.5rem,env(safe-area-inset-top,0px))]";
+  "relative sticky top-0 z-30 flex shrink-0 min-h-14 items-center justify-between gap-3 border-b border-slate-200/80 bg-[var(--card)]/95 px-4 shadow-[var(--shadow-card-elevated)] backdrop-blur-sm md:hidden pb-2 pt-[max(0.5rem,env(safe-area-inset-top,0px))]";
 
 export const mobileSalesNavClass =
-  "fixed inset-x-0 bottom-0 z-50 border-t border-slate-200/80 bg-[var(--card)]/95 shadow-[var(--shadow-card-elevated)] backdrop-blur-md md:hidden";
+  "fixed inset-x-0 bottom-0 z-50 border-t border-slate-200/80 bg-[var(--card)]/95 shadow-[var(--shadow-card-elevated)] backdrop-blur-sm md:hidden";
 
 export const mobileNavLinkBaseClass =
   "relative mx-0.5 flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 rounded-md px-1.5 py-2 text-[0.6875rem] font-semibold lg:text-xs";
 
+/** Aktywna pozycja dolnego paska i arkusza „Więcej” — jak w menu bocznym (petrol-mist, petrol-ink). */
 export const mobileNavLinkActiveClass =
-  "border border-transparent bg-indigo-100/55 text-slate-900 shadow-sm ";
+  "border border-transparent bg-indigo-50 text-indigo-900";
 
 export const mobileNavLinkIdleClass = cn(
-  "text-slate-500",
-  `${navFineHover}bg-white/60`,
-  `${navFineHover}text-slate-800`
+  "border border-transparent text-slate-600",
+  `${navFineHover}bg-slate-100`,
+  `${navFineHover}text-slate-900`
 );
-
-export const mobileNavBadgeClass =
-  "bg-slate-700 text-[0.5625rem] font-semibold text-white shadow-sm lg:text-[0.625rem]";
 
 /** Wspólna obudowa komunikatów systemowych. */
 /** Tekst i akcje obok siebie; gdy akcje się nie mieszczą, schodzą pod tekst (sm:flex-wrap), zamiast go ściskać. */

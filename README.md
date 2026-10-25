@@ -43,6 +43,7 @@ npm run seed
 ```bash
 mkdir -p data
 # umieść: ustawienia.csv, urlopey.csv, sprzedaz.csv, historia_indywidualne.csv
+# data/ jest w .gitignore (poza data/supplier-forms/): eksporty mają dane osobowe, repo jest publiczne
 npm run migrate -- ./data
 ```
 

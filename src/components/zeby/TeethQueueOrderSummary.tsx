@@ -76,10 +76,10 @@ export function TeethQueueOrderSummary({
             const accent = teethProductLineAccent(section.productLine);
             return (
               <tbody key={section.key} className="divide-y divide-slate-100 border-t border-slate-200">
-                <tr className={accent.header}>
+                <tr className="bg-slate-50">
                   <th colSpan={4} scope="rowgroup" className="px-3 py-1.5 text-left">
-                    <span className={cn("inline-flex items-center gap-2 text-xs font-semibold", accent.text)}>
-                      <span className={cn("h-3.5 w-1 rounded-full", accent.dot)} aria-hidden />
+                    <span className="inline-flex items-center gap-2 text-xs font-semibold text-slate-900">
+                      <span className={cn("size-2 rounded-full", accent.dot)} aria-hidden />
                       {section.label}
                     </span>
                   </th>
@@ -96,7 +96,7 @@ export function TeethQueueOrderSummary({
                     <td className="px-3 py-1.5 text-right font-semibold tabular-nums text-slate-900">
                       {l.quantity}
                       {l.orderCount > 1 ? (
-                        <span className="ml-1 text-[0.6875rem] font-normal text-slate-400">
+                        <span className="ml-1 text-[0.6875rem] font-normal text-slate-500">
                           ({l.orderCount} {plProsba(l.orderCount)})
                         </span>
                       ) : null}

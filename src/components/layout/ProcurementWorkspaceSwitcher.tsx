@@ -7,13 +7,10 @@ import { runServerActionWithRedirect } from "@/lib/client/server-action-redirect
 import {
   PROCUREMENT_WORKSPACE_OPTIONS,
   type ProcurementWorkspace,
-  workspaceToneBg,
-  workspaceToneRing,
-  workspaceToneText,
-  workspaceToneAccent,
 } from "@/lib/auth/procurement-workspace";
 import { cn } from "@/lib/cn";
 import { NavIcon } from "@/components/icons/NavIcon";
+import { IconX } from "@/components/icons/StrokeIcons";
 import {
   controlFocusClass,
 } from "@/lib/ui/ontime-theme";
@@ -40,21 +37,25 @@ export function ProcurementWorkspaceSwitcher({
 
   return (
     <div className="mb-3">
-      <p className="mb-1.5 px-3 text-[0.625rem] font-semibold text-slate-400">
+      <p className="mb-1.5 px-1 text-[0.6875rem] leading-tight text-slate-500">
         Przełącz obszar
       </p>
       {error ? (
-        <div className="mb-1.5 mx-2 flex items-center justify-between gap-2 rounded-md bg-rose-50 px-2.5 py-1.5 text-xs text-rose-700 ring-1 ring-inset ring-rose-100">
-          <span className="min-w-0 truncate">{error}</span>
-          <button type="button" onClick={dismissError} className="shrink-0 text-rose-400 hover:text-rose-600">
-            ✕
+        <div className="mb-1.5 flex items-start justify-between gap-2 rounded-md bg-red-50 px-2.5 py-1.5 text-xs text-red-700" role="alert">
+          <span className="min-w-0">{error}</span>
+          <button
+            type="button"
+            onClick={dismissError}
+            aria-label="Zamknij komunikat"
+            className={cn("shrink-0 rounded text-red-700 hover:text-red-800", controlFocusClass)}
+          >
+            <IconX size={14} />
           </button>
         </div>
       ) : null}
       <div
         className={cn(
-          "px-2",
-          stacked ? "space-y-1" : "flex gap-1",
+          stacked ? "space-y-0.5" : "flex gap-1",
           pending && "opacity-60",
         )}
         role="group"
@@ -84,34 +85,30 @@ export function ProcurementWorkspaceSwitcher({
                 });
               }}
               className={cn(
-                "flex items-center gap-2 rounded-lg px-2.5 py-2 text-left transition",
+                "flex min-h-9 items-center gap-2 rounded-md px-2.5 py-1.5 text-left transition-colors",
                 stacked ? "w-full" : "flex-1 justify-center gap-1.5 text-center",
                 controlFocusClass,
+                // Wybrany obszar wygląda jak aktywna pozycja menu (DESIGN.md → „Jedno wybrane”).
                 isActive
-                  ? cn(workspaceToneBg(opt.value), workspaceToneRing(opt.value), "ring-1 ring-inset shadow-sm")
-                  : "hover:bg-slate-50 ring-1 ring-transparent",
+                  ? "bg-indigo-50 text-indigo-900"
+                  : "text-slate-700 hover:bg-slate-100 hover:text-slate-900",
                 pending && "cursor-wait"
               )}
             >
-              <NavIcon navKey={iconKey} size={stacked ? 16 : 14} />
+              <NavIcon
+                navKey={iconKey}
+                size={stacked ? 16 : 14}
+                className={isActive ? "text-indigo-700" : "text-slate-500"}
+              />
               <span
                 className={cn(
-                  "min-w-0 truncate text-[0.6875rem] font-medium leading-tight",
+                  "min-w-0 text-[0.8125rem] leading-tight",
                   stacked && "flex-1",
-                  isActive ? cn("font-semibold", workspaceToneText(opt.value)) : "text-slate-600"
+                  isActive ? "font-semibold" : "font-medium"
                 )}
               >
                 {opt.label}
               </span>
-              {isActive ? (
-                <span
-                  className={cn(
-                    "shrink-0 h-1.5 w-1.5 rounded-full bg-current",
-                    workspaceToneAccent(opt.value),
-                  )}
-                  aria-hidden
-                />
-              ) : null}
             </button>
           );
         })}

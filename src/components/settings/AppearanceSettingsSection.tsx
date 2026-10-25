@@ -3,10 +3,8 @@
 import { useOptimistic, useTransition } from "react";
 import { actionSetUniformBackground, actionSetFontScale } from "@/app/actions/user-preferences";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { IconGlobe } from "@/components/icons/StrokeIcons";
-import { cn } from "@/lib/cn";
-import { salesChromeInsetClass } from "@/lib/ui/ontime-theme";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { SettingToggleRow, settingRowsClass } from "@/components/settings/SettingToggleRow";
 import {
   FONT_SCALE_LABELS,
   type FontScale,
@@ -58,76 +56,29 @@ export function AppearanceSettingsSection({
 
   return (
     <Card padding={false} className="overflow-hidden">
-      <CardHeader
-        inset
-        density="compact"
-        title="Wygląd"
-        description="Personalizacja interfejsu."
-        leading={
-          <SectionHeadingIcon tileClassName="bg-sky-100 text-sky-800">
-            <IconGlobe size={20} />
-          </SectionHeadingIcon>
-        }
-      />
-      <div className={cn(salesChromeInsetClass, "space-y-2.5 py-3.5")}>
-        <label
-          className={cn(
-            "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-colors",
-            optimisticBg
-              ? "border-sky-200/80 bg-sky-50/40"
-              : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40"
-          )}
-        >
-          <span className="flex flex-col gap-0.5">
-            <span className="text-sm font-medium text-slate-800">Jednolite tło</span>
-            <span className="text-[0.6875rem] leading-snug text-slate-400">
-              Ukrywa okręgi w tle aplikacji - czyste, jednolite tło
-            </span>
-          </span>
-          <input
-            type="checkbox"
-            role="switch"
-            aria-checked={optimisticBg}
-            aria-label="Jednolite tło - ukrywa okręgi w tle aplikacji"
-            checked={optimisticBg}
-            onChange={(e) => toggleBackground(e.target.checked)}
-            className="toggle-switch toggle-indigo"
-          />
-        </label>
-
-        <div className="rounded-lg border border-slate-200/70 bg-white px-3.5 py-2.5">
-          <span className="flex flex-col gap-0.5">
-            <span className="text-sm font-medium text-slate-800">Rozmiar czcionki</span>
-            <span className="text-[0.6875rem] leading-snug text-slate-400">
+      <CardHeader inset title="Wygląd" description="Personalizacja interfejsu." />
+      <div className={settingRowsClass}>
+        <SettingToggleRow
+          label="Jednolite tło"
+          description="Ukrywa okręgi w tle aplikacji - czyste, jednolite tło"
+          checked={optimisticBg}
+          onChange={toggleBackground}
+        />
+        <div className="flex flex-col gap-3 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="text-sm font-medium text-slate-900">Rozmiar czcionki</span>
+            <span className="text-xs leading-snug text-slate-500">
               Zwiększ czytelność tekstu w całym interfejsie
             </span>
           </span>
-          <div
-            role="radiogroup"
-            aria-label="Rozmiar czcionki"
-            className="mt-2.5 grid grid-cols-3 gap-1.5"
-          >
-            {FONT_SCALE_ORDER.map((scale) => {
-              const selected = optimisticFont === scale;
-              return (
-                <button
-                  key={scale}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  onClick={() => changeFontScale(scale)}
-                  className={cn(
-                    "min-h-9 rounded-md border px-2 py-1.5 text-center text-xs font-medium transition",
-                    selected
-                      ? "border-sky-300 bg-sky-50 text-sky-900 shadow-sm"
-                      : "border-slate-200/70 bg-white text-slate-600 hover:border-slate-300/80 hover:bg-slate-50/40"
-                  )}
-                >
-                  {FONT_SCALE_LABELS[scale]}
-                </button>
-              );
-            })}
-          </div>
+          <SegmentedControl
+            value={optimisticFont}
+            onChange={changeFontScale}
+            ariaLabel="Rozmiar czcionki"
+            touchFriendly
+            className="self-start sm:self-auto"
+            options={FONT_SCALE_ORDER.map((scale) => ({ value: scale, label: FONT_SCALE_LABELS[scale] }))}
+          />
         </div>
       </div>
     </Card>

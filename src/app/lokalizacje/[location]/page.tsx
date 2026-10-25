@@ -6,7 +6,12 @@ import { getRowColorForDate } from "@/lib/orders/colors";
 import { parseDateOnly } from "@/lib/orders/dates";
 import { locationLabel } from "@/lib/display-labels";
 import { LocationScheduleClient } from "@/components/targets/LocationScheduleClient";
+import Link from "next/link";
 import { Alert } from "@/components/ui/Alert";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { adminPageShellClass, brandLinkClass } from "@/lib/ui/ontime-theme";
 import { logDevPageError } from "@/lib/dev/log-page-error";
 import { SuppliersHubShell } from "@/components/admin/SuppliersHubShell";
 import {
@@ -41,7 +46,22 @@ export default async function LocationPage({
   const { location: loc } = await params;
   const location = loc.toUpperCase() as SupplierLocation;
   if (!VALID.includes(location)) {
-    return <p className="text-red-600">Nieprawidłowa lokalizacja</p>;
+    return (
+      <div className={adminPageShellClass}>
+        <PageHeader title="Nieprawidłowa lokalizacja" />
+        <Card>
+          <EmptyState
+            title="Nie ma takiej lokalizacji"
+            description="Terminy zamówień są dla lokalizacji Polska, Zagranica i Import."
+            action={
+              <Link href="/lokalizacje/polska" className={brandLinkClass}>
+                Otwórz terminy: Polska
+              </Link>
+            }
+          />
+        </Card>
+      </div>
+    );
   }
 
   const label = locationLabel(location);
