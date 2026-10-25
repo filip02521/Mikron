@@ -55,11 +55,11 @@ export const navLinkIdleClass = cn(
 
 /** Tytuł strony (DESIGN.md → Headline): Inter Tight 700, jeden na ekran. */
 export const pageTitleClass =
-  "font-display text-[1.75rem] font-bold leading-tight tracking-[-0.025em] text-slate-900";
+  "font-display text-[1.75rem] font-bold leading-tight tracking-[-0.015em] text-slate-900";
 
 /** Tytuł sekcji i karty (DESIGN.md → Section): Inter Tight 700. */
 export const sectionTitleClass =
-  "font-display text-lg font-bold leading-snug tracking-[-0.015em] text-slate-900";
+  "font-display text-lg font-bold leading-snug tracking-[-0.01em] text-slate-900";
 
 /** Sidebar — nagłówek grupy nawigacji (design-ok: Nav Group, jedyne wersaliki w aplikacji). */
 export const sidebarNavSectionTitleClass =

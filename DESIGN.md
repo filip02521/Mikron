@@ -34,13 +34,13 @@ typography:
     fontSize: "1.75rem"
     fontWeight: 700
     lineHeight: 1.2
-    letterSpacing: "-0.025em"
+    letterSpacing: "-0.015em"
   section:
     fontFamily: "Inter Tight, Geist, ui-sans-serif, system-ui, sans-serif"
     fontSize: "1.125rem"
     fontWeight: 700
     lineHeight: 1.35
-    letterSpacing: "-0.015em"
+    letterSpacing: "-0.01em"
   title:
     fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
     fontSize: "1rem"
@@ -276,8 +276,8 @@ Na każdym ekranie musi być widać od razu, co jest ważne. Dlatego są cztery 
 
 ### Hierarchy
 
-- **Headline** (`pageTitleClass`: Inter Tight 700, `text-[1.75rem]`, tracking −0.025em): tytuł strony w `PageHeader`, na każdej szerokości. Jeden na ekran.
-- **Section** (`sectionTitleClass`: Inter Tight 700, `text-lg`, tracking −0.015em): tytuł karty w `CardHeader` i nagłówek sekcji na tle („Zaległe”, „Prośby handlowców”, „Pilne u dostawcy”). Licznik obok tytułu pisz w Meta, nie w wadze tytułu.
+- **Headline** (`pageTitleClass`: Inter Tight 700, `text-[1.75rem]`, tracking −0.015em; krój jest już zwarty, mocniej nie ściskamy): tytuł strony w `PageHeader`, na każdej szerokości. Jeden na ekran.
+- **Section** (`sectionTitleClass`: Inter Tight 700, `text-lg`, tracking −0.01em): tytuł karty w `CardHeader` i nagłówek sekcji na tle („Zaległe”, „Prośby handlowców”, „Pilne u dostawcy”). Licznik obok tytułu pisz w Meta, nie w wadze tytułu.
 - **Title** (Geist 600, `text-base`): tytuł karty w gęstym kontekście (`CardHeader density="compact"`, panel boczny, okno). Wariant `micro` (chrome Kreatora ZD) 13px.
 - **Item** (`panelTypography.rowTitle`: Geist 600, `text-[0.9375rem]`): nazwa pozycji w liście lub tabeli: dostawca, towar, osoba, dokument.
 - **Meta** (`panelTypography.rowMeta`: Geist 400, `text-[0.8125rem]`, `slate-500`): linia pod nazwą pozycji: kraj, kanał, data analizy, ilości.
