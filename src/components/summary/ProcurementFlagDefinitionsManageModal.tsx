@@ -304,7 +304,7 @@ export function ProcurementFlagDefinitionsManageModal({
 
         {inactive.length ? (
           <div className="space-y-2">
-            <p className={cn(panelTypography.caption, "font-semibold uppercase")}>
+            <p className={cn(panelTypography.caption, "font-semibold")}>
               {PROCUREMENT_REQUEST_FLAG_COPY.manageInactiveSection}
             </p>
             <ul className="max-h-40 space-y-2 overflow-y-auto">

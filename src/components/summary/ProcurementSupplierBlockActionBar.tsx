@@ -41,7 +41,7 @@ function ActionCount({
   return (
     <span
       className={cn(
-        "ml-1 inline-flex min-w-[1.15rem] justify-center rounded px-1 text-[0.625rem] font-bold tabular-nums",
+        "ml-1 inline-flex min-w-[1.15rem] justify-center rounded px-1 text-[0.625rem] font-semibold tabular-nums",
         variant === "primary"
           ? "bg-white/25 text-white ring-1 ring-inset ring-white/35"
           : isStockOut

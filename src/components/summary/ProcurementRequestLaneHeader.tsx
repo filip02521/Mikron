@@ -118,7 +118,7 @@ export function ProcurementRequestLaneHeader({
         {showPeekBadge ? (
           <span
             className={cn(
-              "shrink-0 rounded px-1.5 py-0.5 text-[0.625rem] font-bold tabular-nums",
+              "shrink-0 rounded px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums",
               dailyPanelUnseenBadgeClass("prosby")
             )}
           >

@@ -144,7 +144,7 @@ function SalesPersonCard({
         <div className="flex min-w-0 items-center gap-2.5">
           <span
             className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sm font-bold ring-1 ring-inset",
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sm font-semibold ring-1 ring-inset",
               isSelf
                 ? "bg-indigo-100 text-indigo-700 ring-indigo-200/60"
                 : "bg-slate-100 text-slate-600 ring-slate-200/60"
@@ -328,7 +328,7 @@ export function SalesTeamOverview({
               </span>
               <div className="min-w-0">
                 <p className="text-xs font-medium text-amber-900">ZK czekają na towar</p>
-                <p className="text-lg font-bold tabular-nums text-amber-800">{totalPending}</p>
+                <p className="text-lg font-semibold tabular-nums text-amber-800">{totalPending}</p>
               </div>
             </div>
           ) : null}
@@ -339,7 +339,7 @@ export function SalesTeamOverview({
               </span>
               <div className="min-w-0">
                 <p className="text-xs font-medium text-violet-900">Przypomnienia ZK</p>
-                <p className="text-lg font-bold tabular-nums text-violet-800">{totalFollowUpDue}</p>
+                <p className="text-lg font-semibold tabular-nums text-violet-800">{totalFollowUpDue}</p>
               </div>
             </div>
           ) : null}
@@ -350,7 +350,7 @@ export function SalesTeamOverview({
               </span>
               <div className="min-w-0">
                 <p className="text-xs font-medium text-indigo-900">Przypomnienia notatek</p>
-                <p className="text-lg font-bold tabular-nums text-indigo-800">{totalNotesFollowUpDue}</p>
+                <p className="text-lg font-semibold tabular-nums text-indigo-800">{totalNotesFollowUpDue}</p>
               </div>
             </div>
           ) : null}

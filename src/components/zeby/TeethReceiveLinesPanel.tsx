@@ -606,7 +606,7 @@ export function TeethReceiveLinesPanel({
             />
             <span className="text-xs font-semibold text-slate-700">Filtry i wyszukiwanie</span>
             {productSearchActive || productLineFilter ? (
-              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-md bg-indigo-100 px-1 text-[0.625rem] font-bold tabular-nums text-indigo-700">
+              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-md bg-indigo-100 px-1 text-[0.625rem] font-semibold tabular-nums text-indigo-700">
                 {[productSearchActive, Boolean(productLineFilter)].filter(Boolean).length}
               </span>
             ) : null}

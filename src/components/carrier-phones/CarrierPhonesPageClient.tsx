@@ -111,7 +111,7 @@ export function CarrierPhonesPageClient({
             <IconTruck size={22} aria-hidden />
           </span>
           <div>
-            <h1 className="text-[0.9375rem] font-bold tracking-tight text-slate-900">Kurierzy</h1>
+            <h1 className="text-[0.9375rem] font-semibold tracking-tight text-slate-900">Kurierzy</h1>
             <p className="mt-0.5 text-[0.75rem] text-slate-500">
               {pending && phones.length === 0
                 ? "Wczytywanie numerów…"
@@ -236,7 +236,7 @@ export function CarrierPhonesPageClient({
                               </div>
                               <a
                                 href={`tel:${phone.phone.replace(/[\s()-]/g, "")}`}
-                                className="flex shrink-0 items-center gap-1.5 rounded-lg bg-indigo-50 px-3.5 py-2 text-[0.75rem] font-bold text-indigo-600 transition hover:bg-indigo-100 hover:text-indigo-700 active:scale-[0.97]"
+                                className="flex shrink-0 items-center gap-1.5 rounded-lg bg-indigo-50 px-3.5 py-2 text-[0.75rem] font-semibold text-indigo-600 transition hover:bg-indigo-100 hover:text-indigo-700 active:scale-[0.97]"
                               >
                                 <IconPhone size={13} aria-hidden />
                                 Zadzwoń

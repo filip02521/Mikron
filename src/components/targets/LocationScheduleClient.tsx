@@ -320,7 +320,7 @@ export function LocationScheduleClient({
                       <div className="flex items-center gap-2.5">
                         <span
                           className={cn(
-                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-sm font-bold ring-1 ring-inset",
+                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-sm font-semibold ring-1 ring-inset",
                             row.is_active
                               ? "bg-indigo-50 text-indigo-700 ring-indigo-100/60"
                               : "bg-slate-100 text-slate-400 ring-slate-200/60"

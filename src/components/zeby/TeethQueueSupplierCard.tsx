@@ -42,7 +42,7 @@ function StepMarker({ tone, index }: { tone: StepTone; index: number }) {
   return (
     <span
       className={cn(
-        "flex size-6 shrink-0 items-center justify-center rounded-full text-[0.6875rem] font-bold",
+        "flex size-6 shrink-0 items-center justify-center rounded-full text-[0.6875rem] font-semibold",
         tone === "done" && "bg-indigo-600 text-white",
         tone === "warn" && "bg-amber-400 text-amber-950",
         tone === "todo" && "bg-white text-indigo-700 ring-2 ring-indigo-500",

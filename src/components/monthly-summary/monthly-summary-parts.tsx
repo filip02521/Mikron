@@ -156,7 +156,7 @@ export function KpiCard({
       {value == null ? (
         <p className="mt-1.5 flex h-6 items-end text-sm font-medium text-slate-500">Brak danych</p>
       ) : (
-        <p className={cn("mt-1.5 text-2xl font-bold tabular-nums leading-none", t.text)}>{value}</p>
+        <p className={cn("mt-1.5 text-2xl font-semibold tabular-nums leading-none", t.text)}>{value}</p>
       )}
       {mom && previousLabel ? (
         <div className="mt-2">
@@ -194,7 +194,7 @@ export function SecondaryStat({
   return (
     <div className="flex items-baseline justify-between gap-2 rounded-lg bg-slate-50/80 px-3 py-2 ring-1 ring-inset ring-slate-200/70">
       <span className="text-xs text-slate-500">{label}</span>
-      <span className={cn("text-sm font-bold tabular-nums", t.text)}>{value}</span>
+      <span className={cn("text-sm font-semibold tabular-nums", t.text)}>{value}</span>
     </div>
   );
 }

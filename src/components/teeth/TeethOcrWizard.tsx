@@ -79,7 +79,7 @@ function StepIndicator({ currentStep }: { currentStep: "detecting" | "review" | 
       {STEP_LABELS.map((label, i) => (
         <div key={label} className="flex items-center gap-1.5">
           <span
-            className={`flex h-5 w-5 items-center justify-center rounded-full text-[0.625rem] font-bold ${
+            className={`flex h-5 w-5 items-center justify-center rounded-full text-[0.625rem] font-semibold ${
               i <= stepIndex
                 ? "bg-indigo-600 text-white"
                 : "bg-slate-100 text-slate-400"
@@ -464,7 +464,7 @@ export function TeethOcrWizard({
               </Button>
               <span className="group relative inline-flex">
                 <span
-                  className="cursor-help rounded bg-indigo-50 px-1.5 py-0.5 text-[0.5625rem] font-bold text-indigo-400 transition-colors group-hover:bg-indigo-100"
+                  className="cursor-help rounded bg-indigo-50 px-1.5 py-0.5 text-[0.5625rem] font-semibold text-indigo-400 transition-colors group-hover:bg-indigo-100"
                 >
                   Beta
                 </span>
@@ -522,7 +522,7 @@ export function TeethOcrWizard({
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-slate-800">{line.label}</span>
                         <span
-                          className={`rounded px-1.5 py-0.5 text-[0.625rem] font-bold ${
+                          className={`rounded px-1.5 py-0.5 text-[0.625rem] font-semibold ${
                             line.confidence > 0.7
                               ? "bg-green-100 text-green-700"
                               : line.confidence > 0.5

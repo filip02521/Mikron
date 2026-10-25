@@ -28,7 +28,7 @@ export function DeliveryScheduleCard({
       <div className="flex items-center gap-2">
         <span
           className={cn(
-            "flex shrink-0 items-center justify-center rounded-md text-xs font-bold ring-1 ring-inset",
+            "flex shrink-0 items-center justify-center rounded-md text-xs font-semibold ring-1 ring-inset",
             supplier.isOverduePlan
               ? "bg-rose-100 text-rose-600 ring-rose-200/60"
               : "bg-indigo-50 text-indigo-700 ring-indigo-100/60",

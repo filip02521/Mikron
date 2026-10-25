@@ -138,7 +138,7 @@ function formatWindowShort(dataOd: string, dataDo: string): string {
 }
 
 const stripLabelClass =
-  "text-[11px] font-semibold uppercase tracking-[0.04em] text-slate-500";
+  "text-[11px] font-semibold text-slate-500";
 const sectionLabelClass =
   "text-sm font-semibold tracking-tight text-slate-800";
 

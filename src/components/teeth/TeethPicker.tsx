@@ -204,7 +204,7 @@ function KlapkaWizard({
                 onClick={() => onActiveChange(i)}
                 aria-label={`Klapka ${i + 1}${complete ? " - gotowa" : " - do uzupełnienia"}`}
                 className={cn(
-                  "flex size-6 items-center justify-center rounded text-[0.6875rem] font-bold tabular-nums transition-colors",
+                  "flex size-6 items-center justify-center rounded text-[0.6875rem] font-semibold tabular-nums transition-colors",
                   isActive
                     ? "bg-violet-600 text-white ring-2 ring-violet-300"
                     : complete

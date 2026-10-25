@@ -229,7 +229,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
           </span>
         </div>
         {(salesCancelRow || isPartial) && (
-          <p className="mt-0.5 pl-3 text-[0.625rem] font-bold text-amber-800">
+          <p className="mt-0.5 pl-3 text-[0.625rem] font-semibold text-amber-800">
             {salesCancelRow
               ? fulfillment.cancelled > 0 && (fulfillment.supplierRemaining ?? 0) > 0
                 ? `częściowa · ${fulfillment.supplierRemaining} szt.`
@@ -309,7 +309,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
                 disabled={pending}
                 onClick={onStockBadgeClick}
                 title={`Towar na stanie Subiekta (${stockAvailable} szt.) - kliknij, aby przyjąć ${Math.min(stockAvailable, ordered ?? stockAvailable)} szt.`}
-                className="mt-0.5 inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2 py-0.5 text-[0.625rem] font-bold text-emerald-800 ring-1 ring-inset ring-emerald-200/60 transition hover:bg-emerald-200 disabled:opacity-50"
+                className="mt-0.5 inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2 py-0.5 text-[0.625rem] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200/60 transition hover:bg-emerald-200 disabled:opacity-50"
               >
                 <svg aria-hidden viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" className="size-3 shrink-0">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 8.5l3 3 7-7" />
@@ -477,7 +477,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
             {progress.hasNumericQty ? (
               <span
                 className={cn(
-                  "min-w-[1.25rem] text-[0.6875rem] font-bold",
+                  "min-w-[1.25rem] text-[0.6875rem] font-semibold",
                   progress.remaining && progress.remaining > 0
                     ? "text-amber-700"
                     : "text-emerald-700"

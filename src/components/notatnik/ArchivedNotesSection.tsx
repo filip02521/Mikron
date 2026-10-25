@@ -146,7 +146,7 @@ function ArchivedNoteCard({
       >
         <div className="px-2.5 py-3 pt-3.5">
           {note.title?.trim() ? (
-            <h3 className="text-[0.8125rem] font-bold text-slate-900">{note.title}</h3>
+            <h3 className="text-[0.8125rem] font-semibold text-slate-900">{note.title}</h3>
           ) : null}
           <div className={note.title?.trim() ? "mt-1" : undefined}>
             <NoteBodyDisplay body={note.body} />

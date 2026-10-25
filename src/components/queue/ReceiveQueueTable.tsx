@@ -735,7 +735,7 @@ export function ReceiveQueueTable({
               <IconSearch size={15} className="shrink-0 text-slate-400" />
               <span>Wyszukiwanie</span>
               {hasActiveFilters ? (
-                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-md bg-indigo-100 px-1 text-[0.625rem] font-bold text-indigo-700">
+                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-md bg-indigo-100 px-1 text-[0.625rem] font-semibold text-indigo-700">
                   {productSearchActive ? 1 : 0}
                   {zdFilter ? (productSearchActive ? 1 : 1) : 0}
                 </span>
@@ -852,7 +852,7 @@ export function ReceiveQueueTable({
               <button
                 type="button"
                 onClick={() => setStockAvailableOnly(true)}
-                className="ml-auto shrink-0 rounded-md bg-emerald-100 px-2 py-0.5 text-[0.625rem] font-bold text-emerald-900 transition hover:bg-emerald-200"
+                className="ml-auto shrink-0 rounded-md bg-emerald-100 px-2 py-0.5 text-[0.625rem] font-semibold text-emerald-900 transition hover:bg-emerald-200"
               >
                 Pokaż tylko na stanie
               </button>
@@ -860,7 +860,7 @@ export function ReceiveQueueTable({
               <button
                 type="button"
                 onClick={() => setStockAvailableOnly(false)}
-                className="ml-auto shrink-0 rounded-md bg-emerald-100 px-2 py-0.5 text-[0.625rem] font-bold text-emerald-900 transition hover:bg-emerald-200"
+                className="ml-auto shrink-0 rounded-md bg-emerald-100 px-2 py-0.5 text-[0.625rem] font-semibold text-emerald-900 transition hover:bg-emerald-200"
               >
                 Pokaż wszystkie
               </button>

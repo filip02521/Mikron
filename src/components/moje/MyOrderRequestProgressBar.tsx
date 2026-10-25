@@ -68,7 +68,7 @@ export function MyOrderRequestProgressBar({
               <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
                 <span
                   className={cn(
-                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[0.6875rem] font-bold tabular-nums",
+                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[0.6875rem] font-semibold tabular-nums",
                     step.state === "done" && palette.done,
                     step.state === "current" && palette.current,
                     step.state === "upcoming" && palette.upcoming,

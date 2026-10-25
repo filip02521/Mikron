@@ -73,7 +73,7 @@ function ReportNote({
         </div>
         <span
           className={cn(
-            "inline-block px-2 py-0.5 text-[0.625rem] font-bold",
+            "inline-block px-2 py-0.5 text-[0.625rem] font-semibold",
             STATUS_STAMP[report.status]
           )}
         >
@@ -85,12 +85,12 @@ function ReportNote({
 
       <dl className="mb-3 space-y-1 text-[0.6875rem] text-neutral-700">
         <div>
-          <dt className="inline font-bold">strona:</dt>{" "}
+          <dt className="inline font-semibold">strona:</dt>{" "}
           <dd className="inline break-all">{report.page_path}</dd>
         </div>
         {report.user_agent ? (
           <div>
-            <dt className="inline font-bold">przeglądarka:</dt>{" "}
+            <dt className="inline font-semibold">przeglądarka:</dt>{" "}
             <dd className="inline break-all opacity-80">{report.user_agent}</dd>
           </div>
         ) : null}
@@ -103,7 +103,7 @@ function ReportNote({
             value={status}
             onChange={(e) => setStatus(e.target.value as SalesBugReportStatus)}
             disabled={pending}
-            className="mt-1 block w-full border-2 border-neutral-800 bg-white px-2 py-1.5 text-xs font-bold uppercase"
+            className="mt-1 block w-full border-2 border-neutral-800 bg-white px-2 py-1.5 text-xs font-semibold"
           >
             <option value="open">nowe</option>
             <option value="triaged">w toku</option>
@@ -125,7 +125,7 @@ function ReportNote({
           type="button"
           onClick={() => save()}
           disabled={pending}
-          className="border-2 border-neutral-900 bg-neutral-900 px-3 py-1.5 text-[0.6875rem] font-bold text-[#fff9bf] hover:bg-neutral-700 disabled:opacity-50"
+          className="border-2 border-neutral-900 bg-neutral-900 px-3 py-1.5 text-[0.6875rem] font-semibold text-[#fff9bf] hover:bg-neutral-700 disabled:opacity-50"
         >
           {pending ? "zapisuję…" : "zapisz"}
         </button>
@@ -159,7 +159,7 @@ export function BugReportsAdminClient({
       }}
     >
       <header className="mb-5 border-b-4 border-neutral-800 pb-3 font-mono">
-        <p className="text-[0.625rem] font-bold text-red-700">
+        <p className="text-[0.625rem] font-semibold text-red-700">
           {"/// poza design systemem ///"}
         </p>
         <p className="mt-2 max-w-2xl text-xs leading-relaxed text-neutral-700">
@@ -171,7 +171,7 @@ export function BugReportsAdminClient({
         </p>
       </header>
 
-      <div className="mb-5 flex flex-wrap gap-2 font-mono text-[0.6875rem] uppercase">
+      <div className="mb-5 flex flex-wrap gap-2 font-mono text-[0.6875rem]">
         {(
           [
             ["open", `nowe (${reports.filter((r) => r.status === "open").length})`],
@@ -185,7 +185,7 @@ export function BugReportsAdminClient({
             type="button"
             onClick={() => setFilter(id)}
             className={cn(
-              "border-2 px-2.5 py-1 font-bold",
+              "border-2 px-2.5 py-1 font-semibold",
               filter === id
                 ? "border-neutral-900 bg-neutral-900 text-[#fff9bf]"
                 : "border-neutral-700 bg-white text-neutral-800 hover:bg-neutral-100"

@@ -52,7 +52,7 @@ export function VerificationPendingBanner({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span
-              className="inline-flex min-w-[2rem] items-center justify-center rounded-md bg-amber-500 px-2.5 py-0.5 text-sm font-bold tabular-nums text-white shadow-sm"
+              className="inline-flex min-w-[2rem] items-center justify-center rounded-md bg-amber-500 px-2.5 py-0.5 text-sm font-semibold tabular-nums text-white shadow-sm"
               aria-hidden
             >
               {count}

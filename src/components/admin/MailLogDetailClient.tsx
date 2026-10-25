@@ -108,6 +108,7 @@ export function MailLogDetailClient({
             ) : (
               snapshot.map((r) => (
                 <li key={`${r.recipient_role}-${r.email}`}>
+                  {/* design-ok: kod roli odbiorcy (to / cc) w monospace, jak symbol */}
                   <span className="font-mono text-xs uppercase text-slate-500">{r.recipient_role}</span>{" "}
                   {r.email}
                 </li>

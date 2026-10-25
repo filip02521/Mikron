@@ -199,7 +199,7 @@ export function TeethQueueOrderRow({
                     <span>{label}</span>
                     <span
                       className={cn(
-                        "rounded px-1 text-[0.6875rem] font-bold tabular-nums",
+                        "rounded px-1 text-[0.6875rem] font-semibold tabular-nums",
                         lineSelected ? "bg-white/20" : "bg-slate-100 text-slate-700",
                       )}
                     >

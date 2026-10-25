@@ -330,7 +330,7 @@ const NoteCard = memo(function NoteCard({
           ) : null}
           {readOnly ? (
             note.title?.trim() ? (
-              <h3 className="pr-4 text-[0.8125rem] font-bold leading-snug text-slate-900">{note.title}</h3>
+              <h3 className="pr-4 text-[0.8125rem] font-semibold leading-snug text-slate-900">{note.title}</h3>
             ) : null
           ) : (
             <input
@@ -344,7 +344,7 @@ const NoteCard = memo(function NoteCard({
               onBlur={() => void save()}
               placeholder="Tytuł (wymagany)"
               aria-required
-              className="w-full bg-transparent pr-4 text-[0.8125rem] font-bold leading-snug text-slate-900 outline-none placeholder:text-slate-400/70"
+              className="w-full bg-transparent pr-4 text-[0.8125rem] font-semibold leading-snug text-slate-900 outline-none placeholder:text-slate-400/70"
             />
           )}
           {showAuthor && note.author?.email ? (

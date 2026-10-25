@@ -424,7 +424,7 @@ function WeekPlanEmptyCalendar({
               {day.dateLabel}
             </p>
             {day.isToday ? (
-              <Badge variant="info" className="mt-1.5 px-2 py-0 text-[0.5625rem] uppercase">
+              <Badge variant="info" className="mt-1.5 px-2 py-0 text-[0.5625rem]">
                 Dziś
               </Badge>
             ) : null}
@@ -558,7 +558,7 @@ function DayColumn({
         </div>
         <div className="flex flex-col items-end gap-1">
           {day.isToday ? (
-            <Badge variant="info" className="px-2 py-0 text-[0.625rem] uppercase">
+            <Badge variant="info" className="px-2 py-0 text-[0.625rem]">
               Dziś
             </Badge>
           ) : null}

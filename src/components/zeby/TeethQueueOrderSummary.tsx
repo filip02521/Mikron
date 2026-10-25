@@ -111,7 +111,7 @@ export function TeethQueueOrderSummary({
               <td colSpan={4} className="px-3 py-1.5 text-xs font-semibold text-slate-600">
                 Razem
               </td>
-              <td className="px-3 py-1.5 text-right font-bold tabular-nums text-slate-900">{total}</td>
+              <td className="px-3 py-1.5 text-right font-semibold tabular-nums text-slate-900">{total}</td>
             </tr>
           </tfoot>
         </table>

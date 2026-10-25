@@ -80,7 +80,7 @@ function DeliveryWeekDayColumn({
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           {day.isToday ? (
-            <span className="rounded-md bg-sky-200/80 px-2 py-0.5 text-[0.625rem] font-semibold uppercase text-sky-800">
+            <span className="rounded-md bg-sky-200/80 px-2 py-0.5 text-[0.625rem] font-semibold text-sky-800">
               Dziś
             </span>
           ) : null}

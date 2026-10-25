@@ -164,7 +164,7 @@ export function ZkWatchFollowUpButton({
         {followUpDay ? (
           <span
             className={cn(
-              "absolute -bottom-0.5 -right-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-md px-0.5 text-[0.5625rem] font-bold leading-none ring-1 ring-inset",
+              "absolute -bottom-0.5 -right-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-md px-0.5 text-[0.5625rem] font-semibold leading-none ring-1 ring-inset",
               followUpDue
                 ? "bg-amber-100 text-amber-900 ring-amber-200/80"
                 : "bg-violet-100 text-violet-900 ring-violet-200/80"

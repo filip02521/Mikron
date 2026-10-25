@@ -254,7 +254,7 @@ export function MobileNavOverflowSheet({
             {overflowAttentionBadge > 0 && !activeInOverflow ? (
               <span
                 className={cn(
-                  "absolute -right-1.5 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-md px-0.5 text-[0.5rem] font-bold tabular-nums",
+                  "absolute -right-1.5 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-md px-0.5 text-[0.5rem] font-semibold tabular-nums",
                   mobileNavBadgeClass
                 )}
               >

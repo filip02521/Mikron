@@ -23,7 +23,7 @@ export const boardQuestionsAttentionRowClass =
   "flex flex-wrap items-center gap-2";
 
 export const boardQuestionsAttentionLabelClass =
-  "shrink-0 text-[0.625rem] font-bold text-slate-400";
+  "shrink-0 text-[0.625rem] font-semibold text-slate-400";
 
 export const boardQuestionsAttentionChipClass =
   "inline-flex min-h-8 shrink-0 cursor-pointer items-center gap-1 rounded-md border px-2.5 py-1 text-[0.6875rem] font-semibold leading-none transition";

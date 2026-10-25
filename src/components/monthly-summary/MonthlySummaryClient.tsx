@@ -366,7 +366,7 @@ function StickyDepartmentTabs({
               </span>
               <span
                 className={cn(
-                  "text-sm font-bold tabular-nums",
+                  "text-sm font-semibold tabular-nums",
                   isActive ? meta.accent : "text-slate-700"
                 )}
               >
@@ -412,7 +412,7 @@ function HighlightCard({
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-[0.6875rem] font-semibold text-slate-600/80">{eyebrow}</p>
-          <p className="mt-0.5 truncate text-lg font-bold text-slate-900">{title}</p>
+          <p className="mt-0.5 truncate text-lg font-semibold text-slate-900">{title}</p>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">{children}</div>
         </div>
       </div>
@@ -590,7 +590,7 @@ function SalesTab({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
                         <p className="truncate text-sm font-medium text-slate-800">{s.salesPersonName}</p>
-                        <span className="shrink-0 text-sm font-bold tabular-nums text-slate-900">
+                        <span className="shrink-0 text-sm font-semibold tabular-nums text-slate-900">
                           {s.requestsCreated}
                         </span>
                       </div>
@@ -814,7 +814,7 @@ function DeliveryTab({
                 <div key={f.form} className="px-4 py-3">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-medium text-slate-800">{f.label}</p>
-                    <span className="text-sm font-bold tabular-nums text-slate-900">{f.count}</span>
+                    <span className="text-sm font-semibold tabular-nums text-slate-900">{f.count}</span>
                   </div>
                   <ShareBar
                     sharePct={share}
@@ -849,7 +849,7 @@ function DeliveryTab({
                       <p className="truncate text-sm font-medium text-slate-800">
                         {warehouseCarrierLabel(c.carrier)}
                       </p>
-                      <span className="shrink-0 text-sm font-bold tabular-nums text-slate-900">
+                      <span className="shrink-0 text-sm font-semibold tabular-nums text-slate-900">
                         {c.count}
                       </span>
                     </div>
@@ -908,7 +908,7 @@ function SupplierRanking({
             >
               <span
                 className={cn(
-                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold tabular-nums",
+                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
                   remainder
                     ? "text-slate-400"
                     : idx === 0
@@ -932,7 +932,7 @@ function SupplierRanking({
                   >
                     {s.supplierName}
                   </p>
-                  <span className="shrink-0 text-sm font-bold tabular-nums text-slate-900">
+                  <span className="shrink-0 text-sm font-semibold tabular-nums text-slate-900">
                     {s.orders}
                   </span>
                 </div>
@@ -1280,7 +1280,7 @@ export function MonthlySummaryClient({
                   </svg>
                 </span>
                 <div className="min-w-0">
-                  <h1 className={cn("text-xl font-bold tracking-tight", brandGradientTextClass)}>
+                  <h1 className={cn("text-xl font-semibold tracking-tight", brandGradientTextClass)}>
                     Podsumowanie miesiąca
                   </h1>
                   <p className="mt-0.5 text-sm font-medium text-slate-500">{stats.monthLabel}</p>

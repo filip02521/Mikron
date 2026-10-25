@@ -1007,7 +1007,7 @@ export function VacationCalendar({
                   </span>
                   {cell.isWeekend ? <span className="sr-only">, weekend</span> : null}
                   {cell.isToday ? (
-                    <Badge variant="info" className="hidden text-[0.5625rem] uppercase sm:inline-flex">Dziś</Badge>
+                    <Badge variant="info" className="hidden text-[0.5625rem] sm:inline-flex">Dziś</Badge>
                   ) : null}
                 </div>
                 {cell.isCurrentMonth && cell.periods.length > 0 ? (

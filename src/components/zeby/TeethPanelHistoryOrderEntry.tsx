@@ -102,7 +102,7 @@ export function TeethPanelHistoryOrderEntry({
                 )}
               >
                 {formatTeethSpecLabel(line)}
-                <span className="rounded bg-slate-100 px-1 text-[0.6875rem] font-bold tabular-nums text-slate-700">
+                <span className="rounded bg-slate-100 px-1 text-[0.6875rem] font-semibold tabular-nums text-slate-700">
                   ×{line.total}
                 </span>
               </li>

@@ -924,7 +924,7 @@ export function MagazynGadkiClient({
                       {orphanVisible.length > 0 ? (
                         <div className="space-y-2.5 rounded-lg border border-amber-200/90 bg-amber-50/90 p-3.5">
                           <div className="flex items-center gap-2">
-                            <span className="inline-flex items-center rounded-md bg-amber-100/90 px-2 py-0.5 text-[0.625rem] font-bold text-amber-900 ring-1 ring-inset ring-amber-200/80">
+                            <span className="inline-flex items-center rounded-md bg-amber-100/90 px-2 py-0.5 text-[0.625rem] font-semibold text-amber-900 ring-1 ring-inset ring-amber-200/80">
                               Usunięte z ZK
                             </span>
                             <span className="text-[0.6875rem] text-amber-800/80">
@@ -1929,7 +1929,7 @@ function SplitSharesEditor({
             className="space-y-1.5 rounded-lg border border-emerald-100/80 bg-white p-2.5 shadow-sm shadow-slate-950/[0.02]"
           >
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-[0.625rem] font-bold tabular-nums text-emerald-800 ring-1 ring-inset ring-emerald-200/70">
+              <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-[0.625rem] font-semibold tabular-nums text-emerald-800 ring-1 ring-inset ring-emerald-200/70">
                 {idx + 1}
               </span>
               <input

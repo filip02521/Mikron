@@ -121,7 +121,7 @@ export function SupplierGroupHeaderRow({
             <Chevron open={isOpen} />
             <span className="min-w-0">
               <span className="flex flex-wrap items-center gap-1.5">
-                <span className="truncate text-[0.875rem] font-bold leading-tight text-slate-900">
+                <span className="truncate text-[0.875rem] font-semibold leading-tight text-slate-900">
                   {group.supplierKey}
                 </span>
                 {scheduleDate ? (

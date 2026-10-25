@@ -26,7 +26,7 @@ export function boardAnnouncementRowClass(opts: {
 }
 
 export function boardAnnouncementRoleBadgeClass(): string {
-  return "inline-flex rounded-md bg-indigo-100 px-2 py-0.5 text-[0.625rem] font-bold leading-none text-indigo-900";
+  return "inline-flex rounded-md bg-indigo-100 px-2 py-0.5 text-[0.625rem] font-semibold leading-none text-indigo-900";
 }
 
 export function boardAnnouncementAvatarClass(opts: {
@@ -228,7 +228,7 @@ export function boardThreadAvatarClass(tone: BoardThreadMessageTone): string {
 
 export function boardThreadRoleBadgeClass(tone: BoardThreadMessageTone): string {
   return cn(
-    "inline-flex rounded-md px-2 py-0.5 text-[0.625rem] font-bold leading-none",
+    "inline-flex rounded-md px-2 py-0.5 text-[0.625rem] font-semibold leading-none",
     tone === "procurement" ? "bg-indigo-100 text-indigo-900" : "bg-slate-100 text-slate-700"
   );
 }
@@ -250,13 +250,13 @@ export function boardChipCountBadgeClass(opts: {
   emphasis?: "default" | "warning" | "action";
 }): string {
   if (opts.active) {
-    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-indigo-600 px-1.5 py-0.5 tabular-nums text-[0.625rem] font-bold leading-none text-white";
+    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-indigo-600 px-1.5 py-0.5 tabular-nums text-[0.625rem] font-semibold leading-none text-white";
   }
   if (opts.emphasis === "warning") {
-    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-amber-100 px-1.5 py-0.5 tabular-nums text-[0.625rem] font-bold leading-none text-amber-900";
+    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-amber-100 px-1.5 py-0.5 tabular-nums text-[0.625rem] font-semibold leading-none text-amber-900";
   }
   if (opts.emphasis === "action") {
-    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-indigo-100 px-1.5 py-0.5 tabular-nums text-[0.625rem] font-bold leading-none text-indigo-900";
+    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-indigo-100 px-1.5 py-0.5 tabular-nums text-[0.625rem] font-semibold leading-none text-indigo-900";
   }
-  return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-slate-100 px-1.5 py-0.5 tabular-nums text-[0.625rem] font-bold leading-none text-slate-600";
+  return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-slate-100 px-1.5 py-0.5 tabular-nums text-[0.625rem] font-semibold leading-none text-slate-600";
 }

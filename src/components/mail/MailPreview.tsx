@@ -147,7 +147,7 @@ export function MailPreview({
               >
                 <span className="min-w-0 flex-1 break-all text-sm text-slate-900">
                   {a.roleLabel ? (
-                    <span className="mb-0.5 block text-[0.6875rem] font-semibold uppercase tracking-[0.04em] text-emerald-800">
+                    <span className="mb-0.5 block text-[0.6875rem] font-semibold text-emerald-800">
                       {a.roleLabel}
                     </span>
                   ) : null}

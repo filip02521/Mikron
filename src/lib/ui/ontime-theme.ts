@@ -53,7 +53,7 @@ export const navLinkIdleClass = cn(
   `${navFineHover}text-slate-900`
 );
 
-/** Sidebar — nagłówek grupy nawigacji. */
+/** Sidebar — nagłówek grupy nawigacji (design-ok: Nav Group, jedyne wersaliki w aplikacji). */
 export const sidebarNavSectionTitleClass =
   "px-3 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-slate-500";
 
@@ -784,7 +784,7 @@ export const mobileNavLinkIdleClass = cn(
 );
 
 export const mobileNavBadgeClass =
-  "bg-slate-700 text-[0.5625rem] font-bold text-white shadow-sm lg:text-[0.625rem]";
+  "bg-slate-700 text-[0.5625rem] font-semibold text-white shadow-sm lg:text-[0.625rem]";
 
 /** Wspólna obudowa komunikatów systemowych. */
 /** Tekst i akcje obok siebie; gdy akcje się nie mieszczą, schodzą pod tekst (sm:flex-wrap), zamiast go ściskać. */

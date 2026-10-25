@@ -329,7 +329,7 @@ export function ZkWatchProsbaScopeModal({
           <div className="flex items-center gap-2 text-xs text-slate-500">
             {orderCount > 0 ? (
               <>
-                <span className="inline-flex size-5 items-center justify-center rounded-full bg-indigo-100 text-[0.625rem] font-bold text-indigo-700">
+                <span className="inline-flex size-5 items-center justify-center rounded-full bg-indigo-100 text-[0.625rem] font-semibold text-indigo-700">
                   {orderCount}
                 </span>
                 <span className="font-medium text-slate-700">

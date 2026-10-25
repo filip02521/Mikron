@@ -150,7 +150,7 @@ function DayColumn({
             {day.weekdayLabel}
           </p>
           {day.isToday ? (
-            <Badge variant="info" className="px-1.5 py-0 text-[0.5625rem] uppercase">
+            <Badge variant="info" className="px-1.5 py-0 text-[0.5625rem]">
               {C.weekToday}
             </Badge>
           ) : null}

@@ -63,7 +63,7 @@ function IntroStepCard({
 }) {
   return (
     <div className="rounded-lg border border-indigo-100/90 bg-indigo-50/35 px-3 py-2.5 text-center">
-      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-800">
+      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-800">
         {step}
       </span>
       <p className="mt-2 text-xs font-semibold text-slate-900">{title}</p>

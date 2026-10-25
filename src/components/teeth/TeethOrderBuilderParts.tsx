@@ -95,7 +95,7 @@ export function TeethBuilderStepFlow({ steps }: { steps: TeethBuilderStep[] }) {
           >
             <span
               className={cn(
-                "flex size-3.5 shrink-0 items-center justify-center rounded-full text-[0.5625rem] font-bold",
+                "flex size-3.5 shrink-0 items-center justify-center rounded-full text-[0.5625rem] font-semibold",
                 step.done ? "bg-indigo-600 text-white" : "bg-slate-200/80 text-slate-500",
               )}
               aria-hidden="true"
@@ -228,7 +228,7 @@ export function TeethBuilderGroupList({
                 <span className="text-xs font-medium text-slate-700">{g.mould.trim()}</span>
               ) : null}
               {needsJaw && jawIcon && !mouldEncodesExplicitJaw(g.mould) ? (
-                <span className="text-xs font-bold text-slate-500" title={resolvedJaw === "upper" ? "Górna" : "Dolna"}>
+                <span className="text-xs font-semibold text-slate-500" title={resolvedJaw === "upper" ? "Górna" : "Dolna"}>
                   {jawIcon}
                 </span>
               ) : null}

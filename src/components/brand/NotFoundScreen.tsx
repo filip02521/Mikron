@@ -50,7 +50,7 @@ export function NotFoundScreen({
 
           {/* Znak 404 — tło typograficzne, nie konkuruje z marką */}
           <span
-            className="pointer-events-none absolute inset-x-0 top-3 select-none text-center text-[4.5rem] font-bold leading-none tracking-tighter text-slate-900/[0.04] sm:top-2 sm:text-[5.5rem]"
+            className="pointer-events-none absolute inset-x-0 top-3 select-none text-center text-[4.5rem] font-semibold leading-none tracking-tighter text-slate-900/[0.04] sm:top-2 sm:text-[5.5rem]"
             aria-hidden
           >
             404
@@ -61,7 +61,7 @@ export function NotFoundScreen({
               Strona niedostępna
             </p>
 
-            <h1 className="mt-2 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+            <h1 className="mt-2 text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
               Nie znaleziono strony
             </h1>
 

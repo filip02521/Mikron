@@ -67,7 +67,7 @@ function ColumnToggleRow({
       >
         <span
           className={cn(
-            "inline-flex size-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold leading-none",
+            "inline-flex size-4 shrink-0 items-center justify-center rounded border text-[10px] font-semibold leading-none",
             visible
               ? "border-indigo-400 bg-indigo-50 text-indigo-800"
               : "border-slate-200 bg-white text-transparent"
