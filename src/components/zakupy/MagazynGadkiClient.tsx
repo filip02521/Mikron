@@ -103,12 +103,15 @@ function GadkiSection({
   title,
   hint,
   headerAside,
+  collapsed = false,
   children,
   className,
 }: {
   title: string;
   hint?: string;
   headerAside?: React.ReactNode;
+  /** Zwinięta treść — bez pustego pasa paddingu pod nagłówkiem. */
+  collapsed?: boolean;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -127,7 +130,7 @@ function GadkiSection({
         action={headerAside}
         actionAlign="inline"
       />
-      <div className={cn(panelSubsectionInsetClass, "pb-4 pt-3")}>{children}</div>
+      <div className={cn(panelSubsectionInsetClass, collapsed ? "py-0" : "pb-4 pt-3")}>{children}</div>
     </section>
   );
 }
@@ -555,6 +558,7 @@ export function MagazynGadkiClient({
 
       <GadkiSection
         title="Powiązane ZK"
+        collapsed={!linksExpanded}
         hint="Stałe dokumenty ZK z Subiekta przypięte do magazynu Gądki (max 10)."
         headerAside={
           links.length > 0 ? (
@@ -746,9 +750,9 @@ export function MagazynGadkiClient({
                   <article
                     key={link.id}
                     id={`zk-${link.id}`}
-                    className="scroll-mt-24 overflow-hidden rounded-lg border border-indigo-100/80 bg-white shadow-sm "
+                    className="scroll-mt-24 overflow-hidden rounded-lg bg-slate-50"
                   >
-                    <header className="flex flex-wrap items-start justify-between gap-3 border-b border-indigo-50 bg-indigo-50/70 px-3.5 py-3 sm:px-4">
+                    <header className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200/70 px-3.5 py-3 sm:px-4">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="text-sm font-semibold tracking-tight text-slate-900">
@@ -828,13 +832,12 @@ export function MagazynGadkiClient({
                                   {group.title}
                                 </span>
                                 <span className="text-[0.6875rem] tabular-nums text-slate-500">
-                                  {group.lines.length}{" "}
-                                  {group.lines.length === 1 ? "wiersz" : "wiersze"}
+                                  {polishPlural(group.lines.length, "wiersz", "wiersze", "wierszy")}
                                 </span>
                                 <div className="h-px flex-1 bg-slate-200/80" />
                               </div>
                             ) : null}
-                            <ul className="overflow-hidden rounded-lg border border-slate-200/80 bg-white divide-y divide-slate-100/90 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.8)]">
+                            <ul className="overflow-hidden rounded-lg border border-slate-200/80 bg-white divide-y divide-slate-100/90">
                               {group.lines.map((line) => (
                                 <LineRow
                                   key={`${link.id}-${line.rowKey}`}
@@ -1360,7 +1363,7 @@ function RenamePalletForm({
 
   return (
     <form
-      className="flex flex-wrap items-center gap-1.5 rounded-lg border border-indigo-100/90 bg-white/90 px-2 py-1.5 text-xs shadow-sm "
+      className="flex flex-wrap items-center gap-1.5 rounded-lg border border-indigo-100/90 bg-white/90 px-2 py-1.5 text-xs"
       onSubmit={(e) => {
         e.preventDefault();
         if (!from || !to.trim()) return;
@@ -1865,7 +1868,7 @@ function SplitSharesEditor({
   const listId = `gadki-pallets-${line.rowKey}`;
 
   return (
-    <div className="mt-3 space-y-3 rounded-lg border border-indigo-100 bg-indigo-50/50 p-3 shadow-sm ">
+    <div className="mt-3 space-y-3 rounded-lg border border-indigo-100 bg-indigo-50/50 p-3">
       <div className="space-y-1">
         <p className="text-xs font-semibold text-indigo-950">
           Rozbicie na palety
@@ -1890,7 +1893,7 @@ function SplitSharesEditor({
         {rows.map((row, idx) => (
           <li
             key={row.id}
-            className="space-y-1.5 rounded-lg border border-indigo-100/80 bg-white p-2.5 shadow-sm shadow-slate-950/[0.02]"
+            className="space-y-1.5 rounded-lg border border-indigo-100/80 bg-white p-2.5"
           >
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-[0.625rem] font-semibold tabular-nums text-indigo-800 ring-1 ring-inset ring-indigo-200/70">
