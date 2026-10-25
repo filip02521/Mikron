@@ -631,7 +631,7 @@ export function ZdEstimatePostCreatePanel({
       >
         {session.kind === "timeout_recovery" ? (
           <section
-            className="flex items-start gap-3 rounded-xl bg-amber-50 px-4 py-3.5 ring-1 ring-amber-200"
+            className="flex items-start gap-3 rounded-lg bg-amber-50 px-4 py-3.5 ring-1 ring-amber-200"
             aria-labelledby="zd-post-create-hero"
           >
             <IconAlertCircle
@@ -666,7 +666,7 @@ export function ZdEstimatePostCreatePanel({
           </section>
         ) : (
           <section
-            className="flex flex-col gap-3 rounded-xl bg-emerald-50/80 px-4 py-3.5 ring-1 ring-emerald-200 sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col gap-3 rounded-lg bg-emerald-50/80 px-4 py-3.5 ring-1 ring-emerald-200 sm:flex-row sm:items-center sm:justify-between"
             aria-labelledby="zd-post-create-hero"
           >
             <div className="flex min-w-0 items-center gap-3">

@@ -34,7 +34,7 @@ export function formatWhen(iso: string | null): string {
 
 export function ProductCell({ row }: { row: Pick<StockWatchRowView, "twSymbol" | "twNazwa" | "grtNazwa"> }) {
   return (
-    <div className="min-w-0 max-w-[16rem]">
+    <div className="min-w-0 max-w-[14rem]">
       <p className="truncate font-mono text-[0.8125rem] font-semibold text-slate-900" title={row.twSymbol ?? undefined}>
         {row.twSymbol ?? "-"}
       </p>

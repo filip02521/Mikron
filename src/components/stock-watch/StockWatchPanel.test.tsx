@@ -158,6 +158,16 @@ describe("StockWatchPanel", () => {
     expect(replace).toHaveBeenCalledWith("/zakupy/braki?dostawca=a&tab=alerts", { scroll: false });
   });
 
+  it("'Puste · bez dostawy' is a filter chip in the list's filter row", () => {
+    renderPanel({ initialTab: "alerts" });
+    const chip = screen.getByRole("button", { name: /Puste · bez dostawy/ });
+    expect(chip.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(chip);
+    expect(chip.getAttribute("aria-pressed")).toBe("true");
+    expect(replace).toHaveBeenLastCalledWith("/zakupy/braki?filtr=puste", { scroll: false });
+    expect(screen.getAllByRole("status").some((s) => s.textContent === "1 pozycja")).toBe(true);
+  });
+
   it("expands a 'Wkrótce' supplier into its next-delivery risks", () => {
     renderPanel({ initialSupplierId: "n", initialSupplierName: "Dostawca N" });
     const desktop = screen.getAllByRole("table")[0]!;

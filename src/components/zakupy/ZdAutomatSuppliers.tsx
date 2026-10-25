@@ -243,8 +243,23 @@ export function ZdAutomatSuppliers({
     <Card padding={false} className="overflow-hidden">
       <CardHeader inset title="Dostawcy" description={kpiWeekLabel} />
 
-      <div className="flex flex-col gap-3 border-y border-slate-200 bg-white px-6 py-3 sm:px-7 lg:flex-row lg:items-center lg:justify-between">
-        <div className="relative lg:w-64">
+      <div className="flex flex-wrap items-center gap-2 border-y border-slate-200 bg-white px-6 py-3 sm:px-7">
+        <SegmentedControl
+          value={filter}
+          onChange={(f) => {
+            onFilterChange(f);
+            setExpanded(null);
+          }}
+          ariaLabel="Pokaż dostawców"
+          density="compact"
+          options={[
+            { value: "check", label: `Do sprawdzenia ${counts.check}` },
+            { value: "automat", label: `W automacie ${counts.automat}` },
+            { value: "pl", label: `Polscy ${counts.pl}` },
+            { value: "all", label: `Wszyscy ${counts.all}` },
+          ]}
+        />
+        <div className="relative order-first w-full sm:order-none sm:w-64">
           <IconSearch size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden />
           <Input
             type="search"
@@ -255,26 +270,11 @@ export function ZdAutomatSuppliers({
             className="pl-9"
           />
         </div>
-        <SegmentedControl
-          value={filter}
-          onChange={(f) => {
-            onFilterChange(f);
-            setExpanded(null);
-          }}
-          ariaLabel="Pokaż dostawców"
-          density="compact"
-          options={[
-            { value: "check", label: `Do sprawdzenia (${counts.check})` },
-            { value: "automat", label: `W automacie (${counts.automat})` },
-            { value: "pl", label: `Polscy (${counts.pl})` },
-            { value: "all", label: `Wszyscy (${counts.all})` },
-          ]}
-        />
       </div>
 
       {shown.length ? (
-        <TableScroll>
-          <DataTable className="kpi-table min-w-[880px]">
+        <TableScroll className="relative">
+          <DataTable className="kpi-table min-w-[760px]">
             <thead>
               <tr>
                 <th>Dostawca</th>
@@ -303,7 +303,7 @@ export function ZdAutomatSuppliers({
                 return (
                   <Fragment key={r.id}>
                     <tr className={cn(open && "bg-slate-50")}>
-                      <td className="min-w-[12rem]">
+                      <td className="min-w-[11rem]">
                         <button
                           type="button"
                           aria-expanded={open}
