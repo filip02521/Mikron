@@ -93,7 +93,7 @@ export const CRON_JOB_DEFINITIONS: CronJobDefinition[] = [
   {
     id: "zd_sku_class",
     label: "Klasy ABC/XYZ towarów",
-    schedule: "1. dnia miesiąca 0:30",
+    schedule: "raz w miesiącu, po Stock Watch (5:30–6:30)",
     endpoint: "/api/cron/zd-sku-class",
     scheduled: true,
     description:
@@ -102,7 +102,7 @@ export const CRON_JOB_DEFINITIONS: CronJobDefinition[] = [
   {
     id: "zd_kpi_weekly",
     label: "KPI automatu ZD",
-    schedule: "pn 7:00",
+    schedule: "raz w tygodniu, po Stock Watch (5:30–6:30)",
     endpoint: "/api/cron/zd-kpi-weekly",
     scheduled: true,
     description:

@@ -545,8 +545,9 @@ Po wdrożeniu main z #230–#232:
 
 1. **Migracje** (Admin → Migracje): `190`, `193`, `194`, `195` — te, których brak. Bez 194 strategia zapisze stopień 1
    (z ostrzeżeniem), ale bez minimum/progu, flag, odłożenia i klas; bez 195 backtest w aplikacji nie zapisze wyniku.
-2. **Crony** na serwerze (PowerShell jako administrator): `.\installer\install-cron.ps1` — dodaje `zd-sku-class`
-   (1. dnia miesiąca 00:30) i `zd-kpi-weekly` (pn 07:00). Monitor cronów w panelu admina pokaże je jako „nigdy”.
+2. **Crony — nic do instalowania.** Klasy ABC/XYZ (raz w miesiącu) i KPI (raz w tygodniu) liczy istniejący
+   `stock-watch` po porannym przebiegu braków (zmiana 2026-10-25; wcześniej osobne zadania Windows, których
+   `install-cron.ps1` na serwerze nie dodał). Pierwszy poranek po wdrożeniu nadrobi oba.
 3. **Pierwsze klasy ABC/XYZ i KPI**: `/zakupy/automat` → „Przelicz” (admin) — bez czekania na 1. dzień miesiąca.
 4. **Czasy dostaw**: nocny `subiekt-lead-times` (01:30) sam przeliczy próbki z nową regułą końca miesiąca.
 5. **Strategia dostawców**: rekomendacje z §11.2 (stopień 1 — propozycje do akceptacji). Przed zapisem sprawdzić

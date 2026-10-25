@@ -8,7 +8,7 @@ import { recordCronSkipped, warsawCronContext } from "@/lib/time/warsaw-cron";
 export const dynamic = "force-dynamic";
 export const maxDuration = 900;
 
-/** Poniedziałek 07:00: KPI automatu ZD za miniony tydzień (pn–nd) → zd_kpi_weekly. */
+/** Ręcznie (`cron-invoke -Job zd-kpi-weekly`); co tydzień liczy to `stock-watch` (`zd-automat-catchup`). KPI automatu ZD za miniony tydzień (pn–nd) → zd_kpi_weekly. */
 export async function GET(request: Request) {
   const denied = authorizeCronRequest(request.headers.get("authorization"));
   if (denied) return denied;
