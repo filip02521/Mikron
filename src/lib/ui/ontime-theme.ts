@@ -1028,17 +1028,18 @@ export const panelNoticeTriggerDefaultClass =
 /** Pasek akcji w nagłówku panelu dziennego (wyszukiwarka + przyciski) */
 export const panelToolbarShellClass = "flex w-full min-w-0 items-center";
 
-export const panelToolbarRowClass =
-  "flex w-full min-w-0 flex-col gap-2 md:flex-row md:items-center";
+/** Pasek narzędzi panelu: jedna wysokość dla pola i przycisków — 44 px na telefonie, 40 px od `sm`. */
+export const panelToolbarControlHeightClass = "h-11 sm:h-10";
 
-export const panelToolbarSearchWrapClass =
-  "flex min-w-0 flex-1 items-center px-0.5 md:min-w-[12rem]";
+export const panelToolbarRowClass =
+  "flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:items-center";
+
+export const panelToolbarSearchWrapClass = "flex min-w-0 flex-1 items-center sm:min-w-[12rem]";
 
 export const panelToolbarSearchInputClass =
-  "h-9 w-full rounded-md border border-indigo-100/80 bg-white px-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100/90";
+  "h-11 sm:h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm transition-colors duration-150 placeholder:text-slate-500 hover:border-slate-300 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100";
 
-export const panelToolbarActionsClass =
-  "flex shrink-0 flex-wrap items-center justify-stretch gap-1.5 md:justify-end";
+export const panelToolbarActionsClass = "flex shrink-0 items-center gap-2";
 
 export const panelToolbarTextButtonClass =
   "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-indigo-100/80 bg-white px-2.5 text-xs font-medium text-indigo-800/85 shadow-sm transition hover:border-indigo-200/80 hover:bg-indigo-50/45 hover:text-indigo-950";
