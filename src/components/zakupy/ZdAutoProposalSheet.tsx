@@ -267,7 +267,7 @@ export function ZdAutoProposalSheet({
     setListReady(false);
     setFresh(null);
     setEdits({});
-    void actionCreateZdAutoProposalNow({ supplierId }).then(
+    void actionCreateZdAutoProposalNow({ supplierId, refreshProposalId: fresh?.id ?? morning.id }).then(
       (r) => {
         if (!r.ok) return setRecompute({ status: "error", message: r.message });
         if (!r.proposal) return setRecompute({ status: "error", message: "Na aktualnych stanach nie ma nic do zamówienia." });
@@ -419,7 +419,7 @@ export function ZdAutoProposalSheet({
       key: "plan",
       title: "Plan zamówień",
       status: "idle",
-      detail: `${supplierName} oznaczony jako zamówiony${cycle ? `; kolejna propozycja za ${cycle} ${polishPluralWord(cycle, "dzień", "dni", "dni")}` : ""}.`,
+      detail: `${supplierName} oznaczony jako zamówiony${cycle ? `; kolejna propozycja za ${cycle} ${polishPluralWord(cycle, "dzień", "dni", "dni")}, w dzień roboczy` : ""}.`,
     },
   ];
 

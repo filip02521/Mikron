@@ -764,8 +764,9 @@ export const informacjaSurfaceClass =
   "rounded-md border border-sky-200/90 bg-[var(--card)] shadow-[var(--shadow-card-elevated)]";
 
 /** Mobile — widok handlowca */
+/** Nagłówek mobilny: odstęp u góry i u dołu równy (treść na środku paska); u góry co najmniej bezpieczna strefa ekranu. */
 export const mobileSalesHeaderClass =
-  "relative sticky top-0 z-30 flex shrink-0 min-h-14 items-center justify-between gap-3 border-b border-slate-200/80 bg-[var(--card)]/95 px-4 shadow-[var(--shadow-card-elevated)] backdrop-blur-md md:hidden pt-[max(0.75rem,env(safe-area-inset-top,0px))]";
+  "relative sticky top-0 z-30 flex shrink-0 min-h-14 items-center justify-between gap-3 border-b border-slate-200/80 bg-[var(--card)]/95 px-4 shadow-[var(--shadow-card-elevated)] backdrop-blur-md md:hidden pb-2 pt-[max(0.5rem,env(safe-area-inset-top,0px))]";
 
 export const mobileSalesNavClass =
   "fixed inset-x-0 bottom-0 z-50 border-t border-slate-200/80 bg-[var(--card)]/95 shadow-[var(--shadow-card-elevated)] backdrop-blur-md md:hidden";

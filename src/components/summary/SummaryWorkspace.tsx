@@ -84,6 +84,8 @@ import type {
 } from "@/lib/stock-watch/data";
 import { StockWatchOffPlanBanner } from "@/components/stock-watch/StockWatchOffPlanBanner";
 import { DailyZdProposalsProvider, type DailyZdProposal } from "@/components/summary/DailyZdProposals";
+import { DailyZdAutomatSection } from "@/components/summary/DailyZdAutomatSection";
+import type { ZdAutomatDailyData } from "@/lib/orders/zd-automat-daily";
 import {
   SupplierStockSignalsProvider,
   supplierStockSignalRank,
@@ -100,6 +102,9 @@ export function SummaryWorkspace({
   stockSignalBySupplierId = {},
   offPlanSuppliers = [],
   autoProposals = [],
+  zdAutomat = null,
+  nowIso,
+  supplierCardsHref = "/zakupy/dostawcy",
   suppliers,
   supplierDirectory,
   salesPeople,
@@ -119,6 +124,12 @@ export function SummaryWorkspace({
   offPlanSuppliers?: StockWatchOffPlanSupplier[];
   /** Zamówienia automatu do potwierdzenia — w wierszu dostawcy harmonogramu (tylko role z Kreatorem). */
   autoProposals?: DailyZdProposal[];
+  /** Sekcja „Automat ZD” (dostawcy w automacie, ostatnie propozycje, nocny przebieg); null = brak sekcji. */
+  zdAutomat?: ZdAutomatDailyData | null;
+  /** Czas z serwera dla sekcji Automat ZD — ten sam wynik na serwerze i w przeglądarce. */
+  nowIso?: string;
+  /** Karty dostawców dla roli (admin / zakupy) — link „Ustawienia” w sekcji Automat ZD. */
+  supplierCardsHref?: string;
   suppliers: OrderFormSupplierOption[];
   supplierDirectory: SupplierDirectoryEntry[];
   salesPeople: { id: string; name: string; email: string }[];
@@ -553,6 +564,11 @@ export function SummaryWorkspace({
             notify={notify}
             etaUseP50={etaUseP50}
             etaQuantilesBySupplierId={etaQuantilesBySupplierId}
+            automat={
+              canPrepareZd && zdAutomat && zdAutomat.suppliers.length > 0 && nowIso ? (
+                <DailyZdAutomatSection data={zdAutomat} nowIso={nowIso} cardsHref={supplierCardsHref} />
+              ) : null
+            }
           />
         ) : null}
 

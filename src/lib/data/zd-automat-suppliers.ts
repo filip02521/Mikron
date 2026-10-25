@@ -26,6 +26,8 @@ export type ZdAutomatSupplierRow = {
   subiektCountryId: number | null;
   subiektCountryName: string | null;
   policy: ZdSupplierOrderPolicyRow;
+  /** Stopień cofnięty automatycznie (braki A) — do następnej ręcznej zmiany ustawień; null = brak. */
+  levelRollback?: { at: string; reason: string } | null;
   backtest: {
     status: "queued" | "running" | "done" | "error";
     verdict: ZdBacktestVerdictKind | null;
@@ -34,6 +36,19 @@ export type ZdAutomatSupplierRow = {
     params: ZdBacktestParams;
   } | null;
 };
+
+/**
+ * Notatka o automatycznym cofnięciu stopnia (migracja 198): widoczna, dopóki nikt nie zmienił ustawień po nim
+ * (`updated_at` starsze niż `auto_level_changed_at`).
+ */
+export function zdLevelRollbackFromPolicyJson(p: Record<string, unknown> | null | undefined): { at: string; reason: string } | null {
+  const at = p?.auto_level_changed_at ? new Date(String(p.auto_level_changed_at)) : null;
+  const reason = typeof p?.auto_level_change_reason === "string" ? p.auto_level_change_reason.trim() : "";
+  if (!at || Number.isNaN(at.getTime()) || !reason) return null;
+  const updated = p?.updated_at ? new Date(String(p.updated_at)).getTime() : 0;
+  if (updated > at.getTime()) return null;
+  return { at: at.toISOString(), reason };
+}
 
 export async function loadZdAutomatSuppliers(): Promise<ZdAutomatSupplierRow[]> {
   const res = await query<{
@@ -84,6 +99,7 @@ export async function loadZdAutomatSuppliers(): Promise<ZdAutomatSupplierRow[]> 
       subiektCountryId: Number.isFinite(countryId) ? countryId : null,
       subiektCountryName: typeof r.country?.name === "string" ? r.country.name : null,
       policy,
+      levelRollback: zdLevelRollbackFromPolicyJson(p),
       backtest: backtests.get(r.id) ?? null,
     };
   });

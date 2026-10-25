@@ -37,12 +37,17 @@ import { zdAutoProposalBlockReason } from "@/lib/orders/zd-auto-proposal-create"
 import { collectZdPackagingPairConflicts } from "@/lib/orders/zd-estimate-packaging-pair-conflict";
 import {
   createZdAutoProposal,
-  fetchLatestZdAutoProposal,
+  fetchZdAutoProposalCycleAnchorKey,
   isZdAutoProposalDue,
+  reconcileUnconfirmedZdAutoProposals,
+  refreshZdAutoProposal,
+  type ZdAutoProposalOrigin,
   type ZdAutoProposalLine,
 } from "@/lib/data/zd-auto-proposals";
-import { fetchZdSupplierOrderPolicy } from "@/lib/data/zd-supplier-order-policy";
-import { warsawDateKeyFromIso, warsawNowParts } from "@/lib/time/warsaw";
+import { fetchZdSupplierOrderPolicy, recordZdAutomatAttempt, rollbackZdAutomatLevel } from "@/lib/data/zd-supplier-order-policy";
+import { zdAutomatCreateFailRollback } from "@/lib/orders/zd-automat-status";
+import { isZdAutomatWorkday } from "@/lib/orders/zd-automat-daily";
+import { warsawNowParts } from "@/lib/time/warsaw";
 import { classifySubiektException, feedbackFromException } from "@/lib/subiekt/feedback";
 import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
 import { analyzeStockWatchItem, unitPricePerPiece } from "@/lib/stock-watch/analysis";
@@ -215,6 +220,9 @@ export async function runStockWatchWorker(input: {
       console.error("[stock-watch] price harvest", e);
     }
 
+    // 1b) Propozycje z niepotwierdzonym tworzeniem ZD — uzgodnienie z liniami ZD zebranymi wyżej.
+    await reconcileUnconfirmedProposals(todayKey);
+
     // 2) Wycena listy — raz na wywołanie (reguły czyta silnik per dostawca, jak Kreator).
     const prices = await loadProductPurchasePrices();
     // Czas dostawy + kolejne zamówienie per dostawca — tylko do sygnałów
@@ -245,6 +253,9 @@ export async function runStockWatchWorker(input: {
         break;
       }
       const supplier = supplierById.get(scope.supplierId)!;
+      // Wyjątek (Subiekt, sieć) w poprzednim slocie tego przebiegu — ten jest ponowieniem.
+      const retry = run.scopesFailed.some((f) => f.supplierId === scope.supplierId);
+      let markDone = true;
       try {
         const outcome = await computeSupplierOrder({
           scope,
@@ -261,6 +272,8 @@ export async function runStockWatchWorker(input: {
           ...(input.trigger === "cron" && snapshotWindow ? { stockSnapshotDayKey: todayKey } : {}),
         });
         itemsWritten += outcome.itemsWritten;
+        // Ponowienie się udało — błąd z poprzedniego slotu nie jest już stanem przebiegu.
+        if (retry) scopesFailed.splice(0, scopesFailed.length, ...scopesFailed.filter((f) => f.supplierId !== scope.supplierId));
         if (outcome.message) {
           scopesFailed.push({
             supplierId: scope.supplierId,
@@ -277,14 +290,17 @@ export async function runStockWatchWorker(input: {
             ? userFacingErrorTextFromMessage(e instanceof Error ? e.message : String(e))
             : feedbackFromException(e).message;
         console.error("[stock-watch] scope", scope.supplierId, message, e);
-        scopesFailed.push({
-          supplierId: scope.supplierId,
-          supplierName: supplier.name,
-          message,
-        });
+        // Panel dzienny → Automat ZD: dziś bez propozycji przez błąd, nie „nic do zamówienia”.
+        await recordZdAutomatAttempt(scope.supplierId, { kind: "error", detail: message });
+        if (!retry) {
+          scopesFailed.push({ supplierId: scope.supplierId, supplierName: supplier.name, message });
+          // Pierwszy błąd: kolejny slot crona (co 20 min) spróbuje jeszcze raz — chwilowa awaria Subiekta
+          // nie może kosztować dostawcy całego cyklu.
+          markDone = false;
+        }
       }
-      // Także po błędzie — bez pętli na tym samym zakresie do końca dnia.
-      scopesDone.push(scope.supplierId);
+      // Po drugim błędzie też — bez pętli na tym samym zakresie do końca dnia.
+      if (markDone) scopesDone.push(scope.supplierId);
       await updateStockWatchRun(run.id, { scopesDone, scopesFailed, itemsWritten });
     }
 
@@ -351,8 +367,13 @@ async function computeSupplierOrder(input: {
   horizon: ZdOrderHorizon | null;
   /** Dzień nocnego przebiegu — wtedy (i tylko wtedy) może powstać propozycja ZD automatu. */
   proposalTodayKey?: string;
-  /** „Przygotuj teraz” w Kreatorze — bez czekania na cykl. */
-  proposalForce?: boolean;
+  /**
+   * Skąd propozycja: nocny przebieg (cykl, dni robocze), „Przygotuj teraz” w Kreatorze albo przeliczenie
+   * w panelu „Sprawdź i zatwierdź” (bez czekania na cykl). Domyślnie nocny.
+   */
+  proposalMode?: ZdAutoProposalOrigin;
+  /** Przegląd: propozycja do przeliczenia w miejscu (ten sam id — harmonogram się nie przesuwa). */
+  proposalRefreshId?: string;
   /** Dzień porannego zapisu historii stanów — tylko nocny przebieg z crona. */
   stockSnapshotDayKey?: string;
 }): Promise<{ itemsWritten: number; message: string | null; proposal?: ZdAutoProposalOutcome }> {
@@ -578,7 +599,8 @@ async function computeSupplierOrder(input: {
   } else if (input.proposalTodayKey) {
     proposal = await maybeCreateAutoProposal({
       supplierId: supplier.id,
-      force: input.proposalForce === true,
+      mode: input.proposalMode ?? "night",
+      refreshId: input.proposalRefreshId ?? null,
       todayKey: input.proposalTodayKey,
       dataOd: window.dataOd,
       dataDo: window.dataDo,
@@ -601,6 +623,13 @@ async function computeSupplierOrder(input: {
         })),
       serviceOrderIds: list.serviceOrderIds,
       hook: { list, engine, horizon, prices },
+    });
+  }
+  // Przeliczenie w panelu to nie próba automatu — „Ostatnia próba” zostaje z nocy albo „Przygotuj teraz”.
+  if (proposal && input.proposalMode !== "review") {
+    await recordZdAutomatAttempt(supplier.id, {
+      kind: proposal.kind,
+      detail: proposal.kind === "skipped" ? proposal.reason : proposal.kind === "error" ? proposal.message : null,
     });
   }
 
@@ -628,7 +657,8 @@ export type ZdAutoProposalOutcome =
 
 async function maybeCreateAutoProposal(input: {
   supplierId: string;
-  force: boolean;
+  mode: ZdAutoProposalOrigin;
+  refreshId: string | null;
   todayKey: string;
   dataOd: string;
   dataDo: string;
@@ -639,14 +669,20 @@ async function maybeCreateAutoProposal(input: {
   /** Kontekst bezpieczników (zad. 4) i minimum (zad. 5). */
   hook: Pick<ZdProposalHookContext, "list" | "engine" | "horizon" | "prices">;
 }): Promise<ZdAutoProposalOutcome> {
+  const force = input.mode !== "night";
   try {
     const policy = await fetchZdSupplierOrderPolicy(input.supplierId);
-    if (policy.strategy === "classic" || (!policy.autoProposals && !input.force)) return { kind: "disabled" };
+    if (policy.strategy === "classic" || (!policy.autoProposals && !force)) return { kind: "disabled" };
+    // Dni robocze: w weekend i święto propozycja (a za nią mail do dostawcy) czeka do najbliższego dnia roboczego.
+    // „Przygotuj teraz” (force) działa zawsze — to decyzja człowieka.
+    if (!force && !isZdAutomatWorkday(input.todayKey)) return { kind: "not_due" };
     if (input.lines.length === 0) return { kind: "nothing_to_order" };
-    const last = await fetchLatestZdAutoProposal(input.supplierId);
-    const lastKey = last ? warsawDateKeyFromIso(last.createdAt) : null;
-    if (!input.force && !isZdAutoProposalDue({ cycleDays: policy.cycleDays, lastCreatedDateKey: lastKey, todayKey: input.todayKey })) {
-      return { kind: "not_due" };
+    // Cykl liczony od nocnej albo zatwierdzonej — przeliczenie w panelu ani niezatwierdzone „Przygotuj teraz” go nie przesuwa.
+    if (!force) {
+      const lastKey = await fetchZdAutoProposalCycleAnchorKey(input.supplierId);
+      if (!isZdAutoProposalDue({ cycleDays: policy.cycleDays, lastCreatedDateKey: lastKey, todayKey: input.todayKey })) {
+        return { kind: "not_due" };
+      }
     }
     const ctx: ZdProposalHookContext = {
       ...input.hook,
@@ -659,7 +695,7 @@ async function maybeCreateAutoProposal(input: {
     // flagi wartościowe liczą się z tej samej ceny, którą zapisuje propozycja, a dopełnienie też jest sprawdzone.
     const minimum = await applyZdProposalMinimum(ctx);
     const guarded = await applyZdProposalGuards({ ...ctx, lines: minimum.lines });
-    const created = await createZdAutoProposal({
+    const write = {
       supplierId: input.supplierId,
       // targetDays = dni faktycznie użyte w tej propozycji (baner pokazuje je zamiast ustawienia).
       policy: { strategy: policy.strategy, targetDays: input.dniZapasuUsed, cycleDays: policy.cycleDays },
@@ -669,12 +705,30 @@ async function maybeCreateAutoProposal(input: {
       serviceOrderIds: input.serviceOrderIds,
       flags: guarded.proposalFlags,
       deferredReason: minimum.outcome.kind === "deferred" ? minimum.outcome.reason : null,
-    });
+    };
+    const refreshed = input.refreshId ? await refreshZdAutoProposal(input.refreshId, write) : null;
+    const created = refreshed ?? (await createZdAutoProposal({ ...write, origin: input.mode }));
     return { kind: "created", id: created.id };
   } catch (e) {
     // Nocny przebieg idzie dalej (analiza braków); „Przygotuj teraz” dostaje przyczynę.
     console.error("[stock-watch] propozycja ZD automatu", input.supplierId, e);
     return { kind: "error", message: e instanceof Error ? e.message : "Nie udało się zapisać propozycji." };
+  }
+}
+
+/** Uzgodnienie po timeoucie Subiekta; ZD nie powstało = stopień automatu w dół (spec §4.4). Błąd tylko w logu. */
+async function reconcileUnconfirmedProposals(todayKey: string): Promise<void> {
+  try {
+    for (const r of await reconcileUnconfirmedZdAutoProposals(todayKey)) {
+      if (r.outcome === "waiting") continue;
+      console.info("[stock-watch] uzgodnienie propozycji", r.supplierId, r.outcome, r.dokNr);
+      if (r.outcome !== "expired") continue;
+      const policy = await fetchZdSupplierOrderPolicy(r.supplierId);
+      const rollback = zdAutomatCreateFailRollback({ autoLevel: policy.autoLevel, attemptDay: r.attemptDay });
+      if (rollback) await rollbackZdAutomatLevel({ supplierId: r.supplierId, ...rollback });
+    }
+  } catch (e) {
+    console.error("[stock-watch] uzgodnienie niepotwierdzonych ZD", e);
   }
 }
 
@@ -720,13 +774,17 @@ export type ZdAutoProposalNowResult =
   | { status: "no_scope" | "no_run" | "not_configured" }
   | { status: "ok"; proposal: ZdAutoProposalOutcome | undefined };
 
-export async function createZdAutoProposalNow(supplierId: string): Promise<ZdAutoProposalNowResult> {
+export async function createZdAutoProposalNow(
+  supplierId: string,
+  options?: { refreshProposalId?: string | null }
+): Promise<ZdAutoProposalNowResult> {
   // Jedno przeliczenie dostawcy naraz: poczekaj na trwające odświeżenie (np. po Utwórz ZD),
   // a dwa kliknięcia „Przygotuj teraz” liczą się raz (drugie dostaje wynik pierwszego).
   await supplierRefresh.get(supplierId)?.running;
   const inFlight = proposalNowInFlight.get(supplierId);
   if (inFlight) return inFlight;
-  const run = computeSingleSupplier(supplierId, { proposalForce: true }).finally(() => {
+  const mode: ZdAutoProposalOrigin = options?.refreshProposalId ? "review" : "manual";
+  const run = computeSingleSupplier(supplierId, { proposalMode: mode, proposalRefreshId: options?.refreshProposalId ?? undefined }).finally(() => {
     proposalNowInFlight.delete(supplierId);
   });
   proposalNowInFlight.set(supplierId, run);
@@ -742,7 +800,7 @@ export function zdAutoProposalNowInFlight(supplierId: string): Promise<unknown> 
 
 async function computeSingleSupplier(
   supplierId: string,
-  options?: { proposalForce?: boolean }
+  options?: { proposalMode?: ZdAutoProposalOrigin; proposalRefreshId?: string }
 ): Promise<ZdAutoProposalNowResult> {
   const orders = resolveSubiektOrdersConfig();
   if (!orders.ok) return { status: "not_configured" };
@@ -775,7 +833,9 @@ async function computeSingleSupplier(
     ordersBaseUrl: orders.config.baseUrl,
     prices,
     horizon: horizons.get(supplier.id) ?? null,
-    ...(options?.proposalForce ? { proposalTodayKey: todayKey, proposalForce: true } : {}),
+    ...(options?.proposalMode
+      ? { proposalTodayKey: todayKey, proposalMode: options.proposalMode, proposalRefreshId: options.proposalRefreshId }
+      : {}),
   });
   return { status: "ok", proposal: outcome.proposal };
 }

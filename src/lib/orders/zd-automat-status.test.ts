@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { ZdKpiWeeklyMetrics } from "@/lib/data/zd-kpi-weekly";
 import {
+  zdAutomatCreateFailRollback,
+  zdAutomatLevelRollback,
   buildZdAutomatCheckStatus,
   buildZdAutomatStatus,
   zdAutomatCheckReasons,
@@ -118,5 +120,36 @@ describe("do sprawdzenia", () => {
     expect(s?.count).toBe(4);
     expect(s?.headline).toBe("4 z 5 dostawców w automacie do sprawdzenia");
     expect(s?.detail).toBe("A: brak backtestu · B: braki A od 5% · C: brak backtestu · i 1 inny.");
+  });
+});
+
+describe("cofnięcie stopnia po brakach A", () => {
+  it("stopień ≥ 2 i braki A od 5% — o jeden niżej, z powodem", () => {
+    expect(zdAutomatLevelRollback({ autoLevel: 3, oosAPct: 6.2, weekStart: "2026-10-19" })).toEqual({
+      from: 3,
+      to: 2,
+      reason: "braki A 6,2% w tygodniu od 19.10 (próg 5%)",
+    });
+  });
+  it("nie schodzi poniżej 1 (propozycje zatwierdza człowiek)", () => {
+    expect(zdAutomatLevelRollback({ autoLevel: 1, oosAPct: 20, weekStart: "2026-10-19" })).toBeNull();
+    expect(zdAutomatLevelRollback({ autoLevel: 2, oosAPct: 20, weekStart: "2026-10-19" })?.to).toBe(1);
+  });
+  it("braki poniżej progu albo bez pomiaru — bez zmiany", () => {
+    expect(zdAutomatLevelRollback({ autoLevel: 3, oosAPct: 4.99, weekStart: "2026-10-19" })).toBeNull();
+    expect(zdAutomatLevelRollback({ autoLevel: 3, oosAPct: null, weekStart: "2026-10-19" })).toBeNull();
+  });
+});
+
+describe("zdAutomatCreateFailRollback", () => {
+  it("nieudane utworzenie ZD cofa stopień ≥ 2 o jeden", () => {
+    expect(zdAutomatCreateFailRollback({ autoLevel: 2, attemptDay: "2026-10-23" })).toEqual({
+      from: 2,
+      to: 1,
+      reason: "nieudane utworzenie ZD 23.10 (Subiekt nie potwierdził zapisu)",
+    });
+  });
+  it("stopień 1 i niżej zostaje", () => {
+    expect(zdAutomatCreateFailRollback({ autoLevel: 1, attemptDay: "2026-10-23" })).toBeNull();
   });
 });

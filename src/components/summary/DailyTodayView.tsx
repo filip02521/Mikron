@@ -49,6 +49,7 @@ export function DailyTodayView({
   notify,
   etaUseP50 = false,
   etaQuantilesBySupplierId = {},
+  automat,
 }: {
   workspace: SummaryWorkspaceData;
   verificationCount: number;
@@ -87,6 +88,8 @@ export function DailyTodayView({
     string,
     import("@/lib/orders/delivery-eta-quantiles-load").DeliveryEtaSupplierQuantiles
   >;
+  /** Sekcja „Automat ZD” na górze zakładki (role z Kreatorem ZD). */
+  automat?: React.ReactNode;
 }) {
   const hasCancelled = workspace.salesCancelledNotices.length > 0;
   // Zamówienie automatu u dostawcy bez terminu dziś też jest pracą na dziś (sekcja „Na dziś”).
@@ -106,6 +109,7 @@ export function DailyTodayView({
       aria-labelledby="panel-tab-dzis"
       className={panelSectionInsetClass}
     >
+        {automat}
         {!showEmpty ? (
           <div className="space-y-3">
             {hasCancelled ? (

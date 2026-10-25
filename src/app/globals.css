@@ -3289,6 +3289,15 @@ input[type="checkbox"].toggle-switch.toggle-indigo:checked {
   text-align: center;
 }
 
+/* Klasa ABC/XYZ („AX”, „B Z*”) — wąska, sortowalna (A najpierw). */
+.data-table.zd-estimate-table td.zd-estimate-class-col,
+.data-table.zd-estimate-table th.zd-estimate-class-col {
+  width: 4rem;
+  min-width: 4rem;
+  max-width: 4rem;
+  text-align: center;
+}
+
 /* Dostępne + rezerwacje (zamiast osobnych kolumn Stan / Rez.). */
 .data-table.zd-estimate-table .zd-est-available {
   display: inline-flex;
