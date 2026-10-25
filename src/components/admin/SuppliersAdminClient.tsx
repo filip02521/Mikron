@@ -519,24 +519,29 @@ export function SuppliersAdminClient({
       </SupplierEditSheet>
 
       <section className="space-y-4">
-        {!formOpen ? (
-          teethLane ? (
-            <AddButton onClick={() => setTeethPickerOpen(true)} disabled={readOnly || pending}>
-              Dodaj dostawcę do zębów
-            </AddButton>
-          ) : (
-            <AddButton onClick={openNew} disabled={readOnly}>
-              Dodaj dostawcę
-            </AddButton>
-          )
-        ) : null}
-
         <Card padding={false} className="overflow-hidden">
           <CardHeader
             inset
             density="compact"
             title="Karty"
             description={SUPPLIER_HUB_LIST_META_DESCRIPTION}
+            actionAlign="inline"
+            action={
+              teethLane ? (
+                <AddButton
+                  size="sm"
+                  className="max-sm:min-h-11"
+                  onClick={() => setTeethPickerOpen(true)}
+                  disabled={readOnly || pending || formOpen}
+                >
+                  Dodaj dostawcę do zębów
+                </AddButton>
+              ) : (
+                <AddButton size="sm" className="max-sm:min-h-11" onClick={openNew} disabled={readOnly || formOpen}>
+                  Dodaj dostawcę
+                </AddButton>
+              )
+            }
           />
 
           <SupplierAdminCardsFilterBar

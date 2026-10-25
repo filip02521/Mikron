@@ -40,6 +40,7 @@ import {
 } from "@/lib/users/users-admin-sync";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 import { AdminFilterChip } from "@/components/admin/AdminFilterChip";
+import { AddButton } from "@/components/ui/AddButton";
 import { OverflowMenu, OverflowMenuItem } from "@/components/ui/OverflowMenu";
 import { matchesSearchWords } from "@/lib/search/keywords";
 
@@ -1151,9 +1152,9 @@ export function UsersAdminClient({
                   <Badge variant="warning">{unsavedCount} do zapisu</Badge>
                 ) : null}
                 {!createOpen ? (
-                  <Button variant="outline" size="sm" className="max-sm:min-h-11" onClick={() => setCreateOpen(true)}>
-                    + Nowe konto
-                  </Button>
+                  <AddButton size="sm" className="max-sm:min-h-11" onClick={() => setCreateOpen(true)}>
+                    Nowe konto
+                  </AddButton>
                 ) : null}
               </div>
             }

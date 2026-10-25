@@ -498,12 +498,6 @@ export function VacationsAdminClient({
         </div>
       </SupplierEditSheet>
 
-      {!formOpen ? (
-        <AddButton onClick={openCreate} disabled={readOnly || pending}>
-          Dodaj urlop
-        </AddButton>
-      ) : null}
-
       <div className="flex flex-wrap items-center gap-2">
         <Input
           type="search"
@@ -545,6 +539,12 @@ export function VacationsAdminClient({
           density="compact"
           title={`Aktywne urlopy (${activeRows.length})`}
           description="Kliknij wiersz lub Edytuj, aby zmienić okres. Po zapisie system przelicza terminy."
+          actionAlign="inline"
+          action={
+            <AddButton size="sm" className="max-sm:min-h-11" onClick={openCreate} disabled={readOnly || pending || formOpen}>
+              Dodaj urlop
+            </AddButton>
+          }
         />
         {!activeRows.length ? (
           <EmptyState title={searchQuery ? "Brak dopasowań" : "Brak aktywnych urlopów"} />
