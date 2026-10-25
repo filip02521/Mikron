@@ -151,11 +151,11 @@ export function BugReportsAdminClient({
 
   return (
     <div className="space-y-5">
-      <p className="text-[0.9375rem] text-slate-700">
-        {openCount > 0
-          ? `${openCount} ${polishPluralWord(openCount, "nowe zgłoszenie czeka", "nowe zgłoszenia czekają", "nowych zgłoszeń czeka")} na odpowiedź.`
-          : "Brak nowych zgłoszeń."}
-      </p>
+      {openCount > 0 ? (
+        <p className="text-[0.9375rem] text-slate-700">
+          {`${openCount} ${polishPluralWord(openCount, "nowe zgłoszenie czeka", "nowe zgłoszenia czekają", "nowych zgłoszeń czeka")} na odpowiedź.`}
+        </p>
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
         <SegmentedControl<Filter>

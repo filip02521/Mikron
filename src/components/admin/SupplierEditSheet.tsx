@@ -57,7 +57,7 @@ export function SupplierEditSheet({
         ref={(el) => {
           panelRef.current = el;
         }}
-        className="panel-slide-enter fixed inset-y-0 right-0 z-[60] flex w-full max-w-xl flex-col border-l border-slate-200/80 bg-white shadow-2xl"
+        className="panel-slide-enter fixed inset-y-0 right-0 z-[60] flex w-full max-w-xl flex-col border-l border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="supplier-edit-sheet-title"

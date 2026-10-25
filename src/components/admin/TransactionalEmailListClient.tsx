@@ -67,13 +67,6 @@ export function TransactionalEmailListClient({
 
   return (
     <AdminHubShell activeTab="wysylki">
-      <p className="max-w-3xl text-sm leading-relaxed text-slate-600">
-        Każda wysyłka SES z OnTime jest zapisywana z treścią HTML (pełny HTML -
-        bez automatycznej retencji; przy dużej objętości rozważ okresowe czyszczenie
-        starszych wierszy w <code>transactional_email_log</code>). Kody OTP w
-        podglądzie są zredagowane (<code>••••••</code>).
-      </p>
-
       {loadError ? (
         <Alert tone="error" title="Nie udało się wczytać logów">
           {userFacingErrorTextFromMessage(loadError)}
@@ -111,23 +104,26 @@ export function TransactionalEmailListClient({
       </div>
 
       <Card padding={false} className="overflow-hidden">
-        <CardHeader inset density="compact" title="Historia wysyłek" />
+        <CardHeader
+          inset
+          density="compact"
+          title="Historia wysyłek"
+          description="Pełny HTML bez automatycznej retencji - przy dużej objętości czyść starsze wiersze w transactional_email_log."
+        />
         <TableScroll>
           <DataTable>
             <thead>
               <tr>
                 <th>Czas</th>
-                <th>Typ</th>
                 <th>Status</th>
                 <th>Do</th>
-                <th>Temat</th>
-                <th />
+                <th>Temat i typ</th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-slate-500">
+                  <td colSpan={4} className="text-slate-500">
                     {loadError
                       ? "Brak danych do wyświetlenia (błąd wczytywania powyżej)."
                       : kind !== "all" || status !== "all"
@@ -141,7 +137,6 @@ export function TransactionalEmailListClient({
                     <td className="whitespace-nowrap text-xs text-slate-600">
                       {formatWarsawDateTime(row.created_at)}
                     </td>
-                    <td className="text-xs">{kindLabel(row.kind)}</td>
                     <td>
                       <Badge
                         variant={row.status === "sent" ? "success" : "danger"}
@@ -149,22 +144,21 @@ export function TransactionalEmailListClient({
                         {row.status === "sent" ? "Wysłano" : "Błąd"}
                       </Badge>
                     </td>
-                    <td className="max-w-[12rem] truncate text-xs font-mono">
+                    <td className="max-w-[11rem] truncate font-mono text-xs">
                       {(row.to_addresses ?? []).join(", ") || "-"}
                       {row.override_to ? (
                         <span className="ml-1 text-amber-800">(override)</span>
                       ) : null}
                     </td>
-                    <td className="max-w-[18rem] truncate text-sm">
-                      {row.subject || "-"}
-                    </td>
-                    <td>
+                    <td className="max-w-[20rem]">
                       <Link
                         href={`/admin/wysylki/${row.id}`}
-                        className="inline-flex min-h-9 items-center text-xs font-medium text-indigo-700 hover:underline"
+                        className="block truncate text-sm font-medium text-slate-900 hover:text-indigo-800 hover:underline"
+                        title="Otwórz podgląd maila"
                       >
-                        Podgląd
+                        {row.subject || "(bez tematu)"}
                       </Link>
+                      <span className="block truncate text-[0.6875rem] text-slate-500">{kindLabel(row.kind)}</span>
                     </td>
                   </tr>
                 ))

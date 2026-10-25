@@ -82,11 +82,8 @@ export function MailCenterClient({
   return (
     <AdminHubShell activeTab="mail" visibleTabs={visibleTabs}>
       <p className="max-w-3xl text-sm leading-relaxed text-slate-600">
-        Centrum maili Ivoclar jest <strong>tylko do odczytu</strong>. Generowanie i wysyłkę
-        prowadzi OnTime Raporty - stąd nie ma przycisków Wyślij / Włącz / edycji odbiorców.
-        Status <strong>SEND</strong> pochodzi na żywo z runnera (
-        <code>IVOCLAR_SEND_ENABLED</code>
-        ).
+        Stąd nie ma przycisków Wyślij / Włącz / edycji odbiorców. Status <strong>SEND</strong>{" "}
+        pochodzi na żywo z runnera (<code>IVOCLAR_SEND_ENABLED</code>).
         {runnerUrl ? (
           <>
             {" "}

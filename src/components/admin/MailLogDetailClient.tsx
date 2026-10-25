@@ -122,7 +122,7 @@ export function MailLogDetailClient({
       </div>
 
       <Card padding={false} className="overflow-hidden">
-        <CardHeader inset density="compact" title="Timeline" />
+        <CardHeader inset density="compact" title="Przebieg" />
         <ul className="space-y-2 px-3 py-4 sm:px-4 lg:px-5">
           {events.length === 0 ? (
             <li className="text-sm text-slate-500">Brak zdarzeń</li>
