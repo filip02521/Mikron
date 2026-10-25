@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 /** Pełny przebieg (wszystkie zmapowane zakresy) to kilkanaście minut. */
 export const maxDuration = 1800;
 
-/** 1. dnia miesiąca w nocy (00:30): klasy ABC (zysk 12 mies.) × XYZ (52 tygodnie) → zd_sku_class. */
+/** Ręcznie (`cron-invoke -Job zd-sku-class`); co miesiąc liczy to `stock-watch` (`zd-automat-catchup`). Klasy ABC (zysk 12 mies.) × XYZ (52 tygodnie) → zd_sku_class. */
 export async function GET(request: Request) {
   const denied = authorizeCronRequest(request.headers.get("authorization"));
   if (denied) return denied;

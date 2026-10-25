@@ -304,7 +304,7 @@ export function DailyPanelStatusBand({
       : "";
 
   return (
-    <div className={cn("border-b border-slate-100 py-2.5 sm:py-3", panelChromeInsetClass)}>
+    <div className={cn("py-3 sm:py-4", panelChromeInsetClass)}>
       <button
         type="button"
         className="flex min-h-11 w-full items-center justify-between gap-2 rounded-md text-left transition-colors hover:bg-slate-100/60 sm:hidden"

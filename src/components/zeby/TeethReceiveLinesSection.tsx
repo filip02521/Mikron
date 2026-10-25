@@ -137,7 +137,7 @@ function OrderTimingMeta({
   if (timing.submittedLabel) {
     parts.push(
       <span key="submitted" className="inline-flex items-baseline gap-1">
-        <span className="font-medium text-slate-400">Prośba</span>
+        <span className="font-medium text-slate-500">Prośba</span>
         <span className="font-semibold tabular-nums text-slate-700">
           {timing.submittedLabel}
         </span>
@@ -147,7 +147,7 @@ function OrderTimingMeta({
   if (timing.orderedLabel) {
     parts.push(
       <span key="ordered" className="inline-flex items-baseline gap-1">
-        <span className="font-medium text-slate-400">Zamówiono</span>
+        <span className="font-medium text-slate-500">Zamówiono</span>
         <span className="font-semibold tabular-nums text-slate-700">
           {timing.orderedLabel}
         </span>
@@ -238,7 +238,7 @@ function SalesPersonDivider({
               aria-hidden
             />
             <span className="truncate text-xs font-semibold text-slate-800">{name}</span>
-            <span className="shrink-0 text-[0.625rem] font-medium tabular-nums text-slate-400">
+            <span className="shrink-0 text-[0.625rem] font-medium tabular-nums text-slate-500">
               {lineCount} {plPozycja(lineCount)}
             </span>
             {waitingDays != null && waitingDays > 0 && !showOrderLevelTiming ? (
@@ -661,7 +661,7 @@ export function TeethReceiveLinesSection({
                               {row.group.color || "-"}
                             </span>
                             {isCancelled ? (
-                              <span className="ml-1.5 inline-flex rounded bg-amber-100 px-1.5 py-0.5 text-[0.5625rem] font-semibold text-amber-800">
+                              <span className="ml-1.5 inline-flex rounded bg-amber-100 px-1.5 py-0.5 text-[0.625rem] font-semibold text-amber-900">
                                 Anulowane
                               </span>
                             ) : null}

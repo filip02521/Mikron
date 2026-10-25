@@ -4,8 +4,9 @@ import { getSessionUser } from "@/lib/auth";
 import { isAdmin, IVOCLAR_RAPORTY_LEGACY_PATH } from "@/lib/auth-roles";
 import { hasMailCenterModuleForUserId } from "@/lib/admin-modules";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
-import { adminPageShellClass, panelTypography } from "@/lib/ui/ontime-theme";
-import { cn } from "@/lib/cn";
+import { adminPageShellClass } from "@/lib/ui/ontime-theme";
+import { Alert } from "@/components/ui/Alert";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 export const metadata: Metadata = pageMetadataFor("ivoclarReport");
 export const dynamic = "force-dynamic";
@@ -24,15 +25,14 @@ export default async function IvoclarReportMovedPage() {
 
   return (
     <div className={adminPageShellClass}>
-      <h1 className={cn(panelTypography.sectionTitle, "mb-2")}>Raporty Ivoclar - przeniesione</h1>
-      <p className={cn(panelTypography.sectionDesc, "max-w-xl")}>
-        Status i historia wysyłek są w Centrum maili (<code>/admin/mail</code>). Generowanie
-        prowadzi OnTime Raporty.
-      </p>
-      <p className={cn(panelTypography.sectionDesc, "mt-3 max-w-xl")}>
-        Nie masz uprawnień do podglądu logów. Poproś administratora o moduł{" "}
-        <strong>Wysyłki Ivoclar (odczyt)</strong> w panelu Konta.
-      </p>
+      <PageHeader
+        title="Raporty Ivoclar"
+        description="Status i historia wysyłek są teraz w Centrum maili. Generowanie prowadzi OnTime Raporty."
+      />
+      <Alert tone="info" title="Brak dostępu do Centrum maili">
+        Nie masz uprawnień do podglądu logów wysyłek. Poproś administratora o moduł{" "}
+        <strong className="font-semibold">Wysyłki Ivoclar (odczyt)</strong> w panelu Konta.
+      </Alert>
     </div>
   );
 }

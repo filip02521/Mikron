@@ -274,7 +274,7 @@ export function CarrierPhonesModal({
                   <div
                     key={carrier.slug}
                     className={cn(
-                      "rounded-xl border transition-colors",
+                      "rounded-lg border transition-colors",
                       isExpanded
                         ? "border-slate-300 bg-white shadow-sm"
                         : "border-slate-200 bg-white hover:border-slate-300",
@@ -296,14 +296,14 @@ export function CarrierPhonesModal({
                         <p className="truncate text-[0.8125rem] font-semibold text-slate-800">
                           {carrier.label}
                         </p>
-                        <p className="text-[0.6875rem] text-slate-400">
+                        <p className="text-[0.6875rem] text-slate-500">
                           {carrierPhones.length === 0
                             ? "Brak numerów"
                             : `${carrierPhones.length} ${polishPluralWord(carrierPhones.length, "numer", "numery", "numerów")}`}
                         </p>
                       </div>
                       {!carrier.isActive ? (
-                        <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[0.625rem] font-medium text-slate-400">
+                        <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[0.625rem] font-medium text-slate-500">
                           Ukryty
                         </span>
                       ) : null}
@@ -364,7 +364,7 @@ export function CarrierPhonesModal({
                                           {phone.phone}
                                         </p>
                                         {phone.label ? (
-                                          <p className="text-[0.6875rem] text-slate-400">{phone.label}</p>
+                                          <p className="text-[0.6875rem] text-slate-500">{phone.label}</p>
                                         ) : null}
                                       </div>
                                       <a
@@ -401,7 +401,7 @@ export function CarrierPhonesModal({
                             })}
                           </ul>
                         ) : (
-                          <p className="px-2.5 py-1.5 text-[0.6875rem] text-slate-400">
+                          <p className="px-2.5 py-1.5 text-[0.6875rem] text-slate-500">
                             Brak zapisanych numerów dla tego kuriera.
                           </p>
                         )}

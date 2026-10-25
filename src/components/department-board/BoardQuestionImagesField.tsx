@@ -56,7 +56,7 @@ export function BoardQuestionImagesField({
         <label htmlFor={inputId} className={boardQuestionsFieldLabelClass}>
           {DEPARTMENT_BOARD_QUESTIONS_FORM.imagesLabel}
         </label>
-        <span className="text-[0.6875rem] text-slate-400">
+        <span className="text-[0.6875rem] text-slate-500">
           {images.length}/{BOARD_IMAGE_MAX_COUNT}
         </span>
       </div>

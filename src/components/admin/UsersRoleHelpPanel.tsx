@@ -1,5 +1,6 @@
 "use client";
 
+import { IconChevronDown } from "@/components/icons/StrokeIcons";
 import { Badge } from "@/components/ui/Badge";
 import { ROLE_LABELS } from "@/lib/users/labels";
 import { roleBadgeClass } from "@/lib/ui/ontime-theme";
@@ -32,19 +33,19 @@ const ROLE_HELP: { role: UserRole; description: string }[] = [
 /** Zwijany opis ról — spójny z panelem narzędzi administracyjnych. */
 export function UsersRoleHelpPanel() {
   return (
-    <details className="group overflow-hidden rounded-md border border-slate-200/90 bg-white shadow-sm open:shadow-md">
-      <summary className="cursor-pointer list-none px-3 py-3 text-sm font-semibold text-slate-900 marker:content-none sm:px-4 [&::-webkit-details-marker]:hidden">
-        <span className="flex items-center justify-between gap-2">
+    <details className="group overflow-hidden rounded-[var(--radius-panel)] border border-slate-200 bg-[var(--card)] shadow-[var(--shadow-card)]">
+      <summary className="flex min-h-12 cursor-pointer list-none items-center px-4 py-3 text-base font-semibold text-slate-900 marker:content-none hover:bg-slate-50 sm:px-5 lg:px-6 [&::-webkit-details-marker]:hidden">
+        <span className="flex w-full items-center justify-between gap-2">
           <span className="flex items-center gap-2">
             Opis ról
             <Badge variant="default" className="font-normal">
               {ROLE_HELP.length}
             </Badge>
           </span>
-          <span className="text-slate-400 transition group-open:rotate-180">▾</span>
+          <IconChevronDown size={16} className="shrink-0 text-slate-400 transition-transform group-open:rotate-180 motion-reduce:transition-none" />
         </span>
       </summary>
-      <ul className="divide-y divide-slate-100 border-t border-slate-100 px-3 pb-3 sm:px-4 sm:pb-4">
+      <ul className="divide-y divide-slate-100 border-t border-slate-100 px-4 pb-3 sm:px-5 sm:pb-4 lg:px-6">
         {ROLE_HELP.map(({ role, description }) => (
           <li key={role} className="flex flex-col gap-1.5 py-3 first:pt-3 sm:flex-row sm:items-start sm:gap-3">
             <span className={roleBadgeClass(role)}>{ROLE_LABELS[role]}</span>

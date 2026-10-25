@@ -67,7 +67,7 @@ function NoteAction({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="rounded px-1 py-0.5 text-[0.6875rem] font-medium text-slate-600 transition hover:bg-black/5 hover:text-slate-900 disabled:opacity-50"
+      className="hit-target rounded px-1 py-0.5 text-[0.6875rem] font-medium text-slate-600 transition hover:bg-black/5 hover:text-slate-900 disabled:opacity-50"
     >
       {children}
     </button>
@@ -97,7 +97,7 @@ function NoteDeleteAction({
       title={title}
       aria-label={ariaLabel}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-md text-red-600 transition hover:bg-red-50 hover:text-red-700 disabled:opacity-50",
+        "hit-target inline-flex shrink-0 items-center justify-center rounded-md text-red-600 transition hover:bg-red-50 hover:text-red-700 disabled:opacity-50",
         className
       )}
     >

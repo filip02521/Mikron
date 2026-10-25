@@ -2,7 +2,7 @@ import Link from "next/link";
 import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
-import { panelTextLinkClass, panelTypography } from "@/lib/ui/ontime-theme";
+import { panelTypography } from "@/lib/ui/ontime-theme";
 import { supplierHubPaths } from "@/lib/supplier-hub";
 
 const adminPaths = supplierHubPaths("admin");
@@ -50,32 +50,22 @@ export function AdminDataShortcuts() {
         title="Dane operacyjne"
         description="Skróty do hubu dostawców i katalogu. Wersja admin dostawców jest też w menu po lewej."
       />
-      <div className="grid gap-3 px-3 pb-4 sm:grid-cols-2 sm:px-4 lg:px-5">
+      <ul className="grid divide-y divide-slate-100 sm:grid-cols-2 sm:divide-y-0">
         {shortcuts.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              "group flex min-h-[5.5rem] flex-col justify-between rounded-md border border-slate-200/90",
-              "bg-white p-3 transition hover:border-indigo-200/90 hover:bg-indigo-50/20"
-            )}
-          >
-            <div className="min-w-0">
-              <p className={panelTypography.rowTitle}>{item.title}</p>
-              <p className={cn(panelTypography.rowMeta, "mt-1")}>{item.description}</p>
-            </div>
-            <span
-              className={cn(
-                panelTextLinkClass,
-                "mt-3 inline-flex items-center gap-1 text-sm font-medium"
-              )}
+          <li key={item.href} className="sm:border-b sm:border-slate-100 sm:odd:border-r">
+            <Link
+              href={item.href}
+              className="group flex min-h-14 items-center gap-3 px-3 py-3 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-600 sm:px-4 lg:px-5"
             >
-              Otwórz
+              <span className="min-w-0 flex-1">
+                <span className={cn(panelTypography.rowTitle, "block group-hover:text-indigo-800")}>{item.title}</span>
+                <span className={cn(panelTypography.rowMeta, "mt-0.5 block")}>{item.description}</span>
+              </span>
               <LinkChevron tone="brand" />
-            </span>
-          </Link>
+            </Link>
+          </li>
         ))}
-      </div>
+      </ul>
     </Card>
   );
 }

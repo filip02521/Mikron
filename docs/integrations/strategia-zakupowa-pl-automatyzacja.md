@@ -241,6 +241,8 @@ treści ZD albo nieudanym create.
 Backtest zrobiony (§8). Kolejność: najpierw tryb z akceptacją na 10 dostawcach, automat dopiero
 po pomiarze na żywo. Szczegółowy plan zadań: `TASKS.md` → „Automat ZD — polscy dostawcy”.
 
+**Stan w kodzie (2026-10-25, główna gałąź):** kroki 1, 3, 5 zrobione (kraj dostawcy, flagi linii, `zd_sku_class` + `zd_kpi_weekly`); z kroku 6 jest pomiar gotowości (4 tygodnie z korektą < 10%, `src/lib/orders/zd-automat-status.ts`) i automatyczne cofnięcie stopnia po brakach A (migracja `198_zd_automat_level_rollback.sql`) oraz po nieudanym create, samego auto-zatwierdzenia nie ma; krok 4 (okno handlowców, `zd_auto_proposal_events`) i 7 — nie zaczęte. Kroki 0 i 2 dotyczą produkcji — **niezweryfikowane** (brak dostępu).
+
 | # | Krok | Kryterium odbioru |
 |---|---|---|
 | 0 | Domknąć Polkard (TASKS F): testy, review, authz, migracje 190/193 na produkcji | migracje na produkcji, propozycje Polkardu powstają |
@@ -543,10 +545,11 @@ Po wdrożeniu main z #230–#232:
 
 1. **Migracje** (Admin → Migracje): `190`, `193`, `194`, `195` — te, których brak. Bez 194 strategia zapisze stopień 1
    (z ostrzeżeniem), ale bez minimum/progu, flag, odłożenia i klas; bez 195 backtest w aplikacji nie zapisze wyniku.
-2. **Crony** na serwerze (PowerShell jako administrator): `.\installer\install-cron.ps1` — dodaje `zd-sku-class`
-   (1. dnia miesiąca 00:30) i `zd-kpi-weekly` (pn 07:00). Monitor cronów w panelu admina pokaże je jako „nigdy”.
+2. **Crony — nic do instalowania.** Klasy ABC/XYZ (raz w miesiącu) i KPI (raz w tygodniu) liczy istniejący
+   `stock-watch` po porannym przebiegu braków (zmiana 2026-10-25; wcześniej osobne zadania Windows, których
+   `install-cron.ps1` na serwerze nie dodał). Pierwszy poranek po wdrożeniu nadrobi oba.
 3. **Pierwsze klasy ABC/XYZ i KPI**: `/zakupy/automat` → „Przelicz” (admin) — bez czekania na 1. dzień miesiąca.
-4. **Czasy dostaw**: nocny `subiekt-lead-times` (01:30) sam przeliczy próbki z nową regułą końca miesiąca.
+4. **Czasy dostaw**: nocny `subiekt-lead-times` (w ramach `catalog-zd-sync`, 02:00–04:40) sam przeliczy próbki z nową regułą końca miesiąca.
 5. **Strategia dostawców**: rekomendacje z §11.2 (stopień 1 — propozycje do akceptacji). Przed zapisem sprawdzić
    w karcie dostawcy minimum zamówienia i próg darmowej dostawy — backtest liczył bez nich.
 

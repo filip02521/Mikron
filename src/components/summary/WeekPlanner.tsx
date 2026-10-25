@@ -739,7 +739,7 @@ function PlannerCard({
         className={cn(
           panelRowGroupClass("text-sm transition"),
           urgentCardClassName(isOverdue && !isMoved),
-          isMoved && "border-slate-200 border-l-2 border-l-amber-400 bg-white",
+          isMoved && "border-slate-200 bg-amber-50/60",
           isDragging && "opacity-50",
           rowPending && rowPendingRingClass
         )}

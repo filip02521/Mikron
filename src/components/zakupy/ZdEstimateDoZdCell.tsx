@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import { IconCheck } from "@/components/icons/StrokeIcons";
 import { polishPlural } from "@/lib/email/polish-plural";
 import { formatQty } from "@/lib/orders/zd-estimate-manual";
 import {
@@ -243,7 +244,7 @@ export function ZdEstimateDoZdCell({
             title={confidenceUi.title || undefined}
             aria-label={confidenceUi.acceptAriaLabel}
           >
-            ✓
+            <IconCheck size={10} strokeWidth={3} aria-hidden />
           </button>
         ) : confidenceUi.needsReview ? (
           <span className="zd-est-dozd-confidence__dot" aria-hidden />
@@ -268,7 +269,7 @@ export function ZdEstimateDoZdCell({
           title={confidenceUi.title || undefined}
           aria-label={confidenceUi.acceptAriaLabel}
         >
-          ✓
+          <IconCheck size={10} strokeWidth={3} aria-hidden />
         </button>
       </span>
     ) : null;

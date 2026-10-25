@@ -58,13 +58,13 @@ function ClassMatrix({ classes }: { classes: ZdSkuClassSummary }) {
   const profitTotal = ABC.reduce((a, k) => a + classes.profitByAbc[k], 0);
   return (
     <TableScroll>
-      <DataTable className="min-w-[640px]">
+      <DataTable className="kpi-table min-w-[640px]">
         <thead>
           <tr>
             <th>Klasa</th>
             {XYZ.map((x) => (
               <th key={x} className="text-right">
-                {x} <span className="font-normal">{XYZ_HINT[x]}</span>
+                {x} <span className="block text-xs font-normal">{XYZ_HINT[x]}</span>
               </th>
             ))}
             <th className="text-right">Razem</th>
@@ -213,7 +213,7 @@ function StatusPanel({
     <Card padding={false}>
       <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5" role="status">
         <div className="min-w-0">
-          <p className="flex items-start gap-2.5 text-lg font-semibold leading-snug tracking-tight text-balance text-slate-900 lg:text-xl">
+          <p className="flex items-start gap-2.5 text-lg font-semibold leading-snug tracking-[-0.015em] text-balance text-slate-900">
             <span className={cn("mt-2 size-2.5 shrink-0 rounded-full", dot)} aria-hidden />
             {headline}
           </p>

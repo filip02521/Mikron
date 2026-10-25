@@ -156,7 +156,7 @@ export function BoardQuestionAttachmentsGallery({
                 onClick={() => setZoomIndex(index)}
                 className={cn(
                   thumbClass,
-                  "group block cursor-zoom-in transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                  "group block cursor-zoom-in transition-shadow hover:ring-2 hover:ring-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
                 )}
                 title="Powiększ zdjęcie"
                 aria-label={`Powiększ zdjęcie ${index + 1}`}
@@ -196,7 +196,7 @@ export function BoardQuestionAttachmentsGallery({
                 Otwórz w pełnym rozmiarze
               </a>
               {canBrowse ? (
-                <span className="hidden text-[0.6875rem] text-slate-400 sm:inline">
+                <span className="hidden text-[0.6875rem] text-slate-500 sm:inline">
                   Strzałki ← → przełączają zdjęcia
                 </span>
               ) : null}

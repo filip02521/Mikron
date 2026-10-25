@@ -726,7 +726,6 @@ export function NotesSection({
             <div className="min-w-0 sm:max-w-xs sm:flex-1">
               <NotatnikListFilterBar
                 compact
-                visibleLabel={undefined}
                 value={searchQuery}
                 onChange={setSearchQuery}
                 matchCount={filtered.length}
@@ -747,7 +746,7 @@ export function NotesSection({
           {!readOnly && composeExpanded ? composeForm : null}
 
           {canDrag && filtered.length > 1 ? (
-            <p className="inline-flex flex-wrap items-center gap-1 text-[0.625rem] text-slate-400">
+            <p className="inline-flex flex-wrap items-center gap-1 text-[0.6875rem] text-slate-500">
               {NOTATNIK_NOTES_SECTION_COPY.dragHintBefore}
               <DragHandleGlyph />
               ) w sekcji — między przypiętymi a zwykłymi nie da się przenieść.

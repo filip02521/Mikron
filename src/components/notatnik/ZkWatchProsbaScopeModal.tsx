@@ -337,7 +337,7 @@ export function ZkWatchProsbaScopeModal({
                 </span>
               </>
             ) : (
-              <span className="text-slate-400">Brak pozycji do zamówienia</span>
+              <span className="text-slate-500">Brak pozycji do zamówienia</span>
             )}
           </div>
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -426,13 +426,13 @@ export function ZkWatchProsbaScopeModal({
       <div className="space-y-1.5">
         <div className="flex items-center justify-between px-0.5">
           <span className={salesTypography.sectionLabel}>Pozycje z ZK</span>
-          <span className="text-[0.6875rem] font-medium text-slate-400">
+          <span className="text-[0.6875rem] font-medium text-slate-500">
             {totalLines} {plPozycja(totalLines)}
           </span>
         </div>
         <ul
           className={cn(
-            "divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm",
+            "divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200/80 bg-white",
             awaitingAutoMark && "pointer-events-none opacity-60"
           )}
           aria-busy={awaitingAutoMark || undefined}

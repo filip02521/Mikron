@@ -13,13 +13,14 @@
 |------|--------|
 | `admin` | Pełny; mutacje w podglądzie innego panelu zablokowane (`requireAdminForMutation`) |
 | `zakupy` | Operacje zakupowe, dostawcy, panel dzienny |
+| `zakupy_zeby` | Zakupy w module Zęby (`/zeby`, `teethNavGroups` w `src/lib/nav.ts`) |
 | `magazyn` | Kolejka, notatki magazynowe (bez edycji kurierów) |
 | `sales` | Panel handlowca |
 | `sales_manager` | Zespół w scope grup + własny panel handlowca |
 
 ## Admin — podgląd panelu (cookie)
 
-- Cookie `admin_panel_context`: `admin` | `zakupy` | `sales`.
+- Cookie `ontime_admin_panel` (`src/lib/auth/admin-panel-context.ts`): `admin` | `zakupy` | `zakupy_zeby` | `magazyn` | `sales` | `sales_manager`; wybrany handlowiec w podglądzie: `ontime_preview_sales_person`.
 - **Read-only preview** (handlowiec / magazyn w UI): mutacje admina zablokowane.
 - **Wyjątek — tablica zakupów i prośby operacyjne**: dozwolone w cookie `admin` lub `zakupy`.
 - **Zakupy w podglądzie**: admin może wykonywać realną pracę zakupową.
@@ -69,7 +70,7 @@ RLS jest **wyłączone**. Ograniczenia roli (`sales` / `sales_manager` / …) eg
 | Rola | Dostęp (aplikacja) |
 |------|---------------------|
 | `admin` | pełny |
-| `zakupy` / `magazyn` | operacje w swoim panelu |
+| `zakupy` / `zakupy_zeby` / `magazyn` | operacje w swoim panelu |
 | `sales` | własna karta handlowca |
 | `sales_manager` | własna + zespół w scope grup |
 
@@ -83,13 +84,13 @@ Sesja `ontime_session` jest `httpOnly: true`. Cookie podglądu panelu admina te�
 
 - `npm run audit:admin-mutations` — mutacje admin bez `requireAdminForMutation`.
 - `npm run audit:db-access` / `audit:service-role` — `createAdminClient()` w actions wymaga `@db-ok` / `@service-role-ok`.
-- Joby w GitHub Actions: `security-audit`, `integration` (postgres:16 + `db:migrate`).
+- Joby w GitHub Actions (`.github/workflows/ci.yml`): `lint`, `unit`, `security-audit`, `build`, `e2e`, `integration` (postgres:16 + `db:migrate`); osobno `codeql.yml`.
 
 ## Error boundaries
 
 Wspólny komponent: `src/components/errors/RouteErrorScreen.tsx`.
 
-`error.tsx`: globalny + `/admin`, `/zakupy`, `/podsumowanie`, `/kolejka`, `/moje`, `/prosba`, `/zespol`.
+`error.tsx`: globalny + `/admin`, `/zakupy`, `/podsumowanie`, `/podsumowanie-miesieczne`, `/kolejka`, `/moje`, `/prosba`, `/zespol`, `/urlopy`, `/ustawienia`, `/zamowienia`, `/zeby`.
 
 ## Znane ograniczenia
 

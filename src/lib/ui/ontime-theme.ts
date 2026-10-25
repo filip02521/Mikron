@@ -49,6 +49,14 @@ export const navLinkIdleClass = cn(
   `${navFineHover}text-slate-900`
 );
 
+/** Tytuł strony (DESIGN.md → Headline): Inter Tight 700, jeden na ekran. */
+export const pageTitleClass =
+  "font-display text-[1.75rem] font-bold leading-tight tracking-[-0.015em] text-slate-900";
+
+/** Tytuł sekcji i karty (DESIGN.md → Section): Inter Tight 700. */
+export const sectionTitleClass =
+  "font-display text-lg font-bold leading-snug tracking-[-0.01em] text-slate-900";
+
 /** Sidebar — nagłówek grupy nawigacji (design-ok: Nav Group, jedyne wersaliki w aplikacji). */
 export const sidebarNavSectionTitleClass =
   "px-3 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-slate-500";
@@ -564,7 +572,7 @@ export const mojeDestructiveOutlineControlClass = cn(
 
 /** Anulowanie pojedynczej linii — dyskretny link przy wierszu produktu. */
 export const mojeDestructiveSubtleControlClass = cn(
-  "inline-flex shrink-0 items-center justify-center rounded-sm px-1 py-0.5 text-[0.625rem] font-medium text-slate-400/90 transition",
+  "inline-flex shrink-0 items-center justify-center rounded-sm px-1 py-0.5 text-[0.625rem] font-medium text-slate-500 transition",
   "hover:text-red-700 focus-visible:text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-indigo-600",
   "disabled:cursor-not-allowed disabled:opacity-40"
 );
@@ -633,10 +641,12 @@ export const panelSubsectionInsetClass = "px-3 sm:px-4 lg:px-5";
  * Skala typografii panelu dziennego — płaska, bez powiększania na lg+ (wąska kolumna).
  */
 export const panelTypography = {
+  // Tytuł bloku w karcie lub komunikatu (14/600). Sekcja strony: sectionTitleClass / CardHeader.
   sectionTitle: "text-sm font-semibold text-slate-900",
   sectionLabel: "text-[0.6875rem] font-semibold text-slate-600",
-  rowTitle: "text-sm font-semibold leading-snug text-slate-900",
-  rowMeta: "text-xs leading-snug text-slate-500",
+  // Item (DESIGN.md): nazwa pozycji 15/600, metadane 13/400.
+  rowTitle: "text-[0.9375rem] font-semibold leading-snug text-slate-900",
+  rowMeta: "text-[0.8125rem] leading-snug text-slate-500",
   caption: "text-[0.6875rem] leading-snug text-slate-500",
   chrome: "text-xs leading-snug text-slate-600",
   sectionDesc: "text-xs leading-relaxed text-slate-500",
@@ -724,9 +734,6 @@ export const plannerDropHintClass =
 export const mojeHeadlineInfoWrapClass = "bg-indigo-50 text-indigo-950";
 export const mojeHeadlineInfoTitleClass = "text-indigo-900";
 export const mojeHeadlineInfoSubClass = "text-indigo-800";
-
-export const mojeCardHighlightClass =
-  "z-[1] my-1 rounded-md border border-indigo-300/90 bg-indigo-50/90 shadow-md ring-1 ring-indigo-200/70";
 
 /** Sekcja informacja (magazyn) — sky pozostaje semantyczny */
 export const informacjaSurfaceClass =
@@ -919,11 +926,11 @@ export const panelDashedActionClass =
 
 /** Główna akcja dodawania w notatniku (ZK, karteczki) — petrol soft, nie pełny primary. */
 export const notatnikPrimaryAddButtonClass =
-  "min-h-9 justify-center border-indigo-200/80 bg-indigo-50/55 text-indigo-950 hover:bg-indigo-100/70 sm:w-auto";
+  "min-h-11 sm:min-h-9 justify-center border-indigo-200/80 bg-indigo-50/55 text-indigo-950 hover:bg-indigo-100/70 sm:w-auto";
 
 /** Obudowa rozwiniętego formularza dodawania (ZK); notatki compose = sticky na tablicy. */
 export const notatnikAddPanelShellClass =
-  "overflow-hidden rounded-md border border-slate-200/90 bg-white";
+  "overflow-hidden rounded-lg bg-slate-50";
 
 export const panelMutedToggleClass =
   "text-sm font-medium text-indigo-700/80 transition hover:text-indigo-900";
@@ -998,20 +1005,21 @@ export const panelNoticeTriggerDefaultClass =
   "border-indigo-100/85 bg-indigo-50/35 hover:border-indigo-200/75 hover:bg-indigo-50/55";
 
 /** Pasek akcji w nagłówku panelu dziennego (wyszukiwarka + przyciski) */
-export const panelToolbarShellClass =
-  "flex w-full min-w-0 items-center rounded-md border border-indigo-100/75 bg-indigo-50/35 p-2 shadow-sm";
+export const panelToolbarShellClass = "flex w-full min-w-0 items-center";
+
+/** Pasek narzędzi panelu: jedna wysokość dla pola i przycisków — 44 px na telefonie, 40 px od `sm`. */
+export const panelToolbarControlHeightClass = "h-11 sm:h-10";
 
 export const panelToolbarRowClass =
-  "flex w-full min-w-0 flex-col gap-2 md:flex-row md:items-center";
+  // Jeden rząd od 520 px — węższy ekran nie pomieści pola obok czterech przycisków.
+  "flex w-full min-w-0 flex-col gap-2 min-[520px]:flex-row min-[520px]:items-center";
 
-export const panelToolbarSearchWrapClass =
-  "flex min-w-0 flex-1 items-center px-0.5 md:min-w-[12rem]";
+export const panelToolbarSearchWrapClass = "flex min-w-0 flex-1 items-center min-[520px]:min-w-[12rem]";
 
 export const panelToolbarSearchInputClass =
-  "h-9 w-full rounded-md border border-indigo-100/80 bg-white px-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100/90";
+  "h-11 sm:h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm transition-colors duration-150 placeholder:text-slate-500 hover:border-slate-300 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100";
 
-export const panelToolbarActionsClass =
-  "flex shrink-0 flex-wrap items-center justify-stretch gap-1.5 md:justify-end md:border-l md:border-indigo-100/75 md:pl-2.5";
+export const panelToolbarActionsClass = "flex shrink-0 items-center gap-2";
 
 export const panelToolbarTextButtonClass =
   "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-indigo-100/80 bg-white px-2.5 text-xs font-medium text-indigo-800/85 shadow-sm transition hover:border-indigo-200/80 hover:bg-indigo-50/45 hover:text-indigo-950";

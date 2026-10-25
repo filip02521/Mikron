@@ -4,26 +4,31 @@ import { useMemo, useState, useTransition } from "react";
 import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
 import { actionUpdateSalesBugReport } from "@/app/actions/sales-bug-report";
 import type { SalesBugReport, SalesBugReportStatus } from "@/types/database";
-import { cn } from "@/lib/cn";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Field, Select, fieldControlClass } from "@/components/ui/Field";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { Spinner } from "@/components/ui/Spinner";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 import { formatWarsawDateTime } from "@/lib/time/warsaw";
 
 const STATUS_LABEL: Record<SalesBugReportStatus, string> = {
-  open: "NOWE",
-  triaged: "W TOKU",
-  closed: "ZAMKNIĘTE",
+  open: "Nowe",
+  triaged: "W toku",
+  closed: "Zamknięte",
 };
 
-const STATUS_STAMP: Record<SalesBugReportStatus, string> = {
-  open: "bg-red-200 text-red-950 rotate-[-2deg]",
-  triaged: "bg-amber-200 text-amber-950 rotate-[1deg]",
-  closed: "bg-lime-200 text-lime-950 rotate-[-1deg]",
+const STATUS_BADGE: Record<SalesBugReportStatus, "warning" | "info" | "success"> = {
+  open: "warning",
+  triaged: "info",
+  closed: "success",
 };
 
-function formatWhen(iso: string) {
-  return formatWarsawDateTime(iso);
-}
+type Filter = SalesBugReportStatus | "all";
 
-function ReportNote({
+function ReportItem({
   report,
   onUpdated,
 }: {
@@ -34,6 +39,7 @@ function ReportNote({
   const [adminNote, setAdminNote] = useState(report.admin_note ?? "");
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const dirty = status !== report.status || adminNote !== (report.admin_note ?? "");
 
   function save() {
     setError(null);
@@ -52,84 +58,71 @@ function ReportNote({
   }
 
   return (
-    <article
-      className={cn(
-        "relative border-2 border-dashed border-neutral-800 bg-[#fff9bf] p-4 shadow-[4px_4px_0_#1f2937]",
-        "font-mono text-[0.8125rem] leading-relaxed text-neutral-900",
-        report.status === "closed" && "opacity-75"
-      )}
-      style={{
-        transform: `rotate(${(report.id.charCodeAt(0) % 5) - 2}deg)`,
-      }}
-    >
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-2 border-b border-dashed border-neutral-600 pb-2">
-        <div>
-          <p className="text-[0.6875rem] text-neutral-600">
-            od: {report.reporter_name}
-          </p>
-          <p className="text-[0.6875rem] text-neutral-700">
-            {report.reporter_email ?? "-"} · {formatWhen(report.created_at)}
+    <article className="space-y-3 px-4 py-4 sm:px-5 lg:px-6">
+      <header className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-900">{report.reporter_name}</p>
+          <p className="text-[0.6875rem] text-slate-500">
+            <span className="break-all">{report.reporter_email ?? "-"}</span> ·{" "}
+            <span className="tabular-nums">{formatWarsawDateTime(report.created_at)}</span>
           </p>
         </div>
-        <span
-          className={cn(
-            "inline-block px-2 py-0.5 text-[0.625rem] font-semibold",
-            STATUS_STAMP[report.status]
-          )}
-        >
-          {STATUS_LABEL[report.status]}
-        </span>
-      </div>
+        <Badge variant={STATUS_BADGE[report.status]}>{STATUS_LABEL[report.status]}</Badge>
+      </header>
 
-      <p className="mb-3 whitespace-pre-wrap">{report.message}</p>
+      <p className="whitespace-pre-wrap text-[0.9375rem] leading-relaxed text-slate-800">{report.message}</p>
 
-      <dl className="mb-3 space-y-1 text-[0.6875rem] text-neutral-700">
+      <dl className="space-y-0.5 text-[0.6875rem] text-slate-500">
         <div>
-          <dt className="inline font-semibold">strona:</dt>{" "}
-          <dd className="inline break-all">{report.page_path}</dd>
+          <dt className="inline font-medium text-slate-600">Strona:</dt>{" "}
+          <dd className="inline break-all font-mono">{report.page_path}</dd>
         </div>
         {report.user_agent ? (
           <div>
-            <dt className="inline font-semibold">przeglądarka:</dt>{" "}
-            <dd className="inline break-all opacity-80">{report.user_agent}</dd>
+            <dt className="inline font-medium text-slate-600">Przeglądarka:</dt>{" "}
+            <dd className="inline break-all">{report.user_agent}</dd>
           </div>
         ) : null}
       </dl>
 
-      <div className="space-y-2 border-t border-dotted border-neutral-500 pt-3">
-        <label className="block text-[0.625rem] text-neutral-600">
-          status (admin)
-          <select
+      <div className="grid gap-3 rounded-lg bg-slate-50 p-3 sm:grid-cols-[12rem_minmax(0,1fr)] sm:items-start">
+        <Field label="Status">
+          <Select
             value={status}
             onChange={(e) => setStatus(e.target.value as SalesBugReportStatus)}
             disabled={pending}
-            className="mt-1 block w-full border-2 border-neutral-800 bg-white px-2 py-1.5 text-xs font-semibold"
           >
-            <option value="open">nowe</option>
-            <option value="triaged">w toku</option>
-            <option value="closed">zamknięte</option>
-          </select>
-        </label>
-        <label className="block text-[0.625rem] text-neutral-600">
-          notatka wewnętrzna
+            <option value="open">Nowe</option>
+            <option value="triaged">W toku</option>
+            <option value="closed">Zamknięte</option>
+          </Select>
+        </Field>
+        <Field label="Notatka wewnętrzna">
           <textarea
             rows={2}
             value={adminNote}
             onChange={(e) => setAdminNote(e.target.value)}
             disabled={pending}
-            className="mt-1 block w-full resize-y border-2 border-neutral-800 bg-white px-2 py-1.5 text-xs"
-            placeholder="co zrobiłeś / co dalej"
+            className={fieldControlClass("default", "resize-y")}
+            placeholder="Co zrobiono i co dalej"
           />
-        </label>
-        <button
-          type="button"
-          onClick={() => save()}
-          disabled={pending}
-          className="border-2 border-neutral-900 bg-neutral-900 px-3 py-1.5 text-[0.6875rem] font-semibold text-[#fff9bf] hover:bg-neutral-700 disabled:opacity-50"
-        >
-          {pending ? "zapisuję…" : "zapisz"}
-        </button>
-        {error ? <p className="text-[0.6875rem] text-red-800">{error}</p> : null}
+        </Field>
+        <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
+          <Button variant="secondary" size="sm" onClick={save} disabled={pending || !dirty}>
+            {pending ? (
+              <>
+                <Spinner size="sm" />
+                Zapisuję…
+              </>
+            ) : (
+              "Zapisz"
+            )}
+          </Button>
+          {!dirty && !pending ? (
+            <span className="text-[0.6875rem] text-slate-500">Zmień status lub notatkę, żeby zapisać.</span>
+          ) : null}
+          {error ? <p className="text-xs text-red-700">{error}</p> : null}
+        </div>
       </div>
     </article>
   );
@@ -141,77 +134,67 @@ export function BugReportsAdminClient({
   initialReports: SalesBugReport[];
 }) {
   const [reports, setReports] = useState(initialReports);
-  const [filter, setFilter] = useState<SalesBugReportStatus | "all">("open");
+  const [filter, setFilter] = useState<Filter>("open");
 
   const filtered = useMemo(() => {
     if (filter === "all") return reports;
     return reports.filter((r) => r.status === filter);
   }, [filter, reports]);
 
-  const openCount = reports.filter((r) => r.status === "open").length;
+  const count = (s: SalesBugReportStatus) => reports.filter((r) => r.status === s).length;
+  const openCount = count("open");
+  const segLabel = (label: string, n: number) => (
+    <>
+      {label} <span className="tabular-nums text-slate-500">{n}</span>
+    </>
+  );
 
   return (
-    <div
-      className="relative overflow-hidden rounded-sm border-4 border-double border-neutral-800 bg-[#f3f0e6] p-4 sm:p-6"
-      style={{
-        backgroundImage:
-          "repeating-linear-gradient(transparent, transparent 27px, rgba(0,0,0,0.04) 28px)",
-      }}
-    >
-      <header className="mb-5 border-b-4 border-neutral-800 pb-3 font-mono">
-        <p className="text-[0.625rem] font-semibold text-red-700">
-          {"/// poza design systemem ///"}
+    <div className="space-y-5">
+      {openCount > 0 ? (
+        <p className="text-[0.9375rem] text-slate-700">
+          {`${openCount} ${polishPluralWord(openCount, "nowe zgłoszenie czeka", "nowe zgłoszenia czekają", "nowych zgłoszeń czeka")} na odpowiedź.`}
         </p>
-        <p className="mt-2 max-w-2xl text-xs leading-relaxed text-neutral-700">
-          {openCount > 0 ? (
-            <strong className="text-red-800">{openCount} nowych zgłoszeń czeka.</strong>
-          ) : (
-            "Brak nowych zgłoszeń."
-          )}
-        </p>
-      </header>
+      ) : null}
 
-      <div className="mb-5 flex flex-wrap gap-2 font-mono text-[0.6875rem]">
-        {(
-          [
-            ["open", `nowe (${reports.filter((r) => r.status === "open").length})`],
-            ["triaged", `w toku (${reports.filter((r) => r.status === "triaged").length})`],
-            ["closed", `zamknięte (${reports.filter((r) => r.status === "closed").length})`],
-            ["all", `wszystko (${reports.length})`],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setFilter(id)}
-            className={cn(
-              "border-2 px-2.5 py-1 font-semibold",
-              filter === id
-                ? "border-neutral-900 bg-neutral-900 text-[#fff9bf]"
-                : "border-neutral-700 bg-white text-neutral-800 hover:bg-neutral-100"
-            )}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center gap-2">
+        <SegmentedControl<Filter>
+          value={filter}
+          onChange={setFilter}
+          ariaLabel="Status zgłoszeń"
+          options={[
+            { value: "open", label: segLabel("Nowe", openCount) },
+            { value: "triaged", label: segLabel("W toku", count("triaged")) },
+            { value: "closed", label: segLabel("Zamknięte", count("closed")) },
+            { value: "all", label: segLabel("Wszystkie", reports.length) },
+          ]}
+        />
+        <p className="ml-auto text-[0.6875rem] tabular-nums text-slate-500" aria-live="polite">
+          {filtered.length} {polishPluralWord(filtered.length, "zgłoszenie", "zgłoszenia", "zgłoszeń")}
+        </p>
       </div>
 
-      {filtered.length === 0 ? (
-        <p className="font-mono text-sm text-neutral-600">Pusto. Nikt nic nie narzekał (jeszcze).</p>
-      ) : (
-        <ul className="grid gap-5 lg:grid-cols-2">
-          {filtered.map((report) => (
-            <li key={report.id}>
-              <ReportNote
-                report={report}
-                onUpdated={(next) =>
-                  setReports((prev) => prev.map((r) => (r.id === next.id ? next : r)))
-                }
-              />
-            </li>
-          ))}
-        </ul>
-      )}
+      <Card padding={false} className="overflow-hidden">
+        {filtered.length === 0 ? (
+          <EmptyState
+            title={filter === "open" ? "Brak nowych zgłoszeń" : "Brak zgłoszeń w tym widoku"}
+            description="Zgłoszenia wysyłają handlowcy przyciskiem „Zgłoś problem” w swoim panelu."
+          />
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {filtered.map((report) => (
+              <li key={report.id}>
+                <ReportItem
+                  report={report}
+                  onUpdated={(next) =>
+                    setReports((prev) => prev.map((r) => (r.id === next.id ? next : r)))
+                  }
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
     </div>
   );
 }

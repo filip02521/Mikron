@@ -1,6 +1,7 @@
 /**
  * Pilnuje reguł DESIGN.md, których nowy kod nie może łamać (Typography → Named Rules):
- * - wagi powyżej 600 (`font-bold`, `font-extrabold`, `font-black`, CSS `font-weight: 700+`);
+ * - wagi powyżej 600 (`font-bold`, `font-extrabold`, `font-black`, CSS `font-weight: 700+`),
+ *   poza `font-bold` razem z `font-display` (tytuły w Inter Tight);
  * - wersaliki poza nagłówkiem grupy menu (`uppercase`, `text-transform: uppercase`);
  * - rozmiar tekstu w px (`text-[11px]`) poza chrome Kreatora ZD — rem rośnie z ustawieniem
  *   „większy tekst” (`html[data-font-scale]`), px nie.
@@ -14,14 +15,16 @@ const KREATOR_FILE = /zd-estimate|ZdEstimate/i;
 const KREATOR_EXPORT = /zdEstimate|ZdEstimate/;
 const EXCLUDED_DIRS = ["src/lib/email/"];
 
-type Rule = { id: string; re: RegExp; css?: boolean; kreatorExempt?: boolean; message: string };
+type Rule = { id: string; re: RegExp; css?: boolean; kreatorExempt?: boolean; allowIf?: RegExp; message: string };
 
 const RULES: Rule[] = [
   {
     id: "waga",
     re: /(?<![\w-])font-(bold|extrabold|black)(?![\w-])|font-weight:\s*(700|800|900|bold)\b/,
     css: true,
-    message: "waga powyżej 600 — użyj font-semibold (DESIGN.md → Typography)",
+    // 700 tylko w kroju tytułów (Inter Tight), w tej samej klasie.
+    allowIf: /(?<![\w-])font-display(?![\w-])/,
+    message: "waga powyżej 600 — użyj font-semibold; 700 tylko z font-display (DESIGN.md → Typography)",
   },
   {
     id: "wersaliki",
@@ -62,6 +65,7 @@ export function auditFile(path: string, src: string): string[] {
     for (const rule of RULES) {
       if (css && !rule.css) continue;
       if (!rule.re.test(line)) continue;
+      if (rule.allowIf?.test(line)) continue;
       if (rule.kreatorExempt && (kreatorFile || kreatorLines.has(i))) continue;
       if (lines.slice(Math.max(0, i - 2), i + 1).some((l) => l.includes("design-ok:"))) continue;
       out.push(`${path}:${i + 1} [${rule.id}] ${rule.message}`);
