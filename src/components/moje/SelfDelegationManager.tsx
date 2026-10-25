@@ -15,8 +15,6 @@ import { Button } from "@/components/ui/Button";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Badge } from "@/components/ui/Badge";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { IconUsers } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { salesChromeInsetClass, salesTypography } from "@/lib/ui/ontime-theme";
 import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
@@ -127,11 +125,6 @@ export function SelfDelegationManager({
         density="compact"
         title="Zastępstwa urlopowe"
         description="Wyznacz osobę, która zastąpi Cię podczas urlopu. Zastępca zyska dostęp do Twojego panelu (odczyt + potwierdzenie odbioru + zamykanie ZK)."
-        leading={
-          <SectionHeadingIcon tileClassName="bg-indigo-100 text-indigo-800">
-            <IconUsers size={20} />
-          </SectionHeadingIcon>
-        }
         action={
           !formOpen ? (
             <Button variant="outline" size="sm" onClick={() => setFormOpen(true)}>

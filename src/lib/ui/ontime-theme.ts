@@ -564,7 +564,7 @@ export const mojeDestructiveOutlineControlClass = cn(
 
 /** Anulowanie pojedynczej linii — dyskretny link przy wierszu produktu. */
 export const mojeDestructiveSubtleControlClass = cn(
-  "inline-flex shrink-0 items-center justify-center rounded-sm px-1 py-0.5 text-[0.625rem] font-medium text-slate-400/90 transition",
+  "inline-flex shrink-0 items-center justify-center rounded-sm px-1 py-0.5 text-[0.625rem] font-medium text-slate-500 transition",
   "hover:text-red-700 focus-visible:text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-indigo-600",
   "disabled:cursor-not-allowed disabled:opacity-40"
 );
@@ -724,9 +724,6 @@ export const plannerDropHintClass =
 export const mojeHeadlineInfoWrapClass = "bg-indigo-50 text-indigo-950";
 export const mojeHeadlineInfoTitleClass = "text-indigo-900";
 export const mojeHeadlineInfoSubClass = "text-indigo-800";
-
-export const mojeCardHighlightClass =
-  "z-[1] my-1 rounded-md border border-indigo-300/90 bg-indigo-50/90 shadow-md ring-1 ring-indigo-200/70";
 
 /** Sekcja informacja (magazyn) — sky pozostaje semantyczny */
 export const informacjaSurfaceClass =
@@ -915,11 +912,11 @@ export const panelDashedActionClass =
 
 /** Główna akcja dodawania w notatniku (ZK, karteczki) — petrol soft, nie pełny primary. */
 export const notatnikPrimaryAddButtonClass =
-  "min-h-9 justify-center border-indigo-200/80 bg-indigo-50/55 text-indigo-950 hover:bg-indigo-100/70 sm:w-auto";
+  "min-h-11 sm:min-h-9 justify-center border-indigo-200/80 bg-indigo-50/55 text-indigo-950 hover:bg-indigo-100/70 sm:w-auto";
 
 /** Obudowa rozwiniętego formularza dodawania (ZK); notatki compose = sticky na tablicy. */
 export const notatnikAddPanelShellClass =
-  "overflow-hidden rounded-md border border-slate-200/90 bg-white";
+  "overflow-hidden rounded-lg bg-slate-50";
 
 export const panelMutedToggleClass =
   "text-sm font-medium text-indigo-700/80 transition hover:text-indigo-900";

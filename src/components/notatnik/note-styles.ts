@@ -69,19 +69,20 @@ export function noteStickyPaperClass(
 ): string {
   return cn(
     "relative flex w-full flex-col overflow-visible rounded-md border",
-    "shadow-sm shadow-slate-900/10",
+    "shadow-sm",
     NOTE_STICKY_PAPER[color],
     options?.placeholder &&
       "border-dashed border-indigo-200/80 bg-indigo-50/50 shadow-none",
     options?.archived && "opacity-85 saturate-[0.9]",
-    options?.pinned && !options?.editing && "shadow-md shadow-slate-900/12",
+    // Słownik cieni DESIGN.md: uniesiona karteczka dostaje cień „Uniesienie”, nie shadow-md.
+    options?.pinned && !options?.editing && "shadow-[var(--shadow-elevated)]",
     options?.followUpDue &&
       !options?.editing &&
       "ring-2 ring-violet-400/40 ring-offset-1 ring-offset-indigo-50/50",
-    options?.focused && "shadow-md ring-2 ring-indigo-300/50",
+    options?.focused && "shadow-[var(--shadow-elevated)] ring-2 ring-indigo-300",
     options?.dragOver && "ring-2 ring-indigo-400/45",
-    options?.isDragging && "opacity-80 shadow-lg shadow-slate-900/15",
-    options?.editing && "shadow-md shadow-slate-900/12 ring-1 ring-indigo-200/60"
+    options?.isDragging && "opacity-80 shadow-[var(--shadow-card-elevated)]",
+    options?.editing && "shadow-[var(--shadow-elevated)] ring-1 ring-indigo-200"
   );
 }
 

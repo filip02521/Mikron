@@ -1,16 +1,13 @@
 import { cn } from "@/lib/cn";
 import { controlFocusClass, salesPageShellClass, surfaceCardClass } from "@/lib/ui/ontime-theme";
-import { mojeShipmentListClass, mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
+import { mojeShipmentListClass } from "@/lib/ui/moje-shipment-row-styles";
 
 /** Domyślna szerokość stron handlowca (= {@link salesPageShellClass}). */
 export const NOTATNIK_PAGE_CLASS = salesPageShellClass;
 
-/** Wewnętrzna tablica karteczek — spójna z panelem Notatnik (indigo / slate). */
+/** Tablica karteczek w karcie — blok `well` bez ramki i cienia (DESIGN.md → Cards). */
 export const NOTATNIK_NOTES_WALL_CLASS = cn(
-  "overflow-visible rounded-md border border-indigo-100/70",
-  "bg-indigo-50/25",
-  "bg-[length:18px_18px]",
-  "shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)]",
+  "overflow-visible rounded-lg bg-slate-50",
   "px-3 py-4 sm:px-4 sm:py-5"
 );
 
@@ -23,11 +20,8 @@ export const NOTATNIK_ZK_LIST_CLASS = mojeShipmentListClass;
 /** Scroll listy ZK — pozwala wychodzić znacznikowi „gotowe do zamknięcia” poza krawędź. */
 export const NOTATNIK_ZK_LIST_SCROLL_CLASS = "overflow-x-visible";
 
-/** Obudowa listy ZK — znaczniki boczne mogą wychodzić poza biały panel. */
-export const NOTATNIK_ZK_LIST_SECTION_CLASS = cn(
-  mojeShipmentSectionShellClass,
-  "overflow-visible"
-);
+/** Lista ZK w karcie strony — bez własnej ramki i cienia (DESIGN.md → bez karty w karcie). */
+export const NOTATNIK_ZK_LIST_SECTION_CLASS = "overflow-visible bg-white";
 
 export const NOTATNIK_ZK_ACTIONS_CLASS =
   "grid grid-cols-2 gap-1.5 border-t border-slate-100 pt-2 sm:grid-cols-3";

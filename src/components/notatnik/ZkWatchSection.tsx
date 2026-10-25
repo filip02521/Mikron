@@ -788,7 +788,6 @@ export function ZkWatchSection({
         {!embedded && watches.length > 0 ? (
           <NotatnikListFilterBar
             embedded
-            visibleLabel="Szukaj na swojej liście"
             value={listFilter}
             onChange={setListFilter}
             matchCount={filteredWatches.length}
