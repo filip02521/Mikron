@@ -13,7 +13,7 @@ export const queueToolbarInputClass =
   "w-full min-h-11 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-base text-slate-900 shadow-sm placeholder:text-slate-400 hover:border-slate-300 sm:min-h-9 sm:text-sm";
 
 /** Jednolita wysokość pól i przycisków w pasku przyjęcia. */
-export const queueToolbarControlClass = "min-h-11 py-2 sm:min-h-9";
+export const queueToolbarControlClass = "min-h-11 py-2 sm:min-h-10";
 
 /** Karta sekcji w pasku przyjęcia towaru. */
 export const receiveQueueToolbarSectionClass =

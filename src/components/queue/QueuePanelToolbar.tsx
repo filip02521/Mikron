@@ -13,17 +13,20 @@ const TABS: { id: QueueView; label: string; title: string }[] = [
 ];
 
 /**
- * Zakładki widoku magazynu — wygląd `SectionTabNav` (podkreślenie Petrol), ale przyciski,
- * bo widoki przełączają się w miejscu (hash), bez nawigacji.
+ * Zakładki widoku magazynu jako kafle z licznikiem: liczba to pierwsze, co magazyn chce wiedzieć
+ * (ile czeka na przyjęcie, ile wpisów, co na regale). Przełączają widok w miejscu (hash), bez nawigacji.
  */
 export function QueuePanelToolbar({
   view,
   onViewChange,
   counts,
+  hints,
 }: {
   view: QueueView;
   onViewChange: (view: QueueView) => void;
   counts: Record<QueueView, number>;
+  /** Jedna linia pod nazwą kafla, np. „1 na regale do odbioru · 0 informacji”. */
+  hints?: Partial<Record<QueueView, string>>;
 }) {
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -38,7 +41,7 @@ export function QueuePanelToolbar({
       ref={listRef}
       role="tablist"
       aria-label="Widok magazynu"
-      className="mb-5 flex gap-5 overflow-x-auto border-b border-slate-200 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-6"
+      className="mb-4 grid grid-cols-3 gap-2 sm:gap-3"
     >
       {TABS.map((tab, index) => {
         const active = view === tab.id;
@@ -64,18 +67,19 @@ export function QueuePanelToolbar({
               }
             }}
             className={cn(
-              "-mb-px inline-flex min-h-11 shrink-0 items-center gap-1.5 border-b-2 px-0.5 text-sm font-medium transition-colors duration-150 sm:min-h-10",
+              "flex min-w-0 flex-col items-start rounded-lg border bg-white px-3 py-2.5 text-left shadow-sm transition-colors duration-150 sm:px-4 sm:py-3",
               controlFocusClass,
               active
-                ? "border-indigo-600 text-slate-900"
-                : "border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                ? "border-indigo-600 ring-1 ring-inset ring-indigo-600"
+                : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
             )}
           >
-            {tab.label}
-            {count > 0 ? (
-              <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums text-slate-600">
-                {count}
-              </span>
+            <span className="text-2xl font-semibold leading-none tabular-nums text-slate-900 sm:text-[1.75rem]">{count}</span>
+            <span className={cn("mt-1.5 text-sm font-semibold", active ? "text-indigo-800" : "text-slate-800")}>
+              {tab.label}
+            </span>
+            {hints?.[tab.id] ? (
+              <span className="mt-0.5 hidden w-full truncate text-[0.8125rem] text-slate-500 sm:block">{hints[tab.id]}</span>
             ) : null}
           </button>
         );

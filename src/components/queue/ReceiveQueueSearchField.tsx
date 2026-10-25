@@ -7,9 +7,11 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 export function ReceiveQueueSearchField({
   disabled,
   onDebouncedChange,
+  className = "min-w-0 sm:max-w-xs",
 }: {
   disabled?: boolean;
   onDebouncedChange: (value: string) => void;
+  className?: string;
 }) {
   const [value, setValue] = useState("");
   const debounced = useDebouncedValue(value, 150);
@@ -32,7 +34,7 @@ export function ReceiveQueueSearchField({
       disabled={disabled}
       placeholder="Symbol, nazwa lub kod Mikron…"
       onChange={setValue}
-      className="min-w-0 sm:max-w-xs"
+      className={className}
     />
   );
 }
