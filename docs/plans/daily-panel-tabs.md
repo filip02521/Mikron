@@ -1,6 +1,6 @@
 # Plan: zakładki panelu dziennego (P2)
 
-**Status:** wdrożone (MVP) — `?view=dzis|tydzien|narzedzia`, legacy `#plan` → tydzień.
+**Status: zrobione, z odstępstwem od planu.** Zakładki to `?view=dzis|tydzien|wyjatki` (`src/lib/orders/daily-panel-view.ts`): trzecia zakładka to **Wyjątki** (informacja, dostawcy na żądanie, pozycje poza harmonogramem), a nie „Narzędzia”; stare `?view=narzedzia` i `#plan` przekierowują (`src/hooks/useDailyPanelView.ts`). Komponenty: `DailyPanelTabs`, `DailyTodayView`, `DailyWeekView` w `src/components/summary/`; `DailyToolsView` nie powstał. Poniżej plan w pierwotnym brzmieniu.
 
 ## Cel
 

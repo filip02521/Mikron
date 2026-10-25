@@ -31,6 +31,7 @@ export type ZdEstimateListFilter = (typeof ZD_ESTIMATE_LIST_FILTERS)[number];
 export const ZD_ESTIMATE_OPTIONAL_COLUMNS = [
   "packaging",
   "cover",
+  "abcClass",
   "available",
   "openZd",
   "sales",
@@ -51,6 +52,7 @@ export const ZD_ESTIMATE_COLUMN_VISIBILITY_DEFAULTS: ZdEstimateColumnVisibility 
   {
     packaging: true,
     cover: true,
+    abcClass: true,
     available: true,
     openZd: true,
     sales: true,
@@ -73,6 +75,7 @@ export const ZD_ESTIMATE_COLUMN_ORDER_DEFAULTS: ZdEstimateOptionalColumn[] = [
 export const ZD_ESTIMATE_COLUMN_SECTIONS = {
   packaging: "pack",
   cover: "signal",
+  abcClass: "signal",
   available: "flow",
   sales: "flow",
   target: "flow",
@@ -177,6 +180,7 @@ const SORT_KEYS = new Set<ZdEstimateListSortKey>([
   "confidence",
   "minStock",
   "cover",
+  "abc",
 ]);
 
 const OPTIONAL_COLUMN_SET = new Set<string>(ZD_ESTIMATE_OPTIONAL_COLUMNS);

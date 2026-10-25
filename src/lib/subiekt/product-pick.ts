@@ -287,11 +287,14 @@ export function patchFromCombinedProductInput(
     ? inferCombinedProductSearchField(prevDisplay)
     : "name";
   const prevSymbol = previous?.symbol?.trim() ?? "";
+  // Symbol zostaje tylko, gdy po nim jest spacja i dalej nazwa („ABC opis”). Ciąg dalszy tego samego słowa
+  // („S” → „Silikon”) znaczy, że pierwsza litera nie była symbolem — inaczej prośba wiązała się z towarem „S”.
   const extendingSymbol =
     prevField === "symbol" &&
     Boolean(prevSymbol) &&
     prevSymbol !== "-" &&
-    query.trim().toLowerCase().startsWith(prevSymbol.toLowerCase());
+    query.trim().toLowerCase().startsWith(prevSymbol.toLowerCase()) &&
+    /\s/.test(query.trim().charAt(prevSymbol.length));
   const keepSymbol =
     extendingSymbol ||
     (prevField === "name" &&

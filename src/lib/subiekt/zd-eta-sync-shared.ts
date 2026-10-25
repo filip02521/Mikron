@@ -2,6 +2,7 @@
 
 import { canEstimateDeliveryEta, orderPlacementAt } from "@/lib/orders/order-timing";
 import type { IndividualOrder } from "@/types/database";
+import { effectiveRequestSymbol } from "@/lib/orders/request-completeness";
 
 import { clientFetchTimeoutMs } from "@/lib/timing";
 
@@ -150,7 +151,9 @@ export function isZdEtaSyncEligible(order: IndividualOrder): boolean {
     if (!order.supplier_id) return false;
     if (!order.ordered_at?.trim()) return false;
     const hasTwId = order.subiekt_tw_id != null && order.subiekt_tw_id > 0;
-    const hasSymbol = order.symbol && order.symbol.trim() && order.symbol.trim() !== "-";
+    const hasSymbol = Boolean(
+      effectiveRequestSymbol({ symbol: order.symbol, products: order.products, subiektTwId: order.subiekt_tw_id })
+    );
     const hasMikran = order.mikran_code && order.mikran_code.trim();
     if (!hasTwId && !hasSymbol && !hasMikran) return false;
     return true;

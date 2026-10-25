@@ -65,7 +65,7 @@ export function ZdUnmappedKhPanel({
   };
 
   return (
-    <div className="mt-4 rounded-md border border-amber-200/80 bg-amber-50/40 p-3">
+    <div className="mt-4 rounded-lg bg-amber-50 p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-slate-900">
@@ -129,7 +129,7 @@ export function ZdUnmappedKhPanel({
           </p>
           <div className="mt-3 max-h-80 overflow-auto rounded-md border border-slate-200 bg-white">
             <table className="w-full min-w-[44rem] text-left text-xs">
-              <thead className="sticky top-0 bg-slate-50 text-[11px] font-semibold text-slate-500">
+              <thead className="sticky top-0 bg-slate-50 text-[0.6875rem] font-semibold text-slate-500">
                 <tr>
                   <th className="px-3 py-2">Kontrahent (Subiekt)</th>
                   <th className="px-3 py-2">ZD</th>
@@ -146,12 +146,12 @@ export function ZdUnmappedKhPanel({
                     <tr key={row.subiektKhId} className="align-top text-slate-800">
                       <td className="px-3 py-2">
                         <span className="font-medium leading-snug">{display}</span>
-                        <span className="mt-0.5 block font-mono text-[10px] text-slate-400">
+                        <span className="mt-0.5 block font-mono text-[0.625rem] text-slate-500">
                           id {row.subiektKhId}
                         </span>
                         {row.sampleDocNumbers.length > 0 ? (
                           <span
-                            className="mt-1 block text-[10px] text-slate-500 line-clamp-2"
+                            className="mt-1 block text-[0.625rem] text-slate-500 line-clamp-2"
                             title={row.sampleDocNumbers.join(", ")}
                           >
                             np. {row.sampleDocNumbers.slice(0, 2).join(", ")}
@@ -166,7 +166,7 @@ export function ZdUnmappedKhPanel({
                               <span className="font-medium text-indigo-900">{s.supplierName}</span>
                               <span
                                 className={cn(
-                                  "ml-1.5 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+                                  "ml-1.5 rounded-md px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums",
                                   s.score >= 80
                                     ? "bg-emerald-100 text-emerald-900"
                                     : "bg-indigo-100 text-indigo-900"
@@ -174,7 +174,7 @@ export function ZdUnmappedKhPanel({
                               >
                                 {s.score}%
                               </span>
-                              <p className="mt-0.5 text-[11px] leading-snug text-slate-600">
+                              <p className="mt-0.5 text-[0.6875rem] leading-snug text-slate-600">
                                 {s.reason}
                               </p>
                             </div>
@@ -191,13 +191,13 @@ export function ZdUnmappedKhPanel({
                                   : "Dodaj jako dodatkowy kontrahent"}
                               </Button>
                             ) : (
-                              <p className="text-[11px] text-amber-900">
+                              <p className="text-[0.6875rem] text-amber-900">
                                 Powiązanie jest w kartotece - wystarczy reindeks ZD (przycisk wyżej).
                               </p>
                             )}
                           </div>
                         ) : (
-                          <span className="text-[11px] text-slate-500">
+                          <span className="text-[0.6875rem] text-slate-500">
                             Brak pewnej propozycji - sprawdź ręcznie w Dostawcy
                           </span>
                         )}
@@ -205,7 +205,7 @@ export function ZdUnmappedKhPanel({
                       <td className="px-3 py-2">
                         <span
                           className={cn(
-                            "inline-block rounded-md px-2 py-1 text-[11px] leading-snug",
+                            "inline-block rounded-md px-2 py-1 text-[0.6875rem] leading-snug",
                             hint.tone === "amber"
                               ? "bg-amber-100 text-amber-950"
                               : "bg-red-50 text-red-900"

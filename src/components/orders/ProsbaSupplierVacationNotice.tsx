@@ -32,7 +32,7 @@ export function ProsbaSupplierVacationNotice({
           <p className="text-sm font-semibold leading-snug text-amber-950">
             {model.title}
           </p>
-          <p className="mt-1 text-xs leading-relaxed text-amber-950/90 sm:text-[13px]">
+          <p className="mt-1 text-xs leading-relaxed text-amber-950/90 sm:text-[0.8125rem]">
             {model.description}
           </p>
         </div>

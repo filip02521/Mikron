@@ -11,12 +11,9 @@ import { MyOrderShipmentList } from "@/components/moje/MyOrderShipmentList";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import {
-  MojeSectionIcon,
-  mojeSectionIconTileClass,
   IconChevronDown,
   IconArchive,
 } from "@/components/icons/StrokeIcons";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export function MyOrderArchiveSection({
@@ -123,23 +120,19 @@ export function MyOrderArchiveSection({
         : `Odebrane i zakończone prośby z ostatnich ${ARCHIVE_RECENT_DAYS} dni`;
 
   return (
-    <div id="moje-ostatnio-zakonczone" className="scroll-mt-24 pt-3">
-    <Card padding={false} className="border-slate-200/80 bg-white/70 shadow-sm shadow-slate-200/30">
+    <div id="moje-ostatnio-zakonczone" className="scroll-mt-24">
+    <Card padding={false}>
       <CardHeader
         inset
         density="compact"
         title="Ostatnio zakończone"
         description={description}
-        leading={
-          <SectionHeadingIcon tileClassName={mojeSectionIconTileClass("archive")}>
-            <MojeSectionIcon kind="archive" size={20} />
-          </SectionHeadingIcon>
-        }
         action={
           <Button
             type="button"
             variant="outline"
             size="sm"
+            className="min-h-11 sm:min-h-0"
             onClick={() => {
               setOpen((v) => {
                 if (v) setShowMore(false);
@@ -189,7 +182,7 @@ export function MyOrderArchiveSection({
             </div>
           )}
           {visibleRows.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-slate-100 px-4 py-2 text-[11px] text-slate-500" aria-label="Znaczenie kolorów w archiwum">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-slate-100 px-4 py-2 text-[0.6875rem] text-slate-500" aria-label="Znaczenie kolorów w archiwum">
               <span className="inline-flex items-center gap-1.5">
                 <span className="h-3 w-1 shrink-0 rounded-full bg-emerald-300" aria-hidden />
                 <span>Zrealizowane</span>

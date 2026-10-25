@@ -64,7 +64,7 @@ export function StockCoverBar({
           />
         ) : null}
       </div>
-      <p className="mt-1 flex justify-between gap-2 text-[11px] tabular-nums text-slate-500">
+      <p className="mt-1 flex justify-between gap-2 text-[0.6875rem] tabular-nums text-slate-500">
         <span>
           {formatQtyPl(available)} / {formatQtyPl(safetyStock)} szt
         </span>

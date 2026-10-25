@@ -91,6 +91,27 @@ describe("overlapContributions w buildIndividualEstimateExtras", () => {
 });
 
 describe("matchZdEstimateTwFromOrder", () => {
+  it("prośba wpisana ręcznie z artefaktem „S” nie trafia na towar o symbolu S", () => {
+    const bySymbol = new Map([["s", 677]]);
+    const byTw = new Map([[677, { tw_Id: 677, tw_Symbol: "S" }]]);
+    const o = pending({ id: "p", symbol: "S", products: "Silikon wyciskowy", subiektTwId: null });
+    expect(matchZdEstimateTwFromOrder(o, bySymbol, new Map(), byTw)).toBeNull();
+    // Prawdziwy symbol przed nazwą działa jak dotąd.
+    expect(matchZdEstimateTwFromOrder({ ...o, products: "S kieliszek" }, bySymbol, new Map(), byTw)).toBe(677);
+  });
+
+  it("przypięty towar bez symbolu wygrywa z kodem innego towaru w nazwie", () => {
+    const bySymbol = new Map([["fr-01", 111], ["ab123", 222]]);
+    const byTw = new Map([
+      [111, { tw_Id: 111, tw_Symbol: "FR-01" }],
+      [222, { tw_Id: 222, tw_Symbol: "AB123" }],
+    ]);
+    const o = pending({ id: "p", products: "Frez diamentowy AB123", subiektTwId: 111 });
+    expect(matchZdEstimateTwFromOrder(o, bySymbol, new Map(), byTw)).toBe(111);
+    // bez przypiętego towaru kod z nazwy nadal działa
+    expect(matchZdEstimateTwFromOrder({ ...o, subiektTwId: null }, bySymbol, new Map(), byTw)).toBe(222);
+  });
+
   it("kolejność: symbol > PLU > subiektTwId; bez firstToken", () => {
     const bySymbol = new Map([
       ["ivoclar", 111],
@@ -964,5 +985,51 @@ describe("excluded → usługi", () => {
       routed.serviceLines.filter((l) => l.reason === "excluded")
     ).toHaveLength(2);
     expect(individualExtraPiecesMap(routed).get(2)).toBe(1);
+  });
+});
+
+describe("prośby w parach paczka↔sztuka - w sztukach pary", () => {
+  const pairs = [{ packTwId: 20, pieceTwId: 21, unitsPerPack: 10 }];
+  const lines = [
+    { tw_Id: 20, tw_Symbol: "KARTON" },
+    { tw_Id: 21, tw_Symbol: "SZT" },
+  ];
+
+  it("prośba na kartonie: 3 kartony = 30 sztuk pary (nie 3)", () => {
+    const bundle = buildIndividualEstimateExtras({
+      orders: [pending({ id: "o1", symbol: "KARTON", qty: 3, salesClientKhId: 7 })],
+      lines,
+      pairs,
+    });
+    expect(bundle.byTwId.get(20)?.extraPieces).toBe(30);
+    expect(bundle.byTwId.get(20)?.overlapContributions?.[0]?.qty).toBe(30);
+  });
+
+  it("prośba na sztuce trafia na paczkę bez przeliczania", () => {
+    const bundle = buildIndividualEstimateExtras({
+      orders: [pending({ id: "o2", symbol: "SZT", qty: 6 })],
+      lines,
+      pairs,
+    });
+    expect(bundle.byTwId.get(20)?.extraPieces).toBe(6);
+    expect(bundle.byTwId.has(21)).toBe(false);
+  });
+
+  it("zestaw „Składamy” z kartonem: 2 zestawy × 1 karton = 2 kartony", () => {
+    const bundle = buildIndividualEstimateExtras({
+      orders: [pending({ id: "o3", symbol: "PROMO", qty: 2 })],
+      lines: [...lines, { tw_Id: 30, tw_Symbol: "PROMO" }],
+      pairs,
+      boms: [
+        {
+          parentTwId: 30,
+          stockAsCover: true,
+          demandAllocation: "explode",
+          purchaseTarget: "components",
+          components: [{ componentTwId: 20, qtyPerParent: 1 }],
+        },
+      ],
+    });
+    expect(bundle.byTwId.get(20)?.extraPieces).toBe(20);
   });
 });

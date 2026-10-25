@@ -1,6 +1,7 @@
 import type { IndividualOrder } from "@/types/database";
 import type { SubiektDocument, SubiektDocumentLine } from "@/lib/subiekt/types";
 import { getDeliveryProgress } from "@/lib/orders/individual";
+import { effectiveRequestSymbol } from "@/lib/orders/request-completeness";
 import { lineTowId } from "@/lib/subiekt/zd-document-line";
 import { buildZdMatchProfileFromDocument } from "@/lib/warehouse/zd-receive-filter";
 import {
@@ -68,26 +69,31 @@ function hasExplicitOrderSymbol(symbol: string | null | undefined): boolean {
 
 /** Warianty symbolu do dopasowania ZD — pełny symbol z prośby lub wyciągnięty z nazwy. */
 export function resolveOrderMatchSymbols(
-  order: Pick<IndividualOrder, "symbol" | "products">
+  order: Pick<IndividualOrder, "symbol" | "products"> & Partial<Pick<IndividualOrder, "subiekt_tw_id">>
 ): string[] {
   const symbols = new Set<string>();
+  // „S” wzięte z pierwszej litery „Silikon…” (wpis bez towaru z Subiekta) nie jest symbolem towaru.
+  const symbol = effectiveRequestSymbol({
+    symbol: order.symbol,
+    products: order.products,
+    subiektTwId: order.subiekt_tw_id ?? null,
+  });
 
-  if (hasExplicitOrderSymbol(order.symbol)) {
-    addMatchSymbol(symbols, order.symbol);
+  if (hasExplicitOrderSymbol(symbol)) {
+    addMatchSymbol(symbols, symbol);
     return [...symbols];
   }
 
-  addMatchSymbol(symbols, order.symbol);
   addMatchSymbol(
     symbols,
     effectiveProductSymbol({
       tw_Id: 0,
-      tw_Symbol: order.symbol ?? "",
+      tw_Symbol: symbol ?? "",
       tw_Nazwa: order.products ?? "",
     })
   );
 
-  for (const src of [order.symbol, order.products]) {
+  for (const src of [symbol, order.products]) {
     addMatchSymbol(symbols, extractAlphanumericProductCodeFromName(src ?? ""));
     const firstToken = src?.trim().split(/\s+/)[0];
     addMatchSymbol(symbols, firstToken);

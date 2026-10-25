@@ -49,7 +49,7 @@ export function DailyPanelExceptionsView({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-6">
       {hasInformacja ? (
         <DailyPanelInformacjaSection groups={workspace.informacjaLeft} />
       ) : null}

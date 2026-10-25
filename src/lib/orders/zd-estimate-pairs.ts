@@ -12,6 +12,7 @@ import {
 } from "@/lib/orders/zd-estimate-history-track";
 import {
   computeSalesTrackedCel,
+  floorCelTrackedAtZapasMin,
   reconcileSalesTrackQtyMetaAfterHistory,
   resolveSprzedazDziennie,
   type SalesTrackReason,
@@ -270,8 +271,20 @@ export function applyZdEstimatePairs(
       }
     }
 
+    if (!partnerMissing) {
+      const floored = floorCelTrackedAtZapasMin(celTracked, celBase, zapasMin);
+      if (floored !== celTracked) {
+        celTracked = floored;
+        salesTrackDelta = celTracked - celBase;
+      }
+    }
+
     const packExcluded = excluded?.has(pair.packTwId) === true;
-    const packMinStock = options.minStockByTwId?.get(pair.packTwId) ?? 0;
+    // Minimum w sztukach pary — ustawione na którejkolwiek karcie (wiersz sztuki też ma menu).
+    const packMinStock = Math.max(
+      options.minStockByTwId?.get(pair.packTwId) ?? 0,
+      options.minStockByTwId?.get(pair.pieceTwId) ?? 0
+    );
     let piecesNeeded = 0;
     if (!partnerMissing && !packExcluded) {
       piecesNeeded = computeManualOrderQty({

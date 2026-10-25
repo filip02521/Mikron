@@ -2,13 +2,14 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
+import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { plPozycja, plProsba } from "@/lib/ui/polish-plurals";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 import { TeethPanelEmpty } from "@/components/zeby/TeethPanelSection";
 import { TeethQueueSupplierCard } from "@/components/zeby/TeethQueueSupplierCard";
 import {
-  IconAlertCircle,
   IconCalendar,
   IconClipboardList,
   IconTruck,
@@ -38,38 +39,46 @@ import {
 } from "@/lib/teeth/teeth-queue-view-model";
 import { parseTeethJaw, parseTeethKind } from "@/lib/teeth/teeth-catalog-types";
 
-function StatTile({
-  label,
-  value,
-  hint,
-  tone = "slate",
+/** Zdanie stanu kolejki (DESIGN.md → Status Panel) zamiast rzędu kafelków z liczbami. */
+export function QueueStatus({
+  orders,
+  ready,
+  needsFix,
+  oldestDays,
+  onShowNeedsFix,
 }: {
-  label: string;
-  value: string | number;
-  hint?: string;
-  tone?: "slate" | "indigo" | "amber" | "red";
+  orders: number;
+  ready: number;
+  needsFix: number;
+  oldestDays: number;
+  onShowNeedsFix?: () => void;
 }) {
   return (
-    <div
-      className={cn(
-        "rounded-xl border bg-white px-3 py-2.5 shadow-sm sm:px-4 sm:py-3",
-        tone === "amber" && "border-amber-200 bg-amber-50/60",
-        tone === "red" && "border-red-200 bg-red-50/50",
-        tone === "indigo" && "border-indigo-200",
-        tone === "slate" && "border-slate-200",
-      )}
-    >
-      <p className="text-[11px] font-semibold text-slate-500">{label}</p>
-      <p
-        className={cn(
-          "mt-0.5 text-xl font-semibold tabular-nums sm:text-2xl",
-          tone === "amber" ? "text-amber-800" : tone === "red" ? "text-red-700" : "text-slate-900",
-        )}
-      >
-        {value}
-      </p>
-      {hint ? <p className="hidden text-xs text-slate-500 sm:block">{hint}</p> : null}
-    </div>
+    <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <p className="text-base font-semibold tracking-[-0.01em] text-slate-900 tabular-nums">
+          {orders} {plProsba(orders)} w kolejce, {ready}{" "}
+          {polishPluralWord(ready, "gotowa", "gotowe", "gotowych")} do zamówienia
+        </p>
+        <p className="mt-1 text-sm text-slate-600 tabular-nums">
+          {needsFix > 0 ? (
+            <span className="text-amber-800">
+              {needsFix} do uzupełnienia - brak lub niepełna lista zębów.
+            </span>
+          ) : (
+            "Wszystkie listy zębów są kompletne."
+          )}{" "}
+          <span className={cn(oldestDays > 5 && "font-medium text-red-700")}>
+            Najdłużej czeka: {oldestDays > 0 ? formatTeethQueueWaitDays(oldestDays) : "od dziś"}.
+          </span>
+        </p>
+      </div>
+      {needsFix > 0 && onShowNeedsFix ? (
+        <Button variant="secondary" className="shrink-0" onClick={onShowNeedsFix}>
+          Pokaż {needsFix} do uzupełnienia
+        </Button>
+      ) : null}
+    </Card>
   );
 }
 
@@ -88,6 +97,7 @@ export function TeethPanelKolejkaView({
   onSetDeliveryDate,
   onEditSaved,
   onFileChanged,
+  onShowNeedsFix,
 }: {
   groups: TeethQueueGroup[];
   readinessCtx?: TeethPanelReadinessContext;
@@ -107,6 +117,8 @@ export function TeethPanelKolejkaView({
   onSetDeliveryDate: () => void;
   onEditSaved?: (message?: string) => void;
   onFileChanged?: () => void;
+  /** Włącza filtr „Tylko do uzupełnienia”; brak, gdy filtr już działa. */
+  onShowNeedsFix?: () => void;
 }) {
   const duplicates = useMemo(() => detectTeethDuplicates(groups), [groups]);
   const [showDuplicates, setShowDuplicates] = useState(false);
@@ -191,47 +203,29 @@ export function TeethPanelKolejkaView({
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile label="Prośby w kolejce" value={stats.orders} tone="indigo" />
-        <StatTile
-          label="Gotowe do zamówienia"
-          value={stats.ready}
-          hint={stats.ready > 0 ? "kompletna lista zębów" : undefined}
-        />
-        <StatTile
-          label="Do uzupełnienia"
-          value={stats.needsFix}
-          tone={stats.needsFix > 0 ? "amber" : "slate"}
-          hint={stats.needsFix > 0 ? "brak lub niepełna lista" : "wszystko kompletne"}
-        />
-        <StatTile
-          label="Najdłużej czeka"
-          value={stats.oldestDays > 0 ? formatTeethQueueWaitDays(stats.oldestDays) : "dziś"}
-          tone={stats.oldestDays > 5 ? "red" : "slate"}
-        />
-      </div>
+      <QueueStatus
+        orders={stats.orders}
+        ready={stats.ready}
+        needsFix={stats.needsFix}
+        oldestDays={stats.oldestDays}
+        onShowNeedsFix={onShowNeedsFix}
+      />
 
       {duplicates.length > 0 ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-900">
-          <div className="flex items-start gap-2">
-            <IconAlertCircle size={16} className="mt-0.5 text-amber-600" />
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold">Możliwe duplikaty: {duplicates.length}</p>
-              <p className="text-xs text-amber-800">
-                Ten sam handlowiec prosi o te same zęby w kilku prośbach - sprawdź przed zamówieniem.
-              </p>
-            </div>
+        <Alert tone="warning" title={`Możliwe duplikaty: ${duplicates.length}`}>
+          <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+            <p>Ten sam handlowiec prosi o te same zęby w kilku prośbach - sprawdź przed zamówieniem.</p>
             <button
               type="button"
               onClick={() => setShowDuplicates((v) => !v)}
-              className="shrink-0 rounded-md px-2 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+              className="-my-2 inline-flex min-h-11 shrink-0 items-center rounded-md px-2 font-semibold text-amber-900 underline-offset-2 hover:underline sm:min-h-8"
               aria-expanded={showDuplicates}
             >
-              {showDuplicates ? "Ukryj" : "Pokaż"}
+              {showDuplicates ? "Ukryj listę" : "Pokaż listę"}
             </button>
           </div>
           {showDuplicates ? (
-            <ul className="mt-2 space-y-0.5 pl-6 text-xs">
+            <ul className="mt-2 space-y-0.5 text-xs">
               {duplicates.map((d) => (
                 <li key={`${d.salesPersonName}-${d.color}-${d.mould}-${d.jaw}-${d.kind}`}>
                   <span className="font-semibold">{d.salesPersonName}</span>:{" "}
@@ -246,7 +240,7 @@ export function TeethPanelKolejkaView({
               ))}
             </ul>
           ) : null}
-        </div>
+        </Alert>
       ) : null}
 
       {groups.map((group) => {
@@ -297,26 +291,26 @@ export function TeethPanelKolejkaView({
             role="region"
             aria-label="Zaznaczone zęby"
             className={cn(
-              "fixed inset-x-3 z-40 mx-auto max-w-3xl",
+              "fixed inset-x-3 z-30 mx-auto max-w-3xl",
               // Telefon: nad dolną nawigacją i paskiem podglądu admina.
               "bottom-[calc(env(safe-area-inset-bottom)+4.75rem+var(--admin-preview-dock,0px))]",
               // Desktop: obok menu bocznego (--app-sidebar-w) i nad paskiem „Podgląd: …”.
               "md:left-[calc(var(--app-sidebar-w)+1.5rem)] md:right-6 md:bottom-[calc(1.5rem+var(--admin-preview-clearance,0px))]",
             )}
           >
-            <div className="flex flex-col gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white shadow-2xl sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-2 rounded-[var(--radius-panel)] border border-indigo-200 bg-[var(--card)]/95 px-4 py-3 shadow-[var(--shadow-card-elevated)] backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
-                <p className="text-sm font-semibold">
+                <p className="text-sm font-semibold text-slate-900 tabular-nums">
                   Zaznaczono {selectedPositionCount}{" "}
                   {polishPluralWord(selectedPositionCount, "ząb", "zęby", "zębów")}
-                  <span className="font-normal text-slate-300">
+                  <span className="font-normal text-slate-600">
                     {" "}
                     z {selectedOrderCount} {selectedOrderCount === 1 ? "prośby" : "próśb"}
                   </span>
                 </p>
                 {selectionMissingFiles.length > 0 ? (
-                  <p className="text-xs text-amber-300">
-                    Brak pliku zamówienia: {selectionMissingFiles.join(", ")}
+                  <p className="text-xs text-amber-800">
+                    Wgraj plik zamówienia u: {selectionMissingFiles.join(", ")}
                   </p>
                 ) : null}
               </div>
@@ -325,7 +319,7 @@ export function TeethPanelKolejkaView({
                   size="sm"
                   variant="ghost"
                   onClick={onClearSelection}
-                  className="min-h-9 text-slate-300 hover:bg-white/10 hover:text-white"
+                  className="min-h-11 sm:min-h-9"
                 >
                   <IconX size={14} />
                   Wyczyść
@@ -335,7 +329,7 @@ export function TeethPanelKolejkaView({
                   variant="ghost"
                   onClick={onSetDeliveryDate}
                   disabled={pending}
-                  className="min-h-9 text-slate-100 hover:bg-white/10 hover:text-white"
+                  className="min-h-11 sm:min-h-9"
                 >
                   <IconCalendar size={14} />
                   Data dostawy
@@ -344,7 +338,7 @@ export function TeethPanelKolejkaView({
                   size="sm"
                   onClick={() => onRequestMarkPositionsOrdered(selections(), null, "selection")}
                   disabled={pending || selectionMissingFiles.length > 0}
-                  className="min-h-9"
+                  className="min-h-11 sm:min-h-9"
                   title={
                     selectionMissingFiles.length > 0
                       ? "Wgraj plik zamówienia u każdego zaznaczonego dostawcy"

@@ -1,4 +1,5 @@
 "use client";
+import type { ZdAutomatSupplierRow } from "@/lib/data/zd-automat-suppliers";
 import { toastFromError, toastSuccess, SUPPLIER_TOAST, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
 
 import Link from "next/link";
@@ -51,7 +52,10 @@ import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
 import { Badge } from "@/components/ui/Badge";
 import { IconPencil, IconMapPin, IconSearch, IconPlusCircle } from "@/components/icons/StrokeIcons";
+import { polishPluralWord } from "@/lib/email/polish-plural";
+import { panelTextLinkClass } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 function scheduleHref(location: SupplierLocation, name: string): string {
   const q = encodeURIComponent(name);
@@ -76,6 +80,8 @@ export function SuppliersAdminClient({
   warehouseCarriers = [],
   teethScheduleSupplierIds,
   teethScheduleMap,
+  automat = {},
+  canManageAutomat = false,
 }: {
   initial: SupplierWithSchedule[];
   /** Wszyscy dostawcy (nieprzefiltrowani) — do pickera w torze zębów */
@@ -86,6 +92,10 @@ export function SuppliersAdminClient({
   teethScheduleSupplierIds?: string[];
   /** Mapa harmonogramów zębów (supplierId → TeethSupplierSchedule) */
   teethScheduleMap?: Record<string, TeethSupplierSchedule>;
+  /** Dostawcy z zakresem w Kreatorze ZD (supplierId → strategia i ostatni backtest) — sekcja „Automat ZD” w karcie. */
+  automat?: Record<string, ZdAutomatSupplierRow>;
+  /** Zmiana strategii i backtest z karty (dostęp do Kreatora ZD). */
+  canManageAutomat?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -159,7 +169,7 @@ export function SuppliersAdminClient({
     const needle = teethPickerSearch.trim().toLowerCase();
     return allSuppliers
       .filter((s) => isSupplierActive(s) && !teethScheduleIds.has(s.id))
-      .filter((s) => !needle || s.name.toLowerCase().includes(needle))
+      .filter((s) => matchesSearchWords(s.name, needle))
       .sort((a, b) => a.name.localeCompare(b.name, "pl"));
   }, [teethLane, allSuppliers, teethScheduleIds, teethPickerSearch]);
 
@@ -249,12 +259,33 @@ export function SuppliersAdminClient({
       setAppliedPowiazQuery(powiazQuery);
       setPowiazHandled(true);
       startEdit(match);
-      const params = new URLSearchParams(searchParams.toString());
-      params.delete("powiaz");
-      const next = params.toString();
-      router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
     }
   }
+  const powiazInUrl = searchParams.get("powiaz") === "1";
+  useEffect(() => {
+    if (!powiazHandled || !powiazInUrl) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("powiaz");
+    const next = params.toString();
+    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+  }, [powiazHandled, powiazInUrl, searchParams, pathname, router]);
+
+  // ?karta=<id> — wejście z pulpitu Automatu ZD prosto do karty dostawcy.
+  const kartaId = searchParams.get("karta") ?? "";
+  const [appliedKartaId, setAppliedKartaId] = useState("");
+  if (kartaId && kartaId !== appliedKartaId) {
+    setAppliedKartaId(kartaId);
+    const match = rows.find((row) => row.id === kartaId);
+    if (match) startEdit(match);
+  }
+  // Adres bez ?karta= po otwarciu karty (router poza renderem).
+  useEffect(() => {
+    if (!kartaId || kartaId !== appliedKartaId) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("karta");
+    const next = params.toString();
+    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+  }, [kartaId, appliedKartaId, searchParams, pathname, router]);
 
   useEffect(() => {
     if (!formOpen || !form.id) return;
@@ -461,11 +492,25 @@ export function SuppliersAdminClient({
             teethLane={teethLane}
             onTeethScheduleToast={setToast}
             onToast={setToast}
-            onSubiektLinked={(khId) => {
-              setForm((f) => ({ ...f, subiekt_kh_id: khId }));
+            automat={
+              form.id && automat[form.id]
+                ? { row: automat[form.id]!, canManage: canManageAutomat && !readOnly, onChanged: () => router.refresh() }
+                : null
+            }
+            onSubiektLinked={(khId, country) => {
+              setForm((f) => ({ ...f, subiekt_kh_id: khId, subiekt_country: country }));
               if (form.id) {
                 setRows((list) =>
-                  list.map((r) => (r.id === form.id ? { ...r, subiekt_kh_id: khId } : r))
+                  list.map((r) =>
+                    r.id === form.id
+                      ? {
+                          ...r,
+                          subiekt_kh_id: khId,
+                          subiekt_country_id: country?.id ?? null,
+                          subiekt_country_name: country?.name ?? null,
+                        }
+                      : r
+                  )
                 );
               }
             }}
@@ -474,24 +519,29 @@ export function SuppliersAdminClient({
       </SupplierEditSheet>
 
       <section className="space-y-4">
-        {!formOpen ? (
-          teethLane ? (
-            <AddButton onClick={() => setTeethPickerOpen(true)} disabled={readOnly || pending}>
-              Dodaj dostawcę do zębów
-            </AddButton>
-          ) : (
-            <AddButton onClick={openNew} disabled={readOnly}>
-              Dodaj dostawcę
-            </AddButton>
-          )
-        ) : null}
-
         <Card padding={false} className="overflow-hidden">
           <CardHeader
             inset
             density="compact"
-            title={`Karty (${filtered.length}${filterActive ? ` z ${rows.length}` : ""})`}
+            title="Karty"
             description={SUPPLIER_HUB_LIST_META_DESCRIPTION}
+            actionAlign="inline"
+            action={
+              teethLane ? (
+                <AddButton
+                  size="sm"
+                  className="max-sm:min-h-11"
+                  onClick={() => setTeethPickerOpen(true)}
+                  disabled={readOnly || pending || formOpen}
+                >
+                  Dodaj dostawcę do zębów
+                </AddButton>
+              ) : (
+                <AddButton size="sm" className="max-sm:min-h-11" onClick={openNew} disabled={readOnly || formOpen}>
+                  Dodaj dostawcę
+                </AddButton>
+              )
+            }
           />
 
           <SupplierAdminCardsFilterBar
@@ -504,6 +554,7 @@ export function SuppliersAdminClient({
             search={search}
             onSearchChange={setSearch}
             searchId="supplier-card-search"
+            resultLabel={`${filtered.length}${filterActive ? ` z ${rows.length}` : ""} ${polishPluralWord(filterActive ? rows.length : filtered.length, "dostawca", "dostawcy", "dostawców")}`}
           />
 
           {filtered.length === 0 ? (
@@ -534,7 +585,7 @@ export function SuppliersAdminClient({
             <>
               <div
                 className={cn(
-                  "hidden border-b border-slate-100 bg-slate-50/60 px-4 py-2.5 text-[10px] font-semibold text-slate-400 md:grid md:gap-3 lg:px-5",
+                  "hidden border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-[0.8125rem] font-medium text-slate-500 md:grid md:gap-3 lg:px-5",
                   teethLane
                     ? "md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(120px,160px)]"
                     : "md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(88px,100px)_minmax(120px,160px)]"
@@ -546,7 +597,7 @@ export function SuppliersAdminClient({
                 {teethLane ? null : <span>Terminy</span>}
                 <span className="text-right">Akcje</span>
               </div>
-              <ul className="space-y-1.5 p-2 sm:p-3 lg:p-4">
+              <ul className="divide-y divide-slate-100">
                 {filtered.map((s) => {
                   const isEditing = formOpen && form.id === s.id;
                   const cycleSummary = teethLane
@@ -559,11 +610,9 @@ export function SuppliersAdminClient({
                       key={s.id}
                       id={`supplier-row-${s.id}`}
                       className={cn(
-                        "rounded-lg border border-slate-100 bg-white px-3 py-3 transition sm:px-4 lg:px-5",
-                        "hover:border-slate-200 hover:shadow-sm",
+                        "px-3 py-3 transition-colors hover:bg-slate-50 sm:px-4 lg:px-5",
                         !isActive && "opacity-70",
-                        s.subiekt_kh_id == null && "border-amber-100/60 bg-amber-50/20",
-                        isEditing && "border-indigo-200 bg-indigo-50/60 ring-1 ring-inset ring-indigo-200 shadow-sm"
+                        isEditing && "bg-indigo-50 hover:bg-indigo-50"
                       )}
                     >
                       <div
@@ -583,13 +632,13 @@ export function SuppliersAdminClient({
                               teethLane={teethLane}
                               trailingBadge={
                                 teethLane && !teethScheduleIds.has(s.id) ? (
-                                  <Badge variant="warning" className="text-[10px]">
+                                  <Badge variant="warning" className="text-[0.625rem]">
                                     Brak cyklu zębów
                                   </Badge>
                                 ) : undefined
                               }
                             />
-                            <p className="mt-1.5 flex items-center gap-1 text-xs text-slate-500 md:mt-1">
+                            <p className="mt-1 flex items-center gap-1 text-xs text-slate-500">
                               <IconMapPin size={12} className="shrink-0 text-slate-400" />
                               {formatSupplierListMeta(s)}
                             </p>
@@ -607,15 +656,14 @@ export function SuppliersAdminClient({
                             </span>
                           </div>
                           {!teethLane ? (
-                          <Link
-                            href={scheduleHref(s.location, s.name)}
-                            className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-sky-700 hover:text-sky-900 hover:underline md:mt-0 md:text-sm"
-                          >
-                            Terminy
-                            <LinkChevron size={12} tone="sky" className="md:hidden" />
-                            <LinkChevron size={14} tone="sky" className="hidden md:inline" />
-                          </Link>
-                        ) : null}
+                            <Link
+                              href={scheduleHref(s.location, s.name)}
+                              className={cn(panelTextLinkClass, "ml-3 inline-flex min-h-10 items-center gap-1 text-xs md:ml-0 md:min-h-0 md:text-sm")}
+                            >
+                              Terminy
+                              <LinkChevron size={12} tone="brand" />
+                            </Link>
+                          ) : null}
                         </div>
                         <div className="flex shrink-0 items-center gap-1 md:justify-end">
                           <Button
@@ -695,11 +743,11 @@ export function SuppliersAdminClient({
               </div>
             ) : (
               <>
-                <p className="text-xs font-medium text-slate-400">
+                <p className="text-xs font-medium text-slate-500">
                   {availableTeethSuppliers.length}{" "}
                   {availableTeethSuppliers.length === 1 ? "dostępny" : "dostępnych"}
                 </p>
-                <ul className="max-h-80 space-y-1.5 overflow-y-auto">
+                <ul className="-mx-2 max-h-80 divide-y divide-slate-100 overflow-y-auto">
                   {availableTeethSuppliers.map((s) => (
                     <li key={s.id}>
                       <button
@@ -707,14 +755,11 @@ export function SuppliersAdminClient({
                         disabled={pending}
                         onClick={() => addSupplierToTeeth(s.id)}
                         className={cn(
-                          "group flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-white px-3.5 py-3 text-left transition",
-                          "hover:border-indigo-200 hover:bg-indigo-50/40 hover:shadow-sm",
-                          "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-slate-100 disabled:hover:bg-white disabled:hover:shadow-none"
+                          "group flex min-h-12 w-full items-center gap-3 rounded-md px-2 py-2.5 text-left transition-colors",
+                          "hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
+                          "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
                         )}
                       >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition-colors group-hover:bg-indigo-100 group-hover:text-indigo-600">
-                          <IconMapPin size={16} />
-                        </span>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium text-slate-900">
                             {s.name}
@@ -723,7 +768,7 @@ export function SuppliersAdminClient({
                             {formatSupplierListMeta(s)}
                           </p>
                         </div>
-                        <span className="flex shrink-0 items-center gap-1 rounded-lg bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-600 opacity-0 transition-opacity group-hover:opacity-100">
+                        <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-indigo-700">
                           <IconPlusCircle size={14} />
                           Dodaj
                         </span>

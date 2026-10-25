@@ -42,7 +42,7 @@ import { Alert } from "@/components/ui/Alert";
 import { cn } from "@/lib/cn";
 
 const loginAltLinkClass = cn(
-  "text-xs font-semibold text-indigo-700 hover:text-indigo-900 hover:underline",
+  "inline-flex min-h-11 items-center text-xs font-semibold text-indigo-700 underline-offset-2 hover:text-indigo-900 hover:underline sm:min-h-0",
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
 );
 

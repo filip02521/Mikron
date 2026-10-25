@@ -92,7 +92,7 @@ export function AuthQuotePanel({
         )}
       >
         {!isAuthVisualVariant("minimal") ? <AuthCompactQuoteBackdrop /> : null}
-        <p className="relative text-xs font-medium text-sky-100/95">{ONTIME_TAGLINE}</p>
+        <p className="relative text-xs font-medium text-white/85">{ONTIME_TAGLINE}</p>
         <QuoteText quote={quote} animClass={animClass} compact />
       </div>
     );
@@ -111,11 +111,11 @@ export function AuthQuotePanel({
               aria-label={ONTIME_APP_NAME}
             >
               <span>On</span>
-              <span className="text-sky-200">Time</span>
+              <span className="text-indigo-200">Time</span>
             </p>
           </div>
         </div>
-        <p className="mt-3 text-sm font-medium text-sky-100/95">{ONTIME_TAGLINE}</p>
+        <p className="mt-3 text-sm font-medium text-white/85">{ONTIME_TAGLINE}</p>
         <QuoteText quote={quote} animClass={animClass} compact={false} />
       </div>
     </div>

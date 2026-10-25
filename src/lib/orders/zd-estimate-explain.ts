@@ -28,7 +28,8 @@ export function explainZdOrderQty(input: {
   line: Pick<
     ManualZdEstimateLine,
     "celZapasu" | "celZapasuTracked" | "dostepne" | "pair" | "demandFloor"
-  >;
+  > &
+    Partial<Pick<ManualZdEstimateLine, "stockoutAdjust" | "salesProfile">>;
   qty: ZdPackOrderQty;
   /** Otwarte ZD przeliczone na sztuki (dla pary — już w pokryciu). */
   openZdPieces: number;
@@ -44,11 +45,22 @@ export function explainZdOrderQty(input: {
   const pair = line.pair?.role === "pack" && !line.pair.partnerMissing ? line.pair : null;
   const minStock = Math.max(0, Number(input.minStockSzt) || 0);
   const extra = Math.max(0, Math.ceil(input.extraPieces || 0));
+  const fromSupply = Math.max(0, Math.ceil(qty.prosbaFromSupplyPieces ?? 0));
+  const supplyStep: ZdOrderExplainStep = {
+    key: "prosba_supply",
+    label: input.extraOnly
+      ? "Prośby z wolnego towaru (półka i w drodze) — wydaj z magazynu"
+      : "Prośby z nadwyżki ponad cel (półka i w drodze) — wydaj z magazynu",
+    value: fromSupply,
+    unit: "szt",
+    kind: "minus",
+  };
 
   let expected: number;
   if (input.extraOnly) {
     steps.push({ key: "mode", label: "Tylko na prośbę — bez celu zapasu", value: 0, unit: "", kind: "note" });
     if (extra > 0) steps.push({ key: "extra", label: "Prośby handlowców", value: extra, unit: "szt", kind: "plus" });
+    if (fromSupply > 0) steps.push(supplyStep);
     if (minStock > 0) {
       steps.push({ key: "min", label: "Minimum stanów (poziom)", value: minStock, unit: "szt", kind: "base" });
     }
@@ -64,12 +76,44 @@ export function explainZdOrderQty(input: {
         kind: "note",
       });
     }
+    const sp = line.salesProfile;
+    if (sp?.applied && sp.prosbaPieces > 0) {
+      steps.push({
+        key: "prosba_sales",
+        label: "Sprzedaż pod prośby odjęta (zamawiana osobno z prośbą, nie na zapas)",
+        value: Math.round(sp.prosbaPieces * 100) / 100,
+        unit: "szt",
+        kind: "note",
+      });
+    }
+    if (line.stockoutAdjust) {
+      const a = line.stockoutAdjust;
+      steps.push({
+        key: "stockout",
+        label: `Sprzedaż przeliczona na dni ze stanem (${a.outDays} z ${a.recordedDays} dni bez towaru)`,
+        value: Math.round(a.factor * 100) / 100,
+        unit: "× sprzedaż",
+        kind: "note",
+      });
+    }
     const celBase = Number(line.celZapasuTracked ?? line.celZapasu) || 0;
+    const celSubiekt = Number(line.celZapasu) || 0;
+    // Korekta za sprzedażą / historią zmienia cel — bez tego kroku „Cel” różni się od Subiekta bez powodu.
+    if (line.celZapasuTracked != null && Math.abs(celBase - celSubiekt) >= 0.05) {
+      steps.push({
+        key: "cel_subiekt",
+        label: `Cel przed korektą za sprzedażą (${celBase > celSubiekt ? "podbity" : "obniżony"} o ${formatQty(Math.abs(celBase - celSubiekt))} szt)`,
+        value: Math.round(celSubiekt * 100) / 100,
+        unit: "szt",
+        kind: "note",
+      });
+    }
     const cel = Math.max(celBase, minStock);
     steps.push({
       key: "cel",
       label: minStock > celBase ? "Minimum stanów (wyższe niż cel)" : "Cel zapasu",
-      value: Math.round(cel * 10) / 10,
+      // 2 miejsca: przy 30,04 − 30 „Brak 1” musi wynikać z widocznych liczb.
+      value: Math.round(cel * 100) / 100,
       unit: "szt",
       kind: "base",
     });
@@ -96,7 +140,9 @@ export function explainZdOrderQty(input: {
         kind: "plus",
       });
     }
-    expected = input.extrasPolicy === "max" ? Math.max(shortage, extra) : shortage + extra;
+    if (fromSupply > 0) steps.push(supplyStep);
+    const extraToOrder = Math.max(0, extra - fromSupply);
+    expected = input.extrasPolicy === "max" ? Math.max(shortage, extraToOrder) : shortage + extraToOrder;
   }
 
   const diff = qty.piecesNeeded - expected;

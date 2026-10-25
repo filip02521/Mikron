@@ -31,9 +31,11 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import { cn } from "@/lib/cn";
 import { panelTypography } from "@/lib/ui/ontime-theme";
 import { prosbaLineStockShellClass } from "@/lib/orders/prosba-line-stock-ui";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 type SearchHit = {
   subiektTwId: number;
@@ -85,7 +87,7 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
       const hay = [row.name, row.symbol ?? "", row.plu ?? "", String(row.subiektTwId), row.note]
         .join(" ")
         .toLowerCase();
-      return hay.includes(q);
+      return matchesSearchWords(hay, q);
     });
   }, [filter, rows]);
 
@@ -275,7 +277,7 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
           </p>
         </Alert>
 
-        <section className="rounded-md border border-slate-200/90 bg-white p-4 shadow-sm sm:p-5">
+        <section className="rounded-[var(--radius-panel)] border border-slate-200 bg-[var(--card)] shadow-[var(--shadow-card)] p-5 sm:p-6">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className={panelTypography.rowTitle}>Dodaj z Subiekta</h2>
@@ -319,15 +321,18 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
               />
             </Field>
 
-            <div className="rounded-md border border-slate-200/80 bg-slate-50/60 p-3">
+            <div className="rounded-lg bg-slate-50 p-3">
               {trimmedSearchQuery.length < 2 ? (
                 <p className={cn(panelTypography.rowMeta, "text-slate-500")}>
                   Wpisz co najmniej 2 znaki, aby zobaczyć wyniki.
                 </p>
               ) : visibleSearchLoading ? (
-                <p className={cn(panelTypography.rowMeta, "text-slate-500")}>Szukam w Subiekcie…</p>
+                <p role="status" className={cn(panelTypography.rowMeta, "flex items-center gap-2 text-slate-600")}>
+                  <BrandLoader size="sm" tile={false} />
+                  Szukam w Subiekcie…
+                </p>
               ) : visibleSearchError ? (
-                <p className="text-sm text-rose-700">{visibleSearchError}</p>
+                <p className="text-sm text-red-700">{visibleSearchError}</p>
               ) : visibleSearchHits.length === 0 ? (
                 <p className={cn(panelTypography.rowMeta, "text-slate-500")}>
                   Brak nowych wyników - sprawdź frazę lub czy towar nie jest już na liście.
@@ -342,10 +347,10 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
                           type="button"
                           onClick={() => setSelectedHit(hit)}
                           className={cn(
-                            "w-full rounded-md border px-3 py-2 text-left text-sm transition",
+                            "w-full rounded-md px-3 py-2 text-left text-sm transition-colors",
                             active
-                              ? "border-violet-300 bg-violet-50/80 text-violet-950"
-                              : "border-transparent bg-white hover:border-slate-200 hover:bg-white"
+                              ? "bg-indigo-50 text-indigo-900 ring-1 ring-inset ring-indigo-200"
+                              : "bg-white hover:bg-slate-100"
                           )}
                         >
                           <span className="font-medium">{productLabel(hit)}</span>
@@ -363,9 +368,9 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
           </div>
 
           {selectedHit ? (
-            <div className="mt-4 rounded-md border border-violet-200/80 bg-violet-50/35 p-4">
-              <p className="text-sm font-semibold text-violet-950">{productLabel(selectedHit)}</p>
-              <p className="mt-1 text-xs text-violet-900/80">
+            <div className="mt-4 rounded-lg bg-indigo-50 p-4">
+              <p className="text-sm font-semibold text-indigo-900">{productLabel(selectedHit)}</p>
+              <p className="mt-1 text-xs text-indigo-800">
                 Zostanie dodany jako produkt z wyłączoną kontrolą stanu magazynowego.
               </p>
               <div className="mt-3 grid gap-3 sm:grid-cols-3">
@@ -428,22 +433,24 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
           ) : null}
         </section>
 
-        <section className="rounded-md border border-slate-200/90 bg-white shadow-sm">
-          <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <section className="overflow-hidden rounded-[var(--radius-panel)] border border-slate-200 bg-[var(--card)] shadow-[var(--shadow-card)]">
+          <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5 lg:px-6">
             <div>
               <h2 className={panelTypography.rowTitle}>Lista produktów zębnych</h2>
               <p className={cn(panelTypography.rowMeta, "mt-1")}>
                 Zarządzaj pozycjami objętymi wyjątkiem od kontroli stanu.
               </p>
             </div>
-            <Field label="Filtruj listę" className="w-full sm:w-64">
+            <div className="w-full sm:max-w-xs">
               <Input
+                type="search"
+                aria-label="Filtruj listę produktów zębnych"
                 value={filter}
                 onChange={(event) => setFilter(event.target.value)}
-                placeholder="Nazwa, symbol, tw_Id…"
+                placeholder="Filtruj: nazwa, symbol, tw_Id…"
                 autoComplete="off"
               />
-            </Field>
+            </div>
           </div>
 
           {filtered.length === 0 ? (
@@ -461,7 +468,7 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
                 const noteValue = noteDrafts[row.subiektTwId] ?? row.note;
                 const noteDirty = noteValue !== row.note;
                 return (
-                  <li key={row.subiektTwId} className="px-4 py-4 sm:px-5">
+                  <li key={row.subiektTwId} className="px-4 py-4 sm:px-5 lg:px-6">
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
@@ -471,25 +478,25 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
                             <span className="text-xs text-slate-500">{row.plu}</span>
                           ) : null}
                           {row.productLine ? (
-                            <Badge variant="info" className="text-[10px]">
+                            <Badge variant="info" className="text-[0.625rem]">
                               {teethProductLineLabel(row.productLine)}
                             </Badge>
                           ) : null}
                           {row.manufacturer ? (
-                            <Badge variant="default" className="text-[10px]">
+                            <Badge variant="default" className="text-[0.625rem]">
                               {teethManufacturerLabel(row.manufacturer)}
                             </Badge>
                           ) : (
-                            <Badge variant="warning" className="text-[10px]">
+                            <Badge variant="warning" className="text-[0.625rem]">
                               Producent nieustalony
                             </Badge>
                           )}
                           {row.kind ? (
-                            <Badge variant="info" className="text-[10px]">
+                            <Badge variant="info" className="text-[0.625rem]">
                               {TEETH_KIND_LABELS[row.kind]}
                             </Badge>
                           ) : (
-                            <Badge variant="warning" className="text-[10px]">
+                            <Badge variant="warning" className="text-[0.625rem]">
                               Typ nieustalony
                             </Badge>
                           )}

@@ -18,17 +18,15 @@ export function DeliveryScheduleCard({
   return (
     <div
       className={cn(
-        "rounded-lg border bg-white shadow-sm transition hover:shadow-md",
-        supplier.isOverduePlan
-          ? "border-rose-200/70 bg-rose-50/20"
-          : "border-slate-200/80",
+        "rounded-lg",
+        supplier.isOverduePlan ? "bg-red-50/70" : "bg-slate-50",
         compact ? "px-2.5 py-2" : "px-3 py-2.5"
       )}
     >
       <div className="flex items-center gap-2">
         <span
           className={cn(
-            "flex shrink-0 items-center justify-center rounded-md text-xs font-bold ring-1 ring-inset",
+            "flex shrink-0 items-center justify-center rounded-md text-xs font-semibold ring-1 ring-inset",
             supplier.isOverduePlan
               ? "bg-rose-100 text-rose-600 ring-rose-200/60"
               : "bg-indigo-50 text-indigo-700 ring-indigo-100/60",
@@ -45,8 +43,8 @@ export function DeliveryScheduleCard({
             </p>
             <span
               className={cn(
-                "shrink-0 rounded-full font-semibold",
-                compact ? "px-1.5 py-0 text-[9px] leading-tight" : "px-2 py-0.5 text-[10px]",
+                "shrink-0 rounded-md font-semibold",
+                compact ? "px-1.5 py-0 text-[0.625rem] leading-tight" : "px-2 py-0.5 text-[0.625rem]",
                 supplier.isOverduePlan
                   ? "bg-rose-100 text-rose-700"
                   : "bg-indigo-100 text-indigo-700"
@@ -57,12 +55,12 @@ export function DeliveryScheduleCard({
           </div>
           {!compact ? (
             <p className="mt-0.5 inline-flex items-center gap-1 text-xs text-slate-500">
-              <IconMapPin size={11} className="text-slate-400" />
+              <IconMapPin size={11} className="text-slate-400" aria-hidden />
               {locationLabel(supplier.location)}
             </p>
           ) : null}
           {vacationText ? (
-            <p className={cn("inline-flex items-center gap-1 text-amber-600", compact ? "mt-0.5 text-[10px]" : "mt-0.5 text-[10px]")}>
+            <p className={cn("inline-flex items-center gap-1 text-amber-600", compact ? "mt-0.5 text-[0.625rem]" : "mt-0.5 text-[0.625rem]")}>
               <IconSun size={compact ? 11 : 12} className="text-amber-500" />
               {vacationText}
             </p>

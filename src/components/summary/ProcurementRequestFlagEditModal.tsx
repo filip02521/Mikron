@@ -178,7 +178,7 @@ function ProcurementRequestFlagEditModalForm({
 
         {multi ? (
           <fieldset className="space-y-2">
-            <legend className="text-[11px] font-medium text-slate-600">
+            <legend className="text-[0.6875rem] font-medium text-slate-600">
               {PROCUREMENT_REQUEST_FLAG_COPY.selectLines}
             </legend>
             <ul className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-slate-200/80 p-2">
@@ -201,7 +201,7 @@ function ProcurementRequestFlagEditModalForm({
                       <span className="min-w-0 leading-snug">
                         <span className="font-medium">{lineLabel(line)}</span>
                         {line.procurementFlag ? (
-                          <span className="mt-0.5 block text-[10px] text-slate-500">
+                          <span className="mt-0.5 block text-[0.625rem] text-slate-500">
                             Teraz:{" "}
                             {currentDef?.label ?? line.procurementFlag}
                             {currentDef && !currentDef.isActive
@@ -231,7 +231,7 @@ function ProcurementRequestFlagEditModalForm({
         ) : null}
 
         <fieldset>
-          <legend className="mb-1.5 text-[11px] font-medium text-slate-600">
+          <legend className="mb-1.5 text-[0.6875rem] font-medium text-slate-600">
             Flaga
           </legend>
           {selectedIsOrphan ? (
@@ -249,7 +249,7 @@ function ProcurementRequestFlagEditModalForm({
               <span
                 className={cn(
                   panelChoiceChipClass,
-                  "inline-flex items-center gap-1.5 text-[11px] opacity-80",
+                  "inline-flex items-center gap-1.5 text-[0.6875rem] opacity-80",
                   procurementFlagModalChipSelectedClass(initialDef.color)
                 )}
               >
@@ -280,7 +280,7 @@ function ProcurementRequestFlagEditModalForm({
                     onClick={() => setFlag(f.id)}
                     className={cn(
                       panelChoiceChipClass,
-                      "inline-flex items-center gap-1.5 text-[11px]",
+                      "inline-flex items-center gap-1.5 text-[0.6875rem]",
                       active
                         ? procurementFlagModalChipSelectedClass(f.color)
                         : panelChoiceChipIdleClass
@@ -302,7 +302,7 @@ function ProcurementRequestFlagEditModalForm({
         </fieldset>
 
         <label className="block">
-          <span className="flex items-baseline justify-between gap-2 text-[11px] font-medium text-slate-600">
+          <span className="flex items-baseline justify-between gap-2 text-[0.6875rem] font-medium text-slate-600">
             <span>{PROCUREMENT_REQUEST_FLAG_COPY.noteLabel}</span>
             <span
               className={cn(

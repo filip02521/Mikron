@@ -7,7 +7,7 @@ import {
 
 describe("isManagedSalesPersonEmail", () => {
   it("akceptuje kartę z admina", () => {
-    expect(isManagedSalesPersonEmail("kasia.jasiewicz@mikran.com")).toBe(true);
+    expect(isManagedSalesPersonEmail("marta.lis@mikran.com")).toBe(true);
   });
 
   it("odrzuca wpis z importu historii", () => {

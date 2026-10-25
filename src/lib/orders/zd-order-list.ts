@@ -58,6 +58,8 @@ export type ZdOrderList = {
   explodeBomIncomplete: boolean;
   orderExcludedTwIds: Set<number>;
   extraOnlyTwIds: Set<number>;
+  /** Prośby bez towaru na liście (usługi, wykluczone) — w Kreatorze idą do uwag ZD. */
+  serviceOrderIds: string[];
 };
 
 export function buildZdOrderList(input: {
@@ -109,6 +111,9 @@ export function buildZdOrderList(input: {
     catalogExtras,
     orderExcludedTwIds
   );
+  const serviceOrderIds = [
+    ...new Set(individualBundle.serviceLines.flatMap((s) => s.requests.map((r) => r.orderId)).filter(Boolean)),
+  ];
   const dedupe = resolveProsbaReservationDedupeMaps(
     individualBundle.byTwId,
     input.prosbaReservedByTwId
@@ -119,7 +124,7 @@ export function buildZdOrderList(input: {
     input.missingBomTwIds
   );
   if (explodeBomIncomplete) {
-    return { lines: [], explodeBomIncomplete, orderExcludedTwIds, extraOnlyTwIds };
+    return { lines: [], explodeBomIncomplete, orderExcludedTwIds, extraOnlyTwIds, serviceOrderIds };
   }
 
   const orderable = filterOrderableLinesWithPackaging(
@@ -161,5 +166,5 @@ export function buildZdOrderList(input: {
     };
   });
 
-  return { lines: out, explodeBomIncomplete, orderExcludedTwIds, extraOnlyTwIds };
+  return { lines: out, explodeBomIncomplete, orderExcludedTwIds, extraOnlyTwIds, serviceOrderIds };
 }

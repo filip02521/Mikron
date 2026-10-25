@@ -8,7 +8,7 @@ import { cn } from "@/lib/cn";
 export const zkWatchRowInlineBadgeClass = cn(
   "inline-flex shrink-0 items-center gap-1",
   "h-5 max-w-[14rem] rounded-md px-1.5",
-  "text-[10px] font-medium leading-none"
+  "text-[0.625rem] font-medium leading-none"
 );
 
 /** Mocniejszy chip (akcja / pilne). */
@@ -69,41 +69,20 @@ export const zkWatchNewlyAddedRowRingClass = "ring-1 ring-inset ring-indigo-300/
 /** @deprecated */
 export const zkWatchInformacjaRowRingClass = "ring-1 ring-inset ring-sky-300/70";
 
-/** Pasek stanu z lewej: jedna szerokość (3px) dla wszystkich sygnałów uwagi. */
-const RAIL_BASE = "w-[3px] shrink-0 self-stretch";
+/**
+ * Wiersz z sygnałem uwagi: stan niesie tło wiersza i tag przy numerze ZK, bez paska z boku
+ * (DESIGN.md → Shapes). Tła odpowiadają próbkom w `ZkWatchRowColorLegend`.
+ */
+const SIGNAL_ROW_BASE = "flex min-h-[2.625rem] transition-colors duration-150";
 
-/** Wiersz z sygnałem uwagi: neutralne tło; stan niesie pasek z lewej i tag przy numerze ZK. */
-const SIGNAL_ROW_SHELL = cn(
-  "flex min-h-[2.625rem] border-l-0 transition-colors duration-150",
-  "bg-white hover:bg-slate-50/70"
-);
-
-/** Obudowa wiersza gotowego do zamknięcia — flex + gradient, bez border-l. */
-export const zkWatchReadyToCloseRowShellClass = SIGNAL_ROW_SHELL;
+/** Obudowa wiersza gotowego do zamknięcia. */
+export const zkWatchReadyToCloseRowShellClass = cn(SIGNAL_ROW_BASE, "bg-emerald-50/60 hover:bg-emerald-50");
 
 /** Obudowa wiersza z towarem na regale (odczytany). */
-export const zkWatchRegalWaitingRowShellClass = SIGNAL_ROW_SHELL;
+export const zkWatchRegalWaitingRowShellClass = cn(SIGNAL_ROW_BASE, "bg-indigo-50/50 hover:bg-indigo-50");
 
 /** Obudowa wiersza z nowym przybyciem na regale (nieodczytany). */
-export const zkWatchRegalNewRowShellClass = SIGNAL_ROW_SHELL;
-
-/** Lewy rail — gotowe do zamknięcia. */
-export const zkWatchReadyToCloseRailClass = cn(
-  RAIL_BASE,
-  "bg-emerald-500"
-);
-
-/** Lewy rail — czeka na odbiór z regału. */
-export const zkWatchRegalWaitingRailClass = cn(
-  RAIL_BASE,
-  "bg-violet-500"
-);
-
-/** Lewy rail — nowy towar na regale. */
-export const zkWatchRegalNewRailClass = cn(
-  RAIL_BASE,
-  "bg-violet-600"
-);
+export const zkWatchRegalNewRowShellClass = cn(SIGNAL_ROW_BASE, "bg-indigo-50/80 hover:bg-indigo-50");
 
 export type ZkWatchRowRailKind = "ready_to_close" | "regal_waiting" | "regal_new";
 
@@ -122,56 +101,25 @@ export const zkWatchDefaultRowShellClass = cn(
 
 /** Wiersz w archiwum. */
 export const zkWatchArchivedRowShellClass = cn(
-  "flex min-h-[2.625rem] border-l-[3px] border-l-slate-200/70 transition duration-150",
+  "flex min-h-[2.625rem] transition duration-150",
   "bg-slate-50/45 hover:bg-slate-50/65"
 );
 
 
-export const zkWatchInformacjaAccentRailClass = cn(
-  RAIL_BASE,
-  "bg-sky-500"
-);
+export const zkWatchInformacjaRowShellClass = cn(SIGNAL_ROW_BASE, "bg-slate-50/80 hover:bg-slate-50");
 
-export const zkWatchNewLinesAccentRailClass = cn(
-  RAIL_BASE,
-  "bg-amber-500"
-);
+export const zkWatchNewLinesRowShellClass = cn(SIGNAL_ROW_BASE, "bg-amber-50/50 hover:bg-amber-50");
 
-export const zkWatchNewlyAddedAccentRailClass = cn(
-  RAIL_BASE,
-  "bg-indigo-500"
-);
+export const zkWatchNewlyAddedRowShellClass = cn(SIGNAL_ROW_BASE, "bg-indigo-50/50 hover:bg-indigo-50");
 
-export const zkWatchFollowUpAccentRailClass = cn(
-  RAIL_BASE,
-  "bg-amber-500"
-);
+export const zkWatchFollowUpRowShellClass = cn(SIGNAL_ROW_BASE, "bg-amber-50/50 hover:bg-amber-50");
 
-export const zkWatchScopeOverflowAccentRailClass = cn(
-  RAIL_BASE,
-  "bg-slate-300"
-);
-
-export const zkWatchInformacjaRowShellClass = SIGNAL_ROW_SHELL;
-
-export const zkWatchNewLinesRowShellClass = SIGNAL_ROW_SHELL;
-
-export const zkWatchNewlyAddedRowShellClass = SIGNAL_ROW_SHELL;
-
-export const zkWatchFollowUpRowShellClass = SIGNAL_ROW_SHELL;
-
-export const zkWatchScopeOverflowRowShellClass = SIGNAL_ROW_SHELL;
+export const zkWatchScopeOverflowRowShellClass = cn(SIGNAL_ROW_BASE, "bg-white hover:bg-slate-50/70");
 
 const ROW_SHELL_BY_RAIL: Record<ZkWatchRowRailKind, string> = {
   ready_to_close: zkWatchReadyToCloseRowShellClass,
   regal_waiting: zkWatchRegalWaitingRowShellClass,
   regal_new: zkWatchRegalNewRowShellClass,
-};
-
-const ROW_RAIL_BY_KIND: Record<ZkWatchRowRailKind, string> = {
-  ready_to_close: zkWatchReadyToCloseRailClass,
-  regal_waiting: zkWatchRegalWaitingRailClass,
-  regal_new: zkWatchRegalNewRailClass,
 };
 
 const ROW_SHELL_BY_ACCENT: Record<ZkWatchRowAccentKind, string> = {
@@ -182,28 +130,12 @@ const ROW_SHELL_BY_ACCENT: Record<ZkWatchRowAccentKind, string> = {
   scope_overflow: zkWatchScopeOverflowRowShellClass,
 };
 
-const ROW_ACCENT_RAIL_BY_KIND: Record<ZkWatchRowAccentKind, string> = {
-  informacja: zkWatchInformacjaAccentRailClass,
-  new_lines: zkWatchNewLinesAccentRailClass,
-  newly_added: zkWatchNewlyAddedAccentRailClass,
-  follow_up: zkWatchFollowUpAccentRailClass,
-  scope_overflow: zkWatchScopeOverflowAccentRailClass,
-};
-
 export function zkWatchRowShellClassForRail(kind: ZkWatchRowRailKind): string {
   return ROW_SHELL_BY_RAIL[kind];
 }
 
-export function zkWatchRowRailClassForKind(kind: ZkWatchRowRailKind): string {
-  return ROW_RAIL_BY_KIND[kind];
-}
-
 export function zkWatchRowShellClassForAccent(kind: ZkWatchRowAccentKind): string {
   return ROW_SHELL_BY_ACCENT[kind];
-}
-
-export function zkWatchRowAccentRailClassForKind(kind: ZkWatchRowAccentKind): string {
-  return ROW_ACCENT_RAIL_BY_KIND[kind];
 }
 
 export function zkWatchRowShellClassForChrome(

@@ -87,17 +87,17 @@ export function ProsbaOptionalSection({
           <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
             <span className="text-xs font-medium leading-snug text-slate-800">{title}</span>
             {showOptionalLabel ? (
-              <span className="text-[11px] text-slate-500">(opcjonalnie)</span>
+              <span className="text-[0.6875rem] text-slate-500">(opcjonalnie)</span>
             ) : null}
             {hint ? (
               <HelpHintBubble message={hint} tone="slate" size="md" ariaLabel={hintAriaLabel} />
             ) : null}
           </div>
           {description ? (
-            <p className="mt-0.5 text-[11px] leading-snug text-slate-500">{description}</p>
+            <p className="mt-0.5 text-[0.6875rem] leading-snug text-slate-500">{description}</p>
           ) : null}
           {trimmedTeaser ? (
-            <p className="mt-1 truncate text-[11px] font-medium text-slate-600 group-open:hidden">
+            <p className="mt-1 truncate text-[0.6875rem] font-medium text-slate-600 group-open:hidden">
               {trimmedTeaser}
             </p>
           ) : null}

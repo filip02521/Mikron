@@ -70,18 +70,29 @@ Wszystkie listy zwracają envelope:
 | GET | `/products` | Towary (`search`, `symbol`, `page`, `pageSize`, …) |
 | GET | `/products/remanent` | Remanent na dzień (`naDzien`, `cechaId`, …) — stany z `dok_MagRuch`, nie bieżący `tw_Stan` |
 | GET | `/products/:id` | Jeden towar |
+| GET | `/products/group/:id` | Towary grupy |
 | GET | `/kontrahenci` | Kontrahenci |
+| GET | `/kontrahenci/:id` | Jeden kontrahent |
+| GET | `/kraje` | Słownik państw (`sl_Panstwo`) — kraj dostawcy |
+| GET | `/uzytkownicy` | Personel Subiekta (pole „Wystawił” przy create ZD) — host ORDERS |
 | GET | `/kontrahenci/dostawcy` | Dostawcy |
 | GET | `/kontrahenci/odbiorcy` | Odbiorcy |
 | GET | `/documents` | Dokumenty (filtry `typ`, `dataOd`, `dataDo`, …) |
 | GET | `/documents/zk` | Zamówienia od klientów (typ 16) |
+| GET | `/documents/zk/:id` | Jedno ZK |
+| GET | `/documents/fs` | Faktury sprzedaży (także `/documents/fs/:id`) |
 | GET | `/documents/zd` | Zamówienia do dostawców (typ 15) |
 | GET | `/documents/zd/:id` | Jedno ZD (pełne linie) |
+| GET | `/documents/zd/:id/pdf` | Wydruk ZD do PDF — host ORDERS |
+| PUT | `/documents/zd/:id` | Zmiana `terminRealizacji` — host ORDERS |
 | POST | `/documents/zd/create` | Host ORDERS (`:5080` live / `:5082` test) — tworzy ZD (Sfera `DodajZD`) |
 | GET | `/groups` | Grupy towarowe (`sl_GrupaTw`) — host ORDERS; query: `search?`, `id?`, `page`, `pageSize` |
 | GET | `/cechy/towarow` | Słownik cech towarów (`sl_CechaTw`) — host ORDERS; query: `search?`, `id?`, `page`, `pageSize` → `{ ctw_Id, ctw_Nazwa }` |
 | GET | `/orders/zd/estimate` | Kreator ilości do ZD — `/zakupy/szacunek` (host ORDERS) |
-| GET | `/products/komplety` | **Do wdrożenia:** komplety `tw_Komplet` (pack↔piece, `liczba`) — sync par w OnTime |
+| GET | `/orders/zd/estimate/:towarId` | Dokumenty użyte w estimate dla jednego towaru (karta produktu w Kreatorze) |
+| GET | `/orders/zd/estimate/zk` | Otwarte ZK towaru (rezerwacje) — host ORDERS |
+| GET | `/orders/zd/estimate/otwarteZd` | Otwarte ZD towaru — host ORDERS |
+| GET | `/products/komplety` | Komplety `tw_Komplet` (pack↔piece, `liczba`) — sync par w OnTime. Klient jest w `src/lib/subiekt/api.ts`; czy endpoint działa na hostach — **niezweryfikowane** (brak LAN, komentarz w `paths.ts` mówi „wymaga wdrożenia”) |
 | GET | `/examples` | Przykłady zapytań |
 | GET | `/docs` | Dokumentacja OpenAPI (HTML) |
 
@@ -106,7 +117,7 @@ OnTime wysyła XOR: albo `grupaId`, albo `cechaId` (nigdy oba, nigdy puste — b
 
 OnTime **nie** dolicza `wzNiepowiazaneOkres` ponownie do sprzedaży (unik podwójnego liczenia). Kolumna Sprzed. pokazuje `sprzedazOkres`; przy `wz > 0` dopisek „w tym WZ N”. Opakowania OnTime (`zd_estimate_packaging`) **nie** przeliczają Sprzed./WZ — tylko Do ZD / jednostki dokumentu.
 
-### Spec `GET /products/komplety` (host ORDERS — brakuje w API)
+### Spec `GET /products/komplety` (host ORDERS)
 
 Źródło SQL: `tw_Komplet` (`kpl_Id`, `kpl_IdKomplet`, `kpl_IdSkladnik`, `kpl_Liczba`).
 
@@ -131,7 +142,7 @@ OnTime sync (`actionSyncZdProductPairsFromSubiekt`) pomija komplety z ≠1 skła
 
 `/zakupy/szacunek` **nie** spada cicho na `SUBIEKT_API_BASE_URL` — wymaga jawnego `SUBIEKT_API_ORDERS_BASE_URL`.
 
-**Stan na 2026-08-11 (tymczasowo):** ORDERS = **live `:5080`** (baza API: **MIKRAN**).  
+**Stan na 2026-08-11 (tymczasowo; dziś niezweryfikowany — brak dostępu do serwera):** ORDERS = **live `:5080`** (baza API: **MIKRAN**).  
 Snapshoty historii: `host_kind=live`. **Utwórz ZD zapisuje prawdziwe dokumenty.**  
 Powrót na sandbox: ustaw ORDERS na `:5082`, gdy kopia testowa wstanie.
 

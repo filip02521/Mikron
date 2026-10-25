@@ -27,10 +27,9 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { NoticeToast } from "@/components/ui/NoticeToast";
-import { SectionListLabel } from "@/components/ui/SectionListLabel";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { IconArchive, IconClipboardList, IconChevronRight } from "@/components/icons/StrokeIcons";
-import { navIconTileClassForTone } from "@/components/icons/NavIcon";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { IconChevronRight } from "@/components/icons/StrokeIcons";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 import { HistoriaHelp } from "@/components/history/HistoriaHelp";
 import { ProcurementCancelDialog } from "@/components/procurement/ProcurementCancelDialog";
 import { ProcurementCancelNoteEditModal } from "@/components/procurement/ProcurementCancelNoteEditModal";
@@ -38,63 +37,10 @@ import { cn } from "@/lib/cn";
 import { MICROCOPY } from "@/lib/ui/microcopy";
 import {
   panelChromeInsetClass,
-  procurementArchivePageShellClass,
-  panelSectionInsetClass,
-  panelTypography,
 } from "@/lib/ui/ontime-theme";
 import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
 import { salesHistoriaHeaderHint } from "@/lib/sales/sales-page-ui-copy";
 import { askConfirm } from "@/components/ui/ConfirmHost";
-
-function HistorySummaryStrip({
-  individualTotal,
-  individualOpen,
-  individualCompleted,
-  normalTotal,
-}: ReturnType<typeof historySectionSummary>) {
-  return (
-    <div
-      className={cn(
-        "grid gap-2 border-b border-slate-100 bg-slate-50/35 sm:grid-cols-2",
-        panelSectionInsetClass,
-        "py-3"
-      )}
-    >
-      <div className="flex items-center gap-3 rounded-md border border-indigo-100/80 bg-white px-3 py-2.5 shadow-sm">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-indigo-100 text-indigo-700">
-          <IconClipboardList size={16} />
-        </div>
-        <div className="min-w-0">
-          <p className={panelTypography.caption}>Prośby indywidualne</p>
-          <p className={cn(panelTypography.rowTitle, "mt-0.5 tabular-nums")}>
-            {individualTotal}
-            <span className="ml-1.5 text-sm font-normal text-slate-500">
-              {individualOpen > 0
-                ? `· ${individualOpen} otwartych`
-                : individualCompleted > 0
-                  ? `· ${individualCompleted} zakończonych`
-                  : ""}
-            </span>
-          </p>
-        </div>
-      </div>
-      <div className="flex items-center gap-3 rounded-md border border-slate-200/80 bg-white px-3 py-2.5 shadow-sm">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-600">
-          <IconArchive size={16} />
-        </div>
-        <div className="min-w-0">
-          <p className={panelTypography.caption}>Akcje standardowe</p>
-          <p className={cn(panelTypography.rowTitle, "mt-0.5 tabular-nums")}>
-            {normalTotal}
-            <span className="ml-1.5 text-sm font-normal text-slate-500">
-              · zbiorcze w panelu dziennym
-            </span>
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function HistoryShowAllFooter({
   total,
@@ -107,7 +53,7 @@ function HistoryShowAllFooter({
     <div className={cn("border-t border-slate-100 py-3", panelChromeInsetClass)}>
       <Button variant="outline" size="sm" className="gap-1.5 w-full sm:w-auto" onClick={onOpen}>
         <IconChevronRight size={14} className="shrink-0" />
-        Pokaż pełną historię ({total} {total === 1 ? "wpis" : "wpisów"})
+        Pokaż pełną historię ({total} {polishPluralWord(total, "wpis", "wpisy", "wpisów")})
       </Button>
     </div>
   );
@@ -258,7 +204,7 @@ export function HistoriaClient({
   };
 
   return (
-    <div className={procurementArchivePageShellClass}>
+    <div className="space-y-6">
       {msg ? (
         <NoticeToast notice={msg} onDismiss={() => setMsg(null)} />
       ) : null}
@@ -269,7 +215,7 @@ export function HistoriaClient({
         headline={cancelTarget?.products}
         message="Prośba zostanie oznaczona jako anulowana. Handlowiec otrzyma powiadomienie e-mail."
         confirmLabel="Anuluj prośbę"
-        tier={editNoteTarget ? "stack" : "raised"}
+        tier={editNoteTarget ? "stack" : sheet ? "top" : "raised"}
         pending={pending && cancelTarget !== null}
         onCancel={() => setCancelTarget(null)}
         onConfirm={confirmCancelOrder}
@@ -282,34 +228,30 @@ export function HistoriaClient({
         onConfirm={confirmEditNote}
       />
 
+      <PageHeader
+        title="Historia zamówień"
+        help={<HistoriaHelp />}
+        description={salesHistoriaHeaderHint(HISTORY_RETENTION_MONTHS, HISTORY_PREVIEW_COUNT)}
+        className="mb-0"
+      />
+
       <Card padding={false} className="min-w-0 overflow-hidden">
         <CardHeader
           inset
           density="compact"
-          leading={
-            <SectionHeadingIcon tileClassName={navIconTileClassForTone("slate")}>
-              <IconArchive size={20} />
-            </SectionHeadingIcon>
+          actionAlign="inline"
+          title="Prośby indywidualne"
+          description={
+            individual.length > 0
+              ? `${summary.individualTotal} ${polishPluralWord(summary.individualTotal, "prośba", "prośby", "próśb")}${
+                  summary.individualOpen > 0
+                    ? ` · ${summary.individualOpen} ${polishPluralWord(summary.individualOpen, "otwarta", "otwarte", "otwartych")}`
+                    : summary.individualCompleted > 0
+                      ? ` · ${summary.individualCompleted} ${polishPluralWord(summary.individualCompleted, "zakończona", "zakończone", "zakończonych")}`
+                      : ""
+                }. Zrealizowane i zarchiwizowane prośby handlowców, bez pozycji informacyjnych.`
+              : "Zrealizowane i zarchiwizowane prośby handlowców, bez pozycji informacyjnych."
           }
-          title="Historia"
-          hint={salesHistoriaHeaderHint(HISTORY_RETENTION_MONTHS, HISTORY_PREVIEW_COUNT)}
-          hintAriaLabel="O historii zamówień"
-          action={<HistoriaHelp />}
-        />
-
-        {summary.individualTotal > 0 || summary.normalTotal > 0 ? (
-          <HistorySummaryStrip {...summary} />
-        ) : null}
-
-        <SectionListLabel
-          domain="panel"
-          accent="indigo"
-          title="Historia indywidualna"
-          hint="Zrealizowane i zarchiwizowane prośby handlowców - bez pozycji informacyjnych"
-          hintMode="tooltip"
-          count={individual.length}
-          icon={<IconClipboardList size={17} />}
-          tileClassName="bg-indigo-100 text-indigo-800"
         />
         {!individual.length ? (
           <div className={panelChromeInsetClass}>
@@ -337,19 +279,16 @@ export function HistoriaClient({
             ) : null}
           </>
         )}
+      </Card>
 
-        <div className="border-t border-slate-100">
-          <SectionListLabel
-            domain="panel"
-            accent="slate"
-            title="Zamówienia standardowe"
-            hint="Kliknięcia „Zamówione” i przesunięcia terminów z panelu dziennego"
-            hintMode="tooltip"
-            count={normal.length}
-            icon={<IconArchive size={17} />}
-            tileClassName="bg-slate-100 text-slate-700"
-          />
-        </div>
+      <Card padding={false} className="min-w-0 overflow-hidden">
+        <CardHeader
+          inset
+          density="compact"
+          actionAlign="inline"
+          title="Zamówienia standardowe"
+          description={`${normal.length > 0 ? `${summary.normalTotal} ${polishPluralWord(summary.normalTotal, "wpis", "wpisy", "wpisów")}. ` : ""}Kliknięcia „Zamówione” i przesunięcia terminów z panelu dziennego.`}
+        />
         {!normal.length ? (
           <div className={panelChromeInsetClass}>
             <EmptyState

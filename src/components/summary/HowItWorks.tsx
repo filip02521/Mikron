@@ -62,7 +62,7 @@ export function HowItWorksContent() {
       <HelpBlock title="Skróty i menu">
         <p>
           Wyszukiwarka{" "}
-          <kbd className="rounded border border-slate-200 bg-slate-50 px-1 font-mono text-[11px]">
+          <kbd className="rounded border border-slate-200 bg-slate-50 px-1 font-mono text-[0.6875rem]">
             /
           </kbd>
           , nowa prośba i menu <HelpMenuGlyph className="align-[-2px]" /> są u góry karty. Pełna

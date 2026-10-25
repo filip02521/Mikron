@@ -3,13 +3,19 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import {
+  panelChoiceChipClass,
+  panelChoiceChipIdleClass,
+  panelChoiceChipSelectedClass,
+} from "@/lib/ui/ontime-theme";
+import {
   countActiveTeethPanelFilters,
   EMPTY_TEETH_PANEL_FILTERS,
   type TeethPanelFilters,
 } from "@/lib/teeth/teeth-panel-filters";
 
+/** Select w pasku filtrów: 44px na telefonie, 40px od `sm` (DESIGN.md → Inputs). */
 export const teethToolbarSelectClass =
-  "h-9 min-w-0 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800 shadow-sm outline-none transition-colors hover:border-slate-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30";
+  "min-h-11 min-w-0 rounded-md border border-slate-200 bg-white px-2.5 text-base text-slate-900 shadow-sm outline-none transition-colors hover:border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 sm:min-h-10 sm:text-sm";
 
 function ToggleChip({
   label,
@@ -26,13 +32,12 @@ function ToggleChip({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "inline-flex h-9 w-full min-w-0 items-center justify-center rounded-lg border px-3 text-sm font-medium transition-colors sm:w-auto sm:shrink-0",
-        active
-          ? "border-amber-300 bg-amber-50 text-amber-900"
-          : "border-slate-200 bg-white text-slate-600 shadow-sm hover:border-slate-300 hover:text-slate-900",
+        panelChoiceChipClass,
+        "inline-flex min-h-11 w-full min-w-0 items-center justify-center text-sm sm:min-h-10 sm:w-auto sm:shrink-0",
+        active ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass,
       )}
     >
-      <span className="truncate">{label}</span>
+      {label}
     </button>
   );
 }
@@ -44,6 +49,7 @@ export function TeethPanelFiltersBar({
   suppliers,
   salesPeople,
   showQueueFilters = true,
+  leading,
   trailing,
   className,
 }: {
@@ -53,6 +59,8 @@ export function TeethPanelFiltersBar({
   salesPeople: { id: string; name: string }[];
   /** Filtry specyficzne dla kolejki (specyfikacja, dane ogólne). */
   showQueueFilters?: boolean;
+  /** Pole szukania na początku rzędu; na telefonie pierwsze, na pełną szerokość. */
+  leading?: ReactNode;
   /** Dodatkowe kontrolki po prawej (np. sortowanie). */
   trailing?: ReactNode;
   className?: string;
@@ -67,11 +75,12 @@ export function TeethPanelFiltersBar({
       aria-label="Filtry"
       className={cn("grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap", className)}
     >
+      {leading ? <div className="col-span-2 min-w-0 sm:min-w-[11rem] sm:max-w-xs sm:flex-1">{leading}</div> : null}
       <select
         aria-label="Dostawca"
         value={filters.supplierId ?? ""}
         onChange={(e) => onChange({ ...filters, supplierId: e.target.value || null })}
-        className={cn(teethToolbarSelectClass, "w-full sm:w-auto sm:max-w-[14rem]")}
+        className={cn(teethToolbarSelectClass, "w-full sm:w-auto sm:max-w-[12rem]")}
       >
         <option value="">Wszyscy dostawcy</option>
         {suppliers.map((s) => (
@@ -84,7 +93,7 @@ export function TeethPanelFiltersBar({
         aria-label="Handlowiec"
         value={filters.salesPersonId ?? ""}
         onChange={(e) => onChange({ ...filters, salesPersonId: e.target.value || null })}
-        className={cn(teethToolbarSelectClass, "w-full sm:w-auto sm:max-w-[14rem]")}
+        className={cn(teethToolbarSelectClass, "w-full sm:w-auto sm:max-w-[12rem]")}
       >
         <option value="">Wszyscy handlowcy</option>
         {salesPeople.map((sp) => (
@@ -104,7 +113,7 @@ export function TeethPanelFiltersBar({
         <button
           type="button"
           onClick={() => onChange(EMPTY_TEETH_PANEL_FILTERS)}
-          className="h-9 px-1 text-sm font-medium text-indigo-700 hover:text-indigo-900"
+          className="min-h-11 px-1 text-sm font-medium text-indigo-700 hover:text-indigo-900 sm:min-h-10"
         >
           Wyczyść filtry
         </button>

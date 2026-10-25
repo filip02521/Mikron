@@ -108,3 +108,32 @@ describe("normalizeDraftProducts", () => {
     });
   });
 });
+
+describe("symbol z pierwszej litery wpisu (artefakt formularza)", () => {
+  it("rozpoznaje sam początek pierwszego słowa nazwy, nie symbol przed spacją", async () => {
+    const { isSymbolNamePrefixArtifact, effectiveRequestSymbol } = await import("./request-completeness");
+    expect(isSymbolNamePrefixArtifact("S", "Silikon wyciskowy")).toBe(true);
+    expect(isSymbolNamePrefixArtifact("B", "Bredent nożyk 36001150")).toBe(true);
+    expect(isSymbolNamePrefixArtifact("ABC", "ABC opis")).toBe(false);
+    expect(isSymbolNamePrefixArtifact("SR6", "Śruba M6")).toBe(false);
+    expect(isSymbolNamePrefixArtifact("S", "S")).toBe(false);
+    expect(isSymbolNamePrefixArtifact("-", "Silikon")).toBe(false);
+    // Towar wybrany z Subiekta: symbol prawdziwy, nawet gdy nazwa zaczyna się od niego („M” → „Miyo …”).
+    expect(effectiveRequestSymbol({ symbol: "M", products: "Miyo trans sunflower", subiektTwId: 987 })).toBe("M");
+    expect(effectiveRequestSymbol({ symbol: "S", products: "Silikon", subiektTwId: null })).toBeNull();
+    expect(effectiveRequestSymbol({ symbol: "ABC", products: "ABC opis" })).toBe("ABC");
+  });
+
+  it("zapis prośby bez towaru z Subiekta nie zachowuje artefaktu", async () => {
+    const { normalizeDraftProducts } = await import("./request-completeness");
+    expect(normalizeDraftProducts({ symbol: "S", product: "Silikon wyciskowy" })).toEqual({
+      products: "Silikon wyciskowy",
+      symbol: "-",
+    });
+    expect(normalizeDraftProducts({ symbol: "M", product: "Miyo trans sunflower", subiektTwId: 987 })).toEqual({
+      products: "Miyo trans sunflower",
+      symbol: "M",
+    });
+    expect(normalizeDraftProducts({ symbol: "ABC", product: "ABC opis" })).toEqual({ products: "ABC opis", symbol: "ABC" });
+  });
+});

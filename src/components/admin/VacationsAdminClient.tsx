@@ -33,7 +33,7 @@ import {
   isVacationHistorical,
   isVacationScheduledInactive,
 } from "@/lib/orders/vacation-status";
-import { Field, Input, Select } from "@/components/ui/Field";
+import { Input, Select } from "@/components/ui/Field";
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 
@@ -132,7 +132,7 @@ function VacationRowsTable({
   return (
     <>
       <div
-        className="hidden border-b border-slate-100 bg-slate-50/90 px-4 py-2 text-[11px] font-semibold text-slate-500 md:grid md:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(88px,120px))_minmax(88px,100px)_minmax(88px,120px)] md:gap-3 lg:px-5"
+        className="hidden border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-[0.8125rem] font-medium text-slate-500 md:grid md:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(88px,120px))_minmax(88px,100px)_minmax(88px,120px)] md:gap-3 lg:px-5"
         aria-hidden
       >
         <span>Dostawca</span>
@@ -155,8 +155,8 @@ function VacationRowsTable({
               key={v.id}
               id={`vacation-row-${v.id}`}
               className={cn(
-                "px-3 py-3 sm:px-4 lg:px-5",
-                isEditing && "bg-indigo-50/80 ring-1 ring-inset ring-indigo-200"
+                "px-3 py-3 transition-colors hover:bg-slate-50 sm:px-4 lg:px-5",
+                isEditing && "bg-indigo-50 hover:bg-indigo-50"
               )}
             >
               <div className="flex items-start gap-2 md:grid md:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(88px,120px))_minmax(88px,100px)_minmax(88px,120px)] md:items-center md:gap-3">
@@ -168,7 +168,7 @@ function VacationRowsTable({
                   <span className="block font-medium text-slate-900 hover:text-indigo-800 hover:underline md:truncate">
                     {name}
                     {isEditing ? (
-                      <Badge variant="info" className="ml-2 text-[10px]">
+                      <Badge variant="info" className="ml-2 text-[0.625rem]">
                         Edycja
                       </Badge>
                     ) : null}
@@ -190,7 +190,7 @@ function VacationRowsTable({
                           ) : isVacationScheduledInactive(v, todayDateKey) ? (
                             <Badge variant="info">Wyłączony</Badge>
                           ) : (
-                            <span className="text-sm text-slate-400">Nieaktywny</span>
+                            <span className="text-sm text-slate-500">Nieaktywny</span>
                           )}
                         </span>
                 </button>
@@ -209,7 +209,7 @@ function VacationRowsTable({
                     align="end"
                     disabled={pending || readOnly}
                     iconOnly
-                    variant="segment"
+                    triggerClassName="h-11 w-11 sm:h-8 sm:w-8"
                   >
                     <OverflowMenuItem onClick={() => onEdit(v)}>
                       Edytuj urlop
@@ -498,28 +498,36 @@ export function VacationsAdminClient({
         </div>
       </SupplierEditSheet>
 
-      {!formOpen ? (
-        <AddButton onClick={openCreate} disabled={readOnly || pending}>
-          Dodaj urlop
-        </AddButton>
-      ) : null}
-
-      <div className="flex items-center gap-3">
-        <div className="min-w-0 flex-1">
-          <Input
-            type="search"
-            placeholder="Szukaj dostawcy…"
-            aria-label="Szukaj dostawcy po nazwie"
-            className="w-full py-2 text-sm"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        {searchQuery ? (
-          <span className="shrink-0 text-xs text-slate-500">
-            {totalCount} {polishPluralWord(totalCount, "wynik", "wyniki", "wyników")}
-          </span>
-        ) : null}
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          type="search"
+          placeholder="Szukaj dostawcy…"
+          aria-label="Szukaj dostawcy po nazwie"
+          className="w-full sm:max-w-xs"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+        <Select
+          aria-label="Sortuj urlopy"
+          value={`${sortState.field}-${sortState.direction}`}
+          onChange={(e) => {
+            const [field, direction] = e.target.value.split("-") as [VacationSortField, VacationSortDirection];
+            setSortState({ field, direction });
+          }}
+          className="w-full sm:w-auto sm:min-w-[14rem]"
+        >
+          <option value="name-asc">Dostawca (A-Z)</option>
+          <option value="name-desc">Dostawca (Z-A)</option>
+          <option value="start_date-asc">Od (najstarsza)</option>
+          <option value="start_date-desc">Od (najnowsza)</option>
+          <option value="end_date-asc">Do (najstarsza)</option>
+          <option value="end_date-desc">Do (najnowsza)</option>
+          <option value="last_order_date-asc">Ostatnie zam. (najstarsza)</option>
+          <option value="last_order_date-desc">Ostatnie zam. (najnowsza)</option>
+        </Select>
+        <p className="ml-auto text-[0.6875rem] tabular-nums text-slate-500" aria-live="polite">
+          {totalCount} {polishPluralWord(totalCount, "urlop", "urlopy", "urlopów")}
+        </p>
       </div>
 
       <Card
@@ -531,26 +539,11 @@ export function VacationsAdminClient({
           density="compact"
           title={`Aktywne urlopy (${activeRows.length})`}
           description="Kliknij wiersz lub Edytuj, aby zmienić okres. Po zapisie system przelicza terminy."
+          actionAlign="inline"
           action={
-            <Field label="Sortuj" labelClassName="text-[10px] text-slate-500">
-              <Select
-                value={`${sortState.field}-${sortState.direction}`}
-                onChange={(e) => {
-                  const [field, direction] = e.target.value.split("-") as [VacationSortField, VacationSortDirection];
-                  setSortState({ field, direction });
-                }}
-                className="min-w-[140px]"
-              >
-                <option value="name-asc">Dostawca (A-Z)</option>
-                <option value="name-desc">Dostawca (Z-A)</option>
-                <option value="start_date-asc">Od (najstarsza)</option>
-                <option value="start_date-desc">Od (najnowsza)</option>
-                <option value="end_date-asc">Do (najstarsza)</option>
-                <option value="end_date-desc">Do (najnowsza)</option>
-                <option value="last_order_date-asc">Ostatnie zam. (najstarsza)</option>
-                <option value="last_order_date-desc">Ostatnie zam. (najnowsza)</option>
-              </Select>
-            </Field>
+            <AddButton size="sm" className="max-sm:min-h-11" onClick={openCreate} disabled={readOnly || pending || formOpen}>
+              Dodaj urlop
+            </AddButton>
           }
         />
         {!activeRows.length ? (
@@ -575,27 +568,6 @@ export function VacationsAdminClient({
             density="compact"
             title={`Wyłączone (przyszłe) (${scheduledRows.length})`}
             description="Zapisane okresy bez wpływu na harmonogram - można je ponownie włączyć."
-            action={
-              <Field label="Sortuj" labelClassName="text-[10px] text-slate-500">
-                <Select
-                  value={`${sortState.field}-${sortState.direction}`}
-                  onChange={(e) => {
-                    const [field, direction] = e.target.value.split("-") as [VacationSortField, VacationSortDirection];
-                    setSortState({ field, direction });
-                  }}
-                  className="min-w-[140px]"
-                >
-                  <option value="name-asc">Dostawca (A-Z)</option>
-                  <option value="name-desc">Dostawca (Z-A)</option>
-                  <option value="start_date-asc">Od (najstarsza)</option>
-                  <option value="start_date-desc">Od (najnowsza)</option>
-                  <option value="end_date-asc">Do (najstarsza)</option>
-                  <option value="end_date-desc">Do (najnowsza)</option>
-                  <option value="last_order_date-asc">Ostatnie zam. (najstarsza)</option>
-                  <option value="last_order_date-desc">Ostatnie zam. (najnowsza)</option>
-                </Select>
-              </Field>
-            }
           />
           <VacationRowsTable
             rows={scheduledRows}
@@ -615,9 +587,9 @@ export function VacationsAdminClient({
       ) : null}
 
       {pastRows.length ? (
-        <details className="group overflow-hidden rounded-md border border-slate-200/90 bg-white shadow-sm open:shadow-md">
-          <summary className="cursor-pointer list-none px-3 py-3 text-sm font-semibold text-slate-900 marker:content-none sm:px-4 [&::-webkit-details-marker]:hidden">
-            <span className="flex items-center justify-between gap-2">
+        <details className="group overflow-hidden rounded-[var(--radius-panel)] border border-slate-200 bg-[var(--card)] shadow-[var(--shadow-card)]">
+          <summary className="flex min-h-12 cursor-pointer list-none items-center px-3 py-3 text-base font-semibold text-slate-900 marker:content-none hover:bg-slate-50 sm:px-4 lg:px-5 [&::-webkit-details-marker]:hidden">
+            <span className="flex w-full items-center justify-between gap-2">
               <span className="flex items-center gap-2">
                 Przeszłe urlopy
                 <Badge variant="default" className="font-normal">
@@ -632,29 +604,10 @@ export function VacationsAdminClient({
               </span>
             </span>
           </summary>
-          <div className="border-t border-slate-100 px-3 pb-2 sm:px-4">
-            <p className="pb-2 text-xs text-slate-500">
+          <div className="border-t border-slate-100 px-3 py-2 sm:px-4 lg:px-5">
+            <p className="text-xs text-slate-500">
               Zakończone wpisy można edytować albo trwale usunąć, żeby uporządkować listę.
             </p>
-            <Field label="Sortuj" labelClassName="text-[10px] text-slate-500">
-              <Select
-                value={`${sortState.field}-${sortState.direction}`}
-                onChange={(e) => {
-                  const [field, direction] = e.target.value.split("-") as [VacationSortField, VacationSortDirection];
-                  setSortState({ field, direction });
-                }}
-                className="min-w-[140px]"
-              >
-                <option value="name-asc">Dostawca (A-Z)</option>
-                <option value="name-desc">Dostawca (Z-A)</option>
-                <option value="start_date-asc">Od (najstarsza)</option>
-                <option value="start_date-desc">Od (najnowsza)</option>
-                <option value="end_date-asc">Do (najstarsza)</option>
-                <option value="end_date-desc">Do (najnowsza)</option>
-                <option value="last_order_date-asc">Ostatnie zam. (najstarsza)</option>
-                <option value="last_order_date-desc">Ostatnie zam. (najnowsza)</option>
-              </Select>
-            </Field>
           </div>
           <VacationRowsTable
             rows={pastRows}

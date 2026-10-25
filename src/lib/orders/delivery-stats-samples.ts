@@ -25,6 +25,8 @@ export type DeliveryStatsQuantiles = {
   nOrders: number;
   placementDayCount: number;
   firstReceiptP50: number | null;
+  /** p90 dni roboczych do PIERWSZEJ dostawy (od 5 próbek) — czas, po którym towar zwykle już jest; braki z zaległości zostają w otwartych ZD. */
+  firstReceiptP90: number | null;
   variability: DeliveryEtaVariability | null;
   nextMorningShare: number | null;
   hasRecentSample: boolean;
@@ -219,6 +221,7 @@ export function quantilesFromSampleRows(
   const p50 = percentileNearestRank(days, 50);
   const p90 = days.length >= 5 ? percentileNearestRank(days, 90) : null;
   const firstReceiptP50 = percentileNearestRank(firstDays, 50);
+  const firstReceiptP90 = firstDays.length >= 5 ? percentileNearestRank(firstDays, 90) : null;
 
   let variability: DeliveryEtaVariability | null = null;
   if (p50 != null && p90 != null && days.length >= 5) {
@@ -235,6 +238,7 @@ export function quantilesFromSampleRows(
     nOrders: active.length,
     placementDayCount: daySet.size,
     firstReceiptP50,
+    firstReceiptP90,
     variability,
     nextMorningShare,
     hasRecentSample: active.length === 0 ? false : hasRecentSample,

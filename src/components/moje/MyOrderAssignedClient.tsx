@@ -84,7 +84,7 @@ export function MyOrderAssignedClient({
   const badgeClass = cn(
     salesClientLabelClass,
     "gap-0.5",
-    hasKhId && "cursor-pointer select-none transition-colors",
+    hasKhId && "hit-target cursor-pointer select-none transition-colors",
     copyState === "copied" && "text-emerald-600",
     (copyState === "error" || copyState === "copy_failed") && "text-red-500"
   );

@@ -1,5 +1,7 @@
 # Raport: rozjazd sprzedaży K-Snap (Subiekt Informator vs OnTime / API)
 
+> **Status: raport historyczny (2026-08-20).** Czy API Subiekta naprawiło zerowe `ob_Ilosc` na tych FS — **niezweryfikowane** (brak dostępu do Subiekta z tej sesji). Opis zachowania OnTime (Sprzed. = `sprzedazOkres` z API) zgadza się z `docs/integrations/subiekt.md`.
+
 **Produkt:** Piny K-Snap kpl.op/100szt.  
 **Symbol:** `14061000`  
 **`tw_Id`:** `7598`  

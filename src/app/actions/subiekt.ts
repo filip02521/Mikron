@@ -11,6 +11,8 @@ import {
   requireSupplierManagement,
 } from "@/lib/auth";
 import { indexOrderLineToProductCatalog } from "@/lib/data/product-catalog";
+import { syncSupplierCountry } from "@/lib/data/supplier-country-sync";
+import type { SubiektCountry } from "@/lib/suppliers/subiekt-country";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { searchSubiektKontrahenci, searchSubiektProducts } from "@/lib/subiekt/api";
 import {
@@ -70,6 +72,7 @@ import type { SubiektKontrahent, SubiektProduct } from "@/lib/subiekt/types";
 import type { ProsbaLineStockSnapshot } from "@/lib/orders/prosba-stock-check";
 import { fetchProsbaLineStock } from "@/lib/orders/fetch-prosba-line-stock";
 import { searchProductCatalogSuggestions } from "@/lib/orders/product-catalog-suggest";
+import { matchesSearchWords, searchWords } from "@/lib/search/keywords";
 
 export async function actionGetSubiektStatus() {
   await requireAdmin();
@@ -338,6 +341,25 @@ export async function actionSubiektSuggestProductsForZdLookup(
 }
 
 /** Podpowiedzi klienta końcowego (odbiorcy) przy prośbach handlowca. */
+/**
+ * Kontrahenci po słowach („testowy gabinet” → „GABINET TESTOWY”): gdy cała fraza nic nie dała, szukamy po najdłuższym
+ * słowie i zostawiamy tych, którzy mają wszystkie słowa w symbolu, nazwie albo miejscowości.
+ */
+async function searchKontrahenciByWords(
+  query: string,
+  loaders: ReadonlyArray<(search: string) => Promise<{ data?: SubiektKontrahent[] | null }>>
+): Promise<SubiektKontrahent[]> {
+  const words = searchWords(query);
+  if (words.length < 2) return [];
+  const longest = [...new Set(query.trim().split(/\s+/))].sort((a, b) => b.length - a.length)[0] ?? "";
+  if (longest.length < 2) return [];
+  const settled = await Promise.allSettled(loaders.map((load) => load(longest)));
+  if (settled.every((s) => s.status === "rejected")) throw (settled[0] as PromiseRejectedResult).reason;
+  return settled
+    .flatMap((s) => (s.status === "fulfilled" ? (s.value.data ?? []) : []))
+    .filter((k) => matchesSearchWords([k.kh_Symbol, k.adr_Nazwa, k.adr_NazwaPelna, k.adr_Miejscowosc], query));
+}
+
 export async function actionSubiektSuggestClients(
   query: string
 ): Promise<SubiektLookupResult<SubiektKontrahent>> {
@@ -401,6 +423,14 @@ export async function actionSubiektSuggestClients(
           12
         );
       }
+    }
+
+    if (merged.length === 0) {
+      const byWords = await searchKontrahenciByWords(q, [
+        (search) => searchSubiektCustomersCached({ ...listBase, pageSize: 100, search }),
+        (search) => searchSubiektKontrahenciCached({ ...listBase, pageSize: 100, search }),
+      ]);
+      mergeKontrahenciUnique(merged, seenKh, seenLabels, byWords, 12);
     }
 
     if (merged.length === 0) {
@@ -598,6 +628,48 @@ async function searchSubiektProductsCombined(
   return { data, totalCount: totalCount || undefined };
 }
 
+/**
+ * Kilka słów („eco gips”, „200224 gips”): API Subiekta szuka frazy jako jednego ciągu, więc pytamy o każde słowo
+ * osobno — w nazwie i w symbolu (tryb nazwy nie przeszukuje symboli) — bierzemy najmniej liczne słowo jako bazę
+ * (do 3 stron po 200 na tryb) i zostawiamy towary zawierające wszystkie słowa w symbolu, nazwie albo kodzie Mikran.
+ */
+async function searchSubiektProductsByWords(query: string, limit = 12): Promise<SubiektProduct[]> {
+  const words = [...new Set(query.trim().split(/\s+/).filter((w) => w.length >= 2))]
+    .sort((a, b) => b.length - a.length)
+    .slice(0, 3);
+  if (!words.length) return [];
+  const PAGE = 200;
+  const modes = ["name", "symbol"] as const;
+  const searchWord = async (word: string, page: number) => {
+    const settled = await Promise.allSettled(
+      modes.map((mode) => searchSubiektProducts({ ...productSearchParams(word, mode), pageSize: PAGE, page }))
+    );
+    if (settled.every((s) => s.status === "rejected")) throw (settled[0] as PromiseRejectedResult).reason;
+    const ok = settled.map((s) => (s.status === "fulfilled" ? s.value : null));
+    return {
+      rows: ok.flatMap((r) => r?.data ?? []),
+      // Strony do dociągnięcia liczone osobno dla każdego trybu.
+      more: ok.some((r) => (r?.pagination?.totalCount ?? 0) > page * PAGE),
+      total: ok.reduce((a, r) => a + (r?.pagination?.totalCount ?? r?.data?.length ?? 0), 0),
+    };
+  };
+  const firsts = await Promise.all(words.map(async (word) => ({ word, ...(await searchWord(word, 1)) })));
+  if (firsts.some((f) => f.rows.length === 0)) return []; // któreś słowo nie występuje nigdzie
+  const anchor = [...firsts].sort((a, b) => a.total - b.total)[0]!;
+  const rows = [...anchor.rows];
+  // shortcut: do 3 stron na tryb dla najrzadszego słowa; przy bardzo szerokich słowach trzeba dopisać kolejne.
+  for (let page = 2, more = anchor.more; more && page <= 3; page++) {
+    const next = await searchWord(anchor.word, page);
+    rows.push(...next.rows);
+    more = next.more;
+  }
+  const hits = mergeSubiektProductSearchResults(
+    [rows.filter((p) => matchesSearchWords([p.tw_Symbol, p.tw_Nazwa, p.tw_PLU], query))],
+    rows.length
+  );
+  return rankSubiektProductsForLookupQuery(hits, query).slice(0, limit);
+}
+
 async function suggestProductsForZdLookup(
   query: string
 ): Promise<SubiektLookupResult<SubiektProduct>> {
@@ -636,10 +708,12 @@ async function suggestProductsForZdLookup(
       }
     }
 
-    const rows = rankSubiektProductsForLookupQuery(
+    let rows = rankSubiektProductsForLookupQuery(
       mergeSubiektProductSearchResults(batches, 12),
       q
     );
+    // Kilka słów, a fraza w całości nic nie dała — szukaj po słowach.
+    if (!rows.length && searchWords(q).length >= 2) rows = await searchSubiektProductsByWords(q);
 
     if (!rows.length) {
       return {
@@ -672,7 +746,13 @@ async function suggestProducts(
     let rows: SubiektProduct[] = [];
     let totalCount: number | undefined;
 
-    if (isCombinedProductSearchField(field)) {
+    if ((isCombinedProductSearchField(field) || field === "name") && searchWords(q).length >= 2) {
+      // Kilka słów: najpierw cała fraza (dokładne trafienia wyżej), potem każde słowo osobno.
+      const phrase = await searchSubiektProductsCombined(q).catch(() => ({ data: [] as SubiektProduct[] }));
+      const byWords = await searchSubiektProductsByWords(q);
+      rows = mergeSubiektProductSearchResults([phrase.data, byWords], 12);
+      totalCount = rows.length;
+    } else if (isCombinedProductSearchField(field)) {
       const combined = await searchSubiektProductsCombined(q);
       rows = combined.data;
       totalCount = combined.totalCount;
@@ -824,6 +904,18 @@ export async function actionSubiektLookupSupplier(
     }
 
     if (merged.length === 0) {
+      for (const row of await searchKontrahenciByWords(q, [
+        (search) => searchSubiektSuppliersCached({ search, pageSize: 100, page: 1, includeBlocked: true }),
+        (search) => searchSubiektKontrahenci({ search, pageSize: 100, page: 1, includeBlocked: true }),
+      ])) {
+        if (seenKh.has(Number(row.kh_Id))) continue;
+        seenKh.add(Number(row.kh_Id));
+        merged.push(row);
+        if (merged.length >= 16) break;
+      }
+    }
+
+    if (merged.length === 0) {
       return { ok: true, items: [], totalCount: 0, feedback: notFoundSupplierFeedback(q) };
     }
 
@@ -852,7 +944,7 @@ export async function actionSubiektLookupSupplier(
 export async function actionSetSupplierSubiektKhId(
   supplierId: string,
   subiektKhId: number | null
-): Promise<{ ok: true } | { ok: false; feedback: SubiektFeedback }> {
+): Promise<{ ok: true; country: SubiektCountry | null } | { ok: false; feedback: SubiektFeedback }> {
   await requireSupplierManagement("mutate");
 
   if (subiektKhId != null && (!Number.isFinite(subiektKhId) || subiektKhId <= 0)) {
@@ -883,6 +975,15 @@ export async function actionSetSupplierSubiektKhId(
       .eq("subiekt_kh_id", Math.trunc(subiektKhId));
   }
 
+  const { data: prev, error: prevError } = await supabase
+    .from("suppliers")
+    .select("subiekt_kh_id")
+    .eq("id", supplierId)
+    .maybeSingle();
+  if (prevError) {
+    return { ok: false, feedback: feedbackFromException(new Error(prevError.message)) };
+  }
+
   const { error } = await supabase
     .from("suppliers")
     .update({
@@ -906,9 +1007,18 @@ export async function actionSetSupplierSubiektKhId(
     };
   }
 
+  // Kraj od razu (automat ZD PL); błąd odczytu nie cofa powiązania — dociągnie nocny cron.
+  let country: SubiektCountry | null = null;
+  try {
+    const khChanged = prev?.subiekt_kh_id == null || Math.trunc(Number(prev.subiekt_kh_id)) !== subiektKhId;
+    country = await syncSupplierCountry(supplierId, subiektKhId, { clearOnMiss: khChanged });
+  } catch (e) {
+    console.error("[actionSetSupplierSubiektKhId] kraj z Subiekta", e instanceof Error ? e.message : e);
+  }
+
   revalidateSupplierSubiektKhCaches();
 
-  return { ok: true };
+  return { ok: true, country };
 }
 
 function revalidateSupplierSubiektKhCaches() {
@@ -1092,6 +1202,12 @@ export async function actionSubiektSuggestSuppliers(
         if (mergedKontrahenci.length >= 12) break;
       }
       if (mergedKontrahenci.length >= 12) break;
+    }
+    if (mergedKontrahenci.length === 0) {
+      const byWords = await searchKontrahenciByWords(trimmed, [
+        (search) => searchSubiektSuppliersCached({ search, pageSize: 100, page: 1 }),
+      ]);
+      mergedKontrahenci.push(...byWords.slice(0, 12));
     }
 
     const subiektSuggestions: SubiektSupplierSuggestion[] = [];

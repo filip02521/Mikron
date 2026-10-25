@@ -2,7 +2,7 @@
 
 import type { DailyInboxSummary } from "@/lib/orders/procurement-daily-ui";
 import type { DailyPanelView } from "@/lib/orders/daily-panel-view";
-import { panelChromeInsetClass, panelTypography } from "@/lib/ui/ontime-theme";
+import { panelTypography } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 
@@ -19,8 +19,9 @@ export function DailyPanelToolbar({
 }) {
   if (view === "wyjatki") {
     return (
-      <div className={cn("border-b border-slate-100 py-2.5 sm:py-3", panelChromeInsetClass)}>
-        <p className={panelTypography.sectionTitle}>Wyjątki</p>
+      // -mb-3: pod nagłówkiem sekcji mniej odstępu niż nad nim (rodzic ma space-y-6).
+      <div className="-mb-3">
+        <h2 className="text-lg font-semibold tracking-[-0.015em] text-slate-900">Wyjątki</h2>
         <p className={cn("mt-0.5", panelTypography.sectionDesc)}>
           {exceptionsCount > 0
             ? `${exceptionsCount} ${polishPluralWord(
@@ -35,7 +36,7 @@ export function DailyPanelToolbar({
               {" "}
               <button
                 type="button"
-                className="font-medium text-slate-600 transition-colors hover:text-slate-800"
+                className="font-medium text-indigo-700 underline-offset-2 transition-colors hover:text-indigo-900 hover:underline"
                 onClick={onOpenOnDemand}
               >
                 Na żądanie ({summary.onDemandCount})

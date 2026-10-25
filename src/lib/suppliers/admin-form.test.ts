@@ -33,7 +33,11 @@ describe("applyAdminFormToSupplierRow", () => {
       default_delivery_shipment_form: "paleta",
       min_order_value: 500,
       min_order_currency: "PLN",
+      free_shipping_threshold: 1200.456,
+      subiekt_country: { id: 7, name: "Niemcy" },
     });
+    expect(next.free_shipping_threshold).toBe(1200.46);
+    expect(next.subiekt_country_id).toBe(7);
     expect(next.name).toBe("Nowy");
     expect(next.location).toBe("ZAGRANICA");
     expect(next.notes).toBe("mail");
@@ -64,6 +68,8 @@ describe("applyAdminFormToSupplierRow", () => {
       default_delivery_shipment_form: "",
       min_order_value: 0,
       min_order_currency: "PLN",
+      free_shipping_threshold: null,
+      subiekt_country: null,
     });
     expect(next.min_order_value).toBeNull();
     expect(next.min_order_currency).toBeNull();
@@ -90,6 +96,8 @@ describe("applyAdminFormToSupplierRow", () => {
       default_delivery_shipment_form: "",
       min_order_value: 300,
       min_order_currency: "",
+      free_shipping_threshold: null,
+      subiekt_country: null,
     });
     expect(next.min_order_value).toBe(300);
     expect(next.min_order_currency).toBe("PLN");

@@ -1,6 +1,6 @@
 import type { ProductLineDraft } from "@/components/orders/request-product-lines";
 import { parseOrderQuantity } from "@/lib/orders/individual";
-import { buildProsbaSufficientStockSummary } from "@/lib/orders/prosba-line-stock-ui";
+import { buildProsbaSufficientStockSummary, prosbaPairStockShort } from "@/lib/orders/prosba-line-stock-ui";
 import { isStockExemptTwId } from "@/lib/orders/teeth-stock-exempt";
 import { plPozycja } from "@/lib/ui/polish-plurals";
 import type { SubiektProduct } from "@/lib/subiekt/types";
@@ -575,7 +575,8 @@ export function applyProsbaLineStockMap(
       line.available === patch.available &&
       line.stockSource === patch.stockSource &&
       line.pairStockCover === patch.pairStockCover &&
-      line.pairUnitsPerPack === patch.pairUnitsPerPack
+      line.pairUnitsPerPack === patch.pairUnitsPerPack &&
+      line.pairRole === patch.pairRole
     ) {
       return line;
     }
@@ -603,9 +604,7 @@ export function formatProsbaSubmitStockConfirmMessage(
     const name = line.product.trim() || line.symbol.trim() || "Produkt";
     const qty = line.quantity.trim();
     const avail = line.available;
-    const pairHint = line.pairStockCover
-      ? " - cover pary (sztuki + paczki po demontażu)"
-      : "";
+    const pairHint = line.pairStockCover ? ` - ${prosbaPairStockShort(line.pairRole)}` : "";
     const availPart =
       avail != null
         ? ` (stan: ${avail} szt.${pairHint})`
@@ -630,6 +629,7 @@ export function mergeStockIntoLinePatch(
       stockSource: undefined,
       pairStockCover: undefined,
       pairUnitsPerPack: undefined,
+      pairRole: undefined,
     };
   }
   return {
@@ -639,6 +639,7 @@ export function mergeStockIntoLinePatch(
     stockSource: snap.source,
     pairStockCover: snap.pairAware === true ? true : undefined,
     pairUnitsPerPack: snap.pairUnitsPerPack,
+    pairRole: snap.pairAware === true ? (snap.pairRole ?? null) : undefined,
   };
 }
 

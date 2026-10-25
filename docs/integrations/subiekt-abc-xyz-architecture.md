@@ -1,5 +1,7 @@
 # Podział odpowiedzialności: OnTime ↔ API Subiekta (ABC/XYZ + ROP/EOQ)
 
+> **Status (2026-10-25): częściowo zrobione inną drogą.** Klasy ABC (zysk 12 mies.) / XYZ (52 tygodnie) liczy OnTime miesięcznie do `zd_sku_class` (`src/lib/data/zd-sku-class-sync.ts`, cron `zd-sku-class`) z dokumentów towaru z `GET /orders/zd/estimate/{towarId}`, nie z proponowanego `GET /orders/sales/weekly`. Czasy dostaw liczy OnTime z par ZD → FZ (cron `subiekt-lead-times`), nie z `GET /orders/lead-time/stats`. Strategia ilości: `docs/integrations/strategia-zakupowa-pl-automatyzacja.md`. ROP/EOQ — nie wdrożone (brak w kodzie).
+
 **Dla:** Filip / Tomasz  
 **Powiązane:** [`subiekt-abc-xyz-api-gaps.md`](./subiekt-abc-xyz-api-gaps.md) (czego brakuje w endpointach)  
 **Cel:** jak **najlepiej** rozdzielić pracę między OnTime a API (`http://192.168.0.140:5080/api/v1`), żeby system działał wydajnie, dał się utrzymać i nie dublował logiki.
@@ -47,7 +49,7 @@ Gdyby API liczyło finalne qty EOQ, przy każdej zmianie progu / \(S\) trzeba by
 
 ### 2.3. Audyt i iteracja
 
-Matryca ABC/XYZ w Supabase (OT):
+Matryca ABC/XYZ w PostgreSQL OnTime:
 
 - widać historię klas („dlaczego ten SKU jest A-X”),
 - można ręcznie nadpisać klasę / wyłączyć algorytm,
@@ -84,7 +86,7 @@ API **nie** przechowuje klas A-X / B-Y i **nie** zna wykluczeń OnTime.
 |---|---|---|
 | Wybór zakresu (grupa/cecha) + Policz | `/zakupy/szacunek` | jak dziś |
 | Wykluczenia, opakowania, pary, BOM, zęby | tabele + workbench | jak dziś |
-| Persist matrycy ABC/XYZ | nowa tabela Supabase + cron | raz / miesiąc |
+| Persist matrycy ABC/XYZ | tabela PostgreSQL + cron (dziś `zd_sku_class`) | raz / miesiąc |
 | Progi ABC/XYZ, Z-score, \(S\), \(i\) | config / admin | nie w API |
 | Wybór algorytmu wg segmentu | silnik qty | X / Y / Z |
 | ROP, SS, EOQ, Min-Max, (później) Croston/HW | silnik qty | na danych z API |
@@ -106,7 +108,7 @@ API **nie** przechowuje klas A-X / B-Y i **nie** zna wykluczeń OnTime.
 
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
-│                         OnTime (Supabase)                        │
+│                         OnTime (PostgreSQL)                      │
 │  dostawcy, stock→dniZapasu, wykluczenia, pack, pary, prośby,    │
 │  parametry S/i/Z, matryca ABC/XYZ, snapshoty ZD                   │
 └───────────────┬─────────────────────────────▲───────────────────┘
@@ -320,7 +322,7 @@ Czyli: **lista i decyzja w OnTime; obliczenia masowe (agregaty) w API; obliczeni
 - [ ] Zasada: API = fakty/agregaty, OT = matryca + qty + create  
 - [ ] `GET /orders/sales/weekly` (zera tygodniowe, źródło FS/WZ w docs)  
 - [ ] Wartość: cena sprzedaży i/lub zakupu  
-- [ ] Matryca w Supabase + cron OT  
+- [ ] Matryca w PostgreSQL OnTime + cron OT  
 - [ ] Faza 1: badge klas bez zmiany qty  
 - [ ] Potem: komplety, MOQ, lead-time stats  
 - [ ] ROP/EOQ za flagą, z fallbackiem do obecnego cover×dni  

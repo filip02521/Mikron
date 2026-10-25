@@ -7,6 +7,8 @@ import type {
 import type { ZdDeliveryRisk } from "@/lib/orders/zd-order-horizon";
 import { isZdNameAutoExcluded } from "@/lib/orders/zd-estimate-name-exclude";
 import { buildStockWatchDashboard } from "@/lib/stock-watch/dashboard";
+import { SUBIEKT_DOC_TYPE_FZ, SUBIEKT_DOC_TYPE_ZD, SUBIEKT_ZD_STATUS_DONE } from "@/lib/orders/subiekt-lead-times";
+import type { StockWatchAssemblyKind, StockWatchBomRole } from "@/lib/stock-watch/bom-stock";
 
 /** pg zwraca `numeric` jako string — normalizacja w jednym miejscu. */
 function num(value: unknown): number {
@@ -230,6 +232,14 @@ export type StockWatchItemWrite = {
   /** Sygnał z czasu dostawy — bez wpływu na ilość. */
   deliveryRisk: ZdDeliveryRisk | null;
   status: StockWatchStatus;
+  /** Rola w składzie z Kreatora (zestaw „Składamy”, komplet kupowany, składnik). */
+  bomRole: StockWatchBomRole | null;
+  /** Strona pary paczka↔sztuka (stan liczony w sztukach na paczce). */
+  pairRole: "pack" | "piece" | null;
+  /** Co da kompletacja w Subiekcie bez zakupu: złożenie zestawu / rozłożenie kompletu. */
+  assemblyKind: StockWatchAssemblyKind | null;
+  assemblyQty: number | null;
+  assemblyNote: string | null;
 };
 
 const ITEM_COLUMNS = [
@@ -266,6 +276,46 @@ const ITEM_COLUMNS = [
   "delivery_risk",
   "status",
 ] as const;
+
+/** Kolumny z migracji 191 — zapisywane tylko, gdy migracja jest na bazie. */
+const ITEM_BOM_COLUMNS = [
+  "bom_role",
+  "pair_role",
+  "assembly_kind",
+  "assembly_qty",
+  "assembly_note",
+] as const;
+
+let bomColumnsReady: Promise<boolean> | null = null;
+
+/**
+ * Czy baza ma kolumny kompletacji (191_stock_watch_bom.sql). Bez nich worker zapisuje
+ * jak dotąd, a „Do kompletacji” idzie jako „W normie” (stary CHECK statusu) — żaden
+ * fałszywy brak, tylko bez osobnej listy. Wynik pozytywny trzymamy do końca procesu.
+ */
+async function hasStockWatchBomColumns(): Promise<boolean> {
+  bomColumnsReady ??= query<{ n: string }>(
+    `SELECT count(*)::text AS n
+       FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'stock_watch_items'
+        AND column_name = ANY($1::text[])`,
+    [[...ITEM_BOM_COLUMNS]]
+  )
+    .then((r) => Number(r.rows[0]?.n) === ITEM_BOM_COLUMNS.length)
+    .then(
+      (ok) => {
+        if (!ok) bomColumnsReady = null;
+        return ok;
+      },
+      (e) => {
+        // Błąd bazy ≠ brak migracji: zapis bez kolumn zostawiłby stare dane kompletacji
+        // przy nowym statusie (ON CONFLICT). Zakres pada jak przy innym błędzie zapisu.
+        bomColumnsReady = null;
+        throw e;
+      }
+    );
+  return bomColumnsReady;
+}
 
 function itemValues(item: StockWatchItemWrite): unknown[] {
   return [
@@ -304,6 +354,10 @@ function itemValues(item: StockWatchItemWrite): unknown[] {
   ];
 }
 
+function itemBomValues(item: StockWatchItemWrite): unknown[] {
+  return [item.bomRole, item.pairRole, item.assemblyKind, item.assemblyQty, item.assemblyNote];
+}
+
 /**
  * Zastępuje wynik dostawcy: upsert bieżącej listy, usunięcie towarów,
  * których w tym przebiegu już nie ma (lista = to, co policzył silnik).
@@ -315,7 +369,10 @@ export async function replaceSupplierStockWatchItems(
 ): Promise<number> {
   let written = 0;
   const chunkSize = 200;
-  const updates = ITEM_COLUMNS.filter((c) => c !== "subiekt_tw_id" && c !== "supplier_id")
+  const withBom = await hasStockWatchBomColumns();
+  const columns: readonly string[] = withBom ? [...ITEM_COLUMNS, ...ITEM_BOM_COLUMNS] : ITEM_COLUMNS;
+  const updates = columns
+    .filter((c) => c !== "subiekt_tw_id" && c !== "supplier_id")
     .map((c) => `${c} = EXCLUDED.${c}`)
     .concat("computed_at = now()")
     .join(", ");
@@ -323,14 +380,17 @@ export async function replaceSupplierStockWatchItems(
     const chunk = items.slice(start, start + chunkSize);
     const params: unknown[] = [];
     const tuples = chunk.map((item) => {
-      const placeholders = itemValues(item).map((v) => {
+      const values = withBom
+        ? [...itemValues(item), ...itemBomValues(item)]
+        : itemValues({ ...item, status: item.status === "to_assemble" ? "ok" : item.status });
+      const placeholders = values.map((v) => {
         params.push(v);
         return `$${params.length}`;
       });
       return `(${placeholders.join(", ")}, now())`;
     });
     const res = await query(
-      `INSERT INTO stock_watch_items (${ITEM_COLUMNS.join(", ")}, computed_at)
+      `INSERT INTO stock_watch_items (${columns.join(", ")}, computed_at)
        VALUES ${tuples.join(", ")}
        ON CONFLICT (supplier_id, subiekt_tw_id) DO UPDATE SET ${updates}`,
       params
@@ -434,6 +494,15 @@ function mapItem(row: ItemRow): StockWatchItem {
         ? row.delivery_risk
         : null,
     status: row.status as StockWatchStatus,
+    bomRole:
+      row.bom_role === "assembled_parent" || row.bom_role === "purchased_kit" || row.bom_role === "component"
+        ? row.bom_role
+        : null,
+    pairRole: row.pair_role === "pack" || row.pair_role === "piece" ? row.pair_role : null,
+    assemblyKind:
+      row.assembly_kind === "assemble" || row.assembly_kind === "disassemble" ? row.assembly_kind : null,
+    assemblyQty: numOrNull(row.assembly_qty),
+    assemblyNote: (row.assembly_note as string | null) ?? null,
     computedAt: iso(row.computed_at) ?? "",
     supplierName: (row.supplier_name as string | null) ?? null,
     rule,
@@ -791,6 +860,17 @@ export type ZdPurchaseLineRow = {
   /** Jednostki dokumentu ZD (przy opakowaniach: paczki). */
   qty: number;
   priceNet: number | null;
+  /**
+   * Pierwsza faktura FZ do tego ZD (także do ZD „resztowego” z niego) — data jak w czasach dostaw:
+   * przyjęcie na magazyn, bez niej wystawienie. null = bez faktury (w drodze albo zamknięte bez FZ).
+   * Tylko w historii karty produktu (listZdPurchaseLinesForTw).
+   */
+  fzDate?: string | null;
+  fzNr?: string | null;
+  /** Ile FZ do tego ZD (dostawy częściowe). */
+  fzCount?: number;
+  /** ZD zrealizowany w Subiekcie — bez FZ to „faktura niepowiązana” (np. przez PZ), nie „w drodze”. null = brak ZD w kopii. */
+  zdDone?: boolean | null;
 };
 
 /**
@@ -833,17 +913,33 @@ export async function upsertZdPurchaseLines(rows: readonly ZdPurchaseLineRow[]):
 export async function listZdPurchaseLinesForTw(
   twIds: readonly number[],
   sinceDate: string,
-  limit = 40
+  limit = 40,
+  /** Wiele towarów naraz (wykrywanie „na prośbę” dla listy) — wyższy sufit niż karta jednego towaru. */
+  maxLimit = 200
 ): Promise<ZdPurchaseLineRow[]> {
   const ids = [...new Set(twIds.map((x) => Math.trunc(x)).filter((x) => x > 0))];
   if (!ids.length) return [];
+  // FZ wskazuje ZD przez do_dok_id (jak w subiekt-lead-times); ZD resztowy wskazuje ZD, z którego powstał.
+  // Data faktury: przyjęcie na magazyn, bez niej wystawienie — „kiedy faktura była wpisana”.
   const res = await query<ItemRow>(
-    `SELECT subiekt_tw_id, dok_id, dok_nr, dok_date, kh_id, qty, price_net
-       FROM zd_purchase_lines
-      WHERE subiekt_tw_id = ANY($1::int[]) AND dok_date >= $2::date
-      ORDER BY dok_date DESC, dok_id DESC
+    `SELECT l.subiekt_tw_id, l.dok_id, l.dok_nr, l.dok_date, l.kh_id, l.qty, l.price_net,
+            f.fz_date, f.fz_nr, f.fz_count, zd.status AS zd_status
+       FROM zd_purchase_lines l
+       LEFT JOIN subiekt_purchase_docs zd ON zd.dok_id = l.dok_id AND zd.typ = $5
+       LEFT JOIN LATERAL (
+         SELECT min(coalesce(fz.data_mag, fz.data_wyst)) AS fz_date,
+                (array_agg(fz.nr_pelny ORDER BY coalesce(fz.data_mag, fz.data_wyst), fz.dok_id))[1] AS fz_nr,
+                count(*) AS fz_count
+           FROM subiekt_purchase_docs fz
+          WHERE fz.typ = $4
+            AND (fz.do_dok_id = l.dok_id
+                 OR fz.do_dok_id IN (SELECT z.dok_id FROM subiekt_purchase_docs z
+                                      WHERE z.typ = $5 AND z.do_dok_id = l.dok_id))
+       ) f ON f.fz_count > 0
+      WHERE l.subiekt_tw_id = ANY($1::int[]) AND l.dok_date >= $2::date
+      ORDER BY coalesce(f.fz_date, l.dok_date) DESC, l.dok_id DESC
       LIMIT $3`,
-    [ids, sinceDate, Math.min(200, Math.max(1, Math.trunc(limit)))]
+    [ids, sinceDate, Math.min(maxLimit, Math.max(1, Math.trunc(limit))), SUBIEKT_DOC_TYPE_FZ, SUBIEKT_DOC_TYPE_ZD]
   );
   return res.rows.map((r) => ({
     subiektTwId: num(r.subiekt_tw_id),
@@ -853,6 +949,10 @@ export async function listZdPurchaseLinesForTw(
     khId: r.kh_id == null ? null : num(r.kh_id),
     qty: num(r.qty),
     priceNet: r.price_net == null ? null : num(r.price_net),
+    fzDate: dateKey(r.fz_date),
+    fzNr: (r.fz_nr as string | null) ?? null,
+    fzCount: r.fz_count == null ? 0 : num(r.fz_count),
+    zdDone: r.zd_status == null ? null : num(r.zd_status) === SUBIEKT_ZD_STATUS_DONE,
   }));
 }
 

@@ -145,7 +145,7 @@ function ProcurementRequestLineContent({
         </p>
         {flagSlot ? <div className="mt-1 min-w-0">{flagSlot}</div> : null}
         {hasMeta ? (
-          <p className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5 text-[11px] leading-snug text-slate-500">
+          <p className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5 text-[0.6875rem] leading-snug text-slate-500">
             {hasSymbol ? (
               <span className="font-mono tabular-nums text-slate-500">{line.symbol}</span>
             ) : null}

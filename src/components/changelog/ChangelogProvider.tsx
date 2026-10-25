@@ -42,7 +42,8 @@ export function ChangelogProvider({
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const seenVersion = useSeenChangelogVersion();
-  const hasUnseen = seenVersion !== CHANGELOG_LATEST_VERSION;
+  // Gość (404, logowanie) nie dostaje „Co nowego” — zmiany dotyczą pracy w panelu.
+  const hasUnseen = role != null && seenVersion !== CHANGELOG_LATEST_VERSION;
 
   const openModal = useCallback(() => {
     setIsModalOpen(true);

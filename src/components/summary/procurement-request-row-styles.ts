@@ -158,4 +158,4 @@ export const procurementSupplierBlockFooterClass = "px-2.5 py-1 sm:px-3";
 
 /** Etykieta scope w footerze (Zamów razem / Tylko ta osoba). */
 export const procurementRequestFooterScopeLabelClass =
-  "shrink-0 text-[10px] font-medium leading-none text-slate-400";
+  "shrink-0 text-[0.625rem] font-medium leading-none text-slate-400";

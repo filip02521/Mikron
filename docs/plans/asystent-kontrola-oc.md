@@ -1,6 +1,6 @@
 # Plan: kontrola potwierdzeń zamówień (OC) w OnTime
 
-**Status:** C1 zrobione (tabele, lista spraw, import JSON). Kolejne etapy: propozycja.
+**Status: częściowo zrobione — tylko C1** (tabele `oc_checks` / `oc_check_lines` / `gmail_sync_state`, lista spraw na `/zakupy/asystent`, import JSON w `src/lib/oc-check/import.ts`). C2–C6 nie istnieją w kodzie (2026-10-25): brak `src/lib/oc-check/compare.ts`, trasy `/api/cron/oc-check` i zmiennych `GMAIL_SA_KEY_PATH` / `GMAIL_MAILBOXES` / `OC_CHECK_ENABLED` / `ANTHROPIC_API_KEY`. Odczyt maili dostawców powstał inną drogą — z Gmaila osób przez OAuth (Poczta dostawców, `docs/wdrozenie-gmail-poczta-dostawcow.md`), nie przez konto serwisowe opisane niżej.
 
 Dziś (etap D) jest strona `/zakupy/asystent` z linkami do raportów rutyn Claude w chmurze. Ten plan opisuje etap C: przeniesienie kontroli do OnTime.
 
@@ -63,7 +63,7 @@ UI /zakupy/asystent → lista spraw; przy ZD (historia, kreator) → znaczek „
 | Zmienna | Opis |
 |---|---|
 | `GMAIL_SA_KEY_PATH` | konto serwisowe Google Workspace z delegacją domenową (tylko zakres `gmail.readonly`) |
-| `GMAIL_MAILBOXES` | `filip.naskret@mikran.com,aleksandra.stupczynska@mikran.com` |
+| `GMAIL_MAILBOXES` | adresy skrzynek po przecinku, np. `jan.kowalski@firma.example,anna.nowak@firma.example` |
 | `ANTHROPIC_API_KEY` | ekstrakcja z PDF i obrazów |
 | `OC_CHECK_ENABLED` | wyłącznik awaryjny |
 
@@ -81,7 +81,7 @@ UI /zakupy/asystent → lista spraw; przy ZD (historia, kreator) → znaczek „
    - Ekran `/zakupy/asystent` z listą spraw: filtry „do ruchu”, „zgodne”, „wyjaśnione” oraz akcja „Wyjaśnione”.
    - Seed z danych rutyny w chmurze, żeby od razu było widać wartość.
    - Format importu: `src/lib/oc-check/import.ts` (`{ checks: [...] }`, upsert po `source_key`; ponowny import nie zmienia decyzji „Wyjaśnione”).
-2. **C2, porównanie.** Moduł `src/lib/oc-check/compare.ts`, czysta funkcja `porównaj(zdLines, ocLines, packaging)` z testami na przypadkach z 05.10:
+2. **C2, porównanie.** Moduł `oc-check/compare.ts` (do utworzenia w `src/lib/`), czysta funkcja `porównaj(zdLines, ocLines, packaging)` z testami na przypadkach z 05.10:
    - Polirapid: opakowanie zamiast sztuki,
    - Motyl: braki,
    - Renfert: pozycja dodatkowa,

@@ -8,6 +8,9 @@ import { Alert } from "@/components/ui/Alert";
 import { supplierHubShellDescription } from "@/lib/supplier-hub";
 import type { SupplierWithSchedule, TeethSupplierSchedule } from "@/types/database";
 
+import { loadZdAutomatSuppliersForCards } from "@/lib/data/zd-automat-suppliers";
+import { getSessionUser } from "@/lib/auth";
+import { canAccessZdEstimate } from "@/lib/auth-roles";
 import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
 
@@ -29,12 +32,16 @@ export default async function ZakupyDostawcyPage({
   let warehouseCarriers: Awaited<ReturnType<typeof fetchWarehouseCarriers>> = [];
   let teethScheduleSupplierIds: string[] = [];
   let teethScheduleMap: Record<string, TeethSupplierSchedule> = {};
+  const user = await getSessionUser();
+  const canManageAutomat = Boolean(user && canAccessZdEstimate(user.role, user.assignedWorkspaces));
+  let automat: Awaited<ReturnType<typeof loadZdAutomatSuppliersForCards>> = {};
   let loadError: string | null = null;
   try {
-    [suppliers, inactiveCount, warehouseCarriers] = await Promise.all([
+    [suppliers, inactiveCount, warehouseCarriers, automat] = await Promise.all([
       fetchSuppliersWithSchedules(),
       countInactiveSuppliers(),
       fetchWarehouseCarriers(),
+      loadZdAutomatSuppliersForCards(canManageAutomat && !teethLane),
     ]);
     allSuppliers = suppliers;
     if (teethLane) {
@@ -87,6 +94,8 @@ export default async function ZakupyDostawcyPage({
         warehouseCarriers={warehouseCarriers}
         teethScheduleSupplierIds={teethLane ? teethScheduleSupplierIds : undefined}
         teethScheduleMap={teethLane ? teethScheduleMap : undefined}
+        automat={automat}
+        canManageAutomat={canManageAutomat}
       />
     </SuppliersHubShell>
   );

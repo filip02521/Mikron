@@ -78,6 +78,31 @@ export function prosbaLineStockIconClass(tone: ProsbaLineStockTone): string {
   return TONE_ICON[tone];
 }
 
+/**
+ * Towar w parze (opakowanie zbiorcze ↔ pojedyncze sztuki): stan liczy obie wersje. Handlowiec ma wiedzieć,
+ * co wliczyliśmy — bez słów „para”, „cover”, „demontaż”.
+ */
+export function prosbaPairStockShort(role: "pack" | "piece" | null | undefined): string {
+  if (role === "piece") return "razem z opakowaniami zbiorczymi";
+  if (role === "pack") return "razem z pojedynczymi sztukami";
+  return "razem z drugą wersją towaru";
+}
+
+export function prosbaPairStockNote(role: "pack" | "piece" | null | undefined, unitsPerPack: number | null | undefined): string {
+  const n = unitsPerPack != null && unitsPerPack > 1 ? Math.trunc(unitsPerPack) : null;
+  if (role === "piece") {
+    return n
+      ? `Liczymy też opakowania zbiorcze (1 op. = ${n} szt.) - magazyn je rozpakuje.`
+      : "Liczymy też opakowania zbiorcze - magazyn je rozpakuje.";
+  }
+  if (role === "pack") {
+    return n
+      ? `Liczymy też pojedyncze sztuki: ${n} szt. zastępuje 1 op.`
+      : "Liczymy też pojedyncze sztuki tego towaru.";
+  }
+  return n ? `Liczymy razem sztuki i opakowania zbiorcze (1 op. = ${n} szt.).` : "Liczymy razem sztuki i opakowania zbiorcze.";
+}
+
 function formatAvailable(available: number): string {
   return `${available} szt.`;
 }
@@ -102,12 +127,10 @@ export function buildProsbaLineStockStatusView(
     return {
       assessment,
       tone: "amber",
-      shortLabel: line.pairStockCover
-        ? `Cover pary ${availLabel}${reserveShort}`
-        : `Na stanie ${availLabel}${reserveShort}`,
-      title: line.pairStockCover ? "Wystarczy (para)" : "Wystarczy z półki",
+      shortLabel: `Na stanie ${availLabel}${reserveShort}`,
+      title: "Wystarczy z półki",
       detail: line.pairStockCover
-        ? "Cover pary: sztuki i paczki po demontażu"
+        ? prosbaPairStockNote(line.pairRole, line.pairUnitsPerPack)
         : `${availLabel}${reserveShort}`,
     };
   }

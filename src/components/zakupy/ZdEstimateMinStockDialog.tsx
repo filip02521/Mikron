@@ -10,10 +10,21 @@ import { ModalShell } from "@/components/ui/ModalShell";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
-import { zdLineAvailablePieces } from "@/lib/orders/zd-estimate-sort";
 import { panelTypography } from "@/lib/ui/ontime-theme";
 
 const MIN_STOCK_MAX = 1_000_000;
+
+/** Do ZD dla danego minimum — liczone w Kreatorze tak samo jak tabela. */
+export type ZdMinStockPreviewOrder = (
+  line: ManualZdEstimateLine,
+  minStockSzt: number
+) => {
+  zdUnits: number;
+  label: string;
+  openZdPieces: number;
+  /** Dostępne w sztukach z tej samej linii co Do ZD (sztuka pary → cała para). */
+  availablePieces: number;
+};
 
 function assertMinStockSzt(raw: string):
   | { ok: true; value: number }
@@ -63,6 +74,7 @@ function Stat({
 
 function MinStockDialogForm({
   line,
+  previewOrder,
   existingMinSzt,
   pending,
   onCancel,
@@ -70,6 +82,7 @@ function MinStockDialogForm({
   onClear,
 }: {
   line: ManualZdEstimateLine;
+  previewOrder: ZdMinStockPreviewOrder;
   existingMinSzt: number;
   pending: boolean;
   onCancel: () => void;
@@ -94,13 +107,13 @@ function MinStockDialogForm({
     ? line.celZapasuTracked
     : line.celZapasu;
   const celZMin = Math.max(celBazowy, draftMin);
-  const doZdBezMin = line.doZamowieniaReczne;
-  // Para: wszystko w sztukach (paczki × przelicznik), pokrycie z otwartymi ZD obu stron.
+  // Jak tabela: jednostki dokumentu ZD (opakowania, prośby, ulgi rezerwacji).
+  const teraz = previewOrder(line, existingMinSzt);
+  const zMin = previewOrder(line, draftMin);
   const pair = line.pair?.role === "pack" && !line.pair.partnerMissing ? line.pair : null;
-  const dostepneSzt = zdLineAvailablePieces(line);
-  const otwarteZdSzt = pair ? Math.max(0, pair.coverSzt - dostepneSzt) : line.otwarteZd;
-  const doZdZMin = Math.max(0, Math.ceil(celZMin - dostepneSzt - otwarteZdSzt));
-  const roznica = doZdZMin - doZdBezMin;
+  const dostepneSzt = teraz.availablePieces;
+  const otwarteZdSzt = teraz.openZdPieces;
+  const roznica = zMin.zdUnits - teraz.zdUnits;
   const minAktywny = draftMin > celBazowy;
 
   const handleSave = () => {
@@ -280,18 +293,18 @@ function MinStockDialogForm({
               />
               <Stat
                 label="Do ZD teraz"
-                value={String(doZdBezMin)}
+                value={teraz.label}
               />
               <Stat
                 label="Do ZD z min."
-                value={String(doZdZMin)}
+                value={zMin.label}
                 tone={minAktywny ? "emerald" : "default"}
               />
             </div>
             {minAktywny ? (
               <p className="mt-2 text-[11px] leading-snug text-indigo-700/80">
                 {roznica > 0
-                  ? `Minimum podbija cel o ${Math.round(celZMin - celBazowy)} szt - zamówienie rośnie o ${roznica} szt.`
+                  ? `Minimum podbija cel o ${Math.round(celZMin - celBazowy)} szt - zamówienie: ${teraz.label} → ${zMin.label}.`
                   : `Minimum podbija cel, ale stan/ZD już pokrywają zapotrzebowanie.`}
               </p>
             ) : (
@@ -335,6 +348,7 @@ function MinStockDialogForm({
 export function ZdEstimateMinStockDialog({
   open,
   line,
+  previewOrder,
   existingMinSzt,
   pending,
   onCancel,
@@ -343,6 +357,7 @@ export function ZdEstimateMinStockDialog({
 }: {
   open: boolean;
   line: ManualZdEstimateLine | null;
+  previewOrder: ZdMinStockPreviewOrder;
   existingMinSzt: number;
   pending: boolean;
   onCancel: () => void;
@@ -354,6 +369,7 @@ export function ZdEstimateMinStockDialog({
     <MinStockDialogForm
       key={`${line.tw_Id}-${existingMinSzt}`}
       line={line}
+      previewOrder={previewOrder}
       existingMinSzt={existingMinSzt}
       pending={pending}
       onCancel={onCancel}

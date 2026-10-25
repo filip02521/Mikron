@@ -5,7 +5,7 @@ import {
   IconCircleCheck,
   IconInfoCircle,
 } from "@/components/icons/StrokeIcons";
-import { Spinner } from "@/components/ui/Spinner";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 export type ZkProsbaModalCalloutTone =
   | "info"
@@ -63,13 +63,7 @@ export function ZkProsbaModalCallout({
       ? null
       : icon === "spinner"
         ? (
-            <Spinner
-              size="sm"
-              className={cn(
-                "mt-0.5 shrink-0",
-                tone === "sky" && "border-sky-200 border-t-sky-600"
-              )}
-            />
+            <BrandLoader size="sm" tile={false} className="mt-px" />
           )
         : icon !== "auto"
           ? icon

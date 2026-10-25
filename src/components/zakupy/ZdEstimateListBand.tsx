@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/OverflowMenu";
 import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
 import {
+  IconCheck,
   IconChevronDown,
   IconSearch,
   IconSettings,
@@ -67,14 +68,14 @@ function ColumnToggleRow({
       >
         <span
           className={cn(
-            "inline-flex size-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold leading-none",
+            "inline-flex size-4 shrink-0 items-center justify-center rounded border text-[10px] font-semibold leading-none",
             visible
               ? "border-indigo-400 bg-indigo-50 text-indigo-800"
               : "border-slate-200 bg-white text-transparent"
           )}
           aria-hidden
         >
-          ✓
+          <IconCheck size={10} strokeWidth={3} />
         </span>
         <span className="min-w-0 flex-1 truncate">
           {ZD_ESTIMATE_UI.listColumnLabels[columnKey]}
@@ -434,7 +435,7 @@ export function ZdEstimateListBand({
               disabled={disabled}
             >
               {sortKeyIsConfidence
-                ? `✓ ${ZD_ESTIMATE_UI.listSortByConfidence}`
+                ? <><IconCheck size={14} className="mr-1.5 inline-block align-[-2px]" aria-hidden />{ZD_ESTIMATE_UI.listSortByConfidence}</>
                 : ZD_ESTIMATE_UI.listSortByConfidence}
             </OverflowMenuItem>
             <OverflowMenuItem
@@ -442,7 +443,7 @@ export function ZdEstimateListBand({
               disabled={disabled}
             >
               {sortKeyIsMinStock
-                ? `✓ ${ZD_ESTIMATE_UI.listSortByMinStock}`
+                ? <><IconCheck size={14} className="mr-1.5 inline-block align-[-2px]" aria-hidden />{ZD_ESTIMATE_UI.listSortByMinStock}</>
                 : ZD_ESTIMATE_UI.listSortByMinStock}
             </OverflowMenuItem>
             {canSelectVisible ? (

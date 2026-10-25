@@ -16,7 +16,9 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { HelpBlock } from "@/components/ui/HelpBlock";
 import { HelpPopover } from "@/components/ui/HelpPopover";
-import { PanelSummaryMetric } from "@/components/ui/PanelSummaryMetric";
+import { AdminMetrics } from "@/components/admin/AdminMetrics";
+import { Alert } from "@/components/ui/Alert";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { formatWarsawDateTime } from "@/lib/time/warsaw";
@@ -129,71 +131,67 @@ export function CatalogZdSyncStatusPanel({
         }
       />
 
-      <div className="space-y-4 px-3 pb-4 sm:px-4 lg:px-5">
-        <div className="grid gap-3 sm:grid-cols-3">
-          <PanelSummaryMetric
-            label="Postęp"
-            value={summary.progressPercent != null ? `${summary.progressPercent}%` : "-"}
-            hint={phaseLabel}
-            tone={
-              summary.progressPercent === 100
-                ? "success"
-                : isRunning
+      <div className="space-y-4 px-3 py-4 sm:px-4 lg:px-5">
+        <AdminMetrics
+          items={[
+            {
+              label: "Postęp",
+              value: summary.progressPercent != null ? `${summary.progressPercent}%` : "-",
+              hint: phaseLabel,
+              tone:
+                summary.progressPercent === 100
+                  ? "success"
+                  : isRunning
+                    ? "warning"
+                    : metricTone(summary.statusTone),
+            },
+            {
+              label: "Ostatnia aktualizacja",
+              value: lastCronAt ? formatWarsawDateTime(lastCronAt) : "-",
+              hint:
+                catalogSync?.lastCron?.ok === false && !catalogSync.lastCron.detail?.timedOut
+                  ? "Ostatni cron z błędem"
+                  : "Stan w bazie lub ostatni cron",
+              tone:
+                catalogSync?.lastCron?.ok === false && !catalogSync.lastCron.detail?.timedOut
                   ? "warning"
-                  : metricTone(summary.statusTone)
-            }
-          />
-          <PanelSummaryMetric
-            label="Ostatnia aktualizacja"
-            value={lastCronAt ? formatWarsawDateTime(lastCronAt).slice(0, 16) : "-"}
-            hint={
-              catalogSync?.lastCron?.ok === false && !catalogSync.lastCron.detail?.timedOut
-                ? "Ostatni cron z błędem"
-                : "Stan w bazie lub ostatni cron"
-            }
-            tone={
-              catalogSync?.lastCron?.ok === false && !catalogSync.lastCron.detail?.timedOut
-                ? "warning"
-                : "default"
-            }
-          />
-          <PanelSummaryMetric
-            label="Kontynuacja"
-            value={summary.needsContinue ? "Wymagana" : "Nie"}
-            hint={
-              summary.needsContinue
+                  : "default",
+            },
+            {
+              label: "Kontynuacja",
+              value: summary.needsContinue ? "Wymagana" : "Nie",
+              hint: summary.needsContinue
                 ? isRunning
                   ? "Cron w toku - kolejny slot lub przycisk poniżej"
                   : "Uruchom kontynuację lub poczekaj na kolejny slot nocny"
-                : "Przebieg domknięty lub bezczynny"
-            }
-            tone={summary.needsContinue ? "warning" : state?.status === "done" ? "success" : "default"}
-          />
-        </div>
+                : "Przebieg domknięty lub bezczynny",
+              tone: summary.needsContinue ? "warning" : state?.status === "done" ? "success" : "default",
+            },
+          ]}
+        />
 
-        <div
-          className={cn(
-            "rounded-md border px-3 py-2.5",
+        <Alert
+          tone={
             summary.statusTone === "success"
-              ? "border-emerald-200/80 bg-emerald-50/40"
+              ? "success"
               : summary.statusTone === "error"
-                ? "border-red-200/80 bg-red-50/40"
+                ? "error"
                 : summary.statusTone === "warning"
-                  ? "border-amber-200/80 bg-amber-50/40"
-                  : "border-slate-200/90 bg-slate-50/50"
-          )}
+                  ? "warning"
+                  : "info"
+          }
+          title={summary.headline}
         >
-          <p className="text-sm font-medium text-slate-900">{summary.headline}</p>
-          <ul className={cn(panelTypography.caption, "mt-2 space-y-0.5 text-slate-700")}>
+          <ul className="space-y-0.5 text-xs">
             {summary.detailLines.map((line) => (
               <li key={line}>{line}</li>
             ))}
           </ul>
-        </div>
+        </Alert>
 
         {summary.progressPercent != null ? (
           <div>
-            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
+            <div className="flex items-center justify-between text-[0.6875rem] font-semibold text-slate-500">
               <span>Postęp szacunkowy</span>
               <span className="tabular-nums text-slate-800">{summary.progressPercent}%</span>
             </div>
@@ -211,10 +209,11 @@ export function CatalogZdSyncStatusPanel({
         ) : null}
 
         {isRunning ? (
-          <p className={cn(panelTypography.chrome, "font-medium text-amber-900")}>
+          <div role="status" className={cn(panelTypography.chrome, "flex items-center gap-2")}>
+            <BrandLoader size="sm" tile={false} />
             Synchronizacja w toku - odśwież status za chwilę lub poczekaj na koniec przebiegu
             crona.
-          </p>
+          </div>
         ) : null}
 
         <div className="flex flex-wrap gap-2">

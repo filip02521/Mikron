@@ -49,6 +49,12 @@ export interface Supplier {
   min_order_value?: number | null;
   /** Symbol waluty dla min_order_value (np. PLN, EUR, USD). NULL gdy brak minimum. */
   min_order_currency?: string | null;
+  /** Próg darmowej dostawy (zł netto). NULL = brak progu (mig. 194). */
+  free_shipping_threshold?: number | null;
+  /** Kraj z kartoteki Subiekta (`adr_IdPanstwo`, 1 = Polska); NULL = jeszcze nieodczytany. */
+  subiekt_country_id?: number | null;
+  subiekt_country_name?: string | null;
+  subiekt_country_synced_at?: string | null;
 }
 
 export interface SupplierSchedule {

@@ -59,7 +59,6 @@ import { formatZkWatchNotePreview } from "@/lib/sales/zk-watch-row-display";
 import { ZkCaseNoteProsbaChip } from "./ZkCaseNoteProsbaChip";
 import { ZkWatchAttentionBadge } from "./ZkWatchAttentionBadge";
 import { ZkWatchFollowUpButton } from "./ZkWatchFollowUpButton";
-import { ZkWatchRowAccentRail, ZkWatchRowAttentionRail } from "./ZkWatchRowAttentionRail";
 import { ZkWatchOverflowMenu } from "./ZkWatchOverflowMenu";
 import { ZkWatchProsbaActions } from "./ZkWatchProsbaActions";
 import { buildZkWatchLineViews } from "@/lib/sales/zk-watch-lines";
@@ -598,8 +597,6 @@ export function ZkWatchCard({
       {autoProsbaPending ? (
         <ActionLoadingOverlay message="Tworzę prośbę…" variant="section" />
       ) : null}
-      {rowChrome.railKind ? <ZkWatchRowAttentionRail kind={rowChrome.railKind} /> : null}
-      {rowChrome.accentKind ? <ZkWatchRowAccentRail kind={rowChrome.accentKind} /> : null}
       <div className="min-w-0 flex-1">
       <div
         className={cn(

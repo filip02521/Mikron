@@ -97,7 +97,6 @@ import {
   mojeShipmentLinesShellClass,
   mojeShipmentRowClass,
   type MojeShipmentRowVisualTone,
-  type MojeShipmentRowArchiveAccent,
 } from "@/lib/ui/moje-shipment-row-styles";
 import { mojeActionBarShellClass } from "@/lib/ui/surfaces";
 import {
@@ -939,18 +938,6 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     !showBulkPickup &&
     !(showSinglePickup && !bannerPickup);
 
-  const archiveAccent: MojeShipmentRowArchiveAccent = row.isArchive
-    ? row.kind === "informacja"
-      ? "informacja"
-      : row.statusTitle === "Anulowane" ||
-          row.statusTitle === "Częściowo wycofane" ||
-          row.statusTitle === "Rezygnacja - towar w drodze" ||
-          row.statusTitle === "Rezygnacja - towar na magazynie" ||
-          row.statusTitle === "Anulowano"
-        ? "cancelled"
-        : "completed"
-    : "default";
-
   return (
     <Root
       id={domId}
@@ -964,11 +951,9 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
           isDismiss,
           isUrgent,
           isStock,
-          isInformacja,
           visualTone: rowVisualTone,
           deliveryBorderAccent: deliveryRowVisual?.borderAccent,
           deliveryCollapsedBg: deliveryRowVisual?.collapsedBg,
-          archiveAccent,
         }),
         expanded && needsExpand && mojeShipmentExpandedRowShellClass,
         highlighted && "z-[2] ring-2 ring-inset ring-indigo-300/80"
@@ -1042,7 +1027,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                   showUnreadRequestNoteChrome ? (
                     <span
                       className={cn(
-                        "shrink-0 inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-medium leading-none ring-1 ring-inset",
+                        "shrink-0 inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[0.6875rem] font-medium leading-none ring-1 ring-inset",
                         showUnreadRequestNoteChrome
                           ? "bg-indigo-100 text-indigo-800 ring-indigo-300/80"
                           : "bg-indigo-50 text-indigo-700 ring-indigo-200/70"
@@ -1350,7 +1335,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
               ) : null}
             </div>
             {expandedOrderTypeLabel ? (
-              <p className="flex flex-wrap items-baseline gap-x-1.5 px-0.5 text-[11px] leading-snug text-slate-500">
+              <p className="flex flex-wrap items-baseline gap-x-1.5 px-0.5 text-[0.6875rem] leading-snug text-slate-500">
                 <span className="font-medium text-slate-500">Typ</span>
                 <span className="text-slate-600">{expandedOrderTypeLabel}</span>
               </p>

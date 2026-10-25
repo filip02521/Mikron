@@ -8,13 +8,13 @@ import {
   actionSetInformacjaStockAutoEnabled,
 } from "@/app/actions/admin";
 import { IconChevronDown } from "@/components/icons/StrokeIcons";
+import { AdminMetrics } from "@/components/admin/AdminMetrics";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { HelpBlock } from "@/components/ui/HelpBlock";
 import { HelpPopover } from "@/components/ui/HelpPopover";
 import { LinkChevron } from "@/components/ui/UiGlyphs";
-import { PanelSummaryMetric } from "@/components/ui/PanelSummaryMetric";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import type { CronJobMonitorRow, CronMonitorTone } from "@/lib/services/cron-monitor";
@@ -44,7 +44,7 @@ function toneBadgeVariant(tone: CronMonitorTone): "success" | "warning" | "dange
 
 function CronJobDetail({ job }: { job: CronJobMonitorRow }) {
   return (
-    <div className="space-y-3 border-t border-slate-100 bg-slate-50/40 px-3 py-3 sm:px-4">
+    <div className="space-y-3 border-t border-slate-100 bg-slate-50 px-3 py-3 sm:px-4 lg:px-5">
       <p className={cn(panelTypography.caption, "text-slate-600")}>{job.description}</p>
       <dl className="grid gap-2 text-xs sm:grid-cols-2">
         <div>
@@ -56,13 +56,13 @@ function CronJobDetail({ job }: { job: CronJobMonitorRow }) {
           <dd className="text-slate-900">{job.schedule}</dd>
         </div>
       </dl>
-      <ul className="space-y-0.5 text-[11px] leading-relaxed text-slate-700">
+      <ul className="space-y-0.5 text-[0.6875rem] leading-relaxed text-slate-700">
         {job.summaryLines.map((line) => (
           <li key={line}>{line}</li>
         ))}
       </ul>
       {job.error ? (
-        <p className="text-[11px] font-medium text-red-700">{job.error}</p>
+        <p className="text-[0.6875rem] font-medium text-red-700">{job.error}</p>
       ) : null}
       {job.id === "catalog_zd_sync" ? (
         <Link
@@ -90,35 +90,41 @@ function CronJobRow({
     <>
       <tr
         className={cn(
-          "cursor-pointer transition hover:bg-indigo-50/30",
-          expanded && "bg-indigo-50/20"
+          "cursor-pointer transition-colors hover:bg-slate-50",
+          expanded && "bg-indigo-50 hover:bg-indigo-50"
         )}
         onClick={onToggle}
       >
-        <td className="px-2 py-2.5 sm:px-3">
-          <div className="flex items-start gap-2">
+        <td className="py-2.5 pl-3 pr-2 sm:pl-4 lg:pl-5">
+          <button
+            type="button"
+            aria-expanded={expanded}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggle();
+            }}
+            className="flex w-full items-start gap-2 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+          >
             <IconChevronDown
               size={14}
               open={expanded}
               className="mt-0.5 shrink-0 text-slate-400"
             />
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-900">{job.label}</p>
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-slate-900">{job.label}</span>
               {!job.scheduled ? (
-                <p className="text-[11px] text-slate-500">Tylko ręcznie</p>
+                <span className="block text-[0.6875rem] text-slate-500">Tylko ręcznie</span>
               ) : null}
-            </div>
-          </div>
+            </span>
+          </button>
         </td>
         <td className="px-2 py-2.5 sm:px-3">
-          <Badge variant={toneBadgeVariant(job.tone)} className="text-[10px]">
-            {job.statusLabel}
-          </Badge>
+          <Badge variant={toneBadgeVariant(job.tone)}>{job.statusLabel}</Badge>
         </td>
-        <td className="hidden px-2 py-2.5 text-xs text-slate-700 md:table-cell sm:px-3">
+        <td className="hidden px-2 py-2.5 text-xs text-slate-600 md:table-cell sm:px-3">
           {job.schedule}
         </td>
-        <td className="px-2 py-2.5 text-xs tabular-nums text-slate-800 sm:px-3">
+        <td className="py-2.5 pl-2 pr-3 text-xs tabular-nums text-slate-700 sm:pr-4 lg:pr-5">
           {job.lastAtFormatted}
         </td>
       </tr>
@@ -228,34 +234,35 @@ export function AdminCronStatusPanel({
         }
       />
 
-      <div className="space-y-4 px-3 pb-4 sm:px-4 lg:px-5">
-        <div className="grid gap-3 sm:grid-cols-3">
-          <PanelSummaryMetric
-            label="Zadania OK"
-            value={`${okCount}/${scheduledCount}`}
-            hint="Zaplanowane z ostatnim przebiegiem w normie"
-            tone={okCount === scheduledCount ? "success" : snapshot.issueCount ? "warning" : "default"}
-          />
-          <PanelSummaryMetric
-            label="Do sprawdzenia"
-            value={snapshot.issueCount}
-            hint="Ostrzeżenia i błędy wymagające reakcji"
-            tone={
-              snapshot.issueCount === 0
-                ? "success"
-                : snapshot.issueCount > 2
-                  ? "danger"
-                  : "warning"
-            }
-          />
-          <PanelSummaryMetric
-            label="Podgląd"
-            value={formatWarsawDateTime(snapshot.generatedAt).slice(0, 16)}
-            hint="Czas ostatniego odczytu z bazy"
-          />
-        </div>
+      <div className="space-y-4 px-3 py-4 sm:px-4 lg:px-5">
+        <AdminMetrics
+          items={[
+            {
+              label: "Zadania OK",
+              value: `${okCount}/${scheduledCount}`,
+              hint: "Zaplanowane z ostatnim przebiegiem w normie",
+              tone: okCount === scheduledCount ? "success" : snapshot.issueCount ? "warning" : "default",
+            },
+            {
+              label: "Do sprawdzenia",
+              value: snapshot.issueCount,
+              hint: "Ostrzeżenia i błędy wymagające reakcji",
+              tone:
+                snapshot.issueCount === 0
+                  ? "success"
+                  : snapshot.issueCount > 2
+                    ? "danger"
+                    : "warning",
+            },
+            {
+              label: "Podgląd",
+              value: formatWarsawDateTime(snapshot.generatedAt),
+              hint: "Czas ostatniego odczytu z bazy",
+            },
+          ]}
+        />
 
-        <div className="rounded-md border border-slate-200/90 bg-slate-50/70 px-3.5 py-3">
+        <div className="rounded-lg bg-slate-50 px-3.5 py-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2">
@@ -275,10 +282,7 @@ export function AdminCronStatusPanel({
             </div>
             <label
               className={cn(
-                "flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition",
-                informacjaStockAutoEnabled
-                  ? "border-indigo-200/80 bg-indigo-50/40"
-                  : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40",
+                "flex min-h-11 shrink-0 cursor-pointer items-center gap-3",
                 togglePending && "opacity-70"
               )}
             >
@@ -312,11 +316,12 @@ export function AdminCronStatusPanel({
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Filtr zadań">
           {JOB_FILTERS.map((item) => (
             <button
               key={item.id}
               type="button"
+              aria-pressed={filter === item.id}
               onClick={() => setFilter(item.id)}
               className={cn(
                 panelChoiceChipClass,
@@ -328,14 +333,16 @@ export function AdminCronStatusPanel({
           ))}
         </div>
 
-        <div className="overflow-hidden rounded-md border border-slate-200/90">
+      </div>
+
+      <div className="overflow-x-auto border-y border-slate-200">
           <table className="w-full min-w-[32rem] border-collapse text-left">
             <thead>
-              <tr className="border-b border-slate-200/90 bg-slate-50/80 text-[11px] font-semibold text-slate-500">
-                <th className="px-2 py-2 sm:px-3">Zadanie</th>
-                <th className="px-2 py-2 sm:px-3">Status</th>
-                <th className="hidden px-2 py-2 md:table-cell sm:px-3">Harmonogram</th>
-                <th className="px-2 py-2 sm:px-3">Ostatnio</th>
+              <tr className="border-b border-slate-200 bg-slate-50 text-[0.8125rem] font-medium text-slate-500">
+                <th className="py-2 pl-3 pr-2 font-medium sm:pl-4 lg:pl-5">Zadanie</th>
+                <th className="px-2 py-2 font-medium sm:px-3">Status</th>
+                <th className="hidden px-2 py-2 font-medium md:table-cell sm:px-3">Harmonogram</th>
+                <th className="py-2 pl-2 pr-3 font-medium sm:pr-4 lg:pr-5">Ostatnio</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
@@ -362,8 +369,9 @@ export function AdminCronStatusPanel({
               )}
             </tbody>
           </table>
-        </div>
+      </div>
 
+      <div className="px-3 py-3 sm:px-4 lg:px-5">
         <p className={cn(panelTypography.caption, "text-slate-500")}>
           Nocna synchronizacja katalogu ZD - pełny postęp i kontynuacja na stronie{" "}
           <Link href="/admin/produkty" className={panelTextLinkClass}>

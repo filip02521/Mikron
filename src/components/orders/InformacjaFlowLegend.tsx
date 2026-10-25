@@ -22,7 +22,7 @@ export function InformacjaViaPanelProcurementCallout({ className }: { className?
       )}
     >
       <div className="flex flex-wrap items-start gap-2">
-        <Badge variant="default" className="shrink-0 text-[10px]">
+        <Badge variant="default" className="shrink-0 text-[0.625rem]">
           {INFORMACJA_VIA_PANEL_BADGE}
         </Badge>
         <p className="min-w-0 flex-1 text-xs leading-relaxed text-indigo-950">
@@ -66,10 +66,10 @@ export function InformacjaFlowLegend({
 
   return (
     <div className={cn("space-y-2", className)}>
-      <p className="text-[11px] leading-relaxed text-slate-600">
+      <p className="text-[0.6875rem] leading-relaxed text-slate-600">
         {INFORMACJA_FLOW_LEGEND_PANEL}
       </p>
-      <div className="grid gap-2 text-[11px] leading-relaxed text-slate-700 sm:grid-cols-2">
+      <div className="grid gap-2 text-[0.6875rem] leading-relaxed text-slate-700 sm:grid-cols-2">
         {INFORMACJA_FLOW_UI.map((flow) => (
           <FlowCard key={flow.path} flow={flow} />
         ))}
@@ -104,7 +104,7 @@ export function InformacjaFlowLegendDetailed({ className }: { className?: string
   return (
     <div className={cn("space-y-2", className)}>
       <InformacjaFlowLegend variant="full" />
-      <div className="rounded-md border border-indigo-200 bg-indigo-50/90 px-2.5 py-2 text-[11px] leading-relaxed text-slate-700">
+      <div className="rounded-md border border-indigo-200 bg-indigo-50/90 px-2.5 py-2 text-[0.6875rem] leading-relaxed text-slate-700">
         <p className="font-medium text-slate-900">{INFORMACJA_VIA_PANEL_UI.label}</p>
         <p className="mt-0.5 text-slate-600">{INFORMACJA_VIA_PANEL_UI.short}</p>
         <ol className="mt-1.5 list-decimal space-y-0.5 pl-4 text-slate-600">
@@ -113,7 +113,7 @@ export function InformacjaFlowLegendDetailed({ className }: { className?: string
           ))}
         </ol>
       </div>
-      <p className="text-[11px] text-slate-500">
+      <p className="text-[0.6875rem] text-slate-500">
         {INFORMACJA_FLOW_DIRECT.label} - domyślna ścieżka w formularzu handlowca (stan magazynowy, bez zapytania u dostawcy).
       </p>
     </div>

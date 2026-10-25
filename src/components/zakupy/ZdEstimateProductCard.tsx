@@ -2,6 +2,15 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { actionFetchZdEstimateProductHistory } from "@/app/actions/zd-estimate";
+import { ZdProductNote } from "@/components/zakupy/ZdProductNote";
+import {
+  detectOnRequestPattern,
+  isOnRequestDeliveryArrived,
+  onRequestCustomerKey,
+  onRequestDeliveryDate,
+  onRequestPatternSummary,
+} from "@/lib/orders/zd-on-request-detect";
+import { warsawDateKeyDaysAgo } from "@/lib/time/warsaw";
 import { IconChevronLeft, IconChevronRight, IconX } from "@/components/icons/StrokeIcons";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -33,7 +42,7 @@ const FOCUSABLE =
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Sprzedaż (Subiekt) i nasze zakupy towaru — dociągane przy otwarciu karty i przy ←/→. */
-function useProductHistory(
+export function useProductHistory(
   twId: number,
   pair: { twinTwId: number; unitsPerPack: number } | null
 ): ZdProductHistoryState & { nowMs?: number } {
@@ -142,6 +151,23 @@ export function ZdEstimateProductCard({
       ? { label: packLabel, piecesPerUnit: qty.unitsPerPackage }
       : { label: "szt", piecesPerUnit: null };
   };
+  // Wygląda na „na prośbę”: po fakturze jeden klient bierze całą dostawę — z danych, które karta już ma.
+  const onRequestPattern =
+    history.status === "ok" && history.purchases.ok && history.sales.ok && history.purchases.rows.length > 0
+      ? detectOnRequestPattern(
+          history.purchases.rows.filter(isOnRequestDeliveryArrived).map((r) => ({
+            date: onRequestDeliveryDate({ fzDate: r.fzDate, zdDate: r.date }) ?? "",
+            pieces: r.qty * (purchaseUnit(r).piecesPerUnit ?? 1),
+          })),
+          history.sales.rows.map((s, i) => ({
+            date: s.date,
+            khKey: onRequestCustomerKey(s, s.dokNr || i),
+            khName: s.khName || s.khSymbol || null,
+            pieces: s.pieces,
+          })),
+          warsawDateKeyDaysAgo(0)
+        )
+      : null;
   const orderMarks: ZdSalesChartOrderMark[] =
     history.status === "ok" && history.purchases.ok && history.nowMs != null
       ? history.purchases.rows
@@ -226,7 +252,9 @@ export function ZdEstimateProductCard({
   const decision = status.excluded
     ? "Wykluczony z ZD"
     : shownUnits <= 0
-      ? "Nic do zamówienia"
+      ? (qty.prosbaFromSupplyPieces ?? 0) > 0
+        ? "Nic do zamówienia — prośbę wydaj z magazynu"
+        : "Nic do zamówienia"
       : shownUnits !== qty.zdUnits
         ? `Na ZD: ${formatQty(shownUnits)} ${qty.hasPackaging && isPackagingPackagesMode(qty.documentUnitMode) ? `× ${label}` : "szt"} (wpisane ręcznie)`
         : (preview?.orderLine ?? `Na ZD: ${formatQty(shownUnits)} szt`);
@@ -255,7 +283,7 @@ export function ZdEstimateProductCard({
         ref={(el) => {
           panelRef.current = el;
         }}
-        className="panel-slide-enter fixed inset-y-0 right-0 z-[49] flex w-full max-w-xl flex-col border-l border-slate-200/80 bg-white shadow-2xl"
+        className="panel-slide-enter fixed inset-y-0 right-0 z-[49] flex w-full max-w-xl flex-col border-l border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -333,11 +361,43 @@ export function ZdEstimateProductCard({
             ) : null}
           </section>
 
+          {onRequestPattern?.likely && !status.onRequest && !status.excluded ? (
+            <section className="rounded-md border border-slate-200 bg-white px-3.5 py-3" aria-label="Podpowiedź: towar na prośbę">
+              <p className="text-sm font-medium text-slate-900">Wygląda na towar na prośbę</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{onRequestPatternSummary(onRequestPattern)}</p>
+              {actions.onMarkOnRequest ? (
+                <Button type="button" size="sm" variant="outline" className="mt-2 max-sm:min-h-10" disabled={!canMutate} onClick={actions.onMarkOnRequest}>
+                  Oznacz „tylko na prośbę”
+                </Button>
+              ) : null}
+            </section>
+          ) : onRequestPattern?.stockLike && !onRequestPattern.likely && status.onRequest ? (
+            <section className="rounded-md border border-slate-200 bg-white px-3.5 py-3" aria-label="Podpowiedź: sprzedaje się jak magazynowy">
+              <p className="text-sm font-medium text-slate-900">Oznaczony „na prośbę”, a sprzedaje się jak magazynowy</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                Kupuje go {onRequestPattern.customers} klientów w roku, dostaw nie bierze w całości jeden klient.
+              </p>
+              {actions.onClearOnRequest ? (
+                <Button type="button" size="sm" variant="ghost" className="mt-2 max-sm:min-h-10" disabled={!canMutate} onClick={actions.onClearOnRequest}>
+                  Zdejmij „na prośbę”
+                </Button>
+              ) : null}
+            </section>
+          ) : null}
+
+          <ZdProductNote
+            twId={line.tw_Id}
+            symbol={line.tw_Symbol ?? null}
+            name={line.tw_Nazwa ?? null}
+            canEdit={canMutate}
+            titleId={titleId}
+          />
+
           <ZdProductPurchasesSection state={history} titleId={titleId} unitFor={purchaseUnit} />
 
           {line.salesProfile && line.salesProfile.windows.length > 0 ? (
             <section aria-labelledby={`${titleId}-sales`}>
-              <h3 id={`${titleId}-sales`} className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <h3 id={`${titleId}-sales`} className="text-xs font-semibold text-slate-600">
                 Sprzedaż i nasze ZD
               </h3>
               <div className="mt-1.5 text-xs leading-relaxed text-slate-800">
@@ -350,7 +410,7 @@ export function ZdEstimateProductCard({
 
           {pairStockRows.length > 0 ? (
             <section aria-labelledby={`${titleId}-stock`}>
-              <h3 id={`${titleId}-stock`} className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+              <h3 id={`${titleId}-stock`} className="text-xs font-semibold text-slate-600">
                 Stan pary
               </h3>
               <dl className="mt-1.5 grid grid-cols-3 gap-px overflow-hidden rounded-md border border-slate-200 bg-slate-200 text-sm">
@@ -365,7 +425,7 @@ export function ZdEstimateProductCard({
           ) : null}
 
           <section aria-labelledby={`${titleId}-why`}>
-            <h3 id={`${titleId}-why`} className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+            <h3 id={`${titleId}-why`} className="text-xs font-semibold text-slate-600">
               Dlaczego tyle
             </h3>
             <ol className="mt-1.5 divide-y divide-slate-100 rounded-md border border-slate-200">

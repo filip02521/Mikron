@@ -72,3 +72,55 @@ describe("explainZdOrderQty — strategia testowa", () => {
     expect(s[0]!.label).toContain("6 → 12 szt / 30 d");
   });
 });
+
+describe("explainZdOrderQty - korekty sprzedaży widoczne w krokach", () => {
+  it("sprzedaż pod prośby odjęta i dni braku pokazane jako kroki", () => {
+    const qty = computeZdPackOrderQty(20, 1, "op.");
+    const s = explainZdOrderQty({
+      line: line({
+        celZapasu: 20,
+        celZapasuTracked: 20,
+        dostepne: 0,
+        salesProfile: { applied: true, prosbaPieces: 12 } as ManualZdEstimateLine["salesProfile"],
+        stockoutAdjust: { windowDays: 22, recordedDays: 22, outDays: 6, factor: 1.38 },
+      }),
+      qty,
+      openZdPieces: 0,
+      extraPieces: 0,
+      extraOnly: false,
+      extrasPolicy: "sum",
+    });
+    expect(byKey(s)).toMatchObject({ prosba_sales: 12, stockout: 1.38, cel: 20, short: 20 });
+  });
+});
+
+describe("explainZdOrderQty — prośby z wolnego towaru", () => {
+  it("nadwyżka ponad cel: krok „wydaj z magazynu”, bez korekty Kreatora", () => {
+    // cel 10, dostępne 13 → brak 0; prośba 5, 3 z nadwyżki → 2 szt
+    const qty = { ...computeZdPackOrderQty(2, 1, "op."), prosbaFromSupplyPieces: 3 };
+    const s = explainZdOrderQty({
+      line: line({ celZapasu: 10, celZapasuTracked: 10, dostepne: 13 }),
+      qty,
+      openZdPieces: 0,
+      extraPieces: 5,
+      extraOnly: false,
+      extrasPolicy: "sum",
+    });
+    expect(byKey(s)).toMatchObject({ short: 0, extra: 5, prosba_supply: 3, need: 2 });
+    expect(s.find((x) => x.key === "prosba_supply")?.label).toContain("wydaj z magazynu");
+    expect(s.some((x) => x.key === "adjust")).toBe(false);
+  });
+
+  it("tylko na prośbę: krok wolnego towaru", () => {
+    const qty = { ...computeZdPackOrderQty(0, 1, "op."), prosbaFromSupplyPieces: 2 };
+    const s = explainZdOrderQty({
+      line: line({ dostepne: 10 }),
+      qty,
+      openZdPieces: 0,
+      extraPieces: 2,
+      extraOnly: true,
+      extrasPolicy: "sum",
+    });
+    expect(byKey(s)).toMatchObject({ extra: 2, prosba_supply: 2, need: 0 });
+  });
+});

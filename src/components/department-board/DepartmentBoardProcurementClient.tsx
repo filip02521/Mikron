@@ -7,9 +7,9 @@ import { changeWithEmoticons, convertEmoticons } from "@/lib/ui/emoticons";
 import { useRouter } from "next/navigation";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { NoticeToast } from "@/components/ui/NoticeToast";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { IconInbox } from "@/components/icons/StrokeIcons";
 import { NoteColorPicker } from "@/components/notatnik/NoteColorPicker";
 import { NotatnikPanel } from "@/components/notatnik/NotatnikPanel";
@@ -49,7 +49,6 @@ import type { DepartmentBoardData } from "@/lib/data/department-board-shared";
 import type { SalesNoteColor } from "@/types/database";
 import { cn } from "@/lib/cn";
 import {
-  brandIconTileClass,
   panelPageShellClass,
   panelTypography,
 } from "@/lib/ui/ontime-theme";
@@ -232,21 +231,14 @@ export function DepartmentBoardProcurementClient({
         </Alert>
       ) : null}
 
-      <Card padding={false} className="overflow-hidden">
-        <CardHeader
-          inset
-          density="compact"
+      {/* Nagłówek i zakładki na tle, treść w karcie (DESIGN.md → Anatomia ekranu). */}
+      <div>
+        <PageHeader
           title={DEPARTMENT_BOARD_PROCUREMENT_PAGE_TITLE}
           hint={pageDescription}
           hintAriaLabel="O tablicy"
-          action={<DepartmentBoardProcurementGuide />}
-          leading={
-            <SectionHeadingIcon tileClassName={brandIconTileClass}>
-              <IconInbox size={20} />
-            </SectionHeadingIcon>
-          }
+          actions={<DepartmentBoardProcurementGuide />}
         />
-
         <DepartmentBoardTabBar
           activeTab={activeTab}
           onTabChange={handleTabChange}
@@ -254,9 +246,12 @@ export function DepartmentBoardProcurementClient({
           totalQuestions={initial.questions.length}
           openQuestions={openQuestionsCount}
         />
+      </div>
+
+      <Card padding={false} className="overflow-hidden">
 
         {activeTab === "announcements" ? (
-          <div className="space-y-3 p-3 sm:p-4">
+          <div className="divide-y divide-slate-200/80">
             <NotatnikPanel
               domain="panel"
               title="Nowe ogłoszenie"
@@ -335,7 +330,6 @@ export function DepartmentBoardProcurementClient({
                 <NotatnikListFilterBar
                   embedded
                   bleed
-                  visibleLabel={DEPARTMENT_BOARD_ANNOUNCEMENTS_SEARCH.label}
                   value={announcementSearch}
                   onChange={setAnnouncementSearch}
                   matchCount={filteredAnnouncements.length}
@@ -359,7 +353,7 @@ export function DepartmentBoardProcurementClient({
                   onShowQuestions={() => handleTabChange("questions")}
                 />
               ) : (
-                <div className={cn(boardAnnouncementListClass, "-mx-3 -mb-3 sm:-mx-4 sm:-mb-4")}>
+                <div className={cn(boardAnnouncementListClass, "-mx-3 -mb-3 border-b-0 sm:-mx-4 sm:-mb-4")}>
                   {filteredAnnouncements.map((thread) => (
                     <AnnouncementCard
                       key={thread.id}
@@ -403,7 +397,7 @@ export function DepartmentBoardProcurementClient({
             ) : filteredQuestions.length === 0 ? (
               <DepartmentBoardQuestionsEmpty domain="panel" filter={activeQuestionFilter} />
             ) : (
-              <div className={cn(boardQuestionListClass, "-mx-1 sm:-mx-0")}>
+              <div className={cn(boardQuestionListClass, "-mx-3 -mb-3 border-b-0 sm:-mx-4 sm:-mb-4")}>
                 {filteredQuestions.map((question, index) => (
                   <QuestionThreadCard
                     key={question.id}

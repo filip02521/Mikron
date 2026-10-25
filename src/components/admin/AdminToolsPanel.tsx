@@ -62,8 +62,8 @@ export function AdminToolsPanel() {
           }
         />
 
-        <div className="grid gap-4 px-3 pb-4 sm:px-4 lg:grid-cols-2 lg:px-5">
-          <div className="space-y-3 rounded-md border border-slate-200/90 bg-slate-50/30 p-3 sm:p-4">
+        <div className="grid divide-y divide-slate-100 lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+          <div className="space-y-3 px-3 py-4 sm:px-4 lg:px-5">
             <div>
               <p className={panelTypography.sectionLabel}>Harmonogramy</p>
               <p className={cn(panelTypography.sectionDesc, "mt-1")}>
@@ -82,7 +82,7 @@ export function AdminToolsPanel() {
             </p>
           </div>
 
-          <div className="space-y-3 rounded-md border border-slate-200/90 bg-slate-50/30 p-3 sm:p-4">
+          <div className="space-y-3 px-3 py-4 sm:px-4 lg:px-5">
             <div>
               <p className={panelTypography.sectionLabel}>Realizacja i statystyki</p>
               <p className={cn(panelTypography.sectionDesc, "mt-1")}>

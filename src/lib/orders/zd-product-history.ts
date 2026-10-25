@@ -17,10 +17,18 @@ export type ZdProductSaleRow = {
 export type ZdProductPurchaseRow = {
   twId?: number;
   dokNr: string | null;
+  /** Data ZD (zamówienie) — rytm zakupów i kropki na wykresie sprzedaży. */
   date: string | null;
   /** Jednostki dokumentu ZD. */
   qty: number;
   priceNet: number | null;
+  /** Pierwsza faktura FZ do tego ZD: data wpisu (przyjęcie, bez niej wystawienie) i numer; null = bez FZ. */
+  fzDate?: string | null;
+  fzNr?: string | null;
+  /** Ile faktur do ZD (dostawy częściowe). */
+  fzCount?: number;
+  /** ZD zrealizowany bez powiązanej FZ (powiązanie przez dokument spoza kopii, np. PZ); null = nie wiadomo. */
+  zdDone?: boolean | null;
 };
 
 export type ZdProductCustomer = {

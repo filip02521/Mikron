@@ -63,8 +63,10 @@ describe("DepartmentBoardQuestionFilters", () => {
       />
     );
 
-    expect(screen.getByText("Status")).toBeTruthy();
-    expect(screen.getByText("Dla Ciebie")).toBeTruthy();
+    // Grupy nazywa aria-label, bez widocznych etykiet nad kontrolkami (DESIGN.md → Pasek filtrów).
+    expect(screen.getByRole("group", { name: "Status" })).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Dla Ciebie" })).toBeTruthy();
+    expect(screen.queryByText("Dla Ciebie")).toBeNull();
     expect(screen.getByRole("button", { name: /Nowe/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /^Moje/i })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Moje z nową odpowiedzią/i })).toBeNull();
@@ -87,6 +89,19 @@ describe("DepartmentBoardQuestionFilters", () => {
     expect(screen.getByText(/Widok: Twoje pytania z nową odpowiedzią/i)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Pokaż wszystkie/i }));
     expect(onChange).toHaveBeenCalledWith("all");
+  });
+
+  it("sales: bez widocznego chipa nie stawia pustej grupy Dla Ciebie", () => {
+    render(
+      <DepartmentBoardQuestionFilters
+        domain="sales"
+        value="all"
+        onChange={vi.fn()}
+        counts={{ ...baseCounts, mine: 0 }}
+        showMine
+      />
+    );
+    expect(screen.queryByRole("group", { name: "Dla Ciebie" })).toBeNull();
   });
 
   it("pokazuje liczniki na chipach statusu i Moje", () => {
@@ -119,7 +134,7 @@ describe("DepartmentBoardQuestionFilters", () => {
       />
     );
 
-    expect(screen.queryByText("Dla Ciebie")).toBeNull();
+    expect(screen.queryByRole("group", { name: "Dla Ciebie" })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Nowe$/i })).toBeNull();
     expect(screen.getByRole("button", { name: /Aktywne/i })).toBeTruthy();
   });

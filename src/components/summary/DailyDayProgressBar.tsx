@@ -147,7 +147,7 @@ export function DailyDayProgressBar({
         ) : null}
       </div>
 
-      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-500">
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[0.6875rem] text-slate-500">
         {urgent.hasWork ? (
           <span className="inline-flex items-center gap-1.5">
             <span className={legendDotUrgentClass} aria-hidden />

@@ -21,7 +21,7 @@ export function AuthBrandHeader({
           markClassName
         )}
       />
-      <p className="text-xs font-semibold text-sky-700/90">
+      <p className="text-xs font-semibold text-slate-500">
         {ONTIME_COMPANY}
       </p>
       <p

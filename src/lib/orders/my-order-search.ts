@@ -1,4 +1,5 @@
 import type { MyOrderLine, MyOrderRow } from "@/lib/orders/my-order-presenter";
+import { foldSearchText, searchWords } from "@/lib/search/keywords";
 import { myOrderFriendlyStatusLabel } from "@/lib/orders/my-order-friendly-status";
 import type { MojeClientLinkFilter } from "@/lib/orders/moje-client-link-filter";
 import {
@@ -9,29 +10,13 @@ import {
 export type { MojeClientLinkFilter };
 export { filterMyOrderRowsByClientLink, rowMatchesMojeClientLinkFilter };
 
-const POLISH_FOLD_MAP: Record<string, string> = {
-  ą: "a",
-  ć: "c",
-  ę: "e",
-  ł: "l",
-  ń: "n",
-  ó: "o",
-  ś: "s",
-  ź: "z",
-  ż: "z",
-};
-
-/** Porównywanie bez polskich znaków diakrytycznych. */
+/** Porównywanie bez polskich znaków diakrytycznych (wspólne: `@/lib/search/keywords`). */
 export function normalizeMyOrderSearchText(raw: string): string {
-  let s = raw.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  s = s.replace(/[ąćęłńóśźż]/g, (ch) => POLISH_FOLD_MAP[ch] ?? ch);
-  return s;
+  return foldSearchText(raw);
 }
 
 export function searchQueryTokens(query: string | null | undefined): string[] {
-  const normalized = normalizeMyOrderSearchText(query ?? "");
-  if (!normalized) return [];
-  return normalized.split(/\s+/).filter(Boolean);
+  return searchWords(query);
 }
 
 /** Tekst do przeszukania dla jednej prośby / grupy. */

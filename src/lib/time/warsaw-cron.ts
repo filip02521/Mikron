@@ -21,7 +21,9 @@ export async function recordCronSkipped(
     | "informacja_stock_sync"
     | "scheduled_mails"
     | "stock_watch"
-    | "subiekt_lead_times",
+    | "subiekt_lead_times"
+    | "zd_sku_class"
+    | "zd_kpi_weekly",
   reason: string,
   detail?: Record<string, unknown>
 ): Promise<void> {

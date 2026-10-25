@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { actionFetchZdEstimateProductReservations } from "@/app/actions/zd-estimate";
 import type { ZdEstimateReservedZkRow } from "@/lib/orders/zd-estimate-reservations";
 import { ModalShell } from "@/components/ui/ModalShell";
-import { Spinner } from "@/components/ui/Spinner";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Alert } from "@/components/ui/Alert";
 import { formatPlDate } from "@/lib/display-labels";
@@ -232,8 +232,8 @@ export function ZdEstimateReservationsModal({
       ) : null}
 
       {pending && !loaded ? (
-        <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500">
-          <Spinner size="sm" />
+        <div className="flex flex-col items-center justify-center gap-2 py-10 text-sm text-slate-500" role="status">
+          <BrandLoader size="md" />
           {ZD_ESTIMATE_UI.reservationsLoading}
         </div>
       ) : null}

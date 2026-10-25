@@ -1,5 +1,6 @@
 import type { DepartmentBoardThreadRow } from "@/lib/data/department-board-shared";
 import { authorLabelFromProfile } from "@/lib/department-board/format";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 export function departmentBoardAnnouncementSearchHaystack(
   thread: DepartmentBoardThreadRow
@@ -19,6 +20,6 @@ export function filterDepartmentBoardAnnouncementsByQuery(
   const needle = query.trim().toLowerCase();
   if (!needle) return announcements;
   return announcements.filter((thread) =>
-    departmentBoardAnnouncementSearchHaystack(thread).includes(needle)
+    matchesSearchWords(departmentBoardAnnouncementSearchHaystack(thread), needle)
   );
 }

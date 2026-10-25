@@ -10,11 +10,7 @@ import {
 } from "@/lib/auth/admin-panel-context";
 import { cn } from "@/lib/cn";
 import { NavIcon } from "@/components/icons/NavIcon";
-import type { NavIconKey, NavTone } from "@/lib/nav";
-import {
-  navIconTileActiveClassForTone,
-  navIconTileClassForTone,
-} from "@/components/icons/NavIcon";
+import type { NavIconKey } from "@/lib/nav";
 import { IconChevronDown } from "@/components/icons/StrokeIcons";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
 
@@ -25,15 +21,6 @@ const CONTEXT_ICON: Record<AdminPanelContext, NavIconKey> = {
   magazyn: "warehouse",
   sales: "myOrders",
   sales_manager: "team",
-};
-
-const CONTEXT_TONE: Record<AdminPanelContext, NavTone> = {
-  admin: "violet",
-  zakupy: "indigo",
-  zakupy_zeby: "sky",
-  magazyn: "emerald",
-  sales: "indigo",
-  sales_manager: "slate",
 };
 
 export function AdminPanelContextSwitcher({
@@ -48,7 +35,6 @@ export function AdminPanelContextSwitcher({
   const currentOpt =
     ADMIN_PANEL_CONTEXT_OPTIONS.find((o) => o.value === current) ??
     ADMIN_PANEL_CONTEXT_OPTIONS[0]!;
-  const currentTone = CONTEXT_TONE[current];
   const currentIcon = CONTEXT_ICON[current];
 
   useEffect(() => {
@@ -83,25 +69,20 @@ export function AdminPanelContextSwitcher({
         title={currentOpt.title}
         onClick={() => setExpanded((v) => !v)}
         className={cn(
-          "mx-2 flex w-[calc(100%-1rem)] items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors",
+          "flex min-h-10 w-full items-center gap-2.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-left shadow-sm transition-colors",
           controlFocusClass,
-          "bg-slate-100/80 ring-1 ring-slate-200/80 hover:bg-slate-100",
+          "hover:border-slate-300 hover:bg-slate-50",
           pending && "opacity-60"
         )}
       >
-        <span
-          className={cn(
-            "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
-            navIconTileActiveClassForTone(currentTone)
-          )}
-        >
-          <NavIcon navKey={currentIcon} size={15} />
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center text-slate-500" aria-hidden>
+          <NavIcon navKey={currentIcon} size={16} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[10px] font-semibold text-slate-500">
+          <span className="block text-[0.6875rem] leading-tight text-slate-500">
             Podgląd panelu
           </span>
-          <span className="block truncate text-[13px] font-semibold leading-snug text-slate-900">
+          <span className="block text-[0.8125rem] font-semibold leading-snug text-slate-900">
             {labelForAdminPanelContext(current)}
           </span>
         </span>
@@ -120,12 +101,11 @@ export function AdminPanelContextSwitcher({
           id={panelId}
           role="group"
           aria-label="Wybór panelu podglądu"
-          className={cn("mt-1.5 grid grid-cols-2 gap-1 px-2", pending && "opacity-60")}
+          className={cn("mt-1.5 grid grid-cols-2 gap-0.5", pending && "opacity-60")}
         >
           {ADMIN_PANEL_CONTEXT_OPTIONS.map((opt) => {
             const isActive = opt.value === current;
             const iconKey = CONTEXT_ICON[opt.value];
-            const tone = CONTEXT_TONE[opt.value];
 
             return (
               <button
@@ -145,29 +125,29 @@ export function AdminPanelContextSwitcher({
                   });
                 }}
                 className={cn(
-                  "flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors",
+                  "flex min-h-9 items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors",
                   controlFocusClass,
+                  // Wybrany panel wygląda jak aktywna pozycja menu (DESIGN.md → „Jedno wybrane”).
                   isActive
-                    ? "bg-slate-100 ring-1 ring-slate-200/80"
-                    : "hover:bg-slate-50",
+                    ? "bg-indigo-50 text-indigo-900"
+                    : "text-slate-700 hover:bg-slate-100 hover:text-slate-900",
                   pending && "cursor-wait"
                 )}
               >
                 <span
                   className={cn(
-                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
-                    isActive
-                      ? navIconTileActiveClassForTone(tone)
-                      : navIconTileClassForTone(tone)
+                    "flex h-5 w-5 shrink-0 items-center justify-center",
+                    isActive ? "text-indigo-700" : "text-slate-500"
                   )}
+                  aria-hidden
                 >
                   <NavIcon navKey={iconKey} size={15} />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span
                     className={cn(
-                      "block truncate text-[13px] font-medium leading-snug",
-                      isActive ? "font-semibold text-slate-900" : "text-slate-700"
+                      "block text-[0.8125rem] leading-snug",
+                      isActive ? "font-semibold" : "font-medium"
                     )}
                   >
                     {opt.label}

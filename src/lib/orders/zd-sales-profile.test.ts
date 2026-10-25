@@ -52,9 +52,15 @@ describe("resolveZdSalesProfile", () => {
     expect(20 * m.factor).toBe(5);
   });
 
-  it("rzadki → średnia z 12 okien", () => {
+  it("rzadki → średnia od pierwszej sprzedaży (9 szt w 5 oknach)", () => {
     const m = resolveZdSalesProfile({ windows: SAT01, sprzedazOkres: 6, dniOkresu: 30, prosbaPieces: 0, smoothing: true });
-    expect(6 * m.factor).toBeCloseTo(0.75);
+    expect(6 * m.factor).toBeCloseTo(1.8);
+  });
+
+  it("nowość z pierwszą sprzedażą w bieżącym oknie nie jest cięta do 1/12", () => {
+    const w = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24];
+    const m = resolveZdSalesProfile({ windows: w, sprzedazOkres: 24, dniOkresu: 30, prosbaPieces: 0, smoothing: true });
+    expect(m.applied).toBe(false);
   });
 
   it("nowość i wzrost zostają bez zmian", () => {
@@ -173,5 +179,32 @@ describe("jednorazowy skok — przypadki z danych (10.2026)", () => {
   it("miesiąc wyraźnie ponad wszystko wcześniej zostaje skokiem", () => {
     expect(kind([1, 3, 1, 3, 0, 2, 1, 4, 4, 2, 1, 8])).toBe("spike");
     expect(kind([13, 5, 3, 26, 13, 9, 13, 1, 10, 5, 10, 51])).toBe("spike");
+  });
+});
+
+describe("prośby bez wygładzenia (strategia z podłogą 90 d)", () => {
+  it("subtractProsba odejmuje sprzedaż pod prośby, nie wygładza reszty", () => {
+    const meta = resolveZdSalesProfile({
+      windows: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 60],
+      sprzedazOkres: 60,
+      dniOkresu: 30,
+      prosbaPieces: 50,
+      smoothing: false,
+      subtractProsba: true,
+    });
+    expect(meta.applied).toBe(true);
+    expect(meta.factor).toBeCloseTo(10 / 60);
+    expect(meta.prosbaPieces).toBe(50);
+  });
+
+  it("bez flagi i bez wygładzenia sprzedaż zostaje", () => {
+    const meta = resolveZdSalesProfile({
+      windows: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 60],
+      sprzedazOkres: 60,
+      dniOkresu: 30,
+      prosbaPieces: 50,
+      smoothing: false,
+    });
+    expect(meta.applied).toBe(false);
   });
 });

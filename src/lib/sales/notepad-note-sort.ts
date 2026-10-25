@@ -1,11 +1,12 @@
 import type { SalesNote } from "@/types/database";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 export function filterSalesNotesByQuery(notes: SalesNote[], query: string): SalesNote[] {
   const needle = query.trim().toLowerCase();
   if (!needle) return notes;
   return notes.filter(
     (note) =>
-      note.body.toLowerCase().includes(needle) || note.title?.toLowerCase().includes(needle)
+      matchesSearchWords([note.body, note.title], needle)
   );
 }
 

@@ -54,7 +54,7 @@ export function HistoriaNormalTable({
                   <div className="flex items-center gap-2">
                     {h.suppliers?.name ? (
                       <span
-                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xs font-bold text-slate-600 ring-1 ring-inset ring-slate-200/60"
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xs font-semibold text-slate-600 ring-1 ring-inset ring-slate-200/60"
                         aria-hidden
                       >
                         {h.suppliers.name.charAt(0).toUpperCase()}

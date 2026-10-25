@@ -92,7 +92,8 @@ export function DailyPanelOnDemandSection({
                 </div>
               <PanelRowActionsInlineEnd
                 forceVisible={rowPending}
-                className={panelQueueRowActionsClass}
+                // sm:w-auto: wspólna klasa ma sm:w-full, przez co szyna akcji ściskała nazwę dostawcy do 0 px.
+                className={cn(panelQueueRowActionsClass, "sm:w-auto sm:max-w-[60%]")}
                 contentClassName="w-full sm:w-max"
               >
                 <div className="flex w-full flex-col gap-1.5 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-1">

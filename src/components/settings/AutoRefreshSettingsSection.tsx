@@ -10,10 +10,7 @@ import { useOperationsUpdates } from "@/components/operations/OperationsUpdatesC
 import { useTeethUpdates } from "@/components/zeby/TeethUpdatesContext";
 import { useSalesUpdates } from "@/components/sales/SalesUpdatesContext";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { IconClock } from "@/components/icons/StrokeIcons";
-import { cn } from "@/lib/cn";
-import { salesChromeInsetClass } from "@/lib/ui/ontime-theme";
+import { SettingToggleRow, settingRowsClass } from "@/components/settings/SettingToggleRow";
 import type { UserRole } from "@/types/database";
 
 type AutoRefreshSettingsSectionProps = {
@@ -70,108 +67,36 @@ export function AutoRefreshSettingsSection({ role }: AutoRefreshSettingsSectionP
     <Card padding={false} className="overflow-hidden">
       <CardHeader
         inset
-        density="compact"
         title="Auto-odświeżanie"
         description="Automatyczne odświeżanie listy po wykryciu zmian."
-        leading={
-          <SectionHeadingIcon tileClassName="bg-indigo-100 text-indigo-800">
-            <IconClock size={20} />
-          </SectionHeadingIcon>
-        }
       />
-      <div className={cn(salesChromeInsetClass, "space-y-2.5 py-3.5")}>
+      <div className={settingRowsClass}>
         {showSales ? (
-          <label
-            className={cn(
-              "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-colors",
-              salesValue
-                ? "border-indigo-200/80 bg-indigo-50/40"
-                : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40"
-            )}
-          >
-            <span className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium text-slate-800">
-                Auto przy zmianach (panel sprzedaży)
-              </span>
-              <span className="text-[11px] leading-snug text-slate-400">
-                „Moje” i notatnik odświeżają się zawsze. Ta opcja odświeża też pozostałe
-                strony sprzedaży zaraz po wykryciu zmian.
-              </span>
-            </span>
-            <input
-              type="checkbox"
-              role="switch"
-              aria-checked={salesValue}
-              aria-label="Automatyczne odświeżanie panelu sprzedaży przy wykrytych zmianach"
-              checked={salesValue}
-              onChange={(e) => setSales(e.target.checked)}
-              className="toggle-switch toggle-indigo"
-            />
-          </label>
+          <SettingToggleRow
+            label="Odświeżaj pozostałe strony po zmianach"
+            description="„Moje” i notatnik odświeżają się zawsze. Ta opcja odświeża też pozostałe strony sprzedaży zaraz po wykryciu zmian."
+            checked={salesValue}
+            onChange={setSales}
+          />
         ) : null}
-
         {showOps ? (
-          <label
-            className={cn(
-              "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-colors",
-              opsValue
-                ? "border-indigo-200/80 bg-indigo-50/40"
-                : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40"
-            )}
-          >
-            <span className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium text-slate-800">
-                Auto przy zmianach (panel operacji)
-              </span>
-              <span className="text-[11px] leading-snug text-slate-400">
-                Dziś, weryfikacja i tablica odświeżają się zawsze. Ta opcja obejmuje też
-                pozostałe strony (kolejka, historia…) zaraz po wykryciu zmian.
-              </span>
-            </span>
-            <input
-              type="checkbox"
-              role="switch"
-              aria-checked={opsValue}
-              aria-label="Automatyczne odświeżanie panelu operacji przy wykrytych zmianach"
-              checked={opsValue}
-              onChange={(e) => setOps(e.target.checked)}
-              className="toggle-switch toggle-indigo"
-            />
-          </label>
+          <SettingToggleRow
+            label="Odświeżaj pozostałe strony po zmianach"
+            description="Dziś, weryfikacja i tablica odświeżają się zawsze. Ta opcja obejmuje też pozostałe strony (kolejka, historia…) zaraz po wykryciu zmian."
+            checked={opsValue}
+            onChange={setOps}
+          />
         ) : null}
-
         {showTeeth ? (
-          <label
-            className={cn(
-              "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-colors",
-              teethValue
-                ? "border-indigo-200/80 bg-indigo-50/40"
-                : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40"
-            )}
-          >
-            <span className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium text-slate-800">
-                Auto przy zmianach (panel zębów)
-              </span>
-              <span className="text-[11px] leading-snug text-slate-400">
-                Ścieżki /zeby odświeżają się zawsze. Ta opcja obejmuje też pozostałe strony
-                zaraz po wykryciu zmian.
-              </span>
-            </span>
-            <input
-              type="checkbox"
-              role="switch"
-              aria-checked={teethValue}
-              aria-label="Automatyczne odświeżanie panelu zębów przy wykrytych zmianach"
-              checked={teethValue}
-              onChange={(e) => setTeeth(e.target.checked)}
-              className="toggle-switch toggle-indigo"
-            />
-          </label>
+          <SettingToggleRow
+            label="Odświeżaj pozostałe strony po zmianach"
+            description="Strony panelu zębów odświeżają się zawsze. Ta opcja obejmuje też pozostałe strony zaraz po wykryciu zmian."
+            checked={teethValue}
+            onChange={setTeeth}
+          />
         ) : null}
-
         {!hasAny ? (
-          <p className="py-4 text-center text-sm text-slate-400">
+          <p className="px-5 py-4 text-sm text-slate-500 sm:px-6">
             Brak dostępnych ustawień auto-odświeżania dla Twojej roli.
           </p>
         ) : null}

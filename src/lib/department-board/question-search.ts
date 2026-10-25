@@ -1,6 +1,7 @@
 import { questionAuthorLabel } from "@/lib/department-board/format";
 import { boardQuestionProductSearchText } from "@/lib/department-board/question-product";
 import type { DepartmentBoardQuestion } from "@/lib/data/department-board-shared";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 /** Tekst przeszukiwany w wątku pytania (temat, treść, autor, produkt, odpowiedzi). */
 export function departmentBoardQuestionSearchHaystack(question: DepartmentBoardQuestion): string {
@@ -24,5 +25,5 @@ export function filterDepartmentBoardQuestionsByQuery(
 ): DepartmentBoardQuestion[] {
   const needle = query.trim().toLowerCase();
   if (!needle) return questions;
-  return questions.filter((question) => departmentBoardQuestionSearchHaystack(question).includes(needle));
+  return questions.filter((question) => matchesSearchWords(departmentBoardQuestionSearchHaystack(question), needle));
 }

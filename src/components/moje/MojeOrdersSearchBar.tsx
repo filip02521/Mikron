@@ -19,6 +19,7 @@ export function MojeOrdersSearchBar({
   totalCount,
   archiveMatchCount = 0,
   enableShortcut = true,
+  trailing,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -26,6 +27,8 @@ export function MojeOrdersSearchBar({
   totalCount: number;
   archiveMatchCount?: number;
   enableShortcut?: boolean;
+  /** Licznik wyników na końcu rzędu (DESIGN.md → Pasek filtrów). */
+  trailing?: React.ReactNode;
 }) {
   const inputId = useId();
   const trimmed = value.trim();
@@ -54,6 +57,7 @@ export function MojeOrdersSearchBar({
 
   return (
     <div className={cn("border-b border-slate-100 bg-white py-2.5", salesChromeInsetClass)}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
       <div className="relative min-w-0 flex-1">
         <label
           htmlFor={inputId}
@@ -99,6 +103,8 @@ export function MojeOrdersSearchBar({
             </button>
           ) : null}
         </div>
+      </div>
+      {trailing}
       </div>
       {active ? (
         <p className="mt-2 text-xs leading-relaxed text-slate-600" aria-live="polite">

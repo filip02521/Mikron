@@ -22,6 +22,6 @@ describe("zdSupplierPolicyLabel", () => {
     expect(zdSupplierPolicyLabel(null)).toBe("Strategia: jak dotąd");
     expect(
       zdSupplierPolicyLabel({ strategy: "max30_90", targetDays: 25, cycleDays: 3, autoProposals: true })
-    ).toBe("Strategia testowa · 25 dni zapasu · co 3 dni · propozycje");
+    ).toBe("Automat ZD · 25 dni zapasu · co 3 dni · propozycje");
   });
 });

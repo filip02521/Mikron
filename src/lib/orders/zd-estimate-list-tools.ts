@@ -1,4 +1,5 @@
 import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 export type ZdEstimateListToolsMode = "idle" | "selection";
 
@@ -229,12 +230,5 @@ export function filterZdEstimateLinesBySearch<
 >(lines: T[], query: string): T[] {
   const q = query.trim().toLowerCase();
   if (!q) return lines;
-  return lines.filter((l) => {
-    if (l.tw_Symbol.toLowerCase().includes(q)) return true;
-    if (l.tw_Nazwa.toLowerCase().includes(q)) return true;
-    const plu = l.tw_PLU?.trim().toLowerCase();
-    if (plu && plu.includes(q)) return true;
-    if (l.tw_Id != null && String(l.tw_Id).includes(q)) return true;
-    return false;
-  });
+  return lines.filter((l) => matchesSearchWords([l.tw_Symbol, l.tw_Nazwa, l.tw_PLU, l.tw_Id], q));
 }

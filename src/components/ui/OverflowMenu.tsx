@@ -366,7 +366,7 @@ export function OverflowMenuItem({
 export function OverflowMenuLabel({ children }: { children: ReactNode }) {
   return (
     <p
-      className="px-3 pb-0.5 pt-2 text-[11px] font-semibold text-slate-500"
+      className="px-3 pb-0.5 pt-2 text-[0.6875rem] font-semibold text-slate-500"
       role="presentation"
     >
       {children}

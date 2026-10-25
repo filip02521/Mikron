@@ -84,11 +84,29 @@ export const CRON_JOB_DEFINITIONS: CronJobDefinition[] = [
   {
     id: "subiekt_lead_times",
     label: "Czasy dostaw z Subiekta",
-    schedule: "codziennie 1:30",
+    schedule: "codziennie, po Katalogu z ZD (2:00–4:40)",
     endpoint: "/api/cron/subiekt-lead-times",
     scheduled: true,
     description:
       "ZD → FZ z ostatnich 18 mies.: domyka zamówienia z brakami i przelicza ETA dostawców. Panel: /admin (Czasy dostaw z Subiekta).",
+  },
+  {
+    id: "zd_sku_class",
+    label: "Klasy ABC/XYZ towarów",
+    schedule: "raz w miesiącu, po Stock Watch (5:30–6:30)",
+    endpoint: "/api/cron/zd-sku-class",
+    scheduled: true,
+    description:
+      "ABC wg zysku 12 mies. i XYZ ze sprzedaży tygodniowej dla zmapowanych zakresów dostawców (kilkanaście minut). Panel: /zakupy/automat.",
+  },
+  {
+    id: "zd_kpi_weekly",
+    label: "KPI automatu ZD",
+    schedule: "raz w tygodniu, po Stock Watch (5:30–6:30)",
+    endpoint: "/api/cron/zd-kpi-weekly",
+    scheduled: true,
+    description:
+      "Braki A, rotacja, martwy zapas, korekta człowieka i minima za miniony tydzień. Panel: /zakupy/automat.",
   },
   {
     id: "morning_sync",
@@ -477,7 +495,7 @@ export function evaluateCronJob(
             : job.id === "stock_watch"
               ? isNightlyJobStale(run, now, 8)
               : job.id === "subiekt_lead_times"
-              ? isNightlyJobStale(run, now, 3)
+              ? isNightlyJobStale(run, now, 5)
               : job.id === "scheduled_mails"
               ? isScheduledMailsStale(run, now, context?.scheduledMailSentLog)
               : false

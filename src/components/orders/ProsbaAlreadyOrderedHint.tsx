@@ -74,17 +74,17 @@ export function ProsbaAlreadyOrderedHint({
 
   return (
     <div role="status" aria-live="polite" className={cn("space-y-1.5", className)}>
-      <p className="text-[13px] font-semibold leading-snug tracking-tight tabular-nums text-slate-900">
+      <p className="text-[0.8125rem] font-semibold leading-snug tracking-tight tabular-nums text-slate-900">
         {view.title}
       </p>
-      <ul className="space-y-0.5 text-[12px] leading-snug text-slate-600 tabular-nums">
+      <ul className="space-y-0.5 text-[0.75rem] leading-snug text-slate-600 tabular-nums">
         {view.details.map((line, i) => (
           <li key={`${i}-${line}`} className="break-words">
             {line}
           </li>
         ))}
       </ul>
-      <p className="text-[12px] leading-snug text-slate-500">{view.advice}</p>
+      <p className="text-[0.75rem] leading-snug text-slate-500">{view.advice}</p>
       {hasNotify || showRemove ? (
         <div className="flex flex-wrap items-center gap-2 pt-0.5">
           {hasNotify ? (
@@ -186,7 +186,7 @@ function AvailabilityStat({
     >
       <dt
         className={cn(
-          "order-2 mt-1 text-[10px] font-medium leading-none",
+          "order-2 mt-1 text-[0.625rem] font-medium leading-none",
           emphasis ? "text-indigo-800" : "text-slate-500"
         )}
       >
@@ -194,7 +194,7 @@ function AvailabilityStat({
       </dt>
       <dd
         className={cn(
-          "order-1 text-[13px] font-semibold leading-none tabular-nums sm:text-sm",
+          "order-1 text-[0.8125rem] font-semibold leading-none tabular-nums sm:text-sm",
           quiet
             ? "text-slate-400"
             : emphasis
@@ -205,7 +205,7 @@ function AvailabilityStat({
         {value}
       </dd>
       {note ? (
-        <p className="order-3 mt-0.5 text-[10px] leading-none text-slate-500">{note}</p>
+        <p className="order-3 mt-0.5 text-[0.625rem] leading-none text-slate-500">{note}</p>
       ) : null}
     </div>
   );
@@ -347,7 +347,7 @@ export function ProsbaAvailabilityCard({
       {title ? (
         <p
           role="status"
-          className="min-w-0 shrink text-[13px] font-semibold leading-snug tracking-tight tabular-nums text-slate-900"
+          className="min-w-0 shrink text-[0.8125rem] font-semibold leading-snug tracking-tight tabular-nums text-slate-900"
         >
           {title}
         </p>
@@ -438,7 +438,7 @@ export function ProsbaAvailabilityCard({
         {hasFollowUp ? (
           <div className="space-y-1.5 border-t border-slate-200/80 px-2.5 py-2 sm:px-3">
             {details.length > 0 ? (
-              <ul className="space-y-0.5 text-[12px] leading-snug text-slate-600 tabular-nums">
+              <ul className="space-y-0.5 text-[0.75rem] leading-snug text-slate-600 tabular-nums">
                 {details.map((d, i) => (
                   <li key={`${i}-${d}`} className="break-words">
                     {d}
@@ -448,10 +448,10 @@ export function ProsbaAvailabilityCard({
             ) : null}
 
             {advice ? (
-              <p className="text-[12px] leading-snug text-slate-500">{advice}</p>
+              <p className="text-[0.75rem] leading-snug text-slate-500">{advice}</p>
             ) : null}
             {notifyNeedsSplit ? (
-              <p className="text-[12px] leading-snug text-slate-500">
+              <p className="text-[0.75rem] leading-snug text-slate-500">
                 Kilka pozycji w prośbie — usuń tę i złóż osobno jako „Informacja o towarze”.
               </p>
             ) : null}

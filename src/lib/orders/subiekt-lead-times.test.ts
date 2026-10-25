@@ -42,21 +42,28 @@ describe("analyzeSubiektLeadTimes", () => {
     });
   });
 
-  it("FZ cofnięta na koniec miesiąca → dzień wpisu z numeracji (ZD wprowadzone tuż przed)", () => {
+  it("FZ z datą ostatniego dnia miesiąca (wpis po zamknięciu) — zamówienie nie jest próbką", () => {
     const docs = [
-      zd(10, "2026-09-25"), // zamówienie
-      zd(20, "2026-10-02"), // inne ZD wprowadzone 02.10…
-      zd(21, "2026-10-02"),
-      zd(22, "2026-10-02"),
-      fz(23, "2026-09-30", 10), // …a FZ wpisana po nich z datą 30.09
+      zd(10, "2026-10-27"), // ZD 27.10, towar 03.11, FZ z datą 31.10
+      fz(11, "2026-10-31", 10),
+      zd(20, "2026-10-26"),
+      fz(21, "2026-10-29", 20), // zwykła FZ w miesiącu — liczy się
     ];
     const { samples, counts } = analyzeSubiektLeadTimes(docs);
-    const s = samples.find((x) => x.zdId === 10)!;
-    expect(s.deliveryDate).toBe("2026-10-02");
-    expect(s.dateCorrected).toBe(true);
-    // pt 25.09 → pt 02.10 = 5 dni roboczych (nie 3 z daty 30.09)
-    expect(s.businessDaysFull).toBe(5);
-    expect(counts.corrected).toBe(1);
+    expect(samples.map((x) => x.zdId)).toEqual([20]);
+    expect(counts.monthEndExcluded).toBe(1);
+  });
+
+  it("łańcuch braków z jedną FZ na koniec miesiąca — całe zamówienie pominięte", () => {
+    const docs = [
+      zd(10, "2026-09-14"),
+      fz(11, "2026-09-16", 10),
+      zd(12, "2026-09-16", { doDokId: 10 }),
+      fz(13, "2026-09-30", 12),
+    ];
+    const { samples, counts } = analyzeSubiektLeadTimes(docs);
+    expect(samples).toHaveLength(0);
+    expect(counts.monthEndExcluded).toBe(1);
   });
 
   it("FZ wpisana dzień/weekend po przyjęciu (nie koniec miesiąca) — data magazynowa zostaje", () => {

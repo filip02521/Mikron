@@ -12,7 +12,7 @@ import {
   zdEstimateRefreshDays,
 } from "@/lib/orders/zd-estimate-live-refresh";
 import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
-import { minStockRowsToMap } from "@/lib/orders/zd-estimate-min-stock-lookup";
+import { minStockRowsToMap, withPairMinStock } from "@/lib/orders/zd-estimate-min-stock-lookup";
 import { onRequestTwIdSet } from "@/lib/orders/zd-estimate-on-request";
 import { packagingRowsToRefreshLookup } from "@/lib/orders/zd-estimate-packaging";
 import {
@@ -88,7 +88,7 @@ export function recomputeZdEstimateLinesWithRules(
           ? input.historyByTwId
           : null,
       salesTrackPolicy: input.salesTrackPolicy,
-      minStockByTwId: minStockRowsToMap(rules.minStock),
+      minStockByTwId: withPairMinStock(minStockRowsToMap(rules.minStock), rules.productPairs),
     },
   });
 }

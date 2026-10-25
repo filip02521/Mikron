@@ -64,6 +64,25 @@ import {
   buttonPrimaryClass,
   controlFocusClass,
 } from "@/lib/ui/ontime-theme";
+import { BrandLoader } from "@/components/ui/BrandLoader";
+
+/**
+ * Panel po utworzeniu bez okna — w panelu bocznym propozycji ZD (tytuł, treść i stopka w miejscu).
+ * Te same właściwości co ModalShell, żeby podmiana była jedną linią.
+ */
+function InlineShell({ title, titleId, footer, children }: React.ComponentProps<typeof ModalShell>) {
+  return (
+    <section aria-labelledby={titleId} className="space-y-4">
+      {title ? (
+        <h3 id={titleId} className="text-base font-semibold text-slate-900">
+          {title}
+        </h3>
+      ) : null}
+      <div className="space-y-4">{children}</div>
+      {footer ? <div className="border-t border-slate-100 pt-4">{footer}</div> : null}
+    </section>
+  );
+}
 
 export function ZdEstimatePostCreatePanel({
   session,
@@ -77,8 +96,11 @@ export function ZdEstimatePostCreatePanel({
   onUndoMark,
   previewOnly = false,
   sendSimulation = null,
+  embedded = false,
 }: {
   session: ZdPostCreateSession;
+  /** W panelu bocznym propozycji ZD: bez własnego okna. */
+  embedded?: boolean;
   /** Harness UI (e2e-lab): bez zapisów — Główne / plan / cofnij nic nie wysyłają. */
   previewOnly?: boolean;
   /** Laboratorium: przebieg wysyłki na niby (tylko z previewOnly). */
@@ -304,6 +326,7 @@ export function ZdEstimatePostCreatePanel({
     };
   }, [session.supplierId, session.scheduleDone, session.createdAtMs]);
 
+  const Shell = embedded ? InlineShell : ModalShell;
   const title =
     session.kind === "linked"
       ? ZD_ESTIMATE_UI.postCreateTitleLinked
@@ -525,7 +548,7 @@ export function ZdEstimatePostCreatePanel({
         {tsvError ? "Kopiowanie TSV nie powiodło się. " : null}
         {tsvCopied ? "TSV skopiowano. " : null}
       </div>
-      <ModalShell
+      <Shell
         open
         onClose={onDismiss}
         title={title}
@@ -608,7 +631,7 @@ export function ZdEstimatePostCreatePanel({
       >
         {session.kind === "timeout_recovery" ? (
           <section
-            className="flex items-start gap-3 rounded-xl bg-amber-50 px-4 py-3.5 ring-1 ring-amber-200"
+            className="flex items-start gap-3 rounded-lg bg-amber-50 px-4 py-3.5 ring-1 ring-amber-200"
             aria-labelledby="zd-post-create-hero"
           >
             <IconAlertCircle
@@ -643,7 +666,7 @@ export function ZdEstimatePostCreatePanel({
           </section>
         ) : (
           <section
-            className="flex flex-col gap-3 rounded-xl bg-emerald-50/80 px-4 py-3.5 ring-1 ring-emerald-200 sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col gap-3 rounded-lg bg-emerald-50/80 px-4 py-3.5 ring-1 ring-emerald-200 sm:flex-row sm:items-center sm:justify-between"
             aria-labelledby="zd-post-create-hero"
           >
             <div className="flex min-w-0 items-center gap-3">
@@ -735,7 +758,7 @@ export function ZdEstimatePostCreatePanel({
         {canAct && session.dokId != null ? (
           gmail == null || contactLoading ? (
             <p className="inline-flex items-center gap-2 text-sm text-slate-600" role="status">
-              <Spinner className="size-4" /> Przygotowuję wysyłkę…
+              <BrandLoader size="sm" tile={false} /> Przygotowuję wysyłkę…
             </p>
           ) : (
             <ZdSendWorkspace
@@ -825,7 +848,7 @@ export function ZdEstimatePostCreatePanel({
           lines={orderPreviewRowsFromSnap(session.linesSnapshot)}
           compact
         />
-      </ModalShell>
+      </Shell>
 
       <SupplierDrawer
         mode="preview"

@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { authorizeCronRequest } from "@/lib/services/cron-auth";
+import { runZdAutomatCatchUp } from "@/lib/data/zd-automat-catchup";
 import { recordCronRun } from "@/lib/services/cron-run-log";
 import { recordCronSkipped, warsawCronContext } from "@/lib/time/warsaw-cron";
 import { warsawNowParts } from "@/lib/time/warsaw";
@@ -44,6 +45,22 @@ export async function GET(request: NextRequest) {
       ok: result.ok && (result.scopesFailed ?? 0) === 0,
       detail: { ...result, warsawDateKey: warsawNowParts().dateKey },
       error: result.error,
+    });
+  }
+
+  // Po dzisiejszym przebiegu braków: klasy ABC/XYZ (raz w miesiącu) i KPI automatu (raz w tygodniu), w tle.
+  const stockWatchDoneToday =
+    result.ok && (result.reason === "already_done_today" || (!result.skipped && !result.timedOut));
+  if (stockWatchDoneToday && !force) {
+    after(async () => {
+      try {
+        const catchUp = await runZdAutomatCatchUp();
+        if (catchUp.skuClass !== "not_due" || catchUp.kpiWeekly !== "not_due") {
+          console.info("[stock-watch] klasy/KPI automatu ZD", catchUp);
+        }
+      } catch (e) {
+        console.error("[stock-watch] klasy/KPI automatu ZD", e);
+      }
     });
   }
 

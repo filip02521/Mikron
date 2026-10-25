@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { AppSupplierRef } from "@/lib/subiekt/match-supplier";
-import { buildQuotedIlikeContainsPattern } from "@/lib/security/ilike-pattern";
+import { buildWordsContainsOrFilters } from "@/lib/security/ilike-pattern";
 
 export type ProductCatalogSuggestion = {
   subiektTwId: number;
@@ -25,9 +25,7 @@ export async function searchProductCatalogSuggestions(
   if (!q) return [];
 
   const supabase = createAdminClient();
-  const pattern = buildQuotedIlikeContainsPattern(q);
-
-  const { data: rows, error } = await supabase
+  let sql = supabase
     .from("subiekt_products")
     .select(
       `
@@ -43,8 +41,9 @@ export async function searchProductCatalogSuggestions(
         suppliers!inner(id, name)
       )
     `
-    )
-    .or(`symbol.ilike.${pattern},name.ilike.${pattern},plu.ilike.${pattern}`)
+    );
+  for (const f of buildWordsContainsOrFilters(q, ["symbol", "name", "plu"])) sql = sql.or(f);
+  const { data: rows, error } = await sql
     .order("last_seen_at", { ascending: false })
     .limit(Math.max(1, Math.min(100, limit)));
 

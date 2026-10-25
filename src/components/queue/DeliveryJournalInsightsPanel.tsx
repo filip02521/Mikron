@@ -27,13 +27,10 @@ import { Field, Input, Select } from "@/components/ui/Field";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { cn } from "@/lib/cn";
-import {
-  panelMetricTileClass,
-  panelTypography,
-} from "@/lib/ui/ontime-theme";
+import { panelTypography } from "@/lib/ui/ontime-theme";
+import { Alert } from "@/components/ui/Alert";
 import {
   QUEUE_LIST_BODY_CLASS,
-  queueToolbarFieldLabelClass,
   queueToolbarShellClass,
 } from "@/lib/ui/queue-panel-styles";
 import { polishPluralWord } from "@/lib/email/polish-plural";
@@ -43,15 +40,6 @@ type SupplierOption = { id: string; name: string; subiektKhId: number | null };
 function formatDateLabel(dateKey: string): string {
   const [y, m, d] = dateKey.split("-");
   return `${d}.${m}.${y}`;
-}
-
-function SummaryStat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className={cn(panelMetricTileClass, "border-slate-200/90 bg-white px-3 py-2.5")}>
-      <p className={panelTypography.caption}>{label}</p>
-      <p className={cn(panelTypography.statValue, "mt-0.5 text-lg")}>{value}</p>
-    </div>
-  );
 }
 
 function readInitialArchiveState(initialQuery: string) {
@@ -198,8 +186,8 @@ export function DeliveryJournalInsightsPanel({
       : `${formatDateLabel(dateFrom)} - ${formatDateLabel(dateTo)}`;
 
   return (
-    <div className="px-4 py-5 sm:px-6">
-      <p className={panelTypography.sectionDesc}>
+    <div className="px-3 py-4 sm:px-4 lg:px-6">
+      <p className="text-sm leading-relaxed text-slate-600">
         Sprawdź, czy paczka dotarła - po numerze listu, dostawcy lub kurierze. Edycja wpisów tylko w
         zakładce <strong className="font-medium text-slate-700">Dzień</strong> (dziś).
       </p>
@@ -209,6 +197,8 @@ export function DeliveryJournalInsightsPanel({
           <DeliveryJournalSearchField
             id="journal-archive-search"
             label="Szukaj paczki"
+            hideLabel
+            className="sm:max-w-sm"
             value={query}
             disabled={pending}
             placeholder="Nr listu, dostawca, kurier…"
@@ -220,32 +210,25 @@ export function DeliveryJournalInsightsPanel({
             onChange={setQuery}
             onSubmit={runSearch}
           />
-          <div className="flex shrink-0 flex-col gap-1 sm:w-auto">
-            <span className={cn(queueToolbarFieldLabelClass, "hidden sm:block sm:invisible")}>
-              Szukaj
-            </span>
-            <Button
-              variant="primary"
-              size="md"
-              className="min-h-[2.375rem] w-full sm:w-auto"
-              disabled={pending}
-              onClick={runSearch}
-            >
-              {pending ? "Szukam…" : "Szukaj"}
-            </Button>
-          </div>
+          <Button
+            variant="primary"
+            size="md"
+            className="min-h-11 w-full shrink-0 sm:min-h-9 sm:w-auto sm:self-start"
+            disabled={pending}
+            onClick={runSearch}
+          >
+            {pending ? "Szukam…" : "Szukaj"}
+          </Button>
         </div>
 
-        <div className="rounded-md border border-emerald-100/70 bg-white p-3 shadow-sm">
-          <div className="flex flex-wrap items-end justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <span className={queueToolbarFieldLabelClass}>Zakres dat</span>
+        <div className="rounded-lg bg-slate-50 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="min-w-0 max-w-full">
               <SegmentedControl<DeliveryJournalDatePreset>
                 ariaLabel="Zakres dat"
                 value={preset}
                 onChange={applyPreset}
                 touchFriendly
-                className="mt-0.5 w-full sm:w-auto"
                 options={(
                   ["today", "week", "last7", "last30", "last90", "month"] as DeliveryJournalDatePreset[]
                 ).map((p) => ({
@@ -309,25 +292,25 @@ export function DeliveryJournalInsightsPanel({
         </div>
 
         {error ? (
-          <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-            {error}
-          </p>
+          <Alert tone="error">{error}</Alert>
         ) : null}
       </div>
 
       {summary && searched ? (
         <div className="mt-5 space-y-3">
-          <h3 className={panelTypography.sectionLabel}>Podsumowanie · {dateRangeLabel}</h3>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <SummaryStat label="Dostawy" value={summary.receiptCount} />
-            <SummaryStat label="Paczki" value={summary.packageCount} />
-            <SummaryStat label="Palety" value={summary.palletCount} />
-            <SummaryStat label="Dostawcy" value={summary.supplierCount} />
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900">Podsumowanie · {dateRangeLabel}</h3>
+            <p className="mt-0.5 text-sm tabular-nums text-slate-600">
+              {summary.receiptCount} {polishPluralWord(summary.receiptCount, "dostawa", "dostawy", "dostaw")} ·{" "}
+              {summary.packageCount} {polishPluralWord(summary.packageCount, "paczka", "paczki", "paczek")} ·{" "}
+              {summary.palletCount} {polishPluralWord(summary.palletCount, "paleta", "palety", "palet")} ·{" "}
+              {summary.supplierCount} {polishPluralWord(summary.supplierCount, "dostawca", "dostawcy", "dostawców")}
+            </p>
           </div>
           {summary.byCarrier.length > 0 ? (
-            <div className="overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm">
+            <div className="overflow-x-auto rounded-lg border border-slate-200">
               <table className="w-full text-left text-sm">
-                <thead className="border-b border-slate-100 bg-slate-50/80 text-xs text-slate-600">
+                <thead className="border-b border-slate-200 bg-slate-50 text-[0.8125rem] text-slate-500">
                   <tr>
                     <th className="px-3 py-2 font-medium">Kurier</th>
                     <th className="px-3 py-2 font-medium">Dostawy</th>
@@ -337,7 +320,7 @@ export function DeliveryJournalInsightsPanel({
                 </thead>
                 <tbody>
                   {summary.byCarrier.map((row) => (
-                    <tr key={row.carrier} className="border-b border-slate-50 last:border-0">
+                    <tr key={row.carrier} className="border-b border-slate-100 last:border-0">
                       <td className="px-3 py-2 font-medium text-slate-900">
                         {warehouseCarrierLabel(row.carrier, carriers)}
                       </td>
@@ -356,10 +339,10 @@ export function DeliveryJournalInsightsPanel({
       {searched ? (
         <div className="mt-5">
           <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-            <h3 className={panelTypography.sectionLabel}>
+            <h3 className="text-sm font-semibold text-slate-900">
               Wyniki
               {!pending ? (
-                <span className="ml-1.5 font-normal normal-case tracking-normal text-slate-500">
+                <span className="ml-1.5 font-normal text-slate-500">
                   · {receipts.length}{" "}
                   {polishPluralWord(receipts.length, "dostawa", "dostawy", "dostaw")}
                 </span>
@@ -373,7 +356,7 @@ export function DeliveryJournalInsightsPanel({
           </div>
 
           {receipts.length > 0 ? (
-            <ul className={cn("space-y-2", QUEUE_LIST_BODY_CLASS, pending && "opacity-60")}>
+            <ul className={cn("divide-y divide-slate-100", QUEUE_LIST_BODY_CLASS, pending && "opacity-60")}>
               {receipts.map((r) => (
                 <DeliveryJournalReceiptCard
                   key={r.id}

@@ -1,5 +1,5 @@
 import { cn } from "@/lib/cn";
-import { panelSubsectionInsetClass, panelTypography, surfaceCardClass } from "@/lib/ui/ontime-theme";
+import { panelSubsectionInsetClass, panelTypography, sectionTitleClass, surfaceCardClass } from "@/lib/ui/ontime-theme";
 
 export type DailyPanelSubsectionTone =
   | "default"
@@ -97,7 +97,7 @@ export function DailyPanelSubsectionBar({
             className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5"
             aria-label={ariaParts.join(", ")}
           >
-            <h4 className={panelTypography.sectionTitle}>{title}</h4>
+            <h4 className={sectionTitleClass}>{title}</h4>
             {countLabel ? (
               <span className={cn("font-normal tabular-nums text-slate-500", panelTypography.rowMeta)}>
                 · {countLabel}

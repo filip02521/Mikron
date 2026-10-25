@@ -21,14 +21,14 @@ export function NoteBodyDisplay({
   const [localChecked, setLocalChecked] = useState<Record<number, boolean>>({});
 
   if (!trimmed) {
-    return <p className={cn("text-sm italic text-slate-400", emptyClassName)}>Brak treści</p>;
+    return <p className={cn("text-sm italic text-slate-500", emptyClassName)}>Brak treści</p>;
   }
 
   // Zliczaj pozycje todo w całej notatce, aby identyfikować linie
   let todoLineCounter = 0;
 
   return (
-    <div className={cn("note-body-display space-y-1.5 text-[13px] leading-snug text-slate-900/90", className)}>
+    <div className={cn("note-body-display space-y-1.5 text-[0.8125rem] leading-snug text-slate-900/90", className)}>
       {blocks.map((block, index) => {
         if (block.type === "paragraph") {
           return (

@@ -6,13 +6,12 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
 import { buildOnboardingNotepadDemo } from "@/lib/sales/sales-onboarding-demo-data";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { UndoToast } from "@/components/ui/UndoToast";
 import { NoticeToast } from "@/components/ui/NoticeToast";
-import { IconPackageCheck } from "@/components/icons/StrokeIcons";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { MyOrderPickupShelfDialogProvider } from "@/components/moje/MyOrderPickupShelfDialogProvider";
 import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
 import { salesChromeInsetClass } from "@/lib/ui/ontime-theme";
@@ -96,7 +95,6 @@ import { NotatnikZkStatusChrome } from "./NotatnikZkStatusChrome";
 import { NotatnikGuide } from "./NotatnikGuide";
 import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
 import { NOTATNIK_NOTES_PAGE_HINT } from "@/lib/sales/notatnik-notes-copy";
-import { sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
 import {
   isUndoExpired,
   undoExpiresAtNow,
@@ -1239,67 +1237,58 @@ export function NotatnikClient({
         />
       ) : null}
 
-      <Card padding={false} className={isZkSurface ? "overflow-visible" : "overflow-hidden"}>
-        <CardHeader
-          inset
-          density="compact"
-          title={pageTitle}
-          hint={
-            pageDescription
-              ? undefined
-              : isZkSurface
-                ? SALES_PAGE_HEADER_HINTS.zk
-                : NOTATNIK_NOTES_PAGE_HINT
-          }
-          hintAriaLabel={isZkSurface ? "O stronie ZK" : "O notatniku"}
-          description={pageDescription}
-          action={<NotatnikGuide surface={isZkSurface ? "zk" : "notes"} />}
-          actionAlign="inline"
-          leading={
-            isZkSurface ? (
-              <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
-                <IconPackageCheck size={20} />
-              </SectionHeadingIcon>
-            ) : undefined
-          }
+      {/* Nagłówek i zakładki na tle, treść w karcie (DESIGN.md → Anatomia ekranu). */}
+      <PageHeader
+        title={pageTitle}
+        hint={
+          pageDescription
+            ? undefined
+            : isZkSurface
+              ? SALES_PAGE_HEADER_HINTS.zk
+              : NOTATNIK_NOTES_PAGE_HINT
+        }
+        hintAriaLabel={isZkSurface ? "O stronie ZK" : "O notatniku"}
+        description={pageDescription}
+        actions={<NotatnikGuide surface={isZkSurface ? "zk" : "notes"} />}
+      />
+
+      {loadError ? (
+        <Alert tone="error" className="mb-4">
+          {loadError}
+        </Alert>
+      ) : null}
+
+      {focusWatchError ? (
+        <Alert tone="warning" className="mb-4">
+          {focusWatchError}
+        </Alert>
+      ) : null}
+
+      {isZkSurface ? (
+        <NotatnikTabBar
+          value={activeTab}
+          onChange={(tab) => navigateToTab(tab)}
+          zkCount={zkWatches.length}
+          notesCount={0}
+          archiveCount={archivedWatches.length}
+          showArchive={hasZkArchive}
+          visibleTabs={["zk", "archive"]}
+          archiveScope="zk"
         />
+      ) : (
+        <NotatnikTabBar
+          value={activeTab}
+          onChange={(tab) => navigateToTab(tab)}
+          zkCount={0}
+          notesCount={notes.length}
+          archiveCount={archivedNotes.length}
+          showArchive={hasNotesArchive}
+          visibleTabs={["notes", "archive"]}
+          archiveScope="notes"
+        />
+      )}
 
-        {loadError ? (
-          <Alert tone="error" className={cn(salesChromeInsetClass, "mt-3")}>
-            {loadError}
-          </Alert>
-        ) : null}
-
-        {focusWatchError ? (
-          <Alert tone="warning" className={cn(salesChromeInsetClass, "mt-3")}>
-            {focusWatchError}
-          </Alert>
-        ) : null}
-
-        {isZkSurface ? (
-          <NotatnikTabBar
-            value={activeTab}
-            onChange={(tab) => navigateToTab(tab)}
-            zkCount={zkWatches.length}
-            notesCount={0}
-            archiveCount={archivedWatches.length}
-            showArchive={hasZkArchive}
-            visibleTabs={["zk", "archive"]}
-            archiveScope="zk"
-          />
-        ) : (
-          <NotatnikTabBar
-            value={activeTab}
-            onChange={(tab) => navigateToTab(tab)}
-            zkCount={0}
-            notesCount={notes.length}
-            archiveCount={archivedNotes.length}
-            showArchive={hasNotesArchive}
-            visibleTabs={["notes", "archive"]}
-            archiveScope="notes"
-          />
-        )}
-
+      <Card padding={false} className={cn("mt-5", isZkSurface ? "overflow-visible" : "overflow-hidden")}>
         {showSalesSyncStrip ? (
           <NotatnikZkStatusChrome
             subiektInitial={subiektForNotepad ?? undefined}

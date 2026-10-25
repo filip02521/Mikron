@@ -54,7 +54,7 @@ Oczekiwane:
 
 ## Powierzchnia DB w kodzie
 
-- **~150 plików** `src/` używa `createAdminClient()` (actions, data, services, cron)
+- **~135 plików** `src/` używa `createAdminClient()` (stan 2026-10-25) (actions, data, services, cron)
 - **3 RPC**: `try_acquire_job_lock`, `increment_delivery_stats`, `replace_external_warehouse_line_pallet_shares`
 - **Auth**: `app_users` + cookie `ontime_session` (bez Supabase JWT)
 - **Storage**: `STORAGE_ROOT` + signed URL `/api/storage/file`

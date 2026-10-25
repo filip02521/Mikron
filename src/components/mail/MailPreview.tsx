@@ -2,7 +2,7 @@
 
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { IconAlertCircle, IconDownload, IconEye, IconX } from "@/components/icons/StrokeIcons";
-import { Spinner } from "@/components/ui/Spinner";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import { cn } from "@/lib/cn";
 import { parseEmailList } from "@/lib/customs/customs-email";
 import { plainTextEmailHtml } from "@/lib/email/plain-text-html";
@@ -127,7 +127,7 @@ export function MailPreview({
           </p>
         ) : attachmentsLoading ? (
           <p className="flex items-center gap-2 text-sm text-slate-600" role="status">
-            <Spinner size="sm" />
+            <BrandLoader size="sm" tile={false} />
             {attachmentsLoading}
           </p>
         ) : attachments.length === 0 && !attachmentsFooter ? (
@@ -147,7 +147,7 @@ export function MailPreview({
               >
                 <span className="min-w-0 flex-1 break-all text-sm text-slate-900">
                   {a.roleLabel ? (
-                    <span className="mb-0.5 block text-[11px] font-semibold uppercase tracking-[0.04em] text-emerald-800">
+                    <span className="mb-0.5 block text-[0.6875rem] font-semibold text-emerald-800">
                       {a.roleLabel}
                     </span>
                   ) : null}

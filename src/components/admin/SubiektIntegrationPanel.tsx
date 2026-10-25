@@ -21,7 +21,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { Input } from "@/components/ui/Field";
 import { HelpBlock } from "@/components/ui/HelpBlock";
 import { HelpPopover } from "@/components/ui/HelpPopover";
-import { PanelSummaryMetric } from "@/components/ui/PanelSummaryMetric";
+import { AdminMetrics } from "@/components/admin/AdminMetrics";
 import { cn } from "@/lib/cn";
 import { panelTypography } from "@/lib/ui/ontime-theme";
 
@@ -55,7 +55,7 @@ function LookupResults({
 
   return (
     <div className="overflow-hidden rounded-md border border-slate-200/90 bg-white">
-      <p className="border-b border-slate-100 bg-slate-50/80 px-3 py-2 text-[11px] font-semibold text-slate-500">
+      <p className="border-b border-slate-100 bg-slate-50/80 px-3 py-2 text-[0.6875rem] font-semibold text-slate-500">
         {title}
       </p>
       <ul className="divide-y divide-slate-100">
@@ -202,21 +202,19 @@ export function SubiektIntegrationPanel({
           </div>
         }
       />
-      <div className="space-y-4 px-3 pb-4 sm:px-4 lg:px-5">
+      <div className="space-y-4 px-3 py-4 sm:px-4 lg:px-5">
         {configured ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <PanelSummaryMetric
-              label="Adres API"
-              value={shortApiHost(baseUrl)}
-              hint={baseUrl ?? "-"}
-            />
-            <PanelSummaryMetric
-              label="Uwierzytelnianie"
-              value={authMode ? AUTH_LABELS[authMode].split("(")[0].trim() : "-"}
-              hint={authMode ? AUTH_LABELS[authMode] : "Nie ustawiono"}
-              tone={authMode ? "success" : "warning"}
-            />
-          </div>
+          <AdminMetrics
+            items={[
+              { label: "Adres API", value: shortApiHost(baseUrl), hint: baseUrl ?? "-" },
+              {
+                label: "Uwierzytelnianie",
+                value: authMode ? AUTH_LABELS[authMode].split("(")[0].trim() : "-",
+                hint: authMode ? AUTH_LABELS[authMode] : "Nie ustawiono",
+                tone: authMode ? "success" : "warning",
+              },
+            ]}
+          />
         ) : (
           <SubiektFeedbackAlert feedback={getSubiektFeedback("not_configured")} />
         )}
@@ -242,7 +240,7 @@ export function SubiektIntegrationPanel({
         </div>
 
         {configured ? (
-          <div className="space-y-4 rounded-md border border-slate-200/90 bg-slate-50/30 p-3 sm:p-4">
+          <div className="space-y-4 rounded-lg bg-slate-50 p-3 sm:p-4">
             <div>
               <p className={panelTypography.sectionLabel}>Szybki test odczytu</p>
               <p className={cn(panelTypography.sectionDesc, "mt-1")}>
@@ -253,7 +251,7 @@ export function SubiektIntegrationPanel({
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
               <div className="min-w-0 flex-1">
                 <label
-                  className="mb-1.5 block text-[11px] font-semibold text-slate-500"
+                  className="mb-1.5 block text-xs font-semibold text-slate-600"
                   htmlFor="subiekt-product-q"
                 >
                   Symbol / towar
@@ -279,7 +277,7 @@ export function SubiektIntegrationPanel({
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
               <div className="min-w-0 flex-1">
                 <label
-                  className="mb-1.5 block text-[11px] font-semibold text-slate-500"
+                  className="mb-1.5 block text-xs font-semibold text-slate-600"
                   htmlFor="subiekt-supplier-q"
                 >
                   Dostawca

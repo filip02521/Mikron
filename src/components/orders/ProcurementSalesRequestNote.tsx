@@ -19,7 +19,7 @@ export function ProcurementSalesRequestNote({
       className={cn(
         "flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5",
         panelTypography.rowMeta,
-        compact && "text-[11px] leading-snug",
+        compact && "text-[0.6875rem] leading-snug",
         className
       )}
     >

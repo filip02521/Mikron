@@ -102,6 +102,7 @@ html[data-sidebar="collapsed"] .sb-link .sb-link-icon {
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-inter-tight);
 }
 
 /* ——— Motyw OnTime: chłodny grafit + petrol (teal) ———
@@ -352,6 +353,11 @@ body {
 /* Fokus z klawiatury: jeden pierścień Petrol tam, gdzie komponent nie rysuje własnego.
    W @layer base, żeby klasy komponentów (outline-none + ring) wygrywały. */
 @layer base {
+  /* Nagłówek kolumny: 500 (DESIGN.md → Column Header), nie domyślne 700 przeglądarki. */
+  th {
+    font-weight: 500;
+  }
+
   :where(a[href], button, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
     outline: 2px solid var(--color-indigo-600);
     outline-offset: 2px;
@@ -498,6 +504,24 @@ select:disabled,
 
 .data-table tbody tr:hover td {
   background-color: var(--color-slate-50);
+}
+
+/* Tabela wskaźników (KPI) — wiele kolumn liczb: węższe odstępy, ten sam rytm wierszy */
+.data-table.kpi-table th,
+.data-table.kpi-table td {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  vertical-align: top;
+}
+
+.data-table.kpi-table th:first-child,
+.data-table.kpi-table td:first-child {
+  padding-left: 1.5rem;
+}
+
+.data-table.kpi-table th:last-child,
+.data-table.kpi-table td:last-child {
+  padding-right: 1.5rem;
 }
 
 /* Kolejka realizacji — zwarte wiersze */
@@ -848,7 +872,7 @@ select:disabled,
   thead
   th.zd-estimate-metric-col--target
   .zd-est-metric-th__label {
-  font-weight: 700;
+  font-weight: 600;
 }
 
 /* Liczby: Sprzed. spokojniejszy slate-sky; Cel mocniejszy indigo. */
@@ -1441,7 +1465,7 @@ select:disabled,
   background: #fff;
   padding: 0.05rem 0.32rem;
   font-size: 0.5625rem;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.3;
   letter-spacing: 0.03em;
   color: var(--color-slate-700);
@@ -1746,8 +1770,7 @@ select:disabled,
 
 .data-table.zd-estimate-table .zd-est-status-badge__kind {
   flex-shrink: 0;
-  font-weight: 700;
-  text-transform: uppercase;
+  font-weight: 600;
 }
 
 .data-table.zd-estimate-table
@@ -1817,7 +1840,7 @@ select:disabled,
   border-radius: 0.25rem;
   background: var(--color-slate-100);
   font-size: 0.625rem;
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--color-slate-600);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-slate-900) 8%, transparent);
@@ -2178,7 +2201,10 @@ button:focus-visible {
   opacity: 0.85;
 }
 
+/* `relative`: teksty `sr-only` (position: absolute) w szerokiej tabeli zostają w jej scrollporcie — bez tego
+   wychodziły poza przewijany kontener i rozpychały `main` w poziomie na telefonie. Menu w wierszach idą przez portal. */
 .table-scroll {
+  position: relative;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -2948,8 +2974,14 @@ html.ontime-scroll-locked main {
   animation: board-question-expand 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Automat ZD — szczegóły dostawcy pod wierszem tabeli (ten sam ruch co rozwinięcie pytania). */
+.zd-automat-detail-enter {
+  animation: board-question-expand 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .board-question-expanded-enter {
+  .board-question-expanded-enter,
+  .zd-automat-detail-enter {
     animation: none;
   }
 }
@@ -3259,6 +3291,15 @@ input[type="checkbox"].toggle-switch.toggle-indigo:checked {
   width: 4.75rem;
   min-width: 4.75rem;
   max-width: 4.75rem;
+  text-align: center;
+}
+
+/* Klasa ABC/XYZ („AX”, „B Z*”) — wąska, sortowalna (A najpierw). */
+.data-table.zd-estimate-table td.zd-estimate-class-col,
+.data-table.zd-estimate-table th.zd-estimate-class-col {
+  width: 4rem;
+  min-width: 4rem;
+  max-width: 4rem;
   text-align: center;
 }
 
@@ -3769,4 +3810,83 @@ input[type="checkbox"].toggle-switch.toggle-indigo:checked {
 @keyframes brand-loader-breathe {
   from { opacity: 1; }
   to { opacity: 0.55; }
+}
+/* Wiersz „trwa dłużej” pod szkieletem: po 3 s (SlowLoadingNote); miejsce zajęte od początku. */
+.slow-loading-note {
+  animation: slow-loading-note-in 240ms cubic-bezier(0.22, 1, 0.36, 1) 3s both;
+}
+@keyframes slow-loading-note-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slow-loading-note {
+    animation: brand-loader-fade 200ms ease 3s both;
+  }
+}
+
+/* ── Znak kroku (BrandStepMark) ──────────────────────────────────────────────
+   W toku: przygaszona tarcza i obiegający łuk (jak BrandLoader), bez wskazówek i ptaszka.
+   Zakończony: łuk gaśnie, tarcza się rozjaśnia, wskazówki wracają, ptaszek się rysuje
+   (ok. 520 ms łącznie). Przejścia, nie keyframes — wejście w stanie done jest bez animacji. */
+.brand-step__ring {
+  opacity: 0.3;
+  transition: opacity 240ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.brand-step__arc {
+  stroke-dasharray: 0.22 0.78;
+  transform-box: view-box;
+  transform-origin: 32px 32px;
+  animation: brand-loader-turn 1s linear infinite;
+  transition: opacity 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.brand-step__ticks,
+.brand-step__dot {
+  opacity: 0;
+  transition: opacity 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.brand-step__check {
+  opacity: 0;
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+  transition:
+    opacity 60ms linear,
+    stroke-dashoffset 380ms cubic-bezier(0.77, 0, 0.175, 1);
+}
+.brand-step[data-state="done"] .brand-step__ring {
+  opacity: 1;
+}
+.brand-step[data-state="done"] .brand-step__arc {
+  opacity: 0;
+}
+.brand-step[data-state="done"] .brand-step__ticks {
+  opacity: 1;
+  transition-delay: 80ms;
+}
+.brand-step[data-state="done"] .brand-step__check {
+  opacity: 1;
+  stroke-dashoffset: 0;
+  transition-delay: 140ms;
+}
+.brand-step[data-state="done"] .brand-step__dot {
+  opacity: 1;
+  transition-delay: 440ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand-step__arc {
+    animation: none;
+  }
+  .brand-step[data-state="running"] svg {
+    animation: brand-loader-breathe 1.6s ease-in-out infinite alternate;
+  }
+  /* Ptaszek pojawia się, a nie rysuje. */
+  .brand-step__check {
+    stroke-dashoffset: 0;
+    transition: opacity 200ms ease;
+  }
+  .brand-step[data-state="done"] .brand-step__ticks,
+  .brand-step[data-state="done"] .brand-step__check,
+  .brand-step[data-state="done"] .brand-step__dot {
+    transition-delay: 0ms;
+  }
 }

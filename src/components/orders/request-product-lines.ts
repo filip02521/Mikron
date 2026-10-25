@@ -24,9 +24,11 @@ export type ProductLineDraft = {
   available?: number | null;
   /** Stan magazynowy z Subiekta (tylko UI / walidacja). */
   stockSource?: "subiekt" | null;
-  /** available obejmuje cover pary pack↔piece (po demontażu). */
+  /** available liczy obie wersje towaru z pary: sztuki i opakowania zbiorcze. */
   pairStockCover?: boolean;
   pairUnitsPerPack?: number | null;
+  /** Ten towar w parze: opakowanie zbiorcze (pack) albo pojedyncza sztuka (piece). */
+  pairRole?: "pack" | "piece" | null;
   /** Skąd pochodzi wybór produktu (Subiekt API lub nasza baza). */
   source?: "subiekt" | "catalog" | null;
   /** Ilość z pozycji ZK (prefill) — walidacja prośby vs ZK. */

@@ -7,10 +7,14 @@ import {
   findZdSharedScopes,
   loadZdScopeInsights,
   loadZdSharedScopeProducts,
+  loadZdProductAssignments,
+  loadZdSharedScopeStats,
+  loadZdTwScopeFacts,
   setZdProductAssignments,
   type ZdScopeInsightsBundle,
   type ZdSharedScope,
   type ZdSharedScopeProduct,
+  type ZdSharedScopeStats,
 } from "@/lib/data/zd-scope-order";
 import { syncSubiektScopeIndex } from "@/lib/orders/zd-scope-index";
 import type { ZdEstimateRunMode } from "@/lib/orders/zd-estimate-scope";
@@ -24,16 +28,31 @@ let indexSyncRunning = false;
 
 /** Pokrycie i podpowiedzi zakresów dla wszystkich dostawców + wspólne zakresy. */
 export async function actionLoadZdScopeOrder(): Promise<
-  Result<ZdScopeInsightsBundle & { sharedScopes: ZdSharedScope[]; indexSyncRunning: boolean }>
+  Result<
+    ZdScopeInsightsBundle & {
+      sharedScopes: ZdSharedScope[];
+      sharedScopeStats: ZdSharedScopeStats[];
+      indexSyncRunning: boolean;
+    }
+  >
 > {
   await requireZdEstimateAdmin("read");
   try {
     const scopes = await listZdEstimateSupplierScopes();
-    const bundle = await loadZdScopeInsights(scopes);
+    const sharedScopes = findZdSharedScopes(scopes);
+    const [bundle, sharedScopeStats] = await Promise.all([
+      loadZdScopeInsights(scopes),
+      // Postęp rozdzielania jest dodatkiem — błąd nie blokuje podpowiedzi.
+      loadZdSharedScopeStats(sharedScopes).catch((e) => {
+        console.error("[zd-scope-order] shared scope stats", e);
+        return [];
+      }),
+    ]);
     return {
       ok: true,
       ...bundle,
-      sharedScopes: findZdSharedScopes(scopes),
+      sharedScopes,
+      sharedScopeStats,
       indexSyncRunning,
     };
   } catch (e) {
@@ -62,7 +81,11 @@ export async function actionStartZdScopeIndexSync(): Promise<Result<object>> {
 export async function actionLoadZdSharedScopeProducts(input: {
   mode: ZdEstimateRunMode;
   scopeId: number;
-}): Promise<Result<{ scope: ZdSharedScope; products: ZdSharedScopeProduct[] }>> {
+  /** Także towary zakresu bez historii ZD (do limitu). */
+  includeAll?: boolean;
+}): Promise<
+  Result<{ scope: ZdSharedScope; products: ZdSharedScopeProduct[]; truncated: boolean }>
+> {
   await requireZdEstimateAdmin("read");
   try {
     // Dostawców wspólnego zakresu bierzemy z bazy, nie od klienta.
@@ -70,34 +93,75 @@ export async function actionLoadZdSharedScopeProducts(input: {
       (s) => s.mode === input.mode && s.scopeId === Math.trunc(Number(input.scopeId))
     );
     if (!scope) return { ok: false, message: "Ten zakres nie jest już wspólny dla kilku dostawców." };
-    const products = await loadZdSharedScopeProducts({
+    const { products, truncated } = await loadZdSharedScopeProducts({
       mode: scope.mode,
       scopeId: scope.scopeId,
       supplierIds: scope.supplierIds,
+      includeAll: input.includeAll === true,
     });
-    return { ok: true, scope, products };
+    return { ok: true, scope, products, truncated };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się wczytać towarów zakresu.") };
   }
 }
 
-/** Przypisanie towarów wspólnego zakresu do dostawców (null = zdejmij przypisanie). */
+/** Limit jednego zapisu — powyżej limitu listy w panelu (3000), żeby „wszystkie” mieściły się w jednym zapisie. */
+const MAX_ASSIGNMENTS_PER_SAVE = 5000;
+
+/**
+ * Przypisanie towarów wspólnego zakresu do dostawców (null = zdejmij przypisanie).
+ * Serwer sprawdza, że towar leży we wspólnym zakresie, a dostawca ten zakres dzieli;
+ * symbol i nazwę bierze z katalogu, nie od klienta.
+ */
 export async function actionSetZdProductAssignments(input: {
-  items: { subiektTwId: number; supplierId: string | null; twSymbol: string | null; twNazwa: string }[];
+  items: { subiektTwId: number; supplierId: string | null }[];
 }): Promise<Result<object>> {
   const user = await requireZdEstimateAdmin("mutate");
-  const items = (Array.isArray(input.items) ? input.items : [])
+  const raw = Array.isArray(input.items) ? input.items : [];
+  if (raw.length > MAX_ASSIGNMENTS_PER_SAVE) {
+    return { ok: false, message: `Za dużo towarów naraz (max ${MAX_ASSIGNMENTS_PER_SAVE}).` };
+  }
+  const items = raw
     .map((i) => ({
       subiektTwId: Math.trunc(Number(i.subiektTwId)),
       supplierId: typeof i.supplierId === "string" && i.supplierId.trim() ? i.supplierId.trim() : null,
-      twSymbol: i.twSymbol ?? null,
-      twNazwa: String(i.twNazwa ?? ""),
     }))
-    .filter((i) => i.subiektTwId > 0);
+    .filter((i) => Number.isSafeInteger(i.subiektTwId) && i.subiektTwId > 0 && i.subiektTwId <= 2_147_483_647);
   if (!items.length) return { ok: false, message: "Brak towarów do zapisania." };
-  if (items.length > 2000) return { ok: false, message: "Za dużo towarów naraz (max 2000)." };
   try {
-    await setZdProductAssignments(items, user.id);
+    const twIds = items.map((i) => i.subiektTwId);
+    const unassignIds = items.filter((i) => !i.supplierId).map((i) => i.subiektTwId);
+    const [shared, facts, existing] = await Promise.all([
+      listZdEstimateSupplierScopes().then(findZdSharedScopes),
+      loadZdTwScopeFacts(twIds),
+      // Zapisane przypisania potrzebne tylko do zdejmowania (towar ze zniesionego zakresu).
+      unassignIds.length ? loadZdProductAssignments(unassignIds) : Promise.resolve(new Map()),
+    ]);
+    const rows = [];
+    for (const item of items) {
+      const f = facts.get(item.subiektTwId);
+      const label = f?.symbol ?? `#${item.subiektTwId}`;
+      const owners = new Set(
+        shared
+          .filter((sh) =>
+            f && (sh.mode === "cecha" ? f.cechaIds.includes(sh.scopeId) : f.grupaId === sh.scopeId)
+          )
+          .flatMap((sh) => sh.supplierIds)
+      );
+      if (!item.supplierId) {
+        // Zdjęcie przypisania tylko przywraca widoczność u wszystkich — dozwolone także dla
+        // towaru, którego zakres przestał być wspólny (inaczej zostałby osierocony).
+        if (!f || (owners.size === 0 && !existing.has(item.subiektTwId))) {
+          return { ok: false, message: `Towar ${label} nie należy do wspólnego zakresu - odśwież listę.` };
+        }
+      } else if (!f || owners.size === 0) {
+        return { ok: false, message: `Towar ${label} nie należy już do wspólnego zakresu - odśwież listę.` };
+      } else if (!owners.has(item.supplierId)) {
+        return { ok: false, message: `Towar ${label}: wybrany dostawca nie ma tego zakresu - odśwież listę.` };
+      }
+      rows.push({ ...item, twSymbol: f?.symbol ?? null, twNazwa: f?.name ?? "" });
+    }
+    await setZdProductAssignments(rows, user.id);
     return { ok: true };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się zapisać przypisań.") };

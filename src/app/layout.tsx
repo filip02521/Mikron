@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Inter_Tight } from "next/font/google";
 import "./globals.css";
 import { CryptoPolyfillInit } from "@/components/CryptoPolyfillScript";
 import { FontScaleScript } from "@/components/layout/FontScaleScript";
@@ -10,6 +10,13 @@ import { defaultAppMetadata } from "@/lib/ui/page-metadata";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap",
+});
+// Tytuły strony i sekcji (DESIGN.md → Typography, Display).
+const interTight = Inter_Tight({
+  variable: "--font-inter-tight",
+  subsets: ["latin", "latin-ext"],
+  weight: ["700"],
   display: "swap",
 });
 const geistMono = Geist_Mono({
@@ -33,7 +40,7 @@ export default function RootLayout({
     <html
       lang="pl"
       data-scroll-behavior="smooth"
-      className={`${geistSans.variable} ${geistMono.variable}`}
+      className={`${geistSans.variable} ${geistMono.variable} ${interTight.variable}`}
       // Skrypty w <head> ustawiają data-font-scale / data-sidebar przed hydracją (bez mignięcia).
       suppressHydrationWarning
     >

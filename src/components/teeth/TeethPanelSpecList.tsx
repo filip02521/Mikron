@@ -65,7 +65,7 @@ export function TeethPanelSpecList({
         {items.map((g, index) => (
           <li
             key={`${g.color}-${g.mould}-${g.jaw}-${g.kind}-${index}`}
-            className="text-[11px] font-medium leading-snug text-slate-800"
+            className="text-[0.6875rem] font-medium leading-snug text-slate-800"
           >
             {formatTeethGroupLabel(g)}
           </li>
@@ -88,7 +88,7 @@ export function TeethPanelSpecList({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[16rem] text-left text-xs">
           <thead>
-            <tr className="border-b border-slate-200/80 text-[10px] font-semibold text-slate-500">
+            <tr className="border-b border-slate-200/80 text-[0.625rem] font-semibold text-slate-500">
               <th className={compact ? "py-0.5 pr-2" : "py-1 pr-2"}>Kolor</th>
               <th className={compact ? "py-0.5 pr-2" : "py-1 pr-2"}>Fason</th>
               <th className={compact ? "py-0.5 pr-2" : "py-1 pr-2"}>Szczęka</th>

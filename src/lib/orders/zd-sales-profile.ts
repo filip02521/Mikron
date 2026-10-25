@@ -18,6 +18,7 @@
  */
 
 import { polishPluralWord } from "@/lib/email/polish-plural";
+import { ZD_DEMAND_FLOOR_WINDOWS } from "@/lib/orders/zd-demand-policy";
 
 export const ZD_SALES_PROFILE = {
   windows: 12,
@@ -99,7 +100,11 @@ export function classifyZdSalesProfile(input: {
   const life = firstPrev < 0 ? prev : prev.slice(firstPrev);
   const typicalMonthly = median(life);
   const robustMonthly = Math.max(typicalMonthly, percentile(life, 0.75));
-  const meanMonthly = w.length ? w.reduce((a, b) => a + b, 0) / w.length : 0;
+  // Średnia od pierwszej sprzedaży: miesiące sprzed wprowadzenia towaru nie zaniżają tempa
+  // (nowość z jedną sprzedażą w bieżącym oknie dostawała 1/12).
+  const firstAny = w.findIndex((x) => x > 0);
+  const sinceFirst = firstAny < 0 ? w : w.slice(firstAny);
+  const meanMonthly = sinceFirst.length ? sinceFirst.reduce((a, b) => a + b, 0) / sinceFirst.length : 0;
   const activeWindows = w.filter((x) => x > 0).length;
   const base = { activeWindows, typicalMonthly, robustMonthly, meanMonthly, currentMonthly };
 
@@ -132,10 +137,12 @@ export function resolveZdSalesProfile(input: {
   dniOkresu: number;
   prosbaPieces: number;
   smoothing: boolean;
+  /** Odejmij prośby także bez wygładzenia (strategia z podłogą 90 d). */
+  subtractProsba?: boolean;
 }): ZdSalesProfileLineMeta {
   const raw = Math.max(0, input.sprzedazOkres);
   const prosba = Math.min(raw, Math.max(0, input.prosbaPieces));
-  const afterProsba = input.smoothing ? raw - prosba : raw;
+  const afterProsba = input.smoothing || input.subtractProsba ? raw - prosba : raw;
   const c = classifyZdSalesProfile({
     windows: input.windows,
     currentSales: afterProsba,
@@ -234,6 +241,43 @@ export function zdSalesProfileWindows(endDate: string): Array<{ dataOd: string; 
   for (let i = p.windows - 1; i >= 0; i -= 1) {
     const to = end - i * p.windowDays * day;
     out.push({ dataOd: key(to - (p.windowDays - 1) * day), dataDo: key(to) });
+  }
+  return out;
+}
+
+/**
+ * Sprzedaż pod klienta zwykle idzie kilka dni po dostawie prośby — okno liczy dostawy od 14 dni przed nim
+ * do 3 dni przed jego końcem (dostarczone na końcu okna najczęściej sprzedają się już po nim).
+ */
+export const ZD_PROSBA_DELIVERY_LEAD_DAYS = 14;
+export const ZD_PROSBA_DELIVERY_TAIL_DAYS = 3;
+
+const shiftKey = (key: string, days: number) =>
+  new Date(Date.parse(`${key}T00:00:00Z`) + days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+/**
+ * Okna profilu do podłogi 90 d (od najstarszego) i zakres dat dostaw próśb każdego z nich. Te same przesunięcia
+ * co dla okna Kreatora, ale bez nakładania: okno dostaje dostawy do 3 dni przed swoim końcem, następne od dnia
+ * po tej granicy (prośba odjęta raz); najstarsze sięga 14 dni wstecz.
+ */
+export function zdProsbaFloorWindowRanges(endDate: string): Array<{ from: string; to: string }> {
+  const w = zdSalesProfileWindows(endDate).slice(-ZD_DEMAND_FLOOR_WINDOWS);
+  return w.map((x, k) => ({
+    from: k === 0 ? shiftKey(x.dataOd, -ZD_PROSBA_DELIVERY_LEAD_DAYS) : shiftKey(w[k - 1]!.dataDo, 1 - ZD_PROSBA_DELIVERY_TAIL_DAYS),
+    to: shiftKey(x.dataDo, -ZD_PROSBA_DELIVERY_TAIL_DAYS),
+  }));
+}
+
+/** Sztuki próśb (dzień dostawy YYYY-MM-DD, sztuki) rozłożone na okna podłogi 90 d, od najstarszego. */
+export function zdProsbaPiecesByFloorWindow(
+  deliveries: Iterable<readonly [string, number]>,
+  endDate: string
+): number[] {
+  const ranges = zdProsbaFloorWindowRanges(endDate);
+  const out = ranges.map(() => 0);
+  for (const [day, pieces] of deliveries) {
+    const k = ranges.findIndex((r) => day >= r.from && day <= r.to);
+    if (k >= 0 && pieces > 0) out[k] += pieces;
   }
   return out;
 }

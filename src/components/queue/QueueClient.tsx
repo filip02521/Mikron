@@ -2,17 +2,16 @@
 
 import { useMemo, useState, useCallback, useEffect } from "react";
 import type { IndividualOrder, SupplierWithSchedule } from "@/types/database";
+import Link from "next/link";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { SectionListLabel } from "@/components/ui/SectionListLabel";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { IconTruck, IconWarehouse } from "@/components/icons/StrokeIcons";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { QueuePanelHelp } from "@/components/queue/QueuePanelHelp";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { Alert } from "@/components/ui/Alert";
 import { QueuePanelToolbar, type QueueView } from "@/components/queue/QueuePanelToolbar";
 import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
-import { panelPageShellClass } from "@/lib/ui/ontime-theme";
+import { brandLinkClass, panelWorkspaceShellClass } from "@/lib/ui/ontime-theme";
 import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
 import { ReceiveQueueTable, type ReceiveQueueToast } from "@/components/queue/ReceiveQueueTable";
 import { WarehouseInventorySection } from "@/components/queue/WarehouseInventorySection";
@@ -209,10 +208,35 @@ export function QueueClient({
     ? `${pickupReadyCount} na regale do odbioru · ${inboxSummary.zamowienieCount} zamówień · ${inboxSummary.informacjaCount} informacji · ${partialCount} częściowo${cancelLabelled ? ` · ${cancelLabelled} z rezygnacją` : ""}`
     : "Po zamówieniu u dostawcy w panelu dziennym";
 
+  const crossLinks =
+    showDailyPanelLink || showTeethLink ? (
+      <>
+        {showDailyPanelLink ? (
+          <>
+            Brak dostawcy uzupełnia zakupy w{" "}
+            <Link href="/podsumowanie" className={brandLinkClass}>
+              panelu dziennym
+            </Link>
+            .
+          </>
+        ) : null}
+        {showDailyPanelLink && showTeethLink ? " " : null}
+        {showTeethLink ? (
+          <>
+            Zęby przyjmujesz w{" "}
+            <Link href="/zeby/przyjecie" className={brandLinkClass}>
+              panelu zębów
+            </Link>
+            .
+          </>
+        ) : null}
+      </>
+    ) : null;
+
   return (
-    <div className={panelPageShellClass}>
+    <div className={panelWorkspaceShellClass}>
       {loadError ? (
-        <Alert tone="error">{loadError}</Alert>
+        <Alert tone="error" className="mb-4">{loadError}</Alert>
       ) : null}
       {pendingMessage ? (
         <ActionLoadingOverlay message={pendingMessage} variant="viewport" />
@@ -221,47 +245,42 @@ export function QueueClient({
         <NoticeToast notice={toast} onDismiss={dismissToast} />
       ) : null}
 
-      <Card padding={false} className="overflow-hidden">
-        <CardHeader
-          inset
-          density="compact"
-          leading={
-            <SectionHeadingIcon tileClassName="bg-emerald-100 text-emerald-800">
-              <IconWarehouse size={20} />
-            </SectionHeadingIcon>
-          }
-          title="Przyjęcie towaru"
-          hint={SALES_PAGE_HEADER_HINTS.queue}
-          hintAriaLabel="O przyjęciu towaru"
-          action={<QueuePanelHelp />}
-        />
+      <PageHeader
+        title="Przyjęcie towaru"
+        help={<QueuePanelHelp />}
+        description={
+          <>
+            {SALES_PAGE_HEADER_HINTS.queue}
+            {crossLinks ? <> {crossLinks}</> : null}
+          </>
+        }
+        className="mb-4"
+      />
 
-        <QueuePanelToolbar
-          view={view}
-          onViewChange={setQueueView}
-          summary={inboxSummary}
-          pickupReadyCount={pickupReadyCount}
-          inventoryCount={inventoryCount}
-          journalCount={deliveryJournal.summary.receiptCount}
-          showDailyPanelLink={showDailyPanelLink}
-          showTeethLink={showTeethLink}
-        />
+      <QueuePanelToolbar
+        view={view}
+        onViewChange={setQueueView}
+        counts={{
+          receive: inboxSummary.activeCount,
+          journal: deliveryJournal.summary.receiptCount,
+          inventory: inventoryCount,
+        }}
+      />
 
-        <div
-          role="tabpanel"
-          id="queue-panel-receive"
-          aria-labelledby="queue-tab-receive"
-          hidden={view !== "receive"}
-        >
+      <div
+        role="tabpanel"
+        id="queue-panel-receive"
+        aria-labelledby="queue-tab-receive"
+        hidden={view !== "receive"}
+      >
+        <Card padding={false} className="overflow-hidden">
           <section id="kolejka-przyjecie" className="scroll-mt-20">
-            <SectionListLabel
-              domain="panel"
+            <CardHeader
+              inset
+              density="compact"
+              actionAlign="inline"
               title="Kolejka przyjęcia"
-              hint={receiveHint}
-              count={receiveQueue.length}
-              accent="emerald"
-              icon={<IconTruck size={17} />}
-              tileClassName="bg-emerald-100 text-emerald-800"
+              description={receiveHint}
             />
             <ReceiveQueueTable
               deliveryOrders={orders}
@@ -273,40 +292,40 @@ export function QueueClient({
               onPendingChange={setPendingMessage}
             />
           </section>
-        </div>
+        </Card>
+      </div>
 
-        <div
-          role="tabpanel"
-          id="queue-panel-journal"
-          aria-labelledby="queue-tab-journal"
-          hidden={view !== "journal"}
-        >
-          <DeliveryJournalSection
-            suppliers={journalSuppliers}
-            carriers={warehouseCarriers}
-            initialJournal={deliveryJournal}
-            todayDateKey={deliveryJournal.date}
-            canEditJournal={canEditJournal}
-            canManageCarriers={canManageCarriers}
-            onGoToReceive={goToReceiveForSupplier}
-          />
-        </div>
+      <div
+        role="tabpanel"
+        id="queue-panel-journal"
+        aria-labelledby="queue-tab-journal"
+        hidden={view !== "journal"}
+      >
+        <DeliveryJournalSection
+          suppliers={journalSuppliers}
+          carriers={warehouseCarriers}
+          initialJournal={deliveryJournal}
+          todayDateKey={deliveryJournal.date}
+          canEditJournal={canEditJournal}
+          canManageCarriers={canManageCarriers}
+          onGoToReceive={goToReceiveForSupplier}
+        />
+      </div>
 
-        <div
-          role="tabpanel"
-          id="queue-panel-inventory"
-          aria-labelledby="queue-tab-inventory"
-          hidden={view !== "inventory"}
-        >
-          <WarehouseInventorySection
-            orders={warehouseInventory}
-            deliveryQueueOrders={orders}
-            canClearFromShelf={canClearFromShelf}
-          />
-        </div>
+      <div
+        role="tabpanel"
+        id="queue-panel-inventory"
+        aria-labelledby="queue-tab-inventory"
+        hidden={view !== "inventory"}
+      >
+        <WarehouseInventorySection
+          orders={warehouseInventory}
+          deliveryQueueOrders={orders}
+          canClearFromShelf={canClearFromShelf}
+        />
+      </div>
 
-        <AppBrandContentFooter />
-      </Card>
+      <AppBrandContentFooter variant="page" className="mt-6" />
     </div>
   );
 }

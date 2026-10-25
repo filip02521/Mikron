@@ -40,6 +40,10 @@ import { cn } from "@/lib/cn";
 import { formatZdSalesProfileHint } from "@/lib/orders/zd-sales-profile";
 import { checkboxBrandClass } from "@/lib/ui/ontime-theme";
 import { askConfirm } from "@/components/ui/ConfirmHost";
+import type { ZdProsbaElsewhere } from "@/lib/data/zd-scope-order";
+
+const ABC_TITLE: Record<string, string> = { A: "80% zysku", B: "kolejne 15% zysku", C: "ostatnie 5% zysku" };
+const XYZ_TITLE: Record<string, string> = { X: "sprzedaż równa", Y: "sprzedaż zmienna", Z: "sprzedaż rzadka", N: "nowość" };
 
 /** Kolumny przepływu (Dost. → Sprzed. → Cel → Otwarte) — wspólne dla nagłówka i wierszy. */
 /** „Starczy na” — dni do wyczerpania (dostępne / sprzedaż dziennie) i minipasek z kreską czasu dostawy. */
@@ -255,8 +259,12 @@ export type ZdEstimateTableRowProps = {
   onAcceptReview: (twId: number) => void;
   /** Ostatnie ZD na ten towar było u innego dostawcy (nazwa) — tylko podpowiedź. */
   otherSupplierHint?: string | null;
+  /** Wiszące prośby na ten towar przypisane innemu dostawcy — tylko podpowiedź. */
+  prosbyElsewhere?: readonly ZdProsbaElsewhere[] | null;
   /** Cena netto za sztukę z ostatniego ZD (null = brak ceny). */
   unitPriceNet?: number | null;
+  /** Klasa ABC/XYZ (kolumna „Klasa”); null = towar jeszcze niesklasyfikowany. */
+  skuClass?: { abc: string; xyz: string; overridden: boolean } | null;
 };
 
 /**
@@ -310,7 +318,9 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
   onOverrideChange,
   onAcceptReview,
   otherSupplierHint,
+  prosbyElsewhere,
   unitPriceNet,
+  skuClass,
 }: ZdEstimateTableRowProps) {
   const hidePairOrBomHardActions = bomRowHidesHardExclude(l);
   const hideOnRequestAction = bomRowHidesOnRequest(l);
@@ -490,6 +500,22 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
             />
           ) : null}
         </span>
+        {!excluded && (qty.prosbaFromSupplyPieces ?? 0) > 0 ? (
+          <span
+            className="mt-0.5 block truncate text-[11px] font-medium text-emerald-700"
+            title="Wolny towar (półka i w drodze ponad cel zapasu) pokrywa prośbę handlowca — nie zamawiamy jej drugi raz. Wydaj z magazynu; handlowiec widzi to w „Moje zamówienia”."
+          >
+            Prośba z wolnego towaru: {formatQty(qty.prosbaFromSupplyPieces ?? 0)} szt — wydaj z magazynu
+          </span>
+        ) : null}
+        {prosbyElsewhere?.length ? (
+          <span
+            className="mt-0.5 block truncate text-[11px] font-medium text-amber-700"
+            title={`Handlowiec przypisał prośbę na ten towar innemu dostawcy: ${prosbyElsewhere.map((p) => `${p.supplierName} (${p.count})`).join(", ")}. Ta lista jej nie liczy. Jeśli towar zamawiasz tutaj, popraw dostawcę w prośbie.`}
+          >
+            Prośba czeka u: {prosbyElsewhere.map((p) => p.supplierName).join(", ")}
+          </span>
+        ) : null}
         {otherSupplierHint ? (
           <span
             className="mt-0.5 block truncate text-[11px] font-medium text-amber-700"
@@ -557,6 +583,28 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
                 className={cn("zd-estimate-num-col zd-estimate-cover-col whitespace-nowrap", sectionCls)}
               >
                 <ZdEstimateCoverCell line={l} leadDays={leadDays} />
+              </td>
+            );
+          case "abcClass":
+            return (
+              <td
+                key={col}
+                className={cn("zd-estimate-class-col text-center whitespace-nowrap", sectionCls)}
+                title={
+                  skuClass
+                    ? `Klasa ${skuClass.abc}${skuClass.xyz}: ${ABC_TITLE[skuClass.abc] ?? ""}, ${XYZ_TITLE[skuClass.xyz] ?? ""}${skuClass.overridden ? " (nadpisana ręcznie)" : ""}`
+                    : "Bez klasy - towar spoza przeliczonych zakresów albo przed pierwszym przeliczeniem klas"
+                }
+              >
+                {skuClass ? (
+                  <span className="tabular-nums">
+                    <span className={cn("font-semibold", skuClass.abc === "A" ? "text-slate-900" : "text-slate-600")}>{skuClass.abc}</span>
+                    <span className="text-slate-500">{skuClass.xyz}</span>
+                    {skuClass.overridden ? <span className="text-slate-500">*</span> : null}
+                  </span>
+                ) : (
+                  <span className="text-slate-400">—</span>
+                )}
               </td>
             );
           case "value": {

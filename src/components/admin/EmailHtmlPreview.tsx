@@ -30,11 +30,11 @@ export function EmailHtmlPreview({
         srcDoc={srcDoc}
         className="h-[min(70vh,36rem)] w-full rounded-md border border-slate-200 bg-white"
       />
-      <details className="rounded-md border border-slate-200 bg-white">
-        <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50">
+      <details>
+        <summary className="inline-flex min-h-9 cursor-pointer select-none items-center rounded-md px-1 text-xs font-medium text-slate-600 hover:text-slate-900">
           Źródło HTML
         </summary>
-        <pre className="max-h-64 overflow-auto border-t border-slate-100 bg-slate-50 p-3 text-[11px] leading-relaxed text-slate-700 whitespace-pre-wrap break-all">
+        <pre className="mt-1 max-h-64 overflow-auto rounded-lg bg-slate-50 p-3 text-[0.6875rem] leading-relaxed text-slate-700 whitespace-pre-wrap break-all">
           {html || "(puste)"}
         </pre>
       </details>

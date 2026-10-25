@@ -258,7 +258,7 @@ export function TeethVerificationInlineRow({
           saving && "bg-indigo-50/30",
           error && "bg-red-50/20",
           isActive && "ring-1 ring-inset ring-indigo-300 bg-indigo-50/20",
-          isVisited && !isActive && !saving && !error && "bg-emerald-50/40 border-l-2 border-l-emerald-400",
+          isVisited && !isActive && !saving && !error && "bg-emerald-50/40",
         )}
       >
         <td className="py-0.5 px-1">
@@ -342,7 +342,7 @@ export function TeethVerificationInlineRow({
             {savedFlash ? (
               <IconCircleCheck size={14} className="shrink-0 text-emerald-500 transition-opacity" />
             ) : saving ? (
-              <span className="text-[10px] text-indigo-500">…</span>
+              <span className="text-[0.625rem] text-indigo-500">…</span>
             ) : null}
           </div>
         </td>
@@ -350,7 +350,7 @@ export function TeethVerificationInlineRow({
       {error ? (
         <tr className="border-b border-slate-100 last:border-b-0">
           <td colSpan={showJaw ? 4 : 3} className="py-1 px-2">
-            <div className="flex items-center gap-1 text-[10px] font-medium text-red-600">
+            <div className="flex items-center gap-1 text-[0.625rem] font-medium text-red-600">
               <IconAlertCircle size={11} className="shrink-0" />
               {error}
             </div>

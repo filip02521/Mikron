@@ -31,6 +31,15 @@ import { policyForBoostPreset, type ZdBoostPowerPreset } from "@/lib/orders/zd-e
 import { fetchZdProductPairs, type ZdProductPairRow } from "@/lib/data/zd-product-pairs";
 import { fetchZdProductBoms, type ZdProductBomRow } from "@/lib/data/zd-product-boms";
 import { bomRowsToRefs, type ZdProductBomRef } from "@/lib/orders/zd-estimate-bom";
+import { normalizeDemandAllocation } from "@/lib/orders/zd-estimate-bom-policy";
+import { withPairMinStock } from "@/lib/orders/zd-estimate-min-stock-lookup";
+import {
+  applyStockoutAdjustToLine,
+  businessDaysInWindow,
+  computeStockoutSalesFactor,
+  loadStockHistoryWindow,
+  stockoutMetaExcludingProsba,
+} from "@/lib/stock-watch/stock-history";
 import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
 import { collectMissingZdBomTwIds } from "@/lib/orders/zd-estimate-live-refresh";
 import { normalizeIndividualOrders } from "@/lib/data/normalize-order";
@@ -65,8 +74,11 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { listZdEstimateSupplierScopesFor } from "@/lib/data/zd-estimate-supplier-scopes";
 import {
+  countIncompleteProsbyForSupplier,
   loadLastZdSupplierByTwIds,
+  loadProsbyElsewhereByTwIds,
   loadZdProductAssignments,
+  type ZdProsbaElsewhere,
 } from "@/lib/data/zd-scope-order";
 import {
   fetchSubiektZdEstimateAll,
@@ -78,6 +90,7 @@ import {
   applyZdPairDemandFloor,
   effectiveDniZapasu,
   sales90FromProfile,
+  applyZdBomDemandFloor,
   ZD_SUPPLIER_ORDER_POLICY_CLASSIC,
   type ZdSupplierOrderPolicy,
 } from "@/lib/orders/zd-demand-policy";
@@ -90,6 +103,11 @@ import {
   collectTwIdsNeedingProsbaReservationOverlap,
   collectTwIdsNeedingProsbaReservationOverlapWithoutStanRez,
   individualExtrasAndReliefWithReservationOverlap,
+  buildZdOverlapReservationSources,
+  linesWithReservationSources,
+  mergeReservedSlicesBySources,
+  reservationSourceTwIds,
+  type ZdOverlapReservationSources,
   reservedRowsToOverlapSlices,
   type ZdEstimateProsbaOverlapContribution,
   type ZdEstimateReservedOverlapSlice,
@@ -101,6 +119,7 @@ import {
 } from "@/lib/orders/zd-sales-profile";
 import {
   ensureZdSalesProfiles,
+  loadDeliveredProsbaPiecesByFloorWindow,
   loadDeliveredProsbaPiecesByTwId,
   type ZdSalesProfileScope,
 } from "@/lib/orders/zd-sales-profile-load";
@@ -296,6 +315,11 @@ export async function resolveIndividualExtrasWithReservationOverlap(input: {
     number,
     ZdPackagingDocumentUnitMode
   > | null;
+  /**
+   * Pary i zestawy „Składamy”: ZK klienta rezerwuje inną kartę niż ta z prośbą (sztuka pary,
+   * karta zestawu) — rezerwacje kart źródłowych scalane na linii w jednostkach jej extra.
+   */
+  reservationSources?: ZdOverlapReservationSources | null;
 }): Promise<{
   adjustedExtraByTwId: Map<number, number>;
   rawExtraByTwId: Map<number, number>;
@@ -319,10 +343,13 @@ export async function resolveIndividualExtrasWithReservationOverlap(input: {
     if (extra.extraPieces > 0) rawMap.set(tw, extra.extraPieces);
   }
 
-  const candidateTwIds = input.lines?.length
+  const sources = input.reservationSources ?? new Map();
+  // Rezerwacja na którejkolwiek karcie źródłowej czyni linię kandydatem.
+  const linesForCandidates = input.lines?.length ? linesWithReservationSources(input.lines, sources) : null;
+  const candidateTwIds = linesForCandidates
     ? collectTwIdsNeedingProsbaReservationOverlap({
         extraTwIds: rawMap.keys(),
-        lines: input.lines,
+        lines: linesForCandidates,
         byTwId: scopedByTw,
       })
     : collectTwIdsNeedingProsbaReservationOverlapWithoutStanRez({
@@ -364,7 +391,8 @@ export async function resolveIndividualExtrasWithReservationOverlap(input: {
   }
 
   try {
-    const fetched = await fetchReservedOverlapSlicesByTwIds(toFetch);
+    const fetched = await fetchReservedOverlapSlicesByTwIds(reservationSourceTwIds(toFetch, sources));
+    fetched.reservedByTwId = mergeReservedSlicesBySources(fetched.reservedByTwId, toFetch, sources);
     const maps = individualExtrasAndReliefWithReservationOverlap(
       scopedByTw,
       fetched.reservedByTwId
@@ -419,6 +447,11 @@ export type ZdOrderEngineInput = {
   /** Dostawca OnTime — historia snapshotów (kh + aliasy) i prośby. Bez → bez historii i próśb. */
   supplierId: string | null;
   dniZapasu: number;
+  /**
+   * Czas dostawy i dni do kolejnego zamówienia (jak horyzont „do kolejnej dostawy”) —
+   * strategia z własnymi dniami celu liczy co najmniej cykl + dostawę.
+   */
+  orderTiming?: { leadDays: number; nextOrderDays: number } | null;
   dataOd: string;
   dataDo: string;
   zapasMin: number;
@@ -463,6 +496,10 @@ export type ZdOrderEngineOutput = {
   assignedElsewhere: ZdOrderAssignedElsewhere[];
   /** tw → nazwa dostawcy z ostatniego ZD, gdy inny niż liczony. */
   otherSupplierHintByTwId: Record<number, string>;
+  /** tw → wiszące prośby na ten towar przypisane innemu dostawcy (podpowiedź). */
+  prosbyElsewhereByTwId: Record<number, ZdProsbaElsewhere[]>;
+  /** Prośby tego dostawcy w Weryfikacji — poza Kreatorem do uzupełnienia; null = nie udało się policzyć. */
+  incompleteProsbyCount: number | null;
   fetch: { pagesFetched: number; totalCountApi: number; truncated: boolean };
   historyByTwId: Map<number, { lastOrderedQty: number; linkedAt: string }> | null;
   historyFetchFailed: boolean;
@@ -537,7 +574,7 @@ export async function runZdOrderEngine(
       return { ok: false, feedback };
     }
   }
-  const dniZapasu = effectiveDniZapasu(orderPolicy, input.dniZapasu);
+  const dniZapasu = effectiveDniZapasu(orderPolicy, input.dniZapasu, input.orderTiming);
 
   // Pełna lista towarów zakresu z Subiekta (nie tylko braki API / nie nasza baza).
   // Echo filtra zaraz po 1. stronie — bez tego stary API mógłby dociągnąć cały katalog.
@@ -785,7 +822,7 @@ export async function runZdOrderEngine(
 
   // Min stock — soft fail (bez minimum lista działa, po prostu bez dobijania).
   const minStock = minStockSettled.ok ? minStockSettled.value : [];
-  const minStockByTwId = minStockRowsToMap(minStock);
+  const minStockByTwIdOwn = minStockRowsToMap(minStock);
 
   if (!productPairsSettled.ok) {
     const message = userFacingErrorText(
@@ -800,6 +837,8 @@ export async function runZdOrderEngine(
     return { ok: false, feedback };
   }
   const productPairs = productPairsSettled.value;
+  // Minimum z wiersza sztuki pary liczy się na paczce (ścieżki czytające mapę po tw paczki).
+  const minStockByTwId = withPairMinStock(minStockByTwIdOwn, productPairs);
 
   if (!productBomsSettled.ok) {
     const message =
@@ -1014,6 +1053,51 @@ export async function runZdOrderEngine(
   // tylko własną sprzedaż towaru — bez profilu, żeby znacznik nie przeczył liczbom. Pary dostają
   // profil łączny (niżej), bo ich sprzedaż w tabeli to sztuki + paczki × przelicznik.
   // Prośby odejmujemy tylko bez opakowań (prośba w sztukach, sprzedaż w jednostkach karty).
+  // Dni braku w oknie (historia stanów z nocnego przebiegu): sprzedaż przeliczona na dni ze
+  // stanem, zanim podłoga / profil / cel ją wezmą. Pary i składy — bez (stan łączony gdzie indziej).
+  // Bez historii (pierwsze tygodnie, błąd bazy) — jak dotąd.
+  {
+    const composite = new Set<number>([
+      ...productPairs.flatMap((p) => [p.packTwId, p.pieceTwId]),
+      ...bomRefs.flatMap((b) => [b.parentTwId, ...b.components.map((c) => c.componentTwId)]),
+    ]);
+    const windowDays = businessDaysInWindow(dataOd, dataDo);
+    const twIds = mergedPozycje.map((p) => Math.trunc(Number(p.tw_Id) || 0)).filter((t) => t > 0 && !composite.has(t));
+    const history =
+      windowDays > 0 && twIds.length
+        ? await loadStockHistoryWindow(twIds, dataOd, dataDo).catch((e) => {
+            console.error("[zd-order-engine] historia stanów", e);
+            return new Map<number, { recordedDays: number; outDays: number }>();
+          })
+        : new Map<number, { recordedDays: number; outDays: number }>();
+    const metaByTw = new Map<number, NonNullable<ReturnType<typeof computeStockoutSalesFactor>>>();
+    for (const [tw, h] of history) {
+      if (composite.has(tw)) continue;
+      const meta = computeStockoutSalesFactor({ windowDays, recordedDays: h.recordedDays, outDays: h.outDays });
+      if (meta) metaByTw.set(tw, meta);
+    }
+    // Sprzedaż pod prośby nie dostaje mnożnika (jak w odejmowaniu próśb: tylko bez opakowań,
+    // bo prośba jest w sztukach, a sprzedaż w jednostkach karty).
+    const prosbaForStockout = metaByTw.size
+      ? await loadDeliveredProsbaPiecesByTwId({
+          twIds: [...metaByTw.keys()].filter((tw) => !((packagingByTwId.get(tw)?.unitsPerPackage ?? 1) > 1)),
+          dataOd,
+          dataDo,
+        }).catch(() => new Map<number, number>())
+      : new Map<number, number>();
+    for (let i = 0; i < mergedPozycje.length; i += 1) {
+      const tw = Math.trunc(Number(mergedPozycje[i]!.tw_Id) || 0);
+      const meta = metaByTw.get(tw);
+      if (!meta) continue;
+      const effective = stockoutMetaExcludingProsba(
+        meta,
+        Number(mergedPozycje[i]!.sprzedazOkres) || 0,
+        prosbaForStockout.get(tw) ?? 0
+      );
+      if (effective) mergedPozycje[i] = applyStockoutAdjustToLine(mergedPozycje[i]!, effective, zapasMin);
+    }
+  }
+
   let salesSmoothing: ZdSalesSmoothingSummary | null = null;
   /** Linie przed podłogą strategii — „jak dotąd” liczone z tego samego pobrania (porównanie). */
   const classicBase: typeof mergedPozycje | null =
@@ -1044,17 +1128,28 @@ export async function runZdOrderEngine(
       }
       // Strategia max30_90 zastępuje wygładzenie (backtest: wygładzenie nie poprawiało wyniku).
       const smoothing = input.salesSmoothing === true && orderPolicy.strategy === "classic";
+      // Sprzedaż pod prośbę była już zamówiona jako dodatek do prośby — nie jest popytem na zapas.
+      // Strategia zastępuje wygładzenie, ale odejmowanie próśb musi zostać (inaczej podłoga 90 d
+      // ciągnie jednorazową prośbę jeszcze przez dwa miesiące).
+      const strategyActive = orderPolicy.strategy !== "classic";
+      const subtractProsba = smoothing || strategyActive;
       const prosbaInPieces = (tw: number) =>
-        smoothing &&
+        subtractProsba &&
         !compositeTwIds.has(tw) &&
         !((packagingByTwId.get(tw)?.unitsPerPackage ?? 1) > 1);
-      const prosbaPieces = smoothing
-        ? await loadDeliveredProsbaPiecesByTwId({
-            twIds: mergedPozycje.map((p) => Math.trunc(Number(p.tw_Id) || 0)).filter(prosbaInPieces),
-            dataOd,
-            dataDo,
-          }).catch(() => new Map<number, number>())
-        : new Map<number, number>();
+      const prosbaLoadTwIds = mergedPozycje.map((p) => Math.trunc(Number(p.tw_Id) || 0)).filter(prosbaInPieces);
+      const [prosbaPieces, prosbaByFloorWindow] = await Promise.all([
+        subtractProsba
+          ? loadDeliveredProsbaPiecesByTwId({ twIds: prosbaLoadTwIds, dataOd, dataDo }).catch(() => new Map<number, number>())
+          : new Map<number, number>(),
+        // Podłoga 90 d: prośby z każdego z jej trzech okien profilu, nie tylko z okna Kreatora.
+        // shortcut: okna liczone od dataDo — profil „usable” w Kreatorze (do 14 d starszy) przesuwa je o tyle; nocny przebieg ma świeży.
+        strategyActive
+          ? loadDeliveredProsbaPiecesByFloorWindow({ twIds: prosbaLoadTwIds, endDate: dataDo }).catch(
+              () => new Map<number, number[]>()
+            )
+          : new Map<number, number[]>(),
+      ]);
       const dniOkresu =
         Number(fetched.parametry.dniOkresu) > 0
           ? Number(fetched.parametry.dniOkresu)
@@ -1063,17 +1158,61 @@ export async function runZdOrderEngine(
       // Para to jeden popyt (sztuki + paczki × przelicznik): podłoga i profil liczone dla pary,
       // nie dla każdej strony osobno (inaczej max(paczki) + max(sztuki) zawyżałby cel).
       const pairTwIds = new Set(productPairs.flatMap((p) => [p.packTwId, p.pieceTwId]));
+      // „Składamy”: popyt zestawu schodzi na składniki (sprzedaż × ilość). Podłoga per linia
+      // dałaby max(składnik) + ilość × max(zestaw) — liczymy ją raz, na łącznym popycie składnika.
+      const explodeBoms = bomRefs.filter(
+        (b) => normalizeDemandAllocation(b.demandAllocation) === "explode" && b.components.length > 0
+      );
+      const explodeParentIds = new Set(explodeBoms.map((b) => b.parentTwId));
       const rawSalesByTw = new Map(
         mergedPozycje.map((p) => [Math.trunc(Number(p.tw_Id) || 0), Number(p.sprzedazOkres) || 0])
       );
+      // Najpierw łączna podłoga składników; składnik bez niej (brak profilu zestawu, zestaw spoza
+      // zakresu) dostaje własną podłogę per linia — inaczej traciłby ją całkiem.
+      const bomFloored = applyZdBomDemandFloor({
+        lines: mergedPozycje,
+        explodeBoms,
+        profiles,
+        rawSalesByTw,
+        pairTwIds,
+        policy: orderPolicy,
+        dniOkresu,
+        dniZapasu,
+      });
       for (let i = 0; i < mergedPozycje.length; i += 1) {
         const line = mergedPozycje[i]!;
         const tw = Math.trunc(Number(line.tw_Id) || 0);
         const windows = profiles.get(tw);
-        if (windows && orderPolicy.strategy !== "classic" && !pairTwIds.has(tw)) {
-          const floored = applyZdDemandFloorToLine(line, {
+        // Strategia odjęła prośby — meta z tego kroku zostaje (drugi przebieg bez odejmowania
+        // nadpisałby ją „bez zmian”, a liczby już są po odjęciu).
+        let prosbaMetaKept = false;
+        if (
+          windows &&
+          strategyActive &&
+          !pairTwIds.has(tw) &&
+          !explodeParentIds.has(tw) &&
+          !bomFloored.has(tw)
+        ) {
+          let base = line;
+          const prosba = prosbaPieces.get(tw) ?? 0;
+          if (prosba > 0 && !compositeTwIds.has(tw)) {
+            const pm = resolveZdSalesProfile({
+              windows,
+              sprzedazOkres: Number(line.sprzedazOkres) || 0,
+              dniOkresu,
+              prosbaPieces: prosba,
+              smoothing: false,
+              subtractProsba: true,
+            });
+            base = applyZdSalesProfileToLine(line, pm, zapasMin);
+            if (pm.applied) {
+              salesSmoothing.prosba += 1;
+              prosbaMetaKept = true;
+            }
+          }
+          const floored = applyZdDemandFloorToLine(base, {
             policy: orderPolicy,
-            sales90: sales90FromProfile(windows),
+            sales90: sales90FromProfile(windows, prosbaByFloorWindow.get(tw)),
             dniOkresu,
             dniZapasu,
           });
@@ -1081,7 +1220,7 @@ export async function runZdOrderEngine(
             mergedPozycje[i] = floored;
           }
         }
-        if (!windows || compositeTwIds.has(tw)) continue;
+        if (!windows || compositeTwIds.has(tw) || prosbaMetaKept) continue;
         const meta = resolveZdSalesProfile({
           windows,
           // Profil (znaczniki) z prawdziwej sprzedaży, nie z podłogi strategii.
@@ -1220,17 +1359,23 @@ export async function runZdOrderEngine(
     }
   }
 
-  // Podpowiedź: ostatnie ZD na ten towar było u innego dostawcy.
+  // Podpowiedzi (bez nich lista działa): ostatnie ZD u innego dostawcy, prośby na te towary
+  // przypisane innemu dostawcy, prośby tego dostawcy czekające na uzupełnienie.
   const otherSupplierHintByTwId: Record<number, string> = {};
+  const prosbyElsewhereByTwId: Record<number, ZdProsbaElsewhere[]> = {};
+  let incompleteProsbyCount: number | null = null;
   if (input.supplierId) {
-    try {
-      const last = await loadLastZdSupplierByTwIds(result.pozycje.map((p) => p.tw_Id));
-      for (const [tw, hit] of last) {
-        if (hit.supplierId !== input.supplierId) otherSupplierHintByTwId[tw] = hit.supplierName;
-      }
-    } catch {
-      // Tylko podpowiedź — bez niej lista działa.
+    const supplierId = input.supplierId;
+    const [last, elsewhere, incomplete] = await Promise.all([
+      loadLastZdSupplierByTwIds(result.pozycje.map((p) => p.tw_Id)).catch(() => null),
+      loadProsbyElsewhereByTwIds({ supplierId, lines: result.pozycje }).catch(() => null),
+      countIncompleteProsbyForSupplier(supplierId).catch(() => null),
+    ]);
+    for (const [tw, hit] of last ?? []) {
+      if (hit.supplierId !== supplierId) otherSupplierHintByTwId[tw] = hit.supplierName;
     }
+    for (const [tw, list] of elsewhere ?? []) prosbyElsewhereByTwId[tw] = list;
+    incompleteProsbyCount = incomplete;
   }
 
   const hardBase = mergeZdEstimateExcludedTwIds(
@@ -1285,6 +1430,11 @@ export async function runZdOrderEngine(
       const overlap = await resolveIndividualExtrasWithReservationOverlap({
         byTwId: extras.byTwId,
         lines: result.pozycje,
+        reservationSources: buildZdOverlapReservationSources({
+          pairs: productPairs,
+          boms: bomRefs,
+          dostepneByTw: new Map(result.pozycjeBase.map((l) => [l.tw_Id, Number(l.dostepne) || 0])),
+        }),
       });
       prosbaOverlapCandidateTwIds = overlap.candidateTwIds;
       prosbaOverlapResolved = overlap.resolved;
@@ -1351,6 +1501,8 @@ export async function runZdOrderEngine(
     scopesIncluded,
     assignedElsewhere,
     otherSupplierHintByTwId,
+    prosbyElsewhereByTwId,
+    incompleteProsbyCount,
     fetch: {
       pagesFetched: fetched.pagesFetched,
       totalCountApi: fetched.totalCountApi,

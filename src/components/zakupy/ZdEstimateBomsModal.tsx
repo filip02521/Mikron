@@ -29,6 +29,7 @@ import {
   type BomPresetId,
 } from "@/lib/orders/zd-estimate-bom-policy";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 export type ZdBomSeedProduct = {
   twId: number;
@@ -189,7 +190,7 @@ export function ZdEstimateBomsModal({
       ]
         .join(" ")
         .toLowerCase();
-      return hay.includes(q);
+      return matchesSearchWords(hay, q);
     });
   }, [boms, query]);
 

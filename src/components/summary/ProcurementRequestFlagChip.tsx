@@ -132,7 +132,7 @@ export function ProcurementRequestFlagChip({
           type="button"
           data-flag-note-toggle
           className={cn(
-            "ml-0.5 inline-flex shrink-0 items-center gap-0.5 rounded px-0.5 py-0.5 text-[9px] font-semibold opacity-70",
+            "ml-0.5 inline-flex shrink-0 items-center gap-0.5 rounded px-0.5 py-0.5 text-[0.5625rem] font-semibold opacity-70",
             "hover:bg-black/5 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
           )}
           aria-expanded={showFullNote}
@@ -162,7 +162,7 @@ export function ProcurementRequestFlagChip({
     <>
       {headerRow}
       {showFullNote ? (
-        <span className="min-w-0 max-w-[min(100%,22rem)] whitespace-pre-wrap break-words pl-3 text-[10px] font-medium leading-relaxed opacity-90">
+        <span className="min-w-0 max-w-[min(100%,22rem)] whitespace-pre-wrap break-words pl-3 text-[0.625rem] font-medium leading-relaxed opacity-90">
           {noteRaw}
         </span>
       ) : null}

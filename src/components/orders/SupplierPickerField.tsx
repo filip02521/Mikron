@@ -16,7 +16,6 @@ import {
 } from "@/app/actions/subiekt";
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
 import { Input } from "@/components/ui/Field";
-import { Spinner } from "@/components/ui/Spinner";
 import {
   TYPEAHEAD_KEYBOARD_HINT,
   TypeaheadDropdown,
@@ -28,6 +27,7 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { filterSuppliersByName } from "@/lib/orders/filter-suppliers";
 import { cn } from "@/lib/cn";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 export type SupplierPickerOption = {
   id: string;
@@ -331,7 +331,7 @@ export function SupplierPickerField({
         />
         {visibleStatus === "loading" && subiektQueryActive ? (
           <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
-            <Spinner size="sm" />
+            <BrandLoader size="sm" tile={false} label="Szukam" />
           </span>
         ) : null}
       </div>

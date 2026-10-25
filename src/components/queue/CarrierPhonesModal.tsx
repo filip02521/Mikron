@@ -28,6 +28,7 @@ import { redirectToLoginIfSessionError } from "@/lib/auth/session-login-redirect
 import { panelTypography } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
 import { polishPluralWord } from "@/lib/email/polish-plural";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 type PhoneFormState = {
   label: string;
@@ -112,8 +113,10 @@ export function CarrierPhonesModal({
     if (!q) return carriers;
     return carriers.filter(
       (c) =>
-        c.label.toLowerCase().includes(q) ||
-        (phonesBySlug.get(c.slug) ?? []).some((p) => p.phone.includes(q) || p.label.toLowerCase().includes(q)),
+        matchesSearchWords(
+          [c.label, ...(phonesBySlug.get(c.slug) ?? []).flatMap((p) => [p.phone, p.label])],
+          q
+        ),
     );
   }, [carriers, phonesBySlug, search]);
 
@@ -251,7 +254,7 @@ export function CarrierPhonesModal({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Szukaj kuriera lub numeru…"
-              className="h-8 max-w-[14rem] text-[12px]"
+              className="h-8 max-w-[14rem] text-[0.75rem]"
             />
           </div>
 
@@ -271,7 +274,7 @@ export function CarrierPhonesModal({
                   <div
                     key={carrier.slug}
                     className={cn(
-                      "rounded-xl border transition-colors",
+                      "rounded-lg border transition-colors",
                       isExpanded
                         ? "border-slate-300 bg-white shadow-sm"
                         : "border-slate-200 bg-white hover:border-slate-300",
@@ -290,17 +293,17 @@ export function CarrierPhonesModal({
                         )}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] font-semibold text-slate-800">
+                        <p className="truncate text-[0.8125rem] font-semibold text-slate-800">
                           {carrier.label}
                         </p>
-                        <p className="text-[11px] text-slate-400">
+                        <p className="text-[0.6875rem] text-slate-500">
                           {carrierPhones.length === 0
                             ? "Brak numerów"
                             : `${carrierPhones.length} ${polishPluralWord(carrierPhones.length, "numer", "numery", "numerów")}`}
                         </p>
                       </div>
                       {!carrier.isActive ? (
-                        <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
+                        <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[0.625rem] font-medium text-slate-500">
                           Ukryty
                         </span>
                       ) : null}
@@ -321,7 +324,7 @@ export function CarrierPhonesModal({
                                           value={editForm.label}
                                           onChange={(e) => setEditForm((f) => ({ ...f, label: e.target.value }))}
                                           placeholder="np. biuro, kierowca…"
-                                          className="h-8 text-[12px]"
+                                          className="h-8 text-[0.75rem]"
                                           autoFocus
                                         />
                                       </Field>
@@ -329,7 +332,7 @@ export function CarrierPhonesModal({
                                         <Input
                                           value={editForm.phone}
                                           onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))}
-                                          className="h-8 text-[12px]"
+                                          className="h-8 text-[0.75rem]"
                                         />
                                       </Field>
                                       <div className="flex gap-1.5 pb-0.5">
@@ -357,16 +360,16 @@ export function CarrierPhonesModal({
                                         <IconPhone size={14} aria-hidden />
                                       </span>
                                       <div className="min-w-0 flex-1">
-                                        <p className="text-[13px] font-medium text-slate-800">
+                                        <p className="text-[0.8125rem] font-medium text-slate-800">
                                           {phone.phone}
                                         </p>
                                         {phone.label ? (
-                                          <p className="text-[11px] text-slate-400">{phone.label}</p>
+                                          <p className="text-[0.6875rem] text-slate-500">{phone.label}</p>
                                         ) : null}
                                       </div>
                                       <a
                                         href={`tel:${phone.phone.replace(/[\s()-]/g, "")}`}
-                                        className="shrink-0 rounded-md px-2 py-1 text-[11px] font-medium text-indigo-600 hover:bg-indigo-50"
+                                        className="shrink-0 rounded-md px-2 py-1 text-[0.6875rem] font-medium text-indigo-600 hover:bg-indigo-50"
                                       >
                                         Zadzwoń
                                       </a>
@@ -398,7 +401,7 @@ export function CarrierPhonesModal({
                             })}
                           </ul>
                         ) : (
-                          <p className="px-2.5 py-1.5 text-[11px] text-slate-400">
+                          <p className="px-2.5 py-1.5 text-[0.6875rem] text-slate-500">
                             Brak zapisanych numerów dla tego kuriera.
                           </p>
                         )}
@@ -409,7 +412,7 @@ export function CarrierPhonesModal({
                               value={form.label}
                               onChange={(e) => setFormForSlug(carrier.slug, { label: e.target.value })}
                               placeholder="np. biuro, kierowca…"
-                              className="h-8 text-[12px]"
+                              className="h-8 text-[0.75rem]"
                             />
                           </Field>
                           <Field label="Numer telefonu" className="min-w-[10rem] flex-1">
@@ -417,7 +420,7 @@ export function CarrierPhonesModal({
                               value={form.phone}
                               onChange={(e) => setFormForSlug(carrier.slug, { phone: e.target.value })}
                               placeholder="np. 500 123 456"
-                              className="h-8 text-[12px]"
+                              className="h-8 text-[0.75rem]"
                               onKeyDown={(e) => {
                                 if (e.key === "Enter" && form.phone.trim()) {
                                   e.preventDefault();

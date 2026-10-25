@@ -1,3 +1,5 @@
+import { BrandLoader } from "@/components/ui/BrandLoader";
+
 /** Fallback Suspense dla OrderFormClient — ten sam układ na /prosba. */
 export function ProsbaFormSuspenseFallback() {
   return (
@@ -6,8 +8,8 @@ export function ProsbaFormSuspenseFallback() {
         <div className="h-5 w-40 animate-pulse rounded bg-slate-100" />
         <div className="mt-2 h-3 w-full max-w-md animate-pulse rounded bg-slate-100" />
       </div>
-      <p className="px-3 py-12 text-center text-xs text-slate-500 sm:px-4">
-        Ładowanie formularza…
+      <p className="flex items-center justify-center gap-2 px-3 py-12 text-xs text-slate-500 sm:px-4" role="status">
+        <BrandLoader size="sm" tile={false} /> Wczytuję formularz…
       </p>
     </div>
   );

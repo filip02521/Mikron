@@ -847,6 +847,7 @@ export const ZD_ESTIMATE_UI = {
   listColumnLabels: {
     packaging: "Opakowanie",
     cover: "Starczy na",
+    abcClass: "Klasa (ABC / XYZ)",
     available: "Dostępne (stan, rezerwacje)",
     openZd: "W drodze (otwarte ZD)",
     sales: "Sprzedaż",

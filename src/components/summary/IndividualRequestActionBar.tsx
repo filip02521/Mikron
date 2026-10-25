@@ -28,19 +28,19 @@ import { procurementRequestFooterScopeLabelClass } from "@/components/summary/pr
 const footerPrimaryClass = cn(
   buttonGroupItemClass,
   panelSegmentPrimaryClass,
-  "min-w-0 flex-1 whitespace-nowrap px-2 text-[12px] transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50"
+  "min-w-0 flex-1 whitespace-nowrap px-2 text-[0.75rem] transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50"
 );
 
 const footerOutlineClass = cn(
   buttonGroupItemClass,
   panelSegmentOutlineClass,
-  "min-w-0 flex-1 whitespace-nowrap px-2 text-[12px]"
+  "min-w-0 flex-1 whitespace-nowrap px-2 text-[0.75rem]"
 );
 
 function nestedPrimarySegmentClass(tone: DailyPanelUnseenVariant) {
   return cn(
     panelActionSegmentClass,
-    "min-w-0 flex-1 whitespace-nowrap px-1.5 text-[11px] font-semibold border-0 text-white",
+    "min-w-0 flex-1 whitespace-nowrap px-1.5 text-[0.6875rem] font-semibold border-0 text-white",
     "transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50",
     tone === "stockOut"
       ? "bg-amber-600 hover:bg-amber-700"
@@ -50,7 +50,7 @@ function nestedPrimarySegmentClass(tone: DailyPanelUnseenVariant) {
 
 const nestedOutlineSegmentClass = cn(
   panelActionSegmentClass,
-  "min-w-0 flex-1 whitespace-nowrap px-1.5 text-[11px] font-semibold",
+  "min-w-0 flex-1 whitespace-nowrap px-1.5 text-[0.6875rem] font-semibold",
   "border-0 border-l border-slate-200 bg-slate-50 text-slate-700",
   "transition-colors duration-150 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
 );

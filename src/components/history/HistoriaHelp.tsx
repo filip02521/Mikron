@@ -1,6 +1,8 @@
 "use client";
 
-import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
+import { HelpPopover } from "@/components/ui/HelpPopover";
+import { IconHelpCircle } from "@/components/icons/StrokeIcons";
+import { pageHelpIconButtonClass } from "@/lib/ui/queue-panel-styles";
 import { HelpBlock } from "@/components/ui/HelpBlock";
 import { HISTORY_PREVIEW_COUNT, HISTORY_RETENTION_MONTHS } from "@/lib/orders/history-retention";
 
@@ -9,8 +11,10 @@ export function HistoriaHelp() {
     <HelpPopover
       label="Pomoc - historia zamówień"
       title="Historia zamówień"
-      shortLabel="Pomoc"
-      icon={<GuideIcon />}
+      shortLabel=""
+      icon={<IconHelpCircle size={18} />}
+      align="left"
+      buttonClassName={pageHelpIconButtonClass}
     >
       <HelpBlock title="Dwie sekcje">
         <p>

@@ -15,7 +15,8 @@ import { buttonPrimaryClass } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
 import { IconChevronRight, IconClipboardList, IconClock } from "@/components/icons/StrokeIcons";
 import { Alert } from "@/components/ui/Alert";
-import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { SectionTabNav } from "@/components/ui/SectionTabNav";
 import {
   DetailEmpty,
   listColumnClass,
@@ -57,10 +58,9 @@ const OC_VIEW_COPY: Record<OcView, { label: string; hint: string; emptyTitle: st
 
 type Section = "poczta" | "oc" | "raporty";
 
-const SECTION_COPY: Record<Section, { label: string; shortLabel?: string; description: string }> = {
+const SECTION_COPY: Record<Section, { label: string; description: string }> = {
   poczta: {
     label: "Poczta dostawców",
-    shortLabel: "Poczta",
     description:
       "Maile od dostawców jako sprawy na tablicy: do zrobienia, w trakcie, czekam, faktury do wpisania do Subiekta i przedpłaty do przekazania do zapłaty. Nowe maile dociągają się z Gmaila po wejściu.",
   },
@@ -126,45 +126,22 @@ export default async function AsystentPage({
 
   return (
     <div data-assistant-viewport className="relative mx-auto flex w-full max-w-[min(100%,100rem)] flex-col gap-3 sm:gap-4">
-      {/* Jedna linia: tytuł z podpowiedzią i przełącznik sekcji — panel pracy zaczyna się jak najwyżej. */}
-      <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Asystent</h1>
-          <HelpHintBubble message={SECTION_COPY[section].description} tone="slate" size="md" ariaLabel="O tej sekcji" />
-        </div>
-        <nav aria-label="Sekcje Asystenta" className="min-w-0 max-w-full">
-          <div role="tablist" className="flex max-w-full gap-1 overflow-x-auto rounded-md border border-slate-200/90 bg-slate-50/90 p-0.5">
-            {sections.map((s) => {
-              const active = s.id === section;
-              return (
-                <Link
-                  key={s.id}
-                  href={s.href}
-                  role="tab"
-                  aria-selected={active}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "inline-flex min-h-9 shrink-0 items-center gap-2 rounded-[5px] px-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
-                    active
-                      ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/70"
-                      : "text-slate-600 hover:bg-white/70 hover:text-slate-900",
-                  )}
-                >
-                  {SECTION_COPY[s.id].shortLabel ? (
-                    <>
-                      <span className="sm:hidden">{SECTION_COPY[s.id].shortLabel}</span>
-                      <span className="hidden sm:inline">{SECTION_COPY[s.id].label}</span>
-                    </>
-                  ) : (
-                    SECTION_COPY[s.id].label
-                  )}
-                  {s.count > 0 ? <RailCount value={s.count} tone="attention" /> : null}
-                </Link>
-              );
-            })}
-          </div>
-        </nav>
-      </header>
+      {/* Nagłówek i zakładki sekcji ciasno nad panelem pracy — panel zaczyna się jak najwyżej. */}
+      <div>
+        <PageHeader title="Asystent" hint={SECTION_COPY[section].description} hintAriaLabel="O tej sekcji" className="!mb-3" />
+        <SectionTabNav
+          embedded
+          activeTab={section}
+          ariaLabel="Sekcje Asystenta"
+          tabs={sections.map((s) => ({
+            id: s.id,
+            label: SECTION_COPY[s.id].label,
+            hint: SECTION_COPY[s.id].description,
+            href: s.href,
+            badgeCount: s.count,
+          }))}
+        />
+      </div>
 
       <section
         aria-label={SECTION_COPY[section].label}

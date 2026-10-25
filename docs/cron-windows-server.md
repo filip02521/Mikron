@@ -23,7 +23,9 @@ Opcjonalnie: `INFORMACJA_STOCK_AUTO_ENABLED=1` w `.env.local`, aby włączyć au
 | `zd-eta-sync` | `/api/cron/zd-eta-sync` | **08:00–18:00 co 2 h** | Backup sync terminów ZD na prośbach |
 | `catalog-zd-sync` | `/api/cron/catalog-zd-sync` | **codziennie 02:00–04:40 co 20 min** | Indeks ZD + import katalogu (noc) |
 | `stock-watch` | `/api/cron/stock-watch` | **codziennie 05:30–06:30 co 20 min** | Braki i zamówienia: ceny z ZD + lista „Do ZD” silnikiem Kreatora per dostawca (panel `/zakupy/braki`) |
-| `subiekt-lead-times` | `/api/cron/subiekt-lead-times` | **codziennie 01:30** | Czasy dostaw ZD → FZ z Subiekta (ostatnie 18 mies.) i przeliczenie ETA; `?full=1` = cała historia od 2006 (~5 min) |
+| `subiekt-lead-times` | `/api/cron/subiekt-lead-times` | **raz dziennie, w ramach `catalog-zd-sync`** (bez osobnego zadania) | Czasy dostaw ZD → FZ z Subiekta (ostatnie 18 mies.) i przeliczenie ETA, potem kraj dostawców z kartoteki Subiekta (`suppliers.subiekt_country_*`). Uruchamia go `catalog-zd-sync` w tle po slocie nocnym, gdy dziś (kalendarz warszawski) nie było udanej synchronizacji — także ręcznej z `/admin`; błąd lub Subiekt offline = ponowienie w kolejnym slocie, więc kończy się przed `stock-watch` (`src/lib/data/subiekt-lead-times-catchup.ts`). Endpoint zostaje do ręcznego `-Job`; `?full=1` = cała historia od 2006 (~5 min) |
+| `zd-sku-class` | `/api/cron/zd-sku-class` | **raz w miesiącu, w ramach `stock-watch`** (bez osobnego zadania) | Klasy ABC (zysk 12 mies.) / XYZ (52 tygodnie) towarów zmapowanych zakresów → `zd_sku_class` (~3 min lokalnie na 5 100 towarów); panel `/zakupy/automat` |
+| `zd-kpi-weekly` | `/api/cron/zd-kpi-weekly` | **raz w tygodniu, w ramach `stock-watch`** (bez osobnego zadania) | KPI automatu ZD za miniony tydzień (braki A, rotacja, martwy zapas, korekta, minima) → `zd_kpi_weekly`. Oba kroki uruchamia `stock-watch` w tle po dzisiejszym przebiegu braków, gdy w tym miesiącu (klasy) / za ostatni pełny tydzień (KPI) nie ma udanego wpisu — także ręcznego „Przelicz”; przebieg bez zapisu (błąd, Subiekt offline) = ponowienie w kolejnym slocie; częściowy błąd z zapisem zamyka okres jak przy osobnym cronie (`src/lib/data/zd-automat-catchup.ts`). Endpointy zostają do ręcznego `-Job` |
 | `morning-sync` | `/api/cron/morning-sync` | **ręcznie** | Tylko przeliczenie harmonogramów (serwis / test) |
 
 Ivoclar weekly: **OnTime Raporty** (nie instalować `scheduled-mails` na OT). Endpoint `/api/cron/scheduled-mails` w OT to legacy no-op; stare SchTasks `OnTime Cron Scheduled Mails *` są usuwane przy `-Install` (lista legacy). Logi: `/admin/mail`. Zob. `docs/CUTOVER-IVOCLAR.md`.
@@ -91,14 +93,12 @@ Bez `-Force` endpointy mogą zwrócić **200 OK** z komunikatem „poza oknem”
 
 ### 6. Logi
 
-Po każdym wywołaniu wpis trafia do:
+Po każdym wywołaniu wpis trafia do `logs\cron-<job>.log` (jeden plik na job z tabeli wyżej, `installer/cron-invoke.ps1`), np.:
 
 ```
 logs\cron-morning.log
-logs\cron-process-deliveries.log
 logs\cron-informacja-stock-sync.log
-logs\cron-zd-eta-sync.log
-logs\cron-catalog-zd-sync.log
+logs\cron-stock-watch.log
 ```
 
 Przykład:

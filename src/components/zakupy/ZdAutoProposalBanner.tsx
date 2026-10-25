@@ -10,6 +10,9 @@ import { IconPackageCheck } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
 import { fieldControlClass } from "@/components/ui/Field";
 import { PageAttentionStrip, PageAttentionStripCta } from "@/components/ui/PageAttentionStrip";
+import { ZdAutoProposalSheet } from "@/components/zakupy/ZdAutoProposalSheet";
+import { ZdProposalFlagsSummary, ZdProposalLineFlags } from "@/components/zakupy/ZdProposalLineFlags";
+import { ZdProposalMinimumNotice } from "@/components/zakupy/ZdProposalMinimumNotice";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 import { ModalShell } from "@/components/ui/ModalShell";
 import type { ZdAutoProposal } from "@/lib/data/zd-auto-proposals";
@@ -38,6 +41,7 @@ const STATUS_LABEL: Record<ZdAutoProposal["status"], string> = {
   accepted: "zaakceptowana",
   rejected: "odrzucona",
   expired: "wygasła",
+  deferred: "odłożona",
 };
 
 /** Różnice propozycja → utworzone ZD (jednostki ZD) do historii. */
@@ -66,9 +70,19 @@ export function zdAutoProposalDiff(p: Pick<ZdAutoProposal, "lines" | "finalLines
  * Propozycja ZD automatu dla wybranego dostawcy (strategia testowa). Akceptacja zapisuje się
  * sama przy „Utwórz ZD” (z Twoimi zmianami); tu: podgląd, odrzucenie z powodem i historia.
  */
-export function ZdAutoProposalBanner({ supplierId, supplierName }: { supplierId: string; supplierName: string }) {
+export function ZdAutoProposalBanner({
+  supplierId,
+  supplierName,
+  inDailyPanel = false,
+}: {
+  supplierId: string;
+  supplierName: string;
+  /** Panel dzienny: wiersz w grupie uwagi, dostawca w tytule i „Akceptuj” (ZD + wysyłka bez Kreatora). */
+  inDailyPanel?: boolean;
+}) {
   const [proposals, setProposals] = useState<ZdAutoProposal[] | null>(null);
   const [open, setOpen] = useState(false);
+  const [accepting, setAccepting] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -103,6 +117,8 @@ export function ZdAutoProposalBanner({ supplierId, supplierName }: { supplierId:
 
   const latest = proposals?.[0] ?? null;
   if (proposals == null) return null;
+  // Panel dzienny pokazuje tylko czekające — po decyzji wiersz znika.
+  if (inDailyPanel && latest?.status !== "pending" && !accepting) return null;
   if (!latest) {
     return (
       <PageAttentionStrip
@@ -120,6 +136,10 @@ export function ZdAutoProposalBanner({ supplierId, supplierName }: { supplierId:
   }
   const waiting = latest.status === "pending";
   const pieces = latest.lines.reduce((a, l) => a + l.pieces, 0);
+  const flaggedCount = latest.lines.filter((l) => l.flags?.length).length;
+  const valueJump = latest.flags.includes("order_value_jump");
+  // Pozycje z bezpiecznikiem na górze listy (jak w panelu akceptacji).
+  const sortedLines = [...latest.lines].sort((a, b) => Number(Boolean(b.flags?.length)) - Number(Boolean(a.flags?.length)));
 
   const reject = () => {
     setError(null);
@@ -136,8 +156,13 @@ export function ZdAutoProposalBanner({ supplierId, supplierName }: { supplierId:
     <>
       <PageAttentionStrip
         tone="violet"
+        edge={inDailyPanel ? "row" : undefined}
         icon={<IconPackageCheck size={16} strokeWidth={2.25} />}
-        title={`${waiting ? "Propozycja ZD" : "Ostatnia propozycja ZD"} z ${formatDateTimePl(latest.createdAt)}`}
+        title={
+          inDailyPanel
+            ? `Zamówienie ${supplierName} do potwierdzenia`
+            : `${waiting ? "Propozycja ZD" : "Ostatnia propozycja ZD"} z ${formatDateTimePl(latest.createdAt)}`
+        }
         hint={
           error && !rejecting ? (
             <span className="text-red-700">{error}</span>
@@ -146,22 +171,45 @@ export function ZdAutoProposalBanner({ supplierId, supplierName }: { supplierId:
               {latest.lineCount} {polishPluralWord(latest.lineCount, "pozycja", "pozycje", "pozycji")} ·{" "}
               {formatQty(pieces)} szt · ok. {zl(latest.valueNet)}
               {!waiting ? ` · ${STATUS_LABEL[latest.status]}` : ""}
+              {inDailyPanel ? ` · z ${formatDateTimePl(latest.createdAt)}` : ""}
+              {waiting && (flaggedCount || valueJump) ? (
+                <span className="font-medium text-amber-800">
+                  {" · "}
+                  {[
+                    flaggedCount ? `${flaggedCount} do sprawdzenia` : null,
+                    valueJump ? "wartość nietypowo wysoka" : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
+              ) : null}
             </span>
           )
         }
         actions={
           <>
-            <button type="button" className={quietActionClass} onClick={buildNow} disabled={building}>
-              {building ? "Liczę…" : "Przelicz"}
-            </button>
+            {/* Panel dzienny: przeliczenie i podgląd są w oknie akceptacji. */}
+            {!inDailyPanel ? (
+              <button type="button" className={quietActionClass} onClick={buildNow} disabled={building}>
+                {building ? "Liczę…" : "Przelicz"}
+              </button>
+            ) : null}
             {waiting ? (
               <button type="button" className={quietActionClass} onClick={() => setRejecting(true)}>
                 Odrzuć
               </button>
             ) : null}
-            <PageAttentionStripCta tone="violet" onClick={() => setOpen(true)}>
-              Pokaż propozycję
-            </PageAttentionStripCta>
+            {inDailyPanel ? (
+              waiting ? (
+                <PageAttentionStripCta tone="violet" onClick={() => setAccepting(true)}>
+                  Sprawdź i zatwierdź
+                </PageAttentionStripCta>
+              ) : null
+            ) : (
+              <PageAttentionStripCta tone="violet" onClick={() => setOpen(true)}>
+                Pokaż propozycję
+              </PageAttentionStripCta>
+            )}
           </>
         }
       />
@@ -175,21 +223,25 @@ export function ZdAutoProposalBanner({ supplierId, supplierName }: { supplierId:
           bodyClassName="space-y-4 px-5 py-5 sm:px-6"
         >
           <p className="text-sm text-slate-600">
-            Policzona {formatDateTimePl(latest.createdAt)} strategią testową
+            Policzona {formatDateTimePl(latest.createdAt)} przez automat
             {latest.policy.targetDays ? ` (${latest.policy.targetDays} dni zapasu, co ${latest.policy.cycleDays ?? "?"} dni)` : ""}.
             Policz w Kreatorze liczy tak samo - popraw ilości w tabeli i Utwórz ZD; propozycja zapisze się jako
             zaakceptowana razem z Twoimi zmianami.
           </p>
+          <ZdProposalMinimumNotice proposal={latest} />
+          <ZdProposalFlagsSummary proposal={latest} />
           <ul className="divide-y divide-slate-100 rounded-md border border-slate-200">
-            {latest.lines.map((l) => (
+            {sortedLines.map((l) => (
               <li key={l.twId} className="flex items-baseline justify-between gap-3 px-3 py-1.5 text-sm">
                 <span className="min-w-0 truncate text-slate-800" title={l.nazwa}>
                   <span className="mr-2 font-mono text-xs text-slate-500">{l.symbol}</span>
                   {l.nazwa}
                   {l.floor ? <span className="ml-2 text-xs text-indigo-700">średnia 90 d</span> : null}
+                  {l.topUpUnits ? <span className="ml-2 text-xs text-indigo-700">dopełnienie</span> : null}
                   {l.prosbaPieces > 0 ? (
                     <span className="ml-2 text-xs text-slate-500">w tym prośby {formatQty(l.prosbaPieces)} szt</span>
                   ) : null}
+                  {l.flags?.length ? <span className="ml-2"><ZdProposalLineFlags flags={l.flags} notes={l.flagNotes} /></span> : null}
                 </span>
                 <span className="shrink-0 tabular-nums font-medium text-slate-900">
                   {formatQty(l.zdUnits)} {l.unitLabel}
@@ -200,7 +252,7 @@ export function ZdAutoProposalBanner({ supplierId, supplierName }: { supplierId:
           </ul>
           {proposals && proposals.length > 1 ? (
             <section>
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-600">Historia propozycji</h3>
+              <h3 className="text-sm font-semibold text-slate-900">Historia propozycji</h3>
               <ul className="mt-1.5 divide-y divide-slate-100 rounded-md border border-slate-200">
                 {proposals.slice(1).map((p) => {
                   const d = p.status === "accepted" ? zdAutoProposalDiff(p) : null;
@@ -209,7 +261,9 @@ export function ZdAutoProposalBanner({ supplierId, supplierName }: { supplierId:
                       <span className="text-slate-700">
                         <span className="tabular-nums">{formatDateTimePl(p.createdAt)}</span> · {p.lineCount} poz. ·{" "}
                         {STATUS_LABEL[p.status]}
-                        {p.decisionNote ? <span className="text-slate-500"> - {p.decisionNote}</span> : null}
+                        {p.decisionNote ?? p.deferredReason ? (
+                          <span className="text-slate-500"> - {p.decisionNote ?? p.deferredReason}</span>
+                        ) : null}
                       </span>
                       {d ? (
                         <span className="shrink-0 text-xs tabular-nums text-slate-600">
@@ -223,6 +277,18 @@ export function ZdAutoProposalBanner({ supplierId, supplierName }: { supplierId:
             </section>
           ) : null}
         </ModalShell>
+      ) : null}
+
+      {accepting ? (
+        <ZdAutoProposalSheet
+          supplierId={supplierId}
+          supplierName={supplierName}
+          morning={latest}
+          onClose={() => {
+            setAccepting(false);
+            load();
+          }}
+        />
       ) : null}
 
       {rejecting ? (

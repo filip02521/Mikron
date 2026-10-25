@@ -44,6 +44,7 @@ import { cn } from "@/lib/cn";
 import { formatPlDate } from "@/lib/display-labels";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 import { panelTypography } from "@/lib/ui/ontime-theme";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 const MIN_STOCK_MAX = 1_000_000;
 
@@ -407,7 +408,7 @@ export function ZdEstimateMinStockModal({
       ]
         .join(" ")
         .toLowerCase();
-      return hay.includes(q);
+      return matchesSearchWords(hay, q);
     });
     const dir = sortDir === "asc" ? 1 : -1;
     return [...list].sort((a, b) => {
@@ -885,7 +886,7 @@ export function ZdEstimateMinStockModal({
       {summary ? (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-slate-200/70 bg-white px-4 py-2.5">
           <div className="flex items-baseline gap-1.5">
-            <span className="text-lg font-bold tabular-nums text-slate-900">
+            <span className="text-lg font-semibold tabular-nums text-slate-900">
               {summary.count}
             </span>
             <span className="text-[11px] font-medium text-slate-500">
@@ -894,7 +895,7 @@ export function ZdEstimateMinStockModal({
           </div>
           <div className="h-4 w-px bg-slate-200" />
           <div className="flex items-baseline gap-1.5">
-            <span className="text-lg font-bold tabular-nums text-emerald-700">
+            <span className="text-lg font-semibold tabular-nums text-emerald-700">
               {summary.total}
             </span>
             <span className="text-[11px] font-medium text-slate-500">

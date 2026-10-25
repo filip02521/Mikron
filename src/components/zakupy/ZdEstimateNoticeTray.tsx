@@ -167,7 +167,7 @@ export function ZdEstimateNoticeTrayBar({ className }: { className?: string }) {
         role="region"
         aria-label="Uwagi kreatora ZD"
         className={cn(
-          "absolute inset-x-0 top-full z-30 mt-1 max-h-[min(60vh,32rem)] space-y-2 overflow-y-auto overscroll-contain rounded-lg border border-slate-200 bg-white p-2 shadow-xl shadow-slate-900/10",
+          "absolute inset-x-0 top-full z-30 mt-1 max-h-[min(60vh,32rem)] space-y-2 overflow-y-auto overscroll-contain rounded-lg border border-slate-200 bg-white p-2 shadow-[var(--shadow-elevated)]",
           !open && "hidden"
         )}
       />

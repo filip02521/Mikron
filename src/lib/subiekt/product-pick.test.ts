@@ -178,6 +178,17 @@ describe("combined product search", () => {
     ).toEqual({ product: "ABC opis", symbol: "ABC" });
   });
 
+  it("pierwsza litera wpisu nie zostaje symbolem, gdy wpis jest ciągiem tego samego słowa", () => {
+    // „S” wygląda na symbol, ale „Si…” to już nazwa — inaczej prośba wiązała się z towarem o symbolu „S”.
+    const first = patchFromCombinedProductInput("S");
+    expect(first).toEqual({ symbol: "S", product: "" });
+    const second = patchFromCombinedProductInput("Si", first);
+    expect(second).toEqual({ product: "Si", symbol: "" });
+    expect(patchFromCombinedProductInput("Silikon", second)).toEqual({ product: "Silikon", symbol: "" });
+    // Wieloliterowy kod też: „AB” → „ABC” to dalsze pisanie symbolu, „ABCd…” — nazwa bez symbolu.
+    expect(patchFromCombinedProductInput("Abrazja", { symbol: "AB", product: "" })).toEqual({ product: "Abrazja", symbol: "" });
+  });
+
   it("nie dzieli ręcznej nazwy z dywizem", () => {
     expect(patchFromCombinedProductInput("TEST UX audyt - nie realizować")).toEqual({
       symbol: "",

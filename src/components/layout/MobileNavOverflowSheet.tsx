@@ -17,14 +17,13 @@ import {
   mobileNavLinkActiveClass,
   mobileNavLinkBaseClass,
   mobileNavLinkIdleClass,
-  mobileNavBadgeClass,
   navLinkIdleClass,
   panelTypography,
   sidebarNavAttentionIdleClass,
   sidebarNavBadgeClassForTone,
-  sidebarNavToneActiveClass,
 } from "@/lib/ui/ontime-theme";
 import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { useMonthlySummaryNeedsAttention } from "@/hooks/useMonthlySummaryAttention";
 import { MONTHLY_SUMMARY_HREF } from "@/lib/monthly-summary-attention";
 
@@ -64,6 +63,10 @@ export function MobileNavOverflowSheet({
     (max, item) => Math.max(max, item.badge != null && item.badge > 0 ? item.badge : 0),
     0
   );
+  // Licznik „Więcej” w tonie pozycji z największą liczbą (wymaga działania → pełny petrol).
+  const topBadgeItem =
+    overflowAttentionBadge > 0 ? items.find((item) => item.badge === overflowAttentionBadge) : undefined;
+  const overflowBadgeTone = topBadgeItem ? navItemDisplayTone(topBadgeItem, false) : "slate";
   const hasMonthlyInOverflow = items.some((item) => item.href === MONTHLY_SUMMARY_HREF);
   const showMonthlyDot =
     hasMonthlyInOverflow && monthlyNeedsAttention && !activeInOverflow;
@@ -81,6 +84,21 @@ export function MobileNavOverflowSheet({
     animateSheetTo(panel, backdropRef.current, panel.offsetHeight, velocity, () => setOpen(false));
   }, []);
   const drag = useSheetDrag(panelRef, backdropRef, close);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const wasOpenRef = useRef(false);
+  useFocusTrap(panelRef, open && hydrated);
+  // Fokus na arkuszu, nie na pierwszej pozycji: po dotknięciu bez ramki fokusu, Tab idzie dalej po pozycjach.
+  useEffect(() => {
+    if (open && hydrated) panelRef.current?.focus({ preventScroll: true });
+  }, [open, hydrated]);
+  // Po zamknięciu arkusza fokus wraca na „Więcej”.
+  useEffect(() => {
+    if (open) wasOpenRef.current = true;
+    else if (wasOpenRef.current) {
+      wasOpenRef.current = false;
+      triggerRef.current?.focus();
+    }
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -111,7 +129,8 @@ export function MobileNavOverflowSheet({
             />
             <div
               ref={panelRef}
-              className="sheet-enter absolute inset-x-0 bottom-0 max-h-[min(70vh,28rem)] overflow-y-auto rounded-t-xl border border-slate-200/90 bg-[var(--card)] shadow-[var(--shadow-card-elevated)] pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
+              className="sheet-enter absolute inset-x-0 bottom-0 max-h-[min(70vh,28rem)] overflow-y-auto rounded-t-[var(--radius-panel)] outline-none border border-slate-200/90 bg-[var(--card)] shadow-[var(--shadow-card-elevated)] pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
+              tabIndex={-1}
               {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}
             >
               {/* Nagłówek = uchwyt: przeciągnij w dół, żeby zamknąć. Pełne tło — lista przewija się pod nim. */}
@@ -151,12 +170,10 @@ export function MobileNavOverflowSheet({
                           "flex items-center gap-3 rounded-md px-3 py-2.5",
                           controlFocusClass,
                           active
-                            ? sidebarNavToneActiveClass(item.tone)
+                            ? mobileNavLinkActiveClass
                             : attentionIdle
                               ? sidebarNavAttentionIdleClass
-                              : monthlyIdle
-                                ? "border border-violet-200/70 bg-violet-50/80 text-slate-800"
-                                : navLinkIdleClass,
+                              : navLinkIdleClass,
                           locked && "pointer-events-none opacity-40"
                         )}
                         aria-current={active ? "page" : undefined}
@@ -188,14 +205,14 @@ export function MobileNavOverflowSheet({
                         </span>
                         {monthlyIdle ? (
                           <span
-                            className="h-2 w-2 shrink-0 rounded-full bg-violet-500 ring-2 ring-white"
+                            className="h-2 w-2 shrink-0 rounded-full bg-indigo-600 ring-2 ring-white"
                             title="Nowe podsumowanie miesiąca"
                           />
                         ) : null}
                         {hasBadge ? (
                           <span
                             className={cn(
-                              "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold leading-none tabular-nums",
+                              "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[0.6875rem] font-semibold leading-none tabular-nums",
                               sidebarNavBadgeClassForTone(displayTone, active)
                             )}
                           >
@@ -238,6 +255,7 @@ export function MobileNavOverflowSheet({
     <>
       <li className="min-w-0 flex-1">
         <button
+          ref={triggerRef}
           type="button"
           onClick={() => setOpen(true)}
           className={cn(
@@ -249,20 +267,23 @@ export function MobileNavOverflowSheet({
           aria-expanded={open}
           aria-haspopup="dialog"
         >
+          {/* Ten sam kafel 28px co pozostałe pozycje paska — inaczej etykieta „Więcej” stoi wyżej od reszty. */}
           <span className="relative">
-            <IconMoreVertical size={20} className="text-current" />
+            <span className="flex h-7 w-7 items-center justify-center rounded-md">
+              <IconMoreVertical size={18} className="text-current" />
+            </span>
             {overflowAttentionBadge > 0 && !activeInOverflow ? (
               <span
                 className={cn(
-                  "absolute -right-1.5 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-md px-0.5 text-[8px] font-bold tabular-nums",
-                  mobileNavBadgeClass
+                  "absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[0.625rem] font-semibold leading-none tabular-nums ring-2 ring-white",
+                  sidebarNavBadgeClassForTone(overflowBadgeTone, false)
                 )}
               >
                 {overflowAttentionBadge > 9 ? "9+" : overflowAttentionBadge}
               </span>
             ) : showMonthlyDot ? (
               <span
-                className="absolute -right-1 top-0 h-2 w-2 rounded-full bg-violet-500 ring-2 ring-white"
+                className="absolute -right-1 top-0 h-2 w-2 rounded-full bg-indigo-600 ring-2 ring-white"
                 title="Nowe podsumowanie miesiąca"
               />
             ) : null}

@@ -330,7 +330,7 @@ export const TeethOrderBuilderSection = forwardRef<
     <div className="space-y-2.5 rounded-lg ring-1 ring-indigo-100/80 bg-white p-3">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-xs font-semibold text-slate-800">{sectionLabel}</h3>
-        <span className="text-[10px] font-medium tabular-nums text-indigo-700">{totalCount} szt.</span>
+        <span className="text-[0.625rem] font-medium tabular-nums text-indigo-700">{totalCount} szt.</span>
       </div>
       {content}
     </div>

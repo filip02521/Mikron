@@ -168,13 +168,13 @@ export function ShiftMenu({
             >
               Wybierz datę…
             </button>
-            <p className="px-3 pb-2 text-[11px] leading-snug text-slate-500">
+            <p className="px-3 pb-2 text-[0.6875rem] leading-snug text-slate-500">
               Weekendy i polskie święta są automatycznie przesuwane na najbliższy dzień roboczy.
             </p>
           </>
         ) : (
           <div className="space-y-2 px-3 py-2">
-            <label className="block text-[11px] font-medium text-slate-600">
+            <label className="block text-[0.6875rem] font-medium text-slate-600">
               Nowy termin
               <input
                 ref={dateInputRef}

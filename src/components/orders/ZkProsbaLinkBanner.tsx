@@ -104,7 +104,7 @@ export function ZkProsbaLinkBanner({
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
             <Badge
               variant={tone.badge}
-              className="shrink-0 px-2 py-0.5 text-[11px] font-semibold leading-none tracking-wide"
+              className="shrink-0 px-2 py-0.5 text-[0.6875rem] font-semibold leading-none tracking-wide"
             >
               {isSupplement
                 ? ZK_PROSBA_LINK_BANNER_COPY.badgeSupplement

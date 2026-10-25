@@ -102,6 +102,19 @@ describe("quantilesFromSampleRows", () => {
     expect(q.p90).toBe(10);
     expect(q.variability).toBe("wide");
   });
+
+  it("p90 pierwszej dostawy od 5 próbek z datą pierwszego przyjęcia", () => {
+    const rows = [
+      [3, 2], [5, 3], [7, 3], [9, 4], [60, 5],
+    ].map(([full, first], i) =>
+      sample({ supplier_id: "s1", order_id: `o${i}`, business_days_full: full, business_days_first: first, order_type: "Glowne", delivery_date: "2026-06-01" })
+    );
+    const q = quantilesFromSampleRows(rows, "Glowne", "OSOBNO", { now: new Date("2026-06-15") });
+    expect(q.p90).toBe(60);
+    expect(q.firstReceiptP90).toBe(5);
+    const four = quantilesFromSampleRows(rows.slice(0, 4), "Glowne", "OSOBNO", { now: new Date("2026-06-15") });
+    expect(four.firstReceiptP90).toBeNull();
+  });
 });
 
 describe("selectSamplesForStats", () => {

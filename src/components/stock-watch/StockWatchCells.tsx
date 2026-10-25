@@ -3,6 +3,7 @@ import { IconTruck } from "@/components/icons/StrokeIcons";
 import { isStockWatchEmptyNoIncoming } from "@/lib/stock-watch/analysis";
 import type { StockWatchRowView } from "@/lib/stock-watch/dashboard";
 import {
+  formatAssembly,
   formatCover,
   formatQtyPl,
   formatRunOutDate,
@@ -33,8 +34,8 @@ export function formatWhen(iso: string | null): string {
 
 export function ProductCell({ row }: { row: Pick<StockWatchRowView, "twSymbol" | "twNazwa" | "grtNazwa"> }) {
   return (
-    <div className="min-w-0 max-w-[16rem]">
-      <p className="truncate font-mono text-[13px] font-semibold text-slate-900" title={row.twSymbol ?? undefined}>
+    <div className="min-w-0 max-w-[14rem]">
+      <p className="truncate font-mono text-[0.8125rem] font-semibold text-slate-900" title={row.twSymbol ?? undefined}>
         {row.twSymbol ?? "-"}
       </p>
       <p className="truncate text-xs text-slate-500" title={row.twNazwa}>
@@ -47,7 +48,8 @@ export function ProductCell({ row }: { row: Pick<StockWatchRowView, "twSymbol" |
 export function CoverChip({
   row,
 }: {
-  row: Pick<StockWatchRowView, "daysOfCover" | "status" | "runOutDate" | "deliveryRisk">;
+  row: Pick<StockWatchRowView, "daysOfCover" | "status" | "runOutDate" | "deliveryRisk"> &
+    Partial<Pick<StockWatchRowView, "assemblyKind" | "assemblyQty" | "assemblyNote">>;
 }) {
   const meta = STOCK_WATCH_STATUS_META[row.status];
   const runOut = formatRunOutDate(row.runOutDate);
@@ -60,7 +62,31 @@ export function CoverChip({
         <span className="text-xs text-slate-500">koniec ok. {runOut}</span>
       ) : null}
       {row.deliveryRisk ? <DeliveryRiskTag risk={row.deliveryRisk} /> : null}
+      {/* Tylko gdy kompletacja jest do zrobienia — inaczej to szum przy towarze ze stanem. */}
+      {row.status === "to_assemble" ? <AssemblyTag row={row} /> : null}
     </div>
+  );
+}
+
+/** Kompletacja w Subiekcie zamiast zakupu (skład z Kreatora ZD). */
+export function AssemblyTag({
+  row,
+}: {
+  row: Partial<Pick<StockWatchRowView, "assemblyKind" | "assemblyQty" | "assemblyNote">>;
+}) {
+  const label = formatAssembly({ assemblyKind: row.assemblyKind ?? null, assemblyQty: row.assemblyQty ?? null });
+  if (!label) return null;
+  return (
+    <span
+      className="whitespace-nowrap rounded-md bg-indigo-50 px-1.5 text-xs font-medium text-indigo-800"
+      title={
+        row.assemblyKind === "assemble"
+          ? `Z części na stanie (skład w Kreatorze ZD). ${row.assemblyNote ?? ""}`.trim()
+          : `Z kompletów na stanie (skład w Kreatorze ZD). ${row.assemblyNote ?? ""}`.trim()
+      }
+    >
+      {label}
+    </span>
   );
 }
 
@@ -108,7 +134,7 @@ export function VelocityCell({
     <div className="whitespace-nowrap text-right tabular-nums">
       <span className="font-semibold text-slate-900">{formatVelocity(row.velocityDaily)}</span>
       <span className="text-xs text-slate-500">/d</span>
-      <p className="text-[11px] text-slate-500" title="Sprzedaż w oknie Kreatora (dni zapasu dostawcy)">
+      <p className="text-[0.6875rem] text-slate-500" title="Sprzedaż w oknie Kreatora (dni zapasu dostawcy)">
         {formatQtyPl(row.salesPeriodQty)} szt / {row.salesPeriodDays} d
       </p>
     </div>
@@ -119,8 +145,16 @@ export function VelocityCell({
 export function OrderQty({
   row,
 }: {
-  row: Pick<StockWatchRowView, "inOrder" | "orderZdUnits" | "orderUnitLabel" | "orderPieces">;
+  row: Pick<StockWatchRowView, "inOrder" | "orderZdUnits" | "orderUnitLabel" | "orderPieces"> &
+    Partial<Pick<StockWatchRowView, "bomRole">>;
 }) {
+  if (row.bomRole === "assembled_parent") {
+    return (
+      <span className="whitespace-nowrap text-xs text-slate-500" title="Zestaw „Składamy” - na ZD idą jego składniki">
+        składniki
+      </span>
+    );
+  }
   if (!row.inOrder || row.orderZdUnits <= 0) {
     return (
       <span className="whitespace-nowrap text-xs text-slate-500" title="Poza listą „Do ZD” - pokryte stanem / otwartymi ZD albo reguła">

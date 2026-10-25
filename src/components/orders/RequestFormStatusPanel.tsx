@@ -7,7 +7,7 @@ import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert"
 import { FormNoticeMessage } from "@/components/ui/FormNoticeMessage";
 import { FormStatusAlert } from "@/components/orders/FormStatusAlert";
 import type { FormMessage } from "@/lib/ui/notice-content";
-import { Spinner } from "@/components/ui/Spinner";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import {
   type RequestCompleteness,
@@ -74,7 +74,7 @@ export function RequestFormStatusPanel({
       aria-live="polite"
       aria-relevant="additions text"
     >
-      <p className="text-[11px] font-semibold text-slate-500">
+      <p className="text-[0.6875rem] font-semibold text-slate-500">
         Status formularza
       </p>
 
@@ -89,7 +89,7 @@ export function RequestFormStatusPanel({
       {resolvingSupplier ? (
         <FormStatusAlert tone="info" title="Sprawdzam dostawcę">
           <span className="flex items-center gap-2">
-            <Spinner size="sm" />
+            <BrandLoader size="sm" tile={false} />
             Szukam dopasowania w naszej bazie…
           </span>
         </FormStatusAlert>

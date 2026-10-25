@@ -20,6 +20,15 @@ const baseOrder = {
   zd_fulfillment_dok_id: null as number | null,
 };
 
+describe("symbole prośby do dopasowania ZD", () => {
+  it("artefakt „S” z „Silikon…” (bez towaru) nie jest symbolem; po towarze z Subiekta — jest", () => {
+    const symbols = resolveOrderMatchSymbols({ symbol: "S", products: "Silikon wyciskowy", subiekt_tw_id: null });
+    expect(symbols).not.toContain("s");
+    expect(resolveOrderMatchSymbols({ symbol: "M", products: "Miyo trans sunflower", subiekt_tw_id: 987 })).toEqual(["m"]);
+    expect(matchOrderToZdLine({ ...baseOrder, symbol: "S", products: "Silikon wyciskowy" }, { ob_TowId: 677, tw_Symbol: "S" })).toBe(false);
+  });
+});
+
 describe("matchOrderToZdLine", () => {
   it("dopasowuje po tw_Id", () => {
     expect(

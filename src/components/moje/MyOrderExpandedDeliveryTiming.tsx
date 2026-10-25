@@ -85,7 +85,7 @@ export function MyOrderExpandedDeliveryTiming({
           <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
             <span
               className={cn(
-                "shrink-0 text-[11px] font-medium leading-none",
+                "shrink-0 text-[0.6875rem] font-medium leading-none",
                 isOverdue
                   ? "text-amber-800"
                   : isZd

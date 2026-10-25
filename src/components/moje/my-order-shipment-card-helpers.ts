@@ -151,3 +151,9 @@ export function buildOverflowMenuProps({
     },
   };
 }
+
+/** „Rozwiń / Zwiń wszystkie”: gdy wszystkie są rozwinięte, zwija; inaczej rozwija wszystkie. */
+export function toggleAllExpandedIds(prev: ReadonlySet<string>, ids: readonly string[]): Set<string> {
+  const allOpen = ids.length > 0 && ids.every((id) => prev.has(id));
+  return allOpen ? new Set() : new Set(ids);
+}

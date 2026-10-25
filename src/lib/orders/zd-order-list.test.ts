@@ -83,6 +83,7 @@ describe("buildZdOrderList", () => {
 
   it("„na prośbę” z prośbą handlowca wchodzi tylko z ilością prośby", () => {
     const res = build({
+      lines: [line(1), line(2, { dostepne: 50 }), line(3, { dostepne: 0 })],
       onRequestTwIds: new Set([3]),
       pendingIndividuals: [prosba(3, 4)],
     });

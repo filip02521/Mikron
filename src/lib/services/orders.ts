@@ -341,6 +341,7 @@ export async function batchAddIndividualOrders(
           subiektTwId: e.subiektTwId,
           symbol: sanitized.symbol,
           mikranCode: sanitized.mikranCode,
+          product: sanitized.product,
         }),
       };
       if (!hasAnyProductHint(draft)) {
@@ -877,6 +878,7 @@ export async function updateIndividualRequestGroup(
         subiektTwId: line.subiektTwId,
         symbol: sanitized.symbol,
         mikranCode: sanitized.mikranCode,
+        product: sanitized.product,
       });
       return {
         salesPersonId: payload.salesPersonId,
@@ -931,7 +933,8 @@ export async function updateIndividualRequestGroup(
       throw new Error("Podaj ilość (liczba sztuk, np. 1) w każdej pozycji zamówienia.");
     }
 
-    const { products, symbol } = normalizeDraftProducts(draft);
+    // Towar wybrany z Subiekta: symbol jest prawdziwy, nawet gdy nazwa się od niego zaczyna.
+    const { products, symbol } = normalizeDraftProducts({ ...draft, subiektTwId: line.subiektTwId });
     const lineDraft = { ...draft, subiektTwId: line.subiektTwId };
     const status =
       catalogSource === "procurement_verification"

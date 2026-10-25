@@ -92,7 +92,7 @@ export function ProcurementRequestOrderBody({
 export function ProcurementRequestContextSep({ className }: { className?: string }) {
   return (
     <span
-      className={cn("select-none text-[10px] text-slate-300", className)}
+      className={cn("select-none text-[0.625rem] text-slate-300", className)}
       aria-hidden
     >
       ·

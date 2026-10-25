@@ -20,6 +20,7 @@ import {
 } from "@/components/orders/ProsbaFormSharedSections";
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
 import { ModalShell } from "@/components/ui/ModalShell";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { DeliveryStats, IndividualRequestKind } from "@/types/database";
 import { hasValidOrderQuantity } from "@/lib/orders/request-completeness";
 import { assertProcurementEntryComplete } from "@/lib/orders/procurement-submit";
@@ -108,6 +109,7 @@ export function QuickOrderModal({
   const [formNotice, setFormNotice] = useState<FormMessage | null>(null);
   const [resolvingSupplier, setResolvingSupplier] = useState(false);
   const [stockConfirmOpen, setStockConfirmOpen] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
   const [stockConfirmMessage, setStockConfirmMessage] = useState("");
   const [stockConfirmSummary, setStockConfirmSummary] = useState<string | null>(null);
   /** Kolejne pytanie przed wysyłką: najpierw dubel, potem towar na stanie. */
@@ -183,7 +185,18 @@ export function QuickOrderModal({
 
   const handleClose = () => {
     reset();
+    setDiscardOpen(false);
     onClose();
+  };
+
+  // Esc, „Anuluj” i klik obok okna nie kasują wpisanych pozycji bez pytania.
+  const draftLines = lines.filter(
+    (l) => l.product.trim() || l.symbol.trim() || l.mikranCode.trim() || (l.subiektTwId ?? 0) > 0
+  ).length;
+  const requestClose = () => {
+    if (pending) return;
+    if (draftLines > 0) setDiscardOpen(true);
+    else handleClose();
   };
 
   const submitRef = useRef<() => void>(() => {});
@@ -429,9 +442,20 @@ export function QuickOrderModal({
           performSubmit(pendingSubmitRef.current, { acknowledgeSufficientStock: true });
         }}
       />
+      <ConfirmDialog
+        open={discardOpen}
+        tier="top"
+        title="Zamknąć bez zapisu?"
+        message={`Wpisane pozycje (${draftLines}) nie zostaną zapisane.`}
+        confirmLabel="Zamknij bez zapisu"
+        cancelLabel="Wróć do prośby"
+        danger
+        onCancel={() => setDiscardOpen(false)}
+        onConfirm={handleClose}
+      />
     <ModalShell
       open={open}
-      onClose={handleClose}
+      onClose={requestClose}
       title="Nowa prośba handlowca"
       titleHint={PROSBA_PAGE_HEADER_HINTS.dailyNewRequest}
       titleHintAriaLabel="O formularzu prośby"
@@ -452,7 +476,7 @@ export function QuickOrderModal({
                   : prosbaReadiness.view.headline}
             </p>
           ) : null}
-          <Button variant="secondary" onClick={handleClose} disabled={pending}>
+          <Button variant="secondary" onClick={requestClose} disabled={pending}>
             Anuluj
           </Button>
           {/* Klikalny także przy brakach — submit pokazuje, czego brakuje (handlowiec, dostawca, pola). */}

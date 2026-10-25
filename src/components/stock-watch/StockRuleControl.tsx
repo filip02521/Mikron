@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { IconCheck } from "@/components/icons/StrokeIcons";
 import { useRouter } from "next/navigation";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import {
@@ -117,7 +118,7 @@ export function StockRuleMenu({
           disabled={value === rule}
           title={STOCK_WATCH_RULE_META[value].description}
         >
-          {value === rule ? "✓ " : ""}
+          {value === rule ? <IconCheck size={14} className="mr-1.5 inline-block align-[-2px]" aria-hidden /> : null}
           {STOCK_WATCH_RULE_META[value].label}
         </OverflowMenuItem>
       ))}

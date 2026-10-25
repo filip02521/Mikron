@@ -14,7 +14,7 @@ export function TeethProductLineBadge({
   return (
     <span
       className={cn(
-        "inline-flex max-w-full items-center rounded-md px-2 py-0.5 text-[11px] font-semibold leading-snug",
+        "inline-flex max-w-full items-center rounded-md px-2 py-0.5 text-[0.6875rem] font-semibold leading-snug",
         teethProductLineBadgeClass(productLine ?? null),
         className,
       )}

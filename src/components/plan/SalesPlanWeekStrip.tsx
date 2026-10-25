@@ -43,7 +43,7 @@ export function SalesPlanWeekStrip({
   }, [effectiveScope, sourceDays, prioritySet]);
 
   return (
-    <div className={cn("border-t border-slate-100", className)}>
+    <div className={className}>
       <div className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
         <div className="min-w-0">
           <p className={cn(salesTypography.blockTitle)}>{C.weekTitle}</p>
@@ -102,7 +102,7 @@ function ToggleGroup<T extends string>({
     <div
       role="group"
       aria-label={ariaLabel}
-      className="inline-flex rounded-md border border-slate-200 bg-white p-0.5 text-xs shadow-sm"
+      className="inline-flex rounded-md border border-slate-200/90 bg-slate-50/90 p-0.5 text-xs"
     >
       {options.map((opt) => {
         const active = value === opt.value;
@@ -114,10 +114,10 @@ function ToggleGroup<T extends string>({
             aria-pressed={active}
             onClick={() => onChange(opt.value)}
             className={cn(
-              "rounded px-2 py-1 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+              "min-h-11 rounded-[5px] px-2.5 font-medium transition-[background-color,color,box-shadow] duration-150 disabled:cursor-not-allowed disabled:opacity-40 sm:min-h-0 sm:py-1",
               active
-                ? "bg-indigo-600 text-white"
-                : "text-slate-600 hover:bg-slate-50"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-600 hover:bg-white/70 hover:text-slate-900"
             )}
           >
             {opt.label}
@@ -146,11 +146,11 @@ function DayColumn({
     >
       <header className="border-b border-slate-100 px-2 py-1.5">
         <div className="flex items-center justify-between gap-1">
-          <p className="text-[10px] font-semibold text-slate-500">
+          <p className="text-[0.625rem] font-semibold text-slate-500">
             {day.weekdayLabel}
           </p>
           {day.isToday ? (
-            <Badge variant="info" className="px-1.5 py-0 text-[9px] uppercase">
+            <Badge variant="info" className="px-1.5 py-0 text-[0.625rem]">
               {C.weekToday}
             </Badge>
           ) : null}
@@ -159,7 +159,7 @@ function DayColumn({
       </header>
       <ul className="flex flex-1 flex-col gap-1 p-1.5">
         {!day.items.length ? (
-          <li className="flex flex-1 items-center justify-center px-1 py-3 text-center text-[10px] text-slate-400">
+          <li className="flex flex-1 items-center justify-center px-1 py-3 text-center text-[0.625rem] text-slate-400">
             -
           </li>
         ) : (
@@ -170,7 +170,7 @@ function DayColumn({
               <li
                 key={`${day.dateKey}-${item.supplierId}-${item.scheduleId}`}
                 className={cn(
-                  "truncate rounded px-1.5 py-1 text-[11px] leading-snug",
+                  "truncate rounded px-1.5 py-1 text-[0.6875rem] leading-snug",
                   mine
                     ? "bg-indigo-50 font-medium text-indigo-950"
                     : "bg-slate-50 text-slate-700",

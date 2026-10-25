@@ -1,5 +1,6 @@
 "use client";
 import { MY_ORDERS_TOAST, toastSuccess, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
+import { toggleAllExpandedIds } from "@/components/moje/my-order-shipment-card-helpers";
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -144,13 +145,10 @@ export function MyOrderShipmentList({
     });
   }, []);
 
-  const expandAll = useCallback(() => {
-    setExpandedIds(new Set(sortedRows.map((r) => r.id)));
+  // Decyzja z poprzedniego stanu, nie z renderu: dwa szybkie kliknięcia muszą rozwinąć i zwinąć.
+  const toggleAll = useCallback(() => {
+    setExpandedIds((prev) => toggleAllExpandedIds(prev, sortedRows.map((r) => r.id)));
   }, [sortedRows]);
-
-  const collapseAll = useCallback(() => {
-    setExpandedIds(new Set());
-  }, []);
 
   const headerSlot = useMojeSectionHeaderSlot();
   const expandAllToggle =
@@ -158,10 +156,13 @@ export function MyOrderShipmentList({
       <button
         type="button"
         aria-expanded={allExpanded}
-        className="hit-target rounded px-1.5 py-0.5 text-[11px] font-medium text-slate-500 underline-offset-2 transition-colors hover:text-slate-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
-        onClick={() => (allExpanded ? collapseAll() : expandAll())}
+        aria-label={allExpanded ? "Zwiń wszystkie" : "Rozwiń wszystkie"}
+        className="hit-target rounded px-1.5 py-0.5 text-[0.6875rem] font-medium text-slate-500 underline-offset-2 transition-colors hover:text-slate-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+        onClick={toggleAll}
       >
-        {allExpanded ? "Zwiń wszystkie" : "Rozwiń wszystkie"}
+        {/* Krótsza etykieta na telefonie — pełna nie mieściła się obok tytułu sekcji i „?”. */}
+        {allExpanded ? "Zwiń" : "Rozwiń"}
+        <span className="hidden sm:inline"> wszystkie</span>
       </button>
     ) : null;
 

@@ -17,20 +17,13 @@ export function SupplierAdminNameCell({
   trailingBadge?: React.ReactNode;
   teethLane?: boolean;
 }) {
-  const initial = s.name.charAt(0).toUpperCase() || "?";
   return (
     <button
       type="button"
       onClick={onEdit}
       aria-label={`Edytuj kartę dostawcy ${s.name}`}
-      className="group flex min-w-0 items-center gap-2.5 text-left"
+      className="group flex min-h-10 min-w-0 items-center rounded-md text-left sm:min-h-8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
     >
-      <span
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-sm font-bold text-indigo-700 ring-1 ring-inset ring-indigo-100/60 transition group-hover:bg-indigo-100 group-hover:text-indigo-800"
-        aria-hidden
-      >
-        {initial}
-      </span>
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-center gap-1.5">
           <span className="font-medium text-slate-900 group-hover:text-indigo-800 group-hover:underline">
@@ -38,17 +31,17 @@ export function SupplierAdminNameCell({
           </span>
           {trailingBadge}
           {!teethLane && isSupplierOrderOnDemand(s) ? (
-            <Badge variant="info" className="text-[10px]">
+            <Badge variant="info" className="text-[0.625rem]">
               Na żądanie
             </Badge>
           ) : null}
           {s.subiekt_kh_id == null ? (
-            <Badge variant="warning" className="text-[10px]">
+            <Badge variant="warning" className="text-[0.625rem]">
               Bez Subiekta
             </Badge>
           ) : null}
           {isEditing ? (
-            <Badge variant="info" className="text-[10px]">
+            <Badge variant="info" className="text-[0.625rem]">
               Edycja
             </Badge>
           ) : null}

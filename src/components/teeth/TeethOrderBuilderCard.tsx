@@ -170,7 +170,7 @@ export function TeethOrderBuilderCard({
               {detail}
             </p>
             {!complete ? (
-              <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+              <p className="mt-1 text-[0.6875rem] leading-relaxed text-slate-500">
                 Stan magazynowy nie jest weryfikowany.
               </p>
             ) : null}

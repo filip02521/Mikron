@@ -113,7 +113,7 @@ export function ProsbaProductLineCollapsedRow({
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-          <span className="text-[11px] font-semibold text-slate-400">
+          <span className="text-[0.6875rem] font-semibold text-slate-400">
             {index + 1}.
           </span>
           <p className="min-w-0 font-medium text-slate-900">{summary.title}</p>
@@ -128,17 +128,17 @@ export function ProsbaProductLineCollapsedRow({
             </span>
           ) : null}
           {teethNeedsList ? (
-            <span className="shrink-0 rounded-md bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-200/80">
+            <span className="shrink-0 rounded-md bg-amber-100 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-amber-800 ring-1 ring-amber-200/80">
               Szkic listy
             </span>
           ) : isTeethProduct && teethComplete ? (
-            <span className="shrink-0 rounded-md bg-violet-100 px-1.5 py-0.5 text-[11px] font-semibold text-violet-800 ring-1 ring-violet-200/80">
+            <span className="shrink-0 rounded-md bg-violet-100 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-violet-800 ring-1 ring-violet-200/80">
               Lista gotowa
             </span>
           ) : stockView ? (
             <span
               className={cn(
-                "shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold",
+                "shrink-0 rounded-md px-1.5 py-0.5 text-[0.6875rem] font-semibold",
                 prosbaLineStockBadgeClass(stockView.tone),
               )}
             >
@@ -148,7 +148,7 @@ export function ProsbaProductLineCollapsedRow({
           {alreadyOrdered ? (
             <span
               className={cn(
-                "shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold",
+                "shrink-0 rounded-md px-1.5 py-0.5 text-[0.6875rem] font-semibold",
                 PROSBA_ALREADY_ORDERED_BADGE[alreadyOrdered.tone],
               )}
             >

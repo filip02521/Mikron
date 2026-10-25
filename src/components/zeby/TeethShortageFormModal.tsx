@@ -87,10 +87,10 @@ function Section({
   return (
     <section className="space-y-3 rounded-md border border-slate-200/80 bg-slate-50/40 p-3 sm:p-3.5">
       <header className="space-y-0.5">
-        <h3 className="text-[11px] font-semibold text-slate-500">
+        <h3 className="text-[0.6875rem] font-semibold text-slate-500">
           {title}
         </h3>
-        {hint ? <p className="text-[11px] leading-snug text-slate-500">{hint}</p> : null}
+        {hint ? <p className="text-[0.6875rem] leading-snug text-slate-500">{hint}</p> : null}
       </header>
       {children}
     </section>
@@ -372,7 +372,7 @@ export function TeethShortageFormModal({
       bodyClassName="space-y-3 px-5 py-4 sm:px-6"
       footer={
         <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="min-h-[1.25rem] text-[11px] text-slate-500">
+          <p className="min-h-[1.25rem] text-[0.6875rem] text-slate-500">
             {blockReason && attempted ? (
               <span className="text-amber-800">{blockReason}</span>
             ) : (
@@ -440,7 +440,7 @@ export function TeethShortageFormModal({
         {form.productLine ? (
           <p
             className={cn(
-              "rounded-md px-2.5 py-1.5 text-[11px] leading-snug",
+              "rounded-md px-2.5 py-1.5 text-[0.6875rem] leading-snug",
               supplierName
                 ? "border border-slate-200/80 bg-white text-slate-600"
                 : "border border-amber-200/80 bg-amber-50/50 text-amber-900",
@@ -467,7 +467,7 @@ export function TeethShortageFormModal({
               <p className="text-xs font-semibold tracking-wide text-slate-600">
                 Typ
                 {dualKind && hasAnyMoulds ? (
-                  <span className="ml-1 font-normal text-slate-400">
+                  <span className="ml-1 font-normal text-slate-500">
                     - „Bez rozróżnienia” = brak dla obu typów (bez fasonu)
                   </span>
                 ) : null}
@@ -522,12 +522,12 @@ export function TeethShortageFormModal({
                   label={c}
                   active={form.color === c}
                   disabled={pending}
-                  className="px-2 py-1 text-[11px]"
+                  className="px-2 py-1 text-[0.6875rem]"
                   onClick={() => patch({ color: c })}
                 />
               ))}
               {colors.length === 0 ? (
-                <p className="px-1 py-0.5 text-[11px] text-slate-500">
+                <p className="px-1 py-0.5 text-[0.6875rem] text-slate-500">
                   Ta linia nie ma zdefiniowanej palety kolorów w katalogu.
                 </p>
               ) : null}
@@ -576,7 +576,7 @@ export function TeethShortageFormModal({
           ) : null}
 
           {!showMouldPicker && !showOptionalMouldInput && showKindPicker && form.kind === "" ? (
-            <p className="rounded-md border border-dashed border-slate-200 bg-white/70 px-2.5 py-2 text-[11px] leading-snug text-slate-500">
+            <p className="rounded-md border border-dashed border-slate-200 bg-white/70 px-2.5 py-2 text-[0.6875rem] leading-snug text-slate-500">
               Bez rozróżnienia typu - wpis obejmuje przednie i boczne tej samej linii/koloru.
               Aby wskazać konkretny fason, wybierz typ.
             </p>
@@ -599,7 +599,7 @@ export function TeethShortageFormModal({
         aria-live="polite"
       >
         <div className="min-w-0 flex-1 space-y-0.5">
-          <p className="text-[10px] font-semibold text-amber-900/70">
+          <p className="text-[0.625rem] font-semibold text-amber-900/70">
             Podgląd wpisu
           </p>
           <p
@@ -611,7 +611,7 @@ export function TeethShortageFormModal({
             {previewParts.length > 0 ? previewParts.join(" · ") : "Uzupełnij pola powyżej"}
           </p>
         </div>
-        <span className="shrink-0 rounded-md bg-white/90 px-2 py-0.5 text-[11px] font-medium text-amber-900 ring-1 ring-amber-200/80">
+        <span className="shrink-0 rounded-md bg-white/90 px-2 py-0.5 text-[0.6875rem] font-medium text-amber-900 ring-1 ring-amber-200/80">
           {dateBadge}
         </span>
       </div>
@@ -638,7 +638,7 @@ export function TeethShortageFormModal({
         </div>
 
         {form.dateUndetermined ? (
-          <p className="rounded-md border border-amber-200/70 bg-amber-50/40 px-2.5 py-2 text-[11px] leading-snug text-amber-900/90">
+          <p className="rounded-md border border-amber-200/70 bg-amber-50/40 px-2.5 py-2 text-[0.6875rem] leading-snug text-amber-900/90">
             Ostrzeżenie przy prośbie: „termin dostępności nieustalony”.
             Datę możesz uzupełnić później bez zmiany wariantu.
           </p>

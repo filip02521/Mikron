@@ -431,3 +431,158 @@ export function stockNeedReliefPiecesForTw(
   const n = Number(reliefByTwId.get(Math.trunc(twId)));
   return Number.isFinite(n) && n > 0 ? Math.ceil(n) : 0;
 }
+
+/**
+ * Skąd brać rezerwacje ZK dla linii z prośbą: prośba ląduje na innej karcie niż ZK klienta.
+ * - para: prośba na paczce (w sztukach pary), ZK na paczce (× przelicznik) albo na sztuce;
+ * - zestaw „Składamy”: prośba rozpisana na składnik (także przez zestaw w zestawie), ZK na
+ *   karcie zestawu (× iloczyn ilości w zestawach).
+ * Wszystko w jednostkach extra linii docelowej. Linia bez wpisu = tylko własna karta.
+ * `capQty` (jednostki karty źródłowej): ile rezerwacji zestawu naprawdę podniosło potrzebę
+ * składnika — przy wyłączonym „stan zestawu jako pokrycie” tylko część ponad stan.
+ */
+export type ZdOverlapReservationSources = Map<number, { twId: number; factor: number; capQty?: number }[]>;
+
+const MAX_BOM_DEPTH = 32;
+
+export function buildZdOverlapReservationSources(input: {
+  pairs?: readonly { packTwId: number; pieceTwId: number; unitsPerPack: number }[] | null;
+  boms?: readonly {
+    parentTwId: number;
+    demandAllocation?: string | null;
+    stockAsCover?: boolean | null;
+    components: readonly { componentTwId: number; qtyPerParent: number }[];
+  }[] | null;
+  /** Dostępne kart zestawów (stan − rezerwacje) — do limitu przy wyłączonym pokryciu. */
+  dostepneByTw?: ReadonlyMap<number, number> | null;
+}): ZdOverlapReservationSources {
+  const out: ZdOverlapReservationSources = new Map();
+  const pieceToPack = new Map<number, { packTwId: number; ratio: number }>();
+  const ratioByPack = new Map<number, number>();
+  for (const p of input.pairs ?? []) {
+    const ratio = Math.max(1, Number(p.unitsPerPack) || 1);
+    ratioByPack.set(p.packTwId, ratio);
+    pieceToPack.set(p.pieceTwId, { packTwId: p.packTwId, ratio });
+    out.set(p.packTwId, [
+      { twId: p.packTwId, factor: ratio },
+      { twId: p.pieceTwId, factor: 1 },
+    ]);
+  }
+
+  // Tylko „Składamy” (explode): tam niedobór zestawu schodzi na składniki.
+  const parentsOf = new Map<number, { parent: number; qty: number; cover: boolean }[]>();
+  const explodeParents = new Set<number>();
+  for (const bom of input.boms ?? []) {
+    if (bom.demandAllocation === "separate") continue;
+    explodeParents.add(bom.parentTwId);
+    for (const c of bom.components) {
+      const q = Math.trunc(Number(c.qtyPerParent)) || 0;
+      if (q < 1) continue;
+      const list = parentsOf.get(c.componentTwId) ?? [];
+      list.push({ parent: bom.parentTwId, qty: q, cover: bom.stockAsCover !== false });
+      parentsOf.set(c.componentTwId, list);
+    }
+  }
+  const ancestors = (tw: number, factor: number, depth: number, acc: { twId: number; factor: number; capQty?: number }[]) => {
+    if (depth > MAX_BOM_DEPTH) return;
+    for (const p of parentsOf.get(tw) ?? []) {
+      const f = factor * p.qty;
+      const dost = Number(input.dostepneByTw?.get(p.parent));
+      acc.push(
+        p.cover
+          ? { twId: p.parent, factor: f }
+          : { twId: p.parent, factor: f, capQty: Math.max(0, -(Number.isFinite(dost) ? dost : 0)) }
+      );
+      ancestors(p.parent, f, depth + 1, acc);
+    }
+  };
+  for (const comp of parentsOf.keys()) {
+    // Zestaw w zestawie nie trafia na ZD — prośby i rezerwacje schodzą do liścia.
+    if (explodeParents.has(comp)) continue;
+    const viaPiece = pieceToPack.get(comp);
+    const target = viaPiece ? viaPiece.packTwId : comp;
+    const unit = ratioByPack.get(comp) ?? 1;
+    const acc: { twId: number; factor: number; capQty?: number }[] = [];
+    ancestors(comp, unit, 0, acc);
+    if (!acc.length) continue;
+    const list = out.get(target) ?? [{ twId: target, factor: 1 }];
+    list.push(...acc);
+    out.set(target, list);
+  }
+  return out;
+}
+
+/**
+ * Karty zestawów, dla których `buildZdOverlapReservationSources` potrzebuje stanu
+ * („Składamy” z wyłączonym pokryciem) — bez `dostepneByTw` ich limit wynosi 0.
+ */
+export function overlapCapKitTwIds(
+  boms: readonly { parentTwId: number; demandAllocation?: string | null; stockAsCover?: boolean | null }[]
+): number[] {
+  return [
+    ...new Set(
+      boms
+        .filter((b) => b.demandAllocation !== "separate" && b.stockAsCover === false)
+        .map((b) => b.parentTwId)
+        .filter((tw) => tw > 0)
+    ),
+  ];
+}
+
+/** Linie z sumą rezerwacji ze wszystkich kart źródłowych (do wyboru kandydatów overlap). */
+export function linesWithReservationSources<T extends { tw_Id: number; tw_StanRez?: number | null }>(
+  lines: readonly T[],
+  sources: ZdOverlapReservationSources
+): T[] {
+  const rez = new Map(lines.map((l) => [Math.trunc(Number(l.tw_Id)) || 0, Math.max(0, Number(l.tw_StanRez) || 0)]));
+  return lines.map((l) => {
+    const src = sources.get(Math.trunc(Number(l.tw_Id)) || 0);
+    if (!src) return l;
+    return { ...l, tw_StanRez: src.reduce((sum, s) => sum + (rez.get(s.twId) ?? 0) * s.factor, 0) };
+  });
+}
+
+/** Karty do pobrania rezerwacji dla linii docelowych. */
+export function reservationSourceTwIds(
+  targets: readonly number[],
+  sources: ZdOverlapReservationSources
+): number[] {
+  const ids = new Set<number>();
+  for (const tw of targets) {
+    for (const s of sources.get(tw) ?? [{ twId: tw, factor: 1 }]) ids.add(s.twId);
+  }
+  return [...ids];
+}
+
+/** Rezerwacje kart źródłowych scalone na liniach docelowych, w jednostkach extra linii. */
+export function mergeReservedSlicesBySources(
+  reservedByTwId: ReadonlyMap<number, readonly ZdEstimateReservedOverlapSlice[]>,
+  targets: readonly number[],
+  sources: ZdOverlapReservationSources
+): Map<number, ZdEstimateReservedOverlapSlice[]> {
+  const out = new Map<number, ZdEstimateReservedOverlapSlice[]>();
+  for (const tw of targets) {
+    const src = sources.get(tw);
+    if (!src) {
+      const own = reservedByTwId.get(tw);
+      if (own) out.set(tw, [...own]);
+      continue;
+    }
+    out.set(
+      tw,
+      src.flatMap((s) => {
+        const slices = reservedByTwId.get(s.twId) ?? [];
+        // Limit (pokrycie wyłączone): liczy się tylko część rezerwacji ponad stan zestawu.
+        let scale = 1;
+        if (s.capQty != null) {
+          const total = slices.reduce((sum, sl) => sum + Math.max(0, sl.quantity), 0);
+          scale = total > 0 ? Math.min(1, Math.max(0, s.capQty) / total) : 0;
+        }
+        return slices
+          .map((sl) => ({ ...sl, quantity: sl.quantity * scale * s.factor }))
+          .filter((sl) => sl.quantity > 0);
+      })
+    );
+  }
+  return out;
+}

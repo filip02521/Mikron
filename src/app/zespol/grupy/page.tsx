@@ -21,14 +21,12 @@ export default async function ZespolGrupyPage() {
       title={copy.title}
       description={copy.description}
       hint={SALES_PAGE_HEADER_HINTS.teamGroups}
-      iconKey="teamGroups"
       subnav={<SalesTeamSubnav />}
     >
       <SalesGroupsClient
         initial={groups}
         canCreateGroups={teamUi.canCreateGroups}
         readOnlyPreview={readOnlyPreview}
-        embeddedInTeamWorkspace
         loadError={groupsLoadError}
       />
     </SalesTeamWorkspace>

@@ -14,6 +14,22 @@ const variants: Record<ButtonVariant, string> = {
   danger: "bg-red-600 text-white hover:bg-red-700",
 };
 
+const sizes = {
+  sm: "px-2.5 py-1.5 text-xs rounded-md leading-none",
+  md: "px-4 py-2 text-sm rounded-md",
+  lg: "px-5 py-2.5 text-base rounded-md",
+};
+
+/** Klasy przycisku — także dla linku, który wygląda jak przycisk (np. „Przygotuj ZD” w wierszu). */
+export function buttonClass(variant: ButtonVariant = "primary", size: "sm" | "md" | "lg" = "md", className?: string): string {
+  return cn(
+    "inline-flex cursor-pointer items-center justify-center gap-2 font-medium transition-[color,background-color,border-color,box-shadow,scale] duration-150 ease-out active:scale-[0.97] active:duration-75 motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50",
+    variants[variant],
+    sizes[size],
+    className
+  );
+}
+
 export const Button = forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -24,20 +40,10 @@ export const Button = forwardRef<
   { children, variant = "primary", className, size = "md", type = "button", ...props },
   ref
 ) {
-  const sizes = {
-    sm: "px-2.5 py-1.5 text-xs rounded-md leading-none",
-    md: "px-4 py-2 text-sm rounded-md",
-    lg: "px-5 py-2.5 text-base rounded-md",
-  };
   return (
     <button
       ref={ref}
-      className={cn(
-        "inline-flex cursor-pointer items-center justify-center gap-2 font-medium transition-[color,background-color,border-color,box-shadow,scale] duration-150 ease-out active:scale-[0.97] active:duration-75 motion-reduce:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50",
-        variants[variant],
-        sizes[size],
-        className
-      )}
+      className={buttonClass(variant, size, className)}
       type={type}
       {...props}
     >

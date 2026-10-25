@@ -144,7 +144,7 @@ function SalesPersonCard({
         <div className="flex min-w-0 items-center gap-2.5">
           <span
             className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sm font-bold ring-1 ring-inset",
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sm font-semibold ring-1 ring-inset",
               isSelf
                 ? "bg-indigo-100 text-indigo-700 ring-indigo-200/60"
                 : "bg-slate-100 text-slate-600 ring-slate-200/60"
@@ -157,11 +157,11 @@ function SalesPersonCard({
             <div className="flex min-w-0 items-center gap-2">
               <h3 className={cn(salesTypography.rowTitle, "truncate")}>{row.name}</h3>
               {isSelf ? (
-                <Badge variant="info" className="shrink-0 text-[10px]">
+                <Badge variant="info" className="shrink-0 text-[0.625rem]">
                   Ty
                 </Badge>
               ) : row.groupName ? (
-                <Badge variant="default" className="shrink-0 text-[10px]">
+                <Badge variant="default" className="shrink-0 text-[0.625rem]">
                   {row.groupName}
                 </Badge>
               ) : null}
@@ -328,7 +328,7 @@ export function SalesTeamOverview({
               </span>
               <div className="min-w-0">
                 <p className="text-xs font-medium text-amber-900">ZK czekają na towar</p>
-                <p className="text-lg font-bold tabular-nums text-amber-800">{totalPending}</p>
+                <p className="text-lg font-semibold tabular-nums text-amber-800">{totalPending}</p>
               </div>
             </div>
           ) : null}
@@ -339,7 +339,7 @@ export function SalesTeamOverview({
               </span>
               <div className="min-w-0">
                 <p className="text-xs font-medium text-violet-900">Przypomnienia ZK</p>
-                <p className="text-lg font-bold tabular-nums text-violet-800">{totalFollowUpDue}</p>
+                <p className="text-lg font-semibold tabular-nums text-violet-800">{totalFollowUpDue}</p>
               </div>
             </div>
           ) : null}
@@ -350,7 +350,7 @@ export function SalesTeamOverview({
               </span>
               <div className="min-w-0">
                 <p className="text-xs font-medium text-indigo-900">Przypomnienia notatek</p>
-                <p className="text-lg font-bold tabular-nums text-indigo-800">{totalNotesFollowUpDue}</p>
+                <p className="text-lg font-semibold tabular-nums text-indigo-800">{totalNotesFollowUpDue}</p>
               </div>
             </div>
           ) : null}
@@ -380,11 +380,11 @@ export function SalesTeamOverview({
                   {title}
                 </h2>
                 {sectionFollowUpDue > 0 ? (
-                  <Badge variant="info" className="text-[10px]">
+                  <Badge variant="info" className="text-[0.625rem]">
                     {formatPrzypomnienieCount(sectionFollowUpDue)}
                   </Badge>
                 ) : sectionPending > 0 ? (
-                  <Badge variant="warning" className="text-[10px]">
+                  <Badge variant="warning" className="text-[0.625rem]">
                     {sectionPending} ZK na towar
                   </Badge>
                 ) : null}

@@ -389,14 +389,15 @@ describe("mapZdEstimateLineToManual", () => {
     const linkedAt = new Date(
       Date.now() - 20 * 24 * 60 * 60 * 1000
     ).toISOString();
+    // Skok tnie tylko, gdy stan starcza na ≥ połowę dni zapasu (bez profilu dokładka ≈ skok).
     const line = {
       ...base,
       celZapasu: 300,
-      dostepne: 0,
+      dostepne: 160,
       otwarteZd: 0,
       sprzedazOkres: 300,
       sprzedazDziennie: 10,
-      doZamowienia: 300,
+      doZamowienia: 140,
       otwarteZkBezRez: 0,
     };
     const without = mapZdEstimateLineToManual(line, {

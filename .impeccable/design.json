@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-20T17:46:04.389Z",
+  "generatedAt": "2026-10-24T11:42:00.760Z",
   "title": "Design System: OnTime",
   "extensions": {
     "colorMeta": {
@@ -568,18 +568,22 @@
       "Do zaczynaj ekran pracy od zdania stanu z liczbą, nie od statystyk.",
       "Do sprawdzaj każdy ekran przy 375px: brak przewijania strony w poziomie, etykiety całe, pola min. 44px.",
       "Do pokazuj stan tłem, odznaką lub ikoną z tekstem, zawsze w kolorze jego znaczenia.",
-      "Do dawaj każdemu ruchowi wariant `motion-reduce`."
+      "Do dawaj każdemu ruchowi wariant `motion-reduce`.",
+      "Do pokazuj każde dłuższe ładowanie animowanym logo (`BrandLoader`) ze zdaniem, co się dzieje.",
+      "Do dawaj stronie z własnymi zakładkami jedną pozycję menu, a ustawienia obiektu trzymaj w jego karcie; inne ekrany pokazują stan i otwierają to samo okno."
     ],
     "donts": [
       "Don't dodawaj drugiego koloru akcentu, gradientów ani zieleni, bursztynu i czerwieni jako dekoracji.",
       "Don't stawiaj kolorowego paska z boku karty, wiersza, alertu ani pozycji menu.",
       "Don't buduj ekranu z rzędu kafelków z liczbami, jeśli te liczby są już w zakładkach albo tabeli.",
       "Don't wkładaj karty do karty.",
+      "Don't pokazuj tego samego obiektu w dwóch tabelach jednego ekranu; szczegóły rozwijaj pod jego wierszem.",
       "Don't pisz nagłówków kolumn, etykiet ani odznak wersalikami.",
       "Don't ucinaj etykiet przełączników ani przycisków wielokropkiem.",
       "Don't używaj `slate-400` do tekstu, który trzeba przeczytać.",
       "Don't zaznaczaj wybranego stanu grafitem ani kolorem stanu; wybrane jest zawsze w Petrolu.",
-      "Don't przenoś ciemnego gradientu logowania do aplikacji."
+      "Don't przenoś ciemnego gradientu logowania do aplikacji.",
+      "Don't stawiaj szkieletu, pulsującego paska ani samego `Spinner` tam, gdzie czeka cały obszar lub panel."
     ]
   }
 }

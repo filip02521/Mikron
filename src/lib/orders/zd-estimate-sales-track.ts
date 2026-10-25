@@ -406,8 +406,11 @@ export function computeSalesTrackedCel(input: {
 
   const coverDays =
     sprzedazDziennie > 1e-9 ? coverStock / sprzedazDziennie : null;
-  const pool = sprzedazOkres + coverStock;
-  const sellThrough = pool > 0 ? sprzedazOkres / pool : null;
+  // Sprzedaż w skali dni zapasu — inaczej dłuższe okno (ręczne daty, horyzont, dni strategii)
+  // samo podbijało sell-through, a krótkie cięło przy stanie poniżej celu.
+  const soldInZapas = soldNormalizedToZapas({ sprzedazOkres, dniOkresuEffective, dniZapasu });
+  const pool = soldInZapas + coverStock;
+  const sellThrough = pool > 0 ? soldInZapas / pool : null;
 
   const confidence =
     sprzedazOkres >= policy.minSprzedazOkres
@@ -656,4 +659,13 @@ export function formatSalesTrackHint(
       ? ` · bez +${held} boost`
       : "";
   return `${sign}${q} szt (śledzenie: ${why}${review}${holdNote})`;
+}
+
+/**
+ * Zapas minimalny (zapasMin) to twarda podłoga celu: korekty za sprzedażą i historią tną
+ * procent całego celu, a zapas bezpieczeństwa ma zostać. Nie podnosi ponad cel bazowy.
+ */
+export function floorCelTrackedAtZapasMin(celTracked: number, celBase: number, zapasMin: number | null | undefined): number {
+  const min = Math.min(Math.max(0, asFinite(celBase)), Math.max(0, asFinite(zapasMin)));
+  return Math.max(asFinite(celTracked), min);
 }

@@ -90,7 +90,7 @@ export function RequestGroupOverflowMenu({
         >
           <span className="flex min-w-0 flex-col items-start">
             <span>Już zamówione</span>
-            <span className="text-[11px] font-normal text-slate-500">
+            <span className="text-[0.6875rem] font-normal text-slate-500">
               Bez wpływu na czasy dostaw
             </span>
           </span>
@@ -135,7 +135,7 @@ export function RequestGroupOverflowMenu({
                       />
                       <span className="min-w-0 flex-1 truncate">{opt.label}</span>
                       {isCurrent ? (
-                        <span className="shrink-0 text-[10px] font-semibold text-indigo-500/90">
+                        <span className="shrink-0 text-[0.625rem] font-semibold text-indigo-500/90">
                           {PROCUREMENT_REQUEST_FLAG_COPY.overflowFlagActive}
                         </span>
                       ) : null}

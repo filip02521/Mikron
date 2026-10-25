@@ -88,7 +88,7 @@ export function ZkWatchAddBar({
             aria-disabled={!canAdd}
           />
           {!inline ? (
-            <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+            <p className="mt-1.5 text-[0.6875rem] leading-relaxed text-slate-500">
               Krótki numer (min. 2 znaki) - najpierw 30 dni, potem do 90 dni. Pełny format - tylko dany miesiąc.
             </p>
           ) : null}
@@ -138,7 +138,7 @@ export function ZkWatchAddBar({
                     </span>
                     <span className="text-xs text-slate-600">{candidate.clientLabel}</span>
                     {candidate.lineSummary || issued ? (
-                      <span className="mt-0.5 text-[11px] text-slate-500">
+                      <span className="mt-0.5 text-[0.6875rem] text-slate-500">
                         {[issued ? `Wystawiono ${issued}` : null, candidate.lineSummary]
                           .filter(Boolean)
                           .join(" · ")}

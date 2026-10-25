@@ -12,8 +12,6 @@ Na **dowolnym** PC w LAN:
 http://192.168.0.140:3000/login
 ```
 
-W Supabase → Redirect URLs: `http://192.168.0.140:3000/**`
-
 W `.env` na serwerze (zamiast `ontime.mikran`):
 
 ```env
@@ -21,7 +19,9 @@ NEXT_PUBLIC_APP_URL=http://192.168.0.140:3000
 LAN_DEV_HOST=192.168.0.140
 ```
 
-Minus: trzeba pamiętać IP; po zmianie IP w DHCP — aktualizacja `.env` i Supabase.
+Minus: trzeba pamiętać IP; po zmianie IP w DHCP — aktualizacja `.env`.
+
+Logowanie jest lokalne (cookie `ontime_session`, tabele `app_users` / `app_sessions`), więc poza `.env` nie ma żadnych adresów przekierowań do konfiguracji.
 
 ---
 
@@ -78,8 +78,6 @@ NEXT_PUBLIC_APP_URL=http://ontime.mikran:3000
 LAN_DEV_HOST=ontime.mikran
 ```
 
-Supabase: `http://ontime.mikran:3000/**`
-
 **Uwaga:** strefa `mikran` musi być obsługiwana przez DNS, którego używają stacje (zwykle DC po DHCP). Jeśli firma ma już strefę `mikran.com.pl`, lepiej rekord `ontime` w istniejącej strefie wewnętrznej.
 
 ---
@@ -94,7 +92,7 @@ http://NAZWA-SERWERA:3000
 
 (gdzie `NAZWA-SERWERA` = `hostname` z `hostname` w cmd)
 
-Wtedy w `.env`: `LAN_DEV_HOST` = ta nazwa (krótka lub FQDN), w Supabase ten sam URL.
+Wtedy w `.env`: `LAN_DEV_HOST` = ta nazwa (krótka lub FQDN), a `NEXT_PUBLIC_APP_URL` = ten sam URL.
 
 To nie zawsze działa poza domeną / po VPN — DNS firmowy jest pewniejszy.
 

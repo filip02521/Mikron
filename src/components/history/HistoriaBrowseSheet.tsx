@@ -16,13 +16,13 @@ import {
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Field";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { IconArchive, IconClipboardList, IconX } from "@/components/icons/StrokeIcons";
-import { navIconTileClassForTone } from "@/components/icons/NavIcon";
+import { IconX } from "@/components/icons/StrokeIcons";
+import { FOCUSABLE_SELECTOR } from "@/components/ui/ModalShell";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { cn } from "@/lib/cn";
-import { sideSheetWidePanelClass } from "@/lib/ui/surfaces";
-import { controlFocusClass, panelTypography } from "@/lib/ui/ontime-theme";
+import { sidePanelBackdropClass, sidePanelHeaderClass, sideSheetWidePanelClass } from "@/lib/ui/surfaces";
+import { controlFocusClass } from "@/lib/ui/ontime-theme";
 import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 import { useAnimatedClose } from "@/lib/ui/use-animated-close";
 
@@ -72,12 +72,45 @@ export function HistoriaBrowseSheet({
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
-      // Escape w otwartym potwierdzeniu (np. „Usunąć wpis?”) zamyka tylko potwierdzenie.
-      if (event.key === "Escape" && !document.querySelector('[role="alertdialog"]')) requestClose();
+      const panel = panelRef.current;
+      if (event.key === "Escape") {
+        // Escape w oknie nad panelem (anulowanie, notatka, „Usunąć wpis?”) zamyka tylko to okno.
+        const target = event.target instanceof Element ? event.target : null;
+        const fromDialog = target?.closest('[role="dialog"], [role="alertdialog"]');
+        if (fromDialog && panel && !panel.contains(fromDialog)) return;
+        if (document.querySelector('[role="alertdialog"]')) return;
+        requestClose();
+        return;
+      }
+      // Pułapka Tab — panel jest modalny (aria-modal), fokus zostaje w środku.
+      if (event.key !== "Tab" || !panel) return;
+      const items = [...panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)].filter(
+        (el) => el.offsetParent !== null
+      );
+      if (!items.length) return;
+      const first = items[0]!;
+      const last = items[items.length - 1]!;
+      if (event.shiftKey && (document.activeElement === first || !panel.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !panel.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, requestClose]);
+  }, [open, requestClose, panelRef]);
+
+  // Przycisk otwierający czytany przy renderze — zanim autoFocus przeniesie fokus do pola szukania.
+  const [opener] = useState(() =>
+    typeof document === "undefined" ? null : (document.activeElement as HTMLElement | null)
+  );
+  // Po zamknięciu fokus wraca na przycisk, który otworzył panel.
+  useEffect(() => {
+    if (!open) return;
+    return () => opener?.focus?.();
+  }, [open, opener]);
 
   useBodyScrollLock(open);
 
@@ -108,7 +141,7 @@ export function HistoriaBrowseSheet({
   const total = isIndividual ? individual.length : normal.length;
   const shown = isIndividual ? filteredIndividual.length : filteredNormal.length;
   const hasActiveFilter = Boolean(query.trim() || supplierKey);
-  const title = isIndividual ? "Historia indywidualna" : "Zamówienia standardowe";
+  const title = isIndividual ? "Prośby indywidualne" : "Zamówienia standardowe";
   const searchPlaceholder = isIndividual
     ? "Nazwa produktu, symbol, dostawca, handlowiec…"
     : "Użytkownik, dostawca, akcja…";
@@ -119,18 +152,14 @@ export function HistoriaBrowseSheet({
       : `Nie znaleziono pasujących do „${query.trim()}”.`;
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-[60]"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="historia-sheet-title"
-    >
+    <>
       <button
         ref={(el) => {
           backdropRef.current = el;
         }}
         type="button"
-        className="panel-slide-backdrop-enter absolute inset-0 bg-slate-900/30 backdrop-blur-[1px]"
+        tabIndex={-1}
+        className={cn(sidePanelBackdropClass, "z-[58] panel-slide-backdrop-enter")}
         aria-label="Zamknij historię"
         onClick={requestClose}
       />
@@ -138,55 +167,41 @@ export function HistoriaBrowseSheet({
         ref={(el) => {
           panelRef.current = el;
         }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="historia-sheet-title"
         className={cn(
-          "panel-slide-enter absolute inset-y-0 right-0",
+          "panel-slide-enter fixed inset-y-0 right-0 z-[60]",
           sideSheetWidePanelClass
         )}
       >
-        <header className="shrink-0 border-b border-indigo-100/70 bg-indigo-50/20 px-4 py-4 sm:px-5">
+        <header className={cn(sidePanelHeaderClass, "px-4 sm:px-5")}>
           <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 items-start gap-3">
-              <SectionHeadingIcon
-                tileClassName={
-                  isIndividual
-                    ? navIconTileClassForTone("indigo")
-                    : navIconTileClassForTone("slate")
-                }
-              >
-                {isIndividual ? (
-                  <IconClipboardList size={18} />
-                ) : (
-                  <IconArchive size={18} />
-                )}
-              </SectionHeadingIcon>
-              <div className="min-w-0">
-                <h2 id="historia-sheet-title" className={panelTypography.rowTitle}>
-                  {title}
-                </h2>
-                <p className={cn(panelTypography.caption, "mt-0.5")}>
-                  {hasActiveFilter
-                    ? `${shown} z ${total} wpisów (ostatnie ${retentionLabel})`
-                    : `${total} wpisów z ostatnich ${retentionLabel}`}
-                  {supplierKey ? (
-                    <span className="mt-0.5 block text-indigo-700/80">
-                      Filtr: wybrany dostawca (z panelu)
-                    </span>
-                  ) : null}
-                </p>
-              </div>
+            <div className="min-w-0">
+              <h2 id="historia-sheet-title" className="text-lg font-semibold text-slate-900">
+                {title}
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                {hasActiveFilter
+                  ? `${shown} z ${total} ${polishPluralWord(total, "wpisu", "wpisów", "wpisów")} (ostatnie ${retentionLabel})`
+                  : `${total} ${polishPluralWord(total, "wpis", "wpisy", "wpisów")} z ostatnich ${retentionLabel}`}
+                {supplierKey ? (
+                  <span className="mt-0.5 block text-slate-700">Filtr: wybrany dostawca (z panelu)</span>
+                ) : null}
+              </p>
             </div>
             <Button
               variant="ghost"
               size="sm"
-              className={cn(controlFocusClass, "h-8 w-8 shrink-0 p-0")}
+              className={cn(controlFocusClass, "size-11 shrink-0 p-0 sm:size-8")}
               onClick={requestClose}
               aria-label="Zamknij"
             >
-              <IconX size={16} />
+              <IconX size={18} />
             </Button>
           </div>
           <label className="mt-3 block">
-            <span className="mb-1.5 block text-xs font-semibold text-slate-600">Szukaj</span>
+            <span className="sr-only">Szukaj w historii</span>
             <Input
               type="search"
               placeholder={searchPlaceholder}
@@ -246,7 +261,7 @@ export function HistoriaBrowseSheet({
           )}
         </div>
       </aside>
-    </div>,
+    </>,
     document.body
   );
 }

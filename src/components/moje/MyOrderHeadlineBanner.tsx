@@ -72,13 +72,13 @@ export function MyOrderHeadlineBanner({
         <div className="min-w-0 flex-1">
           <p className={cn("text-xs font-semibold leading-snug", s.title)}>{headline}</p>
           {subline && !action ? (
-            <p className={cn("mt-0.5 text-[11px] leading-relaxed", s.sub)}>{subline}</p>
+            <p className={cn("mt-0.5 text-[0.6875rem] leading-relaxed", s.sub)}>{subline}</p>
           ) : null}
         </div>
         {action}
       </div>
       {subline && action ? (
-        <p className={cn("mt-0.5 text-[11px] leading-relaxed", s.sub)}>{subline}</p>
+        <p className={cn("mt-0.5 text-[0.6875rem] leading-relaxed", s.sub)}>{subline}</p>
       ) : null}
     </div>
   );

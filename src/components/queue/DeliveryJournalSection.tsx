@@ -47,10 +47,11 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { IconChevronLeft, IconChevronRight } from "@/components/icons/StrokeIcons";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Card } from "@/components/ui/Card";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 import { cn } from "@/lib/cn";
 import {
   brandLinkClass,
-  panelMetricTileClass,
   panelSectionInsetClass,
   panelTypography,
 } from "@/lib/ui/ontime-theme";
@@ -58,8 +59,6 @@ import {
   QUEUE_LIST_BODY_CLASS,
   journalComposeShellClass,
   journalEditShellClass,
-  journalToolbarCardClass,
-  queueToolbarFieldLabelClass,
   queueToolbarShellClass,
 } from "@/lib/ui/queue-panel-styles";
 
@@ -101,15 +100,6 @@ function formatTodayLabel(dateKey: string): string {
 }
 
 type JournalSubView = "entries" | "insights";
-
-function DaySummaryStat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className={cn(panelMetricTileClass, "border-emerald-100/70 bg-white px-3 py-2.5")}>
-      <p className={panelTypography.caption}>{label}</p>
-      <p className={cn(panelTypography.statValue, "mt-0.5 text-lg")}>{value}</p>
-    </div>
-  );
-}
 
 function JournalDateStepButton({
   children,
@@ -355,7 +345,7 @@ function ReceiptFormFields({
           ))}
         </Select>
         {carrierHintLabel ? (
-          <p className="mt-1.5 rounded-md border border-emerald-100 bg-emerald-50/80 px-2.5 py-1.5 text-[11px] leading-snug text-emerald-800">
+          <p className="mt-1.5 rounded-md border border-emerald-100 bg-emerald-50/80 px-2.5 py-1.5 text-[0.6875rem] leading-snug text-emerald-800">
             {carrierHintLabel}
           </p>
         ) : null}
@@ -575,21 +565,20 @@ export function DeliveryJournalSection({
 
   const summaryLine = useMemo(() => {
     const parts: string[] = [];
-    if (journal.summary.receiptCount > 0) {
-      parts.push(
-        `${journal.summary.receiptCount} ${
-          journal.summary.receiptCount === 1 ? "dostawa" : "dostaw"
-        }`
-      );
+    const { receiptCount, packageCount, palletCount } = journal.summary;
+    if (receiptCount > 0) {
+      parts.push(`${receiptCount} ${polishPluralWord(receiptCount, "dostawa", "dostawy", "dostaw")}`);
+      const supplierCount = new Set(journal.receipts.map((r) => r.supplierId ?? r.supplierLabel)).size;
+      parts.push(`${supplierCount} ${polishPluralWord(supplierCount, "dostawca", "dostawcy", "dostawców")}`);
     }
-    if (journal.summary.packageCount > 0) {
-      parts.push(`${journal.summary.packageCount} pacz.`);
+    if (packageCount > 0) {
+      parts.push(`${packageCount} ${polishPluralWord(packageCount, "paczka", "paczki", "paczek")}`);
     }
-    if (journal.summary.palletCount > 0) {
-      parts.push(`${journal.summary.palletCount} pal.`);
+    if (palletCount > 0) {
+      parts.push(`${palletCount} ${polishPluralWord(palletCount, "paleta", "palety", "palet")}`);
     }
     return parts.join(" · ") || "Brak wpisów";
-  }, [journal.summary]);
+  }, [journal.summary, journal.receipts]);
 
   const goToArchive = useCallback((query?: string) => {
     setArchiveSearchSeed(query?.trim() ?? "");
@@ -673,13 +662,15 @@ export function DeliveryJournalSection({
   };
 
   return (
+    <>
+    <Card padding={false} className="overflow-hidden">
     <section className="scroll-mt-20" id="dziennik-dostaw">
       <div className={cn("border-b border-slate-100", panelSectionInsetClass)}>
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className={panelTypography.sectionTitle}>Dziennik dostaw</h2>
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold tracking-tight text-slate-900">Dziennik dostaw</h2>
             {showEntries ? (
-              <p className={cn(panelTypography.sectionDesc, "mt-0.5")}>
+              <p className="mt-1 text-sm leading-relaxed text-slate-600">
                 {isViewingToday ? (
                   <>
                     {formatTodayLabel(journal.date)} - {summaryLine}.
@@ -687,11 +678,11 @@ export function DeliveryJournalSection({
                       <>
                         {" "}
                         Skrót zapisu:{" "}
-                        <kbd className="rounded border border-slate-200 bg-white px-1 font-mono text-[10px]">
+                        <kbd className="rounded border border-slate-200 bg-white px-1 font-mono text-[0.625rem]">
                           Ctrl
                         </kbd>
                         +
-                        <kbd className="rounded border border-slate-200 bg-white px-1 font-mono text-[10px]">
+                        <kbd className="rounded border border-slate-200 bg-white px-1 font-mono text-[0.625rem]">
                           Enter
                         </kbd>
                         .
@@ -708,7 +699,7 @@ export function DeliveryJournalSection({
                 )}
               </p>
             ) : (
-              <p className={cn(panelTypography.sectionDesc, "mt-0.5")}>
+              <p className="mt-1 text-sm leading-relaxed text-slate-600">
                 Wyszukiwanie paczek, filtry i podsumowania - bez edycji wpisów.
               </p>
             )}
@@ -731,7 +722,7 @@ export function DeliveryJournalSection({
                 disabled={pending}
                 onClick={() => setFormOpen((open) => !open)}
               >
-                {formOpen ? "Zwiń formularz" : "+ Dostawa"}
+                {formOpen ? "Zwiń formularz" : "Dodaj dostawę"}
               </Button>
             ) : null}
           </div>
@@ -769,12 +760,11 @@ export function DeliveryJournalSection({
           initialQuery={archiveSearchSeed}
         />
       ) : (
-        <div className="space-y-4 px-4 py-5 sm:px-6">
-          <div className={journalToolbarCardClass}>
-            <div className="flex flex-wrap items-end gap-3">
+        <div className="space-y-4 px-3 py-4 sm:px-4 lg:px-6">
+          <div>
+            <div className="flex flex-wrap items-center gap-3">
               <div className="min-w-[12.5rem] flex-1 sm:max-w-[17rem]">
-                <span className={queueToolbarFieldLabelClass}>Data</span>
-                <div className="mt-0.5 flex gap-1.5">
+                <div className="flex gap-1.5">
                   <JournalDateStepButton
                     disabled={pending}
                     onClick={goPrevDay}
@@ -785,6 +775,7 @@ export function DeliveryJournalSection({
                   </JournalDateStepButton>
                   <Input
                     type="date"
+                    aria-label="Data dziennika"
                     className="min-w-0 flex-1"
                     value={viewDate}
                     max={todayDateKey}
@@ -818,18 +809,6 @@ export function DeliveryJournalSection({
             </div>
           </div>
 
-          {journal.summary.receiptCount > 0 ? (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <DaySummaryStat label="Dostawy" value={journal.summary.receiptCount} />
-              <DaySummaryStat label="Paczki" value={journal.summary.packageCount} />
-              <DaySummaryStat label="Palety" value={journal.summary.palletCount} />
-              <DaySummaryStat
-                label="Dostawcy"
-                value={new Set(journal.receipts.map((r) => r.supplierId ?? r.supplierLabel)).size}
-              />
-            </div>
-          ) : null}
-
           {formOpen && isViewingToday && canEditTodayEntries ? (
             <div
               ref={formPanelRef}
@@ -853,7 +832,7 @@ export function DeliveryJournalSection({
                 <Button variant="primary" size="sm" disabled={pending} onClick={submitNew}>
                   Zapisz i kolejna
                 </Button>
-                <span className="text-[11px] text-slate-500">Ctrl+Enter - zapisz bez myszy</span>
+                <span className="text-[0.6875rem] text-slate-500">Ctrl+Enter - zapisz bez myszy</span>
               </div>
             </div>
           ) : null}
@@ -863,6 +842,8 @@ export function DeliveryJournalSection({
               <DeliveryJournalSearchField
                 id="journal-day-search"
                 label="Szukaj w tym dniu"
+                hideLabel
+                className="sm:max-w-xs"
                 value={entrySearch}
                 disabled={pending}
                 placeholder="Nr listu, dostawca, kurier…"
@@ -884,7 +865,7 @@ export function DeliveryJournalSection({
             </div>
           ) : null}
 
-          <ul className={cn("space-y-2", journal.receipts.length > 6 && QUEUE_LIST_BODY_CLASS)}>
+          <ul className={cn("divide-y divide-slate-100", journal.receipts.length > 6 && QUEUE_LIST_BODY_CLASS)}>
             {filteredReceipts.map((r) => (
               <ReceiptRow
                 key={r.id}
@@ -923,14 +904,14 @@ export function DeliveryJournalSection({
               description={
                 isViewingToday
                   ? canEditTodayEntries
-                    ? "Dodaj pierwszą dostawę przyciskiem „+ Dostawa”."
+                    ? "Dodaj pierwszą dostawę przyciskiem „Dodaj dostawę”."
                     : "Dostawy można dodawać w zakładce Dzień."
                   : "Wybierz inną datę lub wróć na dziś."
               }
               action={
                 isViewingToday && canEditTodayEntries && !formOpen ? (
                   <Button variant="primary" size="sm" onClick={() => setFormOpen(true)}>
-                    + Dostawa
+                    Dodaj dostawę
                   </Button>
                 ) : undefined
               }
@@ -938,6 +919,8 @@ export function DeliveryJournalSection({
           ) : null}
         </div>
       )}
+    </section>
+    </Card>
 
       {toast ? <NoticeToast notice={toast} onDismiss={() => setToast(null)} /> : null}
       {canManageCarriers ? (
@@ -952,6 +935,6 @@ export function DeliveryJournalSection({
         onClose={() => setPhonesModalOpen(false)}
         carriers={carriers}
       />
-    </section>
+    </>
   );
 }

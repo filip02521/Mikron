@@ -3,7 +3,9 @@
 import { useMemo, useState } from "react";
 import { plProsba } from "@/lib/ui/polish-plurals";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
+import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { Spinner } from "@/components/ui/Spinner";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { TeethPanelEmpty } from "@/components/zeby/TeethPanelSection";
@@ -105,7 +107,7 @@ export function TeethPanelWeryfikacjaView({
         action={
           <Link
             href="/zeby/kolejka"
-            className="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 sm:min-h-10"
           >
             Przejdź do kolejki
           </Link>
@@ -116,12 +118,12 @@ export function TeethPanelWeryfikacjaView({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-semibold text-slate-900">
+          <p className="text-base font-semibold tracking-[-0.01em] text-slate-900 tabular-nums">
             {allOrderIds.length} {plProsba(allOrderIds.length)} czeka na sprawdzenie
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="mt-1 text-sm text-slate-600">
             Porównaj listę ze zdjęciem, popraw pomyłki odczytu i zatwierdź - prośba trafi do
             zamówienia.
           </p>
@@ -129,23 +131,22 @@ export function TeethPanelWeryfikacjaView({
         <Button
           type="button"
           variant="primary"
-          className="min-h-10 shrink-0"
+          className="shrink-0"
           disabled={pending || localPending}
           aria-busy={localPending}
           onClick={() => requestApprove(allOrderIds, "wszystkie prośby")}
         >
           {localPending ? <Spinner size="sm" /> : <IconCircleCheck size={16} />}
-          Zatwierdź wszystkie
+          Zatwierdź {allOrderIds.length} {plProsba(allOrderIds.length)}
         </Button>
-      </div>
+      </Card>
       {missingDataCount > 0 ? (
-        <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-900">
-          <IconAlertCircle size={18} className="shrink-0 text-amber-600" />
-          <span>
-            <strong>{missingDataCount}</strong> {plProsba(missingDataCount)} bez koloru lub typu przy
-            którymś zębie - uzupełnij przed zatwierdzeniem.
-          </span>
-        </div>
+        <Alert
+          tone="warning"
+          title={`${missingDataCount} ${plProsba(missingDataCount)} bez koloru lub typu przy którymś zębie`}
+        >
+          Uzupełnij je przed zatwierdzeniem.
+        </Alert>
       ) : null}
 
       {groups.map((group) => {
@@ -168,7 +169,7 @@ export function TeethPanelWeryfikacjaView({
           <section
             key={group.supplierId ?? "__no_supplier"}
             aria-label={`Dostawca ${group.supplierName}`}
-            className="rounded-xl border border-slate-200 bg-white shadow-sm"
+            className="rounded-[var(--radius-panel)] border border-slate-200 bg-[var(--card)] shadow-[var(--shadow-card)]"
           >
             <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 sm:px-5">
               <div className="min-w-0">
@@ -186,7 +187,7 @@ export function TeethPanelWeryfikacjaView({
                   type="button"
                   variant="secondary"
                   size="sm"
-                  className="min-h-9"
+                  className="min-h-11 sm:min-h-9"
                   disabled={pending || localPending}
                   onClick={() => requestApprove(orderIds, group.supplierName ?? "tej grupy")}
                 >
@@ -201,7 +202,7 @@ export function TeethPanelWeryfikacjaView({
                   <div
                     key={section.key}
                     id={sectionDomId(section.key)}
-                    className="scroll-mt-24 overflow-hidden rounded-lg border border-slate-200"
+                    className="scroll-mt-24 overflow-hidden rounded-lg"
                   >
                     <TeethProductLineSectionHeader
                       productLine={section.productLine}

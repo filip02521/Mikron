@@ -1,5 +1,6 @@
 import type { IndividualOrder } from "@/types/database";
 import { normalizeProcurementCancelNote } from "@/lib/orders/procurement-cancel-note";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 function normalizeSearch(s: string) {
   return s.trim().toLocaleLowerCase("pl");
@@ -19,7 +20,7 @@ export function matchesIndividualSearch(order: IndividualOrder, query: string): 
     .filter(Boolean)
     .join(" ")
     .toLocaleLowerCase("pl");
-  return haystack.includes(q);
+  return matchesSearchWords(haystack, q);
 }
 
 type NormalHistorySearchRow = {
@@ -35,5 +36,5 @@ export function matchesNormalSearch(row: NormalHistorySearchRow, query: string):
     .filter(Boolean)
     .join(" ")
     .toLocaleLowerCase("pl");
-  return haystack.includes(q);
+  return matchesSearchWords(haystack, q);
 }

@@ -1,62 +1,20 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/cn";
 import { isNavItemActive } from "@/lib/nav";
-import { NavIcon } from "@/components/icons/NavIcon";
-import {
-  controlFocusClass,
-  panelChoiceChipClass,
-  panelChoiceChipIdleClass,
-  panelChoiceChipSelectedClass,
-  salesChromeInsetClass,
-} from "@/lib/ui/ontime-theme";
+import { SectionTabNav } from "@/components/ui/SectionTabNav";
 
 const SIBLING_HREFS = ["/zespol", "/zespol/handlowcy", "/zespol/grupy", "/zespol/urlopy"] as const;
 
-const TAB_CHIP_CLASS = cn(
-  panelChoiceChipClass,
-  "inline-flex min-h-11 shrink-0 items-center gap-1.5 py-2 sm:min-h-9",
-  controlFocusClass
-);
+const ITEMS = [
+  { id: "/zespol", href: "/zespol", label: "Podgląd zespołu", hint: "Karty handlowców i skróty do próśb oraz ZK" },
+  { id: "/zespol/handlowcy", href: "/zespol/handlowcy", label: "Handlowcy", hint: "Lista osób, konta i przypisanie do grup" },
+  { id: "/zespol/grupy", href: "/zespol/grupy", label: "Grupy", hint: "Nazwy i kolejność grup w podglądzie" },
+  { id: "/zespol/urlopy", href: "/zespol/urlopy", label: "Urlopy", hint: "Zastępstwa urlopowe handlowców" },
+];
 
 export function SalesTeamSubnav() {
   const pathname = usePathname();
-
-  const items = [
-    { href: "/zespol", label: "Podgląd zespołu", title: "Karty handlowców i skróty do próśb oraz ZK", icon: "team" as const },
-    { href: "/zespol/handlowcy", label: "Handlowcy", title: "Lista osób, konta i przypisanie do grup", icon: "teamAccounts" as const },
-    { href: "/zespol/grupy", label: "Grupy", title: "Nazwy i kolejność grup w podglądzie", icon: "teamGroups" as const },
-    { href: "/zespol/urlopy", label: "Urlopy", title: "Zastępstwa urlopowe handlowców", icon: "vacation" as const },
-  ] as const;
-
-  return (
-    <nav
-      className={cn(
-        "flex flex-wrap gap-2 border-b border-slate-100 bg-slate-50/60 py-2.5",
-        salesChromeInsetClass
-      )}
-      aria-label="Sekcje zespołu"
-    >
-      {items.map((item) => {
-        const active = isNavItemActive(pathname, item.href, [...SIBLING_HREFS]);
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            title={item.title}
-            aria-current={active ? "page" : undefined}
-            className={cn(
-              TAB_CHIP_CLASS,
-              active ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass
-            )}
-          >
-            <NavIcon navKey={item.icon} size={15} />
-            {item.label}
-          </Link>
-        );
-      })}
-    </nav>
-  );
+  const active = ITEMS.find((item) => isNavItemActive(pathname, item.href, [...SIBLING_HREFS]))?.id ?? "/zespol";
+  return <SectionTabNav activeTab={active} tabs={ITEMS} ariaLabel="Sekcje zespołu" embedded />;
 }

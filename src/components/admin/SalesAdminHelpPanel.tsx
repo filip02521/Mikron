@@ -1,5 +1,6 @@
 "use client";
 
+import { IconChevronDown } from "@/components/icons/StrokeIcons";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { brandLinkClass, salesChromeInsetClass } from "@/lib/ui/ontime-theme";
@@ -21,18 +22,18 @@ export function SalesAdminHelpPanel({
         "group",
         embedded
           ? "border-t border-slate-100"
-          : "overflow-hidden rounded-md border border-slate-200/90 bg-white shadow-sm open:shadow-md"
+          : "overflow-hidden rounded-[var(--radius-panel)] border border-slate-200 bg-[var(--card)] shadow-[var(--shadow-card)]"
       )}
     >
       <summary
         className={cn(
-          "cursor-pointer list-none py-3 text-sm font-semibold text-slate-900 marker:content-none [&::-webkit-details-marker]:hidden",
+          "flex min-h-12 cursor-pointer list-none items-center py-3 text-sm font-semibold text-slate-900 marker:content-none hover:bg-slate-50 [&::-webkit-details-marker]:hidden",
           embedded ? salesChromeInsetClass : "px-3 sm:px-4"
         )}
       >
-        <span className="flex items-center justify-between gap-2">
+        <span className="flex w-full items-center justify-between gap-2">
           <span>Jak działają karty i konta</span>
-          <span className="text-slate-400 transition group-open:rotate-180">▾</span>
+          <IconChevronDown size={16} className="shrink-0 text-slate-400 transition-transform group-open:rotate-180 motion-reduce:transition-none" />
         </span>
       </summary>
       <div

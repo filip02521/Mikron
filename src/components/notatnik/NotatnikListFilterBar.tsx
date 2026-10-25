@@ -168,7 +168,7 @@ export function NotatnikListFilterBar({
             <span className="hidden sm:inline">
               {" "}
               Skrót:{" "}
-              <kbd className="rounded border border-slate-200 bg-slate-50 px-1 font-mono text-[10px]">
+              <kbd className="rounded border border-slate-200 bg-slate-50 px-1 font-mono text-[0.625rem]">
                 /
               </kbd>
             </span>

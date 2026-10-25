@@ -7,9 +7,12 @@ import {
   type ProductCatalogRow,
 } from "@/lib/data/product-catalog-shared";
 import {
-  buildQuotedIlikeContainsPattern,
+  buildWordsContainsOrFilters,
   escapeIlikePattern,
 } from "@/lib/security/ilike-pattern";
+
+/** Pola towaru przeszukiwane w katalogu (każde słowo zapytania w którymś z nich). */
+const PRODUCT_TEXT_COLUMNS = ["symbol", "name", "plu", "note"] as const;
 
 export type {
   ProductCatalogCoverageStats,
@@ -51,11 +54,9 @@ async function fetchSupplierLinkTwIdPage(options: {
     if ("twId" in options.productFilter) {
       query = query.eq("subiekt_tw_id", options.productFilter.twId);
     } else {
-      const pattern = buildQuotedIlikeContainsPattern(options.productFilter.textQuery);
-      query = query.or(
-        `symbol.ilike.${pattern},name.ilike.${pattern},plu.ilike.${pattern},note.ilike.${pattern}`,
-        { foreignTable: "subiekt_products" }
-      );
+      for (const f of buildWordsContainsOrFilters(options.productFilter.textQuery, PRODUCT_TEXT_COLUMNS)) {
+        query = query.or(f, { foreignTable: "subiekt_products" });
+      }
     }
   }
 
@@ -75,15 +76,13 @@ async function fetchSupplierLinkTwIdPage(options: {
 /** Wszystkie tw_Id pasujące do pól produktu (bez paginacji wyniku). */
 async function listAllTwIdsFromProductTextSearch(q: string): Promise<number[]> {
   const supabase = createAdminClient();
-  const pattern = buildQuotedIlikeContainsPattern(q);
   const ids: number[] = [];
   let offset = 0;
 
   while (true) {
-    const { data, error } = await supabase
-      .from("subiekt_products")
-      .select("subiekt_tw_id")
-      .or(`symbol.ilike.${pattern},name.ilike.${pattern},plu.ilike.${pattern},note.ilike.${pattern}`)
+    let query = supabase.from("subiekt_products").select("subiekt_tw_id");
+    for (const f of buildWordsContainsOrFilters(q, PRODUCT_TEXT_COLUMNS)) query = query.or(f);
+    const { data, error } = await query
       .order("last_seen_at", { ascending: false })
       .range(offset, offset + SUPABASE_PAGE - 1);
     if (error) throw new Error(error.message);
@@ -465,14 +464,13 @@ export async function searchProductCatalogPage(options: {
     return { rows, total, offset, limit };
   }
 
-  const pattern = buildQuotedIlikeContainsPattern(q);
   const supplierNameTwIds = await listTwIdsBySupplierNameMatch(q);
   if (!supplierNameTwIds.length) {
-    const query = supabase
+    let query = supabase
       .from("subiekt_products")
       .select("subiekt_tw_id", { count: "exact" })
-      .order("last_seen_at", { ascending: false })
-      .or(`symbol.ilike.${pattern},name.ilike.${pattern},plu.ilike.${pattern},note.ilike.${pattern}`);
+      .order("last_seen_at", { ascending: false });
+    for (const f of buildWordsContainsOrFilters(q, PRODUCT_TEXT_COLUMNS)) query = query.or(f);
 
     const { data: idsRaw, count, error } = await query.range(offset, offset + limit - 1);
     if (error) throw new Error(error.message);

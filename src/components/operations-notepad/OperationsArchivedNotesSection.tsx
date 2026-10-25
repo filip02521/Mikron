@@ -76,13 +76,13 @@ function ArchivedNoteCard({
         <p className="mb-0.5 text-xs font-semibold text-slate-800">{note.title}</p>
       ) : null}
       {note.visibility === "public" && note.author?.email ? (
-        <p className="mb-0.5 text-[10px] text-slate-500">{note.author.email}</p>
+        <p className="mb-0.5 text-[0.625rem] text-slate-500">{note.author.email}</p>
       ) : null}
       <div className="leading-snug text-slate-700">
         <NoteBodyDisplay body={note.body} />
       </div>
       {archivedLabel ? (
-        <p className="mt-1.5 text-[10px] text-slate-500">Zarchiwizowano {archivedLabel}</p>
+        <p className="mt-1.5 text-[0.625rem] text-slate-500">Zarchiwizowano {archivedLabel}</p>
       ) : null}
       {canRestore ? (
         <div className="mt-2 flex flex-wrap gap-1.5 border-t border-black/5 pt-2">

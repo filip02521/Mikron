@@ -15,6 +15,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { formatPlDate } from "@/lib/display-labels";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 type GroupFilter = "all" | string;
 
@@ -225,7 +226,7 @@ export function ZdEstimateExclusionsModal({
       ]
         .join(" ")
         .toLowerCase();
-      return hay.includes(q);
+      return matchesSearchWords(hay, q);
     });
   }, [exclusions, query, groupFilter]);
 

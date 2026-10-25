@@ -114,7 +114,7 @@ export function SupplierQuickActionsMenu({
         ref={panelRef}
         id={`supplier-menu-${supplierId}`}
         role="menu"
-        className="fixed z-[100] min-w-[200px] overflow-y-auto overscroll-y-contain rounded-md border border-slate-200 bg-white py-1 shadow-lg"
+        className="fixed z-[200] min-w-[200px] overflow-y-auto overscroll-y-contain rounded-md border border-slate-200 bg-white py-1 shadow-[var(--shadow-elevated)]"
         style={{
           top: pos.top,
           left: pos.left,
@@ -137,7 +137,7 @@ export function SupplierQuickActionsMenu({
               {DAILY_PANEL_MARK_ORDERED_LABEL}
             </MenuItem>
             <div className="border-t border-slate-100 px-3 py-2">
-              <p className="mb-1 text-[10px] font-semibold text-slate-400">
+              <p className="mb-1 text-[0.625rem] font-semibold text-slate-400">
                 Przesuń termin
               </p>
               <ShiftMenu

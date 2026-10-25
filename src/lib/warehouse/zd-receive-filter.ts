@@ -5,6 +5,7 @@ import { findSupplierBySubiektKhId } from "@/lib/subiekt/match-supplier";
 import { extractDocKhIds } from "@/lib/subiekt/zd-document-kh";
 import { lineTowId } from "@/lib/subiekt/zd-document-line";
 import { filterOrdersBySupplier } from "@/lib/orders/supplier-filter-summary";
+import { effectiveRequestSymbol } from "@/lib/orders/request-completeness";
 import {
   resolveOrderMatchSymbols,
   type ZdPairMatchIndex,
@@ -176,7 +177,10 @@ export function countUnmatchedZdLines(
         ) {
           return true;
         }
-        const symbol = normalizeSymbol(order.symbol);
+        // Artefakt „S” z „Silikon…” (prośba bez towaru) nie jest symbolem pozycji ZD.
+        const symbol = normalizeSymbol(
+          effectiveRequestSymbol({ symbol: order.symbol, products: order.products, subiektTwId: order.subiekt_tw_id })
+        );
         const lineSym = normalizeSymbol(line.symbol);
         return Boolean(symbol && lineSym && symbol === lineSym);
       })

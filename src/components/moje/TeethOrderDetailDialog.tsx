@@ -63,20 +63,20 @@ function buildTeethLineSummaries(
 function DeliveryBadge({ delivered, ordered }: { delivered: number; ordered: number }) {
   if (delivered <= 0) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-1.5 py-0.5 text-[11px] font-semibold text-slate-500 ring-1 ring-slate-200/80">
+      <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-slate-500 ring-1 ring-slate-200/80">
         czeka
       </span>
     );
   }
   if (delivered >= ordered) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-200/80">
+      <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-emerald-700 ring-1 ring-emerald-200/80">
         komplet
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold text-amber-700 ring-1 ring-amber-200/80">
+    <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-amber-700 ring-1 ring-amber-200/80">
       częściowo
     </span>
   );
@@ -148,19 +148,19 @@ export function TeethOrderDetailDialog({
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-100">
-                    <th className="px-3 py-1.5 text-left text-[11px] font-semibold text-slate-500">
+                    <th className="px-3 py-1.5 text-left text-[0.6875rem] font-semibold text-slate-500">
                       Specyfikacja
                     </th>
-                    <th className="px-3 py-1.5 text-center text-[11px] font-semibold text-slate-500">
+                    <th className="px-3 py-1.5 text-center text-[0.6875rem] font-semibold text-slate-500">
                       Zam.
                     </th>
-                    <th className="px-3 py-1.5 text-center text-[11px] font-semibold text-slate-500">
+                    <th className="px-3 py-1.5 text-center text-[0.6875rem] font-semibold text-slate-500">
                       Przyj.
                     </th>
-                    <th className="px-3 py-1.5 text-center text-[11px] font-semibold text-slate-500">
+                    <th className="px-3 py-1.5 text-center text-[0.6875rem] font-semibold text-slate-500">
                       Brak
                     </th>
-                    <th className="px-3 py-1.5 text-center text-[11px] font-semibold text-slate-500">
+                    <th className="px-3 py-1.5 text-center text-[0.6875rem] font-semibold text-slate-500">
                       Status
                     </th>
                   </tr>

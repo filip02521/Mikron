@@ -111,8 +111,8 @@ export function MojeOrdersHelp() {
           </li>
           <li>
             <strong className="font-medium text-slate-800">{INFORMACJA_FLOW_DIRECT.label}</strong> -
-            badge <strong className="font-medium text-violet-900">Informacyjna</strong>, fioletowa
-            krawędź wiersza; magazyn czeka na towar i wysyła e-mail po przyjęciu. Prośby „Brak na
+            odznaka <strong className="font-medium text-violet-900">Informacyjna</strong> w wierszu;
+            magazyn czeka na towar i wysyła e-mail po przyjęciu. Prośby „Brak na
             stanie” nie trafiają tutaj - obsługuje je dział zakupów.
           </li>
         </ul>

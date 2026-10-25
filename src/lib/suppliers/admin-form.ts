@@ -29,6 +29,8 @@ export function emptySupplierAdminForm(): SupplierAdminFormState {
     default_delivery_shipment_form: "",
     min_order_value: null,
     min_order_currency: "",
+    free_shipping_threshold: null,
+    subiekt_country: null,
   };
 }
 
@@ -53,6 +55,12 @@ export function supplierToAdminForm(s: SupplierWithSchedule): SupplierAdminFormS
     min_order_value:
       s.min_order_value != null ? Number(s.min_order_value) : null,
     min_order_currency: s.min_order_currency ?? "",
+    free_shipping_threshold:
+      s.free_shipping_threshold != null ? Number(s.free_shipping_threshold) : null,
+    subiekt_country:
+      s.subiekt_country_id != null
+        ? { id: s.subiekt_country_id, name: s.subiekt_country_name ?? null }
+        : null,
   };
 }
 
@@ -84,5 +92,8 @@ export function applyAdminFormToSupplierRow(
       form.min_order_currency,
       minOrderValue
     ),
+    free_shipping_threshold: normalizeMinOrderValue(form.free_shipping_threshold),
+    subiekt_country_id: form.subiekt_country?.id ?? null,
+    subiekt_country_name: form.subiekt_country?.name ?? null,
   };
 }

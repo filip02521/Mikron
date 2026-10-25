@@ -47,7 +47,7 @@ export function SupplierLeadTimeHint({
       )}
       role="note"
     >
-      <p className={cn("font-semibold", compact ? "text-[11px]" : "text-xs")}>
+      <p className={cn("font-semibold", compact ? "text-[0.6875rem]" : "text-xs")}>
         Szacowany czas dostawy
       </p>
       <ul className={cn("mt-1 space-y-0.5", compact && "mt-0.5")}>

@@ -91,6 +91,8 @@ Dla każdego towaru dostawcy liczymy `dni do wyczerpania = dostępne / rotacja` 
 
 Dostawca „na żądanie” — tylko sygnał „Pilne”, bez planowych.
 
+Panel Braki: licznik pilnych przy dostawcy i lista po jego rozwinięciu liczą to samo — pozycje bez stanu, w stanie krytycznym albo z ryzykiem dostawy (`isStockWatchSupplierUrgent` w `src/lib/stock-watch/dashboard.ts`, PR #249). To szerzej niż widok „Wszystkie braki”: obejmuje też ≤ 48 h z dostawą w drodze i ryzyko przed kolejną dostawą.
+
 ### 3.5 Przepływ dnia
 
 1. **Noc (po synchronizacji katalogu):** silnik liczy wszystkich dostawców; zapis propozycji i sygnałów.
@@ -113,9 +115,9 @@ Dostawca „na żądanie” — tylko sygnał „Pilne”, bez planowych.
 | 3. Czas dostawy i harmonogram ✅ | Opcja „Do kolejnej dostawy” w Kreatorze (domyślnie wyłączona, przełącznik w formularzu i w pasku listy, pamiętana w sesji); sygnały „przed dostawą” / „przed kolejną dostawą” w panelu Braki; baner „Zamów dziś poza planem” w panelu dziennym | Horyzont zgodny z ręcznym wyliczeniem (testy); bez opcji ilości bez zmian |
 | 4. Gotowa lista w Kreatorze — rezygnacja | Decyzja 2026-10-03: niepotrzebne — ZD powstaje świadomie z „Przygotuj ZD”, które liczy listę na żywo | — |
 
-## 5. Decyzje do potwierdzenia
+## 5. Decyzje (przyjęte 2026-10-03, wdrożone w etapach 1–3)
 
 1. Horyzont `H = max(zapas, do kolejnego zamówienia + czas dostawy)` — zapas z karty dostawcy zostaje minimum.
-2. Czas dostawy = 80. percentyl z próbek (bezpieczniej niż średnia), zamówienia Główne.
+2. Czas dostawy = 90. percentyl z próbek (§3.3; pierwotna propozycja: 80.), zamówienia Główne.
 3. Główny dostawca towaru = ostatnie ZD; ręczna zmiana nadpisuje.
 4. Panel Braki bez szkiców i bez tworzenia ZD — wszystko przez Kreator.

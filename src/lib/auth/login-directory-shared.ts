@@ -1,3 +1,4 @@
+import { matchesSearchWords } from "@/lib/search/keywords";
 /** Typy i helpery katalogu logowania — bezpieczne dla klienta (bez klienta admin Supabase). */
 
 import { resolveLoginDisplayName } from "@/lib/users/display-name";
@@ -70,10 +71,7 @@ export function loginDirectoryAccountMatchesQuery(
   account: Pick<LoginDirectoryAccount, "displayName" | "salesPersonName">,
   normalizedQuery: string
 ): boolean {
-  const haystack = [account.displayName, account.salesPersonName ?? ""]
-    .join(" ")
-    .toLowerCase();
-  return haystack.includes(normalizedQuery);
+  return matchesSearchWords([account.displayName, account.salesPersonName], normalizedQuery);
 }
 
 export function filterLoginDirectoryAccounts(

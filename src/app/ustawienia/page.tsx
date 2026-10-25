@@ -9,7 +9,7 @@ import { SalesOnboardingSettingsSection } from "@/components/settings/SalesOnboa
 import { canAccessZdEstimate, isSalesAccount } from "@/lib/auth-roles";
 import { getGmailOAuthConfig } from "@/lib/google/gmail";
 import { getEmailSignature, getGmailConnection } from "@/lib/google/gmail-connections";
-import { salesPageShellClass } from "@/lib/ui/ontime-theme";
+import { salesWorkspaceShellClass } from "@/lib/ui/ontime-theme";
 import { pageMetadata } from "@/lib/ui/page-metadata";
 
 export const metadata = pageMetadata("Ustawienia", "Zarządzaj powiadomieniami i preferencjami.");
@@ -32,7 +32,7 @@ export default async function UstawieniaPage() {
   const gmailUnavailable = showGmail && !gmailData;
 
   return (
-    <div className={salesPageShellClass}>
+    <div className={salesWorkspaceShellClass}>
       <SettingsWorkspace
         title="Ustawienia"
         description="Zarządzaj powiadomieniami i preferencjami."

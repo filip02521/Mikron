@@ -127,7 +127,7 @@ export function SectionListLabel({
         {count !== undefined && count > 0 ? (
           <span
             className={cn(
-              "shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold tabular-nums",
+              "shrink-0 rounded-md px-2 py-0.5 text-[0.6875rem] font-semibold tabular-nums",
               ACCENT_COUNT[accent]
             )}
           >

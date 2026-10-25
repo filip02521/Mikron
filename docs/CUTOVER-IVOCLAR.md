@@ -1,14 +1,14 @@
 # Cutover Ivoclar: OnTime → OnTime Raporty
 
-Pełna procedura: sibling repo `ontime-raporty` → `docs/CUTOVER.md`.
+Pełna procedura: plik `docs/CUTOVER.md` w osobnym repo „ontime-raporty” (nie w tym repo).
 
 ## Stan w OnTime (wdrożone w kodzie)
 
 - Generowanie / wysyłka Ivoclar **usunięte** z OnTime (pipeline report + cron send).
 - `/admin/mail` — odczyt `mail_send_log` + definicje jobów; **brak mutacji** (generate/send/odbiorcy).
 - Dostęp: `role=admin` **lub** moduł `ivoclar_weekly_mail_center`.
-  - Admin: pełny hub (System / Wysyłki OT / Ivoclar / …).
-  - Tylko moduł: hub pokazuje wyłącznie zakładkę Ivoclar (bez linku do `/admin/wysylki`).
+  - Admin: w menu Administracji obie pozycje — „Wysyłki OnTime” (`/admin/wysylki`) i „Wysyłki Ivoclar” (`/admin/mail`) (`src/lib/nav.ts`).
+  - Tylko moduł: widzi wyłącznie „Wysyłki Ivoclar” (bez `/admin/wysylki`).
 - `/zakupy/raporty-ivoclar` — bookmark: redirect do `/admin/mail` (admin lub moduł) albo komunikat o braku modułu.
 - `/api/cron/scheduled-mails` — zawsze `skipped: moved_to_ontime_raporty` (legacy no-op).
 - Env (server-only): `RAPORTY_RUNNER_URL` (+ opcjonalnie `RAPORTY_CRON_SECRET`) — live status `SEND` z `GET /api/ivoclar/status`.
@@ -16,7 +16,7 @@ Pełna procedura: sibling repo `ontime-raporty` → `docs/CUTOVER.md`.
 
 ## Ops (produkcja)
 
-1. Runner musi mieć dostęp do **tego samego Supabase** co OnTime (lustro `mail_send_log`), inaczej OT nie zobaczy statusu.
+1. Runner musi pisać do **tej samej bazy PostgreSQL** co OnTime (własny `DATABASE_URL` runnera; lustro `mail_send_log`), inaczej OT nie zobaczy statusu.
 2. Smoke: runner z `EMAIL_OVERRIDE_TO` + `IVOCLAR_SEND_ENABLED=1` → w OT widać `period_key` z `:test`.
 3. Wyłączyć Windows SchTasks `OnTime Cron Scheduled Mails *` (reinstall `install-cron.ps1 -Install` usuwa je jako legacy).
 4. Zdjąć override; `IVOCLAR_SEND_ENABLED=1` na runnerze na stałe.

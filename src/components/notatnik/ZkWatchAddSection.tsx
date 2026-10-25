@@ -2,7 +2,6 @@
 
 import { useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { IconPlusCircle } from "@/components/icons/StrokeIcons";
 import { ZK_PAGE_SECTION_COPY } from "@/lib/sales/zk-page-copy";
 import { cn } from "@/lib/cn";
@@ -67,9 +66,7 @@ export function ZkWatchAddSection({
       >
         <div className="flex items-start justify-between gap-2 border-b border-indigo-100/80 px-3 py-2.5 sm:px-3.5">
           <div className="flex min-w-0 items-start gap-2.5">
-            <SectionHeadingIcon tileClassName="bg-indigo-100 text-indigo-800" className="mt-0.5 h-8 w-8">
-              <IconPlusCircle size={17} strokeWidth={2.25} />
-            </SectionHeadingIcon>
+            <IconPlusCircle size={17} strokeWidth={2.25} className="mt-0.5 shrink-0 text-indigo-700" aria-hidden />
             <div className="min-w-0">
               <p className={cn(salesTypography.sectionLabel, "normal-case text-indigo-950")}>
                 {ZK_PAGE_SECTION_COPY.addTitle}

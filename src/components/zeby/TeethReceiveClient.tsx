@@ -6,7 +6,6 @@ import type { IndividualOrder } from "@/types/database";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { Alert } from "@/components/ui/Alert";
-import { IconWarehouse } from "@/components/icons/StrokeIcons";
 import { TeethReceiveLinesPanel } from "@/components/zeby/TeethReceiveLinesPanel";
 import { TeethPanelTabPanel } from "@/components/zeby/TeethPanelSection";
 import { TeethPanelWorkspaceCard } from "@/components/zeby/TeethPanelWorkspaceCard";
@@ -19,7 +18,6 @@ import {
   buildTeethReceiveQueue,
   summarizeTeethReceiveInbox,
 } from "@/lib/orders/receive-queue-teeth";
-import { TEETH_PRZYJECIE_ICON_TILE } from "@/lib/teeth/teeth-panel-shell";
 
 export function TeethReceiveClient({
   orders,
@@ -55,8 +53,6 @@ export function TeethReceiveClient({
     <TeethPanelWorkspaceCard
       title={TEETH_PRZYJECIE_PAGE_TITLE}
       hint={TEETH_PRZYJECIE_PAGE_HINT}
-      icon={<IconWarehouse size={20} />}
-      iconTileClassName={TEETH_PRZYJECIE_ICON_TILE}
       beforeCard={overlays}
     >
       <TeethPanelTabPanel id="teeth-panel-view-przyjecie" labelledBy="teeth-nav-przyjecie">
