@@ -2,7 +2,6 @@
 
 import { cn } from "@/lib/cn";
 import {
-  queueSupplierLeadingCellClass,
   queueSupplierRowClass,
   type SupplierOrderGroup,
 } from "@/lib/orders/queue-supplier-groups";
@@ -106,16 +105,13 @@ export function SupplierGroupHeaderRow({
     >
       <td
         colSpan={colSpan}
-        className={cn(
-          queueSupplierLeadingCellClass(groupIndex, { variant, isHeader: true }),
-          "!py-2.5 !pl-3 sm:!pl-4",
-        )}
+        className="!py-2.5 !pl-3 sm:!pl-4"
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <button
             type="button"
             onClick={onToggle}
-            className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg text-left transition hover:bg-black/[0.02]"
+            className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 rounded-md text-left transition hover:bg-black/[0.02] sm:min-h-0"
             aria-expanded={isOpen}
           >
             <Chevron open={isOpen} />

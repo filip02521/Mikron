@@ -83,7 +83,7 @@ export function ReceiveQueueGroupMenu({
         aria-haspopup="menu"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[0.6875rem] font-semibold text-slate-600 transition",
+          "inline-flex min-h-11 items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition sm:min-h-0 sm:text-[0.6875rem]",
           "hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800",
           "disabled:opacity-50",
           open && "border-slate-300 bg-slate-50 text-slate-800",
@@ -102,7 +102,7 @@ export function ReceiveQueueGroupMenu({
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 top-full z-20 mt-1.5 min-w-[12rem] rounded-xl border border-slate-200 bg-white py-1 shadow-lg shadow-slate-200/50"
+          className="absolute right-0 top-full z-20 mt-1.5 min-w-[12rem] rounded-lg border border-slate-200 bg-white py-1 shadow-[var(--shadow-elevated)]"
         >
           {items.map((item) => (
             <button
