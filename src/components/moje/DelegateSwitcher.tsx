@@ -82,7 +82,7 @@ export function DelegateSwitcher({
                   >
                     <span className="inline-flex items-center gap-1.5">
                       <span
-                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-100 text-[0.5625rem] font-semibold text-violet-700"
+                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-[0.625rem] font-semibold text-indigo-800"
                         aria-hidden
                       >
                         {initialsFromName(d.salesPersonName)}
@@ -133,7 +133,7 @@ export function DelegateSwitcher({
                 >
                   <span className="inline-flex items-center gap-1.5">
                     <span
-                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-100 text-[0.5625rem] font-semibold text-violet-700"
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-[0.625rem] font-semibold text-indigo-800"
                       aria-hidden
                     >
                       {initialsFromName(d.salesPersonName)}

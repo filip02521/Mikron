@@ -92,8 +92,7 @@ export function TeethQueueOrderRow({
     <li
       className={cn(
         "group relative flex gap-3 px-4 py-3 transition-colors sm:px-5",
-        allSelected || someSelected ? "bg-indigo-50/50" : "hover:bg-slate-50/70",
-        needsFix && "before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-amber-400",
+        allSelected || someSelected ? "bg-indigo-50" : "hover:bg-slate-50",
       )}
     >
       <div className="pt-0.5">
@@ -154,7 +153,7 @@ export function TeethQueueOrderRow({
                 orderId={item.id}
                 onSaved={onEditSaved}
                 label="Edytuj"
-                className="min-h-7 px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                className="min-h-11 px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 hover:text-slate-900 sm:min-h-7"
               />
             ) : null}
           </div>
@@ -186,13 +185,13 @@ export function TeethQueueOrderRow({
                           : "Zaznacz tylko te zęby"
                     }
                     className={cn(
-                      "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset transition-colors",
+                      "inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset transition-colors sm:min-h-0",
                       done
-                        ? "cursor-default bg-slate-50 text-slate-400 ring-slate-200 line-through decoration-slate-300"
+                        ? "cursor-default bg-slate-50 text-slate-500 ring-slate-200 line-through decoration-slate-300"
                         : locked
                           ? "cursor-default bg-white text-slate-700 ring-slate-200"
                         : lineSelected
-                          ? "bg-indigo-600 text-white ring-indigo-600"
+                          ? "bg-indigo-50 text-indigo-900 ring-indigo-200"
                           : "bg-white text-slate-800 ring-slate-200 hover:ring-indigo-300",
                     )}
                   >
@@ -200,7 +199,7 @@ export function TeethQueueOrderRow({
                     <span
                       className={cn(
                         "rounded px-1 text-[0.6875rem] font-semibold tabular-nums",
-                        lineSelected ? "bg-white/20" : "bg-slate-100 text-slate-700",
+                        lineSelected ? "bg-white text-indigo-700" : "bg-slate-100 text-slate-700",
                       )}
                     >
                       ×{qty}
@@ -227,7 +226,7 @@ export function TeethQueueOrderRow({
                 orderId={item.id}
                 onSaved={onEditSaved}
                 label={state === "missing_list" ? "Dodaj listę zębów" : "Uzupełnij"}
-                className="min-h-8 border border-amber-300 bg-white px-2.5 text-xs font-semibold text-amber-900 hover:bg-amber-50"
+                className="min-h-11 border border-amber-300 bg-white px-2.5 text-xs font-semibold text-amber-900 hover:bg-amber-50 sm:min-h-8"
               />
             ) : null}
           </div>

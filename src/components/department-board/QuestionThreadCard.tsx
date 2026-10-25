@@ -685,7 +685,7 @@ export function QuestionThreadCard({
         ) : null}
 
         {isClosed ? (
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-500">
             {closedByLabel
               ? `Zamknięto: ${closedByLabel}`
               : "Zamknięto automatycznie"}
@@ -732,7 +732,7 @@ function AuthorAvatar({ label, size = "sm", className }: { label: string; size?:
     <span
       className={cn(
         "inline-flex shrink-0 items-center justify-center rounded-full bg-slate-100 font-semibold leading-none text-slate-600 ring-1 ring-slate-200/80",
-        size === "md" ? "size-8 text-[0.6875rem]" : "size-5 text-[0.5625rem]",
+        size === "md" ? "size-8 text-[0.6875rem]" : "size-5 text-[0.625rem]",
         className
       )}
       title={label}

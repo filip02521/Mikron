@@ -6,7 +6,9 @@
 2. U dostawcy da się kupić **A/B** i/lub **K** (często K taniej).  
 3. Albo K to tylko promocja / skład wewnętrzny — **nie kupujemy K**, tylko A+B.
 
-**Stan kodu dziś (twarde):** `expandZdEstimateBoms` zawsze robi *explode* sprzedaży K→składniki, zeruje `doZd` parenta, opcjonalnie `stock_as_cover`. Odpowiednik presetu **„Składamy / tylko składniki”** poniżej.
+> **Status (2026-10-25): v1 zrobione, v2 nie.** Pola `demand_allocation` / `purchase_target` są w `zd_product_boms` (migracja `136_zd_product_boms_purchase_policy.sql`), silnik w `src/lib/orders/zd-estimate-bom.ts` zna presety `assemble`, `buy_separate`, `kit_only` i dodatkowy `kit_from_components` (rollup max, spoza tego planu). Preset v2 `cheapest` (porównanie cen) — nie ma go w kodzie.
+
+**Stan kodu przed v1 (historycznie):** `expandZdEstimateBoms` zawsze robił *explode* sprzedaży K→składniki, zerował `doZd` parenta, opcjonalnie `stock_as_cover`. Odpowiednik presetu **„Składamy / tylko składniki”** poniżej.
 
 **Poza zakresem tego modelu:** pary pack↔piece (`zd_product_pairs`) — ten sam towar, inna JM (karton/sztuki).
 

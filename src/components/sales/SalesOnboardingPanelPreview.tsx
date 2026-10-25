@@ -15,20 +15,16 @@ function PreviewRow({
   badge,
   badgeClass,
   action,
-  accent = "border-l-slate-200",
 }: {
   title: string;
   badge: string;
   badgeClass: string;
   action?: string;
-  accent?: string;
 }) {
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-2 border-b border-slate-100 bg-white px-2.5 py-2 last:border-b-0",
-        "border-l-[3px]",
-        accent
+        "flex items-center justify-between gap-2 border-b border-slate-100 bg-white px-2.5 py-2 last:border-b-0"
       )}
     >
       <div className="min-w-0">
@@ -141,14 +137,12 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
               badge="Gotowe"
               badgeClass="bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100"
               action="Przejdź"
-              accent="border-l-emerald-500"
             />
             <PreviewRow
               title="Potwierdź informacje o dotarciu (1)"
               badge="Do potwierdzenia"
               badgeClass="bg-violet-50 text-violet-800 ring-1 ring-violet-100"
               action="Przejdź"
-              accent="border-l-violet-400"
             />
           </div>
           <div className="rounded-md border border-slate-200/90 bg-slate-50 px-2.5 py-2 text-[0.625rem] text-slate-600">

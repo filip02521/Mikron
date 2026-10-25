@@ -27,8 +27,6 @@ NEXT_PUBLIC_APP_URL=http://ontime.mikran:3000
 LAN_DEV_HOST=ontime.mikran
 ```
 
-W Supabase → **Redirect URLs:** `http://ontime.mikran:3000/**`
-
 Otwierasz: **http://ontime.mikran:3000/login** (bez nginx trzeba podać port `:3000`).
 
 Aby wejść **bez portu** (`http://ontime.mikran/login`), użyj nginx — [nginx.md](./nginx.md).
@@ -64,24 +62,13 @@ LAN_DEV_HOST=192.168.10.173
 
 Po zmianie IP w sieci zaktualizuj obie wartości i zrestartuj `npm run dev`.
 
-## Supabase (wymagane raz)
+## Logowanie po HTTP
 
-W [Supabase Dashboard](https://supabase.com/dashboard) → projekt → **Authentication** → **URL Configuration**:
-
-| Pole | Wartość |
-|------|---------|
-| **Site URL** | `http://192.168.10.173:3000` |
-| **Redirect URLs** | `http://192.168.10.173:3000/**` |
-
-Zachowaj też `http://localhost:3000/**` jeśli logujesz się z komputera.
-
-Zapisz i odczekaj ~1 minutę.
-
-**Authentication → Settings** (jeśli jest): wyłącz wymuszanie HTTPS / „secure cookies” na dev, jeśli blokują logowanie po HTTP.
+Logowanie jest lokalne (cookie `ontime_session`), bez zewnętrznego dostawcy — nie ma adresów przekierowań do ustawiania. Ciasteczko dostaje `Secure` tylko na produkcji z `NEXT_PUBLIC_APP_URL=https://…` (`src/lib/auth-local/cookies.ts`), więc w dev po HTTP działa bez zmian.
 
 Po nieudanym wejściu na chronioną stronę zobaczysz `/login?reason=session` z komunikatem o braku sesji.
 
-W `next.config.ts` musi być `allowedDevOrigins` z Twoim IP — bez tego Next w dev **blokuje skrypty** z telefonu i formularz logowania tylko „odświeża” stronę (bez JavaScript).
+`allowedDevOrigins` w `next.config.ts` musi zawierać Twój host — stała lista plus `LAN_DEV_HOST` i `SERVER_ACTION_ALLOWED_ORIGINS` z env. Bez tego Next w dev **blokuje skrypty** z telefonu i formularz logowania tylko „odświeża” stronę (bez JavaScript).
 
 Na **HTTP po IP** przeglądarka nie ma `crypto.randomUUID` (tylko HTTPS / localhost). Aplikacja ładuje polyfill automatycznie; jeśli widzisz ten błąd — odśwież stronę twardo (zamknij kartę).
 
@@ -109,7 +96,7 @@ Na **HTTP po IP** przeglądarka nie ma `crypto.randomUUID` (tylko HTTPS / localh
 
 ## Typowe problemy
 
-- **„Tylko odświeża”** — zły `NEXT_PUBLIC_APP_URL` (localhost zamiast IP), brak redirect URL w Supabase, albo stary build (po poprawce ciasteczek zrestartuj `npm run dev`).
+- **„Tylko odświeża”** — zły `NEXT_PUBLIC_APP_URL` (localhost zamiast IP), host spoza `allowedDevOrigins` (ustaw `LAN_DEV_HOST`), albo stary build (po poprawce ciasteczek zrestartuj `npm run dev`).
 - **Strona się nie ładuje** — telefon i Mac w tej samej sieci Wi‑Fi; firewall Maca zezwala na Node.
 - **Gość Wi‑Fi** — często blokuje dostęp do innych urządzeń w LAN.
 - **`ontime.mikran` tylko na serwerze** — inne PC nie znają tej nazwy bez hosts lub firmowego DNS.

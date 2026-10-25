@@ -8,55 +8,19 @@ import {
 } from "@/lib/sales/zk-watch-row-color-legend";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 
+/** Próbka tła wiersza — te same tony co obudowy w `zk-watch-attention-styles`. */
+const SWATCH_TONE: Partial<Record<ZkWatchRowColorLegendItemId, string>> = {
+  regal: "bg-indigo-50 ring-indigo-200",
+  ready_to_close: "bg-emerald-50 ring-emerald-200",
+  informacja: "bg-slate-50 ring-slate-300",
+  follow_up: "bg-amber-50 ring-amber-200",
+  new_lines: "bg-amber-50 ring-amber-200",
+};
+
 function LegendSwatch({ id }: { id: ZkWatchRowColorLegendItemId }) {
-  switch (id) {
-    case "regal":
-      return (
-        <span
-          className="inline-flex h-3 w-3 shrink-0 overflow-hidden rounded-[3px] ring-1 ring-violet-200/80"
-          aria-hidden
-        >
-          <span className="w-[38%] bg-violet-500" />
-          <span className="flex-1 bg-violet-50/90" />
-        </span>
-      );
-    case "ready_to_close":
-      return (
-        <span
-          className="inline-flex h-3 w-3 shrink-0 overflow-hidden rounded-[3px] ring-1 ring-emerald-200/80"
-          aria-hidden
-        >
-          <span className="w-[38%] bg-emerald-500" />
-          <span className="flex-1 bg-emerald-50/90" />
-        </span>
-      );
-    case "informacja":
-      return (
-        <span
-          className="h-3 w-1 shrink-0 rounded-full bg-sky-500"
-          aria-hidden
-        />
-      );
-    case "follow_up":
-      return (
-        <span
-          className="h-3 w-1 shrink-0 rounded-full bg-amber-500"
-          aria-hidden
-        />
-      );
-    case "new_lines":
-      return (
-        <span
-          className="inline-flex h-3 w-3 shrink-0 overflow-hidden rounded-[3px] ring-1 ring-amber-200/80"
-          aria-hidden
-        >
-          <span className="w-[38%] bg-amber-500" />
-          <span className="flex-1 bg-amber-50/90" />
-        </span>
-      );
-    default:
-      return null;
-  }
+  const tone = SWATCH_TONE[id];
+  if (!tone) return null;
+  return <span className={cn("h-3 w-3 shrink-0 rounded-[3px] ring-1", tone)} aria-hidden />;
 }
 
 function LegendItem({ item }: { item: ZkWatchRowColorLegendItem }) {
@@ -102,7 +66,7 @@ export function ZkWatchRowColorLegend({
       className={cn(
         "flex flex-wrap items-center gap-x-3 gap-y-1",
         variant === "strip"
-          ? "text-[0.625rem] leading-snug text-slate-500"
+          ? "text-[0.6875rem] leading-snug text-slate-500"
           : salesTypography.chrome,
         className
       )}

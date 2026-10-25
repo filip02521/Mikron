@@ -1,6 +1,6 @@
 # Dziennik dostaw (magazyn)
 
-Rola **Dział dostaw** (`magazyn`) ma dostęp wyłącznie do **Magazyn i regał** (`/kolejka`).
+Rola **Dział dostaw** (`magazyn`) ma w menu: **Przyjęcie towaru** (`/kolejka`), **Plan dostaw** (`/dostawy`), notatki magazynu i urlopy działu (`magazynNavGroups` w `src/lib/nav.ts`). Dziennik dostaw jest częścią `/kolejka`.
 
 ## Zakładki
 
@@ -10,14 +10,14 @@ Rola **Dział dostaw** (`magazyn`) ma dostęp wyłącznie do **Magazyn i regał*
 
 Data wpisu = **dziś (Europe/Warsaw)** — bez ręcznego wpisywania. Edycja i usuwanie tylko wpisów z bieżącego dnia.
 
-## Widoki (rola magazyn)
+## Widoki
 
-Rola **Dział dostaw** w zakładce **Dziennik dostaw** ma podzakładki:
+Dziennik ma dwa widoki (`src/components/queue/DeliveryJournalSection.tsx`):
 
-1. **Wpisy na dziś** — szybkie dodawanie (Ctrl+Enter), edycja i usuwanie tylko dzisiejszych wpisów.
-2. **Archiwum i raporty** — wyszukiwanie po zakresie dat (presety: dziś / tydzień / 7 dni / miesiąc), filtr dostawcy i kuriera, podsumowanie (dostawy, paczki, palety, dostawcy, tabela kurierów).
+1. **Dzień** — wpisy z wybranej daty i podsumowanie dnia (dostawy, paczki, palety, dostawcy); dodawanie, edycja i usuwanie tylko dla dzisiejszej daty.
+2. **Archiwum** — wyszukiwanie paczek i podsumowania za zakres dat.
 
-**Administrator** i **zakupy** na `/kolejka`: jeden widok z **wyborem daty** (podgląd archiwum, bez edycji). Bez podzakładki „Archiwum i raporty” — pełne wyszukiwanie i raporty ma rola **magazyn**.
+Edytować mogą osoby z dostępem do magazynu (`canAccessWarehouse` w `src/lib/auth-roles.ts`): przy przypisanych obszarach roboczych — obszar `dostawy` lub `magazyn`, bez nich — role `admin`, `zakupy`, `magazyn`. Pozostali widzą dziennik bez edycji.
 
 ## Kurierzy (lista w formularzu)
 

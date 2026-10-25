@@ -35,16 +35,15 @@ export function TeethProductLineSectionHeader({
   const accent = teethProductLineAccent(productLine);
   const title = (
     <>
-      <span className={cn("h-4 w-1 shrink-0 rounded-full", accent.dot)} aria-hidden />
-      <h3 className={cn("text-sm font-semibold", accent.text)}>{label}</h3>
+      <span className={cn("size-2 shrink-0 rounded-full", accent.dot)} aria-hidden />
+      <h3 className="text-sm font-semibold text-slate-900">{label}</h3>
       {meta ? <span className="text-xs text-slate-500">{meta}</span> : null}
     </>
   );
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-slate-100 px-4 py-2 sm:px-5",
-        accent.header,
+        "flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-slate-100 bg-slate-50 px-4 py-2 sm:px-5",
       )}
     >
       {leading}
@@ -54,7 +53,7 @@ export function TeethProductLineSectionHeader({
           onClick={onToggle}
           aria-expanded={expanded}
           aria-controls={controlsId}
-          className="-mx-1 flex min-w-0 flex-1 items-center gap-x-3 gap-y-1 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-black/[0.03]"
+          className="-mx-1 flex min-h-11 min-w-0 flex-1 items-center gap-x-3 gap-y-1 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-slate-100 sm:min-h-8"
         >
           <IconChevronDown
             size={15}
@@ -107,11 +106,11 @@ export function TeethProductLineChips({
                   }
                 : undefined
             }
-            className="inline-flex items-center gap-1.5 rounded-md bg-white px-2 py-0.5 text-[0.6875rem] font-medium text-slate-700 ring-1 ring-inset ring-slate-200 transition-colors hover:bg-slate-50"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-md bg-white px-2 py-0.5 text-[0.6875rem] font-medium text-slate-700 ring-1 ring-inset ring-slate-200 transition-colors hover:bg-slate-50 sm:min-h-6"
           >
             <span className={cn("size-2 rounded-full", accent.dot)} aria-hidden />
             {section.label}
-            <span className="tabular-nums text-slate-400">{section.count}</span>
+            <span className="tabular-nums text-slate-500">{section.count}</span>
           </a>
         );
       })}

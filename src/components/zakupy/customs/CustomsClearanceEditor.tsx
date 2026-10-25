@@ -31,6 +31,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Field, Input, Select, fieldControlClass } from "@/components/ui/Field";
 import { cn } from "@/lib/cn";
@@ -661,18 +662,11 @@ export function CustomsClearanceEditor({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1">
-          <Link
-            href="/zakupy/odprawy"
-            className="-my-2 inline-flex min-h-10 items-center text-xs font-medium text-slate-500 hover:text-slate-800"
-          >
-            ← Odprawy celne
-          </Link>
-          <h1 className="break-words text-2xl font-semibold tracking-tight text-slate-900">
-            {view.supplierName} · {view.invoiceNumber || "bez numeru faktury"}
-          </h1>
-          <p className="text-sm text-slate-600">
+      <PageHeader
+        back={{ href: "/zakupy/odprawy", label: "Odprawy celne" }}
+        title={`${view.supplierName} · ${view.invoiceNumber || "bez numeru faktury"}`}
+        description={
+          <>
             {polishPozycjeLabel(view.lines.length)}
             {view.zdNumber ? ` · ${view.zdNumber}` : ""} ·{" "}
             {readOnly ? (
@@ -680,33 +674,35 @@ export function CustomsClearanceEditor({
             ) : (
               <Badge variant="warning">Mail w przygotowaniu</Badge>
             )}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="secondary"
-            disabled={pending}
-            onClick={() =>
-              run(async () => {
-                const res = await actionExportCustomsExcel(view.id);
-                if (!res.ok) return { tone: "error", text: res.error };
-                downloadBase64(res.base64, res.fileName);
-              })
-            }
-          >
-            Pobierz Excel
-          </Button>
-          {!readOnly ? (
+          </>
+        }
+        actions={
+          <>
             <Button
-              variant="ghost"
+              variant="secondary"
               disabled={pending}
-              onClick={() => setConfirming("delete")}
+              onClick={() =>
+                run(async () => {
+                  const res = await actionExportCustomsExcel(view.id);
+                  if (!res.ok) return { tone: "error", text: res.error };
+                  downloadBase64(res.base64, res.fileName);
+                })
+              }
             >
-              Usuń
+              Pobierz Excel
             </Button>
-          ) : null}
-        </div>
-      </div>
+            {!readOnly ? (
+              <Button
+                variant="ghost"
+                disabled={pending}
+                onClick={() => setConfirming("delete")}
+              >
+                Usuń
+              </Button>
+            ) : null}
+          </>
+        }
+      />
 
       {notice ? <Alert tone={notice.tone}>{notice.text}</Alert> : null}
 
@@ -818,13 +814,11 @@ export function CustomsClearanceEditor({
       </Card>
 
       <Card padding={false}>
-        <div className="border-b border-slate-100 px-5 py-3.5">
-          <h2 className="text-base font-semibold text-slate-900">Dokumenty dostawcy</h2>
-          <p className="max-w-prose text-xs text-slate-500">
-            Artykuły z listy dokumentu (np. Annex A deklaracji zgodności) dostają VAT 8% jako wyrób medyczny,
-            a dokument trafia do załączników.
-          </p>
-        </div>
+        <CardHeader
+          inset
+          title="Dokumenty dostawcy"
+          description="Artykuły z listy dokumentu (np. Annex A deklaracji zgodności) dostają VAT 8% jako wyrób medyczny, a dokument trafia do załączników."
+        />
         {view.documents.length ? (
           <ul className="divide-y divide-slate-100">
             {view.documents.map((doc) => (

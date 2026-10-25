@@ -35,7 +35,7 @@ export function LoginAccountRoleLine({
                 key={`${g}-${i}`}
                 className={cn(
                   "inline-flex items-center rounded bg-slate-100/80 font-medium text-slate-500",
-                  compact ? "px-1 py-px text-[0.5625rem]" : "px-1.5 py-px text-[0.625rem]"
+                  compact ? "px-1 py-px text-[0.625rem]" : "px-1.5 py-px text-[0.625rem]"
                 )}
               >
                 {g}

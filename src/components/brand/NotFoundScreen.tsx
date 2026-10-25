@@ -33,39 +33,28 @@ export function NotFoundScreen({
         "px-1 py-6 sm:py-10"
       )}
     >
-      <div className="auth-enter relative z-[1]">
+      {/* Moment marki bez animacji wejścia: treść widoczna od razu (DESIGN.md → Ruch). */}
+      <div className="relative z-[1]">
         <AuthBrandHeader className="mb-5 sm:mb-6" />
 
-        <p className="mb-4 text-center text-xs leading-relaxed text-slate-400 sm:mb-5">
+        <p className="mb-5 text-center text-xs leading-relaxed text-slate-500 sm:mb-6">
           {ONTIME_TAGLINE}
         </p>
 
         <div
           className={cn(
-            "auth-card-enter relative overflow-hidden rounded-lg border border-slate-200/80",
-            "bg-white/95 p-6 text-center shadow-[var(--shadow-card-elevated)] backdrop-blur-sm sm:p-8"
+            "relative overflow-hidden rounded-[var(--radius-panel)] border border-slate-200",
+            "bg-[var(--card)] p-6 text-center shadow-[var(--shadow-card-elevated)] sm:p-8"
           )}
         >
           <BrandCardAccent className="absolute -right-6 -top-6 h-36 w-44 text-indigo-600" />
 
-          {/* Znak 404 — tło typograficzne, nie konkuruje z marką */}
-          <span
-            className="pointer-events-none absolute inset-x-0 top-3 select-none text-center text-[4.5rem] font-semibold leading-none tracking-tighter text-slate-900/[0.04] sm:top-2 sm:text-[5.5rem]"
-            aria-hidden
-          >
-            404
-          </span>
-
           <div className="relative z-[1]">
-            <p className="text-[0.6875rem] font-semibold text-sky-700/90">
-              Strona niedostępna
-            </p>
-
-            <h1 className="mt-2 text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
+            <h1 className="text-2xl font-semibold leading-tight tracking-[-0.02em] text-slate-900">
               Nie znaleziono strony
             </h1>
 
-            <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-slate-500">
+            <p className="mx-auto mt-3 max-w-sm text-[0.9375rem] leading-relaxed text-slate-600">
               Ten adres nie prowadzi do żadnego widoku w OnTime. Link mógł się
               zmienić, wygasnąć albo zawierać literówkę.
             </p>
@@ -83,7 +72,7 @@ export function NotFoundScreen({
           </div>
         </div>
 
-        <p className="mt-5 text-center text-xs text-slate-400">{ONTIME_AUTH_FOOTER}</p>
+        <p className="mt-5 text-center text-xs text-slate-500">{ONTIME_AUTH_FOOTER}</p>
       </div>
     </div>
   );

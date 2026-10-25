@@ -11,7 +11,9 @@ import { actionSetSupplierActive, actionUpsertSupplier } from "@/app/actions/adm
 import { formatPlDate } from "@/lib/display-labels";
 import { formatSupplierCycleSummary, formatSupplierListMeta } from "@/lib/suppliers/supplier-list-labels";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonClass } from "@/components/ui/Button";
+import { polishPluralWord } from "@/lib/email/polish-plural";
+import { panelTextLinkClass } from "@/lib/ui/ontime-theme";
 import { IconPencil, IconMapPin } from "@/components/icons/StrokeIcons";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { SupplierAdminCardsFilterBar } from "@/components/admin/SupplierHubListFilters";
@@ -58,7 +60,7 @@ function parseSubiektFilter(raw: string | null): SupplierSubiektFilter {
 }
 
 function inactiveRowClass(isEditing: boolean): string {
-  return cn("bg-slate-50/80", isEditing && "bg-indigo-50/80 ring-1 ring-inset ring-indigo-200");
+  return cn(isEditing && "bg-indigo-50 hover:bg-indigo-50");
 }
 
 export function InactiveSuppliersAdminClient({
@@ -307,7 +309,7 @@ export function InactiveSuppliersAdminClient({
           <CardHeader
             inset
             density="compact"
-            title={`Nieaktywni (${filtered.length}${filterActive ? ` z ${rows.length}` : ""})`}
+            title="Nieaktywni"
             description={SUPPLIER_HUB_LIST_META_DESCRIPTION}
           />
 
@@ -322,24 +324,30 @@ export function InactiveSuppliersAdminClient({
             onSearchChange={setSearch}
             searchId="inactive-supplier-search"
             searchAriaLabel="Szukaj nieaktywnego dostawcy po nazwie"
+            resultLabel={`${filtered.length}${filterActive ? ` z ${rows.length}` : ""} ${polishPluralWord(filterActive ? rows.length : filtered.length, "dostawca", "dostawcy", "dostawców")}`}
           />
 
           {filtered.length === 0 ? (
-            <EmptyState
-              title="Brak nieaktywnych dostawców"
-              description="Wszyscy dostawcy są aktywni. Dezaktywuj z listy Kart dostawców."
-              action={
-                <Link href={cardsPath}>
-                  <Button variant="secondary" size="sm">
+            filterActive && rows.length > 0 ? (
+              <EmptyState
+                title="Brak dostawców w tym widoku"
+                description="Zmień wyszukiwanie lub filtry."
+              />
+            ) : (
+              <EmptyState
+                title="Brak nieaktywnych dostawców"
+                description="Wszyscy dostawcy są aktywni. Dezaktywuj z listy Kart dostawców."
+                action={
+                  <Link href={cardsPath} className={buttonClass("secondary", "sm")}>
                     Karty dostawców
-                  </Button>
-                </Link>
-              }
-            />
+                  </Link>
+                }
+              />
+            )
           ) : (
             <>
               <div
-                className="hidden border-b border-slate-100 bg-slate-50/90 px-4 py-2 text-[0.6875rem] font-semibold text-slate-500 md:grid md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(100px,120px)_minmax(88px,100px)_minmax(120px,160px)] md:gap-3 lg:px-5"
+                className="hidden border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-[0.8125rem] font-medium text-slate-500 md:grid md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(100px,120px)_minmax(88px,100px)_minmax(120px,160px)] md:gap-3 lg:px-5"
                 aria-hidden
               >
                 <span>Dostawca</span>
@@ -348,7 +356,7 @@ export function InactiveSuppliersAdminClient({
                 <span>Terminy</span>
                 <span className="text-right">Akcje</span>
               </div>
-              <ul className="space-y-1.5 p-2 sm:p-3 lg:p-4">
+              <ul className="divide-y divide-slate-100">
                 {filtered.map((s) => {
                   const isEditing = formOpen && form.id === s.id;
                   const cycleSummary = formatSupplierCycleSummary(s);
@@ -358,10 +366,8 @@ export function InactiveSuppliersAdminClient({
                       key={s.id}
                       id={`inactive-supplier-row-${s.id}`}
                       className={cn(
-                        "rounded-lg border border-slate-100 bg-white px-3 py-3 transition sm:px-4 lg:px-5",
-                        "hover:border-slate-200 hover:shadow-sm",
-                        inactiveRowClass(isEditing),
-                        s.subiekt_kh_id == null && "border-amber-100/60 bg-amber-50/20"
+                        "px-3 py-3 transition-colors hover:bg-slate-50 sm:px-4 lg:px-5",
+                        inactiveRowClass(isEditing)
                       )}
                     >
                       <div className="flex items-start gap-2 md:grid md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(100px,120px)_minmax(88px,100px)_minmax(120px,160px)] md:items-center md:gap-3">
@@ -373,7 +379,7 @@ export function InactiveSuppliersAdminClient({
                               onEdit={() => startEdit(s)}
                               trailingBadge={<InactiveSupplierBadge className="text-[0.625rem]" />}
                             />
-                            <p className="mt-1.5 flex items-center gap-1 text-xs text-slate-500 md:mt-1">
+                            <p className="mt-1 flex items-center gap-1 text-xs text-slate-500">
                               <IconMapPin size={12} className="shrink-0 text-slate-400" />
                               {formatSupplierListMeta(s)}
                             </p>
@@ -393,11 +399,10 @@ export function InactiveSuppliersAdminClient({
                           </p>
                           <Link
                             href={scheduleHref(s.location, s.name)}
-                            className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-sky-700 hover:text-sky-900 hover:underline md:mt-0 md:text-sm"
+                            className={cn(panelTextLinkClass, "inline-flex min-h-10 items-center gap-1 text-xs md:min-h-0 md:text-sm")}
                           >
                             Terminy
-                            <LinkChevron size={12} tone="sky" className="md:hidden" />
-                            <LinkChevron size={14} tone="sky" className="hidden md:inline" />
+                            <LinkChevron size={12} tone="brand" />
                           </Link>
                         </div>
                         <div className="flex shrink-0 items-center gap-1 md:justify-end">

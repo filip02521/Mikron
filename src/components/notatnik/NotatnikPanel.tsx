@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { SectionListLabel, type SectionListAccent } from "@/components/ui/SectionListLabel";
 import { cn } from "@/lib/cn";
-import { mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
 import { sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
 
 export function NotatnikPanel({
@@ -33,7 +32,8 @@ export function NotatnikPanel({
   flushBody?: boolean;
 }) {
   return (
-    <section className={cn(mojeShipmentSectionShellClass, className)}>
+    // Sekcja w karcie strony — bez własnej ramki i cienia (DESIGN.md → bez karty w karcie).
+    <section className={cn("bg-white", className)}>
       <SectionListLabel
         domain={domain}
         title={title}

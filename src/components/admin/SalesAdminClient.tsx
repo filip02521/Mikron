@@ -30,9 +30,12 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
-import { IconPencil, IconTrash2, IconLink, IconUserCog, IconKeyRound } from "@/components/icons/StrokeIcons";
+import { IconPencil, IconLink, IconUserCog, IconKeyRound } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
-import { brandLinkClass, controlFocusClass, panelChoiceChipClass, panelChoiceChipIdleClass, panelChoiceChipSelectedClass, salesChromeInsetClass } from "@/lib/ui/ontime-theme";
+import { OverflowMenu, OverflowMenuItem } from "@/components/ui/OverflowMenu";
+import { AdminFilterChip } from "@/components/admin/AdminFilterChip";
+import { polishPluralWord } from "@/lib/email/polish-plural";
+import { brandLinkClass, salesChromeInsetClass } from "@/lib/ui/ontime-theme";
 import { matchesSearchWords } from "@/lib/search/keywords";
 
 type FormState = { id?: string; name: string; email: string; groupId: string };
@@ -40,44 +43,8 @@ type GroupFilter = "all" | "none" | string;
 
 const emptyForm = (): FormState => ({ name: "", email: "", groupId: "" });
 
-function GroupFilterChip({
-  active,
-  onClick,
-  label,
-  count,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-  count: number;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        panelChoiceChipClass,
-        controlFocusClass,
-        "inline-flex shrink-0 items-center gap-1.5 px-2.5 py-1.5",
-        active ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass
-      )}
-    >
-      <span>{label}</span>
-      <span
-        className={cn(
-          "rounded px-1 py-px text-[0.625rem] font-semibold tabular-nums",
-          active ? "bg-indigo-100/80 text-indigo-900" : "bg-slate-100 text-slate-600"
-        )}
-      >
-        {count}
-      </span>
-    </button>
-  );
-}
-
 function groupBadgeClass(): string {
-  return "inline-flex max-w-full items-center rounded-md border border-indigo-200/80 bg-indigo-50/90 px-2.5 py-0.5 text-xs font-medium text-indigo-800";
+  return "inline-flex max-w-full items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700";
 }
 
 export function SalesAdminClient({
@@ -284,6 +251,7 @@ export function SalesAdminClient({
             <AddButton
               variant="outline"
               size="sm"
+              className="max-sm:min-h-11"
               onClick={openCreateForm}
               disabled={createDisabled}
               title={createDisabled ? "Brak przypisanych grup - poproś administratora" : undefined}
@@ -300,12 +268,19 @@ export function SalesAdminClient({
     <>
       <div
         className={cn(
-          "space-y-3 border-b border-slate-100 py-3",
+          "flex flex-wrap items-center gap-2 border-b border-slate-100 py-3",
           salesChromeInsetClass
         )}
       >
-        <div className="flex flex-wrap gap-2">
-          <GroupFilterChip
+        <Input
+          placeholder="Szukaj: imię, e-mail, grupa…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="Szukaj handlowców"
+          className="w-full sm:max-w-xs"
+        />
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Grupa">
+          <AdminFilterChip
             active={groupFilter === "all"}
             onClick={() => setGroupFilter("all")}
             label="Wszyscy"
@@ -315,7 +290,7 @@ export function SalesAdminClient({
             const count = groupCounts[g.id] ?? 0;
             if (!count) return null;
             return (
-              <GroupFilterChip
+              <AdminFilterChip
                 key={g.id}
                 active={groupFilter === g.id}
                 onClick={() => setGroupFilter(g.id)}
@@ -325,7 +300,7 @@ export function SalesAdminClient({
             );
           })}
           {!managerMode && (groupCounts.none ?? 0) > 0 ? (
-            <GroupFilterChip
+            <AdminFilterChip
               active={groupFilter === "none"}
               onClick={() => setGroupFilter("none")}
               label="Bez grupy"
@@ -333,12 +308,9 @@ export function SalesAdminClient({
             />
           ) : null}
         </div>
-        <Input
-          placeholder="Szukaj po imieniu, e-mailu, grupie lub koncie…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          aria-label="Szukaj handlowców"
-        />
+        <p className="ml-auto text-[0.6875rem] tabular-nums text-slate-500" aria-live="polite">
+          {filtered.length} {polishPluralWord(filtered.length, "osoba", "osoby", "osób")}
+        </p>
       </div>
       {!filtered.length ? (
         <EmptyState
@@ -364,18 +336,8 @@ export function SalesAdminClient({
             </thead>
             <tbody>
               {filtered.map((p) => (
-                <tr key={p.id} className="transition-colors hover:bg-slate-50/50">
-                  <td className="font-medium text-slate-900">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xs font-semibold text-slate-600 ring-1 ring-inset ring-slate-200/60"
-                        aria-hidden
-                      >
-                        {p.name.charAt(0).toUpperCase() || "?"}
-                      </span>
-                      <span className="truncate">{p.name}</span>
-                    </div>
-                  </td>
+                <tr key={p.id}>
+                  <td className="font-medium text-slate-900">{p.name}</td>
                   <td>
                     {p.groupName ? (
                       <span className={groupBadgeClass()}>{p.groupName}</span>
@@ -391,8 +353,7 @@ export function SalesAdminClient({
                     {p.orderCount > 0 ? p.orderCount : "-"}
                   </td>
                   <td>
-                    <div className="flex flex-col items-end gap-1.5">
-                      <div className="flex flex-wrap justify-end gap-1.5">
+                    <div className="flex items-center justify-end gap-1">
                         {!p.linkedUserId ? (
                           <>
                             <Button
@@ -408,18 +369,6 @@ export function SalesAdminClient({
                               <IconLink size={13} className="shrink-0" />
                               Link zaproszenia
                             </Button>
-                            {!managerMode ? (
-                              <Link
-                                href={`/admin/uzytkownicy?handlowiec=${p.id}`}
-                                className={cn(
-                                  "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium",
-                                  "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                                )}
-                              >
-                                <IconUserCog size={13} className="shrink-0" />
-                                Ręcznie
-                              </Link>
-                            ) : null}
                           </>
                         ) : managerMode ? (
                           <Button
@@ -445,32 +394,35 @@ export function SalesAdminClient({
                             Konto
                           </Link>
                         )}
-                      </div>
-                      <div className="flex flex-wrap justify-end gap-2">
-                        <Button variant="ghost" size="sm" className="gap-1" onClick={() => startEdit(p)}>
-                          <IconPencil size={13} className="shrink-0" />
-                          Edytuj
-                        </Button>
-                        {!managerMode ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="gap-1 text-rose-600 hover:text-rose-700"
+                      <Button variant="ghost" size="sm" className="gap-1" onClick={() => startEdit(p)}>
+                        <IconPencil size={13} className="shrink-0" />
+                        Edytuj
+                      </Button>
+                      {!managerMode ? (
+                        <OverflowMenu
+                          label={`Akcje: ${p.name}`}
+                          align="end"
+                          iconOnly
+                          triggerClassName="h-11 w-11 sm:h-8 sm:w-8"
+                        >
+                          {!p.linkedUserId ? (
+                            <OverflowMenuItem onClick={() => router.push(`/admin/uzytkownicy?handlowiec=${p.id}`)}>
+                              Załóż konto ręcznie
+                            </OverflowMenuItem>
+                          ) : null}
+                          <OverflowMenuItem
+                            danger
                             disabled={p.orderCount > 0 || !!p.linkedUserId}
-                            title={
-                              p.orderCount > 0
-                                ? "Nie można usunąć - są zamówienia w historii"
-                                : p.linkedUserId
-                                  ? "Najpierw usuń powiązane konto użytkownika"
-                                  : undefined
-                            }
                             onClick={() => setDeleteTarget(p)}
                           >
-                            <IconTrash2 size={13} className="shrink-0" />
-                            Usuń
-                          </Button>
-                        ) : null}
-                      </div>
+                            {p.orderCount > 0
+                              ? "Usuń - są zamówienia w historii"
+                              : p.linkedUserId
+                                ? "Usuń - najpierw usuń konto"
+                                : "Usuń"}
+                          </OverflowMenuItem>
+                        </OverflowMenu>
+                      ) : null}
                     </div>
                   </td>
                 </tr>

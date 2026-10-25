@@ -79,7 +79,7 @@ export function VacationSavePreview({
 
   return (
     <div
-      className="rounded-md border border-slate-200/90 bg-slate-50/80 px-3 py-3 text-sm text-slate-700 sm:px-4"
+      className="rounded-lg bg-slate-50 px-3 py-3 text-sm text-slate-700 sm:px-4"
       aria-live="polite"
     >
       <p className="font-semibold text-slate-900">Podgląd po zapisie</p>

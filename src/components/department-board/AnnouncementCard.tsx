@@ -143,6 +143,7 @@ export function AnnouncementCard({
             <Button
               size="sm"
               variant="secondary"
+              className="hit-target"
               disabled={busy}
               onClick={() =>
                 void run(() => actionToggleAnnouncementPin(thread.id, !thread.pinned))
@@ -153,6 +154,7 @@ export function AnnouncementCard({
             <Button
               size="sm"
               variant="ghost"
+              className="hit-target"
               disabled={busy}
               onClick={() => void run(() => actionArchiveAnnouncement(thread.id))}
             >
@@ -170,7 +172,7 @@ export function AnnouncementCard({
         ref={articleRef}
         id={`announcement-${thread.id}`}
         className={cn(
-          "relative rounded-xl border p-4 shadow-sm",
+          "relative rounded-[var(--radius-panel)] border p-4 shadow-sm",
           cardTone,
           thread.pinned && "ring-1 ring-indigo-200/80",
           showUnread && "ring-2 ring-indigo-300/70 ring-offset-1"
