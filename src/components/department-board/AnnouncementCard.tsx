@@ -103,13 +103,13 @@ export function AnnouncementCard({
         aria-hidden
       />
       {thread.pinned ? (
-        <span className="inline-flex items-center gap-0.5 rounded-md bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-900">
+        <span className="inline-flex items-center gap-0.5 rounded-md bg-indigo-100 px-2 py-0.5 text-[0.625rem] font-semibold text-indigo-900">
           <IconPin size={10} strokeWidth={2.5} aria-hidden />
           Przypięte
         </span>
       ) : null}
       {showUnread ? (
-        <span className="rounded-md bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-800">
+        <span className="rounded-md bg-indigo-100 px-2 py-0.5 text-[0.625rem] font-semibold text-indigo-800">
           Nowe
         </span>
       ) : null}
@@ -143,6 +143,7 @@ export function AnnouncementCard({
             <Button
               size="sm"
               variant="secondary"
+              className="hit-target"
               disabled={busy}
               onClick={() =>
                 void run(() => actionToggleAnnouncementPin(thread.id, !thread.pinned))
@@ -153,6 +154,7 @@ export function AnnouncementCard({
             <Button
               size="sm"
               variant="ghost"
+              className="hit-target"
               disabled={busy}
               onClick={() => void run(() => actionArchiveAnnouncement(thread.id))}
             >
@@ -170,7 +172,7 @@ export function AnnouncementCard({
         ref={articleRef}
         id={`announcement-${thread.id}`}
         className={cn(
-          "relative rounded-xl border p-4 shadow-sm",
+          "relative rounded-[var(--radius-panel)] border p-4 shadow-sm",
           cardTone,
           thread.pinned && "ring-1 ring-indigo-200/80",
           showUnread && "ring-2 ring-indigo-300/70 ring-offset-1"

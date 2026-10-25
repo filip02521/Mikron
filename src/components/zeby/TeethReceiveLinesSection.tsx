@@ -113,7 +113,7 @@ function WaitingDaysBadge({
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+        "inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums",
         days >= 3
           ? "bg-rose-100/90 text-rose-700 ring-1 ring-inset ring-rose-200/50"
           : "bg-slate-100/80 text-slate-600 ring-1 ring-inset ring-slate-200/40",
@@ -137,7 +137,7 @@ function OrderTimingMeta({
   if (timing.submittedLabel) {
     parts.push(
       <span key="submitted" className="inline-flex items-baseline gap-1">
-        <span className="font-medium text-slate-400">Prośba</span>
+        <span className="font-medium text-slate-500">Prośba</span>
         <span className="font-semibold tabular-nums text-slate-700">
           {timing.submittedLabel}
         </span>
@@ -147,7 +147,7 @@ function OrderTimingMeta({
   if (timing.orderedLabel) {
     parts.push(
       <span key="ordered" className="inline-flex items-baseline gap-1">
-        <span className="font-medium text-slate-400">Zamówiono</span>
+        <span className="font-medium text-slate-500">Zamówiono</span>
         <span className="font-semibold tabular-nums text-slate-700">
           {timing.orderedLabel}
         </span>
@@ -167,7 +167,7 @@ function OrderTimingMeta({
     <p
       className={cn(
         "flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5",
-        compact ? "text-[10px] leading-snug" : "text-[11px] leading-snug",
+        compact ? "text-[0.625rem] leading-snug" : "text-[0.6875rem] leading-snug",
       )}
       title={title}
     >
@@ -238,14 +238,14 @@ function SalesPersonDivider({
               aria-hidden
             />
             <span className="truncate text-xs font-semibold text-slate-800">{name}</span>
-            <span className="shrink-0 text-[10px] font-medium tabular-nums text-slate-400">
+            <span className="shrink-0 text-[0.625rem] font-medium tabular-nums text-slate-500">
               {lineCount} {plPozycja(lineCount)}
             </span>
             {waitingDays != null && waitingDays > 0 && !showOrderLevelTiming ? (
               <WaitingDaysBadge days={waitingDays} />
             ) : null}
             {hasPartial ? (
-              <span className="shrink-0 rounded-md bg-amber-100/90 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+              <span className="shrink-0 rounded-md bg-amber-100/90 px-1.5 py-0.5 text-[0.625rem] font-semibold text-amber-900">
                 częściowo
               </span>
             ) : null}
@@ -254,7 +254,7 @@ function SalesPersonDivider({
                 type="button"
                 disabled={pending}
                 onClick={onFillAll}
-                className="ml-auto shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700 hover:bg-indigo-50 hover:text-indigo-900 disabled:opacity-50 sm:ml-0"
+                className="ml-auto shrink-0 rounded-md px-1.5 py-0.5 text-[0.625rem] font-semibold text-indigo-700 hover:bg-indigo-50 hover:text-indigo-900 disabled:opacity-50 sm:ml-0"
               >
                 Całość
               </button>
@@ -416,7 +416,7 @@ export function TeethReceiveLinesSection({
               >
                 <span className="hidden sm:inline">Akceptuj anulację</span>
                 <span className="sm:hidden">Anulacja</span>
-                <span className="rounded-md bg-amber-200/60 px-1.5 py-0.5 text-[10px] tabular-nums">
+                <span className="rounded-md bg-amber-200/60 px-1.5 py-0.5 text-[0.625rem] tabular-nums">
                   {cancelledOrderIds.length}
                 </span>
               </button>
@@ -431,7 +431,7 @@ export function TeethReceiveLinesSection({
                 <SaveIcon className="size-3.5" />
                 <span className="hidden sm:inline">Zapisz wprowadzone</span>
                 <span className="sm:hidden">Zapisz</span>
-                <span className="rounded-md bg-white/15 px-1.5 py-0.5 text-[10px] tabular-nums">
+                <span className="rounded-md bg-white/15 px-1.5 py-0.5 text-[0.625rem] tabular-nums">
                   {orderIdsWithInput.length}
                 </span>
               </button>
@@ -661,7 +661,7 @@ export function TeethReceiveLinesSection({
                               {row.group.color || "-"}
                             </span>
                             {isCancelled ? (
-                              <span className="ml-1.5 inline-flex rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-800">
+                              <span className="ml-1.5 inline-flex rounded bg-amber-100 px-1.5 py-0.5 text-[0.625rem] font-semibold text-amber-900">
                                 Anulowane
                               </span>
                             ) : null}
@@ -733,7 +733,7 @@ export function TeethReceiveLinesSection({
                           >
                             <div className={teethReceiveManualCellClass}>
                               <p className="font-medium text-slate-900">{row.productLabel}</p>
-                              <p className="mt-0.5 text-[10px] leading-relaxed text-amber-900/90">
+                              <p className="mt-0.5 text-[0.625rem] leading-relaxed text-amber-900/90">
                                 {row.incompleteSpec
                                   ? "Lista niekompletna - wpisz łączną ilość w tej sesji"
                                   : "Brak listy zębów - wpisz łączną ilość w tej sesji"}

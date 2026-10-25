@@ -13,10 +13,9 @@ import type { DepartmentBoardAttentionBanners } from "@/lib/department-board/boa
 import { shouldShowBoardAnswersBanner } from "@/lib/department-board/board-attention-banners";
 import { useRouter } from "next/navigation";
 import { Alert } from "@/components/ui/Alert";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { NoticeToast } from "@/components/ui/NoticeToast";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { IconClipboardPen } from "@/components/icons/StrokeIcons";
 import { QuestionThreadCard } from "@/components/department-board/QuestionThreadCard";
 import type { DepartmentBoardQuestionFilter } from "@/components/department-board/DepartmentBoardSalesChrome";
 import { DepartmentBoardQuestionsEmpty } from "@/components/department-board/DepartmentBoardEmptyPanel";
@@ -42,7 +41,6 @@ import { cn } from "@/lib/cn";
 import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
 import {
   salesPageShellClass,
-  sectionIconTileBrandClass,
   salesChromeInsetClass,
 } from "@/lib/ui/ontime-theme";
 import { SalesListFilterEmptyHint } from "@/components/sales/SalesListEmptyHints";
@@ -284,20 +282,15 @@ export function DepartmentBoardSalesClient({
         />
       ) : null}
 
+      {/* Nagłówek na tle, treść w karcie (DESIGN.md → Anatomia ekranu). */}
+      <PageHeader
+        title={pageTitle ?? DEPARTMENT_BOARD_SALES_PAGE_TITLE}
+        hint={pageDescription}
+        hintAriaLabel="O pytaniach zespołu"
+        actions={<DepartmentBoardGuide />}
+      />
+
       <Card padding={false} className="overflow-hidden">
-        <CardHeader
-          inset
-          density="compact"
-          title={pageTitle ?? DEPARTMENT_BOARD_SALES_PAGE_TITLE}
-          hint={pageDescription}
-          hintAriaLabel="O pytaniach zespołu"
-          action={<DepartmentBoardGuide />}
-          leading={
-            <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
-              <IconClipboardPen size={20} />
-            </SectionHeadingIcon>
-          }
-        />
 
         {loadError && !tourDemo ? (
           <Alert tone="error" className={cn(salesChromeInsetClass, "mt-0")}>
@@ -329,7 +322,7 @@ export function DepartmentBoardSalesClient({
         ) : null}
 
         <div className="space-y-4 p-3 pb-20 sm:p-4 sm:pb-4">
-          <div className="rounded-lg border border-slate-200/80 bg-slate-50/70 px-3 py-2.5 sm:px-4">
+          <div className="rounded-lg bg-slate-50 px-3 py-2.5 sm:px-4">
             <p className="text-xs leading-relaxed text-slate-600">
               {DEPARTMENT_BOARD_QUESTIONS_EXPLAINER.body}
             </p>
@@ -387,7 +380,7 @@ export function DepartmentBoardSalesClient({
           ) : filteredQuestions.length === 0 ? (
             <DepartmentBoardQuestionsEmpty domain="sales" filter={activeQuestionFilter} />
           ) : (
-            <div className={boardQuestionListClass}>
+            <div className={cn(boardQuestionListClass, "-mx-3 sm:-mx-4")}>
               {filteredQuestions.map((question, index) => (
                 <QuestionThreadCard
                   key={question.id}

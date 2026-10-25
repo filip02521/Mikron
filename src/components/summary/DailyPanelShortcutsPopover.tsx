@@ -24,7 +24,7 @@ export function DailyPanelShortcutsPopover({ view }: { view: DailyPanelView }) {
       shortLabel="Skróty"
       icon={<IconKeyboard size={14} strokeWidth={1.75} />}
       align="right"
-      buttonClassName="!py-1 !px-2 !text-[11px]"
+      buttonClassName="!py-1 !px-2 !text-[0.6875rem]"
     >
       <KeyboardShortcutsHint items={items} className="flex-col !items-start !gap-2" />
     </HelpPopover>

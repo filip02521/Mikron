@@ -72,7 +72,7 @@ export function ZdProductNote({
   return (
     <section aria-labelledby={`${titleId}-note`}>
       <div className="flex items-center justify-between gap-2">
-        <h3 id={`${titleId}-note`} className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+        <h3 id={`${titleId}-note`} className="text-xs font-semibold text-slate-600">
           Notatka
         </h3>
         {canEdit && draft == null && state?.status === "ok" && note ? (

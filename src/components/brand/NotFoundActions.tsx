@@ -13,11 +13,11 @@ export function NotFoundAttemptedPath() {
   if (!pathname || pathname === "/") return null;
 
   return (
-    <p className="mt-4 rounded-md bg-slate-50 px-3 py-2 text-left ring-1 ring-inset ring-slate-200/80">
-      <span className="block text-[10px] font-semibold text-slate-400">
+    <p className="mt-4 rounded-md bg-slate-50 px-3 py-2 text-left">
+      <span className="block text-[0.6875rem] font-medium text-slate-500">
         Szukany adres
       </span>
-      <code className="mt-0.5 block truncate font-mono text-xs text-slate-600">{pathname}</code>
+      <code className="mt-0.5 block break-all font-mono text-xs text-slate-700">{pathname}</code>
     </p>
   );
 }

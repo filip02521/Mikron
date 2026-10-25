@@ -11,7 +11,6 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { KeyboardShortcutsHint } from "@/components/ui/KeyboardShortcutsHint";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { IconPlusCircle } from "@/components/icons/StrokeIcons";
 import { NOTATNIK_NOTES_SEARCH_PLACEHOLDER, NOTATNIK_NOTES_SECTION_COPY } from "@/lib/sales/notatnik-notes-copy";
 import { SalesListFilterEmptyHint, SalesSectionEmptyHint } from "@/components/sales/SalesListEmptyHints";
@@ -330,7 +329,7 @@ const NoteCard = memo(function NoteCard({
           ) : null}
           {readOnly ? (
             note.title?.trim() ? (
-              <h3 className="pr-4 text-[13px] font-bold leading-snug text-slate-900">{note.title}</h3>
+              <h3 className="pr-4 text-[0.8125rem] font-semibold leading-snug text-slate-900">{note.title}</h3>
             ) : null
           ) : (
             <input
@@ -344,11 +343,11 @@ const NoteCard = memo(function NoteCard({
               onBlur={() => void save()}
               placeholder="Tytuł (wymagany)"
               aria-required
-              className="w-full bg-transparent pr-4 text-[13px] font-bold leading-snug text-slate-900 outline-none placeholder:text-slate-400/70"
+              className="w-full bg-transparent pr-4 text-[0.8125rem] font-semibold leading-snug text-slate-900 outline-none placeholder:text-slate-400/70"
             />
           )}
           {showAuthor && note.author?.email ? (
-            <p className="mb-0.5 mt-0.5 text-[10px] text-slate-500">{note.author.email}</p>
+            <p className="mb-0.5 mt-0.5 text-[0.625rem] text-slate-500">{note.author.email}</p>
           ) : null}
           <div className={cn("mt-1 pr-1")}>
             {readOnly ? (
@@ -405,7 +404,7 @@ const NoteCard = memo(function NoteCard({
             <NoteFollowUpControl value={followUpAt} onChange={() => {}} disabled />
           </div>
         ) : null}
-        {error ? <p className="px-2.5 pb-2 text-[11px] text-red-700">{error}</p> : null}
+        {error ? <p className="px-2.5 pb-2 text-[0.6875rem] text-red-700">{error}</p> : null}
       </article>
     </NoteStickyFrame>
   );
@@ -733,12 +732,7 @@ export function OperationsNotesSection({
           <div className={notatnikAddPanelShellClass}>
             <div className="flex items-start justify-between gap-2 border-b border-indigo-100/80 px-3 py-2.5 sm:px-3.5">
               <div className="flex min-w-0 items-start gap-2.5">
-                <SectionHeadingIcon
-                  tileClassName="bg-indigo-100 text-indigo-800"
-                  className="mt-0.5 h-8 w-8"
-                >
-                  <IconPlusCircle size={17} strokeWidth={2.25} />
-                </SectionHeadingIcon>
+                <IconPlusCircle size={17} strokeWidth={2.25} className="mt-0.5 shrink-0 text-indigo-700" aria-hidden />
                 <div className="min-w-0">
                   <p className={cn(salesTypography.sectionLabel, "normal-case text-indigo-950")}>
                     Nowa karteczka
@@ -863,7 +857,6 @@ export function OperationsNotesSection({
           <NotatnikListFilterBar
             embedded
             bleed
-            visibleLabel="Szukaj w notatkach"
             value={searchQuery}
             onChange={setSearchQuery}
             matchCount={filtered.length}
@@ -879,7 +872,7 @@ export function OperationsNotesSection({
       ) : null}
 
       {canDrag && filtered.length > 1 ? (
-        <p className="inline-flex flex-wrap items-center gap-1 text-[10px] text-slate-400">
+        <p className="inline-flex flex-wrap items-center gap-1 text-[0.6875rem] text-slate-500">
           Przeciągnij kartę (
           <DragHandleGlyph />
           ) w sekcji przypiętych lub zwykłych - między sekcjami nie da się przenieść.

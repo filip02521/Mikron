@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { NotatnikListFilterBar } from "@/components/notatnik/NotatnikListFilterBar";
-import { IconChevronDown, IconInbox, IconPin } from "@/components/icons/StrokeIcons";
+import { IconChevronDown, IconPin } from "@/components/icons/StrokeIcons";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 import { SalesListFilterEmptyHint } from "@/components/sales/SalesListEmptyHints";
 import { Alert } from "@/components/ui/Alert";
 import {
@@ -97,8 +98,8 @@ function MojeAnnouncementCompactRow({
     <li
       id={`announcement-${thread.id}`}
       className={cn(
-        "border-l-[3px] border-b border-slate-100 last:border-b-0",
-        unread ? "border-l-sky-500 bg-sky-50/25" : "border-l-slate-200 bg-white"
+        "border-b border-slate-100 last:border-b-0",
+        unread ? "bg-indigo-50/40" : "bg-white"
       )}
     >
       <button
@@ -110,7 +111,7 @@ function MojeAnnouncementCompactRow({
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
             {unread ? (
-              <span className="shrink-0 rounded bg-sky-100 px-1.5 py-0.5 text-[11px] font-semibold text-sky-800">
+              <span className="shrink-0 rounded bg-sky-100 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-sky-800">
                 Nowe
               </span>
             ) : null}
@@ -250,9 +251,6 @@ export function MojeAnnouncementsSection({
       <div id={MOJE_ANNOUNCEMENTS_SECTION_ID} className="scroll-mt-24">
         <div className={mojeShipmentSectionShellClass}>
           <div className="flex w-full items-center gap-2.5 border-b border-slate-100 bg-slate-50/60 px-3 py-2.5 sm:px-4">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-sky-100 text-sky-800">
-              <IconInbox size={16} />
-            </span>
             <span className="min-w-0 flex-1">
               <span className={cn(salesTypography.blockTitle, "text-slate-900")}>
                 {DEPARTMENT_BOARD_ANNOUNCEMENTS_EXPLAINER.title}
@@ -273,14 +271,8 @@ export function MojeAnnouncementsSection({
 
   const sectionSummary =
     unreadCount > 0
-      ? `${unreadCount} ${unreadCount === 1 ? "nowe" : "nowych"}`
-      : `${listAnnouncements.length} ${
-          listAnnouncements.length === 1
-            ? "ogłoszenie"
-            : listAnnouncements.length < 5
-              ? "ogłoszenia"
-              : "ogłoszeń"
-        }`;
+      ? `${unreadCount} ${polishPluralWord(unreadCount, "nowe", "nowe", "nowych")}`
+      : `${listAnnouncements.length} ${polishPluralWord(listAnnouncements.length, "ogłoszenie", "ogłoszenia", "ogłoszeń")}`;
 
   return (
     <div id={MOJE_ANNOUNCEMENTS_SECTION_ID} className="scroll-mt-24">
@@ -295,9 +287,6 @@ export function MojeAnnouncementsSection({
           }
           aria-expanded={sectionExpanded}
         >
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-sky-100 text-sky-800">
-            <IconInbox size={16} />
-          </span>
           <span className="min-w-0 flex-1">
             <span className={cn(salesTypography.blockTitle, "text-slate-900")}>
               {DEPARTMENT_BOARD_ANNOUNCEMENTS_EXPLAINER.title}
@@ -378,7 +367,7 @@ export function MojeAnnouncementsSection({
             )}
 
             {!searchNeedle && listAnnouncements.length > 3 ? (
-              <p className="border-t border-slate-100 px-3 py-2 text-[11px] text-slate-500 sm:px-4">
+              <p className="border-t border-slate-100 px-3 py-2 text-[0.6875rem] text-slate-500 sm:px-4">
                 Pytania do zakupów zadajesz na{" "}
                 <Link href={tablicaHref} className={brandLinkClass}>
                   Tablicy

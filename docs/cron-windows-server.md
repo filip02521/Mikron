@@ -93,14 +93,12 @@ Bez `-Force` endpointy mogą zwrócić **200 OK** z komunikatem „poza oknem”
 
 ### 6. Logi
 
-Po każdym wywołaniu wpis trafia do:
+Po każdym wywołaniu wpis trafia do `logs\cron-<job>.log` (jeden plik na job z tabeli wyżej, `installer/cron-invoke.ps1`), np.:
 
 ```
 logs\cron-morning.log
-logs\cron-process-deliveries.log
 logs\cron-informacja-stock-sync.log
-logs\cron-zd-eta-sync.log
-logs\cron-catalog-zd-sync.log
+logs\cron-stock-watch.log
 ```
 
 Przykład:

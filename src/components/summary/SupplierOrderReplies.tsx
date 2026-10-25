@@ -40,7 +40,7 @@ export function MailReplyPreview({ reply }: { reply: GmailReply }) {
       <p className="flex flex-wrap items-baseline justify-between gap-x-2 text-xs">
         <span className="flex min-w-0 items-baseline gap-1.5">
           {tag ? (
-            <span className={cn("shrink-0 rounded px-1.5 py-px text-[10px] font-semibold", tag.className)}>{tag.text}</span>
+            <span className={cn("shrink-0 rounded px-1.5 py-px text-[0.625rem] font-semibold", tag.className)}>{tag.text}</span>
           ) : null}
           <span className="min-w-0 truncate font-medium text-slate-800" title={reply.from}>
             {senderName(reply.from)}
@@ -50,7 +50,7 @@ export function MailReplyPreview({ reply }: { reply: GmailReply }) {
       </p>
       {reply.snippet ? <p className="mt-1 line-clamp-3 text-xs leading-snug text-slate-700">{reply.snippet}</p> : null}
       {reply.attachments.length ? (
-        <p className="mt-1 break-all text-[11px] text-slate-500">Załączniki: {reply.attachments.join(", ")}</p>
+        <p className="mt-1 break-all text-[0.6875rem] text-slate-500">Załączniki: {reply.attachments.join(", ")}</p>
       ) : null}
     </div>
   );
@@ -133,7 +133,7 @@ export function SupplierOrderReplies({ supplierId }: { supplierId: string }) {
                 {item.status === "read" ? (
                   <span
                     className={cn(
-                      "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium",
+                      "shrink-0 rounded-full px-2 py-0.5 text-[0.6875rem] font-medium",
                       state === "replied"
                         ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200"
                         : state === "bounced"
@@ -169,7 +169,7 @@ export function SupplierOrderReplies({ supplierId }: { supplierId: string }) {
                 <MailReplyPreview key={r.id} reply={r} />
               ))}
               {replies.length > 2 ? (
-                <p className="text-[11px] text-slate-500">Starsze odpowiedzi ({replies.length - 2}) są w wątku w Gmailu.</p>
+                <p className="text-[0.6875rem] text-slate-500">Starsze odpowiedzi ({replies.length - 2}) są w wątku w Gmailu.</p>
               ) : null}
 
               {item.gmailUrl ? (

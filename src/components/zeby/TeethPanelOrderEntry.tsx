@@ -70,35 +70,35 @@ function buildIssueBadges(
 
   if (variant === "queue" && item.request_kind === "informacja") {
     badges.push(
-      <Badge key="info" variant="default" className="text-[10px]">
+      <Badge key="info" variant="default" className="text-[0.625rem]">
         Informacja
       </Badge>,
     );
   }
   if (needsHeaderData) {
     badges.push(
-      <Badge key="header" variant="warning" className="text-[10px]">
+      <Badge key="header" variant="warning" className="text-[0.625rem]">
         {TEETH_QUEUE_HEADER_DATA_LABEL}
       </Badge>,
     );
   }
   if (showMissingList) {
     badges.push(
-      <Badge key="missing" variant="warning" className="text-[10px]">
+      <Badge key="missing" variant="warning" className="text-[0.625rem]">
         Brak listy
       </Badge>,
     );
   }
   if (showIncomplete) {
     badges.push(
-      <Badge key="incomplete" variant="warning" className="text-[10px]">
+      <Badge key="incomplete" variant="warning" className="text-[0.625rem]">
         Lista niekompletna
       </Badge>,
     );
   }
   if (variant === "history") {
     badges.push(
-      <Badge key="status" variant="default" className="text-[10px]">
+      <Badge key="status" variant="default" className="text-[0.625rem]">
         {historyStatusLabel(item)}
       </Badge>,
     );
@@ -144,7 +144,7 @@ function HistoryActions({
         <button
           type="button"
           onClick={onEditDate}
-          className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+          className="inline-flex size-11 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 sm:size-8"
           title="Zmień datę dostawy"
           aria-label="Zmień datę dostawy"
         >
@@ -155,7 +155,7 @@ function HistoryActions({
         <button
           type="button"
           onClick={onUnmark}
-          className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-amber-50 hover:text-amber-800"
+          className="inline-flex size-11 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-amber-50 hover:text-amber-800 sm:size-8"
           title="Cofnij zamówienie"
           aria-label="Cofnij zamówienie"
         >

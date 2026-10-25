@@ -21,12 +21,12 @@ Supabase został odłączony z tego projektu i nie jest używany.
 
 - **Baza danych to PostgreSQL** — wszystkie zapytania, migracje i logika bazodanowa muszą być pisane pod PostgreSQL.
 - **Nie używaj Supabase** — nie dodawaj zależności Supabase, nie używaj Supabase SDK, nie zakładaj Supabase-specific funkcji (RLS, `auth.uid()`, `private` schema).
-- **Migracje** — pliki SQL w `supabase/migrations/` to tylko katalog migracji (nazwa historyczna). Są to zwykłe migracje PostgreSQL uruchamiane przez panel admina lub skrypt.
+- **Migracje** — pliki SQL w `supabase/migrations/` to tylko katalog migracji (nazwa historyczna). Są to zwykłe migracje PostgreSQL uruchamiane przez panel admina lub skrypt (`npm run db:migrate`, `scripts/db-migrate.ts`). Obok jest nakładka `db/migrations/` (lokalna autentykacja, wyłączenie RLS, uprawnienia): `0000_*` idzie przed `supabase/migrations/`, reszta po nich.
 - **Role PostgreSQL** — `ontime_app` (aplikacja), `ontime_migrator` (DDL/migracje). Panel admina używa `DATABASE_MIGRATE_URL` dla migracji.
-- **Klient DB** — aplikacja używa `pg` (node-postgres) przez `src/lib/db/pool.ts` oraz Supabase JS client jako cienką warstwę nad PostgreSQL (tylko jako query builder, bez Supabase-specific funkcji).
+- **Klient DB** — aplikacja używa `pg` (node-postgres) przez `src/lib/db/pool.ts` oraz własnego query buildera z API w stylu PostgREST (`from().select()`, `src/lib/db/query-builder.ts`, przez `createAdminClient()`). Pakietu `@supabase/*` nie ma w zależnościach — nie dodawaj go.
 - **Auth** — lokalna autentykacja (`app_users`, `app_sessions`), nie Supabase Auth.
-- **RLS** — wyłączone (`0002_disable_rls_remap_fk.sql`). Autoryzacja w warstwie aplikacji.
-- **`auth.uid()`** — stub zwracający `NULL` (`0000_supabase_compat_stubs.sql`).
+- **RLS** — wyłączone (`db/migrations/0002_disable_rls_remap_fk.sql`). Autoryzacja w warstwie aplikacji.
+- **`auth.uid()`** — stub zwracający `NULL` (`db/migrations/0000_supabase_compat_stubs.sql`).
 
 ## Złote zasady
 

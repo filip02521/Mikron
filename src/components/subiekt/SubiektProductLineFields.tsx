@@ -1350,7 +1350,7 @@ export function SubiektProductLineFields({
 
       {isRegistryTeethTw && !resolvedTeethProductLine && requestKind === "zamowienie" ? (
         <div role="status" aria-live="polite">
-          <Badge variant="warning" className="text-[10px]">
+          <Badge variant="warning" className="text-[0.625rem]">
             Producent nieustalony - uzupełnij w adminie
           </Badge>
         </div>

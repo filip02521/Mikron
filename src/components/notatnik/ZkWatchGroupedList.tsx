@@ -62,7 +62,7 @@ function ZkWatchMonthExpandControl({
       <button
         type="button"
         onClick={() => (allExpanded ? onCollapseAll() : onExpandAll())}
-        className={cn(panelTextLinkClass, "text-[11px] transition hover:underline")}
+        className={cn(panelTextLinkClass, "text-[0.6875rem] transition hover:underline")}
       >
         {allExpanded ? "Zwiń wszystkie miesiące" : "Rozwiń wszystkie miesiące"}
       </button>
@@ -367,7 +367,7 @@ export function ZkWatchGroupedList({
                 onClick={() => toggleMonth(group.key)}
                 aria-expanded={isOpen}
                 aria-label={`${group.label}, ${group.watches.length} ZK, ${isOpen ? "rozwinięte" : "zwinięte"}`}
-                className="flex w-full items-center gap-2 border-y border-slate-200/70 bg-slate-50/80 px-3 py-2 text-left transition hover:bg-slate-100/80"
+                className="flex min-h-11 w-full items-center gap-2 border-y border-slate-200/70 bg-slate-50/80 px-3 py-2 text-left transition hover:bg-slate-100/80 sm:min-h-0"
               >
                 <IconChevronRight
                   size={14}
@@ -378,7 +378,7 @@ export function ZkWatchGroupedList({
                 />
                 <span className={salesTypography.sectionLabel}>
                   {group.label}
-                  <span className="ml-2 font-normal normal-case tabular-nums text-slate-400">
+                  <span className="ml-2 font-normal normal-case tabular-nums text-slate-500">
                     ({group.watches.length})
                   </span>
                 </span>

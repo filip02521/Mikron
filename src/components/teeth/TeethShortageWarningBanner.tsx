@@ -52,7 +52,7 @@ export function TeethShortageWarningBanner({
                 {" - "}
                 {hit.message}
                 {note ? (
-                  <span className="mt-0.5 block text-[11px] leading-snug text-amber-900/90">
+                  <span className="mt-0.5 block text-[0.6875rem] leading-snug text-amber-900/90">
                     {note}
                   </span>
                 ) : null}
@@ -60,7 +60,7 @@ export function TeethShortageWarningBanner({
             );
           })}
         </ul>
-        <p className="mt-1 text-[11px] leading-relaxed text-amber-800/80">
+        <p className="mt-1 text-[0.6875rem] leading-relaxed text-amber-800/80">
           Możesz wysłać prośbę mimo braku - to tylko ostrzeżenie.
         </p>
       </div>

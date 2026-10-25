@@ -38,7 +38,7 @@ export function SupplierDrawerLeadTime({
         <h3 className="text-xs text-slate-500">{model.title}</h3>
         {model.kind !== "empty" && model.lowConfidence ? (
           <span
-            className="ml-auto text-[10px] font-medium text-amber-700/90"
+            className="ml-auto text-[0.625rem] font-medium text-amber-700/90"
             title={model.footnote ?? undefined}
           >
             szacunek
@@ -92,18 +92,18 @@ function SplitStat({
 }) {
   return (
     <div className="rounded-md bg-slate-50/70 px-2.5 py-1.5">
-      <p className="text-[10px] font-medium text-slate-400">
+      <p className="text-[0.625rem] font-medium text-slate-400">
         {label}
       </p>
       {part ? (
         <>
           <p className="mt-0.5 text-sm font-semibold tabular-nums text-slate-800">
             {part.avgDisplay}{" "}
-            <span className="text-[11px] font-medium text-slate-500">
+            <span className="text-[0.6875rem] font-medium text-slate-500">
               {part.unitLabel}
             </span>
           </p>
-          <p className="text-[10px] text-slate-400">{part.sampleLabel}</p>
+          <p className="text-[0.625rem] text-slate-400">{part.sampleLabel}</p>
         </>
       ) : (
         <p className="mt-0.5 text-xs text-slate-400">Brak danych</p>

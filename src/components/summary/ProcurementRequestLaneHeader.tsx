@@ -106,11 +106,11 @@ export function ProcurementRequestLaneHeader({
         />
         <span className={procurementRequestLaneDotClass(resolvedTone)} aria-hidden />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[12px] font-semibold tracking-tight text-slate-800">
+          <span className="block truncate text-[0.75rem] font-semibold tracking-tight text-slate-800">
             {label}
           </span>
           {subtitle ? (
-            <span className="mt-0.5 block truncate text-[10px] font-medium leading-snug text-slate-500">
+            <span className="mt-0.5 block truncate text-[0.625rem] font-medium leading-snug text-slate-500">
               {subtitle}
             </span>
           ) : null}
@@ -118,7 +118,7 @@ export function ProcurementRequestLaneHeader({
         {showPeekBadge ? (
           <span
             className={cn(
-              "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold tabular-nums",
+              "shrink-0 rounded px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums",
               dailyPanelUnseenBadgeClass("prosby")
             )}
           >
@@ -134,7 +134,7 @@ export function ProcurementRequestLaneHeader({
         <div className="flex shrink-0 flex-col justify-center gap-0.5 border-l border-black/5 px-1 py-1">
           <button
             type="button"
-            className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 transition-colors hover:bg-white/70 hover:text-slate-800 disabled:opacity-35"
+            className="rounded px-1.5 py-0.5 text-[0.625rem] font-semibold text-slate-500 transition-colors hover:bg-white/70 hover:text-slate-800 disabled:opacity-35"
             disabled={movePending || !canMoveUp}
             title={PROCUREMENT_REQUEST_LANE_COPY.laneMoveUp}
             aria-label={`${PROCUREMENT_REQUEST_LANE_COPY.laneMoveUp}: ${label}`}
@@ -144,7 +144,7 @@ export function ProcurementRequestLaneHeader({
           </button>
           <button
             type="button"
-            className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 transition-colors hover:bg-white/70 hover:text-slate-800 disabled:opacity-35"
+            className="rounded px-1.5 py-0.5 text-[0.625rem] font-semibold text-slate-500 transition-colors hover:bg-white/70 hover:text-slate-800 disabled:opacity-35"
             disabled={movePending || !canMoveDown}
             title={PROCUREMENT_REQUEST_LANE_COPY.laneMoveDown}
             aria-label={`${PROCUREMENT_REQUEST_LANE_COPY.laneMoveDown}: ${label}`}

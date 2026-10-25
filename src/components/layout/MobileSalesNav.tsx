@@ -17,11 +17,11 @@ import { NavIcon } from "@/components/icons/NavIcon";
 import { MobileNavOverflowSheet } from "@/components/layout/MobileNavOverflowSheet";
 import {
   mobileNavAttentionIdleClass,
+  mobileNavLinkActiveClass,
   mobileNavLinkBaseClass,
   mobileNavLinkIdleClass,
   mobileSalesNavClass,
   sidebarNavBadgeClassForTone,
-  sidebarNavToneActiveClass,
 } from "@/lib/ui/ontime-theme";
 import { isSalesManager } from "@/lib/auth-roles";
 import { hrefWithAdminSalesPreview, shouldPreserveSalesPreviewInNav } from "@/lib/nav/sales-preview-href";
@@ -88,7 +88,7 @@ export function MobileSalesNav({
             mobileNavLinkBaseClass,
             "px-1",
             active
-              ? sidebarNavToneActiveClass(item.tone)
+              ? mobileNavLinkActiveClass
               : attentionIdle
                 ? mobileNavAttentionIdleClass
                 : mobileNavLinkIdleClass,
@@ -102,7 +102,7 @@ export function MobileSalesNav({
                 {attentionBadge > 0 ? (
                   <span
                     className={cn(
-                      "absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 leading-none tabular-nums text-[9px] font-bold ring-2 ring-white lg:text-[10px]",
+                      "absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 leading-none tabular-nums text-[0.625rem] font-semibold ring-2 ring-white",
                       sidebarNavBadgeClassForTone(displayTone, active)
                     )}
                   >

@@ -66,7 +66,7 @@ export function BoardFileAttachments({
             >
               {busyId === att.id ? <Spinner size="sm" /> : <IconPaperclip size={13} className="shrink-0 text-slate-400" aria-hidden />}
               <span className="truncate font-medium">{att.file_name}</span>
-              {att.byte_size ? <span className="shrink-0 tabular-nums text-slate-400">{fileSize(att.byte_size)}</span> : null}
+              {att.byte_size ? <span className="shrink-0 tabular-nums text-slate-500">{fileSize(att.byte_size)}</span> : null}
             </button>
           </li>
         ))}

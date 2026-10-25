@@ -2,13 +2,7 @@
 
 import type { NotatnikPageTab } from "@/lib/sales/notepad-page-tabs";
 import { cn } from "@/lib/cn";
-import {
-  panelChoiceChipClass,
-  panelChoiceChipIdleClass,
-  panelChoiceChipSelectedClass,
-  salesChromeInsetClass,
-  tabBadgeSelectedClass,
-} from "@/lib/ui/ontime-theme";
+import { controlFocusClass } from "@/lib/ui/ontime-theme";
 
 const TAB_META: Record<NotatnikPageTab, { label: string; title: string }> = {
   zk: {
@@ -36,9 +30,10 @@ const ARCHIVE_TAB_META: Record<"zk" | "notes", { label: string; title: string }>
   },
 };
 
-const TAB_CHIP_CLASS = cn(
-  panelChoiceChipClass,
-  "inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-1.5 py-2 sm:min-h-9"
+/** Zakładki strony z podkreśleniem — ten sam wygląd co `SectionTabNav` (DESIGN.md → Navigation). */
+const TAB_CLASS = cn(
+  "-mb-px inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-1.5 border-b-2 px-0.5 text-sm font-medium transition-colors duration-150 sm:min-h-10",
+  controlFocusClass
 );
 
 export function NotatnikTabBar({
@@ -81,8 +76,7 @@ export function NotatnikTabBar({
     <>
       <div
         className={cn(
-          "flex flex-wrap gap-2 border-b border-slate-100 bg-slate-50/60 py-2.5",
-          salesChromeInsetClass,
+          "flex gap-5 overflow-x-auto border-b border-slate-200 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-6",
           className
         )}
         role="tablist"
@@ -104,18 +98,15 @@ export function NotatnikTabBar({
               title={meta.title}
               onClick={() => onChange(tab)}
               className={cn(
-                TAB_CHIP_CLASS,
-                active ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass
+                TAB_CLASS,
+                active
+                  ? "border-indigo-600 text-slate-900"
+                  : "border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900"
               )}
             >
               <span>{meta.label}</span>
               {count > 0 ? (
-                <span
-                  className={cn(
-                    "inline-flex min-w-[1.25rem] items-center justify-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
-                    active ? tabBadgeSelectedClass : "bg-slate-200/90 text-slate-700"
-                  )}
-                >
+                <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums text-slate-600">
                   {count}
                 </span>
               ) : null}

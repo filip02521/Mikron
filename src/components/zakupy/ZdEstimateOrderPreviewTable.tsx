@@ -153,14 +153,14 @@ export function ZdEstimateOrderPreviewTable({
                       </span>
                     ) : null}
                     {(l.individualExtraPieces ?? 0) > 0 ? (
-                      <span className="text-[11px] font-semibold uppercase text-emerald-700">
+                      <span className="text-[11px] font-semibold text-emerald-700">
                         {extrasPolicy === "max"
                           ? `prośba ${formatQty(l.individualExtraPieces ?? 0)} szt`
                           : `+prośba ${formatQty(l.individualExtraPieces ?? 0)} szt`}
                       </span>
                     ) : null}
                     {l.extraOnly ? (
-                      <span className="text-[11px] font-medium uppercase text-amber-800">
+                      <span className="text-[11px] font-medium text-amber-800">
                         tylko prośba
                       </span>
                     ) : null}

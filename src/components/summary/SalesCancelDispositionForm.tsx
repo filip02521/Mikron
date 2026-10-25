@@ -49,7 +49,7 @@ function DispositionChip({
       onClick={onClick}
       className={cn(
         panelChoiceChipClass,
-        "px-2.5 py-1.5 text-[11px] sm:min-w-[7.5rem]",
+        "px-2.5 py-1.5 text-[0.6875rem] sm:min-w-[7.5rem]",
         selected
           ? tone === "stock"
             ? panelChoiceChipSuccessSelectedClass
@@ -85,7 +85,7 @@ function DispositionLineRow({
         <div className="min-w-0 flex-1">
           <p className="text-xs font-medium leading-snug text-slate-900">{line.products}</p>
           {(line.symbol && line.symbol !== "-") || qtyLabel ? (
-            <p className="mt-0.5 text-[11px] text-slate-500">
+            <p className="mt-0.5 text-[0.6875rem] text-slate-500">
               {line.symbol && line.symbol !== "-" ? line.symbol : null}
               {line.symbol && line.symbol !== "-" && qtyLabel ? " · " : null}
               {qtyLabel ? `${qtyLabel} szt.` : null}
@@ -181,7 +181,7 @@ export function SalesCancelDispositionForm({
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] leading-relaxed text-slate-600">{phaseHint}</p>
+      <p className="text-[0.6875rem] leading-relaxed text-slate-600">{phaseHint}</p>
 
       {dispositionLines.length > 1 ? (
         <div className="flex flex-wrap items-center gap-2">
@@ -193,7 +193,7 @@ export function SalesCancelDispositionForm({
             className={cn(
               panelChoiceChipClass,
               panelChoiceChipIdleClass,
-              "px-2.5 py-1 text-[11px]"
+              "px-2.5 py-1 text-[0.6875rem]"
             )}
           >
             Wszystkie na stan
@@ -205,7 +205,7 @@ export function SalesCancelDispositionForm({
             className={cn(
               panelChoiceChipClass,
               panelChoiceChipIdleClass,
-              "px-2.5 py-1 text-[11px]"
+              "px-2.5 py-1 text-[0.6875rem]"
             )}
           >
             Wszystkie do zwrotu
@@ -236,10 +236,10 @@ export function SalesCancelDispositionForm({
 
       {infoLines.length ? (
         <div className="rounded-md border border-slate-100 bg-white px-3 py-2">
-          <p className="text-[11px] font-medium text-slate-700">
+          <p className="text-[0.6875rem] font-medium text-slate-700">
             Rezygnacja przed zamówieniem u dostawcy
           </p>
-          <ul className="mt-1 space-y-0.5 text-[11px] text-slate-600">
+          <ul className="mt-1 space-y-0.5 text-[0.6875rem] text-slate-600">
             {infoLines.map((line) => (
               <li key={line.id}>
                 <span className="font-medium text-slate-800">{line.symbol}</span>
@@ -253,7 +253,7 @@ export function SalesCancelDispositionForm({
 
       {dispositionLines.length ? (
         <label className="block">
-          <span className="text-[11px] font-medium text-slate-600">
+          <span className="text-[0.6875rem] font-medium text-slate-600">
             Notatka dla magazynu (wspólna)
           </span>
           <textarea

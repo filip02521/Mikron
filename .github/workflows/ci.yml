@@ -73,6 +73,9 @@ jobs:
       - name: Audit server action redirect callers
         run: npm run audit:server-action-redirect
 
+      - name: Audit DESIGN.md typography rules
+        run: npm run audit:design
+
   build:
     name: Next.js build
     runs-on: ubuntu-latest

@@ -63,11 +63,11 @@ function IntroStepCard({
 }) {
   return (
     <div className="rounded-lg border border-indigo-100/90 bg-indigo-50/35 px-3 py-2.5 text-center">
-      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-800">
+      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-800">
         {step}
       </span>
       <p className="mt-2 text-xs font-semibold text-slate-900">{title}</p>
-      <p className="mt-0.5 text-[11px] leading-snug text-slate-600">{detail}</p>
+      <p className="mt-0.5 text-[0.6875rem] leading-snug text-slate-600">{detail}</p>
     </div>
   );
 }
@@ -174,7 +174,7 @@ function FoundMatchRow({
       {display ? (
         <DeliveryTimingMeta caption={ZD_DELIVERY_META_CAPTION} captionTone="zd" className="shrink-0">
           <DeliveryDateMetaValue display={display} />
-          <span className="text-[10px] font-medium text-slate-500">{formatPlDate(deadline)}</span>
+          <span className="text-[0.625rem] font-medium text-slate-500">{formatPlDate(deadline)}</span>
         </DeliveryTimingMeta>
       ) : (
         <span className="text-sm font-semibold text-slate-800">{formatPlDate(deadline)}</span>

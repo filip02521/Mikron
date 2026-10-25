@@ -71,11 +71,11 @@ export function ProcurementRequestLaneNav({
     >
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <div className="flex min-w-0 items-baseline gap-2">
-          <p className="text-[10px] font-semibold text-slate-400">
+          <p className="text-[0.625rem] font-semibold text-slate-400">
             {PROCUREMENT_REQUEST_LANE_COPY.navLabel}
           </p>
           {visible.length > 0 ? (
-            <p className="truncate text-[10px] font-medium text-slate-400/90">
+            <p className="truncate text-[0.625rem] font-medium text-slate-400/90">
               skocz do sekcji
             </p>
           ) : null}
@@ -83,7 +83,7 @@ export function ProcurementRequestLaneNav({
         {onManageClick ? (
           <button
             type="button"
-            className="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-indigo-700/90 transition-colors hover:bg-indigo-50 hover:text-indigo-950"
+            className="shrink-0 rounded-md px-1.5 py-0.5 text-[0.6875rem] font-semibold text-indigo-700/90 transition-colors hover:bg-indigo-50 hover:text-indigo-950"
             onClick={onManageClick}
           >
             {PROCUREMENT_REQUEST_LANE_COPY.manageFlags}

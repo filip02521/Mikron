@@ -241,6 +241,8 @@ treści ZD albo nieudanym create.
 Backtest zrobiony (§8). Kolejność: najpierw tryb z akceptacją na 10 dostawcach, automat dopiero
 po pomiarze na żywo. Szczegółowy plan zadań: `TASKS.md` → „Automat ZD — polscy dostawcy”.
 
+**Stan w kodzie (2026-10-25, główna gałąź):** kroki 1, 3, 5 zrobione (kraj dostawcy, flagi linii, `zd_sku_class` + `zd_kpi_weekly`); z kroku 6 jest pomiar gotowości (4 tygodnie z korektą < 10%, `src/lib/orders/zd-automat-status.ts`) i automatyczne cofnięcie stopnia po brakach A (migracja `198_zd_automat_level_rollback.sql`) oraz po nieudanym create, samego auto-zatwierdzenia nie ma; krok 4 (okno handlowców, `zd_auto_proposal_events`) i 7 — nie zaczęte. Kroki 0 i 2 dotyczą produkcji — **niezweryfikowane** (brak dostępu).
+
 | # | Krok | Kryterium odbioru |
 |---|---|---|
 | 0 | Domknąć Polkard (TASKS F): testy, review, authz, migracje 190/193 na produkcji | migracje na produkcji, propozycje Polkardu powstają |

@@ -25,12 +25,6 @@ export const mojeShipmentListClass = "divide-y divide-slate-100 pb-0.5";
 
 export type MojeShipmentRowVisualTone = "default" | "archive";
 
-export type MojeShipmentRowArchiveAccent =
-  | "completed"
-  | "cancelled"
-  | "informacja"
-  | "default";
-
 export function mojeShipmentRowClass({
   expanded,
   isAction,
@@ -39,11 +33,9 @@ export function mojeShipmentRowClass({
   isDismiss,
   isUrgent,
   isStock,
-  isInformacja,
   visualTone = "default",
   deliveryBorderAccent,
   deliveryCollapsedBg,
-  archiveAccent = "default",
 }: {
   expanded: boolean;
   isAction: boolean;
@@ -52,83 +44,51 @@ export function mojeShipmentRowClass({
   isDismiss?: boolean;
   isUrgent: boolean;
   isStock?: boolean;
-  isInformacja: boolean;
   visualTone?: MojeShipmentRowVisualTone;
   deliveryBorderAccent?: string | null;
   deliveryCollapsedBg?: string | null;
-  archiveAccent?: MojeShipmentRowArchiveAccent;
 }): string {
+  // Stan wiersza niesie tło i zdanie stanu w wierszu, bez paska z boku (DESIGN.md → Shapes).
   if (visualTone === "archive") {
-    const accent =
-      archiveAccent === "cancelled"
-        ? "border-l-red-300"
-        : archiveAccent === "informacja"
-          ? "border-l-violet-300"
-          : archiveAccent === "completed"
-            ? "border-l-emerald-300"
-            : "border-l-slate-200/70";
     return cn(
-      "border-l-[3px] transition duration-150",
-      accent,
-      expanded ? "bg-slate-100/80" : "bg-slate-50/45 hover:bg-slate-50/65"
+      "transition duration-150",
+      expanded ? "bg-slate-100/80" : "bg-slate-50/45 hover:bg-slate-50/80"
     );
   }
 
-  const accent = isAction
-    ? "border-l-emerald-500"
-    : isInformacjaAck
-      ? "border-l-violet-500"
-      : isDismiss
-        ? "border-l-rose-400"
-        : isCancelAck
-          ? "border-l-amber-500"
-          : isUrgent
-            ? "border-l-amber-500"
-            : deliveryBorderAccent
-              ? deliveryBorderAccent
-              : isStock
-                ? "border-l-sky-500"
-                : isInformacja
-                  ? "border-l-violet-400"
-                  : "border-l-slate-200";
+  // Po terminie (dawniej bursztynowy pasek z `deliveryUrgencyRowVisual`) zostaje wyróżnione tłem.
+  const isOverdue = isUrgent || deliveryBorderAccent === "border-l-amber-500";
 
   return cn(
-    "border-l-[3px] transition duration-150",
-    accent,
-    isAction && !expanded && "bg-emerald-50/35",
-    isInformacjaAck && !expanded && "bg-violet-50/40",
-    isDismiss && !expanded && "bg-rose-50/30",
-    isCancelAck && !expanded && "bg-amber-50/50",
-    !expanded && isStock && !deliveryCollapsedBg && "bg-sky-50/35",
-    !expanded && deliveryCollapsedBg,
+    "transition duration-150",
     // Nagłówek rozwiniętego wiersza wyraźnie ciemniejszy niż zwinięte — tu zaczyna się otwarta prośba.
     expanded
       ? "bg-slate-100/80"
       : isAction
-        ? "hover:bg-emerald-50/50"
+        ? "bg-emerald-50/60 hover:bg-emerald-50"
         : isInformacjaAck
-          ? "hover:bg-violet-50/55"
+          ? "bg-indigo-50/60 hover:bg-indigo-50"
           : isDismiss
-            ? "hover:bg-rose-50/45"
-            : isCancelAck
-              ? "hover:bg-amber-50/65"
-            : deliveryCollapsedBg
-              ? "hover:brightness-[0.98]"
-              : "bg-white hover:bg-slate-50/50"
+            ? "bg-red-50/45 hover:bg-red-50/80"
+            : isCancelAck || isOverdue
+              ? "bg-amber-50/35 hover:bg-amber-50/70"
+              : deliveryCollapsedBg
+                ? cn(deliveryCollapsedBg, "hover:brightness-[0.98]")
+                : isStock
+                  ? "bg-slate-50/70 hover:bg-slate-50"
+                  : "bg-white hover:bg-slate-50/70"
   );
 }
 
 /**
- * Rozwinięty wiersz zostaje w liście (bez zaokrągleń i marginesów — te zawijały 3-pikselowy pasek po
- * lewej i przesuwały sąsiadów), ale ma wyraźne granice: ramkę na całym obwodzie i krótki cień pod
- * spodem, żeby było widać, gdzie otwarta prośba się kończy, a zaczyna następna.
+ * Rozwinięty wiersz zostaje w liście (bez zaokrągleń i marginesów — przesuwały sąsiadów), ale ma
+ * wyraźne granice: ramkę na całym obwodzie, żeby było widać, gdzie otwarta prośba się kończy.
  */
 export const mojeShipmentExpandedRowShellClass = cn(
-  "relative z-[1] shadow-[0_10px_18px_-12px_rgba(21,25,32,0.12)]",
+  "relative z-[1]",
   // Ramka na warstwie nad treścią (::after) — wewnętrzny cień na samym wierszu zasłaniał biały panel
-  // szczegółów. Góra, prawa i dół w kolorze Linii Mocnej; z lewej zostaje pasek koloru wiersza.
-  "after:pointer-events-none after:absolute after:inset-0 after:content-['']",
-  "after:shadow-[inset_0_1px_0_#c9ced6,inset_-1px_0_0_#c9ced6,inset_0_-1px_0_#c9ced6]"
+  // szczegółów. Obwód w kolorze Linii Mocnej, bez cienia w karcie (DESIGN.md → Cichy cień).
+  "after:pointer-events-none after:absolute after:inset-0 after:content-[''] after:ring-1 after:ring-inset after:ring-slate-300"
 );
 
 export const mojeShipmentExpandedMetaShellClass =

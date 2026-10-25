@@ -7,13 +7,13 @@ const CHIP_BASE =
 /** Chip statusu notatki — wiersz listy ZK. */
 export const zkCaseNoteProsbaRowChipClass = cn(
   CHIP_BASE,
-  "px-1.5 py-0.5 text-[10px] normal-case tracking-normal"
+  "px-1.5 py-0.5 text-[0.625rem] normal-case tracking-normal"
 );
 
 /** Chip statusu notatki — modal / sekcja edycji. */
 export const zkCaseNoteProsbaModalChipClass = cn(
   CHIP_BASE,
-  "px-2 py-0.5 text-[10px] font-semibold"
+  "px-2 py-0.5 text-[0.625rem] font-semibold"
 );
 
 const TONE_CHIP: Record<ZkCaseNoteProsbaStatusCopy["tone"], string> = {

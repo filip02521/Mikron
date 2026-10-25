@@ -3,12 +3,9 @@
 import type { IndividualOrder } from "@/types/database";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { SectionListLabel } from "@/components/ui/SectionListLabel";
 import {
-  IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
-  IconClipboardList,
 } from "@/components/icons/StrokeIcons";
 import { VerificationPathBadge } from "@/components/verification/VerificationInformacjaPathPanel";
 import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
@@ -51,7 +48,7 @@ function QueueNav({
         type="button"
         variant="ghost"
         size="sm"
-        className="h-8 w-8 px-0"
+        className="size-11 px-0 sm:size-8"
         disabled={!prevId}
         aria-label="Poprzednia prośba w kolejce"
         onClick={() => prevId && onSelect(prevId)}
@@ -65,34 +62,13 @@ function QueueNav({
         type="button"
         variant="ghost"
         size="sm"
-        className="h-8 w-8 px-0"
+        className="size-11 px-0 sm:size-8"
         disabled={!nextId}
         aria-label="Następna prośba w kolejce"
         onClick={() => nextId && onSelect(nextId)}
       >
         <IconChevronRight size={16} />
       </Button>
-    </div>
-  );
-}
-
-function QueueFooter({ layout }: { layout: "page" | "modal" }) {
-  const label =
-    layout === "modal"
-      ? "Formularz uzupełnienia obok"
-      : "Formularz uzupełnienia poniżej";
-
-  return (
-    <div
-      className={cn(
-        "flex items-center justify-center gap-1.5 border-t border-amber-200/90 px-3 py-2 text-[11px] font-medium text-amber-900/85",
-        layout === "page" ? "bg-amber-50/70" : "bg-amber-50/50"
-      )}
-    >
-      {layout === "page" ? (
-        <IconChevronDown size={14} className="shrink-0 opacity-70" aria-hidden />
-      ) : null}
-      <span>{label}</span>
     </div>
   );
 }
@@ -126,27 +102,15 @@ export function VerificationQueuePicker({
   if (layout === "modal") {
     return (
       <div className="flex min-h-0 shrink-0 flex-col lg:min-h-0 lg:shrink lg:border-r lg:border-slate-200">
-        <div className="relative overflow-hidden rounded-tl-md border-b border-amber-200/80 bg-white">
-          <div className={items.length > 1 ? "pr-[7.5rem] sm:pr-[8rem]" : undefined}>
-            <SectionListLabel
-              domain="panel"
-              title="Kolejka"
-              hint="Wybierz prośbę - uzupełnisz ją obok"
-              hintMode="tooltip"
-              count={items.length}
-              icon={<IconClipboardList size={17} />}
-              tileClassName="bg-amber-100 text-amber-800"
-            />
-          </div>
-          {items.length > 1 ? (
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 sm:right-3">
-              {headerNav}
-            </div>
-          ) : null}
-        </div>
+        <QueueHeader
+          title="Kolejka"
+          description="Wybierz prośbę, uzupełnisz ją obok."
+          count={items.length}
+          nav={items.length > 1 ? headerNav : null}
+        />
         <ul
           className={cn(
-            "divide-y divide-amber-100/90 overflow-y-auto overscroll-contain bg-white",
+            "divide-y divide-slate-100 overflow-y-auto overscroll-contain bg-white",
             listMaxHeight,
             "lg:min-h-0 lg:flex-1"
           )}
@@ -165,40 +129,26 @@ export function VerificationQueuePicker({
             />
           ))}
         </ul>
-        <QueueFooter layout="modal" />
       </div>
     );
   }
 
   return (
-    <section
-      aria-label="Kolejka do weryfikacji"
-      className="mx-3 my-3 overflow-hidden rounded-lg border border-amber-200/90 bg-white shadow-sm ring-1 ring-amber-100/50 sm:mx-4"
-    >
-      <div className="relative border-b border-amber-200/80 bg-amber-50">
-        <div className={items.length > 1 ? "pr-[7.5rem] sm:pr-[8rem]" : undefined}>
-          <SectionListLabel
-            domain="panel"
-            title="Kolejka do weryfikacji"
-            hint={
-              items.length === 1
-                ? "Jedna prośba - uzupełnij formularz poniżej"
-                : "Kliknij wpis - formularz pod kolejką"
-            }
-            hintMode="tooltip"
-            count={items.length}
-            icon={<IconClipboardList size={17} />}
-            tileClassName="bg-amber-100 text-amber-800"
-          />
-        </div>
-        {items.length > 1 ? (
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 sm:right-3">{headerNav}</div>
-        ) : null}
-      </div>
+    <section aria-label="Kolejka do weryfikacji" className="border-b border-slate-100">
+      <QueueHeader
+        title="Kolejka do weryfikacji"
+        description={
+          items.length === 1
+            ? "Jedna prośba. Uzupełnij formularz poniżej."
+            : "Wybierz prośbę, formularz jest pod kolejką."
+        }
+        count={items.length}
+        nav={items.length > 1 ? headerNav : null}
+      />
 
       <ul
         className={cn(
-          "relative divide-y divide-amber-100 overflow-y-auto overscroll-contain bg-white",
+          "relative divide-y divide-slate-100 overflow-y-auto overscroll-contain bg-white",
           listMaxHeight,
           scrollable &&
             "after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-6 after:bg-gradient-to-t after:from-white after:to-transparent"
@@ -219,8 +169,34 @@ export function VerificationQueuePicker({
         ))}
       </ul>
 
-      <QueueFooter layout="page" />
     </section>
+  );
+}
+
+function QueueHeader({
+  title,
+  description,
+  count,
+  nav,
+}: {
+  title: string;
+  description: string;
+  count: number;
+  nav: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-3 py-3 sm:px-4">
+      <div className="min-w-0">
+        <h2 className="flex items-center gap-1.5 text-sm font-semibold text-slate-900">
+          {title}
+          <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums text-slate-600">
+            {count}
+          </span>
+        </h2>
+        <p className="mt-0.5 text-xs text-slate-600">{description}</p>
+      </div>
+      {nav ? <div className="shrink-0">{nav}</div> : null}
+    </div>
   );
 }
 
@@ -258,12 +234,9 @@ function VerificationQueueRow({
         }
         onClick={onSelect}
         className={cn(
-          "group relative w-full border-l-[3px] text-left transition",
+          "group relative w-full text-left transition-colors duration-150",
           density === "compact" ? "px-3 py-3 sm:px-4" : "px-4 py-3.5",
-          active
-            ? "border-l-amber-500 bg-amber-50/90 shadow-[inset_0_1px_0_0_rgba(251,191,36,0.15)]"
-            : "border-l-transparent bg-white hover:bg-amber-50/50",
-          pathUi?.path === "stock_out" && !active && "border-l-amber-300/80"
+          active ? "bg-indigo-50" : "bg-white hover:bg-slate-50"
         )}
       >
         <div className="flex items-start gap-2.5">
@@ -271,8 +244,8 @@ function VerificationQueueRow({
             className={cn(
               "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
               active
-                ? "border-amber-600 bg-amber-600"
-                : "border-slate-300 bg-white group-hover:border-amber-300"
+                ? "border-indigo-600 bg-indigo-600"
+                : "border-slate-300 bg-white group-hover:border-slate-400"
             )}
             aria-hidden
           >
@@ -283,20 +256,20 @@ function VerificationQueueRow({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5">
               {showIndex ? (
-                <span className="text-[11px] font-semibold tabular-nums text-slate-400">
+                <span className="text-[0.6875rem] font-semibold tabular-nums text-slate-500">
                   {index + 1}.
                 </span>
               ) : null}
               <p className="text-sm font-semibold text-slate-900">
                 {order.sales_person?.name ?? "Handlowiec"}
               </p>
-              {pathUi ? <VerificationPathBadge ui={pathUi} className="text-[10px]" /> : null}
+              {pathUi ? <VerificationPathBadge ui={pathUi} className="text-[0.625rem]" /> : null}
               {ready ? (
-                <span className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
+                <span className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-[0.625rem] font-semibold text-emerald-800">
                   Gotowe
                 </span>
               ) : missing.length ? (
-                <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+                <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[0.625rem] font-semibold text-amber-900">
                   Brakuje {missing.length}
                 </span>
               ) : null}
@@ -307,7 +280,7 @@ function VerificationQueueRow({
               {order.products}
             </p>
             {density === "compact" && active && missing.length ? (
-              <p className="mt-1 text-[11px] font-medium text-amber-900">
+              <p className="mt-1 text-[0.6875rem] font-medium text-amber-900">
                 Brakuje: {missing.join(", ")}
               </p>
             ) : null}
@@ -315,23 +288,23 @@ function VerificationQueueRow({
               <MyOrderAssignedClient name={clientName} className="mt-1" />
             ) : null}
             {requestNote ? (
-              <p className="mt-1 line-clamp-3 text-[11px] leading-snug text-slate-500">
+              <p className="mt-1 line-clamp-3 text-[0.6875rem] leading-snug text-slate-500">
                 <span className={salesRequestNoteLabelClass}>Uwagi</span>{" "}
                 <span className="font-medium text-slate-800">{requestNote}</span>
               </p>
             ) : null}
-            <p className="mt-1 text-[11px] text-slate-500">
+            <p className="mt-1 text-[0.6875rem] text-slate-500">
               {formatPlDate(order.action_at.slice(0, 10))}
               {pathUi ? ` · ${pathUi.queueHint}` : ""}
               {order.subiekt_tw_id ? " · Subiekt" : ""}
             </p>
             {density === "comfortable" && missing.length ? (
-              <p className="mt-1 text-[11px] font-medium text-amber-900">
+              <p className="mt-1 text-[0.6875rem] font-medium text-amber-900">
                 Brakuje: {missing.join(", ")}
               </p>
             ) : null}
             {density === "comfortable" && ready ? (
-              <p className="mt-1 text-[11px] font-medium text-emerald-700">
+              <p className="mt-1 text-[0.6875rem] font-medium text-emerald-700">
                 Gotowe do zatwierdzenia
               </p>
             ) : null}
