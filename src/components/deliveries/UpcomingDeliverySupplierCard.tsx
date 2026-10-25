@@ -136,9 +136,12 @@ function cardBorder(status: DeliveryStatus): string {
 export function UpcomingDeliverySupplierCard({
   supplier,
   compact = false,
+  lateLabel,
 }: {
   supplier: UpcomingDeliverySupplier;
   compact?: boolean;
+  /** Sekcja „Po terminie”: np. „4 dni po terminie · termin 21.10” zamiast samej odznaki. */
+  lateLabel?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -182,7 +185,7 @@ export function UpcomingDeliverySupplierCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <p className={cn(panelTypography.rowTitle, "min-w-0 truncate", compact && "text-xs", deliveryStatus === "received" && "text-slate-500 line-through decoration-slate-400/60")}>{supplier.supplierName}</p>
-            {supplier.isOverdueDeadline ? (
+            {supplier.isOverdueDeadline && !lateLabel ? (
               <span className="shrink-0 rounded-md bg-rose-100 px-1.5 py-0.5 text-[0.625rem] font-semibold text-rose-800 ring-1 ring-rose-200/80">
                 Po terminie
               </span>
@@ -191,6 +194,9 @@ export function UpcomingDeliverySupplierCard({
               {badge.label}
             </span>
           </div>
+          {lateLabel ? (
+            <p className="mt-0.5 text-[0.8125rem] font-medium tabular-nums text-rose-700">{lateLabel}</p>
+          ) : null}
           <div className={cn("mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5", compact && "mt-0.5")}>
             {supplier.zdDocNumber ? (
               <span className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[0.625rem] font-medium text-slate-600 ring-1 ring-inset ring-slate-200/50">

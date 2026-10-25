@@ -13,6 +13,7 @@ import {
   summarizeDeliverySchedule,
   upcomingDeliveryPresetRange,
   type UpcomingDeliveryRangePreset,
+  collectOverdueDeliveries,
 } from "@/lib/data/upcoming-deliveries-shared";
 import { formatDateString } from "@/lib/orders/dates";
 import { useLatest } from "@/hooks/useLatest";
@@ -27,6 +28,7 @@ import { IconChevronLeft, IconChevronRight } from "@/components/icons/StrokeIcon
 import { cn } from "@/lib/cn";
 import { adminPageShellClass, panelTypography } from "@/lib/ui/ontime-theme";
 import { DeliveryTodaySection } from "@/components/deliveries/DeliveryTodaySection";
+import { DeliveryOverdueSection } from "@/components/deliveries/DeliveryOverdueSection";
 import { DeliveryWeekGrid } from "@/components/deliveries/DeliveryWeekGrid";
 import type { SupplierWithSchedule } from "@/types/database";
 import { BrandLoader } from "@/components/ui/BrandLoader";
@@ -158,6 +160,7 @@ export function UpcomingDeliveriesClient({
   }, [dateFrom, dateTo, loadData]);
 
   const days = useMemo(() => payload?.days ?? [], [payload?.days]);
+  const overdueDeliveries = useMemo(() => collectOverdueDeliveries(days, todayDateKey), [days, todayDateKey]);
   const summary = payload?.summary;
   const journalReceivedToday = useMemo(
     () => payload?.receivedSupplierIdsToday ?? [],
@@ -287,6 +290,8 @@ export function UpcomingDeliveriesClient({
       {error ? <Alert tone="error">{error}</Alert> : null}
 
       {!error && todayDay ? <DeliveryTodaySection todayDay={todayDay} pending={pending} /> : null}
+
+      {!error ? <DeliveryOverdueSection items={overdueDeliveries} /> : null}
 
       {!error && !pending && weekGridEmpty && days.length === 0 ? (
         <Card>
