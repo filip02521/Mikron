@@ -86,7 +86,7 @@ export function DailyPanelActionsBar({
         <div className={panelToolbarActionsClass}>
           <Button
             size="sm"
-            className={cn(panelToolbarControlHeightClass, "min-h-0 flex-1 gap-1.5 px-4 py-0 text-sm sm:flex-none")}
+            className={cn(panelToolbarControlHeightClass, "min-h-0 flex-1 gap-1.5 px-4 py-0 text-sm min-[520px]:flex-none")}
             onClick={onNewRequest}
           >
             <IconPlusCircle size={15} />

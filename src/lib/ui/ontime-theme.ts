@@ -1032,9 +1032,10 @@ export const panelToolbarShellClass = "flex w-full min-w-0 items-center";
 export const panelToolbarControlHeightClass = "h-11 sm:h-10";
 
 export const panelToolbarRowClass =
-  "flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:items-center";
+  // Jeden rząd od 520 px — węższy ekran nie pomieści pola obok czterech przycisków.
+  "flex w-full min-w-0 flex-col gap-2 min-[520px]:flex-row min-[520px]:items-center";
 
-export const panelToolbarSearchWrapClass = "flex min-w-0 flex-1 items-center sm:min-w-[12rem]";
+export const panelToolbarSearchWrapClass = "flex min-w-0 flex-1 items-center min-[520px]:min-w-[12rem]";
 
 export const panelToolbarSearchInputClass =
   "h-11 sm:h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm transition-colors duration-150 placeholder:text-slate-500 hover:border-slate-300 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100";
