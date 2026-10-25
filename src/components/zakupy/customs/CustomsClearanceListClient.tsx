@@ -17,6 +17,10 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input, Select, fieldControlClass } from "@/components/ui/Field";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { IconSearch } from "@/components/icons/StrokeIcons";
+import { polishPlural } from "@/lib/email/polish-plural";
 import { SHIPMENT_STAGE_LABEL, shipmentAlerts, shipmentStage, todayInWarsaw } from "@/lib/customs/customs-shipment";
 import { ALERT_BADGE, STAGE_BADGE } from "./CustomsShipmentCard";
 import { matchesSearchWords } from "@/lib/search/keywords";
@@ -33,10 +37,17 @@ export function CustomsClearanceListClient({
   suppliers,
   clearances,
   aiEnabled,
+  title,
+  description,
+  children,
 }: {
   suppliers: CustomsSupplierOption[];
   clearances: CustomsClearanceListItem[];
   aiEnabled: boolean;
+  title: string;
+  description?: string;
+  /** Panele przesyłek i poczty agencji — między nowym formularzem a listą odpraw. */
+  children?: React.ReactNode;
 }) {
   const router = useRouter();
   const [creating, setCreating] = useState(clearances.length === 0);
@@ -170,6 +181,11 @@ export function CustomsClearanceListClient({
 
   return (
     <div className="space-y-4">
+      <PageHeader
+        title={title}
+        description={description}
+        actions={creating ? null : <Button onClick={() => setCreating(true)}>Nowa odprawa</Button>}
+      />
       {creating ? (
         <Card>
           <CardHeader
@@ -295,44 +311,57 @@ export function CustomsClearanceListClient({
             </Button>
           </div>
         </Card>
-      ) : (
-        <div className="flex justify-end">
-          <Button onClick={() => setCreating(true)}>Nowa odprawa</Button>
-        </div>
-      )}
-
-      {clearances.length > 3 ? (
-        <div className="grid gap-2 sm:grid-cols-3">
-          <Select value={filterSupplier} onChange={(e) => setFilterSupplier(e.target.value)} aria-label="Dostawca">
-            <option value="">Wszyscy dostawcy</option>
-            {supplierNames.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </Select>
-          <Select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value as "" | "draft" | "sent")}
-            aria-label="Status"
-          >
-            <option value="">Wszystkie statusy</option>
-            <option value="draft">Mail w przygotowaniu</option>
-            <option value="sent">Mail wysłany</option>
-          </Select>
-          <Input
-            value={filterText}
-            onChange={(e) => setFilterText(e.target.value)}
-            placeholder="Szukaj: nr faktury lub ZD"
-            aria-label="Szukaj"
-          />
-        </div>
       ) : null}
 
+      {children}
+
       {clearances.length ? (
-        <Card padding={false}>
+        <Card padding={false} className="overflow-hidden">
+          <CardHeader inset title="Odprawy" />
+          {clearances.length > 3 ? (
+            <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-5 py-3 sm:px-6">
+              <SegmentedControl
+                value={filterStatus || "all"}
+                onChange={(v) => setFilterStatus(v === "all" ? "" : v)}
+                ariaLabel="Status maila"
+                density="compact"
+                options={[
+                  { value: "all", label: "Wszystkie" },
+                  { value: "draft", label: "Mail w przygotowaniu" },
+                  { value: "sent", label: "Mail wysłany" },
+                ]}
+              />
+              <Select
+                value={filterSupplier}
+                onChange={(e) => setFilterSupplier(e.target.value)}
+                aria-label="Dostawca"
+                className="sm:w-56"
+              >
+                <option value="">Wszyscy dostawcy</option>
+                {supplierNames.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </Select>
+              <div className="relative order-first w-full sm:order-none sm:w-60">
+                <IconSearch size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden />
+                <Input
+                  type="search"
+                  value={filterText}
+                  onChange={(e) => setFilterText(e.target.value)}
+                  placeholder="Nr faktury, ZD lub przesyłki"
+                  aria-label="Szukaj odprawy"
+                  className="pl-9"
+                />
+              </div>
+              <span className="ml-auto text-[0.6875rem] tabular-nums text-slate-500">
+                {polishPlural(visible.length, "odprawa", "odprawy", "odpraw")}
+              </span>
+            </div>
+          ) : null}
           {!visible.length ? (
-            <p className="px-5 py-4 text-sm text-slate-500">Brak odpraw dla wybranych filtrów.</p>
+            <p className="px-5 py-6 text-sm text-slate-600 sm:px-6">Brak odpraw dla wybranych filtrów.</p>
           ) : null}
           <ul className="divide-y divide-slate-100">
             {visible.map((c) => (

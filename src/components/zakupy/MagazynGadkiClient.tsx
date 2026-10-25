@@ -45,25 +45,21 @@ import { formatWarsawDateTime } from "@/lib/time/warsaw";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { CardHeader } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { fieldControlClass } from "@/components/ui/Field";
-import { PanelSummaryMetric } from "@/components/ui/PanelSummaryMetric";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Spinner } from "@/components/ui/Spinner";
 import { ZkWatchAddBar } from "@/components/notatnik/ZkWatchAddBar";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import {
   IconChevronDown,
   IconClipboardList,
   IconClock,
   IconLayers,
-  IconLink,
   IconLinkOff,
-  IconMagazynGadki,
   IconNotepad,
-  IconPackage,
   IconPencil,
   IconPlusCircle,
   IconSearch,
@@ -71,12 +67,11 @@ import {
 } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import {
-  panelSectionInsetClass,
   panelSubsectionInsetClass,
   panelTypography,
-  sectionIconTileBrandClass,
 } from "@/lib/ui/ontime-theme";
 import { matchesSearchWords } from "@/lib/search/keywords";
+import { polishPlural, polishPozycjeLabel } from "@/lib/email/polish-plural";
 
 export type GadkiSyncBanner = {
   changes: { zkNumber: string; text: string }[];
@@ -107,16 +102,12 @@ function matchesSearch(line: ExternalWarehouseLineDto, q: string): boolean {
 function GadkiSection({
   title,
   hint,
-  icon,
-  iconTileClassName,
   headerAside,
   children,
   className,
 }: {
   title: string;
   hint?: string;
-  icon: React.ReactNode;
-  iconTileClassName?: string;
   headerAside?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
@@ -124,18 +115,13 @@ function GadkiSection({
   return (
     <section
       className={cn(
-        "overflow-hidden rounded-md border border-slate-200/80 bg-[var(--card)] shadow-sm",
+        "overflow-hidden rounded-[var(--radius-panel)] border border-slate-200 bg-[var(--card)] shadow-[var(--shadow-card)]",
         className
       )}
     >
       <CardHeader
         inset
         density="compact"
-        leading={
-          <SectionHeadingIcon tileClassName={iconTileClassName ?? sectionIconTileBrandClass}>
-            {icon}
-          </SectionHeadingIcon>
-        }
         title={title}
         hint={hint}
         action={headerAside}
@@ -458,23 +444,17 @@ export function MagazynGadkiClient({
 
   return (
     <div className="space-y-4">
-      <Card padding={false} className="overflow-hidden">
-        <CardHeader
-          inset
-          density="compact"
-          leading={
-            <SectionHeadingIcon tileClassName="bg-emerald-100 text-emerald-800" className="h-9 w-9">
-              <IconMagazynGadki size={18} />
-            </SectionHeadingIcon>
-          }
+      <div>
+        <PageHeader
           title={siteName}
           description="Stałe ZK magazynu zewnętrznego - palety, notatki i zmiany z Subiekta."
           hint="Pozycje aktualizują się same z Subiekta (przy wejściu i co minutę przy otwartej stronie) oraz po „Odśwież teraz”. Gdy ilość w ZK spadnie, palety dopasowują się od ostatniej. Koszty pakowania/dostawy są ukryte."
-          actionAlign="inline"
-          action={
+          className="!mb-2"
+          actions={
             canMutate ? (
               <Button
                 type="button"
+                variant="secondary"
                 size="sm"
                 disabled={pending || links.length === 0}
                 onClick={() =>
@@ -491,36 +471,27 @@ export function MagazynGadkiClient({
             ) : null
           }
         />
-
-        <div className={cn(panelSectionInsetClass, "space-y-3 border-b border-slate-100")}>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={subiektReachable ? "success" : "warning"}>
-              {subiektReachable ? "Subiekt online" : "Subiekt offline"}
-            </Badge>
-            {!canMutate ? <Badge variant="warning">Podgląd</Badge> : null}
-            {latestSync ? (
-              <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
-                <IconClock size={13} strokeWidth={1.75} />
-                <span className="tabular-nums">
-                  Sync {formatWarsawDateTime(latestSync)}
-                </span>
-              </span>
-            ) : (
-              <span className="text-xs text-slate-500">Brak synchronizacji</span>
-            )}
-            <span className="text-xs text-slate-400" title={subiektMessage}>
-              {subiektLabel}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-slate-500">
+          <Badge variant={subiektReachable ? "success" : "warning"}>
+            {subiektReachable ? "Subiekt online" : "Subiekt offline"}
+          </Badge>
+          {!canMutate ? <Badge variant="warning">Podgląd</Badge> : null}
+          <span className="tabular-nums">
+            {polishPlural(links.length, "ZK", "ZK", "ZK")} · {polishPozycjeLabel(totalLines)} ·{" "}
+            {polishPlural(totalPallets, "paleta", "palety", "palet")} ·{" "}
+            {polishPlural(notes.length, "notatka", "notatki", "notatek")}
+          </span>
+          {latestSync ? (
+            <span className="inline-flex items-center gap-1.5">
+              <IconClock size={13} strokeWidth={1.75} aria-hidden />
+              <span className="tabular-nums">Sync {formatWarsawDateTime(latestSync)}</span>
             </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <PanelSummaryMetric label="ZK" value={links.length} />
-            <PanelSummaryMetric label="Pozycje" value={totalLines} />
-            <PanelSummaryMetric label="Palety" value={totalPallets} />
-            <PanelSummaryMetric label="Notatki" value={notes.length} />
-          </div>
+          ) : (
+            <span>Brak synchronizacji</span>
+          )}
+          <span title={subiektMessage}>{subiektLabel}</span>
         </div>
-      </Card>
+      </div>
 
       {!canMutate ? (
         <Alert tone="warning" title="Podgląd - bez sync">
@@ -585,8 +556,6 @@ export function MagazynGadkiClient({
       <GadkiSection
         title="Powiązane ZK"
         hint="Stałe dokumenty ZK z Subiekta przypięte do magazynu Gądki (max 10)."
-        icon={<IconLink size={16} />}
-        iconTileClassName="bg-sky-100 text-sky-800"
         headerAside={
           links.length > 0 ? (
             <button
@@ -610,7 +579,7 @@ export function MagazynGadkiClient({
           <div className="overflow-hidden">
             <div className="space-y-4">
               {canMutate ? (
-                <div className="rounded-md border border-dashed border-slate-200 bg-slate-50/60 p-3 sm:p-3.5">
+                <div className="rounded-lg bg-slate-50 p-3 sm:p-3.5">
                   <p className="mb-2 text-xs font-medium text-slate-600">Dodaj ZK</p>
                   <ZkWatchAddBar
                     query={query}
@@ -663,7 +632,7 @@ export function MagazynGadkiClient({
                           {link.clientLabel || "-"}
                           {link.label ? ` · ${link.label}` : ""}
                         </p>
-                        <p className="mt-1 text-[0.6875rem] tabular-nums text-slate-400">
+                        <p className="mt-1 text-[0.6875rem] tabular-nums text-slate-500">
                           {new Set(link.lines.map((l) => l.key)).size} poz.
                           {link.lastSyncedAt
                             ? ` · ${link.syncError ? "stan z" : "aktualne na"} ${formatWarsawDateTime(link.lastSyncedAt)}`
@@ -724,8 +693,6 @@ export function MagazynGadkiClient({
         <GadkiSection
           title="Pozycje"
           hint="Grupowanie po paletach lub płaska lista. Wyszukiwanie działa po wszystkich ZK."
-          icon={<IconPackage size={16} />}
-          iconTileClassName="bg-emerald-100 text-emerald-800"
           headerAside={
             <SegmentedControl
               value={viewMode}
@@ -742,7 +709,8 @@ export function MagazynGadkiClient({
             <div className="relative">
               <IconSearch
                 size={15}
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-emerald-700/50"
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                aria-hidden
               />
               <input
                 type="search"
@@ -751,7 +719,7 @@ export function MagazynGadkiClient({
                 placeholder="Szukaj symbolu, nazwy, palety, notatki…"
                 className={cn(
                   fieldControlClass("default"),
-                  "w-full border-emerald-100/90 bg-emerald-50/20 pl-9 placeholder:text-slate-400 focus:border-emerald-300 focus:ring-emerald-500/15"
+                  "w-full pl-9"
                 )}
               />
             </div>
@@ -778,15 +746,15 @@ export function MagazynGadkiClient({
                   <article
                     key={link.id}
                     id={`zk-${link.id}`}
-                    className="scroll-mt-24 overflow-hidden rounded-lg border border-emerald-100/80 bg-white shadow-sm "
+                    className="scroll-mt-24 overflow-hidden rounded-lg border border-indigo-100/80 bg-white shadow-sm "
                   >
-                    <header className="flex flex-wrap items-start justify-between gap-3 border-b border-emerald-50 bg-emerald-50/70 px-3.5 py-3 sm:px-4">
+                    <header className="flex flex-wrap items-start justify-between gap-3 border-b border-indigo-50 bg-indigo-50/70 px-3.5 py-3 sm:px-4">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="text-sm font-semibold tracking-tight text-slate-900">
                             {link.zkNumber}
                           </h3>
-                          <span className="inline-flex items-center rounded-md bg-white/90 px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums text-emerald-800 ring-1 ring-inset ring-emerald-200/70">
+                          <span className="inline-flex items-center rounded-md bg-white/90 px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums text-indigo-800 ring-1 ring-inset ring-indigo-200/70">
                             {uniquePozCount}
                             {deferredSearch
                               ? ` / ${new Set(link.lines.map((l) => l.key)).size}`
@@ -795,7 +763,7 @@ export function MagazynGadkiClient({
                           </span>
                           {labeledPalletCount > 0 ? (
                             <span className="inline-flex items-center gap-1 rounded-md bg-white/90 px-1.5 py-0.5 text-[0.625rem] font-medium text-slate-600 ring-1 ring-inset ring-slate-200/80">
-                              <IconLayers size={10} className="text-emerald-700/70" />
+                              <IconLayers size={10} className="text-indigo-700/70" />
                               {labeledPalletCount}{" "}
                               {labeledPalletCount === 1 ? "paleta" : "palet"}
                             </span>
@@ -851,7 +819,7 @@ export function MagazynGadkiClient({
                                     "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[0.6875rem] font-semibold tracking-wide",
                                     isUnassigned
                                       ? "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200/80"
-                                      : "bg-emerald-50 text-emerald-900 ring-1 ring-inset ring-emerald-200/80"
+                                      : "bg-indigo-50 text-indigo-900 ring-1 ring-inset ring-indigo-200/80"
                                   )}
                                 >
                                   {!isUnassigned ? (
@@ -859,7 +827,7 @@ export function MagazynGadkiClient({
                                   ) : null}
                                   {group.title}
                                 </span>
-                                <span className="text-[0.6875rem] tabular-nums text-slate-400">
+                                <span className="text-[0.6875rem] tabular-nums text-slate-500">
                                   {group.lines.length}{" "}
                                   {group.lines.length === 1 ? "wiersz" : "wiersze"}
                                 </span>
@@ -963,7 +931,7 @@ export function MagazynGadkiClient({
                                       </span>
                                     ) : null}
                                     {line.lineNote && line.lineNote !== line.note ? (
-                                      <span className="mt-0.5 block text-xs leading-snug text-slate-400">
+                                      <span className="mt-0.5 block text-xs leading-snug text-slate-500">
                                         Pozycja · {line.lineNote}
                                       </span>
                                     ) : null}
@@ -1026,8 +994,6 @@ export function MagazynGadkiClient({
       <GadkiSection
         title="Notatki"
         hint="Notatki magazynu lub przypięte do konkretnego ZK."
-        icon={<IconNotepad size={16} />}
-        iconTileClassName="bg-violet-100 text-violet-800"
         headerAside={
           notes.length > 0 ? (
             <select
@@ -1158,7 +1124,7 @@ export function MagazynGadkiClient({
                               {note.zkNumber}
                             </Badge>
                           ) : (
-                            <span className="text-slate-400">magazyn</span>
+                            <span className="text-slate-500">magazyn</span>
                           )}
                         </p>
                       </div>
@@ -1211,8 +1177,6 @@ export function MagazynGadkiClient({
             ? "Zmiany treści ZK z Subiekta (ilości, dodane/usunięte pozycje)."
             : "Wszystkie zdarzenia: sync ZK, palety, notatki, powiązania."
         }
-        icon={<IconClipboardList size={16} />}
-        iconTileClassName="bg-slate-100 text-slate-700"
         headerAside={
           changeLog.length > 0 ? (
             <div className="flex flex-wrap items-center gap-1.5">
@@ -1396,7 +1360,7 @@ function RenamePalletForm({
 
   return (
     <form
-      className="flex flex-wrap items-center gap-1.5 rounded-lg border border-emerald-100/90 bg-white/90 px-2 py-1.5 text-xs shadow-sm "
+      className="flex flex-wrap items-center gap-1.5 rounded-lg border border-indigo-100/90 bg-white/90 px-2 py-1.5 text-xs shadow-sm "
       onSubmit={(e) => {
         e.preventDefault();
         if (!from || !to.trim()) return;
@@ -1410,7 +1374,7 @@ function RenamePalletForm({
         onChange={(e) => setFromDraft(e.target.value)}
         className={cn(
           fieldControlClass("default"),
-          "min-w-[4.5rem] border-emerald-100/80 py-1 text-xs"
+          "min-w-[4.5rem] border-indigo-100/80 py-1 text-xs"
         )}
         disabled={disabled}
       >
@@ -1420,7 +1384,7 @@ function RenamePalletForm({
           </option>
         ))}
       </select>
-      <span className="text-emerald-600/50" aria-hidden>
+      <span className="text-indigo-600/50" aria-hidden>
         →
       </span>
       <input
@@ -1429,7 +1393,7 @@ function RenamePalletForm({
         placeholder="Nowa nazwa"
         className={cn(
           fieldControlClass("default"),
-          "w-28 border-emerald-100/80 py-1 text-xs"
+          "w-28 border-indigo-100/80 py-1 text-xs"
         )}
         disabled={disabled}
       />
@@ -1438,7 +1402,7 @@ function RenamePalletForm({
         size="sm"
         variant="ghost"
         disabled={disabled || !to.trim()}
-        className="text-emerald-800 hover:bg-emerald-50"
+        className="text-indigo-800 hover:bg-indigo-50"
       >
         OK
       </Button>
@@ -1451,13 +1415,13 @@ function LineStatusChip({
   tone = "neutral",
 }: {
   children: React.ReactNode;
-  tone?: "neutral" | "emerald" | "amber" | "slate";
+  tone?: "neutral" | "info" | "amber" | "slate";
 }) {
   return (
     <span
       className={cn(
         "inline-flex items-center rounded px-1.5 py-0.5 text-[0.625rem] font-semibold",
-        tone === "emerald" && "bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200/70",
+        tone === "info" && "bg-indigo-50 text-indigo-800 ring-1 ring-inset ring-indigo-200/70",
         tone === "amber" && "bg-amber-50 text-amber-900 ring-1 ring-inset ring-amber-200/80",
         tone === "slate" && "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200/80",
         tone === "neutral" && "bg-sky-50 text-sky-900 ring-1 ring-inset ring-sky-200/70"
@@ -1523,7 +1487,7 @@ function LineRow({
     <li
       className={cn(
         "group px-3 py-3 transition-colors sm:px-3.5",
-        editingOpen ? "bg-emerald-50/35" : "hover:bg-slate-50/80"
+        editingOpen ? "bg-indigo-50/35" : "hover:bg-slate-50/80"
       )}
     >
       <div className="flex items-start gap-3 sm:items-center">
@@ -1535,7 +1499,7 @@ function LineRow({
               </span>
             ) : null}
             {isSplit ? (
-              <LineStatusChip tone={line.isRemainder ? "slate" : "emerald"}>
+              <LineStatusChip tone={line.isRemainder ? "slate" : "info"}>
                 {line.isRemainder ? "reszta" : "udział"}
               </LineStatusChip>
             ) : null}
@@ -1545,7 +1509,7 @@ function LineRow({
             {canMutate && line.palletLabel && !editingOpen ? (
               <span
                 className={cn(
-                  "inline-flex max-w-[8rem] truncate rounded-md bg-emerald-50/80 px-1.5 py-0.5 text-[0.625rem] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200/70",
+                  "inline-flex max-w-[8rem] truncate rounded-md bg-indigo-50/80 px-1.5 py-0.5 text-[0.625rem] font-semibold text-indigo-800 ring-1 ring-inset ring-indigo-200/70",
                   "[@media(hover:hover)_and_(pointer:fine)]:group-hover:hidden"
                 )}
               >
@@ -1558,7 +1522,7 @@ function LineRow({
           </p>
           {line.note && !(noteOpen && noteTarget === "share") ? (
             <p className="mt-1 line-clamp-2 text-xs leading-snug text-slate-500">
-              <span className="font-medium text-slate-400">Notatka · </span>
+              <span className="font-medium text-slate-500">Notatka · </span>
               {line.note}
             </p>
           ) : null}
@@ -1568,22 +1532,22 @@ function LineRow({
             canMutate && canEditLineNote ? (
               <button
                 type="button"
-                className="mt-1 line-clamp-2 max-w-full text-left text-xs leading-snug text-slate-400 transition-colors hover:text-sky-800"
+                className="mt-1 line-clamp-2 max-w-full text-left text-xs leading-snug text-slate-500 transition-colors hover:text-sky-800"
                 disabled={disabled}
                 onClick={() => openNoteEditor("line")}
               >
-                <span className="font-medium text-slate-400">Pozycja · </span>
+                <span className="font-medium text-slate-500">Pozycja · </span>
                 {line.lineNote}
               </button>
             ) : (
-              <p className="mt-1 line-clamp-2 text-xs leading-snug text-slate-400">
-                <span className="font-medium text-slate-400">Pozycja · </span>
+              <p className="mt-1 line-clamp-2 text-xs leading-snug text-slate-500">
+                <span className="font-medium text-slate-500">Pozycja · </span>
                 {line.lineNote}
               </p>
             )
           ) : null}
           {isSplit && lineQtyLabel ? (
-            <p className="mt-1 text-[0.6875rem] tabular-nums text-slate-400">
+            <p className="mt-1 text-[0.6875rem] tabular-nums text-slate-500">
               {lineQtyLabel}
             </p>
           ) : null}
@@ -1599,7 +1563,7 @@ function LineRow({
                 : "-"}
             </span>
             {line.quantity != null ? (
-              <span className="ml-1 text-[0.6875rem] font-medium text-slate-400">
+              <span className="ml-1 text-[0.6875rem] font-medium text-slate-500">
                 szt.
               </span>
             ) : null}
@@ -1633,7 +1597,7 @@ function LineRow({
                       placeholder="Nowa paleta…"
                       className={cn(
                         fieldControlClass("default"),
-                        "w-28 border-emerald-100 py-1 text-xs"
+                        "w-28 border-indigo-100 py-1 text-xs"
                       )}
                       disabled={disabled}
                       autoFocus
@@ -1648,7 +1612,7 @@ function LineRow({
                     disabled={disabled}
                     className={cn(
                       fieldControlClass("default"),
-                      "max-w-[9.5rem] border-emerald-100/90 py-1 text-xs"
+                      "max-w-[9.5rem] border-indigo-100/90 py-1 text-xs"
                     )}
                     aria-label={`Paleta: ${line.product}`}
                     onChange={(e) => {
@@ -1674,7 +1638,7 @@ function LineRow({
                   className={cn(
                     "inline-flex max-w-[9.5rem] truncate rounded-md px-2 py-1 text-xs font-semibold",
                     line.palletLabel
-                      ? "bg-emerald-50 text-emerald-900 ring-1 ring-inset ring-emerald-200/70"
+                      ? "bg-indigo-50 text-indigo-900 ring-1 ring-inset ring-indigo-200/70"
                       : "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200/80"
                   )}
                 >
@@ -1688,7 +1652,7 @@ function LineRow({
                 disabled={disabled}
                 className={cn(
                   "gap-1 text-slate-600",
-                  splitOpen && "bg-emerald-100/70 text-emerald-900"
+                  splitOpen && "bg-indigo-100/70 text-indigo-900"
                 )}
                 onClick={() => {
                   setNoteOpen(false);
@@ -1901,12 +1865,12 @@ function SplitSharesEditor({
   const listId = `gadki-pallets-${line.rowKey}`;
 
   return (
-    <div className="mt-3 space-y-3 rounded-lg border border-emerald-100 bg-emerald-50/50 p-3 shadow-sm ">
+    <div className="mt-3 space-y-3 rounded-lg border border-indigo-100 bg-indigo-50/50 p-3 shadow-sm ">
       <div className="space-y-1">
-        <p className="text-xs font-semibold text-emerald-950">
+        <p className="text-xs font-semibold text-indigo-950">
           Rozbicie na palety
           {lineQty != null ? (
-            <span className="ml-1.5 font-normal tabular-nums text-emerald-800/80">
+            <span className="ml-1.5 font-normal tabular-nums text-indigo-800/80">
               · łącznie {lineQty} szt. w ZK
             </span>
           ) : null}
@@ -1926,10 +1890,10 @@ function SplitSharesEditor({
         {rows.map((row, idx) => (
           <li
             key={row.id}
-            className="space-y-1.5 rounded-lg border border-emerald-100/80 bg-white p-2.5 shadow-sm shadow-slate-950/[0.02]"
+            className="space-y-1.5 rounded-lg border border-indigo-100/80 bg-white p-2.5 shadow-sm shadow-slate-950/[0.02]"
           >
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-[0.625rem] font-semibold tabular-nums text-emerald-800 ring-1 ring-inset ring-emerald-200/70">
+              <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-[0.625rem] font-semibold tabular-nums text-indigo-800 ring-1 ring-inset ring-indigo-200/70">
                 {idx + 1}
               </span>
               <input
@@ -1945,7 +1909,7 @@ function SplitSharesEditor({
                 placeholder="Nazwa palety"
                 className={cn(
                   fieldControlClass("default"),
-                  "min-w-[7rem] flex-1 border-emerald-100/80 py-1.5 text-xs sm:max-w-[10rem]"
+                  "min-w-[7rem] flex-1 border-indigo-100/80 py-1.5 text-xs sm:max-w-[10rem]"
                 )}
                 disabled={disabled}
               />
@@ -1963,7 +1927,7 @@ function SplitSharesEditor({
                 placeholder="Ilość"
                 className={cn(
                   fieldControlClass("default"),
-                  "w-[4.5rem] border-emerald-100/80 py-1.5 text-xs tabular-nums"
+                  "w-[4.5rem] border-indigo-100/80 py-1.5 text-xs tabular-nums"
                 )}
                 disabled={disabled}
               />
@@ -2004,14 +1968,14 @@ function SplitSharesEditor({
           <option key={p} value={p} />
         ))}
       </datalist>
-      <div className="flex flex-wrap items-center gap-2 rounded-md bg-white/80 px-2.5 py-1.5 text-[0.6875rem] tabular-nums text-slate-600 ring-1 ring-inset ring-emerald-100/80">
+      <div className="flex flex-wrap items-center gap-2 rounded-md bg-white/80 px-2.5 py-1.5 text-[0.6875rem] tabular-nums text-slate-600 ring-1 ring-inset ring-indigo-100/80">
         <span>
           Suma:{" "}
           <span className="font-semibold text-slate-900">
             {Math.round(sum * 10000) / 10000}
           </span>
           {lineQty != null ? (
-            <span className="text-slate-400"> / {lineQty}</span>
+            <span className="text-slate-500"> / {lineQty}</span>
           ) : null}
         </span>
         {rem != null && rem > 1e-9 ? (
@@ -2023,7 +1987,7 @@ function SplitSharesEditor({
           </span>
         ) : null}
       </div>
-      <div className="flex flex-wrap gap-1.5 border-t border-emerald-100/80 pt-2.5">
+      <div className="flex flex-wrap gap-1.5 border-t border-indigo-100/80 pt-2.5">
         <Button
           type="button"
           size="sm"
@@ -2031,7 +1995,7 @@ function SplitSharesEditor({
           disabled={
             disabled || rows.length >= MAX_EXTERNAL_WAREHOUSE_PALLET_SHARES_PER_LINE
           }
-          className="text-emerald-800 hover:bg-emerald-50"
+          className="text-indigo-800 hover:bg-indigo-50"
           onClick={() =>
             setRows((prev) => [
               ...prev,
