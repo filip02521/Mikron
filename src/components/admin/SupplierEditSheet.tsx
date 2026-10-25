@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { useEffect } from "react";
 import { cn } from "@/lib/cn";
 import { sidePanelBackdropClass, sidePanelCloseButtonClass, sidePanelHeaderClass } from "@/lib/ui/surfaces";
@@ -40,9 +41,10 @@ export function SupplierEditSheet({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, requestClose, pending, panelRef]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
-  return (
+  // Portal: zamontowany w sekcji strony panel konkuruje z-indexem tylko w jej kontekście (DESIGN.md → Panele i okna).
+  return createPortal(
     <>
       <button
         ref={(el) => {
@@ -98,6 +100,7 @@ export function SupplierEditSheet({
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">{footer}</div>
         </footer>
       </aside>
-    </>
+    </>,
+    document.body
   );
 }
