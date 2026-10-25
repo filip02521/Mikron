@@ -7,8 +7,8 @@ Pełna procedura: plik `docs/CUTOVER.md` w osobnym repo „ontime-raporty” (ni
 - Generowanie / wysyłka Ivoclar **usunięte** z OnTime (pipeline report + cron send).
 - `/admin/mail` — odczyt `mail_send_log` + definicje jobów; **brak mutacji** (generate/send/odbiorcy).
 - Dostęp: `role=admin` **lub** moduł `ivoclar_weekly_mail_center`.
-  - Admin: pełny hub (System / Wysyłki OT / Ivoclar / …).
-  - Tylko moduł: hub pokazuje wyłącznie zakładkę Ivoclar (bez linku do `/admin/wysylki`).
+  - Admin: w menu Administracji obie pozycje — „Wysyłki OnTime” (`/admin/wysylki`) i „Wysyłki Ivoclar” (`/admin/mail`) (`src/lib/nav.ts`).
+  - Tylko moduł: widzi wyłącznie „Wysyłki Ivoclar” (bez `/admin/wysylki`).
 - `/zakupy/raporty-ivoclar` — bookmark: redirect do `/admin/mail` (admin lub moduł) albo komunikat o braku modułu.
 - `/api/cron/scheduled-mails` — zawsze `skipped: moved_to_ontime_raporty` (legacy no-op).
 - Env (server-only): `RAPORTY_RUNNER_URL` (+ opcjonalnie `RAPORTY_CRON_SECRET`) — live status `SEND` z `GET /api/ivoclar/status`.

@@ -40,7 +40,8 @@ Reguły: [DESIGN.md](../DESIGN.md). Tu tylko mapa plików do odtworzenia w nowym
 | Prymitywy | `src/components/ui/` | `Button`, `Field`, `Card`, `ModalShell`, `SegmentedControl`, `SystemNotice`, `BrandLoader`… |
 | Ikony | `src/components/icons/StrokeIcons.tsx` | własne SVG stroke, bez paczki ikon |
 | Shell i nawigacja | `src/components/layout/` | `AppShell` → `AppShellClient`, `Sidebar`, `MobileSalesNav`, `MobileOperationsNav` |
-| Ekrany logowania / 404 | `src/components/brand/BrandMomentLayout.tsx` | bez sidebara (`isAuthLayoutPath`) |
+| Logowanie, ustawienie hasła, setup | `src/components/auth/AuthScreenLayout.tsx` | bez sidebara (`isAuthLayoutPath`) |
+| 404 | `src/components/brand/NotFoundScreen.tsx` | z `src/app/not-found.tsx` |
 | Znak marki | `src/lib/ui/brand-app-icon-svg.ts` | opis: `docs/brand/README.md` |
 
 ---
@@ -110,7 +111,7 @@ src/
 - [ ] `cn.ts` + `app-theme.ts` (na bazie `ontime-theme.ts`)
 - [ ] Prymitywy z `src/components/ui/` potrzebne pierwszemu ekranowi
 - [ ] `layout.tsx` z fontami + `AppShell` (sidebar + main)
-- [ ] Ekran logowania w stylu `BrandMomentLayout`
+- [ ] Ekran logowania w stylu `AuthScreenLayout`
 
 ### Faza 2 — nawigacja
 
@@ -179,6 +180,6 @@ Role użytkowników: [LISTA]
 | `src/components/ui/Button.tsx` | Wzorzec wariantów |
 | `src/components/layout/AppShellClient.tsx` | Shell + mobile |
 | `src/components/layout/Sidebar.tsx` | Nawigacja desktop |
-| `src/components/brand/BrandMomentLayout.tsx` | Auth / 404 |
+| `src/components/auth/AuthScreenLayout.tsx` | Logowanie i ekrany bez sidebara |
 | `src/components/icons/StrokeIcons.tsx` | Ikony |
 | `src/app/layout.tsx` | Fonty, metadata |

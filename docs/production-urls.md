@@ -46,5 +46,5 @@ Wcześniejszy błąd produkcji: `NEXT_PUBLIC_APP_URL=http://192.168.10.173:3000`
 ## Weryfikacja
 
 1. `npm run setup-check` — sprawdza env i wypisuje `APP_URL`  
-2. Admin → Użytkownicy → **Wygeneruj link resetu hasła** → otwórz w przeglądarce  
+2. Administracja → Użytkownicy → konto → okno „Edytuj konto” → **Kopiuj link hasła** (link trafia do schowka) → otwórz w przeglądarce  
 3. Powinno trafić na `/ustaw-haslo` z aktywnym formularzem (nie komunikat „Otwórz link zaproszenia…”)

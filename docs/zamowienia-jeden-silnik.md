@@ -91,6 +91,8 @@ Dla każdego towaru dostawcy liczymy `dni do wyczerpania = dostępne / rotacja` 
 
 Dostawca „na żądanie” — tylko sygnał „Pilne”, bez planowych.
 
+Panel Braki: licznik pilnych przy dostawcy i lista po jego rozwinięciu liczą to samo — pozycje bez stanu, w stanie krytycznym albo z ryzykiem dostawy (`isStockWatchSupplierUrgent` w `src/lib/stock-watch/dashboard.ts`, PR #249). To szerzej niż widok „Wszystkie braki”: obejmuje też ≤ 48 h z dostawą w drodze i ryzyko przed kolejną dostawą.
+
 ### 3.5 Przepływ dnia
 
 1. **Noc (po synchronizacji katalogu):** silnik liczy wszystkich dostawców; zapis propozycji i sygnałów.
