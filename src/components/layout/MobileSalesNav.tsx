@@ -75,7 +75,7 @@ export function MobileSalesNav({
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       aria-label="Nawigacja handlowca"
     >
-      <ul className="mx-auto flex max-w-lg items-stretch justify-around gap-0.5 px-0.5">
+      <ul className="mx-auto flex max-w-lg items-stretch justify-around gap-0.5 px-0.5 py-0.5">
         {primaryItems.map((item) => {
           const active = isNavItemActive(pathname, item.href, allPrimaryHrefs);
           const attentionBadge =
@@ -98,7 +98,9 @@ export function MobileSalesNav({
           const inner = (
             <>
               <span className="relative">
-                <NavIcon navKey={item.icon} size={20} className="text-current" />
+                <span className="flex h-7 w-7 items-center justify-center rounded-md">
+                  <NavIcon navKey={item.icon} size={18} className="text-current" />
+                </span>
                 {attentionBadge > 0 ? (
                   <span
                     className={cn(

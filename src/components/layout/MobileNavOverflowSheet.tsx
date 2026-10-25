@@ -267,8 +267,11 @@ export function MobileNavOverflowSheet({
           aria-expanded={open}
           aria-haspopup="dialog"
         >
+          {/* Ten sam kafel 28px co pozostałe pozycje paska — inaczej etykieta „Więcej” stoi wyżej od reszty. */}
           <span className="relative">
-            <IconMoreVertical size={20} className="text-current" />
+            <span className="flex h-7 w-7 items-center justify-center rounded-md">
+              <IconMoreVertical size={18} className="text-current" />
+            </span>
             {overflowAttentionBadge > 0 && !activeInOverflow ? (
               <span
                 className={cn(

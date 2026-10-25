@@ -740,8 +740,12 @@ export const mobileSalesHeaderClass =
 export const mobileSalesNavClass =
   "fixed inset-x-0 bottom-0 z-50 border-t border-slate-200/80 bg-[var(--card)]/95 shadow-[var(--shadow-card-elevated)] backdrop-blur-sm md:hidden";
 
+/**
+ * Pozycja dolnego paska: 52px (`min-h`, kafel 28 + etykieta wyśrodkowane). Z `py-0.5` listy i ramką pasek ma 3.5rem —
+ * tyle zakładają `pb` treści w `AppShellClient` i elementy przyklejone nad paskiem.
+ */
 export const mobileNavLinkBaseClass =
-  "relative mx-0.5 flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 rounded-md px-1.5 py-2 text-[0.6875rem] font-semibold lg:text-xs";
+  "relative mx-0.5 flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 rounded-md px-1.5 py-0.5 text-[0.6875rem] font-semibold lg:text-xs";
 
 /** Aktywna pozycja dolnego paska i arkusza „Więcej” — jak w menu bocznym (petrol-mist, petrol-ink). */
 export const mobileNavLinkActiveClass =
