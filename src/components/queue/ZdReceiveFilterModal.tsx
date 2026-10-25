@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { Alert } from "@/components/ui/Alert";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import {
   actionResolveZdReceiveFilterByDokId,
@@ -93,7 +94,7 @@ function ZdReceiveCandidateList({
   onDismiss: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-2.5">
+    <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-2.5">
       <p className="text-xs font-medium text-emerald-950">{hint}</p>
       <ul className="mt-2 max-h-52 space-y-1.5 overflow-y-auto" role="listbox" aria-label="Pasujące dokumenty ZD">
         {candidates.map((candidate) => {
@@ -408,15 +409,11 @@ export function ZdReceiveFilterModal({
           </div>
 
           {showStatusPanel && preview.status === "error" ? (
-            <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
-              {preview.message}
-            </p>
+            <Alert tone="error">{preview.message}</Alert>
           ) : null}
 
           {chooseRequiredHint ? (
-            <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              {chooseRequiredHint}
-            </p>
+            <Alert tone="warning">{chooseRequiredHint}</Alert>
           ) : null}
 
           {showStatusPanel && preview.status === "choose" ? (
@@ -433,7 +430,7 @@ export function ZdReceiveFilterModal({
           ) : null}
 
           {showStatusPanel && preview.status === "ready" ? (
-            <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/60 px-3 py-2.5 text-sm text-emerald-950">
+            <div className="rounded-lg border border-emerald-200/80 bg-emerald-50/60 px-3 py-2.5 text-sm text-emerald-950">
               <p className="font-semibold text-slate-900">{preview.filter.docNumber}</p>
               <p className={cn(panelTypography.caption, "text-slate-600")}>
                 {preview.filter.supplierName}

@@ -1,121 +1,85 @@
 "use client";
 
-import Link from "next/link";
-import {
-  IconClipboardList,
-  IconPackageCheck,
-  IconTruck,
-} from "@/components/icons/StrokeIcons";
-import { QueueMetricTab } from "@/components/queue/QueueMetricTab";
-import type { QueueInboxSummary } from "@/lib/orders/queue-inbox";
+import { useRef } from "react";
 import { cn } from "@/lib/cn";
-import { brandLinkClass, panelSectionInsetClass } from "@/lib/ui/ontime-theme";
+import { controlFocusClass } from "@/lib/ui/ontime-theme";
 
 export type QueueView = "receive" | "journal" | "inventory";
 
-function buildReceiveHint(summary: QueueInboxSummary): string | undefined {
-  if (summary.activeCount === 0) return "brak pozycji w kolejce";
-  const parts: string[] = [];
-  if (summary.zamowienieCount > 0) parts.push(`${summary.zamowienieCount} zam.`);
-  if (summary.informacjaCount > 0) parts.push(`${summary.informacjaCount} info`);
-  if (summary.partialCount > 0) parts.push(`${summary.partialCount} częściowo`);
-  return parts.join(" · ");
-}
+const TABS: { id: QueueView; label: string; title: string }[] = [
+  { id: "receive", label: "Przyjęcie", title: "Kolejka przyjęcia towaru u dostawcy" },
+  { id: "journal", label: "Dziennik", title: "Dziennik dostaw: kurier, paczki, palety" },
+  { id: "inventory", label: "Regał", title: "Inwentaryzacja: co czeka na odbiór" },
+];
 
+/**
+ * Zakładki widoku magazynu — wygląd `SectionTabNav` (podkreślenie Petrol), ale przyciski,
+ * bo widoki przełączają się w miejscu (hash), bez nawigacji.
+ */
 export function QueuePanelToolbar({
   view,
   onViewChange,
-  summary,
-  pickupReadyCount,
-  inventoryCount = 0,
-  journalCount = 0,
-  showDailyPanelLink = false,
-  showTeethLink = false,
+  counts,
 }: {
   view: QueueView;
   onViewChange: (view: QueueView) => void;
-  summary: QueueInboxSummary;
-  pickupReadyCount: number;
-  inventoryCount?: number;
-  journalCount?: number;
-  showDailyPanelLink?: boolean;
-  showTeethLink?: boolean;
+  counts: Record<QueueView, number>;
 }) {
-  const receiveHint = buildReceiveHint(summary);
-  const inventoryHint =
-    inventoryCount > 0
-      ? "pełny odbiór, części i informacje"
-      : pickupReadyCount > 0
-        ? `${pickupReadyCount} gotowych u handlowców`
-        : "brak pozycji na regale";
+  const listRef = useRef<HTMLDivElement>(null);
+
+  const focusTab = (index: number) => {
+    const next = TABS[(index + TABS.length) % TABS.length]!;
+    onViewChange(next.id);
+    listRef.current?.querySelector<HTMLButtonElement>(`#queue-tab-${next.id}`)?.focus();
+  };
 
   return (
-    <div className={cn("border-b border-emerald-100/60 bg-emerald-50/20", panelSectionInsetClass)}>
-      <div
-        role="tablist"
-        aria-label="Widok magazynu"
-        className="grid grid-cols-3 gap-1.5 sm:gap-2"
-      >
-        <QueueMetricTab
-          id="queue-tab-receive"
-          ariaControls="queue-panel-receive"
-          active={view === "receive"}
-          count={summary.activeCount}
-          label="Przyjęcie"
-          hint={receiveHint}
-          icon={<IconTruck size={14} />}
-          tileClassName="bg-slate-100 text-slate-800"
-          title="Kolejka przyjęcia towaru u dostawcy"
-          onClick={() => onViewChange("receive")}
-        />
-        <QueueMetricTab
-          id="queue-tab-journal"
-          ariaControls="queue-panel-journal"
-          active={view === "journal"}
-          count={journalCount}
-          label="Dziennik"
-          hint={journalCount > 0 ? "przyjęte dostawy dziś" : "brak wpisów dziś"}
-          icon={<IconClipboardList size={14} />}
-          tileClassName="bg-sky-100 text-sky-800"
-          title="Kurier, paczki, palety"
-          onClick={() => onViewChange("journal")}
-        />
-        <QueueMetricTab
-          id="queue-tab-inventory"
-          ariaControls="queue-panel-inventory"
-          active={view === "inventory"}
-          count={inventoryCount}
-          label="Regał"
-          hint={inventoryHint}
-          icon={<IconPackageCheck size={14} />}
-          tileClassName="bg-emerald-100 text-emerald-800"
-          title="Inwentaryzacja - co czeka na odbiór"
-          onClick={() => onViewChange("inventory")}
-        />
-      </div>
-      {showDailyPanelLink || showTeethLink ? (
-        <div className="mt-2.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-lg bg-slate-50/60 px-3 py-1.5 text-[0.625rem] text-slate-500">
-          {showDailyPanelLink ? (
-            <>
-              <span>Brak dostawcy uzupełnia zakupy w</span>
-              <Link href="/podsumowanie" className={cn(brandLinkClass, "font-medium")}>
-                panelu dziennym
-              </Link>
-            </>
-          ) : null}
-          {showDailyPanelLink && showTeethLink ? (
-            <span aria-hidden className="text-slate-300">·</span>
-          ) : null}
-          {showTeethLink ? (
-            <>
-              <span>Zęby przyjmujesz w</span>
-              <Link href="/zeby/przyjecie" className={cn(brandLinkClass, "font-medium")}>
-                panelu zębów
-              </Link>
-            </>
-          ) : null}
-        </div>
-      ) : null}
+    <div
+      ref={listRef}
+      role="tablist"
+      aria-label="Widok magazynu"
+      className="mb-5 flex gap-5 overflow-x-auto border-b border-slate-200 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-6"
+    >
+      {TABS.map((tab, index) => {
+        const active = view === tab.id;
+        const count = counts[tab.id];
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            id={`queue-tab-${tab.id}`}
+            aria-selected={active}
+            aria-controls={`queue-panel-${tab.id}`}
+            tabIndex={active ? 0 : -1}
+            title={tab.title}
+            onClick={() => onViewChange(tab.id)}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowRight") {
+                e.preventDefault();
+                focusTab(index + 1);
+              } else if (e.key === "ArrowLeft") {
+                e.preventDefault();
+                focusTab(index - 1);
+              }
+            }}
+            className={cn(
+              "-mb-px inline-flex min-h-11 shrink-0 items-center gap-1.5 border-b-2 px-0.5 text-sm font-medium transition-colors duration-150 sm:min-h-10",
+              controlFocusClass,
+              active
+                ? "border-indigo-600 text-slate-900"
+                : "border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900"
+            )}
+          >
+            {tab.label}
+            {count > 0 ? (
+              <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums text-slate-600">
+                {count}
+              </span>
+            ) : null}
+          </button>
+        );
+      })}
     </div>
   );
 }

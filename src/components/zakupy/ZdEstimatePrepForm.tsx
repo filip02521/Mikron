@@ -1063,8 +1063,8 @@ export function ZdEstimatePrepForm({
                 canPolicz &&
                   !estimating &&
                   (recountNeeded
-                    ? "shadow-md ring-2 ring-amber-400/70"
-                    : "shadow-md ring-2 ring-slate-900/15")
+                    ? "ring-2 ring-amber-400/70"
+                    : "ring-2 ring-slate-900/15")
               )}
             >
               {estimating ? (

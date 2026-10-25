@@ -6,12 +6,13 @@ import {
   TeethProductLineSectionHeader,
   teethLineSectionDomId,
 } from "@/components/zeby/TeethProductLineSectionHeader";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ModalShell } from "@/components/ui/ModalShell";
-import { Input } from "@/components/ui/Field";
+import { Alert } from "@/components/ui/Alert";
+import { Input, fieldControlClass } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import Link from "next/link";
@@ -46,7 +47,7 @@ import {
   actionUnmarkTeethOrdered,
 } from "@/app/actions/teeth-orders";
 import { TeethPanelAuditLog } from "@/components/zeby/TeethPanelAuditLog";
-import { IconCircleCheck, IconAlertCircle, IconSearch, IconCalendar } from "@/components/icons/StrokeIcons";
+import { IconCircleCheck, IconSearch, IconCalendar } from "@/components/icons/StrokeIcons";
 import { TEETH_PANEL_TOAST, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
 
 const plZamowienie = (n: number) => polishPluralWord(n, "zamówienie", "zamówienia", "zamówień");
@@ -96,12 +97,15 @@ export function TeethPanelHistoriaView({
   filters = EMPTY_TEETH_PANEL_FILTERS,
   onToast,
   onReloadQueue,
+  renderFilterBar,
 }: {
   groups: TeethQueueGroup[] | null;
   readinessCtx?: TeethPanelReadinessContext;
   filters?: TeethPanelFilters;
   onToast: (toast: ToastNotice) => void;
   onReloadQueue?: () => void;
+  /** Pasek filtrów ekranu; widok dokłada szukanie i zmianę dat, żeby był jeden rząd. */
+  renderFilterBar?: (slots: { leading?: ReactNode; trailing?: ReactNode }) => ReactNode;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(groups === null);
@@ -264,23 +268,60 @@ export function TeethPanelHistoriaView({
     }
   }, [bulkSelectedIds, bulkDateValue, reloadHistory, onToast]);
 
+  const searchField = (
+    <div className="relative">
+      <IconSearch size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+      <input
+        type="search"
+        value={searchSpec}
+        onChange={(e) => setSearchSpec(e.target.value)}
+        placeholder="Kolor, fason, produkt, handlowiec…"
+        className={fieldControlClass("default", "pl-9")}
+        aria-label="Szukaj w historii zamówień"
+      />
+    </div>
+  );
+  const bulkToggle = (
+    <Button
+      variant={bulkDateMode ? "outline" : "secondary"}
+      className="min-h-11 w-full sm:min-h-10 sm:w-auto"
+      aria-pressed={bulkDateMode}
+      onClick={() => {
+        setBulkDateMode((v) => !v);
+        setBulkSelectedIds(new Set());
+      }}
+    >
+      <IconCalendar size={15} />
+      {bulkDateMode ? "Zakończ zmianę dat" : "Zmień datę kilku"}
+    </Button>
+  );
+  const barWithTools = renderFilterBar?.({ leading: searchField, trailing: bulkToggle }) ?? null;
+  const barPlain = renderFilterBar?.({}) ?? null;
+
   if (error) {
     return (
-      <TeethPanelEmpty
-        title="Nie udało się wczytać historii"
-        description={error}
-        tone="sky"
-        icon={<IconCircleCheck size={24} strokeWidth={1.75} />}
-      />
+      <>
+        {barPlain}
+        <Alert tone="error" title="Nie udało się wczytać historii">
+          {`${error} Odśwież stronę albo spróbuj za chwilę.`}
+        </Alert>
+      </>
     );
   }
 
   if (loading || historyGroups === null) {
-    return <TeethPanelListSkeleton />;
+    return (
+      <>
+        {barPlain}
+        <TeethPanelListSkeleton />
+      </>
+    );
   }
 
   if (historyGroups.length === 0) {
     return (
+      <>
+      {barPlain}
       <TeethPanelEmpty
         title={
           countActiveTeethPanelFilters(filters) > 0
@@ -292,19 +333,19 @@ export function TeethPanelHistoriaView({
             ? "Zmień filtry, aby zobaczyć historię zamówień zębów."
             : "Po oznaczeniu pozycji w kolejce jako zamówione u dostawcy trafią tutaj wraz z planowaną datą dostawy."
         }
-        tone="sky"
         icon={<IconCircleCheck size={24} strokeWidth={1.75} />}
         action={
           countActiveTeethPanelFilters(filters) === 0 ? (
             <Link
               href="/zeby/kolejka"
-              className="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 sm:min-h-10"
             >
               Przejdź do kolejki
             </Link>
           ) : null
         }
       />
+      </>
     );
   }
 
@@ -321,12 +362,14 @@ export function TeethPanelHistoriaView({
 
   if (displayGroups.length === 0) {
     return (
-      <TeethPanelEmpty
-        title="Brak pozycji spełniających filtry"
-        description="Zmień filtry historii zamówień zębów."
-        tone="sky"
-        icon={<IconCircleCheck size={24} strokeWidth={1.75} />}
-      />
+      <>
+        {barWithTools}
+        <TeethPanelEmpty
+          title="Brak pozycji spełniających filtry"
+          description="Zmień filtry albo wyczyść szukanie, żeby zobaczyć historię zamówień zębów."
+          icon={<IconCircleCheck size={24} strokeWidth={1.75} />}
+        />
+      </>
     );
   }
 
@@ -358,34 +401,11 @@ export function TeethPanelHistoriaView({
 
   return (
     <>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <IconSearch size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="search"
-            value={searchSpec}
-            onChange={(e) => setSearchSpec(e.target.value)}
-            placeholder="Szukaj: kolor, fason, produkt, handlowiec…"
-            className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 shadow-sm outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30"
-            aria-label="Szukaj w historii zamówień"
-          />
-        </div>
-        <Button
-          variant={bulkDateMode ? "primary" : "secondary"}
-          className="min-h-10"
-          onClick={() => {
-            setBulkDateMode((v) => !v);
-            setBulkSelectedIds(new Set());
-          }}
-        >
-          <IconCalendar size={15} />
-          {bulkDateMode ? "Zakończ zaznaczanie" : "Zmień datę kilku"}
-        </Button>
-      </div>
+      {barWithTools}
 
       {bulkDateMode ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/70 px-4 py-3">
-          <span className="text-sm font-medium text-indigo-900">
+        <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-panel)] border border-indigo-200 bg-indigo-50 px-4 py-3">
+          <span className="text-sm font-medium text-indigo-900 tabular-nums">
             Zaznacz zamówienia poniżej · wybrano {bulkSelectedIds.size}
           </span>
           <Input
@@ -397,28 +417,29 @@ export function TeethPanelHistoriaView({
           />
           <Button
             size="sm"
-            className="min-h-9"
+            className="min-h-11 sm:min-h-9"
             disabled={bulkSelectedIds.size === 0 || !bulkDateValue || bulkDatePending}
             onClick={() => void handleBulkSaveDate()}
           >
             {bulkDatePending ? <Spinner size="sm" /> : null}
-            Ustaw datę
+            {bulkSelectedIds.size > 0
+              ? `Ustaw datę dla ${bulkSelectedIds.size}`
+              : "Ustaw datę"}
           </Button>
         </div>
       ) : null}
 
       {delayedItems.length > 0 ? (
-        <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50/70 px-4 py-3 text-sm text-red-800">
-          <IconAlertCircle size={18} className="shrink-0 text-red-600" />
-          <span>
-            <strong>{delayedItems.length}</strong> {plZamowienie(delayedItems.length)} po terminie
-            dostawy - skontaktuj się z dostawcą albo popraw datę.
-          </span>
-        </div>
+        <Alert
+          tone="error"
+          title={`${delayedItems.length} ${plZamowienie(delayedItems.length)} po terminie dostawy`}
+        >
+          Skontaktuj się z dostawcą albo popraw datę.
+        </Alert>
       ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-slate-500 tabular-nums">
         W drodze: <strong className="text-slate-700">{countByState("in_transit")}</strong>
         {" · "}Opóźnione: <strong className="text-slate-700">{countByState("late")}</strong>
         {" · "}Częściowo: <strong className="text-slate-700">{countByState("partial")}</strong>
@@ -428,14 +449,14 @@ export function TeethPanelHistoriaView({
           <button
             type="button"
             onClick={() => setAllExpanded(true)}
-            className="rounded-md px-2 py-1 text-indigo-700 hover:bg-indigo-50"
+            className="min-h-11 rounded-md px-2 text-indigo-700 hover:bg-indigo-50 sm:min-h-8"
           >
             Rozwiń wszystko
           </button>
           <button
             type="button"
             onClick={() => setAllExpanded(false)}
-            className="rounded-md px-2 py-1 text-slate-600 hover:bg-slate-100"
+            className="min-h-11 rounded-md px-2 text-slate-600 hover:bg-slate-100 sm:min-h-8"
           >
             Zwiń wszystko
           </button>
@@ -454,7 +475,7 @@ export function TeethPanelHistoriaView({
           <section
             key={supplierKey}
             aria-label={`Dostawca ${group.supplierName}`}
-            className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+            className="overflow-hidden rounded-[var(--radius-panel)] border border-slate-200 bg-[var(--card)] shadow-[var(--shadow-card)]"
           >
             <header className={cn("px-4 py-3 sm:px-5", supplierOpen && "border-b border-slate-100")}>
               <button
@@ -462,7 +483,7 @@ export function TeethPanelHistoriaView({
                 onClick={() => setExpanded(supplierKey, !supplierOpen)}
                 aria-expanded={supplierOpen}
                 aria-controls={bodyId}
-                className="-mx-1 flex w-full flex-wrap items-center gap-x-3 gap-y-1.5 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-slate-50"
+                className="-mx-1 flex min-h-11 w-full flex-wrap items-center gap-x-3 gap-y-1.5 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-slate-50 sm:min-h-0"
               >
                 <IconChevronDown
                   size={16}

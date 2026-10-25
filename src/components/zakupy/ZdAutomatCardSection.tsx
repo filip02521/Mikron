@@ -46,8 +46,9 @@ export function ZdBacktestState({ row, nowMs: nowProp }: { row: Pick<ZdAutomatSu
   return (
     <span className="flex flex-col items-start gap-0.5" title={b.headline ?? undefined}>
       {b.verdict ? <Badge variant={ZD_BACKTEST_VERDICT_BADGE[b.verdict]}>{ZD_BACKTEST_VERDICT_LABEL[b.verdict]}</Badge> : null}
-      <span className="text-xs text-slate-500 md:whitespace-nowrap">
-        co {b.params.cycleDays} d, cel {b.params.targetDays} d · {formatWarsawDateTime(b.at)}
+      <span className="text-xs text-slate-500">
+        <span className="whitespace-nowrap">co {b.params.cycleDays} d, cel {b.params.targetDays} d</span> ·{" "}
+        <span className="whitespace-nowrap">{formatWarsawDateTime(b.at)}</span>
       </span>
       {age > ZD_AUTOMAT_BACKTEST_STALE_DAYS ? (
         <span className="text-xs font-medium text-amber-800">sprzed {age} dni - policz ponownie</span>

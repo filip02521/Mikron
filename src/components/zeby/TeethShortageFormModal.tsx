@@ -467,7 +467,7 @@ export function TeethShortageFormModal({
               <p className="text-xs font-semibold tracking-wide text-slate-600">
                 Typ
                 {dualKind && hasAnyMoulds ? (
-                  <span className="ml-1 font-normal text-slate-400">
+                  <span className="ml-1 font-normal text-slate-500">
                     - „Bez rozróżnienia” = brak dla obu typów (bez fasonu)
                   </span>
                 ) : null}

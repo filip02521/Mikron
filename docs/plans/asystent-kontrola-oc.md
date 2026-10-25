@@ -63,7 +63,7 @@ UI /zakupy/asystent → lista spraw; przy ZD (historia, kreator) → znaczek „
 | Zmienna | Opis |
 |---|---|
 | `GMAIL_SA_KEY_PATH` | konto serwisowe Google Workspace z delegacją domenową (tylko zakres `gmail.readonly`) |
-| `GMAIL_MAILBOXES` | `filip.naskret@mikran.com,aleksandra.stupczynska@mikran.com` |
+| `GMAIL_MAILBOXES` | adresy skrzynek po przecinku, np. `jan.kowalski@firma.example,anna.nowak@firma.example` |
 | `ANTHROPIC_API_KEY` | ekstrakcja z PDF i obrazów |
 | `OC_CHECK_ENABLED` | wyłącznik awaryjny |
 

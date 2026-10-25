@@ -203,6 +203,25 @@ function proposalWarnings(order: StockWatchSupplierOrder): string[] {
   return out;
 }
 
+/** „Do zamówienia dziś”: brak albo ≤ 48 h bez dostawy w drodze (≤ 48 h z dostawą w drodze nie jest „dziś”). */
+export function isStockWatchAlertNow(i: StockWatchItem): boolean {
+  return i.status === "out_of_stock" || isStockWatchCriticalNoIncoming(i);
+}
+
+/** Zakładka „Wszystkie braki”: do zamówienia dziś albo skończy się przed dostawą. */
+export function isStockWatchListAlert(i: StockWatchItem): boolean {
+  return isStockWatchAlertNow(i) || i.deliveryRisk === "before_delivery";
+}
+
+/**
+ * Pilne u dostawcy: wiersz tablicy dostawców („Pokazano X z N”) i „Lista braków dostawcy” — jedna reguła, żeby
+ * liczba w wierszu była liczbą pozycji listy. Szersza niż „Wszystkie braki”: także ≤ 48 h z dostawą w drodze
+ * i ryzyko przed kolejną dostawą (dostawca „wkrótce” musi je widzieć).
+ */
+export function isStockWatchSupplierUrgent(i: StockWatchItem): boolean {
+  return i.status === "out_of_stock" || i.status === "critical" || i.deliveryRisk != null;
+}
+
 /**
  * Model panelu. Propozycje = lista „Do ZD” z silnika (jak Kreator). Reguły
  * „Wyklucz” / „Na prośbę” działają od razu; zdjęcie reguły (powrót do Standard)
@@ -262,22 +281,28 @@ export function buildStockWatchDashboard(
 
   // „Do zamówienia dziś”: brak i ≤ 48 h (limit) + osobno „przed dostawą” (własny limit) —
   // inaczej przy setkach braków sygnał czasu dostawy nigdy by się nie zmieścił.
-  const isOutOrCritical = (i: StockWatchItem) =>
-    i.status === "out_of_stock" || i.status === "critical";
   const assemblySource = opts.alertsSupplierId
     ? items.filter((i) => i.supplierId === opts.alertsSupplierId && i.rule === "standard")
     : standard;
-  const alertSource = assemblySource.filter((i) => !isAssembledKitRow(i));
-  // Jak liczniki: ≤ 48 h z dostawą w drodze nie jest „do zamówienia dziś”
-  // (trafia do „przed dostawą” tylko, gdy dostawa nie zdąży).
-  const isAlertNow = (i: StockWatchItem) =>
-    i.status === "out_of_stock" || isStockWatchCriticalNoIncoming(i);
+  // Lista jednego dostawcy: towar wspólny u właściciela (jak tablica dostawców) i bez globalnego limitu —
+  // wiersz tablicy obiecuje, że to pełna lista jego braków.
+  const alertSource = (opts.alertsSupplierId
+    ? standard.filter((i) => i.supplierId === opts.alertsSupplierId)
+    : standard
+  ).filter((i) => !isAssembledKitRow(i));
+  const alertLimit = opts.alertsSupplierId ? Infinity : STOCK_WATCH_ALERT_LIMIT;
   const alerts = [
-    ...alertSource.filter(isAlertNow).sort(compareStockWatchAlerts).slice(0, STOCK_WATCH_ALERT_LIMIT),
+    ...alertSource.filter(isStockWatchAlertNow).sort(compareStockWatchAlerts).slice(0, alertLimit),
     ...alertSource
-      .filter((i) => !isAlertNow(i) && i.deliveryRisk === "before_delivery")
+      .filter((i) => isStockWatchListAlert(i) && !isStockWatchAlertNow(i))
       .sort(compareStockWatchAlerts)
-      .slice(0, STOCK_WATCH_ALERT_LIMIT),
+      .slice(0, alertLimit),
+    // Dostawca: reszta jego pilnych (≤ 48 h z dostawą w drodze, przed kolejną dostawą) — jak w wierszu tablicy.
+    ...(opts.alertsSupplierId
+      ? alertSource
+          .filter((i) => isStockWatchSupplierUrgent(i) && !isStockWatchListAlert(i))
+          .sort(compareStockWatchAlerts)
+      : []),
   ].map(toStockWatchRowView);
 
   const assembly = assemblySource
@@ -410,7 +435,8 @@ export function buildStockWatchDashboard(
         c.beforeDelivery += 1;
       }
       else if (i.deliveryRisk === "before_next_delivery") c.beforeNextDelivery += 1;
-      if (isOutOrCritical(i) || i.deliveryRisk != null) urgent.push(i);
+      // Ta sama reguła co „Lista braków dostawcy” — „Pokazano X z N” mówi o tej liście.
+      if (isStockWatchSupplierUrgent(i)) urgent.push(i);
     }
     const priority = stockWatchSupplierPriority(c);
     if (!priority) {

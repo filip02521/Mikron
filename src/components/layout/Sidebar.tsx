@@ -31,7 +31,6 @@ import {
   sidebarNavBadgeClassForTone,
   sidebarNavToneActiveClass,
   sidebarNavToneHighlightIdleClass,
-  buttonPrimaryClass,
 } from "@/lib/ui/ontime-theme";
 import type { UserRole, Workspace } from "@/types/database";
 import { cn } from "@/lib/cn";
@@ -45,6 +44,7 @@ import {
   IconSidebarExpand,
 } from "@/components/icons/StrokeIcons";
 import { AppBrandMark } from "@/components/ui/AppBrandMark";
+import { buttonClass } from "@/components/ui/Button";
 import { useSidebarCollapsed, useSidebarCollapseShortcut } from "@/lib/ui/sidebar-collapse";
 import type { VacationDelegationRow } from "@/lib/data/vacation-delegations";
 import { useSalesNavLocked } from "@/components/sales/SalesOnboardingContext";
@@ -137,12 +137,7 @@ function NavLink({
       ? cn(sidebarNavToneActiveClass(item.tone), "sb-link-active")
       : attentionIdle
         ? sidebarNavAttentionIdleClass
-        : monthlyIdle
-          ? cn(
-              "border border-violet-200/70 bg-violet-50/80 text-slate-800 shadow-sm",
-              "hover:border-violet-300/80 hover:bg-violet-50"
-            )
-          : showHighlight
+        : showHighlight
             ? cn(
                 "border border-transparent text-slate-700",
                 sidebarNavToneHighlightIdleClass(item.tone) ?? navLinkIdleClass
@@ -197,7 +192,7 @@ function NavLink({
         <span
           className={cn(
             "sb-rail absolute right-1.5 top-1 h-2 w-2 rounded-full ring-2 ring-white",
-            monthlyIdle ? "bg-violet-500" : hasBadge ? "bg-indigo-500" : "bg-amber-400"
+            monthlyIdle ? "bg-indigo-600" : hasBadge ? "bg-indigo-600" : "bg-amber-400"
           )}
           aria-hidden
         />
@@ -207,7 +202,7 @@ function NavLink({
           <span
             className={cn(
               "h-2 w-2 rounded-full ring-2 ring-white",
-              monthlyIdle ? "bg-violet-500" : "bg-amber-400"
+              monthlyIdle ? "bg-indigo-600" : "bg-amber-400"
             )}
             title={monthlyIdle ? "Nowe podsumowanie miesiąca" : "Nowe zmiany"}
           />
@@ -329,7 +324,7 @@ function CollapsibleNavSection({
         </h2>
         {hasMonthlyAttention && collapsed ? (
           <span
-            className="h-2 w-2 shrink-0 rounded-full bg-violet-500 ring-2 ring-white"
+            className="h-2 w-2 shrink-0 rounded-full bg-indigo-600 ring-2 ring-white"
             title="Nowe podsumowanie miesiąca"
           />
         ) : null}
@@ -663,10 +658,8 @@ export function Sidebar({
         {showLoginLink ? (
           <Link
             href="/login"
-            className={cn(
-              "inline-flex w-full min-h-10 items-center justify-center rounded-md px-4 py-2.5 text-sm font-medium transition-colors",
-              buttonPrimaryClass
-            )}
+            // Na 404 dla gościa główna akcja jest w karcie; tu przycisk drugorzędny (jedna główna na ekran).
+            className={buttonClass("secondary", "md", "w-full min-h-10")}
           >
             Zaloguj się
           </Link>

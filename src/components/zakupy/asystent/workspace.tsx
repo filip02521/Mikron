@@ -59,11 +59,11 @@ export function RailCount({ value, tone = "neutral" }: { value: number; tone?: "
   );
 }
 
-/** Wiersz listy: zaznaczenie = Petrol Mist + 3 px pasek z lewej (jak wybrany wiersz tabeli). */
+/** Wiersz listy: zaznaczenie = Petrol Mist, jak wybrany wiersz tabeli (DESIGN.md → „Jedno wybrane”). */
 export function listRowClass(selected: boolean): string {
   return cn(
     "block w-full px-4 py-3 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-600",
-    selected ? "bg-indigo-50/70 shadow-[inset_3px_0_0_var(--primary)]" : "hover:bg-slate-50 active:bg-slate-100",
+    selected ? "bg-indigo-50" : "hover:bg-slate-50 active:bg-slate-100",
   );
 }
 
@@ -84,7 +84,7 @@ export function DetailHeader({
   children?: ReactNode;
 }) {
   const backClass =
-    "mb-2 inline-flex min-h-8 items-center gap-1 rounded-md pr-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50 lg:hidden";
+    "mb-2 inline-flex min-h-11 items-center gap-1 rounded-md pr-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50 lg:hidden";
   return (
     <header className="border-b border-slate-200 px-4 py-3 sm:px-5">
       {"href" in back ? (
@@ -136,4 +136,4 @@ export function DetailEmpty({
 
 /** Drobna akcja tekstowa w nagłówku treści (link do karty, przekazanie). */
 export const detailLinkClass =
-  "inline-flex min-h-8 items-center rounded-md px-2 text-xs font-medium text-indigo-700 transition-colors hover:bg-indigo-50 hover:text-indigo-900";
+  "inline-flex min-h-11 items-center rounded-md px-2 text-xs font-medium text-indigo-700 sm:min-h-8 transition-colors hover:bg-indigo-50 hover:text-indigo-900";

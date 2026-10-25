@@ -4,8 +4,8 @@ import { displayNameFromEmail, resolveUserDisplayName } from "./display-name";
 describe("displayNameFromEmail", () => {
   it("formatuje imie.nazwisko@domena", () => {
     expect(displayNameFromEmail("filip.naskret@mikran.com")).toBe("Filip Naskret");
-    expect(displayNameFromEmail("aleksandra.stupczynska@mikran.com")).toBe(
-      "Aleksandra Stupczynska"
+    expect(displayNameFromEmail("anna.kowalska@mikran.com")).toBe(
+      "Anna Kowalska"
     );
   });
 
