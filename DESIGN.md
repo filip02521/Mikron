@@ -31,16 +31,22 @@ colors:
 typography:
   headline:
     fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "1.75rem"
+    fontSize: "1.5rem"
     fontWeight: 600
     lineHeight: 1.25
-    letterSpacing: "-0.025em"
-  title:
+    letterSpacing: "-0.02em"
+  section:
     fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
     fontSize: "1.125rem"
     fontWeight: 600
+    lineHeight: 1.35
+    letterSpacing: "-0.015em"
+  title:
+    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "1rem"
+    fontWeight: 600
     lineHeight: 1.4
-    letterSpacing: "-0.025em"
+    letterSpacing: "-0.01em"
   body:
     fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.9375rem"
@@ -138,7 +144,16 @@ components:
   card:
     backgroundColor: "{colors.card}"
     rounded: "{rounded.panel}"
-    padding: "1.5rem"
+    padding: "1.25rem"
+  tab-active:
+    textColor: "{colors.graphite}"
+    typography: "{typography.body-dense}"
+    padding: "0.625rem 0.25rem"
+  filter-chip-selected:
+    backgroundColor: "{colors.petrol-mist}"
+    textColor: "{colors.petrol-ink}"
+    rounded: "{rounded.control}"
+    padding: "0.375rem 0.75rem"
   badge-neutral:
     backgroundColor: "{colors.line-soft}"
     textColor: "{colors.graphite-soft}"
@@ -189,6 +204,8 @@ Ten plik jest normatywny: tokeny we frontmatterze są źródłem prawdy, a tekst
 OnTime to narzędzie do codziennej pracy na danych z Subiekta: listy dostawców, setki pozycji ZD, kolejki próśb. Interfejs ma zejść z drogi. Neutralna, chłodna szarość niesie strukturę, jeden kolor marki (Petrol) pokazuje, gdzie działasz, a trzy kolory stanów mówią, co wymaga reakcji. Nic poza tym nie jest kolorowe.
 
 Wzorcem jest pulpit dyspozytora: wszystko pod ręką, gęsto, ale czytelnie. Gęstość nie jest problemem do rozwiązania. Zakupy pracują przy biurku na długich listach, magazyn na telefonie w hali, handlowcy w biegu. Ekran zaczyna od zadania i jego stanu („421 cen do zapisu”), nie od statystyk.
+
+Nowoczesność tutaj to spokój, nie efekt: jedna warstwa kart na tle, nagłówki na tle zamiast w ramkach, cienkie linie zamiast ciężkich cieni, jeden wyraźny stan „wybrane”, ciasna i równa skala tekstu. Każdy ekran składa się z tych samych pięciu warstw (Layout → „Anatomia ekranu”), więc przejście między modułami nie wymaga uczenia się nowego układu.
 
 Aplikacja ma tylko jasny motyw. Ciemne tło z gradientem marki występuje wyłącznie na ekranach logowania. Tarcza marki (`BrandCardAccent`) pojawia się tylko w momentach marki: logowanie, strona 404, onboarding i puste stany pierwszego uruchomienia. Na ekranach pracy jej nie ma.
 
@@ -245,12 +262,13 @@ Na kolorowym tle tekst pomocniczy bierz z tej samej rodziny (np. `amber-800` na 
 
 **Krój:** Geist w całym interfejsie, Geist Mono dla numerów katalogowych, symboli i kodów. Oba ładuje `next/font`, dostępne jako `font-sans` i `font-mono`.
 
-Hierarchię budują rozmiar i waga, nie zmiana kroju ani koloru. Waga 600 to tytuły i etykiety, 500 to przyciski, nagłówki kolumn i odznaki, 400 cała reszta. Wyższe wagi nie występują.
+Hierarchię budują rozmiar i waga, nie zmiana kroju ani koloru. Waga 600 to tytuły i etykiety, 500 to przyciski, nagłówki kolumn i odznaki, 400 cała reszta. Wyższe wagi nie występują. Skala jest ciasna (krok 1.125–1.33): 10 · 11 · 12 · 13 · 14 · 15 · 16 · 18 · 24px. Tytuł strony nie rośnie na dużym ekranie: aplikacja to narzędzie, nie strona promocyjna.
 
 ### Hierarchy
 
-- **Headline** (600, 1.5rem na telefonie, 1.75rem od `sm`, tracking −0.025em): tytuł strony w `PageHeader`. Jeden na ekran.
-- **Title** (600, 1.125rem, od `lg` 1.25rem): tytuł karty w `CardHeader`. Wariant `compact` 1rem, wariant `micro` (chrome Kreatora ZD) 13px.
+- **Headline** (600, `text-2xl` 1.5rem, tracking −0.02em): tytuł strony w `PageHeader`, na każdej szerokości. Jeden na ekran.
+- **Section** (600, `text-lg` 1.125rem, tracking −0.015em): nagłówek sekcji leżącej na tle, między kartami (np. „Zaległe”, „Na jutro”).
+- **Title** (600, `text-base` 1rem, tracking −0.01em): tytuł karty w `CardHeader`. Wariant `micro` (chrome Kreatora ZD) 13px.
 - **Body** (400, 0.9375rem, 1.55): tekst aplikacji, opisy, komunikaty. Opis pod tytułem strony ma szerokość max 48rem.
 - **Body Dense** (400, 0.875rem, 1.45, cyfry tabelaryczne): komórki tabel, pola od `sm`, podpowiedzi.
 - **Label** (600, 0.75rem): etykieta pola formularza, kolor `slate-600`.
@@ -280,18 +298,30 @@ Szerokość kolumny zależy od rodzaju pracy, a ustawia ją shell strony z `onti
 - `adminPageShellClass`: administracja, zakupy, historia, 56rem, do 72rem na `2xl`.
 - `zdEstimatePageShellClass`: Kreator ZD, cała szerokość (max 100rem), bez przewijania `main`.
 
-Margines strony to 0.75rem na telefonie, 1rem od `sm`, 1.25rem od `lg`. Bloki strony układają się w stos co 1rem (`space-y-4`). Odstępy biorą się ze skali co 4px (`spacing` we frontmatterze); wewnątrz grupy 0.5–0.75rem, między grupami 1–1.5rem, nad nagłówkiem sekcji więcej niż pod nim.
+### Anatomia ekranu
+
+Każdy ekran pracy składa się z tych warstw, od góry, w tej kolejności. Pominąć można każdą poza nagłówkiem; dodać nowej nie wolno.
+
+1. **Pas uwagi** (`PageAttentionStrip`, opcjonalny): jedna sprawa całej aplikacji wymagająca reakcji.
+2. **Nagłówek strony** (`PageHeader`) leży wprost na `canvas`, nie w karcie i bez kafla ikony (ikona tej strony jest w menu). Nad tytułem opcjonalny link powrotu („← Administracja”, Micro, `slate-600`). Tytuł Headline, obok niego przycisk pomocy (`HelpPopover`, ikona `?` z etykietą dla czytnika). Pod tytułem opis (Body, `slate-600`, max 48rem). Akcje po prawej, najwyżej jedna główna.
+3. **Zakładki strony** (`SectionTabNav`), gdy strona to hub: tuż pod nagłówkiem, bez etykiety „Widok”.
+4. **Pasek filtrów**: jeden rząd nad treścią, którą filtruje (Components → „Pasek filtrów”).
+5. **Treść**: karty (`Card`) i sekcje z nagłówkiem Section, ułożone w stos. Karty są rodzeństwem; karta w karcie, karta strony z kartami w środku i nagłówek strony w karcie są zakazane.
+
+Odstępy pionowe: pas uwagi → nagłówek 1rem; nagłówek → zakładki 1rem; zakładki lub filtry → treść 1.25rem; między kartami i sekcjami 1.5rem (`space-y-6`); wewnątrz karty 1rem. Wzory: `AdminSecondaryShell` (strona administracji z powrotem), `PageHeader` + `SectionTabNav` (hub).
+
+Margines strony to 0.75rem na telefonie, 1rem od `sm`, 1.25rem od `lg`. Odstępy biorą się ze skali co 4px (`spacing` we frontmatterze); wewnątrz grupy 0.5–0.75rem, między grupami 1–1.5rem, nad nagłówkiem sekcji więcej niż pod nim.
 
 Strona nigdy nie przewija się w poziomie, także przy 375px. Tabela ma min. 640px i przewija się wewnątrz swojej karty. Przełącznik segmentowy z wieloma opcjami przewija swój tor. Najważniejsza kolumna (stan, akcja wiersza) ma być widoczna bez przewijania przy typowej szerokości biurka.
 
 ## Elevation & Depth
 
-Głębia jest warstwowa i cicha. Na szarym `canvas` leżą białe karty z obramowaniem `line` i miękkim cieniem. Elementy nad treścią (modal, menu rozwijane, sticky pasek wyszukiwania) mają mocniejszy cień. Sticky chrome ma półprzezroczyste tło karty z `backdrop-blur-sm`, żeby przewijana treść była widoczna pod spodem.
+Głębia jest warstwowa i cicha. Na szarym `canvas` leżą białe karty z obramowaniem `line` i najlżejszym cieniem: kartę odróżnia od tła linia, nie cień. Wyraźny cień mają tylko elementy, które pływają nad treścią (okno, panel boczny, menu rozwijane, lista podpowiedzi, sticky pasek). Sticky chrome ma półprzezroczyste tło karty z `backdrop-blur-sm`, żeby przewijana treść była widoczna pod spodem.
 
 ### Shadow Vocabulary
 
-- **Karta** (`var(--shadow-card-elevated)`: `0 1px 2px rgba(21,25,32,.05), 0 6px 20px -8px rgba(21,25,32,.12)`): karta treści, modal.
-- **Kontrolka** (`var(--shadow-card)` albo `shadow-sm`: `0 1px 2px rgba(21,25,32,.06)`): przycisk drugorzędny, pole, aktywny segment.
+- **Karta i kontrolka** (`var(--shadow-card)` albo `shadow-sm`: `0 1px 2px rgba(21,25,32,.06)`): karta treści, przycisk drugorzędny, pole, aktywny segment.
+- **Okno** (`var(--shadow-card-elevated)`: `0 1px 2px rgba(21,25,32,.05), 0 6px 20px -8px rgba(21,25,32,.12)`): okno (`ModalShell`), panel boczny, sticky chrome.
 - **Uniesienie** (`var(--shadow-elevated)`: `0 4px 14px -4px rgba(21,25,32,.1)`): elementy pływające: lista podpowiedzi (`TypeaheadDropdown`), dymek pomocy, popover.
 - **Marka** (`var(--shadow-brand)`: `0 4px 14px -6px rgba(15,115,128,.25)`): tylko kafel ikony marki.
 
@@ -328,14 +358,26 @@ Komponenty bazowe są w `src/components/ui/`. Zanim napiszesz własny przycisk, 
 
 - **Odznaka (`Badge`):** płaskie tło bez obramowania, 12px, waga 500, cyfry tabelaryczne. Warianty: `default` (szary), `success`, `warning`, `danger`, `info` (Petrol). Odznaka nie jest klikalna.
 - **Filtrowanie** robi przełącznik segmentowy albo chip filtra, nie klikalna odznaka.
-- **Wybrany chip filtra lub zakładka:** tło `indigo-50`, tekst `indigo-900`, obramowanie (albo wewnętrzny ring) `indigo-200`; licznik w środku na białym tle w `indigo-700`. W spoczynku: białe lub `slate-100` tło i `slate-600`. Wybrany stan nigdy nie jest grafitowy (`slate-900`).
+- **Wybrany chip filtra:** tło `indigo-50`, tekst `indigo-900`, wewnętrzny ring `indigo-200`; licznik w środku na białym tle w `indigo-700`. W spoczynku: białe tło, ring `slate-200`, tekst `slate-600`. Gotowe klasy: `panelChoiceChipSelectedClass` / `panelChoiceChipIdleClass`.
+
+**Jedno „wybrane”.** Każdy rodzaj wyboru ma jeden wygląd w całej aplikacji:
+
+| Co jest wybrane | Wygląd |
+|---|---|
+| Pozycja menu | tło `petrol-mist`, tekst `petrol-ink` |
+| Zakładka strony | tekst `slate-900`, podkreślenie 2px `indigo-600` |
+| Widok w przełączniku segmentowym | biały segment z cieniem kontrolki na torze `slate-50` |
+| Chip filtra | tło `indigo-50`, ring `indigo-200`, tekst `indigo-900` |
+| Wiersz tabeli | tło `indigo-50` |
+
+Pełny Petrol nigdy nie oznacza „wybrane”: należy do głównej akcji i licznika „wymaga działania”. Grafit (`slate-900`) też nie.
 
 ### Cards / Containers
 
-- **Promień:** 10px. **Tło:** `card` na `canvas`. **Obramowanie:** 1px `line`. **Cień:** Karta.
-- **Padding:** 1.5rem, od `sm` 1.75rem. Karta z tabelą ma `padding={false}`, a tabela dochodzi do krawędzi.
-- **Nagłówek (`CardHeader`):** tytuł, opcjonalny opis i akcja po prawej; od treści oddziela go linia `line-soft`.
-- Karta w karcie jest zakazana. Wewnątrz karty grupuj odstępem, linią albo blokiem `well` bez cienia.
+- **Promień:** 10px. **Tło:** `card` na `canvas`. **Obramowanie:** 1px `line`. **Cień:** Karta i kontrolka.
+- **Padding:** 1.25rem, od `sm` 1.5rem. Karta z tabelą ma `padding={false}`, a tabela dochodzi do krawędzi.
+- **Nagłówek (`CardHeader`):** tytuł Title, opcjonalny opis (`slate-600`, Body Dense) i akcja po prawej; od treści oddziela go linia `line-soft`. Bez kafla ikony: kafel jest tylko w `EmptyState` i w momentach marki.
+- Karta w karcie jest zakazana. Wewnątrz karty grupuj odstępem, linią albo blokiem `well` bez cienia i bez obramowania.
 
 ### Inputs / Fields
 
@@ -351,6 +393,7 @@ Komponenty bazowe są w `src/components/ui/`. Zanim napiszesz własny przycisk, 
 - **Liczniki:** pigułki w dwóch poziomach. Wymaga działania: pełny Petrol z białą cyfrą. Informacyjny: `slate-100` z `slate-700`.
 - **Telefon:** dolny pasek z czterema pozycjami i „Więcej” (`mobileSalesNavClass`), aktywna zakładka jak w menu bocznym.
 - **Nagłówek na telefonie** (`mobileSalesHeaderClass`): sticky, min. 3.5rem, treść wyśrodkowana w pionie (równy odstęp u góry i u dołu, u góry co najmniej bezpieczna strefa ekranu). Blok marki `MobileBrandBlock`: znak i dwie linie, „OnTime” i „kto · rola” w jednej linii. Bez trzeciej linii i bez e-maila.
+- **Zakładki strony (`SectionTabNav`):** rząd linków na linii `line`, bez tła i bez ramki. Zakładka: Body Dense 500, `slate-600`, hover `slate-900`; wybrana `slate-900` z podkreśleniem 2px `indigo-600` przykrywającym linię. Licznik obok etykiety jako odznaka Tiny `slate-100`. Na telefonie rząd przewija się w poziomie.
 - **Strona z zakładkami to jedna pozycja menu.** Hub z własnymi zakładkami (Karty dostawców: karty, terminy zamówień, urlopy, nieaktywni) ma w menu jedno wejście, podświetlone na każdej zakładce (`isSupplierHubPath` w `supplier-hub.ts`). Zakładki nie wracają do menu jako osobne pozycje.
 - **Grupa menu to jeden temat pracy**, nie jeden ekran: „Zamawianie” to tworzenie i przegląd ZD, „Dostawcy” to wszystko o dostawcy (karty, cenniki, poczta dostawców). Nowa funkcja trafia do istniejącej strony (zakładka, sekcja, rozwinięcie wiersza), zanim dostanie własną pozycję menu.
 
@@ -367,6 +410,12 @@ Najważniejszy komponent produktu (`DataTable`, klasa `.data-table`).
 ### Segmented Control
 
 Przełącznik widoku lub filtra (`SegmentedControl`). Tor `slate-50` z obramowaniem, aktywny segment na białym tle z cieniem kontrolki. Licznik w etykiecie jest przygaszony (`slate-500`). Etykiet nie ucinamy: przy wielu opcjach tor przewija się w poziomie.
+
+### Pasek filtrów
+
+Jeden rząd nad listą lub tabelą, którą filtruje: przełącznik segmentowy (stan lub zakres), pole szukania (`max-w-xs`, ikona lupy, skrót `/`), chipy dodatkowych filtrów, a na końcu licznik wyników (Micro, `slate-500`, „206 dostawców”). Bez etykiet nad kontrolkami („Lokalizacja”, „Szukaj”): nazwę niesie `aria-label`, a przełącznik mówi sam za siebie. Na telefonie rząd zawija się, pole szukania idzie na pełną szerokość jako pierwsze. Filtry zapisują się w adresie strony.
+
+Pasek leży w nagłówku karty z tabelą (`CardHeader` z `action`) albo bezpośrednio nad kartą, nigdy w osobnej karcie.
 
 ### Ustawienia obiektu
 
@@ -476,6 +525,7 @@ Skrót zasad z sekcji wyżej, do sprawdzenia przed PR. Przy rozbieżności rozst
 - **Do** dawaj każdemu ruchowi wariant `motion-reduce`.
 - **Do** pokazuj każde dłuższe ładowanie animowanym logo (`BrandLoader`) ze zdaniem, co się dzieje.
 - **Do** dawaj stronie z własnymi zakładkami jedną pozycję menu, a ustawienia obiektu trzymaj w jego karcie; inne ekrany pokazują stan i otwierają to samo okno.
+- **Do** układaj ekran z warstw „Anatomii ekranu”: nagłówek na tle, zakładki, pasek filtrów, karty-rodzeństwo.
 - **Do** buduj okno na `ModalShell`, a panel boczny na klasach `sidePanel*Class`; z-index bierz ze skali w „Panele i okna”.
 - **Do** odmieniaj liczebniki (`polishPluralWord`) i pisz daty bliskie względnie.
 
@@ -484,7 +534,9 @@ Skrót zasad z sekcji wyżej, do sprawdzenia przed PR. Przy rozbieżności rozst
 - **Don't** dodawaj drugiego koloru akcentu, gradientów ani zieleni, bursztynu i czerwieni jako dekoracji.
 - **Don't** stawiaj kolorowego paska z boku karty, wiersza, alertu ani pozycji menu.
 - **Don't** buduj ekranu z rzędu kafelków z liczbami, jeśli te liczby są już w zakładkach albo tabeli.
-- **Don't** wkładaj karty do karty.
+- **Don't** wkładaj karty do karty ani nagłówka strony do karty; kafel ikony tylko w `EmptyState`.
+- **Don't** oznaczaj wyboru pełnym Petrolem; każdy rodzaj wyboru ma jeden wygląd (tabela „Jedno wybrane”).
+- **Don't** stawiaj etykiet nad kontrolkami paska filtrów.
 - **Don't** pokazuj tego samego obiektu w dwóch tabelach jednego ekranu; szczegóły rozwijaj pod jego wierszem.
 - **Don't** pisz nagłówków kolumn, etykiet ani odznak wersalikami.
 - **Don't** ucinaj etykiet przełączników ani przycisków wielokropkiem.
@@ -510,3 +562,7 @@ Stan na 25.10.2026, z wyszukiwania w `src/` (bez testów). Przy każdej zmianie 
 | Najmniej `0.625rem` | 34 (`text-[0.5625rem]` 31, `0.5rem` 2, hasło logotypu 1) | licznik w pigułce może zostać, tekst nie |
 | Stan ikoną | ✓ / ⚠ w tekście: 15 w 10 plikach | `StrokeIcons` |
 | Skala warstw | `z-[100]`: 4 menu i kreator | przenieść do `z-[200]` (menu) lub `ModalShell` |
+| Anatomia ekranu | 49 z 67 `page.tsx` nie używa wprost `PageHeader` ani shella (część robi to w komponencie klienta) | nagłówek na tle, bez karty strony |
+| Kafel ikony tylko w `EmptyState` | `SectionHeadingIcon` w 40 plikach | usunąć z nagłówków stron i kart |
+| Jedno „wybrane” | pełny Petrol (`bg-indigo-600 text-white`) 24 razy, część to wybrany filtr | wybrany chip: `panelChoiceChipSelectedClass` |
+| Pasek filtrów | etykiety nad kontrolkami filtrów (np. karty dostawców: „Lokalizacja”, „Subiekt”, „Szukaj”) | jeden rząd, `aria-label` |

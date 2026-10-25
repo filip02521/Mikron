@@ -517,7 +517,6 @@ export const zdEstimateSelectionBarClass = cn(
 );
 
 /** Treść wewnątrz karty huba administracji / dostawców. */
-export const adminHubBodyClass = "min-w-0 space-y-4 p-3 sm:p-4 lg:p-5";
 
 /** Padding chrome panelu handlowca — nieco ciaśniej niż panel dzienny. */
 export const salesChromeInsetClass = "px-3 sm:px-4 lg:px-5";
@@ -934,10 +933,11 @@ export const panelChoiceChipClass =
   "rounded-md border px-3 py-2 text-left text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600";
 
 export const panelChoiceChipIdleClass =
-  "border-indigo-100/80 bg-white text-slate-700 hover:border-indigo-200/80 hover:bg-indigo-50/50";
+  "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900";
 
+/** Wybrany chip filtra — DESIGN.md → „Jedno wybrane”. */
 export const panelChoiceChipSelectedClass =
-  "border-indigo-400/90 bg-indigo-50 text-indigo-950 ring-1 ring-indigo-200/60";
+  "border-indigo-200 bg-indigo-50 text-indigo-900";
 
 export const panelChoiceChipSuccessSelectedClass =
   "border-emerald-400/90 bg-emerald-50 text-emerald-950 ring-1 ring-emerald-200/50";
