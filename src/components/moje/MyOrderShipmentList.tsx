@@ -158,10 +158,13 @@ export function MyOrderShipmentList({
       <button
         type="button"
         aria-expanded={allExpanded}
+        aria-label={allExpanded ? "Zwiń wszystkie" : "Rozwiń wszystkie"}
         className="hit-target rounded px-1.5 py-0.5 text-[0.6875rem] font-medium text-slate-500 underline-offset-2 transition-colors hover:text-slate-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
         onClick={() => (allExpanded ? collapseAll() : expandAll())}
       >
-        {allExpanded ? "Zwiń wszystkie" : "Rozwiń wszystkie"}
+        {/* Krótsza etykieta na telefonie — pełna nie mieściła się obok tytułu sekcji i „?”. */}
+        {allExpanded ? "Zwiń" : "Rozwiń"}
+        <span className="hidden sm:inline"> wszystkie</span>
       </button>
     ) : null;
 

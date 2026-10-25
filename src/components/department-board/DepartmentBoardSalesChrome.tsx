@@ -9,7 +9,6 @@ import {
   boardQuestionsAttentionChipActiveClass,
   boardQuestionsAttentionChipClass,
   boardQuestionsAttentionChipIdleClass,
-  boardQuestionsAttentionLabelClass,
   boardQuestionsAttentionRowClass,
   boardQuestionsOwnUnseenHintClass,
   boardQuestionsStatusChipActiveClass,
@@ -21,8 +20,8 @@ import {
   panelChoiceChipClass,
   panelChoiceChipIdleClass,
   panelChoiceChipSelectedClass,
-  panelChromeInsetClass,
   salesTypography,
+  controlFocusClass,
 } from "@/lib/ui/ontime-theme";
 
 export type DepartmentBoardTab = "announcements" | "questions";
@@ -35,9 +34,10 @@ export type DepartmentBoardQuestionFilter =
   | "own_unseen"
   | "mine";
 
-const TAB_CHIP_CLASS = cn(
-  panelChoiceChipClass,
-  "inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-1.5 py-2 sm:min-h-9"
+/** Zakładki tablicy z podkreśleniem — ten sam wygląd co `SectionTabNav` (DESIGN.md → Navigation). */
+const TAB_CLASS = cn(
+  "-mb-px inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-1.5 border-b-2 px-0.5 text-sm font-medium transition-colors duration-150 sm:min-h-10",
+  controlFocusClass
 );
 
 const STATUS_FILTERS: DepartmentBoardQuestionFilter[] = [
@@ -94,10 +94,7 @@ export function DepartmentBoardTabBar({
 
   return (
     <div
-      className={cn(
-        "flex flex-wrap gap-2 border-b border-slate-100 bg-slate-50/60 py-2.5",
-        panelChromeInsetClass
-      )}
+      className="mb-5 flex gap-5 overflow-x-auto border-b border-slate-200 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-6"
       role="tablist"
       aria-label="Rodzaj wpisów na tablicy"
     >
@@ -111,17 +108,15 @@ export function DepartmentBoardTabBar({
             aria-selected={active}
             onClick={() => onTabChange(tab.id)}
             className={cn(
-              TAB_CHIP_CLASS,
-              active ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass
+              TAB_CLASS,
+              active
+                ? "border-indigo-600 text-slate-900"
+                : "border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900"
             )}
             title={tab.hint}
           >
             <span>{tab.label}</span>
-            <DepartmentBoardCountBadge
-              count={tab.count}
-              active={active}
-              emphasis={active ? "default" : tab.countEmphasis}
-            />
+            <DepartmentBoardCountBadge count={tab.count} emphasis={tab.countEmphasis} />
             {tab.hint && !active ? (
               <span className="sr-only"> - {tab.hint}</span>
             ) : null}
@@ -246,23 +241,16 @@ export function DepartmentBoardQuestionFilters({
   showUnseen?: boolean;
 }) {
   const salesLayout = domain === "sales";
-  const showAttentionRow =
-    salesLayout &&
-    (showMine ||
-      showUnseen ||
-      value === "own_unseen" ||
-      value === "mine" ||
-      value === "unseen");
   const showMineChip = showMine && (counts.mine > 0 || value === "mine");
   const showUnseenChip = showUnseen || value === "unseen";
+  // Rząd tylko z widocznym chipem — sam napis „Dla Ciebie” bez chipów był pustą etykietą.
+  const showAttentionRow = salesLayout && (showMineChip || showUnseenChip);
 
   return (
     <div className="space-y-2.5">
       {salesLayout ? (
-        <div className="space-y-1.5">
-          <p className={boardQuestionsAttentionLabelClass}>
-            {DEPARTMENT_BOARD_QUESTIONS_FILTERS.statusGroupLabel}
-          </p>
+        <div>
+          {/* Pasek filtrów bez etykiet nad kontrolkami — nazwę niesie aria-label (DESIGN.md). */}
           <div
             className={boardQuestionsStatusTrackClass}
             role="group"
@@ -301,10 +289,11 @@ export function DepartmentBoardQuestionFilters({
       )}
 
       {showAttentionRow ? (
-        <div className={boardQuestionsAttentionRowClass}>
-          <span className={boardQuestionsAttentionLabelClass}>
-            {DEPARTMENT_BOARD_QUESTIONS_FILTERS.attentionGroupLabel}
-          </span>
+        <div
+          className={boardQuestionsAttentionRowClass}
+          role="group"
+          aria-label={DEPARTMENT_BOARD_QUESTIONS_FILTERS.attentionGroupLabel}
+        >
           {showUnseenChip ? (
             <AttentionFilterChip
               id="unseen"

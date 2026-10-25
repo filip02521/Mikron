@@ -21,7 +21,7 @@ export function NoteBodyDisplay({
   const [localChecked, setLocalChecked] = useState<Record<number, boolean>>({});
 
   if (!trimmed) {
-    return <p className={cn("text-sm italic text-slate-400", emptyClassName)}>Brak treści</p>;
+    return <p className={cn("text-sm italic text-slate-500", emptyClassName)}>Brak treści</p>;
   }
 
   // Zliczaj pozycje todo w całej notatce, aby identyfikować linie

@@ -55,7 +55,7 @@ export function BoardThreadMessage({
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className={boardThreadRoleBadgeClass(tone)}>{roleLabel}</span>
             <span className={boardThreadAuthorNameClass(tone)}>{authorLabel}</span>
-            <span className="text-[0.6875rem] text-slate-400">{formatBoardDate(createdAt)}</span>
+            <span className="text-[0.6875rem] text-slate-500">{formatBoardDate(createdAt)}</span>
           </div>
           {body.trim() ? (
             <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{body}</p>

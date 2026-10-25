@@ -14,7 +14,6 @@ import { useMojeOrdersSearch } from "@/components/moje/useMojeOrdersSearch";
 import { sortMyOrderRows } from "@/lib/orders/my-order-sales-ui";
 import { formatProsbaCount } from "@/lib/orders/my-order-plural";
 import { MICROCOPY } from "@/lib/ui/microcopy";
-import { cn } from "@/lib/cn";
 import { MyOrderPickupShelfDialogProvider } from "@/components/moje/MyOrderPickupShelfDialogProvider";
 import {
   MyOrderShipmentUndoProvider,
@@ -25,10 +24,10 @@ import { ZdFulfillmentDeadlineChangeAutoAck } from "@/components/moje/ZdFulfillm
 import { type SalesDayStartContext } from "@/lib/sales/sales-day-start";
 import { useSalesInbox } from "@/components/sales/SalesInboxContext";
 import { MyOrderShipmentList } from "@/components/moje/MyOrderShipmentList";
-import { MyOrdersRowLegend } from "@/components/moje/MyOrdersRowLegend";
 import { MojeOrdersHelp } from "@/components/moje/MojeOrdersGuide";
 import { MojeOrdersEmptyGuide } from "@/components/moje/MojeOrdersEmptyGuide";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Alert } from "@/components/ui/Alert";
 import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
 import { SectionListLabel } from "@/components/ui/SectionListLabel";
@@ -39,8 +38,6 @@ import {
   type MojeSectionIconKind,
   mojeSectionIconTileClass,
 } from "@/components/icons/StrokeIcons";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { salesChromeInsetClass, salesTypography, sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import type { MyOrderSectionPatternId } from "@/lib/orders/my-order-section-callout";
 import { deriveMyOrderSectionDisplayState } from "@/lib/orders/my-order-section-callout";
@@ -75,91 +72,24 @@ function cardDomId(rowId: string) {
 }
 
 import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
+import { polishPozycjeLabel } from "@/lib/email/polish-plural";
 
 function prosbaUnitLabel(n: number): string {
   return formatProsbaCount(n).replace(/^\d+\s+/, "");
 }
 
-function lineUnitLabel(n: number): string {
-  if (n === 1) return "pozycja";
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "pozycje";
-  return "pozycji";
-}
-
-function MojeOrdersOverviewStats({
+/** Licznik wyników na końcu paska filtrów (DESIGN.md → Pasek filtrów): „18 próśb · 26 pozycji”. */
+function MojeOrdersResultCount({
   shipmentCount,
   lineCount,
-  searchActive,
-  clientLinkFilterActive = false,
-  className,
 }: {
   shipmentCount: number;
   lineCount: number;
-  filteredCount: number;
-  searchActive: boolean;
-  clientLinkFilterActive?: boolean;
-  archiveMatchCount?: number;
-  className?: string;
 }) {
-  if (searchActive) return null;
-  if (clientLinkFilterActive) return null;
   return (
-    <div className={cn("min-w-0 flex-1", className)}>
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="inline-flex items-baseline gap-1.5">
-          <span className={salesTypography.statValue}>{shipmentCount}</span>
-          <span className={salesTypography.statLabel}>{prosbaUnitLabel(shipmentCount)}</span>
-        </div>
-        <span className="hidden h-3.5 w-px bg-slate-200 sm:block" aria-hidden />
-        <div className="inline-flex items-baseline gap-1.5">
-          <span className={salesTypography.statValue}>{lineCount}</span>
-          <span className={salesTypography.statLabel}>{lineUnitLabel(lineCount)}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** Statystyki listy (lewo) + legenda kolorów wierszy (prawo) w jednym pasku. */
-function MojeOrdersListMetaStrip({
-  shipmentCount,
-  lineCount,
-  filteredCount,
-  searchActive,
-  clientLinkFilterActive = false,
-  archiveMatchCount = 0,
-}: {
-  shipmentCount: number;
-  lineCount: number;
-  filteredCount: number;
-  searchActive: boolean;
-  clientLinkFilterActive?: boolean;
-  archiveMatchCount?: number;
-}) {
-  const stats = (
-    <MojeOrdersOverviewStats
-      shipmentCount={shipmentCount}
-      lineCount={lineCount}
-      filteredCount={filteredCount}
-      searchActive={searchActive}
-      clientLinkFilterActive={clientLinkFilterActive}
-      archiveMatchCount={archiveMatchCount}
-    />
-  );
-
-  return (
-    <div
-      className={cn(
-        salesChromeInsetClass,
-        "flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-200/80 bg-slate-50/35 py-2.5",
-        stats ? "justify-between" : "justify-start"
-      )}
-    >
-      {stats}
-      <MyOrdersRowLegend className={stats ? "shrink-0 sm:justify-end" : undefined} />
-    </div>
+    <p className="shrink-0 text-[0.6875rem] font-medium tabular-nums text-slate-500">
+      {shipmentCount} {prosbaUnitLabel(shipmentCount)} · {polishPozycjeLabel(lineCount)}
+    </p>
   );
 }
 
@@ -633,7 +563,6 @@ function MojeOrdersViewContent({
     ) : null;
 
   const shipmentCount = zamowienia.length + informacje.length;
-  const filteredCount = filteredZamowienia.length + filteredInformacje.length;
   const actionCount = actionZamowienia.length + actionInformacje.length;
   const actionShelfCount = actionShelfZamowienia.length;
   const actionTeethCount = actionTeethZamowienia.length;
@@ -715,8 +644,8 @@ function MojeOrdersViewContent({
   const searchBar = (
     <Suspense
       fallback={
-        <div className="border-b border-slate-100 px-3 py-3 sm:px-4">
-          <div className="h-11 animate-pulse rounded-md bg-slate-100" />
+        <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-3 text-sm text-slate-500 sm:px-4" role="status">
+          <BrandLoader size="sm" tile={false} /> Wczytuję wyszukiwarkę…
         </div>
       }
     >
@@ -727,6 +656,11 @@ function MojeOrdersViewContent({
         totalCount={shipmentCount}
         archiveMatchCount={archiveMatchCount}
         enableShortcut={!tourPreview}
+        trailing={
+          shipmentCount > 0 && !searchActive && !clientLinkFilterActive ? (
+            <MojeOrdersResultCount shipmentCount={shipmentCount} lineCount={filteredLineCount} />
+          ) : null
+        }
       />
     </Suspense>
   );
@@ -770,27 +704,24 @@ function MojeOrdersViewContent({
     </div>
   );
 
+  // Nagłówek strony leży na tle, nad kartami (DESIGN.md → Anatomia ekranu).
+  const pageHeader = (
+    <PageHeader
+      title={pageTitle}
+      hint={cardHint}
+      hintAriaLabel="O liście próśb"
+      description={cardDescription}
+      actions={cardHeaderAction}
+    />
+  );
+
   if (!shipmentCount) {
     return (
-      <div className="space-y-5">
+      <div className="space-y-6">
+        {pageHeader}
         {announcementsPanel}
         {zdDeadlineAutoAck}
         <Card padding={false} className="overflow-hidden">
-          <CardHeader
-            inset
-            density="compact"
-            title={pageTitle}
-            hint={cardHint}
-            hintAriaLabel="O liście próśb"
-            description={cardDescription}
-            action={cardHeaderAction}
-            actionAlign="inline"
-            leading={
-              <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
-                <IconClipboardList size={20} />
-              </SectionHeadingIcon>
-            }
-          />
           {!tourPreview && showSalesSync ? <MojeOrdersSyncStrip /> : null}
           {subiektAvailability ? (
             <SubiektStatusBar
@@ -843,26 +774,11 @@ function MojeOrdersViewContent({
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
+      {pageHeader}
       {announcementsPanel}
       {zdDeadlineAutoAck}
       <Card padding={false}>
-        <CardHeader
-          inset
-          density="compact"
-          title={pageTitle}
-          hint={cardHint}
-          hintAriaLabel="O liście próśb"
-          description={cardDescription}
-          action={cardHeaderAction}
-          actionAlign="inline"
-          leading={
-            <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
-              <IconClipboardList size={20} />
-            </SectionHeadingIcon>
-          }
-        />
-
         {clientKhBanner}
 
         {!tourPreview && showSalesSync ? <MojeOrdersSyncStrip /> : null}
@@ -877,15 +793,6 @@ function MojeOrdersViewContent({
 
         {searchBar}
 
-        <MojeOrdersListMetaStrip
-          shipmentCount={shipmentCount}
-          lineCount={filteredLineCount}
-          filteredCount={filteredCount}
-          searchActive={searchActive}
-          clientLinkFilterActive={clientLinkFilterActive}
-          archiveMatchCount={archiveMatchCount}
-        />
-
         {searchActive && searchMatchCount === 0 && !archiveMatchCount ? (
           <MojeOrdersSearchEmptyHint query={filterQuery} onClear={() => setSearchQuery("")} />
         ) : null}
@@ -898,9 +805,10 @@ function MojeOrdersViewContent({
           />
         ) : null}
 
-        <div className="space-y-3 p-3 sm:p-4">
+        {/* Sekcje w jednej karcie oddziela linia, nie własna ramka (DESIGN.md → bez karty w karcie). */}
+        <div className="divide-y divide-slate-200/80">
         {actionCount > 0 ? (
-          <div className="space-y-3">
+          <div className="divide-y divide-slate-200/80">
             {actionShelfCount > 0 ? (
               <MojeSectionShell sectionIcon={MY_ORDER_ACTION_SECTION_COPY.icon}>
                 <MojeSectionListLabel
@@ -1080,11 +988,8 @@ export function MojeOrdersView(
         <Suspense
         fallback={
           <div className="space-y-5">
+            <PageHeader title={props.pageTitle ?? "Moje zamówienia"} />
             <Card padding={false} className="overflow-hidden">
-              <CardHeader inset density="compact" title={props.pageTitle ?? "Moje zamówienia"} />
-              <div className="border-b border-slate-100 px-3 py-2.5 sm:px-4 lg:px-6">
-                <div className="h-11 animate-pulse rounded-md bg-slate-100" />
-              </div>
               <div className="flex items-center justify-center gap-2 px-4 py-12 text-sm text-slate-500" role="status">
                 <BrandLoader size="sm" tile={false} /> Wczytuję zamówienia…
               </div>
