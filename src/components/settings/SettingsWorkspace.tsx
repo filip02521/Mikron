@@ -1,10 +1,7 @@
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
-import { Card, CardHeader } from "@/components/ui/Card";
-import { IconSettings } from "@/components/icons/StrokeIcons";
-import { cn } from "@/lib/cn";
-import { salesCardBodyClass } from "@/lib/ui/ontime-theme";
+import { PageHeader } from "@/components/ui/PageHeader";
 
+/** Strona ustawień: nagłówek na tle, sekcje jako karty-rodzeństwo (DESIGN.md → Anatomia ekranu). */
 export function SettingsWorkspace({
   title,
   description,
@@ -19,24 +16,10 @@ export function SettingsWorkspace({
   children: React.ReactNode;
 }) {
   return (
-    <Card padding={false} className="overflow-hidden">
-      <CardHeader
-        inset
-        density="compact"
-        leading={
-          <SectionHeadingIcon tileClassName="bg-slate-100 text-slate-700">
-            <IconSettings size={20} />
-          </SectionHeadingIcon>
-        }
-        title={title}
-        description={description}
-        hint={hint}
-        hintAriaLabel={hintAriaLabel}
-      />
-      <div className={cn(salesCardBodyClass, "space-y-4")}>
-        {children}
-      </div>
+    <>
+      <PageHeader title={title} description={description} hint={hint} hintAriaLabel={hintAriaLabel} />
+      <div className="space-y-6">{children}</div>
       <AppBrandContentFooter mobileOnly variant="page" />
-    </Card>
+    </>
   );
 }

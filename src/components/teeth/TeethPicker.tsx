@@ -104,7 +104,7 @@ export function TeethPicker({
         <span className="text-[0.6875rem] font-semibold text-slate-600">
           {label ?? "Zęby"}
           {safeQty > 1 && (
-            <span className="ml-1.5 font-normal normal-case text-slate-400">
+            <span className="ml-1.5 font-normal normal-case text-slate-500">
               ({safeQty} kl.)
             </span>
           )}

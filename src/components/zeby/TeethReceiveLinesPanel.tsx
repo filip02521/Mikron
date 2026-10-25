@@ -19,7 +19,7 @@ import { SystemNotice } from "@/components/ui/SystemNotice";
 import { UndoToast } from "@/components/ui/UndoToast";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { Button } from "@/components/ui/Button";
-import { IconTooth, IconChevronDown } from "@/components/icons/StrokeIcons";
+import { IconTooth } from "@/components/icons/StrokeIcons";
 import { SupplierFilterChips } from "@/components/queue/SupplierFilterChips";
 import { ReceiveQueueSearchField } from "@/components/queue/ReceiveQueueSearchField";
 import { ReceiveQueueActiveFilters } from "@/components/queue/ReceiveQueueActiveFilters";
@@ -30,7 +30,6 @@ import { useTeethProductInfo } from "@/components/layout/TeethExemptContext";
 import { useTeethUpdates } from "@/components/zeby/TeethUpdatesContext";
 import { cn } from "@/lib/cn";
 import { teethPanelFiltersBarClass } from "@/lib/teeth/teeth-panel-ui";
-import { receiveQueueToolbarSectionClass } from "@/lib/ui/queue-panel-styles";
 import { useDeliveryNotificationFlush, cancelScheduledNotificationFlushes } from "@/lib/client/use-delivery-notification-flush";
 import {
   filterReceiveQueueTable,
@@ -125,7 +124,6 @@ export function TeethReceiveLinesPanel({
   const [productLineFilter, setProductLineFilter] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [productSearchResetToken, setProductSearchResetToken] = useState(0);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [batchSaveConfirm, setBatchSaveConfirm] = useState<{
     orderIds: string[];
     fullQuantity?: boolean;
@@ -590,83 +588,38 @@ export function TeethReceiveLinesPanel({
         />
       ) : null}
 
-      <div className={cn(teethPanelFiltersBarClass, "border-b border-slate-200/80")}>
-        <button
-          type="button"
-          onClick={() => setFiltersOpen((v) => !v)}
-          className="flex w-full items-center justify-between gap-2 py-1 text-left"
-          aria-expanded={filtersOpen}
-        >
-          <div className="flex min-w-0 items-center gap-2">
-            <IconChevronDown
-              open={filtersOpen}
-              size={14}
-              strokeWidth={2}
-              className="shrink-0 text-slate-400"
-            />
-            <span className="text-xs font-semibold text-slate-700">Filtry i wyszukiwanie</span>
-            {productSearchActive || productLineFilter ? (
-              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-md bg-indigo-100 px-1 text-[0.625rem] font-semibold tabular-nums text-indigo-700">
-                {[productSearchActive, Boolean(productLineFilter)].filter(Boolean).length}
-              </span>
-            ) : null}
-            {productLineFilter ? (
-              <span className="hidden truncate text-[0.6875rem] text-slate-500 sm:inline">
-                {productLineFilter}
-              </span>
-            ) : null}
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {productSearchActive || productLineFilter ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setProductLineFilter("");
-                  clearProductSearch();
-                }}
-                className="text-[0.625rem] font-medium text-indigo-700 transition hover:text-indigo-900"
-              >
-                Wyczyść
-              </button>
-            ) : null}
-          </div>
-        </button>
-
-        {filtersOpen ? (
-          <div className="space-y-3 pt-2">
-            <div className={cn(receiveQueueToolbarSectionClass, "border-slate-200/80 shadow-none")}>
-              <ReceiveQueueSearchField
-                key={`teeth-receive-search-${productSearchResetToken}`}
-                onDebouncedChange={setProductSearch}
+      <div
+        role="search"
+        aria-label="Filtry przyjęcia"
+        className={cn(teethPanelFiltersBarClass, "flex flex-col gap-3 sm:flex-row sm:items-start")}
+      >
+        <div className="w-full sm:max-w-xs">
+          <ReceiveQueueSearchField
+            key={`teeth-receive-search-${productSearchResetToken}`}
+            onDebouncedChange={setProductSearch}
+          />
+          {productSearchActive ? (
+            <div className="mt-2 space-y-2">
+              <ReceiveQueueActiveFilters
+                productSearch={productSearch}
+                onClearProductSearch={clearProductSearch}
+                zdFilter={null}
+                onClearZdFilter={() => {}}
               />
-              {productSearchActive ? (
-                <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
-                  <ReceiveQueueActiveFilters
-                    productSearch={productSearch}
-                    onClearProductSearch={clearProductSearch}
-                    zdFilter={null}
-                    onClearZdFilter={() => {}}
-                  />
-                  <p className="text-[0.6875rem] font-medium text-slate-700">
-                    {receiveQueueSearchToolbarLabel(filtered.length, zdScoped.length, productSearch)}
-                  </p>
-                </div>
-              ) : null}
+              <p className="text-[0.6875rem] font-medium text-slate-600 tabular-nums">
+                {receiveQueueSearchToolbarLabel(filtered.length, zdScoped.length, productSearch)}
+              </p>
             </div>
-
-            <div className={cn(receiveQueueToolbarSectionClass, "border-slate-200/80 shadow-none")}>
-              <SupplierFilterChips
-                chips={productLineChips}
-                value={productLineFilter}
-                onChange={setProductLineFilter}
-                totalLabel="Wszystkie linie"
-                fieldLabel="Linia produktowa"
-                accentVariant="indigo"
-              />
-            </div>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
+        <SupplierFilterChips
+          chips={productLineChips}
+          value={productLineFilter}
+          onChange={setProductLineFilter}
+          totalLabel="Wszystkie linie"
+          fieldLabel="Linia produktowa"
+          accentVariant="indigo"
+        />
       </div>
 
       {filtered.length === 0 ? (
