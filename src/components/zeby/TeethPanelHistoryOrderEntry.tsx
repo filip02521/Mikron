@@ -25,7 +25,7 @@ export const TEETH_HISTORY_STATE_META: Record<TeethHistoryState, { label: string
   late: { label: "Opóźnione", badge: "bg-red-50 text-red-700 ring-red-200", bar: "bg-red-500" },
   partial: { label: "Częściowo", badge: "bg-amber-50 text-amber-800 ring-amber-200", bar: "bg-amber-400" },
   done: { label: "Dostarczone", badge: "bg-indigo-50 text-indigo-700 ring-indigo-200", bar: "bg-indigo-300" },
-  cancelled: { label: "Anulowane", badge: "bg-slate-50 text-slate-400 ring-slate-200", bar: "bg-slate-200" },
+  cancelled: { label: "Anulowane", badge: "bg-slate-50 text-slate-500 ring-slate-200", bar: "bg-slate-200" },
 };
 
 /** Jedno zamówienie w historii — wiersz listy z czytelnym stanem i akcjami tekstowymi. */

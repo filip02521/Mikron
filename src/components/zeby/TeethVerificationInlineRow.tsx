@@ -258,7 +258,7 @@ export function TeethVerificationInlineRow({
           saving && "bg-indigo-50/30",
           error && "bg-red-50/20",
           isActive && "ring-1 ring-inset ring-indigo-300 bg-indigo-50/20",
-          isVisited && !isActive && !saving && !error && "bg-emerald-50/40 border-l-2 border-l-emerald-400",
+          isVisited && !isActive && !saving && !error && "bg-emerald-50/40",
         )}
       >
         <td className="py-0.5 px-1">

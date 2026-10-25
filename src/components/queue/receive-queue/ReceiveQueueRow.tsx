@@ -27,7 +27,6 @@ import {
 import { partialReceiveCrossLabel } from "@/lib/orders/warehouse-cross-link";
 import { SearchHighlightText } from "@/components/moje/SearchHighlightText";
 import {
-  queueSupplierLeadingCellClass,
   queueSupplierRowClass,
 } from "@/lib/orders/queue-supplier-groups";
 import {
@@ -193,18 +192,10 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
         isInfo && "bg-sky-50/40",
         salesCancelRow && "bg-amber-50/50",
         stockAvailable != null && stockAvailable > 0 && !isInfo && !salesCancelRow && "bg-emerald-50/30",
-        selected && "ring-1 ring-inset ring-violet-300/80"
+        selected && "bg-indigo-50"
       )}
     >
-      <td
-        className={cn(
-          "w-10 text-center",
-          queueSupplierLeadingCellClass(groupIndex, {
-            variant: isInfo ? "informacja" : "delivery",
-            isHeader: false,
-          })
-        )}
-      >
+      <td className="w-10 text-center">
         <input
           type="checkbox"
           className={cn("size-4", checkboxBrandClass)}
@@ -299,7 +290,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
               <SearchHighlightText
                 text={order.symbol}
                 searchQuery={searchQuery}
-                className="truncate text-[0.6875rem] text-slate-400"
+                className="truncate text-[0.6875rem] text-slate-500"
                 as="p"
               />
             ) : null}
@@ -414,7 +405,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
                   aria-label="Zapisz przyjęcie"
                   onClick={onSaveDelivery}
                   className={cn(
-                    "inline-flex size-10 items-center justify-center rounded-xl border transition sm:size-8",
+                    "inline-flex size-11 items-center justify-center rounded-md border transition sm:size-8",
                     canSave
                       ? "border-violet-200 bg-violet-600 text-white hover:bg-violet-700 hover:shadow-sm "
                       : "border-slate-200 bg-slate-50 text-slate-300"
@@ -498,7 +489,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
               aria-label="Zapisz dostawę"
               onClick={onSaveDelivery}
               className={cn(
-                "ml-0.5 inline-flex size-10 items-center justify-center rounded-xl border transition sm:size-8",
+                "ml-0.5 inline-flex size-11 items-center justify-center rounded-md border transition sm:size-8",
                 canSave
                   ? "border-violet-200 bg-violet-600 text-white hover:bg-violet-700 hover:shadow-sm "
                   : "border-slate-200 bg-slate-50 text-slate-300"

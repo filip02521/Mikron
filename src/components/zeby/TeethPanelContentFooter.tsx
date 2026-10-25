@@ -1,9 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
 import { AppBrandFooterLine } from "@/components/layout/AppBrandContentFooter";
-import { TeethPanelHowItWorksContent } from "@/components/zeby/TeethPanelHowItWorks";
 import { useTeethUpdates } from "@/components/zeby/TeethUpdatesContext";
 import { useSyncRelativeTime } from "@/hooks/useSyncRelativeTime";
 import { teethSupplierCardsHref } from "@/lib/teeth/teeth-supplier-dual-lane";
@@ -12,9 +10,8 @@ import {
   panelContentFooterLinkClass,
   panelTypography,
 } from "@/lib/ui/ontime-theme";
-import { cn } from "@/lib/cn";
 
-/** Stopka na dole karty panelu zębów — skróty, sync i marka po scrollu listy. */
+/** Stopka panelu zębów — skrót do kart dostawców, sync i marka po scrollu listy. Pomoc jest przy tytule. */
 export function TeethPanelContentFooter() {
   const ctx = useTeethUpdates();
   const syncLabel = useSyncRelativeTime(
@@ -31,19 +28,6 @@ export function TeethPanelContentFooter() {
         <Link href={teethSupplierCardsHref()} className={panelContentFooterLinkClass}>
           Karty dostawców
         </Link>
-        <HelpPopover
-          label="Pomoc - panel zębów"
-          title="Panel zębów"
-          shortLabel="Pomoc"
-          icon={<GuideIcon />}
-          align="right"
-          buttonClassName={cn(
-            panelContentFooterLinkClass,
-            "inline-flex items-center gap-1 border-0 bg-transparent p-0 shadow-none hover:bg-transparent",
-          )}
-        >
-          <TeethPanelHowItWorksContent />
-        </HelpPopover>
       </nav>
 
       <div className="mt-3 space-y-1 text-center">

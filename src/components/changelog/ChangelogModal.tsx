@@ -8,9 +8,10 @@ import { canAccessPath } from "@/lib/auth-roles";
 import {
   CHANGELOG_ENTRIES,
   CHANGELOG_CATEGORY_META,
+  type ChangelogCategory,
   type ChangelogEntry,
 } from "@/lib/changelog/changelog-entries";
-import { IconSparkles } from "@/components/icons/StrokeIcons";
+import { Badge } from "@/components/ui/Badge";
 import type { UserRole } from "@/types/database";
 
 const MONTHS_PL = [
@@ -70,77 +71,66 @@ const SECTION_LABELS: Record<EntryTier, string> = {
   minor: "Drobne poprawki",
 };
 
+// Wpisy to treść jednej karty okna: grupuje je linia, a najważniejsze leżą na bloku `well` (bez ramek i cieni).
 const tierCardClass: Record<EntryTier, string> = {
-  highlight:
-    "rounded-md border border-indigo-200/70 bg-indigo-50/40 px-5 py-4 shadow-sm ",
-  normal:
-    "rounded-md border border-slate-200/80 bg-white px-4 py-3 shadow-[var(--shadow-card)]",
-  minor:
-    "rounded-md border border-slate-200/50 bg-slate-50/40 px-3.5 py-2.5",
+  highlight: "rounded-lg bg-slate-50 px-4 py-3.5",
+  normal: "py-3",
+  minor: "py-2",
 };
 
 const tierTitleClass: Record<EntryTier, string> = {
-  highlight: "text-base font-semibold tracking-tight text-slate-900",
+  highlight: "text-base font-semibold tracking-[-0.01em] text-slate-900",
   normal: "text-sm font-semibold text-slate-900",
-  minor: "text-xs font-semibold text-slate-700",
+  minor: "text-[0.8125rem] font-medium text-slate-800",
 };
 
 const tierDescClass: Record<EntryTier, string> = {
   highlight: "text-sm leading-relaxed text-slate-600",
-  normal: "text-xs leading-relaxed text-slate-600",
-  minor: "text-[0.6875rem] leading-relaxed text-slate-500",
-};
-
-const tierBadgeClass: Record<EntryTier, string> = {
-  highlight: "rounded-md px-2.5 py-0.5 text-xs font-semibold",
-  normal: "rounded-md px-2 py-0.5 text-[0.6875rem] font-semibold",
-  minor: "rounded-md px-1.5 py-0.5 text-[0.625rem] font-semibold",
+  normal: "text-[0.8125rem] leading-relaxed text-slate-600",
+  minor: "text-xs leading-relaxed text-slate-500",
 };
 
 const tierLinkClass: Record<EntryTier, string> = {
   highlight:
-    "inline-flex items-center gap-1 text-sm font-medium text-indigo-700 transition-colors hover:text-indigo-900 hover:underline underline-offset-2",
+    "inline-flex items-center gap-1 text-sm font-medium text-indigo-700 underline-offset-2 transition-colors hover:text-indigo-900 hover:underline",
   normal:
-    "inline-flex items-center gap-1 text-xs font-medium text-indigo-700 transition-colors hover:text-indigo-900 hover:underline underline-offset-2",
+    "inline-flex items-center gap-1 text-xs font-medium text-indigo-700 underline-offset-2 transition-colors hover:text-indigo-900 hover:underline",
   minor:
-    "inline-flex items-center gap-1 text-[0.6875rem] font-medium text-indigo-600 transition-colors hover:text-indigo-800",
+    "inline-flex items-center gap-1 text-xs font-medium text-indigo-700 underline-offset-2 transition-colors hover:text-indigo-900 hover:underline",
 };
 
 const tierGapClass: Record<EntryTier, string> = {
-  highlight: "space-y-2.5",
-  normal: "space-y-2",
-  minor: "space-y-1.5",
+  highlight: "space-y-1.5",
+  normal: "space-y-1.5",
+  minor: "space-y-1",
 };
+
+/** Rodzaj zmiany to etykieta, nie stan: tylko „Nowość” dostaje Petrol. */
+const categoryBadgeVariant: Record<ChangelogCategory, "info" | "default"> = {
+  new: "info",
+  improvement: "default",
+  fix: "default",
+};
+
+const sectionTitleClass = "text-xs font-semibold text-slate-600";
 
 function EntryCard({
   entry,
   tier,
   role,
   onClose,
-  index,
 }: {
   entry: ChangelogEntry;
   tier: EntryTier;
   role: UserRole | null;
   onClose: () => void;
-  index: number;
 }) {
   const meta = CHANGELOG_CATEGORY_META[entry.category];
   const showLink = entry.link && canAccessLink(role, entry.link.href);
 
   return (
-    <div
-      className={cn("changelog-entry-enter", tierGapClass[tier], tierCardClass[tier])}
-      style={{ animationDelay: `${Math.min(index * 40, 400)}ms` }}
-    >
-      <div className="flex items-center gap-2">
-        <span className={cn(tierBadgeClass[tier], meta.badgeClass)}>
-          {meta.label}
-        </span>
-        {tier === "highlight" && (
-          <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" aria-hidden />
-        )}
-      </div>
+    <div className={cn(tierGapClass[tier], tierCardClass[tier])}>
+      <Badge variant={categoryBadgeVariant[entry.category]}>{meta.label}</Badge>
       <h3 className={tierTitleClass[tier]}>{entry.title}</h3>
       <p className={tierDescClass[tier]}>{entry.description}</p>
       {showLink ? (
@@ -173,8 +163,6 @@ export function ChangelogModal({
   const normals = filtered.filter((e) => getTier(e) === "normal");
   const minors = filtered.filter((e) => getTier(e) === "minor");
 
-  let runningIndex = 0;
-
   return (
     <ModalShell
       open={open}
@@ -182,27 +170,21 @@ export function ChangelogModal({
       size="lg"
       tier="standard"
       footer={
-        <Button variant="primary" size="md" onClick={onClose}>
+        <Button variant="primary" size="md" className="min-h-11 sm:min-h-0" onClick={onClose}>
           Przeczytałem, dziękuję
         </Button>
       }
     >
-      {/* Branded header */}
-      <header className="shrink-0 border-b border-indigo-100/80 bg-indigo-50/50 px-5 py-5 sm:px-6">
-        <div className="flex items-start gap-3.5">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-indigo-600 text-white shadow-[var(--shadow-brand)] ring-1 ring-sky-500/30">
-            <IconSparkles className="h-5.5 w-5.5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-lg font-semibold tracking-tight text-slate-900">
+      <header className="shrink-0 border-b border-slate-100 px-5 py-4 sm:px-6">
+        <div className="min-w-0">
+            <h2 className="text-lg font-semibold tracking-[-0.015em] text-slate-900">
               Co nowego w systemie
             </h2>
-            <p className="mt-1 text-sm leading-relaxed text-slate-500">
+            <p className="mt-1 text-sm leading-relaxed text-slate-600">
               {latestEntry
                 ? `Aktualizacja z ${formatDatePl(latestEntry.date)} · ${polishCountLabel(filtered.length)}`
                 : "Historia zmian w systemie"}
             </p>
-          </div>
         </div>
       </header>
 
@@ -215,9 +197,9 @@ export function ChangelogModal({
           <>
             {highlights.length > 0 && (
               <section className="space-y-2.5">
-                <h4 className="text-[0.6875rem] font-semibold text-indigo-700">
+                <h3 className={sectionTitleClass}>
                   {SECTION_LABELS.highlight}
-                </h4>
+                </h3>
                 {highlights.map((entry) => (
                   <EntryCard
                     key={entry.id}
@@ -225,7 +207,6 @@ export function ChangelogModal({
                     tier="highlight"
                     role={role}
                     onClose={onClose}
-                    index={runningIndex++}
                   />
                 ))}
               </section>
@@ -236,10 +217,10 @@ export function ChangelogModal({
                 {highlights.length > 0 && (
                   <div className="border-t border-slate-100" />
                 )}
-                <h4 className="text-[0.6875rem] font-semibold text-slate-600">
+                <h3 className={sectionTitleClass}>
                   {SECTION_LABELS.normal}
-                </h4>
-                <div className="space-y-2">
+                </h3>
+                <div className="divide-y divide-slate-100">
                   {normals.map((entry) => (
                     <EntryCard
                       key={entry.id}
@@ -247,8 +228,7 @@ export function ChangelogModal({
                       tier="normal"
                       role={role}
                       onClose={onClose}
-                      index={runningIndex++}
-                    />
+                      />
                   ))}
                 </div>
               </section>
@@ -259,10 +239,10 @@ export function ChangelogModal({
                 {(highlights.length > 0 || normals.length > 0) && (
                   <div className="border-t border-slate-100" />
                 )}
-                <h4 className="text-[0.6875rem] font-semibold text-slate-400">
+                <h3 className={sectionTitleClass}>
                   {SECTION_LABELS.minor}
-                </h4>
-                <div className="space-y-1.5">
+                </h3>
+                <div className="divide-y divide-slate-100">
                   {minors.map((entry) => (
                     <EntryCard
                       key={entry.id}
@@ -270,8 +250,7 @@ export function ChangelogModal({
                       tier="minor"
                       role={role}
                       onClose={onClose}
-                      index={runningIndex++}
-                    />
+                      />
                   ))}
                 </div>
               </section>

@@ -144,7 +144,7 @@ function HistoryActions({
         <button
           type="button"
           onClick={onEditDate}
-          className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+          className="inline-flex size-11 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 sm:size-8"
           title="Zmień datę dostawy"
           aria-label="Zmień datę dostawy"
         >
@@ -155,7 +155,7 @@ function HistoryActions({
         <button
           type="button"
           onClick={onUnmark}
-          className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-amber-50 hover:text-amber-800"
+          className="inline-flex size-11 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-amber-50 hover:text-amber-800 sm:size-8"
           title="Cofnij zamówienie"
           aria-label="Cofnij zamówienie"
         >
