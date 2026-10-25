@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Input } from "@/components/ui/Field";
 import { SupplierLocationFilters } from "@/components/admin/SupplierLocationFilters";
-import { SupplierSubiektFilters } from "@/components/admin/SupplierSubiektFilters";
+import { SupplierHubFilterChip, SupplierSubiektFilters } from "@/components/admin/SupplierSubiektFilters";
 import { cn } from "@/lib/cn";
 import { supplierHubPaths, type SupplierHubContext } from "@/lib/supplier-hub";
 import {
@@ -15,26 +15,13 @@ import {
 } from "@/lib/supplier-locations";
 import type { SupplierLocation } from "@/types/database";
 
+/** Pasek filtrów (DESIGN.md → „Pasek filtrów”): jeden rząd, bez etykiet nad kontrolkami. */
 export const supplierHubFilterBarClass =
-  "space-y-4 border-b border-slate-100 bg-slate-50/40 px-3 pb-4 pt-3 sm:px-4 lg:px-5";
+  "flex flex-wrap items-center gap-2 border-b border-slate-100 px-3 py-3 sm:px-4 lg:px-5";
 
-export const supplierHubFilterGridClass =
-  "grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(220px,280px)] xl:items-end";
-
-export function SupplierHubFilterLabel({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+export function SupplierHubResultCount({ children }: { children: React.ReactNode }) {
   return (
-    <p
-      className={cn(
-        "mb-2 text-xs font-semibold text-slate-500",
-        className
-      )}
-    >
+    <p className="ml-auto whitespace-nowrap text-[0.6875rem] tabular-nums text-slate-500" aria-live="polite">
       {children}
     </p>
   );
@@ -56,16 +43,13 @@ export function SupplierHubSearchField({
   className?: string;
 }) {
   return (
-    <div className={cn("min-w-0", className)}>
-      <SupplierHubFilterLabel>
-        <label htmlFor={id}>Szukaj</label>
-      </SupplierHubFilterLabel>
+    <div className={cn("order-first w-full min-w-0 sm:order-none sm:w-auto sm:min-w-[14rem] sm:max-w-xs sm:flex-1", className)}>
       <Input
         id={id}
         type="search"
         placeholder={placeholder}
         aria-label={ariaLabel}
-        className="w-full py-2 text-sm"
+        className="w-full"
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
@@ -85,6 +69,7 @@ export function SupplierAdminCardsFilterBar({
   searchId,
   searchPlaceholder,
   searchAriaLabel,
+  resultLabel,
 }: {
   locationFilter: SupplierLocationFilter;
   onLocationFilterChange: (value: SupplierLocationFilter) => void;
@@ -97,30 +82,30 @@ export function SupplierAdminCardsFilterBar({
   searchId: string;
   searchPlaceholder?: string;
   searchAriaLabel?: string;
+  /** Licznik wyników na końcu paska, np. „206 dostawców”. */
+  resultLabel?: string;
 }) {
   return (
     <div className={supplierHubFilterBarClass}>
-      <div className={supplierHubFilterGridClass}>
-        <SupplierLocationFilters
-          value={locationFilter}
-          onChange={onLocationFilterChange}
-          counts={locationCounts}
-          className="min-w-0"
-        />
-        <SupplierSubiektFilters
-          value={subiektFilter}
-          onChange={onSubiektFilterChange}
-          counts={subiektCounts}
-          className="min-w-0"
-        />
-        <SupplierHubSearchField
-          id={searchId}
-          value={search}
-          onChange={onSearchChange}
-          placeholder={searchPlaceholder}
-          ariaLabel={searchAriaLabel}
-        />
-      </div>
+      <SupplierLocationFilters
+        value={locationFilter}
+        onChange={onLocationFilterChange}
+        counts={locationCounts}
+        className="max-w-full"
+      />
+      <SupplierHubSearchField
+        id={searchId}
+        value={search}
+        onChange={onSearchChange}
+        placeholder={searchPlaceholder}
+        ariaLabel={searchAriaLabel}
+      />
+      <SupplierSubiektFilters
+        value={subiektFilter}
+        onChange={onSubiektFilterChange}
+        counts={subiektCounts}
+      />
+      {resultLabel ? <SupplierHubResultCount>{resultLabel}</SupplierHubResultCount> : null}
     </div>
   );
 }
@@ -137,12 +122,11 @@ export function ScheduleRouteLocationFilters({
   const paths = supplierHubPaths(context);
 
   return (
-    <div className={cn("min-w-0", className)}>
-      <SupplierHubFilterLabel>Lokalizacja</SupplierHubFilterLabel>
+    <div className={cn("min-w-0 max-w-full", className)}>
       <div
         role="group"
         aria-label="Lokalizacja terminów"
-        className="inline-flex max-w-full flex-wrap rounded-md border border-slate-200 bg-slate-50/80 p-0.5"
+        className="inline-flex max-w-full overflow-x-auto overscroll-x-contain rounded-md border border-slate-200 bg-slate-50 p-0.5 [scrollbar-width:thin]"
       >
         {SUPPLIER_LOCATION_OPTIONS.map((opt) => {
           const active = value === opt.value;
@@ -152,10 +136,10 @@ export function ScheduleRouteLocationFilters({
               href={paths.schedule(opt.value)}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "min-w-0 truncate rounded-md px-2.5 py-1.5 text-xs font-medium transition sm:min-h-10 sm:px-3 sm:py-2.5 sm:text-sm lg:min-h-0 lg:py-1.5",
+                "inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-[5px] px-3 text-sm font-medium transition-[background-color,color,box-shadow] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 sm:min-h-0 sm:py-1.5",
                 active
                   ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-600 hover:bg-white/60 hover:text-slate-900"
+                  : "text-slate-600 hover:bg-white/70 hover:text-slate-900"
               )}
             >
               {opt.label}
@@ -169,15 +153,11 @@ export function ScheduleRouteLocationFilters({
 
 type ScheduleTermFilterKey = "all" | "overdue" | "week" | "vacation";
 
-const SCHEDULE_TERM_OPTIONS: {
-  value: ScheduleTermFilterKey;
-  label: string;
-  activeClass: string;
-}[] = [
-  { value: "all", label: "Wszystkie", activeClass: "bg-indigo-600 text-white" },
-  { value: "overdue", label: "Po terminie", activeClass: "bg-amber-600 text-white" },
-  { value: "week", label: "Ten tydzień", activeClass: "bg-sky-600 text-white" },
-  { value: "vacation", label: "Z urlopem", activeClass: "bg-violet-600 text-white" },
+const SCHEDULE_TERM_OPTIONS: { value: ScheduleTermFilterKey; label: string }[] = [
+  { value: "all", label: "Wszystkie" },
+  { value: "overdue", label: "Po terminie" },
+  { value: "week", label: "Ten tydzień" },
+  { value: "vacation", label: "Z urlopem" },
 ];
 
 export function ScheduleTermFilters({
@@ -192,29 +172,16 @@ export function ScheduleTermFilters({
   className?: string;
 }) {
   return (
-    <div className={cn("min-w-0", className)}>
-      <SupplierHubFilterLabel>Status terminu</SupplierHubFilterLabel>
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtr statusu terminu">
-        {SCHEDULE_TERM_OPTIONS.map((opt) => {
-          const active = value === opt.value;
-          return (
-            <button
-              key={opt.value}
-              type="button"
-              aria-pressed={active}
-              onClick={() => onChange(opt.value)}
-              className={cn(
-                "rounded-md px-2.5 py-1.5 text-xs font-medium transition sm:min-h-10 sm:px-3 sm:text-sm lg:min-h-0 lg:py-1.5",
-                active
-                  ? opt.activeClass
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-              )}
-            >
-              {opt.label} ({counts[opt.value]})
-            </button>
-          );
-        })}
-      </div>
+    <div className={cn("flex flex-wrap gap-1.5", className)} role="group" aria-label="Filtr statusu terminu">
+      {SCHEDULE_TERM_OPTIONS.map((opt) => (
+        <SupplierHubFilterChip
+          key={opt.value}
+          active={value === opt.value}
+          label={opt.label}
+          count={counts[opt.value]}
+          onClick={() => onChange(opt.value)}
+        />
+      ))}
     </div>
   );
 }
@@ -238,21 +205,19 @@ export function ScheduleListFilterBar({
 }) {
   return (
     <div className={supplierHubFilterBarClass}>
-      <div className={supplierHubFilterGridClass}>
-        <ScheduleRouteLocationFilters value={location} context={context} />
-        <ScheduleTermFilters
-          value={termFilter}
-          onChange={onTermFilterChange}
-          counts={termCounts}
-        />
-        <SupplierHubSearchField
-          id="schedule-supplier-search"
-          value={search}
-          onChange={onSearchChange}
-          placeholder="Szukaj dostawcy…"
-          ariaLabel="Szukaj dostawcy po nazwie"
-        />
-      </div>
+      <ScheduleRouteLocationFilters value={location} context={context} />
+      <SupplierHubSearchField
+        id="schedule-supplier-search"
+        value={search}
+        onChange={onSearchChange}
+        placeholder="Szukaj dostawcy…"
+        ariaLabel="Szukaj dostawcy po nazwie"
+      />
+      <ScheduleTermFilters
+        value={termFilter}
+        onChange={onTermFilterChange}
+        counts={termCounts}
+      />
     </div>
   );
 }
