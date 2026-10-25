@@ -16,19 +16,19 @@ function taskBadge(kind: NotepadTodayTaskKind) {
   switch (kind) {
     case "zk-follow-up":
       return (
-        <Badge variant="info" className="text-[10px]">
+        <Badge variant="info" className="text-[0.625rem]">
           Przypomnienie
         </Badge>
       );
     case "zk-warehouse-arrival":
       return (
-        <Badge variant="info" className="text-[10px]">
+        <Badge variant="info" className="text-[0.625rem]">
           Nowy na regale
         </Badge>
       );
     case "note-follow-up":
       return (
-        <Badge variant="info" className="text-[10px]">
+        <Badge variant="info" className="text-[0.625rem]">
           Notatka
         </Badge>
       );
@@ -71,7 +71,7 @@ function TodayTaskList({
                 )}
               </div>
               {task.subtitle ? (
-                <p className="mt-0.5 truncate text-[11px] text-slate-500">{task.subtitle}</p>
+                <p className="mt-0.5 truncate text-[0.6875rem] text-slate-500">{task.subtitle}</p>
               ) : null}
             </div>
             <LinkChevron size={14} tone="brand" />

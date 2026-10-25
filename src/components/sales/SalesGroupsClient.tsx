@@ -156,7 +156,7 @@ export function SalesGroupsClient({
                   >
                     <span>Kolejność: {g.sortOrder}</span>
                     <span title="Handlowcy widoczni w podglądzie zespołu">
-                      <Badge variant="default" className="text-[10px]">
+                      <Badge variant="default" className="text-[0.625rem]">
                         {g.memberCount}{" "}
                         {g.memberCount === 1
                           ? "handlowiec"

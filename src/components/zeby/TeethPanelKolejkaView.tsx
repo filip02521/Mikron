@@ -59,7 +59,7 @@ function StatTile({
         tone === "slate" && "border-slate-200",
       )}
     >
-      <p className="text-[11px] font-semibold text-slate-500">{label}</p>
+      <p className="text-[0.6875rem] font-semibold text-slate-500">{label}</p>
       <p
         className={cn(
           "mt-0.5 text-xl font-semibold tabular-nums sm:text-2xl",

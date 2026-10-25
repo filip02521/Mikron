@@ -158,7 +158,7 @@ function CompareBars({ rows, reality }: { rows: CompareRow[]; reality: CompareRo
   };
   const metric = (label: string, value: string, raw: number, max: number, strong: boolean, d: ReturnType<typeof delta>) => (
     <div className="min-w-0">
-      <p className="text-[11px] font-medium text-slate-500 sm:hidden">{label}</p>
+      <p className="text-[0.6875rem] font-medium text-slate-500 sm:hidden">{label}</p>
       <div className="flex items-baseline justify-between gap-2 text-sm tabular-nums">
         <span className="font-semibold text-slate-900">{value}</span>
         {d ? (

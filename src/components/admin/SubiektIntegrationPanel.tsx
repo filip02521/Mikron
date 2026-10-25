@@ -55,7 +55,7 @@ function LookupResults({
 
   return (
     <div className="overflow-hidden rounded-md border border-slate-200/90 bg-white">
-      <p className="border-b border-slate-100 bg-slate-50/80 px-3 py-2 text-[11px] font-semibold text-slate-500">
+      <p className="border-b border-slate-100 bg-slate-50/80 px-3 py-2 text-[0.6875rem] font-semibold text-slate-500">
         {title}
       </p>
       <ul className="divide-y divide-slate-100">
@@ -253,7 +253,7 @@ export function SubiektIntegrationPanel({
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
               <div className="min-w-0 flex-1">
                 <label
-                  className="mb-1.5 block text-[11px] font-semibold text-slate-500"
+                  className="mb-1.5 block text-[0.6875rem] font-semibold text-slate-500"
                   htmlFor="subiekt-product-q"
                 >
                   Symbol / towar
@@ -279,7 +279,7 @@ export function SubiektIntegrationPanel({
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
               <div className="min-w-0 flex-1">
                 <label
-                  className="mb-1.5 block text-[11px] font-semibold text-slate-500"
+                  className="mb-1.5 block text-[0.6875rem] font-semibold text-slate-500"
                   htmlFor="subiekt-supplier-q"
                 >
                   Dostawca

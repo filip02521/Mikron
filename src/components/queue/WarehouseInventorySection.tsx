@@ -133,7 +133,7 @@ function WaitingBadge({ row }: { row: WarehouseInventoryRow }) {
           ? "bg-amber-100 text-amber-900"
           : "bg-slate-100 text-slate-700";
   return (
-    <span className={cn("inline-block rounded px-1.5 py-0.5 text-[11px] font-medium tabular-nums", tone)}>
+    <span className={cn("inline-block rounded px-1.5 py-0.5 text-[0.6875rem] font-medium tabular-nums", tone)}>
       {waitingLabel(row)}
     </span>
   );
@@ -382,10 +382,10 @@ export function WarehouseInventorySection({
             {o.products}
           </p>
           {o.symbol && o.symbol !== "-" ? (
-            <p className="truncate text-[11px] text-slate-500">{o.symbol}</p>
+            <p className="truncate text-[0.6875rem] text-slate-500">{o.symbol}</p>
           ) : null}
           {crossLabel ? (
-            <p className="mt-0.5 line-clamp-1 text-[10px] font-medium text-amber-800">{crossLabel}</p>
+            <p className="mt-0.5 line-clamp-1 text-[0.625rem] font-medium text-amber-800">{crossLabel}</p>
           ) : null}
         </td>
         <td className="align-top min-w-[6rem] max-w-[10rem]">
@@ -394,7 +394,7 @@ export function WarehouseInventorySection({
           </p>
           {o.sales_client_name?.trim() ? (
             <p
-              className="truncate text-[11px] text-slate-600"
+              className="truncate text-[0.6875rem] text-slate-600"
               title={o.sales_client_name.trim()}
             >
               {o.sales_client_name.trim()}
@@ -407,7 +407,7 @@ export function WarehouseInventorySection({
             <WaitingBadge row={row} />
             <span
               className={cn(
-                "inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold",
+                "inline-block rounded px-1.5 py-0.5 text-[0.625rem] font-semibold",
                 row.kind === "pickup_full"
                   ? "bg-emerald-100 text-emerald-900"
                   : row.kind === "pickup_partial"
@@ -426,7 +426,7 @@ export function WarehouseInventorySection({
                 type="button"
                 disabled={pending || clearPending || revertPending}
                 onClick={() => setRevertConfirmId(o.id)}
-                className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-40"
+                className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[0.6875rem] font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-40"
                 title="Cofnij przyjęcie - wróci do kolejki oczekujących"
               >
                 <IconUndoLeft size={13} />
@@ -436,7 +436,7 @@ export function WarehouseInventorySection({
                 type="button"
                 disabled={pending || clearPending || revertPending}
                 onClick={() => setClearConfirmId(o.id)}
-                className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-40"
+                className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[0.6875rem] font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-40"
                 title="Zdejmij z regału"
               >
                 <IconX size={13} />

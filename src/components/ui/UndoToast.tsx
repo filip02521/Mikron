@@ -162,8 +162,8 @@ export function UndoToast({
               </ul>
             ) : null}
             {undoShortcut ? (
-              <p className="mt-1 text-[11px] text-slate-500">
-                <kbd className="rounded border border-slate-200 bg-slate-50 px-1 py-0.5 font-mono text-[11px] text-slate-700">
+              <p className="mt-1 text-[0.6875rem] text-slate-500">
+                <kbd className="rounded border border-slate-200 bg-slate-50 px-1 py-0.5 font-mono text-[0.6875rem] text-slate-700">
                   {undoShortcut}
                 </kbd>{" "}
                 - szybkie cofnięcie

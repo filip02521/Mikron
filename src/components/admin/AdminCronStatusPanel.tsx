@@ -56,13 +56,13 @@ function CronJobDetail({ job }: { job: CronJobMonitorRow }) {
           <dd className="text-slate-900">{job.schedule}</dd>
         </div>
       </dl>
-      <ul className="space-y-0.5 text-[11px] leading-relaxed text-slate-700">
+      <ul className="space-y-0.5 text-[0.6875rem] leading-relaxed text-slate-700">
         {job.summaryLines.map((line) => (
           <li key={line}>{line}</li>
         ))}
       </ul>
       {job.error ? (
-        <p className="text-[11px] font-medium text-red-700">{job.error}</p>
+        <p className="text-[0.6875rem] font-medium text-red-700">{job.error}</p>
       ) : null}
       {job.id === "catalog_zd_sync" ? (
         <Link
@@ -105,13 +105,13 @@ function CronJobRow({
             <div className="min-w-0">
               <p className="text-sm font-medium text-slate-900">{job.label}</p>
               {!job.scheduled ? (
-                <p className="text-[11px] text-slate-500">Tylko ręcznie</p>
+                <p className="text-[0.6875rem] text-slate-500">Tylko ręcznie</p>
               ) : null}
             </div>
           </div>
         </td>
         <td className="px-2 py-2.5 sm:px-3">
-          <Badge variant={toneBadgeVariant(job.tone)} className="text-[10px]">
+          <Badge variant={toneBadgeVariant(job.tone)} className="text-[0.625rem]">
             {job.statusLabel}
           </Badge>
         </td>
@@ -331,7 +331,7 @@ export function AdminCronStatusPanel({
         <div className="overflow-hidden rounded-md border border-slate-200/90">
           <table className="w-full min-w-[32rem] border-collapse text-left">
             <thead>
-              <tr className="border-b border-slate-200/90 bg-slate-50/80 text-[11px] font-semibold text-slate-500">
+              <tr className="border-b border-slate-200/90 bg-slate-50/80 text-[0.6875rem] font-semibold text-slate-500">
                 <th className="px-2 py-2 sm:px-3">Zadanie</th>
                 <th className="px-2 py-2 sm:px-3">Status</th>
                 <th className="hidden px-2 py-2 md:table-cell sm:px-3">Harmonogram</th>

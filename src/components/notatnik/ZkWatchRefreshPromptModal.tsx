@@ -369,7 +369,7 @@ export function ZkWatchRefreshPromptModal({
             <span className="font-semibold text-slate-800">
               Okno {queuePosition} z {queueTotal}
             </span>
-            <span className="text-[11px] font-medium text-slate-500">
+            <span className="text-[0.6875rem] font-medium text-slate-500">
               Kolejne ZK po tej decyzji
             </span>
           </div>
@@ -464,7 +464,7 @@ export function ZkWatchRefreshPromptModal({
           <span className={salesTypography.sectionLabel}>
             Nowe pozycje - zaznacz do prośby
           </span>
-          <span className="text-[11px] font-medium text-slate-400">
+          <span className="text-[0.6875rem] font-medium text-slate-400">
             {addedCount} {plPozycja(addedCount)}
           </span>
         </div>
@@ -543,13 +543,13 @@ export function ZkWatchRefreshPromptModal({
                       </p>
                     )}
                     {stockDetail && (
-                      <p className="mt-0.5 text-[11px] leading-tight text-slate-400">
+                      <p className="mt-0.5 text-[0.6875rem] leading-tight text-slate-400">
                         {stockDetail}
                       </p>
                     )}
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1">
-                    <Badge variant="warning" className="text-[9px]">
+                    <Badge variant="warning" className="text-[0.5625rem]">
                       Nowa
                     </Badge>
                     {!selectionBusy && (snap != null || sufficient || selectionInitialized) ? (

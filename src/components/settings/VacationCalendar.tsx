@@ -91,12 +91,12 @@ type DayCell = {
 
 function statusBadge(startDate: string, endDate: string, todayKey: string) {
   if (todayKey < startDate) {
-    return <Badge variant="default" className="text-[10px]">Nadchodzący</Badge>;
+    return <Badge variant="default" className="text-[0.625rem]">Nadchodzący</Badge>;
   }
   if (todayKey > endDate) {
-    return <Badge variant="default" className="text-[10px] opacity-60">Zakończony</Badge>;
+    return <Badge variant="default" className="text-[0.625rem] opacity-60">Zakończony</Badge>;
   }
-  return <Badge variant="success" className="text-[10px]">Trwa teraz</Badge>;
+  return <Badge variant="success" className="text-[0.625rem]">Trwa teraz</Badge>;
 }
 
 function formatRangeLabel(startDate: string, endDate: string): string {
@@ -684,7 +684,7 @@ export function VacationCalendar({
                         {formatRangeLabel(period.startDate, period.endDate)}
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-500">
+                    <p className="text-[0.6875rem] text-slate-500">
                       {(() => {
                         const days = countBusinessDaysInclusive(period.startDate, period.endDate);
                         return days > 0 ? `${days} ${plDzienRoboczy(days)}` : "Tylko dni wolne od pracy";
@@ -694,14 +694,14 @@ export function VacationCalendar({
 
                   <div className="flex flex-wrap items-center gap-1.5">
                     {statusBadge(period.startDate, period.endDate, todayDateKey)}
-                    <Badge variant="default" className="text-[10px]">
+                    <Badge variant="default" className="text-[0.625rem]">
                       {staffVacationCategoryLabel(period.category)}
                     </Badge>
                   </div>
 
                   {period.note ? (
                     <div className="rounded-md border border-slate-100 bg-white px-2.5 py-2">
-                      <p className="text-[10px] font-semibold text-slate-400">Notatka</p>
+                      <p className="text-[0.625rem] font-semibold text-slate-400">Notatka</p>
                       <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{period.note}</p>
                     </div>
                   ) : null}
@@ -959,7 +959,7 @@ export function VacationCalendar({
           <div
             key={label}
             className={cn(
-              "border-b border-r border-slate-100 px-1.5 py-2.5 text-center font-semibold text-[10px]",
+              "border-b border-r border-slate-100 px-1.5 py-2.5 text-center font-semibold text-[0.625rem]",
               idx >= 5 ? "bg-slate-100/60 text-slate-400" : "text-slate-400"
             )}
           >
@@ -1007,7 +1007,7 @@ export function VacationCalendar({
                   </span>
                   {cell.isWeekend ? <span className="sr-only">, weekend</span> : null}
                   {cell.isToday ? (
-                    <Badge variant="info" className="hidden text-[9px] uppercase sm:inline-flex">Dziś</Badge>
+                    <Badge variant="info" className="hidden text-[0.5625rem] sm:inline-flex">Dziś</Badge>
                   ) : null}
                 </div>
                 {cell.isCurrentMonth && cell.periods.length > 0 ? (
@@ -1023,7 +1023,7 @@ export function VacationCalendar({
                             key={p.period.id + "-" + idx}
                             type="button"
                             className={cn(
-                              "flex w-full items-center gap-1 rounded px-1.5 py-1 text-[10px] font-medium truncate cursor-pointer transition hover:ring-1 hover:ring-slate-300/50 border border-white/80 shadow-sm",
+                              "flex w-full items-center gap-1 rounded px-1.5 py-1 text-[0.625rem] font-medium truncate cursor-pointer transition hover:ring-1 hover:ring-slate-300/50 border border-white/80 shadow-sm",
                               isOwn && "ring-1 ring-slate-400/40 font-semibold",
                               c.bg,
                               c.text
@@ -1049,7 +1049,7 @@ export function VacationCalendar({
                         );
                       })}
                       {cell.periods.length > 4 ? (
-                        <p className="text-[10px] font-medium text-slate-500">
+                        <p className="text-[0.625rem] font-medium text-slate-500">
                           +{cell.periods.length - 4} więcej
                         </p>
                       ) : null}
@@ -1075,7 +1075,7 @@ export function VacationCalendar({
                         );
                       })}
                       {cell.periods.length > 5 ? (
-                        <span className="text-[10px] font-medium text-slate-500">
+                        <span className="text-[0.625rem] font-medium text-slate-500">
                           +{cell.periods.length - 5}
                         </span>
                       ) : null}

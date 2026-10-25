@@ -132,7 +132,7 @@ export function TeethQueueOrderRow({
             {waitDays != null ? (
               <span
                 className={cn(
-                  "rounded-md px-2 py-0.5 text-[11px] font-medium tabular-nums ring-1 ring-inset",
+                  "rounded-md px-2 py-0.5 text-[0.6875rem] font-medium tabular-nums ring-1 ring-inset",
                   waitToneClass(waitDays),
                 )}
                 title={enteredAt ? `W kolejce od ${formatPlDate(enteredAt.slice(0, 10))}` : undefined}
@@ -142,7 +142,7 @@ export function TeethQueueOrderRow({
             ) : null}
             <span
               className={cn(
-                "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset",
+                "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[0.6875rem] font-semibold ring-1 ring-inset",
                 STATE_BADGE[state],
               )}
             >
@@ -199,14 +199,14 @@ export function TeethQueueOrderRow({
                     <span>{label}</span>
                     <span
                       className={cn(
-                        "rounded px-1 text-[11px] font-bold tabular-nums",
+                        "rounded px-1 text-[0.6875rem] font-semibold tabular-nums",
                         lineSelected ? "bg-white/20" : "bg-slate-100 text-slate-700",
                       )}
                     >
                       ×{qty}
                     </span>
                     {line.orderedCount > 0 && !done ? (
-                      <span className="text-[10px] font-normal opacity-70">
+                      <span className="text-[0.625rem] font-normal opacity-70">
                         +{line.orderedCount} zam.
                       </span>
                     ) : null}

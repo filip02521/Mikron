@@ -11,7 +11,7 @@ export const boardQuestionsStatusTrackClass =
   "flex w-full flex-wrap gap-0.5 rounded-lg border border-slate-200/90 bg-slate-100/70 p-0.5 sm:flex-nowrap";
 
 export const boardQuestionsStatusChipClass =
-  "inline-flex min-h-9 flex-auto cursor-pointer whitespace-nowrap sm:min-w-0 sm:flex-1 items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-semibold leading-none transition sm:min-h-8 sm:px-2.5 sm:text-xs";
+  "inline-flex min-h-9 flex-auto cursor-pointer whitespace-nowrap sm:min-w-0 sm:flex-1 items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[0.6875rem] font-semibold leading-none transition sm:min-h-8 sm:px-2.5 sm:text-xs";
 
 export const boardQuestionsStatusChipIdleClass =
   "text-slate-600 hover:bg-white/80 hover:text-slate-900";
@@ -23,10 +23,10 @@ export const boardQuestionsAttentionRowClass =
   "flex flex-wrap items-center gap-2";
 
 export const boardQuestionsAttentionLabelClass =
-  "shrink-0 text-[10px] font-bold text-slate-400";
+  "shrink-0 text-[0.625rem] font-semibold text-slate-400";
 
 export const boardQuestionsAttentionChipClass =
-  "inline-flex min-h-8 shrink-0 cursor-pointer items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] font-semibold leading-none transition";
+  "inline-flex min-h-8 shrink-0 cursor-pointer items-center gap-1 rounded-md border px-2.5 py-1 text-[0.6875rem] font-semibold leading-none transition";
 
 export const boardQuestionsAttentionChipIdleClass =
   "border-slate-200/90 bg-white text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/50 hover:text-indigo-900";
@@ -41,7 +41,7 @@ export const boardQuestionsOwnUnseenHintClass =
   "flex flex-wrap items-center justify-between gap-2 rounded-lg border border-indigo-100/90 bg-indigo-50/40 px-2.5 py-2 text-xs text-indigo-900/90";
 
 export const boardQuestionsResultsMetaClass =
-  "text-[11px] tabular-nums text-slate-500";
+  "text-[0.6875rem] tabular-nums text-slate-500";
 
 export const boardQuestionsFormShellClass =
   "overflow-hidden rounded-lg border border-indigo-200/80 bg-white shadow-sm";
@@ -65,7 +65,7 @@ export const boardQuestionsFormEmbeddedHeaderExpandedClass =
 export const boardQuestionsFormEmbeddedTitleClass = "text-sm font-semibold text-indigo-900";
 
 export const boardQuestionsFormEmbeddedExpandBadgeClass =
-  "rounded-md bg-indigo-100 px-2 py-0.5 text-[11px] font-semibold text-indigo-700";
+  "rounded-md bg-indigo-100 px-2 py-0.5 text-[0.6875rem] font-semibold text-indigo-700";
 
 export const boardQuestionsFormBodyClass = "space-y-4 px-3 py-3 sm:px-4 sm:py-4";
 

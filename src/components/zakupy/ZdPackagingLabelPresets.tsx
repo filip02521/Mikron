@@ -41,7 +41,7 @@ export function ZdPackagingLabelPresets({
             }
             onClick={() => onSelect(preset)}
             className={cn(
-              "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium ring-1 transition",
+              "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[0.6875rem] font-medium ring-1 transition",
               active
                 ? "bg-indigo-50 text-indigo-950 ring-indigo-200"
                 : "bg-white text-slate-600 ring-slate-200 hover:bg-slate-50",

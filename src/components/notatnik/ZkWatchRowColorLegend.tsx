@@ -102,7 +102,7 @@ export function ZkWatchRowColorLegend({
       className={cn(
         "flex flex-wrap items-center gap-x-3 gap-y-1",
         variant === "strip"
-          ? "text-[10px] leading-snug text-slate-500"
+          ? "text-[0.625rem] leading-snug text-slate-500"
           : salesTypography.chrome,
         className
       )}

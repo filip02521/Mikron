@@ -192,7 +192,7 @@ export function UserSettingsMenu({
       >
         <div className="flex items-center gap-2 px-3 pb-1 pt-2">
           <IconSun size={14} className="shrink-0 text-amber-500" />
-          <p className="text-[10px] font-semibold text-slate-400" role="presentation">
+          <p className="text-[0.625rem] font-semibold text-slate-400" role="presentation">
             Wybierz panel ({delegations.length})
           </p>
         </div>
@@ -204,12 +204,12 @@ export function UserSettingsMenu({
             className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-indigo-50/80 hover:text-indigo-950"
             onClick={() => setOpen(false)}
           >
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-100 text-[10px] font-semibold text-violet-700" aria-hidden>
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-100 text-[0.625rem] font-semibold text-violet-700" aria-hidden>
               {initialsFromName(d.salesPersonName)}
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate font-medium leading-tight">{d.salesPersonName}</span>
-              <span className="block text-[10px] leading-tight text-slate-400">do {d.endDate}</span>
+              <span className="block text-[0.625rem] leading-tight text-slate-400">do {d.endDate}</span>
             </span>
             <IconChevronRight size={14} className="shrink-0 text-slate-300" />
           </Link>
@@ -245,7 +245,7 @@ export function UserSettingsMenu({
                 )}
               >
                 <span
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-100 text-[10px] font-semibold text-violet-700"
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-100 text-[0.625rem] font-semibold text-violet-700"
                   aria-hidden
                 >
                   {initialsFromName(d.salesPersonName)}
@@ -253,10 +253,10 @@ export function UserSettingsMenu({
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-1">
                     <IconSun size={11} className="shrink-0 text-amber-500" />
-                    <span className="truncate text-[11px] font-semibold leading-tight text-amber-900">Zastępujesz</span>
+                    <span className="truncate text-[0.6875rem] font-semibold leading-tight text-amber-900">Zastępujesz</span>
                   </span>
-                  <span className="block truncate text-[11px] font-medium leading-tight text-slate-700">{d.salesPersonName}</span>
-                  <span className="block text-[9px] leading-tight text-slate-400">do {d.endDate}</span>
+                  <span className="block truncate text-[0.6875rem] font-medium leading-tight text-slate-700">{d.salesPersonName}</span>
+                  <span className="block text-[0.5625rem] leading-tight text-slate-400">do {d.endDate}</span>
                 </span>
                 <IconChevronRight size={14} className="shrink-0 text-amber-400 transition-colors group-hover:text-amber-600" />
               </Link>
@@ -272,7 +272,7 @@ export function UserSettingsMenu({
               aria-expanded={open}
               aria-haspopup="menu"
               aria-controls={open ? menuId : undefined}
-              className="mt-1 flex w-full items-center justify-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-amber-700 transition-colors hover:bg-amber-50"
+              className="mt-1 flex w-full items-center justify-center gap-1 rounded-md px-2 py-1 text-[0.6875rem] font-medium text-amber-700 transition-colors hover:bg-amber-50"
             >
               +{delegations.length - 2} więcej zastępstw
               <IconChevronDown open={open} size={12} className="text-amber-500" />

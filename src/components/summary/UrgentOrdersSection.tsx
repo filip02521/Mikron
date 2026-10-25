@@ -158,7 +158,7 @@ function UrgentCard({
       : null;
 
   const chips = vacationLabel ? (
-    <Badge variant="warning" className="w-fit text-[10px]">
+    <Badge variant="warning" className="w-fit text-[0.625rem]">
       {vacationLabel}
     </Badge>
   ) : null;

@@ -98,7 +98,7 @@ export function AdminPreviewDock({
                 <p id={titleId} className={noticeTitleInlineClass}>
                   Podgląd panelu: {label}
                   {readOnlyHint ? (
-                    <span className="ml-1.5 text-[11px] font-medium text-slate-500">
+                    <span className="ml-1.5 text-[0.6875rem] font-medium text-slate-500">
                       tylko odczyt
                     </span>
                   ) : null}
@@ -149,7 +149,7 @@ export function AdminPreviewDock({
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-violet-100 text-violet-800">
             <IconEye size={15} />
           </span>
-          <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-slate-900">
+          <span className="min-w-0 flex-1 truncate text-[0.8125rem] font-semibold text-slate-900">
             {collapsedLabel}
           </span>
           <IconChevronDown

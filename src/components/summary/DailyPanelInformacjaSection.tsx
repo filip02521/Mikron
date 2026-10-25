@@ -67,7 +67,7 @@ export function DailyPanelInformacjaSection({
                     ))}
                   </ul>
                 </div>
-                <Badge variant="default" className="shrink-0 self-start text-[10px] sm:self-auto">
+                <Badge variant="default" className="shrink-0 self-start text-[0.625rem] sm:self-auto">
                   Informacja
                 </Badge>
               </div>

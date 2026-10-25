@@ -26,14 +26,14 @@ export function PanelSummaryMetric({
 
   const body = (
     <>
-      <p className="text-[11px] font-semibold text-slate-500">
+      <p className="text-[0.6875rem] font-semibold text-slate-500">
         {label}
       </p>
       <p className={cn("mt-0.5 text-lg font-semibold tabular-nums", valueToneClass)}>
         {value}
       </p>
       {hint ? (
-        <p className="mt-0.5 text-[11px] leading-snug text-slate-600">{hint}</p>
+        <p className="mt-0.5 text-[0.6875rem] leading-snug text-slate-600">{hint}</p>
       ) : null}
     </>
   );

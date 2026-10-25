@@ -74,7 +74,7 @@ function SalesCancelledNoticeModal({
     >
       <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={notice.needsDisposition ? "warning" : "default"} className="text-[10px]">
+          <Badge variant={notice.needsDisposition ? "warning" : "default"} className="text-[0.625rem]">
             {notice.phase === "before_order" ? "Wycofane" : "Rezygnacja"}
           </Badge>
           {notice.clientName ? (
@@ -179,15 +179,15 @@ function SalesCancelledNoticeRow({
             {notice.person}
             <span className="font-normal text-slate-500"> · {notice.supplierName}</span>
           </p>
-          <p className="mt-0.5 truncate text-[11px] text-slate-500">{noticeCompactSubtitle(notice)}</p>
+          <p className="mt-0.5 truncate text-[0.6875rem] text-slate-500">{noticeCompactSubtitle(notice)}</p>
           {firstLine ? (
-            <p className="mt-0.5 truncate text-[11px] text-slate-400">
+            <p className="mt-0.5 truncate text-[0.6875rem] text-slate-400">
               {firstLine.symbol}
               {extraLines > 0 ? ` · +${extraLines}` : null}
             </p>
           ) : null}
         </div>
-        <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-slate-600">
+        <span className="inline-flex shrink-0 items-center gap-1 text-[0.6875rem] font-medium text-slate-600">
           {noticeActionLabel(notice)}
           <LinkChevron size={13} tone="muted" />
         </span>

@@ -754,7 +754,7 @@ export function ZdSharedScopeSplitter({
         ) : (
           <table className="w-full min-w-[640px] border-separate border-spacing-0 text-sm">
             <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-sm">
-              <tr className="text-left text-[13px] font-medium text-slate-500">
+              <tr className="text-left text-[0.8125rem] font-medium text-slate-500">
                 <th className="w-10 border-b border-slate-200 py-2.5 pl-5 pr-2 sm:pl-6">
                   <input
                     ref={headerBoxRef}
@@ -826,14 +826,14 @@ export function ZdSharedScopeSplitter({
                           {p.twSymbol ?? `#${tw}`}
                         </span>
                         {isChanged ? (
-                          <span className="shrink-0 rounded bg-indigo-50 px-1 text-[11px] font-medium text-indigo-800">
+                          <span className="shrink-0 rounded bg-indigo-50 px-1 text-[0.6875rem] font-medium text-indigo-800">
                             zmiana
                           </span>
                         ) : null}
                         {p.pair ? (
                           pairMismatch ? (
                             <span
-                              className="shrink-0 rounded bg-amber-50 px-1 text-[11px] font-medium text-amber-900"
+                              className="shrink-0 rounded bg-amber-50 px-1 text-[0.6875rem] font-medium text-amber-900"
                               title={`${p.pair.role === "pack" ? "Sztuki" : "Paczka"} ${
                                 p.pair.otherSymbol ?? `#${p.pair.otherTwId}`
                               } ma innego dostawcę${
@@ -844,7 +844,7 @@ export function ZdSharedScopeSplitter({
                             </span>
                           ) : (
                             <span
-                              className="shrink-0 rounded bg-slate-100 px-1 text-[11px] font-medium text-slate-600"
+                              className="shrink-0 rounded bg-slate-100 px-1 text-[0.6875rem] font-medium text-slate-600"
                               title={`Para z ${p.pair.otherSymbol ?? `#${p.pair.otherTwId}`}`}
                             >
                               {p.pair.role === "pack" ? "paczka" : "sztuki"}
@@ -889,7 +889,7 @@ export function ZdSharedScopeSplitter({
                         onPick={(sid) => assign([tw], sid)}
                       />
                       {p.assignedAt && !isChanged ? (
-                        <p className="mt-1 text-[11px] tabular-nums text-slate-500">
+                        <p className="mt-1 text-[0.6875rem] tabular-nums text-slate-500">
                           zapisane {formatPlDate(p.assignedAt)}
                           {p.assignedBy ? ` · ${p.assignedBy}` : ""}
                         </p>

@@ -80,7 +80,7 @@ export function AppearanceSettingsSection({
         >
           <span className="flex flex-col gap-0.5">
             <span className="text-sm font-medium text-slate-800">Jednolite tło</span>
-            <span className="text-[11px] leading-snug text-slate-400">
+            <span className="text-[0.6875rem] leading-snug text-slate-400">
               Ukrywa okręgi w tle aplikacji - czyste, jednolite tło
             </span>
           </span>
@@ -98,7 +98,7 @@ export function AppearanceSettingsSection({
         <div className="rounded-lg border border-slate-200/70 bg-white px-3.5 py-2.5">
           <span className="flex flex-col gap-0.5">
             <span className="text-sm font-medium text-slate-800">Rozmiar czcionki</span>
-            <span className="text-[11px] leading-snug text-slate-400">
+            <span className="text-[0.6875rem] leading-snug text-slate-400">
               Zwiększ czytelność tekstu w całym interfejsie
             </span>
           </span>

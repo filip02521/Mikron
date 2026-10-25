@@ -66,7 +66,7 @@ function GroupFilterChip({
       <span>{label}</span>
       <span
         className={cn(
-          "rounded px-1 py-px text-[10px] font-semibold tabular-nums",
+          "rounded px-1 py-px text-[0.625rem] font-semibold tabular-nums",
           active ? "bg-indigo-100/80 text-indigo-900" : "bg-slate-100 text-slate-600"
         )}
       >
@@ -271,12 +271,12 @@ export function SalesAdminClient({
       action={
         <div className="flex flex-wrap items-center justify-end gap-2.5">
           {unlinkedCount > 0 ? (
-            <Badge variant="warning" className="text-[10px]">
+            <Badge variant="warning" className="text-[0.625rem]">
               {unlinkedCount} bez konta
             </Badge>
           ) : null}
           {linkedCount > 0 ? (
-            <Badge variant="success" className="text-[10px]">
+            <Badge variant="success" className="text-[0.625rem]">
               {linkedCount} z kontem
             </Badge>
           ) : null}
@@ -368,7 +368,7 @@ export function SalesAdminClient({
                   <td className="font-medium text-slate-900">
                     <div className="flex items-center gap-2">
                       <span
-                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xs font-bold text-slate-600 ring-1 ring-inset ring-slate-200/60"
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xs font-semibold text-slate-600 ring-1 ring-inset ring-slate-200/60"
                         aria-hidden
                       >
                         {p.name.charAt(0).toUpperCase() || "?"}

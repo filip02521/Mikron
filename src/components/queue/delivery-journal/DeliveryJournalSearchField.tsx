@@ -90,7 +90,7 @@ export function DeliveryJournalSearchField({
         ) : null}
       </div>
       {hint ? (
-        <p id={`${id}-hint`} className="mt-1 text-[11px] leading-snug text-slate-500">
+        <p id={`${id}-hint`} className="mt-1 text-[0.6875rem] leading-snug text-slate-500">
           {hint}
         </p>
       ) : null}

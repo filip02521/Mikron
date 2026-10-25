@@ -577,7 +577,7 @@ export function SuppliersAdminClient({
             <>
               <div
                 className={cn(
-                  "hidden border-b border-slate-100 bg-slate-50/60 px-4 py-2.5 text-[10px] font-semibold text-slate-400 md:grid md:gap-3 lg:px-5",
+                  "hidden border-b border-slate-100 bg-slate-50/60 px-4 py-2.5 text-[0.625rem] font-semibold text-slate-400 md:grid md:gap-3 lg:px-5",
                   teethLane
                     ? "md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(120px,160px)]"
                     : "md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(88px,100px)_minmax(120px,160px)]"
@@ -626,7 +626,7 @@ export function SuppliersAdminClient({
                               teethLane={teethLane}
                               trailingBadge={
                                 teethLane && !teethScheduleIds.has(s.id) ? (
-                                  <Badge variant="warning" className="text-[10px]">
+                                  <Badge variant="warning" className="text-[0.625rem]">
                                     Brak cyklu zębów
                                   </Badge>
                                 ) : undefined

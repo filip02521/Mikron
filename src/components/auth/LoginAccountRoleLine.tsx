@@ -19,7 +19,7 @@ export function LoginAccountRoleLine({
     <span
       className={cn(
         "flex min-w-0 items-center gap-1.5 text-slate-500",
-        compact ? "text-[10px] leading-tight" : "text-xs leading-tight",
+        compact ? "text-[0.625rem] leading-tight" : "text-xs leading-tight",
         className
       )}
     >
@@ -35,7 +35,7 @@ export function LoginAccountRoleLine({
                 key={`${g}-${i}`}
                 className={cn(
                   "inline-flex items-center rounded bg-slate-100/80 font-medium text-slate-500",
-                  compact ? "px-1 py-px text-[9px]" : "px-1.5 py-px text-[10px]"
+                  compact ? "px-1 py-px text-[0.5625rem]" : "px-1.5 py-px text-[0.625rem]"
                 )}
               >
                 {g}

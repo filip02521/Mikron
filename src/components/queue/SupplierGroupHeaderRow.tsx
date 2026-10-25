@@ -121,13 +121,13 @@ export function SupplierGroupHeaderRow({
             <Chevron open={isOpen} />
             <span className="min-w-0">
               <span className="flex flex-wrap items-center gap-1.5">
-                <span className="truncate text-[14px] font-bold leading-tight text-slate-900">
+                <span className="truncate text-[0.875rem] font-semibold leading-tight text-slate-900">
                   {group.supplierKey}
                 </span>
                 {scheduleDate ? (
                   <span
                     className={cn(
-                      "inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold transition",
+                      "inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[0.625rem] font-semibold transition",
                       scheduleOverdue
                         ? "bg-rose-100 text-rose-700 ring-1 ring-inset ring-rose-200/60"
                         : "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200/50",
@@ -143,7 +143,7 @@ export function SupplierGroupHeaderRow({
                 {maxWaitingDays != null && maxWaitingDays > 0 ? (
                   <span
                     className={cn(
-                      "inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold tabular-nums transition",
+                      "inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[0.625rem] font-semibold tabular-nums transition",
                       isStale
                         ? "bg-rose-100/90 text-rose-700 ring-1 ring-inset ring-rose-200/50"
                         : "bg-slate-100/80 text-slate-600 ring-1 ring-inset ring-slate-200/40",
@@ -155,7 +155,7 @@ export function SupplierGroupHeaderRow({
                   </span>
                 ) : null}
               </span>
-              <span className="mt-0.5 block text-[10px] font-medium leading-snug text-slate-600">
+              <span className="mt-0.5 block text-[0.625rem] font-medium leading-snug text-slate-600">
                 {summary}
               </span>
             </span>

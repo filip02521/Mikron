@@ -110,7 +110,7 @@ function MojeAnnouncementCompactRow({
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
             {unread ? (
-              <span className="shrink-0 rounded bg-sky-100 px-1.5 py-0.5 text-[11px] font-semibold text-sky-800">
+              <span className="shrink-0 rounded bg-sky-100 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-sky-800">
                 Nowe
               </span>
             ) : null}
@@ -378,7 +378,7 @@ export function MojeAnnouncementsSection({
             )}
 
             {!searchNeedle && listAnnouncements.length > 3 ? (
-              <p className="border-t border-slate-100 px-3 py-2 text-[11px] text-slate-500 sm:px-4">
+              <p className="border-t border-slate-100 px-3 py-2 text-[0.6875rem] text-slate-500 sm:px-4">
                 Pytania do zakupów zadajesz na{" "}
                 <Link href={tablicaHref} className={brandLinkClass}>
                   Tablicy

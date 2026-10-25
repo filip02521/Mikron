@@ -26,7 +26,7 @@ export function SupplierAdminNameCell({
       className="group flex min-w-0 items-center gap-2.5 text-left"
     >
       <span
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-sm font-bold text-indigo-700 ring-1 ring-inset ring-indigo-100/60 transition group-hover:bg-indigo-100 group-hover:text-indigo-800"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-sm font-semibold text-indigo-700 ring-1 ring-inset ring-indigo-100/60 transition group-hover:bg-indigo-100 group-hover:text-indigo-800"
         aria-hidden
       >
         {initial}
@@ -38,17 +38,17 @@ export function SupplierAdminNameCell({
           </span>
           {trailingBadge}
           {!teethLane && isSupplierOrderOnDemand(s) ? (
-            <Badge variant="info" className="text-[10px]">
+            <Badge variant="info" className="text-[0.625rem]">
               Na żądanie
             </Badge>
           ) : null}
           {s.subiekt_kh_id == null ? (
-            <Badge variant="warning" className="text-[10px]">
+            <Badge variant="warning" className="text-[0.625rem]">
               Bez Subiekta
             </Badge>
           ) : null}
           {isEditing ? (
-            <Badge variant="info" className="text-[10px]">
+            <Badge variant="info" className="text-[0.625rem]">
               Edycja
             </Badge>
           ) : null}

@@ -735,7 +735,7 @@ export function ReceiveQueueTable({
               <IconSearch size={15} className="shrink-0 text-slate-400" />
               <span>Wyszukiwanie</span>
               {hasActiveFilters ? (
-                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-md bg-indigo-100 px-1 text-[10px] font-bold text-indigo-700">
+                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-md bg-indigo-100 px-1 text-[0.625rem] font-semibold text-indigo-700">
                   {productSearchActive ? 1 : 0}
                   {zdFilter ? (productSearchActive ? 1 : 1) : 0}
                 </span>
@@ -749,12 +749,12 @@ export function ReceiveQueueTable({
             {searchCollapsed && hasActiveFilters ? (
               <div className="flex flex-wrap items-center gap-1.5">
                 {productSearchActive ? (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-700">
+                  <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-[0.6875rem] font-medium text-slate-700">
                     Szukaj: {productSearch.trim()}
                   </span>
                 ) : null}
                 {zdFilter ? (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2 py-1 text-[11px] font-medium text-emerald-800">
+                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2 py-1 text-[0.6875rem] font-medium text-emerald-800">
                     ZD: {zdFilter.docNumber}
                   </span>
                 ) : null}
@@ -799,7 +799,7 @@ export function ReceiveQueueTable({
                   />
                   <div className="space-y-0.5">
                     {productSearchActive ? (
-                      <p className="text-[11px] font-medium text-slate-700">
+                      <p className="text-[0.6875rem] font-medium text-slate-700">
                         {receiveQueueSearchToolbarLabel(
                           filtered.length,
                           zdScoped.length,
@@ -809,11 +809,11 @@ export function ReceiveQueueTable({
                     ) : null}
                     {zdFilter ? (
                       <>
-                        <p className="text-[11px] font-medium text-emerald-800">
+                        <p className="text-[0.6875rem] font-medium text-emerald-800">
                           {zdFilterToolbarLabel(filtered.length, supplierFiltered.length)}
                         </p>
                         {zdFilterUnmatchedLinesLabel(zdUnmatchedLineCount) ? (
-                          <p className="text-[10px] text-amber-800">
+                          <p className="text-[0.625rem] text-amber-800">
                             {zdFilterUnmatchedLinesLabel(zdUnmatchedLineCount)}
                           </p>
                         ) : null}
@@ -841,7 +841,7 @@ export function ReceiveQueueTable({
         </div>
 
         {availableCount > 0 && !stockAlertLoading ? (
-          <div className="flex items-center gap-2 rounded-lg bg-emerald-50/70 px-3 py-2 text-[11px] font-medium text-emerald-900 ring-1 ring-inset ring-emerald-200/50">
+          <div className="flex items-center gap-2 rounded-lg bg-emerald-50/70 px-3 py-2 text-[0.6875rem] font-medium text-emerald-900 ring-1 ring-inset ring-emerald-200/50">
             <svg aria-hidden viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" className="size-4 shrink-0 text-emerald-700">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 8.5l3 3 7-7" />
             </svg>
@@ -852,7 +852,7 @@ export function ReceiveQueueTable({
               <button
                 type="button"
                 onClick={() => setStockAvailableOnly(true)}
-                className="ml-auto shrink-0 rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-900 transition hover:bg-emerald-200"
+                className="ml-auto shrink-0 rounded-md bg-emerald-100 px-2 py-0.5 text-[0.625rem] font-semibold text-emerald-900 transition hover:bg-emerald-200"
               >
                 Pokaż tylko na stanie
               </button>
@@ -860,7 +860,7 @@ export function ReceiveQueueTable({
               <button
                 type="button"
                 onClick={() => setStockAvailableOnly(false)}
-                className="ml-auto shrink-0 rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-900 transition hover:bg-emerald-200"
+                className="ml-auto shrink-0 rounded-md bg-emerald-100 px-2 py-0.5 text-[0.625rem] font-semibold text-emerald-900 transition hover:bg-emerald-200"
               >
                 Pokaż wszystkie
               </button>
@@ -869,7 +869,7 @@ export function ReceiveQueueTable({
         ) : null}
 
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-md border border-slate-100 bg-slate-50/60 px-3 py-2">
-          <p className="min-w-0 text-[10px] leading-relaxed text-slate-500">
+          <p className="min-w-0 text-[0.625rem] leading-relaxed text-slate-500">
             <span className="inline-flex items-center gap-1">
               <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
               zamówienie: wpisz ilość, Enter lub{" "}
@@ -888,7 +888,7 @@ export function ReceiveQueueTable({
               <button
                 type="button"
                 onClick={selectAllZdMatches}
-                className="text-[10px] font-medium text-emerald-700 transition hover:text-emerald-900"
+                className="text-[0.625rem] font-medium text-emerald-700 transition hover:text-emerald-900"
               >
                 Zaznacz wszystkie pasujące
               </button>
@@ -1052,9 +1052,9 @@ export function ReceiveQueueTable({
                   onChange={(e) => toggleAll(e.target.checked)}
                 />
               </th>
-              <th className="bg-slate-50/95 px-2 py-2.5 text-left text-[11px] font-semibold text-slate-500">Handlowiec</th>
-              <th className="bg-slate-50/95 px-2 py-2.5 text-left text-[11px] font-semibold text-slate-500">Produkt</th>
-              <th className="w-[9.5rem] bg-slate-50/95 px-2 py-2.5 text-right text-[11px] font-semibold text-slate-500">Realizacja</th>
+              <th className="bg-slate-50/95 px-2 py-2.5 text-left text-[0.6875rem] font-semibold text-slate-500">Handlowiec</th>
+              <th className="bg-slate-50/95 px-2 py-2.5 text-left text-[0.6875rem] font-semibold text-slate-500">Produkt</th>
+              <th className="w-[9.5rem] bg-slate-50/95 px-2 py-2.5 text-right text-[0.6875rem] font-semibold text-slate-500">Realizacja</th>
             </tr>
           </thead>
           <ReceiveQueueVirtualTbody

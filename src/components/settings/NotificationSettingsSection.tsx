@@ -74,7 +74,7 @@ export function NotificationSettingsSection({ role }: NotificationSettingsSectio
           >
             <span className="flex flex-col gap-0.5">
               <span className="text-sm font-medium text-slate-800">Dźwięk przy odpowiedzi na Tablicy</span>
-              <span className="text-[11px] leading-snug text-slate-400">
+              <span className="text-[0.6875rem] leading-snug text-slate-400">
                 Odtwarza dźwięk, gdy dział zakupów odpowie na Twoje pytanie
               </span>
             </span>
@@ -101,7 +101,7 @@ export function NotificationSettingsSection({ role }: NotificationSettingsSectio
           >
             <span className="flex flex-col gap-0.5">
               <span className="text-sm font-medium text-slate-800">Dźwięk przy pytaniu</span>
-              <span className="text-[11px] leading-snug text-slate-400">Odtwarza dźwięk, gdy handlowiec doda pytanie na tablicy</span>
+              <span className="text-[0.6875rem] leading-snug text-slate-400">Odtwarza dźwięk, gdy handlowiec doda pytanie na tablicy</span>
             </span>
             <input
               type="checkbox"
@@ -125,7 +125,7 @@ export function NotificationSettingsSection({ role }: NotificationSettingsSectio
         >
           <span className="flex flex-col gap-0.5">
             <span className="text-sm font-medium text-slate-800">Dźwięk toastów</span>
-            <span className="text-[11px] leading-snug text-slate-400">
+            <span className="text-[0.6875rem] leading-snug text-slate-400">
               Odtwarza dźwięk przy komunikatach potwierdzenia i cofania
             </span>
           </span>

@@ -52,7 +52,7 @@ export function VerificationPendingBanner({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span
-              className="inline-flex min-w-[2rem] items-center justify-center rounded-md bg-amber-500 px-2.5 py-0.5 text-sm font-bold tabular-nums text-white shadow-sm"
+              className="inline-flex min-w-[2rem] items-center justify-center rounded-md bg-amber-500 px-2.5 py-0.5 text-sm font-semibold tabular-nums text-white shadow-sm"
               aria-hidden
             >
               {count}
@@ -72,7 +72,7 @@ export function VerificationPendingBanner({
             {MISSING_FIELDS.map((label) => (
               <li
                 key={label}
-                className="rounded-md border border-amber-200/90 bg-white/90 px-2 py-0.5 text-[11px] font-semibold text-amber-900/85"
+                className="rounded-md border border-amber-200/90 bg-white/90 px-2 py-0.5 text-[0.6875rem] font-semibold text-amber-900/85"
               >
                 {label}
               </li>

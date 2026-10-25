@@ -26,7 +26,7 @@ export function boardAnnouncementRowClass(opts: {
 }
 
 export function boardAnnouncementRoleBadgeClass(): string {
-  return "inline-flex rounded-md bg-indigo-100 px-2 py-0.5 text-[10px] font-bold leading-none text-indigo-900";
+  return "inline-flex rounded-md bg-indigo-100 px-2 py-0.5 text-[0.625rem] font-semibold leading-none text-indigo-900";
 }
 
 export function boardAnnouncementAvatarClass(opts: {
@@ -169,7 +169,7 @@ export function boardSupplierWaitPanelClass(overdue: boolean): string {
 
 export const boardQuestionPreviewClass = cn(
   salesTypography.rowBody,
-  "block truncate text-[12px] leading-snug text-slate-500/90"
+  "block truncate text-[0.75rem] leading-snug text-slate-500/90"
 );
 
 export const boardQuestionCollapsedMetaClass = "text-slate-600/95";
@@ -185,7 +185,7 @@ export function boardThreadAuthorNameClass(tone: BoardThreadMessageTone): string
 }
 
 export const boardQuestionProductChipClass =
-  "inline-flex max-w-full items-center gap-1.5 rounded-md border border-slate-200/90 bg-slate-100/80 px-2 py-0.5 text-[11px] font-semibold text-slate-700";
+  "inline-flex max-w-full items-center gap-1.5 rounded-md border border-slate-200/90 bg-slate-100/80 px-2 py-0.5 text-[0.6875rem] font-semibold text-slate-700";
 
 export const boardQuestionProductContextClass =
   "overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9)] ring-1 ring-slate-900/[0.02]";
@@ -197,7 +197,7 @@ export const boardQuestionQuickProsbaStripClass =
   "flex flex-col gap-2 border-t border-indigo-100/80 bg-indigo-50/55 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3";
 
 export const boardQuestionQuickProsbaHintClass =
-  "min-w-0 text-[11px] leading-snug text-slate-600 sm:text-xs";
+  "min-w-0 text-[0.6875rem] leading-snug text-slate-600 sm:text-xs";
 
 export const boardQuestionQuickProsbaCtaClass =
   "shrink-0 gap-1.5 border-indigo-200/80 bg-white/90 text-indigo-800 shadow-sm hover:border-indigo-300 hover:bg-indigo-50/80";
@@ -228,7 +228,7 @@ export function boardThreadAvatarClass(tone: BoardThreadMessageTone): string {
 
 export function boardThreadRoleBadgeClass(tone: BoardThreadMessageTone): string {
   return cn(
-    "inline-flex rounded-md px-2 py-0.5 text-[10px] font-bold leading-none",
+    "inline-flex rounded-md px-2 py-0.5 text-[0.625rem] font-semibold leading-none",
     tone === "procurement" ? "bg-indigo-100 text-indigo-900" : "bg-slate-100 text-slate-700"
   );
 }
@@ -250,13 +250,13 @@ export function boardChipCountBadgeClass(opts: {
   emphasis?: "default" | "warning" | "action";
 }): string {
   if (opts.active) {
-    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-indigo-600 px-1.5 py-0.5 tabular-nums text-[10px] font-bold leading-none text-white";
+    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-indigo-600 px-1.5 py-0.5 tabular-nums text-[0.625rem] font-semibold leading-none text-white";
   }
   if (opts.emphasis === "warning") {
-    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-amber-100 px-1.5 py-0.5 tabular-nums text-[10px] font-bold leading-none text-amber-900";
+    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-amber-100 px-1.5 py-0.5 tabular-nums text-[0.625rem] font-semibold leading-none text-amber-900";
   }
   if (opts.emphasis === "action") {
-    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-indigo-100 px-1.5 py-0.5 tabular-nums text-[10px] font-bold leading-none text-indigo-900";
+    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-indigo-100 px-1.5 py-0.5 tabular-nums text-[0.625rem] font-semibold leading-none text-indigo-900";
   }
-  return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-slate-100 px-1.5 py-0.5 tabular-nums text-[10px] font-bold leading-none text-slate-600";
+  return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-slate-100 px-1.5 py-0.5 tabular-nums text-[0.625rem] font-semibold leading-none text-slate-600";
 }

@@ -83,7 +83,7 @@ export function TeethPanelHistoryOrderEntry({
           </div>
           <span
             className={cn(
-              "shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset",
+              "shrink-0 rounded-md px-2 py-0.5 text-[0.6875rem] font-semibold ring-1 ring-inset",
               meta.badge,
             )}
           >
@@ -102,7 +102,7 @@ export function TeethPanelHistoryOrderEntry({
                 )}
               >
                 {formatTeethSpecLabel(line)}
-                <span className="rounded bg-slate-100 px-1 text-[11px] font-bold tabular-nums text-slate-700">
+                <span className="rounded bg-slate-100 px-1 text-[0.6875rem] font-semibold tabular-nums text-slate-700">
                   ×{line.total}
                 </span>
               </li>

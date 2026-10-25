@@ -133,7 +133,7 @@ export function SupplierSubiektLinkField({
 
   return (
     <div className="rounded-lg border border-slate-200/70 bg-slate-50/50 p-3.5 space-y-3">
-      <p className="text-[11px] font-semibold text-slate-400">
+      <p className="text-[0.6875rem] font-semibold text-slate-400">
         Powiązanie z Subiektem
       </p>
       {subiektKhId != null ? (
@@ -145,7 +145,7 @@ export function SupplierSubiektLinkField({
             <p className="text-sm font-medium text-indigo-900">
               {kontrahentDisplayName(linkedLabel, subiektKhId)}
             </p>
-            <p className="text-[11px] text-indigo-600/80">
+            <p className="text-[0.6875rem] text-indigo-600/80">
               id {subiektKhId} ·{" "}
               {countryLabel
                 ? `kraj z Subiekta: ${countryLabel}`
@@ -171,7 +171,7 @@ export function SupplierSubiektLinkField({
 
       {aliases.length > 0 ? (
         <div className="space-y-1.5">
-          <p className="text-[11px] font-semibold text-slate-400">
+          <p className="text-[0.6875rem] font-semibold text-slate-400">
             Dodatkowi kontrahenci
           </p>
           <ul className="space-y-1">
@@ -184,7 +184,7 @@ export function SupplierSubiektLinkField({
                   <span className="font-medium text-slate-900">
                     {kontrahentDisplayName(a.kontrahentLabel, a.subiektKhId)}
                   </span>
-                  <span className="mt-0.5 block font-mono text-[10px] text-slate-400">
+                  <span className="mt-0.5 block font-mono text-[0.625rem] text-slate-400">
                     id {a.subiektKhId}
                   </span>
                   {a.note ? (
@@ -248,7 +248,7 @@ export function SupplierSubiektLinkField({
                     <span className="text-sm font-medium text-slate-900">{formatSubiektKontrahentLabel(k)}</span>
                     <span className="text-xs text-slate-400">id {k.kh_Id}</span>
                   </div>
-                  <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-slate-500">
+                  <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[0.6875rem] text-slate-500">
                     {k.adr_NIP ? <span>NIP: {k.adr_NIP}</span> : null}
                     {k.adr_Miejscowosc ? <span>{k.adr_Miejscowosc}</span> : null}
                   </div>
@@ -265,7 +265,7 @@ export function SupplierSubiektLinkField({
                       Ustaw jako główne
                     </Button>
                   ) : (
-                    <span className="self-center px-2 text-[11px] font-medium text-indigo-700">Główne</span>
+                    <span className="self-center px-2 text-[0.6875rem] font-medium text-indigo-700">Główne</span>
                   )}
                   {!isAlias && !isPrimary ? (
                     <Button
@@ -278,7 +278,7 @@ export function SupplierSubiektLinkField({
                       Dodaj dodatkowy
                     </Button>
                   ) : isAlias ? (
-                    <span className="self-center px-2 text-[11px] text-slate-400">Już dodatkowy</span>
+                    <span className="self-center px-2 text-[0.6875rem] text-slate-400">Już dodatkowy</span>
                   ) : null}
                 </div>
               </li>

@@ -1031,7 +1031,7 @@ export function ProductsCatalogAdminClient({
           </p>
           <div className="mt-2 flex flex-wrap items-end gap-2">
             <div className="min-w-[10rem]">
-              <label className="text-[11px] font-semibold text-slate-500">
+              <label className="text-[0.6875rem] font-semibold text-slate-500">
                 Zakres (mies. wstecz)
               </label>
               <Select
@@ -1045,7 +1045,7 @@ export function ProductsCatalogAdminClient({
                 ))}
               </Select>
             </div>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[0.6875rem] text-slate-500">
               Większy zakres = więcej ZD do przypisania do dostawców.
             </p>
           </div>
@@ -1112,13 +1112,13 @@ export function ProductsCatalogAdminClient({
               </span>
             </div>
             {indexState?.lastDocNumber ? (
-              <p className="mt-2 text-[11px] text-slate-600">
+              <p className="mt-2 text-[0.6875rem] text-slate-600">
                 Ostatni dokument: <span className="font-medium">{indexState.lastDocNumber}</span> ·{" "}
                 {String(indexState.lastUpdatedAt ?? "").slice(0, 19).replace("T", " ")}
               </p>
             ) : null}
             {indexState?.lastError ? (
-              <p className="mt-2 text-[11px] text-red-700">Błąd: {indexState.lastError}</p>
+              <p className="mt-2 text-[0.6875rem] text-red-700">Błąd: {indexState.lastError}</p>
             ) : null}
           </div>
 
@@ -1213,7 +1213,7 @@ export function ProductsCatalogAdminClient({
           </p>
           <div className="mt-2 flex flex-wrap items-end gap-2">
             <div className="min-w-[10rem]">
-              <label className="text-[11px] font-semibold text-slate-500">
+              <label className="text-[0.6875rem] font-semibold text-slate-500">
                 Zakres (mies. wstecz)
               </label>
               <Select
@@ -1227,7 +1227,7 @@ export function ProductsCatalogAdminClient({
                 ))}
               </Select>
             </div>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[0.6875rem] text-slate-500">
               Im większy zakres, tym więcej ZD i więcej unikalnych produktów (np. Ivoclar ~1000).
             </p>
           </div>
@@ -1291,13 +1291,13 @@ export function ProductsCatalogAdminClient({
               </span>
             </div>
             {allState?.lastDocNumber ? (
-              <p className="mt-2 text-[11px] text-slate-600">
+              <p className="mt-2 text-[0.6875rem] text-slate-600">
                 Ostatni dokument: <span className="font-medium">{allState.lastDocNumber}</span> ·{" "}
                 {String(allState.lastUpdatedAt ?? "").slice(0, 19).replace("T", " ")}
               </p>
             ) : null}
             {allState?.lastError ? (
-              <p className="mt-2 text-[11px] text-red-700">Błąd: {allState.lastError}</p>
+              <p className="mt-2 text-[0.6875rem] text-red-700">Błąd: {allState.lastError}</p>
             ) : null}
           </div>
 
@@ -1310,7 +1310,7 @@ export function ProductsCatalogAdminClient({
 
           <div className="mt-2 flex flex-wrap items-end gap-2">
             <div className="min-w-[10rem]">
-              <label className="text-[11px] font-semibold text-slate-500">
+              <label className="text-[0.6875rem] font-semibold text-slate-500">
                 Zakres (mies. wstecz)
               </label>
               <Select
@@ -1418,13 +1418,13 @@ export function ProductsCatalogAdminClient({
               </span>
             </div>
             {importState?.lastDocNumber ? (
-              <p className="mt-2 text-[11px] text-slate-600">
+              <p className="mt-2 text-[0.6875rem] text-slate-600">
                 Ostatni dokument: <span className="font-medium">{importState.lastDocNumber}</span> ·{" "}
                 {String(importState.lastUpdatedAt ?? "").slice(0, 19).replace("T", " ")}
               </p>
             ) : null}
             {importState?.lastError ? (
-              <p className="mt-2 text-[11px] text-red-700">Błąd: {importState.lastError}</p>
+              <p className="mt-2 text-[0.6875rem] text-red-700">Błąd: {importState.lastError}</p>
             ) : null}
           </div>
         </div>
@@ -1472,7 +1472,7 @@ export function ProductsCatalogAdminClient({
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
           {listMode === "all" ? (
             <div className="sm:w-64">
-              <label className="mb-1 block text-[11px] font-semibold text-slate-500">
+              <label className="mb-1 block text-[0.6875rem] font-semibold text-slate-500">
                 Dostawca
               </label>
               <Select
@@ -1491,7 +1491,7 @@ export function ProductsCatalogAdminClient({
           ) : null}
           <div className="min-w-0 flex-1">
             {listMode === "all" ? (
-              <label className="mb-1 block text-[11px] font-semibold text-slate-500">
+              <label className="mb-1 block text-[0.6875rem] font-semibold text-slate-500">
                 Szukaj
               </label>
             ) : null}
@@ -1539,7 +1539,7 @@ export function ProductsCatalogAdminClient({
 
       <div className="border-t border-slate-100">
         <div
-          className="hidden border-b border-slate-100 bg-slate-50/90 px-4 py-2 text-[11px] font-semibold text-slate-500 lg:grid lg:grid-cols-[auto_minmax(0,1fr)_minmax(220px,1fr)_minmax(140px,180px)] lg:items-center lg:gap-3"
+          className="hidden border-b border-slate-100 bg-slate-50/90 px-4 py-2 text-[0.6875rem] font-semibold text-slate-500 lg:grid lg:grid-cols-[auto_minmax(0,1fr)_minmax(220px,1fr)_minmax(140px,180px)] lg:items-center lg:gap-3"
           aria-hidden
         >
           <span className="flex w-9 justify-center">
@@ -1577,7 +1577,7 @@ export function ProductsCatalogAdminClient({
                   aria-label={`Zaznacz ${r.name || `produkt ${r.subiektTwId}`}`}
                   onChange={() => toggleRowSelected(r.subiektTwId)}
                 />
-                <span className="text-[11px] font-medium text-slate-500 lg:hidden">Zaznacz</span>
+                <span className="text-[0.6875rem] font-medium text-slate-500 lg:hidden">Zaznacz</span>
               </div>
               <div className="min-w-0">
                 <div className="flex min-w-0 items-baseline gap-2">
@@ -1587,11 +1587,11 @@ export function ProductsCatalogAdminClient({
                   >
                     {r.name || "-"}
                   </p>
-                  <span className="shrink-0 font-mono text-[11px] tabular-nums text-slate-500">
+                  <span className="shrink-0 font-mono text-[0.6875rem] tabular-nums text-slate-500">
                     {r.subiektTwId}
                   </span>
                 </div>
-                <p className="mt-0.5 truncate text-[11px] leading-snug text-slate-500">
+                <p className="mt-0.5 truncate text-[0.6875rem] leading-snug text-slate-500">
                   {[
                     r.symbol || null,
                     `${r.totalOrders} zlec.`,

@@ -44,14 +44,14 @@ export function urgentFooterShellClass(_tone: UrgentCardTone = "today") {
 /** Primary „Zamówione” w footerze — zawsze akcent marki. */
 export function urgentFooterPrimaryClass(_tone: UrgentCardTone = "today") {
   return cn(
-    "flex h-full min-h-0 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-none rounded-l-md border-0 px-2 text-[12px] font-semibold leading-none text-white shadow-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50",
+    "flex h-full min-h-0 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-none rounded-l-md border-0 px-2 text-[0.75rem] font-semibold leading-none text-white shadow-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50",
     "bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800"
   );
 }
 
 /** Segment Przesuń w footerze — rozciąga się jak Uzupełniające w prośbach. */
 export const urgentFooterShiftSegmentClass =
-  "flex h-full min-h-0 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-none border-0 border-l border-slate-200/90 px-2 text-[12px] font-medium leading-none text-slate-700 shadow-none transition-colors duration-150 hover:bg-slate-50";
+  "flex h-full min-h-0 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-none border-0 border-l border-slate-200/90 px-2 text-[0.75rem] font-medium leading-none text-slate-700 shadow-none transition-colors duration-150 hover:bg-slate-50";
 
 /** Treść karty — bez prawej szyny akcji (akcje w footerze). */
 export const urgentCardBodyClass = "px-2.5 py-1.5 sm:px-3";

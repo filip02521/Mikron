@@ -53,9 +53,9 @@ export const navLinkIdleClass = cn(
   `${navFineHover}text-slate-900`
 );
 
-/** Sidebar — nagłówek grupy nawigacji. */
+/** Sidebar — nagłówek grupy nawigacji (design-ok: Nav Group, jedyne wersaliki w aplikacji). */
 export const sidebarNavSectionTitleClass =
-  "px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500";
+  "px-3 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-slate-500";
 
 /** Sidebar — separator między grupami (subtelny). */
 export const sidebarNavSectionDividerClass = "mt-2.5 pt-2.5";
@@ -130,7 +130,7 @@ export function roleBadgeClass(role: string): string {
     sales_manager: "border-indigo-200/70 bg-indigo-50/80 text-indigo-800",
   };
   return [
-    "inline-flex max-w-full items-center rounded-md border px-2.5 py-1 text-[10px] font-semibold leading-tight",
+    "inline-flex max-w-full items-center rounded-md border px-2.5 py-1 text-[0.625rem] font-semibold leading-tight",
     tint[role] ?? "border-slate-200/90 bg-slate-50/80 text-slate-700",
   ].join(" ");
 }
@@ -549,7 +549,7 @@ export const mojePickupControlClass = cn(
 
 /** Potwierdzenie pojedynczej pozycji w rozwiniętej liście — pełna szerokość kolumny akcji. */
 export const mojeLinePickupAckClass = cn(
-  "inline-flex w-full min-w-0 items-center justify-center rounded-md border border-emerald-200/90 bg-white px-2 py-2 text-center text-[11px] font-semibold leading-snug text-emerald-800 shadow-sm transition sm:text-xs",
+  "inline-flex w-full min-w-0 items-center justify-center rounded-md border border-emerald-200/90 bg-white px-2 py-2 text-center text-[0.6875rem] font-semibold leading-snug text-emerald-800 shadow-sm transition sm:text-xs",
   "hover:border-emerald-300 hover:bg-emerald-50 active:bg-emerald-100/90 disabled:cursor-not-allowed disabled:opacity-50",
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600",
   "min-h-9 sm:min-h-10"
@@ -595,14 +595,14 @@ export const mojeDestructiveOutlineControlClass = cn(
 
 /** Anulowanie pojedynczej linii — dyskretny link przy wierszu produktu. */
 export const mojeDestructiveSubtleControlClass = cn(
-  "inline-flex shrink-0 items-center justify-center rounded-sm px-1 py-0.5 text-[10px] font-medium text-slate-400/90 transition",
+  "inline-flex shrink-0 items-center justify-center rounded-sm px-1 py-0.5 text-[0.625rem] font-medium text-slate-400/90 transition",
   "hover:text-red-700 focus-visible:text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-indigo-600",
   "disabled:cursor-not-allowed disabled:opacity-40"
 );
 
 /** Anulowanie pojedynczej pozycji w rozwiniętej liście — pełna szerokość kolumny akcji. */
 export const mojeLineCancelControlClass = cn(
-  "inline-flex w-full min-w-0 items-center justify-center rounded-md border border-red-200/90 bg-white px-2 py-2 text-center text-[11px] font-semibold leading-snug text-red-800 shadow-sm transition sm:text-xs",
+  "inline-flex w-full min-w-0 items-center justify-center rounded-md border border-red-200/90 bg-white px-2 py-2 text-center text-[0.6875rem] font-semibold leading-snug text-red-800 shadow-sm transition sm:text-xs",
   "hover:border-red-300 hover:bg-red-50 active:bg-red-100/90 disabled:cursor-not-allowed disabled:opacity-50",
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600",
   "min-h-9 sm:min-h-10"
@@ -616,40 +616,40 @@ export const salesTypography = {
   pageTitle: "text-base font-semibold tracking-tight text-slate-900",
   pageDesc: "text-xs leading-relaxed text-slate-500",
   blockTitle: "text-sm font-semibold text-slate-900",
-  sectionLabel: "text-[11px] font-semibold text-slate-600",
-  sectionLabelAccent: "text-[11px] font-semibold text-emerald-900",
+  sectionLabel: "text-[0.6875rem] font-semibold text-slate-600",
+  sectionLabelAccent: "text-[0.6875rem] font-semibold text-emerald-900",
   /** Nagłówek podsekcji listy (SectionListLabel) — wyżej niż meta wierszy. */
-  sectionTitle: "text-[13px] font-semibold leading-snug text-slate-800",
+  sectionTitle: "text-[0.8125rem] font-semibold leading-snug text-slate-800",
   sectionHint: "text-xs leading-relaxed text-slate-500",
   rowTitle: "text-sm font-semibold leading-snug text-slate-900",
   rowBody: "text-xs font-medium leading-snug text-slate-600",
-  rowMeta: "text-[11px] leading-snug text-slate-500",
+  rowMeta: "text-[0.6875rem] leading-snug text-slate-500",
   chrome: "text-xs leading-snug text-slate-600",
   statValue: "text-sm font-semibold tabular-nums text-slate-900",
   statLabel: "text-xs text-slate-500",
-  kindTag: "text-[10px] font-semibold",
-  pill: "text-[11px] font-semibold leading-snug",
+  kindTag: "text-[0.625rem] font-semibold",
+  pill: "text-[0.6875rem] font-semibold leading-snug",
 } as const;
 
 /** Etykieta „Uwagi” przy notatce handlowca — spójna w /moje i panelu dziennym. */
 export const salesRequestNoteLabelClass =
-  "inline-flex items-center rounded-md bg-indigo-50 px-1.5 py-0.5 text-[11px] font-medium leading-none text-indigo-700 ring-1 ring-inset ring-indigo-200/70";
+  "inline-flex items-center rounded-md bg-indigo-50 px-1.5 py-0.5 text-[0.6875rem] font-medium leading-none text-indigo-700 ring-1 ring-inset ring-indigo-200/70";
 
 /** Etykieta wiadomości od zakupów przy anulowaniu — widoczna u handlowca. */
 export const procurementCancelNoteLabelClass =
-  "inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium leading-none text-amber-800 ring-1 ring-inset ring-amber-200/70";
+  "inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[0.6875rem] font-medium leading-none text-amber-800 ring-1 ring-inset ring-amber-200/70";
 
 /** Etykieta klienta końcowego — ten sam układ co „Uwagi”, ton indigo. */
 export const salesClientLabelClass =
-  "inline-flex items-center rounded-md bg-indigo-50 px-1.5 py-0.5 text-[11px] font-medium leading-none text-indigo-700 ring-1 ring-inset ring-indigo-200/70";
+  "inline-flex items-center rounded-md bg-indigo-50 px-1.5 py-0.5 text-[0.6875rem] font-medium leading-none text-indigo-700 ring-1 ring-inset ring-indigo-200/70";
 
 export const salesClientNameClass = "font-medium text-indigo-900";
 
 /** Etykieta powiązania ZK — fiolet jak w notatniku, ten sam układ co „Klient”. */
 export const salesZkLabelClass =
-  "inline-flex items-center rounded-md bg-violet-50 px-1.5 py-0.5 text-[11px] font-medium leading-none text-violet-700 ring-1 ring-inset ring-violet-200/70";
+  "inline-flex items-center rounded-md bg-violet-50 px-1.5 py-0.5 text-[0.6875rem] font-medium leading-none text-violet-700 ring-1 ring-inset ring-violet-200/70";
 
-export const salesZkNumberClass = "text-[11px] font-medium leading-none text-violet-900";
+export const salesZkNumberClass = "text-[0.6875rem] font-medium leading-none text-violet-900";
 
 /** Wewnętrzny padding sekcji panelu. */
 export const panelSectionInsetClass = "px-3 py-3 sm:px-4 sm:py-4 lg:px-5 lg:py-4";
@@ -665,10 +665,10 @@ export const panelSubsectionInsetClass = "px-3 sm:px-4 lg:px-5";
  */
 export const panelTypography = {
   sectionTitle: "text-sm font-semibold text-slate-900",
-  sectionLabel: "text-[11px] font-semibold text-slate-600",
+  sectionLabel: "text-[0.6875rem] font-semibold text-slate-600",
   rowTitle: "text-sm font-semibold leading-snug text-slate-900",
   rowMeta: "text-xs leading-snug text-slate-500",
-  caption: "text-[11px] leading-snug text-slate-500",
+  caption: "text-[0.6875rem] leading-snug text-slate-500",
   chrome: "text-xs leading-snug text-slate-600",
   sectionDesc: "text-xs leading-relaxed text-slate-500",
   tab: "text-sm font-medium",
@@ -679,21 +679,21 @@ export const panelTypography = {
 /** Meta terminów dostawy / ZD na /moje — spokojna hierarchia jak PlannedOrderDateMeta. */
 export const deliveryMetaTypography = {
   caption:
-    "text-[11px] font-medium text-slate-500",
-  captionZd: "text-[11px] font-medium text-indigo-700",
-  captionAvailable: "text-[11px] font-medium text-sky-700",
-  captionOverdue: "text-[11px] font-medium text-amber-800",
-  captionPending: "text-[11px] font-medium text-slate-500 normal-case tracking-normal",
+    "text-[0.6875rem] font-medium text-slate-500",
+  captionZd: "text-[0.6875rem] font-medium text-indigo-700",
+  captionAvailable: "text-[0.6875rem] font-medium text-sky-700",
+  captionOverdue: "text-[0.6875rem] font-medium text-amber-800",
+  captionPending: "text-[0.6875rem] font-medium text-slate-500 normal-case tracking-normal",
   dateBadge:
-    "max-w-full whitespace-normal rounded-md bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium leading-none text-slate-700 ring-1 ring-inset ring-slate-200/80 tabular-nums",
+    "max-w-full whitespace-normal rounded-md bg-slate-50 px-1.5 py-0.5 text-[0.6875rem] font-medium leading-none text-slate-700 ring-1 ring-inset ring-slate-200/80 tabular-nums",
   dateBadgeAvailable:
-    "max-w-full whitespace-normal rounded-md bg-sky-50 px-1.5 py-0.5 text-[11px] font-medium leading-none text-sky-800 ring-1 ring-inset ring-sky-200/80 tabular-nums",
+    "max-w-full whitespace-normal rounded-md bg-sky-50 px-1.5 py-0.5 text-[0.6875rem] font-medium leading-none text-sky-800 ring-1 ring-inset ring-sky-200/80 tabular-nums",
   dateBadgeOverdue:
-    "max-w-full whitespace-normal rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium leading-none text-amber-800 ring-1 ring-inset ring-amber-200/80 tabular-nums",
+    "max-w-full whitespace-normal rounded-md bg-amber-50 px-1.5 py-0.5 text-[0.6875rem] font-medium leading-none text-amber-800 ring-1 ring-inset ring-amber-200/80 tabular-nums",
   statusBadge:
-    "max-w-full whitespace-normal rounded-md bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium leading-none text-slate-600 ring-1 ring-inset ring-slate-200/80",
+    "max-w-full whitespace-normal rounded-md bg-slate-50 px-1.5 py-0.5 text-[0.6875rem] font-medium leading-none text-slate-600 ring-1 ring-inset ring-slate-200/80",
   statusBadgePending:
-    "max-w-full whitespace-normal rounded-md bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium leading-none text-slate-600 ring-1 ring-inset ring-slate-200/70",
+    "max-w-full whitespace-normal rounded-md bg-slate-50 px-1.5 py-0.5 text-[0.6875rem] font-medium leading-none text-slate-600 ring-1 ring-inset ring-slate-200/70",
 } as const;
 
 /** Wypełnienie paska postępu */
@@ -772,7 +772,7 @@ export const mobileSalesNavClass =
   "fixed inset-x-0 bottom-0 z-50 border-t border-slate-200/80 bg-[var(--card)]/95 shadow-[var(--shadow-card-elevated)] backdrop-blur-md md:hidden";
 
 export const mobileNavLinkBaseClass =
-  "relative mx-0.5 flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 rounded-md px-1.5 py-2 text-[11px] font-semibold lg:text-xs";
+  "relative mx-0.5 flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 rounded-md px-1.5 py-2 text-[0.6875rem] font-semibold lg:text-xs";
 
 export const mobileNavLinkActiveClass =
   "border border-transparent bg-indigo-100/55 text-slate-900 shadow-sm ";
@@ -784,7 +784,7 @@ export const mobileNavLinkIdleClass = cn(
 );
 
 export const mobileNavBadgeClass =
-  "bg-slate-700 text-[9px] font-bold text-white shadow-sm lg:text-[10px]";
+  "bg-slate-700 text-[0.5625rem] font-semibold text-white shadow-sm lg:text-[0.625rem]";
 
 /** Wspólna obudowa komunikatów systemowych. */
 /** Tekst i akcje obok siebie; gdy akcje się nie mieszczą, schodzą pod tekst (sm:flex-wrap), zamiast go ściskać. */

@@ -223,7 +223,7 @@ function SalesSupplierRow({
             >
               {insight.name}
             </span>
-            <span className="shrink-0 rounded bg-slate-100/90 px-1 py-px text-[10px] font-medium text-slate-500">
+            <span className="shrink-0 rounded bg-slate-100/90 px-1 py-px text-[0.625rem] font-medium text-slate-500">
               {locationLabel(insight.location)}
             </span>
           </div>
@@ -290,18 +290,18 @@ function SalesSupplierRow({
             <SupplierVacationNowChip window={insight.vacationWindow} compact />
           ) : null}
           {insight.orderOnDemand ? (
-            <Badge variant="default" className="px-1.5 py-0 text-[10px]">
+            <Badge variant="default" className="px-1.5 py-0 text-[0.625rem]">
               {C.labelOnDemand}
             </Badge>
           ) : null}
           {insight.activeShift && !insight.isOverdue ? (
-            <Badge variant="info" className="px-1.5 py-0 text-[10px]">
+            <Badge variant="info" className="px-1.5 py-0 text-[0.625rem]">
               {C.labelShifted}
             </Badge>
           ) : null}
           {hasOpenRequests ? (
             <span title={salesPlanOpenRequestsLabel(openOrderCount!)}>
-              <Badge variant="info" className="px-1.5 py-0 text-[10px] tabular-nums">
+              <Badge variant="info" className="px-1.5 py-0 text-[0.625rem] tabular-nums">
                 {openOrderCount}
               </Badge>
             </span>

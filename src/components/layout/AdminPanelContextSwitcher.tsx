@@ -98,10 +98,10 @@ export function AdminPanelContextSwitcher({
           <NavIcon navKey={currentIcon} size={15} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[10px] font-semibold text-slate-500">
+          <span className="block text-[0.625rem] font-semibold text-slate-500">
             Podgląd panelu
           </span>
-          <span className="block truncate text-[13px] font-semibold leading-snug text-slate-900">
+          <span className="block truncate text-[0.8125rem] font-semibold leading-snug text-slate-900">
             {labelForAdminPanelContext(current)}
           </span>
         </span>
@@ -166,7 +166,7 @@ export function AdminPanelContextSwitcher({
                 <span className="min-w-0 flex-1">
                   <span
                     className={cn(
-                      "block truncate text-[13px] font-medium leading-snug",
+                      "block truncate text-[0.8125rem] font-medium leading-snug",
                       isActive ? "font-semibold text-slate-900" : "text-slate-700"
                     )}
                   >

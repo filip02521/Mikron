@@ -115,7 +115,7 @@ export function TeethOrderFileUpload({
             type="button"
             disabled={pending}
             onClick={handleDownload}
-            className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-md border border-indigo-200 bg-white px-2 py-1 text-[11px] font-medium text-indigo-800 shadow-sm transition-colors hover:bg-indigo-50 disabled:opacity-50"
+            className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-md border border-indigo-200 bg-white px-2 py-1 text-[0.6875rem] font-medium text-indigo-800 shadow-sm transition-colors hover:bg-indigo-50 disabled:opacity-50"
             title={`Pobierz: ${fileName}`}
           >
             {pending ? (
@@ -138,16 +138,16 @@ export function TeethOrderFileUpload({
           ) : null}
         </div>
         {slotHint ? (
-          <span className="text-[10px] leading-snug text-slate-500">{slotHint}</span>
+          <span className="text-[0.625rem] leading-snug text-slate-500">{slotHint}</span>
         ) : null}
-        {error ? <span className="text-[10px] leading-snug text-red-600">{error}</span> : null}
+        {error ? <span className="text-[0.625rem] leading-snug text-red-600">{error}</span> : null}
       </div>
     );
   }
 
   if (locked) {
     return (
-      <span className="text-[11px] text-slate-400" title="Plik niedostępny">
+      <span className="text-[0.6875rem] text-slate-400" title="Plik niedostępny">
         -
       </span>
     );
@@ -167,7 +167,7 @@ export function TeethOrderFileUpload({
         disabled={pending}
         onClick={() => inputRef.current?.click()}
         className={cn(
-          "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium shadow-sm transition-colors disabled:opacity-50",
+          "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[0.6875rem] font-medium shadow-sm transition-colors disabled:opacity-50",
           required
             ? "border-indigo-300 bg-indigo-600 text-white hover:bg-indigo-700"
             : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900"
@@ -178,9 +178,9 @@ export function TeethOrderFileUpload({
         {required ? "Wgraj plik zamówienia" : "Załącz plik"}
       </button>
       {slotHint ? (
-        <span className="text-[10px] leading-snug text-slate-500">{slotHint}</span>
+        <span className="text-[0.625rem] leading-snug text-slate-500">{slotHint}</span>
       ) : null}
-      {error ? <span className="text-[10px] leading-snug text-red-600">{error}</span> : null}
+      {error ? <span className="text-[0.625rem] leading-snug text-red-600">{error}</span> : null}
     </div>
   );
 }

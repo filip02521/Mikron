@@ -138,7 +138,7 @@ export function SalesPartialCancelDialog({
           />
           <p
             id={`${inputId}-max`}
-            className={draftOutOfRange ? "text-[11px] font-medium text-red-700" : "text-[11px] text-slate-500"}
+            className={draftOutOfRange ? "text-[0.6875rem] font-medium text-red-700" : "text-[0.6875rem] text-slate-500"}
             aria-live="polite"
           >
             {draftOutOfRange ? `Wpisz od 1 do ${maxQty}` : `od 1 do ${maxQty} szt.`}

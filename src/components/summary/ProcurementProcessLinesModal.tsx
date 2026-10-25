@@ -154,10 +154,10 @@ function ProcurementProcessLinesModalForm({
 
         <fieldset className="space-y-2">
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-            <legend className="text-[11px] font-medium text-slate-600">
+            <legend className="text-[0.6875rem] font-medium text-slate-600">
               {PROCUREMENT_PROCESS_LINES_COPY.selectLines}
             </legend>
-            <span className="text-[11px] tabular-nums text-slate-500">
+            <span className="text-[0.6875rem] tabular-nums text-slate-500">
               {PROCUREMENT_PROCESS_LINES_COPY.selectedCount(
                 selectedCount,
                 totalCount
@@ -165,7 +165,7 @@ function ProcurementProcessLinesModalForm({
             </span>
           </div>
 
-          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[0.6875rem]">
             <button
               type="button"
               className={cn(
@@ -216,13 +216,13 @@ function ProcurementProcessLinesModalForm({
                           {linePrimaryLabel(line)}
                         </span>
                         {qty ? (
-                          <span className="shrink-0 tabular-nums text-[11px] text-slate-500">
+                          <span className="shrink-0 tabular-nums text-[0.6875rem] text-slate-500">
                             {PROCUREMENT_PROCESS_LINES_COPY.qtyPrefix} {qty}
                           </span>
                         ) : null}
                       </span>
                       {(line.informacjaViaPanel || line.informacjaStockOut) && (
-                        <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500">
+                        <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[0.625rem] text-slate-500">
                           {line.informacjaViaPanel ? (
                             <span className="rounded bg-slate-100 px-1 py-0.5 font-semibold text-slate-500">
                               {PROCUREMENT_PROCESS_LINES_COPY.badgeInfo}

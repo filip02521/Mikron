@@ -62,7 +62,7 @@ function ZkWatchMonthExpandControl({
       <button
         type="button"
         onClick={() => (allExpanded ? onCollapseAll() : onExpandAll())}
-        className={cn(panelTextLinkClass, "text-[11px] transition hover:underline")}
+        className={cn(panelTextLinkClass, "text-[0.6875rem] transition hover:underline")}
       >
         {allExpanded ? "Zwiń wszystkie miesiące" : "Rozwiń wszystkie miesiące"}
       </button>

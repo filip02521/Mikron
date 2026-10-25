@@ -61,7 +61,7 @@ export function CardHeader({
 
   const titleClass = cn(
     density === "micro"
-      ? "text-[13px] font-semibold tracking-tight text-slate-900"
+      ? "text-[0.8125rem] font-semibold tracking-tight text-slate-900"
       : density === "compact"
         ? "text-base font-semibold tracking-tight text-slate-900"
         : "text-lg font-semibold tracking-tight text-slate-900 lg:text-xl",
@@ -70,7 +70,7 @@ export function CardHeader({
 
   const descriptionClass = cn(
     density === "micro"
-      ? "mt-0.5 text-[11px] leading-snug text-slate-500"
+      ? "mt-0.5 text-[0.6875rem] leading-snug text-slate-500"
       : density === "compact"
         ? "mt-1 text-xs leading-relaxed text-slate-500"
         : "mt-1.5 text-sm leading-snug text-slate-500 sm:leading-relaxed lg:text-base lg:leading-relaxed",

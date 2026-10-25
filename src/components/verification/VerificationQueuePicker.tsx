@@ -85,7 +85,7 @@ function QueueFooter({ layout }: { layout: "page" | "modal" }) {
   return (
     <div
       className={cn(
-        "flex items-center justify-center gap-1.5 border-t border-amber-200/90 px-3 py-2 text-[11px] font-medium text-amber-900/85",
+        "flex items-center justify-center gap-1.5 border-t border-amber-200/90 px-3 py-2 text-[0.6875rem] font-medium text-amber-900/85",
         layout === "page" ? "bg-amber-50/70" : "bg-amber-50/50"
       )}
     >
@@ -283,20 +283,20 @@ function VerificationQueueRow({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5">
               {showIndex ? (
-                <span className="text-[11px] font-semibold tabular-nums text-slate-400">
+                <span className="text-[0.6875rem] font-semibold tabular-nums text-slate-400">
                   {index + 1}.
                 </span>
               ) : null}
               <p className="text-sm font-semibold text-slate-900">
                 {order.sales_person?.name ?? "Handlowiec"}
               </p>
-              {pathUi ? <VerificationPathBadge ui={pathUi} className="text-[10px]" /> : null}
+              {pathUi ? <VerificationPathBadge ui={pathUi} className="text-[0.625rem]" /> : null}
               {ready ? (
-                <span className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
+                <span className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-[0.625rem] font-semibold text-emerald-800">
                   Gotowe
                 </span>
               ) : missing.length ? (
-                <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+                <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[0.625rem] font-semibold text-amber-900">
                   Brakuje {missing.length}
                 </span>
               ) : null}
@@ -307,7 +307,7 @@ function VerificationQueueRow({
               {order.products}
             </p>
             {density === "compact" && active && missing.length ? (
-              <p className="mt-1 text-[11px] font-medium text-amber-900">
+              <p className="mt-1 text-[0.6875rem] font-medium text-amber-900">
                 Brakuje: {missing.join(", ")}
               </p>
             ) : null}
@@ -315,23 +315,23 @@ function VerificationQueueRow({
               <MyOrderAssignedClient name={clientName} className="mt-1" />
             ) : null}
             {requestNote ? (
-              <p className="mt-1 line-clamp-3 text-[11px] leading-snug text-slate-500">
+              <p className="mt-1 line-clamp-3 text-[0.6875rem] leading-snug text-slate-500">
                 <span className={salesRequestNoteLabelClass}>Uwagi</span>{" "}
                 <span className="font-medium text-slate-800">{requestNote}</span>
               </p>
             ) : null}
-            <p className="mt-1 text-[11px] text-slate-500">
+            <p className="mt-1 text-[0.6875rem] text-slate-500">
               {formatPlDate(order.action_at.slice(0, 10))}
               {pathUi ? ` · ${pathUi.queueHint}` : ""}
               {order.subiekt_tw_id ? " · Subiekt" : ""}
             </p>
             {density === "comfortable" && missing.length ? (
-              <p className="mt-1 text-[11px] font-medium text-amber-900">
+              <p className="mt-1 text-[0.6875rem] font-medium text-amber-900">
                 Brakuje: {missing.join(", ")}
               </p>
             ) : null}
             {density === "comfortable" && ready ? (
-              <p className="mt-1 text-[11px] font-medium text-emerald-700">
+              <p className="mt-1 text-[0.6875rem] font-medium text-emerald-700">
                 Gotowe do zatwierdzenia
               </p>
             ) : null}

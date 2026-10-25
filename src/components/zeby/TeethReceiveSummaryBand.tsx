@@ -24,7 +24,7 @@ export function TeethReceiveSummaryBand({
     >
       <div className="flex min-w-[8rem] flex-1 items-center gap-3 rounded-md border border-indigo-200/80 bg-indigo-50/50 px-3 py-2">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-indigo-100 text-indigo-700">
-          <span className="text-sm font-bold tabular-nums">{summary.activeCount}</span>
+          <span className="text-sm font-semibold tabular-nums">{summary.activeCount}</span>
         </div>
         <div className="min-w-0">
           <p className={cn(panelTypography.sectionLabel, "text-indigo-800/90")}>Czeka na dostawę</p>
@@ -37,7 +37,7 @@ export function TeethReceiveSummaryBand({
       </div>
       <div className="flex min-w-[8rem] flex-1 items-center gap-3 rounded-md border border-amber-200/80 bg-amber-50/50 px-3 py-2">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-amber-100 text-amber-700">
-          <span className="text-sm font-bold tabular-nums">{summary.partialCount}</span>
+          <span className="text-sm font-semibold tabular-nums">{summary.partialCount}</span>
         </div>
         <div className="min-w-0">
           <p className={cn(panelTypography.sectionLabel, "text-amber-800/90")}>Częściowo</p>

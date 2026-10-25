@@ -75,7 +75,7 @@ export function NotatnikCollapsible({
         </div>
         <div className="flex shrink-0 items-center gap-2 pt-0.5">
           {count !== undefined && count > 0 ? (
-            <span className="rounded-md bg-indigo-100/90 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-indigo-900">
+            <span className="rounded-md bg-indigo-100/90 px-2 py-0.5 text-[0.6875rem] font-semibold tabular-nums text-indigo-900">
               {count}
             </span>
           ) : null}

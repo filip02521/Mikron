@@ -94,7 +94,7 @@ export function QueuePanelToolbar({
         />
       </div>
       {showDailyPanelLink || showTeethLink ? (
-        <div className="mt-2.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-lg bg-slate-50/60 px-3 py-1.5 text-[10px] text-slate-500">
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-lg bg-slate-50/60 px-3 py-1.5 text-[0.625rem] text-slate-500">
           {showDailyPanelLink ? (
             <>
               <span>Brak dostawcy uzupełnia zakupy w</span>

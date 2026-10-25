@@ -329,7 +329,7 @@ export function ZkWatchProsbaScopeModal({
           <div className="flex items-center gap-2 text-xs text-slate-500">
             {orderCount > 0 ? (
               <>
-                <span className="inline-flex size-5 items-center justify-center rounded-full bg-indigo-100 text-[10px] font-bold text-indigo-700">
+                <span className="inline-flex size-5 items-center justify-center rounded-full bg-indigo-100 text-[0.625rem] font-semibold text-indigo-700">
                   {orderCount}
                 </span>
                 <span className="font-medium text-slate-700">
@@ -426,7 +426,7 @@ export function ZkWatchProsbaScopeModal({
       <div className="space-y-1.5">
         <div className="flex items-center justify-between px-0.5">
           <span className={salesTypography.sectionLabel}>Pozycje z ZK</span>
-          <span className="text-[11px] font-medium text-slate-400">
+          <span className="text-[0.6875rem] font-medium text-slate-400">
             {totalLines} {plPozycja(totalLines)}
           </span>
         </div>
@@ -505,7 +505,7 @@ export function ZkWatchProsbaScopeModal({
                     <span className={cn(salesTypography.rowTitle, "block text-slate-900")}>
                       {line.product}
                       {twId != null && teethExemptTwIds.has(twId) ? (
-                        <span className="ml-1.5 inline-flex rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-800 ring-1 ring-inset ring-violet-200/70">
+                        <span className="ml-1.5 inline-flex rounded-md bg-violet-50 px-1.5 py-0.5 text-[0.625rem] font-medium text-violet-800 ring-1 ring-inset ring-violet-200/70">
                           Zęby
                         </span>
                       ) : null}

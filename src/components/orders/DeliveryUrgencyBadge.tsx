@@ -33,7 +33,7 @@ export function DeliveryUrgencyBadge({
       <Badge
         variant="default"
         className={cn(
-          "max-w-full whitespace-nowrap rounded-md px-1.5 py-0.5 text-[10px] font-semibold leading-snug ring-1",
+          "max-w-full whitespace-nowrap rounded-md px-1.5 py-0.5 text-[0.625rem] font-semibold leading-snug ring-1",
           salesTypography.rowMeta,
           urgencyBadgeClass[tone],
           className

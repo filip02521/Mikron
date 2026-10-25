@@ -111,8 +111,8 @@ export function CarrierPhonesPageClient({
             <IconTruck size={22} aria-hidden />
           </span>
           <div>
-            <h1 className="text-[15px] font-bold tracking-tight text-slate-900">Kurierzy</h1>
-            <p className="mt-0.5 text-[12px] text-slate-500">
+            <h1 className="text-[0.9375rem] font-semibold tracking-tight text-slate-900">Kurierzy</h1>
+            <p className="mt-0.5 text-[0.75rem] text-slate-500">
               {pending && phones.length === 0
                 ? "Wczytywanie numerów…"
                 : `${totalPhones} ${polishPluralWord(totalPhones, "numer", "numery", "numerów")}`}{" "}
@@ -124,7 +124,7 @@ export function CarrierPhonesPageClient({
           <button
             type="button"
             onClick={allExpanded ? collapseAll : expandAll}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[0.6875rem] font-semibold text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
           >
             {allExpanded ? "Zwiń wszystkie" : "Rozwiń wszystkie"}
           </button>
@@ -140,7 +140,7 @@ export function CarrierPhonesPageClient({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Szukaj kuriera lub numeru telefonu…"
-          className="h-10 pl-10 text-[13px]"
+          className="h-10 pl-10 text-[0.8125rem]"
         />
       </div>
 
@@ -196,17 +196,17 @@ export function CarrierPhonesPageClient({
                     </span>
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-semibold text-slate-800">
+                    <p className="truncate text-[0.8125rem] font-semibold text-slate-800">
                       {carrier.label}
                     </p>
-                    <p className="mt-0.5 text-[11px] text-slate-400">
+                    <p className="mt-0.5 text-[0.6875rem] text-slate-400">
                       {hasPhones
                         ? `${carrierPhones.length} ${polishPluralWord(carrierPhones.length, "numer", "numery", "numerów")}`
                         : "Brak numerów"}
                     </p>
                   </div>
                   {!carrier.isActive ? (
-                    <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+                    <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-[0.625rem] font-medium text-slate-400">
                       Nieaktywny
                     </span>
                   ) : hasPhones ? (
@@ -227,16 +227,16 @@ export function CarrierPhonesPageClient({
                                 <IconPhone size={14} aria-hidden />
                               </span>
                               <div className="min-w-0 flex-1">
-                                <p className="text-[14px] font-semibold tabular-nums tracking-wide text-slate-800">
+                                <p className="text-[0.875rem] font-semibold tabular-nums tracking-wide text-slate-800">
                                   {phone.phone}
                                 </p>
                                 {phone.label ? (
-                                  <p className="mt-0.5 text-[11px] text-slate-400">{phone.label}</p>
+                                  <p className="mt-0.5 text-[0.6875rem] text-slate-400">{phone.label}</p>
                                 ) : null}
                               </div>
                               <a
                                 href={`tel:${phone.phone.replace(/[\s()-]/g, "")}`}
-                                className="flex shrink-0 items-center gap-1.5 rounded-lg bg-indigo-50 px-3.5 py-2 text-[12px] font-bold text-indigo-600 transition hover:bg-indigo-100 hover:text-indigo-700 active:scale-[0.97]"
+                                className="flex shrink-0 items-center gap-1.5 rounded-lg bg-indigo-50 px-3.5 py-2 text-[0.75rem] font-semibold text-indigo-600 transition hover:bg-indigo-100 hover:text-indigo-700 active:scale-[0.97]"
                               >
                                 <IconPhone size={13} aria-hidden />
                                 Zadzwoń
@@ -246,7 +246,7 @@ export function CarrierPhonesPageClient({
                         ))}
                       </ul>
                     ) : (
-                      <p className="px-4 py-3.5 text-[12px] text-slate-400">
+                      <p className="px-4 py-3.5 text-[0.75rem] text-slate-400">
                         Brak zapisanych numerów dla tego kuriera.
                       </p>
                     )}

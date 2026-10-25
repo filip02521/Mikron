@@ -34,7 +34,7 @@ export function EmailHtmlPreview({
         <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50">
           Źródło HTML
         </summary>
-        <pre className="max-h-64 overflow-auto border-t border-slate-100 bg-slate-50 p-3 text-[11px] leading-relaxed text-slate-700 whitespace-pre-wrap break-all">
+        <pre className="max-h-64 overflow-auto border-t border-slate-100 bg-slate-50 p-3 text-[0.6875rem] leading-relaxed text-slate-700 whitespace-pre-wrap break-all">
           {html || "(puste)"}
         </pre>
       </details>

@@ -241,7 +241,7 @@ export function SubiektClientNameField({
         ) : null}
         {clientKhId != null && clientKhId > 0 && !typeaheadPanelVisible ? (
           <span
-            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-emerald-700"
+            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[0.625rem] font-semibold text-emerald-700"
             title="Powiązano z kartoteką Subiekta"
           >
             Subiekt

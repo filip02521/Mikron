@@ -27,6 +27,7 @@ colors:
   danger: "#dc2626"
   danger-surface: "#fef2f2"
   danger-ink: "#b91c1c"
+  danger-ink-deep: "#991b1b"
 typography:
   headline:
     fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
@@ -56,6 +57,16 @@ typography:
     fontSize: "0.75rem"
     fontWeight: 600
     lineHeight: 1.4
+  micro:
+    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "0.6875rem"
+    fontWeight: 500
+    lineHeight: 1.4
+  tiny:
+    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "0.625rem"
+    fontWeight: 600
+    lineHeight: 1.2
   column-header:
     fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.8125rem"
@@ -107,6 +118,11 @@ components:
     textColor: "{colors.ink-secondary}"
     rounded: "{rounded.control}"
     padding: "0.5rem 1rem"
+  button-outline:
+    backgroundColor: "{colors.petrol-mist}"
+    textColor: "{colors.petrol-pressed}"
+    rounded: "{rounded.control}"
+    padding: "0.5rem 1rem"
   button-danger:
     backgroundColor: "{colors.danger}"
     textColor: "{colors.card}"
@@ -133,6 +149,21 @@ components:
     textColor: "{colors.attention-ink}"
     rounded: "{rounded.control}"
     padding: "0.125rem 0.375rem"
+  badge-success:
+    backgroundColor: "{colors.success-surface}"
+    textColor: "{colors.success-ink}"
+    rounded: "{rounded.control}"
+    padding: "0.125rem 0.375rem"
+  badge-danger:
+    backgroundColor: "{colors.danger-surface}"
+    textColor: "{colors.danger-ink-deep}"
+    rounded: "{rounded.control}"
+    padding: "0.125rem 0.375rem"
+  badge-info:
+    backgroundColor: "{colors.petrol-mist}"
+    textColor: "{colors.petrol-pressed}"
+    rounded: "{rounded.control}"
+    padding: "0.125rem 0.375rem"
   nav-item-active:
     backgroundColor: "{colors.petrol-mist}"
     textColor: "{colors.petrol-ink}"
@@ -151,7 +182,7 @@ components:
 
 # Design System: OnTime
 
-Ten plik jest normatywny: tokeny we frontmatterze są źródłem prawdy, a tekst mówi, gdzie i po co ich używać. Kod realizuje je w dwóch miejscach: `src/app/globals.css` (zmienne CSS i przemapowane palety Tailwinda) oraz `src/lib/ui/ontime-theme.ts` (gotowe klasy). Gdy kod i ten plik się rozjadą, popraw jedno albo drugie w tym samym PR. Kolory podawaj zawsze jako klasę Tailwinda lub zmienną CSS, nigdy jako surowy hex w komponencie.
+Ten plik jest normatywny: tokeny we frontmatterze są źródłem prawdy, a tekst mówi, gdzie i po co ich używać. Kod realizuje je w dwóch miejscach: `src/app/globals.css` (zmienne CSS i przemapowane palety Tailwinda) oraz `src/lib/ui/ontime-theme.ts` (gotowe klasy). Gdy kod i ten plik się rozjadą, popraw jedno albo drugie w tym samym PR. Kolory podawaj zawsze jako klasę Tailwinda lub zmienną CSS, nigdy jako surowy hex w komponencie. Część reguł pilnuje `npm run audit:design` (krok CI): wagi powyżej 600, wersaliki i rozmiary tekstu w px. Czego audyt jeszcze nie łapie, jest w sekcji „Znany dług”.
 
 ## Overview
 
@@ -202,7 +233,7 @@ W kodzie palety Tailwinda są przemapowane w `globals.css`: `slate-*` to szaroś
 | Uwaga | `amber-50` | `amber-500` | `amber-900` | Zaległe, do przejrzenia, tryb podglądu (pasek 3 px u góry ekranu). |
 | Błąd | `red-50` | `red-600` | `red-700` | Błąd zapisu, rozbieżność, akcja nieodwracalna na produkcji. |
 
-Na kolorowym tle tekst pomocniczy bierz z tej samej rodziny (np. `amber-800` na `amber-50`), nie szary.
+Na kolorowym tle tekst pomocniczy bierz z tej samej rodziny (np. `amber-800` na `amber-50`), nie szary. Tekst odznaki i chipa stanu na `red-50` to `red-800` (`danger-ink-deep`), tak jak `emerald-800` i `amber-900` w pozostałych stanach.
 
 ### Named Rules
 
@@ -223,17 +254,21 @@ Hierarchię budują rozmiar i waga, nie zmiana kroju ani koloru. Waga 600 to tyt
 - **Body** (400, 0.9375rem, 1.55): tekst aplikacji, opisy, komunikaty. Opis pod tytułem strony ma szerokość max 48rem.
 - **Body Dense** (400, 0.875rem, 1.45, cyfry tabelaryczne): komórki tabel, pola od `sm`, podpowiedzi.
 - **Label** (600, 0.75rem): etykieta pola formularza, kolor `slate-600`.
+- **Micro** (500 lub 600, `text-[0.6875rem]`, czyli 11px przy bazie 16px): metadane w wierszu listy, liczniki przy etykiecie, podpis pod wartością, etykieta w dolnym pasku telefonu. Najmniejszy rozmiar do czytania.
+- **Tiny** (600, `text-[0.625rem]`, 10px): tylko krótka treść w pigułce lub odznace (licznik, „Dziś”, skrót stanu). Zdania nigdy.
 - **Column Header** (500, 0.8125rem, `slate-500`): nagłówek kolumny tabeli. Pisany zdaniowo, bez wersalików.
 - **Nav Group** (600, 11px, tracking 0.08em, wersaliki, `slate-500`): nagłówek grupy w menu bocznym. Jedyne miejsce na wersaliki z rozstrzeleniem.
 - **Code** (Geist Mono, 0.75rem): symbol towaru, numer dokumentu.
 
-Rozmiar bazowy zależy od ustawienia użytkownika: `html[data-font-scale]` podnosi go z 16px do 17.6px albo 20px. Dlatego rozmiary i odstępy podawaj w `rem` (klasy Tailwinda), a stałe piksele tylko w chrome Kreatora ZD.
+Rozmiar bazowy zależy od ustawienia użytkownika: `html[data-font-scale]` podnosi go z 16px do 17.6px albo 20px. Dlatego rozmiary i odstępy podawaj w `rem` (klasy Tailwinda), a stałe piksele tylko w chrome Kreatora ZD (pliki `zd-estimate*` / `ZdEstimate*` i eksporty `zdEstimate*` w `ontime-theme.ts`). Rozmiar spoza skali Tailwinda pisz jako `text-[Nrem]` (N = px / 16), nie jako własną klasę narzędziową: `cn()` używa `tailwind-merge`, który nieznaną klasę `text-*` uzna za kolor i usunie ją przy łączeniu z `text-slate-*`. Poniżej `0.625rem` nie schodzimy.
 
 ### Named Rules
 
 **Cyfry w kolumnie.** Kwoty, ilości, procenty i daty w tabelach i licznikach mają cyfry o stałej szerokości. `.data-table` włącza je sama; poza tabelą dodaj `tabular-nums`.
 
-**Wersaliki tylko w menu.** Nagłówki kolumn, etykiety pól i odznaki pisz normalnie. Wersaliki z rozstrzeleniem są tylko w nagłówkach grup menu bocznego.
+**Wagi do 600.** `font-semibold` to najcięższa waga; `font-bold` i cięższe nie występują (pilnuje `audit:design`).
+
+**Wersaliki tylko w menu.** Nagłówki kolumn, etykiety pól i odznaki pisz normalnie. Wersaliki z rozstrzeleniem są tylko w nagłówkach grup menu bocznego (`sidebarNavSectionTitleClass`) i w szynie grup asystenta. Uzasadniony wyjątek (kod w monospace, logotyp) dostaje komentarz `design-ok: <powód>` nad linią, inaczej audyt go odrzuci.
 
 ## Layout
 
@@ -314,7 +349,8 @@ Komponenty bazowe są w `src/components/ui/`. Zanim napiszesz własny przycisk, 
 - **Menu boczne:** białe na szarym `canvas`, nagłówek i stopka na pasie `slate-50`. Grupy z nagłówkiem Nav Group. Pozycja w spoczynku `slate-700`, hover tło `slate-100`, wciśnięcie `slate-200`.
 - **Aktywna pozycja:** tło `petrol-mist`, tekst `petrol-ink`, bez paska z boku.
 - **Liczniki:** pigułki w dwóch poziomach. Wymaga działania: pełny Petrol z białą cyfrą. Informacyjny: `slate-100` z `slate-700`.
-- **Telefon:** dolny pasek z czterema pozycjami i „Więcej”, aktywna zakładka jak w menu bocznym.
+- **Telefon:** dolny pasek z czterema pozycjami i „Więcej” (`mobileSalesNavClass`), aktywna zakładka jak w menu bocznym.
+- **Nagłówek na telefonie** (`mobileSalesHeaderClass`): sticky, min. 3.5rem, treść wyśrodkowana w pionie (równy odstęp u góry i u dołu, u góry co najmniej bezpieczna strefa ekranu). Blok marki `MobileBrandBlock`: znak i dwie linie, „OnTime” i „kto · rola” w jednej linii. Bez trzeciej linii i bez e-maila.
 - **Strona z zakładkami to jedna pozycja menu.** Hub z własnymi zakładkami (Karty dostawców: karty, terminy zamówień, urlopy, nieaktywni) ma w menu jedno wejście, podświetlone na każdej zakładce (`isSupplierHubPath` w `supplier-hub.ts`). Zakładki nie wracają do menu jako osobne pozycje.
 - **Grupa menu to jeden temat pracy**, nie jeden ekran: „Zamawianie” to tworzenie i przegląd ZD, „Dostawcy” to wszystko o dostawcy (karty, cenniki, poczta dostawców). Nowa funkcja trafia do istniejącej strony (zakładka, sekcja, rozwinięcie wiersza), zanim dostanie własną pozycję menu.
 
@@ -344,6 +380,68 @@ Ekran przeglądu wielu obiektów (Automat ZD): na górze Status Panel ze zdaniem
 
 Karta stanu na górze ekranu pracy: zdanie stanu z liczbą („433 pozycje czekają na Twoją decyzję”, z poprawną odmianą liczebnika), jedno zdanie wyjaśnienia i jedna główna akcja po prawej. Na telefonie akcja schodzi pod tekst. Pas uwagi na całą szerokość (`PageAttentionStrip`) służy do pojedynczej sprawy wymagającej reakcji, w tonie `amber`.
 
+### Ikony
+
+- **Zestaw:** `StrokeIcons` (`src/components/icons/StrokeIcons.tsx`): obrys 2, `currentColor`, siatka 24, domyślnie 20px, `aria-hidden`. Menu ma `NavIcon`, nagłówki sekcji `SectionHeadingIcon`. Nowej ikony nie bierz z innej biblioteki; dopisz ją do `StrokeIcons` w tym samym stylu.
+- **Kolor:** ikona przy tekście ma kolor tekstu albo `slate-400` (pomocnicza); ikona stanu ma kolor sygnału stanu.
+- **Ikona bez tekstu** (przycisk z samą ikoną) ma `aria-label` i pole dotyku min. 44px na telefonie.
+- **Emoji** tylko w treści użytkownika (reakcje w `EmojiPicker`). Stanu nie pokazuje znak ✓ ani ⚠ w tekście, tylko ikona z `StrokeIcons`.
+
+### Panele i okna
+
+Każde okno nad treścią to `ModalShell` (`src/components/ui/ModalShell.tsx`), a panel boczny używa klas `sidePanel*Class` z `src/lib/ui/surfaces.ts` (wzór: `SupplierEditSheet`, `ZdAutoProposalSheet`). Oba dają kontrakty, które własna nakładka musi zapewnić sama, i to w całości:
+
+- **Portal** do `document.body` (`createPortal`): nakładka zamontowana w sekcji strony konkuruje z-indexem tylko w jej kontekście i na telefonie chowa się pod nagłówkiem i dolnym paskiem.
+- **Przewijanie:** `useBodyScrollLock` blokuje stronę, a przewijany obszar nakładki ma atrybut `SCROLL_LOCK_ALLOW_ATTR` (`data-scroll-lock-allow`), bez którego kółko i dotyk nic nie przewiną.
+- **Fokus:** wchodzi do panelu przy otwarciu, Tab krąży w środku (`FOCUSABLE_SELECTOR`), po zamknięciu wraca na przycisk otwierający.
+- **Escape** zamyka tylko najwyższą warstwę: panel ignoruje Escape, gdy zdarzenie przyszło z innego `[role=dialog]` nad nim, bo niezapisane zmiany w panelu by przepadły.
+- **Sprawdzenie:** przy 375px `document.elementFromPoint` u góry i u dołu ekranu ma trafić w nakładkę, a Escape sprawdzamy prawdziwym klawiszem przy otwartym oknie nad panelem.
+
+Warstwy (z-index) biorą się z tej skali. Nie wymyślaj nowej wartości; okno nad oknem dostaje wyższy `tier`.
+
+| Warstwa | z-index | Gdzie |
+|---|---|---|
+| Lokalnie nad sąsiadem | `z-[1]`, `z-[2]`, `z-30` | podświetlony wiersz, pole z otwartą listą, nakładka ładowania w obszarze |
+| Sticky chrome | `z-30` | nagłówek na telefonie, przypięty komunikat |
+| Menu boczne | `z-40` | `Sidebar` |
+| Dolny pasek telefonu, okno `standard` | `z-50` / `z-[55]` | `mobileSalesNavClass`, `ModalShell tier="standard"` |
+| Panel boczny | `z-[58]` tło, `z-[60]`–`z-[61]` panel | `sidePanelBackdropClass`, `sidePanelShellClass` |
+| Okno `raised` | `z-[60]` / `z-[61]` | okno nad zwykłym |
+| Toasty | `z-[65]` | `Toast`, `UndoToast` |
+| Okno `top` | `z-[70]` / `z-[71]` | okno nad panelem bocznym (np. ustawienia z karty dostawcy) |
+| Okno `stack` | `z-[80]` / `z-[81]` | potwierdzenie nad oknem; lista podpowiedzi w oknie |
+| Okno `overlay` | `z-[90]` / `z-[91]` | kreator nad oknem `stack` |
+| Menu rozwijane | `z-[200]` | `OverflowMenu`, menu użytkownika: zawsze na wierzchu |
+
+### Komunikaty
+
+Jedna sprawa, jeden komponent. Ton (`info`, `success`, `warning`, `error`) bierze się z tabeli Stany, a treść zawsze ma nagłówek z wynikiem i zdanie z następnym krokiem.
+
+| Sytuacja | Komponent |
+|---|---|
+| Potwierdzenie po akcji, znika samo | `NoticeToast` (nagłówek i treść dzieli sam) |
+| Akcja odwracalna („Zapisano · Cofnij”) | `UndoToast`; okno cofnięcia zgodne z serwerem |
+| Wynik lub błąd w treści ekranu, karty, okna | `Alert` |
+| Wynik wysłania formularza nad przyciskami | `FormNoticeMessage` |
+| Pojedyncza sprawa strony wymagająca reakcji | `PageAttentionStrip` (ton `amber`), patrz Status Panel |
+| Ogłoszenie systemowe: przypięte, z akcją, przewodnik | `SystemNotice` (`pinned`, `action`, `tour`) |
+| Kilka komunikatów strony naraz | `PageNoticeStack` |
+| Brak danych | `EmptyState`: tytuł mówi, co tu będzie, opis jak to zapełnić, akcja obok; `brandAccent` tylko przy pierwszym uruchomieniu |
+| Akcja nieodwracalna lub zapis na produkcji | `ConfirmDialog` |
+
+`Toast` jest warstwą pod `NoticeToast` i `UndoToast`; w ekranie używaj ich, nie jego.
+
+### Teksty
+
+Interfejs mówi językiem działu i pisze, co się stało i co zrobić. PRODUCT.md: „Do ogarnięcia bez szkolenia”.
+
+- **Słowa działu:** ZD, ZK, Subiekt, paleta, prośba, dostawa. Nazwy z kodu i bazy (para, wiersz, `tw_Id`, zakres) nie wychodzą do handlowców. Gdy pojęcie wymaga wyjaśnienia, zastąp je zdaniem o skutku („Ten towar zamawiamy w kartonach po 10 szt.”).
+- **Liczebniki** zawsze z odmianą: `polishPluralWord` / `polishPlural` (`src/lib/email/polish-plural.ts`). Nigdy „1 pozycji” ani „pozycja(e)”.
+- **Daty bliskie** względnie: „dziś”, „jutro”, „wczoraj”, dalej „pt 31.10” (wzór `formatAutomatDay` w `src/lib/orders/zd-automat-daily.ts`); pełne daty `formatPlDate` (`src/lib/display-labels.ts`).
+- **Błąd:** co się stało i jak to naprawić, bez kodu wyjątku. Tekst z wyjątku przechodzi przez `userFacingErrorText` (`src/lib/ui/user-facing-error.ts`).
+- **Pole ilości** nie ma domyślnej liczby ani placeholdera z liczbą: wartość, której nikt nie wpisał, wygląda na zamówioną.
+- **Przycisk** to czasownik, najlepiej z liczbą („Zapisz 421 cen”); w toku forma ciągła („Tworzę…”).
+
 ### Ruch
 
 Ruch tylko potwierdza działanie: zmiana tła i obramowania w 150 ms, rozwinięcie panelu w 200–300 ms, krzywa `cubic-bezier(0.22, 1, 0.36, 1)` (szybki start, miękkie wyhamowanie). Elementy są widoczne od razu, bez animacji wejścia przy ładowaniu strony. Każdy ruch ma wariant `motion-reduce`. Ruch to CSS (klasy w `globals.css`, np. `.zd-automat-detail-enter` dla rozwinięcia wiersza). Rive i biblioteki animacji nie wchodzą na ekrany pracy: jedyny animowany znak to `BrandLoader`, a nowy znak w Rive wymaga sprawdzenia CSP produkcji (WASM, `connect-src`).
@@ -366,6 +464,8 @@ Zaznaczenie tekstu ma tło `petrol-mist` i tekst `petrol-deep`. Kursor tekstowy 
 
 ## Do's and Don'ts
 
+Skrót zasad z sekcji wyżej, do sprawdzenia przed PR. Przy rozbieżności rozstrzyga sekcja.
+
 ### Do:
 
 - **Do** buduj ekrany z komponentów `src/components/ui/` i klas z `ontime-theme.ts`. Kolor podawaj klasą lub zmienną, nie hexem.
@@ -376,6 +476,8 @@ Zaznaczenie tekstu ma tło `petrol-mist` i tekst `petrol-deep`. Kursor tekstowy 
 - **Do** dawaj każdemu ruchowi wariant `motion-reduce`.
 - **Do** pokazuj każde dłuższe ładowanie animowanym logo (`BrandLoader`) ze zdaniem, co się dzieje.
 - **Do** dawaj stronie z własnymi zakładkami jedną pozycję menu, a ustawienia obiektu trzymaj w jego karcie; inne ekrany pokazują stan i otwierają to samo okno.
+- **Do** buduj okno na `ModalShell`, a panel boczny na klasach `sidePanel*Class`; z-index bierz ze skali w „Panele i okna”.
+- **Do** odmieniaj liczebniki (`polishPluralWord`) i pisz daty bliskie względnie.
 
 ### Don't:
 
@@ -390,3 +492,21 @@ Zaznaczenie tekstu ma tło `petrol-mist` i tekst `petrol-deep`. Kursor tekstowy 
 - **Don't** zaznaczaj wybranego stanu grafitem ani kolorem stanu; wybrane jest zawsze w Petrolu.
 - **Don't** przenoś ciemnego gradientu logowania do aplikacji.
 - **Don't** stawiaj szkieletu, pulsującego paska ani samego `Spinner` tam, gdzie czeka cały obszar lub panel.
+- **Don't** podawaj rozmiaru tekstu w px poza Kreatorem ZD ani nie schodź poniżej `0.625rem`.
+- **Don't** używaj `font-bold` i cięższych wag.
+- **Don't** pokazuj stanu emoji ani znakiem ✓ / ⚠ w tekście.
+
+### Znany dług
+
+Stan na 25.10.2026, z wyszukiwania w `src/` (bez testów). Przy każdej zmianie ekranu poprawiamy jego dług, a reguły, które da się sprawdzić maszynowo, przechodzą do `audit:design`, gdy dług spadnie do zera.
+
+| Reguła | Wystąpienia | Uwagi |
+|---|---|---|
+| `slate-400` tylko pomocniczo | 383 w 170 plikach | część to ikony i „—” (dozwolone); tekst do przeczytania → `slate-500` |
+| Promień do 10px | `rounded-xl` i większe: 52 w 26 plikach | karta ma 10px, element w karcie mniej |
+| Słownik cieni | `shadow-md` i większe: 46 w 34 plikach | zamień na `var(--shadow-*)` |
+| Bez bocznego paska | `border-l-2` / `border-l-4`: 24 w 7 plikach | stan tłem, odznaką lub ikoną |
+| Ładowanie logiem | `Spinner` 64 w 46 plikach, `animate-pulse` 24 w 14 | `Spinner` w przycisku jest dozwolony |
+| Najmniej `0.625rem` | 34 (`text-[0.5625rem]` 31, `0.5rem` 2, hasło logotypu 1) | licznik w pigułce może zostać, tekst nie |
+| Stan ikoną | ✓ / ⚠ w tekście: 15 w 10 plikach | `StrokeIcons` |
+| Skala warstw | `z-[100]`: 4 menu i kreator | przenieść do `z-[200]` (menu) lub `ModalShell` |

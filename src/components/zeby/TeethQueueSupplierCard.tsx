@@ -42,7 +42,7 @@ function StepMarker({ tone, index }: { tone: StepTone; index: number }) {
   return (
     <span
       className={cn(
-        "flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
+        "flex size-6 shrink-0 items-center justify-center rounded-full text-[0.6875rem] font-semibold",
         tone === "done" && "bg-indigo-600 text-white",
         tone === "warn" && "bg-amber-400 text-amber-950",
         tone === "todo" && "bg-white text-indigo-700 ring-2 ring-indigo-500",
@@ -70,7 +70,7 @@ function Step({
     <div className="flex min-w-0 gap-2.5">
       <StepMarker tone={tone} index={index} />
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-semibold text-slate-500">{title}</p>
+        <p className="text-[0.6875rem] font-semibold text-slate-500">{title}</p>
         <div className="mt-1 min-w-0">{children}</div>
       </div>
     </div>
@@ -181,7 +181,7 @@ export function TeethQueueSupplierCard({
           {schedule?.computed_next_date ? (
             <span
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset",
+                "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[0.6875rem] font-semibold ring-1 ring-inset",
                 scheduleOverdue
                   ? "bg-amber-50 text-amber-900 ring-amber-300"
                   : "bg-sky-50 text-sky-800 ring-sky-200",
@@ -268,17 +268,17 @@ export function TeethQueueSupplierCard({
                   : `Oznacz wszystkie (${openTeeth})`}
               </Button>
               {!hasFile ? (
-                <p className="mt-1 text-[11px] text-slate-500">Odblokuje się po wgraniu pliku.</p>
+                <p className="mt-1 text-[0.6875rem] text-slate-500">Odblokuje się po wgraniu pliku.</p>
               ) : readyCount === 0 ? (
-                <p className="mt-1 text-[11px] text-amber-700">Najpierw uzupełnij listy.</p>
+                <p className="mt-1 text-[0.6875rem] text-amber-700">Najpierw uzupełnij listy.</p>
               ) : partialSelection ? (
-                <p className="mt-1 text-[11px] text-slate-600">
+                <p className="mt-1 text-[0.6875rem] text-slate-600">
                   Tylko zaznaczone - {openTeeth - selectedTeethCount}{" "}
                   {polishPluralWord(openTeeth - selectedTeethCount, "ząb zostanie", "zęby zostaną", "zębów zostanie")} w
                   kolejce.
                 </p>
               ) : selectedTeethCount === 0 ? (
-                <p className="mt-1 text-[11px] text-slate-500">
+                <p className="mt-1 text-[0.6875rem] text-slate-500">
                   Chcesz tylko część? Zaznacz zęby poniżej.
                 </p>
               ) : null}
@@ -385,7 +385,7 @@ export function TeethQueueSupplierCard({
                     }
                     trailing={
                       sectionNeedsFix > 0 ? (
-                        <span className="rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-inset ring-amber-200">
+                        <span className="rounded-md bg-amber-50 px-2 py-0.5 text-[0.6875rem] font-semibold text-amber-800 ring-1 ring-inset ring-amber-200">
                           {sectionNeedsFix} do uzupełnienia
                         </span>
                       ) : null
@@ -421,7 +421,7 @@ export function TeethQueueSupplierCard({
           </div>
 
           {schedule && !scheduleOnly ? (
-            <p className="flex items-center gap-2 border-t border-slate-100 px-4 py-2 text-[11px] text-slate-500 sm:px-5">
+            <p className="flex items-center gap-2 border-t border-slate-100 px-4 py-2 text-[0.6875rem] text-slate-500 sm:px-5">
               <IconCalendar size={13} className="text-sky-600" />
               Oznaczenie próśb przesunie też cykl z harmonogramu na kolejny termin.
             </p>

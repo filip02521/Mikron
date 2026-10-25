@@ -68,7 +68,7 @@ export function SectionTabNav<T extends string>({
               >
                 {item.label}
                 {item.badgeCount != null && item.badgeCount > 0 ? (
-                  <span className="ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-md bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-slate-700">
+                  <span className="ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-md bg-slate-200 px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums text-slate-700">
                     {item.badgeCount}
                   </span>
                 ) : null}

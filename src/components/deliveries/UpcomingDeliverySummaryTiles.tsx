@@ -80,7 +80,7 @@ export function UpcomingDeliverySummaryTiles({
           </div>
           <p className={cn(panelTypography.statValue, "mt-0.5 text-lg")}>{tile.value}</p>
           {tile.hint ? (
-            <p className="mt-0.5 text-[10px] leading-snug text-slate-400">{tile.hint}</p>
+            <p className="mt-0.5 text-[0.625rem] leading-snug text-slate-400">{tile.hint}</p>
           ) : null}
         </div>
       ))}

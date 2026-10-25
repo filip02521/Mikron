@@ -79,7 +79,7 @@ function StepIndicator({ currentStep }: { currentStep: "detecting" | "review" | 
       {STEP_LABELS.map((label, i) => (
         <div key={label} className="flex items-center gap-1.5">
           <span
-            className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
+            className={`flex h-5 w-5 items-center justify-center rounded-full text-[0.625rem] font-semibold ${
               i <= stepIndex
                 ? "bg-indigo-600 text-white"
                 : "bg-slate-100 text-slate-400"
@@ -88,7 +88,7 @@ function StepIndicator({ currentStep }: { currentStep: "detecting" | "review" | 
             {i + 1}
           </span>
           <span
-            className={`text-[11px] font-medium ${
+            className={`text-[0.6875rem] font-medium ${
               i <= stepIndex ? "text-slate-700" : "text-slate-400"
             }`}
           >
@@ -464,13 +464,13 @@ export function TeethOcrWizard({
               </Button>
               <span className="group relative inline-flex">
                 <span
-                  className="cursor-help rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold text-indigo-400 transition-colors group-hover:bg-indigo-100"
+                  className="cursor-help rounded bg-indigo-50 px-1.5 py-0.5 text-[0.5625rem] font-semibold text-indigo-400 transition-colors group-hover:bg-indigo-100"
                 >
                   Beta
                 </span>
                 <span
                   role="tooltip"
-                  className="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 hidden w-max max-w-[min(100vw,18rem)] rounded-md border border-indigo-200/90 bg-indigo-50/95 px-2.5 py-1.5 text-[11px] font-medium leading-relaxed text-indigo-900 shadow-md group-hover:block group-focus-within:block"
+                  className="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 hidden w-max max-w-[min(100vw,18rem)] rounded-md border border-indigo-200/90 bg-indigo-50/95 px-2.5 py-1.5 text-[0.6875rem] font-medium leading-relaxed text-indigo-900 shadow-md group-hover:block group-focus-within:block"
                 >
                   To funkcja testowa - sczytywanie listy zębów ze zdjęcia za pomocą AI. Wynik zawsze sprawdź przed zapisaniem.
                 </span>
@@ -481,7 +481,7 @@ export function TeethOcrWizard({
                 ? "Upuść zdjęcie tutaj"
                 : "Zrób zdjęcie odręcznie wypełnionej kartki zamówienia zębów lub przeciągnij plik tutaj."}
             </p>
-            <p className="text-center text-[11px] text-slate-400">
+            <p className="text-center text-[0.6875rem] text-slate-400">
               System najpierw rozpozna linie produktów, a potem odczyta pozycje.
             </p>
           </div>
@@ -522,7 +522,7 @@ export function TeethOcrWizard({
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-slate-800">{line.label}</span>
                         <span
-                          className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                          className={`rounded px-1.5 py-0.5 text-[0.625rem] font-semibold ${
                             line.confidence > 0.7
                               ? "bg-green-100 text-green-700"
                               : line.confidence > 0.5
@@ -534,7 +534,7 @@ export function TeethOcrWizard({
                         </span>
                       </div>
                       {line.note && (
-                        <p className="mt-0.5 text-[11px] text-slate-500">{line.note}</p>
+                        <p className="mt-0.5 text-[0.6875rem] text-slate-500">{line.note}</p>
                       )}
                     </div>
                   </label>
@@ -574,7 +574,7 @@ export function TeethOcrWizard({
                   <button
                     type="button"
                     onClick={() => setShowAddLine(false)}
-                    className="mt-1 text-[11px] text-slate-500 hover:text-slate-700"
+                    className="mt-1 text-[0.6875rem] text-slate-500 hover:text-slate-700"
                   >
                     Anuluj
                   </button>

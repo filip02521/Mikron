@@ -48,7 +48,7 @@ export function OperationsTodayTasksSection({
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="info" className="text-[10px]">
+                  <Badge variant="info" className="text-[0.625rem]">
                     {note.visibility === "public" ? "Wspólna" : "Prywatna"}
                   </Badge>
                   <span className="truncate text-xs font-semibold text-slate-900">
@@ -56,7 +56,7 @@ export function OperationsTodayTasksSection({
                   </span>
                 </div>
                 {note.follow_up_at ? (
-                  <p className="mt-0.5 truncate text-[11px] text-slate-500">
+                  <p className="mt-0.5 truncate text-[0.6875rem] text-slate-500">
                     {formatFollowUpLabel(note.follow_up_at)}
                   </p>
                 ) : null}

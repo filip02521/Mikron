@@ -1042,7 +1042,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                   showUnreadRequestNoteChrome ? (
                     <span
                       className={cn(
-                        "shrink-0 inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-medium leading-none ring-1 ring-inset",
+                        "shrink-0 inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[0.6875rem] font-medium leading-none ring-1 ring-inset",
                         showUnreadRequestNoteChrome
                           ? "bg-indigo-100 text-indigo-800 ring-indigo-300/80"
                           : "bg-indigo-50 text-indigo-700 ring-indigo-200/70"
@@ -1350,7 +1350,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
               ) : null}
             </div>
             {expandedOrderTypeLabel ? (
-              <p className="flex flex-wrap items-baseline gap-x-1.5 px-0.5 text-[11px] leading-snug text-slate-500">
+              <p className="flex flex-wrap items-baseline gap-x-1.5 px-0.5 text-[0.6875rem] leading-snug text-slate-500">
                 <span className="font-medium text-slate-500">Typ</span>
                 <span className="text-slate-600">{expandedOrderTypeLabel}</span>
               </p>

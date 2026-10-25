@@ -91,7 +91,7 @@ const CATEGORY_TAG: Record<MailConversation["category"], { text: string; classNa
 };
 
 function Tag({ text, className }: { text: string; className: string }) {
-  return <span className={cn("shrink-0 rounded px-1.5 py-px text-[11px] font-medium ring-1", className)}>{text}</span>;
+  return <span className={cn("shrink-0 rounded px-1.5 py-px text-[0.6875rem] font-medium ring-1", className)}>{text}</span>;
 }
 
 function ItemTag({ item }: { item: BoardItem }) {
@@ -1262,7 +1262,7 @@ function MessageCard({ m, aiAvailable = false, onForward }: { m: ConversationMes
         </span>
       </header>
       {showTranslation && translation ? (
-        <p className="mt-1.5 text-[11px] font-medium text-indigo-700">Tłumaczenie AI na polski — oryginał pod „Oryginał”.</p>
+        <p className="mt-1.5 text-[0.6875rem] font-medium text-indigo-700">Tłumaczenie AI na polski — oryginał pod „Oryginał”.</p>
       ) : null}
       {translateError ? (
         <p className="mt-1.5 text-xs text-red-700" role="alert">

@@ -472,25 +472,25 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
                             <span className="text-xs text-slate-500">{row.plu}</span>
                           ) : null}
                           {row.productLine ? (
-                            <Badge variant="info" className="text-[10px]">
+                            <Badge variant="info" className="text-[0.625rem]">
                               {teethProductLineLabel(row.productLine)}
                             </Badge>
                           ) : null}
                           {row.manufacturer ? (
-                            <Badge variant="default" className="text-[10px]">
+                            <Badge variant="default" className="text-[0.625rem]">
                               {teethManufacturerLabel(row.manufacturer)}
                             </Badge>
                           ) : (
-                            <Badge variant="warning" className="text-[10px]">
+                            <Badge variant="warning" className="text-[0.625rem]">
                               Producent nieustalony
                             </Badge>
                           )}
                           {row.kind ? (
-                            <Badge variant="info" className="text-[10px]">
+                            <Badge variant="info" className="text-[0.625rem]">
                               {TEETH_KIND_LABELS[row.kind]}
                             </Badge>
                           ) : (
-                            <Badge variant="warning" className="text-[10px]">
+                            <Badge variant="warning" className="text-[0.625rem]">
                               Typ nieustalony
                             </Badge>
                           )}
