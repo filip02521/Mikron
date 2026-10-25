@@ -6,7 +6,10 @@ import { AdminHubShell } from "@/components/admin/AdminHubShell";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
-import { PanelSummaryMetric } from "@/components/ui/PanelSummaryMetric";
+import { AdminMetrics } from "@/components/admin/AdminMetrics";
+import { Alert } from "@/components/ui/Alert";
+import { BrandLoader } from "@/components/ui/BrandLoader";
+import { buttonClass } from "@/components/ui/Button";
 import { formatWarsawDateTime } from "@/lib/time/warsaw";
 import type { MailSendLog, MailSendStatus } from "@/types/database";
 import { panelTypography } from "@/lib/ui/ontime-theme";
@@ -78,12 +81,9 @@ export function MailCenterClient({
 
   return (
     <AdminHubShell activeTab="mail" visibleTabs={visibleTabs}>
-      <p className={cn(panelTypography.sectionDesc, "mb-3")}>
-        Centrum maili Ivoclar jest <strong>tylko do odczytu</strong>. Generowanie i wysyłkę
-        prowadzi OnTime Raporty - stąd nie ma przycisków Wyślij / Włącz / edycji odbiorców.
-        Status <strong>SEND</strong> pochodzi na żywo z runnera (
-        <code>IVOCLAR_SEND_ENABLED</code>
-        ).
+      <p className="max-w-3xl text-sm leading-relaxed text-slate-600">
+        Stąd nie ma przycisków Wyślij / Włącz / edycji odbiorców. Status <strong>SEND</strong>{" "}
+        pochodzi na żywo z runnera (<code>IVOCLAR_SEND_ENABLED</code>).
         {runnerUrl ? (
           <>
             {" "}
@@ -100,24 +100,28 @@ export function MailCenterClient({
         ) : null}
       </p>
 
-      <div
-        className={cn(
-          "mb-3 rounded-md border px-3 py-2 text-sm",
-          runnerStatus.ok && runnerStatus.sendEnabled && !runnerStatus.overrideTo
-            ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-            : runnerStatus.ok && runnerStatus.sendEnabled
-              ? "border-amber-200 bg-amber-50 text-amber-950"
-              : runnerStatus.ok
-                ? "border-slate-200 bg-slate-50 text-slate-700"
-                : "border-amber-200 bg-amber-50 text-amber-950"
-        )}
-      >
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={sendBadge.variant}>{sendBadge.label}</Badge>
-          <span>{raportyRunnerStatusLabel(runnerStatus)}</span>
-        </div>
+      <Card padding={false} className="overflow-hidden">
+        <CardHeader
+          inset
+          density="compact"
+          title="Status runnera"
+          description={raportyRunnerStatusLabel(runnerStatus)}
+          action={<Badge variant={sendBadge.variant}>{sendBadge.label}</Badge>}
+        />
+        <div className="space-y-4 px-3 py-4 text-sm sm:px-4 lg:px-5">
+        <AdminMetrics
+          items={[
+            { label: "SEND na runnerze", value: sendMetric },
+            { label: "Wysłane (ostatnie)", value: sentRecent },
+            {
+              label: "Problemy (ostatnie)",
+              value: problemRecent,
+              tone: problemRecent > 0 ? "warning" : "default",
+            },
+          ]}
+        />
         {runnerStatus.ok && runnerStatus.periodLabel ? (
-          <p className={cn(panelTypography.caption, "mt-1 text-slate-600")}>
+          <p className={cn(panelTypography.caption, "text-slate-600")}>
             Bieżący okres w runnerze: {runnerStatus.periodLabel}
             {runnerStatus.productionSent
               ? " · produkcja tygodnia automatycznego: wysłana"
@@ -128,25 +132,22 @@ export function MailCenterClient({
           </p>
         ) : null}
         {runnerStatus.ok && runnerStatus.crashSticky ? (
-          <p className="mt-2 rounded border border-amber-300 bg-amber-100/80 px-2 py-1.5 text-sm text-amber-950">
-            Runner zgłasza <strong>unknown_after_crash</strong>
-            {runnerStatus.runnerStateError
-              ? ` (${runnerStatus.runnerStateError})`
-              : ""}
-            . Nie generuj ponownie z OnTime - dokończ w OnTime Raporty (Wymuś
-            wysyłkę + potwierdzenie).
-          </p>
+          <Alert tone="warning" title="Runner zgłasza unknown_after_crash">
+            {runnerStatus.runnerStateError ? `Błąd: ${runnerStatus.runnerStateError}. ` : ""}
+            Nie generuj ponownie z OnTime - dokończ w OnTime Raporty (Wymuś wysyłkę + potwierdzenie).
+          </Alert>
         ) : null}
         {runnerStatus.ok &&
         runnerStatus.runnerStateStatus === "sending" &&
         !runnerStatus.crashSticky ? (
-          <p className="mt-2 rounded border border-sky-200 bg-sky-50 px-2 py-1.5 text-sm text-sky-950">
+          <div role="status" className="flex items-center gap-2 text-slate-600">
+            <BrandLoader size="sm" tile={false} />
             Runner jest w trakcie wysyłki…
-          </p>
+          </div>
         ) : null}
         {runnerStatus.ok &&
         (runnerStatus.lastSentLabel || runnerStatus.nextWeekLabel) ? (
-          <div className="mt-2 grid gap-2 border-t border-black/5 pt-2 sm:grid-cols-2">
+          <div className="grid gap-3 border-t border-slate-100 pt-3 sm:grid-cols-2">
             <div>
               <p className={cn(panelTypography.caption, "text-slate-500")}>
                 Ostatni wysłany raport
@@ -182,25 +183,21 @@ export function MailCenterClient({
             </div>
           </div>
         ) : null}
-      </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <PanelSummaryMetric label="SEND na runnerze" value={sendMetric} />
-        <PanelSummaryMetric label="Wysłane (ostatnie)" value={String(sentRecent)} />
-        <PanelSummaryMetric label="Problemy (ostatnie)" value={String(problemRecent)} />
-      </div>
-      <p className={cn(panelTypography.caption, "mt-1 text-slate-500")}>
+        <p className={cn(panelTypography.caption, "text-slate-500")}>
         Joby w bazie (metadane OT): {jobsInDb} - flaga DB <code>enabled</code> nie steruje już
         wyświetlanym SEND.
-      </p>
+        </p>
+        </div>
+      </Card>
 
-      <Card padding={false} className="mt-4 overflow-hidden">
+      <Card padding={false} className="overflow-hidden">
         <CardHeader inset density="compact" title="Joby mailowe" />
         <div className="divide-y divide-slate-100">
           {jobs.map(({ job, lastLog }) => (
             <div
               key={job.id}
-              className="flex flex-col gap-3 px-3 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-4"
+              className="flex flex-col gap-3 px-3 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-4 lg:px-5"
             >
               <div className="min-w-0 space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
@@ -224,10 +221,7 @@ export function MailCenterClient({
                 </p>
               </div>
               <div className="flex shrink-0 flex-wrap gap-2">
-                <Link
-                  href={`/admin/mail/${job.id}`}
-                  className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
-                >
+                <Link href={`/admin/mail/${job.id}`} className={buttonClass("secondary", "sm")}>
                   Logi / szczegóły
                 </Link>
               </div>
@@ -236,7 +230,7 @@ export function MailCenterClient({
         </div>
       </Card>
 
-      <Card padding={false} className="mt-4 overflow-hidden">
+      <Card padding={false} className="overflow-hidden">
         <CardHeader inset density="compact" title="Ostatnie wysyłki" />
         <TableScroll>
           <DataTable>
@@ -265,7 +259,7 @@ export function MailCenterClient({
                     <td>
                       <Badge variant={statusBadgeVariant(log.status)}>{log.status}</Badge>
                       {log.had_warnings ? (
-                        <span className="ml-1 text-xs text-amber-700">z ostrzeżeniami</span>
+                        <span className="ml-1 text-xs text-amber-800">z ostrzeżeniami</span>
                       ) : null}
                     </td>
                     <td>{log.attempt_no}</td>

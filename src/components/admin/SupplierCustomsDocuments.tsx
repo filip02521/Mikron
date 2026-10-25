@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { cn } from "@/lib/cn";
 import { fieldControlClass } from "@/components/ui/Field";
@@ -80,7 +81,7 @@ function DocumentRow({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <p className="truncate text-sm font-medium text-slate-900">{doc.file_name}</p>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-slate-500">
               {formatBytes(doc.byte_size)}
               {doc.created_by_email ? ` · ${doc.created_by_email}` : ""}
               {doc.created_at ? ` · ${formatDate(doc.created_at)}` : ""}
@@ -125,7 +126,7 @@ function DocumentRow({
             <div className="mt-1.5 flex items-start justify-between gap-2">
               <p className="min-w-0 flex-1 text-sm leading-relaxed text-slate-600">
                 {doc.description || (
-                  <span className="italic text-slate-400">Brak opisu</span>
+                  <span className="italic text-slate-500">Brak opisu</span>
                 )}
               </p>
               <div className="flex shrink-0 items-center gap-1">
@@ -285,7 +286,7 @@ export function SupplierCustomsDocuments({
                   disabled={busy}
                   onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                 />
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-slate-500">
                   PDF, JPG, PNG, WebP, DOCX, XLSX - max 20 MB
                 </p>
               </div>
@@ -313,7 +314,10 @@ export function SupplierCustomsDocuments({
 
           {/* Lista dokumentów */}
           {loading ? (
-            <p className="py-4 text-center text-sm text-slate-400">Wczytywanie dokumentów…</p>
+            <p role="status" className="flex items-center justify-center gap-2 py-4 text-sm text-slate-600">
+              <BrandLoader size="sm" tile={false} />
+              Wczytuję dokumenty…
+            </p>
           ) : documents.length === 0 ? (
             <div className="py-6 text-center">
               <span className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400">

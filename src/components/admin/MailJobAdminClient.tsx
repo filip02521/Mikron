@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AdminHubShell } from "@/components/admin/AdminHubShell";
+import { AdminSecondaryShell } from "@/components/admin/AdminSecondaryShell";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
@@ -9,7 +9,6 @@ import { formatWarsawDateTime } from "@/lib/time/warsaw";
 import type { MailJobDefinition, MailJobRecipient, MailSendLog } from "@/types/database";
 import { panelTypography } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
-import type { AdminHubTab } from "@/lib/admin-hub";
 import {
   raportyRunnerStatusLabel,
   type RaportyRunnerStatusResult,
@@ -20,13 +19,11 @@ export function MailJobAdminClient({
   recipients,
   logs,
   runnerStatus,
-  visibleTabs,
 }: {
   job: MailJobDefinition;
   recipients: MailJobRecipient[];
   logs: MailSendLog[];
   runnerStatus: RaportyRunnerStatusResult;
-  visibleTabs?: readonly AdminHubTab[];
 }) {
   const sendLabel = !runnerStatus.ok
     ? "Wysyłka: nieznany stan"
@@ -45,21 +42,13 @@ export function MailJobAdminClient({
         : "default";
 
   return (
-    <AdminHubShell
-      activeTab="mail"
-      visibleTabs={visibleTabs}
+    <AdminSecondaryShell
+      backHref="/admin/mail"
+      backLabel="Ivoclar"
       title={job.label}
       description={job.description}
-      action={
-        <Link
-          href="/admin/mail"
-          className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
-        >
-          ← Lista
-        </Link>
-      }
     >
-      <p className={cn(panelTypography.sectionDesc, "mb-3")}>
+      <p className="max-w-3xl text-sm leading-relaxed text-slate-600">
         Tryb odczytu - bez wysyłki, testów ani edycji odbiorców z OnTime. Generowanie i mail
         tygodniowy prowadzi OnTime Raporty.
       </p>
@@ -71,7 +60,7 @@ export function MailJobAdminClient({
           title="Status wysyłki (OnTime Raporty)"
           description={job.schedule_label || "-"}
         />
-        <div className="px-3 py-3 text-sm text-slate-600 sm:px-4">
+        <div className="px-3 py-4 text-sm text-slate-600 sm:px-4 lg:px-5">
           <Badge variant={sendVariant}>{sendLabel}</Badge>
           <p className={cn(panelTypography.caption, "mt-2 text-slate-600")}>
             {raportyRunnerStatusLabel(runnerStatus)}
@@ -84,7 +73,7 @@ export function MailJobAdminClient({
         </div>
       </Card>
 
-      <Card padding={false} className="mt-4 overflow-hidden">
+      <Card padding={false} className="overflow-hidden">
         <CardHeader inset density="compact" title="Odbiorcy (podgląd)" />
         <TableScroll>
           <DataTable>
@@ -118,16 +107,16 @@ export function MailJobAdminClient({
         </TableScroll>
       </Card>
 
-      <Card padding={false} className="mt-4 overflow-hidden">
+      <Card padding={false} className="overflow-hidden">
         <CardHeader inset density="compact" title="Historia wysyłek" />
         <TableScroll>
           <DataTable>
             <thead>
               <tr>
-                <th>period_key</th>
-                <th>status</th>
-                <th>próba</th>
-                <th>kiedy</th>
+                <th>Okres</th>
+                <th>Status</th>
+                <th>Próba</th>
+                <th>Kiedy</th>
                 <th />
               </tr>
             </thead>
@@ -174,6 +163,6 @@ export function MailJobAdminClient({
           </DataTable>
         </TableScroll>
       </Card>
-    </AdminHubShell>
+    </AdminSecondaryShell>
   );
 }
