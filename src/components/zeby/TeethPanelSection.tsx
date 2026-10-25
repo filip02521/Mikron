@@ -2,50 +2,30 @@
 
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { panelSectionInsetClass, panelSubsectionInsetClass, panelTypography } from "@/lib/ui/ontime-theme";
-import { CardHeader } from "@/components/ui/Card";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
+import { panelSectionInsetClass, panelSubsectionInsetClass } from "@/lib/ui/ontime-theme";
+import { Card, CardHeader } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { SlowLoadingNote } from "@/components/ui/SlowLoadingNote";
 
 /** Karta sekcji wewnątrz panelu zębów — spójna z panelem dziennym. */
 export function TeethPanelSection({
   title,
   hint,
-  icon,
-  iconTileClassName = "bg-emerald-100 text-emerald-800",
   children,
   headerAside,
   className,
 }: {
   title: string;
   hint?: string;
-  icon?: ReactNode;
-  iconTileClassName?: string;
   children: ReactNode;
   headerAside?: ReactNode;
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        "overflow-hidden rounded-md border border-slate-200/80 bg-[var(--card)] shadow-sm",
-        className,
-      )}
-    >
-      <CardHeader
-        inset
-        density="compact"
-        leading={
-          icon ? (
-            <SectionHeadingIcon tileClassName={iconTileClassName}>{icon}</SectionHeadingIcon>
-          ) : undefined
-        }
-        title={title}
-        hint={hint}
-        action={headerAside}
-      />
+    <Card padding={false} className={cn("overflow-hidden", className)}>
+      <CardHeader inset density="compact" title={title} hint={hint} action={headerAside} />
       <div className={cn(panelSubsectionInsetClass, "py-3")}>{children}</div>
-    </div>
+    </Card>
   );
 }
 
@@ -73,46 +53,22 @@ export function TeethPanelTabPanel({
   );
 }
 
+/** Pusty stan widoku panelu zębów — karta z {@link EmptyState}. */
 export function TeethPanelEmpty({
   title,
   description,
   icon,
-  tone = "indigo",
   action,
 }: {
   title: string;
   description?: string;
   icon: ReactNode;
-  tone?: "indigo" | "emerald" | "sky" | "amber";
   action?: ReactNode;
 }) {
-  const iconShellClass =
-    tone === "sky"
-      ? "bg-sky-50 text-sky-700"
-      : tone === "amber"
-        ? "bg-amber-50 text-amber-800"
-        : tone === "emerald"
-          ? "bg-emerald-50 text-emerald-700"
-          : "bg-indigo-50 text-indigo-700";
-
   return (
-    <div className="overflow-hidden rounded-md border border-slate-200/80 bg-[var(--card)] shadow-sm">
-      <div className={cn("py-8 text-center", panelSectionInsetClass)}>
-        <div
-          className={cn(
-            "mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full",
-            iconShellClass,
-          )}
-        >
-          {icon}
-        </div>
-        <p className={panelTypography.rowTitle}>{title}</p>
-        {description ? (
-          <p className={cn(panelTypography.caption, "mx-auto mt-1.5 max-w-md")}>{description}</p>
-        ) : null}
-        {action ? <div className="mt-4">{action}</div> : null}
-      </div>
-    </div>
+    <Card padding={false}>
+      <EmptyState title={title} description={description} icon={icon} action={action} />
+    </Card>
   );
 }
 
@@ -122,7 +78,7 @@ export function TeethPanelListSkeleton({ groups = 3 }: { groups?: number }) {
       {Array.from({ length: groups }).map((_, index) => (
         <div
           key={index}
-          className="overflow-hidden rounded-md border border-slate-200/80 bg-[var(--card)] shadow-sm motion-safe:animate-pulse"
+          className="overflow-hidden rounded-[var(--radius-panel)] border border-slate-200 bg-[var(--card)] shadow-[var(--shadow-card)] motion-safe:animate-pulse"
         >
           <div className="border-b border-slate-100 px-4 py-3">
             <div className="h-4 w-40 rounded bg-slate-200" />

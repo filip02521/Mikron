@@ -79,7 +79,7 @@ export function DeliveryJournalReceiptCard({
   };
 
   return (
-    <li className="rounded-md border border-slate-200/90 bg-white px-4 py-3 shadow-sm shadow-slate-900/[0.02]">
+    <li className="py-3 first:pt-0 last:pb-0">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           {showDate ? (
@@ -116,7 +116,7 @@ export function DeliveryJournalReceiptCard({
           </p>
           {note ? (
             <p className={cn(panelTypography.caption, "mt-1.5")}>
-              <span className="text-slate-400">List / uwagi: </span>
+              <span className="text-slate-500">List / uwagi: </span>
               <HighlightedNote note={note} query={highlightQuery} />
             </p>
           ) : null}
@@ -124,7 +124,7 @@ export function DeliveryJournalReceiptCard({
             <button
               type="button"
               onClick={goToReceiveQueue}
-              className="mt-1.5 inline-flex items-center gap-1 text-[0.6875rem] font-medium text-sky-600 transition hover:text-sky-800 hover:underline"
+              className="mt-1 inline-flex min-h-11 items-center gap-1 text-xs font-medium text-indigo-700 underline-offset-2 transition hover:text-indigo-900 hover:underline sm:min-h-0"
             >
               Przejdź do przyjęcia →
             </button>

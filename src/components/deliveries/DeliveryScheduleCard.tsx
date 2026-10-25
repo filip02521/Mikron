@@ -18,10 +18,8 @@ export function DeliveryScheduleCard({
   return (
     <div
       className={cn(
-        "rounded-lg border bg-white shadow-sm transition hover:shadow-md",
-        supplier.isOverduePlan
-          ? "border-rose-200/70 bg-rose-50/20"
-          : "border-slate-200/80",
+        "rounded-lg",
+        supplier.isOverduePlan ? "bg-red-50/70" : "bg-slate-50",
         compact ? "px-2.5 py-2" : "px-3 py-2.5"
       )}
     >
@@ -45,8 +43,8 @@ export function DeliveryScheduleCard({
             </p>
             <span
               className={cn(
-                "shrink-0 rounded-full font-semibold",
-                compact ? "px-1.5 py-0 text-[0.5625rem] leading-tight" : "px-2 py-0.5 text-[0.625rem]",
+                "shrink-0 rounded-md font-semibold",
+                compact ? "px-1.5 py-0 text-[0.625rem] leading-tight" : "px-2 py-0.5 text-[0.625rem]",
                 supplier.isOverduePlan
                   ? "bg-rose-100 text-rose-700"
                   : "bg-indigo-100 text-indigo-700"
@@ -57,7 +55,7 @@ export function DeliveryScheduleCard({
           </div>
           {!compact ? (
             <p className="mt-0.5 inline-flex items-center gap-1 text-xs text-slate-500">
-              <IconMapPin size={11} className="text-slate-400" />
+              <IconMapPin size={11} className="text-slate-400" aria-hidden />
               {locationLabel(supplier.location)}
             </p>
           ) : null}

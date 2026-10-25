@@ -13,7 +13,6 @@ import {
   DailySectionIcon,
 } from "@/components/icons/StrokeIcons";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
-import { panelSectionInsetClass } from "@/lib/ui/ontime-theme";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import { useProcurementLanePrefs } from "@/components/summary/useProcurementLanePrefs";
 import { useDailyZdProposalsOutside } from "@/components/summary/DailyZdProposals";
@@ -107,11 +106,11 @@ export function DailyTodayView({
       id="panel-view-dzis"
       role="tabpanel"
       aria-labelledby="panel-tab-dzis"
-      className={panelSectionInsetClass}
+      className="space-y-6"
     >
         {automat}
         {!showEmpty ? (
-          <div className="space-y-3">
+          <div className="space-y-6">
             {hasCancelled ? (
               <SalesCancelledDailyPanel
                 notices={workspace.salesCancelledNotices}
