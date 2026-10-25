@@ -106,8 +106,8 @@ ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO mail_job_recipients (job_id, email, display_name, recipient_role, enabled, sort_order)
 VALUES
-  ('ivoclar_weekly', 'salesdata@ivoclar.com', 'Ivoclar Sales Data', 'to', true, 1),
-  ('ivoclar_weekly', 'natalia.marcinkowska@ivoclar.com', 'Natalia Marcinkowska', 'to', true, 2)
+  ('ivoclar_weekly', 'salesdata@ivoclar.com', 'Ivoclar — sales data', 'to', true, 1),
+  ('ivoclar_weekly', 'kontakt@dostawca.example', 'Ivoclar — opiekun', 'to', true, 2)
 ON CONFLICT (job_id, email, recipient_role) DO NOTHING;
 
 COMMENT ON TABLE mail_job_definitions IS 'Definicje zaplanowanych jobów mailowych (raporty, digesty).';
