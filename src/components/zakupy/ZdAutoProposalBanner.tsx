@@ -108,7 +108,8 @@ export function ZdAutoProposalBanner({
   const buildNow = () => {
     setError(null);
     startBuilding(async () => {
-      const r = await actionCreateZdAutoProposalNow({ supplierId });
+      const r = await actionCreateZdAutoProposalNow({ supplierId }).catch(() => null);
+      if (!r) return setError("Serwer nie odpowiedział - odśwież stronę i sprawdź, czy propozycja powstała.");
       if (!r.ok) return setError(r.message);
       if (!r.proposal) setError("Nic do zamówienia - propozycja nie powstała.");
       load();
@@ -144,7 +145,8 @@ export function ZdAutoProposalBanner({
   const reject = () => {
     setError(null);
     startTransition(async () => {
-      const r = await actionRejectZdAutoProposal({ id: latest.id, supplierId, note });
+      const r = await actionRejectZdAutoProposal({ id: latest.id, supplierId, note }).catch(() => null);
+      if (!r) return setError("Serwer nie odpowiedział - spróbuj ponownie.");
       if (!r.ok) return setError(r.message);
       setRejecting(false);
       setNote("");

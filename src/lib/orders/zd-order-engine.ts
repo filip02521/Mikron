@@ -82,7 +82,6 @@ import {
 } from "@/lib/data/zd-scope-order";
 import {
   fetchSubiektZdEstimateAll,
-  fetchSubiektZdEstimateZkPage,
 } from "@/lib/subiekt/api";
 import { fetchZdSupplierOrderPolicy } from "@/lib/data/zd-supplier-order-policy";
 import {
@@ -98,7 +97,7 @@ import { requireZdEstimateSnapshotHostKind } from "@/lib/subiekt/config";
 import { getSubiektFeedback, type SubiektFeedback } from "@/lib/subiekt/feedback";
 import { assertZdEstimateFilterEcho } from "@/lib/orders/zd-estimate-scope";
 import type { ZdEstimateRunProgressSnapshot } from "@/lib/orders/zd-estimate-run-progress";
-import { fetchAllReservedZkRowsForTwId } from "@/lib/orders/zd-estimate-reservations";
+import { fetchReservedOverlapSlicesByTwIds } from "@/lib/orders/zd-reserved-overlap-fetch";
 import {
   collectTwIdsNeedingProsbaReservationOverlap,
   collectTwIdsNeedingProsbaReservationOverlapWithoutStanRez,
@@ -108,7 +107,6 @@ import {
   mergeReservedSlicesBySources,
   reservationSourceTwIds,
   type ZdOverlapReservationSources,
-  reservedRowsToOverlapSlices,
   type ZdEstimateProsbaOverlapContribution,
   type ZdEstimateReservedOverlapSlice,
 } from "@/lib/orders/zd-estimate-prosba-reservation-overlap";
@@ -222,59 +220,7 @@ export function historyScopeFromRun(scope: {
 }
 
 
-const ZD_ESTIMATE_PROSBA_OVERLAP_CONCURRENCY = 4;
-
-export async function fetchReservedOverlapSlicesByTwIds(
-  twIds: readonly number[]
-): Promise<{
-  reservedByTwId: Map<number, ZdEstimateReservedOverlapSlice[]>;
-  /** true gdy którykolwiek tw rzucił — nie cache'uj skip w UI. */
-  hadFetchErrors: boolean;
-}> {
-  const unique = [
-    ...new Set(
-      twIds
-        .map((id) => Math.trunc(Number(id)) || 0)
-        .filter((id) => id > 0)
-    ),
-  ];
-
-  const out = new Map<number, ZdEstimateReservedOverlapSlice[]>();
-  if (!unique.length) {
-    return { reservedByTwId: out, hadFetchErrors: false };
-  }
-
-  let hadFetchErrors = false;
-  for (let i = 0; i < unique.length; i += ZD_ESTIMATE_PROSBA_OVERLAP_CONCURRENCY) {
-    const chunk = unique.slice(i, i + ZD_ESTIMATE_PROSBA_OVERLAP_CONCURRENCY);
-    const results = await Promise.all(
-      chunk.map(async (twId) => {
-        try {
-          const fetched = await fetchAllReservedZkRowsForTwId({
-            twId,
-            fetchPage: fetchSubiektZdEstimateZkPage,
-          });
-          return {
-            twId,
-            slices: reservedRowsToOverlapSlices(fetched.rows),
-            ok: true as const,
-          };
-        } catch {
-          return {
-            twId,
-            slices: [] as ZdEstimateReservedOverlapSlice[],
-            ok: false as const,
-          };
-        }
-      })
-    );
-    for (const r of results) {
-      if (!r.ok) hadFetchErrors = true;
-      if (r.slices.length) out.set(r.twId, r.slices);
-    }
-  }
-  return { reservedByTwId: out, hadFetchErrors };
-}
+export { fetchReservedOverlapSlicesByTwIds };
 
 export function reservedOverlapMapToDto(
   map: Map<number, ZdEstimateReservedOverlapSlice[]>
@@ -320,6 +266,7 @@ export async function resolveIndividualExtrasWithReservationOverlap(input: {
    * karta zestawu) — rezerwacje kart źródłowych scalane na linii w jednostkach jej extra.
    */
   reservationSources?: ZdOverlapReservationSources | null;
+  fetchOpts?: Parameters<typeof fetchReservedOverlapSlicesByTwIds>[1];
 }): Promise<{
   adjustedExtraByTwId: Map<number, number>;
   rawExtraByTwId: Map<number, number>;
@@ -391,7 +338,10 @@ export async function resolveIndividualExtrasWithReservationOverlap(input: {
   }
 
   try {
-    const fetched = await fetchReservedOverlapSlicesByTwIds(reservationSourceTwIds(toFetch, sources));
+    const fetched = await fetchReservedOverlapSlicesByTwIds(
+      reservationSourceTwIds(toFetch, sources),
+      input.fetchOpts
+    );
     fetched.reservedByTwId = mergeReservedSlicesBySources(fetched.reservedByTwId, toFetch, sources);
     const maps = individualExtrasAndReliefWithReservationOverlap(
       scopedByTw,
