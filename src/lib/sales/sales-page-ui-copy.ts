@@ -17,8 +17,6 @@ export const SALES_PAGE_HEADER_HINTS = {
     "Kolejka zakupów - prośby handlowców na dziś, plan tygodnia i wyjątki poza harmonogramem.",
   verification:
     "Niekompletne prośby handlowców - uzupełnij dostawcę i produkt. Po zatwierdzeniu trafiają do panelu dziennego; ścieżka informacji jest zachowana.",
-  queue:
-    "Jedna lista przyjęcia: zamówienia i informacje u tego samego dostawcy - kolejka, dziennik i inwentaryzacja regału.",
   prosba: "Zgłoś prośbę do działu zakupów - pojedynczą lub grupową, z opcjonalnymi notatkami i klientem.",
   accountLink:
     "Aby korzystać z aplikacji jako handlowiec, konto musi być przypisane do Twojego profilu w systemie.",

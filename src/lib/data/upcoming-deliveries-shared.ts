@@ -30,8 +30,10 @@ export type UpcomingDeliverySupplier = {
   orders: IndividualOrder[];
   /** ZD z indeksu bez dopasowanego zamówienia (tylko z Subiekta). */
   zdOnlyDocNumbers: string[];
-  /** Termin ZD był wcześniej niż dziś — pokazane w „Dziś” jako zaległe. */
+  /** Termin ZD był wcześniej niż dziś — pokazane w sekcji „Po terminie”, nie w „Dziś”. */
   isOverdueDeadline?: boolean;
+  /** Najwcześniejszy minięty termin ZD tego dostawcy (yyyy-MM-dd). */
+  overdueDeadlineKey?: string;
 };
 
 export type UpcomingDeliveryDay = {
@@ -174,12 +176,13 @@ export function mergeUpcomingDeliverySuppliers(
     orders,
     zdOnlyDocNumbers: [...zdOnly],
     isOverdueDeadline: Boolean(a.isOverdueDeadline || b.isOverdueDeadline),
+    overdueDeadlineKey: [a.overdueDeadlineKey, b.overdueDeadlineKey].filter(Boolean).sort()[0],
   };
 }
 
 /**
- * Dla kolumny „Dziś”: dołącz dostawców z zaległych terminów ZD
- * (analogicznie do zaległych pozycji planowych z harmonogramu).
+ * Dzień planu z ZD. „Dziś” to tylko terminy na dziś — zaległe ZD są osobno (`collectOverdueDeliveries`),
+ * bo kilkanaście miesięcznych zaległości zasłaniało to, co naprawdę może dziś przyjść.
  */
 export function deliveryDayForScheduleDate(
   dateKey: string,
@@ -188,40 +191,59 @@ export function deliveryDayForScheduleDate(
   fallbackDateLabel: string,
   fallbackWeekdayLabel: string
 ): UpcomingDeliveryDay | null {
-  if (dateKey !== todayDateKey) {
-    return deliveryByDateKey.get(dateKey) ?? null;
-  }
+  const day = deliveryByDateKey.get(dateKey);
+  if (dateKey !== todayDateKey) return day ?? null;
+  if (!day) return null;
+  return {
+    ...day,
+    dateLabel: day.dateLabel || fallbackDateLabel,
+    weekdayLabel: day.weekdayLabel || fallbackWeekdayLabel,
+    isToday: true,
+    isOverdue: false,
+  };
+}
 
-  const today = deliveryByDateKey.get(todayDateKey);
+/** Do tylu dni po terminie dostawa „może przyjść w każdej chwili”; starsze to ZD do wyjaśnienia z zakupami. */
+export const OVERDUE_RECENT_DAYS = 7;
+
+export type OverdueDelivery = {
+  supplier: UpcomingDeliverySupplier;
+  /** Najwcześniejszy minięty termin ZD (yyyy-MM-dd). */
+  deadlineKey: string;
+  daysLate: number;
+};
+
+/** Dni kalendarzowe od terminu do dziś (oba jako yyyy-MM-dd). */
+export function daysPastDeadline(deadlineKey: string, todayDateKey: string): number {
+  const d = parseDateOnly(deadlineKey);
+  const t = parseDateOnly(todayDateKey);
+  if (!d || !t) return 0;
+  return Math.max(0, Math.round((t.getTime() - d.getTime()) / 86_400_000));
+}
+
+/**
+ * Zaległe ZD jako jedna lista: jeden wiersz na dostawcę (zaległe terminy scalone),
+ * od najświeższej zaległości — ta najpewniej przyjdzie najszybciej.
+ */
+export function collectOverdueDeliveries(
+  deliveryDays: readonly UpcomingDeliveryDay[],
+  todayDateKey: string
+): OverdueDelivery[] {
   const byId = new Map<string, UpcomingDeliverySupplier>();
-  for (const s of today?.suppliers ?? []) {
-    byId.set(s.supplierId, { ...s, isOverdueDeadline: false });
-  }
-  for (const [key, day] of deliveryByDateKey) {
-    if (!(key < todayDateKey)) continue;
+  for (const day of deliveryDays) {
+    if (!(day.dateKey < todayDateKey)) continue;
     for (const s of day.suppliers) {
-      const stamped: UpcomingDeliverySupplier = {
-        ...s,
-        isOverdueDeadline: true,
-      };
+      const stamped: UpcomingDeliverySupplier = { ...s, isOverdueDeadline: true, overdueDeadlineKey: day.dateKey };
       const existing = byId.get(s.supplierId);
-      if (!existing) byId.set(s.supplierId, stamped);
-      else byId.set(s.supplierId, mergeUpcomingDeliverySuppliers(existing, stamped));
+      byId.set(s.supplierId, existing ? mergeUpcomingDeliverySuppliers(existing, stamped) : stamped);
     }
   }
-
-  if (byId.size === 0) return today ?? null;
-
-  return {
-    dateKey: todayDateKey,
-    dateLabel: today?.dateLabel ?? fallbackDateLabel,
-    weekdayLabel: today?.weekdayLabel ?? fallbackWeekdayLabel,
-    isToday: true,
-    isOverdue: [...byId.values()].some((s) => s.isOverdueDeadline),
-    suppliers: [...byId.values()].sort((a, b) =>
-      a.supplierName.localeCompare(b.supplierName, "pl")
-    ),
-  };
+  return [...byId.values()]
+    .map((supplier) => {
+      const deadlineKey = supplier.overdueDeadlineKey ?? todayDateKey;
+      return { supplier, deadlineKey, daysLate: daysPastDeadline(deadlineKey, todayDateKey) };
+    })
+    .sort((a, b) => a.daysLate - b.daysLate || a.supplier.supplierName.localeCompare(b.supplier.supplierName, "pl"));
 }
 
 export function buildDeliveryScheduleWeek(

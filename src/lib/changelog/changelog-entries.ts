@@ -607,21 +607,15 @@ export const CHANGELOG_LATEST_VERSION =
 
 export const CHANGELOG_CATEGORY_META: Record<
   ChangelogCategory,
-  { label: string; badgeClass: string; dotClass: string }
+  { label: string }
 > = {
   new: {
     label: "Nowość",
-    badgeClass: "bg-emerald-100 text-emerald-800",
-    dotClass: "bg-emerald-500",
   },
   improvement: {
     label: "Ulepszenie",
-    badgeClass: "bg-indigo-100 text-indigo-800",
-    dotClass: "bg-indigo-500",
   },
   fix: {
     label: "Naprawa",
-    badgeClass: "bg-amber-100 text-amber-800",
-    dotClass: "bg-amber-500",
   },
 };

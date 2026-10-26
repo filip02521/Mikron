@@ -55,18 +55,14 @@ export function supplierGroupIndexByOrderId(
   return map;
 }
 
+// Jeden spokojny układ: wiersz dostawcy biały, jego pozycje na lekkim szarym tle. Grupy rozdziela linia,
+// nie kolor tła — naprzemienne barwy czytały się jak stan, którego nie ma (DESIGN.md → Cards).
 const DELIVERY_GROUP_STYLES = [
-  { headerBg: "bg-slate-100/90", itemBg: "bg-white", border: "border-l-violet-500" },
-  { headerBg: "bg-slate-100/80", itemBg: "bg-slate-50/40", border: "border-l-slate-500" },
-  { headerBg: "bg-violet-100/70", itemBg: "bg-violet-50/30", border: "border-l-violet-400" },
-  { headerBg: "bg-indigo-100/60", itemBg: "bg-indigo-50/25", border: "border-l-indigo-400" },
+  { headerBg: "bg-white hover:bg-slate-50/70", itemBg: "bg-slate-50/60" },
 ] as const;
 
 const INFORMACJA_GROUP_STYLES = [
-  { headerBg: "bg-slate-100/90", itemBg: "bg-white", border: "border-l-sky-500" },
-  { headerBg: "bg-sky-100/70", itemBg: "bg-sky-50/30", border: "border-l-sky-400" },
-  { headerBg: "bg-slate-100/80", itemBg: "bg-slate-50/40", border: "border-l-slate-400" },
-  { headerBg: "bg-cyan-100/50", itemBg: "bg-cyan-50/25", border: "border-l-cyan-500" },
+  { headerBg: "bg-white hover:bg-slate-50/70", itemBg: "bg-sky-50/40" },
 ] as const;
 
 type QueueTableVariant = "delivery" | "informacja";
@@ -95,19 +91,20 @@ export function queueSupplierRowClass(
 
   return cn(
     options?.isPartial ? "bg-amber-50/85" : isHeader ? palette.headerBg : palette.itemBg,
+    isHeader && "border-t border-slate-100",
     !isHeader && options?.isFirstInSupplierGroup === true && "border-t border-slate-200/80",
     !isHeader && options?.isFirstInSupplierGroup === false && "border-t border-slate-200/60",
     !isHeader && options?.isLastInGroup === true && "border-b border-slate-200/60"
   );
 }
 
-/** Lewy pasek grupy — musi być na pierwszej komórce wiersza (border na `<tr>` nie renderuje się przy border-collapse). */
+/**
+ * Dawniej lewy kolorowy pasek grupy. DESIGN.md nie dopuszcza bocznych pasków na wierszach — grupy rozdziela
+ * linia i tło pozycji — więc zwraca pustą klasę; zostaje, żeby wywołania (kolejka, zęby) się nie zmieniały.
+ */
 export function queueSupplierLeadingCellClass(
-  groupIndex: number,
-  options?: { variant?: QueueTableVariant; isHeader?: boolean; stripeIndex?: number }
+  _groupIndex: number,
+  _options?: { variant?: QueueTableVariant; isHeader?: boolean; stripeIndex?: number }
 ): string {
-  const variant = options?.variant ?? "delivery";
-  const palette = supplierGroupPalette(options?.stripeIndex ?? groupIndex, variant);
-  const isHeader = options?.isHeader ?? false;
-  return cn(isHeader ? "border-l-[3px]" : "border-l-2", palette.border);
+  return "";
 }

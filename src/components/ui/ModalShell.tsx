@@ -12,6 +12,16 @@ export const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export type ModalTier = "standard" | "raised" | "top" | "stack" | "overlay";
+
+/**
+ * Otwarte okna w kolejności otwarcia. Klawisze (Escape, pułapka Tab) obsługuje tylko najwyższe —
+ * inaczej jedno Escape zamykało okno nad oknem razem z oknem pod spodem.
+ */
+const openModalStack: symbol[] = [];
+
+export function isTopModal(token: symbol): boolean {
+  return openModalStack[openModalStack.length - 1] === token;
+}
 export type ModalSize = "sm" | "md" | "lg" | "xl" | "full";
 
 const tierZ: Record<ModalTier, { backdrop: string; panel: string }> = {
@@ -134,7 +144,12 @@ export function ModalShell({
       didFocusRef.current = true;
       raf = requestAnimationFrame(focusFirst);
     }
+    const token = Symbol("modal");
+    openModalStack.push(token);
     const onKey = (e: KeyboardEvent) => {
+      if (!isTopModal(token)) return;
+      // Escape obsłużony już przez listę podpowiedzi lub dymek w oknie zamyka tylko je.
+      if (e.key === "Escape" && e.defaultPrevented) return;
       if (e.key === "Escape" && !disableBackdropCloseRef.current) {
         onCloseRef.current();
         return;
@@ -170,6 +185,8 @@ export function ModalShell({
     return () => {
       if (raf) cancelAnimationFrame(raf);
       window.removeEventListener("keydown", onKey);
+      const at = openModalStack.indexOf(token);
+      if (at >= 0) openModalStack.splice(at, 1);
       // Przywróć fokus do elementu, który otworzył modal.
       const prev = previouslyFocusedRef.current;
       if (prev && typeof prev.focus === "function") {

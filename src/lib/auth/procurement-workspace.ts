@@ -104,42 +104,6 @@ export function subtitleForProcurementWorkspace(
   return null;
 }
 
-export type WorkspaceTone = "indigo" | "sky" | "emerald";
-
-export function workspaceTone(ws: ProcurementWorkspace): WorkspaceTone {
-  if (ws === "zeby") return "sky";
-  if (ws === "magazyn") return "emerald";
-  return "indigo";
-}
-
-export function workspaceToneBg(ws: ProcurementWorkspace): string {
-  const tone = workspaceTone(ws);
-  if (tone === "sky") return "bg-sky-50/80";
-  if (tone === "emerald") return "bg-emerald-50/80";
-  return "bg-indigo-50/80";
-}
-
-export function workspaceToneRing(ws: ProcurementWorkspace): string {
-  const tone = workspaceTone(ws);
-  if (tone === "sky") return "ring-sky-200/60";
-  if (tone === "emerald") return "ring-emerald-200/60";
-  return "ring-indigo-200/60";
-}
-
-export function workspaceToneText(ws: ProcurementWorkspace): string {
-  const tone = workspaceTone(ws);
-  if (tone === "sky") return "text-sky-900";
-  if (tone === "emerald") return "text-emerald-900";
-  return "text-indigo-900";
-}
-
-export function workspaceToneAccent(ws: ProcurementWorkspace): string {
-  const tone = workspaceTone(ws);
-  if (tone === "sky") return "text-sky-500";
-  if (tone === "emerald") return "text-emerald-500";
-  return "text-indigo-500";
-}
-
 export const PROCUREMENT_WORKSPACE_OPTIONS: {
   value: ProcurementWorkspace;
   label: string;

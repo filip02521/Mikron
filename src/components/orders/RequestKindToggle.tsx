@@ -3,7 +3,6 @@
 import type { IndividualRequestKind } from "@/types/database";
 import { cn } from "@/lib/cn";
 import { IconAvailability, IconTruck } from "@/components/icons/StrokeIcons";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 
 export function RequestKindToggle({
   value,
@@ -34,17 +33,12 @@ export function RequestKindToggle({
             : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/80"
         )}
       >
-        <SectionHeadingIcon
-          tileClassName={
-            value === "zamowienie"
-              ? "bg-indigo-200/80 text-indigo-900"
-              : "bg-slate-100 text-slate-600"
-          }
-          className="h-9 w-9"
-        >
-          <IconTruck size={18} />
-        </SectionHeadingIcon>
-        <span className="min-w-0 pt-0.5">
+        <IconTruck
+          size={18}
+          aria-hidden
+          className={cn("mt-0.5 shrink-0", value === "zamowienie" ? "text-indigo-700" : "text-slate-500")}
+        />
+        <span className="min-w-0">
           <span className="block text-sm font-semibold text-slate-900">Zamówienie u dostawcy</span>
           <span className="mt-0.5 block text-xs leading-relaxed text-slate-600">
             Składamy zamówienie - podajesz ilość i śledzisz dostawę.
@@ -65,17 +59,12 @@ export function RequestKindToggle({
             : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/80"
         )}
       >
-        <SectionHeadingIcon
-          tileClassName={
-            value === "informacja"
-              ? "bg-violet-200/80 text-violet-900"
-              : "bg-slate-100 text-slate-600"
-          }
-          className="h-9 w-9"
-        >
-          <IconAvailability size={18} />
-        </SectionHeadingIcon>
-        <span className="min-w-0 pt-0.5">
+        <IconAvailability
+          size={18}
+          aria-hidden
+          className={cn("mt-0.5 shrink-0", value === "informacja" ? "text-violet-700" : "text-slate-500")}
+        />
+        <span className="min-w-0">
           <span className="block text-sm font-semibold text-slate-900">
             Informacja o towarze
           </span>

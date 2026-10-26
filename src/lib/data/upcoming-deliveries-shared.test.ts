@@ -3,6 +3,8 @@ import {
   buildDeliveryScheduleWeek,
   buildDeliveryTodayDay,
   clearedSupplierIdsByDateFromPayload,
+  collectOverdueDeliveries,
+  daysPastDeadline,
   deliveryDayForScheduleDate,
   hideScheduledReceivedToday,
   journalHasReceiptForDeadline,
@@ -65,22 +67,21 @@ describe("journalHasReceiptForDeadline", () => {
 });
 
 describe("deliveryDayForScheduleDate", () => {
-  it("rolls overdue ZD suppliers into today", () => {
+  it("today shows only ZD due today — overdue stays out of „Dziś”", () => {
     const map = new Map<string, UpcomingDeliveryDay>([
       ["2026-08-07", day("2026-08-07", [supplier({ supplierId: "a", supplierName: "Alpha" })], { isOverdue: true })],
       ["2026-08-09", day("2026-08-09", [supplier({ supplierId: "b", supplierName: "Beta" })], { isToday: true })],
     ]);
-    const merged = deliveryDayForScheduleDate(
-      "2026-08-09",
-      "2026-08-09",
-      map,
-      "09.08",
-      "Sob"
-    );
-    expect(merged?.suppliers.map((s) => s.supplierId).sort()).toEqual(["a", "b"]);
-    expect(merged?.suppliers.find((s) => s.supplierId === "a")?.isOverdueDeadline).toBe(true);
-    expect(merged?.suppliers.find((s) => s.supplierId === "b")?.isOverdueDeadline).toBe(false);
-    expect(merged?.isOverdue).toBe(true);
+    const today = deliveryDayForScheduleDate("2026-08-09", "2026-08-09", map, "09.08", "Sob");
+    expect(today?.suppliers.map((s) => s.supplierId)).toEqual(["b"]);
+    expect(today?.isOverdue).toBe(false);
+  });
+
+  it("today with only overdue ZD is empty", () => {
+    const map = new Map<string, UpcomingDeliveryDay>([
+      ["2026-08-07", day("2026-08-07", [supplier({ supplierId: "a", supplierName: "Alpha" })])],
+    ]);
+    expect(deliveryDayForScheduleDate("2026-08-09", "2026-08-09", map, "09.08", "Sob")).toBeNull();
   });
 
   it("does not roll overdue into mid-week non-today columns", () => {
@@ -90,6 +91,30 @@ describe("deliveryDayForScheduleDate", () => {
     expect(
       deliveryDayForScheduleDate("2026-08-08", "2026-08-09", map, "08.08", "Pt")
     ).toBeNull();
+  });
+});
+
+describe("collectOverdueDeliveries", () => {
+  it("one row per supplier, earliest missed deadline, freshest first", () => {
+    const days = [
+      day("2026-07-10", [supplier({ supplierId: "old", supplierName: "Old" })]),
+      day("2026-08-05", [supplier({ supplierId: "a", supplierName: "Alpha" })]),
+      day("2026-08-07", [supplier({ supplierId: "a", supplierName: "Alpha" }), supplier({ supplierId: "b", supplierName: "Beta" })]),
+      day("2026-08-09", [supplier({ supplierId: "today", supplierName: "Today" })]),
+    ];
+    const out = collectOverdueDeliveries(days, "2026-08-09");
+    expect(out.map((o) => [o.supplier.supplierId, o.deadlineKey, o.daysLate])).toEqual([
+      ["b", "2026-08-07", 2],
+      ["a", "2026-08-05", 4],
+      ["old", "2026-07-10", 30],
+    ]);
+    expect(out[1]!.supplier.totalQuantity).toBe(20);
+    expect(out.every((o) => o.supplier.isOverdueDeadline)).toBe(true);
+  });
+
+  it("daysPastDeadline counts calendar days and never goes negative", () => {
+    expect(daysPastDeadline("2026-10-21", "2026-10-25")).toBe(4);
+    expect(daysPastDeadline("2026-10-26", "2026-10-25")).toBe(0);
   });
 });
 
@@ -143,7 +168,7 @@ describe("buildDeliveryScheduleWeek + hideScheduledReceivedToday", () => {
     }),
   ];
 
-  it("dedupes plan card when ZD card exists and rolls overdue ZD into Friday today", () => {
+  it("dedupes plan card when ZD card exists; overdue ZD stays out of today", () => {
     const today = "2026-08-07";
     const deliveryDays = [
       day("2026-08-05", [supplier({ supplierId: "overdue-zd", supplierName: "Overdue ZD" })]),
@@ -155,8 +180,9 @@ describe("buildDeliveryScheduleWeek + hideScheduledReceivedToday", () => {
     const friday = week.find((d) => d.dateKey === today);
     expect(friday?.isToday).toBe(true);
     const zdIds = friday?.deliveryDay?.suppliers.map((s) => s.supplierId) ?? [];
-    expect(zdIds).toContain("overdue-zd");
+    expect(zdIds).not.toContain("overdue-zd");
     expect(zdIds).toContain("zd-and-plan");
+    expect(collectOverdueDeliveries(deliveryDays, today).map((o) => o.supplier.supplierId)).toEqual(["overdue-zd"]);
     expect(friday?.scheduledSuppliers.map((s) => s.supplierId)).toEqual(["plan-only"]);
     expect(friday?.scheduledSuppliers[0]?.planDateKey).toBe("2026-08-07");
   });
@@ -243,7 +269,7 @@ describe("buildDeliveryScheduleWeek + hideScheduledReceivedToday", () => {
 });
 
 describe("buildDeliveryTodayDay (weekend)", () => {
-  it("builds today snapshot with overdue ZD when today is Saturday", () => {
+  it("weekend today snapshot: overdue plan stays, overdue ZD goes to „Po terminie”", () => {
     const saturday = "2026-08-08";
     const snapshot = buildDeliveryTodayDay(
       [
@@ -264,7 +290,7 @@ describe("buildDeliveryTodayDay (weekend)", () => {
       saturday
     );
     expect(snapshot?.isToday).toBe(true);
-    expect(snapshot?.deliveryDay?.suppliers.map((s) => s.supplierId)).toEqual(["zd"]);
+    expect(snapshot?.deliveryDay).toBeNull();
     expect(snapshot?.scheduledSuppliers.map((s) => s.supplierId)).toEqual(["plan"]);
     expect(snapshot?.scheduledSuppliers[0]?.isOverduePlan).toBe(true);
   });
