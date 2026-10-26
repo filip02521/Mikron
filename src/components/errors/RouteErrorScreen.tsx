@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
+import posthog from "posthog-js";
 import { Button, buttonClass } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { cn } from "@/lib/cn";
@@ -27,6 +28,8 @@ export function RouteErrorScreen({
 }) {
   useEffect(() => {
     console.error(`[${logLabel}]`, error);
+    // Błąd złapany przez error boundary nie dociera do window.onerror — zgłaszamy go sami.
+    if (posthog.__loaded) posthog.captureException(error, { boundary: logLabel, digest: error.digest });
   }, [error, logLabel]);
 
   return (
