@@ -36,9 +36,10 @@ import {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// Create mieści się w proxy_read_timeout 300 s nginx razem z zapisem ZD (do 180 s).
-const ZD_CREATE_OVERLAP_BUDGET_MS = 90_000;
-const ZD_CREATE_OVERLAP_CACHE_MAX_AGE_MS = 30 * 60_000;
+// Create musi zmieścić się w proxy_read_timeout 300 s nginx razem z zapisem ZD (do 180 s).
+const ZD_CREATE_OVERLAP_DEADLINE_MS = 100_000;
+// Rezerwacje z Policz — create liczy na tych samych danych, które użytkownik widział.
+const ZD_CREATE_OVERLAP_CACHE_MAX_AGE_MS = 15 * 60_000;
 const ZD_CREATE_KIT_STOCK_BUDGET_MS = 20_000;
 // @service-role-ok — autoryzacja requireZdEstimateAdmin() (operacje dostaw); service role z pełnym scope po warstwie aplikacji.
 import { requireZdEstimateAdmin } from "@/lib/auth";
@@ -4054,9 +4055,9 @@ export async function actionCreateZdFromEstimate(input: {
   // coverLines: fetch ZK tylko gdy ilosc < minZd(raw); scoped extras bez zmian.
   const tOverlap = performance.now();
   // Stan kart „Składamy” bez pokrycia — jak dostepneByTw w Policz; bez niego limit rezerwacji
-  // zestawu wynosi 0 i ZD dostaje prośbę drugi raz. Brak odpowiedzi = limit 0 (jak dotąd).
-  // Stan tylko zestawów, które faktycznie są źródłem rezerwacji dla linii tego ZD —
-  // bomsForExtras to wszystkie BOM-y w bazie (każda karta = osobne zapytanie do Subiekta).
+  // zestawu wynosi 0 i ZD dostaje prośbę drugi raz. Pojedynczy brak odpowiedzi = limit 0 (jak dotąd).
+  // Tylko zestawy będące źródłem rezerwacji linii tego ZD — bomsForExtras to wszystkie BOM-y
+  // w bazie, a każda karta to osobne zapytanie do Subiekta.
   const capKits = new Set(overlapCapKitTwIds(bomsForExtras));
   const relevantCapKits = new Set<number>();
   if (capKits.size) {
@@ -4070,35 +4071,50 @@ export async function actionCreateZdFromEstimate(input: {
       }
     }
   }
-  const kitDostepneByTw = await Promise.race([
-    fetchOwnAvailableByTwIds([...relevantCapKits]),
-    new Promise<Map<number, number>>((resolve) =>
-      setTimeout(() => resolve(new Map()), ZD_CREATE_KIT_STOCK_BUDGET_MS)
-    ),
-  ]).catch(() => new Map<number, number>());
-  const overlapForCreate = await resolveIndividualExtrasWithReservationOverlap({
-    byTwId: extrasBundle.byTwId,
-    twIdsFilter: createdTwIds,
-    coverLines: linesCheck.lines,
-    unitsPerPackageByTwId,
-    packagingModeByTwId,
-    reservationSources: buildZdOverlapReservationSources({
-      pairs: pairsForExtras,
-      boms: bomRowsToRefs(bomsForExtras),
-      dostepneByTw: kitDostepneByTw,
-    }),
-    fetchOpts: {
-      cacheMaxAgeMs: ZD_CREATE_OVERLAP_CACHE_MAX_AGE_MS,
-      deadlineAt: Date.now() + ZD_CREATE_OVERLAP_BUDGET_MS,
-    },
-  });
+  let kitStockTimer: ReturnType<typeof setTimeout> | undefined;
+  const kitDostepneByTw = relevantCapKits.size
+    ? await Promise.race([
+        fetchOwnAvailableByTwIds([...relevantCapKits]).catch(() => new Map<number, number>()),
+        new Promise<null>((resolve) => {
+          kitStockTimer = setTimeout(() => resolve(null), ZD_CREATE_KIT_STOCK_BUDGET_MS);
+        }),
+      ]).finally(() => clearTimeout(kitStockTimer))
+    : new Map<number, number>();
+  // Timeout całości ≠ pojedynczy brak: cicho zerowy limit dla wszystkich zestawów
+  // zdublowałby prośby na ZD — traktujemy jak nierozstrzygnięty overlap.
+  const overlapForCreate = kitDostepneByTw
+    ? await resolveIndividualExtrasWithReservationOverlap({
+        byTwId: extrasBundle.byTwId,
+        twIdsFilter: createdTwIds,
+        coverLines: linesCheck.lines,
+        unitsPerPackageByTwId,
+        packagingModeByTwId,
+        reservationSources: buildZdOverlapReservationSources({
+          pairs: pairsForExtras,
+          boms: bomRowsToRefs(bomsForExtras),
+          dostepneByTw: kitDostepneByTw,
+        }),
+        fetchOpts: {
+          cacheMaxAgeMs: ZD_CREATE_OVERLAP_CACHE_MAX_AGE_MS,
+          // Liczone od startu akcji: zapis ZD (do 180 s) musi się jeszcze zmieścić w limicie proxy.
+          deadlineAt: Date.now() + Math.max(0, ZD_CREATE_OVERLAP_DEADLINE_MS - (performance.now() - t0)),
+        },
+      })
+    : null;
+  if (!overlapForCreate) {
+    console.warn("[zd-estimate:create:kit-stock-timeout]", {
+      supplierId: input.supplierId,
+      khId: khRes.khId,
+      kitCount: relevantCapKits.size,
+    });
+  }
   msOverlap = Math.round(performance.now() - tOverlap);
-  overlapCandidateCount = overlapForCreate.candidateTwIds.length;
-  overlapTwFetched = overlapForCreate.overlapTwFetched;
-  overlapTwSkipped = overlapForCreate.overlapTwSkipped;
+  overlapCandidateCount = overlapForCreate?.candidateTwIds.length ?? 0;
+  overlapTwFetched = overlapForCreate?.overlapTwFetched ?? [];
+  overlapTwSkipped = overlapForCreate?.overlapTwSkipped ?? [];
 
   // Fail-open raw extras przy błędzie ZK → ensureCover mógłby over-bumpnąć vs UI.
-  if (!overlapForCreate.resolved) {
+  if (!overlapForCreate?.resolved) {
     console.warn("[zd-estimate:create:fail]", {
       hostKind,
       ordersBaseUrl: orders.config.baseUrl,
