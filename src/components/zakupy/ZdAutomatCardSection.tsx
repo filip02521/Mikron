@@ -10,7 +10,7 @@ import {
   ZdSupplierOrderPolicyDialog,
 } from "@/components/zakupy/ZdSupplierOrderPolicyDialog";
 import type { ZdAutomatSupplierRow } from "@/lib/data/zd-automat-suppliers";
-import { zdBacktestAgeDays, ZD_AUTOMAT_BACKTEST_STALE_DAYS } from "@/lib/orders/zd-automat-status";
+import { zdBacktestAgeDays, zdBacktestCycleText, ZD_AUTOMAT_BACKTEST_STALE_DAYS, ZD_BACKTEST_SEARCH_VERSION } from "@/lib/orders/zd-automat-status";
 import { formatWarsawDateTime } from "@/lib/time/warsaw";
 
 /**
@@ -29,7 +29,10 @@ export function formatRollbackDay(iso: string): string {
 export const zdBacktestRunning = (row: Pick<ZdAutomatSupplierRow, "backtest">) =>
   row.backtest?.status === "queued" || row.backtest?.status === "running";
 
-/** Werdykt ostatniego backtestu: odznaka i parametry z datą; stary (> 90 dni) — z prośbą o ponowne policzenie. */
+/**
+ * Ostatni backtest: znalezione ustawienia z datą (odznaka tylko, gdy nie da się ich włączyć: za mało danych, automat
+ * nie poprawia, wynik sprzed doboru ustawień); stary (> 90 dni) — z prośbą o ponowne policzenie.
+ */
 export function ZdBacktestState({ row, nowMs: nowProp }: { row: Pick<ZdAutomatSupplierRow, "backtest">; nowMs?: number }) {
   const [nowMs] = useState(() => nowProp ?? Date.now());
   const b = row.backtest;
@@ -43,13 +46,20 @@ export function ZdBacktestState({ row, nowMs: nowProp }: { row: Pick<ZdAutomatSu
   }
   if (b.status === "error") return <Badge variant="danger">błąd przebiegu</Badge>;
   const age = zdBacktestAgeDays(b.at, nowMs);
+  const legacy = (b.version ?? 0) < ZD_BACKTEST_SEARCH_VERSION;
+  const found = !legacy && b.verdict === "works" && b.params;
   return (
     <span className="flex flex-col items-start gap-0.5" title={b.headline ?? undefined}>
-      {b.verdict ? <Badge variant={ZD_BACKTEST_VERDICT_BADGE[b.verdict]}>{ZD_BACKTEST_VERDICT_LABEL[b.verdict]}</Badge> : null}
-      <span className="text-xs text-slate-500">
-        <span className="whitespace-nowrap">co {b.params.cycleDays} d, cel {b.params.targetDays} d</span> ·{" "}
-        <span className="whitespace-nowrap">{formatWarsawDateTime(b.at)}</span>
-      </span>
+      {found ? (
+        <span className="whitespace-nowrap text-sm font-medium text-slate-900">
+          {zdBacktestCycleText(b.params!.cycleDays)} · cel {b.params!.targetDays} d
+        </span>
+      ) : legacy ? (
+        <Badge>sprzed doboru ustawień</Badge>
+      ) : b.verdict ? (
+        <Badge variant={ZD_BACKTEST_VERDICT_BADGE[b.verdict]}>{ZD_BACKTEST_VERDICT_LABEL[b.verdict]}</Badge>
+      ) : null}
+      <span className="whitespace-nowrap text-xs text-slate-500">{formatWarsawDateTime(b.at)}</span>
       {age > ZD_AUTOMAT_BACKTEST_STALE_DAYS ? (
         <span className="text-xs font-medium text-amber-800">sprzed {age} dni - policz ponownie</span>
       ) : null}
@@ -105,12 +115,19 @@ export function ZdAutomatCardSection({
       </div>
       {canManage ? (
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button type="button" variant="secondary" size="sm" className="min-h-11 sm:min-h-0" onClick={() => setOpen("policy")}>
-            {on ? "Zmień ustawienia" : "Włącz automat"}
-          </Button>
-          <Button type="button" variant="ghost" size="sm" className="min-h-11 sm:min-h-0" onClick={() => setOpen("backtest")}>
-            Backtest
-          </Button>
+          {/* Automat włącza się z backtestu — on dobiera cykl i cel; backtest potrzebuje zakresu w Kreatorze. */}
+          {on || row.hasScope ? (
+            <Button type="button" variant="secondary" size="sm" className="min-h-11 sm:min-h-0" onClick={() => setOpen(on ? "policy" : "backtest")}>
+              {on ? "Zmień ustawienia" : "Włącz automat"}
+            </Button>
+          ) : (
+            <span className="text-sm text-slate-600">Automat i backtest po ustawieniu zakresu w Kreatorze ZD</span>
+          )}
+          {on && row.hasScope ? (
+            <Button type="button" variant="ghost" size="sm" className="min-h-11 sm:min-h-0" onClick={() => setOpen("backtest")}>
+              Backtest
+            </Button>
+          ) : null}
         </div>
       ) : null}
       {open === "policy" ? (

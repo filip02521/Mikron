@@ -6,6 +6,7 @@ import {
   buildZdAutomatCheckStatus,
   buildZdAutomatStatus,
   zdAutomatCheckReasons,
+  zdBacktestApplyBlock,
   zdAutomatReadiness,
   type ZdAutomatCheckInput,
   type ZdAutomatRow,
@@ -65,25 +66,28 @@ describe("do sprawdzenia", () => {
   const check = (over: Partial<ZdAutomatCheckInput> = {}): ZdAutomatCheckInput => ({
     name: "Polkard",
     inAutomat: true,
-    backtest: { status: "done", verdict: "works", at: at(3) },
+    backtest: { status: "done", verdict: "works", at: at(3), version: 3, params: { cycleDays: 7, targetDays: 25 } },
     oosAlert: false,
     ...over,
   });
 
-  it("świeży backtest „działa” bez alarmu — nic do sprawdzenia; poza automatem — nigdy", () => {
+  it("świeży backtest z ustawieniami bez alarmu — nic do sprawdzenia; poza automatem — nigdy", () => {
     expect(zdAutomatCheckReasons(check(), now)).toEqual([]);
     expect(zdAutomatCheckReasons(check({ inAutomat: false, backtest: null, oosAlert: true }), now)).toEqual([]);
   });
 
-  it("alarm braków, brak / błąd backtestu, werdykt inny niż „działa”, backtest starszy niż 90 dni", () => {
+  it("alarm braków, brak / błąd backtestu, wynik bez ustawień, backtest starszy niż 90 dni", () => {
     expect(zdAutomatCheckReasons(check({ oosAlert: true }), now)).toEqual(["braki A od 5%"]);
     expect(zdAutomatCheckReasons(check({ backtest: null }), now)).toEqual(["brak backtestu"]);
     expect(zdAutomatCheckReasons(check({ backtest: { status: "error", verdict: null, at: at(1) } }), now)).toEqual(["błąd backtestu"]);
-    expect(zdAutomatCheckReasons(check({ backtest: { status: "done", verdict: "tradeoff", at: at(94) } }), now)).toEqual([
-      "backtest „kompromis”",
+    expect(zdAutomatCheckReasons(check({ backtest: { status: "done", verdict: "tradeoff", at: at(94), params: { cycleDays: 7, targetDays: 25 } } }), now)).toEqual([
+      "backtest sprzed doboru ustawień - policz ponownie",
       "backtest sprzed 94 dni",
     ]);
-    expect(zdAutomatCheckReasons(check({ backtest: { status: "done", verdict: "works", at: at(90) } }), now)).toEqual([]);
+    const v3 = { status: "done" as const, at: at(90), version: 3, params: { cycleDays: 7, targetDays: 25 } };
+    expect(zdAutomatCheckReasons(check({ backtest: { ...v3, verdict: "works" } }), now)).toEqual([]);
+    expect(zdAutomatCheckReasons(check({ backtest: { ...v3, verdict: "fails" } }), now)).toEqual(["backtest: automat nie poprawi"]);
+    expect(zdAutomatCheckReasons(check({ backtest: { ...v3, verdict: "insufficient", params: null } }), now)).toEqual(["backtest: za mało danych"]);
   });
 
   it("automat stoi: dostawca nieaktywny albo bez zakresu w Kreatorze (nocny przebieg go pomija)", () => {
@@ -92,10 +96,13 @@ describe("do sprawdzenia", () => {
     expect(zdAutomatCheckReasons(check({ inAutomat: false, active: false }), now)).toEqual([]);
   });
 
-  it("backtest dla innych ustawień niż bieżące nie potwierdza strategii", () => {
-    const done = { status: "done" as const, verdict: "works" as const, at: at(3), params: { cycleDays: 14, targetDays: 25 } };
+  it("backtest znalazł inne ustawienia niż bieżące — do przestawienia", () => {
+    const done = { status: "done" as const, verdict: "works" as const, at: at(3), version: 3, params: { cycleDays: 14, targetDays: 25 } };
     expect(zdAutomatCheckReasons(check({ backtest: done, policy: { cycleDays: 14, targetDays: 40 } }), now)).toEqual([
-      "backtest dla innych ustawień (co 14 / cel 25)",
+      "backtest znalazł inne ustawienia (co 14 / cel 25)",
+    ]);
+    expect(zdAutomatCheckReasons(check({ backtest: { ...done, params: { cycleDays: 1, targetDays: 20 } }, policy: { cycleDays: 7, targetDays: 20 } }), now)).toEqual([
+      "backtest znalazł inne ustawienia (codziennie / cel 20)",
     ]);
     expect(zdAutomatCheckReasons(check({ backtest: done, policy: { cycleDays: 14, targetDays: 25 } }), now)).toEqual([]);
   });
@@ -120,6 +127,27 @@ describe("do sprawdzenia", () => {
     expect(s?.count).toBe(4);
     expect(s?.headline).toBe("4 z 5 dostawców w automacie do sprawdzenia");
     expect(s?.detail).toBe("A: brak backtestu · B: braki A od 5% · C: brak backtestu · i 1 inny.");
+  });
+});
+
+describe("włączenie automatu tylko z backtestu", () => {
+  const now = new Date("2026-10-24T12:00:00.000Z").getTime();
+  const at = (daysAgo: number) => new Date(now - daysAgo * 86_400_000).toISOString();
+  const ok = { status: "done" as const, verdict: "works" as const, at: at(3), version: 3, params: { cycleDays: 7, targetDays: 25 } };
+  it("świeży wynik z ustawieniami — można", () => {
+    expect(zdBacktestApplyBlock(ok, now)).toBeNull();
+    expect(zdBacktestApplyBlock({ ...ok, at: at(90) }, now)).toBeNull();
+  });
+  it("bez backtestu, w toku, błąd, starsza wersja, za mało danych, gorzej niż dziś, stary — nie", () => {
+    expect(zdBacktestApplyBlock(null, now)).toMatch(/^Najpierw backtest/);
+    expect(zdBacktestApplyBlock({ ...ok, status: "running" }, now)).toBe("Backtest jeszcze się liczy.");
+    expect(zdBacktestApplyBlock({ ...ok, status: "error" }, now)).toMatch(/nie udał/);
+    expect(zdBacktestApplyBlock({ ...ok, version: 2 }, now)).toMatch(/nie dobierał ustawień/);
+    expect(zdBacktestApplyBlock({ ...ok, version: null }, now)).toMatch(/nie dobierał ustawień/);
+    expect(zdBacktestApplyBlock({ ...ok, verdict: "insufficient", params: null }, now)).toBe("Za mało danych, żeby dobrać ustawienia.");
+    expect(zdBacktestApplyBlock({ ...ok, params: null }, now)).toBe("Za mało danych, żeby dobrać ustawienia.");
+    expect(zdBacktestApplyBlock({ ...ok, verdict: "fails" }, now)).toMatch(/nie poprawi/);
+    expect(zdBacktestApplyBlock({ ...ok, at: at(91) }, now)).toBe("Backtest sprzed 91 dni - policz ponownie na świeżych danych.");
   });
 });
 

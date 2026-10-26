@@ -157,11 +157,41 @@ export function buildZdAutomatStatus(rows: readonly ZdAutomatRow[], kpiComputed:
 }
 
 export const ZD_BACKTEST_VERDICT_LABEL: Record<ZdBacktestVerdictKind, string> = {
-  works: "działa",
-  tradeoff: "kompromis",
-  fails: "nie działa",
+  works: "ustawienia znalezione",
+  tradeoff: "starszy wynik",
+  fails: "automat nie poprawi",
   insufficient: "za mało danych",
 };
+
+/** „co 7 dni” / „codziennie” — rytm ZD w zdaniach (klient i serwer; zd-backtest.ts ciągnie bazę, tu jest bezpiecznie). */
+export const zdBacktestCycleText = (cycleDays: number) => (cycleDays === 1 ? "codziennie" : `co ${cycleDays} dni`);
+
+/** Wersja wyniku, od której backtest sam dobiera ustawienia (`ZdBacktestResult.version`). */
+export const ZD_BACKTEST_SEARCH_VERSION = 3;
+
+export type ZdBacktestApplyInput = {
+  status: "queued" | "running" | "done" | "error";
+  verdict: ZdBacktestVerdictKind | null;
+  at: string;
+  params: { cycleDays: number; targetDays: number } | null;
+  version: number | null;
+} | null;
+
+/**
+ * Czemu ustawień z ostatniego backtestu nie da się włączyć; null = można (świeży wynik v3 z ustawieniami, automat
+ * poprawia wynik). Jedna reguła dla serwera (zapis), panelu backtestu i karty — automat włącza się tylko z backtestu.
+ */
+export function zdBacktestApplyBlock(b: ZdBacktestApplyInput, nowMs = Date.now()): string | null {
+  if (!b) return "Najpierw backtest - on sam dobierze, co ile dni zamawiać i na jaki zapas.";
+  if (b.status === "queued" || b.status === "running") return "Backtest jeszcze się liczy.";
+  if (b.status === "error") return "Ostatni backtest się nie udał - policz ponownie.";
+  if ((b.version ?? 0) < ZD_BACKTEST_SEARCH_VERSION) return "Ostatni backtest nie dobierał ustawień - policz ponownie.";
+  if (b.verdict === "insufficient" || !b.params) return "Za mało danych, żeby dobrać ustawienia.";
+  if (b.verdict === "fails") return "Automat nie poprawi wyniku u tego dostawcy - zostań przy Kreatorze.";
+  const age = zdBacktestAgeDays(b.at, nowMs);
+  if (age > ZD_AUTOMAT_BACKTEST_STALE_DAYS) return `Backtest sprzed ${age} dni - policz ponownie na świeżych danych.`;
+  return null;
+}
 
 export type ZdAutomatCheckInput = {
   name: string;
@@ -175,16 +205,18 @@ export type ZdAutomatCheckInput = {
     status: "queued" | "running" | "done" | "error";
     verdict: ZdBacktestVerdictKind | null;
     at: string;
-    params?: { cycleDays: number; targetDays: number };
+    params?: { cycleDays: number; targetDays: number } | null;
+    /** Brak = wynik sprzed doboru ustawień. */
+    version?: number | null;
   } | null;
   oosAlert: boolean;
 };
 
 /**
  * Powody, dla których dostawca w automacie jest „do sprawdzenia”: automat stoi (dostawca nieaktywny albo bez zakresu
- * w Kreatorze), alarm braków A, brak lub błąd backtestu, werdykt inny niż „działa”, backtest dla innych ustawień niż
- * bieżące, backtest starszy niż 90 dni (ZD_AUTOMAT_BACKTEST_STALE_DAYS). Liczący się backtest — bez powodu (wynik
- * w drodze). Dostawca poza automatem — nigdy.
+ * w Kreatorze), alarm braków A, brak lub błąd backtestu, backtest sprzed doboru ustawień (wersja < 3), za mało danych
+ * albo automat nie poprawia wyniku, ustawienia inne niż znalezione przez backtest, backtest starszy niż 90 dni
+ * (ZD_AUTOMAT_BACKTEST_STALE_DAYS). Liczący się backtest — bez powodu (wynik w drodze). Poza automatem — nigdy.
  */
 export function zdAutomatCheckReasons(row: ZdAutomatCheckInput, nowMs = Date.now()): string[] {
   if (!row.inAutomat) return [];
@@ -196,10 +228,12 @@ export function zdAutomatCheckReasons(row: ZdAutomatCheckInput, nowMs = Date.now
   if (!b) out.push("brak backtestu");
   else if (b.status === "error") out.push("błąd backtestu");
   else if (b.status === "done") {
-    if (b.verdict && b.verdict !== "works") out.push(`backtest „${ZD_BACKTEST_VERDICT_LABEL[b.verdict]}”`);
     const p = b.params;
-    if (p && row.policy && (p.cycleDays !== row.policy.cycleDays || p.targetDays !== row.policy.targetDays)) {
-      out.push(`backtest dla innych ustawień (co ${p.cycleDays} / cel ${p.targetDays})`);
+    if ((b.version ?? 0) < ZD_BACKTEST_SEARCH_VERSION) out.push("backtest sprzed doboru ustawień - policz ponownie");
+    else if (b.verdict === "insufficient" || b.verdict === "fails" || !p) {
+      out.push(`backtest: ${ZD_BACKTEST_VERDICT_LABEL[b.verdict === "fails" ? "fails" : "insufficient"]}`);
+    } else if (row.policy && (p.cycleDays !== row.policy.cycleDays || p.targetDays !== row.policy.targetDays)) {
+      out.push(`backtest znalazł inne ustawienia (${p.cycleDays === 1 ? "codziennie" : `co ${p.cycleDays}`} / cel ${p.targetDays})`);
     }
     const age = zdBacktestAgeDays(b.at, nowMs);
     if (age > ZD_AUTOMAT_BACKTEST_STALE_DAYS) out.push(`backtest sprzed ${age} dni`);

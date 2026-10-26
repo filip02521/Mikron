@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState, useTransition } from "react";
+import { ZdBacktestPanel } from "@/components/zakupy/ZdBacktestPanel";
 import { actionSaveZdSupplierOrderPolicy } from "@/app/actions/zd-estimate";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/Field";
@@ -9,7 +10,8 @@ import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 import type { ZdAutoLevel, ZdSupplierOrderPolicyRow } from "@/lib/data/zd-supplier-order-policy";
-import type { ZdDemandStrategy } from "@/lib/orders/zd-demand-policy";
+import { ZD_SUPPLIER_ORDER_POLICY_CLASSIC, type ZdDemandStrategy } from "@/lib/orders/zd-demand-policy";
+import { zdBacktestCycleText } from "@/lib/orders/zd-automat-status";
 
 /** Stopnie autonomii (spec §4.4); `soon` = zapisany, ale działa dopiero od wdrożenia tej części. */
 export const ZD_AUTO_LEVEL_OPTIONS: { value: ZdAutoLevel; label: string; body: string; soon?: string }[] = [
@@ -35,9 +37,6 @@ export function zdAutoLevelLabel(level: number): string {
   const o = ZD_AUTO_LEVEL_OPTIONS.find((x) => x.value === level);
   return `stopień ${o?.label ?? level}${o?.soon ? " (na razie jak 1)" : ""}`;
 }
-
-/** Wartości startowe — backtest roczny polskich dostawców (spec §9): cel 25 dni, ZD co 7 dni. */
-export const ZD_TEST_POLICY_DEFAULTS = { targetDays: 25, cycleDays: 7 } as const;
 
 export function zdSupplierPolicyLabel(p: Pick<ZdSupplierOrderPolicyRow, "strategy" | "targetDays" | "cycleDays" | "autoProposals"> | null): string {
   if (!p || p.strategy === "classic") return "Strategia: jak dotąd";
@@ -88,11 +87,6 @@ export function ZdSupplierOrderPolicyChip({
   );
 }
 
-function parseDays(raw: string, lo: number, hi: number): number | null {
-  const n = Number(raw.trim());
-  return Number.isInteger(n) && n >= lo && n <= hi ? n : null;
-}
-
 export function ZdSupplierOrderPolicyDialog({
   supplierId,
   supplierName,
@@ -109,26 +103,42 @@ export function ZdSupplierOrderPolicyDialog({
   /** `top` — nad panelem karty dostawcy (z-[60]). */
   tier?: ModalTier;
 }) {
-  const daysId = useId();
-  const cycleId = useId();
   const levelId = useId();
   const cutoffId = useId();
   const [strategy, setStrategy] = useState<ZdDemandStrategy>(policy?.strategy ?? "classic");
-  const [days, setDays] = useState(String(policy?.targetDays ?? ZD_TEST_POLICY_DEFAULTS.targetDays));
-  const [cycle, setCycle] = useState(String(policy?.cycleDays ?? ZD_TEST_POLICY_DEFAULTS.cycleDays));
   const [level, setLevel] = useState<ZdAutoLevel>(policy?.autoLevel ?? 0);
   const [cutoff, setCutoff] = useState(policy?.cutoffTime ?? "14:00");
   const [error, setError] = useState<string | null>(null);
   /** Zapis bez części pól (baza bez migracji 194) — dialog zostaje z ostrzeżeniem, zamknięcie oddaje politykę. */
   const [savedWithWarning, setSavedWithWarning] = useState<{ policy: ZdSupplierOrderPolicyRow; warning: string } | null>(null);
   const [pending, startTransition] = useTransition();
+  /** Automat włącza się z backtestu: okno strategii oddaje miejsce panelowi backtestu (ta sama warstwa). */
+  const [backtest, setBacktest] = useState(false);
+  const [applied, setApplied] = useState<ZdSupplierOrderPolicyRow | null>(null);
   const test = strategy === "max30_90";
+  const inAutomat = policy != null && policy.strategy !== "classic";
+  /** Cykl i cel automatu — tylko z backtestu; tu zostają te, które dostawca już ma. */
+  const targetDays = inAutomat ? policy.targetDays : null;
+  const cycleDays = inAutomat ? policy.cycleDays : null;
+
+  if (backtest) {
+    return (
+      <ZdBacktestPanel
+        supplierId={supplierId}
+        supplierName={supplierName}
+        policy={
+          policy ?? { ...ZD_SUPPLIER_ORDER_POLICY_CLASSIC, supplierId, autoProposals: false, autoLevel: 0, cutoffTime: "14:00", updatedAt: null }
+        }
+        canManage
+        tier={tier}
+        onClose={() => (applied ? onSaved(applied) : onClose())}
+        onChanged={() => undefined}
+        onApplied={setApplied}
+      />
+    );
+  }
 
   const save = () => {
-    const targetDays = test ? parseDays(days, 1, 180) : null;
-    const cycleDays = test ? parseDays(cycle, 1, 60) : null;
-    if (test && targetDays == null) return setError("Dni zapasu: liczba całkowita od 1 do 180.");
-    if (test && cycleDays == null) return setError("Co ile dni: liczba całkowita od 1 do 60.");
     const cutoffOk = /^\d{2}:\d{2}$/.test(cutoff);
     if (test && level >= 2 && !cutoffOk) return setError("Podaj godzinę odcięcia, np. 14:00.");
     setError(null);
@@ -136,8 +146,8 @@ export function ZdSupplierOrderPolicyDialog({
       const res = await actionSaveZdSupplierOrderPolicy({
         supplierId,
         strategy,
-        targetDays,
-        cycleDays,
+        targetDays: test ? targetDays : null,
+        cycleDays: test ? cycleDays : null,
         autoLevel: test ? level : 0,
         cutoffTime: cutoffOk ? cutoff : (policy?.cutoffTime ?? "14:00"),
       });
@@ -190,9 +200,15 @@ export function ZdSupplierOrderPolicyDialog({
             <Button type="button" variant="secondary" onClick={onClose} disabled={pending}>
               Anuluj
             </Button>
-            <Button type="button" onClick={save} disabled={pending}>
-              Zapisz
-            </Button>
+            {test && !inAutomat ? (
+              <Button type="button" onClick={() => setBacktest(true)}>
+                Znajdź najlepsze ustawienia
+              </Button>
+            ) : (
+              <Button type="button" onClick={save} disabled={pending}>
+                Zapisz
+              </Button>
+            )}
           </div>
         )
       }
@@ -206,14 +222,24 @@ export function ZdSupplierOrderPolicyDialog({
         )}
       </div>
 
-      {test ? (
+      {test && !inAutomat ? (
+        <p className="rounded-md bg-indigo-50 px-3 py-2.5 text-sm leading-relaxed text-indigo-900">
+          Automat włączasz z backtestu: sprawdzi rok sprzedaży i stanów tego dostawcy i sam dobierze, co ile dni zamawiać i na ile dni zapasu.
+          Potem jedno kliknięcie włącza automat z tymi ustawieniami.
+        </p>
+      ) : test ? (
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Dni zapasu w celu" hint="Minimum — przy długiej dostawie cel rośnie sam.">
-            <Input id={daysId} inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value)} />
-          </Field>
-          <Field label="ZD co ile dni" hint="Dla polskich dostawców: 7. Propozycje tylko w dni robocze - termin w weekend lub święto przechodzi na następny dzień roboczy.">
-            <Input id={cycleId} inputMode="numeric" value={cycle} onChange={(e) => setCycle(e.target.value)} />
-          </Field>
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-md bg-slate-50 px-3 py-2.5 sm:col-span-2">
+            <p className="text-sm text-slate-700">
+              <span className="font-medium text-slate-900">
+                {cycleDays && targetDays ? `ZD ${zdBacktestCycleText(cycleDays)}, cel ${targetDays} dni` : "Bez cyklu i celu"}
+              </span>{" "}
+              - dobiera backtest
+            </p>
+            <Button type="button" variant="ghost" size="sm" className="min-h-11 sm:min-h-0" onClick={() => setBacktest(true)}>
+              Backtest
+            </Button>
+          </div>
           <Field label="Stopień automatu" className="sm:col-span-2">
             <Select id={levelId} value={level} onChange={(e) => setLevel(Number(e.target.value) as ZdAutoLevel)}>
               {ZD_AUTO_LEVEL_OPTIONS.map((o) => (
@@ -225,7 +251,7 @@ export function ZdSupplierOrderPolicyDialog({
             <p className="text-xs leading-relaxed text-slate-600">
               {ZD_AUTO_LEVEL_OPTIONS[level].body}
               {level >= 1
-                ? ` Propozycja ${parseDays(cycle, 1, 60) === 1 ? "codziennie" : `co ${parseDays(cycle, 1, 60) ?? "…"} dni`}.`
+                ? ` Propozycja ${cycleDays ? zdBacktestCycleText(cycleDays) : "w rytmie z backtestu"}.`
                 : ""}
             </p>
           </Field>
@@ -244,10 +270,8 @@ export function ZdSupplierOrderPolicyDialog({
       ) : null}
 
       <p className="rounded-md bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-600">
-        Backtest roczny 10.2025-10.2026 na 9 polskich dostawcach: ZD co 7 dni z celem 25 dni dały o 39% mniej
-        towarów z zerowym stanem i o 33% mniejszy zapas niż rzeczywistość. Przy dłuższej dostawie cel rośnie sam: co
-        najmniej cykl zamawiania + czas dostawy + 25% czasu dostawy (dni wyżej to minimum). Zmiana działa od następnego
-        Policz.
+        Cel to minimum: przy dłuższej dostawie rośnie sam (cykl zamawiania + czas dostawy + 25% czasu dostawy). Zmiana
+        działa od następnego Policz.
       </p>
       {savedWithWarning ? (
         <p className="rounded-md bg-amber-50 px-3 py-2 text-sm leading-relaxed text-amber-900" role="status">

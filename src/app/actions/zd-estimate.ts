@@ -1984,13 +1984,24 @@ export async function actionSaveZdSupplierOrderPolicy(input: {
   const cutoffTime = parseZdCutoffTime(input.cutoffTime);
   if (!cutoffTime) return { ok: false, message: "Godzina odcięcia: format GG:MM." };
   if (autoLevel > 0 && strategy === "classic") return { ok: false, message: "Propozycje automatu wymagają strategii testowej." };
-  if (autoLevel > 0 && cycle == null) return { ok: false, message: "Propozycje automatu wymagają cyklu (co ile dni)." };
   try {
+    // Cykl i cel automatu dobiera tylko backtest (actionApplyZdBacktestSettings) — tu zostają te, które już są.
+    let targetDays = strategy === "classic" ? null : days;
+    let cycleDays = cycle;
+    if (strategy === "max30_90") {
+      const current = await fetchZdSupplierOrderPolicy(supplierId);
+      if (current.strategy === "classic") {
+        return { ok: false, message: "Automat włączasz z backtestu - on sam dobierze, co ile dni zamawiać i na jaki zapas." };
+      }
+      targetDays = current.targetDays;
+      cycleDays = current.cycleDays;
+    }
+    if (autoLevel > 0 && cycleDays == null) return { ok: false, message: "Propozycje automatu wymagają cyklu - policz backtest." };
     const { policy, warning } = await upsertZdSupplierOrderPolicy({
       supplierId,
       strategy,
-      targetDays: strategy === "classic" ? null : days,
-      cycleDays: cycle,
+      targetDays,
+      cycleDays,
       autoProposals: autoLevel >= 1,
       autoLevel: autoLevel as ZdAutoLevel,
       cutoffTime,
