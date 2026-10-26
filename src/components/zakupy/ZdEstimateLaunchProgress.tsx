@@ -149,7 +149,7 @@ export function ZdEstimateLaunchProgressPanel({
         footerNote={
           forceComplete
             ? null
-            : zdEstimateLaunchProgressFooter(elapsedMs, pagesLabel)
+            : zdEstimateLaunchProgressFooter(elapsedMs, pagesLabel, livePhase)
         }
       />
     </ZdEstimateLoadingWindow>

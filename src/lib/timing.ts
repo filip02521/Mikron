@@ -32,6 +32,22 @@ export async function withTimeoutAbort<T>(
   }
 }
 
+/** Czeka na wynik najwyżej `budgetMs`; po czasie `null` — praca biegnie dalej w tle. */
+export async function awaitWithinBudget<T>(
+  promise: Promise<T>,
+  budgetMs: number
+): Promise<{ value: T } | null> {
+  let id: ReturnType<typeof setTimeout> | undefined;
+  const expired = new Promise<null>((resolve) => {
+    id = setTimeout(() => resolve(null), Math.max(0, budgetMs));
+  });
+  try {
+    return await Promise.race([promise.then((value) => ({ value })), expired]);
+  } finally {
+    clearTimeout(id);
+  }
+}
+
 /**
  * TTL locka joba (sekundy): budżet pracy + zapas,
  * żeby lock nie wygasł przed kooperatywnym soft-stopem.

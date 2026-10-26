@@ -140,19 +140,80 @@ async function saveScopeProfiles(
 
 /** Jedno liczenie zakresu naraz w procesie (Kreator + nocny przebieg, dwa Policz). */
 const inFlight = new Map<string, Promise<Map<number, number[]>>>();
+/** Ostatni błąd liczenia zakresu — odbiera go `prepareZdSalesProfile` (raz). */
+const lastFailure = new Map<string, string>();
+
+const scopeKey = (scope: ZdSalesProfileScope, endDate: string) => `${scope.mode}:${scope.id}:${endDate}`;
+
+/**
+ * Wynik liczenia z ostatnich minut. Krok 2 Policz nie liczy drugi raz — także dla starszej
+ * daty „do”, której profil nie trafia do bazy (nie nadpisuje nowszego).
+ */
+const recentComputed = new Map<string, { at: number; byTw: Map<number, number[]> }>();
+const RECENT_COMPUTED_TTL_MS = 10 * 60_000;
+
+function recentFor(key: string): Map<number, number[]> | null {
+  const hit = recentComputed.get(key);
+  if (hit && Date.now() - hit.at <= RECENT_COMPUTED_TTL_MS) return hit.byTw;
+  recentComputed.delete(key);
+  return null;
+}
+
+function rememberComputed(key: string, byTw: Map<number, number[]>) {
+  const now = Date.now();
+  for (const [k, v] of recentComputed) if (now - v.at > RECENT_COMPUTED_TTL_MS) recentComputed.delete(k);
+  recentComputed.set(key, { at: now, byTw });
+}
 
 function refreshScope(scope: ZdSalesProfileScope, endDate: string): Promise<Map<number, number[]>> {
-  const key = `${scope.mode}:${scope.id}:${endDate}`;
+  const key = scopeKey(scope, endDate);
   const running = inFlight.get(key);
   if (running) return running;
+  lastFailure.delete(key);
   const job = computeScopeProfiles(scope, endDate)
     .then(async (computed) => {
       await saveScopeProfiles(scope, endDate, computed);
+      rememberComputed(key, computed);
       return computed;
+    })
+    // Błąd zapisany przed zdjęciem z inFlight — pytający status nie wystartuje liczenia drugi raz.
+    .catch((e: unknown) => {
+      lastFailure.set(key, e instanceof Error ? e.message : String(e));
+      throw e;
     })
     .finally(() => inFlight.delete(key));
   inFlight.set(key, job);
   return job;
+}
+
+export type ZdSalesProfilePrepareStatus =
+  | { status: "ready" }
+  | { status: "computing" }
+  | { status: "failed"; message: string };
+
+/**
+ * Kreator, krok 1 „Policz”: profil zakresu gotowy w bazie albo liczony w tle. Nie trzyma
+ * żądania — duży zakres (cecha Ivoclar: ~3 min) razem z listą przekraczał 5 min nginx.
+ * Klient pyta, aż „ready”, i dopiero wtedy liczy listę (krok 2) — z profilem z bazy.
+ */
+export async function prepareZdSalesProfile(
+  scope: ZdSalesProfileScope,
+  endDate: string
+): Promise<ZdSalesProfilePrepareStatus> {
+  const key = scopeKey(scope, endDate);
+  if (inFlight.has(key)) return { status: "computing" };
+  if (recentFor(key)) return { status: "ready" };
+  const failed = lastFailure.get(key);
+  if (failed != null) {
+    lastFailure.delete(key);
+    return { status: "failed", message: failed };
+  }
+  // „usable” (do 14 d): lista użyje go od razu, a silnik odświeży w tle — jak dotąd.
+  if ((await scopeAge(scope, endDate)) !== "none") return { status: "ready" };
+  void refreshScope(scope, endDate).catch((e: unknown) =>
+    console.warn("[zd-sales-profile] liczenie przed Policz", scope, e)
+  );
+  return { status: "computing" };
 }
 
 async function loadScopeProfiles(scope: ZdSalesProfileScope): Promise<Map<number, number[]>> {
@@ -184,7 +245,7 @@ export async function ensureZdSalesProfiles(input: {
         );
         return loadScopeProfiles(scope);
       }
-      return refreshScope(scope, input.endDate);
+      return recentFor(scopeKey(scope, input.endDate)) ?? refreshScope(scope, input.endDate);
     })
   );
   const out = new Map<number, number[]>();

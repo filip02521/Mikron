@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
+  awaitWithinBudget,
   clientFetchTimeoutMs,
   createTimeoutAbort,
   isTimeBudgetExceeded,
@@ -44,5 +45,31 @@ describe("createTimeoutAbort / withTimeoutAbort", () => {
       return 42;
     });
     expect(result).toBe(42);
+  });
+});
+
+describe("awaitWithinBudget", () => {
+  it("zwraca wynik, gdy zdąży przed limitem", async () => {
+    await expect(awaitWithinBudget(Promise.resolve(7), 1_000)).resolves.toEqual({ value: 7 });
+  });
+
+  it("po limicie zwraca null, a praca kończy się w tle", async () => {
+    vi.useFakeTimers();
+    try {
+      let finished = false;
+      const slow = new Promise<number>((resolve) =>
+        setTimeout(() => {
+          finished = true;
+          resolve(1);
+        }, 5_000)
+      );
+      const waited = awaitWithinBudget(slow, 1_000);
+      await vi.advanceTimersByTimeAsync(1_000);
+      await expect(waited).resolves.toBeNull();
+      await vi.advanceTimersByTimeAsync(4_000);
+      expect(finished).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

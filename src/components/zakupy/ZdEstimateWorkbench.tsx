@@ -36,6 +36,7 @@ import {
   actionRestoreZdEstimateProduct,
   actionRestoreZdEstimateProducts,
   actionRunZdEstimateManual,
+  actionPrepareZdEstimateProfile,
   actionPollZdEstimateRunProgress,
   actionFetchZdEstimatePendingIndividuals,
   actionFetchZdEstimateProsbaReservationOverlap,
@@ -190,7 +191,9 @@ import {
   zdEstimateExternalSessionScopeChangeMessage,
   zdEstimateExternalSessionScopeChangeConfirmLabel,
   zdEstimateExternalSessionScopeChangeCancelLabel,
+  zdEstimateProfilePrepareHint,
 } from "@/lib/orders/zd-estimate-ui-copy";
+import { waitForZdSalesProfile } from "@/lib/orders/zd-estimate-profile-prepare";
 import { shouldUseZdEstimateProgressShell } from "@/lib/orders/zd-estimate-progress-shell";
 import { applyGroupStockWindow, resolveSupplierForScopeSelection } from "@/lib/orders/zd-estimate-group-stock";
 import {
@@ -4015,13 +4018,41 @@ export function ZdEstimateWorkbench({
             const v = ch === "x" ? n : (n & 0x3) | 0x8;
             return v.toString(16);
           });
-    startRunProgressPoll(progressId, estimateGen);
     const scopeLabelForRun =
       mode === "cecha"
         ? selectedCecha?.ctw_Nazwa ?? (cechaQuery.trim() || null)
         : selectedGroup?.grt_Nazwa ?? (groupQuery.trim() || null);
     startEstimate(async () => {
       try {
+      // Krok 1: profil sprzedaży 12 mies. — krótkie pytania; liczenie od zera (duża cecha ~3 min)
+      // razem z listą w jednym żądaniu przekraczało 5 min nginx.
+      const profileStep = await waitForZdSalesProfile({
+        prepare: () =>
+          actionPrepareZdEstimateProfile({
+            mode,
+            ...(mode === "grupa" ? { grupaId } : { cechaId }),
+            dniZapasu: Number(dniZapasu),
+            dataOd,
+            dataDo,
+          }),
+        isCancelled: () => estimateGen !== estimateGenRef.current,
+        onComputing: () =>
+          setRunProgressSnapshot({
+            progressId,
+            ownerUserId: "",
+            phase: "profile",
+            pagesCommitted: 0,
+            totalPages: 0,
+            totalCountApi: 0,
+            linesSoFar: 0,
+            message: zdEstimateProfilePrepareHint(),
+            updatedAt: Date.now(),
+            expiresAt: Date.now() + 60_000,
+          }),
+      });
+      if (profileStep === "cancelled") return;
+      // Krok 2: lista — profil jest już w bazie.
+      startRunProgressPoll(progressId, estimateGen);
       const res = await actionRunZdEstimateManual({
         mode,
         ...(mode === "grupa" ? { grupaId } : { cechaId }),

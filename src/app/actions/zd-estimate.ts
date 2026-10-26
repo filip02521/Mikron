@@ -37,6 +37,7 @@ import {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // @service-role-ok — autoryzacja requireZdEstimateAdmin() (operacje dostaw); service role z pełnym scope po warstwie aplikacji.
 import { requireZdEstimateAdmin } from "@/lib/auth";
+import { prepareZdSalesProfile, type ZdSalesProfilePrepareStatus } from "@/lib/orders/zd-sales-profile-load";
 import {
   deleteZdEstimateExclusion,
   deleteZdEstimateExclusionsMany,
@@ -2073,6 +2074,41 @@ export async function actionFetchZdEstimateProsbaReservationOverlap(input: {
   }
 }
 
+/** Okno sprzedaży Policz — wspólne dla kroku 1 (profil) i 2 (lista): ten sam dzień końcowy. */
+function resolveZdEstimateRunDates(
+  input: Pick<ZdEstimateRunInput, "dataOd" | "dataDo">,
+  dniZapasu: number,
+  todayKey: string
+): { dataOd: string; dataDo: string } {
+  let dataDo = normalizeDateKey(input.dataDo) ?? todayKey;
+  let dataOd = normalizeDateKey(input.dataOd) ?? salesWindowFromDniZapasu(dniZapasu, dataDo).dataOd;
+  if (dataOd > dataDo) [dataOd, dataDo] = [dataDo, dataOd];
+  return { dataOd, dataDo };
+}
+
+/**
+ * Policz, krok 1: profil sprzedaży 12 mies. zakresu gotowy w bazie (albo liczony w tle).
+ * Krótkie żądanie — klient pyta co kilka sekund i dopiero po „ready” woła krok 2 (lista).
+ */
+export async function actionPrepareZdEstimateProfile(
+  input: Pick<ZdEstimateRunInput, "mode" | "grupaId" | "cechaId" | "dniZapasu" | "dataOd" | "dataDo">
+): Promise<ZdSalesProfilePrepareStatus> {
+  await requireZdEstimateAdmin("read");
+  const scope = resolveZdEstimateRunScope({ mode: input.mode, grupaId: input.grupaId, cechaId: input.cechaId });
+  const dniZapasu = Math.round(Number(input.dniZapasu));
+  // Błędne wejście zgłosi krok 2 (te same walidacje) — tu tylko nie liczymy profilu.
+  if (!scope.ok || !Number.isFinite(dniZapasu) || dniZapasu < 1 || dniZapasu > 730) return { status: "ready" };
+  const { dataDo } = resolveZdEstimateRunDates(input, dniZapasu, warsawNowParts().dateKey);
+  const id = scope.mode === "cecha" ? scope.cechaId : scope.grupaId;
+  try {
+    return await prepareZdSalesProfile({ mode: scope.mode, id }, dataDo);
+  } catch (e) {
+    // Baza niedostępna — krok 2 i tak to zgłosi; nie blokujemy Policz na kroku 1.
+    console.warn("[zd-estimate] przygotowanie profilu", e);
+    return { status: "ready" };
+  }
+}
+
 export async function actionRunZdEstimateManual(
   input: ZdEstimateRunInput
 ): Promise<ZdEstimateRunResult> {
@@ -2138,16 +2174,7 @@ export async function actionRunZdEstimateManual(
   }
 
   const todayKey = warsawNowParts().dateKey;
-  let dataDo = normalizeDateKey(input.dataDo) ?? todayKey;
-  let dataOd =
-    normalizeDateKey(input.dataOd) ??
-    salesWindowFromDniZapasu(dniZapasu, dataDo).dataOd;
-
-  if (dataOd > dataDo) {
-    const tmp = dataOd;
-    dataOd = dataDo;
-    dataDo = tmp;
-  }
+  const { dataOd, dataDo } = resolveZdEstimateRunDates(input, dniZapasu, todayKey);
 
   const zapasMin = Math.max(0, Number(input.zapasMin) || 0);
   const started = Date.now();

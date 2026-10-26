@@ -153,10 +153,20 @@ export function zdEstimateRouteLoadingFooter(): string {
   return "To nie jest jeszcze liczenie listy - zaraz wybierzesz zakres i klikniesz „Policz listę”.";
 }
 
+/** Policz, krok 1 — profil sprzedaży liczy się przed listą (duży zakres: kilka minut). */
+export function zdEstimateProfilePrepareHint(): string {
+  return "Liczę sprzedaż z ostatnich 12 miesięcy dla tego zakresu - przy dużych cechach to kilka minut. Potem lista policzy się w około minutę.";
+}
+
 export function zdEstimateLaunchProgressFooter(
   elapsedMs = 0,
-  pagesLabel?: string | null
+  pagesLabel?: string | null,
+  livePhase?: import("@/lib/orders/zd-estimate-run-progress").ZdEstimateRunPhase | null
 ): string {
+  if (livePhase === "profile") {
+    // Krok 1 nie ma limitu 5 min — każde pytanie o profil to osobne, krótkie żądanie.
+    return "Profil liczy się w tle i zapisuje - kolejne liczenie tego zakresu będzie szybkie. Nie zamykaj tej karty.";
+  }
   if (pagesLabel) {
     return `${pagesLabel}. Lista pojawi się automatycznie - nie zamykaj tej karty.`;
   }

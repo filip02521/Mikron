@@ -96,6 +96,7 @@ import {
 } from "@/lib/orders/zd-demand-policy";
 import { requireZdEstimateSnapshotHostKind } from "@/lib/subiekt/config";
 import { getSubiektFeedback, type SubiektFeedback } from "@/lib/subiekt/feedback";
+import { awaitWithinBudget } from "@/lib/timing";
 import { assertZdEstimateFilterEcho } from "@/lib/orders/zd-estimate-scope";
 import type { ZdEstimateRunProgressSnapshot } from "@/lib/orders/zd-estimate-run-progress";
 import { fetchAllReservedZkRowsForTwId } from "@/lib/orders/zd-estimate-reservations";
@@ -223,6 +224,8 @@ export function historyScopeFromRun(scope: {
 
 
 const ZD_ESTIMATE_PROSBA_OVERLAP_CONCURRENCY = 4;
+/** Kreator: limit czekania na profil po pobraniu listy (lista ~1 min + to < 5 min nginx). */
+const ZD_KREATOR_PROFILE_WAIT_MS = 60_000;
 
 export async function fetchReservedOverlapSlicesByTwIds(
   twIds: readonly number[]
@@ -1110,7 +1113,26 @@ export async function runZdOrderEngine(
       new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 300)),
     ]);
     if (!readyFast) touchProgress({ phase: "profile", message: null });
-    const [p1, p2] = await profilesReady;
+    // Kreator liczy profil przed listą (actionPrepareZdEstimateProfile); tu bezpiecznik na zakresy
+    // dodatkowe (pary, BOM) i błąd kroku 1 — po limicie profil dolicza się w tle (refreshScope).
+    const waited =
+      input.salesProfileRefresh === "background"
+        ? await awaitWithinBudget(profilesReady, ZD_KREATOR_PROFILE_WAIT_MS)
+        : { value: await profilesReady };
+    if (!waited && orderPolicy.strategy !== "classic") {
+      // Bez profilu strategia nie ma podłogi 90 d — ilości byłyby niższe niż w automacie.
+      return {
+        ok: false,
+        feedback: getSubiektFeedback("empty_query", {
+          title: "Liczę profil sprzedaży tego zakresu",
+          message:
+            "Lista nie została pokazana - profil sprzedaży z 12 miesięcy dla tego zakresu jest jeszcze liczony w Subiekcie, a bez niego ilości strategii dostawcy byłyby za niskie.",
+          hint: "Profil dolicza się w tle. Kliknij „Policz listę” ponownie za 3-4 minuty.",
+        }),
+      };
+    }
+    // Strategia klasyczna bez profilu: lista bez wygładzenia (jak przy błędzie profilu).
+    const [p1, p2] = waited?.value ?? [null, null];
     // Błąd któregokolwiek zakresu = komunikat (część listy byłaby bez wygładzenia).
     const anyFailed = p1 == null || (extraScopes.length > 0 && p2 == null);
     if (!p1 && !p2) {
