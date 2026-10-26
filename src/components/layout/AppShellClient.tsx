@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useLayoutEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { LegacyProcurementRouteRedirect } from "@/components/layout/LegacyProcurementRouteRedirect";
 import { AdminPanelPreviewProvider } from "./AdminPanelPreviewContext";
@@ -95,6 +95,44 @@ function OperationsGlobalPinnedStrip({
   );
 }
 
+/**
+ * Pas powiadomień nad stroną ma szerokość kolumny strony (DESIGN.md → Anatomia ekranu). Szerokość kolumny
+ * ustawia każda strona własną klasą (`max-w-*` z `mx-auto`), więc czytamy ją z wyrenderowanej kolumny
+ * zamiast powielać progi; bez takiej kolumny pas zostaje na całą szerokość.
+ */
+function useAlignNoticesToPageColumn() {
+  const noticesRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+  useLayoutEffect(() => {
+    const notices = noticesRef.current;
+    const content = contentRef.current;
+    if (!notices || !content) return;
+    const findColumn = (): HTMLElement | null => {
+      let el = content.firstElementChild as HTMLElement | null;
+      for (let depth = 0; el && depth < 4; depth++) {
+        const cs = getComputedStyle(el);
+        if (cs.maxWidth !== "none" && cs.marginLeft === cs.marginRight && parseFloat(cs.marginLeft) >= 0) return el;
+        el = el.firstElementChild as HTMLElement | null;
+      }
+      return null;
+    };
+    const apply = () => {
+      const column = findColumn();
+      notices.style.maxWidth = column ? getComputedStyle(column).maxWidth : "";
+    };
+    apply();
+    window.addEventListener("resize", apply);
+    const observer = new MutationObserver(apply);
+    observer.observe(content, { childList: true });
+    return () => {
+      window.removeEventListener("resize", apply);
+      observer.disconnect();
+    };
+  }, [pathname]);
+  return { noticesRef, contentRef };
+}
+
 function AppShellMain({
   children,
   mobileChrome,
@@ -113,6 +151,7 @@ function AppShellMain({
   adminPreviewDock?: boolean;
 }) {
   const coachPadding = useSalesCoachPaddingClass();
+  const { noticesRef, contentRef } = useAlignNoticesToPageColumn();
 
   return (
     <main
@@ -129,9 +168,13 @@ function AppShellMain({
       )}
     >
       <div className={cn(appMainInsetClass, "relative z-[1]")}>
-        {topNotices}
+        <div ref={noticesRef} className="mx-auto w-full">
+          {topNotices}
+        </div>
         <SalesOnboardingTourBanner />
-        <SalesOnboardingContentGuard>{children}</SalesOnboardingContentGuard>
+        <div ref={contentRef} className="contents">
+          <SalesOnboardingContentGuard>{children}</SalesOnboardingContentGuard>
+        </div>
         {footer}
       </div>
     </main>

@@ -164,7 +164,8 @@ export function PageAttentionStripCta({
 }) {
   const compact = density === "compact";
   const classes = cn(
-    "inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 text-xs font-medium transition",
+    // hit-target: 44 px pola dotyku na ekranach dotykowych bez zmiany wyglądu.
+    "hit-target inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 text-xs font-medium transition",
     // Odpowiedź na wciśnięcie od razu (pointer-down), nie dopiero po kliknięciu.
     "motion-safe:active:scale-[0.97] motion-safe:active:duration-75",
     TONE_CTA[tone],
