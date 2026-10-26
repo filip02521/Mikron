@@ -15,6 +15,7 @@ import { isSalesAccount, canAccessTeethPanel, canAccessOperations } from "@/lib/
 import { fetchTeethProductInfo } from "@/lib/data/teeth-products";
 import { fetchActiveTeethShortages } from "@/lib/data/teeth-shortages";
 import { fetchActiveDelegationsForDelegate, type VacationDelegationRow } from "@/lib/data/vacation-delegations";
+import { PostHogIdentify } from "@/components/analytics/PostHogIdentify";
 import { AppShellClient } from "./AppShellClient";
 import { AppShellMetricsProvider } from "./AppShellMetricsContext";
 import { AppShellMetricsLoader } from "./AppShellMetricsLoader";
@@ -110,6 +111,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       fontScale={session?.fontScale ?? "default"}
       adminModules={adminModules}
     >
+      <PostHogIdentify userId={session?.id ?? null} role={realRole} />
       {children}
     </AppShellClient>
   );
