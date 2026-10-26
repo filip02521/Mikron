@@ -35,6 +35,11 @@ import {
 } from "@/lib/data/zd-auto-proposals";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Create mieści się w proxy_read_timeout 300 s nginx razem z zapisem ZD (do 180 s).
+const ZD_CREATE_OVERLAP_BUDGET_MS = 90_000;
+const ZD_CREATE_OVERLAP_CACHE_MAX_AGE_MS = 30 * 60_000;
+const ZD_CREATE_KIT_STOCK_BUDGET_MS = 20_000;
 // @service-role-ok — autoryzacja requireZdEstimateAdmin() (operacje dostaw); service role z pełnym scope po warstwie aplikacji.
 import { requireZdEstimateAdmin } from "@/lib/auth";
 import {
@@ -4050,9 +4055,27 @@ export async function actionCreateZdFromEstimate(input: {
   const tOverlap = performance.now();
   // Stan kart „Składamy” bez pokrycia — jak dostepneByTw w Policz; bez niego limit rezerwacji
   // zestawu wynosi 0 i ZD dostaje prośbę drugi raz. Brak odpowiedzi = limit 0 (jak dotąd).
-  const kitDostepneByTw = await fetchOwnAvailableByTwIds(overlapCapKitTwIds(bomsForExtras)).catch(
-    () => new Map<number, number>()
-  );
+  // Stan tylko zestawów, które faktycznie są źródłem rezerwacji dla linii tego ZD —
+  // bomsForExtras to wszystkie BOM-y w bazie (każda karta = osobne zapytanie do Subiekta).
+  const capKits = new Set(overlapCapKitTwIds(bomsForExtras));
+  const relevantCapKits = new Set<number>();
+  if (capKits.size) {
+    const draftSources = buildZdOverlapReservationSources({
+      pairs: pairsForExtras,
+      boms: bomRowsToRefs(bomsForExtras),
+    });
+    for (const tw of createdTwIds) {
+      for (const src of draftSources.get(tw) ?? []) {
+        if (capKits.has(src.twId)) relevantCapKits.add(src.twId);
+      }
+    }
+  }
+  const kitDostepneByTw = await Promise.race([
+    fetchOwnAvailableByTwIds([...relevantCapKits]),
+    new Promise<Map<number, number>>((resolve) =>
+      setTimeout(() => resolve(new Map()), ZD_CREATE_KIT_STOCK_BUDGET_MS)
+    ),
+  ]).catch(() => new Map<number, number>());
   const overlapForCreate = await resolveIndividualExtrasWithReservationOverlap({
     byTwId: extrasBundle.byTwId,
     twIdsFilter: createdTwIds,
@@ -4064,6 +4087,10 @@ export async function actionCreateZdFromEstimate(input: {
       boms: bomRowsToRefs(bomsForExtras),
       dostepneByTw: kitDostepneByTw,
     }),
+    fetchOpts: {
+      cacheMaxAgeMs: ZD_CREATE_OVERLAP_CACHE_MAX_AGE_MS,
+      deadlineAt: Date.now() + ZD_CREATE_OVERLAP_BUDGET_MS,
+    },
   });
   msOverlap = Math.round(performance.now() - tOverlap);
   overlapCandidateCount = overlapForCreate.candidateTwIds.length;

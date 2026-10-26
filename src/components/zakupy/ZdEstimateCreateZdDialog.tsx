@@ -392,28 +392,43 @@ export function ZdEstimateCreateZdDialog({
       consumedOrderIds: consumed,
     });
     startPending(async () => {
-      const res = await actionCreateZdFromEstimate({
-        supplierId,
-        uwagi,
-        scopeMode,
-        grtId: scopeMode === "grupa" ? (grtId ?? null) : null,
-        cechaId: scopeMode === "cecha" ? (cechaId ?? null) : null,
-        lines: preview.lines.map((l) => ({
-          twId: l.twId,
-          ilosc: l.ilosc,
-          symbol: l.symbol || null,
-          plu: l.plu ?? null,
-        })),
-        lineMeta: lineMetaSnap,
-        confirmLiveCreate: ordersIsLive ? true : undefined,
-        individualCatalogOrderIds: catalogIds,
-        individualServiceOrderIds: serviceIdsForSubmit,
-        consumedOrderIds: consumed,
-      });
-      if (!res.ok) {
+      const resetProgress = () => {
         setProgressStartedAtMs(null);
         setProgressComplete(false);
         setProgressSnapshotOk(null);
+      };
+      let res: Awaited<ReturnType<typeof actionCreateZdFromEstimate>>;
+      try {
+        res = await actionCreateZdFromEstimate({
+          supplierId,
+          uwagi,
+          scopeMode,
+          grtId: scopeMode === "grupa" ? (grtId ?? null) : null,
+          cechaId: scopeMode === "cecha" ? (cechaId ?? null) : null,
+          lines: preview.lines.map((l) => ({
+            twId: l.twId,
+            ilosc: l.ilosc,
+            symbol: l.symbol || null,
+            plu: l.plu ?? null,
+          })),
+          lineMeta: lineMetaSnap,
+          confirmLiveCreate: ordersIsLive ? true : undefined,
+          individualCatalogOrderIds: catalogIds,
+          individualServiceOrderIds: serviceIdsForSubmit,
+          consumedOrderIds: consumed,
+        });
+      } catch {
+        // Proxy ucina długie żądanie (ERR_EMPTY_RESPONSE), a serwer mógł już utworzyć ZD —
+        // ścieżka timeout pozwala znaleźć/powiązać dokument zamiast ponownego tworzenia.
+        resetProgress();
+        onError(
+          "Serwer nie odpowiedział. ZD mogło zostać utworzone w Subiekcie — sprawdź ostatnie ZD dostawcy przed ponowną próbą.",
+          { timeoutKhId: khId, title: "Brak odpowiedzi serwera" }
+        );
+        return;
+      }
+      if (!res.ok) {
+        resetProgress();
         onError(res.message, {
           timeoutKhId: res.code === "timeout" ? res.supplierKhId : undefined,
           title: res.title,
