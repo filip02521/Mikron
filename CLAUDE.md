@@ -3,6 +3,6 @@
 # Szkice maili (Gmail MCP)
 
 - Zero załączników, chyba że użytkownik wprost poda plik do dołączenia.
-- Odpowiedź w wątku (`replyToMessageId`) dokleja cytat oryginału, a z nim osierocone obrazki z podpisów (`~WRD*.jpg`, `image00*.png`, „Das Bild wurde vom Absender entfernt”). Gmail robi z nich puste załączniki.
-- Dlatego po `create_draft` z `replyToMessageId` od razu wołaj `update_draft` z tym samym `body` i bez `attachments` — czyści załączniki i cytat, zostaje wątek.
-- Przed oddaniem szkicu sprawdź `get_draft`: `attachments` ma być puste.
+- Nie używaj `replyToMessageId`. Odpowiedź w wątku dokleja cytat oryginału z obrazkami z podpisów (`~WRD*.jpg`, `image00*.png`), z których Gmail robi puste załączniki. `update_draft` cytatu nie usuwa — serwer dokleja go z powrotem.
+- Zamiast tego nowy szkic z tematem `Re: <temat wątku>` i numerem zamówienia/sprawy w treści.
+- Przed oddaniem szkicu sprawdź `get_draft`: brak `attachments`.
