@@ -4,6 +4,7 @@ import { DeliveryScheduleCard } from "@/components/deliveries/DeliveryScheduleCa
 import { Card } from "@/components/ui/Card";
 import { BrandLoader } from "@/components/ui/BrandLoader";
 import { polishPluralWord } from "@/lib/email/polish-plural";
+import { sectionTitleClass } from "@/lib/ui/ontime-theme";
 
 export function DeliveryTodaySection({
   todayDay,
@@ -15,20 +16,17 @@ export function DeliveryTodaySection({
   const zdSuppliers = todayDay.deliveryDay?.suppliers ?? [];
   const scheduledSuppliers = todayDay.scheduledSuppliers;
   const totalCount = zdSuppliers.length + scheduledSuppliers.length;
-  const overdueCount = zdSuppliers.filter((s) => s.isOverdueDeadline).length;
 
   return (
     <Card padding={false} className="overflow-hidden">
       <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-3 pb-3 pt-4 sm:px-4">
         <div className="min-w-0">
-          <h2 className="text-base font-semibold tracking-tight text-slate-900">
-            Dziś <span className="font-normal text-slate-600">· {todayDay.dateLabel}</span>
+          <h2 className={sectionTitleClass}>
+            Dziś <span className="font-sans text-base font-normal text-slate-500">{todayDay.weekdayLabel} {todayDay.dateLabel}</span>
           </h2>
           <p className="mt-1 text-sm text-slate-600">
             {totalCount > 0
-              ? `${totalCount} ${polishPluralWord(totalCount, "dostawa", "dostawy", "dostaw")}: ${zdSuppliers.length} z ZD · ${scheduledSuppliers.length} z planu${
-                  overdueCount > 0 ? ` · ${overdueCount} po terminie` : ""
-                }`
+              ? `${totalCount} ${polishPluralWord(totalCount, "dostawa", "dostawy", "dostaw")}: ${zdSuppliers.length} z ZD · ${scheduledSuppliers.length} z planu`
               : "Brak zaplanowanych dostaw"}
           </p>
         </div>
@@ -36,7 +34,7 @@ export function DeliveryTodaySection({
 
       {totalCount === 0 && !pending ? (
         <p className="px-4 py-6 text-center text-sm text-slate-600">
-          Na dziś nic nie zaplanowano. Sprawdź kolejkę przyjęcia albo inne dni poniżej.
+          Na dziś nie ma terminu żadnego ZD ani dostawy z planu.
         </p>
       ) : null}
 
