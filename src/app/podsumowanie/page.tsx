@@ -20,6 +20,11 @@ import {
   type StockWatchSupplierSignal,
 } from "@/lib/stock-watch/data";
 import { warsawNowParts } from "@/lib/time/warsaw";
+import { listPendingZdAutoProposals } from "@/lib/data/zd-auto-proposals";
+import type { DailyZdProposal } from "@/components/summary/DailyZdProposals";
+import { loadZdAutomatDaily } from "@/lib/data/zd-automat-daily";
+import { supplierHubContextForRole, supplierHubPaths } from "@/lib/supplier-hub";
+import type { ZdAutomatDailyData } from "@/lib/orders/zd-automat-daily";
 import {
   supplierSubiektScopeInfoFromRow,
   type SupplierSubiektScopeInfo,
@@ -65,9 +70,12 @@ export default async function PodsumowaniePage() {
   let error: string | null = null;
   let offPlanSuppliers: StockWatchOffPlanSupplier[] = [];
   let stockSignalBySupplierId: Record<string, StockWatchSupplierSignal> = {};
+  let autoProposals: DailyZdProposal[] = [];
+  let zdAutomat: ZdAutomatDailyData | null = null;
+  const nowIso = new Date().toISOString();
 
   try {
-    const [data, verification, scopeRows, offPlan, stockSignals] = await Promise.all([
+    const [data, verification, scopeRows, offPlan, stockSignals, pendingProposals, automat] = await Promise.all([
       fetchSummaryWorkspace(),
       fetchVerificationOrders(),
       // Powiązania dostawca → grupa/cecha Subiekta; brak tabeli/błąd nie blokuje panelu.
@@ -75,7 +83,18 @@ export default async function PodsumowaniePage() {
       // Panel Braki (nocna analiza): brak tabeli / błąd nie blokuje panelu dziennego.
       listStockWatchOffPlanSuppliers(warsawNowParts().dateKey).catch(() => []),
       listStockWatchSupplierSignals().catch(() => ({})),
+      // Propozycje ZD automatu do potwierdzenia; bez migracji 190 / błąd — brak karty.
+      canPrepareZd ? listPendingZdAutoProposals().catch(() => []) : Promise.resolve([]),
+      // Sekcja „Automat ZD”: błąd nie blokuje panelu (log), sekcji wtedy nie ma.
+      canPrepareZd
+        ? loadZdAutomatDaily().catch((e) => {
+            console.error("[panel dzienny] automat ZD", e);
+            return null;
+          })
+        : Promise.resolve(null),
     ]);
+    autoProposals = pendingProposals;
+    zdAutomat = automat;
     offPlanSuppliers = offPlan;
     stockSignalBySupplierId = stockSignals;
     for (const row of scopeRows) {
@@ -118,6 +137,10 @@ export default async function PodsumowaniePage() {
           workspace={workspace}
           stockSignalBySupplierId={stockSignalBySupplierId}
           offPlanSuppliers={offPlanSuppliers}
+          autoProposals={autoProposals}
+          zdAutomat={zdAutomat}
+          nowIso={nowIso}
+          supplierCardsHref={supplierHubPaths(supplierHubContextForRole(session?.role)).cards}
           suppliers={suppliers}
           supplierDirectory={supplierDirectory}
           salesPeople={salesPeople}

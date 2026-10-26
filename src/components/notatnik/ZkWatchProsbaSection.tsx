@@ -95,7 +95,7 @@ export function ZkWatchProsbaSection({
           title={ZK_MODAL_PROSBA_COPY.previewLinkTitle}
           className={cn(
             "group flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-slate-50",
-            "focus-visible:relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500/45"
+            "focus-visible:relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-600"
           )}
         >
           <span className="min-w-0 flex-1">

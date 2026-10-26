@@ -17,8 +17,13 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input, Select, fieldControlClass } from "@/components/ui/Field";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { IconSearch } from "@/components/icons/StrokeIcons";
+import { polishPlural } from "@/lib/email/polish-plural";
 import { SHIPMENT_STAGE_LABEL, shipmentAlerts, shipmentStage, todayInWarsaw } from "@/lib/customs/customs-shipment";
 import { ALERT_BADGE, STAGE_BADGE } from "./CustomsShipmentCard";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 function formatDate(value: string | null): string {
   if (!value) return "-";
@@ -32,10 +37,17 @@ export function CustomsClearanceListClient({
   suppliers,
   clearances,
   aiEnabled,
+  title,
+  description,
+  children,
 }: {
   suppliers: CustomsSupplierOption[];
   clearances: CustomsClearanceListItem[];
   aiEnabled: boolean;
+  title: string;
+  description?: string;
+  /** Panele przesyłek i poczty agencji — między nowym formularzem a listą odpraw. */
+  children?: React.ReactNode;
 }) {
   const router = useRouter();
   const [creating, setCreating] = useState(clearances.length === 0);
@@ -71,7 +83,7 @@ export function CustomsClearanceListClient({
         (c) =>
           (!filterSupplier || c.supplierName === filterSupplier) &&
           (!filterStatus || c.status === filterStatus) &&
-          (!q || `${c.invoiceNumber} ${c.zdNumber ?? ""} ${c.shipment.transportRef}`.toLowerCase().includes(q))
+          matchesSearchWords([c.invoiceNumber, c.zdNumber, c.shipment.transportRef], q)
       )
       .map((c) => ({
         ...c,
@@ -169,169 +181,201 @@ export function CustomsClearanceListClient({
 
   return (
     <div className="space-y-4">
+      <PageHeader
+        title={title}
+        description={description}
+        actions={
+          creating ? null : (
+            <Button
+              onClick={() => {
+                setCreating(true);
+                // Formularz leży pod panelami przesyłek i poczty — pokaż go od razu.
+                requestAnimationFrame(() => document.getElementById("nowa-odprawa")?.scrollIntoView({ block: "start" }));
+              }}
+            >
+              Nowa odprawa
+            </Button>
+          )
+        }
+      />
+      {children}
+
       {creating ? (
-        <Card>
-          <CardHeader
-            title="Nowa odprawa"
-            description="Wgraj fakturę, wybierz dostawcę (i ZD z Subiekta, jeśli jest). Zatwierdzone wcześniej artykuły uzupełnią się same."
-          />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label={aiEnabled ? "Plik faktury – Excel, CSV, PDF lub skan" : "Plik faktury – Excel lub CSV"}
-              hint={
-                aiReading
-                  ? "Czytam plik… (PDF / skan przez AI do 2 minut)"
-                  : (aiNote ??
-                    (aiEnabled
-                      ? "Zacznij od pliku: wypełni numer, datę, walutę i pozycje. Excel / CSV czytam po nagłówkach, PDF i skany przez AI."
-                      : "Kolumny rozpoznam po nagłówkach (kod / nazwa / ilość / cena). PDF wymaga włączenia AI."))
-              }
-              state={aiNote ? "success" : "default"}
-              className="sm:col-span-2"
-            >
-              <input
-                type="file"
-                accept={
-                  aiEnabled
-                    ? ".xlsx,.csv,.xls,.tif,.tiff,application/pdf,image/*"
-                    : ".xlsx,.csv,.xls"
+        <div id="nowa-odprawa" className="scroll-mt-4">
+          <Card>
+            <CardHeader
+              title="Nowa odprawa"
+              description="Wgraj fakturę, wybierz dostawcę (i ZD z Subiekta, jeśli jest). Zatwierdzone wcześniej artykuły uzupełnią się same."
+            />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field
+                label={aiEnabled ? "Plik faktury – Excel, CSV, PDF lub skan" : "Plik faktury – Excel lub CSV"}
+                hint={
+                  aiReading
+                    ? "Czytam plik… (PDF / skan przez AI do 2 minut)"
+                    : (aiNote ??
+                      (aiEnabled
+                        ? "Zacznij od pliku: wypełni numer, datę, walutę i pozycje. Excel / CSV czytam po nagłówkach, PDF i skany przez AI."
+                        : "Kolumny rozpoznam po nagłówkach (kod / nazwa / ilość / cena). PDF wymaga włączenia AI."))
                 }
-                disabled={aiReading || pending}
-                className="block w-full min-w-0 pt-1 text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) void readInvoiceFile(file);
-                  e.target.value = "";
-                }}
-              />
-            </Field>
-            <Field label="Dostawca (import)">
-              <Select value={supplierId} onChange={(e) => void onSupplierChange(e.target.value)}>
-                <option value="">- wybierz -</option>
-                {suppliers.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field
-              label="ZD z Subiekta"
-              hint={zdLoading ? "Wczytuję ZD…" : (zdMessage ?? "Pozycje i ilości do porównania z fakturą.")}
-              state={zdMessage && !zds.length ? "warning" : "default"}
-            >
-              <Select value={zdId} onChange={(e) => setZdId(e.target.value)} disabled={!zds.length}>
-                <option value="">- bez ZD -</option>
-                {zds.map((z) => (
-                  <option key={z.id} value={z.id}>
-                    {z.number} · {formatDate(z.date)}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Numer faktury">
-              <Input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} placeholder="np. AI/3177/26" />
-            </Field>
-            <div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-3">
-              <Field label="Data faktury" className="min-w-0">
-                <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
+                state={aiNote ? "success" : "default"}
+                className="sm:col-span-2"
+              >
+                <input
+                  type="file"
+                  accept={
+                    aiEnabled
+                      ? ".xlsx,.csv,.xls,.tif,.tiff,application/pdf,image/*"
+                      : ".xlsx,.csv,.xls"
+                  }
+                  disabled={aiReading || pending}
+                  className="block w-full min-w-0 pt-1 text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void readInvoiceFile(file);
+                    e.target.value = "";
+                  }}
+                />
               </Field>
-              <Field label="Waluta" className="min-w-0">
-                <Select className="min-w-0" value={currency} onChange={(e) => setCurrency(e.target.value)}>
-                  {[...new Set([currency, "EUR", "USD", "GBP", "CNY", "CHF", "JPY", "PLN"])].map((c) => (
-                    <option key={c} value={c}>
-                      {c}
+              <Field label="Dostawca (import)">
+                <Select value={supplierId} onChange={(e) => void onSupplierChange(e.target.value)}>
+                  <option value="">- wybierz -</option>
+                  {suppliers.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
                     </option>
                   ))}
                 </Select>
               </Field>
+              <Field
+                label="ZD z Subiekta"
+                hint={zdLoading ? "Wczytuję ZD…" : (zdMessage ?? "Pozycje i ilości do porównania z fakturą.")}
+                state={zdMessage && !zds.length ? "warning" : "default"}
+              >
+                <Select value={zdId} onChange={(e) => setZdId(e.target.value)} disabled={!zds.length}>
+                  <option value="">- bez ZD -</option>
+                  {zds.map((z) => (
+                    <option key={z.id} value={z.id}>
+                      {z.number} · {formatDate(z.date)}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="Numer faktury">
+                <Input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} placeholder="np. AI/3177/26" />
+              </Field>
+              <div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-3">
+                <Field label="Data faktury" className="min-w-0">
+                  <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
+                </Field>
+                <Field label="Waluta" className="min-w-0">
+                  <Select className="min-w-0" value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                    {[...new Set([currency, "EUR", "USD", "GBP", "CNY", "CHF", "JPY", "PLN"])].map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+              <Field
+                label="Przesyłka zawiera"
+                hint="Do maila: „2) Przesyłka zawiera …”. Puste = jak w poprzedniej odprawie tego dostawcy."
+                className="sm:col-span-2"
+              >
+                <Input
+                  value={shipmentDescription}
+                  onChange={(e) => setShipmentDescription(e.target.value)}
+                  placeholder="przyrządy używane w protetyce stomatologicznej"
+                />
+              </Field>
+              <Field
+                label="Pozycje z faktury (opcjonalnie)"
+                hint="Skopiuj z Excela / PDF: kod ⇥ nazwa ⇥ ilość ⇥ cena - jedna pozycja na wiersz. Gdy puste, pozycje bierzemy z ZD."
+                className="sm:col-span-2"
+              >
+                <textarea
+                  className={fieldControlClass("default", "min-h-32 sm:min-h-32 font-mono text-xs")}
+                  value={pastedLines}
+                  onChange={(e) => setPastedLines(e.target.value)}
+                  placeholder={"DE-1196\tPlaster knife large\t10\t4,50\nDE-1698\tScalpel handle No.3\t20\t2,10"}
+                />
+              </Field>
             </div>
-            <Field
-              label="Przesyłka zawiera"
-              hint="Do maila: „2) Przesyłka zawiera …”. Puste = jak w poprzedniej odprawie tego dostawcy."
-              className="sm:col-span-2"
-            >
-              <Input
-                value={shipmentDescription}
-                onChange={(e) => setShipmentDescription(e.target.value)}
-                placeholder="przyrządy używane w protetyce stomatologicznej"
-              />
-            </Field>
-            <Field
-              label="Pozycje z faktury (opcjonalnie)"
-              hint="Skopiuj z Excela / PDF: kod ⇥ nazwa ⇥ ilość ⇥ cena - jedna pozycja na wiersz. Gdy puste, pozycje bierzemy z ZD."
-              className="sm:col-span-2"
-            >
-              <textarea
-                className={fieldControlClass("default", "min-h-32 sm:min-h-32 font-mono text-xs")}
-                value={pastedLines}
-                onChange={(e) => setPastedLines(e.target.value)}
-                placeholder={"DE-1196\tPlaster knife large\t10\t4,50\nDE-1698\tScalpel handle No.3\t20\t2,10"}
-              />
-            </Field>
-          </div>
-          {readWarnings.length ? (
-            <Alert tone="warning" className="mt-4">
-              {readWarnings.join(" ")}
-            </Alert>
-          ) : null}
-          {error ? (
-            <Alert tone="error" className="mt-4">
-              {error}
-            </Alert>
-          ) : null}
-          <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
-            {submitBlocker && !pending && !aiReading ? (
-              <p className="mr-auto text-sm text-slate-600">{submitBlocker}</p>
+            {readWarnings.length ? (
+              <Alert tone="warning" className="mt-4">
+                {readWarnings.join(" ")}
+              </Alert>
             ) : null}
-            {clearances.length ? (
-              <Button variant="ghost" onClick={() => setCreating(false)} disabled={pending}>
-                Anuluj
+            {error ? (
+              <Alert tone="error" className="mt-4">
+                {error}
+              </Alert>
+            ) : null}
+            <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
+              {submitBlocker && !pending && !aiReading ? (
+                <p className="mr-auto text-sm text-slate-600">{submitBlocker}</p>
+              ) : null}
+              {clearances.length ? (
+                <Button variant="ghost" onClick={() => setCreating(false)} disabled={pending}>
+                  Anuluj
+                </Button>
+              ) : null}
+              <Button onClick={submit} disabled={!canSubmit || pending || aiReading}>
+                {pending ? "Tworzę…" : "Utwórz odprawę"}
               </Button>
-            ) : null}
-            <Button onClick={submit} disabled={!canSubmit || pending || aiReading}>
-              {pending ? "Tworzę…" : "Utwórz odprawę"}
-            </Button>
-          </div>
-        </Card>
-      ) : (
-        <div className="flex justify-end">
-          <Button onClick={() => setCreating(true)}>Nowa odprawa</Button>
-        </div>
-      )}
-
-      {clearances.length > 3 ? (
-        <div className="grid gap-2 sm:grid-cols-3">
-          <Select value={filterSupplier} onChange={(e) => setFilterSupplier(e.target.value)} aria-label="Dostawca">
-            <option value="">Wszyscy dostawcy</option>
-            {supplierNames.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </Select>
-          <Select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value as "" | "draft" | "sent")}
-            aria-label="Status"
-          >
-            <option value="">Wszystkie statusy</option>
-            <option value="draft">Mail w przygotowaniu</option>
-            <option value="sent">Mail wysłany</option>
-          </Select>
-          <Input
-            value={filterText}
-            onChange={(e) => setFilterText(e.target.value)}
-            placeholder="Szukaj: nr faktury lub ZD"
-            aria-label="Szukaj"
-          />
+            </div>
+          </Card>
         </div>
       ) : null}
 
       {clearances.length ? (
-        <Card padding={false}>
+        <Card padding={false} className="overflow-hidden">
+          <CardHeader inset title="Odprawy" />
+          {clearances.length > 3 ? (
+            <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-5 py-3 sm:px-6">
+              <SegmentedControl
+                value={filterStatus || "all"}
+                onChange={(v) => setFilterStatus(v === "all" ? "" : v)}
+                ariaLabel="Status maila"
+                density="compact"
+                options={[
+                  { value: "all", label: "Wszystkie" },
+                  { value: "draft", label: "Mail w przygotowaniu" },
+                  { value: "sent", label: "Mail wysłany" },
+                ]}
+              />
+              <Select
+                value={filterSupplier}
+                onChange={(e) => setFilterSupplier(e.target.value)}
+                aria-label="Dostawca"
+                className="sm:w-56"
+              >
+                <option value="">Wszyscy dostawcy</option>
+                {supplierNames.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </Select>
+              <div className="relative order-first w-full sm:order-none sm:w-60">
+                <IconSearch size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden />
+                <Input
+                  type="search"
+                  value={filterText}
+                  onChange={(e) => setFilterText(e.target.value)}
+                  placeholder="Nr faktury, ZD lub przesyłki"
+                  aria-label="Szukaj odprawy"
+                  className="pl-9"
+                />
+              </div>
+              <span className="ml-auto text-[0.6875rem] tabular-nums text-slate-500">
+                {polishPlural(visible.length, "odprawa", "odprawy", "odpraw")}
+              </span>
+            </div>
+          ) : null}
           {!visible.length ? (
-            <p className="px-5 py-4 text-sm text-slate-500">Brak odpraw dla wybranych filtrów.</p>
+            <p className="px-5 py-6 text-sm text-slate-600 sm:px-6">Brak odpraw dla wybranych filtrów.</p>
           ) : null}
           <ul className="divide-y divide-slate-100">
             {visible.map((c) => (

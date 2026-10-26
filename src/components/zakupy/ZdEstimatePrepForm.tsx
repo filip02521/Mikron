@@ -138,7 +138,7 @@ function formatWindowShort(dataOd: string, dataDo: string): string {
 }
 
 const stripLabelClass =
-  "text-[11px] font-semibold uppercase tracking-[0.04em] text-slate-500";
+  "text-[11px] font-semibold text-slate-500";
 const sectionLabelClass =
   "text-sm font-semibold tracking-tight text-slate-800";
 
@@ -159,7 +159,7 @@ function PrepStepBadge({
         done
           ? "bg-emerald-100 text-emerald-800"
           : active
-            ? "bg-slate-900 text-white"
+            ? "bg-indigo-600 text-white"
             : "bg-slate-100 text-slate-500"
       )}
     >
@@ -1063,8 +1063,8 @@ export function ZdEstimatePrepForm({
                 canPolicz &&
                   !estimating &&
                   (recountNeeded
-                    ? "shadow-md ring-2 ring-amber-400/70"
-                    : "shadow-md ring-2 ring-slate-900/15")
+                    ? "ring-2 ring-amber-400/70"
+                    : "ring-2 ring-slate-900/15")
               )}
             >
               {estimating ? (

@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/OverflowMenu";
 import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
 import {
+  IconCheck,
   IconChevronDown,
   IconSearch,
   IconSettings,
@@ -67,14 +68,14 @@ function ColumnToggleRow({
       >
         <span
           className={cn(
-            "inline-flex size-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold leading-none",
+            "inline-flex size-4 shrink-0 items-center justify-center rounded border text-[10px] font-semibold leading-none",
             visible
               ? "border-indigo-400 bg-indigo-50 text-indigo-800"
               : "border-slate-200 bg-white text-transparent"
           )}
           aria-hidden
         >
-          ✓
+          <IconCheck size={10} strokeWidth={3} />
         </span>
         <span className="min-w-0 flex-1 truncate">
           {ZD_ESTIMATE_UI.listColumnLabels[columnKey]}
@@ -217,7 +218,8 @@ export function ZdEstimateListBand({
       >
         <div
           className={cn(
-            "flex min-w-0 flex-1 items-center",
+            // Od sm: lewa grupa ma szerokość treści (filtry + notka), szukanie bierze resztę i kurczy się pierwsze.
+            "flex min-w-0 flex-1 items-center sm:flex-none",
             zdEstimateChromeGapClass
           )}
         >
@@ -296,7 +298,7 @@ export function ZdEstimateListBand({
 
         <div
           className={cn(
-            "flex w-full min-w-0 items-center sm:ml-auto sm:w-auto",
+            "flex w-full min-w-0 items-center sm:ml-auto sm:w-auto sm:flex-1 sm:justify-end",
             zdEstimateChromeGapClass
           )}
         >
@@ -346,7 +348,7 @@ export function ZdEstimateListBand({
               <span className="lg:hidden">Wygładź</span>
             </label>
           ) : null}
-          <div className="relative min-w-0 flex-1 sm:w-[14rem] sm:flex-none md:w-[15rem] lg:w-[16rem]">
+          <div className="relative min-w-0 flex-1 sm:min-w-[7.5rem] sm:max-w-[16rem]">
             <IconSearch
               size={14}
               strokeWidth={2}
@@ -433,7 +435,7 @@ export function ZdEstimateListBand({
               disabled={disabled}
             >
               {sortKeyIsConfidence
-                ? `✓ ${ZD_ESTIMATE_UI.listSortByConfidence}`
+                ? <><IconCheck size={14} className="mr-1.5 inline-block align-[-2px]" aria-hidden />{ZD_ESTIMATE_UI.listSortByConfidence}</>
                 : ZD_ESTIMATE_UI.listSortByConfidence}
             </OverflowMenuItem>
             <OverflowMenuItem
@@ -441,7 +443,7 @@ export function ZdEstimateListBand({
               disabled={disabled}
             >
               {sortKeyIsMinStock
-                ? `✓ ${ZD_ESTIMATE_UI.listSortByMinStock}`
+                ? <><IconCheck size={14} className="mr-1.5 inline-block align-[-2px]" aria-hidden />{ZD_ESTIMATE_UI.listSortByMinStock}</>
                 : ZD_ESTIMATE_UI.listSortByMinStock}
             </OverflowMenuItem>
             {canSelectVisible ? (

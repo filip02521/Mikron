@@ -86,13 +86,12 @@ export function NotatnikArchivePanel({
         <div className="px-3 pt-3 sm:px-4">
           <NotatnikListFilterBar
             embedded
-            visibleLabel={mode === "zk" ? "Szukaj w archiwum ZK" : "Szukaj w archiwum"}
             value={listFilter}
             onChange={setListFilter}
             matchCount={filteredWatches.length + filteredNotes.length}
             totalCount={zkWatches.length + notes.length}
             placeholder={filterPlaceholder}
-            searchLabel="Szukaj w archiwum"
+            searchLabel={mode === "zk" ? "Szukaj w archiwum ZK" : "Szukaj w archiwum"}
             showIdleHint={false}
             showActiveDetail={false}
           />

@@ -13,7 +13,9 @@ import { Input } from "@/components/ui/Field";
 import { HelpBlock } from "@/components/ui/HelpBlock";
 import { HelpPopover } from "@/components/ui/HelpPopover";
 import { NoticeToast } from "@/components/ui/NoticeToast";
-import { PanelSummaryMetric } from "@/components/ui/PanelSummaryMetric";
+import { AdminMetrics } from "@/components/admin/AdminMetrics";
+import { BrandLoader } from "@/components/ui/BrandLoader";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 import { Spinner } from "@/components/ui/Spinner";
 import type {
   SubiektLeadTimeSupplierRow,
@@ -30,6 +32,7 @@ import {
 } from "@/lib/ui/ontime-theme";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { askConfirm } from "@/components/ui/ConfirmHost";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 const STATUS: Record<
   SubiektLeadTimeSupplierStatus,
@@ -70,11 +73,18 @@ function SupplierRow({ row, expanded, onToggle }: { row: SubiektLeadTimeSupplier
   const status = STATUS[row.status];
   return (
     <Fragment>
-      <tr className={cn("cursor-pointer hover:bg-slate-50/80", !row.isActive && "opacity-60")} onClick={onToggle}>
-        <td className="px-2 py-2 text-sm font-medium text-slate-800 sm:px-3">
+      <tr
+        className={cn(
+          "cursor-pointer transition-colors hover:bg-slate-50",
+          expanded && "bg-indigo-50 hover:bg-indigo-50",
+          !row.isActive && "text-slate-500"
+        )}
+        onClick={onToggle}
+      >
+        <td className="py-2 pl-3 pr-2 text-sm font-medium text-slate-800 sm:pl-4 lg:pl-5">
           <button
             type="button"
-            className="flex items-center gap-1.5 text-left"
+            className="flex items-center gap-1.5 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
             aria-expanded={expanded}
             onClick={(e) => {
               e.stopPropagation();
@@ -100,8 +110,8 @@ function SupplierRow({ row, expanded, onToggle }: { row: SubiektLeadTimeSupplier
         <td className="hidden px-2 py-2 text-xs tabular-nums text-slate-500 lg:table-cell sm:px-3">{plDate(row.lastZdDate)}</td>
       </tr>
       {expanded ? (
-        <tr className="bg-slate-50/60">
-          <td colSpan={8} className="px-3 py-3 sm:px-5">
+        <tr className="bg-slate-50">
+          <td colSpan={8} className="px-3 py-3 sm:px-4 lg:px-5">
             <div className="grid gap-3 text-xs text-slate-600 sm:grid-cols-2">
               <div className="space-y-1">
                 <p>{status.hint}.</p>
@@ -123,11 +133,11 @@ function SupplierRow({ row, expanded, onToggle }: { row: SubiektLeadTimeSupplier
                     {row.trend.map((t) => (
                       <span
                         key={t.year}
-                        className="rounded-md border border-slate-200 bg-white px-2 py-1 tabular-nums"
+                        className="rounded-md bg-white px-2 py-1 tabular-nums ring-1 ring-inset ring-slate-200"
                         title={`${t.n} zamówień w ${t.year}`}
                       >
                         {t.year}: <strong className="text-slate-800">{t.p50} d</strong>
-                        <span className="text-slate-400"> · {t.n}</span>
+                        <span className="text-slate-500"> · {t.n}</span>
                       </span>
                     ))}
                   </div>
@@ -225,7 +235,7 @@ export function SubiektLeadTimesPanel({ initialData }: { initialData: SubiektLea
     if (!data) return [];
     const q = search.trim().toLowerCase();
     return data.suppliers.filter((row) => {
-      if (q && !row.name.toLowerCase().includes(q)) return false;
+      if (!matchesSearchWords(row.name, q)) return false;
       if (filter === "subiekt") return row.status === "subiekt" || row.status === "subiekt_old";
       if (filter === "diff") return isDiff(row);
       if (filter === "other") return row.status !== "subiekt" && row.status !== "subiekt_old" && row.isActive;
@@ -284,40 +294,48 @@ export function SubiektLeadTimesPanel({ initialData }: { initialData: SubiektLea
             </p>
           ) : (
             <>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-                <PanelSummaryMetric
-                  label="Dokumenty w kopii"
-                  value={(data.docs.zd + data.docs.fz).toLocaleString("pl-PL")}
-                  hint={`${data.docs.zd.toLocaleString("pl-PL")} ZD · ${data.docs.fz.toLocaleString("pl-PL")} FZ · od ${data.docs.oldest?.slice(0, 4) ?? "-"}`}
-                />
-                <PanelSummaryMetric
-                  label="Zmierzone zamówienia"
-                  value={(state?.samplesAssigned ?? 0).toLocaleString("pl-PL")}
-                  hint={state?.counts ? `${state.counts.openOrders} czeka na braki` : undefined}
-                  tone={state?.samplesAssigned ? "success" : "default"}
-                />
-                <PanelSummaryMetric
-                  label="Dostawcy z Subiekta"
-                  value={fromSubiekt}
-                  hint={`${data.unmapped.length} kont bez karty dostawcy`}
-                  tone={fromSubiekt ? "success" : "default"}
-                />
-                <PanelSummaryMetric
-                  label="Poprawione daty FZ"
-                  value={(state?.counts?.corrected ?? 0).toLocaleString("pl-PL")}
-                  hint="wpis po zamknięciu miesiąca"
-                />
-                <PanelSummaryMetric
-                  label="Rozbieżne z panelem"
-                  value={diffCount}
-                  hint="mediana różni się o ≥ 3 dni"
-                  tone={diffCount ? "warning" : "default"}
-                  onClick={() => setFilter("diff")}
-                />
-              </div>
+              <AdminMetrics
+                items={[
+                  {
+                    label: "Dokumenty w kopii",
+                    value: (data.docs.zd + data.docs.fz).toLocaleString("pl-PL"),
+                    hint: `${data.docs.zd.toLocaleString("pl-PL")} ZD · ${data.docs.fz.toLocaleString("pl-PL")} FZ · od ${data.docs.oldest?.slice(0, 4) ?? "-"}`,
+                  },
+                  {
+                    label: "Zmierzone zamówienia",
+                    value: (state?.samplesAssigned ?? 0).toLocaleString("pl-PL"),
+                    hint: state?.counts ? `${state.counts.openOrders} czeka na braki` : undefined,
+                  },
+                  {
+                    label: "Dostawcy z Subiekta",
+                    value: fromSubiekt,
+                    hint: `${data.unmapped.length} kont bez karty dostawcy`,
+                  },
+                  {
+                    label: "Pominięte: FZ z końca miesiąca",
+                    value: (state?.counts?.monthEndExcluded ?? 0).toLocaleString("pl-PL"),
+                    hint: "data wpisu po zamknięciu miesiąca, nie przyjęcia",
+                  },
+                  {
+                    label: "Rozbieżne z panelem",
+                    value: diffCount,
+                    hint: "mediana różni się o ≥ 3 dni",
+                    tone: diffCount ? "warning" : "default",
+                    onClick: () => setFilter("diff"),
+                    actionLabel: `Pokaż ${diffCount} rozbieżnych z panelem`,
+                  },
+                ]}
+              />
+
+              {running === "full" ? (
+                <div role="status" className="flex items-center gap-2 text-sm text-slate-600">
+                  <BrandLoader size="sm" tile={false} />
+                  Pobieram całą historię ZD i FZ z Subiekta. Zwykle trwa to ok. 5 minut; tabela odświeży się sama.
+                </div>
+              ) : null}
 
               {firstRun ? (
-                <div className="flex flex-wrap items-center gap-3 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-2.5">
+                <div className="flex flex-wrap items-center gap-3 rounded-lg bg-indigo-50 px-3.5 py-3">
                   <p className="min-w-0 flex-1 text-sm text-slate-800">
                     <strong className="font-semibold">Kopia ZD/FZ jest pusta.</strong> Wczytaj raz całą historię z
                     Subiekta (ok. 5 min) - dopiero wtedy czasy dostaw liczą się z prawdziwych dat, a nie z kliknięć w
@@ -366,28 +384,30 @@ export function SubiektLeadTimesPanel({ initialData }: { initialData: SubiektLea
                 </span>
               </div>
 
-              <div className="flex flex-wrap items-end gap-3 border-b border-slate-100 pb-4">
-                <div className="min-w-[200px] flex-1">
-                  <label htmlFor="subiekt-lead-search" className="mb-1.5 block text-xs font-semibold text-slate-500">
-                    Szukaj dostawcy
-                  </label>
-                  <Input
-                    id="subiekt-lead-search"
-                    type="search"
-                    placeholder="Nazwa dostawcy…"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-full py-2 text-sm"
-                  />
-                </div>
-                <div className="flex flex-wrap gap-1.5">
+            </>
+          )}
+        </div>
+
+        {data ? (
+          <>
+              <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-3 py-3 sm:px-4 lg:px-5">
+                <Input
+                  type="search"
+                  aria-label="Szukaj dostawcy"
+                  placeholder="Szukaj dostawcy…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full sm:max-w-xs"
+                />
+                <div className="flex flex-wrap gap-1.5" role="group" aria-label="Źródło ETA">
                   {FILTERS.map((chip) => (
                     <button
                       key={chip.id}
                       type="button"
+                      aria-pressed={filter === chip.id}
                       className={cn(
                         panelChoiceChipClass,
-                        "px-2.5 py-1.5",
+                        "min-h-9 px-2.5 py-1.5",
                         filter === chip.id ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass
                       )}
                       onClick={() => setFilter(chip.id)}
@@ -396,20 +416,23 @@ export function SubiektLeadTimesPanel({ initialData }: { initialData: SubiektLea
                     </button>
                   ))}
                 </div>
+                <p className="ml-auto text-[0.6875rem] tabular-nums text-slate-500">
+                  {rows.length} {polishPluralWord(rows.length, "dostawca", "dostawcy", "dostawców")}
+                </p>
               </div>
 
-              <div className="overflow-x-auto rounded-md border border-slate-200/90">
+              <div className="overflow-x-auto border-t border-slate-200">
                 <table className="min-w-full text-left">
                   <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50/90 text-[11px] text-slate-500">
-                      <th className="px-2 py-2.5 font-semibold sm:px-3">Dostawca</th>
-                      <th className="px-2 py-2.5 font-semibold sm:px-3">Źródło ETA</th>
-                      <th className="px-2 py-2.5 font-semibold sm:px-3" title="Mediana dni roboczych do pełnej dostawy">Typowo</th>
-                      <th className="hidden px-2 py-2.5 font-semibold sm:table-cell sm:px-3" title="9 na 10 zamówień przychodzi w tym czasie">Najdłużej (p90)</th>
-                      <th className="hidden px-2 py-2.5 font-semibold md:table-cell sm:px-3">Zamówień</th>
-                      <th className="hidden px-2 py-2.5 font-semibold md:table-cell sm:px-3" title="Mediana z kliknięć w panelu (dla porównania)">Panel</th>
-                      <th className="hidden px-2 py-2.5 font-semibold lg:table-cell sm:px-3" title="Średnia z delivery_stats (po przeliczeniu). Terminy w ETA liczone są z mediany, gdy włączona jest flaga p50.">Średnia</th>
-                      <th className="hidden px-2 py-2.5 font-semibold lg:table-cell sm:px-3">Ostatnie ZD</th>
+                    <tr className="border-b border-slate-200 bg-slate-50 text-[0.8125rem] text-slate-500">
+                      <th className="py-2.5 pl-3 pr-2 font-medium sm:pl-4 lg:pl-5">Dostawca</th>
+                      <th className="px-2 py-2.5 font-medium sm:px-3">Źródło ETA</th>
+                      <th className="px-2 py-2.5 font-medium sm:px-3" title="Mediana dni roboczych do pełnej dostawy">Typowo</th>
+                      <th className="hidden px-2 py-2.5 font-medium sm:table-cell sm:px-3" title="9 na 10 zamówień przychodzi w tym czasie">Najdłużej (p90)</th>
+                      <th className="hidden px-2 py-2.5 font-medium md:table-cell sm:px-3">Zamówień</th>
+                      <th className="hidden px-2 py-2.5 font-medium md:table-cell sm:px-3" title="Mediana z kliknięć w panelu (dla porównania)">Panel</th>
+                      <th className="hidden px-2 py-2.5 font-medium lg:table-cell sm:px-3" title="Średnia z delivery_stats (po przeliczeniu). Terminy w ETA liczone są z mediany, gdy włączona jest flaga p50.">Średnia</th>
+                      <th className="hidden px-2 py-2.5 font-medium lg:table-cell sm:px-3">Ostatnie ZD</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
@@ -434,10 +457,10 @@ export function SubiektLeadTimesPanel({ initialData }: { initialData: SubiektLea
               </div>
 
               {data.unmapped.length ? (
-                <div className="rounded-md border border-slate-200/90">
+                <div className="border-t border-slate-200">
                   <button
                     type="button"
-                    className="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm font-medium text-slate-700"
+                    className="flex min-h-11 w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-600 sm:px-4 lg:px-5"
                     aria-expanded={showUnmapped}
                     onClick={() => setShowUnmapped((v) => !v)}
                   >
@@ -452,9 +475,9 @@ export function SubiektLeadTimesPanel({ initialData }: { initialData: SubiektLea
                   {showUnmapped ? (
                     <ul className="divide-y divide-slate-100 border-t border-slate-100 text-xs">
                       {data.unmapped.map((u) => (
-                        <li key={u.khId} className="flex items-center justify-between gap-3 px-3 py-1.5">
+                        <li key={u.khId} className="flex items-center justify-between gap-3 px-3 py-1.5 sm:px-4 lg:px-5">
                           <span className="font-medium text-slate-700">
-                            {u.khSymbol ?? "?"} <span className="font-normal text-slate-400">kh_Id {u.khId}</span>
+                            {u.khSymbol ?? "?"} <span className="font-normal text-slate-500">kh_Id {u.khId}</span>
                           </span>
                           <span className="tabular-nums text-slate-500">
                             {u.orders} ZD · ostatnie {plDate(u.lastZdDate)}
@@ -465,9 +488,8 @@ export function SubiektLeadTimesPanel({ initialData }: { initialData: SubiektLea
                   ) : null}
                 </div>
               ) : null}
-            </>
-          )}
-        </div>
+          </>
+        ) : null}
       </Card>
     </>
   );

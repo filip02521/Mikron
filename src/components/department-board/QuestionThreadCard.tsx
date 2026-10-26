@@ -413,7 +413,7 @@ export function QuestionThreadCard({
           type="button"
           className={cn(
             "min-w-0 flex-1 text-left py-3 sm:py-3.5",
-            "rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/25",
+            "rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
             boardQuestionRowHeaderClass
           )}
           onClick={toggleExpanded}
@@ -428,12 +428,12 @@ export function QuestionThreadCard({
                 {showUnseen ? <span className={boardQuestionUnseenDotClass} aria-hidden /> : null}
                 <span className="truncate font-medium">{author}</span>
                 {productSymbolHint ? (
-                  <span className="shrink-0 rounded border border-slate-200 bg-slate-50 px-1 py-px font-mono text-[10.5px] text-slate-600">
+                  <span className="shrink-0 rounded border border-slate-200 bg-slate-50 px-1 py-px font-mono text-[0.65625rem] text-slate-600">
                     {productSymbolHint}
                   </span>
                 ) : null}
                 {threadPhotoCount > 0 ? (
-                  <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-slate-500" title={`W wątku: ${photoLabel(threadPhotoCount)}`}>
+                  <span className="inline-flex shrink-0 items-center gap-1 text-[0.6875rem] font-medium text-slate-500" title={`W wątku: ${photoLabel(threadPhotoCount)}`}>
                     <IconCamera size={12} className="shrink-0" aria-hidden />
                     <span className="tabular-nums">{threadPhotoCount}</span>
                     <span className="sr-only">zdjęć w wątku</span>
@@ -456,7 +456,7 @@ export function QuestionThreadCard({
             </span>
             <span className="flex flex-col items-end gap-1.5 pt-0.5">
               <span className="flex items-center gap-1.5">
-                <span className="text-[11px] tabular-nums text-slate-500" title={`Ostatnia aktywność: ${formatBoardDate(lastActivityAt)}`}>
+                <span className="text-[0.6875rem] tabular-nums text-slate-500" title={`Ostatnia aktywność: ${formatBoardDate(lastActivityAt)}`}>
                   {formatBoardShortDate(lastActivityAt)}
                 </span>
                 <IconChevronDown
@@ -685,7 +685,7 @@ export function QuestionThreadCard({
         ) : null}
 
         {isClosed ? (
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-500">
             {closedByLabel
               ? `Zamknięto: ${closedByLabel}`
               : "Zamknięto automatycznie"}
@@ -732,7 +732,7 @@ function AuthorAvatar({ label, size = "sm", className }: { label: string; size?:
     <span
       className={cn(
         "inline-flex shrink-0 items-center justify-center rounded-full bg-slate-100 font-semibold leading-none text-slate-600 ring-1 ring-slate-200/80",
-        size === "md" ? "size-8 text-[11px]" : "size-5 text-[9px]",
+        size === "md" ? "size-8 text-[0.6875rem]" : "size-5 text-[0.625rem]",
         className
       )}
       title={label}

@@ -1,24 +1,27 @@
 "use client";
 
 import { useId, useState } from "react";
-import { IconPackage } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { ModalShell } from "@/components/ui/ModalShell";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Spinner } from "@/components/ui/Spinner";
 import { ZdPackagingLabelPresets } from "@/components/zakupy/ZdPackagingLabelPresets";
 import { cn } from "@/lib/cn";
 import { controlFocusClass, panelTypography } from "@/lib/ui/ontime-theme";
 import { ZD_ESTIMATE_BULK_MAX } from "@/lib/orders/zd-estimate-bulk";
 import {
-  assertOrderMultiple,
   assertPackagingUnits,
+  parsePalletInput,
   ZD_PACKAGING_UNITS_MAX,
   ZD_PACKAGING_UNITS_MIN,
   type ZdPackagingDocumentUnitMode,
 } from "@/lib/orders/zd-estimate-packaging";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 import type { ZdEstimateBulkLinePreview } from "@/components/zakupy/ZdEstimateBulkExcludeDialog";
+
+type PalletChoice = "keep" | "set" | "off";
 
 export function ZdEstimateBulkPackagingDialog({
   open,
@@ -35,71 +38,92 @@ export function ZdEstimateBulkPackagingDialog({
   pending?: boolean;
   /** set = ustaw opakowanie; clear = potwierdź usunięcie */
   mode?: "set" | "clear";
-  /** tw_Id paczek z pary — Mode B zablokowany gdy zaznaczenie je zawiera. */
+  /** tw_Id opakowań z pary — N z pary, tylko tryb opakowań. */
   packPairTwIds?: ReadonlySet<number> | null;
   onCancel: () => void;
   onSave: (input: {
-    unitsPerPackage: number;
-    packageLabel: string;
+    /** Brak = N z pary (same opakowania z pary). */
+    unitsPerPackage?: number;
+    /** Brak = bez zmian. */
+    packageLabel?: string;
     documentUnitMode: ZdPackagingDocumentUnitMode;
-    orderMultiple: number | null;
+    /** Brak = bez zmian, null = wyłącz palety. */
+    orderMultiple?: number | null;
     note: string;
   }) => void;
   onClear: () => void;
 }) {
   const unitsId = useId();
-  const orderEnableId = useId();
-  const orderMultId = useId();
+  const palletId = useId();
   const labelId = useId();
   const noteId = useId();
   const modePackagesId = useId();
   const modePiecesId = useId();
   const [units, setUnits] = useState("10");
-  const [orderMultipleEnabled, setOrderMultipleEnabled] = useState(false);
-  const [orderMultiple, setOrderMultiple] = useState("");
-  const [label, setLabel] = useState("op.");
+  const [palletChoice, setPalletChoice] = useState<PalletChoice>("keep");
+  const [pallet, setPallet] = useState("");
+  const [label, setLabel] = useState("");
   const [note, setNote] = useState("");
   const [documentUnitMode, setDocumentUnitMode] =
     useState<ZdPackagingDocumentUnitMode>("packages");
 
   if (!open || lines.length === 0) return null;
 
-  const pairPackBlocksPiecesMode = lines.some((l) =>
-    packPairTwIds?.has(l.tw_Id)
-  );
-  const effectiveMode: ZdPackagingDocumentUnitMode = pairPackBlocksPiecesMode
+  const pairCount = lines.filter((l) => packPairTwIds?.has(l.tw_Id)).length;
+  const anyPair = pairCount > 0;
+  const allPair = pairCount === lines.length;
+  const effectiveMode: ZdPackagingDocumentUnitMode = anyPair
     ? "packages"
     : documentUnitMode;
   const packagesMode = effectiveMode === "packages";
-  const orderActive = packagesMode && orderMultipleEnabled;
 
-  const unitsCheck = assertPackagingUnits(units);
-  const orderCheck = assertOrderMultiple(orderActive ? orderMultiple : null);
-  const orderValueOk =
-    !orderActive ||
-    (orderCheck.ok && orderCheck.orderMultiple != null);
-  const canSave = unitsCheck.ok && orderValueOk;
-  const unitsNum = unitsCheck.ok
-    ? unitsCheck.units
-    : Math.trunc(Number(units));
-  const showUnitsError = units.trim() !== "" && !unitsCheck.ok;
-  const showOrderError =
-    orderActive &&
-    (orderMultiple.trim() === "" || !orderCheck.ok || !orderValueOk);
-  const orderErrorMessage =
-    orderActive && orderMultiple.trim() === ""
-      ? ZD_ESTIMATE_UI.packagingOrderMultipleRequiredError
-      : !orderCheck.ok
-        ? orderCheck.message
-        : orderActive && orderCheck.orderMultiple == null
-          ? ZD_ESTIMATE_UI.packagingOrderMultipleRequiredError
-          : null;
-  const resolvedOrderMultiple =
-    orderActive && orderCheck.ok ? orderCheck.orderMultiple : null;
+  // Same opakowania z pary: N pochodzi z pary (serwer), pole sztuk nie ma znaczenia.
+  const unitsCheck = allPair
+    ? ({ ok: true, units: undefined } as const)
+    : assertPackagingUnits(units);
+  const showUnitsError = !allPair && units.trim() !== "" && !unitsCheck.ok;
+  // „Ustaw” wymaga liczby; „Bez zmian” = undefined, „Wyłącz” albo tryb sztuk = null.
+  const palletSet = packagesMode && palletChoice === "set";
+  const palletParsed = parsePalletInput(palletSet ? pallet : "");
+  const palletError = !palletSet
+    ? null
+    : !palletParsed.ok
+      ? palletParsed.message
+      : palletParsed.value == null
+        ? ZD_ESTIMATE_UI.packagingOrderMultipleRequiredError
+        : null;
+  const palletOk = palletError == null;
+  let resolvedPallet: number | null | undefined;
+  if (!packagesMode || palletChoice === "off") resolvedPallet = null;
+  else if (palletChoice === "keep") resolvedPallet = undefined;
+  else resolvedPallet = palletParsed.ok ? palletParsed.value : null;
+  const canSave = unitsCheck.ok && palletOk;
   const preview = lines.slice(0, 8);
   const rest = lines.length - preview.length;
   const overLimit = lines.length > ZD_ESTIMATE_BULK_MAX;
   const actionCount = Math.min(lines.length, ZD_ESTIMATE_BULK_MAX);
+  const labelTrim = label.trim();
+
+  let unitsLine: string;
+  if (allPair) unitsLine = "Opakowanie: N z pary (bez zmian)";
+  else if (!packagesMode) {
+    unitsLine = `Na ZD sztuki, zaokrąglone do ${unitsCheck.ok ? unitsCheck.units : "?"} szt`;
+  } else {
+    unitsLine = `Opakowanie: ${unitsCheck.ok ? unitsCheck.units : "?"} szt w 1`;
+    if (anyPair) {
+      unitsLine += ` (${pairCount} z pary ${polishPluralWord(pairCount, "zachowa", "zachowają", "zachowa")} N z pary)`;
+    }
+  }
+  const palletLine = !packagesMode
+    ? "Palety: wyłączone (tryb sztuk)"
+    : resolvedPallet === undefined
+      ? "Palety: bez zmian"
+      : resolvedPallet === null
+        ? palletChoice === "set"
+          ? "Palety: ?"
+          : "Palety: wyłączone"
+        : `Palety: co ${resolvedPallet} ${polishPluralWord(resolvedPallet, "opakowanie", "opakowania", "opakowań")}`;
+  const summary = [unitsLine, `Etykieta: ${labelTrim ? labelTrim : "bez zmian"}`, palletLine];
 
   if (mode === "clear") {
     const clearOverLimit = lines.length > ZD_ESTIMATE_BULK_MAX;
@@ -147,7 +171,7 @@ export function ZdEstimateBulkPackagingDialog({
       >
         <BulkProductPreview lines={preview} rest={rest} />
         {clearOverLimit ? (
-          <p className="text-[11px] font-medium text-amber-800">
+          <p className="text-xs font-medium text-amber-800">
             Limit {ZD_ESTIMATE_BULK_MAX} na jedną akcję - usunę pierwsze{" "}
             {ZD_ESTIMATE_BULK_MAX} z {lines.length}.
           </p>
@@ -165,12 +189,12 @@ export function ZdEstimateBulkPackagingDialog({
       open
       onClose={onCancel}
       title={`Opakowanie dla ${actionCount}${overLimit ? ` z ${lines.length}` : ""}`}
-      titleHint={ZD_ESTIMATE_UI.packagingDialogHint}
+      titleHint={ZD_ESTIMATE_UI.packagingBulkDialogHint}
       titleId="zd-estimate-bulk-packaging-title"
       size="md"
       tier="raised"
       disableBackdropClose={pending}
-      bodyClassName="space-y-4 px-5 py-5 sm:px-6"
+      bodyClassName="space-y-5 px-5 py-5 sm:px-6"
       loadingMessage={pending ? "Zapisuję…" : null}
       footer={
         <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -188,12 +212,12 @@ export function ZdEstimateBulkPackagingDialog({
             className="min-h-11 w-full sm:w-auto"
             disabled={pending || !canSave}
             onClick={() => {
-              if (!unitsCheck.ok || !orderValueOk) return;
+              if (!unitsCheck.ok || !palletOk) return;
               onSave({
                 unitsPerPackage: unitsCheck.units,
-                packageLabel: label.trim() || "op.",
+                packageLabel: labelTrim || undefined,
                 documentUnitMode: effectiveMode,
-                orderMultiple: resolvedOrderMultiple,
+                orderMultiple: resolvedPallet,
                 note: note.trim(),
               });
             }}
@@ -212,238 +236,180 @@ export function ZdEstimateBulkPackagingDialog({
       <BulkProductPreview lines={preview} rest={rest} />
 
       {overLimit ? (
-        <p className="text-[11px] font-medium text-amber-800">
+        <p className="text-xs font-medium text-amber-800">
           Limit {ZD_ESTIMATE_BULK_MAX} na jedną akcję - zapiszę pierwsze{" "}
           {ZD_ESTIMATE_BULK_MAX} z {lines.length}. Reszta zostanie zaznaczona.
         </p>
       ) : null}
 
-      <fieldset className="space-y-2">
-        <legend className="text-xs font-medium text-slate-600">
-          Tryb dokumentu
-        </legend>
-        <label
-          htmlFor={modePackagesId}
-          className={cn(
-            "flex cursor-pointer gap-2 rounded-lg border px-3 py-2.5",
-            effectiveMode === "packages"
-              ? "border-indigo-200 bg-indigo-50/60"
-              : "border-slate-200 bg-white"
-          )}
-        >
-          <input
-            id={modePackagesId}
-            type="radio"
-            name="zd-bulk-pack-mode"
-            className="mt-0.5"
-            checked={effectiveMode === "packages"}
-            disabled={pending}
-            onChange={() => setDocumentUnitMode("packages")}
-          />
-          <span className="text-xs font-semibold text-slate-900">
-            {ZD_ESTIMATE_UI.packagingModePackagesLabel}
-          </span>
-        </label>
-        <label
-          htmlFor={modePiecesId}
-          className={cn(
-            "flex gap-2 rounded-lg border px-3 py-2.5",
-            pairPackBlocksPiecesMode
-              ? "cursor-not-allowed border-slate-200 bg-slate-50 opacity-70"
-              : "cursor-pointer",
-            !pairPackBlocksPiecesMode && effectiveMode === "pieces_multiple"
-              ? "border-indigo-200 bg-indigo-50/60"
-              : !pairPackBlocksPiecesMode
-                ? "border-slate-200 bg-white"
-                : null
-          )}
-        >
-          <input
-            id={modePiecesId}
-            type="radio"
-            name="zd-bulk-pack-mode"
-            className="mt-0.5"
-            checked={effectiveMode === "pieces_multiple"}
-            disabled={pending || pairPackBlocksPiecesMode}
-            onChange={() => {
-              setDocumentUnitMode("pieces_multiple");
-              setOrderMultipleEnabled(false);
-              setOrderMultiple("");
-            }}
-          />
-          <span className="min-w-0">
-            <span className="block text-xs font-semibold text-slate-900">
-              {ZD_ESTIMATE_UI.packagingModePiecesLabel}
-            </span>
-            {pairPackBlocksPiecesMode ? (
-              <span className="mt-0.5 block text-[11px] leading-snug text-slate-500">
-                {ZD_ESTIMATE_UI.packagingModeBulkPairBlockedHint}
-              </span>
-            ) : null}
-          </span>
-        </label>
-      </fieldset>
+      {allPair ? (
+        <p className={cn(panelTypography.caption)}>
+          {ZD_ESTIMATE_UI.packagingBulkAllPairHint}
+        </p>
+      ) : (
+        <>
+          <fieldset className="space-y-2">
+            <legend className="text-xs font-medium text-slate-600">
+              Na dokumencie ZD
+            </legend>
+            {(
+              [
+                { id: modePackagesId, mode: "packages" as const, title: ZD_ESTIMATE_UI.packagingModePackagesLabel },
+                { id: modePiecesId, mode: "pieces_multiple" as const, title: ZD_ESTIMATE_UI.packagingModePiecesLabel },
+              ]
+            ).map((opt) => {
+              const blocked = opt.mode === "pieces_multiple" && anyPair;
+              return (
+                <label
+                  key={opt.mode}
+                  htmlFor={opt.id}
+                  className={cn(
+                    "flex gap-2.5 rounded-md border px-3 py-2.5",
+                    blocked
+                      ? "cursor-not-allowed border-slate-200 bg-slate-50"
+                      : effectiveMode === opt.mode
+                        ? "cursor-pointer border-indigo-300 bg-indigo-50/60"
+                        : "cursor-pointer border-slate-200 bg-white hover:bg-slate-50"
+                  )}
+                >
+                  <input
+                    id={opt.id}
+                    type="radio"
+                    name="zd-bulk-pack-mode"
+                    className="mt-0.5"
+                    checked={effectiveMode === opt.mode}
+                    disabled={pending || blocked}
+                    onChange={() => setDocumentUnitMode(opt.mode)}
+                  />
+                  <span className="min-w-0">
+                    <span className={cn("block text-sm font-medium", blocked ? "text-slate-600" : "text-slate-900")}>
+                      {opt.title}
+                    </span>
+                    {blocked ? (
+                      <span className="mt-0.5 block text-xs leading-snug text-slate-600">
+                        {ZD_ESTIMATE_UI.packagingModeBulkPairBlockedHint}
+                      </span>
+                    ) : null}
+                  </span>
+                </label>
+              );
+            })}
+          </fieldset>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label htmlFor={unitsId} className="block">
-          <span className="text-xs font-medium text-slate-600">
-            {ZD_ESTIMATE_UI.packagingUnitsLabel}
-          </span>
-          <Input
-            id={unitsId}
-            type="number"
-            min={ZD_PACKAGING_UNITS_MIN}
-            max={ZD_PACKAGING_UNITS_MAX}
-            value={units}
-            onChange={(e) => setUnits(e.target.value)}
-            disabled={pending}
-            className="mt-1.5"
-            autoFocus
-            aria-invalid={showUnitsError || undefined}
-          />
-          <p className={cn(panelTypography.caption, "mt-1")}>
-            {ZD_ESTIMATE_UI.packagingBulkUnitsHint}
-          </p>
-        </label>
-        <div>
-          <label htmlFor={labelId} className="block">
-            <span className="text-xs font-medium text-slate-600">
-              {ZD_ESTIMATE_UI.packagingLabelField}
-            </span>
+          <div>
+            <label htmlFor={unitsId} className="block text-xs font-medium text-slate-600">
+              {ZD_ESTIMATE_UI.packagingUnitsLabel}
+            </label>
             <Input
-              id={labelId}
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              maxLength={24}
+              id={unitsId}
+              type="number"
+              inputMode="numeric"
+              min={ZD_PACKAGING_UNITS_MIN}
+              max={ZD_PACKAGING_UNITS_MAX}
+              value={units}
+              onChange={(e) => setUnits(e.target.value)}
               disabled={pending}
-              placeholder="op. / karton"
-              className="mt-1.5"
+              state={showUnitsError ? "warning" : "default"}
+              className="mt-1.5 sm:max-w-[12rem]"
+              data-autofocus
+              aria-invalid={showUnitsError || undefined}
             />
-          </label>
-          <ZdPackagingLabelPresets
-            value={label}
-            disabled={pending}
-            onSelect={setLabel}
-            className="mt-2"
-          />
-        </div>
+            <p className={cn(panelTypography.caption, "mt-1", showUnitsError && "font-medium text-amber-900")}>
+              {showUnitsError && !unitsCheck.ok
+                ? unitsCheck.message
+                : anyPair
+                  ? ZD_ESTIMATE_UI.packagingBulkPairUnitsHint
+                  : ZD_ESTIMATE_UI.packagingBulkUnitsHint}
+            </p>
+          </div>
+        </>
+      )}
+
+      <div>
+        <label htmlFor={labelId} className="block text-xs font-medium text-slate-600">
+          {ZD_ESTIMATE_UI.packagingLabelField}{" "}
+          <span className="font-normal text-slate-500">(puste = bez zmian)</span>
+        </label>
+        <Input
+          id={labelId}
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          maxLength={24}
+          disabled={pending}
+          placeholder="bez zmian"
+          className="mt-1.5 sm:max-w-[16rem]"
+        />
+        <ZdPackagingLabelPresets
+          value={label}
+          disabled={pending}
+          onSelect={setLabel}
+          className="mt-2"
+        />
       </div>
 
       {packagesMode ? (
-        <div className="space-y-2">
-          <label
-            htmlFor={orderEnableId}
-            className={cn(
-              "flex cursor-pointer gap-2.5 rounded-lg border px-3 py-2.5",
-              orderMultipleEnabled
-                ? "border-indigo-200 bg-indigo-50/50"
-                : "border-slate-200 bg-white"
-            )}
-          >
-            <input
-              id={orderEnableId}
-              type="checkbox"
-              className="mt-0.5"
-              checked={orderMultipleEnabled}
-              disabled={pending}
-              onChange={(e) => {
-                const on = e.target.checked;
-                setOrderMultipleEnabled(on);
-                if (!on) setOrderMultiple("");
-              }}
-            />
-            <span className="min-w-0">
-              <span className="block text-xs font-semibold text-slate-900">
-                {ZD_ESTIMATE_UI.packagingOrderMultipleEnableLabel}
-              </span>
-              <span className="mt-0.5 block text-[11px] leading-snug text-slate-500">
-                {ZD_ESTIMATE_UI.packagingOrderMultipleEnableHint}
-              </span>
-            </span>
-          </label>
-          <div
-            className={cn(
-              "rounded-lg border px-3 py-2.5 transition",
-              orderMultipleEnabled
-                ? "border-slate-200 bg-white"
-                : "border-slate-200/80 bg-slate-100/80 opacity-70"
-            )}
-            aria-disabled={!orderMultipleEnabled}
-          >
-            <label htmlFor={orderMultId} className="block">
-              <span
-                className={cn(
-                  "text-xs font-medium",
-                  orderMultipleEnabled ? "text-slate-600" : "text-slate-400"
-                )}
-              >
-                {ZD_ESTIMATE_UI.packagingOrderMultipleLabel}
-              </span>
+        <div>
+          <p className="text-xs font-medium text-slate-600" id={`${palletId}-legend`}>
+            {ZD_ESTIMATE_UI.packagingOrderMultipleEnableLabel}
+          </p>
+          <SegmentedControl
+            className="mt-1.5"
+            value={palletChoice}
+            onChange={setPalletChoice}
+            ariaLabel={ZD_ESTIMATE_UI.packagingOrderMultipleEnableLabel}
+            disabled={pending}
+            options={[
+              { value: "keep", label: "Bez zmian" },
+              { value: "set", label: "Ustaw" },
+              { value: "off", label: "Wyłącz" },
+            ]}
+          />
+          {palletChoice === "set" ? (
+            <div className="mt-2">
+              <label htmlFor={palletId} className="block text-xs font-medium text-slate-600">
+                {ZD_ESTIMATE_UI.packagingPalletFieldLabel}
+              </label>
               <Input
-                id={orderMultId}
-                type="number"
-                min={ZD_PACKAGING_UNITS_MIN}
-                max={ZD_PACKAGING_UNITS_MAX}
-                value={orderMultiple}
-                onChange={(e) => setOrderMultiple(e.target.value)}
-                disabled={pending || !orderMultipleEnabled}
+                id={palletId}
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                state={palletError ? "warning" : "default"}
+                value={pallet}
+                onChange={(e) => setPallet(e.target.value)}
+                disabled={pending}
                 placeholder={ZD_ESTIMATE_UI.packagingOrderMultiplePlaceholder}
-                className="mt-1.5"
-                aria-invalid={showOrderError || undefined}
+                className="mt-1.5 sm:max-w-[12rem]"
+                aria-invalid={palletError ? true : undefined}
               />
-            </label>
-            {orderMultipleEnabled ? (
-              <>
-                <p className={cn(panelTypography.caption, "mt-1")}>
-                  {ZD_ESTIMATE_UI.packagingOrderMultipleHint}
-                </p>
-                {showOrderError && orderErrorMessage ? (
-                  <p className="mt-1 text-xs font-medium text-amber-900">
-                    {orderErrorMessage}
-                  </p>
-                ) : null}
-              </>
-            ) : (
-              <p className={cn(panelTypography.caption, "mt-1 text-slate-400")}>
-                {ZD_ESTIMATE_UI.packagingOrderMultipleOffCaption}
+              <p className={cn(panelTypography.caption, "mt-1", palletError && "font-medium text-amber-900")}>
+                {palletError ?? ZD_ESTIMATE_UI.packagingBulkPalletSameHint}
               </p>
-            )}
-          </div>
+            </div>
+          ) : (
+            <p className={cn(panelTypography.caption, "mt-1")}>
+              {palletChoice === "keep"
+                ? ZD_ESTIMATE_UI.packagingBulkPalletKeepHint
+                : ZD_ESTIMATE_UI.packagingOrderMultipleOffCaption}
+            </p>
+          )}
         </div>
       ) : null}
 
-      {canSave ? (
-        <div className="rounded-lg border border-emerald-200/70 bg-emerald-50/50 px-3 py-2.5">
-          <p className="text-xs font-semibold text-emerald-950">
-            {packagesMode
-              ? `Dla każdego: 1 ${label.trim() || "op."} = ${unitsNum} szt${
-                  resolvedOrderMultiple != null
-                    ? ` · co ${resolvedOrderMultiple} op.`
-                    : ""
-                }`
-              : `Dla każdego: Do ZD w sztukach, dobij do wielokrotności ${unitsNum}`}
-          </p>
-          <p className="mt-0.5 text-[11px] leading-snug text-emerald-900/85">
-            {packagesMode
-              ? ZD_ESTIMATE_UI.packagingBulkPreviewPackages
-              : ZD_ESTIMATE_UI.packagingBulkPreviewPieces}
-          </p>
-        </div>
-      ) : showUnitsError ? (
-        <div className="rounded-lg border border-amber-200/80 bg-amber-50/60 px-3 py-2.5">
-          <p className="text-xs font-medium text-amber-900">
-            {unitsCheck.message}
-          </p>
-        </div>
-      ) : null}
+      <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5" aria-live="polite">
+        <p className="text-xs font-semibold text-slate-900">Zapiszę dla każdego zaznaczonego:</p>
+        <ul className="mt-1 space-y-0.5 text-xs tabular-nums text-slate-700">
+          {summary.map((s) => (
+            <li key={s}>{s}</li>
+          ))}
+        </ul>
+      </div>
 
-      <label htmlFor={noteId} className="block">
-        <span className="text-xs font-medium text-slate-600">
+      <div>
+        <label htmlFor={noteId} className="block text-xs font-medium text-slate-600">
           Notatka{" "}
-          <span className="font-normal text-slate-400">
-            (opcjonalnie - pusta nie zmienia istniejących)
-          </span>
-        </span>
+          <span className="font-normal text-slate-500">(puste = bez zmian)</span>
+        </label>
         <textarea
           id={noteId}
           value={note}
@@ -451,13 +417,13 @@ export function ZdEstimateBulkPackagingDialog({
           rows={2}
           maxLength={500}
           disabled={pending}
-          placeholder="np. Falcon - karton 10 szt"
+          placeholder="np. paleta 36 worków"
           className={cn(
-            "mt-1.5 w-full resize-y rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400",
+            "mt-1.5 w-full resize-y rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-500",
             controlFocusClass
           )}
         />
-      </label>
+      </div>
     </ModalShell>
   );
 }
@@ -470,37 +436,23 @@ function BulkProductPreview({
   rest: number;
 }) {
   return (
-    <div className="rounded-lg border border-slate-200/90 bg-slate-50/70 px-3.5 py-3">
-      <div className="flex gap-3">
-        <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-md bg-white text-slate-500 ring-1 ring-slate-200/80">
-          <IconPackage size={18} strokeWidth={1.75} aria-hidden />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold text-slate-900">
-            Zaznaczone produkty
-          </p>
-          <ul className="mt-1.5 space-y-1">
-            {lines.map((l) => (
-              <li
-                key={l.tw_Id}
-                className="flex min-w-0 items-baseline gap-2 text-sm"
-              >
-                <span className="shrink-0 font-semibold tabular-nums text-slate-900">
-                  {l.tw_Symbol}
-                </span>
-                <span className="min-w-0 truncate text-slate-600">
-                  {l.tw_Nazwa}
-                </span>
-              </li>
-            ))}
-          </ul>
-          {rest > 0 ? (
-            <p className="mt-1.5 text-[11px] text-slate-500">
-              …i jeszcze {rest}
-            </p>
-          ) : null}
-        </div>
-      </div>
+    <div>
+      <p className="text-xs font-medium text-slate-600">Zaznaczone produkty</p>
+      <ul className="mt-1.5 space-y-1">
+        {lines.map((l) => (
+          <li key={l.tw_Id} className="flex min-w-0 items-baseline gap-2 text-sm">
+            <span className="shrink-0 font-mono text-xs font-semibold tabular-nums text-slate-900">
+              {l.tw_Symbol}
+            </span>
+            <span className="min-w-0 truncate text-slate-600" title={l.tw_Nazwa}>
+              {l.tw_Nazwa}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {rest > 0 ? (
+        <p className="mt-1.5 text-xs text-slate-600">…i jeszcze {rest}</p>
+      ) : null}
     </div>
   );
 }

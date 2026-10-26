@@ -2,7 +2,7 @@
 
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { IconAlertCircle, IconDownload, IconEye, IconX } from "@/components/icons/StrokeIcons";
-import { Spinner } from "@/components/ui/Spinner";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import { cn } from "@/lib/cn";
 import { parseEmailList } from "@/lib/customs/customs-email";
 import { plainTextEmailHtml } from "@/lib/email/plain-text-html";
@@ -127,7 +127,7 @@ export function MailPreview({
           </p>
         ) : attachmentsLoading ? (
           <p className="flex items-center gap-2 text-sm text-slate-600" role="status">
-            <Spinner size="sm" />
+            <BrandLoader size="sm" tile={false} />
             {attachmentsLoading}
           </p>
         ) : attachments.length === 0 && !attachmentsFooter ? (
@@ -147,7 +147,7 @@ export function MailPreview({
               >
                 <span className="min-w-0 flex-1 break-all text-sm text-slate-900">
                   {a.roleLabel ? (
-                    <span className="mb-0.5 block text-[11px] font-semibold uppercase tracking-[0.04em] text-emerald-800">
+                    <span className="mb-0.5 block text-[0.6875rem] font-semibold text-emerald-800">
                       {a.roleLabel}
                     </span>
                   ) : null}
@@ -160,7 +160,7 @@ export function MailPreview({
                   <button
                     type="button"
                     onClick={a.onMarkAsZd}
-                    className="inline-flex min-h-8 shrink-0 cursor-pointer items-center rounded-md bg-slate-900 px-2 text-xs font-medium text-white transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:bg-slate-800 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/40"
+                    className="inline-flex min-h-8 shrink-0 cursor-pointer items-center rounded-md bg-slate-900 px-2 text-xs font-medium text-white transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:bg-slate-800 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
                   >
                     {a.markAsZdLabel ?? "To jest dokument ZD"}
                   </button>
@@ -170,7 +170,7 @@ export function MailPreview({
                     href={a.href}
                     target="_blank"
                     rel="noopener"
-                    className="inline-flex min-h-8 shrink-0 cursor-pointer items-center gap-1 rounded px-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45"
+                    className="inline-flex min-h-8 shrink-0 cursor-pointer items-center gap-1 rounded px-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
                   >
                     {a.opensInline ? <IconEye size={14} aria-hidden /> : <IconDownload size={14} aria-hidden />}
                     {a.opensInline ? "Otwórz" : "Pobierz"}
@@ -181,7 +181,7 @@ export function MailPreview({
                     type="button"
                     onClick={a.onRemove}
                     aria-label={`Usuń ${a.name}`}
-                    className="inline-flex min-h-8 min-w-8 shrink-0 cursor-pointer items-center justify-center rounded text-slate-500 hover:bg-slate-200 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45"
+                    className="inline-flex min-h-8 min-w-8 shrink-0 cursor-pointer items-center justify-center rounded text-slate-500 hover:bg-slate-200 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
                   >
                     <IconX size={14} aria-hidden />
                   </button>

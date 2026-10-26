@@ -42,7 +42,19 @@ $script:CronJobDefinitions = @(
     Id = "subiekt-lead-times"
     Path = "/api/cron/subiekt-lead-times"
     Label = "Czasy dostaw ZD → FZ z Subiekta (18 mies.) + przeliczenie ETA"
-    Schedule = "codziennie 01:30"
+    Schedule = "raz dziennie, w ramach catalog-zd-sync (ręcznie: -Job)"
+  },
+  @{
+    Id = "zd-sku-class"
+    Path = "/api/cron/zd-sku-class"
+    Label = "Klasy ABC/XYZ towarów zmapowanych zakresów (Subiekt w LAN, kilkanaście minut)"
+    Schedule = "raz w miesiącu, w ramach stock-watch (ręcznie: -Job)"
+  },
+  @{
+    Id = "zd-kpi-weekly"
+    Path = "/api/cron/zd-kpi-weekly"
+    Label = "KPI automatu ZD za miniony tydzień (Subiekt w LAN)"
+    Schedule = "raz w tygodniu, w ramach stock-watch (ręcznie: -Job)"
   },
   @{
     Id = "morning-sync"

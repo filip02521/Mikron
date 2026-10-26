@@ -879,16 +879,27 @@ describe("ensureZdCreateLinesCoverIndividualExtras", () => {
     ]);
   });
 
-  it("packages + orderMultiple: extras 144 / N=48 / M=10 → bump do 10", () => {
+  it("packages + orderMultiple: 3 × 48 = 144 szt pokrywa prośbę 144 → bez dobijania do palety", () => {
     const res = ensureZdCreateLinesCoverIndividualExtras({
       lines: [{ twId: 10, ilosc: 3, symbol: "C202085" }],
       extraPiecesByTwId: new Map([[10, 144]]),
       unitsPerPackageByTwId: new Map([[10, 48]]),
       orderMultipleByTwId: new Map([[10, 10]]),
     });
-    expect(res.lines[0]?.ilosc).toBe(10);
+    expect(res.lines[0]?.ilosc).toBe(3);
+    expect(res.bumped).toEqual([]);
+  });
+
+  it("packages + orderMultiple: extras 144 / N=48 / M=10, wysłane 2 (96 szt) → bump do 3 (minimum, bez palety)", () => {
+    const res = ensureZdCreateLinesCoverIndividualExtras({
+      lines: [{ twId: 10, ilosc: 2, symbol: "C202085" }],
+      extraPiecesByTwId: new Map([[10, 144]]),
+      unitsPerPackageByTwId: new Map([[10, 48]]),
+      orderMultipleByTwId: new Map([[10, 10]]),
+    });
+    expect(res.lines[0]?.ilosc).toBe(3);
     expect(res.bumped).toEqual([
-      { twId: 10, from: 3, to: 10, extraPieces: 144 },
+      { twId: 10, from: 2, to: 3, extraPieces: 144 },
     ]);
   });
 
@@ -911,6 +922,28 @@ describe("ensureZdCreateLinesCoverIndividualExtras", () => {
     expect(res.lines.find((l) => l.twId === 50)?.ilosc).toBe(2);
     expect(res.lines.find((l) => l.twId === 60)?.ilosc).toBe(5);
     expect(res.bumped.map((b) => b.twId)).toEqual([50]);
+  });
+});
+
+describe("ręczne nadpisanie pokrywające prośbę nie jest dobijane do palety", () => {
+  it("worek N=25, paleta 36, prośba 5 szt, wpisane 10 → zostaje 10", () => {
+    const res = ensureZdCreateLinesCoverIndividualExtras({
+      lines: [{ twId: 1, ilosc: 10 }],
+      extraPiecesByTwId: new Map([[1, 5]]),
+      unitsPerPackageByTwId: new Map([[1, 25]]),
+      orderMultipleByTwId: new Map([[1, 36]]),
+    });
+    expect(res.lines[0]?.ilosc).toBe(10);
+    expect(res.bumped).toEqual([]);
+  });
+  it("tryb sztuk N=5, prośba 6, wpisane 7 → zostaje 7", () => {
+    const res = ensureZdCreateLinesCoverIndividualExtras({
+      lines: [{ twId: 2, ilosc: 7 }],
+      extraPiecesByTwId: new Map([[2, 6]]),
+      unitsPerPackageByTwId: new Map([[2, 5]]),
+      packagingModeByTwId: new Map([[2, "pieces_multiple"]]),
+    });
+    expect(res.lines[0]?.ilosc).toBe(7);
   });
 });
 

@@ -1,8 +1,7 @@
 import { cn } from "@/lib/cn";
 import { panelTypography, salesTypography } from "@/lib/ui/ontime-theme";
-import { SectionListLabel, type SectionListAccent } from "@/components/ui/SectionListLabel";
+import type { SectionListAccent } from "@/components/ui/SectionListLabel";
 import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
-import { mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
 import type { ReactNode } from "react";
 
 /** Nagłówek bloku w jednej karcie formularza prośby. */
@@ -13,9 +12,9 @@ export function ProsbaFormSection({
   children,
   className,
   domain = "sales",
-  accent,
-  icon,
-  tileClassName,
+  accent: _accent,
+  icon: _icon,
+  tileClassName: _tileClassName,
 }: {
   title: string;
   hint?: string;
@@ -25,33 +24,16 @@ export function ProsbaFormSection({
   className?: string;
   /** sales — panel handlowca; panel — zakupy / weryfikacja. */
   domain?: "sales" | "panel";
-  /** Wariant jak sekcje w „Moje zamówienia” — kolorowy nagłówek w obramowanej karcie. */
+  /** Z accent + icon + tileClassName: blok well wewnątrz karty (ikona i ton nie są już rysowane). */
   accent?: SectionListAccent;
   icon?: ReactNode;
   tileClassName?: string;
 }) {
-  if (accent && icon && tileClassName) {
-    return (
-      <section className={cn(mojeShipmentSectionShellClass, className)}>
-        <SectionListLabel
-          title={title}
-          hint={hint}
-          hintMode={hintMode}
-          accent={accent}
-          domain={domain}
-          icon={icon}
-          tileClassName={tileClassName}
-        />
-        <div className="space-y-3 p-3 sm:p-4">{children}</div>
-      </section>
-    );
-  }
-
   const titleClass =
     domain === "panel" ? panelTypography.sectionTitle : salesTypography.blockTitle;
   const hintClass =
     domain === "panel" ? panelTypography.sectionDesc : salesTypography.sectionHint;
-
+  // accent / icon / tileClassName zostają w API wywołań; blok jest płaski — sekcje dzieli odstęp, nie tło (DESIGN.md → Cards).
   return (
     <section className={cn("space-y-3", className)}>
       <div>

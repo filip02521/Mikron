@@ -13,30 +13,25 @@ import {
   summarizeDeliverySchedule,
   upcomingDeliveryPresetRange,
   type UpcomingDeliveryRangePreset,
+  collectOverdueDeliveries,
 } from "@/lib/data/upcoming-deliveries-shared";
 import { formatDateString } from "@/lib/orders/dates";
 import { useLatest } from "@/hooks/useLatest";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Alert } from "@/components/ui/Alert";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Button } from "@/components/ui/Button";
-import {
-  IconCalendar,
-  IconChevronLeft,
-  IconChevronRight,
-  IconTruck,
-} from "@/components/icons/StrokeIcons";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
+import { IconChevronLeft, IconChevronRight } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
-import {
-  panelSectionInsetClass,
-  panelTypography,
-  sectionIconTileBrandClass,
-} from "@/lib/ui/ontime-theme";
-import { UpcomingDeliverySummaryTiles } from "@/components/deliveries/UpcomingDeliverySummaryTiles";
+import { adminPageShellClass, panelTypography } from "@/lib/ui/ontime-theme";
 import { DeliveryTodaySection } from "@/components/deliveries/DeliveryTodaySection";
+import { DeliveryOverdueSection } from "@/components/deliveries/DeliveryOverdueSection";
 import { DeliveryWeekGrid } from "@/components/deliveries/DeliveryWeekGrid";
 import type { SupplierWithSchedule } from "@/types/database";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 const PRESET_OPTIONS: { value: UpcomingDeliveryRangePreset; label: string }[] = [
   { value: "week", label: "Tydzień" },
@@ -165,6 +160,7 @@ export function UpcomingDeliveriesClient({
   }, [dateFrom, dateTo, loadData]);
 
   const days = useMemo(() => payload?.days ?? [], [payload?.days]);
+  const overdueDeliveries = useMemo(() => collectOverdueDeliveries(days, todayDateKey), [days, todayDateKey]);
   const summary = payload?.summary;
   const journalReceivedToday = useMemo(
     () => payload?.receivedSupplierIdsToday ?? [],
@@ -215,7 +211,8 @@ export function UpcomingDeliveriesClient({
 
   if (!isAuthorized) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+      <div className={adminPageShellClass}>
+        <PageHeader title="Plan dostaw" />
         <Card>
           <EmptyState
             title="Brak uprawnień"
@@ -227,119 +224,100 @@ export function UpcomingDeliveriesClient({
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-      <Card padding={false} className="overflow-hidden">
-        <CardHeader
-          title="Plan dostaw"
-          description="Centrum dowodzenia - planowi dostawcy i zamówienia ZD"
-          hint="Plan dostawców na podstawie harmonogramu + dokumenty ZD z Subiekta. Odświeża się automatycznie."
-          density="compact"
-          inset
-          leading={
-            <SectionHeadingIcon tileClassName={sectionIconTileBrandClass} className="h-7 w-7">
-              <IconTruck size={16} />
-            </SectionHeadingIcon>
-          }
-          action={
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={refreshQuiet}
-                disabled={pending || !dateFrom || !dateTo}
-                title="Odśwież plan"
-              >
-                Odśwież
-              </Button>
-              <SegmentedControl
-                value={preset === "custom" ? ("" as UpcomingDeliveryRangePreset) : preset}
-                onChange={handlePresetChange}
-                options={PRESET_OPTIONS}
-                ariaLabel="Zakres czasowy dostaw"
-              />
-            </div>
-          }
+    <div className={adminPageShellClass}>
+      <PageHeader
+        title="Plan dostaw"
+        description="Planowi dostawcy z harmonogramu i dokumenty ZD z Subiekta. Plan odświeża się sam."
+        actions={
+          <Button variant="secondary" size="sm" onClick={refreshQuiet} disabled={pending || !dateFrom || !dateTo}>
+            Odśwież
+          </Button>
+        }
+        className="mb-0"
+      />
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <SegmentedControl
+          value={preset === "custom" ? ("" as UpcomingDeliveryRangePreset) : preset}
+          onChange={handlePresetChange}
+          options={PRESET_OPTIONS}
+          ariaLabel="Zakres czasowy dostaw"
+          touchFriendly
         />
-
-        <div className={cn(panelSectionInsetClass, "space-y-3 border-b border-slate-100")}>
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePrev}
-                disabled={pending}
-                title="Poprzedni okres"
-              >
-                <IconChevronLeft size={16} />
-              </Button>
-              <span className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
-                <IconCalendar size={14} />
-                {rangeLabel}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleNext}
-                disabled={pending}
-                title="Następny okres"
-              >
-                <IconChevronRight size={16} />
-              </Button>
-            </div>
-            {pending ? (
-              <span className="text-[11px] text-slate-400">Ładowanie…</span>
-            ) : null}
-          </div>
-          {extendedSummary ? <UpcomingDeliverySummaryTiles summary={extendedSummary} /> : null}
-          {pending && !extendedSummary ? (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-16 animate-pulse rounded-lg bg-slate-100" />
-              ))}
-            </div>
-          ) : null}
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="min-h-11 min-w-11 sm:min-h-8 sm:min-w-8"
+            onClick={handlePrev}
+            disabled={pending}
+            aria-label="Poprzedni okres"
+            title="Poprzedni okres"
+          >
+            <IconChevronLeft size={16} aria-hidden />
+          </Button>
+          <span className="px-1 text-sm font-medium tabular-nums text-slate-700">{rangeLabel}</span>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="min-h-11 min-w-11 sm:min-h-8 sm:min-w-8"
+            onClick={handleNext}
+            disabled={pending}
+            aria-label="Następny okres"
+            title="Następny okres"
+          >
+            <IconChevronRight size={16} aria-hidden />
+          </Button>
         </div>
-
-        {error ? (
-          <div className={panelSectionInsetClass}>
-            <p className="text-sm text-red-600">{error}</p>
-          </div>
+        {pending ? (
+          <span className="inline-flex items-center gap-1.5 text-xs text-slate-500" role="status">
+            <BrandLoader size="sm" tile={false} /> Wczytuję dostawy…
+          </span>
+        ) : extendedSummary ? (
+          <p className="text-[0.6875rem] tabular-nums text-slate-500 sm:ml-auto">
+            {extendedSummary.positionCount}{" "}
+            {polishPluralWord(extendedSummary.positionCount, "pozycja", "pozycje", "pozycji")} w ZD · prognoza ok.{" "}
+            {extendedSummary.estimatedPackages}{" "}
+            {polishPluralWord(extendedSummary.estimatedPackages, "paczki", "paczek", "paczek")} i{" "}
+            {extendedSummary.estimatedPallets}{" "}
+            {polishPluralWord(extendedSummary.estimatedPallets, "palety", "palet", "palet")} ·{" "}
+            {extendedSummary.scheduledSupplierCount}{" "}
+            {polishPluralWord(extendedSummary.scheduledSupplierCount, "dostawca", "dostawcy", "dostawców")} z planu
+          </p>
         ) : null}
+      </div>
 
-        {!error && todayDay ? (
-          <div className="border-b border-slate-100 px-3 py-3 sm:px-4">
-            <DeliveryTodaySection todayDay={todayDay} pending={pending} />
+      {error ? <Alert tone="error">{error}</Alert> : null}
+
+      {!error && todayDay ? <DeliveryTodaySection todayDay={todayDay} pending={pending} /> : null}
+
+      {!error ? <DeliveryOverdueSection items={overdueDeliveries} /> : null}
+
+      {!error && !pending && weekGridEmpty && days.length === 0 ? (
+        <Card>
+          <EmptyState
+            title="Brak zaplanowanych dostaw w wybranym okresie"
+            description="Wybierz inny zakres dat lub sprawdź kolejkę przyjęcia towaru."
+          />
+        </Card>
+      ) : null}
+
+      {!error && !weekGridEmpty ? (
+        <Card padding={false} className="overflow-hidden">
+          <DeliveryWeekGrid days={weekDays} pending={pending} />
+        </Card>
+      ) : null}
+
+      {!error && pending && weekGridEmpty ? (
+        <Card>
+          <div role="status" className="flex flex-col items-center justify-center gap-3 py-8 text-sm text-slate-600">
+            <BrandLoader size="lg" tile={false} />
+            Wczytuję plan dostaw. Zwykle trwa to kilka sekund.
           </div>
-        ) : null}
+        </Card>
+      ) : null}
 
-        {!error && !pending && weekGridEmpty && days.length === 0 ? (
-          <div className="px-3 py-3 sm:px-4">
-            <EmptyState
-              title="Brak zaplanowanych dostaw w wybranym okresie"
-              description="Wybierz inny zakres dat lub sprawdź kolejkę przyjęcia towaru."
-            />
-          </div>
-        ) : null}
-
-        {!error && !weekGridEmpty ? (
-          <div className="overflow-hidden border-t border-slate-100">
-            <DeliveryWeekGrid days={weekDays} pending={pending} />
-          </div>
-        ) : null}
-
-        {!error && pending && weekGridEmpty ? (
-          <div className="px-3 py-3 sm:px-4">
-            <div className="grid grid-cols-1 gap-px overflow-hidden bg-slate-100 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-32 animate-pulse bg-slate-100" />
-              ))}
-            </div>
-          </div>
-        ) : null}
-      </Card>
-
-      <p className={cn(panelTypography.caption, "mt-3 text-center")}>
+      <p className={cn(panelTypography.caption, "text-center")}>
         Plan dostawców na podstawie harmonogramu · prognoza paczek i palet z historii dostaw.
       </p>
     </div>

@@ -46,6 +46,7 @@ describe("countInformacjaWarehouseQueueRows", () => {
       informacjaRow({ status: "Nowe", informacja_queue_via_daily_panel: false }),
       informacjaRow({ status: "Nowe", informacja_queue_via_daily_panel: true }),
       informacjaRow({ status: "Zamowione" }),
+      informacjaRow({ status: "Nowe", informacja_stock_out_reorder: true }),
     ];
     expect(countInformacjaWarehouseQueueRows(rows)).toBe(2);
   });

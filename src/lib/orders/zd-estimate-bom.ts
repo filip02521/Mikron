@@ -20,6 +20,7 @@ import {
 } from "@/lib/orders/zd-estimate-bom-policy";
 import {
   computeSalesTrackedCel,
+  floorCelTrackedAtZapasMin,
   reconcileSalesTrackQtyMetaAfterHistory,
   resolveSprzedazDziennie,
   type SalesTrackReason,
@@ -125,8 +126,22 @@ export function computeKitSalesRollupFromComponents(
   components: readonly ZdProductBomComponentRef[],
   byTw: ReadonlyMap<
     number,
-    Pick<ManualZdEstimateLine, "sprzedazOkres" | "wzNiepowiazaneOkres">
-  >
+    Pick<ManualZdEstimateLine, "sprzedazOkres" | "wzNiepowiazaneOkres"> &
+      Partial<Pick<ManualZdEstimateLine, "dostepne" | "otwarteZd">>
+  >,
+  /**
+   * Luźne sztuki składnika (stan + otwarte ZD) to już rozłożone komplety — odliczamy je
+   * od sprzedaży składnika w skali okna (stan × dniOkresu / dniZapasu), inaczej 40 szt.
+   * koloru na półce i tak dokładało komplety. Bez opcji — sama sprzedaż (jak dotąd).
+   */
+  looseCover?: {
+    dniZapasu: number;
+    dniOkresu: number;
+    packagingByTwId?: ReadonlyMap<
+      number,
+      { unitsPerPackage: number; documentUnitMode?: import("@/lib/orders/zd-estimate-units").ZdPackagingDocumentUnitMode | null }
+    > | null;
+  } | null
 ): { rollupSales: number; rollupWz: number } {
   let rollupSales = 0;
   let rollupWz = 0;
@@ -136,7 +151,14 @@ export function computeKitSalesRollupFromComponents(
     if (!(cid > 0) || qty < 1) continue;
     const row = byTw.get(cid);
     if (!row) continue;
-    const sales = Math.max(0, asNum(row.sprzedazOkres));
+    let sales = Math.max(0, asNum(row.sprzedazOkres));
+    if (looseCover && looseCover.dniZapasu > 0 && looseCover.dniOkresu > 0) {
+      const pack = looseCover.packagingByTwId?.get(cid);
+      const cover =
+        Math.max(0, asNum(row.dostepne)) +
+        zdDocumentUnitsToPieces(Math.max(0, asNum(row.otwarteZd)), pack?.unitsPerPackage, pack?.documentUnitMode);
+      sales = Math.max(0, sales - cover * (looseCover.dniOkresu / looseCover.dniZapasu));
+    }
     const wz = Math.max(0, asNum(row.wzNiepowiazaneOkres));
     rollupSales = Math.max(rollupSales, sales / qty);
     rollupWz = Math.max(rollupWz, wz / qty);
@@ -246,6 +268,9 @@ export function expandZdEstimateBoms(
         documentUnitMode?: import("@/lib/orders/zd-estimate-units").ZdPackagingDocumentUnitMode | null;
       }
     > | null;
+    /** Odliczenie luźnych sztuk składników w „Komplet ze sprzedaży składników”. */
+    dniZapasu?: number | null;
+    dniOkresu?: number | null;
   }
 ): ManualZdEstimateLineWithBom[] {
   if (!boms.length) {
@@ -316,7 +341,10 @@ export function expandZdEstimateBoms(
       explode && (parent.bom?.relocatedWz ?? 0) > 0
         ? Math.max(0, asNum(parent.bom?.relocatedWz))
         : Math.max(0, asNum(parent.wzNiepowiazaneOkres));
-    const parentDost = Math.max(0, asNum(parent.dostepne));
+    // Ujemne dostępne zestawu = rezerwacje ZK ponad stan: zestaw nie idzie na ZD, więc ten
+    // niedobór musi zejść na składniki (niezależnie od „stan zestawu jako pokrycie”).
+    const parentDostSigned = asNum(parent.dostepne);
+    const parentDost = Math.max(0, parentDostSigned);
     const parentZdRaw = Math.max(0, asNum(parent.otwarteZd));
     const parentPackRow = packagingByTwId?.get(parentId);
     const parentPack = parentPackRow?.unitsPerPackage ?? null;
@@ -327,7 +355,8 @@ export function expandZdEstimateBoms(
     );
     const useCover =
       explode && bom.stockAsCover !== false && allocation === "explode";
-    const coverBase = useCover ? parentDost + parentZdPieces : 0;
+    const coverBase =
+      (useCover ? parentDost + parentZdPieces : 0) + (explode ? Math.min(0, parentDostSigned) : 0);
 
     if (explode) {
       explodeBomByParent.set(parentId, bom);
@@ -371,7 +400,14 @@ export function expandZdEstimateBoms(
       if (fromComponents) {
         const rolled = computeKitSalesRollupFromComponents(
           bom.components,
-          byTw
+          byTw,
+          options?.dniZapasu != null
+            ? {
+                dniZapasu: options.dniZapasu,
+                dniOkresu: options.dniOkresu ?? options.dniZapasu,
+                packagingByTwId,
+              }
+            : null
         );
         rollupSales = rolled.rollupSales;
         rollupWz = rolled.rollupWz;
@@ -680,6 +716,12 @@ export function rematerializeSoloAfterBom(
       }
     }
 
+    const floored = floorCelTrackedAtZapasMin(celTracked, celBase, zapasMin);
+    if (floored !== celTracked) {
+      celTracked = floored;
+      salesTrackDelta = celTracked - celBase;
+    }
+
     const doZamowieniaReczne = computeManualOrderQty({
       celZapasu: celTracked,
       dostepne,
@@ -785,6 +827,8 @@ export function applyZdEstimateBoms(
   }
 ): ManualZdEstimateLineWithBom[] {
   const expanded = expandZdEstimateBoms(lines, boms, {
+    dniZapasu: options.dniZapasu,
+    dniOkresu: options.dniOkresu,
     missingComponentTwIds: options.missingComponentTwIds,
     packagingByTwId: options.packagingByTwId,
   });

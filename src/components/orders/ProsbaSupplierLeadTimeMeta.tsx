@@ -86,7 +86,7 @@ export function ProsbaSupplierLeadTimeMeta({
           className={cn(
             "flex flex-wrap items-center gap-x-1.5 gap-y-0.5 leading-snug",
             underLink
-              ? "text-[11px] text-slate-500"
+              ? "text-[0.6875rem] text-slate-500"
               : "text-xs text-slate-500"
           )}
           title={row.meta.tooltip}
@@ -121,7 +121,7 @@ export function ProsbaSupplierLeadTimeMeta({
               ) : null}
               {row.meta.lowConfidence ? (
                 <span
-                  className="text-[10px] font-medium text-amber-700/80"
+                  className="text-[0.625rem] font-medium text-amber-700/80"
                   title={row.meta.tooltip}
                 >
                   szacunek
@@ -153,7 +153,7 @@ export function ProsbaSupplierLeadTimeMeta({
               ) : null}
               {row.meta.lowConfidence ? (
                 <span
-                  className="text-[10px] font-medium text-amber-700/90"
+                  className="text-[0.625rem] font-medium text-amber-700/90"
                   title={row.meta.tooltip}
                 >
                   szacunek

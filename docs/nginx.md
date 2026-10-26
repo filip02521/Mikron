@@ -81,14 +81,9 @@ NEXT_PUBLIC_APP_URL=https://ontime.firma.pl
 
 Po zmianie: `npm run build` (jeśli zmieniasz `NEXT_PUBLIC_*`) i restart `npm run start`.
 
-## 4. Supabase
+## 4. Logowanie
 
-Authentication → URL Configuration:
-
-| Tryb | Site URL | Redirect URLs |
-|------|----------|-----------------|
-| LAN HTTP | `http://ontime.mikran` | `http://ontime.mikran/**` |
-| HTTPS | `https://ontime.firma.pl` | `https://ontime.firma.pl/**` |
+Logowanie jest lokalne (cookie `ontime_session`, tabele `app_users` / `app_sessions`) — poza `NEXT_PUBLIC_APP_URL` nie ma adresów przekierowań do konfiguracji. Wyjątek: wysyłka z Gmaila wymaga w Google Cloud przekierowania `https://<host>/api/google/callback` (README → „Wysyłka zamówień ZD z Gmaila”).
 
 ## 5. DNS / hosts
 
@@ -134,7 +129,7 @@ nssm start OnTime
 
 - Certyfikat firmowy lub Let’s Encrypt (na Linuxie: certbot).
 - Odkomentuj blok `listen 443` w szablonie nginx.
-- `NEXT_PUBLIC_APP_URL=https://...` — ciasteczka sesji będą `Secure` (patrz `src/lib/supabase/cookie-options.ts`).
+- `NEXT_PUBLIC_APP_URL=https://...` — ciasteczka sesji będą `Secure` (patrz `src/lib/auth-local/cookies.ts`).
 
 ## 8. Diagnostyka
 

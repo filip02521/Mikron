@@ -53,7 +53,7 @@ export function TeethSupplierBatchSummary({
             </span>
           ) : null}
           {batch.ordersMissingSpec > 0 ? (
-            <Badge variant="warning" className="text-[10px]">
+            <Badge variant="warning" className="text-[0.625rem]">
               {batch.ordersMissingSpec}{" "}
               {batch.ordersMissingSpec === 1 ? "do uzupełnienia" : "do uzupełnienia"}
             </Badge>

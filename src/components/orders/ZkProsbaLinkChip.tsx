@@ -5,12 +5,12 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { IconCheck, IconCopy } from "@/components/icons/StrokeIcons";
 import { copyTextToClipboard } from "@/lib/ui/copy-text-to-clipboard";
-import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { formatProsbaZkLinkNumber } from "@/lib/orders/zk-prosba-link-display";
 import { notatnikZkWatchHref } from "@/lib/orders/notatnik-zk-watch-href";
 import { SearchHighlightText } from "@/components/moje/SearchHighlightText";
 import { salesTypography, salesZkLabelClass, salesZkNumberClass } from "@/lib/ui/ontime-theme";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 const ZK_NAV_PENDING_LABEL = "Przechodzę do ZK:";
 
@@ -19,15 +19,13 @@ const chipToneStyles = {
     label: salesZkLabelClass,
     number: salesZkNumberClass,
     pending: "text-violet-800",
-    spinner: "border-slate-200 border-t-violet-600",
     linkHover: "hover:text-violet-800",
   },
   amber: {
     label:
-      "inline-flex items-center rounded-md bg-amber-100/90 px-1.5 py-0.5 text-[10px] font-medium leading-none text-amber-900 ring-1 ring-inset ring-amber-200/80",
-    number: "text-[11px] font-semibold leading-none text-amber-950",
+      "inline-flex items-center rounded-md bg-amber-100/90 px-1.5 py-0.5 text-[0.625rem] font-medium leading-none text-amber-900 ring-1 ring-inset ring-amber-200/80",
+    number: "text-[0.6875rem] font-semibold leading-none text-amber-950",
     pending: "text-amber-900",
-    spinner: "border-amber-200 border-t-amber-700",
     linkHover: "hover:text-amber-950",
   },
 } as const;
@@ -82,7 +80,7 @@ function ZkNumberCopyButton({ nr }: { nr: string }) {
           "-my-1 inline-flex size-7 items-center justify-center rounded-md text-slate-400 sm:size-6",
           "transition-[color,background-color,scale] duration-150 ease-out active:scale-[0.94]",
           "hover:bg-slate-100 hover:text-slate-700",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
           state === "copied" && "text-emerald-600 hover:text-emerald-700",
           state === "failed" && "text-red-600 hover:text-red-700"
         )}
@@ -97,7 +95,7 @@ function ZkNumberCopyButton({ nr }: { nr: string }) {
         <span
           role="status"
           className={cn(
-            "pointer-events-none absolute bottom-full left-1/2 z-20 mb-1 -translate-x-1/2 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] font-medium text-white shadow-sm",
+            "pointer-events-none absolute bottom-full left-1/2 z-20 mb-1 -translate-x-1/2 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[0.6875rem] font-medium text-white shadow-sm",
             "transition-[opacity,translate] duration-150 ease-out starting:translate-y-0.5 starting:opacity-0",
             state === "copied" ? "bg-slate-900" : "bg-red-700"
           )}
@@ -208,7 +206,7 @@ export function ZkProsbaLinkChip({
   const content = pending ? (
     <span
       className={cn(
-        "inline-flex min-w-0 max-w-full items-center gap-1.5 text-[11px]",
+        "inline-flex min-w-0 max-w-full items-center gap-1.5 text-[0.6875rem]",
         styles.pending
       )}
       role="status"
@@ -216,8 +214,8 @@ export function ZkProsbaLinkChip({
       aria-label={zkPendingMessage(nr)}
       title={zkPendingMessage(nr)}
     >
-      <Spinner size="sm" className={cn("shrink-0", styles.spinner)} />
-      <span className="shrink-0 text-[11px] font-medium leading-none">{ZK_NAV_PENDING_LABEL}</span>
+      <BrandLoader size="sm" tile={false} />
+      <span className="shrink-0 text-[0.6875rem] font-medium leading-none">{ZK_NAV_PENDING_LABEL}</span>
       <span className={cn(styles.number, "min-w-0 truncate tabular-nums")}>{nr}</span>
     </span>
   ) : (

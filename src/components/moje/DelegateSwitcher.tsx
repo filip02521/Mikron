@@ -82,13 +82,13 @@ export function DelegateSwitcher({
                   >
                     <span className="inline-flex items-center gap-1.5">
                       <span
-                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-100 text-[9px] font-semibold text-violet-700"
+                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-[0.625rem] font-semibold text-indigo-800"
                         aria-hidden
                       >
                         {initialsFromName(d.salesPersonName)}
                       </span>
                       <span>{d.salesPersonName}</span>
-                      <span className="text-[11px] font-normal text-slate-500">do {d.endDate}</span>
+                      <span className="text-[0.6875rem] font-normal text-slate-500">do {d.endDate}</span>
                     </span>
                   </Button>
                 </Link>
@@ -133,13 +133,13 @@ export function DelegateSwitcher({
                 >
                   <span className="inline-flex items-center gap-1.5">
                     <span
-                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-100 text-[9px] font-semibold text-violet-700"
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-[0.625rem] font-semibold text-indigo-800"
                       aria-hidden
                     >
                       {initialsFromName(d.salesPersonName)}
                     </span>
                     <span>{d.salesPersonName}</span>
-                    <span className="text-[11px] font-normal text-slate-500">do {d.endDate}</span>
+                    <span className="text-[0.6875rem] font-normal text-slate-500">do {d.endDate}</span>
                   </span>
                 </Button>
               </Link>

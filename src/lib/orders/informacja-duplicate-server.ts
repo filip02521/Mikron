@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@/lib/db/admin";
+import { fetchAllRows } from "@/lib/data/fetch-all-rows";
 import type { IndividualRequestKind } from "@/types/database";
 import {
   assertNoInformacjaDuplicatesInList,
@@ -52,17 +53,18 @@ export async function fetchActiveInformacjaOrdersForSalesPeople(
   const uniqueIds = [...new Set(salesPersonIds.filter(Boolean))];
   if (!uniqueIds.length) return [];
 
-  const { data, error } = await supabase
-    .from("individual_orders")
-    .select(INFORMACJA_DUPLICATE_SELECT)
-    .in("sales_person_id", uniqueIds)
-    .eq("request_kind", "informacja")
-    .is("sales_acknowledged_at", null)
-    .neq("status", "Anulowane");
+  const data = await fetchAllRows<InformacjaDuplicateRow>(() =>
+    supabase
+      .from("individual_orders")
+      .select(INFORMACJA_DUPLICATE_SELECT)
+      .in("sales_person_id", uniqueIds)
+      .eq("request_kind", "informacja")
+      .is("sales_acknowledged_at", null)
+      .neq("status", "Anulowane")
+      .order("id", { ascending: true })
+  );
 
-  if (error) throw new Error(error.message);
-
-  return (data as InformacjaDuplicateRow[] | null ?? [])
+  return data
     .map(mapInformacjaDuplicateRow)
     .filter(isActiveInformacjaOrder);
 }
@@ -109,6 +111,7 @@ export async function assertNoDuplicateInformacjaEntries(
         subiektTwId: entry.subiektTwId,
         symbol: entry.symbol,
         mikranCode: entry.mikranCode,
+        product: entry.product,
       });
       return { ...base, subiektTwId };
     })

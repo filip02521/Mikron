@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Alert } from "@/components/ui/Alert";
-import { Spinner } from "@/components/ui/Spinner";
 import {
   TypeaheadDropdown,
   TypeaheadOption,
@@ -49,6 +48,7 @@ import {
 import type { SubiektProduct } from "@/lib/subiekt/types";
 import { mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
 import { salesTypography } from "@/lib/ui/ontime-theme";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 type LookupPhase = "search" | "loading" | "result";
 
@@ -63,11 +63,11 @@ function IntroStepCard({
 }) {
   return (
     <div className="rounded-lg border border-indigo-100/90 bg-indigo-50/35 px-3 py-2.5 text-center">
-      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-800">
+      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-800">
         {step}
       </span>
       <p className="mt-2 text-xs font-semibold text-slate-900">{title}</p>
-      <p className="mt-0.5 text-[11px] leading-snug text-slate-600">{detail}</p>
+      <p className="mt-0.5 text-[0.6875rem] leading-snug text-slate-600">{detail}</p>
     </div>
   );
 }
@@ -174,7 +174,7 @@ function FoundMatchRow({
       {display ? (
         <DeliveryTimingMeta caption={ZD_DELIVERY_META_CAPTION} captionTone="zd" className="shrink-0">
           <DeliveryDateMetaValue display={display} />
-          <span className="text-[10px] font-medium text-slate-500">{formatPlDate(deadline)}</span>
+          <span className="text-[0.625rem] font-medium text-slate-500">{formatPlDate(deadline)}</span>
         </DeliveryTimingMeta>
       ) : (
         <span className="text-sm font-semibold text-slate-800">{formatPlDate(deadline)}</span>
@@ -522,7 +522,7 @@ export function ProductZdLookupModal({
                   />
                   {visibleSuggestLoading ? (
                     <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
-                      <Spinner size="sm" />
+                      <BrandLoader size="sm" tile={false} label="Szukam" />
                     </span>
                   ) : null}
                   <TypeaheadDropdown
@@ -574,8 +574,8 @@ export function ProductZdLookupModal({
               <ProductChip product={selectedProduct} />
 
               {phase === "loading" ? (
-                <div className="flex items-center gap-2 text-slate-500">
-                  <Spinner size="sm" />
+                <div className="flex items-center gap-2 text-slate-500" role="status">
+                  <BrandLoader size="sm" tile={false} />
                   <p className={salesTypography.rowMeta}>Łączymy towar z dokumentami ZD…</p>
                 </div>
               ) : null}

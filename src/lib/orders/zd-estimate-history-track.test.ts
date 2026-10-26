@@ -12,6 +12,30 @@ import {
 const NOW_MS = Date.parse("2026-08-07T12:00:00.000Z");
 const LINKED_14D = new Date(NOW_MS - 14 * 24 * 60 * 60 * 1000).toISOString();
 
+describe("estimateSoldSinceLink - zakup na kilka okien", () => {
+  it("ZD starsze niż okno: tempo × dni, bez limitu sprzedażą okna", () => {
+    expect(
+      estimateSoldSinceLink({ sprzedazOkres: 30, sprzedazDziennie: 1, daysSinceLink: 60, windowDays: 30 })
+    ).toBe(60);
+  });
+
+  it("paleta 100 szt. sprzed 60 dni, stałe 1 szt./d - nie „wolno schodzi”", () => {
+    const adj = applyHistorySlowCut({
+      celTracked: 40,
+      celBase: 40,
+      sprzedazOkres: 30,
+      sprzedazDziennie: 1,
+      coverStock: 35,
+      dniZapasu: 30,
+      dniOkresu: 30,
+      lastOrderedQty: 100,
+      linkedAt: new Date(NOW_MS - 60 * 24 * 60 * 60 * 1000).toISOString(),
+      nowMs: NOW_MS,
+    });
+    expect(adj.reason).toBeNull();
+  });
+});
+
 describe("estimateSoldSinceLink", () => {
   it("tempo × dni, ograniczone oknem FS", () => {
     expect(
@@ -94,7 +118,7 @@ describe("applySalesSpikeCut", () => {
       celBase: 300,
       sprzedazOkres: 300,
       sprzedazDziennie: 10,
-      coverStock: 10,
+      coverStock: 150,
       dniZapasu: 30,
       dniOkresu: 30,
       lastOrderedQty: 100,
@@ -116,7 +140,7 @@ describe("applySalesSpikeCut", () => {
       celBase: 500,
       sprzedazOkres: 1000,
       sprzedazDziennie: 30,
-      coverStock: 0,
+      coverStock: 450,
       dniZapasu: 30,
       dniOkresu: 30,
       lastOrderedQty: 100,
@@ -130,6 +154,31 @@ describe("applySalesSpikeCut", () => {
   });
 });
 
+describe("applySalesSpikeCut - bez fałszywych skoków", () => {
+  const steady = {
+    celTracked: 30,
+    celBase: 30,
+    sprzedazOkres: 30,
+    sprzedazDziennie: 1,
+    dniZapasu: 30,
+    dniOkresu: 30,
+    lastOrderedQty: 5,
+    nowMs: NOW_MS,
+  };
+
+  it("stały popyt po małej dokładce, stan 0 - bez cięcia (inaczej pewny brak)", () => {
+    const adj = applySalesSpikeCut({ ...steady, coverStock: 0, linkedAt: LINKED_14D });
+    expect(adj.reason).toBeNull();
+    expect(adj.celTracked).toBe(30);
+  });
+
+  it("ZD sprzed 2 lat nie mówi nic o dzisiejszym tempie", () => {
+    const old = new Date(NOW_MS - 700 * 24 * 60 * 60 * 1000).toISOString();
+    const adj = applySalesSpikeCut({ ...steady, coverStock: 25, linkedAt: old });
+    expect(adj.reason).toBeNull();
+  });
+});
+
 describe("applyZdEstimateHistoryCuts", () => {
   it("spike przed history_slow", () => {
     const out = applyZdEstimateHistoryCuts({
@@ -137,7 +186,7 @@ describe("applyZdEstimateHistoryCuts", () => {
       celBase: 300,
       sprzedazOkres: 300,
       sprzedazDziennie: 10,
-      coverStock: 50,
+      coverStock: 150,
       dniZapasu: 30,
       dniOkresu: 30,
       lastOrderedQty: 100,

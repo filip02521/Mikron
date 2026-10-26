@@ -130,7 +130,9 @@ describe("SupplierDrawer - stan magazynu z analizy Braki", () => {
     const text = section.textContent ?? "";
     expect(text).toContain("2 pilne");
     expect(text).toMatch(/Do ZD: 14 poz\. · ok\. 3\s?200\s+zł \(\+2 bez ceny\)/);
-    expect(text).toContain("3 towary skończą się przed dostawą");
+    // Pilne są w szerokim liczniku „przed dostawą” — pokazujemy tylko kolejne.
+    expect(text).toContain("1 kolejny skończy się przed dostawą");
+    expect(text).not.toContain("3 towary skończą się");
     expect(text).toContain("Najpilniej IV-123 (< 1 dzień)");
     expect(text).toContain("Dostawa ok. 9 dni · kolejne zamówienie 10.09 (za 7 dni)");
     expect(text).not.toContain("nieaktualna");

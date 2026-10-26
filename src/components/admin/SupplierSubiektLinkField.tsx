@@ -12,23 +12,34 @@ import { kontrahentDisplayName } from "@/lib/subiekt/kontrahent-display";
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
-import { Spinner } from "@/components/ui/Spinner";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { formatSubiektKontrahentLabel } from "@/lib/subiekt/match-supplier";
 import type { SubiektKontrahent } from "@/lib/subiekt/types";
 import type { SupplierSubiektKhAliasRow } from "@/lib/data/supplier-subiekt-kh";
+import { supplierCountryLabel, supplierCountryMismatchesLocation, type SubiektCountry } from "@/lib/suppliers/subiekt-country";
+import { ZD_AUTOMAT_SUPPLIER_LOCATION } from "@/lib/orders/zd-automat-contract";
 
 export function SupplierSubiektLinkField({
   supplierId,
   supplierName,
   subiektKhId,
+  country,
+  supplierLocation,
   onLinked,
 }: {
   supplierId: string;
   supplierName: string;
   subiektKhId: number | null;
-  onLinked?: (khId: number | null) => void;
+  /** Kraj zapisany z kartoteki Subiekta (null = jeszcze nieodczytany). */
+  country?: SubiektCountry | null;
+  /** Lokalizacja OnTime (POLSKA / ZAGRANICA / IMPORT) — porównanie z krajem z Subiektu. */
+  supplierLocation?: string | null;
+  onLinked?: (khId: number | null, country: SubiektCountry | null) => void;
 }) {
+  const countryLabel = supplierCountryLabel(country?.id, country?.name);
+  // Automat ZD liczy „polskich” wg Lokalizacji; kraj z Subiektu (adres rozliczeniowy) tylko kontroluje.
+  const countryMismatch = supplierCountryMismatchesLocation(country?.id, supplierLocation);
   const [query, setQuery] = useState(supplierName);
   const [results, setResults] = useState<SubiektKontrahent[]>([]);
   const [feedback, setFeedback] = useState<SubiektFeedback | null>(null);
@@ -77,7 +88,7 @@ export function SupplierSubiektLinkField({
       setLinkedLabel(formatSubiektKontrahentLabel(k));
       setResults([]);
       setFeedback(null);
-      onLinked?.(k.kh_Id);
+      onLinked?.(k.kh_Id, res.country);
       reloadAliases();
     });
   };
@@ -116,13 +127,13 @@ export function SupplierSubiektLinkField({
         return;
       }
       setLinkedLabel(null);
-      onLinked?.(null);
+      onLinked?.(null, null);
     });
   };
 
   return (
     <div className="rounded-lg border border-slate-200/70 bg-slate-50/50 p-3.5 space-y-3">
-      <p className="text-[11px] font-semibold text-slate-400">
+      <p className="text-[0.6875rem] font-semibold text-slate-500">
         Powiązanie z Subiektem
       </p>
       {subiektKhId != null ? (
@@ -134,22 +145,33 @@ export function SupplierSubiektLinkField({
             <p className="text-sm font-medium text-indigo-900">
               {kontrahentDisplayName(linkedLabel, subiektKhId)}
             </p>
-            <p className="text-[11px] text-indigo-600/80">
-              id {subiektKhId}
+            <p className="text-[0.6875rem] text-indigo-600/80">
+              id {subiektKhId} ·{" "}
+              {countryLabel
+                ? `kraj z Subiekta: ${countryLabel}`
+                : "kraj z Subiekta jeszcze nieodczytany - uzupełni się w nocy"}
             </p>
           </div>
         </div>
-      ) : (
+      ) : null}
+      {subiektKhId != null && countryMismatch ? (
+        <p className="rounded-md bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
+          W Subiekcie adres: {countryLabel}, a Lokalizacja w OnTime:{" "}
+          {supplierLocation === ZD_AUTOMAT_SUPPLIER_LOCATION ? "Polska" : supplierLocation === "IMPORT" ? "Import" : "Zagranica"}. Automat ZD
+          liczy dostawcę wg Lokalizacji — sprawdź, czy jest ustawiona dobrze.
+        </p>
+      ) : null}
+      {subiektKhId == null ? (
         <p className="text-xs leading-relaxed text-slate-500">
           Wyszukaj kontrahenta po nazwie w Subiekcie i ustaw jako głównego albo dodaj dodatkowego
           (np. po zmianie firmy) - indeks ZD dopasuje dokumenty z każdej z tych kart do tego
           dostawcy.
         </p>
-      )}
+      ) : null}
 
       {aliases.length > 0 ? (
         <div className="space-y-1.5">
-          <p className="text-[11px] font-semibold text-slate-400">
+          <p className="text-[0.6875rem] font-semibold text-slate-500">
             Dodatkowi kontrahenci
           </p>
           <ul className="space-y-1">
@@ -162,7 +184,7 @@ export function SupplierSubiektLinkField({
                   <span className="font-medium text-slate-900">
                     {kontrahentDisplayName(a.kontrahentLabel, a.subiektKhId)}
                   </span>
-                  <span className="mt-0.5 block font-mono text-[10px] text-slate-400">
+                  <span className="mt-0.5 block font-mono text-[0.625rem] text-slate-500">
                     id {a.subiektKhId}
                   </span>
                   {a.note ? (
@@ -209,8 +231,8 @@ export function SupplierSubiektLinkField({
       </div>
 
       {pending ? (
-        <p className="flex items-center gap-2 text-xs text-slate-500">
-          <Spinner size="sm" /> Łączenie…
+        <p className="flex items-center gap-2 text-xs text-slate-500" role="status">
+          <BrandLoader size="sm" tile={false} /> Łączenie…
         </p>
       ) : null}
 
@@ -224,9 +246,9 @@ export function SupplierSubiektLinkField({
                 <div className="px-1 py-0.5">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <span className="text-sm font-medium text-slate-900">{formatSubiektKontrahentLabel(k)}</span>
-                    <span className="text-xs text-slate-400">id {k.kh_Id}</span>
+                    <span className="text-xs text-slate-500">id {k.kh_Id}</span>
                   </div>
-                  <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-slate-500">
+                  <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[0.6875rem] text-slate-500">
                     {k.adr_NIP ? <span>NIP: {k.adr_NIP}</span> : null}
                     {k.adr_Miejscowosc ? <span>{k.adr_Miejscowosc}</span> : null}
                   </div>
@@ -243,7 +265,7 @@ export function SupplierSubiektLinkField({
                       Ustaw jako główne
                     </Button>
                   ) : (
-                    <span className="self-center px-2 text-[11px] font-medium text-indigo-700">Główne</span>
+                    <span className="self-center px-2 text-[0.6875rem] font-medium text-indigo-700">Główne</span>
                   )}
                   {!isAlias && !isPrimary ? (
                     <Button
@@ -256,7 +278,7 @@ export function SupplierSubiektLinkField({
                       Dodaj dodatkowy
                     </Button>
                   ) : isAlias ? (
-                    <span className="self-center px-2 text-[11px] text-slate-400">Już dodatkowy</span>
+                    <span className="self-center px-2 text-[0.6875rem] text-slate-500">Już dodatkowy</span>
                   ) : null}
                 </div>
               </li>

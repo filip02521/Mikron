@@ -125,9 +125,8 @@ export function SalesDayStartItemRow({
         onClick={handleClick}
         className={cn(
           mojeQueueRowLayoutClass,
-          "w-full border-l-[3px] bg-white px-3 py-2.5 text-left transition-colors duration-150 sm:px-4 sm:py-3",
-          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-indigo-500/40",
-          salesDayStartSourceRowAccent(item.source)
+          "w-full bg-white px-3 py-2.5 text-left transition-colors duration-150 sm:px-4 sm:py-3",
+          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-indigo-600"
         )}
       >
         <div className={mojeQueueRowMainClass}>

@@ -28,6 +28,8 @@ export const SUBIEKT_PATHS = {
   ordersZdEstimate: "/orders/zd/estimate",
   /** Otwarte ZK towaru (rozbicie rezerwacji / bez rezerwacji) — host ORDERS. */
   ordersZdEstimateZk: "/orders/zd/estimate/zk",
+  /** Dokumenty użyte w estimate dla jednego towaru (`rola`: fs, pa, wzNiepowiazane, zw, zd, zk). */
+  ordersZdEstimateTowar: (towarId: number | string) => `/orders/zd/estimate/${towarId}`,
   /** Otwarte ZD towaru — host ORDERS. */
   ordersZdEstimateOtwarteZd: "/orders/zd/estimate/otwarteZd",
   /**

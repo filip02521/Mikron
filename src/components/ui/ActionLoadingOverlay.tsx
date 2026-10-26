@@ -1,6 +1,6 @@
 "use client";
 
-import { Spinner } from "@/components/ui/Spinner";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import { cn } from "@/lib/cn";
 import { useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 
@@ -48,7 +48,7 @@ export function ActionLoadingOverlay({
         "mx-4 flex max-w-sm items-center gap-3.5 rounded-lg border border-slate-200/90 bg-white px-5 py-4 shadow-xl ring-1 ring-slate-900/5",
         variant === "viewport" && "pointer-events-auto"
       )}>
-        <Spinner size="md" />
+        <BrandLoader size="md" />
         <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-900">{message}</p>
           {hint ? <p className="mt-0.5 text-xs text-slate-500">{hint}</p> : null}

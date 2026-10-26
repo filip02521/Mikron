@@ -39,6 +39,7 @@ export function PageAttentionStrip({
   icon,
   title,
   hint,
+  hintClassName,
   actions,
   edge = "inset",
   density = "comfortable",
@@ -49,6 +50,8 @@ export function PageAttentionStrip({
   icon: ReactNode;
   title: ReactNode;
   hint?: ReactNode;
+  /** Np. `max-sm:hidden` — podpowiedź (z myślnikiem) tylko od `sm`. */
+  hintClassName?: string;
   actions?: ReactNode;
   edge?: PageAttentionStripEdge;
   density?: PageAttentionStripDensity;
@@ -69,7 +72,7 @@ export function PageAttentionStrip({
         className
       )}
     >
-      <div className="flex min-w-0 items-center gap-2.5">
+      <div className="flex min-w-[min(100%,14rem)] flex-1 items-center gap-2.5">
         <span
           className={cn(
             "flex shrink-0 items-center justify-center rounded-md",
@@ -88,12 +91,13 @@ export function PageAttentionStrip({
         >
           <span className={cn("font-semibold", TONE_TITLE[tone])}>{title}</span>
           {hint != null && hint !== "" ? (
-            <span className="text-slate-600"> - {hint}</span>
+            <span className={cn("text-slate-600", hintClassName)}> - {hint}</span>
           ) : null}
         </p>
       </div>
       {actions ? (
-        <div className="flex shrink-0 flex-wrap items-center gap-1.5">{actions}</div>
+        // ml-auto: zawinięte pod tekst akcje zostają po prawej, nie lądują przy ikonie.
+        <div className="ml-auto flex shrink-0 flex-wrap items-center gap-1.5">{actions}</div>
       ) : null}
     </div>
   );
@@ -148,19 +152,24 @@ export function PageAttentionStripCta({
   href,
   onClick,
   type = "button",
+  disabled,
   "aria-label": ariaLabel,
 }: CtaCommon & {
   href?: string;
+  /** Tylko dla przycisku (np. trwa liczenie). */
+  disabled?: boolean;
   onClick?: (event: MouseEvent<HTMLElement>) => void;
   type?: ButtonHTMLAttributes<HTMLButtonElement>["type"];
   "aria-label"?: string;
 }) {
   const compact = density === "compact";
   const classes = cn(
-    "inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 text-xs font-medium transition",
+    // hit-target: 44 px pola dotyku na ekranach dotykowych bez zmiany wyglądu.
+    "hit-target inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 text-xs font-medium transition",
     // Odpowiedź na wciśnięcie od razu (pointer-down), nie dopiero po kliknięciu.
     "motion-safe:active:scale-[0.97] motion-safe:active:duration-75",
     TONE_CTA[tone],
+    "disabled:pointer-events-none disabled:opacity-60",
     compact ? "h-7" : "h-8",
     className
   );
@@ -184,6 +193,7 @@ export function PageAttentionStripCta({
       type={type}
       className={classes}
       onClick={onClick}
+      disabled={disabled}
       aria-label={ariaLabel}
     >
       {children}

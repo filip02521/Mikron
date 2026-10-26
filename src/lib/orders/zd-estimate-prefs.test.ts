@@ -91,6 +91,7 @@ describe("parseZdEstimateUiPrefs", () => {
     expect(parsed.columnOrder).toEqual([
       "packaging",
       "cover",
+      "abcClass",
       "available",
       "sales",
       "target",
@@ -232,6 +233,7 @@ describe("parseZdEstimateColumnOrder", () => {
       "zk",
       "packaging",
       "cover",
+      "abcClass",
       "available",
       "openZd",
     ]);
@@ -243,6 +245,7 @@ describe("parseZdEstimateColumnOrder", () => {
     ).toEqual([
       "packaging",
       "cover",
+      "abcClass",
       "available",
       "openZd",
       "sales",
@@ -275,6 +278,7 @@ describe("parseZdEstimateColumnOrder", () => {
       "value",
       "zk",
       "cover",
+      "abcClass",
       "available",
       "openZd",
     ]);
@@ -310,7 +314,7 @@ describe("parseZdEstimateColumnOrder", () => {
     const parsed = zdEstimateUiPrefsFromProfilePreferences(next);
     const o = parsed.columnOrder;
     expect(o.indexOf("zk") + 1).toBe(o.indexOf("sales"));
-    expect(o).toHaveLength(8);
+    expect(o).toHaveLength(9);
   });
 
   it("round-trip: widoczność + kolejność przeżywają zapis profilu", () => {
@@ -323,6 +327,7 @@ describe("parseZdEstimateColumnOrder", () => {
     const columnOrder: ZdEstimateOptionalColumn[] = [
       "zk",
       "cover",
+      "abcClass",
       "target",
       "openZd",
       "available",
@@ -349,7 +354,7 @@ describe("parseZdEstimateColumnOrder", () => {
     expect(reloaded.sortKey).toBe("symbol");
     expect(
       resolveZdEstimateScrollableColumnOrder(reloaded.columns, reloaded.columnOrder)
-    ).toEqual(["zk", "cover", "target", "openZd", "available"]);
+    ).toEqual(["zk", "cover", "abcClass", "target", "openZd", "available"]);
   });
 
   it("merge samego columnOrder nie kasuje columns", () => {
@@ -383,6 +388,7 @@ describe("parseZdEstimateColumnOrder", () => {
           "sales",
           "packaging",
           "cover",
+          "abcClass",
           "available",
           "target",
           "openZd",

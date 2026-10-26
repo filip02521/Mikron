@@ -8,7 +8,7 @@ import {
   actionMarkZdEstimateIndividualsGlowne,
   actionMarkZdEstimateSupplierOrdered,
 } from "@/app/actions/zd-estimate";
-import { IconAlertCircle, IconCircleCheck, IconMail, IconPaperclip } from "@/components/icons/StrokeIcons";
+import { IconAlertCircle, IconMail, IconPaperclip } from "@/components/icons/StrokeIcons";
 import { MailPreview, type MailPreviewAttachment } from "@/components/mail/MailPreview";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
@@ -30,6 +30,8 @@ import type { DailyPanelUndoPayload } from "@/lib/orders/daily-panel-undo";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
+import { BrandLoader } from "@/components/ui/BrandLoader";
+import { BrandStepMark } from "@/components/ui/BrandStepMark";
 
 function canBePrimaryZd(file: File): boolean {
   return (PRIMARY_ZD_OVERRIDE_EXTENSIONS as readonly string[]).includes(
@@ -666,7 +668,7 @@ export function ZdSendWorkspace({
                     <span className="text-red-700">{plan.message}</span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 text-slate-500">
-                      <Spinner size="sm" /> Sprawdzam pozycje ZD w Subiekcie…
+                      <BrandLoader size="sm" tile={false} /> Sprawdzam pozycje ZD w Subiekcie…
                     </span>
                   )
                 ) : (
@@ -770,7 +772,7 @@ export function ZdSendWorkspace({
                       <p className="mt-1 text-xs leading-relaxed text-amber-900/90">
                         {ZD_ESTIMATE_UI.zdSendAttachFailedLead}
                       </p>
-                      <p className="mt-1.5 text-[11px] leading-snug text-amber-800/80">
+                      <p className="mt-1.5 text-[0.6875rem] leading-snug text-amber-800/80">
                         {attachment.message}
                       </p>
                       <div className="mt-3 flex flex-wrap gap-2">
@@ -835,7 +837,7 @@ export function ZdSendWorkspace({
                     type="button"
                     onClick={() => extrasInputRef.current?.click()}
                     disabled={extrasBusy || running}
-                    className="inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded px-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 disabled:opacity-50"
+                    className="inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded px-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-50"
                   >
                     {extrasBusy ? <Spinner size="sm" /> : <IconPaperclip size={14} aria-hidden />}
                     {extrasBusy ? "Przygotowuję pliki…" : "Dodaj pliki"}
@@ -870,7 +872,7 @@ export function ZdSendWorkspace({
                 type="button"
                 onClick={refreshDocument}
                 disabled={attachment.state === "loading" || running}
-                className="inline-flex min-h-9 cursor-pointer items-center rounded px-1.5 text-xs font-medium text-indigo-700 underline decoration-indigo-300 underline-offset-2 hover:decoration-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 disabled:opacity-50"
+                className="inline-flex min-h-9 cursor-pointer items-center rounded px-1.5 text-xs font-medium text-indigo-700 underline decoration-indigo-300 underline-offset-2 hover:decoration-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-50"
                 title="Gdy dopisałeś coś do ZD w Subiekcie - pozycje i wydruk wczytają się od nowa"
               >
                 {manualPrimary
@@ -991,27 +993,19 @@ function StepRow({
 }) {
   return (
     <li className="flex gap-3">
-      <span
-        aria-hidden
-        className={cn(
-          "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
-          state.status === "ok"
-            ? "bg-emerald-100 text-emerald-800"
-            : state.status === "error"
-              ? "bg-red-100 text-red-800"
-              : "bg-white text-slate-600 ring-1 ring-slate-300"
-        )}
-      >
-        {state.status === "running" ? (
-          <Spinner size="sm" />
-        ) : state.status === "ok" ? (
-          <IconCircleCheck size={14} />
-        ) : state.status === "error" ? (
-          <IconAlertCircle size={14} />
-        ) : (
-          n
-        )}
-      </span>
+      {state.status === "running" || state.status === "ok" ? (
+        <BrandStepMark state={state.status === "ok" ? "done" : "running"} size={24} className="mt-0.5" />
+      ) : (
+        <span
+          aria-hidden
+          className={cn(
+            "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
+            state.status === "error" ? "bg-red-100 text-red-800" : "bg-white text-slate-600 ring-1 ring-slate-300"
+          )}
+        >
+          {state.status === "error" ? <IconAlertCircle size={14} /> : n}
+        </span>
+      )}
       <div className="min-w-0 flex-1 text-sm">
         <p className="font-medium text-slate-900">{title}</p>
         <div className="mt-0.5 text-slate-700">{detail}</div>

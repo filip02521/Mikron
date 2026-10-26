@@ -12,7 +12,6 @@ import {
   formatZdPackCompactLabel,
   formatZdPackDocumentLabel,
   formatZdPackHint,
-  formatZdPackOrderPreviewLine,
   formatZdPackRoundupLine,
   formatZdPackTableRatioLabel,
   formatZdPackUnitsPerLabelHint,
@@ -24,6 +23,8 @@ import {
   pruneZdDocumentUnitOverrides,
   resolveOrderQtyForLine,
   summarizePackOrderQty,
+  formatZdPackDialogPreview,
+  parsePalletInput,
 } from "./zd-estimate-packaging";
 
 describe("formatZdPackCompactLabel", () => {
@@ -278,15 +279,6 @@ describe("assertPackagingUnits + format helpers", () => {
     const round = computeZdPackOrderQty(9, 10, "karton");
     expect(formatZdPackHint(round)).toContain("1 karton × 10 = 10 szt");
     expect(formatZdPackHint(round)).toContain("potrzeba 9 szt");
-  });
-
-  it("formatZdPackOrderPreviewLine: A paczki, B sztuki", () => {
-    const a = computeZdPackOrderQty(8, 5, "op.", "packages");
-    expect(formatZdPackOrderPreviewLine(a)).toBe("2 × 5 = 10 szt");
-    const b = computeZdPackOrderQty(8, 5, "op.", "pieces_multiple");
-    expect(formatZdPackOrderPreviewLine(b)).toBe(
-      "10 szt (wielokrotność 5)"
-    );
   });
 
   it("getZdPackRoundupInfo / formatZdPackRoundupLine", () => {
@@ -635,8 +627,8 @@ describe("resolveOrderQtyForLine + individualExtra", () => {
       dostepne: 10,
       otwarteZd: 0,
       doZamowienia: 0,
-    });
-    // base 0 + extra 8 → 1 op.
+    }, { salesTrack: false });
+    // base 0 + extra 8 → 1 op. (stan = cel, bez wolnego towaru na prośbę)
     const q = resolveOrderQtyForLine(
       line,
       { unitsPerPackage: 10, packageLabel: "op." },
@@ -1121,5 +1113,218 @@ describe("filterOrderableLinesWithPackaging + extraOnly", () => {
       extraOnly
     );
     expect(rows.map((r) => r.tw_Id)).toEqual([2]);
+  });
+});
+
+describe("Na prośbę + minimum stanów: minimum to poziom, nie ilość", () => {
+  const solo = (dost: number, zd = 0): ManualZdEstimateLine =>
+    ({
+      ...mapZdEstimateLineToManual(
+        { tw_Id: 3, tw_Symbol: "S3", tw_Nazwa: "x", celZapasu: 0, dostepne: dost, otwarteZd: zd, doZamowienia: 0 },
+        { salesTrack: false, salesTrackCuts: false }
+      ),
+      celZapasu: 0,
+      celZapasuTracked: 0,
+      salesTrackDelta: 0,
+    }) as ManualZdEstimateLine;
+
+  it("stan 50 ≥ min 10, bez prośby → 0", () => {
+    expect(resolveOrderQtyForLine(solo(50), null, 0, true, "sum", 0, 0, 10).zdUnits).toBe(0);
+  });
+  it("10 szt już na otwartym ZD → 0 (nie zamawia drugi raz)", () => {
+    expect(resolveOrderQtyForLine(solo(0, 10), null, 0, true, "sum", 0, 0, 10).zdUnits).toBe(0);
+  });
+  it("stan 4, min 10 → dobija brak 6; prośba 8 wygrywa jako większa", () => {
+    expect(resolveOrderQtyForLine(solo(4), null, 0, true, "sum", 0, 0, 10).zdUnits).toBe(6);
+    expect(resolveOrderQtyForLine(solo(4), null, 8, true, "sum", 0, 0, 10).zdUnits).toBe(8);
+  });
+  it("worek z pary: min liczone od pokrycia pary w sztukach", () => {
+    const pack = {
+      ...solo(0),
+      doZamowieniaReczne: 100,
+      pair: { role: "pack", twinTwId: 5, unitsPerPack: 5, sprzedazSzt: 0, wzNiepowiazaneSzt: 0, coverSzt: 12,
+        pieceSprzedaz: 0, packSprzedaz: 0, pieceWzNiepowiazane: 0, packWzNiepowiazane: 0, pieceDostepne: 0, packDostepne: 0 },
+    } as ManualZdEstimateLine;
+    // min 30 szt, pokrycie 12 → brak 18 szt → 4 worki
+    expect(resolveOrderQtyForLine(pack, { unitsPerPackage: 5 }, 0, true, "sum", 0, 0, 30).zdUnits).toBe(4);
+    // pokrycie ≥ min → 0
+    expect(resolveOrderQtyForLine(pack, { unitsPerPackage: 5 }, 0, true, "sum", 0, 0, 10).zdUnits).toBe(0);
+  });
+});
+
+describe("formatZdPackDialogPreview", () => {
+  it("bez opakowania: same sztuki, bez „× op.”", () => {
+    const q = computeZdPackOrderQty(9, null);
+    expect(q.hasPackaging).toBe(false);
+    expect(formatZdPackDialogPreview(q).orderLine).toMatch(/: 9 szt$/);
+  });
+
+  it("worek z pary, co 36: liczba worków, sztuki i palety", () => {
+    const q = computeZdPackOrderQty(15, 5, "worek", "packages", 36);
+    expect(formatZdPackDialogPreview(q)).toEqual({
+      orderLine: "Na ZD: 36 × worek = 180 szt · 1 pełna paleta",
+      needLine: "Potrzeba 15 szt · zapas 165 szt",
+    });
+    expect(formatZdPackDialogPreview(computeZdPackOrderQty(200, 5, "worek", "packages", 36)).orderLine).toBe(
+      "Na ZD: 72 × worek = 360 szt · 2 pełne palety"
+    );
+  });
+  it("bez palet i tryb sztuk", () => {
+    expect(formatZdPackDialogPreview(computeZdPackOrderQty(10, 5, "karton")).orderLine).toBe(
+      "Na ZD: 2 × karton = 10 szt"
+    );
+    expect(formatZdPackDialogPreview(computeZdPackOrderQty(8, 5, "op.", "pieces_multiple")).orderLine).toBe(
+      "Na ZD: 10 szt (pełne opakowania po 5 szt)"
+    );
+  });
+});
+
+describe("ręczne nadpisanie Do ZD idzie na ZD dokładnie (bez dobijania)", () => {
+  const line = (cel: number): ManualZdEstimateLine =>
+    ({
+      ...mapZdEstimateLineToManual(
+        { tw_Id: 1, tw_Symbol: "S1", tw_Nazwa: "x", celZapasu: cel, dostepne: 0, otwarteZd: 0, doZamowienia: 0 },
+        { salesTrack: false, salesTrackCuts: false }
+      ),
+      celZapasu: cel,
+      celZapasuTracked: cel,
+      salesTrackDelta: 0,
+    }) as ManualZdEstimateLine;
+  const pallet = { unitsPerPackage: 25, packageLabel: "worek", documentUnitMode: "packages" as const, orderMultiple: 36 };
+  it("paleta 36: wpisane 10 → 10, zmniejszenie 72 → 40 → 40", () => {
+    expect(effectiveZdDocumentUnits(line(100), pallet, 0, 10)).toBe(10);
+    expect(effectiveZdDocumentUnits(line(1000), pallet, 0, 40)).toBe(40);
+    expect(effectiveZdDocumentUnits(line(100), pallet)).toBe(36);
+  });
+  it("tryb sztuk N=5: wpisane 7 → 7", () => {
+    expect(effectiveZdDocumentUnits(line(20), { unitsPerPackage: 5, documentUnitMode: "pieces_multiple" }, 0, 7)).toBe(7);
+  });
+});
+
+describe("Na prośbę bez minimum: ujemne dostępne (dług rezerwacji) nie podbija Do ZD", () => {
+  const debt = (dost: number): ManualZdEstimateLine =>
+    ({
+      ...mapZdEstimateLineToManual(
+        { tw_Id: 4, tw_Symbol: "S4", tw_Nazwa: "x", celZapasu: 0, dostepne: dost, otwarteZd: 0, doZamowienia: 0 },
+        { salesTrack: false, salesTrackCuts: false }
+      ),
+      celZapasu: 0,
+      celZapasuTracked: 0,
+      salesTrackDelta: 0,
+    }) as ManualZdEstimateLine;
+  it("prośba 2, dostępne −7, bez minimum → 2", () => {
+    expect(resolveOrderQtyForLine(debt(-7), null, 2, true).zdUnits).toBe(2);
+    expect(resolveOrderQtyForLine(debt(-7), null, 0, true).zdUnits).toBe(0);
+  });
+  it("worek z pary, pokrycie −20, prośba 5 → 1 worek", () => {
+    const pack = {
+      ...debt(0),
+      pair: { role: "pack", twinTwId: 5, unitsPerPack: 5, sprzedazSzt: 0, wzNiepowiazaneSzt: 0, coverSzt: -20,
+        pieceSprzedaz: 0, packSprzedaz: 0, pieceWzNiepowiazane: 0, packWzNiepowiazane: 0, pieceDostepne: 0, packDostepne: 0 },
+    } as ManualZdEstimateLine;
+    expect(resolveOrderQtyForLine(pack, { unitsPerPackage: 5 }, 5, true).zdUnits).toBe(1);
+  });
+});
+
+describe("parsePalletInput", () => {
+  it("puste = bez palet, liczba 2+ = paleta", () => {
+    expect(parsePalletInput("")).toEqual({ ok: true, value: null });
+    expect(parsePalletInput(" 36 ")).toEqual({ ok: true, value: 36 });
+  });
+  it("tekst, ułamki, 1 i za duże → błąd (nie ciche wyłączenie palety)", () => {
+    for (const bad of ["36e", "3-6", "36.5", "1", "0", "100001"]) {
+      expect(parsePalletInput(bad).ok).toBe(false);
+    }
+  });
+});
+
+describe("resolveOrderQtyForLine — wolny towar pokrywa prośbę", () => {
+  const solo = (over: Partial<ManualZdEstimateLine>): ManualZdEstimateLine =>
+    ({
+      tw_Id: 7, tw_Symbol: "X", tw_Nazwa: "X", tw_IdGrupa: null, grt_Nazwa: "-",
+      tw_Stan: 0, tw_StanRez: 0, dostepne: 0, sprzedazOkres: 0, wzNiepowiazaneOkres: 0,
+      sprzedazDziennie: 0, celZapasu: 0, celZapasuTracked: 0, salesTrackDelta: 0,
+      salesTrackReasons: [], salesTrackConfidence: 0, salesTrackQtyReview: false,
+      salesTrackHeldExtraQty: 0, salesTrackAllowedExtraQty: 0, otwarteZkBezRez: 0,
+      otwarteZkZarezerwowane: 0, otwarteZd: 0, doZamowieniaApi: 0, doZamowieniaReczne: 0, wkladZk: 0,
+      ...over,
+    }) as ManualZdEstimateLine;
+
+  it("tylko na prośbę: 10 wolnych na półce, prośba 2 → nic na ZD", () => {
+    const q = resolveOrderQtyForLine(solo({ tw_Stan: 10, dostepne: 10 }), null, 2, true);
+    expect(q.piecesNeeded).toBe(0);
+    expect(q.prosbaFromSupplyPieces).toBe(2);
+  });
+
+  it("tylko na prośbę: 5 w drodze, prośba 2 → nic na ZD", () => {
+    const q = resolveOrderQtyForLine(solo({ otwarteZd: 5 }), null, 2, true);
+    expect(q.piecesNeeded).toBe(0);
+    expect(q.prosbaFromSupplyPieces).toBe(2);
+  });
+
+  it("częściowo: 3 wolne, prośba 5 → 2 na ZD", () => {
+    const q = resolveOrderQtyForLine(solo({ tw_Stan: 3, dostepne: 3 }), null, 5, true);
+    expect(q.piecesNeeded).toBe(2);
+    expect(q.prosbaFromSupplyPieces).toBe(3);
+  });
+
+  it("otwarte ZK bez rezerwacji zabierają półkę → prośba zamawiana", () => {
+    const q = resolveOrderQtyForLine(solo({ tw_Stan: 4, dostepne: 4, otwarteZkBezRez: 4 }), null, 2, true);
+    expect(q.piecesNeeded).toBe(2);
+    expect(q.prosbaFromSupplyPieces).toBeUndefined();
+  });
+
+  it("minimum stanów: wolne tylko ponad minimum", () => {
+    // stan 6, minimum 5 → 1 wolna; prośba 3 → 2 na ZD
+    const q = resolveOrderQtyForLine(solo({ tw_Stan: 6, dostepne: 6 }), null, 3, true, "sum", 0, 0, 5);
+    expect(q.piecesNeeded).toBe(2);
+    expect(q.prosbaFromSupplyPieces).toBe(1);
+  });
+
+  it("zapas (sum): nadwyżka ponad cel pokrywa prośbę", () => {
+    const q = resolveOrderQtyForLine(
+      solo({ celZapasu: 10, celZapasuTracked: 10, tw_Stan: 50, dostepne: 50 }), null, 2, false, "sum"
+    );
+    expect(q.piecesNeeded).toBe(0);
+    expect(q.prosbaFromSupplyPieces).toBe(2);
+  });
+
+  it("zapas: brak do celu — prośba w całości jak dawniej", () => {
+    const q = resolveOrderQtyForLine(
+      solo({ celZapasu: 10, celZapasuTracked: 10, tw_Stan: 4, dostepne: 4, doZamowieniaReczne: 6 }), null, 2, false, "sum"
+    );
+    expect(q.piecesNeeded).toBe(8);
+    expect(q.prosbaFromSupplyPieces).toBeUndefined();
+  });
+
+  it("polityka max: nadwyżka pokrywa prośbę", () => {
+    const q = resolveOrderQtyForLine(
+      solo({ celZapasu: 10, celZapasuTracked: 10, tw_Stan: 13, dostepne: 13 }), null, 5, false, "max"
+    );
+    expect(q.piecesNeeded).toBe(2);
+    expect(q.prosbaFromSupplyPieces).toBe(3);
+  });
+
+  it("para (opakowanie): pokrycie obu kart pokrywa prośbę", () => {
+    const pair = {
+      role: "pack" as const, twinTwId: 20, unitsPerPack: 10, sprzedazSzt: 0, wzNiepowiazaneSzt: 0,
+      coverSzt: 12, pieceSprzedaz: 0, packSprzedaz: 0, pieceWzNiepowiazane: 0, packWzNiepowiazane: 0,
+      pieceDostepne: 12, packDostepne: 0,
+    };
+    const q = resolveOrderQtyForLine(solo({ pair } as Partial<ManualZdEstimateLine>), null, 15, true);
+    // 12 wolnych sztuk → 3 na ZD → 1 opakowanie
+    expect(q.piecesNeeded).toBe(3);
+    expect(q.zdUnits).toBe(1);
+    expect(q.prosbaFromSupplyPieces).toBe(12);
+  });
+
+  it("para bez partnera — bez pokrycia z półki", () => {
+    const pair = {
+      role: "pack" as const, twinTwId: 20, unitsPerPack: 10, sprzedazSzt: 0, wzNiepowiazaneSzt: 0,
+      coverSzt: 12, pieceSprzedaz: 0, packSprzedaz: 0, pieceWzNiepowiazane: 0, packWzNiepowiazane: 0,
+      pieceDostepne: 12, packDostepne: 0, partnerMissing: true,
+    };
+    const q = resolveOrderQtyForLine(solo({ pair } as Partial<ManualZdEstimateLine>), null, 15, true);
+    expect(q.piecesNeeded).toBe(15);
   });
 });

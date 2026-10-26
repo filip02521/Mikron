@@ -218,7 +218,7 @@ export function ProcurementSupplierBlockBar({
                   <Badge
                     variant="default"
                     className={cn(
-                      "px-1.5 py-0 text-[10px] font-medium ring-1 ring-inset",
+                      "px-1.5 py-0 text-[0.625rem] font-medium ring-1 ring-inset",
                       isStockOut
                         ? "bg-amber-100/90 text-amber-900 ring-amber-200/80"
                         : "bg-indigo-100/80 text-indigo-900 ring-indigo-200/70"
@@ -229,7 +229,7 @@ export function ProcurementSupplierBlockBar({
                   {unseenCount > 0 ? (
                     <Badge
                       className={cn(
-                        "px-1.5 py-0 text-[10px] font-semibold",
+                        "px-1.5 py-0 text-[0.625rem] font-semibold",
                         dailyPanelUnseenBadgeClass(unseenVariant)
                       )}
                     >
@@ -238,7 +238,7 @@ export function ProcurementSupplierBlockBar({
                   ) : null}
                   <span
                     className={cn(
-                      "hidden text-[10px] font-medium sm:inline",
+                      "hidden text-[0.625rem] font-medium sm:inline",
                       "opacity-0 transition-opacity duration-150",
                       "group-hover/blockHeader:opacity-100",
                       isStockOut ? "text-amber-700/80" : "text-indigo-600/80"

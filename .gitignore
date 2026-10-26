@@ -51,9 +51,17 @@ next-env.d.ts
 
 # windsurf / codeium MCP config (contains tokens)
 .codeium
-data/cutover/
-data/handoff/
+# Eksporty z arkusza (cutover 05.2026): pracownicy, klienci, kontakty — tylko lokalnie (repo publiczne).
+# Skrypty importu czytają ./data; w repo zostają tylko formularze dostawców.
+data/*
+!data/supplier-forms/
 .storage-dev/
 
 # Skille: dane osobowe i szczegóły spraw tylko lokalnie (repo publiczne)
 .claude/skills/**/*.local.md
+
+# Backtest ZD — surowe dane z Subiekta (id dokumentów i kontrahentów)
+scripts/backtest-zd-pl/data/
+scripts/backtest-zd-pl/result.json
+scripts/backtest-zd-pl/data-1y/
+scripts/backtest-zd-pl/out-*.txt

@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/data/fetch-all-rows";
 import { normalizeUnitsPerPack } from "@/lib/orders/zd-product-pair-units";
 import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
 
@@ -67,12 +68,14 @@ export function mapZdProductPairRow(row: DbRow): ZdProductPairRow {
 
 export async function fetchZdProductPairs(): Promise<ZdProductPairRow[]> {
   const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("zd_product_pairs")
-    .select(SELECT_COLS)
-    .order("pack_symbol", { ascending: true, nullsFirst: false });
-  if (error) throw new Error(error.message);
-  return (data ?? []).map((r) => mapZdProductPairRow(r as DbRow));
+  const rows = await fetchAllRows<DbRow>(() =>
+    supabase
+      .from("zd_product_pairs")
+      .select(SELECT_COLS)
+      .order("pack_symbol", { ascending: true, nullsFirst: false })
+      .order("id", { ascending: true })
+  );
+  return rows.map((r) => mapZdProductPairRow(r));
 }
 
 export async function fetchZdProductPairByTwId(

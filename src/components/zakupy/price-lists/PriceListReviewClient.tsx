@@ -31,6 +31,7 @@ import {
   type PriceFlag,
 } from "@/lib/price-lists/price-list";
 import { formatDate, HostBadge } from "./PriceListsClient";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 type Filter = "selected" | "review" | "problems" | "applied" | "restored" | "unchanged" | "not_in_list" | "withdrawn" | "all";
 
@@ -102,7 +103,7 @@ function PriceCell({ oldValue, newValue, after, status }: { oldValue: number | n
       </div>
     );
   }
-  if (newValue == null) return <span className="text-slate-400">brak w cenniku</span>;
+  if (newValue == null) return <span className="text-slate-500">brak w cenniku</span>;
   const pct = pctChange(oldValue, newValue);
   const same = oldValue != null && Math.abs(newValue - oldValue) < 0.005;
   return (
@@ -276,7 +277,7 @@ export function PriceListReviewClient({
   const visible = useMemo(() => {
     const q = fold(query.trim());
     return items.filter(
-      (it) => inFilter(it, activeFilter) && (!q || fold(`${it.symbol} ${it.name} ${it.listName ?? ""}`).includes(q))
+      (it) => inFilter(it, activeFilter) && matchesSearchWords([it.symbol, it.name, it.listName], q)
     );
   }, [items, activeFilter, query]);
   // Problemy: największe rozbieżności najpierw — różnice o grosz nie zasłaniają prawdziwych.
@@ -444,14 +445,10 @@ export function PriceListReviewClient({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <Link href="/zakupy/cenniki" className="rounded text-indigo-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45">
-          ← Cenniki
-        </Link>
-      </div>
       <PageHeader
+        back={{ href: "/zakupy/cenniki", label: "Cenniki" }}
         title={`Cennik ${imp.cechaName}`}
-        badge={<HostBadge isLive={imp.hostKind === "live"} />}
+        help={<HostBadge isLive={imp.hostKind === "live"} />}
         actions={
           backupRows.length ? (
             <div className="flex flex-wrap gap-2">
@@ -480,7 +477,7 @@ export function PriceListReviewClient({
           <div className="mt-2 flex flex-wrap gap-2">
             <Link
               href={`/zakupy/cenniki/${newerImportId}`}
-              className="inline-flex min-h-9 items-center rounded-[var(--radius-control)] bg-indigo-600 px-3 text-sm font-medium text-white hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 focus-visible:ring-offset-2"
+              className="inline-flex min-h-9 items-center rounded-[var(--radius-control)] bg-indigo-600 px-3 text-sm font-medium text-white hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2"
             >
               Otwórz nowszy cennik
             </Link>
@@ -576,8 +573,8 @@ export function PriceListReviewClient({
       ) : null}
 
       <Card padding={false}>
-        <div className="flex flex-col gap-3 p-4 sm:px-6 xl:flex-row xl:items-center">
-          <div className="-mx-1 min-w-0 overflow-x-auto px-1 pb-1 xl:pb-0">
+        <div className="flex flex-wrap items-center gap-2 p-4 sm:px-6">
+          <div className="-mx-1 min-w-0 max-w-full overflow-x-auto px-1">
             <SegmentedControl
               ariaLabel="Widok pozycji"
               className="w-max max-w-none"
@@ -602,12 +599,12 @@ export function PriceListReviewClient({
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Szukaj numeru lub nazwy…"
             aria-label="Szukaj numeru lub nazwy"
-            className="sm:max-w-xs xl:ml-auto xl:w-60 xl:shrink-0"
+            className="order-first w-full sm:order-none sm:ml-auto sm:w-60 sm:shrink-0"
           />
         </div>
 
         <TableScroll className="max-h-[min(75dvh,60rem)] overflow-y-auto overscroll-y-contain">
-          <DataTable className="[&_thead_th]:sticky [&_thead_th]:top-0 [&_thead_th]:z-[1]">
+          <DataTable className="kpi-table [&_thead_th]:sticky [&_thead_th]:top-0 [&_thead_th]:z-[1]">
             <thead>
               <tr>
                 <th className="w-8">
@@ -634,7 +631,7 @@ export function PriceListReviewClient({
             </thead>
             <tbody>
               {shown.map((it) => (
-                <tr key={it.id} className={cn(it.selected && it.status === "pending" && "bg-indigo-50/40")}>
+                <tr key={it.id} className={cn(it.selected && it.status === "pending" && "bg-indigo-50")}>
                   <td>
                     {it.status === "pending" ? (
                       <input
@@ -648,7 +645,7 @@ export function PriceListReviewClient({
                     ) : null}
                   </td>
                   <td className="whitespace-nowrap font-mono text-xs">{it.symbol}</td>
-                  <td className="min-w-[18rem] max-w-[30rem]">
+                  <td className="min-w-[14rem] max-w-[30rem]">
                     <div className="text-slate-900">{it.name}</div>
                     {it.listName ? (
                       <div className="text-xs text-slate-500">
@@ -993,7 +990,7 @@ function ItemNotes({ item, canRestore, onRestore }: { item: PriceListItem; canRe
       {restorable ? (
         <button
           type="button"
-          className="-mx-1 inline-flex min-h-8 items-center whitespace-nowrap rounded px-1 text-xs font-medium text-indigo-700 underline decoration-indigo-300 underline-offset-2 hover:decoration-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45"
+          className="-mx-1 inline-flex min-h-8 items-center whitespace-nowrap rounded px-1 text-xs font-medium text-indigo-700 underline decoration-indigo-300 underline-offset-2 hover:decoration-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
           onClick={onRestore}
         >
           {item.status === "restore_failed" ? "Spróbuj przywrócić ponownie" : "Przywróć z kopii"}: {fmt(item.backupPurchase)} / {fmt(item.backupRetail)}

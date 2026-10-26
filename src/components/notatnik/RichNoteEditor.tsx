@@ -353,7 +353,7 @@ export function RichNoteEditor({
           data-placeholder={placeholder}
           className={cn(
             "rich-note-editor min-h-[2.5rem] w-full outline-none",
-            "text-[13px] leading-relaxed text-slate-900",
+            "text-[0.8125rem] leading-relaxed text-slate-900",
             "[&_strong]:font-semibold [&_strong]:text-slate-900",
             "[&_em]:italic",
             "[&_u]:underline [&_span[data-underline=true]]:underline",
@@ -412,10 +412,10 @@ function ToolbarButton({
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
       className={cn(
-        "inline-flex h-7 min-w-7 items-center justify-center rounded-md px-1.5 transition",
+        "hit-target inline-flex h-7 min-w-7 items-center justify-center rounded-md px-1.5 transition",
         "disabled:cursor-not-allowed disabled:opacity-30",
         active
-          ? "bg-indigo-600 text-white shadow-sm"
+          ? "bg-indigo-50 text-indigo-900 ring-1 ring-inset ring-indigo-200"
           : "text-slate-500 hover:bg-slate-100 hover:text-slate-800 active:bg-slate-200"
       )}
     >
@@ -497,7 +497,7 @@ function RichNoteEditorToolbar({ editable, activeFormats }: { editable: boolean;
   return (
     <div
       className={cn(
-        "pointer-events-none absolute -top-8 right-4 flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white/95 px-1 py-1 shadow-md shadow-slate-900/8 backdrop-blur-sm transition-opacity duration-150 z-10",
+        "pointer-events-none absolute -top-8 right-4 flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white/95 px-1 py-1 shadow-[var(--shadow-elevated)] backdrop-blur-sm transition-opacity duration-150 z-10",
         "opacity-0",
         editable && "group-hover/sticky:pointer-events-auto group-hover/sticky:opacity-100 group-focus-within/sticky:pointer-events-auto group-focus-within/sticky:opacity-100"
       )}

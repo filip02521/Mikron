@@ -9,9 +9,7 @@ import { teethOrderHistorySummary } from "@/lib/teeth/teeth-history-audit-copy";
 import { panelTypography } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
 import { TeethPanelSection } from "@/components/zeby/TeethPanelSection";
-import { IconClipboardPen } from "@/components/icons/StrokeIcons";
-
-const AUDIT_SECTION_TILE = "bg-sky-100 text-sky-800";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 export function TeethPanelAuditLog({
   supplierId,
@@ -48,19 +46,16 @@ export function TeethPanelAuditLog({
       className={className}
       title="Dziennik operacji"
       hint="Kto i kiedy oznaczał zamówienia, zmieniał daty dostawy lub harmonogram zębów."
-      icon={<IconClipboardPen size={18} strokeWidth={1.75} />}
-      iconTileClassName={AUDIT_SECTION_TILE}
     >
       {error ? (
         <p className={cn(panelTypography.caption, "text-amber-800")}>
           Nie udało się wczytać dziennika: {error}
         </p>
       ) : !rows ? (
-        <div className="space-y-2 motion-safe:animate-pulse" aria-busy="true">
-          <div className="h-4 w-full max-w-md rounded bg-slate-100" />
-          <div className="h-4 w-full max-w-sm rounded bg-slate-100" />
-          <div className="h-4 w-full max-w-lg rounded bg-slate-100" />
-        </div>
+        <p role="status" className="flex items-center gap-2 text-sm text-slate-600">
+          <BrandLoader size="sm" tile={false} />
+          Wczytuję dziennik operacji…
+        </p>
       ) : rows.length === 0 ? (
         <p className={cn(panelTypography.caption, "text-slate-600")}>
           Dziennik jest pusty - wpisy pojawią się po oznaczeniu zamówień lub zmianie harmonogramu.

@@ -1,4 +1,4 @@
-import { Spinner } from "@/components/ui/Spinner";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import {
   IconAlertCircle,
   IconCircleCheck,
@@ -118,10 +118,7 @@ export function ZdEstimateLoadingBody({
             ) : tone === "warning" ? (
               <IconAlertCircle size={20} strokeWidth={2.25} />
             ) : (
-              <Spinner
-                size="sm"
-                className="border-indigo-200 border-t-indigo-600"
-              />
+              <BrandLoader size="sm" tile={false} />
             )}
           </span>
           <div className="min-w-0 flex-1 pt-0.5">

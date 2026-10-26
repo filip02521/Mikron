@@ -4,9 +4,8 @@ import { salesTypography } from "@/lib/ui/ontime-theme";
 /** Etykieta autora odpowiedzi zakupów w wątku pytań. */
 export const BOARD_PROCUREMENT_AUTHOR_LABEL = "Dział zakupów";
 
-/** Lista wątków pytań — zebra na zwiniętych wierszach zamiast divide-y. */
-export const boardQuestionListClass =
-  "overflow-hidden rounded-xl border border-slate-200/80 bg-slate-50/25 shadow-sm ring-1 ring-slate-900/[0.03]";
+/** Lista wątków pytań przy krawędziach karty (bez ramki w karcie) — zebra na zwiniętych wierszach. */
+export const boardQuestionListClass = "overflow-hidden border-y border-slate-200/80 bg-white";
 
 /** Lista ogłoszeń — ten sam kontener co pytania. */
 export const boardAnnouncementListClass = boardQuestionListClass;
@@ -26,7 +25,7 @@ export function boardAnnouncementRowClass(opts: {
 }
 
 export function boardAnnouncementRoleBadgeClass(): string {
-  return "inline-flex rounded-md bg-indigo-100 px-2 py-0.5 text-[10px] font-bold leading-none text-indigo-900";
+  return "inline-flex rounded-md bg-indigo-100 px-2 py-0.5 text-[0.625rem] font-semibold leading-none text-indigo-900";
 }
 
 export function boardAnnouncementAvatarClass(opts: {
@@ -57,71 +56,29 @@ export function boardQuestionRowClass(opts: {
   const alt = opts.alternate ?? false;
   const stale = opts.stale ?? false;
 
+  // Stan wątku niesie tło i odznaka stanu w wierszu, bez paska z boku i cienia w karcie (DESIGN.md → Shapes).
+  const transition =
+    "transition-colors duration-200 ease-out motion-reduce:transition-none";
+
   if (opts.expanded) {
-    return cn(
-      "relative z-[1] border-l-2 border-l-indigo-400/80 bg-white shadow-md ring-1 ring-indigo-200/70",
-      "transition-[background-color,box-shadow,ring-color,border-color] duration-300 ease-out motion-reduce:transition-none"
-    );
+    return cn("relative z-[1] bg-white ring-1 ring-inset ring-slate-300", transition);
   }
 
   const waiting = opts.waiting ?? null;
-  const accent = opts.unseen
-    ? "border-l-2 border-l-indigo-500/85"
-    : waiting === "supplier-overdue"
-      ? "border-l-2 border-l-amber-400/80"
-      : waiting === "supplier"
-        ? "border-l-2 border-l-slate-300"
-        : opts.open
-          ? "border-l-2 border-l-amber-400/80"
-          : stale
-            ? "border-l-2 border-l-slate-200/60"
-            : "border-l-2 border-l-indigo-300/50";
 
   if (opts.unseen) {
-    return cn(
-      accent,
-      "transition-[background-color,box-shadow,ring-color,border-color] duration-200 ease-out motion-reduce:transition-none",
-      alt
-        ? "bg-indigo-50/35 hover:bg-indigo-50/45"
-        : "bg-indigo-50/18 hover:bg-indigo-50/30",
-      "ring-1 ring-inset ring-indigo-200/50"
-    );
+    return cn(transition, alt ? "bg-indigo-50/60 hover:bg-indigo-50" : "bg-indigo-50/40 hover:bg-indigo-50/70");
   }
 
-  if (waiting === "supplier") {
-    return cn(
-      accent,
-      "transition-[background-color,box-shadow,ring-color,border-color] duration-200 ease-out motion-reduce:transition-none",
-      alt ? "bg-slate-50/60 hover:bg-slate-100/60" : "bg-white hover:bg-slate-50/90"
-    );
-  }
-
-  if (opts.open || waiting === "supplier-overdue") {
-    return cn(
-      accent,
-      "transition-[background-color,box-shadow,ring-color,border-color] duration-200 ease-out motion-reduce:transition-none",
-      alt ? "bg-slate-50/60 hover:bg-slate-100/60" : "bg-white hover:bg-slate-50/90"
-    );
+  if (waiting === "supplier-overdue" || (opts.open && waiting !== "supplier")) {
+    return cn(transition, alt ? "bg-amber-50/45 hover:bg-amber-50/70" : "bg-amber-50/25 hover:bg-amber-50/55");
   }
 
   if (stale) {
-    return cn(
-      accent,
-      "transition-[background-color,box-shadow,ring-color,border-color] duration-200 ease-out motion-reduce:transition-none",
-      alt
-        ? "bg-slate-50/40 hover:bg-slate-100/50"
-        : "bg-slate-50/20 hover:bg-slate-100/40",
-      "opacity-70"
-    );
+    return cn(transition, alt ? "bg-slate-50/60 hover:bg-slate-50" : "bg-white hover:bg-slate-50/70", "opacity-70");
   }
 
-  return cn(
-    accent,
-    "transition-[background-color,box-shadow,ring-color,border-color] duration-200 ease-out motion-reduce:transition-none",
-    alt
-      ? "bg-slate-100/45 hover:bg-slate-100/65"
-      : "bg-white hover:bg-slate-50/90"
-  );
+  return cn(transition, alt ? "bg-slate-50/60 hover:bg-slate-50" : "bg-white hover:bg-slate-50/70");
 }
 
 export const boardQuestionRowHeaderExpandedClass =
@@ -169,7 +126,7 @@ export function boardSupplierWaitPanelClass(overdue: boolean): string {
 
 export const boardQuestionPreviewClass = cn(
   salesTypography.rowBody,
-  "block truncate text-[12px] leading-snug text-slate-500/90"
+  "block truncate text-[0.75rem] leading-snug text-slate-500"
 );
 
 export const boardQuestionCollapsedMetaClass = "text-slate-600/95";
@@ -185,10 +142,10 @@ export function boardThreadAuthorNameClass(tone: BoardThreadMessageTone): string
 }
 
 export const boardQuestionProductChipClass =
-  "inline-flex max-w-full items-center gap-1.5 rounded-md border border-slate-200/90 bg-slate-100/80 px-2 py-0.5 text-[11px] font-semibold text-slate-700";
+  "inline-flex max-w-full items-center gap-1.5 rounded-md border border-slate-200/90 bg-slate-100/80 px-2 py-0.5 text-[0.6875rem] font-semibold text-slate-700";
 
 export const boardQuestionProductContextClass =
-  "overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9)] ring-1 ring-slate-900/[0.02]";
+  "overflow-hidden rounded-lg border border-slate-200/90 bg-white";
 
 export const boardQuestionProductContextBodyClass =
   "bg-slate-50/90 px-3 py-2.5";
@@ -197,7 +154,7 @@ export const boardQuestionQuickProsbaStripClass =
   "flex flex-col gap-2 border-t border-indigo-100/80 bg-indigo-50/55 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3";
 
 export const boardQuestionQuickProsbaHintClass =
-  "min-w-0 text-[11px] leading-snug text-slate-600 sm:text-xs";
+  "min-w-0 text-[0.6875rem] leading-snug text-slate-600 sm:text-xs";
 
 export const boardQuestionQuickProsbaCtaClass =
   "shrink-0 gap-1.5 border-indigo-200/80 bg-white/90 text-indigo-800 shadow-sm hover:border-indigo-300 hover:bg-indigo-50/80";
@@ -206,7 +163,7 @@ export type BoardThreadMessageTone = "question" | "procurement" | "sales";
 
 export function boardThreadMessageShellClass(tone: BoardThreadMessageTone): string {
   return cn(
-    "rounded-xl border px-3.5 py-3",
+    "rounded-lg border px-3.5 py-3",
     tone === "question"
       ? "border-slate-200/90 bg-white"
       : tone === "procurement"
@@ -228,13 +185,13 @@ export function boardThreadAvatarClass(tone: BoardThreadMessageTone): string {
 
 export function boardThreadRoleBadgeClass(tone: BoardThreadMessageTone): string {
   return cn(
-    "inline-flex rounded-md px-2 py-0.5 text-[10px] font-bold leading-none",
+    "inline-flex rounded-md px-2 py-0.5 text-[0.625rem] font-semibold leading-none",
     tone === "procurement" ? "bg-indigo-100 text-indigo-900" : "bg-slate-100 text-slate-700"
   );
 }
 
 export const boardReplyFormShellClass =
-  "space-y-2 rounded-xl border border-indigo-200/70 bg-indigo-50/25 px-3.5 py-3 shadow-sm";
+  "space-y-2 rounded-lg border border-indigo-200/70 bg-indigo-50/25 px-3.5 py-3";
 
 export const boardAwaitingReplyClass = cn(
   salesTypography.rowMeta,
@@ -242,7 +199,7 @@ export const boardAwaitingReplyClass = cn(
 );
 
 export const boardQuestionFabClass =
-  "fixed z-50 flex h-12 min-w-12 items-center justify-center gap-2 rounded-md bg-indigo-600 px-4 text-sm font-semibold text-white shadow-lg transition hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600";
+  "fixed z-50 flex h-12 min-w-12 items-center justify-center gap-2 rounded-md bg-indigo-600 px-4 text-sm font-semibold text-white shadow-[var(--shadow-elevated)] transition hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600";
 
 /** Licznik na chipie filtra / zakładce tablicy. */
 export function boardChipCountBadgeClass(opts: {
@@ -250,13 +207,14 @@ export function boardChipCountBadgeClass(opts: {
   emphasis?: "default" | "warning" | "action";
 }): string {
   if (opts.active) {
-    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-indigo-600 px-1.5 py-0.5 tabular-nums text-[10px] font-bold leading-none text-white";
+    // Licznik w wybranym chipie: białe tło, Petrol (DESIGN.md → Chips), nie pełny Petrol.
+    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-white px-1.5 py-0.5 tabular-nums text-[0.625rem] font-semibold leading-none text-indigo-700";
   }
   if (opts.emphasis === "warning") {
-    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-amber-100 px-1.5 py-0.5 tabular-nums text-[10px] font-bold leading-none text-amber-900";
+    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-amber-100 px-1.5 py-0.5 tabular-nums text-[0.625rem] font-semibold leading-none text-amber-900";
   }
   if (opts.emphasis === "action") {
-    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-indigo-100 px-1.5 py-0.5 tabular-nums text-[10px] font-bold leading-none text-indigo-900";
+    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-indigo-100 px-1.5 py-0.5 tabular-nums text-[0.625rem] font-semibold leading-none text-indigo-900";
   }
-  return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-slate-100 px-1.5 py-0.5 tabular-nums text-[10px] font-bold leading-none text-slate-600";
+  return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-slate-100 px-1.5 py-0.5 tabular-nums text-[0.625rem] font-semibold leading-none text-slate-600";
 }

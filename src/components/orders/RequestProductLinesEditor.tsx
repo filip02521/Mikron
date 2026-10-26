@@ -544,18 +544,13 @@ export function RequestProductLinesEditor({
                 : "space-y-3"
             )}
           >
+            <div className={cn(prosba && wrapLine && "p-3 sm:p-3.5")}>
+            {/* Numer w przepływie, nie na sztywno: przy sm:p-3.5 pozycja absolutna wchodziła pod etykietę pola. */}
             {prosba && showLineLabel ? (
-              <span className="pointer-events-none absolute left-3 top-2 z-[1] text-[11px] font-semibold tabular-nums text-slate-400">
-                {index + 1}.
-              </span>
+              <p className="mb-1.5 text-[0.6875rem] font-semibold tabular-nums text-slate-500">
+                Pozycja {index + 1}
+              </p>
             ) : null}
-
-            <div
-              className={cn(
-                prosba && wrapLine && "p-3 sm:p-3.5",
-                prosba && showLineLabel && "pt-5"
-              )}
-            >
             <SubiektProductLineFields
               appearance={appearance}
               salesProsbaForm={salesProsbaForm}
@@ -832,7 +827,7 @@ export function RequestProductLinesEditor({
                     className={cn(
                       "inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 text-xs font-semibold text-slate-700 transition-colors",
                       "hover:bg-slate-100/90 hover:text-slate-900 active:scale-[0.99]",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500/40"
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-600"
                     )}
                     onClick={() => setFocusedLineId(null)}
                     aria-label="Zwiń pozycję"

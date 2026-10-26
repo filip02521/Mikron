@@ -42,6 +42,11 @@ function item(over: Partial<StockWatchItem>): StockWatchItem {
     ruleNote: null,
     priceDokNr: null,
     priceDate: null,
+    bomRole: null,
+    pairRole: null,
+    assemblyKind: null,
+    assemblyQty: null,
+    assemblyNote: null,
     ...over,
   };
 }
@@ -143,7 +148,9 @@ describe("buildStockWatchDashboard", () => {
       outOfStock: 1,
       emptyNoIncoming: 1,
       critical: 1,
+      criticalInTransit: 0,
       warning: 1,
+      toAssemble: 0,
       ok: 1,
       noSales: 0,
       beforeDelivery: 0,
@@ -236,5 +243,162 @@ describe("buildStockWatchDashboard - filtr dostawcy", () => {
     expect(all.alerts.some((r) => r.supplierId === "s2")).toBe(false);
     const filtered = buildStockWatchDashboard([...many, s2], [], { alertsSupplierId: "s2" });
     expect(filtered.alerts.map((r) => r.supplierId)).toEqual(["s2"]);
+  });
+});
+
+describe("buildStockWatchDashboard — tablica dostawców", () => {
+  const items = [
+    // Duży dostawca: dużo braków, ale wszystko już jedzie.
+    item({ subiektTwId: 10, supplierId: "big", supplierName: "Duży", status: "out_of_stock", openZdQty: 5 }),
+    item({ subiektTwId: 11, supplierId: "big", supplierName: "Duży", status: "out_of_stock", openZdQty: 3 }),
+    // Mały dostawca: jedna pusta półka bez dostawy — ma być wyżej.
+    item({ subiektTwId: 20, supplierId: "small", supplierName: "Mały", status: "out_of_stock", openZdQty: 0, ...inOrder(2, 40) }),
+    // Ryzyko przed dostawą.
+    item({ subiektTwId: 30, supplierId: "lead", supplierName: "Daleki", status: "warning", deliveryRisk: "before_delivery", ...inOrder(1, 10) }),
+    // Tylko poniżej celu.
+    item({ subiektTwId: 40, supplierId: "restock", supplierName: "Uzupełnienie", status: "warning", ...inOrder(3, 90) }),
+    // Wykluczony towar nie robi priorytetu.
+    item({ subiektTwId: 50, supplierId: "excluded", supplierName: "Wykluczony", status: "out_of_stock", rule: "excluded" }),
+    item({ subiektTwId: 60, supplierId: "quiet", supplierName: "Spokojny", status: "ok" }),
+  ];
+  const d = buildStockWatchDashboard(items, [
+    order({ supplierId: "small", supplierName: "Mały" }),
+    order({ supplierId: "lead", supplierName: "Daleki" }),
+    order({ supplierId: "restock", supplierName: "Uzupełnienie" }),
+  ]);
+
+  it("orders suppliers by priority, not by the size of their shortage list", () => {
+    expect(d.suppliers.map((s) => [s.supplierId, s.priority])).toEqual([
+      ["small", "now"],
+      ["lead", "today"],
+      ["restock", "restock"],
+      ["big", "waiting"],
+    ]);
+    expect(d.quietSupplierCount).toBe(2);
+  });
+
+  it("shows a supplier whose only problem is a Kreator warning, as 'attention'", () => {
+    const withWarning = buildStockWatchDashboard(
+      [item({ subiektTwId: 70, supplierId: "bom", supplierName: "Komplety", status: "ok" })],
+      [order({ supplierId: "bom", supplierName: "Komplety", explodeBomIncomplete: true })]
+    );
+    expect(withWarning.suppliers.map((s) => [s.supplierId, s.priority, s.dataWarnings])).toEqual([["bom", "attention", 1]]);
+    expect(withWarning.quietSupplierCount).toBe(0);
+  });
+
+  it("counts a shared-scope product only at the supplier that orders it", () => {
+    const shared = buildStockWatchDashboard(
+      [
+        item({ subiektTwId: 80, supplierId: "a", supplierName: "A", status: "out_of_stock", ...inOrder(2, 20) }),
+        item({ subiektTwId: 80, supplierId: "b", supplierName: "B", status: "out_of_stock" }),
+      ],
+      [order({ supplierId: "a", supplierName: "A" }), order({ supplierId: "b", supplierName: "B" })]
+    );
+    expect(shared.suppliers.map((s) => [s.supplierId, s.emptyNoIncoming])).toEqual([["a", 1]]);
+  });
+
+  it("lists next-delivery risks in the expansion of a 'soon' supplier", () => {
+    const soon = buildStockWatchDashboard(
+      [item({ subiektTwId: 90, supplierId: "n", supplierName: "N", status: "warning", deliveryRisk: "before_next_delivery" })],
+      [order({ supplierId: "n", supplierName: "N" })]
+    );
+    expect(soon.suppliers[0]?.priority).toBe("soon");
+    expect(soon.suppliers[0]?.urgentRows.map((r) => r.subiektTwId)).toEqual([90]);
+  });
+
+  it("carries the supplier's urgent rows and the proposal for the row action", () => {
+    const small = d.suppliers[0]!;
+    expect(small.emptyNoIncoming).toBe(1);
+    expect(small.urgentRows.map((r) => r.subiektTwId)).toEqual([20]);
+    expect(small.proposal?.lineCount).toBe(1);
+    const big = d.suppliers.find((s) => s.supplierId === "big")!;
+    expect([big.outOfStock, big.emptyNoIncoming, big.urgentTotal]).toEqual([2, 0, 2]);
+  });
+});
+
+describe("≤ 48 h z towarem w drodze nie jest „do zamówienia dziś”", () => {
+  const board = (over: Partial<StockWatchItem>) =>
+    buildStockWatchDashboard(
+      [item({ subiektTwId: 95, supplierId: "z", supplierName: "Z", status: "critical", ...over })],
+      [order({ supplierId: "z", supplierName: "Z" })]
+    );
+
+  it("nic w drodze → Teraz", () => {
+    const d = board({ openZdQty: 0 });
+    expect(d.suppliers[0]?.priority).toBe("now");
+    expect(d.counts.critical).toBe(1);
+  });
+
+  it("ZD w drodze i zdąży → czeka na dostawę (nie znika z tablicy)", () => {
+    const d = board({ openZdQty: 500 });
+    expect(d.counts.critical).toBe(0);
+    expect(d.counts.criticalInTransit).toBe(1);
+    expect(d.counts.beforeDelivery).toBe(0);
+    expect(d.suppliers[0]?.priority).toBe("waiting");
+  });
+
+  it("ryzyko przed dostawą liczone szeroko dla sygnału panelu (także ≤ 48 h bez dostawy)", () => {
+    const d = board({ openZdQty: 0, deliveryRisk: "before_delivery" });
+    expect(d.suppliers[0]?.beforeDelivery).toBe(0);
+    expect(d.suppliers[0]?.atRiskBeforeDelivery).toBe(1);
+  });
+
+  it("ZD w drodze, ale nie zdąży → Dziś", () => {
+    const d = board({ openZdQty: 500, deliveryRisk: "before_delivery" });
+    expect(d.counts.critical).toBe(0);
+    expect(d.counts.beforeDelivery).toBe(1);
+    expect(d.suppliers[0]?.priority).toBe("today");
+  });
+});
+
+describe("zestaw „Składamy” w liczbach panelu", () => {
+  it("brak zestawu nie jest osobną pilną pozycją - niosą go składniki", () => {
+    const d = buildStockWatchDashboard(
+      [
+        item({ subiektTwId: 100, bomRole: "assembled_parent", status: "out_of_stock", availableQty: 0 }),
+        item({ subiektTwId: 1, bomRole: "component", status: "out_of_stock", availableQty: 0, inOrder: true }),
+        item({ subiektTwId: 101, bomRole: "assembled_parent", status: "to_assemble", availableQty: 0 }),
+      ],
+      [order({ lineCount: 1 })]
+    );
+    expect(d.counts.outOfStock).toBe(1);
+    expect(d.alerts.map((r) => r.subiektTwId)).toEqual([1]);
+    expect(d.counts.toAssemble).toBe(1);
+    expect(d.assembly.map((r) => r.subiektTwId)).toEqual([101]);
+    expect(d.topVelocity.some((r) => r.bomRole === "assembled_parent")).toBe(false);
+    expect(d.suppliers[0]?.outOfStock).toBe(1);
+  });
+});
+
+describe("buildStockWatchDashboard — wiersz dostawcy zgodny z „Lista braków dostawcy”", () => {
+  // Wiersz pisze „Pokazano X najpilniejszych z N — pełna lista w »Lista braków dostawcy«”:
+  // N i pokazane pozycje muszą być dokładnie tą listą (zgłoszenie: 45 w wierszu, 32 na liście).
+  const many = Array.from({ length: 70 }, (_, i) =>
+    item({ subiektTwId: 2000 + i, supplierId: "s1", status: "out_of_stock", availableQty: 0, daysOfCover: 0 })
+  );
+  const mixed = [
+    ...many,
+    item({ subiektTwId: 1, supplierId: "s1", status: "warning", deliveryRisk: "before_next_delivery", daysOfCover: 12 }),
+    item({ subiektTwId: 2, supplierId: "s1", status: "critical", openZdQty: 5, daysOfCover: 1 }),
+    item({ subiektTwId: 3, supplierId: "s1", status: "warning", deliveryRisk: "before_delivery", daysOfCover: 4 }),
+    item({ subiektTwId: 4, supplierId: "s1", status: "critical", openZdQty: 0, daysOfCover: 1 }),
+    // Wspólny towar: liczy się u właściciela (s2 ma go w ZD), nie u s1.
+    item({ subiektTwId: 5, supplierId: "s1", status: "out_of_stock", availableQty: 0 }),
+    item({ subiektTwId: 5, supplierId: "s2", supplierName: "Dostawca 2", status: "out_of_stock", availableQty: 0, inOrder: true, orderZdUnits: 2, orderPieces: 2 }),
+  ];
+
+  it("licznik i pokazane pozycje wiersza = lista dostawcy po filtrze", () => {
+    const board = buildStockWatchDashboard(mixed, []);
+    for (const row of board.suppliers.filter((s) => s.urgentTotal > 0)) {
+      const list = buildStockWatchDashboard(mixed, [], { alertsSupplierId: row.supplierId }).alerts;
+      expect(list.length, row.supplierId).toBe(row.urgentTotal);
+      const listTw = new Set(list.map((r) => r.subiektTwId));
+      for (const r of row.urgentRows) expect(listTw.has(r.subiektTwId), `${row.supplierId}/${r.subiektTwId}`).toBe(true);
+    }
+  });
+
+  it("lista jednego dostawcy nie jest ucinana do globalnego limitu", () => {
+    const list = buildStockWatchDashboard(mixed, [], { alertsSupplierId: "s1" }).alerts;
+    expect(list.filter((r) => r.status === "out_of_stock").length).toBe(70);
   });
 });

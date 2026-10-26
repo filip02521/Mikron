@@ -5,6 +5,10 @@ import type {
   StockWatchStatus,
 } from "@/lib/stock-watch/analysis";
 import type { ZdDeliveryRisk } from "@/lib/orders/zd-order-horizon";
+import { isZdNameAutoExcluded } from "@/lib/orders/zd-estimate-name-exclude";
+import { buildStockWatchDashboard } from "@/lib/stock-watch/dashboard";
+import { SUBIEKT_DOC_TYPE_FZ, SUBIEKT_DOC_TYPE_ZD, SUBIEKT_ZD_STATUS_DONE } from "@/lib/orders/subiekt-lead-times";
+import type { StockWatchAssemblyKind, StockWatchBomRole } from "@/lib/stock-watch/bom-stock";
 
 /** pg zwraca `numeric` jako string — normalizacja w jednym miejscu. */
 function num(value: unknown): number {
@@ -228,6 +232,14 @@ export type StockWatchItemWrite = {
   /** Sygnał z czasu dostawy — bez wpływu na ilość. */
   deliveryRisk: ZdDeliveryRisk | null;
   status: StockWatchStatus;
+  /** Rola w składzie z Kreatora (zestaw „Składamy”, komplet kupowany, składnik). */
+  bomRole: StockWatchBomRole | null;
+  /** Strona pary paczka↔sztuka (stan liczony w sztukach na paczce). */
+  pairRole: "pack" | "piece" | null;
+  /** Co da kompletacja w Subiekcie bez zakupu: złożenie zestawu / rozłożenie kompletu. */
+  assemblyKind: StockWatchAssemblyKind | null;
+  assemblyQty: number | null;
+  assemblyNote: string | null;
 };
 
 const ITEM_COLUMNS = [
@@ -264,6 +276,46 @@ const ITEM_COLUMNS = [
   "delivery_risk",
   "status",
 ] as const;
+
+/** Kolumny z migracji 191 — zapisywane tylko, gdy migracja jest na bazie. */
+const ITEM_BOM_COLUMNS = [
+  "bom_role",
+  "pair_role",
+  "assembly_kind",
+  "assembly_qty",
+  "assembly_note",
+] as const;
+
+let bomColumnsReady: Promise<boolean> | null = null;
+
+/**
+ * Czy baza ma kolumny kompletacji (191_stock_watch_bom.sql). Bez nich worker zapisuje
+ * jak dotąd, a „Do kompletacji” idzie jako „W normie” (stary CHECK statusu) — żaden
+ * fałszywy brak, tylko bez osobnej listy. Wynik pozytywny trzymamy do końca procesu.
+ */
+async function hasStockWatchBomColumns(): Promise<boolean> {
+  bomColumnsReady ??= query<{ n: string }>(
+    `SELECT count(*)::text AS n
+       FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'stock_watch_items'
+        AND column_name = ANY($1::text[])`,
+    [[...ITEM_BOM_COLUMNS]]
+  )
+    .then((r) => Number(r.rows[0]?.n) === ITEM_BOM_COLUMNS.length)
+    .then(
+      (ok) => {
+        if (!ok) bomColumnsReady = null;
+        return ok;
+      },
+      (e) => {
+        // Błąd bazy ≠ brak migracji: zapis bez kolumn zostawiłby stare dane kompletacji
+        // przy nowym statusie (ON CONFLICT). Zakres pada jak przy innym błędzie zapisu.
+        bomColumnsReady = null;
+        throw e;
+      }
+    );
+  return bomColumnsReady;
+}
 
 function itemValues(item: StockWatchItemWrite): unknown[] {
   return [
@@ -302,6 +354,10 @@ function itemValues(item: StockWatchItemWrite): unknown[] {
   ];
 }
 
+function itemBomValues(item: StockWatchItemWrite): unknown[] {
+  return [item.bomRole, item.pairRole, item.assemblyKind, item.assemblyQty, item.assemblyNote];
+}
+
 /**
  * Zastępuje wynik dostawcy: upsert bieżącej listy, usunięcie towarów,
  * których w tym przebiegu już nie ma (lista = to, co policzył silnik).
@@ -313,7 +369,10 @@ export async function replaceSupplierStockWatchItems(
 ): Promise<number> {
   let written = 0;
   const chunkSize = 200;
-  const updates = ITEM_COLUMNS.filter((c) => c !== "subiekt_tw_id" && c !== "supplier_id")
+  const withBom = await hasStockWatchBomColumns();
+  const columns: readonly string[] = withBom ? [...ITEM_COLUMNS, ...ITEM_BOM_COLUMNS] : ITEM_COLUMNS;
+  const updates = columns
+    .filter((c) => c !== "subiekt_tw_id" && c !== "supplier_id")
     .map((c) => `${c} = EXCLUDED.${c}`)
     .concat("computed_at = now()")
     .join(", ");
@@ -321,14 +380,17 @@ export async function replaceSupplierStockWatchItems(
     const chunk = items.slice(start, start + chunkSize);
     const params: unknown[] = [];
     const tuples = chunk.map((item) => {
-      const placeholders = itemValues(item).map((v) => {
+      const values = withBom
+        ? [...itemValues(item), ...itemBomValues(item)]
+        : itemValues({ ...item, status: item.status === "to_assemble" ? "ok" : item.status });
+      const placeholders = values.map((v) => {
         params.push(v);
         return `$${params.length}`;
       });
       return `(${placeholders.join(", ")}, now())`;
     });
     const res = await query(
-      `INSERT INTO stock_watch_items (${ITEM_COLUMNS.join(", ")}, computed_at)
+      `INSERT INTO stock_watch_items (${columns.join(", ")}, computed_at)
        VALUES ${tuples.join(", ")}
        ON CONFLICT (supplier_id, subiekt_tw_id) DO UPDATE SET ${updates}`,
       params
@@ -343,13 +405,34 @@ export async function replaceSupplierStockWatchItems(
   return written;
 }
 
-/** Wyniki dostawców, których zakres zniknął — po kilku dniach poza panelem. */
+/**
+ * Wyniki dostawców, których zakres zniknął — po kilku dniach poza panelem. Do tego wiersze,
+ * których analiza już nie pilnuje (zęby z katalogu, outlet / wycofane): także u dostawców,
+ * których zakres się nie przeliczył, żeby sygnały SQL (panel dzienny, Kreator) ich nie liczyły.
+ */
 export async function pruneStaleStockWatchItems(olderThanDays: number): Promise<number> {
   const res = await query(
     `DELETE FROM stock_watch_items
       WHERE computed_at < now() - ($1::int * interval '1 day')`,
     [olderThanDays]
   );
+  await query(
+    `DELETE FROM stock_watch_items i
+      USING prosba_teeth_products t
+      WHERE t.subiekt_tw_id = i.subiekt_tw_id`
+  );
+  const names = await query<{ supplier_id: string; subiekt_tw_id: number; tw_nazwa: string }>(
+    `SELECT supplier_id, subiekt_tw_id, tw_nazwa FROM stock_watch_items`
+  );
+  const unmonitored = names.rows.filter((r) => !isStockWatchMonitored({ twNazwa: r.tw_nazwa }));
+  if (unmonitored.length > 0) {
+    await query(
+      `DELETE FROM stock_watch_items i
+        USING unnest($1::uuid[], $2::int[]) AS x(supplier_id, subiekt_tw_id)
+        WHERE i.supplier_id = x.supplier_id AND i.subiekt_tw_id = x.subiekt_tw_id`,
+      [unmonitored.map((r) => r.supplier_id), unmonitored.map((r) => r.subiekt_tw_id)]
+    );
+  }
   await query(
     `DELETE FROM stock_watch_supplier_orders
       WHERE computed_at < now() - ($1::int * interval '1 day')`,
@@ -411,6 +494,15 @@ function mapItem(row: ItemRow): StockWatchItem {
         ? row.delivery_risk
         : null,
     status: row.status as StockWatchStatus,
+    bomRole:
+      row.bom_role === "assembled_parent" || row.bom_role === "purchased_kit" || row.bom_role === "component"
+        ? row.bom_role
+        : null,
+    pairRole: row.pair_role === "pack" || row.pair_role === "piece" ? row.pair_role : null,
+    assemblyKind:
+      row.assembly_kind === "assemble" || row.assembly_kind === "disassemble" ? row.assembly_kind : null,
+    assemblyQty: numOrNull(row.assembly_qty),
+    assemblyNote: (row.assembly_note as string | null) ?? null,
     computedAt: iso(row.computed_at) ?? "",
     supplierName: (row.supplier_name as string | null) ?? null,
     rule,
@@ -434,7 +526,10 @@ const ITEM_SELECT = `SELECT i.*,
        LEFT JOIN suppliers s ON s.id = i.supplier_id
        LEFT JOIN zd_estimate_exclusions e ON e.subiekt_tw_id = i.subiekt_tw_id
        LEFT JOIN zd_estimate_on_request r ON r.subiekt_tw_id = i.subiekt_tw_id
-       LEFT JOIN product_purchase_prices p ON p.subiekt_tw_id = i.subiekt_tw_id`;
+       LEFT JOIN product_purchase_prices p ON p.subiekt_tw_id = i.subiekt_tw_id
+      WHERE NOT EXISTS (
+        SELECT 1 FROM prosba_teeth_products t WHERE t.subiekt_tw_id = i.subiekt_tw_id
+      )`;
 
 /**
  * Wszystkie wyniki z regułą liczoną na żywo — oznaczenie „Wyklucz” / „Na prośbę”
@@ -442,7 +537,16 @@ const ITEM_SELECT = `SELECT i.*,
  */
 export async function listStockWatchItems(): Promise<StockWatchItem[]> {
   const res = await query<ItemRow>(ITEM_SELECT);
-  return res.rows.map(mapItem);
+  return res.rows.map(mapItem).filter(isStockWatchMonitored);
+}
+
+/**
+ * Outlet / wycofane (także ucięte „WYCOF…”) — reguła z nazwy, jak auto-wykluczenie w Kreatorze ZD
+ * (katalog zębów odfiltrowuje `ITEM_SELECT`). Worker ich nie zapisuje, a `pruneStaleStockWatchItems`
+ * usuwa wiersze ze starszych przebiegów — filtr przy odczycie działa do tego czasu.
+ */
+export function isStockWatchMonitored(item: { twNazwa: string }): boolean {
+  return !isZdNameAutoExcluded(item.twNazwa);
 }
 
 /** Wyszukiwanie po symbolu / nazwie (zakładka reguł) — limit 50. */
@@ -452,12 +556,13 @@ export async function searchStockWatchItems(term: string): Promise<StockWatchIte
   const escaped = q.replace(/[\\%_]/g, (c) => `\\${c}`);
   const res = await query<ItemRow>(
     `${ITEM_SELECT}
-      WHERE i.tw_symbol ILIKE $1 OR i.tw_nazwa ILIKE $1
+        AND (i.tw_symbol ILIKE $1 OR i.tw_nazwa ILIKE $1)
       ORDER BY (i.tw_symbol ILIKE $2) DESC, i.velocity_daily DESC, i.tw_symbol
-      LIMIT 50`,
+      LIMIT 200`,
     [`%${escaped}%`, `${escaped}%`]
   );
-  return res.rows.map(mapItem);
+  // Filtr nazw po stronie aplikacji — zapas w LIMIT, żeby wycofane nie wypchnęły wyników.
+  return res.rows.map(mapItem).filter(isStockWatchMonitored).slice(0, 50);
 }
 
 // ---------------------------------------------------------------------------
@@ -586,6 +691,10 @@ import type { StockWatchSupplierSignal } from "@/lib/stock-watch/signal";
 export async function listStockWatchSupplierSignals(): Promise<
   Record<string, StockWatchSupplierSignal>
 > {
+  // Pozycje tablicy czytane równolegle z agregatu listy „Do ZD”.
+  const itemsPromise = listStockWatchItems();
+  // Gdy agregat rzuci pierwszy, odrzucenie pozycji nie może zostać nieobsłużone.
+  itemsPromise.catch(() => undefined);
   const res = await query<{
     supplier_id: string;
     dni_zapasu: unknown;
@@ -597,8 +706,6 @@ export async function listStockWatchSupplierSignals(): Promise<
     line_count: unknown;
     order_value: unknown;
     unpriced_count: unknown;
-    critical: unknown;
-    before_delivery: unknown;
     urgent_symbol: string | null;
     urgent_name: string | null;
     urgent_cover: unknown;
@@ -616,11 +723,7 @@ export async function listStockWatchSupplierSignals(): Promise<
        SELECT supplier_id,
               count(*) FILTER (WHERE do_zd) AS line_count,
               coalesce(sum(order_value) FILTER (WHERE do_zd AND order_zd_units > 0), 0) AS order_value,
-              count(*) FILTER (WHERE do_zd AND order_zd_units > 0 AND order_value IS NULL) AS unpriced_count,
-              -- Jak lista pilnych w Brakach (link „N pilne” otwiera dokładnie te pozycje): standardowe,
-              -- niezależnie od in_order — przy niepełnej analizie (np. BOM) in_order bywa false.
-              count(*) FILTER (WHERE standard AND status IN ('out_of_stock', 'critical')) AS critical,
-              count(*) FILTER (WHERE standard AND delivery_risk = 'before_delivery') AS before_delivery
+              count(*) FILTER (WHERE do_zd AND order_zd_units > 0 AND order_value IS NULL) AS unpriced_count
          FROM lines
         GROUP BY supplier_id
      ),
@@ -632,20 +735,27 @@ export async function listStockWatchSupplierSignals(): Promise<
      )
      SELECT o.supplier_id, o.dni_zapasu, o.data_do, o.lead_days, o.next_order_date,
             o.next_order_days, o.computed_at,
-            a.line_count, a.order_value, a.unpriced_count, a.critical, a.before_delivery,
+            a.line_count, a.order_value, a.unpriced_count,
             u.tw_symbol AS urgent_symbol, u.tw_nazwa AS urgent_name, u.days_of_cover AS urgent_cover
        FROM stock_watch_supplier_orders o
        LEFT JOIN agg a ON a.supplier_id = o.supplier_id
        LEFT JOIN urgent u ON u.supplier_id = o.supplier_id`
   );
+  // „N pilne” / „przed dostawą” liczone tą samą funkcją co tablica Braków: filtr zębów i WYCOF,
+  // towar wspólny tylko u jednego dostawcy, towar w drodze nie jest pilny.
+  // Liczniki pilności zależą tylko od pozycji (propozycje Do ZD idą z SQL powyżej).
+  const board = buildStockWatchDashboard(await itemsPromise, []);
+  const boardById = new Map(board.suppliers.map((s) => [s.supplierId, s]));
   const out: Record<string, StockWatchSupplierSignal> = {};
   for (const row of res.rows) {
+    const boardRow = boardById.get(String(row.supplier_id));
     out[String(row.supplier_id)] = {
       lineCount: num(row.line_count),
       orderValue: Math.round(num(row.order_value) * 100) / 100,
       unpricedCount: num(row.unpriced_count),
-      criticalCount: num(row.critical),
-      beforeDeliveryCount: num(row.before_delivery),
+      criticalCount: boardRow ? boardRow.emptyNoIncoming + boardRow.critical : 0,
+      // Szeroko (także brak / ≤ 48 h), jak dotąd — panel dzienny pokazuje z tego „Do kolejnej dostawy”.
+      beforeDeliveryCount: boardRow?.atRiskBeforeDelivery ?? 0,
       mostUrgent:
         row.urgent_name != null
           ? { twSymbol: row.urgent_symbol, twNazwa: row.urgent_name, daysOfCover: numOrNull(row.urgent_cover) }
@@ -739,6 +849,111 @@ export async function upsertProductPurchasePrices(
     params
   );
   return res.rowCount ?? 0;
+}
+
+export type ZdPurchaseLineRow = {
+  subiektTwId: number;
+  dokId: number;
+  dokNr: string | null;
+  dokDate: string | null;
+  khId: number | null;
+  /** Jednostki dokumentu ZD (przy opakowaniach: paczki). */
+  qty: number;
+  priceNet: number | null;
+  /**
+   * Pierwsza faktura FZ do tego ZD (także do ZD „resztowego” z niego) — data jak w czasach dostaw:
+   * przyjęcie na magazyn, bez niej wystawienie. null = bez faktury (w drodze albo zamknięte bez FZ).
+   * Tylko w historii karty produktu (listZdPurchaseLinesForTw).
+   */
+  fzDate?: string | null;
+  fzNr?: string | null;
+  /** Ile FZ do tego ZD (dostawy częściowe). */
+  fzCount?: number;
+  /** ZD zrealizowany w Subiekcie — bez FZ to „faktura niepowiązana” (np. przez PZ), nie „w drodze”. null = brak ZD w kopii. */
+  zdDone?: boolean | null;
+};
+
+/**
+ * Linie ZD do historii zakupów (karta produktu). Ten sam ZD odczytany ponownie nadpisuje linię.
+ * Tablice + unnest: jedno zapytanie bez limitu 65 535 parametrów (porcja harvestu może mieć tysiące linii).
+ */
+export async function upsertZdPurchaseLines(rows: readonly ZdPurchaseLineRow[]): Promise<number> {
+  if (!rows.length) return 0;
+  // Ten sam (ZD, towar) dwa razy w jednym INSERT … ON CONFLICT rzuca błąd — zostaje ostatni.
+  const byKey = new Map<string, ZdPurchaseLineRow>();
+  for (const r of rows) byKey.set(`${r.dokId}:${r.subiektTwId}`, r);
+  const list = [...byKey.values()];
+  const res = await query(
+    `INSERT INTO zd_purchase_lines
+       (dok_id, subiekt_tw_id, dok_nr, dok_date, kh_id, qty, price_net, updated_at)
+     SELECT t.dok_id, t.tw, t.dok_nr, t.dok_date, t.kh_id, t.qty, t.price_net, now()
+       FROM unnest($1::int[], $2::int[], $3::text[], $4::date[], $5::int[], $6::numeric[], $7::numeric[])
+         AS t(dok_id, tw, dok_nr, dok_date, kh_id, qty, price_net)
+     ON CONFLICT (dok_id, subiekt_tw_id) DO UPDATE SET
+       dok_nr = EXCLUDED.dok_nr,
+       dok_date = EXCLUDED.dok_date,
+       kh_id = EXCLUDED.kh_id,
+       qty = EXCLUDED.qty,
+       price_net = EXCLUDED.price_net,
+       updated_at = now()`,
+    [
+      list.map((r) => r.dokId),
+      list.map((r) => r.subiektTwId),
+      list.map((r) => r.dokNr),
+      list.map((r) => r.dokDate),
+      list.map((r) => r.khId),
+      list.map((r) => r.qty),
+      list.map((r) => r.priceNet),
+    ]
+  );
+  return res.rowCount ?? 0;
+}
+
+/** Historia zakupów towarów (najnowsze pierwsze) — karta produktu w Kreatorze. */
+export async function listZdPurchaseLinesForTw(
+  twIds: readonly number[],
+  sinceDate: string,
+  limit = 40,
+  /** Wiele towarów naraz (wykrywanie „na prośbę” dla listy) — wyższy sufit niż karta jednego towaru. */
+  maxLimit = 200
+): Promise<ZdPurchaseLineRow[]> {
+  const ids = [...new Set(twIds.map((x) => Math.trunc(x)).filter((x) => x > 0))];
+  if (!ids.length) return [];
+  // FZ wskazuje ZD przez do_dok_id (jak w subiekt-lead-times); ZD resztowy wskazuje ZD, z którego powstał.
+  // Data faktury: przyjęcie na magazyn, bez niej wystawienie — „kiedy faktura była wpisana”.
+  const res = await query<ItemRow>(
+    `SELECT l.subiekt_tw_id, l.dok_id, l.dok_nr, l.dok_date, l.kh_id, l.qty, l.price_net,
+            f.fz_date, f.fz_nr, f.fz_count, zd.status AS zd_status
+       FROM zd_purchase_lines l
+       LEFT JOIN subiekt_purchase_docs zd ON zd.dok_id = l.dok_id AND zd.typ = $5
+       LEFT JOIN LATERAL (
+         SELECT min(coalesce(fz.data_mag, fz.data_wyst)) AS fz_date,
+                (array_agg(fz.nr_pelny ORDER BY coalesce(fz.data_mag, fz.data_wyst), fz.dok_id))[1] AS fz_nr,
+                count(*) AS fz_count
+           FROM subiekt_purchase_docs fz
+          WHERE fz.typ = $4
+            AND (fz.do_dok_id = l.dok_id
+                 OR fz.do_dok_id IN (SELECT z.dok_id FROM subiekt_purchase_docs z
+                                      WHERE z.typ = $5 AND z.do_dok_id = l.dok_id))
+       ) f ON f.fz_count > 0
+      WHERE l.subiekt_tw_id = ANY($1::int[]) AND l.dok_date >= $2::date
+      ORDER BY coalesce(f.fz_date, l.dok_date) DESC, l.dok_id DESC
+      LIMIT $3`,
+    [ids, sinceDate, Math.min(maxLimit, Math.max(1, Math.trunc(limit))), SUBIEKT_DOC_TYPE_FZ, SUBIEKT_DOC_TYPE_ZD]
+  );
+  return res.rows.map((r) => ({
+    subiektTwId: num(r.subiekt_tw_id),
+    dokId: num(r.dok_id),
+    dokNr: (r.dok_nr as string | null) ?? null,
+    dokDate: dateKey(r.dok_date),
+    khId: r.kh_id == null ? null : num(r.kh_id),
+    qty: num(r.qty),
+    priceNet: r.price_net == null ? null : num(r.price_net),
+    fzDate: dateKey(r.fz_date),
+    fzNr: (r.fz_nr as string | null) ?? null,
+    fzCount: r.fz_count == null ? 0 : num(r.fz_count),
+    zdDone: r.zd_status == null ? null : num(r.zd_status) === SUBIEKT_ZD_STATUS_DONE,
+  }));
 }
 
 export async function listZdIndexPendingPriceHarvest(limit: number): Promise<

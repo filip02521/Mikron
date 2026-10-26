@@ -39,7 +39,7 @@ export function ZdEstimateReservationsCell({
           "zd-estimate-rez-trigger inline-flex max-w-full items-center justify-center rounded-sm",
           "underline decoration-amber-600/50 decoration-dotted underline-offset-2",
           "hover:bg-amber-50/80 hover:decoration-amber-700 focus-visible:outline-none",
-          "focus-visible:ring-2 focus-visible:ring-amber-500/40"
+          "focus-visible:ring-2 focus-visible:ring-indigo-600"
         )}
       >
         {children}

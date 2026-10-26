@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { query } from "@/lib/db/pool";
 
 export type ProductCatalogSource = "order_history" | "procurement_verification" | "zd_import" | "admin_note";
 
@@ -285,3 +286,29 @@ export async function indexOrderLineToProductCatalog(input: {
   }
 }
 
+
+/** Notatka zakupów przy towarze (np. „taniej od 10 opak.”) — ta sama, co w katalogu produktów admina. */
+export async function fetchSubiektProductNote(subiektTwId: number): Promise<string> {
+  const res = await query<{ note: string | null }>(`SELECT note FROM subiekt_products WHERE subiekt_tw_id = $1`, [
+    Math.trunc(subiektTwId),
+  ]);
+  return res.rows[0]?.note ?? "";
+}
+
+/** Zapis notatki; towaru może jeszcze nie być w katalogu (Kreator czyta Subiekta) — wtedy powstaje wiersz. */
+export async function saveSubiektProductNote(input: { subiektTwId: number; note: string; symbol?: string | null; name?: string | null }): Promise<void> {
+  // Pusta notatka tylko czyści istniejącą — nie zakłada w katalogu pustego wiersza dla towaru spoza niego.
+  if (!input.note) {
+    await query(`UPDATE subiekt_products SET note = '', updated_at = now() WHERE subiekt_tw_id = $1 AND note <> ''`, [
+      Math.trunc(input.subiektTwId),
+    ]);
+    return;
+  }
+  await query(
+    `INSERT INTO subiekt_products (subiekt_tw_id, symbol, name, note, updated_at)
+     VALUES ($1, $2, $3, $4, now())
+     ON CONFLICT (subiekt_tw_id) DO UPDATE SET note = EXCLUDED.note, updated_at = now(),
+       symbol = coalesce(subiekt_products.symbol, EXCLUDED.symbol), name = coalesce(subiekt_products.name, EXCLUDED.name)`,
+    [Math.trunc(input.subiektTwId), input.symbol ?? null, input.name ?? null, input.note]
+  );
+}

@@ -25,6 +25,8 @@ import {
   validateSupplierContactFields,
 } from "@/lib/orders/validate-supplier-contact";
 import { MIN_ORDER_CURRENCY_OPTIONS } from "@/lib/suppliers/min-order-currency";
+import { SupplierFreeShippingField } from "@/components/admin/SupplierFreeShippingField";
+import type { SubiektCountry } from "@/lib/suppliers/subiekt-country";
 
 const LOCATIONS: { value: SupplierLocation; label: string }[] = [
   { value: "POLSKA", label: "Polska" },
@@ -51,6 +53,8 @@ function formFromSupplier(s: SupplierSummaryMeta | null) {
       subiekt_kh_id: null as number | null,
       min_order_value: null as number | null,
       min_order_currency: "",
+      free_shipping_threshold: null as number | null,
+      subiekt_country: null as SubiektCountry | null,
     };
   }
   return {
@@ -76,6 +80,11 @@ function formFromSupplier(s: SupplierSummaryMeta | null) {
     min_order_value:
       s.min_order_value != null ? Number(s.min_order_value) : null,
     min_order_currency: s.min_order_currency ?? "",
+    free_shipping_threshold:
+      s.free_shipping_threshold != null ? Number(s.free_shipping_threshold) : null,
+    subiekt_country: (s.subiekt_country_id != null
+      ? { id: s.subiekt_country_id, name: s.subiekt_country_name ?? null }
+      : null) as SubiektCountry | null,
   };
 }
 
@@ -195,7 +204,11 @@ function SupplierEditModalInner({
               supplierId={form.id}
               supplierName={form.name}
               subiektKhId={form.subiekt_kh_id}
-              onLinked={(khId) => setForm((f) => ({ ...f, subiekt_kh_id: khId }))}
+              country={form.subiekt_country}
+            supplierLocation={form.location}
+              onLinked={(khId, country) =>
+                setForm((f) => ({ ...f, subiekt_kh_id: khId, subiekt_country: country }))
+              }
             />
           </div>
         ) : null}
@@ -341,6 +354,11 @@ function SupplierEditModalInner({
             </Select>
           </div>
         </Field>
+        <SupplierFreeShippingField
+          value={form.free_shipping_threshold}
+          disabled={pending}
+          onChange={(v) => setForm((f) => ({ ...f, free_shipping_threshold: v }))}
+        />
         <label className="flex cursor-pointer items-start gap-2 sm:col-span-2">
           <input
             type="checkbox"

@@ -59,7 +59,7 @@ const TEMPLATES: Record<SubiektErrorCode, FeedbackTemplate> = {
   not_found_product: {
     title: "Nie znaleziono produktu",
     message: "Brak pozycji pasującej do wpisanej frazy.",
-    hint: "Sprawdź symbol lub wpisz opis produktu ręcznie - prośbę można wysłać bez podpowiedzi.",
+    hint: "Nowy towar, którego nie ma w Subiekcie? Zostaw wpisaną nazwę - prośbę wyślesz bez wyboru z listy.",
     tone: "info",
   },
   not_found_supplier: {

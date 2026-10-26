@@ -26,14 +26,14 @@ export function PanelSummaryMetric({
 
   const body = (
     <>
-      <p className="text-[11px] font-semibold text-slate-500">
+      <p className="text-[0.6875rem] font-semibold text-slate-500">
         {label}
       </p>
       <p className={cn("mt-0.5 text-lg font-semibold tabular-nums", valueToneClass)}>
         {value}
       </p>
       {hint ? (
-        <p className="mt-0.5 text-[11px] leading-snug text-slate-600">{hint}</p>
+        <p className="mt-0.5 text-[0.6875rem] leading-snug text-slate-600">{hint}</p>
       ) : null}
     </>
   );
@@ -45,7 +45,7 @@ export function PanelSummaryMetric({
         onClick={onClick}
         title={title}
         className={cn(
-          "cursor-pointer rounded-md border px-3 py-2.5 text-left transition-[border-color,background-color] duration-150 ease-out hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 active:scale-[0.99]",
+          "cursor-pointer rounded-md border px-3 py-2.5 text-left transition-[border-color,background-color] duration-150 ease-out hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 active:scale-[0.99]",
           toneClass,
           className
         )}

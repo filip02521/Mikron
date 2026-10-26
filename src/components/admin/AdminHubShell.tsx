@@ -1,20 +1,9 @@
 "use client";
 
-import { NavIcon } from "@/components/icons/NavIcon";
-import { navIconTileIdleClass, type NavIconKey } from "@/components/icons/NavIcon";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { AdminHubNav } from "@/components/admin/AdminHubNav";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import type { AdminHubTab } from "@/lib/admin-hub";
-import { adminHubBodyClass, adminPageShellClass } from "@/lib/ui/ontime-theme";
-
-const TAB_ICON: Record<AdminHubTab, NavIconKey> = {
-  system: "admin",
-  users: "teamAccounts",
-  sales: "team",
-  mail: "admin",
-  wysylki: "admin",
-};
+import { adminPageShellClass } from "@/lib/ui/ontime-theme";
 
 const TAB_TITLE: Record<AdminHubTab, string> = {
   system: "Administracja",
@@ -52,29 +41,14 @@ export function AdminHubShell({
   action?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  const iconKey = TAB_ICON[activeTab];
   const headerTitle = title ?? TAB_TITLE[activeTab];
   const headerDescription = description ?? TAB_DESCRIPTION[activeTab];
 
   return (
     <div className={adminPageShellClass}>
+      <PageHeader title={headerTitle} description={headerDescription} actions={action} />
       <AdminHubNav activeTab={activeTab} visibleTabs={visibleTabs} />
-      <Card padding={false} className="mt-3 overflow-hidden">
-        <CardHeader
-          inset
-          density="compact"
-          leading={
-            <SectionHeadingIcon tileClassName={navIconTileIdleClass(iconKey)}>
-              <NavIcon navKey={iconKey} size={20} />
-            </SectionHeadingIcon>
-          }
-          title={headerTitle}
-          description={headerDescription}
-          action={action}
-        />
-
-        <div className={adminHubBodyClass}>{children}</div>
-      </Card>
+      <div className="min-w-0 space-y-6">{children}</div>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
+import { fetchAllRowsResult } from "@/lib/data/fetch-all-rows";
 import { normalizeIndividualOrders } from "@/lib/data/normalize-order";
 import { formatDateString, parseDateOnly } from "@/lib/orders/dates";
 import { todayInWarsaw } from "@/lib/time/warsaw";
@@ -158,29 +159,35 @@ export async function fetchUpcomingDeliveriesWithMeta(
   const todayKey = formatDateString(todayInWarsaw());
 
   const [rangeRes, overdueRes] = await Promise.all([
-    supabase
-      .from("individual_orders")
-      .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
-      .eq("request_kind", "zamowienie")
-      .in("status", ["Zamowione", "Czesciowo_zrealizowane", "Zrealizowane"])
-      .is("sales_cancelled_at", null)
-      .not("supplier_id", "is", null)
-      .not("zd_fulfillment_deadline", "is", null)
-      .gte("zd_fulfillment_deadline", dateFrom)
-      .lte("zd_fulfillment_deadline", dateTo)
-      .order("zd_fulfillment_deadline", { ascending: true })
-      .order("supplier_id", { ascending: true }),
-    supabase
-      .from("individual_orders")
-      .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
-      .eq("request_kind", "zamowienie")
-      .in("status", ["Zamowione", "Czesciowo_zrealizowane", "Zrealizowane"])
-      .is("sales_cancelled_at", null)
-      .not("supplier_id", "is", null)
-      .not("zd_fulfillment_deadline", "is", null)
-      .lt("zd_fulfillment_deadline", todayKey)
-      .order("zd_fulfillment_deadline", { ascending: true })
-      .order("supplier_id", { ascending: true }),
+    fetchAllRowsResult<IndividualOrder>(() =>
+      supabase
+        .from("individual_orders")
+        .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
+        .eq("request_kind", "zamowienie")
+        .in("status", ["Zamowione", "Czesciowo_zrealizowane", "Zrealizowane"])
+        .is("sales_cancelled_at", null)
+        .not("supplier_id", "is", null)
+        .not("zd_fulfillment_deadline", "is", null)
+        .gte("zd_fulfillment_deadline", dateFrom)
+        .lte("zd_fulfillment_deadline", dateTo)
+        .order("zd_fulfillment_deadline", { ascending: true })
+        .order("supplier_id", { ascending: true })
+        .order("id", { ascending: true })
+    ),
+    fetchAllRowsResult<IndividualOrder>(() =>
+      supabase
+        .from("individual_orders")
+        .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
+        .eq("request_kind", "zamowienie")
+        .in("status", ["Zamowione", "Czesciowo_zrealizowane", "Zrealizowane"])
+        .is("sales_cancelled_at", null)
+        .not("supplier_id", "is", null)
+        .not("zd_fulfillment_deadline", "is", null)
+        .lt("zd_fulfillment_deadline", todayKey)
+        .order("zd_fulfillment_deadline", { ascending: true })
+        .order("supplier_id", { ascending: true })
+        .order("id", { ascending: true })
+    ),
   ]);
 
   if (rangeRes.error) {
@@ -241,29 +248,35 @@ async function fetchUpcomingDeliveriesLegacy(
 ): Promise<UpcomingDeliveriesResult> {
   const supabase = createAdminClient();
   const [rangeRes, overdueRes] = await Promise.all([
-    supabase
-      .from("individual_orders")
-      .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
-      .eq("request_kind", "zamowienie")
-      .in("status", ["Zamowione", "Czesciowo_zrealizowane", "Zrealizowane"])
-      .is("sales_cancelled_at", null)
-      .not("supplier_id", "is", null)
-      .not("zd_fulfillment_deadline", "is", null)
-      .gte("zd_fulfillment_deadline", dateFrom)
-      .lte("zd_fulfillment_deadline", dateTo)
-      .order("zd_fulfillment_deadline", { ascending: true })
-      .order("supplier_id", { ascending: true }),
-    supabase
-      .from("individual_orders")
-      .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
-      .eq("request_kind", "zamowienie")
-      .in("status", ["Zamowione", "Czesciowo_zrealizowane", "Zrealizowane"])
-      .is("sales_cancelled_at", null)
-      .not("supplier_id", "is", null)
-      .not("zd_fulfillment_deadline", "is", null)
-      .lt("zd_fulfillment_deadline", todayKey)
-      .order("zd_fulfillment_deadline", { ascending: true })
-      .order("supplier_id", { ascending: true }),
+    fetchAllRowsResult<IndividualOrder>(() =>
+      supabase
+        .from("individual_orders")
+        .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
+        .eq("request_kind", "zamowienie")
+        .in("status", ["Zamowione", "Czesciowo_zrealizowane", "Zrealizowane"])
+        .is("sales_cancelled_at", null)
+        .not("supplier_id", "is", null)
+        .not("zd_fulfillment_deadline", "is", null)
+        .gte("zd_fulfillment_deadline", dateFrom)
+        .lte("zd_fulfillment_deadline", dateTo)
+        .order("zd_fulfillment_deadline", { ascending: true })
+        .order("supplier_id", { ascending: true })
+        .order("id", { ascending: true })
+    ),
+    fetchAllRowsResult<IndividualOrder>(() =>
+      supabase
+        .from("individual_orders")
+        .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
+        .eq("request_kind", "zamowienie")
+        .in("status", ["Zamowione", "Czesciowo_zrealizowane", "Zrealizowane"])
+        .is("sales_cancelled_at", null)
+        .not("supplier_id", "is", null)
+        .not("zd_fulfillment_deadline", "is", null)
+        .lt("zd_fulfillment_deadline", todayKey)
+        .order("zd_fulfillment_deadline", { ascending: true })
+        .order("supplier_id", { ascending: true })
+        .order("id", { ascending: true })
+    ),
   ]);
 
   if (rangeRes.error) throw new Error(rangeRes.error.message);

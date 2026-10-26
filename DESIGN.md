@@ -5,13 +5,14 @@ colors:
   petrol: "#0f7380"
   petrol-deep: "#0d5d67"
   petrol-pressed: "#0f4b53"
+  petrol-ink: "#113e45"
   petrol-tint: "#d4edef"
   petrol-mist: "#edf7f8"
   graphite: "#151920"
   graphite-soft: "#363c46"
   ink-secondary: "#4a515c"
   ink-muted: "#626a76"
-  ink-faint: "#8b939f"
+  ink-faint: "#737b87"
   line-strong: "#c9ced6"
   line: "#e1e4e9"
   line-soft: "#eef0f3"
@@ -26,19 +27,36 @@ colors:
   danger: "#dc2626"
   danger-surface: "#fef2f2"
   danger-ink: "#b91c1c"
+  danger-ink-deep: "#991b1b"
 typography:
   headline:
-    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Inter Tight, Geist, ui-sans-serif, system-ui, sans-serif"
     fontSize: "1.75rem"
-    fontWeight: 600
-    lineHeight: 1.25
-    letterSpacing: "-0.025em"
+    fontWeight: 700
+    lineHeight: 1.2
+    letterSpacing: "-0.015em"
+  section:
+    fontFamily: "Inter Tight, Geist, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "1.125rem"
+    fontWeight: 700
+    lineHeight: 1.35
+    letterSpacing: "-0.01em"
   title:
     fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "1.125rem"
+    fontSize: "1rem"
     fontWeight: 600
     lineHeight: 1.4
-    letterSpacing: "-0.025em"
+    letterSpacing: "-0.01em"
+  item:
+    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "0.9375rem"
+    fontWeight: 600
+    lineHeight: 1.35
+  meta:
+    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "0.8125rem"
+    fontWeight: 400
+    lineHeight: 1.4
   body:
     fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.9375rem"
@@ -49,18 +67,33 @@ typography:
     fontSize: "0.875rem"
     fontWeight: 400
     lineHeight: 1.45
+    fontFeature: "tnum"
   label:
     fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.75rem"
     fontWeight: 600
     lineHeight: 1.4
-    letterSpacing: "0.025em"
-  overline:
+  micro:
     fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "0.75rem"
+    fontSize: "0.6875rem"
+    fontWeight: 500
+    lineHeight: 1.4
+  tiny:
+    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "0.625rem"
+    fontWeight: 600
+    lineHeight: 1.2
+  column-header:
+    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "0.8125rem"
+    fontWeight: 500
+    lineHeight: 1.4
+  nav-group:
+    fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "0.6875rem"
     fontWeight: 600
     lineHeight: 1.4
-    letterSpacing: "0.04em"
+    letterSpacing: "0.08em"
   code:
     fontFamily: "Geist Mono, ui-monospace, monospace"
     fontSize: "0.75rem"
@@ -72,11 +105,13 @@ rounded:
   panel: "0.625rem"
   pill: "9999px"
 spacing:
-  xs: "0.25rem"
-  sm: "0.5rem"
-  md: "1rem"
-  lg: "1.5rem"
-  xl: "1.75rem"
+  "1": "0.25rem"
+  "2": "0.5rem"
+  "3": "0.75rem"
+  "4": "1rem"
+  "5": "1.25rem"
+  "6": "1.5rem"
+  "7": "1.75rem"
 components:
   button-primary:
     backgroundColor: "{colors.petrol}"
@@ -92,6 +127,18 @@ components:
     textColor: "{colors.graphite-soft}"
     rounded: "{rounded.control}"
     padding: "0.5rem 1rem"
+  button-secondary-hover:
+    backgroundColor: "{colors.well}"
+    textColor: "{colors.graphite}"
+  button-ghost:
+    textColor: "{colors.ink-secondary}"
+    rounded: "{rounded.control}"
+    padding: "0.5rem 1rem"
+  button-outline:
+    backgroundColor: "{colors.petrol-mist}"
+    textColor: "{colors.petrol-pressed}"
+    rounded: "{rounded.control}"
+    padding: "0.5rem 1rem"
   button-danger:
     backgroundColor: "{colors.danger}"
     textColor: "{colors.card}"
@@ -100,14 +147,23 @@ components:
   input:
     backgroundColor: "{colors.card}"
     textColor: "{colors.graphite}"
-    typography: "{typography.body}"
+    typography: "{typography.body-dense}"
     rounded: "{rounded.control}"
     padding: "0.625rem 0.875rem"
     height: "2.5rem"
   card:
     backgroundColor: "{colors.card}"
     rounded: "{rounded.panel}"
-    padding: "1.75rem"
+    padding: "1.25rem"
+  tab-active:
+    textColor: "{colors.graphite}"
+    typography: "{typography.body-dense}"
+    padding: "0.625rem 0.25rem"
+  filter-chip-selected:
+    backgroundColor: "{colors.petrol-mist}"
+    textColor: "{colors.petrol-ink}"
+    rounded: "{rounded.control}"
+    padding: "0.375rem 0.75rem"
   badge-neutral:
     backgroundColor: "{colors.line-soft}"
     textColor: "{colors.graphite-soft}"
@@ -118,6 +174,25 @@ components:
     textColor: "{colors.attention-ink}"
     rounded: "{rounded.control}"
     padding: "0.125rem 0.375rem"
+  badge-success:
+    backgroundColor: "{colors.success-surface}"
+    textColor: "{colors.success-ink}"
+    rounded: "{rounded.control}"
+    padding: "0.125rem 0.375rem"
+  badge-danger:
+    backgroundColor: "{colors.danger-surface}"
+    textColor: "{colors.danger-ink-deep}"
+    rounded: "{rounded.control}"
+    padding: "0.125rem 0.375rem"
+  badge-info:
+    backgroundColor: "{colors.petrol-mist}"
+    textColor: "{colors.petrol-pressed}"
+    rounded: "{rounded.control}"
+    padding: "0.125rem 0.375rem"
+  nav-item-active:
+    backgroundColor: "{colors.petrol-mist}"
+    textColor: "{colors.petrol-ink}"
+    rounded: "{rounded.control}"
   segmented-active:
     backgroundColor: "{colors.card}"
     textColor: "{colors.graphite}"
@@ -126,160 +201,383 @@ components:
   table-header:
     backgroundColor: "{colors.well}"
     textColor: "{colors.ink-muted}"
-    typography: "{typography.overline}"
+    typography: "{typography.column-header}"
     padding: "0.875rem 1.25rem"
 ---
 
 # Design System: OnTime
 
+Ten plik jest normatywny: tokeny we frontmatterze są źródłem prawdy, a tekst mówi, gdzie i po co ich używać. Kod realizuje je w dwóch miejscach: `src/app/globals.css` (zmienne CSS i przemapowane palety Tailwinda) oraz `src/lib/ui/ontime-theme.ts` (gotowe klasy). Gdy kod i ten plik się rozjadą, popraw jedno albo drugie w tym samym PR. Kolory podawaj zawsze jako klasę Tailwinda lub zmienną CSS, nigdy jako surowy hex w komponencie. Część reguł pilnuje `npm run audit:design` (krok CI): wagi powyżej 600, wersaliki i rozmiary tekstu w px. Czego audyt jeszcze nie łapie, jest w sekcji „Znany dług”.
+
 ## Overview
 
-**Creative North Star: "Pulpit dyspozytora"**
+OnTime to narzędzie do codziennej pracy na danych z Subiekta: listy dostawców, setki pozycji ZD, kolejki próśb. Interfejs ma zejść z drogi. Neutralna, chłodna szarość niesie strukturę, jeden kolor marki (Petrol) pokazuje, gdzie działasz, a trzy kolory stanów mówią, co wymaga reakcji. Nic poza tym nie jest kolorowe.
 
-OnTime to stanowisko dyspozytora: spokojna, gęsta powierzchnia, na której wszystko jest pod ręką, a kolor pojawia się tylko tam, gdzie coś wymaga reakcji. Tło to chłodny grafit i jasne szarości. Na nim leżą białe karty z delikatnym cieniem, a jedyny akcent marki, Petrol, oznacza „tu działasz”: główną akcję, aktywną pozycję menu, zaznaczenie. Statusy mają osobny, stały słownik: zielony gotowe, bursztyn uwaga, czerwony błąd. Nie mieszają się z marką.
+Wzorcem jest pulpit dyspozytora: wszystko pod ręką, gęsto, ale czytelnie. Gęstość nie jest problemem do rozwiązania. Zakupy pracują przy biurku na długich listach, magazyn na telefonie w hali, handlowcy w biegu. Ekran zaczyna od zadania i jego stanu („421 cen do zapisu”), nie od statystyk.
 
-Gęstość jest zaletą. Tabele z setkami pozycji, liczby w kolumnach z cyframi o stałej szerokości i krótkie etykiety to normalna praca działu zakupów, magazynu i handlowców. Akcje są pewne i wyraźne: główny przycisk to pełny Petrol z jednoznacznym czasownikiem i liczbą („Zapisz 421 cen”). Nigdy nie konkuruje z drugim przyciskiem tej samej wagi.
+Nowoczesność tutaj to spokój, nie efekt: jedna warstwa kart na tle, nagłówki na tle zamiast w ramkach, cienkie linie zamiast ciężkich cieni, jeden wyraźny stan „wybrane”, ciasna i równa skala tekstu. Każdy ekran składa się z tych samych pięciu warstw (Layout → „Anatomia ekranu”), więc przejście między modułami nie wymaga uczenia się nowego układu.
 
-Interfejs nie ma motywu ciemnego w aplikacji. Ciemny gradient marki należy wyłącznie do ekranów logowania.
-
-**Key Characteristics:**
-- Grafit i szarości, jeden akcent Petrol, statusy tylko zielony / bursztyn / czerwony.
-- Białe karty na szarym płótnie, cienie miękkie i krótkie.
-- Gęste tabele, cyfry tabelaryczne, nagłówki kolumn wersalikami.
-- Główna akcja pełna i jednoznaczna, z liczbą w etykiecie.
-- Geist w całym interfejsie, Geist Mono dla kodów i numerów katalogowych.
+Aplikacja ma tylko jasny motyw. Ciemne tło z gradientem marki występuje wyłącznie na ekranach logowania. Tarcza marki (`BrandCardAccent`) pojawia się tylko w momentach marki: logowanie, strona 404, onboarding i puste stany pierwszego uruchomienia. Na ekranach pracy jej nie ma.
 
 ## Colors
 
-Chłodna, niemal monochromatyczna paleta grafitu z jednym nasyconym akcentem i trzema kolorami stanów.
+Szarości są chłodne (lekko w stronę niebieskiego), Petrol jest jedynym nasyconym kolorem, a zieleń, bursztyn i czerwień oznaczają wyłącznie stany.
+
+W kodzie palety Tailwinda są przemapowane w `globals.css`: `slate-*` to szarości OnTime, `indigo-*` to Petrol. Rodziny `blue`, `cyan`, `teal`, `violet`, `purple`, `fuchsia`, `pink` też dają Petrol, `sky` daje szarość, `rose` czerwień, `orange` i `yellow` bursztyn, `green` i `lime` zieleń. Nowy kod pisz jednak wprost klasami `slate-*`, `indigo-*`, `emerald-*`, `amber-*`, `red-*`, żeby intencja była czytelna.
 
 ### Primary
-- **Petrol** (#0f7380): kolor marki i jedynego „tu działasz”. Główne przyciski, aktywna pozycja menu (pasek z lewej i tło Petrol Tint), linki, zaznaczone checkboxy, pasek postępu, pierścień fokusu, hover wiersza tabeli (wewnętrzny pasek 3 px z lewej).
-- **Petrol Deep** (#0d5d67): hover głównej akcji, kolor zaznaczonego tekstu.
-- **Petrol Pressed** (#0f4b53): stan wciśnięcia głównej akcji.
-- **Petrol Tint** (#d4edef) i **Petrol Mist** (#edf7f8): tła zaznaczenia (aktywny link, zaznaczenie tekstu, wybrany wiersz, komunikat informacyjny).
+
+| Token | Klasa | Do czego |
+|---|---|---|
+| `petrol` | `indigo-600`, `var(--primary)` | Główny przycisk, link, zaznaczony checkbox, pasek postępu, pierścień fokusu. |
+| `petrol-deep` | `indigo-700` | Hover głównego przycisku, tekst zaznaczenia. |
+| `petrol-pressed` | `indigo-800` | Wciśnięty główny przycisk. |
+| `petrol-ink` | `indigo-900` | Tekst aktywnej pozycji menu. |
+| `petrol-tint` | `indigo-100` | Obramowanie lub tło wybranego elementu, gdy `petrol-mist` jest za słaby. |
+| `petrol-mist` | `indigo-50`, `var(--primary-muted)` | Tło aktywnej pozycji menu, zaznaczenia tekstu, komunikatu informacyjnego. |
 
 ### Neutral
-- **Grafit** (#151920): tekst główny, tytuły, wartości.
-- **Grafit Miękki** (#363c46): tekst przycisków drugorzędnych.
-- **Atrament Drugi** (#4a515c): tekst komórek tabel, opisy.
-- **Atrament Przygaszony** (#626a76): nagłówki kolumn, podpisy, metadane.
-- **Atrament Blady** (#8b939f): placeholdery, wartości zerowe, separatory tekstowe.
-- **Linia Mocna** (#c9ced6), **Linia** (#e1e4e9), **Linia Miękka** (#eef0f3): obramowania kontrolek, kart i wierszy tabel, od najmocniejszej.
-- **Studnia** (#f6f7f9): tło nagłówka tabeli, hover wiersza, tor przełącznika segmentowego.
-- **Płótno** (#f3f5f7): tło aplikacji pod kartami.
-- **Karta** (#ffffff): powierzchnie treści, menu boczne.
 
-### Status
-- **Gotowe** (#ecfdf5 tło / #065f46 tekst): zapisane, zrealizowane, zgodne.
-- **Uwaga** (#fffbeb tło / #f59e0b sygnał / #78350f tekst): zaległe, do przejrzenia, tryb podglądu (pasek 3 px u góry ekranu).
-- **Błąd** (#fef2f2 tło / #dc2626 przycisk / #b91c1c tekst): błąd zapisu, rozbieżność, akcja nieodwracalna na produkcji.
+| Token | Klasa | Do czego |
+|---|---|---|
+| `graphite` | `slate-900`, `var(--foreground)` | Tekst główny, tytuły, wartości. |
+| `graphite-soft` | `slate-700` | Tekst przycisku drugorzędnego, pozycje menu w spoczynku. |
+| `ink-secondary` | `slate-600`, `var(--muted-foreground)` | Tekst komórek tabeli, opisy pod tytułem, etykiety pól. |
+| `ink-muted` | `slate-500`, `var(--muted)` | Nagłówki kolumn, podpisy, metadane. Najjaśniejszy tekst dopuszczalny dla treści. |
+| `ink-faint` | `slate-400` | Placeholdery, wartość zerowa („—”), ikony pomocnicze. Ma 4.3:1 na bieli, więc nie używaj go do zdań do przeczytania. |
+| `line-strong` | `slate-300` | Obramowanie pola i przycisku w hover, suwak przewijania. |
+| `line` | `slate-200`, `var(--card-border)` | Obramowanie karty, pola, przycisku. |
+| `line-soft` | `slate-100` | Linie między wierszami tabeli, tło neutralnej odznaki, hover pozycji menu. |
+| `well` | `slate-50` | Nagłówek tabeli, hover wiersza, tor przełącznika segmentowego, wyłączone pole. |
+| `canvas` | `var(--background)` | Tło aplikacji pod kartami. |
+| `card` | `white`, `var(--card)` | Karty, menu boczne, pola. |
+
+### Stany
+
+| Stan | Tło | Sygnał | Tekst | Kiedy |
+|---|---|---|---|---|
+| Gotowe | `emerald-50` | `emerald-600` | `emerald-800` | Zapisane, zrealizowane, zgodne z Subiektem. |
+| Uwaga | `amber-50` | `amber-500` | `amber-900` | Zaległe, do przejrzenia, tryb podglądu (pasek 3 px u góry ekranu). |
+| Błąd | `red-50` | `red-600` | `red-700` | Błąd zapisu, rozbieżność, akcja nieodwracalna na produkcji. |
+
+Na kolorowym tle tekst pomocniczy bierz z tej samej rodziny (np. `amber-800` na `amber-50`), nie szary. Tekst odznaki i chipa stanu na `red-50` to `red-800` (`danger-ink-deep`), tak jak `emerald-800` i `amber-900` w pozostałych stanach.
 
 ### Named Rules
-**The One Accent Rule.** Petrol jest jedynym kolorem marki. Pozostałe rodziny barw Tailwinda (indigo, violet, blue, cyan, sky) są w `globals.css` przemapowane na Petrol lub grafit, dlatego nowa klasa `indigo-600` to nadal Petrol. Nie dodawaj drugiego akcentu.
 
-**The Status Is Not Brand Rule.** Zielony, bursztyn i czerwony znaczą wyłącznie stan (gotowe, uwaga, błąd). Nigdy nie służą jako dekoracja ani akcent sekcji.
+**Jeden akcent.** Petrol jest jedynym kolorem marki. Nie dodawaj drugiego akcentu ani gradientu dla wyróżnienia sekcji, roli czy modułu.
+
+**Stan to nie dekoracja.** Zieleń, bursztyn i czerwień zawsze coś znaczą. Jeśli element nie jest w żadnym stanie, jest szary albo Petrol.
 
 ## Typography
 
-**Display Font:** Geist (z ui-sans-serif, system-ui)
-**Body Font:** Geist
-**Label/Mono Font:** Geist Mono (numery katalogowe, symbole, kody)
+**Krój:** Inter Tight 700 (`font-display`) tylko w tytule strony i tytułach sekcji. Geist (`font-sans`) w całej reszcie interfejsu, Geist Mono (`font-mono`) dla numerów katalogowych, symboli i kodów. Wszystkie trzy ładuje `next/font` w `src/app/layout.tsx`.
 
-**Character:** Jedna rzeczowa rodzina bezszeryfowa w całym produkcie. Hierarchię budują waga i rozmiar, nie zmiana kroju.
+Na każdym ekranie musi być widać od razu, co jest ważne. Dlatego są cztery wyraźne stopnie i każdy ma jedną rolę: tytuł strony (28px, Inter Tight 700), tytuł sekcji (18px, Inter Tight 700), nazwa pozycji w liście (15px, Geist 600), metadane (13px, Geist 400). Element, który nie jest żadnym z nich, nie udaje go wagą ani rozmiarem. Liczba, przycisk albo etykieta nie dostaje 600 tylko po to, żeby się wyróżnić; wyróżnia go kolor stanu albo miejsce. Waga 700 występuje tylko w `font-display`. 600 mają nazwy pozycji, tytuły bloków i etykiety pól, 500 przyciski, nagłówki kolumn i odznaki, a 400 cała reszta. Tytuł strony nie rośnie na dużym ekranie: aplikacja to narzędzie, nie strona promocyjna.
 
 ### Hierarchy
-- **Headline** (600, 1.5rem na telefonie / 1.75rem od sm, 1.25, tracking -0.025em): tytuł strony w nagłówku.
-- **Title** (600, 1.125rem / 1.25rem od lg, tracking -0.025em): tytuł karty i sekcji. Wariant zwarty: 1rem, a w chrome Kreatora 13px.
-- **Body** (400, 0.9375rem, 1.55): tekst aplikacji, opisy, komunikaty.
-- **Body Dense** (400, 0.875rem, 1.45): komórki tabel, podpowiedzi pod polami.
-- **Label** (600, 0.75rem, tracking 0.025em): etykiety pól formularza.
-- **Overline** (600, 0.75rem, tracking 0.04em, wersaliki): nagłówki kolumn tabel. Nagłówki grup menu: 10px, 700, tracking 0.12em.
-- **Code** (Geist Mono, 0.75rem): numery katalogowe i symbole w tabelach.
 
-Skala tekstu reaguje na ustawienie użytkownika: `html[data-font-scale]` podnosi bazę z 16px do 17.6px lub 20px, a cały układ skaluje się w rem.
+- **Headline** (`pageTitleClass`: Inter Tight 700, `text-[1.75rem]`, tracking −0.015em; krój jest już zwarty, mocniej nie ściskamy): tytuł strony w `PageHeader`, na każdej szerokości. Jeden na ekran.
+- **Section** (`sectionTitleClass`: Inter Tight 700, `text-lg`, tracking −0.01em): tytuł karty w `CardHeader` i nagłówek sekcji na tle („Zaległe”, „Prośby handlowców”, „Pilne u dostawcy”). Licznik obok tytułu pisz w Meta, nie w wadze tytułu.
+- **Title** (Geist 600, `text-base`): tytuł karty w gęstym kontekście (`CardHeader density="compact"`, panel boczny, okno). Wariant `micro` (chrome Kreatora ZD) 13px.
+- **Item** (`panelTypography.rowTitle`: Geist 600, `text-[0.9375rem]`): nazwa pozycji w liście lub tabeli: dostawca, towar, osoba, dokument.
+- **Meta** (`panelTypography.rowMeta`: Geist 400, `text-[0.8125rem]`, `slate-500`): linia pod nazwą pozycji: kraj, kanał, data analizy, ilości.
+- **Block** (`panelTypography.sectionTitle`: Geist 600, `text-sm`): tytuł bloku wewnątrz karty i tytuł komunikatu.
+- **Body** (400, 0.9375rem, 1.55): tekst aplikacji, opisy, komunikaty. Opis pod tytułem strony ma szerokość max 48rem.
+- **Body Dense** (400, 0.875rem, 1.45, cyfry tabelaryczne): komórki tabel, pola od `sm`, podpowiedzi.
+- **Label** (600, 0.75rem): etykieta pola formularza, kolor `slate-600`.
+- **Micro** (500 lub 600, `text-[0.6875rem]`, czyli 11px przy bazie 16px): liczniki przy etykiecie, podpis pod wartością, etykieta w dolnym pasku telefonu. Najmniejszy rozmiar do czytania.
+- **Tiny** (600, `text-[0.625rem]`, 10px): tylko krótka treść w pigułce lub odznace (licznik, „Dziś”, skrót stanu). Zdania nigdy.
+- **Column Header** (500, 0.8125rem, `slate-500`): nagłówek kolumny tabeli. Pisany zdaniowo, bez wersalików.
+- **Nav Group** (600, 11px, tracking 0.08em, wersaliki, `slate-500`): nagłówek grupy w menu bocznym. Jedyne miejsce na wersaliki z rozstrzeleniem.
+- **Code** (Geist Mono, 0.75rem): symbol towaru, numer dokumentu.
+
+Rozmiar bazowy zależy od ustawienia użytkownika: `html[data-font-scale]` podnosi go z 16px do 17.6px albo 20px. Dlatego rozmiary i odstępy podawaj w `rem` (klasy Tailwinda), a stałe piksele tylko w chrome Kreatora ZD (pliki `zd-estimate*` / `ZdEstimate*` i eksporty `zdEstimate*` w `ontime-theme.ts`). Rozmiar spoza skali Tailwinda pisz jako `text-[Nrem]` (N = px / 16), nie jako własną klasę narzędziową: `cn()` używa `tailwind-merge`, który nieznaną klasę `text-*` uzna za kolor i usunie ją przy łączeniu z `text-slate-*`. Poniżej `0.625rem` nie schodzimy.
 
 ### Named Rules
-**The Tabular Numbers Rule.** Każda kolumna z kwotami, ilościami lub procentami używa cyfr o stałej szerokości (`tabular-nums`), żeby liczby dało się porównywać w pionie.
+
+**Cyfry w kolumnie.** Kwoty, ilości, procenty i daty w tabelach i licznikach mają cyfry o stałej szerokości. `.data-table` włącza je sama; poza tabelą dodaj `tabular-nums`.
+
+**700 tylko w tytułach.** `font-bold` występuje wyłącznie razem z `font-display` w tej samej klasie (Headline, Section). Poza nimi najcięższa waga to `font-semibold`. Pilnuje tego `audit:design`. Nagłówki kolumn `<th>` mają 500 z `globals.css`, nie domyślne 700 przeglądarki.
+
+**Wersaliki tylko w menu.** Nagłówki kolumn, etykiety pól i odznaki pisz normalnie. Wersaliki z rozstrzeleniem są tylko w nagłówkach grup menu bocznego (`sidebarNavSectionTitleClass`) i w szynie grup asystenta. Uzasadniony wyjątek (kod w monospace, logotyp) dostaje komentarz `design-ok: <powód>` nad linią, inaczej audyt go odrzuci.
 
 ## Layout
 
-Szkielet to menu boczne o szerokości 16rem (zwijane do paska ikon 4.25rem) i główna kolumna na szarym płótnie. Na telefonie menu zastępuje dolny pasek z czterema pozycjami i „Więcej”.
+Szkielet: menu boczne 16rem (zwinięte do paska ikon 4.25rem, `html[data-sidebar="collapsed"]`) i kolumna treści na `canvas`. Na telefonie menu zastępuje dolny pasek z czterema pozycjami i „Więcej”.
 
-Szerokość treści zależy od rodzaju ekranu. Panele pracy dziennej mają wąską kolumnę (max 48rem, szerszą na 2xl). Ekrany administracyjne i zakupowe mają kolumnę 56rem, a od xl do 2xl 64–72rem. Kreator ZD wykorzystuje całą szerokość. Wewnętrzny margines strony to 0.75rem na telefonie i 1.25rem od lg. Sekcje układają się w stos z odstępem 1rem, a karta ma padding 1.5rem (1.75rem od sm).
+Szerokość kolumny zależy od rodzaju pracy, a ustawia ją shell strony z `ontime-theme.ts`:
 
-Tabele mają minimalną szerokość 640px i na wąskich ekranach przewijają się w poziomie wewnątrz karty. Strona nigdy nie przewija się w poziomie. Przełączniki z wieloma opcjami też przewijają się w poziomie, nie ucinają etykiet.
+- `panelWorkspaceShellClass`, `salesWorkspaceShellClass`: panel dzienny i prośby, 48rem, szerzej dopiero na `xl`/`2xl`.
+- `adminPageShellClass`: administracja, zakupy, historia, 56rem, do 72rem na `2xl`.
+- `zdEstimatePageShellClass`: Kreator ZD, cała szerokość (max 100rem), bez przewijania `main`.
+
+### Anatomia ekranu
+
+Każdy ekran pracy składa się z tych warstw, od góry, w tej kolejności. Pominąć można każdą poza nagłówkiem; dodać nowej nie wolno.
+
+1. **Pas uwagi** (`PageAttentionStrip`, opcjonalny): jedna sprawa całej aplikacji wymagająca reakcji.
+2. **Nagłówek strony** (`PageHeader`) leży wprost na `canvas`, nie w karcie i bez kafla ikony (ikona tej strony jest w menu). Nad tytułem opcjonalny link powrotu („← Administracja”, Micro, `slate-600`). Tytuł Headline, obok niego przycisk pomocy (`HelpPopover`, ikona `?` z etykietą dla czytnika). Pod tytułem opis (Body, `slate-600`, max 48rem). Akcje po prawej, najwyżej jedna główna.
+3. **Zakładki strony** (`SectionTabNav`), gdy strona to hub: tuż pod nagłówkiem, bez etykiety „Widok”.
+4. **Pasek filtrów**: jeden rząd nad treścią, którą filtruje (Components → „Pasek filtrów”).
+5. **Treść**: karty (`Card`) i sekcje z nagłówkiem Section, ułożone w stos. Karty są rodzeństwem; karta w karcie, karta strony z kartami w środku i nagłówek strony w karcie są zakazane.
+
+Odstępy pionowe: pas uwagi → nagłówek 1rem; nagłówek → zakładki 1rem; zakładki lub filtry → treść 1.25rem; między kartami i sekcjami 1.5rem (`space-y-6`); wewnątrz karty 1rem. Wzory: `AdminSecondaryShell` (strona administracji z powrotem), `PageHeader` + `SectionTabNav` (hub).
+
+Margines strony to 0.75rem na telefonie, 1rem od `sm`, 1.25rem od `lg`. Odstępy biorą się ze skali co 4px (`spacing` we frontmatterze); wewnątrz grupy 0.5–0.75rem, między grupami 1–1.5rem, nad nagłówkiem sekcji więcej niż pod nim.
+
+Strona nigdy nie przewija się w poziomie, także przy 375px. Tabela ma min. 640px i przewija się wewnątrz swojej karty. Przełącznik segmentowy z wieloma opcjami przewija swój tor. Najważniejsza kolumna (stan, akcja wiersza) ma być widoczna bez przewijania przy typowej szerokości biurka.
 
 ## Elevation & Depth
 
-Głębia jest warstwowa i cicha: szare płótno, na nim białe karty z dwuwarstwowym cieniem, który ledwie odrywa kartę od tła. Elementy pływające (modale, menu, sticky pasek wyszukiwania) dostają mocniejszy, ale nadal miękki cień. Sticky chrome ma półprzezroczyste tło karty z lekkim rozmyciem, żeby przewijana treść była czytelna pod spodem.
+Głębia jest warstwowa i cicha. Na szarym `canvas` leżą białe karty z obramowaniem `line` i najlżejszym cieniem: kartę odróżnia od tła linia, nie cień. Wyraźny cień mają tylko elementy, które pływają nad treścią (okno, panel boczny, menu rozwijane, lista podpowiedzi, sticky pasek). Sticky chrome ma półprzezroczyste tło karty z `backdrop-blur-sm`, żeby przewijana treść była widoczna pod spodem.
 
 ### Shadow Vocabulary
-- **Karta** (`box-shadow: 0 1px 2px rgba(21,25,32,.05), 0 6px 20px -8px rgba(21,25,32,.12)`): karty treści, modale.
-- **Spoczynek** (`box-shadow: 0 1px 2px rgba(21,25,32,.06)`): drobne kontrolki, aktywny segment.
-- **Uniesienie** (`box-shadow: 0 4px 14px -4px rgba(21,25,32,.1)`): elementy pływające.
-- **Marka** (`box-shadow: 0 4px 14px -6px rgba(15,115,128,.25)`): tylko kafel ikony marki.
+
+- **Karta i kontrolka** (`var(--shadow-card)` albo `shadow-sm`: `0 1px 2px rgba(21,25,32,.06)`): karta treści, przycisk drugorzędny, pole, aktywny segment.
+- **Okno** (`var(--shadow-card-elevated)`: `0 1px 2px rgba(21,25,32,.05), 0 6px 20px -8px rgba(21,25,32,.12)`): okno (`ModalShell`), panel boczny, sticky chrome.
+- **Uniesienie** (`var(--shadow-elevated)`: `0 4px 14px -4px rgba(21,25,32,.1)`): elementy pływające: lista podpowiedzi (`TypeaheadDropdown`), dymek pomocy, popover.
+- **Marka** (`var(--shadow-brand)`: `0 4px 14px -6px rgba(15,115,128,.25)`): tylko kafel ikony marki.
 
 ### Named Rules
-**The Quiet Lift Rule.** Cień zawsze ma przesunięcie i miękkie rozmycie, a jego krycie nie przekracza 0.12. Nie używaj kolorowych poświat ani twardych cieni bez rozmycia.
+
+**Cichy cień.** Każdy cień ma przesunięcie w dół i miękkie rozmycie, a krycie do 0.12 (wyjątek: kafel marki). Bez kolorowych poświat, bez twardych cieni bez rozmycia, bez cieni na elementach wewnątrz karty.
 
 ## Shapes
 
-Lekko zaokrąglone, prostokątne formy. Kontrolki (przyciski, pola, odznaki, segmenty) mają promień 6px, powierzchnie zagnieżdżone 8px, a karty paneli 10px. Pełne zaokrąglenie (pill) mają tylko liczniki w menu i paski postępu. Obramowania są jednopikselowe w tonach Linii. Kolorowe obramowanie z boku karty pojawia się wyłącznie jako 3-pikselowy pasek aktywnej pozycji menu albo wiersza tabeli.
+Formy są prostokątne, lekko zaokrąglone, a promień rośnie z wielkością elementu:
+
+- 6px (`rounded-md`, `--radius`): przyciski, pola, odznaki, segmenty, alerty.
+- 8px (`rounded-lg`, `--radius-lg`): bloki zagnieżdżone w karcie, okna loadingu, chrome Kreatora.
+- 10px (`rounded-[var(--radius-panel)]`): karty paneli (`Card`, `surfaceCardClass`).
+- Pełne zaokrąglenie: tylko liczniki w menu i paski postępu.
+
+Element wewnątrz karty nigdy nie ma większego promienia niż karta. Obramowania są jednopikselowe w tonach `line`. Kolorowego paska z boku karty, wiersza ani alertu nie stosujemy: stan pokazuje tło, odznaka albo ikona.
 
 ## Components
 
-Komponenty są pewne i wyraźne: jedna oczywista główna akcja na ekran, czytelne stany i żadnych ozdobników.
+Komponenty bazowe są w `src/components/ui/`. Zanim napiszesz własny przycisk, pole czy tabelę, użyj ich.
 
 ### Buttons
-- **Shape:** zaokrąglenie kontrolki (6px). Rozmiary: sm (0.375rem 0.625rem, 12px), md (0.5rem 1rem, 14px), lg (0.625rem 1.25rem, 16px).
-- **Primary:** pełny Petrol, biały tekst, delikatny cień spoczynku. Etykieta to czasownik, często z liczbą („Zapisz 421 cen”).
-- **Hover / Focus:** hover Petrol Deep, wciśnięcie Petrol Pressed. Fokus to obrys 2px Petrol z odstępem 2px. Wyłączony przycisk ma krycie 50% i kursor zakazu.
-- **Secondary:** biała karta z obramowaniem Linia i tekstem Grafit Miękki; hover jaśniejszym tłem Studni.
-- **Ghost:** bez tła, tekst Atrament Drugi; hover tłem Linii Miękkiej.
-- **Danger:** pełny czerwony. Zarezerwowany dla akcji nieodwracalnych i zapisu na produkcji (LIVE).
+
+- **Kształt:** 6px. Rozmiary `sm` (12px tekstu), `md` (14px, domyślny), `lg` (16px). Na telefonie przyciski w `PageHeader` mają min. 44px wysokości.
+- **Primary:** pełny Petrol, biały tekst, cień kontrolki. Hover `indigo-700`, wciśnięcie `indigo-800` i lekkie zmniejszenie (`scale 0.97`, 75 ms; wyłączone przy `prefers-reduced-motion`). Etykieta to czasownik, najlepiej z liczbą („Zapisz 421 cen”). Jeden na ekran.
+- **Secondary:** biała karta, obramowanie `line`, tekst `slate-700`; hover tło `slate-50` i obramowanie `slate-300`.
+- **Outline:** tło `petrol-mist`, obramowanie `indigo-200`, tekst `indigo-800`. Dla akcji drugiego rzędu, która ma zostać zauważona obok głównej.
+- **Ghost:** bez tła, tekst `slate-600`; hover tło `slate-100`. W paskach narzędzi i wierszach tabel.
+- **Danger:** pełny `red-600`. Tylko akcje nieodwracalne i zapis na produkcji (LIVE), zawsze z potwierdzeniem (`ConfirmDialog`).
+- **Fokus:** pierścień 2px `indigo-600` z odstępem. **Wyłączony:** krycie 50%, kursor zakazu; powód blokady pokaż tekstem obok, nie tylko w `title`.
 
 ### Chips
-- **Style:** odznaki statusu (Badge), płaskie tło bez obramowania, 12px średnia waga. Kolor ma tylko znaczenie stanu: neutralny, zielony, bursztyn, Petrol (informacja), czerwony.
-- **State:** odznaki nie są klikalne; filtrowanie robi przełącznik segmentowy.
+
+- **Odznaka (`Badge`):** płaskie tło bez obramowania, 12px, waga 500, cyfry tabelaryczne. Warianty: `default` (szary), `success`, `warning`, `danger`, `info` (Petrol). Odznaka nie jest klikalna.
+- **Filtrowanie** robi przełącznik segmentowy albo chip filtra, nie klikalna odznaka.
+- **Wybrany chip filtra:** tło `indigo-50`, tekst `indigo-900`, wewnętrzny ring `indigo-200`; licznik w środku na białym tle w `indigo-700`. W spoczynku: białe tło, ring `slate-200`, tekst `slate-600`. Gotowe klasy: `panelChoiceChipSelectedClass` / `panelChoiceChipIdleClass`.
+
+**Jedno „wybrane”.** Każdy rodzaj wyboru ma jeden wygląd w całej aplikacji:
+
+| Co jest wybrane | Wygląd |
+|---|---|
+| Pozycja menu | tło `petrol-mist`, tekst `petrol-ink` |
+| Zakładka strony | tekst `slate-900`, podkreślenie 2px `indigo-600` |
+| Widok w przełączniku segmentowym | biały segment z cieniem kontrolki na torze `slate-50` |
+| Chip filtra | tło `indigo-50`, ring `indigo-200`, tekst `indigo-900` |
+| Wiersz tabeli | tło `indigo-50` |
+
+Pełny Petrol nigdy nie oznacza „wybrane”: należy do głównej akcji i licznika „wymaga działania”. Grafit (`slate-900`) też nie.
 
 ### Cards / Containers
-- **Corner Style:** 10px.
-- **Background:** Karta (#ffffff) na Płótnie.
-- **Shadow Strategy:** cień Karty (patrz Elevation & Depth).
-- **Border:** 1px Linia.
-- **Internal Padding:** 1.5rem, od sm 1.75rem. Karty z tabelą mają padding 0, a tabela dochodzi do krawędzi.
+
+- **Promień:** 10px. **Tło:** `card` na `canvas`. **Obramowanie:** 1px `line`. **Cień:** Karta i kontrolka.
+- **Padding:** 1.25rem, od `sm` 1.5rem. Karta z tabelą ma `padding={false}`, a tabela dochodzi do krawędzi.
+- **Nagłówek (`CardHeader`):** tytuł Section (w gęstym kontekście Title), opcjonalny opis (`slate-600`, Body Dense) i akcja po prawej; od treści oddziela go linia `line-soft`. Bez kafla ikony: kafel jest tylko w `EmptyState` i w momentach marki.
+- Karta w karcie jest zakazana. Wewnątrz karty grupuj odstępem, linią albo blokiem `well` bez cienia i bez obramowania.
 
 ### Inputs / Fields
-- **Style:** białe tło, obramowanie Linia, promień 6px, minimalna wysokość 44px na telefonie i 40px od sm, tekst 16px na telefonie (bez auto-zoomu) i 14px od sm.
-- **Focus:** obramowanie Petrol i miękki pierścień.
-- **Error / Disabled:** stany ostrzeżenia i błędu barwią obramowanie i tło (bursztyn, czerwony), a komunikat pod polem przyjmuje ten sam ton. Wyłączone pole ma tło Studni.
+
+- **Styl:** białe tło, obramowanie `line`, promień 6px, cień kontrolki. Wysokość min. 44px i tekst 16px na telefonie (bez auto-zoomu iOS), od `sm` 40px i 14px.
+- **Hover:** obramowanie `slate-300`. **Fokus:** obramowanie `indigo-500` i pierścień `indigo-500/20`.
+- **Stany:** `warning`, `error`, `success` barwią obramowanie i lekko tło, a komunikat pod polem przyjmuje ten sam ton. Komunikat błędu mówi, co jest nie tak i jak to naprawić.
+- **Wyłączone:** tło `slate-50`, tekst `slate-400`.
 
 ### Navigation
-- **Menu boczne:** białe na szarym płótnie, grupy z nagłówkiem 10px wersalikami. Aktywna pozycja ma tło Petrol Tint i 3-pikselowy pasek Petrol z lewej. Liczniki to pigułki w dwóch poziomach (neutralny i uwaga).
-- **Telefon:** dolny pasek z 4 pozycjami i „Więcej”, aktywna zakładka w tym samym języku co menu boczne.
+
+- **Menu boczne:** białe na szarym `canvas`, nagłówek i stopka na pasie `slate-50`. Grupy z nagłówkiem Nav Group. Pozycja w spoczynku `slate-700`, hover tło `slate-100`, wciśnięcie `slate-200`.
+- **Aktywna pozycja:** tło `petrol-mist`, tekst `petrol-ink`, bez paska z boku.
+- **Liczniki:** pigułki w dwóch poziomach. Wymaga działania: pełny Petrol z białą cyfrą. Informacyjny: `slate-100` z `slate-700`.
+- **Telefon:** dolny pasek z czterema pozycjami i „Więcej” (`mobileSalesNavClass`), aktywna zakładka jak w menu bocznym.
+- **Nagłówek na telefonie** (`mobileSalesHeaderClass`): sticky, min. 3.5rem, treść wyśrodkowana w pionie (równy odstęp u góry i u dołu, u góry co najmniej bezpieczna strefa ekranu). Blok marki `MobileBrandBlock`: znak i dwie linie, „OnTime” i „kto · rola” w jednej linii. Bez trzeciej linii i bez e-maila.
+- **Zakładki strony (`SectionTabNav`):** rząd linków na linii `line`, bez tła i bez ramki. Zakładka: Body Dense 500, `slate-600`, hover `slate-900`; wybrana `slate-900` z podkreśleniem 2px `indigo-600` przykrywającym linię. Licznik obok etykiety jako odznaka Tiny `slate-100`. Na telefonie rząd przewija się w poziomie.
+- **Kafle z licznikiem (`QueuePanelToolbar`):** zamiast zakładek, gdy widoki przełączają się w miejscu, a liczba jest pierwszym, co użytkownik chce wiedzieć (Przyjęcie towaru: Przyjęcie / Dziennik / Regał). Siatka 3 kolumn, kafel biały z ramką `line`; liczba 1.75rem 600, nazwa Body Dense 600, pod nią jedna linia Meta (od `sm`). Wybrany kafel: ramka i obrys 1px `indigo-600`, nazwa `indigo-800`. Bez kafla ikony. Semantyka zakładek (`role="tablist"`, strzałki) zostaje.
+- **Strona z zakładkami to jedna pozycja menu.** Hub z własnymi zakładkami (Karty dostawców: karty, terminy zamówień, urlopy, nieaktywni) ma w menu jedno wejście, podświetlone na każdej zakładce (`isSupplierHubPath` w `supplier-hub.ts`). Zakładki nie wracają do menu jako osobne pozycje.
+- **Grupa menu to jeden temat pracy**, nie jeden ekran: „Zamawianie” to tworzenie i przegląd ZD, „Dostawcy” to wszystko o dostawcy (karty, cenniki, poczta dostawców). Nowa funkcja trafia do istniejącej strony (zakładka, sekcja, rozwinięcie wiersza), zanim dostanie własną pozycję menu.
 
 ### Data Table
-Sygnaturowy komponent produktu. Nagłówek ma tło Studni i wersaliki 12px z rozstrzeleniem 0.04em. Komórki mają padding 1rem 1.25rem (1.5rem przy krawędziach) i tekst Atrament Drugi 14px. Hover wiersza zmienia tło na Studnię i dodaje wewnętrzny pasek Petrol z lewej. Zmiana wartości pokazuje starą wartość przekreśloną i nową pogrubioną z procentem zmiany, a duże zmiany są w bursztynie.
+
+Najważniejszy komponent produktu (`DataTable`, klasa `.data-table`).
+
+- **Nagłówek:** tło `well`, Column Header (13px, 500, `slate-500`, zdaniowo), linia `line` pod spodem, bez zawijania.
+- **Komórki:** padding 1rem 1.25rem (1.5rem przy krawędziach karty), Body Dense w `slate-600`, linie `line-soft` między wierszami.
+- **Hover wiersza:** tło `well`. Bez paska z boku.
+- **Wersje zwarte:** kolejka realizacji (`.queue-table`, 13px, nagłówek sticky), Kreator ZD (`.zd-estimate-table`) i tabele wskaźników z wieloma kolumnami liczb (`.kpi-table`, odstępy 0.75rem, wyrównanie do góry) mają mniejsze paddingi, te same zasady.
+- **Zmiana wartości:** stara wartość przekreślona w `slate-500`, nowa w `slate-900` waga 600, obok procent zmiany w `slate-500`; zmiana powyżej 5% w `amber-700` waga 600.
 
 ### Segmented Control
-Przełącznik widoków: tor ze Studni z obramowaniem, aktywny segment na białej karcie z cieniem spoczynku. Liczniki w etykiecie są przygaszone. Przy wielu opcjach tor przewija się w poziomie, etykiety nie są ucinane.
+
+Przełącznik widoku lub filtra (`SegmentedControl`). Tor `slate-50` z obramowaniem, aktywny segment na białym tle z cieniem kontrolki. Licznik w etykiecie jest przygaszony (`slate-500`). Etykiet nie ucinamy: przy wielu opcjach tor przewija się w poziomie.
+
+### Pasek filtrów
+
+Jeden rząd nad listą lub tabelą, którą filtruje: przełącznik segmentowy (stan lub zakres), pole szukania (`max-w-xs`, ikona lupy, skrót `/`), chipy dodatkowych filtrów, a na końcu licznik wyników (Micro, `slate-500`, „206 dostawców”). Bez etykiet nad kontrolkami („Lokalizacja”, „Szukaj”): nazwę niesie `aria-label`, a przełącznik mówi sam za siebie. Na telefonie rząd zawija się, pole szukania idzie na pełną szerokość jako pierwsze. Filtry zapisują się w adresie strony.
+
+Pasek leży w nagłówku karty z tabelą (`CardHeader` z `action`) albo bezpośrednio nad kartą, nigdy w osobnej karcie.
+
+### Ustawienia obiektu
+
+Ustawienia jednego obiektu mają jedno okno i jedno miejsce stałe: kartę obiektu. Przykład: strategia automatu ZD dostawcy (`ZdSupplierOrderPolicyDialog`) jest sekcją „Automat ZD” w karcie dostawcy (`ZdAutomatCardSection`). Inne ekrany (Kreator ZD, pulpit Automatu) pokazują stan i otwierają to samo okno; nie mają własnej kopii pól. Okno otwarte nad panelem bocznym używa warstwy `tier="top"` w `ModalShell`, a Escape zamyka tylko to okno, nie panel z niezapisanymi zmianami. Z ekranu przeglądu do karty prowadzi link `?karta=<id>`.
+
+### Pulpit
+
+Ekran przeglądu wielu obiektów (Automat ZD): na górze Status Panel ze zdaniem stanu i jedną akcją, która prowadzi do tego, co wymaga reakcji („Pokaż 2 do sprawdzenia” ustawia filtr tabeli). Pod nim jedna tabela, jeden wiersz na obiekt; ten sam obiekt nie pojawia się w drugiej tabeli. Szczegóły (pełne wskaźniki z trendem, akcje, przejście do karty) rozwijają się pod wierszem. Widok innego rodzaju (Klasy towarów) wybiera przełącznik segmentowy nad tabelą, bez liczników, które powtarzają filtry tabeli.
 
 ### Status Panel
-Karta „co teraz” na górze ekranu pracy. Pogrubione zdanie stanu z liczbą („421 cen do zapisu”), jedno zdanie wyjaśnienia i główna akcja po prawej. Na telefonie akcja schodzi pod tekst.
+
+Karta stanu na górze ekranu pracy: zdanie stanu z liczbą („433 pozycje czekają na Twoją decyzję”, z poprawną odmianą liczebnika), jedno zdanie wyjaśnienia i jedna główna akcja po prawej. Na telefonie akcja schodzi pod tekst. Pas uwagi na całą szerokość (`PageAttentionStrip`) służy do pojedynczej sprawy wymagającej reakcji, w tonie `amber`.
+
+### Ikony
+
+- **Zestaw:** `StrokeIcons` (`src/components/icons/StrokeIcons.tsx`): obrys 2, `currentColor`, siatka 24, domyślnie 20px, `aria-hidden`. Menu ma `NavIcon`, nagłówki sekcji `SectionHeadingIcon`. Nowej ikony nie bierz z innej biblioteki; dopisz ją do `StrokeIcons` w tym samym stylu.
+- **Kolor:** ikona przy tekście ma kolor tekstu albo `slate-400` (pomocnicza); ikona stanu ma kolor sygnału stanu.
+- **Ikona bez tekstu** (przycisk z samą ikoną) ma `aria-label` i pole dotyku min. 44px na telefonie.
+- **Emoji** tylko w treści użytkownika (reakcje w `EmojiPicker`). Stanu nie pokazuje znak ✓ ani ⚠ w tekście, tylko ikona z `StrokeIcons`.
+
+### Panele i okna
+
+Każde okno nad treścią to `ModalShell` (`src/components/ui/ModalShell.tsx`), a panel boczny używa klas `sidePanel*Class` z `src/lib/ui/surfaces.ts` (wzór: `SupplierEditSheet`, `ZdAutoProposalSheet`). Oba dają kontrakty, które własna nakładka musi zapewnić sama, i to w całości:
+
+- **Portal** do `document.body` (`createPortal`): nakładka zamontowana w sekcji strony konkuruje z-indexem tylko w jej kontekście i na telefonie chowa się pod nagłówkiem i dolnym paskiem.
+- **Przewijanie:** `useBodyScrollLock` blokuje stronę, a przewijany obszar nakładki ma atrybut `SCROLL_LOCK_ALLOW_ATTR` (`data-scroll-lock-allow`), bez którego kółko i dotyk nic nie przewiną.
+- **Fokus:** wchodzi do panelu przy otwarciu, Tab krąży w środku (`FOCUSABLE_SELECTOR`), po zamknięciu wraca na przycisk otwierający.
+- **Escape** zamyka tylko najwyższą warstwę: panel ignoruje Escape, gdy zdarzenie przyszło z innego `[role=dialog]` nad nim, bo niezapisane zmiany w panelu by przepadły.
+- **Sprawdzenie:** przy 375px `document.elementFromPoint` u góry i u dołu ekranu ma trafić w nakładkę, a Escape sprawdzamy prawdziwym klawiszem przy otwartym oknie nad panelem.
+
+Warstwy (z-index) biorą się z tej skali. Nie wymyślaj nowej wartości; okno nad oknem dostaje wyższy `tier`.
+
+| Warstwa | z-index | Gdzie |
+|---|---|---|
+| Lokalnie nad sąsiadem | `z-[1]`, `z-[2]`, `z-30` | podświetlony wiersz, pole z otwartą listą, nakładka ładowania w obszarze |
+| Sticky chrome | `z-30` | nagłówek na telefonie, przypięty komunikat |
+| Menu boczne | `z-40` | `Sidebar` |
+| Dolny pasek telefonu, okno `standard` | `z-50` / `z-[55]` | `mobileSalesNavClass`, `ModalShell tier="standard"` |
+| Panel boczny | `z-[58]` tło, `z-[60]`–`z-[61]` panel | `sidePanelBackdropClass`, `sidePanelShellClass` |
+| Okno `raised` | `z-[60]` / `z-[61]` | okno nad zwykłym |
+| Toasty | `z-[65]` | `Toast`, `UndoToast` |
+| Okno `top` | `z-[70]` / `z-[71]` | okno nad panelem bocznym (np. ustawienia z karty dostawcy) |
+| Okno `stack` | `z-[80]` / `z-[81]` | potwierdzenie nad oknem; lista podpowiedzi w oknie |
+| Okno `overlay` | `z-[90]` / `z-[91]` | kreator nad oknem `stack` |
+| Menu rozwijane | `z-[200]` | `OverflowMenu`, menu użytkownika: zawsze na wierzchu |
+
+### Komunikaty
+
+Jedna sprawa, jeden komponent. Ton (`info`, `success`, `warning`, `error`) bierze się z tabeli Stany, a treść zawsze ma nagłówek z wynikiem i zdanie z następnym krokiem.
+
+| Sytuacja | Komponent |
+|---|---|
+| Potwierdzenie po akcji, znika samo | `NoticeToast` (nagłówek i treść dzieli sam) |
+| Akcja odwracalna („Zapisano · Cofnij”) | `UndoToast`; okno cofnięcia zgodne z serwerem |
+| Wynik lub błąd w treści ekranu, karty, okna | `Alert` |
+| Wynik wysłania formularza nad przyciskami | `FormNoticeMessage` |
+| Pojedyncza sprawa strony wymagająca reakcji | `PageAttentionStrip` (ton `amber`), patrz Status Panel |
+| Ogłoszenie systemowe: przypięte, z akcją, przewodnik | `SystemNotice` (`pinned`, `action`, `tour`) |
+| Kilka komunikatów strony naraz | `PageNoticeStack` |
+| Brak danych | `EmptyState`: tytuł mówi, co tu będzie, opis jak to zapełnić, akcja obok; `brandAccent` tylko przy pierwszym uruchomieniu |
+| Akcja nieodwracalna lub zapis na produkcji | `ConfirmDialog` |
+
+`Toast` jest warstwą pod `NoticeToast` i `UndoToast`; w ekranie używaj ich, nie jego.
+
+### Teksty
+
+Interfejs mówi językiem działu i pisze, co się stało i co zrobić. PRODUCT.md: „Do ogarnięcia bez szkolenia”.
+
+- **Słowa działu:** ZD, ZK, Subiekt, paleta, prośba, dostawa. Nazwy z kodu i bazy (para, wiersz, `tw_Id`, zakres) nie wychodzą do handlowców. Gdy pojęcie wymaga wyjaśnienia, zastąp je zdaniem o skutku („Ten towar zamawiamy w kartonach po 10 szt.”).
+- **Liczebniki** zawsze z odmianą: `polishPluralWord` / `polishPlural` (`src/lib/email/polish-plural.ts`). Nigdy „1 pozycji” ani „pozycja(e)”.
+- **Daty bliskie** względnie: „dziś”, „jutro”, „wczoraj”, dalej „pt 31.10” (wzór `formatAutomatDay` w `src/lib/orders/zd-automat-daily.ts`); pełne daty `formatPlDate` (`src/lib/display-labels.ts`).
+- **Błąd:** co się stało i jak to naprawić, bez kodu wyjątku. Tekst z wyjątku przechodzi przez `userFacingErrorText` (`src/lib/ui/user-facing-error.ts`).
+- **Pole ilości** nie ma domyślnej liczby ani placeholdera z liczbą: wartość, której nikt nie wpisał, wygląda na zamówioną.
+- **Przycisk** to czasownik, najlepiej z liczbą („Zapisz 421 cen”); w toku forma ciągła („Tworzę…”).
+
+### Ruch
+
+Ruch tylko potwierdza działanie: zmiana tła i obramowania w 150 ms, rozwinięcie panelu w 200–300 ms, krzywa `cubic-bezier(0.22, 1, 0.36, 1)` (szybki start, miękkie wyhamowanie). Elementy są widoczne od razu, bez animacji wejścia przy ładowaniu strony. Każdy ruch ma wariant `motion-reduce`. Ruch to CSS (klasy w `globals.css`, np. `.zd-automat-detail-enter` dla rozwinięcia wiersza). Rive i biblioteki animacji nie wchodzą na ekrany pracy: jedyny animowany znak to `BrandLoader`, a nowy znak w Rive wymaga sprawdzenia CSP produkcji (WASM, `connect-src`).
+
+### Ładowanie
+
+Systemowe ładowanie OnTime to animowane logo, `BrandLoader` (`src/components/ui/BrandLoader.tsx`): przygaszona tarcza, łuk obiega ją w kółko, ptaszek stoi; przy „ogranicz ruch” spokojnie pulsuje. Znak pojawia się dopiero po 250 ms, więc krótkie ładowanie nie mignie i można go dawać wszędzie, gdzie coś się wczytuje.
+
+- **Obszar, panel, okno albo strona czeka na dane lub na długą operację** (przeliczenie, zapis do Subiekta, wysyłka): `BrandLoader` (`size="lg"` na środku pustego obszaru, `md` w karcie, `sm` w wierszu stanu obok tekstu) z jednym zdaniem, co się dzieje, i ile to zwykle trwa. Nad treścią, która zostaje widoczna: `ActionLoadingOverlay` (ma logo w środku).
+- **Operacja z kilkoma krokami** (przeliczenie → zapis w Subiekcie → wysyłka): pionowa oś kroków w miejscu treści, na którą się czeka. Węzeł kroku w toku i zakończonego to `BrandStepMark`: w toku sama przygaszona tarcza z obiegającym łukiem, po sukcesie tarcza się domyka, wracają wskazówki i rysuje się ptaszek (pełne logo); szyna do następnego kroku w Petrolu (`indigo-300`), błąd czerwony węzeł z „Spróbuj ponownie”, kroki przed nami numer i cichy opis. Wzór: `ActionTimeline` w `ZdAutoProposalSheet.tsx`.
+- **Przycisk w toku**: `Spinner` w przycisku zostaje (mała ikona przy etykiecie „Tworzę…”). Gdy operacja trwa dłużej niż kilka sekund, obszar, którego dotyczy, dostaje dodatkowo wiersz stanu z `BrandLoader size="sm"`.
+- **Bez szkieletów i pulsujących pasków** zamiast logo na ekranach pracy. Wyjątek: wiersze tabeli, które dociągają się pod już widoczną listą.
+- **Szkielet, który zostaje** (trasy `loading.tsx` przez `PanelRouteLoading`, lista zębów, dziennik): pod nim `SlowLoadingNote` — wiersz z małym logo „… trwa dłużej niż zwykle…”, który pojawia się dopiero po 3 s (sam CSS, miejsce zarezerwowane od początku). Krótkie ładowanie wygląda bez zmian, długie nie wygląda na zawieszone. Puls dajemy blokom szkieletu, nie kontenerowi z tym wierszem.
+- Logo przy tekście jest dekoracją (`aria-hidden`); kontener ma `role="status"` i widoczny opis. Sam znak bez tekstu dostaje `label`.
+- Nowe miejsca z ładowaniem od razu używają `BrandLoader`; stare `Spinner` poza przyciskami i szkielety wymieniamy przy każdej zmianie tego ekranu.
+
+### Powierzchnie przeglądarki
+
+Zaznaczenie tekstu ma tło `petrol-mist` i tekst `petrol-deep`. Kursor tekstowy i natywne checkboxy, radia i suwaki są w Petrolu (`accent-color`, `caret-color`). Paski przewijania są cienkie, `slate-300`. Fokus z klawiatury ma zawsze ten sam kolor, `indigo-600` (także na elementach w tonie stanu): komponenty rysują go jako `focus-visible:ring-2 focus-visible:ring-indigo-600`, a element bez własnego stylu dostaje obrys 2px z odstępem 2px z `@layer base`. Pierścieni przezroczystych (`/40`) nie stosujemy, bo nie mają kontrastu 3:1. Linki mają podkreślenie odsunięte od tekstu.
 
 ## Do's and Don'ts
 
+Skrót zasad z sekcji wyżej, do sprawdzenia przed PR. Przy rozbieżności rozstrzyga sekcja.
+
 ### Do:
-- **Do** używaj Petrol (#0f7380) tylko do akcji, zaznaczenia i fokusu, a nowe ekrany buduj na tokenach z `globals.css` i klasach z `ontime-theme.ts`.
+
+- **Do** buduj ekrany z komponentów `src/components/ui/` i klas z `ontime-theme.ts`. Kolor podawaj klasą lub zmienną, nie hexem.
 - **Do** dawaj jedną pełną główną akcję na ekran, z czasownikiem i liczbą w etykiecie.
-- **Do** stosuj `tabular-nums` w każdej kolumnie liczb i Geist Mono dla numerów katalogowych.
-- **Do** pokazuj stan pracy zdaniem („433 pozycje czekają na Twoją decyzję”) z poprawną polską odmianą liczebników.
-- **Do** przewijaj szerokie tabele i przełączniki w poziomie wewnątrz karty. Strona ma zawsze szerokość ekranu.
+- **Do** zaczynaj ekran pracy od zdania stanu z liczbą, nie od statystyk.
+- **Do** sprawdzaj każdy ekran przy 375px: brak przewijania strony w poziomie, etykiety całe, pola min. 44px.
+- **Do** pokazuj stan tłem, odznaką lub ikoną z tekstem, zawsze w kolorze jego znaczenia.
+- **Do** dawaj każdemu ruchowi wariant `motion-reduce`.
+- **Do** pokazuj każde dłuższe ładowanie animowanym logo (`BrandLoader`) ze zdaniem, co się dzieje.
+- **Do** dawaj stronie z własnymi zakładkami jedną pozycję menu, a ustawienia obiektu trzymaj w jego karcie; inne ekrany pokazują stan i otwierają to samo okno.
+- **Do** układaj ekran z warstw „Anatomii ekranu”: nagłówek na tle, zakładki, pasek filtrów, karty-rodzeństwo.
+- **Do** buduj okno na `ModalShell`, a panel boczny na klasach `sidePanel*Class`; z-index bierz ze skali w „Panele i okna”.
+- **Do** odmieniaj liczebniki (`polishPluralWord`) i pisz daty bliskie względnie.
 
 ### Don't:
-- **Don't** dodawaj drugiego koloru akcentu ani nie używaj zieleni, bursztynu i czerwieni jako dekoracji.
-- **Don't** przenoś ciemnego gradientu logowania do aplikacji.
-- **Don't** dawaj cieni z kryciem powyżej 0.12, kolorowych poświat ani twardych cieni bez rozmycia.
-- **Don't** buduj ekranu pracy z rzędu kafelków z liczbami, jeśli te same liczby są już w zakładkach lub tabeli.
+
+- **Don't** dodawaj drugiego koloru akcentu, gradientów ani zieleni, bursztynu i czerwieni jako dekoracji.
+- **Don't** stawiaj kolorowego paska z boku karty, wiersza, alertu ani pozycji menu.
+- **Don't** buduj ekranu z rzędu kafelków z liczbami, jeśli te liczby są już w zakładkach albo tabeli.
+- **Don't** wkładaj karty do karty ani nagłówka strony do karty; kafel ikony tylko w `EmptyState`.
+- **Don't** oznaczaj wyboru pełnym Petrolem; każdy rodzaj wyboru ma jeden wygląd (tabela „Jedno wybrane”).
+- **Don't** stawiaj etykiet nad kontrolkami paska filtrów.
+- **Don't** pokazuj tego samego obiektu w dwóch tabelach jednego ekranu; szczegóły rozwijaj pod jego wierszem.
+- **Don't** pisz nagłówków kolumn, etykiet ani odznak wersalikami.
 - **Don't** ucinaj etykiet przełączników ani przycisków wielokropkiem.
+- **Don't** używaj `slate-400` do tekstu, który trzeba przeczytać.
+- **Don't** zaznaczaj wybranego stanu grafitem ani kolorem stanu; wybrane jest zawsze w Petrolu.
+- **Don't** przenoś ciemnego gradientu logowania do aplikacji.
+- **Don't** stawiaj szkieletu, pulsującego paska ani samego `Spinner` tam, gdzie czeka cały obszar lub panel.
+- **Don't** podawaj rozmiaru tekstu w px poza Kreatorem ZD ani nie schodź poniżej `0.625rem`.
+- **Don't** używaj `font-bold` i cięższych wag.
+- **Don't** pokazuj stanu emoji ani znakiem ✓ / ⚠ w tekście.
+
+### Znany dług
+
+Stan na 25.10.2026, z wyszukiwania w `src/` (bez testów). Przy każdej zmianie ekranu poprawiamy jego dług, a reguły, które da się sprawdzić maszynowo, przechodzą do `audit:design`, gdy dług spadnie do zera.
+
+| Reguła | Wystąpienia | Uwagi |
+|---|---|---|
+| Nagłówki poza `PageHeader` / `CardHeader` | 71 `<h1>`–`<h3>` w 54 plikach | ręczne `font-semibold`; tytuł strony → `pageTitleClass`, sekcja → `sectionTitleClass`, blok → `panelTypography.sectionTitle` |
+| `slate-400` tylko pomocniczo | 383 w 170 plikach | część to ikony i „—” (dozwolone); tekst do przeczytania → `slate-500` |
+| Promień do 10px | `rounded-xl` i większe: 52 w 26 plikach | karta ma 10px, element w karcie mniej |
+| Słownik cieni | `shadow-md` i większe: 46 w 34 plikach | zamień na `var(--shadow-*)` |
+| Bez bocznego paska | `border-l-2` / `border-l-4`: 24 w 7 plikach | stan tłem, odznaką lub ikoną |
+| Ładowanie logiem | `Spinner` 64 w 46 plikach, `animate-pulse` 24 w 14 | `Spinner` w przycisku jest dozwolony |
+| Najmniej `0.625rem` | 34 (`text-[0.5625rem]` 31, `0.5rem` 2, hasło logotypu 1) | licznik w pigułce może zostać, tekst nie |
+| Stan ikoną | ✓ / ⚠ w tekście: 15 w 10 plikach | `StrokeIcons` |
+| Skala warstw | `z-[100]`: 4 menu i kreator | przenieść do `z-[200]` (menu) lub `ModalShell` |
+| Anatomia ekranu | 49 z 67 `page.tsx` nie używa wprost `PageHeader` ani shella (część robi to w komponencie klienta) | nagłówek na tle, bez karty strony |
+| Kafel ikony tylko w `EmptyState` | `SectionHeadingIcon` w 40 plikach | usunąć z nagłówków stron i kart |
+| Jedno „wybrane” | pełny Petrol (`bg-indigo-600 text-white`) 24 razy, część to wybrany filtr | wybrany chip: `panelChoiceChipSelectedClass` |
+| Pasek filtrów | etykiety nad kontrolkami filtrów (np. karty dostawców: „Lokalizacja”, „Subiekt”, „Szukaj”) | jeden rząd, `aria-label` |

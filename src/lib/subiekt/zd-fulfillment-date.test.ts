@@ -93,3 +93,11 @@ describe("partitionZdListItemsForEtaLoad", () => {
     expect(later.map((r) => r.dok_Id)).toEqual([3]);
   });
 });
+
+describe("isActiveZdFulfillmentDeadline — dziś według Warszawy", () => {
+  it("00:30 czasu warszawskiego (22:30 UTC dnia poprzedniego): wczorajszy termin nieaktywny", () => {
+    const at = new Date("2026-10-20T22:30:00Z"); // 21.10 00:30 w Warszawie (CEST)
+    expect(isActiveZdFulfillmentDeadline("2026-10-20", at)).toBe(false);
+    expect(isActiveZdFulfillmentDeadline("2026-10-21", at)).toBe(true);
+  });
+});

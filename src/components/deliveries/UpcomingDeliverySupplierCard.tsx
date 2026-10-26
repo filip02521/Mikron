@@ -17,6 +17,7 @@ import {
   IconTruck,
   IconCircleCheck,
   IconClock,
+  IconCheck,
 } from "@/components/icons/StrokeIcons";
 
 function shipmentFormLabel(value: string): string {
@@ -49,14 +50,11 @@ function statusLabel(status: IndividualOrderStatus): string {
   }
 }
 
-function MiniStat({ label, value, compact = false }: { label: string; value: string | number; compact?: boolean }) {
+function MiniStat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className={cn(
-      "rounded-lg border border-slate-200/70 bg-slate-50/80 text-left shadow-[var(--shadow-card)]",
-      compact ? "px-2 py-1.5" : "px-2.5 py-2"
-    )}>
-      <p className="text-[10px] font-medium text-slate-500">{label}</p>
-      <p className="mt-0.5 text-sm font-semibold tabular-nums text-slate-900">{value}</p>
+    <div className="min-w-0">
+      <dt className="text-[0.6875rem] text-slate-500">{label}</dt>
+      <dd className="text-sm font-semibold tabular-nums text-slate-900">{value}</dd>
     </div>
   );
 }
@@ -127,20 +125,23 @@ function statusProgressTrack(status: DeliveryStatus): string {
 function cardBorder(status: DeliveryStatus): string {
   switch (status) {
     case "received":
-      return "border-emerald-200/80 bg-emerald-50/20";
+      return "bg-emerald-50/70";
     case "partial":
-      return "border-amber-200/80 bg-amber-50/15";
+      return "bg-amber-50/70";
     default:
-      return "border-slate-200/80 bg-white";
+      return "bg-slate-50 hover:bg-slate-100";
   }
 }
 
 export function UpcomingDeliverySupplierCard({
   supplier,
   compact = false,
+  lateLabel,
 }: {
   supplier: UpcomingDeliverySupplier;
   compact?: boolean;
+  /** Sekcja „Po terminie”: np. „4 dni po terminie · termin 21.10” zamiast samej odznaki. */
+  lateLabel?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -159,7 +160,8 @@ export function UpcomingDeliverySupplierCard({
 
   return (
     <div className={cn(
-      "rounded-lg border shadow-sm transition hover:shadow-md",
+      // Blok `well` w karcie planu: bez ramki i cienia (DESIGN.md → Cards, karta w karcie).
+      "rounded-lg transition-colors duration-150",
       cardBorder(deliveryStatus)
     )}>
       <button
@@ -183,18 +185,21 @@ export function UpcomingDeliverySupplierCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <p className={cn(panelTypography.rowTitle, "min-w-0 truncate", compact && "text-xs", deliveryStatus === "received" && "text-slate-500 line-through decoration-slate-400/60")}>{supplier.supplierName}</p>
-            {supplier.isOverdueDeadline ? (
-              <span className="shrink-0 rounded-md bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-800 ring-1 ring-rose-200/80">
+            {supplier.isOverdueDeadline && !lateLabel ? (
+              <span className="shrink-0 rounded-md bg-rose-100 px-1.5 py-0.5 text-[0.625rem] font-semibold text-rose-800 ring-1 ring-rose-200/80">
                 Po terminie
               </span>
             ) : null}
-            <span className={cn("shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold", badge.className)}>
+            <span className={cn("shrink-0 rounded-md px-1.5 py-0.5 text-[0.625rem] font-semibold", badge.className)}>
               {badge.label}
             </span>
           </div>
+          {lateLabel ? (
+            <p className="mt-0.5 text-[0.8125rem] font-medium tabular-nums text-rose-700">{lateLabel}</p>
+          ) : null}
           <div className={cn("mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5", compact && "mt-0.5")}>
             {supplier.zdDocNumber ? (
-              <span className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-medium text-slate-600 ring-1 ring-inset ring-slate-200/50">
+              <span className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[0.625rem] font-medium text-slate-600 ring-1 ring-inset ring-slate-200/50">
                 {supplier.zdDocNumber}
               </span>
             ) : null}
@@ -206,7 +211,7 @@ export function UpcomingDeliverySupplierCard({
                   : "brak pozycji"}
             </span>
             {supplier.carrierLabel ? (
-              <span className={cn("inline-flex items-center gap-1 font-medium text-slate-600", compact ? "text-[10px]" : "text-[11px]")}>
+              <span className={cn("inline-flex items-center gap-1 font-medium text-slate-600", compact ? "text-[0.625rem]" : "text-[0.6875rem]")}>
                 <IconPackage size={compact ? 11 : 12} />
                 {supplier.carrierLabel}
                 {supplier.carrierHint
@@ -214,11 +219,11 @@ export function UpcomingDeliverySupplierCard({
                   : ""}
               </span>
             ) : (
-              <span className={cn("text-slate-400", compact ? "text-[10px]" : "text-[11px]")}>brak prognozy kuriera</span>
+              <span className={cn("text-slate-500", compact ? "text-[0.625rem]" : "text-[0.6875rem]")}>brak prognozy kuriera</span>
             )}
           </div>
           {supplier.salesPeople.length > 0 && !compact ? (
-            <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
+            <p className="mt-0.5 text-[0.6875rem] leading-snug text-slate-500">
               <span className="font-medium text-slate-600">Dla:</span> {salesPeopleLabel}
               {extraSalesPeople > 0 ? ` i ${extraSalesPeople} więcej` : ""}
             </p>
@@ -246,27 +251,19 @@ export function UpcomingDeliverySupplierCard({
 
       {expanded ? (
         <div className={cn("border-t border-slate-100", compact ? "px-2.5 py-2.5" : "px-3 py-3 sm:px-4")}>
-          <div className={cn("mb-3 grid gap-2", compact ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4")}>
-            <MiniStat label="Pozycje" value={supplier.positionCount} compact={compact} />
-            <MiniStat label="Sztuki" value={supplier.totalQuantity} compact={compact} />
-            <MiniStat
-              label="Paczki"
-              value={supplier.carrierHint?.typicalPackageCount ?? "-"}
-              compact={compact}
-            />
-            <MiniStat
-              label="Palety"
-              value={supplier.carrierHint?.typicalPalletCount ?? "-"}
-              compact={compact}
-            />
-          </div>
+          <dl className={cn("mb-3 grid gap-2", compact ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4")}>
+            <MiniStat label="Pozycje" value={supplier.positionCount} />
+            <MiniStat label="Sztuki" value={supplier.totalQuantity} />
+            <MiniStat label="Paczki" value={supplier.carrierHint?.typicalPackageCount ?? "-"} />
+            <MiniStat label="Palety" value={supplier.carrierHint?.typicalPalletCount ?? "-"} />
+          </dl>
           {deliveryProgress > 0 ? (
             <div className="mb-3">
               <div className="mb-1 flex items-center justify-between">
-                <p className={cn("text-[11px] font-medium", deliveryStatus === "received" ? "text-emerald-700" : "text-amber-700")}>
+                <p className={cn("text-[0.6875rem] font-medium", deliveryStatus === "received" ? "text-emerald-700" : "text-amber-700")}>
                   {supplier.totalDelivered} / {supplier.totalQuantity} szt. odebranych
                 </p>
-                <span className={cn("text-[11px] font-semibold tabular-nums", deliveryStatus === "received" ? "text-emerald-700" : "text-amber-700")}>
+                <span className={cn("text-[0.6875rem] font-semibold tabular-nums", deliveryStatus === "received" ? "text-emerald-700" : "text-amber-700")}>
                   {deliveryProgress}%
                 </span>
               </div>
@@ -280,14 +277,14 @@ export function UpcomingDeliverySupplierCard({
           ) : null}
           {(supplier.zdOnlyDocNumbers?.length ?? 0) > 0 ? (
             <div className="mb-2 rounded-md bg-slate-50 px-2.5 py-2">
-              <p className="text-[10px] font-medium text-slate-500">
+              <p className="text-[0.625rem] font-medium text-slate-500">
                 ZD z Subiekta (bez dopasowanego zamówienia)
               </p>
               <div className="mt-1 flex flex-wrap gap-1.5">
                 {(supplier.zdOnlyDocNumbers ?? []).map((nr) => (
                   <span
                     key={nr}
-                    className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-medium text-slate-600"
+                    className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[0.625rem] font-medium text-slate-600"
                   >
                     {nr}
                   </span>
@@ -312,12 +309,12 @@ export function UpcomingDeliverySupplierCard({
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className={cn("font-mono text-[11px] font-medium", orderComplete ? "text-slate-500 line-through" : "text-slate-700")}>
+                      <span className={cn("font-mono text-[0.6875rem] font-medium", orderComplete ? "text-slate-500 line-through" : "text-slate-700")}>
                         {order.symbol || "-"}
                       </span>
                       <span
                         className={cn(
-                          "rounded-md px-1.5 py-0.5 text-[10px] font-semibold",
+                          "rounded-md px-1.5 py-0.5 text-[0.625rem] font-semibold",
                           orderComplete
                             ? "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200/80"
                             : orderPartial
@@ -328,22 +325,24 @@ export function UpcomingDeliverySupplierCard({
                         {orderComplete ? "Odebrane" : orderPartial ? `${orderDelivered}/${orderQty}` : statusLabel(order.status)}
                       </span>
                     </div>
-                    <p className={cn("mt-0.5 truncate", orderComplete ? "text-slate-400 line-through" : "text-slate-600")}>{order.products}</p>
+                    <p className={cn("mt-0.5 truncate", orderComplete ? "text-slate-500 line-through" : "text-slate-600")}>{order.products}</p>
                     {order.sales_person?.name ? (
-                      <p className="mt-0.5 text-[10px] text-slate-400">
+                      <p className="mt-0.5 text-[0.6875rem] text-slate-500">
                         {order.sales_person.name}
                       </p>
                     ) : null}
                   </div>
-                  <span className={cn("shrink-0 text-right font-semibold tabular-nums", compact && "text-[11px]", orderComplete ? "text-slate-500" : "text-slate-900")}>
+                  <span className={cn("shrink-0 text-right font-semibold tabular-nums", compact && "text-[0.6875rem]", orderComplete ? "text-slate-500" : "text-slate-900")}>
                     {order.quantity} szt.
                     {orderPartial ? (
-                      <span className="block text-[10px] font-normal text-amber-600">
+                      <span className="block text-[0.625rem] font-normal text-amber-600">
                         odebrano {order.delivered_quantity}
                       </span>
                     ) : orderComplete ? (
-                      <span className="block text-[10px] font-normal text-emerald-600">
-                        ✓ {order.delivered_quantity}
+                      <span className="flex items-center justify-end gap-0.5 text-[0.625rem] font-normal text-emerald-700">
+                        <IconCheck size={11} aria-hidden />
+                        <span className="sr-only">odebrano </span>
+                        {order.delivered_quantity}
                       </span>
                     ) : null}
                   </span>

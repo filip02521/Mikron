@@ -12,6 +12,8 @@ export type RequestCompleteness = "complete" | "incomplete";
 
 export type RequestDraft = {
   supplierId?: string;
+  /** Towar wybrany z Subiekta — wtedy symbol jest prawdziwy, nie wpisany ręcznie. */
+  subiektTwId?: number | null;
   symbol?: string;
   /** Kod Mikran (tw_PLU). */
   mikranCode?: string;
@@ -145,6 +147,32 @@ export function completenessUserHint(
   };
 }
 
+/**
+ * „Symbol” będący samym początkiem pierwszego słowa nazwy: formularz brał pierwszą literę wpisu
+ * („S” przy „Silikon…”) za symbol, a dopasowanie po symbolu wiązało prośbę z towarem o symbolu „S”.
+ * Prawdziwy symbol przed nazwą jest oddzielony spacją („ABC opis”) albo pochodzi z wyboru w Subiekcie.
+ */
+export function isSymbolNamePrefixArtifact(symbol: string | null | undefined, products: string | null | undefined): boolean {
+  const sym = symbol?.trim() ?? "";
+  const name = products?.trim() ?? "";
+  if (!sym || sym === "-" || name.length <= sym.length) return false;
+  if (!name.toLocaleLowerCase("pl").startsWith(sym.toLocaleLowerCase("pl"))) return false;
+  return /[\p{L}\p{N}]/u.test(name.charAt(sym.length));
+}
+
+/** Symbol prośby do dopasowań: bez artefaktu z początku nazwy, gdy prośba nie ma towaru z Subiekta. */
+export function effectiveRequestSymbol(order: {
+  symbol: string | null | undefined;
+  products: string | null | undefined;
+  subiektTwId?: number | null;
+}): string | null {
+  const sym = order.symbol?.trim() ?? "";
+  if (!sym || sym === "-") return null;
+  const linked = order.subiektTwId != null && order.subiektTwId > 0;
+  if (!linked && isSymbolNamePrefixArtifact(sym, order.products)) return null;
+  return sym;
+}
+
 export function normalizeDraftProducts(draft: RequestDraft): {
   products: string;
   symbol: string;
@@ -157,7 +185,10 @@ export function normalizeDraftProducts(draft: RequestDraft): {
     : hasText(draft.mikranCode)
       ? clampText(draft.mikranCode!, MAX_MIKRAN_CODE_LEN)
       : "";
-  if (product) return { products: product, symbol: symbolRaw };
+  if (product) {
+    const linked = draft.subiektTwId != null && draft.subiektTwId > 0;
+    return { products: product, symbol: !linked && isSymbolNamePrefixArtifact(symbolRaw, product) ? "-" : symbolRaw };
+  }
   if (hasText(draft.symbol)) {
     return { products: clampText(draft.symbol!, MAX_PRODUCT_TEXT_LEN), symbol: symbolRaw };
   }

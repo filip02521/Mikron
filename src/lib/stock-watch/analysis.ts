@@ -48,6 +48,8 @@ export type StockWatchRule = "standard" | "on_request" | "excluded";
 export type StockWatchStatus =
   | "out_of_stock"
   | "critical"
+  /** Własny stan się kończy, ale kompletacja w Subiekcie (złożenie / rozłożenie) go pokrywa. */
+  | "to_assemble"
   | "warning"
   | "ok"
   | "no_sales";
@@ -71,6 +73,12 @@ export type StockWatchInput = {
   unitPriceNet: number | null;
   /** Ostatni dzień uwzględnionej sprzedaży (YYYY-MM-DD) — od niego liczymy datę wyczerpania. */
   salesEndDate: string;
+  /**
+   * Sztuki do uzyskania kompletacją bez zakupu (zestaw z części / składnik z kompletu).
+   * Liczą się do pokrycia; `assemblyActionable` = własny stan nie wystarcza → „Do kompletacji”.
+   */
+  assemblyQty?: number | null;
+  assemblyActionable?: boolean;
 };
 
 export type StockWatchResult = {
@@ -106,6 +114,9 @@ export function unitPricePerPiece(
 
 export function analyzeStockWatchItem(input: StockWatchInput): StockWatchResult {
   const available = finite(input.availableQty);
+  const assembly = Math.max(0, finite(input.assemblyQty));
+  // Rezerwacje ponad stan zjadają też to, co da kompletacja.
+  const effective = available + assembly;
   const velocityDaily = Math.max(0, finite(input.velocityDaily));
   const minStock =
     input.minStockQty != null && Number.isFinite(input.minStockQty)
@@ -113,7 +124,7 @@ export function analyzeStockWatchItem(input: StockWatchInput): StockWatchResult 
       : null;
 
   const daysOfCover =
-    velocityDaily > 0 ? round(Math.max(0, available) / velocityDaily, 1) : null;
+    velocityDaily > 0 ? round(Math.max(0, effective) / velocityDaily, 1) : null;
 
   const end = parseDateOnly(input.salesEndDate);
   const runOutDate =
@@ -122,19 +133,27 @@ export function analyzeStockWatchItem(input: StockWatchInput): StockWatchResult 
       : null;
 
   // Co będzie na stanie po dostawach z otwartych ZD (bez ZK — jak „Do ZD” w Kreatorze).
-  const projected = available + Math.max(0, finite(input.openZdQty));
+  const projected = effective + Math.max(0, finite(input.openZdQty));
   const target = Math.max(finite(input.targetQty), minStock ?? 0);
 
   let status: StockWatchStatus;
-  const belowMin = minStock != null && minStock > 0 && available < minStock;
+  const belowMin = minStock != null && minStock > 0 && effective < minStock;
+  // Sam stan karty (bez kompletacji) — czy półka jest pusta / na wyczerpaniu.
+  const ownShort =
+    available <= 0 ||
+    (velocityDaily > 0 && available / velocityDaily <= STOCK_WATCH_CRITICAL_DAYS) ||
+    (minStock != null && minStock > 0 && available < minStock);
   if (velocityDaily <= 0 && !belowMin) {
     status = "no_sales";
-  } else if (available <= 0) {
+  } else if (effective <= 0) {
     status = "out_of_stock";
   } else if (daysOfCover != null && daysOfCover <= STOCK_WATCH_CRITICAL_DAYS) {
     status = "critical";
   } else if (projected < target) {
+    // Poniżej celu Kreator i tak zamawia — kompletacja tego nie zastępuje.
     status = "warning";
+  } else if (assembly > 0 && input.assemblyActionable === true && ownShort) {
+    status = "to_assemble";
   } else {
     status = "ok";
   }
@@ -154,6 +173,17 @@ export function isStockWatchEmptyNoIncoming(item: {
   openZdQty: number;
 }): boolean {
   return item.status === "out_of_stock" && item.openZdQty <= 0;
+}
+
+/**
+ * Starczy na ≤ 48 h i nic w otwartych ZD. Krytyczny towar, który już jedzie, nie jest
+ * „do zamówienia dziś” — chyba że dostawa nie zdąży (deliveryRisk before_delivery).
+ */
+export function isStockWatchCriticalNoIncoming(item: {
+  status: StockWatchStatus;
+  openZdQty: number;
+}): boolean {
+  return item.status === "critical" && item.openZdQty <= 0;
 }
 
 /** Kolejność alertów: brak (najpierw bez dostawy), potem krytyczne; w grupie — wartość / rotacja. */
@@ -176,9 +206,10 @@ export function compareStockWatchAlerts(
   const rank: Record<StockWatchStatus, number> = {
     out_of_stock: 0,
     critical: 1,
-    warning: 2,
-    ok: 3,
-    no_sales: 4,
+    to_assemble: 2,
+    warning: 3,
+    ok: 4,
+    no_sales: 5,
   };
   const byStatus = rank[a.status] - rank[b.status];
   if (byStatus !== 0) return byStatus;

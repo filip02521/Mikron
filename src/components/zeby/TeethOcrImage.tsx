@@ -4,9 +4,9 @@ import { useEffect, useReducer, useState } from "react";
 import Image from "next/image";
 import { cn } from "@/lib/cn";
 import { ModalShell } from "@/components/ui/ModalShell";
-import { Spinner } from "@/components/ui/Spinner";
 import { actionGetOcrImageUrl } from "@/app/actions/teeth-orders";
 import { IconAlertCircle } from "@/components/icons/StrokeIcons";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 type FetchState = { status: "idle" | "loading" | "done" | "error"; url: string | null };
 
@@ -62,11 +62,12 @@ export function TeethOcrImage({
     return (
       <div
         className={cn(
-          "flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-500",
+          "flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[0.6875rem] font-medium text-slate-500",
           className,
         )}
+        role="status"
       >
-        <Spinner size="sm" />
+        <BrandLoader size="sm" tile={false} />
         Wczytywanie zdjęcia…
       </div>
     );
@@ -76,7 +77,7 @@ export function TeethOcrImage({
     return (
       <div
         className={cn(
-          "flex items-center gap-1.5 rounded-md border border-amber-200/80 bg-amber-50/80 px-2 py-1 text-[11px] font-medium text-amber-800",
+          "flex items-center gap-1.5 rounded-md border border-amber-200/80 bg-amber-50/80 px-2 py-1 text-[0.6875rem] font-medium text-amber-800",
           className,
         )}
       >
@@ -92,7 +93,7 @@ export function TeethOcrImage({
         type="button"
         onClick={() => setZoomOpen(true)}
         className={cn(
-          "group relative block cursor-zoom-in overflow-hidden rounded-lg border border-slate-200 bg-slate-50 transition-shadow hover:shadow-md",
+          "group relative block cursor-zoom-in overflow-hidden rounded-lg border border-slate-200 bg-slate-50 transition-colors hover:border-slate-300",
           className,
         )}
         title="Kliknij aby powiększyć"
@@ -107,7 +108,7 @@ export function TeethOcrImage({
           onError={() => dispatch({ type: "error" })}
         />
         <div className="pointer-events-none absolute inset-0 flex items-end justify-end bg-gradient-to-t from-black/30 to-transparent p-1.5 opacity-0 transition-opacity group-hover:opacity-100">
-          <span className="rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700">
+          <span className="rounded bg-white/90 px-1.5 py-0.5 text-[0.625rem] font-semibold text-slate-700">
             Powiększ
           </span>
         </div>

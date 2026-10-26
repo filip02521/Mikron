@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/TypeaheadDropdown";
 import { cn } from "@/lib/cn";
 import type { SupplierLocation } from "@/types/database";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 export type SupplierDirectoryEntry = {
   id: string;
@@ -43,7 +44,7 @@ export function SupplierSearchField({
     const q = query.trim().toLowerCase();
     if (!q) return suppliers.slice(0, 12);
     return suppliers
-      .filter((s) => s.name.toLowerCase().includes(q))
+      .filter((s) => matchesSearchWords(s.name, q))
       .slice(0, 12);
   }, [query, suppliers]);
 

@@ -2,7 +2,6 @@
 
 import { cn } from "@/lib/cn";
 import {
-  queueSupplierLeadingCellClass,
   queueSupplierRowClass,
   type SupplierOrderGroup,
 } from "@/lib/orders/queue-supplier-groups";
@@ -22,22 +21,6 @@ function Chevron({ open }: { open: boolean }) {
       fill="currentColor"
     >
       <path d="M7.2 4.2a1 1 0 0 1 1.4 0l4.8 4.8a1 1 0 0 1 0 1.4l-4.8 4.8a1 1 0 1 1-1.4-1.4L11.58 10 7.2 5.6a1 1 0 0 1 0-1.4Z" />
-    </svg>
-  );
-}
-
-function CalendarIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      className={className}
-    >
-      <rect x="2.5" y="3.5" width="11" height="10" rx="1.5" />
-      <path strokeLinecap="round" d="M2.5 6.5h11M5.5 2v2M10.5 2v2" />
     </svg>
   );
 }
@@ -106,48 +89,22 @@ export function SupplierGroupHeaderRow({
     >
       <td
         colSpan={colSpan}
-        className={cn(
-          queueSupplierLeadingCellClass(groupIndex, { variant, isHeader: true }),
-          "!py-2.5 !pl-3 sm:!pl-4",
-        )}
+        className="!py-3 !pl-3 sm:!pl-4"
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <button
             type="button"
             onClick={onToggle}
-            className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg text-left transition hover:bg-black/[0.02]"
+            className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 rounded-md text-left sm:min-h-0"
             aria-expanded={isOpen}
           >
             <Chevron open={isOpen} />
             <span className="min-w-0">
               <span className="flex flex-wrap items-center gap-1.5">
-                <span className="truncate text-[14px] font-bold leading-tight text-slate-900">
-                  {group.supplierKey}
-                </span>
-                {scheduleDate ? (
+                <span className="truncate text-base font-semibold leading-snug text-slate-900">{group.supplierKey}</span>
+                {isStale ? (
                   <span
-                    className={cn(
-                      "inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold transition",
-                      scheduleOverdue
-                        ? "bg-rose-100 text-rose-700 ring-1 ring-inset ring-rose-200/60"
-                        : "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200/50",
-                    )}
-                    title={scheduleOverdue ? "Planowany dzień zamówienia minął - sprawdź opóźnienie" : "Najbliższy planowany dzień zamówienia"}
-                  >
-                    <CalendarIcon className="size-3 shrink-0" />
-                    {scheduleOverdue ? "po planie" : "plan"}
-                    {" "}
-                    {formatPlDate(scheduleDate)}
-                  </span>
-                ) : null}
-                {maxWaitingDays != null && maxWaitingDays > 0 ? (
-                  <span
-                    className={cn(
-                      "inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold tabular-nums transition",
-                      isStale
-                        ? "bg-rose-100/90 text-rose-700 ring-1 ring-inset ring-rose-200/50"
-                        : "bg-slate-100/80 text-slate-600 ring-1 ring-inset ring-slate-200/40",
-                    )}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-md bg-rose-50 px-1.5 py-0.5 text-xs font-medium tabular-nums text-rose-700"
                     title={`Najstarsze zamówienie czeka ${waitingLabel} w przyjęciu`}
                   >
                     <ClockIcon className="size-3 shrink-0" />
@@ -155,8 +112,18 @@ export function SupplierGroupHeaderRow({
                   </span>
                 ) : null}
               </span>
-              <span className="mt-0.5 block text-[10px] font-medium leading-snug text-slate-600">
+              {/* Jeden czerwony sygnał (czeka ≥ 3 dni); plan i krótsze czekanie to zwykłe metadane. */}
+              <span className="mt-0.5 block text-sm leading-snug text-slate-500">
                 {summary}
+                {scheduleDate ? (
+                  <span title={scheduleOverdue ? "Planowany dzień zamówienia minął - sprawdź opóźnienie" : "Najbliższy planowany dzień zamówienia"}>
+                    {" · "}
+                    {scheduleOverdue ? "po planie" : "plan"} {formatPlDate(scheduleDate)}
+                  </span>
+                ) : null}
+                {!isStale && maxWaitingDays != null && maxWaitingDays > 0 ? (
+                  <span className="tabular-nums">{" · "}czeka {waitingLabel}</span>
+                ) : null}
               </span>
             </span>
           </button>

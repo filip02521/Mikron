@@ -15,6 +15,8 @@ import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { formatPlDate } from "@/lib/display-labels";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
+import { ZdOnRequestHints } from "@/components/zakupy/ZdOnRequestHints";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 type GroupFilter = "all" | string;
 
@@ -36,15 +38,15 @@ function GroupChip({
       className={cn(
         "inline-flex min-h-8 items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition",
         active
-          ? "border-slate-800 bg-slate-900 text-white"
+          ? "border-indigo-200 bg-indigo-50 text-indigo-900"
           : "border-slate-200/90 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
       )}
     >
-      <span className="max-w-[10rem] truncate">{label}</span>
+      <span className="max-w-[16rem] text-left leading-snug [overflow-wrap:anywhere]">{label}</span>
       <span
         className={cn(
           "rounded px-1 py-px text-[10px] font-semibold tabular-nums",
-          active ? "bg-white/15 text-white" : "bg-slate-100 text-slate-500"
+          active ? "bg-white text-indigo-700" : "bg-slate-100 text-slate-500"
         )}
       >
         {count}
@@ -184,12 +186,20 @@ export function ZdEstimateOnRequestModal({
   onRequests,
   onOnRequestsChange,
   onError,
+  scanLines = [],
+  supplierName = null,
+  onMarkLine,
 }: {
   open: boolean;
   onClose: () => void;
   onRequests: ZdEstimateOnRequestRow[];
   onOnRequestsChange: (rows: ZdEstimateOnRequestRow[]) => void;
   onError: (message: string) => void;
+  /** Bieżąca lista Kreatora — podpowiedzi „na prośbę” z historii sprzedaży i dostaw. */
+  scanLines?: ReadonlyArray<{ tw_Id: number; tw_Symbol: string | null; tw_Nazwa: string | null }>;
+  supplierName?: string | null;
+  /** Oznaczenie pozycji listy (to samo co ⋮ → Tylko na prośbę). Bez niego sekcji podpowiedzi nie ma. */
+  onMarkLine?: (twId: number) => void;
 }) {
   const searchId = useId();
   const searchRef = useRef<HTMLInputElement>(null);
@@ -225,7 +235,7 @@ export function ZdEstimateOnRequestModal({
       ]
         .join(" ")
         .toLowerCase();
-      return hay.includes(q);
+      return matchesSearchWords(hay, q);
     });
   }, [onRequests, query, groupFilter]);
 
@@ -319,6 +329,17 @@ export function ZdEstimateOnRequestModal({
           </div>
         </div>
       </div>
+
+      {onMarkLine ? (
+        <ZdOnRequestHints
+          lines={scanLines}
+          supplierName={supplierName}
+          markedTwIds={new Set(onRequests.map((r) => r.subiektTwId))}
+          onMark={onMarkLine}
+          onClear={clear}
+          disabled={pending}
+        />
+      ) : null}
 
       <div className="space-y-2.5">
         <label htmlFor={searchId} className="block text-xs font-medium text-slate-600">

@@ -16,6 +16,7 @@ import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
+import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
 import { salesChromeInsetClass, salesTypography } from "@/lib/ui/ontime-theme";
 
 type SalesPersonOption = {
@@ -24,25 +25,25 @@ type SalesPersonOption = {
   email: string;
 };
 
+/** Dziś w Warszawie (jak serwer) — UTC dawało wczoraj między północą a 2:00. */
 function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayDateKeyInWarsaw();
 }
 
 function addDaysStr(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  const [y, m, d] = todayStr().split("-").map(Number);
+  return new Date(Date.UTC(y!, m! - 1, d! + days)).toISOString().slice(0, 10);
 }
 
 function statusBadge(startDate: string, endDate: string) {
   const today = todayStr();
   if (today < startDate) {
-    return <Badge variant="default" className="text-[10px]">Nadchodzące</Badge>;
+    return <Badge variant="default" className="text-[0.625rem]">Nadchodzące</Badge>;
   }
   if (today > endDate) {
-    return <Badge variant="default" className="text-[10px] opacity-60">Zakończone</Badge>;
+    return <Badge variant="default" className="text-[0.625rem] opacity-60">Zakończone</Badge>;
   }
-  return <Badge variant="success" className="text-[10px]">Aktywne</Badge>;
+  return <Badge variant="success" className="text-[0.625rem]">Aktywne</Badge>;
 }
 
 export function VacationDelegationManager({

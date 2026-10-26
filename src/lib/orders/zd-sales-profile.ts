@@ -3,7 +3,9 @@
  *
  * Bazowy cel z Subiekta = sprzedaż w oknie ÷ dni okna × dni zapasu, więc każda
  * sprzedaż w oknie trafia w cel. Profil pozwala odróżnić:
- *   - spike  — bieżące okno ≥ 3× typowego miesiąca (jednorazowa duża sprzedaż),
+ *   - spike  — bieżące okno ≥ 3× typowego miesiąca i wyraźnie ponad każdy wcześniejszy
+ *              (jednorazowa duża sprzedaż),
+ *   - lumpy  — jak spike, ale tak duże miesiące już były (sprzedaż falami — nie ruszamy),
  *   - rare   — sprzedaż w ≤ 3 z 12 okien (kupowany pod zamówienie?),
  *   - new    — sprzedaż dopiero w ostatnich 3 oknach (nowość — nie ruszamy),
  *   - rising — poprzednie okno też wysokie (wzrost — nie ruszamy),
@@ -16,6 +18,7 @@
  */
 
 import { polishPluralWord } from "@/lib/email/polish-plural";
+import { ZD_DEMAND_FLOOR_WINDOWS } from "@/lib/orders/zd-demand-policy";
 
 export const ZD_SALES_PROFILE = {
   windows: 12,
@@ -24,6 +27,8 @@ export const ZD_SALES_PROFILE = {
   spikeRatio: 3,
   /** Skok tylko od tylu sztuk w bieżącym oknie (na 30 dni). */
   spikeMinPieces: 5,
+  /** Wcześniejsze okno ≥ tyle × bieżące → duże miesiące się powtarzają (falami), nie jednorazowy skok. */
+  spikeRepeatShare: 0.67,
   /** Okno przed bieżącym ≥ tyle × typowy → wzrost, nie skok. */
   risingRatio: 1.5,
   /** Sprzedaż w najwyżej tylu oknach z 12 → rzadki. */
@@ -32,7 +37,7 @@ export const ZD_SALES_PROFILE = {
   newWithinWindows: 3,
 } as const;
 
-export type ZdSalesProfileKind = "steady" | "rare" | "spike" | "new" | "rising" | "none";
+export type ZdSalesProfileKind = "steady" | "rare" | "spike" | "lumpy" | "new" | "rising" | "none";
 
 /** Dołączane do wiersza API i dalej do wiersza Kreatora (przeżywa przeliczenia w przeglądarce). */
 export type ZdSalesProfileLineMeta = {
@@ -90,9 +95,16 @@ export function classifyZdSalesProfile(input: {
   // Okna nakładające się na bieżące okno Kreatora nie są „historią”.
   const overlap = Math.min(w.length - 1, Math.max(1, Math.ceil(days / p.windowDays)));
   const prev = w.slice(0, w.length - overlap);
-  const typicalMonthly = median(prev);
-  const robustMonthly = Math.max(typicalMonthly, percentile(prev, 0.75));
-  const meanMonthly = w.length ? w.reduce((a, b) => a + b, 0) / w.length : 0;
+  // Typowy miesiąc liczony od pierwszej sprzedaży: zera sprzed wprowadzenia towaru to nie „słaby miesiąc”.
+  const firstPrev = prev.findIndex((x) => x > 0);
+  const life = firstPrev < 0 ? prev : prev.slice(firstPrev);
+  const typicalMonthly = median(life);
+  const robustMonthly = Math.max(typicalMonthly, percentile(life, 0.75));
+  // Średnia od pierwszej sprzedaży: miesiące sprzed wprowadzenia towaru nie zaniżają tempa
+  // (nowość z jedną sprzedażą w bieżącym oknie dostawała 1/12).
+  const firstAny = w.findIndex((x) => x > 0);
+  const sinceFirst = firstAny < 0 ? w : w.slice(firstAny);
+  const meanMonthly = sinceFirst.length ? sinceFirst.reduce((a, b) => a + b, 0) / sinceFirst.length : 0;
   const activeWindows = w.filter((x) => x > 0).length;
   const base = { activeWindows, typicalMonthly, robustMonthly, meanMonthly, currentMonthly };
 
@@ -108,7 +120,9 @@ export function classifyZdSalesProfile(input: {
   const floor = Math.max(1, typicalMonthly);
   const before = prev[prev.length - 1] ?? 0;
   if (currentMonthly >= p.spikeMinPieces && currentMonthly >= p.spikeRatio * floor) {
-    return { kind: before >= p.risingRatio * floor ? "rising" : "spike", ...base };
+    if (before >= p.risingRatio * floor) return { kind: "rising", ...base };
+    const peak = Math.max(0, ...prev);
+    return { kind: peak >= p.spikeRepeatShare * currentMonthly ? "lumpy" : "spike", ...base };
   }
   return { kind: "steady", ...base };
 }
@@ -123,10 +137,12 @@ export function resolveZdSalesProfile(input: {
   dniOkresu: number;
   prosbaPieces: number;
   smoothing: boolean;
+  /** Odejmij prośby także bez wygładzenia (strategia z podłogą 90 d). */
+  subtractProsba?: boolean;
 }): ZdSalesProfileLineMeta {
   const raw = Math.max(0, input.sprzedazOkres);
   const prosba = Math.min(raw, Math.max(0, input.prosbaPieces));
-  const afterProsba = input.smoothing ? raw - prosba : raw;
+  const afterProsba = input.smoothing || input.subtractProsba ? raw - prosba : raw;
   const c = classifyZdSalesProfile({
     windows: input.windows,
     currentSales: afterProsba,
@@ -229,27 +245,77 @@ export function zdSalesProfileWindows(endDate: string): Array<{ dataOd: string; 
   return out;
 }
 
+/**
+ * Sprzedaż pod klienta zwykle idzie kilka dni po dostawie prośby — okno liczy dostawy od 14 dni przed nim
+ * do 3 dni przed jego końcem (dostarczone na końcu okna najczęściej sprzedają się już po nim).
+ */
+export const ZD_PROSBA_DELIVERY_LEAD_DAYS = 14;
+export const ZD_PROSBA_DELIVERY_TAIL_DAYS = 3;
+
+const shiftKey = (key: string, days: number) =>
+  new Date(Date.parse(`${key}T00:00:00Z`) + days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+/**
+ * Okna profilu do podłogi 90 d (od najstarszego) i zakres dat dostaw próśb każdego z nich. Te same przesunięcia
+ * co dla okna Kreatora, ale bez nakładania: okno dostaje dostawy do 3 dni przed swoim końcem, następne od dnia
+ * po tej granicy (prośba odjęta raz); najstarsze sięga 14 dni wstecz.
+ */
+export function zdProsbaFloorWindowRanges(endDate: string): Array<{ from: string; to: string }> {
+  const w = zdSalesProfileWindows(endDate).slice(-ZD_DEMAND_FLOOR_WINDOWS);
+  return w.map((x, k) => ({
+    from: k === 0 ? shiftKey(x.dataOd, -ZD_PROSBA_DELIVERY_LEAD_DAYS) : shiftKey(w[k - 1]!.dataDo, 1 - ZD_PROSBA_DELIVERY_TAIL_DAYS),
+    to: shiftKey(x.dataDo, -ZD_PROSBA_DELIVERY_TAIL_DAYS),
+  }));
+}
+
+/** Sztuki próśb (dzień dostawy YYYY-MM-DD, sztuki) rozłożone na okna podłogi 90 d, od najstarszego. */
+export function zdProsbaPiecesByFloorWindow(
+  deliveries: Iterable<readonly [string, number]>,
+  endDate: string
+): number[] {
+  const ranges = zdProsbaFloorWindowRanges(endDate);
+  const out = ranges.map(() => 0);
+  for (const [day, pieces] of deliveries) {
+    const k = ranges.findIndex((r) => day >= r.from && day <= r.to);
+    if (k >= 0 && pieces > 0) out[k] += pieces;
+  }
+  return out;
+}
+
 function fmt(n: number): string {
   return n.toLocaleString("pl-PL", { maximumFractionDigits: 1 });
 }
 
 /** Krótki opis do podpowiedzi (title) i znacznika. */
-export function formatZdSalesProfileHint(meta: ZdSalesProfileLineMeta): string {
-  const series = meta.windows.map((x) => fmt(x)).join(" · ");
-  const head =
+/** Jedno zdanie profilu („Jednorazowy skok: … zwykle ~…”) — nagłówek dymka z wykresem. */
+export function formatZdSalesProfileHeadline(meta: ZdSalesProfileLineMeta): string {
+  return (
     meta.kind === "spike"
       ? `Jednorazowy skok: ${fmt(meta.currentMonthly)} szt / 30 d, zwykle ~${fmt(meta.typicalMonthly)}.`
       : meta.kind === "rare"
         ? `Rzadka sprzedaż: w ${meta.activeWindows} z ${meta.windows.length} miesięcy - może kupowany pod zamówienie.`
         : meta.kind === "new"
           ? "Nowość - sprzedaż dopiero od ostatnich miesięcy."
+          : meta.kind === "lumpy"
+            ? `Sprzedaż falami: ${fmt(meta.currentMonthly)} szt / 30 d, takie miesiące już były (do ${fmt(Math.max(0, ...meta.windows.slice(0, -1)))}).`
           : meta.kind === "rising"
             ? `Wzrost sprzedaży: ${fmt(meta.currentMonthly)} szt / 30 d, wcześniej ~${fmt(meta.typicalMonthly)}.`
-            : `Sprzedaż regularna (${meta.activeWindows} z ${meta.windows.length} miesięcy).`;
+            : `Sprzedaż regularna (${meta.activeWindows} z ${meta.windows.length} miesięcy).`
+  );
+}
+
+/** Dopiski profilu: prośby w oknie i wygładzenie (bez nagłówka i serii). */
+export function formatZdSalesProfileNotes(meta: ZdSalesProfileLineMeta): string {
   const prosba =
     meta.prosbaPieces > 0 ? ` W oknie ${fmt(meta.prosbaPieces)} szt z zrealizowanych próśb.` : "";
   const applied = meta.applied
     ? ` Wygładzono: sprzedaż w oknie ${fmt(meta.rawSprzedazOkres)} → ${fmt(meta.rawSprzedazOkres * meta.factor)} szt.`
     : "";
-  return `${head}${prosba}${applied} Ostatnie 12 × 30 dni: ${series}.`;
+  return `${prosba}${applied}`.trim();
+}
+
+export function formatZdSalesProfileHint(meta: ZdSalesProfileLineMeta): string {
+  const series = meta.windows.map((x) => fmt(x)).join(" · ");
+  const notes = formatZdSalesProfileNotes(meta);
+  return `${formatZdSalesProfileHeadline(meta)}${notes ? ` ${notes}` : ""} Ostatnie 12 × 30 dni: ${series}.`;
 }

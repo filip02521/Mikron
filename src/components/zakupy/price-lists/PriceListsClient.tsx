@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Field, Select } from "@/components/ui/Field";
 import { polishPlural } from "@/lib/email/polish-plural";
 import type { PriceListImport } from "@/lib/price-lists/data";
@@ -141,11 +142,12 @@ export function PriceListsClient({
       ) : null}
 
       <Card padding={false}>
-        <div className="p-6 pb-3 sm:p-7 sm:pb-3">
-          <CardHeader title="Wgrane cenniki" density="compact" />
-        </div>
+        <CardHeader inset title="Wgrane cenniki" />
         {imports.length === 0 ? (
-          <p className="px-6 pb-6 text-sm text-slate-500 sm:px-7">Jeszcze nie wgrano cennika. Pierwszy porównasz powyżej — zobaczysz każdą zmianę ceny, zanim cokolwiek trafi do Subiekta.</p>
+          <EmptyState
+            title="Jeszcze nie wgrano cennika"
+            description="Pierwszy porównasz powyżej — zobaczysz każdą zmianę ceny, zanim cokolwiek trafi do Subiekta."
+          />
         ) : (
           <TableScroll>
             <DataTable>
@@ -163,13 +165,13 @@ export function PriceListsClient({
                       <Link
                         href={`/zakupy/cenniki/${imp.id}`}
                         title={imp.fileName}
-                        className="rounded font-medium text-indigo-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45"
+                        className="rounded font-medium text-indigo-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
                       >
                         {imp.cechaName} · ważny od {formatDate(imp.validFrom)}
                       </Link>
                       <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
                         <span className="whitespace-nowrap"><HostBadge isLive={imp.hostKind === "live"} /></span>
-                        <span className="min-w-0 truncate">{imp.fileName}</span>
+                        <span className="min-w-0 max-w-[13rem] truncate" title={imp.fileName}>{imp.fileName}</span>
                       </div>
                     </td>
                     <td className="text-sm">
@@ -179,7 +181,7 @@ export function PriceListsClient({
                         <span className="text-slate-500">Zastąpiony nowszym</span>
                       )}
                     </td>
-                    <td className="whitespace-nowrap">
+                    <td>
                       {new Date(imp.createdAt).toLocaleString("pl-PL", { dateStyle: "short", timeStyle: "short" })}
                       <div className="text-xs text-slate-500">{imp.createdByName ?? ""}</div>
                       {imp.updatedAt ? (

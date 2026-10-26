@@ -90,7 +90,7 @@ export async function restoreScheduleSnapshot(
   snapshot: ScheduleSnapshot
 ): Promise<void> {
   const supabase = createAdminClient();
-  await supabase.from("supplier_schedules").upsert(
+  const { error } = await supabase.from("supplier_schedules").upsert(
     {
       supplier_id: snapshot.supplierId,
       order_date: snapshot.orderDate,
@@ -99,6 +99,7 @@ export async function restoreScheduleSnapshot(
     },
     { onConflict: "supplier_id" }
   );
+  if (error) throw new Error(error.message);
   await recalcSupplierSchedule(snapshot.supplierId);
 }
 

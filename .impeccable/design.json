@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-05T17:14:51.116Z",
+  "generatedAt": "2026-10-24T11:42:00.760Z",
   "title": "Design System: OnTime",
   "extensions": {
     "colorMeta": {
@@ -35,6 +35,20 @@
       "petrol-pressed": {
         "role": "primary",
         "displayName": "Petrol Pressed",
+        "tonalRamp": [
+          "#113e45",
+          "#0f4b53",
+          "#0d5d67",
+          "#0f7380",
+          "#3ba4af",
+          "#74c2ca",
+          "#d4edef",
+          "#edf7f8"
+        ]
+      },
+      "petrol-ink": {
+        "role": "primary",
+        "displayName": "Petrol ink (indigo-900)",
         "tonalRamp": [
           "#113e45",
           "#0f4b53",
@@ -132,7 +146,7 @@
       },
       "ink-faint": {
         "role": "neutral",
-        "displayName": "Atrament Blady",
+        "displayName": "Atrament blady (slate-400)",
         "tonalRamp": [
           "#151920",
           "#232830",
@@ -370,13 +384,17 @@
         "displayName": "Label",
         "purpose": "Etykiety pól formularza."
       },
-      "overline": {
-        "displayName": "Overline",
-        "purpose": "Nagłówki kolumn tabel, wersaliki."
-      },
       "code": {
         "displayName": "Code",
         "purpose": "Numery katalogowe i symbole."
+      },
+      "column-header": {
+        "displayName": "Column Header",
+        "purpose": "Nagłówek kolumny tabeli, zdaniowo, slate-500."
+      },
+      "nav-group": {
+        "displayName": "Nav Group",
+        "purpose": "Nagłówek grupy menu bocznego; jedyne wersaliki z rozstrzeleniem."
       }
     },
     "shadows": [
@@ -403,19 +421,19 @@
     ],
     "motion": [
       {
-        "name": "state",
-        "value": "150ms cubic-bezier(0.4, 0, 0.2, 1)",
-        "purpose": "Domyślne przejścia kolorów i tła (transition-colors)."
+        "name": "ease-out",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Rozwinięcia i zmiany układu (200–300 ms)."
       },
       {
-        "name": "progress",
-        "value": "300ms ease-out",
-        "purpose": "Paski postępu (szerokość)."
+        "name": "duration-state",
+        "value": "150ms",
+        "purpose": "Zmiana tła, koloru, obramowania."
       },
       {
-        "name": "reduced-motion",
-        "value": "prefers-reduced-motion: reduce → bez animacji",
-        "purpose": "Animacje wyłączane w globals.css."
+        "name": "duration-press",
+        "value": "75ms",
+        "purpose": "Wciśnięcie przycisku (scale 0.97)."
       }
     ],
     "breakpoints": [
@@ -496,7 +514,7 @@
       "refersTo": "table-header",
       "description": "Sygnaturowa tabela: wersalikowe nagłówki, zmiana ceny stara → nowa, hover z paskiem Petrol.",
       "html": "<table class=\"ds-table\"><thead><tr><th>Numer</th><th>Towar</th><th>Kartotekowa netto</th></tr></thead><tbody><tr><td class=\"ds-code\">531664</td><td>Ips classic v neutral 20g</td><td class=\"ds-num\"><s>42,37</s> <b>43,07</b> <small>+1,7%</small></td></tr><tr><td class=\"ds-code\">531745</td><td>ProBase Hot Polymer 500g Pink V</td><td class=\"ds-num\"><s>110,24</s> <b>112,64</b> <small>+2,2%</small></td></tr></tbody></table>",
-      "css": ".ds-table{width:100%;border-collapse:collapse;font-family:Geist, ui-sans-serif, system-ui, sans-serif;font-size:.875rem;line-height:1.45;background:#fff}.ds-table th{padding:.875rem 1.25rem;background:#f6f7f9;border-bottom:1px solid #e1e4e9;text-align:left;font-size:.75rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#626a76;white-space:nowrap}.ds-table td{padding:1rem 1.25rem;border-bottom:1px solid #eef0f3;color:#4a515c}.ds-table tbody tr:hover td{background:#f6f7f9}.ds-table tbody tr:hover td:first-child{box-shadow:inset 3px 0 0 0 #0f7380}.ds-code{font-family:\"Geist Mono\",ui-monospace,monospace;font-size:.75rem}.ds-num{font-variant-numeric:tabular-nums;white-space:nowrap}.ds-num s{color:#626a76;text-decoration-color:#c9ced6}.ds-num b{color:#151920;font-weight:600}.ds-num small{color:#626a76;font-size:.75rem}"
+      "css": ".ds-table{width:100%;border-collapse:collapse;font-family:Geist, ui-sans-serif, system-ui, sans-serif;font-size:.875rem;line-height:1.45;background:#fff}.ds-table th{padding:.875rem 1.25rem;background:#f6f7f9;border-bottom:1px solid #e1e4e9;text-align:left;font-size:.8125rem;font-weight:500;color:#626a76;white-space:nowrap}.ds-table td{padding:1rem 1.25rem;border-bottom:1px solid #eef0f3;color:#4a515c}.ds-table tbody tr:hover td{background:#f6f7f9}.ds-table tbody tr:hover td:first-child{font-size:.75rem}.ds-num{font-variant-numeric:tabular-nums;white-space:nowrap}.ds-num s{color:#626a76;text-decoration-color:#c9ced6}.ds-num b{color:#151920;font-weight:600}.ds-num small{color:#626a76;font-size:.75rem}"
     },
     {
       "name": "Status Panel Card",
@@ -509,49 +527,63 @@
   ],
   "narrative": {
     "northStar": "Pulpit dyspozytora",
-    "overview": "OnTime to stanowisko dyspozytora: spokojna, gęsta powierzchnia, na której wszystko jest pod ręką, a kolor pojawia się tylko tam, gdzie coś wymaga reakcji. Tło to chłodny grafit i jasne szarości. Na nim leżą białe karty z delikatnym cieniem, a jedyny akcent marki, Petrol, oznacza „tu działasz”: główną akcję, aktywną pozycję menu, zaznaczenie. Statusy mają osobny, stały słownik: zielony gotowe, bursztyn uwaga, czerwony błąd. Nie mieszają się z marką.\n\nGęstość jest zaletą. Tabele z setkami pozycji, liczby w kolumnach z cyframi o stałej szerokości i krótkie etykiety to normalna praca działu zakupów, magazynu i handlowców. Akcje są pewne i wyraźne: główny przycisk to pełny Petrol z jednoznacznym czasownikiem i liczbą („Zapisz 421 cen”). Nigdy nie konkuruje z drugim przyciskiem tej samej wagi.\n\nInterfejs nie ma motywu ciemnego w aplikacji. Ciemny gradient marki należy wyłącznie do ekranów logowania.",
+    "overview": "OnTime to narzędzie do codziennej pracy na danych z Subiekta: listy dostawców, setki pozycji ZD, kolejki próśb. Interfejs ma zejść z drogi. Neutralna, chłodna szarość niesie strukturę, jeden kolor marki (Petrol) pokazuje, gdzie działasz, a trzy kolory stanów mówią, co wymaga reakcji. Nic poza tym nie jest kolorowe.\n\nWzorcem jest pulpit dyspozytora: wszystko pod ręką, gęsto, ale czytelnie. Gęstość nie jest problemem do rozwiązania. Zakupy pracują przy biurku na długich listach, magazyn na telefonie w hali, handlowcy w biegu. Ekran zaczyna od zadania i jego stanu („421 cen do zapisu”), nie od statystyk.\n\nAplikacja ma tylko jasny motyw. Ciemne tło z gradientem marki występuje wyłącznie na ekranach logowania. Tarcza marki (`BrandCardAccent`) pojawia się tylko w momentach marki: logowanie, strona 404, onboarding i puste stany pierwszego uruchomienia. Na ekranach pracy jej nie ma.",
     "keyCharacteristics": [
-      "Grafit i szarości, jeden akcent Petrol, statusy tylko zielony / bursztyn / czerwony.",
-      "Białe karty na szarym płótnie, cienie miękkie i krótkie.",
-      "Gęste tabele, cyfry tabelaryczne, nagłówki kolumn wersalikami.",
-      "Główna akcja pełna i jednoznaczna, z liczbą w etykiecie.",
-      "Geist w całym interfejsie, Geist Mono dla kodów i numerów katalogowych."
+      "Chłodne szarości, jeden akcent Petrol, stany tylko zielony / bursztyn / czerwony.",
+      "Białe karty na szarym tle, cienie miękkie i krótkie.",
+      "Gęste tabele, cyfry tabelaryczne, nagłówki kolumn zdaniowe.",
+      "Jedna pełna główna akcja na ekran, z liczbą w etykiecie.",
+      "Geist w całym interfejsie, Geist Mono dla kodów."
     ],
     "rules": [
       {
-        "name": "The One Accent Rule",
-        "body": "Petrol jest jedynym kolorem marki. Pozostałe rodziny barw Tailwinda (indigo, violet, blue, cyan, sky) są w `globals.css` przemapowane na Petrol lub grafit, dlatego nowa klasa `indigo-600` to nadal Petrol. Nie dodawaj drugiego akcentu.",
+        "name": "Jeden akcent",
+        "body": "Petrol jest jedynym kolorem marki. Nie dodawaj drugiego akcentu ani gradientu dla wyróżnienia sekcji, roli czy modułu.",
         "section": "colors"
       },
       {
-        "name": "The Status Is Not Brand Rule",
-        "body": "Zielony, bursztyn i czerwony znaczą wyłącznie stan (gotowe, uwaga, błąd). Nigdy nie służą jako dekoracja ani akcent sekcji.",
+        "name": "Stan to nie dekoracja",
+        "body": "Zieleń, bursztyn i czerwień zawsze coś znaczą. Jeśli element nie jest w żadnym stanie, jest szary albo Petrol.",
         "section": "colors"
       },
       {
-        "name": "The Tabular Numbers Rule",
-        "body": "Każda kolumna z kwotami, ilościami lub procentami używa cyfr o stałej szerokości (`tabular-nums`), żeby liczby dało się porównywać w pionie.",
+        "name": "Cyfry w kolumnie",
+        "body": "Kwoty, ilości, procenty i daty w tabelach i licznikach mają cyfry o stałej szerokości. `.data-table` włącza je sama; poza tabelą dodaj `tabular-nums`.",
         "section": "typography"
       },
       {
-        "name": "The Quiet Lift Rule",
-        "body": "Cień zawsze ma przesunięcie i miękkie rozmycie, a jego krycie nie przekracza 0.12. Nie używaj kolorowych poświat ani twardych cieni bez rozmycia.",
+        "name": "Wersaliki tylko w menu",
+        "body": "Nagłówki kolumn, etykiety pól i odznaki pisz normalnie. Wersaliki z rozstrzeleniem są tylko w nagłówkach grup menu bocznego.",
+        "section": "typography"
+      },
+      {
+        "name": "Cichy cień",
+        "body": "Każdy cień ma przesunięcie w dół i miękkie rozmycie, a krycie do 0.12 (wyjątek: kafel marki). Bez kolorowych poświat, bez twardych cieni bez rozmycia, bez cieni na elementach wewnątrz karty.",
         "section": "elevation"
       }
     ],
     "dos": [
-      "**Do** używaj Petrol (#0f7380) tylko do akcji, zaznaczenia i fokusu, a nowe ekrany buduj na tokenach z `globals.css` i klasach z `ontime-theme.ts`.",
-      "**Do** dawaj jedną pełną główną akcję na ekran, z czasownikiem i liczbą w etykiecie.",
-      "**Do** stosuj `tabular-nums` w każdej kolumnie liczb i Geist Mono dla numerów katalogowych.",
-      "**Do** pokazuj stan pracy zdaniem („433 pozycje czekają na Twoją decyzję”) z poprawną polską odmianą liczebników.",
-      "**Do** przewijaj szerokie tabele i przełączniki w poziomie wewnątrz karty. Strona ma zawsze szerokość ekranu."
+      "Do buduj ekrany z komponentów `src/components/ui/` i klas z `ontime-theme.ts`. Kolor podawaj klasą lub zmienną, nie hexem.",
+      "Do dawaj jedną pełną główną akcję na ekran, z czasownikiem i liczbą w etykiecie.",
+      "Do zaczynaj ekran pracy od zdania stanu z liczbą, nie od statystyk.",
+      "Do sprawdzaj każdy ekran przy 375px: brak przewijania strony w poziomie, etykiety całe, pola min. 44px.",
+      "Do pokazuj stan tłem, odznaką lub ikoną z tekstem, zawsze w kolorze jego znaczenia.",
+      "Do dawaj każdemu ruchowi wariant `motion-reduce`.",
+      "Do pokazuj każde dłuższe ładowanie animowanym logo (`BrandLoader`) ze zdaniem, co się dzieje.",
+      "Do dawaj stronie z własnymi zakładkami jedną pozycję menu, a ustawienia obiektu trzymaj w jego karcie; inne ekrany pokazują stan i otwierają to samo okno."
     ],
     "donts": [
-      "**Don't** dodawaj drugiego koloru akcentu ani nie używaj zieleni, bursztynu i czerwieni jako dekoracji.",
-      "**Don't** przenoś ciemnego gradientu logowania do aplikacji.",
-      "**Don't** dawaj cieni z kryciem powyżej 0.12, kolorowych poświat ani twardych cieni bez rozmycia.",
-      "**Don't** buduj ekranu pracy z rzędu kafelków z liczbami, jeśli te same liczby są już w zakładkach lub tabeli.",
-      "**Don't** ucinaj etykiet przełączników ani przycisków wielokropkiem."
+      "Don't dodawaj drugiego koloru akcentu, gradientów ani zieleni, bursztynu i czerwieni jako dekoracji.",
+      "Don't stawiaj kolorowego paska z boku karty, wiersza, alertu ani pozycji menu.",
+      "Don't buduj ekranu z rzędu kafelków z liczbami, jeśli te liczby są już w zakładkach albo tabeli.",
+      "Don't wkładaj karty do karty.",
+      "Don't pokazuj tego samego obiektu w dwóch tabelach jednego ekranu; szczegóły rozwijaj pod jego wierszem.",
+      "Don't pisz nagłówków kolumn, etykiet ani odznak wersalikami.",
+      "Don't ucinaj etykiet przełączników ani przycisków wielokropkiem.",
+      "Don't używaj `slate-400` do tekstu, który trzeba przeczytać.",
+      "Don't zaznaczaj wybranego stanu grafitem ani kolorem stanu; wybrane jest zawsze w Petrolu.",
+      "Don't przenoś ciemnego gradientu logowania do aplikacji.",
+      "Don't stawiaj szkieletu, pulsującego paska ani samego `Spinner` tam, gdzie czeka cały obszar lub panel."
     ]
   }
 }

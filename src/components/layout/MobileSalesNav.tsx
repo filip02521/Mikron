@@ -17,11 +17,11 @@ import { NavIcon } from "@/components/icons/NavIcon";
 import { MobileNavOverflowSheet } from "@/components/layout/MobileNavOverflowSheet";
 import {
   mobileNavAttentionIdleClass,
+  mobileNavLinkActiveClass,
   mobileNavLinkBaseClass,
   mobileNavLinkIdleClass,
   mobileSalesNavClass,
   sidebarNavBadgeClassForTone,
-  sidebarNavToneActiveClass,
 } from "@/lib/ui/ontime-theme";
 import { isSalesManager } from "@/lib/auth-roles";
 import { hrefWithAdminSalesPreview, shouldPreserveSalesPreviewInNav } from "@/lib/nav/sales-preview-href";
@@ -75,7 +75,7 @@ export function MobileSalesNav({
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       aria-label="Nawigacja handlowca"
     >
-      <ul className="mx-auto flex max-w-lg items-stretch justify-around gap-0.5 px-0.5">
+      <ul className="mx-auto flex max-w-lg items-stretch justify-around gap-0.5 px-0.5 py-0.5">
         {primaryItems.map((item) => {
           const active = isNavItemActive(pathname, item.href, allPrimaryHrefs);
           const attentionBadge =
@@ -88,7 +88,7 @@ export function MobileSalesNav({
             mobileNavLinkBaseClass,
             "px-1",
             active
-              ? sidebarNavToneActiveClass(item.tone)
+              ? mobileNavLinkActiveClass
               : attentionIdle
                 ? mobileNavAttentionIdleClass
                 : mobileNavLinkIdleClass,
@@ -98,11 +98,13 @@ export function MobileSalesNav({
           const inner = (
             <>
               <span className="relative">
-                <NavIcon navKey={item.icon} size={20} className="text-current" />
+                <span className="flex h-7 w-7 items-center justify-center rounded-md">
+                  <NavIcon navKey={item.icon} size={18} className="text-current" />
+                </span>
                 {attentionBadge > 0 ? (
                   <span
                     className={cn(
-                      "absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 leading-none tabular-nums text-[9px] font-bold ring-2 ring-white lg:text-[10px]",
+                      "absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 leading-none tabular-nums text-[0.625rem] font-semibold ring-2 ring-white",
                       sidebarNavBadgeClassForTone(displayTone, active)
                     )}
                   >

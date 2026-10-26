@@ -4,7 +4,6 @@ import { useRef, useState, type ClipboardEvent, type DragEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { changeWithEmoticons } from "@/lib/ui/emoticons";
 import { EmojiPicker } from "@/components/ui/EmojiPicker";
-import { Spinner } from "@/components/ui/Spinner";
 import { IconCamera, IconPaperclip } from "@/components/icons/StrokeIcons";
 import {
   BoardImageDraftThumbs,
@@ -19,6 +18,7 @@ import {
 import { DEPARTMENT_BOARD_REPLY_COMPOSER as COPY } from "@/lib/department-board/copy";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 function dragHasFiles(event: DragEvent): boolean {
   return Array.from(event.dataTransfer?.types ?? []).includes("Files");
@@ -159,8 +159,8 @@ export function BoardReplyComposer({
             size="sm"
           />
           {compressing ? (
-            <span className="flex h-16 items-center gap-1.5 px-1 text-[11px] text-slate-500">
-              <Spinner size="sm" />
+            <span className="flex h-16 items-center gap-1.5 px-1 text-[0.6875rem] text-slate-500" role="status">
+              <BrandLoader size="sm" tile={false} />
               {COPY.compressing}
             </span>
           ) : null}
@@ -218,13 +218,13 @@ export function BoardReplyComposer({
           <IconCamera size={14} className="shrink-0" />
           {COPY.attach}
           {images.length ? (
-            <span className="tabular-nums text-slate-400">
+            <span className="tabular-nums text-slate-500">
               {images.length}/{BOARD_IMAGE_MAX_COUNT}
             </span>
           ) : null}
         </Button>
         <EmojiPicker textareaRef={textareaRef} value={value} onChange={onChange} disabled={busy} />
-        <span className="hidden text-[11px] text-slate-400 sm:inline">{COPY.hint}</span>
+        <span className="hidden text-[0.6875rem] text-slate-500 sm:inline">{COPY.hint}</span>
         <Button
           type="button"
           size="sm"

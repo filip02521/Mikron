@@ -101,7 +101,7 @@ export function AuthScreenLayout({
               </div>
             </header>
 
-            <div className="auth-card-enter min-h-0 min-w-0 max-w-full rounded-lg border border-slate-200 bg-white p-4 shadow-[var(--shadow-card-elevated)] sm:p-6">
+            <div className="auth-card-enter min-h-0 min-w-0 max-w-full rounded-[var(--radius-panel)] border border-slate-200 bg-white p-4 shadow-[var(--shadow-card-elevated)] sm:p-6">
               {children}
             </div>
 

@@ -1068,7 +1068,7 @@ export function ForSomeoneRequests({
   const queueToolbarActions = (
     <div className="flex flex-wrap items-center justify-end gap-1">
       {unseenGroupCount > 0 ? (
-        <Badge className={cn("h-7 shrink-0 px-2 text-[11px] font-semibold", dailyPanelUnseenBadgeClass(unseenVariant))}>
+        <Badge className={cn("h-7 shrink-0 px-2 text-[0.6875rem] font-semibold", dailyPanelUnseenBadgeClass(unseenVariant))}>
           {unseenGroupCount}{" "}
           {polishPluralWord(unseenGroupCount, "nowy", "nowe", "nowych")}
         </Badge>
@@ -1959,7 +1959,7 @@ export function ForSomeoneRequests({
                                                     {isUnseen ? (
                                                       <Badge
                                                         className={cn(
-                                                          "w-fit shrink-0 px-1.5 py-0 text-[10px] font-semibold",
+                                                          "w-fit shrink-0 px-1.5 py-0 text-[0.625rem] font-semibold",
                                                           dailyPanelUnseenBadgeClass(unseenVariant)
                                                         )}
                                                       >
@@ -1986,7 +1986,7 @@ export function ForSomeoneRequests({
                                                     {showStatusBadge ? (
                                                       <Badge
                                                         variant={statusBadgeVariant}
-                                                        className="w-fit text-[10px]"
+                                                        className="w-fit text-[0.625rem]"
                                                       >
                                                         {ui.statusTitle}
                                                       </Badge>

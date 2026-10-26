@@ -6,8 +6,16 @@
 
 import { query } from "@/lib/db/pool";
 import { fetchSubiektZdEstimateAll } from "@/lib/subiekt/api";
+import { assertZdEstimateFilterEcho } from "@/lib/orders/zd-estimate-scope";
 import { parseOrderQuantity } from "@/lib/orders/individual";
-import { ZD_SALES_PROFILE, zdSalesProfileWindows } from "@/lib/orders/zd-sales-profile";
+import {
+  ZD_PROSBA_DELIVERY_LEAD_DAYS,
+  ZD_PROSBA_DELIVERY_TAIL_DAYS,
+  ZD_SALES_PROFILE,
+  zdProsbaFloorWindowRanges,
+  zdProsbaPiecesByFloorWindow,
+  zdSalesProfileWindows,
+} from "@/lib/orders/zd-sales-profile";
 
 export type ZdSalesProfileScope = { mode: "grupa" | "cecha"; id: number };
 
@@ -54,14 +62,31 @@ async function computeScopeProfiles(
   endDate: string
 ): Promise<Map<number, number[]>> {
   const windows = zdSalesProfileWindows(endDate);
-  const fetchWindow = (w: { dataOd: string; dataDo: string }) =>
-    fetchSubiektZdEstimateAll({
-      ...(scope.mode === "grupa" ? { grupaId: scope.id } : { cechaId: scope.id }),
-      dataOd: w.dataOd,
-      dataDo: w.dataDo,
-      dniZapasu: ZD_SALES_PROFILE.windowDays,
-      tylkoBraki: false,
-    });
+  const fetchWindow = async (w: { dataOd: string; dataDo: string }) => {
+    const res = await fetchSubiektZdEstimateAll(
+      {
+        ...(scope.mode === "grupa" ? { grupaId: scope.id } : { cechaId: scope.id }),
+        dataOd: w.dataOd,
+        dataDo: w.dataDo,
+        dniZapasu: ZD_SALES_PROFILE.windowDays,
+        tylkoBraki: false,
+      },
+      {
+        // Jak lista główna: bez potwierdzonego filtra okno mogłoby być całym katalogiem.
+        validateFirstPage: ({ parametry }) =>
+          assertZdEstimateFilterEcho({
+            mode: scope.mode,
+            expectedGrupaId: scope.mode === "grupa" ? scope.id : null,
+            expectedCechaId: scope.mode === "cecha" ? scope.id : null,
+            parametry,
+          }),
+      }
+    );
+    // Niepełne okno = zera dla brakujących towarów → fałszywe skoki i niższa podłoga 90 d,
+    // zapisane na dni. Lepiej oznaczyć profil jako niedostępny.
+    if (res.truncated) throw new Error(`Profil sprzedaży: okno ${w.dataOd}–${w.dataDo} niepełne.`);
+    return res;
+  };
   const results: Awaited<ReturnType<typeof fetchWindow>>[] = [];
   for (let i = 0; i < windows.length; i += WINDOW_CONCURRENCY) {
     const chunk = windows.slice(i, i + WINDOW_CONCURRENCY);
@@ -169,17 +194,42 @@ export async function ensureZdSalesProfiles(input: {
   return out;
 }
 
-/**
- * Sprzedaż pod klienta zwykle idzie kilka dni po dostawie prośby — liczymy dostawy
- * od 14 dni przed oknem do 3 dni przed jego końcem (dostarczone na końcu okna
- * najczęściej sprzedają się już po nim, więc nie ma ich w sprzedaży okna).
- */
-const PROSBA_DELIVERY_LEAD_DAYS = 14;
-const PROSBA_DELIVERY_TAIL_DAYS = 3;
+type ProsbaDelivery = { tw: number; day: string; pieces: number };
+
+/** Zrealizowane prośby (sztuki dostarczone) z dniem dostawy w zakresie dat (czas warszawski). */
+async function loadDeliveredProsby(twIds: readonly number[], from: string, to: string): Promise<ProsbaDelivery[]> {
+  if (twIds.length === 0) return [];
+  const { rows } = await query<{
+    subiekt_tw_id: number;
+    status: string;
+    quantity: string | null;
+    delivered_quantity: string | null;
+    day: string;
+  }>(
+    `SELECT subiekt_tw_id, status, quantity, delivered_quantity,
+            (delivery_at AT TIME ZONE 'Europe/Warsaw')::date::text AS day
+       FROM individual_orders
+      WHERE subiekt_tw_id = ANY($1::int[])
+        AND status IN ('Zrealizowane', 'Czesciowo_zrealizowane')
+        AND delivery_at IS NOT NULL
+        AND (delivery_at AT TIME ZONE 'Europe/Warsaw')::date BETWEEN $2::date AND $3::date`,
+    [twIds, from, to]
+  );
+  const out: ProsbaDelivery[] = [];
+  for (const r of rows) {
+    const delivered =
+      parseOrderQuantity(r.delivered_quantity ?? "") ??
+      (r.status === "Zrealizowane" ? parseOrderQuantity(r.quantity ?? "") : null) ??
+      0;
+    if (delivered > 0) out.push({ tw: r.subiekt_tw_id, day: r.day, pieces: delivered });
+  }
+  return out;
+}
 
 /**
  * Sztuki z próśb zrealizowanych — ta sprzedaż była pod klienta i nie powinna budować
- * zapasu (odejmowana przy wygładzeniu, z limitem do sprzedaży w oknie).
+ * zapasu (odejmowana przy wygładzeniu, z limitem do sprzedaży w oknie). Dostawy od 14 dni
+ * przed oknem do 3 dni przed jego końcem (`ZD_PROSBA_DELIVERY_*`).
  */
 export async function loadDeliveredProsbaPiecesByTwId(input: {
   twIds: readonly number[];
@@ -187,31 +237,23 @@ export async function loadDeliveredProsbaPiecesByTwId(input: {
   dataDo: string;
 }): Promise<Map<number, number>> {
   const out = new Map<number, number>();
-  if (input.twIds.length === 0) return out;
-  const { rows } = await query<{
-    subiekt_tw_id: number;
-    status: string;
-    quantity: string | null;
-    delivered_quantity: string | null;
-  }>(
-    `SELECT subiekt_tw_id, status, quantity, delivered_quantity
-       FROM individual_orders
-      WHERE subiekt_tw_id = ANY($1::int[])
-        AND status IN ('Zrealizowane', 'Czesciowo_zrealizowane')
-        AND delivery_at IS NOT NULL
-        AND (delivery_at AT TIME ZONE 'Europe/Warsaw')::date BETWEEN $2::date AND $3::date`,
-    [
-      input.twIds,
-      shiftDateKey(input.dataOd, -PROSBA_DELIVERY_LEAD_DAYS),
-      shiftDateKey(input.dataDo, -PROSBA_DELIVERY_TAIL_DAYS),
-    ]
+  const rows = await loadDeliveredProsby(
+    input.twIds,
+    shiftDateKey(input.dataOd, -ZD_PROSBA_DELIVERY_LEAD_DAYS),
+    shiftDateKey(input.dataDo, -ZD_PROSBA_DELIVERY_TAIL_DAYS)
   );
-  for (const r of rows) {
-    const delivered =
-      parseOrderQuantity(r.delivered_quantity ?? "") ??
-      (r.status === "Zrealizowane" ? parseOrderQuantity(r.quantity ?? "") : null) ??
-      0;
-    if (delivered > 0) out.set(r.subiekt_tw_id, (out.get(r.subiekt_tw_id) ?? 0) + delivered);
-  }
+  for (const r of rows) out.set(r.tw, (out.get(r.tw) ?? 0) + r.pieces);
   return out;
+}
+
+/** Sztuki próśb w każdym z trzech okien profilu do podłogi 90 d (od najstarszego; `zdProsbaFloorWindowRanges`). */
+export async function loadDeliveredProsbaPiecesByFloorWindow(input: {
+  twIds: readonly number[];
+  endDate: string;
+}): Promise<Map<number, number[]>> {
+  const ranges = zdProsbaFloorWindowRanges(input.endDate);
+  const rows = await loadDeliveredProsby(input.twIds, ranges[0]!.from, ranges[ranges.length - 1]!.to);
+  const byTw = new Map<number, Array<readonly [string, number]>>();
+  for (const r of rows) byTw.set(r.tw, [...(byTw.get(r.tw) ?? []), [r.day, r.pieces]]);
+  return new Map([...byTw].map(([tw, d]) => [tw, zdProsbaPiecesByFloorWindow(d, input.endDate)]));
 }

@@ -10,7 +10,7 @@ import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
 import type { IndividualRequestKind } from "@/types/database";
 import { IconCircleCheck } from "@/components/icons/StrokeIcons";
-import { Spinner } from "@/components/ui/Spinner";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 import { FormNoticeMessage } from "@/components/ui/FormNoticeMessage";
 import type { FormMessage } from "@/lib/ui/notice-content";
 import { cn } from "@/lib/cn";
@@ -37,7 +37,7 @@ function StepRow({ step }: { step: ProcurementReadinessStep }) {
       <StepIcon state={step.state} />
       <div className="min-w-0 flex-1">
         <p className="text-xs font-medium text-slate-800">{step.label}</p>
-        <p className="text-[11px] leading-snug text-slate-500">{step.detail}</p>
+        <p className="text-[0.6875rem] leading-snug text-slate-500">{step.detail}</p>
       </div>
     </li>
   );
@@ -122,7 +122,7 @@ export function ProcurementFormReadiness({
             {view.headline}
           </p>
           {view.canSubmit ? (
-            <span className="text-[11px] font-medium text-emerald-800">Gotowe do zapisu</span>
+            <span className="text-[0.6875rem] font-medium text-emerald-800">Gotowe do zapisu</span>
           ) : null}
         </div>
         {view.subline ? (
@@ -136,8 +136,8 @@ export function ProcurementFormReadiness({
         </ul>
 
         {resolvingSupplier ? (
-          <p className="mt-2 flex items-center gap-2 text-xs text-indigo-800">
-            <Spinner size="sm" />
+          <p className="mt-2 flex items-center gap-2 text-xs text-indigo-800" role="status">
+            <BrandLoader size="sm" tile={false} />
             Sprawdzam dostawcę w bazie…
           </p>
         ) : null}

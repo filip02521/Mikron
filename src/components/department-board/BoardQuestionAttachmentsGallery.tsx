@@ -3,7 +3,6 @@
 import { useEffect, useReducer, useState } from "react";
 import Image from "next/image";
 import { ModalShell } from "@/components/ui/ModalShell";
-import { Spinner } from "@/components/ui/Spinner";
 import {
   IconAlertCircle,
   IconChevronLeft,
@@ -12,6 +11,7 @@ import {
 import { actionGetBoardQuestionImageUrl } from "@/app/actions/department-board";
 import type { DepartmentBoardThreadAttachment } from "@/types/database";
 import { cn } from "@/lib/cn";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 type FetchState = {
   status: "idle" | "loading" | "done" | "error";
@@ -118,10 +118,10 @@ export function BoardQuestionAttachmentsGallery({
 
   if (state.status === "loading" || state.status === "idle") {
     return (
-      <ul className={cn("flex flex-wrap gap-2", className)} aria-label="Wczytywanie zdjęć">
+      <ul className={cn("flex flex-wrap gap-2", className)} aria-label="Wczytywanie zdjęć" aria-busy="true">
         {attachments.map((att) => (
           <li key={att.id} className={cn(thumbClass, "flex items-center justify-center")}>
-            <Spinner size="sm" />
+            <BrandLoader size="sm" tile={false} />
           </li>
         ))}
       </ul>
@@ -132,7 +132,7 @@ export function BoardQuestionAttachmentsGallery({
     return (
       <div
         className={cn(
-          "flex items-center gap-1.5 rounded-md border border-amber-200/80 bg-amber-50/80 px-2.5 py-1.5 text-[11px] font-medium text-amber-800",
+          "flex items-center gap-1.5 rounded-md border border-amber-200/80 bg-amber-50/80 px-2.5 py-1.5 text-[0.6875rem] font-medium text-amber-800",
           className
         )}
       >
@@ -156,7 +156,7 @@ export function BoardQuestionAttachmentsGallery({
                 onClick={() => setZoomIndex(index)}
                 className={cn(
                   thumbClass,
-                  "group block cursor-zoom-in transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40"
+                  "group block cursor-zoom-in transition-shadow hover:ring-2 hover:ring-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
                 )}
                 title="Powiększ zdjęcie"
                 aria-label={`Powiększ zdjęcie ${index + 1}`}
@@ -168,7 +168,7 @@ export function BoardQuestionAttachmentsGallery({
                   unoptimized
                   className="object-cover"
                 />
-                <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-black/45 px-1.5 py-1 text-[10px] font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
+                <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-black/45 px-1.5 py-1 text-[0.625rem] font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
                   Powiększ
                 </span>
               </button>
@@ -196,7 +196,7 @@ export function BoardQuestionAttachmentsGallery({
                 Otwórz w pełnym rozmiarze
               </a>
               {canBrowse ? (
-                <span className="hidden text-[11px] text-slate-400 sm:inline">
+                <span className="hidden text-[0.6875rem] text-slate-500 sm:inline">
                   Strzałki ← → przełączają zdjęcia
                 </span>
               ) : null}

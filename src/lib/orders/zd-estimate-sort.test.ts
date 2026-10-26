@@ -3,6 +3,7 @@ import { mapZdEstimateLineToManual } from "./zd-estimate-manual";
 import {
   defaultDirForZdEstimateSortKey,
   sortZdEstimateLines,
+  zdEstimateDaysOfCover,
 } from "./zd-estimate-sort";
 
 function line(partial: {
@@ -117,5 +118,58 @@ describe("defaultDirForZdEstimateSortKey", () => {
     expect(defaultDirForZdEstimateSortKey("confidence")).toBe("desc");
     expect(defaultDirForZdEstimateSortKey("symbol")).toBe("asc");
     expect(defaultDirForZdEstimateSortKey("name")).toBe("asc");
+  });
+});
+
+describe("zdEstimateDaysOfCover — para (sprzedaż łączna w sztukach)", () => {
+  it("dostępne pary liczone w sztukach: sztuki + paczki × przelicznik", () => {
+    // Haczyki 100 szt (10.2026): 195 szt + 1 op. × 100, sprzedaż 26,77 szt/d → ~11 d, nie 0
+    const days = zdEstimateDaysOfCover({
+      dostepne: 1,
+      sprzedazDziennie: 26.77,
+      pair: { role: "pack", unitsPerPack: 100, pieceDostepne: 195, packDostepne: 1 } as never,
+    });
+    expect(days).toBeCloseTo(295 / 26.77);
+  });
+
+  it("brak partnera albo wiersz sztuki — jak zwykły towar", () => {
+    expect(
+      zdEstimateDaysOfCover({
+        dostepne: 10,
+        sprzedazDziennie: 2,
+        pair: { role: "pack", unitsPerPack: 100, pieceDostepne: 195, packDostepne: 1, partnerMissing: true } as never,
+      })
+    ).toBe(5);
+    expect(zdEstimateDaysOfCover({ dostepne: 10, sprzedazDziennie: 2 })).toBe(5);
+  });
+});
+
+describe("sortZdEstimateLines — klasa ABC (kolejność przeglądu)", () => {
+  const rows = [
+    line({ tw_Id: 1, tw_Symbol: "C-1", tw_Nazwa: "C mały", celZapasu: 2 }),
+    line({ tw_Id: 2, tw_Symbol: "A-1", tw_Nazwa: "A mały", celZapasu: 3 }),
+    line({ tw_Id: 3, tw_Symbol: "X-1", tw_Nazwa: "bez klasy", celZapasu: 50 }),
+    line({ tw_Id: 4, tw_Symbol: "A-2", tw_Nazwa: "A duży", celZapasu: 30 }),
+    line({ tw_Id: 5, tw_Symbol: "B-1", tw_Nazwa: "B", celZapasu: 5 }),
+  ];
+  const abc = new Map([
+    [1, "C"],
+    [2, "A"],
+    [4, "A"],
+    [5, "B"],
+  ]);
+  const sort = (dir: "asc" | "desc") =>
+    sortZdEstimateLines(rows, "abc", dir, null, null, null, null, undefined, null, null, null, abc).map((l) => l.tw_Id);
+
+  it("rosnąco: A (największe Do ZD najpierw), B, C, na końcu bez klasy", () => {
+    expect(sort("asc")).toEqual([4, 2, 5, 1, 3]);
+  });
+
+  it("malejąco: C, B, A — bez klasy dalej na końcu", () => {
+    expect(sort("desc")).toEqual([1, 5, 4, 2, 3]);
+  });
+
+  it("domyślny kierunek: A najpierw", () => {
+    expect(defaultDirForZdEstimateSortKey("abc")).toBe("asc");
   });
 });

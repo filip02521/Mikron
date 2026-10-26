@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { IconChevronLeft } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 
-const focusRingClass = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45";
+const focusRingClass = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600";
 
 /**
  * Panel Asystenta: od lg lista i treść obok siebie na całej wysokości ekranu, widoki jako pasek nad nimi;
@@ -27,7 +27,8 @@ export const listColumnClass = "min-h-0 border-slate-200 lg:overflow-y-auto lg:b
 export const railTabsClass =
   "flex min-w-0 gap-1 overflow-x-auto p-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden 2xl:flex-col 2xl:overflow-visible";
 
-export const railGroupLabelClass ="px-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500";
+// design-ok: nagłówek grupy w szynie asystenta — styl Nav Group
+export const railGroupLabelClass ="px-2 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-slate-500";
 
 /** Pozycja szyny: aktywna jak segment (biała, lekki cień) — ten sam język co przełączniki w aplikacji. */
 export function railItemClass(active: boolean): string {
@@ -45,7 +46,7 @@ export function RailCount({ value, tone = "neutral" }: { value: number; tone?: "
   return (
     <span
       className={cn(
-        "min-w-5 rounded-full px-1.5 py-px text-center text-[11px] font-medium tabular-nums",
+        "min-w-5 rounded-full px-1.5 py-px text-center text-[0.6875rem] font-medium tabular-nums",
         tone === "attention" && value
           ? "bg-amber-100 text-amber-900"
           : tone === "info" && value
@@ -58,11 +59,11 @@ export function RailCount({ value, tone = "neutral" }: { value: number; tone?: "
   );
 }
 
-/** Wiersz listy: zaznaczenie = Petrol Mist + 3 px pasek z lewej (jak wybrany wiersz tabeli). */
+/** Wiersz listy: zaznaczenie = Petrol Mist, jak wybrany wiersz tabeli (DESIGN.md → „Jedno wybrane”). */
 export function listRowClass(selected: boolean): string {
   return cn(
-    "block w-full px-4 py-3 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500/45",
-    selected ? "bg-indigo-50/70 shadow-[inset_3px_0_0_var(--primary)]" : "hover:bg-slate-50 active:bg-slate-100",
+    "block w-full px-4 py-3 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-600",
+    selected ? "bg-indigo-50" : "hover:bg-slate-50 active:bg-slate-100",
   );
 }
 
@@ -83,7 +84,7 @@ export function DetailHeader({
   children?: ReactNode;
 }) {
   const backClass =
-    "mb-2 inline-flex min-h-8 items-center gap-1 rounded-md pr-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50 lg:hidden";
+    "mb-2 inline-flex min-h-11 items-center gap-1 rounded-md pr-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50 lg:hidden";
   return (
     <header className="border-b border-slate-200 px-4 py-3 sm:px-5">
       {"href" in back ? (
@@ -135,4 +136,4 @@ export function DetailEmpty({
 
 /** Drobna akcja tekstowa w nagłówku treści (link do karty, przekazanie). */
 export const detailLinkClass =
-  "inline-flex min-h-8 items-center rounded-md px-2 text-xs font-medium text-indigo-700 transition-colors hover:bg-indigo-50 hover:text-indigo-900";
+  "inline-flex min-h-11 items-center rounded-md px-2 text-xs font-medium text-indigo-700 sm:min-h-8 transition-colors hover:bg-indigo-50 hover:text-indigo-900";

@@ -52,7 +52,7 @@ export function MyOrderRequestNote({
                 </svg>
                 Uwagi od działu zakupów
               </span>
-              <span className="inline-flex items-center rounded-md bg-indigo-600/10 px-2 py-0.5 text-[11px] font-semibold text-indigo-800 ring-1 ring-inset ring-indigo-200/70">
+              <span className="inline-flex items-center rounded-md bg-indigo-600/10 px-2 py-0.5 text-[0.6875rem] font-semibold text-indigo-800 ring-1 ring-inset ring-indigo-200/70">
                 Nowe
               </span>
             </div>

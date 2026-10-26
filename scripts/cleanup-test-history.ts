@@ -5,6 +5,8 @@
  *   npx tsx scripts/cleanup-test-history.ts --dry-run
  */
 import { createAdminClient as createClient } from "../src/lib/db/admin";
+import { fetchAllRows } from "../src/lib/data/fetch-all-rows";
+import type { Row } from "../src/lib/db/query-builder";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { parseCsv, headerIndex } from "./lib/parse-csv";
@@ -50,11 +52,14 @@ async function main() {
   const normDeleted = 0;
 
   // 1. Zamówienia indywidualne sprzed importu CSV
-  const { data: oldByDate } = await supabase
-    .from("individual_orders")
-    .select("id, products, created_at")
-    .lt("created_at", IMPORT_CUTOFF_ISO);
-  const oldIds = (oldByDate ?? []).map((r) => r.id);
+  const oldByDate = await fetchAllRows<Row>(() =>
+    supabase
+      .from("individual_orders")
+      .select("id, products, created_at")
+      .lt("created_at", IMPORT_CUTOFF_ISO)
+      .order("id", { ascending: true })
+  );
+  const oldIds = oldByDate.map((r) => r.id);
 
   // 2. Nie ma w eksporcie CSV (np. ręczne testy w aplikacji)
   const notInCsv: string[] = [];
@@ -78,11 +83,14 @@ async function main() {
   // 3. Śmieciowe produkty testowe
   const testProductIds: string[] = [];
   for (const pattern of TEST_PRODUCT_PATTERNS) {
-    const { data } = await supabase
-      .from("individual_orders")
-      .select("id")
-      .ilike("products", pattern);
-    for (const row of data ?? []) testProductIds.push(row.id);
+    const data = await fetchAllRows<Row>(() =>
+      supabase
+        .from("individual_orders")
+        .select("id")
+        .ilike("products", pattern)
+        .order("id", { ascending: true })
+    );
+    for (const row of data) testProductIds.push(row.id);
   }
 
   // 4. Karty demo handlowców (Krzychu, Filip test)
@@ -95,11 +103,14 @@ async function main() {
   const testSalesIds = (testSales ?? []).map((s) => s.id);
   const testSalesOrderIds: string[] = [];
   for (const sid of testSalesIds) {
-    const { data } = await supabase
-      .from("individual_orders")
-      .select("id")
-      .eq("sales_person_id", sid);
-    for (const row of data ?? []) testSalesOrderIds.push(row.id);
+    const data = await fetchAllRows<Row>(() =>
+      supabase
+        .from("individual_orders")
+        .select("id")
+        .eq("sales_person_id", sid)
+        .order("id", { ascending: true })
+    );
+    for (const row of data) testSalesOrderIds.push(row.id);
   }
 
   const indToDelete = [

@@ -19,11 +19,11 @@ import { teethColorSwatch } from "@/lib/teeth/teeth-color-swatches";
 import type { ModalSize } from "@/components/ui/ModalShell";
 import { cn } from "@/lib/cn";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
-import { IconAlertCircle, IconPlusCircle, IconPencil } from "@/components/icons/StrokeIcons";
+import { IconAlertCircle, IconCheck, IconPlusCircle, IconPencil } from "@/components/icons/StrokeIcons";
 
 /** Spójny styl komunikatu ostrzegawczego w modalu zębów. */
 export const teethBuilderAlertClass =
-  "flex items-center gap-1.5 rounded-md border border-amber-200/80 bg-amber-50/80 px-2 py-1 text-[11px] font-medium text-amber-800";
+  "flex items-center gap-1.5 rounded-md border border-amber-200/80 bg-amber-50/80 px-2 py-1 text-[0.6875rem] font-medium text-amber-800";
 
 export function teethBuilderModalSize(
   productLine: TeethProductLine,
@@ -78,7 +78,7 @@ export function TeethBuilderStepFlow({ steps }: { steps: TeethBuilderStep[] }) {
       {steps.map((step, index) => (
         <li key={step.label} className="flex items-center gap-1">
           {index > 0 ? (
-            <span className="px-0.5 text-[10px] text-slate-300" aria-hidden="true">
+            <span className="px-0.5 text-[0.625rem] text-slate-300" aria-hidden="true">
               /
             </span>
           ) : null}
@@ -86,21 +86,21 @@ export function TeethBuilderStepFlow({ steps }: { steps: TeethBuilderStep[] }) {
             type="button"
             onClick={() => handleStepClick(step.stepKey)}
             className={cn(
-              "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium leading-none transition",
+              "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[0.625rem] font-medium leading-none transition",
               "hover:ring-2 hover:ring-indigo-200/50",
               step.done
                 ? "bg-indigo-50 text-indigo-800 ring-1 ring-indigo-200/70"
-                : "text-slate-400 hover:text-slate-600",
+                : "text-slate-500 hover:text-slate-700",
             )}
           >
             <span
               className={cn(
-                "flex size-3.5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold",
-                step.done ? "bg-indigo-600 text-white" : "bg-slate-200/80 text-slate-500",
+                "flex size-4 shrink-0 items-center justify-center rounded-full text-[0.625rem] font-semibold",
+                step.done ? "bg-white text-indigo-700 ring-1 ring-indigo-200" : "bg-slate-200/80 text-slate-600",
               )}
               aria-hidden="true"
             >
-              {step.done ? "✓" : step.number}
+              {step.done ? <IconCheck size={10} strokeWidth={3} /> : step.number}
             </span>
             {step.label}
           </button>
@@ -133,11 +133,11 @@ export function TeethBuilderEmptyList({
     >
       <div className="flex flex-col items-center gap-1.5">
         <IconPlusCircle size={20} className="text-indigo-400" />
-        <p className="text-[11px] font-medium text-slate-600">{TEETH_BUILDER_EMPTY_LIST_TITLE}</p>
-        <p className="text-[10px] leading-snug text-slate-500">
+        <p className="text-[0.6875rem] font-medium text-slate-600">{TEETH_BUILDER_EMPTY_LIST_TITLE}</p>
+        <p className="text-[0.625rem] leading-snug text-slate-500">
           {teethBuilderEmptyListExample(kind, productLine)}
         </p>
-        <p className="text-[10px] font-medium text-indigo-600">Wypełnij formularz powyżej ↑</p>
+        <p className="text-[0.625rem] font-medium text-indigo-600">Wypełnij formularz powyżej ↑</p>
       </div>
     </div>
   );
@@ -171,13 +171,13 @@ export function TeethBuilderGroupList({
   return (
     <section className="space-y-1.5">
       <div className="flex items-center justify-between gap-2 px-0.5">
-        <h3 className="text-[10px] font-semibold text-slate-500">
+        <h3 className="text-[0.625rem] font-semibold text-slate-500">
           Lista · {groups.length}
         </h3>
         <div className="flex items-center gap-1.5">
           <span
             className={cn(
-              "inline-flex items-center gap-1 text-[10px] font-medium",
+              "inline-flex items-center gap-1 text-[0.625rem] font-medium",
               listComplete ? "text-indigo-600" : "text-amber-700",
             )}
           >
@@ -228,12 +228,12 @@ export function TeethBuilderGroupList({
                 <span className="text-xs font-medium text-slate-700">{g.mould.trim()}</span>
               ) : null}
               {needsJaw && jawIcon && !mouldEncodesExplicitJaw(g.mould) ? (
-                <span className="text-xs font-bold text-slate-500" title={resolvedJaw === "upper" ? "Górna" : "Dolna"}>
+                <span className="text-xs font-semibold text-slate-500" title={resolvedJaw === "upper" ? "Górna" : "Dolna"}>
                   {jawIcon}
                 </span>
               ) : null}
               {effectiveKind ? (
-                <span className="rounded bg-slate-100 px-1 py-0.5 text-[9px] font-medium text-slate-500">
+                <span className="rounded bg-slate-100 px-1 py-0.5 text-[0.625rem] font-medium text-slate-600">
                   {TEETH_KIND_LABELS[effectiveKind].toLowerCase()}
                 </span>
               ) : null}
@@ -294,7 +294,7 @@ function ListActionButton({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "rounded px-1.5 py-0.5 text-[10px] font-medium transition",
+        "rounded px-1.5 py-0.5 text-[0.625rem] font-medium transition",
         "disabled:cursor-not-allowed disabled:opacity-40",
         tone === "danger"
           ? "text-rose-600 hover:bg-rose-50"
@@ -329,7 +329,7 @@ export function TeethBuilderQuantityRow({
     <div className="space-y-1.5 border-t border-indigo-100/60 pt-2.5">
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-semibold text-slate-500">
+          <span className="text-[0.625rem] font-semibold text-slate-500">
             Ilość
           </span>
           <div className="flex items-center rounded-md ring-1 ring-slate-200/90">
@@ -381,7 +381,7 @@ export function TeethBuilderQuantityRow({
         </div>
       </div>
       {jawModeBoth ? (
-        <p className="text-[10px] leading-snug text-indigo-700/90" role="status">
+        <p className="text-[0.625rem] leading-snug text-indigo-700/90" role="status">
           {TEETH_BUILDER_BOTH_JAW_HINT}
         </p>
       ) : null}

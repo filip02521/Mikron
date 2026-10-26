@@ -19,7 +19,7 @@ function OnTimeWordmark({
   const text =
     size === "sm"
       ? "text-sm font-semibold tracking-tight"
-      : "text-[15px] font-semibold tracking-tight";
+      : "text-[0.9375rem] font-semibold tracking-tight";
 
   return (
     <p className={cn(text, className)} aria-label={ONTIME_APP_NAME}>
@@ -81,8 +81,9 @@ export function SidebarBrandBlock({
       <div className="flex items-center gap-2.5" title={`${ONTIME_APP_NAME} · ${ONTIME_COMPANY}`}>
         <AppBrandMark size="sm" variant="light" className="shrink-0" />
         <div className="min-w-0 flex-1">
-          <OnTimeWordmark className="pr-7 text-[17px] font-bold leading-none tracking-[-0.02em]" />
-          <p className="mt-1 whitespace-nowrap text-[8.5px] font-semibold uppercase leading-none tracking-[0.1em] text-slate-500">
+          <OnTimeWordmark className="pr-7 text-[1.0625rem] font-semibold leading-none tracking-[-0.02em]" />
+          {/* design-ok: hasło w bloku marki menu bocznego (część logotypu) */}
+          <p className="mt-1 whitespace-nowrap text-[0.625rem] font-semibold uppercase leading-none tracking-[0.08em] text-slate-500">
             {ONTIME_TAGLINE_SHORT}
           </p>
         </div>
@@ -117,7 +118,7 @@ export function MobileBrandBlock({
     <div className="flex min-w-0 items-center gap-2.5">
       <AppBrandMark size="sm" variant="light" className="shrink-0" />
       <div className="min-w-0 flex-1">
-        <OnTimeWordmark size="sm" />
+        <OnTimeWordmark className="text-[0.9375rem] leading-none" size="sm" />
         <SidebarUserRow
           role={role}
           userEmail={userEmail}

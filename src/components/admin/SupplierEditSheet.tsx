@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { useEffect } from "react";
 import { cn } from "@/lib/cn";
 import { sidePanelBackdropClass, sidePanelCloseButtonClass, sidePanelHeaderClass } from "@/lib/ui/surfaces";
@@ -30,15 +31,20 @@ export function SupplierEditSheet({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !pending) requestClose();
+      if (e.key !== "Escape" || pending) return;
+      // Escape w oknie otwartym z karty (strategia, backtest) zamyka tylko to okno, nie kartę z niezapisanymi zmianami.
+      const dialog = e.target instanceof Element ? e.target.closest('[role="dialog"]') : null;
+      if (dialog && dialog !== panelRef.current) return;
+      requestClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, requestClose, pending]);
+  }, [open, requestClose, pending, panelRef]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
-  return (
+  // Portal: zamontowany w sekcji strony panel konkuruje z-indexem tylko w jej kontekście (DESIGN.md → Panele i okna).
+  return createPortal(
     <>
       <button
         ref={(el) => {
@@ -53,7 +59,7 @@ export function SupplierEditSheet({
         ref={(el) => {
           panelRef.current = el;
         }}
-        className="panel-slide-enter fixed inset-y-0 right-0 z-[60] flex w-full max-w-xl flex-col border-l border-slate-200/80 bg-white shadow-2xl"
+        className="panel-slide-enter fixed inset-y-0 right-0 z-[60] flex w-full max-w-xl flex-col border-l border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="supplier-edit-sheet-title"
@@ -94,6 +100,7 @@ export function SupplierEditSheet({
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">{footer}</div>
         </footer>
       </aside>
-    </>
+    </>,
+    document.body
   );
 }

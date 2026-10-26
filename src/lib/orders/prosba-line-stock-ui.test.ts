@@ -3,6 +3,7 @@ import {
   buildProsbaLineStockStatusView,
   buildProsbaSufficientStockSummary,
   formatProsbaStockLineHint,
+  prosbaPairStockNote,
 } from "./prosba-line-stock-ui";
 import type { ProductLineDraft } from "@/components/orders/request-product-lines";
 
@@ -41,6 +42,23 @@ describe("buildProsbaLineStockStatusView", () => {
     expect(view?.assessment).toBe("sufficient");
     expect(view?.tone).toBe("amber");
     expect(view?.shortLabel).toContain("10 szt.");
+  });
+
+  it("towar z opakowaniem zbiorczym: zdanie dla handlowca zamiast „cover pary”", () => {
+    const view = buildProsbaLineStockStatusView(
+      line({ stockSource: "subiekt", onHand: 45, reserved: 0, available: 45, quantity: "2", pairStockCover: true, pairUnitsPerPack: 5, pairRole: "piece" }),
+      "zamowienie"
+    );
+    expect(view?.title).toBe("Wystarczy z półki");
+    expect(view?.shortLabel).toBe("Na stanie 45 szt.");
+    expect(view?.detail).toBe("Liczymy też opakowania zbiorcze (1 op. = 5 szt.) - magazyn je rozpakuje.");
+    expect(`${view?.title} ${view?.detail} ${view?.shortLabel}`).not.toMatch(/cover|para|demonta/i);
+  });
+
+  it("zdanie o parze dla opakowania i bez znanej roli", () => {
+    expect(prosbaPairStockNote("pack", 5)).toBe("Liczymy też pojedyncze sztuki: 5 szt. zastępuje 1 op.");
+    expect(prosbaPairStockNote(null, 5)).toBe("Liczymy razem sztuki i opakowania zbiorcze (1 op. = 5 szt.).");
+    expect(prosbaPairStockNote("piece", null)).toBe("Liczymy też opakowania zbiorcze - magazyn je rozpakuje.");
   });
 
   it("częściowy stan - ton sky", () => {

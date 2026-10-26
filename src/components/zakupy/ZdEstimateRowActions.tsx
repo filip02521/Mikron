@@ -108,7 +108,7 @@ export function ZdEstimateRowActions({
         <span className="mt-0.5 block text-[11px] font-normal leading-snug text-slate-400">
           {packagingHint
             ? packagingHint
-            : "1 na ZD = N sztuk (np. Falcon 10)"}
+            : "Opakowanie lub pełne palety (np. karton 10 szt)"}
         </span>
       </OverflowMenuItem>
       {onMinStock ? (

@@ -27,7 +27,7 @@ export function InactiveSupplierRowMenu({
       align="end"
       disabled={disabled}
       iconOnly
-      variant="segment"
+      triggerClassName="h-11 w-11 sm:h-8 sm:w-8"
     >
       <OverflowMenuItem onClick={onEdit}>Edytuj kartę</OverflowMenuItem>
       <OverflowMenuItem

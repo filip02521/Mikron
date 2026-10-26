@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { query } from "@/lib/db/pool";
+import { fetchAllRows } from "@/lib/data/fetch-all-rows";
 import type { ZdEstimateSnapshotHostKind } from "@/lib/subiekt/config";
 
 export type ZdEstimateSnapshotScopeMode = "grupa" | "cecha";
@@ -239,12 +240,15 @@ export async function upsertZdEstimateOrderSnapshot(
   let linkedAt = now;
   if (existingSnap?.id) {
     const existing = existingSnap as SnapshotDb;
-    const { data: existingLines } = await supabase
-      .from("zd_estimate_order_snapshot_lines")
-      .select("tw_id, qty")
-      .eq("snapshot_id", existing.id);
+    const existingLines = await fetchAllRows<{ tw_id: number; qty: number }>(() =>
+      supabase
+        .from("zd_estimate_order_snapshot_lines")
+        .select("tw_id, qty")
+        .eq("snapshot_id", existing.id)
+        .order("tw_id", { ascending: true })
+    );
     const prevFp = linesFingerprint(
-      (existingLines ?? []).map((r) => ({
+      existingLines.map((r) => ({
         twId: Math.trunc(Number(r.tw_id)),
         twSymbol: null,
         twNazwa: "-",
@@ -326,15 +330,17 @@ export async function upsertZdEstimateOrderSnapshot(
   if (upsertLinesErr) throw new Error(upsertLinesErr.message);
 
   const keepTwIds = new Set(lines.map((l) => l.twId));
-  const { data: existingLines, error: existingErr } = await supabase
-    .from("zd_estimate_order_snapshot_lines")
-    .select("tw_id")
-    .eq("snapshot_id", snapshot.id);
-  if (existingErr) throw new Error(existingErr.message);
+  const existingLines = await fetchAllRows<{ tw_id: number }>(() =>
+    supabase
+      .from("zd_estimate_order_snapshot_lines")
+      .select("tw_id")
+      .eq("snapshot_id", snapshot.id)
+      .order("tw_id", { ascending: true })
+  );
 
   const orphanTwIds = [
     ...new Set(
-      (existingLines ?? [])
+      existingLines
         .map((r) => Math.trunc(Number(r.tw_id)))
         .filter((id) => id > 0 && !keepTwIds.has(id))
     ),
@@ -415,28 +421,12 @@ export function snapshotHeaderMatchesHistoryFilters(
   );
 }
 
-/** PostgREST `.or` dla foreign table — scope match XOR legacy NULL. */
-export function snapshotHistoryScopeOrFilter(
-  scope: ZdEstimateHistoryScope
-): string {
-  if (scope.mode === "cecha") {
-    const id = Math.trunc(scope.cechaId);
-    return `and(scope_mode.eq.cecha,cecha_id.eq.${id}),scope_mode.is.null`;
-  }
-  const id = Math.trunc(scope.grtId);
-  return `and(scope_mode.eq.grupa,grt_id.eq.${id}),scope_mode.is.null`;
-}
-
 /**
  * Historia do Policz: host + kh (+ aliasy) + scope (z legacy fallback).
  * `filters = null` → tylko tw_id (legacy helper).
  *
- * Duże cechy (1k+ SKU): `.in(tw_id)` i `.in(supplier_kh_id)` chunkowane.
- * Sort DESC po `linked_at` + limit wierszy — przy obcięciu PostgREST zostają najnowsze.
+ * Jedno zapytanie SQL z DISTINCT ON (tw_id) — najnowszy ZD na towar wg `linked_at`.
  */
-export const ZD_ESTIMATE_HISTORY_TW_ID_CHUNK = 200;
-/** Limit wierszy na jeden chunk tw_id (PostgREST default bywa 1000). */
-export const ZD_ESTIMATE_HISTORY_CHUNK_ROW_LIMIT = 5000;
 
 export async function fetchLatestSnapshotHistoryByTwIds(
   twIds: readonly number[],
@@ -463,120 +453,52 @@ export async function fetchLatestSnapshotHistoryByTwIds(
     : [];
   if (filters && khIds.length === 0) return map;
 
-  const supabase = createAdminClient();
-  const twChunkSize = ZD_ESTIMATE_HISTORY_TW_ID_CHUNK;
-  const khChunkSize = ZD_ESTIMATE_HISTORY_TW_ID_CHUNK;
-  const rowLimit = ZD_ESTIMATE_HISTORY_CHUNK_ROW_LIMIT;
-  const parsed: ZdEstimateOrderSnapshotLineRow[] = [];
-
-  type JoinedHeader = {
-    dok_id: number;
-    dok_nr_pelny: string | null;
-    linked_at: string;
-    supplier_kh_id?: number | null;
-    grt_id?: number | null;
-    cecha_id?: number | null;
-    scope_mode?: string | null;
-    host_kind?: string | null;
-    eligible_for_history?: boolean | null;
-  };
-
-  type Joined = LineDb & {
-    zd_estimate_order_snapshots: JoinedHeader | JoinedHeader[];
-  };
-
-  const ingest = (data: unknown[] | null) => {
-    for (const raw of data ?? []) {
-      const row = raw as unknown as Joined;
-      const snapRaw = row.zd_estimate_order_snapshots;
-      const snap = Array.isArray(snapRaw) ? snapRaw[0] : snapRaw;
-      if (!snap) continue;
-      if (filters) {
-        if (!snapshotHeaderMatchesHistoryFilters(snap, filters)) continue;
-      } else if (snap.eligible_for_history === false) {
-        continue;
-      }
-      parsed.push({
-        id: row.id,
-        snapshotId: row.snapshot_id,
-        twId: Number(row.tw_id),
-        twSymbol: row.tw_symbol?.trim() || null,
-        twNazwa: (row.tw_nazwa ?? "").trim() || "-",
-        qty: asNum(row.qty),
-        celAtLink: finiteOrNull(row.cel_at_link),
-        deltaAtLink: finiteOrNull(row.delta_at_link),
-        linkedAt: snap.linked_at,
-        dokId: Number(snap.dok_id),
-        dokNrPelny: (snap.dok_nr_pelny ?? "").trim(),
-      });
+  // Najnowsza linia na tw_id liczona w bazie (DISTINCT ON) — jeden round-trip, bez limitu
+  // ucinającego przypadkowe wiersze i bez czytania całej historii. Filtry jak w
+  // snapshotHeaderMatchesHistoryFilters: host + kh (+ aliasy) + scope albo legacy NULL.
+  const params: unknown[] = [ids];
+  let where = "l.tw_id = ANY($1::int[])";
+  if (filters) {
+    params.push(filters.hostKind, khIds);
+    where += " AND s.host_kind = $2 AND s.supplier_kh_id = ANY($3::int[]) AND s.eligible_for_history = true";
+    if (filters.scope.mode === "cecha") {
+      params.push(Math.trunc(filters.scope.cechaId));
+      where += " AND (s.scope_mode IS NULL OR (s.scope_mode = 'cecha' AND s.cecha_id = $4))";
+    } else {
+      params.push(Math.trunc(filters.scope.grtId));
+      where += " AND (s.scope_mode IS NULL OR (s.scope_mode = 'grupa' AND s.grt_id = $4))";
     }
-  };
-
-  const khChunks: number[][] =
-    filters == null
-      ? [[]]
-      : Array.from(
-          { length: Math.ceil(khIds.length / khChunkSize) },
-          (_, i) => khIds.slice(i * khChunkSize, (i + 1) * khChunkSize)
-        );
-
-  for (let offset = 0; offset < ids.length; offset += twChunkSize) {
-    const twChunk = ids.slice(offset, offset + twChunkSize);
-    for (const khChunk of khChunks) {
-      let query = supabase
-        .from("zd_estimate_order_snapshot_lines")
-        .select(
-          `
-      id,
-      snapshot_id,
-      tw_id,
-      tw_symbol,
-      tw_nazwa,
-      qty,
-      cel_at_link,
-      delta_at_link,
-      zd_estimate_order_snapshots!inner (
-        dok_id,
-        dok_nr_pelny,
-        linked_at,
-        supplier_kh_id,
-        grt_id,
-        cecha_id,
-        scope_mode,
-        host_kind,
-        eligible_for_history
-      )
-    `
-        )
-        .in("tw_id", twChunk)
-        .order("linked_at", {
-          ascending: false,
-          foreignTable: "zd_estimate_order_snapshots",
-        })
-        .limit(rowLimit);
-
-      if (filters) {
-        query = query
-          .eq("zd_estimate_order_snapshots.host_kind", filters.hostKind)
-          .in("zd_estimate_order_snapshots.supplier_kh_id", khChunk)
-          .eq("zd_estimate_order_snapshots.eligible_for_history", true)
-          .or(snapshotHistoryScopeOrFilter(filters.scope), {
-            foreignTable: "zd_estimate_order_snapshots",
-          });
-      }
-
-      const { data, error } = await query;
-      if (error) throw new Error(error.message);
-      ingest(data as unknown[] | null);
-    }
+  } else {
+    where += " AND s.eligible_for_history IS DISTINCT FROM false";
   }
 
-  parsed.sort(
-    (a, b) =>
-      Date.parse(b.linkedAt) - Date.parse(a.linkedAt) || b.dokId - a.dokId
+  const res = await query<
+    LineDb & { linked_at: Date | string; dok_id: number; dok_nr_pelny: string | null }
+  >(
+    `SELECT DISTINCT ON (l.tw_id)
+            l.id, l.snapshot_id, l.tw_id, l.tw_symbol, l.tw_nazwa, l.qty,
+            l.cel_at_link, l.delta_at_link, s.linked_at, s.dok_id, s.dok_nr_pelny
+       FROM zd_estimate_order_snapshot_lines l
+       JOIN zd_estimate_order_snapshots s ON s.id = l.snapshot_id
+      WHERE ${where}
+      ORDER BY l.tw_id, s.linked_at DESC, s.dok_id DESC`,
+    params
   );
-  for (const row of parsed) {
-    if (!map.has(row.twId)) map.set(row.twId, row);
+
+  for (const row of res.rows) {
+    map.set(Number(row.tw_id), {
+      id: row.id,
+      snapshotId: row.snapshot_id,
+      twId: Number(row.tw_id),
+      twSymbol: row.tw_symbol?.trim() || null,
+      twNazwa: (row.tw_nazwa ?? "").trim() || "-",
+      qty: asNum(row.qty),
+      celAtLink: finiteOrNull(row.cel_at_link),
+      deltaAtLink: finiteOrNull(row.delta_at_link),
+      linkedAt: new Date(row.linked_at).toISOString(),
+      dokId: Number(row.dok_id),
+      dokNrPelny: (row.dok_nr_pelny ?? "").trim(),
+    });
   }
 
   return map;
@@ -597,16 +519,18 @@ export async function fetchZdEstimateOrderSnapshotLines(
   if (!header) return [];
   const snap = mapZdEstimateOrderSnapshot(header as SnapshotDb);
 
-  const { data, error } = await supabase
-    .from("zd_estimate_order_snapshot_lines")
-    .select(
-      "id, snapshot_id, tw_id, tw_symbol, tw_nazwa, qty, cel_at_link, delta_at_link"
-    )
-    .eq("snapshot_id", id)
-    .order("tw_symbol", { ascending: true });
-  if (error) throw new Error(error.message);
+  const data = await fetchAllRows<LineDb>(() =>
+    supabase
+      .from("zd_estimate_order_snapshot_lines")
+      .select(
+        "id, snapshot_id, tw_id, tw_symbol, tw_nazwa, qty, cel_at_link, delta_at_link"
+      )
+      .eq("snapshot_id", id)
+      .order("tw_symbol", { ascending: true })
+      .order("id", { ascending: true })
+  );
 
-  return (data ?? []).map((row) => {
+  return data.map((row) => {
     const r = row as LineDb;
     return {
       id: r.id,
@@ -667,3 +591,4 @@ export async function listSnapshotHistoryScopesForKh(
   }
   return out;
 }
+

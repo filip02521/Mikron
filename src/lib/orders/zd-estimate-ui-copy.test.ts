@@ -249,7 +249,7 @@ describe("zd-estimate-ui-copy", () => {
     expect(ZD_ESTIMATE_UI.exclusionsModalHint).toMatch(/Policz listę/);
     expect(ZD_ESTIMATE_UI.onRequestModalHint).toMatch(/celu zapasu/);
     expect(ZD_ESTIMATE_UI.pairsModalHint).toMatch(/paczki/);
-    expect(ZD_ESTIMATE_UI.packagingModalHint).toMatch(/Tryb A/);
+    expect(ZD_ESTIMATE_UI.packagingModalHint).toMatch(/pełnych palet/);
     expect(ZD_ESTIMATE_UI.extrasPolicySumHint).toMatch(/niedobór/);
     expect(ZD_ESTIMATE_UI.extrasPolicyMaxHint).toMatch(/większa/);
     expect(ZD_ESTIMATE_UI.changeSupplierScopeHint).toMatch(/formularzu/);

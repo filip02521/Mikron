@@ -82,6 +82,7 @@ import {
   stockSignalHasWork,
   useSupplierStockSignals,
 } from "@/components/summary/SupplierStockSignal";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 /** Link wyglądający jak `Button` size="sm" (bez zagnieżdżania <button> w <a>), cel ≥ 36 px. */
 const LINK_BUTTON_VARIANT = {
@@ -93,7 +94,7 @@ const LINK_BUTTON_VARIANT = {
 
 function linkButtonClass(variant: keyof typeof LINK_BUTTON_VARIANT): string {
   return cn(
-    "inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-md px-2.5 py-1.5 text-xs font-medium leading-none transition-[color,background-color,border-color] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 focus-visible:ring-offset-1",
+    "inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-md px-2.5 py-1.5 text-xs font-medium leading-none transition-[color,background-color,border-color] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-1",
     LINK_BUTTON_VARIANT[variant]
   );
 }
@@ -396,7 +397,7 @@ export function SupplierDrawer({
             )}
           >
             <div className="min-w-0">
-              <p className="text-[11px] font-medium opacity-75">
+              <p className="text-[0.6875rem] font-medium opacity-75">
                 {supplier.order_on_demand ? "Zamówienie na żądanie" : "Następne zamówienie"}
               </p>
               <p className="mt-0.5 text-base font-semibold tabular-nums">
@@ -408,7 +409,7 @@ export function SupplierDrawer({
             </div>
             {supplier.shift_date ? (
               <span
-                className="shrink-0 rounded-md bg-white/70 px-2 py-1 text-[11px] font-medium text-slate-600 ring-1 ring-inset ring-slate-200"
+                className="shrink-0 rounded-md bg-white/70 px-2 py-1 text-[0.6875rem] font-medium text-slate-600 ring-1 ring-inset ring-slate-200"
                 title="Termin przesunięty ręcznie"
               >
                 przesunięte ręcznie
@@ -457,7 +458,7 @@ export function SupplierDrawer({
                 {!rowPending ? (
                   <kbd
                     className={cn(
-                      "ml-1 hidden rounded border px-1 text-[10px] font-semibold leading-4 sm:inline",
+                      "ml-1 hidden rounded border px-1 text-[0.625rem] font-semibold leading-4 sm:inline",
                       zdFirst ? "border-slate-300" : "border-white/30"
                     )}
                   >
@@ -653,9 +654,9 @@ export function SupplierDrawer({
             icon={<IconClock size={14} />}
           >
             {historyLoading ? (
-              <div className="flex items-center gap-2 text-sm text-slate-400">
-                <span className="h-3 w-3 animate-pulse rounded-full bg-slate-300" />
-                Ładowanie historii…
+              <div className="flex items-center gap-2 text-sm text-slate-500" role="status">
+                <BrandLoader size="sm" tile={false} />
+                Wczytuję historię…
               </div>
             ) : history.length === 0 ? (
               <p className="text-sm text-slate-400">Brak zapisów w historii.</p>
@@ -701,7 +702,7 @@ export function SupplierDrawer({
                 <IconArchive size={14} className="shrink-0 text-slate-500" />
                 <span className="min-w-0">
                   <span className="block text-sm font-medium text-slate-800">Zamówienia standardowe</span>
-                  <span className="block text-[11px] text-slate-500">z panelu dziennego</span>
+                  <span className="block text-[0.6875rem] text-slate-500">z panelu dziennego</span>
                 </span>
               </Link>
               <Link
@@ -712,7 +713,7 @@ export function SupplierDrawer({
                 <IconClipboardList size={14} className="shrink-0 text-slate-500" />
                 <span className="min-w-0">
                   <span className="block text-sm font-medium text-slate-800">Prośby indywidualne</span>
-                  <span className="block text-[11px] text-slate-500">od handlowców</span>
+                  <span className="block text-[0.6875rem] text-slate-500">od handlowców</span>
                 </span>
               </Link>
             </div>
@@ -764,7 +765,7 @@ function Chip({
     <span
       title={title}
       className={cn(
-        "inline-flex max-w-full items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
+        "inline-flex max-w-full items-center gap-1 rounded-md px-2 py-0.5 text-[0.6875rem] font-medium ring-1 ring-inset",
         CHIP_TONE[tone],
       )}
     >
@@ -860,7 +861,7 @@ function LinkRow({
       <div className="min-w-0 flex-1">
         <p className="text-xs text-slate-500">{label}</p>
         <p className={cn("text-sm font-medium", ok ? "text-slate-900" : "text-amber-800")}>{value}</p>
-        <p className="mt-0.5 text-[11px] text-slate-400">{hint}</p>
+        <p className="mt-0.5 text-[0.6875rem] text-slate-400">{hint}</p>
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
     </div>

@@ -8,15 +8,12 @@ import {
 } from "@/app/actions/teeth-shortages";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Field";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { fieldControlClass } from "@/components/ui/Field";
 import { NoticeToast } from "@/components/ui/NoticeToast";
-import { IconAlertCircle, IconPlusCircle } from "@/components/icons/StrokeIcons";
+import { IconPlusCircle, IconSearch, IconToothShortage } from "@/components/icons/StrokeIcons";
 import { TeethPanelWorkspaceCard } from "@/components/zeby/TeethPanelWorkspaceCard";
 import { TeethPanelTabPanel } from "@/components/zeby/TeethPanelSection";
-import {
-  TeethShortageAddCta,
-  TeethShortageEmptyGraphic,
-} from "@/components/zeby/TeethShortageAddCta";
 import {
   EMPTY_TEETH_SHORTAGE_FORM,
   TeethShortageFormModal,
@@ -39,7 +36,6 @@ import {
   teethShortageAvailabilityBadgeClass,
   classifyTeethShortageAvailability,
 } from "@/lib/teeth/teeth-shortage-copy";
-import { TEETH_BRAKI_ICON_TILE } from "@/lib/teeth/teeth-panel-shell";
 import {
   panelChoiceChipClass,
   panelChoiceChipIdleClass,
@@ -48,6 +44,8 @@ import {
 import { toastError, toastSuccess, type ToastNotice } from "@/lib/ui/notice-copy";
 import { warsawNowParts } from "@/lib/time/warsaw";
 import type { TeethSupplierShortageWithSupplier } from "@/types/database";
+import { matchesSearchWords } from "@/lib/search/keywords";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 function FilterChip({
   label,
@@ -65,7 +63,7 @@ function FilterChip({
       onClick={onClick}
       className={cn(
         panelChoiceChipClass,
-        "inline-flex shrink-0 items-center gap-1.5 px-2.5 py-1.5 text-xs",
+        "inline-flex min-h-11 shrink-0 items-center gap-1.5 px-2.5 py-1.5 text-xs sm:min-h-10",
         active ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass,
       )}
     >
@@ -119,7 +117,7 @@ export function TeethShortagesClient({
           .filter(Boolean)
           .join(" ")
           .toLowerCase();
-        return hay.includes(q);
+        return matchesSearchWords(hay, q);
       })
       .slice()
       .sort((a, b) => {
@@ -134,6 +132,8 @@ export function TeethShortagesClient({
         return a.product_line.localeCompare(b.product_line);
       });
   }, [rows, showInactive, colorFilter, undatedOnly, query, todayKey]);
+
+  const hasFilters = query.trim() !== "" || colorFilter.trim() !== "" || undatedOnly;
 
   function openCreate() {
     setForm(EMPTY_TEETH_SHORTAGE_FORM);
@@ -209,10 +209,8 @@ export function TeethShortagesClient({
     <TeethPanelWorkspaceCard
       title={TEETH_BRAKI_PAGE_TITLE}
       hint={TEETH_BRAKI_PAGE_HINT}
-      icon={<IconAlertCircle size={20} />}
-      iconTileClassName={TEETH_BRAKI_ICON_TILE}
       headerAside={
-        <Button className="min-h-10 gap-1.5" onClick={openCreate} disabled={pending}>
+        <Button className="gap-1.5" onClick={openCreate} disabled={pending}>
           <IconPlusCircle size={16} />
           {TEETH_BRAKI_ADD_COPY.ctaLabel}
         </Button>
@@ -230,10 +228,31 @@ export function TeethShortagesClient({
         </>
       }
     >
-      <TeethPanelTabPanel id="teeth-panel-view-braki" labelledBy="teeth-nav-braki">
-        <div className="space-y-3 px-4 py-3 sm:px-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <FilterChip
+      <TeethPanelTabPanel id="teeth-panel-view-braki" bare className="space-y-0">
+        <div
+          role="search"
+          aria-label="Filtry braków"
+          className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-3 sm:px-5"
+        >
+          <div className="relative w-full sm:max-w-xs sm:flex-1">
+            <IconSearch size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Dostawca, linia, fason, notatka…"
+              aria-label="Szukaj braków"
+              className={fieldControlClass("default", "pl-9")}
+            />
+          </div>
+          <input
+            value={colorFilter}
+            onChange={(e) => setColorFilter(e.target.value)}
+            placeholder="Kolor, np. A1"
+            aria-label="Kolor"
+            className={fieldControlClass("default", "w-36")}
+          />
+          <FilterChip
               label="Pokaż nieaktywne"
               active={showInactive}
               onClick={() => setShowInactive((v) => !v)}
@@ -243,60 +262,46 @@ export function TeethShortagesClient({
               active={undatedOnly}
               onClick={() => setUndatedOnly((v) => !v)}
             />
-          </div>
-
-          <div className="grid gap-2 sm:grid-cols-2">
-            <label className="block text-xs font-medium text-slate-600">
-              Kolor
-              <Input
-                className="mt-1"
-                value={colorFilter}
-                onChange={(e) => setColorFilter(e.target.value)}
-                placeholder="np. A1"
-              />
-            </label>
-            <label className="block text-xs font-medium text-slate-600">
-              Szukaj
-              <Input
-                className="mt-1"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="dostawca, linia, fason, notatka…"
-              />
-            </label>
-          </div>
+          <p className="ml-auto text-[0.6875rem] font-medium text-slate-500 tabular-nums" aria-live="polite">
+            {filtered.length} {polishPluralWord(filtered.length, "brak", "braki", "braków")}
+          </p>
+        </div>
 
           {filtered.length === 0 ? (
-            <div className="overflow-hidden rounded-xl border border-indigo-100 bg-indigo-50/70 shadow-sm">
-              <div className="relative px-4 py-10 text-center sm:px-6 sm:py-12">
-                <div className="relative">
-                  <TeethShortageEmptyGraphic className="mb-4" />
-                  <p className="text-sm font-semibold text-slate-900">
-                    {rows.length === 0
-                      ? TEETH_BRAKI_ADD_COPY.emptyTitle
-                      : TEETH_BRAKI_ADD_COPY.emptyFilteredTitle}
-                  </p>
-                  <p className="mx-auto mt-1.5 max-w-md text-xs leading-relaxed text-slate-500">
-                    {rows.length === 0
-                      ? TEETH_BRAKI_ADD_COPY.emptyDescription
-                      : TEETH_BRAKI_ADD_COPY.emptyFilteredDescription}
-                  </p>
-                  <div className="mt-5 flex justify-center">
-                    <TeethShortageAddCta
-                      onClick={openCreate}
-                      disabled={pending}
-                      label={
-                        rows.length === 0
-                          ? TEETH_BRAKI_ADD_COPY.emptyAction
-                          : TEETH_BRAKI_ADD_COPY.ctaLabel
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+            <EmptyState
+              title={
+                rows.length === 0
+                  ? TEETH_BRAKI_ADD_COPY.emptyTitle
+                  : TEETH_BRAKI_ADD_COPY.emptyFilteredTitle
+              }
+              description={
+                rows.length === 0
+                  ? TEETH_BRAKI_ADD_COPY.emptyDescription
+                  : TEETH_BRAKI_ADD_COPY.emptyFilteredDescription
+              }
+              icon={<IconToothShortage size={26} strokeWidth={1.75} />}
+              action={
+                !hasFilters ? (
+                  <Button variant="secondary" className="gap-1.5" onClick={openCreate} disabled={pending}>
+                    <IconPlusCircle size={16} />
+                    {rows.length === 0 ? TEETH_BRAKI_ADD_COPY.emptyAction : TEETH_BRAKI_ADD_COPY.ctaLabel}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setQuery("");
+                      setColorFilter("");
+                      setUndatedOnly(false);
+                    }}
+                  >
+                    Wyczyść filtry
+                  </Button>
+                )
+              }
+            />
           ) : (
-            <ul className="divide-y divide-slate-100 overflow-hidden rounded-md border border-slate-200/80 bg-white">
+            <ul className="divide-y divide-slate-100">
               {filtered.map((row) => {
                 const kindLabel = row.kind ? TEETH_KIND_LABELS[row.kind] : null;
                 const lineLabel =
@@ -306,8 +311,8 @@ export function TeethShortagesClient({
                   <li
                     key={row.id}
                     className={cn(
-                      "flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between",
-                      !row.active && "bg-slate-50/80 opacity-75",
+                      "flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5",
+                      !row.active && "bg-slate-50",
                     )}
                   >
                     <div className="min-w-0 space-y-0.5">
@@ -317,14 +322,14 @@ export function TeethShortagesClient({
                         </span>
                         <span
                           className={cn(
-                            "rounded-md px-1.5 py-0.5 text-[11px] font-medium ring-1",
+                            "rounded-md px-1.5 py-0.5 text-[0.6875rem] font-medium ring-1",
                             teethShortageAvailabilityBadgeClass(row.available_from, todayKey),
                           )}
                         >
                           {teethShortageAvailabilityBadgeLabel(row.available_from, todayKey)}
                         </span>
                         {!row.active ? (
-                          <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
+                          <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[0.6875rem] font-medium text-slate-600">
                             Nieaktywny
                           </span>
                         ) : null}
@@ -337,7 +342,7 @@ export function TeethShortagesClient({
                         {kindLabel ? ` · ${kindLabel}` : ""}
                       </p>
                       {row.note ? (
-                        <p className="text-[11px] leading-snug text-amber-900/90">
+                        <p className="text-[0.6875rem] leading-snug text-amber-900/90">
                           <span className="font-medium text-amber-950/80">Uwaga: </span>
                           {row.note}
                         </p>
@@ -347,6 +352,7 @@ export function TeethShortagesClient({
                       <Button
                         size="sm"
                         variant="secondary"
+                        className="min-h-11 sm:min-h-9"
                         disabled={pending}
                         onClick={() => openEdit(row)}
                       >
@@ -356,6 +362,7 @@ export function TeethShortagesClient({
                         <Button
                           size="sm"
                           variant="ghost"
+                          className="min-h-11 sm:min-h-9"
                           disabled={pending}
                           onClick={() => setActive(row, false)}
                         >
@@ -365,6 +372,7 @@ export function TeethShortagesClient({
                         <Button
                           size="sm"
                           variant="outline"
+                          className="min-h-11 sm:min-h-9"
                           disabled={pending}
                           onClick={() => setActive(row, true)}
                         >
@@ -377,7 +385,6 @@ export function TeethShortagesClient({
               })}
             </ul>
           )}
-        </div>
       </TeethPanelTabPanel>
 
       <TeethShortageFormModal

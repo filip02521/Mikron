@@ -60,13 +60,13 @@ export function BoardFileAttachments({
               disabled={busyId === att.id}
               className={cn(
                 "inline-flex max-w-72 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 transition-all duration-200 hover:bg-slate-50",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 disabled:opacity-60"
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-60"
               )}
               title={att.file_name}
             >
               {busyId === att.id ? <Spinner size="sm" /> : <IconPaperclip size={13} className="shrink-0 text-slate-400" aria-hidden />}
               <span className="truncate font-medium">{att.file_name}</span>
-              {att.byte_size ? <span className="shrink-0 tabular-nums text-slate-400">{fileSize(att.byte_size)}</span> : null}
+              {att.byte_size ? <span className="shrink-0 tabular-nums text-slate-500">{fileSize(att.byte_size)}</span> : null}
             </button>
           </li>
         ))}

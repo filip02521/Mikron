@@ -211,7 +211,7 @@ export function buildZdCreatePreviewFromOrderable(
       override != null &&
       Number.isFinite(override) &&
       override >= 0;
-    // Normalizuj override przez effectiveZdDocumentUnits (dobicie do M/pack).
+    // Override przez effectiveZdDocumentUnits — idzie na ZD dokładnie tak, jak wpisany.
     const finalZd = usedOverride
       ? effectiveZdDocumentUnits(
           line,
@@ -411,7 +411,7 @@ export function validateZdCreateClientLines(
 
 /**
  * Gwarantuje, że ilosc na ZD pokrywa co najmniej rezerwę próśb (ceil opakowania).
- * Nie zaniża qty względem klienta — tylko podbija, gdy extras > wysłane.
+ * Nie zaniża qty względem klienta — tylko podbija, gdy sztuki z ilości < extras.
  * Mode B: minZd = ceil(extra/N)*N (sztuki), nie liczba paczek.
  */
 export function minZdUnitsForExtraPieces(
@@ -517,14 +517,14 @@ export function ensureZdCreateLinesCoverIndividualExtras(input: {
     );
     const mode =
       input.packagingModeByTwId?.get(line.twId) ?? "packages";
-    const orderMultiple = input.orderMultipleByTwId?.get(line.twId) ?? null;
-    const minZd = computeZdPackOrderQty(
-      extraPieces,
-      units,
-      "op.",
-      mode,
-      orderMultiple
-    ).zdUnits;
+    // Pokrycie liczone w sztukach: ręcznie wpisana ilość, która już pokrywa prośbę
+    // (np. 10 worków przy palecie 36), idzie na ZD bez dobijania do palety.
+    const piecesSent =
+      mode === "pieces_multiple" ? line.ilosc : line.ilosc * units;
+    if (piecesSent >= extraPieces) return { ...line };
+    // Nie pokrywa: dobij do minimum, które pokrywa prośbę (pełne opakowanie), bez palety —
+    // paleta przy ręcznej ilości jest tylko ostrzeżeniem w komórce Do ZD.
+    const minZd = computeZdPackOrderQty(extraPieces, units, "op.", mode, null).zdUnits;
     if (!(minZd > line.ilosc)) return { ...line };
     bumped.push({
       twId: line.twId,

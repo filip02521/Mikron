@@ -39,6 +39,9 @@ import { IconCalendar, IconClock, IconSun } from "@/components/icons/StrokeIcons
 import { InactiveSupplierBadge } from "@/components/suppliers/InactiveSupplierBadge";
 import { inactiveSupplierRowClass, inactiveSupplierNameClass } from "@/lib/suppliers/active";
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
+import { ZdAutomatPolicyBadge } from "@/components/zakupy/ZdAutomatPolicyNote";
+import type { ZdAutomatPolicySummary } from "@/lib/data/zd-supplier-order-policy";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 export interface ScheduleRow {
   id: string;
@@ -50,6 +53,8 @@ export interface ScheduleRow {
   next_date: string | null;
   vacation_note: string | null;
   rowColor: string;
+  /** Dostawca w automacie ZD — propozycje w jego rytmie; termin z harmonogramu tylko przypomina. */
+  automat?: ZdAutomatPolicySummary | null;
 }
 
 type FilterKey = ScheduleTermFilterKey;
@@ -165,7 +170,7 @@ export function LocationScheduleClient({
   const filtered = useMemo(() => {
     let rows = [...initialRows];
     const q = search.trim().toLowerCase();
-    if (q) rows = rows.filter((r) => r.name.toLowerCase().includes(q));
+    if (q) rows = rows.filter((r) => matchesSearchWords(r.name, q));
 
     if (filter === "overdue") rows = rows.filter((r) => isOverdue(r.next_date));
     else if (filter === "week")
@@ -315,7 +320,7 @@ export function LocationScheduleClient({
                       <div className="flex items-center gap-2.5">
                         <span
                           className={cn(
-                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-sm font-bold ring-1 ring-inset",
+                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-sm font-semibold ring-1 ring-inset",
                             row.is_active
                               ? "bg-indigo-50 text-indigo-700 ring-indigo-100/60"
                               : "bg-slate-100 text-slate-400 ring-slate-200/60"
@@ -328,13 +333,18 @@ export function LocationScheduleClient({
                           <p className="flex flex-wrap items-center gap-2">
                             <span>{row.name}</span>
                             {!row.is_active ? (
-                              <InactiveSupplierBadge className="text-[10px]" />
+                              <InactiveSupplierBadge className="text-[0.625rem]" />
                             ) : null}
                           </p>
                           {row.interval_hint ? (
-                            <p className="mt-0.5 flex items-center gap-1 text-[11px] font-normal text-slate-500">
+                            <p className="mt-0.5 flex items-center gap-1 text-[0.6875rem] font-normal text-slate-500">
                               <IconClock size={11} className="shrink-0 text-slate-400" />
                               {row.interval_hint}
+                            </p>
+                          ) : null}
+                          {row.automat ? (
+                            <p className="mt-1">
+                              <ZdAutomatPolicyBadge policy={row.automat} />
                             </p>
                           ) : null}
                           <Link
@@ -458,7 +468,7 @@ function DateCell({
             if (next !== (value ?? null)) onSave(next);
           }}
         />
-        <p className="flex items-center gap-1 text-[10px] text-slate-500 tabular-nums">
+        <p className="flex items-center gap-1 text-[0.625rem] text-slate-500 tabular-nums">
           <IconCalendar size={10} className="shrink-0 text-slate-400" />
           {hint}
         </p>

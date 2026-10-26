@@ -98,7 +98,7 @@ import {
 import {
   parseWarehouseShipmentForm,
 } from "@/lib/warehouse/delivery-carriers";
-import { assertWarehouseCarrierSlug } from "@/app/actions/warehouse-carriers";
+import { assertWarehouseCarrierSlug } from "@/lib/data/warehouse-carriers";
 import type { IndividualRequestKind, SupplierLocation, StatsMode } from "@/types/database";
 import {
   clampOptionalText,
@@ -1512,6 +1512,8 @@ export type UpsertSupplierForm = {
   min_order_value?: number | null;
   /** Symbol waluty dla min_order_value (np. PLN, EUR). */
   min_order_currency?: string | null;
+  /** Próg darmowej dostawy (zł netto). null = brak progu. */
+  free_shipping_threshold?: number | null;
 };
 
 export type UpsertSupplierResult =
@@ -1536,22 +1538,23 @@ export async function actionUpsertSupplier(
   }
 }
 
-const SUPPLIER_MIN_ORDER_COLUMNS = ["min_order_value", "min_order_currency"] as const;
+/** Kolumny opcjonalne karty → pole w komunikacie i migracja, która je dodaje. */
+const SUPPLIER_OPTIONAL_COLUMNS: Record<string, { label: string; migration: string }> = {
+  min_order_value: { label: "minimalnej wartości zamówienia", migration: "157_supplier_min_order_value.sql" },
+  min_order_currency: { label: "minimalnej wartości zamówienia", migration: "157_supplier_min_order_value.sql" },
+  free_shipping_threshold: { label: "progu darmowej dostawy", migration: "194_zd_automat_pl.sql" },
+};
 
-/** Brak kolumn z migracji 157 (baza jeszcze niezmigrowana). */
-function isMissingMinOrderColumnError(
-  error: { code?: string; message?: string } | null
-): boolean {
-  if (!error) return false;
+/** Kolumna z payloadu, której baza jeszcze nie ma (migracja niewgrana); null = inny błąd. */
+function missingOptionalSupplierColumn(
+  error: { code?: string; message?: string } | null,
+  payload: Record<string, unknown>
+): string | null {
+  if (!error) return null;
   const message = error.message ?? "";
-  return (
-    (error.code === "42703" || /does not exist|could not find/i.test(message)) &&
-    SUPPLIER_MIN_ORDER_COLUMNS.some((col) => message.includes(col))
-  );
+  if (!(error.code === "42703" || /does not exist|could not find/i.test(message))) return null;
+  return Object.keys(SUPPLIER_OPTIONAL_COLUMNS).find((col) => col in payload && message.includes(col)) ?? null;
 }
-
-const MIN_ORDER_MIGRATION_WARNING =
-  "Zapisano bez minimalnej wartości zamówienia - baza nie ma jeszcze kolumn z migracji 157_supplier_min_order_value.sql (Admin → Migracje).";
 
 /** Wywoływane tylko z actionUpsertSupplier — po requireSupplierManagement. */
 async function upsertSupplier(form: UpsertSupplierForm): Promise<UpsertSupplierResult> {
@@ -1614,29 +1617,35 @@ async function upsertSupplier(form: UpsertSupplierForm): Promise<UpsertSupplierR
       value
     );
   }
+  if (form.free_shipping_threshold !== undefined) {
+    payload.free_shipping_threshold = normalizeMinOrderValue(form.free_shipping_threshold);
+  }
 
-  let warning: string | undefined;
-  const dropMinOrderColumns = () => {
-    const hadValue = payload.min_order_value != null;
-    for (const col of SUPPLIER_MIN_ORDER_COLUMNS) delete payload[col];
-    if (hadValue) warning = MIN_ORDER_MIGRATION_WARNING;
-    console.warn("[actionUpsertSupplier] brak kolumn min_order_* - zapis bez nich");
+  // Baza bez kolumny opcjonalnej (migracja niewgrana): zapis bez niej + ostrzeżenie, gdy pole miało wartość.
+  const skipped = new Map<string, string>();
+  const withoutMissingColumns = async <R extends { error: { code?: string; message?: string } | null }>(
+    run: () => PromiseLike<R>
+  ): Promise<R> => {
+    let res = await run();
+    for (let col = missingOptionalSupplierColumn(res.error, payload); col; col = missingOptionalSupplierColumn(res.error, payload)) {
+      const info = SUPPLIER_OPTIONAL_COLUMNS[col];
+      if (payload[col] != null) skipped.set(info.label, info.migration);
+      delete payload[col];
+      console.warn(`[actionUpsertSupplier] brak kolumny ${col} - zapis bez niej`);
+      res = await run();
+    }
+    return res;
   };
+  const migrationWarning = () =>
+    skipped.size
+      ? `Zapisano bez ${[...skipped.keys()].join(" i ")} - baza nie ma jeszcze kolumn z migracji ${[...new Set(skipped.values())].join(", ")} (Admin → Migracje).`
+      : undefined;
 
   if (supplierId) {
-    let { data: updated, error } = await supabase
-      .from("suppliers")
-      .update(payload)
-      .eq("id", supplierId)
-      .select("id");
-    if (isMissingMinOrderColumnError(error) && "min_order_value" in payload) {
-      dropMinOrderColumns();
-      ({ data: updated, error } = await supabase
-        .from("suppliers")
-        .update(payload)
-        .eq("id", supplierId)
-        .select("id"));
-    }
+    const { data: updated, error } = await withoutMissingColumns(() =>
+      supabase.from("suppliers").update(payload).eq("id", supplierId).select("id")
+    );
+    const warning = migrationWarning();
     if (error) throw new Error(supplierSaveErrorMessage(error));
     if (!updated?.length) {
       throw new Error("Nie znaleziono dostawcy - odśwież listę i spróbuj ponownie.");
@@ -1648,19 +1657,10 @@ async function upsertSupplier(form: UpsertSupplierForm): Promise<UpsertSupplierR
     return { success: true, id: supplierId, ...(warning ? { warning } : {}) };
   }
 
-  let { data, error: insertError } = await supabase
-    .from("suppliers")
-    .insert(payload)
-    .select("id")
-    .single();
-  if (isMissingMinOrderColumnError(insertError) && "min_order_value" in payload) {
-    dropMinOrderColumns();
-    ({ data, error: insertError } = await supabase
-      .from("suppliers")
-      .insert(payload)
-      .select("id")
-      .single());
-  }
+  const { data, error: insertError } = await withoutMissingColumns(() =>
+    supabase.from("suppliers").insert(payload).select("id").single()
+  );
+  const warning = migrationWarning();
   if (insertError) throw new Error(supplierSaveErrorMessage(insertError));
   if (!data?.id) throw new Error("Nie udało się dodać dostawcy.");
   const { error: scheduleError } = await supabase

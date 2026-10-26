@@ -23,6 +23,7 @@ import type { OrderInterval } from "@/lib/orders/dates";
 import { resolveSupplierInterval } from "@/lib/orders/dates";
 import {
   computeSalesTrackedCel,
+  floorCelTrackedAtZapasMin,
   reconcileSalesTrackQtyMetaAfterHistory,
   resolveSprzedazDziennie,
   type SalesTrackReason,
@@ -75,6 +76,10 @@ export const ZD_ESTIMATE_MISSING_SKU_FETCH_CONCURRENCY = 4;
 export type ManualZdEstimateLine = {
   /** Profil sprzedaży 12 × 30 dni (znacznik skok / rzadki, wygładzenie). */
   salesProfile?: ZdSalesProfileLineMeta;
+  /** Strategia testowa: średnia 90 d podniosła tempo (szt / dzień przed i po). */
+  demandFloor?: { sales90: number; rateBefore: number; rateAfter: number };
+  /** Dni braku w oknie (historia stanów): sprzedaż przeliczona na dni ze stanem. */
+  stockoutAdjust?: import("@/lib/stock-watch/stock-history").StockoutAdjustMeta;
   tw_Id: number;
   tw_Symbol: string;
   tw_Nazwa: string;
@@ -222,6 +227,8 @@ export function computeManualOrderQty(input: {
 export type MapZdEstimateLineOptions = {
   /** Dni zapasu dostawcy / run — do oceny cienkiego pokrycia. */
   dniZapasu?: number | null;
+  /** Zapas minimalny z Kreatora — twarda podłoga celu po korektach. */
+  zapasMin?: number | null;
   /** Długość okna FS z API — fallback tempa dziennego. */
   dniOkresu?: number | null;
   /** Domyślnie true — podążanie za sprzedażą. */
@@ -365,6 +372,12 @@ export function mapZdEstimateLineToManual(
     }
   }
 
+  const floored = floorCelTrackedAtZapasMin(celTracked, celZapasu, options?.zapasMin);
+  if (floored !== celTracked) {
+    celTracked = floored;
+    salesTrackDelta = celTracked - celZapasu;
+  }
+
   const doZamowieniaReczne = computeManualOrderQty({
     celZapasu: celTracked,
     dostepne,
@@ -404,11 +417,18 @@ export function mapZdEstimateLineToManual(
     doZamowieniaReczne,
     wkladZk: Math.max(0, doZamowieniaApi - doZamowieniaReczne),
     ...(salesProfile ? { salesProfile } : {}),
+    ...((line as { stockoutAdjust?: ManualZdEstimateLine["stockoutAdjust"] }).stockoutAdjust
+      ? { stockoutAdjust: (line as { stockoutAdjust?: ManualZdEstimateLine["stockoutAdjust"] }).stockoutAdjust }
+      : {}),
+    ...((line as { demandFloor?: ManualZdEstimateLine["demandFloor"] }).demandFloor
+      ? { demandFloor: (line as { demandFloor?: ManualZdEstimateLine["demandFloor"] }).demandFloor }
+      : {}),
   };
 }
 
 export type ZdEstimateSoloMapOptions = {
   dniZapasu: number;
+  zapasMin?: number | null;
   dniOkresu?: number | null;
   salesTrack?: boolean;
   salesTrackCuts?: boolean;
@@ -460,6 +480,7 @@ export function mapZdEstimateLinesSolo(
     const minStock = minStockByTwId?.get(twId) ?? 0;
     return mapZdEstimateLineToManual(line, {
       dniZapasu,
+      zapasMin: options.zapasMin,
       dniOkresu: options.dniOkresu,
       salesTrack: inPair ? false : options.salesTrack,
       salesTrackCuts: inPair ? false : options.salesTrackCuts,
@@ -470,6 +491,21 @@ export function mapZdEstimateLinesSolo(
       minStockSzt: minStock,
     });
   });
+}
+
+/**
+ * Długość okna sprzedaży (dni, włącznie): `dniOkresu` z API, inaczej z dat okna.
+ * Bez tego para liczyła tempo na dniach zapasu, a pojedynczy towar na tempie z Subiekta.
+ */
+export function zdEstimateWindowDays(
+  parametry: Pick<SubiektZdEstimateParams, "dniOkresu" | "dataOd" | "dataDo"> | null | undefined
+): number | null {
+  const raw = Number(parametry?.dniOkresu);
+  if (parametry?.dniOkresu != null && Number.isFinite(raw) && raw > 0) return raw;
+  const od = Date.parse(String(parametry?.dataOd ?? "").slice(0, 10));
+  const doo = Date.parse(String(parametry?.dataDo ?? "").slice(0, 10));
+  if (!Number.isFinite(od) || !Number.isFinite(doo) || doo < od) return null;
+  return Math.round((doo - od) / 86_400_000) + 1;
 }
 
 export function buildManualZdEstimateResult(
@@ -518,10 +554,7 @@ export function buildManualZdEstimateResult(
     parametry.dniZapasu != null && Number.isFinite(Number(parametry.dniZapasu))
       ? Number(parametry.dniZapasu)
       : DEFAULT_DNI_ZAPASU;
-  const dniOkresu =
-    parametry.dniOkresu != null && Number.isFinite(Number(parametry.dniOkresu))
-      ? Number(parametry.dniOkresu)
-      : null;
+  const dniOkresu = zdEstimateWindowDays(parametry);
   const historyByTwId = options?.historyByTwId ?? null;
   const packagingByTwId = options?.packagingByTwId ?? null;
   const minStockByTwId = options?.minStockByTwId ?? null;
@@ -532,6 +565,7 @@ export function buildManualZdEstimateResult(
     (parametry.zapasMin != null ? Number(parametry.zapasMin) : 0);
 
   const mapped = mapZdEstimateLinesSolo(lines, {
+    zapasMin,
     dniZapasu,
     dniOkresu,
     salesTrack: options?.salesTrack,

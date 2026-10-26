@@ -11,7 +11,9 @@ export type ZdEstimateListSortKey =
   | "confidence"
   | "minStock"
   /** Dni do wyczerpania (dostępne / sprzedaż dziennie) — rosnąco = najpilniejsze. */
-  | "cover";
+  | "cover"
+  /** Klasa ABC (zysk 12 mies.) — rosnąco = A najpierw, w klasie największe „Do ZD” (kolejność przeglądu, spec §8.2). */
+  | "abc";
 export type ZdEstimateListSortDir = "asc" | "desc";
 
 export type ZdEstimateSortPackaging = {
@@ -23,11 +25,23 @@ export type ZdEstimateSortPackaging = {
 /**
  * Dni do wyczerpania: dostępne / sprzedaż dziennie. Brak dostępnego = 0,
  * brak sprzedaży = null (nie kończy się).
+ * Para (wiersz paczki): sprzedaż jest łączna w sztukach, więc dostępne też w sztukach —
+ * sztuki + paczki × przelicznik (bez otwartych ZD, jak przy zwykłym towarze).
  */
+/** Dostępne w sztukach — dla pary sztuki + paczki × przelicznik (wiersz paczki ma `dostepne` w paczkach). */
+export function zdLineAvailablePieces(
+  line: Pick<ManualZdEstimateLine, "dostepne"> & Partial<Pick<ManualZdEstimateLine, "pair">>
+): number {
+  const pair = line.pair?.role === "pack" && !line.pair.partnerMissing ? line.pair : null;
+  return pair
+    ? (Number(pair.pieceDostepne) || 0) + (Number(pair.packDostepne) || 0) * Math.max(1, Number(pair.unitsPerPack) || 1)
+    : Number(line.dostepne) || 0;
+}
+
 export function zdEstimateDaysOfCover(
-  line: Pick<ManualZdEstimateLine, "dostepne" | "sprzedazDziennie">
+  line: Pick<ManualZdEstimateLine, "dostepne" | "sprzedazDziennie"> & Partial<Pick<ManualZdEstimateLine, "pair">>
 ): number | null {
-  const available = Number(line.dostepne) || 0;
+  const available = zdLineAvailablePieces(line);
   const daily = Number(line.sprzedazDziennie) || 0;
   if (available <= 0) return daily > 0 ? 0 : null;
   if (daily <= 0) return null;
@@ -35,7 +49,7 @@ export function zdEstimateDaysOfCover(
 }
 
 function zdEstimateDaysOfCoverSortValue(
-  line: Pick<ManualZdEstimateLine, "dostepne" | "sprzedazDziennie">
+  line: Pick<ManualZdEstimateLine, "dostepne" | "sprzedazDziennie"> & Partial<Pick<ManualZdEstimateLine, "pair">>
 ): number {
   return zdEstimateDaysOfCover(line) ?? Number.POSITIVE_INFINITY;
 }
@@ -59,13 +73,40 @@ export function sortZdEstimateLines(
   extrasPolicy?: import("@/lib/orders/zd-estimate-extras-policy").ZdEstimateExtrasPolicy,
   stockNeedReliefByTwId?: ReadonlyMap<number, number> | null,
   extraOverlapByTwId?: ReadonlyMap<number, number> | null,
-  minStockByTwId?: ReadonlyMap<number, number> | null
+  minStockByTwId?: ReadonlyMap<number, number> | null,
+  /** twId → klasa ABC (`zd_sku_class`, z nadpisaniem); brak = towar niesklasyfikowany (na końcu). */
+  abcByTwId?: ReadonlyMap<number, string> | null
 ): ManualZdEstimateLine[] {
   const dir = sortDir === "asc" ? 1 : -1;
   const pack = packagingById ?? null;
+  const doZd = (l: ManualZdEstimateLine) =>
+    effectiveZdDocumentUnits(
+      l,
+      pack?.get(l.tw_Id) ?? null,
+      individualExtraPiecesForTw(l.tw_Id, individualExtraByTwId),
+      qtyOverrideByTwId?.get(l.tw_Id),
+      extraOnlyTwIds?.has(l.tw_Id) === true,
+      extrasPolicy,
+      individualExtraPiecesForTw(l.tw_Id, stockNeedReliefByTwId),
+      individualExtraPiecesForTw(l.tw_Id, extraOverlapByTwId),
+      individualExtraPiecesForTw(l.tw_Id, minStockByTwId)
+    );
+  const abcRank = (l: ManualZdEstimateLine) => ZD_ABC_RANK[abcByTwId?.get(l.tw_Id) ?? ""] ?? 3;
 
   return [...lines].sort((a, b) => {
     let cmp = 0;
+    if (sortKey === "abc") {
+      // Niesklasyfikowane zawsze na końcu; w klasie największe „Do ZD” najpierw — niezależnie od kierunku.
+      const ra = abcRank(a);
+      const rb = abcRank(b);
+      if (ra === 3 || rb === 3) {
+        if (ra !== rb) return ra - rb;
+      } else if (ra !== rb) {
+        return dir * (ra - rb);
+      }
+      const q = doZd(b) - doZd(a);
+      return q !== 0 ? q : compareText(a.tw_Symbol, b.tw_Symbol);
+    }
     if (sortKey === "symbol") {
       cmp = compareText(a.tw_Symbol, b.tw_Symbol);
     } else if (sortKey === "name") {
@@ -84,34 +125,14 @@ export function sortZdEstimateLines(
       const mb = minStockByTwId?.get(b.tw_Id) ?? 0;
       cmp = ma - mb;
     } else {
-      const qa = effectiveZdDocumentUnits(
-        a,
-        pack?.get(a.tw_Id) ?? null,
-        individualExtraPiecesForTw(a.tw_Id, individualExtraByTwId),
-        qtyOverrideByTwId?.get(a.tw_Id),
-        extraOnlyTwIds?.has(a.tw_Id) === true,
-        extrasPolicy,
-        individualExtraPiecesForTw(a.tw_Id, stockNeedReliefByTwId),
-        individualExtraPiecesForTw(a.tw_Id, extraOverlapByTwId),
-        individualExtraPiecesForTw(a.tw_Id, minStockByTwId)
-      );
-      const qb = effectiveZdDocumentUnits(
-        b,
-        pack?.get(b.tw_Id) ?? null,
-        individualExtraPiecesForTw(b.tw_Id, individualExtraByTwId),
-        qtyOverrideByTwId?.get(b.tw_Id),
-        extraOnlyTwIds?.has(b.tw_Id) === true,
-        extrasPolicy,
-        individualExtraPiecesForTw(b.tw_Id, stockNeedReliefByTwId),
-        individualExtraPiecesForTw(b.tw_Id, extraOverlapByTwId),
-        individualExtraPiecesForTw(b.tw_Id, minStockByTwId)
-      );
-      cmp = qa - qb;
+      cmp = doZd(a) - doZd(b);
     }
     if (cmp !== 0) return dir * cmp;
     return compareText(a.tw_Symbol, b.tw_Symbol);
   });
 }
+
+const ZD_ABC_RANK: Record<string, number> = { A: 0, B: 1, C: 2 };
 
 /** Przy zmianie kolumny: tekst A→Z, Do ZD / pewność od największej. */
 export function defaultDirForZdEstimateSortKey(

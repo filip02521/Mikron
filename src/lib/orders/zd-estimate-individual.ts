@@ -16,6 +16,7 @@ import {
   type ZdProductPairRef,
 } from "@/lib/orders/zd-product-pair-units";
 import { extractAlphanumericProductCodeFromName } from "@/lib/subiekt/zd-product-name-parse";
+import { effectiveRequestSymbol } from "@/lib/orders/request-completeness";
 import type { IndividualOrder } from "@/types/database";
 import type { ZdEstimateProsbaOverlapContribution } from "@/lib/orders/zd-estimate-prosba-reservation-overlap";
 
@@ -31,6 +32,8 @@ export type ZdEstimateIndividualRequestRef = {
   /** kh_Id klienta — do dedupe vs rez. ZK. */
   salesClientKhId?: number | null;
   sourceZkNumber?: string | null;
+  /** Klient z prośby (nazwa wpisana przez handlowca) — do podglądu, kto czeka na towar. */
+  salesClientName?: string | null;
 };
 
 export type ZdEstimateIndividualTwExtra = {
@@ -71,6 +74,8 @@ export type ZdEstimatePendingIndividualOrder = {
   salesClientKhId?: number | null;
   /** Numer ZK przy złożeniu prośby — zapasowy match gdy brak kh_Id. */
   sourceZkNumber?: string | null;
+  /** Klient z prośby — tylko do podglądu. */
+  salesClientName?: string | null;
 };
 
 export type ZdEstimateIndividualBundle = {
@@ -126,6 +131,7 @@ export function mapIndividualOrderToPendingDto(
     requestNote: order.sales_request_note?.trim() || null,
     salesClientKhId,
     sourceZkNumber,
+    salesClientName: order.sales_client_name?.trim() || null,
   };
 }
 
@@ -143,6 +149,7 @@ function toRequestRef(
     requestNote: order.requestNote,
     salesClientKhId: order.salesClientKhId ?? null,
     sourceZkNumber: order.sourceZkNumber ?? null,
+    salesClientName: order.salesClientName ?? null,
   };
 }
 
@@ -200,7 +207,8 @@ export function matchZdEstimateTwFromOrder(
   byMikran?: Map<string, number>,
   byTw?: Map<number, { tw_Id: number; tw_Symbol: string }>
 ): number | null {
-  const explicitSym = normalizeKey(order.symbol);
+  // Artefakt formularza („S” z „Silikon…”) nie jest symbolem — bez tego prośba trafiała na towar „S”.
+  const explicitSym = normalizeKey(effectiveRequestSymbol(order));
   const mikran = normalizeKey(order.mikranCode);
   const storedTw =
     order.subiektTwId != null && order.subiektTwId > 0
@@ -227,7 +235,8 @@ export function matchZdEstimateTwFromOrder(
   if (mikranHit != null && mikranHit > 0) return mikranHit;
 
   // Kod z nazwy tylko gdy wygląda jak SKU (litery+cyfry) i trafia dokładnie 1 symbol.
-  if (!explicitSym) {
+  // Przypięty towar z Subiekta jest pewniejszy niż zgadywanie z opisu — kod z nazwy go nie nadpisuje.
+  if (!explicitSym && storedTw == null) {
     const fromName = extractAlphanumericProductCodeFromName(
       order.products ?? ""
     );
@@ -401,12 +410,15 @@ export function buildIndividualEstimateExtras(
     }
   >();
 
-  function addExtra(targetTw: number, order: ZdEstimatePendingIndividualOrder, qty: number) {
+  function addExtra(targetTw: number, order: ZdEstimatePendingIndividualOrder, cardQty: number) {
     let tw = targetTw;
     const pairHit = pairIndex.get(tw);
     if (pairHit?.role === "piece") {
       tw = pairHit.pair.packTwId;
     }
+    // Pary: extra i dedupe z ZK w sztukach pary (jak cel i pokrycie paczki). Prośba na karcie
+    // paczki jest w paczkach — bez × przelicznik 3 kartony szły na ZD jako 3 sztuki (1 karton).
+    const qty = pairHit?.role === "pack" ? cardQty * Math.max(1, pairHit.pair.unitsPerPack) : cardQty;
     if (fetchFailed.has(tw)) {
       pushService(serviceLines, "fetch_failed", order);
       return;

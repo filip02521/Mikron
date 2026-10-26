@@ -15,7 +15,9 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Field";
 import { HelpPopover } from "@/components/ui/HelpPopover";
 import { HelpBlock } from "@/components/ui/HelpBlock";
-import { PanelSummaryMetric } from "@/components/ui/PanelSummaryMetric";
+import { AdminMetrics } from "@/components/admin/AdminMetrics";
+import { Alert } from "@/components/ui/Alert";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 import { Spinner } from "@/components/ui/Spinner";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { cn } from "@/lib/cn";
@@ -32,6 +34,7 @@ import {
   panelChoiceChipSelectedClass,
 } from "@/lib/ui/ontime-theme";
 import { formatWarsawDateTime } from "@/lib/time/warsaw";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 type HealthFilter = "all" | DeliveryStatsHealth | "issues";
 
@@ -90,27 +93,27 @@ function SupplierDetailPanel({ row }: { row: DeliveryStatsSupplierDiagnostic }) 
   const recomputedSide = avgCell(row.recomputed.side_avg, row.recomputed.side_count);
 
   return (
-    <div className="space-y-4 border-t border-slate-100 bg-slate-50/40 px-3 py-4 sm:px-4">
-      <div className="rounded-md border border-slate-200/80 bg-white p-3">
+    <div className="space-y-4 border-t border-slate-100 bg-slate-50 px-3 py-4 sm:px-4 lg:px-5">
+      <div>
         <p className="text-xs font-semibold text-slate-800">Diagnoza</p>
         <ul className="mt-1.5 list-inside list-disc space-y-0.5 text-xs leading-relaxed text-slate-700">
           {row.healthNotes.map((note) => (
             <li key={note}>{note}</li>
           ))}
         </ul>
-        <p className="mt-2 text-[11px] text-slate-500">
+        <p className="mt-2 text-[0.6875rem] text-slate-500">
           Historia: {row.historyOrderCount} zrealizowanych w pełni · {row.unusedOrderCount}{" "}
           pominiętych (duplikaty dnia, brak daty, typ None itd.)
         </p>
       </div>
 
-      <div className="overflow-x-auto rounded-md border border-slate-200/80 bg-white">
+      <div className="overflow-x-auto">
         <table className="min-w-full text-left">
           <thead>
-            <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] text-slate-500">
-              <th className="px-2 py-2 font-semibold">Pole</th>
-              <th className="px-2 py-2 font-semibold">W bazie (delivery_stats)</th>
-              <th className="px-2 py-2 font-semibold">Z historii (przeliczone)</th>
+            <tr className="border-b border-slate-100 bg-slate-50/80 text-xs text-slate-500">
+              <th className="px-2 py-2 font-medium">Pole</th>
+              <th className="px-2 py-2 font-medium">W bazie (delivery_stats)</th>
+              <th className="px-2 py-2 font-medium">Z historii (przeliczone)</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -126,8 +129,8 @@ function SupplierDetailPanel({ row }: { row: DeliveryStatsSupplierDiagnostic }) 
       </div>
 
       {row.samples.length ? (
-        <div className="overflow-x-auto rounded-md border border-slate-200/80 bg-white">
-          <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-3 py-2">
+        <div className="overflow-x-auto">
+          <div className="flex items-center justify-between gap-2 py-1">
             <p className="text-xs font-semibold text-slate-800">
               Próbki ({row.samples.length}) - jedna na dzień zamówienia
             </p>
@@ -144,18 +147,18 @@ function SupplierDetailPanel({ row }: { row: DeliveryStatsSupplierDiagnostic }) 
           </div>
           <table className="min-w-full text-left">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] text-slate-500">
-                <th className="px-2 py-2 font-semibold">Zamówienie</th>
-                <th className="px-2 py-2 font-semibold">Data zam.</th>
-                <th className="px-2 py-2 font-semibold">Dostawa</th>
-                <th className="px-2 py-2 font-semibold">Dni rob.</th>
-                <th className="px-2 py-2 font-semibold">Typ</th>
+              <tr className="border-b border-slate-100 bg-slate-50/80 text-xs text-slate-500">
+                <th className="px-2 py-2 font-medium">Zamówienie</th>
+                <th className="px-2 py-2 font-medium">Data zam.</th>
+                <th className="px-2 py-2 font-medium">Dostawa</th>
+                <th className="px-2 py-2 font-medium">Dni rob.</th>
+                <th className="px-2 py-2 font-medium">Typ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {visibleSamples.map((sample) => (
                 <tr key={sample.dedupKey}>
-                  <td className="px-2 py-1.5 font-mono text-[11px] text-slate-600">
+                  <td className="px-2 py-1.5 font-mono text-[0.6875rem] text-slate-600">
                     {sample.orderId.slice(0, 8)}…
                   </td>
                   <td className="px-2 py-1.5 text-xs tabular-nums text-slate-800">
@@ -176,7 +179,7 @@ function SupplierDetailPanel({ row }: { row: DeliveryStatsSupplierDiagnostic }) 
           </table>
         </div>
       ) : (
-        <p className="rounded-md border border-dashed border-slate-200 bg-white px-3 py-4 text-xs text-slate-600">
+        <p className="text-xs text-slate-600">
           Brak próbek w historii zrealizowanych zamówień dla tego dostawcy.
         </p>
       )}
@@ -197,28 +200,36 @@ function SupplierRow({
     <>
       <tr
         className={cn(
-          "cursor-pointer transition hover:bg-indigo-50/30",
-          expanded && "bg-indigo-50/20"
+          "cursor-pointer transition-colors hover:bg-slate-50",
+          expanded && "bg-indigo-50 hover:bg-indigo-50"
         )}
         onClick={onToggle}
       >
-        <td className="px-2 py-2.5 sm:px-3">
-          <div className="flex items-start gap-2">
+        <td className="py-2.5 pl-3 pr-2 sm:pl-4 lg:pl-5">
+          <button
+            type="button"
+            aria-expanded={expanded}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggle();
+            }}
+            className="flex w-full items-start gap-2 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+          >
             <IconChevronDown
               size={14}
               open={expanded}
               className="mt-0.5 shrink-0 text-slate-400"
             />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-slate-900">{row.supplierName}</p>
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-slate-900">{row.supplierName}</span>
               {!row.isActive ? (
-                <p className="text-[11px] text-slate-500">Nieaktywny</p>
+                <span className="block text-[0.6875rem] text-slate-500">Nieaktywny</span>
               ) : null}
-            </div>
-          </div>
+            </span>
+          </button>
         </td>
         <td className="px-2 py-2.5 sm:px-3">
-          <Badge variant={healthBadgeVariant(row.health)}>
+          <Badge variant={healthBadgeVariant(row.health)} className="whitespace-nowrap">
             {deliveryStatsHealthLabel(row.health)}
           </Badge>
         </td>
@@ -236,7 +247,7 @@ function SupplierRow({
         </td>
         <td className="hidden px-2 py-2.5 text-xs tabular-nums text-slate-700 sm:table-cell sm:px-3">
           {row.totalSamples}
-          <span className="text-slate-400"> / {row.historyOrderCount}</span>
+          <span className="text-slate-500"> / {row.historyOrderCount}</span>
         </td>
         <td className="hidden px-2 py-2.5 text-xs text-slate-600 xl:table-cell sm:px-3">
           {formatTimestamp(row.storedUpdatedAt)}
@@ -304,7 +315,7 @@ export function DeliveryStatsDiagnosticsPanel({
       } else if (healthFilter !== "all" && row.health !== healthFilter) {
         return false;
       }
-      if (q && !row.supplierName.toLowerCase().includes(q)) return false;
+      if (!matchesSearchWords(row.supplierName, q)) return false;
       return true;
     });
   }, [data, search, healthFilter, activeOnly]);
@@ -409,107 +420,61 @@ export function DeliveryStatsDiagnosticsPanel({
           }
         />
 
-        <div className="space-y-4 px-3 pb-4 sm:px-4 lg:px-5">
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-            <PanelSummaryMetric
-              label="Dostawcy z próbkami"
-              value={summary.suppliersWithSamples}
-              hint={`z ${summary.supplierCount} łącznie`}
-              tone={summary.suppliersWithSamples > 0 ? "success" : "default"}
-            />
-            <PanelSummaryMetric
-              label="Próbki łącznie"
-              value={summary.totalSamples}
-              hint={`${summary.totalHistoryOrders} w historii · ${summary.totalUnusedOrders} pominiętych`}
-            />
-            <PanelSummaryMetric
-              label="Wiersze w delivery_stats"
-              value={summary.suppliersWithStoredStats}
-              hint={
-                summary.lastStatsUpdate
+        <div className="space-y-4 px-3 py-4 sm:px-4 lg:px-5">
+          <AdminMetrics
+            items={[
+              {
+                label: "Dostawcy z próbkami",
+                value: summary.suppliersWithSamples,
+                hint: `z ${summary.supplierCount} łącznie`,
+              },
+              {
+                label: "Próbki łącznie",
+                value: summary.totalSamples,
+                hint: `${summary.totalHistoryOrders} w historii · ${summary.totalUnusedOrders} pominiętych`,
+              },
+              {
+                label: "Wiersze w delivery_stats",
+                value: summary.suppliersWithStoredStats,
+                hint: summary.lastStatsUpdate
                   ? `Ostatnia akt. ${formatTimestamp(summary.lastStatsUpdate)}`
-                  : "Brak aktualizacji"
-              }
-            />
-            <PanelSummaryMetric
-              label="Mało próbek (&lt;3)"
-              value={summary.suppliersLowConfidence}
-              tone={summary.suppliersLowConfidence ? "warning" : "default"}
-            />
-            <PanelSummaryMetric
-              label="Rozjazdy / brak wiersza"
-              value={summary.suppliersMismatch}
-              tone={summary.suppliersMismatch ? "danger" : "default"}
-            />
-            <PanelSummaryMetric
-              label="Brak danych"
-              value={summary.suppliersNoData}
-              hint="Bez historii i bez wiersza"
-            />
-          </div>
+                  : "Brak aktualizacji",
+              },
+              {
+                label: "Mało próbek (<3)",
+                value: summary.suppliersLowConfidence,
+                tone: summary.suppliersLowConfidence ? "warning" : "default",
+              },
+              {
+                label: "Rozjazdy / brak wiersza",
+                value: summary.suppliersMismatch,
+                tone: summary.suppliersMismatch ? "danger" : "default",
+              },
+              {
+                label: "Brak danych",
+                value: summary.suppliersNoData,
+                hint: "Bez historii i bez wiersza",
+              },
+            ]}
+          />
 
           {issueCount > 0 ? (
-            <div className="rounded-md border border-red-200/80 bg-red-50/50 px-3 py-2.5 text-sm text-red-900">
-              <span className="font-medium">{issueCount} dostawców</span> ma rozjazd między bazą a
-              historią lub brak wiersza mimo próbek - użyj „Przelicz statystyki ETA”.
-            </div>
+            <Alert
+              tone="error"
+              title={`${issueCount} ${polishPluralWord(issueCount, "dostawca ma", "dostawcy mają", "dostawców ma")} rozjazd między bazą a historią`}
+            >
+              Albo brak wiersza mimo próbek. Użyj „Przelicz statystyki ETA”.
+            </Alert>
           ) : summary.suppliersWithSamples > 0 ? (
-            <div className="rounded-md border border-emerald-200/80 bg-emerald-50/40 px-3 py-2.5 text-sm text-emerald-900">
+            <p className="text-sm text-slate-600">
               Dane wyglądają spójnie - system zbiera próbki i zapisuje je w{" "}
-              <code className="rounded bg-white/80 px-1 text-xs">delivery_stats</code>.
-            </div>
+              <code className="rounded bg-slate-100 px-1 text-xs">delivery_stats</code>.
+            </p>
           ) : (
-            <div className="rounded-md border border-amber-200/80 bg-amber-50/40 px-3 py-2.5 text-sm text-amber-900">
-              Brak próbek w historii - ETA pojawi się po pierwszych zrealizowanych dostawach.
-            </div>
+            <Alert tone="warning" title="Brak próbek w historii">
+              ETA pojawi się po pierwszych zrealizowanych dostawach.
+            </Alert>
           )}
-
-          <div className="flex flex-wrap items-end gap-3 border-b border-slate-100 pb-4">
-            <div className="min-w-[200px] flex-1">
-              <label
-                htmlFor="delivery-stats-search"
-                className="mb-1.5 block text-xs font-semibold text-slate-500"
-              >
-                Szukaj dostawcy
-              </label>
-              <Input
-                id="delivery-stats-search"
-                type="search"
-                placeholder="Nazwa dostawcy…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full py-2 text-sm"
-              />
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {HEALTH_FILTERS.map((chip) => {
-                const active = healthFilter === chip.id;
-                return (
-                  <button
-                    key={chip.id}
-                    type="button"
-                    className={cn(
-                      panelChoiceChipClass,
-                      "px-2.5 py-1.5",
-                      active ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass
-                    )}
-                    onClick={() => setHealthFilter(chip.id)}
-                  >
-                    {chip.label}
-                  </button>
-                );
-              })}
-            </div>
-            <label className="flex cursor-pointer items-center gap-2 pb-1 text-xs text-slate-700">
-              <input
-                type="checkbox"
-                checked={activeOnly}
-                onChange={(e) => setActiveOnly(e.target.checked)}
-                className="rounded border-slate-300"
-              />
-              Tylko aktywni
-            </label>
-          </div>
 
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" size="sm" disabled={refreshing} onClick={refresh}>
@@ -536,18 +501,63 @@ export function DeliveryStatsDiagnosticsPanel({
             />
           </div>
 
-          <div className="overflow-x-auto rounded-md border border-slate-200/90">
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-3 py-3 sm:px-4 lg:px-5">
+          <Input
+            type="search"
+            aria-label="Szukaj dostawcy"
+            placeholder="Szukaj dostawcy…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full sm:max-w-xs"
+          />
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Stan statystyk">
+            {HEALTH_FILTERS.map((chip) => {
+              const active = healthFilter === chip.id;
+              return (
+                <button
+                  key={chip.id}
+                  type="button"
+                  aria-pressed={active}
+                  className={cn(
+                    panelChoiceChipClass,
+                    "min-h-9 px-2.5 py-1.5",
+                    active ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass
+                  )}
+                  onClick={() => setHealthFilter(chip.id)}
+                >
+                  {chip.label}
+                </button>
+              );
+            })}
+          </div>
+          <label className="flex min-h-9 cursor-pointer items-center gap-2 text-xs text-slate-700">
+            <input
+              type="checkbox"
+              checked={activeOnly}
+              onChange={(e) => setActiveOnly(e.target.checked)}
+              className="rounded border-slate-300"
+            />
+            Tylko aktywni
+          </label>
+          <p className="ml-auto text-[0.6875rem] tabular-nums text-slate-500">
+            {filtered.length} {polishPluralWord(filtered.length, "dostawca", "dostawcy", "dostawców")}
+          </p>
+        </div>
+
+          <div className="overflow-x-auto border-t border-slate-200">
             <table className="min-w-full text-left">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/90 text-[11px] text-slate-500">
-                  <th className="px-2 py-2.5 font-semibold sm:px-3">Dostawca</th>
-                  <th className="px-2 py-2.5 font-semibold sm:px-3">Status</th>
-                  <th className="hidden px-2 py-2.5 font-semibold md:table-cell sm:px-3">Tryb</th>
-                  <th className="hidden px-2 py-2.5 font-semibold lg:table-cell sm:px-3">Główne</th>
-                  <th className="hidden px-2 py-2.5 font-semibold lg:table-cell sm:px-3">Poboczne</th>
-                  <th className="px-2 py-2.5 font-semibold sm:px-3">Łącznie</th>
-                  <th className="hidden px-2 py-2.5 font-semibold sm:table-cell sm:px-3">Próbki</th>
-                  <th className="hidden px-2 py-2.5 font-semibold xl:table-cell sm:px-3">
+                <tr className="border-b border-slate-200 bg-slate-50 text-[0.8125rem] text-slate-500">
+                  <th className="py-2.5 pl-3 pr-2 font-medium sm:pl-4 lg:pl-5">Dostawca</th>
+                  <th className="px-2 py-2.5 font-medium sm:px-3">Status</th>
+                  <th className="hidden px-2 py-2.5 font-medium md:table-cell sm:px-3">Tryb</th>
+                  <th className="hidden px-2 py-2.5 font-medium lg:table-cell sm:px-3">Główne</th>
+                  <th className="hidden px-2 py-2.5 font-medium lg:table-cell sm:px-3">Poboczne</th>
+                  <th className="px-2 py-2.5 font-medium sm:px-3">Łącznie</th>
+                  <th className="hidden px-2 py-2.5 font-medium sm:table-cell sm:px-3">Próbki</th>
+                  <th className="hidden px-2 py-2.5 font-medium xl:table-cell sm:px-3">
                     Ostatnia akt.
                   </th>
                 </tr>
@@ -574,7 +584,6 @@ export function DeliveryStatsDiagnosticsPanel({
               </tbody>
             </table>
           </div>
-        </div>
       </Card>
     </>
   );

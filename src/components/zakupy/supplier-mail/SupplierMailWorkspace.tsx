@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { matchesSearchWords } from "@/lib/search/keywords";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   actionMailForward,
@@ -48,6 +49,7 @@ import { formatFileSize } from "@/components/mail/MailPreview";
 import { isInlineImage, isPreviewableImage } from "@/lib/mail/attachments";
 import { splitEmphasis } from "@/lib/mail/emphasis";
 import { looksPolish } from "@/lib/supplier-mail/polish";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 type Scope = "mine" | "all";
 /** Kolumna tablicy albo półka: „Do przejrzenia” (nieznani nadawcy — sprawa czy nie), „Oferty” (reklamy dostawców). */
@@ -89,7 +91,7 @@ const CATEGORY_TAG: Record<MailConversation["category"], { text: string; classNa
 };
 
 function Tag({ text, className }: { text: string; className: string }) {
-  return <span className={cn("shrink-0 rounded px-1.5 py-px text-[11px] font-medium ring-1", className)}>{text}</span>;
+  return <span className={cn("shrink-0 rounded px-1.5 py-px text-[0.6875rem] font-medium ring-1", className)}>{text}</span>;
 }
 
 function ItemTag({ item }: { item: BoardItem }) {
@@ -126,16 +128,9 @@ const inheritKeyOf = (i: BoardItem) =>
     ? `${i.ref.conv.caseKind}:${i.ref.conv.caseId}`
     : null;
 
-/** Bez wielkości liter i polskich znaków — „zolw” znajdzie „Żółw”. */
-const fold = (t: string) => t.toLocaleLowerCase("pl").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ł/g, "l");
-
 function matchesSearch(i: BoardItem, q: string): boolean {
   const conv = i.ref.type === "conv" ? i.ref.conv : null;
-  const hay = [itemTitle(i), itemSubject(i), i.note, i.waitingOn, conv?.zdLabel ?? "", conv?.snippet ?? "", conv?.lastFromEmail ?? ""].join(" ");
-  return fold(q)
-    .split(/\s+/)
-    .filter(Boolean)
-    .every((w) => fold(hay).includes(w));
+  return matchesSearchWords([itemTitle(i), itemSubject(i), i.note, i.waitingOn, conv?.zdLabel, conv?.snippet, conv?.lastFromEmail], q);
 }
 
 /** 1 sprawa, 2–4 sprawy, 5+ spraw (12–14 też „spraw”). */
@@ -503,7 +498,7 @@ export function SupplierMailWorkspace({
           <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-slate-500" role="status" aria-live="polite">
             {syncing ? (
               <>
-                <Spinner size="sm" /> Sprawdzam skrzynkę…
+                <BrandLoader size="sm" tile={false} /> Sprawdzam skrzynkę…
               </>
             ) : (
               <>
@@ -1140,7 +1135,7 @@ function ConversationDetail({
           ) : null}
           {!messages && !error ? (
             <p className="flex items-center gap-2 text-sm text-slate-500" role="status">
-              <Spinner size="sm" /> Wczytuję treść z Gmaila…
+              <BrandLoader size="sm" tile={false} /> Wczytuję treść z Gmaila…
             </p>
           ) : null}
           {messages?.map((m) => (
@@ -1267,7 +1262,7 @@ function MessageCard({ m, aiAvailable = false, onForward }: { m: ConversationMes
         </span>
       </header>
       {showTranslation && translation ? (
-        <p className="mt-1.5 text-[11px] font-medium text-indigo-700">Tłumaczenie AI na polski — oryginał pod „Oryginał”.</p>
+        <p className="mt-1.5 text-[0.6875rem] font-medium text-indigo-700">Tłumaczenie AI na polski — oryginał pod „Oryginał”.</p>
       ) : null}
       {translateError ? (
         <p className="mt-1.5 text-xs text-red-700" role="alert">
@@ -1300,7 +1295,7 @@ function MessageCard({ m, aiAvailable = false, onForward }: { m: ConversationMes
                   type="button"
                   onClick={() => setPreview(a)}
                   title={a.filename}
-                  className="block overflow-hidden rounded-md ring-1 ring-slate-200 transition-shadow hover:ring-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45"
+                  className="block overflow-hidden rounded-md ring-1 ring-slate-200 transition-shadow hover:ring-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
                 >
                   {/* Załącznik z własnego API za sesją — next/image nie ma tu czego optymalizować. */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1332,7 +1327,7 @@ function MessageCard({ m, aiAvailable = false, onForward }: { m: ConversationMes
                     type="button"
                     onClick={() => setPreview(a)}
                     title={a.filename}
-                    className="block rounded-md ring-1 ring-slate-200 hover:ring-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45"
+                    className="block rounded-md ring-1 ring-slate-200 hover:ring-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={attachmentUrl(m.id, a.attachmentId)} alt={a.filename} loading="lazy" className="h-10 max-w-[9rem] rounded-md bg-white object-contain" />

@@ -35,6 +35,7 @@ import {
 } from "@/lib/orders/zd-estimate-scope-favorites";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
+import { BrandLoader } from "@/components/ui/BrandLoader";
 
 type Props = {
   open: boolean;
@@ -330,8 +331,8 @@ export function ZdEstimateScopeCatalogDialog({
       ) : null}
 
       {pending && rowsEmpty ? (
-        <p className="inline-flex items-center gap-2 text-sm text-slate-600">
-          <Spinner className="size-4" /> {ZD_ESTIMATE_UI.scopeCatalogLoading}
+        <p className="inline-flex items-center gap-2 text-sm text-slate-600" role="status">
+          <BrandLoader size="sm" tile={false} /> {ZD_ESTIMATE_UI.scopeCatalogLoading}
         </p>
       ) : null}
 

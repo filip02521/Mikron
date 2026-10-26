@@ -847,6 +847,7 @@ export const ZD_ESTIMATE_UI = {
   listColumnLabels: {
     packaging: "Opakowanie",
     cover: "Starczy na",
+    abcClass: "Klasa (ABC / XYZ)",
     available: "Dostępne (stan, rezerwacje)",
     openZd: "W drodze (otwarte ZD)",
     sales: "Sprzedaż",
@@ -1196,30 +1197,56 @@ export const ZD_ESTIMATE_UI = {
   postCreateMailComposeTo: "Do",
   postCreateMailComposeSubject: "Temat",
   postCreateMailComposeBody: "Treść",
-  packagingDialogTitle: "Karton / opakowanie",
+  packagingDialogTitle: "Opakowanie i palety",
   packagingDialogHint:
-    "Wybierz, jak przeliczać niedobór w sztukach na jednostki dokumentu ZD: paczki albo sztuki z dobiciem.",
-  packagingModePackagesLabel: "1 na ZD = N szt (paczki na dokumencie)",
-  packagingModePiecesLabel: "Do ZD w sztukach - dobij do wielokrotności N",
+    "Kreator liczy brak w sztukach. Tu ustawiasz, co wpisać na ZD: opakowania czy sztuki, i czy dobijać do pełnych palet.",
+  packagingModePackagesLabel: "Na ZD wpisuję opakowania",
+  packagingModePiecesLabel: "Na ZD wpisuję sztuki, zaokrąglone do pełnego opakowania",
   packagingModePackagesHint:
-    "Na dokumencie wpisujesz liczbę opakowań (np. 2 przy potrzebie 8 szt. i N = 5).",
+    "Np. 2 kartony przy potrzebie 8 szt i 5 szt w kartonie.",
   packagingModePiecesHint:
-    "Na dokumencie wpisujesz sztuki - system dobija do pełnych paczek (np. 10 przy potrzebie 8 szt. i N = 5).",
+    "Np. 10 szt przy potrzebie 8 szt i 5 szt w opakowaniu.",
   packagingModePairBlockedHint:
-    "Na paczce z pary montaż/demontaż dostępny jest tylko tryb opakowań (1 na ZD = N szt).",
+    "Na opakowaniu z pary montaż/demontaż na ZD wpisujesz tylko opakowania.",
+  packagingPairUnitsTitle: "Na ZD zamawiasz opakowania z pary",
+  packagingPairUnitsLine: (units: number, label: string) => `1 ${label} = ${units} szt`,
+  packagingPalletFieldLabel: "Opakowań na palecie",
+  packagingPalletFieldOptional: "(puste = bez palet)",
+  packagingPalletFieldHint:
+    "Do ZD dobija w górę do pełnych palet. Np. 36: potrzeba 3 → 36, potrzeba 40 → 72.",
+  packagingPairConflictCallout: (units: number, label: string, pairUnits: number) =>
+    `Zapisane było „1 ${label} = ${units} szt”, a para mówi ${pairUnits} szt. Jeśli ${units} to opakowania na palecie, przenieś tę liczbę do palet.`,
+  packagingPairConflictCta: (units: number) => `Ustaw ${units} na palecie`,
+  packagingPairPiecesModeNote:
+    "Zapisany był tryb „sztuki” - na opakowaniu z pary na ZD idą opakowania. Zapisz, żeby to poprawić.",
+  packagingOpenZdWarn: (openUnits: string) =>
+    `Na otwartych ZD jest ${openUnits}. Po zmianie opakowania kreator przeliczy je według nowego ustawienia - sprawdź Do ZD po zapisie.`,
+  packagingNeedZeroLine: "Przy obecnym stanie i otwartych ZD Do ZD będzie 0.",
   packagingModeBulkPairBlockedHint:
-    "Zaznaczenie zawiera paczkę z pary - tryb „dobicie w sztukach” jest niedostępny (tylko opakowania).",
+    "Zaznaczenie zawiera opakowania z pary - na ZD wpiszesz tylko opakowania.",
   packagingLiveFlash:
     "Opakowania zaktualizowane - pokrycie i Do ZD przeliczone.",
   packagingModalTitle: "Opakowania ZD",
   packagingModalHint:
-    "Ustaw, jak przeliczać niedobór w sztukach na jednostki dokumentu ZD. Tryb A: 1 na ZD = opakowanie (wpisujesz liczbę paczek; możesz też włączyć kupno co M paczek). Tryb B: Do ZD w sztukach z dobiciem do wielokrotności N. Sztuki 1:1 - usuń opakowanie, nie zapisuj „1”.",
-  packagingIntroTitle: "1 na ZD → N sztuk na magazynie i w sprzedaży",
+    "Każdy wiersz mówi, co wpisać na ZD: opakowania (z opcją pełnych palet) albo sztuki zaokrąglone do pełnego opakowania. Towar na sztuki bez opakowania - usuń wpis, nie zapisuj „1”.",
+  packagingIntroTitle: "Brak w sztukach → pozycja na ZD",
   packagingIntroBody:
-    "Kreator liczy niedobór w sztukach. Kolumna „Do ZD” pokazuje jednostki dokumentu: albo liczbę paczek (tryb A), albo sztuki dobite do pełnego N (tryb B). W trybie A możesz osobno włączyć kupno w wielokrotności paczek (np. co 10 op.).",
-  packagingUnitsLabel: "Sztuk w 1 na ZD",
+    "Kreator liczy brak w sztukach. Kolumna „Do ZD” pokazuje to, co trafi na dokument: liczbę opakowań (np. 4 kartony, z dobiciem do pełnych palet, gdy je ustawisz) albo sztuki zaokrąglone do pełnego opakowania.",
+  packagingUnitsLabel: "Sztuk w 1 opakowaniu",
+  packagingUnitsFromPairHint:
+    "Z pary montaż/demontaż - zmienisz w „Pary”. Tu ustawiasz etykietę i pełne palety.",
+  packagingBulkDialogHint:
+    "Ustaw to samo opakowanie dla zaznaczonych. Pola zostawione „bez zmian” każdy produkt zachowuje po swojemu.",
+  packagingBulkAllPairHint:
+    "Wszystkie zaznaczone to opakowania z pary - sztuki w opakowaniu biorę z pary. Ustawiasz tylko etykietę i palety.",
+  packagingBulkPalletKeepHint:
+    "Każdy produkt zachowa swoją paletę (np. jeden 36, drugi 40).",
+  packagingBulkPalletSameHint:
+    "Ta sama liczba dla wszystkich zaznaczonych. Różne palety ustawisz w wierszu produktu.",
+  packagingBulkPairUnitsHint:
+    "Paczki z pary zachowają swoje N z pary - zapisze się dla nich tylko etykieta i palety.",
   packagingUnitsHint:
-    "Minimum 2 (max 100 000). W trybie A: ile sztuk = 1 na ZD. W trybie B: wielokrotność dobicia sztuk. Sztuki 1:1 - „Usuń”, nie zapisuj „1”.",
+    "Od 2 do 100 000. Towar na sztuki bez opakowania - „Usuń”, nie wpisuj 1.",
   packagingLabelField: "Etykieta",
   packagingClearCta: "Usuń (sztuki 1:1)",
   minStockModalTitle: "Minimum stanów ZD",
@@ -1235,6 +1262,7 @@ export const ZD_ESTIMATE_UI = {
   minStockNoteLabel: "Notatka",
   minStockClearCta: "Usuń minimum",
   minStockLiveFlash: "Minimum stanów zaktualizowane - lista przeliczona.",
+  settingsReloadedLiveFlash: "Ustawienia wczytane - lista przeliczona.",
   minStockBadgeShort: "min",
   minStockAddSectionTitle: "Dodaj produkt",
   minStockAddPlaceholder: "Wpisz symbol lub nazwę towaru z Subiekta…",
@@ -1263,37 +1291,30 @@ export const ZD_ESTIMATE_UI = {
   packagingOverrideHint:
     "Wpisujesz jednostki na dokumencie ZD (opakowania), nie sztuki.",
   packagingOverrideHintPieces:
-    "Wpisujesz sztuki na dokumencie ZD (dobite do paczki).",
+    "Wpisujesz sztuki na dokumencie ZD - idą dokładnie tak, jak wpisane.",
   packagingUnitsMinError:
     "Opakowanie wymaga co najmniej 2 sztuk na 1 jednostkę ZD. Sztuki 1:1 - usuń ustawienie.",
   packagingUnitsMaxError:
     "Liczba sztuk w opakowaniu jest zbyt duża (max 100 000).",
-  packagingOrderMultipleEnableLabel: "Kupuj w wielokrotności paczek",
-  packagingOrderMultipleEnableHint:
-    "Włącz, gdy dostawca sprzedaje tylko pełne partie (np. zawsze co 10 op.). Wyłączone = Do ZD to dokładnie tyle opakowań, ile wynika z niedoboru - bez dodatkowego dobicia.",
-  packagingOrderMultipleLabel: "Wielokrotność (liczba paczek)",
-  packagingOrderMultipleHint:
-    "Np. 10 = przy niedoborze 2-3 op. Do ZD = 10 op. Minimum 2. Puste pole przy włączonej opcji nie jest dozwolone.",
-  packagingOrderMultiplePlaceholder: "np. 10",
+  packagingOrderMultipleEnableLabel: "Kupuj pełnymi paletami / partiami",
+  packagingOrderMultiplePlaceholder: "np. 36",
   packagingOrderMultipleShort: (m: number) => `co ${m}`,
   packagingOrderMultipleOffCaption:
-    "Opcja wyłączona - bez dobicia liczby paczek do partii.",
+    "Wyłączone - Do ZD bez dobijania do pełnych palet.",
   packagingOrderMultipleRequiredError:
-    "Podaj wielokrotność (co najmniej 2) albo wyłącz opcję „Kupuj w wielokrotności paczek”.",
+    "Podaj liczbę opakowań na palecie (co najmniej 2) albo wybierz „Bez zmian” lub „Wyłącz”.",
   packagingOrderMultipleMinError:
-    "Wielokrotność paczek wymaga co najmniej 2.",
+    "Paleta musi mieć co najmniej 2 opakowania.",
   packagingOrderMultipleMaxError:
-    "Wielokrotność paczek jest zbyt duża (max 100 000).",
+    "Za duża liczba opakowań na palecie (max 100 000).",
   packagingOrderMultipleModeHint:
-    "Wielokrotność paczek jest dostępna tylko w trybie „1 na ZD = N szt”.",
+    "Pełne palety działają tylko, gdy na ZD wpisujesz opakowania.",
   packagingDoZdOrderMultipleWarn: (m: number) =>
-    `Ilość nie jest wielokrotnością ${m} op. - zwykle kupujecie co ${m}.`,
+    `Niepełna paleta (paleta = ${m} op.) - na ZD pójdzie dokładnie wpisana ilość.`,
+  packagingDoZdPiecesMultipleWarn: (n: number) =>
+    `Niepełne opakowanie (po ${n} szt) - na ZD pójdzie dokładnie wpisana ilość.`,
   packagingBulkUnitsHint:
     "Minimum 2 (max 100 000) dla wszystkich zaznaczonych. Sztuki 1:1 - osobna akcja „Usuń opakowanie”, nie zapisuj „1”.",
-  packagingBulkPreviewPackages:
-    "Niedobór liczymy w sztukach, a „Do ZD” pokaże liczbę opakowań (zaokrąglenie w górę).",
-  packagingBulkPreviewPieces:
-    "Niedobór liczymy w sztukach, a „Do ZD” pokaże sztuki dobite do wielokrotności N (nie liczbę paczek).",
   packagingBulkClearHint:
     "Zaznaczone wrócą do zamawiania na sztuki 1:1 w kolumnie Do ZD (bez paczki i bez dobicia).",
   packagingPairConflictTitle: "Konflikt opakowanie ↔ para",

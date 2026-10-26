@@ -7,16 +7,18 @@ import { actionFetchCarrierPhones } from "@/app/actions/carrier-phones";
 import { Alert } from "@/components/ui/Alert";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Field";
-import {
-  IconPhone,
-  IconChevronRight,
-  IconSearch,
-  IconTruck,
-} from "@/components/icons/StrokeIcons";
+import { IconPhone, IconChevronRight, IconSearch } from "@/components/icons/StrokeIcons";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { controlFocusClass } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
 import { userFacingErrorFromUnknown } from "@/lib/ui/user-facing-error";
 import { redirectToLoginIfSessionError } from "@/lib/auth/session-login-redirect";
 import { polishPluralWord } from "@/lib/email/polish-plural";
+import { BrandLoader } from "@/components/ui/BrandLoader";
+import { matchesSearchWords } from "@/lib/search/keywords";
 
 export function CarrierPhonesPageClient({
   carriers,
@@ -77,9 +79,9 @@ export function CarrierPhonesPageClient({
     if (!q) return carriers;
     return carriers.filter(
       (c) =>
-        c.label.toLowerCase().includes(q) ||
-        (phonesBySlug.get(c.slug) ?? []).some(
-          (p) => p.phone.includes(q) || p.label.toLowerCase().includes(q),
+        matchesSearchWords(
+          [c.label, ...(phonesBySlug.get(c.slug) ?? []).flatMap((p) => [p.phone, p.label])],
+          q
         ),
     );
   }, [carriers, phonesBySlug, search]);
@@ -100,46 +102,44 @@ export function CarrierPhonesPageClient({
   const activeCarriers = carriers.filter((c) => c.isActive).length;
   const allExpanded = filteredCarriers.length > 0 && filteredCarriers.every((c) => expandedSlugs.has(c.slug));
 
+  const countLine =
+    pending && phones.length === 0
+      ? "Wczytuję numery…"
+      : `${totalPhones} ${polishPluralWord(totalPhones, "numer", "numery", "numerów")} · ${activeCarriers} ${polishPluralWord(activeCarriers, "aktywny kurier", "aktywni kurierzy", "aktywnych kurierów")}`;
+
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-100">
-            <IconTruck size={22} aria-hidden />
+    <div className="space-y-5">
+      <PageHeader
+        title="Kurierzy"
+        description="Numery telefonów do kurierów. Dotknij numeru, żeby zadzwonić."
+        className="mb-0"
+      />
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative min-w-0 flex-1 sm:max-w-xs">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+            <IconSearch size={16} aria-hidden />
           </span>
-          <div>
-            <h1 className="text-[15px] font-bold tracking-tight text-slate-900">Kurierzy</h1>
-            <p className="mt-0.5 text-[12px] text-slate-500">
-              {pending && phones.length === 0
-                ? "Wczytywanie numerów…"
-                : `${totalPhones} ${polishPluralWord(totalPhones, "numer", "numery", "numerów")}`}{" "}
-              · {activeCarriers} aktywnych
-            </p>
-          </div>
+          <Input
+            type="search"
+            aria-label="Szukaj kuriera lub numeru"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Kurier lub numer telefonu…"
+            className="pl-9"
+          />
         </div>
+        <p className="text-[0.6875rem] tabular-nums text-slate-500 sm:ml-auto">{countLine}</p>
         {filteredCarriers.length > 1 ? (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
+            className="min-h-11 self-start sm:min-h-8 sm:self-auto"
             onClick={allExpanded ? collapseAll : expandAll}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
           >
             {allExpanded ? "Zwiń wszystkie" : "Rozwiń wszystkie"}
-          </button>
+          </Button>
         ) : null}
-      </div>
-
-      {/* Search */}
-      <div className="relative">
-        <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300">
-          <IconSearch size={16} aria-hidden />
-        </span>
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Szukaj kuriera lub numeru telefonu…"
-          className="h-10 pl-10 text-[13px]"
-        />
       </div>
 
       {loadError ? (
@@ -148,111 +148,98 @@ export function CarrierPhonesPageClient({
         </Alert>
       ) : null}
 
-      {/* Loading */}
       {pending && phones.length === 0 ? (
-        <div className="flex items-center justify-center py-16">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-emerald-500" />
-        </div>
+        <Card>
+          <div className="flex flex-col items-center justify-center gap-3 py-12 text-sm text-slate-600" role="status">
+            <BrandLoader size="lg" tile={false} />
+            Wczytuję kurierów i numery…
+          </div>
+        </Card>
       ) : filteredCarriers.length === 0 ? (
-        <EmptyState
-          title="Brak kurierów"
-          description={search ? "Brak wyników dla tej frazy." : "Brak zdefiniowanych kurierów."}
-        />
+        <Card>
+          <EmptyState
+            title="Brak kurierów"
+            description={search ? "Brak wyników dla tej frazy. Wyczyść wyszukiwanie albo wpisz inny numer." : "Brak zdefiniowanych kurierów."}
+          />
+        </Card>
       ) : (
-        <div className="space-y-1.5">
-          {filteredCarriers.map((carrier) => {
-            const isExpanded = expandedSlugs.has(carrier.slug);
-            const carrierPhones = phonesBySlug.get(carrier.slug) ?? [];
-            const hasPhones = carrierPhones.length > 0;
+        <Card padding={false} className="overflow-hidden">
+          <ul className="divide-y divide-slate-100">
+            {filteredCarriers.map((carrier) => {
+              const isExpanded = expandedSlugs.has(carrier.slug);
+              const carrierPhones = phonesBySlug.get(carrier.slug) ?? [];
+              const hasPhones = carrierPhones.length > 0;
+              const panelId = `kurier-${carrier.slug}`;
 
-            return (
-              <div
-                key={carrier.slug}
-                className={cn(
-                  "overflow-hidden rounded-xl border transition duration-200",
-                  isExpanded
-                    ? "border-slate-300 bg-white shadow-sm"
-                    : "border-slate-200/80 bg-white hover:border-slate-300",
-                )}
-              >
-                <button
-                  type="button"
-                  onClick={() => toggleExpand(carrier.slug)}
-                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-slate-50/40"
-                >
-                  <span
+              return (
+                <li key={carrier.slug}>
+                  <button
+                    type="button"
+                    onClick={() => toggleExpand(carrier.slug)}
+                    aria-expanded={isExpanded}
+                    aria-controls={panelId}
                     className={cn(
-                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition duration-200",
-                      isExpanded
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-slate-100 text-slate-400 group-hover:text-slate-500",
+                      controlFocusClass,
+                      "flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-slate-50"
                     )}
                   >
-                    <span className={cn("transition-transform duration-200", isExpanded ? "rotate-90" : "rotate-0")}>
-                      <IconChevronRight size={16} aria-hidden />
-                    </span>
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-semibold text-slate-800">
-                      {carrier.label}
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-slate-400">
-                      {hasPhones
-                        ? `${carrierPhones.length} ${polishPluralWord(carrierPhones.length, "numer", "numery", "numerów")}`
-                        : "Brak numerów"}
-                    </p>
-                  </div>
-                  {!carrier.isActive ? (
-                    <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                      Nieaktywny
-                    </span>
-                  ) : hasPhones ? (
-                    <span className="shrink-0 flex h-6 w-6 items-center justify-center rounded-md bg-emerald-50 text-emerald-500">
-                      <IconPhone size={12} aria-hidden />
-                    </span>
-                  ) : null}
-                </button>
+                    <IconChevronRight
+                      size={16}
+                      aria-hidden
+                      className={cn(
+                        "shrink-0 text-slate-400 transition-transform duration-200 motion-reduce:transition-none",
+                        isExpanded && "rotate-90"
+                      )}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-slate-900">{carrier.label}</p>
+                      <p className="mt-0.5 text-[0.6875rem] text-slate-500">
+                        {hasPhones
+                          ? `${carrierPhones.length} ${polishPluralWord(carrierPhones.length, "numer", "numery", "numerów")}`
+                          : "Brak numerów"}
+                      </p>
+                    </div>
+                    {!carrier.isActive ? <Badge>Nieaktywny</Badge> : null}
+                  </button>
 
-                {isExpanded ? (
-                  <div className="border-t border-slate-100">
-                    {hasPhones ? (
-                      <ul className="divide-y divide-slate-50">
-                        {carrierPhones.map((phone) => (
-                          <li key={phone.id}>
-                            <div className="group/phone flex items-center gap-3 px-4 py-3 transition-colors hover:bg-slate-50/50">
-                              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-                                <IconPhone size={14} aria-hidden />
-                              </span>
+                  {isExpanded ? (
+                    <div id={panelId} className="bg-slate-50/60">
+                      {hasPhones ? (
+                        <ul className="divide-y divide-slate-100">
+                          {carrierPhones.map((phone) => (
+                            <li key={phone.id} className="flex items-center gap-3 py-2.5 pl-11 pr-4">
                               <div className="min-w-0 flex-1">
-                                <p className="text-[14px] font-semibold tabular-nums tracking-wide text-slate-800">
-                                  {phone.phone}
-                                </p>
+                                <p className="text-sm font-semibold tabular-nums text-slate-900">{phone.phone}</p>
                                 {phone.label ? (
-                                  <p className="mt-0.5 text-[11px] text-slate-400">{phone.label}</p>
+                                  <p className="mt-0.5 text-[0.6875rem] text-slate-500">{phone.label}</p>
                                 ) : null}
                               </div>
                               <a
                                 href={`tel:${phone.phone.replace(/[\s()-]/g, "")}`}
-                                className="flex shrink-0 items-center gap-1.5 rounded-lg bg-indigo-50 px-3.5 py-2 text-[12px] font-bold text-indigo-600 transition hover:bg-indigo-100 hover:text-indigo-700 active:scale-[0.97]"
+                                aria-label={`Zadzwoń: ${phone.phone}`}
+                                className={cn(
+                                  controlFocusClass,
+                                  "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-md border border-indigo-200 bg-indigo-50 px-3 text-xs font-medium text-indigo-800 transition-colors hover:bg-indigo-100 sm:min-h-9"
+                                )}
                               >
-                                <IconPhone size={13} aria-hidden />
+                                <IconPhone size={14} aria-hidden />
                                 Zadzwoń
                               </a>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="px-4 py-3.5 text-[12px] text-slate-400">
-                        Brak zapisanych numerów dla tego kuriera.
-                      </p>
-                    )}
-                  </div>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="py-3 pl-11 pr-4 text-xs text-slate-600">
+                          Brak zapisanych numerów dla tego kuriera.
+                        </p>
+                      )}
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
       )}
     </div>
   );

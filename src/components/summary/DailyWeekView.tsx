@@ -14,7 +14,6 @@ import {
 } from "@/lib/orders/daily-panel-section-anchors";
 import {
   panelDashedActionClass,
-  panelSectionInsetClass,
   panelSubsectionInsetClass,
   panelTextLinkClass,
 } from "@/lib/ui/ontime-theme";
@@ -57,7 +56,7 @@ export function DailyWeekView({
       id="panel-view-tydzien"
       role="tabpanel"
       aria-labelledby="panel-tab-tydzien"
-      className={cn("space-y-3", panelSectionInsetClass)}
+      className="space-y-6"
     >
       {onDemandCount > 0 && !thisWeekEmpty ? (
         <section

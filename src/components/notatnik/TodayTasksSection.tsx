@@ -16,19 +16,19 @@ function taskBadge(kind: NotepadTodayTaskKind) {
   switch (kind) {
     case "zk-follow-up":
       return (
-        <Badge variant="info" className="text-[10px]">
+        <Badge variant="info" className="text-[0.625rem]">
           Przypomnienie
         </Badge>
       );
     case "zk-warehouse-arrival":
       return (
-        <Badge variant="info" className="text-[10px]">
+        <Badge variant="info" className="text-[0.625rem]">
           Nowy na regale
         </Badge>
       );
     case "note-follow-up":
       return (
-        <Badge variant="info" className="text-[10px]">
+        <Badge variant="info" className="text-[0.625rem]">
           Notatka
         </Badge>
       );
@@ -51,13 +51,13 @@ function TodayTaskList({
   }
 
   return (
-    <ul className="flex flex-col gap-1.5">
+    <ul className="divide-y divide-slate-200/70">
       {tasks.map((task) => (
         <li key={`${task.kind}-${task.id}`}>
           <button
             type="button"
             onClick={() => navigate(task.anchor, task.kind)}
-            className="flex w-full items-center justify-between gap-2 rounded-md border border-slate-200/80 bg-white px-2.5 py-1.5 text-left transition-colors hover:border-slate-300 hover:bg-slate-50 active:scale-[0.99]"
+            className="flex min-h-11 w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-white active:scale-[0.99] sm:min-h-0"
           >
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
@@ -71,7 +71,7 @@ function TodayTaskList({
                 )}
               </div>
               {task.subtitle ? (
-                <p className="mt-0.5 truncate text-[11px] text-slate-500">{task.subtitle}</p>
+                <p className="mt-0.5 truncate text-[0.6875rem] text-slate-500">{task.subtitle}</p>
               ) : null}
             </div>
             <LinkChevron size={14} tone="brand" />
@@ -125,7 +125,7 @@ export function TodayTasksSection({
           <span className="font-semibold text-slate-900">
             {ZK_PAGE_SECTION_COPY.todayTasksTitle}
           </span>
-          <span className="text-slate-400"> · </span>
+          <span className="text-slate-500"> · </span>
           <span className="tabular-nums text-slate-500">{taskSummary}</span>
         </p>
         <TodayTaskList tasks={tasks} onTaskClick={onTaskClick} />

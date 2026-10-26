@@ -123,7 +123,7 @@ export function TeethPartialCancelDialog({
       <div className="mt-4 overflow-hidden rounded-lg border border-slate-200">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-200 bg-slate-50 text-left text-[11px] font-semibold text-slate-500">
+            <tr className="border-b border-slate-200 bg-slate-50 text-left text-[0.6875rem] font-semibold text-slate-500">
               <th className="px-3 py-2">Grupa</th>
               <th className="px-3 py-2 text-center">Zamówione</th>
               <th className="px-3 py-2 text-center">Przyjęte</th>
