@@ -14,7 +14,7 @@ import { normalizeSalesRequestNote } from "@/lib/orders/sales-request-note";
 import type { VerificationInformacjaUi } from "@/lib/orders/verification-informacja-ui";
 import { formatPlDate } from "@/lib/display-labels";
 import { cn } from "@/lib/cn";
-import { salesRequestNoteLabelClass } from "@/lib/ui/ontime-theme";
+import { panelTypography, salesRequestNoteLabelClass, sectionTitleClass } from "@/lib/ui/ontime-theme";
 
 export type VerificationQueueItemMeta = {
   id: string;
@@ -187,13 +187,11 @@ function QueueHeader({
   return (
     <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-3 py-3 sm:px-4">
       <div className="min-w-0">
-        <h2 className="flex items-center gap-1.5 text-sm font-semibold text-slate-900">
+        <h2 className={cn("flex items-baseline gap-1.5", sectionTitleClass)}>
           {title}
-          <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums text-slate-600">
-            {count}
-          </span>
+          <span className={cn("font-normal tabular-nums", panelTypography.rowMeta)}>{count}</span>
         </h2>
-        <p className="mt-0.5 text-xs text-slate-600">{description}</p>
+        <p className={cn("mt-0.5", panelTypography.rowMeta)}>{description}</p>
       </div>
       {nav ? <div className="shrink-0">{nav}</div> : null}
     </div>
@@ -260,7 +258,7 @@ function VerificationQueueRow({
                   {index + 1}.
                 </span>
               ) : null}
-              <p className="text-sm font-semibold text-slate-900">
+              <p className={panelTypography.rowTitle}>
                 {order.sales_person?.name ?? "Handlowiec"}
               </p>
               {pathUi ? <VerificationPathBadge ui={pathUi} className="text-[0.625rem]" /> : null}

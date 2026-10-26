@@ -20,7 +20,6 @@ import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { UndoToast } from "@/components/ui/UndoToast";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { QueueGroupExpandControl } from "@/components/queue/QueueGroupExpandControl";
-import { SupplierFilterChips } from "@/components/queue/SupplierFilterChips";
 import { ReceiveQueueSearchField } from "@/components/queue/ReceiveQueueSearchField";
 import { ReceiveQueueActiveFilters } from "@/components/queue/ReceiveQueueActiveFilters";
 import { ZdReceiveFilterModal } from "@/components/queue/ZdReceiveFilterModal";
@@ -46,7 +45,7 @@ import {
   receiveQueueTargetQuantity,
 } from "@/lib/orders/sales-cancel";
 import { warehouseCancelFulfillToast } from "@/lib/orders/warehouse-cancel-fulfillment";
-import { brandLinkClass, checkboxBrandClass, controlFocusClass } from "@/lib/ui/ontime-theme";
+import { brandLinkClass, checkboxBrandClass, panelTextLinkClass } from "@/lib/ui/ontime-theme";
 import { MICROCOPY } from "@/lib/ui/microcopy";
 import {
   QUEUE_LIST_BODY_CLASS,
@@ -72,7 +71,7 @@ import {
   panelChoiceChipIdleClass,
   panelChoiceChipSelectedClass,
 } from "@/lib/ui/ontime-theme";
-import { Alert } from "@/components/ui/Alert";
+import { HelpPopover } from "@/components/ui/HelpPopover";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 import {
   informacjaProductKey,
@@ -80,7 +79,8 @@ import {
 } from "@/lib/orders/queue-product-groups";
 import { buildSupplierGroupMetrics } from "@/lib/orders/supplier-group-metrics";
 import { useSupplierGroupCollapse } from "@/lib/orders/use-supplier-group-collapse";
-import { maxReceiveQueueWaitingDays } from "@/lib/orders/receive-queue-waiting";
+import { maxReceiveQueueWaitingDays, receiveQueueWaitingBusinessDays } from "@/lib/orders/receive-queue-waiting";
+import { ReceiveSupplierFilterField } from "@/components/queue/ReceiveSupplierFilterField";
 import {
   formatReceiveGroupHeaderSummary,
   groupReceiveQueueBySupplier,
@@ -109,6 +109,14 @@ export type ReceiveQueueToast = {
   tone: "success" | "error" | "warning";
   durationMs?: number;
 };
+
+type ReceiveQuickFilter = "all" | "stock" | "stale";
+
+/** „Czeka ≥ 3 dni” — ten sam próg, od którego wiersz pokazuje czerwony znacznik. */
+function isStaleReceiveOrder(order: IndividualOrder): boolean {
+  if (isInformacjaRequest(order)) return false;
+  return (receiveQueueWaitingBusinessDays(order) ?? 0) >= 3;
+}
 
 export function ReceiveQueueTable({
   deliveryOrders,
@@ -203,7 +211,8 @@ export function ReceiveQueueTable({
     [deliveryOrders, informacjaOrders]
   );
 
-  const [stockAvailableOnly, setStockAvailableOnly] = useState(false);
+  const [quickFilter, setQuickFilter] = useState<ReceiveQuickFilter>("all");
+  const stockAvailableOnly = quickFilter === "stock";
 
   const { stockByTwId, availableTwIds, availableCount, loading: stockAlertLoading } =
     useReceiveQueueStockAlert(deliveryOrders, true);
@@ -230,14 +239,16 @@ export function ReceiveQueueTable({
     setQty((s) => ({ ...s, [orderId]: String(fillQty) }));
   }, [deliveryOrders, stockByTwId]);
 
-  const { filtered, supplierFiltered, zdScoped } = useMemo(() => {
+  const { filtered, supplierFiltered, zdScoped, baseQueue } = useMemo(() => {
     const baseQueue = stockAvailableOnly
       ? receiveQueue.filter((o) => {
           if (isInformacjaRequest(o)) return false;
           const twId = o.subiekt_tw_id;
           return twId != null && twId > 0 && availableTwIds.has(Math.trunc(twId));
         })
-      : receiveQueue;
+      : quickFilter === "stale"
+        ? receiveQueue.filter(isStaleReceiveOrder)
+        : receiveQueue;
     const supplierFiltered = filterOrdersBySupplier(baseQueue, supplierFilter);
     const zdScoped = filterReceiveQueueTable(baseQueue, {
       supplierFilter,
@@ -252,8 +263,10 @@ export function ReceiveQueueTable({
             productSearch,
           })
         : zdScoped;
-    return { filtered, supplierFiltered, zdScoped };
-  }, [receiveQueue, supplierFilter, zdFilter, productSearch, stockAvailableOnly, availableTwIds]);
+    return { filtered, supplierFiltered, zdScoped, baseQueue };
+  }, [receiveQueue, supplierFilter, zdFilter, productSearch, stockAvailableOnly, quickFilter, availableTwIds]);
+
+  const staleCount = useMemo(() => receiveQueue.filter(isStaleReceiveOrder).length, [receiveQueue]);
 
   const productSearchActive = searchQueryTokens(productSearch).length > 0;
   const hasActiveFilters = productSearchActive || Boolean(zdFilter);
@@ -263,7 +276,8 @@ export function ReceiveQueueTable({
     return countUnmatchedZdLines(zdFilter.profile, supplierFiltered);
   }, [supplierFiltered, zdFilter]);
 
-  const supplierChips = useMemo(() => countOrdersBySupplier(receiveQueue), [receiveQueue]);
+  // Liczniki dostawców po szybkim filtrze — „DREVE 2” w liście ma znaczyć 2 pozycje na ekranie.
+  const supplierChips = useMemo(() => countOrdersBySupplier(baseQueue), [baseQueue]);
   const supplierGroups = useMemo(
     () => groupReceiveQueueBySupplier(filtered),
     [filtered],
@@ -700,34 +714,49 @@ export function ReceiveQueueTable({
     />
   );
 
-  const toolbar = (
-    <div className="space-y-3 border-b border-slate-100 px-3 py-3 sm:px-4 lg:px-6">
-      {showInformacjaAutoHint ? (
-        <Alert tone="info">{INFORMACJA_AUTO_STOCK_QUEUE_HINT}</Alert>
-      ) : null}
+  const quickFilters: { id: ReceiveQuickFilter; label: string; count: number; tone?: "ok" }[] = [
+    { id: "all", label: "Wszystko", count: receiveQueue.length },
+    ...(availableCount > 0 && !stockAlertLoading
+      ? [{ id: "stock" as const, label: "Na stanie Subiekta", count: availableCount, tone: "ok" as const }]
+      : []),
+    ...(staleCount > 0 ? [{ id: "stale" as const, label: "Czeka ≥ 3 dni", count: staleCount }] : []),
+  ];
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+  const toolbar = (
+    <div className="space-y-3 border-b border-slate-100 px-3 py-3 sm:px-4 lg:px-5">
+      <div className="flex flex-col gap-2 md:flex-row md:items-center">
         <ReceiveQueueSearchField
           key={`receive-product-search-${productSearchResetToken}`}
           onDebouncedChange={setProductSearch}
+          className="min-w-0 md:flex-1"
         />
-        <button
-          type="button"
-          onClick={() => setZdModalOpen(true)}
-          aria-pressed={Boolean(zdFilter)}
-          className={cn(
-            panelChoiceChipClass,
-            queueToolbarControlClass,
-            zdFilter ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass,
-            "inline-flex shrink-0 items-center justify-center gap-2 px-3 text-sm",
-          )}
-        >
-          <IconClipboardList size={16} className="shrink-0" aria-hidden />
-          {zdFilter ? `ZD ${zdFilter.docNumber}` : "Szukaj ZD"}
-        </button>
-        <p className="text-[0.6875rem] tabular-nums text-slate-500 sm:ml-auto" aria-live="polite">
-          {filtered.length} {polishPluralWord(filtered.length, "pozycja", "pozycje", "pozycji")}
-        </p>
+        <div className="flex min-w-0 gap-2">
+          <ReceiveSupplierFilterField
+            chips={supplierChips}
+            value={supplierFilter}
+            onChange={(next) => {
+              setSupplierFilter(next);
+              if (zdFilter && next !== zdFilter.supplierName) {
+                setZdFilter(null);
+              }
+            }}
+            className="min-w-0 flex-1 md:w-64 md:flex-none"
+          />
+          <button
+            type="button"
+            onClick={() => setZdModalOpen(true)}
+            aria-pressed={Boolean(zdFilter)}
+            className={cn(
+              panelChoiceChipClass,
+              queueToolbarControlClass,
+              zdFilter ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass,
+              "inline-flex shrink-0 items-center justify-center gap-2 px-3 text-sm",
+            )}
+          >
+            <IconClipboardList size={16} className="shrink-0" aria-hidden />
+            {zdFilter ? `ZD ${zdFilter.docNumber}` : "Szukaj ZD"}
+          </button>
+        </div>
       </div>
 
       {hasActiveFilters ? (
@@ -758,55 +787,38 @@ export function ReceiveQueueTable({
         </div>
       ) : null}
 
-      <SupplierFilterChips
-        chips={supplierChips}
-        value={supplierFilter}
-        onChange={(next) => {
-          setSupplierFilter(next);
-          if (zdFilter && next !== zdFilter.supplierName) {
-            setZdFilter(null);
-          }
-        }}
-        totalLabel="Wszyscy"
-      />
-
-      {availableCount > 0 && !stockAlertLoading ? (
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md bg-emerald-50 px-3 py-2 text-[0.8125rem] text-emerald-800">
-          <IconCircleCheck size={16} className="shrink-0 text-emerald-600" aria-hidden />
-          <span className="min-w-0 flex-1">
-            {availableCount} {polishPluralWord(availableCount, "pozycja jest", "pozycje są", "pozycji jest")} na stanie
-            Subiekta. Oznacz przyjęcie i przygotuj na regale.
-          </span>
-          <button
-            type="button"
-            aria-pressed={stockAvailableOnly}
-            onClick={() => setStockAvailableOnly((v) => !v)}
-            className={cn(
-              controlFocusClass,
-              "inline-flex min-h-11 shrink-0 items-center rounded-md px-2.5 text-xs font-medium text-emerald-800 underline-offset-2 transition hover:bg-emerald-100 hover:underline sm:min-h-8",
-            )}
-          >
-            {stockAvailableOnly ? "Pokaż wszystkie" : "Pokaż tylko na stanie"}
-          </button>
+      {/* Szybkie filtry z licznikami (jedno wybrane); instrukcja pod „Jak przyjmować”. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div
+          role="group"
+          aria-label="Szybki filtr"
+          className="-mx-3 flex min-w-0 max-w-[calc(100%+1.5rem)] gap-1.5 overflow-x-auto px-3 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:max-w-none sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden"
+        >
+          {quickFilters.map((f) => {
+            const active = quickFilter === f.id;
+            return (
+              <button
+                key={f.id}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setQuickFilter(f.id)}
+                className={cn(
+                  panelChoiceChipClass,
+                  active ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass,
+                  "inline-flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-[0.8125rem] sm:min-h-8",
+                )}
+              >
+                {f.tone === "ok" ? <IconCircleCheck size={14} className="shrink-0 text-emerald-600" aria-hidden /> : null}
+                {f.label}
+                <span className="tabular-nums text-slate-500">{f.count}</span>
+              </button>
+            );
+          })}
         </div>
-      ) : null}
-
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <p className="min-w-0 text-[0.6875rem] leading-relaxed text-slate-500">
-          <span className="inline-flex items-center gap-1">
-            <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
-            zamówienie: wpisz ilość, Enter lub{" "}
-            <InlineCheck size={10} className="inline align-[-2px]" />
-          </span>
-          <span className="mx-1.5 text-slate-300" aria-hidden>
-            ·
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <span className="size-1.5 shrink-0 rounded-full bg-sky-500" aria-hidden />
-            informacja: przycisk powiadomienia lub zaznaczenie wielu
-          </span>
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center gap-3">
+          <p className="text-[0.8125rem] tabular-nums text-slate-500" aria-live="polite">
+            {filtered.length} {polishPluralWord(filtered.length, "pozycja", "pozycje", "pozycji")}
+          </p>
           {zdFilter && filtered.length > 0 ? (
             <button
               type="button"
@@ -816,11 +828,36 @@ export function ReceiveQueueTable({
               Zaznacz wszystkie pasujące
             </button>
           ) : null}
+          <HelpPopover
+            label="Jak przyjmować towar"
+            title="Jak przyjmować"
+            shortLabel="Jak przyjmować"
+            align="right"
+            buttonClassName={cn(
+              panelTextLinkClass,
+              "inline-flex min-h-11 shrink-0 items-center gap-1 border-0 bg-transparent px-0 text-[0.8125rem] font-medium shadow-none hover:underline sm:min-h-0",
+            )}
+          >
+            <ul className="space-y-2 text-sm leading-relaxed text-slate-700">
+              <li className="flex gap-2">
+                <span className="mt-2 size-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+                <span>
+                  Zamówienie: wpisz ilość i naciśnij Enter albo <InlineCheck size={11} className="inline align-[-2px]" />.
+                </span>
+              </li>
+              <li className="flex gap-2">
+                <span className="mt-2 size-1.5 shrink-0 rounded-full bg-sky-500" aria-hidden />
+                <span>Informacja: przycisk powiadomienia albo zaznacz kilka i powiadom razem.</span>
+              </li>
+              {showInformacjaAutoHint ? <li className="text-slate-600">{INFORMACJA_AUTO_STOCK_QUEUE_HINT}</li> : null}
+            </ul>
+          </HelpPopover>
           <QueueGroupExpandControl
             groupCount={supplierGroups.length}
             allExpanded={collapse.allExpanded}
             onExpandAll={collapse.expandAll}
             onCollapseAll={collapse.collapseAll}
+            className="text-[0.8125rem] sm:text-[0.8125rem]"
           />
         </div>
       </div>
@@ -951,8 +988,9 @@ export function ReceiveQueueTable({
             onClear={clearSelection}
           />
 
-          <TableScroll className="px-0 pb-0">
-        <div className={QUEUE_LIST_BODY_CLASS}>
+          <TableScroll className="px-0 pb-0 sm:px-0 sm:pb-0">
+        {/* Lista rośnie z całą stroną; własne przewijanie tylko przy wirtualizacji (RECEIVE_QUEUE_VIRTUAL_THRESHOLD). */}
+        <div className={queueVirtualEnabled ? QUEUE_LIST_BODY_CLASS : undefined}>
           <DataTable
             ref={queueTableRef}
             className="queue-table receive-queue-table"
@@ -974,9 +1012,9 @@ export function ReceiveQueueTable({
                   onChange={(e) => toggleAll(e.target.checked)}
                 />
               </th>
-              <th className="bg-slate-50/95 px-2 py-2.5 text-left text-[0.6875rem] font-semibold text-slate-500">Handlowiec</th>
-              <th className="bg-slate-50/95 px-2 py-2.5 text-left text-[0.6875rem] font-semibold text-slate-500">Produkt</th>
-              <th className="w-[9.5rem] bg-slate-50/95 px-2 py-2.5 text-right text-[0.6875rem] font-semibold text-slate-500">Realizacja</th>
+              <th className="bg-slate-50/95 px-2 py-2.5 text-left text-[0.8125rem] font-medium text-slate-500">Dostawca · handlowiec</th>
+              <th className="bg-slate-50/95 px-2 py-2.5 text-left text-[0.8125rem] font-medium text-slate-500">Produkt</th>
+              <th className="w-[9.5rem] bg-slate-50/95 px-2 py-2.5 text-right text-[0.8125rem] font-medium text-slate-500">Realizacja</th>
             </tr>
           </thead>
           <ReceiveQueueVirtualTbody

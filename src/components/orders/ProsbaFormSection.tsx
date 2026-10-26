@@ -12,9 +12,9 @@ export function ProsbaFormSection({
   children,
   className,
   domain = "sales",
-  accent,
-  icon,
-  tileClassName,
+  accent: _accent,
+  icon: _icon,
+  tileClassName: _tileClassName,
 }: {
   title: string;
   hint?: string;
@@ -33,11 +33,9 @@ export function ProsbaFormSection({
     domain === "panel" ? panelTypography.sectionTitle : salesTypography.blockTitle;
   const hintClass =
     domain === "panel" ? panelTypography.sectionDesc : salesTypography.sectionHint;
-  // Blok w karcie formularza: tło well bez ramki i cienia, bez kafla ikony (DESIGN.md → Cards).
-  const asWell = Boolean(accent && icon && tileClassName);
-
+  // accent / icon / tileClassName zostają w API wywołań; blok jest płaski — sekcje dzieli odstęp, nie tło (DESIGN.md → Cards).
   return (
-    <section className={cn("space-y-3", asWell && "rounded-lg bg-slate-50 p-3 sm:p-4", className)}>
+    <section className={cn("space-y-3", className)}>
       <div>
         <div className="flex flex-wrap items-center gap-1.5">
           <h3 className={titleClass}>{title}</h3>
