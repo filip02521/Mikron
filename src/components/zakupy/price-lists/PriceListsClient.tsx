@@ -171,7 +171,7 @@ export function PriceListsClient({
                       </Link>
                       <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
                         <span className="whitespace-nowrap"><HostBadge isLive={imp.hostKind === "live"} /></span>
-                        <span className="min-w-0 max-w-[13rem] truncate">{imp.fileName}</span>
+                        <span className="min-w-0 max-w-[13rem] truncate" title={imp.fileName}>{imp.fileName}</span>
                       </div>
                     </td>
                     <td className="text-sm">
