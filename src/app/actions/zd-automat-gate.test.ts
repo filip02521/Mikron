@@ -107,4 +107,14 @@ describe("automat włącza się tylko z backtestu", () => {
     expect(on.ok).toBe(true);
     expect(upserts[0]).toMatchObject({ cycleDays: 2, targetDays: 21, autoLevel: 2, cutoffTime: "13:00" });
   });
+
+  it("strategia automatu bez propozycji (stopień 0) — włączenie propozycji tylko z backtestu; zostanie na 0 wolno", async () => {
+    current = { ...classic, strategy: "max30_90", cycleDays: 7, targetDays: 25, autoLevel: 0, autoProposals: false };
+    const on = await actionSaveZdSupplierOrderPolicy({ supplierId: SUP, strategy: "max30_90", targetDays: 25, cycleDays: 7, autoLevel: 1, cutoffTime: "14:00" });
+    expect(on).toMatchObject({ ok: false, message: expect.stringMatching(/^Automat włączasz z backtestu/) });
+    expect(upserts).toEqual([]);
+    const stay = await actionSaveZdSupplierOrderPolicy({ supplierId: SUP, strategy: "max30_90", targetDays: 25, cycleDays: 7, autoLevel: 0, cutoffTime: "13:00" });
+    expect(stay.ok).toBe(true);
+    expect(upserts[0]).toMatchObject({ autoLevel: 0, autoProposals: false, cutoffTime: "13:00" });
+  });
 });

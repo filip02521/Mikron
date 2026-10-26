@@ -1990,7 +1990,8 @@ export async function actionSaveZdSupplierOrderPolicy(input: {
     let cycleDays = cycle;
     if (strategy === "max30_90") {
       const current = await fetchZdSupplierOrderPolicy(supplierId);
-      if (current.strategy === "classic") {
+      // Także strategia bez propozycji (stopień 0): włączenie propozycji to włączenie automatu — tylko z backtestu.
+      if (current.strategy === "classic" || (autoLevel >= 1 && !current.autoProposals)) {
         return { ok: false, message: "Automat włączasz z backtestu - on sam dobierze, co ile dni zamawiać i na jaki zapas." };
       }
       targetDays = current.targetDays;
