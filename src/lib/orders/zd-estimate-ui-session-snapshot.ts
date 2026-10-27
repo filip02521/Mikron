@@ -76,6 +76,11 @@ export type ZdEstimateUiSessionSnapshot = {
   salesSmoothing?: import("@/lib/orders/zd-order-engine").ZdSalesSmoothingSummary | null;
   /** Ceny za sztukę z ostatnich ZD (kolumna „Wartość”); starsze snapshoty: brak. */
   unitPriceByTwId?: Record<number, number>;
+  /**
+   * Surowa cena z ostatniego ZD (w jednostce dokumentu: przy opakowaniach za paczkę).
+   * Przeglądarka dzieli ją przez bieżące opakowanie/parę; starsze snapshoty: brak.
+   */
+  purchasePriceNetByTwId?: Record<number, number>;
   /** Czas dostawy dostawcy z Policz (kreska w „Starczy”); starsze snapshoty: brak. */
   leadDays?: number | null;
   /** Strategia testowa: lista „jak dotąd” do porównania (dotąd N); starsze snapshoty: brak. */

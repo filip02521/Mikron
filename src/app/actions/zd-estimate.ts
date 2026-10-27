@@ -431,6 +431,8 @@ export type ZdEstimateRunResult =
       salesSmoothing?: import("@/lib/orders/zd-order-engine").ZdSalesSmoothingSummary | null;
       /** tw → cena netto za sztukę z ostatniego ZD (kolumna „Wartość”). */
       unitPriceByTwId?: Record<number, number>;
+      /** tw → surowa cena z ostatniego ZD (jednostka dokumentu) — przeglądarka przelicza na sztukę. */
+      purchasePriceNetByTwId?: Record<number, number>;
       meta: {
         pagesFetched: number;
         totalCountApi: number;
@@ -2282,11 +2284,13 @@ export async function actionRunZdEstimateManual(
 
     // Ceny z ostatnich ZD (nocny zbiór) — za sztukę, wg opakowań z tego Policz.
     const unitPriceByTwId: Record<number, number> = {};
+    const purchasePriceNetByTwId: Record<number, number> = {};
     try {
       const prices = await loadProductPurchasePrices();
       for (const line of result.pozycje) {
         const price = prices.get(line.tw_Id);
         if (!price) continue;
+        if (price.priceNet > 0) purchasePriceNetByTwId[line.tw_Id] = price.priceNet;
         const perPiece = unitPricePerPiece(price.priceNet, engine.packagingLookup.get(line.tw_Id) ?? null);
         if (perPiece != null) unitPriceByTwId[line.tw_Id] = perPiece;
       }
@@ -2322,6 +2326,7 @@ export async function actionRunZdEstimateManual(
         salesSmoothingEnabled: smoothingApplied,
         salesSmoothing: engine.salesSmoothing,
         unitPriceByTwId,
+        purchasePriceNetByTwId,
         leadDays,
         classicCompare,
         seed: input.uiSessionSeed ?? null,
@@ -2368,6 +2373,7 @@ export async function actionRunZdEstimateManual(
       salesSmoothingEnabled: smoothingApplied,
       salesSmoothing: engine.salesSmoothing,
       unitPriceByTwId,
+      purchasePriceNetByTwId,
       exclusions,
       onRequests,
       packaging,

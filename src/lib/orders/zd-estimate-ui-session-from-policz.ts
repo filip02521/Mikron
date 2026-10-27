@@ -99,6 +99,7 @@ export function buildZdEstimateUiSessionSnapshotFromPolicz(input: {
   salesSmoothingEnabled?: boolean;
   salesSmoothing?: import("@/lib/orders/zd-order-engine").ZdSalesSmoothingSummary | null;
   unitPriceByTwId?: Record<number, number>;
+  purchasePriceNetByTwId?: Record<number, number>;
   leadDays?: number | null;
   classicCompare?: import("@/lib/orders/zd-demand-policy").ZdClassicCompare | null;
   seed?: ZdEstimateUiSessionPoliczSeed | null;
@@ -190,6 +191,7 @@ export function buildZdEstimateUiSessionSnapshotFromPolicz(input: {
     salesSmoothingEnabled: input.salesSmoothingEnabled === true,
     salesSmoothing: input.salesSmoothing ?? null,
     unitPriceByTwId: input.unitPriceByTwId ?? {},
+    purchasePriceNetByTwId: input.purchasePriceNetByTwId ?? {},
     leadDays: input.leadDays ?? null,
     classicCompare: input.classicCompare ?? null,
     scopeMode: input.mode,
