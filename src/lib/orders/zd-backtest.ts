@@ -7,8 +7,8 @@
  * - okno sprzedaży = dni zapasu dostawcy (jak Kreator i nocny przebieg), sprzedaż widziana przez system
  *   = to, co zeszło ze stanu w symulacji (nie popyt, którego nie było czym obsłużyć),
  * - korekta za dni braku (`computeStockoutSalesFactor`, dni robocze, poranny stan ≤ 0; bez par i kompletów),
- * - strategia max30_90: sprzedaż pod prośby odjęta, tempo = max(okno, 90 d), cel `effectiveDniZapasu`
- *   (cykl + czas dostawy + 25%, minimum dni celu),
+ * - strategia max30_90: sprzedaż pod prośby odjęta, jednorazowy skok jak typowy miesiąc (profil 12 × 30 d),
+ *   tempo = max(okno, 90 d), cel `effectiveDniZapasu` (cykl + czas dostawy + 25%, minimum dni celu),
  * - podążanie za sprzedażą (`computeSalesTrackedCel`, preset mocy z ustawień) i cięcia z historii ZD
  *   (`applyZdEstimateHistoryCuts`), minimum stanów i `computeManualOrderQty`, opakowania (`computeZdPackOrderQty`),
  * - czas dostawy w dniu decyzji z próbek znanych tego dnia (dostarczonych wcześniej), wybranych i liczonych
@@ -25,12 +25,13 @@
  */
 import { calculateBusinessDate, formatDateString, parseDateOnly } from "@/lib/orders/dates";
 import { quantilesFromSampleRows, selectSamplesForStats, type DeliveryStatsSampleRow } from "@/lib/orders/delivery-stats-samples";
-import { effectiveDniZapasu, sales90FromProfile } from "@/lib/orders/zd-demand-policy";
+import { effectiveDniZapasu } from "@/lib/orders/zd-demand-policy";
 import type { ZdSalesTrackPolicy } from "@/lib/orders/zd-estimate-boost-presets";
 import { applyZdEstimateHistoryCuts } from "@/lib/orders/zd-estimate-history-track";
 import { computeManualOrderQty } from "@/lib/orders/zd-estimate-manual";
 import { computeZdPackOrderQty } from "@/lib/orders/zd-estimate-packaging";
 import { computeSalesTrackedCel } from "@/lib/orders/zd-estimate-sales-track";
+import { resolveZdSalesProfile, sales90CappedFromProfile, ZD_SALES_PROFILE } from "@/lib/orders/zd-sales-profile";
 import {
   normalizePackagingDocumentUnitMode,
   normalizeUnitsPerPackage,
@@ -285,7 +286,8 @@ function prepare(input: ZdBacktestInput): Prep {
   if (cached) return cached;
   const D = input.days;
   const W = Math.max(1, Math.round(input.windowDays));
-  const H = Math.max(W, FLOOR_DAYS) + 1;
+  // Pełny profil 12 × 30 d przed decyzją (skok jak w silniku); starsze niż wczytana historia — zera.
+  const H = Math.max(W, ZD_SALES_PROFILE.windows * PROFILE_WINDOW_DAYS) + 1;
   const keyAt = (i: number) => addDaysKey(input.simStart, i - H);
   const weekday = new Uint8Array(H + D);
   for (let i = 0; i < H + D; i++) weekday[i] = isWeekday(keyAt(i)) ? 1 : 0;
@@ -410,6 +412,8 @@ export function zdBacktestDecideOrder(a: {
   /** Trzy okna 30 d profilu do podłogi (od najstarszego): cała sprzedaż (z prośbami) i sprzedaż pod prośby. */
   floorGross: readonly number[];
   floorProsba: readonly number[];
+  /** Wcześniejsze okna 30 d profilu (od najstarszego, przed oknami podłogi) — do rozpoznania skoku jak silnik. */
+  profileHistory?: readonly number[];
   /** Dni robocze okna z historią stanu; null = bez korekty (para, komplet). */
   stockout: { windowDays: number; recordedDays: number; outDays: number } | null;
   /** Stan − rezerwacje. */
@@ -430,9 +434,17 @@ export function zdBacktestDecideOrder(a: {
   let rate: number;
   let sales: number;
   if (a.strategy === "max30_90") {
-    const prosba = Math.min(gross, a.prosbaWindow);
-    sales = Math.max(0, gross - prosba);
-    const sales90 = sales90FromProfile(a.floorGross, a.floorProsba) ?? 0;
+    const profile = [...(a.profileHistory ?? []), ...a.floorGross];
+    const pm = resolveZdSalesProfile({
+      windows: profile,
+      sprzedazOkres: gross,
+      dniOkresu: W,
+      prosbaPieces: a.prosbaWindow,
+      smoothing: true,
+      smoothKinds: ["spike"],
+    });
+    sales = gross > 0 ? gross * pm.factor : 0;
+    const sales90 = sales90CappedFromProfile(profile, a.floorProsba) ?? 0;
     rate = Math.max(sales / W, sales90 / FLOOR_DAYS);
     sales = rate * W;
   } else {
@@ -510,6 +522,10 @@ export function simulateZdBacktest(input: ZdBacktestInput, policy: ZdBacktestPol
   const sum = (arr: Float64Array, a: number, b: number) => arr[Math.max(0, b)]! - arr[Math.max(0, a)]!;
   // Początki okien podłogi (dni przed decyzją), od najstarszego: [i-90, i-60), [i-60, i-30), [i-30, i).
   const floorStarts = [FLOOR_DAYS, FLOOR_DAYS - PROFILE_WINDOW_DAYS, PROFILE_WINDOW_DAYS];
+  const historyStarts = Array.from(
+    { length: ZD_SALES_PROFILE.windows - floorStarts.length },
+    (_, k) => (ZD_SALES_PROFILE.windows - k) * PROFILE_WINDOW_DAYS
+  );
 
   // Stan każdego towaru; dzień po dniu dla całego dostawcy — reguły minimum i progu działają na całe ZD.
   const states = prep.products.map((pp) => {
@@ -591,6 +607,7 @@ export function simulateZdBacktest(input: ZdBacktestInput, policy: ZdBacktestPol
           prosbaWindow: sum(s.cumProsba, i - W, i),
           floorGross: floorStarts.map((st) => sum(s.cumSeen, i - st, i - st + PROFILE_WINDOW_DAYS) + sum(s.cumProsba, i - st, i - st + PROFILE_WINDOW_DAYS)),
           floorProsba: floorStarts.map((st) => sum(s.cumProsba, i - st, i - st + PROFILE_WINDOW_DAYS)),
+          profileHistory: historyStarts.map((st) => sum(s.cumSeen, i - st, i - st + PROFILE_WINDOW_DAYS) + sum(s.cumProsba, i - st, i - st + PROFILE_WINDOW_DAYS)),
           stockout,
           dostepne,
           onOrder,

@@ -156,8 +156,16 @@ export type ZdAutomatSupplierView = {
   stopReason: string | null;
   nextKey: string | null;
   pending: ZdAutomatDailyProposal | null;
-  /** Ostatnia próba dziś zakończona błędem albo zablokowana — powód z workera. */
+  /** Ostatnia próba dziś zakończona błędem albo zablokowana — powód z workera; albo dziś termin, a próby nie było. */
   attemptProblem: string | null;
+  /** Dzisiejsza próba bez propozycji i bez błędu — czemu „jutro”, a nie dziś. */
+  attemptNote: string | null;
+};
+
+const ATTEMPT_NOTE: Partial<Record<ZdAutomatDailyAttemptKind, string>> = {
+  nothing_to_order: "dziś: nic do zamówienia",
+  not_due: "dziś: przed terminem cyklu",
+  disabled: "dziś: propozycje wyłączone",
 };
 
 export function zdAutomatSupplierView(
@@ -166,15 +174,23 @@ export function zdAutomatSupplierView(
 ): ZdAutomatSupplierView {
   const a = s.lastAttempt;
   const attemptToday = a && warsawKeyFromIso(a.at) === ctx.todayKey;
+  const stopReason = zdAutomatStopReason(s);
+  // Każde policzenie dostawcy w nocnym przebiegu zapisuje wynik próby — brak dzisiejszego przy terminie na dziś
+  // znaczy, że przebieg dostawcy nie policzył (inaczej wiersz pokazywałby tylko „jutro”).
+  const missed =
+    !stopReason && !attemptToday && ctx.nightPassed && zdAutomatNextProposalKey(s, { ...ctx, nightPassed: false }) === ctx.todayKey;
   const attemptProblem =
     attemptToday && (a.kind === "error" || a.kind === "skipped")
       ? `${a.kind === "error" ? "błąd" : "wstrzymane"}: ${a.detail?.trim() || "bez opisu"}`
-      : null;
+      : missed
+        ? "dziś termin, a nocny przebieg nie policzył dostawcy"
+        : null;
   return {
-    stopReason: zdAutomatStopReason(s),
+    stopReason,
     nextKey: zdAutomatNextProposalKey(s, ctx),
     pending: s.proposals[0]?.status === "pending" ? s.proposals[0] : null,
     attemptProblem,
+    attemptNote: attemptToday && !attemptProblem ? (ATTEMPT_NOTE[a.kind] ?? null) : null,
   };
 }
 

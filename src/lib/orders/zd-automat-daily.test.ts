@@ -94,6 +94,24 @@ describe("zdAutomatSupplierView", () => {
     );
     expect(zdAutomatSupplierView(err("2026-10-24T04:40:00.000Z"), { todayKey: TODAY, nightPassed: true }).attemptProblem).toBeNull();
   });
+
+  it("dziś bez propozycji: powód widoczny (nic do zamówienia), a brak próby przy terminie to problem", () => {
+    const WED = "2026-10-28";
+    const ctx = { todayKey: WED, nightPassed: true };
+    const nothing = supplier({ lastAttempt: { at: `${WED}T04:40:00.000Z`, kind: "nothing_to_order", detail: null } });
+    expect(zdAutomatSupplierView(nothing, ctx)).toMatchObject({ attemptProblem: null, attemptNote: "dziś: nic do zamówienia" });
+    // termin dziś (brak propozycji), noc przeszła, wynik próby wczorajszy — dostawca nie był liczony
+    const stale = supplier({ lastAttempt: { at: "2026-10-27T04:40:00.000Z", kind: "nothing_to_order", detail: null } });
+    expect(zdAutomatSupplierView(stale, ctx).attemptProblem).toBe("dziś termin, a nocny przebieg nie policzył dostawcy");
+    expect(zdAutomatSupplierView(stale, { ...ctx, nightPassed: false }).attemptProblem).toBeNull();
+    // termin dopiero za kilka dni — brak dzisiejszej próby to norma
+    const later = supplier({
+      cycleDays: 7,
+      lastAttempt: null,
+      proposals: [{ id: "p", createdAt: proposalAt("2026-10-27"), status: "accepted", lineCount: 1, valueNet: 1, dokNr: null }],
+    });
+    expect(zdAutomatSupplierView(later, ctx)).toMatchObject({ attemptProblem: null, attemptNote: null });
+  });
 });
 
 describe("buildZdAutomatDailyStatus", () => {

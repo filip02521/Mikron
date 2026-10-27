@@ -5,11 +5,11 @@
  */
 import { describe, expect, it } from "vitest";
 import { zdBacktestDecideOrder, zdBacktestPackPieces } from "@/lib/orders/zd-backtest";
-import { applyZdDemandFloorToLine, sales90FromProfile } from "@/lib/orders/zd-demand-policy";
+import { applyZdDemandFloorToLine } from "@/lib/orders/zd-demand-policy";
 import { policyForBoostPreset } from "@/lib/orders/zd-estimate-boost-presets";
 import { mapZdEstimateLineToManual } from "@/lib/orders/zd-estimate-manual";
 import { resolveOrderQtyForLine } from "@/lib/orders/zd-estimate-packaging";
-import { applyZdSalesProfileToLine, resolveZdSalesProfile } from "@/lib/orders/zd-sales-profile";
+import { applyZdSalesProfileToLine, resolveZdSalesProfile, sales90CappedFromProfile } from "@/lib/orders/zd-sales-profile";
 import { applyStockoutAdjustToLine, computeStockoutSalesFactor, stockoutMetaExcludingProsba } from "@/lib/stock-watch/stock-history";
 import type { SubiektZdEstimateLine } from "@/lib/subiekt/types";
 
@@ -23,6 +23,8 @@ type Case = {
   /** Trzy okna 30 d profilu do podłogi (od najstarszego): cała sprzedaż i sprzedaż pod prośby. */
   floor: [number, number, number];
   floorProsba: [number, number, number];
+  /** Dziewięć wcześniejszych okien profilu (domyślnie po 5). */
+  profileHistory?: number[];
   stockout: { windowDays: number; recordedDays: number; outDays: number } | null;
   stock: number;
   reserved: number;
@@ -78,6 +80,10 @@ const cases: Case[] = [
   { ...base, name: "paczka 10 szt, wielokrotność 3 paczek", pack: { units: 10, mode: "packages", mult: 3 } },
   { ...base, name: "ZD w sztukach, wielokrotność 6 szt", pack: { units: 6, mode: "pieces_multiple", mult: null } },
   { ...base, name: "paczka 10 szt i minimum stanów", seen: 0, floor: [0, 0, 0], stock: 0, minStock: 4, pack: { units: 10, mode: "packages", mult: null } },
+  { ...base, name: "jednorazowy skok w oknie — tempo z typowego miesiąca", seen: 34, floor: [4, 5, 34], stock: 3, profileHistory: [4, 5, 3, 4, 6, 4, 5, 4, 3] },
+  { ...base, name: "skok sprzed 45 dni nie podnosi podłogi", seen: 4, floor: [4, 34, 4], stock: 3, profileHistory: [4, 5, 3, 4, 6, 4, 5, 4, 3] },
+  { ...base, name: "skok w paczkach 10 szt", seen: 34, floor: [4, 5, 34], stock: 3, profileHistory: [4, 5, 3, 4, 6, 4, 5, 4, 3], pack: { units: 10, mode: "packages", mult: null } },
+  { ...base, name: "wzrost (dwa wysokie okna) — bez cięcia", seen: 30, floor: [4, 30, 30], stock: 3, profileHistory: [4, 5, 3, 4, 6, 4, 5, 4, 3] },
 ];
 
 /** Ścieżka nocnego przebiegu na jednym wierszu z API. */
@@ -103,22 +109,20 @@ function engine(c: Case, nowMs: number): number {
   }
   if (c.strategy === "max30_90") {
     // Profil: 12 okien po 30 d; ostatnie trzy dają sprzedaż z 90 d.
-    const windows = [5, 5, 5, 5, 5, 5, 5, 5, 5, ...c.floor];
+    const windows = [...(c.profileHistory ?? Array(9).fill(5)), ...c.floor];
     let b = line;
-    if (c.prosba > 0) {
-      const pm = resolveZdSalesProfile({
-        windows,
-        sprzedazOkres: Number(line.sprzedazOkres) || 0,
-        dniOkresu: c.W,
-        prosbaPieces: c.prosba,
-        smoothing: false,
-        subtractProsba: true,
-      });
-      b = applyZdSalesProfileToLine(line, pm, 0);
-    }
+    const pm = resolveZdSalesProfile({
+      windows,
+      sprzedazOkres: Number(line.sprzedazOkres) || 0,
+      dniOkresu: c.W,
+      prosbaPieces: c.prosba,
+      smoothing: true,
+      smoothKinds: ["spike"],
+    });
+    if (pm.applied) b = applyZdSalesProfileToLine(line, { ...pm, smoothing: false }, 0);
     line = applyZdDemandFloorToLine(b, {
       policy: { strategy: "max30_90", targetDays: c.dni, cycleDays: 7 },
-      sales90: sales90FromProfile(windows, c.floorProsba),
+      sales90: sales90CappedFromProfile(windows, c.floorProsba),
       dniOkresu: c.W,
       dniZapasu: c.dni,
     });
@@ -159,6 +163,7 @@ describe("decyzja backtestu = nocny przebieg (te same dane)", () => {
         prosbaWindow: c.prosba,
         floorGross: c.floor,
         floorProsba: c.floorProsba,
+        profileHistory: c.profileHistory ?? Array(9).fill(5),
         stockout: c.stockout,
         dostepne: c.stock - c.reserved,
         onOrder: c.onOrder,
@@ -179,6 +184,12 @@ describe("decyzja backtestu = nocny przebieg (te same dane)", () => {
       }
     });
   }
+  it("skok: zamówienie z typowego miesiąca, nie z całej jednorazowej sprzedaży", () => {
+    const spike = cases.find((c) => c.name.startsWith("jednorazowy skok"))!;
+    const noCap = engine({ ...spike, profileHistory: [0, 0, 0, 0, 0, 0, 0, 0, 0], floor: [0, 0, 34] }, nowMs);
+    expect(engine(spike, nowMs)).toBeLessThan(10);
+    expect(noCap).toBeGreaterThan(20);
+  });
   it("scenariusze naprawdę coś zmieniają (test nie jest pusty)", () => {
     const qty = new Set(cases.map((c) => engine(c, nowMs)));
     expect(qty.size).toBeGreaterThan(6);

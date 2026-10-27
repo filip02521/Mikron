@@ -4,8 +4,9 @@
  * „classic” = jak dotąd: tempo z okna Kreatora × dni zapasu dostawcy.
  * „max30_90” = tempo nie niższe niż średnia z 90 dni (ostatnie 3 okna profilu 12 × 30 d),
  * cel na `targetDays` dni, zamawianie co `cycleDays` dni. Podłoga 90 d trzyma towar,
- * który chwilowo mniej sprzedał; krótszy cel przy częstszych ZD ogranicza zapas
- * po jednorazowej dużej sprzedaży (zamówi ok. targetDays/30 jej ilości, nie całość).
+ * który chwilowo mniej sprzedał. Jednorazowy skok (profil 12 × 30 d, `capZdSalesProfileSpikes`)
+ * liczy się jak typowy miesiąc — w oknie i w podłodze; sam krótszy cel nie wystarczał, bo cel
+ * strategii to co najmniej cykl + dostawa + bufor.
  * Czysta logika — ta sama funkcja liczy Kreator, nocny przebieg i backtest.
  */
 
