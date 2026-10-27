@@ -191,6 +191,7 @@ import {
   zdEstimateExternalSessionScopeChangeConfirmLabel,
   zdEstimateExternalSessionScopeChangeCancelLabel,
 } from "@/lib/orders/zd-estimate-ui-copy";
+import { resolveZdEstimateUnitPrices } from "@/lib/orders/zd-estimate-unit-prices";
 import { shouldUseZdEstimateProgressShell } from "@/lib/orders/zd-estimate-progress-shell";
 import { applyGroupStockWindow, resolveSupplierForScopeSelection } from "@/lib/orders/zd-estimate-group-stock";
 import {
@@ -1124,6 +1125,8 @@ export function ZdEstimateWorkbench({
   }, [bootstrap.supplierScopes, bootstrap.suppliers]);
     /** tw → cena netto za sztukę z ostatniego ZD (kolumna „Wartość”, suma ZD). */
   const [unitPriceByTwId, setUnitPriceByTwId] = useState<Record<number, number>>({});
+  /** tw → surowa cena z ostatniego ZD (jednostka dokumentu) — dzielona przez bieżące opakowanie/parę. */
+  const [purchasePriceNetByTwId, setPurchasePriceNetByTwId] = useState<Record<number, number>>({});
   const [leadTimeHorizon, setLeadTimeHorizon] = useState(() =>
     Boolean(launch?.leadTimeHorizon)
   );
@@ -1515,6 +1518,10 @@ export function ZdEstimateWorkbench({
   useLayoutEffect(() => {
     latestRulesRef.current = rulesState;
   });
+  const effectiveUnitPriceByTwId = useMemo(
+    () => resolveZdEstimateUnitPrices(purchasePriceNetByTwId, unitPriceByTwId, packagingLookup),
+    [purchasePriceNetByTwId, unitPriceByTwId, packagingLookup]
+  );
   const [pairsOpen, setPairsOpen] = useState(false);
   const [pairSeed, setPairSeed] = useState<
     readonly [ZdPairSeedProduct, ZdPairSeedProduct] | null
@@ -2385,7 +2392,7 @@ export function ZdEstimateWorkbench({
       count += 1;
       const linePieces = piecesArrivingForZdUnitsFromQty(units, qty);
       pieces += linePieces;
-      const price = unitPriceByTwId[l.tw_Id];
+      const price = effectiveUnitPriceByTwId[l.tw_Id];
       if (price != null && price > 0) value += linePieces * price;
       else unpriced += 1;
       // Jak znacznik „N pal.” w wierszu: tylko pełne wielokrotności palety.
@@ -2409,7 +2416,7 @@ export function ZdEstimateWorkbench({
     extraOverlapByTwId,
     minStockByTwIdForRefresh,
     qtyOverrideMap,
-    unitPriceByTwId,
+    effectiveUnitPriceByTwId,
   ]);
 
   const classicCompareSummary = useMemo(() => {
@@ -2417,11 +2424,11 @@ export function ZdEstimateWorkbench({
     if (!c) return null;
     let value = 0;
     for (const [tw, v] of Object.entries(c.byTwId)) {
-      const price = unitPriceByTwId[Number(tw)];
+      const price = effectiveUnitPriceByTwId[Number(tw)];
       if (price != null && price > 0) value += v.pieces * price;
     }
     return { lineCount: c.lineCount, pieces: c.pieces, value };
-  }, [policzScopeInfo, unitPriceByTwId]);
+  }, [policzScopeInfo, effectiveUnitPriceByTwId]);
 
   const segmentFilteredLines = useMemo(() => {
     if (!lines) return [];
@@ -2865,6 +2872,7 @@ export function ZdEstimateWorkbench({
         salesSmoothingEnabled: salesSmoothing,
         salesSmoothing: policzScopeInfo?.salesSmoothing ?? null,
         unitPriceByTwId,
+        purchasePriceNetByTwId,
         leadDays: policzScopeInfo?.leadDays ?? null,
         classicCompare: policzScopeInfo?.classicCompare ?? null,
         boostNeedsRecount,
@@ -2907,6 +2915,7 @@ export function ZdEstimateWorkbench({
       salesSmoothing,
       policzScopeInfo,
       unitPriceByTwId,
+      purchasePriceNetByTwId,
       boostPreset,
       boostNeedsRecount,
       scopeMode,
@@ -3172,6 +3181,7 @@ export function ZdEstimateWorkbench({
       setLeadTimeHorizon(Boolean(payload.leadTimeHorizon));
       setSalesSmoothing(Boolean(payload.salesSmoothingEnabled));
       setUnitPriceByTwId(payload.unitPriceByTwId ?? {});
+      setPurchasePriceNetByTwId(payload.purchasePriceNetByTwId ?? {});
       setHorizonNeedsRecount(false);
 
       const restoredBoostNeedsRecount = payload.boostPreset
@@ -4139,6 +4149,7 @@ export function ZdEstimateWorkbench({
           classicCompare: res.classicCompare ?? null,
         });
         setUnitPriceByTwId(res.unitPriceByTwId ?? {});
+        setPurchasePriceNetByTwId(res.purchasePriceNetByTwId ?? {});
         setHorizonNeedsRecount(false);
         const histMap = new Map<
           number,
@@ -4837,6 +4848,7 @@ export function ZdEstimateWorkbench({
     salesSmoothing,
     policzScopeInfo,
     unitPriceByTwId,
+    purchasePriceNetByTwId,
     boostNeedsRecount,
     scopeMode,
     selectedGroup,
@@ -8082,7 +8094,7 @@ export function ZdEstimateWorkbench({
                           onAcceptReview={handleRowAcceptReview}
                           otherSupplierHint={policzScopeInfo?.otherSupplierHintByTwId[l.tw_Id] ?? null}
                           prosbyElsewhere={policzScopeInfo?.prosbyElsewhereByTwId?.[l.tw_Id] ?? null}
-                          unitPriceNet={unitPriceByTwId[l.tw_Id] ?? null}
+                          unitPriceNet={effectiveUnitPriceByTwId[l.tw_Id] ?? null}
                           skuClass={skuClassByTwId.get(l.tw_Id) ?? null}
                         />
                       );
@@ -9050,7 +9062,7 @@ export function ZdEstimateWorkbench({
           dateKey={bootstrap.todayKey}
           preview={createDialogPreview}
           scopeMode={scopeMode}
-          unitPriceByTwId={unitPriceByTwId}
+          unitPriceByTwId={effectiveUnitPriceByTwId}
           calcNotes={[
             `zapas ${dniZapasu} d`,
             `sprzedaż ${formatDateKeyPl(dataOd)}-${formatDateKeyPl(dataDo)}`,
