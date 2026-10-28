@@ -123,6 +123,8 @@ import {
   ensureZdCreateLinesCoverIndividualExtras,
   resolveZdCreateKhId,
   validateZdCreateClientLines,
+  ZD_CREATE_MAX_LINES,
+  ZD_CREATE_MAX_QTY,
 } from "@/lib/orders/zd-estimate-create-zd";
 import { resolveDocAfterZdCreate } from "@/lib/orders/zd-estimate-create-doc";
 import {
@@ -1647,14 +1649,15 @@ async function acceptPendingAutoProposal(input: {
    * w międzyczasie mogła powstać nowsza, a zatwierdzona jest ta, którą człowiek oglądał.
    */
   proposalId?: string | null;
-}): Promise<void> {
-  if (!UUID_RE.test(input.supplierId)) return;
+}): Promise<string | null> {
+  // Zwraca id propozycji tego dostawcy, do której ZD się odnosi (dziennik decyzji) — null, gdy żadnej.
+  if (!UUID_RE.test(input.supplierId)) return null;
   try {
     const latest = input.proposalId
       ? await fetchZdAutoProposalById(input.proposalId)
       : await fetchLatestZdAutoProposal(input.supplierId);
-    if (latest && latest.supplierId !== input.supplierId) return;
-    if (!latest) return;
+    if (latest && latest.supplierId !== input.supplierId) return null;
+    if (!latest) return null;
     const finalLines: Record<string, number> = {};
     for (const l of input.createLines) finalLines[String(l.twId)] = (finalLines[String(l.twId)] ?? 0) + l.ilosc;
     if (latest.status === "accepted") {
@@ -1665,11 +1668,12 @@ async function acceptPendingAutoProposal(input: {
         warsawDateKeyFromIso(latest.decidedAt) === warsawDateKeyDaysAgo(0)
       ) {
         await addZdAutoProposalFinalLines({ id: latest.id, supplierId: input.supplierId, finalLines });
+        return latest.id;
       }
-      return;
+      return null;
     }
     // Odłożona (minimum) też: ZD z Kreatora to świadoma decyzja „mimo to”.
-    if (latest.status !== "pending" && latest.status !== "deferred") return;
+    if (latest.status !== "pending" && latest.status !== "deferred") return null;
     await decideZdAutoProposal({
       id: latest.id,
       supplierId: input.supplierId,
@@ -1679,8 +1683,10 @@ async function acceptPendingAutoProposal(input: {
       dokId: input.dokId,
       finalLines,
     });
+    return latest.id;
   } catch (e) {
     console.warn("[zd-auto-proposal] akceptacja po ZD", input.supplierId.replace(/[\r\n]/g, ""), e);
+    return null;
   }
 }
 
@@ -4431,7 +4437,8 @@ export async function actionCreateZdFromEstimate(input: {
 
   const autoProposalId = typeof input.autoProposalId === "string" && UUID_RE.test(input.autoProposalId) ? input.autoProposalId : null;
   const acceptInput = { supplierId: input.supplierId, dokId, createLines, userId: user.id, proposalId: autoProposalId };
-  await acceptPendingAutoProposal(acceptInput);
+  // Id propozycji tylko po sprawdzeniu, że należy do tego dostawcy (dziennik decyzji).
+  const acceptedProposalId = await acceptPendingAutoProposal(acceptInput);
   // „Przygotuj teraz” w toku: propozycja powstanie po tym ZD — to ZD na nią odpowiada (Kreator, nie panel propozycji).
   const proposalRun = autoProposalId ? null : zdAutoProposalNowInFlight(input.supplierId);
   if (proposalRun) void proposalRun.then(() => acceptPendingAutoProposal(acceptInput), () => undefined);
@@ -4454,21 +4461,25 @@ export async function actionCreateZdFromEstimate(input: {
     docSource = resolved.source;
     didReget = resolved.didReget;
 
-    // Dziennik decyzji per linia (co proponował silnik vs co poszło na ZD, także zdjęte) — błąd tylko w logu.
-    {
-      const factorOf = (v: unknown) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : null);
+    // Dziennik decyzji per linia (co proponował silnik vs co poszło na ZD, także zdjęte) — błąd tylko w logu,
+    // także błąd kształtu wejścia (ZD już istnieje; snapshot historii nie może na tym ucierpieć).
+    try {
+      const factorOf = (v: unknown) => (Number.isFinite(Number(v)) && Number(v) > 0 && Number(v) <= 100 ? Number(v) : null);
+      const unitsOf = (v: unknown) => (Number.isFinite(Number(v)) ? Math.min(ZD_CREATE_MAX_QTY, Math.max(0, Number(v))) : null);
+      const twOk = (v: unknown) => Number.isSafeInteger(Number(v)) && Number(v) > 0 && Number(v) < 2 ** 31;
       const proposedByTw = new Map<
         number,
         { proposed: number | null; symbol: string | null; nazwa: string | null; pattern: number | null }
       >();
       for (const l of input.lines) {
         proposedByTw.set(Math.trunc(l.twId), {
-          proposed: l.proposedUnits == null ? null : Math.max(0, Number(l.proposedUnits) || 0),
-          symbol: l.symbol ?? null,
-          nazwa: l.nazwa ?? null,
+          proposed: l.proposedUnits == null ? null : unitsOf(l.proposedUnits),
+          symbol: typeof l.symbol === "string" ? l.symbol : null,
+          nazwa: typeof l.nazwa === "string" ? l.nazwa : null,
           pattern: factorOf(l.patternFactor),
         });
       }
+      const dropped = Array.isArray(input.droppedLines) ? input.droppedLines.slice(0, ZD_CREATE_MAX_LINES) : [];
       const decisionLines = [
         ...createLines.map((l) => {
           const p = proposedByTw.get(Math.trunc(l.twId));
@@ -4481,25 +4492,27 @@ export async function actionCreateZdFromEstimate(input: {
             patternFactor: p?.pattern ?? null,
           };
         }),
-        ...(input.droppedLines ?? [])
-          .filter((d) => Math.trunc(d.twId) > 0 && Number(d.proposedUnits) > 0)
+        ...dropped
+          .filter((d) => d && typeof d === "object" && twOk(d.twId) && (unitsOf(d.proposedUnits) ?? 0) > 0)
           .map((d) => ({
-            twId: d.twId,
-            symbol: d.symbol ?? null,
-            nazwa: d.nazwa ?? null,
-            proposedUnits: Number(d.proposedUnits),
+            twId: Math.trunc(Number(d.twId)),
+            symbol: typeof d.symbol === "string" ? d.symbol : null,
+            nazwa: typeof d.nazwa === "string" ? d.nazwa : null,
+            proposedUnits: unitsOf(d.proposedUnits) ?? 0,
             finalUnits: 0,
             patternFactor: factorOf(d.patternFactor),
           })),
       ];
       void recordZdLineDecisions({
         supplierId: input.supplierId,
-        proposalId: autoProposalId,
+        proposalId: acceptedProposalId,
         dokId,
         dokNr: dokNrPelny,
         decidedBy: user.id,
         lines: decisionLines,
       }).catch((e) => console.warn("[zd-estimate:create] dziennik decyzji", e));
+    } catch (e) {
+      console.warn("[zd-estimate:create] dziennik decyzji (wejście)", e);
     }
 
     if (!persistSnapshots) {
