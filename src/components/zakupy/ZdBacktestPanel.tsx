@@ -1,20 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { actionGetZdBacktestRun, actionStartZdBacktest } from "@/app/actions/zd-backtest";
+import { actionApplyZdBacktestSettings, actionGetZdBacktestRun, actionStartZdBacktest } from "@/app/actions/zd-backtest";
 import { actionSaveZdSupplierOrderPolicy } from "@/app/actions/zd-estimate";
+import { Alert } from "@/components/ui/Alert";
 import { BrandLoader } from "@/components/ui/BrandLoader";
 import { Button } from "@/components/ui/Button";
-import { Field, Input, Select } from "@/components/ui/Field";
 import { ModalShell, type ModalTier } from "@/components/ui/ModalShell";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
-import { IconCheck } from "@/components/icons/StrokeIcons";
+import { polishPluralWord } from "@/lib/email/polish-plural";
+import { IconCheck, IconChevronDown } from "@/components/icons/StrokeIcons";
 import type { ZdBacktestProgress, ZdBacktestResult, ZdBacktestRun } from "@/lib/data/zd-backtest-run";
 import type { ZdSupplierOrderPolicyRow } from "@/lib/data/zd-supplier-order-policy";
-import type { ZdBacktestGridPoint, ZdBacktestRecommendationTier, ZdBacktestVerdictKind } from "@/lib/orders/zd-backtest";
+import type { ZdBacktestVerdictKind } from "@/lib/orders/zd-backtest";
 import { formatWarsawDateTime } from "@/lib/time/warsaw";
-import { ZD_BACKTEST_VERDICT_LABEL } from "@/lib/orders/zd-automat-status";
+import { ZD_BACKTEST_SEARCH_VERSION, ZD_BACKTEST_VERDICT_LABEL, zdBacktestApplyBlock, zdBacktestCycleText } from "@/lib/orders/zd-automat-status";
 
 const nf0 = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 });
 const nf1 = new Intl.NumberFormat("pl-PL", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -26,44 +27,23 @@ const dm = (key: string) => `${key.slice(8, 10)}.${key.slice(5, 7)}.${key.slice(
 export { ZD_BACKTEST_VERDICT_LABEL };
 export const ZD_BACKTEST_VERDICT_BADGE: Record<ZdBacktestVerdictKind, "success" | "warning" | "danger" | "default"> = {
   works: "success",
-  tradeoff: "warning",
+  tradeoff: "default",
   fails: "danger",
   insufficient: "default",
 };
-const VERDICT_SURFACE: Record<ZdBacktestVerdictKind, string> = {
-  works: "bg-emerald-50 text-emerald-900",
-  tradeoff: "bg-amber-50 text-amber-900",
-  fails: "bg-red-50 text-red-800",
-  insufficient: "bg-slate-50 text-slate-700",
-};
-const VERDICT_DOT: Record<ZdBacktestVerdictKind, string> = {
-  works: "bg-emerald-600",
-  tradeoff: "bg-amber-500",
-  fails: "bg-red-600",
-  insufficient: "bg-slate-400",
-};
 
+/** Etapy na ekranie; krótki krok „simulate” (czas dostawy) liczy się do szukania. */
 const PHASES: { key: ZdBacktestProgress["phase"]; title: string; text: string }[] = [
   { key: "products", title: "Towary", text: "Czytam towary zakresu dostawcy" },
   { key: "sales", title: "Sprzedaż", text: "Pobieram sprzedaż z Subiekta" },
-  { key: "stock", title: "Stany", text: "Pobieram tygodniowe stany z remanentu" },
-  { key: "simulate", title: "Symulacja", text: "Symuluję rok zamówień" },
+  { key: "stock", title: "Stany", text: "Pobieram dzienne stany z remanentu" },
+  { key: "search", title: "Szukanie", text: "Szukam najlepszych ustawień" },
 ];
+const phaseIndex = (phase: ZdBacktestProgress["phase"] | undefined) =>
+  Math.max(0, PHASES.findIndex((p) => p.key === (phase === "simulate" ? "search" : phase)));
 
-const CYCLE_OPTIONS = [1, 2, 3, 5, 7, 14, 21];
-const cycleLabel = (c: number) => (c === 1 ? "codziennie" : `co ${c} dni`);
-
-const REC_TITLE: Record<ZdBacktestRecommendationTier, string> = {
-  works: "Najlepsze ustawienie",
-  delay_sensitive: "Najlepsze przy zwykłych dostawach",
-  more_stock: "Mniej braków za cenę zapasu",
-  lowest_cost: "Najniższy koszt",
-};
-const REC_NOTE: Record<Exclude<ZdBacktestRecommendationTier, "works">, string> = {
-  delay_sensitive: "Żadne ustawienie nie przechodzi testu opóźnionych dostaw — to ma braki i zapas nie gorsze niż dziś.",
-  more_stock: "Żadne ustawienie nie ma braków jak dziś bez większego zapasu — to najtańsze z mniejszymi brakami.",
-  lowest_cost: "Żadne ustawienie nie ma braków nie większych niż dziś — to najtańsze w roku.",
-};
+/** „ZD co 7 dni, cel 25 dni”. */
+const settingsText = (p: { cycleDays: number; targetDays: number }) => `ZD ${zdBacktestCycleText(p.cycleDays)}, cel ${p.targetDays} dni`;
 
 // Kreskowany prowadnik między etykietą a wartością (z 21st.dev ReUI stepper-18): w wierszu items-baseline
 // pusty flex-item ma linię bazową na dole, więc kreska siada na linii tekstu.
@@ -83,7 +63,7 @@ function KeyValue({ label, value, tone }: { label: string; value: string; tone?:
 
 /** Etapy przebiegu jako stepper: zrobione (zielony haczyk), bieżący (pulsuje), czekające. */
 function PhaseStepper({ progress }: { progress: Partial<ZdBacktestProgress> | undefined }) {
-  const current = Math.max(0, PHASES.findIndex((p) => p.key === progress?.phase));
+  const current = phaseIndex(progress?.phase);
   return (
     <ol className="grid w-full grid-cols-4" aria-label="Etapy backtestu">
       {PHASES.map((p, i) => {
@@ -93,7 +73,7 @@ function PhaseStepper({ progress }: { progress: Partial<ZdBacktestProgress> | un
             ? "gotowe"
             : state === "pending"
               ? "czeka"
-              : progress?.total && p.key !== "simulate"
+              : progress?.total && progress.phase !== "simulate"
                 ? `${nf0.format(progress.done ?? 0)}/${nf0.format(progress.total)}`
                 : "trwa";
         return (
@@ -139,7 +119,7 @@ type CompareRow = {
   avgStock: number;
   orders: number | null;
   medianOrder: number | null;
-  /** Koszt roku: utracona marża + utrzymanie zapasu (v2). */
+  /** Koszt roku: utracona marża + utrzymanie zapasu + obsługa ZD. */
   cost: number | null;
   lostMargin: number | null;
 };
@@ -176,7 +156,7 @@ function CompareBars({ rows, reality }: { rows: CompareRow[]; reality: CompareRo
         <span>Wariant</span>
         <span>Towary z zerowym stanem</span>
         <span>Średni zapas</span>
-        <span className="text-right" title="Utracona marża na brakach + 20% średniego zapasu rocznie">Koszt roku</span>
+        <span className="text-right" title="Utracona marża na brakach + 20% średniego zapasu rocznie + koszt każdego ZD">Koszt roku</span>
         <span className="text-right">ZD w roku</span>
       </div>
       <ul>
@@ -200,7 +180,7 @@ function CompareBars({ rows, reality }: { rows: CompareRow[]; reality: CompareRo
               {metric("Średni zapas", zl(r.avgStock), r.avgStock, maxStock, strong, isReality ? null : delta(r.avgStock, reality.avgStock, "%"))}
               <div className="text-sm tabular-nums text-slate-600 sm:text-right">
                 {r.cost == null ? (
-                  <span className="hidden text-slate-400 sm:inline">—</span>
+                  <span className="hidden text-slate-500 sm:inline">—</span>
                 ) : (
                   <>
                     <span className="sm:hidden">Koszt roku: </span>
@@ -211,7 +191,7 @@ function CompareBars({ rows, reality }: { rows: CompareRow[]; reality: CompareRo
               </div>
               <div className="text-sm tabular-nums text-slate-600 sm:text-right">
                 {r.orders == null ? (
-                  <span className="hidden text-slate-400 sm:inline">—</span>
+                  <span className="hidden text-slate-500 sm:inline">—</span>
                 ) : (
                   <>
                     <span className="sm:hidden">ZD w roku: </span>
@@ -228,61 +208,91 @@ function CompareBars({ rows, reality }: { rows: CompareRow[]; reality: CompareRo
   );
 }
 
-function GridMatrix({ result, onPick }: { result: ZdBacktestResult; onPick: (p: ZdBacktestGridPoint) => void }) {
-  const cycles = [...new Set(result.grid.map((g) => g.cycleDays))];
-  const targets = [...new Set(result.grid.map((g) => g.targetDays))];
-  const at = (c: number, t: number) => result.grid.find((g) => g.cycleDays === c && g.targetDays === t);
-  const rec = result.recommended;
+/** Jedna liczba odpowiedzi: wartość automatu i punkt odniesienia; kolor zmiany tylko przy różnicy. */
+function AnswerMetric({ label, value, base, baseLabel, better }: { label: string; value: string; base: string; baseLabel: string; better: boolean | null }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200">
-      <table className="w-full min-w-[560px] border-collapse text-sm tabular-nums">
-        <caption className="sr-only">Siatka ustawień: braki i średni zapas dla każdego cyklu i celu w dniach</caption>
-        <thead>
-          <tr className="bg-slate-50 text-left text-[0.8125rem] font-medium text-slate-500">
-            <th className="px-3 py-2 font-medium">ZD co</th>
-            {targets.map((t) => (
-              <th key={t} className="px-2 py-2 text-right font-medium">
-                cel {t} d
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {cycles.map((c) => (
-            <tr key={c} className="border-t border-slate-100">
-              <th scope="row" className="whitespace-nowrap px-3 py-2 text-left font-medium text-slate-700">
-                {c === 1 ? "codziennie" : `${c} dni`}
-              </th>
-              {targets.map((t) => {
-                const g = at(c, t);
-                if (!g) return <td key={t} />;
-                const isRec = rec?.cycleDays === c && rec.targetDays === t;
-                const isParams = result.params.cycleDays === c && result.params.targetDays === t;
-                return (
-                  <td key={t} className="p-1">
-                    <button
-                      type="button"
-                      onClick={() => onPick(g)}
-                      aria-label={`Co ${c} dni, cel ${t} dni: braki ${pct(g.zeroShare)}, zapas ${zl(g.avgStock)}${g.cost != null ? `, koszt roku ${zl(g.cost)}` : ""}${g.works ? ", działa" : ""}`}
-                      title={g.cost != null ? `Koszt roku ${zl(g.cost)}${g.stableQuarters != null ? ` · trzyma w ${g.stableQuarters}/4 kwartałów` : ""}` : undefined}
-                      className={cn(
-                        "flex w-full cursor-pointer flex-col items-end rounded-md px-2 py-1.5 text-right transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
-                        g.works ? "bg-emerald-50 text-emerald-900 hover:bg-emerald-100" : "text-slate-600 hover:bg-slate-50",
-                        isRec && "ring-2 ring-inset ring-indigo-600",
-                        isParams && !isRec && "ring-1 ring-inset ring-slate-300"
-                      )}
-                    >
-                      <span className="font-semibold">{pct(g.zeroShare)}</span>
-                      <span className="text-xs opacity-80">{zl(g.avgStock)}</span>
-                    </button>
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="min-w-0 py-3 sm:px-4 sm:first:ps-0 sm:last:pe-0">
+      <dt className="text-xs font-medium text-slate-500">{label}</dt>
+      <dd className="mt-0.5">
+        <span className={cn("text-lg font-semibold tabular-nums", better == null ? "text-slate-900" : better ? "text-emerald-800" : "text-amber-800")}>{value}</span>
+        <span className="block text-xs text-slate-600">
+          {baseLabel} {base}
+        </span>
+      </dd>
     </div>
+  );
+}
+
+/** Szczegóły (porównanie wariantów, dane, metoda) — dla sprawdzających; odpowiedź stoi nad nimi. */
+function ResultDetails({ result, compareRows }: { result: ZdBacktestResult; compareRows: CompareRow[] }) {
+  const automat = result.variants.find((v) => v.key === "automat");
+  return (
+    <details className="group rounded-lg border border-slate-200">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 [&::-webkit-details-marker]:hidden">
+        Jak to policzono: porównanie i dane
+        <IconChevronDown size={16} className="shrink-0 transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none" aria-hidden />
+      </summary>
+      <div className="space-y-4 border-t border-slate-200 px-4 py-4">
+        <CompareBars rows={compareRows} reality={compareRows[0]!} />
+        <dl className="grid grid-cols-1 gap-x-8 gap-y-1.5 sm:grid-cols-2">
+          <KeyValue label="Towary aktywne" value={`${nf0.format(result.quality.activeSkus)} z ${nf0.format(result.quality.skus)}`} />
+          <KeyValue label="Zmierzone dostawy" value={nf0.format(result.quality.leadSamples)} />
+          <KeyValue label="Pominięte wykluczone" value={nf0.format(result.quality.excluded)} />
+          <KeyValue label="Pominięte na prośbę" value={nf0.format(result.quality.onRequest)} />
+          <KeyValue label="Cena dla aktywnych" value={pct(result.quality.pricedActiveShare)} tone={result.quality.pricedActiveShare < 90 ? "warning" : undefined} />
+          {result.quality.hiddenOutflowShare != null ? (
+            <KeyValue label="Rozchód bez sprzedaży" value={pct(result.quality.hiddenOutflowShare)} tone={result.quality.hiddenOutflowShare >= 10 ? "warning" : undefined} />
+          ) : null}
+          {result.model ? <KeyValue label="Okno sprzedaży" value={`${result.model.windowDays} dni (jak Kreator)`} /> : null}
+          {result.model ? <KeyValue label="Podążanie za sprzedażą" value={result.model.trackPreset ?? "wyłączone"} /> : null}
+          {result.model?.orderCost != null ? <KeyValue label="Koszt jednego ZD (w koszcie roku)" value={zl(result.model.orderCost)} /> : null}
+          {result.model && "minOrderValue" in result.model ? (
+            <KeyValue
+              label="Minimum / darmowa dostawa"
+              value={`${result.model.minOrderValue != null ? zl(result.model.minOrderValue) : "brak"} / ${result.model.freeShippingThreshold != null ? zl(result.model.freeShippingThreshold) : "brak"}`}
+            />
+          ) : null}
+          {result.quality.imputedShare != null ? (
+            <KeyValue label="Popyt dopisany za braki" value={pct(result.quality.imputedShare)} tone={result.quality.imputedShare >= 15 ? "warning" : undefined} />
+          ) : null}
+          {result.quality.prosbaShare != null ? <KeyValue label="Sprzedaż pod prośby (poza zapasem)" value={pct(result.quality.prosbaShare)} /> : null}
+          {result.quality.zkShare != null ? <KeyValue label="Sprzedaż z zamówień klientów (ZK)" value={pct(result.quality.zkShare)} /> : null}
+          {automat?.metrics.zk ? (
+            <KeyValue
+              label="ZK wydane po terminie (automat)"
+              value={
+                automat.metrics.zk.lateQty
+                  ? `${nf0.format(automat.metrics.zk.lateQty)} z ${nf0.format(automat.metrics.zk.qty)} szt., śr. ${nf1.format(automat.metrics.zk.avgDelayDays ?? 0)} dni`
+                  : `0 z ${nf0.format(automat.metrics.zk.qty)} szt.`
+              }
+            />
+          ) : null}
+          {result.quality.minStockSkus ? <KeyValue label="Towary z minimum stanów" value={nf0.format(result.quality.minStockSkus)} /> : null}
+          {result.quality.marginActiveShare != null ? (
+            <KeyValue label="Marża dla aktywnych" value={pct(result.quality.marginActiveShare)} tone={result.quality.marginActiveShare < 80 ? "warning" : undefined} />
+          ) : null}
+          {result.quality.pairs ? <KeyValue label="Pary paczka↔sztuka" value={nf0.format(result.quality.pairs)} /> : null}
+          {result.quality.explodedBoms ? <KeyValue label="Komplety na składniki" value={nf0.format(result.quality.explodedBoms)} /> : null}
+        </dl>
+        {result.notes.length ? (
+          <ul className="space-y-1 text-sm text-slate-600">
+            {result.notes.map((n) => (
+              <li key={n}>{n}</li>
+            ))}
+          </ul>
+        ) : null}
+        <p className="text-xs leading-relaxed text-slate-500">
+          Każde ustawienie to pełny rok decyzji liczonych jak nocny przebieg: okno dni zapasu dostawcy, korekta dni braku, prośby poza zapasem,
+          rezerwacje z ZK, podążanie za sprzedażą, minimum stanów, opakowania, minimum zamówienia i darmowa dostawa, czas dostawy znany w dniu
+          decyzji, stany dzienne. Wygrywa najniższy koszt roku (utracona marża na brakach + 20% średniego zapasu + koszt każdego ZD) wśród
+          ustawień, które mają braki nie większe niż naprawdę także przy opóźnionych dostawach i trzymają w kwartałach (najlepiej we
+          wszystkich, co najmniej w trzech). Gdy takich nie ma — wśród tych z brakami nie większymi niż naprawdę, a dopiero potem
+          najtańsze w ogóle (pod warunkiem, że marża jest znana dla co najmniej 80% towarów). Remis kosztu do 1% rozstrzyga mniej braków.
+          Cykl tylko z listy (codziennie, co 2, 3, 4, 5, 7, 10, 14, 21, 28 dni), cel co 1 dzień. Cel to minimum — przy długiej dostawie
+          silnik podnosi go sam (cykl + dostawa + 25%).
+        </p>
+      </div>
+    </details>
   );
 }
 
@@ -293,6 +303,7 @@ export function ZdBacktestPanel({
   canManage,
   onClose,
   onChanged,
+  onApplied,
   tier,
 }: {
   supplierId: string;
@@ -302,22 +313,24 @@ export function ZdBacktestPanel({
   onClose: () => void;
   /** Po włączeniu automatu albo zakończeniu backtestu — lista odświeża się w tle. */
   onChanged: () => void;
-  /** `top` — nad panelem karty dostawcy (z-[60]). */
+  /** Po zapisie ustawień z backtestu (albo wyłączeniu automatu) — nowe ustawienia dostawcy. */
+  onApplied?: (policy: ZdSupplierOrderPolicyRow) => void;
+  /** `top` — nad panelem karty dostawcy (z-[70]). */
   tier?: ModalTier;
 }) {
-  const inAutomat = policy.strategy !== "classic";
-  const [targetDays, setTargetDays] = useState(String(policy.targetDays ?? 25));
-  const [cycleDays, setCycleDays] = useState(String(policy.cycleDays ?? 7));
+  const [current, setCurrent] = useState(policy);
+  const inAutomat = current.strategy !== "classic";
   const [run, setRun] = useState<ZdBacktestRun | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
+  const [nowMs] = useState(() => Date.now());
   const wasRunning = useRef(false);
 
   const load = useCallback(async () => {
     const r = await actionGetZdBacktestRun({ supplierId });
-    if (!r.ok) return setError(r.message);
+    if (!r?.ok) return setError(r?.message ?? "Nie udało się odczytać backtestu.");
     setRun(r.run);
     const running = r.run?.status === "queued" || r.run?.status === "running";
     if (wasRunning.current && !running) onChanged();
@@ -328,13 +341,8 @@ export function ZdBacktestPanel({
     let cancelled = false;
     void actionGetZdBacktestRun({ supplierId }).then((r) => {
       if (cancelled) return;
-      if (!r.ok) return setError(r.message);
+      if (!r?.ok) return setError(r?.message ?? "Nie udało się odczytać backtestu.");
       setRun(r.run);
-      // Pola pokazują ustawienia widocznego wyniku — inaczej „Policz ponownie” liczyłoby coś innego niż na ekranie.
-      if (r.run) {
-        setTargetDays(String(r.run.params.targetDays));
-        setCycleDays(String(r.run.params.cycleDays));
-      }
       wasRunning.current = r.run?.status === "queued" || r.run?.status === "running";
     });
     return () => {
@@ -349,46 +357,66 @@ export function ZdBacktestPanel({
     return () => window.clearInterval(id);
   }, [running, load]);
 
-  const start = async (params?: { targetDays: number; cycleDays: number }) => {
-    const t = params?.targetDays ?? Number(targetDays);
-    const c = params?.cycleDays ?? Number(cycleDays);
-    if (params) {
-      setTargetDays(String(t));
-      setCycleDays(String(c));
-    }
+  const start = async () => {
     setError(null);
     setSaved(null);
     setStarting(true);
-    const r = await actionStartZdBacktest({ supplierId, targetDays: t, cycleDays: c });
+    const r = await actionStartZdBacktest({ supplierId });
     setStarting(false);
     if (!r.ok) return setError(r.message);
     wasRunning.current = true;
     await load();
   };
 
-  const enable = async (t: number, c: number) => {
+  const apply = async () => {
+    if (!run) return;
+    setError(null);
+    setSaving(true);
+    const r = await actionApplyZdBacktestSettings({ supplierId, runId: run.id });
+    setSaving(false);
+    if (!r.ok) {
+      setError(r.message);
+      // Np. nowszy przebieg od otwarcia okna — pokaż to, co jest teraz.
+      return void load();
+    }
+    setCurrent(r.policy);
+    setSaved(r.message);
+    onApplied?.(r.policy);
+    onChanged();
+  };
+
+  const turnOff = async () => {
     setError(null);
     setSaving(true);
     const r = await actionSaveZdSupplierOrderPolicy({
       supplierId,
-      strategy: "max30_90",
-      targetDays: t,
-      cycleDays: c,
-      autoLevel: Math.max(1, policy.autoLevel) as ZdSupplierOrderPolicyRow["autoLevel"],
-      cutoffTime: policy.cutoffTime,
+      strategy: "classic",
+      targetDays: null,
+      cycleDays: null,
+      autoLevel: 0,
+      cutoffTime: current.cutoffTime,
     });
     setSaving(false);
     if (!r.ok) return setError(r.message);
-    setSaved(r.warning ?? `Automat włączony: co ${c} dni, cel ${t} dni. Pierwsza propozycja powstanie w nocnym przebiegu.`);
+    setCurrent(r.policy);
+    setSaved("Automat wyłączony - ZD liczysz w Kreatorze jak dotąd.");
+    onApplied?.(r.policy);
     onChanged();
   };
 
   const result = run?.status === "done" ? run.result : null;
-  const rec = result?.recommended ?? null;
-  const pick = rec && rec.works ? rec : null;
-  const sameAsPolicy = (t: number, c: number) => inAutomat && policy.targetDays === t && policy.cycleDays === c;
-  const automat = result?.variants.find((v) => v.key === "automat");
+  const searched = result != null && result.version >= ZD_BACKTEST_SEARCH_VERSION;
+  const best = searched ? result.params : null;
+  const block = run
+    ? zdBacktestApplyBlock(
+        { status: run.status, verdict: result?.verdict.kind ?? null, at: run.createdAt, params: result?.params ?? null, version: result?.version ?? null },
+        nowMs
+      )
+    : zdBacktestApplyBlock(null, nowMs);
+  const sameAsPolicy = !!best && inAutomat && current.cycleDays === best.cycleDays && current.targetDays === best.targetDays;
+  const canApply = canManage && !running && !block && !!best && !sameAsPolicy;
   const kreator = result?.variants.find((v) => v.key === "kreator");
+  const automat = result?.variants.find((v) => v.key === "automat");
   const pessimistic = result?.variants.find((v) => v.key === "pessimistic");
   const progress = run?.progress;
   const compareRows: CompareRow[] = result
@@ -396,7 +424,7 @@ export function ZdBacktestPanel({
         {
           key: "reality",
           label: "Naprawdę",
-          settings: "tygodniowe remanenty",
+          settings: "stany z remanentu",
           zeroShare: result.reality.zeroShare,
           avgStock: result.reality.avgStock,
           orders: null,
@@ -425,34 +453,39 @@ export function ZdBacktestPanel({
       ]
     : [];
 
-  // Pola zmienione względem wyniku na ekranie — najpierw policz, nie włączaj starych ustawień.
-  const fieldsChanged = !!result && (Number(targetDays) !== result.params.targetDays || Number(cycleDays) !== result.params.cycleDays);
   const footer = (
     <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
       <Button variant="secondary" onClick={onClose}>
         Zamknij
       </Button>
-      {canManage && fieldsChanged && !running ? (
-        <Button onClick={() => void start()} disabled={starting}>
-          {starting ? <Spinner /> : null}
-          Policz: co {cycleDays} dni, cel {targetDays} dni
-        </Button>
-      ) : canManage && result && result.verdict.kind === "works" && !sameAsPolicy(result.params.targetDays, result.params.cycleDays) ? (
-        <Button onClick={() => void enable(result.params.targetDays, result.params.cycleDays)} disabled={saving}>
+      {canManage && inAutomat && searched && result?.verdict.kind === "fails" && !running ? (
+        <Button variant="secondary" onClick={() => void turnOff()} disabled={saving}>
           {saving ? <Spinner /> : null}
-          Włącz automat: co {result.params.cycleDays} dni, cel {result.params.targetDays} dni
-        </Button>
-      ) : canManage && pick && !pick.sameAsParams && !sameAsPolicy(pick.targetDays, pick.cycleDays) ? (
-        <Button onClick={() => void enable(pick.targetDays, pick.cycleDays)} disabled={saving}>
-          {saving ? <Spinner /> : null}
-          Włącz z rekomendacją: co {pick.cycleDays} dni, cel {pick.targetDays} dni
-        </Button>
-      ) : canManage && !running ? (
-        <Button onClick={() => void start()} disabled={starting}>
-          {starting ? <Spinner /> : null}
-          {result ? "Policz ponownie" : "Uruchom backtest"}
+          Wyłącz automat
         </Button>
       ) : null}
+      {!canManage || running ? null : canApply ? (
+        <>
+          <Button variant="ghost" onClick={() => void start()} disabled={starting || saving}>
+            {starting ? <Spinner /> : null}
+            Policz ponownie
+          </Button>
+          <Button onClick={() => void apply()} disabled={saving || starting}>
+            {saving ? <Spinner /> : null}
+            {inAutomat ? "Przestaw automat" : "Włącz automat"}: {settingsText(best!)}
+          </Button>
+        </>
+      ) : block ? (
+        <Button onClick={() => void start()} disabled={starting || saving || run === undefined}>
+          {starting ? <Spinner /> : null}
+          {searched ? "Policz ponownie" : "Znajdź najlepsze ustawienia"}
+        </Button>
+      ) : (
+        <Button variant="ghost" onClick={() => void start()} disabled={starting || saving}>
+          {starting ? <Spinner /> : null}
+          Policz ponownie
+        </Button>
+      )}
     </div>
   );
 
@@ -462,39 +495,22 @@ export function ZdBacktestPanel({
       onClose={onClose}
       title={`Backtest — ${supplierName}`}
       tier={tier}
-      description="Rok prawdziwej sprzedaży i stanów z Subiekta, liczony tym samym silnikiem co automat. Nic nie zapisuje się w Subiekcie."
+      description="Backtest sam znajduje, co ile dni zamawiać i na ile dni zapasu: sprawdza każde ustawienie na roku prawdziwej sprzedaży i stanów z Subiekta, tym samym silnikiem co automat. Nic nie zapisuje się w Subiekcie."
       size="xl"
       bodyClassName="space-y-5 px-5 py-5 sm:px-6"
       footer={footer}
     >
-      <section className="rounded-lg border border-slate-200 bg-slate-50/60 px-4 py-3.5" aria-label="Ustawienia backtestu">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(2,minmax(0,11rem))_minmax(0,1fr)] sm:items-end">
-          <Field label="ZD co ile dni">
-            <Select value={cycleDays} onChange={(e) => setCycleDays(e.target.value)} disabled={running}>
-              {[...new Set([...CYCLE_OPTIONS, Number(cycleDays)])].sort((a, b) => a - b).map((c) => (
-                <option key={c} value={String(c)}>
-                  {cycleLabel(c)}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Cel w dniach">
-            <Input inputMode="numeric" value={targetDays} onChange={(e) => setTargetDays(e.target.value)} disabled={running} />
-          </Field>
-          <p className="col-span-2 flex items-center gap-2 text-sm text-slate-600 sm:col-span-1 sm:h-10 sm:justify-end">
-            <span className={cn("size-1.5 shrink-0 rounded-full", inAutomat ? "bg-emerald-600" : "bg-slate-300")} aria-hidden />
-            {inAutomat
-              ? `Teraz w automacie: co ${policy.cycleDays ?? "?"} dni, cel ${policy.targetDays ?? "?"} dni, stopień ${policy.autoLevel}`
-              : "Teraz poza automatem — zamawiasz z Kreatora"}
-          </p>
-        </div>
-        <p className="mt-2 text-xs text-slate-500">Cel to minimum — przy długiej dostawie silnik podnosi go sam (cykl + dostawa + zapas na opóźnienie).</p>
-      </section>
+      <p className="flex items-center gap-2 text-sm text-slate-600">
+        <span className={cn("size-1.5 shrink-0 rounded-full", inAutomat ? "bg-emerald-600" : "bg-slate-300")} aria-hidden />
+        {inAutomat
+          ? `Teraz w automacie: ${current.cycleDays && current.targetDays ? settingsText({ cycleDays: current.cycleDays, targetDays: current.targetDays }) : "bez ustawień"}`
+          : "Teraz poza automatem - ZD liczysz w Kreatorze"}
+      </p>
 
       {error ? (
-        <p className="rounded-md bg-red-50 px-3 py-2.5 text-sm text-red-700" role="alert">
+        <Alert tone="error" title="Nie udało się">
           {error}
-        </p>
+        </Alert>
       ) : null}
       {saved ? (
         <p className="rounded-md bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800" role="status">
@@ -512,11 +528,11 @@ export function ZdBacktestPanel({
           <BrandLoader size="lg" />
           <div className="space-y-1">
             <p className="text-base font-semibold text-slate-900">
-              {(PHASES.find((p) => p.key === progress?.phase) ?? PHASES[0]).text}
+              {PHASES[phaseIndex(progress?.phase)]!.text}
               {progress?.total && progress.phase !== "simulate" ? ` — ${nf0.format(progress.done ?? 0)} z ${nf0.format(progress.total)}` : "…"}
             </p>
             <p className="mx-auto max-w-md text-sm text-slate-600">
-              Zwykle od pół minuty do kilku minut (duże zakresy). Możesz zamknąć okno — wynik się zapisze i pokaże na liście.
+              Zwykle od minuty do kilku minut (duże zakresy). Możesz zamknąć okno — wynik się zapisze i pokaże na liście.
             </p>
           </div>
           <div className="w-full max-w-2xl text-left">
@@ -524,146 +540,90 @@ export function ZdBacktestPanel({
           </div>
         </div>
       ) : run?.status === "error" ? (
-        <p className="rounded-md bg-red-50 px-3 py-2.5 text-sm text-red-700" role="alert">
-          Backtest z {formatWarsawDateTime(run.createdAt)} się nie udał: {run.error ?? "nieznany błąd"}. Uruchom ponownie.
-        </p>
+        <Alert tone="error" title="Backtest się nie udał">
+          {`Przebieg z ${formatWarsawDateTime(run.createdAt)}: ${run.error ?? "nieznany błąd"}. Policz ponownie.`}
+        </Alert>
       ) : !result ? (
-        <div className="rounded-lg bg-slate-50 px-4 py-6 text-sm text-slate-600">
-          Ten dostawca nie ma jeszcze backtestu. Wybierz cykl i cel, a potem <span className="font-medium text-slate-900">Uruchom backtest</span>. Wynik
-          porówna automat z tym, jak było naprawdę, i z dzisiejszym Kreatorem, a siatka pokaże, które ustawienia działają.
+        <div className="rounded-lg bg-slate-50 px-4 py-6 text-sm leading-relaxed text-slate-600">
+          Ten dostawca nie ma jeszcze backtestu. <span className="font-medium text-slate-900">Znajdź najlepsze ustawienia</span> sprawdzi zamawianie od
+          codziennie do co 4 tygodnie i cel od 10 do 90 dni (dalej, gdy trzeba), a potem dopracuje cel co 1 dzień. Automat włączysz jednym kliknięciem z tym, co znajdzie.
         </div>
+      ) : !searched ? (
+        <Alert tone="info" title="Ten wynik nie dobierał ustawień">
+          {`Backtest z ${formatWarsawDateTime(run!.createdAt)} liczył ustawienia wybrane ręcznie (co ${result.params?.cycleDays ?? "?"} dni, cel ${result.params?.targetDays ?? "?"} dni). Teraz backtest sam szuka najlepszych - policz ponownie.`}
+        </Alert>
       ) : (
         <>
-          <section className={cn("rounded-lg px-4 py-4 sm:px-5", VERDICT_SURFACE[result.verdict.kind])} aria-labelledby="bt-verdict">
-            <p id="bt-verdict" className="flex items-start gap-2.5 text-lg font-semibold leading-snug text-balance">
-              <span className={cn("mt-2 size-2.5 shrink-0 rounded-full", VERDICT_DOT[result.verdict.kind])} aria-hidden />
-              {result.verdict.headline}
+          <section aria-labelledby="bt-answer" className="rounded-lg border border-slate-200 px-4 py-4 sm:px-5">
+            <p className="text-xs font-medium text-slate-500">
+              {result.verdict.kind === "works" ? "Najlepsze ustawienia" : result.verdict.kind === "fails" ? "Najlepsze, co da się ustawić" : "Wynik"}
             </p>
-            <div className="mt-1 space-y-1 pl-5 text-sm leading-relaxed">
-              {result.verdict.reasons.map((r) => (
-                <p key={r}>{r}</p>
-              ))}
-              <p className="opacity-80">
-                Co {result.params.cycleDays} dni, cel {result.params.targetDays} dni · okres {dm(result.period.from)}–{dm(result.period.to)} · policzone{" "}
-                {formatWarsawDateTime(run!.finishedAt ?? run!.createdAt)}
-              </p>
-            </div>
-          </section>
-
-          {rec && !rec.sameAsParams ? (
-            <section className="flex flex-col gap-3 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between" aria-label="Rekomendacja">
-              <div className="text-sm text-indigo-900">
-                <p className="font-semibold">
-                  {REC_TITLE[rec.tier ?? (rec.works ? "works" : "lowest_cost")]}: co {rec.cycleDays} dni, cel {rec.targetDays} dni
-                </p>
-                <p className="text-indigo-800">
-                  Braki {pct(rec.zeroShare)} (naprawdę {pct(result.reality.zeroShare)}), zapas {zl(rec.avgStock)} (naprawdę {zl(result.reality.avgStock)}),{" "}
-                  {nf0.format(rec.orders)} ZD w roku.
-                  {rec.cost != null ? ` Koszt roku ${zl(rec.cost)}${kreator?.metrics.cost != null ? ` (Kreator dziś ${zl(kreator.metrics.cost)})` : ""}.` : ""}
-                  {rec.stableQuarters != null ? ` Trzyma w ${rec.stableQuarters} z 4 kwartałów.` : ""}
-                  {rec.tier && rec.tier !== "works" ? ` ${REC_NOTE[rec.tier]}` : ""}
-                </p>
-              </div>
-              {canManage ? (
-                <Button variant="outline" size="sm" className="shrink-0" onClick={() => void start({ targetDays: rec.targetDays, cycleDays: rec.cycleDays })} disabled={starting}>
-                  Pokaż szczegóły tego ustawienia
-                </Button>
-              ) : null}
-            </section>
-          ) : null}
-
-          <section aria-labelledby="bt-compare" className="space-y-2">
-            <h3 id="bt-compare" className="text-sm font-semibold text-slate-900">
-              Porównanie
+            <h3 id="bt-answer" className="mt-0.5 text-xl font-semibold leading-snug text-balance text-slate-900">
+              {best && result.verdict.kind !== "insufficient" ? settingsText(best) : result.verdict.headline}
             </h3>
-            <CompareBars rows={compareRows} reality={compareRows[0]} />
-          </section>
-
-          <section aria-labelledby="bt-grid" className="space-y-2">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h3 id="bt-grid" className="text-sm font-semibold text-slate-900">
-                Siatka ustawień
-              </h3>
-              <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="size-2.5 rounded-sm bg-emerald-100 ring-1 ring-emerald-300" aria-hidden /> działa
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="size-2.5 rounded-sm ring-2 ring-indigo-600" aria-hidden /> rekomendacja
-                </span>
-                <span>braki · średni zapas; kliknij, żeby policzyć szczegóły</span>
-              </p>
-            </div>
-            <GridMatrix result={result} onPick={(g) => (canManage ? void start({ targetDays: g.targetDays, cycleDays: g.cycleDays }) : undefined)} />
-          </section>
-
-          <section aria-labelledby="bt-quality" className="space-y-2">
-            <h3 id="bt-quality" className="text-sm font-semibold text-slate-900">
-              Dane
-            </h3>
-            <dl className="grid grid-cols-1 gap-x-8 gap-y-1.5 rounded-lg border border-slate-200 px-4 py-3 sm:grid-cols-2">
-              <KeyValue label="Towary aktywne" value={`${nf0.format(result.quality.activeSkus)} z ${nf0.format(result.quality.skus)}`} />
-              <KeyValue label="Zmierzone dostawy" value={nf0.format(result.quality.leadSamples)} />
-              <KeyValue label="Pominięte wykluczone" value={nf0.format(result.quality.excluded)} />
-              <KeyValue label="Pominięte na prośbę" value={nf0.format(result.quality.onRequest)} />
-              <KeyValue
-                label="Cena dla aktywnych"
-                value={pct(result.quality.pricedActiveShare)}
-                tone={result.quality.pricedActiveShare < 90 ? "warning" : undefined}
-              />
-              {result.quality.hiddenOutflowShare != null ? (
-                <KeyValue
-                  label="Rozchód bez sprzedaży"
-                  value={pct(result.quality.hiddenOutflowShare)}
-                  tone={result.quality.hiddenOutflowShare >= 10 ? "warning" : undefined}
-                />
-              ) : null}
-              {result.model ? <KeyValue label="Okno sprzedaży" value={`${result.model.windowDays} dni (jak Kreator)`} /> : null}
-              {result.model ? <KeyValue label="Podążanie za sprzedażą" value={result.model.trackPreset ?? "wyłączone"} /> : null}
-              {result.model?.orderCost != null ? <KeyValue label="Koszt jednego ZD (w koszcie roku)" value={zl(result.model.orderCost)} /> : null}
-              {result.model && "minOrderValue" in result.model ? (
-                <KeyValue
-                  label="Minimum / darmowa dostawa"
-                  value={`${result.model.minOrderValue != null ? zl(result.model.minOrderValue) : "brak"} / ${result.model.freeShippingThreshold != null ? zl(result.model.freeShippingThreshold) : "brak"}`}
-                />
-              ) : null}
-              {result.model?.dailyStock ? <KeyValue label="Stany" value="dzienne (remanent na każdy dzień)" /> : null}
-              {result.quality.imputedShare != null ? (
-                <KeyValue label="Popyt dopisany za braki" value={pct(result.quality.imputedShare)} tone={result.quality.imputedShare >= 15 ? "warning" : undefined} />
-              ) : null}
-              {result.quality.prosbaShare != null ? <KeyValue label="Sprzedaż pod prośby (poza zapasem)" value={pct(result.quality.prosbaShare)} /> : null}
-              {result.quality.zkShare != null ? <KeyValue label="Sprzedaż z zamówień klientów (ZK)" value={pct(result.quality.zkShare)} /> : null}
-              {automat?.metrics.zk ? (
-                <KeyValue
-                  label="ZK wydane po terminie (automat)"
-                  value={
-                    automat.metrics.zk.lateQty
-                      ? `${nf0.format(automat.metrics.zk.lateQty)} z ${nf0.format(automat.metrics.zk.qty)} szt., śr. ${nf1.format(automat.metrics.zk.avgDelayDays ?? 0)} dni`
-                      : `0 z ${nf0.format(automat.metrics.zk.qty)} szt.`
-                  }
-                />
-              ) : null}
-              {result.quality.minStockSkus ? <KeyValue label="Towary z minimum stanów" value={nf0.format(result.quality.minStockSkus)} /> : null}
-              {result.quality.marginActiveShare != null ? (
-                <KeyValue label="Marża dla aktywnych" value={pct(result.quality.marginActiveShare)} tone={result.quality.marginActiveShare < 80 ? "warning" : undefined} />
-              ) : null}
-              {result.quality.pairs ? <KeyValue label="Pary paczka↔sztuka" value={nf0.format(result.quality.pairs)} /> : null}
-              {result.quality.explodedBoms ? <KeyValue label="Komplety na składniki" value={nf0.format(result.quality.explodedBoms)} /> : null}
-            </dl>
-            {result.notes.length ? (
-              <ul className="space-y-1 text-sm text-slate-600">
-                {result.notes.map((n) => (
-                  <li key={n}>{n}</li>
+            {result.verdict.kind === "insufficient" ? (
+              <ul className="mt-2 list-disc space-y-1 ps-5 text-sm text-slate-700">
+                {result.verdict.reasons.map((r) => (
+                  <li key={r}>{r}</li>
                 ))}
               </ul>
+            ) : automat && kreator ? (
+              <>
+                <dl className="mt-2 grid grid-cols-1 divide-y divide-slate-100 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+                  <AnswerMetric
+                    label="Towary z zerowym stanem"
+                    value={pct(automat.metrics.zeroShare)}
+                    baseLabel="naprawdę"
+                    base={pct(result.reality.zeroShare)}
+                    better={automat.metrics.zeroShare == null || result.reality.zeroShare == null ? null : automat.metrics.zeroShare <= result.reality.zeroShare}
+                  />
+                  <AnswerMetric
+                    label="Średni zapas"
+                    value={zl(automat.metrics.avgStock)}
+                    baseLabel="naprawdę"
+                    base={zl(result.reality.avgStock)}
+                    better={automat.metrics.avgStock <= result.reality.avgStock}
+                  />
+                  <AnswerMetric
+                    label="Koszt roku"
+                    value={zl(automat.metrics.cost)}
+                    baseLabel="Kreator dziś"
+                    base={zl(kreator.metrics.cost)}
+                    better={automat.metrics.cost <= kreator.metrics.cost}
+                  />
+                </dl>
+                {pessimistic?.metrics.zeroShare != null && result.reality.zeroShare != null && pessimistic.metrics.zeroShare > result.reality.zeroShare + 1 ? (
+                  <p className="mt-1 text-sm text-slate-700">
+                    Gdy dostawca się spóźnia (towar dopiero z ostatnią dostawą), braki rosną do {pct(pessimistic.metrics.zeroShare)}.
+                  </p>
+                ) : null}
+                {result.verdict.kind === "fails" ? (
+                  <p className="mt-2 text-sm font-medium text-amber-900">
+                    Nawet najlepsze ustawienia mają więcej braków niż naprawdę i nie są tańsze od Kreatora - zostań przy Kreatorze.
+                  </p>
+                ) : null}
+              </>
             ) : null}
-            <p className="text-xs leading-relaxed text-slate-500">
-              Werdykt „działa”: braki nie większe niż naprawdę, zapas najwyżej o 10% większy, a przy opóźnionych dostawach braki najwyżej o 1 pp większe.
-              {result.version === 2
-                ? " Każda decyzja liczona jak nocny przebieg: okno dni zapasu dostawcy, korekta dni braku, prośby poza zapasem, rezerwacje z ZK (klient czeka na dostawę, nie przepada), podążanie za sprzedażą, minimum stanów, opakowania, minimum zamówienia i darmowa dostawa (odłożenie, dopełnienie), czas dostawy znany w dniu decyzji, stany dzienne. Nowy towar dostaje pierwszą dostawę jak naprawdę. Koszt roku = utracona marża na sprzedaży z półki + 20% średniego zapasu + koszt każdego ZD; rekomendacja to najniższy koszt wśród ustawień (od codziennie do co 3 tygodnie), które działają — najlepiej we wszystkich kwartałach. Częściej albo rzadziej z większym zapasem — wygrywa to, co taniej wychodzi w roku."
-                : " Wynik policzony starszą wersją backtestu — policz ponownie, żeby zobaczyć koszt i ustawienia liczone jak nocny przebieg."}
+            <p className="mt-3 text-xs text-slate-500">
+              {result.searched
+                ? `Sprawdzono ${nf0.format(result.searched.points)} ${polishPluralWord(result.searched.points, "ustawienie", "ustawienia", "ustawień")}: ZD co ${result.searched.cycles[0]}–${result.searched.cycles[1]} dni, cel ${result.searched.targets[0]}–${result.searched.targets[1]} dni · `
+                : ""}
+              okres {dm(result.period.from)}–{dm(result.period.to)} · policzone {formatWarsawDateTime(run!.finishedAt ?? run!.createdAt)}
             </p>
           </section>
+
+          {block && best && result.verdict.kind === "works" ? (
+            <Alert tone="warning" title="Najpierw policz ponownie">
+              {sameAsPolicy ? `${block} Automat ma te ustawienia, ale nie wiadomo, czy dalej są najlepsze.` : block}
+            </Alert>
+          ) : sameAsPolicy ? (
+            <p className="flex items-center gap-2 rounded-md bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800" role="status">
+              <IconCheck size={16} aria-hidden />
+              Automat ma już te ustawienia.
+            </p>
+          ) : null}
+
+          <ResultDetails result={result} compareRows={compareRows} />
         </>
       )}
     </ModalShell>

@@ -82,14 +82,12 @@ import {
 } from "@/lib/data/zd-scope-order";
 import {
   fetchSubiektZdEstimateAll,
-  fetchSubiektZdEstimateZkPage,
 } from "@/lib/subiekt/api";
 import { fetchZdSupplierOrderPolicy } from "@/lib/data/zd-supplier-order-policy";
 import {
   applyZdDemandFloorToLine,
   applyZdPairDemandFloor,
   effectiveDniZapasu,
-  sales90FromProfile,
   applyZdBomDemandFloor,
   ZD_SUPPLIER_ORDER_POLICY_CLASSIC,
   type ZdSupplierOrderPolicy,
@@ -98,7 +96,7 @@ import { requireZdEstimateSnapshotHostKind } from "@/lib/subiekt/config";
 import { getSubiektFeedback, type SubiektFeedback } from "@/lib/subiekt/feedback";
 import { assertZdEstimateFilterEcho } from "@/lib/orders/zd-estimate-scope";
 import type { ZdEstimateRunProgressSnapshot } from "@/lib/orders/zd-estimate-run-progress";
-import { fetchAllReservedZkRowsForTwId } from "@/lib/orders/zd-estimate-reservations";
+import { fetchReservedOverlapSlicesByTwIds } from "@/lib/orders/zd-reserved-overlap-fetch";
 import {
   collectTwIdsNeedingProsbaReservationOverlap,
   collectTwIdsNeedingProsbaReservationOverlapWithoutStanRez,
@@ -108,13 +106,13 @@ import {
   mergeReservedSlicesBySources,
   reservationSourceTwIds,
   type ZdOverlapReservationSources,
-  reservedRowsToOverlapSlices,
   type ZdEstimateProsbaOverlapContribution,
   type ZdEstimateReservedOverlapSlice,
 } from "@/lib/orders/zd-estimate-prosba-reservation-overlap";
 import {
   applyZdSalesProfileToLine,
   resolveZdSalesProfile,
+  sales90CappedFromProfile,
   type ZdSalesSmoothingSummary,
 } from "@/lib/orders/zd-sales-profile";
 import {
@@ -222,59 +220,7 @@ export function historyScopeFromRun(scope: {
 }
 
 
-const ZD_ESTIMATE_PROSBA_OVERLAP_CONCURRENCY = 4;
-
-export async function fetchReservedOverlapSlicesByTwIds(
-  twIds: readonly number[]
-): Promise<{
-  reservedByTwId: Map<number, ZdEstimateReservedOverlapSlice[]>;
-  /** true gdy którykolwiek tw rzucił — nie cache'uj skip w UI. */
-  hadFetchErrors: boolean;
-}> {
-  const unique = [
-    ...new Set(
-      twIds
-        .map((id) => Math.trunc(Number(id)) || 0)
-        .filter((id) => id > 0)
-    ),
-  ];
-
-  const out = new Map<number, ZdEstimateReservedOverlapSlice[]>();
-  if (!unique.length) {
-    return { reservedByTwId: out, hadFetchErrors: false };
-  }
-
-  let hadFetchErrors = false;
-  for (let i = 0; i < unique.length; i += ZD_ESTIMATE_PROSBA_OVERLAP_CONCURRENCY) {
-    const chunk = unique.slice(i, i + ZD_ESTIMATE_PROSBA_OVERLAP_CONCURRENCY);
-    const results = await Promise.all(
-      chunk.map(async (twId) => {
-        try {
-          const fetched = await fetchAllReservedZkRowsForTwId({
-            twId,
-            fetchPage: fetchSubiektZdEstimateZkPage,
-          });
-          return {
-            twId,
-            slices: reservedRowsToOverlapSlices(fetched.rows),
-            ok: true as const,
-          };
-        } catch {
-          return {
-            twId,
-            slices: [] as ZdEstimateReservedOverlapSlice[],
-            ok: false as const,
-          };
-        }
-      })
-    );
-    for (const r of results) {
-      if (!r.ok) hadFetchErrors = true;
-      if (r.slices.length) out.set(r.twId, r.slices);
-    }
-  }
-  return { reservedByTwId: out, hadFetchErrors };
-}
+export { fetchReservedOverlapSlicesByTwIds };
 
 export function reservedOverlapMapToDto(
   map: Map<number, ZdEstimateReservedOverlapSlice[]>
@@ -320,6 +266,7 @@ export async function resolveIndividualExtrasWithReservationOverlap(input: {
    * karta zestawu) — rezerwacje kart źródłowych scalane na linii w jednostkach jej extra.
    */
   reservationSources?: ZdOverlapReservationSources | null;
+  fetchOpts?: Parameters<typeof fetchReservedOverlapSlicesByTwIds>[1];
 }): Promise<{
   adjustedExtraByTwId: Map<number, number>;
   rawExtraByTwId: Map<number, number>;
@@ -391,7 +338,10 @@ export async function resolveIndividualExtrasWithReservationOverlap(input: {
   }
 
   try {
-    const fetched = await fetchReservedOverlapSlicesByTwIds(reservationSourceTwIds(toFetch, sources));
+    const fetched = await fetchReservedOverlapSlicesByTwIds(
+      reservationSourceTwIds(toFetch, sources),
+      input.fetchOpts
+    );
     fetched.reservedByTwId = mergeReservedSlicesBySources(fetched.reservedByTwId, toFetch, sources);
     const maps = individualExtrasAndReliefWithReservationOverlap(
       scopedByTw,
@@ -1183,8 +1133,8 @@ export async function runZdOrderEngine(
         const line = mergedPozycje[i]!;
         const tw = Math.trunc(Number(line.tw_Id) || 0);
         const windows = profiles.get(tw);
-        // Strategia odjęła prośby — meta z tego kroku zostaje (drugi przebieg bez odejmowania
-        // nadpisałby ją „bez zmian”, a liczby już są po odjęciu).
+        // Strategia odjęła prośby / ścięła skok — meta z tego kroku zostaje (drugi przebieg bez
+        // wygładzenia nadpisałby ją „bez zmian”, a liczby już są po zmianie).
         let prosbaMetaKept = false;
         if (
           windows &&
@@ -1194,25 +1144,29 @@ export async function runZdOrderEngine(
           !bomFloored.has(tw)
         ) {
           let base = line;
-          const prosba = prosbaPieces.get(tw) ?? 0;
-          if (prosba > 0 && !compositeTwIds.has(tw)) {
+          if (!compositeTwIds.has(tw)) {
+            // Jednorazowy skok liczony jak typowy miesiąc — cel strategii (cykl + dostawa + bufor) zamawiałby
+            // go prawie w całości. Rzadka sprzedaż bez zmian (tę trzyma podłoga 90 d).
             const pm = resolveZdSalesProfile({
               windows,
               sprzedazOkres: Number(line.sprzedazOkres) || 0,
               dniOkresu,
-              prosbaPieces: prosba,
-              smoothing: false,
-              subtractProsba: true,
+              prosbaPieces: prosbaPieces.get(tw) ?? 0,
+              smoothing: true,
+              smoothKinds: ["spike"],
             });
-            base = applyZdSalesProfileToLine(line, pm, zapasMin);
             if (pm.applied) {
-              salesSmoothing.prosba += 1;
+              // smoothing: false — jak dotąd przy samych prośbach: cięcia z historii ZD i podbicia bez zmian
+              // (backtest liczy je tak samo).
+              base = applyZdSalesProfileToLine(line, { ...pm, smoothing: false }, zapasMin);
+              if (pm.prosbaPieces > 0) salesSmoothing.prosba += 1;
+              if (pm.kind === "spike") salesSmoothing.spike += 1;
               prosbaMetaKept = true;
             }
           }
           const floored = applyZdDemandFloorToLine(base, {
             policy: orderPolicy,
-            sales90: sales90FromProfile(windows, prosbaByFloorWindow.get(tw)),
+            sales90: sales90CappedFromProfile(windows, prosbaByFloorWindow.get(tw)),
             dniOkresu,
             dniZapasu,
           });
@@ -1262,7 +1216,7 @@ export async function runZdOrderEngine(
           pack: mergedPozycje[packIdx]!,
           piece: pieceIdx != null ? mergedPozycje[pieceIdx]! : null,
           unitsPerPack: ratio,
-          sales90: sales90FromProfile(windows),
+          sales90: sales90CappedFromProfile(windows),
           dniOkresu,
         });
         if (!floored) continue;

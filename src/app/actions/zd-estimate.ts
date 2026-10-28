@@ -35,6 +35,12 @@ import {
 } from "@/lib/data/zd-auto-proposals";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Create musi zmieścić się w proxy_read_timeout 300 s nginx razem z zapisem ZD (do 180 s).
+const ZD_CREATE_OVERLAP_DEADLINE_MS = 100_000;
+// Rezerwacje z Policz — create liczy na tych samych danych, które użytkownik widział.
+const ZD_CREATE_OVERLAP_CACHE_MAX_AGE_MS = 15 * 60_000;
+const ZD_CREATE_KIT_STOCK_BUDGET_MS = 20_000;
 // @service-role-ok — autoryzacja requireZdEstimateAdmin() (operacje dostaw); service role z pełnym scope po warstwie aplikacji.
 import { requireZdEstimateAdmin } from "@/lib/auth";
 import {
@@ -425,6 +431,8 @@ export type ZdEstimateRunResult =
       salesSmoothing?: import("@/lib/orders/zd-order-engine").ZdSalesSmoothingSummary | null;
       /** tw → cena netto za sztukę z ostatniego ZD (kolumna „Wartość”). */
       unitPriceByTwId?: Record<number, number>;
+      /** tw → surowa cena z ostatniego ZD (jednostka dokumentu) — przeglądarka przelicza na sztukę. */
+      purchasePriceNetByTwId?: Record<number, number>;
       meta: {
         pagesFetched: number;
         totalCountApi: number;
@@ -1984,13 +1992,25 @@ export async function actionSaveZdSupplierOrderPolicy(input: {
   const cutoffTime = parseZdCutoffTime(input.cutoffTime);
   if (!cutoffTime) return { ok: false, message: "Godzina odcięcia: format GG:MM." };
   if (autoLevel > 0 && strategy === "classic") return { ok: false, message: "Propozycje automatu wymagają strategii testowej." };
-  if (autoLevel > 0 && cycle == null) return { ok: false, message: "Propozycje automatu wymagają cyklu (co ile dni)." };
   try {
+    // Cykl i cel automatu dobiera tylko backtest (actionApplyZdBacktestSettings) — tu zostają te, które już są.
+    let targetDays = strategy === "classic" ? null : days;
+    let cycleDays = cycle;
+    if (strategy === "max30_90") {
+      const current = await fetchZdSupplierOrderPolicy(supplierId);
+      // Także strategia bez propozycji (stopień 0): włączenie propozycji to włączenie automatu — tylko z backtestu.
+      if (current.strategy === "classic" || (autoLevel >= 1 && !current.autoProposals)) {
+        return { ok: false, message: "Automat włączasz z backtestu - on sam dobierze, co ile dni zamawiać i na jaki zapas." };
+      }
+      targetDays = current.targetDays;
+      cycleDays = current.cycleDays;
+    }
+    if (autoLevel > 0 && cycleDays == null) return { ok: false, message: "Propozycje automatu wymagają cyklu - policz backtest." };
     const { policy, warning } = await upsertZdSupplierOrderPolicy({
       supplierId,
       strategy,
-      targetDays: strategy === "classic" ? null : days,
-      cycleDays: cycle,
+      targetDays,
+      cycleDays,
       autoProposals: autoLevel >= 1,
       autoLevel: autoLevel as ZdAutoLevel,
       cutoffTime,
@@ -2264,11 +2284,13 @@ export async function actionRunZdEstimateManual(
 
     // Ceny z ostatnich ZD (nocny zbiór) — za sztukę, wg opakowań z tego Policz.
     const unitPriceByTwId: Record<number, number> = {};
+    const purchasePriceNetByTwId: Record<number, number> = {};
     try {
       const prices = await loadProductPurchasePrices();
       for (const line of result.pozycje) {
         const price = prices.get(line.tw_Id);
         if (!price) continue;
+        if (price.priceNet > 0) purchasePriceNetByTwId[line.tw_Id] = price.priceNet;
         const perPiece = unitPricePerPiece(price.priceNet, engine.packagingLookup.get(line.tw_Id) ?? null);
         if (perPiece != null) unitPriceByTwId[line.tw_Id] = perPiece;
       }
@@ -2304,6 +2326,7 @@ export async function actionRunZdEstimateManual(
         salesSmoothingEnabled: smoothingApplied,
         salesSmoothing: engine.salesSmoothing,
         unitPriceByTwId,
+        purchasePriceNetByTwId,
         leadDays,
         classicCompare,
         seed: input.uiSessionSeed ?? null,
@@ -2350,6 +2373,7 @@ export async function actionRunZdEstimateManual(
       salesSmoothingEnabled: smoothingApplied,
       salesSmoothing: engine.salesSmoothing,
       unitPriceByTwId,
+      purchasePriceNetByTwId,
       exclusions,
       onRequests,
       packaging,
@@ -4049,29 +4073,66 @@ export async function actionCreateZdFromEstimate(input: {
   // coverLines: fetch ZK tylko gdy ilosc < minZd(raw); scoped extras bez zmian.
   const tOverlap = performance.now();
   // Stan kart „Składamy” bez pokrycia — jak dostepneByTw w Policz; bez niego limit rezerwacji
-  // zestawu wynosi 0 i ZD dostaje prośbę drugi raz. Brak odpowiedzi = limit 0 (jak dotąd).
-  const kitDostepneByTw = await fetchOwnAvailableByTwIds(overlapCapKitTwIds(bomsForExtras)).catch(
-    () => new Map<number, number>()
-  );
-  const overlapForCreate = await resolveIndividualExtrasWithReservationOverlap({
-    byTwId: extrasBundle.byTwId,
-    twIdsFilter: createdTwIds,
-    coverLines: linesCheck.lines,
-    unitsPerPackageByTwId,
-    packagingModeByTwId,
-    reservationSources: buildZdOverlapReservationSources({
+  // zestawu wynosi 0 i ZD dostaje prośbę drugi raz. Pojedynczy brak odpowiedzi = limit 0 (jak dotąd).
+  // Tylko zestawy będące źródłem rezerwacji linii tego ZD — bomsForExtras to wszystkie BOM-y
+  // w bazie, a każda karta to osobne zapytanie do Subiekta.
+  const capKits = new Set(overlapCapKitTwIds(bomsForExtras));
+  const relevantCapKits = new Set<number>();
+  if (capKits.size) {
+    const draftSources = buildZdOverlapReservationSources({
       pairs: pairsForExtras,
       boms: bomRowsToRefs(bomsForExtras),
-      dostepneByTw: kitDostepneByTw,
-    }),
-  });
+    });
+    for (const tw of createdTwIds) {
+      for (const src of draftSources.get(tw) ?? []) {
+        if (capKits.has(src.twId)) relevantCapKits.add(src.twId);
+      }
+    }
+  }
+  let kitStockTimer: ReturnType<typeof setTimeout> | undefined;
+  const kitDostepneByTw = relevantCapKits.size
+    ? await Promise.race([
+        fetchOwnAvailableByTwIds([...relevantCapKits]).catch(() => new Map<number, number>()),
+        new Promise<null>((resolve) => {
+          kitStockTimer = setTimeout(() => resolve(null), ZD_CREATE_KIT_STOCK_BUDGET_MS);
+        }),
+      ]).finally(() => clearTimeout(kitStockTimer))
+    : new Map<number, number>();
+  // Timeout całości ≠ pojedynczy brak: cicho zerowy limit dla wszystkich zestawów
+  // zdublowałby prośby na ZD — traktujemy jak nierozstrzygnięty overlap.
+  const overlapForCreate = kitDostepneByTw
+    ? await resolveIndividualExtrasWithReservationOverlap({
+        byTwId: extrasBundle.byTwId,
+        twIdsFilter: createdTwIds,
+        coverLines: linesCheck.lines,
+        unitsPerPackageByTwId,
+        packagingModeByTwId,
+        reservationSources: buildZdOverlapReservationSources({
+          pairs: pairsForExtras,
+          boms: bomRowsToRefs(bomsForExtras),
+          dostepneByTw: kitDostepneByTw,
+        }),
+        fetchOpts: {
+          cacheMaxAgeMs: ZD_CREATE_OVERLAP_CACHE_MAX_AGE_MS,
+          // Liczone od startu akcji: zapis ZD (do 180 s) musi się jeszcze zmieścić w limicie proxy.
+          deadlineAt: Date.now() + Math.max(0, ZD_CREATE_OVERLAP_DEADLINE_MS - (performance.now() - t0)),
+        },
+      })
+    : null;
+  if (!overlapForCreate) {
+    console.warn("[zd-estimate:create:kit-stock-timeout]", {
+      supplierId: input.supplierId,
+      khId: khRes.khId,
+      kitCount: relevantCapKits.size,
+    });
+  }
   msOverlap = Math.round(performance.now() - tOverlap);
-  overlapCandidateCount = overlapForCreate.candidateTwIds.length;
-  overlapTwFetched = overlapForCreate.overlapTwFetched;
-  overlapTwSkipped = overlapForCreate.overlapTwSkipped;
+  overlapCandidateCount = overlapForCreate?.candidateTwIds.length ?? 0;
+  overlapTwFetched = overlapForCreate?.overlapTwFetched ?? [];
+  overlapTwSkipped = overlapForCreate?.overlapTwSkipped ?? [];
 
   // Fail-open raw extras przy błędzie ZK → ensureCover mógłby over-bumpnąć vs UI.
-  if (!overlapForCreate.resolved) {
+  if (!overlapForCreate?.resolved) {
     console.warn("[zd-estimate:create:fail]", {
       hostKind,
       ordersBaseUrl: orders.config.baseUrl,

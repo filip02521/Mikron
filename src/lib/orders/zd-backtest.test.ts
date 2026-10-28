@@ -3,20 +3,22 @@ import { policyForBoostPreset } from "@/lib/orders/zd-estimate-boost-presets";
 import {
   addDaysKey,
   simulateZdBacktest,
-  zdBacktestGrid,
+  zdBacktestPickBest,
+  zdBacktestSearch,
   zdBacktestHiddenOutflowShare,
   zdBacktestImputedShare,
   zdBacktestLeadDays,
   zdBacktestReality,
   zdBacktestSplitProsbaSales,
   zdBacktestStableQuarters,
-  zdBacktestVerdict,
+  zdBacktestBestVerdict,
   zdBacktestApplyOrderTerms,
   ZD_BACKTEST_ORDER_COST,
   type ZdBacktestInput,
   type ZdBacktestLeadSample,
   type ZdBacktestMetrics,
   type ZdBacktestReality,
+  type ZdBacktestGridPoint,
 } from "@/lib/orders/zd-backtest";
 
 const START = "2025-10-23"; // czwartek
@@ -282,29 +284,46 @@ const m = (zeroShare: number, avgStock: number): ZdBacktestMetrics => ({
 });
 const quality = { activeSkus: 30, pricedActiveShare: 100, leadSamples: 40 };
 
-describe("werdykt", () => {
+describe("werdykt najlepszych ustawień", () => {
   const reality = { zeroShare: 10, avgStock: 1000 };
-  it("mniej braków, zapas do +10%, pesymistycznie nie gorzej niż +1 pp — działa", () => {
-    const v = zdBacktestVerdict({ reality, automat: m(6, 1100), pessimistic: m(11, 1100), quality });
+  const best = { targetDays: 25, cycleDays: 7 };
+  const kreator = m(12, 2000);
+  it("opisuje znalezione ustawienia liczbami, bez etykiet", () => {
+    const v = zdBacktestBestVerdict({ reality, best, automat: m(6, 900), pessimistic: m(10.5, 900), kreator, quality });
     expect(v.kind).toBe("works");
-    expect(v.headline).toBe("Schemat działa: o 40% mniej braków i o 10% więcej zapasu niż było naprawdę");
+    expect(v.headline).toBe("Najlepiej: ZD co 7 dni, cel 25 dni");
+    expect(v.reasons).toEqual([
+      "Towary z zerowym stanem: 6% (naprawdę 10%).",
+      "Średni zapas: 900 zł (naprawdę 1000 zł).",
+      "Koszt roku: 180 zł (Kreator dziś 400 zł).",
+    ]);
   });
-  it("mniej braków, ale zapas ponad +10% — kompromis", () => {
-    expect(zdBacktestVerdict({ reality, automat: m(6, 1101), pessimistic: m(8, 1101), quality }).kind).toBe("tradeoff");
+  it("wrażliwość na opóźnienia to zdanie z liczbą, nie inny werdykt", () => {
+    const v = zdBacktestBestVerdict({ reality, best: { targetDays: 30, cycleDays: 1 }, automat: m(6, 900), pessimistic: m(11.5, 900), kreator, quality });
+    expect(v.kind).toBe("works");
+    expect(v.headline).toBe("Najlepiej: ZD codziennie, cel 30 dni");
+    expect(v.reasons.at(-1)).toBe("Gdy dostawca się spóźnia (towar dopiero z ostatnią dostawą), braki rosną do 11,5%.");
   });
-  it("wrażliwe na opóźnienia — kompromis", () => {
-    const v = zdBacktestVerdict({ reality, automat: m(6, 900), pessimistic: m(11.5, 900), quality });
-    expect(v.kind).toBe("tradeoff");
-    expect(v.headline.startsWith("Działa przy zwykłych dostawach")).toBe(true);
+  it("więcej braków niż naprawdę, ale taniej niż Kreator — nadal najlepsze do włączenia", () => {
+    expect(zdBacktestBestVerdict({ reality, best, automat: m(11, 900), pessimistic: m(12, 900), kreator, quality }).kind).toBe("works");
   });
-  it("mniej zapasu, braki do +2 pp — kompromis; więcej — nie działa", () => {
-    expect(zdBacktestVerdict({ reality, automat: m(12, 700), pessimistic: m(13, 700), quality }).kind).toBe("tradeoff");
-    expect(zdBacktestVerdict({ reality, automat: m(12.5, 700), pessimistic: m(13, 700), quality }).kind).toBe("fails");
+  it("więcej braków niż naprawdę przy słabo znanej marży — za mało danych, nie włączamy", () => {
+    const v = zdBacktestBestVerdict({ reality, best, automat: m(11, 900), pessimistic: m(12, 900), kreator, quality: { ...quality, marginActiveShare: 60 } });
+    expect(v.kind).toBe("insufficient");
+    expect(v.reasons[0]).toContain("marża znana tylko dla 60%");
+    expect(zdBacktestBestVerdict({ reality, best, automat: m(6, 900), pessimistic: m(7, 900), kreator, quality: { ...quality, marginActiveShare: 60 } }).kind).toBe("works");
   });
-  it("za mało danych: mało towarów, cen albo dostaw", () => {
-    expect(zdBacktestVerdict({ reality, automat: m(1, 1), pessimistic: m(1, 1), quality: { ...quality, activeSkus: 4 } }).kind).toBe("insufficient");
-    expect(zdBacktestVerdict({ reality, automat: m(1, 1), pessimistic: m(1, 1), quality: { ...quality, pricedActiveShare: 79 } }).kind).toBe("insufficient");
-    expect(zdBacktestVerdict({ reality, automat: m(1, 1), pessimistic: m(1, 1), quality: { ...quality, leadSamples: 4 } }).reasons[0]).toContain("4 zmierzonych dostaw");
+  it("więcej braków i nie taniej niż Kreator — automat nie poprawi wyniku", () => {
+    const v = zdBacktestBestVerdict({ reality, best, automat: m(11, 2000), pessimistic: m(12, 2000), kreator, quality });
+    expect(v.kind).toBe("fails");
+    expect(v.headline).toContain("ZD co 7 dni, cel 25 dni");
+  });
+  it("za mało danych: mało towarów, cen albo dostaw, albo nic nie znaleziono", () => {
+    const ok = { reality, best, automat: m(1, 1), pessimistic: m(1, 1), kreator };
+    expect(zdBacktestBestVerdict({ ...ok, quality: { ...quality, activeSkus: 4 } }).kind).toBe("insufficient");
+    expect(zdBacktestBestVerdict({ ...ok, quality: { ...quality, pricedActiveShare: 79 } }).kind).toBe("insufficient");
+    expect(zdBacktestBestVerdict({ ...ok, quality: { ...quality, leadSamples: 4 } }).reasons[0]).toContain("4 zmierzonych dostaw");
+    expect(zdBacktestBestVerdict({ ...ok, best: null, automat: null, quality }).kind).toBe("insufficient");
   });
 });
 
@@ -316,21 +335,86 @@ const realityOf = (zeroShare: number, avgStock: number): ZdBacktestReality => ({
   quarters: [{ zeroShare }, { zeroShare }, { zeroShare }, { zeroShare }],
 });
 
-describe("siatka ustawień i rekomendacja", () => {
-  it("rekomenduje najniższy koszt wśród działających; gdy nic nie działa — kolejne progi, każdy po koszcie", () => {
+const point = (over: Partial<ZdBacktestGridPoint>): ZdBacktestGridPoint => ({
+  targetDays: 25,
+  cycleDays: 7,
+  zeroShare: 5,
+  avgStock: 1000,
+  orders: 50,
+  medianOrder: 100,
+  lostMargin: 0,
+  cost: 1000,
+  stableQuarters: 4,
+  pessimisticZeroShare: 5,
+  ...over,
+});
+
+describe("wybór najlepszych ustawień", () => {
+  const r = realityOf(10, 5000);
+  it("najniższy koszt wśród odpornych na opóźnienia", () => {
+    const best = zdBacktestPickBest(
+      [point({ cycleDays: 7, cost: 900 }), point({ cycleDays: 14, cost: 800 }), point({ cycleDays: 1, cost: 500, pessimisticZeroShare: 12 })],
+      r
+    );
+    expect(best).toMatchObject({ cycleDays: 14, tier: "works" });
+  });
+  it("remis kosztu w granicach 1% rozstrzygają mniej braków", () => {
+    const best = zdBacktestPickBest([point({ cycleDays: 7, cost: 1000, zeroShare: 6 }), point({ cycleDays: 5, cost: 1009, zeroShare: 3 })], r);
+    expect(best?.cycleDays).toBe(5);
+    expect(zdBacktestPickBest([point({ cycleDays: 7, cost: 1000, zeroShare: 6 }), point({ cycleDays: 5, cost: 1020, zeroShare: 3 })], r)?.cycleDays).toBe(7);
+  });
+  it("identyczny wynik dla kilku celów — wyższy cel (niższe cele silnik i tak podnosi)", () => {
+    const best = zdBacktestPickBest([point({ targetDays: 10 }), point({ targetDays: 14 }), point({ targetDays: 18 })], r);
+    expect(best?.targetDays).toBe(18);
+  });
+  it("stabilność przed kosztem: tańsze, ale trzymające w 2 kwartałach przegrywa z trzymającym we wszystkich", () => {
+    const best = zdBacktestPickBest([point({ cycleDays: 7, cost: 500, stableQuarters: 2 }), point({ cycleDays: 14, cost: 900 })], r);
+    expect(best?.cycleDays).toBe(14);
+  });
+  it("progi: wrażliwe na opóźnienia, potem najtańsze w ogóle", () => {
+    expect(zdBacktestPickBest([point({ pessimisticZeroShare: 20 })], r)?.tier).toBe("delay_sensitive");
+    expect(zdBacktestPickBest([point({ zeroShare: 20, pessimisticZeroShare: null, cost: 900 }), point({ zeroShare: 30, pessimisticZeroShare: null, cost: 800 })], r)).toMatchObject({
+      tier: "lowest_cost",
+      cost: 800,
+    });
+    expect(zdBacktestPickBest([], r)).toBeNull();
+  });
+});
+
+describe("szukanie ustawień", () => {
+  it("siatka, potem dopracowanie co 1 dzień wokół najlepszego; najlepsze = najtańsze z całości", async () => {
     const base = input();
-    const { grid, recommended } = zdBacktestGrid(base, realityOf(50, 10_000), { targets: [20, 40], cycles: [7, 14] });
-    expect(grid).toHaveLength(4);
-    expect(grid.every((g) => g.works && g.stableQuarters === 4)).toBe(true);
-    expect(recommended!.cost).toBe(Math.min(...grid.map((g) => g.cost)));
-    expect(recommended!.tier).toBe("works");
-    const none = zdBacktestGrid(base, realityOf(0, 1), { targets: [20, 40], cycles: [7] });
-    expect(none.grid.some((g) => g.works)).toBe(false);
-    // braki 0 = jak dziś, ale zapas ponad dzisiejszy → „mniej braków za cenę zapasu”
-    expect(none.recommended!.tier).toBe("more_stock");
-    expect(none.recommended!.cost).toBe(Math.min(...none.grid.map((g) => g.cost)));
-    const worse = zdBacktestGrid(base, realityOf(-1, 1), { targets: [20, 40], cycles: [7] });
-    expect(worse.recommended!.tier).toBe("lowest_cost");
+    const steps: Array<[number, number]> = [];
+    const { grid, best } = await zdBacktestSearch(base, realityOf(50, 10_000), {
+      cycles: [7, 14],
+      targets: [20, 30],
+      onStep: (d, t) => void steps.push([d, t]),
+    });
+    // 4 punkty siatki + dopracowanie celu co 1 dzień
+    expect(grid.length).toBeGreaterThan(4);
+    expect(new Set(grid.map((g) => `${g.cycleDays}/${g.targetDays}`)).size).toBe(grid.length);
+    expect(best).not.toBeNull();
+    expect(best).toEqual(zdBacktestPickBest(grid, realityOf(50, 10_000)));
+    // każdy punkt z brakami ≤ naprawdę ma wariant opóźnionych dostaw
+    expect(grid.every((g) => g.pessimisticZeroShare != null)).toBe(true);
+    expect(steps.at(-1)![0]).toBe(steps.at(-1)![1]);
+    expect(steps.at(-1)![0]).toBe(grid.length * 2);
+  });
+  it("najlepsze na brzegu siatki — szuka dalej, do granicy zapisu (cel 180)", async () => {
+    // Cel 5–6 silnik i tak podnosi do cyklu + dostawy: wynik identyczny, remis wygrywa wyższy cel = brzeg siatki.
+    const { grid } = await zdBacktestSearch(input(), realityOf(50, 10_000), { cycles: [7], targets: [5, 6] });
+    expect(grid.some((g) => g.targetDays === 105)).toBe(true);
+    expect(grid.some((g) => g.targetDays === 180)).toBe(true);
+  });
+  it("cykl tylko z listy; cel dopracowany co 1 dzień wokół najlepszego", async () => {
+    const r = realityOf(50, 10_000);
+    const { grid, best } = await zdBacktestSearch(input(), r, { cycles: [3, 7, 14], targets: [20, 30, 40] });
+    // Cykle tylko z listy (i dalszej części, gdy najlepszy wypadł na brzegu) — nigdy „co 8” czy „co 13”.
+    expect(grid.every((g) => [3, 7, 14, 35, 42, 60].includes(g.cycleDays))).toBe(true);
+    const has = (c: number, t: number) => grid.some((g) => g.cycleDays === c && g.targetDays === t);
+    expect(has(best!.cycleDays, best!.targetDays + 1) || best!.targetDays === 180).toBe(true);
+    expect(has(best!.cycleDays, best!.targetDays - 1) || best!.targetDays === 1).toBe(true);
+    expect(best).toEqual(zdBacktestPickBest(grid, r));
   });
   it("braki kosztują marżę: przy brakach tańszy jest wyższy cel, mimo większego zapasu", () => {
     // Długa dostawa (30 dni rob.), zero na starcie: krótki cykl z dużym celem lepiej obsługuje popyt.

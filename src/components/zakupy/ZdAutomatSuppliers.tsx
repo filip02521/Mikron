@@ -22,6 +22,7 @@ import { ZD_AUTOMAT_SUPPLIER_LOCATION } from "@/lib/orders/zd-automat-contract";
 import {
   ZD_AUTOMAT_OOS_A_ALERT_PCT,
   ZD_AUTOMAT_READY_WEEKS,
+  ZD_BACKTEST_SEARCH_VERSION,
   zdAutomatOosAlert,
   zdAutomatReadiness,
   type ZdAutomatRow,
@@ -378,7 +379,8 @@ export function ZdAutomatSuppliers({
                                 ))}
                               </dl>
                             )}
-                            {r.backtest?.headline ? (
+                            {/* Nagłówki starszych wyników („Schemat działa…”) opisywały ręcznie wybrane ustawienia — nie pokazujemy. */}
+                            {r.backtest?.headline && (r.backtest.version ?? 0) >= ZD_BACKTEST_SEARCH_VERSION ? (
                               <p className="max-w-3xl text-sm leading-relaxed text-slate-700">
                                 <span className="font-medium text-slate-900">Backtest: </span>
                                 {r.backtest.headline}
@@ -387,15 +389,23 @@ export function ZdAutomatSuppliers({
                             <div className="flex flex-wrap items-center gap-2">
                               {canManage ? (
                                 <>
-                                  <Button variant="secondary" size="sm" className="min-h-11 sm:min-h-0" onClick={() => setDialog({ kind: "policy", row: r })}>
-                                    {on ? "Zmień ustawienia" : "Włącz automat"}
-                                  </Button>
+                                  {/* Automat włącza się z backtestu — on dobiera cykl i cel. */}
+                                  {on ? (
+                                    <Button variant="secondary" size="sm" className="min-h-11 sm:min-h-0" onClick={() => setDialog({ kind: "policy", row: r })}>
+                                      Zmień ustawienia
+                                    </Button>
+                                  ) : null}
                                   {r.hasScope ? (
-                                    <Button variant="ghost" size="sm" className="min-h-11 sm:min-h-0" onClick={() => setDialog({ kind: "backtest", row: r })}>
-                                      Backtest
+                                    <Button
+                                      variant={on ? "ghost" : "secondary"}
+                                      size="sm"
+                                      className="min-h-11 sm:min-h-0"
+                                      onClick={() => setDialog({ kind: "backtest", row: r })}
+                                    >
+                                      {on ? "Backtest" : "Włącz automat"}
                                     </Button>
                                   ) : (
-                                    <span className="text-sm text-slate-600">Backtest po ustawieniu zakresu w Kreatorze ZD</span>
+                                    <span className="text-sm text-slate-600">Automat i backtest po ustawieniu zakresu w Kreatorze ZD</span>
                                   )}
                                 </>
                               ) : null}
@@ -423,7 +433,7 @@ export function ZdAutomatSuppliers({
             : filter === "check"
               ? "Wszyscy w automacie mają świeży backtest „działa” i braki A poniżej alarmu."
               : filter === "automat"
-                ? "Nikt jeszcze nie jest w automacie. Przełącz na „Polscy”, rozwiń dostawcę i uruchom backtest."
+                ? "Nikt jeszcze nie jest w automacie. Przełącz na „Polscy”, rozwiń dostawcę i wybierz Włącz automat - backtest dobierze ustawienia."
                 : "Brak dostawców z zakresem w Kreatorze ZD."}
         </p>
       )}

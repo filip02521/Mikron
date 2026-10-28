@@ -380,7 +380,11 @@ async function computeSupplierOrder(input: {
   const { scope, supplier, runId, salesEndDate, prices, horizon } = input;
   const scopeId = (scope.mode === "grupa" ? scope.grupaId : scope.cechaId) ?? 0;
   if (!(scopeId > 0)) {
-    return { itemsWritten: 0, message: "Zakres dostawcy bez grupy / cechy." };
+    const message = "Zakres dostawcy bez grupy / cechy.";
+    if (input.proposalTodayKey && input.proposalMode !== "review") {
+      await recordZdAutomatAttempt(supplier.id, { kind: "skipped", detail: message });
+    }
+    return { itemsWritten: 0, message };
   }
   // Te same dni zapasu i okno co Kreator po wyborze dostawcy.
   const dniZapasu = supplierStockDays(supplier);

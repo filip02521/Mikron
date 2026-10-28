@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { captureServerEvent } from "@/lib/posthog/server";
 import {
   CRON_JOB_IDS,
   type CronJobId,
@@ -11,6 +12,20 @@ export async function recordCronRun(
   job: CronJobId,
   payload: Omit<CronRunPayload, "at"> & { at?: string }
 ): Promise<boolean> {
+  // Puls cronu w PostHog (alert, gdy go brak albo ok=false) — niezależnie od zapisu w bazie.
+  const detail = (payload.detail ?? {}) as { skipped?: unknown; reason?: unknown };
+  try {
+    captureServerEvent("cron_run", {
+      job,
+      ok: payload.ok,
+      skipped: detail.skipped === true,
+      reason: typeof detail.reason === "string" ? detail.reason : undefined,
+      error: payload.error,
+    });
+  } catch (e) {
+    // recordCronRun nigdy nie rzuca — wywołujący crony na tym polegają.
+    console.error(`recordCronRun(${job}) posthog failed`, e);
+  }
   try {
     const supabase = createAdminClient();
     const value: CronRunPayload = {

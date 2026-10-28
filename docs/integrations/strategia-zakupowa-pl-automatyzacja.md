@@ -556,3 +556,32 @@ Po wdrożeniu main z #230–#232:
 Skutek reguły końca miesiąca dla ETA: u rzadko zamawianych dostawców zagranicznych FZ z datą ostatniego dnia
 miesiąca to 33–60% faktur (np. VERTYSYSTEM, MGM System, Realloy, Dental Flex Italia, IP Division) — ich ETA liczy się
 z mniejszej liczby pomiarów (przy < 5 z 24 mies. bierzemy 5 najnowszych).
+
+## 13. Backtest dobiera ustawienia, automat włącza się tylko z niego (2026-10-26)
+
+Wcześniej człowiek wpisywał „co ile dni” i „cel”, a backtest oceniał ten wybór werdyktem („działa / kompromis /
+nie działa”) i obok pokazywał siatkę z rekomendacją. Teraz backtest nie ma pól: sam szuka najlepszych ustawień.
+
+- **Szukanie** (`zdBacktestSearch`, `src/lib/orders/zd-backtest.ts`): siatka cykl 1, 2, 3, 4, 5, 7, 10, 14, 21, 28 dni ×
+  cel 10–90 dni (13 wartości); gdy najlepsze wypada na brzegu — dalej (cel 105–180, cykl 35–60). Potem cel co 1 dzień:
+  wszystko między sąsiednimi wartościami siatki, a dalej kroki cel ±1/±2 i cykl na sąsiedni z listy, dopóki najlepsze
+  się przesuwa. Cykl zostaje z listy: koszt skacze między sąsiednimi dniami cyklu (fazy tygodnia, dni robocze — w
+  teście co 9 dni 15,3 tys., co 10 dni 16,4 tys., co 13 dni 14,2 tys.), więc „co 13 dni” wygrywałoby przypadkiem. Każdy punkt to pełny rok symulacji jak nocny
+  przebieg; wariant z opóźnionymi dostawami dla punktów z brakami nie większymi niż naprawdę. ~75 ms na punkt przy
+  600 towarach; pętla zdarzeń oddawana między symulacjami, postęp „Szukam najlepszych ustawień — N z M”.
+- **Wybór** (`zdBacktestPickBest`): najniższy koszt roku (utracona marża + 20% zapasu + 20 zł za ZD) wśród ustawień
+  z brakami ≤ naprawdę także przy opóźnionych dostawach i stabilnych w kwartałach; bez takich — braki ≤ naprawdę;
+  bez takich — najtańsze w ogóle. Remis kosztu do 1% (+1 zł) rozstrzyga mniej braków, potem mniej zapasu, potem wyższy
+  cel (niższe cele silnik i tak podnosi do cyklu + dostawy + 25%) i rzadsze ZD. Więcej braków niż naprawdę (gdy żadne
+  ustawienie nie trzyma dzisiejszych) przyjmujemy tylko przy marży znanej dla ≥ 80% aktywnych — inaczej „za mało danych”.
+- **Wynik v3** (`ZdBacktestResult.version = 3`): `params` = znalezione ustawienia (zapisywane też w wierszu przebiegu),
+  werdykt to liczby (braki, zapas, koszt roku vs Kreator), `fails` tylko gdy nawet najlepsze ustawienia mają więcej
+  braków niż naprawdę i nie są tańsze od Kreatora.
+- **Bramka** (`zdBacktestApplyBlock`, `src/lib/orders/zd-automat-status.ts`): automat włącza (albo przestawia)
+  wyłącznie `actionApplyZdBacktestSettings` — z ostatniego backtestu v3 dostawcy, tego samego, który widzi człowiek
+  (`runId`; nowszy przebieg od otwarcia okna = odmowa), nie starszego niż 90 dni, z
+  ustawieniami i bez „automat nie poprawi”. `actionSaveZdSupplierOrderPolicy` nie przyjmuje już cyklu i celu: dla
+  dostawcy poza automatem odmawia „Automat włączasz z backtestu”, w automacie zostawia te, które są (zmienia tylko
+  stopień, godzinę odcięcia albo wyłącza automat).
+- **Starsze wyniki** (v1/v2) liczyły ręcznie wybrane ustawienia: lista pokazuje „sprzed doboru ustawień”, a dostawca
+  w automacie trafia do „Do sprawdzenia” z „policz ponownie”, dopóki ktoś nie przeliczy backtestu.

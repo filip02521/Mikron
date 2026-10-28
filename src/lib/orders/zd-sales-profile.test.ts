@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { mapZdEstimateLineToManual } from "@/lib/orders/zd-estimate-manual";
 import {
+  capZdSalesProfileSpikes,
+  sales90CappedFromProfile,
   applyZdSalesProfileToLine,
   classifyZdSalesProfile,
   formatZdSalesProfileHeadline,
@@ -206,5 +208,21 @@ describe("prośby bez wygładzenia (strategia z podłogą 90 d)", () => {
       smoothing: false,
     });
     expect(meta.applied).toBe(false);
+  });
+});
+
+describe("capZdSalesProfileSpikes / sales90CappedFromProfile (strategia)", () => {
+  const steady = [4, 5, 3, 4, 6, 4, 5, 4, 3];
+  it("jednorazowy skok w podłodze liczony jak typowy miesiąc", () => {
+    expect(capZdSalesProfileSpikes([...steady, 4, 34, 4])).toEqual([...steady, 4, 5, 4]);
+    expect(sales90CappedFromProfile([...steady, 4, 34, 4])).toBe(13);
+  });
+  it("wzrost (dwa wysokie okna), sprzedaż falami i nowość — bez cięcia", () => {
+    expect(sales90CappedFromProfile([...steady, 4, 30, 30])).toBe(64);
+    expect(sales90CappedFromProfile([4, 30, 3, 4, 6, 4, 5, 4, 3, 4, 34, 4])).toBe(42);
+    expect(sales90CappedFromProfile([0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 34, 4])).toBe(40);
+  });
+  it("prośby odjęte przed oceną skoku", () => {
+    expect(sales90CappedFromProfile([...steady, 4, 34, 4], [0, 30, 0])).toBe(12);
   });
 });

@@ -33,7 +33,10 @@ export type ZdAutomatSupplierRow = {
     verdict: ZdBacktestVerdictKind | null;
     headline: string | null;
     at: string;
-    params: ZdBacktestParams;
+    /** Ustawienia znalezione przez backtest (v3) albo wybrane ręcznie (starsze wyniki); null = brak. */
+    params: ZdBacktestParams | null;
+    /** 3 = ustawienia dobrane przez backtest; starsze wyniki trzeba policzyć ponownie. */
+    version: number | null;
   } | null;
 };
 

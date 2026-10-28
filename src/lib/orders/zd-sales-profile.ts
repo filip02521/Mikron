@@ -18,7 +18,7 @@
  */
 
 import { polishPluralWord } from "@/lib/email/polish-plural";
-import { ZD_DEMAND_FLOOR_WINDOWS } from "@/lib/orders/zd-demand-policy";
+import { sales90FromProfile, ZD_DEMAND_FLOOR_WINDOWS } from "@/lib/orders/zd-demand-policy";
 
 export const ZD_SALES_PROFILE = {
   windows: 12,
@@ -139,6 +139,8 @@ export function resolveZdSalesProfile(input: {
   smoothing: boolean;
   /** Odejmij prośby także bez wygładzenia (strategia z podłogą 90 d). */
   subtractProsba?: boolean;
+  /** Co wygładzać; domyślnie skok i rzadka sprzedaż. Strategia max30_90 — tylko skok. */
+  smoothKinds?: readonly ZdSalesProfileKind[];
 }): ZdSalesProfileLineMeta {
   const raw = Math.max(0, input.sprzedazOkres);
   const prosba = Math.min(raw, Math.max(0, input.prosbaPieces));
@@ -149,7 +151,7 @@ export function resolveZdSalesProfile(input: {
     currentDays: input.dniOkresu,
   });
   let smoothed = afterProsba;
-  if (input.smoothing && c.currentMonthly > 0) {
+  if (input.smoothing && c.currentMonthly > 0 && (input.smoothKinds ?? ["spike", "rare"]).includes(c.kind)) {
     const target =
       c.kind === "spike" ? c.robustMonthly : c.kind === "rare" ? c.meanMonthly : c.currentMonthly;
     smoothed = afterProsba * Math.min(1, target / c.currentMonthly);
@@ -208,6 +210,51 @@ export function applyZdSalesProfileToLine<
     doZamowienia,
     salesProfile: meta,
   };
+}
+
+/**
+ * Okna profilu z jednorazowymi skokami ściętymi do typowego miesiąca (od `from`). Skok jak w `classifyZdSalesProfile`:
+ * ≥ 3× typowego miesiąca historii przed oknem, takich miesięcy jeszcze nie było, a sąsiednie okna nie są wysokie
+ * (to wzrost, nie jednorazowa sprzedaż). Rzadka sprzedaż i nowość — bez zmian.
+ */
+export function capZdSalesProfileSpikes(windows: readonly number[], from = windows.length - ZD_DEMAND_FLOOR_WINDOWS): number[] {
+  const p = ZD_SALES_PROFILE;
+  const w = windows.map((x) => Math.max(0, Number(x) || 0));
+  const firstActive = w.findIndex((x) => x > 0);
+  const activeWindows = w.filter((x) => x > 0).length;
+  if (firstActive < 0 || activeWindows <= p.rareMaxActiveWindows || firstActive >= w.length - p.newWithinWindows) return w;
+  const out = w.slice();
+  for (let k = Math.max(1, from); k < w.length; k += 1) {
+    const prev = w.slice(0, k);
+    const first = prev.findIndex((x) => x > 0);
+    if (first < 0) continue;
+    const life = prev.slice(first);
+    const typical = median(life);
+    const floor = Math.max(1, typical);
+    const x = w[k]!;
+    if (x < p.spikeMinPieces || x < p.spikeRatio * floor) continue;
+    if (w[k - 1]! >= p.risingRatio * floor || (w[k + 1] ?? 0) >= p.risingRatio * floor) continue;
+    if (Math.max(...life) >= p.spikeRepeatShare * x) continue;
+    out[k] = Math.max(typical, percentile(life, 0.75));
+  }
+  return out;
+}
+
+/**
+ * Podłoga 90 d strategii: sprzedaż z trzech ostatnich okien profilu po odjęciu próśb (per okno), z jednorazowym
+ * skokiem liczonym jak typowy miesiąc. Bez tego skok podnosi tempo przez trzy miesiące, a cel strategii (cykl +
+ * dostawa + bufor) zamawia go prawie w całości.
+ */
+export function sales90CappedFromProfile(
+  windows: readonly number[] | null | undefined,
+  prosbaByWindow?: readonly number[]
+): number | null {
+  if (!windows || windows.length < ZD_DEMAND_FLOOR_WINDOWS) return null;
+  const off = windows.length - ZD_DEMAND_FLOOR_WINDOWS;
+  const net = windows.map((x, i) =>
+    Math.max(0, (Number(x) || 0) - (i >= off ? Math.max(0, prosbaByWindow?.[i - off] ?? 0) : 0))
+  );
+  return sales90FromProfile(capZdSalesProfileSpikes(net));
 }
 
 /** Ile pozycji zmieniło wygładzenie w jednym Policz. */

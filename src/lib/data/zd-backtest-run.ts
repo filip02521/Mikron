@@ -29,16 +29,17 @@ import { isPlnCurrency } from "@/lib/orders/zd-proposal-minimum-notice";
 import { loadSubiektLeadRowsBySupplier } from "@/lib/data/subiekt-automat-lead";
 import type { StatsMode } from "@/types/database";
 import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
+import { zdBacktestCycleText } from "@/lib/orders/zd-automat-status";
 import {
   addDaysKey,
   simulateZdBacktest,
   zdBacktestHiddenOutflowShare,
   zdBacktestImputedShare,
   zdBacktestReality,
-  zdBacktestGrid,
+  zdBacktestSearch,
   zdBacktestSplitProsbaSales,
   zdBacktestStableQuarters,
-  zdBacktestVerdict,
+  zdBacktestBestVerdict,
   ZD_BACKTEST_HOLDING_RATE,
   ZD_BACKTEST_ORDER_COST,
   ZD_BACKTEST_PROSBA_SALE_DAYS,
@@ -73,10 +74,13 @@ export type ZdBacktestVariant = {
 };
 
 export type ZdBacktestResult = {
-  /** 2: silnik 1:1 z nocnym przebiegiem (okno dni zapasu, korekta braków, prośby, podążanie, minimum), koszt w rekomendacji. */
-  version: 1 | 2;
+  /**
+   * 2: silnik 1:1 z nocnym przebiegiem, koszt w rekomendacji; ustawienia wybierał człowiek.
+   * 3: ustawienia dobiera backtest (`zdBacktestSearch`) — `params` = znalezione najlepsze, null = nic (za mało danych).
+   */
+  version: 1 | 2 | 3;
   period: { from: string; to: string };
-  params: ZdBacktestParams;
+  params: ZdBacktestParams | null;
   reality: { zeroShare: number | null; avgStock: number; cycleDays: number } & Partial<Omit<ZdBacktestReality, "zeroShare" | "avgStock">>;
   variants: ZdBacktestVariant[];
   /** Ustawienia modelu (v2). */
@@ -93,9 +97,11 @@ export type ZdBacktestResult = {
     dailyStock?: boolean;
   };
   verdict: ZdBacktestVerdict;
-  /** Siatka ustawień (cel × cykl) i rekomendacja: najmniejszy zapas wśród działających, inaczej najmniej braków. */
+  /** Wszystkie sprawdzone ustawienia (cel × cykl) i najlepsze z nich (v3: to samo co `params`). */
   grid: ZdBacktestGridPoint[];
-  recommended: (ZdBacktestGridPoint & { sameAsParams: boolean; tier?: ZdBacktestRecommendationTier }) | null;
+  recommended: (ZdBacktestGridPoint & { tier?: ZdBacktestRecommendationTier }) | null;
+  /** v3: zakres szukania — ile ustawień, cykle i cele od–do. */
+  searched?: { points: number; cycles: [number, number]; targets: [number, number] };
   quality: {
     skus: number;
     activeSkus: number;
@@ -124,13 +130,14 @@ export type ZdBacktestResult = {
   notes: string[];
 };
 
-export type ZdBacktestProgress = { phase: "products" | "sales" | "stock" | "simulate"; done: number; total: number };
+export type ZdBacktestProgress = { phase: "products" | "sales" | "stock" | "simulate" | "search"; done: number; total: number };
 
 export type ZdBacktestRun = {
   id: string;
   supplierId: string;
   status: "queued" | "running" | "done" | "error";
-  params: ZdBacktestParams;
+  /** Znalezione ustawienia (v3) albo wybrane ręcznie (starsze); null = jeszcze nie ma albo za mało danych. */
+  params: ZdBacktestParams | null;
   progress: Partial<ZdBacktestProgress>;
   result: ZdBacktestResult | null;
   error: string | null;
@@ -142,7 +149,7 @@ type RunRow = {
   id: string;
   supplier_id: string;
   status: ZdBacktestRun["status"];
-  params: ZdBacktestParams;
+  params: Partial<ZdBacktestParams> | null;
   progress: Partial<ZdBacktestProgress> | null;
   result: ZdBacktestResult | null;
   error: string | null;
@@ -157,13 +164,16 @@ type RunRow = {
 export function zdBacktestRunStale(status: string, createdAt: Date | string, nowMs = Date.now()): boolean {
   return (status === "queued" || status === "running") && nowMs - new Date(createdAt).getTime() > LOCK_TTL_SEC * 1000;
 }
+/** Przebieg v3 zaczyna z pustymi parametrami — ustawienia zapisuje dopiero wynik. */
+export const zdBacktestRowParams = (p: Partial<ZdBacktestParams> | null | undefined): ZdBacktestParams | null =>
+  p && Number.isInteger(p.targetDays) && Number.isInteger(p.cycleDays) ? { targetDays: p.targetDays!, cycleDays: p.cycleDays! } : null;
 const STALE_ERROR = "Przebieg przerwany (restart serwera w trakcie liczenia) - policz ponownie.";
 
 const mapRun = (r: RunRow): ZdBacktestRun => ({
   id: r.id,
   supplierId: r.supplier_id,
   status: zdBacktestRunStale(r.status, r.created_at) ? "error" : r.status,
-  params: r.params,
+  params: zdBacktestRowParams(r.params),
   progress: r.progress ?? {},
   result: r.result,
   error: zdBacktestRunStale(r.status, r.created_at) ? STALE_ERROR : r.error,
@@ -184,11 +194,32 @@ export async function fetchLatestZdBacktestRun(supplierId: string): Promise<ZdBa
 
 /** Ostatni zakończony werdykt na dostawcę — lista na /zakupy/automat. Brak tabeli (mig. 195) → pusta mapa. */
 export async function listLatestZdBacktestVerdicts(): Promise<
-  Map<string, { status: ZdBacktestRun["status"]; verdict: ZdBacktestVerdict["kind"] | null; headline: string | null; at: string; params: ZdBacktestParams }>
+  Map<
+    string,
+    {
+      status: ZdBacktestRun["status"];
+      verdict: ZdBacktestVerdict["kind"] | null;
+      headline: string | null;
+      at: string;
+      params: ZdBacktestParams | null;
+      /** Wersja wyniku (3 = ustawienia dobrane przez backtest); null = brak wyniku. */
+      version: number | null;
+    }
+  >
 > {
   try {
-    const res = await query<{ supplier_id: string; status: ZdBacktestRun["status"]; result: ZdBacktestResult | null; created_at: Date; params: ZdBacktestParams }>(
-      `SELECT DISTINCT ON (supplier_id) supplier_id, status, result, created_at, params
+    const res = await query<{
+      supplier_id: string;
+      status: ZdBacktestRun["status"];
+      verdict: ZdBacktestVerdict["kind"] | null;
+      headline: string | null;
+      version: number | null;
+      created_at: Date;
+      params: Partial<ZdBacktestParams> | null;
+    }>(
+      `SELECT DISTINCT ON (supplier_id) supplier_id, status, created_at, params,
+              result #>> '{verdict,kind}' AS verdict, result #>> '{verdict,headline}' AS headline,
+              (result ->> 'version')::int AS version
          FROM zd_backtest_runs ORDER BY supplier_id, created_at DESC`
     );
     return new Map(
@@ -196,10 +227,11 @@ export async function listLatestZdBacktestVerdicts(): Promise<
         r.supplier_id,
         {
           status: zdBacktestRunStale(r.status, r.created_at) ? "error" : r.status,
-          verdict: r.result?.verdict.kind ?? null,
-          headline: r.result?.verdict.headline ?? null,
+          verdict: r.verdict ?? null,
+          headline: r.headline ?? null,
           at: new Date(r.created_at).toISOString(),
-          params: r.params,
+          params: zdBacktestRowParams(r.params),
+          version: r.version ?? null,
         },
       ])
     );
@@ -213,7 +245,7 @@ export async function listLatestZdBacktestVerdicts(): Promise<
 const MAX_RUNNING = 3;
 
 /** Nowy przebieg; null = ten dostawca już się liczy, "busy" = liczy się już MAX_RUNNING przebiegów. */
-export async function createZdBacktestRun(input: { supplierId: string; params: ZdBacktestParams; userId: string | null }): Promise<string | null | "busy"> {
+export async function createZdBacktestRun(input: { supplierId: string; userId: string | null }): Promise<string | null | "busy"> {
   // Przebieg starszy niż blokada uznajemy za porzucony (restart serwera w trakcie).
   const busy = await query<{ n: string }>(
     `SELECT count(*) AS n FROM zd_backtest_runs WHERE status IN ('queued', 'running') AND created_at > now() - make_interval(secs => $1)`,
@@ -223,8 +255,8 @@ export async function createZdBacktestRun(input: { supplierId: string; params: Z
   if (!(await tryAcquireLock(lockKey(input.supplierId), LOCK_TTL_SEC, "zd_backtest"))) return null;
   try {
     const res = await query<{ id: string }>(
-      `INSERT INTO zd_backtest_runs (supplier_id, status, params, created_by) VALUES ($1, 'queued', $2::jsonb, $3) RETURNING id`,
-      [input.supplierId, JSON.stringify(input.params), input.userId]
+      `INSERT INTO zd_backtest_runs (supplier_id, status, params, created_by) VALUES ($1, 'queued', '{}'::jsonb, $2) RETURNING id`,
+      [input.supplierId, input.userId]
     );
     return res.rows[0]!.id;
   } catch (e) {
@@ -270,8 +302,13 @@ export async function runZdBacktest(runId: string): Promise<void> {
   const supplierId = row.supplier_id;
   try {
     await query(`UPDATE zd_backtest_runs SET status = 'running', started_at = now() WHERE id = $1`, [runId]);
-    const result = await computeZdBacktest(supplierId, row.params, (p) => setProgress(runId, p));
-    await query(`UPDATE zd_backtest_runs SET status = 'done', result = $2::jsonb, finished_at = now() WHERE id = $1`, [runId, JSON.stringify(result)]);
+    const result = await computeZdBacktest(supplierId, (p) => setProgress(runId, p));
+    // params = znalezione ustawienia — lista i „do sprawdzenia” porównują je z ustawieniami automatu.
+    await query(`UPDATE zd_backtest_runs SET status = 'done', result = $2::jsonb, params = $3::jsonb, finished_at = now() WHERE id = $1`, [
+      runId,
+      JSON.stringify(result),
+      JSON.stringify(result.params ?? {}),
+    ]);
   } catch (e) {
     console.error("[zd-backtest]", supplierId, e);
     await query(`UPDATE zd_backtest_runs SET status = 'error', error = $2, finished_at = now() WHERE id = $1`, [
@@ -285,11 +322,10 @@ export async function runZdBacktest(runId: string): Promise<void> {
 
 export async function computeZdBacktest(
   supplierId: string,
-  params: ZdBacktestParams,
   onProgress: (p: ZdBacktestProgress) => Promise<void> = async () => undefined
 ): Promise<ZdBacktestResult> {
   const { input, ctx } = await loadZdBacktestData(supplierId, onProgress);
-  return evaluateZdBacktest(input, ctx, params);
+  return evaluateZdBacktest(input, ctx, onProgress);
 }
 
 /** Wszystko, czego ocena potrzebuje poza wejściem symulacji. */
@@ -673,34 +709,42 @@ export async function loadZdBacktestData(
   return { input, ctx };
 }
 
-/** Warianty, siatka, werdykt i jakość danych — czyste liczenie na wejściu z `loadZdBacktestData`. */
-export function evaluateZdBacktest(input: ZdBacktestInput, ctx: ZdBacktestContext, params: ZdBacktestParams): ZdBacktestResult {
+/**
+ * Szukanie najlepszych ustawień, warianty przy nich, werdykt i jakość danych — liczenie na wejściu
+ * z `loadZdBacktestData` (bez I/O poza `onProgress`).
+ */
+export async function evaluateZdBacktest(
+  input: ZdBacktestInput,
+  ctx: ZdBacktestContext,
+  onProgress: (p: ZdBacktestProgress) => Promise<void> = async () => undefined
+): Promise<ZdBacktestResult> {
   const { simStart, simEnd, kreatorDays, supplierCycle, statsMode } = ctx;
   const { products, lead } = input;
   const prosba = input.prosba ?? new Map<number, ReadonlyArray<readonly [string, number]>>();
   const demand = input.demand;
-  const variants: ZdBacktestVariant[] = [
-    {
-      key: "kreator",
-      label: "Kreator dziś",
-      settings: `${kreatorDays} dni sprzedaży, co ${supplierCycle} dni`,
-      metrics: simulateZdBacktest(input, { kind: "kreator", days: kreatorDays, cycleDays: supplierCycle }),
-    },
-    {
-      key: "automat",
-      label: "Automat",
-      settings: `co ${params.cycleDays} dni, cel ${params.targetDays} dni`,
-      metrics: simulateZdBacktest(input, { kind: "automat", targetDays: params.targetDays, cycleDays: params.cycleDays, arrival: "first" }),
-    },
-    {
-      key: "pessimistic",
-      label: "Automat, opóźnione dostawy",
-      settings: "towar dopiero z ostatnią dostawą zamówienia",
-      metrics: simulateZdBacktest(input, { kind: "automat", targetDays: params.targetDays, cycleDays: params.cycleDays, arrival: "full" }),
-    },
-  ];
   const reality = zdBacktestReality(input);
-  const { grid, recommended } = zdBacktestGrid(input, reality);
+  let reported = 0;
+  const { grid, best } = await zdBacktestSearch(input, reality, {
+    onStep: (done, total) => {
+      if (done - reported < 10 && done < total) return;
+      reported = done;
+      return onProgress({ phase: "search", done, total });
+    },
+  });
+  const params: ZdBacktestParams | null = best ? { targetDays: best.targetDays, cycleDays: best.cycleDays } : null;
+  const kreator = simulateZdBacktest(input, { kind: "kreator", days: kreatorDays, cycleDays: supplierCycle });
+  const automat = params ? simulateZdBacktest(input, { kind: "automat", ...params, arrival: "first" }) : null;
+  const pessimistic = params ? simulateZdBacktest(input, { kind: "automat", ...params, arrival: "full" }) : null;
+  const settings = params ? `${zdBacktestCycleText(params.cycleDays)}, cel ${params.targetDays} dni` : "";
+  const variants: ZdBacktestVariant[] = [
+    { key: "kreator", label: "Kreator dziś", settings: `${kreatorDays} dni sprzedaży, ${zdBacktestCycleText(supplierCycle)}`, metrics: kreator },
+    ...(automat && pessimistic
+      ? [
+          { key: "automat" as const, label: "Automat", settings, metrics: automat },
+          { key: "pessimistic" as const, label: "Automat, opóźnione dostawy", settings: "towar dopiero z ostatnią dostawą zamówienia", metrics: pessimistic },
+        ]
+      : []),
+  ];
   const active = products.filter((p) => p.active);
   const pricedActiveShare = active.length ? (100 * active.filter((p) => p.cost != null).length) / active.length : 0;
   const marginActiveShare = active.length ? (100 * active.filter((p) => p.margin != null && p.margin > 0).length) / active.length : 0;
@@ -732,11 +776,13 @@ export function evaluateZdBacktest(input: ZdBacktestInput, ctx: ZdBacktestContex
     }
     return all > 0 ? (100 * pv) / all : null;
   })();
-  const verdict = zdBacktestVerdict({
+  const verdict = zdBacktestBestVerdict({
     reality,
-    automat: variants[1]!.metrics,
-    pessimistic: variants[2]!.metrics,
-    quality: { activeSkus: active.length, pricedActiveShare, leadSamples: lead.filter((l) => l.source !== "import").length },
+    best: params,
+    automat,
+    pessimistic,
+    kreator,
+    quality: { activeSkus: active.length, pricedActiveShare, marginActiveShare, leadSamples: lead.filter((l) => l.source !== "import").length },
   });
   const notes: string[] = [];
   if (hiddenOutflowShare != null && hiddenOutflowShare >= 10) {
@@ -755,22 +801,25 @@ export function evaluateZdBacktest(input: ZdBacktestInput, ctx: ZdBacktestContex
 
   const round1 = (v: number | null) => (v == null ? null : Math.round(v * 10) / 10);
   return {
-    version: 2,
+    version: 3,
     period: { from: simStart, to: simEnd },
     params,
     reality: { ...reality, cycleDays: supplierCycle },
     variants,
     verdict,
     grid,
-    recommended: recommended
-      ? { ...recommended, sameAsParams: recommended.targetDays === params.targetDays && recommended.cycleDays === params.cycleDays }
-      : null,
+    recommended: best,
+    searched: {
+      points: grid.length,
+      cycles: [Math.min(...grid.map((g) => g.cycleDays)), Math.max(...grid.map((g) => g.cycleDays))],
+      targets: [Math.min(...grid.map((g) => g.targetDays)), Math.max(...grid.map((g) => g.targetDays))],
+    },
     model: {
       windowDays: kreatorDays,
       holdingRate: ZD_BACKTEST_HOLDING_RATE,
       trackPreset: ctx.trackPreset,
       statsMode,
-      automatStableQuarters: zdBacktestStableQuarters(variants[1]!.metrics, reality),
+      automatStableQuarters: automat ? zdBacktestStableQuarters(automat, reality) : 0,
       orderCost: ZD_BACKTEST_ORDER_COST,
       minOrderValue: input.orderTerms?.minOrderValue ?? null,
       freeShippingThreshold: input.orderTerms?.freeShippingThreshold ?? null,

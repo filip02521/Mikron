@@ -7,8 +7,8 @@
  * - okno sprzedaży = dni zapasu dostawcy (jak Kreator i nocny przebieg), sprzedaż widziana przez system
  *   = to, co zeszło ze stanu w symulacji (nie popyt, którego nie było czym obsłużyć),
  * - korekta za dni braku (`computeStockoutSalesFactor`, dni robocze, poranny stan ≤ 0; bez par i kompletów),
- * - strategia max30_90: sprzedaż pod prośby odjęta, tempo = max(okno, 90 d), cel `effectiveDniZapasu`
- *   (cykl + czas dostawy + 25%, minimum dni celu),
+ * - strategia max30_90: sprzedaż pod prośby odjęta, jednorazowy skok jak typowy miesiąc (profil 12 × 30 d),
+ *   tempo = max(okno, 90 d), cel `effectiveDniZapasu` (cykl + czas dostawy + 25%, minimum dni celu),
  * - podążanie za sprzedażą (`computeSalesTrackedCel`, preset mocy z ustawień) i cięcia z historii ZD
  *   (`applyZdEstimateHistoryCuts`), minimum stanów i `computeManualOrderQty`, opakowania (`computeZdPackOrderQty`),
  * - czas dostawy w dniu decyzji z próbek znanych tego dnia (dostarczonych wcześniej), wybranych i liczonych
@@ -25,12 +25,13 @@
  */
 import { calculateBusinessDate, formatDateString, parseDateOnly } from "@/lib/orders/dates";
 import { quantilesFromSampleRows, selectSamplesForStats, type DeliveryStatsSampleRow } from "@/lib/orders/delivery-stats-samples";
-import { effectiveDniZapasu, sales90FromProfile } from "@/lib/orders/zd-demand-policy";
+import { effectiveDniZapasu } from "@/lib/orders/zd-demand-policy";
 import type { ZdSalesTrackPolicy } from "@/lib/orders/zd-estimate-boost-presets";
 import { applyZdEstimateHistoryCuts } from "@/lib/orders/zd-estimate-history-track";
 import { computeManualOrderQty } from "@/lib/orders/zd-estimate-manual";
 import { computeZdPackOrderQty } from "@/lib/orders/zd-estimate-packaging";
 import { computeSalesTrackedCel } from "@/lib/orders/zd-estimate-sales-track";
+import { resolveZdSalesProfile, sales90CappedFromProfile, ZD_SALES_PROFILE } from "@/lib/orders/zd-sales-profile";
 import {
   normalizePackagingDocumentUnitMode,
   normalizeUnitsPerPackage,
@@ -38,6 +39,7 @@ import {
 } from "@/lib/orders/zd-estimate-units";
 import { resolveZdOrderHorizon, businessToCalendarDays } from "@/lib/orders/zd-order-horizon";
 import { computeStockoutSalesFactor, stockoutMetaExcludingProsba } from "@/lib/stock-watch/stock-history";
+import { zdBacktestCycleText } from "@/lib/orders/zd-automat-status";
 import type { StatsMode } from "@/types/database";
 
 const DAY_MS = 86_400_000;
@@ -284,7 +286,8 @@ function prepare(input: ZdBacktestInput): Prep {
   if (cached) return cached;
   const D = input.days;
   const W = Math.max(1, Math.round(input.windowDays));
-  const H = Math.max(W, FLOOR_DAYS) + 1;
+  // Pełny profil 12 × 30 d przed decyzją (skok jak w silniku); starsze niż wczytana historia — zera.
+  const H = Math.max(W, ZD_SALES_PROFILE.windows * PROFILE_WINDOW_DAYS) + 1;
   const keyAt = (i: number) => addDaysKey(input.simStart, i - H);
   const weekday = new Uint8Array(H + D);
   for (let i = 0; i < H + D; i++) weekday[i] = isWeekday(keyAt(i)) ? 1 : 0;
@@ -409,6 +412,8 @@ export function zdBacktestDecideOrder(a: {
   /** Trzy okna 30 d profilu do podłogi (od najstarszego): cała sprzedaż (z prośbami) i sprzedaż pod prośby. */
   floorGross: readonly number[];
   floorProsba: readonly number[];
+  /** Wcześniejsze okna 30 d profilu (od najstarszego, przed oknami podłogi) — do rozpoznania skoku jak silnik. */
+  profileHistory?: readonly number[];
   /** Dni robocze okna z historią stanu; null = bez korekty (para, komplet). */
   stockout: { windowDays: number; recordedDays: number; outDays: number } | null;
   /** Stan − rezerwacje. */
@@ -429,9 +434,17 @@ export function zdBacktestDecideOrder(a: {
   let rate: number;
   let sales: number;
   if (a.strategy === "max30_90") {
-    const prosba = Math.min(gross, a.prosbaWindow);
-    sales = Math.max(0, gross - prosba);
-    const sales90 = sales90FromProfile(a.floorGross, a.floorProsba) ?? 0;
+    const profile = [...(a.profileHistory ?? []), ...a.floorGross];
+    const pm = resolveZdSalesProfile({
+      windows: profile,
+      sprzedazOkres: gross,
+      dniOkresu: W,
+      prosbaPieces: a.prosbaWindow,
+      smoothing: true,
+      smoothKinds: ["spike"],
+    });
+    sales = gross > 0 ? gross * pm.factor : 0;
+    const sales90 = sales90CappedFromProfile(profile, a.floorProsba) ?? 0;
     rate = Math.max(sales / W, sales90 / FLOOR_DAYS);
     sales = rate * W;
   } else {
@@ -509,6 +522,10 @@ export function simulateZdBacktest(input: ZdBacktestInput, policy: ZdBacktestPol
   const sum = (arr: Float64Array, a: number, b: number) => arr[Math.max(0, b)]! - arr[Math.max(0, a)]!;
   // Początki okien podłogi (dni przed decyzją), od najstarszego: [i-90, i-60), [i-60, i-30), [i-30, i).
   const floorStarts = [FLOOR_DAYS, FLOOR_DAYS - PROFILE_WINDOW_DAYS, PROFILE_WINDOW_DAYS];
+  const historyStarts = Array.from(
+    { length: ZD_SALES_PROFILE.windows - floorStarts.length },
+    (_, k) => (ZD_SALES_PROFILE.windows - k) * PROFILE_WINDOW_DAYS
+  );
 
   // Stan każdego towaru; dzień po dniu dla całego dostawcy — reguły minimum i progu działają na całe ZD.
   const states = prep.products.map((pp) => {
@@ -590,6 +607,7 @@ export function simulateZdBacktest(input: ZdBacktestInput, policy: ZdBacktestPol
           prosbaWindow: sum(s.cumProsba, i - W, i),
           floorGross: floorStarts.map((st) => sum(s.cumSeen, i - st, i - st + PROFILE_WINDOW_DAYS) + sum(s.cumProsba, i - st, i - st + PROFILE_WINDOW_DAYS)),
           floorProsba: floorStarts.map((st) => sum(s.cumProsba, i - st, i - st + PROFILE_WINDOW_DAYS)),
+          profileHistory: historyStarts.map((st) => sum(s.cumSeen, i - st, i - st + PROFILE_WINDOW_DAYS) + sum(s.cumProsba, i - st, i - st + PROFILE_WINDOW_DAYS)),
           stockout,
           dostepne,
           onOrder,
@@ -818,6 +836,7 @@ export function zdBacktestSplitProsbaSales(
   };
 }
 
+/** `tradeoff` — tylko w wynikach starszych wersji (ustawienia wybierane ręcznie); nowe przebiegi go nie dają. */
 export type ZdBacktestVerdictKind = "works" | "tradeoff" | "fails" | "insufficient";
 
 export type ZdBacktestVerdict = {
@@ -827,19 +846,16 @@ export type ZdBacktestVerdict = {
   reasons: string[];
 };
 
-/** Zapas może być wyższy niż w rzeczywistości najwyżej o tyle, żeby schemat „działał”. */
-export const ZD_BACKTEST_STOCK_TOLERANCE = 1.1;
 /** Wariant pesymistyczny (towar dopiero z ostatnią dostawą) może mieć najwyżej tyle pp braków więcej niż rzeczywistość. */
 export const ZD_BACKTEST_PESSIMISTIC_PP = 1;
 /** Kwartał „trzyma”, gdy braki nie większe niż naprawdę w tym kwartale + tyle pp. */
 export const ZD_BACKTEST_QUARTER_PP = 0.5;
+/** Ustawienia droższe od najtańszego najwyżej o tyle (+1 zł) to remis w granicach szumu — wygrywa mniej braków. */
+export const ZD_BACKTEST_COST_TIE = 0.01;
 
 const fmtPct = (v: number) => `${String(Math.round(v * 10) / 10).replace(".", ",")}%`;
-const fmtChange = (now: number, base: number) => {
-  if (!(base > 0)) return null;
-  const c = Math.round(((now - base) / base) * 100);
-  return c;
-};
+const nfZl = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 });
+const fmtZl = (v: number) => (Math.abs(v) >= 10_000 ? `${nfZl.format(v / 1000)} tys. zł` : `${nfZl.format(v)} zł`);
 
 /** W ilu kwartałach braki symulacji nie przekraczają rzeczywistości (+0,5 pp). */
 export function zdBacktestStableQuarters(m: Pick<ZdBacktestMetrics, "quarters">, reality: Pick<ZdBacktestReality, "quarters">): number {
@@ -849,68 +865,73 @@ export function zdBacktestStableQuarters(m: Pick<ZdBacktestMetrics, "quarters">,
   }).length;
 }
 
-export function zdBacktestVerdict(input: {
-  reality: { zeroShare: number | null; avgStock: number };
-  automat: ZdBacktestMetrics;
-  pessimistic: ZdBacktestMetrics;
-  quality: { activeSkus: number; pricedActiveShare: number; leadSamples: number };
-}): ZdBacktestVerdict {
-  const { reality, automat, pessimistic, quality } = input;
+/** Braki danych, przy których backtest nie może dobrać ustawień (puste = dane wystarczą). */
+export function zdBacktestMissingData(quality: { activeSkus: number; pricedActiveShare: number; leadSamples: number }): string[] {
   const missing: string[] = [];
   if (quality.activeSkus < 5) missing.push(`tylko ${quality.activeSkus} towarów ze sprzedażą w pół roku przed okresem`);
   if (quality.pricedActiveShare < 80) missing.push(`cena magazynowa tylko dla ${fmtPct(quality.pricedActiveShare)} aktywnych towarów`);
   if (quality.leadSamples < 5) missing.push(`tylko ${quality.leadSamples} zmierzonych dostaw (czas dostawy przyjęty 7 dni)`);
-  if (missing.length || reality.zeroShare == null || automat.zeroShare == null || !(reality.avgStock > 0)) {
+  return missing;
+}
+
+/** Więcej braków niż naprawdę przyjmujemy tylko wtedy, gdy marżę (koszt braku) znamy co najmniej dla tylu % aktywnych. */
+export const ZD_BACKTEST_MIN_MARGIN_KNOWN_PCT = 80;
+
+/**
+ * Wynik szukania: najlepsze ustawienia opisane liczbami. Gdy nawet najlepsze ustawienia mają więcej braków niż naprawdę:
+ * „fails”, jeśli nie są tańsze od dzisiejszego Kreatora (automat nie ma czego poprawić); „insufficient”, jeśli marża
+ * jest znana dla zbyt małej części towarów, żeby koszt braków był wiarygodny.
+ */
+export function zdBacktestBestVerdict(input: {
+  reality: { zeroShare: number | null; avgStock: number };
+  best: Pick<ZdBacktestGridPoint, "targetDays" | "cycleDays"> | null;
+  automat: ZdBacktestMetrics | null;
+  pessimistic: ZdBacktestMetrics | null;
+  kreator: ZdBacktestMetrics;
+  quality: { activeSkus: number; pricedActiveShare: number; leadSamples: number; marginActiveShare?: number };
+}): ZdBacktestVerdict {
+  const { reality, best, automat, pessimistic, kreator } = input;
+  const missing = zdBacktestMissingData(input.quality);
+  if (missing.length || !best || !automat || reality.zeroShare == null || automat.zeroShare == null || !(reality.avgStock > 0)) {
     return {
       kind: "insufficient",
-      headline: "Za mało danych na werdykt",
+      headline: "Za mało danych, żeby dobrać ustawienia",
       reasons: missing.length ? missing : ["brak stanów albo sprzedaży w okresie backtestu"],
     };
   }
-  const zeroBetter = automat.zeroShare <= reality.zeroShare;
-  const stockOk = automat.avgStock <= reality.avgStock * ZD_BACKTEST_STOCK_TOLERANCE;
-  const pessimisticOk = (pessimistic.zeroShare ?? Infinity) <= reality.zeroShare + ZD_BACKTEST_PESSIMISTIC_PP;
-  const zeroChange = fmtChange(automat.zeroShare, reality.zeroShare);
-  const stockChange = fmtChange(automat.avgStock, reality.avgStock);
-  const zeroText =
-    zeroChange == null
-      ? `braki ${fmtPct(automat.zeroShare)} (dziś ${fmtPct(reality.zeroShare)})`
-      : zeroChange <= 0
-        ? `o ${Math.abs(zeroChange)}% mniej braków`
-        : `o ${zeroChange}% więcej braków`;
-  const stockText = stockChange == null ? "" : stockChange <= 0 ? `o ${Math.abs(stockChange)}% mniej zapasu` : `o ${stockChange}% więcej zapasu`;
-  const both = [zeroText, stockText].filter(Boolean).join(" i ");
-  const pessText = `Gdyby towar przychodził dopiero z ostatnią dostawą: braki ${fmtPct(pessimistic.zeroShare ?? 0)} (dziś ${fmtPct(reality.zeroShare)}).`;
-  if (zeroBetter && stockOk && pessimisticOk) {
-    return { kind: "works", headline: `Schemat działa: ${both} niż było naprawdę`, reasons: [pessText] };
+  const settings = `ZD ${zdBacktestCycleText(best.cycleDays)}, cel ${best.targetDays} dni`;
+  const reasons = [
+    `Towary z zerowym stanem: ${fmtPct(automat.zeroShare)} (naprawdę ${fmtPct(reality.zeroShare)}).`,
+    `Średni zapas: ${fmtZl(automat.avgStock)} (naprawdę ${fmtZl(reality.avgStock)}).`,
+    `Koszt roku: ${fmtZl(automat.cost)} (Kreator dziś ${fmtZl(kreator.cost)}).`,
+  ];
+  const pz = pessimistic?.zeroShare;
+  if (pz != null && pz > reality.zeroShare + ZD_BACKTEST_PESSIMISTIC_PP) {
+    reasons.push(`Gdy dostawca się spóźnia (towar dopiero z ostatnią dostawą), braki rosną do ${fmtPct(pz)}.`);
   }
-  if (zeroBetter && !stockOk) {
+  if (automat.zeroShare > reality.zeroShare && automat.cost >= kreator.cost) {
+    return { kind: "fails", headline: `Automat nie poprawi wyniku — nawet najlepsze ustawienia (${settings}) wypadają gorzej`, reasons };
+  }
+  const margin = input.quality.marginActiveShare;
+  if (automat.zeroShare > reality.zeroShare && margin != null && margin < ZD_BACKTEST_MIN_MARGIN_KNOWN_PCT) {
     return {
-      kind: "tradeoff",
-      headline: `Mniej braków kosztem zapasu: ${both}`,
-      reasons: ["Krótszy cel dni albo dłuższy cykl może obniżyć zapas — porównaj warianty.", pessText],
+      kind: "insufficient",
+      headline: "Za mało danych, żeby dobrać ustawienia",
+      reasons: [
+        `żadne ustawienie nie trzyma dzisiejszych braków, a marża znana tylko dla ${fmtPct(margin)} aktywnych towarów — nie da się policzyć, czy mniejszy zapas wyrównuje dodatkowe braki`,
+      ],
     };
   }
-  if (zeroBetter && stockOk && !pessimisticOk) {
-    return {
-      kind: "tradeoff",
-      headline: `Działa przy zwykłych dostawach: ${both}`,
-      reasons: [`Wrażliwe na opóźnienia dostawcy. ${pessText}`],
-    };
-  }
-  if (!zeroBetter && stockChange != null && stockChange < 0 && automat.zeroShare - reality.zeroShare <= 2) {
-    return {
-      kind: "tradeoff",
-      headline: `Mniej zapasu, trochę więcej braków: ${both}`,
-      reasons: ["Dłuższy cel dni poprawi dostępność — porównaj warianty.", pessText],
-    };
-  }
-  return { kind: "fails", headline: `Schemat nie poprawia wyniku: ${both}`, reasons: [pessText] };
+  return { kind: "works", headline: `Najlepiej: ${settings}`, reasons };
 }
 
-export const ZD_BACKTEST_GRID_TARGETS = [15, 20, 25, 30, 35, 40, 45, 50, 60] as const;
-/** Od zamawiania codziennie (dzień roboczy) do co 3 tygodnie. */
-export const ZD_BACKTEST_GRID_CYCLES = [1, 2, 3, 5, 7, 14, 21] as const;
+/** Siatka szukania: od zamawiania codziennie (dzień roboczy) do co 4 tygodnie… */
+export const ZD_BACKTEST_SEARCH_CYCLES = [1, 2, 3, 4, 5, 7, 10, 14, 21, 28] as const;
+/** … i cel od 10 do 90 dni (cel to minimum — silnik podnosi go do cyklu + dostawy + 25%). */
+export const ZD_BACKTEST_SEARCH_TARGETS = [10, 14, 18, 21, 25, 30, 35, 40, 45, 50, 60, 75, 90] as const;
+/** Dalej, gdy najlepsze wypada na brzegu siatki — do granic zapisu ustawień (cel 180, cykl 60 dni). */
+export const ZD_BACKTEST_SEARCH_TARGETS_BEYOND = [105, 120, 150, 180] as const;
+export const ZD_BACKTEST_SEARCH_CYCLES_BEYOND = [35, 42, 60] as const;
 
 export type ZdBacktestGridPoint = {
   targetDays: number;
@@ -923,39 +944,92 @@ export type ZdBacktestGridPoint = {
   cost: number;
   /** Kwartały, w których braki nie większe niż naprawdę (+0,5 pp). */
   stableQuarters: number;
-  /** Spełnia „działa” (braki ≤ dziś, zapas ≤ dziś + 10%, opóźnione dostawy ≤ dziś + 1 pp). */
-  works: boolean;
-  /** Braki ≤ dziś i zapas ≤ dziś + 10% (bez warunku opóźnionych dostaw). */
-  fits?: boolean;
+  /** Braki przy opóźnionych dostawach — liczone tylko dla ustawień z brakami nie większymi niż naprawdę. */
+  pessimisticZeroShare: number | null;
 };
 
 /**
- * Skąd rekomendacja: działa we wszystkim → najniższy koszt; inaczej najniższy koszt wśród ustawień, które
- * spełniają braki i zapas, ale są wrażliwe na opóźnienia; inaczej mniej braków niż dziś za cenę zapasu;
- * inaczej najniższy koszt w ogóle.
+ * Skąd wybór: `works` — braki nie większe niż naprawdę także przy opóźnionych dostawach; `delay_sensitive` — braki
+ * nie większe niż naprawdę przy zwykłych dostawach; `lowest_cost` — żadne ustawienie nie trzyma dzisiejszych braków.
  */
-export type ZdBacktestRecommendationTier = "works" | "delay_sensitive" | "more_stock" | "lowest_cost";
+export type ZdBacktestRecommendationTier = "works" | "delay_sensitive" | "lowest_cost";
 
 /**
- * Siatka ustawień automatu i rekomendacja: wśród ustawień, które „działają” (najlepiej we wszystkich
- * kwartałach, co najmniej w trzech), najniższy koszt roku = utracona marża na brakach + 20% średniego zapasu
- * + koszt każdego ZD; gdy żadne nie działa — progi `ZdBacktestRecommendationTier`. Wariant pesymistyczny tylko dla kandydatów po dwóch pierwszych warunkach.
+ * Najlepsze ustawienia z siatki: w najwyższym progu, który ma kandydatów (`ZdBacktestRecommendationTier`), wśród
+ * stabilnych (najlepiej we wszystkich kwartałach, co najmniej w trzech) najniższy koszt roku = utracona marża
+ * + 20% średniego zapasu + koszt każdego ZD. Remis kosztu (`ZD_BACKTEST_COST_TIE`) rozstrzygają mniej braków,
+ * mniej zapasu, a przy identycznym wyniku wyższy cel (bliżej tego, co silnik naprawdę trzyma) i rzadsze ZD.
  */
-export function zdBacktestGrid(
+export function zdBacktestPickBest(
+  grid: readonly ZdBacktestGridPoint[],
+  reality: Pick<ZdBacktestReality, "zeroShare">
+): (ZdBacktestGridPoint & { tier: ZdBacktestRecommendationTier }) | null {
+  const r0 = reality.zeroShare;
+  const noWorse = (g: ZdBacktestGridPoint) => r0 != null && g.zeroShare != null && g.zeroShare <= r0;
+  const tiers: Array<[ZdBacktestRecommendationTier, ZdBacktestGridPoint[]]> = [
+    ["works", grid.filter((g) => noWorse(g) && g.pessimisticZeroShare != null && g.pessimisticZeroShare <= r0! + ZD_BACKTEST_PESSIMISTIC_PP)],
+    ["delay_sensitive", grid.filter(noWorse)],
+    ["lowest_cost", [...grid]],
+  ];
+  for (const [tier, points] of tiers) {
+    const stable = Math.min(3, Math.max(0, ...points.map((g) => g.stableQuarters)));
+    const pool = points.filter((g) => g.stableQuarters >= stable);
+    if (!pool.length) continue;
+    const min = Math.min(...pool.map((g) => g.cost));
+    const z = (g: ZdBacktestGridPoint) => g.zeroShare ?? Infinity;
+    const best = pool
+      .filter((g) => g.cost <= min * (1 + ZD_BACKTEST_COST_TIE) + 1)
+      .sort((a, b) => z(a) - z(b) || a.avgStock - b.avgStock || b.targetDays - a.targetDays || b.cycleDays - a.cycleDays)[0]!;
+    return { ...best, tier };
+  }
+  return null;
+}
+
+/**
+ * Szukanie najlepszych ustawień automatu: siatka `ZD_BACKTEST_SEARCH_CYCLES` × `ZD_BACKTEST_SEARCH_TARGETS` (dalej
+ * `…_BEYOND`, gdy najlepsze wypada na brzegu), potem dopracowanie celu co 1 dzień (cykl zostaje z listy), dopóki
+ * najlepsze się przesuwa. Każde ustawienie to pełny rok symulacji; wariant z opóźnionymi dostawami tylko dla ustawień z brakami nie większymi niż naprawdę.
+ * Asynchroniczne — oddaje pętlę zdarzeń między symulacjami i raportuje postęp (`onStep`).
+ */
+export async function zdBacktestSearch(
   input: ZdBacktestInput,
   reality: ZdBacktestReality,
-  options: { targets?: readonly number[]; cycles?: readonly number[] } = {}
-): { grid: ZdBacktestGridPoint[]; recommended: (ZdBacktestGridPoint & { tier: ZdBacktestRecommendationTier }) | null } {
+  options: {
+    cycles?: readonly number[];
+    targets?: readonly number[];
+    onStep?: (done: number, total: number) => void | Promise<void>;
+  } = {}
+): Promise<{ grid: ZdBacktestGridPoint[]; best: (ZdBacktestGridPoint & { tier: ZdBacktestRecommendationTier }) | null }> {
+  const cycles = [...(options.cycles ?? ZD_BACKTEST_SEARCH_CYCLES)].sort((a, b) => a - b);
+  const targets = [...(options.targets ?? ZD_BACKTEST_SEARCH_TARGETS)].sort((a, b) => a - b);
   const grid: ZdBacktestGridPoint[] = [];
-  for (const cycleDays of options.cycles ?? ZD_BACKTEST_GRID_CYCLES) {
-    for (const targetDays of options.targets ?? ZD_BACKTEST_GRID_TARGETS) {
+  const seen = new Set<string>();
+  let done = 0;
+  let total = 0;
+  const step = async () => {
+    done++;
+    await options.onStep?.(done, total);
+    await new Promise((r) => setTimeout(r, 0));
+  };
+  const evaluate = async (points: Array<[number, number]>) => {
+    // Bez powtórek: ani sprawdzonych wcześniej, ani dwa razy w tej samej liście (rogi przy rozszerzeniu siatki).
+    const keys = new Set<string>();
+    const fresh = points.filter(([c, t]) => {
+      const k = `${c}/${t}`;
+      if (seen.has(k) || keys.has(k)) return false;
+      keys.add(k);
+      return true;
+    });
+    total += fresh.length;
+    for (const [cycleDays, targetDays] of fresh) {
+      seen.add(`${cycleDays}/${targetDays}`);
       const m = simulateZdBacktest(input, { kind: "automat", targetDays, cycleDays, arrival: "first" });
-      let works = false;
-      const fits =
-        reality.zeroShare != null && m.zeroShare != null && m.zeroShare <= reality.zeroShare && m.avgStock <= reality.avgStock * ZD_BACKTEST_STOCK_TOLERANCE;
-      if (fits && reality.zeroShare != null) {
-        const p = simulateZdBacktest(input, { kind: "automat", targetDays, cycleDays, arrival: "full" });
-        works = (p.zeroShare ?? Infinity) <= reality.zeroShare + ZD_BACKTEST_PESSIMISTIC_PP;
+      await step();
+      let pessimisticZeroShare: number | null = null;
+      if (reality.zeroShare != null && m.zeroShare != null && m.zeroShare <= reality.zeroShare) {
+        total++;
+        pessimisticZeroShare = simulateZdBacktest(input, { kind: "automat", targetDays, cycleDays, arrival: "full" }).zeroShare;
+        await step();
       }
       grid.push({
         targetDays,
@@ -967,26 +1041,48 @@ export function zdBacktestGrid(
         lostMargin: m.lostMargin,
         cost: m.cost,
         stableQuarters: zdBacktestStableQuarters(m, reality),
-        works,
-        fits,
+        pessimisticZeroShare,
       });
     }
-  }
-  const byCost = (a: ZdBacktestGridPoint, b: ZdBacktestGridPoint) => a.cost - b.cost || a.avgStock - b.avgStock || b.cycleDays - a.cycleDays;
-  const pick = (points: ZdBacktestGridPoint[]) => {
-    const best = Math.max(0, ...points.map((g) => g.stableQuarters));
-    return points.filter((g) => g.stableQuarters >= Math.min(best, 3)).sort(byCost)[0] ?? null;
   };
-  const r0 = reality.zeroShare;
-  const tiers: Array<[ZdBacktestRecommendationTier, ZdBacktestGridPoint[]]> = [
-    ["works", grid.filter((g) => g.works)],
-    ["delay_sensitive", grid.filter((g) => g.fits)],
-    ["more_stock", grid.filter((g) => r0 != null && g.zeroShare != null && g.zeroShare <= r0)],
-    ["lowest_cost", grid],
-  ];
-  for (const [tier, points] of tiers) {
-    const g = pick(points);
-    if (g) return { grid, recommended: { ...g, tier } };
+  await evaluate(cycles.flatMap((c) => targets.map((t): [number, number] => [c, t])));
+  let best = zdBacktestPickBest(grid, reality);
+  // Najlepsze na brzegu siatki — optimum może leżeć dalej: siatka rośnie do granic zapisu (cel 180, cykl 60).
+  const moreTargets = best && best.targetDays === targets.at(-1) ? ZD_BACKTEST_SEARCH_TARGETS_BEYOND.filter((t) => t > best!.targetDays) : [];
+  const moreCycles = best && best.cycleDays === cycles.at(-1) ? ZD_BACKTEST_SEARCH_CYCLES_BEYOND.filter((c) => c > best!.cycleDays) : [];
+  if (moreTargets.length || moreCycles.length) {
+    targets.push(...moreTargets);
+    cycles.push(...moreCycles);
+    await evaluate([
+      ...cycles.flatMap((c) => moreTargets.map((t): [number, number] => [c, t])),
+      ...moreCycles.flatMap((c) => targets.map((t): [number, number] => [c, t])),
+    ]);
+    best = zdBacktestPickBest(grid, reality);
   }
-  return { grid, recommended: null };
+  if (best) {
+    // Dopracowanie celu co 1 dzień: wszystko między sąsiadami najlepszego celu z siatki, potem kroki (cel ±1/±2, cykl na
+    // sąsiedni z listy), dopóki najlepsze się przesuwa. Cykl tylko z listy: koszt skacze między sąsiednimi dniami cyklu
+    // (fazy tygodnia, dni robocze), więc „co 13 dni” wygrywałoby przypadkiem jednego roku, nie regułą.
+    const b0 = best;
+    const below = targets.filter((x) => x < b0.targetDays).at(-1) ?? Math.max(0, 2 * b0.targetDays - (targets.find((x) => x > b0.targetDays) ?? b0.targetDays));
+    const above = targets.find((x) => x > b0.targetDays) ?? b0.targetDays;
+    const fine: Array<[number, number]> = [];
+    for (let t = Math.max(1, below + 1); t < Math.min(181, above); t++) if (t !== b0.targetDays) fine.push([b0.cycleDays, t]);
+    await evaluate(fine);
+    best = zdBacktestPickBest(grid, reality);
+    for (let round = 0; best && round < 8; round++) {
+      const at = best;
+      const i = cycles.indexOf(at.cycleDays);
+      const next: Array<[number, number]> = [
+        ...[-2, -1, 1, 2].map((dt): [number, number] => [at.cycleDays, at.targetDays + dt]),
+        ...[cycles[i - 1], cycles[i + 1]].filter((c): c is number => c != null).map((c): [number, number] => [c, at.targetDays]),
+      ].filter(([, t]) => t >= 1 && t <= 180);
+      const before = grid.length;
+      await evaluate(next);
+      if (grid.length === before) break;
+      best = zdBacktestPickBest(grid, reality);
+      if (best && best.cycleDays === at.cycleDays && best.targetDays === at.targetDays) break;
+    }
+  }
+  return { grid, best: zdBacktestPickBest(grid, reality) };
 }

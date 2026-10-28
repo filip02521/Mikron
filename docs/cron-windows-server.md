@@ -34,6 +34,15 @@ Ivoclar weekly: **OnTime Raporty** (nie instalować `scheduled-mails` na OT). En
 
 Na **Vercel** harmonogram może różnić się (UTC) — patrz `vercel.json` (bez `scheduled-mails`).
 
+## Monitoring w PostHog
+
+Każdy `recordCronRun` (także pominięcia z `recordCronSkipped`) wysyła do PostHog (projekt „OnTime”, region EU) zdarzenie `cron_run` z polami `job`, `ok`, `skipped`, `reason`, `error`. Na dashboardzie „OnTime — stan aplikacji” są dwa alerty mailowe, sprawdzane codziennie o 7:30:
+
+- **Cron bez pulsu** — job nie odezwał się w dopuszczalnym czasie (insight „Crony bez pulsu”). Joby nocne, tygodniowe i miesięczne liczą się tylko z przebiegiem, który wykonał pracę (nie `skipped`). **Nowy job w OnTime trzeba dopisać do listy w tym insighcie** — inaczej nikt nie zauważy, że przestał działać.
+- **Cron z błędem** — przebieg z `ok = false` w ostatnich 24 h.
+
+Serwer potrzebuje wyjścia HTTPS do `eu.i.posthog.com`. Wyłączenie wysyłki: `POSTHOG_DISABLED=1` w `.env.local` (serwer) albo `NEXT_PUBLIC_POSTHOG_DISABLED=1` przed buildem (przeglądarka). Lokalny dev, e2e i adresy 127.0.0.1 nic nie wysyłają. Kod: `src/lib/posthog/`, `src/instrumentation*.ts`.
+
 ## Instalacja krok po kroku
 
 ### 1. PowerShell jako Administrator

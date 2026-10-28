@@ -159,6 +159,7 @@ function SupplierRow({
                 · <span className="whitespace-nowrap">ok. {zl(last.valueNet)}</span>
               </p>
             ) : null}
+            {view.attemptNote ? <p className="mt-0.5 text-xs text-slate-600">{view.attemptNote}</p> : null}
           </div>
           <div className="min-w-0">
             <span className="block text-xs text-slate-500 sm:sr-only">Następna propozycja</span>

@@ -76,10 +76,10 @@ export function ZdEstimateLinkZdDialog({
       setLoadError(null);
     });
     startPending(async () => {
-      const res = await actionSearchZdForEstimateLink({ days: 21 });
-      if (!res.ok) {
+      const res = await actionSearchZdForEstimateLink({ days: 21 }).catch(() => null);
+      if (!res?.ok) {
         setDocs([]);
-        setLoadError(res.message);
+        setLoadError(res?.message ?? "Nie udało się połączyć z serwerem.");
         return;
       }
       setDocs(res.documents);
@@ -115,9 +115,9 @@ export function ZdEstimateLinkZdDialog({
         cechaId: scopeMode === "cecha" ? (cechaId ?? null) : null,
         lineMeta: lineMeta ?? null,
         orderableTwIds: orderableTwIds ?? null,
-      });
-      if (!res.ok) {
-        onError(res.message);
+      }).catch(() => null);
+      if (!res?.ok) {
+        onError(res?.message ?? "Nie udało się połączyć z serwerem - spróbuj ponownie.");
         return;
       }
       onLinked({
