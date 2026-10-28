@@ -44,11 +44,19 @@ export async function loadZdAutomatDaily(): Promise<ZdAutomatDailyData> {
         dok_nr: string | null;
         origin: string | null;
         create_attempted_at: string | null;
+        dok_id: number | null;
+        decided_at: Date | string | null;
+        mail_sent_at: Date | string | null;
       }>(
-        // to_jsonb: kolumny z migracji 193/199 czytają się także na bazie bez nich (wtedy null).
-        `SELECT x.supplier_id, x.id, x.created_at, x.status, x.line_count, x.value_net, d.nr_pelny AS dok_nr,
-                x.extra->>'origin' AS origin, x.extra->>'create_attempted_at' AS create_attempted_at
-           FROM (SELECT supplier_id, id, created_at, status, line_count, value_net, dok_id, to_jsonb(p) AS extra,
+        // to_jsonb: kolumny z migracji 193/199/200 czytają się także na bazie bez nich (wtedy null).
+        // Numer ZD: nocna kopia dokumentów nie ma jeszcze ZD z dziś — zapisuje go też historia przy tworzeniu.
+        `SELECT x.supplier_id, x.id, x.created_at, x.status, x.line_count, x.value_net,
+                COALESCE(d.nr_pelny, (SELECT NULLIF(h.dok_nr_pelny, '') FROM zd_estimate_order_snapshots h WHERE h.dok_id = x.dok_id)) AS dok_nr,
+                x.extra->>'origin' AS origin, x.extra->>'create_attempted_at' AS create_attempted_at,
+                x.dok_id, x.decided_at,
+                COALESCE((x.extra->>'sent_at')::timestamptz,
+                         (SELECT max(e.sent_at) FROM supplier_order_emails e WHERE e.subiekt_dok_id = x.dok_id)) AS mail_sent_at
+           FROM (SELECT supplier_id, id, created_at, status, line_count, value_net, dok_id, decided_at, to_jsonb(p) AS extra,
                         row_number() OVER (PARTITION BY supplier_id ORDER BY created_at DESC) AS rn
                    FROM zd_auto_proposals p WHERE supplier_id = ANY($1::uuid[])) x
            LEFT JOIN subiekt_purchase_docs d ON d.dok_id = x.dok_id AND d.typ = $3
@@ -70,6 +78,9 @@ export async function loadZdAutomatDaily(): Promise<ZdAutomatDailyData> {
         dokNr: p.dok_nr?.trim() || null,
         origin: p.origin === "night" || p.origin === "manual" || p.origin === "review" ? p.origin : null,
         createAttemptedAt: p.create_attempted_at ? new Date(p.create_attempted_at).toISOString() : null,
+        dokId: p.dok_id != null && Number(p.dok_id) > 0 ? Number(p.dok_id) : null,
+        decidedAt: p.decided_at ? new Date(p.decided_at).toISOString() : null,
+        mailSentAt: p.mail_sent_at ? new Date(p.mail_sent_at).toISOString() : null,
       });
       bySupplier.set(p.supplier_id, list);
     }

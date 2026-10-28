@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { DailyInboxSummary } from "@/lib/orders/procurement-daily-ui";
 import { useSupplierHubContext } from "@/components/layout/AppRoleContext";
 import { supplierVacationsHref } from "@/lib/supplier-hub";
-import type { DailyDayProgress } from "@/lib/orders/daily-day-progress";
+import { withAutomatDayProgress, type DailyDayProgress } from "@/lib/orders/daily-day-progress";
 import type { DailyPanelView } from "@/lib/orders/daily-panel-view";
 import { DailyDayProgressBar } from "@/components/summary/DailyDayProgressBar";
 import { DailyPanelQueueSteps } from "@/components/summary/DailyPanelQueueSteps";
@@ -132,12 +132,14 @@ function StatusBandBody({
   showVerification,
   verificationCount,
   urgentVacationCount,
+  automatToDo,
   onOpenOnDemand,
 }: {
   view: DailyPanelView;
   summary: DailyInboxSummary;
   dayProgress: DailyDayProgress;
   dayProgressReady?: boolean;
+  automatToDo: number;
   queueTotal: number;
   /** Wliczone do „w kolejce” — pokazane osobno, żeby liczby się sumowały. */
   cancelledCount: number;
@@ -158,6 +160,16 @@ function StatusBandBody({
           {/* Z paskiem „Kolejka” liczniki sekcji są w krokach — tu tylko suma (bez powtórki). */}
           {!showQueueSteps ? (
             <>
+              {automatToDo > 0 ? (
+                <>
+                  <Stat
+                    value={automatToDo}
+                    label={unitLabel(automatToDo, "zamówienie automatu", "zamówienia automatu", "zamówień automatu")}
+                    sectionKey="automat"
+                  />
+                  <StatDivider />
+                </>
+              ) : null}
               <Stat
                 value={summary.overdueCount}
                 label={unitLabel(summary.overdueCount, "zaległe", "zaległe", "zaległych")}
@@ -225,6 +237,7 @@ function StatusBandBody({
 
       {showQueueSteps ? (
         <DailyPanelQueueSteps
+          automatCount={automatToDo}
           overdueCount={summary.overdueCount}
           stockOutGroupCount={summary.stockOutGroupCount}
           forSomeoneGroupCount={summary.forSomeoneGroupCount}
@@ -263,11 +276,14 @@ export function DailyPanelStatusBand({
   showVerification = true,
   urgentVacationCount = 0,
   cancelledCount = 0,
+  automat = null,
   onOpenOnDemand,
 }: {
   view: DailyPanelView;
   summary: DailyInboxSummary;
   dayProgress: DailyDayProgress;
+  /** Zamówienia automatu ZD na dziś: ile jest i ile domkniętych (wysłane albo odrzucone). */
+  automat?: { done: number; total: number } | null;
   dayProgressReady?: boolean;
   verificationCount?: number;
   showVerification?: boolean;
@@ -280,7 +296,10 @@ export function DailyPanelStatusBand({
 
   if (view !== "dzis") return null;
 
+  const automatToDo = automat ? Math.max(0, automat.total - automat.done) : 0;
+  const progress = withAutomatDayProgress(dayProgress, automat);
   const queueTotal =
+    automatToDo +
     summary.overdueCount +
     summary.todayCount +
     summary.forSomeoneGroupCount +
@@ -290,6 +309,7 @@ export function DailyPanelStatusBand({
     (summary.onDemandCount > 0 && Boolean(onOpenOnDemand)) ||
     summary.hiddenScheduleCount > 0;
   const activeSectionCount =
+    Number(automatToDo > 0) +
     Number(summary.overdueCount > 0) +
     Number(summary.stockOutGroupCount > 0) +
     Number(summary.forSomeoneGroupCount > 0) +
@@ -297,10 +317,10 @@ export function DailyPanelStatusBand({
   const showQueueSteps = activeSectionCount >= 2;
 
   const progressHint =
-    dayProgressReady && dayProgress.combined.hasWork
-      ? dayProgress.combined.complete
+    dayProgressReady && progress.combined.hasWork
+      ? progress.combined.complete
         ? " · domknięte"
-        : ` · ${dayProgress.combined.percent}% postępu`
+        : ` · ${progress.combined.percent}% postępu`
       : "";
 
   return (
@@ -332,7 +352,8 @@ export function DailyPanelStatusBand({
         <StatusBandBody
           view={view}
           summary={summary}
-          dayProgress={dayProgress}
+          dayProgress={progress}
+          automatToDo={automatToDo}
           dayProgressReady={dayProgressReady}
           queueTotal={queueTotal}
           cancelledCount={cancelledCount}

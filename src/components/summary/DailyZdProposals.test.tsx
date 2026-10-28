@@ -71,9 +71,9 @@ describe("DailyZdProposals", () => {
     expect(screen.getByText("2 pozycje,")).toBeTruthy();
     expect(screen.getByText("205 szt,")).toBeTruthy();
     expect(screen.getByText(/ok\. 210 zł/)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Sprawdź i zatwierdź" }).className).not.toContain("bg-indigo-600");
+    expect(screen.getByRole("button", { name: "Sprawdź i wyślij" }).className).not.toContain("bg-indigo-600");
     expect(screen.getByText(/automat co 3 dni/)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Sprawdź i zatwierdź" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Sprawdź i wyślij" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Odrzuć" })).toBeTruthy();
     expect(screen.queryByText(/do sprawdzenia/)).toBeNull();
   });
