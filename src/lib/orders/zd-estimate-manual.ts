@@ -86,7 +86,7 @@ export type ManualZdEstimateLine = {
   salesCorrections?: import("@/lib/data/subiekt-sales-corrections").SalesCorrectionsMeta;
   /** Pełny brak w oknie: tempo przyjęte z profilu sprzed okna. */
   stockoutFallback?: import("@/lib/orders/zd-sales-profile").ZdStockoutFallbackMeta;
-  /** Pamięć korekt: wzorzec z Twoich ostatnich decyzji na tym towarze (dziennik, mig. 201). */
+  /** Pamięć korekt: wzorzec z Twoich ostatnich decyzji na tym towarze (dziennik, mig. 203). */
   userPattern?: import("@/lib/data/zd-line-decisions").ZdLineDecisionPattern;
   tw_Id: number;
   tw_Symbol: string;

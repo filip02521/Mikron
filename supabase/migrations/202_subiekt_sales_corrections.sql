@@ -1,4 +1,4 @@
--- 200_subiekt_sales_corrections.sql
+-- 202_subiekt_sales_corrections.sql
 -- Korekty sprzedaży (KFS, dok_Typ = 6) z Subiekta — API `/orders/zd/estimate` sumuje FS + PA + WZ,
 -- a zwrotów nie odejmuje (audyt 28.10.2026: od sierpnia 259 KFS, pojedyncze towary po 20–50 szt).
 -- Nocny odczyt dokumentów zapisuje pozycje; silnik odejmuje je od sprzedaży w oknie i w profilu 12 × 30 d.

@@ -1,5 +1,5 @@
 /**
- * Dziennik decyzji per linia (mig. 201): przy każdym „Utwórz ZD” z Kreatora — co silnik proponował
+ * Dziennik decyzji per linia (mig. 203): przy każdym „Utwórz ZD” z Kreatora — co silnik proponował
  * (jednostki ZD), co poszło na dokument, które linie zdjęto. Z niego: KPI korekty na wszystkich ZD
  * (nie tylko z propozycji automatu) i „pamięć korekt” per towar (`zdLineDecisionPattern`), z której
  * silnik uczy się Twojego rytmu. Reguły czyste, I/O osobno.

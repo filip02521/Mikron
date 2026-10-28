@@ -55,13 +55,13 @@ Kolejność: 1 → 3; 6 po 4; 8 po 6 i 4 cyklach pomiaru; 9 po 8.
 Raport: `docs/audyt-procesu-zamowien-2026-10-28.md`, zmiany: `docs/zamowienia-jeden-silnik.md` §6.
 
 - [x] Zaległe ZD poza „w drodze” + nocne odświeżenie statusów; ZK bez rezerwacji poza wolnym towarem.
-- [x] KFS: tabela `subiekt_sales_corrections` (mig. 200), nocny odczyt, odjęcie w silniku (okno + profil).
+- [x] KFS: tabela `subiekt_sales_corrections` (mig. 202), nocny odczyt, odjęcie w silniku (okno + profil).
 - [x] Pełny brak w oknie → tempo z profilu; p75 przy 5–9 próbkach czasu dostawy.
 - [x] Prośby: rezerwacja zmniejsza prośbę (nie need), odejmowanie przy opakowaniach.
 - [x] Podbicie: bez thin_cover/sell_through po mnożniku braków, cel bez zapasMin; skok vs ZD tylko w classic; profil na sprzedaży sprzed mnożnika.
-- [x] Dziennik decyzji per linia (mig. 201) + KPI `lineCorrection` + pamięć korekt (cel × mediana, flaga `habit`).
+- [x] Dziennik decyzji per linia (mig. 203) + KPI `lineCorrection` + pamięć korekt (cel × mediana, flaga `habit`).
 - [x] Panel dzienny „poza planem” liczy towar raz.
-- [ ] Produkcja: migracje 200, 201; sprawdzić po pierwszej nocy `[catalog-zd-sync] korekty KFS` i `zaległe ZD` w logu.
+- [ ] Produkcja: migracje 202, 203; sprawdzić po pierwszej nocy `[catalog-zd-sync] korekty KFS` i `zaległe ZD` w logu.
 - [ ] Powód korekty (klient / promocja / cena / rytm) w oknie „Utwórz ZD” — dziś dziennik bez powodów, więc pamięć korekt nie odróżnia jednorazowej decyzji pod klienta.
 - [ ] Prośba dostarczona przed oknem obniża sprzedaż w oknie (L4 w raporcie) — wymaga daty wydania klientowi.
 - [ ] Tomasz (API): KFS w `sprzedazOkres`, `zkDataOd` dla ZK bez rezerwacji.

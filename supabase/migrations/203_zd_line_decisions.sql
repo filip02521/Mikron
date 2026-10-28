@@ -1,4 +1,4 @@
--- 201_zd_line_decisions.sql
+-- 203_zd_line_decisions.sql
 -- Dziennik decyzji per linia przy „Utwórz ZD” w Kreatorze (audyt 28.10.2026): co silnik proponował,
 -- co poszło na ZD, także linie zdjęte z listy. Dotąd ślad był tylko w `zd_auto_proposals.final_lines`
 -- (jednostki bez wartości, tylko dla zaakceptowanych propozycji) — korekty przy ZD bez propozycji

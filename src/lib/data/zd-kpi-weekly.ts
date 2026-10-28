@@ -230,7 +230,7 @@ export type ZdKpiWeeklyMetrics = {
   rotation: ZdKpiRotation;
   deadStock: ZdKpiDeadStock;
   humanCorrection: ZdKpiHumanCorrection;
-  /** Korekta na wszystkich ZD z Kreatora w tygodniu (dziennik decyzji, mig. 201); brak = tydzień sprzed dziennika. */
+  /** Korekta na wszystkich ZD z Kreatora w tygodniu (dziennik decyzji, mig. 203); brak = tydzień sprzed dziennika. */
   lineCorrection?: ZdLineDecisionCorrection;
   minima: ZdKpiMinima;
 };

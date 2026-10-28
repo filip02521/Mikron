@@ -1,6 +1,6 @@
 /**
  * Korekty sprzedaży (KFS) — Subiekt liczy `sprzedazOkres` z FS + PA + WZ i nie odejmuje zwrotów.
- * Kopia pozycji KFS w `subiekt_sales_corrections` (mig. 200), odczyt nocny z `/documents?typ=6`;
+ * Kopia pozycji KFS w `subiekt_sales_corrections` (mig. 202), odczyt nocny z `/documents?typ=6`;
  * silnik odejmuje je od sprzedaży w oknie Kreatora i od okien profilu 12 × 30 d.
  * Reguły czyste (`applySalesCorrectionsToLine`, `subtractCorrectionsFromWindows`), I/O osobno.
  */

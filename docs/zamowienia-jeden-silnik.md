@@ -129,7 +129,7 @@ Raport: `docs/audyt-procesu-zamowien-2026-10-28.md`. Zmiany w silniku, wszystkie
 | Co | Gdzie | Reguła |
 |---|---|---|
 | Zaległe ZD nie są „w drodze” | `src/lib/data/zd-stale-open-zd.ts`, silnik przed mnożnikiem braków | otwarte ZD po terminie + 7 dni (bez terminu: 60 dni od wystawienia) odjęte od `otwarteZd`; kopia `subiekt_zd_index` ⋈ `zd_purchase_lines`; statusy zaległych odświeżane nocą w `catalog-zd-sync` |
-| Zwroty (KFS) odjęte od sprzedaży | `src/lib/data/subiekt-sales-corrections.ts`, mig. 200 | nocny odczyt `/documents?typ=6` do `subiekt_sales_corrections`; w silniku sprzedaż w oknie, cel i okna profilu 12 × 30 d netto |
+| Zwroty (KFS) odjęte od sprzedaży | `src/lib/data/subiekt-sales-corrections.ts`, mig. 202 | nocny odczyt `/documents?typ=6` do `subiekt_sales_corrections`; w silniku sprzedaż w oknie, cel i okna profilu 12 × 30 d netto |
 | ZK bez rezerwacji nie zabierają wolnego towaru | `freeSupplyForProsbaPieces` | 92 % tych ZK to martwe dokumenty sprzed lat; prośba bierze z półki to, co jest ponad cel |
 | Pełny brak w oknie | `applyZdStockoutFallbackToLine` | stan ≤ 0 i sprzedaż 0 → tempo ze średniej 3 okien profilu sprzed okna Kreatora |
 | Czas dostawy z małej próbki | `quantilesFromSampleRows` | 5–9 próbek → p75 (nearest rank p90 był maksimum), od 10 → p90 |
@@ -138,9 +138,9 @@ Raport: `docs/audyt-procesu-zamowien-2026-10-28.md`. Zmiany w silniku, wszystkie
 | Podbicie po mnożniku braków | `computeSalesTrackedCel` | `stockoutApplied` wyłącza thin_cover i sell_through; podbicia, cięcia, sufity i podłogi liczone od celu bez `zapasMin` |
 | Skok vs ostatnie ZD | `historySpikeCut` | wyłączone przy strategii ≠ classic (skok tnie profil 12 × 30 d) |
 | Profil klasyfikuje sprzedaż sprzed mnożnika braków | silnik | sprzedaż ×2 po brakach nie wygląda jak skok |
-| Dziennik decyzji per linia | `src/lib/data/zd-line-decisions.ts`, mig. 201 | każde „Utwórz ZD”: propozycja silnika vs ZD, także linie zdjęte; KPI `lineCorrection` w `zd_kpi_weekly` i w tabeli Automatu |
+| Dziennik decyzji per linia | `src/lib/data/zd-line-decisions.ts`, mig. 203 | każde „Utwórz ZD”: propozycja silnika vs ZD, także linie zdjęte; KPI `lineCorrection` w `zd_kpi_weekly` i w tabeli Automatu |
 | Pamięć korekt | `src/lib/orders/zd-user-pattern.ts` | 3 z 4 ostatnich decyzji w tę samą stronę → cel × mediana (0,5–2) albo znacznik „zwykle zdejmujesz”; flaga `habit` w propozycji; krok w „Dlaczego tyle”. Dziennik zapisuje `pattern_factor`, więc stosunek liczy się do surowej propozycji silnika — zaakceptowanie dopasowanej ilości utrzymuje wzorzec, nie kasuje go |
 | Panel dzienny „poza planem” | `listStockWatchOffPlanSuppliers` | towar wspólnego zakresu liczony raz, u właściciela (jak tablica Braki) |
 | Karta produktu: „Ruch towaru” i „Starsze zakupy” | `src/lib/orders/zd-product-movement.ts`, `ZdProductHistorySections.tsx`, `actionFetchZdProductOlderPurchases` | ZD + przyjęcia + sprzedaż w jednej osi; zakres: okno zapasu (min. 30 d), 3 mies., 12 mies., cała historia; dostawa wzięta w całości przez jednego klienta wyróżniona; starsze zakupy z całej kopii ZD na żądanie (do 500 linii) |
 
-Do zrobienia na produkcji: migracje 200 i 201 (panel admina), pierwsza noc `catalog-zd-sync` wczyta ~900 KFS z 13 miesięcy (własny budżet, w razie braku czasu w slocie — następnej nocy) i odświeży statusy do 150 zaległych ZD. Nic poza tym — brak nowych zadań crona, brak zmian w `.env`.
+Do zrobienia na produkcji: migracje 202 i 203 (panel admina), pierwsza noc `catalog-zd-sync` wczyta ~900 KFS z 13 miesięcy (własny budżet, w razie braku czasu w slocie — następnej nocy) i odświeży statusy do 150 zaległych ZD. Nic poza tym — brak nowych zadań crona, brak zmian w `.env`.

@@ -3924,7 +3924,7 @@ export async function actionCreateZdFromEstimate(input: {
     ilosc: number;
     symbol?: string | null;
     plu?: string | null;
-    /** Jednostki ZD z silnika przed ręczną zmianą — dziennik decyzji (mig. 201). */
+    /** Jednostki ZD z silnika przed ręczną zmianą — dziennik decyzji (mig. 203). */
     proposedUnits?: number | null;
     /** Mnożnik pamięci korekt zawarty w `proposedUnits`. */
     patternFactor?: number | null;
