@@ -31,6 +31,7 @@ import {
   fetchZdAutoProposalById,
   releaseZdAutoProposalCreate,
   listZdAutoProposals,
+  markZdAutoProposalSent,
   type ZdAutoProposal,
 } from "@/lib/data/zd-auto-proposals";
 
@@ -1708,6 +1709,24 @@ export async function actionCreateZdAutoProposalNow(input: {
     return { ok: false, message: "Automat ZD jest wyłączony dla tego dostawcy - włącz go w karcie dostawcy (sekcja Automat ZD) albo w Strategii dostawcy w Kreatorze." };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się przygotować propozycji.") };
+  }
+}
+
+/**
+ * „Wysłałem ręcznie” w panelu wysyłki ZD: zamówienie automatu z tym ZD poszło do dostawcy (etap „sent”
+ * w panelu dziennym). ZD spoza automatu — nic. Wysyłkę z Gmaila OnTime zapisuje sama (supplier_order_emails).
+ */
+export async function actionMarkZdAutoProposalSentManually(input: { dokId: number }): Promise<{ ok: boolean }> {
+  await requireZdEstimateAdmin("mutate");
+  const dokId = Math.trunc(Number(input.dokId));
+  if (!(dokId > 0)) return { ok: false };
+  try {
+    const done = await markZdAutoProposalSent(dokId, "manual");
+    if (done) revalidateAfterZdEstimateMark();
+    return { ok: true };
+  } catch (e) {
+    console.warn("[zd-auto-proposal] wysłane ręcznie", dokId, e);
+    return { ok: false };
   }
 }
 

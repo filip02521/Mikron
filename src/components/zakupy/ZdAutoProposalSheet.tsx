@@ -22,6 +22,7 @@ import { polishPluralWord } from "@/lib/email/polish-plural";
 import { ZD_AUTO_PROPOSAL_EDIT_MAX_UNITS, diffZdAutoProposalLines } from "@/lib/orders/zd-auto-proposal-create";
 import type { ZdPostCreateSession } from "@/lib/orders/zd-estimate-post-create";
 import { formatQty } from "@/lib/orders/zd-estimate-manual";
+import { warsawKeyFromIso, zdProposalListFromToday } from "@/lib/orders/zd-automat-daily";
 import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 import {
   sidePanelBackdropClass,
@@ -198,19 +199,28 @@ export function ZdAutoProposalSheet({
   supplierId,
   supplierName,
   morning,
+  resumeSession = null,
   onClose,
 }: {
   supplierId: string;
   supplierName: string;
   /** Propozycja, którą widział użytkownik — porównanie po przeliczeniu. */
   morning: ZdAutoProposal;
+  /** ZD już utworzone z tej propozycji, mail jeszcze nie poszedł — panel otwiera się od razu na wysyłce. */
+  resumeSession?: ZdPostCreateSession | null;
   onClose: () => void;
 }) {
   const router = useRouter();
   const { panelRef, backdropRef, requestClose } = useAnimatedClose(onClose);
-  const [phase, setPhase] = useState<Phase>("review");
-  const [recompute, setRecompute] = useState<{ status: "running" | "ok" | "error"; message?: string }>({ status: "running" });
-  const [fresh, setFresh] = useState<ZdAutoProposal | null>(null);
+  // Dzisiejsza lista automatu jest gotowa do zatwierdzenia — przeliczenie tylko na żądanie albo dla starszej listy.
+  const [listFromToday] = useState(() => zdProposalListFromToday(morning, warsawKeyFromIso(new Date().toISOString())));
+  const [phase, setPhase] = useState<Phase>(resumeSession ? "send" : "review");
+  const [recompute, setRecompute] = useState<{ status: "running" | "ok" | "error"; message?: string }>({
+    status: listFromToday ? "ok" : "running",
+  });
+  const [fresh, setFresh] = useState<ZdAutoProposal | null>(listFromToday ? morning : null);
+  /** Lista przeliczona w tym panelu (nie ta z nocnego przebiegu). */
+  const [recomputedHere, setRecomputedHere] = useState(false);
   const [edits, setEdits] = useState<Record<string, number>>({});
   const [createError, setCreateError] = useState<string | null>(null);
   /** Subiekt nie potwierdził zapisu (timeout, zerwane połączenie) — ZD mogło powstać; jak w Kreatorze bez ponowienia. */
@@ -218,8 +228,8 @@ export function ZdAutoProposalSheet({
   /** Numer utworzonego ZD — krok „ZD w Subiekcie” chwilę zielony, zanim przejdzie do wysyłki. */
   const [createdNr, setCreatedNr] = useState<string | null>(null);
   /** Po przeliczeniu krok 1 chwilę pokazuje sukces (logo się domyka), dopiero potem lista. */
-  const [listReady, setListReady] = useState(false);
-  const [session, setSession] = useState<ZdPostCreateSession | null>(null);
+  const [listReady, setListReady] = useState(listFromToday);
+  const [session, setSession] = useState<ZdPostCreateSession | null>(resumeSession);
   const [filter, setFilter] = useState<Filter>("all");
   /** Prośby przy pozycjach — wczytane dla propozycji `id`; inna propozycja (przeliczenie) = wczytuje się. */
   const [prosby, setProsby] = useState<ZdProposalProsbyState | null>(null);
@@ -272,6 +282,7 @@ export function ZdAutoProposalSheet({
         if (!r.ok) return setRecompute({ status: "error", message: r.message });
         if (!r.proposal) return setRecompute({ status: "error", message: "Na aktualnych stanach nie ma nic do zamówienia." });
         setFresh(r.proposal);
+        setRecomputedHere(true);
         setRecompute({ status: "ok" });
         // Ponowne przeliczenie w trakcie pauzy nie może odsłonić listy za wcześnie.
         window.setTimeout(() => {
@@ -283,7 +294,7 @@ export function ZdAutoProposalSheet({
   };
   useEffect(() => {
     // Raz po otwarciu (StrictMode montuje efekt dwa razy).
-    if (started.current) return;
+    if (started.current || listFromToday || resumeSession) return;
     started.current = true;
     runRecompute();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -469,7 +480,9 @@ export function ZdAutoProposalSheet({
             <div className="space-y-4">
               <p className="flex items-center gap-2 rounded-md bg-emerald-50 px-3 py-2.5 text-sm font-medium text-emerald-800">
                 <IconCircleCheck size={16} aria-hidden />
-                Utworzono {session.dokNrPelny ?? "ZD"} w Subiekcie. Teraz mail do dostawcy - sprawdź go przed wysłaniem.
+                {resumeSession
+                  ? `${session.dokNrPelny || "ZD"} jest już w Subiekcie. Zostało wysłać zamówienie do dostawcy.`
+                  : `Utworzono ${session.dokNrPelny ?? "ZD"} w Subiekcie. Teraz mail do dostawcy - sprawdź go przed wysłaniem.`}
               </p>
               <ZdEstimatePostCreatePanel
                 embedded
@@ -491,13 +504,31 @@ export function ZdAutoProposalSheet({
                   <ActionTimeline steps={steps} />
                 </div>
               ) : (
-                <p className="text-sm text-slate-600">
-                  Przeliczone na stanach z tej chwili.{" "}
-                  {changes.length
-                    ? `Wobec ${since}: ${changes.length} ${polishPluralWord(changes.length, "zmiana", "zmiany", "zmian")}.`
-                    : `Bez zmian wobec ${since}.`}{" "}
-                  Popraw ilości, jeśli trzeba - zatwierdzisz dokładnie to, co widzisz.
-                </p>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                  <p className="text-sm text-slate-600">
+                    {recomputedHere ? (
+                      <>
+                        Przeliczone na stanach z tej chwili.{" "}
+                        {changes.length
+                          ? `Wobec ${since}: ${changes.length} ${polishPluralWord(changes.length, "zmiana", "zmiany", "zmian")}.`
+                          : `Bez zmian wobec ${since}.`}{" "}
+                      </>
+                    ) : (
+                      <>Lista automatu z {formatWhen(fresh?.refreshedAt ?? fresh?.createdAt ?? morning.createdAt)}. </>
+                    )}
+                    Popraw ilości, jeśli trzeba - zatwierdzisz dokładnie to, co widzisz.
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="min-h-11 shrink-0 self-start sm:min-h-8"
+                    onClick={runRecompute}
+                    disabled={creating || createLocked}
+                  >
+                    {editedCount ? "Przelicz (poprawki przepadną)" : "Przelicz na aktualnych stanach"}
+                  </Button>
+                </div>
               )}
 
               {createLocked ? (
@@ -548,7 +579,8 @@ export function ZdAutoProposalSheet({
                       { value: "all", label: `Wszystkie (${diff.length})` },
                       ...(flaggedCount ? [{ value: "flagged" as const, label: `Do sprawdzenia (${flaggedCount})` }] : []),
                       ...(prosbaCount ? [{ value: "prosby" as const, label: `Na prośbę (${prosbaCount})` }] : []),
-                      { value: "changes", label: `Zmiany (${changes.length})` },
+                      // Zmiany wobec listy automatu są dopiero po przeliczeniu w tym panelu.
+                      ...(recomputedHere ? [{ value: "changes" as const, label: `Zmiany (${changes.length})` }] : []),
                       { value: "edited", label: `Poprawione (${editedCount})` },
                     ]}
                   />

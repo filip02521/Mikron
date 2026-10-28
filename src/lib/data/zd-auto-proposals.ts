@@ -421,6 +421,24 @@ export async function decideZdAutoProposal(input: {
   return (res.rowCount ?? 0) > 0;
 }
 
+/**
+ * Zamówienie automatu poszło do dostawcy poza Gmailem OnTime („Wysłałem ręcznie”) — etap „sent” (migracja 200).
+ * Wysyłkę z Gmaila widać w `supplier_order_emails`. Pierwszy zapis wygrywa; baza bez migracji 200 — nic (false).
+ */
+export async function markZdAutoProposalSent(dokId: number, via: "gmail" | "manual"): Promise<boolean> {
+  try {
+    const res = await query(
+      `UPDATE zd_auto_proposals SET sent_at = now(), sent_via = $2
+        WHERE dok_id = $1 AND status = 'accepted' AND sent_at IS NULL`,
+      [dokId, via]
+    );
+    return (res.rowCount ?? 0) > 0;
+  } catch (e) {
+    if (isUndefinedColumn(e)) return false;
+    throw e;
+  }
+}
+
 /** Drugie ZD tego samego dnia (zamówienie podzielone) — dopisuje linie do zaakceptowanej propozycji. */
 export async function addZdAutoProposalFinalLines(input: {
   id: string;

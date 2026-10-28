@@ -1,5 +1,6 @@
 /** Kotwice sekcji zakładki Dziś — wspólne dla nawigacji i scrolla. */
 export const DAILY_PANEL_QUEUE_SECTION = {
+  automat: "kolejka-automat-zd",
   overdue: "kolejka-zalegle",
   stockOut: "kolejka-brak-na-stanie",
   prosby: "kolejka-prosby",

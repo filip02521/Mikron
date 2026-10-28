@@ -585,3 +585,32 @@ nie działa”) i obok pokazywał siatkę z rekomendacją. Teraz backtest nie ma
   stopień, godzinę odcięcia albo wyłącza automat).
 - **Starsze wyniki** (v1/v2) liczyły ręcznie wybrane ustawienia: lista pokazuje „sprzed doboru ustawień”, a dostawca
   w automacie trafia do „Do sprawdzenia” z „policz ponownie”, dopóki ktoś nie przeliczy backtestu.
+
+## 14. Przebieg zamówienia automatu w panelu dziennym (2026-10-28)
+
+Produkcja 28.10: 5 dostawców w automacie (Adammed, Makromed, Dentalstore/At-Akcept, RS-Team, Polkard), u każdego „brak ZD z propozycji” — żadna propozycja nie skończyła się jeszcze zamówieniem; dziś czeka jedna (Dentalstore, 2 pozycje, nocny przebieg 5:30).
+
+Problem (zgłoszenie Filipa, potwierdzone w bazie dev): „Sprawdź i zatwierdź” przy każdym otwarciu przeliczało propozycję
+od nowa — Polkard miał w dwa dni ok. 10 propozycji wygaszonych kolejnymi przeliczeniami, a lista z nocnego przebiegu
+nigdy nie była tą, którą się zatwierdzało. Górny pasek „Automat ZD” tylko opisywał stan i odsyłał do kolejki, a po
+utworzeniu ZD nic nie pilnowało, czy zamówienie poszło do dostawcy.
+
+Teraz:
+
+- **Lista automatu z dziś otwiera się od razu** (`zdProposalListFromToday`, `ZdAutoProposalSheet`): bez przeliczania
+  i bez nowej propozycji. „Przelicz na aktualnych stanach” jest przyciskiem; lista z poprzedniego dnia przelicza się sama.
+- **Górny panel = zamówienia automatu na dziś** (`DailyZdAutomatOrders`, `zdAutomatTodayOrders`): zdanie „N zamówień
+  czeka na Ciebie · X z Y gotowe”, pod nim wiersz na zamówienie z etapem (sprawdzenie → ZD w Subiekcie → wysłane) i jedną
+  akcją: „Sprawdź i wyślij” albo „Wyślij mail” (ZD jest, zamówienie nie poszło — panel otwiera się od razu na wysyłce).
+- **Karta kolejki u góry panelu** (`DailyPanelStatusBand`): krok „Automat ZD (N)” na początku kolejki (przewija do sekcji, kotwica `kolejka-automat-zd`), N w „w kolejce” i „automat X/Y” w postępie dnia (`withAutomatDayProgress`).
+- **Etap „wysłane”** (§4.2, migracja `200_zd_auto_proposal_sent.sql`): mail z Gmaila OnTime widać w
+  `supplier_order_emails`; „Wysłałem ręcznie” zapisuje `sent_at`/`sent_via = manual` na propozycji.
+
+### 14.1. Dalej: do pełnej automatyzacji
+
+| # | Krok | Co trzeba rozstrzygnąć |
+|---|---|---|
+| A | „Zatwierdź wszystkie bez uwag” w górnym panelu: jedno kliknięcie tworzy ZD z propozycji bez flag (ta sama ścieżka co klik, `claimZdAutoProposalCreate`), potem wysyłka po kolei | czy wysyłka maili też zbiorczo, czy każdy podgląd osobno |
+| B | Stopień 3 (auto-zatwierdzenie): ścieżka zatwierdzania wyjęta z akcji do `src/lib` (bez sesji użytkownika, `decided_by` = automat), wołana o stałej godzinie dla dostawców z `auto_level ≥ 3` i propozycją bez flag | godzina (po oknie handlowców — zadanie 6 — czy od razu po nocnym przebiegu) |
+| C | Stopień 4 (auto-mail): `sendGmailAsUser` wymaga połączonego Gmaila konkretnej osoby; tylko dostawcy z adresem w karcie i bez własnego formularza (Wiedent, Sirona) | z czyjej skrzynki idą maile automatu |
+| D | Cofnięcie stopnia po reklamacji treści ZD (§4.4) — dziś tylko braki A i nieudany create | jak zgłaszać reklamację (przycisk przy wysłanym zamówieniu?) |
