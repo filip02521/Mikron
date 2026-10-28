@@ -94,7 +94,15 @@ const KPIS: Record<"oos" | "rotation" | "dead" | "correction" | "deferred" | "mi
     label: "Korekta",
     help: `Korekta człowieka: % wartości propozycji zmienionej przy tworzeniu ZD. Poniżej 10% przez ${ZD_AUTOMAT_READY_WEEKS} tygodnie = gotowość do auto-zatwierdzania.`,
     value: (m) => pct(m.humanCorrection.pct),
-    note: (m) => (m.humanCorrection.proposals ? `${nf0.format(m.humanCorrection.proposals)} ZD z propozycji` : null),
+    note: (m) =>
+      [
+        m.humanCorrection.proposals ? `${nf0.format(m.humanCorrection.proposals)} ZD z propozycji` : null,
+        m.lineCorrection?.pct != null
+          ? `Kreator: ${pct(m.lineCorrection.pct)} na ${nf0.format(m.lineCorrection.zdCount)} ZD, ${nf0.format(m.lineCorrection.dropped)} zdjętych`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" · ") || null,
     empty: "brak ZD z propozycji",
   },
   deferred: {

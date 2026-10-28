@@ -46,6 +46,10 @@ export type ZdCreatePreviewLine = {
   plu?: string | null;
   /** Jednostki dokumentu ZD (paczki w trybie A, sztuki w B). */
   ilosc: number;
+  /** Jednostki ZD z silnika przed ręczną zmianą — dziennik decyzji (brak w starych fixture'ach i labie). */
+  proposedUnits?: number;
+  /** Mnożnik pamięci korekt zawarty w `proposedUnits` (cel × mnożnik); brak = silnik bez pamięci. */
+  patternFactor?: number | null;
   packagingHint: string | null;
   /** Rezerwa próśb (sztuki) wliczona w ilosc po opakowaniu. */
   individualExtraPieces?: number;
@@ -62,6 +66,8 @@ export type ZdCreatePreviewLine = {
 
 export type ZdCreatePreview = {
   lines: ZdCreatePreviewLine[];
+  /** Linie z propozycją silnika > 0 zdjęte z listy ręcznie (nie idą na ZD) — dziennik decyzji. */
+  droppedLines?: Array<{ twId: number; symbol: string; nazwa: string; proposedUnits: number; patternFactor?: number | null }>;
   lineCount: number;
   zdUnitsSuma: number;
   piecesArrivingSuma: number;
@@ -162,6 +168,12 @@ export function resolveZdCreateKhId(input: {
   };
 }
 
+/** Mnożnik pamięci korekt, gdy zmienił cel linii (up/down); „drop” i brak wzorca → null. */
+function previewPatternFactor(line: ManualZdEstimateLine): number | null {
+  const p = line.userPattern;
+  return p && p.kind !== "drop" && p.factor > 0 ? p.factor : null;
+}
+
 export function buildZdCreatePreviewFromOrderable(
   lines: readonly ManualZdEstimateLine[],
   packagingById: ReadonlyMap<number, PackagingLookup>,
@@ -175,6 +187,7 @@ export function buildZdCreatePreviewFromOrderable(
   minStockByTwId?: ReadonlyMap<number, number> | null
 ): ZdCreatePreview {
   const previewLines: ZdCreatePreviewLine[] = [];
+  const droppedLines: NonNullable<ZdCreatePreview["droppedLines"]> = [];
   let zdUnitsSuma = 0;
   let piecesArrivingSuma = 0;
   let extraRequestLineCount = 0;
@@ -225,7 +238,18 @@ export function buildZdCreatePreviewFromOrderable(
           minStockByTwId?.get(line.tw_Id)
         )
       : qty.zdUnits;
-    if (finalZd <= 0) continue;
+    if (finalZd <= 0) {
+      if (qty.zdUnits > 0) {
+        droppedLines.push({
+          twId: line.tw_Id,
+          symbol: line.tw_Symbol,
+          nazwa: line.tw_Nazwa,
+          proposedUnits: qty.zdUnits,
+          patternFactor: previewPatternFactor(line),
+        });
+      }
+      continue;
+    }
     const piecesArriving = usedOverride
       ? piecesArrivingForZdUnits(
           finalZd,
@@ -243,6 +267,8 @@ export function buildZdCreatePreviewFromOrderable(
       nazwa: line.tw_Nazwa,
       plu: line.tw_PLU ?? null,
       ilosc: finalZd,
+      proposedUnits: qty.zdUnits,
+      patternFactor: previewPatternFactor(line),
       packagingHint: qty.hasPackaging
         ? isPackagingPackagesMode(qty.documentUnitMode)
           ? [
@@ -272,6 +298,7 @@ export function buildZdCreatePreviewFromOrderable(
   }
   return {
     lines: previewLines,
+    droppedLines,
     lineCount: previewLines.length,
     zdUnitsSuma,
     piecesArrivingSuma,

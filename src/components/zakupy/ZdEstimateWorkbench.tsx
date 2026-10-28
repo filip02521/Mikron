@@ -8668,6 +8668,7 @@ export function ZdEstimateWorkbench({
                 minStockSzt={minSt}
                 overrideZdUnits={qtyOverrideByTwId[l.tw_Id]}
                 leadDays={policzScopeInfo?.leadDays ?? policzScopeInfo?.horizon?.leadDays ?? null}
+                salesWindow={{ dataOd, dataDo }}
                 comparePieces={
                   policzScopeInfo?.classicCompare ? (policzScopeInfo.classicCompare.byTwId[l.tw_Id]?.pieces ?? 0) : null
                 }

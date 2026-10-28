@@ -84,6 +84,16 @@ import {
   fetchSubiektZdEstimateAll,
 } from "@/lib/subiekt/api";
 import { fetchZdSupplierOrderPolicy } from "@/lib/data/zd-supplier-order-policy";
+import { applyStaleOpenZdToLine, loadStaleOpenZdByTwId, type ZdStaleOpenZd } from "@/lib/data/zd-stale-open-zd";
+import {
+  applySalesCorrectionsToLine,
+  loadSalesCorrectionsByDay,
+  subtractCorrectionsFromWindows,
+} from "@/lib/data/subiekt-sales-corrections";
+import { loadZdLineDecisionPatterns, type ZdLineDecisionPattern } from "@/lib/data/zd-line-decisions";
+import { applyUserPatternToManualLine } from "@/lib/orders/zd-user-pattern";
+import { zdDocumentUnitsToPieces } from "@/lib/orders/zd-estimate-units";
+import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
 import {
   applyZdDemandFloorToLine,
   applyZdPairDemandFloor,
@@ -111,6 +121,7 @@ import {
 } from "@/lib/orders/zd-estimate-prosba-reservation-overlap";
 import {
   applyZdSalesProfileToLine,
+  applyZdStockoutFallbackToLine,
   resolveZdSalesProfile,
   sales90CappedFromProfile,
   type ZdSalesSmoothingSummary,
@@ -935,6 +946,21 @@ export async function runZdOrderEngine(
     }
   }
 
+  // Zaległe ZD (po terminie) nie są „w drodze” — inaczej jedno martwe ZD zerowało Do ZD miesiącami.
+  {
+    const staleByTw = await loadStaleOpenZdByTwId(
+      mergedPozycje.map((p) => Math.trunc(Number(p.tw_Id) || 0)),
+      dataDo
+    ).catch((e: unknown) => {
+      console.warn("[zd-order-engine] zaległe ZD", e);
+      return new Map<number, ZdStaleOpenZd>();
+    });
+    for (let i = 0; i < mergedPozycje.length && staleByTw.size; i += 1) {
+      const stale = staleByTw.get(Math.trunc(Number(mergedPozycje[i]!.tw_Id) || 0));
+      if (stale) mergedPozycje[i] = applyStaleOpenZdToLine(mergedPozycje[i]!, stale);
+    }
+  }
+
   // Jedna historia: zakres główny + dociągnięte partner/BOM/prośba.
   if (historyFilters) {
     historyByTwId = new Map();
@@ -1006,6 +1032,30 @@ export async function runZdOrderEngine(
   // Dni braku w oknie (historia stanów z nocnego przebiegu): sprzedaż przeliczona na dni ze
   // stanem, zanim podłoga / profil / cel ją wezmą. Pary i składy — bez (stan łączony gdzie indziej).
   // Bez historii (pierwsze tygodnie, błąd bazy) — jak dotąd.
+  // Zwroty (KFS): Subiekt ich nie odejmuje — sprzedaż w oknie i cel w dół, zanim cokolwiek z nich liczy.
+  const correctionsByDay = await loadSalesCorrectionsByDay({
+    twIds: mergedPozycje.map((p) => Math.trunc(Number(p.tw_Id) || 0)),
+    endDate: dataDo,
+  }).catch((e: unknown) => {
+    console.warn("[zd-order-engine] korekty KFS", e);
+    return new Map<number, Array<readonly [string, number]>>();
+  });
+  if (correctionsByDay.size) {
+    const dniOkresuKfs =
+      Number(fetched.parametry.dniOkresu) > 0
+        ? Number(fetched.parametry.dniOkresu)
+        : Math.round((Date.parse(dataDo) - Date.parse(dataOd)) / 86_400_000) + 1;
+    for (let i = 0; i < mergedPozycje.length; i += 1) {
+      const days = correctionsByDay.get(Math.trunc(Number(mergedPozycje[i]!.tw_Id) || 0));
+      if (!days) continue;
+      const pieces = days.reduce((a, [day, q]) => (day >= dataOd && day <= dataDo ? a + q : a), 0);
+      mergedPozycje[i] = applySalesCorrectionsToLine(mergedPozycje[i]!, pieces, dniOkresuKfs, dniZapasu, zapasMin);
+    }
+  }
+  // Sprzedaż przed mnożnikiem braków — profil klasyfikuje skok na niej (sprzedaż ×2 wyglądała jak skok i cofała korektę).
+  const preStockoutSalesByTw = new Map(
+    mergedPozycje.map((p) => [Math.trunc(Number(p.tw_Id) || 0), Math.max(0, Number(p.sprzedazOkres) || 0)])
+  );
   {
     const composite = new Set<number>([
       ...productPairs.flatMap((p) => [p.packTwId, p.pieceTwId]),
@@ -1026,11 +1076,11 @@ export async function runZdOrderEngine(
       const meta = computeStockoutSalesFactor({ windowDays, recordedDays: h.recordedDays, outDays: h.outDays });
       if (meta) metaByTw.set(tw, meta);
     }
-    // Sprzedaż pod prośby nie dostaje mnożnika (jak w odejmowaniu próśb: tylko bez opakowań,
-    // bo prośba jest w sztukach, a sprzedaż w jednostkach karty).
+    // Sprzedaż pod prośby nie dostaje mnożnika. Prośba jest w sztukach karty — tak samo jak
+    // sprzedaż z API i jak liczy ją `individualExtra` (opakowanie przelicza tylko jednostki ZD).
     const prosbaForStockout = metaByTw.size
       ? await loadDeliveredProsbaPiecesByTwId({
-          twIds: [...metaByTw.keys()].filter((tw) => !((packagingByTwId.get(tw)?.unitsPerPackage ?? 1) > 1)),
+          twIds: [...metaByTw.keys()],
           dataOd,
           dataDo,
         }).catch(() => new Map<number, number>())
@@ -1067,6 +1117,11 @@ export async function runZdOrderEngine(
       salesSmoothing = { spike: 0, rare: 0, prosba: 0, failed: true };
     } else {
       const profiles = new Map([...(p2 ?? []), ...(p1 ?? [])]);
+      // Zwroty także z okien profilu — podłoga 90 d i znaczniki na sprzedaży netto.
+      for (const [tw, days] of correctionsByDay) {
+        const w = profiles.get(tw);
+        if (w) profiles.set(tw, subtractCorrectionsFromWindows(w, days, dataDo));
+      }
       const compositeTwIds = new Set<number>();
       for (const pair of productPairs) {
         compositeTwIds.add(pair.packTwId);
@@ -1076,6 +1131,22 @@ export async function runZdOrderEngine(
         compositeTwIds.add(bom.parentTwId);
         for (const c of bom.components) compositeTwIds.add(c.componentTwId);
       }
+      // Pełny brak w oknie (stan 0, sprzedaż 0): tempo z profilu sprzed okna — inaczej towar znika z listy i z radaru.
+      {
+        const dniOkresuFb =
+          Number(fetched.parametry.dniOkresu) > 0
+            ? Number(fetched.parametry.dniOkresu)
+            : Math.round((Date.parse(dataDo) - Date.parse(dataOd)) / 86_400_000) + 1;
+        for (let i = 0; i < mergedPozycje.length; i += 1) {
+          const tw = Math.trunc(Number(mergedPozycje[i]!.tw_Id) || 0);
+          if (compositeTwIds.has(tw)) continue;
+          mergedPozycje[i] = applyZdStockoutFallbackToLine(mergedPozycje[i]!, profiles.get(tw), {
+            dniOkresu: dniOkresuFb,
+            dniZapasu,
+            zapasMin,
+          });
+        }
+      }
       // Strategia max30_90 zastępuje wygładzenie (backtest: wygładzenie nie poprawiało wyniku).
       const smoothing = input.salesSmoothing === true && orderPolicy.strategy === "classic";
       // Sprzedaż pod prośbę była już zamówiona jako dodatek do prośby — nie jest popytem na zapas.
@@ -1083,10 +1154,9 @@ export async function runZdOrderEngine(
       // ciągnie jednorazową prośbę jeszcze przez dwa miesiące).
       const strategyActive = orderPolicy.strategy !== "classic";
       const subtractProsba = smoothing || strategyActive;
-      const prosbaInPieces = (tw: number) =>
-        subtractProsba &&
-        !compositeTwIds.has(tw) &&
-        !((packagingByTwId.get(tw)?.unitsPerPackage ?? 1) > 1);
+      // Prośba jest w sztukach karty jak sprzedaż z API (opakowanie przelicza tylko jednostki ZD) —
+      // towary z opakowaniem też; dawniej pomijane, więc prośba 500 szt siedziała w celu i w podłodze 90 d.
+      const prosbaInPieces = (tw: number) => subtractProsba && !compositeTwIds.has(tw);
       const prosbaLoadTwIds = mergedPozycje.map((p) => Math.trunc(Number(p.tw_Id) || 0)).filter(prosbaInPieces);
       const [prosbaPieces, prosbaByFloorWindow] = await Promise.all([
         subtractProsba
@@ -1149,7 +1219,7 @@ export async function runZdOrderEngine(
             // go prawie w całości. Rzadka sprzedaż bez zmian (tę trzyma podłoga 90 d).
             const pm = resolveZdSalesProfile({
               windows,
-              sprzedazOkres: Number(line.sprzedazOkres) || 0,
+              sprzedazOkres: preStockoutSalesByTw.get(tw) ?? (Number(line.sprzedazOkres) || 0),
               dniOkresu,
               prosbaPieces: prosbaPieces.get(tw) ?? 0,
               smoothing: true,
@@ -1178,7 +1248,7 @@ export async function runZdOrderEngine(
         const meta = resolveZdSalesProfile({
           windows,
           // Profil (znaczniki) z prawdziwej sprzedaży, nie z podłogi strategii.
-          sprzedazOkres: Number(line.sprzedazOkres) || 0,
+          sprzedazOkres: preStockoutSalesByTw.get(tw) ?? (Number(line.sprzedazOkres) || 0),
           dniOkresu,
           prosbaPieces: prosbaPieces.get(tw) ?? 0,
           smoothing,
@@ -1230,6 +1300,8 @@ export async function runZdOrderEngine(
   touchProgress({ phase: "compose" });
   const result = buildManualZdEstimateResult(fetched.parametry, mergedPozycje, {
     onlyManualBraki: false,
+    // Strategia: jednorazowy skok tnie profil 12 × 30 d; „skok vs ostatnie ZD” liczyłby oczekiwane na innych dniach zapasu.
+    historySpikeCut: orderPolicy.strategy === "classic",
     historyByTwId,
     packagingByTwId,
     productPairs,
@@ -1260,6 +1332,7 @@ export async function runZdOrderEngine(
         }),
         {
           onlyManualBraki: false,
+          historySpikeCut: true,
           historyByTwId,
           packagingByTwId,
           productPairs,
@@ -1310,6 +1383,38 @@ export async function runZdOrderEngine(
         classicResult.pozycje = classicResult.pozycje.filter((p) => !hidden.has(p.tw_Id));
         classicResult.pozycjeBase = classicResult.pozycjeBase.filter((p) => !hidden.has(p.tw_Id));
       }
+    }
+  }
+
+  // Pamięć korekt (dziennik decyzji): towar, który 3 z 4 ostatnich razy podnosiłeś / obniżałeś, dostaje
+  // cel × mediana Twoich korekt; zdejmowany z listy — znacznik. Bez dziennika lista jak dotąd.
+  if (input.supplierId) {
+    const patterns = await loadZdLineDecisionPatterns({
+      supplierId: input.supplierId,
+      twIds: result.pozycje.map((p) => p.tw_Id),
+    }).catch((e: unknown) => {
+      console.warn("[zd-order-engine] pamięć korekt", e);
+      return new Map<number, ZdLineDecisionPattern>();
+    });
+    if (patterns.size) {
+      // Pary i składy liczą ilość na scalonym wierszu — pamięć korekt tylko na zwykłych kartach (w bazie i w wyniku tak samo).
+      const compositeTw = new Set<number>([
+        ...productPairs.flatMap((p) => [p.packTwId, p.pieceTwId]),
+        ...bomRefs.flatMap((b) => [b.parentTwId, ...b.components.map((c) => c.componentTwId)]),
+      ]);
+      const applyTo = (lines: ManualZdEstimateLine[]) =>
+        lines.map((line) => {
+          const p = patterns.get(line.tw_Id);
+          if (!p || compositeTw.has(line.tw_Id)) return line;
+          const pack = packagingByTwId.get(line.tw_Id);
+          return applyUserPatternToManualLine(line, p, {
+            zapasMin,
+            otwarteZdPieces: zdDocumentUnitsToPieces(line.otwarteZd, pack?.unitsPerPackage, pack?.documentUnitMode),
+            minStockSzt: minStockByTwId.get(line.tw_Id),
+          });
+        });
+      result.pozycje = applyTo(result.pozycje);
+      result.pozycjeBase = applyTo(result.pozycjeBase);
     }
   }
 

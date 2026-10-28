@@ -285,3 +285,12 @@ describe("applyZdProposalGuards", () => {
     });
   });
 });
+
+describe("pamięć korekt (habit)", () => {
+  it("linia ze wzorcem z dziennika decyzji dostaje flagę „habit” ze zdaniem wzorca", () => {
+    const r = zdLineGuardFlags(facts({ userPattern: { kind: "up", factor: 2, agree: 3, of: 4 } }), base);
+    expect(r.flags).toContain("habit");
+    expect(r.notes.habit).toBe("Podnosiłeś ilość 3 z 4 ostatnich razy — cel × 2.");
+    expect(flags({ userPattern: null })).not.toContain("habit");
+  });
+});

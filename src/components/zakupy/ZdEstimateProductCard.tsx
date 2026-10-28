@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { actionFetchZdEstimateProductHistory } from "@/app/actions/zd-estimate";
+import { actionFetchZdEstimateProductHistory, actionFetchZdProductOlderPurchases } from "@/app/actions/zd-estimate";
 import { ZdProductNote } from "@/components/zakupy/ZdProductNote";
 import {
   detectOnRequestPattern,
@@ -16,9 +16,11 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ZdSalesProfileCardContent, type ZdSalesChartOrderMark } from "@/components/zakupy/ZdSalesSparkline";
 import {
+  ZdProductMovementSection,
   ZdProductPurchasesSection,
   ZdProductSalesSections,
   type ZdProductHistoryState,
+  type ZdProductOlderPurchases,
 } from "@/components/zakupy/ZdProductHistorySections";
 import { formatDatePlKey, type ZdProductPurchaseRow } from "@/lib/orders/zd-product-history";
 import { cn } from "@/lib/cn";
@@ -71,6 +73,39 @@ export function useProductHistory(
   return state.key === key ? state : { status: "loading" };
 }
 
+/** „Starsze zakupy”: cała historia ZD z kopii, dociągana na żądanie i wstawiana w miejsce 12 miesięcy. */
+export function useOlderPurchases(
+  twId: number,
+  pair: { twinTwId: number; unitsPerPack: number } | null,
+  base: ZdProductHistoryState & { nowMs?: number }
+): { history: ZdProductHistoryState & { nowMs?: number }; older: ZdProductOlderPurchases; loadOlder: () => void } {
+  const key = `${twId}:${pair?.twinTwId ?? 0}`;
+  const [older, setOlder] = useState<{ key: string; state: ZdProductOlderPurchases; rows: ZdProductPurchaseRow[] }>({
+    key,
+    state: { status: "idle" },
+    rows: [],
+  });
+  const current = older.key === key ? older : { key, state: { status: "idle" as const }, rows: [] };
+  const loadOlder = () => {
+    if (current.state.status === "loading" || current.state.status === "ok") return;
+    setOlder({ key, state: { status: "loading" }, rows: [] });
+    actionFetchZdProductOlderPurchases({ twId, pair })
+      .then((r) =>
+        setOlder((prev) =>
+          prev.key !== key
+            ? prev
+            : r.ok
+              ? { key, state: { status: "ok", since: r.since, truncated: r.truncated }, rows: r.rows }
+              : { key, state: { status: "error", message: r.message }, rows: [] }
+        )
+      )
+      .catch(() => setOlder((prev) => (prev.key !== key ? prev : { key, state: { status: "error", message: "Nie udało się wczytać starszych zakupów." }, rows: [] })));
+  };
+  const history: ZdProductHistoryState & { nowMs?: number } =
+    current.state.status === "ok" && base.status === "ok" ? { ...base, purchases: { ok: true, rows: current.rows } } : base;
+  return { history, older: current.state, loadOlder };
+}
+
 function isTypingTarget(el: EventTarget | null): boolean {
   return el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
 }
@@ -98,6 +133,7 @@ export function ZdEstimateProductCard({
   minStockSzt,
   overrideZdUnits,
   leadDays,
+  salesWindow = null,
   comparePieces = null,
   supplierName,
   status,
@@ -117,6 +153,8 @@ export function ZdEstimateProductCard({
   minStockSzt?: number | null;
   overrideZdUnits?: number | null;
   leadDays?: number | null;
+  /** Okno sprzedaży tego Policz (domyślny zakres osi „Ruch towaru”). */
+  salesWindow?: { dataOd: string; dataDo: string } | null;
   /** Strategia testowa: sztuki wg „jak dotąd” (null = bez porównania). */
   comparePieces?: number | null;
   supplierName?: string | null;
@@ -139,10 +177,9 @@ export function ZdEstimateProductCard({
         ["Pokrycie pary (z ZD)", activePair.coverSzt],
       ]
     : [];
-  const history = useProductHistory(
-    line.tw_Id,
-    activePair ? { twinTwId: activePair.twinTwId, unitsPerPack: activePair.unitsPerPack } : null
-  );
+  const pairKey = activePair ? { twinTwId: activePair.twinTwId, unitsPerPack: activePair.unitsPerPack } : null;
+  const baseHistory = useProductHistory(line.tw_Id, pairKey);
+  const { history, older, loadOlder } = useOlderPurchases(line.tw_Id, pairKey, baseHistory);
   const packLabel = qty.packageLabel.trim() || "op.";
   const purchaseUnit = (r: ZdProductPurchaseRow): { label: string; piecesPerUnit: number | null } => {
     if (activePair && r.twId !== line.tw_Id) return { label: "szt", piecesPerUnit: null };
@@ -393,7 +430,16 @@ export function ZdEstimateProductCard({
             titleId={titleId}
           />
 
-          <ZdProductPurchasesSection state={history} titleId={titleId} unitFor={purchaseUnit} />
+          <ZdProductPurchasesSection state={history} titleId={titleId} unitFor={purchaseUnit} older={older} onLoadOlder={loadOlder} />
+
+          <ZdProductMovementSection
+            state={history}
+            titleId={titleId}
+            unitFor={purchaseUnit}
+            salesWindow={salesWindow}
+            older={older}
+            onLoadOlder={loadOlder}
+          />
 
           {line.salesProfile && line.salesProfile.windows.length > 0 ? (
             <section aria-labelledby={`${titleId}-sales`}>

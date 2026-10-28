@@ -600,3 +600,26 @@ describe("mapZdEstimateLineToManual confidence hold", () => {
     ).toBe(orderQtyFromCel(1.35, 0));
   });
 });
+
+describe("computeSalesTrackedCel — mnożnik braków i zapasMin (audyt 28.10.2026)", () => {
+  it("po mnożniku braków bez thin_cover i sell_through (cięcia zostają)", () => {
+    const base = { celZapasu: 20, sprzedazOkres: 20, sprzedazDziennie: 20 / 30, dostepne: 0, dniZapasu: 30, dniOkresu: 30 };
+    const boosted = computeSalesTrackedCel(base);
+    expect(boosted.reasons).toContain("thin_cover");
+    const after = computeSalesTrackedCel({ ...base, stockoutApplied: true });
+    expect(after.applied).toBe(false);
+    expect(after.celTracked).toBe(20);
+    const fat = computeSalesTrackedCel({ ...base, dostepne: 80, stockoutApplied: true });
+    expect(fat.reasons).toContain("fat_cover");
+  });
+
+  it("zapasMin nie skaluje podbicia sell-through: 100 szt bufora nie daje 15 szt dokupu", () => {
+    // Sprzedaż 6/30 d, cel API = 6 + 100 (zapasMin), stan 0 → ST = 1.
+    const input = { celZapasu: 106, sprzedazOkres: 6, sprzedazDziennie: 0.2, dostepne: 0, dniZapasu: 30, dniOkresu: 30 };
+    const withMin = computeSalesTrackedCel({ ...input, zapasMin: 100 });
+    const noMin = computeSalesTrackedCel(input);
+    expect(withMin.celTracked - 106).toBeLessThan(noMin.celTracked - 106);
+    // Podbicie liczone od 6 (część ze sprzedaży): ≤ 6 × 0,35 + thin_cover (0,2 × 10) ≈ 4,1.
+    expect(withMin.celTracked - 106).toBeLessThanOrEqual(4.2);
+  });
+});

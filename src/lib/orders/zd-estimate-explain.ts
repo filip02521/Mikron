@@ -5,6 +5,7 @@
  */
 
 import { formatQty, type ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
+import { formatUserPattern } from "@/lib/orders/zd-user-pattern";
 import type { ZdEstimateExtrasPolicy } from "@/lib/orders/zd-estimate-extras-policy";
 import {
   isPackagingPackagesMode,
@@ -29,7 +30,12 @@ export function explainZdOrderQty(input: {
     ManualZdEstimateLine,
     "celZapasu" | "celZapasuTracked" | "dostepne" | "pair" | "demandFloor"
   > &
-    Partial<Pick<ManualZdEstimateLine, "stockoutAdjust" | "salesProfile">>;
+    Partial<
+      Pick<
+        ManualZdEstimateLine,
+        "stockoutAdjust" | "salesProfile" | "staleOpenZd" | "salesCorrections" | "stockoutFallback" | "userPattern"
+      >
+    >;
   qty: ZdPackOrderQty;
   /** Otwarte ZD przeliczone na sztuki (dla pary — już w pokryciu). */
   openZdPieces: number;
@@ -86,6 +92,24 @@ export function explainZdOrderQty(input: {
         kind: "note",
       });
     }
+    if (line.stockoutFallback) {
+      steps.push({
+        key: "stockout_fallback",
+        label: `Brak przez całe okno (sprzedaż 0) — tempo z ${line.stockoutFallback.windowsUsed} ostatnich miesięcy profilu`,
+        value: Math.round(line.stockoutFallback.rate30 * 10) / 10,
+        unit: "szt / 30 d",
+        kind: "note",
+      });
+    }
+    if (line.salesCorrections && line.salesCorrections.pieces > 0) {
+      steps.push({
+        key: "kfs",
+        label: "Zwroty (KFS) odjęte od sprzedaży w oknie — Subiekt ich nie odejmuje",
+        value: Math.round(line.salesCorrections.pieces * 100) / 100,
+        unit: "szt",
+        kind: "note",
+      });
+    }
     if (line.stockoutAdjust) {
       const a = line.stockoutAdjust;
       steps.push({
@@ -93,6 +117,15 @@ export function explainZdOrderQty(input: {
         label: `Sprzedaż przeliczona na dni ze stanem (${a.outDays} z ${a.recordedDays} dni bez towaru)`,
         value: Math.round(a.factor * 100) / 100,
         unit: "× sprzedaż",
+        kind: "note",
+      });
+    }
+    if (line.userPattern) {
+      steps.push({
+        key: "user_pattern",
+        label: `Pamięć Twoich korekt: ${formatUserPattern(line.userPattern)}`,
+        value: line.userPattern.kind === "drop" ? line.userPattern.agree : Math.round(line.userPattern.factor * 100) / 100,
+        unit: line.userPattern.kind === "drop" ? "× zdjęte" : "× cel",
         kind: "note",
       });
     }
@@ -128,6 +161,16 @@ export function explainZdOrderQty(input: {
     const inTransit = pair ? 0 : Math.max(0, input.openZdPieces);
     if (inTransit > 0) {
       steps.push({ key: "zd", label: "W drodze (otwarte ZD)", value: inTransit, unit: "szt", kind: "minus" });
+    }
+    if (line.staleOpenZd && line.staleOpenZd.units > 0) {
+      const nrs = line.staleOpenZd.docs.map((d) => d.dokNr).filter(Boolean).slice(0, 3).join(", ");
+      steps.push({
+        key: "stale_zd",
+        label: `Zaległe ZD po terminie nie liczone jako w drodze${nrs ? ` (${nrs})` : ""} — zamknij albo potwierdź u dostawcy`,
+        value: line.staleOpenZd.units,
+        unit: "j.dok.",
+        kind: "note",
+      });
     }
     const shortage = ceilPos(cel - stock - inTransit);
     steps.push({ key: "short", label: "Brak do celu", value: shortage, unit: "szt", kind: "result" });

@@ -33,6 +33,7 @@ import {
   listZdAutoProposals,
   type ZdAutoProposal,
 } from "@/lib/data/zd-auto-proposals";
+import { recordZdLineDecisions } from "@/lib/data/zd-line-decisions";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -1543,39 +1544,64 @@ export async function actionFetchZdEstimateProductHistory(input: {
     }
   })();
 
-  const purchasesP = (async () => {
-    try {
-      const rows = await listZdPurchaseLinesForTw(
-        sides.map((s) => s.tw),
-        dataOd
-      );
-      return {
-        ok: true as const,
-        rows: rows.map((r): ZdProductPurchaseRow => ({
-          twId: r.subiektTwId,
-          dokNr: r.dokNr,
-          date: r.dokDate,
-          qty: r.qty,
-          priceNet: r.priceNet,
-          fzDate: r.fzDate ?? null,
-          fzNr: r.fzNr ?? null,
-          fzCount: r.fzCount ?? 0,
-          zdDone: r.zdDone ?? null,
-        })),
-      };
-    } catch (e) {
-      const missingTable = isUndefinedTableError(e);
-      return {
-        ok: false as const,
-        message: missingTable
-          ? "Historia zakupów pojawi się po wgraniu migracji 189 i nocnym odczycie ZD."
-          : "Historia zakupów niedostępna (błąd bazy).",
-      };
-    }
-  })();
+  const purchasesP = loadZdProductPurchases(sides.map((s) => s.tw), dataOd);
 
   const [sales, purchases] = await Promise.all([salesP, purchasesP]);
   return { sales, purchases };
+}
+
+const ZD_PRODUCT_PURCHASES_ALL_SINCE = "2000-01-01";
+const ZD_PRODUCT_PURCHASES_ALL_LIMIT = 500;
+
+async function loadZdProductPurchases(
+  twIds: number[],
+  since: string,
+  limit?: number
+): Promise<{ ok: true; rows: ZdProductPurchaseRow[] } | { ok: false; message: string }> {
+  try {
+    const rows = await listZdPurchaseLinesForTw(twIds, since, limit, limit);
+    return {
+      ok: true as const,
+      rows: rows.map((r): ZdProductPurchaseRow => ({
+        twId: r.subiektTwId,
+        dokNr: r.dokNr,
+        date: r.dokDate,
+        qty: r.qty,
+        priceNet: r.priceNet,
+        fzDate: r.fzDate ?? null,
+        fzNr: r.fzNr ?? null,
+        fzCount: r.fzCount ?? 0,
+        zdDone: r.zdDone ?? null,
+      })),
+    };
+  } catch (e) {
+    const missingTable = isUndefinedTableError(e);
+    return {
+      ok: false as const,
+      message: missingTable
+        ? "Historia zakupów pojawi się po wgraniu migracji 189 i nocnym odczycie ZD."
+        : "Historia zakupów niedostępna (błąd bazy).",
+    };
+  }
+}
+
+/**
+ * Karta produktu, „Starsze zakupy”: cała historia ZD towaru z kopii (nocny odczyt + migracja 189),
+ * nie tylko 12 miesięcy — ilości i ceny z lat wcześniejszych. Ta sama kopia, więc bez Subiekta.
+ */
+export async function actionFetchZdProductOlderPurchases(input: {
+  twId: number;
+  pair?: { twinTwId: number; unitsPerPack: number } | null;
+}): Promise<{ ok: true; rows: ZdProductPurchaseRow[]; since: string | null; truncated: boolean } | { ok: false; message: string }> {
+  await requireZdEstimateAdmin("read");
+  const twId = Math.trunc(Number(input.twId));
+  if (!Number.isSafeInteger(twId) || twId <= 0) return { ok: false, message: "Nieprawidłowy identyfikator towaru." };
+  const twinTwId = Math.trunc(Number(input.pair?.twinTwId));
+  const twIds = Number.isSafeInteger(twinTwId) && twinTwId > 0 && twinTwId !== twId ? [twId, twinTwId] : [twId];
+  const res = await loadZdProductPurchases(twIds, ZD_PRODUCT_PURCHASES_ALL_SINCE, ZD_PRODUCT_PURCHASES_ALL_LIMIT);
+  if (!res.ok) return res;
+  const dates = res.rows.map((r) => r.date).filter((d): d is string => Boolean(d)).sort();
+  return { ok: true, rows: res.rows, since: dates[0] ?? null, truncated: res.rows.length >= ZD_PRODUCT_PURCHASES_ALL_LIMIT };
 }
 
 /** Lista „Do ZD” strategii „jak dotąd” (te same reguły co nocny przebieg) do porównania w Kreatorze. */
@@ -3872,7 +3898,20 @@ export async function actionCreateZdFromEstimate(input: {
     ilosc: number;
     symbol?: string | null;
     plu?: string | null;
+    /** Jednostki ZD z silnika przed ręczną zmianą — dziennik decyzji (mig. 201). */
+    proposedUnits?: number | null;
+    /** Mnożnik pamięci korekt zawarty w `proposedUnits`. */
+    patternFactor?: number | null;
+    nazwa?: string | null;
   }>;
+  /** Linie z propozycją silnika zdjęte z listy — dziennik decyzji. */
+  droppedLines?: Array<{
+    twId: number;
+    symbol?: string | null;
+    nazwa?: string | null;
+    proposedUnits: number;
+    patternFactor?: number | null;
+  }> | null;
   lineMeta?: ZdEstimateLinkLineMeta[] | null;
   /**
    * Wymagane przy ORDERS live (:5080) — serwer odrzuci create bez tego.
@@ -4414,6 +4453,54 @@ export async function actionCreateZdFromEstimate(input: {
     dokNrPelny = resolved.dokNrPelny;
     docSource = resolved.source;
     didReget = resolved.didReget;
+
+    // Dziennik decyzji per linia (co proponował silnik vs co poszło na ZD, także zdjęte) — błąd tylko w logu.
+    {
+      const factorOf = (v: unknown) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : null);
+      const proposedByTw = new Map<
+        number,
+        { proposed: number | null; symbol: string | null; nazwa: string | null; pattern: number | null }
+      >();
+      for (const l of input.lines) {
+        proposedByTw.set(Math.trunc(l.twId), {
+          proposed: l.proposedUnits == null ? null : Math.max(0, Number(l.proposedUnits) || 0),
+          symbol: l.symbol ?? null,
+          nazwa: l.nazwa ?? null,
+          pattern: factorOf(l.patternFactor),
+        });
+      }
+      const decisionLines = [
+        ...createLines.map((l) => {
+          const p = proposedByTw.get(Math.trunc(l.twId));
+          return {
+            twId: l.twId,
+            symbol: p?.symbol ?? null,
+            nazwa: p?.nazwa ?? null,
+            proposedUnits: p?.proposed ?? null,
+            finalUnits: l.ilosc,
+            patternFactor: p?.pattern ?? null,
+          };
+        }),
+        ...(input.droppedLines ?? [])
+          .filter((d) => Math.trunc(d.twId) > 0 && Number(d.proposedUnits) > 0)
+          .map((d) => ({
+            twId: d.twId,
+            symbol: d.symbol ?? null,
+            nazwa: d.nazwa ?? null,
+            proposedUnits: Number(d.proposedUnits),
+            finalUnits: 0,
+            patternFactor: factorOf(d.patternFactor),
+          })),
+      ];
+      void recordZdLineDecisions({
+        supplierId: input.supplierId,
+        proposalId: autoProposalId,
+        dokId,
+        dokNr: dokNrPelny,
+        decidedBy: user.id,
+        lines: decisionLines,
+      }).catch((e) => console.warn("[zd-estimate:create] dziennik decyzji", e));
+    }
 
     if (!persistSnapshots) {
       logCreateDone({

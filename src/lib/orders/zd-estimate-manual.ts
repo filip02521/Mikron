@@ -80,6 +80,14 @@ export type ManualZdEstimateLine = {
   demandFloor?: { sales90: number; rateBefore: number; rateAfter: number };
   /** Dni braku w oknie (historia stanów): sprzedaż przeliczona na dni ze stanem. */
   stockoutAdjust?: import("@/lib/stock-watch/stock-history").StockoutAdjustMeta;
+  /** Zaległe otwarte ZD (po terminie) odjęte od „w drodze” — jednostki dokumentu i dokumenty. */
+  staleOpenZd?: import("@/lib/data/zd-stale-open-zd").ZdStaleOpenZd;
+  /** Zwroty (KFS) odjęte od sprzedaży w oknie. */
+  salesCorrections?: import("@/lib/data/subiekt-sales-corrections").SalesCorrectionsMeta;
+  /** Pełny brak w oknie: tempo przyjęte z profilu sprzed okna. */
+  stockoutFallback?: import("@/lib/orders/zd-sales-profile").ZdStockoutFallbackMeta;
+  /** Pamięć korekt: wzorzec z Twoich ostatnich decyzji na tym towarze (dziennik, mig. 201). */
+  userPattern?: import("@/lib/data/zd-line-decisions").ZdLineDecisionPattern;
   tw_Id: number;
   tw_Symbol: string;
   tw_Nazwa: string;
@@ -235,6 +243,8 @@ export type MapZdEstimateLineOptions = {
   salesTrack?: boolean;
   /** Domyślnie true — sygnały cięcia (fat cover / low ST / dead). */
   salesTrackCuts?: boolean;
+  /** Domyślnie true — cięcie „skok vs ostatnie ZD”; false przy strategii (skok tnie profil 12 × 30 d). */
+  historySpikeCut?: boolean;
   /** Ostatnie zamówienie z snapshotu ZD (Faza 3) — qty w sztukach. */
   history?: { lastOrderedQty: number; linkedAt: string } | null;
   /**
@@ -305,6 +315,9 @@ export function mapZdEstimateLineToManual(
         >)
       : options?.salesTrackPolicy ?? undefined;
 
+  const stockoutApplied = Boolean(
+    (line as { stockoutAdjust?: unknown }).stockoutAdjust || (line as { stockoutFallback?: unknown }).stockoutFallback
+  );
   const track = computeSalesTrackedCel({
     celZapasu,
     sprzedazOkres,
@@ -316,6 +329,8 @@ export function mapZdEstimateLineToManual(
     enabled: options?.salesTrack !== false,
     cutsEnabled: options?.salesTrackCuts !== false,
     policy: salesTrackPolicy,
+    stockoutApplied,
+    zapasMin: options?.zapasMin ?? 0,
   });
 
   let celTracked = track.celTracked;
@@ -351,7 +366,7 @@ export function mapZdEstimateLineToManual(
       lastOrderedQty: hist.lastOrderedQty,
       linkedAt: hist.linkedAt,
       // Profil 12 miesięcy ocenia skok lepiej niż porównanie z ostatnim ZD (ilość netto).
-      skipSpike: salesProfile?.smoothing === true,
+      skipSpike: salesProfile?.smoothing === true || options?.historySpikeCut === false,
     });
     if (histAdj.reasons.length > 0) {
       celTracked = histAdj.celTracked;
@@ -423,6 +438,15 @@ export function mapZdEstimateLineToManual(
     ...((line as { demandFloor?: ManualZdEstimateLine["demandFloor"] }).demandFloor
       ? { demandFloor: (line as { demandFloor?: ManualZdEstimateLine["demandFloor"] }).demandFloor }
       : {}),
+    ...((line as { staleOpenZd?: ManualZdEstimateLine["staleOpenZd"] }).staleOpenZd
+      ? { staleOpenZd: (line as { staleOpenZd?: ManualZdEstimateLine["staleOpenZd"] }).staleOpenZd }
+      : {}),
+    ...((line as { salesCorrections?: ManualZdEstimateLine["salesCorrections"] }).salesCorrections
+      ? { salesCorrections: (line as { salesCorrections?: ManualZdEstimateLine["salesCorrections"] }).salesCorrections }
+      : {}),
+    ...((line as { stockoutFallback?: ManualZdEstimateLine["stockoutFallback"] }).stockoutFallback
+      ? { stockoutFallback: (line as { stockoutFallback?: ManualZdEstimateLine["stockoutFallback"] }).stockoutFallback }
+      : {}),
   };
 }
 
@@ -432,6 +456,7 @@ export type ZdEstimateSoloMapOptions = {
   dniOkresu?: number | null;
   salesTrack?: boolean;
   salesTrackCuts?: boolean;
+  historySpikeCut?: boolean;
   salesTrackPolicy?: Partial<
     typeof import("@/lib/orders/zd-estimate-sales-track").ZD_SALES_TRACK
   > | null;
@@ -484,6 +509,7 @@ export function mapZdEstimateLinesSolo(
       dniOkresu: options.dniOkresu,
       salesTrack: inPair ? false : options.salesTrack,
       salesTrackCuts: inPair ? false : options.salesTrackCuts,
+      historySpikeCut: options.historySpikeCut,
       salesTrackPolicy: options.salesTrackPolicy,
       history: hist,
       unitsPerPackage: packUnits,
@@ -517,6 +543,8 @@ export function buildManualZdEstimateResult(
     salesTrack?: boolean;
     /** Domyślnie true. */
     salesTrackCuts?: boolean;
+    /** Domyślnie true — cięcie „skok vs ostatnie ZD”. */
+    historySpikeCut?: boolean;
     /** Wspólna polityka mocy boosta (presety). */
     salesTrackPolicy?: Partial<
       typeof import("@/lib/orders/zd-estimate-sales-track").ZD_SALES_TRACK
@@ -570,6 +598,7 @@ export function buildManualZdEstimateResult(
     dniOkresu,
     salesTrack: options?.salesTrack,
     salesTrackCuts: options?.salesTrackCuts,
+    historySpikeCut: options?.historySpikeCut,
     salesTrackPolicy: options?.salesTrackPolicy,
     historyByTwId,
     packagingByTwId,
