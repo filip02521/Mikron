@@ -68,10 +68,10 @@ export function buildSupplierInquiryDraft(input: {
     ? [
         "Hello,",
         "",
-        "could you please send us information about the following product:",
+        "could you please send me information about the following product:",
         ...lines,
         "",
-        "We would like to know:",
+        "I would like to know:",
         "- the current net price,",
         "- availability,",
         "- lead time from order.",
@@ -82,18 +82,18 @@ export function buildSupplierInquiryDraft(input: {
     : [
         "Dzień dobry,",
         "",
-        "prosimy o informację w sprawie produktu:",
+        "zwracam się z zapytaniem o produkt:",
         ...lines,
         "",
-        "Prosimy o:",
+        "Proszę o:",
         "- aktualną cenę netto,",
         "- dostępność,",
         "- czas realizacji od zamówienia.",
         "",
-        "Z góry dziękujemy.",
-        "Pozdrawiamy",
+        "Z góry dziękuję.",
+        "Pozdrawiam",
       ];
-  // Podpis z pożegnaniem („Pozdrawiam/Best Regards…”) zastępuje nasze — inaczej mail żegna się dwa razy.
+  // Podpis z pożegnaniem („Pozdrawiam/Best Regards…”) zastępuje domyślne — inaczej mail żegna się dwa razy.
   if (signature && /^(pozdrawiam|pozdrawiamy|z powa[zż]aniem|kind regards|best regards|regards|thank you)/i.test(signature)) {
     body.pop();
   }

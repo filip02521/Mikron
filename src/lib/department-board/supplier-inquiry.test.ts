@@ -25,7 +25,7 @@ describe("buildSupplierInquiryDraft", () => {
     expect(d.body).toContain("- aktualną cenę netto,");
     expect(d.body).toContain("- dostępność,");
     expect(d.body).toContain("- czas realizacji od zamówienia.");
-    expect(d.body.endsWith("Pozdrawiamy\nJan\nZakupy")).toBe(true);
+    expect(d.body.endsWith("Pozdrawiam\nJan\nZakupy")).toBe(true);
   });
 
   it("EN dla dostawcy z zagranicy", () => {
