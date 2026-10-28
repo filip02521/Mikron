@@ -128,7 +128,7 @@ export async function syncSalesCorrections(input: {
   );
   const docIds: Array<{ id: number; date: string | null; nr: string | null }> = [];
   let page = 1;
-  let totalPages = 1;
+  let totalPages: number;
   let timedOut = false;
   do {
     const list = await searchSubiektDocuments({ typ: SUBIEKT_DOC_TYPE_KFS, dataOd: from, page, pageSize: 200 });
