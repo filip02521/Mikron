@@ -24,7 +24,7 @@ export function DailyDayProgressBar({
   /** false — ukryj do odczytu sessionStorage (bez skoku %). */
   ready?: boolean;
 }) {
-  const { combined, urgent, forSomeone } = progress;
+  const { combined, urgent, forSomeone, automat } = progress;
 
   if (!ready) return null;
 
@@ -35,6 +35,8 @@ export function DailyDayProgressBar({
       combined.total > 0 ? (urgent.done / combined.total) * 100 : 0;
     const forSomeoneDoneWidth =
       combined.total > 0 ? (forSomeone.done / combined.total) * 100 : 0;
+    const automatDoneWidth =
+      automat && combined.total > 0 ? (automat.done / combined.total) * 100 : 0;
 
     return (
       <div
@@ -46,6 +48,12 @@ export function DailyDayProgressBar({
         aria-label="Postęp dnia"
       >
         <div className="flex h-1.5 min-w-[5rem] flex-1 overflow-hidden rounded-full bg-slate-200/80">
+          {automatDoneWidth > 0 ? (
+            <div
+              className="h-full bg-indigo-700 transition-[width,background-color] duration-500"
+              style={{ width: `${automatDoneWidth}%` }}
+            />
+          ) : null}
           {urgentDoneWidth > 0 ? (
             <div
               className={cn("h-full transition-[width,background-color] duration-500", progressFillUrgentClass)}
@@ -69,7 +77,7 @@ export function DailyDayProgressBar({
           </span>
         )}
         <span className={cn("hidden min-w-0 truncate sm:inline", panelTypography.caption)}>
-          harm. {urgent.done}/{urgent.total} · prośby {forSomeone.done}/{forSomeone.total}
+          {automat ? `automat ${automat.done}/${automat.total} · ` : null}harm. {urgent.done}/{urgent.total} · prośby {forSomeone.done}/{forSomeone.total}
         </span>
       </div>
     );

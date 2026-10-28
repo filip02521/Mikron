@@ -60,7 +60,7 @@ export function dailyZdProposalAnchorId(supplierId: string): string {
 }
 
 /**
- * Zamówienie automatu w wierszu dostawcy harmonogramu: co jest gotowe, „Sprawdź i zatwierdź”
+ * Zamówienie automatu w wierszu dostawcy harmonogramu: co jest gotowe, „Sprawdź i wyślij”
  * (panel boczny: przeliczenie, korekta, ZD w Subiekcie, wysyłka) i „Odrzuć” z powodem.
  */
 export function DailyZdProposalNotice({ proposal, className }: { proposal: DailyZdProposal; className?: string }) {
@@ -145,7 +145,7 @@ export function DailyZdProposalNotice({ proposal, className }: { proposal: Daily
           </button>
           {/* Obrysowany, nie pełny: na panelu jest jedna pełna akcja główna, a zamówień automatu bywa kilka. */}
           <Button type="button" variant="outline" size="sm" className="min-h-10 font-semibold sm:min-h-8" onClick={() => setReviewing(true)}>
-            Sprawdź i zatwierdź
+            Sprawdź i wyślij
           </Button>
         </div>
       </div>

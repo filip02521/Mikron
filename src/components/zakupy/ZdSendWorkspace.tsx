@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { actionSendZdToSupplier, type SendZdToSupplierResult } from "@/app/actions/gmail";
+import { actionMarkZdAutoProposalSentManually } from "@/app/actions/zd-estimate";
 import { actionSetZdTerminAfterSend, actionZdSendPlan, type ZdSendPlan } from "@/app/actions/zd-send";
 import {
   actionMarkZdEstimateIndividualsGlowne,
@@ -520,6 +521,8 @@ export function ZdSendWorkspace({
     const confirmedInGmail = mailIssue?.kind === "uncertain";
     setMailIssue(null);
     setStep("mail", { status: "ok", message: confirmedInGmail ? "Jest w Wysłanych w Gmailu" : "Wysłane poza OnTime" });
+    // Zamówienie automatu z tym ZD: etap „wysłane” w panelu dziennym (bez śladu w Gmailu OnTime nic by go nie domknęło).
+    if (live) void actionMarkZdAutoProposalSentManually({ dokId, supplierId }).catch(() => undefined);
     showProgress();
     await finishAfterMail();
   }
