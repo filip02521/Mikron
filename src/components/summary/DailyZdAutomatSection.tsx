@@ -5,7 +5,6 @@ import { useId, useMemo, useState, useSyncExternalStore } from "react";
 import { IconChevronDown } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
 import { DailyZdAutomatOrders } from "@/components/summary/DailyZdAutomatOrders";
-import { dailyZdProposalAnchorId } from "@/components/summary/DailyZdProposals";
 import { cn } from "@/lib/cn";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 import {
@@ -264,15 +263,6 @@ export function DailyZdAutomatSection({
       document.getElementById(`automat-zd-${supplierId}`)?.scrollIntoView({ block: "nearest", behavior: smooth() })
     );
   };
-  /** Przewija do bloku propozycji w wierszu dostawcy i na chwilę go obrysowuje; bez wiersza — pokazuje dostawcę na liście. */
-  const showInQueue = (supplierId: string) => {
-    const el = document.getElementById(dailyZdProposalAnchorId(supplierId));
-    if (!el) return reveal(supplierId);
-    el.scrollIntoView({ block: "center", behavior: smooth() });
-    el.classList.add("ring-2", "ring-indigo-300");
-    window.setTimeout(() => el.classList.remove("ring-2", "ring-indigo-300"), 2000);
-    el.querySelector<HTMLButtonElement>("button:last-of-type")?.focus({ preventScroll: true });
-  };
   // Zamówienia automatu na dziś: zdanie mówi, ile czeka na Ciebie, a lista pod nim prowadzi każde do wysyłki.
   const ordersHeadline = today.orders.length
     ? toDo
@@ -287,22 +277,7 @@ export function DailyZdAutomatSection({
         : null;
   const stoppedCount = rows.filter((r) => r.view.stopReason || r.view.attemptProblem).length;
   const warning = ordersHeadline ? toDo > 0 || Boolean(nightProblem) : status.tone === "warning";
-  // Czekająca propozycja: w linii tylko termin wygaśnięcia i stan nocnego przebiegu — szczegóły są w wierszu kolejki.
-  // Niepotwierdzone tworzenie ZD i pozostałe stany zostają z pełnym opisem (tylko tu je widać).
-  const firstPending = rows.find((r) => r.view.pending)?.view;
-  const detail =
-    status.action?.kind === "review" && firstPending && !firstPending.pending!.createAttemptedAt
-      ? [
-          firstPending.nextKey ? `wygasa ${formatAutomatDay(firstPending.nextKey, todayKey)}` : null,
-          night.kind === "missing"
-            ? `dziś bez nocnego przebiegu${night.lastRunDate ? ` (ostatni ${formatAutomatDay(night.lastRunDate, todayKey)})` : ""}`
-            : night.kind === "done" && night.failed
-              ? "nocny przebieg z błędem"
-              : null,
-        ]
-          .filter(Boolean)
-          .join(" · ")
-      : status.detail;
+  const detail = status.detail;
 
   return (
     <section
@@ -337,11 +312,9 @@ export function DailyZdAutomatSection({
               variant="ghost"
               size="sm"
               className="min-h-11 sm:min-h-8"
-              onClick={() =>
-                status.action!.kind === "review" ? showInQueue(status.action!.supplierId) : reveal(status.action!.supplierId)
-              }
+              onClick={() => reveal(status.action!.supplierId)}
             >
-              {status.action.kind === "review" ? "Pokaż w kolejce" : status.action.label}
+              {status.action.label}
             </Button>
           ) : null}
           <button
@@ -361,7 +334,11 @@ export function DailyZdAutomatSection({
         </div>
       </div>
 
-      {today.orders.length ? <DailyZdAutomatOrders orders={today.orders} todayKey={todayKey} /> : null}
+      {today.orders.length ? <DailyZdAutomatOrders
+          orders={today.orders}
+          todayKey={todayKey}
+          expiresBySupplier={Object.fromEntries(rows.map((r) => [r.s.id, r.view.nextKey]))}
+        /> : null}
 
       {open ? (
         <div id={listId} className="zd-automat-detail-enter border-t border-slate-200 bg-[var(--card)]">

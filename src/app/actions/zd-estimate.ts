@@ -1618,7 +1618,7 @@ async function acceptPendingAutoProposal(input: {
   createLines: ReadonlyArray<{ twId: number; ilosc: number }>;
   userId: string;
   /**
-   * ZD z panelu „Sprawdź i zatwierdź”: ta konkretna propozycja (zajęta blokadą tworzenia), nie najnowsza —
+   * ZD z panelu „Sprawdź i wyślij”: ta konkretna propozycja (zajęta blokadą tworzenia), nie najnowsza —
    * w międzyczasie mogła powstać nowsza, a zatwierdzona jest ta, którą człowiek oglądał.
    */
   proposalId?: string | null;
@@ -1677,7 +1677,7 @@ export async function actionListZdAutoProposals(input: {
 /** „Przygotuj propozycję teraz” — przelicza dostawcę strategią testową i zapisuje propozycję. */
 export async function actionCreateZdAutoProposalNow(input: {
   supplierId: string;
-  /** Panel „Sprawdź i zatwierdź”: przelicz tę propozycję w miejscu zamiast tworzyć nową. */
+  /** Panel „Sprawdź i wyślij”: przelicz tę propozycję w miejscu zamiast tworzyć nową. */
   refreshProposalId?: string | null;
 }): Promise<{ ok: true; proposal: ZdAutoProposal | null } | { ok: false; message: string }> {
   await requireZdEstimateAdmin("mutate");
@@ -1716,12 +1716,13 @@ export async function actionCreateZdAutoProposalNow(input: {
  * „Wysłałem ręcznie” w panelu wysyłki ZD: zamówienie automatu z tym ZD poszło do dostawcy (etap „sent”
  * w panelu dziennym). ZD spoza automatu — nic. Wysyłkę z Gmaila OnTime zapisuje sama (supplier_order_emails).
  */
-export async function actionMarkZdAutoProposalSentManually(input: { dokId: number }): Promise<{ ok: boolean }> {
+export async function actionMarkZdAutoProposalSentManually(input: { dokId: number; supplierId: string }): Promise<{ ok: boolean }> {
   await requireZdEstimateAdmin("mutate");
   const dokId = Math.trunc(Number(input.dokId));
-  if (!(dokId > 0)) return { ok: false };
+  const supplierId = String(input.supplierId ?? "").trim();
+  if (!(dokId > 0 && dokId <= 2_147_483_647) || !UUID_RE.test(supplierId)) return { ok: false };
   try {
-    const done = await markZdAutoProposalSent(dokId, "manual");
+    const done = await markZdAutoProposalSent(dokId, supplierId, "manual");
     if (done) revalidateAfterZdEstimateMark();
     return { ok: true };
   } catch (e) {

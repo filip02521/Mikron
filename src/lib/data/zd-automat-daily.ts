@@ -48,8 +48,10 @@ export async function loadZdAutomatDaily(): Promise<ZdAutomatDailyData> {
         decided_at: Date | string | null;
         mail_sent_at: Date | string | null;
       }>(
-        // to_jsonb: kolumny z migracji 193/199 czytają się także na bazie bez nich (wtedy null).
-        `SELECT x.supplier_id, x.id, x.created_at, x.status, x.line_count, x.value_net, d.nr_pelny AS dok_nr,
+        // to_jsonb: kolumny z migracji 193/199/200 czytają się także na bazie bez nich (wtedy null).
+        // Numer ZD: nocna kopia dokumentów nie ma jeszcze ZD z dziś — zapisuje go też historia przy tworzeniu.
+        `SELECT x.supplier_id, x.id, x.created_at, x.status, x.line_count, x.value_net,
+                COALESCE(d.nr_pelny, (SELECT NULLIF(h.dok_nr_pelny, '') FROM zd_estimate_order_snapshots h WHERE h.dok_id = x.dok_id)) AS dok_nr,
                 x.extra->>'origin' AS origin, x.extra->>'create_attempted_at' AS create_attempted_at,
                 x.dok_id, x.decided_at,
                 COALESCE((x.extra->>'sent_at')::timestamptz,

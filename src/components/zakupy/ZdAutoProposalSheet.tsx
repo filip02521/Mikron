@@ -224,7 +224,8 @@ export function ZdAutoProposalSheet({
   const [edits, setEdits] = useState<Record<string, number>>({});
   const [createError, setCreateError] = useState<string | null>(null);
   /** Subiekt nie potwierdził zapisu (timeout, zerwane połączenie) — ZD mogło powstać; jak w Kreatorze bez ponowienia. */
-  const [createLocked, setCreateLocked] = useState(false);
+  // Poprzednia próba nie dostała potwierdzenia z Subiekta — ZD mogło powstać; od razu bez drugiego zatwierdzenia.
+  const [createLocked, setCreateLocked] = useState(() => Boolean(morning.createAttemptedAt) && !resumeSession);
   /** Numer utworzonego ZD — krok „ZD w Subiekcie” chwilę zielony, zanim przejdzie do wysyłki. */
   const [createdNr, setCreatedNr] = useState<string | null>(null);
   /** Po przeliczeniu krok 1 chwilę pokazuje sukces (logo się domyka), dopiero potem lista. */
@@ -518,16 +519,19 @@ export function ZdAutoProposalSheet({
                     )}
                     Popraw ilości, jeśli trzeba - zatwierdzisz dokładnie to, co widzisz.
                   </p>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="min-h-11 shrink-0 self-start sm:min-h-8"
-                    onClick={runRecompute}
-                    disabled={creating || createLocked}
-                  >
-                    {editedCount ? "Przelicz (poprawki przepadną)" : "Przelicz na aktualnych stanach"}
-                  </Button>
+                  {/* Przy niepotwierdzonym ZD przeliczenie jest w ostrzeżeniu niżej („Przelicz na nowo”). */}
+                  {createLocked ? null : (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="min-h-11 shrink-0 self-start sm:min-h-8"
+                      onClick={runRecompute}
+                      disabled={creating}
+                    >
+                      {editedCount ? "Przelicz (poprawki przepadną)" : "Przelicz na aktualnych stanach"}
+                    </Button>
+                  )}
                 </div>
               )}
 

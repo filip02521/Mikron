@@ -522,7 +522,7 @@ export function ZdSendWorkspace({
     setMailIssue(null);
     setStep("mail", { status: "ok", message: confirmedInGmail ? "Jest w Wysłanych w Gmailu" : "Wysłane poza OnTime" });
     // Zamówienie automatu z tym ZD: etap „wysłane” w panelu dziennym (bez śladu w Gmailu OnTime nic by go nie domknęło).
-    if (live) void actionMarkZdAutoProposalSentManually({ dokId }).catch(() => undefined);
+    if (live) void actionMarkZdAutoProposalSentManually({ dokId, supplierId }).catch(() => undefined);
     showProgress();
     await finishAfterMail();
   }

@@ -26,12 +26,23 @@ const timeOf = (iso: string) =>
 /** Te same trzy etapy co w panelu „Sprawdź i wyślij” — postęp widać bez otwierania. */
 const STEPS = ["Sprawdzenie", "ZD w Subiekcie", "Mail do dostawcy"] as const;
 
-function stageText(o: ZdAutomatTodayOrder, todayKey: string): { text: string; tone: "neutral" | "warning" | "success" } {
+function stageText(
+  o: ZdAutomatTodayOrder,
+  todayKey: string,
+  /** Dzień następnej propozycji dostawcy — wtedy ta wygasa. */
+  expiresKey: string | null
+): { text: string; tone: "neutral" | "warning" | "success" } {
   const nr = o.proposal.dokNr ?? "ZD";
   switch (o.stage) {
     case "review": {
       const day = warsawKeyFromIso(o.proposal.createdAt);
-      return { text: day === todayKey ? "do sprawdzenia" : `do sprawdzenia, czeka od ${formatAutomatDay(day, todayKey)}`, tone: "neutral" };
+      const text = [
+        day === todayKey ? "do sprawdzenia" : `do sprawdzenia, czeka od ${formatAutomatDay(day, todayKey)}`,
+        expiresKey && expiresKey > todayKey ? `wygasa ${formatAutomatDay(expiresKey, todayKey)}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      return { text, tone: "neutral" };
     }
     case "unconfirmed":
       return { text: "Subiekt nie potwierdził zapisu ZD - sprawdź w Subiekcie, zanim zamówisz ponownie", tone: "warning" };
@@ -95,7 +106,16 @@ type Open = { order: ZdAutomatTodayOrder; proposal: ZdAutoProposal; resume: ZdPo
  * Panel dzienny → sekcja „Automat ZD”: zamówienia automatu na dziś z etapem (sprawdzenie → ZD w Subiekcie → mail)
  * i jedną akcją, która prowadzi do następnego etapu w tym samym panelu bocznym co wiersz kolejki.
  */
-export function DailyZdAutomatOrders({ orders, todayKey }: { orders: readonly ZdAutomatTodayOrder[]; todayKey: string }) {
+export function DailyZdAutomatOrders({
+  orders,
+  todayKey,
+  expiresBySupplier = {},
+}: {
+  orders: readonly ZdAutomatTodayOrder[];
+  todayKey: string;
+  /** Dostawca → dzień następnej propozycji (wtedy czekająca wygasa). */
+  expiresBySupplier?: Record<string, string | null>;
+}) {
   const router = useRouter();
   const pendingMap = useDailyZdProposalMap();
   const [open, setOpen] = useState<Open | null>(null);
@@ -124,11 +144,12 @@ export function DailyZdAutomatOrders({ orders, todayKey }: { orders: readonly Zd
     <>
       <ul className="divide-y divide-slate-100 border-t border-slate-200 bg-[var(--card)]" aria-label="Zamówienia automatu na dziś">
         {orders.map((o) => {
-          const st = stageText(o, todayKey);
+          const st = stageText(o, todayKey, expiresBySupplier[o.supplierId] ?? null);
           const action =
             o.stage === "review"
               ? { label: "Sprawdź i wyślij", variant: "outline" as const }
-              : o.stage === "send"
+              : // Bez dok_Id nie ma czego wysłać — panel otworzyłby zatwierdzanie zatwierdzonej już propozycji.
+                o.stage === "send" && o.proposal.dokId
                 ? { label: "Wyślij mail", variant: "outline" as const }
                 : o.stage === "unconfirmed"
                   ? { label: "Sprawdź", variant: "ghost" as const }
