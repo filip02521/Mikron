@@ -612,5 +612,5 @@ Teraz:
 |---|---|---|
 | A | „Zatwierdź wszystkie bez uwag” w górnym panelu: jedno kliknięcie tworzy ZD z propozycji bez flag (ta sama ścieżka co klik, `claimZdAutoProposalCreate`), potem wysyłka po kolei | czy wysyłka maili też zbiorczo, czy każdy podgląd osobno |
 | B | Stopień 3 (auto-zatwierdzenie): ścieżka zatwierdzania wyjęta z akcji do `src/lib` (bez sesji użytkownika, `decided_by` = automat), wołana o stałej godzinie dla dostawców z `auto_level ≥ 3` i propozycją bez flag | godzina (po oknie handlowców — zadanie 6 — czy od razu po nocnym przebiegu) |
-| C | Stopień 4 (auto-mail): `sendGmailAsUser` wymaga połączonego Gmaila konkretnej osoby; tylko dostawcy z adresem w karcie i bez własnego formularza (Wiedent, Sirona) | z czyjej skrzynki idą maile automatu |
+| C | Stopień 4 (auto-mail): `sendGmailAsUser` wymaga połączonego Gmaila konkretnej osoby; tylko dostawcy z adresem w karcie i bez własnego formularza (Wiedent, Sirona) | **Decyzja 2026-10-28 (Filip):** z Gmaila połączonego w OnTime przez zalogowaną osobę (`google_mail_connections`) — przy wysyłce bez człowieka: osoby, która włączyła stopień 4 dostawcy |
 | D | Cofnięcie stopnia po reklamacji treści ZD (§4.4) — dziś tylko braki A i nieudany create | jak zgłaszać reklamację (przycisk przy wysłanym zamówieniu?) |
