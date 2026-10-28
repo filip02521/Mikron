@@ -4,6 +4,7 @@ import {
   capZdSalesProfileSpikes,
   sales90CappedFromProfile,
   applyZdSalesProfileToLine,
+  applyZdStockoutFallbackToLine,
   classifyZdSalesProfile,
   formatZdSalesProfileHeadline,
   resolveZdSalesProfile,
@@ -224,5 +225,32 @@ describe("capZdSalesProfileSpikes / sales90CappedFromProfile (strategia)", () =>
   });
   it("prośby odjęte przed oceną skoku", () => {
     expect(sales90CappedFromProfile([...steady, 4, 34, 4], [0, 30, 0])).toBe(12);
+  });
+});
+
+describe("applyZdStockoutFallbackToLine", () => {
+  const w = [0, 0, 0, 0, 0, 0, 20, 20, 20, 20, 0, 0];
+
+  it("stan 0 i sprzedaż 0 w oknie → tempo ze średniej 3 okien sprzed okna Kreatora", () => {
+    // Okno 30 d nakłada się na ostatnie okno profilu; sprzed niego: 20, 20, 0 → 40 / 90 d.
+    const out = applyZdStockoutFallbackToLine(
+      { sprzedazOkres: 0, sprzedazDziennie: 0, celZapasu: 0, dostepne: 0 },
+      w,
+      { dniOkresu: 30, dniZapasu: 30, zapasMin: 0 }
+    );
+    expect(out.sprzedazDziennie).toBeCloseTo(40 / 90, 9);
+    expect(out.sprzedazOkres).toBeCloseTo((40 / 90) * 30, 9);
+    expect(out.celZapasu).toBeCloseTo((40 / 90) * 30, 5);
+    expect(out.stockoutFallback).toEqual({ rate30: (40 / 90) * 30, windowsUsed: 3 });
+  });
+
+  it("jest stan albo jest sprzedaż albo profil pusty → bez zmian", () => {
+    const line = { sprzedazOkres: 0, sprzedazDziennie: 0, celZapasu: 0, dostepne: 3 };
+    expect(applyZdStockoutFallbackToLine(line, w, { dniOkresu: 30, dniZapasu: 30, zapasMin: 0 })).toBe(line);
+    const sold = { sprzedazOkres: 2, sprzedazDziennie: 0.07, celZapasu: 2, dostepne: 0 };
+    expect(applyZdStockoutFallbackToLine(sold, w, { dniOkresu: 30, dniZapasu: 30, zapasMin: 0 })).toBe(sold);
+    const empty = { sprzedazOkres: 0, sprzedazDziennie: 0, celZapasu: 0, dostepne: 0 };
+    expect(applyZdStockoutFallbackToLine(empty, Array(12).fill(0), { dniOkresu: 30, dniZapasu: 30, zapasMin: 0 })).toBe(empty);
+    expect(applyZdStockoutFallbackToLine(empty, null, { dniOkresu: 30, dniZapasu: 30, zapasMin: 0 })).toBe(empty);
   });
 });

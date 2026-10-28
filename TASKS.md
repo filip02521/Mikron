@@ -49,3 +49,21 @@ Spec: `docs/integrations/strategia-zakupowa-pl-automatyzacja.md` (decyzje §7, b
 
 Kolejność: 1 → 3; 6 po 4; 8 po 6 i 4 cyklach pomiaru; 9 po 8.
 - Zadania 2, 4, 5, 7 zrobione zespołem (4 sesje), scalone 2026-10-23 po audycie; backtest roczny potwierdził strategię (spec §9).
+
+## Audyt procesu zamówień — poprawki (2026-10-28)
+
+Raport: `docs/audyt-procesu-zamowien-2026-10-28.md`, zmiany: `docs/zamowienia-jeden-silnik.md` §6.
+
+- [x] Zaległe ZD poza „w drodze” + nocne odświeżenie statusów; ZK bez rezerwacji poza wolnym towarem.
+- [x] KFS: tabela `subiekt_sales_corrections` (mig. 202), nocny odczyt, odjęcie w silniku (okno + profil).
+- [x] Pełny brak w oknie → tempo z profilu; p75 przy 5–9 próbkach czasu dostawy.
+- [x] Prośby: rezerwacja zmniejsza prośbę (nie need), odejmowanie przy opakowaniach.
+- [x] Podbicie: bez thin_cover/sell_through po mnożniku braków, cel bez zapasMin; skok vs ZD tylko w classic; profil na sprzedaży sprzed mnożnika.
+- [x] Dziennik decyzji per linia (mig. 203) + KPI `lineCorrection` + pamięć korekt (cel × mediana, flaga `habit`).
+- [x] Panel dzienny „poza planem” liczy towar raz.
+- [ ] Produkcja: migracje 202, 203; sprawdzić po pierwszej nocy `[catalog-zd-sync] korekty KFS` i `zaległe ZD` w logu.
+- [ ] Powód korekty (klient / promocja / cena / rytm) w oknie „Utwórz ZD” — dziś dziennik bez powodów, więc pamięć korekt nie odróżnia jednorazowej decyzji pod klienta.
+- [ ] Prośba dostarczona przed oknem obniża sprzedaż w oknie (L4 w raporcie) — wymaga daty wydania klientowi.
+- [ ] Tomasz (API): KFS w `sprzedazOkres`, `zkDataOd` dla ZK bez rezerwacji.
+- [x] Karta produktu: „Ruch towaru” (ZD + przyjęcia + sprzedaż w jednej osi, zakres od okna zapasu, min. miesiąc, 3/12 mies., cała historia) i „Starsze zakupy” (cała kopia ZD na żądanie).
+- [x] Przegląd całości (28.10): dziennik zapisuje `pattern_factor` (stosunek do surowej propozycji), pamięć korekt poza parami i składami, kroki po indeksie w budżecie slotu `catalog-zd-sync`, przełącznik zakresu z `SegmentedControl`.

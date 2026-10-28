@@ -7,6 +7,11 @@
  * Populacja towarów = `zd_sku_class` dostawcy (zmapowane zakresy), klasa = nadpisanie ?? policzona.
  */
 import { query } from "@/lib/db/pool";
+import {
+  loadZdLineDecisionsForPeriod,
+  zdLineDecisionCorrection,
+  type ZdLineDecisionCorrection,
+} from "@/lib/data/zd-line-decisions";
 import { mapPool } from "@/lib/async/map-pool";
 import { releaseLock, tryAcquireLock } from "@/lib/services/locks";
 import { subiektJson } from "@/lib/subiekt/client";
@@ -225,6 +230,8 @@ export type ZdKpiWeeklyMetrics = {
   rotation: ZdKpiRotation;
   deadStock: ZdKpiDeadStock;
   humanCorrection: ZdKpiHumanCorrection;
+  /** Korekta na wszystkich ZD z Kreatora w tygodniu (dziennik decyzji, mig. 203); brak = tydzień sprzed dziennika. */
+  lineCorrection?: ZdLineDecisionCorrection;
   minima: ZdKpiMinima;
 };
 
@@ -379,6 +386,10 @@ async function computeSupplierKpi(
     lines: Array.isArray(r.lines) ? r.lines : [],
     finalLines: r.final_lines,
   }));
+  const decisions = await loadZdLineDecisionsForPeriod({ supplierId: s.id, from: week.start, to: week.end }).catch(
+    () => [] as Awaited<ReturnType<typeof loadZdLineDecisionsForPeriod>>
+  );
+  const lineCorrection = decisions.length ? zdLineDecisionCorrection(decisions) : undefined;
 
   return {
     version: 1,
@@ -390,6 +401,7 @@ async function computeSupplierKpi(
     rotation,
     deadStock,
     humanCorrection: zdKpiHumanCorrection(proposals),
+    ...(lineCorrection ? { lineCorrection } : {}),
     // Minima: propozycje automatu, nie te utworzone w panelu przy przeglądzie (brak otwartej do przeliczenia).
     minima: zdKpiMinima(
       proposals.filter((_, i) => props.rows[i]!.origin !== "review"),

@@ -28,7 +28,9 @@ export type ZdProposalLineFlag =
   /** pierwsza sprzedaż < 13 tygodni temu i wartość linii > 500 zł */
   | "new_item"
   /** brak tempa, ceny albo czasu dostawy — ilość z fallbacku */
-  | "missing_data";
+  | "missing_data"
+  /** pamięć korekt: 3 z 4 ostatnich ZD poprawiałeś tę linię w tę samą stronę (dziennik decyzji) */
+  | "habit";
 
 /** Flaga całej propozycji (wartość ZD > 2× mediany 6 ostatnich ZD dostawcy). */
 export type ZdProposalFlag = "order_value_jump";
@@ -39,6 +41,7 @@ export const ZD_PROPOSAL_LINE_FLAG_LABEL: Record<ZdProposalLineFlag, string> = {
   jump: "skok vs ostatnie ZD",
   new_item: "nowość",
   missing_data: "brak danych",
+  habit: "Twój wzorzec",
 };
 
 export type ZdAbc = "A" | "B" | "C";

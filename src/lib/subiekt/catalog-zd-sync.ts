@@ -12,6 +12,8 @@ import {
 import { warsawNowParts, warsawDateKeyDaysAgo } from "@/lib/time/warsaw";
 import { resolveKhLabelForZdDocument } from "@/lib/subiekt/kontrahent-from-document";
 import { parseZdFulfillmentDeadline } from "@/lib/subiekt/zd-fulfillment-date";
+import { refreshOverdueOpenZdIndex } from "@/lib/data/zd-stale-open-zd";
+import { syncSalesCorrections } from "@/lib/data/subiekt-sales-corrections";
 import { extractDocKhIds } from "@/lib/subiekt/zd-document-kh";
 import { tryAcquireLock, releaseLock } from "@/lib/services/locks";
 import { lockTtlSecondsForBudgetMs } from "@/lib/timing";
@@ -403,6 +405,28 @@ export async function runCatalogZdSync(options?: {
     if (allDone) {
       const auto = await autoAssignMissingSuppliersFromCatalog({ limit: 120 });
       autoAssignUpdated += auto.updated;
+      // Kroki po indeksie tylko w budżecie slotu (trasa ma limit czasu): gdy indeks zjadł cały budżet,
+      // zrobią się następnej nocy — oba są idempotentne i dokańczają od zakładki.
+      const remainingMs = maxDurationMs - (Date.now() - started);
+      if (remainingMs > 60_000) {
+        // Zaległe ZD starsze niż okno indeksu — status z Subiekta, żeby zamknięte nie wisiały jako otwarte.
+        try {
+          const stale = await refreshOverdueOpenZdIndex({ todayKey: runId });
+          if (stale.checked) console.info("[catalog-zd-sync] zaległe ZD", stale);
+        } catch (e) {
+          console.warn("[catalog-zd-sync] zaległe ZD", e);
+        }
+        // Zwroty (KFS) do odjęcia od sprzedaży — własny budżet, przerwany odczyt dokończy się następnej nocy.
+        try {
+          const kfs = await syncSalesCorrections({
+            todayKey: runId,
+            maxDurationMs: Math.min(90_000, Math.max(15_000, maxDurationMs - (Date.now() - started) - 30_000)),
+          });
+          if (kfs.docs) console.info("[catalog-zd-sync] korekty KFS", kfs);
+        } catch (e) {
+          console.warn("[catalog-zd-sync] korekty KFS", e);
+        }
+      }
       state = {
         ...state,
         autoAssignUpdated,

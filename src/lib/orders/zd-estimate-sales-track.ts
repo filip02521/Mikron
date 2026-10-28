@@ -359,9 +359,20 @@ export function computeSalesTrackedCel(input: {
   /** Domyślnie true — sygnały cięcia. */
   cutsEnabled?: boolean;
   policy?: Partial<typeof ZD_SALES_TRACK>;
+  /**
+   * Sprzedaż już przeliczona na dni ze stanem (mnożnik braków / tempo z profilu przy pełnym braku):
+   * thin_cover i sell_through podbijałyby drugi raz za ten sam fakt „nie było towaru” — zostają cięcia.
+   */
+  stockoutApplied?: boolean;
+  /** Zapas minimalny w celu z API — podbicia i cięcia liczą się od części zależnej od sprzedaży. */
+  zapasMin?: number;
 }): SalesTrackAdjustment {
   const policy = { ...ZD_SALES_TRACK, ...input.policy };
   const celBase = Math.max(0, asFinite(input.celZapasu));
+  const minPart = Math.min(celBase, Math.max(0, asFinite(input.zapasMin)));
+  // Część celu z tempa sprzedaży — podbicia, cięcia, sufity i podłogi liczą się od niej, nie od zapasu minimalnego.
+  const celCore = celBase - minPart;
+  const boostsEnabled = input.stockoutApplied !== true;
   const sprzedazOkres = Math.max(0, asFinite(input.sprzedazOkres));
   const dniZapasu = Math.max(1, Math.round(asFinite(input.dniZapasu, 30)));
   const dniOkresuEffective = resolveDniOkresuEffective(
@@ -447,7 +458,7 @@ export function computeSalesTrackedCel(input: {
   const boostReasons: SalesTrackReason[] = [];
   let boost = 0;
 
-  if (coverDays != null && coverDays < lo) {
+  if (boostsEnabled && coverDays != null && coverDays < lo) {
     const shortfallDays = dniZapasu - coverDays;
     const extraDays = Math.min(
       policy.maxCoverExtraDays,
@@ -460,20 +471,21 @@ export function computeSalesTrackedCel(input: {
   }
 
   if (
+    boostsEnabled &&
     sellThrough != null &&
     sellThrough > policy.sellThroughFloor &&
-    celBase > 0
+    celCore > 0
   ) {
     const span = Math.max(1e-9, 1 - policy.sellThroughFloor);
     const t = Math.min(1, (sellThrough - policy.sellThroughFloor) / span);
-    const fromSt = celBase * (t * policy.sellThroughMaxBoost);
+    const fromSt = celCore * (t * policy.sellThroughMaxBoost);
     if (fromSt > 0) {
       boost += fromSt;
       boostReasons.push("sell_through");
     }
   }
 
-  boost = Math.min(boost, celBase * policy.maxTotalBoostRatio);
+  boost = Math.min(boost, celCore * policy.maxTotalBoostRatio);
 
   const cutReasons: SalesTrackReason[] = [];
   let cut = 0;
@@ -498,14 +510,14 @@ export function computeSalesTrackedCel(input: {
     ) {
       const span = Math.max(1e-9, policy.sellThroughLowFloor);
       const t = Math.min(1, (policy.sellThroughLowFloor - sellThrough) / span);
-      const fromSt = celBase * (t * policy.sellThroughMaxCut);
+      const fromSt = celCore * (t * policy.sellThroughMaxCut);
       if (fromSt > 0) {
         cut += fromSt;
         cutReasons.push("low_sell_through");
       }
     }
 
-    cut = Math.min(cut, celBase * policy.maxTotalCutRatio);
+    cut = Math.min(cut, celCore * policy.maxTotalCutRatio);
   }
 
   const deltaRaw = boost - cut;
@@ -515,17 +527,17 @@ export function computeSalesTrackedCel(input: {
 
   let celRaw = celBase + deltaRaw;
   if (deltaRaw < 0) {
-    const floor = celBase * policy.minCelRatio;
+    const floor = minPart + celCore * policy.minCelRatio;
     celRaw = Math.max(floor, celRaw);
   } else {
-    celRaw = Math.min(celBase + celBase * policy.maxTotalBoostRatio, celRaw);
+    celRaw = Math.min(celBase + celCore * policy.maxTotalBoostRatio, celRaw);
   }
   celRaw = Math.max(0, celRaw);
 
   // Cut zawsze wchodzi w baseline; hold/scale dotyczy wyłącznie boostu.
   const celAfterCut =
     cut > DELTA_EPS
-      ? Math.max(celBase * policy.minCelRatio, Math.max(0, celBase - cut))
+      ? Math.max(minPart + celCore * policy.minCelRatio, Math.max(0, celBase - cut))
       : celBase;
   const qtyAfterCut = orderQtyFromCel(celAfterCut, coverStock);
   const qtyRaw = orderQtyFromCel(celRaw, coverStock);

@@ -218,10 +218,14 @@ export function quantilesFromSampleRows(
     .sort((a, b) => a - b);
 
   const daySet = new Set(active.map((r) => `${r.placement_date}|${r.order_type}`));
+  // Nearest rank: przy 5–9 próbkach „p90” to po prostu maksimum (jedna spóźniona dostawa robiła
+  // „zabraknie przed dostawą” z całego zakresu) — do 10 próbek bierzemy p75, od 10 prawdziwe p90.
+  const upper = (sorted: number[]) =>
+    sorted.length >= 10 ? percentileNearestRank(sorted, 90) : sorted.length >= 5 ? percentileNearestRank(sorted, 75) : null;
   const p50 = percentileNearestRank(days, 50);
-  const p90 = days.length >= 5 ? percentileNearestRank(days, 90) : null;
+  const p90 = upper(days);
   const firstReceiptP50 = percentileNearestRank(firstDays, 50);
-  const firstReceiptP90 = firstDays.length >= 5 ? percentileNearestRank(firstDays, 90) : null;
+  const firstReceiptP90 = upper(firstDays);
 
   let variability: DeliveryEtaVariability | null = null;
   if (p50 != null && p90 != null && days.length >= 5) {

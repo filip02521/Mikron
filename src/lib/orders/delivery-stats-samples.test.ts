@@ -84,7 +84,13 @@ describe("aggregateDeliveryStatsFromSampleRows", () => {
 });
 
 describe("quantilesFromSampleRows", () => {
-  it("liczy p50/p90 z próbek orderów", () => {
+  it("liczy p50 i górny kwantyl z próbek orderów: przy 5–9 próbkach p75 (nie maksimum), od 10 p90", () => {
+    const ten = [1, 2, 3, 4, 5, 6, 7, 8, 9, 30].map((d, i) =>
+      sample({ supplier_id: "s1", order_id: `t${i}`, business_days_full: d, order_type: "Glowne", delivery_date: "2026-06-01" })
+    );
+    const q10 = quantilesFromSampleRows(ten, "Glowne", "OSOBNO", { now: new Date("2026-06-15") });
+    expect(q10.p90).toBe(9);
+    expect(q10.variability).toBe("stable");
     const rows = [1, 2, 3, 4, 10].map((d, i) =>
       sample({
         supplier_id: "s1",
@@ -99,19 +105,19 @@ describe("quantilesFromSampleRows", () => {
     });
     expect(q.nOrders).toBe(5);
     expect(q.p50).toBe(3);
-    expect(q.p90).toBe(10);
-    expect(q.variability).toBe("wide");
+    expect(q.p90).toBe(4);
+    expect(q.variability).toBe("stable");
   });
 
-  it("p90 pierwszej dostawy od 5 próbek z datą pierwszego przyjęcia", () => {
+  it("górny kwantyl pierwszej dostawy od 5 próbek (p75) z datą pierwszego przyjęcia", () => {
     const rows = [
       [3, 2], [5, 3], [7, 3], [9, 4], [60, 5],
     ].map(([full, first], i) =>
       sample({ supplier_id: "s1", order_id: `o${i}`, business_days_full: full, business_days_first: first, order_type: "Glowne", delivery_date: "2026-06-01" })
     );
     const q = quantilesFromSampleRows(rows, "Glowne", "OSOBNO", { now: new Date("2026-06-15") });
-    expect(q.p90).toBe(60);
-    expect(q.firstReceiptP90).toBe(5);
+    expect(q.p90).toBe(9);
+    expect(q.firstReceiptP90).toBe(4);
     const four = quantilesFromSampleRows(rows.slice(0, 4), "Glowne", "OSOBNO", { now: new Date("2026-06-15") });
     expect(four.firstReceiptP90).toBeNull();
   });
