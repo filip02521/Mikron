@@ -31,6 +31,7 @@ import {
   fetchZdAutoProposalById,
   releaseZdAutoProposalCreate,
   listZdAutoProposals,
+  markZdAutoProposalSent,
   type ZdAutoProposal,
 } from "@/lib/data/zd-auto-proposals";
 import { recordZdLineDecisions } from "@/lib/data/zd-line-decisions";
@@ -1645,7 +1646,7 @@ async function acceptPendingAutoProposal(input: {
   createLines: ReadonlyArray<{ twId: number; ilosc: number }>;
   userId: string;
   /**
-   * ZD z panelu „Sprawdź i zatwierdź”: ta konkretna propozycja (zajęta blokadą tworzenia), nie najnowsza —
+   * ZD z panelu „Sprawdź i wyślij”: ta konkretna propozycja (zajęta blokadą tworzenia), nie najnowsza —
    * w międzyczasie mogła powstać nowsza, a zatwierdzona jest ta, którą człowiek oglądał.
    */
   proposalId?: string | null;
@@ -1708,7 +1709,7 @@ export async function actionListZdAutoProposals(input: {
 /** „Przygotuj propozycję teraz” — przelicza dostawcę strategią testową i zapisuje propozycję. */
 export async function actionCreateZdAutoProposalNow(input: {
   supplierId: string;
-  /** Panel „Sprawdź i zatwierdź”: przelicz tę propozycję w miejscu zamiast tworzyć nową. */
+  /** Panel „Sprawdź i wyślij”: przelicz tę propozycję w miejscu zamiast tworzyć nową. */
   refreshProposalId?: string | null;
 }): Promise<{ ok: true; proposal: ZdAutoProposal | null } | { ok: false; message: string }> {
   await requireZdEstimateAdmin("mutate");
@@ -1740,6 +1741,25 @@ export async function actionCreateZdAutoProposalNow(input: {
     return { ok: false, message: "Automat ZD jest wyłączony dla tego dostawcy - włącz go w karcie dostawcy (sekcja Automat ZD) albo w Strategii dostawcy w Kreatorze." };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się przygotować propozycji.") };
+  }
+}
+
+/**
+ * „Wysłałem ręcznie” w panelu wysyłki ZD: zamówienie automatu z tym ZD poszło do dostawcy (etap „sent”
+ * w panelu dziennym). ZD spoza automatu — nic. Wysyłkę z Gmaila OnTime zapisuje sama (supplier_order_emails).
+ */
+export async function actionMarkZdAutoProposalSentManually(input: { dokId: number; supplierId: string }): Promise<{ ok: boolean }> {
+  await requireZdEstimateAdmin("mutate");
+  const dokId = Math.trunc(Number(input.dokId));
+  const supplierId = String(input.supplierId ?? "").trim();
+  if (!(dokId > 0 && dokId <= 2_147_483_647) || !UUID_RE.test(supplierId)) return { ok: false };
+  try {
+    const done = await markZdAutoProposalSent(dokId, supplierId, "manual");
+    if (done) revalidateAfterZdEstimateMark();
+    return { ok: true };
+  } catch (e) {
+    console.warn("[zd-auto-proposal] wysłane ręcznie", dokId, e);
+    return { ok: false };
   }
 }
 

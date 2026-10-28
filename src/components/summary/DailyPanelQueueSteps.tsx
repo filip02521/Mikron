@@ -9,9 +9,10 @@ import {
 } from "@/lib/ui/ontime-theme";
 
 /** Kolejność obsługi w zakładce Dziś (zgodna z DailyTodayView). */
-export type DailyPanelQueueStepKind = "overdue" | "stockOut" | "prosby" | "today";
+export type DailyPanelQueueStepKind = "automat" | "overdue" | "stockOut" | "prosby" | "today";
 
 const STEP_ORDER: DailyPanelQueueStepKind[] = [
+  "automat",
   "overdue",
   "stockOut",
   "prosby",
@@ -19,6 +20,7 @@ const STEP_ORDER: DailyPanelQueueStepKind[] = [
 ];
 
 const STEP_META: Record<DailyPanelQueueStepKind, { label: string }> = {
+  automat: { label: "Automat ZD" },
   overdue: { label: "Zaległe" },
   stockOut: { label: "Brak na stanie" },
   prosby: { label: "Prośby handlowców" },
@@ -53,8 +55,9 @@ function QueueStepChip({
   );
 }
 
-/** Skrócona nawigacja po kolejce Dziś (zaległe → brak stanu → prośby → harmonogram). */
+/** Skrócona nawigacja po kolejce Dziś (automat ZD → zaległe → brak stanu → prośby → harmonogram). */
 export function DailyPanelQueueSteps({
+  automatCount = 0,
   overdueCount,
   stockOutGroupCount,
   forSomeoneGroupCount,
@@ -65,9 +68,12 @@ export function DailyPanelQueueSteps({
   stockOutGroupCount: number;
   forSomeoneGroupCount: number;
   todayCount: number;
+  /** Zamówienia automatu ZD czekające dziś na sprawdzenie albo wysyłkę. */
+  automatCount?: number;
   className?: string;
 }) {
   const counts: Record<DailyPanelQueueStepKind, number> = {
+    automat: automatCount,
     overdue: overdueCount,
     stockOut: stockOutGroupCount,
     prosby: forSomeoneGroupCount,

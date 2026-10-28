@@ -42,6 +42,8 @@ Spec: `docs/integrations/strategia-zakupowa-pl-automatyzacja.md` (decyzje §7, b
 - [ ] 8. Auto-zatwierdzenie (stopień 3) — ta sama ścieżka co klik (`create_attempted_at`), tylko linie bez flag; najpierw 2–3 dostawcy z korektą < 10% przez 4 cykle. Kryterium: 4 cykle bez duplikatu ZD; automatyczne cofnięcie stopnia po brakach A / nieudanym create.
   - Częściowo (PR #239, 2026-10-25): pomiar gotowości 4 tygodni (`src/lib/orders/zd-automat-status.ts`), cofnięcie stopnia po brakach A (migracja 198) i po nieudanym create (`zdAutomatCreateFailRollback`), cykl życia propozycji (199), sekcja „Automat ZD” w panelu dziennym. Brak: samo auto-zatwierdzenie.
 - [ ] 9. Auto-mail z PDF ZD (stopień 4) przez pocztę dostawców. Kryterium: 4 cykle bez reklamacji.
+- [x] 11. Przebieg w panelu dziennym (spec §14, 2026-10-28): lista automatu z dziś bez przeliczania przy otwarciu, górny panel z zamówieniami na dziś i etapem sprawdzenie → ZD → wysłane, „Wyślij mail” dla ZD bez wysyłki, etap „wysłane” (migracja 200, także „Wysłałem ręcznie”). **Migracja 200 na produkcji — po wdrożeniu (Admin → Migracje).**
+- [ ] 12. „Zatwierdź wszystkie bez uwag” w górnym panelu (spec §14.1 A) — krok między stopniem 2 a 3. Kryterium: N propozycji bez flag → N ZD, każde dokładnie raz (blokada `create_attempted_at`), błąd jednego nie zatrzymuje reszty.
 - [ ] 10. Przed stopniem 3: zestaw Vertex Orthoplast 4 kg + 2×1 L (bez ZD od roku) — kupowany czy składany w Subiekcie? Składany → komplet „rozpisz na składniki”. Backtest: dodać pary paczka↔sztuka (dziś ich nie modeluje, stąd gorszy Denon).
 - [ ] API (Tomasz, równolegle): `sales/weekly` z max-z-dokumentu, cena zakupu, `tw_StanMin/Maks/IdPodstDostawca` w `/products`.
 

@@ -204,7 +204,7 @@ export function ZdAutoProposalBanner({
             {inDailyPanel ? (
               waiting ? (
                 <PageAttentionStripCta tone="violet" onClick={() => setAccepting(true)}>
-                  Sprawdź i zatwierdź
+                  Sprawdź i wyślij
                 </PageAttentionStripCta>
               ) : null
             ) : (

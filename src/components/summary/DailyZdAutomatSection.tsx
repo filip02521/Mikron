@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useId, useMemo, useState, useSyncExternalStore } from "react";
 import { IconChevronDown } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
-import { dailyZdProposalAnchorId } from "@/components/summary/DailyZdProposals";
+import { DailyZdAutomatOrders } from "@/components/summary/DailyZdAutomatOrders";
 import { cn } from "@/lib/cn";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 import {
@@ -18,11 +18,13 @@ import {
   zdAutomatNightPassed,
   zdAutomatNightRunState,
   zdAutomatSupplierView,
+  zdAutomatTodayOrders,
   type ZdAutomatDailyData,
   type ZdAutomatDailyProposal,
   type ZdAutomatDailySupplier,
   type ZdAutomatSupplierView,
 } from "@/lib/orders/zd-automat-daily";
+import { DAILY_PANEL_QUEUE_SECTION, dailyPanelQueueSectionScrollClass } from "@/lib/orders/daily-panel-section-anchors";
 import { panelSubsectionInsetClass } from "@/lib/ui/ontime-theme";
 
 const OPEN_KEY = "ontime:daily-automat-open";
@@ -191,9 +193,10 @@ function SupplierRow({
 }
 
 /**
- * Panel dzienny → „Dziś”: automat ZD jako jedna linia stanu (czeka propozycja, automat stoi, nocny przebieg).
- * Decyzja o propozycji zapada tylko w wierszu dostawcy w kolejce („Sprawdź i zatwierdź”) — tu „Pokaż w kolejce”
- * przewija do tego wiersza. „Dostawcy (N)” rozwija stan automatu u każdego dostawcy; ustawienia są w karcie dostawcy.
+ * Panel dzienny → „Dziś”: automat ZD — zdanie stanu, pod nim zamówienia automatu na dziś z etapem
+ * (sprawdzenie → ZD w Subiekcie → mail) i akcją do następnego etapu; ten sam panel boczny otwiera wiersz dostawcy
+ * w kolejce. Bez zamówień na dziś: jedna linia stanu (automat stoi, nocny przebieg, następna propozycja).
+ * „Dostawcy (N)” rozwija stan automatu u każdego dostawcy; ustawienia są w karcie dostawcy.
  */
 export function DailyZdAutomatSection({
   data,
@@ -248,6 +251,8 @@ export function DailyZdAutomatSection({
       );
 
   if (!status) return null;
+  const today = zdAutomatTodayOrders(data.suppliers, todayKey);
+  const toDo = today.orders.length - today.done;
 
   const smooth = (): ScrollBehavior =>
     window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
@@ -258,37 +263,28 @@ export function DailyZdAutomatSection({
       document.getElementById(`automat-zd-${supplierId}`)?.scrollIntoView({ block: "nearest", behavior: smooth() })
     );
   };
-  /** Przewija do bloku propozycji w wierszu dostawcy i na chwilę go obrysowuje; bez wiersza — pokazuje dostawcę na liście. */
-  const showInQueue = (supplierId: string) => {
-    const el = document.getElementById(dailyZdProposalAnchorId(supplierId));
-    if (!el) return reveal(supplierId);
-    el.scrollIntoView({ block: "center", behavior: smooth() });
-    el.classList.add("ring-2", "ring-indigo-300");
-    window.setTimeout(() => el.classList.remove("ring-2", "ring-indigo-300"), 2000);
-    el.querySelector<HTMLButtonElement>("button:last-of-type")?.focus({ preventScroll: true });
-  };
-  const warning = status.tone === "warning";
-  // Czekająca propozycja: w linii tylko termin wygaśnięcia i stan nocnego przebiegu — szczegóły są w wierszu kolejki.
-  // Niepotwierdzone tworzenie ZD i pozostałe stany zostają z pełnym opisem (tylko tu je widać).
-  const firstPending = rows.find((r) => r.view.pending)?.view;
-  const detail =
-    status.action?.kind === "review" && firstPending && !firstPending.pending!.createAttemptedAt
-      ? [
-          firstPending.nextKey ? `wygasa ${formatAutomatDay(firstPending.nextKey, todayKey)}` : null,
-          night.kind === "missing"
-            ? `dziś bez nocnego przebiegu${night.lastRunDate ? ` (ostatni ${formatAutomatDay(night.lastRunDate, todayKey)})` : ""}`
-            : night.kind === "done" && night.failed
-              ? "nocny przebieg z błędem"
-              : null,
-        ]
-          .filter(Boolean)
-          .join(" · ")
-      : status.detail;
+  // Zamówienia automatu na dziś: zdanie mówi, ile czeka na Ciebie, a lista pod nim prowadzi każde do wysyłki.
+  const ordersHeadline = today.orders.length
+    ? toDo
+      ? `Automat ZD: ${toDo} ${polishPluralWord(toDo, "zamówienie czeka", "zamówienia czekają", "zamówień czeka")} na Ciebie`
+      : `Zamówienia automatu na dziś wysłane`
+    : null;
+  const nightProblem =
+    night.kind === "missing"
+      ? `dziś bez nocnego przebiegu${night.lastRunDate ? ` (ostatni ${formatAutomatDay(night.lastRunDate, todayKey)})` : ""}`
+      : night.kind === "done" && night.failed
+        ? "nocny przebieg z błędem"
+        : null;
+  const stoppedCount = rows.filter((r) => r.view.stopReason || r.view.attemptProblem).length;
+  const warning = ordersHeadline ? toDo > 0 || Boolean(nightProblem) : status.tone === "warning";
+  const detail = status.detail;
 
   return (
     <section
+      id={DAILY_PANEL_QUEUE_SECTION.automat}
       aria-labelledby={titleId}
       className={cn(
+        dailyPanelQueueSectionScrollClass,
         "overflow-hidden rounded-[var(--radius-panel)] border shadow-[var(--shadow-card)]",
         warning ? "border-amber-200 bg-amber-50" : "border-slate-200 bg-[var(--card)]"
       )}
@@ -296,22 +292,29 @@ export function DailyZdAutomatSection({
       <div className={cn("flex flex-col gap-2 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4", panelSubsectionInsetClass)}>
         <p role="status" className={cn("min-w-0 text-sm leading-snug", warning ? "text-amber-900" : "text-slate-600")}>
           <span id={titleId} className={cn("font-semibold", warning ? "text-amber-950" : "text-slate-900")}>
-            {status.headline}
+            {ordersHeadline ?? status.headline}
           </span>
-          {detail ? <> · {detail}</> : null}
+          {ordersHeadline ? (
+            <span className="tabular-nums">
+              {" "}
+              · {today.done} z {today.orders.length} {polishPluralWord(today.orders.length, "gotowe", "gotowe", "gotowych")}
+              {nightProblem ? ` · ${nightProblem}` : null}
+              {stoppedCount ? ` · automat stoi u ${stoppedCount} ${stoppedCount === 1 ? "dostawcy" : "dostawców"}` : null}
+            </span>
+          ) : detail ? (
+            <> · {detail}</>
+          ) : null}
         </p>
         <div className="flex shrink-0 items-center gap-1.5 self-end sm:self-auto">
-          {status.action ? (
+          {status.action && !ordersHeadline ? (
             <Button
               type="button"
               variant="ghost"
               size="sm"
               className="min-h-11 sm:min-h-8"
-              onClick={() =>
-                status.action!.kind === "review" ? showInQueue(status.action!.supplierId) : reveal(status.action!.supplierId)
-              }
+              onClick={() => reveal(status.action!.supplierId)}
             >
-              {status.action.kind === "review" ? "Pokaż w kolejce" : status.action.label}
+              {status.action.label}
             </Button>
           ) : null}
           <button
@@ -330,6 +333,12 @@ export function DailyZdAutomatSection({
           </button>
         </div>
       </div>
+
+      {today.orders.length ? <DailyZdAutomatOrders
+          orders={today.orders}
+          todayKey={todayKey}
+          expiresBySupplier={Object.fromEntries(rows.map((r) => [r.s.id, r.view.nextKey]))}
+        /> : null}
 
       {open ? (
         <div id={listId} className="zd-automat-detail-enter border-t border-slate-200 bg-[var(--card)]">

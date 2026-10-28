@@ -9,6 +9,9 @@ import {
   zdAutomatSupplierView,
   zdAutomatCycles,
   isZdAutomatWorkday,
+  zdAutomatTodayOrders,
+  zdAutomatTodayStageStep,
+  zdProposalListFromToday,
   type ZdAutomatDailyRun,
   type ZdAutomatDailySupplier,
 } from "./zd-automat-daily";
@@ -203,5 +206,60 @@ describe("kotwica cyklu (audyt K1)", () => {
     const st = buildZdAutomatDailyStatus({ suppliers: [supplier({ proposals: [pending] })], run: doneRun }, { todayKey: TODAY, nowMinutes: 9 * 60 });
     expect(st?.headline).toBe("Tworzenie ZD Polkard niepotwierdzone");
     expect(zdAutomatLastResultLabel(pending, TODAY)).toBe("tworzenie ZD niepotwierdzone · dziś");
+  });
+});
+
+describe("zdAutomatTodayOrders — droga sprawdź → ZD → mail", () => {
+  const p = (id: string, extra: Partial<ZdAutomatDailySupplier["proposals"][number]>) => ({
+    id,
+    createdAt: proposalAt(TODAY),
+    status: "pending" as const,
+    lineCount: 3,
+    valueNet: 100,
+    dokNr: null,
+    ...extra,
+  });
+  it("etapy, kolejność (najpierw do zrobienia) i licznik załatwionych", () => {
+    const { orders, done } = zdAutomatTodayOrders(
+      [
+        supplier({ id: "a", name: "Amadar", proposals: [p("a1", { status: "accepted", dokId: 7, decidedAt: `${TODAY}T08:00:00.000Z`, mailSentAt: `${TODAY}T08:05:00.000Z` })] }),
+        supplier({ id: "b", name: "Denon", proposals: [p("b1", { status: "accepted", dokId: 8, decidedAt: `${TODAY}T09:00:00.000Z` })] }),
+        supplier({ id: "c", name: "Formed", proposals: [p("c1", {})] }),
+        supplier({ id: "d", name: "Hansen", proposals: [p("d1", { status: "rejected", decidedAt: `${TODAY}T09:00:00.000Z` })] }),
+        supplier({ id: "e", name: "Kol-Dental", proposals: [p("e1", { createAttemptedAt: `${TODAY}T09:00:00.000Z` })] }),
+      ],
+      TODAY
+    );
+    expect(orders.map((o) => [o.supplierName, o.stage])).toEqual([
+      ["Kol-Dental", "unconfirmed"],
+      ["Formed", "review"],
+      ["Denon", "send"],
+      ["Amadar", "sent"],
+      ["Hansen", "rejected"],
+    ]);
+    expect(done).toBe(2);
+    expect(orders.map((o) => zdAutomatTodayStageStep(o.stage))).toEqual([0, 0, 2, 3, 0]);
+  });
+  it("zatwierdzona wczoraj i starsza czekająca (nie najnowsza) — poza dzisiejszą listą", () => {
+    const { orders } = zdAutomatTodayOrders(
+      [
+        supplier({
+          proposals: [
+            p("new", { status: "expired" }),
+            p("old", { createdAt: proposalAt("2026-10-22") }),
+            p("acc", { status: "accepted", decidedAt: "2026-10-24T09:00:00.000Z" }),
+          ],
+        }),
+      ],
+      TODAY
+    );
+    expect(orders).toEqual([]);
+  });
+  it("lista z dziś (nocna albo przeliczona) nie przelicza się przy otwarciu; wczorajsza tak", () => {
+    expect(zdProposalListFromToday({ createdAt: proposalAt(TODAY) }, TODAY)).toBe(true);
+    expect(zdProposalListFromToday({ createdAt: proposalAt("2026-10-24") }, TODAY)).toBe(false);
+    expect(zdProposalListFromToday({ createdAt: proposalAt("2026-10-24"), refreshedAt: `${TODAY}T07:00:00.000Z` }, TODAY)).toBe(true);
+    // 23:30 UTC 24.10 = 00:30 w Warszawie 25.10.
+    expect(zdProposalListFromToday({ createdAt: "2026-10-24T23:30:00.000Z" }, TODAY)).toBe(true);
   });
 });
