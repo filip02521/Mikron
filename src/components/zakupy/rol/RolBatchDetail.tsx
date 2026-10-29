@@ -13,6 +13,7 @@ import type { RolBatchView, RolInvoiceView, RolLineView, RolProgram } from "@/li
 import { rolBatchEditable } from "@/lib/rol/review";
 import { rolActiveLines, rolBatchBlockers, rolLineQty } from "@/lib/rol/view";
 import { formError } from "@/lib/ui/notice-copy";
+import { RolMailDialog } from "./RolMailDialog";
 
 /** Telefon: przyciski w wierszach mają pole dotyku 44 px (DESIGN.md). */
 const ROW_ACTION = "max-sm:min-h-11";
@@ -37,8 +38,26 @@ const contested = (inv: RolInvoiceView) =>
   inv.excluded && (inv.excludedReason === ROL_CONFLICT_REASON || inv.excludedReason.startsWith("Przypisana do ROL "));
 
 /** Rozwinięcie wiersza klienta: blok klienta, FS z pozycjami, zatwierdzenie listy. */
-export function RolBatchDetail({ program, batch, monthEn }: { program: RolProgram; batch: RolBatchView; monthEn: string }) {
+function sentLabel(iso: string): string {
+  return new Intl.DateTimeFormat("pl-PL", { timeZone: "Europe/Warsaw", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }).format(
+    new Date(iso)
+  );
+}
+
+export function RolBatchDetail({
+  program,
+  batch,
+  monthEn,
+  autoOpenMail = false,
+}: {
+  program: RolProgram;
+  batch: RolBatchView;
+  monthEn: string;
+  /** Status Panel „Przygotuj mail” otwiera okno od razu po rozwinięciu wiersza. */
+  autoOpenMail?: boolean;
+}) {
   const router = useRouter();
+  const [mailOpen, setMailOpen] = useState(autoOpenMail && batch.status === "przejrzane");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const editable = rolBatchEditable(batch.status);
@@ -133,11 +152,25 @@ export function RolBatchDetail({ program, batch, monthEn }: { program: RolProgra
         </div>
       ) : batch.status === "przejrzane" ? (
         <div className="flex flex-col gap-2 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-end">
-          <p className="text-sm text-slate-600 sm:mr-auto">Lista zatwierdzona — gotowa do wysłania.</p>
+          <p className="text-sm text-slate-600 sm:mr-auto">
+            Lista zatwierdzona — gotowa do wysłania{batch.zdNr ? ` · ${batch.zdNr} już w Subiekcie` : ""}.
+          </p>
           <Button variant="ghost" disabled={pending} onClick={() => run(() => actionRolReopen(batch.id))}>
             Edytuj listę
           </Button>
+          <Button variant="outline" disabled={pending} onClick={() => setMailOpen(true)}>
+            Przygotuj mail
+          </Button>
         </div>
+      ) : batch.lastSend ? (
+        <p className="border-t border-slate-100 pt-3 text-sm text-slate-600">
+          Wysłano {sentLabel(batch.lastSend.sentAt)} z {batch.lastSend.from}
+          {batch.zdNr ? ` · ${batch.zdNr}` : ""}. Odpowiedź Ivoclara trafi do Poczty dostawców.
+        </p>
+      ) : null}
+
+      {mailOpen ? (
+        <RolMailDialog onClose={() => setMailOpen(false)} batchId={batch.id} label={program.label} period={batch.period} />
       ) : null}
     </div>
   );

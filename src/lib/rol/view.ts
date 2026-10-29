@@ -52,10 +52,14 @@ export function rolMonthEn(period: string): string {
   return ENGLISH_MONTHS[Number(period.slice(5, 7)) - 1] ?? "";
 }
 
+/** „wrzesień” z `2026-09-01` (opis ZD, bez roku). */
+export function rolMonthPl(period: string): string {
+  return MONTHS_PL[Number(period.slice(5, 7)) - 1] ?? "";
+}
+
 /** „wrzesień 2026” z `2026-09-01`. */
 export function rolPeriodLabel(period: string): string {
-  const [y, m] = period.split("-").map(Number) as [number, number];
-  return `${MONTHS_PL[m - 1]} ${y}`;
+  return `${rolMonthPl(period)} ${period.slice(0, 4)}`;
 }
 
 /** Ostatnie `count` miesięcy przed `todayKey`, od najnowszego (`YYYY-MM-01`). */

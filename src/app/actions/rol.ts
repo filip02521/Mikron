@@ -6,7 +6,14 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { requireOperations } from "@/lib/auth";
 import { hasDatabaseConfig } from "@/lib/db/pool";
-import { approveRolBatch, reopenRolBatch, runRolScan, saveRolProgram, setRolInvoice, setRolLine } from "@/lib/rol/data";
+import { getEmailSignature, getGmailConnection, sendGmailAsUser } from "@/lib/google/gmail-connections";
+import { approveRolBatch, loadRolBatchById, reopenRolBatch, runRolScan, saveRolProgram, setRolInvoice, setRolLine } from "@/lib/rol/data";
+import { buildRolBatchFiles } from "@/lib/rol/files";
+import { ensureRolZd, sendRolMail } from "@/lib/rol/send";
+import { loadIvoclarKhId, loadRolMailDefaults, rolSendStore, rolZdApi, sha256 } from "@/lib/rol/send-io";
+import { parseRolMailInput, rolMailDraft, rolZdUwagi } from "@/lib/rol/send-rules";
+import { rolSheetRows } from "@/lib/rol/sheet";
+import { resolveSubiektIssuerId } from "@/lib/subiekt/api";
 import { fetchMissingRolPdfs, resetFailedRolPdfs } from "@/lib/rol/pdfs";
 import { parseRolProgramInput, type RolProgramInput } from "@/lib/rol/program";
 import { parseRolCatalogNo, parseRolQtyOverride } from "@/lib/rol/review";
@@ -155,4 +162,111 @@ export async function actionRolFetchPdfs(): Promise<Result> {
     await resetFailedRolPdfs();
     fetchPdfsInBackground();
   }, "Nie udało się zlecić pobrania PDF.");
+}
+
+// --- Wysyłka (plasterek 5): podgląd maila, ZD w Subiekcie, mail z Gmaila osoby. ---
+
+export type RolMailPreview = {
+  from: string | null;
+  draft: { to: string; cc: string; subject: string; body: string };
+  files: Array<{ name: string; bytes: number }>;
+  missingPdf: string[];
+  zd: { nr: string | null; uwagi: string; lines: Array<{ symbol: string; name: string; qty: number }> };
+};
+
+export async function actionRolPrepareMail(batchId: string): Promise<Result<{ preview: RolMailPreview }>> {
+  try {
+    const user = await requireOperations("mutate");
+    assertRolEditor(user);
+    if (!hasDatabaseConfig()) return { ok: false, error: "Brak konfiguracji bazy danych." };
+    const id = batchIdOrThrow(batchId);
+    const [found, files, defaults, conn, signature] = await Promise.all([
+      loadRolBatchById(id),
+      buildRolBatchFiles(id),
+      loadRolMailDefaults(),
+      getGmailConnection(user.id).catch(() => null),
+      getEmailSignature(user.id).catch(() => ""),
+    ]);
+    if (!found || !files) return { ok: false, error: "Nie znaleziono zgłoszenia — odśwież stronę." };
+    const draft = rolMailDraft({ program: found.program, period: found.batch.period, defaults, signature });
+    return {
+      ok: true,
+      preview: {
+        from: conn?.email ?? null,
+        draft: { to: draft.to.join(", "), cc: draft.cc.join(", "), subject: draft.subject, body: draft.body },
+        files: [files.sheet, ...files.pdfs].map((f) => ({ name: f.name, bytes: f.content.length })),
+        missingPdf: files.missingPdf,
+        zd: {
+          nr: found.batch.zdNr,
+          uwagi: rolZdUwagi(found.program.label, found.batch.period),
+          lines: rolSheetRows(found.batch),
+        },
+      },
+    };
+  } catch (e) {
+    return { ok: false, error: userFacingErrorText(e, "Nie udało się przygotować maila.") };
+  }
+}
+
+export async function actionRolEnsureZd(batchId: string): Promise<Result<{ zdNr: string }>> {
+  try {
+    const user = await requireOperations("mutate");
+    assertRolEditor(user);
+    if (!hasDatabaseConfig()) return { ok: false, error: "Brak konfiguracji bazy danych." };
+    const id = batchIdOrThrow(batchId);
+    const [found, files, ivoclarKhId, personelId] = await Promise.all([
+      loadRolBatchById(id),
+      buildRolBatchFiles(id),
+      loadIvoclarKhId(),
+      resolveSubiektIssuerId(user.email).catch(() => null),
+    ]);
+    if (!found || !files) return { ok: false, error: "Nie znaleziono zgłoszenia — odśwież stronę." };
+    const res = await ensureRolZd(
+      {
+        batch: found.batch,
+        programLabel: found.program.label,
+        missingPdf: files.missingPdf,
+        ivoclarKhId,
+        personelId,
+        todayKey: warsawNowParts().dateKey,
+      },
+      rolSendStore,
+      rolZdApi
+    );
+    revalidatePath(ASYSTENT_PATH);
+    return res.ok ? { ok: true, zdNr: res.zdNr } : res;
+  } catch (e) {
+    revalidatePath(ASYSTENT_PATH);
+    return { ok: false, error: userFacingErrorText(e, "Nie udało się utworzyć ZD w Subiekcie. Sprawdź w Subiekcie, czy ZD nie powstała, zanim spróbujesz ponownie.") };
+  }
+}
+
+export async function actionRolSendMail(
+  batchId: string,
+  mail: { to: string; cc: string; subject: string; body: string }
+): Promise<Result<{ from: string }>> {
+  try {
+    const user = await requireOperations("mutate");
+    assertRolEditor(user);
+    if (!hasDatabaseConfig()) return { ok: false, error: "Brak konfiguracji bazy danych." };
+    const id = batchIdOrThrow(batchId);
+    const parsed = parseRolMailInput({
+      to: String(mail?.to ?? ""),
+      cc: String(mail?.cc ?? ""),
+      subject: String(mail?.subject ?? ""),
+      body: String(mail?.body ?? ""),
+    });
+    if (!parsed.ok) return parsed;
+    const [found, files] = await Promise.all([loadRolBatchById(id), buildRolBatchFiles(id)]);
+    if (!found || !files) return { ok: false, error: "Nie znaleziono zgłoszenia — odśwież stronę." };
+    const res = await sendRolMail(
+      { batch: found.batch, files, mail: parsed.value, userId: user.id, sha256 },
+      rolSendStore,
+      (input) => sendGmailAsUser({ ...input, kind: "supplier_order" })
+    );
+    revalidatePath(ASYSTENT_PATH);
+    return res;
+  } catch (e) {
+    return { ok: false, error: userFacingErrorText(e, "Nie udało się wysłać maila.") };
+  }
 }

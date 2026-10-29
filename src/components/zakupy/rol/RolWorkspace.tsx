@@ -53,6 +53,8 @@ export function RolWorkspace({
   const toReview = batches.filter((b) => b.status === "wykryte");
   const ready = batches.filter((b) => b.status === "przejrzane");
   const nextToReview = programs.find((p) => toReview.some((b) => b.programId === p.id)) ?? null;
+  const nextToSend = nextToReview ? null : (programs.find((p) => ready.some((b) => b.programId === p.id)) ?? null);
+  const [mailFor, setMailFor] = useState<string | null>(null);
   const lastScan = batches.reduce<RolBatchView | null>((a, b) => (!a || b.scannedAt > a.scannedAt ? b : a), null);
   const monthEn = rolMonthEn(period);
 
@@ -96,6 +98,15 @@ export function RolWorkspace({
           </Select>
           {nextToReview ? (
             <Button onClick={() => setOpen(nextToReview.id)}>Przejrzyj ROL {nextToReview.label}</Button>
+          ) : nextToSend ? (
+            <Button
+              onClick={() => {
+                setOpen(nextToSend.id);
+                setMailFor(nextToSend.id);
+              }}
+            >
+              Przygotuj mail · ROL {nextToSend.label}
+            </Button>
           ) : null}
           {programs.length ? (
             <Button variant="secondary" onClick={scan} disabled={scanning}>
@@ -204,7 +215,7 @@ export function RolWorkspace({
                     {expanded && batch ? (
                       <tr id={detailId}>
                         <td colSpan={4} className="bg-white">
-                          <RolBatchDetail program={program} batch={batch} monthEn={monthEn} />
+                          <RolBatchDetail program={program} batch={batch} monthEn={monthEn} autoOpenMail={mailFor === program.id} />
                         </td>
                       </tr>
                     ) : null}

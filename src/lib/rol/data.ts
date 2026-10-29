@@ -12,6 +12,7 @@ import {
 } from "@/lib/subiekt/api";
 import { loadIvoclarTwIds } from "./ivoclar-products";
 import { loadRolPdfRows, rolPdfState, type RolPdfState } from "./pdfs";
+import { loadRolLastSends } from "./send-io";
 import { decideRolMerge, type RolBatchStatus } from "./merge";
 import { rolApproveError, rolAssignedElsewhereReason, rolInvoiceAfterRescan, rolReopenError } from "./review";
 import type { RolProgramValues } from "./program";
@@ -56,7 +57,10 @@ export type RolBatchView = {
   changeNote: string;
   lateFsCount: number;
   reviewedAt: string | null;
+  zdDokId: number | null;
   zdNr: string | null;
+  /** Ostatni wysłany mail tej paczki. */
+  lastSend: { sentAt: string; from: string } | null;
   invoices: RolInvoiceView[];
   lines: RolLineView[];
 };
@@ -145,10 +149,11 @@ export async function loadRolBatches(period: string): Promise<RolBatchView[]> {
     change_note: string;
     late_fs_count: number;
     reviewed_at: string | null;
+    zd_dok_id: number | null;
     zd_nr: string | null;
   }>(
     `SELECT id, program_id, to_char(period, 'YYYY-MM-DD') AS period, status, scanned_at::text, fs_checked_count,
-            change_note, late_fs_count, reviewed_at::text, zd_nr
+            change_note, late_fs_count, reviewed_at::text, zd_dok_id, zd_nr
        FROM rol_batches WHERE period = $1::date`,
     [period]
   );
@@ -189,7 +194,10 @@ export async function loadRolBatches(period: string): Promise<RolBatchView[]> {
       [ids]
     ),
   ]);
-  const pdfRows = await loadRolPdfRows([...new Set(invoices.rows.map((i) => Number(i.fs_dok_id)))]);
+  const [pdfRows, lastSends] = await Promise.all([
+    loadRolPdfRows([...new Set(invoices.rows.map((i) => Number(i.fs_dok_id)))]),
+    loadRolLastSends(ids),
+  ]);
   const now = Date.now();
   return batches.rows.map((b) => ({
     id: b.id,
@@ -201,7 +209,9 @@ export async function loadRolBatches(period: string): Promise<RolBatchView[]> {
     changeNote: b.change_note,
     lateFsCount: b.late_fs_count,
     reviewedAt: b.reviewed_at,
+    zdDokId: b.zd_dok_id,
     zdNr: b.zd_nr,
+    lastSend: lastSends.get(b.id) ?? null,
     invoices: invoices.rows
       .filter((i) => i.batch_id === b.id)
       .map((i) => ({
