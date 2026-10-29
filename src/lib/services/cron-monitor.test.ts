@@ -130,10 +130,11 @@ describe("buildCronMonitorSnapshot", () => {
         subiekt_lead_times: null,
         zd_sku_class: null,
         zd_kpi_weekly: null,
+        rol_reports: null,
       },
       new Date("2026-06-18T06:30:00.000Z")
     );
-    expect(snapshot.jobs.length).toBe(11);
+    expect(snapshot.jobs.length).toBe(12);
     expect(snapshot.issueCount).toBeGreaterThan(0);
   });
 
@@ -160,6 +161,7 @@ describe("buildCronMonitorSnapshot", () => {
         subiekt_lead_times: null,
         zd_sku_class: null,
         zd_kpi_weekly: null,
+        rol_reports: null,
       },
       new Date("2026-06-23T00:30:00.000Z"),
       {
@@ -206,6 +208,7 @@ describe("buildCronMonitorSnapshot", () => {
         subiekt_lead_times: null,
         zd_sku_class: null,
         zd_kpi_weekly: null,
+        rol_reports: null,
         scheduled_mails: {
           ok: true,
           at: "2026-08-17T06:00:00.000Z",

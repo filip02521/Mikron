@@ -33,7 +33,7 @@ import { OcCheckImportForm } from "@/components/zakupy/oc-check/OcCheckImportFor
 import { SupplierMailWorkspace } from "@/components/zakupy/supplier-mail/SupplierMailWorkspace";
 import { RolWorkspace } from "@/components/zakupy/rol/RolWorkspace";
 import { loadRolBatches, loadRolPrograms, type RolBatchView, type RolProgram } from "@/lib/rol/data";
-import { recentRolPeriods } from "@/lib/rol/view";
+import { recentRolPeriods, rolNeedsAction } from "@/lib/rol/view";
 import { warsawNowParts } from "@/lib/time/warsaw";
 
 export const metadata: Metadata = pageMetadataFor("assistant");
@@ -93,7 +93,7 @@ async function loadRolSection(
   if (!hasDatabaseConfig()) return { programs: [], batches: [], toReview: 0, error: null };
   try {
     const [programs, batches] = await Promise.all([loadRolPrograms(), loadRolBatches(period)]);
-    return { programs, batches, toReview: batches.filter((b) => b.status === "wykryte").length, error: null };
+    return { programs, batches, toReview: batches.filter((b) => rolNeedsAction(b.status)).length, error: null };
   } catch {
     return {
       programs: [],

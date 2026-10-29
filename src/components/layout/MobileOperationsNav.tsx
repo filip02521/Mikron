@@ -54,6 +54,7 @@ export function MobileOperationsNav({
     departmentBoardQuestions?: number;
     supplierMail?: number;
     customsDhl?: number;
+    rolReports?: number;
     teethQueue?: number;
     teethReceivePending?: number;
   };

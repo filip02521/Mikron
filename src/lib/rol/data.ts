@@ -17,7 +17,8 @@ import { decideRolMerge, type RolBatchStatus } from "./merge";
 import { rolApproveError, rolAssignedElsewhereReason, rolInvoiceAfterRescan, rolReopenError } from "./review";
 import type { RolProgramValues } from "./program";
 import { ROL_ASSIGNED_HERE_REASON } from "./constants";
-import { ROL_CONFLICT_REASON, scanRolPeriod, type RolBatchDraft, type RolScanResult } from "./scan";
+import { ROL_NEEDS_ACTION_STATUSES } from "./view";
+import { previousMonthPeriod, ROL_CONFLICT_REASON, scanRolPeriod, type RolBatchDraft, type RolScanResult } from "./scan";
 
 export type RolProgram = RolProgramValues & { id: string; sendMode: "review" | "auto" };
 
@@ -240,6 +241,15 @@ export async function loadRolBatches(period: string): Promise<RolBatchView[]> {
         excluded: l.excluded,
       })),
   }));
+}
+
+/** Licznik w menu: paczki bieżącego zgłoszenia (poprzedni miesiąc), które czekają na przegląd albo wysyłkę. */
+export async function countRolNeedsAction(todayKey: string): Promise<number> {
+  const res = await query<{ n: string }>(
+    `SELECT count(*)::text AS n FROM rol_batches WHERE period = $1::date AND status = ANY($2::text[])`,
+    [previousMonthPeriod(todayKey), [...ROL_NEEDS_ACTION_STATUSES]]
+  );
+  return Number(res.rows[0]?.n ?? 0);
 }
 
 /** Paczka po id (z FS, pozycjami i stanem PDF) oraz jej klient. */

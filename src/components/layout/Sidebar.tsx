@@ -492,6 +492,7 @@ export function Sidebar({
     departmentBoardQuestions?: number;
     supplierMail?: number;
     customsDhl?: number;
+    rolReports?: number;
     teethQueue?: number;
   };
   activeDelegations?: VacationDelegationRow[];

@@ -43,6 +43,17 @@ async function missingFsIds(): Promise<number[]> {
   return res.rows.map((r) => Number(r.fs_dok_id));
 }
 
+/** Ile FS z niewysłanych paczek czeka na PDF (i nie wyczerpało prób) — krok crona pobiera je w każdym slocie. */
+export async function countMissingRolPdfs(): Promise<number> {
+  const ids = await missingFsIds();
+  if (!ids.length) return 0;
+  const res = await query<{ n: string }>(
+    `SELECT count(*)::text AS n FROM rol_fs_pdfs WHERE fs_dok_id = ANY($1::int[]) AND attempts >= $2`,
+    [ids, ROL_PDF_MAX_ATTEMPTS]
+  );
+  return ids.length - Number(res.rows[0]?.n ?? 0);
+}
+
 /** Rezerwacja FS do druku; false = ktoś już ją drukuje, jest gotowa albo wyczerpała próby. */
 async function claim(fsDokId: number): Promise<boolean> {
   const res = await query(

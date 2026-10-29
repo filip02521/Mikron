@@ -18,6 +18,13 @@ export const ROL_STATUS_BADGE: Record<
   do_korekty: { label: "Do korekty", variant: "danger" },
 };
 
+/** Paczka wymaga ruchu: przegląd albo wysyłka. Jedna definicja dla zakładki i licznika w menu. */
+export const ROL_NEEDS_ACTION_STATUSES: readonly RolBatchStatus[] = ["wykryte", "przejrzane"];
+
+export function rolNeedsAction(status: RolBatchStatus): boolean {
+  return ROL_NEEDS_ACTION_STATUSES.includes(status);
+}
+
 const MONTHS_PL = [
   "styczeń",
   "luty",
