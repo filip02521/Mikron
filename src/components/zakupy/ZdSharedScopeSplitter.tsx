@@ -128,7 +128,7 @@ function FilterChip({
       onClick={onClick}
       className={cn(
         "inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 text-xs font-medium transition-colors duration-150",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
         active
           ? "bg-indigo-50 text-indigo-900 ring-1 ring-inset ring-indigo-200"
           : "bg-card text-slate-600 ring-1 ring-inset ring-slate-200 hover:bg-slate-50 hover:text-slate-900"
@@ -214,7 +214,7 @@ function RowPicker({
             onClick={() => onPick(sg.id)}
             className={cn(
               "relative inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-[5px] px-2 text-xs font-medium transition-colors duration-150",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
               active
                 ? sg.id === ""
                   ? "bg-card text-slate-900 shadow-sm"

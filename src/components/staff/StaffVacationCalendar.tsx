@@ -469,7 +469,7 @@ export function StaffVacationCalendar({
                   {member.name}
                 </span>
                 {isOwn ? (
-                  <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-[0.625rem] font-medium text-indigo-600">Ty</span>
+                  <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-[0.625rem] font-medium text-indigo-700">Ty</span>
                 ) : null}
               </div>
 
@@ -552,7 +552,7 @@ export function StaffVacationCalendar({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="flex-1 justify-center gap-1.5 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50/60"
+                          className="flex-1 justify-center gap-1.5 text-indigo-700 hover:text-indigo-800 hover:bg-indigo-50/60"
                           onClick={startEdit}
                         >
                           <IconPencil size={14} className="shrink-0" />

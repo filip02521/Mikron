@@ -277,7 +277,7 @@ function MinStockDialogForm({
                 strokeWidth={2.25}
                 className={cn(
                   "shrink-0",
-                  minAktywny ? "text-indigo-600" : "text-slate-400"
+                  minAktywny ? "text-indigo-700" : "text-slate-400"
                 )}
                 aria-hidden
               />

@@ -29,7 +29,7 @@ export function AuthBrandHeader({
         aria-label={ONTIME_APP_NAME}
       >
         <span className="text-slate-800">On</span>
-        <span className="text-indigo-600">Time</span>
+        <span className="text-indigo-700">Time</span>
       </p>
     </div>
   );

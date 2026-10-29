@@ -79,7 +79,7 @@ export function ZdProductNote({
           <button
             type="button"
             onClick={() => setEditing({ key: twId, draft: note })}
-            className="inline-flex min-h-8 items-center gap-1 rounded-md px-2 text-xs font-medium text-indigo-700 transition-colors duration-150 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+            className="inline-flex min-h-8 items-center gap-1 rounded-md px-2 text-xs font-medium text-indigo-700 transition-colors duration-150 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
           >
             <IconPencil size={13} aria-hidden /> Edytuj
           </button>
@@ -156,7 +156,7 @@ export function ZdProductNote({
         <button
           type="button"
           onClick={() => setEditing({ key: twId, draft: "" })}
-          className="mt-1.5 w-full rounded-md border border-dashed border-slate-300 px-3 py-2 text-left text-sm text-slate-600 transition-colors duration-150 hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+          className="mt-1.5 w-full rounded-md border border-dashed border-slate-300 px-3 py-2 text-left text-sm text-slate-600 transition-colors duration-150 hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
           + Dodaj notatkę, np. „taniej od 10 opak.”
         </button>

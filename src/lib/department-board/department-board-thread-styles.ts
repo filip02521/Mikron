@@ -199,7 +199,7 @@ export const boardAwaitingReplyClass = cn(
 );
 
 export const boardQuestionFabClass =
-  "fixed z-50 flex h-12 min-w-12 items-center justify-center gap-2 rounded-md bg-indigo-600 px-4 text-sm font-semibold text-white shadow-[var(--shadow-elevated)] transition hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600";
+  "fixed z-50 flex h-12 min-w-12 items-center justify-center gap-2 rounded-md bg-indigo-600 px-4 text-sm font-semibold text-white shadow-[var(--shadow-elevated)] transition hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
 /** Licznik na chipie filtra / zakładce tablicy. */
 export function boardChipCountBadgeClass(opts: {

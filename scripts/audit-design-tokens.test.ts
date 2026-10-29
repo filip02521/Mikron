@@ -29,6 +29,12 @@ describe("audit-design-tokens", () => {
     expect(ids("src/components/A.tsx", `"fixed inset-0 bg-slate-900/40"`)).toEqual(["scrim"]);
     expect(ids("src/components/A.tsx", `"hover:bg-slate-900/5 bg-scrim/40 shadow-slate-900/20"`)).toEqual([]);
   });
+  it("krok 600 tylko jako wypełnienie; fokus przez ring-focus", () => {
+    expect(ids("src/components/A.tsx", `"text-indigo-600 hover:text-rose-600"`)).toEqual(["krok600"]);
+    expect(ids("src/components/A.tsx", `"bg-indigo-600 text-white text-indigo-700 text-slate-600"`)).toEqual([]);
+    expect(ids("src/components/A.tsx", `"focus-visible:ring-2 focus-visible:ring-indigo-600"`)).toEqual(["fokus"]);
+    expect(ids("src/components/A.tsx", `"focus-visible:ring-focus focus:ring-indigo-500/20 ring-indigo-600"`)).toEqual([]);
+  });
   it("wyjątek tylko z adnotacją design-ok do dwóch linii wyżej; komentarze pomija", () => {
     expect(ids("src/components/A.tsx", `{/* design-ok: kod */}\n<span className="uppercase">to</span>`)).toEqual([]);
     expect(ids("src/components/A.tsx", `// design-ok: x\n\n\nconst c = "uppercase";`)).toEqual(["wersaliki"]);

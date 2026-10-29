@@ -59,7 +59,7 @@ export function ProductZdLookupTrigger({
           onClick={() => setOpen(true)}
           className={cn(
             "flex w-full items-start gap-3 px-4 py-3.5 text-left transition",
-            "hover:bg-indigo-50/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-indigo-600"
+            "hover:bg-indigo-50/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
           )}
         >
           <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700">

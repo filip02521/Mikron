@@ -360,7 +360,7 @@ export function StockWatchPanel({
                   }}
                   onKeyDown={onTabKeyDown}
                   className={cn(
-                    "-mb-px inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-1.5 border-b-2 px-0.5 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-600 sm:min-h-10",
+                    "-mb-px inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-1.5 border-b-2 px-0.5 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:min-h-10",
                     active
                       ? "border-indigo-600 text-slate-900"
                       : "border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900"
@@ -389,7 +389,7 @@ export function StockWatchPanel({
                 <button
                   type="button"
                   onClick={clearSupplier}
-                  className="inline-flex size-10 cursor-pointer items-center justify-center rounded text-indigo-700 transition-colors hover:bg-card hover:text-indigo-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 sm:size-7"
+                  className="inline-flex size-10 cursor-pointer items-center justify-center rounded text-indigo-700 transition-colors hover:bg-card hover:text-indigo-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:size-7"
                   aria-label={`Usuń filtr dostawcy ${supplierName}`}
                 >
                   ×
@@ -524,7 +524,7 @@ function StatusPanel({
             <Link
               href={line.focus.href}
               className={cn(
-                "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-md px-4 text-sm font-medium sm:min-h-10 transition-[transform,background-color] duration-150 ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-1",
+                "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-md px-4 text-sm font-medium sm:min-h-10 transition-[transform,background-color] duration-150 ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1",
                 buttonPrimaryClass
               )}
             >

@@ -254,7 +254,7 @@ function SalesSupplierRow({
               {warehouse.empty ? C.mobileWarehouseEmpty : warehouse.text}
             </span>
             {hasOpenRequests ? (
-              <span className="font-medium text-indigo-600">· {openOrderCount}</span>
+              <span className="font-medium text-indigo-700">· {openOrderCount}</span>
             ) : null}
             {insight.onVacationNow ? (
               <span className="font-medium text-amber-700">· {C.labelVacationShort}</span>
@@ -765,7 +765,7 @@ function SalesPlanViewContent({
                 onClick={() => setQuery("")}
                 className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-700 hover:text-indigo-900"
               >
-                <BackChevron className="text-indigo-600" />
+                <BackChevron className="text-indigo-700" />
                 {C.searchBackToList}
               </button>
             </div>

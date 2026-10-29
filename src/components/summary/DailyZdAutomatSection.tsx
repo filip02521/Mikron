@@ -182,7 +182,7 @@ function SupplierRow({
         <span className="flex gap-1 sm:justify-end">
           <Link
             href={`${cardsHref}?karta=${encodeURIComponent(s.id)}`}
-            className="inline-flex min-h-11 items-center rounded-md px-2.5 text-xs font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 sm:min-h-8"
+            className="inline-flex min-h-11 items-center rounded-md px-2.5 text-xs font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:min-h-8"
           >
             Ustawienia
           </Link>
@@ -322,7 +322,7 @@ export function DailyZdAutomatSection({
             aria-expanded={open}
             aria-controls={listId}
             onClick={() => toggle(!open)}
-            className="inline-flex min-h-11 items-center gap-1 rounded-md px-2 text-xs font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-900/5 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 sm:min-h-8"
+            className="inline-flex min-h-11 items-center gap-1 rounded-md px-2 text-xs font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-900/5 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:min-h-8"
           >
             {open ? "Zwiń" : `Dostawcy (${data.suppliers.length})`}
             <IconChevronDown

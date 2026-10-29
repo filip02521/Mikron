@@ -60,7 +60,7 @@ export function BoardFileAttachments({
               disabled={busyId === att.id}
               className={cn(
                 "inline-flex max-w-72 items-center gap-1.5 rounded-md border border-slate-200 bg-card px-2.5 py-1.5 text-xs text-slate-700 transition-all duration-200 hover:bg-slate-50",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-60"
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-60"
               )}
               title={att.file_name}
             >

@@ -139,7 +139,7 @@ export function HistoriaIndividualTable({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="gap-1 text-rose-600 hover:text-rose-700"
+                          className="gap-1 text-rose-700 hover:text-rose-800"
                           disabled={pending}
                           onClick={() => onRemove(o.id)}
                         >

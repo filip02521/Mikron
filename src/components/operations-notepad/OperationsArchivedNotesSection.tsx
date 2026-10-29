@@ -89,7 +89,7 @@ function ArchivedNoteCard({
           <Button size="sm" variant="ghost" disabled={restoring} onClick={() => void restore()}>
             {restoring ? "Przywracam…" : "Przywróć"}
           </Button>
-          {error ? <p className="w-full text-xs text-red-600">{error}</p> : null}
+          {error ? <p className="w-full text-xs text-red-700">{error}</p> : null}
         </div>
       ) : null}
     </article>

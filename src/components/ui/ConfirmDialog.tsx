@@ -84,7 +84,7 @@ export function ConfirmDialog({
           role="status"
           aria-live="polite"
         >
-          <IconAlertCircle size={16} className={summaryTone === "neutral" ? "mt-0.5 shrink-0 text-slate-500" : "mt-0.5 shrink-0 text-amber-600"} />
+          <IconAlertCircle size={16} className={summaryTone === "neutral" ? "mt-0.5 shrink-0 text-slate-500" : "mt-0.5 shrink-0 text-amber-700"} />
           <span className="min-w-0 flex-1 font-medium">{summary}</span>
         </div>
       ) : null}

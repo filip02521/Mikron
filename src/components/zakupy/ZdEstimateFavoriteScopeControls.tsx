@@ -70,7 +70,7 @@ export function ZdEstimateFavoriteGroupChip({
           "inline-flex min-h-10 min-w-9 shrink-0 items-center justify-center border-l border-slate-200/70 text-slate-400 transition",
           "hover:bg-slate-100/90 hover:text-slate-700",
           "opacity-80 sm:opacity-0 sm:group-hover/chip:opacity-100 sm:group-focus-within/chip:opacity-100",
-          "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
+          "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
           "disabled:cursor-not-allowed disabled:opacity-40",
           active && "border-indigo-200/80"
         )}
@@ -143,7 +143,7 @@ export function ZdEstimateFavoriteCechaChip({
           "inline-flex min-h-10 min-w-9 shrink-0 items-center justify-center border-l border-slate-200/70 text-slate-400 transition",
           "hover:bg-slate-100/90 hover:text-slate-700",
           "opacity-80 sm:opacity-0 sm:group-hover/chip:opacity-100 sm:group-focus-within/chip:opacity-100",
-          "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
+          "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
           "disabled:cursor-not-allowed disabled:opacity-40",
           active && "border-indigo-200/80"
         )}
@@ -173,7 +173,7 @@ export function ZdEstimateFavoriteStarButton({
         favorited
           ? "text-amber-500 hover:bg-amber-50"
           : "text-slate-400 hover:bg-slate-50 hover:text-slate-600",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
         className
       )}
       aria-pressed={favorited}

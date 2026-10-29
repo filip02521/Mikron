@@ -137,7 +137,7 @@ export function ScheduleRouteLocationFilters({
               href={paths.schedule(opt.value)}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-[5px] px-3 text-sm font-medium transition-[background-color,color,box-shadow] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 sm:min-h-0 sm:py-1.5",
+                "inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-[5px] px-3 text-sm font-medium transition-[background-color,color,box-shadow] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:min-h-0 sm:py-1.5",
                 active
                   ? "bg-card text-slate-900 shadow-sm"
                   : "text-slate-600 hover:bg-card/70 hover:text-slate-900"

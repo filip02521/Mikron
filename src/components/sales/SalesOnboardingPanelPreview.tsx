@@ -197,7 +197,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
               className="flex items-center justify-between rounded-md border border-slate-200 bg-card px-2.5 py-1.5 text-[0.6875rem]"
             >
               <span className="font-medium text-slate-800">{row}</span>
-              <span className="text-indigo-600">rozwiń</span>
+              <span className="text-indigo-700">rozwiń</span>
             </div>
           ))}
           <div className="rounded-md border border-sky-100 bg-sky-50/70 px-2.5 py-1.5 text-[0.625rem] text-sky-900">

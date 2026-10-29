@@ -94,7 +94,7 @@ const LINK_BUTTON_VARIANT = {
 
 function linkButtonClass(variant: keyof typeof LINK_BUTTON_VARIANT): string {
   return cn(
-    "inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-md px-2.5 py-1.5 text-xs font-medium leading-none transition-[color,background-color,border-color] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-1",
+    "inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-md px-2.5 py-1.5 text-xs font-medium leading-none transition-[color,background-color,border-color] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1",
     LINK_BUTTON_VARIANT[variant]
   );
 }

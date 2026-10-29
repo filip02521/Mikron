@@ -47,6 +47,17 @@ const RULES: Rule[] = [
     message: "tło pod oknem — użyj bg-scrim/N; slate-900 w ciemnym motywie jest jasny",
   },
   {
+    id: "krok600",
+    re: /(?<![\w-])(?:[a-z0-9-]+:)*text-(indigo|violet|purple|fuchsia|pink|blue|cyan|teal|red|rose|emerald|green|lime|amber|orange|yellow)-600(?![\w-])/,
+    message: "krok 600 Petrolu i stanów to wypełnienie — tekst od 700 (DESIGN.md, docs/plans/ciemny-tryb.md §2)",
+  },
+  {
+    id: "fokus",
+    // Tylko 600 (wskaźnik fokusu z klawiatury); poświata pola focus:ring-indigo-500/20 zostaje z palety.
+    re: /(?<![\w-])(?:[a-z0-9-]+:)*(focus|focus-visible|focus-within):(ring|outline)-(indigo|violet)-600(?![\w-])/,
+    message: "pierścień fokusu — użyj ring-focus / outline-focus (w ciemnym motywie Petrol 600 ma za mały kontrast)",
+  },
+  {
     id: "px",
     re: /(?<![\w-])text-\[\d+(\.\d+)?px\]/,
     kreatorExempt: true,

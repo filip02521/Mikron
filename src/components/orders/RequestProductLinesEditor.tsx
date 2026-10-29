@@ -827,7 +827,7 @@ export function RequestProductLinesEditor({
                     className={cn(
                       "inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 text-xs font-semibold text-slate-700 transition-colors",
                       "hover:bg-slate-100/90 hover:text-slate-900 active:scale-[0.99]",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-600"
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
                     )}
                     onClick={() => setFocusedLineId(null)}
                     aria-label="Zwiń pozycję"

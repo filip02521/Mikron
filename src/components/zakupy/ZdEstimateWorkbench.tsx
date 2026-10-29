@@ -8382,14 +8382,14 @@ export function ZdEstimateWorkbench({
                     <IconAlertCircle
                       size={13}
                       strokeWidth={2}
-                      className="mt-px shrink-0 text-red-600"
+                      className="mt-px shrink-0 text-red-700"
                       aria-hidden
                     />
                   ) : (
                     <IconInfoCircle
                       size={13}
                       strokeWidth={2}
-                      className="mt-px shrink-0 text-amber-600"
+                      className="mt-px shrink-0 text-amber-700"
                       aria-hidden
                     />
                   )}

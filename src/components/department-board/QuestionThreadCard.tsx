@@ -413,7 +413,7 @@ export function QuestionThreadCard({
           type="button"
           className={cn(
             "min-w-0 flex-1 text-left py-3 sm:py-3.5",
-            "rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
+            "rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
             boardQuestionRowHeaderClass
           )}
           onClick={toggleExpanded}
@@ -681,7 +681,7 @@ export function QuestionThreadCard({
         ) : null}
 
         {error && !showInlineReplyForm && !(canReply && !isClosed) ? (
-          <p className="text-xs text-red-600">{error}</p>
+          <p className="text-xs text-red-700">{error}</p>
         ) : null}
 
         {isClosed ? (
@@ -699,7 +699,7 @@ export function QuestionThreadCard({
               <Button
                 size="sm"
                 variant="ghost"
-                className="text-xs text-indigo-600"
+                className="text-xs text-indigo-700"
                 disabled={busy}
                 onClick={() => void reopenThread()}
               >
@@ -710,7 +710,7 @@ export function QuestionThreadCard({
               <Button
                 size="sm"
                 variant="ghost"
-                className="text-xs text-red-600 hover:text-red-700"
+                className="text-xs text-red-700 hover:text-red-800"
                 disabled={busy}
                 onClick={() => void deleteClosedThread()}
               >

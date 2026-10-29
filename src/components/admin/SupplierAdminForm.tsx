@@ -244,7 +244,7 @@ export function SupplierAdminForm({
             <p className="text-xs font-semibold text-indigo-700">
               Cykl zamówień
             </p>
-            <p className="mt-0.5 text-xs leading-relaxed text-indigo-600/80">
+            <p className="mt-0.5 text-xs leading-relaxed text-indigo-700/80">
               {automat && !teethLane && zdInAutomat(automat.row)
                 ? ZD_AUTOMAT_CARD_CYCLE_MEANING
                 : "Te pola przeliczają terminy w harmonogramie. Daty w cyklu edytujesz osobno w zakładce Terminy."}

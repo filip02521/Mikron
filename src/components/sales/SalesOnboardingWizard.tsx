@@ -264,7 +264,7 @@ export function SalesOnboardingWizard() {
           <div className="relative z-[1] border-b border-slate-100 bg-card/80 px-4 py-4 sm:px-6">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[0.625rem] font-semibold text-indigo-600/90">
+                <p className="text-[0.625rem] font-semibold text-indigo-700/90">
                   Wprowadzenie · OnTime
                 </p>
                 <p className="mt-0.5 text-xs text-slate-500">
@@ -288,7 +288,7 @@ export function SalesOnboardingWizard() {
             {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}
           >
             <WelcomeStepContent step={step} displayName={displayName} />
-            {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
+            {error ? <p className="mt-4 text-sm text-red-700">{error}</p> : null}
           </div>
 
           <div className="relative z-[1] flex flex-col-reverse gap-2 border-t border-slate-100 bg-card/90 px-4 py-4 sm:flex-row sm:justify-end sm:gap-3 sm:px-6">
@@ -350,7 +350,7 @@ export function SalesOnboardingWizard() {
       <div className="relative z-[1] shrink-0 border-b border-slate-100/90 px-3 py-2.5 sm:px-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-[0.625rem] font-semibold text-indigo-600/90">
+            <p className="text-[0.625rem] font-semibold text-indigo-700/90">
               Tour · krok {stepIndex + 1}/{steps.length}
             </p>
             <p className="truncate text-xs font-medium text-slate-700">{step.title}</p>
@@ -370,7 +370,7 @@ export function SalesOnboardingWizard() {
           }
           showFullDetails={showFullDetails}
         />
-        {error ? <p className="mt-2 text-xs text-red-600">{error}</p> : null}
+        {error ? <p className="mt-2 text-xs text-red-700">{error}</p> : null}
       </div>
 
       <div className="relative z-[1] shrink-0 space-y-2 border-t border-slate-100/90 bg-card/95 px-3 py-2.5 sm:px-4">

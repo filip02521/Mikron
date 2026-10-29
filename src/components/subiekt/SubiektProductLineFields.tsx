@@ -160,10 +160,10 @@ function SubiektLinkedLineBanner({
       aria-label={title}
       className="flex items-center gap-1.5 text-xs font-medium text-emerald-700"
     >
-      <IconCircleCheck size={14} strokeWidth={2.5} className="shrink-0 text-emerald-600" aria-hidden />
+      <IconCircleCheck size={14} strokeWidth={2.5} className="shrink-0 text-emerald-700" aria-hidden />
       <span className="font-semibold">{title}</span>
       {symbol?.trim() ? (
-        <span className="text-emerald-600/90">· {symbol.trim()}</span>
+        <span className="text-emerald-700/90">· {symbol.trim()}</span>
       ) : null}
     </div>
   );

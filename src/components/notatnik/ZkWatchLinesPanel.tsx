@@ -661,7 +661,7 @@ export function ZkWatchLinesPanel({
           </div>
         ) : null}
         {panel}
-        {error ? <p className="text-xs text-red-600">{error}</p> : null}
+        {error ? <p className="text-xs text-red-700">{error}</p> : null}
       </ZkWatchModalSection>
     );
   }
@@ -669,7 +669,7 @@ export function ZkWatchLinesPanel({
   return (
     <div className={cn("space-y-2", saving && "pointer-events-none opacity-70")}>
       {panel}
-      {error ? <p className="text-xs text-red-600">{error}</p> : null}
+      {error ? <p className="text-xs text-red-700">{error}</p> : null}
     </div>
   );
 }

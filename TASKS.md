@@ -74,7 +74,7 @@ Plan: `docs/plans/ciemny-tryb.md` (inwentarz, tokeny z pomiarem kontrastu, prze�
 
 - [x] 1. Tokeny ciemne w `globals.css` + test kontrastu z CSS (D5 w jasnym: `emerald-600` `#047857`, `amber-600` `#b45309`).
 - [x] 2. Codemod powierzchni (`bg-white` → `bg-card`: 524 zamian w 234 plikach, scrim 10) + reguły `audit:design` `biel` i `scrim`; `.theme-light` na logowaniu i podglądach maila.
-- [ ] 3. Codemod kroku 600 i fokusu + reguła `audit:design`.
+- [x] 3. Codemod kroku 600 i fokusu (144 tekstów 600 → 700, 15 hoverów → 800, 101 pierścieni → `ring-focus`) + reguły `audit:design` `krok600` i `fokus`.
 - [ ] 4. Ręczne miejsca (wypełnienia 700+, `SUMMARY_COLORS`, SVG, `BrandLoader`, surowe `rgb()`).
 - [ ] 5. Preferencja na koncie (`preferences.theme`, cookie, skrypt w `<head>`) + wiersz „Motyw” w Ustawieniach.
 - [ ] 6. Szybkie wejście w menu bocznym i „Więcej”.

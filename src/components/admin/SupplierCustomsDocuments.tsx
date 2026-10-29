@@ -150,7 +150,7 @@ function DocumentRow({
                 </button>
                 <button
                   type="button"
-                  className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
+                  className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-700 disabled:opacity-40"
                   title="Usuń dokument"
                   disabled={disabled}
                   onClick={() => onRemove(doc)}

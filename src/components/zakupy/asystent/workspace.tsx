@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { IconChevronLeft } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 
-const focusRingClass = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600";
+const focusRingClass = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
 /**
  * Panel Asystenta: od lg lista i treść obok siebie na całej wysokości ekranu, widoki jako pasek nad nimi;
@@ -62,7 +62,7 @@ export function RailCount({ value, tone = "neutral" }: { value: number; tone?: "
 /** Wiersz listy: zaznaczenie = Petrol Mist, jak wybrany wiersz tabeli (DESIGN.md → „Jedno wybrane”). */
 export function listRowClass(selected: boolean): string {
   return cn(
-    "block w-full px-4 py-3 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-600",
+    "block w-full px-4 py-3 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus",
     selected ? "bg-indigo-50" : "hover:bg-slate-50 active:bg-slate-100",
   );
 }

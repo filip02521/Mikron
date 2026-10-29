@@ -29,11 +29,11 @@ const TONE_CLASS: Record<ZkProsbaModalCalloutTone, string> = {
 const ICON_CLASS: Record<ZkProsbaModalCalloutTone, string> = {
   info: "text-slate-400",
   sky: "text-sky-600",
-  amber: "text-amber-600",
-  emerald: "text-emerald-600",
-  rose: "text-rose-600",
+  amber: "text-amber-700",
+  emerald: "text-emerald-700",
+  rose: "text-rose-700",
   neutral: "text-slate-400",
-  indigo: "text-indigo-600",
+  indigo: "text-indigo-700",
 };
 
 /** Wspólny padding/spacing calloutów w modalach ZK → prośba. */

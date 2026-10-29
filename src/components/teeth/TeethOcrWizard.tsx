@@ -469,7 +469,7 @@ export function TeethOcrWizard({
               <span className="group relative inline-flex">
                 <span
                   tabIndex={0}
-                  className="cursor-help rounded-md bg-indigo-50 px-1.5 py-0.5 text-[0.625rem] font-semibold text-indigo-700 transition-colors group-hover:bg-indigo-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                  className="cursor-help rounded-md bg-indigo-50 px-1.5 py-0.5 text-[0.625rem] font-semibold text-indigo-700 transition-colors group-hover:bg-indigo-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 >
                   Beta
                 </span>
@@ -521,7 +521,7 @@ export function TeethOcrWizard({
                       type="checkbox"
                       checked={line.selected}
                       onChange={() => toggleLine(line.productLine)}
-                      className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      className="h-4 w-4 rounded border-slate-300 text-indigo-700 focus:ring-indigo-500"
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
@@ -553,7 +553,7 @@ export function TeethOcrWizard({
                 <button
                   type="button"
                   onClick={() => setShowAddLine(true)}
-                  className="text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                  className="text-xs font-medium text-indigo-700 hover:text-indigo-800"
                 >
                   + Dodaj linię ręcznie
                 </button>
@@ -607,10 +607,10 @@ export function TeethOcrWizard({
                       <BrandLoader size="sm" tile={false} />
                     )}
                     {ls.status === "done" && (
-                      <IconCircleCheck size={16} className="text-emerald-600" />
+                      <IconCircleCheck size={16} className="text-emerald-700" />
                     )}
                     {ls.status === "error" && (
-                      <IconAlertCircle size={16} className="text-red-600" />
+                      <IconAlertCircle size={16} className="text-red-700" />
                     )}
                     <div className="flex-1 min-w-0">
                       <span className="text-sm font-medium text-slate-800">
@@ -642,7 +642,7 @@ export function TeethOcrWizard({
           <div className="animate-[fadeIn_0.2s_ease-out] space-y-4">
             <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3">
               <div className="flex items-center gap-2">
-                <IconCircleCheck size={18} className="text-green-600" />
+                <IconCircleCheck size={18} className="text-green-700" />
                 <span className="text-sm font-semibold text-green-800">
                   Rozpoznano {resultGroups.length} pozycji w{" "}
                   {detectedLines.filter((l) => l.selected).length} liniach
@@ -668,7 +668,7 @@ export function TeethOcrWizard({
                     <span
                       className={`text-xs font-medium ${
                         ls.status === "done"
-                          ? "text-green-600"
+                          ? "text-green-700"
                           : "text-red-700"
                       }`}
                     >

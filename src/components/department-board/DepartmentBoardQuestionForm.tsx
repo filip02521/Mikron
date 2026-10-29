@@ -160,7 +160,7 @@ function QuestionFormFields({
         onRemove={onRemoveImage}
       />
 
-      {error ? <p className="text-xs text-red-600">{error}</p> : null}
+      {error ? <p className="text-xs text-red-700">{error}</p> : null}
 
       <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-3">
         {missingHint ? (
@@ -277,7 +277,7 @@ export function DepartmentBoardQuestionForm({
           aria-expanded={expanded}
         >
           <span className="flex min-w-0 flex-1 items-center gap-2">
-            <IconClipboardPen size={17} className="shrink-0 text-indigo-600" />
+            <IconClipboardPen size={17} className="shrink-0 text-indigo-700" />
             <span
               className={
                 embedded ? boardQuestionsFormEmbeddedTitleClass : salesTypography.blockTitle

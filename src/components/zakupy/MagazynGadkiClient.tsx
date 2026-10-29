@@ -1387,7 +1387,7 @@ function RenamePalletForm({
           </option>
         ))}
       </select>
-      <span className="text-indigo-600/50" aria-hidden>
+      <span className="text-indigo-700/50" aria-hidden>
         →
       </span>
       <input

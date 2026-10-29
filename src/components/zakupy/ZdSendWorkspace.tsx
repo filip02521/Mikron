@@ -840,7 +840,7 @@ export function ZdSendWorkspace({
                     type="button"
                     onClick={() => extrasInputRef.current?.click()}
                     disabled={extrasBusy || running}
-                    className="inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded px-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-50"
+                    className="inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded px-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50"
                   >
                     {extrasBusy ? <Spinner size="sm" /> : <IconPaperclip size={14} aria-hidden />}
                     {extrasBusy ? "Przygotowuję pliki…" : "Dodaj pliki"}
@@ -875,7 +875,7 @@ export function ZdSendWorkspace({
                 type="button"
                 onClick={refreshDocument}
                 disabled={attachment.state === "loading" || running}
-                className="inline-flex min-h-9 cursor-pointer items-center rounded px-1.5 text-xs font-medium text-indigo-700 underline decoration-indigo-300 underline-offset-2 hover:decoration-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-50"
+                className="inline-flex min-h-9 cursor-pointer items-center rounded px-1.5 text-xs font-medium text-indigo-700 underline decoration-indigo-300 underline-offset-2 hover:decoration-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50"
                 title="Gdy dopisałeś coś do ZD w Subiekcie - pozycje i wydruk wczytają się od nowa"
               >
                 {manualPrimary

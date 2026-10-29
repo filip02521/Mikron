@@ -207,7 +207,7 @@ export function ZdEstimateRowActions({
       {showExclude ? (
         <OverflowMenuItem danger disabled={disabled || pending} onClick={() => setConfirmExcludeOpen(true)}>
           <span className="block font-medium leading-snug">Wyklucz</span>
-          <span className="mt-0.5 block text-[11px] font-normal leading-snug text-red-600/75">
+          <span className="mt-0.5 block text-[11px] font-normal leading-snug text-red-700/75">
             Ukryj przy kolejnych szacunkach
           </span>
         </OverflowMenuItem>

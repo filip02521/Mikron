@@ -533,7 +533,7 @@ export function ZkWatchRefreshPromptModal({
                         ? `${line.product} - do zamówienia, odznacz aby pominąć`
                         : `${line.product} - pominięte, zaznacz aby zamówić`
                     }
-                    className="mt-0.5 size-4 shrink-0 rounded-md border-slate-300 text-indigo-600 transition-colors focus:ring-2 focus:ring-indigo-500/40 focus:ring-offset-0"
+                    className="mt-0.5 size-4 shrink-0 rounded-md border-slate-300 text-indigo-700 transition-colors focus:ring-2 focus:ring-indigo-500/40 focus:ring-offset-0"
                   />
                   <div className="min-w-0 flex-1">
                     <p className={cn(salesTypography.rowTitle, "text-slate-900")}>{line.product}</p>

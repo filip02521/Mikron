@@ -335,7 +335,7 @@ export function UpcomingDeliverySupplierCard({
                   <span className={cn("shrink-0 text-right font-semibold tabular-nums", compact && "text-[0.6875rem]", orderComplete ? "text-slate-500" : "text-slate-900")}>
                     {order.quantity} szt.
                     {orderPartial ? (
-                      <span className="block text-[0.625rem] font-normal text-amber-600">
+                      <span className="block text-[0.625rem] font-normal text-amber-700">
                         odebrano {order.delivered_quantity}
                       </span>
                     ) : orderComplete ? (

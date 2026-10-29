@@ -82,7 +82,7 @@ export function ZdEstimateIndividualServicesSection({
           <div className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
-              className="inline-flex h-8 min-w-0 items-center gap-1.5 rounded-md px-1 text-left transition hover:bg-amber-100/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+              className="inline-flex h-8 min-w-0 items-center gap-1.5 rounded-md px-1 text-left transition hover:bg-amber-100/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
               aria-expanded={expanded}
               onClick={() => setExpanded((v) => !v)}
             >

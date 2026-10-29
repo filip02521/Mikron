@@ -721,7 +721,7 @@ export function VacationCalendar({
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-7 px-2 text-xs text-indigo-600"
+                              className="h-7 px-2 text-xs text-indigo-700"
                               onClick={() => {
                                 setAssigningDelegate(true);
                                 setSelectedDelegateId("");
@@ -789,7 +789,7 @@ export function VacationCalendar({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 px-2 text-xs text-indigo-600"
+                        className="h-7 px-2 text-xs text-indigo-700"
                         onClick={() => {
                           setAssigningDelegate(true);
                           setSelectedDelegateId("");
@@ -809,7 +809,7 @@ export function VacationCalendar({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="flex-1 justify-center gap-1.5 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50/60"
+                          className="flex-1 justify-center gap-1.5 text-indigo-700 hover:text-indigo-800 hover:bg-indigo-50/60"
                           onClick={startEdit}
                         >
                           <IconPencil size={14} className="shrink-0" />

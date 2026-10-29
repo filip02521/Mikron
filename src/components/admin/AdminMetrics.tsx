@@ -40,7 +40,7 @@ export function AdminMetrics({ items, className }: { items: AdminMetric[]; class
                 type="button"
                 onClick={m.onClick}
                 aria-label={m.actionLabel}
-                className="rounded-md underline decoration-slate-300 underline-offset-4 transition-colors hover:decoration-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                className="rounded-md underline decoration-slate-300 underline-offset-4 transition-colors hover:decoration-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
               >
                 {m.value}
               </button>

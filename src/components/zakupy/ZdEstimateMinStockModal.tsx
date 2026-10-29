@@ -187,7 +187,7 @@ function MinStockRow({
               type="checkbox"
               checked={selected}
               onChange={onToggleSelect}
-              className="size-4 cursor-pointer rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/40"
+              className="size-4 cursor-pointer rounded border-slate-300 text-indigo-700 focus:ring-indigo-500/40"
               aria-label={`Zaznacz ${row.twSymbol ?? row.twNazwa}`}
             />
           </label>
@@ -722,7 +722,7 @@ export function ZdEstimateMinStockModal({
           <IconPlusCircle
             size={15}
             strokeWidth={2.25}
-            className="shrink-0 text-indigo-600"
+            className="shrink-0 text-indigo-700"
             aria-hidden
           />
           <p className="text-xs font-semibold text-indigo-900/80">

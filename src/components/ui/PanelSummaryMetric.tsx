@@ -45,7 +45,7 @@ export function PanelSummaryMetric({
         onClick={onClick}
         title={title}
         className={cn(
-          "cursor-pointer rounded-md border px-3 py-2.5 text-left transition-[border-color,background-color] duration-150 ease-out hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 active:scale-[0.99]",
+          "cursor-pointer rounded-md border px-3 py-2.5 text-left transition-[border-color,background-color] duration-150 ease-out hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus active:scale-[0.99]",
           toneClass,
           className
         )}

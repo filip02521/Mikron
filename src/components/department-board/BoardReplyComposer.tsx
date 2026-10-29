@@ -239,7 +239,7 @@ export function BoardReplyComposer({
 
       {imagesError ? <p className="mt-1.5 text-xs text-amber-700">{imagesError}</p> : null}
       {error ? (
-        <p className="mt-1.5 text-xs text-red-600" role="alert">
+        <p className="mt-1.5 text-xs text-red-700" role="alert">
           {error}
         </p>
       ) : null}

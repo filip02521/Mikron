@@ -31,9 +31,9 @@ export function ZdProposalMinimumNotice({
           )}
         >
           {i.tone === "warning" ? (
-            <IconAlertCircle size={16} className="mt-0.5 shrink-0 text-amber-600" aria-hidden />
+            <IconAlertCircle size={16} className="mt-0.5 shrink-0 text-amber-700" aria-hidden />
           ) : (
-            <IconInfoCircle size={16} className="mt-0.5 shrink-0 text-indigo-600" aria-hidden />
+            <IconInfoCircle size={16} className="mt-0.5 shrink-0 text-indigo-700" aria-hidden />
           )}
           <span className="min-w-0">{i.text}</span>
         </p>

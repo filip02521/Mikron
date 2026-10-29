@@ -102,7 +102,7 @@ export function NoteFollowUpControl({
           : "text-slate-500 hover:bg-slate-100/80 hover:text-slate-700"
       )}
     >
-      <IconClock size={13} strokeWidth={2} className={due ? "text-violet-600" : "text-slate-400"} />
+      <IconClock size={13} strokeWidth={2} className={due ? "text-violet-700" : "text-slate-400"} />
       <span className="truncate">{label ? `Przypomnienie: ${label}` : "Przypomnij…"}</span>
     </button>
   );

@@ -97,7 +97,7 @@ function NoteDeleteAction({
       title={title}
       aria-label={ariaLabel}
       className={cn(
-        "hit-target inline-flex shrink-0 items-center justify-center rounded-md text-red-600 transition hover:bg-red-50 hover:text-red-700 disabled:opacity-50",
+        "hit-target inline-flex shrink-0 items-center justify-center rounded-md text-red-700 transition hover:bg-red-50 hover:text-red-800 disabled:opacity-50",
         className
       )}
     >

@@ -145,7 +145,7 @@ export function SupplierSubiektLinkField({
             <p className="text-sm font-medium text-indigo-900">
               {kontrahentDisplayName(linkedLabel, subiektKhId)}
             </p>
-            <p className="text-[0.6875rem] text-indigo-600/80">
+            <p className="text-[0.6875rem] text-indigo-700/80">
               id {subiektKhId} ·{" "}
               {countryLabel
                 ? `kraj z Subiekta: ${countryLabel}`

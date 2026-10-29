@@ -236,7 +236,7 @@ export function TypeaheadDropdown({
 
 export function TypeaheadSectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <li className="px-3 pb-0.5 pt-2 text-[0.625rem] font-semibold text-indigo-600/80">
+    <li className="px-3 pb-0.5 pt-2 text-[0.625rem] font-semibold text-indigo-700/80">
       {children}
     </li>
   );

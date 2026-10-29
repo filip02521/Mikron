@@ -165,9 +165,9 @@ export function ProsbaFormReadiness({
 
     const compactIcon =
       view.tone === "ready" ? (
-        <IconCircleCheck size={14} strokeWidth={2.5} className="shrink-0 text-emerald-600" />
+        <IconCircleCheck size={14} strokeWidth={2.5} className="shrink-0 text-emerald-700" />
       ) : view.tone === "blocked" ? (
-        <IconAlertCircle size={14} strokeWidth={2.5} className="shrink-0 text-amber-600" />
+        <IconAlertCircle size={14} strokeWidth={2.5} className="shrink-0 text-amber-700" />
       ) : (
         <IconChevronRight size={14} strokeWidth={2.5} className="shrink-0 text-indigo-500" />
       );

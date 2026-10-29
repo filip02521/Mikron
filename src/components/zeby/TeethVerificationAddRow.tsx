@@ -223,7 +223,7 @@ export function TeethVerificationAddRow({
         </div>
       </div>
       {error ? (
-        <div className="mt-1.5 flex items-center gap-1 text-[0.625rem] font-medium text-red-600">
+        <div className="mt-1.5 flex items-center gap-1 text-[0.625rem] font-medium text-red-700">
           <IconAlertCircle size={11} className="shrink-0" />
           {error}
         </div>

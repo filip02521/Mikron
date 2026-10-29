@@ -130,7 +130,7 @@ export function TeethOrderFileUpload({
               type="button"
               disabled={pending}
               onClick={handleRemove}
-              className="inline-flex size-11 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-card text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-red-600 disabled:opacity-50 sm:size-8"
+              className="inline-flex size-11 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-card text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-red-700 disabled:opacity-50 sm:size-8"
               title="Usuń plik z całej grupy dostawcy"
               aria-label="Usuń plik zamówienia z całej grupy dostawcy"
             >
@@ -141,7 +141,7 @@ export function TeethOrderFileUpload({
         {slotHint ? (
           <span className="text-[0.625rem] leading-snug text-slate-500">{slotHint}</span>
         ) : null}
-        {error ? <span className="text-[0.625rem] leading-snug text-red-600">{error}</span> : null}
+        {error ? <span className="text-[0.625rem] leading-snug text-red-700">{error}</span> : null}
       </div>
     );
   }
@@ -181,7 +181,7 @@ export function TeethOrderFileUpload({
       {slotHint ? (
         <span className="text-[0.625rem] leading-snug text-slate-500">{slotHint}</span>
       ) : null}
-      {error ? <span className="text-[0.625rem] leading-snug text-red-600">{error}</span> : null}
+      {error ? <span className="text-[0.625rem] leading-snug text-red-700">{error}</span> : null}
     </div>
   );
 }

@@ -623,7 +623,7 @@ export function TeethPanelHistoriaView({
             {dateValue ? (
               <Button
                 variant="ghost"
-                className="min-h-11 w-full text-red-600 hover:text-red-700 sm:w-auto"
+                className="min-h-11 w-full text-red-700 hover:text-red-800 sm:w-auto"
                 onClick={() => void handleClearDate()}
                 disabled={datePending}
               >

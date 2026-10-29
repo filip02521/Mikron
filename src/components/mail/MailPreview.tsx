@@ -160,7 +160,7 @@ export function MailPreview({
                   <button
                     type="button"
                     onClick={a.onMarkAsZd}
-                    className="inline-flex min-h-8 shrink-0 cursor-pointer items-center rounded-md bg-slate-900 px-2 text-xs font-medium text-white transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:bg-slate-800 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                    className="inline-flex min-h-8 shrink-0 cursor-pointer items-center rounded-md bg-slate-900 px-2 text-xs font-medium text-white transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:bg-slate-800 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                   >
                     {a.markAsZdLabel ?? "To jest dokument ZD"}
                   </button>
@@ -170,7 +170,7 @@ export function MailPreview({
                     href={a.href}
                     target="_blank"
                     rel="noopener"
-                    className="inline-flex min-h-8 shrink-0 cursor-pointer items-center gap-1 rounded px-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                    className="inline-flex min-h-8 shrink-0 cursor-pointer items-center gap-1 rounded px-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                   >
                     {a.opensInline ? <IconEye size={14} aria-hidden /> : <IconDownload size={14} aria-hidden />}
                     {a.opensInline ? "Otwórz" : "Pobierz"}
@@ -181,7 +181,7 @@ export function MailPreview({
                     type="button"
                     onClick={a.onRemove}
                     aria-label={`Usuń ${a.name}`}
-                    className="inline-flex min-h-8 min-w-8 shrink-0 cursor-pointer items-center justify-center rounded text-slate-500 hover:bg-slate-200 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                    className="inline-flex min-h-8 min-w-8 shrink-0 cursor-pointer items-center justify-center rounded text-slate-500 hover:bg-slate-200 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                   >
                     <IconX size={14} aria-hidden />
                   </button>

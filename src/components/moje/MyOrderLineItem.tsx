@@ -93,7 +93,7 @@ function CopyBadge({
     >
       {copied ? (
         <span className="inline-flex items-center gap-0.5">
-          <IconCheck size={11} strokeWidth={2.5} className="shrink-0 text-emerald-600" aria-hidden />
+          <IconCheck size={11} strokeWidth={2.5} className="shrink-0 text-emerald-700" aria-hidden />
           skopiowano
         </span>
       ) : (

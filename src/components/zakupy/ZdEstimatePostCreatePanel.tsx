@@ -636,7 +636,7 @@ export function ZdEstimatePostCreatePanel({
           >
             <IconAlertCircle
               size={28}
-              className="mt-0.5 shrink-0 text-amber-600"
+              className="mt-0.5 shrink-0 text-amber-700"
               aria-hidden
             />
             <div className="min-w-0 space-y-1">
@@ -672,7 +672,7 @@ export function ZdEstimatePostCreatePanel({
             <div className="flex min-w-0 items-center gap-3">
               <IconCircleCheck
                 size={32}
-                className="shrink-0 text-emerald-600"
+                className="shrink-0 text-emerald-700"
                 aria-hidden
               />
               <div className="min-w-0">

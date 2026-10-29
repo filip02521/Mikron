@@ -145,9 +145,9 @@ export function ZdEstimateNoticeTrayBar({ className }: { className?: string }) {
           )}
         >
           {worst === "info" || worst === "success" ? (
-            <IconInfoCircle size={15} className="shrink-0 text-indigo-600" />
+            <IconInfoCircle size={15} className="shrink-0 text-indigo-700" />
           ) : (
-            <IconAlertCircle size={15} className={cn("shrink-0", worst === "error" ? "text-red-600" : "text-amber-600")} />
+            <IconAlertCircle size={15} className={cn("shrink-0", worst === "error" ? "text-red-700" : "text-amber-700")} />
           )}
           <span className="shrink-0 font-semibold">Uwagi ({entries.length})</span>
           <span className="min-w-0 flex-1 truncate opacity-80">

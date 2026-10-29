@@ -27,7 +27,7 @@ export function MyOrderLineCountMeta({
       title={expandHint ?? label}
       aria-label={expandHint ?? label}
     >
-      <IconLayers size={11} className="shrink-0 text-indigo-600/90" aria-hidden />
+      <IconLayers size={11} className="shrink-0 text-indigo-700/90" aria-hidden />
       <SearchHighlightText
         text={label}
         searchQuery={searchQuery}

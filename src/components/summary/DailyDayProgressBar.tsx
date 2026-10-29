@@ -68,7 +68,7 @@ export function DailyDayProgressBar({
           ) : null}
         </div>
         {combined.complete ? (
-          <span className="shrink-0 text-emerald-600" aria-hidden>
+          <span className="shrink-0 text-emerald-700" aria-hidden>
             <IconCircleCheck size={16} strokeWidth={2.5} />
           </span>
         ) : (
@@ -121,7 +121,7 @@ export function DailyDayProgressBar({
           </p>
         </div>
         {combined.complete ? (
-          <span className="shrink-0 text-emerald-600" role="img" aria-label="Dzień domknięty">
+          <span className="shrink-0 text-emerald-700" role="img" aria-label="Dzień domknięty">
             <IconCircleCheck size={28} />
           </span>
         ) : (

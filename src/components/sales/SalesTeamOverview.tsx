@@ -256,7 +256,7 @@ function SalesPersonCard({
             : "border-slate-100 bg-slate-50/40 text-slate-500"
         )}>
           {row.linkedUserEmail ? (
-            <IconCircleCheck size={14} className="shrink-0 text-emerald-600" />
+            <IconCircleCheck size={14} className="shrink-0 text-emerald-700" />
           ) : (
             <IconMail size={14} className="shrink-0 text-slate-400" />
           )}

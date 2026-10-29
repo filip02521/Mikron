@@ -139,7 +139,7 @@ function DataWarning({ row }: { row: StockWatchSupplierBoardRow }) {
 }
 
 const secondaryLinkClass =
-  "inline-flex h-8 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-md border border-slate-200 bg-card px-3 text-xs font-semibold text-slate-800 shadow-[0_1px_2px_rgba(21,25,32,.06)] transition-[background-color,transform] duration-150 ease-out hover:bg-slate-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-1";
+  "inline-flex h-8 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-md border border-slate-200 bg-card px-3 text-xs font-semibold text-slate-800 shadow-[0_1px_2px_rgba(21,25,32,.06)] transition-[background-color,transform] duration-150 ease-out hover:bg-slate-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1";
 
 /** Rozwinięty dostawca: dlaczego ten priorytet, co zrobić w Kreatorze, jego pilne towary. */
 function SupplierDetail({
@@ -437,7 +437,7 @@ export function StockSupplierBoard({
                     onClick={() => toggle(r.supplierId)}
                     aria-expanded={open}
                     aria-controls={detailId}
-                    className="flex w-full cursor-pointer items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-600"
+                    className="flex w-full cursor-pointer items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
                   >
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2">
@@ -552,7 +552,7 @@ export function StockSupplierBoard({
                           aria-expanded={open}
                           aria-controls={detailId}
                           aria-label={`${open ? "Zwiń" : "Rozwiń"} ${r.supplierName}`}
-                          className="inline-flex size-7 cursor-pointer items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-card hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                          className="inline-flex size-7 cursor-pointer items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-card hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                         >
                           <IconChevronDown
                             size={16}

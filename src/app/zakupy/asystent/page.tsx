@@ -281,7 +281,7 @@ export default async function AsystentPage({
                         rel="noopener noreferrer"
                         className={cn(
                           buttonPrimaryClass,
-                          "inline-flex min-h-10 items-center rounded-md px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-1",
+                          "inline-flex min-h-10 items-center rounded-md px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1",
                         )}
                       >
                         Otwórz raport

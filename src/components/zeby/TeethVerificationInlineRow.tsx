@@ -350,7 +350,7 @@ export function TeethVerificationInlineRow({
       {error ? (
         <tr className="border-b border-slate-100 last:border-b-0">
           <td colSpan={showJaw ? 4 : 3} className="py-1 px-2">
-            <div className="flex items-center gap-1 text-[0.625rem] font-medium text-red-600">
+            <div className="flex items-center gap-1 text-[0.625rem] font-medium text-red-700">
               <IconAlertCircle size={11} className="shrink-0" />
               {error}
             </div>
