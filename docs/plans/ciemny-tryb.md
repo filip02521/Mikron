@@ -1,6 +1,6 @@
 # Ciemny tryb OnTime — plan
 
-Stan: **plan do zatwierdzenia, bez kodu.** 2026-10-29. Podstawa: `DESIGN.md` (normatywny), inwentarz `src/` na `fec424df`, pomiar kontrastu WCAG 2.x i podgląd ciemnej palety wstrzykniętej do działającej aplikacji (dev, 35 ekranów, 1280 px i 375 px).
+Stan: **decyzje D1–D6 zatwierdzone 2026-10-29 zgodnie z rekomendacją; wdrożenie od plasterka 1.** Plan z 2026-10-29. Podstawa: `DESIGN.md` (normatywny), inwentarz `src/` na `fec424df`, pomiar kontrastu WCAG 2.x i podgląd ciemnej palety wstrzykniętej do działającej aplikacji (dev, 35 ekranów, 1280 px i 375 px).
 
 ## 1. Do decyzji (przed plasterkiem 1)
 
@@ -182,7 +182,7 @@ Próg: tekst 4.5:1, ikony / obrys / pierścień 3:1, linie bez progu (podane dla
 
 **Ciemny: 0 par poniżej progu.** Jasny dziś: 3 pary poniżej (dwie znikają po D5; `amber-500` jako jedyny sygnał na białym ma 2.15:1 — zostaje, bo pas uwagi i kropki stoją zawsze obok tekstu; zapisane w „Znaleziono”).
 
-Plasterek 1 przenosi ten pomiar do testu (`scripts/audit-theme-contrast.test.ts`): wartości czyta z `globals.css`, więc zmiana tokenu, która zbije parę pod próg, wywraca CI.
+Plasterek 1 przenosi ten pomiar do testu (`scripts/audit-theme-contrast.test.ts`): wartości czyta z `globals.css` i z domyślnego motywu Tailwinda, więc zmiana tokenu, która zbije parę pod próg, wywraca CI. Tabela wyżej liczyła jasne `emerald` / `amber` / `red` z przybliżeń hex; Tailwind v4 ma je w `oklch`, a test liczy z `oklch` — rozstrzyga test.
 
 ## 4. Inwentarz
 

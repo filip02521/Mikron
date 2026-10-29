@@ -70,9 +70,9 @@ Raport: `docs/audyt-procesu-zamowien-2026-10-28.md`, zmiany: `docs/zamowienia-je
 
 ## Ciemny tryb — 2026-10-29
 
-Plan: `docs/plans/ciemny-tryb.md` (inwentarz, tokeny z pomiarem kontrastu, przełącznik, brak mignięcia). **Czeka na zatwierdzenie decyzji D1–D6** — bez kodu do tego czasu.
+Plan: `docs/plans/ciemny-tryb.md` (inwentarz, tokeny z pomiarem kontrastu, przełącznik, brak mignięcia). Decyzje D1–D6 zatwierdzone 2026-10-29 (rekomendacje z planu).
 
-- [ ] 1. Tokeny ciemne w `globals.css` + test kontrastu z CSS.
+- [x] 1. Tokeny ciemne w `globals.css` + test kontrastu z CSS (D5 w jasnym: `emerald-600` `#047857`, `amber-600` `#b45309`).
 - [ ] 2. Codemod powierzchni (`bg-white` → `bg-card`, scrim) + reguły `audit:design`.
 - [ ] 3. Codemod kroku 600 i fokusu + reguła `audit:design`.
 - [ ] 4. Ręczne miejsca (wypełnienia 700+, `SUMMARY_COLORS`, SVG, `BrandLoader`, surowe `rgb()`).
