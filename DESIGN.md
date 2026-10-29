@@ -28,6 +28,27 @@ colors:
   danger-surface: "#fef2f2"
   danger-ink: "#b91c1c"
   danger-ink-deep: "#991b1b"
+  # Motyw ciemny (html[data-theme="dark"], globals.css). Te same klasy, inne wartości.
+  canvas-dark: "#0e1116"
+  card-dark: "#161a20"
+  raised-dark: "#20262e"
+  well-dark: "#1b2027"
+  line-dark: "#2c333d"
+  graphite-dark: "#e8ebef"
+  ink-secondary-dark: "#b5bcc6"
+  ink-muted-dark: "#9ea6b1"
+  ink-faint-dark: "#8b939f"
+  petrol-fill-dark: "#157984"
+  petrol-ink-dark: "#6ccfd8"
+  petrol-mist-dark: "#122a2e"
+  focus-dark: "#2aa3b0"
+  segment-active-dark: "#2c333d"
+  success-surface-dark: "#0f2a21"
+  success-ink-dark: "#86e0bb"
+  attention-surface-dark: "#2d2310"
+  attention-ink-dark: "#fadfae"
+  danger-surface-dark: "#321719"
+  danger-ink-dark: "#f8aaae"
 typography:
   headline:
     fontFamily: "Inter Tight, Geist, ui-sans-serif, system-ui, sans-serif"
@@ -207,7 +228,7 @@ components:
 
 # Design System: OnTime
 
-Ten plik jest normatywny: tokeny we frontmatterze są źródłem prawdy, a tekst mówi, gdzie i po co ich używać. Kod realizuje je w dwóch miejscach: `src/app/globals.css` (zmienne CSS i przemapowane palety Tailwinda) oraz `src/lib/ui/ontime-theme.ts` (gotowe klasy). Gdy kod i ten plik się rozjadą, popraw jedno albo drugie w tym samym PR. Kolory podawaj zawsze jako klasę Tailwinda lub zmienną CSS, nigdy jako surowy hex w komponencie. Część reguł pilnuje `npm run audit:design` (krok CI): wagi powyżej 600, wersaliki i rozmiary tekstu w px. Czego audyt jeszcze nie łapie, jest w sekcji „Znany dług”.
+Ten plik jest normatywny: tokeny we frontmatterze są źródłem prawdy, a tekst mówi, gdzie i po co ich używać. Kod realizuje je w dwóch miejscach: `src/app/globals.css` (zmienne CSS i przemapowane palety Tailwinda) oraz `src/lib/ui/ontime-theme.ts` (gotowe klasy). Gdy kod i ten plik się rozjadą, popraw jedno albo drugie w tym samym PR. Kolory podawaj zawsze jako klasę Tailwinda lub zmienną CSS, nigdy jako surowy hex w komponencie. Część reguł pilnuje `npm run audit:design` (krok CI): wagi powyżej 600, wersaliki, rozmiary tekstu w px, a od wprowadzenia motywu ciemnego także `bg-white` (`biel`), tło pod oknem bez `bg-scrim` (`scrim`), tekst krokiem 600 (`krok600`), fokus bez `ring-focus` (`fokus`) i hover wypełnienia krokiem 700+ (`wypelnienie`). Kontrast obu motywów liczy `scripts/audit-theme-contrast.test.ts`. Czego audyt jeszcze nie łapie, jest w sekcji „Znany dług”.
 
 ## Overview
 
@@ -217,7 +238,7 @@ Wzorcem jest pulpit dyspozytora: wszystko pod ręką, gęsto, ale czytelnie. Gę
 
 Nowoczesność tutaj to spokój, nie efekt: jedna warstwa kart na tle, nagłówki na tle zamiast w ramkach, cienkie linie zamiast ciężkich cieni, jeden wyraźny stan „wybrane”, ciasna i równa skala tekstu. Każdy ekran składa się z tych samych pięciu warstw (Layout → „Anatomia ekranu”), więc przejście między modułami nie wymaga uczenia się nowego układu.
 
-Aplikacja ma tylko jasny motyw. Ciemne tło z gradientem marki występuje wyłącznie na ekranach logowania. Tarcza marki (`BrandCardAccent`) pojawia się tylko w momentach marki: logowanie, strona 404, onboarding i puste stany pierwszego uruchomienia. Na ekranach pracy jej nie ma.
+Aplikacja ma motyw jasny i ciemny; każdy użytkownik wybiera Jasny, Ciemny albo Jak w systemie (Colors → „Motyw ciemny”). Nowe konto zaczyna od jasnego. Ciemne tło z gradientem marki występuje wyłącznie na ekranach logowania i nie jest motywem ciemnym. Tarcza marki (`BrandCardAccent`) pojawia się tylko w momentach marki: logowanie, strona 404, onboarding i puste stany pierwszego uruchomienia. Na ekranach pracy jej nie ma.
 
 ## Colors
 
@@ -229,9 +250,11 @@ W kodzie palety Tailwinda są przemapowane w `globals.css`: `slate-*` to szaroś
 
 | Token | Klasa | Do czego |
 |---|---|---|
-| `petrol` | `indigo-600`, `var(--primary)` | Główny przycisk, link, zaznaczony checkbox, pasek postępu, pierścień fokusu. |
-| `petrol-deep` | `indigo-700` | Hover głównego przycisku, tekst zaznaczenia. |
-| `petrol-pressed` | `indigo-800` | Wciśnięty główny przycisk. |
+| `petrol` | `indigo-600`, `bg-primary`, `var(--primary)` | Wypełnienie: główny przycisk, zaznaczony checkbox, pasek postępu. Nie tekst (krok 600 to wypełnienie, patrz „Motyw ciemny”). |
+| `petrol-deep` | `indigo-700` | Link, tekst zaznaczenia, licznik w wybranym chipie. |
+| — | `bg-primary-hover`, `bg-primary-pressed` | Hover i wciśnięcie głównego przycisku (w jasnym = `indigo-700` / `indigo-800`). |
+| — | `ring-focus`, `outline-focus` | Pierścień fokusu z klawiatury. |
+| `petrol-pressed` | `indigo-800` | Tekst przycisku Outline. |
 | `petrol-ink` | `indigo-900` | Tekst aktywnej pozycji menu. |
 | `petrol-tint` | `indigo-100` | Obramowanie lub tło wybranego elementu, gdy `petrol-mist` jest za słaby. |
 | `petrol-mist` | `indigo-50`, `var(--primary-muted)` | Tło aktywnej pozycji menu, zaznaczenia tekstu, komunikatu informacyjnego. |
@@ -250,7 +273,8 @@ W kodzie palety Tailwinda są przemapowane w `globals.css`: `slate-*` to szaroś
 | `line-soft` | `slate-100` | Linie między wierszami tabeli, tło neutralnej odznaki, hover pozycji menu. |
 | `well` | `slate-50` | Nagłówek tabeli, hover wiersza, tor przełącznika segmentowego, wyłączone pole. |
 | `canvas` | `var(--background)` | Tło aplikacji pod kartami. |
-| `card` | `white`, `var(--card)` | Karty, menu boczne, pola. |
+| `card` | `bg-card`, `var(--card)` | Karty, menu boczne, pola. Nigdy `bg-white` (audyt `biel`). |
+| — | `bg-raised` | Okno, panel boczny, menu rozwijane, dymek, lista podpowiedzi, toast. W jasnym biały jak karta, w ciemnym o stopień jaśniejszy. |
 
 ### Stany
 
@@ -267,6 +291,20 @@ Na kolorowym tle tekst pomocniczy bierz z tej samej rodziny (np. `amber-800` na 
 **Jeden akcent.** Petrol jest jedynym kolorem marki. Nie dodawaj drugiego akcentu ani gradientu dla wyróżnienia sekcji, roli czy modułu.
 
 **Stan to nie dekoracja.** Zieleń, bursztyn i czerwień zawsze coś znaczą. Jeśli element nie jest w żadnym stanie, jest szary albo Petrol.
+
+**Krok 600 to wypełnienie.** W Petrolu i stanach (`indigo`, `emerald`, `amber`, `red` i ich aliasy) krok 600 to tło pod białym tekstem albo sygnał (kropka, ikona, pasek). Tekst zaczyna się od 700. Pilnuje tego audyt `krok600`.
+
+### Motyw ciemny
+
+Ciemny motyw to te same klasy z innymi wartościami: `globals.css` przypisuje paletom drugi zestaw zmiennych pod `html[data-theme="dark"]` (tylko na ekranie — wydruk zostaje jasny). Komponenty nie mają wariantów `dark:`; kolor podajesz raz, klasą z tego pliku.
+
+- **Role kroków** są te same w obu motywach: 50–300 tła i linie, 400 pomocniczy (ikony, placeholder), 500 Meta, 600 w szarościach tekst komórek, w Petrolu i stanach wypełnienie, 700–950 tekst. W ciemnym niskie kroki są ciemne, a wysokie jasne, więc para „tło 50 + tekst 800” działa w obu.
+- **Kolory ról** zamiast kroku palety tam, gdzie krok nie wystarcza: `bg-card`, `bg-raised`, `bg-primary-hover` / `bg-primary-pressed`, `bg-success-hover` / `bg-success-pressed`, `bg-warning-hover`, `bg-danger-hover`, `bg-fill-neutral` (szary przycisk z białym tekstem), `ring-focus`, `bg-scrim/N` (tło pod oknem), `bg-inverse` + `text-on-inverse` (dymek, ciemny chip), `bg-segment-active` (wybrany segment). Biel zostaje białą tylko na wypełnieniu, z `text-white` w tej samej klasie albo komentarzem `design-ok`.
+- **Różnica bez cienia.** Cień w ciemnym prawie znika, więc to, co w jasnym odróżnia cień (okno nad kartą, wybrany segment), ma w ciemnym własną różnicę koloru (`bg-raised`, `bg-segment-active`).
+- **Zawsze jasne** (`.theme-light`): ekrany logowania, podgląd treści maila i papier. Maile wychodzące i PDF nie zależą od motywu.
+- **Kolory z danych** (`SUMMARY_COLORS` w `style`) idą przez `summaryColorCss` i zmienne `--summary-*`; nowy kolor z danych dostaje swoją zmienną w obu blokach.
+- **Kontrast** obu motywów liczy `scripts/audit-theme-contrast.test.ts` z wartości w CSS (tekst ≥ 4.5:1, ikony i fokus ≥ 3:1). Nowy token albo nowa para tekst/tło trafia do tego testu.
+- **Wybór** zapisuje się na koncie (`profiles.preferences.theme`); skrypt w `<head>` ustawia motyw z cookie przed pierwszym malowaniem, więc strona nie miga.
 
 ## Typography
 
@@ -360,12 +398,12 @@ Komponenty bazowe są w `src/components/ui/`. Zanim napiszesz własny przycisk, 
 ### Buttons
 
 - **Kształt:** 6px. Rozmiary `sm` (12px tekstu), `md` (14px, domyślny), `lg` (16px). Na telefonie przyciski w `PageHeader` mają min. 44px wysokości.
-- **Primary:** pełny Petrol, biały tekst, cień kontrolki. Hover `indigo-700`, wciśnięcie `indigo-800` i lekkie zmniejszenie (`scale 0.97`, 75 ms; wyłączone przy `prefers-reduced-motion`). Etykieta to czasownik, najlepiej z liczbą („Zapisz 421 cen”). Jeden na ekran.
-- **Secondary:** biała karta, obramowanie `line`, tekst `slate-700`; hover tło `slate-50` i obramowanie `slate-300`.
+- **Primary:** pełny Petrol, biały tekst, cień kontrolki. Hover `bg-primary-hover`, wciśnięcie `bg-primary-pressed` i lekkie zmniejszenie (`scale 0.97`, 75 ms; wyłączone przy `prefers-reduced-motion`). Etykieta to czasownik, najlepiej z liczbą („Zapisz 421 cen”). Jeden na ekran.
+- **Secondary:** tło `bg-card`, obramowanie `line`, tekst `slate-700`; hover tło `slate-50` i obramowanie `slate-300`.
 - **Outline:** tło `petrol-mist`, obramowanie `indigo-200`, tekst `indigo-800`. Dla akcji drugiego rzędu, która ma zostać zauważona obok głównej.
 - **Ghost:** bez tła, tekst `slate-600`; hover tło `slate-100`. W paskach narzędzi i wierszach tabel.
-- **Danger:** pełny `red-600`. Tylko akcje nieodwracalne i zapis na produkcji (LIVE), zawsze z potwierdzeniem (`ConfirmDialog`).
-- **Fokus:** pierścień 2px `indigo-600` z odstępem. **Wyłączony:** krycie 50%, kursor zakazu; powód blokady pokaż tekstem obok, nie tylko w `title`.
+- **Danger:** pełny `red-600`, hover `bg-danger-hover`. Tylko akcje nieodwracalne i zapis na produkcji (LIVE), zawsze z potwierdzeniem (`ConfirmDialog`).
+- **Fokus:** pierścień 2px `ring-focus` z odstępem (odstęp w kolorze karty, także w ciemnym). **Wyłączony:** krycie 50%, kursor zakazu; powód blokady pokaż tekstem obok, nie tylko w `title`.
 
 ### Chips
 
@@ -379,7 +417,7 @@ Komponenty bazowe są w `src/components/ui/`. Zanim napiszesz własny przycisk, 
 |---|---|
 | Pozycja menu | tło `petrol-mist`, tekst `petrol-ink` |
 | Zakładka strony | tekst `slate-900`, podkreślenie 2px `indigo-600` |
-| Widok w przełączniku segmentowym | biały segment z cieniem kontrolki na torze `slate-50` |
+| Widok w przełączniku segmentowym | segment `bg-segment-active` z cieniem kontrolki na torze `slate-50` |
 | Chip filtra | tło `indigo-50`, ring `indigo-200`, tekst `indigo-900` |
 | Wiersz tabeli | tło `indigo-50` |
 
@@ -423,7 +461,7 @@ Najważniejszy komponent produktu (`DataTable`, klasa `.data-table`).
 
 ### Segmented Control
 
-Przełącznik widoku lub filtra (`SegmentedControl`). Tor `slate-50` z obramowaniem, aktywny segment na białym tle z cieniem kontrolki. Licznik w etykiecie jest przygaszony (`slate-500`). Etykiet nie ucinamy: przy wielu opcjach tor przewija się w poziomie.
+Przełącznik widoku lub filtra (`SegmentedControl`). Tor `slate-50` z obramowaniem, aktywny segment `bg-segment-active` z cieniem kontrolki (w ciemnym jaśniejszy od toru, bo cień tam nie działa). Licznik w etykiecie jest przygaszony (`slate-500`). Etykiet nie ucinamy: przy wielu opcjach tor przewija się w poziomie.
 
 ### Pasek filtrów
 
@@ -452,7 +490,7 @@ Karta stanu na górze ekranu pracy: zdanie stanu z liczbą („433 pozycje czeka
 
 ### Panele i okna
 
-Każde okno nad treścią to `ModalShell` (`src/components/ui/ModalShell.tsx`), a panel boczny używa klas `sidePanel*Class` z `src/lib/ui/surfaces.ts` (wzór: `SupplierEditSheet`, `ZdAutoProposalSheet`). Oba dają kontrakty, które własna nakładka musi zapewnić sama, i to w całości:
+Każde okno nad treścią to `ModalShell` (`src/components/ui/ModalShell.tsx`), a panel boczny używa klas `sidePanel*Class` z `src/lib/ui/surfaces.ts` (wzór: `SupplierEditSheet`, `ZdAutoProposalSheet`). Tło każdej warstwy nad treścią to `bg-raised`, tło pod oknem `bg-scrim/N`. Oba dają kontrakty, które własna nakładka musi zapewnić sama, i to w całości:
 
 - **Portal** do `document.body` (`createPortal`): nakładka zamontowana w sekcji strony konkuruje z-indexem tylko w jej kontekście i na telefonie chowa się pod nagłówkiem i dolnym paskiem.
 - **Przewijanie:** `useBodyScrollLock` blokuje stronę, a przewijany obszar nakładki ma atrybut `SCROLL_LOCK_ALLOW_ATTR` (`data-scroll-lock-allow`), bez którego kółko i dotyk nic nie przewiną.
@@ -523,7 +561,7 @@ Systemowe ładowanie OnTime to animowane logo, `BrandLoader` (`src/components/ui
 
 ### Powierzchnie przeglądarki
 
-Zaznaczenie tekstu ma tło `petrol-mist` i tekst `petrol-deep`. Kursor tekstowy i natywne checkboxy, radia i suwaki są w Petrolu (`accent-color`, `caret-color`). Paski przewijania są cienkie, `slate-300`. Fokus z klawiatury ma zawsze ten sam kolor, `indigo-600` (także na elementach w tonie stanu): komponenty rysują go jako `focus-visible:ring-2 focus-visible:ring-indigo-600`, a element bez własnego stylu dostaje obrys 2px z odstępem 2px z `@layer base`. Pierścieni przezroczystych (`/40`) nie stosujemy, bo nie mają kontrastu 3:1. Linki mają podkreślenie odsunięte od tekstu.
+Zaznaczenie tekstu ma tło `petrol-mist` i tekst `petrol-deep`. Kursor tekstowy i natywne checkboxy, radia i suwaki są w Petrolu (`accent-color`, `caret-color`). Paski przewijania są cienkie, `slate-300`. Fokus z klawiatury ma zawsze ten sam kolor, `ring-focus` (Petrol; także na elementach w tonie stanu): komponenty rysują go jako `focus-visible:ring-2 focus-visible:ring-focus`, a element bez własnego stylu dostaje obrys 2px z odstępem 2px z `@layer base`. Audyt `fokus` nie przepuszcza `ring-indigo-600` w fokusie. Pierścieni przezroczystych (`/40`) nie stosujemy, bo nie mają kontrastu 3:1. Linki mają podkreślenie odsunięte od tekstu.
 
 ## Do's and Don'ts
 
@@ -532,6 +570,7 @@ Skrót zasad z sekcji wyżej, do sprawdzenia przed PR. Przy rozbieżności rozst
 ### Do:
 
 - **Do** buduj ekrany z komponentów `src/components/ui/` i klas z `ontime-theme.ts`. Kolor podawaj klasą lub zmienną, nie hexem.
+- **Do** sprawdzaj każdą zmianę UI w obu motywach (Ustawienia → Wygląd → Motyw); nową parę tekst/tło dopisz do testu kontrastu.
 - **Do** dawaj jedną pełną główną akcję na ekran, z czasownikiem i liczbą w etykiecie.
 - **Do** zaczynaj ekran pracy od zdania stanu z liczbą, nie od statystyk.
 - **Do** sprawdzaj każdy ekran przy 375px: brak przewijania strony w poziomie, etykiety całe, pola min. 44px.
@@ -560,6 +599,7 @@ Skrót zasad z sekcji wyżej, do sprawdzenia przed PR. Przy rozbieżności rozst
 - **Don't** stawiaj szkieletu, pulsującego paska ani samego `Spinner` tam, gdzie czeka cały obszar lub panel.
 - **Don't** podawaj rozmiaru tekstu w px poza Kreatorem ZD ani nie schodź poniżej `0.625rem`.
 - **Don't** używaj `font-bold` i cięższych wag.
+- **Don't** pisz `bg-white`, `text-indigo-600` (i inne teksty krokiem 600 Petrolu i stanów), `hover:bg-indigo-700` ani wariantów `dark:`; użyj kolorów ról z „Motyw ciemny”.
 - **Don't** pokazuj stanu emoji ani znakiem ✓ / ⚠ w tekście.
 
 ### Znany dług
@@ -574,6 +614,9 @@ Stan na 25.10.2026, z wyszukiwania w `src/` (bez testów). Przy każdej zmianie 
 | Słownik cieni | `shadow-md` i większe: 46 w 34 plikach | zamień na `var(--shadow-*)` |
 | Bez bocznego paska | `border-l-2` / `border-l-4`: 24 w 7 plikach | stan tłem, odznaką lub ikoną |
 | Ładowanie logiem | `Spinner` 64 w 46 plikach, `animate-pulse` 24 w 14 | `Spinner` w przycisku jest dozwolony |
+| Tekst `slate-300` | 48 w 31 plikach (stan na 29.10.2026) | 1.58:1 w jasnym, 1.73:1 w ciemnym; cyfra do przeczytania → `slate-400`, wypełniacz → `aria-hidden` (dni sąsiednich miesięcy w kalendarzach urlopów już na `slate-400`) |
+| Ramka pola | `slate-200` wobec karty 1.27:1 (jasny), 1.37:1 (ciemny) | poniżej 3:1 dla granicy kontrolki (WCAG 1.4.11) w obu motywach; pole odróżnia też cień i placeholder |
+| Sam sygnał `amber-500` | kropka bez tekstu 2.15:1 na białym | w ciemnym 8.47:1; w jasnym zawsze obok tekstu |
 | Najmniej `0.625rem` | 34 (`text-[0.5625rem]` 31, `0.5rem` 2, hasło logotypu 1) | licznik w pigułce może zostać, tekst nie |
 | Stan ikoną | ✓ / ⚠ w tekście: 15 w 10 plikach | `StrokeIcons` |
 | Skala warstw | `z-[100]`: 4 menu i kreator | przenieść do `z-[200]` (menu) lub `ModalShell` |

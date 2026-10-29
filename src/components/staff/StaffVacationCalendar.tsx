@@ -715,7 +715,7 @@ export function StaffVacationCalendar({
                         ? "-m-0.5 flex size-5 items-center justify-center rounded-full bg-indigo-600 text-white"
                         : cell.isCurrentMonth
                           ? cell.isWeekend ? "text-slate-500" : "text-slate-900"
-                          : "text-slate-300",
+                          : "text-slate-400",
                     )}
                   >
                     {cell.dayOfMonth}

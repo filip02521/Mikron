@@ -306,3 +306,21 @@ Plasterki 2–4 są niezależne od siebie, ale dotykają setek tych samych plik�
 
 - Kontrast: skrypt w notatkach sesji (`contrast.mjs`) liczy wszystkie pary z §3.3 dla jasnego, jasnego po poprawkach i ciemnego; plasterek 1 robi z niego test w repo.
 - Przegląd ekranów: wstrzyknięcie bloku zmiennych + `*{transition:none!important}` do działającej aplikacji, potem dla każdego widocznego elementu `getComputedStyle` (kolor tekstu wobec najbliższego nieprzezroczystego tła). Kolory w `oklab` (warianty z przezroczystością Tailwinda) przegląd pomija — w plasterku 8 policzyć je przez `canvas` albo przeliczyć `oklab → sRGB`.
+
+## Wynik przeglądu modułów (plasterek 8, 2026-10-29)
+
+Narzędzie: wstrzyknięty przegląd każdego widocznego elementu w działającej aplikacji, `data-theme="dark"`, przejścia CSS wyłączone. Kolor czytany przez płótno 1×1 (także `oklab`, `lab`, `color-mix`), tło półprzezroczyste składane z tłem rodziców od tła strony; tekst wobec rzeczywistego tła pod nim. Kontrola dodatnia przed przeglądem: `text-slate-300` na karcie w jasnym → 1.58:1, jak w §3.3.
+
+| Zakres | Ekrany | Tekst < AA | Jasne powierzchnie |
+|---|---|---|---|
+| 1280 px, wszystkie trasy admina | 45 tras, 40 różnych ekranów po przekierowaniach (panel, administracja, dostawy, historia, kolejka, kurierzy, notatki, podsumowanie miesięczne, urlopy, ustawienia, weryfikacja, zakupy ×12, zęby ×8, zespół ×4, harmonogram lokalizacji) | 0 | 0 |
+| Ekrany handlowca (`?dla=`, podgląd tylko do odczytu) | `/moje`, `/plan`, `/prosba`, `/notatnik`, `/tablica`, `/zk` | 0 | 0 |
+| 375 px | panel, przyjęcie, braki, `/moje`, `/prosba`, kolejka zębów | 0, bez przewijania w poziomie | 0 |
+| Okna i nakładki | „Skróty”, panel dostawcy, menu „Przesuń”, dymek pomocy, arkusz „Więcej”, formularz „Nowe konto” | 0 | 0 |
+| Kreator ZD — tabela | sztuczna tabela z prawdziwymi klasami (kolumny przypięte, „Do ZD” w stanach zwykłym / nadpisanym / ostrzeżenie, odznaki, wiersze zebra i wybrane) | 0 | 0 |
+
+Naprawione w tym plasterku: odznaka „Podgląd: …” (`.delegate-preview-badge`, 1.39:1), 32 surowe kolory w `globals.css` (głównie `#fff` w komórkach Kreatora — przegląd w §4.2 ich nie wyłapał, bo `awk` nie zna `\b`), dni sąsiednich miesięcy w kalendarzach urlopów (`slate-300` → `slate-400`, także w jasnym).
+
+Nieobjęte: toasty (nie wywołałem akcji zapisującej, żeby je pokazać; ich klasa `systemNoticeUndoClass` jest na `bg-raised`), Kreator ZD z policzoną listą (Policz w przeglądarce nadpisałby aktywną listę zakupów — stąd tabela sztuczna), ekran logowania na żywo (wymaga wylogowania wspólnej sesji; zakres `.theme-light` pilnuje test). Znalezione poza motywem: panel dostawcy bez portalu na telefonie i Escape zamykający panel razem z menu — osobna sesja.
+
+**D2 do ponownej decyzji:** wszystkie ekrany przeszły przegląd w ciemnym. Rekomendacja: nowe konta dalej „Jasny” — kto chce ciemny, ma przełącznik w menu, a „Jak w systemie” jako domyślny przestawiłby wygląd każdemu z ciemnym systemem bez pytania.

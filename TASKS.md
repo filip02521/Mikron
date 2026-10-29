@@ -79,4 +79,4 @@ Plan: `docs/plans/ciemny-tryb.md` (inwentarz, tokeny z pomiarem kontrastu, prze�
 - [x] 5. Preferencja na koncie (`preferences.theme`, cookie przy logowaniu, skrypt w `<head>`, `ThemeSync`) + wiersz „Motyw” w Ustawieniach; wybrany segment `SegmentedControl` na `bg-segment-active` (w ciemnym jaśniejszy od toru).
 - [x] 6. Szybkie wejście: stopka menu bocznego (ikony), zwinięte menu (przycisk z listą), arkusz „Więcej” na telefonie; jeden stan z Ustawieniami (`ThemeSwitch`, `use-theme-preference`).
 - [x] 7. Okna, panele boczne, menu, dymki, podpowiedzi i toasty na `bg-raised` (ciemny `#20262e`, 1.15:1 wobec karty); test kontrastu pilnuje różnicy okno/karta i ramki.
-- [ ] 8. Przegląd modułów w ciemnym, DESIGN.md, ponowna decyzja o domyślnym motywie.
+- [x] 8. Przegląd modułów w ciemnym (46 ekranów: 40 admina + 6 handlowca, 0 tekstu < AA), DESIGN.md → „Motyw ciemny”. Otwarte: decyzja D2 (rekomendacja: zostaje jasny).
