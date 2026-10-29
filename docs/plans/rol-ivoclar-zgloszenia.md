@@ -1,6 +1,6 @@
 # Plan: comiesięczne zgłoszenia ROL do Ivoclara
 
-**Status: plan do akceptacji (2026-10-29). Kodu brak.** Nic z tego nie jest wdrożone; plasterki niżej czekają na decyzję.
+**Status: plan zatwierdzony (2026-10-29), decyzje P1–P8 w §10.** Plasterki 1–2 w kodzie: migracja `204_rol_reports.sql`, `src/lib/rol/*` (skan, scalanie, walidacja, widok), akcje `src/app/actions/rol.ts`, zakładka „Zgłoszenia ROL” w Asystencie (podgląd tylko do odczytu, „Sprawdź ponownie”, Ustawienia ROL). **Plasterek 0 czeka na LAN** (z sesji 29.10 Subiekt był nieosiągalny): ścieżka PDF FS, `kh_Id` klientów, pole opisu ZD, hipoteza `dok_DoDokId` na KFS (`scan.ts`).
 
 Nazwy klientów, adresy, NIP-y i adresy e-mail w tym pliku są zmyślone albo opisane rolą (repo jest publiczne). Prawdziwe wartości trafią do tabeli konfiguracji w bazie (`rol_programs`), nie do kodu.
 
@@ -92,27 +92,44 @@ Siły: push — ręczne przeglądanie, pomyłka z października / pull — gotow
 
 ## 4. Rekomendacja w jednym akapicie
 
-Nowa sekcja **„Zgłoszenia ROL”** w hubie Asystent. Pierwszego dnia roboczego miesiąca krok w nocnym cronie skanuje FS z poprzedniego miesiąca, osobno dla każdego klienta ROL, wybiera pozycje Ivoclar i zapisuje **paczkę miesiąca** (klient × miesiąc). Osoba z zakupów przegląda listę FS i pozycji, może wyłączyć pozycję lub FS, zatwierdza, a przycisk „Przygotuj mail” składa mail według wzoru z gotowymi plikami (arkusz + PDF-y FS). Po edycji wysyła go ze swojego Gmaila. Odpowiedź Ivoclara z OC trafia do Poczty dostawców; w ostatnim plasterku sprawdzamy na OC rabat −25%.
+Nowa sekcja **„Zgłoszenia ROL”** w hubie Asystent. Pierwszego dnia roboczego miesiąca krok w nocnym cronie skanuje FS z poprzedniego miesiąca, osobno dla każdego klienta ROL, wybiera pozycje Ivoclar i zapisuje **paczkę miesiąca** (klient × miesiąc). Osoba z zakupów przegląda listę FS i pozycji, może wyłączyć pozycję lub FS, zatwierdza, a przycisk „Przygotuj mail” składa **osobny mail dla tego klienta** według wzoru z gotowymi plikami (arkusz + PDF-y jego FS). Po edycji wysyła go ze swojego Gmaila, a OnTime w tym samym kroku tworzy w Subiekcie ZD do Ivoclara z tymi pozycjami i opisem „ROL <klient> <miesiąc>”. Na start wszystko idzie po zatwierdzeniu; w ustawieniach programu da się przełączyć na pełny automat (§5 „Tryb automatyczny”). Odpowiedź Ivoclara z OC trafia do Poczty dostawców; w ostatnim plasterku sprawdzamy na OC rabat −25%.
 
-Odrzucone: (a) sam raport do pobrania — nie skraca kroków 3–5; (b) wysyłka bez przeglądu — wbrew zasadzie „pewność danych przed szybkością” i obawie o rozpoznanie klienta; (c) gotowe komponenty z 21st.dev — DESIGN.md wymaga komponentów z `src/components/ui/`, a ekran składa się z istniejących wzorów (rail Asystenta, `DataTable`, `Status Panel`, `ModalShell`).
+Odrzucone: (a) sam raport do pobrania — nie skraca kroków 3–5; (b) wysyłka bez przeglądu od pierwszego dnia — wbrew zasadzie „pewność danych przed szybkością” i obawie o rozpoznanie klienta; automat jest przełącznikiem na później, po miesiącach wysłanych ręcznie; (c) gotowe komponenty z 21st.dev — DESIGN.md wymaga komponentów z `src/components/ui/`, a ekran składa się z istniejących wzorów (rail Asystenta, `DataTable`, `Status Panel`, `ModalShell`).
 
 ## 5. Logika
 
 ### Źródło danych i filtr
 
-1. **Okres:** poprzedni miesiąc kalendarzowy w strefie Warszawy, `dataOd = 1. dzień`, `dataDo = ostatni dzień`, po `dok_DataWyst` (data wystawienia FS).
+1. **Okres:** gdy zaczyna się miesiąc, zgłaszamy cały poprzedni (decyzja P7): miesiąc kalendarzowy w strefie Warszawy, `dataOd = 1. dzień`, `dataDo = ostatni dzień`, po `dok_DataWyst` (data wystawienia FS).
 2. **Lista FS:** `searchSubiektOrdersFs({ dataOd, dataDo, page, pageSize: 200 })`, strona po stronie do `totalPages` liczonego dla 200. Bez polegania na `khId`.
 3. **Klient:** FS należy do programu, gdy `dok_PlatnikId` **albo** `dok_OdbiorcaId` ∈ `rol_programs.kh_ids` (lista, bo klient może mieć kilka kartotek). Gdy płatnik i odbiorca to dwa różne programy — FS idzie na listę „do decyzji”, nie do żadnej paczki.
 4. **Linie:** `getSubiektOrdersFs(id)` tylko dla dopasowanych FS (kilka–kilkanaście na klienta).
-5. **Produkt Ivoclar:** `ob_TowId` ∈ zbiór `tw_Id` z zakresu dostawcy Ivoclar (cecha/grupy z `zd_estimate_supplier_scopes`), pobierany raz na skan. Zęby Ivoclar — według decyzji P4. Linie spoza zakresu pokazujemy zwinięte („3 pozycje innych producentów pominięte”), żeby było widać, że nic nie zginęło.
+5. **Produkt Ivoclar:** `ob_TowId` ∈ zbiór `tw_Id` z zakresu dostawcy Ivoclar (cecha/grupy z `zd_estimate_supplier_scopes`), pobierany raz na skan. Wchodzi **cały Ivoclar** (decyzja P4): suma zakresu dostawcy i zębów Ivoclar (`manufacturer = ivoclar` w katalogu zębów). Linie spoza zakresu pokazujemy zwinięte („3 pozycje innych producentów pominięte”), żeby było widać, że nic nie zginęło.
 6. **Korekty:** KFS tego klienta z tego samego okresu (i KFS do FS z okresu, wystawione do dnia skanu) odejmujemy od ilości; ujemny wynik → 0 i ostrzeżenie przy pozycji.
-7. **Agregacja w arkuszu:** suma ilości po numerze katalogowym Ivoclar. Numer katalogowy: pole symbolu u dostawcy w kartotece (do potwierdzenia, P2); brak numeru → pozycja „bez nr kat. Ivoclar”, blokuje wysyłkę do czasu uzupełnienia w Subiekcie albo ręcznego wpisu.
+7. **Bez progów** (decyzja P8): zgłaszamy każdą pozycję, nawet 1 szt.; programy to tylko skonfigurowani klienci ROL (dziś dwóch).
+8. **Agregacja w arkuszu:** suma ilości po symbolu. Symbol w arkuszu to numer Ivoclar (6 cyfr, np. `673261`) — na wzorze zgadza się z symbolem towaru w Subiekcie (`tw_Symbol`); plasterek 0 sprawdza to dla zębów. Symbol pusty albo nie w formacie numeru Ivoclar → pozycja z ostrzeżeniem „bez nr kat. Ivoclar”, blokuje wysyłkę do czasu uzupełnienia w Subiekcie albo ręcznego wpisu.
 
 ### Harmonogram
 
 - Krok `rol-month-scan` w istniejącym cronie `catalog-zd-sync` (codziennie): jeśli dziś ≥ 1. dzień roboczy miesiąca i dla poprzedniego miesiąca brak paczki danego programu → skanuj. Nadrabia sam po przerwie serwera.
 - **Ponowny skan** automatycznie co noc, dopóki paczka nie jest wysłana (dochodzą FS wystawione z datą wsteczną i KFS). Zmiana po przeglądzie cofa paczkę do „wykryte” z widoczną różnicą („+1 FS od przeglądu”).
 - Ręcznie: „Sprawdź ponownie” w sekcji, oraz wybór dowolnego wcześniejszego miesiąca (nadrabianie, test na danych z października).
+
+### ZD w Subiekcie (decyzja P6)
+
+- Każde zgłoszenie to też ZD do Ivoclara w Subiekcie: kontrahent Ivoclar, pozycje = pozycje arkusza (`towarId`, ilość), istniejące `POST /documents/zd/create`.
+- Opis dokumentu: `ROL <etykieta programu> <miesiąc>` bez roku (np. „ROL Przykładowa wrzesień”), w polu `uwagi` — jedyne pole opisowe w body tworzenia ZD (`SubiektCreateZdInput`). Plasterek 0 sprawdza, czy to pole widać w Subiekcie tam, gdzie zakupy szukają ZD; jeśli nie, rozszerzamy API.
+- Jedna ZD na klienta i miesiąc, nigdy wspólna. Numer ZD zapisany w paczce i widoczny w wierszu klienta.
+- Kolejność przy wysyłce: ZD → pliki → mail. Gdy ZD powstała, a mail nie wyszedł, ponowienie nie tworzy drugiej ZD (sprawdza `rol_batches.zd_dok_id`).
+- Jak każdy zapis do Subiekta: podgląd w oknie maila (pozycje i opis ZD), weryfikacja po zapisie (odczyt utworzonej ZD i porównanie pozycji).
+
+### Tryb automatyczny (decyzja P5)
+
+- Na start każdy program jest w trybie **„Po zatwierdzeniu”**: poprawki i wysyłka dopiero po „Zatwierdź listę” i „Wyślij”.
+- Przełącznik w Ustawieniach ROL, per program: **„Pełny automat”**. Wtedy po nocnym skanie, jeśli paczka nie ma żadnej blokady (brak nr kat., FS „do decyzji”, brak PDF FS, zmiana od poprzedniego skanu), system sam tworzy ZD i wysyła mail z Gmaila osoby wskazanej w ustawieniach (`rol_programs.auto_sender_user_id`; jej połączenie Gmail musi być aktywne).
+- Każda blokada zostawia paczkę do zwykłego przeglądu z powodem w Status Panelu. Automat wysyła dopiero po drugim skanie z tym samym wynikiem (FS z datą wsteczną zdążą dojść).
+- Włączenie automatu wymaga `ConfirmDialog` i jest logowane; w wierszu klienta odznaka „Automat”.
+- Wysłane automatem: `rol_sends.sent_by` = osoba z ustawień, `kind = 'automat'`.
 
 ### Stany paczki (klient × miesiąc)
 
@@ -129,7 +146,7 @@ Odrzucone: (a) sam raport do pobrania — nie skraca kroków 3–5; (b) wysyłka
 | `wykryte` | skan znalazł FS i pozycje; czeka na przegląd | cron / „Sprawdź ponownie” |
 | `brak_zakupow` | klient nie kupił Ivoclar w miesiącu; nic do wysłania, widoczne dla pewności | cron |
 | `przejrzane` | ktoś przejrzał i zatwierdził listę (zapisane kto i kiedy) | użytkownik, „Zatwierdź listę” |
-| `wyslane` | mail wyszedł z Gmaila; zapisane message-id, wątek, lista plików i ich suma kontrolna | system po udanej wysyłce |
+| `wyslane` | ZD utworzona w Subiekcie i mail wyszedł z Gmaila; zapisane numer ZD, message-id, wątek, lista plików i ich suma kontrolna | system po udanej wysyłce (ręcznej albo automatu) |
 | `potwierdzone` / `do_korekty` | OC Ivoclara zawiera / nie zawiera −25% (plasterek 7) | kontrola OC / użytkownik |
 
 Cofnięcie z `przejrzane` do `wykryte`: „Edytuj listę”. Z `wyslane` nie ma cofnięcia — tylko „Dośli uzupełnienie” (nowy mail z samymi nowymi FS).
@@ -137,8 +154,8 @@ Cofnięcie z `przejrzane` do `wykryte`: „Edytuj listę”. Z `wyslane` nie ma 
 ### Edycja przed wysłaniem
 
 - Lista: wyłącz FS albo pojedynczą pozycję (z powodem, np. „zwrot poza systemem”), zmień ilość (stara przekreślona, nowa obok — wzór „Zmiana wartości” z DESIGN.md), dopisz numer katalogowy, gdy brak.
-- Mail: adresaci, DW, temat i treść edytowalne w oknie; domyślne z `rol_programs` i ostatniego wysłanego maila. Załączniki widoczne jako lista plików z rozmiarem; arkusz można pobrać i podejrzeć, ale nie podmienić (zmiana pozycji = zmiana listy, nie pliku).
-- Jedna wiadomość na miesiąc z blokiem na każdego klienta w stanie `przejrzane` (jak 1 października), z możliwością odznaczenia klienta. Pliki każdego klienta powstają wyłącznie z jego paczki, a nazwa pliku i blok treści biorą nazwę z tej samej paczki — to usuwa pomyłkę z października u źródła.
+- Mail: adresaci, DW, temat i treść edytowalne w oknie; domyślne z programu (`rol_programs.to_emails` / `cc_emails` — każdy klient ma swoją opiekunkę w Ivoclarze), a gdy program ich nie ma, z `rol_mail_settings`. Załączniki widoczne jako lista plików z rozmiarem; arkusz można pobrać i podejrzeć, ale nie podmienić (zmiana pozycji = zmiana listy, nie pliku).
+- **Osobna wiadomość na klienta** (decyzja P3, 2026-10-29). Okno maila dotyczy jednej paczki: jeden blok treści, tylko pliki tego klienta, nazwa klienta w tytule okna i na przycisku wysyłki. Pliki, nazwa pliku i blok treści biorą dane z tej samej paczki — pomyłka z października staje się niemożliwa, także na ekranie.
 - Bez Gmaila albo do doklejenia do zwykłego zamówienia: „Pobierz pliki” (ZIP z arkuszami i PDF-ami); oznaczenie „Wysłane ręcznie” wymaga wybrania wysłanego maila z wątków Poczty dostawców albo wpisania daty.
 
 ### Błędy i przypadki brzegowe
@@ -151,11 +168,12 @@ Cofnięcie z `przejrzane` do `wykryte`: „Edytuj listę”. Z `wyslane` nie ma 
 | Klient bez zakupów Ivoclar | stan `brak_zakupow`, nic do wysłania |
 | Ta sama FS u dwóch programów | lista „do decyzji”, blokuje wysyłkę obu |
 | Brak numeru katalogowego Ivoclar | pozycja z ostrzeżeniem, blokuje wysyłkę z powodem widocznym obok przycisku |
+| Błąd tworzenia ZD | mail nie wychodzi; komunikat z przyczyną z Subiekta, paczka zostaje `przejrzane`; timeout = stan nieznany, przed ponowieniem szukamy ZD z tym opisem u Ivoclara |
 | Brak PDF FS (endpoint nie odpowiada) | paczka może iść bez tej FS tylko po świadomym „Wyślij bez PDF FS 1234”; domyślnie blokada |
 | Gmail niepołączony / brak zgody | przycisk „Połącz Gmail” w miejscu wysyłki (Ustawienia → Gmail) |
 | Timeout przy wysyłce | stan nieznany, nie „błąd”: sprawdzamy w Wysłanych po własnym Message-ID (`findGmailMessageByRfcId`) zanim pozwolimy wysłać drugi raz |
 | Podwójne kliknięcie / dwie osoby naraz | wysyłka blokuje paczkę w bazie (`sending_at`), druga próba dostaje komunikat „Ktoś właśnie wysyła tę paczkę” |
-| Rozmiar maila | suma załączników pokazana przed wysyłką; > 20 MB → podział na dwa maile per klient |
+| Rozmiar maila | suma załączników pokazana przed wysyłką; > 20 MB → podział zgłoszenia klienta na dwa maile |
 | Nowa FS po wysłaniu | paczka zostaje `wyslane`, pas uwagi „Po wysłaniu doszła 1 FS — dośli uzupełnienie” |
 | Zmiana statusu ROL klienta w trakcie roku | `rol_programs.active_from` / `active_to`; skan bierze tylko programy aktywne w danym miesiącu |
 
@@ -176,10 +194,13 @@ rol_programs (
   discount_pct numeric not null,        -- 25
   address_lines text[], nip text,       -- blok w treści maila
   file_label text,                      -- nazwa w plikach („Przykładowa”)
+  to_emails text[], cc_emails text[],   -- adresaci tego klienta (opiekunka w Ivoclarze); puste → domyślne
+  send_mode text not null default 'review' check in ('review','auto'),
+  auto_sender_user_id uuid null,        -- czyj Gmail wysyła w trybie automatu
   active_from date, active_to date null,
   updated_by uuid, updated_at timestamptz
 )
-rol_mail_settings (                     -- jeden wiersz
+rol_mail_settings (                     -- jeden wiersz, wartości domyślne
   to_emails text[], cc_emails text[], subject_template text, body_template text,
   updated_by uuid, updated_at timestamptz
 )
@@ -191,6 +212,7 @@ rol_batches (
   scanned_at timestamptz, fs_checked_count int,    -- ile FS przejrzał skan
   reviewed_by uuid, reviewed_at timestamptz,
   sending_at timestamptz null,                     -- blokada wysyłki
+  zd_dok_id int null, zd_nr text null,             -- ZD do Ivoclara w Subiekcie (P6)
   unique (program_id, period)
 )
 rol_batch_invoices (batch_id fk, fs_dok_id int, fs_nr text, fs_date date,
@@ -200,13 +222,12 @@ rol_batch_lines (batch_id fk, fs_dok_id int, subiekt_tw_id int, symbol text,
                  qty_fs numeric, qty_kfs numeric, qty_override numeric null,
                  excluded bool, note text)
 
--- wysyłka (jedna wiadomość może nieść kilka paczek)
-rol_sends (id uuid pk, sent_by uuid, sent_at timestamptz,
+-- wysyłka (jedna wiadomość = jedna paczka; uzupełnienie to kolejny wiersz tej samej paczki)
+rol_sends (id uuid pk, batch_id fk, sent_by uuid, sent_at timestamptz,
            gmail_message_id text, gmail_thread_id text, rfc_message_id text,
            to_emails text[], cc_emails text[], subject text, body text,
            attachments jsonb,                       -- nazwa, rozmiar, sha256
-           kind text check in ('zgloszenie','uzupelnienie','reczne'))
-rol_send_batches (send_id fk, batch_id fk)
+           kind text check in ('zgloszenie','uzupelnienie','reczne','automat'))
 ```
 
 Pliki (XLSX, PDF FS) generujemy w locie przy podglądzie i wysyłce, nie trzymamy ich w bazie; w `rol_sends.attachments` zostaje suma kontrolna, żeby było wiadomo, co dokładnie wyszło.
@@ -217,6 +238,8 @@ Mode: **Operate**. Ekran z istniejących warstw „Anatomii ekranu”; nowe są 
 
 **Miejsce:** `/zakupy/asystent?sekcja=rol`, nowa pozycja w railu Asystenta „Zgłoszenia ROL” z licznikiem paczek do ruchu (`wykryte` + `przejrzane` w bieżącym okresie). Licznik wlicza się do odznaki „Asystent” w menu. Bez nowej pozycji menu (DESIGN.md: „Nowa funkcja trafia do istniejącej strony…”).
 
+**Brief (impeccable shape, zatwierdzony 2026-10-29).** Praca: osoba z zakupów, często w zastępstwie, raz w miesiącu (dni 1–5) przy biurku, wysyła Ivoclarowi dokładnie to, co każdy klient ROL kupił, bez pomylenia klientów. Sukces: osobny mail na klienta z jego arkuszem i wyłącznie jego FS, do 3. dnia roboczego, przegląd < 10 min. Dowód dla przeglądającego: lista FS, które skan znalazł, i liczba FS, które sprawdził. Kierunek: bez nowego świata wizualnego — wzór „Pulpit” + komponenty Asystenta; punkt skupienia to rozwinięcie wiersza klienta (tożsamość, FS, pozycje).
+
 ### Desktop (≥ 1024 px)
 
 ```
@@ -226,58 +249,59 @@ Mode: **Operate**. Ekran z istniejących warstw „Anatomii ekranu”; nowe są 
 │ Zgłoszenia ROL     (2) │ ┌ Status Panel ─────────────────────────────────────────┐  │
 │ Raporty                │ │ 2 zgłoszenia czekają na przegląd                      │  │
 │                        │ │ Skan FS 1.10 o 02:14 · sprawdzono 412 FS · Subiekt LIVE│  │
-│                        │ │                                   [Przygotuj mail (2)] │  │
+│                        │ │                         [Przejrzyj ROL Przykładowa]   │  │
 │                        │ └───────────────────────────────────────────────────────┘  │
 │                        │                                                            │
 │                        │ ┌ Card ─────────────────────────────────────────────────┐  │
-│                        │ │ Klient          FS   Pozycje Ivoclar  Wartość    Stan  │  │
+│                        │ │ Klient            FS   Pozycje Ivoclar        Stan     │  │
 │                        │ │ ─────────────────────────────────────────────────────  │  │
-│                        │ │ ▸ ROL Przykładowa  3    11 (24 szt)    4 812 zł [Wykryte]│
-│                        │ │ ▾ ROL Wzorcowa     4     9 (17 szt)    3 105 zł[Przejrzane]
+│                        │ │ ▸ ROL Przykładowa  3   11 pozycji · 24 szt [Do przeglądu]│
+│                        │ │ ▾ ROL Wzorcowa     4    9 pozycji · 17 szt [Przejrzane]│  │
+│                        │ │   ROL Wzorcowa September -25% · ul. Próbna 2 … · NIP … │  │
 │                        │ │   ┌ well ────────────────────────────────────────────┐ │  │
 │                        │ │   │ FS 1201 · 04.09 · 3 poz. Ivoclar  [PDF] [Wyłącz]   │ │  │
 │                        │ │   │   764338 IPS e.max Zirconia A2 98.5-18   2 szt   │ │  │
 │                        │ │   │   …                                             │ │  │
 │                        │ │   │   2 pozycje innych producentów pominięte  [Pokaż]│ │  │
 │                        │ │   │ FS 1388 · 18.09 · KFS 211 odjęta (−1 szt)        │ │  │
-│                        │ │   │ ⚠ 1 pozycja bez nr kat. Ivoclar   [Uzupełnij]    │ │  │
-│                        │ │   │                         [Edytuj listę]           │ │  │
+│                        │ │   │ (ikona) 1 pozycja bez nr kat. Ivoclar [Uzupełnij] │ │  │
 │                        │ │   └──────────────────────────────────────────────────┘ │  │
+│                        │ │          [Edytuj listę]  [Przygotuj mail]              │  │
 │                        │ └───────────────────────────────────────────────────────┘  │
 │                        │ Historia: sierpień — wysłane 2.09 (J. Kowalska) · lipiec — … │
 └────────────────────────┴────────────────────────────────────────────────────────────┘
 ```
 
-- Status Panel: zdanie stanu z odmianą liczebnika, jedna główna akcja. Gdy nic nie jest `przejrzane`, główną akcją jest „Przejrzyj 2 zgłoszenia” (rozwija pierwszy wiersz), a „Przygotuj mail” jest wyłączony z powodem tekstem obok.
-- Tabela: jeden wiersz na klienta (`DataTable`), szczegóły rozwijane pod wierszem (wzór „Pulpit”), bez drugiej tabeli z tymi samymi danymi. W rozwinięciu FS jako bloki `well` (bez karty w karcie).
-- Stany jako `Badge`: `wykryte` → `info`, `przejrzane` → `default` z ikoną, `wyslane` → `success`, `brak_zakupow` → `default` „Brak zakupów”, `do_korekty` → `danger`.
-- `[⋯]` (`OverflowMenu`): „Sprawdź ponownie”, „Pobierz pliki (ZIP)”, „Oznacz jako wysłane ręcznie”, „Ustawienia ROL”.
+- **Status Panel:** zdanie stanu z odmianą liczebnika i wiersz skanu („Skan FS 1.10 o 02:14 · sprawdzono 412 FS”). Jedna główna akcja prowadzi do następnego klienta, który wymaga ruchu: „Przejrzyj ROL Przykładowa” (rozwija jego wiersz) albo „Przygotuj mail · ROL Wzorcowa” (otwiera okno). Gdy nic nie czeka — bez akcji.
+- **Tabela:** jeden wiersz na klienta (`DataTable`): klient, FS, „11 pozycji · 24 szt”, stan, a w linii Meta ostatnia zmiana („+1 FS od przeglądu”). **Bez kolumny wartości** (decyzja 2026-10-29): Ivoclar zamawia po nr kat. i ilości, a nasza cena sprzedaży sugerowałaby wartość zamówienia. Szczegóły rozwijane pod wierszem (wzór „Pulpit”), bez drugiej tabeli z tymi samymi danymi.
+- **Rozwinięcie:** na górze blok klienta dokładnie tak, jak zobaczy go Ivoclar (etykieta, adres, NIP) — przeglądający sprawdza tożsamość, zanim spojrzy na pozycje. Pod nim FS jako bloki `well` (bez karty w karcie). Akcje zależą od stanu: `wykryte` → „Zatwierdź listę” (outline); `przejrzane` → „Przygotuj mail” (outline) + „Edytuj listę” (ghost). Blokada (brak nr kat., FS „do decyzji”, brak PDF FS) ma powód tekstem obok przycisku; ostrzeżenia ikoną z `StrokeIcons`, nie znakiem ⚠.
+- **Stany jako `Badge`:** `wykryte` → `warning` „Do przeglądu” (DESIGN.md: bursztyn = do przejrzenia), `przejrzane` → `info`, `wyslane` → `success`, `brak_zakupow` → `default` „Brak zakupów”, `do_korekty` → `danger`.
+- `[⋯]` (`OverflowMenu`): „Sprawdź ponownie”, „Pobierz pliki (ZIP)” — osobno na klienta, „Oznacz jako wysłane ręcznie”, „Ustawienia ROL”.
+- **Licznik** w railu i w odznace „Asystent” = liczba wierszy w stanie `wykryte` + `przejrzane`.
 - Ładowanie skanu: wiersz stanu z `BrandLoader size="sm"` „Sprawdzam FS za wrzesień w Subiekcie — zwykle ok. 30 s”.
 
-### Okno „Przygotuj mail” (`ModalShell`, szerokie)
+### Okno „Przygotuj mail” (`ModalShell`, szerokie, jeden klient)
 
 ```
-┌ Mail do Ivoclara · wrzesień 2026 ───────────────────────────────── [×] ┐
+┌ Zgłoszenie ROL Wzorcowa · wrzesień 2026 ────────────────────────── [×] ┐
 │ Od:   jan.kowalski@… (Twój Gmail)                                      │
-│ Do:   [skrzynka zamówień Ivoclar] [obsługa zamówień] [+]               │
+│ Do:   [skrzynka zamówień Ivoclar] [opiekunka klienta] [+]              │
 │ DW:   [+]                                                              │
 │ Temat:[New Order                                                    ]  │
 │ ┌ Treść ───────────────────────────────────────────────────────────┐   │
 │ │ Dear Sirs,                                                        │   │
 │ │ Please find attached our new order.                               │   │
-│ │ ROL Przykładowa September -25%  …                                 │   │
+│ │ ROL Wzorcowa September -25%                                       │   │
+│ │ ul. Próbna 2, 00-002 Miasto · NIP: 000-000-00-00                  │   │
 │ └───────────────────────────────────────────────────────────────────┘   │
-│ Klienci w tym mailu:  [✓] ROL Przykładowa   [✓] ROL Wzorcowa            │
-│ Załączniki (7 · 1,4 MB)                                                │
-│   ROL Przykładowa -25% September 2026.xlsx   18 KB   [Podgląd]         │
-│   1201 Przykladowa.pdf · 1244 Przykladowa.pdf · …                      │
+│ Załączniki (5 · 0,9 MB)                                                │
 │   ROL Wzorcowa -25% September 2026.xlsx      15 KB   [Podgląd]         │
-│   …                                                                    │
-│                                   [Anuluj]  [Wyślij z Gmaila (2 klientów)]│
+│   1201 Wzorcowa.pdf   1244 Wzorcowa.pdf   1388 Wzorcowa.pdf   …        │
+│                              [Anuluj]  [Wyślij zgłoszenie ROL Wzorcowa] │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-Po „Wyślij” — `ConfirmDialog` („Wyślesz zamówienie ROL dla 2 klientów do Ivoclara, 7 załączników”), potem w oknie oś kroków (`ActionTimeline` / `BrandStepMark`): „Pobieram PDF FS z Subiektu” → „Składam arkusze” → „Wysyłam z Gmaila” → „Zapisuję w historii”. Wynik: `NoticeToast` „Wysłano zgłoszenie ROL za wrzesień · odpowiedź Ivoclara trafi do Poczty dostawców”.
+Okno zawsze dotyczy jednej paczki: nazwa klienta w tytule, w treści, w nazwach plików i na przycisku. Adresaci domyślnie z programu klienta. Bez Gmaila w miejscu przycisku jest „Połącz Gmail”. Po „Wyślij” — `ConfirmDialog` („Wyślesz zamówienie ROL Wzorcowa do Ivoclara, 5 załączników”), potem w oknie oś kroków (`ActionTimeline` / `BrandStepMark`): „Pobieram PDF FS z Subiektu” → „Składam arkusz” → „Wysyłam z Gmaila” → „Zapisuję w historii”. Wynik: `NoticeToast` „Wysłano zgłoszenie ROL Wzorcowa za wrzesień · odpowiedź Ivoclara trafi do Poczty dostawców”. Timeout wysyłki → stan nieznany i sprawdzenie w Wysłanych, zanim przycisk znów zadziała.
 
 ### Telefon (375 px)
 
@@ -298,7 +322,8 @@ cron catalog-zd-sync (noc) ──► krok rol-month-scan
 UI Asystent → Zgłoszenia ROL
    ├─ przegląd → „Zatwierdź listę” → przejrzane
    └─ „Przygotuj mail” → podgląd i edycja → ConfirmDialog
-        ├─ PDF FS z Subiekta (P1) + XLSX (exceljs) per klient
+        ├─ ZD do Ivoclara w Subiekcie (opis „ROL <klient> <miesiąc>”) + weryfikacja
+        ├─ PDF FS z Subiekta + XLSX (exceljs) dla tego klienta
         ├─ sendGmailRaw (Gmail osoby) → rol_sends (+ message-id, wątek, sumy plików)
         └─ paczki → wyslane; wątek widoczny w Poczcie dostawców
 Poczta dostawców: odpowiedź „AW: New Order / 38…” z OC
@@ -311,26 +336,30 @@ Każdy plasterek kończy się zielonym `tsc`, lintem i pełnym zestawem testów 
 
 | # | Plasterek | Kryterium akceptacji |
 |---|---|---|
-| 0 | **Rozpoznanie (bez kodu produkcyjnego)**: odpowiedzi na P1–P5 w LAN | Zapisane w tym pliku: czy jest `GET /documents/fs/{id}/pdf` na :5080/:5082; kolumny wysłanego arkusza ROL; `kh_Id` obu klientów; liczba FS w 09.2026 (do czasu skanu); czy zęby Ivoclar wchodzą |
+| 0 | **Rozpoznanie (bez kodu produkcyjnego)** w LAN | Zapisane w tym pliku: dokładna ścieżka PDF FS w API (P1: endpoint jest) na :5080 i :5082; `kh_Id` obu klientów; czy `tw_Symbol` = numer Ivoclar także dla zębów (P2); czy `uwagi` ZD widać w Subiekcie jako opis (P6); liczba FS w 09.2026 |
 | 1 | **Model i konfiguracja**: migracja `NNN_rol_*` (następny wolny numer w chwili wdrożenia; dziś ostatnia to 203), okno „Ustawienia ROL” (programy, adresaci, szablon) | Migracja przechodzi na czystym PostgreSQL i na kopii dev; `ontime_app` ma granty; w UI da się dodać program i adresatów; akcje odrzucają rolę `sales` (test) |
 | 2 | **Skaner** (czysta funkcja + odczyt Subiekta), przycisk „Sprawdź miesiąc”, wynik tylko do odczytu | Testy na zmyślonych fixture'ach: stronicowanie po 200 przy `totalPages` > 1, FS po płatniku i po odbiorcy, FS dwóch programów → „do decyzji”, linie spoza Ivoclar pominięte i policzone, KFS odjęta, częściowy błąd strony → brak zapisu. Na LIVE za wrzesień 2026 lista FS zgadza się z FS z maila z 1 i 15.10 (ręczne porównanie numerów) |
 | 3 | **Przegląd i stany**: tabela, rozwinięcie, wyłączanie FS/pozycji, zmiana ilości, `wykryte → przejrzane`, ponowny skan z różnicą | Testy przejść stanów (w tym cofnięcie przy nowej FS); w podglądzie: wyłączenie pozycji zmienia liczniki w wierszu i w Status Panelu; brak nr kat. blokuje z widocznym powodem |
-| 4 | **Pliki**: XLSX z pozycjami (nr kat. Ivoclar, nazwa, ilość) + PDF FS, „Pobierz pliki (ZIP)” | Arkusz otwiera się w Excelu i ma kolumny jak wzór z P2; nazwy plików wg wzoru; plik klienta A nigdy nie zawiera pozycji klienta B (test na dwóch paczkach z tym samym towarem) |
-| 5 | **Mail i wysyłka**: okno z edycją, ConfirmDialog, oś kroków, `rol_sends`, blokada podwójnej wysyłki, sprawdzenie po timeoucie | Test MIME (adresaci, temat, załączniki, nazwy); wysyłka testowa na własny adres z kopii dev; druga równoległa wysyłka odrzucona; po timeoucie bez drugiego maila |
+| 4 | **Pliki**: XLSX jak wzór (P2) + PDF FS, „Pobierz pliki (ZIP)” | Arkusz „Arkusz1” z kolumnami `Lp, Symbol, Nazwa, Ilość, Jm`, bez cen i bez nagłówka klienta, otwiera się w Excelu; nazwy plików wg wzoru; plik klienta A nigdy nie zawiera pozycji klienta B (test na dwóch paczkach z tym samym towarem) |
+| 5 | **ZD i mail**: okno z edycją (jeden klient), podgląd ZD, ConfirmDialog, oś kroków (ZD → pliki → Gmail → historia), `rol_sends`, blokada podwójnej wysyłki, sprawdzenie po timeoucie | Test MIME (adresaci, temat, załączniki, nazwy); okno nie pokazuje plików innego klienta (test); ZD na hoście testowym :5082 z opisem „ROL … wrzesień”; ponowienie po błędzie maila nie tworzy drugiej ZD; wysyłka testowa na własny adres; druga równoległa wysyłka odrzucona |
+| 6a | **Tryb automatyczny**: przełącznik per program, `auto_sender_user_id`, wysyłka po skanie bez blokad | Testy: blokada → paczka czeka na przegląd; brak połączenia Gmail → przegląd z powodem; automat nie wysyła drugi raz; włączenie wymaga potwierdzenia |
 | 6 | **Harmonogram i licznik**: krok w `catalog-zd-sync`, nocny ponowny skan do wysłania, licznik w railu i menu | Testy „czy należy skanować” (1. dzień roboczy, nadrabianie po przerwie, brak skanu po wysłaniu); liczba w menu = liczba wierszy do ruchu w sekcji |
 | 7 | **Kontrola OC rabatu** (po etapie C kontroli OC): dopasowanie odpowiedzi Ivoclara do `rol_sends.gmail_thread_id`, porównanie pozycji i rabatu | Na zmyślonym OC: zgodne → `potwierdzone`; brak −25% → `do_korekty` z pozycjami; ręczne „Potwierdź” działa bez parsera |
 
-Kolejność: 0 → 1 → 2 → 3 → 4 → 5 → 6, plasterek 7 osobno. Pierwszy realny użytek: po plasterku 4 („Pobierz pliki” zastępuje kroki 1–4 nawet bez wysyłki z OnTime).
+Kolejność: 0 → 1 → 2 → 3 → 4 → 5 → 6 → 6a, plasterek 7 osobno. Automat włączamy dopiero po co najmniej jednym miesiącu wysłanym ręcznie przez OnTime. Pierwszy realny użytek: po plasterku 4 („Pobierz pliki” zastępuje kroki 1–4 nawet bez wysyłki z OnTime).
 
-## 10. Otwarte pytania (do decyzji przed kodem)
+## 10. Decyzje (2026-10-29)
 
-- **P1 — PDF FS.** API Subiekta ma wydruk tylko dla ZD. Czy dopisujemy `GET /documents/fs/{id}/pdf` po stronie API (zalecane: to ten sam wydruk co z Subiekta), czy generujemy własne zestawienie FS w PDF (nie jest fakturą — Ivoclar prosi o faktury)? Sprawdzić też host `:5082`.
-- **P2 — format arkusza.** Nie mam treści wysłanych plików `ROL … .xlsx` (Gmail connector nie pobiera załączników). Potrzebny jeden wysłany arkusz: jakie kolumny (nr kat. Ivoclar, nazwa, ilość, cena?) i czy to formularz Ivoclara, czy nasz układ. Skąd brać numer katalogowy Ivoclar (symbol dostawcy w kartotece?).
-- **P3 — jeden mail czy doklejanie.** Czy ROL ma iść osobnym mailem (rekomendacja: tak, mniej pomyłek), czy nadal razem ze zwykłym zamówieniem Ivoclar? Jeśli razem — wystarczy „Pobierz pliki”, a wysyłka z OnTime jest opcjonalna.
-- **P4 — zakres produktów.** Czy do ROL liczą się wszystkie produkty Ivoclar (łącznie z zębami z szafki konsygnacyjnej), czy tylko technika? Jeden przypadek z marca miał zęby w osobnych formularzach.
-- **P5 — „przygotuj” znaczy wyślij czy szkic?** Plan zakłada wysyłkę z OnTime (zakres `gmail.send` już jest). Szkic w Gmailu wymaga nowej zgody `gmail.compose` i ponownego połączenia Gmaila przez każdą osobę.
-- **P6 — ZD w Subiekcie.** Czy dla zamówienia ROL tworzymy ZD do Ivoclara w Subiekcie (Kreator ma „Utwórz ZD”), czy ROL żyje tylko w mailu?
-- **P7 — data FS.** Miesiąc liczymy po dacie wystawienia czy po dacie sprzedaży (`dok_DataMag`/sprzedaży)? FS wystawiona 1.10 za wrzesień — do którego miesiąca?
-- **P8 — progi.** Czy jest minimalna wartość lub ilość, poniżej której nie zgłaszamy?
+| # | Pytanie | Decyzja |
+|---|---|---|
+| P1 | PDF FS | Endpoint PDF FS jest już w API Subiekta. Do dopisania w `src/lib/subiekt/api.ts` (wzór: wydruk ZD, `GET /documents/zd/{id}/pdf`); ścieżkę i hosty potwierdza plasterek 0. |
+| P2 | Format arkusza | Wzór z września: jeden arkusz „Arkusz1”, kolumny `Lp \| Symbol \| Nazwa \| Ilość \| Jm` (szer. ok. 9 / 7 / 38), Symbol = numer Ivoclar (6 cyfr), Jm „szt.”, bez cen, bez danych klienta w arkuszu. |
+| P3 | Jeden mail czy osobno | Osobny mail na klienta, nie doklejamy do zwykłego zamówienia. |
+| P4 | Zakres produktów | Cały Ivoclar, łącznie z zębami. |
+| P5 | Szkic czy wysyłka | Wysyłka z OnTime; na start poprawki i wysyłka dopiero po zatwierdzeniu, z przełącznikiem programu na pełny automat. |
+| P6 | ZD w Subiekcie | Tak: ZD do Ivoclara dla każdego klienta osobno, opis „ROL <klient> <miesiąc>” bez roku. |
+| P7 | Data FS | Po wybiciu nowego miesiąca zgłaszamy cały poprzedni (data wystawienia FS). |
+| P8 | Progi | Bez progów: zgłaszamy wszystko, tylko dla klientów ROL (dziś dwóch). |
+| UI | Kolumna wartości | Bez wartości: ilości i liczba pozycji (shape 2026-10-29). |
 
-Hipotezy do sprawdzenia na produkcji / w LAN (ta sesja nie miała dostępu): liczba FS w miesiącu (~400 wg numeracji), czas skanu, to, czy klienci mają po jednej kartotece.
+Hipotezy do sprawdzenia w LAN: liczba FS w miesiącu (~400 wg numeracji), czas skanu, to, czy klienci mają po jednej kartotece.

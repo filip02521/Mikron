@@ -31,6 +31,10 @@ import { OcCheckDetail } from "@/components/zakupy/oc-check/OcCheckDetail";
 import { ocCheckHref, OcCheckList } from "@/components/zakupy/oc-check/OcCheckList";
 import { OcCheckImportForm } from "@/components/zakupy/oc-check/OcCheckImportForm";
 import { SupplierMailWorkspace } from "@/components/zakupy/supplier-mail/SupplierMailWorkspace";
+import { RolWorkspace } from "@/components/zakupy/rol/RolWorkspace";
+import { loadRolBatches, loadRolPrograms, type RolBatchView, type RolProgram } from "@/lib/rol/data";
+import { recentRolPeriods } from "@/lib/rol/view";
+import { warsawNowParts } from "@/lib/time/warsaw";
 
 export const metadata: Metadata = pageMetadataFor("assistant");
 export const dynamic = "force-dynamic";
@@ -56,7 +60,7 @@ const OC_VIEW_COPY: Record<OcView, { label: string; hint: string; emptyTitle: st
   },
 };
 
-type Section = "poczta" | "oc" | "raporty";
+type Section = "poczta" | "oc" | "rol" | "raporty";
 
 const SECTION_COPY: Record<Section, { label: string; description: string }> = {
   poczta: {
@@ -68,6 +72,11 @@ const SECTION_COPY: Record<Section, { label: string; description: string }> = {
     label: "Kontrola OC",
     description: "Potwierdzenia zamówień porównane pozycja po pozycji z wysłanym ZD.",
   },
+  rol: {
+    label: "Zgłoszenia ROL",
+    description:
+      "Comiesięczne zamówienia ROL do Ivoclara: FS klientów ROL z poprzedniego miesiąca i pozycje Ivoclar do zgłoszenia z rabatem.",
+  },
   raporty: {
     label: "Raporty",
     description: "Raporty rutyn w chmurze: poranny przegląd skrzynki i kontrola potwierdzeń.",
@@ -75,13 +84,30 @@ const SECTION_COPY: Record<Section, { label: string; description: string }> = {
 };
 
 function parseSection(raw: string | undefined): Section {
-  return raw === "oc" || raw === "raporty" ? raw : "poczta";
+  return raw === "oc" || raw === "rol" || raw === "raporty" ? raw : "poczta";
+}
+
+async function loadRolSection(
+  period: string
+): Promise<{ programs: RolProgram[]; batches: RolBatchView[]; toReview: number; error: string | null }> {
+  if (!hasDatabaseConfig()) return { programs: [], batches: [], toReview: 0, error: null };
+  try {
+    const [programs, batches] = await Promise.all([loadRolPrograms(), loadRolBatches(period)]);
+    return { programs, batches, toReview: batches.filter((b) => b.status === "wykryte").length, error: null };
+  } catch {
+    return {
+      programs: [],
+      batches: [],
+      toReview: 0,
+      error: "Nie udało się wczytać zgłoszeń ROL. Sprawdź, czy migracja 204_rol_reports została uruchomiona.",
+    };
+  }
 }
 
 export default async function AsystentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ widok?: string; sekcja?: string; sprawa?: string }>;
+  searchParams: Promise<{ widok?: string; sekcja?: string; sprawa?: string; miesiac?: string }>;
 }) {
   const user = await requireOperations("read");
   // Raporty dotyczą skrzynki działu zakupów — jak Kreator ZD, tylko admin i zakupy.
@@ -114,6 +140,11 @@ export default async function AsystentPage({
     getPaymentForwardEmail(user.id).catch(() => ""),
   ]);
   const mailTodo = mail ? countNeedsAction(mail, user.id) : 0;
+
+  // Zgłoszenia ROL: domyślnie poprzedni miesiąc (ten, który zgłaszamy teraz).
+  const rolPeriods = recentRolPeriods(warsawNowParts().dateKey);
+  const rolPeriod = typeof params.miesiac === "string" && rolPeriods.includes(params.miesiac) ? params.miesiac : rolPeriods[0]!;
+  const rol = await loadRolSection(rolPeriod);
   const sections: { id: Section; href: string; count: number }[] = [
     { id: "poczta", href: "/zakupy/asystent", count: mailTodo },
     {
@@ -121,6 +152,7 @@ export default async function AsystentPage({
       href: "/zakupy/asystent?sekcja=oc",
       count: groups["do-ruchu"].length,
     },
+    { id: "rol", href: "/zakupy/asystent?sekcja=rol", count: rol.toReview },
     { id: "raporty", href: "/zakupy/asystent?sekcja=raporty", count: 0 },
   ];
 
@@ -254,6 +286,16 @@ export default async function AsystentPage({
               )}
             </div>
           </div>
+        ) : null}
+
+        {section === "rol" ? (
+          <RolWorkspace
+            period={rolPeriod}
+            periods={rolPeriods}
+            programs={rol.programs}
+            batches={rol.batches}
+            loadError={rol.error}
+          />
         ) : null}
 
         {section === "raporty" ? (
