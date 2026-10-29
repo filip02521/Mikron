@@ -88,12 +88,16 @@ function positiveIntOrThrow(raw: unknown, what: string): number {
   return n;
 }
 
-async function editRol(run: (userId: string) => Promise<void>, fallback: string): Promise<Result> {
+/** Rola i baza po requireOperations — wywoływane w ciele każdej akcji (reguła CodeQL widzi auth tylko tam). */
+function assertRolReady(user: { role: string }) {
+  assertRolEditor(user);
+  if (!hasDatabaseConfig()) throw new Error("Brak konfiguracji bazy danych.");
+}
+
+/** Wspólna obsługa błędów i odświeżenia strony; autoryzację robi sama akcja w `run`. */
+async function editRol(run: () => Promise<void>, fallback: string): Promise<Result> {
   try {
-    const user = await requireOperations("mutate");
-    assertRolEditor(user);
-    if (!hasDatabaseConfig()) return { ok: false, error: "Brak konfiguracji bazy danych." };
-    await run(user.id);
+    await run();
     revalidatePath(ASYSTENT_PATH);
     return { ok: true };
   } catch (e) {
@@ -108,6 +112,7 @@ export async function actionRolSetInvoice(input: {
   reason?: string;
 }): Promise<Result> {
   return editRol(async () => {
+    assertRolReady(await requireOperations("mutate"));
     if (!["exclude", "include", "assign"].includes(input.mode)) throw new Error("Nieznana zmiana FS.");
     await setRolInvoice({
       batchId: batchIdOrThrow(input.batchId),
@@ -126,6 +131,7 @@ export async function actionRolSetLine(input: {
   catalogNo?: string;
 }): Promise<Result> {
   return editRol(async () => {
+    assertRolReady(await requireOperations("mutate"));
     let qtyOverride: number | null | undefined;
     if (input.qty !== undefined) {
       const q = parseRolQtyOverride(String(input.qty));
@@ -149,16 +155,24 @@ export async function actionRolSetLine(input: {
 }
 
 export async function actionRolApprove(batchId: string): Promise<Result> {
-  return editRol((userId) => approveRolBatch(batchIdOrThrow(batchId), userId), "Nie udało się zatwierdzić listy.");
+  return editRol(async () => {
+    const user = await requireOperations("mutate");
+    assertRolReady(user);
+    await approveRolBatch(batchIdOrThrow(batchId), user.id);
+  }, "Nie udało się zatwierdzić listy.");
 }
 
 export async function actionRolReopen(batchId: string): Promise<Result> {
-  return editRol(() => reopenRolBatch(batchIdOrThrow(batchId)), "Nie udało się otworzyć listy do edycji.");
+  return editRol(async () => {
+    assertRolReady(await requireOperations("mutate"));
+    await reopenRolBatch(batchIdOrThrow(batchId));
+  }, "Nie udało się otworzyć listy do edycji.");
 }
 
 /** „Pobierz PDF-y ponownie”: zeruje nieudane próby i pobiera brakujące PDF-y FS w tle. */
 export async function actionRolFetchPdfs(): Promise<Result> {
   return editRol(async () => {
+    assertRolReady(await requireOperations("mutate"));
     await resetFailedRolPdfs();
     fetchPdfsInBackground();
   }, "Nie udało się zlecić pobrania PDF.");

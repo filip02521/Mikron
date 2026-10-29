@@ -62,7 +62,7 @@ const shiftKey = (key: string, days: number) =>
 export const rolZdApi: RolZdApi = {
   async findExisting({ khId, uwagi, dateKey }) {
     let page = 1;
-    let totalPages = 1;
+    let totalPages: number;
     do {
       const res = await searchSubiektOrdersZd({ dataOd: shiftKey(dateKey, -FIND_DAYS), dataDo: dateKey, page, pageSize: 200 });
       for (const d of res.data ?? []) {

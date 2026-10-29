@@ -261,7 +261,7 @@ async function listAllPages(
 ): Promise<SubiektDocument[]> {
   const out: SubiektDocument[] = [];
   let page = 1;
-  let totalPages = 1;
+  let totalPages: number;
   do {
     const res = await list({ ...params, page, pageSize: PAGE_SIZE });
     out.push(...(res.data ?? []));

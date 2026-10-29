@@ -18,7 +18,7 @@ export async function loadIvoclarTwIds(): Promise<Set<number>> {
   for (const scope of scopes) {
     const filter = scope.mode === "cecha" ? { cechaId: scope.cechaId ?? undefined } : { grupaId: scope.grupaId ?? undefined };
     let page = 1;
-    let totalPages = 1;
+    let totalPages: number;
     do {
       const res = await searchSubiektOrdersProducts({ ...filter, page, pageSize: PAGE_SIZE });
       for (const p of res.data ?? []) {
