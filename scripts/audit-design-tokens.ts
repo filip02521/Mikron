@@ -58,6 +58,11 @@ const RULES: Rule[] = [
     message: "pierścień fokusu — użyj ring-focus / outline-focus (w ciemnym motywie Petrol 600 ma za mały kontrast)",
   },
   {
+    id: "wypelnienie",
+    re: /(?<![\w-])(?:[a-z0-9-]+:)*(hover|active):bg-(indigo|violet|purple|fuchsia|pink|blue|cyan|teal|red|rose|emerald|green|lime|amber|orange|yellow|sky)-(700|800|900|950)(?![\w/-])/,
+    message: "hover/wciśnięcie wypełnienia — użyj bg-primary-hover, bg-danger-hover, bg-success-hover … (w ciemnym kroki 700+ są tekstem)",
+  },
+  {
     id: "px",
     re: /(?<![\w-])text-\[\d+(\.\d+)?px\]/,
     kreatorExempt: true,

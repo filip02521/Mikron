@@ -72,7 +72,7 @@ export function NoteFollowUpControl({
               type="button"
               disabled={saving}
               onClick={() => void commit(null)}
-              className="rounded px-1 py-0.5 text-[0.6875rem] text-slate-500 hover:bg-black/5 disabled:opacity-50"
+              className="rounded px-1 py-0.5 text-[0.6875rem] text-slate-500 hover:bg-slate-900/5 disabled:opacity-50"
             >
               Usuń
             </button>
@@ -81,7 +81,7 @@ export function NoteFollowUpControl({
             type="button"
             disabled={saving}
             onClick={() => setEditing(false)}
-            className="rounded px-1 py-0.5 text-[0.6875rem] text-slate-500 hover:bg-black/5 disabled:opacity-50"
+            className="rounded px-1 py-0.5 text-[0.6875rem] text-slate-500 hover:bg-slate-900/5 disabled:opacity-50"
           >
             Anuluj
           </button>

@@ -160,7 +160,7 @@ export function MailPreview({
                   <button
                     type="button"
                     onClick={a.onMarkAsZd}
-                    className="inline-flex min-h-8 shrink-0 cursor-pointer items-center rounded-md bg-slate-900 px-2 text-xs font-medium text-white transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:bg-slate-800 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                    className="inline-flex min-h-8 shrink-0 cursor-pointer items-center rounded-md bg-inverse px-2 text-xs font-medium text-on-inverse transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:bg-inverse/90 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                   >
                     {a.markAsZdLabel ?? "To jest dokument ZD"}
                   </button>

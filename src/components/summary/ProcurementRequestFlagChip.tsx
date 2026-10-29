@@ -133,7 +133,7 @@ export function ProcurementRequestFlagChip({
           data-flag-note-toggle
           className={cn(
             "ml-0.5 inline-flex shrink-0 items-center gap-0.5 rounded px-0.5 py-0.5 text-[0.5625rem] font-semibold opacity-70",
-            "hover:bg-black/5 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            "hover:bg-slate-900/5 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
           )}
           aria-expanded={showFullNote}
           aria-label={

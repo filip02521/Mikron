@@ -189,8 +189,8 @@ function FloatingNoticePanel({
               className={cn(
                 "inline-flex h-9 w-full items-center justify-center gap-2 rounded-md px-3 text-xs font-semibold text-white shadow-sm transition",
                 urgent
-                  ? "bg-amber-600 hover:bg-amber-700"
-                  : "bg-indigo-600 hover:bg-indigo-700",
+                  ? "bg-amber-600 hover:bg-warning-hover"
+                  : "bg-indigo-600 hover:bg-primary-hover",
                 controlFocusClass
               )}
             >

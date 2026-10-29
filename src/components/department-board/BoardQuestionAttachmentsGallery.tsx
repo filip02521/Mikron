@@ -168,7 +168,7 @@ export function BoardQuestionAttachmentsGallery({
                   unoptimized
                   className="object-cover"
                 />
-                <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-black/45 px-1.5 py-1 text-[0.625rem] font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
+                <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-scrim/45 px-1.5 py-1 text-[0.625rem] font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
                   Powiększ
                 </span>
               </button>

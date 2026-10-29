@@ -101,7 +101,7 @@ export function ZdEstimateNotice({
             onClick={() => setDismissed(true)}
             aria-label={`Zamknij komunikat: ${heading}`}
             title="Zamknij"
-            className="shrink-0 rounded p-1 opacity-60 transition hover:bg-black/5 hover:opacity-100"
+            className="shrink-0 rounded p-1 opacity-60 transition hover:bg-slate-900/5 hover:opacity-100"
           >
             <IconX size={14} />
           </button>

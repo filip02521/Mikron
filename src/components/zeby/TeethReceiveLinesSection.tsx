@@ -391,7 +391,7 @@ export function TeethReceiveLinesSection({
         <button
           type="button"
           onClick={onToggle}
-          className="flex min-w-0 flex-1 items-center gap-2 rounded-md text-left hover:bg-black/[0.03]"
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-md text-left hover:bg-slate-900/[0.03]"
           aria-expanded={isOpen}
         >
           <Chevron open={isOpen} />

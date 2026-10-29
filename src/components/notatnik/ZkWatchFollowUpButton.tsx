@@ -231,7 +231,7 @@ export function ZkWatchFollowUpButton({
                         setFollowUpDraft("");
                         void saveFollowUp("");
                       }}
-                      className="rounded px-2 py-1 text-xs text-slate-500 hover:bg-black/5 disabled:opacity-50"
+                      className="rounded px-2 py-1 text-xs text-slate-500 hover:bg-slate-900/5 disabled:opacity-50"
                     >
                       Wyczyść
                     </button>

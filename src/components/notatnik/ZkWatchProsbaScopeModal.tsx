@@ -357,7 +357,7 @@ export function ZkWatchProsbaScopeModal({
               onClick={() => void save()}
               className={cn(
                 orderCount > 0 && !saving &&
-                  "bg-indigo-600 hover:bg-indigo-700"
+                  "bg-indigo-600 hover:bg-primary-hover"
               )}
             >
               {saving

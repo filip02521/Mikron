@@ -67,7 +67,7 @@ function NoteAction({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="hit-target rounded px-1 py-0.5 text-[0.6875rem] font-medium text-slate-600 transition hover:bg-black/5 hover:text-slate-900 disabled:opacity-50"
+      className="hit-target rounded px-1 py-0.5 text-[0.6875rem] font-medium text-slate-600 transition hover:bg-slate-900/5 hover:text-slate-900 disabled:opacity-50"
     >
       {children}
     </button>

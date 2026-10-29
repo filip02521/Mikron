@@ -95,9 +95,9 @@ function ZkNumberCopyButton({ nr }: { nr: string }) {
         <span
           role="status"
           className={cn(
-            "pointer-events-none absolute bottom-full left-1/2 z-20 mb-1 -translate-x-1/2 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[0.6875rem] font-medium text-white shadow-sm",
+            "pointer-events-none absolute bottom-full left-1/2 z-20 mb-1 -translate-x-1/2 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[0.6875rem] font-medium shadow-sm",
             "transition-[opacity,translate] duration-150 ease-out starting:translate-y-0.5 starting:opacity-0",
-            state === "copied" ? "bg-slate-900" : "bg-red-700"
+            state === "copied" ? "bg-inverse text-on-inverse" : "bg-red-600 text-white"
           )}
         >
           {state === "copied" ? "Skopiowano" : "Nie udało się skopiować"}

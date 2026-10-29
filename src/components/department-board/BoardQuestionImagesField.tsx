@@ -140,7 +140,7 @@ export function BoardImageDraftThumbs({
           />
           <button
             type="button"
-            className="absolute right-0.5 top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-scrim/70 text-white hover:bg-slate-900 disabled:opacity-50"
+            className="absolute right-0.5 top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-scrim/70 text-white hover:bg-scrim disabled:opacity-50"
             onClick={() => onRemove(img.key)}
             disabled={disabled}
             aria-label={`Usuń zdjęcie ${index + 1}`}

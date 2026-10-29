@@ -457,10 +457,10 @@ export function IconColorLegendSample({ className, size = 14 }: StrokeIconProps)
       className={cn("shrink-0", className)}
       aria-hidden
     >
-      <rect x="1" y="1" width="5" height="5" rx="1" fill="#eff6ff" stroke="#94a3b8" />
-      <rect x="8" y="1" width="5" height="5" rx="1" fill="#fffde7" stroke="#94a3b8" />
-      <rect x="1" y="8" width="5" height="5" rx="1" fill="#ffebee" stroke="#94a3b8" />
-      <rect x="8" y="8" width="5" height="5" rx="1" fill="#e8f5e9" stroke="#94a3b8" />
+      <rect x="1" y="1" width="5" height="5" rx="1" fill="var(--summary-today)" stroke="var(--color-slate-400)" />
+      <rect x="8" y="1" width="5" height="5" rx="1" fill="var(--summary-tomorrow)" stroke="var(--color-slate-400)" />
+      <rect x="1" y="8" width="5" height="5" rx="1" fill="var(--summary-expired)" stroke="var(--color-slate-400)" />
+      <rect x="8" y="8" width="5" height="5" rx="1" fill="var(--summary-for-someone)" stroke="var(--color-slate-400)" />
     </svg>
   );
 }

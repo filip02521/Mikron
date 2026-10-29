@@ -406,7 +406,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
                   className={cn(
                     "inline-flex size-11 items-center justify-center rounded-md border transition sm:size-8",
                     canSave
-                      ? "border-violet-200 bg-violet-600 text-white hover:bg-violet-700 hover:shadow-sm "
+                      ? "border-violet-200 bg-violet-600 text-white hover:bg-primary-hover hover:shadow-sm "
                       : "border-slate-200 bg-slate-50 text-slate-300"
                   )}
                 >
@@ -490,7 +490,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
               className={cn(
                 "ml-0.5 inline-flex size-11 items-center justify-center rounded-md border transition sm:size-8",
                 canSave
-                  ? "border-violet-200 bg-violet-600 text-white hover:bg-violet-700 hover:shadow-sm "
+                  ? "border-violet-200 bg-violet-600 text-white hover:bg-primary-hover hover:shadow-sm "
                   : "border-slate-200 bg-slate-50 text-slate-300"
               )}
             >

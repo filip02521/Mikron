@@ -264,7 +264,7 @@ function KlapkaWizard({
             onClick={goNext}
             className={cn(
               "rounded-md bg-violet-600 px-4 py-1.5 text-xs font-semibold text-white transition-colors",
-              "hover:bg-violet-700",
+              "hover:bg-primary-hover",
               disabled && "cursor-not-allowed opacity-50",
               !isCurrentComplete && "ring-2 ring-amber-300",
             )}

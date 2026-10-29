@@ -35,6 +35,10 @@ describe("audit-design-tokens", () => {
     expect(ids("src/components/A.tsx", `"focus-visible:ring-2 focus-visible:ring-indigo-600"`)).toEqual(["fokus"]);
     expect(ids("src/components/A.tsx", `"focus-visible:ring-focus focus:ring-indigo-500/20 ring-indigo-600"`)).toEqual([]);
   });
+  it("hover wypełnienia przez tokeny ról", () => {
+    expect(ids("src/components/A.tsx", `"bg-indigo-600 text-white hover:bg-indigo-700 active:bg-indigo-800"`)).toEqual(["wypelnienie"]);
+    expect(ids("src/components/A.tsx", `"bg-primary hover:bg-primary-hover hover:bg-slate-50 hover:bg-indigo-50/50"`)).toEqual([]);
+  });
   it("wyjątek tylko z adnotacją design-ok do dwóch linii wyżej; komentarze pomija", () => {
     expect(ids("src/components/A.tsx", `{/* design-ok: kod */}\n<span className="uppercase">to</span>`)).toEqual([]);
     expect(ids("src/components/A.tsx", `// design-ok: x\n\n\nconst c = "uppercase";`)).toEqual(["wersaliki"]);

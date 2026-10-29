@@ -11,7 +11,7 @@ const variants: Record<ButtonVariant, string> = {
   outline:
     "border border-indigo-200/90 bg-[var(--primary-muted)]/60 text-indigo-800 hover:bg-[var(--primary-muted)]",
   ghost: "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
-  danger: "bg-red-600 text-white hover:bg-red-700",
+  danger: "bg-red-600 text-white hover:bg-danger-hover",
 };
 
 const sizes = {

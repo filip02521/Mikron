@@ -35,6 +35,11 @@
     animation: none;
   }
 }
+/* W ciemnym multiply na ciemnym wierszu nic nie barwi — rozjaśniamy zamiast przyciemniać. */
+html[data-theme="dark"] [data-notepad-flash]::after {
+  background: var(--color-indigo-200);
+  mix-blend-mode: screen;
+}
 
 /* Menu boczne: pełne 16rem albo wąski pasek z ikonami (html[data-sidebar="collapsed"]). */
 :root {
@@ -92,6 +97,19 @@ html[data-sidebar="collapsed"] .sb-link .sb-link-icon {
   --scrim: #151920;
   --inverse: #151920;
   --on-inverse: #ffffff;
+  /* Hover i wciśnięcie wypełnień pod białym tekstem (w ciemnym kroki 700+ są tekstem). */
+  --success-hover: oklch(50.8% 0.118 165.612);
+  --success-pressed: oklch(43.2% 0.095 166.913);
+  --warning-hover: oklch(55.5% 0.163 48.998);
+  --danger-hover: oklch(50.5% 0.213 27.518);
+  --fill-neutral: #4a515c;
+  --fill-neutral-hover: #363c46;
+  /* Tła wierszy harmonogramu = SUMMARY_COLORS (src/types/database.ts), czytane przez summaryColorCss. */
+  --summary-expired: #fff1f2;
+  --summary-today: #eff6ff;
+  --summary-tomorrow: #fffde7;
+  --summary-this-week: #e3f2fd;
+  --summary-for-someone: #e8f5e9;
   --muted: #626a76;
   --muted-foreground: #4a515c;
   --radius: 0.375rem;
@@ -308,6 +326,12 @@ html[data-sidebar="collapsed"] .sb-link .sb-link-icon {
   --color-scrim: var(--scrim);
   --color-inverse: var(--inverse);
   --color-on-inverse: var(--on-inverse);
+  --color-success-hover: var(--success-hover);
+  --color-success-pressed: var(--success-pressed);
+  --color-warning-hover: var(--warning-hover);
+  --color-danger-hover: var(--danger-hover);
+  --color-fill-neutral: var(--fill-neutral);
+  --color-fill-neutral-hover: var(--fill-neutral-hover);
 }
 
 /* ——— Motyw ciemny ———
@@ -332,6 +356,18 @@ html[data-sidebar="collapsed"] .sb-link .sb-link-icon {
     --scrim: #000000;
     --inverse: #e8ebef;
     --on-inverse: #151920;
+    --success-hover: #197352;
+    --success-pressed: #166a4b;
+    --warning-hover: #8e5a0b;
+    --danger-hover: #bb3239;
+    --fill-neutral: #666f7d;
+    --fill-neutral-hover: #5e6673;
+    /* Tła wierszy harmonogramu (SUMMARY_COLORS w style przez summaryColorCss); w jasnym zostaje hex. */
+    --summary-expired: var(--color-red-50);
+    --summary-today: var(--color-indigo-100);
+    --summary-tomorrow: var(--color-amber-50);
+    --summary-this-week: var(--color-indigo-50);
+    --summary-for-someone: var(--color-emerald-50);
     --brand-sky: var(--focus-ring);
     --brand-sky-muted: #122a2e;
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
@@ -422,6 +458,17 @@ html[data-sidebar="collapsed"] .sb-link .sb-link-icon {
   --scrim: #151920;
   --inverse: #151920;
   --on-inverse: #ffffff;
+  --success-hover: oklch(50.8% 0.118 165.612);
+  --success-pressed: oklch(43.2% 0.095 166.913);
+  --warning-hover: oklch(55.5% 0.163 48.998);
+  --danger-hover: oklch(50.5% 0.213 27.518);
+  --fill-neutral: #4a515c;
+  --fill-neutral-hover: #363c46;
+  --summary-expired: #fff1f2;
+  --summary-today: #eff6ff;
+  --summary-tomorrow: #fffde7;
+  --summary-this-week: #e3f2fd;
+  --summary-for-someone: #e8f5e9;
   --brand-sky: #0f7380;
   --brand-sky-muted: #edf7f8;
   --shadow-card: 0 1px 2px rgba(21, 25, 32, 0.06);
@@ -612,7 +659,7 @@ body[data-delegate-preview="true"]::after {
   padding: 0.25rem 0.5rem;
   font-size: 12px;
   font-weight: 500;
-  color: #92400e;
+  color: var(--color-amber-800);
 }
 
 body:has([data-admin-preview-dock]) .delegate-preview-badge {
@@ -836,7 +883,7 @@ select:disabled,
   --zd-num-color-dash: var(--color-slate-300);
   --zd-num-color-unit: var(--color-slate-500); /* slate-400 na bieli ~2.6:1 — poniżej AA dla 10px */
   --zd-num-color-decision: var(--color-indigo-900);
-  --zd-num-color-warn: #92400e;
+  --zd-num-color-warn: var(--color-amber-800);
   width: 100%;
   /* Bez sztywnego min-width — laptop + sidebar (~1000px treści) bez H-scrolla.
    * Wąskie ekrany: floor w @media ≤767 / ≤479. */
@@ -1467,7 +1514,7 @@ select:disabled,
 .data-table.zd-estimate-table .zd-est-dozd-input--override {
   border-color: #fbbf24;
   background: #fffbeb;
-  color: #92400e;
+  color: var(--color-amber-800);
   box-shadow: 0 0 0 1px rgb(251 191 36 / 0.25);
 }
 
@@ -1555,14 +1602,14 @@ select:disabled,
   text-overflow: ellipsis;
   white-space: nowrap;
   border-radius: 0.3rem;
-  background: rgb(254 243 199 / 0.75);
+  background: color-mix(in srgb, var(--color-amber-100) 75%, transparent);
   padding: 0.1rem 0.35rem;
   font-size: 0.5625rem;
   font-weight: 600;
   line-height: 1.25;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
-  color: #92400e;
+  color: var(--color-amber-800);
   text-align: center;
 }
 
@@ -1590,14 +1637,14 @@ select:disabled,
   overflow: hidden;
   border: 0;
   border-radius: 0.3rem;
-  background: rgb(254 243 199 / 0.85);
+  background: color-mix(in srgb, var(--color-amber-100) 85%, transparent);
   padding: 0.1rem 0.35rem;
   font-size: 0.5625rem;
   font-weight: 600;
   line-height: 1.25;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
-  color: #92400e;
+  color: var(--color-amber-800);
   text-align: center;
   text-decoration: none;
   cursor: pointer;
@@ -2030,7 +2077,7 @@ select:disabled,
 
 .data-table.zd-estimate-table .zd-est-status-badge--amber {
   background: #fffbeb;
-  color: #92400e;
+  color: var(--color-amber-800);
 }
 
 .data-table.zd-estimate-table .zd-est-status-badge--rose {
@@ -2650,7 +2697,7 @@ main:has([data-zd-estimate-viewport]) [data-zd-estimate-viewport] {
 }
 
 .zd-est-loading-status-icon {
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.65);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--card) 65%, transparent);
 }
 
 .zd-est-loading-step--active {

@@ -119,7 +119,7 @@ export const surfaceCardClass =
 
 /** Przycisk primary — pełny petrol, ciemniejszy przy hover/active. */
 export const buttonPrimaryClass =
-  "bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 active:bg-indigo-800";
+  "bg-indigo-600 text-white shadow-sm hover:bg-primary-hover active:bg-primary-pressed";
 
 /** Wspólna wysokość kontrolek w pasku akcji nagłówka (checkbox, CTA, pomoc). */
 export const pageToolbarSizingClass = "h-10 min-h-10 shrink-0 px-3 py-0 text-xs leading-none";
@@ -535,7 +535,7 @@ export const mojeLinePickupAckClass = cn(
 /** Zbiorcze potwierdzenie pod listą produktów. */
 export const mojeBulkPickupAckClass = cn(
   "inline-flex w-full min-h-10 items-center justify-center rounded-md border border-emerald-600 bg-emerald-600 px-4 text-center text-xs font-semibold leading-none text-white shadow-sm transition",
-  "hover:border-emerald-700 hover:bg-emerald-700 active:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50",
+  "hover:border-emerald-700 hover:bg-success-hover active:bg-success-pressed disabled:cursor-not-allowed disabled:opacity-50",
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:w-auto sm:min-w-[10.5rem]"
 );
 
@@ -940,7 +940,7 @@ export const panelMenuItemClass =
 
 /** Segmenty w grupie akcji panelu — h-full wypełnia obudowę (bez białego paska). */
 export const panelSegmentPrimaryClass =
-  "flex h-full min-h-0 shrink-0 items-center justify-center rounded-none rounded-l-md border-0 bg-indigo-600 px-2.5 text-xs font-semibold leading-none text-white shadow-none transition-colors duration-150 hover:bg-indigo-700 active:bg-indigo-800 sm:px-3";
+  "flex h-full min-h-0 shrink-0 items-center justify-center rounded-none rounded-l-md border-0 bg-indigo-600 px-2.5 text-xs font-semibold leading-none text-white shadow-none transition-colors duration-150 hover:bg-primary-hover active:bg-primary-pressed sm:px-3";
 
 export const panelSegmentControlClass =
   "flex h-full min-h-0 shrink-0 items-center justify-center rounded-none border-0 border-l border-slate-200/90 px-2 text-xs font-medium leading-none text-slate-700 shadow-none transition-colors duration-150 hover:bg-slate-50 sm:px-2.5";

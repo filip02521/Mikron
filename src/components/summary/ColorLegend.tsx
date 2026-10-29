@@ -1,5 +1,6 @@
 import { SUMMARY_COLORS } from "@/types/database";
 import { GuideIcon } from "@/components/ui/HelpPopover";
+import { summaryColorCss } from "@/lib/orders/colors";
 
 export const LEGEND_ITEMS = [
   { label: "Po terminie", color: SUMMARY_COLORS.expired },
@@ -16,7 +17,7 @@ export function ColorLegendContent() {
         <li key={item.label} className="flex items-center gap-2 text-sm">
           <span
             className="h-3.5 w-3.5 shrink-0 rounded-sm border border-slate-200/60"
-            style={{ backgroundColor: item.color }}
+            style={{ backgroundColor: summaryColorCss(item.color) }}
             aria-hidden
           />
           <span className="text-slate-700">{item.label}</span>
