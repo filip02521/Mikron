@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/auth";
+import { canAccessOperations } from "@/lib/auth-roles";
 import { buildRolBatchFiles, zipRolBatchFiles } from "@/lib/rol/files";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 
@@ -19,9 +20,10 @@ function download(name: string, contentType: string, content: Buffer) {
 /** Pliki zgłoszenia ROL jednego klienta: `?plik=arkusz` — sam arkusz, domyślnie ZIP z arkuszem i PDF-ami FS. */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ batchId: string }> }) {
   const user = await getSessionUser();
-  // Jak strona Asystenta: tylko admin i zakupy.
-  if (!user || (user.role !== "admin" && user.role !== "zakupy")) {
-    return NextResponse.json({ error: "Brak dostępu" }, { status: 401 });
+  if (!user) return NextResponse.json({ error: "Zaloguj się ponownie" }, { status: 401 });
+  // Jak strona Asystenta (requireOperations + rola): dostęp do operacji i tylko admin albo zakupy.
+  if (!canAccessOperations(user.role, user.assignedWorkspaces) || (user.role !== "admin" && user.role !== "zakupy")) {
+    return NextResponse.json({ error: "Brak dostępu" }, { status: 403 });
   }
   const batchId = (await params).batchId;
   if (!UUID_RE.test(batchId)) return NextResponse.json({ error: "Nieprawidłowe zgłoszenie" }, { status: 400 });
