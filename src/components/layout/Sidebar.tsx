@@ -62,6 +62,7 @@ import {
 import { isAdmin } from "@/lib/auth-roles";
 import { hrefWithAdminSalesPreview, shouldPreserveSalesPreviewInNav } from "@/lib/nav/sales-preview-href";
 import { ChangelogTriggerIconButton } from "@/components/changelog/ChangelogTriggerIconButton";
+import { ThemeSwitch } from "@/components/layout/ThemeSwitch";
 import { useMonthlySummaryNeedsAttention } from "@/hooks/useMonthlySummaryAttention";
 import { MONTHLY_SUMMARY_HREF } from "@/lib/monthly-summary-attention";
 
@@ -630,6 +631,7 @@ export function Sidebar({
           >
             <IconSettings size={16} />
           </Link>
+          {showLoginLink ? null : <ThemeSwitch variant="menu" />}
           {showLoginLink ? null : (
             <button
               type="button"
@@ -665,6 +667,7 @@ export function Sidebar({
           </Link>
         ) : (
           <>
+            <ThemeSwitch variant="icons" className="mb-2" />
             <div className="flex items-stretch gap-2">
               <ChangelogTriggerIconButton />
               <Link

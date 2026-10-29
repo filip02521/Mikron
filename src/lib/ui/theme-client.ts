@@ -41,3 +41,24 @@ export function persistTheme(preference: ThemePreference) {
     // tryb prywatny — wystarczy cookie
   }
 }
+
+/** Wybór motywu w tej karcie — jeden stan dla Ustawień, stopki menu i arkusza „Więcej”. */
+let currentPreference: ThemePreference | null = null;
+const preferenceListeners = new Set<() => void>();
+
+export function getThemePreference(): ThemePreference | null {
+  return currentPreference;
+}
+
+export function setThemePreference(preference: ThemePreference) {
+  if (currentPreference === preference) return;
+  currentPreference = preference;
+  preferenceListeners.forEach((listener) => listener());
+}
+
+export function subscribeThemePreference(listener: () => void) {
+  preferenceListeners.add(listener);
+  return () => {
+    preferenceListeners.delete(listener);
+  };
+}

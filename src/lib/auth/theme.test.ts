@@ -3,7 +3,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { THEME_COOKIE, THEME_SCRIPT, buildThemeCookie, normalizeTheme, resolveTheme } from "./theme";
-import { applyTheme, persistTheme } from "@/lib/ui/theme-client";
+import { applyTheme, getThemePreference, persistTheme, setThemePreference, subscribeThemePreference } from "@/lib/ui/theme-client";
 
 function mockSystemDark(dark: boolean) {
   vi.stubGlobal("matchMedia", (q: string) => ({ matches: dark && q.includes("dark"), addEventListener() {}, removeEventListener() {} }));
@@ -84,6 +84,16 @@ describe("applyTheme / persistTheme", () => {
     html().setAttribute("data-theme", "light");
     applyTheme("light");
     expect(html().classList.contains("theme-switching")).toBe(false);
+  });
+  it("wspólny stan powiadamia tylko przy zmianie", () => {
+    const seen: (string | null)[] = [];
+    const off = subscribeThemePreference(() => seen.push(getThemePreference()));
+    setThemePreference("dark");
+    setThemePreference("dark");
+    setThemePreference("system");
+    off();
+    setThemePreference("light");
+    expect(seen).toEqual(["dark", "system"]);
   });
   it("zapis trafia do cookie i localStorage pod tą samą nazwą", () => {
     persistTheme("system");

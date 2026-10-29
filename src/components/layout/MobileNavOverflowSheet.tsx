@@ -8,6 +8,7 @@ import { createPortal } from "react-dom";
 import { NavIcon, navIconTileActiveClassForTone, navIconTileClassForTone } from "@/components/icons/NavIcon";
 import { IconLogOut, IconMoreVertical } from "@/components/icons/StrokeIcons";
 import { signOutToLogin } from "@/lib/auth/sign-out-client";
+import { ThemeSwitch } from "@/components/layout/ThemeSwitch";
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { isNavItemActive, navItemDisplayTone, navItemHasDueReminders, type NavItem } from "@/lib/nav";
 import { hrefWithAdminSalesPreview } from "@/lib/nav/sales-preview-href";
@@ -245,6 +246,7 @@ export function MobileNavOverflowSheet({
                   </li>
                 ) : null}
               </ul>
+              <ThemeSwitch variant="sheet" className="mt-2" />
             </div>
           </div>,
           document.body
