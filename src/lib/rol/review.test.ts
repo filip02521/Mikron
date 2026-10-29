@@ -32,6 +32,8 @@ const inv = (p: Partial<RolInvoiceView> = {}): RolInvoiceView => ({
   kfsDokIds: [],
   excluded: false,
   excludedReason: "",
+  pdf: "czeka",
+  pdfError: "",
   ...p,
 });
 

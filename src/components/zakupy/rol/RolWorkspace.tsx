@@ -15,24 +15,10 @@ import { cn } from "@/lib/cn";
 import { polishPlural } from "@/lib/email/polish-plural";
 import type { RolBatchView, RolProgram } from "@/lib/rol/data";
 import { rolEditSummary } from "@/lib/rol/review";
-import { rolBatchSummary, rolPeriodLabel, ROL_STATUS_BADGE } from "@/lib/rol/view";
+import { rolBatchSummary, rolMonthEn, rolPeriodLabel, ROL_STATUS_BADGE } from "@/lib/rol/view";
 import { RolBatchDetail } from "./RolBatchDetail";
 import { RolSettingsDialog } from "./RolSettingsDialog";
 
-const ENGLISH_MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
 
 function scanTimeLabel(iso: string): string {
   return new Intl.DateTimeFormat("pl-PL", {
@@ -68,7 +54,7 @@ export function RolWorkspace({
   const ready = batches.filter((b) => b.status === "przejrzane");
   const nextToReview = programs.find((p) => toReview.some((b) => b.programId === p.id)) ?? null;
   const lastScan = batches.reduce<RolBatchView | null>((a, b) => (!a || b.scannedAt > a.scannedAt ? b : a), null);
-  const monthEn = ENGLISH_MONTHS[Number(period.slice(5, 7)) - 1];
+  const monthEn = rolMonthEn(period);
 
   const scan = () =>
     startScan(async () => {
@@ -218,7 +204,7 @@ export function RolWorkspace({
                     {expanded && batch ? (
                       <tr id={detailId}>
                         <td colSpan={4} className="bg-white">
-                          <RolBatchDetail program={program} batch={batch} monthEn={monthEn ?? ""} />
+                          <RolBatchDetail program={program} batch={batch} monthEn={monthEn} />
                         </td>
                       </tr>
                     ) : null}

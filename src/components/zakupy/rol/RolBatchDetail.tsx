@@ -1,17 +1,17 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { actionRolApprove, actionRolReopen, actionRolSetInvoice, actionRolSetLine } from "@/app/actions/rol";
+import { actionRolApprove, actionRolFetchPdfs, actionRolReopen, actionRolSetInvoice, actionRolSetLine } from "@/app/actions/rol";
 import { IconAlertCircle } from "@/components/icons/StrokeIcons";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonClass } from "@/components/ui/Button";
 import { FormNoticeMessage } from "@/components/ui/FormNoticeMessage";
 import { cn } from "@/lib/cn";
 import { polishPlural } from "@/lib/email/polish-plural";
 import { ROL_CONFLICT_REASON } from "@/lib/rol/constants";
 import type { RolBatchView, RolInvoiceView, RolLineView, RolProgram } from "@/lib/rol/data";
 import { rolBatchEditable } from "@/lib/rol/review";
-import { rolBatchBlockers, rolLineQty } from "@/lib/rol/view";
+import { rolActiveLines, rolBatchBlockers, rolLineQty } from "@/lib/rol/view";
 import { formError } from "@/lib/ui/notice-copy";
 
 /** Telefon: przyciski w wierszach mają pole dotyku 44 px (DESIGN.md). */
@@ -23,6 +23,16 @@ function shortDate(key: string | null): string {
   return key ? `${key.slice(8, 10)}.${key.slice(5, 7)}` : "—";
 }
 
+const PDF_LABEL: Record<RolInvoiceView["pdf"], string> = {
+  gotowy: "PDF gotowy",
+  pobieram: "PDF: pobieram z Subiekta…",
+  czeka: "PDF: w kolejce",
+  blad: "PDF: błąd wydruku",
+};
+
+/** Odświeżanie otwartego wiersza, dopóki PDF-y FS pobierają się w tle. */
+const PDF_POLL_MS = 15_000;
+
 const contested = (inv: RolInvoiceView) =>
   inv.excluded && (inv.excludedReason === ROL_CONFLICT_REASON || inv.excludedReason.startsWith("Przypisana do ROL "));
 
@@ -33,6 +43,17 @@ export function RolBatchDetail({ program, batch, monthEn }: { program: RolProgra
   const [error, setError] = useState<string | null>(null);
   const editable = rolBatchEditable(batch.status);
   const blockers = rolBatchBlockers(batch);
+  const activeFs = new Set(rolActiveLines(batch).map((l) => l.fsDokId));
+  const fileInvoices = batch.invoices.filter((i) => activeFs.has(i.fsDokId));
+  const pdfReady = fileInvoices.filter((i) => i.pdf === "gotowy").length;
+  const pdfFailed = fileInvoices.filter((i) => i.pdf === "blad").length;
+  const pdfWaiting = fileInvoices.length - pdfReady - pdfFailed;
+
+  useEffect(() => {
+    if (!pdfWaiting) return;
+    const t = setInterval(() => router.refresh(), PDF_POLL_MS);
+    return () => clearInterval(t);
+  }, [pdfWaiting, router]);
 
   const run: Run = (fn) =>
     startTransition(async () => {
@@ -69,6 +90,30 @@ export function RolBatchDetail({ program, batch, monthEn }: { program: RolProgra
           />
         ))
       )}
+
+      {fileInvoices.length ? (
+        <div className="flex flex-col gap-2 rounded-md border border-slate-200 px-3 py-2.5 sm:flex-row sm:items-center">
+          <p className="text-sm text-slate-600 sm:mr-auto" role="status">
+            {pdfReady === fileInvoices.length
+              ? `Pliki gotowe: arkusz i ${polishPlural(pdfReady, "PDF FS", "PDF-y FS", "PDF-ów FS")}.`
+              : `PDF FS: ${pdfReady} z ${fileInvoices.length} gotowe${pdfWaiting ? " — pobieram w tle, ok. 45 s na fakturę" : ""}${pdfFailed ? ` · ${polishPlural(pdfFailed, "błąd", "błędy", "błędów")} wydruku` : ""}.`}
+          </p>
+          <div className="flex flex-wrap gap-1">
+            <a href={`/api/zakupy/rol/${batch.id}/pliki?plik=arkusz`} className={buttonClass("ghost", "sm", ROW_ACTION + " inline-flex items-center")}>
+              Pobierz arkusz
+            </a>
+            {pdfReady === fileInvoices.length ? (
+              <a href={`/api/zakupy/rol/${batch.id}/pliki`} className={buttonClass("outline", "sm", ROW_ACTION + " inline-flex items-center")}>
+                Pobierz pliki (ZIP)
+              </a>
+            ) : pdfFailed ? (
+              <Button variant="ghost" size="sm" className={ROW_ACTION} disabled={pending} onClick={() => run(() => actionRolFetchPdfs())}>
+                Pobierz PDF-y ponownie
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       {error ? <FormNoticeMessage message={formError("Nie zapisano zmiany", error)} /> : null}
 
@@ -144,7 +189,14 @@ function RolInvoiceBlock({
           </div>
         ) : null}
       </div>
-      {inv.excluded ? <p className="mt-0.5 text-xs text-amber-800">Nie idzie do zgłoszenia: {inv.excludedReason || "wyłączona"}</p> : null}
+      {inv.excluded ? (
+        <p className="mt-0.5 text-xs text-amber-800">Nie idzie do zgłoszenia: {inv.excludedReason || "wyłączona"}</p>
+      ) : (
+        <p className={cn("mt-0.5 text-xs", inv.pdf === "blad" ? "text-amber-800" : "text-slate-500")} title={inv.pdfError || undefined}>
+          {PDF_LABEL[inv.pdf]}
+          {inv.pdf === "blad" && inv.pdfError ? ` — ${inv.pdfError}` : ""}
+        </p>
+      )}
       <ul className={cn("mt-1.5 divide-y divide-slate-100", inv.excluded && "opacity-60")}>
         {lines.map((l) => (
           <RolLineRow key={l.id} batchId={batchId} line={l} editable={editable && !inv.excluded} pending={pending} run={run} />

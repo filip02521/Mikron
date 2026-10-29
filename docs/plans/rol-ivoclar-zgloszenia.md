@@ -1,6 +1,6 @@
 # Plan: comiesięczne zgłoszenia ROL do Ivoclara
 
-**Status: plan zatwierdzony (2026-10-29), decyzje P1–P8 w §10.** Plasterki 1–2 w kodzie: migracja `204_rol_reports.sql`, `src/lib/rol/*` (skan, scalanie, walidacja, widok), akcje `src/app/actions/rol.ts`, zakładka „Zgłoszenia ROL” w Asystencie („Sprawdź ponownie”, Ustawienia ROL). Plasterek 3 w kodzie: wyłączanie FS i pozycji, ilość ręczna, numer katalogowy, przypisanie FS z konfliktem do klienta, „Zatwierdź listę” / „Edytuj listę” (`src/lib/rol/review.ts`, `RolBatchDetail.tsx`); ponowny skan zachowuje tylko jawne decyzje użytkownika. Plasterek 0 zrobiony (wyniki w §9); otwarte tylko: czy opis ZD (`uwagi`) widać w Subiekcie.
+**Status: plan zatwierdzony (2026-10-29), decyzje P1–P8 w §10.** Plasterki 1–2 w kodzie: migracja `204_rol_reports.sql`, `src/lib/rol/*` (skan, scalanie, walidacja, widok), akcje `src/app/actions/rol.ts`, zakładka „Zgłoszenia ROL” w Asystencie („Sprawdź ponownie”, Ustawienia ROL). Plasterek 3 w kodzie: wyłączanie FS i pozycji, ilość ręczna, numer katalogowy, przypisanie FS z konfliktem do klienta, „Zatwierdź listę” / „Edytuj listę” (`src/lib/rol/review.ts`, `RolBatchDetail.tsx`); ponowny skan zachowuje tylko jawne decyzje użytkownika. Plasterek 4 w kodzie: arkusz XLSX wg wzoru (`sheet.ts`), PDF-y FS pobierane w tle po skanie do `rol_fs_pdfs` (migracja 205, `pdfs.ts`), „Pobierz arkusz” i „Pobierz pliki (ZIP)” (`/api/zakupy/rol/[batchId]/pliki`). Plasterek 0 zrobiony (wyniki w §9); otwarte tylko: czy opis ZD (`uwagi`) widać w Subiekcie.
 
 Nazwy klientów, adresy, NIP-y i adresy e-mail w tym pliku są zmyślone albo opisane rolą (repo jest publiczne). Prawdziwe wartości trafią do tabeli konfiguracji w bazie (`rol_programs`), nie do kodu.
 
@@ -353,7 +353,7 @@ Każdy plasterek kończy się zielonym `tsc`, lintem i pełnym zestawem testów 
 - **Symbol:** wszystkie 19 symboli na tych FS i symbole zębów Ivoclar to 6 cyfr = numer Ivoclar (P2 potwierdzone).
 - **FS w miesiącu:** 4225 we wrześniu, 3463 w sierpniu (numeracja FS liczy się od nowa co miesiąc — hipoteza „~400” była błędna). Skan miesiąca: 22 strony po 200, ok. 20 s.
 - **KFS:** `dok_DoDokId` wskazuje korygowaną FS (typ 2, ten sam klient). `ob_Ilosc` na KFS to ilość zwrócona: suma `ilość × cena FS` zgadza się z wartością netto KFS (sprawdzone na 12 KFS).
-- **PDF FS:** `GET /documents/fs/{id}/pdf` działa na :5080 (PDF ok. 70 KB), ale trwa **ok. 45 s na fakturę**; :5082 nie odpowiedział. Plasterek 4: pobierać PDF-y w tle zaraz po skanie (kolejka, ponowienia) i trzymać je do wysyłki — nie przy kliknięciu „Wyślij”.
+- **PDF FS:** `GET /documents/fs/{id}/pdf` działa na :5080 (PDF ok. 70 KB), ale trwa **ok. 45 s na fakturę**; :5082 nie odpowiedział. Subiekt drukuje **po kolei**: przy 2 wydrukach naraz drugi czekał w kolejce i przekroczył 90 s — pobieramy jedną FS naraz. Plasterek 4: pobierać PDF-y w tle zaraz po skanie (kolejka, ponowienia) i trzymać je do wysyłki — nie przy kliknięciu „Wyślij”.
 - **Opis ZD:** pole `dok_Uwagi` jest w API dokumentów; czy zakupy widzą je na liście ZD w Subiekcie — do potwierdzenia przez użytkownika przed plasterkiem 5.
 
 Kolejność: 0 → 1 → 2 → 3 → 4 → 5 → 6 → 6a, plasterek 7 osobno. Automat włączamy dopiero po co najmniej jednym miesiącu wysłanym ręcznie przez OnTime. Pierwszy realny użytek: po plasterku 4 („Pobierz pliki” zastępuje kroki 1–4 nawet bez wysyłki z OnTime).

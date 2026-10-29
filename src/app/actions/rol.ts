@@ -3,9 +3,11 @@
 // @service-role-ok — autoryzacja requireOperations("mutate") + rola admin/zakupy; zapis tylko tabel rol_*.
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { requireOperations } from "@/lib/auth";
 import { hasDatabaseConfig } from "@/lib/db/pool";
 import { approveRolBatch, reopenRolBatch, runRolScan, saveRolProgram, setRolInvoice, setRolLine } from "@/lib/rol/data";
+import { fetchMissingRolPdfs, resetFailedRolPdfs } from "@/lib/rol/pdfs";
 import { parseRolProgramInput, type RolProgramInput } from "@/lib/rol/program";
 import { parseRolCatalogNo, parseRolQtyOverride } from "@/lib/rol/review";
 import { isRolPeriod } from "@/lib/rol/scan";
@@ -13,6 +15,18 @@ import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { warsawNowParts } from "@/lib/time/warsaw";
 
 const ASYSTENT_PATH = "/zakupy/asystent";
+/** PDF FS ok. 45 s na fakturę — w tle po odpowiedzi, z budżetem jak inne zadania w tle. */
+const PDF_BUDGET_MS = 12 * 60 * 1000;
+
+function fetchPdfsInBackground() {
+  after(async () => {
+    try {
+      await fetchMissingRolPdfs({ budgetMs: PDF_BUDGET_MS });
+    } catch (e) {
+      console.error("[rol] PDF FS w tle", e);
+    }
+  });
+}
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -45,6 +59,7 @@ export async function actionScanRolMonth(period: string): Promise<Result<{ fsChe
     const todayKey = warsawNowParts().dateKey;
     if (period > todayKey) return { ok: false, error: "Ten miesiąc jeszcze się nie zaczął." };
     const res = await runRolScan({ period, todayKey });
+    fetchPdfsInBackground();
     revalidatePath(ASYSTENT_PATH);
     return { ok: true, fsChecked: res.fsChecked, changed: res.changed };
   } catch (e) {
@@ -132,4 +147,12 @@ export async function actionRolApprove(batchId: string): Promise<Result> {
 
 export async function actionRolReopen(batchId: string): Promise<Result> {
   return editRol(() => reopenRolBatch(batchIdOrThrow(batchId)), "Nie udało się otworzyć listy do edycji.");
+}
+
+/** „Pobierz PDF-y ponownie”: zeruje nieudane próby i pobiera brakujące PDF-y FS w tle. */
+export async function actionRolFetchPdfs(): Promise<Result> {
+  return editRol(async () => {
+    await resetFailedRolPdfs();
+    fetchPdfsInBackground();
+  }, "Nie udało się zlecić pobrania PDF.");
 }

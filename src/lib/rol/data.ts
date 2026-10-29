@@ -11,6 +11,7 @@ import {
   searchSubiektOrdersFs,
 } from "@/lib/subiekt/api";
 import { loadIvoclarTwIds } from "./ivoclar-products";
+import { loadRolPdfRows, rolPdfState, type RolPdfState } from "./pdfs";
 import { decideRolMerge, type RolBatchStatus } from "./merge";
 import { rolApproveError, rolAssignedElsewhereReason, rolInvoiceAfterRescan, rolReopenError } from "./review";
 import type { RolProgramValues } from "./program";
@@ -27,6 +28,9 @@ export type RolInvoiceView = {
   kfsDokIds: number[];
   excluded: boolean;
   excludedReason: string;
+  /** Wydruk FS do PDF (pobierany w tle po skanie). */
+  pdf: RolPdfState;
+  pdfError: string;
 };
 
 export type RolLineView = {
@@ -185,6 +189,8 @@ export async function loadRolBatches(period: string): Promise<RolBatchView[]> {
       [ids]
     ),
   ]);
+  const pdfRows = await loadRolPdfRows([...new Set(invoices.rows.map((i) => Number(i.fs_dok_id)))]);
+  const now = Date.now();
   return batches.rows.map((b) => ({
     id: b.id,
     programId: b.program_id,
@@ -206,6 +212,8 @@ export async function loadRolBatches(period: string): Promise<RolBatchView[]> {
         kfsDokIds: i.kfs_dok_ids,
         excluded: i.excluded,
         excludedReason: i.excluded_reason,
+        pdf: rolPdfState(pdfRows.get(Number(i.fs_dok_id)), now),
+        pdfError: pdfRows.get(Number(i.fs_dok_id))?.lastError ?? "",
       })),
     lines: lines.rows
       .filter((l) => l.batch_id === b.id)
@@ -222,6 +230,20 @@ export async function loadRolBatches(period: string): Promise<RolBatchView[]> {
         excluded: l.excluded,
       })),
   }));
+}
+
+/** Paczka po id (z FS, pozycjami i stanem PDF) oraz jej klient. */
+export async function loadRolBatchById(batchId: string): Promise<{ batch: RolBatchView; program: RolProgram } | null> {
+  const res = await query<{ period: string; program_id: string }>(
+    `SELECT to_char(period, 'YYYY-MM-DD') AS period, program_id FROM rol_batches WHERE id = $1`,
+    [batchId]
+  );
+  const row = res.rows[0];
+  if (!row) return null;
+  const [batches, programs] = await Promise.all([loadRolBatches(row.period), loadRolPrograms()]);
+  const batch = batches.find((b) => b.id === batchId);
+  const program = programs.find((p) => p.id === row.program_id);
+  return batch && program ? { batch, program } : null;
 }
 
 /**
@@ -516,6 +538,8 @@ export async function approveRolBatch(batchId: string, userId: string): Promise<
         kfsDokIds: [],
         excluded: i.excluded,
         excludedReason: i.excluded_reason,
+        pdf: "czeka" as const,
+        pdfError: "",
       })),
       lines: lines.rows.map((l) => ({
         id: Number(l.id),

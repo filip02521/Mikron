@@ -33,6 +33,25 @@ const MONTHS_PL = [
   "grudzień",
 ];
 
+const ENGLISH_MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+export function rolMonthEn(period: string): string {
+  return ENGLISH_MONTHS[Number(period.slice(5, 7)) - 1] ?? "";
+}
+
 /** „wrzesień 2026” z `2026-09-01`. */
 export function rolPeriodLabel(period: string): string {
   const [y, m] = period.split("-").map(Number) as [number, number];
