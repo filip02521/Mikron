@@ -63,6 +63,25 @@ export function effectiveDniZapasu(
 }
 
 /**
+ * Dni celu w biegu z ręcznie podniesionym zapasem (Kreator). `normalDniZapasu` = dni zwykłego zamówienia
+ * (karta); gdy `dniZapasu` jest większe, cel liczy się co najmniej na nich — także przy strategii z własnymi
+ * dniami — a `signalDniZapasu` (dni zwykłego zamówienia, strategia: jej dni) niesie skalę korekt.
+ * Bez podniesienia = `effectiveDniZapasu` i brak `signalDniZapasu` (automat, backtest).
+ */
+export function resolveZdRunDniZapasu(input: {
+  policy: ZdSupplierOrderPolicy;
+  dniZapasu: number;
+  normalDniZapasu?: number | null;
+  timing?: { leadDays: number; nextOrderDays: number } | null;
+}): { dniZapasu: number; signalDniZapasu: number | null; raised: boolean } {
+  const normal = Math.round(Number(input.normalDniZapasu));
+  const raised = Number.isFinite(normal) && normal >= 1 && input.dniZapasu > normal;
+  const normalDays = effectiveDniZapasu(input.policy, raised ? normal : input.dniZapasu, input.timing);
+  const dniZapasu = raised ? Math.max(normalDays, input.dniZapasu) : normalDays;
+  return { dniZapasu, signalDniZapasu: dniZapasu > normalDays ? normalDays : null, raised };
+}
+
+/**
  * Sprzedaż z ostatnich 90 dni z profilu (12 okien po 30 d, od najstarszego). `prosbaByWindow` — sprzedaż pod
  * prośby w każdym z tych trzech okien (od najstarszego), odjęta per okno (okno nie mniej niż 0).
  */

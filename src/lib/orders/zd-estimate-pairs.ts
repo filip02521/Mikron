@@ -95,6 +95,8 @@ export function mergePairHistoryForCut(
 
 export type ApplyZdEstimatePairsOptions = {
   dniZapasu: number;
+  /** Dni zwykłego zamówienia przy ręcznie podniesionym zapasie — sygnały korekt jak przy zwykłym zamówieniu. */
+  signalDniZapasu?: number | null;
   dniOkresu?: number | null;
   zapasMin?: number;
   salesTrack?: boolean;
@@ -222,6 +224,7 @@ export function applyZdEstimatePairs(
         dostepne: coverSzt, // cover już z ZD — otwarteZd=0 w track
         otwarteZd: 0,
         dniZapasu,
+        signalDniZapasu: options.signalDniZapasu,
         dniOkresu: options.dniOkresu,
         enabled: true,
         cutsEnabled: salesTrackCuts,
@@ -247,6 +250,7 @@ export function applyZdEstimatePairs(
           sprzedazDziennie: tempo,
           coverStock: coverSzt,
           dniZapasu,
+          lastOrderDniZapasu: options.signalDniZapasu,
           dniOkresu: options.dniOkresu,
           lastOrderedQty: hist.lastOrderedQty,
           linkedAt: hist.linkedAt,

@@ -97,7 +97,7 @@ import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
 import {
   applyZdDemandFloorToLine,
   applyZdPairDemandFloor,
-  effectiveDniZapasu,
+  resolveZdRunDniZapasu,
   applyZdBomDemandFloor,
   ZD_SUPPLIER_ORDER_POLICY_CLASSIC,
   type ZdSupplierOrderPolicy,
@@ -413,6 +413,12 @@ export type ZdOrderEngineInput = {
    * strategia z własnymi dniami celu liczy co najmniej cykl + dostawę.
    */
   orderTiming?: { leadDays: number; nextOrderDays: number } | null;
+  /**
+   * Kreator: dni zwykłego zamówienia (karta dostawcy), gdy zapas podniesiono ręcznie ponad nie.
+   * Cel liczy się wtedy co najmniej na `dniZapasu` (także przy strategii z własnymi dniami), a korekty
+   * za sprzedażą i historią — jak przy zwykłym zamówieniu. Brak = jak dotąd (automat, backtest).
+   */
+  normalDniZapasu?: number | null;
   dataOd: string;
   dataDo: string;
   zapasMin: number;
@@ -535,7 +541,12 @@ export async function runZdOrderEngine(
       return { ok: false, feedback };
     }
   }
-  const dniZapasu = effectiveDniZapasu(orderPolicy, input.dniZapasu, input.orderTiming);
+  const { dniZapasu, signalDniZapasu, raised } = resolveZdRunDniZapasu({
+    policy: orderPolicy,
+    dniZapasu: input.dniZapasu,
+    normalDniZapasu: input.normalDniZapasu,
+    timing: input.orderTiming,
+  });
 
   // Pełna lista towarów zakresu z Subiekta (nie tylko braki API / nie nasza baza).
   // Echo filtra zaraz po 1. stronie — bez tego stary API mógłby dociągnąć cały katalog.
@@ -658,6 +669,11 @@ export async function runZdOrderEngine(
       totalCountApi: fetched.totalCountApi + more.totalCountApi,
       truncated: fetched.truncated || more.truncated,
     };
+  }
+
+  if (signalDniZapasu != null) {
+    // W parametrach wyniku — przeliczenia na kliencie (opakowania, pary, sesja) liczą korekty tak samo.
+    fetched = { ...fetched, parametry: { ...fetched.parametry, dniZapasuSygnaly: signalDniZapasu } };
   }
 
   touchProgress({
@@ -1323,7 +1339,8 @@ export async function runZdOrderEngine(
       : Math.round((Date.parse(dataDo) - Date.parse(dataOd)) / 86_400_000) + 1;
   const classicResult = classicBase
     ? buildManualZdEstimateResult(
-        { ...fetched.parametry, dniZapasu: classicDays },
+        // „Jak dotąd” przy podniesionym zapasie: korekty na dniach karty (classic = karta).
+        { ...fetched.parametry, dniZapasu: classicDays, dniZapasuSygnaly: raised ? input.normalDniZapasu : null },
         classicBase.map((l) => {
           const rate = Math.max(0, Number(l.sprzedazOkres) || 0) / Math.max(1, dniOkresuCompare);
           // Zaokrąglenie do 1e-6: szum zmiennoprzecinkowy przesuwał progi podążania za sprzedażą.

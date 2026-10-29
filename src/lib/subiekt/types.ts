@@ -140,6 +140,8 @@ export type SubiektZdEstimateParams = {
   dataDo?: string | null;
   dniOkresu?: number | null;
   dniZapasu?: number | null;
+  /** OnTime (nie Subiekt): dni zwykłego zamówienia przy ręcznie podniesionym zapasie — sygnały korekt. */
+  dniZapasuSygnaly?: number | null;
   zapasMin?: number | null;
   grupaId?: number | null;
   cechaId?: number | null;

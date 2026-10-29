@@ -9,7 +9,7 @@
  * Snapshot `qty` = sztuki (ob_Ilosc × opakowanie/para przy zapisie).
  */
 
-import type { SalesTrackReason } from "@/lib/orders/zd-estimate-sales-track";
+import { resolveSignalDniZapasu, type SalesTrackReason } from "@/lib/orders/zd-estimate-sales-track";
 
 export const ZD_HISTORY_TRACK = {
   /** Min. qty ze snapshotu (sztuki), żeby brać pod uwagę. */
@@ -61,6 +61,13 @@ export type HistoryTrackInput = {
   /** dostepne + otwarteZd w sztukach. */
   coverStock: number;
   dniZapasu: number;
+  /**
+   * Dni zapasu ostatniego ZD (zwykłe zamówienie), gdy ten bieg ma ręcznie podniesiony zapas —
+   * inaczej ZD na 30 dni porównane ze sprzedażą „na 90 dni” wyglądało jak skok. Skok ocenia się
+   * na nich w całości (oczekiwana sprzedaż, wiek ZD, stan); „wolne po ZD” zostaje na `dniZapasu`.
+   * Brak = `dniZapasu`.
+   */
+  lastOrderDniZapasu?: number | null;
   /** Długość okna FS — do skalowania oczekiwanej sprzedaży. */
   dniOkresu?: number | null;
   /** Zamówione sztuki z ostatniego snapshotu ZD. */
@@ -164,9 +171,12 @@ export function applySalesSpikeCut(
     dniOkresu: input.dniOkresu,
     dniZapasu: input.dniZapasu,
   });
+  // Skok = tempo z okna zawyżone względem ostatniego ZD: ta sama decyzja co przy zwykłym zamówieniu,
+  // także przy ręcznie podniesionym zapasie (cięcie skaluje wtedy cały, dłuższy cel).
+  const refDays = resolveSignalDniZapasu(input.lastOrderDniZapasu, input.dniZapasu);
   const expectedWindowSales = expectedSalesFromLastOrder({
     lastOrderedQty: ordered,
-    dniZapasu: input.dniZapasu,
+    dniZapasu: refDays,
     dniOkresu: input.dniOkresu,
   });
 
@@ -185,13 +195,13 @@ export function applySalesSpikeCut(
   if (!(expectedWindowSales > 0)) return empty();
   // Ilość ostatniego ZD to dokładka netto (cel − stan wtedy), nie popyt — stare ZD nic nie mówi.
   const daysSinceLink = daysBetween(input.linkedAt, input.nowMs ?? Date.now());
-  if (daysSinceLink > p.maxHistoryAgeFactor * Math.max(windowDays, Math.round(input.dniZapasu))) {
+  if (daysSinceLink > p.maxHistoryAgeFactor * Math.max(windowDays, refDays)) {
     return empty();
   }
   // Bez profilu 12 mies. dokładki nie odróżnimy od skoku. Przy cienkim stanie cięcie
   // gwarantuje brak (36 → 23 szt. przy stanie 0), więc tniemy tylko, gdy stan i tak starcza.
   const tempo = Math.max(0, input.sprzedazDziennie);
-  if (tempo > 1e-9 && input.coverStock / tempo < input.dniZapasu * p.minCoverShare) return empty();
+  if (tempo > 1e-9 && input.coverStock / tempo < refDays * p.minCoverShare) return empty();
 
   const spikeRatio = sprzedazOkres / expectedWindowSales;
   if (!(spikeRatio >= p.spikeRatioFloor)) return empty();
