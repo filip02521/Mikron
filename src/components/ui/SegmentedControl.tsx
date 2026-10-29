@@ -69,8 +69,8 @@ export function SegmentedControl<T extends string>({
                 "min-h-10 flex-1 py-2.5 text-sm sm:flex-none sm:min-h-0 sm:py-1.5 sm:text-sm",
               active
                 ? tight
-                  ? "bg-card text-slate-900 shadow-sm ring-1 ring-slate-200/70"
-                  : "bg-card text-slate-900 shadow-sm"
+                  ? "bg-segment-active text-slate-900 shadow-sm ring-1 ring-slate-200/70"
+                  : "bg-segment-active text-slate-900 shadow-sm"
                 : "text-slate-600 hover:bg-card/70 hover:text-slate-900",
               disabled &&
                 "cursor-not-allowed hover:bg-transparent hover:text-slate-600"

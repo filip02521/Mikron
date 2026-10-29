@@ -119,6 +119,8 @@ const PAIRS: [string, string, string, number][] = [
   ["biały / wypełnienie neutralne", WHITE, c("fill-neutral"), 4.5],
   ["biały / wypełnienie neutralne hover", WHITE, c("fill-neutral-hover"), 4.5],
   ["wypełnienie neutralne / karta", c("fill-neutral"), "--card", 3],
+  ["wybrany segment: tekst / tło", c("slate-900"), "--segment-active", 4.5],
+  ["segment w spoczynku: slate-600 / tor", c("slate-600"), c("slate-50"), 4.5],
   ...["expired", "today", "tomorrow", "this-week", "for-someone"].flatMap((k): [string, string, string, number][] => [
     [`slate-900 / wiersz ${k}`, c("slate-900"), `--summary-${k}`, 4.5],
     [`slate-600 / wiersz ${k}`, c("slate-600"), `--summary-${k}`, 4.5],

@@ -267,8 +267,8 @@ Ikony: `IconSun` jest w `StrokeIcons`; dopisać `IconMoon` i `IconMonitor` w tym
 |---|---|
 | `src/lib/auth/theme.ts` | typ `ThemePreference`, `THEME_LABELS`, `normalizeTheme()` |
 | `profile.ts` / `auth.ts` | `theme` w `ProfileRow` i w sesji (obok `fontScale`) |
-| `actionSetTheme()` w `user-preferences.ts` | zapis do `preferences` (jak `actionSetFontScale`) **i** cookie `ontime_theme` (nie-httpOnly, `path=/`, `SameSite=Lax`, rok) |
-| logowanie (`api/auth/login*`) | po udanym logowaniu ustawia `ontime_theme` z profilu — nowe urządzenie dostaje właściwy motyw już na pierwszej stronie po logowaniu |
+| `actionSetTheme()` w `user-preferences.ts` | zapis do `preferences` (jak `actionSetFontScale`); cookie `ontime_theme` (nie-httpOnly, `path=/`, `SameSite=Lax`, rok) zapisuje klient (`persistTheme` w `src/lib/ui/theme-client.ts`) — jeden zapisujący po stronie przeglądarki |
+| logowanie (`api/auth/login`) | po udanym logowaniu ustawia `ontime_theme` z profilu — nowe urządzenie dostaje właściwy motyw już na pierwszej stronie po logowaniu. Reset hasła i `route-auth` tego nie robią: tam pierwszą stronę po wejściu poprawia `ThemeSync` po hydracji |
 | `ThemeScript` w `<head>` (obok `FontScaleScript`) | synchronicznie, przed pierwszym malowaniem: czyta cookie `ontime_theme`, potem `localStorage`; dla `system` pyta `matchMedia('(prefers-color-scheme: dark)')`; ustawia `data-theme` i `style.colorScheme` na `<html>` |
 | `ThemeSync` w `AppShellClient` | gdy wartość z serwera różni się od tej ze skryptu (zmiana na innym urządzeniu), poprawia `<html>`, cookie i `localStorage`; dla `system` słucha zmian `matchMedia`; zdarzenie `storage` synchronizuje inne karty |
 | przełączenie | na czas jednej klatki klasa `html.theme-switching` z `*{transition:none!important}` — bez tego wszystkie elementy z `transition-colors` przez 150–200 ms przechodzą z jasnego w ciemny (zmierzone: w podglądzie przegląd kolorów zaraz po przełączeniu czytał jeszcze jasne wartości) |

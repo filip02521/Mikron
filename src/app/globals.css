@@ -104,6 +104,8 @@ html[data-sidebar="collapsed"] .sb-link .sb-link-icon {
   --danger-hover: oklch(50.5% 0.213 27.518);
   --fill-neutral: #4a515c;
   --fill-neutral-hover: #363c46;
+  /* Wybrany segment przełącznika: w ciemnym jaśniejszy od toru (cień tam nie działa). */
+  --segment-active: #ffffff;
   /* Tła wierszy harmonogramu = SUMMARY_COLORS (src/types/database.ts), czytane przez summaryColorCss. */
   --summary-expired: #fff1f2;
   --summary-today: #eff6ff;
@@ -332,6 +334,7 @@ html[data-sidebar="collapsed"] .sb-link .sb-link-icon {
   --color-danger-hover: var(--danger-hover);
   --color-fill-neutral: var(--fill-neutral);
   --color-fill-neutral-hover: var(--fill-neutral-hover);
+  --color-segment-active: var(--segment-active);
 }
 
 /* ——— Motyw ciemny ———
@@ -362,6 +365,7 @@ html[data-sidebar="collapsed"] .sb-link .sb-link-icon {
     --danger-hover: #bb3239;
     --fill-neutral: #666f7d;
     --fill-neutral-hover: #5e6673;
+    --segment-active: #2c333d;
     /* Tła wierszy harmonogramu (SUMMARY_COLORS w style przez summaryColorCss); w jasnym zostaje hex. */
     --summary-expired: var(--color-red-50);
     --summary-today: var(--color-indigo-100);
@@ -464,6 +468,8 @@ html[data-sidebar="collapsed"] .sb-link .sb-link-icon {
   --danger-hover: oklch(50.5% 0.213 27.518);
   --fill-neutral: #4a515c;
   --fill-neutral-hover: #363c46;
+  /* Wybrany segment przełącznika: w ciemnym jaśniejszy od toru (cień tam nie działa). */
+  --segment-active: #ffffff;
   --summary-expired: #fff1f2;
   --summary-today: #eff6ff;
   --summary-tomorrow: #fffde7;
@@ -532,6 +538,14 @@ html[data-sidebar="collapsed"] .sb-link .sb-link-icon {
   --color-red-800: oklch(44.4% 0.177 26.899);
   --color-red-900: oklch(39.6% 0.141 25.723);
   --color-red-950: oklch(25.8% 0.092 26.042);
+}
+
+/* Przełączenie motywu bez przejść: inaczej każdy element z transition-colors płynie z jasnego w ciemny. */
+html.theme-switching,
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition: none !important;
 }
 
 @layer base {

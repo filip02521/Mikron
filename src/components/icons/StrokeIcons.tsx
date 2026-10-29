@@ -271,6 +271,25 @@ export function IconSun(props: StrokeIconProps) {
   );
 }
 
+/** Motyw ciemny */
+export function IconMoon(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z" />
+    </Svg>
+  );
+}
+
+/** Motyw jak w systemie (ekran komputera) */
+export function IconMonitor(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="4" width="18" height="12" rx="2" />
+      <path d="M8 20h8M12 16v4" />
+    </Svg>
+  );
+}
+
 /** Powiadomienia / inbox handlowca */
 export function IconBell(props: StrokeIconProps) {
   return (

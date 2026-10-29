@@ -76,7 +76,7 @@ Plan: `docs/plans/ciemny-tryb.md` (inwentarz, tokeny z pomiarem kontrastu, prze�
 - [x] 2. Codemod powierzchni (`bg-white` → `bg-card`: 524 zamian w 234 plikach, scrim 10) + reguły `audit:design` `biel` i `scrim`; `.theme-light` na logowaniu i podglądach maila.
 - [x] 3. Codemod kroku 600 i fokusu (144 tekstów 600 → 700, 15 hoverów → 800, 101 pierścieni → `ring-focus`) + reguły `audit:design` `krok600` i `fokus`.
 - [x] 4. Ręczne miejsca: hover/wciśnięcie wypełnień przez tokeny ról (primary, success, warning, danger, fill-neutral), `bg-inverse`, `SUMMARY_COLORS` przez `summaryColorCss` + zmienne `--summary-*`, SVG na zmiennych palety, `BrandLoader`, bursztynowe chipy Kreatora, błysk notatnika; reguła `audit:design` `wypelnienie`.
-- [ ] 5. Preferencja na koncie (`preferences.theme`, cookie, skrypt w `<head>`) + wiersz „Motyw” w Ustawieniach.
+- [x] 5. Preferencja na koncie (`preferences.theme`, cookie przy logowaniu, skrypt w `<head>`, `ThemeSync`) + wiersz „Motyw” w Ustawieniach; wybrany segment `SegmentedControl` na `bg-segment-active` (w ciemnym jaśniejszy od toru).
 - [ ] 6. Szybkie wejście w menu bocznym i „Więcej”.
 - [ ] 7. Okna i panele na `bg-raised`.
 - [ ] 8. Przegląd modułów w ciemnym, DESIGN.md, ponowna decyzja o domyślnym motywie.

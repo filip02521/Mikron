@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import type { UserRole, Workspace } from "@/types/database";
 import { normalizeFontScale, type FontScale } from "@/lib/auth/font-scale";
+import { normalizeTheme, type ThemePreference } from "@/lib/auth/theme";
 
 export type { FontScale, FONT_SCALE_LABELS } from "@/lib/auth/font-scale";
 export { normalizeFontScale } from "@/lib/auth/font-scale";
@@ -15,6 +16,7 @@ export type ProfileRow = {
   assigned_workspaces: Workspace[];
   uniform_background: boolean;
   font_scale: FontScale;
+  theme: ThemePreference;
 };
 
 const PROFILE_SELECT =
@@ -36,6 +38,7 @@ function mapProfileRow(data: Record<string, unknown>): ProfileRow {
     assigned_workspaces: workspaces,
     uniform_background: Boolean(prefs.uniform_background ?? false),
     font_scale: normalizeFontScale(prefs.font_scale),
+    theme: normalizeTheme(prefs.theme),
   };
 }
 
