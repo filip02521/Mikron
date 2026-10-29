@@ -78,6 +78,7 @@ export function RolSettingsDialog({
       title="Ustawienia ROL"
       description="Klienci z dodatkowym rabatem Ivoclar. Na początku miesiąca OnTime szuka ich FS po kartotekach z Subiekta."
       size="lg"
+      bodyClassName="px-5 py-4 sm:px-6"
       footer={
         <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
           <Button variant="secondary" onClick={onClose}>

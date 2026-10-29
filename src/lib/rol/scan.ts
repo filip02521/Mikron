@@ -297,7 +297,7 @@ export async function scanRolPeriod(
     .filter((k): k is { doc: SubiektDocument; header: RolFsHeader } => k.header !== null && programsOf(k.header, programs).length > 0);
   const kfs: Array<RolKfs & { programIds: string[] }> = await mapPool(kfsHeaders, 3, async ({ doc, header }) => {
     const full = await deps.getDocument(header.id);
-    // Hipoteza do plasterka 0: KFS wskazuje korygowaną FS w `dok_DoDokId`.
+    // KFS wskazuje korygowaną FS w `dok_DoDokId` (sprawdzone na LIVE 29.10.2026).
     const corrected = toId(full.dok_DoDokId ?? doc.dok_DoDokId);
     return { ...header, correctedFsId: corrected, lines: docLinesFromDocument(full), programIds: programsOf(header, programs) };
   });

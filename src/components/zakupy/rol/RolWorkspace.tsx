@@ -95,8 +95,8 @@ export function RolWorkspace({
           </h2>
           <p className="text-sm text-slate-600">
             {lastScan
-              ? `Skan FS ${scanTimeLabel(lastScan.scannedAt)} · sprawdzono ${polishPlural(lastScan.fsCheckedCount, "FS", "FS", "FS")} z ${rolPeriodLabel(period)}`
-              : `FS z ${rolPeriodLabel(period)} nie były jeszcze sprawdzane.`}
+              ? `Skan FS ${scanTimeLabel(lastScan.scannedAt)} · sprawdzono ${lastScan.fsCheckedCount} FS za ${rolPeriodLabel(period)}`
+              : `FS za ${rolPeriodLabel(period)} nie były jeszcze sprawdzane.`}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -146,13 +146,14 @@ export function RolWorkspace({
         />
       ) : (
         <TableScroll className="sm:px-0 sm:pb-0">
-          <DataTable className="min-w-[40rem]">
+          <DataTable className="max-sm:min-w-0!">
             <thead>
               <tr>
+                {/* `max-sm:hidden!`: .data-table th/td ustawia display bez warstwy w globals.css i wygrywa ze zwykłym `hidden`. */}
                 <th>Klient</th>
-                <th>FS</th>
-                <th>Pozycje Ivoclar</th>
-                <th>Stan</th>
+                <th className="max-sm:hidden!">FS</th>
+                <th className="max-sm:hidden!">Pozycje Ivoclar</th>
+                <th className="max-sm:hidden!">Stan</th>
               </tr>
             </thead>
             <tbody>
@@ -181,10 +182,24 @@ export function RolWorkspace({
                           ROL {program.label}
                         </button>
                         {batch?.changeNote ? <p className="mt-0.5 pl-5 text-xs text-slate-500">{batch.changeNote}</p> : null}
+                        {/* Telefon: wiersz listy zamiast kolumn — stan i liczby pod nazwą klienta. */}
+                        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 pl-5 text-xs text-slate-600 tabular-nums sm:hidden">
+                          {batch ? (
+                            <Badge variant={ROL_STATUS_BADGE[batch.status].variant}>{ROL_STATUS_BADGE[batch.status].label}</Badge>
+                          ) : (
+                            <Badge>Nie sprawdzono</Badge>
+                          )}
+                          {summary ? <span>{summary.text} · {summary.fsCount} FS</span> : null}
+                          {batch && batch.lateFsCount > 0 ? (
+                            <span className="text-amber-800">
+                              Po wysłaniu {polishPlural(batch.lateFsCount, "doszła FS", "doszły FS", "doszło FS")}
+                            </span>
+                          ) : null}
+                        </div>
                       </td>
-                      <td className="tabular-nums">{summary ? summary.fsCount : "—"}</td>
-                      <td className="tabular-nums">{summary ? summary.text : "—"}</td>
-                      <td>
+                      <td className="tabular-nums max-sm:hidden!">{summary ? summary.fsCount : "—"}</td>
+                      <td className="tabular-nums max-sm:hidden!">{summary ? summary.text : "—"}</td>
+                      <td className="max-sm:hidden!">
                         {batch ? (
                           <Badge variant={ROL_STATUS_BADGE[batch.status].variant}>{ROL_STATUS_BADGE[batch.status].label}</Badge>
                         ) : (

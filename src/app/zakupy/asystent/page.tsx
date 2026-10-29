@@ -145,6 +145,8 @@ export default async function AsystentPage({
   const rolPeriods = recentRolPeriods(warsawNowParts().dateKey);
   const rolPeriod = typeof params.miesiac === "string" && rolPeriods.includes(params.miesiac) ? params.miesiac : rolPeriods[0]!;
   const rol = await loadRolSection(rolPeriod);
+  // Licznik zakładki to zawsze bieżące zgłoszenie (poprzedni miesiąc), nie przeglądany miesiąc.
+  const rolToReview = rolPeriod === rolPeriods[0] ? rol.toReview : (await loadRolSection(rolPeriods[0]!)).toReview;
   const sections: { id: Section; href: string; count: number }[] = [
     { id: "poczta", href: "/zakupy/asystent", count: mailTodo },
     {
@@ -152,7 +154,7 @@ export default async function AsystentPage({
       href: "/zakupy/asystent?sekcja=oc",
       count: groups["do-ruchu"].length,
     },
-    { id: "rol", href: "/zakupy/asystent?sekcja=rol", count: rol.toReview },
+    { id: "rol", href: "/zakupy/asystent?sekcja=rol", count: rolToReview },
     { id: "raporty", href: "/zakupy/asystent?sekcja=raporty", count: 0 },
   ];
 
