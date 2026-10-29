@@ -167,3 +167,48 @@ describe("SupplierDrawer - stan magazynu z analizy Braki", () => {
     expect(screen.queryByRole("region", { name: "Stan magazynu (analiza Braki)" })).toBeNull();
   });
 });
+
+describe("SupplierDrawer - warstwy nad panelem dziennym", () => {
+  afterEach(() => cleanup());
+
+  function renderPanel() {
+    return render(
+      <SupplierDrawer supplier={supplier} onClose={() => {}} isScopePending={() => false} run={vi.fn()} />
+    );
+  }
+
+  it("panel jest w portalu w <body>, nie w kontenerze strony", () => {
+    const { container } = renderPanel();
+    const aside = document.querySelector("aside[aria-labelledby='supplier-drawer-title']");
+    expect(aside?.parentElement).toBe(document.body);
+    expect(container.contains(aside)).toBe(false);
+    expect(aside?.className).toContain("z-[60]");
+  });
+
+  it("Escape przy otwartym menu Przesuń zamyka tylko menu; drugi Escape dochodzi do panelu", () => {
+    renderPanel();
+    // Odbiorca jak w SummaryWorkspace: zamyka szufladę, gdy Escape nie obsłużyła warstwa nad nią.
+    const panelClose = vi.fn();
+    const onWindowKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (e.defaultPrevented || document.querySelector('[role="alertdialog"], [role="menu"]')) return;
+      panelClose();
+    };
+    window.addEventListener("keydown", onWindowKey);
+    try {
+      const trigger = screen.getByRole("button", { name: /Przesuń/ });
+      fireEvent.click(trigger);
+      expect(screen.getByRole("menu")).toBeTruthy();
+
+      fireEvent.keyDown(trigger, { key: "Escape" });
+      expect(screen.queryByRole("menu")).toBeNull();
+      expect(panelClose).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(trigger);
+
+      fireEvent.keyDown(trigger, { key: "Escape" });
+      expect(panelClose).toHaveBeenCalledTimes(1);
+    } finally {
+      window.removeEventListener("keydown", onWindowKey);
+    }
+  });
+});
