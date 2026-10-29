@@ -46,7 +46,7 @@ Konflikt jest tylko w kroku 600 kolorowych rodzin (i w kilku wypełnieniach krok
 | Token (klasa) | Jasny | Ciemny | Po co |
 |---|---|---|---|
 | `card` (`bg-card`, `ring-card`, `border-card`) | `#ffffff` | `#161a20` | zastępuje `bg-white` (407 + 97 z przezroczystością); biel nie może się przemapować, bo `text-white` na wypełnieniach zostaje biały |
-| `raised` (`bg-raised`) | `#ffffff` | `#1d222a` | okno, panel boczny, popover, lista podpowiedzi: w ciemnym głębię daje jaśniejsza powierzchnia, nie cień |
+| `raised` (`bg-raised`) | `#ffffff` | `#20262e` | okno, panel boczny, popover, lista podpowiedzi: w ciemnym głębię daje jaśniejsza powierzchnia, nie cień |
 | `primary`, `primary-hover`, `primary-pressed` | `#0f7380` / `#0d5d67` / `#0f4b53` | `#157984` / `#17818c` / `#14717b` | hover i wciśnięcie głównego przycisku (dziś `hover:bg-indigo-700`, `active:bg-indigo-800` — w ciemnym te kroki są jasnym tekstem) |
 | `focus` (`ring-focus`, `outline-focus`) | `#0f7380` | `#2aa3b0` | pierścień fokusu; `indigo-600` w ciemnym ma tylko 2.94:1 na wybranym chipie |
 | `scrim` (`bg-scrim/40`) | `#151920` | `#000000` | tło pod oknem (dziś `bg-slate-900/40` — w ciemnym zrobiłoby się jasną mgłą) |
@@ -71,7 +71,7 @@ Maile wychodzące (`src/lib/email/*`, `sales-email-layout.ts`) i PDF z `pdf-lib`
 |---|---|---|---|
 | canvas | `var(--background)` | `#f3f5f7` | `#0e1116` |
 | card | `bg-card`, `var(--card)` | `#ffffff` | `#161a20` |
-| raised | `bg-raised` | `#ffffff` | `#1d222a` |
+| raised | `bg-raised` | `#ffffff` | `#20262e` |
 | well | `slate-50` | `#f6f7f9` | `#1b2027` |
 | line-soft | `slate-100` | `#eef0f3` | `#222831` |
 | line | `slate-200`, `var(--card-border)` | `#e1e4e9` | `#2c333d` |
@@ -104,7 +104,7 @@ Tekst główny nie jest czystą bielą (`#e8ebef`, 14.6:1): czysta biel na prawi
 
 Wypełnienia 600 policzone, nie dobrane na oko: dla każdej barwy szukałem jasności, przy której jednocześnie biały tekst ma ≥ 4.5:1, a samo wypełnienie odcina się od ciemnej karty i tła ≥ 3:1. Okno jest wąskie (Petrol: L 28–32 % w HSL), środek okna to wartości w tabeli. Główny przycisk w ciemnym (`#157984`) jest prawie identyczny jak w jasnym (`#0f7380`) — marka się nie zmienia.
 
-Cienie w ciemnym: `--shadow-card` `0 1px 2px rgba(0,0,0,.4)`, `--shadow-card-elevated` `0 1px 2px rgba(0,0,0,.45), 0 8px 24px -8px rgba(0,0,0,.6)`, `--shadow-elevated` `0 6px 18px -4px rgba(0,0,0,.55)`. Głębię niesie głównie `raised` i linia `line`.
+Okno nad kartą: `#20262e` (plasterek 7: `#1d222a` miało tylko 1.09:1 wobec karty; jaśniejsze zlewa się z `slate-100` w środku okna). Cienie w ciemnym: `--shadow-card` `0 1px 2px rgba(0,0,0,.4)`, `--shadow-card-elevated` `0 1px 2px rgba(0,0,0,.45), 0 8px 24px -8px rgba(0,0,0,.6)`, `--shadow-elevated` `0 6px 18px -4px rgba(0,0,0,.55)`. Głębię niesie głównie `raised` i linia `line`.
 
 ### 3.3 Pomiar kontrastu (WCAG 2.x)
 

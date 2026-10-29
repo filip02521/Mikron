@@ -78,5 +78,5 @@ Plan: `docs/plans/ciemny-tryb.md` (inwentarz, tokeny z pomiarem kontrastu, prze�
 - [x] 4. Ręczne miejsca: hover/wciśnięcie wypełnień przez tokeny ról (primary, success, warning, danger, fill-neutral), `bg-inverse`, `SUMMARY_COLORS` przez `summaryColorCss` + zmienne `--summary-*`, SVG na zmiennych palety, `BrandLoader`, bursztynowe chipy Kreatora, błysk notatnika; reguła `audit:design` `wypelnienie`.
 - [x] 5. Preferencja na koncie (`preferences.theme`, cookie przy logowaniu, skrypt w `<head>`, `ThemeSync`) + wiersz „Motyw” w Ustawieniach; wybrany segment `SegmentedControl` na `bg-segment-active` (w ciemnym jaśniejszy od toru).
 - [x] 6. Szybkie wejście: stopka menu bocznego (ikony), zwinięte menu (przycisk z listą), arkusz „Więcej” na telefonie; jeden stan z Ustawieniami (`ThemeSwitch`, `use-theme-preference`).
-- [ ] 7. Okna i panele na `bg-raised`.
+- [x] 7. Okna, panele boczne, menu, dymki, podpowiedzi i toasty na `bg-raised` (ciemny `#20262e`, 1.15:1 wobec karty); test kontrastu pilnuje różnicy okno/karta i ramki.
 - [ ] 8. Przegląd modułów w ciemnym, DESIGN.md, ponowna decyzja o domyślnym motywie.

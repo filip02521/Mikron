@@ -130,13 +130,13 @@ export function MobileNavOverflowSheet({
             />
             <div
               ref={panelRef}
-              className="sheet-enter absolute inset-x-0 bottom-0 max-h-[min(70vh,28rem)] overflow-y-auto rounded-t-[var(--radius-panel)] outline-none border border-slate-200/90 bg-[var(--card)] shadow-[var(--shadow-card-elevated)] pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
+              className="sheet-enter absolute inset-x-0 bottom-0 max-h-[min(70vh,28rem)] overflow-y-auto rounded-t-[var(--radius-panel)] outline-none border border-slate-200/90 bg-raised shadow-[var(--shadow-card-elevated)] pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
               tabIndex={-1}
               {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}
             >
               {/* Nagłówek = uchwyt: przeciągnij w dół, żeby zamknąć. Pełne tło — lista przewija się pod nim. */}
               <div
-                className="sticky top-0 z-[1] touch-none select-none border-b border-slate-100 bg-[var(--card)] px-4 pb-3 pt-2"
+                className="sticky top-0 z-[1] touch-none select-none border-b border-slate-100 bg-raised px-4 pb-3 pt-2"
                 {...drag}
               >
                 <span aria-hidden className="mx-auto mb-2 block h-1 w-9 rounded-full bg-slate-300" />

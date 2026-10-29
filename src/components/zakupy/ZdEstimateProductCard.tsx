@@ -320,7 +320,7 @@ export function ZdEstimateProductCard({
         ref={(el) => {
           panelRef.current = el;
         }}
-        className="panel-slide-enter fixed inset-y-0 right-0 z-[49] flex w-full max-w-xl flex-col border-l border-slate-200/80 bg-card shadow-[var(--shadow-card-elevated)]"
+        className="panel-slide-enter fixed inset-y-0 right-0 z-[49] flex w-full max-w-xl flex-col border-l border-slate-200/80 bg-raised shadow-[var(--shadow-card-elevated)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

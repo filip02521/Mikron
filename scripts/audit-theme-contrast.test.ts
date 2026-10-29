@@ -120,6 +120,10 @@ const PAIRS: [string, string, string, number][] = [
   ["biały / wypełnienie neutralne hover", WHITE, c("fill-neutral-hover"), 4.5],
   ["wypełnienie neutralne / karta", c("fill-neutral"), "--card", 3],
   ["wybrany segment: tekst / tło", c("slate-900"), "--segment-active", 4.5],
+  // Powierzchnie, które w jasnym odróżnia tylko cień: w ciemnym potrzebują własnej różnicy koloru.
+  ["okno nad kartą", "--surface-raised", "--card", 1.1],
+  ["ramka okna / okno", c("slate-200"), "--surface-raised", 1.15], // próg własny (nie WCAG): ramka widoczna bez cienia
+  ["wybrany segment / tor", "--segment-active", c("slate-50"), 1.25],
   ["segment w spoczynku: slate-600 / tor", c("slate-600"), c("slate-50"), 4.5],
   ...["expired", "today", "tomorrow", "this-week", "for-someone"].flatMap((k): [string, string, string, number][] => [
     [`slate-900 / wiersz ${k}`, c("slate-900"), `--summary-${k}`, 4.5],
@@ -153,7 +157,8 @@ const PAIRS: [string, string, string, number][] = [
 ];
 
 // Jasny dług znany i opisany w planie (§4.3): kropka amber-500 stoi zawsze obok tekstu.
-const LIGHT_DEBT = ["amber-500 sygnał / karta"];
+// W jasnym okno i segment są białe na bieli/jasnej szarości — tam różnicę niesie cień.
+const LIGHT_DEBT = ["amber-500 sygnał / karta", "okno nad kartą", "wybrany segment / tor"];
 
 const failing = (vars: Record<string, string>) =>
   PAIRS.filter(([, fg, bg, min]) => ratio(vars, fg, bg) + 1e-9 < min).map(([label, fg, bg, min]) => `${label}: ${ratio(vars, fg, bg).toFixed(2)} < ${min}`);
@@ -165,7 +170,7 @@ describe("kontrast motywów (globals.css)", () => {
   });
 
   it("jasny: tylko znany dług poniżej progu", () => {
-    expect(failing(light).map((f) => f.split(":")[0])).toEqual(LIGHT_DEBT);
+    expect(failing(light).map((f) => f.split(":")[0]).sort()).toEqual([...LIGHT_DEBT].sort());
   });
 
   it(".theme-light przywraca każdą zmienną bloku ciemnego jasną wartością", () => {

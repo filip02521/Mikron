@@ -21,7 +21,7 @@ export const sidePanelBackdropClass =
 
 /** Powłoka panelu bocznego — spójna border, shadow, rounded-left. */
 export const sidePanelShellClass =
-  "fixed inset-y-0 right-0 z-50 flex h-full w-full max-w-lg flex-col border-l border-slate-200/80 bg-card shadow-2xl";
+  "fixed inset-y-0 right-0 z-50 flex h-full w-full max-w-lg flex-col border-l border-slate-200/80 bg-raised shadow-2xl";
 
 /** Przycisk zamykania panelu — ikonowy, zaokrąglony kafelek. */
 export const sidePanelCloseButtonClass =
@@ -36,11 +36,11 @@ export const sidePanelContentClass =
   "flex-1 overflow-y-auto px-5 py-5";
 
 export const modalPanelClass =
-  "relative flex flex-col overflow-hidden rounded-md border border-slate-200/80 bg-card shadow-[var(--shadow-card-elevated)] ring-1 ring-slate-900/5";
+  "relative flex flex-col overflow-hidden rounded-md border border-slate-200/80 bg-raised shadow-[var(--shadow-card-elevated)] ring-1 ring-slate-900/5";
 
 /** Prawy panel z tabelą — szerokość jak ModalShell xl / karty dostawców. */
 export const sideSheetWidePanelClass =
-  "flex w-full max-w-none flex-col border-l border-slate-200/90 bg-[var(--card)] shadow-[var(--shadow-card-elevated)] sm:w-[min(calc(100%-0.75rem),72rem)]";
+  "flex w-full max-w-none flex-col border-l border-slate-200/90 bg-raised shadow-[var(--shadow-card-elevated)] sm:w-[min(calc(100%-0.75rem),72rem)]";
 
 export const choiceChipClass = {
   order:

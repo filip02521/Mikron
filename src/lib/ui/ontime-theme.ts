@@ -796,7 +796,7 @@ export const systemNoticePanelStripClass = cn(
 
 /** Toast / banner cofania — spójny z SystemNotice i panelem dziennym. */
 export const systemNoticeUndoClass = cn(
-  "relative overflow-hidden rounded-md border border-slate-200/90 bg-card text-slate-900 shadow-[var(--shadow-card)]"
+  "relative overflow-hidden rounded-md border border-slate-200/90 bg-raised text-slate-900 shadow-[var(--shadow-card)]"
 );
 
 export const undoNoticeIconTileClass = cn(
@@ -838,7 +838,7 @@ export const salesPinnedNoticeClass = systemNoticePinnedClass;
 
 /** Obudowa menu kontekstowego w panelu dzennym. */
 export const panelDropdownShellClass =
-  "rounded-md border border-indigo-100/85 bg-card py-1 shadow-lg ring-1 ring-sky-100/35";
+  "rounded-md border border-indigo-100/85 bg-raised py-1 shadow-lg ring-1 ring-sky-100/35";
 
 export const panelQueueStepsShellClass = cn(
   "flex flex-nowrap items-center gap-2 overflow-x-auto rounded-md border border-slate-200/80 bg-slate-50/40 px-2 py-2 sm:px-2.5 sm:py-2",
