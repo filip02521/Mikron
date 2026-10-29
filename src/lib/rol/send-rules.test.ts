@@ -52,15 +52,17 @@ describe("ZD do Ivoclara", () => {
     expect(rolZdUwagi("Przykładowa", "2026-09-01")).toBe("ROL Przykładowa wrzesień");
   });
 
-  it("weryfikacja po zapisie: brak albo mniejsza ilość to rozbieżność", () => {
+  it("weryfikacja ZD: dokładnie te pozycje i ilości co lista", () => {
     const sent = [
       { towarId: 1, ilosc: 8 },
       { towarId: 2, ilosc: 4 },
     ];
     expect(rolZdMismatch(sent, new Map([[1, 8], [2, 4]]))).toBeNull();
-    expect(rolZdMismatch(sent, new Map([[1, 8], [2, 5]]))).toBeNull();
-    expect(rolZdMismatch(sent, new Map([[1, 8]]))).toMatch(/1 z 2/);
-    expect(rolZdMismatch(sent, new Map([[1, 7], [2, 4]]))).toMatch(/1 z 2/);
+    expect(rolZdMismatch(sent, new Map([[1, 8]]))).toMatch(/inna ilość albo brak: 1/);
+    expect(rolZdMismatch(sent, new Map([[1, 7], [2, 4]]))).toMatch(/inna ilość albo brak: 1/);
+    // ZD utworzona wcześniej, a lista potem zmieniona: więcej w ZD niż na liście to też rozbieżność.
+    expect(rolZdMismatch(sent, new Map([[1, 8], [2, 5]]))).toMatch(/inna ilość albo brak: 1/);
+    expect(rolZdMismatch(sent, new Map([[1, 8], [2, 4], [3, 1]]))).toMatch(/poza listą: 1/);
   });
 });
 

@@ -20,13 +20,17 @@ export function rolZdUwagi(label: string, period: string): string {
 }
 
 /**
- * Weryfikacja ZD po zapisie: każdy wysłany towar w zapisanej ZD w ilości co najmniej takiej jak wysłana.
+ * Weryfikacja ZD: dokładnie te towary i ilości co lista. ZD utworzona wcześniej, a lista potem zmieniona
+ * („Edytuj listę”, ponowny skan), nie może przejść z nadmiarem — mail i ZD muszą się zgadzać.
  * Zwraca opis rozbieżności albo null.
  */
 export function rolZdMismatch(sent: ReadonlyArray<{ towarId: number; ilosc: number }>, saved: ReadonlyMap<number, number>): string | null {
-  const missing = sent.filter((l) => (saved.get(l.towarId) ?? 0) + 1e-9 < l.ilosc);
-  if (!missing.length) return null;
-  return `w zapisanej ZD brakuje ${missing.length} z ${sent.length} pozycji albo mają mniejszą ilość`;
+  const wanted = new Map(sent.map((l) => [l.towarId, l.ilosc]));
+  const differ = sent.filter((l) => Math.abs((saved.get(l.towarId) ?? 0) - l.ilosc) > 1e-9).length;
+  const extra = [...saved.keys()].filter((tw) => !wanted.has(tw) && (saved.get(tw) ?? 0) > 0).length;
+  if (!differ && !extra) return null;
+  const parts = [differ ? `inna ilość albo brak: ${differ}` : "", extra ? `poza listą: ${extra}` : ""].filter(Boolean);
+  return `pozycje ZD różnią się od listy (${parts.join(", ")})`;
 }
 
 export type RolMailDraft = { to: string[]; cc: string[]; subject: string; body: string };

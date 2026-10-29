@@ -136,6 +136,13 @@ export function RolBatchDetail({
 
       {error ? <FormNoticeMessage message={formError("Nie zapisano zmiany", error)} /> : null}
 
+      {editable && batch.zdNr ? (
+        <p className="flex items-start gap-1.5 text-sm text-amber-800">
+          <IconAlertCircle size={16} aria-hidden className="mt-0.5 shrink-0" />
+          {batch.zdNr} jest już w Subiekcie. Zmiany na liście przenieś do tej ZD ręcznie — wysyłka sprawdza, czy ZD i lista się zgadzają.
+        </p>
+      ) : null}
+
       {editable ? (
         <div className="flex flex-col gap-2 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-end">
           {blockers.length ? (

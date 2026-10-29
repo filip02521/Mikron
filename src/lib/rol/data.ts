@@ -367,7 +367,11 @@ export async function saveRolScan(result: RolScanResult): Promise<{ changed: num
           const batchId = row
             ? row.id
             : (
-                await db.query<{ id: string }>(`INSERT INTO rol_batches (program_id, period) VALUES ($1, $2::date) RETURNING id`, [
+                // Równoległy skan (cron i „Sprawdź ponownie”) mógł już utworzyć paczkę — wtedy bierzemy jej id.
+                await db.query<{ id: string }>(
+                  `INSERT INTO rol_batches (program_id, period) VALUES ($1, $2::date)
+                   ON CONFLICT (program_id, period) DO UPDATE SET program_id = EXCLUDED.program_id RETURNING id`,
+                  [
                   draft.programId,
                   result.period,
                 ])

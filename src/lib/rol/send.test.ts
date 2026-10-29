@@ -105,7 +105,7 @@ describe("ensureRolZd", () => {
   it("rozbieżność po zapisie: numer zostaje zapisany, błąd z numerem ZD", async () => {
     const f = fakes({ saved: new Map([[1, 2]]) });
     const res = await ensureRolZd(ctx(), f.store, f.zd);
-    expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/ZD 500\/M\/11\/2026.*1 z 2/) });
+    expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/ZD 500\/M\/11\/2026.*inna ilość albo brak: 1/) });
     expect(f.log).toContain("saveZd:ZD 500/M/11/2026");
     expect(f.log.at(-1)).toBe("unlock");
   });
