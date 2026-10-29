@@ -67,3 +67,16 @@ Raport: `docs/audyt-procesu-zamowien-2026-10-28.md`, zmiany: `docs/zamowienia-je
 - [ ] Tomasz (API): KFS w `sprzedazOkres`, `zkDataOd` dla ZK bez rezerwacji.
 - [x] Karta produktu: „Ruch towaru” (ZD + przyjęcia + sprzedaż w jednej osi, zakres od okna zapasu, min. miesiąc, 3/12 mies., cała historia) i „Starsze zakupy” (cała kopia ZD na żądanie).
 - [x] Przegląd całości (28.10): dziennik zapisuje `pattern_factor` (stosunek do surowej propozycji), pamięć korekt poza parami i składami, kroki po indeksie w budżecie slotu `catalog-zd-sync`, przełącznik zakresu z `SegmentedControl`.
+
+## Ciemny tryb — 2026-10-29
+
+Plan: `docs/plans/ciemny-tryb.md` (inwentarz, tokeny z pomiarem kontrastu, przełącznik, brak mignięcia). **Czeka na zatwierdzenie decyzji D1–D6** — bez kodu do tego czasu.
+
+- [ ] 1. Tokeny ciemne w `globals.css` + test kontrastu z CSS.
+- [ ] 2. Codemod powierzchni (`bg-white` → `bg-card`, scrim) + reguły `audit:design`.
+- [ ] 3. Codemod kroku 600 i fokusu + reguła `audit:design`.
+- [ ] 4. Ręczne miejsca (wypełnienia 700+, `SUMMARY_COLORS`, SVG, `BrandLoader`, surowe `rgb()`).
+- [ ] 5. Preferencja na koncie (`preferences.theme`, cookie, skrypt w `<head>`) + wiersz „Motyw” w Ustawieniach.
+- [ ] 6. Szybkie wejście w menu bocznym i „Więcej”.
+- [ ] 7. Okna i panele na `bg-raised`.
+- [ ] 8. Przegląd modułów w ciemnym, DESIGN.md, ponowna decyzja o domyślnym motywie.
