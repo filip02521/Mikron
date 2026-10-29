@@ -63,22 +63,31 @@ export function effectiveDniZapasu(
 }
 
 /**
- * Dni celu w biegu z ręcznie podniesionym zapasem (Kreator). `normalDniZapasu` = dni zwykłego zamówienia
- * (karta); gdy `dniZapasu` jest większe, cel liczy się co najmniej na nich — także przy strategii z własnymi
- * dniami — a `signalDniZapasu` (dni zwykłego zamówienia, strategia: jej dni) niesie skalę korekt.
- * Bez podniesienia = `effectiveDniZapasu` i brak `signalDniZapasu` (automat, backtest).
+ * Dni celu biegu Kreatora i dni zwykłego zamówienia do korekt (`signalDniZapasu`, null = te same).
+ * `dniZapasu` = dni biegu (pole albo horyzont „do kolejnej dostawy”), `normalDniZapasu` = karta dostawcy,
+ * `manualDniZapasu` = samo pole. Classic: dni biegu, korekty na karcie, gdy bieg jest dłuższy.
+ * Strategia z własnymi dniami: liczy swoje (cykl + dostawa) — horyzont ich nie zmienia, a pole
+ * większe niż karta (ręcznie podniesiony zapas) podnosi cel co najmniej do dni biegu.
+ * Bez karty / pola = jak dotąd (automat, backtest).
  */
 export function resolveZdRunDniZapasu(input: {
   policy: ZdSupplierOrderPolicy;
   dniZapasu: number;
   normalDniZapasu?: number | null;
+  manualDniZapasu?: number | null;
   timing?: { leadDays: number; nextOrderDays: number } | null;
-}): { dniZapasu: number; signalDniZapasu: number | null; raised: boolean } {
-  const normal = Math.round(Number(input.normalDniZapasu));
-  const raised = Number.isFinite(normal) && normal >= 1 && input.dniZapasu > normal;
-  const normalDays = effectiveDniZapasu(input.policy, raised ? normal : input.dniZapasu, input.timing);
-  const dniZapasu = raised ? Math.max(normalDays, input.dniZapasu) : normalDays;
-  return { dniZapasu, signalDniZapasu: dniZapasu > normalDays ? normalDays : null, raised };
+}): { dniZapasu: number; signalDniZapasu: number | null } {
+  const normalRaw = Math.round(Number(input.normalDniZapasu));
+  const normal = Number.isFinite(normalRaw) && normalRaw >= 1 ? normalRaw : null;
+  if (!(Number(input.policy.targetDays) >= 1)) {
+    const dniZapasu = input.dniZapasu;
+    return { dniZapasu, signalDniZapasu: normal != null && dniZapasu > normal ? normal : null };
+  }
+  const strategyDays = effectiveDniZapasu(input.policy, input.dniZapasu, input.timing);
+  const manual = Math.round(Number(input.manualDniZapasu));
+  const raised = normal != null && Number.isFinite(manual) && manual > normal;
+  const dniZapasu = raised ? Math.max(strategyDays, input.dniZapasu) : strategyDays;
+  return { dniZapasu, signalDniZapasu: dniZapasu > strategyDays ? strategyDays : null };
 }
 
 /**

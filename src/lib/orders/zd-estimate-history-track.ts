@@ -62,7 +62,7 @@ export type HistoryTrackInput = {
   coverStock: number;
   dniZapasu: number;
   /**
-   * Dni zapasu ostatniego ZD (zwykłe zamówienie), gdy ten bieg ma ręcznie podniesiony zapas —
+   * Dni zapasu ostatniego ZD (zwykłe zamówienie), gdy ten bieg jest dłuższy (pole ponad kartę, horyzont) —
    * inaczej ZD na 30 dni porównane ze sprzedażą „na 90 dni” wyglądało jak skok. Skok ocenia się
    * na nich w całości (oczekiwana sprzedaż, wiek ZD, stan); „wolne po ZD” zostaje na `dniZapasu`.
    * Brak = `dniZapasu`.
@@ -172,7 +172,7 @@ export function applySalesSpikeCut(
     dniZapasu: input.dniZapasu,
   });
   // Skok = tempo z okna zawyżone względem ostatniego ZD: ta sama decyzja co przy zwykłym zamówieniu,
-  // także przy ręcznie podniesionym zapasie (cięcie skaluje wtedy cały, dłuższy cel).
+  // także przy dłuższym biegu (cięcie skaluje wtedy cały, dłuższy cel).
   const refDays = resolveSignalDniZapasu(input.lastOrderDniZapasu, input.dniZapasu);
   const expectedWindowSales = expectedSalesFromLastOrder({
     lastOrderedQty: ordered,

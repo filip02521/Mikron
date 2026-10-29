@@ -235,7 +235,7 @@ export function computeManualOrderQty(input: {
 export type MapZdEstimateLineOptions = {
   /** Dni zapasu dostawcy / run — do oceny cienkiego pokrycia. */
   dniZapasu?: number | null;
-  /** Dni zwykłego zamówienia przy ręcznie podniesionym zapasie — sygnały korekt jak przy zwykłym zamówieniu. */
+  /** Dni zwykłego zamówienia, gdy bieg jest dłuższy (pole ponad kartę, horyzont) — podbicia i skok jak przy nim. */
   signalDniZapasu?: number | null;
   /** Zapas minimalny z Kreatora — twarda podłoga celu po korektach. */
   zapasMin?: number | null;
@@ -456,7 +456,7 @@ export function mapZdEstimateLineToManual(
 
 export type ZdEstimateSoloMapOptions = {
   dniZapasu: number;
-  /** Dni zwykłego zamówienia przy ręcznie podniesionym zapasie — sygnały korekt jak przy zwykłym zamówieniu. */
+  /** Dni zwykłego zamówienia, gdy bieg jest dłuższy (pole ponad kartę, horyzont) — podbicia i skok jak przy nim. */
   signalDniZapasu?: number | null;
   zapasMin?: number | null;
   dniOkresu?: number | null;
@@ -602,6 +602,9 @@ export function buildManualZdEstimateResult(
       : DEFAULT_DNI_ZAPASU;
   const dniOkresu = zdEstimateWindowDays(parametry);
   const signalDniZapasu = zdEstimateSignalDniZapasu(parametry);
+  // Bez opcji: z parametrów wyniku (strategia zapisuje bezSkokuZd) — przeliczenia na kliencie liczą jak serwer.
+  // Tylko pojedyncze towary: pary i komplety nie mają cięcia skoku z profilu, więc zostaje im „skok vs ZD”.
+  const historySpikeCut = options?.historySpikeCut ?? (parametry.bezSkokuZd === true ? false : undefined);
   const historyByTwId = options?.historyByTwId ?? null;
   const packagingByTwId = options?.packagingByTwId ?? null;
   const minStockByTwId = options?.minStockByTwId ?? null;
@@ -618,7 +621,7 @@ export function buildManualZdEstimateResult(
     dniOkresu,
     salesTrack: options?.salesTrack,
     salesTrackCuts: options?.salesTrackCuts,
-    historySpikeCut: options?.historySpikeCut,
+    historySpikeCut,
     salesTrackPolicy: options?.salesTrackPolicy,
     historyByTwId,
     packagingByTwId,

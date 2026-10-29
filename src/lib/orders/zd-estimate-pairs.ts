@@ -95,7 +95,7 @@ export function mergePairHistoryForCut(
 
 export type ApplyZdEstimatePairsOptions = {
   dniZapasu: number;
-  /** Dni zwykłego zamówienia przy ręcznie podniesionym zapasie — sygnały korekt jak przy zwykłym zamówieniu. */
+  /** Dni zwykłego zamówienia, gdy bieg jest dłuższy (pole ponad kartę, horyzont) — podbicia i skok jak przy nim. */
   signalDniZapasu?: number | null;
   dniOkresu?: number | null;
   zapasMin?: number;

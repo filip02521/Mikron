@@ -414,11 +414,12 @@ export type ZdOrderEngineInput = {
    */
   orderTiming?: { leadDays: number; nextOrderDays: number } | null;
   /**
-   * Kreator: dni zwykłego zamówienia (karta dostawcy), gdy zapas podniesiono ręcznie ponad nie.
-   * Cel liczy się wtedy co najmniej na `dniZapasu` (także przy strategii z własnymi dniami), a korekty
-   * za sprzedażą i historią — jak przy zwykłym zamówieniu. Brak = jak dotąd (automat, backtest).
+   * Kreator: dni z karty dostawcy (zwykłe zamówienie) i same dni z pola. Dłuższy bieg (pole ponad kartę,
+   * horyzont) liczy podbicia i skok vs ostatnie ZD jak przy zwykłym zamówieniu; pole ponad kartę podnosi
+   * też cel strategii z własnymi dniami (`resolveZdRunDniZapasu`). Brak = jak dotąd (automat, backtest).
    */
   normalDniZapasu?: number | null;
+  manualDniZapasu?: number | null;
   dataOd: string;
   dataDo: string;
   zapasMin: number;
@@ -541,10 +542,11 @@ export async function runZdOrderEngine(
       return { ok: false, feedback };
     }
   }
-  const { dniZapasu, signalDniZapasu, raised } = resolveZdRunDniZapasu({
+  const { dniZapasu, signalDniZapasu } = resolveZdRunDniZapasu({
     policy: orderPolicy,
     dniZapasu: input.dniZapasu,
     normalDniZapasu: input.normalDniZapasu,
+    manualDniZapasu: input.manualDniZapasu,
     timing: input.orderTiming,
   });
 
@@ -671,10 +673,15 @@ export async function runZdOrderEngine(
     };
   }
 
-  if (signalDniZapasu != null) {
-    // W parametrach wyniku — przeliczenia na kliencie (opakowania, pary, sesja) liczą korekty tak samo.
-    fetched = { ...fetched, parametry: { ...fetched.parametry, dniZapasuSygnaly: signalDniZapasu } };
-  }
+  // W parametrach wyniku — przeliczenia na kliencie (opakowania, pary, sesja) liczą korekty tak samo.
+  fetched = {
+    ...fetched,
+    parametry: {
+      ...fetched.parametry,
+      ...(signalDniZapasu != null ? { dniZapasuSygnaly: signalDniZapasu } : {}),
+      ...(orderPolicy.strategy !== "classic" ? { bezSkokuZd: true } : {}),
+    },
+  };
 
   touchProgress({
     phase: "settings",
@@ -1339,8 +1346,16 @@ export async function runZdOrderEngine(
       : Math.round((Date.parse(dataDo) - Date.parse(dataOd)) / 86_400_000) + 1;
   const classicResult = classicBase
     ? buildManualZdEstimateResult(
-        // „Jak dotąd” przy podniesionym zapasie: korekty na dniach karty (classic = karta).
-        { ...fetched.parametry, dniZapasu: classicDays, dniZapasuSygnaly: raised ? input.normalDniZapasu : null },
+        // „Jak dotąd” na dniach dłuższych niż karta: korekty na dniach karty, jak w biegu classic.
+        {
+          ...fetched.parametry,
+          dniZapasu: classicDays,
+          dniZapasuSygnaly: resolveZdRunDniZapasu({
+            policy: ZD_SUPPLIER_ORDER_POLICY_CLASSIC,
+            dniZapasu: classicDays,
+            normalDniZapasu: input.normalDniZapasu,
+          }).signalDniZapasu,
+        },
         classicBase.map((l) => {
           const rate = Math.max(0, Number(l.sprzedazOkres) || 0) / Math.max(1, dniOkresuCompare);
           // Zaokrąglenie do 1e-6: szum zmiennoprzecinkowy przesuwał progi podążania za sprzedażą.

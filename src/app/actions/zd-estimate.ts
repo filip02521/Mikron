@@ -2264,7 +2264,8 @@ export async function actionRunZdEstimateManual(
       scope,
       supplierId: String(input.supplierId ?? "").trim() || null,
       dniZapasu: horizon ? horizon.horizonDays : dniZapasu,
-      normalDniZapasu: supplierCardDays != null && dniZapasu > supplierCardDays ? supplierCardDays : null,
+      normalDniZapasu: supplierCardDays,
+      manualDniZapasu: dniZapasu,
       orderTiming: supplierHorizon
         ? { leadDays: supplierHorizon.automatLeadDays, nextOrderDays: supplierHorizon.nextOrderDays }
         : null,
@@ -2292,7 +2293,10 @@ export async function actionRunZdEstimateManual(
     // Horyzont zastosowany = silnik liczył na jego dniach (strategia bez własnych dni celu też).
     // Strategia z własnymi dniami celu (effectiveDniZapasu) pomija horyzont — równe dni to przypadek.
     const strategyOwnDays = Number(engine.orderPolicy.targetDays) >= 1;
-    const appliedHorizon = horizon && !strategyOwnDays ? horizon : null;
+    // Pole ponad kartę podnosi cel strategii do dni biegu (z horyzontem) — wtedy horyzont jest użyty naprawdę.
+    const manualRaise = supplierCardDays != null && dniZapasu > supplierCardDays;
+    const appliedHorizon =
+      horizon && (!strategyOwnDays || (manualRaise && engine.dniZapasuUsed === horizon.horizonDays)) ? horizon : null;
     const smoothingApplied = input.salesSmoothing === true && !strategyActive;
     const {
       result,

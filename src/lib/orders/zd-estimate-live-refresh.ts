@@ -55,6 +55,8 @@ export function collectMissingZdPairPartnerTwIds(
 }
 
 export type RefreshZdEstimateLinesOptions = ApplyZdEstimatePairsOptions & {
+  /** false = pojedyncze towary bez cięcia „skok vs ostatnie ZD” (strategia, jak serwer). */
+  historySpikeCut?: boolean;
   packagingByTwId?: ReadonlyMap<number, ZdEstimatePackagingRefreshEntry> | null;
   missingBomTwIds?: ReadonlySet<number> | null;
   /** tw_Id → minimum stanów w sztukach fizycznych. */
@@ -83,6 +85,7 @@ export function refreshZdEstimateLinesWithPairs(input: {
   const remappedBase = mapZdEstimateLinesSolo(safeBase, {
     dniZapasu: input.options.dniZapasu,
     signalDniZapasu: input.options.signalDniZapasu,
+    historySpikeCut: input.options.historySpikeCut,
     zapasMin: input.options.zapasMin,
     dniOkresu: input.options.dniOkresu,
     salesTrack: input.options.salesTrack,
@@ -147,7 +150,12 @@ export { collectMissingZdBomTwIds };
 export function zdEstimateRefreshDays(
   paramInfo: Record<string, unknown> | null | undefined,
   dniZapasuForm: string | number
-): { dniZapasu: number; dniOkresu: number | null; signalDniZapasu: number | null } {
+): {
+  dniZapasu: number;
+  dniOkresu: number | null;
+  signalDniZapasu: number | null;
+  historySpikeCut: boolean | undefined;
+} {
   const serverDni = Number(paramInfo?.dniZapasu);
   const dni = Math.round(
     Number.isFinite(serverDni) && serverDni >= 1 ? serverDni : Number(dniZapasuForm)
@@ -158,6 +166,7 @@ export function zdEstimateRefreshDays(
       paramInfo as Parameters<typeof zdEstimateWindowDays>[0]
     ),
     signalDniZapasu: zdEstimateSignalDniZapasu(paramInfo as Parameters<typeof zdEstimateSignalDniZapasu>[0]),
+    historySpikeCut: paramInfo?.bezSkokuZd === true ? false : undefined,
   };
 }
 

@@ -195,7 +195,7 @@ export function resolveDniOkresuEffective(
 }
 
 /**
- * Dni do sygnałów korekt: dni zwykłego zamówienia, gdy zapas podniesiono ponad nie; inaczej dni zapasu.
+ * Dni do podbić i oceny skoku: dni zwykłego zamówienia, gdy bieg jest dłuższy; inaczej dni zapasu.
  */
 export function resolveSignalDniZapasu(signalDniZapasu: number | null | undefined, dniZapasu: number): number {
   const s = Math.round(Number(signalDniZapasu));
@@ -375,9 +375,9 @@ export function computeSalesTrackedCel(input: {
   /** Zapas minimalny w celu z API — podbicia i cięcia liczą się od części zależnej od sprzedaży. */
   zapasMin?: number;
   /**
-   * Dni zwykłego zamówienia, gdy zapas podniesiono ręcznie ponad nie (np. większe zamówienie na koniec
-   * roku). Sygnały i wielkość korekt liczą się jak przy zwykłym zamówieniu; brak / nie mniej niż
-   * `dniZapasu` = jak dotąd.
+   * Dni zwykłego zamówienia, gdy bieg jest dłuższy (pole ponad kartę, horyzont; np. większe zamówienie
+   * na koniec roku). Podbicia liczą się jak przy zwykłym zamówieniu, cięcia na `dniZapasu`;
+   * brak / nie mniej niż `dniZapasu` = jak dotąd.
    */
   signalDniZapasu?: number | null;
 }): SalesTrackAdjustment {
