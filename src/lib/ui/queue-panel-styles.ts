@@ -10,14 +10,14 @@ export const queueToolbarFieldLabelClass =
   "mb-0.5 block text-[0.6875rem] font-medium text-slate-600";
 
 export const queueToolbarInputClass =
-  "w-full min-h-11 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-base text-slate-900 shadow-sm placeholder:text-slate-400 hover:border-slate-300 sm:min-h-9 sm:text-sm";
+  "w-full min-h-11 rounded-md border border-slate-200 bg-card px-2.5 py-1.5 text-base text-slate-900 shadow-sm placeholder:text-slate-400 hover:border-slate-300 sm:min-h-9 sm:text-sm";
 
 /** Jednolita wysokość pól i przycisków w pasku przyjęcia. */
 export const queueToolbarControlClass = "min-h-11 py-2 sm:min-h-10";
 
 /** Karta sekcji w pasku przyjęcia towaru. */
 export const receiveQueueToolbarSectionClass =
-  "rounded-lg border border-slate-200/70 bg-white p-3 shadow-sm";
+  "rounded-lg border border-slate-200/70 bg-card p-3 shadow-sm";
 
 /** Blok narzędzi w dzienniku dostaw (data, filtry) — blok `well` w karcie, bez ramki i cienia. */
 export const journalToolbarCardClass = "rounded-lg bg-slate-50 p-3";

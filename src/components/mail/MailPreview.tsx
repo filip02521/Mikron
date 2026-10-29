@@ -86,12 +86,12 @@ export function MailPreview({
       aria-label="Podgląd wiadomości"
       className={cn("overflow-hidden rounded-[var(--radius-panel)] border border-slate-200 bg-slate-50", className)}
     >
-      <header className="flex items-center gap-2 border-b border-slate-200 bg-white px-4 py-2.5">
+      <header className="flex items-center gap-2 border-b border-slate-200 bg-card px-4 py-2.5">
         <IconEye size={16} className="shrink-0 text-slate-500" aria-hidden />
         <h3 className="text-sm font-semibold text-slate-900">Tak zobaczy to odbiorca</h3>
       </header>
 
-      <dl className="grid grid-cols-[3.25rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 border-b border-slate-200 bg-white px-4 py-3 text-sm">
+      <dl className="grid grid-cols-[3.25rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 border-b border-slate-200 bg-card px-4 py-3 text-sm">
         <dt className="text-slate-500">Od</dt>
         <dd className={cn("min-w-0 break-words", from ? "text-slate-900" : "font-medium text-red-700")}>
           {from ?? "Gmail niepołączony"}
@@ -114,7 +114,7 @@ export function MailPreview({
         </dd>
       </dl>
 
-      <div className="border-b border-slate-200 bg-white px-4 py-3">
+      <div className="border-b border-slate-200 bg-card px-4 py-3">
         <p className="mb-2 text-xs font-medium text-slate-500">
           {attachments.length
             ? `Załączniki (${attachments.length})${totalBytes ? ` · ${formatFileSize(totalBytes)}` : ""}`
@@ -195,7 +195,7 @@ export function MailPreview({
 
       <div className="p-3 sm:p-4">
         {text.trim() ? (
-          <div className="rounded-[var(--radius-surface)] bg-white px-4 py-3 shadow-[0_1px_2px_rgba(21,25,32,.06)] ring-1 ring-slate-200">
+          <div className="theme-light rounded-[var(--radius-surface)] bg-card px-4 py-3 shadow-[0_1px_2px_rgba(21,25,32,.06)] ring-1 ring-slate-200">
             <iframe
               ref={frameRef}
               title="Treść wiadomości"

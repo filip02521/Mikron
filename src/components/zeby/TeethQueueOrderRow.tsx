@@ -189,17 +189,17 @@ export function TeethQueueOrderRow({
                       done
                         ? "cursor-default bg-slate-50 text-slate-500 ring-slate-200 line-through decoration-slate-300"
                         : locked
-                          ? "cursor-default bg-white text-slate-700 ring-slate-200"
+                          ? "cursor-default bg-card text-slate-700 ring-slate-200"
                         : lineSelected
                           ? "bg-indigo-50 text-indigo-900 ring-indigo-200"
-                          : "bg-white text-slate-800 ring-slate-200 hover:ring-indigo-300",
+                          : "bg-card text-slate-800 ring-slate-200 hover:ring-indigo-300",
                     )}
                   >
                     <span>{label}</span>
                     <span
                       className={cn(
                         "rounded px-1 text-[0.6875rem] font-semibold tabular-nums",
-                        lineSelected ? "bg-white text-indigo-700" : "bg-slate-100 text-slate-700",
+                        lineSelected ? "bg-card text-indigo-700" : "bg-slate-100 text-slate-700",
                       )}
                     >
                       ×{qty}
@@ -226,7 +226,7 @@ export function TeethQueueOrderRow({
                 orderId={item.id}
                 onSaved={onEditSaved}
                 label={state === "missing_list" ? "Dodaj listę zębów" : "Uzupełnij"}
-                className="min-h-11 border border-amber-300 bg-white px-2.5 text-xs font-semibold text-amber-900 hover:bg-amber-50 sm:min-h-8"
+                className="min-h-11 border border-amber-300 bg-card px-2.5 text-xs font-semibold text-amber-900 hover:bg-amber-50 sm:min-h-8"
               />
             ) : null}
           </div>

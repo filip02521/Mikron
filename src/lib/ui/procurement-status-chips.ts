@@ -33,7 +33,7 @@ export const procurementListFilterCountSelectedClass = "opacity-90";
 export const procurementListFilterCountEmptyClass = "opacity-40";
 
 export const procurementListFilterChipIdleClass =
-  "border-slate-200/90 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800";
+  "border-slate-200/90 bg-card text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800";
 
 export const procurementListFilterChipSelectedClass =
   "border-indigo-400/90 bg-indigo-50 text-indigo-950 shadow-sm ring-1 ring-indigo-200/50";

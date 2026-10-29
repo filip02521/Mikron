@@ -206,7 +206,7 @@ export function TeethSpecFields({
             onChange={(e) => onChange({ color: e.target.value })}
             placeholder="Wpisz kolor spoza listy"
             className={cn(
-              "mt-1 w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs",
+              "mt-1 w-full rounded-md border border-slate-200 bg-card px-2.5 py-1.5 text-xs",
               controlFocusClass,
               "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
             )}
@@ -261,7 +261,7 @@ export function TeethSpecFields({
             }}
             placeholder={freeformMould ? "Wpisz fason (opcjonalnie)" : "Wpisz fason lub zostaw puste"}
             className={cn(
-              "w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs",
+              "w-full rounded-md border border-slate-200 bg-card px-2.5 py-1.5 text-xs",
               controlFocusClass,
               "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
             )}

@@ -624,7 +624,7 @@ export function ZkWatchLinesPanel({
                   "rounded-md px-2 py-0.5 text-[0.68rem] font-semibold transition",
                   filter === chip.id
                     ? "bg-indigo-100 text-indigo-900 ring-1 ring-indigo-200/80"
-                    : "bg-white text-slate-600 ring-1 ring-slate-200/90 hover:bg-slate-50",
+                    : "bg-card text-slate-600 ring-1 ring-slate-200/90 hover:bg-slate-50",
                   chip.count === 0 && chip.id !== "all" && "opacity-40"
                 )}
               >

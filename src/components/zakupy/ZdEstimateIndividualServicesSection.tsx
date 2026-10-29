@@ -155,7 +155,7 @@ export function ZdEstimateIndividualServicesSection({
       ) : null}
 
       {expanded ? (
-        <ul className="mt-2 max-h-[8rem] divide-y divide-amber-100/90 overflow-y-auto overscroll-contain rounded-md bg-white/40 ring-1 ring-amber-100/80">
+        <ul className="mt-2 max-h-[8rem] divide-y divide-amber-100/90 overflow-y-auto overscroll-contain rounded-md bg-card/40 ring-1 ring-amber-100/80">
           {serviceLines.map((line) => (
             <li
               key={line.key}

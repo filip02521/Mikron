@@ -463,7 +463,7 @@ export function StaffVacationCalendar({
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 {color ? (
-                  <span className={cn("h-3 w-3 rounded-full ring-2 ring-white", color.dot)} />
+                  <span className={cn("h-3 w-3 rounded-full ring-2 ring-card", color.dot)} />
                 ) : null}
                 <span className="text-sm font-semibold text-slate-900">
                   {member.name}
@@ -539,7 +539,7 @@ export function StaffVacationCalendar({
                   </div>
 
                   {period.note ? (
-                    <div className="rounded-md border border-slate-100 bg-white px-2.5 py-2">
+                    <div className="rounded-md border border-slate-100 bg-card px-2.5 py-2">
                       <p className="text-[0.6875rem] font-semibold text-slate-500">Notatka</p>
                       <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{period.note}</p>
                     </div>
@@ -738,7 +738,7 @@ export function StaffVacationCalendar({
                             key={p.period.id + "-" + idx}
                             type="button"
                             className={cn(
-                              "flex w-full items-center gap-1 rounded px-1.5 py-1 text-[0.625rem] font-medium truncate cursor-pointer transition hover:ring-1 hover:ring-slate-300/50 border border-white/80 shadow-sm",
+                              "flex w-full items-center gap-1 rounded px-1.5 py-1 text-[0.625rem] font-medium truncate cursor-pointer transition hover:ring-1 hover:ring-slate-300/50 border border-card/80 shadow-sm",
                               isOwn && "ring-1 ring-slate-400/40 font-semibold",
                               c.bg, c.text,
                             )}
@@ -798,7 +798,7 @@ export function StaffVacationCalendar({
             const isOwn = s.id === currentUserId;
             return (
               <div key={s.id} className="flex items-center gap-1.5">
-                <span className={cn("h-2.5 w-2.5 rounded-full ring-1 ring-inset ring-white/60", c.dot)} />
+                <span className={cn("h-2.5 w-2.5 rounded-full ring-1 ring-inset ring-card/60", c.dot)} />
                 <span className={cn(
                   "text-[0.6875rem]",
                   isOwn ? "font-semibold text-slate-700" : "text-slate-500",

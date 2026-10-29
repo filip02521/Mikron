@@ -562,7 +562,7 @@ export function DeliveryStatsDiagnosticsPanel({
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
+              <tbody className="divide-y divide-slate-100 bg-card">
                 {filtered.length ? (
                   filtered.map((row) => (
                     <SupplierRow

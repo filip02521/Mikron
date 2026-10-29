@@ -43,7 +43,7 @@ export function ProsbaZkPrefillLoading({
         {[0, 1, 2].map((row) => (
           <div
             key={row}
-            className="rounded-md border border-slate-200/80 bg-white px-3 py-3"
+            className="rounded-md border border-slate-200/80 bg-card px-3 py-3"
           >
             <div className="h-3.5 w-[55%] animate-pulse rounded bg-slate-200/90" />
             <div className="mt-2.5 flex gap-2">

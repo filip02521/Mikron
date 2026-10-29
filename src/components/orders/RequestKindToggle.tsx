@@ -30,7 +30,7 @@ export function RequestKindToggle({
           "flex min-h-[4.5rem] cursor-pointer items-start gap-3 rounded-md border px-3.5 py-3 text-left transition-shadow",
           value === "zamowienie"
             ? "border-indigo-400 bg-indigo-50/90 shadow-sm ring-2 ring-indigo-400/30"
-            : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/80"
+            : "border-slate-200 bg-card hover:border-slate-300 hover:bg-slate-50/80"
         )}
       >
         <IconTruck
@@ -56,7 +56,7 @@ export function RequestKindToggle({
           "flex min-h-[4.5rem] cursor-pointer items-start gap-3 rounded-md border px-3.5 py-3 text-left transition-shadow",
           value === "informacja"
             ? "border-violet-400 bg-violet-50/90 shadow-sm ring-2 ring-violet-400/30"
-            : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/80"
+            : "border-slate-200 bg-card hover:border-slate-300 hover:bg-slate-50/80"
         )}
       >
         <IconAvailability

@@ -133,7 +133,7 @@ function SupplierRow({ row, expanded, onToggle }: { row: SubiektLeadTimeSupplier
                     {row.trend.map((t) => (
                       <span
                         key={t.year}
-                        className="rounded-md bg-white px-2 py-1 tabular-nums ring-1 ring-inset ring-slate-200"
+                        className="rounded-md bg-card px-2 py-1 tabular-nums ring-1 ring-inset ring-slate-200"
                         title={`${t.n} zamówień w ${t.year}`}
                       >
                         {t.year}: <strong className="text-slate-800">{t.p50} d</strong>
@@ -435,7 +435,7 @@ export function SubiektLeadTimesPanel({ initialData }: { initialData: SubiektLea
                       <th className="hidden px-2 py-2.5 font-medium lg:table-cell sm:px-3">Ostatnie ZD</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white">
+                  <tbody className="divide-y divide-slate-100 bg-card">
                     {rows.length ? (
                       rows.map((row) => (
                         <SupplierRow

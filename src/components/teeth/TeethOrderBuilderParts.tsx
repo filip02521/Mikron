@@ -96,7 +96,7 @@ export function TeethBuilderStepFlow({ steps }: { steps: TeethBuilderStep[] }) {
             <span
               className={cn(
                 "flex size-4 shrink-0 items-center justify-center rounded-full text-[0.625rem] font-semibold",
-                step.done ? "bg-white text-indigo-700 ring-1 ring-indigo-200" : "bg-slate-200/80 text-slate-600",
+                step.done ? "bg-card text-indigo-700 ring-1 ring-indigo-200" : "bg-slate-200/80 text-slate-600",
               )}
               aria-hidden="true"
             >
@@ -210,7 +210,7 @@ export function TeethBuilderGroupList({
           <li
             key={g.id}
             className={cn(
-              "flex items-center gap-2 bg-white px-2.5 py-1.5",
+              "flex items-center gap-2 bg-card px-2.5 py-1.5",
               editingId === g.id && "bg-amber-50/70 ring-1 ring-inset ring-amber-200/60",
             )}
           >
@@ -350,7 +350,7 @@ export function TeethBuilderQuantityRow({
                 onCountChange(Number.isFinite(n) && n >= 1 ? Math.min(99, n) : 1);
               }}
               className={cn(
-                "w-11 border-x border-slate-200/90 bg-white py-1 text-center text-xs font-semibold tabular-nums",
+                "w-11 border-x border-slate-200/90 bg-card py-1 text-center text-xs font-semibold tabular-nums",
                 controlFocusClass,
               )}
               aria-label="Ilość sztuk tej pozycji"

@@ -61,7 +61,7 @@ export function TeethQueueOrderSummary({
           {copied ? "Skopiowano" : "Kopiuj zestawienie"}
         </Button>
       </div>
-      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-card">
         <table className="w-full min-w-[26rem] text-left text-sm">
           <thead className="bg-slate-50 text-[0.6875rem] font-semibold text-slate-500">
             <tr>

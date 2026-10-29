@@ -623,7 +623,7 @@ export function MagazynGadkiClient({
                   {links.map((link) => (
                     <li
                       key={link.id}
-                      className="flex flex-wrap items-center justify-between gap-3 bg-white px-3 py-3 transition hover:bg-slate-50/80 sm:px-3.5"
+                      className="flex flex-wrap items-center justify-between gap-3 bg-card px-3 py-3 transition hover:bg-slate-50/80 sm:px-3.5"
                     >
                       <div className="min-w-0">
                         <a
@@ -758,7 +758,7 @@ export function MagazynGadkiClient({
                           <h3 className="text-sm font-semibold tracking-tight text-slate-900">
                             {link.zkNumber}
                           </h3>
-                          <span className="inline-flex items-center rounded-md bg-white/90 px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums text-indigo-800 ring-1 ring-inset ring-indigo-200/70">
+                          <span className="inline-flex items-center rounded-md bg-card/90 px-1.5 py-0.5 text-[0.625rem] font-semibold tabular-nums text-indigo-800 ring-1 ring-inset ring-indigo-200/70">
                             {uniquePozCount}
                             {deferredSearch
                               ? ` / ${new Set(link.lines.map((l) => l.key)).size}`
@@ -766,7 +766,7 @@ export function MagazynGadkiClient({
                             poz.
                           </span>
                           {labeledPalletCount > 0 ? (
-                            <span className="inline-flex items-center gap-1 rounded-md bg-white/90 px-1.5 py-0.5 text-[0.625rem] font-medium text-slate-600 ring-1 ring-inset ring-slate-200/80">
+                            <span className="inline-flex items-center gap-1 rounded-md bg-card/90 px-1.5 py-0.5 text-[0.625rem] font-medium text-slate-600 ring-1 ring-inset ring-slate-200/80">
                               <IconLayers size={10} className="text-indigo-700/70" />
                               {labeledPalletCount}{" "}
                               {labeledPalletCount === 1 ? "paleta" : "palet"}
@@ -837,7 +837,7 @@ export function MagazynGadkiClient({
                                 <div className="h-px flex-1 bg-slate-200/80" />
                               </div>
                             ) : null}
-                            <ul className="overflow-hidden rounded-lg border border-slate-200/80 bg-white divide-y divide-slate-100/90">
+                            <ul className="overflow-hidden rounded-lg border border-slate-200/80 bg-card divide-y divide-slate-100/90">
                               {group.lines.map((line) => (
                                 <LineRow
                                   key={`${link.id}-${line.rowKey}`}
@@ -910,7 +910,7 @@ export function MagazynGadkiClient({
                               return (
                                 <li
                                   key={`orphan-${line.rowKey}`}
-                                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-100/90 bg-white/80 px-3 py-2 text-sm"
+                                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-100/90 bg-card/80 px-3 py-2 text-sm"
                                 >
                                   <span className="min-w-0 text-slate-700">
                                     <span className="font-medium text-slate-900">
@@ -1075,7 +1075,7 @@ export function MagazynGadkiClient({
           ) : (
             <ul className="divide-y divide-slate-100 overflow-hidden rounded-md border border-slate-100">
               {visibleNotes.map((note) => (
-                <li key={note.id} className="bg-white px-3 py-3 text-sm sm:px-3.5">
+                <li key={note.id} className="bg-card px-3 py-3 text-sm sm:px-3.5">
                   {editingNoteId === note.id && canMutate ? (
                     <div className="space-y-2">
                       <textarea
@@ -1250,7 +1250,7 @@ export function MagazynGadkiClient({
               </div>
             ) : (
               <>
-                <ul className="max-h-[22rem] divide-y divide-slate-100 overflow-y-auto overflow-x-hidden rounded-lg border border-slate-200/80 bg-white">
+                <ul className="max-h-[22rem] divide-y divide-slate-100 overflow-y-auto overflow-x-hidden rounded-lg border border-slate-200/80 bg-card">
                   {filteredChangeLog.map((row) => {
                     const isZk = isGadkiZkContentLogKind(row.kind);
                     return (
@@ -1363,7 +1363,7 @@ function RenamePalletForm({
 
   return (
     <form
-      className="flex flex-wrap items-center gap-1.5 rounded-lg border border-indigo-100/90 bg-white/90 px-2 py-1.5 text-xs"
+      className="flex flex-wrap items-center gap-1.5 rounded-lg border border-indigo-100/90 bg-card/90 px-2 py-1.5 text-xs"
       onSubmit={(e) => {
         e.preventDefault();
         if (!from || !to.trim()) return;
@@ -1757,7 +1757,7 @@ function LineRow({
             onChange={(e) => setNoteDraft(e.target.value)}
             className={cn(
               fieldControlClass("default"),
-              "flex-1 border-sky-100 bg-white text-sm"
+              "flex-1 border-sky-100 bg-card text-sm"
             )}
             placeholder={
               noteTarget === "share"
@@ -1893,7 +1893,7 @@ function SplitSharesEditor({
         {rows.map((row, idx) => (
           <li
             key={row.id}
-            className="space-y-1.5 rounded-lg border border-indigo-100/80 bg-white p-2.5"
+            className="space-y-1.5 rounded-lg border border-indigo-100/80 bg-card p-2.5"
           >
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-[0.625rem] font-semibold tabular-nums text-indigo-800 ring-1 ring-inset ring-indigo-200/70">
@@ -1971,7 +1971,7 @@ function SplitSharesEditor({
           <option key={p} value={p} />
         ))}
       </datalist>
-      <div className="flex flex-wrap items-center gap-2 rounded-md bg-white/80 px-2.5 py-1.5 text-[0.6875rem] tabular-nums text-slate-600 ring-1 ring-inset ring-indigo-100/80">
+      <div className="flex flex-wrap items-center gap-2 rounded-md bg-card/80 px-2.5 py-1.5 text-[0.6875rem] tabular-nums text-slate-600 ring-1 ring-inset ring-indigo-100/80">
         <span>
           Suma:{" "}
           <span className="font-semibold text-slate-900">

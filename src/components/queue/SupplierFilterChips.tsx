@@ -22,7 +22,7 @@ function SupplierChip({
   onClick,
   title,
   activeClass = panelChoiceChipSelectedClass,
-  activeCountClass = "bg-white text-indigo-700",
+  activeCountClass = "bg-card text-indigo-700",
 }: {
   label: string;
   count?: number;
@@ -126,7 +126,7 @@ export function SupplierFilterChips({
   const activeClass =
     accentVariant === "indigo" ? panelChoiceChipSelectedClass : panelChoiceChipSuccessSelectedClass;
   const activeCountClass =
-    accentVariant === "indigo" ? "bg-white text-indigo-700" : "bg-emerald-100/80 text-emerald-900";
+    accentVariant === "indigo" ? "bg-card text-indigo-700" : "bg-emerald-100/80 text-emerald-900";
   const clearFilterClass =
     "inline-flex min-h-11 items-center text-xs font-medium text-indigo-700 underline-offset-2 transition hover:text-indigo-900 hover:underline sm:min-h-0";
 

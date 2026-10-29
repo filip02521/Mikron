@@ -55,7 +55,7 @@ export function NoteFollowUpControl({
             disabled={saving}
             onChange={(e) => setEditDraft(e.target.value)}
             className={cn(
-              "rounded border border-slate-200/80 bg-white/90 px-1.5 py-0.5 text-[0.6875rem]",
+              "rounded border border-slate-200/80 bg-card/90 px-1.5 py-0.5 text-[0.6875rem]",
               controlFocusClass
             )}
           />

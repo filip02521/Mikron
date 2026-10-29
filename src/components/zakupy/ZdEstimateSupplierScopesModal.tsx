@@ -164,7 +164,7 @@ function ScopeEditorForm({
 
       {hits.length > 0 ? (
         <ul
-          className="max-h-48 divide-y divide-slate-100 overflow-y-auto rounded-md border border-slate-200 bg-white"
+          className="max-h-48 divide-y divide-slate-100 overflow-y-auto rounded-md border border-slate-200 bg-card"
           role="listbox"
           aria-label={draft.mode === "grupa" ? "Wyniki grup" : "Wyniki cech"}
         >
@@ -220,7 +220,7 @@ function SuggestionChip({
       title={`${s.supplierHits} towarów dostawcy z ZD w tym zakresie · ${Math.round(
         s.purity * 100
       )}% kupowanych z niego towarów to ten dostawca · ${s.productCount} towarów w Subiekcie`}
-      className="group inline-flex max-w-full items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-left text-xs text-slate-700 transition-colors duration-150 hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-50"
+      className="group inline-flex max-w-full items-center gap-2 rounded-md border border-slate-200 bg-card px-2.5 py-1.5 text-left text-xs text-slate-700 transition-colors duration-150 hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-50"
     >
       <ModeBadge mode={s.mode} />
       <span className="min-w-0 truncate font-medium text-slate-900">{s.name}</span>
@@ -894,7 +894,7 @@ export function ZdEstimateSupplierScopesModal({
                             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
                             active
                               ? "bg-indigo-50 ring-1 ring-inset ring-indigo-200"
-                              : "hover:bg-white"
+                              : "hover:bg-card"
                           )}
                         >
                           <span className="flex items-center gap-1.5">
@@ -1187,7 +1187,7 @@ export function ZdEstimateSupplierScopesModal({
                           <li
                             key={row.id}
                             className={cn(
-                              "rounded-md border bg-white transition-colors duration-150",
+                              "rounded-md border bg-card transition-colors duration-150",
                               editing ? "border-indigo-200" : dead ? "border-red-200" : "border-slate-200"
                             )}
                           >

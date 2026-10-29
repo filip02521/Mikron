@@ -139,7 +139,7 @@ function DataWarning({ row }: { row: StockWatchSupplierBoardRow }) {
 }
 
 const secondaryLinkClass =
-  "inline-flex h-8 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 shadow-[0_1px_2px_rgba(21,25,32,.06)] transition-[background-color,transform] duration-150 ease-out hover:bg-slate-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-1";
+  "inline-flex h-8 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-md border border-slate-200 bg-card px-3 text-xs font-semibold text-slate-800 shadow-[0_1px_2px_rgba(21,25,32,.06)] transition-[background-color,transform] duration-150 ease-out hover:bg-slate-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-1";
 
 /** Rozwinięty dostawca: dlaczego ten priorytet, co zrobić w Kreatorze, jego pilne towary. */
 function SupplierDetail({
@@ -230,7 +230,7 @@ function SupplierDetail({
       </div>
 
       {row.urgentRows.length > 0 ? (
-        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <div className="overflow-hidden rounded-lg border border-slate-200 bg-card">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-sm">
               <thead>
@@ -401,7 +401,7 @@ export function StockSupplierBoard({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Szukaj dostawcy"
-            className="h-11 w-full rounded-md border border-slate-200 bg-white pl-8 pr-3 text-base text-slate-900 shadow-sm placeholder:text-slate-400 hover:border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:h-8 sm:text-sm"
+            className="h-11 w-full rounded-md border border-slate-200 bg-card pl-8 pr-3 text-base text-slate-900 shadow-sm placeholder:text-slate-400 hover:border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:h-8 sm:text-sm"
           />
         </label>
         <span
@@ -522,7 +522,7 @@ export function StockSupplierBoard({
                           scope="rowgroup"
                           colSpan={COLS}
                           className={cn(
-                            "border-t border-slate-200 bg-white px-4 pb-1.5 pt-4 text-left text-xs font-semibold",
+                            "border-t border-slate-200 bg-card px-4 pb-1.5 pt-4 text-left text-xs font-semibold",
                             PRIORITY_META[r.priority].group
                           )}
                         >
@@ -552,7 +552,7 @@ export function StockSupplierBoard({
                           aria-expanded={open}
                           aria-controls={detailId}
                           aria-label={`${open ? "Zwiń" : "Rozwiń"} ${r.supplierName}`}
-                          className="inline-flex size-7 cursor-pointer items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-white hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                          className="inline-flex size-7 cursor-pointer items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-card hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
                         >
                           <IconChevronDown
                             size={16}

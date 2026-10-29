@@ -2,9 +2,9 @@
 
 export const surface = {
   /** Główna karta strony (Card). */
-  panel: "rounded-md border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]",
+  panel: "rounded-md border border-slate-200/80 bg-card shadow-[var(--shadow-card-elevated)]",
   /** Karta / wiersz wewnątrz sekcji. */
-  nested: "rounded-md border border-slate-200 bg-white",
+  nested: "rounded-md border border-slate-200 bg-card",
   /** Delikatne tło pod listą / metrykami. */
   inset: "rounded-md border border-slate-200/90 bg-slate-50/50",
   /** Przyciski, pola, segmenty. */
@@ -13,15 +13,15 @@ export const surface = {
 
 /** Pełnoekranowy backdrop modala. Wymaga `useBodyScrollLock(open)` — sam nie blokuje scrolla `<main>`. */
 export const modalBackdropClass =
-  "fixed inset-0 cursor-pointer bg-slate-900/45 backdrop-blur-sm";
+  "fixed inset-0 cursor-pointer bg-scrim/45 backdrop-blur-sm";
 
 /** Backdrop dla panelu bocznego (drawer/sheet) — ciemniejszy, z blur. */
 export const sidePanelBackdropClass =
-  "fixed inset-0 z-40 cursor-pointer bg-slate-900/40 backdrop-blur-sm";
+  "fixed inset-0 z-40 cursor-pointer bg-scrim/40 backdrop-blur-sm";
 
 /** Powłoka panelu bocznego — spójna border, shadow, rounded-left. */
 export const sidePanelShellClass =
-  "fixed inset-y-0 right-0 z-50 flex h-full w-full max-w-lg flex-col border-l border-slate-200/80 bg-white shadow-2xl";
+  "fixed inset-y-0 right-0 z-50 flex h-full w-full max-w-lg flex-col border-l border-slate-200/80 bg-card shadow-2xl";
 
 /** Przycisk zamykania panelu — ikonowy, zaokrąglony kafelek. */
 export const sidePanelCloseButtonClass =
@@ -36,7 +36,7 @@ export const sidePanelContentClass =
   "flex-1 overflow-y-auto px-5 py-5";
 
 export const modalPanelClass =
-  "relative flex flex-col overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)] ring-1 ring-slate-900/5";
+  "relative flex flex-col overflow-hidden rounded-md border border-slate-200/80 bg-card shadow-[var(--shadow-card-elevated)] ring-1 ring-slate-900/5";
 
 /** Prawy panel z tabelą — szerokość jak ModalShell xl / karty dostawców. */
 export const sideSheetWidePanelClass =
@@ -52,15 +52,15 @@ export const choiceChipClass = {
 } as const;
 
 export const buttonGroupShellClass =
-  "inline-flex items-stretch overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm";
+  "inline-flex items-stretch overflow-hidden rounded-md border border-slate-200 bg-card shadow-sm";
 
 /** Grupa akcji w wierszu panelu dziennego — wysokość obudowy; segmenty wypełniają przez h-full. */
 export const panelActionBarShellClass =
-  "inline-flex h-9 min-h-9 w-full items-stretch overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm sm:h-7 sm:min-h-7 sm:w-auto";
+  "inline-flex h-9 min-h-9 w-full items-stretch overflow-hidden rounded-md border border-slate-200 bg-card shadow-sm sm:h-7 sm:min-h-7 sm:w-auto";
 
 /** Grupa akcji w wierszu /moje — ta sama wysokość co toolbar karty (h-10). */
 export const mojeActionBarShellClass =
-  "inline-flex h-10 min-h-10 w-full items-stretch overflow-hidden rounded-md border border-slate-200/90 bg-white shadow-sm sm:w-auto";
+  "inline-flex h-10 min-h-10 w-full items-stretch overflow-hidden rounded-md border border-slate-200/90 bg-card shadow-sm sm:w-auto";
 
 export const buttonGroupItemClass = "border-0 shadow-none";
 
@@ -81,7 +81,7 @@ export const panelQueueRowActionsClass =
  * (footer ma już border-t; unikamy podwójnego chrome).
  */
 export const panelActionBarFooterShellClass =
-  "inline-flex h-9 min-h-9 w-full max-w-full items-stretch overflow-hidden rounded-md border border-slate-200/90 bg-white sm:h-7 sm:min-h-7 sm:w-full";
+  "inline-flex h-9 min-h-9 w-full max-w-full items-stretch overflow-hidden rounded-md border border-slate-200/90 bg-card sm:h-7 sm:min-h-7 sm:w-full";
 
 /** Karta w kolumnie planu tygodnia — zawsze pionowo (kolumny są wąskie niezależnie od viewportu). */
 export const weekPlannerCardLayoutClass = "flex flex-col gap-1.5";

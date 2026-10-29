@@ -345,7 +345,7 @@ export function AdminCronStatusPanel({
                 <th className="py-2 pl-2 pr-3 font-medium sm:pr-4 lg:pr-5">Ostatnio</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
+            <tbody className="divide-y divide-slate-100 bg-card">
               {filteredJobs.length ? (
                 filteredJobs.map((job) => (
                   <CronJobRow

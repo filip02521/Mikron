@@ -239,7 +239,7 @@ export function ProsbaFormReadiness({
             ) : null}
           </div>
           {view.canSubmit ? (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-white/80 px-2.5 py-1 text-[0.6875rem] font-semibold text-emerald-800 ring-1 ring-emerald-200/80">
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-card/80 px-2.5 py-1 text-[0.6875rem] font-semibold text-emerald-800 ring-1 ring-emerald-200/80">
               Wyślij
               <SubmitHintChevron />
             </span>

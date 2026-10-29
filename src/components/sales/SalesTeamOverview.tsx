@@ -136,7 +136,7 @@ function SalesPersonCard({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-lg border border-slate-200/80 bg-white shadow-sm transition hover:shadow-md",
+        "overflow-hidden rounded-lg border border-slate-200/80 bg-card shadow-sm transition hover:shadow-md",
         isSelf && "ring-1 ring-indigo-200/80"
       )}
     >

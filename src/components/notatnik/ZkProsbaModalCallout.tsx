@@ -22,7 +22,7 @@ const TONE_CLASS: Record<ZkProsbaModalCalloutTone, string> = {
   amber: "border-amber-200/80 bg-amber-50/70 text-amber-950",
   emerald: "border-emerald-200/70 bg-emerald-50/50 text-emerald-900",
   rose: "border-rose-200/80 bg-rose-50/70 text-rose-800",
-  neutral: "border-slate-200/80 bg-white text-slate-700",
+  neutral: "border-slate-200/80 bg-card text-slate-700",
   indigo: "border-indigo-200/70 bg-indigo-50/50 text-indigo-950",
 };
 

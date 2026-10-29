@@ -127,7 +127,7 @@ export function ZdUnmappedKhPanel({
               ? ` · indeks ${report.indexedAt.slice(0, 19).replace("T", " ")}`
               : ""}
           </p>
-          <div className="mt-3 max-h-80 overflow-auto rounded-md border border-slate-200 bg-white">
+          <div className="mt-3 max-h-80 overflow-auto rounded-md border border-slate-200 bg-card">
             <table className="w-full min-w-[44rem] text-left text-xs">
               <thead className="sticky top-0 bg-slate-50 text-[0.6875rem] font-semibold text-slate-500">
                 <tr>

@@ -38,14 +38,14 @@ export function ActionLoadingOverlay({
       aria-busy="true"
       className={cn(
         position,
-        "flex items-center justify-center bg-slate-900/20 backdrop-blur-[3px]",
+        "flex items-center justify-center bg-scrim/20 backdrop-blur-[3px]",
         pointerEvents,
         className
       )}
     >
       <div className="action-loading-shimmer pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-indigo-500" />
       <div className={cn(
-        "mx-4 flex max-w-sm items-center gap-3.5 rounded-lg border border-slate-200/90 bg-white px-5 py-4 shadow-xl ring-1 ring-slate-900/5",
+        "mx-4 flex max-w-sm items-center gap-3.5 rounded-lg border border-slate-200/90 bg-card px-5 py-4 shadow-xl ring-1 ring-slate-900/5",
         variant === "viewport" && "pointer-events-auto"
       )}>
         <BrandLoader size="md" />

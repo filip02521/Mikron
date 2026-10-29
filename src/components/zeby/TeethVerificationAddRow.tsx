@@ -18,7 +18,7 @@ import {
 } from "@/lib/teeth/teeth-mould-shape-groups";
 import type { TeethProductLine, TeethKind } from "@/lib/teeth/teeth-catalog-types";
 
-const selectClass = "rounded border border-slate-300 bg-white px-1.5 py-1 text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-400";
+const selectClass = "rounded border border-slate-300 bg-card px-1.5 py-1 text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-400";
 
 export function TeethVerificationAddRow({
   orderId,

@@ -610,7 +610,7 @@ export function VerificationWorkspace({
             className={
               inModal
                 ? "flex min-h-0 min-w-0 flex-1 flex-col lg:min-h-0"
-                : "flex min-w-0 flex-col border-t border-slate-200/90 bg-white"
+                : "flex min-w-0 flex-col border-t border-slate-200/90 bg-card"
             }
           >
             {inModal ? (
@@ -807,10 +807,10 @@ export function VerificationWorkspace({
 
             <div
               className={cn(
-                "flex flex-wrap items-center gap-2 border-t border-slate-200 bg-white px-3 py-3 sm:px-4 lg:px-5",
+                "flex flex-wrap items-center gap-2 border-t border-slate-200 bg-card px-3 py-3 sm:px-4 lg:px-5",
                 !inModal &&
                   cn(
-                    "sticky z-10 bg-white/95 shadow-[0_-4px_16px_-8px_rgba(15,23,42,0.12)] backdrop-blur-sm",
+                    "sticky z-10 bg-card/95 shadow-[0_-4px_16px_-8px_rgba(15,23,42,0.12)] backdrop-blur-sm",
                     stickyAboveMobileChromeClass
                   )
               )}
@@ -882,7 +882,7 @@ export function VerificationWorkspace({
       />
 
       {inModal ? (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-slate-200 bg-white">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-slate-200 bg-card">
           {workspaceBody}
         </div>
       ) : (

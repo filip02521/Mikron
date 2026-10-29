@@ -176,7 +176,7 @@ export function ZkWatchClosePendingModal({
         </p>
         <ul
           className={cn(
-            "divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200/80 bg-white",
+            "divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200/80 bg-card",
             refreshing && "opacity-60"
           )}
           aria-busy={refreshing || undefined}

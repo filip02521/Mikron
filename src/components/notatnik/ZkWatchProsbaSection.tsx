@@ -122,7 +122,7 @@ export function ZkWatchProsbaSection({
     );
   }
 
-  const listClass = "divide-y divide-slate-100 overflow-hidden rounded-[var(--radius-surface)] border border-slate-200/90 bg-white";
+  const listClass = "divide-y divide-slate-100 overflow-hidden rounded-[var(--radius-surface)] border border-slate-200/90 bg-card";
 
   return (
     <ZkWatchModalSection title={ZK_MODAL_SECTION_TITLES.prosba}>

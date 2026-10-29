@@ -191,7 +191,7 @@ function NavLink({
         // Wąski pasek: licznik / nowości jako kropka na ikonie (liczba w dymku).
         <span
           className={cn(
-            "sb-rail absolute right-1.5 top-1 h-2 w-2 rounded-full ring-2 ring-white",
+            "sb-rail absolute right-1.5 top-1 h-2 w-2 rounded-full ring-2 ring-card",
             monthlyIdle ? "bg-indigo-600" : hasBadge ? "bg-indigo-600" : "bg-amber-400"
           )}
           aria-hidden
@@ -201,7 +201,7 @@ function NavLink({
         {showDot ? (
           <span
             className={cn(
-              "h-2 w-2 rounded-full ring-2 ring-white",
+              "h-2 w-2 rounded-full ring-2 ring-card",
               monthlyIdle ? "bg-indigo-600" : "bg-amber-400"
             )}
             title={monthlyIdle ? "Nowe podsumowanie miesiąca" : "Nowe zmiany"}
@@ -324,7 +324,7 @@ function CollapsibleNavSection({
         </h2>
         {hasMonthlyAttention && collapsed ? (
           <span
-            className="h-2 w-2 shrink-0 rounded-full bg-indigo-600 ring-2 ring-white"
+            className="h-2 w-2 shrink-0 rounded-full bg-indigo-600 ring-2 ring-card"
             title="Nowe podsumowanie miesiąca"
           />
         ) : null}
@@ -624,7 +624,7 @@ export function Sidebar({
           <ChangelogTriggerIconButton />
           <Link
             href="/ustawienia"
-            className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+            className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-card text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
             aria-label="Ustawienia"
             title="Ustawienia"
           >
@@ -634,7 +634,7 @@ export function Sidebar({
             <button
               type="button"
               onClick={() => void signOut()}
-              className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+              className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-card text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
               aria-label="Wyloguj"
               title="Wyloguj"
             >
@@ -669,7 +669,7 @@ export function Sidebar({
               <ChangelogTriggerIconButton />
               <Link
                 href="/ustawienia"
-                className="flex min-h-10 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+                className="flex min-h-10 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-card px-3 text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
                 aria-label="Ustawienia"
               >
                 <IconSettings size={16} />
@@ -677,7 +677,7 @@ export function Sidebar({
               <button
                 type="button"
                 onClick={() => void signOut()}
-                className="min-h-10 flex-1 rounded-md border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+                className="min-h-10 flex-1 rounded-md border border-slate-200 bg-card px-4 py-2.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
               >
                 Wyloguj
               </button>

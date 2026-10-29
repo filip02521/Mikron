@@ -7774,7 +7774,7 @@ export function ZdEstimateWorkbench({
             <div className="relative isolate flex min-h-0 flex-1 flex-col overflow-hidden">
             <TableScroll
               id={ZD_ESTIMATE_TABLE_SCROLL_ID}
-              className="zd-estimate-table-scroll min-h-0 w-full min-w-0 flex-1 bg-white px-0 pb-0 sm:px-0 sm:pb-0"
+              className="zd-estimate-table-scroll min-h-0 w-full min-w-0 flex-1 bg-card px-0 pb-0 sm:px-0 sm:pb-0"
             >
                 <DataTable
                   className={cn(

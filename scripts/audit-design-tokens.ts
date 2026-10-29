@@ -5,6 +5,8 @@
  * - wersaliki poza nagłówkiem grupy menu (`uppercase`, `text-transform: uppercase`);
  * - rozmiar tekstu w px (`text-[11px]`) poza chrome Kreatora ZD — rem rośnie z ustawieniem
  *   „większy tekst” (`html[data-font-scale]`), px nie.
+ * - biała powierzchnia (`bg-white`, `ring-white` …) zamiast `bg-card` / `ring-card` i tło pod oknem `bg-slate-900/N`
+ *   zamiast `bg-scrim/N` — w ciemnym motywie oba wyglądałyby jasno (docs/plans/ciemny-tryb.md).
  * Uzasadniony wyjątek: komentarz `design-ok: <powód>` w tej samej linii albo do dwóch linii wyżej.
  * Szablony maili (`src/lib/email/`) piszą inline CSS dla klientów poczty — poza audytem.
  */
@@ -31,6 +33,18 @@ const RULES: Rule[] = [
     re: /(?<![\w-])uppercase(?![\w-])|text-transform:\s*uppercase/,
     css: true,
     message: "wersaliki tylko w nagłówku grupy menu (DESIGN.md → „Wersaliki tylko w menu”)",
+  },
+  {
+    id: "biel",
+    re: /(?<![\w-])(?:[a-z0-9-]+:)*(bg|ring|border|from|via|to)-white(?![\w-])/,
+    // Biel na wypełnieniu (licznik na głównym przycisku) zostaje białą w obu motywach.
+    allowIf: /(?<![\w-])text-white(?![\w-])/,
+    message: "biała powierzchnia — użyj bg-card / ring-card / border-card, żeby działał ciemny motyw (docs/plans/ciemny-tryb.md)",
+  },
+  {
+    id: "scrim",
+    re: /(?<![\w-])(?:[a-z0-9-]+:)*bg-slate-(900|950)\/([2-9]\d|100)(?![\w\d])/,
+    message: "tło pod oknem — użyj bg-scrim/N; slate-900 w ciemnym motywie jest jasny",
   },
   {
     id: "px",

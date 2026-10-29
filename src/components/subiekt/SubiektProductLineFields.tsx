@@ -176,7 +176,7 @@ function SubiektLinkedLineBanner({
 function SubiektNewProductBanner() {
   return (
     <div role="status" className="mt-1.5 flex items-start gap-2 rounded-md bg-indigo-50/70 px-2.5 py-2">
-      <span className="mt-px flex size-6 shrink-0 items-center justify-center rounded-md bg-white text-indigo-700 ring-1 ring-indigo-200/80">
+      <span className="mt-px flex size-6 shrink-0 items-center justify-center rounded-md bg-card text-indigo-700 ring-1 ring-indigo-200/80">
         <IconPackage size={14} aria-hidden />
       </span>
       <div className="min-w-0 text-xs leading-snug">

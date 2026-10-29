@@ -85,7 +85,7 @@ function StepIndicator({ currentStep }: { currentStep: "detecting" | "review" | 
               i < stepIndex
                 ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
                 : i === stepIndex
-                  ? "bg-white text-indigo-700 ring-2 ring-indigo-500"
+                  ? "bg-card text-indigo-700 ring-2 ring-indigo-500"
                   : "bg-slate-100 text-slate-500",
             )}
           >
@@ -560,7 +560,7 @@ export function TeethOcrWizard({
               ) : (
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
                   <select
-                    className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-700 focus:border-indigo-400 focus:outline-none"
+                    className="w-full rounded-md border border-slate-200 bg-card px-2 py-1.5 text-sm text-slate-700 focus:border-indigo-400 focus:outline-none"
                     onChange={(e) => {
                       if (e.target.value) addLineManually(e.target.value as TeethProductLine);
                       e.target.value = "";

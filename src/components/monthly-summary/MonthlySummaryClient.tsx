@@ -216,7 +216,7 @@ function MonthSelector({
           disabled={disabled || !canPrev}
           onClick={() => prevKey && onSelect(prevKey)}
           className={cn(
-            "inline-flex h-11 w-11 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors sm:h-9 sm:w-9",
+            "inline-flex h-11 w-11 items-center justify-center rounded-md border border-slate-200 bg-card text-slate-600 shadow-sm transition-colors sm:h-9 sm:w-9",
             controlFocusClass,
             "hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
           )}
@@ -235,7 +235,7 @@ function MonthSelector({
           disabled={disabled}
           onChange={(e) => onSelect(e.target.value)}
           className={cn(
-            "h-11 max-w-[11rem] rounded-md border border-slate-200 bg-white px-2.5 text-base font-medium text-slate-800 shadow-sm sm:h-9 sm:text-sm",
+            "h-11 max-w-[11rem] rounded-md border border-slate-200 bg-card px-2.5 text-base font-medium text-slate-800 shadow-sm sm:h-9 sm:text-sm",
             controlFocusClass,
             "disabled:cursor-not-allowed disabled:opacity-60"
           )}
@@ -255,7 +255,7 @@ function MonthSelector({
           disabled={disabled || !canNext || !nextCandidate}
           onClick={() => nextCandidate && onSelect(nextCandidate)}
           className={cn(
-            "inline-flex h-11 w-11 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors sm:h-9 sm:w-9",
+            "inline-flex h-11 w-11 items-center justify-center rounded-md border border-slate-200 bg-card text-slate-600 shadow-sm transition-colors sm:h-9 sm:w-9",
             controlFocusClass,
             "hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
           )}
@@ -484,7 +484,7 @@ function SalesTab({
                 value={sort}
                 onChange={(e) => setSort(e.target.value as SalesRankingSort)}
                 className={cn(
-                  "rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700",
+                  "rounded-md border border-slate-200 bg-card px-2 py-1 text-xs font-medium text-slate-700",
                   controlFocusClass
                 )}
               >

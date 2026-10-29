@@ -105,8 +105,8 @@ export function DailyPanelTabs({
             className={cn(
               "flex min-h-11 flex-1 shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-[5px] px-3 text-sm font-medium transition-[background-color,color,box-shadow] duration-150 ease-out sm:min-h-8 sm:flex-none",
               selected
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-600 hover:bg-white/70 hover:text-slate-900"
+                ? "bg-card text-slate-900 shadow-sm"
+                : "text-slate-600 hover:bg-card/70 hover:text-slate-900"
             )}
           >
             {dailyPanelViewLabel(id)}

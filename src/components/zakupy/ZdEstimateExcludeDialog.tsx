@@ -69,7 +69,7 @@ function ExcludeDialogForm({
     >
       <div className="rounded-lg border border-slate-200/90 bg-slate-50/70 px-3.5 py-3">
         <div className="flex gap-3">
-          <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-md bg-white text-slate-500 ring-1 ring-slate-200/80">
+          <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-md bg-card text-slate-500 ring-1 ring-slate-200/80">
             <IconClipboardList size={18} strokeWidth={1.75} aria-hidden />
           </div>
           <div className="min-w-0 flex-1 space-y-1">
@@ -138,7 +138,7 @@ function ExcludeDialogForm({
           placeholder="np. wycofany, zamiennik, nie zamawiamy…"
           autoFocus
           className={cn(
-            "mt-1.5 w-full resize-y rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400",
+            "mt-1.5 w-full resize-y rounded-md border border-slate-200 bg-card px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400",
             controlFocusClass
           )}
           onKeyDown={(e) => {

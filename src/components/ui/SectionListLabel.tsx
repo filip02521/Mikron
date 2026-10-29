@@ -25,7 +25,7 @@ const ACCENT_SHELL: Record<SectionListAccent, string> = {
   slate:
     "flex items-start justify-between gap-2 border-b border-slate-200/90 bg-slate-50/70 px-3 py-2 sm:px-4",
   neutral:
-    "flex items-start justify-between gap-2 border-b border-slate-100 bg-white px-3 py-2 sm:px-4",
+    "flex items-start justify-between gap-2 border-b border-slate-100 bg-card px-3 py-2 sm:px-4",
 };
 
 const ACCENT_TITLE: Record<SectionListAccent, string> = {

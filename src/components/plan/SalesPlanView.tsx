@@ -314,10 +314,10 @@ function SalesSupplierRow({
         role="region"
         aria-labelledby={titleId}
         hidden={!expanded}
-        className="border-t border-indigo-200/40 bg-white/70 px-3 pb-3 pt-2 sm:px-4"
+        className="border-t border-indigo-200/40 bg-card/70 px-3 pb-3 pt-2 sm:px-4"
       >
         {expanded ? (
-          <div className="space-y-2.5 rounded-md border border-slate-200/90 bg-white px-3 py-2.5">
+          <div className="space-y-2.5 rounded-md border border-slate-200/90 bg-card px-3 py-2.5">
             <div>
               <p className={cn(salesTypography.sectionLabel, "text-slate-500")}>
                 {C.expandOrderTitle}

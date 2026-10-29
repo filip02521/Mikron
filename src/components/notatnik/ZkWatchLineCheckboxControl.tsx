@@ -30,7 +30,7 @@ export function ZkWatchLineCheckboxControl({
         "flex size-4 shrink-0 items-center justify-center rounded border transition",
         checked
           ? cn("border-transparent text-white shadow-sm", toneClass)
-          : "border-slate-300 bg-white text-slate-300",
+          : "border-slate-300 bg-card text-slate-300",
         toggleable ? "cursor-pointer hover:brightness-95" : "cursor-default opacity-80"
       )}
     >

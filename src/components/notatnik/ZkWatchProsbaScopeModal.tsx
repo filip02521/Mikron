@@ -432,7 +432,7 @@ export function ZkWatchProsbaScopeModal({
         </div>
         <ul
           className={cn(
-            "divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200/80 bg-white",
+            "divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200/80 bg-card",
             awaitingAutoMark && "pointer-events-none opacity-60"
           )}
           aria-busy={awaitingAutoMark || undefined}

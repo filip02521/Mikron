@@ -117,7 +117,7 @@ export function SalesInboxPanel({
         aria-modal="true"
         aria-label="Pilne sprawy"
         className={cn(
-          "absolute inset-y-0 right-0 z-[60] flex w-full max-w-md flex-col border-l border-slate-200/80 bg-white shadow-2xl",
+          "absolute inset-y-0 right-0 z-[60] flex w-full max-w-md flex-col border-l border-slate-200/80 bg-card shadow-2xl",
           "panel-slide-enter"
         )}
         {...{ [SCROLL_LOCK_ALLOW_ATTR]: true }}

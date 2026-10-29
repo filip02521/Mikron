@@ -185,8 +185,8 @@ export function ProcurementSupplierBlockBar({
             type="button"
             onClick={onToggleCollapse}
             className={cn(
-              "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/70 ring-1 ring-slate-200/70",
-              "text-slate-600 transition-colors hover:bg-white hover:text-slate-900",
+              "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-card/70 ring-1 ring-slate-200/70",
+              "text-slate-600 transition-colors hover:bg-card hover:text-slate-900",
               controlFocusClass,
               collapsed
                 ? isStockOut

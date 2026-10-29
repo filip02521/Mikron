@@ -276,8 +276,8 @@ export function CarrierPhonesModal({
                     className={cn(
                       "rounded-lg border transition-colors",
                       isExpanded
-                        ? "border-slate-300 bg-white shadow-sm"
-                        : "border-slate-200 bg-white hover:border-slate-300",
+                        ? "border-slate-300 bg-card shadow-sm"
+                        : "border-slate-200 bg-card hover:border-slate-300",
                     )}
                   >
                     <button

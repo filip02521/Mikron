@@ -400,7 +400,7 @@ export function QuestionThreadCard({
               stale,
               waiting: pendingInquiry ? (inquiryOverdue ? "supplier-overdue" : "supplier") : null,
             })
-          : "rounded-md border border-slate-200/90 bg-white shadow-sm"
+          : "rounded-md border border-slate-200/90 bg-card shadow-sm"
       )}
     >
       <div

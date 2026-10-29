@@ -15,7 +15,7 @@ import {
 
 /** Select w pasku filtrów: 44px na telefonie, 40px od `sm` (DESIGN.md → Inputs). */
 export const teethToolbarSelectClass =
-  "min-h-11 min-w-0 rounded-md border border-slate-200 bg-white px-2.5 text-base text-slate-900 shadow-sm outline-none transition-colors hover:border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 sm:min-h-10 sm:text-sm";
+  "min-h-11 min-w-0 rounded-md border border-slate-200 bg-card px-2.5 text-base text-slate-900 shadow-sm outline-none transition-colors hover:border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 sm:min-h-10 sm:text-sm";
 
 function ToggleChip({
   label,

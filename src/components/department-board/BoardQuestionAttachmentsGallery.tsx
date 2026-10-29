@@ -220,7 +220,7 @@ export function BoardQuestionAttachmentsGallery({
                 <button
                   type="button"
                   onClick={() => step(-1)}
-                  className="absolute left-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-slate-900/60 text-white hover:bg-slate-900/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  className="absolute left-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-scrim/60 text-white hover:bg-scrim/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                   aria-label="Poprzednie zdjęcie"
                 >
                   <IconChevronLeft size={20} />
@@ -228,7 +228,7 @@ export function BoardQuestionAttachmentsGallery({
                 <button
                   type="button"
                   onClick={() => step(1)}
-                  className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-slate-900/60 text-white hover:bg-slate-900/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-scrim/60 text-white hover:bg-scrim/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                   aria-label="Następne zdjęcie"
                 >
                   <IconChevronRight size={20} />

@@ -76,7 +76,7 @@ export function ProductZdLookupTrigger({
           <IconSearch size={16} className="mt-1 shrink-0 text-indigo-500" aria-hidden />
         </button>
         {summary ? (
-          <div className="border-t border-indigo-100/90 bg-white/70 px-4 py-2.5" role="status">
+          <div className="border-t border-indigo-100/90 bg-card/70 px-4 py-2.5" role="status">
             <p className="text-xs leading-relaxed text-slate-600">
               Ostatnio: <span className="font-medium text-slate-800">{summary}</span>
               {onStockOutPrefill &&

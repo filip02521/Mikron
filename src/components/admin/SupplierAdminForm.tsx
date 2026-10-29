@@ -329,7 +329,7 @@ export function SupplierAdminForm({
             </Select>
           </Field>
         </div>
-        <label className={teethLane ? "mt-4 flex cursor-not-allowed items-start gap-2.5 rounded-lg bg-white/60 p-2.5 ring-1 ring-inset ring-indigo-100/50 sm:col-span-2" : "mt-4 flex cursor-pointer items-start gap-2.5 rounded-lg bg-white/60 p-2.5 ring-1 ring-inset ring-indigo-100/50 transition hover:bg-white"}>
+        <label className={teethLane ? "mt-4 flex cursor-not-allowed items-start gap-2.5 rounded-lg bg-card/60 p-2.5 ring-1 ring-inset ring-indigo-100/50 sm:col-span-2" : "mt-4 flex cursor-pointer items-start gap-2.5 rounded-lg bg-card/60 p-2.5 ring-1 ring-inset ring-indigo-100/50 transition hover:bg-card"}>
           <input
             type="checkbox"
             className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-indigo-600"

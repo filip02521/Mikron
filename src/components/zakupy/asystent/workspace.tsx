@@ -36,8 +36,8 @@ export function railItemClass(active: boolean): string {
     focusRingClass,
     "flex shrink-0 items-center justify-between gap-3 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors duration-150 active:scale-[0.98] motion-reduce:active:scale-100 2xl:py-2",
     active
-      ? "bg-white text-slate-900 shadow-[var(--shadow-card)] ring-1 ring-slate-200/80"
-      : "text-slate-600 hover:bg-white/70 hover:text-slate-900",
+      ? "bg-card text-slate-900 shadow-[var(--shadow-card)] ring-1 ring-slate-200/80"
+      : "text-slate-600 hover:bg-card/70 hover:text-slate-900",
   );
 }
 

@@ -52,7 +52,7 @@ function cycleClass(p: ZdAutomatDailyProposal): string {
     case "expired":
       return "bg-amber-400";
     case "pending":
-      return "border-[1.5px] border-dashed border-amber-600 bg-white";
+      return "border-[1.5px] border-dashed border-amber-600 bg-card";
     default:
       return "bg-slate-300";
   }
@@ -383,7 +383,7 @@ export function DailyZdAutomatSection({
               <span aria-hidden className="h-2.5 w-2 rounded-[2px] bg-slate-300" /> odrzucona lub odłożona
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span aria-hidden className="h-2.5 w-2 rounded-[2px] border-[1.5px] border-dashed border-amber-600 bg-white" /> czeka
+              <span aria-hidden className="h-2.5 w-2 rounded-[2px] border-[1.5px] border-dashed border-amber-600 bg-card" /> czeka
             </span>
             <Link href="/zakupy/automat" className="ml-auto font-medium text-indigo-700 underline-offset-2 hover:underline">
               Pulpit automatu

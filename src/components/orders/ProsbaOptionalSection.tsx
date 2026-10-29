@@ -68,7 +68,7 @@ export function ProsbaOptionalSection({
         onOpenChange?.((event.currentTarget as HTMLDetailsElement).open);
       }}
       className={cn(
-        "group rounded-md border border-slate-200/80 bg-slate-50/40 open:bg-white open:shadow-sm",
+        "group rounded-md border border-slate-200/80 bg-slate-50/40 open:bg-card open:shadow-sm",
         className
       )}
     >

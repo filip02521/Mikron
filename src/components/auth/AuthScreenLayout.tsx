@@ -54,7 +54,7 @@ export function AuthScreenLayout({
   const minimal = isAuthVisualVariant('minimal');
 
   return (
-    <div className={cn("flex min-h-dvh w-full max-w-full overflow-x-hidden", className)}>
+    <div className={cn("theme-light flex min-h-dvh w-full max-w-full overflow-x-hidden", className)}>
       <aside
         className={cn(
           "relative hidden overflow-hidden bg-indigo-800 lg:flex lg:w-[min(42%,28rem)] lg:flex-col lg:px-12 lg:py-14 xl:px-16",
@@ -69,7 +69,7 @@ export function AuthScreenLayout({
         className={cn(
           "relative isolate flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain",
           "scroll-smooth [scroll-padding-top:max(0.75rem,env(safe-area-inset-top))] [scroll-padding-bottom:max(1rem,env(safe-area-inset-bottom))]",
-          minimal ? "bg-white" : "bg-slate-50"
+          minimal ? "bg-card" : "bg-slate-50"
         )}
       >
         <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
@@ -101,7 +101,7 @@ export function AuthScreenLayout({
               </div>
             </header>
 
-            <div className="auth-card-enter min-h-0 min-w-0 max-w-full rounded-[var(--radius-panel)] border border-slate-200 bg-white p-4 shadow-[var(--shadow-card-elevated)] sm:p-6">
+            <div className="auth-card-enter min-h-0 min-w-0 max-w-full rounded-[var(--radius-panel)] border border-slate-200 bg-card p-4 shadow-[var(--shadow-card-elevated)] sm:p-6">
               {children}
             </div>
 

@@ -252,7 +252,7 @@ export function ZdAutomatSuppliers({
     <Card padding={false} className="overflow-hidden">
       <CardHeader inset title="Dostawcy" description={kpiWeekLabel} />
 
-      <div className="flex flex-wrap items-center gap-2 border-y border-slate-200 bg-white px-6 py-3 sm:px-7">
+      <div className="flex flex-wrap items-center gap-2 border-y border-slate-200 bg-card px-6 py-3 sm:px-7">
         <SegmentedControl
           value={filter}
           onChange={(f) => {

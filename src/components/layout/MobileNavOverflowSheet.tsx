@@ -123,7 +123,7 @@ export function MobileNavOverflowSheet({
             <button
               ref={backdropRef}
               type="button"
-              className="modal-backdrop-enter absolute inset-0 bg-slate-900/30 backdrop-blur-[1px]"
+              className="modal-backdrop-enter absolute inset-0 bg-scrim/30 backdrop-blur-[1px]"
               aria-label="Zamknij menu"
               onClick={() => close()}
             />
@@ -205,7 +205,7 @@ export function MobileNavOverflowSheet({
                         </span>
                         {monthlyIdle ? (
                           <span
-                            className="h-2 w-2 shrink-0 rounded-full bg-indigo-600 ring-2 ring-white"
+                            className="h-2 w-2 shrink-0 rounded-full bg-indigo-600 ring-2 ring-card"
                             title="Nowe podsumowanie miesiąca"
                           />
                         ) : null}
@@ -275,7 +275,7 @@ export function MobileNavOverflowSheet({
             {overflowAttentionBadge > 0 && !activeInOverflow ? (
               <span
                 className={cn(
-                  "absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[0.625rem] font-semibold leading-none tabular-nums ring-2 ring-white",
+                  "absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[0.625rem] font-semibold leading-none tabular-nums ring-2 ring-card",
                   sidebarNavBadgeClassForTone(overflowBadgeTone, false)
                 )}
               >
@@ -283,7 +283,7 @@ export function MobileNavOverflowSheet({
               </span>
             ) : showMonthlyDot ? (
               <span
-                className="absolute -right-1 top-0 h-2 w-2 rounded-full bg-indigo-600 ring-2 ring-white"
+                className="absolute -right-1 top-0 h-2 w-2 rounded-full bg-indigo-600 ring-2 ring-card"
                 title="Nowe podsumowanie miesiąca"
               />
             ) : null}

@@ -275,7 +275,7 @@ export function ZkWatchNoteSection({
             disabled={savingNote}
             onChange={(e) => setNoteDraft(e.target.value)}
             placeholder="Np. klient dzwonił w poniedziałek, czeka na potwierdzenie dostępności…"
-            className={cn(NOTATNIK_TEXTAREA_CLASS, "w-full bg-white")}
+            className={cn(NOTATNIK_TEXTAREA_CLASS, "w-full bg-card")}
             autoFocus={focusNote}
           />
           {includeInProsba && noteProsbaState.openOrders.length > 0 ? (

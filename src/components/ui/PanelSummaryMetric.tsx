@@ -20,7 +20,7 @@ export function PanelSummaryMetric({
   title?: string;
 }) {
   // Kafelek zawsze neutralny; ton barwi tylko liczbę (czerwień / amber tylko gdy wymaga działania).
-  const toneClass = "border-slate-200/90 bg-white";
+  const toneClass = "border-slate-200/90 bg-card";
   const valueToneClass =
     tone === "danger" ? "text-red-700" : tone === "warning" ? "text-amber-700" : "text-slate-900";
 

@@ -40,7 +40,7 @@ function canBePrimaryZd(file: File): boolean {
   );
 }
 
-const fieldClass = cn(controlFocusClass, "mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm");
+const fieldClass = cn(controlFocusClass, "mt-1 w-full rounded-md border border-slate-200 bg-card px-3 py-2 text-sm");
 
 type StepKey = "mail" | "termin" | "glowne" | "plan";
 type StepState = { status: "idle" | "running" | "ok" | "error" | "skipped"; message?: string };
@@ -651,7 +651,7 @@ export function ZdSendWorkspace({
                       setTerminTouched(true);
                     }}
                     disabled={steps.termin.status === "ok" || steps.termin.status === "running"}
-                    className={cn(controlFocusClass, "min-h-9 rounded-md border border-slate-200 bg-white px-2 text-sm tabular-nums")}
+                    className={cn(controlFocusClass, "min-h-9 rounded-md border border-slate-200 bg-card px-2 text-sm tabular-nums")}
                   />
                   <span className="text-xs text-slate-500">
                     {etaDateKey ? `przewidywana dostawa · ${etaSub}` : "brak historii dostaw - wpisz datę"}
@@ -1003,7 +1003,7 @@ function StepRow({
           aria-hidden
           className={cn(
             "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
-            state.status === "error" ? "bg-red-100 text-red-800" : "bg-white text-slate-600 ring-1 ring-slate-300"
+            state.status === "error" ? "bg-red-100 text-red-800" : "bg-card text-slate-600 ring-1 ring-slate-300"
           )}
         >
           {state.status === "error" ? <IconAlertCircle size={14} /> : n}

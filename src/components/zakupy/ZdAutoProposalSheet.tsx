@@ -112,7 +112,7 @@ function ActionTimeline({ steps }: { steps: Step[] }) {
                   className={cn(
                     "flex size-8 items-center justify-center rounded-full text-xs font-semibold tabular-nums transition-colors duration-200 motion-reduce:transition-none",
                     s.status === "error" && "bg-red-600 text-white",
-                    s.status === "idle" && "bg-white text-slate-500 ring-1 ring-slate-300"
+                    s.status === "idle" && "bg-card text-slate-500 ring-1 ring-slate-300"
                   )}
                 >
                   {s.status === "error" ? (
@@ -178,7 +178,7 @@ function UnitsStepper({
           if (Number.isFinite(n) && n >= 1) onChange(Math.min(ZD_AUTO_PROPOSAL_EDIT_MAX_UNITS, n));
         }}
         onFocus={(e) => e.target.select()}
-        className="h-10 w-14 rounded-md border border-slate-200 bg-white text-center text-base font-semibold tabular-nums text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none disabled:bg-slate-50 sm:h-8 sm:w-12 sm:text-sm"
+        className="h-10 w-14 rounded-md border border-slate-200 bg-card text-center text-base font-semibold tabular-nums text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none disabled:bg-slate-50 sm:h-8 sm:w-12 sm:text-sm"
       />
       <QtyStepButton
         size="sm"
@@ -721,7 +721,7 @@ export function ZdAutoProposalSheet({
         </div>
 
         {phase !== "send" ? (
-          <footer className="flex shrink-0 flex-col gap-3 border-t border-slate-100 bg-white/95 px-5 py-4 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
+          <footer className="flex shrink-0 flex-col gap-3 border-t border-slate-100 bg-card/95 px-5 py-4 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm tabular-nums text-slate-600" aria-live="polite">
               {fresh ? (
                 <>

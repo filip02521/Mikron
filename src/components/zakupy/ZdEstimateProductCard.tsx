@@ -320,7 +320,7 @@ export function ZdEstimateProductCard({
         ref={(el) => {
           panelRef.current = el;
         }}
-        className="panel-slide-enter fixed inset-y-0 right-0 z-[49] flex w-full max-w-xl flex-col border-l border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]"
+        className="panel-slide-enter fixed inset-y-0 right-0 z-[49] flex w-full max-w-xl flex-col border-l border-slate-200/80 bg-card shadow-[var(--shadow-card-elevated)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -399,7 +399,7 @@ export function ZdEstimateProductCard({
           </section>
 
           {onRequestPattern?.likely && !status.onRequest && !status.excluded ? (
-            <section className="rounded-md border border-slate-200 bg-white px-3.5 py-3" aria-label="Podpowiedź: towar na prośbę">
+            <section className="rounded-md border border-slate-200 bg-card px-3.5 py-3" aria-label="Podpowiedź: towar na prośbę">
               <p className="text-sm font-medium text-slate-900">Wygląda na towar na prośbę</p>
               <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{onRequestPatternSummary(onRequestPattern)}</p>
               {actions.onMarkOnRequest ? (
@@ -409,7 +409,7 @@ export function ZdEstimateProductCard({
               ) : null}
             </section>
           ) : onRequestPattern?.stockLike && !onRequestPattern.likely && status.onRequest ? (
-            <section className="rounded-md border border-slate-200 bg-white px-3.5 py-3" aria-label="Podpowiedź: sprzedaje się jak magazynowy">
+            <section className="rounded-md border border-slate-200 bg-card px-3.5 py-3" aria-label="Podpowiedź: sprzedaje się jak magazynowy">
               <p className="text-sm font-medium text-slate-900">Oznaczony „na prośbę”, a sprzedaje się jak magazynowy</p>
               <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
                 Kupuje go {onRequestPattern.customers} klientów w roku, dostaw nie bierze w całości jeden klient.
@@ -461,7 +461,7 @@ export function ZdEstimateProductCard({
               </h3>
               <dl className="mt-1.5 grid grid-cols-3 gap-px overflow-hidden rounded-md border border-slate-200 bg-slate-200 text-sm">
                 {pairStockRows.map(([label, value]) => (
-                  <div key={label} className="bg-white px-2.5 py-1.5">
+                  <div key={label} className="bg-card px-2.5 py-1.5">
                     <dt className="text-xs text-slate-600">{label}</dt>
                     <dd className="tabular-nums font-medium text-slate-900">{formatQty(Number(value) || 0)} szt</dd>
                   </div>
@@ -492,7 +492,7 @@ export function ZdEstimateProductCard({
           </section>
         </div>
 
-        <footer className="shrink-0 border-t border-slate-100 bg-white px-5 py-3">
+        <footer className="shrink-0 border-t border-slate-100 bg-card px-5 py-3">
           <div className="flex flex-wrap gap-2">
             {actions.onEditPackaging ? (
               <Button type="button" size="sm" variant="secondary" disabled={!canMutate} onClick={actions.onEditPackaging}>

@@ -225,7 +225,7 @@ function SalesPersonDivider({
       <td colSpan={TABLE_COLS} className="p-0">
         <div
           className={cn(
-            "border-b border-slate-200/80 bg-white/60 px-3 py-1.5 sm:px-4 lg:px-5",
+            "border-b border-slate-200/80 bg-card/60 px-3 py-1.5 sm:px-4 lg:px-5",
             stripeIndex > 0 && "border-t border-slate-200/80",
           )}
         >
@@ -431,6 +431,7 @@ export function TeethReceiveLinesSection({
                 <SaveIcon className="size-3.5" />
                 <span className="hidden sm:inline">Zapisz wprowadzone</span>
                 <span className="sm:hidden">Zapisz</span>
+                {/* design-ok: licznik na wypełnieniu głównego przycisku, biały w obu motywach */}
                 <span className="rounded-md bg-white/15 px-1.5 py-0.5 text-[0.625rem] tabular-nums">
                   {orderIdsWithInput.length}
                 </span>
@@ -552,7 +553,7 @@ export function TeethReceiveLinesSection({
                   (!isLineClosed && isLineDone) ||
                   (!isLineClosed && hasSessionInput && !isLineDone);
                 const salesStripeBg =
-                  !hasStateBg && row.stripeIndex % 2 === 0 ? "bg-slate-50/40" : !hasStateBg ? "bg-white/40" : "";
+                  !hasStateBg && row.stripeIndex % 2 === 0 ? "bg-slate-50/40" : !hasStateBg ? "bg-card/40" : "";
                 const rowSurfaceClass = cn(
                   teethReceiveDataRowClass,
                   salesStripeBg,

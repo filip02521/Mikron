@@ -44,7 +44,7 @@ export function NoteColorPicker({
               NOTE_COLOR_SWATCH[color],
               selected
                 ? "border-slate-700 shadow-[0_0_0_1px_rgba(255,255,255,0.9)]"
-                : "border-white/80 hover:border-slate-400"
+                : "border-card/80 hover:border-slate-400"
             )}
           />
         );

@@ -527,7 +527,7 @@ export function SupplierMailWorkspace({
       </nav>
 
       <div className={cn(listColumnClass, selected ? "hidden lg:block" : "block")}>
-        <div className="sticky top-0 z-10 border-b border-slate-100 bg-white/95 px-3 py-2 backdrop-blur-sm">
+        <div className="sticky top-0 z-10 border-b border-slate-100 bg-card/95 px-3 py-2 backdrop-blur-sm">
           <label htmlFor="mail-board-search" className="sr-only">
             Szukaj sprawy
           </label>
@@ -539,7 +539,7 @@ export function SupplierMailWorkspace({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Szukaj: dostawca, temat, ZD, opis…"
-              className={cn(controlFocusClass, "min-h-9 w-full rounded-md border border-slate-200 bg-white pl-8 pr-2.5 text-sm")}
+              className={cn(controlFocusClass, "min-h-9 w-full rounded-md border border-slate-200 bg-card pl-8 pr-2.5 text-sm")}
             />
           </div>
         </div>
@@ -649,7 +649,7 @@ export function SupplierMailWorkspace({
         <div className="pointer-events-none fixed inset-x-3 bottom-[calc(1rem+var(--mobile-bottom-chrome,0px))] z-40 flex justify-center lg:absolute lg:inset-x-auto lg:bottom-4 lg:left-4 lg:justify-start 2xl:left-[15rem]">
           <div
             role="status"
-            className="pointer-events-auto flex max-w-[min(100%,28rem)] items-center gap-3 rounded-md border border-slate-200/90 bg-white px-3 py-2 text-sm text-slate-900 shadow-[var(--shadow-card-elevated)]"
+            className="pointer-events-auto flex max-w-[min(100%,28rem)] items-center gap-3 rounded-md border border-slate-200/90 bg-card px-3 py-2 text-sm text-slate-900 shadow-[var(--shadow-card-elevated)]"
           >
             <IconCircleCheck size={18} aria-hidden className="shrink-0 text-emerald-700" />
             <span className="min-w-0 truncate">{undo.label}</span>
@@ -794,7 +794,7 @@ function BoardList({
                 {searching ? (
                   <Tag
                     text={shelfOf.get(i.key) ?? BOARD_COLUMN_LABELS[i.column]}
-                    className="bg-white text-slate-700 ring-slate-300"
+                    className="bg-card text-slate-700 ring-slate-300"
                   />
                 ) : null}
                 {i.reason ? <Tag text={i.reason} className="bg-amber-50 text-amber-900 ring-amber-200" /> : <ItemTag item={i} />}
@@ -872,7 +872,7 @@ function BoardPanel({
     else setError(res?.message ?? "Nie udało się zapisać.");
   };
 
-  const field = cn(controlFocusClass, "min-h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-sm");
+  const field = cn(controlFocusClass, "min-h-9 w-full rounded-md border border-slate-200 bg-card px-2.5 text-sm");
   return (
     <div className="space-y-2 border-b border-slate-200 bg-slate-50/60 px-4 py-3 sm:px-5">
       <div className="grid grid-cols-2 gap-2 xl:grid-cols-[11rem_11rem_minmax(0,1fr)]">
@@ -930,7 +930,7 @@ function BoardPanel({
           }}
             className={cn(
               controlFocusClass,
-              "mt-1 min-h-9 max-h-40 w-full resize-y rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm leading-relaxed field-sizing-content"
+              "mt-1 min-h-9 max-h-40 w-full resize-y rounded-md border border-slate-200 bg-card px-2.5 py-1.5 text-sm leading-relaxed field-sizing-content"
             )}
           />
         </div>
@@ -1223,7 +1223,7 @@ function MessageCard({ m, aiAvailable = false, onForward }: { m: ConversationMes
             ? "bg-slate-50 ring-slate-200"
             : m.kind === "mine"
               ? "ml-6 bg-indigo-50/50 ring-indigo-100"
-              : "bg-white ring-slate-200"
+              : "bg-card ring-slate-200"
       )}
     >
       <header className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-xs">
@@ -1330,7 +1330,7 @@ function MessageCard({ m, aiAvailable = false, onForward }: { m: ConversationMes
                     className="block rounded-md ring-1 ring-slate-200 hover:ring-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={attachmentUrl(m.id, a.attachmentId)} alt={a.filename} loading="lazy" className="h-10 max-w-[9rem] rounded-md bg-white object-contain" />
+                    <img src={attachmentUrl(m.id, a.attachmentId)} alt={a.filename} loading="lazy" className="h-10 max-w-[9rem] rounded-md bg-card object-contain" />
                   </button>
                 ) : (
                   <a href={attachmentUrl(m.id, a.attachmentId)} target="_blank" rel="noopener" className="block rounded-md px-2 py-1 text-xs text-slate-600 ring-1 ring-slate-200 hover:ring-slate-400">
@@ -1559,7 +1559,7 @@ function Composer({
           onClick={() => setOpen(true)}
           className={cn(
             controlFocusClass,
-            "flex min-h-10 w-full items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-left text-sm text-slate-500 shadow-[var(--shadow-card)] transition-colors hover:border-slate-300 hover:text-slate-700"
+            "flex min-h-10 w-full items-center gap-2 rounded-md border border-slate-200 bg-card px-3 text-left text-sm text-slate-500 shadow-[var(--shadow-card)] transition-colors hover:border-slate-300 hover:text-slate-700"
           )}
         >
           <IconPencil size={14} aria-hidden className="shrink-0 text-slate-400" />
@@ -1603,7 +1603,7 @@ function Composer({
         }}
         rows={5}
         disabled={sending}
-        className={cn(controlFocusClass, "w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed")}
+        className={cn(controlFocusClass, "w-full rounded-md border border-slate-200 bg-card px-3 py-2 text-sm leading-relaxed")}
       />
       {withCc ? (
         <div className="flex items-center gap-2">
@@ -1618,7 +1618,7 @@ function Composer({
             inputMode="email"
             autoComplete="off"
             placeholder="opcjonalnie"
-            className={cn(controlFocusClass, "min-h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-sm")}
+            className={cn(controlFocusClass, "min-h-9 w-full rounded-md border border-slate-200 bg-card px-2.5 text-sm")}
           />
         </div>
       ) : null}
@@ -1627,7 +1627,7 @@ function Composer({
           {files.length ? (
             <ul className="flex flex-wrap gap-1.5">
               {files.map((f, i) => (
-                <li key={`${i}-${f.name}`} className="inline-flex max-w-[16rem] items-center gap-1 rounded bg-white px-2 py-1 text-xs text-slate-700 ring-1 ring-slate-200">
+                <li key={`${i}-${f.name}`} className="inline-flex max-w-[16rem] items-center gap-1 rounded bg-card px-2 py-1 text-xs text-slate-700 ring-1 ring-slate-200">
                   <IconPaperclip size={12} aria-hidden className="shrink-0 text-slate-400" />
                   <span className="truncate">{f.name}</span>
                   <span className="shrink-0 tabular-nums text-slate-400">{formatFileSize(f.size)}</span>
@@ -1788,7 +1788,7 @@ function ForwardForm({
           inputMode="email"
           autoComplete="off"
           placeholder={payment ? "adres osoby, która płaci" : "adres (kilka - po przecinku)"}
-          className={cn(controlFocusClass, "min-h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-sm")}
+          className={cn(controlFocusClass, "min-h-9 w-full rounded-md border border-slate-200 bg-card px-2.5 text-sm")}
         />
       </div>
       <label htmlFor={noteId} className="sr-only">
@@ -1800,7 +1800,7 @@ function ForwardForm({
         onChange={(e) => setNote(e.target.value)}
         rows={4}
         disabled={sending}
-        className={cn(controlFocusClass, "w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed")}
+        className={cn(controlFocusClass, "w-full rounded-md border border-slate-200 bg-card px-3 py-2 text-sm leading-relaxed")}
       />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-slate-500">
@@ -1859,7 +1859,7 @@ function TriageBar({
           id={rememberId}
           value={remember}
           onChange={(e) => setRemember(e.target.value as typeof remember)}
-          className={cn(controlFocusClass, "min-h-9 rounded-md border border-slate-200 bg-white px-2 text-sm")}
+          className={cn(controlFocusClass, "min-h-9 rounded-md border border-slate-200 bg-card px-2 text-sm")}
         >
           <option value="sender">i zapamiętaj: zawsze od {email}</option>
           {domain && !isFreeMailDomain(domain) ? <option value="domain">i zapamiętaj: cała domena @{domain}</option> : null}

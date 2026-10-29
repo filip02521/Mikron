@@ -95,7 +95,7 @@ function FloatingNoticePanel({
         }}
         className={cn(
           "pointer-events-auto flex overflow-hidden origin-right",
-          "rounded-l-xl border border-r-0 bg-white/95 backdrop-blur-md",
+          "rounded-l-xl border border-r-0 bg-card/95 backdrop-blur-md",
           "shadow-[0_8px_28px_rgba(15,23,42,0.12)]",
           "transition-[width] duration-200 ease-out will-change-[width]",
           controlFocusClass,

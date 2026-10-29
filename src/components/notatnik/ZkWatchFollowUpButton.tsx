@@ -210,7 +210,7 @@ export function ZkWatchFollowUpButton({
                   disabled={saving}
                   onChange={(e) => setFollowUpDraft(e.target.value)}
                   className={cn(
-                    "h-8 w-full rounded-md border border-slate-200/80 bg-white px-2 text-xs",
+                    "h-8 w-full rounded-md border border-slate-200/80 bg-card px-2 text-xs",
                     controlFocusClass
                   )}
                 />

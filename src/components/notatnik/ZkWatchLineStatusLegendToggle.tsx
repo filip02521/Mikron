@@ -23,7 +23,7 @@ export function ZkWatchLineStatusLegendToggle({
       showOptionalLabel={false}
       summaryClassName="items-center py-1.5"
       bodyClassName="pb-2 pt-1.5"
-      className="border-slate-200/70 bg-white/80"
+      className="border-slate-200/70 bg-card/80"
     >
       <ul className="space-y-1.5">
         {items.map(({ state, hint }) => (

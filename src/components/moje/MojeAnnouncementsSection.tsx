@@ -99,7 +99,7 @@ function MojeAnnouncementCompactRow({
       id={`announcement-${thread.id}`}
       className={cn(
         "border-b border-slate-100 last:border-b-0",
-        unread ? "bg-indigo-50/40" : "bg-white"
+        unread ? "bg-indigo-50/40" : "bg-card"
       )}
     >
       <button

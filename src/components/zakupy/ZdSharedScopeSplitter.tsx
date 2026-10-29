@@ -131,14 +131,14 @@ function FilterChip({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
         active
           ? "bg-indigo-50 text-indigo-900 ring-1 ring-inset ring-indigo-200"
-          : "bg-white text-slate-600 ring-1 ring-inset ring-slate-200 hover:bg-slate-50 hover:text-slate-900"
+          : "bg-card text-slate-600 ring-1 ring-inset ring-slate-200 hover:bg-slate-50 hover:text-slate-900"
       )}
     >
       {children}
       <span
         className={cn(
           "rounded px-1 tabular-nums",
-          active ? "bg-white text-indigo-700" : "text-slate-500"
+          active ? "bg-card text-indigo-700" : "text-slate-500"
         )}
       >
         {count}
@@ -172,7 +172,7 @@ function RowPicker({
         aria-label={label}
         onChange={(e) => onPick(e.target.value)}
         onClick={(e) => e.stopPropagation()}
-        className="h-8 w-full min-w-0 cursor-pointer rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-800 transition-colors duration-150 hover:border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:w-56"
+        className="h-8 w-full min-w-0 cursor-pointer rounded-md border border-slate-200 bg-card px-2 text-xs text-slate-800 transition-colors duration-150 hover:border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:w-56"
       >
         <option value="">Wszyscy</option>
         {options.map((o) => (
@@ -217,9 +217,9 @@ function RowPicker({
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
               active
                 ? sg.id === ""
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "bg-white text-indigo-800 shadow-sm ring-1 ring-inset ring-indigo-200"
-                : "text-slate-600 hover:bg-white/70 hover:text-slate-900",
+                  ? "bg-card text-slate-900 shadow-sm"
+                  : "bg-card text-indigo-800 shadow-sm ring-1 ring-inset ring-indigo-200"
+                : "text-slate-600 hover:bg-card/70 hover:text-slate-900",
               disabled && "cursor-not-allowed opacity-50"
             )}
           >
@@ -235,7 +235,7 @@ function RowPicker({
       })}
       {outsideName && value && !options.some((o) => o.id === value) ? (
         <span
-          className="inline-flex h-7 shrink-0 items-center whitespace-nowrap rounded-[5px] bg-white px-2 text-xs font-medium text-amber-900 shadow-sm"
+          className="inline-flex h-7 shrink-0 items-center whitespace-nowrap rounded-[5px] bg-card px-2 text-xs font-medium text-amber-900 shadow-sm"
           title="Towar jest przypisany do dostawcy spoza tego zakresu"
         >
           {outsideName}
@@ -612,7 +612,7 @@ export function ZdSharedScopeSplitter({
             >
               <Swatch className={o.swatch} />
               {o.name}
-              <Kbd className="bg-white">{o.key}</Kbd>
+              <Kbd className="bg-card">{o.key}</Kbd>
             </FilterChip>
           ))}
           {outsideCount > 0 || filter.kind === "outside" ? (
@@ -917,14 +917,14 @@ export function ZdSharedScopeSplitter({
         ) : null}
         {loading && products != null ? (
           <div className="pointer-events-none absolute inset-x-0 top-12 flex justify-center">
-            <span className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 shadow-sm">
+            <span className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-card px-3 py-1.5 text-xs text-slate-600 shadow-sm">
               <BrandLoader size="sm" tile={false} /> Odświeżam listę…
             </span>
           </div>
         ) : null}
       </div>
 
-      <div className="sticky bottom-0 z-10 flex shrink-0 flex-col gap-3 border-t border-slate-200 bg-white px-5 py-3 sm:px-6 lg:static lg:flex-row lg:items-center lg:justify-between">
+      <div className="sticky bottom-0 z-10 flex shrink-0 flex-col gap-3 border-t border-slate-200 bg-card px-5 py-3 sm:px-6 lg:static lg:flex-row lg:items-center lg:justify-between">
         {selectionSet.size > 0 ? (
           <div className="flex min-w-0 flex-wrap items-center gap-2" role="toolbar" aria-label="Akcje dla zaznaczonych">
             <span className="text-sm font-medium tabular-nums text-slate-900">

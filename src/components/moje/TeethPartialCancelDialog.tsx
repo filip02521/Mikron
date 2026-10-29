@@ -144,7 +144,7 @@ export function TeethPartialCancelDialog({
                   key={key}
                   className={cn(
                     "transition-colors",
-                    disabled ? "bg-slate-50/50 opacity-60" : "bg-white",
+                    disabled ? "bg-slate-50/50 opacity-60" : "bg-card",
                   )}
                 >
                   <td className="px-3 py-2.5 font-medium text-slate-800">

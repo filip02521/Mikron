@@ -455,7 +455,7 @@ export function RequestProductLinesEditor({
                 return (
                   <div
                     key={line.id}
-                    className="overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm"
+                    className="overflow-hidden rounded-md border border-slate-200 bg-card shadow-sm"
                   >
                     <ProsbaProductLineCollapsedRow
                       index={index}
@@ -535,7 +535,7 @@ export function RequestProductLinesEditor({
               wrapLine
                 ? prosba
                   ? cn(
-                      "relative overflow-hidden rounded-lg border bg-white",
+                      "relative overflow-hidden rounded-lg border bg-card",
                       isActive
                         ? "border-indigo-300 shadow-sm ring-1 ring-indigo-200/70"
                         : "border-slate-200/90"
