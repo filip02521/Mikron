@@ -1,8 +1,10 @@
 /** Widok zgłoszeń ROL: liczby w wierszu klienta, blokady wysyłki, etykiety stanów i miesięcy. */
 import { polishPlural } from "@/lib/email/polish-plural";
-import type { RolBatchView, RolLineView } from "./data";
+import type { RolInvoiceView, RolLineView } from "./data";
 import type { RolBatchStatus } from "./merge";
 import { ROL_CONFLICT_REASON } from "./constants";
+
+type RolBatchContent = { invoices: readonly RolInvoiceView[]; lines: readonly RolLineView[] };
 
 export const ROL_STATUS_BADGE: Record<
   RolBatchStatus,
@@ -58,12 +60,12 @@ export function rolLineQty(line: Pick<RolLineView, "qtyFs" | "qtyKfs" | "qtyOver
 }
 
 /** Pozycje, które pójdą do zgłoszenia (bez wyłączonych FS i pozycji, bez zera). */
-export function rolActiveLines(batch: Pick<RolBatchView, "invoices" | "lines">): RolLineView[] {
+export function rolActiveLines(batch: RolBatchContent): RolLineView[] {
   const excludedFs = new Set(batch.invoices.filter((i) => i.excluded).map((i) => i.fsDokId));
   return batch.lines.filter((l) => !l.excluded && !excludedFs.has(l.fsDokId) && rolLineQty(l) > 0);
 }
 
-export function rolBatchSummary(batch: Pick<RolBatchView, "invoices" | "lines">): {
+export function rolBatchSummary(batch: RolBatchContent): {
   fsCount: number;
   positions: number;
   pieces: number;
@@ -82,7 +84,7 @@ export function rolBatchSummary(batch: Pick<RolBatchView, "invoices" | "lines">)
 }
 
 /** Powody, dla których paczki nie da się jeszcze zatwierdzić do wysyłki (tekstem obok przycisku). */
-export function rolBatchBlockers(batch: Pick<RolBatchView, "invoices" | "lines">): string[] {
+export function rolBatchBlockers(batch: RolBatchContent): string[] {
   const out: string[] = [];
   const conflicts = batch.invoices.filter((i) => i.excluded && i.excludedReason === ROL_CONFLICT_REASON).length;
   if (conflicts) out.push(`${polishPlural(conflicts, "FS pasuje", "FS pasują", "FS pasuje")} do dwóch klientów ROL`);

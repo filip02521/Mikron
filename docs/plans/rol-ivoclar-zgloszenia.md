@@ -1,6 +1,6 @@
 # Plan: comiesięczne zgłoszenia ROL do Ivoclara
 
-**Status: plan zatwierdzony (2026-10-29), decyzje P1–P8 w §10.** Plasterki 1–2 w kodzie: migracja `204_rol_reports.sql`, `src/lib/rol/*` (skan, scalanie, walidacja, widok), akcje `src/app/actions/rol.ts`, zakładka „Zgłoszenia ROL” w Asystencie (podgląd tylko do odczytu, „Sprawdź ponownie”, Ustawienia ROL). Plasterek 0 zrobiony (wyniki w §9); otwarte tylko: czy opis ZD (`uwagi`) widać w Subiekcie.
+**Status: plan zatwierdzony (2026-10-29), decyzje P1–P8 w §10.** Plasterki 1–2 w kodzie: migracja `204_rol_reports.sql`, `src/lib/rol/*` (skan, scalanie, walidacja, widok), akcje `src/app/actions/rol.ts`, zakładka „Zgłoszenia ROL” w Asystencie („Sprawdź ponownie”, Ustawienia ROL). Plasterek 3 w kodzie: wyłączanie FS i pozycji, ilość ręczna, numer katalogowy, przypisanie FS z konfliktem do klienta, „Zatwierdź listę” / „Edytuj listę” (`src/lib/rol/review.ts`, `RolBatchDetail.tsx`); ponowny skan zachowuje tylko jawne decyzje użytkownika. Plasterek 0 zrobiony (wyniki w §9); otwarte tylko: czy opis ZD (`uwagi`) widać w Subiekcie.
 
 Nazwy klientów, adresy, NIP-y i adresy e-mail w tym pliku są zmyślone albo opisane rolą (repo jest publiczne). Prawdziwe wartości trafią do tabeli konfiguracji w bazie (`rol_programs`), nie do kodu.
 

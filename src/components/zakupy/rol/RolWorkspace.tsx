@@ -3,7 +3,7 @@
 import { Fragment, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { actionScanRolMonth } from "@/app/actions/rol";
-import { IconAlertCircle, IconChevronRight, IconSettings } from "@/components/icons/StrokeIcons";
+import { IconChevronRight, IconSettings } from "@/components/icons/StrokeIcons";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { BrandLoader } from "@/components/ui/BrandLoader";
@@ -14,13 +14,9 @@ import { Select } from "@/components/ui/Field";
 import { cn } from "@/lib/cn";
 import { polishPlural } from "@/lib/email/polish-plural";
 import type { RolBatchView, RolProgram } from "@/lib/rol/data";
-import {
-  rolBatchBlockers,
-  rolBatchSummary,
-  rolLineQty,
-  rolPeriodLabel,
-  ROL_STATUS_BADGE,
-} from "@/lib/rol/view";
+import { rolEditSummary } from "@/lib/rol/review";
+import { rolBatchSummary, rolPeriodLabel, ROL_STATUS_BADGE } from "@/lib/rol/view";
+import { RolBatchDetail } from "./RolBatchDetail";
 import { RolSettingsDialog } from "./RolSettingsDialog";
 
 const ENGLISH_MONTHS = [
@@ -48,10 +44,6 @@ function scanTimeLabel(iso: string): string {
   }).format(new Date(iso));
 }
 
-function shortDate(key: string | null): string {
-  return key ? `${key.slice(8, 10)}.${key.slice(5, 7)}` : "—";
-}
-
 export function RolWorkspace({
   period,
   periods,
@@ -73,6 +65,8 @@ export function RolWorkspace({
 
   const batchByProgram = new Map(batches.map((b) => [b.programId, b]));
   const toReview = batches.filter((b) => b.status === "wykryte");
+  const ready = batches.filter((b) => b.status === "przejrzane");
+  const nextToReview = programs.find((p) => toReview.some((b) => b.programId === p.id)) ?? null;
   const lastScan = batches.reduce<RolBatchView | null>((a, b) => (!a || b.scannedAt > a.scannedAt ? b : a), null);
   const monthEn = ENGLISH_MONTHS[Number(period.slice(5, 7)) - 1];
 
@@ -91,7 +85,9 @@ export function RolWorkspace({
           <h2 className="text-base font-semibold tracking-tight text-slate-900">
             {toReview.length
               ? `${polishPlural(toReview.length, "zgłoszenie czeka", "zgłoszenia czekają", "zgłoszeń czeka")} na przegląd`
-              : `Zgłoszenia ROL · ${rolPeriodLabel(period)}`}
+              : ready.length
+                ? `${polishPlural(ready.length, "zgłoszenie gotowe", "zgłoszenia gotowe", "zgłoszeń gotowych")} do wysłania`
+                : `Zgłoszenia ROL · ${rolPeriodLabel(period)}`}
           </h2>
           <p className="text-sm text-slate-600">
             {lastScan
@@ -112,6 +108,9 @@ export function RolWorkspace({
               </option>
             ))}
           </Select>
+          {nextToReview ? (
+            <Button onClick={() => setOpen(nextToReview.id)}>Przejrzyj ROL {nextToReview.label}</Button>
+          ) : null}
           {programs.length ? (
             <Button variant="secondary" onClick={scan} disabled={scanning}>
               {scanning ? "Sprawdzam…" : "Sprawdź ponownie"}
@@ -181,7 +180,11 @@ export function RolWorkspace({
                           />
                           ROL {program.label}
                         </button>
-                        {batch?.changeNote ? <p className="mt-0.5 pl-5 text-xs text-slate-500">{batch.changeNote}</p> : null}
+                        {batch && (batch.changeNote || rolEditSummary(batch)) ? (
+                          <p className="mt-0.5 pl-5 text-xs text-slate-500">
+                            {[batch.changeNote, rolEditSummary(batch)].filter(Boolean).join(" · ")}
+                          </p>
+                        ) : null}
                         {/* Telefon: wiersz listy zamiast kolumn — stan i liczby pod nazwą klienta. */}
                         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 pl-5 text-xs text-slate-600 tabular-nums sm:hidden">
                           {batch ? (
@@ -228,69 +231,6 @@ export function RolWorkspace({
       )}
 
       <RolSettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} programs={programs} />
-    </div>
-  );
-}
-
-function RolBatchDetail({ program, batch, monthEn }: { program: RolProgram; batch: RolBatchView; monthEn: string }) {
-  const blockers = rolBatchBlockers(batch);
-  return (
-    <div className="space-y-3 py-1">
-      {/* Blok klienta tak, jak zobaczy go Ivoclar — tożsamość przed pozycjami. */}
-      <div className="text-sm text-slate-700">
-        <p className="font-medium text-slate-900">
-          ROL {program.label} {monthEn} -{program.discountPct}%
-        </p>
-        <p className="text-slate-600">
-          {[...program.addressLines, program.nip ? `NIP: ${program.nip}` : ""].filter(Boolean).join(" · ") || "Brak adresu w ustawieniach"}
-        </p>
-      </div>
-
-      {batch.invoices.length === 0 ? (
-        <p className="text-sm text-slate-600">Klient nie kupił produktów Ivoclar w tym miesiącu — nic do zgłoszenia.</p>
-      ) : (
-        batch.invoices.map((inv) => {
-          const lines = batch.lines.filter((l) => l.fsDokId === inv.fsDokId);
-          return (
-            <div key={inv.fsDokId} className={cn("rounded-md bg-slate-50 px-3 py-2.5", inv.excluded && "opacity-70")}>
-              <p className="text-sm font-medium text-slate-800">
-                {inv.fsNr} · {shortDate(inv.fsDate)} · {polishPlural(lines.length, "poz.", "poz.", "poz.")} Ivoclar
-                {inv.kfsDokIds.length ? (
-                  <span className="font-normal text-slate-600"> · {polishPlural(inv.kfsDokIds.length, "korekta", "korekty", "korekt")} odjęta</span>
-                ) : null}
-              </p>
-              {inv.excluded ? <p className="mt-0.5 text-xs text-amber-800">Wyłączona: {inv.excludedReason || "ręcznie"}</p> : null}
-              <ul className="mt-1.5 space-y-0.5 text-sm text-slate-600">
-                {lines.map((l) => {
-                  const qty = rolLineQty(l);
-                  return (
-                    <li key={l.id} className="flex gap-3">
-                      <span className="w-16 shrink-0 tabular-nums">{l.ivoclarCatalogNo ?? l.symbol ?? "—"}</span>
-                      <span className="min-w-0 flex-1">{l.name}</span>
-                      <span className="shrink-0 tabular-nums">
-                        {l.qtyKfs > 0 ? <s className="mr-1.5 text-slate-500">{l.qtyFs}</s> : null}
-                        <span className="text-slate-900">{qty} szt.</span>
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-              {inv.otherLinesCount > 0 ? (
-                <p className="mt-1 text-xs text-slate-500">
-                  {polishPlural(inv.otherLinesCount, "pozycja innego producenta pominięta", "pozycje innych producentów pominięte", "pozycji innych producentów pominiętych")}
-                </p>
-              ) : null}
-            </div>
-          );
-        })
-      )}
-
-      {blockers.length ? (
-        <p className="flex items-start gap-1.5 text-sm text-amber-800">
-          <IconAlertCircle size={16} aria-hidden className="mt-0.5 shrink-0" />
-          {blockers.join(" · ")}
-        </p>
-      ) : null}
     </div>
   );
 }
