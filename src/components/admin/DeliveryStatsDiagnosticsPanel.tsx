@@ -213,7 +213,7 @@ function SupplierRow({
               e.stopPropagation();
               onToggle();
             }}
-            className="flex w-full items-start gap-2 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+            className="flex w-full items-start gap-2 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
           >
             <IconChevronDown
               size={14}
@@ -562,7 +562,7 @@ export function DeliveryStatsDiagnosticsPanel({
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
+              <tbody className="divide-y divide-slate-100 bg-card">
                 {filtered.length ? (
                   filtered.map((row) => (
                     <SupplierRow

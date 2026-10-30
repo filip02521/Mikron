@@ -14,10 +14,10 @@ import {
 } from "@/components/icons/StrokeIcons";
 
 const TONE: Record<NoticeTone, { shell: string; icon: string; bar: string }> = {
-  info: { shell: "border-indigo-200 bg-indigo-50/80 text-indigo-950", icon: "text-indigo-600", bar: "bg-indigo-500" },
-  success: { shell: "border-emerald-200 bg-emerald-50/80 text-emerald-950", icon: "text-emerald-600", bar: "bg-emerald-500" },
-  warning: { shell: "border-amber-200 bg-amber-50/80 text-amber-950", icon: "text-amber-600", bar: "bg-amber-400" },
-  error: { shell: "border-red-200 bg-red-50/80 text-red-950", icon: "text-red-600", bar: "bg-red-500" },
+  info: { shell: "border-indigo-200 bg-indigo-50/80 text-indigo-950", icon: "text-indigo-700", bar: "bg-indigo-500" },
+  success: { shell: "border-emerald-200 bg-emerald-50/80 text-emerald-950", icon: "text-emerald-700", bar: "bg-emerald-500" },
+  warning: { shell: "border-amber-200 bg-amber-50/80 text-amber-950", icon: "text-amber-700", bar: "bg-amber-400" },
+  error: { shell: "border-red-200 bg-red-50/80 text-red-950", icon: "text-red-700", bar: "bg-red-500" },
 };
 
 function ToneIcon({ tone, className }: { tone: NoticeTone; className?: string }) {
@@ -101,7 +101,7 @@ export function ZdEstimateNotice({
             onClick={() => setDismissed(true)}
             aria-label={`Zamknij komunikat: ${heading}`}
             title="Zamknij"
-            className="shrink-0 rounded p-1 opacity-60 transition hover:bg-black/5 hover:opacity-100"
+            className="shrink-0 rounded p-1 opacity-60 transition hover:bg-slate-900/5 hover:opacity-100"
           >
             <IconX size={14} />
           </button>

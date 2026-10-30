@@ -75,7 +75,7 @@ export function SupplierOrderFormList({ supplierId }: { supplierId: string }) {
               href={`/api/operations/supplier-forms/zd/${d.dokId}?supplierId=${encodeURIComponent(supplierId)}`}
               download
               className={cn(
-                "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-800 hover:bg-slate-50"
+                "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-slate-200 bg-card px-2.5 text-xs font-medium text-slate-800 hover:bg-slate-50"
               )}
             >
               <IconDownload size={14} className="shrink-0" />

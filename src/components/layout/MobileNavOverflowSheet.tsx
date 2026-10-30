@@ -8,6 +8,7 @@ import { createPortal } from "react-dom";
 import { NavIcon, navIconTileActiveClassForTone, navIconTileClassForTone } from "@/components/icons/NavIcon";
 import { IconLogOut, IconMoreVertical } from "@/components/icons/StrokeIcons";
 import { signOutToLogin } from "@/lib/auth/sign-out-client";
+import { ThemeSwitch } from "@/components/layout/ThemeSwitch";
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { isNavItemActive, navItemDisplayTone, navItemHasDueReminders, type NavItem } from "@/lib/nav";
 import { hrefWithAdminSalesPreview } from "@/lib/nav/sales-preview-href";
@@ -123,19 +124,19 @@ export function MobileNavOverflowSheet({
             <button
               ref={backdropRef}
               type="button"
-              className="modal-backdrop-enter absolute inset-0 bg-slate-900/30 backdrop-blur-[1px]"
+              className="modal-backdrop-enter absolute inset-0 bg-scrim/30 backdrop-blur-[1px]"
               aria-label="Zamknij menu"
               onClick={() => close()}
             />
             <div
               ref={panelRef}
-              className="sheet-enter absolute inset-x-0 bottom-0 max-h-[min(70vh,28rem)] overflow-y-auto rounded-t-[var(--radius-panel)] outline-none border border-slate-200/90 bg-[var(--card)] shadow-[var(--shadow-card-elevated)] pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
+              className="sheet-enter absolute inset-x-0 bottom-0 max-h-[min(70vh,28rem)] overflow-y-auto rounded-t-[var(--radius-panel)] outline-none border border-slate-200/90 bg-raised shadow-[var(--shadow-card-elevated)] pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
               tabIndex={-1}
               {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}
             >
               {/* Nagłówek = uchwyt: przeciągnij w dół, żeby zamknąć. Pełne tło — lista przewija się pod nim. */}
               <div
-                className="sticky top-0 z-[1] touch-none select-none border-b border-slate-100 bg-[var(--card)] px-4 pb-3 pt-2"
+                className="sticky top-0 z-[1] touch-none select-none border-b border-slate-100 bg-raised px-4 pb-3 pt-2"
                 {...drag}
               >
                 <span aria-hidden className="mx-auto mb-2 block h-1 w-9 rounded-full bg-slate-300" />
@@ -205,7 +206,7 @@ export function MobileNavOverflowSheet({
                         </span>
                         {monthlyIdle ? (
                           <span
-                            className="h-2 w-2 shrink-0 rounded-full bg-indigo-600 ring-2 ring-white"
+                            className="h-2 w-2 shrink-0 rounded-full bg-indigo-600 ring-2 ring-card"
                             title="Nowe podsumowanie miesiąca"
                           />
                         ) : null}
@@ -245,6 +246,7 @@ export function MobileNavOverflowSheet({
                   </li>
                 ) : null}
               </ul>
+              <ThemeSwitch variant="sheet" className="mt-2" />
             </div>
           </div>,
           document.body
@@ -275,7 +277,7 @@ export function MobileNavOverflowSheet({
             {overflowAttentionBadge > 0 && !activeInOverflow ? (
               <span
                 className={cn(
-                  "absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[0.625rem] font-semibold leading-none tabular-nums ring-2 ring-white",
+                  "absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[0.625rem] font-semibold leading-none tabular-nums ring-2 ring-card",
                   sidebarNavBadgeClassForTone(overflowBadgeTone, false)
                 )}
               >
@@ -283,7 +285,7 @@ export function MobileNavOverflowSheet({
               </span>
             ) : showMonthlyDot ? (
               <span
-                className="absolute -right-1 top-0 h-2 w-2 rounded-full bg-indigo-600 ring-2 ring-white"
+                className="absolute -right-1 top-0 h-2 w-2 rounded-full bg-indigo-600 ring-2 ring-card"
                 title="Nowe podsumowanie miesiąca"
               />
             ) : null}

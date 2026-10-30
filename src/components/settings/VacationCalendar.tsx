@@ -629,7 +629,7 @@ export function VacationCalendar({
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 {color ? (
-                  <span className={cn("h-3 w-3 rounded-full ring-2 ring-white", color.dot)} />
+                  <span className={cn("h-3 w-3 rounded-full ring-2 ring-card", color.dot)} />
                 ) : null}
                 <span className="text-sm font-semibold text-slate-900">{sp.name}</span>
               </div>
@@ -700,7 +700,7 @@ export function VacationCalendar({
                   </div>
 
                   {period.note ? (
-                    <div className="rounded-md border border-slate-100 bg-white px-2.5 py-2">
+                    <div className="rounded-md border border-slate-100 bg-card px-2.5 py-2">
                       <p className="text-[0.6875rem] font-semibold text-slate-500">Notatka</p>
                       <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{period.note}</p>
                     </div>
@@ -721,7 +721,7 @@ export function VacationCalendar({
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-7 px-2 text-xs text-indigo-600"
+                              className="h-7 px-2 text-xs text-indigo-700"
                               onClick={() => {
                                 setAssigningDelegate(true);
                                 setSelectedDelegateId("");
@@ -750,7 +750,7 @@ export function VacationCalendar({
                     ) : assigningDelegate ? (
                       <div className="space-y-2">
                         <select
-                          className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-200/40"
+                          className="w-full rounded-md border border-slate-200 bg-card px-3 py-1.5 text-sm text-slate-900 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-200/40"
                           value={selectedDelegateId}
                           onChange={(e) => setSelectedDelegateId(e.target.value)}
                         >
@@ -789,7 +789,7 @@ export function VacationCalendar({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 px-2 text-xs text-indigo-600"
+                        className="h-7 px-2 text-xs text-indigo-700"
                         onClick={() => {
                           setAssigningDelegate(true);
                           setSelectedDelegateId("");
@@ -809,7 +809,7 @@ export function VacationCalendar({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="flex-1 justify-center gap-1.5 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50/60"
+                          className="flex-1 justify-center gap-1.5 text-indigo-700 hover:text-indigo-800 hover:bg-indigo-50/60"
                           onClick={startEdit}
                         >
                           <IconPencil size={14} className="shrink-0" />
@@ -885,7 +885,7 @@ export function VacationCalendar({
           {salesPeople.length > 1 && !editableSalesPersonId ? (
             <Field label="Handlowiec">
               <select
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-200/40"
+                className="w-full rounded-md border border-slate-200 bg-card px-3 py-2 text-sm text-slate-900 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-200/40"
                 value={vacationForm.salesPersonId}
                 onChange={(e) =>
                   setVacationForm({ ...vacationForm, salesPersonId: e.target.value })
@@ -922,7 +922,7 @@ export function VacationCalendar({
           </div>
           <Field label="Rodzaj nieobecności">
             <select
-              className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-200/40"
+              className="w-full rounded-md border border-slate-200 bg-card px-3 py-2 text-sm text-slate-900 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-200/40"
               value={vacationForm.category}
               onChange={(e) =>
                 setVacationForm({ ...vacationForm, category: e.target.value as VacationCategory })
@@ -1000,7 +1000,7 @@ export function VacationCalendar({
                         ? "-m-0.5 flex size-5 items-center justify-center rounded-full bg-indigo-600 text-white"
                         : cell.isCurrentMonth
                           ? cell.isWeekend ? "text-slate-500" : "text-slate-900"
-                          : "text-slate-300"
+                          : "text-slate-400"
                     )}
                   >
                     {cell.dayOfMonth}
@@ -1023,7 +1023,7 @@ export function VacationCalendar({
                             key={p.period.id + "-" + idx}
                             type="button"
                             className={cn(
-                              "flex w-full items-center gap-1 rounded px-1.5 py-1 text-[0.625rem] font-medium truncate cursor-pointer transition hover:ring-1 hover:ring-slate-300/50 border border-white/80 shadow-sm",
+                              "flex w-full items-center gap-1 rounded px-1.5 py-1 text-[0.625rem] font-medium truncate cursor-pointer transition hover:ring-1 hover:ring-slate-300/50 border border-card/80 shadow-sm",
                               isOwn && "ring-1 ring-slate-400/40 font-semibold",
                               c.bg,
                               c.text

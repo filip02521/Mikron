@@ -116,8 +116,8 @@ function ToggleGroup<T extends string>({
             className={cn(
               "min-h-11 rounded-[5px] px-2.5 font-medium transition-[background-color,color,box-shadow] duration-150 disabled:cursor-not-allowed disabled:opacity-40 sm:min-h-0 sm:py-1",
               active
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-600 hover:bg-white/70 hover:text-slate-900"
+                ? "bg-card text-slate-900 shadow-sm"
+                : "text-slate-600 hover:bg-card/70 hover:text-slate-900"
             )}
           >
             {opt.label}
@@ -140,7 +140,7 @@ function DayColumn({
   return (
     <section
       className={cn(
-        "flex min-h-[6.5rem] flex-col rounded-md border border-slate-200 bg-white",
+        "flex min-h-[6.5rem] flex-col rounded-md border border-slate-200 bg-card",
         day.isToday && "border-sky-200 bg-sky-50/40"
       )}
     >

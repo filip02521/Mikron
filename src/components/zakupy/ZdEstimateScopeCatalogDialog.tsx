@@ -339,7 +339,7 @@ export function ZdEstimateScopeCatalogDialog({
       {mode === "grupa" ? (
         groups.length > 0 ? (
           <ul
-            className="max-h-[min(50dvh,22rem)] divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-200/90 bg-white"
+            className="max-h-[min(50dvh,22rem)] divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-200/90 bg-card"
             role="listbox"
             aria-label={title}
           >
@@ -378,7 +378,7 @@ export function ZdEstimateScopeCatalogDialog({
         ) : null
       ) : cechy.length > 0 ? (
         <ul
-          className="max-h-[min(50dvh,22rem)] divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-200/90 bg-white"
+          className="max-h-[min(50dvh,22rem)] divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-200/90 bg-card"
           role="listbox"
           aria-label={title}
         >

@@ -44,7 +44,7 @@ export function NoteColorPicker({
               NOTE_COLOR_SWATCH[color],
               selected
                 ? "border-slate-700 shadow-[0_0_0_1px_rgba(255,255,255,0.9)]"
-                : "border-white/80 hover:border-slate-400"
+                : "border-card/80 hover:border-slate-400"
             )}
           />
         );
@@ -67,7 +67,7 @@ function NoteAction({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="hit-target rounded px-1 py-0.5 text-[0.6875rem] font-medium text-slate-600 transition hover:bg-black/5 hover:text-slate-900 disabled:opacity-50"
+      className="hit-target rounded px-1 py-0.5 text-[0.6875rem] font-medium text-slate-600 transition hover:bg-slate-900/5 hover:text-slate-900 disabled:opacity-50"
     >
       {children}
     </button>
@@ -97,7 +97,7 @@ function NoteDeleteAction({
       title={title}
       aria-label={ariaLabel}
       className={cn(
-        "hit-target inline-flex shrink-0 items-center justify-center rounded-md text-red-600 transition hover:bg-red-50 hover:text-red-700 disabled:opacity-50",
+        "hit-target inline-flex shrink-0 items-center justify-center rounded-md text-red-700 transition hover:bg-red-50 hover:text-red-800 disabled:opacity-50",
         className
       )}
     >

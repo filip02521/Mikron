@@ -40,7 +40,7 @@ function canBePrimaryZd(file: File): boolean {
   );
 }
 
-const fieldClass = cn(controlFocusClass, "mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm");
+const fieldClass = cn(controlFocusClass, "mt-1 w-full rounded-md border border-slate-200 bg-card px-3 py-2 text-sm");
 
 type StepKey = "mail" | "termin" | "glowne" | "plan";
 type StepState = { status: "idle" | "running" | "ok" | "error" | "skipped"; message?: string };
@@ -651,7 +651,7 @@ export function ZdSendWorkspace({
                       setTerminTouched(true);
                     }}
                     disabled={steps.termin.status === "ok" || steps.termin.status === "running"}
-                    className={cn(controlFocusClass, "min-h-9 rounded-md border border-slate-200 bg-white px-2 text-sm tabular-nums")}
+                    className={cn(controlFocusClass, "min-h-9 rounded-md border border-slate-200 bg-card px-2 text-sm tabular-nums")}
                   />
                   <span className="text-xs text-slate-500">
                     {etaDateKey ? `przewidywana dostawa · ${etaSub}` : "brak historii dostaw - wpisz datę"}
@@ -840,7 +840,7 @@ export function ZdSendWorkspace({
                     type="button"
                     onClick={() => extrasInputRef.current?.click()}
                     disabled={extrasBusy || running}
-                    className="inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded px-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-50"
+                    className="inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded px-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50"
                   >
                     {extrasBusy ? <Spinner size="sm" /> : <IconPaperclip size={14} aria-hidden />}
                     {extrasBusy ? "Przygotowuję pliki…" : "Dodaj pliki"}
@@ -875,7 +875,7 @@ export function ZdSendWorkspace({
                 type="button"
                 onClick={refreshDocument}
                 disabled={attachment.state === "loading" || running}
-                className="inline-flex min-h-9 cursor-pointer items-center rounded px-1.5 text-xs font-medium text-indigo-700 underline decoration-indigo-300 underline-offset-2 hover:decoration-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 disabled:opacity-50"
+                className="inline-flex min-h-9 cursor-pointer items-center rounded px-1.5 text-xs font-medium text-indigo-700 underline decoration-indigo-300 underline-offset-2 hover:decoration-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:opacity-50"
                 title="Gdy dopisałeś coś do ZD w Subiekcie - pozycje i wydruk wczytają się od nowa"
               >
                 {manualPrimary
@@ -1003,7 +1003,7 @@ function StepRow({
           aria-hidden
           className={cn(
             "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
-            state.status === "error" ? "bg-red-100 text-red-800" : "bg-white text-slate-600 ring-1 ring-slate-300"
+            state.status === "error" ? "bg-red-100 text-red-800" : "bg-card text-slate-600 ring-1 ring-slate-300"
           )}
         >
           {state.status === "error" ? <IconAlertCircle size={14} /> : n}

@@ -185,8 +185,8 @@ export function ProcurementSupplierBlockBar({
             type="button"
             onClick={onToggleCollapse}
             className={cn(
-              "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-white/70 ring-1 ring-slate-200/70",
-              "text-slate-600 transition-colors hover:bg-white hover:text-slate-900",
+              "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-card/70 ring-1 ring-slate-200/70",
+              "text-slate-600 transition-colors hover:bg-card hover:text-slate-900",
               controlFocusClass,
               collapsed
                 ? isStockOut
@@ -194,7 +194,7 @@ export function ProcurementSupplierBlockBar({
                   : "group-hover/blockHeader:ring-indigo-300/80 group-hover/blockHeader:text-indigo-700"
                 : isStockOut
                   ? "group-hover/blockHeader:ring-amber-300/70 group-hover/blockHeader:text-amber-700"
-                  : "group-hover/blockHeader:ring-indigo-300/70 group-hover/blockHeader:text-indigo-600"
+                  : "group-hover/blockHeader:ring-indigo-300/70 group-hover/blockHeader:text-indigo-700"
             )}
             aria-expanded={!collapsed}
             aria-label={chevronAria}
@@ -241,7 +241,7 @@ export function ProcurementSupplierBlockBar({
                       "hidden text-[0.625rem] font-medium sm:inline",
                       "opacity-0 transition-opacity duration-150",
                       "group-hover/blockHeader:opacity-100",
-                      isStockOut ? "text-amber-700/80" : "text-indigo-600/80"
+                      isStockOut ? "text-amber-700/80" : "text-indigo-700/80"
                     )}
                     aria-hidden
                   >

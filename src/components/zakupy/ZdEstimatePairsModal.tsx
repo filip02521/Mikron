@@ -275,8 +275,8 @@ export function ZdEstimatePairsModal({
                   className={cn(
                     "rounded-lg border px-3 py-3 text-left transition",
                     isPack
-                      ? "border-indigo-400 bg-white shadow-sm ring-2 ring-indigo-200"
-                      : "border-slate-200/80 bg-white/70 hover:border-slate-300"
+                      ? "border-indigo-400 bg-card shadow-sm ring-2 ring-indigo-200"
+                      : "border-slate-200/80 bg-card/70 hover:border-slate-300"
                   )}
                 >
                   <p className="text-[11px] font-semibold text-slate-500">
@@ -336,7 +336,7 @@ export function ZdEstimatePairsModal({
           </p>
         </div>
       ) : (
-        <div className="grid gap-2 rounded-lg border border-slate-200/80 bg-white p-3 sm:grid-cols-2 lg:grid-cols-6">
+        <div className="grid gap-2 rounded-lg border border-slate-200/80 bg-card p-3 sm:grid-cols-2 lg:grid-cols-6">
           <label className="text-xs font-medium text-slate-600 lg:col-span-1">
             Pack tw_Id
             <Input

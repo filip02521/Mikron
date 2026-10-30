@@ -368,7 +368,7 @@ const NoteCard = memo(function NoteCard({
           </div>
           {pinned && !readOnly ? (
             <span
-              className="absolute right-1.5 top-2 text-indigo-600/80"
+              className="absolute right-1.5 top-2 text-indigo-700/80"
               title="Przypięta"
               aria-label="Przypięta"
             >

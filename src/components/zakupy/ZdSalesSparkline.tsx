@@ -81,7 +81,7 @@ function ZdSalesProfileChart({
             <span
               className={cn(
                 // Nad przerywaną linią typowego miesiąca: tło dymka/karty, żeby linia nie przecinała liczby.
-                "relative z-[1] mb-0.5 rounded-sm bg-white px-0.5 text-[0.625rem] leading-none tabular-nums",
+                "relative z-[1] mb-0.5 rounded-sm bg-card px-0.5 text-[0.625rem] leading-none tabular-nums",
                 i === last ? "font-semibold text-slate-900" : v > 0 ? "text-slate-600" : "text-slate-400"
               )}
             >

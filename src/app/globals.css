@@ -35,6 +35,11 @@
     animation: none;
   }
 }
+/* W ciemnym multiply na ciemnym wierszu nic nie barwi — rozjaśniamy zamiast przyciemniać. */
+html[data-theme="dark"] [data-notepad-flash]::after {
+  background: var(--color-indigo-200);
+  mix-blend-mode: screen;
+}
 
 /* Menu boczne: pełne 16rem albo wąski pasek z ikonami (html[data-sidebar="collapsed"]). */
 :root {
@@ -84,7 +89,29 @@ html[data-sidebar="collapsed"] .sb-link .sb-link-icon {
   --card-border: #e1e4e9;
   --primary: var(--brand-indigo);
   --primary-hover: var(--brand-indigo-hover);
+  --primary-pressed: #0f4b53;
   --primary-muted: #edf7f8;
+  /* Role, które w ciemnym motywie nie dają się wyrazić krokiem palety (docs/plans/ciemny-tryb.md §2.1). */
+  --surface-raised: #ffffff;
+  --focus-ring: #0f7380;
+  --scrim: #151920;
+  --inverse: #151920;
+  --on-inverse: #ffffff;
+  /* Hover i wciśnięcie wypełnień pod białym tekstem (w ciemnym kroki 700+ są tekstem). */
+  --success-hover: oklch(50.8% 0.118 165.612);
+  --success-pressed: oklch(43.2% 0.095 166.913);
+  --warning-hover: oklch(55.5% 0.163 48.998);
+  --danger-hover: oklch(50.5% 0.213 27.518);
+  --fill-neutral: #4a515c;
+  --fill-neutral-hover: #363c46;
+  /* Wybrany segment przełącznika: w ciemnym jaśniejszy od toru (cień tam nie działa). */
+  --segment-active: #ffffff;
+  /* Tła wierszy harmonogramu = SUMMARY_COLORS (src/types/database.ts), czytane przez summaryColorCss. */
+  --summary-expired: #fff1f2;
+  --summary-today: #eff6ff;
+  --summary-tomorrow: #fffde7;
+  --summary-this-week: #e3f2fd;
+  --summary-for-someone: #e8f5e9;
   --muted: #626a76;
   --muted-foreground: #4a515c;
   --radius: 0.375rem;
@@ -135,6 +162,9 @@ html[data-sidebar="collapsed"] .sb-link .sb-link-icon {
   --color-indigo-800: #0f4b53;
   --color-indigo-900: #113e45;
   --color-indigo-950: #07272c;
+  /* Krok 600 stanów to wypełnienie pod białym tekstem (≥ 4.5:1); domyślne Tailwinda dawały 3.8:1 i 3.2:1. */
+  --color-emerald-600: #047857;
+  --color-amber-600: #b45309;
 }
 
 /* Jeden akcent: dawne rodziny dekoracyjne → grafit / petrol / semantyka.
@@ -286,6 +316,250 @@ html[data-sidebar="collapsed"] .sb-link .sb-link-icon {
   --color-lime-950: var(--color-emerald-950);
 }
 
+/* ——— Kolory ról (bg-card, bg-raised, bg-primary-hover, ring-focus, bg-scrim/40, bg-inverse …) ———
+   Każdy motyw daje im własną wartość przez zmienne z :root / html[data-theme="dark"]. */
+@theme inline {
+  --color-card: var(--card);
+  --color-raised: var(--surface-raised);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-pressed: var(--primary-pressed);
+  --color-focus: var(--focus-ring);
+  --color-scrim: var(--scrim);
+  --color-inverse: var(--inverse);
+  --color-on-inverse: var(--on-inverse);
+  --color-success-hover: var(--success-hover);
+  --color-success-pressed: var(--success-pressed);
+  --color-warning-hover: var(--warning-hover);
+  --color-danger-hover: var(--danger-hover);
+  --color-fill-neutral: var(--fill-neutral);
+  --color-fill-neutral-hover: var(--fill-neutral-hover);
+  --color-segment-active: var(--segment-active);
+}
+
+/* ——— Motyw ciemny ———
+   Te same zmienne, druga wartość; kroki zachowują role (DESIGN.md → Motyw ciemny):
+   50–300 tła i linie, 400–950 tekst, a w Petrolu i stanach 600 to wypełnienie i sygnał.
+   Kontrast pilnuje scripts/audit-theme-contrast.test.ts. Tylko na ekranie: wydruk zostaje jasny. */
+@media screen {
+  html[data-theme="dark"] {
+    color-scheme: dark;
+    --background: #0e1116;
+    --foreground: #e8ebef;
+    --card: #161a20;
+    --card-border: #2c333d;
+    --surface-raised: #20262e;
+    --primary: #157984;
+    --primary-hover: #17818c;
+    --primary-pressed: #14717b;
+    --primary-muted: #122a2e;
+    --muted: #9ea6b1;
+    --muted-foreground: #b5bcc6;
+    --focus-ring: #2aa3b0;
+    --scrim: #000000;
+    --inverse: #e8ebef;
+    --on-inverse: #151920;
+    --success-hover: #197352;
+    --success-pressed: #166a4b;
+    --warning-hover: #8e5a0b;
+    --danger-hover: #bb3239;
+    --fill-neutral: #666f7d;
+    --fill-neutral-hover: #5e6673;
+    --segment-active: #2c333d;
+    /* Tła wierszy harmonogramu (SUMMARY_COLORS w style przez summaryColorCss); w jasnym zostaje hex. */
+    --summary-expired: var(--color-red-50);
+    --summary-today: var(--color-indigo-100);
+    --summary-tomorrow: var(--color-amber-50);
+    --summary-this-week: var(--color-indigo-50);
+    --summary-for-someone: var(--color-emerald-50);
+    --brand-sky: var(--focus-ring);
+    --brand-sky-muted: #122a2e;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-card-elevated: 0 1px 2px rgba(0, 0, 0, 0.45), 0 8px 24px -8px rgba(0, 0, 0, 0.6);
+    --shadow-elevated: 0 6px 18px -4px rgba(0, 0, 0, 0.55);
+    --shadow-brand: 0 4px 14px -6px rgba(0, 0, 0, 0.5);
+
+    --color-slate-50: #1b2027;
+    --color-slate-100: #222831;
+    --color-slate-200: #2c333d;
+    --color-slate-300: #3b434f;
+    --color-slate-400: #8b939f;
+    --color-slate-500: #9ea6b1;
+    --color-slate-600: #b5bcc6;
+    --color-slate-700: #c9cfd7;
+    --color-slate-800: #dadfe5;
+    --color-slate-900: #e8ebef;
+    --color-slate-950: #f3f5f7;
+    --color-indigo-50: #122a2e;
+    --color-indigo-100: #16373c;
+    --color-indigo-200: #1f4d54;
+    --color-indigo-300: #2b6971;
+    --color-indigo-400: #3f97a1;
+    --color-indigo-500: #2aa3b0;
+    --color-indigo-600: #157984;
+    --color-indigo-700: #6ccfd8;
+    --color-indigo-800: #92dce3;
+    --color-indigo-900: #b6e8ec;
+    --color-indigo-950: #d9f4f6;
+    --color-emerald-50: #0f2a21;
+    --color-emerald-100: #12352a;
+    --color-emerald-200: #1a4a3a;
+    --color-emerald-300: #246a52;
+    --color-emerald-400: #2f9a73;
+    --color-emerald-500: #22b07f;
+    --color-emerald-600: #1c7d5a;
+    --color-emerald-700: #5fd3a4;
+    --color-emerald-800: #86e0bb;
+    --color-emerald-900: #aeead1;
+    --color-emerald-950: #d3f5e6;
+    --color-amber-50: #2d2310;
+    --color-amber-100: #3a2c12;
+    --color-amber-200: #523d16;
+    --color-amber-300: #77581d;
+    --color-amber-400: #c08a1f;
+    --color-amber-500: #f2a524;
+    --color-amber-600: #99610c;
+    --color-amber-700: #f6c464;
+    --color-amber-800: #f8d28a;
+    --color-amber-900: #fadfae;
+    --color-amber-950: #fdefd3;
+    --color-red-50: #321719;
+    --color-red-100: #3e1b1e;
+    --color-red-200: #592428;
+    --color-red-300: #7d3035;
+    --color-red-400: #c4484f;
+    --color-red-500: #e2545b;
+    --color-red-600: #ca383f;
+    --color-red-700: #f58d93;
+    --color-red-800: #f8aaae;
+    --color-red-900: #fbc8cb;
+    --color-red-950: #fde3e4;
+  }
+
+  /* Zaznaczenie: jasny Petrol na ciemnym, jak petrol-mist z petrol-deep w jasnym. */
+  html[data-theme="dark"] ::selection {
+    background: var(--color-indigo-200);
+    color: var(--color-indigo-950);
+  }
+}
+
+/* Zawsze jasne poddrzewo w ciemnym motywie: logowanie (własne tło marki), podgląd maila, papier.
+   Musi wymieniać każdą zmienną, którą zmienia blok ciemny — pilnuje tego test kontrastu. */
+.theme-light {
+  color-scheme: light;
+  --background: #f3f5f7;
+  --foreground: #151920;
+  --card: #ffffff;
+  --card-border: #e1e4e9;
+  --surface-raised: #ffffff;
+  --primary: #0f7380;
+  --primary-hover: #0d5d67;
+  --primary-pressed: #0f4b53;
+  --primary-muted: #edf7f8;
+  --muted: #626a76;
+  --muted-foreground: #4a515c;
+  --focus-ring: #0f7380;
+  --scrim: #151920;
+  --inverse: #151920;
+  --on-inverse: #ffffff;
+  --success-hover: oklch(50.8% 0.118 165.612);
+  --success-pressed: oklch(43.2% 0.095 166.913);
+  --warning-hover: oklch(55.5% 0.163 48.998);
+  --danger-hover: oklch(50.5% 0.213 27.518);
+  --fill-neutral: #4a515c;
+  --fill-neutral-hover: #363c46;
+  /* Wybrany segment przełącznika: w ciemnym jaśniejszy od toru (cień tam nie działa). */
+  --segment-active: #ffffff;
+  --summary-expired: #fff1f2;
+  --summary-today: #eff6ff;
+  --summary-tomorrow: #fffde7;
+  --summary-this-week: #e3f2fd;
+  --summary-for-someone: #e8f5e9;
+  --brand-sky: #0f7380;
+  --brand-sky-muted: #edf7f8;
+  --shadow-card: 0 1px 2px rgba(21, 25, 32, 0.06);
+  --shadow-card-elevated:
+    0 1px 2px rgba(21, 25, 32, 0.05), 0 6px 20px -8px rgba(21, 25, 32, 0.12);
+  --shadow-elevated: 0 4px 14px -4px rgba(21, 25, 32, 0.1);
+  --shadow-brand: 0 4px 14px -6px rgba(15, 115, 128, 0.25);
+
+  --color-slate-50: #f6f7f9;
+  --color-slate-100: #eef0f3;
+  --color-slate-200: #e1e4e9;
+  --color-slate-300: #c9ced6;
+  --color-slate-400: #737b87;
+  --color-slate-500: #626a76;
+  --color-slate-600: #4a515c;
+  --color-slate-700: #363c46;
+  --color-slate-800: #232830;
+  --color-slate-900: #151920;
+  --color-slate-950: #0b0e13;
+  --color-indigo-50: #edf7f8;
+  --color-indigo-100: #d4edef;
+  --color-indigo-200: #aadbe0;
+  --color-indigo-300: #74c2ca;
+  --color-indigo-400: #3ba4af;
+  --color-indigo-500: #188995;
+  --color-indigo-600: #0f7380;
+  --color-indigo-700: #0d5d67;
+  --color-indigo-800: #0f4b53;
+  --color-indigo-900: #113e45;
+  --color-indigo-950: #07272c;
+  --color-emerald-50: oklch(97.9% 0.021 166.113);
+  --color-emerald-100: oklch(95% 0.052 163.051);
+  --color-emerald-200: oklch(90.5% 0.093 164.15);
+  --color-emerald-300: oklch(84.5% 0.143 164.978);
+  --color-emerald-400: oklch(76.5% 0.177 163.223);
+  --color-emerald-500: oklch(69.6% 0.17 162.48);
+  --color-emerald-600: #047857;
+  --color-emerald-700: oklch(50.8% 0.118 165.612);
+  --color-emerald-800: oklch(43.2% 0.095 166.913);
+  --color-emerald-900: oklch(37.8% 0.077 168.94);
+  --color-emerald-950: oklch(26.2% 0.051 172.552);
+  --color-amber-50: oklch(98.7% 0.022 95.277);
+  --color-amber-100: oklch(96.2% 0.059 95.617);
+  --color-amber-200: oklch(92.4% 0.12 95.746);
+  --color-amber-300: oklch(87.9% 0.169 91.605);
+  --color-amber-400: oklch(82.8% 0.189 84.429);
+  --color-amber-500: oklch(76.9% 0.188 70.08);
+  --color-amber-600: #b45309;
+  --color-amber-700: oklch(55.5% 0.163 48.998);
+  --color-amber-800: oklch(47.3% 0.137 46.201);
+  --color-amber-900: oklch(41.4% 0.112 45.904);
+  --color-amber-950: oklch(27.9% 0.077 45.635);
+  --color-red-50: oklch(97.1% 0.013 17.38);
+  --color-red-100: oklch(93.6% 0.032 17.717);
+  --color-red-200: oklch(88.5% 0.062 18.334);
+  --color-red-300: oklch(80.8% 0.114 19.571);
+  --color-red-400: oklch(70.4% 0.191 22.216);
+  --color-red-500: oklch(63.7% 0.237 25.331);
+  --color-red-600: oklch(57.7% 0.245 27.325);
+  --color-red-700: oklch(50.5% 0.213 27.518);
+  --color-red-800: oklch(44.4% 0.177 26.899);
+  --color-red-900: oklch(39.6% 0.141 25.723);
+  --color-red-950: oklch(25.8% 0.092 26.042);
+}
+
+/* Przełączenie motywu bez przejść: inaczej każdy element z transition-colors płynie z jasnego w ciemny. */
+html.theme-switching,
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition: none !important;
+}
+
+@layer base {
+  /* W warstwie base, żeby klasa text-* na tym samym elemencie wygrywała. */
+  .theme-light {
+    color: var(--foreground);
+  }
+
+  /* Odstęp pierścienia fokusu (ring-offset-*) ma w Tailwindzie domyślnie biały kolor; w ciemnym bierze kolor karty. */
+  html[data-theme="dark"] * {
+    --tw-ring-offset-color: var(--card);
+  }
+}
+
 /* ——— Menu boczne ———
    Białe menu na szarym tle aplikacji (wyraźna granica), nagłówek i stopka na lekko szarym pasie,
    aktywna pozycja w tonie akcentu z paskiem z lewej. */
@@ -359,7 +633,7 @@ body {
   }
 
   :where(a[href], button, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
-    outline: 2px solid var(--color-indigo-600);
+    outline: 2px solid var(--color-focus);
     outline-offset: 2px;
   }
 
@@ -395,11 +669,11 @@ body[data-delegate-preview="true"]::after {
   align-items: center;
   margin-bottom: 0.75rem;
   border-radius: 0.375rem;
-  background: #fffbeb;
+  background: var(--color-amber-50);
   padding: 0.25rem 0.5rem;
   font-size: 12px;
   font-weight: 500;
-  color: #92400e;
+  color: var(--color-amber-800);
 }
 
 body:has([data-admin-preview-dock]) .delegate-preview-badge {
@@ -623,7 +897,7 @@ select:disabled,
   --zd-num-color-dash: var(--color-slate-300);
   --zd-num-color-unit: var(--color-slate-500); /* slate-400 na bieli ~2.6:1 — poniżej AA dla 10px */
   --zd-num-color-decision: var(--color-indigo-900);
-  --zd-num-color-warn: #92400e;
+  --zd-num-color-warn: var(--color-amber-800);
   width: 100%;
   /* Bez sztywnego min-width — laptop + sidebar (~1000px treści) bez H-scrolla.
    * Wąskie ekrany: floor w @media ≤767 / ≤479. */
@@ -944,7 +1218,7 @@ select:disabled,
   position: sticky;
   left: var(--zd-est-sticky-pack-left);
   z-index: 1;
-  background: #fff;
+  background: var(--card);
   box-shadow: none;
   padding-left: var(--zd-est-pad-x-tight);
   padding-right: var(--zd-est-pad-x-tight);
@@ -1032,7 +1306,7 @@ select:disabled,
   padding-left: var(--zd-est-check-pad-l);
   padding-right: var(--zd-est-pad-x-tight);
   vertical-align: middle;
-  background: #fff;
+  background: var(--card);
   box-shadow: none;
 }
 
@@ -1048,7 +1322,7 @@ select:disabled,
   max-width: var(--zd-est-symbol-w);
   padding-left: var(--zd-est-pad-x);
   padding-right: var(--zd-est-pad-x-tight);
-  background: #fff;
+  background: var(--card);
   box-shadow: none;
   overflow: hidden;
   white-space: nowrap;
@@ -1085,7 +1359,7 @@ select:disabled,
   max-width: var(--zd-est-name-max-w);
   padding-left: var(--zd-est-pad-x-tight);
   padding-right: var(--zd-est-pad-x);
-  background: #fff;
+  background: var(--card);
   /* Separacja od przewijanych kolumn (gdy brak Opak.) */
   box-shadow: 1px 0 0 var(--color-slate-200);
   overflow: hidden;
@@ -1146,7 +1420,7 @@ select:disabled,
   padding-right: var(--zd-est-dozd-pad-x);
   text-align: center;
   /* Kolumna sticky — tło musi być nieprzezroczyste, inaczej przewijane liczby prześwitują. */
-  background-color: color-mix(in srgb, var(--color-indigo-50) 55%, #fff);
+  background-color: color-mix(in srgb, var(--color-indigo-50) 55%, var(--card));
   box-shadow: inset 2px 0 0 0 var(--color-indigo-500), 1px 0 0 var(--color-indigo-100);
   overflow: hidden;
   vertical-align: middle;
@@ -1204,7 +1478,7 @@ select:disabled,
   min-width: var(--zd-est-dozd-input-min);
   border-radius: 0.45rem;
   border: 1px solid var(--color-indigo-200);
-  background: #fff;
+  background: var(--card);
   padding: 0 var(--zd-est-dozd-pad-x);
   font-size: var(--zd-num-decision);
   font-weight: 600;
@@ -1228,12 +1502,12 @@ select:disabled,
 
 .data-table.zd-estimate-table .zd-est-dozd-input:hover:not(:disabled) {
   border-color: var(--color-indigo-400);
-  background: #fff;
+  background: var(--card);
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-input:focus {
   border-color: var(--color-indigo-500);
-  background: #fff;
+  background: var(--card);
   outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-indigo-500) 20%, transparent);
 }
@@ -1248,23 +1522,23 @@ select:disabled,
 
 .data-table.zd-estimate-table .zd-est-dozd-input--idle:hover:not(:disabled) {
   border-color: var(--color-slate-300);
-  background: #fff;
+  background: var(--card);
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-input--override {
-  border-color: #fbbf24;
-  background: #fffbeb;
-  color: #92400e;
+  border-color: var(--color-amber-400);
+  background: var(--color-amber-50);
+  color: var(--color-amber-800);
   box-shadow: 0 0 0 1px rgb(251 191 36 / 0.25);
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-input--override:focus {
-  border-color: #f59e0b;
+  border-color: var(--color-amber-500);
   box-shadow: 0 0 0 3px rgb(245 158 11 / 0.22);
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-input--order-mult-warn {
-  border-color: #fbbf24;
+  border-color: var(--color-amber-400);
   box-shadow: 0 0 0 1px rgb(251 191 36 / 0.2);
 }
 
@@ -1278,7 +1552,7 @@ select:disabled,
   font-weight: 650;
   line-height: 1.15;
   letter-spacing: 0.01em;
-  color: #b45309;
+  color: var(--color-amber-700);
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-unit {
@@ -1342,14 +1616,14 @@ select:disabled,
   text-overflow: ellipsis;
   white-space: nowrap;
   border-radius: 0.3rem;
-  background: rgb(254 243 199 / 0.75);
+  background: color-mix(in srgb, var(--color-amber-100) 75%, transparent);
   padding: 0.1rem 0.35rem;
   font-size: 0.5625rem;
   font-weight: 600;
   line-height: 1.25;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
-  color: #92400e;
+  color: var(--color-amber-800);
   text-align: center;
 }
 
@@ -1377,14 +1651,14 @@ select:disabled,
   overflow: hidden;
   border: 0;
   border-radius: 0.3rem;
-  background: rgb(254 243 199 / 0.85);
+  background: color-mix(in srgb, var(--color-amber-100) 85%, transparent);
   padding: 0.1rem 0.35rem;
   font-size: 0.5625rem;
   font-weight: 600;
   line-height: 1.25;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
-  color: #92400e;
+  color: var(--color-amber-800);
   text-align: center;
   text-decoration: none;
   cursor: pointer;
@@ -1397,8 +1671,8 @@ select:disabled,
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-reset:hover:not(:disabled) {
-  background: #fde68a;
-  color: #78350f;
+  background: var(--color-amber-200);
+  color: var(--color-amber-900);
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-reset:focus-visible {
@@ -1453,7 +1727,7 @@ select:disabled,
   height: 0.35rem;
   flex-shrink: 0;
   border-radius: 9999px;
-  background: #f59e0b;
+  background: var(--color-amber-500);
   box-shadow: 0 0 0 2px rgb(245 158 11 / 0.2);
 }
 
@@ -1462,7 +1736,7 @@ select:disabled,
   margin: 0;
   border: 0;
   border-radius: 0.25rem;
-  background: #fff;
+  background: var(--card);
   padding: 0.05rem 0.32rem;
   font-size: 0.5625rem;
   font-weight: 600;
@@ -1493,7 +1767,7 @@ select:disabled,
   position: sticky;
   right: 0;
   z-index: 1;
-  background: #fff;
+  background: var(--card);
   box-shadow: -1px 0 0 var(--color-slate-200);
   width: calc(var(--zd-est-actions-w) + var(--zd-est-actions-scroll-pad));
   min-width: calc(var(--zd-est-actions-w) + var(--zd-est-actions-scroll-pad));
@@ -1559,11 +1833,11 @@ select:disabled,
 }
 
 .data-table.zd-estimate-table tbody tr[data-zebra="even"]:not([class*="bg-"]) td {
-  background-color: color-mix(in srgb, var(--color-slate-50) 70%, #fff);
+  background-color: color-mix(in srgb, var(--color-slate-50) 70%, var(--card));
 }
 
 .data-table.zd-estimate-table tbody tr[data-zebra="even"]:not([class*="bg-"]) td.zd-estimate-dozd-col {
-  background-color: color-mix(in srgb, var(--color-indigo-50) 80%, #fff);
+  background-color: color-mix(in srgb, var(--color-indigo-50) 80%, var(--card));
 }
 
 /* Wiersz dobijany do minimum stanów — subtelny emerald akcent po lewej */
@@ -1588,11 +1862,11 @@ select:disabled,
 }
 
 .data-table.zd-estimate-table tbody tr.zd-estimate-row-selected:not([data-zebra="even"]) td:not(.zd-estimate-dozd-col):not(.zd-estimate-actions-col) {
-  background-color: color-mix(in srgb, var(--color-indigo-50) 50%, #fff);
+  background-color: color-mix(in srgb, var(--color-indigo-50) 50%, var(--card));
 }
 
 .data-table.zd-estimate-table tbody tr.zd-estimate-row-selected[data-zebra="even"]:not([class*="bg-"]) td:not(.zd-estimate-dozd-col):not(.zd-estimate-actions-col) {
-  background-color: color-mix(in srgb, var(--color-indigo-100) 35%, #fff);
+  background-color: color-mix(in srgb, var(--color-indigo-100) 35%, var(--card));
 }
 
 .data-table.zd-estimate-table tbody tr:hover td,
@@ -1609,7 +1883,7 @@ select:disabled,
   tbody
   tr.zd-estimate-row-selected[data-zebra="even"]:not([class*="bg-"]):hover
   td:not(.zd-estimate-dozd-col):not(.zd-estimate-actions-col) {
-  background-color: color-mix(in srgb, var(--color-indigo-100) 60%, #fff);
+  background-color: color-mix(in srgb, var(--color-indigo-100) 60%, var(--card));
 }
 
 .data-table.zd-estimate-table tbody tr:hover td.zd-estimate-dozd-col,
@@ -1816,13 +2090,13 @@ select:disabled,
 }
 
 .data-table.zd-estimate-table .zd-est-status-badge--amber {
-  background: #fffbeb;
-  color: #92400e;
+  background: var(--color-amber-50);
+  color: var(--color-amber-800);
 }
 
 .data-table.zd-estimate-table .zd-est-status-badge--rose {
-  background: #fff1f2;
-  color: #9f1239;
+  background: var(--color-red-50);
+  color: var(--color-red-800);
 }
 
 .data-table.zd-estimate-table .zd-est-status-badge--slate {
@@ -2015,7 +2289,7 @@ select:disabled,
     tbody
     tr[data-zebra="even"]:not([class*="bg-"])
     td.zd-estimate-pack-col {
-    background-color: color-mix(in srgb, var(--color-slate-50) 70%, #fff);
+    background-color: color-mix(in srgb, var(--color-slate-50) 70%, var(--card));
   }
 
   .data-table.zd-estimate-table
@@ -2148,7 +2422,7 @@ select:disabled,
 }
 
 .data-table.receive-queue-table tbody tr[class*="ring-violet"] td {
-  background-color: #f5f3ff;
+  background-color: var(--color-indigo-50);
 }
 
 /* Kolejka przyjęcia — animacja rozwinięcia wierszy */
@@ -2256,7 +2530,7 @@ main:has([data-zd-estimate-viewport]) [data-zd-estimate-viewport] {
   scrollbar-gutter: stable;
   /* Bez `contain: paint` — sticky kolumny zostawiały pustą szparę po prawej. */
   -webkit-overflow-scrolling: touch;
-  background-color: #fff;
+  background-color: var(--card);
   /* Bez permanentnych cieni H-scroll — wyglądały jak „zawsze jest scroll”. */
 }
 
@@ -2437,7 +2711,7 @@ main:has([data-zd-estimate-viewport]) [data-zd-estimate-viewport] {
 }
 
 .zd-est-loading-status-icon {
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.65);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--card) 65%, transparent);
 }
 
 .zd-est-loading-step--active {
@@ -2709,7 +2983,7 @@ html.ontime-scroll-locked main {
   cursor: pointer;
   transition: all 0.15s ease;
   position: relative;
-  background: white;
+  background: var(--card);
 }
 
 .todo-checkbox[data-checked="true"] {

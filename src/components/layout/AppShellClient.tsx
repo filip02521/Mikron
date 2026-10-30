@@ -55,6 +55,8 @@ import { MobileOperationsNav } from "./MobileOperationsNav";
 import { MobileOperationsHeader } from "./MobileOperationsHeader";
 import { useAppShellMetrics } from "./AppShellMetricsContext";
 import { FontScaleSync } from "./FontScaleSync";
+import { ThemeSync } from "./ThemeSync";
+import type { ThemePreference } from "@/lib/auth/theme";
 import { TeethExemptProvider } from "@/components/layout/TeethExemptContext";
 import { TeethShortagesProvider } from "@/components/layout/TeethShortagesContext";
 import type { ActiveTeethShortageEntry } from "@/lib/data/teeth-shortages";
@@ -202,6 +204,7 @@ export function AppShellClient({
   activeDelegations = [],
   uniformBackground = false,
   fontScale = "default",
+  theme,
 }: {
   children: React.ReactNode;
   role: UserRole | null;
@@ -224,6 +227,8 @@ export function AppShellClient({
   activeDelegations?: VacationDelegationRow[];
   uniformBackground?: boolean;
   fontScale?: FontScale;
+  /** Motyw z konta; brak = brak sesji (ThemeSync nic nie zmienia). */
+  theme?: ThemePreference;
 }) {
   const {
     navBadges,
@@ -324,6 +329,7 @@ export function AppShellClient({
       <ChangelogProvider role={role}>
       <ChangelogAutoOpen />
       <FontScaleSync fontScale={fontScale} />
+      <ThemeSync theme={theme} />
       <ConfirmHost />
       <LegacyProcurementRouteRedirect />
       <div

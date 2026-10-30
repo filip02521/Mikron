@@ -58,11 +58,11 @@ export function supplierGroupIndexByOrderId(
 // Jeden spokojny układ: wiersz dostawcy biały, jego pozycje na lekkim szarym tle. Grupy rozdziela linia,
 // nie kolor tła — naprzemienne barwy czytały się jak stan, którego nie ma (DESIGN.md → Cards).
 const DELIVERY_GROUP_STYLES = [
-  { headerBg: "bg-white hover:bg-slate-50/70", itemBg: "bg-slate-50/60" },
+  { headerBg: "bg-card hover:bg-slate-50/70", itemBg: "bg-slate-50/60" },
 ] as const;
 
 const INFORMACJA_GROUP_STYLES = [
-  { headerBg: "bg-white hover:bg-slate-50/70", itemBg: "bg-sky-50/40" },
+  { headerBg: "bg-card hover:bg-slate-50/70", itemBg: "bg-sky-50/40" },
 ] as const;
 
 type QueueTableVariant = "delivery" | "informacja";

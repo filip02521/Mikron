@@ -104,7 +104,7 @@ export function MobileSalesNav({
                 {attentionBadge > 0 ? (
                   <span
                     className={cn(
-                      "absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 leading-none tabular-nums text-[0.625rem] font-semibold ring-2 ring-white",
+                      "absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 leading-none tabular-nums text-[0.625rem] font-semibold ring-2 ring-card",
                       sidebarNavBadgeClassForTone(displayTone, active)
                     )}
                   >
@@ -118,7 +118,7 @@ export function MobileSalesNav({
               !active &&
               attentionBadge === 0 ? (
                 <span
-                  className="absolute right-[calc(50%-1.25rem)] top-2 h-2 w-2 rounded-full bg-amber-400 ring-2 ring-white"
+                  className="absolute right-[calc(50%-1.25rem)] top-2 h-2 w-2 rounded-full bg-amber-400 ring-2 ring-card"
                   aria-hidden
                 />
               ) : null}

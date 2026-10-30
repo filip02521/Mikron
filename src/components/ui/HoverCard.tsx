@@ -153,7 +153,7 @@ export function HoverCard({
               }}
               className={cn(
                 "pointer-events-none block rounded-md border px-2.5 py-2 text-xs leading-relaxed shadow-[var(--shadow-elevated)]",
-                panelClassName ?? "border-slate-200/90 bg-white text-slate-800"
+                panelClassName ?? "border-slate-200/90 bg-raised text-slate-800"
               )}
             >
               {content}

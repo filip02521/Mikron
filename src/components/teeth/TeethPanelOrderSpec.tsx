@@ -72,7 +72,7 @@ export function TeethPanelOrderSpec({
         </p>
         <TeethPanelSpecList
           details={lines}
-          className="mt-2 border-amber-200/60 bg-white/70"
+          className="mt-2 border-amber-200/60 bg-card/70"
           compact
         />
       </div>

@@ -136,7 +136,7 @@ function SalesPersonCard({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-lg border border-slate-200/80 bg-white shadow-sm transition hover:shadow-md",
+        "overflow-hidden rounded-lg border border-slate-200/80 bg-card shadow-sm transition hover:shadow-md",
         isSelf && "ring-1 ring-indigo-200/80"
       )}
     >
@@ -256,7 +256,7 @@ function SalesPersonCard({
             : "border-slate-100 bg-slate-50/40 text-slate-500"
         )}>
           {row.linkedUserEmail ? (
-            <IconCircleCheck size={14} className="shrink-0 text-emerald-600" />
+            <IconCircleCheck size={14} className="shrink-0 text-emerald-700" />
           ) : (
             <IconMail size={14} className="shrink-0 text-slate-400" />
           )}

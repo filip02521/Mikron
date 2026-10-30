@@ -22,6 +22,7 @@ import type { UserRole, Workspace } from "@/types/database";
 type AuthIntent = "read" | "mutate";
 
 import type { FontScale } from "./auth/profile";
+import type { ThemePreference } from "@/lib/auth/theme";
 
 /** Stały komunikat — klasyfikowany jako session → redirect na /login. */
 export const SESSION_REQUIRED_ERROR = "Brak sesji - zaloguj się ponownie.";
@@ -36,6 +37,7 @@ export interface SessionUser {
   assignedWorkspaces: Workspace[];
   uniformBackground: boolean;
   fontScale: FontScale;
+  theme: ThemePreference;
 }
 
 async function loadSessionUser(): Promise<SessionUser | null> {
@@ -52,6 +54,7 @@ async function loadSessionUser(): Promise<SessionUser | null> {
     assignedWorkspaces: profile.assigned_workspaces,
     uniformBackground: profile.uniform_background,
     fontScale: profile.font_scale,
+    theme: profile.theme,
   };
 }
 

@@ -84,7 +84,7 @@ function SupplierRow({ row, expanded, onToggle }: { row: SubiektLeadTimeSupplier
         <td className="py-2 pl-3 pr-2 text-sm font-medium text-slate-800 sm:pl-4 lg:pl-5">
           <button
             type="button"
-            className="flex items-center gap-1.5 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+            className="flex items-center gap-1.5 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             aria-expanded={expanded}
             onClick={(e) => {
               e.stopPropagation();
@@ -133,7 +133,7 @@ function SupplierRow({ row, expanded, onToggle }: { row: SubiektLeadTimeSupplier
                     {row.trend.map((t) => (
                       <span
                         key={t.year}
-                        className="rounded-md bg-white px-2 py-1 tabular-nums ring-1 ring-inset ring-slate-200"
+                        className="rounded-md bg-card px-2 py-1 tabular-nums ring-1 ring-inset ring-slate-200"
                         title={`${t.n} zamówień w ${t.year}`}
                       >
                         {t.year}: <strong className="text-slate-800">{t.p50} d</strong>
@@ -375,7 +375,7 @@ export function SubiektLeadTimesPanel({ initialData }: { initialData: SubiektLea
                     "Pełna historia od 2006"
                   )}
                 </Button>
-                <span className={cn("text-xs", state && !state.ok ? "text-red-600" : "text-slate-500")}>
+                <span className={cn("text-xs", state && !state.ok ? "text-red-700" : "text-slate-500")}>
                   {state
                     ? `${state.ok ? "Ostatnia synchronizacja" : "Błąd synchronizacji"}: ${formatWarsawDateTime(state.at)} · ${
                         state.mode === "full" ? "pełna" : "18 mies."
@@ -435,7 +435,7 @@ export function SubiektLeadTimesPanel({ initialData }: { initialData: SubiektLea
                       <th className="hidden px-2 py-2.5 font-medium lg:table-cell sm:px-3">Ostatnie ZD</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white">
+                  <tbody className="divide-y divide-slate-100 bg-card">
                     {rows.length ? (
                       rows.map((row) => (
                         <SupplierRow
@@ -460,7 +460,7 @@ export function SubiektLeadTimesPanel({ initialData }: { initialData: SubiektLea
                 <div className="border-t border-slate-200">
                   <button
                     type="button"
-                    className="flex min-h-11 w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-600 sm:px-4 lg:px-5"
+                    className="flex min-h-11 w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:px-4 lg:px-5"
                     aria-expanded={showUnmapped}
                     onClick={() => setShowUnmapped((v) => !v)}
                   >

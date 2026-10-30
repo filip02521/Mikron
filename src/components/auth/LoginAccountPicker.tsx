@@ -188,7 +188,7 @@ export function LoginAccountPicker({
           onKeyDown={handleListKeyDown}
           className={cn(
             LOGIN_ACCOUNT_LISTBOX_CLASS,
-            "divide-y divide-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-indigo-600"
+            "divide-y divide-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus"
           )}
         >
           {awaitingSearch ? (
@@ -242,7 +242,7 @@ export function LoginAccountPicker({
                     <IconCircleCheck
                       size={18}
                       strokeWidth={2}
-                      className="shrink-0 text-indigo-600"
+                      className="shrink-0 text-indigo-700"
                       aria-hidden
                     />
                   ) : (

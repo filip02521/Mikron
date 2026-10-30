@@ -235,7 +235,7 @@ export function SalesCancelDispositionForm({
       ) : null}
 
       {infoLines.length ? (
-        <div className="rounded-md border border-slate-100 bg-white px-3 py-2">
+        <div className="rounded-md border border-slate-100 bg-card px-3 py-2">
           <p className="text-[0.6875rem] font-medium text-slate-700">
             Rezygnacja przed zamówieniem u dostawcy
           </p>

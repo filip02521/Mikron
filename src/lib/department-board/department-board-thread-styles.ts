@@ -5,7 +5,7 @@ import { salesTypography } from "@/lib/ui/ontime-theme";
 export const BOARD_PROCUREMENT_AUTHOR_LABEL = "Dział zakupów";
 
 /** Lista wątków pytań przy krawędziach karty (bez ramki w karcie) — zebra na zwiniętych wierszach. */
-export const boardQuestionListClass = "overflow-hidden border-y border-slate-200/80 bg-white";
+export const boardQuestionListClass = "overflow-hidden border-y border-slate-200/80 bg-card";
 
 /** Lista ogłoszeń — ten sam kontener co pytania. */
 export const boardAnnouncementListClass = boardQuestionListClass;
@@ -15,7 +15,7 @@ export function boardAnnouncementRowClass(opts: {
   pinned: boolean;
 }): string {
   return cn(
-    "bg-white px-3 py-3.5 transition-[background-color,box-shadow] duration-200 sm:px-4 sm:py-4",
+    "bg-card px-3 py-3.5 transition-[background-color,box-shadow] duration-200 sm:px-4 sm:py-4",
     opts.unread
       ? "bg-indigo-50/40 ring-1 ring-inset ring-indigo-200/55"
       : opts.pinned
@@ -61,7 +61,7 @@ export function boardQuestionRowClass(opts: {
     "transition-colors duration-200 ease-out motion-reduce:transition-none";
 
   if (opts.expanded) {
-    return cn("relative z-[1] bg-white ring-1 ring-inset ring-slate-300", transition);
+    return cn("relative z-[1] bg-card ring-1 ring-inset ring-slate-300", transition);
   }
 
   const waiting = opts.waiting ?? null;
@@ -75,10 +75,10 @@ export function boardQuestionRowClass(opts: {
   }
 
   if (stale) {
-    return cn(transition, alt ? "bg-slate-50/60 hover:bg-slate-50" : "bg-white hover:bg-slate-50/70", "opacity-70");
+    return cn(transition, alt ? "bg-slate-50/60 hover:bg-slate-50" : "bg-card hover:bg-slate-50/70", "opacity-70");
   }
 
-  return cn(transition, alt ? "bg-slate-50/60 hover:bg-slate-50" : "bg-white hover:bg-slate-50/70");
+  return cn(transition, alt ? "bg-slate-50/60 hover:bg-slate-50" : "bg-card hover:bg-slate-50/70");
 }
 
 export const boardQuestionRowHeaderExpandedClass =
@@ -145,7 +145,7 @@ export const boardQuestionProductChipClass =
   "inline-flex max-w-full items-center gap-1.5 rounded-md border border-slate-200/90 bg-slate-100/80 px-2 py-0.5 text-[0.6875rem] font-semibold text-slate-700";
 
 export const boardQuestionProductContextClass =
-  "overflow-hidden rounded-lg border border-slate-200/90 bg-white";
+  "overflow-hidden rounded-lg border border-slate-200/90 bg-card";
 
 export const boardQuestionProductContextBodyClass =
   "bg-slate-50/90 px-3 py-2.5";
@@ -157,7 +157,7 @@ export const boardQuestionQuickProsbaHintClass =
   "min-w-0 text-[0.6875rem] leading-snug text-slate-600 sm:text-xs";
 
 export const boardQuestionQuickProsbaCtaClass =
-  "shrink-0 gap-1.5 border-indigo-200/80 bg-white/90 text-indigo-800 shadow-sm hover:border-indigo-300 hover:bg-indigo-50/80";
+  "shrink-0 gap-1.5 border-indigo-200/80 bg-card/90 text-indigo-800 shadow-sm hover:border-indigo-300 hover:bg-indigo-50/80";
 
 export type BoardThreadMessageTone = "question" | "procurement" | "sales";
 
@@ -165,7 +165,7 @@ export function boardThreadMessageShellClass(tone: BoardThreadMessageTone): stri
   return cn(
     "rounded-lg border px-3.5 py-3",
     tone === "question"
-      ? "border-slate-200/90 bg-white"
+      ? "border-slate-200/90 bg-card"
       : tone === "procurement"
         ? "border-indigo-200/75 bg-indigo-50/70"
         : "border-slate-200/80 bg-slate-50/70"
@@ -199,7 +199,7 @@ export const boardAwaitingReplyClass = cn(
 );
 
 export const boardQuestionFabClass =
-  "fixed z-50 flex h-12 min-w-12 items-center justify-center gap-2 rounded-md bg-indigo-600 px-4 text-sm font-semibold text-white shadow-[var(--shadow-elevated)] transition hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600";
+  "fixed z-50 flex h-12 min-w-12 items-center justify-center gap-2 rounded-md bg-indigo-600 px-4 text-sm font-semibold text-white shadow-[var(--shadow-elevated)] transition hover:bg-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
 /** Licznik na chipie filtra / zakładce tablicy. */
 export function boardChipCountBadgeClass(opts: {
@@ -208,7 +208,7 @@ export function boardChipCountBadgeClass(opts: {
 }): string {
   if (opts.active) {
     // Licznik w wybranym chipie: białe tło, Petrol (DESIGN.md → Chips), nie pełny Petrol.
-    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-white px-1.5 py-0.5 tabular-nums text-[0.625rem] font-semibold leading-none text-indigo-700";
+    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-card px-1.5 py-0.5 tabular-nums text-[0.625rem] font-semibold leading-none text-indigo-700";
   }
   if (opts.emphasis === "warning") {
     return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-amber-100 px-1.5 py-0.5 tabular-nums text-[0.625rem] font-semibold leading-none text-amber-900";

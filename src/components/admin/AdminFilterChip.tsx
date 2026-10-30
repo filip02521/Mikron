@@ -34,7 +34,7 @@ export function AdminFilterChip({
       <span
         className={cn(
           "rounded px-1 text-[0.6875rem] tabular-nums",
-          active ? "bg-white text-indigo-700" : "text-slate-500"
+          active ? "bg-card text-indigo-700" : "text-slate-500"
         )}
       >
         {count}

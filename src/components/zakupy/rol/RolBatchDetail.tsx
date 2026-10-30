@@ -293,7 +293,7 @@ function RolLineRow({
             maxLength={6}
             placeholder="nr kat."
             aria-label={`Numer katalogowy Ivoclar dla: ${l.name}`}
-            className="h-8 w-24 rounded-md border border-amber-300 bg-white px-2 text-sm text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+            className="h-8 w-24 rounded-md border border-amber-300 bg-card px-2 text-sm text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
           />
           <Button variant="ghost" size="sm" className={ROW_ACTION} disabled={pending} onClick={() => run(() => actionRolSetLine({ batchId, lineId: l.id, catalogNo: catalogDraft }))}>
             Zapisz
@@ -317,7 +317,7 @@ function RolLineRow({
             onBlur={saveQty}
             inputMode="decimal"
             aria-label={`Ilość dla: ${l.name} (puste = z FS)`}
-            className="h-8 w-16 rounded-md border border-slate-300 bg-white px-2 text-right text-sm text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
+            className="h-8 w-16 rounded-md border border-slate-300 bg-card px-2 text-right text-sm text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
           />
         ) : (
           <>
@@ -333,7 +333,7 @@ function RolLineRow({
                 }}
                 aria-label={`Zmień ilość: ${l.name}, teraz ${qty} szt.`}
                 className={cn(
-                  "rounded px-1 underline max-sm:min-h-11 decoration-slate-300 underline-offset-2 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:outline-none",
+                  "rounded px-1 underline max-sm:min-h-11 decoration-slate-300 underline-offset-2 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none",
                   l.qtyOverride !== null ? "font-semibold text-slate-900" : "text-slate-900"
                 )}
               >

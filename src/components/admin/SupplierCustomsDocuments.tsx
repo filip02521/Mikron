@@ -73,7 +73,7 @@ function DocumentRow({
   };
 
   return (
-    <li className="rounded-lg border border-slate-100 bg-white p-3 transition-colors hover:border-slate-200">
+    <li className="rounded-lg border border-slate-100 bg-card p-3 transition-colors hover:border-slate-200">
       <div className="flex items-start gap-3">
         <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-500">
           <IconFilePlus size={15} />
@@ -150,7 +150,7 @@ function DocumentRow({
                 </button>
                 <button
                   type="button"
-                  className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
+                  className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-700 disabled:opacity-40"
                   title="Usuń dokument"
                   disabled={disabled}
                   onClick={() => onRemove(doc)}
@@ -275,7 +275,7 @@ export function SupplierCustomsDocuments({
       >
         <div className="space-y-3 sm:col-span-2">
           {/* Formularz uploadu */}
-          <div className="rounded-lg border border-dashed border-slate-300 bg-white/60 p-4">
+          <div className="rounded-lg border border-dashed border-slate-300 bg-card/60 p-4">
             <div className="space-y-3">
               <div>
                 <input

@@ -54,7 +54,7 @@ function LookupResults({
   if (!items.length) return null;
 
   return (
-    <div className="overflow-hidden rounded-md border border-slate-200/90 bg-white">
+    <div className="overflow-hidden rounded-md border border-slate-200/90 bg-card">
       <p className="border-b border-slate-100 bg-slate-50/80 px-3 py-2 text-[0.6875rem] font-semibold text-slate-500">
         {title}
       </p>

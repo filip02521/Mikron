@@ -67,3 +67,16 @@ Raport: `docs/audyt-procesu-zamowien-2026-10-28.md`, zmiany: `docs/zamowienia-je
 - [ ] Tomasz (API): KFS w `sprzedazOkres`, `zkDataOd` dla ZK bez rezerwacji.
 - [x] Karta produktu: „Ruch towaru” (ZD + przyjęcia + sprzedaż w jednej osi, zakres od okna zapasu, min. miesiąc, 3/12 mies., cała historia) i „Starsze zakupy” (cała kopia ZD na żądanie).
 - [x] Przegląd całości (28.10): dziennik zapisuje `pattern_factor` (stosunek do surowej propozycji), pamięć korekt poza parami i składami, kroki po indeksie w budżecie slotu `catalog-zd-sync`, przełącznik zakresu z `SegmentedControl`.
+
+## Ciemny tryb — 2026-10-29
+
+Plan: `docs/plans/ciemny-tryb.md` (inwentarz, tokeny z pomiarem kontrastu, przełącznik, brak mignięcia). Decyzje D1–D6 zatwierdzone 2026-10-29 (rekomendacje z planu).
+
+- [x] 1. Tokeny ciemne w `globals.css` + test kontrastu z CSS (D5 w jasnym: `emerald-600` `#047857`, `amber-600` `#b45309`).
+- [x] 2. Codemod powierzchni (`bg-white` → `bg-card`: 524 zamian w 234 plikach, scrim 10) + reguły `audit:design` `biel` i `scrim`; `.theme-light` na logowaniu i podglądach maila.
+- [x] 3. Codemod kroku 600 i fokusu (144 tekstów 600 → 700, 15 hoverów → 800, 101 pierścieni → `ring-focus`) + reguły `audit:design` `krok600` i `fokus`.
+- [x] 4. Ręczne miejsca: hover/wciśnięcie wypełnień przez tokeny ról (primary, success, warning, danger, fill-neutral), `bg-inverse`, `SUMMARY_COLORS` przez `summaryColorCss` + zmienne `--summary-*`, SVG na zmiennych palety, `BrandLoader`, bursztynowe chipy Kreatora, błysk notatnika; reguła `audit:design` `wypelnienie`.
+- [x] 5. Preferencja na koncie (`preferences.theme`, cookie przy logowaniu, skrypt w `<head>`, `ThemeSync`) + wiersz „Motyw” w Ustawieniach; wybrany segment `SegmentedControl` na `bg-segment-active` (w ciemnym jaśniejszy od toru).
+- [x] 6. Szybkie wejście: stopka menu bocznego (ikony), zwinięte menu (przycisk z listą), arkusz „Więcej” na telefonie; jeden stan z Ustawieniami (`ThemeSwitch`, `use-theme-preference`).
+- [x] 7. Okna, panele boczne, menu, dymki, podpowiedzi i toasty na `bg-raised` (ciemny `#20262e`, 1.15:1 wobec karty); test kontrastu pilnuje różnicy okno/karta i ramki.
+- [x] 8. Przegląd modułów w ciemnym (46 ekranów: 40 admina + 6 handlowca, 0 tekstu < AA), DESIGN.md → „Motyw ciemny”. Otwarte: decyzja D2 (rekomendacja: zostaje jasny).

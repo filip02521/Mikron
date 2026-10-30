@@ -27,7 +27,7 @@ export const zkWatchRowActionPrimaryClass = cn(
 /** Drugorzędne CTA (Otwórz prośbę, uzupełnij zęby). */
 export const zkWatchRowActionSecondaryClass = cn(
   zkWatchRowActionTextBaseClass,
-  "border border-slate-200/90 bg-white text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+  "border border-slate-200/90 bg-card text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
 );
 
 /** CTA odbioru z regału (Odbierz w Moje) — lekko wyróżnione względem Otwórz prośbę. */

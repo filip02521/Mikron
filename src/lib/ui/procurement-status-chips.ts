@@ -7,7 +7,7 @@ export const procurementStatusChipBaseClass =
   "inline-flex h-5 max-w-full shrink-0 items-center gap-1 rounded-md px-1.5 text-[0.625rem] font-semibold leading-none tracking-tight ring-1 ring-inset transition-colors";
 
 export const procurementStatusChipInteractiveClass =
-  "cursor-pointer hover:brightness-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-indigo-600 active:brightness-[0.95]";
+  "cursor-pointer hover:brightness-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-focus active:brightness-[0.95]";
 
 export const procurementStatusChipDisabledClass = "cursor-not-allowed opacity-55";
 
@@ -23,7 +23,7 @@ export const procurementListFilterTrackFadeClass =
   "pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-slate-50 via-slate-50/85 to-transparent sm:w-10";
 
 export const procurementListFilterChipClass =
-  "inline-flex h-7 shrink-0 items-center gap-1 rounded-md border px-2 text-[0.6875rem] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600";
+  "inline-flex h-7 shrink-0 items-center gap-1 rounded-md border px-2 text-[0.6875rem] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
 export const procurementListFilterCountClass =
   "tabular-nums text-[0.625rem] font-semibold opacity-70";
@@ -33,7 +33,7 @@ export const procurementListFilterCountSelectedClass = "opacity-90";
 export const procurementListFilterCountEmptyClass = "opacity-40";
 
 export const procurementListFilterChipIdleClass =
-  "border-slate-200/90 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800";
+  "border-slate-200/90 bg-card text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800";
 
 export const procurementListFilterChipSelectedClass =
   "border-indigo-400/90 bg-indigo-50 text-indigo-950 shadow-sm ring-1 ring-indigo-200/50";

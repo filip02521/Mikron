@@ -135,7 +135,7 @@ export function MobileOperationsNav({
                   {attentionBadge > 0 && !active ? (
                     <span
                       className={cn(
-                        "absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[0.625rem] font-semibold leading-none tabular-nums ring-2 ring-white",
+                        "absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[0.625rem] font-semibold leading-none tabular-nums ring-2 ring-card",
                         sidebarNavBadgeClassForTone(displayTone, false)
                       )}
                     >
@@ -145,7 +145,7 @@ export function MobileOperationsNav({
                   {showLiveDot ? (
                     <span
                       className={cn(
-                        "absolute h-2 w-2 rounded-full bg-amber-400 ring-2 ring-white",
+                        "absolute h-2 w-2 rounded-full bg-amber-400 ring-2 ring-card",
                         attentionBadge > 0 && !active ? "-left-1 top-0" : "-right-1.5 -top-1"
                       )}
                       title="Nowe zmiany w panelu"

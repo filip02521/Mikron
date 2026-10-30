@@ -109,6 +109,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       activeDelegations={activeDelegations}
       uniformBackground={session?.uniformBackground ?? false}
       fontScale={session?.fontScale ?? "default"}
+      theme={session?.theme}
       adminModules={adminModules}
     >
       <PostHogIdentify userId={session?.id ?? null} role={realRole} />

@@ -60,7 +60,7 @@ export function ZkProsbaLinkBanner({
         title: "text-amber-950",
         meta: "text-amber-900/80",
         body: "text-amber-950/90",
-        note: "border-amber-200/80 bg-white/70 text-amber-950",
+        note: "border-amber-200/80 bg-card/70 text-amber-950",
         badge: "warning",
         chipTone: "amber",
       }
@@ -70,7 +70,7 @@ export function ZkProsbaLinkBanner({
         title: "text-violet-950",
         meta: "text-violet-900/80",
         body: "text-violet-950/90",
-        note: "border-violet-200/80 bg-white/70 text-violet-950",
+        note: "border-violet-200/80 bg-card/70 text-violet-950",
         badge: "info",
         chipTone: "violet",
       };

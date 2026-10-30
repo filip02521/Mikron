@@ -24,6 +24,7 @@ const adminUser: SessionUser = {
   assignedWorkspaces: [],
   uniformBackground: false,
   fontScale: "default",
+  theme: "light",
 };
 
 describe("assertCanSubmitIndividualOrders", () => {

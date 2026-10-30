@@ -75,7 +75,7 @@ export function StockWatchOffPlanBanner({
       <ul
         id="off-plan-suppliers"
         className={cn(
-          "mx-3 mb-3 divide-y divide-amber-100 rounded-md border border-amber-200/70 bg-white sm:mr-4 sm:ml-[3.625rem]",
+          "mx-3 mb-3 divide-y divide-amber-100 rounded-md border border-amber-200/70 bg-card sm:mr-4 sm:ml-[3.625rem]",
           !mobileOpen && "max-sm:hidden"
         )}
       >

@@ -96,7 +96,7 @@ export type ZkWatchRowAccentKind =
 /** Domyślny wiersz bez sygnału uwagi. */
 export const zkWatchDefaultRowShellClass = cn(
   "flex min-h-[2.625rem] transition duration-150",
-  "bg-white hover:bg-slate-50/55"
+  "bg-card hover:bg-slate-50/55"
 );
 
 /** Wiersz w archiwum. */
@@ -114,7 +114,7 @@ export const zkWatchNewlyAddedRowShellClass = cn(SIGNAL_ROW_BASE, "bg-indigo-50/
 
 export const zkWatchFollowUpRowShellClass = cn(SIGNAL_ROW_BASE, "bg-amber-50/50 hover:bg-amber-50");
 
-export const zkWatchScopeOverflowRowShellClass = cn(SIGNAL_ROW_BASE, "bg-white hover:bg-slate-50/70");
+export const zkWatchScopeOverflowRowShellClass = cn(SIGNAL_ROW_BASE, "bg-card hover:bg-slate-50/70");
 
 const ROW_SHELL_BY_RAIL: Record<ZkWatchRowRailKind, string> = {
   ready_to_close: zkWatchReadyToCloseRowShellClass,

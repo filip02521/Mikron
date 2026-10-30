@@ -126,7 +126,7 @@ export function MyOrderExpandedDeliveryTiming({
                   salesTypography.rowMeta,
                   isOverdue
                     ? "bg-amber-100/70 text-amber-950 ring-amber-200/70"
-                    : "bg-white/90 text-slate-600 ring-slate-200/80"
+                    : "bg-card/90 text-slate-600 ring-slate-200/80"
                 )}
                 title={docPart}
               >

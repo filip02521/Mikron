@@ -59,7 +59,7 @@ export function SupplierEditSheet({
         ref={(el) => {
           panelRef.current = el;
         }}
-        className="panel-slide-enter fixed inset-y-0 right-0 z-[60] flex w-full max-w-xl flex-col border-l border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]"
+        className="panel-slide-enter fixed inset-y-0 right-0 z-[60] flex w-full max-w-xl flex-col border-l border-slate-200/80 bg-raised shadow-[var(--shadow-card-elevated)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="supplier-edit-sheet-title"
@@ -96,7 +96,7 @@ export function SupplierEditSheet({
           {children}
         </div>
 
-        <footer className="shrink-0 border-t border-slate-100 bg-white/80 px-5 py-4 backdrop-blur-sm">
+        <footer className="shrink-0 border-t border-slate-100 bg-card/80 px-5 py-4 backdrop-blur-sm">
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">{footer}</div>
         </footer>
       </aside>

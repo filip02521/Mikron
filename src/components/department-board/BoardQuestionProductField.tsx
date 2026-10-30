@@ -95,10 +95,10 @@ function BoardQuestionProductSelectedCard({
           <IconCircleCheck
             size={18}
             strokeWidth={2.25}
-            className="mt-0.5 shrink-0 text-emerald-600"
+            className="mt-0.5 shrink-0 text-emerald-700"
           />
         ) : (
-          <IconPackage size={18} className="mt-0.5 shrink-0 text-indigo-600" aria-hidden />
+          <IconPackage size={18} className="mt-0.5 shrink-0 text-indigo-700" aria-hidden />
         )}
         <div className="min-w-0 text-xs leading-snug">
           <p

@@ -69,7 +69,7 @@ export function AdminPanelContextSwitcher({
         title={currentOpt.title}
         onClick={() => setExpanded((v) => !v)}
         className={cn(
-          "flex min-h-10 w-full items-center gap-2.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-left shadow-sm transition-colors",
+          "flex min-h-10 w-full items-center gap-2.5 rounded-md border border-slate-200 bg-card px-2.5 py-1.5 text-left shadow-sm transition-colors",
           controlFocusClass,
           "hover:border-slate-300 hover:bg-slate-50",
           pending && "opacity-60"

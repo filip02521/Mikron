@@ -127,7 +127,7 @@ export function ZdCreateDialogLab({
           <button
             key={s}
             type="button"
-            className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm hover:bg-slate-50"
+            className="rounded-md border border-slate-200 bg-card px-3 py-1.5 text-sm hover:bg-slate-50"
             onClick={() => setScenario(s)}
           >
             {
@@ -149,7 +149,7 @@ export function ZdCreateDialogLab({
           <select
             value={simulation}
             onChange={(e) => setSimulation(e.target.value as ZdSendSimulation)}
-            className="rounded-md border border-slate-200 bg-white px-2 py-1"
+            className="rounded-md border border-slate-200 bg-card px-2 py-1"
           >
             <option value="ok">wszystko się udaje</option>
             <option value="termin_error">błąd zapisu terminu (potem ponów)</option>

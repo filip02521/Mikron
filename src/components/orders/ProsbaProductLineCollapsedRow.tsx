@@ -77,7 +77,7 @@ export function ProsbaProductLineCollapsedRow({
       className={cn(
         "flex items-start gap-3 px-3 py-2.5 sm:items-center sm:px-4",
         hasFieldIssues
-          ? "bg-white"
+          ? "bg-card"
           : teethNeedsList
             ? "bg-amber-50/40"
             : isTeethProduct && teethComplete
@@ -86,7 +86,7 @@ export function ProsbaProductLineCollapsedRow({
                 ? prosbaLineStockRowTintClass(stockView.tone)
                 : summary.fromSubiekt
                   ? "bg-emerald-50/70"
-                  : "bg-white",
+                  : "bg-card",
       )}
     >
       <span

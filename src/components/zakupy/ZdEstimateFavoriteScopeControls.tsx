@@ -29,7 +29,7 @@ export function ZdEstimateFavoriteGroupChip({
         "group/chip inline-flex max-w-full items-stretch overflow-hidden rounded-md border transition",
         active
           ? "border-indigo-300 bg-indigo-50 text-indigo-950 shadow-sm "
-          : "border-slate-200/90 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+          : "border-slate-200/90 bg-card text-slate-700 hover:border-slate-300 hover:bg-slate-50"
       )}
     >
       <button
@@ -52,7 +52,7 @@ export function ZdEstimateFavoriteGroupChip({
           {group.grt_Nazwa}
         </span>
         {group.dniZapasu != null ? (
-          <span className="rounded-md bg-white/90 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-slate-500 ring-1 ring-slate-200/80">
+          <span className="rounded-md bg-card/90 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-slate-500 ring-1 ring-slate-200/80">
             {group.dniZapasu}d
           </span>
         ) : null}
@@ -70,7 +70,7 @@ export function ZdEstimateFavoriteGroupChip({
           "inline-flex min-h-10 min-w-9 shrink-0 items-center justify-center border-l border-slate-200/70 text-slate-400 transition",
           "hover:bg-slate-100/90 hover:text-slate-700",
           "opacity-80 sm:opacity-0 sm:group-hover/chip:opacity-100 sm:group-focus-within/chip:opacity-100",
-          "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
+          "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
           "disabled:cursor-not-allowed disabled:opacity-40",
           active && "border-indigo-200/80"
         )}
@@ -102,7 +102,7 @@ export function ZdEstimateFavoriteCechaChip({
         "group/chip inline-flex max-w-full items-stretch overflow-hidden rounded-md border transition",
         active
           ? "border-indigo-300 bg-indigo-50 text-indigo-950 shadow-sm "
-          : "border-slate-200/90 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+          : "border-slate-200/90 bg-card text-slate-700 hover:border-slate-300 hover:bg-slate-50"
       )}
     >
       <button
@@ -125,7 +125,7 @@ export function ZdEstimateFavoriteCechaChip({
           {cecha.ctw_Nazwa}
         </span>
         {cecha.dniZapasu != null ? (
-          <span className="rounded-md bg-white/90 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-slate-500 ring-1 ring-slate-200/80">
+          <span className="rounded-md bg-card/90 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-slate-500 ring-1 ring-slate-200/80">
             {cecha.dniZapasu}d
           </span>
         ) : null}
@@ -143,7 +143,7 @@ export function ZdEstimateFavoriteCechaChip({
           "inline-flex min-h-10 min-w-9 shrink-0 items-center justify-center border-l border-slate-200/70 text-slate-400 transition",
           "hover:bg-slate-100/90 hover:text-slate-700",
           "opacity-80 sm:opacity-0 sm:group-hover/chip:opacity-100 sm:group-focus-within/chip:opacity-100",
-          "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
+          "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
           "disabled:cursor-not-allowed disabled:opacity-40",
           active && "border-indigo-200/80"
         )}
@@ -173,7 +173,7 @@ export function ZdEstimateFavoriteStarButton({
         favorited
           ? "text-amber-500 hover:bg-amber-50"
           : "text-slate-400 hover:bg-slate-50 hover:text-slate-600",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
         className
       )}
       aria-pressed={favorited}

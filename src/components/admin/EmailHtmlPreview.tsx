@@ -28,7 +28,7 @@ export function EmailHtmlPreview({
         title="Podgląd treści e-maila"
         sandbox="allow-same-origin"
         srcDoc={srcDoc}
-        className="h-[min(70vh,36rem)] w-full rounded-md border border-slate-200 bg-white"
+        className="theme-light h-[min(70vh,36rem)] w-full rounded-md border border-slate-200 bg-card"
       />
       <details>
         <summary className="inline-flex min-h-9 cursor-pointer select-none items-center rounded-md px-1 text-xs font-medium text-slate-600 hover:text-slate-900">

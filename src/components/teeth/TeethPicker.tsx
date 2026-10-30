@@ -127,7 +127,7 @@ export function TeethPicker({
       </div>
 
       {allSame ? (
-        <div className="rounded-md border border-slate-200 bg-white p-3">
+        <div className="rounded-md border border-slate-200 bg-card p-3">
           {safeQty > 1 ? (
             <p className="mb-3 text-[0.6875rem] font-semibold text-slate-500">
               Wszystkie {safeQty} klapki
@@ -229,7 +229,7 @@ function KlapkaWizard({
         </span>
       </div>
 
-      <div className="rounded-md border border-slate-200 bg-white p-3">
+      <div className="rounded-md border border-slate-200 bg-card p-3">
         <p className="mb-3 text-[0.6875rem] font-semibold text-slate-500">
           Klapka {activeKlapka + 1} z {total}
         </p>
@@ -264,7 +264,7 @@ function KlapkaWizard({
             onClick={goNext}
             className={cn(
               "rounded-md bg-violet-600 px-4 py-1.5 text-xs font-semibold text-white transition-colors",
-              "hover:bg-violet-700",
+              "hover:bg-primary-hover",
               disabled && "cursor-not-allowed opacity-50",
               !isCurrentComplete && "ring-2 ring-amber-300",
             )}

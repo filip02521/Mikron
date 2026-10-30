@@ -66,7 +66,7 @@ const TAB_META: Record<
     label: "Handlowcy",
     hint: "Prośby i dokumenty ZK",
     icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z",
-    accent: "text-indigo-600",
+    accent: "text-indigo-700",
     accentSoft: "bg-indigo-50",
     accentRing: "ring-indigo-200",
   },
@@ -74,7 +74,7 @@ const TAB_META: Record<
     label: "Dostawy",
     hint: "Przyjęcia, paczki i palety",
     icon: "M3 7h11v10H3zM14 10h4l3 3v4h-7",
-    accent: "text-emerald-600",
+    accent: "text-emerald-700",
     accentSoft: "bg-emerald-50",
     accentRing: "ring-emerald-200",
   },
@@ -82,7 +82,7 @@ const TAB_META: Record<
     label: "Zakupy",
     hint: "Zamówienia i ranking dostawców",
     icon: "M3 3h2l2.4 12.5a2 2 0 002 1.5h7.7a2 2 0 002-1.6L21 8H6",
-    accent: "text-amber-600",
+    accent: "text-amber-700",
     accentSoft: "bg-amber-50",
     accentRing: "ring-amber-200",
   },
@@ -90,7 +90,7 @@ const TAB_META: Record<
     label: "Zęby",
     hint: "Tor zębów - prośby i dostawcy",
     icon: "M12 3c2.5 2 4 4.5 4 7.5S14 17 12 21c-2-4-4-7-4-10.5S9.5 5 12 3z",
-    accent: "text-violet-600",
+    accent: "text-violet-700",
     accentSoft: "bg-violet-50",
     accentRing: "ring-violet-200",
   },
@@ -216,7 +216,7 @@ function MonthSelector({
           disabled={disabled || !canPrev}
           onClick={() => prevKey && onSelect(prevKey)}
           className={cn(
-            "inline-flex h-11 w-11 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors sm:h-9 sm:w-9",
+            "inline-flex h-11 w-11 items-center justify-center rounded-md border border-slate-200 bg-card text-slate-600 shadow-sm transition-colors sm:h-9 sm:w-9",
             controlFocusClass,
             "hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
           )}
@@ -235,7 +235,7 @@ function MonthSelector({
           disabled={disabled}
           onChange={(e) => onSelect(e.target.value)}
           className={cn(
-            "h-11 max-w-[11rem] rounded-md border border-slate-200 bg-white px-2.5 text-base font-medium text-slate-800 shadow-sm sm:h-9 sm:text-sm",
+            "h-11 max-w-[11rem] rounded-md border border-slate-200 bg-card px-2.5 text-base font-medium text-slate-800 shadow-sm sm:h-9 sm:text-sm",
             controlFocusClass,
             "disabled:cursor-not-allowed disabled:opacity-60"
           )}
@@ -255,7 +255,7 @@ function MonthSelector({
           disabled={disabled || !canNext || !nextCandidate}
           onClick={() => nextCandidate && onSelect(nextCandidate)}
           className={cn(
-            "inline-flex h-11 w-11 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors sm:h-9 sm:w-9",
+            "inline-flex h-11 w-11 items-center justify-center rounded-md border border-slate-200 bg-card text-slate-600 shadow-sm transition-colors sm:h-9 sm:w-9",
             controlFocusClass,
             "hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
           )}
@@ -475,7 +475,7 @@ function SalesTab({
             <SectionHeading
               title="Ranking handlowców"
               icon="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-              iconClassName="text-indigo-600"
+              iconClassName="text-indigo-700"
               bare
             />
             <label className="flex items-center gap-2 text-xs text-slate-500">
@@ -484,7 +484,7 @@ function SalesTab({
                 value={sort}
                 onChange={(e) => setSort(e.target.value as SalesRankingSort)}
                 className={cn(
-                  "rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700",
+                  "rounded-md border border-slate-200 bg-card px-2 py-1 text-xs font-medium text-slate-700",
                   controlFocusClass
                 )}
               >
@@ -766,7 +766,7 @@ function DeliveryTab({
           <SectionHeading
             title="Przyjęcia według kuriera"
             icon="M3 7h11v10H3zM14 10h4l3 3v4h-7"
-            iconClassName="text-emerald-600"
+            iconClassName="text-emerald-700"
           />
           <div className="divide-y divide-slate-50">
             {delivery.byCarrier.map((c, idx) => {
@@ -1021,7 +1021,7 @@ function ProcurementTab({
       <SupplierRanking
         suppliers={procurement.bySupplier}
         title="Ranking dostawców"
-        iconClassName="text-amber-600"
+        iconClassName="text-amber-700"
       />
     </div>
   );
@@ -1136,7 +1136,7 @@ function TeethTab({
       <SupplierRanking
         suppliers={teeth.bySupplier}
         title="Dostawcy zębów"
-        iconClassName="text-violet-600"
+        iconClassName="text-violet-700"
       />
     </div>
   );

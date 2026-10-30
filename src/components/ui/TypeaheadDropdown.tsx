@@ -54,8 +54,8 @@ function typeaheadPanelClassName(
 ) {
   return cn(
     portalled
-      ? "z-[90] overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-[var(--shadow-elevated)]"
-      : "absolute left-0 right-0 top-full z-[80] mt-1 w-full overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-[var(--shadow-elevated)]",
+      ? "z-[90] overflow-auto rounded-lg border border-slate-200 bg-raised py-1 shadow-[var(--shadow-elevated)]"
+      : "absolute left-0 right-0 top-full z-[80] mt-1 w-full overflow-auto rounded-lg border border-slate-200 bg-raised py-1 shadow-[var(--shadow-elevated)]",
     size === "comfortable"
       ? "max-h-[min(22rem,52dvh)]"
       : "max-h-[min(18rem,45dvh)] sm:max-h-72",
@@ -236,7 +236,7 @@ export function TypeaheadDropdown({
 
 export function TypeaheadSectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <li className="px-3 pb-0.5 pt-2 text-[0.625rem] font-semibold text-indigo-600/80">
+    <li className="px-3 pb-0.5 pt-2 text-[0.625rem] font-semibold text-indigo-700/80">
       {children}
     </li>
   );

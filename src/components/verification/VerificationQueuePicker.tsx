@@ -110,7 +110,7 @@ export function VerificationQueuePicker({
         />
         <ul
           className={cn(
-            "divide-y divide-slate-100 overflow-y-auto overscroll-contain bg-white",
+            "divide-y divide-slate-100 overflow-y-auto overscroll-contain bg-card",
             listMaxHeight,
             "lg:min-h-0 lg:flex-1"
           )}
@@ -148,10 +148,10 @@ export function VerificationQueuePicker({
 
       <ul
         className={cn(
-          "relative divide-y divide-slate-100 overflow-y-auto overscroll-contain bg-white",
+          "relative divide-y divide-slate-100 overflow-y-auto overscroll-contain bg-card",
           listMaxHeight,
           scrollable &&
-            "after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-6 after:bg-gradient-to-t after:from-white after:to-transparent"
+            "after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-6 after:bg-gradient-to-t after:from-card after:to-transparent"
         )}
         role="listbox"
         aria-label="Kolejka weryfikacji"
@@ -234,7 +234,7 @@ function VerificationQueueRow({
         className={cn(
           "group relative w-full text-left transition-colors duration-150",
           density === "compact" ? "px-3 py-3 sm:px-4" : "px-4 py-3.5",
-          active ? "bg-indigo-50" : "bg-white hover:bg-slate-50"
+          active ? "bg-indigo-50" : "bg-card hover:bg-slate-50"
         )}
       >
         <div className="flex items-start gap-2.5">
@@ -243,11 +243,12 @@ function VerificationQueueRow({
               "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
               active
                 ? "border-indigo-600 bg-indigo-600"
-                : "border-slate-300 bg-white group-hover:border-slate-400"
+                : "border-slate-300 bg-card group-hover:border-slate-400"
             )}
             aria-hidden
           >
             {active ? (
+              // design-ok: kropka radia na wypełnieniu Petrol, biała w obu motywach
               <span className="h-1.5 w-1.5 rounded-full bg-white" />
             ) : null}
           </span>

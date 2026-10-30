@@ -33,7 +33,7 @@ export function NotatnikPanel({
 }) {
   return (
     // Sekcja w karcie strony — bez własnej ramki i cienia (DESIGN.md → bez karty w karcie).
-    <section className={cn("bg-white", className)}>
+    <section className={cn("bg-card", className)}>
       <SectionListLabel
         domain={domain}
         title={title}

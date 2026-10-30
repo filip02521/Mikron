@@ -116,7 +116,7 @@ export function RequestFormStatusPanel({
           compact
           stats={leadTime.stats}
           statsMode={leadTime.statsMode}
-          className="border-slate-200 bg-white text-xs"
+          className="border-slate-200 bg-card text-xs"
         />
       ) : null}
 

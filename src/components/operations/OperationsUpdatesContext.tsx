@@ -408,7 +408,7 @@ export function OperationsPanelRefreshStrip() {
         type="button"
         size="sm"
         variant="outline"
-        className="min-h-10 w-full shrink-0 border-slate-200 bg-white sm:min-h-9 sm:w-auto"
+        className="min-h-10 w-full shrink-0 border-slate-200 bg-card sm:min-h-9 sm:w-auto"
         onClick={ctx.refreshNow}
       >
         Odśwież panel

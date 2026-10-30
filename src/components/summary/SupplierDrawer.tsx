@@ -94,7 +94,7 @@ const LINK_BUTTON_VARIANT = {
 
 function linkButtonClass(variant: keyof typeof LINK_BUTTON_VARIANT): string {
   return cn(
-    "inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-md px-2.5 py-1.5 text-xs font-medium leading-none transition-[color,background-color,border-color] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-1",
+    "inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-md px-2.5 py-1.5 text-xs font-medium leading-none transition-[color,background-color,border-color] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1",
     LINK_BUTTON_VARIANT[variant]
   );
 }
@@ -409,7 +409,7 @@ export function SupplierDrawer({
             </div>
             {supplier.shift_date ? (
               <span
-                className="shrink-0 rounded-md bg-white/70 px-2 py-1 text-[0.6875rem] font-medium text-slate-600 ring-1 ring-inset ring-slate-200"
+                className="shrink-0 rounded-md bg-card/70 px-2 py-1 text-[0.6875rem] font-medium text-slate-600 ring-1 ring-inset ring-slate-200"
                 title="Termin przesunięty ręcznie"
               >
                 przesunięte ręcznie
@@ -459,7 +459,7 @@ export function SupplierDrawer({
                   <kbd
                     className={cn(
                       "ml-1 hidden rounded border px-1 text-[0.625rem] font-semibold leading-4 sm:inline",
-                      zdFirst ? "border-slate-300" : "border-white/30"
+                      zdFirst ? "border-slate-300" : "border-card/30"
                     )}
                   >
                     Z
@@ -665,7 +665,7 @@ export function SupplierDrawer({
                 <ol className="relative space-y-3 pl-4 before:absolute before:bottom-2 before:left-[5px] before:top-2 before:w-px before:bg-slate-200">
                   {shownHistory.map((h, i) => (
                     <li key={`${h.action_at}-${i}`} className="relative">
-                      <span className="absolute -left-4 top-1.5 h-2.5 w-2.5 rounded-full bg-indigo-400 ring-2 ring-white" />
+                      <span className="absolute -left-4 top-1.5 h-2.5 w-2.5 rounded-full bg-indigo-400 ring-2 ring-card" />
                       <p className="text-sm font-medium text-slate-800">
                         {h.action}
                         {h.next_date ? (
@@ -741,7 +741,7 @@ const sectionLinkClass =
   "inline-flex items-center gap-0.5 rounded-md px-1.5 py-1 text-xs font-semibold text-indigo-700 transition-colors hover:bg-indigo-50 hover:text-indigo-900";
 
 const historyLinkClass =
-  "flex items-center gap-2.5 rounded-lg border border-slate-200/80 bg-white px-3 py-2 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50";
+  "flex items-center gap-2.5 rounded-lg border border-slate-200/80 bg-card px-3 py-2 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50";
 
 const CHIP_TONE: Record<"neutral" | "amber" | "violet" | "indigo", string> = {
   neutral: "bg-slate-50 text-slate-700 ring-slate-200/80",

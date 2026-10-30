@@ -504,7 +504,7 @@ export function ZdEstimatePostCreatePanel({
         {mailtoSeed ? (
           <a
             href={mailtoSeed.href}
-            className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 sm:w-auto"
+            className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md bg-card px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 sm:w-auto"
           >
             <IconMail size={16} aria-hidden />
             {ZD_ESTIMATE_UI.postCreateMailComposeOpen}
@@ -636,7 +636,7 @@ export function ZdEstimatePostCreatePanel({
           >
             <IconAlertCircle
               size={28}
-              className="mt-0.5 shrink-0 text-amber-600"
+              className="mt-0.5 shrink-0 text-amber-700"
               aria-hidden
             />
             <div className="min-w-0 space-y-1">
@@ -672,7 +672,7 @@ export function ZdEstimatePostCreatePanel({
             <div className="flex min-w-0 items-center gap-3">
               <IconCircleCheck
                 size={32}
-                className="shrink-0 text-emerald-600"
+                className="shrink-0 text-emerald-700"
                 aria-hidden
               />
               <div className="min-w-0">
@@ -715,7 +715,7 @@ export function ZdEstimatePostCreatePanel({
               </div>
             </div>
             <div
-              className="shrink-0 rounded-lg bg-white/80 px-3.5 py-2 ring-1 ring-emerald-200/80 sm:text-right"
+              className="shrink-0 rounded-lg bg-card/80 px-3.5 py-2 ring-1 ring-emerald-200/80 sm:text-right"
               title="Dziś + typowy czas realizacji dostawcy w OnTime (z historii ZD → FZ)"
             >
               <p className="text-xs font-semibold text-emerald-800">Przewidywana dostawa</p>
@@ -797,7 +797,7 @@ export function ZdEstimatePostCreatePanel({
         ) : null}
 
         {hasRequestsPreview ? (
-          <details className="rounded-[var(--radius-panel)] border border-slate-200 bg-white px-4 py-3">
+          <details className="rounded-[var(--radius-panel)] border border-slate-200 bg-card px-4 py-3">
             <summary className="cursor-pointer text-sm font-medium text-slate-700">
               Prośby i uwagi na tym ZD
             </summary>
@@ -951,7 +951,7 @@ function StatusDot({
   return (
     <span
       className={cn(
-        "mt-1.5 size-2.5 shrink-0 rounded-full ring-2 ring-white",
+        "mt-1.5 size-2.5 shrink-0 rounded-full ring-2 ring-card",
         className,
         unsure
           ? "bg-amber-500"

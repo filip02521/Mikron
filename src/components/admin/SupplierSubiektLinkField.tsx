@@ -145,7 +145,7 @@ export function SupplierSubiektLinkField({
             <p className="text-sm font-medium text-indigo-900">
               {kontrahentDisplayName(linkedLabel, subiektKhId)}
             </p>
-            <p className="text-[0.6875rem] text-indigo-600/80">
+            <p className="text-[0.6875rem] text-indigo-700/80">
               id {subiektKhId} ·{" "}
               {countryLabel
                 ? `kraj z Subiekta: ${countryLabel}`
@@ -178,7 +178,7 @@ export function SupplierSubiektLinkField({
             {aliases.map((a) => (
               <li
                 key={a.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200/70 bg-white px-3 py-2 text-sm"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200/70 bg-card px-3 py-2 text-sm"
               >
                 <span>
                   <span className="font-medium text-slate-900">
@@ -237,7 +237,7 @@ export function SupplierSubiektLinkField({
       ) : null}
 
       {results.length > 0 ? (
-        <ul className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-slate-200/70 bg-white p-1.5">
+        <ul className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-slate-200/70 bg-card p-1.5">
           {results.map((k) => {
             const isPrimary = subiektKhId === k.kh_Id;
             const isAlias = aliases.some((a) => a.subiektKhId === k.kh_Id);

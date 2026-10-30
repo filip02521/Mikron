@@ -15,7 +15,7 @@ export function ChangelogTriggerIconButton() {
         "relative flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center rounded-md border px-3 shadow-sm transition duration-200 md:min-h-10 md:min-w-0",
         hasUnseen
           ? "border-indigo-200/90 bg-indigo-50/60 text-indigo-700 hover:border-indigo-300 hover:bg-indigo-100/80 hover:text-indigo-800 hover:shadow"
-          : "border-slate-200/90 bg-white text-slate-500 hover:border-indigo-200 hover:bg-indigo-50/50 hover:text-indigo-600 hover:shadow",
+          : "border-slate-200/90 bg-card text-slate-500 hover:border-indigo-200 hover:bg-indigo-50/50 hover:text-indigo-700 hover:shadow",
       )}
     >
       <IconSparkles size={16} />

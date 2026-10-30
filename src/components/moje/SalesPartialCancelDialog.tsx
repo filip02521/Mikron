@@ -134,7 +134,7 @@ export function SalesPartialCancelDialog({
               if (Number.isInteger(n) && n >= 1 && n <= maxQty) setQty(n);
             }}
             onBlur={() => commit(Number(draft) || qty)}
-            className="w-20 rounded-md border border-slate-200 bg-white py-0.5 text-center text-2xl font-semibold tabular-nums text-slate-900 transition-colors [appearance:textfield] hover:border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 aria-[invalid=true]:border-red-400 aria-[invalid=true]:focus:ring-red-500/20 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            className="w-20 rounded-md border border-slate-200 bg-card py-0.5 text-center text-2xl font-semibold tabular-nums text-slate-900 transition-colors [appearance:textfield] hover:border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 aria-[invalid=true]:border-red-400 aria-[invalid=true]:focus:ring-red-500/20 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
           <p
             id={`${inputId}-max`}

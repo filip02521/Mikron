@@ -93,7 +93,7 @@ function VariantMeta({
       {parts.map((part) => (
         <span
           key={part}
-          className="rounded-md bg-white/90 px-1.5 py-0.5 text-[0.6875rem] font-medium text-slate-700 ring-1 ring-slate-200/80"
+          className="rounded-md bg-card/90 px-1.5 py-0.5 text-[0.6875rem] font-medium text-slate-700 ring-1 ring-slate-200/80"
         >
           {part}
         </span>
@@ -126,7 +126,7 @@ function ShortageLookupRow({
           ? "border-amber-200/80 bg-amber-50/40"
           : availabilityKind === "past"
             ? "border-rose-200/70 bg-rose-50/30"
-            : "border-slate-200/80 bg-white",
+            : "border-slate-200/80 bg-card",
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-2">

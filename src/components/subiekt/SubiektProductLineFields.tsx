@@ -160,10 +160,10 @@ function SubiektLinkedLineBanner({
       aria-label={title}
       className="flex items-center gap-1.5 text-xs font-medium text-emerald-700"
     >
-      <IconCircleCheck size={14} strokeWidth={2.5} className="shrink-0 text-emerald-600" aria-hidden />
+      <IconCircleCheck size={14} strokeWidth={2.5} className="shrink-0 text-emerald-700" aria-hidden />
       <span className="font-semibold">{title}</span>
       {symbol?.trim() ? (
-        <span className="text-emerald-600/90">· {symbol.trim()}</span>
+        <span className="text-emerald-700/90">· {symbol.trim()}</span>
       ) : null}
     </div>
   );
@@ -176,7 +176,7 @@ function SubiektLinkedLineBanner({
 function SubiektNewProductBanner() {
   return (
     <div role="status" className="mt-1.5 flex items-start gap-2 rounded-md bg-indigo-50/70 px-2.5 py-2">
-      <span className="mt-px flex size-6 shrink-0 items-center justify-center rounded-md bg-white text-indigo-700 ring-1 ring-indigo-200/80">
+      <span className="mt-px flex size-6 shrink-0 items-center justify-center rounded-md bg-card text-indigo-700 ring-1 ring-indigo-200/80">
         <IconPackage size={14} aria-hidden />
       </span>
       <div className="min-w-0 text-xs leading-snug">

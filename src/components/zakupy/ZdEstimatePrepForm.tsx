@@ -286,7 +286,7 @@ export function ZdEstimatePrepForm({
         density="compact"
         className={cn(
           zdEstimatePrepFormInsetXClass,
-          "!border-b-0 bg-white/80 pb-2 sm:pb-2"
+          "!border-b-0 bg-card/80 pb-2 sm:pb-2"
         )}
         title={ZD_ESTIMATE_UI.prepFormTitle}
         hint={zdEstimatePrepCardHint()}
@@ -465,7 +465,7 @@ export function ZdEstimatePrepForm({
               {groupHits.length > 0 ? (
                 <ul
                   className={cn(
-                    "max-h-52 divide-y divide-slate-100 overflow-y-auto border border-slate-200/90 bg-white",
+                    "max-h-52 divide-y divide-slate-100 overflow-y-auto border border-slate-200/90 bg-card",
                     zdEstimateRadiusNestedClass,
                     zdEstimateShadowControlClass
                   )}
@@ -613,7 +613,7 @@ export function ZdEstimatePrepForm({
               {cechaHits.length > 0 ? (
                 <ul
                   className={cn(
-                    "max-h-52 divide-y divide-slate-100 overflow-y-auto border border-slate-200/90 bg-white",
+                    "max-h-52 divide-y divide-slate-100 overflow-y-auto border border-slate-200/90 bg-card",
                     zdEstimateRadiusNestedClass,
                     zdEstimateShadowControlClass
                   )}
@@ -773,7 +773,7 @@ export function ZdEstimatePrepForm({
             <span className={stripLabelClass}>Czas dostawy</span>
             <label
               className={cn(
-                "inline-flex cursor-pointer items-center gap-2 rounded-md border bg-white px-2.5 text-[13px] text-slate-800",
+                "inline-flex cursor-pointer items-center gap-2 rounded-md border bg-card px-2.5 text-[13px] text-slate-800",
                 zdEstimatePrepControlClass,
                 leadTimeHorizon ? "border-indigo-300 bg-indigo-50/60" : "border-slate-200/90",
                 paramsDisabled && "cursor-not-allowed opacity-50"
@@ -796,7 +796,7 @@ export function ZdEstimatePrepForm({
             <span className={stripLabelClass}>Nietypowa sprzedaż</span>
             <label
               className={cn(
-                "inline-flex cursor-pointer items-center gap-2 rounded-md border bg-white px-2.5 text-[13px] text-slate-800",
+                "inline-flex cursor-pointer items-center gap-2 rounded-md border bg-card px-2.5 text-[13px] text-slate-800",
                 zdEstimatePrepControlClass,
                 salesSmoothing ? "border-indigo-300 bg-indigo-50/60" : "border-slate-200/90",
                 paramsDisabled && "cursor-not-allowed opacity-50"
@@ -820,7 +820,7 @@ export function ZdEstimatePrepForm({
             <div className="flex flex-wrap items-center gap-1.5">
               <span
                 className={cn(
-                  "inline-flex items-center rounded-md border border-slate-200/90 bg-white tabular-nums text-slate-800",
+                  "inline-flex items-center rounded-md border border-slate-200/90 bg-card tabular-nums text-slate-800",
                   zdEstimatePrepControlClass,
                   paramsDisabled && "opacity-50"
                 )}

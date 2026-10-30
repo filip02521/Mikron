@@ -55,7 +55,7 @@ export function AdminDataShortcuts() {
           <li key={item.href} className="sm:border-b sm:border-slate-100 sm:odd:border-r">
             <Link
               href={item.href}
-              className="group flex min-h-14 items-center gap-3 px-3 py-3 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-600 sm:px-4 lg:px-5"
+              className="group flex min-h-14 items-center gap-3 px-3 py-3 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:px-4 lg:px-5"
             >
               <span className="min-w-0 flex-1">
                 <span className={cn(panelTypography.rowTitle, "block group-hover:text-indigo-800")}>{item.title}</span>

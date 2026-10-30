@@ -38,7 +38,7 @@ export function ActionTimeline({ steps, ariaLabel = "Działania po zatwierdzeniu
                   className={cn(
                     "flex size-8 items-center justify-center rounded-full text-xs font-semibold tabular-nums transition-colors duration-200 motion-reduce:transition-none",
                     s.status === "error" && "bg-red-600 text-white",
-                    s.status === "idle" && "bg-white text-slate-500 ring-1 ring-slate-300"
+                    s.status === "idle" && "bg-card text-slate-500 ring-1 ring-slate-300"
                   )}
                 >
                   {s.status === "error" ? (

@@ -86,12 +86,12 @@ export function MailPreview({
       aria-label="Podgląd wiadomości"
       className={cn("overflow-hidden rounded-[var(--radius-panel)] border border-slate-200 bg-slate-50", className)}
     >
-      <header className="flex items-center gap-2 border-b border-slate-200 bg-white px-4 py-2.5">
+      <header className="flex items-center gap-2 border-b border-slate-200 bg-card px-4 py-2.5">
         <IconEye size={16} className="shrink-0 text-slate-500" aria-hidden />
         <h3 className="text-sm font-semibold text-slate-900">Tak zobaczy to odbiorca</h3>
       </header>
 
-      <dl className="grid grid-cols-[3.25rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 border-b border-slate-200 bg-white px-4 py-3 text-sm">
+      <dl className="grid grid-cols-[3.25rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 border-b border-slate-200 bg-card px-4 py-3 text-sm">
         <dt className="text-slate-500">Od</dt>
         <dd className={cn("min-w-0 break-words", from ? "text-slate-900" : "font-medium text-red-700")}>
           {from ?? "Gmail niepołączony"}
@@ -114,7 +114,7 @@ export function MailPreview({
         </dd>
       </dl>
 
-      <div className="border-b border-slate-200 bg-white px-4 py-3">
+      <div className="border-b border-slate-200 bg-card px-4 py-3">
         <p className="mb-2 text-xs font-medium text-slate-500">
           {attachments.length
             ? `Załączniki (${attachments.length})${totalBytes ? ` · ${formatFileSize(totalBytes)}` : ""}`
@@ -160,7 +160,7 @@ export function MailPreview({
                   <button
                     type="button"
                     onClick={a.onMarkAsZd}
-                    className="inline-flex min-h-8 shrink-0 cursor-pointer items-center rounded-md bg-slate-900 px-2 text-xs font-medium text-white transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:bg-slate-800 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                    className="inline-flex min-h-8 shrink-0 cursor-pointer items-center rounded-md bg-inverse px-2 text-xs font-medium text-on-inverse transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:bg-inverse/90 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                   >
                     {a.markAsZdLabel ?? "To jest dokument ZD"}
                   </button>
@@ -170,7 +170,7 @@ export function MailPreview({
                     href={a.href}
                     target="_blank"
                     rel="noopener"
-                    className="inline-flex min-h-8 shrink-0 cursor-pointer items-center gap-1 rounded px-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                    className="inline-flex min-h-8 shrink-0 cursor-pointer items-center gap-1 rounded px-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                   >
                     {a.opensInline ? <IconEye size={14} aria-hidden /> : <IconDownload size={14} aria-hidden />}
                     {a.opensInline ? "Otwórz" : "Pobierz"}
@@ -181,7 +181,7 @@ export function MailPreview({
                     type="button"
                     onClick={a.onRemove}
                     aria-label={`Usuń ${a.name}`}
-                    className="inline-flex min-h-8 min-w-8 shrink-0 cursor-pointer items-center justify-center rounded text-slate-500 hover:bg-slate-200 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                    className="inline-flex min-h-8 min-w-8 shrink-0 cursor-pointer items-center justify-center rounded text-slate-500 hover:bg-slate-200 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                   >
                     <IconX size={14} aria-hidden />
                   </button>
@@ -195,7 +195,7 @@ export function MailPreview({
 
       <div className="p-3 sm:p-4">
         {text.trim() ? (
-          <div className="rounded-[var(--radius-surface)] bg-white px-4 py-3 shadow-[0_1px_2px_rgba(21,25,32,.06)] ring-1 ring-slate-200">
+          <div className="theme-light rounded-[var(--radius-surface)] bg-card px-4 py-3 shadow-[0_1px_2px_rgba(21,25,32,.06)] ring-1 ring-slate-200">
             <iframe
               ref={frameRef}
               title="Treść wiadomości"

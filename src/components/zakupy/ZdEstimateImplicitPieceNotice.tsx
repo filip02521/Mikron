@@ -52,7 +52,7 @@ export function ZdEstimateImplicitPieceNotice({
             ))}
             {notice.moreCount > 0 ? (
               <li>
-                <span className="inline-flex items-center rounded-md bg-white/70 px-2 py-0.5 text-[11px] font-medium tabular-nums text-amber-900/80 ring-1 ring-amber-200/70">
+                <span className="inline-flex items-center rounded-md bg-card/70 px-2 py-0.5 text-[11px] font-medium tabular-nums text-amber-900/80 ring-1 ring-amber-200/70">
                   +{notice.moreCount}
                 </span>
               </li>

@@ -214,7 +214,7 @@ export function RolWorkspace({
                     </tr>
                     {expanded && batch ? (
                       <tr id={detailId}>
-                        <td colSpan={4} className="bg-white">
+                        <td colSpan={4} className="bg-card">
                           <RolBatchDetail program={program} batch={batch} monthEn={monthEn} autoOpenMail={mailFor === program.id} />
                         </td>
                       </tr>

@@ -13,12 +13,12 @@ export type HelpHintTone =
   | "slate";
 
 const toneButtonClass: Record<HelpHintTone, string> = {
-  warning: "text-amber-700 hover:bg-amber-100/80 focus-visible:ring-indigo-600",
-  sky: "text-sky-700 hover:bg-sky-100/80 focus-visible:ring-indigo-600",
-  indigo: "text-indigo-700 hover:bg-indigo-100/80 focus-visible:ring-indigo-600",
-  emerald: "text-emerald-700 hover:bg-emerald-100/80 focus-visible:ring-indigo-600",
-  violet: "text-violet-700 hover:bg-violet-100/80 focus-visible:ring-indigo-600",
-  slate: "text-slate-600 hover:bg-slate-200/80 focus-visible:ring-indigo-600",
+  warning: "text-amber-700 hover:bg-amber-100/80 focus-visible:ring-focus",
+  sky: "text-sky-700 hover:bg-sky-100/80 focus-visible:ring-focus",
+  indigo: "text-indigo-700 hover:bg-indigo-100/80 focus-visible:ring-focus",
+  emerald: "text-emerald-700 hover:bg-emerald-100/80 focus-visible:ring-focus",
+  violet: "text-violet-700 hover:bg-violet-100/80 focus-visible:ring-focus",
+  slate: "text-slate-600 hover:bg-slate-200/80 focus-visible:ring-focus",
 };
 
 const tonePanelClass: Record<HelpHintTone, string> = {

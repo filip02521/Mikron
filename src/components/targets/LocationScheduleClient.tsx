@@ -42,6 +42,7 @@ import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutatio
 import { ZdAutomatPolicyBadge } from "@/components/zakupy/ZdAutomatPolicyNote";
 import type { ZdAutomatPolicySummary } from "@/lib/data/zd-supplier-order-policy";
 import { matchesSearchWords } from "@/lib/search/keywords";
+import { summaryColorCss } from "@/lib/orders/colors";
 
 export interface ScheduleRow {
   id: string;
@@ -309,7 +310,7 @@ export function LocationScheduleClient({
                 {filtered.map((row) => (
                   <tr
                     key={row.id}
-                    style={{ backgroundColor: row.rowColor }}
+                    style={{ backgroundColor: summaryColorCss(row.rowColor) }}
                     className={cn(
                       "transition-colors hover:brightness-95",
                       inactiveSupplierRowClass(row.is_active),

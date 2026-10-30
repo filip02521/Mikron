@@ -21,7 +21,7 @@ type EditField = "color" | "mould" | "jaw" | "count" | null;
 const JAW_LABELS: Record<string, string> = { upper: "Góra", lower: "Dół" };
 
 const cellClass = "cursor-pointer rounded px-1.5 py-0.5 text-xs font-medium transition-colors hover:bg-slate-100/80";
-const editControlClass = "rounded border border-slate-300 bg-white px-1.5 py-0.5 text-xs font-medium outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400 w-full";
+const editControlClass = "rounded border border-slate-300 bg-card px-1.5 py-0.5 text-xs font-medium outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400 w-full";
 
 export function TeethVerificationInlineRow({
   orderId,
@@ -350,7 +350,7 @@ export function TeethVerificationInlineRow({
       {error ? (
         <tr className="border-b border-slate-100 last:border-b-0">
           <td colSpan={showJaw ? 4 : 3} className="py-1 px-2">
-            <div className="flex items-center gap-1 text-[0.625rem] font-medium text-red-600">
+            <div className="flex items-center gap-1 text-[0.625rem] font-medium text-red-700">
               <IconAlertCircle size={11} className="shrink-0" />
               {error}
             </div>

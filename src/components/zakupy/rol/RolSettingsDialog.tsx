@@ -120,7 +120,7 @@ export function RolSettingsDialog({
             value={form.addressLines}
             onChange={set("addressLines")}
             rows={2}
-            className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-base shadow-[var(--shadow-control)] focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none sm:text-sm"
+            className="w-full rounded-md border border-slate-200 bg-card px-3 py-2 text-base shadow-[var(--shadow-control)] focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none sm:text-sm"
           />
         </Field>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

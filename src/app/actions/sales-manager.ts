@@ -14,6 +14,7 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeFontScale } from "@/lib/auth/profile";
+import { normalizeTheme } from "@/lib/auth/theme";
 import {
   assertUniqueSalesPersonLink,
   finalizeSalesPersonInviteForUser,
@@ -279,6 +280,7 @@ export async function actionCompletePasswordChange(
       assignedWorkspaces: (profile.assigned_workspaces ?? []) as Workspace[],
       uniformBackground: Boolean((profile.preferences as Record<string, unknown> | null)?.uniform_background ?? false),
       fontScale: normalizeFontScale((profile.preferences as Record<string, unknown> | null)?.font_scale),
+      theme: normalizeTheme((profile.preferences as Record<string, unknown> | null)?.theme),
     };
   }
 

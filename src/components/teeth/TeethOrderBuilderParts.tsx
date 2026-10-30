@@ -96,7 +96,7 @@ export function TeethBuilderStepFlow({ steps }: { steps: TeethBuilderStep[] }) {
             <span
               className={cn(
                 "flex size-4 shrink-0 items-center justify-center rounded-full text-[0.625rem] font-semibold",
-                step.done ? "bg-white text-indigo-700 ring-1 ring-indigo-200" : "bg-slate-200/80 text-slate-600",
+                step.done ? "bg-card text-indigo-700 ring-1 ring-indigo-200" : "bg-slate-200/80 text-slate-600",
               )}
               aria-hidden="true"
             >
@@ -137,7 +137,7 @@ export function TeethBuilderEmptyList({
         <p className="text-[0.625rem] leading-snug text-slate-500">
           {teethBuilderEmptyListExample(kind, productLine)}
         </p>
-        <p className="text-[0.625rem] font-medium text-indigo-600">Wypełnij formularz powyżej ↑</p>
+        <p className="text-[0.625rem] font-medium text-indigo-700">Wypełnij formularz powyżej ↑</p>
       </div>
     </div>
   );
@@ -178,7 +178,7 @@ export function TeethBuilderGroupList({
           <span
             className={cn(
               "inline-flex items-center gap-1 text-[0.625rem] font-medium",
-              listComplete ? "text-indigo-600" : "text-amber-700",
+              listComplete ? "text-indigo-700" : "text-amber-700",
             )}
           >
             {!listComplete && <IconAlertCircle size={11} />}
@@ -210,7 +210,7 @@ export function TeethBuilderGroupList({
           <li
             key={g.id}
             className={cn(
-              "flex items-center gap-2 bg-white px-2.5 py-1.5",
+              "flex items-center gap-2 bg-card px-2.5 py-1.5",
               editingId === g.id && "bg-amber-50/70 ring-1 ring-inset ring-amber-200/60",
             )}
           >
@@ -297,7 +297,7 @@ function ListActionButton({
         "rounded px-1.5 py-0.5 text-[0.625rem] font-medium transition",
         "disabled:cursor-not-allowed disabled:opacity-40",
         tone === "danger"
-          ? "text-rose-600 hover:bg-rose-50"
+          ? "text-rose-700 hover:bg-rose-50"
           : "text-indigo-700 hover:bg-indigo-50",
       )}
     >
@@ -350,7 +350,7 @@ export function TeethBuilderQuantityRow({
                 onCountChange(Number.isFinite(n) && n >= 1 ? Math.min(99, n) : 1);
               }}
               className={cn(
-                "w-11 border-x border-slate-200/90 bg-white py-1 text-center text-xs font-semibold tabular-nums",
+                "w-11 border-x border-slate-200/90 bg-card py-1 text-center text-xs font-semibold tabular-nums",
                 controlFocusClass,
               )}
               aria-label="Ilość sztuk tej pozycji"
@@ -418,9 +418,9 @@ export function TeethBuilderFormShell({
       <div className="flex items-center justify-between gap-2 border-b border-slate-200/60 pb-1.5">
         <h3 className="flex items-center gap-1.5 text-xs font-semibold text-slate-800">
           {isNew ? (
-            <IconPlusCircle size={14} className="text-indigo-600" />
+            <IconPlusCircle size={14} className="text-indigo-700" />
           ) : (
-            <IconPencil size={14} className="text-amber-600" />
+            <IconPencil size={14} className="text-amber-700" />
           )}
           {title}
         </h3>

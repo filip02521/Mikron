@@ -119,7 +119,7 @@ export function TeethMouldShapePicker({
           onChange={(e) => onMouldChange(e.target.value || null)}
           placeholder="Wpisz fason spoza listy"
           className={cn(
-            "w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs",
+            "w-full rounded-md border border-slate-200 bg-card px-2.5 py-1.5 text-xs",
             controlFocusClass,
             "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
           )}
@@ -151,7 +151,7 @@ function GroupedMouldSections({
   onSelectOther: () => void;
 }) {
   return (
-    <div className="rounded-lg bg-white ring-1 ring-indigo-100/80">
+    <div className="rounded-lg bg-card ring-1 ring-indigo-100/80">
       <div
         className={cn(
           "flex gap-1.5 overflow-x-auto p-1.5",
@@ -212,7 +212,7 @@ function ShapeSectionHeader({
       )}
     >
       {showIcon ? (
-        <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-white text-slate-500 ring-1 ring-indigo-100/80">
+        <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-card text-slate-500 ring-1 ring-indigo-100/80">
           <TeethMouldShapeIcon
             shapeId={group.shapeId as Exclude<TeethMouldShapeId, "all">}
             className="size-3.5"

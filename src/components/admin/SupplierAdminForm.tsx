@@ -244,7 +244,7 @@ export function SupplierAdminForm({
             <p className="text-xs font-semibold text-indigo-700">
               Cykl zamówień
             </p>
-            <p className="mt-0.5 text-xs leading-relaxed text-indigo-600/80">
+            <p className="mt-0.5 text-xs leading-relaxed text-indigo-700/80">
               {automat && !teethLane && zdInAutomat(automat.row)
                 ? ZD_AUTOMAT_CARD_CYCLE_MEANING
                 : "Te pola przeliczają terminy w harmonogramie. Daty w cyklu edytujesz osobno w zakładce Terminy."}
@@ -329,7 +329,7 @@ export function SupplierAdminForm({
             </Select>
           </Field>
         </div>
-        <label className={teethLane ? "mt-4 flex cursor-not-allowed items-start gap-2.5 rounded-lg bg-white/60 p-2.5 ring-1 ring-inset ring-indigo-100/50 sm:col-span-2" : "mt-4 flex cursor-pointer items-start gap-2.5 rounded-lg bg-white/60 p-2.5 ring-1 ring-inset ring-indigo-100/50 transition hover:bg-white"}>
+        <label className={teethLane ? "mt-4 flex cursor-not-allowed items-start gap-2.5 rounded-lg bg-card/60 p-2.5 ring-1 ring-inset ring-indigo-100/50 sm:col-span-2" : "mt-4 flex cursor-pointer items-start gap-2.5 rounded-lg bg-card/60 p-2.5 ring-1 ring-inset ring-indigo-100/50 transition hover:bg-card"}>
           <input
             type="checkbox"
             className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-indigo-600"

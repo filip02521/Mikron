@@ -80,9 +80,9 @@ function ZkNumberCopyButton({ nr }: { nr: string }) {
           "-my-1 inline-flex size-7 items-center justify-center rounded-md text-slate-400 sm:size-6",
           "transition-[color,background-color,scale] duration-150 ease-out active:scale-[0.94]",
           "hover:bg-slate-100 hover:text-slate-700",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
-          state === "copied" && "text-emerald-600 hover:text-emerald-700",
-          state === "failed" && "text-red-600 hover:text-red-700"
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+          state === "copied" && "text-emerald-700 hover:text-emerald-800",
+          state === "failed" && "text-red-700 hover:text-red-800"
         )}
       >
         {state === "copied" ? (
@@ -95,9 +95,9 @@ function ZkNumberCopyButton({ nr }: { nr: string }) {
         <span
           role="status"
           className={cn(
-            "pointer-events-none absolute bottom-full left-1/2 z-20 mb-1 -translate-x-1/2 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[0.6875rem] font-medium text-white shadow-sm",
+            "pointer-events-none absolute bottom-full left-1/2 z-20 mb-1 -translate-x-1/2 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[0.6875rem] font-medium shadow-sm",
             "transition-[opacity,translate] duration-150 ease-out starting:translate-y-0.5 starting:opacity-0",
-            state === "copied" ? "bg-slate-900" : "bg-red-700"
+            state === "copied" ? "bg-inverse text-on-inverse" : "bg-red-600 text-white"
           )}
         >
           {state === "copied" ? "Skopiowano" : "Nie udało się skopiować"}

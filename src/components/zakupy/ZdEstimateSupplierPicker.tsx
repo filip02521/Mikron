@@ -104,7 +104,7 @@ export function ZdEstimateSupplierPicker({
           placeholder="Wpisz dostawcę, np. Everall7…"
           disabled={disabled}
           value={query}
-          className="h-9 w-full cursor-text rounded-md border border-slate-200/90 bg-white pl-8 pr-3 text-sm leading-none text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-9 w-full cursor-text rounded-md border border-slate-200/90 bg-card pl-8 pr-3 text-sm leading-none text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 disabled:cursor-not-allowed disabled:opacity-50"
           onFocus={() => {
             if (blurTimer.current) window.clearTimeout(blurTimer.current);
             setOpen(true);
@@ -138,7 +138,7 @@ export function ZdEstimateSupplierPicker({
         <ul
           id={listId}
           role="listbox"
-          className="absolute z-30 mt-1 max-h-80 w-full overflow-y-auto rounded-md border border-slate-200 bg-white py-1 shadow-[var(--shadow-elevated)]"
+          className="absolute z-30 mt-1 max-h-80 w-full overflow-y-auto rounded-md border border-slate-200 bg-card py-1 shadow-[var(--shadow-elevated)]"
         >
           {!query.trim() && options.length > 0 ? (
             <li className="px-3 pb-1 pt-1.5 text-[11px] font-semibold text-slate-500" aria-hidden>

@@ -43,8 +43,8 @@ function nestedPrimarySegmentClass(tone: DailyPanelUnseenVariant) {
     "min-w-0 flex-1 whitespace-nowrap px-1.5 text-[0.6875rem] font-semibold border-0 text-white",
     "transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50",
     tone === "stockOut"
-      ? "bg-amber-600 hover:bg-amber-700"
-      : "bg-indigo-600 hover:bg-indigo-700"
+      ? "bg-amber-600 hover:bg-warning-hover"
+      : "bg-indigo-600 hover:bg-primary-hover"
   );
 }
 

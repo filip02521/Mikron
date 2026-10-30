@@ -34,7 +34,7 @@ export function PasswordRequirementsList({
           )}
         >
           {requirement.met ? (
-            <IconCircleCheck size={15} className="mt-0.5 shrink-0 text-emerald-600" />
+            <IconCircleCheck size={15} className="mt-0.5 shrink-0 text-emerald-700" />
           ) : (
             <span
               className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-300"

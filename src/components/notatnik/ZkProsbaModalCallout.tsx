@@ -22,18 +22,18 @@ const TONE_CLASS: Record<ZkProsbaModalCalloutTone, string> = {
   amber: "border-amber-200/80 bg-amber-50/70 text-amber-950",
   emerald: "border-emerald-200/70 bg-emerald-50/50 text-emerald-900",
   rose: "border-rose-200/80 bg-rose-50/70 text-rose-800",
-  neutral: "border-slate-200/80 bg-white text-slate-700",
+  neutral: "border-slate-200/80 bg-card text-slate-700",
   indigo: "border-indigo-200/70 bg-indigo-50/50 text-indigo-950",
 };
 
 const ICON_CLASS: Record<ZkProsbaModalCalloutTone, string> = {
   info: "text-slate-400",
   sky: "text-sky-600",
-  amber: "text-amber-600",
-  emerald: "text-emerald-600",
-  rose: "text-rose-600",
+  amber: "text-amber-700",
+  emerald: "text-emerald-700",
+  rose: "text-rose-700",
   neutral: "text-slate-400",
-  indigo: "text-indigo-600",
+  indigo: "text-indigo-700",
 };
 
 /** Wspólny padding/spacing calloutów w modalach ZK → prośba. */

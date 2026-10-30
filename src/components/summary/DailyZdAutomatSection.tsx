@@ -52,7 +52,7 @@ function cycleClass(p: ZdAutomatDailyProposal): string {
     case "expired":
       return "bg-amber-400";
     case "pending":
-      return "border-[1.5px] border-dashed border-amber-600 bg-white";
+      return "border-[1.5px] border-dashed border-amber-600 bg-card";
     default:
       return "bg-slate-300";
   }
@@ -182,7 +182,7 @@ function SupplierRow({
         <span className="flex gap-1 sm:justify-end">
           <Link
             href={`${cardsHref}?karta=${encodeURIComponent(s.id)}`}
-            className="inline-flex min-h-11 items-center rounded-md px-2.5 text-xs font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 sm:min-h-8"
+            className="inline-flex min-h-11 items-center rounded-md px-2.5 text-xs font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:min-h-8"
           >
             Ustawienia
           </Link>
@@ -322,7 +322,7 @@ export function DailyZdAutomatSection({
             aria-expanded={open}
             aria-controls={listId}
             onClick={() => toggle(!open)}
-            className="inline-flex min-h-11 items-center gap-1 rounded-md px-2 text-xs font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-900/5 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 sm:min-h-8"
+            className="inline-flex min-h-11 items-center gap-1 rounded-md px-2 text-xs font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-900/5 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:min-h-8"
           >
             {open ? "Zwiń" : `Dostawcy (${data.suppliers.length})`}
             <IconChevronDown
@@ -383,7 +383,7 @@ export function DailyZdAutomatSection({
               <span aria-hidden className="h-2.5 w-2 rounded-[2px] bg-slate-300" /> odrzucona lub odłożona
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span aria-hidden className="h-2.5 w-2 rounded-[2px] border-[1.5px] border-dashed border-amber-600 bg-white" /> czeka
+              <span aria-hidden className="h-2.5 w-2 rounded-[2px] border-[1.5px] border-dashed border-amber-600 bg-card" /> czeka
             </span>
             <Link href="/zakupy/automat" className="ml-auto font-medium text-indigo-700 underline-offset-2 hover:underline">
               Pulpit automatu

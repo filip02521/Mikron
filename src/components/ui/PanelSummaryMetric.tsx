@@ -20,7 +20,7 @@ export function PanelSummaryMetric({
   title?: string;
 }) {
   // Kafelek zawsze neutralny; ton barwi tylko liczbę (czerwień / amber tylko gdy wymaga działania).
-  const toneClass = "border-slate-200/90 bg-white";
+  const toneClass = "border-slate-200/90 bg-card";
   const valueToneClass =
     tone === "danger" ? "text-red-700" : tone === "warning" ? "text-amber-700" : "text-slate-900";
 
@@ -45,7 +45,7 @@ export function PanelSummaryMetric({
         onClick={onClick}
         title={title}
         className={cn(
-          "cursor-pointer rounded-md border px-3 py-2.5 text-left transition-[border-color,background-color] duration-150 ease-out hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 active:scale-[0.99]",
+          "cursor-pointer rounded-md border px-3 py-2.5 text-left transition-[border-color,background-color] duration-150 ease-out hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus active:scale-[0.99]",
           toneClass,
           className
         )}

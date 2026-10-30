@@ -201,7 +201,7 @@ export function SupplierStockSummary({
   return (
     <section
       aria-label="Stan magazynu (analiza Braki)"
-      className={cn("rounded-lg border border-slate-200/70 bg-white px-3 py-2.5 text-xs", className)}
+      className={cn("rounded-lg border border-slate-200/70 bg-card px-3 py-2.5 text-xs", className)}
     >
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-slate-500">Stan magazynu (analiza Braki)</h3>

@@ -26,10 +26,10 @@ type Tone = ReturnType<typeof prosbaAlreadyOrderedStockTone>;
 
 /** Odznaka w zwiniętym wierszu — neutralna ramka, kolor tylko w tekście. */
 export const PROSBA_ALREADY_ORDERED_BADGE: Record<Tone, string> = {
-  amber: "bg-white text-amber-900 ring-1 ring-slate-200/90",
-  sky: "bg-white text-sky-900 ring-1 ring-slate-200/90",
-  slate: "bg-white text-slate-700 ring-1 ring-slate-200/90",
-  emerald: "bg-white text-emerald-900 ring-1 ring-slate-200/90",
+  amber: "bg-card text-amber-900 ring-1 ring-slate-200/90",
+  sky: "bg-card text-sky-900 ring-1 ring-slate-200/90",
+  slate: "bg-card text-slate-700 ring-1 ring-slate-200/90",
+  emerald: "bg-card text-emerald-900 ring-1 ring-slate-200/90",
 };
 
 /**
@@ -180,7 +180,7 @@ function AvailabilityStat({
       title={hint}
       className={cn(
         "-m-px flex min-w-0 flex-col items-center justify-center border border-slate-200/90 px-1.5 py-1.5 text-center sm:px-2 sm:py-2",
-        emphasis ? "bg-indigo-50/70" : "bg-white",
+        emphasis ? "bg-indigo-50/70" : "bg-card",
         quiet && "opacity-65"
       )}
     >

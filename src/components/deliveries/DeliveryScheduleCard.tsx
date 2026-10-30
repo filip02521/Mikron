@@ -28,7 +28,7 @@ export function DeliveryScheduleCard({
           className={cn(
             "flex shrink-0 items-center justify-center rounded-md text-xs font-semibold ring-1 ring-inset",
             supplier.isOverduePlan
-              ? "bg-rose-100 text-rose-600 ring-rose-200/60"
+              ? "bg-rose-100 text-rose-700 ring-rose-200/60"
               : "bg-indigo-50 text-indigo-700 ring-indigo-100/60",
             compact ? "h-7 w-7" : "h-8 w-8"
           )}
@@ -60,7 +60,7 @@ export function DeliveryScheduleCard({
             </p>
           ) : null}
           {vacationText ? (
-            <p className={cn("inline-flex items-center gap-1 text-amber-600", compact ? "mt-0.5 text-[0.625rem]" : "mt-0.5 text-[0.625rem]")}>
+            <p className={cn("inline-flex items-center gap-1 text-amber-700", compact ? "mt-0.5 text-[0.625rem]" : "mt-0.5 text-[0.625rem]")}>
               <IconSun size={compact ? 11 : 12} className="text-amber-500" />
               {vacationText}
             </p>

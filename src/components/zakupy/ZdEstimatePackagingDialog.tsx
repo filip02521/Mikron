@@ -307,7 +307,7 @@ function PackagingDialogForm({
                 "flex cursor-pointer gap-2.5 rounded-md border px-3 py-2.5",
                 effectiveMode === opt.mode
                   ? "border-indigo-300 bg-indigo-50/60"
-                  : "border-slate-200 bg-white hover:bg-slate-50"
+                  : "border-slate-200 bg-card hover:bg-slate-50"
               )}
             >
               <input
@@ -480,7 +480,7 @@ function PackagingDialogForm({
           disabled={pending}
           placeholder="np. paleta 36 worków, dostawa raz w miesiącu"
           className={cn(
-            "mt-1.5 w-full resize-y rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-500",
+            "mt-1.5 w-full resize-y rounded-md border border-slate-200 bg-card px-3 py-2 text-sm text-slate-800 placeholder:text-slate-500",
             controlFocusClass
           )}
         />

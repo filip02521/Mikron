@@ -72,7 +72,7 @@ export function MojeZdEtaDevRefreshButton({ className }: { className?: string })
         type="button"
         onClick={() => void run()}
         disabled={busy}
-        className="rounded border border-amber-500 bg-white px-2 py-1 text-xs font-medium hover:bg-amber-100 disabled:opacity-50"
+        className="rounded border border-amber-500 bg-card px-2 py-1 text-xs font-medium hover:bg-amber-100 disabled:opacity-50"
       >
         {busy ? "Szukam w Subiekcie…" : "Wymuś odświeżenie terminów ZD"}
       </button>

@@ -598,7 +598,7 @@ export function ZdEstimateCreateZdDialog({
               size={18}
               className={cn(
                 "mt-0.5 shrink-0",
-                ordersIsLive ? "text-rose-600" : "text-sky-600"
+                ordersIsLive ? "text-rose-700" : "text-sky-600"
               )}
               aria-hidden
             />
@@ -664,7 +664,7 @@ export function ZdEstimateCreateZdDialog({
               aria-label="Do sprawdzenia przed utworzeniem"
             >
               <p className="flex items-center gap-1.5 text-sm font-semibold text-amber-950">
-                <IconAlertCircle size={16} className="shrink-0 text-amber-600" aria-hidden />
+                <IconAlertCircle size={16} className="shrink-0 text-amber-700" aria-hidden />
                 Do sprawdzenia ({warnings.length})
               </p>
               <ul className="mt-2 space-y-1.5 pl-[22px] text-sm leading-snug text-amber-950">
@@ -742,7 +742,7 @@ export function ZdEstimateCreateZdDialog({
               maxLength={baseMax}
               className={cn(
                 controlFocusClass,
-                "w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                "w-full rounded-md border border-slate-200 bg-card px-3 py-2 text-sm text-slate-900"
               )}
             />
             {serviceUwagiPreview ? (
@@ -801,7 +801,7 @@ function SummaryTile({
   return (
     <div
       className={cn(
-        "min-w-0 rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200/90",
+        "min-w-0 rounded-lg bg-card px-3 py-2 ring-1 ring-slate-200/90",
         className
       )}
     >

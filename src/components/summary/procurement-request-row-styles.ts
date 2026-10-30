@@ -37,10 +37,10 @@ export function procurementRequestRowClassName({
               ? isStockOut
                 ? "hover:bg-amber-50/80"
                 : "hover:bg-indigo-50/50"
-              : "hover:bg-white/70"
+              : "hover:bg-card/70"
           )
         : cn(
-            "rounded-md border border-slate-200 bg-white shadow-sm transition-[border-color,box-shadow,background-color]",
+            "rounded-md border border-slate-200 bg-card shadow-sm transition-[border-color,box-shadow,background-color]",
             expandable
               ? isStockOut
                 ? "hover:border-amber-300/90 hover:bg-amber-50/35 hover:shadow-md"
