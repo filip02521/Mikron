@@ -219,6 +219,8 @@ export type NavBadges = {
   supplierMail?: number;
   /** Odprawy: prośby DHL bez odpowiedzi + sprawy innych agencji / spedytorów czekające na nas. */
   customsDhl?: number;
+  /** Zgłoszenia ROL do przeglądu albo wysyłki (sekcja w Asystencie). */
+  rolReports?: number;
   adminBugReports?: number;
   teethQueue?: number;
   teethVerification?: number;
@@ -499,7 +501,7 @@ function operationsTeamItems(badges: {
  * Dostawcy: hub kart (terminy, urlopy i nieaktywni to jego zakładki — jedna pozycja menu),
  * a dla admin + zakupy cenniki i poczta dostawców.
  */
-function supplierHubItemsForRole(role: UserRole, badges: Pick<NavBadges, "supplierMail"> = {}): NavItem[] {
+function supplierHubItemsForRole(role: UserRole, badges: Pick<NavBadges, "supplierMail" | "rolReports"> = {}): NavItem[] {
   const compact = {
     tier: "compact" as const,
     mobileSlot: "overflow" as const,
@@ -534,7 +536,11 @@ function supplierHubItemsForRole(role: UserRole, badges: Pick<NavBadges, "suppli
         description: "Poczta dostawców, przegląd skrzynki i kontrola potwierdzeń OC",
         icon: "mail",
         tone: "slate",
-        badge: badges.supplierMail,
+        // Asystent to hub: poczta dostawców + zgłoszenia ROL (każda sekcja ma swój licznik w zakładce).
+        badge:
+          badges.supplierMail == null && badges.rolReports == null
+            ? undefined
+            : (badges.supplierMail ?? 0) + (badges.rolReports ?? 0),
         ...compact,
       }
     );

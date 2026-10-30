@@ -1,6 +1,7 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { authorizeCronRequest } from "@/lib/services/cron-auth";
 import { runSubiektLeadTimesCatchUp } from "@/lib/data/subiekt-lead-times-catchup";
+import { runRolCronStep } from "@/lib/rol/cron";
 import { recordCronRun, type CronRunPayload } from "@/lib/services/cron-run-log";
 import {
   CATALOG_ZD_SYNC_CRON_BUDGET_MS,
@@ -12,6 +13,9 @@ import { recordCronSkipped, warsawCronContext } from "@/lib/time/warsaw-cron";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 900;
+
+/** Krok ROL: skan (ok. 20 s) + PDF-y FS po ok. 45 s — w ramach jednego slotu 20 min. */
+const ROL_STEP_BUDGET_MS = 12 * 60 * 1000;
 
 /**
  * Nocna synchronizacja katalogu produktów ze Subiekta (indeks ZD + import linii).
@@ -43,6 +47,9 @@ export async function GET(request: NextRequest) {
       } catch (e) {
         console.error("[catalog-zd-sync] czasy dostaw z Subiekta", e);
       }
+      // Zgłoszenia ROL po czasach dostaw (Subiekt drukuje PDF-y FS po kolei — nie równolegle z innymi krokami).
+      // Skan raz na dzień, dopóki zgłoszenie poprzedniego miesiąca nie jest wysłane; wynik w monitorze cronów.
+      await runRolCronStep({ budgetMs: ROL_STEP_BUDGET_MS });
     });
   }
 
