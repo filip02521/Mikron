@@ -457,7 +457,7 @@ Każde okno nad treścią to `ModalShell` (`src/components/ui/ModalShell.tsx`), 
 - **Portal** do `document.body` (`createPortal`): nakładka zamontowana w sekcji strony konkuruje z-indexem tylko w jej kontekście i na telefonie chowa się pod nagłówkiem i dolnym paskiem.
 - **Przewijanie:** `useBodyScrollLock` blokuje stronę, a przewijany obszar nakładki ma atrybut `SCROLL_LOCK_ALLOW_ATTR` (`data-scroll-lock-allow`), bez którego kółko i dotyk nic nie przewiną.
 - **Fokus:** wchodzi do panelu przy otwarciu, Tab krąży w środku (`FOCUSABLE_SELECTOR`), po zamknięciu wraca na przycisk otwierający.
-- **Escape** zamyka tylko najwyższą warstwę: panel ignoruje Escape, gdy zdarzenie przyszło z innego `[role=dialog]` nad nim, bo niezapisane zmiany w panelu by przepadły.
+- **Escape** zamyka tylko najwyższą warstwę: panel ignoruje Escape, gdy zdarzenie przyszło z innego `[role=dialog]` albo otwartego menu (`[role=menu]`) nad nim, bo niezapisane zmiany w panelu by przepadły. Menu zamyka się na Escape samo i woła `preventDefault()`.
 - **Sprawdzenie:** przy 375px `document.elementFromPoint` u góry i u dołu ekranu ma trafić w nakładkę, a Escape sprawdzamy prawdziwym klawiszem przy otwartym oknie nad panelem.
 
 Warstwy (z-index) biorą się z tej skali. Nie wymyślaj nowej wartości; okno nad oknem dostaje wyższy `tier`.

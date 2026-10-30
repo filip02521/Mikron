@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { SupplierStockSignal } from "@/components/summary/SupplierStockSignal";
 import type { OnDemandSupplierRow } from "@/lib/orders/summary-workspace";
 import { actionMarkOrdered } from "@/app/actions/admin";
@@ -42,7 +43,8 @@ export function OnDemandSuppliersSheet({
 
   if (!open) return null;
 
-  return (
+  // Portal: <main> ma własny kontekst warstw — telefon zakrywałby panel paskami aplikacji.
+  return createPortal(
     <>
       <button
         ref={(el) => {
@@ -157,6 +159,7 @@ export function OnDemandSuppliersSheet({
           )}
         </div>
       </aside>
-    </>
+    </>,
+    document.body
   );
 }

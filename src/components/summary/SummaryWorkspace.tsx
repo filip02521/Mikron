@@ -337,8 +337,8 @@ export function SummaryWorkspace({
       if (!drawerId || !drawerSupplier) return;
 
       if (e.key === "Escape") {
-        // ConfirmDialog (alertdialog) nad szufladą — Escape zamyka tylko dialog.
-        if (document.querySelector('[role="alertdialog"]')) return;
+        // Warstwa nad szufladą (ConfirmDialog, menu „Przesuń”) — Escape zamyka tylko ją.
+        if (e.defaultPrevented || document.querySelector('[role="alertdialog"], [role="menu"]')) return;
         setDrawerId(null);
         return;
       }

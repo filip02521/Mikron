@@ -15,13 +15,13 @@ export const surface = {
 export const modalBackdropClass =
   "fixed inset-0 cursor-pointer bg-slate-900/45 backdrop-blur-sm";
 
-/** Backdrop dla panelu bocznego (drawer/sheet) — ciemniejszy, z blur. */
+/** Backdrop dla panelu bocznego (drawer/sheet) — ciemniejszy, z blur. Panel renderuj portalem do `document.body`. */
 export const sidePanelBackdropClass =
-  "fixed inset-0 z-40 cursor-pointer bg-slate-900/40 backdrop-blur-sm";
+  "fixed inset-0 z-[58] cursor-pointer bg-slate-900/40 backdrop-blur-sm";
 
-/** Powłoka panelu bocznego — spójna border, shadow, rounded-left. */
+/** Powłoka panelu bocznego — spójna border, shadow, rounded-left. Warstwa ze skali DESIGN.md, nad dolnym paskiem telefonu. */
 export const sidePanelShellClass =
-  "fixed inset-y-0 right-0 z-50 flex h-full w-full max-w-lg flex-col border-l border-slate-200/80 bg-white shadow-2xl";
+  "fixed inset-y-0 right-0 z-[60] flex h-full w-full max-w-lg flex-col border-l border-slate-200/80 bg-white shadow-2xl";
 
 /** Przycisk zamykania panelu — ikonowy, zaokrąglony kafelek. */
 export const sidePanelCloseButtonClass =
