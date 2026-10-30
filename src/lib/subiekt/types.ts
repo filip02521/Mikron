@@ -140,6 +140,10 @@ export type SubiektZdEstimateParams = {
   dataDo?: string | null;
   dniOkresu?: number | null;
   dniZapasu?: number | null;
+  /** OnTime (nie Subiekt): dni zwykłego zamówienia, gdy bieg jest dłuższy — podbicia i skok jak przy nim. */
+  dniZapasuSygnaly?: number | null;
+  /** OnTime (nie Subiekt): strategia — bez cięcia „skok vs ostatnie ZD”, także w przeliczeniach na kliencie. */
+  bezSkokuZd?: boolean | null;
   zapasMin?: number | null;
   grupaId?: number | null;
   cechaId?: number | null;

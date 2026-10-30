@@ -63,6 +63,34 @@ export function effectiveDniZapasu(
 }
 
 /**
+ * Dni celu biegu Kreatora i dni zwykłego zamówienia do korekt (`signalDniZapasu`, null = te same).
+ * `dniZapasu` = dni biegu (pole albo horyzont „do kolejnej dostawy”), `normalDniZapasu` = karta dostawcy,
+ * `manualDniZapasu` = samo pole. Classic: dni biegu, korekty na karcie, gdy bieg jest dłuższy.
+ * Strategia z własnymi dniami: liczy swoje (cykl + dostawa) — horyzont ich nie zmienia, a pole
+ * większe niż karta (ręcznie podniesiony zapas) podnosi cel co najmniej do dni biegu.
+ * Bez karty / pola = jak dotąd (automat, backtest).
+ */
+export function resolveZdRunDniZapasu(input: {
+  policy: ZdSupplierOrderPolicy;
+  dniZapasu: number;
+  normalDniZapasu?: number | null;
+  manualDniZapasu?: number | null;
+  timing?: { leadDays: number; nextOrderDays: number } | null;
+}): { dniZapasu: number; signalDniZapasu: number | null } {
+  const normalRaw = Math.round(Number(input.normalDniZapasu));
+  const normal = Number.isFinite(normalRaw) && normalRaw >= 1 ? normalRaw : null;
+  if (!(Number(input.policy.targetDays) >= 1)) {
+    const dniZapasu = input.dniZapasu;
+    return { dniZapasu, signalDniZapasu: normal != null && dniZapasu > normal ? normal : null };
+  }
+  const strategyDays = effectiveDniZapasu(input.policy, input.dniZapasu, input.timing);
+  const manual = Math.round(Number(input.manualDniZapasu));
+  const raised = normal != null && Number.isFinite(manual) && manual > normal;
+  const dniZapasu = raised ? Math.max(strategyDays, input.dniZapasu) : strategyDays;
+  return { dniZapasu, signalDniZapasu: dniZapasu > strategyDays ? strategyDays : null };
+}
+
+/**
  * Sprzedaż z ostatnich 90 dni z profilu (12 okien po 30 d, od najstarszego). `prosbaByWindow` — sprzedaż pod
  * prośby w każdym z tych trzech okien (od najstarszego), odjęta per okno (okno nie mniej niż 0).
  */

@@ -636,3 +636,17 @@ describe("navItemDisplayTone", () => {
     expect(navItemDisplayTone(salesNavItem("/zk"), false)).toBe("violet");
   });
 });
+
+describe("licznik Asystenta", () => {
+  const asystent = (badges: Parameters<typeof navForRole>[1]) =>
+    navForRole("zakupy", badges)
+      .flatMap((g) => g.items)
+      .find((i) => i.href === "/zakupy/asystent");
+
+  it("suma poczty dostawców i zgłoszeń ROL; brak obu — bez licznika", () => {
+    expect(asystent({ supplierMail: 3, rolReports: 2 })?.badge).toBe(5);
+    expect(asystent({ rolReports: 2 })?.badge).toBe(2);
+    expect(asystent({ supplierMail: 4 })?.badge).toBe(4);
+    expect(asystent({})?.badge).toBeUndefined();
+  });
+});

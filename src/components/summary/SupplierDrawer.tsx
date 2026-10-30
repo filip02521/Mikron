@@ -722,9 +722,9 @@ export function SupplierDrawer({
       </aside>
     </>
   );
-  // Podgląd nad modalem: portal do <body> — <main> ma własny kontekst warstw (isolate),
-  // w którym szuflada zostałaby pod oknem renderowanym portalem.
-  return preview ? createPortal(drawer, document.body) : drawer;
+  // Portal do <body> — <main> ma własny kontekst warstw (isolate), w którym szuflada byłaby
+  // pod nagłówkiem i dolnym paskiem telefonu, a podgląd pod oknem renderowanym portalem.
+  return createPortal(drawer, document.body);
 }
 
 const HISTORY_PREVIEW = 4;

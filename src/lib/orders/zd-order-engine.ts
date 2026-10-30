@@ -97,7 +97,7 @@ import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
 import {
   applyZdDemandFloorToLine,
   applyZdPairDemandFloor,
-  effectiveDniZapasu,
+  resolveZdRunDniZapasu,
   applyZdBomDemandFloor,
   ZD_SUPPLIER_ORDER_POLICY_CLASSIC,
   type ZdSupplierOrderPolicy,
@@ -413,6 +413,13 @@ export type ZdOrderEngineInput = {
    * strategia z własnymi dniami celu liczy co najmniej cykl + dostawę.
    */
   orderTiming?: { leadDays: number; nextOrderDays: number } | null;
+  /**
+   * Kreator: dni z karty dostawcy (zwykłe zamówienie) i same dni z pola. Dłuższy bieg (pole ponad kartę,
+   * horyzont) liczy podbicia i skok vs ostatnie ZD jak przy zwykłym zamówieniu; pole ponad kartę podnosi
+   * też cel strategii z własnymi dniami (`resolveZdRunDniZapasu`). Brak = jak dotąd (automat, backtest).
+   */
+  normalDniZapasu?: number | null;
+  manualDniZapasu?: number | null;
   dataOd: string;
   dataDo: string;
   zapasMin: number;
@@ -535,7 +542,13 @@ export async function runZdOrderEngine(
       return { ok: false, feedback };
     }
   }
-  const dniZapasu = effectiveDniZapasu(orderPolicy, input.dniZapasu, input.orderTiming);
+  const { dniZapasu, signalDniZapasu } = resolveZdRunDniZapasu({
+    policy: orderPolicy,
+    dniZapasu: input.dniZapasu,
+    normalDniZapasu: input.normalDniZapasu,
+    manualDniZapasu: input.manualDniZapasu,
+    timing: input.orderTiming,
+  });
 
   // Pełna lista towarów zakresu z Subiekta (nie tylko braki API / nie nasza baza).
   // Echo filtra zaraz po 1. stronie — bez tego stary API mógłby dociągnąć cały katalog.
@@ -659,6 +672,16 @@ export async function runZdOrderEngine(
       truncated: fetched.truncated || more.truncated,
     };
   }
+
+  // W parametrach wyniku — przeliczenia na kliencie (opakowania, pary, sesja) liczą korekty tak samo.
+  fetched = {
+    ...fetched,
+    parametry: {
+      ...fetched.parametry,
+      ...(signalDniZapasu != null ? { dniZapasuSygnaly: signalDniZapasu } : {}),
+      ...(orderPolicy.strategy !== "classic" ? { bezSkokuZd: true } : {}),
+    },
+  };
 
   touchProgress({
     phase: "settings",
@@ -1323,7 +1346,16 @@ export async function runZdOrderEngine(
       : Math.round((Date.parse(dataDo) - Date.parse(dataOd)) / 86_400_000) + 1;
   const classicResult = classicBase
     ? buildManualZdEstimateResult(
-        { ...fetched.parametry, dniZapasu: classicDays },
+        // „Jak dotąd” na dniach dłuższych niż karta: korekty na dniach karty, jak w biegu classic.
+        {
+          ...fetched.parametry,
+          dniZapasu: classicDays,
+          dniZapasuSygnaly: resolveZdRunDniZapasu({
+            policy: ZD_SUPPLIER_ORDER_POLICY_CLASSIC,
+            dniZapasu: classicDays,
+            normalDniZapasu: input.normalDniZapasu,
+          }).signalDniZapasu,
+        },
         classicBase.map((l) => {
           const rate = Math.max(0, Number(l.sprzedazOkres) || 0) / Math.max(1, dniOkresuCompare);
           // Zaokrąglenie do 1e-6: szum zmiennoprzecinkowy przesuwał progi podążania za sprzedażą.

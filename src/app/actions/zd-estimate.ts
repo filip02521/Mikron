@@ -2211,15 +2211,7 @@ export async function actionRunZdEstimateManual(
 
   const todayKey = warsawNowParts().dateKey;
   let dataDo = normalizeDateKey(input.dataDo) ?? todayKey;
-  let dataOd =
-    normalizeDateKey(input.dataOd) ??
-    salesWindowFromDniZapasu(dniZapasu, dataDo).dataOd;
-
-  if (dataOd > dataDo) {
-    const tmp = dataOd;
-    dataOd = dataDo;
-    dataDo = tmp;
-  }
+  const dataOdInput = normalizeDateKey(input.dataOd);
 
   const zapasMin = Math.max(0, Number(input.zapasMin) || 0);
   const started = Date.now();
@@ -2229,6 +2221,9 @@ export async function actionRunZdEstimateManual(
     // Czas dostawy dostawcy liczymy zawsze (kolumna „Starczy” pokazuje go jako kreskę),
     // ale horyzont celu zmienia tylko zaznaczona opcja „Do kolejnej dostawy”.
     let supplierHorizon: import("@/lib/orders/zd-order-horizon").ZdOrderHorizon | null = null;
+    // Dni z karty = zwykłe zamówienie (jak automat). Więcej w polu = ręcznie podniesiony zapas.
+    // Karta bez liczby („w razie potrzeby”): dni z pola są zwykłym zamówieniem.
+    let supplierCardDays: number | null = null;
     const horizonSupplierId = String(input.supplierId ?? "").trim();
     if (horizonSupplierId) {
       try {
@@ -2237,6 +2232,10 @@ export async function actionRunZdEstimateManual(
           supplierIds: [horizonSupplierId],
         });
         if (supplier) {
+          supplierCardDays = stockPeriodToDniZapasu(
+            supplier.stock_raw,
+            supplier.stock != null ? Number(supplier.stock) : null
+          );
           supplierHorizon =
             (
               await loadZdOrderHorizons({
@@ -2251,6 +2250,13 @@ export async function actionRunZdEstimateManual(
         if (input.leadTimeHorizon === true) throw e;
       }
     }
+    // Bez dat z formularza: okno z karty (jak automat), nie z pola zapasu.
+    let dataOd = dataOdInput ?? salesWindowFromDniZapasu(supplierCardDays ?? dniZapasu, dataDo).dataOd;
+    if (dataOd > dataDo) {
+      const tmp = dataOd;
+      dataOd = dataDo;
+      dataDo = tmp;
+    }
     const horizon = input.leadTimeHorizon === true ? supplierHorizon : null;
     const leadDays = supplierHorizon?.leadDays ?? null;
 
@@ -2258,6 +2264,8 @@ export async function actionRunZdEstimateManual(
       scope,
       supplierId: String(input.supplierId ?? "").trim() || null,
       dniZapasu: horizon ? horizon.horizonDays : dniZapasu,
+      normalDniZapasu: supplierCardDays,
+      manualDniZapasu: dniZapasu,
       orderTiming: supplierHorizon
         ? { leadDays: supplierHorizon.automatLeadDays, nextOrderDays: supplierHorizon.nextOrderDays }
         : null,
@@ -2285,7 +2293,10 @@ export async function actionRunZdEstimateManual(
     // Horyzont zastosowany = silnik liczył na jego dniach (strategia bez własnych dni celu też).
     // Strategia z własnymi dniami celu (effectiveDniZapasu) pomija horyzont — równe dni to przypadek.
     const strategyOwnDays = Number(engine.orderPolicy.targetDays) >= 1;
-    const appliedHorizon = horizon && !strategyOwnDays ? horizon : null;
+    // Pole ponad kartę podnosi cel strategii do dni biegu (z horyzontem) — wtedy horyzont jest użyty naprawdę.
+    const manualRaise = supplierCardDays != null && dniZapasu > supplierCardDays;
+    const appliedHorizon =
+      horizon && (!strategyOwnDays || (manualRaise && engine.dniZapasuUsed === horizon.horizonDays)) ? horizon : null;
     const smoothingApplied = input.salesSmoothing === true && !strategyActive;
     const {
       result,

@@ -235,6 +235,8 @@ export function computeManualOrderQty(input: {
 export type MapZdEstimateLineOptions = {
   /** Dni zapasu dostawcy / run — do oceny cienkiego pokrycia. */
   dniZapasu?: number | null;
+  /** Dni zwykłego zamówienia, gdy bieg jest dłuższy (pole ponad kartę, horyzont) — podbicia i skok jak przy nim. */
+  signalDniZapasu?: number | null;
   /** Zapas minimalny z Kreatora — twarda podłoga celu po korektach. */
   zapasMin?: number | null;
   /** Długość okna FS z API — fallback tempa dziennego. */
@@ -331,6 +333,7 @@ export function mapZdEstimateLineToManual(
     policy: salesTrackPolicy,
     stockoutApplied,
     zapasMin: options?.zapasMin ?? 0,
+    signalDniZapasu: options?.signalDniZapasu,
   });
 
   let celTracked = track.celTracked;
@@ -362,6 +365,7 @@ export function mapZdEstimateLineToManual(
       sprzedazDziennie: tempo,
       coverStock: coverForQty,
       dniZapasu,
+      lastOrderDniZapasu: options?.signalDniZapasu,
       dniOkresu,
       lastOrderedQty: hist.lastOrderedQty,
       linkedAt: hist.linkedAt,
@@ -452,6 +456,8 @@ export function mapZdEstimateLineToManual(
 
 export type ZdEstimateSoloMapOptions = {
   dniZapasu: number;
+  /** Dni zwykłego zamówienia, gdy bieg jest dłuższy (pole ponad kartę, horyzont) — podbicia i skok jak przy nim. */
+  signalDniZapasu?: number | null;
   zapasMin?: number | null;
   dniOkresu?: number | null;
   salesTrack?: boolean;
@@ -505,6 +511,7 @@ export function mapZdEstimateLinesSolo(
     const minStock = minStockByTwId?.get(twId) ?? 0;
     return mapZdEstimateLineToManual(line, {
       dniZapasu,
+      signalDniZapasu: options.signalDniZapasu,
       zapasMin: options.zapasMin,
       dniOkresu: options.dniOkresu,
       salesTrack: inPair ? false : options.salesTrack,
@@ -532,6 +539,17 @@ export function zdEstimateWindowDays(
   const doo = Date.parse(String(parametry?.dataDo ?? "").slice(0, 10));
   if (!Number.isFinite(od) || !Number.isFinite(doo) || doo < od) return null;
   return Math.round((doo - od) / 86_400_000) + 1;
+}
+
+/**
+ * Dni zwykłego zamówienia zapisane przez silnik w parametrach wyniku (`dniZapasuSygnaly`), gdy zapas
+ * podniesiono ręcznie — przeliczenia na kliencie (opakowania, pary, przywrócenie sesji) liczą tak samo.
+ */
+export function zdEstimateSignalDniZapasu(
+  parametry: Pick<SubiektZdEstimateParams, "dniZapasuSygnaly"> | null | undefined
+): number | null {
+  const n = Math.round(Number(parametry?.dniZapasuSygnaly));
+  return Number.isFinite(n) && n >= 1 ? n : null;
 }
 
 export function buildManualZdEstimateResult(
@@ -583,6 +601,10 @@ export function buildManualZdEstimateResult(
       ? Number(parametry.dniZapasu)
       : DEFAULT_DNI_ZAPASU;
   const dniOkresu = zdEstimateWindowDays(parametry);
+  const signalDniZapasu = zdEstimateSignalDniZapasu(parametry);
+  // Bez opcji: z parametrów wyniku (strategia zapisuje bezSkokuZd) — przeliczenia na kliencie liczą jak serwer.
+  // Tylko pojedyncze towary: pary i komplety nie mają cięcia skoku z profilu, więc zostaje im „skok vs ZD”.
+  const historySpikeCut = options?.historySpikeCut ?? (parametry.bezSkokuZd === true ? false : undefined);
   const historyByTwId = options?.historyByTwId ?? null;
   const packagingByTwId = options?.packagingByTwId ?? null;
   const minStockByTwId = options?.minStockByTwId ?? null;
@@ -595,10 +617,11 @@ export function buildManualZdEstimateResult(
   const mapped = mapZdEstimateLinesSolo(lines, {
     zapasMin,
     dniZapasu,
+    signalDniZapasu,
     dniOkresu,
     salesTrack: options?.salesTrack,
     salesTrackCuts: options?.salesTrackCuts,
-    historySpikeCut: options?.historySpikeCut,
+    historySpikeCut,
     salesTrackPolicy: options?.salesTrackPolicy,
     historyByTwId,
     packagingByTwId,
@@ -616,6 +639,7 @@ export function buildManualZdEstimateResult(
     boms.length > 0
       ? applyZdEstimateBoms(mapped, boms, {
           dniZapasu,
+          signalDniZapasu,
           dniOkresu,
           zapasMin,
           salesTrack: options?.salesTrack,
@@ -633,6 +657,7 @@ export function buildManualZdEstimateResult(
     pairs.length > 0
       ? applyZdEstimatePairs(afterBom, pairs, {
           dniZapasu,
+          signalDniZapasu,
           dniOkresu,
           zapasMin,
           salesTrack: options?.salesTrack,

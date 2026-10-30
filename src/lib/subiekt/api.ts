@@ -464,7 +464,7 @@ export async function getSubiektOrdersZdPdf(id: number, opts: { fresh?: boolean;
   if (pending) return pending;
   const docKey = `${config.baseUrl}#${id}`;
   const generation = zdPdfGeneration.get(docKey) ?? 0;
-  const job = printSubiektOrdersZdPdf(id, config).then((bytes) => {
+  const job = printSubiektOrdersPdf(`${SUBIEKT_PATHS.documentZd(id)}/pdf`, "ZD", config).then((bytes) => {
     // Stare wydruki wylatują przy każdym nowym — pamięć nie rośnie bez końca.
     for (const [k, v] of zdPdfCache) if (Date.now() - v.at >= ZD_PDF_TTL_MS) zdPdfCache.delete(k);
     if ((zdPdfGeneration.get(docKey) ?? 0) === generation) zdPdfCache.set(key, { at: Date.now(), bytes });
@@ -478,11 +478,19 @@ export async function getSubiektOrdersZdPdf(id: number, opts: { fresh?: boolean;
   }
 }
 
-async function printSubiektOrdersZdPdf(id: number, config: SubiektConfig): Promise<Buffer> {
+/**
+ * Wydruk FS do PDF z Subiekta (`GET /documents/fs/{id}/pdf`, host ORDERS). Na :5080 trwa ok. 45 s
+ * (pomiar 29.10.2026) — wołać w tle, nie przy kliknięciu; bez pamięci podręcznej (ROL trzyma PDF w bazie).
+ */
+export async function getSubiektOrdersFsPdf(id: number): Promise<Buffer> {
+  return printSubiektOrdersPdf(`${SUBIEKT_PATHS.documentFs(id)}/pdf`, "FS", ordersConfigOrThrow());
+}
+
+async function printSubiektOrdersPdf(path: string, docLabel: "ZD" | "FS", config: SubiektConfig): Promise<Buffer> {
   let res: Response;
   let bytes: Buffer;
   for (let attempt = 0; ; attempt++) {
-    res = await subiektFetch(`${SUBIEKT_PATHS.documentZd(id)}/pdf`, {}, { ...config, timeoutMs: ZD_PDF_TIMEOUT_MS });
+    res = await subiektFetch(path, {}, { ...config, timeoutMs: ZD_PDF_TIMEOUT_MS });
     bytes = Buffer.from(await res.arrayBuffer());
     const delay = ZD_PDF_RETRY_DELAYS_MS[attempt];
     // 502/503/504 — Sfera zajęta innym wydrukiem albo startuje (pierwszy wydruk po zmianie terminu).
@@ -491,7 +499,7 @@ async function printSubiektOrdersZdPdf(id: number, config: SubiektConfig): Promi
   }
   if (!res.ok || bytes.subarray(0, 4).toString() !== "%PDF") {
     const detail = res.ok ? "" : bytes.toString("utf8", 0, 300).replace(/\s+/g, " ").trim();
-    throw new Error(`Subiekt nie wydrukował ZD do PDF (HTTP ${res.status}${detail ? `: ${detail}` : ""}).`);
+    throw new Error(`Subiekt nie wydrukował ${docLabel} do PDF (HTTP ${res.status}${detail ? `: ${detail}` : ""}).`);
   }
   return bytes;
 }

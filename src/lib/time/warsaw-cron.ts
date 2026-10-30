@@ -1,4 +1,5 @@
 import { readCronRun, recordCronRun } from "@/lib/services/cron-run-log";
+import type { CronJobId } from "@/lib/services/cron-run-shared";
 import { warsawNowParts } from "@/lib/time/warsaw";
 
 /** Czy poranna rutyna już zakończyła się dziś (kalendarz warszawski). */
@@ -12,18 +13,7 @@ export async function morningRoutineAlreadyRanToday(): Promise<boolean> {
 }
 
 export async function recordCronSkipped(
-  job:
-    | "morning_routine"
-    | "process_deliveries"
-    | "morning_sync"
-    | "catalog_zd_sync"
-    | "zd_eta_sync"
-    | "informacja_stock_sync"
-    | "scheduled_mails"
-    | "stock_watch"
-    | "subiekt_lead_times"
-    | "zd_sku_class"
-    | "zd_kpi_weekly",
+  job: CronJobId,
   reason: string,
   detail?: Record<string, unknown>
 ): Promise<void> {

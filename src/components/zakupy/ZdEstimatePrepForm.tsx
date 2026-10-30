@@ -102,6 +102,8 @@ export type ZdEstimatePrepFormProps = {
   onExtrasPolicyChange: (policy: ZdEstimateExtrasPolicy) => void;
   dniZapasu: string;
   onDniZapasuChange: (value: string) => void;
+  /** Strategia automatu: ile dni liczy i jak podnieść zapas (pod polem). */
+  dniZapasuNote?: string | null;
   dataOd: string;
   dataDo: string;
   onManualDataOdChange: (value: string) => void;
@@ -213,6 +215,7 @@ export function ZdEstimatePrepForm({
   onExtrasPolicyChange,
   dniZapasu,
   onDniZapasuChange,
+  dniZapasuNote,
   dataOd,
   dataDo,
   onManualDataOdChange,
@@ -757,7 +760,13 @@ export function ZdEstimatePrepForm({
               disabled={paramsDisabled}
               className={cn(zdEstimatePrepControlClass, "w-[5.5rem]")}
               title={ZD_ESTIMATE_UI.advancedDniZapasuHint}
+              aria-describedby={dniZapasuNote ? "zd-prep-dni-zapasu-note" : undefined}
             />
+            {dniZapasuNote ? (
+              <p id="zd-prep-dni-zapasu-note" className="max-w-[16rem] text-[12px] leading-snug text-slate-600">
+                {dniZapasuNote}
+              </p>
+            ) : null}
           </div>
 
           <div className="flex min-w-0 flex-col gap-1">
@@ -929,7 +938,7 @@ export function ZdEstimatePrepForm({
                     setDatesEditorScopeKey(null);
                   }}
                 >
-                  Przywróć z zapasu
+                  Przywróć z karty
                 </Button>
               </div>
             ) : null}
