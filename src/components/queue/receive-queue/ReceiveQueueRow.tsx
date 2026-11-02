@@ -392,7 +392,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
                   onChange={(e) => onQtyChange(e.target.value)}
                   onKeyDown={onQtyKeyDown}
                   className={cn(
-                    "w-16 rounded-lg border border-slate-200 bg-white px-1 py-1.5 text-center text-base font-semibold transition focus:border-violet-300 focus:ring-2 focus:ring-violet-200/40 sm:w-12",
+                    "w-16 rounded-lg border border-slate-200 bg-card px-1 py-1.5 text-center text-base font-semibold transition focus:border-violet-300 focus:ring-2 focus:ring-violet-200/40 sm:w-12",
                     controlFocusClass
                   )}
                   aria-label={`Przyjęto z rezygnacji dla ${personName}`}
@@ -406,7 +406,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
                   className={cn(
                     "inline-flex size-11 items-center justify-center rounded-md border transition sm:size-8",
                     canSave
-                      ? "border-violet-200 bg-violet-600 text-white hover:bg-violet-700 hover:shadow-sm "
+                      ? "border-violet-200 bg-violet-600 text-white hover:bg-primary-hover hover:shadow-sm "
                       : "border-slate-200 bg-slate-50 text-slate-300"
                   )}
                 >
@@ -459,7 +459,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
               onChange={(e) => onQtyChange(e.target.value)}
               onKeyDown={onQtyKeyDown}
               className={cn(
-                "w-16 rounded-lg border border-slate-200 bg-white px-1 py-1.5 text-center text-base font-semibold transition focus:border-violet-300 focus:ring-2 focus:ring-violet-200/40 sm:w-12",
+                "w-16 rounded-lg border border-slate-200 bg-card px-1 py-1.5 text-center text-base font-semibold transition focus:border-violet-300 focus:ring-2 focus:ring-violet-200/40 sm:w-12",
                 controlFocusClass
               )}
               aria-label={`Dostarczono dla ${personName}`}
@@ -490,7 +490,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
               className={cn(
                 "ml-0.5 inline-flex size-11 items-center justify-center rounded-md border transition sm:size-8",
                 canSave
-                  ? "border-violet-200 bg-violet-600 text-white hover:bg-violet-700 hover:shadow-sm "
+                  ? "border-violet-200 bg-violet-600 text-white hover:bg-primary-hover hover:shadow-sm "
                   : "border-slate-200 bg-slate-50 text-slate-300"
               )}
             >

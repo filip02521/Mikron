@@ -42,12 +42,12 @@ export function TempPasswordDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/40 p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="temp-password-title"
     >
-      <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-xl">
+      <div className="w-full max-w-md rounded-lg border border-slate-200 bg-card p-6 shadow-xl">
         <h2 id="temp-password-title" className="text-lg font-semibold text-slate-900">
           {isReset ? "Hasło zresetowane" : "Konto utworzone"}
         </h2>

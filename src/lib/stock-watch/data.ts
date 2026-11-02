@@ -1014,9 +1014,17 @@ export async function listStockWatchOffPlanSuppliers(
     next_date: unknown;
     on_demand: boolean | null;
   }>(
-    `SELECT i.supplier_id, s.name, count(*)::text AS n, ss.computed_next_date AS next_date,
+    // Towar wspólnego zakresu liczy się raz, u właściciela (wiersz z pozycją „Do ZD”) — jak `uniqueByProduct`
+    // w tablicy Braki; bez tego panel pokazywał „1” u dwóch dostawców za ten sam towar.
+    `WITH owner AS (
+       SELECT DISTINCT ON (i.subiekt_tw_id) i.subiekt_tw_id, i.supplier_id, i.delivery_risk
+         FROM stock_watch_items i
+        WHERE i.computed_at > now() - interval '2 days'
+        ORDER BY i.subiekt_tw_id, i.in_order DESC, i.supplier_id
+     )
+     SELECT i.supplier_id, s.name, count(*)::text AS n, ss.computed_next_date AS next_date,
             s.order_on_demand AS on_demand
-       FROM stock_watch_items i
+       FROM owner i
        JOIN suppliers s ON s.id = i.supplier_id
        LEFT JOIN supplier_schedules ss ON ss.supplier_id = i.supplier_id
        LEFT JOIN zd_estimate_exclusions e ON e.subiekt_tw_id = i.subiekt_tw_id
@@ -1024,7 +1032,6 @@ export async function listStockWatchOffPlanSuppliers(
       WHERE i.delivery_risk = 'before_delivery'
         AND e.subiekt_tw_id IS NULL
         AND r.subiekt_tw_id IS NULL
-        AND i.computed_at > now() - interval '2 days'
         AND COALESCE(s.is_active, true)
         AND (ss.computed_next_date IS NULL OR ss.computed_next_date > $1::date)
       GROUP BY i.supplier_id, s.name, ss.computed_next_date, s.order_on_demand

@@ -214,6 +214,7 @@ import {
 import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
 import {
   DEFAULT_DNI_ZAPASU,
+  zdEstimateSignalDniZapasu,
   zdEstimateWindowDays,
   salesWindowFromDniZapasu,
 } from "@/lib/orders/zd-estimate-manual";
@@ -1051,7 +1052,8 @@ export function ZdEstimateWorkbench({
       groupDniZapasu: fromGroup,
       quickGroupDniZapasu: bootstrap.quickGroups.find((g) => g.dniZapasu)
         ?.dniZapasu,
-      prefsDniZapasu: uiPrefs.dniZapasu,
+      // Okno z karty / domyślne — ostatni ręczny zapas (prefs) zmienia tylko pole dni, nie tempo.
+      prefsDniZapasu: null,
       defaultDni: DEFAULT_DNI_ZAPASU,
     });
     return salesWindowFromDniZapasu(n, bootstrap.salesEndKey).dataOd;
@@ -1936,6 +1938,18 @@ export function ZdEstimateWorkbench({
   const currentSupplierPolicy = supplierPolicy && supplierPolicy.supplierId === supplierId ? supplierPolicy.policy : null;
   const policyTargetDays =
     currentSupplierPolicy?.strategy === "max30_90" && currentSupplierPolicy.targetDays ? currentSupplierPolicy.targetDays : null;
+  // Więcej niż karta = ręcznie podniesiony zapas (serwer liczy tak samo: cel co najmniej na tyle dni).
+  const cardDniZapasu = selectedSupplier?.dniZapasu ?? null;
+  const raisedDniZapasu =
+    cardDniZapasu != null && Math.round(Number(dniZapasu)) > cardDniZapasu ? Math.round(Number(dniZapasu)) : null;
+  const dniZapasuNote =
+    policyTargetDays == null
+      ? null
+      : cardDniZapasu == null
+        ? ZD_ESTIMATE_UI.dniZapasuStrategyNoCardNote(policyTargetDays)
+        : raisedDniZapasu != null
+          ? ZD_ESTIMATE_UI.dniZapasuStrategyRaisedNote(raisedDniZapasu)
+          : ZD_ESTIMATE_UI.dniZapasuStrategyNote(policyTargetDays, cardDniZapasu);
 
   const createKhResolution = useMemo(() => {
     if (!selectedSupplier) return null;
@@ -3534,23 +3548,16 @@ export function ZdEstimateWorkbench({
     const valueChanged = valid && n !== currentN;
     const affectsScope = lines != null && valueChanged;
 
+    // Okno sprzedaży zostaje (karta albo ręczne daty): więcej dni zapasu = to samo tempo × więcej dni.
     const applyValidChange = () => {
       setDniZapasu(raw);
       dniZapasuPrefsValueRef.current = n;
-      setSalesWindowSource("stock");
-      const end = dataDo || bootstrap.salesEndKey;
-      setDataOd(salesWindowFromDniZapasu(n, end).dataOd);
       clearEstimateResult({ fromScopeChange: true });
     };
 
     if (!affectsScope) {
       setDniZapasu(raw);
-      if (valueChanged) {
-        dniZapasuPrefsValueRef.current = n;
-        setSalesWindowSource("stock");
-        const end = dataDo || bootstrap.salesEndKey;
-        setDataOd(salesWindowFromDniZapasu(n, end).dataOd);
-      }
+      if (valueChanged) dniZapasuPrefsValueRef.current = n;
       return;
     }
 
@@ -3709,9 +3716,8 @@ export function ZdEstimateWorkbench({
   };
 
   const restoreSalesWindowFromStock = () => {
-    const n = Math.round(Number(dniZapasu));
-    const days =
-      Number.isFinite(n) && n >= 1 ? n : DEFAULT_DNI_ZAPASU;
+    // Okno z karty dostawcy (jak po wyborze zakresu), nie z pola zapasu.
+    const days = selectedSupplier?.dniZapasu ?? DEFAULT_DNI_ZAPASU;
     const end = bootstrap.salesEndKey;
     const window = salesWindowFromDniZapasu(days, end);
     const affectsScope =
@@ -6408,7 +6414,11 @@ export function ZdEstimateWorkbench({
               dniZapasu={
                 policyTargetDays != null
                   ? // Po Policz: dni faktycznie użyte (strategia liczy co najmniej cykl + dostawę).
-                    String(lines ? Math.max(policyTargetDays, Math.round(Number(paramInfo?.dniZapasu) || 0)) : policyTargetDays)
+                    String(
+                      lines
+                        ? Math.max(policyTargetDays, Math.round(Number(paramInfo?.dniZapasu) || 0))
+                        : Math.max(policyTargetDays, raisedDniZapasu ?? 0)
+                    )
                   : dniZapasu
               }
               supplierLabel={supplierLabel}
@@ -7263,6 +7273,7 @@ export function ZdEstimateWorkbench({
           onExtrasPolicyChange={onExtrasPolicyChange}
           dniZapasu={dniZapasu}
           onDniZapasuChange={onDniZapasuChange}
+          dniZapasuNote={dniZapasuNote}
           dataOd={dataOd}
           dataDo={dataDo}
           onManualDataOdChange={onManualDataOdChange}
@@ -7774,7 +7785,7 @@ export function ZdEstimateWorkbench({
             <div className="relative isolate flex min-h-0 flex-1 flex-col overflow-hidden">
             <TableScroll
               id={ZD_ESTIMATE_TABLE_SCROLL_ID}
-              className="zd-estimate-table-scroll min-h-0 w-full min-w-0 flex-1 bg-white px-0 pb-0 sm:px-0 sm:pb-0"
+              className="zd-estimate-table-scroll min-h-0 w-full min-w-0 flex-1 bg-card px-0 pb-0 sm:px-0 sm:pb-0"
             >
                 <DataTable
                   className={cn(
@@ -8382,14 +8393,14 @@ export function ZdEstimateWorkbench({
                     <IconAlertCircle
                       size={13}
                       strokeWidth={2}
-                      className="mt-px shrink-0 text-red-600"
+                      className="mt-px shrink-0 text-red-700"
                       aria-hidden
                     />
                   ) : (
                     <IconInfoCircle
                       size={13}
                       strokeWidth={2}
-                      className="mt-px shrink-0 text-amber-600"
+                      className="mt-px shrink-0 text-amber-700"
                       aria-hidden
                     />
                   )}
@@ -8668,6 +8679,7 @@ export function ZdEstimateWorkbench({
                 minStockSzt={minSt}
                 overrideZdUnits={qtyOverrideByTwId[l.tw_Id]}
                 leadDays={policzScopeInfo?.leadDays ?? policzScopeInfo?.horizon?.leadDays ?? null}
+                salesWindow={{ dataOd, dataDo }}
                 comparePieces={
                   policzScopeInfo?.classicCompare ? (policzScopeInfo.classicCompare.byTwId[l.tw_Id]?.pieces ?? 0) : null
                 }
@@ -9023,6 +9035,8 @@ export function ZdEstimateWorkbench({
                         ? dni
                         : DEFAULT_DNI_ZAPASU,
                     dniOkresu,
+                    signalDniZapasu: zdEstimateSignalDniZapasu(paramInfo as Parameters<typeof zdEstimateSignalDniZapasu>[0]),
+                    historySpikeCut: paramInfo?.bezSkokuZd === true ? false : undefined,
                     zapasMin: Number(zapasMin) || 0,
                     excludedTwIds: excludedIdsForRefresh,
                     packagingByTwId: packagingByTwIdForRefresh,
@@ -9225,6 +9239,8 @@ export function ZdEstimateWorkbench({
                         ? dni
                         : DEFAULT_DNI_ZAPASU,
                     dniOkresu,
+                    signalDniZapasu: zdEstimateSignalDniZapasu(paramInfo as Parameters<typeof zdEstimateSignalDniZapasu>[0]),
+                    historySpikeCut: paramInfo?.bezSkokuZd === true ? false : undefined,
                     zapasMin: Number(zapasMin) || 0,
                     excludedTwIds: excludedIdsForRefresh,
                     packagingByTwId: packagingByTwIdForRefresh,

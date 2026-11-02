@@ -20,6 +20,12 @@ export type ZdAutomatDailyProposal = {
   origin?: "night" | "manual" | "review" | null;
   /** Tworzenie ZD rozpoczęte, bez potwierdzenia z Subiekta (timeout) — czeka na uzgodnienie. */
   createAttemptedAt?: string | null;
+  /** Utworzone ZD (dok_Id) — wysyłka maila z panelu. */
+  dokId?: number | null;
+  /** Kiedy zatwierdzona albo odrzucona. */
+  decidedAt?: string | null;
+  /** Ostatni mail z tym ZD do dostawcy wysłany z OnTime; null = nie wysłany (albo wysłany poza OnTime). */
+  mailSentAt?: string | null;
 };
 
 /**
@@ -101,6 +107,14 @@ export function warsawKeyFromIso(iso: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw", year: "numeric", month: "2-digit", day: "2-digit" }).format(
     new Date(iso)
   );
+}
+
+/**
+ * Lista propozycji policzona dziś (nocny przebieg albo przeliczenie) — panel „Sprawdź i wyślij” pokazuje ją od razu,
+ * bez liczenia od nowa. Starsza (wczoraj i wcześniej) przelicza się przy otwarciu: stany są już inne.
+ */
+export function zdProposalListFromToday(p: { createdAt: string; refreshedAt?: string | null }, todayKey: string): boolean {
+  return warsawKeyFromIso(p.refreshedAt ?? p.createdAt) === todayKey;
 }
 
 export type ZdAutomatNightRunState =
@@ -227,6 +241,58 @@ export function zdAutomatLastResultLabel(p: ZdAutomatDailyProposal | undefined, 
     case "deferred":
       return `odłożona (minimum) · ${day}`;
   }
+}
+
+/**
+ * Gdzie jest zamówienie automatu na drodze „sprawdź → ZD w Subiekcie → mail do dostawcy”.
+ * review — czeka na sprawdzenie; unconfirmed — Subiekt nie potwierdził zapisu ZD; send — ZD jest, mail nie poszedł;
+ * sent — mail wysłany z OnTime; rejected — odrzucona dziś.
+ */
+export type ZdAutomatTodayStage = "review" | "unconfirmed" | "send" | "sent" | "rejected";
+
+export type ZdAutomatTodayOrder = {
+  supplierId: string;
+  supplierName: string;
+  proposal: ZdAutomatDailyProposal;
+  stage: ZdAutomatTodayStage;
+};
+
+const STAGE_RANK: Record<ZdAutomatTodayStage, number> = { unconfirmed: 0, review: 1, send: 2, sent: 3, rejected: 4 };
+
+/** Ile kroków z trzech („Sprawdzenie”, „ZD w Subiekcie”, „Mail”) jest za zamówieniem. */
+export function zdAutomatTodayStageStep(stage: ZdAutomatTodayStage): number {
+  return stage === "sent" ? 3 : stage === "send" ? 2 : 0;
+}
+
+/**
+ * Zamówienia automatu na dziś: czekające propozycje (najnowsza dostawcy) oraz te zatwierdzone lub odrzucone dziś.
+ * `done` = mail wysłany albo odrzucona — pasek postępu w panelu dziennym. Kolejność: najpierw to, co czeka na Ciebie.
+ */
+export function zdAutomatTodayOrders(
+  suppliers: readonly ZdAutomatDailySupplier[],
+  todayKey: string
+): { orders: ZdAutomatTodayOrder[]; done: number } {
+  const orders: ZdAutomatTodayOrder[] = [];
+  for (const s of suppliers) {
+    s.proposals.forEach((p, i) => {
+      const decidedToday = p.decidedAt != null && warsawKeyFromIso(p.decidedAt) === todayKey;
+      const stage: ZdAutomatTodayStage | null =
+        p.status === "pending" && i === 0
+          ? p.createAttemptedAt
+            ? "unconfirmed"
+            : "review"
+          : p.status === "accepted" && decidedToday
+            ? p.mailSentAt
+              ? "sent"
+              : "send"
+            : p.status === "rejected" && decidedToday
+              ? "rejected"
+              : null;
+      if (stage) orders.push({ supplierId: s.id, supplierName: s.name, proposal: p, stage });
+    });
+  }
+  orders.sort((a, b) => STAGE_RANK[a.stage] - STAGE_RANK[b.stage] || a.supplierName.localeCompare(b.supplierName, "pl"));
+  return { orders, done: orders.filter((o) => o.stage === "sent" || o.stage === "rejected").length };
 }
 
 /** Dopełniacz po „u” / „z”: u 1 dostawcy, u 2 / 5 dostawców. */

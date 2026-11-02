@@ -166,7 +166,7 @@ export function ProcurementRequestListFilterBar({
                     strokeWidth={2.25}
                     className={cn(
                       "shrink-0",
-                      active ? "text-amber-700" : "text-amber-600/80"
+                      active ? "text-amber-700" : "text-amber-700/80"
                     )}
                     aria-hidden
                   />

@@ -24,7 +24,7 @@ function PreviewRow({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-2 border-b border-slate-100 bg-white px-2.5 py-2 last:border-b-0"
+        "flex items-center justify-between gap-2 border-b border-slate-100 bg-card px-2.5 py-2 last:border-b-0"
       )}
     >
       <div className="min-w-0">
@@ -41,7 +41,7 @@ function PreviewRow({
         </div>
       </div>
       {action ? (
-        <span className="shrink-0 rounded-md border border-indigo-200 bg-white px-2 py-1 text-[0.625rem] font-semibold text-indigo-800 shadow-sm">
+        <span className="shrink-0 rounded-md border border-indigo-200 bg-card px-2 py-1 text-[0.625rem] font-semibold text-indigo-800 shadow-sm">
           {action}
         </span>
       ) : null}
@@ -128,7 +128,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
     case "moje":
       return (
         <div className="space-y-2">
-          <div className="overflow-hidden rounded-md border border-slate-200/90 bg-white shadow-sm">
+          <div className="overflow-hidden rounded-md border border-slate-200/90 bg-card shadow-sm">
             <div className="border-b border-slate-100 px-2.5 py-2 text-[0.625rem] font-semibold text-slate-700">
               Start dnia · pilne sprawy na dziś
             </div>
@@ -157,7 +157,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
             <div className="rounded-md border-2 border-indigo-400 bg-indigo-50 px-2 py-2 text-center text-[0.6875rem] font-semibold text-indigo-900">
               Zamówienie u dostawcy
             </div>
-            <div className="rounded-md border border-slate-200 bg-white px-2 py-2 text-center text-[0.6875rem] font-medium text-slate-600">
+            <div className="rounded-md border border-slate-200 bg-card px-2 py-2 text-center text-[0.6875rem] font-medium text-slate-600">
               Informacja o towarze
             </div>
           </div>
@@ -165,7 +165,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
             {INFORMACJA_FLOW_DIRECT.label} · e-mail + Moje
           </div>
           <div className="space-y-1.5">
-            <div className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[0.6875rem] text-slate-700">
+            <div className="rounded-md border border-slate-200 bg-card px-2.5 py-1.5 text-[0.6875rem] text-slate-700">
               <span className="font-medium text-slate-900">Straumann · implant</span>
               <span className="inline-flex items-center gap-0.5 text-slate-500">
                 <FlowChevron size={10} className="text-slate-300" />
@@ -173,7 +173,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
               </span>
               <p className="mt-1 text-[0.625rem] text-indigo-800/90">Klient: Klinika Smile</p>
             </div>
-            <div className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[0.6875rem] text-slate-700">
+            <div className="rounded-md border border-slate-200 bg-card px-2.5 py-1.5 text-[0.6875rem] text-slate-700">
               <span className="font-medium text-slate-900">Ivoclar · cement</span>
               <span className="inline-flex items-center gap-0.5 text-slate-500">
                 <FlowChevron size={10} className="text-slate-300" />
@@ -188,16 +188,16 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
     case "plan":
       return (
         <div className="space-y-2">
-          <div className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[0.6875rem] text-slate-500">
+          <div className="rounded-md border border-slate-200 bg-card px-2.5 py-1.5 text-[0.6875rem] text-slate-500">
             Szukaj dostawcy…
           </div>
           {["Straumann · 2 prośby", "Dentsply · 1 prośba"].map((row) => (
             <div
               key={row}
-              className="flex items-center justify-between rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[0.6875rem]"
+              className="flex items-center justify-between rounded-md border border-slate-200 bg-card px-2.5 py-1.5 text-[0.6875rem]"
             >
               <span className="font-medium text-slate-800">{row}</span>
-              <span className="text-indigo-600">rozwiń</span>
+              <span className="text-indigo-700">rozwiń</span>
             </div>
           ))}
           <div className="rounded-md border border-sky-100 bg-sky-50/70 px-2.5 py-1.5 text-[0.625rem] text-sky-900">
@@ -211,7 +211,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
           <div className="rounded-md border border-indigo-200 bg-indigo-50/80 px-2.5 py-1.5 text-[0.6875rem] font-semibold text-indigo-900">
             Zadaj pytanie
           </div>
-          <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2 text-[0.6875rem] text-slate-800">
+          <div className="rounded-md border border-slate-200 bg-card px-2.5 py-2 text-[0.6875rem] text-slate-800">
             <p className="font-semibold">Próbki implantów poza harmonogramem?</p>
             <p className="mt-1 text-[0.625rem] text-emerald-700">Odpowiedziano</p>
           </div>
@@ -227,7 +227,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
             <div className="flex-1 rounded-md border-2 border-indigo-400 bg-indigo-50 px-2 py-1.5 text-center text-[0.625rem] font-semibold text-indigo-900">
               ZK
             </div>
-            <div className="flex-1 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-center text-[0.625rem] font-medium text-slate-600">
+            <div className="flex-1 rounded-md border border-slate-200 bg-card px-2 py-1.5 text-center text-[0.625rem] font-medium text-slate-600">
               Archiwum
             </div>
           </div>
@@ -250,14 +250,14 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
             <div className="flex-1 rounded-md border-2 border-indigo-400 bg-indigo-50 px-2 py-1.5 text-center text-[0.625rem] font-semibold text-indigo-900">
               Notatki
             </div>
-            <div className="flex-1 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-center text-[0.625rem] font-medium text-slate-600">
+            <div className="flex-1 rounded-md border border-slate-200 bg-card px-2 py-1.5 text-center text-[0.625rem] font-medium text-slate-600">
               Archiwum
             </div>
           </div>
           <div className="rounded-md border border-violet-200 bg-violet-50/80 px-2.5 py-1.5 text-[0.625rem] text-violet-900">
             Do zrobienia dziś · notatka z przypomnieniem
           </div>
-          <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2 text-[0.6875rem] text-slate-700">
+          <div className="rounded-md border border-slate-200 bg-card px-2.5 py-2 text-[0.6875rem] text-slate-700">
             Oddzwonić do gabinetu - potwierdzić termin
           </div>
         </div>

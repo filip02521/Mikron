@@ -106,7 +106,7 @@ export function TeethProductLineChips({
                   }
                 : undefined
             }
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-md bg-white px-2 py-0.5 text-[0.6875rem] font-medium text-slate-700 ring-1 ring-inset ring-slate-200 transition-colors hover:bg-slate-50 sm:min-h-6"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-md bg-card px-2 py-0.5 text-[0.6875rem] font-medium text-slate-700 ring-1 ring-inset ring-slate-200 transition-colors hover:bg-slate-50 sm:min-h-6"
           >
             <span className={cn("size-2 rounded-full", accent.dot)} aria-hidden />
             {section.label}

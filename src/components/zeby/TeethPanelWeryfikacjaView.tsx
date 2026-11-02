@@ -107,7 +107,7 @@ export function TeethPanelWeryfikacjaView({
         action={
           <Link
             href="/zeby/kolejka"
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 sm:min-h-10"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-slate-200 bg-card px-4 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 sm:min-h-10"
           >
             Przejdź do kolejki
           </Link>

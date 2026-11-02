@@ -1,3 +1,18 @@
 {
-  "buildPath": "code"
+  "buildPath": "code",
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": [
+          "scripts/audit-design-tokens.test.ts"
+        ],
+        "createdAt": "2026-10-29T18:36:50.443Z",
+        "reason": "agent: test fixture strings listing class names for the audit rules, not rendered UI"
+      }
+    ]
+  }
 }

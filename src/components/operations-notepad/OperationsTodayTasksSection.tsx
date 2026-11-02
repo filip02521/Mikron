@@ -44,7 +44,7 @@ export function OperationsTodayTasksSection({
             <button
               type="button"
               onClick={() => navigate(note.id)}
-              className="flex w-full items-center justify-between gap-2 rounded-md border border-white/80 bg-white/90 px-3 py-2 text-left shadow-sm transition hover:border-violet-200 hover:bg-white"
+              className="flex w-full items-center justify-between gap-2 rounded-md border border-card/80 bg-card/90 px-3 py-2 text-left shadow-sm transition hover:border-violet-200 hover:bg-card"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">

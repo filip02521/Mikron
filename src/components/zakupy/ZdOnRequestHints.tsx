@@ -62,7 +62,7 @@ export function ZdOnRequestHints({
   };
 
   return (
-    <section aria-labelledby="zd-on-request-hints" className="rounded-lg border border-slate-200 bg-white px-4 py-3">
+    <section aria-labelledby="zd-on-request-hints" className="rounded-lg border border-slate-200 bg-card px-4 py-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h3 id="zd-on-request-hints" className="text-sm font-semibold text-slate-900">

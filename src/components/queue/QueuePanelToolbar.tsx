@@ -67,7 +67,7 @@ export function QueuePanelToolbar({
               }
             }}
             className={cn(
-              "flex min-w-0 flex-col items-start rounded-lg border bg-white px-3 py-2.5 text-left shadow-sm transition-colors duration-150 sm:px-4 sm:py-3",
+              "flex min-w-0 flex-col items-start rounded-lg border bg-card px-3 py-2.5 text-left shadow-sm transition-colors duration-150 sm:px-4 sm:py-3",
               controlFocusClass,
               active
                 ? "border-indigo-600 ring-1 ring-inset ring-indigo-600"

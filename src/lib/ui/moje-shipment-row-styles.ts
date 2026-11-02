@@ -3,7 +3,7 @@ import { salesTypography } from "@/lib/ui/ontime-theme";
 
 /** Jedna sekcja listy (nagłówek + wiersze) — zaokrąglenie tylko na zewnątrz. */
 export const mojeShipmentSectionShellClass =
-  "overflow-hidden rounded-lg border border-slate-200/80 bg-white shadow-sm shadow-slate-200/40";
+  "overflow-hidden rounded-lg border border-slate-200/80 bg-card shadow-sm shadow-slate-200/40";
 
 /** Układ wiersza — treść nad akcjami na wąskim ekranie. */
 export const mojeQueueRowLayoutClass =
@@ -76,7 +76,7 @@ export function mojeShipmentRowClass({
                 ? cn(deliveryCollapsedBg, "hover:brightness-[0.98]")
                 : isStock
                   ? "bg-slate-50/70 hover:bg-slate-50"
-                  : "bg-white hover:bg-slate-50/70"
+                  : "bg-card hover:bg-slate-50/70"
   );
 }
 
@@ -96,7 +96,7 @@ export const mojeShipmentExpandedMetaShellClass =
 
 /** Szczegóły pod nagłówkiem wiersza: płaskie, oddzielone cienką linią — bez karty w karcie. */
 export const mojeShipmentExpandedPanelClass =
-  "space-y-2 border-t border-slate-200/70 bg-white px-3 py-3 sm:px-4 sm:py-3.5";
+  "space-y-2 border-t border-slate-200/70 bg-card px-3 py-3 sm:px-4 sm:py-3.5";
 
 export const mojeShipmentExpandedInfoBlockClass =
   "space-y-1.5 px-3 py-2";
@@ -124,7 +124,7 @@ export const mojeShipmentLinesHeaderTitleClass = cn(
 );
 
 export const mojeShipmentLinesShellClass =
-  "overflow-hidden rounded-lg border border-slate-200/70 bg-white";
+  "overflow-hidden rounded-lg border border-slate-200/70 bg-card";
 
 export const mojeShipmentLineRowClass =
   "border-b border-slate-100 px-3 py-2 last:border-b-0 sm:py-2.5";

@@ -28,7 +28,7 @@ export function SupplierDrawerLeadTime({
   return (
     <section
       className={cn(
-        "rounded-lg border border-slate-200/70 bg-white px-3 py-2.5",
+        "rounded-lg border border-slate-200/70 bg-card px-3 py-2.5",
         className
       )}
       aria-label={model.title}

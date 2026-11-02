@@ -589,6 +589,8 @@ export function expandZdEstimateBoms(
 
 export type RematerializeSoloAfterBomOptions = {
   dniZapasu: number;
+  /** Dni zwykłego zamówienia, gdy bieg jest dłuższy (pole ponad kartę, horyzont) — podbicia i skok jak przy nim. */
+  signalDniZapasu?: number | null;
   dniOkresu?: number | null;
   zapasMin?: number;
   salesTrack?: boolean;
@@ -670,6 +672,7 @@ export function rematerializeSoloAfterBom(
         dostepne,
         otwarteZd: otwarteZdPieces,
         dniZapasu,
+        signalDniZapasu: options.signalDniZapasu,
         dniOkresu,
         enabled: true,
         cutsEnabled: salesTrackCuts,
@@ -692,6 +695,7 @@ export function rematerializeSoloAfterBom(
           sprzedazDziennie: tempo,
           coverStock: coverForQty,
           dniZapasu,
+          lastOrderDniZapasu: options.signalDniZapasu,
           dniOkresu,
           lastOrderedQty: hist.lastOrderedQty,
           linkedAt: hist.linkedAt,

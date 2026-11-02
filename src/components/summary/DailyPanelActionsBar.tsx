@@ -31,7 +31,7 @@ import { supplierHubPaths, supplierVacationsHref } from "@/lib/supplier-hub";
 
 /** Przycisk z ikoną w pasku panelu — styl Secondary, kwadrat o wysokości pola wyszukiwania. */
 export const dailyToolbarIconButtonClass =
-  "inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 shadow-sm transition-colors duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:w-10";
+  "inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-card text-slate-700 shadow-sm transition-colors duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:w-10";
 
 export function DailyPanelActionsBar({
   summary,

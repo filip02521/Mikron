@@ -45,8 +45,8 @@ function StepMarker({ tone, index }: { tone: StepTone; index: number }) {
         "flex size-6 shrink-0 items-center justify-center rounded-full text-[0.6875rem] font-semibold",
         tone === "done" && "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200",
         tone === "warn" && "bg-amber-400 text-amber-950",
-        tone === "todo" && "bg-white text-indigo-700 ring-2 ring-indigo-500",
-        tone === "idle" && "bg-white text-slate-400 ring-1 ring-slate-300",
+        tone === "todo" && "bg-card text-indigo-700 ring-2 ring-indigo-500",
+        tone === "idle" && "bg-card text-slate-400 ring-1 ring-slate-300",
       )}
       aria-hidden
     >

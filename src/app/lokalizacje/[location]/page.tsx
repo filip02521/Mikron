@@ -118,10 +118,10 @@ export default async function LocationPage({
           automat: automat[s.id] ?? null,
           rowColor:
             s.is_active === false
-              ? "#f1f5f9"
+              ? "var(--color-slate-100)"
               : getRowColorForDate(
                   parseDateOnly(s.schedule?.computed_next_date ?? null)
-                ) ?? "#fff",
+                ) ?? "var(--card)",
         }))}
       />
     </SuppliersHubShell>

@@ -115,7 +115,7 @@ export function TeethOrderFileUpload({
             type="button"
             disabled={pending}
             onClick={handleDownload}
-            className="inline-flex min-h-11 min-w-0 max-w-full items-center gap-1 rounded-md border border-indigo-200 bg-white px-2 py-1 text-xs font-medium sm:min-h-8 text-indigo-800 shadow-sm transition-colors hover:bg-indigo-50 disabled:opacity-50"
+            className="inline-flex min-h-11 min-w-0 max-w-full items-center gap-1 rounded-md border border-indigo-200 bg-card px-2 py-1 text-xs font-medium sm:min-h-8 text-indigo-800 shadow-sm transition-colors hover:bg-indigo-50 disabled:opacity-50"
             title={`Pobierz: ${fileName}`}
           >
             {pending ? (
@@ -130,7 +130,7 @@ export function TeethOrderFileUpload({
               type="button"
               disabled={pending}
               onClick={handleRemove}
-              className="inline-flex size-11 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-red-600 disabled:opacity-50 sm:size-8"
+              className="inline-flex size-11 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-card text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-red-700 disabled:opacity-50 sm:size-8"
               title="Usuń plik z całej grupy dostawcy"
               aria-label="Usuń plik zamówienia z całej grupy dostawcy"
             >
@@ -141,7 +141,7 @@ export function TeethOrderFileUpload({
         {slotHint ? (
           <span className="text-[0.625rem] leading-snug text-slate-500">{slotHint}</span>
         ) : null}
-        {error ? <span className="text-[0.625rem] leading-snug text-red-600">{error}</span> : null}
+        {error ? <span className="text-[0.625rem] leading-snug text-red-700">{error}</span> : null}
       </div>
     );
   }
@@ -171,7 +171,7 @@ export function TeethOrderFileUpload({
           "inline-flex min-h-11 items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium shadow-sm transition-colors disabled:opacity-50 sm:min-h-8",
           required
             ? "border-indigo-200 bg-indigo-50 text-indigo-800 hover:bg-indigo-100"
-            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+            : "border-slate-200 bg-card text-slate-600 hover:bg-slate-50 hover:text-slate-900"
         )}
         title="Załącz jeden plik zamówienia (Excel, PDF lub XML) na grupę dostawcy - wymagany przed oznaczeniem"
       >
@@ -181,7 +181,7 @@ export function TeethOrderFileUpload({
       {slotHint ? (
         <span className="text-[0.625rem] leading-snug text-slate-500">{slotHint}</span>
       ) : null}
-      {error ? <span className="text-[0.625rem] leading-snug text-red-600">{error}</span> : null}
+      {error ? <span className="text-[0.625rem] leading-snug text-red-700">{error}</span> : null}
     </div>
   );
 }

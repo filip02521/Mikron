@@ -57,11 +57,11 @@ export function TeethQueueOrderSummary({
           Niezamówione zęby u tego dostawcy, zsumowane osobno dla każdej linii. Skopiuj i wklej do zamówienia.
         </p>
         <Button size="sm" variant="secondary" className="min-h-8" onClick={() => void copy()}>
-          {copied ? <IconCircleCheck size={14} className="text-emerald-600" /> : <IconClipboardList size={14} />}
+          {copied ? <IconCircleCheck size={14} className="text-emerald-700" /> : <IconClipboardList size={14} />}
           {copied ? "Skopiowano" : "Kopiuj zestawienie"}
         </Button>
       </div>
-      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-card">
         <table className="w-full min-w-[26rem] text-left text-sm">
           <thead className="bg-slate-50 text-[0.6875rem] font-semibold text-slate-500">
             <tr>

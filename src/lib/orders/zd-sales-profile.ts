@@ -257,6 +257,48 @@ export function sales90CappedFromProfile(
   return sales90FromProfile(capZdSalesProfileSpikes(net));
 }
 
+/** Pełny brak w oknie: tempo z tylu ostatnich okien profilu sprzed okna Kreatora. */
+export const ZD_STOCKOUT_FALLBACK_WINDOWS = 3;
+
+export type ZdStockoutFallbackMeta = {
+  /** Tempo przyjęte z profilu, w sztukach na 30 dni. */
+  rate30: number;
+  /** Okna profilu, z których liczone (sprzed okna Kreatora). */
+  windowsUsed: number;
+};
+
+/**
+ * Towar bez stanu przez całe okno ma sprzedaż 0 → Subiekt daje cel 0 i radar mówi „bez sprzedaży”,
+ * choć schodził do dnia, w którym się skończył. Gdy stan ≤ 0 i sprzedaż w oknie 0, tempo bierzemy
+ * ze średniej ostatnich okien profilu sprzed okna Kreatora (bez okien nakładających się na okno).
+ * Nic nie zmienia, gdy jest stan, jest sprzedaż albo profil też jest pusty.
+ */
+export function applyZdStockoutFallbackToLine<
+  T extends { sprzedazOkres?: number | null; sprzedazDziennie?: number | null; celZapasu?: number | null; dostepne?: number | null },
+>(
+  line: T,
+  windows: readonly number[] | null | undefined,
+  input: { dniOkresu: number; dniZapasu: number; zapasMin: number }
+): T & { stockoutFallback?: ZdStockoutFallbackMeta } {
+  if (!windows || Math.max(0, Number(line.sprzedazOkres) || 0) > 0) return line;
+  if ((Number(line.dostepne) || 0) > 0) return line;
+  const p = ZD_SALES_PROFILE;
+  const days = Math.max(1, input.dniOkresu);
+  const overlap = Math.min(windows.length - 1, Math.max(1, Math.ceil(days / p.windowDays)));
+  const prev = windows.slice(0, windows.length - overlap).map((x) => Math.max(0, Number(x) || 0));
+  const used = prev.slice(-ZD_STOCKOUT_FALLBACK_WINDOWS);
+  const sum = used.reduce((a, b) => a + b, 0);
+  if (!(sum > 0)) return line;
+  const rate = sum / (used.length * p.windowDays);
+  return {
+    ...line,
+    sprzedazOkres: rate * days,
+    sprzedazDziennie: rate,
+    celZapasu: Math.round((rate * Math.max(1, input.dniZapasu) + Math.max(0, input.zapasMin)) * 1e6) / 1e6,
+    stockoutFallback: { rate30: rate * p.windowDays, windowsUsed: used.length },
+  };
+}
+
 /** Ile pozycji zmieniło wygładzenie w jednym Policz. */
 export type ZdSalesSmoothingSummary = {
   spike: number;

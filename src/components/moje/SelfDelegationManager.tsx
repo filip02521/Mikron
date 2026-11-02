@@ -140,7 +140,7 @@ export function SelfDelegationManager({
           <div className="mb-4 space-y-4 rounded-md border border-slate-200 bg-slate-50/50 p-4">
             <Field label="Zastępca">
               <select
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-200/40"
+                className="w-full rounded-md border border-slate-200 bg-card px-3 py-2 text-sm text-slate-900 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-200/40"
                 value={form.delegateProfileId}
                 onChange={(e) => setForm({ ...form, delegateProfileId: e.target.value })}
               >
@@ -207,7 +207,7 @@ export function SelfDelegationManager({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-rose-600 hover:text-rose-700"
+                    className="text-rose-700 hover:text-rose-800"
                     onClick={() => setDeleteTarget(d)}
                   >
                     Usuń

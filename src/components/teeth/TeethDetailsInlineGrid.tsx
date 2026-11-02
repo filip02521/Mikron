@@ -174,7 +174,7 @@ export function TeethDetailsInlineGrid({
                 }
               }}
               disabled={disabled}
-              className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-700 focus:ring-indigo-500"
             />
             Wszystkie takie same
           </label>

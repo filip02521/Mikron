@@ -756,7 +756,7 @@ export function SuppliersAdminClient({
                         onClick={() => addSupplierToTeeth(s.id)}
                         className={cn(
                           "group flex min-h-12 w-full items-center gap-3 rounded-md px-2 py-2.5 text-left transition-colors",
-                          "hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
+                          "hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
                           "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
                         )}
                       >

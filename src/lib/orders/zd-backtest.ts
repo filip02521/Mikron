@@ -426,10 +426,16 @@ export function zdBacktestDecideOrder(a: {
 }): { rate: number; cel: number; celTracked: number; pieces: number } {
   const W = Math.max(1, a.windowDays);
   let gross = a.seenWindow + a.prosbaWindow;
+  // Sprzedaż sprzed mnożnika braków — profil klasyfikuje skok na niej (jak silnik).
+  const grossPre = gross;
+  let stockoutApplied = false;
   if (a.stockout && gross > 0) {
     const meta = computeStockoutSalesFactor(a.stockout);
     const eff = meta ? stockoutMetaExcludingProsba(meta, gross, a.prosbaWindow) : null;
-    if (eff) gross *= eff.factor;
+    if (eff) {
+      gross *= eff.factor;
+      stockoutApplied = true;
+    }
   }
   let rate: number;
   let sales: number;
@@ -437,7 +443,7 @@ export function zdBacktestDecideOrder(a: {
     const profile = [...(a.profileHistory ?? []), ...a.floorGross];
     const pm = resolveZdSalesProfile({
       windows: profile,
-      sprzedazOkres: gross,
+      sprzedazOkres: grossPre,
       dniOkresu: W,
       prosbaPieces: a.prosbaWindow,
       smoothing: true,
@@ -462,6 +468,8 @@ export function zdBacktestDecideOrder(a: {
         dniZapasu: a.dniZapasu,
         dniOkresu: W,
         policy: a.trackPolicy,
+        // Jak silnik: po mnożniku braków bez thin_cover / sell_through (zapasMin w backteście = 0).
+        stockoutApplied,
       }).celTracked
     : cel;
   if (a.trackPolicy && a.lastOrder) {

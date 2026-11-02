@@ -5,7 +5,7 @@ describe("boardQuestionRowClass", () => {
   it("stosuje jaśniejsze tło na co drugim zwiniętym wierszu bez statusu", () => {
     const even = boardQuestionRowClass({ unseen: false, open: false, expanded: false, alternate: false });
     const odd = boardQuestionRowClass({ unseen: false, open: false, expanded: false, alternate: true });
-    expect(even).toContain("bg-white");
+    expect(even).toContain("bg-card");
     expect(odd).toContain("bg-slate-50/60");
   });
 
@@ -16,7 +16,7 @@ describe("boardQuestionRowClass", () => {
       expanded: true,
       alternate: true,
     });
-    expect(row).toContain("bg-white");
+    expect(row).toContain("bg-card");
     expect(row).not.toContain("bg-slate-100");
   });
 

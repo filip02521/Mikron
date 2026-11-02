@@ -1,6 +1,8 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { BrandLoader } from "@/components/ui/BrandLoader";
+import { SegmentedControl, type SegmentOption } from "@/components/ui/SegmentedControl";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 import { formatQty } from "@/lib/orders/zd-estimate-manual";
 import {
@@ -11,6 +13,23 @@ import {
   type ZdProductSaleRow,
 } from "@/lib/orders/zd-product-history";
 import { cn } from "@/lib/cn";
+import { onRequestCustomerKey, onRequestDeliveryDate } from "@/lib/orders/zd-on-request-detect";
+import {
+  buildZdProductMovement,
+  formatZdProductMovementSummary,
+  zdMovementRangeFrom,
+  zdMovementWindowLabel,
+  type ZdMovementDelivery,
+  type ZdMovementRange,
+  type ZdMovementSale,
+} from "@/lib/orders/zd-product-movement";
+
+/** „Starsze zakupy” — cała historia ZD z kopii, dociągana na żądanie (karta produktu). */
+export type ZdProductOlderPurchases =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "ok"; since: string | null; truncated: boolean }
+  | { status: "error"; message: string };
 import { warsawDateKeyDaysAgo } from "@/lib/time/warsaw";
 
 /** Ile dni otwarty ZD bez faktury pokazujemy jako „w drodze”. */
@@ -145,13 +164,20 @@ export function ZdProductPurchasesSection({
   state,
   titleId,
   unitFor,
+  older,
+  onLoadOlder,
 }: {
   state: ZdProductHistoryState;
   titleId: string;
   /** Jednostka i przeliczenie na sztuki dla linii ZD (towar / strona pary). */
   unitFor: (row: ZdProductPurchaseRow) => { label: string; piecesPerUnit: number | null };
+  /** Starsza historia (cała kopia ZD) — gdy wczytana, `state.purchases.rows` już ją zawiera. */
+  older?: ZdProductOlderPurchases;
+  onLoadOlder?: () => void;
 }) {
+  const [showAll, setShowAll] = useState(false);
   const purchases = state.status === "ok" ? state.purchases : null;
+  const olderLoaded = older?.status === "ok";
   // Jedna jednostka w całej historii → rytm w niej; para / mieszane jednostki → w sztukach.
   const units = purchases?.ok ? purchases.rows.map(unitFor) : [];
   const uniform = units.length > 0 && units.every((u) => u.label === units[0]!.label && u.piecesPerUnit === units[0]!.piecesPerUnit);
@@ -162,7 +188,7 @@ export function ZdProductPurchasesSection({
   return (
     <section aria-labelledby={`${titleId}-buy`}>
       <h3 id={`${titleId}-buy`} className={headingClass}>
-        Nasze zakupy (12 mies.)
+        Nasze zakupy {olderLoaded && older.since ? `(od ${formatDatePlKey(older.since)})` : olderLoaded ? "(cała historia)" : "(12 mies.)"}
       </h3>
       {state.status === "loading" ? (
         <Loading>Wczytuję zakupy…</Loading>
@@ -181,7 +207,7 @@ export function ZdProductPurchasesSection({
             </p>
           ) : null}
           <ul className={listClass}>
-            {purchases.rows.slice(0, PURCHASES_LIST_MAX).map((r) => {
+            {(showAll ? purchases.rows : purchases.rows.slice(0, PURCHASES_LIST_MAX)).map((r) => {
               const u = unitFor(r);
               // Otwarty ZD bez faktury jest „w drodze” tylko przez jakiś czas — starszy to raczej porzucony.
               const inTransitSince = warsawDateKeyDaysAgo(ZD_IN_TRANSIT_MAX_DAYS);
@@ -239,8 +265,189 @@ export function ZdProductPurchasesSection({
               );
             })}
             {purchases.rows.length > PURCHASES_LIST_MAX ? (
-              <li className="px-3 py-1.5 text-xs text-slate-500">i {purchases.rows.length - PURCHASES_LIST_MAX}{" "}
-                {polishPluralWord(purchases.rows.length - PURCHASES_LIST_MAX, "starsza", "starsze", "starszych")}
+              <li className="px-3 py-1.5 text-xs text-slate-500">
+                <button type="button" className="underline-offset-2 hover:underline" onClick={() => setShowAll((v) => !v)}>
+                  {showAll
+                    ? "Pokaż mniej"
+                    : `Pokaż wszystkie (${purchases.rows.length - PURCHASES_LIST_MAX} ${polishPluralWord(purchases.rows.length - PURCHASES_LIST_MAX, "starsza", "starsze", "starszych")})`}
+                </button>
+              </li>
+            ) : null}
+          </ul>
+        </>
+      )}
+      {purchases?.ok && onLoadOlder && !olderLoaded ? (
+        <p className="mt-1.5 text-xs text-slate-600">
+          {older?.status === "loading" ? (
+            <Loading>Wczytuję starsze zakupy…</Loading>
+          ) : older?.status === "error" ? (
+            <span className="text-amber-800">{older.message}</span>
+          ) : (
+            <button type="button" className="underline-offset-2 hover:underline" onClick={onLoadOlder}>
+              Starsze zakupy - cała historia ZD z kopii (ilości i ceny z lat wcześniejszych)
+            </button>
+          )}
+        </p>
+      ) : olderLoaded && older.truncated ? (
+        <p className="mt-1.5 text-xs text-slate-500">Pokazane 500 najnowszych linii ZD - starsze pominięte.</p>
+      ) : null}
+    </section>
+  );
+}
+
+const MOVEMENT_LIST_MAX = 24;
+
+/**
+ * Ruch towaru: ZD, przyjęcia (FZ) i sprzedaż w jednej osi czasu (najnowsze pierwsze). Przyjęcie wzięte
+ * w całości przez jednego klienta i jego sprzedaże są wyróżnione — tak widać zakup pod prośbę
+ * (1 szt przychodzi, po kilku dniach schodzi do jednego klienta) bez liczenia w głowie.
+ */
+export function ZdProductMovementSection({
+  state,
+  titleId,
+  unitFor,
+  salesWindow,
+  older,
+  onLoadOlder,
+}: {
+  state: ZdProductHistoryState;
+  titleId: string;
+  unitFor: (row: ZdProductPurchaseRow) => { label: string; piecesPerUnit: number | null };
+  /** Okno sprzedaży, z którego liczony jest zapas (domyślny zakres osi, nie krócej niż miesiąc). */
+  salesWindow?: { dataOd: string; dataDo: string } | null;
+  older?: ZdProductOlderPurchases;
+  onLoadOlder?: () => void;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const [range, setRange] = useState<ZdMovementRange>("window");
+  const today = warsawDateKeyDaysAgo(0);
+  const from = zdMovementRangeFrom(range, salesWindow, today);
+  const movement = useMemo(() => {
+    if (state.status !== "ok" || !state.purchases.ok || !state.sales.ok) return null;
+    const inTransitSince = warsawDateKeyDaysAgo(ZD_IN_TRANSIT_MAX_DAYS);
+    const deliveries: ZdMovementDelivery[] = state.purchases.rows.flatMap((r) => {
+      const date = onRequestDeliveryDate({ fzDate: r.fzDate, zdDate: r.date });
+      if (!date) return [];
+      const inTransit = !r.fzDate && r.zdDone === false && (r.date ?? "") >= inTransitSince;
+      return [{ date, pieces: r.qty * (unitFor(r).piecesPerUnit ?? 1), dokNr: r.dokNr, fzNr: r.fzNr ?? null, zdDate: r.date, inTransit }];
+    });
+    const sales: ZdMovementSale[] = state.sales.rows.map((s, i) => ({
+        date: s.date,
+        dokNr: s.dokNr,
+        khKey: onRequestCustomerKey(s, s.dokNr || i),
+        khName: s.khSymbol === "PARAGON" ? "Paragon" : s.khName || s.khSymbol || null,
+        pieces: s.pieces,
+        rola: s.rola,
+      }));
+    // Zakres w środku: sprzedaż sprzed zakresu nadal dopasowuje dostawę z jego początku (okno −7 dni).
+    return buildZdProductMovement(deliveries, sales, from);
+  }, [state, unitFor, from]);
+  const rangeOptions: SegmentOption<ZdMovementRange>[] = [
+    { value: "window", label: zdMovementWindowLabel(salesWindow), title: "Okno sprzedaży, z którego liczony jest zapas (nie krócej niż miesiąc)" },
+    { value: "3m", label: "3 mies." },
+    { value: "12m", label: "12 mies." },
+    ...(older?.status === "ok" || onLoadOlder
+      ? [{ value: "all" as const, label: "cała historia", title: "Zakupy z całej kopii ZD; sprzedaż z Subiekta tylko z 12 miesięcy" }]
+      : []),
+  ];
+  const summary = movement ? formatZdProductMovementSummary(movement) : null;
+  const events = movement ? (showAll ? movement.events : movement.events.slice(0, MOVEMENT_LIST_MAX)) : [];
+  return (
+    <section aria-labelledby={`${titleId}-movement`}>
+      <h3 id={`${titleId}-movement`} className={headingClass}>
+        Ruch towaru
+      </h3>
+      <SegmentedControl
+        className="mt-1.5"
+        density="compact"
+        ariaLabel="Zakres ruchu towaru"
+        value={range}
+        options={rangeOptions}
+        onChange={(next) => {
+          setRange(next);
+          if (next === "all" && older?.status !== "ok" && older?.status !== "loading") onLoadOlder?.();
+        }}
+      />
+      {range === "all" ? (
+        <p className="mt-1 text-xs text-slate-500">
+          {older?.status === "loading" ? "Wczytuję starsze zakupy…" : "Zakupy z całej kopii ZD; sprzedaż z Subiekta tylko z 12 miesięcy."}
+        </p>
+      ) : null}
+      {state.status === "loading" ? (
+        <Loading>Wczytuję ruch towaru…</Loading>
+      ) : !movement ? (
+        <Muted tone="amber">Ruch towaru niedostępny - brak historii zakupów albo sprzedaży.</Muted>
+      ) : movement.events.length === 0 ? (
+        <Muted>Brak ZD, przyjęć i sprzedaży tego towaru w tym zakresie.</Muted>
+      ) : (
+        <>
+          {summary ? <p className="mt-1.5 text-sm text-slate-800">{summary}</p> : null}
+          <ul className={listClass}>
+            {events.map((e, i) => {
+              const matched = e.kind === "in" ? e.takenBy != null : e.kind === "out" ? e.fromDelivery != null : false;
+              return (
+                <li key={`${e.kind}-${e.date}-${i}`} className={cn(rowClass, matched && "bg-slate-50")}>
+                  <span className="min-w-0 text-slate-700">
+                    <span className="block truncate">
+                      <span className="tabular-nums">{formatDatePlKey(e.date)}</span>
+                      {e.kind === "zd" ? (
+                        <>
+                          <span className="ml-2 text-slate-800">Zamówiono</span>
+                          {e.dokNr ? <span className="ml-2 font-mono text-xs text-slate-500">{e.dokNr}</span> : null}
+                          {e.inTransit ? <span className="ml-2 text-xs text-slate-500">w drodze</span> : null}
+                        </>
+                      ) : e.kind === "in" ? (
+                        <>
+                          <span className="ml-2 text-slate-800">Przyjęcie</span>
+                          {e.fzNr ? <span className="ml-2 font-mono text-xs text-slate-500">{e.fzNr}</span> : null}
+                        </>
+                      ) : (
+                        <>
+                          <span className="ml-2 text-slate-800">{e.khName ?? e.dokNr}</span>
+                          <span className="ml-2 text-xs text-slate-500">{ROLE_LABEL[e.rola]}</span>
+                        </>
+                      )}
+                    </span>
+                    {e.kind === "zd" && e.gapDays != null ? (
+                      <span className="block text-xs text-slate-500">
+                        po {e.gapDays} {polishPluralWord(e.gapDays, "dniu", "dniach", "dniach")} od poprzedniego ZD
+                      </span>
+                    ) : e.kind === "in" && e.takenBy ? (
+                      <span className="block text-xs font-medium text-slate-800">
+                        → w {e.takenBy.days} {polishPluralWord(e.takenBy.days, "dzień", "dni", "dni")} wziął {e.takenBy.name} (
+                        {formatQty(e.takenBy.pieces)} szt)
+                      </span>
+                    ) : e.kind === "out" && e.fromDelivery ? (
+                      <span className="block text-xs text-slate-500">
+                        z dostawy {e.fromDelivery.fzNr ?? e.fromDelivery.dokNr ?? ""}, {e.fromDelivery.days}{" "}
+                        {polishPluralWord(e.fromDelivery.days, "dzień", "dni", "dni")} po przyjęciu
+                      </span>
+                    ) : null}
+                  </span>
+                  <span
+                    className={cn(
+                      "shrink-0 tabular-nums font-medium",
+                      e.kind === "zd" ? "text-slate-500" : e.kind === "in" ? "text-slate-900" : e.pieces < 0 ? "text-slate-500" : "text-slate-900"
+                    )}
+                  >
+                    {e.kind === "in" ? "+" : e.kind === "out" ? "−" : ""}
+                    {formatQty(Math.abs(e.pieces))} szt
+                  </span>
+                </li>
+              );
+            })}
+            {movement.events.length > MOVEMENT_LIST_MAX ? (
+              <li className="px-3 py-1.5 text-xs text-slate-500">
+                <button type="button" className="underline-offset-2 hover:underline" onClick={() => setShowAll((v) => !v)}>
+                  {showAll
+                    ? "Pokaż mniej"
+                    : `Pokaż wszystkie (${movement.events.length - MOVEMENT_LIST_MAX} ${polishPluralWord(
+                        movement.events.length - MOVEMENT_LIST_MAX,
+                        "wcześniejszy",
+                        "wcześniejsze",
+                        "wcześniejszych"
+                      )})`}
+                </button>
               </li>
             ) : null}
           </ul>

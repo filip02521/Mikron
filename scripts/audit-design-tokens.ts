@@ -5,6 +5,8 @@
  * - wersaliki poza nagłówkiem grupy menu (`uppercase`, `text-transform: uppercase`);
  * - rozmiar tekstu w px (`text-[11px]`) poza chrome Kreatora ZD — rem rośnie z ustawieniem
  *   „większy tekst” (`html[data-font-scale]`), px nie.
+ * - biała powierzchnia (`bg-white`, `ring-white` …) zamiast `bg-card` / `ring-card` i tło pod oknem `bg-slate-900/N`
+ *   zamiast `bg-scrim/N` — w ciemnym motywie oba wyglądałyby jasno (docs/plans/ciemny-tryb.md).
  * Uzasadniony wyjątek: komentarz `design-ok: <powód>` w tej samej linii albo do dwóch linii wyżej.
  * Szablony maili (`src/lib/email/`) piszą inline CSS dla klientów poczty — poza audytem.
  */
@@ -31,6 +33,34 @@ const RULES: Rule[] = [
     re: /(?<![\w-])uppercase(?![\w-])|text-transform:\s*uppercase/,
     css: true,
     message: "wersaliki tylko w nagłówku grupy menu (DESIGN.md → „Wersaliki tylko w menu”)",
+  },
+  {
+    id: "biel",
+    re: /(?<![\w-])(?:[a-z0-9-]+:)*(bg|ring|border|from|via|to)-white(?![\w-])/,
+    // Biel na wypełnieniu (licznik na głównym przycisku) zostaje białą w obu motywach.
+    allowIf: /(?<![\w-])text-white(?![\w-])/,
+    message: "biała powierzchnia — użyj bg-card / ring-card / border-card, żeby działał ciemny motyw (docs/plans/ciemny-tryb.md)",
+  },
+  {
+    id: "scrim",
+    re: /(?<![\w-])(?:[a-z0-9-]+:)*bg-slate-(900|950)\/([2-9]\d|100)(?![\w\d])/,
+    message: "tło pod oknem — użyj bg-scrim/N; slate-900 w ciemnym motywie jest jasny",
+  },
+  {
+    id: "krok600",
+    re: /(?<![\w-])(?:[a-z0-9-]+:)*text-(indigo|violet|purple|fuchsia|pink|blue|cyan|teal|red|rose|emerald|green|lime|amber|orange|yellow)-600(?![\w-])/,
+    message: "krok 600 Petrolu i stanów to wypełnienie — tekst od 700 (DESIGN.md, docs/plans/ciemny-tryb.md §2)",
+  },
+  {
+    id: "fokus",
+    // Tylko 600 (wskaźnik fokusu z klawiatury); poświata pola focus:ring-indigo-500/20 zostaje z palety.
+    re: /(?<![\w-])(?:[a-z0-9-]+:)*(focus|focus-visible|focus-within):(ring|outline)-(indigo|violet)-600(?![\w-])/,
+    message: "pierścień fokusu — użyj ring-focus / outline-focus (w ciemnym motywie Petrol 600 ma za mały kontrast)",
+  },
+  {
+    id: "wypelnienie",
+    re: /(?<![\w-])(?:[a-z0-9-]+:)*(hover|active):bg-(indigo|violet|purple|fuchsia|pink|blue|cyan|teal|red|rose|emerald|green|lime|amber|orange|yellow|sky)-(700|800|900|950)(?![\w/-])/,
+    message: "hover/wciśnięcie wypełnienia — użyj bg-primary-hover, bg-danger-hover, bg-success-hover … (w ciemnym kroki 700+ są tekstem)",
   },
   {
     id: "px",

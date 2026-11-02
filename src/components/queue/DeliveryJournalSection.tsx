@@ -678,11 +678,11 @@ export function DeliveryJournalSection({
                       <>
                         {" "}
                         Skrót zapisu:{" "}
-                        <kbd className="rounded border border-slate-200 bg-white px-1 font-mono text-[0.625rem]">
+                        <kbd className="rounded border border-slate-200 bg-card px-1 font-mono text-[0.625rem]">
                           Ctrl
                         </kbd>
                         +
-                        <kbd className="rounded border border-slate-200 bg-white px-1 font-mono text-[0.625rem]">
+                        <kbd className="rounded border border-slate-200 bg-card px-1 font-mono text-[0.625rem]">
                           Enter
                         </kbd>
                         .

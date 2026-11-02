@@ -82,7 +82,7 @@ export function ZdEstimateIndividualServicesSection({
           <div className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
-              className="inline-flex h-8 min-w-0 items-center gap-1.5 rounded-md px-1 text-left transition hover:bg-amber-100/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+              className="inline-flex h-8 min-w-0 items-center gap-1.5 rounded-md px-1 text-left transition hover:bg-amber-100/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
               aria-expanded={expanded}
               onClick={() => setExpanded((v) => !v)}
             >
@@ -155,7 +155,7 @@ export function ZdEstimateIndividualServicesSection({
       ) : null}
 
       {expanded ? (
-        <ul className="mt-2 max-h-[8rem] divide-y divide-amber-100/90 overflow-y-auto overscroll-contain rounded-md bg-white/40 ring-1 ring-amber-100/80">
+        <ul className="mt-2 max-h-[8rem] divide-y divide-amber-100/90 overflow-y-auto overscroll-contain rounded-md bg-card/40 ring-1 ring-amber-100/80">
           {serviceLines.map((line) => (
             <li
               key={line.key}

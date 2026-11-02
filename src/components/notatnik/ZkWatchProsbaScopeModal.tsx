@@ -357,7 +357,7 @@ export function ZkWatchProsbaScopeModal({
               onClick={() => void save()}
               className={cn(
                 orderCount > 0 && !saving &&
-                  "bg-indigo-600 hover:bg-indigo-700"
+                  "bg-indigo-600 hover:bg-primary-hover"
               )}
             >
               {saving
@@ -376,7 +376,7 @@ export function ZkWatchProsbaScopeModal({
     >
       <div className="overflow-hidden rounded-lg border border-indigo-200/60 bg-indigo-50/80 px-3.5 py-2.5">
         <div className="flex items-start gap-2.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-indigo-100/80 text-indigo-600">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-indigo-100/80 text-indigo-700">
             <IconClipboardList size={16} strokeWidth={2} />
           </div>
           <div className="min-w-0 flex-1">
@@ -432,7 +432,7 @@ export function ZkWatchProsbaScopeModal({
         </div>
         <ul
           className={cn(
-            "divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200/80 bg-white",
+            "divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200/80 bg-card",
             awaitingAutoMark && "pointer-events-none opacity-60"
           )}
           aria-busy={awaitingAutoMark || undefined}
@@ -499,7 +499,7 @@ export function ZkWatchProsbaScopeModal({
                         ? `${line.product} - do zamówienia, odznacz aby pominąć`
                         : `${line.product} - pominięte, zaznacz aby zamówić`
                     }
-                    className="mt-0.5 size-4 shrink-0 rounded-md border-slate-300 text-indigo-600 transition-colors focus:ring-2 focus:ring-indigo-500/40 focus:ring-offset-0"
+                    className="mt-0.5 size-4 shrink-0 rounded-md border-slate-300 text-indigo-700 transition-colors focus:ring-2 focus:ring-indigo-500/40 focus:ring-offset-0"
                   />
                   <span className="min-w-0 flex-1">
                     <span className={cn(salesTypography.rowTitle, "block text-slate-900")}>
@@ -577,7 +577,7 @@ export function ZkWatchProsbaScopeModal({
               checked={autoProsbaActive}
               disabled={saving || autoProsbaDisabled}
               onChange={(e) => setAutoProsba(e.target.checked)}
-              className="mt-0.5 size-4 shrink-0 rounded-md border-slate-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500/40"
+              className="mt-0.5 size-4 shrink-0 rounded-md border-slate-300 text-indigo-700 focus:ring-2 focus:ring-indigo-500/40"
             />
             <span className="min-w-0 flex-1">
               <span className="text-sm font-semibold text-slate-900">

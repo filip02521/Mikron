@@ -228,7 +228,7 @@ function ResultDetails({ result, compareRows }: { result: ZdBacktestResult; comp
   const automat = result.variants.find((v) => v.key === "automat");
   return (
     <details className="group rounded-lg border border-slate-200">
-      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 [&::-webkit-details-marker]:hidden">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden">
         Jak to policzono: porównanie i dane
         <IconChevronDown size={16} className="shrink-0 transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none" aria-hidden />
       </summary>

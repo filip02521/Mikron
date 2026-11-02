@@ -369,7 +369,7 @@ async function computeSupplierOrder(input: {
   proposalTodayKey?: string;
   /**
    * Skąd propozycja: nocny przebieg (cykl, dni robocze), „Przygotuj teraz” w Kreatorze albo przeliczenie
-   * w panelu „Sprawdź i zatwierdź” (bez czekania na cykl). Domyślnie nocny.
+   * w panelu „Sprawdź i wyślij” (bez czekania na cykl). Domyślnie nocny.
    */
   proposalMode?: ZdAutoProposalOrigin;
   /** Przegląd: propozycja do przeliczenia w miejscu (ten sam id — harmonogram się nie przesuwa). */

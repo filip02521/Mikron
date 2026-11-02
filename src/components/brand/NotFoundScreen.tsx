@@ -47,7 +47,7 @@ export function NotFoundScreen({
             "bg-[var(--card)] p-6 text-center shadow-[var(--shadow-card-elevated)] sm:p-8"
           )}
         >
-          <BrandCardAccent className="absolute -right-6 -top-6 h-36 w-44 text-indigo-600" />
+          <BrandCardAccent className="absolute -right-6 -top-6 h-36 w-44 text-indigo-700" />
 
           <div className="relative z-[1]">
             <h1 className="text-2xl font-semibold leading-tight tracking-[-0.02em] text-slate-900">

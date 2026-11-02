@@ -7,11 +7,11 @@ import { actionAcceptZdAutoProposal, actionCreateZdAutoProposalNow, actionGetZdA
 import { IconAlertCircle, IconCircleCheck, IconTrash2, IconUndoLeft, IconX } from "@/components/icons/StrokeIcons";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { ActionTimeline, type ActionStep as Step } from "@/components/ui/ActionTimeline";
 import { FOCUSABLE_SELECTOR } from "@/components/ui/ModalShell";
 import { QtyStepButton } from "@/components/ui/QtyStepButton";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Spinner } from "@/components/ui/Spinner";
-import { BrandStepMark } from "@/components/ui/BrandStepMark";
 import { ZdEstimatePostCreatePanel } from "@/components/zakupy/ZdEstimatePostCreatePanel";
 import { ZdProposalFlagsSummary, ZdProposalLineFlags } from "@/components/zakupy/ZdProposalLineFlags";
 import { ZdProposalMinimumNotice } from "@/components/zakupy/ZdProposalMinimumNotice";
@@ -22,6 +22,7 @@ import { polishPluralWord } from "@/lib/email/polish-plural";
 import { ZD_AUTO_PROPOSAL_EDIT_MAX_UNITS, diffZdAutoProposalLines } from "@/lib/orders/zd-auto-proposal-create";
 import type { ZdPostCreateSession } from "@/lib/orders/zd-estimate-post-create";
 import { formatQty } from "@/lib/orders/zd-estimate-manual";
+import { warsawKeyFromIso, zdProposalListFromToday } from "@/lib/orders/zd-automat-daily";
 import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 import {
   sidePanelBackdropClass,
@@ -78,75 +79,6 @@ function PhaseProgress({ phase }: { phase: Phase }) {
 /** Tyle widać zakończony krok (ptaszek rysuje się ok. 520 ms), zanim panel pójdzie dalej. */
 const STEP_DONE_HOLD_MS = 900;
 
-type StepStatus = "idle" | "running" | "ok" | "error";
-type Step = { key: string; title: string; detail: React.ReactNode; status: StepStatus; message?: string; onRetry?: () => void };
-
-/**
- * Pionowa oś działań. Krok w toku i zakończony to ten sam znak OnTime (BrandStepMark): w toku
- * obiega łuk, po sukcesie tarcza się domyka i rysuje się ptaszek; szyna do następnego kroku
- * przejmuje kolor marki.
- */
-function ActionTimeline({ steps }: { steps: Step[] }) {
-  return (
-    <ol className="relative" aria-label="Działania po zatwierdzeniu">
-      {steps.map((s, i) => {
-        const last = i === steps.length - 1;
-        return (
-          <li key={s.key} className="relative flex gap-3 pb-5 last:pb-0" aria-current={s.status === "running" ? "step" : undefined}>
-            {!last ? (
-              <span
-                aria-hidden
-                className={cn(
-                  "absolute top-9 bottom-1 left-4 w-px -translate-x-1/2 transition-colors duration-300 motion-reduce:transition-none",
-                  s.status === "ok" ? "bg-indigo-300" : "bg-slate-200"
-                )}
-              />
-            ) : null}
-            <span aria-hidden className="relative z-[1] flex size-8 shrink-0 items-center justify-center">
-              {/* Ten sam element w toku i po sukcesie — przejście stanu się animuje. */}
-              {s.status === "running" || s.status === "ok" ? (
-                <BrandStepMark state={s.status === "ok" ? "done" : "running"} />
-              ) : (
-                <span
-                  className={cn(
-                    "flex size-8 items-center justify-center rounded-full text-xs font-semibold tabular-nums transition-colors duration-200 motion-reduce:transition-none",
-                    s.status === "error" && "bg-red-600 text-white",
-                    s.status === "idle" && "bg-white text-slate-500 ring-1 ring-slate-300"
-                  )}
-                >
-                  {s.status === "error" ? (
-                    <IconAlertCircle size={15} />
-                  ) : (
-                    i + 1
-                  )}
-                </span>
-              )}
-            </span>
-            <div className="min-w-0 flex-1 pt-1">
-              <p className={cn("text-sm font-semibold", s.status === "idle" ? "text-slate-600" : "text-slate-900")}>{s.title}</p>
-              <div className={cn("mt-0.5 leading-snug", s.status === "idle" ? "text-xs text-slate-500" : "text-sm text-slate-600")}>
-                {s.detail}
-              </div>
-              {s.message ? (
-                <p
-                  className={cn("mt-1 text-sm", s.status === "error" ? "text-red-700" : "text-slate-700")}
-                  role={s.status === "error" ? "alert" : undefined}
-                >
-                  {s.message}
-                </p>
-              ) : null}
-              {s.onRetry ? (
-                <Button type="button" size="sm" variant="secondary" className="mt-2" onClick={s.onRetry}>
-                  Spróbuj ponownie
-                </Button>
-              ) : null}
-            </div>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
 
 /** Ilość w jednostkach ZD: −/+ i pole; 0 przez −, usunięcie osobnym przyciskiem. */
 function UnitsStepper({
@@ -177,7 +109,7 @@ function UnitsStepper({
           if (Number.isFinite(n) && n >= 1) onChange(Math.min(ZD_AUTO_PROPOSAL_EDIT_MAX_UNITS, n));
         }}
         onFocus={(e) => e.target.select()}
-        className="h-10 w-14 rounded-md border border-slate-200 bg-white text-center text-base font-semibold tabular-nums text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none disabled:bg-slate-50 sm:h-8 sm:w-12 sm:text-sm"
+        className="h-10 w-14 rounded-md border border-slate-200 bg-card text-center text-base font-semibold tabular-nums text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none disabled:bg-slate-50 sm:h-8 sm:w-12 sm:text-sm"
       />
       <QtyStepButton
         size="sm"
@@ -198,28 +130,38 @@ export function ZdAutoProposalSheet({
   supplierId,
   supplierName,
   morning,
+  resumeSession = null,
   onClose,
 }: {
   supplierId: string;
   supplierName: string;
   /** Propozycja, którą widział użytkownik — porównanie po przeliczeniu. */
   morning: ZdAutoProposal;
+  /** ZD już utworzone z tej propozycji, mail jeszcze nie poszedł — panel otwiera się od razu na wysyłce. */
+  resumeSession?: ZdPostCreateSession | null;
   onClose: () => void;
 }) {
   const router = useRouter();
   const { panelRef, backdropRef, requestClose } = useAnimatedClose(onClose);
-  const [phase, setPhase] = useState<Phase>("review");
-  const [recompute, setRecompute] = useState<{ status: "running" | "ok" | "error"; message?: string }>({ status: "running" });
-  const [fresh, setFresh] = useState<ZdAutoProposal | null>(null);
+  // Dzisiejsza lista automatu jest gotowa do zatwierdzenia — przeliczenie tylko na żądanie albo dla starszej listy.
+  const [listFromToday] = useState(() => zdProposalListFromToday(morning, warsawKeyFromIso(new Date().toISOString())));
+  const [phase, setPhase] = useState<Phase>(resumeSession ? "send" : "review");
+  const [recompute, setRecompute] = useState<{ status: "running" | "ok" | "error"; message?: string }>({
+    status: listFromToday ? "ok" : "running",
+  });
+  const [fresh, setFresh] = useState<ZdAutoProposal | null>(listFromToday ? morning : null);
+  /** Lista przeliczona w tym panelu (nie ta z nocnego przebiegu). */
+  const [recomputedHere, setRecomputedHere] = useState(false);
   const [edits, setEdits] = useState<Record<string, number>>({});
   const [createError, setCreateError] = useState<string | null>(null);
   /** Subiekt nie potwierdził zapisu (timeout, zerwane połączenie) — ZD mogło powstać; jak w Kreatorze bez ponowienia. */
-  const [createLocked, setCreateLocked] = useState(false);
+  // Poprzednia próba nie dostała potwierdzenia z Subiekta — ZD mogło powstać; od razu bez drugiego zatwierdzenia.
+  const [createLocked, setCreateLocked] = useState(() => Boolean(morning.createAttemptedAt) && !resumeSession);
   /** Numer utworzonego ZD — krok „ZD w Subiekcie” chwilę zielony, zanim przejdzie do wysyłki. */
   const [createdNr, setCreatedNr] = useState<string | null>(null);
   /** Po przeliczeniu krok 1 chwilę pokazuje sukces (logo się domyka), dopiero potem lista. */
-  const [listReady, setListReady] = useState(false);
-  const [session, setSession] = useState<ZdPostCreateSession | null>(null);
+  const [listReady, setListReady] = useState(listFromToday);
+  const [session, setSession] = useState<ZdPostCreateSession | null>(resumeSession);
   const [filter, setFilter] = useState<Filter>("all");
   /** Prośby przy pozycjach — wczytane dla propozycji `id`; inna propozycja (przeliczenie) = wczytuje się. */
   const [prosby, setProsby] = useState<ZdProposalProsbyState | null>(null);
@@ -272,6 +214,7 @@ export function ZdAutoProposalSheet({
         if (!r.ok) return setRecompute({ status: "error", message: r.message });
         if (!r.proposal) return setRecompute({ status: "error", message: "Na aktualnych stanach nie ma nic do zamówienia." });
         setFresh(r.proposal);
+        setRecomputedHere(true);
         setRecompute({ status: "ok" });
         // Ponowne przeliczenie w trakcie pauzy nie może odsłonić listy za wcześnie.
         window.setTimeout(() => {
@@ -283,7 +226,7 @@ export function ZdAutoProposalSheet({
   };
   useEffect(() => {
     // Raz po otwarciu (StrictMode montuje efekt dwa razy).
-    if (started.current) return;
+    if (started.current || listFromToday || resumeSession) return;
     started.current = true;
     runRecompute();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -469,7 +412,9 @@ export function ZdAutoProposalSheet({
             <div className="space-y-4">
               <p className="flex items-center gap-2 rounded-md bg-emerald-50 px-3 py-2.5 text-sm font-medium text-emerald-800">
                 <IconCircleCheck size={16} aria-hidden />
-                Utworzono {session.dokNrPelny ?? "ZD"} w Subiekcie. Teraz mail do dostawcy - sprawdź go przed wysłaniem.
+                {resumeSession
+                  ? `${session.dokNrPelny || "ZD"} jest już w Subiekcie. Zostało wysłać zamówienie do dostawcy.`
+                  : `Utworzono ${session.dokNrPelny ?? "ZD"} w Subiekcie. Teraz mail do dostawcy - sprawdź go przed wysłaniem.`}
               </p>
               <ZdEstimatePostCreatePanel
                 embedded
@@ -491,13 +436,34 @@ export function ZdAutoProposalSheet({
                   <ActionTimeline steps={steps} />
                 </div>
               ) : (
-                <p className="text-sm text-slate-600">
-                  Przeliczone na stanach z tej chwili.{" "}
-                  {changes.length
-                    ? `Wobec ${since}: ${changes.length} ${polishPluralWord(changes.length, "zmiana", "zmiany", "zmian")}.`
-                    : `Bez zmian wobec ${since}.`}{" "}
-                  Popraw ilości, jeśli trzeba - zatwierdzisz dokładnie to, co widzisz.
-                </p>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                  <p className="text-sm text-slate-600">
+                    {recomputedHere ? (
+                      <>
+                        Przeliczone na stanach z tej chwili.{" "}
+                        {changes.length
+                          ? `Wobec ${since}: ${changes.length} ${polishPluralWord(changes.length, "zmiana", "zmiany", "zmian")}.`
+                          : `Bez zmian wobec ${since}.`}{" "}
+                      </>
+                    ) : (
+                      <>Lista automatu z {formatWhen(fresh?.refreshedAt ?? fresh?.createdAt ?? morning.createdAt)}. </>
+                    )}
+                    Popraw ilości, jeśli trzeba - zatwierdzisz dokładnie to, co widzisz.
+                  </p>
+                  {/* Przy niepotwierdzonym ZD przeliczenie jest w ostrzeżeniu niżej („Przelicz na nowo”). */}
+                  {createLocked ? null : (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="min-h-11 shrink-0 self-start sm:min-h-8"
+                      onClick={runRecompute}
+                      disabled={creating}
+                    >
+                      {editedCount ? "Przelicz (poprawki przepadną)" : "Przelicz na aktualnych stanach"}
+                    </Button>
+                  )}
+                </div>
               )}
 
               {createLocked ? (
@@ -548,7 +514,8 @@ export function ZdAutoProposalSheet({
                       { value: "all", label: `Wszystkie (${diff.length})` },
                       ...(flaggedCount ? [{ value: "flagged" as const, label: `Do sprawdzenia (${flaggedCount})` }] : []),
                       ...(prosbaCount ? [{ value: "prosby" as const, label: `Na prośbę (${prosbaCount})` }] : []),
-                      { value: "changes", label: `Zmiany (${changes.length})` },
+                      // Zmiany wobec listy automatu są dopiero po przeliczeniu w tym panelu.
+                      ...(recomputedHere ? [{ value: "changes" as const, label: `Zmiany (${changes.length})` }] : []),
                       { value: "edited", label: `Poprawione (${editedCount})` },
                     ]}
                   />
@@ -685,7 +652,7 @@ export function ZdAutoProposalSheet({
         </div>
 
         {phase !== "send" ? (
-          <footer className="flex shrink-0 flex-col gap-3 border-t border-slate-100 bg-white/95 px-5 py-4 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
+          <footer className="flex shrink-0 flex-col gap-3 border-t border-slate-100 bg-card/95 px-5 py-4 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm tabular-nums text-slate-600" aria-live="polite">
               {fresh ? (
                 <>

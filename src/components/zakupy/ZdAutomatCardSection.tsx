@@ -86,7 +86,7 @@ export function ZdAutomatCardSection({
   return (
     <section
       aria-labelledby={`zd-automat-card-${row.id}`}
-      className="rounded-lg border border-slate-200 bg-white p-4 sm:col-span-2"
+      className="rounded-lg border border-slate-200 bg-card p-4 sm:col-span-2"
     >
       <h3 id={`zd-automat-card-${row.id}`} className="text-xs font-semibold text-slate-600">
         Automat ZD

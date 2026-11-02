@@ -91,6 +91,15 @@ export const CRON_JOB_DEFINITIONS: CronJobDefinition[] = [
       "ZD → FZ z ostatnich 18 mies.: domyka zamówienia z brakami i przelicza ETA dostawców. Panel: /admin (Czasy dostaw z Subiekta).",
   },
   {
+    id: "rol_reports",
+    label: "Zgłoszenia ROL",
+    schedule: "codziennie, w Katalogu z ZD (2:00–4:40)",
+    endpoint: "/api/cron/catalog-zd-sync",
+    scheduled: true,
+    description:
+      "Skan FS poprzedniego miesiąca dla klientów ROL, ponownie co noc do wysłania, oraz PDF-y FS w tle. Panel: /zakupy/asystent?sekcja=rol.",
+  },
+  {
     id: "zd_sku_class",
     label: "Klasy ABC/XYZ towarów",
     schedule: "raz w miesiącu, po Stock Watch (5:30–6:30)",
@@ -313,6 +322,14 @@ function summarizeRunDetail(
       if (detail.subiektOffline === true) lines.push("Subiekt offline");
       break;
     }
+    case "rol_reports": {
+      if (typeof detail.period === "string") lines.push(`Miesiąc: ${detail.period.slice(0, 7)}`);
+      if (typeof detail.fsChecked === "number") lines.push(`Sprawdzone FS: ${detail.fsChecked}`);
+      if (typeof detail.fetched === "number" && detail.fetched > 0) lines.push(`Pobrane PDF FS: ${detail.fetched}`);
+      if (typeof detail.failed === "number" && detail.failed > 0) lines.push(`Błędy PDF FS: ${detail.failed}`);
+      if (detail.subiektOffline === true) lines.push("Subiekt offline");
+      break;
+    }
     case "morning_sync": {
       if (typeof detail.schedulesProcessed === "number") {
         lines.push(`Harmonogramy: ${detail.schedulesProcessed}`);
@@ -494,7 +511,7 @@ export function evaluateCronJob(
             ? isWorkHoursJobStale(run, now, 3.5)
             : job.id === "stock_watch"
               ? isNightlyJobStale(run, now, 8)
-              : job.id === "subiekt_lead_times"
+              : job.id === "subiekt_lead_times" || job.id === "rol_reports"
               ? isNightlyJobStale(run, now, 5)
               : job.id === "scheduled_mails"
               ? isScheduledMailsStale(run, now, context?.scheduledMailSentLog)

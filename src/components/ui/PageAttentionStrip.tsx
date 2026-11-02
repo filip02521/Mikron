@@ -25,9 +25,9 @@ const TONE_TITLE: Record<PageAttentionStripTone, string> = {
 
 const TONE_CTA: Record<PageAttentionStripTone, string> = {
   amber:
-    "border-amber-200/80 bg-white/90 text-amber-950 hover:bg-amber-50/90",
+    "border-amber-200/80 bg-card/90 text-amber-950 hover:bg-amber-50/90",
   violet:
-    "border-violet-200/80 bg-white/90 text-violet-950 hover:bg-violet-50/90",
+    "border-violet-200/80 bg-card/90 text-violet-950 hover:bg-violet-50/90",
 };
 
 /**

@@ -353,7 +353,7 @@ export function ZdEstimateBomsModal({
                 <div
                   key={p.twId}
                   className={cn(
-                    "flex flex-col overflow-hidden rounded-lg border bg-white transition",
+                    "flex flex-col overflow-hidden rounded-lg border bg-card transition",
                     isParent
                       ? "border-violet-400 shadow-sm ring-2 ring-violet-200"
                       : "border-slate-200/80"
@@ -437,7 +437,7 @@ export function ZdEstimateBomsModal({
             ).map(([id, title, hint]) => (
               <label
                 key={id}
-                className="flex cursor-pointer items-start gap-2 rounded-lg border border-violet-100/80 bg-white/80 px-2.5 py-2 text-xs text-slate-700"
+                className="flex cursor-pointer items-start gap-2 rounded-lg border border-violet-100/80 bg-card/80 px-2.5 py-2 text-xs text-slate-700"
               >
                 <input
                   type="radio"
@@ -496,7 +496,7 @@ export function ZdEstimateBomsModal({
           </div>
         </div>
       ) : (
-        <div className="space-y-3 rounded-lg border border-slate-200/80 bg-white p-3">
+        <div className="space-y-3 rounded-lg border border-slate-200/80 bg-card p-3">
           <div className="grid gap-2 sm:grid-cols-3">
             <label className="text-xs font-medium text-slate-600">
               {ZD_BOM_UI.fieldZestawId}

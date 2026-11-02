@@ -276,8 +276,8 @@ export function CarrierPhonesModal({
                     className={cn(
                       "rounded-lg border transition-colors",
                       isExpanded
-                        ? "border-slate-300 bg-white shadow-sm"
-                        : "border-slate-200 bg-white hover:border-slate-300",
+                        ? "border-slate-300 bg-card shadow-sm"
+                        : "border-slate-200 bg-card hover:border-slate-300",
                     )}
                   >
                     <button
@@ -356,7 +356,7 @@ export function CarrierPhonesModal({
                                     </div>
                                   ) : (
                                     <div className="group flex items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-slate-50">
-                                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-emerald-600">
+                                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-emerald-700">
                                         <IconPhone size={14} aria-hidden />
                                       </span>
                                       <div className="min-w-0 flex-1">
@@ -369,7 +369,7 @@ export function CarrierPhonesModal({
                                       </div>
                                       <a
                                         href={`tel:${phone.phone.replace(/[\s()-]/g, "")}`}
-                                        className="shrink-0 rounded-md px-2 py-1 text-[0.6875rem] font-medium text-indigo-600 hover:bg-indigo-50"
+                                        className="shrink-0 rounded-md px-2 py-1 text-[0.6875rem] font-medium text-indigo-700 hover:bg-indigo-50"
                                       >
                                         Zadzwoń
                                       </a>

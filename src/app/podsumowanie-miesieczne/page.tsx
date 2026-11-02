@@ -28,7 +28,7 @@ export default async function MonthlySummaryPage({
 
   if (!session?.role) {
     return (
-      <div className={cn(panelWorkspaceShellClass, "rounded-lg border border-slate-200 bg-white p-6")}>
+      <div className={cn(panelWorkspaceShellClass, "rounded-lg border border-slate-200 bg-card p-6")}>
         <Alert tone="warning">Zaloguj się, aby zobaczyć podsumowanie miesiąca.</Alert>
       </div>
     );

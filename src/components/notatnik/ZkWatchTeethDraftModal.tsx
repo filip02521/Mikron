@@ -336,7 +336,7 @@ export function ZkWatchTeethDraftModal({
                     "rounded-lg border px-3.5 py-2.5",
                     ready
                       ? "border-emerald-200/80 bg-emerald-50/40"
-                      : "border-slate-200/80 bg-white"
+                      : "border-slate-200/80 bg-card"
                   )}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2">

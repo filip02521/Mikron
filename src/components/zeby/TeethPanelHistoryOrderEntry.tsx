@@ -98,7 +98,7 @@ export function TeethPanelHistoryOrderEntry({
                 key={line.key}
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset",
-                  muted ? "bg-slate-50 text-slate-500 ring-slate-200" : "bg-white text-slate-800 ring-slate-200",
+                  muted ? "bg-slate-50 text-slate-500 ring-slate-200" : "bg-card text-slate-800 ring-slate-200",
                 )}
               >
                 {formatTeethSpecLabel(line)}

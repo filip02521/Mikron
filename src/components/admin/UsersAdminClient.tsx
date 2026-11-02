@@ -761,7 +761,7 @@ export function UsersAdminClient({
                   {accessModalUser.id !== currentUserId ? (
                     <Button
                       variant="secondary"
-                      className="justify-center text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                      className="justify-center text-rose-700 hover:bg-rose-50 hover:text-rose-800"
                       disabled={pending}
                       onClick={() => setDeleteTarget(accessModalUser)}
                     >

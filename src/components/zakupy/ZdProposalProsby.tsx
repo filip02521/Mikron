@@ -49,7 +49,7 @@ export function ZdProposalProsbaToggle({
       aria-controls={controls}
       onClick={onToggle}
       title={people ? `Prośby: ${people}` : undefined}
-      className="inline-flex min-h-8 min-w-0 max-w-full items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-900 transition-colors duration-150 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 max-sm:min-h-10"
+      className="inline-flex min-h-8 min-w-0 max-w-full items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-900 transition-colors duration-150 hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus max-sm:min-h-10"
     >
       <span className="whitespace-nowrap tabular-nums">
         na prośbę {formatQty(prosbaPieces)} szt{packaged ? ` z ${formatQty(Math.round(linePieces))}` : ""}

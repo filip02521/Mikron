@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { getSessionUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeFontScale, type FontScale } from "@/lib/auth/profile";
+import { normalizeTheme, type ThemePreference } from "@/lib/auth/theme";
 
 export async function actionSetUniformBackground(
   enabled: boolean
@@ -78,6 +79,49 @@ export async function actionSetFontScale(
     .from("profiles")
     .update({
       preferences: { ...existingPrefs, font_scale: normalized },
+    })
+    .eq("id", user.id);
+
+  if (updateError) {
+    return { ok: false, error: updateError.message };
+  }
+
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/** Motyw na koncie; cookie dla skryptu w <head> zapisuje klient (persistTheme), przy logowaniu — trasa logowania. */
+export async function actionSetTheme(
+  theme: ThemePreference
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await getSessionUser();
+  if (!user) {
+    return { ok: false, error: "Brak sesji." };
+  }
+
+  const normalized = normalizeTheme(theme);
+
+  const supabase = await createClient();
+
+  const { data: current, error: fetchError } = await supabase
+    .from("profiles")
+    .select("preferences")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (fetchError || !current) {
+    return { ok: false, error: fetchError?.message ?? "Nie znaleziono profilu." };
+  }
+
+  const existingPrefs =
+    current.preferences && typeof current.preferences === "object"
+      ? (current.preferences as Record<string, unknown>)
+      : {};
+
+  const { error: updateError } = await supabase
+    .from("profiles")
+    .update({
+      preferences: { ...existingPrefs, theme: normalized },
     })
     .eq("id", user.id);
 

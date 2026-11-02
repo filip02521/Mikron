@@ -1894,7 +1894,7 @@ export function OrderFormClient({
 
                 <div
                   className={cn(
-                    "sticky z-10 flex flex-col gap-3 border-t border-slate-200/80 bg-white/95 px-3 py-3 shadow-[0_-4px_16px_-8px_rgba(15,23,42,0.12)] backdrop-blur-sm sm:flex-row sm:items-center sm:px-4",
+                    "sticky z-10 flex flex-col gap-3 border-t border-slate-200/80 bg-card/95 px-3 py-3 shadow-[0_-4px_16px_-8px_rgba(15,23,42,0.12)] backdrop-blur-sm sm:flex-row sm:items-center sm:px-4",
                     stickyAboveMobileChromeClass,
                     requestKind === "informacja"
                       ? "sm:justify-between"

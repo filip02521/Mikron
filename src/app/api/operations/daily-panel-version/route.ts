@@ -6,6 +6,8 @@ import { departmentsForRole } from "@/lib/operations/notepad-department";
 import { countCustomsMailNeedsAction, countSupplierMailNeedsAction } from "@/lib/supplier-mail/data";
 import { syncSupplierMail } from "@/lib/supplier-mail/sync";
 import { countDhlShipmentsNeedingReply } from "@/lib/customs/dhl-data";
+import { countRolNeedsAction } from "@/lib/rol/data";
+import { warsawNowParts } from "@/lib/time/warsaw";
 
 export async function GET() {
   const user = await getSessionUser();
@@ -25,13 +27,15 @@ export async function GET() {
     // ponytail: obietnica w tle w procesie Node (jeden serwer OnTime); przy serverless — cron.
     void syncSupplierMail().catch((e) => console.error("[poczta] synchronizacja", e));
   }
-  const [supplierMail, customsDhl] = mailRole
+  const [supplierMail, customsDhl, rolReports] = mailRole
     ? await Promise.all([
         countSupplierMailNeedsAction(user.id),
         // Odprawy w menu: prośby DHL i sprawy pozostałych agencji / spedytorów czekające na nas.
         Promise.all([countDhlShipmentsNeedingReply(), countCustomsMailNeedsAction()]).then(([dhl, agencies]) => dhl + agencies),
+        // Zgłoszenia ROL: błąd (np. brak migracji 204) nie psuje pozostałych liczników.
+        countRolNeedsAction(warsawNowParts().dateKey).catch(() => undefined),
       ])
-    : [undefined, undefined];
+    : [undefined, undefined, undefined];
 
   return NextResponse.json({
     version: metrics.version,
@@ -44,5 +48,6 @@ export async function GET() {
     operationsNotatki: metrics.operationsNotatkiCount,
     supplierMail,
     customsDhl,
+    rolReports,
   });
 }

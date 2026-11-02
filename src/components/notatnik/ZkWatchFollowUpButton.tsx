@@ -210,7 +210,7 @@ export function ZkWatchFollowUpButton({
                   disabled={saving}
                   onChange={(e) => setFollowUpDraft(e.target.value)}
                   className={cn(
-                    "h-8 w-full rounded-md border border-slate-200/80 bg-white px-2 text-xs",
+                    "h-8 w-full rounded-md border border-slate-200/80 bg-card px-2 text-xs",
                     controlFocusClass
                   )}
                 />
@@ -231,14 +231,14 @@ export function ZkWatchFollowUpButton({
                         setFollowUpDraft("");
                         void saveFollowUp("");
                       }}
-                      className="rounded px-2 py-1 text-xs text-slate-500 hover:bg-black/5 disabled:opacity-50"
+                      className="rounded px-2 py-1 text-xs text-slate-500 hover:bg-slate-900/5 disabled:opacity-50"
                     >
                       Wyczyść
                     </button>
                   ) : null}
                 </div>
               </div>
-              {error ? <p className="mt-2 text-xs text-red-600">{error}</p> : null}
+              {error ? <p className="mt-2 text-xs text-red-700">{error}</p> : null}
             </div>,
             document.body
           )

@@ -191,7 +191,7 @@ export function PanelAdminRouteLoadingSkeleton({
         {[0, 1, 2, 3].map((card) => (
           <div
             key={card}
-            className="rounded-lg border border-slate-200/80 bg-white p-5 shadow-[var(--shadow-card)]"
+            className="rounded-lg border border-slate-200/80 bg-card p-5 shadow-[var(--shadow-card)]"
           >
             <PulseBlock className="h-5 w-32 rounded bg-slate-200" />
             <PulseBlock className="mt-3 h-3 w-full" />

@@ -21,7 +21,7 @@ export const NOTATNIK_ZK_LIST_CLASS = mojeShipmentListClass;
 export const NOTATNIK_ZK_LIST_SCROLL_CLASS = "overflow-x-visible";
 
 /** Lista ZK w karcie strony — bez własnej ramki i cienia (DESIGN.md → bez karty w karcie). */
-export const NOTATNIK_ZK_LIST_SECTION_CLASS = "overflow-visible bg-white";
+export const NOTATNIK_ZK_LIST_SECTION_CLASS = "overflow-visible bg-card";
 
 export const NOTATNIK_ZK_ACTIONS_CLASS =
   "grid grid-cols-2 gap-1.5 border-t border-slate-100 pt-2 sm:grid-cols-3";
@@ -32,12 +32,12 @@ export const NOTATNIK_ZK_FOLLOWUP_CLASS =
   "mt-2 space-y-1.5 border-t border-slate-100 pt-2";
 
 export const NOTATNIK_INPUT_CLASS = cn(
-  "h-8 rounded-md border border-slate-200 bg-white px-2.5 text-xs text-slate-900 shadow-sm",
+  "h-8 rounded-md border border-slate-200 bg-card px-2.5 text-xs text-slate-900 shadow-sm",
   controlFocusClass
 );
 
 export const NOTATNIK_TEXTAREA_CLASS = cn(
-  "rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs leading-snug text-slate-900 shadow-sm",
+  "rounded-md border border-slate-200 bg-card px-2.5 py-1.5 text-xs leading-snug text-slate-900 shadow-sm",
   controlFocusClass
 );
 

@@ -55,7 +55,7 @@ export function NoteFollowUpControl({
             disabled={saving}
             onChange={(e) => setEditDraft(e.target.value)}
             className={cn(
-              "rounded border border-slate-200/80 bg-white/90 px-1.5 py-0.5 text-[0.6875rem]",
+              "rounded border border-slate-200/80 bg-card/90 px-1.5 py-0.5 text-[0.6875rem]",
               controlFocusClass
             )}
           />
@@ -72,7 +72,7 @@ export function NoteFollowUpControl({
               type="button"
               disabled={saving}
               onClick={() => void commit(null)}
-              className="rounded px-1 py-0.5 text-[0.6875rem] text-slate-500 hover:bg-black/5 disabled:opacity-50"
+              className="rounded px-1 py-0.5 text-[0.6875rem] text-slate-500 hover:bg-slate-900/5 disabled:opacity-50"
             >
               Usuń
             </button>
@@ -81,7 +81,7 @@ export function NoteFollowUpControl({
             type="button"
             disabled={saving}
             onClick={() => setEditing(false)}
-            className="rounded px-1 py-0.5 text-[0.6875rem] text-slate-500 hover:bg-black/5 disabled:opacity-50"
+            className="rounded px-1 py-0.5 text-[0.6875rem] text-slate-500 hover:bg-slate-900/5 disabled:opacity-50"
           >
             Anuluj
           </button>
@@ -102,7 +102,7 @@ export function NoteFollowUpControl({
           : "text-slate-500 hover:bg-slate-100/80 hover:text-slate-700"
       )}
     >
-      <IconClock size={13} strokeWidth={2} className={due ? "text-violet-600" : "text-slate-400"} />
+      <IconClock size={13} strokeWidth={2} className={due ? "text-violet-700" : "text-slate-400"} />
       <span className="truncate">{label ? `Przypomnienie: ${label}` : "Przypomnij…"}</span>
     </button>
   );

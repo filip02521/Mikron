@@ -42,8 +42,41 @@ Spec: `docs/integrations/strategia-zakupowa-pl-automatyzacja.md` (decyzje §7, b
 - [ ] 8. Auto-zatwierdzenie (stopień 3) — ta sama ścieżka co klik (`create_attempted_at`), tylko linie bez flag; najpierw 2–3 dostawcy z korektą < 10% przez 4 cykle. Kryterium: 4 cykle bez duplikatu ZD; automatyczne cofnięcie stopnia po brakach A / nieudanym create.
   - Częściowo (PR #239, 2026-10-25): pomiar gotowości 4 tygodni (`src/lib/orders/zd-automat-status.ts`), cofnięcie stopnia po brakach A (migracja 198) i po nieudanym create (`zdAutomatCreateFailRollback`), cykl życia propozycji (199), sekcja „Automat ZD” w panelu dziennym. Brak: samo auto-zatwierdzenie.
 - [ ] 9. Auto-mail z PDF ZD (stopień 4) przez pocztę dostawców. Kryterium: 4 cykle bez reklamacji.
+- [x] 11. Przebieg w panelu dziennym (spec §14, 2026-10-28): lista automatu z dziś bez przeliczania przy otwarciu, górny panel z zamówieniami na dziś i etapem sprawdzenie → ZD → wysłane, „Wyślij mail” dla ZD bez wysyłki, etap „wysłane” (migracja 200, także „Wysłałem ręcznie”). **Migracja 200 na produkcji — po wdrożeniu (Admin → Migracje).**
+- [ ] 12. „Zatwierdź wszystkie bez uwag” w górnym panelu (spec §14.1 A) — krok między stopniem 2 a 3. Kryterium: N propozycji bez flag → N ZD, każde dokładnie raz (blokada `create_attempted_at`), błąd jednego nie zatrzymuje reszty.
 - [ ] 10. Przed stopniem 3: zestaw Vertex Orthoplast 4 kg + 2×1 L (bez ZD od roku) — kupowany czy składany w Subiekcie? Składany → komplet „rozpisz na składniki”. Backtest: dodać pary paczka↔sztuka (dziś ich nie modeluje, stąd gorszy Denon).
 - [ ] API (Tomasz, równolegle): `sales/weekly` z max-z-dokumentu, cena zakupu, `tw_StanMin/Maks/IdPodstDostawca` w `/products`.
 
 Kolejność: 1 → 3; 6 po 4; 8 po 6 i 4 cyklach pomiaru; 9 po 8.
 - Zadania 2, 4, 5, 7 zrobione zespołem (4 sesje), scalone 2026-10-23 po audycie; backtest roczny potwierdził strategię (spec §9).
+
+## Audyt procesu zamówień — poprawki (2026-10-28)
+
+Raport: `docs/audyt-procesu-zamowien-2026-10-28.md`, zmiany: `docs/zamowienia-jeden-silnik.md` §6.
+
+- [x] Zaległe ZD poza „w drodze” + nocne odświeżenie statusów; ZK bez rezerwacji poza wolnym towarem.
+- [x] KFS: tabela `subiekt_sales_corrections` (mig. 202), nocny odczyt, odjęcie w silniku (okno + profil).
+- [x] Pełny brak w oknie → tempo z profilu; p75 przy 5–9 próbkach czasu dostawy.
+- [x] Prośby: rezerwacja zmniejsza prośbę (nie need), odejmowanie przy opakowaniach.
+- [x] Podbicie: bez thin_cover/sell_through po mnożniku braków, cel bez zapasMin; skok vs ZD tylko w classic; profil na sprzedaży sprzed mnożnika.
+- [x] Dziennik decyzji per linia (mig. 203) + KPI `lineCorrection` + pamięć korekt (cel × mediana, flaga `habit`).
+- [x] Panel dzienny „poza planem” liczy towar raz.
+- [ ] Produkcja: migracje 202, 203; sprawdzić po pierwszej nocy `[catalog-zd-sync] korekty KFS` i `zaległe ZD` w logu.
+- [ ] Powód korekty (klient / promocja / cena / rytm) w oknie „Utwórz ZD” — dziś dziennik bez powodów, więc pamięć korekt nie odróżnia jednorazowej decyzji pod klienta.
+- [ ] Prośba dostarczona przed oknem obniża sprzedaż w oknie (L4 w raporcie) — wymaga daty wydania klientowi.
+- [ ] Tomasz (API): KFS w `sprzedazOkres`, `zkDataOd` dla ZK bez rezerwacji.
+- [x] Karta produktu: „Ruch towaru” (ZD + przyjęcia + sprzedaż w jednej osi, zakres od okna zapasu, min. miesiąc, 3/12 mies., cała historia) i „Starsze zakupy” (cała kopia ZD na żądanie).
+- [x] Przegląd całości (28.10): dziennik zapisuje `pattern_factor` (stosunek do surowej propozycji), pamięć korekt poza parami i składami, kroki po indeksie w budżecie slotu `catalog-zd-sync`, przełącznik zakresu z `SegmentedControl`.
+
+## Ciemny tryb — 2026-10-29
+
+Plan: `docs/plans/ciemny-tryb.md` (inwentarz, tokeny z pomiarem kontrastu, przełącznik, brak mignięcia). Decyzje D1–D6 zatwierdzone 2026-10-29 (rekomendacje z planu).
+
+- [x] 1. Tokeny ciemne w `globals.css` + test kontrastu z CSS (D5 w jasnym: `emerald-600` `#047857`, `amber-600` `#b45309`).
+- [x] 2. Codemod powierzchni (`bg-white` → `bg-card`: 524 zamian w 234 plikach, scrim 10) + reguły `audit:design` `biel` i `scrim`; `.theme-light` na logowaniu i podglądach maila.
+- [x] 3. Codemod kroku 600 i fokusu (144 tekstów 600 → 700, 15 hoverów → 800, 101 pierścieni → `ring-focus`) + reguły `audit:design` `krok600` i `fokus`.
+- [x] 4. Ręczne miejsca: hover/wciśnięcie wypełnień przez tokeny ról (primary, success, warning, danger, fill-neutral), `bg-inverse`, `SUMMARY_COLORS` przez `summaryColorCss` + zmienne `--summary-*`, SVG na zmiennych palety, `BrandLoader`, bursztynowe chipy Kreatora, błysk notatnika; reguła `audit:design` `wypelnienie`.
+- [x] 5. Preferencja na koncie (`preferences.theme`, cookie przy logowaniu, skrypt w `<head>`, `ThemeSync`) + wiersz „Motyw” w Ustawieniach; wybrany segment `SegmentedControl` na `bg-segment-active` (w ciemnym jaśniejszy od toru).
+- [x] 6. Szybkie wejście: stopka menu bocznego (ikony), zwinięte menu (przycisk z listą), arkusz „Więcej” na telefonie; jeden stan z Ustawieniami (`ThemeSwitch`, `use-theme-preference`).
+- [x] 7. Okna, panele boczne, menu, dymki, podpowiedzi i toasty na `bg-raised` (ciemny `#20262e`, 1.15:1 wobec karty); test kontrastu pilnuje różnicy okno/karta i ramki.
+- [x] 8. Przegląd modułów w ciemnym (46 ekranów: 40 admina + 6 handlowca, 0 tekstu < AA), DESIGN.md → „Motyw ciemny”. Otwarte: decyzja D2 (rekomendacja: zostaje jasny).

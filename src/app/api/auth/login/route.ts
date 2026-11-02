@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { COOKIE_NAME, sessionCookieOptions } from "@/lib/auth-local/cookies";
 import { verifyPassword } from "@/lib/auth-local/password";
 import { createSession } from "@/lib/auth-local/session";
+import { buildThemeCookie } from "@/lib/auth/theme";
 import { findUserByEmail } from "@/lib/auth-local/users";
 import {
   ADMIN_PANEL_COOKIE,
@@ -182,6 +183,8 @@ export async function POST(request: NextRequest) {
     expires: expiresAt,
     maxAge: Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000)),
   });
+  // Motyw z konta już na pierwszej stronie po logowaniu (nowe urządzenie nie mignie jasnym).
+  jsonResponse.cookies.set(buildThemeCookie(profile.theme));
 
   if (!profile.must_change_password) {
     const role = profile.role as UserRole;

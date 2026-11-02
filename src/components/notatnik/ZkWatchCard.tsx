@@ -783,7 +783,7 @@ export function ZkWatchCard({
       </div>
 
       {displayError ? (
-        <p className="border-t border-slate-100/90 px-3 py-1.5 text-xs text-red-600">
+        <p className="border-t border-slate-100/90 px-3 py-1.5 text-xs text-red-700">
           {displayError}
         </p>
       ) : null}

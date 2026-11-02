@@ -32,7 +32,7 @@ export function SupplierVacationNowChip({
       )}
       title={`${PROCUREMENT_REQUEST_FLAG_COPY.vacationChip} · ${rangeTitle}`}
     >
-      <IconSun size={11} strokeWidth={2.25} className="shrink-0 text-amber-600" aria-hidden />
+      <IconSun size={11} strokeWidth={2.25} className="shrink-0 text-amber-700" aria-hidden />
       <span className="truncate">
         {PROCUREMENT_REQUEST_FLAG_COPY.vacationChipShort}
       </span>

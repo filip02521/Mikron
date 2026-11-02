@@ -53,7 +53,7 @@ export function MobileOperationsHeader({
         <button
           type="button"
           onClick={() => void signOutToLogin()}
-          className="min-h-11 shrink-0 cursor-pointer rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
+          className="min-h-11 shrink-0 cursor-pointer rounded-md border border-slate-200 bg-card px-3 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
         >
           Wyloguj
         </button>

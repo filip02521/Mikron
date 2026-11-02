@@ -126,7 +126,7 @@ function TourStepContent({
       ) : null}
 
       {previewMode === "live" ? (
-        <p className="rounded-md border border-slate-200/90 bg-white/80 px-2.5 py-2 text-[0.6875rem] leading-relaxed text-slate-600">
+        <p className="rounded-md border border-slate-200/90 bg-card/80 px-2.5 py-2 text-[0.6875rem] leading-relaxed text-slate-600">
           Na ekranie widać tę zakładkę z{" "}
           <strong className="font-medium text-slate-700">przykładowymi danymi</strong>. Możesz
           przewinąć stronę i obejrzeć układ.
@@ -253,18 +253,18 @@ export function SalesOnboardingWizard() {
   if (isWelcomeStep) {
     return (
       <div
-        className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/50 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+        className="fixed inset-0 z-[100] flex items-end justify-center bg-scrim/50 p-0 backdrop-blur-sm sm:items-center sm:p-4"
         role="dialog"
         aria-modal="true"
         aria-labelledby="sales-onboarding-title"
       >
-        <div className="relative flex max-h-[min(100dvh,920px)] w-full max-w-2xl flex-col overflow-hidden rounded-t-lg border border-slate-200/90 bg-white shadow-2xl sm:rounded-lg">
+        <div className="relative flex max-h-[min(100dvh,920px)] w-full max-w-2xl flex-col overflow-hidden rounded-t-lg border border-slate-200/90 bg-card shadow-2xl sm:rounded-lg">
           <BrandCardAccent className="absolute -right-10 -top-10 h-40 w-48 opacity-80" />
 
-          <div className="relative z-[1] border-b border-slate-100 bg-white/80 px-4 py-4 sm:px-6">
+          <div className="relative z-[1] border-b border-slate-100 bg-card/80 px-4 py-4 sm:px-6">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[0.625rem] font-semibold text-indigo-600/90">
+                <p className="text-[0.625rem] font-semibold text-indigo-700/90">
                   Wprowadzenie · OnTime
                 </p>
                 <p className="mt-0.5 text-xs text-slate-500">
@@ -288,10 +288,10 @@ export function SalesOnboardingWizard() {
             {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}
           >
             <WelcomeStepContent step={step} displayName={displayName} />
-            {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
+            {error ? <p className="mt-4 text-sm text-red-700">{error}</p> : null}
           </div>
 
-          <div className="relative z-[1] flex flex-col-reverse gap-2 border-t border-slate-100 bg-white/90 px-4 py-4 sm:flex-row sm:justify-end sm:gap-3 sm:px-6">
+          <div className="relative z-[1] flex flex-col-reverse gap-2 border-t border-slate-100 bg-card/90 px-4 py-4 sm:flex-row sm:justify-end sm:gap-3 sm:px-6">
             <Button
               type="button"
               variant="ghost"
@@ -320,7 +320,7 @@ export function SalesOnboardingWizard() {
   return (
     <div
       className={cn(
-        "fixed z-[110] flex flex-col border bg-white shadow-xl transition-shadow duration-500",
+        "fixed z-[110] flex flex-col border bg-card shadow-xl transition-shadow duration-500",
         coachHighlight
           ? "border-indigo-400 shadow-[0_0_0_3px_rgba(24, 137, 149,0.35),0_12px_40px_rgba(15,23,42,0.18)]"
           : "border-slate-200/90",
@@ -350,7 +350,7 @@ export function SalesOnboardingWizard() {
       <div className="relative z-[1] shrink-0 border-b border-slate-100/90 px-3 py-2.5 sm:px-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-[0.625rem] font-semibold text-indigo-600/90">
+            <p className="text-[0.625rem] font-semibold text-indigo-700/90">
               Tour · krok {stepIndex + 1}/{steps.length}
             </p>
             <p className="truncate text-xs font-medium text-slate-700">{step.title}</p>
@@ -370,10 +370,10 @@ export function SalesOnboardingWizard() {
           }
           showFullDetails={showFullDetails}
         />
-        {error ? <p className="mt-2 text-xs text-red-600">{error}</p> : null}
+        {error ? <p className="mt-2 text-xs text-red-700">{error}</p> : null}
       </div>
 
-      <div className="relative z-[1] shrink-0 space-y-2 border-t border-slate-100/90 bg-white/95 px-3 py-2.5 sm:px-4">
+      <div className="relative z-[1] shrink-0 space-y-2 border-t border-slate-100/90 bg-card/95 px-3 py-2.5 sm:px-4">
         {!isDesktop ? (
           <button
             type="button"

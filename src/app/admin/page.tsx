@@ -71,6 +71,7 @@ export default async function AdminPage() {
       subiekt_lead_times: null,
       zd_sku_class: null,
       zd_kpi_weekly: null,
+      rol_reports: null,
     } satisfies Record<CronJobId, null>),
     informacjaStockAutoEnabled: true,
   };

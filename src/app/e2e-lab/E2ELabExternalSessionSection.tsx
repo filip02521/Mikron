@@ -90,7 +90,7 @@ export function E2ELabExternalSessionSection() {
         <button
           type="button"
           data-testid="zd-external-session-seed"
-          className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800"
+          className="rounded-md border border-slate-200 bg-card px-2.5 py-1.5 text-xs font-medium text-slate-800"
           onClick={seedActiveSession}
         >
           Symuluj Policz (token)
@@ -98,7 +98,7 @@ export function E2ELabExternalSessionSection() {
         <button
           type="button"
           data-testid="zd-external-session-leave"
-          className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800"
+          className="rounded-md border border-slate-200 bg-card px-2.5 py-1.5 text-xs font-medium text-slate-800"
           onClick={leaveWizard}
         >
           Wyjdź z kreatora
@@ -106,7 +106,7 @@ export function E2ELabExternalSessionSection() {
         <button
           type="button"
           data-testid="zd-external-session-return"
-          className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800"
+          className="rounded-md border border-slate-200 bg-card px-2.5 py-1.5 text-xs font-medium text-slate-800"
           onClick={returnToWizard}
         >
           {zdEstimateExternalSessionReturnCtaLabel}
@@ -114,7 +114,7 @@ export function E2ELabExternalSessionSection() {
         <button
           type="button"
           data-testid="zd-external-session-cancel"
-          className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800"
+          className="rounded-md border border-slate-200 bg-card px-2.5 py-1.5 text-xs font-medium text-slate-800"
           onClick={cancelSession}
         >
           {zdEstimateExternalSessionCancelButtonLabel}

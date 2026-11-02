@@ -22,7 +22,8 @@ export function BrandLoader({
   className?: string;
 }) {
   const px = SIZE_PX[size];
-  const ink = tile ? "#fff" : BRAND_MARK_COLOR;
+  // Bez kafla znak stoi na karcie: kolor z motywu (w jasnym = BRAND_MARK_COLOR).
+  const ink = tile ? "#fff" : "var(--color-primary)";
   const bg = tile ? BRAND_MARK_COLOR : "#fff";
   return (
     <span

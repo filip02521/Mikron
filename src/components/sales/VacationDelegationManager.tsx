@@ -215,7 +215,7 @@ export function VacationDelegationManager({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-rose-600 hover:text-rose-700"
+                    className="text-rose-700 hover:text-rose-800"
                     onClick={() => setDeleteTarget(d)}
                   >
                     Usuń

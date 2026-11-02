@@ -95,7 +95,7 @@ export function ZkWatchProsbaSection({
           title={ZK_MODAL_PROSBA_COPY.previewLinkTitle}
           className={cn(
             "group flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-slate-50",
-            "focus-visible:relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-600"
+            "focus-visible:relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
           )}
         >
           <span className="min-w-0 flex-1">
@@ -122,7 +122,7 @@ export function ZkWatchProsbaSection({
     );
   }
 
-  const listClass = "divide-y divide-slate-100 overflow-hidden rounded-[var(--radius-surface)] border border-slate-200/90 bg-white";
+  const listClass = "divide-y divide-slate-100 overflow-hidden rounded-[var(--radius-surface)] border border-slate-200/90 bg-card";
 
   return (
     <ZkWatchModalSection title={ZK_MODAL_SECTION_TITLES.prosba}>

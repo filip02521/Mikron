@@ -23,7 +23,7 @@ const GMAIL_CONNECT_HREF = "/api/google/connect?returnTo=/ustawienia";
 type Prep = Extract<SupplierInquiryPrep, { ok: true }>;
 type SendError = Extract<SendSupplierInquiryResult, { ok: false }>;
 
-const fieldClass = cn(controlFocusClass, "mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm");
+const fieldClass = cn(controlFocusClass, "mt-1 w-full rounded-md border border-slate-200 bg-card px-3 py-2 text-sm");
 
 /** Okienko „Zapytaj dostawcę” — szkic maila o cenę, dostępność i termin, wysyłka z Gmaila osoby z zakupów. */
 export function SupplierInquiryDialog({

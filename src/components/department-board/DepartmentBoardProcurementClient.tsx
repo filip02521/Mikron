@@ -305,7 +305,7 @@ export function DepartmentBoardProcurementClient({
                 </label>
               </div>
               {announcementFormError ? (
-                <p className="mt-2 text-xs text-red-600">{announcementFormError}</p>
+                <p className="mt-2 text-xs text-red-700">{announcementFormError}</p>
               ) : null}
               <div className="mt-3">
                 <Button

@@ -85,7 +85,7 @@ export function MyOrderAssignedClient({
     salesClientLabelClass,
     "gap-0.5",
     hasKhId && "hit-target cursor-pointer select-none transition-colors",
-    copyState === "copied" && "text-emerald-600",
+    copyState === "copied" && "text-emerald-700",
     (copyState === "error" || copyState === "copy_failed") && "text-red-500"
   );
 

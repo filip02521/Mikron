@@ -39,7 +39,7 @@ export function MojeSectionShell({
     <HeaderSlotContext.Provider value={slot}>
       <div
         id={mojeSectionDomId(sectionIcon)}
-        className={cn("scroll-mt-24 bg-white", className)}
+        className={cn("scroll-mt-24 bg-card", className)}
         aria-labelledby={mojeSectionHeadingDomId(sectionIcon)}
       >
         {children}

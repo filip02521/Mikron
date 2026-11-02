@@ -4,6 +4,8 @@ import "./globals.css";
 import { CryptoPolyfillInit } from "@/components/CryptoPolyfillScript";
 import { FontScaleScript } from "@/components/layout/FontScaleScript";
 import { SidebarCollapseScript } from "@/components/layout/SidebarCollapseScript";
+import { ThemeScript } from "@/components/layout/ThemeScript";
+import { THEME_COLOR } from "@/lib/auth/theme";
 import { AppShell } from "@/components/layout/AppShell";
 import { defaultAppMetadata } from "@/lib/ui/page-metadata";
 
@@ -31,6 +33,11 @@ export const viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover" as const,
+  // ThemeSync nadpisuje oba wpisy kolorem motywu z konta.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: THEME_COLOR.light },
+    { media: "(prefers-color-scheme: dark)", color: THEME_COLOR.dark },
+  ],
 };
 
 export default function RootLayout({
@@ -41,10 +48,11 @@ export default function RootLayout({
       lang="pl"
       data-scroll-behavior="smooth"
       className={`${geistSans.variable} ${geistMono.variable} ${interTight.variable}`}
-      // Skrypty w <head> ustawiają data-font-scale / data-sidebar przed hydracją (bez mignięcia).
+      // Skrypty w <head> ustawiają data-theme / data-font-scale / data-sidebar przed hydracją (bez mignięcia).
       suppressHydrationWarning
     >
       <head>
+        <ThemeScript />
         <FontScaleScript />
         <SidebarCollapseScript />
       </head>

@@ -103,7 +103,7 @@ export function AuthQuotePanel({
       <div>
         {/* Logo poziome (znak + nazwa) jak w menu bocznym, wariant na ciemne tło. */}
         <div className="flex items-center gap-4">
-          <AppBrandMark size="lg" variant="dark" className="ring-1 ring-white/20" />
+          <AppBrandMark size="lg" variant="dark" className="ring-1 ring-card/20" />
           <div className="min-w-0">
             <p className="text-xs font-semibold text-indigo-200/90">{ONTIME_COMPANY}</p>
             <p

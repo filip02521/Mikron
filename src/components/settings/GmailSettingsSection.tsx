@@ -148,7 +148,7 @@ export function GmailSettingsSection({
             rows={5}
             maxLength={EMAIL_SIGNATURE_MAX}
             placeholder={SIGNATURE_PLACEHOLDER}
-            className={cn(controlFocusClass, "w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm")}
+            className={cn(controlFocusClass, "w-full rounded-md border border-slate-200 bg-card px-3 py-2 text-sm")}
           />
           <div className="flex flex-wrap items-center gap-3">
             <Button

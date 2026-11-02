@@ -4,7 +4,7 @@ export const teethPanelSupplierCardClass =
   "overflow-hidden rounded-md border border-slate-200/80 bg-[var(--card)] shadow-sm";
 
 export const teethPanelSupplierHeaderClass =
-  "flex flex-col gap-2 border-b border-slate-200/80 bg-white py-2.5 sm:flex-row sm:items-center sm:justify-between";
+  "flex flex-col gap-2 border-b border-slate-200/80 bg-card py-2.5 sm:flex-row sm:items-center sm:justify-between";
 
 export const teethPanelOrderRowIssueClass =
   "border-l-2 border-l-amber-400/90 bg-amber-50/20 hover:bg-amber-50/35";
@@ -44,7 +44,7 @@ export const teethPanelRowActionsClass =
 
 /** Chip specyfikacji w panelu zakupów — neutralny (formularz prośby zostaje fioletowy). */
 export const teethPanelChipClass =
-  "inline-flex max-w-full items-center rounded-md bg-white px-2 py-0.5 text-[0.6875rem] font-medium leading-snug text-slate-800 ring-1 ring-slate-200/90";
+  "inline-flex max-w-full items-center rounded-md bg-card px-2 py-0.5 text-[0.6875rem] font-medium leading-snug text-slate-800 ring-1 ring-slate-200/90";
 
 export const teethPanelChipCountClass = "font-semibold tabular-nums text-slate-600";
 
@@ -65,10 +65,10 @@ export const teethPanelIncompleteDetailClass =
   "text-[0.6875rem] leading-relaxed text-amber-800/90";
 
 export const teethPanelSpecIncludedHintClass =
-  "rounded-md border border-slate-200/80 bg-white/80 px-2.5 py-1.5 text-xs text-slate-600";
+  "rounded-md border border-slate-200/80 bg-card/80 px-2.5 py-1.5 text-xs text-slate-600";
 
 export const teethPanelBatchLineBlockClass =
-  "space-y-2 rounded-md border border-slate-200/70 bg-white/60 p-2.5";
+  "space-y-2 rounded-md border border-slate-200/70 bg-card/60 p-2.5";
 
 export const teethPanelFiltersBarClass =
   "-mx-3 -mt-3 border-b border-slate-200/80 bg-slate-50/50 px-3 py-2.5 sm:-mx-4 sm:px-4 lg:-mx-5 lg:px-5";
@@ -87,7 +87,7 @@ export const teethReceiveTdClass = "px-2.5 py-2.5 align-middle first:pl-4 last:p
 
 export const teethReceiveOrderDividerClass = "border-t-2 border-slate-200/90";
 
-export const teethReceiveSalesPersonRowClass = "bg-white";
+export const teethReceiveSalesPersonRowClass = "bg-card";
 
 export const teethReceiveSalesPersonBannerClass =
   "relative flex items-center gap-3 px-4 py-3 sm:px-5";
@@ -96,7 +96,7 @@ export const teethReceiveSaveButtonClass =
   "rounded-md bg-indigo-600 px-3 py-1.5 text-[0.6875rem] font-semibold text-white shadow-sm transition disabled:opacity-50";
 
 export const teethReceiveSectionOutlineButtonClass =
-  "rounded-md border border-slate-200 bg-white px-3 py-1.5 text-[0.6875rem] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50";
+  "rounded-md border border-slate-200 bg-card px-3 py-1.5 text-[0.6875rem] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50";
 
 export const teethReceiveDataRowClass =
   "border-b border-slate-100/90 transition-colors hover:bg-slate-50/60";
@@ -110,7 +110,7 @@ export const teethReceiveDataRowPartialClass = "bg-amber-50/20 hover:bg-amber-50
 export const teethReceiveDataRowClosedClass = "bg-slate-50/40 text-slate-500 hover:bg-slate-50/50";
 
 export const teethReceiveQtyInputClass =
-  "w-12 rounded-md border border-slate-200 bg-white px-1.5 py-1.5 text-center text-xs font-semibold tabular-nums shadow-sm";
+  "w-12 rounded-md border border-slate-200 bg-card px-1.5 py-1.5 text-center text-xs font-semibold tabular-nums shadow-sm";
 
 export const teethReceiveQtyInputFilledClass =
   "border-indigo-300 bg-indigo-50/80 text-indigo-950";

@@ -42,7 +42,7 @@ export function NotatnikCollapsible({
   return (
     <section
       className={cn(
-        "bg-white",
+        "bg-card",
         highlight && !open && "bg-amber-50/40",
         className
       )}

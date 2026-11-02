@@ -14,10 +14,10 @@ export const boardQuestionsStatusChipClass =
   "inline-flex min-h-11 flex-auto cursor-pointer whitespace-nowrap sm:min-w-0 sm:flex-1 items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[0.6875rem] font-semibold leading-none transition sm:min-h-8 sm:px-2.5 sm:text-xs";
 
 export const boardQuestionsStatusChipIdleClass =
-  "text-slate-600 hover:bg-white/80 hover:text-slate-900";
+  "text-slate-600 hover:bg-card/80 hover:text-slate-900";
 
 export const boardQuestionsStatusChipActiveClass =
-  "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/80";
+  "bg-card text-slate-900 shadow-sm ring-1 ring-slate-200/80";
 
 export const boardQuestionsAttentionRowClass =
   "flex flex-wrap items-center gap-2";
@@ -26,7 +26,7 @@ export const boardQuestionsAttentionChipClass =
   "inline-flex min-h-8 shrink-0 cursor-pointer items-center gap-1 rounded-md border px-2.5 py-1 text-[0.6875rem] font-semibold leading-none transition";
 
 export const boardQuestionsAttentionChipIdleClass =
-  "border-slate-200/90 bg-white text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/50 hover:text-indigo-900";
+  "border-slate-200/90 bg-card text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/50 hover:text-indigo-900";
 
 export const boardQuestionsAttentionChipActiveClass =
   "border-indigo-300/90 bg-indigo-50 text-indigo-950 ring-1 ring-indigo-200/70";
@@ -41,7 +41,7 @@ export const boardQuestionsResultsMetaClass =
   "text-[0.6875rem] tabular-nums text-slate-500";
 
 export const boardQuestionsFormShellClass =
-  "overflow-hidden rounded-lg border border-indigo-200/80 bg-white shadow-sm";
+  "overflow-hidden rounded-lg border border-indigo-200/80 bg-card shadow-sm";
 
 /** Formularz wewnątrz panelu listy — bez osobnej karty. */
 export const boardQuestionsFormEmbeddedShellClass = "border-b border-slate-100 pb-3";
@@ -53,7 +53,7 @@ export const boardQuestionsFormEmbeddedHeaderClass = cn(
   "flex w-full items-center gap-2.5 rounded-lg border border-indigo-200/90",
   "bg-indigo-50/90 px-3 py-2.5 text-left shadow-sm",
   "transition hover:border-indigo-300 hover:bg-indigo-50 hover:shadow",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
 );
 
 export const boardQuestionsFormEmbeddedHeaderExpandedClass =
@@ -67,7 +67,7 @@ export const boardQuestionsFormEmbeddedExpandBadgeClass =
 export const boardQuestionsFormBodyClass = "space-y-4 px-3 py-3 sm:px-4 sm:py-4";
 
 export const boardQuestionsFormEmbeddedBodyClass = cn(
-  "space-y-3 rounded-b-lg border border-t-0 border-indigo-200/90 bg-white px-3 pb-4 pt-3 sm:px-4"
+  "space-y-3 rounded-b-lg border border-t-0 border-indigo-200/90 bg-card px-3 pb-4 pt-3 sm:px-4"
 );
 
 export const boardQuestionsFieldLabelClass =

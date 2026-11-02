@@ -31,7 +31,7 @@ export function FlowChevron({
 type LinkChevronTone = "brand" | "sky" | "muted" | "inherit";
 
 const linkChevronToneClass: Record<LinkChevronTone, string> = {
-  brand: "text-indigo-600",
+  brand: "text-indigo-700",
   sky: "text-sky-600",
   muted: "text-slate-500",
   inherit: "text-current",

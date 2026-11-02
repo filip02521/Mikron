@@ -269,7 +269,7 @@ export function ZdEstimateBulkPackagingDialog({
                       ? "cursor-not-allowed border-slate-200 bg-slate-50"
                       : effectiveMode === opt.mode
                         ? "cursor-pointer border-indigo-300 bg-indigo-50/60"
-                        : "cursor-pointer border-slate-200 bg-white hover:bg-slate-50"
+                        : "cursor-pointer border-slate-200 bg-card hover:bg-slate-50"
                   )}
                 >
                   <input
@@ -419,7 +419,7 @@ export function ZdEstimateBulkPackagingDialog({
           disabled={pending}
           placeholder="np. paleta 36 worków"
           className={cn(
-            "mt-1.5 w-full resize-y rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-500",
+            "mt-1.5 w-full resize-y rounded-md border border-slate-200 bg-card px-3 py-2 text-sm text-slate-800 placeholder:text-slate-500",
             controlFocusClass
           )}
         />

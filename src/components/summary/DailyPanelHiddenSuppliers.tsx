@@ -66,7 +66,7 @@ export function DailyPanelHiddenSuppliers({
                   ({items.length})
                 </span>
               </p>
-              <ul className={cn(dailyPanelFlatListClass(), "overflow-hidden rounded-md border border-slate-200/90 bg-white/90")}>
+              <ul className={cn(dailyPanelFlatListClass(), "overflow-hidden rounded-md border border-slate-200/90 bg-card/90")}>
                 {items.map((row) => (
                   <li
                     key={row.supplierId}

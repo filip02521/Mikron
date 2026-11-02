@@ -135,7 +135,7 @@ export function OtpCodeInput({
             onKeyDown={(event) => handleKeyDown(index, event)}
             onPaste={handlePaste}
             className={cn(
-              "h-12 w-10 rounded-md border bg-white text-center text-xl font-semibold tracking-widest text-slate-900 shadow-sm transition-[border-color,box-shadow] sm:h-14 sm:w-12 sm:text-2xl",
+              "h-12 w-10 rounded-md border bg-card text-center text-xl font-semibold tracking-widest text-slate-900 shadow-sm transition-[border-color,box-shadow] sm:h-14 sm:w-12 sm:text-2xl",
               "focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20",
               error
                 ? "border-red-300 bg-red-50/40"

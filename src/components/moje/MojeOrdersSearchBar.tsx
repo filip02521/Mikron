@@ -56,7 +56,7 @@ export function MojeOrdersSearchBar({
   }, [enableShortcut, inputId]);
 
   return (
-    <div className={cn("border-b border-slate-100 bg-white py-2.5", salesChromeInsetClass)}>
+    <div className={cn("border-b border-slate-100 bg-card py-2.5", salesChromeInsetClass)}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
       <div className="relative min-w-0 flex-1">
         <label

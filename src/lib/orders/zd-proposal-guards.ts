@@ -15,6 +15,7 @@ import {
 import type { ZdProposalFlag, ZdProposalLineFlag } from "@/lib/orders/zd-automat-contract";
 import { sales90FromProfile } from "@/lib/orders/zd-demand-policy";
 import { formatQty, zdEstimateWindowDays } from "@/lib/orders/zd-estimate-manual";
+import { formatUserPattern } from "@/lib/orders/zd-user-pattern";
 import type { ZdProposalHookContext } from "@/lib/orders/zd-proposal-hook-context";
 import { resolveStockWatchBomViews, resolveStockWatchLineFigures } from "@/lib/stock-watch/bom-stock";
 import { mapPool } from "@/lib/async/map-pool";
@@ -68,6 +69,8 @@ export type ZdGuardLineFacts = {
   windows: readonly number[] | null;
   /** Jednostki ZD z ostatnich ZD towaru u dostawcy, najnowsze pierwsze. */
   recentZdUnits: readonly number[];
+  /** Pamięć korekt z silnika (dziennik decyzji) — linia do sprawdzenia, bo ilość liczy Twój wzorzec. */
+  userPattern?: import("@/lib/data/zd-line-decisions").ZdLineDecisionPattern | null;
 };
 
 /** Udział największego dokumentu w sprzedaży okna (dokumenty z kilku pozycji sumowane; ZW odejmuje). */
@@ -155,6 +158,7 @@ export function zdLineGuardFlags(
         `${qty(ZD_GUARD_PEAK_QTY_FACTOR * f.tempo90! * dni)} szt (2× tempo 90 d × ${dni} d).`
     );
   }
+  if (f.userPattern) add("habit", formatUserPattern(f.userPattern));
   const hist = f.recentZdUnits.slice(0, ZD_GUARD_JUMP_HISTORY);
   if (hist.length >= ZD_GUARD_JUMP_MIN_HISTORY) {
     const avg = hist.reduce((a, x) => a + x, 0) / hist.length;
@@ -225,6 +229,7 @@ function engineFacts(ctx: ZdProposalHookContext) {
       openZd: fig.openZdQty,
       minStock: engine.minStockByTwId.get(twId) ?? null,
       windows: line.salesProfile?.windows ?? null,
+      userPattern: line.userPattern ?? null,
     };
   };
 }

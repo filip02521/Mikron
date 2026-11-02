@@ -41,8 +41,8 @@ export function SegmentedControl<T extends string>({
       className={cn(
         // Przy wielu opcjach tor przewija się w poziomie; etykiet nie ucinamy.
         "inline-flex max-w-full overflow-x-auto overscroll-x-contain rounded-md border border-slate-200/90 bg-slate-50/90 p-0.5 [scrollbar-width:thin]",
-        compact && "h-10 items-stretch rounded-md border-slate-200/80 bg-white/70 sm:h-8",
-        dock && "h-9 min-h-9 items-stretch rounded-md border-slate-200/80 bg-white/70",
+        compact && "h-10 items-stretch rounded-md border-slate-200/80 bg-card/70 sm:h-8",
+        dock && "h-9 min-h-9 items-stretch rounded-md border-slate-200/80 bg-card/70",
         disabled && "opacity-60",
         className
       )}
@@ -58,7 +58,7 @@ export function SegmentedControl<T extends string>({
             disabled={disabled}
             onClick={() => onChange(opt.value)}
             className={cn(
-              "shrink-0 cursor-pointer whitespace-nowrap rounded-[5px] font-medium transition-[background-color,color,box-shadow] duration-150 ease-out active:bg-white/90 active:text-slate-900",
+              "shrink-0 cursor-pointer whitespace-nowrap rounded-[5px] font-medium transition-[background-color,color,box-shadow] duration-150 ease-out active:bg-card/90 active:text-slate-900",
               compact &&
                 "flex-auto px-1.5 text-xs leading-none sm:flex-none sm:px-2.5 sm:text-[0.6875rem]",
               dock &&
@@ -69,9 +69,9 @@ export function SegmentedControl<T extends string>({
                 "min-h-10 flex-1 py-2.5 text-sm sm:flex-none sm:min-h-0 sm:py-1.5 sm:text-sm",
               active
                 ? tight
-                  ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/70"
-                  : "bg-white text-slate-900 shadow-sm"
-                : "text-slate-600 hover:bg-white/70 hover:text-slate-900",
+                  ? "bg-segment-active text-slate-900 shadow-sm ring-1 ring-slate-200/70"
+                  : "bg-segment-active text-slate-900 shadow-sm"
+                : "text-slate-600 hover:bg-card/70 hover:text-slate-900",
               disabled &&
                 "cursor-not-allowed hover:bg-transparent hover:text-slate-600"
             )}

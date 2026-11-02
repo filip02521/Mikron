@@ -16,7 +16,7 @@ export function PanelDailyHelp({
 }) {
   const toolbarButton =
     density === "toolbar"
-      ? "inline-flex h-11 min-w-11 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm transition-colors duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 sm:h-10 sm:min-w-10"
+      ? "inline-flex h-11 min-w-11 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-card px-3 text-sm font-medium text-slate-700 shadow-sm transition-colors duration-150 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 sm:h-10 sm:min-w-10"
       : undefined;
 
   return (

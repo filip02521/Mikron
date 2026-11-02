@@ -64,18 +64,20 @@ export type ZdPackOrderQty = {
 /**
  * Wolne sztuki ponad poziom (cel albo minimum): stan dostępny + w drodze − otwarte ZK bez
  * rezerwacji. Prośba bierze je przed zamówieniem — inaczej towar z półki zamawiano drugi raz.
- * ZK bez rezerwacji odejmujemy, bo zabiorą ten sam stan (gdy to ZK prośby — zamówimy jak dawniej).
+ * ZK bez rezerwacji NIE odejmujemy: w Subiekcie to w 92 % martwe ZK sprzed lat (28.10.2026, zakres
+ * Polkard: 4 780 z 5 190 szt starsze niż 90 dni), więc wolny towar był zawsze 0 i prośba zawsze
+ * dokładała sztuki. Decyzja 2026-10-23: ZK bez rezerwacji nie wchodzą do pozycji zapasu.
  */
 export function freeSupplyForProsbaPieces(input: {
   dostepne: number;
   otwarteZdPieces: number;
+  /** Ignorowane — patrz komentarz wyżej (parametr zostaje dla zgodności wywołań). */
   otwarteZkBezRez?: number;
   levelPieces: number;
 }): number {
   const free =
     (Number(input.dostepne) || 0) +
     Math.max(0, Number(input.otwarteZdPieces) || 0) -
-    Math.max(0, Number(input.otwarteZkBezRez) || 0) -
     Math.max(0, Number(input.levelPieces) || 0);
   return free > 0 ? Math.floor(free + 1e-9) : 0;
 }
@@ -233,10 +235,15 @@ export function resolveOrderQtyForLine(
   const mode = packagingDocumentMode(packaging);
   const orderMult = packaging?.orderMultiple ?? null;
 
+  // extraOnly / baza 0: overlap nie obcina (prośba na towar „tylko na prośbę” idzie w całości).
   const effectiveExtraForNeed = (stockNeed: number) => {
     const cappedOverlap = Math.min(uncappedOverlap, Math.max(0, stockNeed));
     return Math.max(0, rawExtra - cappedOverlap);
   };
+  // Zwykła linia: rezerwacja ZK klienta (własny ZK prośby = relief, inny ZK tego klienta = overlap) siedzi już
+  // w stanRez, więc need ją odtwarza — prośba dokłada tylko to, czego rezerwacja nie pokrywa. Odejmowanie relief
+  // od need (jak dawniej) zamawiało prośbę w całości, gdy stan ją pokrywał: stan 12, rez 5, cel 10, prośba 5 → 5 zamiast 3.
+  const extraAfterReservations = () => Math.max(0, rawExtra - relief - uncappedOverlap);
 
   // Assembled parent: nigdy na ZD (także bez extras — explode idzie na składniki).
   if (isAssembledBomParent(line)) {
@@ -299,11 +306,10 @@ export function resolveOrderQtyForLine(
         fromSupply
       );
     }
-    const baseRaw = line.pair.partnerMissing
+    const base = line.pair.partnerMissing
       ? 0
       : Math.max(0, Math.ceil(Number(line.doZamowieniaReczne) || 0));
-    const base = Math.max(0, baseRaw - relief);
-    const extra = effectiveExtraForNeed(base);
+    const extra = extraAfterReservations();
     const fromSupply = Math.min(
       extra,
       pairFree(Math.max(Number(line.celZapasuTracked ?? line.celZapasu) || 0, Number(minStockSzt) || 0))
@@ -353,16 +359,13 @@ export function resolveOrderQtyForLine(
       fromSupply
     );
   }
-  const stockNeed = Math.max(
-    0,
-    computeManualOrderQty({
-      celZapasu: line.celZapasuTracked ?? line.celZapasu,
-      dostepne: line.dostepne,
-      otwarteZd: otwarteZdPieces,
-      minStockSzt,
-    }) - relief
-  );
-  const extra = effectiveExtraForNeed(stockNeed);
+  const stockNeed = computeManualOrderQty({
+    celZapasu: line.celZapasuTracked ?? line.celZapasu,
+    dostepne: line.dostepne,
+    otwarteZd: otwarteZdPieces,
+    minStockSzt,
+  });
+  const extra = extraAfterReservations();
   const fromSupply = Math.min(
     extra,
     lineFree(Math.max(Number(line.celZapasuTracked ?? line.celZapasu) || 0, Number(minStockSzt) || 0))

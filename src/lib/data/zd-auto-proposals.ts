@@ -42,7 +42,7 @@ export type ZdAutoProposalStatus = "pending" | "accepted" | "rejected" | "expire
 
 /**
  * Skąd propozycja (migracja 199): nocny przebieg, „Przygotuj teraz” w Kreatorze, przeliczenie w panelu
- * „Sprawdź i zatwierdź”. null = propozycja sprzed migracji (traktowana jak nocna).
+ * „Sprawdź i wyślij”. null = propozycja sprzed migracji (traktowana jak nocna).
  */
 export type ZdAutoProposalOrigin = "night" | "manual" | "review";
 
@@ -298,7 +298,7 @@ async function createZdAutoProposalLegacy(input: ZdAutoProposalWrite): Promise<Z
 }
 
 /**
- * Przeliczenie w panelu „Sprawdź i zatwierdź”: ta sama propozycja dostaje linie z aktualnych stanów (ten sam id
+ * Przeliczenie w panelu „Sprawdź i wyślij”: ta sama propozycja dostaje linie z aktualnych stanów (ten sam id
  * i data powstania — termin kolejnej się nie przesuwa). Pierwsze przeliczenie zachowuje listę automatu
  * (`original_lines`) do KPI korekty. null = nie ma otwartej propozycji do przeliczenia (albo trwa tworzenie ZD,
  * albo baza bez migracji 199) — wtedy wołający tworzy nową.
@@ -419,6 +419,24 @@ export async function decideZdAutoProposal(input: {
     ]
   );
   return (res.rowCount ?? 0) > 0;
+}
+
+/**
+ * Zamówienie automatu poszło do dostawcy poza Gmailem OnTime („Wysłałem ręcznie”) — etap „sent” (migracja 200).
+ * Wysyłkę z Gmaila widać w `supplier_order_emails`. Pierwszy zapis wygrywa; baza bez migracji 200 — nic (false).
+ */
+export async function markZdAutoProposalSent(dokId: number, supplierId: string, via: "gmail" | "manual"): Promise<boolean> {
+  try {
+    const res = await query(
+      `UPDATE zd_auto_proposals SET sent_at = now(), sent_via = $2
+        WHERE dok_id = $1 AND supplier_id = $3 AND status = 'accepted' AND sent_at IS NULL`,
+      [dokId, via, supplierId]
+    );
+    return (res.rowCount ?? 0) > 0;
+  } catch (e) {
+    if (isUndefinedColumn(e)) return false;
+    throw e;
+  }
 }
 
 /** Drugie ZD tego samego dnia (zamówienie podzielone) — dopisuje linie do zaakceptowanej propozycji. */

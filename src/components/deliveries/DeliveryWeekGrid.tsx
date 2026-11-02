@@ -55,7 +55,7 @@ function DeliveryWeekDayColumn({
           ? "bg-sky-50/40"
           : day.isPast
             ? "bg-slate-50/40"
-            : "bg-white"
+            : "bg-card"
       )}
     >
       <header

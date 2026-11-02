@@ -456,7 +456,7 @@ export function ZdProductSettingsPalette({ open, onClose, canEdit }: { open: boo
               setPicked(null);
               requestAnimationFrame(() => inputRef.current?.focus());
             }}
-            className="inline-flex min-h-8 items-center gap-1 rounded-md px-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+            className="inline-flex min-h-8 items-center gap-1 rounded-md px-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
           >
             <IconChevronLeft size={15} aria-hidden /> Inny towar
           </button>

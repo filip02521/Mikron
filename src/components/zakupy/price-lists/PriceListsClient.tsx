@@ -165,7 +165,7 @@ export function PriceListsClient({
                       <Link
                         href={`/zakupy/cenniki/${imp.id}`}
                         title={imp.fileName}
-                        className="rounded font-medium text-indigo-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                        className="rounded font-medium text-indigo-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                       >
                         {imp.cechaName} · ważny od {formatDate(imp.validFrom)}
                       </Link>

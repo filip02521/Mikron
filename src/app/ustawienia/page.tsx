@@ -48,7 +48,7 @@ export default async function UstawieniaPage() {
             unavailable={gmailUnavailable}
           /> : null}
 
-        <AppearanceSettingsSection uniformBackground={user.uniformBackground} fontScale={user.fontScale} />
+        <AppearanceSettingsSection uniformBackground={user.uniformBackground} fontScale={user.fontScale} theme={user.theme} />
 
         {isSalesAccount(user.role) && user.salesPersonId ? <SalesOnboardingSettingsSection /> : null}
       </SettingsWorkspace>

@@ -18,7 +18,8 @@ export type CronJobId =
   | "stock_watch"
   | "subiekt_lead_times"
   | "zd_sku_class"
-  | "zd_kpi_weekly";
+  | "zd_kpi_weekly"
+  | "rol_reports";
 
 export const CRON_JOB_IDS: CronJobId[] = [
   "morning_routine",
@@ -30,6 +31,7 @@ export const CRON_JOB_IDS: CronJobId[] = [
   "subiekt_lead_times",
   "zd_sku_class",
   "zd_kpi_weekly",
+  "rol_reports",
   "scheduled_mails",
   "morning_sync",
 ];

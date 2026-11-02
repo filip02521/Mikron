@@ -30,7 +30,7 @@ function formatDateTimePl(iso: string): string {
 
 /** Drugorzędne akcje w pasku: tekst bez ramki, ta sama wysokość co CTA. */
 const quietActionClass =
-  "inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-slate-600 transition-colors hover:bg-white/70 hover:text-slate-900 disabled:opacity-60";
+  "inline-flex h-8 items-center rounded-md px-2 text-xs font-medium text-slate-600 transition-colors hover:bg-card/70 hover:text-slate-900 disabled:opacity-60";
 
 function zl(v: number): string {
   return `${Math.round(v).toLocaleString("pl-PL")} zł`;
@@ -204,7 +204,7 @@ export function ZdAutoProposalBanner({
             {inDailyPanel ? (
               waiting ? (
                 <PageAttentionStripCta tone="violet" onClick={() => setAccepting(true)}>
-                  Sprawdź i zatwierdź
+                  Sprawdź i wyślij
                 </PageAttentionStripCta>
               ) : null
             ) : (

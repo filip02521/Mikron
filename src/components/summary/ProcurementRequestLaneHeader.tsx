@@ -134,7 +134,7 @@ export function ProcurementRequestLaneHeader({
         <div className="flex shrink-0 flex-col justify-center gap-0.5 border-l border-black/5 px-1 py-1">
           <button
             type="button"
-            className="rounded px-1.5 py-0.5 text-[0.625rem] font-semibold text-slate-500 transition-colors hover:bg-white/70 hover:text-slate-800 disabled:opacity-35"
+            className="rounded px-1.5 py-0.5 text-[0.625rem] font-semibold text-slate-500 transition-colors hover:bg-card/70 hover:text-slate-800 disabled:opacity-35"
             disabled={movePending || !canMoveUp}
             title={PROCUREMENT_REQUEST_LANE_COPY.laneMoveUp}
             aria-label={`${PROCUREMENT_REQUEST_LANE_COPY.laneMoveUp}: ${label}`}
@@ -144,7 +144,7 @@ export function ProcurementRequestLaneHeader({
           </button>
           <button
             type="button"
-            className="rounded px-1.5 py-0.5 text-[0.625rem] font-semibold text-slate-500 transition-colors hover:bg-white/70 hover:text-slate-800 disabled:opacity-35"
+            className="rounded px-1.5 py-0.5 text-[0.625rem] font-semibold text-slate-500 transition-colors hover:bg-card/70 hover:text-slate-800 disabled:opacity-35"
             disabled={movePending || !canMoveDown}
             title={PROCUREMENT_REQUEST_LANE_COPY.laneMoveDown}
             aria-label={`${PROCUREMENT_REQUEST_LANE_COPY.laneMoveDown}: ${label}`}

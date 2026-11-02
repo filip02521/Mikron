@@ -156,7 +156,7 @@ export function BoardQuestionAttachmentsGallery({
                 onClick={() => setZoomIndex(index)}
                 className={cn(
                   thumbClass,
-                  "group block cursor-zoom-in transition-shadow hover:ring-2 hover:ring-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                  "group block cursor-zoom-in transition-shadow hover:ring-2 hover:ring-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 )}
                 title="Powiększ zdjęcie"
                 aria-label={`Powiększ zdjęcie ${index + 1}`}
@@ -168,7 +168,7 @@ export function BoardQuestionAttachmentsGallery({
                   unoptimized
                   className="object-cover"
                 />
-                <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-black/45 px-1.5 py-1 text-[0.625rem] font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
+                <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-scrim/45 px-1.5 py-1 text-[0.625rem] font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
                   Powiększ
                 </span>
               </button>
@@ -191,7 +191,7 @@ export function BoardQuestionAttachmentsGallery({
                 href={zoomUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                className="text-xs font-medium text-indigo-700 hover:text-indigo-800"
               >
                 Otwórz w pełnym rozmiarze
               </a>
@@ -220,7 +220,7 @@ export function BoardQuestionAttachmentsGallery({
                 <button
                   type="button"
                   onClick={() => step(-1)}
-                  className="absolute left-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-slate-900/60 text-white hover:bg-slate-900/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  className="absolute left-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-scrim/60 text-white hover:bg-scrim/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                   aria-label="Poprzednie zdjęcie"
                 >
                   <IconChevronLeft size={20} />
@@ -228,7 +228,7 @@ export function BoardQuestionAttachmentsGallery({
                 <button
                   type="button"
                   onClick={() => step(1)}
-                  className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-slate-900/60 text-white hover:bg-slate-900/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-scrim/60 text-white hover:bg-scrim/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                   aria-label="Następne zdjęcie"
                 >
                   <IconChevronRight size={20} />

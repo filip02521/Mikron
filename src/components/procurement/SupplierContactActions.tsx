@@ -140,7 +140,7 @@ export function SupplierContactActions({
           className={cn(
             panelContactLinkClass,
             "cursor-pointer rounded-md px-0.5 text-left",
-            "hover:bg-sky-50/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
+            "hover:bg-sky-50/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
             copied && "text-emerald-700"
           )}
           title={mailCopyTitle}

@@ -10,6 +10,7 @@ import {
   effectiveZdDocumentUnits,
   filterOrderableLinesWithPackaging,
   formatZdPackCompactLabel,
+  freeSupplyForProsbaPieces,
   formatZdPackDocumentLabel,
   formatZdPackHint,
   formatZdPackRoundupLine,
@@ -1268,10 +1269,10 @@ describe("resolveOrderQtyForLine — wolny towar pokrywa prośbę", () => {
     expect(q.prosbaFromSupplyPieces).toBe(3);
   });
 
-  it("otwarte ZK bez rezerwacji zabierają półkę → prośba zamawiana", () => {
+  it("otwarte ZK bez rezerwacji nie zabierają półki (w Subiekcie to martwe ZK sprzed lat) → prośba z wolnego towaru", () => {
     const q = resolveOrderQtyForLine(solo({ tw_Stan: 4, dostepne: 4, otwarteZkBezRez: 4 }), null, 2, true);
-    expect(q.piecesNeeded).toBe(2);
-    expect(q.prosbaFromSupplyPieces).toBeUndefined();
+    expect(q.piecesNeeded).toBe(0);
+    expect(q.prosbaFromSupplyPieces).toBe(2);
   });
 
   it("minimum stanów: wolne tylko ponad minimum", () => {
@@ -1326,5 +1327,54 @@ describe("resolveOrderQtyForLine — wolny towar pokrywa prośbę", () => {
     };
     const q = resolveOrderQtyForLine(solo({ pair } as Partial<ManualZdEstimateLine>), null, 15, true);
     expect(q.piecesNeeded).toBe(15);
+  });
+});
+
+describe("freeSupplyForProsbaPieces — ZK bez rezerwacji", () => {
+  it("martwe ZK bez rezerwacji nie zerują wolnego towaru dla prośby", () => {
+    // Haczyki 0,8 mm (28.10.2026): 812 szt ZK bez rez z lat 2021–2024 przy stanie 122 i celu 100.
+    expect(freeSupplyForProsbaPieces({ dostepne: 122, otwarteZdPieces: 0, otwarteZkBezRez: 812, levelPieces: 100 })).toBe(22);
+    expect(freeSupplyForProsbaPieces({ dostepne: 122, otwarteZdPieces: 0, levelPieces: 100 })).toBe(22);
+  });
+});
+
+describe("prośba a rezerwacja ZK klienta (audyt 28.10.2026)", () => {
+  const stock = (over: { tw_Stan: number; tw_StanRez: number; cel: number }): ManualZdEstimateLine =>
+    ({
+      ...mapZdEstimateLineToManual(
+        {
+          tw_Id: 7,
+          tw_Symbol: "S7",
+          tw_Nazwa: "x",
+          tw_Stan: over.tw_Stan,
+          tw_StanRez: over.tw_StanRez,
+          dostepne: over.tw_Stan - over.tw_StanRez,
+          celZapasu: over.cel,
+          otwarteZd: 0,
+          doZamowienia: 0,
+        },
+        { salesTrack: false, salesTrackCuts: false }
+      ),
+      celZapasuTracked: over.cel,
+    }) as ManualZdEstimateLine;
+
+  it("stan pokrywa prośbę: stan 12, rez 5 (własny ZK prośby), cel 10, prośba 5 → 3 (nie 5)", () => {
+    const q = resolveOrderQtyForLine(stock({ tw_Stan: 12, tw_StanRez: 5, cel: 10 }), null, 5, false, "sum", 5, 0);
+    expect(q.piecesNeeded).toBe(3);
+  });
+
+  it("brak stanu: stan 0, rez 5, cel 10, prośba 5 → 15 (cel + klient), jak dotąd", () => {
+    const q = resolveOrderQtyForLine(stock({ tw_Stan: 0, tw_StanRez: 5, cel: 10 }), null, 5, false, "sum", 5, 0);
+    expect(q.piecesNeeded).toBe(15);
+  });
+
+  it("inny ZK tego klienta zarezerwowany przy need 0: stan 10, rez 5, cel 5, prośba 5 → 0 (nie 5)", () => {
+    const q = resolveOrderQtyForLine(stock({ tw_Stan: 10, tw_StanRez: 5, cel: 5 }), null, 5, false, "sum", 0, 5);
+    expect(q.piecesNeeded).toBe(0);
+  });
+
+  it("„tylko na prośbę” bez zmian: stan = rezerwacja klienta, prośba 3 → 3", () => {
+    const q = resolveOrderQtyForLine(stock({ tw_Stan: 3, tw_StanRez: 3, cel: 0 }), null, 3, true, "sum", 3, 0);
+    expect(q.piecesNeeded).toBe(3);
   });
 });

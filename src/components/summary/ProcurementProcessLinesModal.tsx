@@ -200,7 +200,7 @@ function ProcurementProcessLinesModalForm({
                     className={cn(
                       "flex cursor-pointer items-start gap-2 rounded-md px-1.5 py-1.5 text-xs text-slate-800",
                       "hover:bg-slate-50",
-                      checked && "bg-white shadow-[inset_0_0_0_1px_rgba(199,210,254,0.7)]"
+                      checked && "bg-card shadow-[inset_0_0_0_1px_rgba(199,210,254,0.7)]"
                     )}
                   >
                     <input

@@ -12,6 +12,7 @@ export const ZD_PROPOSAL_LINE_FLAG_WHY: Record<ZdProposalLineFlag, string> = {
   jump: "Ilość ponad 3× średnia z 4 ostatnich ZD tego towaru u dostawcy.",
   new_item: "Pierwsza sprzedaż mniej niż 13 tygodni temu, a pozycja jest warta ponad 500 zł.",
   missing_data: "Brak tempa sprzedaży, ceny albo czasu dostawy - ilości nie dało się sprawdzić.",
+  habit: "Przy 3 z 4 ostatnich ZD poprawiałeś tę linię w tę samą stronę - ilość liczona z Twojego wzorca (albo linia zwykle zdejmowana).",
 };
 
 /**

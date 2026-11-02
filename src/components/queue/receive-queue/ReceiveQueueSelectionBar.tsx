@@ -60,7 +60,7 @@ export function ReceiveQueueSelectionBar({
         <Button
           variant="primary"
           size="sm"
-          className="min-h-11 bg-sky-600 hover:bg-sky-700 sm:min-h-9"
+          className="min-h-11 bg-fill-neutral hover:bg-fill-neutral-hover sm:min-h-9"
           disabled={pending}
           onClick={onNotifyInformacja}
         >

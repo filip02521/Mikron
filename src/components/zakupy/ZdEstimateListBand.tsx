@@ -71,7 +71,7 @@ function ColumnToggleRow({
             "inline-flex size-4 shrink-0 items-center justify-center rounded border text-[10px] font-semibold leading-none",
             visible
               ? "border-indigo-400 bg-indigo-50 text-indigo-800"
-              : "border-slate-200 bg-white text-transparent"
+              : "border-slate-200 bg-card text-transparent"
           )}
           aria-hidden
         >
@@ -308,7 +308,7 @@ export function ZdEstimateListBand({
                 "inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md border px-2 text-[12px] font-medium",
                 leadTimeHorizon
                   ? "border-indigo-300 bg-indigo-50 text-indigo-900"
-                  : "border-slate-200 bg-white text-slate-600",
+                  : "border-slate-200 bg-card text-slate-600",
                 disabled && "cursor-not-allowed opacity-50"
               )}
               title="Zamówienie do przyjazdu kolejnej dostawy (harmonogram + czas dostawy z historii). Zmiana przelicza listę; odznacz, żeby liczyć jak dotąd."
@@ -331,7 +331,7 @@ export function ZdEstimateListBand({
                 "inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md border px-2 text-[12px] font-medium",
                 salesSmoothing
                   ? "border-indigo-300 bg-indigo-50 text-indigo-900"
-                  : "border-slate-200 bg-white text-slate-600",
+                  : "border-slate-200 bg-card text-slate-600",
                 disabled && "cursor-not-allowed opacity-50"
               )}
               title="Jednorazowe skoki i rzadka sprzedaż liczone z typowego miesiąca (profil 12 miesięcy), sprzedaż pod zrealizowane prośby poza tempem. Tylko obniża ilości. Zmiana przelicza listę; odznacz, żeby liczyć jak dotąd."

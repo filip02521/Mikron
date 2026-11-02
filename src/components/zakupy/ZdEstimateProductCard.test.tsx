@@ -116,18 +116,18 @@ describe("ZdEstimateProductCard", () => {
       },
     });
     renderCard();
-    expect(await screen.findByText("ZD 41/2026")).toBeTruthy();
+    expect((await screen.findAllByText("ZD 41/2026")).length).toBeGreaterThan(0);
     // Data w wierszu to wpis faktury; ZD z datą zamówienia pod spodem; ZD bez FZ — „bez faktury”.
-    expect(screen.getByText("FZ 7/2026")).toBeTruthy();
-    expect(screen.getByText("12.09.2026")).toBeTruthy();
+    expect(screen.getAllByText("FZ 7/2026").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("12.09.2026").length).toBeGreaterThan(0);
     expect(screen.getByText("+1 kolejna")).toBeTruthy();
     expect(screen.getByText(/z 01\.09\.2026/)).toBeTruthy();
-    expect(screen.getByText("w drodze")).toBeTruthy();
+    expect(screen.getAllByText("w drodze").length).toBeGreaterThan(0);
     expect(screen.getByText("zrealizowane, FZ niepowiązana")).toBeTruthy();
     expect(screen.getByText("36 worek")).toBeTruthy();
     expect(screen.getAllByText("= 180 szt").length).toBeGreaterThan(0);
     expect(screen.getByText(/Kupuje głównie Lab Ortho \(96%\)/)).toBeTruthy();
-    expect(screen.getByText("Paragon")).toBeTruthy();
+    expect(screen.getAllByText("Paragon").length).toBeGreaterThan(0);
     expect(screen.queryByText("W drodze (ZD)")).toBeNull();
   });
 

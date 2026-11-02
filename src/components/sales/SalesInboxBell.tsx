@@ -48,7 +48,7 @@ export function SalesInboxBellTrigger({
       aria-controls={SALES_INBOX_PANEL_ID}
       onClick={() => setOpen(!open)}
       className={cn(
-        "relative inline-flex shrink-0 cursor-pointer items-center justify-center rounded-full border border-slate-200/90 bg-white text-slate-700 shadow-sm hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-800",
+        "relative inline-flex shrink-0 cursor-pointer items-center justify-center rounded-full border border-slate-200/90 bg-card text-slate-700 shadow-sm hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-800",
         !ringing && "transition",
         buttonSize,
         controlFocusClass,
@@ -62,7 +62,7 @@ export function SalesInboxBellTrigger({
         <span
           key={ringing ? `badge-pulse-${ringToken}` : "badge-idle"}
           className={cn(
-            "absolute -right-1 -top-1 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-md bg-indigo-600 px-1 text-[0.625rem] font-semibold leading-none text-white ring-2 ring-white",
+            "absolute -right-1 -top-1 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-md bg-indigo-600 px-1 text-[0.625rem] font-semibold leading-none text-white ring-2 ring-card",
             ringing && "sales-inbox-badge-pulse"
           )}
         >

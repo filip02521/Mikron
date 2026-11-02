@@ -60,7 +60,7 @@ export function dailyZdProposalAnchorId(supplierId: string): string {
 }
 
 /**
- * Zamówienie automatu w wierszu dostawcy harmonogramu: co jest gotowe, „Sprawdź i zatwierdź”
+ * Zamówienie automatu w wierszu dostawcy harmonogramu: co jest gotowe, „Sprawdź i wyślij”
  * (panel boczny: przeliczenie, korekta, ZD w Subiekcie, wysyłka) i „Odrzuć” z powodem.
  */
 export function DailyZdProposalNotice({ proposal, className }: { proposal: DailyZdProposal; className?: string }) {
@@ -113,7 +113,7 @@ export function DailyZdProposalNotice({ proposal, className }: { proposal: Daily
         )}
       >
         <div className="flex min-w-0 flex-1 items-start gap-2.5">
-          <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-white text-indigo-700 ring-1 ring-indigo-100" aria-hidden>
+          <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-card text-indigo-700 ring-1 ring-indigo-100" aria-hidden>
             <IconPackageCheck size={15} strokeWidth={2.25} />
           </span>
           <div className="min-w-0">
@@ -138,14 +138,14 @@ export function DailyZdProposalNotice({ proposal, className }: { proposal: Daily
         <div className="flex shrink-0 items-center justify-end gap-1.5">
           <button
             type="button"
-            className="inline-flex h-11 items-center rounded-md px-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-white hover:text-slate-900 sm:h-8 sm:text-xs"
+            className="inline-flex h-11 items-center rounded-md px-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-card hover:text-slate-900 sm:h-8 sm:text-xs"
             onClick={() => setRejecting(true)}
           >
             Odrzuć
           </button>
           {/* Obrysowany, nie pełny: na panelu jest jedna pełna akcja główna, a zamówień automatu bywa kilka. */}
           <Button type="button" variant="outline" size="sm" className="min-h-10 font-semibold sm:min-h-8" onClick={() => setReviewing(true)}>
-            Sprawdź i zatwierdź
+            Sprawdź i wyślij
           </Button>
         </div>
       </div>

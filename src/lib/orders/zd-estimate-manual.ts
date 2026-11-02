@@ -80,6 +80,14 @@ export type ManualZdEstimateLine = {
   demandFloor?: { sales90: number; rateBefore: number; rateAfter: number };
   /** Dni braku w oknie (historia stanów): sprzedaż przeliczona na dni ze stanem. */
   stockoutAdjust?: import("@/lib/stock-watch/stock-history").StockoutAdjustMeta;
+  /** Zaległe otwarte ZD (po terminie) odjęte od „w drodze” — jednostki dokumentu i dokumenty. */
+  staleOpenZd?: import("@/lib/data/zd-stale-open-zd").ZdStaleOpenZd;
+  /** Zwroty (KFS) odjęte od sprzedaży w oknie. */
+  salesCorrections?: import("@/lib/data/subiekt-sales-corrections").SalesCorrectionsMeta;
+  /** Pełny brak w oknie: tempo przyjęte z profilu sprzed okna. */
+  stockoutFallback?: import("@/lib/orders/zd-sales-profile").ZdStockoutFallbackMeta;
+  /** Pamięć korekt: wzorzec z Twoich ostatnich decyzji na tym towarze (dziennik, mig. 203). */
+  userPattern?: import("@/lib/data/zd-line-decisions").ZdLineDecisionPattern;
   tw_Id: number;
   tw_Symbol: string;
   tw_Nazwa: string;
@@ -227,6 +235,8 @@ export function computeManualOrderQty(input: {
 export type MapZdEstimateLineOptions = {
   /** Dni zapasu dostawcy / run — do oceny cienkiego pokrycia. */
   dniZapasu?: number | null;
+  /** Dni zwykłego zamówienia, gdy bieg jest dłuższy (pole ponad kartę, horyzont) — podbicia i skok jak przy nim. */
+  signalDniZapasu?: number | null;
   /** Zapas minimalny z Kreatora — twarda podłoga celu po korektach. */
   zapasMin?: number | null;
   /** Długość okna FS z API — fallback tempa dziennego. */
@@ -235,6 +245,8 @@ export type MapZdEstimateLineOptions = {
   salesTrack?: boolean;
   /** Domyślnie true — sygnały cięcia (fat cover / low ST / dead). */
   salesTrackCuts?: boolean;
+  /** Domyślnie true — cięcie „skok vs ostatnie ZD”; false przy strategii (skok tnie profil 12 × 30 d). */
+  historySpikeCut?: boolean;
   /** Ostatnie zamówienie z snapshotu ZD (Faza 3) — qty w sztukach. */
   history?: { lastOrderedQty: number; linkedAt: string } | null;
   /**
@@ -305,6 +317,9 @@ export function mapZdEstimateLineToManual(
         >)
       : options?.salesTrackPolicy ?? undefined;
 
+  const stockoutApplied = Boolean(
+    (line as { stockoutAdjust?: unknown }).stockoutAdjust || (line as { stockoutFallback?: unknown }).stockoutFallback
+  );
   const track = computeSalesTrackedCel({
     celZapasu,
     sprzedazOkres,
@@ -316,6 +331,9 @@ export function mapZdEstimateLineToManual(
     enabled: options?.salesTrack !== false,
     cutsEnabled: options?.salesTrackCuts !== false,
     policy: salesTrackPolicy,
+    stockoutApplied,
+    zapasMin: options?.zapasMin ?? 0,
+    signalDniZapasu: options?.signalDniZapasu,
   });
 
   let celTracked = track.celTracked;
@@ -347,11 +365,12 @@ export function mapZdEstimateLineToManual(
       sprzedazDziennie: tempo,
       coverStock: coverForQty,
       dniZapasu,
+      lastOrderDniZapasu: options?.signalDniZapasu,
       dniOkresu,
       lastOrderedQty: hist.lastOrderedQty,
       linkedAt: hist.linkedAt,
       // Profil 12 miesięcy ocenia skok lepiej niż porównanie z ostatnim ZD (ilość netto).
-      skipSpike: salesProfile?.smoothing === true,
+      skipSpike: salesProfile?.smoothing === true || options?.historySpikeCut === false,
     });
     if (histAdj.reasons.length > 0) {
       celTracked = histAdj.celTracked;
@@ -423,15 +442,27 @@ export function mapZdEstimateLineToManual(
     ...((line as { demandFloor?: ManualZdEstimateLine["demandFloor"] }).demandFloor
       ? { demandFloor: (line as { demandFloor?: ManualZdEstimateLine["demandFloor"] }).demandFloor }
       : {}),
+    ...((line as { staleOpenZd?: ManualZdEstimateLine["staleOpenZd"] }).staleOpenZd
+      ? { staleOpenZd: (line as { staleOpenZd?: ManualZdEstimateLine["staleOpenZd"] }).staleOpenZd }
+      : {}),
+    ...((line as { salesCorrections?: ManualZdEstimateLine["salesCorrections"] }).salesCorrections
+      ? { salesCorrections: (line as { salesCorrections?: ManualZdEstimateLine["salesCorrections"] }).salesCorrections }
+      : {}),
+    ...((line as { stockoutFallback?: ManualZdEstimateLine["stockoutFallback"] }).stockoutFallback
+      ? { stockoutFallback: (line as { stockoutFallback?: ManualZdEstimateLine["stockoutFallback"] }).stockoutFallback }
+      : {}),
   };
 }
 
 export type ZdEstimateSoloMapOptions = {
   dniZapasu: number;
+  /** Dni zwykłego zamówienia, gdy bieg jest dłuższy (pole ponad kartę, horyzont) — podbicia i skok jak przy nim. */
+  signalDniZapasu?: number | null;
   zapasMin?: number | null;
   dniOkresu?: number | null;
   salesTrack?: boolean;
   salesTrackCuts?: boolean;
+  historySpikeCut?: boolean;
   salesTrackPolicy?: Partial<
     typeof import("@/lib/orders/zd-estimate-sales-track").ZD_SALES_TRACK
   > | null;
@@ -480,10 +511,12 @@ export function mapZdEstimateLinesSolo(
     const minStock = minStockByTwId?.get(twId) ?? 0;
     return mapZdEstimateLineToManual(line, {
       dniZapasu,
+      signalDniZapasu: options.signalDniZapasu,
       zapasMin: options.zapasMin,
       dniOkresu: options.dniOkresu,
       salesTrack: inPair ? false : options.salesTrack,
       salesTrackCuts: inPair ? false : options.salesTrackCuts,
+      historySpikeCut: options.historySpikeCut,
       salesTrackPolicy: options.salesTrackPolicy,
       history: hist,
       unitsPerPackage: packUnits,
@@ -508,6 +541,17 @@ export function zdEstimateWindowDays(
   return Math.round((doo - od) / 86_400_000) + 1;
 }
 
+/**
+ * Dni zwykłego zamówienia zapisane przez silnik w parametrach wyniku (`dniZapasuSygnaly`), gdy zapas
+ * podniesiono ręcznie — przeliczenia na kliencie (opakowania, pary, przywrócenie sesji) liczą tak samo.
+ */
+export function zdEstimateSignalDniZapasu(
+  parametry: Pick<SubiektZdEstimateParams, "dniZapasuSygnaly"> | null | undefined
+): number | null {
+  const n = Math.round(Number(parametry?.dniZapasuSygnaly));
+  return Number.isFinite(n) && n >= 1 ? n : null;
+}
+
 export function buildManualZdEstimateResult(
   parametry: SubiektZdEstimateParams,
   lines: SubiektZdEstimateLine[],
@@ -517,6 +561,8 @@ export function buildManualZdEstimateResult(
     salesTrack?: boolean;
     /** Domyślnie true. */
     salesTrackCuts?: boolean;
+    /** Domyślnie true — cięcie „skok vs ostatnie ZD”. */
+    historySpikeCut?: boolean;
     /** Wspólna polityka mocy boosta (presety). */
     salesTrackPolicy?: Partial<
       typeof import("@/lib/orders/zd-estimate-sales-track").ZD_SALES_TRACK
@@ -555,6 +601,10 @@ export function buildManualZdEstimateResult(
       ? Number(parametry.dniZapasu)
       : DEFAULT_DNI_ZAPASU;
   const dniOkresu = zdEstimateWindowDays(parametry);
+  const signalDniZapasu = zdEstimateSignalDniZapasu(parametry);
+  // Bez opcji: z parametrów wyniku (strategia zapisuje bezSkokuZd) — przeliczenia na kliencie liczą jak serwer.
+  // Tylko pojedyncze towary: pary i komplety nie mają cięcia skoku z profilu, więc zostaje im „skok vs ZD”.
+  const historySpikeCut = options?.historySpikeCut ?? (parametry.bezSkokuZd === true ? false : undefined);
   const historyByTwId = options?.historyByTwId ?? null;
   const packagingByTwId = options?.packagingByTwId ?? null;
   const minStockByTwId = options?.minStockByTwId ?? null;
@@ -567,9 +617,11 @@ export function buildManualZdEstimateResult(
   const mapped = mapZdEstimateLinesSolo(lines, {
     zapasMin,
     dniZapasu,
+    signalDniZapasu,
     dniOkresu,
     salesTrack: options?.salesTrack,
     salesTrackCuts: options?.salesTrackCuts,
+    historySpikeCut,
     salesTrackPolicy: options?.salesTrackPolicy,
     historyByTwId,
     packagingByTwId,
@@ -587,6 +639,7 @@ export function buildManualZdEstimateResult(
     boms.length > 0
       ? applyZdEstimateBoms(mapped, boms, {
           dniZapasu,
+          signalDniZapasu,
           dniOkresu,
           zapasMin,
           salesTrack: options?.salesTrack,
@@ -604,6 +657,7 @@ export function buildManualZdEstimateResult(
     pairs.length > 0
       ? applyZdEstimatePairs(afterBom, pairs, {
           dniZapasu,
+          signalDniZapasu,
           dniOkresu,
           zapasMin,
           salesTrack: options?.salesTrack,

@@ -6,6 +6,7 @@ import type { ZdEstimateExtrasPolicy } from "@/lib/orders/zd-estimate-extras-pol
 import type { ZdEstimatePackagingRow } from "@/lib/data/zd-estimate-packaging";
 import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
 import { formatQty } from "@/lib/orders/zd-estimate-manual";
+import { formatUserPattern } from "@/lib/orders/zd-user-pattern";
 import type { ZdNameAutoExcludeMatch } from "@/lib/orders/zd-estimate-name-exclude";
 import type { ZdEstimateIndividualTwExtra } from "@/lib/orders/zd-estimate-individual";
 import { bomRowHidesHardExclude, bomRowHidesOnRequest } from "@/lib/orders/zd-estimate-bom";
@@ -499,6 +500,13 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
               }
             />
           ) : null}
+          {!excluded && l.userPattern ? (
+            <span className="zd-est-profile-badge zd-est-profile-badge--rare" title={formatUserPattern(l.userPattern)}>
+              {l.userPattern.kind === "drop"
+                ? "zwykle zdejmujesz"
+                : `Twój wzorzec × ${l.userPattern.factor.toLocaleString("pl-PL", { maximumFractionDigits: 2 })}`}
+            </span>
+          ) : null}
         </span>
         {!excluded && (qty.prosbaFromSupplyPieces ?? 0) > 0 ? (
           <span
@@ -796,6 +804,11 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
                           !isPackagingPackagesMode(qty.documentUnitMode)
                         ? `${formatQty(l.otwarteZd)} szt (otwarte ZD)`
                         : `${formatQty(l.otwarteZd)} j.dok. (otwarte ZD)`
+                  }
+                  subline={
+                    l.staleOpenZd && l.staleOpenZd.units > 0
+                      ? `bez ${formatQty(l.staleOpenZd.units)} zaległ.`
+                      : undefined
                   }
                 />
               </td>

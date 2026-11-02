@@ -350,7 +350,7 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
                             "w-full rounded-md px-3 py-2 text-left text-sm transition-colors",
                             active
                               ? "bg-indigo-50 text-indigo-900 ring-1 ring-inset ring-indigo-200"
-                              : "bg-white hover:bg-slate-100"
+                              : "bg-card hover:bg-slate-100"
                           )}
                         >
                           <span className="font-medium">{productLabel(hit)}</span>

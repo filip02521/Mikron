@@ -129,7 +129,7 @@ export function ZdEstimateNoticeTrayBar({ className }: { className?: string }) {
       ? "border-red-200 bg-red-50/90 text-red-950"
       : worst === "warning"
         ? "border-amber-200 bg-amber-50/90 text-amber-950"
-        : "border-slate-200 bg-white/90 text-slate-800";
+        : "border-slate-200 bg-card/90 text-slate-800";
 
   return (
     <div ref={rootRef} className={cn("relative shrink-0", !entries.length && "hidden", className)}>
@@ -145,9 +145,9 @@ export function ZdEstimateNoticeTrayBar({ className }: { className?: string }) {
           )}
         >
           {worst === "info" || worst === "success" ? (
-            <IconInfoCircle size={15} className="shrink-0 text-indigo-600" />
+            <IconInfoCircle size={15} className="shrink-0 text-indigo-700" />
           ) : (
-            <IconAlertCircle size={15} className={cn("shrink-0", worst === "error" ? "text-red-600" : "text-amber-600")} />
+            <IconAlertCircle size={15} className={cn("shrink-0", worst === "error" ? "text-red-700" : "text-amber-700")} />
           )}
           <span className="shrink-0 font-semibold">Uwagi ({entries.length})</span>
           <span className="min-w-0 flex-1 truncate opacity-80">
@@ -167,7 +167,7 @@ export function ZdEstimateNoticeTrayBar({ className }: { className?: string }) {
         role="region"
         aria-label="Uwagi kreatora ZD"
         className={cn(
-          "absolute inset-x-0 top-full z-30 mt-1 max-h-[min(60vh,32rem)] space-y-2 overflow-y-auto overscroll-contain rounded-lg border border-slate-200 bg-white p-2 shadow-[var(--shadow-elevated)]",
+          "absolute inset-x-0 top-full z-30 mt-1 max-h-[min(60vh,32rem)] space-y-2 overflow-y-auto overscroll-contain rounded-lg border border-slate-200 bg-card p-2 shadow-[var(--shadow-elevated)]",
           !open && "hidden"
         )}
       />

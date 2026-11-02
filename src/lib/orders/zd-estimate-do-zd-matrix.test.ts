@@ -157,10 +157,10 @@ describe("Do ZD macierz - stock / extra / overlap / policy", () => {
     ).toBe(5);
   });
 
-  it("pełny overlap + need 0 → Do ZD = extra (overlap limitujemy need)", () => {
+  it("pełny overlap + need 0 → Do ZD 0 (rezerwacja ZK klienta już leży w stanRez; audyt 28.10.2026)", () => {
     expect(
       zdUnits({ cel: 5, dostepne: 5, rawExtra: 3, overlap: 3 })
-    ).toBe(3);
+    ).toBe(0);
   });
 
   it("extraOnly + overlap: baza 0 → pełna prośba (overlap nie obcina)", () => {

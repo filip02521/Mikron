@@ -73,7 +73,7 @@ export function AdminPreviewDock({
         <button
           type="button"
           aria-label="Zwiń podgląd panelu"
-          className="fixed inset-0 z-[55] bg-slate-900/20"
+          className="fixed inset-0 z-[55] bg-scrim/20"
           onClick={() => setExpanded(false)}
         />
       ) : null}
@@ -91,7 +91,7 @@ export function AdminPreviewDock({
             id={regionId}
             role="region"
             aria-labelledby={titleId}
-            className="mb-1.5 max-h-[min(45dvh,22rem)] overflow-y-auto rounded-lg border border-slate-200 bg-white p-3 shadow-[var(--shadow-card-elevated)] sm:p-3.5"
+            className="mb-1.5 max-h-[min(45dvh,22rem)] overflow-y-auto rounded-lg border border-slate-200 bg-card p-3 shadow-[var(--shadow-card-elevated)] sm:p-3.5"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -140,7 +140,7 @@ export function AdminPreviewDock({
           aria-controls={expanded ? regionId : undefined}
           onClick={() => setExpanded((v) => !v)}
           className={cn(
-            "flex items-center gap-2 rounded-md border border-slate-200/90 bg-white px-3 text-left shadow-[var(--shadow-card-elevated)]",
+            "flex items-center gap-2 rounded-md border border-slate-200/90 bg-card px-3 text-left shadow-[var(--shadow-card-elevated)]",
             "hover:bg-slate-50",
             controlFocusClass
           )}

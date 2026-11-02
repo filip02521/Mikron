@@ -172,7 +172,7 @@ export function SalesGroupsClient({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="gap-1 text-rose-600 hover:text-rose-700"
+                    className="gap-1 text-rose-700 hover:text-rose-800"
                     disabled={g.memberCount > 0}
                     title={
                       g.memberCount > 0

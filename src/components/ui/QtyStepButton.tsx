@@ -26,7 +26,7 @@ export function QtyStepButton({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 transition-[background-color,transform] duration-100 hover:bg-slate-50 active:scale-95 active:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100",
+        "flex shrink-0 items-center justify-center rounded-md border border-slate-200 bg-card text-slate-700 transition-[background-color,transform] duration-100 hover:bg-slate-50 active:scale-95 active:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100",
         size === "md" ? "h-11 w-11" : "h-10 w-10 sm:h-8 sm:w-8"
       )}
     >

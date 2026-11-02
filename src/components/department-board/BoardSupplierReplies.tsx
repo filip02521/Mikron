@@ -311,7 +311,7 @@ function SupplierReplyCard({
                       "inline-flex max-w-72 items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50",
                       attached
                         ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                        : "border-slate-200 bg-card text-slate-700 hover:bg-slate-50"
                     )}
                   >
                     <IconPaperclip size={12} className="shrink-0 text-slate-400" aria-hidden />

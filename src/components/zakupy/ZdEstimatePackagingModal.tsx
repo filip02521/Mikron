@@ -270,7 +270,7 @@ export function ZdEstimatePackagingModal({
               <li
                 key={row.subiektTwId}
                 className={cn(
-                  "rounded-lg border border-slate-200/90 bg-white px-4 py-3.5 shadow-sm shadow-slate-900/[0.02]",
+                  "rounded-lg border border-slate-200/90 bg-card px-4 py-3.5 shadow-sm shadow-slate-900/[0.02]",
                   editing && "border-indigo-200/80 ring-1 ring-indigo-100"
                 )}
               >

@@ -39,9 +39,9 @@ export function SalesKeyboardShortcutsStrip({
       className={cn(
         // Toolbar też bez telefonu (jak wariant strip) — tam nie ma klawiatury.
         isToolbar
-          ? "hidden shrink-0 border-slate-200/70 bg-white/80 sm:block"
+          ? "hidden shrink-0 border-slate-200/70 bg-card/80 sm:block"
           : embedded
-            ? "bg-white/70"
+            ? "bg-card/70"
             : undefined,
         className
       )}
@@ -58,7 +58,7 @@ export function SalesKeyboardShortcutsStrip({
     <div
       className={cn(
         embedded
-          ? cn(salesChromeInsetClass, "hidden border-b border-slate-100 bg-white py-2 sm:block")
+          ? cn(salesChromeInsetClass, "hidden border-b border-slate-100 bg-card py-2 sm:block")
           : "hidden py-2 sm:block",
         className
       )}

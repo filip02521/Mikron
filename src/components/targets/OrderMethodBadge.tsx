@@ -52,7 +52,7 @@ export function OrderMethodBadge({
     "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium",
     STYLES[kind],
     onClick &&
-      "cursor-pointer transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600",
+      "cursor-pointer transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
     pressedLabel && "ring-2 ring-emerald-400/70",
     className
   );

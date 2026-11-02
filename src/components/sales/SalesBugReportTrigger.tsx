@@ -58,7 +58,7 @@ export function SalesBugReportTrigger({ className }: { className?: string }) {
             setError(null);
             setSent(false);
           }}
-          className="inline-flex min-h-10 select-none items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium text-slate-500 transition-colors hover:bg-white hover:text-slate-800 active:bg-slate-100"
+          className="inline-flex min-h-10 select-none items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium text-slate-500 transition-colors hover:bg-card hover:text-slate-800 active:bg-slate-100"
           aria-label="Zgłoś problem z aplikacją"
         >
           <IconMessageSquare size={14} aria-hidden />

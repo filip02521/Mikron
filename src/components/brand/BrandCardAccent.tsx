@@ -9,7 +9,7 @@ export function BrandCardAccent({ className }: { className?: string }) {
 
   return (
     <svg
-      className={cn("pointer-events-none text-indigo-600", className)}
+      className={cn("pointer-events-none text-indigo-700", className)}
       aria-hidden
       viewBox="0 0 160 120"
     >

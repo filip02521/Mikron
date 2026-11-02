@@ -181,7 +181,7 @@ export function ProcurementSupplierBlockActionBar({
             className={cn(
               buttonGroupItemClass,
               isStockOut
-                ? "bg-amber-600 text-white hover:bg-amber-700"
+                ? "bg-amber-600 text-white hover:bg-warning-hover"
                 : panelSegmentPrimaryClass,
               "min-w-0 flex-1 whitespace-nowrap px-2 text-[0.75rem]",
               "transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50"

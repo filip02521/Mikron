@@ -338,7 +338,7 @@ export function TeethPanelHistoriaView({
           countActiveTeethPanelFilters(filters) === 0 ? (
             <Link
               href="/zeby/kolejka"
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 sm:min-h-10"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-slate-200 bg-card px-4 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 sm:min-h-10"
             >
               Przejdź do kolejki
             </Link>
@@ -623,7 +623,7 @@ export function TeethPanelHistoriaView({
             {dateValue ? (
               <Button
                 variant="ghost"
-                className="min-h-11 w-full text-red-600 hover:text-red-700 sm:w-auto"
+                className="min-h-11 w-full text-red-700 hover:text-red-800 sm:w-auto"
                 onClick={() => void handleClearDate()}
                 disabled={datePending}
               >

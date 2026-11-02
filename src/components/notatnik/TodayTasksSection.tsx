@@ -57,7 +57,7 @@ function TodayTaskList({
           <button
             type="button"
             onClick={() => navigate(task.anchor, task.kind)}
-            className="flex min-h-11 w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-white active:scale-[0.99] sm:min-h-0"
+            className="flex min-h-11 w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-card active:scale-[0.99] sm:min-h-0"
           >
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
@@ -134,7 +134,7 @@ export function TodayTasksSection({
   }
 
   return (
-    <section className={cn(surfaceCardClass, "border-slate-200/90 bg-white p-3 sm:p-4")}>
+    <section className={cn(surfaceCardClass, "border-slate-200/90 bg-card p-3 sm:p-4")}>
       <div className="mb-2">
         <h2 className={salesTypography.blockTitle}>Do zrobienia dziś</h2>
         <p className={salesTypography.sectionHint}>{taskSummary}</p>

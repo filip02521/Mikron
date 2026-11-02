@@ -121,7 +121,7 @@ export function AnnouncementCard({
       <div className="mt-2.5 whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
         {thread.body}
       </div>
-      {error ? <p className="mt-2 text-xs text-red-600">{error}</p> : null}
+      {error ? <p className="mt-2 text-xs text-red-700">{error}</p> : null}
       <div className="mt-3 flex flex-wrap gap-2">
         {showUnread && !autoMarkRead ? (
           <Button

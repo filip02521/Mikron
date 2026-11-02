@@ -213,7 +213,7 @@ function MinStockDialogForm({
         </div>
 
         {/* Stats — obecny stan magazynu */}
-        <div className="grid grid-cols-3 gap-2 rounded-lg border border-slate-200/70 bg-white px-4 py-2.5">
+        <div className="grid grid-cols-3 gap-2 rounded-lg border border-slate-200/70 bg-card px-4 py-2.5">
           <Stat label={pair ? "Dostępne (szt)" : "Dostępne"} value={String(Math.round(dostepneSzt * 100) / 100)} />
           <Stat label={pair ? "Otwarte ZD (szt)" : "Otwarte ZD"} value={String(Math.round(otwarteZdSzt * 100) / 100)} />
           <Stat
@@ -277,7 +277,7 @@ function MinStockDialogForm({
                 strokeWidth={2.25}
                 className={cn(
                   "shrink-0",
-                  minAktywny ? "text-indigo-600" : "text-slate-400"
+                  minAktywny ? "text-indigo-700" : "text-slate-400"
                 )}
                 aria-hidden
               />

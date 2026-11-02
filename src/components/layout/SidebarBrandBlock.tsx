@@ -24,7 +24,7 @@ function OnTimeWordmark({
   return (
     <p className={cn(text, className)} aria-label={ONTIME_APP_NAME}>
       <span className="text-slate-800">On</span>
-      <span className="text-indigo-600">Time</span>
+      <span className="text-indigo-700">Time</span>
     </p>
   );
 }

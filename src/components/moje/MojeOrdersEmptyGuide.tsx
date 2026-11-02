@@ -74,7 +74,7 @@ function GuideContent({ showActions = true }: { showActions?: boolean }) {
           </Link>
           <Link
             href="/plan"
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-slate-200 bg-card px-5 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
           >
             <IconClipboardList size={16} />
             Plan dostaw

@@ -360,7 +360,7 @@ export function StockWatchPanel({
                   }}
                   onKeyDown={onTabKeyDown}
                   className={cn(
-                    "-mb-px inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-1.5 border-b-2 px-0.5 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-600 sm:min-h-10",
+                    "-mb-px inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-1.5 border-b-2 px-0.5 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:min-h-10",
                     active
                       ? "border-indigo-600 text-slate-900"
                       : "border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900"
@@ -389,7 +389,7 @@ export function StockWatchPanel({
                 <button
                   type="button"
                   onClick={clearSupplier}
-                  className="inline-flex size-10 cursor-pointer items-center justify-center rounded text-indigo-700 transition-colors hover:bg-white hover:text-indigo-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 sm:size-7"
+                  className="inline-flex size-10 cursor-pointer items-center justify-center rounded text-indigo-700 transition-colors hover:bg-card hover:text-indigo-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:size-7"
                   aria-label={`Usuń filtr dostawcy ${supplierName}`}
                 >
                   ×
@@ -524,7 +524,7 @@ function StatusPanel({
             <Link
               href={line.focus.href}
               className={cn(
-                "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-md px-4 text-sm font-medium sm:min-h-10 transition-[transform,background-color] duration-150 ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-1",
+                "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-md px-4 text-sm font-medium sm:min-h-10 transition-[transform,background-color] duration-150 ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1",
                 buttonPrimaryClass
               )}
             >
@@ -565,7 +565,7 @@ function EmptyShelfChip({
         <span
           className={cn(
             "rounded px-1 text-[0.6875rem] font-semibold tabular-nums",
-            checked ? "bg-white text-indigo-700" : "text-slate-500"
+            checked ? "bg-card text-indigo-700" : "text-slate-500"
           )}
         >
           {count}
@@ -1057,7 +1057,7 @@ function RulesSection({
               value={term}
               onChange={(e) => setTerm(e.target.value)}
               placeholder="Symbol albo nazwa (min. 2 znaki)"
-              className="h-11 w-full rounded-md border border-slate-200 bg-white pl-8 pr-9 text-base text-slate-900 shadow-sm placeholder:text-slate-400 hover:border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:h-10 sm:text-sm"
+              className="h-11 w-full rounded-md border border-slate-200 bg-card pl-8 pr-9 text-base text-slate-900 shadow-sm placeholder:text-slate-400 hover:border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:h-10 sm:text-sm"
             />
             {searching ? (
               <span className="absolute right-2.5 top-1/2 -translate-y-1/2">

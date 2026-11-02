@@ -27,7 +27,7 @@ const LANE_SHELL: Record<ProcurementRequestLaneTone, string> = {
   sky: "border-sky-200/70 bg-sky-50/20",
   violet: "border-violet-200/70 bg-violet-50/20",
   fuchsia: "border-fuchsia-200/70 bg-fuchsia-50/20",
-  slate: "border-slate-200/80 bg-white/70",
+  slate: "border-slate-200/80 bg-card/70",
 };
 
 const LANE_HEADER: Record<ProcurementRequestLaneTone, string> = {
@@ -53,14 +53,14 @@ const LANE_HEADER_HOVER: Record<ProcurementRequestLaneTone, string> = {
 };
 
 const LANE_COUNT_PILL: Record<ProcurementRequestLaneTone, string> = {
-  indigo: "bg-white/90 text-indigo-800 ring-indigo-200/70",
-  rose: "bg-white/90 text-rose-800 ring-rose-200/70",
-  amber: "bg-white/90 text-amber-900 ring-amber-200/70",
-  emerald: "bg-white/90 text-emerald-800 ring-emerald-200/70",
-  sky: "bg-white/90 text-sky-900 ring-sky-200/70",
-  violet: "bg-white/90 text-violet-800 ring-violet-200/70",
-  fuchsia: "bg-white/90 text-fuchsia-800 ring-fuchsia-200/70",
-  slate: "bg-white/90 text-slate-700 ring-slate-200/80",
+  indigo: "bg-card/90 text-indigo-800 ring-indigo-200/70",
+  rose: "bg-card/90 text-rose-800 ring-rose-200/70",
+  amber: "bg-card/90 text-amber-900 ring-amber-200/70",
+  emerald: "bg-card/90 text-emerald-800 ring-emerald-200/70",
+  sky: "bg-card/90 text-sky-900 ring-sky-200/70",
+  violet: "bg-card/90 text-violet-800 ring-violet-200/70",
+  fuchsia: "bg-card/90 text-fuchsia-800 ring-fuchsia-200/70",
+  slate: "bg-card/90 text-slate-700 ring-slate-200/80",
 };
 
 const LANE_NAV_CHIP: Record<ProcurementRequestLaneTone, string> = {
@@ -77,7 +77,7 @@ const LANE_NAV_CHIP: Record<ProcurementRequestLaneTone, string> = {
   fuchsia:
     "border-fuchsia-200/85 bg-fuchsia-50/45 text-fuchsia-900 hover:border-fuchsia-300 hover:bg-fuchsia-50",
   slate:
-    "border-slate-200/90 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800",
+    "border-slate-200/90 bg-card text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800",
 };
 
 const LANE_NAV_COUNT: Record<ProcurementRequestLaneTone, string> = {
@@ -113,7 +113,7 @@ export function procurementRequestLaneHeaderClass(
 ): string {
   return cn(
     "sticky top-0 z-[1] flex w-full items-center gap-2 border-b px-2.5 py-2 text-left backdrop-blur-sm sm:px-3",
-    "bg-white/75 transition-[border-radius,background-color,border-color] duration-200 ease-out",
+    "bg-card/75 transition-[border-radius,background-color,border-color] duration-200 ease-out",
     LANE_HEADER[tone],
     LANE_HEADER_HOVER[tone],
     collapsed ? "rounded-md border-b-transparent" : "rounded-t-md"
@@ -159,9 +159,9 @@ export function procurementRequestLaneSupplierShellClass(
   variant: "prosby" | "stockOut" = "prosby"
 ): string {
   if (variant === "stockOut") {
-    return "overflow-hidden rounded-md border border-amber-200/75 border-l-[3px] border-l-amber-500/80 bg-white/90 shadow-sm";
+    return "overflow-hidden rounded-md border border-amber-200/75 border-l-[3px] border-l-amber-500/80 bg-card/90 shadow-sm";
   }
-  return "overflow-hidden rounded-md border border-slate-200/80 border-l-[3px] border-l-indigo-500/70 bg-white/90 shadow-sm";
+  return "overflow-hidden rounded-md border border-slate-200/80 border-l-[3px] border-l-indigo-500/70 bg-card/90 shadow-sm";
 }
 
 export function procurementRequestLaneSupplierInnerListClass(

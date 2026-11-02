@@ -79,6 +79,8 @@ export function AppShellMetricsSync({ payload }: { payload: AppShellMetrics }) {
             current.navBadges.supplierMail ?? payload.navBadges.supplierMail,
           customsDhl:
             current.navBadges.customsDhl ?? payload.navBadges.customsDhl,
+          rolReports:
+            current.navBadges.rolReports ?? payload.navBadges.rolReports,
         },
       };
     });

@@ -15,7 +15,7 @@ export function MyOrderSectionEmptyState({
         className
       )}
     >
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
         <IconCircleCheck size={16} />
       </span>
       <p className="text-sm leading-relaxed text-slate-500">

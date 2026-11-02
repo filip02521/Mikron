@@ -36,7 +36,7 @@ export function urgentSupplierNameLinkClass(_tone: UrgentCardTone = "today") {
 /** Shell footera — delikatna ramka w tonie karty. */
 export function urgentFooterShellClass(_tone: UrgentCardTone = "today") {
   return cn(
-    "inline-flex h-9 min-h-9 w-full max-w-full items-stretch overflow-hidden rounded-md border bg-white sm:h-7 sm:min-h-7 sm:w-full",
+    "inline-flex h-9 min-h-9 w-full max-w-full items-stretch overflow-hidden rounded-md border bg-card sm:h-7 sm:min-h-7 sm:w-full",
     "border-slate-200"
   );
 }
@@ -45,7 +45,7 @@ export function urgentFooterShellClass(_tone: UrgentCardTone = "today") {
 export function urgentFooterPrimaryClass(_tone: UrgentCardTone = "today") {
   return cn(
     "flex h-full min-h-0 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-none rounded-l-md border-0 px-2 text-[0.75rem] font-semibold leading-none text-white shadow-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50",
-    "bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800"
+    "bg-indigo-600 hover:bg-primary-hover active:bg-primary-pressed"
   );
 }
 

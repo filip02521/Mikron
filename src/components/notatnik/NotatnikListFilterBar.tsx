@@ -77,7 +77,7 @@ export function NotatnikListFilterBar({
         compact
           ? "min-w-0"
           : cn(
-              "border-b border-slate-100 bg-white",
+              "border-b border-slate-100 bg-card",
               embedded
                 ? cn(
                     "pb-2.5 pt-0",

@@ -881,11 +881,17 @@ export const ZD_ESTIMATE_UI = {
   advancedSupplierOverrideHint:
     "Wymusza kartę dostawcy (dni zapasu, skróty, mapa zakresu) zamiast domyślnego z grupy lub cechy. Przydatne, gdy cecha łączy kilka marek.",
   advancedDniZapasuHint:
-    "Na ile dni sprzedaży budujemy cel zapasu. Po zmianie okno „Data od / do” przelicza się automatycznie (chyba że ustawisz daty ręcznie).",
+    "Na ile dni zamawiamy: cel = tempo sprzedaży z okna „Data od / do” × dni zapasu. Zmiana dni nie przesuwa okna — więcej dni to to samo tempo na dłużej.",
+  dniZapasuStrategyNote: (strategyDays: number, cardDays: number) =>
+    `Strategia automatu liczy cel na min. ${strategyDays} dni. Wpisz więcej niż ${cardDays} (karta), żeby zamówić na dłużej.`,
+  dniZapasuStrategyRaisedNote: (days: number) =>
+    `Zamówienie na ${days} dni zamiast dni strategii automatu (tylko ten bieg, automat bez zmian).`,
+  dniZapasuStrategyNoCardNote: (strategyDays: number) =>
+    `Strategia automatu liczy cel na własnych dniach (min. ${strategyDays}); karta bez liczby dni, więc pole ich nie zmienia.`,
   advancedDataOdHint:
-    "Początek okna sprzedaży z Subiekta. Ręczna zmiana blokuje automatyczne daty z dni zapasu.",
+    "Początek okna sprzedaży z Subiekta. Ręczna zmiana blokuje automatyczne daty z karty dostawcy.",
   advancedDataDoHint:
-    "Koniec okna sprzedaży (zwykle ostatni dzień z faktur). Ręczna zmiana blokuje automatyczne daty z dni zapasu.",
+    "Koniec okna sprzedaży (zwykle ostatni dzień z faktur). Ręczna zmiana blokuje automatyczne daty z karty dostawcy.",
   advancedSalesWindowManualNote:
     "Okno sprzedaży ustawione ręcznie - daty nie nadpiszą się automatycznie z zapasu dostawcy ani z nazwy grupy.",
   boostPowerLabel: "Podbicie Do ZD",

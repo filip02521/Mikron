@@ -19,14 +19,14 @@ const accentClass = {
   informacja: {
     done: "bg-violet-600 text-white",
     current: "bg-violet-600 text-white ring-1 ring-violet-200",
-    upcoming: "bg-violet-100 text-violet-600",
+    upcoming: "bg-violet-100 text-violet-700",
     cancelled: "bg-red-100 text-red-500 ring-1 ring-red-200",
     connectorDone: "bg-violet-300",
     connectorUpcoming: "bg-violet-100",
     connectorCancelled: "bg-red-200",
     labelCurrent: "text-violet-900",
     labelDone: "text-violet-800/90",
-    labelUpcoming: "text-violet-600",
+    labelUpcoming: "text-violet-700",
     labelCancelled: "text-red-700",
   },
   archive: {
@@ -99,7 +99,7 @@ export function MyOrderRequestProgressBar({
                   <span
                     className={cn(
                       "text-[0.6875rem] tabular-nums leading-tight text-slate-500",
-                      step.state === "cancelled" && "text-red-600"
+                      step.state === "cancelled" && "text-red-700"
                     )}
                   >
                     {step.date}

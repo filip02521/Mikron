@@ -275,7 +275,7 @@ export function ZkWatchNoteSection({
             disabled={savingNote}
             onChange={(e) => setNoteDraft(e.target.value)}
             placeholder="Np. klient dzwonił w poniedziałek, czeka na potwierdzenie dostępności…"
-            className={cn(NOTATNIK_TEXTAREA_CLASS, "w-full bg-white")}
+            className={cn(NOTATNIK_TEXTAREA_CLASS, "w-full bg-card")}
             autoFocus={focusNote}
           />
           {includeInProsba && noteProsbaState.openOrders.length > 0 ? (
@@ -333,7 +333,7 @@ export function ZkWatchNoteSection({
           <label className="flex cursor-pointer items-start gap-2.5">
             <input
               type="checkbox"
-              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-700 focus:ring-indigo-500"
               checked={includeInProsba}
               disabled={pendingFlag}
               onChange={(e) => setIncludeInProsba(e.target.checked)}
@@ -371,7 +371,7 @@ export function ZkWatchNoteSection({
       {info ? (
         <p className="mt-2 text-xs font-medium text-emerald-700">{info}</p>
       ) : null}
-      {error ? <p className="mt-2 text-xs text-red-600">{error}</p> : null}
+      {error ? <p className="mt-2 text-xs text-red-700">{error}</p> : null}
     </ZkWatchModalSection>
   );
 }

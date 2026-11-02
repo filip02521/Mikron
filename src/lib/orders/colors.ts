@@ -11,6 +11,21 @@ export interface SummaryColorSet {
   vacationWarning: string;
 }
 
+/** Kolory wierszy, które trafiają do `style` (harmonogram, legenda); w ciemnym motywie podmienia je zmienna z globals.css. */
+const SUMMARY_COLOR_VARS: Partial<Record<string, string>> = {
+  [SUMMARY_COLORS.expired]: "--summary-expired",
+  [SUMMARY_COLORS.today]: "--summary-today",
+  [SUMMARY_COLORS.tomorrow]: "--summary-tomorrow",
+  [SUMMARY_COLORS.thisWeek]: "--summary-this-week",
+  [SUMMARY_COLORS.forSomeone]: "--summary-for-someone",
+};
+
+/** Wartość do `style.backgroundColor`: jasny hex jako zapas, zmienna motywu gdy jest. */
+export function summaryColorCss(hex: string): string {
+  const name = SUMMARY_COLOR_VARS[hex];
+  return name ? `var(${name}, ${hex})` : hex;
+}
+
 export function getRowColorForDate(
   dateValue: Date | null,
   colors: SummaryColorSet = SUMMARY_COLORS,

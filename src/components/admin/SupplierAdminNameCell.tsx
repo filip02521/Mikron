@@ -22,7 +22,7 @@ export function SupplierAdminNameCell({
       type="button"
       onClick={onEdit}
       aria-label={`Edytuj kartę dostawcy ${s.name}`}
-      className="group flex min-h-10 min-w-0 items-center rounded-md text-left sm:min-h-8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+      className="group flex min-h-10 min-w-0 items-center rounded-md text-left sm:min-h-8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
     >
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-center gap-1.5">

@@ -76,7 +76,7 @@ import type {
 import { StockWatchOffPlanBanner } from "@/components/stock-watch/StockWatchOffPlanBanner";
 import { DailyZdProposalsProvider, type DailyZdProposal } from "@/components/summary/DailyZdProposals";
 import { DailyZdAutomatSection } from "@/components/summary/DailyZdAutomatSection";
-import type { ZdAutomatDailyData } from "@/lib/orders/zd-automat-daily";
+import { warsawKeyFromIso, zdAutomatTodayOrders, type ZdAutomatDailyData } from "@/lib/orders/zd-automat-daily";
 import {
   SupplierStockSignalsProvider,
   supplierStockSignalRank,
@@ -221,6 +221,13 @@ export function SummaryWorkspace({
     forSomeoneRemaining + stockOutRemaining
   );
 
+  // Zamówienia automatu ZD na dziś — krok kolejki i część postępu dnia (te same dane co sekcja Automat ZD).
+  const automatToday = useMemo(() => {
+    if (!canPrepareZd || !zdAutomat?.suppliers.length || !nowIso) return null;
+    const t = zdAutomatTodayOrders(zdAutomat.suppliers, warsawKeyFromIso(nowIso));
+    return t.orders.length ? { done: t.done, total: t.orders.length } : null;
+  }, [canPrepareZd, zdAutomat, nowIso]);
+
   const { overdue: urgentOverdue, todayList: urgentToday } = useMemo(
     () => splitUrgentItems(standardUrgentAll, workspace.todayDateKey),
     [standardUrgentAll, workspace.todayDateKey]
@@ -330,8 +337,8 @@ export function SummaryWorkspace({
       if (!drawerId || !drawerSupplier) return;
 
       if (e.key === "Escape") {
-        // ConfirmDialog (alertdialog) nad szufladą — Escape zamyka tylko dialog.
-        if (document.querySelector('[role="alertdialog"]')) return;
+        // Warstwa nad szufladą (ConfirmDialog, menu „Przesuń”) — Escape zamyka tylko ją.
+        if (e.defaultPrevented || document.querySelector('[role="alertdialog"], [role="menu"]')) return;
         setDrawerId(null);
         return;
       }
@@ -493,6 +500,7 @@ export function SummaryWorkspace({
               showVerification={!hideVerificationDup}
               urgentVacationCount={urgentVacationCount}
               cancelledCount={workspace.salesCancelledNotices.length}
+              automat={automatToday}
               onOpenOnDemand={() => setOnDemandOpen(true)}
             />
           </Card>

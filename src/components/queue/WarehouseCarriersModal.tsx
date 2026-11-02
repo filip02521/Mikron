@@ -196,7 +196,7 @@ export function WarehouseCarriersModal({
           {sorted.length === 0 ? (
             <EmptyState title="Brak kurierów" description="Dodaj pierwszego kuriera do listy." />
           ) : (
-            <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
+            <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-card">
               {sorted.map((carrier) => (
                 <li
                   key={carrier.slug}

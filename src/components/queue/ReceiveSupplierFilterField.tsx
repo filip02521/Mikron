@@ -137,7 +137,7 @@ export function ReceiveSupplierFilterField({
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
           className={cn(
-            "h-11 w-full rounded-md border bg-white pl-3 pr-9 text-sm text-slate-900 shadow-sm transition-colors duration-150 placeholder:text-slate-600 hover:border-slate-300 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100 sm:h-10",
+            "h-11 w-full rounded-md border bg-card pl-3 pr-9 text-sm text-slate-900 shadow-sm transition-colors duration-150 placeholder:text-slate-600 hover:border-slate-300 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100 sm:h-10",
             value && !open ? "border-indigo-300 bg-indigo-50/60 font-medium text-indigo-900" : "border-slate-200"
           )}
         />

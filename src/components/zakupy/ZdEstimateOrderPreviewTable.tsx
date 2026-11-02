@@ -88,7 +88,7 @@ export function ZdEstimateOrderPreviewTable({
             placeholder={ZD_ESTIMATE_UI.postCreateSearchPlaceholder}
             className={cn(
               controlFocusClass,
-              "w-full min-w-[12rem] rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm sm:w-64"
+              "w-full min-w-[12rem] rounded-md border border-slate-200 bg-card px-2.5 py-1.5 text-sm sm:w-64"
             )}
           />
         ) : null}

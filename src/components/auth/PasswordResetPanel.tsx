@@ -19,7 +19,7 @@ import { cn } from "@/lib/cn";
 
 const loginAltLinkClass = cn(
   "text-xs font-semibold text-indigo-700 hover:text-indigo-900 hover:underline",
-  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
 );
 
 function secondsUntil(iso: string): number {

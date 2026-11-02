@@ -6,7 +6,7 @@ export const LOGIN_ACCOUNT_LISTBOX_CLASS =
   "min-h-0 max-h-44 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] sm:max-h-52 [@supports(height:100dvh)]:max-h-[min(13rem,calc(100dvh-26rem))] [@supports(height:100dvh)]:sm:max-h-[min(15rem,calc(100dvh-23rem))]";
 
 export const LOGIN_ACCOUNT_LIST_WRAPPER_CLASS =
-  "overflow-hidden rounded-lg border border-slate-200/90 bg-white shadow-sm shadow-slate-200/30";
+  "overflow-hidden rounded-lg border border-slate-200/90 bg-card shadow-sm shadow-slate-200/30";
 
 /** Wyszukiwarka pojawia się wcześniej — na mobile lista szybciej rośnie. */
 export const LOGIN_ACCOUNT_SEARCH_THRESHOLD = 4;

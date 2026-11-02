@@ -106,8 +106,19 @@ export function ShiftMenu({
       if (panelRef.current?.contains(t)) return;
       close();
     };
+    // Escape zamyka tylko menu; preventDefault mówi panelowi pod spodem, że klawisz jest obsłużony.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      close();
+      anchorRef.current?.querySelector("button")?.focus();
+    };
     document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
   }, [open, close, anchorRef, panelRef]);
 
   const pickWeeks = (w: number) => {

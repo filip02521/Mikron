@@ -24,7 +24,7 @@ export function DailyDayProgressBar({
   /** false — ukryj do odczytu sessionStorage (bez skoku %). */
   ready?: boolean;
 }) {
-  const { combined, urgent, forSomeone } = progress;
+  const { combined, urgent, forSomeone, automat } = progress;
 
   if (!ready) return null;
 
@@ -35,6 +35,8 @@ export function DailyDayProgressBar({
       combined.total > 0 ? (urgent.done / combined.total) * 100 : 0;
     const forSomeoneDoneWidth =
       combined.total > 0 ? (forSomeone.done / combined.total) * 100 : 0;
+    const automatDoneWidth =
+      automat && combined.total > 0 ? (automat.done / combined.total) * 100 : 0;
 
     return (
       <div
@@ -46,6 +48,12 @@ export function DailyDayProgressBar({
         aria-label="Postęp dnia"
       >
         <div className="flex h-1.5 min-w-[5rem] flex-1 overflow-hidden rounded-full bg-slate-200/80">
+          {automatDoneWidth > 0 ? (
+            <div
+              className="h-full bg-indigo-700 transition-[width,background-color] duration-500"
+              style={{ width: `${automatDoneWidth}%` }}
+            />
+          ) : null}
           {urgentDoneWidth > 0 ? (
             <div
               className={cn("h-full transition-[width,background-color] duration-500", progressFillUrgentClass)}
@@ -60,7 +68,7 @@ export function DailyDayProgressBar({
           ) : null}
         </div>
         {combined.complete ? (
-          <span className="shrink-0 text-emerald-600" aria-hidden>
+          <span className="shrink-0 text-emerald-700" aria-hidden>
             <IconCircleCheck size={16} strokeWidth={2.5} />
           </span>
         ) : (
@@ -69,7 +77,7 @@ export function DailyDayProgressBar({
           </span>
         )}
         <span className={cn("hidden min-w-0 truncate sm:inline", panelTypography.caption)}>
-          harm. {urgent.done}/{urgent.total} · prośby {forSomeone.done}/{forSomeone.total}
+          {automat ? `automat ${automat.done}/${automat.total} · ` : null}harm. {urgent.done}/{urgent.total} · prośby {forSomeone.done}/{forSomeone.total}
         </span>
       </div>
     );
@@ -96,7 +104,7 @@ export function DailyDayProgressBar({
   return (
     <div
       className={cn(
-        "rounded-md border border-slate-200/80 bg-white px-4 py-3.5 shadow-[var(--shadow-card-elevated)] sm:px-5",
+        "rounded-md border border-slate-200/80 bg-card px-4 py-3.5 shadow-[var(--shadow-card-elevated)] sm:px-5",
         combined.complete && "border-emerald-200 bg-emerald-50/40",
         className
       )}
@@ -113,7 +121,7 @@ export function DailyDayProgressBar({
           </p>
         </div>
         {combined.complete ? (
-          <span className="shrink-0 text-emerald-600" role="img" aria-label="Dzień domknięty">
+          <span className="shrink-0 text-emerald-700" role="img" aria-label="Dzień domknięty">
             <IconCircleCheck size={28} />
           </span>
         ) : (

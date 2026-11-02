@@ -18,7 +18,7 @@ import {
 } from "@/lib/teeth/teeth-mould-shape-groups";
 import type { TeethProductLine, TeethKind } from "@/lib/teeth/teeth-catalog-types";
 
-const selectClass = "rounded border border-slate-300 bg-white px-1.5 py-1 text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-400";
+const selectClass = "rounded border border-slate-300 bg-card px-1.5 py-1 text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-400";
 
 export function TeethVerificationAddRow({
   orderId,
@@ -223,7 +223,7 @@ export function TeethVerificationAddRow({
         </div>
       </div>
       {error ? (
-        <div className="mt-1.5 flex items-center gap-1 text-[0.625rem] font-medium text-red-600">
+        <div className="mt-1.5 flex items-center gap-1 text-[0.625rem] font-medium text-red-700">
           <IconAlertCircle size={11} className="shrink-0" />
           {error}
         </div>

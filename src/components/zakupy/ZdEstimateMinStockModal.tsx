@@ -90,14 +90,14 @@ function GroupChip({
         "inline-flex min-h-8 items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition",
         active
           ? "border-indigo-200 bg-indigo-50 text-indigo-900"
-          : "border-slate-200/90 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+          : "border-slate-200/90 bg-card text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
       )}
     >
       <span className="max-w-[16rem] text-left leading-snug [overflow-wrap:anywhere]">{label}</span>
       <span
         className={cn(
           "rounded px-1 py-px text-[10px] font-semibold tabular-nums",
-          active ? "bg-white text-indigo-700" : "bg-slate-100 text-slate-500"
+          active ? "bg-card text-indigo-700" : "bg-slate-100 text-slate-500"
         )}
       >
         {count}
@@ -172,7 +172,7 @@ function MinStockRow({
   return (
     <li
       className={cn(
-        "rounded-lg border bg-white px-4 py-3.5 shadow-sm shadow-slate-900/[0.02] transition",
+        "rounded-lg border bg-card px-4 py-3.5 shadow-sm shadow-slate-900/[0.02] transition",
         editing
           ? "border-indigo-200/80 ring-1 ring-indigo-100"
           : selected
@@ -187,7 +187,7 @@ function MinStockRow({
               type="checkbox"
               checked={selected}
               onChange={onToggleSelect}
-              className="size-4 cursor-pointer rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/40"
+              className="size-4 cursor-pointer rounded border-slate-300 text-indigo-700 focus:ring-indigo-500/40"
               aria-label={`Zaznacz ${row.twSymbol ?? row.twNazwa}`}
             />
           </label>
@@ -722,7 +722,7 @@ export function ZdEstimateMinStockModal({
           <IconPlusCircle
             size={15}
             strokeWidth={2.25}
-            className="shrink-0 text-indigo-600"
+            className="shrink-0 text-indigo-700"
             aria-hidden
           />
           <p className="text-xs font-semibold text-indigo-900/80">
@@ -884,7 +884,7 @@ export function ZdEstimateMinStockModal({
 
       {/* Summary stats */}
       {summary ? (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-slate-200/70 bg-white px-4 py-2.5">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-slate-200/70 bg-card px-4 py-2.5">
           <div className="flex items-baseline gap-1.5">
             <span className="text-lg font-semibold tabular-nums text-slate-900">
               {summary.count}

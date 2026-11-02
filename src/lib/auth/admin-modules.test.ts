@@ -32,6 +32,7 @@ function sessionUser(patch: Partial<SessionUser> = {}): SessionUser {
     assignedWorkspaces: [],
     uniformBackground: false,
     fontScale: "default",
+    theme: "light",
     ...patch,
   };
 }

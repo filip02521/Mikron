@@ -442,7 +442,7 @@ export function TeethShortageFormModal({
             className={cn(
               "rounded-md px-2.5 py-1.5 text-[0.6875rem] leading-snug",
               supplierName
-                ? "border border-slate-200/80 bg-white text-slate-600"
+                ? "border border-slate-200/80 bg-card text-slate-600"
                 : "border border-amber-200/80 bg-amber-50/50 text-amber-900",
             )}
           >
@@ -512,7 +512,7 @@ export function TeethShortageFormModal({
             </p>
             <div
               className={cn(
-                "flex flex-wrap gap-1 rounded-md border border-slate-200/70 bg-white p-2",
+                "flex flex-wrap gap-1 rounded-md border border-slate-200/70 bg-card p-2",
                 colors.length > 24 && "max-h-36 overflow-y-auto",
               )}
             >
@@ -540,7 +540,7 @@ export function TeethShortageFormModal({
           {showMouldPicker && effectiveKind && form.productLine ? (
             <div
               className={cn(
-                "rounded-md border border-slate-200/70 bg-white p-2.5",
+                "rounded-md border border-slate-200/70 bg-card p-2.5",
                 attempted &&
                   mouldRequiredForKind(catalog, effectiveKind) &&
                   !form.mould.trim() &&
@@ -576,7 +576,7 @@ export function TeethShortageFormModal({
           ) : null}
 
           {!showMouldPicker && !showOptionalMouldInput && showKindPicker && form.kind === "" ? (
-            <p className="rounded-md border border-dashed border-slate-200 bg-white/70 px-2.5 py-2 text-[0.6875rem] leading-snug text-slate-500">
+            <p className="rounded-md border border-dashed border-slate-200 bg-card/70 px-2.5 py-2 text-[0.6875rem] leading-snug text-slate-500">
               Bez rozróżnienia typu - wpis obejmuje przednie i boczne tej samej linii/koloru.
               Aby wskazać konkretny fason, wybierz typ.
             </p>
@@ -611,7 +611,7 @@ export function TeethShortageFormModal({
             {previewParts.length > 0 ? previewParts.join(" · ") : "Uzupełnij pola powyżej"}
           </p>
         </div>
-        <span className="shrink-0 rounded-md bg-white/90 px-2 py-0.5 text-[0.6875rem] font-medium text-amber-900 ring-1 ring-amber-200/80">
+        <span className="shrink-0 rounded-md bg-card/90 px-2 py-0.5 text-[0.6875rem] font-medium text-amber-900 ring-1 ring-amber-200/80">
           {dateBadge}
         </span>
       </div>

@@ -94,7 +94,15 @@ const KPIS: Record<"oos" | "rotation" | "dead" | "correction" | "deferred" | "mi
     label: "Korekta",
     help: `Korekta człowieka: % wartości propozycji zmienionej przy tworzeniu ZD. Poniżej 10% przez ${ZD_AUTOMAT_READY_WEEKS} tygodnie = gotowość do auto-zatwierdzania.`,
     value: (m) => pct(m.humanCorrection.pct),
-    note: (m) => (m.humanCorrection.proposals ? `${nf0.format(m.humanCorrection.proposals)} ZD z propozycji` : null),
+    note: (m) =>
+      [
+        m.humanCorrection.proposals ? `${nf0.format(m.humanCorrection.proposals)} ZD z propozycji` : null,
+        m.lineCorrection?.pct != null
+          ? `Kreator: ${pct(m.lineCorrection.pct)} na ${nf0.format(m.lineCorrection.zdCount)} ZD, ${nf0.format(m.lineCorrection.dropped)} zdjętych`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" · ") || null,
     empty: "brak ZD z propozycji",
   },
   deferred: {
@@ -244,7 +252,7 @@ export function ZdAutomatSuppliers({
     <Card padding={false} className="overflow-hidden">
       <CardHeader inset title="Dostawcy" description={kpiWeekLabel} />
 
-      <div className="flex flex-wrap items-center gap-2 border-y border-slate-200 bg-white px-6 py-3 sm:px-7">
+      <div className="flex flex-wrap items-center gap-2 border-y border-slate-200 bg-card px-6 py-3 sm:px-7">
         <SegmentedControl
           value={filter}
           onChange={(f) => {
@@ -310,7 +318,7 @@ export function ZdAutomatSuppliers({
                           aria-expanded={open}
                           aria-controls={detailId}
                           onClick={() => setExpanded(open ? null : r.id)}
-                          className="cursor-pointer text-left font-medium text-slate-900 underline-offset-2 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                          className="cursor-pointer text-left font-medium text-slate-900 underline-offset-2 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                         >
                           {r.name}
                         </button>
@@ -345,7 +353,7 @@ export function ZdAutomatSuppliers({
                           aria-expanded={open}
                           aria-controls={detailId}
                           onClick={() => setExpanded(open ? null : r.id)}
-                          className="inline-flex size-11 cursor-pointer items-center sm:size-8 justify-center rounded-md text-slate-500 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                          className="inline-flex size-11 cursor-pointer items-center sm:size-8 justify-center rounded-md text-slate-500 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                         >
                           <IconChevronDown open={open} size={16} className="duration-200 motion-reduce:transition-none" />
                         </button>
@@ -411,7 +419,7 @@ export function ZdAutomatSuppliers({
                               ) : null}
                               <Link
                                 href={`${cardsHref}?karta=${r.id}`}
-                                className="text-sm font-medium text-indigo-700 underline-offset-2 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                                className="text-sm font-medium text-indigo-700 underline-offset-2 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                               >
                                 Karta dostawcy
                               </Link>

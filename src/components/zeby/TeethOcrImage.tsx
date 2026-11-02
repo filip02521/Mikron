@@ -108,7 +108,7 @@ export function TeethOcrImage({
           onError={() => dispatch({ type: "error" })}
         />
         <div className="pointer-events-none absolute inset-0 flex items-end justify-end bg-gradient-to-t from-black/30 to-transparent p-1.5 opacity-0 transition-opacity group-hover:opacity-100">
-          <span className="rounded bg-white/90 px-1.5 py-0.5 text-[0.625rem] font-semibold text-slate-700">
+          <span className="rounded bg-card/90 px-1.5 py-0.5 text-[0.625rem] font-semibold text-slate-700">
             Powiększ
           </span>
         </div>

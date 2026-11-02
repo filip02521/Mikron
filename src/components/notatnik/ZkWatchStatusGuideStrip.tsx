@@ -26,7 +26,7 @@ export function ZkWatchStatusGuideStrip({
     <div
       className={cn(
         embedded
-          ? cn(salesChromeInsetClass, "border-b border-slate-100 bg-white py-2")
+          ? cn(salesChromeInsetClass, "border-b border-slate-100 bg-card py-2")
           : "py-2",
         className
       )}

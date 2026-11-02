@@ -808,7 +808,7 @@ export function ReceiveQueueTable({
                   "inline-flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-[0.8125rem] sm:min-h-8",
                 )}
               >
-                {f.tone === "ok" ? <IconCircleCheck size={14} className="shrink-0 text-emerald-600" aria-hidden /> : null}
+                {f.tone === "ok" ? <IconCircleCheck size={14} className="shrink-0 text-emerald-700" aria-hidden /> : null}
                 {f.label}
                 <span className="tabular-nums text-slate-500">{f.count}</span>
               </button>
