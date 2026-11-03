@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Card } from "@/components/ui/Card";
@@ -12,6 +11,8 @@ import { cn } from "@/lib/cn";
 import { polishPlural } from "@/lib/email/polish-plural";
 import { formatPlDate } from "@/lib/display-labels";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
+import { NoticeToast } from "@/components/ui/NoticeToast";
+import { ServicePartReportDialog } from "@/components/serwis/ServicePartReportDialog";
 import {
   summarizeServiceParts,
   type ServicePartRequest,
@@ -172,18 +173,20 @@ export function ServicePartsPanel({
   rows,
   cechaName,
   readAt,
-  prosbaHref,
+  canReport,
 }: {
   rows: ServicePartRow[];
   cechaName: string;
   readAt: string;
-  prosbaHref: string | null;
+  canReport: boolean;
 }) {
   const router = useRouter();
   const [refreshing, startRefresh] = useTransition();
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
+  const [reportPart, setReportPart] = useState<ServicePartRow | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const summary = useMemo(() => summarizeServiceParts(rows), [rows]);
 
   useEffect(() => {
@@ -359,16 +362,17 @@ export function ServicePartsPanel({
                           )}
                         </td>
                         <td className="whitespace-nowrap px-5 py-3 text-right sm:px-6">
-                          {r.state !== "ok" && r.requests.length === 0 && prosbaHref ? (
-                            <Link
-                              href={prosbaHref}
+                          {r.state !== "ok" && r.requests.length === 0 && canReport ? (
+                            <button
+                              type="button"
+                              onClick={() => setReportPart(r)}
                               className={cn(
                                 "inline-flex h-8 items-center rounded-md px-3 text-sm font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-900",
                                 controlFocusClass
                               )}
                             >
                               Zgłoś brak
-                            </Link>
+                            </button>
                           ) : null}
                         </td>
                       </tr>
@@ -380,6 +384,18 @@ export function ServicePartsPanel({
           </div>
         )}
       </Card>
+
+      <ServicePartReportDialog
+        key={reportPart?.twId ?? "none"}
+        part={reportPart}
+        onClose={() => setReportPart(null)}
+        onReported={(message) => {
+          setReportPart(null);
+          setToast(message);
+          startRefresh(() => router.refresh());
+        }}
+      />
+      {toast ? <NoticeToast notice={toast} onDismiss={() => setToast(null)} /> : null}
     </div>
   );
 }

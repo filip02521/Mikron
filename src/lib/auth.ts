@@ -10,6 +10,7 @@ import {
 import {
   canAccessOperations,
   canAccessTeethPanel,
+  canAccessServicePanel,
   canAccessWarehouse,
   canAccessZdEstimate,
   canManageSalesTeam,
@@ -182,6 +183,20 @@ export async function requireWarehouse(
   }
   if (intent === "mutate") {
     await assertAdminPanelAllowsWarehouseMutations(user);
+  }
+  return user;
+}
+
+/** Panel serwisu: części serwisowe, sprzęt zastępczy (serwis + magazyn + zakupy + admin). */
+export async function requireServicePanel(
+  intent: AuthIntent = "read"
+): Promise<SessionUser> {
+  const user = await requireLoggedInUser();
+  if (!canAccessServicePanel(user.role, user.assignedWorkspaces)) {
+    throw new Error("Brak uprawnień do panelu serwisu");
+  }
+  if (intent === "mutate") {
+    await assertAdminNotInReadOnlyPanelPreview(user);
   }
   return user;
 }

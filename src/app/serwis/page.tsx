@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { requireWarehouse } from "@/lib/auth";
-import { canAccessPath } from "@/lib/auth-roles";
+import { requireServicePanel } from "@/lib/auth";
 import { loadServicePartsOverview } from "@/lib/data/service-parts-overview";
 import { ServicePartsPanel } from "@/components/serwis/ServicePartsPanel";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -15,7 +14,7 @@ export const metadata: Metadata = pageMetadataFor("serwis");
 export const dynamic = "force-dynamic";
 
 export default async function SerwisPage() {
-  const user = await requireWarehouse("read");
+  await requireServicePanel("read");
   let overview: ServicePartsOverview | null = null;
   let error: string | null = null;
   try {
@@ -23,15 +22,12 @@ export default async function SerwisPage() {
   } catch (e) {
     error = userFacingErrorText(e, "Nie udało się pobrać stanów części z Subiekta.");
   }
-  const prosbaHref = canAccessPath(user.role, "/prosba", { workspaces: user.assignedWorkspaces })
-    ? "/prosba"
-    : null;
 
   return (
     <div className={`${adminPageShellClass} space-y-6`}>
       <PageHeader
         title="Części serwisowe"
-        description="Towary z cechą Subiekta „Części serwisowe”. Zakupy zamawiają je tylko na prośbę, więc brakującą część zgłoś prośbą."
+        description="Towary z cechą Subiekta „Części serwisowe”. Zakupy zamawiają je tylko po zgłoszeniu, więc brakującą część zgłoś przyciskiem „Zgłoś brak”."
       />
       {error ? (
         <Alert tone="error" title="Brak połączenia z Subiektem">
@@ -47,7 +43,7 @@ export default async function SerwisPage() {
           rows={overview.rows}
           cechaName={overview.cechaName}
           readAt={overview.readAt}
-          prosbaHref={prosbaHref}
+          canReport
         />
       ) : null}
     </div>

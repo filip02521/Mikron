@@ -20,7 +20,7 @@ export type ServicePartsOverview =
   | { kind: "ok"; cechaName: string; rows: ServicePartRow[]; readAt: string }
   | { kind: "no_cecha"; cechaName: string };
 
-async function fetchProductsWithCecha(cechaId: number): Promise<SubiektProduct[]> {
+export async function fetchProductsWithCecha(cechaId: number): Promise<SubiektProduct[]> {
   const out: SubiektProduct[] = [];
   for (let page = 1; page <= MAX_PAGES; page += 1) {
     const res = await searchSubiektOrdersProducts({ cechaId, page, pageSize: PAGE_SIZE });

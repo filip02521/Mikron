@@ -7,6 +7,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   magazyn: "Dział dostaw",
   sales: "Handlowiec",
   sales_manager: "Kierownictwo",
+  serwis: "Serwis",
 };
 
 export const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
@@ -16,8 +17,10 @@ export const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
   { value: "magazyn", label: ROLE_LABELS.magazyn },
   { value: "sales", label: ROLE_LABELS.sales },
   { value: "sales_manager", label: ROLE_LABELS.sales_manager },
+  { value: "serwis", label: ROLE_LABELS.serwis },
 ];
 
 export function roleRequiresSalesPerson(role: UserRole): boolean {
-  return role === "sales" || role === "sales_manager";
+  // Serwisant składa prośby o części jak handlowiec — na własną kartę w grupie Serwis.
+  return role === "sales" || role === "sales_manager" || role === "serwis";
 }

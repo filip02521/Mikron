@@ -66,6 +66,15 @@ export function canAccessCarrierPhones(
   );
 }
 
+export function isSerwis(role: UserRole): boolean {
+  return role === "serwis";
+}
+
+/** Panel serwisu (/serwis): serwisant, magazyn, zakupy, admin. */
+export function canAccessServicePanel(role: UserRole, workspaces?: Workspace[]): boolean {
+  return isSerwis(role) || canAccessWarehouse(role, workspaces);
+}
+
 export function isSales(role: UserRole): boolean {
   return role === "sales";
 }
@@ -125,6 +134,10 @@ const OPERATIONS_PATH_PREFIXES = [
 
 const SALES_PATH_PREFIXES = ["/moje", "/plan", "/prosba", "/notatnik", "/zk", "/tablica"];
 
+/** Serwisant widzi tylko swój panel i ustawienia konta. */
+const SERVICE_PATH_PREFIXES = ["/serwis", "/podsumowanie-miesieczne"];
+export const SERVICE_HOME_PATH = "/serwis";
+
 /** Domyślna strona startowa handlowca po logowaniu. */
 export const SALES_HOME_PATH = "/moje";
 
@@ -135,6 +148,7 @@ export function homePathForRole(role: UserRole, workspaces?: Workspace[]): strin
     if (workspaces.includes("magazyn")) return "/kolejka";
   }
   if (isMagazyn(role)) return "/kolejka";
+  if (isSerwis(role)) return SERVICE_HOME_PATH;
   if (isZakupyZeby(role)) return "/zeby/kolejka";
   if (canAccessOperations(role)) return "/podsumowanie";
   return SALES_HOME_PATH;
@@ -191,6 +205,10 @@ function canAccessPathForRole(
     pathname.startsWith("/zakupy/urlopy")
   ) {
     return canManageSuppliers(role, ws);
+  }
+  if (isSerwis(role)) {
+    if (SERVICE_PATH_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return true;
+    return pathname === "/" || pathname === "/login" || pathname === "/ustaw-haslo" || pathname === "/ustawienia";
   }
   if (isMagazyn(role, ws)) {
     return WAREHOUSE_PATH_PREFIXES.some(

@@ -840,6 +840,28 @@ function magazynNavGroups(badges: NavBadges): NavGroup[] {
   return groups;
 }
 
+/** Serwisant: części serwisowe (później sprzęt zastępczy i zlecenia). */
+function serwisNavGroups(): NavGroup[] {
+  return [
+    {
+      title: NAV_SECTION_TODAY,
+      items: [
+        {
+          href: "/serwis",
+          label: "Części serwisowe",
+          mobileLabel: "Części",
+          description: "Stany części i zgłoszone braki",
+          icon: "catalog",
+          tone: "sky",
+          tier: "primary",
+          highlight: true,
+          mobileSlot: "primary",
+        },
+      ],
+    },
+  ];
+}
+
 export type NavAppContext = {
   realRole: UserRole;
   /** Rola efektywna (podgląd admina). */
@@ -915,6 +937,10 @@ export function navForRole(
 
   if (role === "magazyn") {
     return magazynNavGroups(badges);
+  }
+
+  if (role === "serwis") {
+    return serwisNavGroups();
   }
 
   const dailyItems: NavItem[] = [
