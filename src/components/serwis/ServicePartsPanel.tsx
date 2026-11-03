@@ -268,7 +268,7 @@ export function ServicePartsPanel({
               placeholder="Szukaj: symbol, nazwa, grupa"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="h-11 w-full rounded-md border border-slate-200 bg-card pl-9 pr-10 text-base shadow-control transition-colors duration-150 hover:border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:h-10 sm:text-sm"
+              className="h-11 w-full rounded-md border border-slate-200 bg-card pl-9 pr-10 text-base shadow-[var(--shadow-control)] transition-colors duration-150 hover:border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:h-10 sm:text-sm"
             />
             <span className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 sm:block">
               <Kbd>/</Kbd>

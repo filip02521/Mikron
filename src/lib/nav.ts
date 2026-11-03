@@ -423,9 +423,9 @@ function operationsOrderingItems(role: UserRole): NavItem[] {
     });
     items.push({
       href: "/serwis",
-      label: "Części serwisowe",
+      label: "Serwis",
       mobileLabel: "Serwis",
-      description: "Stany części i zgłoszone braki",
+      description: "Części serwisowe i sprzęt zastępczy",
       icon: "catalog",
       tone: "sky",
       tier: "compact",
@@ -780,9 +780,9 @@ function magazynNavGroups(badges: NavBadges): NavGroup[] {
         },
         {
           href: "/serwis",
-          label: "Części serwisowe",
+          label: "Serwis",
           mobileLabel: "Serwis",
-          description: "Stany części i zgłoszone braki",
+          description: "Części serwisowe i sprzęt zastępczy",
           icon: "catalog",
           tone: "sky",
           tier: "compact",
@@ -848,9 +848,9 @@ function serwisNavGroups(): NavGroup[] {
       items: [
         {
           href: "/serwis",
-          label: "Części serwisowe",
+          label: "Serwis",
           mobileLabel: "Części",
-          description: "Stany części i zgłoszone braki",
+          description: "Części serwisowe i sprzęt zastępczy",
           icon: "catalog",
           tone: "sky",
           tier: "primary",
@@ -1120,6 +1120,7 @@ export function pageTitle(pathname: string): string {
   if (pathname.startsWith("/zakupy/braki")) return "Braki i zamówienia";
   if (pathname.startsWith("/zakupy/cenniki")) return "Cenniki";
   if (pathname.startsWith("/zakupy/automat")) return "Automat ZD";
+  if (pathname.startsWith("/serwis/zamienniki")) return "Sprzęt zastępczy";
   if (pathname === "/serwis" || pathname.startsWith("/serwis/")) return "Części serwisowe";
   if (pathname.startsWith("/zakupy/asystent")) return "Asystent";
   if (pathname.startsWith("/zakupy/raporty-ivoclar")) return "Raporty Ivoclar (przeniesione)";

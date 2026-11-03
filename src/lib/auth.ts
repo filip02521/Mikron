@@ -11,6 +11,7 @@ import {
   canAccessOperations,
   canAccessTeethPanel,
   canAccessServicePanel,
+  isSerwis,
   canAccessWarehouse,
   canAccessZdEstimate,
   canManageSalesTeam,
@@ -310,6 +311,8 @@ export async function requireSubiektLookup(): Promise<SessionUser> {
   const user = await requireLoggedInUser();
   if (
     !isSalesAccount(user.role) &&
+    // Serwisant wybiera klienta i towar przy wydaniu zamiennika — tylko odczyt podpowiedzi.
+    !isSerwis(user.role) &&
     !canAccessOperations(user.role, user.assignedWorkspaces) &&
     !canAccessTeethPanel(user.role, user.assignedWorkspaces) &&
     !canAccessWarehouse(user.role, user.assignedWorkspaces)

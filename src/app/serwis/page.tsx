@@ -3,6 +3,7 @@ import { requireServicePanel } from "@/lib/auth";
 import { loadServicePartsOverview } from "@/lib/data/service-parts-overview";
 import { ServicePartsPanel } from "@/components/serwis/ServicePartsPanel";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ServiceHubTabs } from "@/components/serwis/ServiceHubTabs";
 import { Alert } from "@/components/ui/Alert";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
@@ -29,6 +30,7 @@ export default async function SerwisPage() {
         title="Części serwisowe"
         description="Towary z cechą Subiekta „Części serwisowe”. Zakupy zamawiają je tylko po zgłoszeniu, więc brakującą część zgłoś przyciskiem „Zgłoś brak”."
       />
+      <ServiceHubTabs active="czesci" />
       {error ? (
         <Alert tone="error" title="Brak połączenia z Subiektem">
           {`${error} Spróbuj odświeżyć stronę za chwilę.`}
