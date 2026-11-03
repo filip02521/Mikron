@@ -26,16 +26,19 @@ async function resolveServiceSalesPersonId(userSalesPersonId: string | null): Pr
     const own = await query<{ id: string }>(`SELECT id FROM sales_people WHERE id = $1`, [userSalesPersonId]);
     if (own.rows[0]) return own.rows[0].id;
   }
-  const res = await query<{ id: string }>(
-    `SELECT sp.id
+  const res = await query<{ id: string; name: string }>(
+    `SELECT sp.id, sp.name
        FROM sales_people sp
        JOIN sales_groups g ON g.id = sp.group_id
-      WHERE lower(trim(g.name)) = lower($1)
-      ORDER BY (lower(trim(sp.name)) = lower($1)) DESC, sp.name
-      LIMIT 1`,
+      WHERE lower(trim(g.name)) = lower($1)`,
     [SERVICE_SALES_GROUP_NAME]
   );
-  return res.rows[0]?.id ?? null;
+  // Jednoznacznie: karta o nazwie „Serwis”, a bez niej jedyna karta w grupie. Kilka kart bez „Serwis” = błąd,
+  // żeby prośby nie lądowały na przypadkowej osobie.
+  const named = res.rows.filter((r) => r.name.trim().toLowerCase() === SERVICE_SALES_GROUP_NAME.toLowerCase());
+  if (named.length === 1) return named[0]!.id;
+  if (named.length === 0 && res.rows.length === 1) return res.rows[0]!.id;
+  return null;
 }
 
 export async function actionReportServicePartShortage(
@@ -58,7 +61,7 @@ export async function actionReportServicePartShortage(
     if (!salesPersonId) {
       return {
         ok: false,
-        message: `Brak karty handlowca w grupie „${SERVICE_SALES_GROUP_NAME}”. Poproś administratora o dodanie karty „Serwis” w Zespole.`,
+        message: `Nie wiem, na kogo zapisać zgłoszenie. W grupie „${SERVICE_SALES_GROUP_NAME}” musi być jedna karta „Serwis” (Zespół → Handlowcy).`,
       };
     }
     const products = await fetchProductsWithCecha(cecha.cechaId);

@@ -135,7 +135,7 @@ const OPERATIONS_PATH_PREFIXES = [
 const SALES_PATH_PREFIXES = ["/moje", "/plan", "/prosba", "/notatnik", "/zk", "/tablica"];
 
 /** Serwisant widzi tylko swój panel i ustawienia konta. */
-const SERVICE_PATH_PREFIXES = ["/serwis", "/podsumowanie-miesieczne"];
+const SERVICE_PATH_PREFIXES = ["/serwis"];
 export const SERVICE_HOME_PATH = "/serwis";
 
 /** Domyślna strona startowa handlowca po logowaniu. */
