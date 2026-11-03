@@ -31,7 +31,7 @@ export default async function SerwisPage() {
     <div className={`${adminPageShellClass} space-y-6`}>
       <PageHeader
         title="Części serwisowe"
-        description="Towary z cechą Subiekta „Części serwisowe”. Zakupy zamawiają je tylko po prośbie, więc brak zgłoś prośbą."
+        description="Towary z cechą Subiekta „Części serwisowe”. Zakupy zamawiają je tylko na prośbę, więc brakującą część zgłoś prośbą."
       />
       {error ? (
         <Alert tone="error" title="Brak połączenia z Subiektem">

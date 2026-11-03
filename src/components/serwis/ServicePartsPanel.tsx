@@ -37,9 +37,26 @@ function matches(row: ServicePartRow, filter: Filter, q: string): boolean {
 }
 
 function StockBadge({ row }: { row: ServicePartRow }) {
-  if (row.state === "brak") return <Badge variant="danger">brak</Badge>;
-  if (row.state === "ponizej_min") return <Badge variant="warning">poniżej minimum</Badge>;
+  if (row.state === "brak") return <Badge variant="danger" className="whitespace-nowrap">brak</Badge>;
+  if (row.state === "ponizej_min") {
+    return <Badge variant="warning" className="whitespace-nowrap">poniżej minimum</Badge>;
+  }
   return null;
+}
+
+function dayKey(d: Date): string {
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+/** Bliskie daty względnie (DESIGN.md → Teksty). */
+function formatNearDay(iso: string): string {
+  const d = new Date(iso);
+  const today = new Date();
+  if (dayKey(d) === dayKey(today)) return "dziś";
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (dayKey(d) === dayKey(yesterday)) return "wczoraj";
+  return formatPlDate(iso);
 }
 
 function formatQty(n: number): string {
@@ -69,7 +86,7 @@ export function ServicePartsPanel({
     summary.toRequest > 0
       ? `${polishPlural(summary.toRequest, "część czeka", "części czekają", "części czeka")} na zgłoszenie`
       : "Wszystkie braki są zgłoszone";
-  const statusText = `${polishPlural(summary.missing, "część", "części", "części")} bez stanu, ${polishPlural(summary.requested, "zgłoszona", "zgłoszone", "zgłoszonych")}. Zakupy zamawiają części serwisowe tylko po prośbie.`;
+  const statusText = `${polishPlural(summary.missing, "część", "części", "części")} bez stanu, ${polishPlural(summary.requested, "zgłoszona", "zgłoszone", "zgłoszonych")}.`;
 
   return (
     <div className="space-y-6">
@@ -90,36 +107,36 @@ export function ServicePartsPanel({
       <Card padding={false}>
         <CardHeader
           title={`Cecha „${cechaName}”`}
-          description={`Stany z Subiekta, odczyt ${formatPlDate(readAt)} ${new Date(readAt).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })}. Stan dostępny = stan − rezerwacje.`}
+          description={`Stany z Subiekta, odczyt ${formatNearDay(readAt)} ${new Date(readAt).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })}. Stan dostępny = stan − rezerwacje.`}
           inset
-          action={
-            <div className="flex flex-wrap items-center gap-2">
-              <SegmentedControl<Filter>
-                ariaLabel="Filtr części"
-                value={filter}
-                onChange={setFilter}
-                options={[
-                  { value: "all", label: `Wszystkie ${summary.total}` },
-                  { value: "to_request", label: `Do zgłoszenia ${summary.toRequest}` },
-                  { value: "missing", label: `Brak ${summary.missing}` },
-                  { value: "requested", label: `Zgłoszone ${summary.requested}` },
-                ]}
-              />
-              <input
-                id="service-parts-search"
-                type="search"
-                aria-label="Szukaj części"
-                placeholder="Szukaj: symbol, nazwa"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="h-11 w-full max-w-xs rounded-md border border-line bg-card px-3 text-base shadow-control sm:h-10 sm:text-sm"
-              />
-              <span className="text-[11px] text-slate-500">
-                {polishPlural(visible.length, "część", "części", "części")}
-              </span>
-            </div>
-          }
         />
+        <div className="border-b border-line-soft px-5 py-4 sm:px-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <SegmentedControl<Filter>
+              ariaLabel="Filtr części"
+              value={filter}
+              onChange={setFilter}
+              options={[
+                { value: "all", label: `Wszystkie ${summary.total}` },
+                { value: "to_request", label: `Do zgłoszenia ${summary.toRequest}` },
+                { value: "missing", label: `Brak ${summary.missing}` },
+                { value: "requested", label: `Zgłoszone ${summary.requested}` },
+              ]}
+            />
+            <input
+              id="service-parts-search"
+              type="search"
+              aria-label="Szukaj części"
+              placeholder="Szukaj: symbol, nazwa"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="h-11 w-full max-w-xs rounded-md border border-line bg-card px-3 text-base shadow-control sm:h-10 sm:text-sm"
+            />
+            <span className="text-[11px] text-slate-500">
+              {polishPlural(visible.length, "część", "części", "części")}
+            </span>
+          </div>
+        </div>
         {visible.length === 0 ? (
           <div className="p-6">
             <EmptyState
@@ -161,7 +178,7 @@ export function ServicePartsPanel({
                         <span className="flex flex-col gap-1">
                           {r.requests.map((req, i) => (
                             <Badge key={`${req.createdAt}-${i}`} variant="info">
-                              {`${req.quantity} szt. · ${STATUS_LABEL[req.status] ?? req.status} · ${formatPlDate(req.createdAt)}`}
+                              {`${req.quantity} szt. · ${STATUS_LABEL[req.status] ?? req.status} · ${formatNearDay(req.createdAt)}`}
                             </Badge>
                           ))}
                         </span>
