@@ -181,7 +181,7 @@ export function BoardReplyComposer({
                   type="button"
                   disabled={busy}
                   onClick={() => onRemoveExtraFile(f.key)}
-                  className="rounded px-1 text-slate-400 transition-all duration-200 hover:bg-slate-200 hover:text-slate-700"
+                  className="rounded px-1 text-slate-400 transition-colors duration-200 hover:bg-slate-200 hover:text-slate-700"
                   aria-label={`Usuń ${f.name} z odpowiedzi`}
                 >
                   ×

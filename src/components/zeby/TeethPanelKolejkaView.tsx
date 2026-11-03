@@ -298,7 +298,7 @@ export function TeethPanelKolejkaView({
               "md:left-[calc(var(--app-sidebar-w)+1.5rem)] md:right-6 md:bottom-[calc(1.5rem+var(--admin-preview-clearance,0px))]",
             )}
           >
-            <div className="flex flex-col gap-2 rounded-[var(--radius-panel)] border border-indigo-200 bg-[var(--card)]/95 px-4 py-3 shadow-[var(--shadow-card-elevated)] backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-2 rounded-[var(--radius-panel)] border border-indigo-200 bg-[var(--card)] px-4 py-3 shadow-[var(--shadow-card-elevated)] sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-slate-900 tabular-nums">
                   Zaznaczono {selectedPositionCount}{" "}
