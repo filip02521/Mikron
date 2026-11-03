@@ -152,7 +152,7 @@ export function LoanerAddDialog({ onClose, onDone }: { onClose: () => void; onDo
                 aria-checked={useSerial === o.v}
                 onClick={() => setUseSerial(o.v)}
                 className={cn(
-                  "h-8 rounded-md px-3 text-[13px] font-medium transition-colors duration-150",
+                  "h-8 rounded-md px-3 text-[0.8125rem] font-medium transition-colors duration-150",
                   useSerial === o.v ? "bg-segment-active text-slate-900 shadow-[var(--shadow-control)]" : "text-slate-500 hover:text-slate-800"
                 )}
               >
@@ -178,7 +178,7 @@ export function LoanerAddDialog({ onClose, onDone }: { onClose: () => void; onDo
                 aria-checked={cond === c}
                 onClick={() => setCond(c)}
                 className={cn(
-                  "h-8 rounded-full border px-3 text-[13px] transition-colors duration-150",
+                  "h-8 rounded-full border px-3 text-[0.8125rem] transition-colors duration-150",
                   cond === c ? "border-indigo-600 bg-indigo-50 font-semibold text-indigo-900" : "border-slate-200 bg-card text-slate-600 hover:bg-slate-100"
                 )}
               >

@@ -71,7 +71,7 @@ function DaysRing({ days, planned }: { days: number; planned: number | null }) {
   const frac = Math.min(days / total, 1);
   const r = 36;
   const c = 2 * Math.PI * r;
-  const tone = planned != null && days > planned ? "text-red-500" : days > 14 ? "text-amber-500" : "text-indigo-600";
+  const tone = planned != null && days > planned ? "stroke-red-500" : days > 14 ? "stroke-amber-500" : "stroke-indigo-600";
   return (
     <svg viewBox="0 0 84 84" className="h-[84px] w-[84px] flex-none" aria-hidden>
       <circle cx="42" cy="42" r={r} fill="none" className="stroke-slate-200" strokeWidth="7" />
@@ -80,17 +80,16 @@ function DaysRing({ days, planned }: { days: number; planned: number | null }) {
         cy="42"
         r={r}
         fill="none"
-        stroke="currentColor"
         className={tone}
         strokeWidth="7"
         strokeLinecap="round"
         strokeDasharray={`${c * frac} ${c}`}
         transform="rotate(-90 42 42)"
       />
-      <text x="42" y="46" textAnchor="middle" className="fill-slate-900 font-display text-[22px] font-bold">
+      <text x="42" y="46" textAnchor="middle" className="fill-slate-900 text-[1.375rem] font-semibold">
         {days}
       </text>
-      <text x="42" y="60" textAnchor="middle" className="fill-slate-500 text-[9.5px]">
+      <text x="42" y="60" textAnchor="middle" className="fill-slate-500 text-[0.6875rem]">
         {polishPluralWord(days, "dzień", "dni", "dni")}
       </text>
     </svg>
@@ -177,7 +176,7 @@ export function LoanerDrawer({
       >
         <div className="flex flex-col gap-2.5 border-b border-slate-100 px-6 pb-4 pt-5">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[13px] font-semibold text-slate-500">
+            <span className="font-mono text-[0.8125rem] font-semibold text-slate-500">
               {unit.code}
               {unit.serialNo && !unit.code.includes(unit.serialNo) ? ` · SN ${unit.serialNo}` : ""}
             </span>
@@ -197,7 +196,7 @@ export function LoanerDrawer({
           <h2 id="loaner-drawer-title" className="font-display text-xl font-bold leading-tight tracking-tight text-slate-900">
             {unit.twName}
           </h2>
-          <span className="text-[13px] text-slate-500">
+          <span className="text-[0.8125rem] text-slate-500">
             Towar w Subiekcie: <span className="font-mono">{unit.twSymbol ?? "-"}</span> · stan techniczny: {unit.condition}
           </span>
         </div>
@@ -208,8 +207,8 @@ export function LoanerDrawer({
               <div className="flex items-center gap-4 rounded-xl border border-slate-200 p-4">
                 <DaysRing days={unit.daysOut ?? 0} planned={planned} />
                 <div className="flex min-w-0 flex-col gap-1">
-                  <span className="text-[15px] font-semibold text-slate-900">{unit.currentClientName}</span>
-                  <span className="text-[13px] text-slate-500">
+                  <span className="text-[0.9375rem] font-semibold text-slate-900">{unit.currentClientName}</span>
+                  <span className="text-[0.8125rem] text-slate-500">
                     od {formatLong(unit.currentSince)}
                     {unit.plannedReturn ? (
                       unit.state === "late" ? (
@@ -219,7 +218,7 @@ export function LoanerDrawer({
                       )
                     ) : null}
                   </span>
-                  {unit.currentClientPhone ? <span className="font-mono text-[13px] text-slate-600">tel. {unit.currentClientPhone}</span> : null}
+                  {unit.currentClientPhone ? <span className="font-mono text-[0.8125rem] text-slate-600">tel. {unit.currentClientPhone}</span> : null}
                 </div>
               </div>
               {mode === null ? (
@@ -241,10 +240,10 @@ export function LoanerDrawer({
           ) : (
             <>
               <div className="rounded-xl border border-slate-200 p-4">
-                <div className="text-[15px] font-semibold text-slate-900">
+                <div className="text-[0.9375rem] font-semibold text-slate-900">
                   {unit.state === "svc" ? "W przeglądzie u serwisu" : "Na półce, gotowy do wydania"}
                 </div>
-                <div className="text-[13px] text-slate-500">
+                <div className="text-[0.8125rem] text-slate-500">
                   {unit.state === "svc"
                     ? "Wraca na stan po zakończeniu przeglądu."
                     : unit.stints.length
@@ -303,7 +302,7 @@ export function LoanerDrawer({
                       if (mode === "return") setNeedsService(c === "do przeglądu" || c === "uszkodzony");
                     }}
                     className={cn(
-                      "h-8 rounded-full border px-3 text-[13px] transition-colors duration-150",
+                      "h-8 rounded-full border px-3 text-[0.8125rem] transition-colors duration-150",
                       cond === c ? "border-indigo-600 bg-indigo-50 font-semibold text-indigo-900" : "border-slate-200 bg-card text-slate-600 hover:bg-slate-100"
                     )}
                   >
@@ -372,28 +371,28 @@ export function LoanerDrawer({
 
           <div className="grid grid-cols-3 gap-2">
             <div className="rounded-lg bg-slate-50 px-3 py-2.5">
-              <b className="block font-display text-lg font-bold tabular-nums">{stats.issues}</b>
+              <b className="block text-lg font-semibold tabular-nums">{stats.issues}</b>
               <span className="text-xs text-slate-500">{polishPluralWord(stats.issues, "wydanie", "wydania", "wydań")}</span>
             </div>
             <div className="rounded-lg bg-slate-50 px-3 py-2.5">
-              <b className="block font-display text-lg font-bold tabular-nums">{stats.avgDaysOut}</b>
+              <b className="block text-lg font-semibold tabular-nums">{stats.avgDaysOut}</b>
               <span className="text-xs text-slate-500">śr. dni u klienta</span>
             </div>
             <div className="rounded-lg bg-slate-50 px-3 py-2.5">
-              <b className="block font-display text-lg font-bold tabular-nums">{stats.utilizationPct}%</b>
+              <b className="block text-lg font-semibold tabular-nums">{stats.utilizationPct}%</b>
               <span className="text-xs text-slate-500">czasu u klientów</span>
             </div>
           </div>
 
           <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">Historia egzemplarza</p>
+            <p className="mb-2 text-[0.8125rem] font-semibold text-slate-600">Historia egzemplarza</p>
             <ol className="relative space-y-4 pl-5 before:absolute before:bottom-1.5 before:left-[5px] before:top-1.5 before:w-px before:bg-slate-200">
               {events.map((e) => (
                 <li key={e.id} className="relative">
                   <span className={cn("absolute -left-5 top-1 h-[11px] w-[11px] rounded-full border-2 bg-raised", EVENT_DOT[e.type])} aria-hidden />
-                  <div className="text-xs tabular-nums text-slate-400">{formatLong(e.at)}</div>
+                  <div className="text-xs tabular-nums text-slate-500">{formatLong(e.at)}</div>
                   <div className="font-semibold text-slate-900">{eventTitle(e)}</div>
-                  {eventMeta(e, unit) ? <div className="text-[13px] text-slate-500">{eventMeta(e, unit)}</div> : null}
+                  {eventMeta(e, unit) ? <div className="text-[0.8125rem] text-slate-500">{eventMeta(e, unit)}</div> : null}
                 </li>
               ))}
             </ol>

@@ -177,7 +177,7 @@ export function LoanerIssueDialog({
                     u.id === unitId ? "border-indigo-600 ring-1 ring-inset ring-indigo-600" : "border-slate-200 hover:border-slate-300"
                   )}
                 >
-                  <span className="font-mono text-[12.5px] font-semibold text-slate-900">{u.code}</span>
+                  <span className="font-mono text-xs font-semibold text-slate-900">{u.code}</span>
                   <span className="truncate text-xs text-slate-500">{u.twName}</span>
                   <span className="text-xs text-slate-500">stan {u.condition}</span>
                 </button>
@@ -199,7 +199,7 @@ export function LoanerIssueDialog({
                 aria-checked={days === n}
                 onClick={() => setDays(n)}
                 className={cn(
-                  "h-8 rounded-full border px-3 text-[13px] transition-colors duration-150",
+                  "h-8 rounded-full border px-3 text-[0.8125rem] transition-colors duration-150",
                   days === n ? "border-indigo-600 bg-indigo-50 font-semibold text-indigo-900" : "border-slate-200 bg-card text-slate-600 hover:bg-slate-100"
                 )}
               >

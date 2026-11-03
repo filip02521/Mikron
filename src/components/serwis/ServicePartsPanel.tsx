@@ -326,10 +326,10 @@ export function ServicePartsPanel({
                       <th
                         colSpan={4}
                         scope="rowgroup"
-                        className="px-5 pb-1.5 pt-4 text-left text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-slate-500 sm:px-6"
+                        className="px-5 pb-1.5 pt-4 text-left text-[0.8125rem] font-semibold text-slate-600 sm:px-6"
                       >
                         {group}
-                        <span className="ml-2 font-medium normal-case tracking-normal text-slate-400">
+                        <span className="ml-2 font-medium text-slate-500">
                           {polishPlural(list.length, "część", "części", "części")}
                           {attention > 0 ? ` · ${attention} do uwagi` : ""}
                         </span>

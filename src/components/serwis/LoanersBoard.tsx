@@ -108,18 +108,18 @@ function Timeline({
         <div className="h-9 border-b border-r border-slate-100" />
         <div className="relative h-9 border-b border-slate-100">
           {ticks.map((d) => (
-            <span key={d.toISOString()} className="absolute top-2.5 -translate-x-1/2 whitespace-nowrap text-[11px] text-slate-400" style={{ left: `${pct(d)}%` }}>
+            <span key={d.toISOString()} className="absolute top-2.5 -translate-x-1/2 whitespace-nowrap text-[0.6875rem] text-slate-500" style={{ left: `${pct(d)}%` }}>
               {formatShort(d.toISOString())}
             </span>
           ))}
-          <span className="absolute top-2.5 -translate-x-1/2 text-[11px] font-semibold text-indigo-700" style={{ left: `${todayPct}%` }}>
+          <span className="absolute top-2.5 -translate-x-1/2 text-[0.6875rem] font-semibold text-indigo-700" style={{ left: `${todayPct}%` }}>
             dziś
           </span>
         </div>
 
         {groups.map((g) => (
           <div key={g.twId} className="contents">
-            <div className="col-span-2 border-b border-slate-100 px-4 pb-1.5 pt-3.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+            <div className="col-span-2 border-b border-slate-100 px-4 pb-1.5 pt-3.5 text-[0.8125rem] font-semibold text-slate-600">
               {g.name} · {g.units.length}
             </div>
             {g.units.map((u) => {
@@ -155,7 +155,7 @@ function Timeline({
                     {u.service.map((s) => (
                       <div
                         key={s.from}
-                        className="absolute top-3.5 flex h-6 items-center overflow-hidden rounded-md border border-slate-200 bg-slate-100 px-2 text-[11px] text-slate-500"
+                        className="absolute top-3.5 flex h-6 items-center overflow-hidden rounded-md border border-slate-200 bg-slate-100 px-2 text-[0.6875rem] text-slate-500"
                         style={{ left: `${pct(s.from)}%`, width: `${Math.max(pct(s.to ?? today) - pct(s.from), 1.5)}%` }}
                         title="Przegląd"
                       >
@@ -175,7 +175,7 @@ function Timeline({
                         <div key={s.from} className="contents">
                           {plan && planW > 0 ? (
                             <div
-                              className="absolute top-3.5 flex h-6 items-center overflow-hidden whitespace-nowrap rounded-md border border-dashed border-slate-300 px-2 text-[11px] text-slate-500"
+                              className="absolute top-3.5 flex h-6 items-center overflow-hidden whitespace-nowrap rounded-md border border-dashed border-slate-300 px-2 text-[0.6875rem] text-slate-500"
                               style={{ left: `${planLeft}%`, width: `${planW}%` }}
                               title={`Planowany zwrot ${formatShort(plan.toISOString())}`}
                             >
@@ -193,7 +193,7 @@ function Timeline({
                             style={{ left: `${left}%`, width: `${width}%` }}
                             title={`${s.clientName}: ${days} ${polishPluralWord(days, "dzień", "dni", "dni")}`}
                           >
-                            {width > 2.5 ? <span className="font-mono text-[11px] font-semibold">{days}d</span> : null}
+                            {width > 2.5 ? <span className="font-mono text-[0.6875rem] font-semibold">{days}d</span> : null}
                             {width > 6 ? <span>{shortClient(s.clientName)}</span> : null}
                           </div>
                         </div>
@@ -232,7 +232,7 @@ function LoanerList({ units, onOpen }: { units: LoanerUnitView[]; onOpen: (id: s
           {rows.map((u) => (
             <tr key={u.id} onClick={() => onOpen(u.id)} className="cursor-pointer border-t border-slate-100 transition-colors duration-150 hover:bg-slate-50">
               <td className="px-5 py-3">
-                <button type="button" onClick={() => onOpen(u.id)} className={cn("font-mono text-[13px] font-semibold text-slate-900", controlFocusClass)}>
+                <button type="button" onClick={() => onOpen(u.id)} className={cn("font-mono text-[0.8125rem] font-semibold text-slate-900", controlFocusClass)}>
                   {u.code}
                 </button>
                 {u.serialNo ? <div className="text-xs text-slate-500">SN {u.serialNo}</div> : null}
@@ -388,11 +388,11 @@ export function LoanersBoard({ units, events }: { units: LoanerUnit[]; events: L
                 >
                   <span className="flex items-baseline justify-between gap-2">
                     <span className="truncate font-semibold text-slate-900">{g.name}</span>
-                    <span className="hidden flex-none whitespace-nowrap font-mono text-[11px] text-slate-400 sm:inline">{g.units[0]?.twSymbol ?? ""}</span>
+                    <span className="hidden flex-none whitespace-nowrap font-mono text-[0.6875rem] text-slate-500 sm:inline">{g.units[0]?.twSymbol ?? ""}</span>
                   </span>
-                  <span className="font-display text-[22px] font-bold leading-none tracking-tight tabular-nums text-slate-900">
+                  <span className="text-[1.375rem] font-semibold leading-none tabular-nums text-slate-900">
                     {free}
-                    <span className="ml-1 font-sans text-[13px] font-medium tracking-normal text-slate-500">z {g.units.length} na stanie</span>
+                    <span className="ml-1 font-sans text-[0.8125rem] font-medium tracking-normal text-slate-500">z {g.units.length} na stanie</span>
                   </span>
                   <span className="flex flex-wrap gap-1" aria-hidden>
                     {g.units.map((u) => (
@@ -410,9 +410,9 @@ export function LoanersBoard({ units, events }: { units: LoanerUnit[]; events: L
 
           {late.length || dueSoon.length || warn.length ? (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="mr-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500">Do zrobienia</span>
+              <span className="mr-1 text-[0.8125rem] font-semibold text-slate-600">Do zrobienia</span>
               {late.map((u) => (
-                <button key={u.id} type="button" onClick={() => setOpenId(u.id)} className={cn("inline-flex h-8 items-center gap-2 rounded-full border border-slate-200 bg-card px-3 text-[13px] transition-colors duration-150 hover:bg-slate-50", controlFocusClass)}>
+                <button key={u.id} type="button" onClick={() => setOpenId(u.id)} className={cn("inline-flex h-8 items-center gap-2 rounded-full border border-slate-200 bg-card px-3 text-[0.8125rem] transition-colors duration-150 hover:bg-slate-50", controlFocusClass)}>
                   <span className="h-2 w-2 rounded-full bg-red-500" aria-hidden />
                   <b className="font-mono font-semibold">{u.code}</b>
                   {shortClient(u.currentClientName ?? "-")} · {polishPlural(daysBetween(parseDateOnly(u.plannedReturn!), today), "dzień", "dni", "dni")} po terminie
@@ -421,7 +421,7 @@ export function LoanersBoard({ units, events }: { units: LoanerUnit[]; events: L
               {dueSoon.map((u) => {
                 const left = daysBetween(today, parseDateOnly(u.plannedReturn!));
                 return (
-                  <button key={u.id} type="button" onClick={() => setOpenId(u.id)} className={cn("inline-flex h-8 items-center gap-2 rounded-full border border-slate-200 bg-card px-3 text-[13px] transition-colors duration-150 hover:bg-slate-50", controlFocusClass)}>
+                  <button key={u.id} type="button" onClick={() => setOpenId(u.id)} className={cn("inline-flex h-8 items-center gap-2 rounded-full border border-slate-200 bg-card px-3 text-[0.8125rem] transition-colors duration-150 hover:bg-slate-50", controlFocusClass)}>
                     <span className="h-2 w-2 rounded-full bg-primary" aria-hidden />
                     <b className="font-mono font-semibold">{u.code}</b>
                     zwrot {left === 0 ? "dziś" : left === 1 ? "jutro" : `za ${left} dni`}
@@ -429,7 +429,7 @@ export function LoanersBoard({ units, events }: { units: LoanerUnit[]; events: L
                 );
               })}
               {warn.length ? (
-                <span className="inline-flex h-8 items-center gap-2 rounded-full border border-slate-200 bg-card px-3 text-[13px]">
+                <span className="inline-flex h-8 items-center gap-2 rounded-full border border-slate-200 bg-card px-3 text-[0.8125rem]">
                   <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden />
                   {polishPlural(warn.length, "egzemplarz", "egzemplarze", "egzemplarzy")} ponad 14 dni
                 </span>
@@ -447,7 +447,7 @@ export function LoanersBoard({ units, events }: { units: LoanerUnit[]; events: L
                     aria-pressed={view === v}
                     onClick={() => setView(v)}
                     className={cn(
-                      "h-8 rounded-md px-3 text-[13px] font-medium transition-colors duration-150",
+                      "h-8 rounded-md px-3 text-[0.8125rem] font-medium transition-colors duration-150",
                       controlFocusClass,
                       view === v ? "bg-segment-active text-slate-900 shadow-[var(--shadow-control)]" : "text-slate-500 hover:text-slate-800"
                     )}
