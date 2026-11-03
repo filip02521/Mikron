@@ -57,6 +57,7 @@ export const PAGE_TITLES = {
   locations: "Lokalizacje",
   monthlySummary: "Podsumowanie miesiąca",
   carriers: "Kurierzy",
+  serwis: "Części serwisowe",
 } as const;
 
 export const PAGE_DESCRIPTIONS: Partial<Record<keyof typeof PAGE_TITLES, string>> = {
@@ -79,6 +80,7 @@ export const PAGE_DESCRIPTIONS: Partial<Record<keyof typeof PAGE_TITLES, string>
   customsClearance:
     "Dane do odprawy celnej importu - opis PL, kod CN, VAT i deklaracje do maila dla agencji",
   zdAutomat: "Pulpit automatu ZD: rytm, backtest i KPI każdego dostawcy, klasy ABC/XYZ towarów",
+  serwis: "Stany części z cechą Subiekta „Części serwisowe” i zgłoszone braki",
   stockWatch:
     "Proaktywne braki: czas do wyczerpania i lista „Do ZD” po dostawcach - liczona jak w Kreatorze ZD",
   assistant:

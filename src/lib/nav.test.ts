@@ -251,6 +251,7 @@ describe("navForRole struktura zakupów", () => {
       expect(ordering?.items.map((item) => item.href)).toEqual([
         "/zakupy/szacunek",
         "/zakupy/braki",
+        "/serwis",
         "/zakupy/automat",
         "/zamowienia/nowe",
         "/historia",
@@ -522,11 +523,12 @@ describe("navForRole magazyn", () => {
     ]);
   });
 
-  it("sekcja Dziś ma Przyjęcie i Plan dostaw", () => {
+  it("sekcja Dziś ma Przyjęcie, Plan dostaw i Części serwisowe", () => {
     const today = navForRole("magazyn").find((g) => g.title === NAV_SECTION_TODAY);
     expect(today?.items.map((item) => item.href)).toEqual([
       "/kolejka",
       "/dostawy",
+      "/serwis",
     ]);
   });
 

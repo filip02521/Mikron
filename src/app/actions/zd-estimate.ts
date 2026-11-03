@@ -58,11 +58,12 @@ import {
   deleteZdEstimateOnRequest,
   deleteZdEstimateOnRequestsMany,
   fetchZdEstimateOnRequest,
-  fetchZdEstimateOnRequests,
   updateZdEstimateOnRequestNote,
   upsertZdEstimateOnRequest,
   type ZdEstimateOnRequestRow,
 } from "@/lib/data/zd-estimate-on-request";
+import { fetchZdEstimateOnRequestsWithServiceParts } from "@/lib/data/service-parts";
+import { SERVICE_PARTS_CECHA_NAME, servicePartTwIdSet } from "@/lib/orders/service-parts";
 import {
   onRequestIdsToClearForExcludedTw,
   onRequestIdsToClearForTw,
@@ -796,7 +797,7 @@ export async function actionZdEstimateBootstrap(): Promise<{
     fetchZdEstimateExclusions()
       .then((value) => ({ ok: true as const, value }))
       .catch((e: unknown) => ({ ok: false as const, error: e })),
-    fetchZdEstimateOnRequests()
+    fetchZdEstimateOnRequestsWithServiceParts()
       .then((value) => ({ ok: true as const, value }))
       .catch((e: unknown) => ({ ok: false as const, error: e })),
     fetchZdEstimatePackaging()
@@ -2678,6 +2679,9 @@ export async function actionUpdateZdEstimateExclusionNote(input: {
   }
 }
 
+/** Usunięcie z listy nic nie da: o trybie decyduje cecha w Subiekcie. */
+const SERVICE_PART_CLEAR_MESSAGE = `Ten towar ma w Subiekcie cechę „${SERVICE_PARTS_CECHA_NAME}”, więc zamawiasz go tylko po prośbie. Żeby liczyć go normalnie, zdejmij cechę w Subiekcie.`;
+
 export type ZdEstimateOnRequestActionResult =
   | { ok: true; onRequests: ZdEstimateOnRequestRow[] }
   | { ok: false; message: string };
@@ -2737,7 +2741,7 @@ function excludedPackOnRequestMessage(packSymbol: string | null): string {
 export async function actionListZdEstimateOnRequests(): Promise<ZdEstimateOnRequestActionResult> {
   await requireZdEstimateAdmin("read");
   try {
-    const onRequests = await fetchZdEstimateOnRequests();
+    const onRequests = await fetchZdEstimateOnRequestsWithServiceParts();
     return { ok: true, onRequests };
   } catch (e) {
     return {
@@ -2774,7 +2778,7 @@ export async function actionMarkZdEstimateOnRequest(input: {
     } catch {
       /* ignore */
     }
-    const onRequests = await fetchZdEstimateOnRequests();
+    const onRequests = await fetchZdEstimateOnRequestsWithServiceParts();
     return { ok: true, onRequests };
   } catch (e) {
     return {
@@ -2791,7 +2795,10 @@ export async function actionClearZdEstimateOnRequest(
   await requireZdEstimateAdmin("mutate");
   try {
     await clearOnRequestRowsForTwIds([subiektTwId]);
-    const onRequests = await fetchZdEstimateOnRequests();
+    const onRequests = await fetchZdEstimateOnRequestsWithServiceParts();
+    if (servicePartTwIdSet(onRequests).has(Math.trunc(subiektTwId))) {
+      return { ok: false, message: SERVICE_PART_CLEAR_MESSAGE };
+    }
     return { ok: true, onRequests };
   } catch (e) {
     return {
@@ -2812,7 +2819,7 @@ export async function actionUpdateZdEstimateOnRequestNote(input: {
       subiektTwId: input.subiektTwId,
       note: input.note,
     });
-    const onRequests = await fetchZdEstimateOnRequests();
+    const onRequests = await fetchZdEstimateOnRequestsWithServiceParts();
     return { ok: true, onRequests };
   } catch (e) {
     return {
@@ -2906,7 +2913,7 @@ export async function actionMarkZdEstimateOnRequestProducts(input: {
   }
 
   try {
-    const onRequests = await fetchZdEstimateOnRequests();
+    const onRequests = await fetchZdEstimateOnRequestsWithServiceParts();
     return { ok: true, onRequests, succeededTwIds, failed, truncated };
   } catch (e) {
     return {
@@ -2930,12 +2937,15 @@ export async function actionClearZdEstimateOnRequestProducts(
 
   try {
     await clearOnRequestRowsForTwIds(ids);
-    const onRequests = await fetchZdEstimateOnRequests();
+    const onRequests = await fetchZdEstimateOnRequestsWithServiceParts();
+    const serviceIds = servicePartTwIdSet(onRequests);
     return {
       ok: true,
       onRequests,
-      succeededTwIds: ids,
-      failed: [],
+      succeededTwIds: ids.filter((id) => !serviceIds.has(id)),
+      failed: ids
+        .filter((id) => serviceIds.has(id))
+        .map((subiektTwId) => ({ subiektTwId, error: SERVICE_PART_CLEAR_MESSAGE })),
       truncated,
     };
   } catch (e) {

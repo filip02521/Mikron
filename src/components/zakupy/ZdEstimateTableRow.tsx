@@ -37,6 +37,8 @@ import { ZdEstimateReservationsCell } from "@/components/zakupy/ZdEstimateReserv
 import { ZdEstimateRowActions } from "@/components/zakupy/ZdEstimateRowActions";
 import { ZdSalesProfileCardContent, ZdSalesSparkline } from "@/components/zakupy/ZdSalesSparkline";
 import { HoverCard } from "@/components/ui/HoverCard";
+import { Badge } from "@/components/ui/Badge";
+import { SERVICE_PARTS_CECHA_NAME } from "@/lib/orders/service-parts";
 import { cn } from "@/lib/cn";
 import { formatZdSalesProfileHint } from "@/lib/orders/zd-sales-profile";
 import { checkboxBrandClass } from "@/lib/ui/ontime-theme";
@@ -217,6 +219,8 @@ export type ZdEstimateTableRowProps = {
   excluded: boolean;
   dbExcluded: boolean;
   dbOnRequest: boolean;
+  /** Towar z cechą Subiekta „Części serwisowe” — „tylko na prośbę” z cechy, nie z listy. */
+  servicePart?: boolean;
   softOnRequest: boolean;
   liftedExtraOnly: boolean;
   sessionIncluded: boolean;
@@ -290,6 +294,7 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
   excluded,
   dbExcluded,
   dbOnRequest,
+  servicePart = false,
   softOnRequest,
   liftedExtraOnly,
   sessionIncluded,
@@ -324,7 +329,7 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
   skuClass,
 }: ZdEstimateTableRowProps) {
   const hidePairOrBomHardActions = bomRowHidesHardExclude(l);
-  const hideOnRequestAction = bomRowHidesOnRequest(l);
+  const hideOnRequestAction = bomRowHidesOnRequest(l) || servicePart;
   const allowsDoZdOverride =
     !excluded && lineAllowsZdDocumentUnitOverride(l);
   const pairMeta = l.pair ?? null;
@@ -474,6 +479,11 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
           <span className="zd-est-product-name">{l.tw_Nazwa}</span>
         )}
         <span className="zd-est-name-meta">
+          {servicePart ? (
+            <span title={`Cecha Subiekta „${SERVICE_PARTS_CECHA_NAME}”: zamawiane tylko po prośbie serwisu.`}>
+              <Badge variant="info">serwis</Badge>
+            </span>
+          ) : null}
           <ZdEstimateNameMetaStack
             pairMeta={pairMeta}
             packagingConflict={packagingConflict}

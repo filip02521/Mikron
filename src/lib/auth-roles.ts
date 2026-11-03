@@ -108,7 +108,7 @@ export function canManageSuppliers(role: UserRole, workspaces?: Workspace[]): bo
 const PROCUREMENT_PREFIXES = ["/zakupy"];
 const SALES_TEAM_PREFIXES = ["/zespol"];
 
-const WAREHOUSE_PATH_PREFIXES = ["/kolejka", "/dostawy", "/notatki", "/ustawienia", "/urlopy", "/podsumowanie-miesieczne", "/kurierzy"];
+const WAREHOUSE_PATH_PREFIXES = ["/kolejka", "/serwis", "/dostawy", "/notatki", "/ustawienia", "/urlopy", "/podsumowanie-miesieczne", "/kurierzy"];
 
 const OPERATIONS_PATH_PREFIXES = [
   "/podsumowanie",
@@ -119,6 +119,7 @@ const OPERATIONS_PATH_PREFIXES = [
   "/zamowienia",
   "/weryfikacja",
   "/kurierzy",
+  "/serwis",
   ...PROCUREMENT_PREFIXES,
 ];
 

@@ -422,6 +422,16 @@ function operationsOrderingItems(role: UserRole): NavItem[] {
       mobileSlot: "overflow",
     });
     items.push({
+      href: "/serwis",
+      label: "Części serwisowe",
+      mobileLabel: "Serwis",
+      description: "Stany części i zgłoszone braki",
+      icon: "catalog",
+      tone: "sky",
+      tier: "compact",
+      mobileSlot: "overflow",
+    });
+    items.push({
       href: "/zakupy/automat",
       label: "Automat ZD",
       description: "Rytm, backtest i KPI dostawców",
@@ -768,6 +778,16 @@ function magazynNavGroups(badges: NavBadges): NavGroup[] {
           tier: "primary",
           mobileSlot: "primary",
         },
+        {
+          href: "/serwis",
+          label: "Części serwisowe",
+          mobileLabel: "Serwis",
+          description: "Stany części i zgłoszone braki",
+          icon: "catalog",
+          tone: "sky",
+          tier: "compact",
+          mobileSlot: "overflow",
+        },
       ],
     },
     {
@@ -1074,6 +1094,7 @@ export function pageTitle(pathname: string): string {
   if (pathname.startsWith("/zakupy/braki")) return "Braki i zamówienia";
   if (pathname.startsWith("/zakupy/cenniki")) return "Cenniki";
   if (pathname.startsWith("/zakupy/automat")) return "Automat ZD";
+  if (pathname === "/serwis" || pathname.startsWith("/serwis/")) return "Części serwisowe";
   if (pathname.startsWith("/zakupy/asystent")) return "Asystent";
   if (pathname.startsWith("/zakupy/raporty-ivoclar")) return "Raporty Ivoclar (przeniesione)";
   if (pathname === "/urlopy" || pathname.startsWith("/urlopy/")) {
