@@ -284,7 +284,7 @@ export function ServicePartsPanel({
             <span>{`Subiekt, ${formatNearDay(readAt)} ${readTime}`}</span>
             <Button
               type="button"
-              variant="ghost"
+              variant="secondary"
               size="sm"
               disabled={refreshing}
               onClick={() => startRefresh(() => router.refresh())}
@@ -313,7 +313,7 @@ export function ServicePartsPanel({
                   <th className="px-5 py-2.5 font-medium sm:px-6">Część</th>
                   <th className="px-4 py-2.5 font-medium">Dostępne</th>
                   <th className="px-4 py-2.5 font-medium">Zgłoszenie</th>
-                  <th className="w-px px-5 py-2.5 sm:px-6">
+                  <th className="w-px px-5 py-2.5 max-sm:hidden sm:px-6">
                     <span className="sr-only">Akcje</span>
                   </th>
                 </tr>
@@ -335,14 +335,23 @@ export function ServicePartsPanel({
                         </span>
                       </th>
                     </tr>
-                    {list.map((r) => (
+                    {list.map((r) => {
+                      const report =
+                        r.state !== "ok" && r.requests.length === 0 && canReport ? (
+                          <Button variant="secondary" size="sm" onClick={() => setReportPart(r)}>
+                            Zgłoś brak
+                          </Button>
+                        ) : null;
+                      return (
                       <tr
                         key={r.twId}
                         className="border-t border-slate-100 transition-colors duration-150 hover:bg-slate-50"
                       >
-                        <td className="px-5 py-3 sm:px-6">
+                        <td className="px-5 py-3 max-sm:max-w-[16rem] sm:px-6">
                           <div className="font-semibold text-slate-900">{r.name}</div>
                           <div className="mt-0.5 font-mono text-xs text-slate-500">{r.symbol ?? "-"}</div>
+                          {/* Na telefonie pod nazwą — kolumna akcji jest poza ekranem, tabela przewija się w bok. */}
+                          {report ? <div className="mt-2 sm:hidden">{report}</div> : null}
                         </td>
                         <td className="px-4 py-3">
                           <StockMeter row={r} />
@@ -361,15 +370,10 @@ export function ServicePartsPanel({
                             <span className="text-slate-400">-</span>
                           )}
                         </td>
-                        <td className="whitespace-nowrap px-5 py-3 text-right sm:px-6">
-                          {r.state !== "ok" && r.requests.length === 0 && canReport ? (
-                            <Button variant="secondary" size="sm" onClick={() => setReportPart(r)}>
-                              Zgłoś brak
-                            </Button>
-                          ) : null}
-                        </td>
+                        <td className="whitespace-nowrap px-5 py-3 text-right max-sm:hidden sm:px-6">{report}</td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 );
               })}

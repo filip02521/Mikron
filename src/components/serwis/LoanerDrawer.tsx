@@ -114,6 +114,8 @@ export function LoanerDrawer({
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLElement>(null);
+  // Element, który otworzył panel — zapamiętany przy montowaniu, zanim pułapka przeniesie fokus do środka.
+  const [opener] = useState(() => (typeof document === "undefined" ? null : (document.activeElement as HTMLElement | null)));
   const [mode, setMode] = useState<Mode>(null);
   const [cond, setCond] = useState(unit.condition);
   const [needsService, setNeedsService] = useState(false);
@@ -124,11 +126,9 @@ export function LoanerDrawer({
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   useBodyScrollLock(true);
-  // Przed efektem niżej: pułapka skupia pierwszy element, efekt i tak ustawia fokus na „Zamknij”.
   useFocusTrap(panelRef, true);
 
   useEffect(() => {
-    const prev = document.activeElement as HTMLElement | null;
     closeRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
@@ -138,9 +138,9 @@ export function LoanerDrawer({
     window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("keydown", onKey);
-      prev?.focus?.();
+      opener?.focus?.();
     };
-  }, [onClose]);
+  }, [onClose, opener]);
 
   const stats = loanerStats(unit, unit.stints, today);
   const planned = unit.currentSince && unit.plannedReturn ? daysBetween(unit.currentSince, parseDateOnly(unit.plannedReturn)) : null;

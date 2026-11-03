@@ -94,25 +94,34 @@ function Timeline({
   const span = PAST_DAYS + FUTURE_DAYS;
   const pct = (d: Date | string) => Math.max(0, Math.min(100, (daysBetween(from, d) / span) * 100));
   const todayPct = pct(today);
-  const ticks = Array.from({ length: Math.floor(span / 7) + 1 }, (_, i) => addDays(from, i * 7));
+  // Bez podziałki tuż przy „dziś” — inaczej oba podpisy nachodzą na siebie.
+  const ticks = Array.from({ length: Math.floor(span / 7) + 1 }, (_, i) => addDays(from, i * 7)).filter(
+    (d) => Math.abs(daysBetween(d, today)) > 3
+  );
   const weekends = Array.from({ length: span }, (_, i) => addDays(from, i)).filter((d) => d.getDay() === 0 || d.getDay() === 6);
 
+  const todayRef = useRef<HTMLSpanElement>(null);
+
+  // „Dziś” ok. 2/3 szerokości widoku: widać ostatnie tygodnie i najbliższe zwroty, także na telefonie.
   useEffect(() => {
     const el = scrollRef.current;
-    if (el) el.scrollLeft = el.scrollWidth * 0.35;
+    const mark = todayRef.current;
+    if (!el || !mark) return;
+    const x = mark.getBoundingClientRect().left - el.getBoundingClientRect().left + el.scrollLeft;
+    el.scrollLeft = Math.max(0, x - el.clientWidth * 0.65);
   }, []);
 
   return (
     <div ref={scrollRef} className="overflow-x-auto">
       <div className="grid min-w-[60rem] grid-cols-[15rem_minmax(45rem,1fr)] max-sm:min-w-[48rem] max-sm:grid-cols-[9.5rem_minmax(38rem,1fr)]">
-        <div className="h-9 border-b border-r border-slate-100" />
+        <div className="sticky left-0 z-10 h-9 border-b border-r border-slate-100 bg-card" />
         <div className="relative h-9 border-b border-slate-100">
           {ticks.map((d) => (
             <span key={d.toISOString()} className="absolute top-2.5 -translate-x-1/2 whitespace-nowrap text-[0.6875rem] text-slate-500" style={{ left: `${pct(d)}%` }}>
               {formatShort(d.toISOString())}
             </span>
           ))}
-          <span className="absolute top-2.5 -translate-x-1/2 text-[0.6875rem] font-semibold text-indigo-700" style={{ left: `${todayPct}%` }}>
+          <span ref={todayRef} className="absolute top-2.5 -translate-x-1/2 text-[0.6875rem] font-semibold text-indigo-700" style={{ left: `${todayPct}%` }}>
             dziś
           </span>
         </div>
@@ -120,7 +129,9 @@ function Timeline({
         {groups.map((g) => (
           <div key={g.twId} className="contents">
             <div className="col-span-2 border-b border-slate-100 px-4 pb-1.5 pt-3.5 text-[0.8125rem] font-semibold text-slate-600">
-              {g.name} · {g.units.length}
+              <span className="sticky left-4">
+                {g.name} · {g.units.length}
+              </span>
             </div>
             {g.units.map((u) => {
               const sub =
@@ -134,7 +145,7 @@ function Timeline({
                   <button
                     type="button"
                     onClick={() => onOpen(u.id)}
-                    className={cn("flex h-[52px] min-w-0 items-center gap-2.5 border-b border-r border-slate-100 px-4 text-left transition-colors duration-150 group-hover:bg-slate-50", controlFocusClass)}
+                    className={cn("sticky left-0 z-10 flex h-[52px] min-w-0 items-center gap-2.5 border-b border-r border-slate-100 bg-card px-4 text-left transition-colors duration-150 group-hover:bg-slate-50", controlFocusClass)}
                   >
                     <span className={cn("h-2 w-2 flex-none rounded-full", STATE_DOT[u.state])} aria-hidden />
                     <span className="flex min-w-0 flex-col">
@@ -387,7 +398,7 @@ export function LoanersBoard({ units, events }: { units: LoanerUnit[]; events: L
                   )}
                 >
                   <span className="flex items-baseline justify-between gap-2">
-                    <span className="truncate font-semibold text-slate-900">{g.name}</span>
+                    <span className="min-w-0 font-semibold text-slate-900">{g.name}</span>
                     <span className="hidden flex-none whitespace-nowrap font-mono text-[0.6875rem] text-slate-500 sm:inline">{g.units[0]?.twSymbol ?? ""}</span>
                   </span>
                   <span className="text-[1.375rem] font-semibold leading-none tabular-nums text-slate-900">
@@ -412,25 +423,25 @@ export function LoanersBoard({ units, events }: { units: LoanerUnit[]; events: L
             <div className="flex flex-wrap items-center gap-2">
               <span className="mr-1 text-[0.8125rem] font-semibold text-slate-600">Do zrobienia</span>
               {late.map((u) => (
-                <button key={u.id} type="button" onClick={() => setOpenId(u.id)} className={cn("inline-flex h-8 items-center gap-2 rounded-full border border-slate-200 bg-card px-3 text-[0.8125rem] transition-colors duration-150 hover:bg-slate-50", controlFocusClass)}>
-                  <span className="h-2 w-2 rounded-full bg-red-500" aria-hidden />
-                  <b className="font-mono font-semibold">{u.code}</b>
+                <button key={u.id} type="button" onClick={() => setOpenId(u.id)} className={cn("inline-flex min-h-8 max-w-full items-center gap-2 rounded-2xl border border-slate-200 bg-card px-3 py-1 text-left text-[0.8125rem] transition-colors duration-150 hover:bg-slate-50", controlFocusClass)}>
+                  <span className="h-2 w-2 flex-none rounded-full bg-red-500" aria-hidden />
+                  <b className="flex-none whitespace-nowrap font-mono font-semibold">{u.code}</b>
                   {shortClient(u.currentClientName ?? "-")} · {polishPlural(daysBetween(parseDateOnly(u.plannedReturn!), today), "dzień", "dni", "dni")} po terminie
                 </button>
               ))}
               {dueSoon.map((u) => {
                 const left = daysBetween(today, parseDateOnly(u.plannedReturn!));
                 return (
-                  <button key={u.id} type="button" onClick={() => setOpenId(u.id)} className={cn("inline-flex h-8 items-center gap-2 rounded-full border border-slate-200 bg-card px-3 text-[0.8125rem] transition-colors duration-150 hover:bg-slate-50", controlFocusClass)}>
-                    <span className="h-2 w-2 rounded-full bg-primary" aria-hidden />
-                    <b className="font-mono font-semibold">{u.code}</b>
+                  <button key={u.id} type="button" onClick={() => setOpenId(u.id)} className={cn("inline-flex min-h-8 max-w-full items-center gap-2 rounded-2xl border border-slate-200 bg-card px-3 py-1 text-left text-[0.8125rem] transition-colors duration-150 hover:bg-slate-50", controlFocusClass)}>
+                    <span className="h-2 w-2 flex-none rounded-full bg-primary" aria-hidden />
+                    <b className="flex-none whitespace-nowrap font-mono font-semibold">{u.code}</b>
                     zwrot {left === 0 ? "dziś" : left === 1 ? "jutro" : `za ${left} dni`}
                   </button>
                 );
               })}
               {warn.length ? (
                 <span className="inline-flex h-8 items-center gap-2 rounded-full border border-slate-200 bg-card px-3 text-[0.8125rem]">
-                  <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden />
+                  <span className="h-2 w-2 flex-none rounded-full bg-amber-500" aria-hidden />
                   {polishPlural(warn.length, "egzemplarz", "egzemplarze", "egzemplarzy")} ponad 14 dni
                 </span>
               ) : null}
