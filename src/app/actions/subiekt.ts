@@ -8,6 +8,7 @@ import {
   requireAdminForMutation,
   requireOperations,
   requireSubiektLookup,
+  requireSubiektSuggestLookup,
   requireSupplierManagement,
 } from "@/lib/auth";
 import { indexOrderLineToProductCatalog } from "@/lib/data/product-catalog";
@@ -146,7 +147,7 @@ export async function actionSubiektSuggestProducts(
   query: string,
   searchField: ProductSearchField = "name"
 ): Promise<SubiektLookupResult<SubiektProduct>> {
-  await requireSubiektLookup();
+  await requireSubiektSuggestLookup();
   return suggestProducts(query, searchField);
 }
 
@@ -363,7 +364,7 @@ async function searchKontrahenciByWords(
 export async function actionSubiektSuggestClients(
   query: string
 ): Promise<SubiektLookupResult<SubiektKontrahent>> {
-  await requireSubiektLookup();
+  await requireSubiektSuggestLookup();
   const q = query.trim();
   if (!q) return validationFailure("empty_query");
   if (q.length < MIN_CLIENT_SEARCH_LENGTH) return validationFailure("short_query");

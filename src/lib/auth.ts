@@ -311,8 +311,6 @@ export async function requireSubiektLookup(): Promise<SessionUser> {
   const user = await requireLoggedInUser();
   if (
     !isSalesAccount(user.role) &&
-    // Serwisant wybiera klienta i towar przy wydaniu zamiennika — tylko odczyt podpowiedzi.
-    !isSerwis(user.role) &&
     !canAccessOperations(user.role, user.assignedWorkspaces) &&
     !canAccessTeethPanel(user.role, user.assignedWorkspaces) &&
     !canAccessWarehouse(user.role, user.assignedWorkspaces)
@@ -320,4 +318,14 @@ export async function requireSubiektLookup(): Promise<SessionUser> {
     throw new Error("Brak uprawnień do podpowiedzi Subiekt");
   }
   return user;
+}
+
+/**
+ * Tylko podpowiedzi klientów i towarów z Subiekta. Serwisant wybiera je przy wydaniu zamiennika,
+ * ale nie dostaje reszty odczytów zakupowych z {@link requireSubiektLookup} (dostawcy, terminy ZD, NIP-y).
+ */
+export async function requireSubiektSuggestLookup(): Promise<SessionUser> {
+  const user = await requireLoggedInUser();
+  if (isSerwis(user.role)) return user;
+  return requireSubiektLookup();
 }

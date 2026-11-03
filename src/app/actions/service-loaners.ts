@@ -146,11 +146,12 @@ export async function actionReturnLoaner(input: {
 }): Promise<LoanerActionResult> {
   const user = await requireServicePanel("mutate");
   return run(async () => {
+    const needsService = input.needsService === true;
     const u = await returnLoanerUnit(
-      { unitId: unitId(input.unitId), condition: condition(input.condition), needsService: Boolean(input.needsService), note: text(input.note, 300) },
+      { unitId: unitId(input.unitId), condition: condition(input.condition), needsService, note: text(input.note, 300) },
       actorOf(user)
     );
-    return input.needsService ? `Przyjęto ${u.code}. Egzemplarz czeka na przegląd.` : `Przyjęto ${u.code}. Wrócił na stan.`;
+    return needsService ? `Przyjęto ${u.code}. Egzemplarz czeka na przegląd.` : `Przyjęto ${u.code}. Wrócił na stan.`;
   });
 }
 
