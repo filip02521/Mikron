@@ -2794,11 +2794,13 @@ export async function actionClearZdEstimateOnRequest(
 ): Promise<ZdEstimateOnRequestActionResult> {
   await requireZdEstimateAdmin("mutate");
   try {
-    await clearOnRequestRowsForTwIds([subiektTwId]);
-    const onRequests = await fetchZdEstimateOnRequestsWithServiceParts();
-    if (servicePartTwIdSet(onRequests).has(Math.trunc(subiektTwId))) {
+    // Najpierw odmowa dla części serwisowej — inaczej skasowalibyśmy jej ręczny wpis z notatką.
+    const before = await fetchZdEstimateOnRequestsWithServiceParts();
+    if (servicePartTwIdSet(before).has(Math.trunc(subiektTwId))) {
       return { ok: false, message: SERVICE_PART_CLEAR_MESSAGE };
     }
+    await clearOnRequestRowsForTwIds([subiektTwId]);
+    const onRequests = await fetchZdEstimateOnRequestsWithServiceParts();
     return { ok: true, onRequests };
   } catch (e) {
     return {
@@ -2936,9 +2938,10 @@ export async function actionClearZdEstimateOnRequestProducts(
   const truncated = normalized.truncated;
 
   try {
-    await clearOnRequestRowsForTwIds(ids);
+    // Części serwisowe pomijamy przed kasowaniem, żeby nie stracić ich ręcznych wpisów.
+    const serviceIds = servicePartTwIdSet(await fetchZdEstimateOnRequestsWithServiceParts());
+    await clearOnRequestRowsForTwIds(ids.filter((id) => !serviceIds.has(id)));
     const onRequests = await fetchZdEstimateOnRequestsWithServiceParts();
-    const serviceIds = servicePartTwIdSet(onRequests);
     return {
       ok: true,
       onRequests,

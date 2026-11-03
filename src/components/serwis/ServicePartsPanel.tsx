@@ -363,16 +363,9 @@ export function ServicePartsPanel({
                         </td>
                         <td className="whitespace-nowrap px-5 py-3 text-right sm:px-6">
                           {r.state !== "ok" && r.requests.length === 0 && canReport ? (
-                            <button
-                              type="button"
-                              onClick={() => setReportPart(r)}
-                              className={cn(
-                                "inline-flex h-8 items-center rounded-md px-3 text-sm font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-900",
-                                controlFocusClass
-                              )}
-                            >
+                            <Button variant="secondary" size="sm" onClick={() => setReportPart(r)}>
                               Zgłoś brak
-                            </button>
+                            </Button>
                           ) : null}
                         </td>
                       </tr>

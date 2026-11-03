@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { cn } from "@/lib/cn";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
@@ -112,6 +113,7 @@ export function LoanerDrawer({
   onDone: (message: string) => void;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
   const [mode, setMode] = useState<Mode>(null);
   const [cond, setCond] = useState(unit.condition);
   const [needsService, setNeedsService] = useState(false);
@@ -122,6 +124,8 @@ export function LoanerDrawer({
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   useBodyScrollLock(true);
+  // Przed efektem niżej: pułapka skupia pierwszy element, efekt i tak ustawia fokus na „Zamknij”.
+  useFocusTrap(panelRef, true);
 
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
@@ -167,6 +171,7 @@ export function LoanerDrawer({
     <>
       <div className="fixed inset-0 z-[58] bg-scrim/40" onClick={onClose} aria-hidden />
       <aside
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="loaner-drawer-title"
