@@ -15,8 +15,8 @@ export function rolZdLines(batch: BatchContent): Array<{ towarId: number; ilosc:
 }
 
 /** Opis ZD (decyzja P6): „ROL <klient> <miesiąc>” bez roku. */
-export function rolZdUwagi(label: string, period: string): string {
-  return `ROL ${label} ${rolMonthPl(period)}`;
+export function rolZdUwagi(label: string, period: string, periodEnd?: string): string {
+  return `ROL ${label} ${rolMonthPl(period, periodEnd)}`;
 }
 
 /**
@@ -39,11 +39,12 @@ export type RolMailDraft = { to: string[]; cc: string[]; subject: string; body: 
 export function rolMailDraft(input: {
   program: { label: string; discountPct: number; addressLines: readonly string[]; nip: string; toEmails: readonly string[]; ccEmails: readonly string[] };
   period: string;
+  periodEnd?: string;
   defaults: { toEmails: readonly string[]; ccEmails: readonly string[]; subject: string };
   signature: string;
 }): RolMailDraft {
   const p = input.program;
-  const block = [`ROL ${p.label} ${rolMonthEn(input.period)} -${p.discountPct}%`, ...p.addressLines, p.nip ? `NIP: ${p.nip}` : ""]
+  const block = [`ROL ${p.label} ${rolMonthEn(input.period, input.periodEnd)} -${p.discountPct}%`, ...p.addressLines, p.nip ? `NIP: ${p.nip}` : ""]
     .filter(Boolean)
     .join("\n");
   const body = ["Dear Sirs,", "", "Please find attached our new order.", "", block, "", "Thank you,", input.signature.trim()]

@@ -15,10 +15,12 @@ import { cn } from "@/lib/cn";
 import { polishPlural } from "@/lib/email/polish-plural";
 import type { RolBatchView, RolProgram } from "@/lib/rol/data";
 import { rolEditSummary } from "@/lib/rol/review";
-import { rolBatchSummary, rolMonthEn, rolPeriodLabel, ROL_STATUS_BADGE } from "@/lib/rol/view";
+import { rolBatchSummary, rolMonthPl, rolPeriodLabel, ROL_STATUS_BADGE } from "@/lib/rol/view";
 import { RolBatchDetail } from "./RolBatchDetail";
 import { RolSettingsDialog } from "./RolSettingsDialog";
 
+
+type RolRow = { key: string; program: RolProgram; batch: RolBatchView | null };
 
 function scanTimeLabel(iso: string): string {
   return new Intl.DateTimeFormat("pl-PL", {
@@ -49,14 +51,26 @@ export function RolWorkspace({
   const [scanError, setScanError] = useState<string | null>(null);
   const [scanning, startScan] = useTransition();
 
-  const batchByProgram = new Map(batches.map((b) => [b.programId, b]));
+  // Wiersz = zgłoszenie: klient z raportami tygodniowymi ma ich kilka w miesiącu; klient bez zgłoszenia — jeden wiersz.
+  const rows = programs.flatMap((program): RolRow[] => {
+    // Raport miesięczny (reszta FS) wysyła się na końcu — pod tygodniowymi.
+    const isMonth = (b: RolBatchView) => rolMonthPl(b.period, b.periodEnd) === rolMonthPl(b.period);
+    const own = batches.filter((b) => b.programId === program.id).sort((a, b) => Number(isMonth(a)) - Number(isMonth(b)));
+    return own.length ? own.map((batch) => ({ key: batch.id, program, batch })) : [{ key: program.id, program, batch: null }];
+  });
+  const rowLabel = ({ program, batch }: RolRow) => {
+    if (!batch) return `ROL ${program.label}`;
+    const range = rolMonthPl(batch.period, batch.periodEnd);
+    if (range !== rolMonthPl(batch.period)) return `ROL ${program.label} · ${range}`;
+    // Miesięczny przy klientach z krótszymi raportami zbiera tylko to, czego w nich nie było.
+    return batches.some((b) => b.programId === program.id && b.id !== batch.id) ? `ROL ${program.label} · reszta miesiąca` : `ROL ${program.label}`;
+  };
   const toReview = batches.filter((b) => b.status === "wykryte");
   const ready = batches.filter((b) => b.status === "przejrzane");
-  const nextToReview = programs.find((p) => toReview.some((b) => b.programId === p.id)) ?? null;
-  const nextToSend = nextToReview ? null : (programs.find((p) => ready.some((b) => b.programId === p.id)) ?? null);
+  const nextToReview = rows.find((r) => r.batch?.status === "wykryte") ?? null;
+  const nextToSend = nextToReview ? null : (rows.find((r) => r.batch?.status === "przejrzane") ?? null);
   const [mailFor, setMailFor] = useState<string | null>(null);
   const lastScan = batches.reduce<RolBatchView | null>((a, b) => (!a || b.scannedAt > a.scannedAt ? b : a), null);
-  const monthEn = rolMonthEn(period);
 
   const scan = () =>
     startScan(async () => {
@@ -97,15 +111,15 @@ export function RolWorkspace({
             ))}
           </Select>
           {nextToReview ? (
-            <Button onClick={() => setOpen(nextToReview.id)}>Przejrzyj ROL {nextToReview.label}</Button>
+            <Button onClick={() => setOpen(nextToReview.key)}>Przejrzyj {rowLabel(nextToReview)}</Button>
           ) : nextToSend ? (
             <Button
               onClick={() => {
-                setOpen(nextToSend.id);
-                setMailFor(nextToSend.id);
+                setOpen(nextToSend.key);
+                setMailFor(nextToSend.key);
               }}
             >
-              Przygotuj mail · ROL {nextToSend.label}
+              Przygotuj mail · {rowLabel(nextToSend)}
             </Button>
           ) : null}
           {programs.length ? (
@@ -123,7 +137,7 @@ export function RolWorkspace({
       {scanning ? (
         <div role="status" className="flex items-center gap-2 border-b border-slate-200 px-4 py-2.5 text-sm text-slate-600 sm:px-6">
           <BrandLoader size="sm" />
-          Sprawdzam FS za {rolPeriodLabel(period)} w Subiekcie — zwykle ok. 30 s.
+          Sprawdzam FS za {rolPeriodLabel(period)} w Subiekcie — zwykle ok. 30 s na każdy raport (miesiąc, tygodnie).
         </div>
       ) : null}
       {scanError || loadError ? (
@@ -153,13 +167,13 @@ export function RolWorkspace({
               </tr>
             </thead>
             <tbody>
-              {programs.map((program) => {
-                const batch = batchByProgram.get(program.id) ?? null;
+              {rows.map((row) => {
+                const { program, batch } = row;
                 const summary = batch ? rolBatchSummary(batch) : null;
-                const expanded = open === program.id;
-                const detailId = `rol-detail-${program.id}`;
+                const expanded = open === row.key;
+                const detailId = `rol-detail-${row.key}`;
                 return (
-                  <Fragment key={program.id}>
+                  <Fragment key={row.key}>
                     <tr className={cn(expanded && "bg-indigo-50")}>
                       <td>
                         <button
@@ -167,7 +181,7 @@ export function RolWorkspace({
                           aria-expanded={expanded}
                           aria-controls={detailId}
                           disabled={!batch}
-                          onClick={() => setOpen(expanded ? null : program.id)}
+                          onClick={() => setOpen(expanded ? null : row.key)}
                           className="inline-flex items-center gap-1.5 text-left font-medium text-slate-900 disabled:cursor-default"
                         >
                           <IconChevronRight
@@ -175,7 +189,7 @@ export function RolWorkspace({
                             aria-hidden
                             className={cn("text-slate-400 transition-transform", expanded && "rotate-90", !batch && "invisible")}
                           />
-                          ROL {program.label}
+                          {rowLabel(row)}
                         </button>
                         {batch && (batch.changeNote || rolEditSummary(batch)) ? (
                           <p className="mt-0.5 pl-5 text-xs text-slate-500">
@@ -187,7 +201,7 @@ export function RolWorkspace({
                           {batch ? (
                             <Badge variant={ROL_STATUS_BADGE[batch.status].variant}>{ROL_STATUS_BADGE[batch.status].label}</Badge>
                           ) : (
-                            <Badge>Nie sprawdzono</Badge>
+                            <Badge>{program.active ? "Nie sprawdzono" : "Nieaktywny"}</Badge>
                           )}
                           {summary ? <span>{summary.text} · {summary.fsCount} FS</span> : null}
                           {batch && batch.lateFsCount > 0 ? (
@@ -203,7 +217,7 @@ export function RolWorkspace({
                         {batch ? (
                           <Badge variant={ROL_STATUS_BADGE[batch.status].variant}>{ROL_STATUS_BADGE[batch.status].label}</Badge>
                         ) : (
-                          <Badge>Nie sprawdzono</Badge>
+                          <Badge>{program.active ? "Nie sprawdzono" : "Nieaktywny"}</Badge>
                         )}
                         {batch && batch.lateFsCount > 0 ? (
                           <p className="mt-1 text-xs text-amber-800">
@@ -215,7 +229,7 @@ export function RolWorkspace({
                     {expanded && batch ? (
                       <tr id={detailId}>
                         <td colSpan={4} className="bg-card">
-                          <RolBatchDetail program={program} batch={batch} monthEn={monthEn} autoOpenMail={mailFor === program.id} />
+                          <RolBatchDetail program={program} batch={batch} autoOpenMail={mailFor === row.key} />
                         </td>
                       </tr>
                     ) : null}

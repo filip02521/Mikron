@@ -5,7 +5,7 @@
  */
 import ExcelJS from "exceljs";
 import type { RolInvoiceView, RolLineView } from "./data";
-import { rolActiveLines, rolLineQty, rolMonthEn } from "./view";
+import { rolActiveLines, rolLineQty, rolMonthEn, rolPeriodYear } from "./view";
 
 export type RolSheetRow = { symbol: string; name: string; qty: number };
 
@@ -23,8 +23,8 @@ export function rolSheetRows(batch: { invoices: readonly RolInvoiceView[]; lines
   return [...bySymbol.values()];
 }
 
-export function rolSheetFileName(input: { fileLabel: string; discountPct: number; period: string }): string {
-  return `ROL ${input.fileLabel} -${input.discountPct}% ${rolMonthEn(input.period)} ${input.period.slice(0, 4)}.xlsx`;
+export function rolSheetFileName(input: { fileLabel: string; discountPct: number; period: string; periodEnd?: string }): string {
+  return `ROL ${input.fileLabel} -${input.discountPct}% ${rolMonthEn(input.period, input.periodEnd)} ${rolPeriodYear(input.period, input.periodEnd)}.xlsx`;
 }
 
 /** „FS 3417/M/09/2026” → „3417 <klient>.pdf” (jak w wysłanych mailach). */

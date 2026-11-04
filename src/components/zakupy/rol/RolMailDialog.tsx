@@ -29,11 +29,13 @@ export function RolMailDialog({
   batchId,
   label,
   period,
+  periodEnd,
 }: {
   onClose: () => void;
   batchId: string;
   label: string;
   period: string;
+  periodEnd: string;
 }) {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("loading");
@@ -118,7 +120,7 @@ export function RolMailDialog({
     <ModalShell
       open
       onClose={onClose}
-      title={`Zgłoszenie ROL ${label} · ${rolPeriodLabel(period)}`}
+      title={`Zgłoszenie ROL ${label} · ${rolPeriodLabel(period, periodEnd)}`}
       size="xl"
       bodyClassName="px-5 py-4 sm:px-6"
       disableBackdropClose={phase === "sending"}

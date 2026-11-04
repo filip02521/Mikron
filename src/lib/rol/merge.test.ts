@@ -69,8 +69,8 @@ describe("parseRolProgramInput", () => {
     nip: "000-000-00-00",
     toEmails: "Zamowienia@example.com; opiekun@example.com",
     ccEmails: "",
-    activeFrom: "2026-03-01",
-    activeTo: "",
+    active: true,
+    reportFrequency: "month",
   };
 
   it("normalizuje listy i domyślną nazwę pliku", () => {
@@ -83,7 +83,8 @@ describe("parseRolProgramInput", () => {
         discountPct: 25,
         addressLines: ["ul. Testowa 1", "00-001 Miasto"],
         toEmails: ["zamowienia@example.com", "opiekun@example.com"],
-        activeTo: null,
+        active: true,
+        reportFrequency: "month",
       }),
     });
   });
@@ -93,7 +94,8 @@ describe("parseRolProgramInput", () => {
     expect(parseRolProgramInput({ ...base, toEmails: "nie-mail" })).toMatchObject({ ok: false, error: expect.stringMatching(/Do:/) });
     expect(parseRolProgramInput({ ...base, discountPct: "125" })).toMatchObject({ ok: false });
     expect(parseRolProgramInput({ ...base, fileLabel: "A/B" })).toMatchObject({ ok: false });
-    expect(parseRolProgramInput({ ...base, activeTo: "2026-01-01" })).toMatchObject({ ok: false });
+    expect(parseRolProgramInput({ ...base, reportFrequency: "dzień" })).toMatchObject({ ok: false, error: expect.stringMatching(/raport/) });
+    expect(parseRolProgramInput({ ...base, active: "tak" as unknown as boolean })).toMatchObject({ ok: true, value: { active: false } });
     expect(parseRolProgramInput({ ...base, id: "x" })).toMatchObject({ ok: false });
   });
 });
