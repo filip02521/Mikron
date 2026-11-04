@@ -259,6 +259,15 @@ export async function shiftSupplierOrder(
   );
 }
 
+/** ZD w drodze, pod który prośba trafia od razu jako „już zamówione” (notatnik ZK). */
+export type InTransitCover = {
+  supplierId: string;
+  dokNr: string;
+  dokId: number | null;
+  /** YYYY-MM-DD — termin realizacji ZD. */
+  deadline: string;
+};
+
 export async function batchAddIndividualOrders(
   entries: Array<{
     supplierId?: string;
@@ -287,11 +296,18 @@ export async function batchAddIndividualOrders(
     submitMode?: "sales" | "procurement";
     /** Line keys ZK objęte tą prośbą — do czyszczenia teeth_drafts. */
     sourceZkLineKeys?: string[];
+    /**
+     * Tylko z kodu serwera (nigdy z danych klienta): indeks pozycji → ZD w drodze, pod który
+     * prośba trafia od razu jako „już zamówione”, bez kolejki zakupów.
+     */
+    inTransitCovers?: ReadonlyMap<number, InTransitCover>;
   }
 ): Promise<{
   count: number;
   complete: number;
   verification: number;
+  /** Pozycje podpięte pod ZD w drodze (`inTransitCovers`). */
+  attached: number;
 }> {
   assertMaxBatchSize(entries.length, MAX_BATCH_ORDER_LINES, "pozycji");
 
@@ -309,11 +325,34 @@ export async function batchAddIndividualOrders(
   try {
     let complete = 0;
     let verification = 0;
+    let attached = 0;
+    const attachedAt = new Date().toISOString();
+    const attachPlacementGroupId = crypto.randomUUID();
+    // Jak „Już zamówione” zakupów: zamówione uzupełniająco, bez próbki czasu dostawy,
+    // od razu z ZD i jego terminem (sync terminów ZD pilnuje go dalej).
+    const inTransitCoverPatch = (entryIndex: number) => {
+      const cover = options?.inTransitCovers?.get(entryIndex);
+      if (!cover) return {};
+      return {
+        supplier_id: cover.supplierId,
+        order_type: "Poboczne" as OrderType,
+        already_ordered: true,
+        ordered_at: attachedAt,
+        procurement_seen_at: attachedAt,
+        placement_group_id: attachPlacementGroupId,
+        zd_fulfillment_deadline: cover.deadline,
+        zd_fulfillment_source: "zd",
+        zd_fulfillment_dok_nr: cover.dokNr,
+        zd_fulfillment_dok_id: cover.dokId,
+        zd_fulfillment_synced_at: attachedAt,
+        zd_auto_attached_at: attachedAt,
+      };
+    };
 
     // Nowe podejście: jeśli handlowiec wpisał symbol / kod, ale nie wybrał pozycji z podpowiedzi Subiekta,
     // spróbuj dopasować tw_Id po naszej bazie `subiekt_products` (symbol/plu).
     // Dzięki temu dalsze kroki (katalog mapowań produkt→dostawca) działają bez ZD.
-    const rows = await Promise.all(entries.map(async (e) => {
+    const rows = await Promise.all(entries.map(async (e, entryIndex) => {
       const sanitized = sanitizeOrderDraftFields({
         symbol: e.symbol,
         mikranCode: e.mikranCode,
@@ -349,7 +388,14 @@ export async function batchAddIndividualOrders(
       }
 
       let status: IndividualOrderStatus;
-      if (procurementMode) {
+      const inTransitCover = options?.inTransitCovers?.get(entryIndex);
+      if (inTransitCover) {
+        if (kind !== "zamowienie" || !hasValidOrderQuantity(sanitized.quantity, kind)) {
+          throw new Error("Pozycję podpiętą pod dostawę trzeba złożyć jako zamówienie z ilością.");
+        }
+        status = "Zamowione";
+        attached++;
+      } else if (procurementMode) {
         assertProcurementEntryComplete({
           ...draft,
           requestKind: kind,
@@ -430,6 +476,7 @@ export async function batchAddIndividualOrders(
           sourceZkWatchId: e.sourceZkWatchId,
           sourceZkNumber: e.sourceZkNumber,
         }),
+        ...inTransitCoverPatch(entryIndex),
       };
     }));
     for (let i = 0; i < rows.length; i++) {
@@ -572,7 +619,7 @@ export async function batchAddIndividualOrders(
       }
     });
 
-    return { count: rows.length, complete, verification };
+    return { count: rows.length, complete, verification, attached };
   } finally {
     await releaseLock("BATCH_INDIVIDUAL");
   }

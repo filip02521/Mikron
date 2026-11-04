@@ -30,6 +30,7 @@ import {
   actionBackfillOrdersSubiektTwIdFromSymbol,
   actionRebuildProductCatalogFromOrders,
   actionAssignProductSupplier,
+  actionUnpinProductSupplier,
   actionBulkAssignProductSuppliers,
   actionCountProductCatalogCoverage,
   actionFetchProductCatalogPage,
@@ -914,7 +915,7 @@ export function ProductsCatalogAdminClient({
             ? ` · uzupełniono ${autoAssign.updated} próśb w weryfikacji`
             : "";
         const filterNote = leftFilteredView
-          ? " · usunięto z aktualnego filtra (główny dostawca się zmienił)"
+          ? " · usunięto z aktualnego filtra (towar przypięty do innego dostawcy)"
           : "";
         setToast(
           catalogAdminNotice(
@@ -924,6 +925,23 @@ export function ProductsCatalogAdminClient({
         );
       } catch (e) {
         setToast(catalogAdminError(e, "Błąd przypisania dostawcy do produktu."));
+      }
+    });
+  };
+
+  const unpinSupplier = (subiektTwId: number) => {
+    start(async () => {
+      try {
+        const { row, restoredLinks } = await actionUnpinProductSupplier(subiektTwId);
+        setRows((prev) => prev.map((r) => (r.subiektTwId === subiektTwId ? row : r)));
+        refreshCoverage();
+        const restoredNote =
+          restoredLinks > 0 ? ` · przywrócono mapowania: ${restoredLinks}` : "";
+        setToast(
+          catalogAdminNotice(`Tryb automatyczny${restoredNote}.`, "success"),
+        );
+      } catch (e) {
+        setToast(catalogAdminError(e, "Błąd zdejmowania przypięcia dostawcy."));
       }
     });
   };
@@ -1622,6 +1640,7 @@ export function ProductsCatalogAdminClient({
                   preferredSupplierId={catalogSupplierId}
                   disabled={pending}
                   onAssign={assignSupplier}
+                  onUnpin={unpinSupplier}
                   compact
                 />
               </div>
