@@ -55,18 +55,54 @@ const ENGLISH_MONTHS = [
   "December",
 ];
 
-export function rolMonthEn(period: string): string {
-  return ENGLISH_MONTHS[Number(period.slice(5, 7)) - 1] ?? "";
+/** Dopełniacz do zakresów dni („3–9 listopada”). */
+const MONTHS_PL_GEN = [
+  "stycznia",
+  "lutego",
+  "marca",
+  "kwietnia",
+  "maja",
+  "czerwca",
+  "lipca",
+  "sierpnia",
+  "września",
+  "października",
+  "listopada",
+  "grudnia",
+];
+
+const monthIdx = (key: string) => Number(key.slice(5, 7)) - 1;
+const dayOf = (key: string) => Number(key.slice(8, 10));
+
+/** Cały miesiąc (bez końca okresu albo od 1. do ostatniego dnia) — inaczej tydzień / dwa tygodnie. */
+function isWholeMonth(period: string, periodEnd?: string): boolean {
+  if (!periodEnd) return true;
+  const [y, m] = period.split("-").map(Number) as [number, number];
+  return dayOf(period) === 1 && periodEnd.slice(0, 7) === period.slice(0, 7) && dayOf(periodEnd) === new Date(Date.UTC(y, m, 0)).getUTCDate();
 }
 
-/** „wrzesień” z `2026-09-01` (opis ZD, bez roku). */
-export function rolMonthPl(period: string): string {
-  return MONTHS_PL[Number(period.slice(5, 7)) - 1] ?? "";
+/** „September” z `2026-09-01`; krótki okres: „3-9 November” albo „27 October-2 November” (mail, pliki). */
+export function rolMonthEn(period: string, periodEnd?: string): string {
+  if (isWholeMonth(period, periodEnd)) return ENGLISH_MONTHS[monthIdx(period)] ?? "";
+  const end = `${dayOf(periodEnd!)} ${ENGLISH_MONTHS[monthIdx(periodEnd!)]}`;
+  return monthIdx(period) === monthIdx(periodEnd!) ? `${dayOf(period)}-${end}` : `${dayOf(period)} ${ENGLISH_MONTHS[monthIdx(period)]}-${end}`;
 }
 
-/** „wrzesień 2026” z `2026-09-01`. */
-export function rolPeriodLabel(period: string): string {
-  return `${rolMonthPl(period)} ${period.slice(0, 4)}`;
+/** „wrzesień” z `2026-09-01` (opis ZD, bez roku); krótki okres: „3–9 listopada”. */
+export function rolMonthPl(period: string, periodEnd?: string): string {
+  if (isWholeMonth(period, periodEnd)) return MONTHS_PL[monthIdx(period)] ?? "";
+  const end = `${dayOf(periodEnd!)} ${MONTHS_PL_GEN[monthIdx(periodEnd!)]}`;
+  return monthIdx(period) === monthIdx(periodEnd!) ? `${dayOf(period)}–${end}` : `${dayOf(period)} ${MONTHS_PL_GEN[monthIdx(period)]} – ${end}`;
+}
+
+/** Rok okresu do nazw plików — rok ostatniego dnia (tydzień na przełomie roku należy do nowego). */
+export function rolPeriodYear(period: string, periodEnd?: string): string {
+  return (periodEnd ?? period).slice(0, 4);
+}
+
+/** „wrzesień 2026” z `2026-09-01`; krótki okres: „3–9 listopada 2026”. */
+export function rolPeriodLabel(period: string, periodEnd?: string): string {
+  return `${rolMonthPl(period, periodEnd)} ${rolPeriodYear(period, periodEnd)}`;
 }
 
 /** Ostatnie `count` miesięcy przed `todayKey`, od najnowszego (`YYYY-MM-01`). */

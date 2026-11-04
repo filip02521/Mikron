@@ -1,5 +1,8 @@
 /** Walidacja ustawień klienta ROL (okno „Ustawienia ROL”) — granica zaufania dla akcji serwera. */
 
+import type { SubiektKontrahent } from "@/lib/subiekt/types";
+import { ROL_FREQUENCIES, type RolFrequency } from "./constants";
+
 export type RolProgramInput = {
   id?: string | null;
   label: string;
@@ -10,8 +13,8 @@ export type RolProgramInput = {
   nip: string;
   toEmails: string;
   ccEmails: string;
-  activeFrom: string;
-  activeTo: string;
+  active: boolean;
+  reportFrequency: string;
 };
 
 export type RolProgramValues = {
@@ -24,13 +27,12 @@ export type RolProgramValues = {
   nip: string;
   toEmails: string[];
   ccEmails: string[];
-  activeFrom: string;
-  activeTo: string | null;
+  active: boolean;
+  reportFrequency: RolFrequency;
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const EMAIL_RE = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const splitList = (s: string) =>
   s
@@ -64,12 +66,8 @@ export function parseRolProgramInput(input: RolProgramInput): { ok: true; value:
   if (typeof to === "string") return { ok: false, error: to };
   const cc = parseEmails(input.ccEmails, "DW");
   if (typeof cc === "string") return { ok: false, error: cc };
-  const activeFrom = input.activeFrom.trim();
-  if (!DATE_RE.test(activeFrom)) return { ok: false, error: "Podaj datę, od której klient ma status ROL." };
-  const activeTo = input.activeTo.trim() || null;
-  if (activeTo && (!DATE_RE.test(activeTo) || activeTo < activeFrom)) {
-    return { ok: false, error: "Data końca statusu ROL musi być po dacie początku." };
-  }
+  const reportFrequency = ROL_FREQUENCIES.find((f) => f === input.reportFrequency);
+  if (!reportFrequency) return { ok: false, error: "Wybierz, co ile wysyłać raport: miesiąc, 2 tygodnie albo tydzień." };
   return {
     ok: true,
     value: {
@@ -86,8 +84,45 @@ export function parseRolProgramInput(input: RolProgramInput): { ok: true; value:
       nip: input.nip.trim().slice(0, 32),
       toEmails: to,
       ccEmails: cc,
-      activeFrom,
-      activeTo,
+      active: input.active === true,
+      reportFrequency,
     },
   };
+}
+
+/**
+ * Wybór kartoteki z Subiekta w oknie „Ustawienia ROL”: dopisuje kh_Id do listy, a nazwę, adres
+ * i NIP wpisuje tylko w puste pola — druga kartoteka tego samego klienta nie nadpisuje danych.
+ */
+export function applyKontrahentToRolInput(
+  form: RolProgramInput,
+  k: SubiektKontrahent
+): { form: RolProgramInput; filled: string[] } {
+  const t = (s?: string | null) => s?.trim() ?? "";
+  const kh = Math.trunc(Number(k.kh_Id));
+  const khIds = splitList(form.khIds);
+  const label = (t(k.adr_Nazwa) || t(k.adr_NazwaPelna)).slice(0, 120);
+  const address = [t(k.adr_Adres) || t(k.adr_Ulica), [t(k.adr_Kod), t(k.adr_Miejscowosc)].filter(Boolean).join(" ")]
+    .filter(Boolean)
+    .join("\n");
+  const nip = t(k.adr_NIP).slice(0, 32);
+  const next = { ...form };
+  const filled: string[] = [];
+  if (kh > 0 && !khIds.includes(String(kh))) {
+    next.khIds = [...khIds, String(kh)].join(", ");
+    filled.push(`kartoteka ${kh}`);
+  }
+  if (!form.label.trim() && label) {
+    next.label = label;
+    filled.push("nazwa");
+  }
+  if (!form.addressLines.trim() && address) {
+    next.addressLines = address;
+    filled.push("adres");
+  }
+  if (!form.nip.trim() && nip) {
+    next.nip = nip;
+    filled.push("NIP");
+  }
+  return { form: next, filled };
 }

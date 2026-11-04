@@ -7,7 +7,7 @@ import JSZip from "jszip";
 import { loadRolBatchById } from "./data";
 import { loadRolPdfBytes } from "./pdfs";
 import { buildRolSheetXlsx, rolFsPdfFileName, rolSheetFileName, rolSheetRows } from "./sheet";
-import { rolActiveLines, rolMonthEn } from "./view";
+import { rolActiveLines, rolMonthEn, rolPeriodYear } from "./view";
 
 export type RolFile = { name: string; contentType: string; content: Buffer };
 
@@ -25,7 +25,7 @@ export async function buildRolBatchFiles(batchId: string): Promise<RolBatchFiles
   const { batch, program } = found;
   const rows = rolSheetRows(batch);
   const sheet: RolFile = {
-    name: rolSheetFileName({ fileLabel: program.fileLabel, discountPct: program.discountPct, period: batch.period }),
+    name: rolSheetFileName({ fileLabel: program.fileLabel, discountPct: program.discountPct, period: batch.period, periodEnd: batch.periodEnd }),
     contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     content: await buildRolSheetXlsx(rows),
   };
@@ -40,7 +40,7 @@ export async function buildRolBatchFiles(batchId: string): Promise<RolBatchFiles
     if (content) pdfs.push({ name: rolFsPdfFileName(inv.fsNr, program.fileLabel), contentType: "application/pdf", content });
     else missingPdf.push(inv.fsNr);
   }
-  return { label: `ROL ${program.fileLabel} ${rolMonthEn(batch.period)} ${batch.period.slice(0, 4)}`, sheet, pdfs, missingPdf };
+  return { label: `ROL ${program.fileLabel} ${rolMonthEn(batch.period, batch.periodEnd)} ${rolPeriodYear(batch.period, batch.periodEnd)}`, sheet, pdfs, missingPdf };
 }
 
 export async function zipRolBatchFiles(files: RolBatchFiles): Promise<Buffer> {

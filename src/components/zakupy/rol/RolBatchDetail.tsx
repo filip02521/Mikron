@@ -11,7 +11,7 @@ import { polishPlural } from "@/lib/email/polish-plural";
 import { ROL_CONFLICT_REASON } from "@/lib/rol/constants";
 import type { RolBatchView, RolInvoiceView, RolLineView, RolProgram } from "@/lib/rol/data";
 import { rolBatchEditable } from "@/lib/rol/review";
-import { rolActiveLines, rolBatchBlockers, rolLineQty } from "@/lib/rol/view";
+import { rolActiveLines, rolBatchBlockers, rolLineQty, rolMonthEn } from "@/lib/rol/view";
 import { formError } from "@/lib/ui/notice-copy";
 import { RolMailDialog } from "./RolMailDialog";
 
@@ -47,12 +47,10 @@ function sentLabel(iso: string): string {
 export function RolBatchDetail({
   program,
   batch,
-  monthEn,
   autoOpenMail = false,
 }: {
   program: RolProgram;
   batch: RolBatchView;
-  monthEn: string;
   /** Status Panel „Przygotuj mail” otwiera okno od razu po rozwinięciu wiersza. */
   autoOpenMail?: boolean;
 }) {
@@ -87,7 +85,7 @@ export function RolBatchDetail({
       {/* Blok klienta tak, jak zobaczy go Ivoclar — tożsamość przed pozycjami. */}
       <div className="text-sm text-slate-700">
         <p className="font-medium text-slate-900">
-          ROL {program.label} {monthEn} -{program.discountPct}%
+          ROL {program.label} {rolMonthEn(batch.period, batch.periodEnd)} -{program.discountPct}%
         </p>
         <p className="text-slate-600">
           {[...program.addressLines, program.nip ? `NIP: ${program.nip}` : ""].filter(Boolean).join(" · ") || "Brak adresu w ustawieniach"}
@@ -95,7 +93,7 @@ export function RolBatchDetail({
       </div>
 
       {batch.invoices.length === 0 ? (
-        <p className="text-sm text-slate-600">Klient nie kupił produktów Ivoclar w tym miesiącu — nic do zgłoszenia.</p>
+        <p className="text-sm text-slate-600">Klient nie kupił produktów Ivoclar w tym okresie albo wszystkie jego FS są już w innym zgłoszeniu — nic do zgłoszenia.</p>
       ) : (
         batch.invoices.map((inv) => (
           <RolInvoiceBlock
@@ -177,7 +175,7 @@ export function RolBatchDetail({
       ) : null}
 
       {mailOpen ? (
-        <RolMailDialog onClose={() => setMailOpen(false)} batchId={batch.id} label={program.label} period={batch.period} />
+        <RolMailDialog onClose={() => setMailOpen(false)} batchId={batch.id} label={program.label} period={batch.period} periodEnd={batch.periodEnd} />
       ) : null}
     </div>
   );
