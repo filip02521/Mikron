@@ -71,6 +71,8 @@ import {
 } from "@/lib/subiekt/match-supplier";
 import { expandSupplierSearchQueries } from "@/lib/subiekt/supplier-search-tokens";
 import type { SubiektKontrahent, SubiektProduct } from "@/lib/subiekt/types";
+import { serviceClientView } from "@/lib/subiekt/service-client-view";
+import { isSerwis } from "@/lib/auth-roles";
 import type { ProsbaLineStockSnapshot } from "@/lib/orders/prosba-stock-check";
 import { fetchProsbaLineStock } from "@/lib/orders/fetch-prosba-line-stock";
 import { searchProductCatalogSuggestions } from "@/lib/orders/product-catalog-suggest";
@@ -365,7 +367,9 @@ async function searchKontrahenciByWords(
 export async function actionSubiektSuggestClients(
   query: string
 ): Promise<SubiektLookupResult<SubiektKontrahent>> {
-  await requireSubiektSuggestLookup();
+  const user = await requireSubiektSuggestLookup();
+  // Serwis: tylko odbiorcy (bez listy wszystkich kontrahentów, w której są dostawcy) i tylko pola przyjęcia sprzętu.
+  const serviceOnly = isSerwis(user.role);
   const q = query.trim();
   if (!q) return validationFailure("empty_query");
   if (q.length < MIN_CLIENT_SEARCH_LENGTH) return validationFailure("short_query");
@@ -410,7 +414,7 @@ export async function actionSubiektSuggestClients(
       );
     }
 
-    if (merged.length < 8) {
+    if (merged.length < 8 && !serviceOnly) {
       for (const phrase of phrases) {
         if (merged.length >= 12) break;
         const kontrahenciRes = await searchSubiektKontrahenciCached({
@@ -430,7 +434,7 @@ export async function actionSubiektSuggestClients(
     if (merged.length === 0) {
       const byWords = await searchKontrahenciByWords(q, [
         (search) => searchSubiektCustomersCached({ ...listBase, pageSize: 100, search }),
-        (search) => searchSubiektKontrahenciCached({ ...listBase, pageSize: 100, search }),
+        ...(serviceOnly ? [] : [(search: string) => searchSubiektKontrahenciCached({ ...listBase, pageSize: 100, search })]),
       ]);
       mergeKontrahenciUnique(merged, seenKh, seenLabels, byWords, 12);
     }
@@ -446,7 +450,7 @@ export async function actionSubiektSuggestClients(
 
     return {
       ok: true,
-      items: merged,
+      items: serviceOnly ? merged.map(serviceClientView) : merged,
       totalCount: merged.length,
     };
   } catch (e) {
