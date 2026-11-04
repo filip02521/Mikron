@@ -3,12 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { requireServicePanel } from "@/lib/auth";
 import { query } from "@/lib/db/pool";
-import { fetchServicePartTwIds, resolveServicePartsCecha } from "@/lib/data/service-parts";
+import {
+  fetchServicePartTwIds,
+  loadServicePartSupplierCandidates,
+  resolveServicePartsCecha,
+} from "@/lib/data/service-parts";
 import { fetchProductsWithCecha } from "@/lib/data/service-parts-overview";
 import { batchAddIndividualOrders } from "@/lib/services/orders";
 import { SERVICE_PARTS_CECHA_NAME } from "@/lib/orders/service-parts";
 import {
   parseServicePartReport,
+  pickServicePartSupplier,
   servicePartRequestNote,
   SERVICE_SALES_GROUP_NAME,
   type ServicePartReportInput,
@@ -69,9 +74,13 @@ export async function actionReportServicePartShortage(
     const symbol = product?.tw_Symbol?.trim() || undefined;
     const name = product?.tw_Nazwa?.trim() || symbol || `Towar ${parsed.twId}`;
 
-    await batchAddIndividualOrders(
+    // Dostawca od razu: prośba trafia do „Nowe” u dostawcy zamiast do Weryfikacji (prośba bez dostawcy).
+    const supplier = pickServicePartSupplier(await loadServicePartSupplierCandidates(parsed.twId));
+
+    const added = await batchAddIndividualOrders(
       [
         {
+          supplierId: supplier?.supplierId,
           salesPersonId,
           subiektTwId: parsed.twId,
           symbol,
@@ -86,7 +95,11 @@ export async function actionReportServicePartShortage(
       { submitMode: "sales" }
     );
     revalidatePath("/serwis");
-    return { ok: true, message: `Zgłoszono ${parsed.quantity} szt. ${name}.` };
+    const where =
+      supplier && added.complete > 0
+        ? `Zakupy widzą prośbę u dostawcy ${supplier.supplierName}.`
+        : "Bez znanego dostawcy — zakupy przypiszą go w Weryfikacji.";
+    return { ok: true, message: `Zgłoszono ${parsed.quantity} szt. ${name}. ${where}` };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się zgłosić braku. Spróbuj ponownie.") };
   }

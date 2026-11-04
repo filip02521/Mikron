@@ -26,6 +26,24 @@ export function parseServicePartReport(input: ServicePartReportInput): ServicePa
   return { ok: true, twId, quantity: qty, note };
 }
 
+export type ServicePartSupplierCandidate = { supplierId: string; supplierName: string; isActive: boolean };
+
+export type ServicePartSupplierPick = ServicePartSupplierCandidate & { source: "kreator" | "historia" };
+
+/**
+ * Dostawca prośby serwisu: najpierw przypięty w Kreatorze ZD (świadoma decyzja zakupów), potem ostatni
+ * z historii ZD. Nieaktywny dostawca nie wygrywa — wtedy następne źródło, a bez żadnego prośba idzie
+ * do Weryfikacji jak dotąd.
+ */
+export function pickServicePartSupplier(input: {
+  pinned: ServicePartSupplierCandidate | null;
+  lastZd: ServicePartSupplierCandidate | null;
+}): ServicePartSupplierPick | null {
+  if (input.pinned?.isActive) return { ...input.pinned, source: "kreator" };
+  if (input.lastZd?.isActive) return { ...input.lastZd, source: "historia" };
+  return null;
+}
+
 /** Treść uwagi prośby: zakupy od razu widzą, że to serwis, i do czego część jest potrzebna. */
 export function servicePartRequestNote(note: string): string {
   return note ? `Zgłoszenie serwisu: ${note}` : "Zgłoszenie serwisu";

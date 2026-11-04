@@ -1,4 +1,5 @@
 import { hasDatabaseConfig, query } from "@/lib/db/pool";
+import type { ServicePartSupplierCandidate } from "@/lib/orders/service-part-report";
 import {
   fetchZdEstimateOnRequests,
   type ZdEstimateOnRequestRow,
@@ -76,4 +77,37 @@ export async function fetchZdEstimateOnRequestsWithServiceParts(): Promise<ZdEst
   if (!cecha) return manual;
   const twIds = await fetchServicePartTwIds(cecha.cechaId);
   return mergeServicePartsIntoOnRequests(manual, twIds, serviceOnRequestRow);
+}
+
+type SupplierCandidateRow = { supplier_id: string; name: string; is_active: boolean | null };
+
+/**
+ * Kandydaci na dostawcę prośby serwisu (wybór: `pickServicePartSupplier`): przypięty w Kreatorze ZD
+ * i ostatni z historii ZD (`product_supplier_links`, jak `loadLastZdSupplierByTwIds`).
+ */
+export async function loadServicePartSupplierCandidates(twId: number): Promise<{
+  pinned: ServicePartSupplierCandidate | null;
+  lastZd: ServicePartSupplierCandidate | null;
+}> {
+  const toCandidate = (r: SupplierCandidateRow | undefined): ServicePartSupplierCandidate | null =>
+    r ? { supplierId: String(r.supplier_id), supplierName: r.name, isActive: r.is_active !== false } : null;
+  const [pinned, last] = await Promise.all([
+    query<SupplierCandidateRow>(
+      `SELECT a.supplier_id, s.name, s.is_active
+         FROM zd_product_supplier_assignments a
+         JOIN suppliers s ON s.id = a.supplier_id
+        WHERE a.subiekt_tw_id = $1`,
+      [twId]
+    ),
+    query<SupplierCandidateRow>(
+      `SELECT l.supplier_id, s.name, s.is_active
+         FROM product_supplier_links l
+         JOIN suppliers s ON s.id = l.supplier_id
+        WHERE l.subiekt_tw_id = $1 AND s.is_active IS DISTINCT FROM false
+        ORDER BY l.last_action_at DESC NULLS LAST, l.order_count DESC
+        LIMIT 1`,
+      [twId]
+    ),
+  ]);
+  return { pinned: toCandidate(pinned.rows[0]), lastZd: toCandidate(last.rows[0]) };
 }
