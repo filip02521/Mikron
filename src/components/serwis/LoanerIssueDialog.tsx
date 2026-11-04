@@ -1,100 +1,13 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { actionIssueLoaner } from "@/app/actions/service-loaners";
-import { actionSubiektSuggestClients } from "@/app/actions/subiekt";
+import { ClientPicker, type PickedClient as Client } from "@/components/serwis/SubiektPickers";
 import { addDays, LOANER_RETURN_PRESETS, toDateOnly } from "@/lib/orders/service-loaners";
 import { formatLong, type LoanerUnitView } from "@/components/serwis/LoanersBoard";
-
-type Client = { khId: number | null; name: string; phone: string | null };
-
-/** Klient z Subiekta (podpowiedzi) albo wpisany ręcznie, gdy Subiekt nie odpowiada. */
-function ClientPicker({ value, onChange }: { value: Client | null; onChange: (c: Client | null) => void }) {
-  const id = useId();
-  const [q, setQ] = useState(value?.name ?? "");
-  const [items, setItems] = useState<Client[]>([]);
-  const [hint, setHint] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
-  const seq = useRef(0);
-
-  useEffect(() => {
-    const term = q.trim();
-    if (term.length < 2 || (value && value.name === q)) return;
-    const mine = ++seq.current;
-    const t = setTimeout(async () => {
-      const res = await actionSubiektSuggestClients(term);
-      if (mine !== seq.current) return;
-      if (!res.ok) {
-        setItems([]);
-        setHint(res.feedback.message);
-        return;
-      }
-      setHint(res.feedback?.hint ?? null);
-      setItems(
-        res.items.map((k) => ({
-          khId: k.kh_Id,
-          name: String(k.adr_NazwaPelna || k.adr_Nazwa || k.kh_Symbol || `Kontrahent ${k.kh_Id}`).trim(),
-          phone: String(k.adr_Telefon || k.kh_Telefon || "").trim() || null,
-        }))
-      );
-      setOpen(true);
-    }, 250);
-    return () => clearTimeout(t);
-  }, [q, value]);
-
-  return (
-    <div className="relative">
-      <label htmlFor={id} className="mb-1.5 block text-xs font-semibold text-slate-600">
-        Klient (kontrahent z Subiekta)
-      </label>
-      <input
-        id={id}
-        value={q}
-        autoComplete="off"
-        placeholder="Zacznij pisać nazwę, miasto albo NIP"
-        onChange={(e) => {
-          setQ(e.target.value);
-          // Bez wyboru z listy zapisujemy nazwę wpisaną ręcznie (kh_Id pusty).
-          onChange(e.target.value.trim() ? { khId: null, name: e.target.value.trim(), phone: null } : null);
-        }}
-        onFocus={() => items.length && setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
-        role="combobox"
-        aria-expanded={open}
-        aria-controls={`${id}-list`}
-        className="h-11 w-full rounded-lg border border-slate-200 bg-card px-3 text-base focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:h-10 sm:text-sm"
-      />
-      {open && items.length ? (
-        <ul id={`${id}-list`} role="listbox" className="absolute z-[90] mt-1 max-h-64 w-full overflow-auto rounded-lg border border-slate-200 bg-raised py-1 shadow-lg">
-          {items.map((c) => (
-            <li key={c.khId ?? c.name} role="option" aria-selected={value?.khId === c.khId}>
-              <button
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  onChange(c);
-                  setQ(c.name);
-                  setOpen(false);
-                }}
-                className="flex w-full flex-col px-3 py-2 text-left text-sm transition-colors duration-150 hover:bg-slate-50"
-              >
-                <span className="font-medium text-slate-900">{c.name}</span>
-                {c.phone ? <span className="text-xs text-slate-500">tel. {c.phone}</span> : null}
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {hint ? <p className="mt-1 text-xs text-slate-500">{hint}</p> : null}
-      {value && value.khId == null && value.name ? (
-        <p className="mt-1 text-xs text-slate-500">Bez wyboru z listy zapiszemy nazwę bez powiązania z Subiektem.</p>
-      ) : null}
-    </div>
-  );
-}
 
 export function LoanerIssueDialog({
   freeUnits,

@@ -261,3 +261,13 @@ export async function retireLoanerUnit(input: { unitId: string; note: string }, 
     return { ...u, status: "wycofany" };
   });
 }
+
+/** Egzemplarze u klientów po planowanym terminie zwrotu (`todayKey` = data w Warszawie, YYYY-MM-DD). */
+export async function countOverdueLoaners(todayKey: string): Promise<number> {
+  const res = await query<{ n: string | number }>(
+    `SELECT COUNT(*) AS n FROM service_loaner_units
+      WHERE status = 'u_klienta' AND planned_return IS NOT NULL AND planned_return < $1::date`,
+    [todayKey]
+  );
+  return Number(res.rows[0]?.n ?? 0);
+}

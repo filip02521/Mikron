@@ -110,6 +110,7 @@ function stockCaption(row: ServicePartRow): string {
   else if (row.state === "ponizej_min") parts.push("poniżej minimum");
   if (row.minStock) parts.push(`min. ${row.minStock}`);
   if (row.reserved) parts.push(`rez. ${formatQty(row.reserved)}`);
+  if (row.takenWithoutRw) parts.push(`${formatQty(row.takenWithoutRw)} pobrane bez RW`);
   return parts.join(" · ");
 }
 

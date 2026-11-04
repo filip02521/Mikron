@@ -45,3 +45,15 @@ describe("buildServicePartRows", () => {
     });
   });
 });
+
+describe("części pobrane do zleceń bez RW", () => {
+  it("odejmują się od dostępnych, bo Subiekt jeszcze ich nie zdjął", () => {
+    const [row] = buildServicePartRows({
+      products: [{ tw_Id: 5, tw_Nazwa: "Szczotki", tw_Stan: 3, tw_StanRez: 1 }],
+      minStockByTwId: new Map(),
+      requestsByTwId: new Map(),
+      takenWithoutRwByTwId: new Map([[5, 2]]),
+    });
+    expect(row).toMatchObject({ takenWithoutRw: 2, available: 0, state: "brak" });
+  });
+});

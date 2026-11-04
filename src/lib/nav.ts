@@ -165,6 +165,10 @@ export function isNavItemActive(
   if (hrefPath.startsWith("/lokalizacje/") && pathname.startsWith("/lokalizacje/")) {
     return true;
   }
+  // Serwis to jeden hub z zakładkami: pozycja menu świeci na każdej z nich (zlecenia, części, zamienniki, modele).
+  if (hrefPath.startsWith("/serwis") && (pathname === "/serwis" || pathname.startsWith("/serwis/"))) {
+    return true;
+  }
   // Karty dostawców to wejście do hubu: terminy, urlopy i nieaktywni są jego zakładkami.
   if (hrefPath.endsWith("/dostawcy") && isSupplierHubPath(pathname) && !pathname.startsWith(hrefPath)) {
     return true;
@@ -215,6 +219,7 @@ export type NavBadges = {
   salesTablica?: number;
   operationsNotatki?: number;
   departmentBoardQuestions?: number;
+  serviceOverdueLoaners?: number;
   /** Tablica spraw (Asystent): moje Do zrobienia + moja półka „Do przejrzenia”. */
   supplierMail?: number;
   /** Odprawy: prośby DHL bez odpowiedzi + sprawy innych agencji / spedytorów czekające na nas. */
@@ -398,7 +403,7 @@ function operationsTodayItems(
 }
 
 /** Zamawianie: Kreator ZD, braki i automat (admin + zakupy), formularz grupowy i archiwum zamówień. */
-function operationsOrderingItems(role: UserRole): NavItem[] {
+function operationsOrderingItems(role: UserRole, badges: NavBadges = {}): NavItem[] {
   const items: NavItem[] = [];
   if (role === "admin" || role === "zakupy") {
     items.push({
@@ -428,6 +433,7 @@ function operationsOrderingItems(role: UserRole): NavItem[] {
       description: "Części serwisowe i sprzęt zastępczy",
       icon: "catalog",
       tone: "sky",
+      badge: badges.serviceOverdueLoaners,
       tier: "compact",
       mobileSlot: "overflow",
     });
@@ -712,7 +718,7 @@ function adminCatalogMailItems(): NavItem[] {
 function operationsNavGroups(role: UserRole, badges: NavBadges): NavGroup[] {
   const groups: NavGroup[] = [
     { title: NAV_SECTION_TODAY, items: operationsTodayItems(badges) },
-    { title: NAV_SECTION_ORDERING, items: operationsOrderingItems(role) },
+    { title: NAV_SECTION_ORDERING, items: operationsOrderingItems(role, badges) },
     { title: NAV_SECTION_TEAM, items: operationsTeamItems(badges) },
     {
       title: NAV_SECTION_SUPPLIERS,
@@ -785,6 +791,7 @@ function magazynNavGroups(badges: NavBadges): NavGroup[] {
           description: "Części serwisowe i sprzęt zastępczy",
           icon: "catalog",
           tone: "sky",
+          badge: badges.serviceOverdueLoaners,
           tier: "compact",
           mobileSlot: "overflow",
         },
@@ -841,20 +848,21 @@ function magazynNavGroups(badges: NavBadges): NavGroup[] {
 }
 
 /** Serwisant: części serwisowe (później sprzęt zastępczy i zlecenia). */
-function serwisNavGroups(): NavGroup[] {
+function serwisNavGroups(badges: NavBadges = {}): NavGroup[] {
   return [
     {
       title: NAV_SECTION_TODAY,
       items: [
         {
-          href: "/serwis",
+          href: "/serwis/zlecenia",
           label: "Serwis",
-          mobileLabel: "Części",
-          description: "Części serwisowe i sprzęt zastępczy",
+          mobileLabel: "Serwis",
+          description: "Zlecenia, części serwisowe i sprzęt zastępczy",
           icon: "catalog",
           tone: "sky",
           tier: "primary",
           highlight: true,
+          badge: badges.serviceOverdueLoaners,
           mobileSlot: "primary",
         },
       ],
@@ -940,7 +948,7 @@ export function navForRole(
   }
 
   if (role === "serwis") {
-    return serwisNavGroups();
+    return serwisNavGroups(badges);
   }
 
   const dailyItems: NavItem[] = [
@@ -1121,6 +1129,8 @@ export function pageTitle(pathname: string): string {
   if (pathname.startsWith("/zakupy/cenniki")) return "Cenniki";
   if (pathname.startsWith("/zakupy/automat")) return "Automat ZD";
   if (pathname.startsWith("/serwis/zamienniki")) return "Sprzęt zastępczy";
+  if (pathname.startsWith("/serwis/zlecenia")) return "Zlecenia serwisowe";
+  if (pathname.startsWith("/serwis/modele")) return "Katalog części modeli";
   if (pathname === "/serwis" || pathname.startsWith("/serwis/")) return "Części serwisowe";
   if (pathname.startsWith("/zakupy/asystent")) return "Asystent";
   if (pathname.startsWith("/zakupy/raporty-ivoclar")) return "Raporty Ivoclar (przeniesione)";

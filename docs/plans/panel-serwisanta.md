@@ -45,6 +45,37 @@ Gałąź: `claude/exciting-edison-zfp8ar`. Makiety: koncepcja całego panelu
 Testy: `npx vitest run src` (zielone), `npx tsc --noEmit`, eslint na zmienionych plikach.
 Przegląd uprawnień (agent `authz-reviewer`) bez uwag krytycznych/wysokich.
 
+### 5. Zlecenia serwisowe `/serwis/zlecenia`
+- Migracja `209_service_orders.sql`: `service_orders` (numer ZS/RR/MM/NNN, klient z Subiekta albo
+  wpisany ręcznie, model z Subiekta albo nazwa spoza kartoteki, SN, usterka, akcesoria, termin dla klienta),
+  `service_order_events` (historia tylko dopisywana), `service_order_parts`, `service_model_parts` (BOM).
+- Statusy: przyjęte → diagnoza → w naprawie (↔ czeka na część) → gotowe → wydane; anulowanie z powodem.
+  Krok wstecz dozwolony, „wydane” i „anulowane” końcowe (`src/lib/orders/service-orders.ts` + testy).
+- Lista według tego, co trzeba zrobić: Czeka na część, W serwisie, Gotowe do wydania, Do RW, Zamknięte
+  (zwinięte). Kafle z tymi samymi nazwami filtrują listę. Skróty: `/` szukaj, `P` przyjmij sprzęt.
+- Panel zlecenia: oś postępu (`StatusStepper`), przyciski przejść, opis prac, części, RW, zamiennik, historia
+  (`EventTimeline`). Powiązanie z zamiennikiem: egzemplarz wydany na tablicy (najpierw ten u klienta);
+  panel egzemplarza pokazuje numer zlecenia, a przy „gotowe” zlecenie przypomina o odbiorze zamiennika.
+- Rola serwis startuje na zleceniach; pozycja „Serwis” w menu świeci na każdej zakładce hubu.
+
+### 6. Części do zlecenia i RW (wystawiane ręcznie)
+- „Pobierz część”: najpierw katalog modelu, potem dowolny towar z Subiekta (tw_Id sprawdzany w Subiekcie).
+  „Zapamiętaj w katalogu modelu” dopisuje część do BOM. Część można oddać, dopóki nie ma RW.
+- Części bez RW odejmują się od „dostępne” w Częściach serwisowych („N pobrane bez RW”).
+- „Do RW”: pozycje zsumowane po towarze, „Kopiuj pozycje (symbol, ilość)”, numer RW z Subiekta → zlecenie
+  rozliczone. Zamknięte bez RW zostają na liście „Do RW”, aż ktoś wpisze numer.
+
+### 7. Katalog części modeli `/serwis/modele`
+- Model + część z Subiekta + zwykła ilość; podpowiedź modeli, które były w naprawie, a nie mają katalogu.
+
+### 8. Drobne
+- Zamienniki: „Wycofaj egzemplarz” (z powodem), model sprawdzany w Subiekcie przy dodaniu,
+  wspólna oś historii `EventTimeline` (components/ui).
+- Zgłoszenia braku dostają dostawcę od razu: przypięty w Kreatorze ZD, inaczej ostatni z historii ZD
+  (na kopii dev 39 z 99 części); bez źródła — Weryfikacja jak dotąd.
+- Kreator ZD: odmowa zdjęcia trybu z części serwisowej przed kasowaniem (notatka zostaje).
+- Zamienniki po terminie: odznaka przy „Serwis” w menu i pasek na zakładkach serwisu (bez maila).
+
 ## Uruchomienie lokalne
 
 ```bash
@@ -60,22 +91,9 @@ npm run dev
 
 ## Do zrobienia
 
-1. **Zlecenia serwisowe** (`/serwis/zlecenia`): przyjęcie sprzętu klienta, statusy
-   (przyjęte → diagnoza → w naprawie → czeka na część → gotowe → wydane), powiązanie
-   z wydanym zamiennikiem.
-2. **Pobranie części do zlecenia i RW na każde zlecenie.** Mostek Subiekta umie dziś tylko
-   `/documents/zd/create`. Decyzja: dopisać RW do mostka (OnTime wystawia z podglądem)
-   albo na start liczyć zużycie w OnTime, a RW wystawiać ręcznie.
-3. **Katalog części dla modelu (BOM)**: przypięcie części do modelu sprzętu, podpowiedzi
-   w panelu pobrania.
-4. Sprzęt zastępczy, drobne:
-   - przycisk „Wycofaj egzemplarz” (status `wycofany` jest w bazie),
-   - weryfikacja `twId` w Subiekcie przy dodaniu egzemplarza,
-   - poranne powiadomienie o egzemplarzach po terminie,
-   - wspólny komponent osi historii (`EventTimeline`) zamiast lokalnej listy w panelu.
-5. Zgłoszenia serwisu trafiają do „Weryfikacji”, bo prośba nie ma dostawcy. Do decyzji:
-   automatyczne przypisanie dostawcy z karty towaru.
-6. Kolejność w Kreatorze ZD: wpis ręczny „tylko na prośbę” dla części serwisowej jest
-   kasowany przed odmową zdjęcia trybu (`actionClearZdEstimateOnRequest`). Nieszkodliwe,
-   ale można odwrócić kolejność.
-7. Produkcja: migracje `207` i `208`, karta i konto „Serwis”.
+1. **RW przez mostek Subiekta**: dziś RW wystawia się ręcznie (źródła mostka nie ma w tym repo).
+   Gdy mostek dostanie `/documents/rw/create`, „Do RW” może je tworzyć jednym kliknięciem.
+2. **Konto serwisanta**: sprawdzić panel na koncie z rolą `serwis` (menu, dostęp tylko do `/serwis/*`,
+   podpowiedzi klientów przy przyjęciu).
+3. **Wydruk potwierdzenia przyjęcia** — świadomie pominięty (decyzja: tylko zapis w OnTime).
+4. Produkcja: migracje `207`, `208`, `209`, karta i konto „Serwis”.

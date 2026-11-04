@@ -265,7 +265,16 @@ function LoanerList({ units, onOpen }: { units: LoanerUnitView[]; onOpen: (id: s
 
 /* ---------- Plansza ---------- */
 
-export function LoanersBoard({ units, events }: { units: LoanerUnit[]; events: LoanerEvent[] }) {
+export function LoanersBoard({
+  units,
+  events,
+  orderByUnit = {},
+}: {
+  units: LoanerUnit[];
+  events: LoanerEvent[];
+  /** Numer zlecenia serwisowego po id egzemplarza. */
+  orderByUnit?: Record<string, string>;
+}) {
   const router = useRouter();
   const [, startRefresh] = useTransition();
   const [view, setView] = useState<"tl" | "list">("tl");
@@ -493,6 +502,7 @@ export function LoanersBoard({ units, events }: { units: LoanerUnit[]; events: L
             <LoanerDrawer
               unit={openUnit}
               today={today}
+              orderNumber={orderByUnit[openUnit.id] ?? null}
               onClose={() => setOpenId(null)}
               onIssue={() => {
                 setOpenId(null);

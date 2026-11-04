@@ -1,3 +1,4 @@
+import { fetchPendingRwQtyByTw } from "@/lib/data/service-orders";
 import { query } from "@/lib/db/pool";
 import { resolveServicePartsCecha } from "@/lib/data/service-parts";
 import { fetchZdEstimateMinStock } from "@/lib/data/zd-estimate-min-stock";
@@ -71,12 +72,12 @@ export async function loadServicePartsOverview(): Promise<ServicePartsOverview> 
     fetchZdEstimateMinStock(),
   ]);
   const twIds = products.map((p) => Math.trunc(Number(p.tw_Id))).filter((id) => id > 0);
-  const requestsByTwId = await fetchActiveRequestsByTwId(twIds);
+  const [requestsByTwId, takenWithoutRwByTwId] = await Promise.all([fetchActiveRequestsByTwId(twIds), fetchPendingRwQtyByTw()]);
   const minStockByTwId = new Map(minStock.map((m) => [m.subiektTwId, m.minStockSzt]));
   return {
     kind: "ok",
     cechaName: cecha.name,
-    rows: buildServicePartRows({ products, minStockByTwId, requestsByTwId }),
+    rows: buildServicePartRows({ products, minStockByTwId, requestsByTwId, takenWithoutRwByTwId }),
     readAt: new Date().toISOString(),
   };
 }

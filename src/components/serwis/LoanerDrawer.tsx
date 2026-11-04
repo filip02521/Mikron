@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { EventTimeline, type EventTimelineTone } from "@/components/ui/EventTimeline";
@@ -107,9 +108,12 @@ export function LoanerDrawer({
   onClose,
   onIssue,
   onDone,
+  orderNumber,
 }: {
   unit: LoanerUnitView;
   today: Date;
+  /** Zlecenie serwisowe, do którego egzemplarz jest wydany. */
+  orderNumber?: string | null;
   onClose: () => void;
   onIssue: () => void;
   onDone: (message: string) => void;
@@ -209,6 +213,14 @@ export function LoanerDrawer({
         </div>
 
         <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5" {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}>
+          {orderNumber ? (
+            <p className="text-[0.8125rem] text-slate-600">
+              Wydany do zlecenia{" "}
+              <Link href="/serwis/zlecenia" className="font-mono font-semibold text-indigo-700 underline underline-offset-2">
+                {orderNumber}
+              </Link>
+            </p>
+          ) : null}
           {unit.status === "u_klienta" && unit.currentSince ? (
             <>
               <div className="flex items-center gap-4 rounded-xl border border-slate-200 p-4">

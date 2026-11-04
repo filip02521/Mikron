@@ -15,6 +15,8 @@ export type ServicePartRow = {
   groupName: string | null;
   onHand: number;
   reserved: number;
+  /** Pobrane do zleceń serwisowych, a jeszcze bez RW — w Subiekcie wciąż na stanie. */
+  takenWithoutRw: number;
   available: number;
   minStock: number | null;
   state: ServicePartStockState;
@@ -51,6 +53,7 @@ export function buildServicePartRows(input: {
   }[];
   minStockByTwId: ReadonlyMap<number, number>;
   requestsByTwId: ReadonlyMap<number, ServicePartRequest[]>;
+  takenWithoutRwByTwId?: ReadonlyMap<number, number>;
 }): ServicePartRow[] {
   const seen = new Set<number>();
   const rows: ServicePartRow[] = [];
@@ -60,7 +63,8 @@ export function buildServicePartRows(input: {
     seen.add(twId);
     const onHand = finite(p.tw_Stan);
     const reserved = finite(p.tw_StanRez);
-    const available = onHand - reserved;
+    const takenWithoutRw = input.takenWithoutRwByTwId?.get(twId) ?? 0;
+    const available = onHand - reserved - takenWithoutRw;
     const minStock = input.minStockByTwId.get(twId) ?? null;
     rows.push({
       twId,
@@ -69,6 +73,7 @@ export function buildServicePartRows(input: {
       groupName: p.grt_Nazwa?.trim() || null,
       onHand,
       reserved,
+      takenWithoutRw,
       available,
       minStock,
       state: servicePartStockState(available, minStock),
