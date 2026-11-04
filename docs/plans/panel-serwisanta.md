@@ -59,6 +59,11 @@ Przegląd uprawnień (agent `authz-reviewer`) bez uwag krytycznych/wysokich.
   Zwrot egzemplarza odpina go od zlecenia (zdarzenie w historii zlecenia); jeden egzemplarz — jedno zlecenie.
 - Rola serwis startuje na zleceniach; pozycja „Serwis” w menu świeci na każdej zakładce hubu.
 
+- Przyjęcie: po wyborze klienta z Subiekta lista „Sprzęt klienta z faktur” — pozycje jego FS (10 lat,
+  `/documents/fs?kh_id=`) z numerem seryjnym w Uwagach („N. numer” = pozycja N; wiersze bez numeru
+  należą do poprzedniej). Usługi (`tw_Rodzaj = 2`, np. licencje z kluczem) odpadają. Klik w numer
+  wpisuje model i numer seryjny (`src/lib/subiekt/client-equipment*.ts`).
+
 ### 6. Części do zlecenia i RW (wystawiane ręcznie)
 - „Pobierz część”: najpierw katalog modelu, potem dowolny towar z Subiekta (tw_Id sprawdzany w Subiekcie).
   „Zapamiętaj w katalogu modelu” dopisuje część do BOM. Część można oddać, dopóki nie ma RW.

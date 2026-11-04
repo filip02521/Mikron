@@ -24,6 +24,8 @@ import {
 } from "@/lib/orders/service-orders";
 import { parseDateOnly, toDateOnly } from "@/lib/orders/service-loaners";
 import { verifySubiektProduct, type VerifiedSubiektProduct } from "@/lib/subiekt/product-verify";
+import { fetchClientEquipment } from "@/lib/subiekt/client-equipment";
+import type { ClientEquipmentItem } from "@/lib/subiekt/client-equipment-parse";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 
 export type ServiceOrderActionResult = { ok: true; message: string; orderId?: string } | { ok: false; message: string };
@@ -287,4 +289,20 @@ export async function actionRemoveServiceModelPart(input: { modelTwId: number; p
     },
     [ORDERS_PATH, "/serwis/modele"]
   );
+}
+
+export type ClientEquipmentActionResult =
+  | { ok: true; items: ClientEquipmentItem[]; invoicesScanned: number; truncated: boolean }
+  | { ok: false; message: string };
+
+/** Sprzęt kupiony przez klienta (pozycje FS z numerami seryjnymi w uwagach) — do wyboru przy przyjęciu. */
+export async function actionServiceClientEquipment(khId: number): Promise<ClientEquipmentActionResult> {
+  await requireServicePanel("read");
+  const id = twId(khId);
+  if (!id) return { ok: false, message: "Wybierz klienta z podpowiedzi Subiekta." };
+  try {
+    return { ok: true, ...(await fetchClientEquipment(id)) };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się pobrać faktur klienta z Subiekta.") };
+  }
 }

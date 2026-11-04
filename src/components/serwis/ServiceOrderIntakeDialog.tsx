@@ -11,6 +11,7 @@ import {
   type PickedClient,
   type PickedProduct,
 } from "@/components/serwis/SubiektPickers";
+import { ClientEquipmentPicker } from "@/components/serwis/ClientEquipmentPicker";
 import { SERVICE_ORDER_TEXT_MAX } from "@/lib/orders/service-orders";
 import { addDays, toDateOnly } from "@/lib/orders/service-loaners";
 
@@ -28,6 +29,7 @@ export function ServiceOrderIntakeDialog({
   const [client, setClient] = useState<PickedClient | null>(null);
   const [phone, setPhone] = useState("");
   const [device, setDevice] = useState<PickedProduct | null>(null);
+  const [deviceKey, setDeviceKey] = useState(0);
   const [serial, setSerial] = useState("");
   const [fault, setFault] = useState("");
   const [accessories, setAccessories] = useState("");
@@ -111,8 +113,23 @@ export function ServiceOrderIntakeDialog({
           </div>
         </div>
 
+        {client?.khId ? (
+          <ClientEquipmentPicker
+            key={client.khId}
+            khId={client.khId}
+            selected={device?.twId ? { twId: device.twId, symbol: device.symbol, name: device.name, serial: serial.trim() } : null}
+            onPick={(e) => {
+              setDevice({ twId: e.twId, symbol: e.symbol, name: e.name });
+              setSerial(e.serial);
+              // Pole modelu czyta wartość przy montowaniu — nowy klucz pokazuje wybrany z faktury model.
+              setDeviceKey((k) => k + 1);
+            }}
+          />
+        ) : null}
+
         <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
           <ProductPicker
+            key={deviceKey}
             value={device}
             onChange={setDevice}
             label="Sprzęt (model z Subiekta)"
