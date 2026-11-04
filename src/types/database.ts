@@ -140,6 +140,8 @@ export interface IndividualOrder {
   ordered_at: string | null;
   /** „Już zamówione” w panelu — towar zamówiony wcześniej; poza statystykami czasu dostaw. */
   already_ordered?: boolean;
+  /** Podpięte automatycznie pod ZD w drodze z notatnika ZK (migracja 207). */
+  zd_auto_attached_at?: string | null;
   /** Wspólne ID pozycji z jednego formularza / jednego zapisu. */
   submission_group_id?: string | null;
   /** Wspólne ID pozycji zamówionych jedną akcją w panelu dziennym. */

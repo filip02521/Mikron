@@ -7,9 +7,10 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
-import { isSalesAccount, isSalesManager } from "@/lib/auth-roles";
+import { isSalesAccount } from "@/lib/auth-roles";
 import { isProfileActiveDelegateForSalesPerson } from "@/lib/data/vacation-delegations";
 import { canAccessSalesPerson } from "@/lib/data/sales-group-access";
+import { canSalesUserActOnZkWatch } from "@/lib/sales/zk-watch-sales-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSubiektZk } from "@/lib/subiekt/api";
 import {
@@ -1759,21 +1760,7 @@ export async function actionAutoCreateProsbaFromZkWatch(
   }
 
   const watch = row as SalesZkWatch;
-  const own = await resolveSalesPersonForUser(user);
-  const isDelegate = await isProfileActiveDelegateForSalesPerson(
-    user.id,
-    watch.sales_person_id
-  );
-  const delegateFor = options?.delegateFor?.trim();
-  let accessOk =
-    own?.id === watch.sales_person_id ||
-    isDelegate ||
-    (delegateFor === watch.sales_person_id &&
-      (await isProfileActiveDelegateForSalesPerson(user.id, delegateFor)));
-  if (!accessOk && isSalesManager(user.role)) {
-    accessOk = await canAccessSalesPerson(user, watch.sales_person_id);
-  }
-  if (!accessOk) {
+  if (!(await canSalesUserActOnZkWatch(user, watch, options?.delegateFor))) {
     return toastForAutoProsbaBlockedCode("blocked_unauthorized");
   }
 
