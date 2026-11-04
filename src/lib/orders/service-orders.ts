@@ -85,8 +85,14 @@ export function primaryNextStatus(from: ServiceOrderStatus): ServiceOrderStatus 
   }
 }
 
-/** Etykieta przycisku dla przejścia — mówi, co się stanie, nie nazwę statusu. */
-export function transitionLabel(to: ServiceOrderStatus): string {
+/**
+ * Etykieta przycisku dla przejścia — mówi, co się stanie, nie nazwę statusu. Krok wstecz (z naprawy do
+ * diagnozy, z gotowego do naprawy) nazywa się „Wróć do: …”, żeby nie wyglądał na kolejny etap.
+ */
+export function transitionLabel(to: ServiceOrderStatus, from?: ServiceOrderStatus): string {
+  if (from && to !== "anulowane" && to !== "czeka_na_czesc" && flowIndex(to) >= 0 && flowIndex(to) < flowIndex(from)) {
+    return `Wróć do: ${SERVICE_ORDER_STATUS_LABEL[to].toLowerCase()}`;
+  }
   switch (to) {
     case "przyjete":
       return "Cofnij do przyjętych";
@@ -167,6 +173,14 @@ export type ServiceOrderEvent = {
   note: string;
   actorName: string | null;
 };
+
+/**
+ * RW wpisuje się po naprawie (od „gotowe”): wcześniej kolejna potrzebna część nie miałaby już gdzie trafić,
+ * bo po RW zlecenie nie przyjmuje części.
+ */
+export function canSetServiceOrderRw(status: ServiceOrderStatus): boolean {
+  return status === "gotowe" || isClosedServiceOrder(status);
+}
 
 /** Części pobrane, a jeszcze bez RW — to trzeba przepisać do Subiekta. */
 export function needsRw(order: Pick<ServiceOrder, "rwNumber">, parts: readonly Pick<ServiceOrderPart, "quantity">[]): boolean {

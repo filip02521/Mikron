@@ -43,7 +43,7 @@ export function ServicePartReportDialog({
       open
       onClose={onClose}
       title={`Zgłoś brak: ${part.name}`}
-      description={`Dostępne w Subiekcie: ${part.available} szt.${part.minStock ? `, minimum ${part.minStock} szt.` : ""} Zakupy zamówią dokładnie tyle, ile wpiszesz.`}
+      description={`Dostępne: ${part.available} szt.${part.takenWithoutRw ? ` (w tym odjęte ${part.takenWithoutRw} pobrane do zleceń bez RW)` : ""}${part.minStock ? `, minimum ${part.minStock} szt.` : ""}. Zakupy zamówią dokładnie tyle, ile wpiszesz.`}
       size="md"
       bodyClassName="px-5 py-4 sm:px-6 sm:py-5"
       loadingMessage={pending ? "Zgłaszam…" : null}

@@ -32,6 +32,7 @@ import {
 } from "@/components/serwis/service-order-view";
 import {
   allowedNextStatuses,
+  canSetServiceOrderRw,
   flowIndex,
   isClosedServiceOrder,
   isServiceOrderLate,
@@ -97,6 +98,7 @@ export function ServiceOrderDrawer({
   const [remember, setRemember] = useState(true);
   const [rw, setRw] = useState("");
   const [copied, setCopied] = useState(false);
+  const [loanerPick, setLoanerPick] = useState("");
   useBodyScrollLock(true);
   useFocusTrap(panelRef, true);
 
@@ -217,12 +219,12 @@ export function ServiceOrderDrawer({
             <div className="flex flex-wrap gap-2">
               {primary ? (
                 <Button type="button" size="sm" disabled={pending} onClick={() => move(primary)}>
-                  {transitionLabel(primary)}
+                  {transitionLabel(primary, order.status)}
                 </Button>
               ) : null}
               {secondary.map((s) => (
                 <Button key={s} type="button" size="sm" variant="secondary" disabled={pending} onClick={() => move(s)}>
-                  {transitionLabel(s)}
+                  {transitionLabel(s, order.status)}
                 </Button>
               ))}
               {canCancel && !cancelling ? (
@@ -487,6 +489,7 @@ export function ServiceOrderDrawer({
                 >
                   {copied ? "Skopiowano pozycje" : "Kopiuj pozycje (symbol, ilość)"}
                 </Button>
+                {canSetServiceOrderRw(order.status) ? (
                 <form
                   className="flex flex-wrap items-end gap-2"
                   onSubmit={(e) => {
@@ -511,6 +514,9 @@ export function ServiceOrderDrawer({
                     Zapisz RW
                   </Button>
                 </form>
+                ) : (
+                  <p className="text-[0.8125rem] text-slate-500">Numer RW wpiszesz, gdy zlecenie będzie gotowe do wydania.</p>
+                )}
               </div>
             </Section>
           ) : null}
@@ -536,30 +542,43 @@ export function ServiceOrderDrawer({
             ) : closed ? (
               <p className="text-[0.8125rem] text-slate-500">Bez zamiennika.</p>
             ) : linkable.length ? (
-              <div className="flex flex-wrap items-end gap-2">
-                <div className="min-w-0 flex-1">
-                  <label htmlFor={`${formId}-loaner`} className="mb-1.5 block text-xs font-semibold text-slate-600">
-                    Wydany egzemplarz
-                  </label>
+              <form
+                className="space-y-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (loanerPick) submit(() => actionLinkServiceOrderLoaner({ orderId: order.id, unitId: loanerPick }), () => setLoanerPick(""));
+                }}
+              >
+                <label htmlFor={`${formId}-loaner`} className="block text-xs font-semibold text-slate-600">
+                  Egzemplarz wydany temu klientowi
+                </label>
+                <div className="flex flex-wrap gap-2">
                   <select
                     id={`${formId}-loaner`}
-                    defaultValue=""
+                    value={loanerPick}
                     disabled={pending}
-                    onChange={(e) => e.target.value && submit(() => actionLinkServiceOrderLoaner({ orderId: order.id, unitId: e.target.value }))}
-                    className={pickerInputClass}
+                    onChange={(e) => setLoanerPick(e.target.value)}
+                    className={cn(pickerInputClass, "min-w-0 flex-1")}
                   >
-                    <option value="">Wybierz egzemplarz u klienta…</option>
+                    <option value="">Wybierz egzemplarz…</option>
                     {linkable.map((l) => (
                       <option key={l.id} value={l.id}>
                         {l.code} · {l.clientName ?? "—"}
                       </option>
                     ))}
                   </select>
+                  <Button type="submit" variant="secondary" disabled={pending || !loanerPick}>
+                    Powiąż
+                  </Button>
                 </div>
-                <Link href="/serwis/zamienniki" className="pb-2.5 text-sm font-medium text-indigo-700 underline underline-offset-2">
-                  Wydaj na tablicy
-                </Link>
-              </div>
+                <p className="text-[0.8125rem] text-slate-500">
+                  Nie ma go na liście?{" "}
+                  <Link href="/serwis/zamienniki" className="font-medium text-indigo-700 underline underline-offset-2">
+                    Wydaj zamiennik na tablicy
+                  </Link>
+                  , a potem powiąż go tutaj.
+                </p>
+              </form>
             ) : (
               <p className="text-[0.8125rem] text-slate-500">
                 Żaden egzemplarz nie jest wydany.{" "}

@@ -41,7 +41,10 @@ export function LoanerIssueDialog({
       bodyClassName="space-y-5 px-5 py-4 sm:px-6 sm:py-5"
       loadingMessage={pending ? "Wydaję…" : null}
       footer={
-        <div className="flex w-full justify-end gap-2">
+        <div className="flex w-full flex-wrap items-center justify-end gap-2">
+          {!unit || !client ? (
+            <span className="mr-auto text-[0.8125rem] text-slate-500">Brakuje {!unit ? "egzemplarza" : "klienta"}.</span>
+          ) : null}
           <Button type="button" variant="secondary" onClick={onClose} disabled={pending}>
             Anuluj
           </Button>

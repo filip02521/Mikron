@@ -90,7 +90,8 @@ export function orderEventTitle(e: ServiceOrderEvent): string {
     case "loaner_linked":
       return `Zamiennik ${e.note}`;
     case "loaner_unlinked":
-      return "Odpięto zamiennik";
+      // Odpięcie przy zwrocie egzemplarza ma notatkę „ZAST-001 zwrócony”, ręczne — pustą.
+      return e.note ? `Zamiennik ${e.note}` : "Odpięto zamiennik";
     case "rw":
       return `RW ${e.note.replace(/^RW\s*/i, "")}`;
     case "note":

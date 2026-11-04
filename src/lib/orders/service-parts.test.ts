@@ -41,16 +41,17 @@ describe("parseServicePartsCechaSetting", () => {
 });
 
 describe("mergeServicePartsIntoOnRequests", () => {
-  it("keeps manual rows and appends cecha rows without duplicates", () => {
-    const manual: Row[] = [{ subiektTwId: 5, note: "ręcznie" }];
+  it("keeps manual rows (with their note) and appends cecha rows without duplicates", () => {
+    const manual: Row[] = [{ subiektTwId: 5, note: "ręcznie" }, { subiektTwId: 6, note: "zwykły" }];
     const merged = mergeServicePartsIntoOnRequests(manual, [5, 7, 7, 0, -1], make);
     expect(merged).toEqual([
-      { subiektTwId: 5, note: "ręcznie" },
+      { subiektTwId: 5, note: "ręcznie", origin: "service_cecha" },
+      { subiektTwId: 6, note: "zwykły" },
       { subiektTwId: 7, note: "cecha", origin: "service_cecha" },
     ]);
   });
-  it("marks only cecha rows as service parts", () => {
-    const merged = mergeServicePartsIntoOnRequests([{ subiektTwId: 5, note: "" }], [8], make);
-    expect([...servicePartTwIdSet(merged)]).toEqual([8]);
+  it("a manual entry of a part with the cecha is still a service part (cecha decides)", () => {
+    const merged = mergeServicePartsIntoOnRequests([{ subiektTwId: 5, note: "" }, { subiektTwId: 9, note: "" }], [8, 5], make);
+    expect([...servicePartTwIdSet(merged)].sort()).toEqual([5, 8]);
   });
 });

@@ -56,6 +56,7 @@ Przegląd uprawnień (agent `authz-reviewer`) bez uwag krytycznych/wysokich.
 - Panel zlecenia: oś postępu (`StatusStepper`), przyciski przejść, opis prac, części, RW, zamiennik, historia
   (`EventTimeline`). Powiązanie z zamiennikiem: egzemplarz wydany na tablicy (najpierw ten u klienta);
   panel egzemplarza pokazuje numer zlecenia, a przy „gotowe” zlecenie przypomina o odbiorze zamiennika.
+  Zwrot egzemplarza odpina go od zlecenia (zdarzenie w historii zlecenia); jeden egzemplarz — jedno zlecenie.
 - Rola serwis startuje na zleceniach; pozycja „Serwis” w menu świeci na każdej zakładce hubu.
 
 ### 6. Części do zlecenia i RW (wystawiane ręcznie)
@@ -64,6 +65,7 @@ Przegląd uprawnień (agent `authz-reviewer`) bez uwag krytycznych/wysokich.
 - Części bez RW odejmują się od „dostępne” w Częściach serwisowych („N pobrane bez RW”).
 - „Do RW”: pozycje zsumowane po towarze, „Kopiuj pozycje (symbol, ilość)”, numer RW z Subiekta → zlecenie
   rozliczone. Zamknięte bez RW zostają na liście „Do RW”, aż ktoś wpisze numer.
+  Numer RW wpisuje się od „gotowe do wydania” — wcześniej kolejna część nie miałaby gdzie trafić.
 
 ### 7. Katalog części modeli `/serwis/modele`
 - Model + część z Subiekta + zwykła ilość; podpowiedź modeli, które były w naprawie, a nie mają katalogu.
@@ -73,7 +75,8 @@ Przegląd uprawnień (agent `authz-reviewer`) bez uwag krytycznych/wysokich.
   wspólna oś historii `EventTimeline` (components/ui).
 - Zgłoszenia braku dostają dostawcę od razu: przypięty w Kreatorze ZD, inaczej ostatni z historii ZD
   (na kopii dev 39 z 99 części); bez źródła — Weryfikacja jak dotąd.
-- Kreator ZD: odmowa zdjęcia trybu z części serwisowej przed kasowaniem (notatka zostaje).
+- Kreator ZD: część z cechą, która ma też ręczny wpis, jest traktowana jak część serwisowa (odznaka,
+  brak „Na prośbę”, odmowa zdjęcia przed kasowaniem — notatka zostaje).
 - Zamienniki po terminie: odznaka przy „Serwis” w menu i pasek na zakładkach serwisu (bez maila).
 
 ## Uruchomienie lokalne

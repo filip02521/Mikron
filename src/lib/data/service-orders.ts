@@ -2,6 +2,7 @@ import type { PoolClient } from "pg";
 import { query, withClient } from "@/lib/db/pool";
 import {
   canMoveServiceOrder,
+  canSetServiceOrderRw,
   isClosedServiceOrder,
   nextServiceOrderNumber,
   SERVICE_ORDER_STATUS_LABEL,
@@ -284,6 +285,7 @@ export async function updateServiceOrderWorkNote(input: { orderId: string; workN
   return inTx(async (c) => {
     const o = await lockOrder(c, input.orderId);
     if (o.workNote === input.workNote) return o;
+    if (isClosedServiceOrder(o.status)) throw new ServiceOrderStateError(`Zlecenie ${o.number} jest zamknięte — opisu prac nie można już zmienić.`);
     await c.query(`UPDATE service_orders SET work_note = $2, updated_at = now() WHERE id = $1`, [o.id, input.workNote]);
     await addEvent(c, o.id, "note", actor, { note: input.workNote ? "Zmieniono opis prac" : "Usunięto opis prac" });
     return { ...o, workNote: input.workNote };
@@ -327,6 +329,9 @@ export async function setServiceOrderRw(input: { orderId: string; rwNumber: stri
   return inTx(async (c) => {
     const o = await lockOrder(c, input.orderId);
     if (o.rwNumber) throw new ServiceOrderStateError(`Zlecenie ${o.number} ma już RW ${o.rwNumber}.`);
+    if (!canSetServiceOrderRw(o.status)) {
+      throw new ServiceOrderStateError(`RW wpisz po naprawie — zlecenie ${o.number} jest „${SERVICE_ORDER_STATUS_LABEL[o.status]}”.`);
+    }
     const parts = await c.query(`SELECT 1 FROM service_order_parts WHERE order_id = $1 LIMIT 1`, [o.id]);
     if (!parts.rowCount) throw new ServiceOrderStateError(`Zlecenie ${o.number} nie ma pobranych części — RW nie jest potrzebne.`);
     await c.query(`UPDATE service_orders SET rw_number = $2, rw_at = now(), updated_at = now() WHERE id = $1`, [o.id, input.rwNumber]);
@@ -344,11 +349,19 @@ export async function linkServiceOrderLoaner(input: { orderId: string; unitId: s
     const o = await lockOrder(c, input.orderId);
     if (input.unitId === o.loanerUnitId) return o;
     let code: string | null = null;
+    if (input.unitId && isClosedServiceOrder(o.status)) {
+      throw new ServiceOrderStateError(`Zlecenie ${o.number} jest zamknięte — nie można powiązać zamiennika.`);
+    }
     if (input.unitId) {
       const u = await c.query<{ code: string; status: string }>(`SELECT code, status FROM service_loaner_units WHERE id = $1`, [input.unitId]);
       const row = u.rows[0];
       if (!row) throw new ServiceOrderStateError("Nie ma takiego egzemplarza. Odśwież panel.");
       if (row.status !== "u_klienta") throw new ServiceOrderStateError(`${row.code} nie jest wydany. Najpierw wydaj go na tablicy zamienników.`);
+      const taken = await c.query<{ number: string }>(
+        `SELECT number FROM service_orders WHERE loaner_unit_id = $1 AND id <> $2 LIMIT 1`,
+        [input.unitId, o.id]
+      );
+      if (taken.rows[0]) throw new ServiceOrderStateError(`${row.code} jest już powiązany ze zleceniem ${taken.rows[0].number}.`);
       code = row.code;
     }
     await c.query(`UPDATE service_orders SET loaner_unit_id = $2, updated_at = now() WHERE id = $1`, [o.id, input.unitId]);

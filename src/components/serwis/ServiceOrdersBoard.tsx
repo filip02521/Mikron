@@ -123,10 +123,12 @@ export function ServiceOrdersBoard({
   }, [parts]);
 
   const grouped = useMemo(() => {
-    const q = query.trim().toLocaleLowerCase("pl-PL");
+    // Jak w częściach serwisowych: każde słowo gdziekolwiek („forte gabinet” znajdzie zlecenie).
+    const words = query.trim().toLocaleLowerCase("pl-PL").split(/\s+/).filter(Boolean);
     const out = new Map<ServiceOrderGroup, ServiceOrder[]>();
     for (const o of orders) {
-      if (q && !orderSearchText(o).includes(q)) continue;
+      const hay = orderSearchText(o);
+      if (words.length && !words.every((w) => hay.includes(w))) continue;
       const g = serviceOrderGroup(o, partsByOrder.get(o.id) ?? []);
       out.set(g, [...(out.get(g) ?? []), o]);
     }
@@ -297,10 +299,15 @@ export function ServiceOrdersBoard({
               order={open}
               parts={partsByOrder.get(open.id) ?? []}
               events={events.filter((e) => e.orderId === open.id)}
-              loaners={loaners}
+              // Egzemplarz powiązany z innym zleceniem nie jest do wyboru (serwer też tego pilnuje).
+              loaners={loaners.filter((l) => !orders.some((o) => o.id !== open.id && o.loanerUnitId === l.id))}
               modelParts={modelParts}
               today={today}
-              onClose={() => setOpenId(null)}
+              onClose={() => {
+                setOpenId(null);
+                // Link ?zlecenie= otwiera panel raz — po zamknięciu odświeżenie strony nie otwiera go ponownie.
+                if (params.get("zlecenie")) window.history.replaceState(null, "", window.location.pathname);
+              }}
               onDone={done}
             />,
             document.body

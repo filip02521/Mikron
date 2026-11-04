@@ -41,18 +41,26 @@ export function parseServicePartsCechaSetting(value: unknown): number | null {
 }
 
 /**
- * Dokleja towary z cechą do listy „tylko na prośbę”. Ręczny wpis wygrywa (zostaje z notatką),
- * a wiersze z cechy dostają `origin`, żeby UI nie proponował ich usuwania z listy.
+ * Dokleja towary z cechą do listy „tylko na prośbę”. Ręczny wpis zostaje (z notatką), ale gdy towar ma
+ * cechę, też dostaje `origin` — o trybie decyduje cecha, więc UI nie proponuje zdjęcia go z listy,
+ * a akcje „usuń” odmawiają, zanim cokolwiek skasują.
  */
 export function mergeServicePartsIntoOnRequests<
   T extends { subiektTwId: number; origin?: ServicePartsOrigin },
 >(manual: readonly T[], serviceTwIds: readonly number[], makeRow: (twId: number) => T): T[] {
-  const seen = new Set<number>();
-  for (const row of manual) seen.add(Math.trunc(Number(row.subiektTwId)));
-  const out: T[] = [...manual];
+  const service = new Set<number>();
   for (const raw of serviceTwIds) {
     const id = Math.trunc(Number(raw));
-    if (!Number.isSafeInteger(id) || id <= 0 || seen.has(id)) continue;
+    if (Number.isSafeInteger(id) && id > 0) service.add(id);
+  }
+  const seen = new Set<number>();
+  const out: T[] = manual.map((row) => {
+    const id = Math.trunc(Number(row.subiektTwId));
+    seen.add(id);
+    return service.has(id) ? { ...row, origin: "service_cecha" as const } : row;
+  });
+  for (const id of service) {
+    if (seen.has(id)) continue;
     seen.add(id);
     out.push(makeRow(id));
   }

@@ -148,11 +148,17 @@ export async function insertLoanerUnit(
   return inTx(async (c) => {
     const dup = await c.query(`SELECT 1 FROM service_loaner_units WHERE lower(trim(code)) = lower(trim($1))`, [input.code]);
     if (dup.rowCount) throw new LoanerStateError(`Numer ${input.code} jest już zajęty.`);
-    const res = await c.query<{ id: string }>(
-      `INSERT INTO service_loaner_units (code, serial_no, subiekt_tw_id, tw_symbol, tw_name, condition, note, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-      [input.code, input.serialNo, input.twId, input.twSymbol, input.twName, input.condition, input.note, actor.id]
-    );
+    const res = await c
+      .query<{ id: string }>(
+        `INSERT INTO service_loaner_units (code, serial_no, subiekt_tw_id, tw_symbol, tw_name, condition, note, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+        [input.code, input.serialNo, input.twId, input.twSymbol, input.twName, input.condition, input.note, actor.id]
+      )
+      .catch((e: unknown) => {
+        // Dwa dodania tego samego numeru naraz: sprawdzenie wyżej przepuszcza oba, indeks unikalny łapie drugie.
+        if ((e as { code?: string }).code === "23505") throw new LoanerStateError(`Numer ${input.code} jest już zajęty.`);
+        throw e;
+      });
     const id = res.rows[0]!.id;
     await addEvent(c, id, "created", actor, { condition: input.condition, note: input.twSymbol ?? "" });
     return id;
@@ -207,6 +213,17 @@ export async function returnLoanerUnit(
       note: input.note,
     });
     if (input.needsService) await addEvent(c, u.id, "service_start", actor, { note: input.note });
+    // Zwrócony egzemplarz nie należy już do zlecenia — inaczej po kolejnym wydaniu pokazywałby cudze zlecenie.
+    const unlinked = await c.query<{ id: string }>(
+      `UPDATE service_orders SET loaner_unit_id = NULL, updated_at = now() WHERE loaner_unit_id = $1 RETURNING id`,
+      [u.id]
+    );
+    for (const o of unlinked.rows) {
+      await c.query(
+        `INSERT INTO service_order_events (order_id, type, note, actor_id, actor_name) VALUES ($1, 'loaner_unlinked', $2, $3, $4)`,
+        [o.id, `${u.code} zwrócony`, actor.id, actor.name]
+      );
+    }
     return { ...u, status: next };
   });
 }

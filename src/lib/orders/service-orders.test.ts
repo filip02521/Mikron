@@ -107,3 +107,27 @@ describe("termin dla klienta", () => {
     expect(isServiceOrderLate({ status: "w_naprawie", dueDate: null }, today)).toBe(false);
   });
 });
+
+describe("kiedy wpisać RW", () => {
+  it("od gotowego do wydania; w trakcie naprawy nie (kolejna część nie miałaby gdzie trafić)", async () => {
+    const { canSetServiceOrderRw } = await import("./service-orders");
+    expect(canSetServiceOrderRw("w_naprawie")).toBe(false);
+    expect(canSetServiceOrderRw("czeka_na_czesc")).toBe(false);
+    expect(canSetServiceOrderRw("gotowe")).toBe(true);
+    expect(canSetServiceOrderRw("wydane")).toBe(true);
+    expect(canSetServiceOrderRw("anulowane")).toBe(true);
+  });
+});
+
+describe("etykiety przejść", () => {
+  it("krok wstecz to „Wróć do”, naprzód — co się dzieje", async () => {
+    const { transitionLabel } = await import("./service-orders");
+    expect(transitionLabel("diagnoza", "w_naprawie")).toBe("Wróć do: diagnoza");
+    expect(transitionLabel("w_naprawie", "gotowe")).toBe("Wróć do: w naprawie");
+    expect(transitionLabel("przyjete", "diagnoza")).toBe("Wróć do: przyjęte");
+    expect(transitionLabel("diagnoza", "przyjete")).toBe("Zacznij diagnozę");
+    expect(transitionLabel("w_naprawie", "czeka_na_czesc")).toBe("Naprawa w toku");
+    expect(transitionLabel("czeka_na_czesc", "w_naprawie")).toBe("Czeka na część");
+    expect(transitionLabel("anulowane", "gotowe")).toBe("Anuluj zlecenie");
+  });
+});

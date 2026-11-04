@@ -229,7 +229,7 @@ export function ServicePartsPanel({
       id: "missing",
       label: "Brak na stanie",
       count: summary.missing,
-      hint: "Dostępne 0 po rezerwacjach",
+      hint: "0 po rezerwacjach i pobraniach",
       tone: summary.missing > 0 ? "bg-red-500" : "bg-slate-300",
     },
     {
