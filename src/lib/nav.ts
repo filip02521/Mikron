@@ -165,8 +165,10 @@ export function isNavItemActive(
   if (hrefPath.startsWith("/lokalizacje/") && pathname.startsWith("/lokalizacje/")) {
     return true;
   }
-  // Serwis to jeden hub z zakładkami: pozycja menu świeci na każdej z nich (zlecenia, części, zamienniki, modele).
-  if (hrefPath.startsWith("/serwis") && (pathname === "/serwis" || pathname.startsWith("/serwis/"))) {
+  // Serwis to jeden hub z zakładkami: jedna pozycja menu świeci na każdej z nich (zlecenia, części, zamienniki,
+  // modele). Gdy zakładki są osobnymi pozycjami (menu serwisanta), każda świeci tylko na swojej.
+  const serviceSiblings = siblingHrefs.some((other) => other !== href && navHrefPath(other).startsWith("/serwis"));
+  if (!serviceSiblings && hrefPath.startsWith("/serwis") && (pathname === "/serwis" || pathname.startsWith("/serwis/"))) {
     return true;
   }
   // Karty dostawców to wejście do hubu: terminy, urlopy i nieaktywni są jego zakładkami.
@@ -848,21 +850,52 @@ function magazynNavGroups(badges: NavBadges): NavGroup[] {
 }
 
 /** Serwisant: części serwisowe (później sprzęt zastępczy i zlecenia). */
+/** Konto serwisanta pracuje tylko w serwisie: cztery zakładki hubu są osobnymi pozycjami menu. */
 function serwisNavGroups(badges: NavBadges = {}): NavGroup[] {
   return [
     {
-      title: NAV_SECTION_TODAY,
+      title: "Serwis",
       items: [
         {
           href: "/serwis/zlecenia",
-          label: "Serwis",
-          mobileLabel: "Serwis",
-          description: "Zlecenia, części serwisowe i sprzęt zastępczy",
-          icon: "catalog",
+          label: "Zlecenia",
+          mobileLabel: "Zlecenia",
+          description: "Sprzęt klientów w naprawie",
+          icon: "verification",
           tone: "sky",
           tier: "primary",
           highlight: true,
+          mobileSlot: "primary",
+        },
+        {
+          href: "/serwis",
+          label: "Części serwisowe",
+          mobileLabel: "Części",
+          description: "Stany części i zgłoszone braki",
+          icon: "warehouse",
+          tone: "sky",
+          tier: "primary",
+          mobileSlot: "primary",
+        },
+        {
+          href: "/serwis/zamienniki",
+          label: "Sprzęt zastępczy",
+          mobileLabel: "Zamienniki",
+          description: "Kto ma który egzemplarz i od ilu dni",
+          icon: "truck",
+          tone: "sky",
+          tier: "primary",
           badge: badges.serviceOverdueLoaners,
+          mobileSlot: "primary",
+        },
+        {
+          href: "/serwis/modele",
+          label: "Katalog modeli",
+          mobileLabel: "Modele",
+          description: "Części do naprawy danego modelu",
+          icon: "catalog",
+          tone: "sky",
+          tier: "primary",
           mobileSlot: "primary",
         },
       ],

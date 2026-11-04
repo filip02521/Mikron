@@ -25,7 +25,7 @@ describe("rola serwis", () => {
 
   it("ma własne menu i kartę handlowca", () => {
     const hrefs = navForRole("serwis").flatMap((g) => g.items.map((i) => i.href));
-    expect(hrefs).toEqual(["/serwis/zlecenia"]);
+    expect(hrefs).toEqual(["/serwis/zlecenia", "/serwis", "/serwis/zamienniki", "/serwis/modele"]);
     expect(roleRequiresSalesPerson("serwis")).toBe(true);
   });
 });

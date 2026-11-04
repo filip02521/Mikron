@@ -91,7 +91,9 @@ export function MobileOperationsNav({
           ? "Nawigacja obszaru zębów"
           : role === "magazyn"
             ? "Nawigacja magazynu"
-            : "Nawigacja działu zakupów"
+            : role === "serwis"
+              ? "Nawigacja serwisu"
+              : "Nawigacja działu zakupów"
       }
     >
       <ul className="mx-auto flex max-w-lg items-stretch justify-around gap-0.5 px-0.5 py-0.5">

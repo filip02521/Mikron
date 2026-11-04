@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { requireServicePanel } from "@/lib/auth";
+import { isSerwis } from "@/lib/auth-roles";
 import { fetchRepairedModels, fetchServiceModelParts } from "@/lib/data/service-orders";
 import { ServiceModelsCatalog } from "@/components/serwis/ServiceModelsCatalog";
 import { ServiceHubTabs } from "@/components/serwis/ServiceHubTabs";
@@ -13,7 +14,7 @@ export const metadata: Metadata = pageMetadataFor("serwisModele");
 export const dynamic = "force-dynamic";
 
 export default async function ModelePage() {
-  await requireServicePanel("read");
+  const user = await requireServicePanel("read");
   let data: { parts: Awaited<ReturnType<typeof fetchServiceModelParts>>; repaired: Awaited<ReturnType<typeof fetchRepairedModels>> } | null = null;
   let error: string | null = null;
   try {
@@ -28,7 +29,7 @@ export default async function ModelePage() {
         title="Katalog części modeli"
         description="Części, które zwykle idą do naprawy danego modelu. Przy pobieraniu części do zlecenia pojawiają się jako pierwsze."
       />
-      <ServiceHubTabs active="modele" />
+      <ServiceHubTabs active="modele" showTabs={!isSerwis(user.role)} />
       {error ? (
         <Alert tone="error" title="Nie wczytano katalogu">
           {`${error} Odśwież stronę za chwilę.`}

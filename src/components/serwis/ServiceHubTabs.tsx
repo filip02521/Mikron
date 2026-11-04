@@ -3,10 +3,14 @@ import { ServiceOverdueLoanersNotice } from "@/components/serwis/ServiceOverdueL
 
 export type ServiceHubTab = "zlecenia" | "czesci" | "zamienniki" | "modele";
 
-/** Hub serwisu: jedna pozycja menu, widoki jako zakładki (DESIGN.md → Navigation). */
-export function ServiceHubTabs({ active }: { active: ServiceHubTab }) {
+/**
+ * Hub serwisu: jedna pozycja menu, widoki jako zakładki (DESIGN.md → Navigation). Konto serwisanta ma te same
+ * cztery widoki w menu bocznym — wtedy bez zakładek (`showTabs={false}`), żeby nie powtarzać nawigacji.
+ */
+export function ServiceHubTabs({ active, showTabs = true }: { active: ServiceHubTab; showTabs?: boolean }) {
   return (
     <>
+      {showTabs ? (
       <SectionTabNav
         embedded
         activeTab={active}
@@ -18,6 +22,7 @@ export function ServiceHubTabs({ active }: { active: ServiceHubTab }) {
           { id: "modele", label: "Katalog modeli", hint: "Części do naprawy danego modelu", href: "/serwis/modele" },
         ]}
       />
+      ) : null}
       {/* Na tablicy zamienników te egzemplarze są w pasie „Do zrobienia” — bez drugiego komunikatu. */}
       {active !== "zamienniki" ? <ServiceOverdueLoanersNotice /> : null}
     </>

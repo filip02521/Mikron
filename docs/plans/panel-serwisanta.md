@@ -27,6 +27,12 @@ Gałąź: `claude/exciting-edison-zfp8ar`. Makiety: koncepcja całego panelu
 
 ### 3. Rola `serwis`
 - Migracja `207_serwis_role.sql`. Konto wymaga karty handlowca (grupa Serwis).
+- Admin → Konta: rola „Serwis” na liście, pole „Karta serwisanta (grupa Serwis)”, opis roli w „Opis ról”.
+- Menu konta serwis: cztery pozycje (Zlecenia, Części serwisowe, Sprzęt zastępczy, Katalog modeli), bez zakładek
+  na stronach; na telefonie nagłówek z „Wyloguj” i dolna nawigacja z tymi samymi pozycjami. Inne role mają jedną
+  pozycję „Serwis” i zakładki.
+- Zabroniona strona prowadzi na start roli (`homePathForUser` → `homePathForRole`); wcześniej serwis i handlowiec
+  dostawali `/podsumowanie`, którego nie mogą otworzyć — pętla przekierowań.
 - Start i dostęp tylko do `/serwis` i ustawień. Strażnik `requireServicePanel`
   (serwis, magazyn, zakupy, admin). Podpowiedzi klientów/towarów z Subiekta przez
   wąski `requireSubiektSuggestLookup` (bez dostawców, terminów ZD, NIP-ów).
@@ -118,7 +124,5 @@ npm run dev
 
 1. **RW przez mostek Subiekta**: dziś RW wystawia się ręcznie (źródła mostka nie ma w tym repo).
    Gdy mostek dostanie `/documents/rw/create`, „Do RW” może je tworzyć jednym kliknięciem.
-2. **Konto serwisanta**: sprawdzić panel na koncie z rolą `serwis` (menu, dostęp tylko do `/serwis/*`,
-   podpowiedzi klientów przy przyjęciu).
-3. **Wydruk potwierdzenia przyjęcia** — świadomie pominięty (decyzja: tylko zapis w OnTime).
-4. Produkcja: migracje `207`, `208`, `209`, `210`, karta i konto „Serwis”.
+2. **Wydruk potwierdzenia przyjęcia** — świadomie pominięty (decyzja: tylko zapis w OnTime).
+3. Produkcja: migracje `207`, `208`, `209`, `210`, karta i konto „Serwis”.

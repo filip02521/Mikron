@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { requireServicePanel } from "@/lib/auth";
+import { isSerwis } from "@/lib/auth-roles";
 import { loadServicePartsOverview } from "@/lib/data/service-parts-overview";
 import { ServicePartsPanel } from "@/components/serwis/ServicePartsPanel";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -15,7 +16,7 @@ export const metadata: Metadata = pageMetadataFor("serwis");
 export const dynamic = "force-dynamic";
 
 export default async function SerwisPage() {
-  await requireServicePanel("read");
+  const user = await requireServicePanel("read");
   let overview: ServicePartsOverview | null = null;
   let error: string | null = null;
   try {
@@ -30,7 +31,7 @@ export default async function SerwisPage() {
         title="Części serwisowe"
         description="Towary z cechą Subiekta „Części serwisowe”. Zakupy zamawiają je tylko po zgłoszeniu, więc brakującą część zgłoś przyciskiem „Zgłoś brak”."
       />
-      <ServiceHubTabs active="czesci" />
+      <ServiceHubTabs active="czesci" showTabs={!isSerwis(user.role)} />
       {error ? (
         <Alert tone="error" title="Brak połączenia z Subiektem">
           {`${error} Spróbuj odświeżyć stronę za chwilę.`}

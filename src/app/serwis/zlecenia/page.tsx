@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { requireServicePanel } from "@/lib/auth";
+import { isSerwis } from "@/lib/auth-roles";
 import { fetchServiceModelParts, fetchServiceOrderBoard } from "@/lib/data/service-orders";
 import { fetchLoanerFleet } from "@/lib/data/service-loaners";
 import { ServiceOrdersBoard } from "@/components/serwis/ServiceOrdersBoard";
@@ -14,7 +15,7 @@ export const metadata: Metadata = pageMetadataFor("serwisZlecenia");
 export const dynamic = "force-dynamic";
 
 export default async function ZleceniaPage() {
-  await requireServicePanel("read");
+  const user = await requireServicePanel("read");
   let data: {
     board: Awaited<ReturnType<typeof fetchServiceOrderBoard>>;
     loaners: Awaited<ReturnType<typeof fetchLoanerFleet>>["units"];
@@ -33,7 +34,7 @@ export default async function ZleceniaPage() {
         title="Zlecenia serwisowe"
         description="Sprzęt klientów w naprawie: od przyjęcia przez diagnozę i części do wydania. Pobrane części rozliczasz numerem RW z Subiekta."
       />
-      <ServiceHubTabs active="zlecenia" />
+      <ServiceHubTabs active="zlecenia" showTabs={!isSerwis(user.role)} />
       {error ? (
         <Alert tone="error" title="Nie wczytano zleceń">
           {`${error} Odśwież stronę za chwilę.`}

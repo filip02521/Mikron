@@ -652,3 +652,31 @@ describe("licznik Asystenta", () => {
     expect(asystent({})?.badge).toBeUndefined();
   });
 });
+
+describe("menu serwisanta", () => {
+  const items = navForRole("serwis").flatMap((g) => g.items);
+  const hrefs = items.map((i) => i.href);
+
+  it("ma cztery zakładki serwisu, licznik zaległych zamienników przy sprzęcie zastępczym", () => {
+    expect(hrefs).toEqual(["/serwis/zlecenia", "/serwis", "/serwis/zamienniki", "/serwis/modele"]);
+    const withBadge = navForRole("serwis", { serviceOverdueLoaners: 3 }).flatMap((g) => g.items);
+    expect(withBadge.find((i) => i.href === "/serwis/zamienniki")?.badge).toBe(3);
+    expect(withBadge.find((i) => i.href === "/serwis/zlecenia")?.badge).toBeUndefined();
+  });
+
+  it("każda pozycja świeci tylko na swojej zakładce", () => {
+    for (const [pathname, active] of [
+      ["/serwis/zlecenia", "/serwis/zlecenia"],
+      ["/serwis", "/serwis"],
+      ["/serwis/zamienniki", "/serwis/zamienniki"],
+      ["/serwis/modele", "/serwis/modele"],
+    ] as const) {
+      expect(hrefs.filter((h) => isNavItemActive(pathname, h, hrefs))).toEqual([active]);
+    }
+  });
+
+  it("jedna pozycja „Serwis” w innych menu nadal świeci na każdej zakładce", () => {
+    expect(isNavItemActive("/serwis/modele", "/serwis", ["/serwis", "/kolejka"])).toBe(true);
+    expect(isNavItemActive("/serwis/zamienniki", "/serwis/zlecenia", ["/serwis/zlecenia", "/moje"])).toBe(true);
+  });
+});

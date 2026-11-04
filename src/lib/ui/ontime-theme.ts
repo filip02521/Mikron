@@ -106,6 +106,7 @@ export function roleBadgeClass(role: string): string {
     magazyn: "border-emerald-200/80 bg-emerald-50/90 text-emerald-800",
     sales: "border-indigo-200/80 bg-indigo-50/90 text-indigo-800",
     sales_manager: "border-indigo-200/70 bg-indigo-50/80 text-indigo-800",
+    serwis: "border-sky-200/80 bg-sky-50/90 text-sky-800",
   };
   return [
     "inline-flex max-w-full items-center rounded-md border px-2.5 py-1 text-[0.625rem] font-semibold leading-tight",
