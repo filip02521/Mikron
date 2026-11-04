@@ -30,6 +30,29 @@ export async function upsertSubiektProduct(input: {
   if (error) throw new Error(error.message);
 }
 
+/**
+ * Dostawca przypięty ręcznie w /admin/produkty. Gdy jest, automaty (ZD, historia zamówień)
+ * nie zakładają ani nie podbijają linków do innych dostawców tego towaru.
+ */
+export async function fetchManualSupplierPins(twIds: number[]): Promise<Map<number, string>> {
+  const ids = [...new Set(twIds.map((id) => Math.trunc(id)).filter((id) => Number.isFinite(id) && id > 0))];
+  const pins = new Map<number, string>();
+  if (!ids.length) return pins;
+  const res = await query<{ subiekt_tw_id: number; manual_supplier_id: string }>(
+    `SELECT subiekt_tw_id, manual_supplier_id::text AS manual_supplier_id
+       FROM subiekt_products
+      WHERE subiekt_tw_id = ANY($1::int[]) AND manual_supplier_id IS NOT NULL`,
+    [ids]
+  );
+  for (const row of res.rows) pins.set(Number(row.subiekt_tw_id), String(row.manual_supplier_id));
+  return pins;
+}
+
+async function blockedByManualPin(subiektTwId: number, supplierId: string): Promise<boolean> {
+  const pinned = (await fetchManualSupplierPins([subiektTwId])).get(Math.trunc(subiektTwId));
+  return pinned != null && pinned !== supplierId;
+}
+
 export async function bumpProductSupplierLink(input: {
   subiektTwId: number;
   supplierId: string;
@@ -40,6 +63,7 @@ export async function bumpProductSupplierLink(input: {
   const supabase = createAdminClient();
   const subiektTwId = Math.trunc(input.subiektTwId);
   const actionAt = input.actionAt ?? nowIso();
+  if (await blockedByManualPin(subiektTwId, input.supplierId)) return;
 
   // Nie ma atomowego "upsert + increment" w supabase-js bez RPC.
   // Skala jest mała, więc robimy read-modify-write.
@@ -80,6 +104,7 @@ export async function bumpProductSupplierLinkBy(input: {
   const delta = Math.trunc(input.delta);
   if (!Number.isFinite(delta) || delta <= 0) return;
   const actionAt = input.lastActionAt ?? nowIso();
+  if (await blockedByManualPin(subiektTwId, input.supplierId)) return;
 
   const { data: existing, error: fetchError } = await supabase
     .from("product_supplier_links")
@@ -132,10 +157,7 @@ export async function recordProductEvent(input: {
   if (error) throw new Error(error.message);
 }
 
-/**
- * Ręczne przypisanie w panelu admina ustawia „głównego” dostawcę w katalogu
- * (najwyższy order_count). Starsze linki zostają w historii z niższym priorytetem.
- */
+/** order_count linku po ręcznym przypisaniu — nie niższy niż dotychczasowy główny dostawca. */
 export function adminAssignPrimaryOrderCount(
   links: Array<{ supplierId: string; orderCount: number }>,
   targetSupplierId: string
@@ -219,12 +241,29 @@ export async function assignProductSupplierLinkAdmin(input: {
   );
   if (error) throw new Error(error.message);
 
+  // Ręczny wybór jest ostateczny: towar znika z list innych dostawców i nie wraca z importu ZD.
+  // Usunięte linki lądują w zdarzeniu — „Wróć do automatu” je odtwarza.
+  const pinRes = await query<{ removed: RemovedLinkSnapshot[] }>(
+    `WITH pin AS (
+       UPDATE subiekt_products SET manual_supplier_id = $2::uuid, updated_at = now()
+        WHERE subiekt_tw_id = $1
+     ),
+     del AS (
+       DELETE FROM product_supplier_links
+        WHERE subiekt_tw_id = $1 AND supplier_id <> $2::uuid
+        RETURNING supplier_id, order_count, last_action_at, last_order_id, last_source, note
+     )
+     SELECT COALESCE(jsonb_agg(to_jsonb(del)), '[]'::jsonb) AS removed FROM del`,
+    [subiektTwId, supplierId]
+  );
+  const removedLinks = pinRes.rows[0]?.removed ?? [];
+
   await recordProductEvent({
     subiektTwId,
     supplierId,
     source: "procurement_verification",
     action: "link_upserted",
-    detail: { manualAdmin: true },
+    detail: { manualAdmin: true, removedLinks },
     at,
   });
 
@@ -233,6 +272,100 @@ export async function assignProductSupplierLinkAdmin(input: {
     supplierName: String(supplier.name ?? "Dostawca"),
     orderCount,
   };
+}
+
+type RemovedLinkSnapshot = {
+  supplier_id: string;
+  order_count: number;
+  last_action_at: string;
+  last_order_id: string | null;
+  last_source: string;
+  note: string;
+};
+
+type PinEventDetail = {
+  manualAdmin?: boolean;
+  manualUnpin?: boolean;
+  removedLinks?: RemovedLinkSnapshot[];
+};
+
+/**
+ * Linki do odtworzenia po odpięciu: z przypięć od ostatniego „Wróć do automatu”,
+ * dla każdego dostawcy najnowsza migawka. `events` — od najnowszego.
+ */
+export function collectLinksToRestore(events: PinEventDetail[]): RemovedLinkSnapshot[] {
+  const bySupplier = new Map<string, RemovedLinkSnapshot>();
+  for (const detail of events) {
+    if (detail.manualUnpin) break;
+    if (!detail.manualAdmin) continue;
+    for (const link of detail.removedLinks ?? []) {
+      const id = String(link?.supplier_id ?? "");
+      if (id && !bySupplier.has(id)) bySupplier.set(id, link);
+    }
+  }
+  return [...bySupplier.values()];
+}
+
+/** „Wróć do automatu”: zdejmuje przypięcie i odtwarza linki usunięte przy przypinaniu. */
+export async function unpinProductSupplierAdmin(subiektTwIdRaw: number): Promise<{ restoredLinks: number }> {
+  const subiektTwId = Math.trunc(subiektTwIdRaw);
+  if (!Number.isFinite(subiektTwId) || subiektTwId <= 0) {
+    throw new Error("Nieprawidłowy identyfikator produktu (tw_Id).");
+  }
+
+  const current = await query<{ manual_supplier_id: string | null }>(
+    `SELECT manual_supplier_id::text AS manual_supplier_id FROM subiekt_products WHERE subiekt_tw_id = $1`,
+    [subiektTwId]
+  );
+  if (!current.rows.length) throw new Error("Produkt nie istnieje w katalogu.");
+  const pinnedSupplierId = current.rows[0].manual_supplier_id;
+  if (!pinnedSupplierId) throw new Error("Towar jest już w trybie automatycznym.");
+
+  const events = await query<{ detail: PinEventDetail | null }>(
+    `SELECT detail FROM product_events
+      WHERE subiekt_tw_id = $1
+        AND action = 'link_upserted'
+        AND ((detail ->> 'manualAdmin') = 'true' OR (detail ->> 'manualUnpin') = 'true')
+      ORDER BY created_at DESC`,
+    [subiektTwId]
+  );
+  const toRestore = collectLinksToRestore(events.rows.map((r) => r.detail ?? {}));
+
+  const res = await query<{ unpinned: number; restored: number }>(
+    `WITH unpin AS (
+       UPDATE subiekt_products SET manual_supplier_id = NULL, updated_at = now()
+        WHERE subiekt_tw_id = $1 AND manual_supplier_id IS NOT NULL
+        RETURNING subiekt_tw_id
+     ),
+     ins AS (
+       INSERT INTO product_supplier_links
+         (subiekt_tw_id, supplier_id, order_count, last_action_at, last_order_id, last_source, note, updated_at)
+       SELECT u.subiekt_tw_id, r.supplier_id, COALESCE(r.order_count, 0), COALESCE(r.last_action_at, now()),
+              r.last_order_id, COALESCE(r.last_source, 'order_history'), COALESCE(r.note, ''), now()
+         FROM unpin u
+        CROSS JOIN jsonb_to_recordset($2::jsonb) AS r(
+          supplier_id uuid, order_count int, last_action_at timestamptz,
+          last_order_id uuid, last_source text, note text
+        )
+        WHERE EXISTS (SELECT 1 FROM suppliers s WHERE s.id = r.supplier_id)
+       ON CONFLICT (subiekt_tw_id, supplier_id) DO NOTHING
+       RETURNING supplier_id
+     )
+     SELECT (SELECT count(*) FROM unpin)::int AS unpinned, (SELECT count(*) FROM ins)::int AS restored`,
+    [subiektTwId, JSON.stringify(toRestore)]
+  );
+  const row = res.rows[0];
+  if (!row?.unpinned) throw new Error("Towar jest już w trybie automatycznym.");
+
+  await recordProductEvent({
+    subiektTwId,
+    supplierId: pinnedSupplierId,
+    source: "procurement_verification",
+    action: "link_upserted",
+    detail: { manualUnpin: true, restoredLinks: row.restored },
+  });
+
+  return { restoredLinks: row.restored };
 }
 
 export async function indexOrderLineToProductCatalog(input: {

@@ -17,6 +17,7 @@ import type { SubiektCountry } from "@/lib/suppliers/subiekt-country";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { searchSubiektKontrahenci, searchSubiektProducts } from "@/lib/subiekt/api";
 import {
+  clientSearchPhrases,
   mergeKontrahenciUnique,
   MIN_CLIENT_SEARCH_LENGTH,
 } from "@/lib/subiekt/client-pick";
@@ -387,7 +388,7 @@ export async function actionSubiektSuggestClients(
     const merged: SubiektKontrahent[] = [];
     const seenKh = new Set<number>();
     const seenLabels = new Set<string>();
-    const phrases = expandSupplierSearchQueries(q).slice(0, 4);
+    const phrases = clientSearchPhrases(q).slice(0, 4);
     const listBase = {
       pageSize: 12,
       page: 1,

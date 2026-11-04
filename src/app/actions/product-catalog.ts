@@ -12,6 +12,8 @@ import { isSubiektReachable } from "@/lib/subiekt/availability";
 import { searchSubiektProducts } from "@/lib/subiekt/api";
 import {
   assignProductSupplierLinkAdmin,
+  fetchManualSupplierPins,
+  unpinProductSupplierAdmin,
   indexOrderLineToProductCatalog,
   normalizeProductCatalogBulkTwIds,
 } from "@/lib/data/product-catalog";
@@ -167,6 +169,22 @@ export async function actionAssignProductSupplier(
   revalidatePath("/podsumowanie");
 
   return { row, autoAssign: { updated: autoAssign.updated, promoted: autoAssign.promoted } };
+}
+
+/** „Wróć do automatu” — zdejmuje ręczne przypięcie dostawcy i odtwarza wcześniejsze linki. */
+export async function actionUnpinProductSupplier(subiektTwId: number): Promise<{
+  row: ProductCatalogRow;
+  restoredLinks: number;
+}> {
+  await requireAdminForMutation();
+  const twId = Math.trunc(subiektTwId);
+  const { restoredLinks } = await unpinProductSupplierAdmin(twId);
+
+  const row = (await fetchProductCatalogRowsByTwIds([twId]))[0];
+  if (!row) throw new Error("Nie udało się odczytać produktu po zapisie.");
+
+  revalidatePath("/admin/produkty");
+  return { row, restoredLinks };
 }
 
 export async function actionBulkAssignProductSuppliers(
@@ -326,7 +344,11 @@ export async function actionRebuildProductCatalogFromOrders(options?: { limit?: 
     }
   }
 
-  const linkRows = [...linksAgg.values()];
+  const pins = await fetchManualSupplierPins([...new Set([...linksAgg.values()].map((l) => l.twId))]);
+  const linkRows = [...linksAgg.values()].filter((l) => {
+    const pinned = pins.get(l.twId);
+    return pinned == null || pinned === l.supplierId;
+  });
   if (linkRows.length) {
     const { data: existingLinksRaw } = await supabase
       .from("product_supplier_links")

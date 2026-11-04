@@ -367,7 +367,7 @@ Strona nigdy nie przewija się w poziomie, także przy 375px. Tabela ma min. 640
 
 ## Elevation & Depth
 
-Głębia jest warstwowa i cicha. Na szarym `canvas` leżą białe karty z obramowaniem `line` i najlżejszym cieniem: kartę odróżnia od tła linia, nie cień. Wyraźny cień mają tylko elementy, które pływają nad treścią (okno, panel boczny, menu rozwijane, lista podpowiedzi, sticky pasek). Sticky chrome ma półprzezroczyste tło karty z `backdrop-blur-sm`, żeby przewijana treść była widoczna pod spodem.
+Głębia jest warstwowa i cicha. Na szarym `canvas` leżą białe karty z obramowaniem `line` i najlżejszym cieniem: kartę odróżnia od tła linia, nie cień. Wyraźny cień mają tylko elementy, które pływają nad treścią (okno, panel boczny, menu rozwijane, lista podpowiedzi, sticky pasek). Sticky chrome ma półprzezroczyste tło karty z `backdrop-blur-sm`, żeby przewijana treść była widoczna pod spodem. Rozmycie tła ma tylko sticky chrome i zawsze `backdrop-blur-sm`: tło pod oknem i panelem (`bg-scrim/N`), nakładki ładowania i elementy pływające mają pełne tło bez rozmycia, bo blur dużej powierzchni pod animacją liczy się od nowa w każdej klatce i na słabszych komputerach tnie otwieranie okien.
 
 ### Shadow Vocabulary
 

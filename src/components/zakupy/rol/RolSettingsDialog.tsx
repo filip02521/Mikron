@@ -7,11 +7,15 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { FormNoticeMessage } from "@/components/ui/FormNoticeMessage";
 import { ModalShell } from "@/components/ui/ModalShell";
+import { SubiektClientNameField } from "@/components/subiekt/SubiektClientNameField";
 import type { RolProgram } from "@/lib/rol/data";
-import type { RolProgramInput } from "@/lib/rol/program";
+import { ROL_FREQUENCIES, ROL_FREQUENCY_LABEL } from "@/lib/rol/constants";
+import { applyKontrahentToRolInput, type RolProgramInput } from "@/lib/rol/program";
+import type { SubiektKontrahent } from "@/lib/subiekt/types";
 import { formError, formSuccess } from "@/lib/ui/notice-copy";
 
 const NEW = "__new__";
+const NO_SEARCH = { clientName: "", clientKhId: null };
 
 function toInput(p: RolProgram | null): RolProgramInput {
   return {
@@ -24,8 +28,8 @@ function toInput(p: RolProgram | null): RolProgramInput {
     nip: p?.nip ?? "",
     toEmails: p?.toEmails.join(", ") ?? "",
     ccEmails: p?.ccEmails.join(", ") ?? "",
-    activeFrom: p?.activeFrom ?? "",
-    activeTo: p?.activeTo ?? "",
+    active: p?.active ?? true,
+    reportFrequency: p?.reportFrequency ?? "month",
   };
 }
 
@@ -45,16 +49,31 @@ export function RolSettingsDialog({
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [saving, startSave] = useTransition();
+  const [search, setSearch] = useState<{ clientName: string; clientKhId: number | null }>(NO_SEARCH);
+  const [picked, setPicked] = useState<string | null>(null);
 
   const pick = (id: string) => {
     setSelected(id);
     setForm(toInput(programs.find((p) => p.id === id) ?? null));
     setError(null);
     setSaved(false);
+    setSearch(NO_SEARCH);
+    setPicked(null);
   };
-  const set = (key: keyof RolProgramInput) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const set = (key: Exclude<keyof RolProgramInput, "active">) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setForm((f) => ({ ...f, [key]: e.target.value }));
     setSaved(false);
+  };
+
+  const fillFromSubiekt = (k: SubiektKontrahent) => {
+    const res = applyKontrahentToRolInput(form, k);
+    setForm(res.form);
+    setSaved(false);
+    setPicked(
+      res.filled.length
+        ? `Uzupełniono: ${res.filled.join(", ")}. Sprawdź i zapisz.`
+        : "Ta kartoteka jest już na liście, a pola są wypełnione — nic nie zmieniono."
+    );
   };
 
   const save = () =>
@@ -76,7 +95,7 @@ export function RolSettingsDialog({
       open={open}
       onClose={onClose}
       title="Ustawienia ROL"
-      description="Klienci z dodatkowym rabatem Ivoclar. Na początku miesiąca OnTime szuka ich FS po kartotekach z Subiekta."
+      description="Klienci z dodatkowym rabatem Ivoclar. OnTime szuka ich FS po kartotekach z Subiekta: co miesiąc, a dla wybranych także co tydzień lub co 2 tygodnie."
       size="lg"
       bodyClassName="px-5 py-4 sm:px-6"
       footer={
@@ -101,6 +120,21 @@ export function RolSettingsDialog({
             <option value={NEW}>+ Nowy klient ROL</option>
           </Select>
         </Field>
+        <Field label="Szukaj klienta w Subiekcie">
+          <SubiektClientNameField
+            value={search.clientName}
+            clientKhId={search.clientKhId}
+            onChange={(patch) => {
+              setSearch(patch);
+              setPicked(null);
+            }}
+            onPick={fillFromSubiekt}
+            maxLength={120}
+            placeholder="Nazwa, nazwisko, NIP lub miasto"
+            hint={picked ?? "Wybór z listy dopisze kartotekę i uzupełni puste pola poniżej."}
+            unavailableHint="Wpisz dane klienta ręcznie w polach poniżej."
+          />
+        </Field>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Nazwa w mailu i opisie ZD" hint="Bez „ROL”, np. „Przykładowa”.">
             <Input value={form.label} onChange={set("label")} maxLength={120} />
@@ -115,7 +149,10 @@ export function RolSettingsDialog({
             <Input value={form.discountPct} onChange={set("discountPct")} inputMode="decimal" />
           </Field>
         </div>
-        <Field label="Adres do maila" hint="Jedna linia na wiersz, maks. 4.">
+        <Field
+          label="Adres klienta (w treści maila)"
+          hint="Ulica, kod i miasto, jedna linia na wiersz, maks. 4. Adresy e-mail wpisz w „Do” / „DW”."
+        >
           <textarea
             value={form.addressLines}
             onChange={set("addressLines")}
@@ -134,12 +171,42 @@ export function RolSettingsDialog({
           <Field label="DW">
             <Input value={form.ccEmails} onChange={set("ccEmails")} type="text" />
           </Field>
-          <Field label="Status ROL od">
-            <Input value={form.activeFrom} onChange={set("activeFrom")} type="date" />
+          <Field
+            label="Raport co"
+            hint={
+              form.reportFrequency === "month"
+                ? "Raport za miesiąc idzie 1. dnia następnego miesiąca."
+                : form.reportFrequency === "week"
+                  ? "W poniedziałek raport za miniony tydzień; 1. dnia miesiąca reszta FS, której jeszcze nie zgłoszono."
+                  : "Co drugi poniedziałek raport za minione 2 tygodnie; 1. dnia miesiąca reszta FS, której jeszcze nie zgłoszono."
+            }
+          >
+            <Select value={form.reportFrequency} onChange={set("reportFrequency")}>
+              {ROL_FREQUENCIES.map((f) => (
+                <option key={f} value={f}>
+                  {ROL_FREQUENCY_LABEL[f]}
+                </option>
+              ))}
+            </Select>
           </Field>
-          <Field label="Status ROL do" hint="Puste = bez końca.">
-            <Input value={form.activeTo} onChange={set("activeTo")} type="date" />
-          </Field>
+          <label className="flex cursor-pointer items-start justify-between gap-4 sm:pt-6">
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="text-sm font-medium text-slate-900">Aktywny ROL</span>
+              <span className="text-xs leading-snug text-slate-500">
+                {form.active ? "Trafia do kolejnych raportów." : "Wyłączony: bez nowych raportów, wysłane zostają w historii."}
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={form.active}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, active: e.target.checked }));
+                setSaved(false);
+              }}
+              className="toggle-switch toggle-indigo mt-0.5 shrink-0"
+            />
+          </label>
         </div>
         {error ? <FormNoticeMessage message={formError("Nie zapisano", error)} /> : null}
         {saved ? (

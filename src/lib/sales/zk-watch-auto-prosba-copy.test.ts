@@ -62,6 +62,7 @@ describe("formatZkScopeSavedToast", () => {
   it("N>1 z plPozycja", () => {
     expect(formatZkScopeSavedToast(3)).toBe("Zapisano zakres - 3 pozycje do zamówienia.");
     expect(formatZkScopeSavedToast(5)).toBe("Zapisano zakres - 5 pozycji do zamówienia.");
+    expect(formatZkScopeSavedToast(0)).toBe("Zapisano zakres - nic do zamówienia.");
   });
 });
 

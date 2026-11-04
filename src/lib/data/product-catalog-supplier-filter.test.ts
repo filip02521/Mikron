@@ -15,6 +15,7 @@ function row(partial: Partial<ProductCatalogRow> & { subiektTwId: number }): Pro
     totalOrders: 0,
     topSupplier: null,
     lastActionAt: null,
+    manualSupplierId: null,
     ...partial,
   };
 }
