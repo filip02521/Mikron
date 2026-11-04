@@ -96,7 +96,7 @@ export function SupplierEditSheet({
           {children}
         </div>
 
-        <footer className="shrink-0 border-t border-slate-100 bg-card/80 px-5 py-4 backdrop-blur-sm">
+        <footer className="shrink-0 border-t border-slate-100 bg-card px-5 py-4">
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">{footer}</div>
         </footer>
       </aside>

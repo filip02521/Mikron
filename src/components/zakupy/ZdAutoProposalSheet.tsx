@@ -652,7 +652,7 @@ export function ZdAutoProposalSheet({
         </div>
 
         {phase !== "send" ? (
-          <footer className="flex shrink-0 flex-col gap-3 border-t border-slate-100 bg-card/95 px-5 py-4 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
+          <footer className="flex shrink-0 flex-col gap-3 border-t border-slate-100 bg-card px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm tabular-nums text-slate-600" aria-live="polite">
               {fresh ? (
                 <>
