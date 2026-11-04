@@ -10,6 +10,8 @@ import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { cn } from "@/lib/cn";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
+import { sidePanelBackdropClass } from "@/lib/ui/surfaces";
+import { useAnimatedClose } from "@/lib/ui/use-animated-close";
 import {
   actionLinkServiceOrderLoaner,
   actionMoveServiceOrder,
@@ -111,7 +113,8 @@ export function ServiceOrderDrawer({
 }) {
   const formId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
-  const panelRef = useRef<HTMLElement>(null);
+  // Wjazd i wyjazd jak inne panele boczne: tylko transform, tło bez rozmycia (DESIGN.md → Elevation & Depth).
+  const { panelRef, backdropRef, requestClose } = useAnimatedClose(onClose);
   // Element, który otworzył panel — zapamiętany przy montowaniu, zanim pułapka przeniesie fokus do środka.
   const [opener] = useState(() => (typeof document === "undefined" ? null : (document.activeElement as HTMLElement | null)));
   const [error, setError] = useState<string | null>(null);
@@ -132,15 +135,15 @@ export function ServiceOrderDrawer({
     closeRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      if ((e.target as HTMLElement | null)?.closest('[role="dialog"]:not([data-order-drawer])')) return;
-      onClose();
+      if (e.target instanceof Element && e.target.closest('[role="dialog"]:not([data-order-drawer])')) return;
+      requestClose();
     };
     window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("keydown", onKey);
       opener?.focus?.();
     };
-  }, [onClose, opener]);
+  }, [requestClose, opener]);
 
   const submit = (fn: () => Promise<ServiceOrderActionResult>, after?: () => void) => {
     setError(null);
@@ -258,14 +261,23 @@ export function ServiceOrderDrawer({
 
   return (
     <>
-      <div className="fixed inset-0 z-[58] bg-scrim/40" onClick={onClose} aria-hidden />
+      <div
+        ref={(el) => {
+          backdropRef.current = el;
+        }}
+        className={cn(sidePanelBackdropClass, "panel-slide-backdrop-enter")}
+        onClick={requestClose}
+        aria-hidden
+      />
       <aside
-        ref={panelRef}
+        ref={(el) => {
+          panelRef.current = el;
+        }}
         role="dialog"
         aria-modal="true"
         aria-labelledby="order-drawer-title"
         data-order-drawer
-        className="touch-ui fixed inset-y-0 right-0 z-[60] flex w-full max-w-[34rem] flex-col border-l border-slate-200 bg-raised shadow-2xl"
+        className="panel-slide-enter touch-ui fixed inset-y-0 right-0 z-[60] flex w-full max-w-[34rem] flex-col border-l border-slate-200/80 bg-raised shadow-[var(--shadow-card-elevated)]"
         style={{ paddingTop: "env(safe-area-inset-top,0px)", paddingBottom: "env(safe-area-inset-bottom,0px)" }}
       >
         <div className="flex flex-col gap-2.5 border-b border-slate-100 px-5 pb-4 pt-5 sm:px-6">
@@ -275,7 +287,7 @@ export function ServiceOrderDrawer({
             <button
               ref={closeRef}
               type="button"
-              onClick={onClose}
+              onClick={requestClose}
               aria-label="Zamknij"
               className="ml-auto grid h-11 w-11 place-items-center rounded-lg text-slate-500 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-900"
             >
