@@ -351,7 +351,7 @@ export async function fetchProductCatalogRowsByTwIds(twIds: number[]): Promise<P
 
   const { data: productsRaw, error } = await supabase
     .from("subiekt_products")
-    .select("subiekt_tw_id, symbol, name, plu, note, last_seen_at")
+    .select("subiekt_tw_id, symbol, name, plu, note, last_seen_at, manual_supplier_id")
     .in("subiekt_tw_id", twIds);
   if (error) throw new Error(error.message);
 
@@ -362,6 +362,7 @@ export async function fetchProductCatalogRowsByTwIds(twIds: number[]): Promise<P
     plu: (p.plu as string | null) ?? null,
     note: String(p.note ?? ""),
     lastSeenAt: String(p.last_seen_at ?? ""),
+    manualSupplierId: p.manual_supplier_id != null ? String(p.manual_supplier_id) : null,
   }));
 
   const { data: linksRaw, error: linksErr } = await supabase
@@ -500,7 +501,7 @@ export async function fetchProductCatalogRows(options?: {
 
   const { data: productsRaw, error } = await supabase
     .from("subiekt_products")
-    .select("subiekt_tw_id, symbol, name, plu, note, last_seen_at")
+    .select("subiekt_tw_id, symbol, name, plu, note, last_seen_at, manual_supplier_id")
     .order("last_seen_at", { ascending: false })
     .limit(limit);
 
@@ -513,6 +514,7 @@ export async function fetchProductCatalogRows(options?: {
     plu: (p.plu as string | null) ?? null,
     note: String(p.note ?? ""),
     lastSeenAt: String(p.last_seen_at ?? ""),
+    manualSupplierId: p.manual_supplier_id != null ? String(p.manual_supplier_id) : null,
   }));
 
   const twIds = products.map((p) => p.subiektTwId).filter((id) => id > 0);

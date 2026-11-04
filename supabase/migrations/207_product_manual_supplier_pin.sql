@@ -24,6 +24,30 @@ WHERE p.subiekt_tw_id = m.subiekt_tw_id
     WHERE l.subiekt_tw_id = m.subiekt_tw_id AND l.supplier_id = m.supplier_id
   );
 
+-- Migawka linków do usunięcia — „Wróć do automatu” w panelu odtwarza je z product_events.
+INSERT INTO public.product_events (subiekt_tw_id, supplier_id, source, action, detail)
+SELECT p.subiekt_tw_id,
+       p.manual_supplier_id,
+       'procurement_verification',
+       'link_upserted',
+       jsonb_build_object(
+         'manualAdmin', true,
+         'migration', '207',
+         'removedLinks', jsonb_agg(jsonb_build_object(
+           'supplier_id', l.supplier_id,
+           'order_count', l.order_count,
+           'last_action_at', l.last_action_at,
+           'last_order_id', l.last_order_id,
+           'last_source', l.last_source,
+           'note', l.note
+         ))
+       )
+FROM public.product_supplier_links l
+JOIN public.subiekt_products p ON p.subiekt_tw_id = l.subiekt_tw_id
+WHERE p.manual_supplier_id IS NOT NULL
+  AND l.supplier_id <> p.manual_supplier_id
+GROUP BY p.subiekt_tw_id, p.manual_supplier_id;
+
 DELETE FROM public.product_supplier_links l
 USING public.subiekt_products p
 WHERE p.subiekt_tw_id = l.subiekt_tw_id

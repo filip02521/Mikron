@@ -10,6 +10,8 @@ export type ProductCatalogRow = {
   totalOrders: number;
   topSupplier: { id: string; name: string; orderCount: number } | null;
   lastActionAt: string | null;
+  /** Dostawca przypięty ręcznie — automaty nie dopisują innych. null = tryb automatyczny. */
+  manualSupplierId: string | null;
 };
 
 export type ProductCatalogPage = {
@@ -31,7 +33,8 @@ export function formatCatalogSupplierSubtitle(
   filteredSupplierName: string | null
 ): string {
   if (row.topSupplier) {
-    const main = `${row.topSupplier.name} (${row.topSupplier.orderCount})`;
+    const pinned = row.manualSupplierId === row.topSupplier.id ? " · ręcznie" : "";
+    const main = `${row.topSupplier.name} (${row.topSupplier.orderCount})${pinned}`;
     if (
       filteredSupplierId &&
       filteredSupplierName &&
