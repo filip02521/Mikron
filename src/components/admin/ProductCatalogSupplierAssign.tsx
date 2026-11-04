@@ -11,6 +11,7 @@ export function ProductCatalogSupplierAssign({
   suppliers,
   disabled,
   onAssign,
+  onUnpin,
   preferredSupplierId,
   compact = false,
 }: {
@@ -18,6 +19,8 @@ export function ProductCatalogSupplierAssign({
   suppliers: Array<{ id: string; name: string; subiektKhId: number | null }>;
   disabled?: boolean;
   onAssign: (subiektTwId: number, supplierId: string) => void;
+  /** „Wróć do automatu” — widoczne tylko dla towaru przypiętego ręcznie. */
+  onUnpin?: (subiektTwId: number) => void;
   /**
    * Hint z filtra katalogu — używany tylko gdy produkt nie ma jeszcze głównego
    * dostawcy. Główny (`row.topSupplier`) zawsze wygrywa, inaczej po grupowym
@@ -38,7 +41,8 @@ export function ProductCatalogSupplierAssign({
   }
 
   const primaryId = row.topSupplier?.id ?? "";
-  const unchanged = Boolean(supplierId) && supplierId === primaryId;
+  const unchanged =
+    Boolean(supplierId) && supplierId === primaryId && row.manualSupplierId === primaryId;
   const canSave = Boolean(supplierId) && !unchanged;
 
   const controls = (
@@ -77,6 +81,19 @@ export function ProductCatalogSupplierAssign({
       >
         {row.topSupplier ? (compact ? "Zmień" : "Zmień mapowanie") : "Przypisz"}
       </Button>
+      {onUnpin && row.manualSupplierId ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={disabled}
+          onClick={() => onUnpin(row.subiektTwId)}
+          title="Zdejmij ręczne przypięcie: wrócą poprzednie mapowania, a import ZD znów będzie dopisywał dostawców."
+          className={cn("shrink-0", compact && "h-8 px-2.5 text-xs")}
+        >
+          Automat
+        </Button>
+      ) : null}
     </div>
   );
 
@@ -90,8 +107,8 @@ export function ProductCatalogSupplierAssign({
       <div className="mt-2">{controls}</div>
       {row.topSupplier && unchanged ? (
         <p className="mt-1.5 text-[0.6875rem] text-slate-500">
-          Wybierz innego dostawcę z listy - stanie się głównym w katalogu (starsze mapowania
-          zostają w historii).
+          Wybierz innego dostawcę z listy - towar zostanie przypięty tylko do niego (import ZD
+          nie dopisze innych). „Automat” zdejmuje przypięcie.
         </p>
       ) : (
         <p className="mt-1.5 text-[0.6875rem] text-slate-500">
