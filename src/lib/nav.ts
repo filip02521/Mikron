@@ -165,12 +165,6 @@ export function isNavItemActive(
   if (hrefPath.startsWith("/lokalizacje/") && pathname.startsWith("/lokalizacje/")) {
     return true;
   }
-  // Serwis to jeden hub z zakładkami: jedna pozycja menu świeci na każdej z nich (zlecenia, części, zamienniki,
-  // modele). Gdy zakładki są osobnymi pozycjami (menu serwisanta), każda świeci tylko na swojej.
-  const serviceSiblings = siblingHrefs.some((other) => other !== href && navHrefPath(other).startsWith("/serwis"));
-  if (!serviceSiblings && hrefPath.startsWith("/serwis") && (pathname === "/serwis" || pathname.startsWith("/serwis/"))) {
-    return true;
-  }
   // Karty dostawców to wejście do hubu: terminy, urlopy i nieaktywni są jego zakładkami.
   if (hrefPath.endsWith("/dostawcy") && isSupplierHubPath(pathname) && !pathname.startsWith(hrefPath)) {
     return true;
@@ -405,7 +399,7 @@ function operationsTodayItems(
 }
 
 /** Zamawianie: Kreator ZD, braki i automat (admin + zakupy), formularz grupowy i archiwum zamówień. */
-function operationsOrderingItems(role: UserRole, badges: NavBadges = {}): NavItem[] {
+function operationsOrderingItems(role: UserRole): NavItem[] {
   const items: NavItem[] = [];
   if (role === "admin" || role === "zakupy") {
     items.push({
@@ -426,17 +420,6 @@ function operationsOrderingItems(role: UserRole, badges: NavBadges = {}): NavIte
       icon: "stockWatch",
       tone: "orange",
       tier: "primary",
-      mobileSlot: "overflow",
-    });
-    items.push({
-      href: "/serwis",
-      label: "Serwis",
-      mobileLabel: "Serwis",
-      description: "Części serwisowe i sprzęt zastępczy",
-      icon: "catalog",
-      tone: "sky",
-      badge: badges.serviceOverdueLoaners,
-      tier: "compact",
       mobileSlot: "overflow",
     });
     items.push({
@@ -720,7 +703,8 @@ function adminCatalogMailItems(): NavItem[] {
 function operationsNavGroups(role: UserRole, badges: NavBadges): NavGroup[] {
   const groups: NavGroup[] = [
     { title: NAV_SECTION_TODAY, items: operationsTodayItems(badges) },
-    { title: NAV_SECTION_ORDERING, items: operationsOrderingItems(role, badges) },
+    { title: NAV_SECTION_ORDERING, items: operationsOrderingItems(role) },
+    serviceNavGroup(badges),
     { title: NAV_SECTION_TEAM, items: operationsTeamItems(badges) },
     {
       title: NAV_SECTION_SUPPLIERS,
@@ -786,19 +770,9 @@ function magazynNavGroups(badges: NavBadges): NavGroup[] {
           tier: "primary",
           mobileSlot: "primary",
         },
-        {
-          href: "/serwis",
-          label: "Serwis",
-          mobileLabel: "Serwis",
-          description: "Części serwisowe i sprzęt zastępczy",
-          icon: "catalog",
-          tone: "sky",
-          badge: badges.serviceOverdueLoaners,
-          tier: "compact",
-          mobileSlot: "overflow",
-        },
       ],
     },
+    serviceNavGroup(badges),
     {
       title: NAV_SECTION_TEAM,
       items: [
@@ -849,58 +823,67 @@ function magazynNavGroups(badges: NavBadges): NavGroup[] {
   return groups;
 }
 
-/** Serwisant: części serwisowe (później sprzęt zastępczy i zlecenia). */
-/** Konto serwisanta pracuje tylko w serwisie: cztery zakładki hubu są osobnymi pozycjami menu. */
-function serwisNavGroups(badges: NavBadges = {}): NavGroup[] {
+/**
+ * Widoki serwisu jako pozycje menu (bez zakładek na stronach). Serwisant ma je jako główne pozycje, zakupy, admin
+ * i magazyn — jako sekcję „Serwis” obok swojej pracy.
+ */
+function serviceNavItems(badges: NavBadges, main: boolean): NavItem[] {
+  const tier: NavTier = main ? "primary" : "compact";
+  const mobileSlot: NavMobileSlot = main ? "primary" : "overflow";
   return [
     {
-      title: "Serwis",
-      items: [
-        {
-          href: "/serwis/zlecenia",
-          label: "Zlecenia",
-          mobileLabel: "Zlecenia",
-          description: "Sprzęt klientów w naprawie",
-          icon: "verification",
-          tone: "sky",
-          tier: "primary",
-          highlight: true,
-          mobileSlot: "primary",
-        },
-        {
-          href: "/serwis",
-          label: "Części serwisowe",
-          mobileLabel: "Części",
-          description: "Stany części i zgłoszone braki",
-          icon: "warehouse",
-          tone: "sky",
-          tier: "primary",
-          mobileSlot: "primary",
-        },
-        {
-          href: "/serwis/zamienniki",
-          label: "Sprzęt zastępczy",
-          mobileLabel: "Zamienniki",
-          description: "Kto ma który egzemplarz i od ilu dni",
-          icon: "truck",
-          tone: "sky",
-          tier: "primary",
-          badge: badges.serviceOverdueLoaners,
-          mobileSlot: "primary",
-        },
-        {
-          href: "/serwis/modele",
-          label: "Katalog modeli",
-          mobileLabel: "Modele",
-          description: "Części do naprawy danego modelu",
-          icon: "catalog",
-          tone: "sky",
-          tier: "primary",
-          mobileSlot: "primary",
-        },
-      ],
+      href: "/serwis/zlecenia",
+      label: main ? "Zlecenia" : "Zlecenia serwisowe",
+      mobileLabel: "Zlecenia",
+      description: "Sprzęt klientów w naprawie",
+      icon: "verification",
+      tone: "sky",
+      tier,
+      highlight: main,
+      mobileSlot,
+    },
+    {
+      href: "/serwis",
+      label: "Części serwisowe",
+      mobileLabel: "Części",
+      description: "Stany części i zgłoszone braki",
+      icon: "warehouse",
+      tone: "sky",
+      tier,
+      mobileSlot,
+    },
+    {
+      href: "/serwis/zamienniki",
+      label: "Sprzęt zastępczy",
+      mobileLabel: "Zamienniki",
+      description: "Kto ma który egzemplarz i od ilu dni",
+      icon: "truck",
+      tone: "sky",
+      tier,
+      badge: badges.serviceOverdueLoaners,
+      mobileSlot,
+    },
+    {
+      href: "/serwis/modele",
+      label: "Katalog modeli",
+      mobileLabel: "Modele",
+      description: "Części do naprawy danego modelu",
+      icon: "catalog",
+      tone: "sky",
+      tier,
+      mobileSlot,
     },
   ];
+}
+
+const NAV_SECTION_SERVICE = "Serwis";
+
+function serviceNavGroup(badges: NavBadges): NavGroup {
+  return { title: NAV_SECTION_SERVICE, items: serviceNavItems(badges, false), collapsible: true };
+}
+
+function serwisNavGroups(badges: NavBadges = {}): NavGroup[] {
+  return [{ title: NAV_SECTION_SERVICE, items: serviceNavItems(badges, true) }];
 }
 
 export type NavAppContext = {

@@ -60,7 +60,7 @@ export const PAGE_TITLES = {
   serwis: "Części serwisowe",
   serwisZamienniki: "Sprzęt zastępczy",
   serwisZlecenia: "Zlecenia serwisowe",
-  serwisModele: "Katalog części modeli",
+  serwisModele: "Katalog modeli",
 } as const;
 
 export const PAGE_DESCRIPTIONS: Partial<Record<keyof typeof PAGE_TITLES, string>> = {

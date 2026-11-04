@@ -177,10 +177,11 @@ describe("navForRole admin dostawcy", () => {
 });
 
 describe("navForRole struktura zakupów", () => {
-  it("od pracy dziennej do konfiguracji: Dziś → Zamawianie → Zespół → Dostawcy → Import i logistyka", () => {
+  it("od pracy dziennej do konfiguracji: Dziś → Zamawianie → Serwis → Zespół → Dostawcy → Import i logistyka", () => {
     expect(navForRole("zakupy").map((g) => g.title)).toEqual([
       NAV_SECTION_TODAY,
       NAV_SECTION_ORDERING,
+      "Serwis",
       NAV_SECTION_TEAM,
       NAV_SECTION_SUPPLIERS,
       NAV_SECTION_LOGISTICS,
@@ -189,6 +190,7 @@ describe("navForRole struktura zakupów", () => {
     expect(navForRole("admin").map((g) => g.title)).toEqual([
       NAV_SECTION_TODAY,
       NAV_SECTION_ORDERING,
+      "Serwis",
       NAV_SECTION_TEAM,
       NAV_SECTION_SUPPLIERS,
       NAV_SECTION_LOGISTICS,
@@ -251,7 +253,6 @@ describe("navForRole struktura zakupów", () => {
       expect(ordering?.items.map((item) => item.href)).toEqual([
         "/zakupy/szacunek",
         "/zakupy/braki",
-        "/serwis",
         "/zakupy/automat",
         "/zamowienia/nowe",
         "/historia",
@@ -484,10 +485,11 @@ describe("navForRole zakupy_zeby", () => {
 });
 
 describe("navForRole magazyn", () => {
-  it("ma sekcje Dziś, Zespół, Archiwum i Kurierzy (jak operacje)", () => {
+  it("ma sekcje Dziś, Serwis, Zespół, Archiwum i Kurierzy (jak operacje)", () => {
     const groups = navForRole("magazyn");
     expect(groups.map((g) => g.title)).toEqual([
       NAV_SECTION_TODAY,
+      "Serwis",
       "Zespół",
       NAV_SECTION_TOOLS,
       NAV_SECTION_CARRIERS,
@@ -495,10 +497,11 @@ describe("navForRole magazyn", () => {
     ]);
   });
 
-  it("sekcje Archiwum i Kurierzy są zwijane", () => {
+  it("sekcje Serwis, Archiwum i Kurierzy są zwijane", () => {
     const groups = navForRole("magazyn");
     const collapsibleSections = groups.filter((g) => g.collapsible);
     expect(collapsibleSections.map((g) => g.title)).toEqual([
+      "Serwis",
       NAV_SECTION_TOOLS,
       NAV_SECTION_CARRIERS,
       NAV_SECTION_SYSTEM,
@@ -523,13 +526,11 @@ describe("navForRole magazyn", () => {
     ]);
   });
 
-  it("sekcja Dziś ma Przyjęcie, Plan dostaw i Części serwisowe", () => {
+  it("sekcja Dziś ma Przyjęcie i Plan dostaw, serwis ma własną sekcję", () => {
     const today = navForRole("magazyn").find((g) => g.title === NAV_SECTION_TODAY);
-    expect(today?.items.map((item) => item.href)).toEqual([
-      "/kolejka",
-      "/dostawy",
-      "/serwis",
-    ]);
+    expect(today?.items.map((item) => item.href)).toEqual(["/kolejka", "/dostawy"]);
+    const service = navForRole("magazyn").find((g) => g.title === "Serwis");
+    expect(service?.items.map((item) => item.href)).toEqual(["/serwis/zlecenia", "/serwis", "/serwis/zamienniki", "/serwis/modele"]);
   });
 
   it("sekcja Zespół ma Notatki i Urlopy", () => {
@@ -675,8 +676,15 @@ describe("menu serwisanta", () => {
     }
   });
 
-  it("jedna pozycja „Serwis” w innych menu nadal świeci na każdej zakładce", () => {
-    expect(isNavItemActive("/serwis/modele", "/serwis", ["/serwis", "/kolejka"])).toBe(true);
-    expect(isNavItemActive("/serwis/zamienniki", "/serwis/zlecenia", ["/serwis/zlecenia", "/moje"])).toBe(true);
+  it("zakupy, admin i magazyn mają te same cztery widoki w sekcji Serwis, z licznikiem przy zamiennikach", () => {
+    for (const role of ["admin", "zakupy", "magazyn"] as const) {
+      const groups = navForRole(role, { serviceOverdueLoaners: 2 });
+      const service = groups.find((g) => g.title === "Serwis");
+      expect(service?.items.map((i) => i.href)).toEqual(hrefs);
+      expect(service?.items.find((i) => i.href === "/serwis/zamienniki")?.badge).toBe(2);
+      // Żadna inna sekcja nie prowadzi do serwisu — jedno wejście na widok.
+      const elsewhere = groups.filter((g) => g !== service).flatMap((g) => g.items).filter((i) => i.href.startsWith("/serwis"));
+      expect(elsewhere).toEqual([]);
+    }
   });
 });

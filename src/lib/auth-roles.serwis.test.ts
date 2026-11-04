@@ -31,13 +31,14 @@ describe("rola serwis", () => {
 });
 
 describe("menu serwisu", () => {
-  it("pozycja świeci na każdej zakładce hubu, a nie poza nim", async () => {
+  it("„Części serwisowe” (/serwis) nie świeci na podstronach, które mają własne pozycje, ani poza serwisem", async () => {
     const { isNavItemActive } = await import("@/lib/nav");
-    for (const p of ["/serwis", "/serwis/zlecenia", "/serwis/zamienniki", "/serwis/modele"]) {
-      expect(isNavItemActive(p, "/serwis/zlecenia")).toBe(true);
-      expect(isNavItemActive(p, "/serwis")).toBe(true);
+    const siblings = ["/serwis/zlecenia", "/serwis", "/serwis/zamienniki", "/serwis/modele"];
+    for (const p of ["/serwis/zlecenia", "/serwis/zamienniki", "/serwis/modele"]) {
+      expect(isNavItemActive(p, "/serwis", siblings)).toBe(false);
     }
-    expect(isNavItemActive("/serwisy", "/serwis")).toBe(false);
-    expect(isNavItemActive("/zakupy/szacunek", "/serwis")).toBe(false);
+    expect(isNavItemActive("/serwis", "/serwis", siblings)).toBe(true);
+    expect(isNavItemActive("/serwisy", "/serwis", siblings)).toBe(false);
+    expect(isNavItemActive("/zakupy/szacunek", "/serwis", siblings)).toBe(false);
   });
 });

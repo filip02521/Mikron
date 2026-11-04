@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { requireServicePanel } from "@/lib/auth";
-import { isSerwis } from "@/lib/auth-roles";
 import { loadServicePartsOverview } from "@/lib/data/service-parts-overview";
 import { ServicePartsPanel } from "@/components/serwis/ServicePartsPanel";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { ServiceHubTabs } from "@/components/serwis/ServiceHubTabs";
+import { ServiceOverdueLoanersNotice } from "@/components/serwis/ServiceOverdueLoanersNotice";
 import { Alert } from "@/components/ui/Alert";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
@@ -16,7 +15,7 @@ export const metadata: Metadata = pageMetadataFor("serwis");
 export const dynamic = "force-dynamic";
 
 export default async function SerwisPage() {
-  const user = await requireServicePanel("read");
+  await requireServicePanel("read");
   let overview: ServicePartsOverview | null = null;
   let error: string | null = null;
   try {
@@ -29,9 +28,9 @@ export default async function SerwisPage() {
     <div className={`${adminPageShellClass} touch-ui space-y-6`}>
       <PageHeader
         title="Części serwisowe"
-        description="Towary z cechą Subiekta „Części serwisowe”. Zakupy zamawiają je tylko po zgłoszeniu, więc brakującą część zgłoś przyciskiem „Zgłoś brak”."
+        description="Zakupy zamawiają te części tylko po zgłoszeniu — brak zgłoś przyciskiem „Zgłoś brak”."
       />
-      <ServiceHubTabs active="czesci" showTabs={!isSerwis(user.role)} />
+      <ServiceOverdueLoanersNotice />
       {error ? (
         <Alert tone="error" title="Brak połączenia z Subiektem">
           {`${error} Spróbuj odświeżyć stronę za chwilę.`}

@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { requireServicePanel } from "@/lib/auth";
-import { isSerwis } from "@/lib/auth-roles";
 import { fetchRepairedModels, fetchServiceModelParts } from "@/lib/data/service-orders";
 import { ServiceModelsCatalog } from "@/components/serwis/ServiceModelsCatalog";
-import { ServiceHubTabs } from "@/components/serwis/ServiceHubTabs";
+import { ServiceOverdueLoanersNotice } from "@/components/serwis/ServiceOverdueLoanersNotice";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Alert } from "@/components/ui/Alert";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
@@ -14,7 +13,7 @@ export const metadata: Metadata = pageMetadataFor("serwisModele");
 export const dynamic = "force-dynamic";
 
 export default async function ModelePage() {
-  const user = await requireServicePanel("read");
+  await requireServicePanel("read");
   let data: { parts: Awaited<ReturnType<typeof fetchServiceModelParts>>; repaired: Awaited<ReturnType<typeof fetchRepairedModels>> } | null = null;
   let error: string | null = null;
   try {
@@ -26,10 +25,10 @@ export default async function ModelePage() {
   return (
     <div className={`${adminPageShellClass} touch-ui space-y-6`}>
       <PageHeader
-        title="Katalog części modeli"
-        description="Części, które zwykle idą do naprawy danego modelu. Przy pobieraniu części do zlecenia pojawiają się jako pierwsze."
+        title="Katalog modeli"
+        description="Części, które zwykle idą do naprawy modelu — przy zleceniu podpowiadane jako pierwsze."
       />
-      <ServiceHubTabs active="modele" showTabs={!isSerwis(user.role)} />
+      <ServiceOverdueLoanersNotice />
       {error ? (
         <Alert tone="error" title="Nie wczytano katalogu">
           {`${error} Odśwież stronę za chwilę.`}

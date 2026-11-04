@@ -29,8 +29,8 @@ Gałąź: `claude/exciting-edison-zfp8ar`. Makiety: koncepcja całego panelu
 - Migracja `207_serwis_role.sql`. Konto wymaga karty handlowca (grupa Serwis).
 - Admin → Konta: rola „Serwis” na liście, pole „Karta serwisanta (grupa Serwis)”, opis roli w „Opis ról”.
 - Menu konta serwis: cztery pozycje (Zlecenia, Części serwisowe, Sprzęt zastępczy, Katalog modeli), bez zakładek
-  na stronach; na telefonie nagłówek z „Wyloguj” i dolna nawigacja z tymi samymi pozycjami. Inne role mają jedną
-  pozycję „Serwis” i zakładki.
+  na stronach; na telefonie nagłówek z „Wyloguj” i dolna nawigacja z tymi samymi pozycjami. Zakupy, admin
+  i magazyn mają te same cztery pozycje w zwijanej sekcji „Serwis”.
 - Zabroniona strona prowadzi na start roli (`homePathForUser` → `homePathForRole`); wcześniej serwis i handlowiec
   dostawali `/podsumowanie`, którego nie mogą otworzyć — pętla przekierowań.
 - Start i dostęp tylko do `/serwis` i ustawień. Strażnik `requireServicePanel`
@@ -63,7 +63,7 @@ Przegląd uprawnień (agent `authz-reviewer`) bez uwag krytycznych/wysokich.
   (`EventTimeline`). Powiązanie z zamiennikiem: egzemplarz wydany na tablicy (najpierw ten u klienta);
   panel egzemplarza pokazuje numer zlecenia, a przy „gotowe” zlecenie przypomina o odbiorze zamiennika.
   Zwrot egzemplarza odpina go od zlecenia (zdarzenie w historii zlecenia); jeden egzemplarz — jedno zlecenie.
-- Rola serwis startuje na zleceniach; pozycja „Serwis” w menu świeci na każdej zakładce hubu.
+- Rola serwis startuje na zleceniach. Widoki serwisu to pozycje menu bocznego (bez zakładek na stronach).
 
 - Przyjęcie: po wyborze klienta z Subiekta lista „Sprzęt klienta z faktur i paragonów” — pozycje jego
   FS (`/documents/fs?kh_id=`) i PA (`/documents/pa?odbiorcaId=`) z 10 lat z numerem seryjnym w Uwagach
@@ -105,7 +105,7 @@ jest w grupie „Brak dokumentów”. Migracja `210_service_orders_documents.sql
   (na kopii dev 39 z 99 części); bez źródła — Weryfikacja jak dotąd.
 - Kreator ZD: część z cechą, która ma też ręczny wpis, jest traktowana jak część serwisowa (odznaka,
   brak „Na prośbę”, odmowa zdjęcia przed kasowaniem — notatka zostaje).
-- Zamienniki po terminie: odznaka przy „Serwis” w menu i pasek na zakładkach serwisu (bez maila).
+- Zamienniki po terminie: odznaka przy „Sprzęt zastępczy” w menu i pasek na pozostałych stronach serwisu (bez maila).
 
 ## Uruchomienie lokalne
 
