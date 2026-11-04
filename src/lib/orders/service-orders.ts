@@ -17,7 +17,10 @@ export type ServiceOrderEventType =
   | "loaner_linked"
   | "loaner_unlinked"
   | "rw"
-  | "note";
+  | "note"
+  | "invoice"
+  | "invoice_cleared"
+  | "waiting_part";
 
 /** Kolejność drogi naprawy — oś postępu w panelu zlecenia. „Anulowane” jest poza nią. */
 export const SERVICE_ORDER_FLOW: readonly ServiceOrderStatus[] = [
@@ -117,16 +120,54 @@ export function transitionLabel(to: ServiceOrderStatus, from?: ServiceOrderStatu
  */
 export function transitionHint(
   to: ServiceOrderStatus,
-  ctx: { partsWithoutRw: boolean; loanerCode: string | null }
+  ctx: { missing: { rw: boolean; invoice: boolean }; loanerCode: string | null }
 ): string | null {
-  if (to === "gotowe") return "Zlecenie przejdzie do „Gotowe do wydania” — od tej chwili wpiszesz numer RW.";
+  if (to === "gotowe") return "Zlecenie przejdzie do „Gotowe do wydania” — tam wpiszesz fakturę za naprawę i RW na części.";
   if (to === "wydane") {
     const parts = ["Zamyka zlecenie."];
-    if (ctx.partsWithoutRw) parts.push("Pobrane części bez RW zostaną na liście „Do RW”.");
+    const missing = missingDocsText(ctx.missing);
+    if (missing) parts.push(`${missing} — zlecenie zostanie na liście „Brak dokumentów”.`);
     if (ctx.loanerCode) parts.push(`Odbierz od klienta zamiennik ${ctx.loanerCode}.`);
     return parts.join(" ");
   }
   return null;
+}
+
+/**
+ * Co panel zlecenia pokazuje na danym kroku — widok idzie za pracą: przy przyjęciu zamiennik,
+ * w naprawie części, przy wydaniu dokumenty i telefon do klienta.
+ */
+export type ServiceOrderPanelView = {
+  /** Etykieta pola notatki; null = pole ukryte. */
+  workNoteLabel: string | null;
+  workNoteEditable: boolean;
+  /** Części: ukryte; pobieranie i oddawanie (do RW); tylko oddawanie (anulowane — części wracają na półkę). */
+  parts: "hidden" | "edit" | "return-only";
+  /** Sekcja dokumentów (faktura + RW). */
+  documents: boolean;
+  /** Zamiennik na górze panelu (przyjęcie — wtedy się go wydaje). */
+  loanerFirst: boolean;
+  /** Duży przycisk „Zadzwoń do klienta” (gotowe do wydania). */
+  callClient: boolean;
+};
+
+export function serviceOrderPanelView(status: ServiceOrderStatus): ServiceOrderPanelView {
+  switch (status) {
+    case "przyjete":
+      return { workNoteLabel: null, workNoteEditable: false, parts: "hidden", documents: false, loanerFirst: true, callClient: false };
+    case "diagnoza":
+      return { workNoteLabel: "Co ustaliła diagnoza", workNoteEditable: true, parts: "edit", documents: false, loanerFirst: false, callClient: false };
+    case "w_naprawie":
+    case "czeka_na_czesc":
+      return { workNoteLabel: "Opis prac", workNoteEditable: true, parts: "edit", documents: false, loanerFirst: false, callClient: false };
+    case "gotowe":
+      return { workNoteLabel: "Opis prac", workNoteEditable: true, parts: "edit", documents: true, loanerFirst: false, callClient: true };
+    case "wydane":
+      // Po wydaniu część można jeszcze dopisać (zapomniana), dopóki nie ma RW.
+      return { workNoteLabel: "Opis prac", workNoteEditable: false, parts: "edit", documents: true, loanerFirst: false, callClient: false };
+    case "anulowane":
+      return { workNoteLabel: "Opis prac", workNoteEditable: false, parts: "return-only", documents: true, loanerFirst: false, callClient: false };
+  }
 }
 
 /** Krok wstecz po osi naprawy (etykieta „Wróć do”, ikona cofnięcia). Wstrzymanie i anulowanie nim nie są. */
@@ -182,6 +223,13 @@ export type ServiceOrder = {
   loanerUnitId: string | null;
   rwNumber: string | null;
   rwAt: string | null;
+  /** Faktura za naprawę: z listy FS klienta (fsId) albo numer wpisany ręcznie. */
+  fsId: number | null;
+  fsNumber: string | null;
+  /** Naprawa bez faktury (gwarancja, bezpłatna) — powód; wyklucza się z fsNumber. */
+  noInvoiceReason: string | null;
+  /** Część, na którą zlecenie czeka (status „czeka na część”); requestStatus — status prośby do zakupów, gdy jest. */
+  waitingPart: { twId: number | null; symbol: string | null; name: string; qty: number; since: string | null; requestStatus: string | null } | null;
   closedAt: string | null;
   createdAt: string;
 };
@@ -227,10 +275,41 @@ export function rwClipboardText(lines: ReturnType<typeof rwLines>): string {
 }
 
 /** Grupy listy zleceń według tego, co serwisant ma zrobić. */
-export type ServiceOrderGroup = "czeka_na_czesc" | "w_serwisie" | "gotowe" | "do_rw" | "zamkniete";
+export type ServiceOrderGroup = "czeka_na_czesc" | "w_serwisie" | "gotowe" | "dokumenty" | "zamkniete";
 
-export function serviceOrderGroup(order: Pick<ServiceOrder, "status" | "rwNumber">, parts: readonly Pick<ServiceOrderPart, "quantity">[]): ServiceOrderGroup {
-  if (isClosedServiceOrder(order.status)) return needsRw(order, parts) ? "do_rw" : "zamkniete";
+/**
+ * Faktura za naprawę wpisywana od „gotowe” (jak RW). Anulowane zlecenie faktury nie ma — tam tylko RW
+ * za części, których nie oddano.
+ */
+export function canSetServiceOrderInvoice(status: ServiceOrderStatus): boolean {
+  return status === "gotowe" || status === "wydane";
+}
+
+/** Czego brakuje do rozliczenia zlecenia (tylko ostrzeżenie — wydanie tego nie blokuje). */
+export function missingServiceOrderDocs(
+  order: Pick<ServiceOrder, "status" | "rwNumber" | "fsNumber" | "noInvoiceReason">,
+  parts: readonly Pick<ServiceOrderPart, "quantity">[]
+): { rw: boolean; invoice: boolean } {
+  return {
+    rw: needsRw(order, parts),
+    invoice: order.status !== "anulowane" && !order.fsNumber && !order.noInvoiceReason,
+  };
+}
+
+/** „Brakuje faktury za naprawę i RW” — jedno zdanie o brakach albo null. */
+export function missingDocsText(missing: { rw: boolean; invoice: boolean }): string | null {
+  const items = [missing.invoice ? "faktury za naprawę" : null, missing.rw ? "RW na części" : null].filter(Boolean);
+  return items.length ? `Brakuje ${items.join(" i ")}` : null;
+}
+
+export function serviceOrderGroup(
+  order: Pick<ServiceOrder, "status" | "rwNumber" | "fsNumber" | "noInvoiceReason">,
+  parts: readonly Pick<ServiceOrderPart, "quantity">[]
+): ServiceOrderGroup {
+  if (isClosedServiceOrder(order.status)) {
+    const m = missingServiceOrderDocs(order, parts);
+    return m.rw || m.invoice ? "dokumenty" : "zamkniete";
+  }
   if (order.status === "czeka_na_czesc") return "czeka_na_czesc";
   if (order.status === "gotowe") return "gotowe";
   return "w_serwisie";

@@ -20,7 +20,7 @@ export const ORDER_GROUP_LABEL: Record<ServiceOrderGroup, string> = {
   czeka_na_czesc: "Czeka na część",
   w_serwisie: "W serwisie",
   gotowe: "Gotowe do wydania",
-  do_rw: "Do RW",
+  dokumenty: "Brak dokumentów",
   zamkniete: "Zamknięte",
 };
 
@@ -68,6 +68,9 @@ const EVENT_TONE: Record<ServiceOrderEvent["type"], EventTimelineTone> = {
   loaner_unlinked: "muted",
   rw: "ok",
   note: "neutral",
+  invoice: "ok",
+  invoice_cleared: "muted",
+  waiting_part: "warn",
 };
 
 export function orderEventTone(e: ServiceOrderEvent): EventTimelineTone {
@@ -94,6 +97,12 @@ export function orderEventTitle(e: ServiceOrderEvent): string {
       return e.note ? `Zamiennik ${e.note}` : "Odpięto zamiennik";
     case "rw":
       return `RW ${e.note.replace(/^RW\s*/i, "")}`;
+    case "invoice":
+      return e.note.startsWith("Bez faktury") ? e.note : `Faktura `;
+    case "invoice_cleared":
+      return `Usunięto fakturę ()`;
+    case "waiting_part":
+      return `Czeka na: `;
     case "note":
       return e.note || "Notatka";
   }
@@ -110,3 +119,13 @@ export function orderEventMeta(e: ServiceOrderEvent): string {
 export function orderSearchText(o: ServiceOrder): string {
   return `${o.number} ${o.clientName} ${o.deviceName} ${o.deviceSymbol ?? ""} ${o.serialNo ?? ""} ${o.rwNumber ?? ""}`.toLocaleLowerCase("pl-PL");
 }
+
+/** Status prośby do zakupów po polsku (lista części, „czeka na część” w zleceniu). */
+export const REQUEST_STATUS_LABEL: Record<string, string> = {
+  Nowe: "nowa prośba",
+  Weryfikacja: "w weryfikacji",
+  Zamowione: "zamówione",
+  Czesciowo_zrealizowane: "częściowo dostarczone",
+  Zrealizowane: "dostarczone",
+  Anulowane: "anulowana",
+};

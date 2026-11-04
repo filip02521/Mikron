@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
-import { Button } from "@/components/ui/Button";
-import { IconChevronRight, IconCircleCheck, IconClock, IconPackageCheck, IconSearch, IconUndoLeft, IconX } from "@/components/icons/StrokeIcons";
+import { Button, buttonClass } from "@/components/ui/Button";
+import { IconChevronRight, IconCircleCheck, IconClock, IconPackageCheck, IconPhone, IconSearch, IconUndoLeft, IconX } from "@/components/icons/StrokeIcons";
 import { EventTimeline } from "@/components/ui/EventTimeline";
 import { StatusStepper } from "@/components/ui/StatusStepper";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
@@ -13,17 +13,19 @@ import {
   actionLinkServiceOrderLoaner,
   actionMoveServiceOrder,
   actionReturnServiceOrderPart,
-  actionSetServiceOrderRw,
   actionTakeServiceOrderPart,
   actionUpdateServiceOrderWorkNote,
   type ServiceOrderActionResult,
 } from "@/app/actions/service-orders";
 import { pickerInputClass, ProductPicker, type PickedProduct } from "@/components/serwis/SubiektPickers";
+import { ServiceOrderDocuments } from "@/components/serwis/ServiceOrderDocuments";
+import { ServiceOrderWaitForm } from "@/components/serwis/ServiceOrderWaitForm";
 import {
   daysSince,
   formatDateOnly,
   formatDay,
   OrderStatusPill,
+  REQUEST_STATUS_LABEL,
   orderEventMeta,
   orderEventTitle,
   orderEventTone,
@@ -33,18 +35,17 @@ import {
 } from "@/components/serwis/service-order-view";
 import {
   allowedNextStatuses,
-  canSetServiceOrderRw,
   flowIndex,
   isBackwardTransition,
   isClosedServiceOrder,
   isServiceOrderLate,
-  needsRw,
+  missingServiceOrderDocs,
   primaryNextStatus,
-  rwClipboardText,
   rwLines,
   SERVICE_ORDER_FLOW,
   SERVICE_ORDER_STATUS_LABEL,
   SERVICE_ORDER_TEXT_MAX,
+  serviceOrderPanelView,
   transitionHint,
   transitionLabel,
   type ServiceOrder,
@@ -121,8 +122,7 @@ export function ServiceOrderDrawer({
   const [part, setPart] = useState<PickedProduct | null>(null);
   const [qty, setQty] = useState("1");
   const [remember, setRemember] = useState(true);
-  const [rw, setRw] = useState("");
-  const [copied, setCopied] = useState(false);
+  const [waitingForm, setWaitingForm] = useState(false);
   const [loanerPick, setLoanerPick] = useState("");
   useBodyScrollLock(true);
   useFocusTrap(panelRef, true);
@@ -160,11 +160,13 @@ export function ServiceOrderDrawer({
   const canCancel = allowedNextStatuses(order.status).includes("anulowane");
   const late = isServiceOrderLate(order, today);
   const lines = rwLines(parts);
-  const pendingRw = needsRw(order, parts);
   const bom = order.deviceTwId ? modelParts.filter((m) => m.modelTwId === order.deviceTwId) : [];
   const partInBom = part?.twId != null && bom.some((b) => b.partTwId === part.twId);
   const linked = order.loanerUnitId ? loaners.find((l) => l.id === order.loanerUnitId) ?? null : null;
-  const primaryHint = primary ? transitionHint(primary, { partsWithoutRw: pendingRw, loanerCode: linked?.code ?? null }) : null;
+  const missing = missingServiceOrderDocs(order, parts);
+  const primaryHint = primary ? transitionHint(primary, { missing, loanerCode: linked?.code ?? null }) : null;
+  // Widok idzie za krokiem: przy przyjęciu zamiennik, w naprawie części, przy wydaniu dokumenty i telefon.
+  const view = serviceOrderPanelView(order.status);
   // Najpierw egzemplarze u tego klienta (po kh_Id albo nazwie), potem pozostałe wydane.
   const linkable = [...loaners].sort((a, b) => {
     const mine = (l: LinkableLoaner) =>
@@ -176,6 +178,77 @@ export function ServiceOrderDrawer({
     .map((e) => ({ id: e.id, at: e.at, title: orderEventTitle(e), meta: orderEventMeta(e) || undefined, tone: orderEventTone(e) }));
 
   const move = (to: ServiceOrderStatus, note = "") => submit(() => actionMoveServiceOrder({ orderId: order.id, to, note }));
+
+  // Zamiennik: przy przyjęciu na górze panelu (wtedy się go wydaje), potem pod częściami.
+  const loanerSection = (
+    <Section title="Zamiennik dla klienta">
+      {linked || order.loanerUnitId ? (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span>
+            <b className="font-mono font-semibold">{linked?.code ?? "egzemplarz zwrócony"}</b>
+            {linked ? <span className="text-slate-500"> · {linked.twName}</span> : null}
+          </span>
+          <Button
+            type="button"
+            variant="secondary"
+            className={cn("ml-auto", touchClass)}
+            disabled={pending}
+            onClick={() => submit(() => actionLinkServiceOrderLoaner({ orderId: order.id, unitId: null }))}
+          >
+            Odepnij
+          </Button>
+        </div>
+      ) : closed ? (
+        <p className="text-[0.8125rem] text-slate-500">Bez zamiennika.</p>
+      ) : linkable.length ? (
+        <form
+          className="space-y-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (loanerPick) submit(() => actionLinkServiceOrderLoaner({ orderId: order.id, unitId: loanerPick }), () => setLoanerPick(""));
+          }}
+        >
+          <label htmlFor={`${formId}-loaner`} className="block text-xs font-semibold text-slate-600">
+            Egzemplarz wydany temu klientowi
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <select
+              id={`${formId}-loaner`}
+              value={loanerPick}
+              disabled={pending}
+              onChange={(e) => setLoanerPick(e.target.value)}
+              className={cn(pickerInputClass, "min-w-0 flex-1")}
+            >
+              <option value="">Wybierz egzemplarz…</option>
+              {linkable.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.code} · {l.clientName ?? "—"}
+                </option>
+              ))}
+            </select>
+            <Button type="submit" variant="secondary" disabled={pending || !loanerPick}>
+              Powiąż
+            </Button>
+          </div>
+          <p className="text-[0.8125rem] text-slate-500">
+            Nie ma go na liście?{" "}
+            <Link href="/serwis/zamienniki" className="font-medium text-indigo-700 underline underline-offset-2">
+              Wydaj zamiennik na tablicy
+            </Link>
+            , a potem powiąż go tutaj.
+          </p>
+        </form>
+      ) : (
+        <p className="text-[0.8125rem] text-slate-500">
+          Żaden egzemplarz nie jest wydany.{" "}
+          <Link href="/serwis/zamienniki" className="font-medium text-indigo-700 underline underline-offset-2">
+            Wydaj zamiennik na tablicy
+          </Link>
+          , a potem powiąż go tutaj.
+        </p>
+      )}
+    </Section>
+  );
 
   return (
     <>
@@ -268,7 +341,7 @@ export function ServiceOrderDrawer({
                       type="button"
                       variant="secondary"
                       disabled={pending}
-                      onClick={() => move(s)}
+                      onClick={() => (s === "czeka_na_czesc" ? setWaitingForm(true) : move(s))}
                       className={cn("w-full", touchClass)}
                     >
                       <TransitionIcon to={s} from={order.status} />
@@ -281,6 +354,52 @@ export function ServiceOrderDrawer({
           ) : null}
 
 
+          {waitingForm && !closed ? (
+            <ServiceOrderWaitForm
+              order={order}
+              modelParts={modelParts}
+              pending={pending}
+              submit={(fn, after) =>
+                submit(fn, () => {
+                  setWaitingForm(false);
+                  after?.();
+                })
+              }
+              onCancel={() => setWaitingForm(false)}
+            />
+          ) : null}
+
+          {order.status === "czeka_na_czesc" && order.waitingPart ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+              <div className="text-sm text-amber-900">
+                Czeka na:{" "}
+                <b className="font-semibold">
+                  {order.waitingPart.qty} szt. {order.waitingPart.symbol ?? order.waitingPart.name}
+                </b>
+                {order.waitingPart.symbol ? <span className="text-amber-800"> · {order.waitingPart.name}</span> : null}
+              </div>
+              <div className="text-[0.8125rem] text-amber-800">
+                {order.waitingPart.since ? `od ${formatDay(order.waitingPart.since)} · ` : ""}
+                {order.waitingPart.requestStatus
+                  ? `prośba do zakupów: ${REQUEST_STATUS_LABEL[order.waitingPart.requestStatus] ?? order.waitingPart.requestStatus}`
+                  : "bez prośby do zakupów"}
+              </div>
+            </div>
+          ) : null}
+
+          {view.callClient ? (
+            order.clientPhone ? (
+              <a href={`tel:${order.clientPhone.replace(/[^\d+]/g, "")}`} className={buttonClass("outline", "lg", cn("w-full", touchClass))}>
+                <IconPhone size={18} aria-hidden className="shrink-0" />
+                Zadzwoń do klienta · {order.clientPhone}
+              </a>
+            ) : (
+              <p className="text-[0.8125rem] text-slate-600">Brak telefonu klienta w zleceniu — numer znajdziesz w Subiekcie.</p>
+            )
+          ) : null}
+
+          {view.loanerFirst ? loanerSection : null}
+
           {error ? (
             <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
               {error}
@@ -292,24 +411,25 @@ export function ServiceOrderDrawer({
             {order.accessories ? <p className="text-[0.8125rem] text-slate-500">Przyjęte z: {order.accessories}</p> : null}
           </Section>
 
-          <Section title="Opis prac">
-            {closed && !order.workNote ? (
+          {view.workNoteLabel ? (
+          <Section title={view.workNoteLabel}>
+            {!view.workNoteEditable && !order.workNote ? (
               <p className="text-[0.8125rem] text-slate-500">Bez opisu prac.</p>
-            ) : closed ? (
+            ) : !view.workNoteEditable ? (
               <p className="whitespace-pre-line text-sm text-slate-800">{order.workNote}</p>
             ) : (
             <textarea
               id={`${formId}-work`}
-              aria-label="Opis prac"
+              aria-label={view.workNoteLabel}
               value={workNote}
               rows={3}
               maxLength={SERVICE_ORDER_TEXT_MAX.workNote}
               onChange={(e) => setWorkNote(e.target.value)}
-              placeholder="Co ustaliła diagnoza, co wymieniono"
+              placeholder={order.status === "diagnoza" ? "Co jest zepsute, co trzeba wymienić" : "Co zrobiono, co wymieniono"}
               className="w-full rounded-lg border border-slate-200 bg-card px-3 py-2 text-base focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:text-sm"
             />
             )}
-            {!closed && workNote !== order.workNote ? (
+            {view.workNoteEditable && workNote !== order.workNote ? (
               <div className="flex justify-end gap-2">
                 <Button type="button" className={touchClass} variant="secondary" onClick={() => setWorkNote(order.workNote)} disabled={pending}>
                   Cofnij zmiany
@@ -325,11 +445,13 @@ export function ServiceOrderDrawer({
               </div>
             ) : null}
           </Section>
+          ) : null}
 
+          {view.parts !== "hidden" ? (
           <Section
             title={`Części do zlecenia${parts.length ? ` (${lines.length})` : ""}`}
             aside={
-              !order.rwNumber && order.status !== "anulowane" && !taking ? (
+              !order.rwNumber && view.parts === "edit" && !taking ? (
                 <Button type="button" className={touchClass} variant="secondary" onClick={() => setTaking(true)}>
                   Pobierz część
                 </Button>
@@ -456,145 +578,11 @@ export function ServiceOrderDrawer({
               </form>
             ) : null}
           </Section>
-
-          {order.rwNumber ? (
-            <Section title="RW">
-              <p className="text-sm text-slate-800">
-                <span className="font-mono font-semibold">{order.rwNumber}</span>
-                {order.rwAt ? <span className="text-slate-500"> · wpisane {formatDay(order.rwAt)}</span> : null}
-              </p>
-            </Section>
-          ) : pendingRw ? (
-            <Section title="Do RW">
-              {/* W trakcie naprawy to informacja; po wydaniu/anulowaniu — zaległość do zrobienia. */}
-              <div className={cn("space-y-3 rounded-xl border p-4", closed ? "border-amber-200 bg-amber-50" : "border-slate-200 bg-slate-50")}>
-                <p className={cn("text-[0.8125rem]", closed ? "text-amber-900" : "text-slate-600")}>
-                  {closed
-                    ? "Zlecenie zamknięte, a części nie mają RW. Wystaw w Subiekcie RW z tymi pozycjami i wpisz tu jego numer."
-                    : "Po naprawie wystaw w Subiekcie RW z tymi pozycjami i wpisz tu jego numer. Do tego czasu części liczą się jako pobrane, a stan w Subiekcie ich nie widzi."}
-                </p>
-                <ul className="space-y-1">
-                  {lines.map((l) => (
-                    <li key={l.partTwId} className="flex gap-3 text-sm">
-                      <span className="w-12 flex-none text-right font-semibold tabular-nums">{l.quantity}</span>
-                      <span className="min-w-0 flex-1">
-                        <span className="font-mono">{l.partSymbol ?? "—"}</span> <span className="text-slate-600">{l.partName}</span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  type="button"
-                  className={touchClass}
-                  variant="secondary"
-                  onClick={() =>
-                    navigator.clipboard?.writeText(rwClipboardText(lines)).then(
-                      () => setCopied(true),
-                      () => setCopied(false)
-                    )
-                  }
-                >
-                  {copied ? "Skopiowano pozycje" : "Kopiuj pozycje (symbol, ilość)"}
-                </Button>
-                {canSetServiceOrderRw(order.status) ? (
-                <form
-                  className="flex flex-wrap items-end gap-2"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    submit(() => actionSetServiceOrderRw({ orderId: order.id, rwNumber: rw }), () => setRw(""));
-                  }}
-                >
-                  <div className="min-w-0 flex-1">
-                    <label htmlFor={`${formId}-rw`} className="mb-1.5 block text-xs font-semibold text-slate-600">
-                      Numer RW z Subiekta
-                    </label>
-                    <input
-                      id={`${formId}-rw`}
-                      value={rw}
-                      maxLength={SERVICE_ORDER_TEXT_MAX.rw}
-                      onChange={(e) => setRw(e.target.value)}
-                      placeholder="Np. RW 15/MAG/2026"
-                      className={`${pickerInputClass} font-mono`}
-                    />
-                  </div>
-                  <Button type="submit" className={touchClass} disabled={pending || !rw.trim()}>
-                    Zapisz RW
-                  </Button>
-                </form>
-                ) : (
-                  <p className="text-[0.8125rem] text-slate-500">Numer RW wpiszesz, gdy zlecenie będzie gotowe do wydania.</p>
-                )}
-              </div>
-            </Section>
           ) : null}
 
-          <Section title="Zamiennik dla klienta">
-            {linked || order.loanerUnitId ? (
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <span>
-                  <b className="font-mono font-semibold">{linked?.code ?? "egzemplarz zwrócony"}</b>
-                  {linked ? <span className="text-slate-500"> · {linked.twName}</span> : null}
-                </span>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className={cn("ml-auto", touchClass)}
-                  disabled={pending}
-                  onClick={() => submit(() => actionLinkServiceOrderLoaner({ orderId: order.id, unitId: null }))}
-                >
-                  Odepnij
-                </Button>
-              </div>
-            ) : closed ? (
-              <p className="text-[0.8125rem] text-slate-500">Bez zamiennika.</p>
-            ) : linkable.length ? (
-              <form
-                className="space-y-2"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (loanerPick) submit(() => actionLinkServiceOrderLoaner({ orderId: order.id, unitId: loanerPick }), () => setLoanerPick(""));
-                }}
-              >
-                <label htmlFor={`${formId}-loaner`} className="block text-xs font-semibold text-slate-600">
-                  Egzemplarz wydany temu klientowi
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  <select
-                    id={`${formId}-loaner`}
-                    value={loanerPick}
-                    disabled={pending}
-                    onChange={(e) => setLoanerPick(e.target.value)}
-                    className={cn(pickerInputClass, "min-w-0 flex-1")}
-                  >
-                    <option value="">Wybierz egzemplarz…</option>
-                    {linkable.map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {l.code} · {l.clientName ?? "—"}
-                      </option>
-                    ))}
-                  </select>
-                  <Button type="submit" variant="secondary" disabled={pending || !loanerPick}>
-                    Powiąż
-                  </Button>
-                </div>
-                <p className="text-[0.8125rem] text-slate-500">
-                  Nie ma go na liście?{" "}
-                  <Link href="/serwis/zamienniki" className="font-medium text-indigo-700 underline underline-offset-2">
-                    Wydaj zamiennik na tablicy
-                  </Link>
-                  , a potem powiąż go tutaj.
-                </p>
-              </form>
-            ) : (
-              <p className="text-[0.8125rem] text-slate-500">
-                Żaden egzemplarz nie jest wydany.{" "}
-                <Link href="/serwis/zamienniki" className="font-medium text-indigo-700 underline underline-offset-2">
-                  Wydaj zamiennik na tablicy
-                </Link>
-                , a potem powiąż go tutaj.
-              </p>
-            )}
-          </Section>
+          {view.documents ? <ServiceOrderDocuments order={order} parts={parts} pending={pending} submit={submit} /> : null}
+
+          {!view.loanerFirst ? loanerSection : null}
 
           <Section title="Historia zlecenia">
             <EventTimeline label="Historia zlecenia" items={historyItems} />

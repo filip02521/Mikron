@@ -84,3 +84,22 @@ export async function fetchClientEquipment(khId: number): Promise<ClientEquipmen
   const items = dropServiceProducts(all, new Map(kinds));
   return { items, invoicesScanned: scanned, truncated };
 }
+
+export type ClientRecentInvoice = { id: number; number: string; date: string | null; gross: number | null };
+
+/** Ostatnie faktury klienta (90 dni, najnowsze najpierw) — do wskazania faktury za naprawę. Tylko serwer. */
+export async function fetchClientRecentInvoices(khId: number): Promise<ClientRecentInvoice[]> {
+  const qs = subiektQueryString({ kh_id: khId, dataOd: warsawDateKeyDaysAgo(90), dataDo: warsawNowParts().dateKey, page: 1, pageSize: PAGE_SIZE });
+  const res = await subiektJson<{ data?: { dok_Id: number; dok_NrPelny?: string | null; dok_DataWyst?: string | null; dok_WartBrutto?: number | null }[] }>(
+    `${SUBIEKT_PATHS.documentsFs}${qs}`
+  );
+  return (res.data ?? [])
+    .map((d) => ({
+      id: d.dok_Id,
+      number: d.dok_NrPelny?.trim() || `FS ${d.dok_Id}`,
+      date: d.dok_DataWyst ? String(d.dok_DataWyst).slice(0, 10) : null,
+      gross: typeof d.dok_WartBrutto === "number" ? d.dok_WartBrutto : null,
+    }))
+    .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? "") || b.id - a.id)
+    .slice(0, 30);
+}

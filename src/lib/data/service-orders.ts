@@ -1,7 +1,9 @@
 import type { PoolClient } from "pg";
+import { servicePartRequestNote } from "@/lib/orders/service-part-report";
 import { query, withClient } from "@/lib/db/pool";
 import {
   canMoveServiceOrder,
+  canSetServiceOrderInvoice,
   canSetServiceOrderRw,
   isClosedServiceOrder,
   nextServiceOrderNumber,
@@ -36,6 +38,14 @@ type OrderRow = {
   loaner_unit_id: string | null;
   rw_number: string | null;
   rw_at: Date | null;
+  fs_id: number | null;
+  fs_number: string | null;
+  no_invoice_reason: string | null;
+  waiting_part_tw_id: number | null;
+  waiting_part_symbol: string | null;
+  waiting_part_name: string | null;
+  waiting_part_qty: number | null;
+  waiting_since: Date | null;
   closed_at: Date | null;
   created_at: Date;
 };
@@ -64,7 +74,8 @@ type EventRow = {
 
 const ORDER_COLS = `id, number, client_kh_id, client_name, client_phone, device_tw_id, device_symbol, device_name,
   serial_no, fault, accessories, work_note, to_char(due_date, 'YYYY-MM-DD') AS due_date, status, loaner_unit_id,
-  rw_number, rw_at, closed_at, created_at`;
+  rw_number, rw_at, fs_id, fs_number, no_invoice_reason, waiting_part_tw_id, waiting_part_symbol, waiting_part_name,
+  waiting_part_qty, waiting_since, closed_at, created_at`;
 
 function mapOrder(r: OrderRow): ServiceOrder {
   return {
@@ -85,6 +96,19 @@ function mapOrder(r: OrderRow): ServiceOrder {
     loanerUnitId: r.loaner_unit_id,
     rwNumber: r.rw_number,
     rwAt: r.rw_at ? new Date(r.rw_at).toISOString() : null,
+    fsId: r.fs_id != null ? Number(r.fs_id) : null,
+    fsNumber: r.fs_number,
+    noInvoiceReason: r.no_invoice_reason,
+    waitingPart: r.waiting_part_name
+      ? {
+          twId: r.waiting_part_tw_id != null ? Number(r.waiting_part_tw_id) : null,
+          symbol: r.waiting_part_symbol,
+          name: r.waiting_part_name,
+          qty: Number(r.waiting_part_qty ?? 1),
+          since: r.waiting_since ? new Date(r.waiting_since).toISOString() : null,
+          requestStatus: null,
+        }
+      : null,
     closedAt: r.closed_at ? new Date(r.closed_at).toISOString() : null,
     createdAt: new Date(r.created_at).toISOString(),
   };
@@ -148,7 +172,23 @@ export async function fetchServiceOrderBoard(): Promise<ServiceOrderBoard> {
       [ids]
     ),
   ]);
-  return { orders: orders.rows.map(mapOrder), parts: parts.rows.map(mapPart), events: events.rows.map(mapEvent) };
+  const mapped = orders.rows.map(mapOrder);
+  // Status prośby o część, na którą zlecenie czeka: prośba ma uwagę „Zgłoszenie serwisu: ZS/…” (zgłoszenie z panelu).
+  const waiting = mapped.filter((o) => o.waitingPart?.twId);
+  if (waiting.length) {
+    const req = await query<{ note: string; subiekt_tw_id: number; status: string }>(
+      `SELECT DISTINCT ON (sales_request_note, subiekt_tw_id) sales_request_note AS note, subiekt_tw_id, status::text AS status
+         FROM individual_orders
+        WHERE sales_request_note = ANY($1::text[])
+        ORDER BY sales_request_note, subiekt_tw_id, created_at DESC`,
+      [waiting.map((o) => servicePartRequestNote(o.number))]
+    );
+    for (const o of waiting) {
+      const hit = req.rows.find((r) => r.note === servicePartRequestNote(o.number) && Number(r.subiekt_tw_id) === o.waitingPart!.twId);
+      if (hit) o.waitingPart = { ...o.waitingPart!, requestStatus: hit.status };
+    }
+  }
+  return { orders: mapped, parts: parts.rows.map(mapPart), events: events.rows.map(mapEvent) };
 }
 
 /**
@@ -271,13 +311,99 @@ export async function moveServiceOrder(
         `Zlecenie ${o.number} ma status „${SERVICE_ORDER_STATUS_LABEL[o.status]}” — nie można go zmienić na „${SERVICE_ORDER_STATUS_LABEL[input.to]}”. Odśwież panel.`
       );
     }
+    if (input.to === "czeka_na_czesc") {
+      throw new ServiceOrderStateError("Wybierz, na jaką część czeka zlecenie.");
+    }
     const closing = isClosedServiceOrder(input.to);
+    // Wyjście z „czeka na część” kończy czekanie — część zostaje w historii (zdarzenie waiting_part).
     await c.query(
-      `UPDATE service_orders SET status = $2, closed_at = CASE WHEN $3 THEN now() ELSE NULL END, updated_at = now() WHERE id = $1`,
+      `UPDATE service_orders
+          SET status = $2, closed_at = CASE WHEN $3 THEN now() ELSE NULL END, updated_at = now(),
+              waiting_part_tw_id = NULL, waiting_part_symbol = NULL, waiting_part_name = NULL,
+              waiting_part_qty = NULL, waiting_since = NULL
+        WHERE id = $1`,
       [o.id, input.to, closing]
     );
     await addEvent(c, o.id, "status", actor, { fromStatus: o.status, toStatus: input.to, note: input.note });
-    return { ...o, status: input.to };
+    return { ...o, status: input.to, waitingPart: null };
+  });
+}
+
+/** „Czeka na część”: status + która część (z Subiekta albo sama nazwa) i ile. Zgłoszenie do zakupów robi akcja. */
+export async function waitForServicePart(
+  input: { orderId: string; part: { twId: number | null; symbol: string | null; name: string }; qty: number; note: string },
+  actor: ServiceActor
+): Promise<ServiceOrder> {
+  return inTx(async (c) => {
+    const o = await lockOrder(c, input.orderId);
+    if (!canMoveServiceOrder(o.status, "czeka_na_czesc")) {
+      throw new ServiceOrderStateError(
+        `Zlecenie ${o.number} ma status „${SERVICE_ORDER_STATUS_LABEL[o.status]}” — nie może czekać na część. Odśwież panel.`
+      );
+    }
+    await c.query(
+      `UPDATE service_orders
+          SET status = 'czeka_na_czesc', updated_at = now(), waiting_part_tw_id = $2, waiting_part_symbol = $3,
+              waiting_part_name = $4, waiting_part_qty = $5, waiting_since = now()
+        WHERE id = $1`,
+      [o.id, input.part.twId, input.part.symbol, input.part.name, input.qty]
+    );
+    await addEvent(c, o.id, "status", actor, { fromStatus: o.status, toStatus: "czeka_na_czesc", note: input.note });
+    await addEvent(c, o.id, "waiting_part", actor, { note: `${input.qty} szt. ${input.part.symbol ?? input.part.name}` });
+    return {
+      ...o,
+      status: "czeka_na_czesc",
+      waitingPart: { twId: input.part.twId, symbol: input.part.symbol, name: input.part.name, qty: input.qty, since: new Date().toISOString(), requestStatus: null },
+    };
+  });
+}
+
+/** Faktura za naprawę (od „gotowe”): z listy FS klienta (fsId) albo numer wpisany ręcznie. Zastępuje „bez faktury”. */
+export async function setServiceOrderInvoice(
+  input: { orderId: string; fsId: number | null; fsNumber: string },
+  actor: ServiceActor
+): Promise<ServiceOrder> {
+  return inTx(async (c) => {
+    const o = await lockOrder(c, input.orderId);
+    if (!canSetServiceOrderInvoice(o.status)) {
+      throw new ServiceOrderStateError(`Fakturę wpisz przy wydaniu — zlecenie ${o.number} jest „${SERVICE_ORDER_STATUS_LABEL[o.status]}”.`);
+    }
+    await c.query(
+      `UPDATE service_orders SET fs_id = $2, fs_number = $3, fs_at = now(), no_invoice_reason = NULL, updated_at = now() WHERE id = $1`,
+      [o.id, input.fsId, input.fsNumber]
+    );
+    await addEvent(c, o.id, "invoice", actor, { note: input.fsNumber });
+    return { ...o, fsId: input.fsId, fsNumber: input.fsNumber, noInvoiceReason: null };
+  });
+}
+
+/** Naprawa bez faktury (gwarancja, bezpłatna) — z powodem; zamyka brak faktury na liście dokumentów. */
+export async function setServiceOrderNoInvoice(input: { orderId: string; reason: string }, actor: ServiceActor): Promise<ServiceOrder> {
+  return inTx(async (c) => {
+    const o = await lockOrder(c, input.orderId);
+    if (!canSetServiceOrderInvoice(o.status)) {
+      throw new ServiceOrderStateError(`Zlecenie ${o.number} jest „${SERVICE_ORDER_STATUS_LABEL[o.status]}” — faktury tu nie dotyczy.`);
+    }
+    await c.query(
+      `UPDATE service_orders SET fs_id = NULL, fs_number = NULL, fs_at = NULL, no_invoice_reason = $2, updated_at = now() WHERE id = $1`,
+      [o.id, input.reason]
+    );
+    await addEvent(c, o.id, "invoice", actor, { note: `Bez faktury: ${input.reason}` });
+    return { ...o, fsId: null, fsNumber: null, noInvoiceReason: input.reason };
+  });
+}
+
+/** Zmiana zdania: faktura albo „bez faktury” wraca do pustej (np. wpisany zły numer). */
+export async function clearServiceOrderInvoice(input: { orderId: string }, actor: ServiceActor): Promise<ServiceOrder> {
+  return inTx(async (c) => {
+    const o = await lockOrder(c, input.orderId);
+    if (!o.fsNumber && !o.noInvoiceReason) return o;
+    await c.query(
+      `UPDATE service_orders SET fs_id = NULL, fs_number = NULL, fs_at = NULL, no_invoice_reason = NULL, updated_at = now() WHERE id = $1`,
+      [o.id]
+    );
+    await addEvent(c, o.id, "invoice_cleared", actor, { note: o.fsNumber ?? "bez faktury" });
+    return { ...o, fsId: null, fsNumber: null, noInvoiceReason: null };
   });
 }
 

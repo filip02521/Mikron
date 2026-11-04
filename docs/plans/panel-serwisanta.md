@@ -67,6 +67,20 @@ Przegląd uprawnień (agent `authz-reviewer`) bez uwag krytycznych/wysokich.
   Ograniczenie: paragony detaliczne idą na zbiorczego kontrahenta (994 z 1000 sprawdzonych) — klient
   detaliczny nie ma ich pod swoją kartoteką.
 
+### 5a. Panel zlecenia idzie za krokiem (`serviceOrderPanelView`)
+| Status | Co widać | Krok główny |
+|---|---|---|
+| Przyjęte | usterka, akcesoria, zamiennik na górze; bez części i notatki | Zacznij diagnozę |
+| Diagnoza | „Co ustaliła diagnoza”, pobieranie części (najpierw katalog modelu) | Zacznij naprawę |
+| W naprawie | „Opis prac”, części | Oznacz jako gotowe |
+| Czeka na część | pasek „Czeka na: N szt. część · od … · prośba do zakupów: status”; wejście pyta o część i może złożyć prośbę (ta sama co „Zgłoś brak”, uwaga „Zgłoszenie serwisu: ZS/…”) | Wznów naprawę |
+| Gotowe do wydania | „Zadzwoń do klienta” (tel:), **Dokumenty**: faktura za naprawę (FS klienta z 90 dni, numer ręcznie albo „bez faktury” z powodem) + RW na części | Wydaj klientowi (zdanie pod nim mówi, czego brakuje) |
+| Wydane | podsumowanie; brakujące dokumenty da się uzupełnić | — |
+| Anulowane | powód; części tylko do oddania albo RW | — |
+
+Braki dokumentów tylko ostrzegają: zamknięte zlecenie bez faktury (lub „bez faktury”) albo z częściami bez RW
+jest w grupie „Brak dokumentów”. Migracja `210_service_orders_documents.sql`.
+
 ### 6. Części do zlecenia i RW (wystawiane ręcznie)
 - „Pobierz część”: najpierw katalog modelu, potem dowolny towar z Subiekta (tw_Id sprawdzany w Subiekcie).
   „Zapamiętaj w katalogu modelu” dopisuje część do BOM. Część można oddać, dopóki nie ma RW.
@@ -107,4 +121,4 @@ npm run dev
 2. **Konto serwisanta**: sprawdzić panel na koncie z rolą `serwis` (menu, dostęp tylko do `/serwis/*`,
    podpowiedzi klientów przy przyjęciu).
 3. **Wydruk potwierdzenia przyjęcia** — świadomie pominięty (decyzja: tylko zapis w OnTime).
-4. Produkcja: migracje `207`, `208`, `209`, karta i konto „Serwis”.
+4. Produkcja: migracje `207`, `208`, `209`, `210`, karta i konto „Serwis”.

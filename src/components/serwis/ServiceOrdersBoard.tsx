@@ -33,20 +33,20 @@ import {
 /** Kolejność grup: najpierw to, co stoi, potem praca w toku, wydanie, papiery, archiwum. */
 const noopSubscribe = () => () => {};
 
-const GROUP_ORDER: ServiceOrderGroup[] = ["czeka_na_czesc", "w_serwisie", "gotowe", "do_rw", "zamkniete"];
+const GROUP_ORDER: ServiceOrderGroup[] = ["czeka_na_czesc", "w_serwisie", "gotowe", "dokumenty", "zamkniete"];
 
 const TILES: { id: Exclude<ServiceOrderGroup, "zamkniete">; tone: string }[] = [
   { id: "w_serwisie", tone: "bg-indigo-600" },
   { id: "czeka_na_czesc", tone: "bg-amber-500" },
   { id: "gotowe", tone: "bg-emerald-500" },
-  { id: "do_rw", tone: "bg-red-500" },
+  { id: "dokumenty", tone: "bg-red-500" },
 ];
 
 const TILE_HINT: Record<Exclude<ServiceOrderGroup, "zamkniete">, string> = {
   w_serwisie: "Przyjęte, diagnoza, naprawa",
   czeka_na_czesc: "Naprawa stoi — brakuje części",
   gotowe: "Do odbioru przez klienta",
-  do_rw: "Zamknięte, części bez RW",
+  dokumenty: "Zamknięte bez faktury lub RW",
 };
 
 function OrderRow({ order, partsCount, today, onOpen }: { order: ServiceOrder; partsCount: number; today: Date; onOpen: () => void }) {
@@ -137,7 +137,7 @@ export function ServiceOrdersBoard({
 
   // Liczniki kafli bez szukania — to stan całego serwisu, nie wynik wyszukiwania.
   const counts = useMemo(() => {
-    const c: Record<ServiceOrderGroup, number> = { czeka_na_czesc: 0, w_serwisie: 0, gotowe: 0, do_rw: 0, zamkniete: 0 };
+    const c: Record<ServiceOrderGroup, number> = { czeka_na_czesc: 0, w_serwisie: 0, gotowe: 0, dokumenty: 0, zamkniete: 0 };
     for (const o of orders) c[serviceOrderGroup(o, partsByOrder.get(o.id) ?? [])]++;
     return c;
   }, [orders, partsByOrder]);

@@ -12,6 +12,7 @@ import { polishPlural } from "@/lib/email/polish-plural";
 import { formatPlDate } from "@/lib/display-labels";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
 import { NoticeToast } from "@/components/ui/NoticeToast";
+import { REQUEST_STATUS_LABEL } from "@/components/serwis/service-order-view";
 import { ServicePartReportDialog } from "@/components/serwis/ServicePartReportDialog";
 import {
   summarizeServiceParts,
@@ -21,11 +22,6 @@ import {
 
 type Filter = "all" | "to_request" | "missing" | "below_min" | "requested";
 
-const STATUS_LABEL: Record<string, string> = {
-  Nowe: "nowa prośba",
-  Weryfikacja: "w weryfikacji",
-  Zamowione: "zamówione",
-};
 
 function matchesFilter(row: ServicePartRow, filter: Filter): boolean {
   switch (filter) {
@@ -118,7 +114,7 @@ function RequestPill({ req }: { req: ServicePartRequest }) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium tabular-nums text-indigo-900">
       <span className="h-1.5 w-1.5 rounded-full bg-indigo-600" aria-hidden />
-      {`${req.quantity} szt. · ${STATUS_LABEL[req.status] ?? req.status} · ${formatNearDay(req.createdAt)}`}
+      {`${req.quantity} szt. · ${REQUEST_STATUS_LABEL[req.status] ?? req.status} · ${formatNearDay(req.createdAt)}`}
     </span>
   );
 }

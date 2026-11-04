@@ -86,15 +86,23 @@ describe("RW", () => {
 });
 
 describe("grupy listy", () => {
-  it("zamknięte zlecenie z częściami bez RW trafia do „Do RW”", () => {
-    expect(serviceOrderGroup({ status: "wydane", rwNumber: null }, [part(1, 1)])).toBe("do_rw");
-    expect(serviceOrderGroup({ status: "wydane", rwNumber: "RW 1/26" }, [part(1, 1)])).toBe("zamkniete");
-    expect(serviceOrderGroup({ status: "anulowane", rwNumber: null }, [])).toBe("zamkniete");
+  const closed = (status: "wydane" | "anulowane", rwNumber: string | null, fs: string | null = null, noInv: string | null = null) =>
+    ({ status, rwNumber, fsNumber: fs, noInvoiceReason: noInv });
+  it("wydane bez faktury albo z częściami bez RW trafia do „Brak dokumentów”", () => {
+    expect(serviceOrderGroup(closed("wydane", null, "FS 1/26"), [part(1, 1)])).toBe("dokumenty");
+    expect(serviceOrderGroup(closed("wydane", "RW 1/26"), [part(1, 1)])).toBe("dokumenty");
+    expect(serviceOrderGroup(closed("wydane", "RW 1/26", "FS 1/26"), [part(1, 1)])).toBe("zamkniete");
+    expect(serviceOrderGroup(closed("wydane", null, null, "gwarancja"), [])).toBe("zamkniete");
+  });
+  it("anulowane nie potrzebuje faktury — tylko RW za nieoddane części", () => {
+    expect(serviceOrderGroup(closed("anulowane", null), [])).toBe("zamkniete");
+    expect(serviceOrderGroup(closed("anulowane", null), [part(1, 1)])).toBe("dokumenty");
   });
   it("otwarte według tego, co trzeba zrobić", () => {
-    expect(serviceOrderGroup({ status: "czeka_na_czesc", rwNumber: null }, [])).toBe("czeka_na_czesc");
-    expect(serviceOrderGroup({ status: "gotowe", rwNumber: null }, [])).toBe("gotowe");
-    expect(serviceOrderGroup({ status: "diagnoza", rwNumber: null }, [])).toBe("w_serwisie");
+    const open = (status: "czeka_na_czesc" | "gotowe" | "diagnoza") => ({ status, rwNumber: null, fsNumber: null, noInvoiceReason: null });
+    expect(serviceOrderGroup(open("czeka_na_czesc"), [])).toBe("czeka_na_czesc");
+    expect(serviceOrderGroup(open("gotowe"), [])).toBe("gotowe");
+    expect(serviceOrderGroup(open("diagnoza"), [])).toBe("w_serwisie");
   });
 });
 
@@ -135,13 +143,30 @@ describe("etykiety przejść", () => {
 });
 
 describe("zdanie o skutku pod przyciskiem głównym", () => {
-  it("wydanie mówi o zamknięciu, RW i zamienniku tylko wtedy, gdy dotyczą", async () => {
+  it("wydanie mówi o zamknięciu, brakach dokumentów i zamienniku tylko wtedy, gdy dotyczą", async () => {
     const { transitionHint } = await import("./service-orders");
-    expect(transitionHint("wydane", { partsWithoutRw: false, loanerCode: null })).toBe("Zamyka zlecenie.");
-    expect(transitionHint("wydane", { partsWithoutRw: true, loanerCode: "ZAST-001" })).toBe(
-      "Zamyka zlecenie. Pobrane części bez RW zostaną na liście „Do RW”. Odbierz od klienta zamiennik ZAST-001."
+    const none = { rw: false, invoice: false };
+    expect(transitionHint("wydane", { missing: none, loanerCode: null })).toBe("Zamyka zlecenie.");
+    expect(transitionHint("wydane", { missing: { rw: true, invoice: true }, loanerCode: "ZAST-001" })).toBe(
+      "Zamyka zlecenie. Brakuje faktury za naprawę i RW na części — zlecenie zostanie na liście „Brak dokumentów”. Odbierz od klienta zamiennik ZAST-001."
     );
-    expect(transitionHint("gotowe", { partsWithoutRw: false, loanerCode: null })).toMatch(/numer RW/);
-    expect(transitionHint("diagnoza", { partsWithoutRw: false, loanerCode: null })).toBeNull();
+    expect(transitionHint("gotowe", { missing: none, loanerCode: null })).toMatch(/fakturę za naprawę i RW/);
+    expect(transitionHint("diagnoza", { missing: none, loanerCode: null })).toBeNull();
+  });
+});
+
+describe("widok panelu na każdym kroku", () => {
+  it("przyjęcie: zamiennik na górze, bez części i dokumentów; naprawa: części; gotowe: dokumenty i telefon", async () => {
+    const { serviceOrderPanelView } = await import("./service-orders");
+    expect(serviceOrderPanelView("przyjete")).toMatchObject({ loanerFirst: true, parts: "hidden", documents: false, workNoteLabel: null });
+    expect(serviceOrderPanelView("diagnoza")).toMatchObject({ parts: "edit", workNoteLabel: "Co ustaliła diagnoza", documents: false });
+    expect(serviceOrderPanelView("w_naprawie")).toMatchObject({ parts: "edit", documents: false, callClient: false });
+    expect(serviceOrderPanelView("gotowe")).toMatchObject({ parts: "edit", documents: true, callClient: true });
+    expect(serviceOrderPanelView("wydane")).toMatchObject({ workNoteEditable: false, documents: true, parts: "edit" });
+    expect(serviceOrderPanelView("anulowane")).toMatchObject({ parts: "return-only", documents: true });
+  });
+  it("faktura od gotowego; po anulowaniu nie", async () => {
+    const { canSetServiceOrderInvoice } = await import("./service-orders");
+    expect(["w_naprawie", "gotowe", "wydane", "anulowane"].map((s) => canSetServiceOrderInvoice(s as never))).toEqual([false, true, true, false]);
   });
 });

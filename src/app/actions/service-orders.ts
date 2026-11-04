@@ -10,7 +10,11 @@ import {
   moveServiceOrder,
   returnServiceOrderPart,
   ServiceOrderStateError,
+  clearServiceOrderInvoice,
+  setServiceOrderInvoice,
+  setServiceOrderNoInvoice,
   setServiceOrderRw,
+  waitForServicePart,
   takeServiceOrderPart,
   updateServiceOrderWorkNote,
   upsertServiceModelPart,
@@ -24,7 +28,8 @@ import {
 } from "@/lib/orders/service-orders";
 import { parseDateOnly, toDateOnly } from "@/lib/orders/service-loaners";
 import { verifySubiektProduct, type VerifiedSubiektProduct } from "@/lib/subiekt/product-verify";
-import { fetchClientEquipment } from "@/lib/subiekt/client-equipment";
+import { fetchClientEquipment, fetchClientRecentInvoices, type ClientRecentInvoice } from "@/lib/subiekt/client-equipment";
+import { reportServicePartShortage } from "@/lib/data/service-part-report";
 import type { ClientEquipmentItem } from "@/lib/subiekt/client-equipment-parse";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 
@@ -304,5 +309,95 @@ export async function actionServiceClientEquipment(khId: number): Promise<Client
     return { ok: true, ...(await fetchClientEquipment(id)) };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się pobrać faktur i paragonów klienta z Subiekta.") };
+  }
+}
+
+export async function actionWaitForServicePart(input: {
+  orderId: string;
+  partTwId?: number | null;
+  /** Nazwa części wpisana ręcznie, gdy nie ma jej w Subiekcie. */
+  partName?: string;
+  quantity: number;
+  /** Złóż od razu prośbę do zakupów (tylko części z cechą „Części serwisowe”). */
+  report: boolean;
+}): Promise<ServiceOrderActionResult> {
+  const user = await requireServicePanel("mutate");
+  return run(
+    async () => {
+      const orderId = uuid(input.orderId, "zlecenie");
+      const qty = Number(input.quantity);
+      if (!Number.isInteger(qty) || qty <= 0 || qty > 999) throw new ServiceOrderStateError("Ilość: liczba całkowita od 1 do 999.");
+      const partId = twId(input.partTwId);
+      let part: { twId: number | null; symbol: string | null; name: string };
+      if (partId) {
+        const p = await verifiedProduct(partId, "Subiekt nie zna tej części. Wybierz ją z podpowiedzi albo wpisz nazwę.");
+        part = { twId: p.twId, symbol: p.symbol, name: p.name };
+      } else {
+        const name = text(input.partName, 200);
+        if (!name) throw new ServiceOrderStateError("Wybierz część, na którą czeka zlecenie.");
+        part = { twId: null, symbol: null, name };
+      }
+      const order = await waitForServicePart({ orderId, part, qty, note: "" }, actorOf(user));
+      let reported = "";
+      if (input.report === true) {
+        if (!part.twId) {
+          reported = " Nie zgłoszono zakupom — część spoza Subiekta.";
+        } else {
+          // Czekanie jest już zapisane; nieudane zgłoszenie tylko to mówi (można zgłosić z ekranu części).
+          try {
+            const res = await reportServicePartShortage({ twId: part.twId, quantity: qty, note: order.number }, user);
+            reported = res.ok ? ` ${res.message}` : ` Nie zgłoszono zakupom: ${res.message}`;
+          } catch (e) {
+            reported = ` Nie zgłoszono zakupom: ${userFacingErrorText(e, "błąd zapisu prośby")}.`;
+          }
+        }
+      }
+      return { message: `${order.number} czeka na ${qty} szt. ${part.symbol ?? part.name}.${reported}`, orderId };
+    },
+    [ORDERS_PATH, "/serwis"]
+  );
+}
+
+export async function actionSetServiceOrderInvoice(input: { orderId: string; fsId?: number | null; fsNumber: string }): Promise<ServiceOrderActionResult> {
+  const user = await requireServicePanel("mutate");
+  return run(async () => {
+    const fsNumber = text(input.fsNumber, 60).replace(/\s+/g, " ");
+    if (!fsNumber || !/\d/.test(fsNumber)) throw new ServiceOrderStateError("Wybierz fakturę klienta albo wpisz jej numer, np. FS 2362/M/10/2026.");
+    const o = await setServiceOrderInvoice({ orderId: uuid(input.orderId, "zlecenie"), fsId: twId(input.fsId), fsNumber }, actorOf(user));
+    return { message: `${o.number}: faktura ${fsNumber}.`, orderId: o.id };
+  });
+}
+
+export async function actionSetServiceOrderNoInvoice(input: { orderId: string; reason: string }): Promise<ServiceOrderActionResult> {
+  const user = await requireServicePanel("mutate");
+  return run(async () => {
+    const reason = text(input.reason, 200);
+    if (!reason) throw new ServiceOrderStateError("Wpisz powód, np. naprawa gwarancyjna.");
+    const o = await setServiceOrderNoInvoice({ orderId: uuid(input.orderId, "zlecenie"), reason }, actorOf(user));
+    return { message: `${o.number}: bez faktury (${reason}).`, orderId: o.id };
+  });
+}
+
+export async function actionClearServiceOrderInvoice(input: { orderId: string }): Promise<ServiceOrderActionResult> {
+  const user = await requireServicePanel("mutate");
+  return run(async () => {
+    const o = await clearServiceOrderInvoice({ orderId: uuid(input.orderId, "zlecenie") }, actorOf(user));
+    return { message: `${o.number}: faktura do wpisania od nowa.`, orderId: o.id };
+  });
+}
+
+export type ClientInvoicesActionResult =
+  | { ok: true; invoices: ClientRecentInvoice[] }
+  | { ok: false; message: string };
+
+/** Ostatnie faktury klienta (90 dni) — do wskazania faktury za naprawę przy wydaniu. */
+export async function actionServiceClientInvoices(khId: number): Promise<ClientInvoicesActionResult> {
+  await requireServicePanel("read");
+  const id = twId(khId);
+  if (!id) return { ok: false, message: "Klient spoza Subiekta — wpisz numer faktury ręcznie." };
+  try {
+    return { ok: true, invoices: await fetchClientRecentInvoices(id) };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się pobrać faktur klienta z Subiekta.") };
   }
 }
