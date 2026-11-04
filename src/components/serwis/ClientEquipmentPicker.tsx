@@ -64,7 +64,6 @@ export function ClientEquipmentPicker({
         </span>
         <Button
           type="button"
-          size="sm"
           variant="secondary"
           onClick={() => {
             setResult(null);
@@ -126,7 +125,7 @@ export function ClientEquipmentPicker({
         ))}
       </ul>
       {result.items.length > VISIBLE ? (
-        <Button type="button" size="sm" variant="secondary" onClick={() => setShowAll((v) => !v)}>
+        <Button type="button" variant="secondary" className="w-full" onClick={() => setShowAll((v) => !v)}>
           {showAll ? "Pokaż mniej" : `Pokaż cały sprzęt (${result.items.length})`}
         </Button>
       ) : null}

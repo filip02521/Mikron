@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
+import { IconCalendar, IconCircleCheck, IconCopy, IconPackageCheck, IconSearch, IconUndoLeft, IconX } from "@/components/icons/StrokeIcons";
 import { EventTimeline, type EventTimelineTone } from "@/components/ui/EventTimeline";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { cn } from "@/lib/cn";
@@ -25,6 +26,9 @@ import {
   type LoanerEvent,
 } from "@/lib/orders/service-loaners";
 import { formatLong, formatShort, StatePill, type LoanerUnitView } from "@/components/serwis/LoanersBoard";
+
+const touchClass = "min-h-11";
+const hintClass = "text-[0.8125rem] text-slate-600";
 
 const EVENT_TONE: Record<LoanerEvent["type"], EventTimelineTone> = {
   created: "neutral",
@@ -241,18 +245,24 @@ export function LoanerDrawer({
                 </div>
               </div>
               {mode === null ? (
-                <div className="flex flex-wrap gap-2">
-                  <Button type="button" size="sm" onClick={() => setMode("return")}>
+                <div className="space-y-2">
+                  <Button type="button" size="lg" className={cn("w-full", touchClass)} onClick={() => setMode("return")}>
+                    <IconUndoLeft size={18} aria-hidden />
                     Przyjmij zwrot
                   </Button>
-                  <Button type="button" size="sm" variant="secondary" onClick={() => setMode("extend")}>
-                    Przedłuż
-                  </Button>
-                  {unit.currentClientPhone ? (
-                    <Button type="button" size="sm" variant="secondary" onClick={copyPhone}>
-                      Kopiuj telefon
+                  <p className={hintClass}>Zapiszesz stan techniczny — egzemplarz wróci na półkę albo do przeglądu.</p>
+                  <div className={cn("grid gap-2 pt-1", unit.currentClientPhone ? "grid-cols-2" : "grid-cols-1")}>
+                    <Button type="button" variant="secondary" className={cn("w-full", touchClass)} onClick={() => setMode("extend")}>
+                      <IconCalendar size={18} aria-hidden />
+                      Przedłuż termin
                     </Button>
-                  ) : null}
+                    {unit.currentClientPhone ? (
+                      <Button type="button" variant="secondary" className={cn("w-full", touchClass)} onClick={copyPhone}>
+                        <IconCopy size={18} aria-hidden />
+                        Kopiuj telefon
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
               ) : null}
             </>
@@ -271,30 +281,34 @@ export function LoanerDrawer({
                 </div>
               </div>
               {mode === null ? (
-                <div className="flex flex-wrap gap-2">
+                <div className="space-y-2">
                   {unit.state === "free" ? (
                     <>
-                      <Button type="button" size="sm" onClick={onIssue}>
+                      <Button type="button" size="lg" className={cn("w-full", touchClass)} onClick={onIssue}>
+                        <IconPackageCheck size={18} aria-hidden />
                         Wydaj ten egzemplarz
                       </Button>
+                      <p className={hintClass}>Wybierzesz klienta i termin zwrotu.</p>
                       <Button
                         type="button"
-                        size="sm"
                         variant="secondary"
+                        className={cn("w-full", touchClass)}
                         disabled={pending}
                         onClick={() => submit(() => actionStartLoanerService({ unitId: unit.id }))}
                       >
+                        <IconSearch size={18} aria-hidden />
                         Oznacz do przeglądu
                       </Button>
                     </>
                   ) : (
-                    <Button type="button" size="sm" onClick={() => setMode("service_end")}>
-                      Zakończ przegląd
-                    </Button>
+                    <>
+                      <Button type="button" size="lg" className={cn("w-full", touchClass)} onClick={() => setMode("service_end")}>
+                        <IconCircleCheck size={18} aria-hidden />
+                        Zakończ przegląd
+                      </Button>
+                      <p className={hintClass}>Zapiszesz stan techniczny — egzemplarz wróci na półkę, gotowy do wydania.</p>
+                    </>
                   )}
-                  <Button type="button" size="sm" variant="secondary" onClick={() => setMode("retire")}>
-                    Wycofaj egzemplarz
-                  </Button>
                 </div>
               ) : null}
             </>
@@ -324,7 +338,7 @@ export function LoanerDrawer({
                       if (mode === "return") setNeedsService(c === "do przeglądu" || c === "uszkodzony");
                     }}
                     className={cn(
-                      "h-8 rounded-full border px-3 text-[0.8125rem] transition-colors duration-150",
+                      "min-h-11 rounded-2xl border px-3.5 text-sm transition-colors duration-150",
                       cond === c ? "border-indigo-600 bg-indigo-50 font-semibold text-indigo-900" : "border-slate-200 bg-card text-slate-600 hover:bg-slate-100"
                     )}
                   >
@@ -333,8 +347,8 @@ export function LoanerDrawer({
                 ))}
               </div>
               {mode === "return" ? (
-                <label className="flex items-center gap-2 text-sm text-slate-700">
-                  <input id="loaner-needs-service" type="checkbox" checked={needsService} onChange={(e) => setNeedsService(e.target.checked)} className="h-4 w-4 accent-[var(--primary)]" />
+                <label className="flex min-h-11 items-center gap-2 text-sm text-slate-700">
+                  <input id="loaner-needs-service" type="checkbox" checked={needsService} onChange={(e) => setNeedsService(e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" />
                   Wymaga przeglądu przed kolejnym wydaniem
                 </label>
               ) : null}
@@ -347,48 +361,12 @@ export function LoanerDrawer({
                 className="h-10 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
               {error ? <p className="text-sm text-red-700">{error}</p> : null}
-              <div className="flex justify-end gap-2">
-                <Button type="button" size="sm" variant="secondary" onClick={() => setMode(null)} disabled={pending}>
-                  Anuluj
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="button" variant="secondary" className={cn("w-full", touchClass)} onClick={() => setMode(null)} disabled={pending}>
+                  Wróć
                 </Button>
-                <Button type="submit" size="sm" disabled={pending}>
+                <Button type="submit" className={cn("w-full", touchClass)} disabled={pending}>
                   {pending ? "Zapisuję…" : mode === "return" ? "Przyjmij zwrot" : "Zakończ przegląd"}
-                </Button>
-              </div>
-            </form>
-          ) : null}
-
-          {mode === "retire" ? (
-            <form
-              className="space-y-3 rounded-xl border border-red-200 bg-red-50 p-4"
-              onSubmit={(e) => {
-                e.preventDefault();
-                submit(() => actionRetireLoaner({ unitId: unit.id, note }));
-              }}
-            >
-              <div>
-                <label htmlFor="loaner-retire-note" className="block text-sm font-semibold text-slate-900">
-                  Wycofanie {unit.code} z puli
-                </label>
-                <p className="text-[0.8125rem] text-slate-600">
-                  Egzemplarz zniknie z tablicy i nie będzie można go wydać. Historia zostaje w bazie.
-                </p>
-              </div>
-              <input
-                id="loaner-retire-note"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                maxLength={300}
-                placeholder="Powód, np. zużyty, sprzedany klientowi"
-                className="h-10 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              />
-              {error ? <p className="text-sm text-red-700">{error}</p> : null}
-              <div className="flex justify-end gap-2">
-                <Button type="button" size="sm" variant="secondary" onClick={() => setMode(null)} disabled={pending}>
-                  Anuluj
-                </Button>
-                <Button type="submit" size="sm" variant="danger" disabled={pending}>
-                  {pending ? "Zapisuję…" : "Wycofaj z puli"}
                 </Button>
               </div>
             </form>
@@ -414,11 +392,11 @@ export function LoanerDrawer({
                 className="h-10 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
               {error ? <p className="text-sm text-red-700">{error}</p> : null}
-              <div className="flex justify-end gap-2">
-                <Button type="button" size="sm" variant="secondary" onClick={() => setMode(null)} disabled={pending}>
-                  Anuluj
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="button" variant="secondary" className={cn("w-full", touchClass)} onClick={() => setMode(null)} disabled={pending}>
+                  Wróć
                 </Button>
-                <Button type="submit" size="sm" disabled={pending}>
+                <Button type="submit" className={cn("w-full", touchClass)} disabled={pending}>
                   {pending ? "Zapisuję…" : "Zapisz termin"}
                 </Button>
               </div>
@@ -456,6 +434,57 @@ export function LoanerDrawer({
               }))}
             />
           </div>
+          {unit.status !== "u_klienta" ? (
+            // Na końcu panelu, z odstępem od kroków: wycofanie nie jest jednym z nich.
+            <div className="border-t border-slate-100 pt-5">
+              {mode === "retire" ? (
+                <form
+                  className="space-y-3 rounded-xl border border-red-200 bg-red-50 p-4"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    submit(() => actionRetireLoaner({ unitId: unit.id, note }));
+                  }}
+                >
+                  <div>
+                    <label htmlFor="loaner-retire-note" className="block text-sm font-semibold text-slate-900">
+                      Wycofanie {unit.code} z puli
+                    </label>
+                    <p className="text-[0.8125rem] text-slate-600">
+                      Egzemplarz zniknie z tablicy i nie będzie można go wydać. Historia zostaje w bazie.
+                    </p>
+                  </div>
+                  <input
+                    id="loaner-retire-note"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    maxLength={300}
+                    placeholder="Powód, np. zużyty, sprzedany klientowi"
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                  {error ? <p className="text-sm text-red-700">{error}</p> : null}
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button type="button" variant="secondary" className={cn("w-full", touchClass)} onClick={() => setMode(null)} disabled={pending}>
+                      Wróć
+                    </Button>
+                    <Button type="submit" variant="danger" className={cn("w-full", touchClass)} disabled={pending}>
+                      {pending ? "Zapisuję…" : "Wycofaj z puli"}
+                    </Button>
+                  </div>
+                </form>
+              ) : (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={pending || mode !== null}
+                  onClick={() => setMode("retire")}
+                  className={cn("w-full text-red-700 hover:text-red-800", touchClass)}
+                >
+                  <IconX size={18} aria-hidden />
+                  Wycofaj egzemplarz
+                </Button>
+              )}
+            </div>
+          ) : null}
         </div>
       </aside>
     </>

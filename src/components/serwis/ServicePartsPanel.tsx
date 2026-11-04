@@ -282,7 +282,6 @@ export function ServicePartsPanel({
             <Button
               type="button"
               variant="secondary"
-              size="sm"
               disabled={refreshing}
               onClick={() => startRefresh(() => router.refresh())}
             >
@@ -335,7 +334,7 @@ export function ServicePartsPanel({
                     {list.map((r) => {
                       const report =
                         r.state !== "ok" && r.requests.length === 0 && canReport ? (
-                          <Button variant="secondary" size="sm" onClick={() => setReportPart(r)}>
+                          <Button variant="secondary" onClick={() => setReportPart(r)}>
                             Zgłoś brak
                           </Button>
                         ) : null;

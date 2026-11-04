@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { Button, buttonClass } from "@/components/ui/Button";
-import { IconChevronRight, IconCircleCheck, IconClock, IconPackageCheck, IconPhone, IconSearch, IconUndoLeft, IconX } from "@/components/icons/StrokeIcons";
+import { IconChevronRight, IconCircleCheck, IconClock, IconPlus, IconPackageCheck, IconPhone, IconSearch, IconUndoLeft, IconX } from "@/components/icons/StrokeIcons";
 import { EventTimeline } from "@/components/ui/EventTimeline";
 import { StatusStepper } from "@/components/ui/StatusStepper";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
@@ -430,13 +430,13 @@ export function ServiceOrderDrawer({
             />
             )}
             {view.workNoteEditable && workNote !== order.workNote ? (
-              <div className="flex justify-end gap-2">
-                <Button type="button" className={touchClass} variant="secondary" onClick={() => setWorkNote(order.workNote)} disabled={pending}>
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="button" className={cn("w-full", touchClass)} variant="secondary" onClick={() => setWorkNote(order.workNote)} disabled={pending}>
                   Cofnij zmiany
                 </Button>
                 <Button
                   type="button"
-                  className={touchClass}
+                  className={cn("w-full", touchClass)}
                   disabled={pending}
                   onClick={() => submit(() => actionUpdateServiceOrderWorkNote({ orderId: order.id, workNote }))}
                 >
@@ -453,6 +453,7 @@ export function ServiceOrderDrawer({
             aside={
               !order.rwNumber && view.parts === "edit" && !taking ? (
                 <Button type="button" className={touchClass} variant="secondary" onClick={() => setTaking(true)}>
+                  <IconPlus size={18} aria-hidden />
                   Pobierz część
                 </Button>
               ) : null
@@ -561,17 +562,17 @@ export function ServiceOrderDrawer({
                   </div>
                 </div>
                 {order.deviceTwId && part?.twId && !partInBom ? (
-                  <label className="flex items-center gap-2 text-sm text-slate-700">
-                    <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="h-4 w-4 accent-[var(--primary)]" />
+                  <label className="flex min-h-11 items-center gap-2 text-sm text-slate-700">
+                    <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" />
                     Zapamiętaj w katalogu modelu {order.deviceSymbol ?? order.deviceName}
                   </label>
                 ) : null}
                 <p className="text-[0.8125rem] text-slate-500">Pobranie zapisuje część na zleceniu. Stan w Subiekcie zejdzie po wystawieniu RW.</p>
-                <div className="flex justify-end gap-2">
-                  <Button type="button" className={touchClass} variant="secondary" onClick={() => setTaking(false)} disabled={pending}>
-                    Anuluj
+                <div className="grid grid-cols-2 gap-2">
+                  <Button type="button" className={cn("w-full", touchClass)} variant="secondary" onClick={() => setTaking(false)} disabled={pending}>
+                    Wróć
                   </Button>
-                  <Button type="submit" className={touchClass} disabled={pending || !part?.twId || !(Number(qty) > 0)}>
+                  <Button type="submit" className={cn("w-full", touchClass)} disabled={pending || !part?.twId || !(Number(qty) > 0)}>
                     {part?.twId ? `Pobierz ${Number(qty) || ""} szt.` : "Pobierz"}
                   </Button>
                 </div>

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Kbd } from "@/components/ui/Kbd";
 import { NoticeToast } from "@/components/ui/NoticeToast";
-import { IconSearch } from "@/components/icons/StrokeIcons";
+import { IconPackageCheck, IconPlus, IconSearch } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { polishPlural, polishPluralWord } from "@/lib/email/polish-plural";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
@@ -372,9 +372,11 @@ export function LoanersBoard({
         </label>
         <div className="flex w-full gap-2 sm:ml-auto sm:w-auto [&>*]:flex-1 sm:[&>*]:flex-none">
           <Button type="button" variant="secondary" onClick={() => setAdding(true)}>
+            <IconPlus size={18} aria-hidden />
             Dodaj egzemplarz
           </Button>
           <Button type="button" onClick={() => setIssueFor(null)} disabled={freeUnits.length === 0}>
+            <IconPackageCheck size={18} aria-hidden />
             Wydaj zamiennik
           </Button>
         </div>

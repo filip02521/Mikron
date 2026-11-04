@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Kbd } from "@/components/ui/Kbd";
 import { NoticeToast } from "@/components/ui/NoticeToast";
-import { IconSearch } from "@/components/icons/StrokeIcons";
+import { IconPlus, IconSearch } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
 import { ServiceOrderDrawer } from "@/components/serwis/ServiceOrderDrawer";
@@ -185,6 +185,7 @@ export function ServiceOrdersBoard({
           </span>
         </label>
         <Button type="button" className="w-full sm:ml-auto sm:w-auto" onClick={() => setIntake(true)}>
+          <IconPlus size={18} aria-hidden />
           Przyjmij sprzęt
         </Button>
       </div>

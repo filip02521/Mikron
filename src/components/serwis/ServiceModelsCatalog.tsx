@@ -150,7 +150,6 @@ export function ServiceModelsCatalog({ parts, repaired }: { parts: CatalogModelP
                     </span>
                     <Button
                       type="button"
-                      size="sm"
                       variant="secondary"
                       disabled={pending}
                       onClick={async () => {

@@ -3,6 +3,7 @@
 import { useEffect, useId, useState } from "react";
 import { BrandLoader } from "@/components/ui/BrandLoader";
 import { Button } from "@/components/ui/Button";
+import { IconCopy } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import {
   actionClearServiceOrderInvoice,
@@ -235,6 +236,7 @@ export function ServiceOrderDocuments({
               )
             }
           >
+            <IconCopy size={18} aria-hidden />
             {copied ? "Skopiowano pozycje" : "Kopiuj pozycje (symbol, ilość)"}
           </Button>
           {canSetServiceOrderRw(order.status) ? (
