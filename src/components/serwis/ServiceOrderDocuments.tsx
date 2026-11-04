@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { BrandLoader } from "@/components/ui/BrandLoader";
 import { Button } from "@/components/ui/Button";
 import { IconCopy } from "@/components/icons/StrokeIcons";
@@ -20,7 +20,6 @@ import {
   canSetServiceOrderInvoice,
   canSetServiceOrderRw,
   isClosedServiceOrder,
-  missingDocsText,
   missingServiceOrderDocs,
   rwClipboardText,
   rwLines,
@@ -32,6 +31,16 @@ type Submit = (fn: () => Promise<ServiceOrderActionResult>, after?: () => void) 
 
 const money = (n: number | null) =>
   n == null ? "" : `${n.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
+
+/** Nagłówek karty dokumentu; po zamknięciu brak jest w nim, nie w osobnym komunikacie. */
+function DocTitle({ children, missing }: { children: string; missing: boolean }) {
+  return (
+    <div className="text-sm font-semibold text-slate-900">
+      {children}
+      {missing ? <span className="font-semibold text-amber-800"> · brak</span> : null}
+    </div>
+  );
+}
 
 /** Faktury klienta z 90 dni — klik wskazuje fakturę za naprawę. */
 function ClientInvoiceList({ khId, onPick, disabled }: { khId: number; onPick: (id: number, number: string) => void; disabled: boolean }) {
@@ -98,25 +107,32 @@ export function ServiceOrderDocuments({
   const [reason, setReason] = useState("");
   const [rw, setRw] = useState("");
   const [copied, setCopied] = useState(false);
+  // Przyciski „Zapisz” są aktywne także przy pustym polu: klik mówi, czego brakuje, zamiast milczeć.
+  const [emptyHint, setEmptyHint] = useState<"fs" | "rw" | "reason" | null>(null);
+  const fsRef = useRef<HTMLInputElement>(null);
+  const rwRef = useRef<HTMLInputElement>(null);
+  const reasonRef = useRef<HTMLInputElement>(null);
   const closed = isClosedServiceOrder(order.status);
   const missing = missingServiceOrderDocs(order, parts);
-  const missingText = missingDocsText(missing);
   const lines = rwLines(parts);
+  const requireValue = (value: string, field: "fs" | "rw" | "reason", ref: React.RefObject<HTMLInputElement | null>) => {
+    if (value.trim()) return true;
+    setEmptyHint(field);
+    ref.current?.focus();
+    return false;
+  };
+  const hint = (field: "fs" | "rw" | "reason", text: string) =>
+    emptyHint === field ? <p className="basis-full text-[0.8125rem] text-amber-900">{text}</p> : null;
 
   return (
     <section aria-labelledby={`${formId}-docs`} className="space-y-3">
       <h3 id={`${formId}-docs`} className="text-[0.8125rem] font-semibold text-slate-600">
         Dokumenty
       </h3>
-      {closed && missingText ? (
-        <p className="rounded-lg bg-amber-50 px-3 py-2 text-[0.8125rem] text-amber-900">
-          {missingText} — zlecenie jest na liście „Brak dokumentów”.
-        </p>
-      ) : null}
 
       {canSetServiceOrderInvoice(order.status) ? (
-        <div className="space-y-2.5 rounded-xl border border-slate-200 p-4">
-          <div className="text-sm font-semibold text-slate-900">Faktura za naprawę</div>
+        <div className={cn("space-y-2.5 rounded-xl border p-4", closed && missing.invoice ? "border-amber-300 bg-amber-50/40" : "border-slate-200")}>
+          <DocTitle missing={closed && missing.invoice}>Faktura za naprawę</DocTitle>
           {order.fsNumber || order.noInvoiceReason ? (
             <div className="flex flex-wrap items-center gap-2">
               <span className="min-w-0 flex-1 text-sm text-slate-800">
@@ -136,6 +152,7 @@ export function ServiceOrderDocuments({
               className="space-y-2"
               onSubmit={(e) => {
                 e.preventDefault();
+                if (!requireValue(reason, "reason", reasonRef)) return;
                 submit(() => actionSetServiceOrderNoInvoice({ orderId: order.id, reason }), () => setNoInvoice(false));
               }}
             >
@@ -144,18 +161,23 @@ export function ServiceOrderDocuments({
               </label>
               <input
                 id={`${formId}-reason`}
+                ref={reasonRef}
                 value={reason}
                 maxLength={200}
                 autoFocus
-                onChange={(e) => setReason(e.target.value)}
+                onChange={(e) => {
+                  setReason(e.target.value);
+                  setEmptyHint(null);
+                }}
                 placeholder="Np. naprawa gwarancyjna, bezpłatna poprawka"
                 className={pickerInputClass}
               />
+              {hint("reason", "Wpisz, dlaczego naprawa jest bez faktury.")}
               <div className="grid grid-cols-2 gap-2">
                 <Button type="button" variant="secondary" onClick={() => setNoInvoice(false)} disabled={pending}>
                   Wróć
                 </Button>
-                <Button type="submit" disabled={pending || !reason.trim()}>
+                <Button type="submit" disabled={pending}>
                   Zapisz bez faktury
                 </Button>
               </div>
@@ -175,6 +197,7 @@ export function ServiceOrderDocuments({
                 className="flex flex-wrap items-end gap-2"
                 onSubmit={(e) => {
                   e.preventDefault();
+                  if (!requireValue(fsNumber, "fs", fsRef)) return;
                   submit(() => actionSetServiceOrderInvoice({ orderId: order.id, fsNumber }), () => setFsNumber(""));
                 }}
               >
@@ -184,16 +207,21 @@ export function ServiceOrderDocuments({
                   </label>
                   <input
                     id={`${formId}-fs`}
+                    ref={fsRef}
                     value={fsNumber}
                     maxLength={60}
-                    onChange={(e) => setFsNumber(e.target.value)}
+                    onChange={(e) => {
+                      setFsNumber(e.target.value);
+                      setEmptyHint(null);
+                    }}
                     placeholder="Np. FS 2362/M/10/2026"
                     className={`${pickerInputClass} font-mono`}
                   />
                 </div>
-                <Button type="submit" disabled={pending || !fsNumber.trim()}>
+                <Button type="submit" disabled={pending}>
                   Zapisz
                 </Button>
+                {hint("fs", "Wpisz numer faktury z Subiekta.")}
               </form>
               <Button type="button" variant="secondary" className="w-full" onClick={() => setNoInvoice(true)} disabled={pending}>
                 Bez faktury (gwarancja, bezpłatna)
@@ -212,8 +240,8 @@ export function ServiceOrderDocuments({
           </p>
         </div>
       ) : missing.rw ? (
-        <div className={cn("space-y-3 rounded-xl border p-4", closed ? "border-amber-200" : "border-slate-200")}>
-          <div className="text-sm font-semibold text-slate-900">RW na części</div>
+        <div className={cn("space-y-3 rounded-xl border p-4", closed ? "border-amber-300 bg-amber-50/40" : "border-slate-200")}>
+          <DocTitle missing={closed}>RW na części</DocTitle>
           <p className="text-[0.8125rem] text-slate-600">Wystaw w Subiekcie RW z tymi pozycjami i wpisz tu jego numer.</p>
           <ul className="space-y-1">
             {lines.map((l) => (
@@ -244,6 +272,7 @@ export function ServiceOrderDocuments({
               className="flex flex-wrap items-end gap-2"
               onSubmit={(e) => {
                 e.preventDefault();
+                if (!requireValue(rw, "rw", rwRef)) return;
                 submit(() => actionSetServiceOrderRw({ orderId: order.id, rwNumber: rw }), () => setRw(""));
               }}
             >
@@ -253,16 +282,21 @@ export function ServiceOrderDocuments({
                 </label>
                 <input
                   id={`${formId}-rw`}
+                  ref={rwRef}
                   value={rw}
                   maxLength={SERVICE_ORDER_TEXT_MAX.rw}
-                  onChange={(e) => setRw(e.target.value)}
+                  onChange={(e) => {
+                    setRw(e.target.value);
+                    setEmptyHint(null);
+                  }}
                   placeholder="Np. RW 15/MAG/2026"
                   className={`${pickerInputClass} font-mono`}
                 />
               </div>
-              <Button type="submit" disabled={pending || !rw.trim()}>
+              <Button type="submit" disabled={pending}>
                 Zapisz RW
               </Button>
+              {hint("rw", "Wpisz numer RW z Subiekta.")}
             </form>
           ) : null}
         </div>

@@ -8,6 +8,7 @@ import { EventTimeline } from "@/components/ui/EventTimeline";
 import { StatusStepper } from "@/components/ui/StatusStepper";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { cn } from "@/lib/cn";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 import {
   actionLinkServiceOrderLoaner,
@@ -167,6 +168,11 @@ export function ServiceOrderDrawer({
   const primaryHint = primary ? transitionHint(primary, { missing, loanerCode: linked?.code ?? null }) : null;
   // Widok idzie za krokiem: przy przyjęciu zamiennik, w naprawie części, przy wydaniu dokumenty i telefon.
   const view = serviceOrderPanelView(order.status);
+  // Po zamknięciu jedyna praca to brakujące dokumenty — wtedy stoją na górze, historia naprawy pod nimi.
+  const docsFirst = closed && (missing.invoice || missing.rw);
+  const serviceDays = daysSince(order.createdAt, closed && order.closedAt ? new Date(order.closedAt) : today);
+  const serviceDaysText = `${serviceDays} ${polishPluralWord(serviceDays, "dzień", "dni", "dni")}`;
+  const documents = <ServiceOrderDocuments order={order} parts={parts} pending={pending} submit={submit} />;
   // Najpierw egzemplarze u tego klienta (po kh_Id albo nazwie), potem pozostałe wydane.
   const linkable = [...loaners].sort((a, b) => {
     const mine = (l: LinkableLoaner) =>
@@ -293,8 +299,10 @@ export function ServiceOrderDrawer({
           <p className="text-[0.8125rem] text-slate-600">
             <span className="font-semibold text-slate-900">{order.clientName}</span>
             {order.clientPhone ? ` · tel. ${order.clientPhone}` : ""}
-            {` · przyjęte ${formatDay(order.createdAt)} (${daysSince(order.createdAt, today)} dni)`}
-            {order.dueDate ? (
+            {closed && order.closedAt
+              ? ` · przyjęte ${formatDay(order.createdAt)} · ${order.status === "wydane" ? "wydane" : "anulowane"} ${formatDay(order.closedAt)} · w serwisie ${serviceDaysText}`
+              : ` · przyjęte ${formatDay(order.createdAt)} · w serwisie ${serviceDaysText}`}
+            {order.dueDate && !closed ? (
               <span className={cn(late && "font-semibold text-red-700")}>
                 {` · ${late ? "termin minął" : "termin"} ${formatDateOnly(order.dueDate)}`}
               </span>
@@ -303,7 +311,7 @@ export function ServiceOrderDrawer({
         </div>
 
         <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5 sm:px-6" {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}>
-          {order.status !== "anulowane" ? (
+          {!closed ? (
             <StatusStepper
               compact
               label="Postęp naprawy"
@@ -406,16 +414,16 @@ export function ServiceOrderDrawer({
             </p>
           ) : null}
 
+          {docsFirst ? documents : null}
+
           <Section title="Usterka">
             <p className="whitespace-pre-line text-sm text-slate-800">{order.fault}</p>
             {order.accessories ? <p className="text-[0.8125rem] text-slate-500">Przyjęte z: {order.accessories}</p> : null}
           </Section>
 
-          {view.workNoteLabel ? (
+          {view.workNoteLabel && (view.workNoteEditable || order.workNote) ? (
           <Section title={view.workNoteLabel}>
-            {!view.workNoteEditable && !order.workNote ? (
-              <p className="text-[0.8125rem] text-slate-500">Bez opisu prac.</p>
-            ) : !view.workNoteEditable ? (
+            {!view.workNoteEditable ? (
               <p className="whitespace-pre-line text-sm text-slate-800">{order.workNote}</p>
             ) : (
             <textarea
@@ -466,8 +474,8 @@ export function ServiceOrderDrawer({
                     <span className="w-14 flex-none text-right text-sm font-semibold tabular-nums text-slate-900">{p.quantity} szt.</span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm text-slate-900">{p.partName}</span>
-                      <span className="block font-mono text-xs text-slate-500">
-                        {p.partSymbol ?? "—"} · {formatDay(p.takenAt)}
+                      <span className="block text-xs text-slate-500">
+                        <span className="font-mono">{p.partSymbol ?? "—"}</span> · {formatDay(p.takenAt)}
                         {p.takenByName ? ` · ${p.takenByName}` : ""}
                       </span>
                     </span>
@@ -581,9 +589,10 @@ export function ServiceOrderDrawer({
           </Section>
           ) : null}
 
-          {view.documents ? <ServiceOrderDocuments order={order} parts={parts} pending={pending} submit={submit} /> : null}
+          {view.documents && !docsFirst ? documents : null}
 
-          {!view.loanerFirst ? loanerSection : null}
+          {/* Zamknięte bez zamiennika: nic do zrobienia ani do pokazania. */}
+          {!view.loanerFirst && !(closed && !linked && !order.loanerUnitId) ? loanerSection : null}
 
           <Section title="Historia zlecenia">
             <EventTimeline label="Historia zlecenia" items={historyItems} />
