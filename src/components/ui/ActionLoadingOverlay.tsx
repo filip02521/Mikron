@@ -38,7 +38,7 @@ export function ActionLoadingOverlay({
       aria-busy="true"
       className={cn(
         position,
-        "flex items-center justify-center bg-scrim/20 backdrop-blur-[3px]",
+        "flex items-center justify-center bg-scrim/20",
         pointerEvents,
         className
       )}

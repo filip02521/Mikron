@@ -2752,10 +2752,9 @@ main:has([data-zd-estimate-viewport]) [data-zd-estimate-viewport] {
   }
 }
 
+/* Bez backdrop-filter: blur pod animowaną kartą liczy się od nowa w każdej klatce; gęstsza zasłona daje ten sam spokój. */
 .zd-est-recount-overlay__veil {
-  background: color-mix(in srgb, var(--color-slate-100) 70%, transparent);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: color-mix(in srgb, var(--color-slate-100) 82%, transparent);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -3284,22 +3283,30 @@ html.ontime-scroll-locked main {
 }
 
 /* ——— Tablica — puls FAB „Zadaj pytanie" (mobile) ——— */
+/* Puls po opacity warstwy z cieniem — animowany box-shadow przemalowywałby przycisk w nieskończoność. */
 @keyframes board-question-fab-pulse {
   0%, 100% {
-    box-shadow: 0 4px 12px -2px color-mix(in srgb, var(--color-indigo-600) 30%, transparent);
+    opacity: 0;
   }
   50% {
-    box-shadow: 0 4px 16px -1px color-mix(in srgb, var(--color-indigo-600) 45%, transparent);
+    opacity: 1;
   }
 }
 
-.board-question-fab-pulse {
-  animation: board-question-fab-pulse 2.4s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: no-preference) {
   .board-question-fab-pulse {
-    animation: none;
+    box-shadow: 0 4px 12px -2px color-mix(in srgb, var(--color-indigo-600) 30%, transparent);
+  }
+
+  .board-question-fab-pulse::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow: 0 4px 16px -1px color-mix(in srgb, var(--color-indigo-600) 45%, transparent);
+    opacity: 0;
+    animation: board-question-fab-pulse 2.4s ease-in-out infinite;
   }
 }
 
@@ -3379,17 +3386,13 @@ input[type="checkbox"].toggle-switch.toggle-indigo:checked {
 }
 
 /* ——— Slide-in drawer + backdrop fade (shared by all side panels) ——— */
+/* Tylko transform — cień zostaje z klasy panelu (animowany box-shadow przemalowuje panel w każdej klatce). */
 @keyframes panel-slide-enter {
   from {
     transform: translateX(100%);
-    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
-  }
-  60% {
-    box-shadow: -12px 0 40px -8px rgba(0, 0, 0, 0.15);
   }
   to {
     transform: translateX(0);
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   }
 }
 
@@ -3842,6 +3845,13 @@ input[type="checkbox"].toggle-switch.toggle-indigo:checked {
   .menu-pop-enter {
     animation-name: modal-backdrop-enter;
   }
+}
+
+/* Pod otwartym oknem/panelem (portal poza <main>) sticky chrome leży pod zasłoną: rozmycia nie widać,
+   a w każdej klatce animacji otwarcia liczy się od nowa (pomiar: ~2× czas kompozycji klatki). */
+html.ontime-scroll-locked main [class*="backdrop-blur"] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 /* Ustawienia systemowe: mniej przezroczystości / więcej kontrastu. */

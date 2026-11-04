@@ -41,6 +41,10 @@ export type ProsbaIncomingZdDoc = {
   deadline: string | null;
   /** Sztuki tego towaru na ZD. */
   qty: number | null;
+  /** dok_Id w Subiekcie — do powiązania prośby z ZD. */
+  dokId?: number | null;
+  /** Dostawca OnTime, z którego indeksu ZD pochodzi dokument. */
+  supplierId?: string | null;
 };
 
 /** Towar w drodze — Subiekt na żywo (kreator ZD dla jednego towaru), w sztukach. */
@@ -413,9 +417,9 @@ export function incomingForOwnZk(inc: ProsbaIncoming, ownZkQty: number | null | 
 export type ZkLineIncomingCover = {
   /** Dostawa (z półką) pokrywa ilość tej pozycji ZK. */
   covered: boolean;
-  /** Jest ZD z terminem w przód — można nie zamawiać. */
+  /** ZD z terminem w przód same przywiozą brakującą ilość — można nie zamawiać. */
   certain: boolean;
-  /** Najbliższy ZD z terminem (do etykiety). */
+  /** ZD, z którego terminem pozycja będzie pokryta (gdy pewne), inaczej najbliższy z terminem. */
   doc: ProsbaIncomingZdDoc | null;
   /** Wolne dla tego ZK (półka po cudzych ZK + wolne z dostawy), szt. */
   freeForLine: number;
@@ -437,10 +441,23 @@ export function zkLineIncomingCover(
   const future = [...inc.docs]
     .filter((d) => d.deadline != null && d.deadline >= todayKey)
     .sort((a, b) => (a.deadline ?? "").localeCompare(b.deadline ?? ""));
+  // Pewne tylko, gdy same ZD z terminem przywiozą tyle, ile brakuje tej pozycji po cudzych
+  // czekających ZK (konserwatywnie: one dostają towar pierwsze). ZD bez ilości nic nie obiecuje.
+  const fromDeliveries = adj.zkWaiting + lineQty - adj.available;
+  let dated = 0;
+  let coveringDoc: ProsbaIncomingZdDoc | null = null;
+  for (const d of future) {
+    if (d.qty == null) continue;
+    dated += d.qty;
+    if (dated >= fromDeliveries) {
+      coveringDoc = d;
+      break;
+    }
+  }
   return {
     covered: freeForLine >= lineQty,
-    certain: future.length > 0,
-    doc: future[0] ?? inc.docs[0] ?? null,
+    certain: coveringDoc != null,
+    doc: coveringDoc ?? future[0] ?? inc.docs[0] ?? null,
     freeForLine,
   };
 }
