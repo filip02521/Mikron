@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
+import { IconChevronRight, IconCircleCheck, IconClock, IconPackageCheck, IconSearch, IconUndoLeft, IconX } from "@/components/icons/StrokeIcons";
 import { EventTimeline } from "@/components/ui/EventTimeline";
 import { StatusStepper } from "@/components/ui/StatusStepper";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
@@ -34,6 +35,7 @@ import {
   allowedNextStatuses,
   canSetServiceOrderRw,
   flowIndex,
+  isBackwardTransition,
   isClosedServiceOrder,
   isServiceOrderLate,
   needsRw,
@@ -43,6 +45,7 @@ import {
   SERVICE_ORDER_FLOW,
   SERVICE_ORDER_STATUS_LABEL,
   SERVICE_ORDER_TEXT_MAX,
+  transitionHint,
   transitionLabel,
   type ServiceOrder,
   type ServiceOrderEvent,
@@ -50,6 +53,28 @@ import {
 } from "@/lib/orders/service-orders";
 
 const STEPS = SERVICE_ORDER_FLOW.map((s) => ({ key: s, title: SERVICE_ORDER_STATUS_LABEL[s] }));
+
+/**
+ * Serwisant pracuje na ekranie dotykowym (także laptop z ekranem dotykowym, który zgłasza mysz jako
+ * główny wskaźnik) — dlatego 44 px stale, nie tylko przy `pointer: coarse` (DESIGN.md: pole dotyku min. 44 px).
+ */
+const touchClass = "min-h-11";
+
+/** Ikona znaczenia ruchu: naprzód, wstrzymanie, cofnięcie — rozpoznawalne bez czytania etykiety. */
+function TransitionIcon({ to, from }: { to: ServiceOrderStatus; from: ServiceOrderStatus }) {
+  const Icon = isBackwardTransition(to, from)
+    ? IconUndoLeft
+    : to === "czeka_na_czesc"
+      ? IconClock
+      : to === "diagnoza"
+        ? IconSearch
+        : to === "gotowe"
+          ? IconCircleCheck
+          : to === "wydane"
+            ? IconPackageCheck
+            : IconChevronRight;
+  return <Icon size={18} aria-hidden className="shrink-0" />;
+}
 
 function Section({ title, children, aside }: { title: string; children: React.ReactNode; aside?: React.ReactNode }) {
   return (
@@ -139,6 +164,7 @@ export function ServiceOrderDrawer({
   const bom = order.deviceTwId ? modelParts.filter((m) => m.modelTwId === order.deviceTwId) : [];
   const partInBom = part?.twId != null && bom.some((b) => b.partTwId === part.twId);
   const linked = order.loanerUnitId ? loaners.find((l) => l.id === order.loanerUnitId) ?? null : null;
+  const primaryHint = primary ? transitionHint(primary, { partsWithoutRw: pendingRw, loanerCode: linked?.code ?? null }) : null;
   // Najpierw egzemplarze u tego klienta (po kh_Id albo nazwie), potem pozostałe wydane.
   const linkable = [...loaners].sort((a, b) => {
     const mine = (l: LinkableLoaner) =>
@@ -160,7 +186,7 @@ export function ServiceOrderDrawer({
         aria-modal="true"
         aria-labelledby="order-drawer-title"
         data-order-drawer
-        className="fixed inset-y-0 right-0 z-[60] flex w-full max-w-[34rem] flex-col border-l border-slate-200 bg-raised shadow-2xl"
+        className="touch-ui fixed inset-y-0 right-0 z-[60] flex w-full max-w-[34rem] flex-col border-l border-slate-200 bg-raised shadow-2xl"
         style={{ paddingTop: "env(safe-area-inset-top,0px)", paddingBottom: "env(safe-area-inset-bottom,0px)" }}
       >
         <div className="flex flex-col gap-2.5 border-b border-slate-100 px-5 pb-4 pt-5 sm:px-6">
@@ -172,7 +198,7 @@ export function ServiceOrderDrawer({
               type="button"
               onClick={onClose}
               aria-label="Zamknij"
-              className="ml-auto grid h-9 w-9 place-items-center rounded-lg text-slate-500 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-900"
+              className="ml-auto grid h-11 w-11 place-items-center rounded-lg text-slate-500 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-900"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
                 <path d="M6 6l12 12M18 6L6 18" />
@@ -215,64 +241,45 @@ export function ServiceOrderDrawer({
             />
           ) : null}
 
-          {!closed ? (
-            <div className="flex flex-wrap gap-2">
+          {!closed && (primary || secondary.length) ? (
+            // Dwa poziomy do skanowania: duży krok naprzód, pod nim równe alternatywy z ikoną znaczenia.
+            // Anulowanie jest osobno na dole panelu — nie stoi obok kroków naprawy.
+            <div className="space-y-2">
               {primary ? (
-                <Button type="button" size="sm" disabled={pending} onClick={() => move(primary)}>
-                  {transitionLabel(primary, order.status)}
-                </Button>
+                <div className="space-y-1.5">
+                  <Button
+                    type="button"
+                    size="lg"
+                    disabled={pending}
+                    onClick={() => move(primary)}
+                    className={cn("w-full", touchClass)}
+                  >
+                    <TransitionIcon to={primary} from={order.status} />
+                    {transitionLabel(primary, order.status)}
+                  </Button>
+                  {primaryHint ? <p className="text-[0.8125rem] text-slate-600">{primaryHint}</p> : null}
+                </div>
               ) : null}
-              {secondary.map((s) => (
-                <Button key={s} type="button" size="sm" variant="secondary" disabled={pending} onClick={() => move(s)}>
-                  {transitionLabel(s, order.status)}
-                </Button>
-              ))}
-              {canCancel && !cancelling ? (
-                <Button type="button" size="sm" variant="secondary" disabled={pending} onClick={() => setCancelling(true)}>
-                  Anuluj zlecenie
-                </Button>
+              {secondary.length ? (
+                <div className={cn("grid gap-2", secondary.length > 1 && "grid-cols-2")}>
+                  {secondary.map((s) => (
+                    <Button
+                      key={s}
+                      type="button"
+                      variant="secondary"
+                      disabled={pending}
+                      onClick={() => move(s)}
+                      className={cn("w-full", touchClass)}
+                    >
+                      <TransitionIcon to={s} from={order.status} />
+                      {transitionLabel(s, order.status)}
+                    </Button>
+                  ))}
+                </div>
               ) : null}
             </div>
           ) : null}
 
-          {order.status === "gotowe" && linked ? (
-            <p className="rounded-lg bg-amber-50 px-3 py-2 text-[0.8125rem] text-amber-900">
-              Przy wydaniu odbierz zamiennik <b className="font-mono font-semibold">{linked.code}</b> — przyjmij zwrot na tablicy zamienników.
-            </p>
-          ) : null}
-
-          {cancelling ? (
-            <form
-              className="space-y-3 rounded-xl border border-red-200 bg-red-50 p-4"
-              onSubmit={(e) => {
-                e.preventDefault();
-                submit(() => actionMoveServiceOrder({ orderId: order.id, to: "anulowane", note: cancelNote }), () => setCancelling(false));
-              }}
-            >
-              <label htmlFor={`${formId}-cancel`} className="block text-sm font-semibold text-slate-900">
-                Anulowanie {order.number}
-              </label>
-              <input
-                id={`${formId}-cancel`}
-                value={cancelNote}
-                maxLength={300}
-                onChange={(e) => setCancelNote(e.target.value)}
-                placeholder="Powód, np. klient zrezygnował z naprawy"
-                className={pickerInputClass}
-              />
-              {parts.length && !order.rwNumber ? (
-                <p className="text-[0.8125rem] text-slate-600">Pobrane części zostaną na liście „Do RW”, dopóki ich nie oddasz albo nie wpiszesz RW.</p>
-              ) : null}
-              <div className="flex justify-end gap-2">
-                <Button type="button" size="sm" variant="secondary" onClick={() => setCancelling(false)} disabled={pending}>
-                  Wróć
-                </Button>
-                <Button type="submit" size="sm" variant="danger" disabled={pending}>
-                  Anuluj zlecenie
-                </Button>
-              </div>
-            </form>
-          ) : null}
 
           {error ? (
             <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -304,12 +311,12 @@ export function ServiceOrderDrawer({
             )}
             {!closed && workNote !== order.workNote ? (
               <div className="flex justify-end gap-2">
-                <Button type="button" size="sm" variant="secondary" onClick={() => setWorkNote(order.workNote)} disabled={pending}>
+                <Button type="button" className={touchClass} variant="secondary" onClick={() => setWorkNote(order.workNote)} disabled={pending}>
                   Cofnij zmiany
                 </Button>
                 <Button
                   type="button"
-                  size="sm"
+                  className={touchClass}
                   disabled={pending}
                   onClick={() => submit(() => actionUpdateServiceOrderWorkNote({ orderId: order.id, workNote }))}
                 >
@@ -323,7 +330,7 @@ export function ServiceOrderDrawer({
             title={`Części do zlecenia${parts.length ? ` (${lines.length})` : ""}`}
             aside={
               !order.rwNumber && order.status !== "anulowane" && !taking ? (
-                <Button type="button" size="sm" variant="secondary" onClick={() => setTaking(true)}>
+                <Button type="button" className={touchClass} variant="secondary" onClick={() => setTaking(true)}>
                   Pobierz część
                 </Button>
               ) : null
@@ -344,7 +351,7 @@ export function ServiceOrderDrawer({
                     {!order.rwNumber ? (
                       <Button
                         type="button"
-                        size="sm"
+                        className={touchClass}
                         variant="secondary"
                         disabled={pending}
                         onClick={() => submit(() => actionReturnServiceOrderPart({ orderId: order.id, partId: p.id }))}
@@ -398,7 +405,7 @@ export function ServiceOrderDrawer({
                             setQty(String(b.defaultQty));
                           }}
                           className={cn(
-                            "inline-flex min-h-8 max-w-full items-center rounded-2xl border px-3 py-1 text-left text-[0.8125rem] transition-colors duration-150",
+                            "inline-flex min-h-11 max-w-full items-center rounded-2xl border px-3.5 py-1.5 text-left text-sm transition-colors duration-150",
                             part?.twId === b.partTwId
                               ? "border-indigo-600 bg-indigo-50 font-semibold text-indigo-900"
                               : "border-slate-200 bg-card text-slate-700 hover:bg-slate-100"
@@ -439,10 +446,10 @@ export function ServiceOrderDrawer({
                 ) : null}
                 <p className="text-[0.8125rem] text-slate-500">Pobranie zapisuje część na zleceniu. Stan w Subiekcie zejdzie po wystawieniu RW.</p>
                 <div className="flex justify-end gap-2">
-                  <Button type="button" size="sm" variant="secondary" onClick={() => setTaking(false)} disabled={pending}>
+                  <Button type="button" className={touchClass} variant="secondary" onClick={() => setTaking(false)} disabled={pending}>
                     Anuluj
                   </Button>
-                  <Button type="submit" size="sm" disabled={pending || !part?.twId || !(Number(qty) > 0)}>
+                  <Button type="submit" className={touchClass} disabled={pending || !part?.twId || !(Number(qty) > 0)}>
                     {part?.twId ? `Pobierz ${Number(qty) || ""} szt.` : "Pobierz"}
                   </Button>
                 </div>
@@ -478,7 +485,7 @@ export function ServiceOrderDrawer({
                 </ul>
                 <Button
                   type="button"
-                  size="sm"
+                  className={touchClass}
                   variant="secondary"
                   onClick={() =>
                     navigator.clipboard?.writeText(rwClipboardText(lines)).then(
@@ -510,7 +517,7 @@ export function ServiceOrderDrawer({
                       className={`${pickerInputClass} font-mono`}
                     />
                   </div>
-                  <Button type="submit" size="sm" disabled={pending || !rw.trim()}>
+                  <Button type="submit" className={touchClass} disabled={pending || !rw.trim()}>
                     Zapisz RW
                   </Button>
                 </form>
@@ -530,9 +537,8 @@ export function ServiceOrderDrawer({
                 </span>
                 <Button
                   type="button"
-                  size="sm"
                   variant="secondary"
-                  className="ml-auto"
+                  className={cn("ml-auto", touchClass)}
                   disabled={pending}
                   onClick={() => submit(() => actionLinkServiceOrderLoaner({ orderId: order.id, unitId: null }))}
                 >
@@ -593,6 +599,56 @@ export function ServiceOrderDrawer({
           <Section title="Historia zlecenia">
             <EventTimeline label="Historia zlecenia" items={historyItems} />
           </Section>
+
+          {canCancel ? (
+            // Na końcu panelu, z odstępem od kroków naprawy: anulowanie nie jest jednym z kroków.
+            <div className="border-t border-slate-100 pt-5">
+              {cancelling ? (
+                <form
+                  className="space-y-3 rounded-xl border border-red-200 bg-red-50 p-4"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    submit(() => actionMoveServiceOrder({ orderId: order.id, to: "anulowane", note: cancelNote }), () => setCancelling(false));
+                  }}
+                >
+                  <label htmlFor={`${formId}-cancel`} className="block text-sm font-semibold text-slate-900">
+                    Anulowanie {order.number}
+                  </label>
+                  <input
+                    id={`${formId}-cancel`}
+                    value={cancelNote}
+                    maxLength={300}
+                    autoFocus
+                    onChange={(e) => setCancelNote(e.target.value)}
+                    placeholder="Powód, np. klient zrezygnował z naprawy"
+                    className={pickerInputClass}
+                  />
+                  {parts.length && !order.rwNumber ? (
+                    <p className="text-[0.8125rem] text-slate-600">Pobrane części zostaną na liście „Do RW”, dopóki ich nie oddasz albo nie wpiszesz RW.</p>
+                  ) : null}
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button type="button" variant="secondary" onClick={() => setCancelling(false)} disabled={pending} className={touchClass}>
+                      Wróć
+                    </Button>
+                    <Button type="submit" variant="danger" disabled={pending} className={touchClass}>
+                      Anuluj zlecenie
+                    </Button>
+                  </div>
+                </form>
+              ) : (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={pending}
+                  onClick={() => setCancelling(true)}
+                  className={cn("w-full text-red-700 hover:text-red-800", touchClass)}
+                >
+                  <IconX size={18} aria-hidden />
+                  Anuluj zlecenie
+                </Button>
+              )}
+            </div>
+          ) : null}
         </div>
       </aside>
     </>

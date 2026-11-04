@@ -61,6 +61,7 @@ export function LoanerAddDialog({ onClose, onDone }: { onClose: () => void; onDo
   return (
     <ModalShell
       open
+      className="touch-ui"
       onClose={onClose}
       title="Dodaj egzemplarz"
       description="Model to towar z Subiekta. OnTime prowadzi numer egzemplarza i jego historię."

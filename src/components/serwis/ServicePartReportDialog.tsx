@@ -41,6 +41,7 @@ export function ServicePartReportDialog({
   return (
     <ModalShell
       open
+      className="touch-ui"
       onClose={onClose}
       title={`Zgłoś brak: ${part.name}`}
       description={`Dostępne: ${part.available} szt.${part.takenWithoutRw ? ` (w tym odjęte ${part.takenWithoutRw} pobrane do zleceń bez RW)` : ""}${part.minStock ? `, minimum ${part.minStock} szt.` : ""}. Zakupy zamówią dokładnie tyle, ile wpiszesz.`}

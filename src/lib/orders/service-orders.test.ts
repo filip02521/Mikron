@@ -126,8 +126,22 @@ describe("etykiety przejść", () => {
     expect(transitionLabel("w_naprawie", "gotowe")).toBe("Wróć do: w naprawie");
     expect(transitionLabel("przyjete", "diagnoza")).toBe("Wróć do: przyjęte");
     expect(transitionLabel("diagnoza", "przyjete")).toBe("Zacznij diagnozę");
-    expect(transitionLabel("w_naprawie", "czeka_na_czesc")).toBe("Naprawa w toku");
+    expect(transitionLabel("w_naprawie", "czeka_na_czesc")).toBe("Wznów naprawę");
+    expect(transitionLabel("w_naprawie", "diagnoza")).toBe("Zacznij naprawę");
+    expect(transitionLabel("gotowe", "w_naprawie")).toBe("Oznacz jako gotowe");
     expect(transitionLabel("czeka_na_czesc", "w_naprawie")).toBe("Czeka na część");
     expect(transitionLabel("anulowane", "gotowe")).toBe("Anuluj zlecenie");
+  });
+});
+
+describe("zdanie o skutku pod przyciskiem głównym", () => {
+  it("wydanie mówi o zamknięciu, RW i zamienniku tylko wtedy, gdy dotyczą", async () => {
+    const { transitionHint } = await import("./service-orders");
+    expect(transitionHint("wydane", { partsWithoutRw: false, loanerCode: null })).toBe("Zamyka zlecenie.");
+    expect(transitionHint("wydane", { partsWithoutRw: true, loanerCode: "ZAST-001" })).toBe(
+      "Zamyka zlecenie. Pobrane części bez RW zostaną na liście „Do RW”. Odbierz od klienta zamiennik ZAST-001."
+    );
+    expect(transitionHint("gotowe", { partsWithoutRw: false, loanerCode: null })).toMatch(/numer RW/);
+    expect(transitionHint("diagnoza", { partsWithoutRw: false, loanerCode: null })).toBeNull();
   });
 });

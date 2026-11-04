@@ -90,7 +90,7 @@ export function primaryNextStatus(from: ServiceOrderStatus): ServiceOrderStatus 
  * diagnozy, z gotowego do naprawy) nazywa się „Wróć do: …”, żeby nie wyglądał na kolejny etap.
  */
 export function transitionLabel(to: ServiceOrderStatus, from?: ServiceOrderStatus): string {
-  if (from && to !== "anulowane" && to !== "czeka_na_czesc" && flowIndex(to) >= 0 && flowIndex(to) < flowIndex(from)) {
+  if (from && isBackwardTransition(to, from)) {
     return `Wróć do: ${SERVICE_ORDER_STATUS_LABEL[to].toLowerCase()}`;
   }
   switch (to) {
@@ -99,16 +99,39 @@ export function transitionLabel(to: ServiceOrderStatus, from?: ServiceOrderStatu
     case "diagnoza":
       return "Zacznij diagnozę";
     case "w_naprawie":
-      return "Naprawa w toku";
+      return from === "czeka_na_czesc" ? "Wznów naprawę" : "Zacznij naprawę";
     case "czeka_na_czesc":
       return "Czeka na część";
     case "gotowe":
-      return "Gotowe do wydania";
+      return "Oznacz jako gotowe";
     case "wydane":
       return "Wydaj klientowi";
     case "anulowane":
       return "Anuluj zlecenie";
   }
+}
+
+/**
+ * Zdanie pod przyciskiem głównym: co system zrobi sam po kliknięciu (DESIGN: kontrolka mówi o skutku).
+ * null = skutek widać w samej etykiecie.
+ */
+export function transitionHint(
+  to: ServiceOrderStatus,
+  ctx: { partsWithoutRw: boolean; loanerCode: string | null }
+): string | null {
+  if (to === "gotowe") return "Zlecenie przejdzie do „Gotowe do wydania” — od tej chwili wpiszesz numer RW.";
+  if (to === "wydane") {
+    const parts = ["Zamyka zlecenie."];
+    if (ctx.partsWithoutRw) parts.push("Pobrane części bez RW zostaną na liście „Do RW”.");
+    if (ctx.loanerCode) parts.push(`Odbierz od klienta zamiennik ${ctx.loanerCode}.`);
+    return parts.join(" ");
+  }
+  return null;
+}
+
+/** Krok wstecz po osi naprawy (etykieta „Wróć do”, ikona cofnięcia). Wstrzymanie i anulowanie nim nie są. */
+export function isBackwardTransition(to: ServiceOrderStatus, from: ServiceOrderStatus): boolean {
+  return to !== "anulowane" && to !== "czeka_na_czesc" && flowIndex(to) >= 0 && flowIndex(to) < flowIndex(from);
 }
 
 /** Pozycja na osi postępu: „czeka na część” stoi tam, gdzie naprawa. */

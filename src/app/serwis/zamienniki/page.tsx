@@ -26,7 +26,7 @@ export default async function ZamiennikiPage() {
     error = userFacingErrorText(e, "Nie udało się wczytać sprzętu zastępczego.");
   }
   return (
-    <div className={`${adminPageShellClass} space-y-6`}>
+    <div className={`${adminPageShellClass} touch-ui space-y-6`}>
       <PageHeader
         title="Sprzęt zastępczy"
         description="Kto ma który egzemplarz, od ilu dni i kiedy ma oddać. Model to towar z Subiekta, historię egzemplarza prowadzi OnTime."

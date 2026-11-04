@@ -109,7 +109,7 @@ export function ServiceModelsCatalog({ parts, repaired }: { parts: CatalogModelP
                   setModel({ twId: r.twId, symbol: r.symbol, name: r.name });
                   setModelKey((k) => k + 1);
                 }}
-                className="inline-flex min-h-8 items-center rounded-2xl border border-slate-200 bg-card px-3 py-1 text-left text-slate-700 transition-colors duration-150 hover:bg-slate-100"
+                className="inline-flex min-h-11 items-center rounded-2xl border border-slate-200 bg-card px-3 py-1 text-left text-slate-700 transition-colors duration-150 hover:bg-slate-100"
               >
                 {r.symbol ?? r.name} · {r.orders} zl.
               </button>

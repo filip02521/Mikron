@@ -35,6 +35,7 @@ export function LoanerIssueDialog({
   return (
     <ModalShell
       open
+      className="touch-ui"
       onClose={onClose}
       title="Wydaj zamiennik"
       size="lg"

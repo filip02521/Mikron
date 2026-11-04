@@ -43,6 +43,7 @@ export function ServiceOrderIntakeDialog({
   return (
     <ModalShell
       open
+      className="touch-ui"
       onClose={onClose}
       title="Przyjmij sprzęt do serwisu"
       description="Zlecenie dostanie numer ZS. Diagnozę, części i wydanie prowadzisz potem w panelu zlecenia."

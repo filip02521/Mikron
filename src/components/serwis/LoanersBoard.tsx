@@ -432,7 +432,7 @@ export function LoanersBoard({
             <div className="flex flex-wrap items-center gap-2">
               <span className="mr-1 text-[0.8125rem] font-semibold text-slate-600">Do zrobienia</span>
               {late.map((u) => (
-                <button key={u.id} type="button" onClick={() => setOpenId(u.id)} className={cn("inline-flex min-h-8 max-w-full items-center gap-2 rounded-2xl border border-slate-200 bg-card px-3 py-1 text-left text-[0.8125rem] transition-colors duration-150 hover:bg-slate-50", controlFocusClass)}>
+                <button key={u.id} type="button" onClick={() => setOpenId(u.id)} className={cn("inline-flex min-h-11 max-w-full items-center gap-2 rounded-2xl border border-slate-200 bg-card px-3 py-1 text-left text-[0.8125rem] transition-colors duration-150 hover:bg-slate-50", controlFocusClass)}>
                   <span className="h-2 w-2 flex-none rounded-full bg-red-500" aria-hidden />
                   <b className="flex-none whitespace-nowrap font-mono font-semibold">{u.code}</b>
                   {shortClient(u.currentClientName ?? "-")} · {polishPlural(daysBetween(parseDateOnly(u.plannedReturn!), today), "dzień", "dni", "dni")} po terminie
@@ -441,7 +441,7 @@ export function LoanersBoard({
               {dueSoon.map((u) => {
                 const left = daysBetween(today, parseDateOnly(u.plannedReturn!));
                 return (
-                  <button key={u.id} type="button" onClick={() => setOpenId(u.id)} className={cn("inline-flex min-h-8 max-w-full items-center gap-2 rounded-2xl border border-slate-200 bg-card px-3 py-1 text-left text-[0.8125rem] transition-colors duration-150 hover:bg-slate-50", controlFocusClass)}>
+                  <button key={u.id} type="button" onClick={() => setOpenId(u.id)} className={cn("inline-flex min-h-11 max-w-full items-center gap-2 rounded-2xl border border-slate-200 bg-card px-3 py-1 text-left text-[0.8125rem] transition-colors duration-150 hover:bg-slate-50", controlFocusClass)}>
                     <span className="h-2 w-2 flex-none rounded-full bg-primary" aria-hidden />
                     <b className="flex-none whitespace-nowrap font-mono font-semibold">{u.code}</b>
                     zwrot {left === 0 ? "dziś" : left === 1 ? "jutro" : `za ${left} dni`}

@@ -113,7 +113,7 @@ export function ClientEquipmentPicker({
                     aria-pressed={active}
                     onClick={() => onPick({ twId: it.twId, symbol: it.symbol, name: it.name, serial: sn })}
                     className={cn(
-                      "inline-flex min-h-8 max-w-full items-center rounded-full border px-3 py-1 font-mono text-[0.8125rem] transition-colors duration-150",
+                      "inline-flex min-h-11 max-w-full items-center rounded-full border px-3 py-1 font-mono text-[0.8125rem] transition-colors duration-150",
                       active ? "border-indigo-600 bg-indigo-50 font-semibold text-indigo-900" : "border-slate-200 bg-card text-slate-700 hover:bg-slate-100"
                     )}
                   >

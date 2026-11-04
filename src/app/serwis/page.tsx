@@ -25,7 +25,7 @@ export default async function SerwisPage() {
   }
 
   return (
-    <div className={`${adminPageShellClass} space-y-6`}>
+    <div className={`${adminPageShellClass} touch-ui space-y-6`}>
       <PageHeader
         title="Części serwisowe"
         description="Towary z cechą Subiekta „Części serwisowe”. Zakupy zamawiają je tylko po zgłoszeniu, więc brakującą część zgłoś przyciskiem „Zgłoś brak”."

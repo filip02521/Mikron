@@ -23,7 +23,7 @@ export default async function ModelePage() {
     error = userFacingErrorText(e, "Nie udało się wczytać katalogu części.");
   }
   return (
-    <div className={`${adminPageShellClass} space-y-6`}>
+    <div className={`${adminPageShellClass} touch-ui space-y-6`}>
       <PageHeader
         title="Katalog części modeli"
         description="Części, które zwykle idą do naprawy danego modelu. Przy pobieraniu części do zlecenia pojawiają się jako pierwsze."
