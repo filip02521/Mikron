@@ -30,6 +30,29 @@ export async function upsertSubiektProduct(input: {
   if (error) throw new Error(error.message);
 }
 
+/**
+ * Dostawca przypięty ręcznie w /admin/produkty. Gdy jest, automaty (ZD, historia zamówień)
+ * nie zakładają ani nie podbijają linków do innych dostawców tego towaru.
+ */
+export async function fetchManualSupplierPins(twIds: number[]): Promise<Map<number, string>> {
+  const ids = [...new Set(twIds.map((id) => Math.trunc(id)).filter((id) => Number.isFinite(id) && id > 0))];
+  const pins = new Map<number, string>();
+  if (!ids.length) return pins;
+  const res = await query<{ subiekt_tw_id: number; manual_supplier_id: string }>(
+    `SELECT subiekt_tw_id, manual_supplier_id::text AS manual_supplier_id
+       FROM subiekt_products
+      WHERE subiekt_tw_id = ANY($1::int[]) AND manual_supplier_id IS NOT NULL`,
+    [ids]
+  );
+  for (const row of res.rows) pins.set(Number(row.subiekt_tw_id), String(row.manual_supplier_id));
+  return pins;
+}
+
+async function blockedByManualPin(subiektTwId: number, supplierId: string): Promise<boolean> {
+  const pinned = (await fetchManualSupplierPins([subiektTwId])).get(Math.trunc(subiektTwId));
+  return pinned != null && pinned !== supplierId;
+}
+
 export async function bumpProductSupplierLink(input: {
   subiektTwId: number;
   supplierId: string;
@@ -40,6 +63,7 @@ export async function bumpProductSupplierLink(input: {
   const supabase = createAdminClient();
   const subiektTwId = Math.trunc(input.subiektTwId);
   const actionAt = input.actionAt ?? nowIso();
+  if (await blockedByManualPin(subiektTwId, input.supplierId)) return;
 
   // Nie ma atomowego "upsert + increment" w supabase-js bez RPC.
   // Skala jest mała, więc robimy read-modify-write.
@@ -80,6 +104,7 @@ export async function bumpProductSupplierLinkBy(input: {
   const delta = Math.trunc(input.delta);
   if (!Number.isFinite(delta) || delta <= 0) return;
   const actionAt = input.lastActionAt ?? nowIso();
+  if (await blockedByManualPin(subiektTwId, input.supplierId)) return;
 
   const { data: existing, error: fetchError } = await supabase
     .from("product_supplier_links")
@@ -132,10 +157,7 @@ export async function recordProductEvent(input: {
   if (error) throw new Error(error.message);
 }
 
-/**
- * Ręczne przypisanie w panelu admina ustawia „głównego” dostawcę w katalogu
- * (najwyższy order_count). Starsze linki zostają w historii z niższym priorytetem.
- */
+/** order_count linku po ręcznym przypisaniu — nie niższy niż dotychczasowy główny dostawca. */
 export function adminAssignPrimaryOrderCount(
   links: Array<{ supplierId: string; orderCount: number }>,
   targetSupplierId: string
@@ -219,12 +241,22 @@ export async function assignProductSupplierLinkAdmin(input: {
   );
   if (error) throw new Error(error.message);
 
+  // Ręczny wybór jest ostateczny: towar znika z list innych dostawców i nie wraca z importu ZD.
+  await query(`UPDATE subiekt_products SET manual_supplier_id = $2::uuid, updated_at = now() WHERE subiekt_tw_id = $1`, [
+    subiektTwId,
+    supplierId,
+  ]);
+  const removed = await query(
+    `DELETE FROM product_supplier_links WHERE subiekt_tw_id = $1 AND supplier_id <> $2::uuid`,
+    [subiektTwId, supplierId]
+  );
+
   await recordProductEvent({
     subiektTwId,
     supplierId,
     source: "procurement_verification",
     action: "link_upserted",
-    detail: { manualAdmin: true },
+    detail: { manualAdmin: true, removedOtherLinks: removed.rowCount ?? 0 },
     at,
   });
 

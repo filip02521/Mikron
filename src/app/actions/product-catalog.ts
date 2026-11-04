@@ -12,6 +12,7 @@ import { isSubiektReachable } from "@/lib/subiekt/availability";
 import { searchSubiektProducts } from "@/lib/subiekt/api";
 import {
   assignProductSupplierLinkAdmin,
+  fetchManualSupplierPins,
   indexOrderLineToProductCatalog,
   normalizeProductCatalogBulkTwIds,
 } from "@/lib/data/product-catalog";
@@ -326,7 +327,11 @@ export async function actionRebuildProductCatalogFromOrders(options?: { limit?: 
     }
   }
 
-  const linkRows = [...linksAgg.values()];
+  const pins = await fetchManualSupplierPins([...new Set([...linksAgg.values()].map((l) => l.twId))]);
+  const linkRows = [...linksAgg.values()].filter((l) => {
+    const pinned = pins.get(l.twId);
+    return pinned == null || pinned === l.supplierId;
+  });
   if (linkRows.length) {
     const { data: existingLinksRaw } = await supabase
       .from("product_supplier_links")
