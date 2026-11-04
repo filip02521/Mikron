@@ -25,12 +25,32 @@ export type ClientEquipmentItem = {
 
 const NUMBERED = /^(\d{1,3})\s*[.)]\s*(.*)$/;
 
-/** Numer seryjny: bez spacji w środku nie musi być, ale cyfra jest zawsze („Proszę o kontakt” to nie SN). */
+/**
+ * „S/N:”, „SN ”, „nr:”, „numer seryjny” przed numerem — nie są jego częścią. „SN”/„nr” tylko z separatorem:
+ * numer „SN11122” zaczyna się od tych liter i zostaje cały.
+ */
+const SERIAL_PREFIX = /^(?:s\s*\/\s*n\s*[:.]?\s*|(?:sn|nr|numer(?:\s+seryjny)?)(?:\s*[:.]\s*|\s+))/i;
+/** Jeden ciąg bez spacji, z cyfrą, 5–40 znaków (adres „Opolska 1”, kod „01-267” czy „Proszę o kontakt” odpadają). */
+const SERIAL_TOKEN = /^[A-Za-z0-9][A-Za-z0-9/._-]{4,39}$/;
+const POSTCODE = /^\d{2}-\d{3}$/;
+
+function asSerial(raw: string): string | null {
+  const t = raw.trim().replace(SERIAL_PREFIX, "").trim();
+  return SERIAL_TOKEN.test(t) && /\d/.test(t) && !POSTCODE.test(t) ? t : null;
+}
+
+/**
+ * Numery z fragmentu uwag. Kilka numerów oddziela przecinek, średnik albo spacja — ale wiersz uznajemy
+ * tylko wtedy, gdy KAŻDE jego słowo wygląda na numer: „Jana Kazimierza 53a” (adres z paragonu) nie jest SN.
+ */
 function serialTokens(text: string): string[] {
-  return text
+  const parts = text
     .split(/[,;]/)
-    .map((t) => t.trim().replace(/\s+/g, " "))
-    .filter((t) => t.length >= 3 && t.length <= 60 && /\d/.test(t));
+    .map((p) => p.trim().replace(SERIAL_PREFIX, ""))
+    .flatMap((p) => p.split(/\s+/))
+    .filter(Boolean);
+  const serials = parts.map(asSerial);
+  return serials.every((s): s is string => s != null) ? serials : [];
 }
 
 /** Uwagi FS → numery seryjne po numerze pozycji (1 = pierwsza pozycja). */

@@ -73,3 +73,20 @@ describe("dropServiceProducts", () => {
     expect(out.map((o) => o.twId)).toEqual([1, 3]);
   });
 });
+
+describe("format numeru seryjnego (paragony mają w uwagach adres kupującego)", () => {
+  it("prefiks S/N, SN, nr nie jest częścią numeru", () => {
+    expect([...parseInvoiceSerialNotes("3.S/N:A1234567").entries()]).toEqual([[3, ["A1234567"]]]);
+    expect([...parseInvoiceSerialNotes("1. SN X99887766\n2) nr: QW-12345").entries()]).toEqual([
+      [1, ["X99887766"]],
+      [2, ["QW-12345"]],
+    ]);
+  });
+  it("adres i kod pocztowy po numerze nie stają się numerami", () => {
+    const notes = "Zamówienie: 140001\r\nJan Testowy\r\n2. ZZ00112233\r\nul. Przykładowa 53a\r\nWarszawa 01-267\r\n01-267\r\n16/1";
+    expect([...parseInvoiceSerialNotes(notes).entries()]).toEqual([[2, ["ZZ00112233"]]]);
+  });
+  it("kilka numerów rozdzielonych spacją w wierszu z numerem pozycji", () => {
+    expect([...parseInvoiceSerialNotes("4. AB12345 CD67890").entries()]).toEqual([[4, ["AB12345", "CD67890"]]]);
+  });
+});

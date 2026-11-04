@@ -295,7 +295,7 @@ export type ClientEquipmentActionResult =
   | { ok: true; items: ClientEquipmentItem[]; invoicesScanned: number; truncated: boolean }
   | { ok: false; message: string };
 
-/** Sprzęt kupiony przez klienta (pozycje FS z numerami seryjnymi w uwagach) — do wyboru przy przyjęciu. */
+/** Sprzęt kupiony przez klienta (pozycje FS i PA z numerami seryjnymi w uwagach) — do wyboru przy przyjęciu. */
 export async function actionServiceClientEquipment(khId: number): Promise<ClientEquipmentActionResult> {
   await requireServicePanel("read");
   const id = twId(khId);
@@ -303,6 +303,6 @@ export async function actionServiceClientEquipment(khId: number): Promise<Client
   try {
     return { ok: true, ...(await fetchClientEquipment(id)) };
   } catch (e) {
-    return { ok: false, message: userFacingErrorText(e, "Nie udało się pobrać faktur klienta z Subiekta.") };
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się pobrać faktur i paragonów klienta z Subiekta.") };
   }
 }

@@ -59,10 +59,13 @@ Przegląd uprawnień (agent `authz-reviewer`) bez uwag krytycznych/wysokich.
   Zwrot egzemplarza odpina go od zlecenia (zdarzenie w historii zlecenia); jeden egzemplarz — jedno zlecenie.
 - Rola serwis startuje na zleceniach; pozycja „Serwis” w menu świeci na każdej zakładce hubu.
 
-- Przyjęcie: po wyborze klienta z Subiekta lista „Sprzęt klienta z faktur” — pozycje jego FS (10 lat,
-  `/documents/fs?kh_id=`) z numerem seryjnym w Uwagach („N. numer” = pozycja N; wiersze bez numeru
-  należą do poprzedniej). Usługi (`tw_Rodzaj = 2`, np. licencje z kluczem) odpadają. Klik w numer
-  wpisuje model i numer seryjny (`src/lib/subiekt/client-equipment*.ts`).
+- Przyjęcie: po wyborze klienta z Subiekta lista „Sprzęt klienta z faktur i paragonów” — pozycje jego
+  FS (`/documents/fs?kh_id=`) i PA (`/documents/pa?odbiorcaId=`) z 10 lat z numerem seryjnym w Uwagach
+  („N. numer” = pozycja N, prefiks „S/N:” pomijany; wiersze bez numeru należą do poprzedniej, o ile cały
+  wiersz wygląda na numer — adres z paragonu nie). Usługi (`tw_Rodzaj = 2`, np. licencje z kluczem)
+  odpadają. Klik w numer wpisuje model i numer seryjny (`src/lib/subiekt/client-equipment*.ts`).
+  Ograniczenie: paragony detaliczne idą na zbiorczego kontrahenta (994 z 1000 sprawdzonych) — klient
+  detaliczny nie ma ich pod swoją kartoteką.
 
 ### 6. Części do zlecenia i RW (wystawiane ręcznie)
 - „Pobierz część”: najpierw katalog modelu, potem dowolny towar z Subiekta (tw_Id sprawdzany w Subiekcie).

@@ -8,7 +8,7 @@ import { polishPlural } from "@/lib/email/polish-plural";
 import { actionServiceClientEquipment, type ClientEquipmentActionResult } from "@/app/actions/service-orders";
 import type { ClientEquipmentItem } from "@/lib/subiekt/client-equipment-parse";
 
-/** Wybrany egzemplarz z faktury: model + numer seryjny. */
+/** Wybrany egzemplarz z faktury albo paragonu: model + numer seryjny. */
 export type PickedEquipment = { twId: number; symbol: string | null; name: string; serial: string };
 
 const VISIBLE = 5;
@@ -20,8 +20,8 @@ function formatDate(ymd: string | null): string {
 }
 
 /**
- * Sprzęt, który klient kupił u nas: pozycje jego faktur z numerem seryjnym w uwagach. Klik w numer
- * wpisuje model i numer seryjny do przyjęcia. Gdy faktura nie ma numeru — sprzęt wybiera się niżej ręcznie.
+ * Sprzęt, który klient kupił u nas: pozycje jego faktur i paragonów z numerem seryjnym w uwagach. Klik w numer
+ * wpisuje model i numer seryjny do przyjęcia. Gdy dokument nie ma numeru — sprzęt wybiera się niżej ręcznie.
  */
 export function ClientEquipmentPicker({
   khId,
@@ -40,7 +40,7 @@ export function ClientEquipmentPicker({
     let alive = true;
     actionServiceClientEquipment(khId).then(
       (res) => alive && setResult(res),
-      () => alive && setResult({ ok: false, message: "Nie udało się pobrać faktur klienta z Subiekta." })
+      () => alive && setResult({ ok: false, message: "Nie udało się pobrać faktur i paragonów klienta z Subiekta." })
     );
     return () => {
       alive = false;
@@ -51,7 +51,7 @@ export function ClientEquipmentPicker({
     return (
       <div role="status" className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
         <BrandLoader size="sm" tile={false} />
-        <span className="text-[0.8125rem] text-slate-600">Szukam sprzętu klienta w jego fakturach…</span>
+        <span className="text-[0.8125rem] text-slate-600">Szukam sprzętu klienta w jego fakturach i paragonach…</span>
       </div>
     );
   }
@@ -80,8 +80,8 @@ export function ClientEquipmentPicker({
   if (result.items.length === 0) {
     return (
       <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[0.8125rem] text-slate-600">
-        Brak sprzętu z numerem seryjnym w fakturach klienta (
-        {polishPlural(result.invoicesScanned, "faktura", "faktury", "faktur")} z 10 lat). Wybierz model niżej.
+        Brak sprzętu z numerem seryjnym w fakturach i paragonach klienta (
+        {polishPlural(result.invoicesScanned, "dokument", "dokumenty", "dokumentów")} z 10 lat). Wybierz model niżej.
       </p>
     );
   }
@@ -91,7 +91,7 @@ export function ClientEquipmentPicker({
     <section aria-labelledby={`eq-${khId}`} className="space-y-2">
       <div className="flex items-baseline justify-between gap-2">
         <h3 id={`eq-${khId}`} className="text-xs font-semibold text-slate-600">
-          Sprzęt klienta z faktur ({result.items.length})
+          Sprzęt klienta z faktur i paragonów ({result.items.length})
         </h3>
         <span className="text-xs text-slate-500">Kliknij numer seryjny</span>
       </div>
@@ -131,7 +131,7 @@ export function ClientEquipmentPicker({
         </Button>
       ) : null}
       {result.truncated ? (
-        <p className="text-xs text-slate-500">Przejrzano {polishPlural(result.invoicesScanned, "fakturę", "faktury", "faktur")} — starszy sprzęt może nie być na liście.</p>
+        <p className="text-xs text-slate-500">Przejrzano {polishPlural(result.invoicesScanned, "dokument", "dokumenty", "dokumentów")} — starszy sprzęt może nie być na liście.</p>
       ) : null}
     </section>
   );
