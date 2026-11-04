@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
+import { EventTimeline, type EventTimelineTone } from "@/components/ui/EventTimeline";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { cn } from "@/lib/cn";
 import { polishPluralWord } from "@/lib/email/polish-plural";
@@ -9,6 +10,7 @@ import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-
 import {
   actionEndLoanerService,
   actionExtendLoaner,
+  actionRetireLoaner,
   actionReturnLoaner,
   actionStartLoanerService,
 } from "@/app/actions/service-loaners";
@@ -23,14 +25,14 @@ import {
 } from "@/lib/orders/service-loaners";
 import { formatLong, formatShort, StatePill, type LoanerUnitView } from "@/components/serwis/LoanersBoard";
 
-const EVENT_DOT: Record<LoanerEvent["type"], string> = {
-  created: "border-slate-300",
-  issued: "border-indigo-600",
-  returned: "border-emerald-500",
-  extended: "border-indigo-300",
-  service_start: "border-amber-500",
-  service_end: "border-emerald-500",
-  retired: "border-slate-400",
+const EVENT_TONE: Record<LoanerEvent["type"], EventTimelineTone> = {
+  created: "neutral",
+  issued: "brand",
+  returned: "ok",
+  extended: "brandSoft",
+  service_start: "warn",
+  service_end: "ok",
+  retired: "muted",
 };
 
 function eventTitle(e: LoanerEvent): string {
@@ -97,7 +99,7 @@ function DaysRing({ days, planned }: { days: number; planned: number | null }) {
   );
 }
 
-type Mode = null | "return" | "extend" | "service_end";
+type Mode = null | "return" | "extend" | "service_end" | "retire";
 
 export function LoanerDrawer({
   unit,
@@ -278,6 +280,9 @@ export function LoanerDrawer({
                       Zakończ przegląd
                     </Button>
                   )}
+                  <Button type="button" size="sm" variant="secondary" onClick={() => setMode("retire")}>
+                    Wycofaj egzemplarz
+                  </Button>
                 </div>
               ) : null}
             </>
@@ -341,6 +346,42 @@ export function LoanerDrawer({
             </form>
           ) : null}
 
+          {mode === "retire" ? (
+            <form
+              className="space-y-3 rounded-xl border border-red-200 bg-red-50 p-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                submit(() => actionRetireLoaner({ unitId: unit.id, note }));
+              }}
+            >
+              <div>
+                <label htmlFor="loaner-retire-note" className="block text-sm font-semibold text-slate-900">
+                  Wycofanie {unit.code} z puli
+                </label>
+                <p className="text-[0.8125rem] text-slate-600">
+                  Egzemplarz zniknie z tablicy i nie będzie można go wydać. Historia zostaje w bazie.
+                </p>
+              </div>
+              <input
+                id="loaner-retire-note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                maxLength={300}
+                placeholder="Powód, np. zużyty, sprzedany klientowi"
+                className="h-10 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              />
+              {error ? <p className="text-sm text-red-700">{error}</p> : null}
+              <div className="flex justify-end gap-2">
+                <Button type="button" size="sm" variant="secondary" onClick={() => setMode(null)} disabled={pending}>
+                  Anuluj
+                </Button>
+                <Button type="submit" size="sm" variant="danger" disabled={pending}>
+                  {pending ? "Zapisuję…" : "Wycofaj z puli"}
+                </Button>
+              </div>
+            </form>
+          ) : null}
+
           {mode === "extend" ? (
             <form
               className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4"
@@ -391,16 +432,17 @@ export function LoanerDrawer({
 
           <div>
             <p className="mb-2 text-[0.8125rem] font-semibold text-slate-600">Historia egzemplarza</p>
-            <ol className="relative space-y-4 pl-5 before:absolute before:bottom-1.5 before:left-[5px] before:top-1.5 before:w-px before:bg-slate-200">
-              {events.map((e) => (
-                <li key={e.id} className="relative">
-                  <span className={cn("absolute -left-5 top-1 h-[11px] w-[11px] rounded-full border-2 bg-raised", EVENT_DOT[e.type])} aria-hidden />
-                  <div className="text-xs tabular-nums text-slate-500">{formatLong(e.at)}</div>
-                  <div className="font-semibold text-slate-900">{eventTitle(e)}</div>
-                  {eventMeta(e, unit) ? <div className="text-[0.8125rem] text-slate-500">{eventMeta(e, unit)}</div> : null}
-                </li>
-              ))}
-            </ol>
+            <EventTimeline
+              label="Historia egzemplarza"
+              formatDate={formatLong}
+              items={events.map((e) => ({
+                id: e.id,
+                at: e.at,
+                title: eventTitle(e),
+                meta: eventMeta(e, unit) || undefined,
+                tone: EVENT_TONE[e.type],
+              }))}
+            />
           </div>
         </div>
       </aside>

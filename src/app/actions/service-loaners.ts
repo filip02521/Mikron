@@ -10,6 +10,7 @@ import {
   insertLoanerUnit,
   issueLoanerUnit,
   LoanerStateError,
+  retireLoanerUnit,
   returnLoanerUnit,
   startLoanerService,
   type LoanerActor,
@@ -21,6 +22,7 @@ import {
   parseDateOnly,
   toDateOnly,
 } from "@/lib/orders/service-loaners";
+import { verifySubiektProduct } from "@/lib/subiekt/product-verify";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 
 export type LoanerActionResult = { ok: true; message: string } | { ok: false; message: string };
@@ -92,15 +94,21 @@ export async function actionAddLoanerUnit(input: {
     if (!code) throw new LoanerStateError("Wpisz numer egzemplarza (np. ZAST-005 albo numer seryjny).");
     const twId = Math.trunc(Number(input.twId));
     if (!Number.isSafeInteger(twId) || twId <= 0) throw new LoanerStateError("Wybierz towar z Subiekta.");
-    const twName = text(input.twName, 200);
-    if (!twName) throw new LoanerStateError("Wybierz towar z Subiekta.");
+    // tw_Id przychodzi z przeglądarki — model musi istnieć w Subiekcie; symbol i nazwa z Subiekta.
+    let product: Awaited<ReturnType<typeof verifySubiektProduct>>;
+    try {
+      product = await verifySubiektProduct(twId);
+    } catch {
+      throw new LoanerStateError("Nie udało się sprawdzić towaru w Subiekcie. Spróbuj za chwilę.");
+    }
+    if (!product) throw new LoanerStateError("Subiekt nie zna tego towaru. Wybierz model z podpowiedzi.");
     await insertLoanerUnit(
       {
         code,
         serialNo: text(input.serialNo, 80) || null,
         twId,
-        twSymbol: text(input.twSymbol, 80) || null,
-        twName,
+        twSymbol: product.symbol,
+        twName: product.name,
         condition: condition(input.condition),
         note: text(input.note, 300),
       },
@@ -169,6 +177,16 @@ export async function actionStartLoanerService(input: { unitId: string; note?: s
   return run(async () => {
     const u = await startLoanerService({ unitId: unitId(input.unitId), note: text(input.note, 300) }, actorOf(user));
     return `${u.code} oznaczony do przeglądu.`;
+  });
+}
+
+export async function actionRetireLoaner(input: { unitId: string; note: string }): Promise<LoanerActionResult> {
+  const user = await requireServicePanel("mutate");
+  return run(async () => {
+    const note = text(input.note, 300);
+    if (!note) throw new LoanerStateError("Wpisz powód wycofania (np. zużyty, sprzedany klientowi).");
+    const u = await retireLoanerUnit({ unitId: unitId(input.unitId), note }, actorOf(user));
+    return `${u.code} wycofany z puli. Historia zostaje w bazie.`;
   });
 }
 

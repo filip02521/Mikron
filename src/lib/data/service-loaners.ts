@@ -249,3 +249,15 @@ export async function startLoanerService(input: { unitId: string; note: string }
     return { ...u, status: "przeglad" };
   });
 }
+
+/** Wycofanie z puli (zużyty, sprzedany, zezłomowany). Egzemplarz u klienta musi najpierw wrócić. */
+export async function retireLoanerUnit(input: { unitId: string; note: string }, actor: LoanerActor): Promise<LoanerUnit> {
+  return inTx(async (c) => {
+    const u = await lockUnit(c, input.unitId);
+    if (u.status === "u_klienta") throw new LoanerStateError(`${u.code} jest u klienta. Najpierw przyjmij zwrot.`);
+    if (u.status === "wycofany") throw new LoanerStateError(`${u.code} jest już wycofany.`);
+    await c.query(`UPDATE service_loaner_units SET status = 'wycofany', updated_at = now() WHERE id = $1`, [u.id]);
+    await addEvent(c, u.id, "retired", actor, { note: input.note });
+    return { ...u, status: "wycofany" };
+  });
+}
