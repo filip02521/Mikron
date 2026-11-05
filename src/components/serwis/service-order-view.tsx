@@ -8,6 +8,7 @@ import {
   type ServiceOrderPart,
   type ServiceOrderStatus,
 } from "@/lib/orders/service-orders";
+import { warrantyLabel, type WarrantyStatus } from "@/lib/orders/service-warranty";
 
 export type OrderPartView = ServiceOrderPart & { orderId: string };
 
@@ -39,6 +40,28 @@ export function OrderStatusPill({ status }: { status: ServiceOrderStatus }) {
     <span className={cn("inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-xs font-medium", STATUS_PILL[status])}>
       <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
       {SERVICE_ORDER_STATUS_LABEL[status]}
+    </span>
+  );
+}
+
+const WARRANTY_PILL: Record<WarrantyStatus["state"], string> = {
+  active: "bg-emerald-50 text-emerald-800",
+  expired: "bg-amber-50 text-amber-900",
+  unknown: "bg-slate-100 text-slate-600",
+};
+
+/** Stan gwarancji jako płaska odznaka (nie przycisk): „Gwarancja do …”, „Po gwarancji (…)”, „Brak daty zakupu”. */
+export function WarrantyPill({ status, className }: { status: WarrantyStatus; className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-xs font-medium",
+        WARRANTY_PILL[status.state],
+        className
+      )}
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
+      {warrantyLabel(status)}
     </span>
   );
 }

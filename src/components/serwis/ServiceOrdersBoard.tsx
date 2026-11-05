@@ -96,13 +96,17 @@ export function ServiceOrdersBoard({
   events,
   loaners,
   modelParts,
+  warrantyMonths: warrantyPairs,
 }: {
   orders: ServiceOrder[];
   parts: OrderPartView[];
   events: ServiceOrderEvent[];
   loaners: LinkableLoaner[];
   modelParts: ModelPartView[];
+  /** Okresy gwarancji modeli różne od domyślnego: [tw_Id, miesiące]. */
+  warrantyMonths: [number, number][];
 }) {
+  const warrantyMonths = useMemo(() => new Map(warrantyPairs), [warrantyPairs]);
   const router = useRouter();
   const params = useSearchParams();
   const [, startRefresh] = useTransition();
@@ -285,6 +289,7 @@ export function ServiceOrdersBoard({
 
       {intake ? (
         <ServiceOrderIntakeDialog
+          warrantyMonths={warrantyMonths}
           onClose={() => setIntake(false)}
           onCreated={(message, orderId) => {
             setIntake(false);

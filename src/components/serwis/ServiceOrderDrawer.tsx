@@ -12,6 +12,7 @@ import { polishPluralWord } from "@/lib/email/polish-plural";
 import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 import { sidePanelBackdropClass } from "@/lib/ui/surfaces";
 import { useAnimatedClose } from "@/lib/ui/use-animated-close";
+import { warrantyStatus } from "@/lib/orders/service-warranty";
 import {
   actionLinkServiceOrderLoaner,
   actionMoveServiceOrder,
@@ -29,6 +30,7 @@ import {
   formatDay,
   OrderStatusPill,
   REQUEST_STATUS_LABEL,
+  WarrantyPill,
   orderEventMeta,
   orderEventTitle,
   orderEventTone,
@@ -320,6 +322,16 @@ export function ServiceOrderDrawer({
               </span>
             ) : null}
           </p>
+          {/* Gwarancja liczy się na dzień przyjęcia: sprzęt przyjęty na gwarancji naprawia się na gwarancji. */}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <WarrantyPill status={warrantyStatus(order.warrantyUntil, new Date(order.createdAt))} />
+            {order.purchaseDate ? (
+              <span className="text-xs text-slate-500">
+                zakup {formatDateOnly(order.purchaseDate)}
+                {order.purchaseDoc ? ` · ${order.purchaseDoc}` : ""}
+              </span>
+            ) : null}
+          </div>
         </div>
 
         <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5 sm:px-6" {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}>

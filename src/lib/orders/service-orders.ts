@@ -230,6 +230,11 @@ export type ServiceOrder = {
   noInvoiceReason: string | null;
   /** Część, na którą zlecenie czeka (status „czeka na część”); requestStatus — status prośby do zakupów, gdy jest. */
   waitingPart: { twId: number | null; symbol: string | null; name: string; qty: number; since: string | null; requestStatus: string | null } | null;
+  /** Zakup sprzętu (YYYY-MM-DD) i dokument (FS/PA z listy sprzętu klienta albo wpisany) — podstawa gwarancji. */
+  purchaseDate: string | null;
+  purchaseDoc: string | null;
+  /** Ostatni dzień gwarancji, policzony przy przyjęciu z okresu modelu (service-warranty.ts). */
+  warrantyUntil: string | null;
   closedAt: string | null;
   createdAt: string;
 };

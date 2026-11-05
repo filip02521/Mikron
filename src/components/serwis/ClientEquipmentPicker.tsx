@@ -7,9 +7,18 @@ import { cn } from "@/lib/cn";
 import { polishPlural } from "@/lib/email/polish-plural";
 import { actionServiceClientEquipment, type ClientEquipmentActionResult } from "@/app/actions/service-orders";
 import type { ClientEquipmentItem } from "@/lib/subiekt/client-equipment-parse";
+import { WarrantyPill } from "@/components/serwis/service-order-view";
+import { warrantyMonthsFor, warrantyStatus, warrantyUntil } from "@/lib/orders/service-warranty";
 
-/** Wybrany egzemplarz z faktury albo paragonu: model + numer seryjny. */
-export type PickedEquipment = { twId: number; symbol: string | null; name: string; serial: string };
+/** Wybrany egzemplarz z faktury albo paragonu: model, numer seryjny i dokument zakupu (podstawa gwarancji). */
+export type PickedEquipment = {
+  twId: number;
+  symbol: string | null;
+  name: string;
+  serial: string;
+  purchaseDate: string | null;
+  purchaseDoc: string | null;
+};
 
 const VISIBLE = 5;
 
@@ -27,11 +36,15 @@ export function ClientEquipmentPicker({
   khId,
   selected,
   onPick,
+  warrantyMonths,
 }: {
   khId: number;
-  selected: PickedEquipment | null;
+  selected: Pick<PickedEquipment, "twId" | "serial"> | null;
   onPick: (e: PickedEquipment) => void;
+  /** Okresy gwarancji modeli różne od domyślnego (tw_Id → miesiące). */
+  warrantyMonths: ReadonlyMap<number, number>;
 }) {
+  const today = new Date();
   const [result, setResult] = useState<ClientEquipmentActionResult | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [showAll, setShowAll] = useState(false);
@@ -102,6 +115,10 @@ export function ClientEquipmentPicker({
               <span className="font-mono">{it.symbol ?? "—"}</span> · {it.invoiceNumber}
               {it.invoiceDate ? ` · ${formatDate(it.invoiceDate)}` : ""}
             </div>
+            <WarrantyPill
+              className="mt-1.5"
+              status={warrantyStatus(it.invoiceDate ? warrantyUntil(it.invoiceDate, warrantyMonthsFor(it.twId, warrantyMonths)) : null, today)}
+            />
             <div role="group" aria-label={`Numery seryjne: ${it.name}`} className="mt-2 flex flex-wrap gap-1.5">
               {it.serials.map((sn) => {
                 const active = selected?.twId === it.twId && selected.serial === sn;
@@ -110,7 +127,9 @@ export function ClientEquipmentPicker({
                     key={sn}
                     type="button"
                     aria-pressed={active}
-                    onClick={() => onPick({ twId: it.twId, symbol: it.symbol, name: it.name, serial: sn })}
+                    onClick={() =>
+                      onPick({ twId: it.twId, symbol: it.symbol, name: it.name, serial: sn, purchaseDate: it.invoiceDate, purchaseDoc: it.invoiceNumber })
+                    }
                     className={cn(
                       "inline-flex min-h-11 max-w-full items-center rounded-full border px-3 py-1 font-mono text-[0.8125rem] transition-colors duration-150",
                       active ? "border-indigo-600 bg-indigo-50 font-semibold text-indigo-900" : "border-slate-200 bg-card text-slate-700 hover:bg-slate-100"

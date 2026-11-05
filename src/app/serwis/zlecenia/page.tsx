@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { requireServicePanel } from "@/lib/auth";
-import { fetchServiceModelParts, fetchServiceOrderBoard } from "@/lib/data/service-orders";
+import { fetchServiceModelParts, fetchServiceModelWarranties, fetchServiceOrderBoard } from "@/lib/data/service-orders";
 import { fetchLoanerFleet } from "@/lib/data/service-loaners";
 import { ServiceOrdersBoard } from "@/components/serwis/ServiceOrdersBoard";
 import { ServiceOverdueLoanersNotice } from "@/components/serwis/ServiceOverdueLoanersNotice";
@@ -19,11 +19,17 @@ export default async function ZleceniaPage() {
     board: Awaited<ReturnType<typeof fetchServiceOrderBoard>>;
     loaners: Awaited<ReturnType<typeof fetchLoanerFleet>>["units"];
     modelParts: Awaited<ReturnType<typeof fetchServiceModelParts>>;
+    warranties: Awaited<ReturnType<typeof fetchServiceModelWarranties>>;
   } | null = null;
   let error: string | null = null;
   try {
-    const [board, fleet, modelParts] = await Promise.all([fetchServiceOrderBoard(), fetchLoanerFleet(), fetchServiceModelParts()]);
-    data = { board, loaners: fleet.units, modelParts };
+    const [board, fleet, modelParts, warranties] = await Promise.all([
+      fetchServiceOrderBoard(),
+      fetchLoanerFleet(),
+      fetchServiceModelParts(),
+      fetchServiceModelWarranties(),
+    ]);
+    data = { board, loaners: fleet.units, modelParts, warranties };
   } catch (e) {
     error = userFacingErrorText(e, "Nie udało się wczytać zleceń serwisowych.");
   }
@@ -53,6 +59,7 @@ export default async function ZleceniaPage() {
             partName: m.partName,
             defaultQty: m.defaultQty,
           }))}
+          warrantyMonths={data.warranties.map((w) => [w.modelTwId, w.months] as [number, number])}
         />
       ) : null}
     </div>

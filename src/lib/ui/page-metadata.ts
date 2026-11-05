@@ -86,7 +86,7 @@ export const PAGE_DESCRIPTIONS: Partial<Record<keyof typeof PAGE_TITLES, string>
   serwis: "Stany części z cechą Subiekta „Części serwisowe” i zgłoszone braki",
   serwisZamienniki: "Sprzęt zastępczy u klientów: licznik dni, terminy zwrotu i historia egzemplarzy",
   serwisZlecenia: "Sprzęt klientów w naprawie: statusy, pobrane części i RW",
-  serwisModele: "Części, które zwykle idą do naprawy danego modelu",
+  serwisModele: "Części, które zwykle idą do naprawy danego modelu, i okres jego gwarancji",
   stockWatch:
     "Proaktywne braki: czas do wyczerpania i lista „Do ZD” po dostawcach - liczona jak w Kreatorze ZD",
   assistant:

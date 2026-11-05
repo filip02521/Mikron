@@ -14,6 +14,8 @@ import {
 import { ClientEquipmentPicker } from "@/components/serwis/ClientEquipmentPicker";
 import { SERVICE_ORDER_TEXT_MAX } from "@/lib/orders/service-orders";
 import { addDays, toDateOnly } from "@/lib/orders/service-loaners";
+import { normalizePurchaseDate, warrantyMonthsFor, warrantyStatus, warrantyUntil } from "@/lib/orders/service-warranty";
+import { WarrantyPill } from "@/components/serwis/service-order-view";
 
 const labelClass = "mb-1.5 block text-xs font-semibold text-slate-600";
 
@@ -21,9 +23,12 @@ const labelClass = "mb-1.5 block text-xs font-semibold text-slate-600";
 export function ServiceOrderIntakeDialog({
   onClose,
   onCreated,
+  warrantyMonths,
 }: {
   onClose: () => void;
   onCreated: (message: string, orderId: string | undefined) => void;
+  /** Okresy gwarancji modeli różne od domyślnego (tw_Id → miesiące). */
+  warrantyMonths: ReadonlyMap<number, number>;
 }) {
   const formId = useId();
   const [client, setClient] = useState<PickedClient | null>(null);
@@ -34,10 +39,15 @@ export function ServiceOrderIntakeDialog({
   const [fault, setFault] = useState("");
   const [accessories, setAccessories] = useState("");
   const [due, setDue] = useState("");
+  // Zakup: z FS/PA wybranego z listy sprzętu (data + numer dokumentu) albo data wpisana przez serwisanta.
+  const [purchaseDate, setPurchaseDate] = useState("");
+  const [purchaseDoc, setPurchaseDoc] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const today = new Date();
 
+  const purchase = normalizePurchaseDate(purchaseDate, today);
+  const warranty = warrantyStatus(purchase ? warrantyUntil(purchase, warrantyMonthsFor(device?.twId ?? null, warrantyMonths)) : null, today);
   const missing = !client?.name ? "klienta" : !device?.name ? "sprzętu" : !fault.trim() ? "opisu usterki" : null;
 
   return (
@@ -83,6 +93,8 @@ export function ServiceOrderIntakeDialog({
               fault,
               accessories,
               dueDate: due || null,
+              purchaseDate: purchaseDate || null,
+              purchaseDoc,
             });
             if (!res.ok) setError(res.message);
             else onCreated(res.message, res.orderId);
@@ -118,10 +130,13 @@ export function ServiceOrderIntakeDialog({
           <ClientEquipmentPicker
             key={client.khId}
             khId={client.khId}
-            selected={device?.twId ? { twId: device.twId, symbol: device.symbol, name: device.name, serial: serial.trim() } : null}
+            selected={device?.twId ? { twId: device.twId, serial: serial.trim() } : null}
+            warrantyMonths={warrantyMonths}
             onPick={(e) => {
               setDevice({ twId: e.twId, symbol: e.symbol, name: e.name });
               setSerial(e.serial);
+              setPurchaseDate(e.purchaseDate ?? "");
+              setPurchaseDoc(e.purchaseDate ? e.purchaseDoc : null);
               // Pole modelu czyta wartość przy montowaniu — nowy klucz pokazuje wybrany z faktury model.
               setDeviceKey((k) => k + 1);
             }}
@@ -132,7 +147,14 @@ export function ServiceOrderIntakeDialog({
           <ProductPicker
             key={deviceKey}
             value={device}
-            onChange={setDevice}
+            onChange={(d) => {
+              // Inny sprzęt niż wybrany z dokumentu — data i numer tamtego zakupu już go nie dotyczą.
+              if (purchaseDoc && d?.twId !== device?.twId) {
+                setPurchaseDate("");
+                setPurchaseDoc(null);
+              }
+              setDevice(d);
+            }}
             label="Sprzęt (model z Subiekta)"
             placeholder="Np. Forte 200, mikrosilnik"
             allowFreeText
@@ -148,6 +170,40 @@ export function ServiceOrderIntakeDialog({
               maxLength={SERVICE_ORDER_TEXT_MAX.serial}
               onChange={(e) => setSerial(e.target.value)}
               className={`${pickerInputClass} font-mono`}
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
+          <div className="flex min-w-0 flex-col justify-end gap-1">
+            <span className={labelClass}>Gwarancja</span>
+            <div className="flex min-h-11 flex-wrap items-center gap-x-2 gap-y-1">
+              {purchase ? (
+                <WarrantyPill status={warranty} />
+              ) : (
+                <span className="text-[0.8125rem] text-slate-600">
+                  {purchaseDate ? "Data zakupu nie może być z przyszłości." : "Wpisz datę zakupu albo wybierz sprzęt z faktury."}
+                </span>
+              )}
+              {purchase && purchaseDoc ? <span className="text-xs text-slate-500">z {purchaseDoc}</span> : null}
+            </div>
+          </div>
+          <div>
+            <label htmlFor={`${formId}-purchase`} className={labelClass}>
+              Data zakupu
+            </label>
+            <input
+              id={`${formId}-purchase`}
+              type="date"
+              value={purchaseDate}
+              max={toDateOnly(today)}
+              min="2000-01-01"
+              onChange={(e) => {
+                setPurchaseDate(e.target.value);
+                // Ręcznie zmieniona data nie pochodzi już z dokumentu.
+                setPurchaseDoc(null);
+              }}
+              className={pickerInputClass}
             />
           </div>
         </div>

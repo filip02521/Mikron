@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { BrandLoader } from "@/components/ui/BrandLoader";
 import { Button } from "@/components/ui/Button";
 import { IconCopy } from "@/components/icons/StrokeIcons";
+import { warrantyStatus } from "@/lib/orders/service-warranty";
 import { cn } from "@/lib/cn";
 import {
   actionClearServiceOrderInvoice,
@@ -115,6 +116,8 @@ export function ServiceOrderDocuments({
   const closed = isClosedServiceOrder(order.status);
   const missing = missingServiceOrderDocs(order, parts);
   const lines = rwLines(parts);
+  // Przyjęte na gwarancji: naprawa zwykle bez faktury — powód podpowiadamy, decyzja zostaje u serwisanta.
+  const underWarranty = warrantyStatus(order.warrantyUntil, new Date(order.createdAt)).state === "active";
   const requireValue = (value: string, field: "fs" | "rw" | "reason", ref: React.RefObject<HTMLInputElement | null>) => {
     if (value.trim()) return true;
     setEmptyHint(field);
@@ -223,9 +226,21 @@ export function ServiceOrderDocuments({
                 </Button>
                 {hint("fs", "Wpisz numer faktury z Subiekta.")}
               </form>
-              <Button type="button" variant="secondary" className="w-full" onClick={() => setNoInvoice(true)} disabled={pending}>
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full"
+                onClick={() => {
+                  if (underWarranty && !reason.trim()) setReason("naprawa gwarancyjna");
+                  setNoInvoice(true);
+                }}
+                disabled={pending}
+              >
                 Bez faktury (gwarancja, bezpłatna)
               </Button>
+              {underWarranty ? (
+                <p className="text-[0.8125rem] text-emerald-800">Sprzęt przyjęty na gwarancji — naprawę gwarancyjną zapisz bez faktury.</p>
+              ) : null}
             </>
           )}
         </div>

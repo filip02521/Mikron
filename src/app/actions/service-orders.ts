@@ -5,6 +5,7 @@ import { requireServicePanel } from "@/lib/auth";
 import type { SessionUser } from "@/lib/auth";
 import {
   deleteServiceModelPart,
+  setServiceModelWarranty,
   insertServiceOrder,
   linkServiceOrderLoaner,
   moveServiceOrder,
@@ -27,6 +28,7 @@ import {
   type ServiceOrderStatus,
 } from "@/lib/orders/service-orders";
 import { parseDateOnly, toDateOnly } from "@/lib/orders/service-loaners";
+import { normalizePurchaseDate, SERVICE_WARRANTY_MONTHS_MAX } from "@/lib/orders/service-warranty";
 import { verifySubiektProduct, type VerifiedSubiektProduct } from "@/lib/subiekt/product-verify";
 import { fetchClientEquipment, fetchClientRecentInvoices, type ClientRecentInvoice } from "@/lib/subiekt/client-equipment";
 import { reportServicePartShortage } from "@/lib/data/service-part-report";
@@ -106,9 +108,15 @@ export async function actionCreateServiceOrder(input: {
   fault: string;
   accessories?: string;
   dueDate?: string | null;
+  /** YYYY-MM-DD — z FS/PA na liście sprzętu klienta albo wpisana; podstawa gwarancji. */
+  purchaseDate?: string | null;
+  purchaseDoc?: string | null;
 }): Promise<ServiceOrderActionResult> {
   const user = await requireServicePanel("mutate");
   return run(async () => {
+    const purchaseRaw = (input.purchaseDate ?? "").trim();
+    const purchaseDate = normalizePurchaseDate(purchaseRaw, new Date());
+    if (purchaseRaw && !purchaseDate) throw new ServiceOrderStateError("Data zakupu: wybierz datę z kalendarza, nie późniejszą niż dziś.");
     const clientName = text(input.clientName, SERVICE_ORDER_TEXT_MAX.client);
     if (!clientName) throw new ServiceOrderStateError("Wybierz klienta albo wpisz jego nazwę.");
     const fault = text(input.fault, SERVICE_ORDER_TEXT_MAX.fault);
@@ -134,6 +142,8 @@ export async function actionCreateServiceOrder(input: {
         fault,
         accessories: text(input.accessories, SERVICE_ORDER_TEXT_MAX.accessories),
         dueDate: dueDate(input.dueDate),
+        purchaseDate,
+        purchaseDoc: text(input.purchaseDoc, 60) || null,
       },
       actorOf(user)
     );
@@ -291,6 +301,25 @@ export async function actionRemoveServiceModelPart(input: { modelTwId: number; p
       const removed = await deleteServiceModelPart({ modelTwId: modelId, partTwId: partId });
       if (!removed) throw new ServiceOrderStateError("Tej części już nie ma w katalogu. Odśwież stronę.");
       return { message: "Usunięto część z katalogu modelu." };
+    },
+    [ORDERS_PATH, "/serwis/modele"]
+  );
+}
+
+/** Okres gwarancji modelu (miesiące); okres domyślny przywraca model do domyślnego. */
+export async function actionSetServiceModelWarranty(input: { modelTwId: number; months: number }): Promise<ServiceOrderActionResult> {
+  const user = await requireServicePanel("mutate");
+  return run(
+    async () => {
+      const modelId = twId(input.modelTwId);
+      if (!modelId) throw new ServiceOrderStateError("Wybierz model z Subiekta.");
+      const months = Number(input.months);
+      if (!Number.isInteger(months) || months <= 0 || months > SERVICE_WARRANTY_MONTHS_MAX) {
+        throw new ServiceOrderStateError(`Gwarancja: liczba miesięcy od 1 do ${SERVICE_WARRANTY_MONTHS_MAX}.`);
+      }
+      const model = await verifiedProduct(modelId, "Subiekt nie zna tego modelu.");
+      await setServiceModelWarranty({ modelTwId: model.twId, modelSymbol: model.symbol, modelName: model.name, months }, actorOf(user));
+      return { message: `Gwarancja ${model.symbol ?? model.name}: ${months} mies.` };
     },
     [ORDERS_PATH, "/serwis/modele"]
   );

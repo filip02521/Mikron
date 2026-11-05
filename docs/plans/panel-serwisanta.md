@@ -73,6 +73,12 @@ Przegląd uprawnień (agent `authz-reviewer`) bez uwag krytycznych/wysokich.
   Ograniczenie: paragony detaliczne idą na zbiorczego kontrahenta (994 z 1000 sprawdzonych) — klient
   detaliczny nie ma ich pod swoją kartoteką.
 
+- Gwarancja (migracja `211_service_warranty.sql`): Subiekt nie zna okresu gwarancji (ani na towarze, ani na pozycji FS),
+  więc liczy go OnTime — domyślnie 24 mies. od daty zakupu, inny okres modelu w „Katalog modeli” (`service_model_warranty`).
+  Lista sprzętu klienta ma odznakę gwarancji przy każdej pozycji; wybór numeru wpisuje „Data zakupu” i dokument (FS/PA),
+  datę można wpisać ręcznie. Koniec gwarancji liczy serwer przy przyjęciu i zapisuje na zleceniu (`warranty_until`);
+  panel zlecenia pokazuje stan na dzień przyjęcia, a przy fakturze za naprawę podpowiada „bez faktury: naprawa gwarancyjna”.
+
 ### 5a. Panel zlecenia idzie za krokiem (`serviceOrderPanelView`)
 | Status | Co widać | Krok główny |
 |---|---|---|

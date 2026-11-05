@@ -1,3 +1,4 @@
+import { SERVICE_WARRANTY_DEFAULT_MONTHS, warrantyUntil } from "@/lib/orders/service-warranty";
 import type { PoolClient } from "pg";
 import { servicePartRequestNote } from "@/lib/orders/service-part-report";
 import { query, withClient } from "@/lib/db/pool";
@@ -46,6 +47,9 @@ type OrderRow = {
   waiting_part_name: string | null;
   waiting_part_qty: number | null;
   waiting_since: Date | null;
+  purchase_date: string | null;
+  purchase_doc: string | null;
+  warranty_until: string | null;
   closed_at: Date | null;
   created_at: Date;
 };
@@ -75,7 +79,8 @@ type EventRow = {
 const ORDER_COLS = `id, number, client_kh_id, client_name, client_phone, device_tw_id, device_symbol, device_name,
   serial_no, fault, accessories, work_note, to_char(due_date, 'YYYY-MM-DD') AS due_date, status, loaner_unit_id,
   rw_number, rw_at, fs_id, fs_number, no_invoice_reason, waiting_part_tw_id, waiting_part_symbol, waiting_part_name,
-  waiting_part_qty, waiting_since, closed_at, created_at`;
+  waiting_part_qty, waiting_since, to_char(purchase_date, 'YYYY-MM-DD') AS purchase_date, purchase_doc,
+  to_char(warranty_until, 'YYYY-MM-DD') AS warranty_until, closed_at, created_at`;
 
 function mapOrder(r: OrderRow): ServiceOrder {
   return {
@@ -109,6 +114,9 @@ function mapOrder(r: OrderRow): ServiceOrder {
           requestStatus: null,
         }
       : null,
+    purchaseDate: r.purchase_date,
+    purchaseDoc: r.purchase_doc,
+    warrantyUntil: r.warranty_until,
     closedAt: r.closed_at ? new Date(r.closed_at).toISOString() : null,
     createdAt: new Date(r.created_at).toISOString(),
   };
@@ -263,6 +271,9 @@ export type ServiceOrderIntake = {
   fault: string;
   accessories: string;
   dueDate: string | null;
+  /** YYYY-MM-DD, już sprawdzona (normalizePurchaseDate); null — nieznana. */
+  purchaseDate: string | null;
+  purchaseDoc: string | null;
 };
 
 export async function insertServiceOrder(input: ServiceOrderIntake, actor: ServiceActor): Promise<ServiceOrder> {
@@ -273,10 +284,18 @@ export async function insertServiceOrder(input: ServiceOrderIntake, actor: Servi
     const prefix = `ZS/${String(now.getFullYear() % 100).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/`;
     const existing = await c.query<{ number: string }>(`SELECT number FROM service_orders WHERE number LIKE $1`, [`${prefix}%`]);
     const number = nextServiceOrderNumber(existing.rows.map((r) => r.number), now);
+    // Koniec gwarancji liczony tu, nie w przeglądarce: okres modelu z katalogu albo domyślny.
+    let warranty: string | null = null;
+    if (input.purchaseDate) {
+      const months = input.deviceTwId
+        ? (await c.query<{ months: number }>(`SELECT months FROM service_model_warranty WHERE model_tw_id = $1`, [input.deviceTwId])).rows[0]?.months
+        : undefined;
+      warranty = warrantyUntil(input.purchaseDate, months ?? SERVICE_WARRANTY_DEFAULT_MONTHS);
+    }
     const res = await c.query<OrderRow>(
       `INSERT INTO service_orders (number, client_kh_id, client_name, client_phone, device_tw_id, device_symbol, device_name,
-         serial_no, fault, accessories, due_date, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         serial_no, fault, accessories, due_date, created_by, purchase_date, purchase_doc, warranty_until)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
        RETURNING ${ORDER_COLS}`,
       [
         number,
@@ -291,6 +310,9 @@ export async function insertServiceOrder(input: ServiceOrderIntake, actor: Servi
         input.accessories,
         input.dueDate,
         actor.id,
+        input.purchaseDate,
+        input.purchaseDate ? input.purchaseDoc : null,
+        warranty,
       ]
     );
     const order = mapOrder(res.rows[0]!);
@@ -569,6 +591,32 @@ export async function upsertServiceModelPart(
 export async function deleteServiceModelPart(input: { modelTwId: number; partTwId: number }): Promise<boolean> {
   const res = await query(`DELETE FROM service_model_parts WHERE model_tw_id = $1 AND part_tw_id = $2`, [input.modelTwId, input.partTwId]);
   return (res.rowCount ?? 0) > 0;
+}
+
+export type ServiceModelWarranty = { modelTwId: number; modelSymbol: string | null; modelName: string; months: number };
+
+/** Okresy gwarancji modeli różne od domyślnego (24 mies.). */
+export async function fetchServiceModelWarranties(): Promise<ServiceModelWarranty[]> {
+  const res = await query<{ model_tw_id: number; model_symbol: string | null; model_name: string; months: number }>(
+    `SELECT model_tw_id, model_symbol, model_name, months FROM service_model_warranty ORDER BY model_name`
+  );
+  return res.rows.map((r) => ({ modelTwId: Number(r.model_tw_id), modelSymbol: r.model_symbol, modelName: r.model_name, months: Number(r.months) }));
+}
+
+/** Okres gwarancji modelu; okres równy domyślnemu usuwa wpis (model wraca do domyślnego). */
+export async function setServiceModelWarranty(input: ServiceModelWarranty, actor: ServiceActor): Promise<void> {
+  if (input.months === SERVICE_WARRANTY_DEFAULT_MONTHS) {
+    await query(`DELETE FROM service_model_warranty WHERE model_tw_id = $1`, [input.modelTwId]);
+    return;
+  }
+  await query(
+    `INSERT INTO service_model_warranty (model_tw_id, model_symbol, model_name, months, updated_by)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (model_tw_id) DO UPDATE SET
+       model_symbol = EXCLUDED.model_symbol, model_name = EXCLUDED.model_name, months = EXCLUDED.months,
+       updated_at = now(), updated_by = EXCLUDED.updated_by`,
+    [input.modelTwId, input.modelSymbol, input.modelName, input.months, actor.id]
+  );
 }
 
 /** Modele, które były w naprawie (do podpowiedzi „bez katalogu” na stronie katalogu). */

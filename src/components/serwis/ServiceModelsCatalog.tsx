@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { askConfirm } from "@/components/ui/ConfirmHost";
-import { actionAddServiceModelPart, actionRemoveServiceModelPart } from "@/app/actions/service-orders";
+import { actionAddServiceModelPart, actionRemoveServiceModelPart, actionSetServiceModelWarranty } from "@/app/actions/service-orders";
+import { SERVICE_WARRANTY_DEFAULT_MONTHS } from "@/lib/orders/service-warranty";
 import { pickerInputClass, ProductPicker, type PickedProduct } from "@/components/serwis/SubiektPickers";
 
 export type CatalogModelPart = {
@@ -23,7 +24,50 @@ export type CatalogModelPart = {
 /** Model, który był w naprawie, a nie ma jeszcze katalogu — podpowiedź „od czego zacząć”. */
 export type CatalogRepairedModel = { twId: number; symbol: string | null; name: string; orders: number };
 
-export function ServiceModelsCatalog({ parts, repaired }: { parts: CatalogModelPart[]; repaired: CatalogRepairedModel[] }) {
+/** Okres gwarancji modelu inny niż domyślny. */
+export type CatalogModelWarranty = { modelTwId: number; modelSymbol: string | null; modelName: string; months: number };
+
+const WARRANTY_OPTIONS = [6, 12, 18, 24, 36, 48, 60];
+
+/** Lista okresów gwarancji; domyślny opisany wprost, nietypowy okres z bazy zostaje na liście. */
+function WarrantySelect({
+  id,
+  value,
+  disabled,
+  onChange,
+}: {
+  id: string;
+  value: number;
+  disabled: boolean;
+  onChange: (months: number) => void;
+}) {
+  const options = WARRANTY_OPTIONS.includes(value) ? WARRANTY_OPTIONS : [...WARRANTY_OPTIONS, value].sort((a, b) => a - b);
+  return (
+    <select
+      id={id}
+      value={value}
+      disabled={disabled}
+      onChange={(e) => onChange(Number(e.target.value))}
+      className={`${pickerInputClass} w-auto pr-8`}
+    >
+      {options.map((m) => (
+        <option key={m} value={m}>
+          {m} mies.{m === SERVICE_WARRANTY_DEFAULT_MONTHS ? " (domyślna)" : ""}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+export function ServiceModelsCatalog({
+  parts,
+  repaired,
+  warranties,
+}: {
+  parts: CatalogModelPart[];
+  repaired: CatalogRepairedModel[];
+  warranties: CatalogModelWarranty[];
+}) {
   const router = useRouter();
   const formId = useId();
   const [, startRefresh] = useTransition();
@@ -36,16 +80,38 @@ export function ServiceModelsCatalog({ parts, repaired }: { parts: CatalogModelP
   // Klucz pickerów: po zapisie część się czyści, model zostaje (zwykle dodaje się kilka części do jednego modelu).
   const [partKey, setPartKey] = useState(0);
   const [modelKey, setModelKey] = useState(0);
+  const [warrantyModel, setWarrantyModel] = useState<PickedProduct | null>(null);
+  const [warrantyModelKey, setWarrantyModelKey] = useState(0);
+  const [warrantyMonths, setWarrantyMonths] = useState(SERVICE_WARRANTY_DEFAULT_MONTHS);
 
   const models = useMemo(() => {
-    const m = new Map<number, { twId: number; symbol: string | null; name: string; parts: CatalogModelPart[] }>();
+    const m = new Map<number, { twId: number; symbol: string | null; name: string; parts: CatalogModelPart[]; months: number }>();
     for (const p of parts) {
-      const cur = m.get(p.modelTwId) ?? { twId: p.modelTwId, symbol: p.modelSymbol, name: p.modelName, parts: [] };
+      const cur = m.get(p.modelTwId) ?? { twId: p.modelTwId, symbol: p.modelSymbol, name: p.modelName, parts: [], months: SERVICE_WARRANTY_DEFAULT_MONTHS };
       cur.parts.push(p);
       m.set(p.modelTwId, cur);
     }
+    // Model z samą gwarancją (bez części) też ma kartę — inaczej jego okresu nie dałoby się zobaczyć ani zmienić.
+    for (const w of warranties) {
+      const cur = m.get(w.modelTwId) ?? { twId: w.modelTwId, symbol: w.modelSymbol, name: w.modelName, parts: [], months: w.months };
+      cur.months = w.months;
+      m.set(w.modelTwId, cur);
+    }
     return [...m.values()].sort((a, b) => a.name.localeCompare(b.name, "pl"));
-  }, [parts]);
+  }, [parts, warranties]);
+
+  const saveWarranty = (modelTwId: number, months: number, after?: () => void) => {
+    setError(null);
+    start(async () => {
+      const res = await actionSetServiceModelWarranty({ modelTwId, months });
+      if (!res.ok) {
+        setError(res.message);
+        return;
+      }
+      after?.();
+      done(res.message);
+    });
+  };
   const withoutCatalog = repaired.filter((r) => !models.some((m) => m.twId === r.twId));
 
   const done = (message: string) => {
@@ -123,6 +189,41 @@ export function ServiceModelsCatalog({ parts, repaired }: { parts: CatalogModelP
         ) : null}
       </form>
 
+      <form
+        className="space-y-3 rounded-xl border border-slate-200 bg-card p-4 shadow-sm sm:p-5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!warrantyModel?.twId) {
+            setError("Wybierz model z podpowiedzi Subiekta.");
+            return;
+          }
+          saveWarranty(warrantyModel.twId, warrantyMonths, () => {
+            setWarrantyModel(null);
+            setWarrantyModelKey((k) => k + 1);
+            setWarrantyMonths(SERVICE_WARRANTY_DEFAULT_MONTHS);
+          });
+        }}
+      >
+        <div>
+          <h2 className="font-display text-lg font-bold text-slate-900">Gwarancja modelu</h2>
+          <p className="text-[0.8125rem] text-slate-600">
+            Domyślnie {SERVICE_WARRANTY_DEFAULT_MONTHS} mies. od daty zakupu. Ustaw inny okres tylko dla modeli, które go mają.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+          <ProductPicker key={`w${warrantyModelKey}`} value={warrantyModel} onChange={setWarrantyModel} label="Model sprzętu" placeholder="Np. Forte 200" />
+          <div>
+            <label htmlFor={`${formId}-warranty`} className="mb-1.5 block text-xs font-semibold text-slate-600">
+              Gwarancja
+            </label>
+            <WarrantySelect id={`${formId}-warranty`} value={warrantyMonths} disabled={pending} onChange={setWarrantyMonths} />
+          </div>
+          <Button type="submit" variant="secondary" disabled={pending}>
+            Zapisz gwarancję
+          </Button>
+        </div>
+      </form>
+
       {models.length === 0 ? (
         <EmptyState
           title="Katalog jest pusty"
@@ -136,9 +237,21 @@ export function ServiceModelsCatalog({ parts, repaired }: { parts: CatalogModelP
                 <h2 id={`model-${m.twId}`} className="text-[0.9375rem] font-semibold text-slate-900">
                   {m.name}
                 </h2>
-                <p className="font-mono text-xs text-slate-500">
-                  {m.symbol ?? "—"} · {m.parts.length} {m.parts.length === 1 ? "część" : "części"}
-                </p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs text-slate-500">
+                    <span className="font-mono">{m.symbol ?? "—"}</span> ·{" "}
+                    {m.parts.length ? `${m.parts.length} ${m.parts.length === 1 ? "część" : "części"}` : "bez części w katalogu"}
+                  </p>
+                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                    Gwarancja
+                    <WarrantySelect
+                      id={`${formId}-w-${m.twId}`}
+                      value={m.months}
+                      disabled={pending}
+                      onChange={(months) => saveWarranty(m.twId, months)}
+                    />
+                  </label>
+                </div>
               </div>
               <ul className="divide-y divide-slate-100">
                 {m.parts.map((p) => (
