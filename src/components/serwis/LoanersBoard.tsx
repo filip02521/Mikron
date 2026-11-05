@@ -150,7 +150,7 @@ function Timeline({
                     <span className={cn("h-2 w-2 flex-none rounded-full", STATE_DOT[u.state])} aria-hidden />
                     <span className="flex min-w-0 flex-col">
                       <span className="font-mono text-xs font-semibold text-slate-900">{u.code}</span>
-                      <span className="truncate text-xs text-slate-500">{sub}</span>
+                      <span className="text-xs leading-snug text-slate-500">{sub}</span>
                     </span>
                   </button>
                   <div
@@ -412,7 +412,7 @@ export function LoanersBoard({
                     <span className="min-w-0 font-semibold text-slate-900">{g.name}</span>
                     <span className="hidden flex-none whitespace-nowrap font-mono text-[0.6875rem] text-slate-500 sm:inline">{g.units[0]?.twSymbol ?? ""}</span>
                   </span>
-                  <span className="text-[1.375rem] font-semibold leading-none tabular-nums text-slate-900">
+                  <span className="text-2xl font-semibold leading-none tabular-nums text-slate-900">
                     {free}
                     <span className="ml-1 font-sans text-[0.8125rem] font-medium tracking-normal text-slate-500">z {g.units.length} na stanie</span>
                   </span>

@@ -69,7 +69,8 @@ function formatQty(n: number): string {
 
 /**
  * Pasek stanu: wypełnienie = dostępne, kreska = minimum z Kreatora.
- * Skala sięga 1,5× minimum, żeby „tuż nad minimum” nie wyglądało jak pełny magazyn.
+ * Skala sięga 1,5× minimum, żeby „tuż nad minimum” nie wyglądało jak pełny magazyn. Bez minimum pasek nie ma
+ * z czym porównać (zawsze pełny) — zostaje sama liczba, a puste miejsce trzyma liczby w jednej kolumnie.
  */
 function StockMeter({ row }: { row: ServicePartRow }) {
   const min = row.minStock && row.minStock > 0 ? row.minStock : null;
@@ -79,8 +80,8 @@ function StockMeter({ row }: { row: ServicePartRow }) {
     row.state === "brak" ? "bg-red-500" : row.state === "ponizej_min" ? "bg-amber-500" : "bg-slate-400";
   return (
     <div className="flex min-w-[9rem] items-center gap-3">
-      <div className="relative h-1.5 flex-1 rounded-full bg-slate-100" aria-hidden>
-        <div className={cn("h-full rounded-full", tone)} style={{ width: `${fill * 100}%` }} />
+      <div className={cn("relative h-1.5 flex-1 rounded-full", min || row.state === "brak" ? "bg-slate-100" : "")} aria-hidden>
+        {min || row.state === "brak" ? <div className={cn("h-full rounded-full", tone)} style={{ width: `${fill * 100}%` }} /> : null}
         {min ? (
           <div
             className="absolute -top-0.5 -bottom-0.5 w-px bg-slate-500"
@@ -218,14 +219,14 @@ export function ServicePartsPanel({
       id: "to_request",
       label: "Do zgłoszenia",
       count: summary.toRequest,
-      hint: "Brak albo poniżej minimum, bez prośby",
+      hint: "Mało lub brak, bez prośby",
       tone: summary.toRequest > 0 ? "bg-amber-500" : "bg-slate-300",
     },
     {
       id: "missing",
       label: "Brak na stanie",
       count: summary.missing,
-      hint: "0 po rezerwacjach i pobraniach",
+      hint: "0 do wzięcia",
       tone: summary.missing > 0 ? "bg-red-500" : "bg-slate-300",
     },
     {
@@ -239,7 +240,7 @@ export function ServicePartsPanel({
       id: "requested",
       label: "Zgłoszone",
       count: summary.requested,
-      hint: "Prośba czeka na ZD lub dostawę",
+      hint: "Prośba w toku",
       tone: "bg-indigo-600",
     },
   ];

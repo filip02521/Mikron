@@ -99,7 +99,7 @@ function DaysRing({ days, planned }: { days: number; planned: number | null }) {
         strokeDasharray={`${c * frac} ${c}`}
         transform="rotate(-90 42 42)"
       />
-      <text x="42" y="46" textAnchor="middle" className="fill-slate-900 text-[1.375rem] font-semibold">
+      <text x="42" y="46" textAnchor="middle" className="fill-slate-900 text-2xl font-semibold">
         {days}
       </text>
       <text x="42" y="60" textAnchor="middle" className="fill-slate-500 text-[0.6875rem]">

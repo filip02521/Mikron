@@ -37,9 +37,10 @@ const noopSubscribe = () => () => {};
 
 const GROUP_ORDER: ServiceOrderGroup[] = ["czeka_na_czesc", "w_serwisie", "gotowe", "dokumenty", "zamkniete"];
 
+// Kafle w tej samej kolejności co grupy listy pod nimi.
 const TILES: { id: Exclude<ServiceOrderGroup, "zamkniete">; tone: string }[] = [
-  { id: "w_serwisie", tone: "bg-indigo-600" },
   { id: "czeka_na_czesc", tone: "bg-amber-500" },
+  { id: "w_serwisie", tone: "bg-indigo-600" },
   { id: "gotowe", tone: "bg-emerald-500" },
   { id: "dokumenty", tone: "bg-red-500" },
 ];
@@ -83,7 +84,12 @@ function OrderRow({
           </span>
           <span className="text-[0.8125rem] text-slate-500">
             {order.clientName}
-            {order.serialNo ? ` · SN ${order.serialNo}` : ""}
+            {order.serialNo ? (
+              <>
+                {" · "}
+                <span className="whitespace-nowrap">SN {order.serialNo}</span>
+              </>
+            ) : null}
             {partsCount ? ` · ${partsCount} ${partsCount === 1 ? "część" : "części"}` : ""}
           </span>
         </span>
@@ -97,7 +103,9 @@ function OrderRow({
             <OrderStatusPill status={order.status} />
           )}
           <span className="whitespace-nowrap text-[0.8125rem] tabular-nums text-slate-500">
-            {order.closedAt ? `zamknięte ${formatDateOnly(order.closedAt.slice(0, 10))}` : `${daysSince(order.createdAt, today)} ${polishPluralWord(daysSince(order.createdAt, today), "dzień", "dni", "dni")}`}
+            {order.closedAt
+              ? `zamknięte ${formatDateOnly(order.closedAt.slice(0, 10))}`
+              : `${daysSince(order.createdAt, today)} ${polishPluralWord(daysSince(order.createdAt, today), "dzień", "dni", "dni")} w serwisie`}
           </span>
           {order.dueDate && !order.closedAt ? (
             <span className={cn("whitespace-nowrap text-[0.8125rem] tabular-nums", late ? "font-semibold text-red-700" : "text-slate-500")}>

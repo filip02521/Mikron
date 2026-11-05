@@ -357,6 +357,37 @@ export function ServiceOrderDrawer({
             />
           ) : null}
 
+          {/* Powód kroku nad przyciskiem: „czeka na …” albo „część na stanie”, a pod nim co zrobić. */}
+          {order.status === "czeka_na_czesc" && order.waitingPart ? (
+            partArrived ? (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                <div className="text-sm font-semibold text-emerald-900">
+                  Część na stanie: {waitingPartAvailable} szt. do wzięcia — wznów naprawę
+                </div>
+                <div className="text-[0.8125rem] text-emerald-800">
+                  {order.waitingPart.qty} szt. {order.waitingPart.symbol ?? order.waitingPart.name}
+                  {order.waitingPart.since ? ` · czekało od ${formatDay(order.waitingPart.since)}` : ""}
+                </div>
+              </div>
+            ) : (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+              <div className="text-sm text-amber-900">
+                Czeka na:{" "}
+                <b className="font-semibold">
+                  {order.waitingPart.qty} szt. {order.waitingPart.symbol ?? order.waitingPart.name}
+                </b>
+                {order.waitingPart.symbol ? <span className="text-amber-800"> · {order.waitingPart.name}</span> : null}
+              </div>
+              <div className="text-[0.8125rem] text-amber-800">
+                {order.waitingPart.since ? `od ${formatDay(order.waitingPart.since)} · ` : ""}
+                {order.waitingPart.requestStatus
+                  ? `prośba do zakupów: ${REQUEST_STATUS_LABEL[order.waitingPart.requestStatus] ?? order.waitingPart.requestStatus}`
+                  : "bez prośby do zakupów"}
+              </div>
+            </div>
+            )
+          ) : null}
+
           {!closed && (primary || secondary.length) ? (
             // Dwa poziomy do skanowania: duży krok naprzód, pod nim równe alternatywy z ikoną znaczenia.
             // Anulowanie jest osobno na dole panelu — nie stoi obok kroków naprawy.
@@ -412,35 +443,6 @@ export function ServiceOrderDrawer({
             />
           ) : null}
 
-          {order.status === "czeka_na_czesc" && order.waitingPart ? (
-            partArrived ? (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-                <div className="text-sm font-semibold text-emerald-900">
-                  Część na stanie: {waitingPartAvailable} szt. do wzięcia — wznów naprawę
-                </div>
-                <div className="text-[0.8125rem] text-emerald-800">
-                  {order.waitingPart.qty} szt. {order.waitingPart.symbol ?? order.waitingPart.name}
-                  {order.waitingPart.since ? ` · czekało od ${formatDay(order.waitingPart.since)}` : ""}
-                </div>
-              </div>
-            ) : (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-              <div className="text-sm text-amber-900">
-                Czeka na:{" "}
-                <b className="font-semibold">
-                  {order.waitingPart.qty} szt. {order.waitingPart.symbol ?? order.waitingPart.name}
-                </b>
-                {order.waitingPart.symbol ? <span className="text-amber-800"> · {order.waitingPart.name}</span> : null}
-              </div>
-              <div className="text-[0.8125rem] text-amber-800">
-                {order.waitingPart.since ? `od ${formatDay(order.waitingPart.since)} · ` : ""}
-                {order.waitingPart.requestStatus
-                  ? `prośba do zakupów: ${REQUEST_STATUS_LABEL[order.waitingPart.requestStatus] ?? order.waitingPart.requestStatus}`
-                  : "bez prośby do zakupów"}
-              </div>
-            </div>
-            )
-          ) : null}
 
           {view.callClient ? (
             order.clientPhone ? (
