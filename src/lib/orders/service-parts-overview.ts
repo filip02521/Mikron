@@ -42,6 +42,14 @@ export function servicePartStockState(available: number, minStock: number | null
   return "ok";
 }
 
+/** Dostępne do wzięcia: stan − rezerwacje − części pobrane do zleceń, a jeszcze bez RW (Subiekt ich nie odjął). */
+export function servicePartAvailable(
+  product: { tw_Stan?: number | null; tw_StanRez?: number | null },
+  takenWithoutRw: number
+): number {
+  return finite(product.tw_Stan) - finite(product.tw_StanRez) - takenWithoutRw;
+}
+
 export function buildServicePartRows(input: {
   products: readonly {
     tw_Id: number;
@@ -64,7 +72,7 @@ export function buildServicePartRows(input: {
     const onHand = finite(p.tw_Stan);
     const reserved = finite(p.tw_StanRez);
     const takenWithoutRw = input.takenWithoutRwByTwId?.get(twId) ?? 0;
-    const available = onHand - reserved - takenWithoutRw;
+    const available = servicePartAvailable(p, takenWithoutRw);
     const minStock = input.minStockByTwId.get(twId) ?? null;
     rows.push({
       twId,

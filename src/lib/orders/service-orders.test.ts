@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  waitingPartArrived,
   canMoveServiceOrder,
   flowIndex,
   isServiceOrderLate,
@@ -168,5 +169,19 @@ describe("widok panelu na każdym kroku", () => {
   it("faktura od gotowego; po anulowaniu nie", async () => {
     const { canSetServiceOrderInvoice } = await import("./service-orders");
     expect(["w_naprawie", "gotowe", "wydane", "anulowane"].map((s) => canSetServiceOrderInvoice(s as never))).toEqual([false, true, true, false]);
+  });
+});
+
+describe("waitingPartArrived", () => {
+  const waiting = (twId: number | null, qty: number) =>
+    ({ status: "czeka_na_czesc" as const, waitingPart: { twId, symbol: null, name: "Część", qty, since: null, requestStatus: null } });
+  it("część na stanie w potrzebnej ilości", () => {
+    expect(waitingPartArrived(waiting(7, 2), new Map([[7, 2]]))).toBe(true);
+    expect(waitingPartArrived(waiting(7, 2), new Map([[7, 1]]))).toBe(false);
+  });
+  it("bez stanu, część spoza Subiektu albo inny status — nie wiemy, więc nie", () => {
+    expect(waitingPartArrived(waiting(7, 1), new Map())).toBe(false);
+    expect(waitingPartArrived(waiting(null, 1), new Map([[7, 5]]))).toBe(false);
+    expect(waitingPartArrived({ ...waiting(7, 1), status: "w_naprawie" }, new Map([[7, 5]]))).toBe(false);
   });
 });

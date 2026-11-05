@@ -24,6 +24,7 @@ import {
 import { pickerInputClass, ProductPicker, type PickedProduct } from "@/components/serwis/SubiektPickers";
 import { ServiceOrderDocuments } from "@/components/serwis/ServiceOrderDocuments";
 import { ServiceOrderWaitForm } from "@/components/serwis/ServiceOrderWaitForm";
+import { SerialHistory } from "@/components/serwis/SerialHistory";
 import {
   daysSince,
   formatDateOnly,
@@ -53,6 +54,7 @@ import {
   serviceOrderPanelView,
   transitionHint,
   transitionLabel,
+  waitingPartArrived,
   type ServiceOrder,
   type ServiceOrderEvent,
   type ServiceOrderStatus,
@@ -100,18 +102,26 @@ export function ServiceOrderDrawer({
   events,
   loaners,
   modelParts,
+  waitingPartAvailable,
   today,
   onClose,
   onDone,
+  onOpenOrder,
+  canOpenOrder,
 }: {
   order: ServiceOrder;
   parts: OrderPartView[];
   events: ServiceOrderEvent[];
   loaners: LinkableLoaner[];
   modelParts: ModelPartView[];
+  /** Ile czekającej części jest do wzięcia (Subiekt); null — nie wiadomo. */
+  waitingPartAvailable: number | null;
   today: Date;
   onClose: () => void;
   onDone: (message: string) => void;
+  /** Otwiera inne zlecenie (wcześniejsze tego samego egzemplarza). */
+  onOpenOrder: (orderId: string) => void;
+  canOpenOrder: (orderId: string) => boolean;
 }) {
   const formId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -173,6 +183,7 @@ export function ServiceOrderDrawer({
   const primaryHint = primary ? transitionHint(primary, { missing, loanerCode: linked?.code ?? null }) : null;
   // Widok idzie za krokiem: przy przyjęciu zamiennik, w naprawie części, przy wydaniu dokumenty i telefon.
   const view = serviceOrderPanelView(order.status);
+  const partArrived = waitingPartAvailable != null && waitingPartArrived(order, new Map([[order.waitingPart?.twId ?? 0, waitingPartAvailable]]));
   // Po zamknięciu jedyna praca to brakujące dokumenty — wtedy stoją na górze, historia naprawy pod nimi.
   const docsFirst = closed && (missing.invoice || missing.rw);
   const serviceDays = daysSince(order.createdAt, closed && order.closedAt ? new Date(order.closedAt) : today);
@@ -402,6 +413,17 @@ export function ServiceOrderDrawer({
           ) : null}
 
           {order.status === "czeka_na_czesc" && order.waitingPart ? (
+            partArrived ? (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                <div className="text-sm font-semibold text-emerald-900">
+                  Część na stanie: {waitingPartAvailable} szt. do wzięcia — wznów naprawę
+                </div>
+                <div className="text-[0.8125rem] text-emerald-800">
+                  {order.waitingPart.qty} szt. {order.waitingPart.symbol ?? order.waitingPart.name}
+                  {order.waitingPart.since ? ` · czekało od ${formatDay(order.waitingPart.since)}` : ""}
+                </div>
+              </div>
+            ) : (
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
               <div className="text-sm text-amber-900">
                 Czeka na:{" "}
@@ -417,6 +439,7 @@ export function ServiceOrderDrawer({
                   : "bez prośby do zakupów"}
               </div>
             </div>
+            )
           ) : null}
 
           {view.callClient ? (
@@ -444,6 +467,8 @@ export function ServiceOrderDrawer({
             <p className="whitespace-pre-line text-sm text-slate-800">{order.fault}</p>
             {order.accessories ? <p className="text-[0.8125rem] text-slate-500">Przyjęte z: {order.accessories}</p> : null}
           </Section>
+
+          <SerialHistory serial={order.serialNo} excludeOrderId={order.id} onOpenOrder={onOpenOrder} canOpenOrder={canOpenOrder} />
 
           {view.workNoteLabel && (view.workNoteEditable || order.workNote) ? (
           <Section title={view.workNoteLabel}>

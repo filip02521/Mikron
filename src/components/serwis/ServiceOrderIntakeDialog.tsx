@@ -16,6 +16,7 @@ import { SERVICE_ORDER_TEXT_MAX } from "@/lib/orders/service-orders";
 import { addDays, toDateOnly } from "@/lib/orders/service-loaners";
 import { normalizePurchaseDate, warrantyMonthsFor, warrantyStatus, warrantyUntil } from "@/lib/orders/service-warranty";
 import { WarrantyPill } from "@/components/serwis/service-order-view";
+import { SerialHistory } from "@/components/serwis/SerialHistory";
 
 const labelClass = "mb-1.5 block text-xs font-semibold text-slate-600";
 
@@ -173,6 +174,8 @@ export function ServiceOrderIntakeDialog({
             />
           </div>
         </div>
+
+        <SerialHistory serial={serial} />
 
         <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
           <div className="flex min-w-0 flex-col justify-end gap-1">

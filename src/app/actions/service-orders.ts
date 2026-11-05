@@ -5,6 +5,7 @@ import { requireServicePanel } from "@/lib/auth";
 import type { SessionUser } from "@/lib/auth";
 import {
   deleteServiceModelPart,
+  fetchServiceOrdersBySerial,
   setServiceModelWarranty,
   insertServiceOrder,
   linkServiceOrderLoaner,
@@ -25,6 +26,7 @@ import {
   normalizeRwNumber,
   SERVICE_ORDER_STATUS_LABEL,
   SERVICE_ORDER_TEXT_MAX,
+  type SerialHistoryItem,
   type ServiceOrderStatus,
 } from "@/lib/orders/service-orders";
 import { parseDateOnly, toDateOnly } from "@/lib/orders/service-loaners";
@@ -428,5 +430,19 @@ export async function actionServiceClientInvoices(khId: number): Promise<ClientI
     return { ok: true, invoices: await fetchClientRecentInvoices(id) };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się pobrać faktur klienta z Subiekta.") };
+  }
+}
+
+export type SerialHistoryActionResult = { ok: true; items: SerialHistoryItem[] } | { ok: false; message: string };
+
+/** Wcześniejsze zlecenia tego samego egzemplarza (numer seryjny) — przy przyjęciu i w panelu zlecenia. */
+export async function actionServiceSerialHistory(input: { serial: string; excludeOrderId?: string | null }): Promise<SerialHistoryActionResult> {
+  await requireServicePanel("read");
+  const serial = text(input.serial, SERVICE_ORDER_TEXT_MAX.serial);
+  const exclude = input.excludeOrderId && UUID_RE.test(input.excludeOrderId) ? input.excludeOrderId : null;
+  try {
+    return { ok: true, items: await fetchServiceOrdersBySerial(serial, exclude) };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się sprawdzić historii egzemplarza.") };
   }
 }

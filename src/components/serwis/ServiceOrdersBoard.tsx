@@ -26,6 +26,7 @@ import {
 import {
   isServiceOrderLate,
   serviceOrderGroup,
+  waitingPartArrived,
   type ServiceOrder,
   type ServiceOrderEvent,
   type ServiceOrderGroup,
@@ -50,7 +51,20 @@ const TILE_HINT: Record<Exclude<ServiceOrderGroup, "zamkniete">, string> = {
   dokumenty: "Zamknięte bez faktury lub RW",
 };
 
-function OrderRow({ order, partsCount, today, onOpen }: { order: ServiceOrder; partsCount: number; today: Date; onOpen: () => void }) {
+function OrderRow({
+  order,
+  partsCount,
+  today,
+  arrived,
+  onOpen,
+}: {
+  order: ServiceOrder;
+  partsCount: number;
+  today: Date;
+  /** Część, na którą zlecenie czeka, jest już na stanie — status w wierszu mówi, co zrobić. */
+  arrived: boolean;
+  onOpen: () => void;
+}) {
   const late = isServiceOrderLate(order, today);
   return (
     <li>
@@ -74,7 +88,14 @@ function OrderRow({ order, partsCount, today, onOpen }: { order: ServiceOrder; p
           </span>
         </span>
         <span className="flex flex-none flex-wrap items-center gap-x-3 gap-y-1 sm:justify-end">
-          <OrderStatusPill status={order.status} />
+          {arrived ? (
+            <span className="inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full bg-emerald-50 px-2.5 text-xs font-medium text-emerald-800">
+              <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
+              Część na stanie
+            </span>
+          ) : (
+            <OrderStatusPill status={order.status} />
+          )}
           <span className="whitespace-nowrap text-[0.8125rem] tabular-nums text-slate-500">
             {order.closedAt ? `zamknięte ${formatDateOnly(order.closedAt.slice(0, 10))}` : `${daysSince(order.createdAt, today)} ${polishPluralWord(daysSince(order.createdAt, today), "dzień", "dni", "dni")}`}
           </span>
@@ -97,6 +118,7 @@ export function ServiceOrdersBoard({
   loaners,
   modelParts,
   warrantyMonths: warrantyPairs,
+  partAvailable: partAvailablePairs,
 }: {
   orders: ServiceOrder[];
   parts: OrderPartView[];
@@ -105,8 +127,15 @@ export function ServiceOrdersBoard({
   modelParts: ModelPartView[];
   /** Okresy gwarancji modeli różne od domyślnego: [tw_Id, miesiące]. */
   warrantyMonths: [number, number][];
+  /** Ile części, na które czekają zlecenia, jest do wzięcia: [tw_Id, szt.]; brak wpisu — Subiekt nie odpowiedział. */
+  partAvailable: [number, number][];
 }) {
   const warrantyMonths = useMemo(() => new Map(warrantyPairs), [warrantyPairs]);
+  const partAvailable = useMemo(() => new Map(partAvailablePairs), [partAvailablePairs]);
+  const arrivedIds = useMemo(
+    () => new Set(orders.filter((o) => waitingPartArrived(o, partAvailable)).map((o) => o.id)),
+    [orders, partAvailable]
+  );
   const router = useRouter();
   const params = useSearchParams();
   const [, startRefresh] = useTransition();
@@ -137,8 +166,11 @@ export function ServiceOrdersBoard({
       const g = serviceOrderGroup(o, partsByOrder.get(o.id) ?? []);
       out.set(g, [...(out.get(g) ?? []), o]);
     }
+    // Zlecenia, których część dotarła, na górze swojej grupy — to je można od razu wznowić.
+    const waiting = out.get("czeka_na_czesc");
+    if (waiting) out.set("czeka_na_czesc", [...waiting.filter((o) => arrivedIds.has(o.id)), ...waiting.filter((o) => !arrivedIds.has(o.id))]);
     return out;
-  }, [orders, partsByOrder, query]);
+  }, [orders, partsByOrder, query, arrivedIds]);
 
   // Liczniki kafli bez szukania — to stan całego serwisu, nie wynik wyszukiwania.
   const counts = useMemo(() => {
@@ -223,7 +255,13 @@ export function ServiceOrdersBoard({
                     <span className="text-2xl font-semibold leading-none tabular-nums text-slate-900 sm:text-[1.75rem]">{counts[t.id]}</span>
                   </span>
                   <span className={cn("mt-1.5 text-sm font-semibold", active ? "text-indigo-800" : "text-slate-800")}>{ORDER_GROUP_LABEL[t.id]}</span>
-                  <span className="mt-0.5 hidden text-[0.8125rem] text-slate-500 sm:block">{TILE_HINT[t.id]}</span>
+                  {t.id === "czeka_na_czesc" && arrivedIds.size > 0 ? (
+                    <span className="mt-0.5 text-[0.8125rem] font-semibold text-emerald-800">
+                      {arrivedIds.size} {polishPluralWord(arrivedIds.size, "część dotarła", "części dotarły", "części dotarło")}
+                    </span>
+                  ) : (
+                    <span className="mt-0.5 hidden text-[0.8125rem] text-slate-500 sm:block">{TILE_HINT[t.id]}</span>
+                  )}
                 </button>
               );
             })}
@@ -275,7 +313,14 @@ export function ServiceOrdersBoard({
                     {expanded ? (
                       <ul className={cn("divide-y divide-slate-100", collapsible && "border-t border-slate-100")}>
                         {list.map((o) => (
-                          <OrderRow key={o.id} order={o} partsCount={partsByOrder.get(o.id)?.length ?? 0} today={today} onOpen={() => setOpenId(o.id)} />
+                          <OrderRow
+                            key={o.id}
+                            order={o}
+                            partsCount={partsByOrder.get(o.id)?.length ?? 0}
+                            today={today}
+                            arrived={arrivedIds.has(o.id)}
+                            onOpen={() => setOpenId(o.id)}
+                          />
                         ))}
                       </ul>
                     ) : null}
@@ -309,6 +354,10 @@ export function ServiceOrdersBoard({
               // Egzemplarz powiązany z innym zleceniem nie jest do wyboru (serwer też tego pilnuje).
               loaners={loaners.filter((l) => !orders.some((o) => o.id !== open.id && o.loanerUnitId === l.id))}
               modelParts={modelParts}
+              waitingPartAvailable={open.waitingPart?.twId != null ? partAvailable.get(open.waitingPart.twId) ?? null : null}
+              // Tablica ma zlecenia otwarte i niedawno zamknięte — starsze z historii egzemplarza są tylko do przeczytania.
+              canOpenOrder={(id) => orders.some((o) => o.id === id)}
+              onOpenOrder={setOpenId}
               today={today}
               onClose={() => {
                 setOpenId(null);

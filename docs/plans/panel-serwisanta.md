@@ -79,6 +79,12 @@ Przegląd uprawnień (agent `authz-reviewer`) bez uwag krytycznych/wysokich.
   datę można wpisać ręcznie. Koniec gwarancji liczy serwer przy przyjęciu i zapisuje na zleceniu (`warranty_until`);
   panel zlecenia pokazuje stan na dzień przyjęcia, a przy fakturze za naprawę podpowiada „bez faktury: naprawa gwarancyjna”.
 
+- „Część dotarła”: dla zleceń „czeka na część” strona zleceń czyta stan czekającej części w Subiekcie (ta sama reguła
+  co ekran części: stan − rezerwacje − pobrane bez RW). Gdy wystarcza: wiersz „Część na stanie”, takie zlecenia na górze
+  grupy, kafel „N część dotarła”, w panelu zielony pasek „wznów naprawę”. Bez Subiektu — sam status prośby.
+- Historia egzemplarza: zlecenia z tym samym numerem seryjnym (bez spacji i wielkości liter) przy przyjęciu i w panelu
+  zlecenia (tam klik otwiera zlecenie, o ile jest na tablicy).
+
 ### 5a. Panel zlecenia idzie za krokiem (`serviceOrderPanelView`)
 | Status | Co widać | Krok główny |
 |---|---|---|

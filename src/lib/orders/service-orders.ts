@@ -250,6 +250,37 @@ export type ServiceOrderEvent = {
   actorName: string | null;
 };
 
+/** Numer seryjny do porównań: bez spacji i wielkości liter („H24R 2BEH” = „h24r2beh”). */
+export function serialKey(raw: string | null | undefined): string {
+  return (raw ?? "").replace(/\s+/g, "").toLocaleUpperCase("pl-PL");
+}
+
+/** Wcześniejsze zlecenie tego samego egzemplarza (po numerze seryjnym). */
+export type SerialHistoryItem = {
+  id: string;
+  number: string;
+  status: ServiceOrderStatus;
+  deviceName: string;
+  createdAt: string;
+  closedAt: string | null;
+  fault: string;
+  workNote: string;
+};
+
+/**
+ * Część, na którą zlecenie czeka, jest już do wzięcia w potrzebnej ilości (stan z Subiekta minus rezerwacje i części
+ * pobrane bez RW). Bez stanu dla tej części (Subiekt niedostępny, część spoza Subiekta) — nie wiemy, więc false.
+ */
+export function waitingPartArrived(
+  order: Pick<ServiceOrder, "status" | "waitingPart">,
+  availableByTw: ReadonlyMap<number, number>
+): boolean {
+  const part = order.waitingPart;
+  if (order.status !== "czeka_na_czesc" || part?.twId == null) return false;
+  const available = availableByTw.get(part.twId);
+  return available != null && available >= part.qty;
+}
+
 /**
  * RW wpisuje się po naprawie (od „gotowe”): wcześniej kolejna potrzebna część nie miałaby już gdzie trafić,
  * bo po RW zlecenie nie przyjmuje części.

@@ -8,6 +8,8 @@ import {
   canSetServiceOrderRw,
   isClosedServiceOrder,
   nextServiceOrderNumber,
+  serialKey,
+  type SerialHistoryItem,
   SERVICE_ORDER_STATUS_LABEL,
   type ServiceOrder,
   type ServiceOrderEvent,
@@ -591,6 +593,43 @@ export async function upsertServiceModelPart(
 export async function deleteServiceModelPart(input: { modelTwId: number; partTwId: number }): Promise<boolean> {
   const res = await query(`DELETE FROM service_model_parts WHERE model_tw_id = $1 AND part_tw_id = $2`, [input.modelTwId, input.partTwId]);
   return (res.rowCount ?? 0) > 0;
+}
+
+/**
+ * Zlecenia z tym samym numerem seryjnym (bez spacji i wielkości liter), najnowsze pierwsze — historia egzemplarza
+ * przy przyjęciu i w panelu zlecenia. Krótkie numery (< 4 znaki) nic nie znajdują, żeby nie łapać przypadkowych.
+ */
+export async function fetchServiceOrdersBySerial(serial: string, excludeOrderId: string | null, limit = 5): Promise<SerialHistoryItem[]> {
+  const key = serialKey(serial);
+  if (key.length < 4) return [];
+  const res = await query<{
+    id: string;
+    number: string;
+    status: ServiceOrderStatus;
+    device_name: string;
+    created_at: Date;
+    closed_at: Date | null;
+    fault: string;
+    work_note: string;
+  }>(
+    `SELECT id, number, status, device_name, created_at, closed_at, fault, work_note
+       FROM service_orders
+      WHERE upper(regexp_replace(coalesce(serial_no, ''), '\\s+', '', 'g')) = $1
+        AND ($2::uuid IS NULL OR id <> $2::uuid)
+      ORDER BY created_at DESC
+      LIMIT $3`,
+    [key, excludeOrderId, limit]
+  );
+  return res.rows.map((r) => ({
+    id: r.id,
+    number: r.number,
+    status: r.status,
+    deviceName: r.device_name,
+    createdAt: new Date(r.created_at).toISOString(),
+    closedAt: r.closed_at ? new Date(r.closed_at).toISOString() : null,
+    fault: r.fault,
+    workNote: r.work_note,
+  }));
 }
 
 export type ServiceModelWarranty = { modelTwId: number; modelSymbol: string | null; modelName: string; months: number };

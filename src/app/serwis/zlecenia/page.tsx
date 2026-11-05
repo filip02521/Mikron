@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { requireServicePanel } from "@/lib/auth";
 import { fetchServiceModelParts, fetchServiceModelWarranties, fetchServiceOrderBoard } from "@/lib/data/service-orders";
 import { fetchLoanerFleet } from "@/lib/data/service-loaners";
+import { fetchWaitingPartsAvailable } from "@/lib/data/service-waiting-parts";
 import { ServiceOrdersBoard } from "@/components/serwis/ServiceOrdersBoard";
 import { ServiceOverdueLoanersNotice } from "@/components/serwis/ServiceOverdueLoanersNotice";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -20,6 +21,7 @@ export default async function ZleceniaPage() {
     loaners: Awaited<ReturnType<typeof fetchLoanerFleet>>["units"];
     modelParts: Awaited<ReturnType<typeof fetchServiceModelParts>>;
     warranties: Awaited<ReturnType<typeof fetchServiceModelWarranties>>;
+    partAvailable: Map<number, number>;
   } | null = null;
   let error: string | null = null;
   try {
@@ -29,7 +31,10 @@ export default async function ZleceniaPage() {
       fetchServiceModelParts(),
       fetchServiceModelWarranties(),
     ]);
-    data = { board, loaners: fleet.units, modelParts, warranties };
+    // Stan tylko części, na które czekają zlecenia — „część dotarła” bez pobierania całego magazynu.
+    const waitingTwIds = board.orders.flatMap((o) => (o.status === "czeka_na_czesc" && o.waitingPart?.twId ? [o.waitingPart.twId] : []));
+    const partAvailable = await fetchWaitingPartsAvailable(waitingTwIds).catch(() => new Map<number, number>());
+    data = { board, loaners: fleet.units, modelParts, warranties, partAvailable };
   } catch (e) {
     error = userFacingErrorText(e, "Nie udało się wczytać zleceń serwisowych.");
   }
@@ -60,6 +65,7 @@ export default async function ZleceniaPage() {
             defaultQty: m.defaultQty,
           }))}
           warrantyMonths={data.warranties.map((w) => [w.modelTwId, w.months] as [number, number])}
+          partAvailable={[...data.partAvailable]}
         />
       ) : null}
     </div>
