@@ -9,6 +9,7 @@ import { Kbd } from "@/components/ui/Kbd";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { IconPlus, IconSearch } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
 import { ServiceOrderDrawer } from "@/components/serwis/ServiceOrderDrawer";
 import { ServiceOrderIntakeDialog } from "@/components/serwis/ServiceOrderIntakeDialog";
@@ -75,7 +76,7 @@ function OrderRow({ order, partsCount, today, onOpen }: { order: ServiceOrder; p
         <span className="flex flex-none flex-wrap items-center gap-x-3 gap-y-1 sm:justify-end">
           <OrderStatusPill status={order.status} />
           <span className="whitespace-nowrap text-[0.8125rem] tabular-nums text-slate-500">
-            {order.closedAt ? `zamknięte ${formatDateOnly(order.closedAt.slice(0, 10))}` : `${daysSince(order.createdAt, today)} dni`}
+            {order.closedAt ? `zamknięte ${formatDateOnly(order.closedAt.slice(0, 10))}` : `${daysSince(order.createdAt, today)} ${polishPluralWord(daysSince(order.createdAt, today), "dzień", "dni", "dni")}`}
           </span>
           {order.dueDate && !order.closedAt ? (
             <span className={cn("whitespace-nowrap text-[0.8125rem] tabular-nums", late ? "font-semibold text-red-700" : "text-slate-500")}>

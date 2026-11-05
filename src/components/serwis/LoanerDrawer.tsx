@@ -65,7 +65,10 @@ function eventMeta(e: LoanerEvent, unit: LoanerUnitView): string {
   const parts: string[] = [];
   if (e.type === "returned") {
     const stint = unit.stints.find((s) => s.to === e.at);
-    if (stint) parts.push(`po ${daysBetween(stint.from, stint.to!)} dniach`);
+    if (stint) {
+      const days = daysBetween(stint.from, stint.to!);
+      parts.push(`po ${days} ${days === 1 ? "dniu" : "dniach"}`);
+    }
   }
   if (e.plannedReturn && (e.type === "issued" || e.type === "extended")) {
     parts.push(`zwrot do ${formatShort(parseDateOnly(e.plannedReturn).toISOString())}`);
