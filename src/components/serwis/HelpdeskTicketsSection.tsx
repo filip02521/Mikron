@@ -30,7 +30,8 @@ export function HelpdeskTicketsSection({
   data: HelpdeskBoardData;
   /** Zgłoszenia po filtrze szukania. */
   tickets: HelpdeskTicket[];
-  onAccept: (helpdeskId: number) => void;
+  /** Bez niego (podgląd tylko do odczytu) wiersze nie mają przycisku przyjęcia. */
+  onAccept?: (helpdeskId: number) => void;
 }) {
   const todayKey = toDateOnly(new Date());
   if (data.error) {
@@ -69,14 +70,16 @@ export function HelpdeskTicketsSection({
                   {[who, t.status, day ? `zgłoszone ${day}` : null, delivery].filter(Boolean).join(" · ")}
                 </span>
               </span>
-              <Button type="button" variant="secondary" className="w-full sm:w-auto" onClick={() => onAccept(t.id)}>
-                Przyjmij sprzęt
-              </Button>
+              {onAccept ? (
+                <Button type="button" variant="secondary" className="w-full sm:w-auto" onClick={() => onAccept(t.id)}>
+                  Przyjmij sprzęt
+                </Button>
+              ) : null}
             </li>
           );
         })}
       </ul>
-      {withOrders ? (
+      {withOrders && onAccept ? (
         <p className="border-t border-[var(--sv-rule)] px-4 py-2.5 text-[0.8125rem] text-slate-500 sm:px-5">
           {withOrders} {polishPluralWord(withOrders, "zgłoszenie ma", "zgłoszenia mają", "zgłoszeń ma")} już przyjęty sprzęt — kolejne urządzenie {withOrders === 1 ? "z niego" : "z nich"} przyjmiesz w „Przyjmij sprzęt”.
         </p>

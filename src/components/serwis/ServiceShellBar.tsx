@@ -1,5 +1,6 @@
 "use client";
 
+import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AppBrandMark } from "@/components/ui/AppBrandMark";
@@ -37,6 +38,7 @@ export function ServiceShellBar({
   const pathname = usePathname() ?? "";
   const router = useRouter();
   const items = navForRole(role, navBadges).flatMap((g) => g.items);
+  const { readOnly } = useAdminPanelPreview();
   const hrefs = items.map((i) => i.href);
   const theme = useThemePreference();
   const who = userAssignmentLabel || userEmail?.split("@")[0] || null;
@@ -85,6 +87,7 @@ export function ServiceShellBar({
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
+          {readOnly ? null : (
           <Link
             href="/serwis/zlecenia?przyjmij=1"
             className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--sv-rail-active)] px-3 text-sm font-medium text-[var(--sv-rail-active-ink)] transition-colors duration-150 hover:bg-[var(--sv-rail-active-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sv-rail-active)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--sv-rail)] sm:px-4"
@@ -93,6 +96,7 @@ export function ServiceShellBar({
             <span className="hidden sm:inline">Przyjmij sprzęt</span>
             <span className="sr-only sm:hidden">Przyjmij sprzęt</span>
           </Link>
+          )}
           <OverflowMenu
             label="Konto"
             iconOnly

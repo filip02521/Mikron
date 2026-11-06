@@ -1,5 +1,6 @@
 "use client";
 
+import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { createPortal } from "react-dom";
@@ -193,7 +194,9 @@ export function ServiceOrdersBoard({
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<TileLane | null>(null);
   const [showClosed, setShowClosed] = useState(false);
-  const [intake, setIntake] = useState(() => params.get("przyjmij") === "1");
+  // Podgląd admina „Serwis” jest tylko do odczytu — bez przyjmowania sprzętu.
+  const { readOnly } = useAdminPanelPreview();
+  const [intake, setIntake] = useState(() => !readOnly && params.get("przyjmij") === "1");
   const [intakeHelpdeskId, setIntakeHelpdeskId] = useState<number | null>(null);
   const [openId, setOpenId] = useState<string | null>(() => params.get("zlecenie"));
   const [toast, setToast] = useState<string | null>(null);
@@ -206,7 +209,7 @@ export function ServiceOrdersBoard({
   const [seenWantsIntake, setSeenWantsIntake] = useState(wantsIntake);
   if (wantsIntake !== seenWantsIntake) {
     setSeenWantsIntake(wantsIntake);
-    if (wantsIntake) {
+    if (wantsIntake && !readOnly) {
       setIntakeHelpdeskId(null);
       setIntake(true);
     }
@@ -350,7 +353,7 @@ export function ServiceOrdersBoard({
             <Kbd>/</Kbd>
           </span>
         </label>
-        {intakeInBar ? null : (
+        {intakeInBar || readOnly ? null : (
           <Button type="button" className="w-full sm:ml-auto sm:w-auto" onClick={() => openIntake(null)}>
             <IconPlus size={18} aria-hidden />
             Przyjmij sprzęt
@@ -362,7 +365,7 @@ export function ServiceOrdersBoard({
         <EmptyState
           title="Brak zleceń serwisowych"
           description="Przyjmij pierwszy sprzęt klienta: zlecenie dostanie numer ZS, a każdy krok naprawy przybije pieczątkę na jego karcie."
-          action={<Button onClick={() => openIntake(null)}>Przyjmij sprzęt</Button>}
+          action={readOnly ? undefined : <Button onClick={() => openIntake(null)}>Przyjmij sprzęt</Button>}
         />
       ) : (
         <>
@@ -387,7 +390,7 @@ export function ServiceOrdersBoard({
             <div className="space-y-5">
               {/* Najpierw to, co serwisant robi dziś (teraz, do wydania), potem sprzęt, który dopiero przyjdzie. */}
               {visibleLanes.filter((l) => l === "teraz" || l === "do_wydania").map(renderLane)}
-              {!filter ? <HelpdeskTicketsSection data={helpdesk} tickets={tickets} onAccept={(id) => openIntake(id)} /> : null}
+              {!filter ? <HelpdeskTicketsSection data={helpdesk} tickets={tickets} onAccept={readOnly ? undefined : (id) => openIntake(id)} /> : null}
               {visibleLanes.filter((l) => l !== "teraz" && l !== "do_wydania").map(renderLane)}
             </div>
           )}

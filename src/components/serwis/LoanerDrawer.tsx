@@ -1,5 +1,6 @@
 "use client";
 
+import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
@@ -149,6 +150,8 @@ export function LoanerDrawer({
   // Element, który otworzył panel — zapamiętany przy montowaniu, zanim pułapka przeniesie fokus do środka.
   const [opener] = useState(() => (typeof document === "undefined" ? null : (document.activeElement as HTMLElement | null)));
   const [mode, setMode] = useState<Mode>(null);
+  // Podgląd admina „Serwis”: stan egzemplarza bez przycisków zmiany.
+  const { readOnly } = useAdminPanelPreview();
   const [cond, setCond] = useState(unit.condition);
   const [needsService, setNeedsService] = useState(false);
   const [note, setNote] = useState("");
@@ -283,7 +286,7 @@ export function LoanerDrawer({
                 </div>
               </div>
               </Section>
-              {mode === null ? (
+              {mode === null && !readOnly ? (
                 <div className="space-y-2">
                   <Button type="button" size="lg" className={cn("w-full", touchClass)} onClick={() => setMode("return")}>
                     <IconUndoLeft size={18} aria-hidden />
@@ -319,7 +322,7 @@ export function LoanerDrawer({
                       : "Jeszcze nie był wydany."}
                 </div>
               </Section>
-              {mode === null ? (
+              {mode === null && !readOnly ? (
                 <div className="space-y-2">
                   {unit.state === "free" ? (
                     <>
@@ -485,7 +488,7 @@ export function LoanerDrawer({
               }))}
             />
           </Section>
-          {unit.status !== "u_klienta" ? (
+          {unit.status !== "u_klienta" && !readOnly ? (
             // Na końcu panelu, z odstępem od kroków: wycofanie nie jest jednym z nich.
             <div className="border-t border-[var(--sv-rule)] pt-5">
               {mode === "retire" ? (

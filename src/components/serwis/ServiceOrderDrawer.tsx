@@ -1,5 +1,6 @@
 "use client";
 
+import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { Button, buttonClass } from "@/components/ui/Button";
@@ -192,7 +193,9 @@ export function ServiceOrderDrawer({
   const missing = missingServiceOrderDocs(order, parts);
   const primaryHint = primary ? transitionHint(primary, { missing, loanerCode: linked?.code ?? null }) : null;
   // Widok idzie za krokiem: przy przyjęciu zamiennik, w naprawie części, przy wydaniu dokumenty i telefon.
-  const view = serviceOrderPanelView(order.status);
+  // Podgląd admina „Serwis”: karta do odczytu, bez kroków, części i zapisu opisu.
+  const { readOnly } = useAdminPanelPreview();
+  const view = { ...serviceOrderPanelView(order.status), ...(readOnly ? { workNoteEditable: false } : {}) };
   const partArrived = waitingPartAvailable != null && waitingPartArrived(order, new Map([[order.waitingPart?.twId ?? 0, waitingPartAvailable]]));
   // Po zamknięciu jedyna praca to brakujące dokumenty — wtedy stoją na górze, historia naprawy pod nimi.
   const docsFirst = closed && (missing.invoice || missing.rw);
@@ -232,17 +235,19 @@ export function ServiceOrderDrawer({
             <b className="font-mono font-semibold">{linked?.code ?? "egzemplarz zwrócony"}</b>
             {linked ? <span className="text-slate-500"> · {linked.twName}</span> : null}
           </span>
-          <Button
-            type="button"
-            variant="secondary"
-            className={cn("ml-auto", touchClass)}
-            disabled={pending}
-            onClick={() => submit(() => actionLinkServiceOrderLoaner({ orderId: order.id, unitId: null }))}
-          >
-            Odepnij
-          </Button>
+          {readOnly ? null : (
+            <Button
+              type="button"
+              variant="secondary"
+              className={cn("ml-auto", touchClass)}
+              disabled={pending}
+              onClick={() => submit(() => actionLinkServiceOrderLoaner({ orderId: order.id, unitId: null }))}
+            >
+              Odepnij
+            </Button>
+          )}
         </div>
-      ) : closed ? (
+      ) : closed || readOnly ? (
         <p className="text-[0.8125rem] text-slate-500">Bez zamiennika.</p>
       ) : linkable.length ? (
         <form
@@ -429,7 +434,9 @@ export function ServiceOrderDrawer({
             </Section>
           ) : null}
 
-          {!closed && (primary || secondary.length) ? (
+          {readOnly && !closed ? <p className="text-[0.8125rem] text-slate-600">Podgląd administratora — tylko odczyt. Zmiany zapisuje serwisant.</p> : null}
+
+          {!closed && !readOnly && (primary || secondary.length) ? (
             // Dwa poziomy do skanowania: duży krok naprzód, pod nim równe alternatywy z ikoną znaczenia.
             // Anulowanie jest osobno na dole panelu — nie stoi obok kroków naprawy.
             <div className="space-y-2">
@@ -576,7 +583,7 @@ export function ServiceOrderDrawer({
           <Section
             title={`Części do zlecenia${parts.length ? ` (${lines.length})` : ""}`}
             aside={
-              !order.rwNumber && view.parts === "edit" && !taking ? (
+              !order.rwNumber && !readOnly && view.parts === "edit" && !taking ? (
                 <Button type="button" className={touchClass} variant="secondary" onClick={() => setTaking(true)}>
                   <IconPlus size={18} aria-hidden />
                   Pobierz część
@@ -596,7 +603,7 @@ export function ServiceOrderDrawer({
                         {p.takenByName ? ` · ${p.takenByName}` : ""}
                       </span>
                     </span>
-                    {!order.rwNumber ? (
+                    {!order.rwNumber && !readOnly ? (
                       <Button
                         type="button"
                         className={touchClass}
@@ -715,7 +722,7 @@ export function ServiceOrderDrawer({
             <EventTimeline label="Historia zlecenia" items={historyItems} />
           </Section>
 
-          {canCancel ? (
+          {canCancel && !readOnly ? (
             // Na końcu panelu, z odstępem od kroków naprawy: anulowanie nie jest jednym z kroków.
             <div className="border-t border-slate-100 pt-5">
               {cancelling ? (

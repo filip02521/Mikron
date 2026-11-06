@@ -1,5 +1,6 @@
 "use client";
 
+import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
@@ -298,6 +299,7 @@ export function LoanersBoard({
   const [openId, setOpenId] = useState<string | null>(null);
   const [issueFor, setIssueFor] = useState<string | null | undefined>(undefined);
   const [adding, setAdding] = useState(false);
+  const { readOnly } = useAdminPanelPreview();
   const [toast, setToast] = useState<string | null>(null);
   const [today] = useState(() => new Date());
   const searchRef = useRef<HTMLInputElement>(null);
@@ -385,6 +387,7 @@ export function LoanersBoard({
             <Kbd>/</Kbd>
           </span>
         </label>
+        {readOnly ? null : (
         <div className="flex w-full gap-2 sm:ml-auto sm:w-auto [&>*]:flex-1 sm:[&>*]:flex-none">
           <Button type="button" variant="secondary" onClick={() => setAdding(true)}>
             <IconPlus size={18} aria-hidden />
@@ -395,13 +398,14 @@ export function LoanersBoard({
             Wydaj zamiennik
           </Button>
         </div>
+        )}
       </div>
 
       {views.length === 0 ? (
         <EmptyState
           title="Brak sprzętu zastępczego"
           description="Dodaj pierwszy egzemplarz: wybierz towar z Subiekta i nadaj numer (ZAST-001 albo numer seryjny)."
-          action={<Button type="button" onClick={() => setAdding(true)}>Dodaj egzemplarz</Button>}
+          action={readOnly ? undefined : <Button type="button" onClick={() => setAdding(true)}>Dodaj egzemplarz</Button>}
         />
       ) : (
         <>

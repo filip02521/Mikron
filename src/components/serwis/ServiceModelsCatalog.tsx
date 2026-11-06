@@ -1,5 +1,6 @@
 "use client";
 
+import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
 import { useRouter } from "next/navigation";
 import { useId, useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
@@ -86,6 +87,7 @@ export function ServiceModelsCatalog({
   const [model, setModel] = useState<PickedProduct | null>(null);
   const [part, setPart] = useState<PickedProduct | null>(null);
   const [qty, setQty] = useState("1");
+  const { readOnly } = useAdminPanelPreview();
   const [error, setErrorState] = useState<{ message: string; at: "form" | "catalog" } | null>(null);
   const setError = (message: string | null, at: "form" | "catalog" = "form") => setErrorState(message ? { message, at } : null);
   const [toast, setToast] = useState<string | null>(null);
@@ -166,7 +168,7 @@ export function ServiceModelsCatalog({
                     <WarrantySelect
                       id={`${formId}-w-${m.twId}`}
                       value={m.months}
-                      disabled={pending}
+                      disabled={pending || readOnly}
                       onChange={(months) => saveWarranty(m.twId, months)}
                     />
                   </label>
@@ -180,6 +182,7 @@ export function ServiceModelsCatalog({
                       <span className="block text-sm text-slate-900">{p.partName}</span>
                       <span className="block font-mono text-xs text-slate-500">{p.partSymbol ?? "—"}</span>
                     </span>
+                    {readOnly ? null : (
                     <Button
                       type="button"
                       variant="secondary"
@@ -201,6 +204,7 @@ export function ServiceModelsCatalog({
                     >
                       Usuń
                     </Button>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -209,6 +213,7 @@ export function ServiceModelsCatalog({
         </div>
       )}
 
+      {readOnly ? null : (
       <section aria-labelledby={`${formId}-add`} className={cn(rubricBoxClass, "divide-y divide-[var(--sv-rule)]")}>
         <div className={rubricHeadClass}>
           <h2 id={`${formId}-add`} className={rubricLabelClass}>
@@ -317,8 +322,8 @@ export function ServiceModelsCatalog({
             </Button>
           </div>
         </form>
-
       </section>
+      )}
       {toast ? <NoticeToast notice={toast} onDismiss={() => setToast(null)} /> : null}
     </div>
   );

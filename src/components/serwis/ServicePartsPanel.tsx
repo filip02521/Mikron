@@ -1,5 +1,6 @@
 "use client";
 
+import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -141,6 +142,7 @@ export function ServicePartsPanel({
   canReport: boolean;
 }) {
   const router = useRouter();
+  const { readOnly } = useAdminPanelPreview();
   const [refreshing, startRefresh] = useTransition();
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
@@ -306,7 +308,7 @@ export function ServicePartsPanel({
                     </tr>
                     {list.map((r) => {
                       const report =
-                        r.state !== "ok" && r.requests.length === 0 && canReport ? (
+                        r.state !== "ok" && r.requests.length === 0 && canReport && !readOnly ? (
                           <Button variant="secondary" onClick={() => setReportPart(r)}>
                             Zgłoś brak
                           </Button>
