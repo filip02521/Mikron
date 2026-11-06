@@ -15,7 +15,8 @@ import { isSerwis } from "@/lib/auth-roles";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
 import { ServiceOrderDrawer } from "@/components/serwis/ServiceOrderDrawer";
 import { ServiceOrderIntakeDialog } from "@/components/serwis/ServiceOrderIntakeDialog";
-import { HelpdeskTicketsSection, helpdeskSearchText, type HelpdeskBoardData } from "@/components/serwis/HelpdeskTicketsSection";
+import { HelpdeskTicketsSection, type HelpdeskBoardData } from "@/components/serwis/HelpdeskTicketsSection";
+import { countTicketsWithoutOrders, helpdeskSearchText } from "@/components/serwis/helpdesk-intake";
 import { ServiceStampStrip, stampSummary } from "@/components/serwis/ServiceStampStrip";
 import { ServiceFilterBar } from "@/components/serwis/ServiceFilterBar";
 import {
@@ -252,7 +253,7 @@ export function ServiceOrdersBoard({
 
   const words = query.trim().toLocaleLowerCase("pl-PL").split(/\s+/).filter(Boolean);
   const matches = (hay: string) => words.every((w) => hay.includes(w));
-  const tickets = helpdesk.tickets.filter((t) => matches(helpdeskSearchText(t)));
+  const tickets = helpdesk.tickets.filter((t) => matches(helpdeskSearchText(t, helpdesk.linked[t.id])));
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -365,7 +366,8 @@ export function ServiceOrdersBoard({
       ) : (
         <>
           <p className="font-display text-lg font-bold tracking-[-0.01em] text-slate-900" aria-live="polite">
-            {boardStateSentence(counts, helpdesk.tickets.length)}
+            {/* Zgłoszenia bez żadnego przyjętego sprzętu — ta sama liczba co w nagłówku sekcji helpdesku. */}
+            {boardStateSentence(counts, countTicketsWithoutOrders(helpdesk.tickets, helpdesk.linked))}
           </p>
           <ServiceFilterBar
             label="Filtr zleceń"
@@ -396,6 +398,8 @@ export function ServiceOrdersBoard({
           warrantyMonths={warrantyMonths}
           helpdeskEnabled={helpdesk.mode !== "off"}
           initialHelpdeskId={intakeHelpdeskId}
+          tickets={helpdesk.tickets}
+          linked={helpdesk.linked}
           onOpenOrder={(id) => {
             setIntake(false);
             setOpenId(id);
