@@ -29,3 +29,4 @@ OnTime — wewnętrzny system dostaw i zakupów (dostawcy, zamówienia ZD/ZK, ma
 - Nie używaj `replyToMessageId`. Odpowiedź w wątku dokleja cytat oryginału z obrazkami z podpisów (`~WRD*.jpg`, `image00*.png`), z których Gmail robi puste załączniki. `update_draft` cytatu nie usuwa — serwer dokleja go z powrotem.
 - Zamiast tego nowy szkic z tematem `Re: <temat wątku>` i numerem zamówienia/sprawy w treści.
 - Przed oddaniem szkicu sprawdź `get_draft`: brak `attachments`.
+- Pisz w 1. osobie liczby pojedynczej, w imieniu Filipa: „I confirm”, „I would like to ask”, „przesyłam”, „proszę”, „mam do odbioru” — nie „we”, „our team”, „prosimy”, „mamy”. Liczba mnoga tylko tam, gdzie chodzi o firmę jako stronę umowy („our order”, „our invoice”, „nasze zamówienie”).
