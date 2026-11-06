@@ -26,6 +26,10 @@ import {
 import { pickerInputClass, ProductPicker, type PickedProduct } from "@/components/serwis/SubiektPickers";
 import { ServiceOrderDocuments } from "@/components/serwis/ServiceOrderDocuments";
 import { ServiceOrderWaitForm } from "@/components/serwis/ServiceOrderWaitForm";
+import { ClientMessage, ServiceQuoteForm } from "@/components/serwis/ServiceQuoteForm";
+import { ServiceReleaseForm } from "@/components/serwis/ServiceReleaseForm";
+import { composeQuoteMessage, inboundFact, outboundFact, quoteFact } from "@/lib/orders/service-messages";
+import { quoteWaitingDays } from "@/lib/orders/service-order-board";
 import { SerialHistory } from "@/components/serwis/SerialHistory";
 import {
   daysSince,
@@ -48,8 +52,10 @@ import {
   isServiceOrderLate,
   missingServiceOrderDocs,
   primaryNextStatus,
+  formatQuoteAmount,
   rwLines,
   SERVICE_ORDER_TEXT_MAX,
+  SERVICE_QUOTE_NUDGE_DAYS,
   serviceOrderPanelView,
   transitionHint,
   transitionLabel,
@@ -66,9 +72,13 @@ import {
  */
 const touchClass = "min-h-11";
 
+/** Z „czeka na decyzję klienta” do diagnozy to cofnięcie (oś liczy oba jako diagnozę, więc transitionLabel go nie widzi). */
+const backFromQuote = (to: ServiceOrderStatus, from: ServiceOrderStatus) => from === "czeka_na_akceptacje" && to === "diagnoza";
+const stepLabel = (to: ServiceOrderStatus, from: ServiceOrderStatus) => (backFromQuote(to, from) ? "Wróć do: diagnoza" : transitionLabel(to, from));
+
 /** Ikona znaczenia ruchu: naprzód, wstrzymanie, cofnięcie — rozpoznawalne bez czytania etykiety. */
 function TransitionIcon({ to, from }: { to: ServiceOrderStatus; from: ServiceOrderStatus }) {
-  const Icon = isBackwardTransition(to, from)
+  const Icon = isBackwardTransition(to, from) || backFromQuote(to, from)
     ? IconUndoLeft
     : to === "czeka_na_czesc"
       ? IconClock
@@ -138,6 +148,8 @@ export function ServiceOrderDrawer({
   const [qty, setQty] = useState("1");
   const [remember, setRemember] = useState(true);
   const [waitingForm, setWaitingForm] = useState(false);
+  const [quoteForm, setQuoteForm] = useState(false);
+  const [releaseForm, setReleaseForm] = useState(false);
   const [loanerPick, setLoanerPick] = useState("");
   useBodyScrollLock(true);
   useFocusTrap(panelRef, true);
@@ -198,6 +210,18 @@ export function ServiceOrderDrawer({
   const historyItems = [...events]
     .sort((a, b) => b.at.localeCompare(a.at) || b.id - a.id)
     .map((e) => ({ id: e.id, at: e.at, title: orderEventTitle(e), meta: orderEventMeta(e) || undefined, tone: orderEventTone(e) }));
+
+  const awaitingClient = order.status === "czeka_na_akceptacje";
+  const facts = [
+    inboundFact(order.inbound),
+    awaitingClient ? null : quoteFact(order.quote),
+    closed ? outboundFact(order.outbound) : null,
+  ].filter((f): f is string => f != null);
+  const quoteDays = awaitingClient ? quoteWaitingDays(order.quote.sentAt, today) : null;
+  const quoteMessage =
+    order.quote.amount != null
+      ? composeQuoteMessage({ items: [{ deviceName: order.deviceName, serialNo: order.serialNo, scope: order.quote.note }], amount: order.quote.amount })
+      : null;
 
   const move = (to: ServiceOrderStatus, note = "") => submit(() => actionMoveServiceOrder({ orderId: order.id, to, note }));
 
@@ -347,6 +371,8 @@ export function ServiceOrderDrawer({
               </span>
             ) : null}
           </div>
+          {/* Transport i wycena: każdy fakt raz — kwota czekającej wyceny stoi w rubryce nad krokami, nie tu. */}
+          {facts.length ? <p className="text-[0.8125rem] text-slate-600">{facts.join(" · ")}</p> : null}
           {/* Karta serwisowa: każdy krok naprawy przybija pieczątkę z datą i tym, kto ją przybił. */}
           <ServiceStampStrip stamps={stamps} size="card" cancelled={order.status === "anulowane"} className="pt-2" />
         </div>
@@ -383,21 +409,52 @@ export function ServiceOrderDrawer({
             )
           ) : null}
 
+          {awaitingClient ? (
+            <Section title="Wycena dla klienta">
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span className="font-display text-lg font-bold tabular-nums text-slate-900">
+                  {order.quote.amount != null ? `${formatQuoteAmount(order.quote.amount)} brutto` : "bez kwoty"}
+                </span>
+                {order.quote.sentAt ? (
+                  <span
+                    className={cn(
+                      "text-[0.8125rem]",
+                      (quoteDays ?? 0) >= SERVICE_QUOTE_NUDGE_DAYS ? "font-semibold text-amber-800" : "text-slate-600"
+                    )}
+                  >
+                    wysłana {formatDay(order.quote.sentAt)} · {quoteDays} {polishPluralWord(quoteDays ?? 0, "dzień", "dni", "dni")} bez odpowiedzi
+                  </span>
+                ) : null}
+              </div>
+              {order.quote.note ? <p className="whitespace-pre-line text-sm text-slate-800">{order.quote.note}</p> : null}
+              <ClientMessage text={quoteMessage} label="Kopiuj wiadomość do klienta" disabledHint="Wycena bez kwoty — wróć do diagnozy i wpisz ją jeszcze raz." />
+            </Section>
+          ) : null}
+
           {!closed && (primary || secondary.length) ? (
             // Dwa poziomy do skanowania: duży krok naprzód, pod nim równe alternatywy z ikoną znaczenia.
             // Anulowanie jest osobno na dole panelu — nie stoi obok kroków naprawy.
             <div className="space-y-2">
-              {primary ? (
+              {primary === "wydane" && releaseForm ? (
+                <ServiceReleaseForm
+                  order={order}
+                  parts={parts}
+                  hint={primaryHint}
+                  pending={pending}
+                  submit={(fn) => submit(fn, () => setReleaseForm(false))}
+                  onCancel={() => setReleaseForm(false)}
+                />
+              ) : primary ? (
                 <div className="space-y-1.5">
                   <Button
                     type="button"
                     size="lg"
                     disabled={pending}
-                    onClick={() => move(primary)}
+                    onClick={() => (primary === "wydane" ? setReleaseForm(true) : move(primary))}
                     className={cn("w-full", touchClass)}
                   >
                     <TransitionIcon to={primary} from={order.status} />
-                    {transitionLabel(primary, order.status)}
+                    {stepLabel(primary, order.status)}
                   </Button>
                   {primaryHint ? <p className="text-[0.8125rem] text-slate-600">{primaryHint}</p> : null}
                 </div>
@@ -410,11 +467,13 @@ export function ServiceOrderDrawer({
                       type="button"
                       variant="secondary"
                       disabled={pending}
-                      onClick={() => (s === "czeka_na_czesc" ? setWaitingForm(true) : move(s))}
+                      onClick={() =>
+                        s === "czeka_na_czesc" ? setWaitingForm(true) : s === "czeka_na_akceptacje" ? setQuoteForm(true) : move(s)
+                      }
                       className={cn("w-full", touchClass)}
                     >
                       <TransitionIcon to={s} from={order.status} />
-                      {transitionLabel(s, order.status)}
+                      {stepLabel(s, order.status)}
                     </Button>
                   ))}
                 </div>
@@ -435,6 +494,16 @@ export function ServiceOrderDrawer({
                 })
               }
               onCancel={() => setWaitingForm(false)}
+            />
+          ) : null}
+
+          {quoteForm && order.status === "diagnoza" ? (
+            <ServiceQuoteForm
+              order={order}
+              parts={parts}
+              pending={pending}
+              submit={(fn) => submit(fn, () => setQuoteForm(false))}
+              onCancel={() => setQuoteForm(false)}
             />
           ) : null}
 
