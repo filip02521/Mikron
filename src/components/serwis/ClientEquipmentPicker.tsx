@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { polishPlural } from "@/lib/email/polish-plural";
 import { actionServiceClientEquipment, type ClientEquipmentActionResult } from "@/app/actions/service-orders";
-import type { ClientEquipmentItem } from "@/lib/subiekt/client-equipment-parse";
+import { rankEquipmentForTicket } from "@/lib/subiekt/client-equipment-parse";
+import { Badge } from "@/components/ui/Badge";
 import { WarrantyPill } from "@/components/serwis/service-order-view";
 import { warrantyMonthsFor, warrantyStatus, warrantyUntil } from "@/lib/orders/service-warranty";
 
@@ -37,12 +38,15 @@ export function ClientEquipmentPicker({
   selected,
   onPick,
   warrantyMonths,
+  ticket,
 }: {
   khId: number;
   selected: Pick<PickedEquipment, "twId" | "serial"> | null;
   onPick: (e: PickedEquipment) => void;
   /** Okresy gwarancji modeli różne od domyślnego (tw_Id → miesiące). */
   warrantyMonths: ReadonlyMap<number, number>;
+  /** Przyjęcie ze zgłoszenia helpdesku: sprzęt z faktury i o nazwie ze zgłoszenia idzie na górę listy. */
+  ticket?: { invoice: string; product: string; serial: string } | null;
 }) {
   const today = new Date();
   const [result, setResult] = useState<ClientEquipmentActionResult | null>(null);
@@ -98,7 +102,10 @@ export function ClientEquipmentPicker({
     );
   }
 
-  const list: ClientEquipmentItem[] = showAll ? result.items : result.items.slice(0, VISIBLE);
+  const ranked = rankEquipmentForTicket(result.items, ticket ?? { invoice: "", product: "" });
+  const hinted = ranked.filter((it) => it.hint).length;
+  // Pasujące do zgłoszenia są zawsze widoczne, nawet gdy jest ich więcej niż VISIBLE.
+  const list = showAll ? ranked : ranked.slice(0, Math.max(VISIBLE, hinted));
   return (
     <section aria-labelledby={`eq-${khId}`} className="space-y-2">
       <div className="flex items-baseline justify-between gap-2">
@@ -110,7 +117,10 @@ export function ClientEquipmentPicker({
       <ul className="space-y-2">
         {list.map((it) => (
           <li key={`${it.invoiceId}-${it.twId}`} className="rounded-xl border border-slate-200 bg-card px-3 py-2.5">
-            <div className="text-sm font-semibold text-slate-900">{it.name}</div>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="text-sm font-semibold text-slate-900">{it.name}</span>
+              {it.hint ? <Badge variant="info">{it.hint === "serial" ? "SN ze zgłoszenia" : it.hint === "invoice" ? "Faktura ze zgłoszenia" : "Jak w zgłoszeniu"}</Badge> : null}
+            </div>
             <div className="text-xs text-slate-500">
               <span className="font-mono">{it.symbol ?? "—"}</span> · {it.invoiceNumber}
               {it.invoiceDate ? ` · ${formatDate(it.invoiceDate)}` : ""}
@@ -143,7 +153,7 @@ export function ClientEquipmentPicker({
           </li>
         ))}
       </ul>
-      {result.items.length > VISIBLE ? (
+      {result.items.length > list.length || showAll ? (
         <Button type="button" variant="secondary" className="w-full" onClick={() => setShowAll((v) => !v)}>
           {showAll ? "Pokaż mniej" : `Pokaż cały sprzęt (${result.items.length})`}
         </Button>

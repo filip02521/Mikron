@@ -235,6 +235,8 @@ export type ServiceOrder = {
   purchaseDoc: string | null;
   /** Ostatni dzień gwarancji, policzony przy przyjęciu z okresu modelu (service-warranty.ts). */
   warrantyUntil: string | null;
+  /** Zgłoszenie w helpdesku sklepu mikran.pl, z którego założono zlecenie (numer service_id). */
+  helpdeskId: number | null;
   closedAt: string | null;
   createdAt: string;
 };

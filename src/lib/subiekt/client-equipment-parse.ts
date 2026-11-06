@@ -145,3 +145,53 @@ export function mergeClientEquipment(items: readonly ClientEquipmentItem[]): Cli
   }
   return out;
 }
+
+/** Numer dokumentu sprzedaży do porównań: „fs 978/m/11/2026”, „978/M/11/2026” → „978/M/11/2026”; rodzaj FS/PA osobno. */
+export function parseSalesDocNumber(raw: string): { kind: "fs" | "pa" | null; key: string; nr: number } | null {
+  const m = raw.trim().toUpperCase().match(/^(?:(FS|PA)\s*)?(\d{1,7})\s*(\/[A-Z0-9/ ]*)?$/);
+  if (!m) return null;
+  const nr = Number(m[2]);
+  if (!nr) return null;
+  return { kind: m[1] === "FS" ? "fs" : m[1] === "PA" ? "pa" : null, key: `${nr}${(m[3] ?? "").replace(/\s+/g, "")}`, nr };
+}
+
+export type EquipmentTicketHint = "serial" | "invoice" | "product" | null;
+
+const serialCmp = (s: string) => s.replace(/\s+/g, "").toUpperCase();
+
+/** Słowa nazwy do porównania (≥ 4 znaki, bez wielkości liter i polskich znaków). */
+function nameWords(s: string): Set<string> {
+  return new Set(
+    s
+      .toLocaleLowerCase("pl-PL")
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/ł/g, "l")
+      .split(/[^a-z0-9]+/)
+      .filter((w) => w.length >= 4)
+  );
+}
+
+/**
+ * Sprzęt klienta ułożony pod zgłoszenie z helpdesku: najpierw egzemplarz o numerze seryjnym ze zgłoszenia,
+ * potem pozycje z faktury podanej w zgłoszeniu, potem te, których nazwa ma wspólne słowo z „produktem”;
+ * reszta w dotychczasowej kolejności.
+ */
+export function rankEquipmentForTicket(
+  items: readonly ClientEquipmentItem[],
+  ticket: { invoice: string; product: string; serial?: string }
+): (ClientEquipmentItem & { hint: EquipmentTicketHint })[] {
+  const inv = parseSalesDocNumber(ticket.invoice);
+  const words = nameWords(ticket.product);
+  const sn = serialCmp(ticket.serial ?? "");
+  const hinted = items.map((it, i) => {
+    const doc = parseSalesDocNumber(it.invoiceNumber);
+    const bySerial = sn.length > 0 && it.serials.some((s) => serialCmp(s) === sn);
+    const byInvoice = !!inv && !!doc && doc.key === inv.key && (!inv.kind || !doc.kind || inv.kind === doc.kind);
+    const byProduct = words.size > 0 && [...nameWords(`${it.name} ${it.symbol ?? ""}`)].some((w) => words.has(w));
+    const hint: EquipmentTicketHint = bySerial ? "serial" : byInvoice ? "invoice" : byProduct ? "product" : null;
+    return { ...it, hint, i };
+  });
+  const rank = (h: EquipmentTicketHint) => (h === "serial" ? 0 : h === "invoice" ? 1 : h === "product" ? 2 : 3);
+  return hinted.sort((a, b) => rank(a.hint) - rank(b.hint) || a.i - b.i).map(({ i: _i, ...rest }) => rest);
+}
