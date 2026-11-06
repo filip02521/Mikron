@@ -111,7 +111,7 @@ export async function fetchAppShellMetrics(
     }
   }
 
-  if (role && canAccessServicePanel(role, workspaces)) {
+  if (role && canAccessServicePanel(role)) {
     try {
       const [{ countOverdueLoaners }, { warsawNowParts }] = await Promise.all([
         import("@/lib/data/service-loaners"),

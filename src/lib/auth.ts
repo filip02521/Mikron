@@ -188,12 +188,12 @@ export async function requireWarehouse(
   return user;
 }
 
-/** Panel serwisu: części serwisowe, sprzęt zastępczy (serwis + magazyn + zakupy + admin). */
+/** Panel serwisu: konto serwisanta; admin czyta, zapis tylko z kontekstu Admin (podgląd „Serwis” to odczyt). */
 export async function requireServicePanel(
   intent: AuthIntent = "read"
 ): Promise<SessionUser> {
   const user = await requireLoggedInUser();
-  if (!canAccessServicePanel(user.role, user.assignedWorkspaces)) {
+  if (!canAccessServicePanel(user.role)) {
     throw new Error("Brak uprawnień do panelu serwisu");
   }
   if (intent === "mutate") {
