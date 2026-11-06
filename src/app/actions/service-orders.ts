@@ -546,6 +546,8 @@ export type HelpdeskIntakeDraft = {
   clientMatch: "nip" | "faktura" | "email" | null;
   phone: string;
   deviceName: string;
+  /** Sposób dostawy ze zgłoszenia (1 klient wysyła, 2 odbiera Mikran) — podpowiedź „Jak sprzęt przyszedł”. */
+  deliveryId: number | null;
   /** Numer seryjny wydzielony z pola „Produkt” zgłoszenia („Turbina SN 4321”); pusty, gdy go nie było. */
   serial: string;
   fault: string;
@@ -610,6 +612,7 @@ export async function actionServiceHelpdeskDraft(rawNumber: string | number): Pr
         phone: ticket.telephone.slice(0, SERVICE_ORDER_TEXT_MAX.phone),
         deviceName: product.name.slice(0, SERVICE_ORDER_TEXT_MAX.device),
         serial: product.serial.slice(0, SERVICE_ORDER_TEXT_MAX.serial),
+        deliveryId: ticket.deliveryId,
         fault: ticket.comment.slice(0, SERVICE_ORDER_TEXT_MAX.fault),
         invoiceId: invoiceNo,
         // Faktura innego klienta niż dopasowany po NIP nie jest jego zakupem — nie podświetlamy jej.
@@ -691,7 +694,13 @@ export async function actionServiceRelatedCases(input: {
       const terms = [serial, text(input.clientName, 80)].filter((t) => t.length >= 4);
       const found = await Promise.all(terms.map((t) => searchHelpdeskTickets(t)));
       const seen = new Set<number>(input.helpdeskId ? [input.helpdeskId] : []);
-      for (const f of found) for (const t of f.tickets) if (!seen.has(t.id)) (seen.add(t.id), tickets.push(t));
+      for (const f of found) {
+        for (const t of f.tickets) {
+          if (seen.has(t.id)) continue;
+          seen.add(t.id);
+          tickets.push(t);
+        }
+      }
       tickets = tickets.slice(0, 8);
     } catch (e) {
       helpdeskError = userFacingErrorText(e, "Helpdesk nie odpowiedział.");

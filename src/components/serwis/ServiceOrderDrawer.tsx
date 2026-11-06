@@ -30,7 +30,8 @@ import { ClientMessage, ServiceQuoteForm } from "@/components/serwis/ServiceQuot
 import { ServiceReleaseForm } from "@/components/serwis/ServiceReleaseForm";
 import { composeQuoteMessage, inboundFact, outboundFact, quoteFact } from "@/lib/orders/service-messages";
 import { quoteWaitingDays } from "@/lib/orders/service-order-board";
-import { SerialHistory } from "@/components/serwis/SerialHistory";
+import { ServiceOrderHelpdeskThread } from "@/components/serwis/ServiceOrderHelpdeskThread";
+import { ServiceRelatedCases } from "@/components/serwis/ServiceRelatedCases";
 import {
   daysSince,
   formatDateOnly,
@@ -72,13 +73,10 @@ import {
  */
 const touchClass = "min-h-11";
 
-/** Z „czeka na decyzję klienta” do diagnozy to cofnięcie (oś liczy oba jako diagnozę, więc transitionLabel go nie widzi). */
-const backFromQuote = (to: ServiceOrderStatus, from: ServiceOrderStatus) => from === "czeka_na_akceptacje" && to === "diagnoza";
-const stepLabel = (to: ServiceOrderStatus, from: ServiceOrderStatus) => (backFromQuote(to, from) ? "Wróć do: diagnoza" : transitionLabel(to, from));
 
 /** Ikona znaczenia ruchu: naprzód, wstrzymanie, cofnięcie — rozpoznawalne bez czytania etykiety. */
 function TransitionIcon({ to, from }: { to: ServiceOrderStatus; from: ServiceOrderStatus }) {
-  const Icon = isBackwardTransition(to, from) || backFromQuote(to, from)
+  const Icon = isBackwardTransition(to, from)
     ? IconUndoLeft
     : to === "czeka_na_czesc"
       ? IconClock
@@ -454,7 +452,7 @@ export function ServiceOrderDrawer({
                     className={cn("w-full", touchClass)}
                   >
                     <TransitionIcon to={primary} from={order.status} />
-                    {stepLabel(primary, order.status)}
+                    {transitionLabel(primary, order.status)}
                   </Button>
                   {primaryHint ? <p className="text-[0.8125rem] text-slate-600">{primaryHint}</p> : null}
                 </div>
@@ -473,7 +471,7 @@ export function ServiceOrderDrawer({
                       className={cn("w-full", touchClass)}
                     >
                       <TransitionIcon to={s} from={order.status} />
-                      {stepLabel(s, order.status)}
+                      {transitionLabel(s, order.status)}
                     </Button>
                   ))}
                 </div>
@@ -534,7 +532,11 @@ export function ServiceOrderDrawer({
             {order.accessories ? <p className="text-[0.8125rem] text-slate-500">Przyjęte z: {order.accessories}</p> : null}
           </Section>
 
-          <SerialHistory serial={order.serialNo} excludeOrderId={order.id} onOpenOrder={onOpenOrder} canOpenOrder={canOpenOrder} />
+          {/* Rozmowa z klientem ze zgłoszenia — bez przełączania się do helpdesku. */}
+          {order.helpdeskId ? <ServiceOrderHelpdeskThread key={order.helpdeskId} helpdeskId={order.helpdeskId} /> : null}
+
+          {/* Ten sam egzemplarz, inne naprawy klienta, inne zgłoszenia (duplikaty) — zastępuje samą historię egzemplarza. */}
+          <ServiceRelatedCases order={order} canOpenOrder={canOpenOrder} onOpenOrder={onOpenOrder} />
 
           {view.workNoteLabel && (view.workNoteEditable || order.workNote) ? (
           <Section title={view.workNoteLabel}>

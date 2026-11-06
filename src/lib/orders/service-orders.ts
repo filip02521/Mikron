@@ -186,6 +186,8 @@ export function serviceOrderPanelView(status: ServiceOrderStatus): ServiceOrderP
 
 /** Krok wstecz po osi naprawy (etykieta „Wróć do”, ikona cofnięcia). Wstrzymanie i anulowanie nim nie są. */
 export function isBackwardTransition(to: ServiceOrderStatus, from: ServiceOrderStatus): boolean {
+  // Oś liczy „czeka na decyzję klienta” jako diagnozę — powrót do diagnozy to i tak cofnięcie wyceny.
+  if (from === "czeka_na_akceptacje" && to === "diagnoza") return true;
   return to !== "anulowane" && to !== "czeka_na_czesc" && to !== "czeka_na_akceptacje" && flowIndex(to) >= 0 && flowIndex(to) < flowIndex(from);
 }
 

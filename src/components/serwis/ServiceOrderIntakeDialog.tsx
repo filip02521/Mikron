@@ -93,8 +93,8 @@ export function ServiceOrderIntakeDialog({
       const d = res.draft;
       setDraft(d);
       setNoTicket(false);
-      // Szkic nie niesie sposobu dostawy — bierzemy go ze zgłoszenia z listy (bez niego zostaje wybór serwisanta).
-      if (ticket) setInbound(inboundFromDelivery(ticket.deliveryId) ?? "");
+      // Sposób dostawy ze zgłoszenia (szkic, a gdy go nie ma — wiersz z listy); bez niego zostaje wybór serwisanta.
+      setInbound(inboundFromDelivery(d.deliveryId ?? ticket?.deliveryId) ?? "");
       // Pola z helpdesku nadpisują formularz także przy kolejnym sprzęcie z tego zgłoszenia — serwisant poprawia je przed zapisem.
       setClient(d.client.name ? d.client : null);
       setClientKey((k) => k + 1);

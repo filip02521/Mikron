@@ -38,3 +38,10 @@ describe("kwota wyceny", () => {
     expect(formatQuoteAmount(674.27).replace(/\s/g, " ")).toBe("674,27 zł");
   });
 });
+
+describe("powrót z wyceny do diagnozy", () => {
+  it("jest cofnięciem z etykietą „Wróć do: diagnoza”", () => {
+    expect(isBackwardTransition("diagnoza", "czeka_na_akceptacje")).toBe(true);
+    expect(transitionLabel("diagnoza", "czeka_na_akceptacje")).toBe("Wróć do: diagnoza");
+  });
+});
