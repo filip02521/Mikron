@@ -239,7 +239,7 @@ Kroje i skala z `DESIGN.md`. Serwis dodaje jeden głos: drobny nadruk formularza
 
 **Kolumna.** Strony Serwisu używają `adminPageShellClass` z `touch-ui` i `space-y-6`, nagłówek `PageHeader` na gruncie (anatomia ekranu z `DESIGN.md`).
 
-**Tablica zleceń** (`ServiceOrdersBoard`), od góry: szukanie (z „Przyjmij sprzęt”, gdy nie ma go na pasie) → zdanie stanu → pasek filtrów (`-mt-3`, przyklejony do zdania) → grupy, odstęp między grupami 1.25rem. Kolejność grup jest stała: Do ruchu teraz, Do wydania, Do przyjęcia z helpdesku, W naprawie, Czeka na część, Bez dokumentów, Zamknięte. Najpierw to, co serwisant robi dziś, potem sprzęt, który dopiero przyjdzie, potem w toku. Każde zlecenie jest w jednej grupie (`serviceOrderLane`). Pusta grupa się nie rysuje; „Zamknięte” jest zwinięte, dopóki nie ma filtra ani szukania. Wybrany filtr pokazuje tylko swoją grupę, a helpdesk znika.
+**Tablica zleceń** (`ServiceOrdersBoard`), od góry: szukanie (z „Przyjmij sprzęt”, gdy nie ma go na pasie) → zdanie stanu → pasek filtrów (`-mt-3`, przyklejony do zdania) → grupy, odstęp między grupami 1.25rem. Kolejność grup jest stała: Do ruchu teraz, Do wydania, Do przyjęcia z helpdesku, Czeka na klienta, W naprawie, Czeka na część, Bez dokumentów, Zamknięte. „Czeka na klienta” to zlecenia po wycenie (status `czeka_na_akceptacje`); po `SERVICE_QUOTE_NUDGE_DAYS` (3) dniach bez odpowiedzi zlecenie przechodzi do „Do ruchu teraz” z odznaką „Klient milczy N dni po wycenie”. Najpierw to, co serwisant robi dziś, potem sprzęt, który dopiero przyjdzie, potem w toku. Każde zlecenie jest w jednej grupie (`serviceOrderLane`). Pusta grupa się nie rysuje; „Zamknięte” jest zwinięte, dopóki nie ma filtra ani szukania. Wybrany filtr pokazuje tylko swoją grupę, a helpdesk znika.
 
 **Wiersz zlecenia.** Od `md` jeden rząd: po lewej numer, nazwa sprzętu, klient · SN · części, odznaka powodu („Część na stanie — wznów”, „Termin minął dd.mm”) i dni w serwisie; po prawej pasek pieczątek i strzałka. Na telefonie pasek schodzi pod opis.
 
@@ -269,7 +269,7 @@ Ruch charakterystyczny Serwisu. Pięć rubryk: Przyjęto · Diagnoza · Naprawa 
 |---|---|---|---|
 | `done` | `bg-card`, ramka 1px `--sv-rule` | pieczątka: koło 2px `--sv-stamp`, data `dd.mm` (bez daty: ptaszek) | `slate-600` |
 | `current` | `bg-card`, ramka 2px `--sv-stamp` | pieczątka jak wyżej | `--sv-stamp` |
-| `waiting` | `amber-50`, ramka 2px `amber-500` | ikona zegara `amber-800`, w karcie słowo „czeka” | `amber-800` |
+| `waiting` | `amber-50`, ramka 2px `amber-500` | ikona zegara `amber-800`, w karcie słowo „czeka” (część, rubryka Naprawa) albo „klient” (decyzja po wycenie, rubryka Diagnoza; `waitingFor`) | `amber-800` |
 | `skipped` | `--sv-box`, ramka przerywana `--sv-rule` | kreska `slate-400` | `slate-600` |
 | `empty` | `--sv-box`, ramka przerywana `--sv-rule` | puste | `slate-600` |
 
@@ -318,7 +318,7 @@ Części i lista zamienników: nagłówek na `--sv-box` z Rubric Label, linie wi
 - **Do** kończ wiersz zlecenia paskiem pieczątek, a nagłówek karty zlecenia pełnym paskiem w trybie karty.
 - **Do** dziel kartę zlecenia i zamiennika na rubryki (`Section`) z Rubric Label; etykiety pól formularzy Serwisu bierz z `fieldLabelClass`.
 - **Do** zaczynaj tablicę zdaniem stanu, którego słowa i liczby są słowami i licznikami filtrów pod nim.
-- **Do** trzymaj kolejność grup: Do ruchu teraz, Do wydania, helpdesk, W naprawie, Czeka na część, Bez dokumentów, Zamknięte.
+- **Do** trzymaj kolejność grup: Do ruchu teraz, Do wydania, helpdesk, Czeka na klienta, W naprawie, Czeka na część, Bez dokumentów, Zamknięte.
 - **Do** dawaj każdej nowej stronie Serwisu `touch-ui` i sprawdzaj ją przy 390px z filtrami przewijanymi w bok.
 - **Do** dopisz każdą nową parę tekst/tło Serwisu do `SERWIS_PAIRS` i sprawdź oba motywy.
 

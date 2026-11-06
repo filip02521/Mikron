@@ -696,7 +696,8 @@ export async function actionServiceRelatedCases(input: {
     } catch (e) {
       helpdeskError = userFacingErrorText(e, "Helpdesk nie odpowiedział.");
     }
-    return { ok: true, clientOrders, serialOrders: serialOrders.filter((x) => !clientOrders.some((c) => c.id === x.id)), tickets, helpdeskError };
+    // Powrót tego samego egzemplarza ważniejszy niż „inna naprawa klienta” — zlecenie z tym SN tylko w pierwszej grupie.
+    return { ok: true, clientOrders: clientOrders.filter((x) => !serialOrders.some((c) => c.id === x.id)), serialOrders, tickets, helpdeskError };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się wczytać powiązanych spraw.") };
   }
