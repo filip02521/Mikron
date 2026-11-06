@@ -18,6 +18,8 @@ export type AppShellNavBadges = {
   teethQueue?: number;
   teethVerification?: number;
   teethReceivePending?: number;
+  /** Zamienniki u klientów po terminie zwrotu (serwis, magazyn, zakupy, admin). */
+  serviceOverdueLoaners?: number;
 };
 
 export type AppShellMetrics = {

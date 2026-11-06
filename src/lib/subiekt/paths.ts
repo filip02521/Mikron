@@ -23,6 +23,7 @@ export const SUBIEKT_PATHS = {
   /** Utworzenie ZD przez Sferę — host ORDERS (live :5080 lub test :5082). */
   documentsZdCreate: "/documents/zd/create",
   documentsFs: "/documents/fs",
+  documentsPa: "/documents/pa",
   documentFs: (id: number | string) => `/documents/fs/${id}`,
   /** Kreator ilości do ZD (sprzedaż FS+PA + WZ niepowiązane + stany + otwarte ZK/ZD). */
   ordersZdEstimate: "/orders/zd/estimate",

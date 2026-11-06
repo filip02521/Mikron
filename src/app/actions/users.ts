@@ -7,7 +7,7 @@ import {
   requireAdminForMutation,
   requireAdminOrSalesTeamManagement,
 } from "@/lib/auth";
-import { roleRequiresSalesPerson } from "@/lib/users/labels";
+import { missingSalesPersonError, roleRequiresSalesPerson } from "@/lib/users/labels";
 import { isAdmin } from "@/lib/auth-roles";
 import { canAccessSalesPerson } from "@/lib/data/sales-group-access";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -86,7 +86,7 @@ export async function actionCreateAppUser(form: {
   const passwordError = passwordValidationError(form.password);
   if (passwordError) return { error: passwordError };
   if (roleRequiresSalesPerson(form.role) && !form.salesPersonId) {
-    return { error: "Dla handlowca wybierz powiązaną osobę z listy handlowców." };
+    return { error: missingSalesPersonError(form.role) };
   }
 
   const supabase = createAdminClient();
@@ -161,7 +161,7 @@ export async function actionUpdateAppUser(form: {
   const current = await requireAdminForMutation();
 
   if (roleRequiresSalesPerson(form.role) && !form.salesPersonId) {
-    return { error: "Handlowiec musi być powiązany z osobą z listy." };
+    return { error: missingSalesPersonError(form.role) };
   }
 
   const supabase = createAdminClient();
@@ -238,7 +238,7 @@ export async function actionSaveAppUserPermissions(form: {
   const current = await requireAdminForMutation();
 
   if (roleRequiresSalesPerson(form.role) && !form.salesPersonId) {
-    return { error: "Handlowiec musi być powiązany z osobą z listy." };
+    return { error: missingSalesPersonError(form.role) };
   }
 
   const supabase = createAdminClient();

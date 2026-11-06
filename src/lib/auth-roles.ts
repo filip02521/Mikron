@@ -66,6 +66,15 @@ export function canAccessCarrierPhones(
   );
 }
 
+export function isSerwis(role: UserRole): boolean {
+  return role === "serwis";
+}
+
+/** Panel serwisu (/serwis): serwisant, magazyn, zakupy, admin. */
+export function canAccessServicePanel(role: UserRole, workspaces?: Workspace[]): boolean {
+  return isSerwis(role) || canAccessWarehouse(role, workspaces);
+}
+
 export function isSales(role: UserRole): boolean {
   return role === "sales";
 }
@@ -108,7 +117,7 @@ export function canManageSuppliers(role: UserRole, workspaces?: Workspace[]): bo
 const PROCUREMENT_PREFIXES = ["/zakupy"];
 const SALES_TEAM_PREFIXES = ["/zespol"];
 
-const WAREHOUSE_PATH_PREFIXES = ["/kolejka", "/dostawy", "/notatki", "/ustawienia", "/urlopy", "/podsumowanie-miesieczne", "/kurierzy"];
+const WAREHOUSE_PATH_PREFIXES = ["/kolejka", "/serwis", "/dostawy", "/notatki", "/ustawienia", "/urlopy", "/podsumowanie-miesieczne", "/kurierzy"];
 
 const OPERATIONS_PATH_PREFIXES = [
   "/podsumowanie",
@@ -119,10 +128,15 @@ const OPERATIONS_PATH_PREFIXES = [
   "/zamowienia",
   "/weryfikacja",
   "/kurierzy",
+  "/serwis",
   ...PROCUREMENT_PREFIXES,
 ];
 
 const SALES_PATH_PREFIXES = ["/moje", "/plan", "/prosba", "/notatnik", "/zk", "/tablica"];
+
+/** Serwisant widzi tylko swój panel i ustawienia konta. */
+const SERVICE_PATH_PREFIXES = ["/serwis"];
+export const SERVICE_HOME_PATH = "/serwis/zlecenia";
 
 /** Domyślna strona startowa handlowca po logowaniu. */
 export const SALES_HOME_PATH = "/moje";
@@ -134,6 +148,7 @@ export function homePathForRole(role: UserRole, workspaces?: Workspace[]): strin
     if (workspaces.includes("magazyn")) return "/kolejka";
   }
   if (isMagazyn(role)) return "/kolejka";
+  if (isSerwis(role)) return SERVICE_HOME_PATH;
   if (isZakupyZeby(role)) return "/zeby/kolejka";
   if (canAccessOperations(role)) return "/podsumowanie";
   return SALES_HOME_PATH;
@@ -190,6 +205,10 @@ function canAccessPathForRole(
     pathname.startsWith("/zakupy/urlopy")
   ) {
     return canManageSuppliers(role, ws);
+  }
+  if (isSerwis(role)) {
+    if (SERVICE_PATH_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return true;
+    return pathname === "/" || pathname === "/login" || pathname === "/ustaw-haslo" || pathname === "/ustawienia";
   }
   if (isMagazyn(role, ws)) {
     return WAREHOUSE_PATH_PREFIXES.some(

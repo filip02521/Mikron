@@ -3868,6 +3868,16 @@ html.ontime-scroll-locked main [class*="backdrop-blur"] {
   }
 }
 
+/* Ekran pod dotyk (panel serwisu — serwisant ma ekran dotykowy): każdy przycisk, pole i lista min. 44 px
+   wysokości, przy każdej szerokości. Nie przez `pointer: coarse` — laptop z ekranem dotykowym zgłasza mysz
+   jako główny wskaźnik. W warstwie components: klasa `min-h-*` na elemencie (utilities) i tak wygrywa,
+   więc w zakresie `.touch-ui` nie używa się wysokości poniżej 44 px. */
+@layer components {
+  .touch-ui :is(button, select, input:not([type="checkbox"], [type="radio"], [type="range"], [type="hidden"])) {
+    min-height: 2.75rem;
+  }
+}
+
 /* Cel dotyku ≥ 44 px dla małych kontrolek (ikona pomocy, próbki koloru) — tylko przy palcu,
    bez zmiany wyglądu i bez nakładania się stref na gęstym desktopie. */
 @layer components {

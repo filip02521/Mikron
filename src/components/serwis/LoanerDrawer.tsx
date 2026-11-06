@@ -1,0 +1,507 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { Button } from "@/components/ui/Button";
+import { IconCalendar, IconCircleCheck, IconCopy, IconPackageCheck, IconSearch, IconUndoLeft, IconX } from "@/components/icons/StrokeIcons";
+import { EventTimeline, type EventTimelineTone } from "@/components/ui/EventTimeline";
+import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { cn } from "@/lib/cn";
+import { polishPluralWord } from "@/lib/email/polish-plural";
+import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
+import { sidePanelBackdropClass } from "@/lib/ui/surfaces";
+import { useAnimatedClose } from "@/lib/ui/use-animated-close";
+import {
+  actionEndLoanerService,
+  actionExtendLoaner,
+  actionRetireLoaner,
+  actionReturnLoaner,
+  actionStartLoanerService,
+} from "@/app/actions/service-loaners";
+import {
+  addDays,
+  daysBetween,
+  LOANER_CONDITIONS,
+  loanerStats,
+  parseDateOnly,
+  toDateOnly,
+  type LoanerEvent,
+} from "@/lib/orders/service-loaners";
+import { formatLong, formatShort, StatePill, type LoanerUnitView } from "@/components/serwis/LoanersBoard";
+
+const touchClass = "min-h-11";
+const hintClass = "text-[0.8125rem] text-slate-600";
+
+const EVENT_TONE: Record<LoanerEvent["type"], EventTimelineTone> = {
+  created: "neutral",
+  issued: "brand",
+  returned: "ok",
+  extended: "brandSoft",
+  service_start: "warn",
+  service_end: "ok",
+  retired: "muted",
+};
+
+function eventTitle(e: LoanerEvent): string {
+  switch (e.type) {
+    case "created":
+      return "Dodany do puli zamienników";
+    case "issued":
+      return `Wydany: ${e.clientName ?? "-"}`;
+    case "returned":
+      return `Zwrot od: ${e.clientName ?? "-"}`;
+    case "extended":
+      return "Przedłużono termin zwrotu";
+    case "service_start":
+      return "Przegląd";
+    case "service_end":
+      return "Przegląd zakończony";
+    case "retired":
+      return "Wycofany";
+  }
+}
+
+function eventMeta(e: LoanerEvent, unit: LoanerUnitView): string {
+  const parts: string[] = [];
+  if (e.type === "returned") {
+    const stint = unit.stints.find((s) => s.to === e.at);
+    if (stint) {
+      const days = daysBetween(stint.from, stint.to!);
+      parts.push(`po ${days} ${days === 1 ? "dniu" : "dniach"}`);
+    }
+  }
+  if (e.plannedReturn && (e.type === "issued" || e.type === "extended")) {
+    parts.push(`zwrot do ${formatShort(parseDateOnly(e.plannedReturn).toISOString())}`);
+  }
+  if (e.condition && (e.type === "returned" || e.type === "service_end" || e.type === "created")) parts.push(`stan: ${e.condition}`);
+  if (e.note) parts.push(e.note);
+  if (e.actorName) parts.push(e.actorName);
+  return parts.join(" · ");
+}
+
+function DaysRing({ days, planned }: { days: number; planned: number | null }) {
+  const total = Math.max(planned ?? days, 1);
+  const frac = Math.min(days / total, 1);
+  const r = 36;
+  const c = 2 * Math.PI * r;
+  const tone = planned != null && days > planned ? "stroke-red-500" : days > 14 ? "stroke-amber-500" : "stroke-indigo-600";
+  return (
+    <svg viewBox="0 0 84 84" className="h-[84px] w-[84px] flex-none" aria-hidden>
+      <circle cx="42" cy="42" r={r} fill="none" className="stroke-slate-200" strokeWidth="7" />
+      <circle
+        cx="42"
+        cy="42"
+        r={r}
+        fill="none"
+        className={tone}
+        strokeWidth="7"
+        strokeLinecap="round"
+        strokeDasharray={`${c * frac} ${c}`}
+        transform="rotate(-90 42 42)"
+      />
+      <text x="42" y="46" textAnchor="middle" className="fill-slate-900 text-2xl font-semibold">
+        {days}
+      </text>
+      <text x="42" y="60" textAnchor="middle" className="fill-slate-500 text-[0.6875rem]">
+        {polishPluralWord(days, "dzień", "dni", "dni")}
+      </text>
+    </svg>
+  );
+}
+
+type Mode = null | "return" | "extend" | "service_end" | "retire";
+
+export function LoanerDrawer({
+  unit,
+  today,
+  onClose,
+  onIssue,
+  onDone,
+  orderNumber,
+}: {
+  unit: LoanerUnitView;
+  today: Date;
+  /** Zlecenie serwisowe, do którego egzemplarz jest wydany. */
+  orderNumber?: string | null;
+  onClose: () => void;
+  onIssue: () => void;
+  onDone: (message: string) => void;
+}) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+  // Wjazd i wyjazd jak inne panele boczne: tylko transform, tło bez rozmycia (DESIGN.md → Elevation & Depth).
+  const { panelRef, backdropRef, requestClose } = useAnimatedClose(onClose);
+  // Element, który otworzył panel — zapamiętany przy montowaniu, zanim pułapka przeniesie fokus do środka.
+  const [opener] = useState(() => (typeof document === "undefined" ? null : (document.activeElement as HTMLElement | null)));
+  const [mode, setMode] = useState<Mode>(null);
+  const [cond, setCond] = useState(unit.condition);
+  const [needsService, setNeedsService] = useState(false);
+  const [note, setNote] = useState("");
+  const [extendTo, setExtendTo] = useState(() =>
+    toDateOnly(addDays(unit.plannedReturn && parseDateOnly(unit.plannedReturn) > today ? parseDateOnly(unit.plannedReturn) : today, 7))
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  useBodyScrollLock(true);
+  useFocusTrap(panelRef, true);
+
+  useEffect(() => {
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (e.target instanceof Element && e.target.closest('[role="dialog"]:not([data-loaner-drawer])')) return;
+      requestClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      opener?.focus?.();
+    };
+  }, [requestClose, opener]);
+
+  const stats = loanerStats(unit, unit.stints, today);
+  const planned = unit.currentSince && unit.plannedReturn ? daysBetween(unit.currentSince, parseDateOnly(unit.plannedReturn)) : null;
+  const events = [...unit.events].sort((a, b) => b.at.localeCompare(a.at) || b.id - a.id);
+
+  const submit = (fn: () => Promise<{ ok: boolean; message: string }>) => {
+    setError(null);
+    start(async () => {
+      const res = await fn();
+      if (!res.ok) {
+        setError(res.message);
+        return;
+      }
+      onDone(res.message);
+      requestClose();
+    });
+  };
+
+  const copyPhone = () => {
+    const phone = unit.currentClientPhone ?? "";
+    navigator.clipboard?.writeText(phone).then(
+      () => onDone(`Skopiowano ${phone}`),
+      () => onDone(`Telefon: ${phone}`)
+    );
+  };
+
+  return (
+    <>
+      <div
+        ref={(el) => {
+          backdropRef.current = el;
+        }}
+        className={cn(sidePanelBackdropClass, "panel-slide-backdrop-enter")}
+        onClick={requestClose}
+        aria-hidden
+      />
+      <aside
+        ref={(el) => {
+          panelRef.current = el;
+        }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="loaner-drawer-title"
+        data-loaner-drawer
+        className="panel-slide-enter touch-ui fixed inset-y-0 right-0 z-[60] flex w-full max-w-[29rem] flex-col border-l border-slate-200/80 bg-raised shadow-[var(--shadow-card-elevated)]"
+        style={{ paddingTop: "env(safe-area-inset-top,0px)", paddingBottom: "env(safe-area-inset-bottom,0px)" }}
+      >
+        <div className="flex flex-col gap-2.5 border-b border-slate-100 px-6 pb-4 pt-5">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[0.8125rem] font-semibold text-slate-500">
+              {unit.code}
+              {unit.serialNo && !unit.code.includes(unit.serialNo) ? ` · SN ${unit.serialNo}` : ""}
+            </span>
+            <StatePill state={unit.state} />
+            <button
+              ref={closeRef}
+              type="button"
+              onClick={requestClose}
+              aria-label="Zamknij"
+              className="ml-auto grid h-11 w-11 place-items-center rounded-lg text-slate-500 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-900"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          </div>
+          <h2 id="loaner-drawer-title" className="font-display text-xl font-bold leading-tight tracking-tight text-slate-900">
+            {unit.twName}
+          </h2>
+          <span className="text-[0.8125rem] text-slate-500">
+            Towar w Subiekcie: <span className="font-mono">{unit.twSymbol ?? "-"}</span> · stan techniczny: {unit.condition}
+          </span>
+        </div>
+
+        <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5" {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}>
+          {orderNumber ? (
+            <p className="text-[0.8125rem] text-slate-600">
+              Wydany do zlecenia{" "}
+              <Link href="/serwis/zlecenia" className="font-mono font-semibold text-indigo-700 underline underline-offset-2">
+                {orderNumber}
+              </Link>
+            </p>
+          ) : null}
+          {unit.status === "u_klienta" && unit.currentSince ? (
+            <>
+              <div className="flex items-center gap-4 rounded-xl border border-slate-200 p-4">
+                <DaysRing days={unit.daysOut ?? 0} planned={planned} />
+                <div className="flex min-w-0 flex-col gap-1">
+                  <span className="text-[0.9375rem] font-semibold text-slate-900">{unit.currentClientName}</span>
+                  <span className="text-[0.8125rem] text-slate-500">
+                    od {formatLong(unit.currentSince)}
+                    {unit.plannedReturn ? (
+                      unit.state === "late" ? (
+                        <b className="font-semibold text-red-700"> · zwrot minął {formatShort(parseDateOnly(unit.plannedReturn).toISOString())}</b>
+                      ) : (
+                        ` · zwrot ${formatShort(parseDateOnly(unit.plannedReturn).toISOString())}`
+                      )
+                    ) : null}
+                  </span>
+                  {unit.currentClientPhone ? <span className="font-mono text-[0.8125rem] text-slate-600">tel. {unit.currentClientPhone}</span> : null}
+                </div>
+              </div>
+              {mode === null ? (
+                <div className="space-y-2">
+                  <Button type="button" size="lg" className={cn("w-full", touchClass)} onClick={() => setMode("return")}>
+                    <IconUndoLeft size={18} aria-hidden />
+                    Przyjmij zwrot
+                  </Button>
+                  <p className={hintClass}>Zapiszesz stan techniczny — egzemplarz wróci na półkę albo do przeglądu.</p>
+                  <div className={cn("grid gap-2 pt-1", unit.currentClientPhone ? "grid-cols-2" : "grid-cols-1")}>
+                    <Button type="button" variant="secondary" className={cn("w-full", touchClass)} onClick={() => setMode("extend")}>
+                      <IconCalendar size={18} aria-hidden />
+                      Przedłuż termin
+                    </Button>
+                    {unit.currentClientPhone ? (
+                      <Button type="button" variant="secondary" className={cn("w-full", touchClass)} onClick={copyPhone}>
+                        <IconCopy size={18} aria-hidden />
+                        Kopiuj telefon
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <div className="rounded-xl border border-slate-200 p-4">
+                <div className="text-[0.9375rem] font-semibold text-slate-900">
+                  {unit.state === "svc" ? "W przeglądzie u serwisu" : "Na półce, gotowy do wydania"}
+                </div>
+                <div className="text-[0.8125rem] text-slate-500">
+                  {unit.state === "svc"
+                    ? "Wraca na stan po zakończeniu przeglądu."
+                    : unit.stints.length
+                      ? `Ostatni zwrot: ${formatLong(unit.stints[unit.stints.length - 1]!.to ?? unit.createdAt)}`
+                      : "Jeszcze nie był wydany."}
+                </div>
+              </div>
+              {mode === null ? (
+                <div className="space-y-2">
+                  {unit.state === "free" ? (
+                    <>
+                      <Button type="button" size="lg" className={cn("w-full", touchClass)} onClick={onIssue}>
+                        <IconPackageCheck size={18} aria-hidden />
+                        Wydaj ten egzemplarz
+                      </Button>
+                      <p className={hintClass}>Wybierzesz klienta i termin zwrotu.</p>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className={cn("w-full", touchClass)}
+                        disabled={pending}
+                        onClick={() => submit(() => actionStartLoanerService({ unitId: unit.id }))}
+                      >
+                        <IconSearch size={18} aria-hidden />
+                        Oznacz do przeglądu
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button type="button" size="lg" className={cn("w-full", touchClass)} onClick={() => setMode("service_end")}>
+                        <IconCircleCheck size={18} aria-hidden />
+                        Zakończ przegląd
+                      </Button>
+                      <p className={hintClass}>Zapiszesz stan techniczny — egzemplarz wróci na półkę, gotowy do wydania.</p>
+                    </>
+                  )}
+                </div>
+              ) : null}
+            </>
+          )}
+
+          {mode === "return" || mode === "service_end" ? (
+            <form
+              className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                submit(() =>
+                  mode === "return"
+                    ? actionReturnLoaner({ unitId: unit.id, condition: cond, needsService, note })
+                    : actionEndLoanerService({ unitId: unit.id, condition: cond, note })
+                );
+              }}
+            >
+              <div className="text-sm font-semibold text-slate-900">{mode === "return" ? "Przyjęcie zwrotu" : "Koniec przeglądu"}</div>
+              <div role="group" aria-label="Stan techniczny" className="flex flex-wrap gap-1.5">
+                {LOANER_CONDITIONS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    aria-pressed={cond === c}
+                    onClick={() => {
+                      setCond(c);
+                      if (mode === "return") setNeedsService(c === "do przeglądu" || c === "uszkodzony");
+                    }}
+                    className={cn(
+                      "min-h-11 rounded-2xl border px-3.5 text-sm transition-colors duration-150",
+                      cond === c ? "border-indigo-600 bg-indigo-50 font-semibold text-indigo-900" : "border-slate-200 bg-card text-slate-600 hover:bg-slate-100"
+                    )}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+              {mode === "return" ? (
+                <label className="flex min-h-11 items-center gap-2 text-sm text-slate-700">
+                  <input id="loaner-needs-service" type="checkbox" checked={needsService} onChange={(e) => setNeedsService(e.target.checked)} className="h-5 w-5 accent-[var(--primary)]" />
+                  Wymaga przeglądu przed kolejnym wydaniem
+                </label>
+              ) : null}
+              <input
+                id="loaner-note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                maxLength={300}
+                placeholder="Uwagi (opcjonalnie), np. brak kabla"
+                className="h-10 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              />
+              {error ? <p className="text-sm text-red-700">{error}</p> : null}
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="button" variant="secondary" className={cn("w-full", touchClass)} onClick={() => setMode(null)} disabled={pending}>
+                  Wróć
+                </Button>
+                <Button type="submit" className={cn("w-full", touchClass)} disabled={pending}>
+                  {pending ? "Zapisuję…" : mode === "return" ? "Przyjmij zwrot" : "Zakończ przegląd"}
+                </Button>
+              </div>
+            </form>
+          ) : null}
+
+          {mode === "extend" ? (
+            <form
+              className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                submit(() => actionExtendLoaner({ unitId: unit.id, plannedReturn: extendTo }));
+              }}
+            >
+              <label htmlFor="loaner-extend" className="block text-sm font-semibold text-slate-900">
+                Nowy termin zwrotu
+              </label>
+              <input
+                id="loaner-extend"
+                type="date"
+                value={extendTo}
+                min={toDateOnly(today)}
+                onChange={(e) => setExtendTo(e.target.value)}
+                className="h-10 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              />
+              {error ? <p className="text-sm text-red-700">{error}</p> : null}
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="button" variant="secondary" className={cn("w-full", touchClass)} onClick={() => setMode(null)} disabled={pending}>
+                  Wróć
+                </Button>
+                <Button type="submit" className={cn("w-full", touchClass)} disabled={pending}>
+                  {pending ? "Zapisuję…" : "Zapisz termin"}
+                </Button>
+              </div>
+            </form>
+          ) : null}
+
+          {error && mode === null ? <p className="text-sm text-red-700">{error}</p> : null}
+
+          <div className="grid grid-cols-3 gap-2">
+            <div className="rounded-lg bg-slate-50 px-3 py-2.5">
+              <b className="block text-lg font-semibold tabular-nums">{stats.issues}</b>
+              <span className="text-xs text-slate-500">{polishPluralWord(stats.issues, "wydanie", "wydania", "wydań")}</span>
+            </div>
+            <div className="rounded-lg bg-slate-50 px-3 py-2.5">
+              <b className="block text-lg font-semibold tabular-nums">{stats.avgDaysOut}</b>
+              <span className="text-xs text-slate-500">śr. dni u klienta</span>
+            </div>
+            <div className="rounded-lg bg-slate-50 px-3 py-2.5">
+              <b className="block text-lg font-semibold tabular-nums">{stats.utilizationPct}%</b>
+              <span className="text-xs text-slate-500">czasu u klientów</span>
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-2 text-[0.8125rem] font-semibold text-slate-600">Historia egzemplarza</p>
+            <EventTimeline
+              label="Historia egzemplarza"
+              formatDate={formatLong}
+              items={events.map((e) => ({
+                id: e.id,
+                at: e.at,
+                title: eventTitle(e),
+                meta: eventMeta(e, unit) || undefined,
+                tone: EVENT_TONE[e.type],
+              }))}
+            />
+          </div>
+          {unit.status !== "u_klienta" ? (
+            // Na końcu panelu, z odstępem od kroków: wycofanie nie jest jednym z nich.
+            <div className="border-t border-slate-100 pt-5">
+              {mode === "retire" ? (
+                <form
+                  className="space-y-3 rounded-xl border border-red-200 bg-red-50 p-4"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    submit(() => actionRetireLoaner({ unitId: unit.id, note }));
+                  }}
+                >
+                  <div>
+                    <label htmlFor="loaner-retire-note" className="block text-sm font-semibold text-slate-900">
+                      Wycofanie {unit.code} z puli
+                    </label>
+                    <p className="text-[0.8125rem] text-slate-600">
+                      Egzemplarz zniknie z tablicy i nie będzie można go wydać. Historia zostaje w bazie.
+                    </p>
+                  </div>
+                  <input
+                    id="loaner-retire-note"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    maxLength={300}
+                    placeholder="Powód, np. zużyty, sprzedany klientowi"
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                  {error ? <p className="text-sm text-red-700">{error}</p> : null}
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button type="button" variant="secondary" className={cn("w-full", touchClass)} onClick={() => setMode(null)} disabled={pending}>
+                      Wróć
+                    </Button>
+                    <Button type="submit" variant="danger" className={cn("w-full", touchClass)} disabled={pending}>
+                      {pending ? "Zapisuję…" : "Wycofaj z puli"}
+                    </Button>
+                  </div>
+                </form>
+              ) : (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={pending || mode !== null}
+                  onClick={() => setMode("retire")}
+                  className={cn("w-full text-red-700 hover:text-red-800", touchClass)}
+                >
+                  <IconX size={18} aria-hidden />
+                  Wycofaj egzemplarz
+                </Button>
+              )}
+            </div>
+          ) : null}
+        </div>
+      </aside>
+    </>
+  );
+}

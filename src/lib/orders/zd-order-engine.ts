@@ -8,7 +8,8 @@
 
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { fetchZdEstimateExclusions, type ZdEstimateExclusionRow } from "@/lib/data/zd-estimate-exclusions";
-import { fetchZdEstimateOnRequests, type ZdEstimateOnRequestRow } from "@/lib/data/zd-estimate-on-request";
+import { type ZdEstimateOnRequestRow } from "@/lib/data/zd-estimate-on-request";
+import { fetchZdEstimateOnRequestsWithServiceParts } from "@/lib/data/service-parts";
 import {
   buildBakeExcludedTwIds,
   buildExtraOnlyTwIds,
@@ -742,7 +743,7 @@ export async function runZdOrderEngine(
     fetchZdEstimateExclusions()
       .then((value) => ({ ok: true as const, value }))
       .catch((e: unknown) => ({ ok: false as const, error: e })),
-    fetchZdEstimateOnRequests()
+    fetchZdEstimateOnRequestsWithServiceParts()
       .then((value) => ({ ok: true as const, value }))
       .catch((e: unknown) => ({ ok: false as const, error: e })),
     fetchZdEstimatePackaging()

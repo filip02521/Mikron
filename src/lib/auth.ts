@@ -10,6 +10,8 @@ import {
 import {
   canAccessOperations,
   canAccessTeethPanel,
+  canAccessServicePanel,
+  isSerwis,
   canAccessWarehouse,
   canAccessZdEstimate,
   canManageSalesTeam,
@@ -186,6 +188,20 @@ export async function requireWarehouse(
   return user;
 }
 
+/** Panel serwisu: części serwisowe, sprzęt zastępczy (serwis + magazyn + zakupy + admin). */
+export async function requireServicePanel(
+  intent: AuthIntent = "read"
+): Promise<SessionUser> {
+  const user = await requireLoggedInUser();
+  if (!canAccessServicePanel(user.role, user.assignedWorkspaces)) {
+    throw new Error("Brak uprawnień do panelu serwisu");
+  }
+  if (intent === "mutate") {
+    await assertAdminNotInReadOnlyPanelPreview(user);
+  }
+  return user;
+}
+
 /** Panel zębów: oznaczanie zamówionych, edycja próśb, przyjęcie dostaw (admin + zakupy_zeby). */
 export async function requireTeethPanel(
   intent: AuthIntent = "read"
@@ -302,4 +318,14 @@ export async function requireSubiektLookup(): Promise<SessionUser> {
     throw new Error("Brak uprawnień do podpowiedzi Subiekt");
   }
   return user;
+}
+
+/**
+ * Tylko podpowiedzi klientów i towarów z Subiekta. Serwisant wybiera je przy wydaniu zamiennika,
+ * ale nie dostaje reszty odczytów zakupowych z {@link requireSubiektLookup} (dostawcy, terminy ZD, NIP-y).
+ */
+export async function requireSubiektSuggestLookup(): Promise<SessionUser> {
+  const user = await requireLoggedInUser();
+  if (isSerwis(user.role)) return user;
+  return requireSubiektLookup();
 }

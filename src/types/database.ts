@@ -14,7 +14,14 @@ export type VacationNote =
   | "PRZESUNIETE_PO"
   | "PRZYSPIESZONE_PRZED"
   | "OSTATNIE_ZAMOWIENIE";
-export type UserRole = "admin" | "zakupy" | "zakupy_zeby" | "magazyn" | "sales" | "sales_manager";
+export type UserRole =
+  | "admin"
+  | "zakupy"
+  | "zakupy_zeby"
+  | "magazyn"
+  | "sales"
+  | "sales_manager"
+  | "serwis";
 
 /** Obszary robocze przypisywane użytkownikom przez admina. */
 export type Workspace = "dostawy" | "zeby" | "magazyn";

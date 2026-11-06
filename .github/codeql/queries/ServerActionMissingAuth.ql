@@ -35,6 +35,9 @@ predicate isAuthFunction(string fnName) {
     "requireReceiveNotificationFlush",
     "requireSupplierManagement",
     "requireSubiektLookup",
+    // Panel serwisu (serwis, magazyn, zakupy, admin) i podpowiedzi Subiekta dla serwisu — oba wołają requireLoggedInUser()
+    "requireServicePanel",
+    "requireSubiektSuggestLookup",
     "requireMailCenterAccess",
     "requireMailCenterForMutation",
     // Helper functions that internally call getSessionUser*() / requireOperations()

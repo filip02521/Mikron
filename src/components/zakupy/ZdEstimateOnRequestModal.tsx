@@ -5,6 +5,8 @@ import {
   actionClearZdEstimateOnRequest,
   actionUpdateZdEstimateOnRequestNote,
 } from "@/app/actions/zd-estimate";
+import { isServicePartOnRequestRow, SERVICE_PARTS_CECHA_NAME } from "@/lib/orders/service-parts";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 import type { ZdEstimateOnRequestRow } from "@/lib/data/zd-estimate-on-request";
 import { IconClipboardList, IconSearch, IconX } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
@@ -183,7 +185,7 @@ function OnRequestRow({
 export function ZdEstimateOnRequestModal({
   open,
   onClose,
-  onRequests,
+  onRequests: allOnRequests,
   onOnRequestsChange,
   onError,
   scanLines = [],
@@ -202,6 +204,12 @@ export function ZdEstimateOnRequestModal({
   onMarkLine?: (twId: number) => void;
 }) {
   const searchId = useId();
+  // Części z cechy Subiekta nie są wpisami tej listy: nie da się ich tu usunąć ani opisać.
+  const onRequests = useMemo(
+    () => allOnRequests.filter((r) => !isServicePartOnRequestRow(r)),
+    [allOnRequests]
+  );
+  const servicePartCount = allOnRequests.length - onRequests.length;
   const searchRef = useRef<HTMLInputElement>(null);
   const [pending, start] = useTransition();
   const [query, setQuery] = useState("");
@@ -298,6 +306,9 @@ export function ZdEstimateOnRequestModal({
                 : onRequests.length === 1
                   ? "1 produkt na liście"
                   : `${onRequests.length} produktów na liście`}
+            {servicePartCount > 0
+              ? ` · ${servicePartCount} ${polishPluralWord(servicePartCount, "część", "części", "części")} z cechą „${SERVICE_PARTS_CECHA_NAME}” w Subiekcie`
+              : null}
           </p>
           <Button
             type="button"
@@ -334,7 +345,7 @@ export function ZdEstimateOnRequestModal({
         <ZdOnRequestHints
           lines={scanLines}
           supplierName={supplierName}
-          markedTwIds={new Set(onRequests.map((r) => r.subiektTwId))}
+          markedTwIds={new Set(allOnRequests.map((r) => r.subiektTwId))}
           onMark={onMarkLine}
           onClear={clear}
           disabled={pending}

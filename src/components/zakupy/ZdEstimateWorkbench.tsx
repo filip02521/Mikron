@@ -102,6 +102,7 @@ import {
 import type { ZdEstimateExclusionRow } from "@/lib/data/zd-estimate-exclusions";
 import type { ZdProsbaElsewhere } from "@/lib/data/zd-scope-order";
 import type { ZdEstimateOnRequestRow } from "@/lib/data/zd-estimate-on-request";
+import { isServicePartOnRequestRow } from "@/lib/orders/service-parts";
 import type { ZdEstimatePackagingRow } from "@/lib/data/zd-estimate-packaging";
 import type { ZdEstimateMinStockRow } from "@/lib/data/zd-estimate-min-stock";
 import type { ZdProductPairRow } from "@/lib/data/zd-product-pairs";
@@ -1514,6 +1515,10 @@ export function ZdEstimateWorkbench({
     pairUnitsByPackTwId,
     packagingLookup,
   } = rulesState;
+  const servicePartTwIds = useMemo(
+    () => onRequestTwIdSet(onRequests.filter(isServicePartOnRequestRow), productPairs),
+    [onRequests, productPairs]
+  );
   // Restore sesji i ponowne wczytanie reguł są asynchroniczne — czytaj reguły
   // z ostatniego renderu, nie z closure.
   const latestRulesRef = useRef<ZdEstimateRestoreRules>(rulesState);
@@ -8056,6 +8061,10 @@ export function ZdEstimateWorkbench({
                             exclusionsTrusted && dbExcludedIds.has(l.tw_Id)
                           }
                           dbOnRequest={dbOnRequest}
+                          servicePart={
+                            onRequestTrusted &&
+                            servicePartTwIds.has(onRequestCanonicalId)
+                          }
                           softOnRequest={
                             dbOnRequest &&
                             orderExcludedTwIds.has(onRequestCanonicalId) &&

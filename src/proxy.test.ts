@@ -104,8 +104,9 @@ describe("proxy mail center module access", () => {
 
     const response = await proxy(new NextRequest("https://example.com/admin/mail"));
 
+    // Na start własnej roli — /podsumowanie handlowca odbiłoby z powrotem (pętla przekierowań).
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe("https://example.com/podsumowanie");
+    expect(response.headers.get("location")).toBe("https://example.com/moje");
   });
 
   it("legacy /zakupy/raporty-ivoclar z modułem → /admin/mail", async () => {
