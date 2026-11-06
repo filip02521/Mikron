@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { serviceOrderLane, serviceOrderNowReason, serviceOrderStamps } from "@/lib/orders/service-order-board";
+import { quoteWaitingDays, serviceOrderLane, serviceOrderNowReason, serviceOrderStamps } from "@/lib/orders/service-order-board";
 import type { ServiceOrderStatus } from "@/lib/orders/service-orders";
 
 const today = new Date(2026, 10, 6);
@@ -58,5 +58,23 @@ describe("serviceOrderStamps", () => {
 
   it("bez zdarzenia „created” bierze datę przyjęcia zlecenia", () => {
     expect(serviceOrderStamps(order("przyjete"), [])[0]).toMatchObject({ state: "current", at: "2026-11-01T08:00:00.000Z" });
+  });
+});
+
+describe("wycena i decyzja klienta", () => {
+  const quoted = (sentAt: string) => ({ ...order("czeka_na_akceptacje"), quote: { sentAt } });
+
+  it("czeka na klienta; po 3 dniach milczenia → teraz z powodem „klient”", () => {
+    expect(serviceOrderLane(quoted("2026-11-05T10:00:00Z"), [], { arrived: false, today })).toBe("klient");
+    expect(serviceOrderLane(quoted("2026-11-03T10:00:00Z"), [], { arrived: false, today })).toBe("teraz");
+    expect(serviceOrderNowReason(quoted("2026-11-03T10:00:00Z"), { arrived: false, today })).toBe("klient");
+    expect(quoteWaitingDays("2026-11-03T23:00:00", today)).toBe(3);
+  });
+
+  it("rubryka Diagnoza czeka na klienta, Naprawa jeszcze pusta", () => {
+    const s = serviceOrderStamps(order("czeka_na_akceptacje"), [ev("created", null, "2026-11-01T08:00:00Z"), ev("status", "diagnoza", "2026-11-02T08:00:00Z"), ev("status", "czeka_na_akceptacje", "2026-11-03T08:00:00Z")]);
+    expect(s.map((x) => x.state)).toEqual(["done", "waiting", "empty", "empty", "empty"]);
+    expect(s[1]!.waitingFor).toBe("klient");
+    expect(serviceOrderStamps(order("czeka_na_czesc"), [])[2]!.waitingFor).toBe("czesc");
   });
 });

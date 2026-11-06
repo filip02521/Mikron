@@ -27,13 +27,14 @@ import {
   type ModelPartView,
   type OrderPartView,
 } from "@/components/serwis/service-order-view";
-import { waitingPartArrived, type ServiceOrder, type ServiceOrderEvent } from "@/lib/orders/service-orders";
+import { formatQuoteAmount, waitingPartArrived, type ServiceOrder, type ServiceOrderEvent } from "@/lib/orders/service-orders";
 import {
   SERVICE_BOARD_LANE_LABEL,
   SERVICE_BOARD_LANES,
   serviceOrderLane,
   serviceOrderNowReason,
   serviceOrderStamps,
+  quoteWaitingDays,
   type ServiceBoardLane,
   type ServiceNowReason,
 } from "@/lib/orders/service-order-board";
@@ -47,6 +48,7 @@ type TileLane = Exclude<ServiceBoardLane, "zamkniete">;
 const TILES: { id: TileLane; dot?: string; hint: string }[] = [
   { id: "teraz", hint: "Część dotarła albo termin minął" },
   { id: "do_wydania", dot: "bg-emerald-600", hint: "Gotowe — zadzwoń i wydaj" },
+  { id: "klient", dot: "bg-amber-500", hint: "Wycena wysłana — czeka na decyzję klienta" },
   { id: "w_naprawie", dot: "bg-slate-400", hint: "Przyjęte, diagnoza, naprawa" },
   { id: "czeka", dot: "bg-amber-500", hint: "Naprawa stoi na części" },
   { id: "dokumenty", dot: "bg-red-600", hint: "Wydane bez faktury lub RW" },
@@ -58,6 +60,7 @@ function boardStateSentence(counts: Record<ServiceBoardLane, number>, tickets: n
   if (counts.teraz) parts.push(`${counts.teraz} do ruchu teraz`);
   if (counts.do_wydania) parts.push(`${counts.do_wydania} do wydania`);
   if (tickets) parts.push(`${tickets} ${polishPluralWord(tickets, "zgłoszenie", "zgłoszenia", "zgłoszeń")} do przyjęcia`);
+  if (counts.klient) parts.push(`${counts.klient} czeka na klienta`);
   if (counts.dokumenty) parts.push(`${counts.dokumenty} bez dokumentów`);
   if (!parts.length) parts.push("Nic pilnego");
   // Te same słowa i liczby co filtry pod zdaniem.
@@ -66,7 +69,15 @@ function boardStateSentence(counts: Record<ServiceBoardLane, number>, tickets: n
   return parts.join(" · ");
 }
 
-function NowReasonPill({ reason, dueDate }: { reason: ServiceNowReason; dueDate: string | null }) {
+function NowReasonPill({ reason, dueDate, quoteDays }: { reason: ServiceNowReason; dueDate: string | null; quoteDays: number | null }) {
+  if (reason === "klient") {
+    return (
+      <span className="inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full bg-amber-50 px-2.5 text-xs font-medium text-amber-900">
+        <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
+        Klient milczy {quoteDays ?? 0} {polishPluralWord(quoteDays ?? 0, "dzień", "dni", "dni")} po wycenie
+      </span>
+    );
+  }
   return reason === "czesc" ? (
     <span className="inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full bg-emerald-50 px-2.5 text-xs font-medium text-emerald-800">
       <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
@@ -123,7 +134,10 @@ function OrderRow({
             {partsCount ? ` · ${partsCount} ${polishPluralWord(partsCount, "część", "części", "części")}` : ""}
           </span>
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            {reason ? <NowReasonPill reason={reason} dueDate={order.dueDate} /> : null}
+            {reason ? <NowReasonPill reason={reason} dueDate={order.dueDate} quoteDays={quoteWaitingDays(order.quote.sentAt, today)} /> : null}
+            {order.status === "czeka_na_akceptacje" && order.quote.amount != null && reason !== "klient" ? (
+              <span className="whitespace-nowrap text-[0.8125rem] tabular-nums text-amber-900">wycena {formatQuoteAmount(order.quote.amount)}</span>
+            ) : null}
             {order.status === "anulowane" ? <OrderStatusPill status="anulowane" /> : null}
             <span className="whitespace-nowrap text-[0.8125rem] tabular-nums text-slate-500">
               {order.closedAt

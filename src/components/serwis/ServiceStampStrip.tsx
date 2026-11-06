@@ -20,7 +20,7 @@ function initials(actor: string): string {
 }
 
 function stampText(s: ServiceStamp): string {
-  if (s.state === "waiting") return `${s.label}: czeka na część`;
+  if (s.state === "waiting") return `${s.label}: ${s.waitingFor === "klient" ? "czeka na decyzję klienta" : "czeka na część"}`;
   if (s.state === "skipped") return `${s.label}: pominięte`;
   if (s.state === "empty") return `${s.label}: jeszcze nie`;
   return `${s.label}: ${s.at ? dayMonth(s.at) : "tak"}${s.state === "current" ? " (teraz)" : ""}`;
@@ -30,7 +30,7 @@ function stampText(s: ServiceStamp): string {
 export function stampSummary(stamps: ServiceStamp[]): string {
   const now = stamps.find((s) => s.state === "current" || s.state === "waiting") ?? [...stamps].reverse().find((s) => s.state === "done");
   if (!now) return "";
-  if (now.state === "waiting") return "Naprawa czeka na część";
+  if (now.state === "waiting") return now.waitingFor === "klient" ? "Wycena czeka na decyzję klienta" : "Naprawa czeka na część";
   return `${now.label}${now.at ? ` ${dayMonth(now.at)}` : ""}`;
 }
 
@@ -100,7 +100,7 @@ export function ServiceStampStrip({
               ) : s.state === "waiting" ? (
                 <span className="flex flex-col items-center gap-0.5 text-amber-800">
                   <IconClock size={card ? 20 : 16} aria-hidden />
-                  {card ? <span className="text-[0.6875rem] font-semibold">czeka</span> : null}
+                  {card ? <span className="text-[0.6875rem] font-semibold">{s.waitingFor === "klient" ? "klient" : "czeka"}</span> : null}
                 </span>
               ) : s.state === "skipped" ? (
                 <IconMinus size={card ? 18 : 14} className="text-slate-400" aria-hidden />

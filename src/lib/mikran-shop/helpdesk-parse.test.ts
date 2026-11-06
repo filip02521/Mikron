@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   decodeHtmlEntities,
+  extractInvoiceNumber,
   isClosedHelpdeskStatus,
   isStaffEmail,
   nipDigits,
   splitProductSerial,
   parseHelpdeskNumber,
+  parseHelpdeskMessages,
   parseHelpdeskTicket,
 } from "@/lib/mikran-shop/helpdesk-parse";
 
@@ -100,5 +102,36 @@ describe("isStaffEmail", () => {
     expect(isStaffEmail("serwis@mikran.com")).toBe(true);
     expect(isStaffEmail("Biuro@Mikran.pl ")).toBe(true);
     expect(isStaffEmail("gabinet@example.com")).toBe(false);
+  });
+});
+
+describe("extractInvoiceNumber", () => {
+  it("z pola faktury, produktu albo opisu", () => {
+    expect(extractInvoiceNumber("", "faktura nr 1617/M/09/2025. Marathon multi 600")).toBe("1617/M/09/2025");
+    expect(extractInvoiceNumber("3025/m/11/2024 ")).toBe("3025/M/11/2024");
+    expect(extractInvoiceNumber("", "Prostnica", "FV 434/M/11/2026 koszt 510 zł")).toBe("434/M/11/2026");
+    expect(extractInvoiceNumber("", "Forte 100 SN X99TEST01", "zakup wrzesień 2026")).toBe("");
+  });
+});
+
+describe("parseHelpdeskMessages", () => {
+  it("od najstarszej, rozpoznaje wpis serwisu i ukryty komentarz, pomija puste", () => {
+    const m = parseHelpdeskMessages({
+      helpdesk_id: 1,
+      messages: [
+        { service_history_id: 2, date_added: "2026-10-26 14:46:28", comment: "Problem przeanalizowany", user_id: 7, notify: 0 },
+        { service_history_id: 1, date_added: "2026-10-26 13:44:57", comment: "Gdzie przesłać film?", user_id: 0, notify: 1 },
+        { service_history_id: 3, date_added: "2026-10-27 08:00:00", comment: "" },
+      ],
+    });
+    expect(m.map((x) => [x.id, x.staff, x.hidden])).toEqual([
+      [1, false, false],
+      [2, true, true],
+    ]);
+  });
+
+  it("nieznany kształt → pusta lista", () => {
+    expect(parseHelpdeskMessages(null)).toEqual([]);
+    expect(parseHelpdeskMessages({ error: "x" })).toEqual([]);
   });
 });

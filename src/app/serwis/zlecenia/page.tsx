@@ -46,12 +46,12 @@ export default async function ZleceniaPage() {
     error = userFacingErrorText(e, "Nie udało się wczytać zleceń serwisowych.");
   }
   // Helpdesk mikran.pl osobno: jego awaria nie zasłania zleceń, tylko sekcję zgłoszeń.
-  let helpdesk: HelpdeskBoardData = { mode: helpdeskMode(), tickets: [], error: null };
+  let helpdesk: HelpdeskBoardData = { mode: helpdeskMode(), tickets: [], linked: {}, error: null };
   if (data && helpdesk.mode !== "off") {
     try {
       const { mode, tickets } = await fetchOpenServiceTickets();
       const linked = await fetchOrdersByHelpdeskIds(tickets.map((t) => t.id));
-      helpdesk = { mode, tickets: tickets.filter((t) => !linked.has(t.id)), error: null };
+      helpdesk = { mode, tickets, linked: Object.fromEntries(linked), error: null };
     } catch (e) {
       helpdesk = { ...helpdesk, error: userFacingErrorText(e, "Nie udało się pobrać zgłoszeń z helpdesku mikran.pl.") };
     }

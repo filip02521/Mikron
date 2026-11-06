@@ -3,6 +3,7 @@
 export type ServiceOrderStatus =
   | "przyjete"
   | "diagnoza"
+  | "czeka_na_akceptacje"
   | "w_naprawie"
   | "czeka_na_czesc"
   | "gotowe"
@@ -20,7 +21,10 @@ export type ServiceOrderEventType =
   | "note"
   | "invoice"
   | "invoice_cleared"
-  | "waiting_part";
+  | "waiting_part"
+  | "quote"
+  | "quote_decision"
+  | "shipment";
 
 /** Kolejność drogi naprawy — oś postępu w panelu zlecenia. „Anulowane” jest poza nią. */
 export const SERVICE_ORDER_FLOW: readonly ServiceOrderStatus[] = [
@@ -34,6 +38,7 @@ export const SERVICE_ORDER_FLOW: readonly ServiceOrderStatus[] = [
 export const SERVICE_ORDER_STATUS_LABEL: Record<ServiceOrderStatus, string> = {
   przyjete: "Przyjęte",
   diagnoza: "Diagnoza",
+  czeka_na_akceptacje: "Czeka na decyzję klienta",
   w_naprawie: "W naprawie",
   czeka_na_czesc: "Czeka na część",
   gotowe: "Gotowe do wydania",
@@ -47,7 +52,9 @@ export const SERVICE_ORDER_STATUS_LABEL: Record<ServiceOrderStatus, string> = {
  */
 const TRANSITIONS: Record<ServiceOrderStatus, readonly ServiceOrderStatus[]> = {
   przyjete: ["diagnoza", "w_naprawie", "anulowane"],
-  diagnoza: ["w_naprawie", "czeka_na_czesc", "gotowe", "przyjete", "anulowane"],
+  diagnoza: ["w_naprawie", "czeka_na_akceptacje", "czeka_na_czesc", "gotowe", "przyjete", "anulowane"],
+  // Wycena wysłana: klient akceptuje (naprawa) albo odmawia (gotowe = zwrot bez naprawy); można wrócić do diagnozy.
+  czeka_na_akceptacje: ["w_naprawie", "gotowe", "diagnoza", "anulowane"],
   w_naprawie: ["czeka_na_czesc", "gotowe", "diagnoza", "anulowane"],
   czeka_na_czesc: ["w_naprawie", "anulowane"],
   gotowe: ["wydane", "w_naprawie"],
@@ -81,6 +88,8 @@ export function primaryNextStatus(from: ServiceOrderStatus): ServiceOrderStatus 
       return "gotowe";
     case "czeka_na_czesc":
       return "w_naprawie";
+    case "czeka_na_akceptacje":
+      return "w_naprawie";
     case "gotowe":
       return "wydane";
     default:
@@ -102,11 +111,14 @@ export function transitionLabel(to: ServiceOrderStatus, from?: ServiceOrderStatu
     case "diagnoza":
       return "Zacznij diagnozę";
     case "w_naprawie":
+      if (from === "czeka_na_akceptacje") return "Klient akceptuje — naprawiaj";
       return from === "czeka_na_czesc" ? "Wznów naprawę" : "Zacznij naprawę";
+    case "czeka_na_akceptacje":
+      return "Wyślij wycenę klientowi";
     case "czeka_na_czesc":
       return "Czeka na część";
     case "gotowe":
-      return "Oznacz jako gotowe";
+      return from === "czeka_na_akceptacje" ? "Klient odmawia — zwrot bez naprawy" : "Oznacz jako gotowe";
     case "wydane":
       return "Wydaj klientowi";
     case "anulowane":
@@ -122,6 +134,7 @@ export function transitionHint(
   to: ServiceOrderStatus,
   ctx: { missing: { rw: boolean; invoice: boolean }; loanerCode: string | null }
 ): string | null {
+  if (to === "czeka_na_akceptacje") return "Wpiszesz kwotę i zakres naprawy — zlecenie poczeka na decyzję klienta w grupie „Czeka na klienta”.";
   if (to === "gotowe") return "Zlecenie przejdzie do „Gotowe do wydania” — tam wpiszesz fakturę za naprawę i RW na części.";
   if (to === "wydane") {
     const parts = ["Zamyka zlecenie."];
@@ -156,6 +169,7 @@ export function serviceOrderPanelView(status: ServiceOrderStatus): ServiceOrderP
     case "przyjete":
       return { workNoteLabel: null, workNoteEditable: false, parts: "hidden", documents: false, loanerFirst: true, callClient: false };
     case "diagnoza":
+    case "czeka_na_akceptacje":
       return { workNoteLabel: "Co ustaliła diagnoza", workNoteEditable: true, parts: "edit", documents: false, loanerFirst: false, callClient: false };
     case "w_naprawie":
     case "czeka_na_czesc":
@@ -172,12 +186,13 @@ export function serviceOrderPanelView(status: ServiceOrderStatus): ServiceOrderP
 
 /** Krok wstecz po osi naprawy (etykieta „Wróć do”, ikona cofnięcia). Wstrzymanie i anulowanie nim nie są. */
 export function isBackwardTransition(to: ServiceOrderStatus, from: ServiceOrderStatus): boolean {
-  return to !== "anulowane" && to !== "czeka_na_czesc" && flowIndex(to) >= 0 && flowIndex(to) < flowIndex(from);
+  return to !== "anulowane" && to !== "czeka_na_czesc" && to !== "czeka_na_akceptacje" && flowIndex(to) >= 0 && flowIndex(to) < flowIndex(from);
 }
 
 /** Pozycja na osi postępu: „czeka na część” stoi tam, gdzie naprawa. */
 export function flowIndex(status: ServiceOrderStatus): number {
   if (status === "czeka_na_czesc") return SERVICE_ORDER_FLOW.indexOf("w_naprawie");
+  if (status === "czeka_na_akceptacje") return SERVICE_ORDER_FLOW.indexOf("diagnoza");
   return SERVICE_ORDER_FLOW.indexOf(status);
 }
 
@@ -235,11 +250,47 @@ export type ServiceOrder = {
   purchaseDoc: string | null;
   /** Ostatni dzień gwarancji, policzony przy przyjęciu z okresu modelu (service-warranty.ts). */
   warrantyUntil: string | null;
-  /** Zgłoszenie w helpdesku sklepu mikran.pl, z którego założono zlecenie (numer service_id). */
+  /** Zgłoszenie w helpdesku sklepu mikran.pl, z którego założono zlecenie (numer service_id). Jedno zgłoszenie bywa na kilka zleceń. */
   helpdeskId: number | null;
+  /** Wycena po diagnozie: kwota brutto (zł), co obejmuje, kiedy wysłana; decyzja klienta i kiedy. */
+  quote: { amount: number | null; note: string; sentAt: string | null; decision: ServiceQuoteDecision | null; decidedAt: string | null };
+  /** Transport: jak sprzęt przyszedł (i planowany odbiór kurierem) i jak wrócił do klienta. */
+  inbound: { method: ServiceInboundMethod | null; pickupDate: string | null };
+  outbound: { method: ServiceOutboundMethod | null; tracking: string | null; address: string | null };
   closedAt: string | null;
   createdAt: string;
 };
+
+export type ServiceQuoteDecision = "accepted" | "rejected";
+export type ServiceInboundMethod = "kurier_klienta" | "odbior_mikran" | "osobiscie";
+export type ServiceOutboundMethod = "gls" | "inny_kurier" | "osobiscie";
+
+export const SERVICE_INBOUND_LABEL: Record<ServiceInboundMethod, string> = {
+  kurier_klienta: "Klient wysyła kurierem",
+  odbior_mikran: "Odbiór kurierem Mikranu",
+  osobiscie: "Klient przynosi osobiście",
+};
+
+export const SERVICE_OUTBOUND_LABEL: Record<ServiceOutboundMethod, string> = {
+  gls: "Kurier GLS",
+  inny_kurier: "Inny kurier",
+  osobiscie: "Odbiór osobisty",
+};
+
+/** Kwota wyceny z pola („674,27”, „674.27 zł”, „1 250”) → złote z groszami; null — to nie kwota. */
+export function parseQuoteAmount(raw: string): number | null {
+  const t = raw.replace(/zł|pln/gi, "").replace(/\s+/g, "").replace(",", ".");
+  if (!/^\d{1,6}(\.\d{1,2})?$/.test(t)) return null;
+  const n = Math.round(Number(t) * 100) / 100;
+  return Number.isFinite(n) && n < 1_000_000 ? n : null;
+}
+
+export function formatQuoteAmount(n: number): string {
+  return `${n.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
+}
+
+/** Ile dni klient milczy po wycenie, zanim zlecenie wchodzi do „Do ruchu teraz” (przypomnieć się klientowi). */
+export const SERVICE_QUOTE_NUDGE_DAYS = 3;
 
 export type ServiceOrderEvent = {
   id: number;

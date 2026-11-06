@@ -4,13 +4,16 @@ import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import type { HelpdeskTicket } from "@/lib/mikran-shop/helpdesk-parse";
+import type { HelpdeskLinkedOrder } from "@/lib/data/service-orders";
 import { toDateOnly } from "@/lib/orders/service-loaners";
 import { formatAutomatDay } from "@/lib/orders/zd-automat-daily";
 
 export type HelpdeskBoardData = {
   mode: "live" | "test" | "off";
-  /** Otwarte zgłoszenia serwisanta, jeszcze bez zlecenia w OnTime. */
+  /** Otwarte zgłoszenia serwisanta (z helpdesku), także te, z których przyjęto już część sprzętu. */
   tickets: HelpdeskTicket[];
+  /** Zlecenia założone z danego zgłoszenia: numer zgłoszenia → zlecenia (jedno zgłoszenie bywa na kilka urządzeń). */
+  linked: Record<number, HelpdeskLinkedOrder[]>;
   error: string | null;
 };
 

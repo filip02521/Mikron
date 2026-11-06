@@ -81,7 +81,7 @@ export function ServiceOrderIntakeDialog({
       const d = res.draft;
       setDraft(d);
       setHelpdeskInput(String(d.helpdeskId));
-      if (d.existingOrder) return;
+      if (d.existingOrders[0]) return;
       // Pola z helpdesku nadpisują formularz — serwisant poprawia je przed zapisem.
       setClient(d.client.name ? d.client : null);
       setClientKey((k) => k + 1);
@@ -105,7 +105,7 @@ export function ServiceOrderIntakeDialog({
   const purchase = normalizePurchaseDate(purchaseDate, today);
   const warranty = warrantyStatus(purchase ? warrantyUntil(purchase, warrantyMonthsFor(device?.twId ?? null, warrantyMonths)) : null, today);
   const missing = !client?.name ? "klienta" : !device?.name ? "sprzętu" : !fault.trim() ? "opisu usterki" : null;
-  const linked = draft && !draft.existingOrder ? draft.helpdeskId : null;
+  const linked = draft && !draft.existingOrders[0] ? draft.helpdeskId : null;
 
   return (
     <ModalShell
@@ -123,7 +123,7 @@ export function ServiceOrderIntakeDialog({
           <Button type="button" variant="secondary" onClick={onClose} disabled={pending}>
             Anuluj
           </Button>
-          <Button type="submit" form={formId} disabled={pending || !!draft?.existingOrder}>
+          <Button type="submit" form={formId} disabled={pending || !!draft?.existingOrders[0]}>
             {pending ? "Zapisuję…" : linked ? `Przyjmij ze zgłoszenia #${linked}` : "Przyjmij sprzęt"}
           </Button>
         </div>
@@ -194,13 +194,13 @@ export function ServiceOrderIntakeDialog({
               <p role="alert" className="text-[0.8125rem] text-red-700">
                 {helpdeskError}
               </p>
-            ) : draft?.existingOrder ? (
+            ) : draft?.existingOrders[0] ? (
               <div role="alert" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-amber-50 px-3 py-2 text-[0.8125rem] text-amber-900">
                 <span className="min-w-0 flex-1">
-                  Zgłoszenie #{draft.helpdeskId} ma już zlecenie {draft.existingOrder.number}.
+                  Zgłoszenie #{draft.helpdeskId} ma już zlecenie {draft.existingOrders[0].number}.
                 </span>
-                <Button type="button" size="sm" variant="secondary" onClick={() => onOpenOrder(draft.existingOrder!.id)}>
-                  Otwórz {draft.existingOrder.number}
+                <Button type="button" size="sm" variant="secondary" onClick={() => onOpenOrder(draft.existingOrders[0]!.id)}>
+                  Otwórz {draft.existingOrders[0].number}
                 </Button>
               </div>
             ) : draft ? (
@@ -249,7 +249,7 @@ export function ServiceOrderIntakeDialog({
             key={client.khId}
             khId={client.khId}
             selected={device?.twId ? { twId: device.twId, serial: serial.trim() } : null}
-            ticket={draft && !draft.existingOrder ? { invoice: draft.invoiceFound ?? "", product: draft.deviceName, serial: draft.serial } : null}
+            ticket={draft && !draft.existingOrders[0] ? { invoice: draft.invoiceFound ?? "", product: draft.deviceName, serial: draft.serial } : null}
             warrantyMonths={warrantyMonths}
             onPick={(e) => {
               setDevice({ twId: e.twId, symbol: e.symbol, name: e.name });

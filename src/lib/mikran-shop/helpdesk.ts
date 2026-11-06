@@ -1,7 +1,9 @@
 import {
   HELPDESK_TEST_TICKETS,
   isClosedHelpdeskStatus,
+  parseHelpdeskMessages,
   parseHelpdeskTicket,
+  type HelpdeskMessage,
   type HelpdeskTicket,
 } from "@/lib/mikran-shop/helpdesk-parse";
 import { addDays, toDateOnly } from "@/lib/orders/service-loaners";
@@ -30,6 +32,20 @@ function intList(raw: string): number[] {
     .filter((n) => Number.isInteger(n) && n > 0);
 }
 
+/**
+ * Zapis do helpdesku (status zgłoszenia przy przyjęciu i wydaniu): tylko z MIKRAN_HELPDESK_WRITE=1 i kluczami
+ * ze scope helpdesk:write. Zawsze notify=false i bez autoodpowiedzi — OnTime nie wysyła maili do klientów.
+ */
+export function helpdeskWriteEnabled(): boolean {
+  return env("MIKRAN_HELPDESK_WRITE") === "1" && helpdeskMode() === "live";
+}
+
+/** status_id w helpdesku (panel sklepu: 1 nowe, 4 przyjęte do realizacji, 5 zakończone); nadpisywane w env. */
+export function helpdeskStatusId(kind: "accepted" | "done"): number {
+  const raw = Number(env(kind === "accepted" ? "MIKRAN_HELPDESK_STATUS_ACCEPTED" : "MIKRAN_HELPDESK_STATUS_DONE"));
+  return Number.isInteger(raw) && raw > 0 ? raw : kind === "accepted" ? 4 : 5;
+}
+
 export function helpdeskMode(): HelpdeskMode {
   if (env("MIKRAN_API_CLIENT_ID") && env("MIKRAN_API_CLIENT_SECRET")) return "live";
   return process.env.NODE_ENV === "production" ? "off" : "test";
@@ -43,7 +59,7 @@ async function accessToken(): Promise<string> {
     grant_type: "client_credentials",
     client_id: env("MIKRAN_API_CLIENT_ID"),
     client_secret: env("MIKRAN_API_CLIENT_SECRET"),
-    scope: "helpdesk:read",
+    scope: helpdeskWriteEnabled() ? "helpdesk:read helpdesk:write" : "helpdesk:read",
   });
   const res = await fetch(`${env("MIKRAN_API_BASE_URL") || DEFAULT_BASE}/api/v1/oauth/token`, {
     method: "POST",
@@ -121,6 +137,59 @@ export async function fetchOpenServiceTickets(): Promise<{ mode: HelpdeskMode; t
   }
   tickets.sort((a, b) => b.dateAdded.localeCompare(a.dateAdded) || b.id - a.id);
   return { mode, tickets };
+}
+
+/**
+ * Szukanie w całym helpdesku (q jak w panelu: numer, klient, e-mail, telefon, firma, NIP, produkt, faktura, opis),
+ * wszystkie statusy i osoby — do wyboru zgłoszenia przy przyjęciu, gdy nie ma go na liście serwisanta.
+ */
+export async function searchHelpdeskTickets(q: string): Promise<{ mode: HelpdeskMode; tickets: HelpdeskTicket[] }> {
+  const mode = helpdeskMode();
+  const term = q.trim();
+  if (mode === "off" || term.length < 2) return { mode, tickets: [] };
+  if (mode === "test") {
+    const words = term.toLocaleLowerCase("pl-PL").split(/\s+/);
+    const hay = (t: HelpdeskTicket) => `${t.id} ${t.name} ${t.company} ${t.product} ${t.email} ${t.telephone} ${t.vat}`.toLocaleLowerCase("pl-PL");
+    return { mode, tickets: testTickets().filter((t) => words.every((w) => hay(t).includes(w))) };
+  }
+  const page = await apiGet("/api/v1/helpdesk", { q: term, pageSize: "20", sort: "s.date_added", order: "DESC" });
+  const rows = page && typeof page === "object" && Array.isArray((page as { data?: unknown }).data) ? (page as { data: unknown[] }).data : [];
+  return { mode, tickets: rows.map((r) => parseHelpdeskTicket(r)).filter((t): t is HelpdeskTicket => t != null) };
+}
+
+/** Wątek zgłoszenia (rozmowa z klientem) od najstarszej wiadomości. */
+export async function fetchHelpdeskMessages(id: number): Promise<{ mode: HelpdeskMode; messages: HelpdeskMessage[] }> {
+  const mode = helpdeskMode();
+  if (mode === "off") return { mode, messages: [] };
+  if (mode === "test") {
+    const t = testTickets().find((x) => x.id === id);
+    if (!t) return { mode, messages: [] };
+    return {
+      mode,
+      messages: [
+        { id: 1, at: `${t.dateAdded} 09:00:00`, author: t.name, staff: false, hidden: false, text: t.comment, status: "Nowe zgłoszenie" },
+        { id: 2, at: `${t.dateAdded} 10:30:00`, author: "Serwis TEST", staff: true, hidden: false, text: "TEST — prosimy o przesłanie sprzętu kurierem GLS (instrukcja pakowania w załączniku).", status: "Przyjęte do realizacji" },
+      ],
+    };
+  }
+  return { mode, messages: parseHelpdeskMessages(await apiGet(`/api/v1/helpdesk/${id}/messages`)) };
+}
+
+/**
+ * Status zgłoszenia w helpdesku (np. przyjęcie sprzętu → przyjęte do realizacji). Krótki wpis ukryty od klienta,
+ * notify=false — bez maila. Bez MIKRAN_HELPDESK_WRITE=1 nic nie robi i zwraca false.
+ */
+export async function setHelpdeskStatus(id: number, statusId: number, comment: string): Promise<boolean> {
+  if (!helpdeskWriteEnabled()) return false;
+  const res = await fetch(`${env("MIKRAN_API_BASE_URL") || DEFAULT_BASE}/api/v1/helpdesk/${id}/messages`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${await accessToken()}`, "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ comment: comment.slice(0, 500), service_status_id: statusId, notify: false }),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Helpdesk mikran.pl nie zapisał statusu zgłoszenia #${id} (${res.status}).`);
+  return true;
 }
 
 /** Jedno zgłoszenie z wątkiem (opis klienta = pierwsza wiadomość). null — nie ma takiego numeru. */
