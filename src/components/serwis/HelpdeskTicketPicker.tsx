@@ -97,7 +97,7 @@ export function HelpdeskTicketPicker({
             value={query}
             autoFocus={autoFocus}
             maxLength={80}
-            placeholder="Klient, gabinet, sprzęt, SN, telefon lub nr zgłoszenia"
+            placeholder="Klient, sprzęt, SN, nr zgłoszenia"
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
               // Enter wybiera / szuka zgłoszenia, nie wysyła formularza przyjęcia.

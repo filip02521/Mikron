@@ -43,7 +43,8 @@ export function ServiceReleaseForm({
     rejected: order.quote.decision === "rejected",
     fsNumber: order.fsNumber,
     noInvoiceReason: order.noInvoiceReason,
-    amount: order.quote.amount,
+    // Koszt tylko z wyceny, którą klient przyjął — wycofana albo bez decyzji nie trafia do wiadomości.
+    amount: order.quote.decision === "accepted" ? order.quote.amount : null,
     method,
     tracking: courier ? tracking : null,
   });

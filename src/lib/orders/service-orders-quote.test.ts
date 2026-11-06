@@ -21,7 +21,7 @@ describe("czeka na decyzję klienta", () => {
   it("etykiety mówią o decyzji klienta; wejście nie jest krokiem wstecz", () => {
     expect(transitionLabel("w_naprawie", "czeka_na_akceptacje")).toBe("Klient akceptuje — naprawiaj");
     expect(transitionLabel("gotowe", "czeka_na_akceptacje")).toBe("Klient odmawia — zwrot bez naprawy");
-    expect(transitionLabel("czeka_na_akceptacje", "diagnoza")).toBe("Wyślij wycenę klientowi");
+    expect(transitionLabel("czeka_na_akceptacje", "diagnoza")).toBe("Wpisz wycenę dla klienta");
     expect(isBackwardTransition("czeka_na_akceptacje", "w_naprawie")).toBe(false);
     expect(flowIndex("czeka_na_akceptacje")).toBe(flowIndex("diagnoza"));
   });

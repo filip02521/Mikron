@@ -51,15 +51,18 @@ export function helpdeskMode(): HelpdeskMode {
   return process.env.NODE_ENV === "production" ? "off" : "test";
 }
 
-let token: { value: string; expiresAt: number } | null = null;
+type TokenScope = "helpdesk:read" | "helpdesk:read helpdesk:write";
+// Osobny token na zapis: klucze bez helpdesk:write nie psują odczytów, gdy zapis jest włączony.
+const tokens = new Map<TokenScope, { value: string; expiresAt: number }>();
 
-async function accessToken(): Promise<string> {
+async function accessToken(scope: TokenScope = "helpdesk:read"): Promise<string> {
+  const token = tokens.get(scope);
   if (token && token.expiresAt > Date.now() + 60_000) return token.value;
   const body = new URLSearchParams({
     grant_type: "client_credentials",
     client_id: env("MIKRAN_API_CLIENT_ID"),
     client_secret: env("MIKRAN_API_CLIENT_SECRET"),
-    scope: helpdeskWriteEnabled() ? "helpdesk:read helpdesk:write" : "helpdesk:read",
+    scope,
   });
   const res = await fetch(`${env("MIKRAN_API_BASE_URL") || DEFAULT_BASE}/api/v1/oauth/token`, {
     method: "POST",
@@ -72,8 +75,8 @@ async function accessToken(): Promise<string> {
   if (!res.ok || !json?.access_token) {
     throw new Error(`Helpdesk mikran.pl odrzucił klucze API (${res.status}${json?.error ? ` ${json.error}` : ""}). Sprawdź MIKRAN_API_CLIENT_ID i sekret.`);
   }
-  token = { value: json.access_token, expiresAt: Date.now() + (json.expires_in ?? 3600) * 1000 };
-  return token.value;
+  tokens.set(scope, { value: json.access_token, expiresAt: Date.now() + (json.expires_in ?? 3600) * 1000 });
+  return json.access_token;
 }
 
 async function apiGet(path: string, params: Record<string, string> = {}): Promise<unknown> {
@@ -88,7 +91,7 @@ async function apiGet(path: string, params: Record<string, string> = {}): Promis
   let res = await call();
   if (res.status === 401) {
     // Token mógł wygasnąć po stronie sklepu wcześniej niż mówi expires_in — jedna ponowna próba z nowym.
-    token = null;
+    tokens.delete("helpdesk:read");
     res = await call();
   }
   if (res.status === 404) return null;
@@ -176,14 +179,14 @@ export async function fetchHelpdeskMessages(id: number): Promise<{ mode: Helpdes
 }
 
 /**
- * Status zgłoszenia w helpdesku (np. przyjęcie sprzętu → przyjęte do realizacji). Krótki wpis ukryty od klienta,
- * notify=false — bez maila. Bez MIKRAN_HELPDESK_WRITE=1 nic nie robi i zwraca false.
+ * Status zgłoszenia w helpdesku (np. przyjęcie sprzętu → przyjęte do realizacji). Krótki wpis z notify=false — bez maila;
+ * API nie ma pola „ukryty”, więc wpis może być widoczny w historii zgłoszenia u klienta (treść neutralna). Bez MIKRAN_HELPDESK_WRITE=1 nic nie robi i zwraca false.
  */
 export async function setHelpdeskStatus(id: number, statusId: number, comment: string): Promise<boolean> {
   if (!helpdeskWriteEnabled()) return false;
   const res = await fetch(`${env("MIKRAN_API_BASE_URL") || DEFAULT_BASE}/api/v1/helpdesk/${id}/messages`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${await accessToken()}`, "Content-Type": "application/json", Accept: "application/json" },
+    headers: { Authorization: `Bearer ${await accessToken("helpdesk:read helpdesk:write")}`, "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify({ comment: comment.slice(0, 500), service_status_id: statusId, notify: false }),
     signal: AbortSignal.timeout(TIMEOUT_MS),
     cache: "no-store",

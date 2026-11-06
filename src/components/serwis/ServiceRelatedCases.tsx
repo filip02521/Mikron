@@ -5,7 +5,7 @@ import { actionServiceRelatedCases, type RelatedCasesResult } from "@/app/action
 import { Badge } from "@/components/ui/Badge";
 import { BrandLoader } from "@/components/ui/BrandLoader";
 import { Button } from "@/components/ui/Button";
-import { formatDateOnly, OrderStatusPill } from "@/components/serwis/service-order-view";
+import { formatLocalDate, OrderStatusPill } from "@/components/serwis/service-order-view";
 import { cn } from "@/lib/cn";
 import type { HelpdeskTicket } from "@/lib/mikran-shop/helpdesk-parse";
 import type { SerialHistoryItem, ServiceOrder } from "@/lib/orders/service-orders";
@@ -139,7 +139,7 @@ function Group({
                 <span className={cn("font-mono text-xs font-semibold", clickable ? "text-indigo-700 underline underline-offset-2" : "text-slate-700")}>
                   {o.number}
                 </span>
-                <span className="text-xs tabular-nums text-slate-600">{formatDateOnly(o.createdAt.slice(0, 10))}</span>
+                <span className="text-xs tabular-nums text-slate-600">{formatLocalDate(o.createdAt)}</span>
                 <OrderStatusPill status={o.status} />
               </span>
               <span className="block text-[0.8125rem] text-slate-800">

@@ -245,7 +245,8 @@ export function parseHelpdeskMessages(raw: unknown): HelpdeskMessage[] {
       at: str(r, ["date_added", "date", "created_at"]),
       author: str(r, ["author", "user", "name", "firstname"]),
       staff: userId != null && userId > 0,
-      hidden: /^(1|true)$/i.test(str(r, ["hidden", "is_hidden", "private"])) || r.notify === 0 || r.notify === "0",
+      // Tylko jawne pole „ukryty” — notify=0 znaczy „bez maila”, nie „niewidoczne dla klienta”.
+      hidden: /^(1|true)$/i.test(str(r, ["hidden", "is_hidden", "private"])),
       text,
       status: str(r, ["status", "service_status"]),
     });

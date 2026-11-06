@@ -7,7 +7,8 @@ import type { HelpdeskTicket } from "@/lib/mikran-shop/helpdesk-parse";
 import type { HelpdeskLinkedOrder } from "@/lib/data/service-orders";
 import { toDateOnly } from "@/lib/orders/service-loaners";
 import { formatAutomatDay } from "@/lib/orders/zd-automat-daily";
-import { countTicketsWithoutOrders, linkedOrderLine, sortTicketsForIntake } from "@/components/serwis/helpdesk-intake";
+import { countTicketsWithoutOrders, sortTicketsForIntake } from "@/components/serwis/helpdesk-intake";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export type HelpdeskBoardData = {
   mode: "live" | "test" | "off";
@@ -39,48 +40,47 @@ export function HelpdeskTicketsSection({
       </Alert>
     );
   }
-  if (!tickets.length) return null;
-  // Najpierw zgłoszenia bez żadnego przyjętego sprzętu; licznik w nagłówku = „N zgłoszeń do przyjęcia” w zdaniu stanu.
-  const sorted = sortTicketsForIntake(tickets, data.linked);
-  const waiting = countTicketsWithoutOrders(tickets, data.linked);
-  const partial = tickets.length - waiting;
+  // Na liście tylko zgłoszenia bez żadnego przyjętego sprzętu: OnTime nie wie, ile urządzeń obejmuje zgłoszenie,
+  // więc to z przyjętym zleceniem nie wisi tu dalej — kolejny sprzęt z niego wybiera się w oknie przyjęcia (lista + szukanie).
+  const waitingTickets = sortTicketsForIntake(tickets, data.linked).filter((t) => !(data.linked[t.id]?.length));
+  const withOrders = tickets.length - countTicketsWithoutOrders(tickets, data.linked);
+  if (!waitingTickets.length) return null;
   return (
     <section aria-labelledby="grp-helpdesk" className="overflow-hidden rounded-[var(--radius-panel)] border border-[var(--sv-rule)] bg-card shadow-sm">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-[var(--sv-rule)] px-4 py-3 sm:px-5">
         <h2 id="grp-helpdesk" className="text-[0.9375rem] font-semibold text-slate-900">
-          Do przyjęcia z helpdesku <span className="font-normal text-slate-500">· {waiting}</span>
-          {partial ? <span className="font-normal text-slate-500"> · {partial} częściowo przyjęte</span> : null}
+          Do przyjęcia z helpdesku <span className="font-normal text-slate-500">· {waitingTickets.length}</span>
         </h2>
         {data.mode === "test" ? <Badge variant="warning">Dane testowe</Badge> : null}
       </div>
       <ul className="divide-y divide-[var(--sv-rule)]">
-        {sorted.map((t) => {
+        {waitingTickets.map((t) => {
           const who = t.company || t.name || t.email;
           const day = /^\d{4}-\d{2}-\d{2}/.test(t.dateAdded) ? formatAutomatDay(t.dateAdded.slice(0, 10), todayKey) : null;
           const delivery = t.deliveryId ? DELIVERY_LABEL[t.deliveryId] : null;
-          const orders = data.linked[t.id] ?? [];
           return (
             <li key={t.id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-5">
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="flex flex-wrap items-baseline gap-x-2">
                   <span className="font-mono text-xs font-semibold text-slate-500">#{t.id}</span>
                   <span className="text-[0.9375rem] font-semibold text-slate-900">{t.product || "Sprzęt bez nazwy"}</span>
-                  {orders.length ? <Badge>Częściowo przyjęte</Badge> : null}
                 </span>
                 <span className="text-[0.8125rem] text-slate-500">
                   {[who, t.status, day ? `zgłoszone ${day}` : null, delivery].filter(Boolean).join(" · ")}
                 </span>
-                {orders.length ? (
-                  <span className="text-[0.8125rem] text-slate-700">Przyjęto: {orders.map(linkedOrderLine).join("; ")}</span>
-                ) : null}
               </span>
               <Button type="button" variant="secondary" className="w-full sm:w-auto" onClick={() => onAccept(t.id)}>
-                {orders.length ? "Przyjmij kolejny sprzęt" : "Przyjmij sprzęt"}
+                Przyjmij sprzęt
               </Button>
             </li>
           );
         })}
       </ul>
+      {withOrders ? (
+        <p className="border-t border-[var(--sv-rule)] px-4 py-2.5 text-[0.8125rem] text-slate-500 sm:px-5">
+          {withOrders} {polishPluralWord(withOrders, "zgłoszenie ma", "zgłoszenia mają", "zgłoszeń ma")} już przyjęty sprzęt — kolejne urządzenie {withOrders === 1 ? "z niego" : "z nich"} przyjmiesz w „Przyjmij sprzęt”.
+        </p>
+      ) : null}
     </section>
   );
 }

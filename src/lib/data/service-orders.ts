@@ -407,6 +407,15 @@ export async function moveServiceOrder(
     // Wyjście z „czeka na decyzję klienta” do naprawy albo do wydania to decyzja klienta — zapisana w zleceniu.
     const decision: ServiceQuoteDecision | null =
       o.status === "czeka_na_akceptacje" ? (input.to === "w_naprawie" ? "accepted" : input.to === "gotowe" ? "rejected" : null) : null;
+    // Powrót z wyceny do diagnozy wycofuje wycenę — nowa kwota przyjdzie z kolejnym zapisem wyceny.
+    const quoteWithdrawn = o.status === "czeka_na_akceptacje" && input.to === "diagnoza";
+    if (quoteWithdrawn) {
+      await c.query(
+        `UPDATE service_orders SET quote_amount = NULL, quote_note = '', quote_sent_at = NULL, quote_decision = NULL, quote_decided_at = NULL WHERE id = $1`,
+        [o.id]
+      );
+      await addEvent(c, o.id, "quote_decision", actor, { note: "Wycena wycofana — powrót do diagnozy" });
+    }
     if (decision) {
       await c.query(`UPDATE service_orders SET quote_decision = $2, quote_decided_at = now() WHERE id = $1`, [o.id, decision]);
       await addEvent(c, o.id, "quote_decision", actor, { note: decision === "accepted" ? "Klient akceptuje wycenę" : "Klient odmawia — zwrot bez naprawy" });
@@ -435,7 +444,11 @@ export async function moveServiceOrder(
       ...o,
       status: input.to,
       waitingPart: null,
-      quote: decision ? { ...o.quote, decision, decidedAt: new Date().toISOString() } : o.quote,
+      quote: quoteWithdrawn
+        ? { amount: null, note: "", sentAt: null, decision: null, decidedAt: null }
+        : decision
+          ? { ...o.quote, decision, decidedAt: new Date().toISOString() }
+          : o.quote,
       outbound: input.to === "wydane" && input.outbound ? { ...input.outbound } : o.outbound,
     };
   });

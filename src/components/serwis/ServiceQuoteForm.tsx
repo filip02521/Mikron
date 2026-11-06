@@ -88,7 +88,6 @@ export function ServiceQuoteForm({
           inputMode="decimal"
           autoComplete="off"
           autoFocus
-          placeholder="np. 674,27"
           onChange={(e) => setAmount(e.target.value)}
           aria-invalid={amount !== "" && value == null}
           className={cn(pickerInputClass, "tabular-nums")}

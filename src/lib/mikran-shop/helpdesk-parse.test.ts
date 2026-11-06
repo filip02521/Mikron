@@ -119,7 +119,7 @@ describe("parseHelpdeskMessages", () => {
     const m = parseHelpdeskMessages({
       helpdesk_id: 1,
       messages: [
-        { service_history_id: 2, date_added: "2026-10-26 14:46:28", comment: "Problem przeanalizowany", user_id: 7, notify: 0 },
+        { service_history_id: 2, date_added: "2026-10-26 14:46:28", comment: "Problem przeanalizowany", user_id: 7, hidden: 1 },
         { service_history_id: 1, date_added: "2026-10-26 13:44:57", comment: "Gdzie przesłać film?", user_id: 0, notify: 1 },
         { service_history_id: 3, date_added: "2026-10-27 08:00:00", comment: "" },
       ],

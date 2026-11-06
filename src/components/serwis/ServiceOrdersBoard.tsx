@@ -22,6 +22,7 @@ import { ServiceFilterBar } from "@/components/serwis/ServiceFilterBar";
 import {
   daysSince,
   formatDateOnly,
+  formatLocalDate,
   OrderStatusPill,
   orderSearchText,
   type LinkableLoaner,
@@ -49,7 +50,7 @@ type TileLane = Exclude<ServiceBoardLane, "zamkniete">;
 const TILES: { id: TileLane; dot?: string; hint: string }[] = [
   { id: "teraz", hint: "Część dotarła albo termin minął" },
   { id: "do_wydania", dot: "bg-emerald-600", hint: "Gotowe — zadzwoń i wydaj" },
-  { id: "klient", dot: "bg-amber-500", hint: "Wycena wysłana — czeka na decyzję klienta" },
+  { id: "klient", dot: "bg-amber-500", hint: "Wycena zapisana — czeka na decyzję klienta" },
   { id: "w_naprawie", dot: "bg-slate-400", hint: "Przyjęte, diagnoza, naprawa" },
   { id: "czeka", dot: "bg-amber-500", hint: "Naprawa stoi na części" },
   { id: "dokumenty", dot: "bg-red-600", hint: "Wydane bez faktury lub RW" },
@@ -142,7 +143,7 @@ function OrderRow({
             {order.status === "anulowane" ? <OrderStatusPill status="anulowane" /> : null}
             <span className="whitespace-nowrap text-[0.8125rem] tabular-nums text-slate-500">
               {order.closedAt
-                ? `zamknięte ${formatDateOnly(order.closedAt.slice(0, 10))}`
+                ? `zamknięte ${formatLocalDate(order.closedAt)}`
                 : `${days} ${polishPluralWord(days, "dzień", "dni", "dni")} w serwisie`}
               {order.dueDate && !order.closedAt && reason !== "termin" ? ` · termin ${formatDateOnly(order.dueDate)}` : ""}
             </span>
@@ -393,7 +394,8 @@ export function ServiceOrdersBoard({
         </>
       )}
 
-      {intake ? (
+      {/* Okno tylko po stronie klienta: otwarte z ?przyjmij=1 nie może się renderować na serwerze (inne useId → błąd hydracji). */}
+      {intake && mounted ? (
         <ServiceOrderIntakeDialog
           warrantyMonths={warrantyMonths}
           helpdeskEnabled={helpdesk.mode !== "off"}

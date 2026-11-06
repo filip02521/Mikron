@@ -420,7 +420,7 @@ export function ServiceOrderDrawer({
                       (quoteDays ?? 0) >= SERVICE_QUOTE_NUDGE_DAYS ? "font-semibold text-amber-800" : "text-slate-600"
                     )}
                   >
-                    wysłana {formatDay(order.quote.sentAt)} · {quoteDays} {polishPluralWord(quoteDays ?? 0, "dzień", "dni", "dni")} bez odpowiedzi
+                    zapisana {formatDay(order.quote.sentAt)} · {quoteDays} {polishPluralWord(quoteDays ?? 0, "dzień", "dni", "dni")} bez odpowiedzi
                   </span>
                 ) : null}
               </div>

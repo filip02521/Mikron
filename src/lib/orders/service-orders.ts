@@ -53,7 +53,7 @@ export const SERVICE_ORDER_STATUS_LABEL: Record<ServiceOrderStatus, string> = {
 const TRANSITIONS: Record<ServiceOrderStatus, readonly ServiceOrderStatus[]> = {
   przyjete: ["diagnoza", "w_naprawie", "anulowane"],
   diagnoza: ["w_naprawie", "czeka_na_akceptacje", "czeka_na_czesc", "gotowe", "przyjete", "anulowane"],
-  // Wycena wysłana: klient akceptuje (naprawa) albo odmawia (gotowe = zwrot bez naprawy); można wrócić do diagnozy.
+  // Wycena zapisana (wiadomość do klienta idzie helpdeskiem): klient akceptuje (naprawa) albo odmawia (gotowe = zwrot bez naprawy); można wrócić do diagnozy.
   czeka_na_akceptacje: ["w_naprawie", "gotowe", "diagnoza", "anulowane"],
   w_naprawie: ["czeka_na_czesc", "gotowe", "diagnoza", "anulowane"],
   czeka_na_czesc: ["w_naprawie", "anulowane"],
@@ -114,7 +114,7 @@ export function transitionLabel(to: ServiceOrderStatus, from?: ServiceOrderStatu
       if (from === "czeka_na_akceptacje") return "Klient akceptuje — naprawiaj";
       return from === "czeka_na_czesc" ? "Wznów naprawę" : "Zacznij naprawę";
     case "czeka_na_akceptacje":
-      return "Wyślij wycenę klientowi";
+      return "Wpisz wycenę dla klienta";
     case "czeka_na_czesc":
       return "Czeka na część";
     case "gotowe":
@@ -134,7 +134,7 @@ export function transitionHint(
   to: ServiceOrderStatus,
   ctx: { missing: { rw: boolean; invoice: boolean }; loanerCode: string | null }
 ): string | null {
-  if (to === "czeka_na_akceptacje") return "Wpiszesz kwotę i zakres naprawy — zlecenie poczeka na decyzję klienta w grupie „Czeka na klienta”.";
+  if (to === "czeka_na_akceptacje") return "Wpiszesz kwotę i zakres, skopiujesz wiadomość do zgłoszenia w helpdesku — zlecenie poczeka na decyzję klienta w „Czeka na klienta”.";
   if (to === "gotowe") return "Zlecenie przejdzie do „Gotowe do wydania” — tam wpiszesz fakturę za naprawę i RW na części.";
   if (to === "wydane") {
     const parts = ["Zamyka zlecenie."];
@@ -254,7 +254,7 @@ export type ServiceOrder = {
   warrantyUntil: string | null;
   /** Zgłoszenie w helpdesku sklepu mikran.pl, z którego założono zlecenie (numer service_id). Jedno zgłoszenie bywa na kilka zleceń. */
   helpdeskId: number | null;
-  /** Wycena po diagnozie: kwota brutto (zł), co obejmuje, kiedy wysłana; decyzja klienta i kiedy. */
+  /** Wycena po diagnozie: kwota brutto (zł), co obejmuje, kiedy zapisana; decyzja klienta i kiedy. */
   quote: { amount: number | null; note: string; sentAt: string | null; decision: ServiceQuoteDecision | null; decidedAt: string | null };
   /** Transport: jak sprzęt przyszedł (i planowany odbiór kurierem) i jak wrócił do klienta. */
   inbound: { method: ServiceInboundMethod | null; pickupDate: string | null };

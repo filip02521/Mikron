@@ -71,6 +71,12 @@ export function formatDay(iso: string): string {
   return new Date(iso).toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit" });
 }
 
+/** Data chwili (ISO) w czasie lokalnym, „dd.mm.rrrr” — nie przez slice(0, 10), które bierze dzień w UTC (00:30 → wczoraj). */
+export function formatLocalDate(iso: string): string {
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
+}
+
 export function formatDateOnly(ymd: string): string {
   const [y, m, d] = ymd.split("-");
   return `${d}.${m}.${y}`;
@@ -131,7 +137,7 @@ export function orderEventTitle(e: ServiceOrderEvent): string {
     case "waiting_part":
       return e.note ? `Czeka na: ${e.note}` : "Czeka na część";
     case "quote":
-      return e.note ? `Wycena: ${e.note}` : "Wycena wysłana";
+      return e.note ? `Wycena: ${e.note}` : "Wycena zapisana";
     case "quote_decision":
       return e.note || "Decyzja klienta";
     case "shipment":
