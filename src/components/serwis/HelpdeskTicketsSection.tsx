@@ -41,14 +41,14 @@ export function HelpdeskTicketsSection({
   }
   if (!tickets.length) return null;
   return (
-    <section aria-labelledby="grp-helpdesk" className="overflow-hidden rounded-xl border border-slate-200 bg-card shadow-sm">
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-slate-100 px-4 py-3 sm:px-5">
+    <section aria-labelledby="grp-helpdesk" className="overflow-hidden rounded-[var(--radius-panel)] border border-[var(--sv-rule)] bg-card shadow-sm">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-[var(--sv-rule)] px-4 py-3 sm:px-5">
         <h2 id="grp-helpdesk" className="text-[0.9375rem] font-semibold text-slate-900">
           Do przyjęcia z helpdesku <span className="font-normal text-slate-500">· {tickets.length}</span>
         </h2>
         {data.mode === "test" ? <Badge variant="warning">Dane testowe</Badge> : null}
       </div>
-      <ul className="divide-y divide-slate-100">
+      <ul className="divide-y divide-[var(--sv-rule)]">
         {tickets.map((t) => {
           const who = t.company || t.name || t.email;
           const day = /^\d{4}-\d{2}-\d{2}/.test(t.dateAdded) ? formatAutomatDay(t.dateAdded.slice(0, 10), todayKey) : null;

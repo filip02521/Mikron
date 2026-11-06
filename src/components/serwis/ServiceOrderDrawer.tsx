@@ -5,7 +5,9 @@ import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { Button, buttonClass } from "@/components/ui/Button";
 import { IconChevronRight, IconCircleCheck, IconClock, IconPlus, IconPackageCheck, IconPhone, IconSearch, IconUndoLeft, IconX } from "@/components/icons/StrokeIcons";
 import { EventTimeline } from "@/components/ui/EventTimeline";
-import { StatusStepper } from "@/components/ui/StatusStepper";
+import { ServiceStampStrip } from "@/components/serwis/ServiceStampStrip";
+import { fieldLabelClass, fieldLabelInlineClass, rubricBoxClass, rubricHeadClass, rubricLabelClass } from "@/lib/ui/serwis-theme";
+import { serviceOrderStamps } from "@/lib/orders/service-order-board";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { cn } from "@/lib/cn";
 import { polishPluralWord } from "@/lib/email/polish-plural";
@@ -41,15 +43,12 @@ import {
 } from "@/components/serwis/service-order-view";
 import {
   allowedNextStatuses,
-  flowIndex,
   isBackwardTransition,
   isClosedServiceOrder,
   isServiceOrderLate,
   missingServiceOrderDocs,
   primaryNextStatus,
   rwLines,
-  SERVICE_ORDER_FLOW,
-  SERVICE_ORDER_STATUS_LABEL,
   SERVICE_ORDER_TEXT_MAX,
   serviceOrderPanelView,
   transitionHint,
@@ -60,7 +59,6 @@ import {
   type ServiceOrderStatus,
 } from "@/lib/orders/service-orders";
 
-const STEPS = SERVICE_ORDER_FLOW.map((s) => ({ key: s, title: SERVICE_ORDER_STATUS_LABEL[s] }));
 
 /**
  * Serwisant pracuje na ekranie dotykowym (także laptop z ekranem dotykowym, który zgłasza mysz jako
@@ -84,14 +82,15 @@ function TransitionIcon({ to, from }: { to: ServiceOrderStatus; from: ServiceOrd
   return <Icon size={18} aria-hidden className="shrink-0" />;
 }
 
+/** Rubryka karty serwisowej: etykieta krojem formularza na pasku z linią, treść pod nią (DESIGN-serwis.md). */
 function Section({ title, children, aside }: { title: string; children: React.ReactNode; aside?: React.ReactNode }) {
   return (
-    <section className="space-y-2.5">
-      <div className="flex items-baseline justify-between gap-2">
-        <h3 className="text-[0.8125rem] font-semibold text-slate-600">{title}</h3>
+    <section className={rubricBoxClass}>
+      <div className={rubricHeadClass}>
+        <h3 className={rubricLabelClass}>{title}</h3>
         {aside}
       </div>
-      {children}
+      <div className="space-y-2.5 px-3 py-3">{children}</div>
     </section>
   );
 }
@@ -171,6 +170,7 @@ export function ServiceOrderDrawer({
   };
 
   const closed = isClosedServiceOrder(order.status);
+  const stamps = serviceOrderStamps(order, events);
   const primary = primaryNextStatus(order.status);
   const secondary = allowedNextStatuses(order.status).filter((s) => s !== primary && s !== "anulowane");
   const canCancel = allowedNextStatuses(order.status).includes("anulowane");
@@ -230,7 +230,7 @@ export function ServiceOrderDrawer({
             if (loanerPick) submit(() => actionLinkServiceOrderLoaner({ orderId: order.id, unitId: loanerPick }), () => setLoanerPick(""));
           }}
         >
-          <label htmlFor={`${formId}-loaner`} className="block text-xs font-semibold text-slate-600">
+          <label htmlFor={`${formId}-loaner`} className={fieldLabelInlineClass}>
             Egzemplarz wydany temu klientowi
           </label>
           <div className="flex flex-wrap gap-2">
@@ -295,8 +295,12 @@ export function ServiceOrderDrawer({
       >
         <div className="flex flex-col gap-2.5 border-b border-slate-100 px-5 pb-4 pt-5 sm:px-6">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[0.8125rem] font-semibold text-slate-500">{order.number}</span>
-            <OrderStatusPill status={order.status} />
+            {/* Numer karty w kratce formularza, jak „Nr” na karcie serwisowej. */}
+            <span className="inline-flex min-h-9 items-center gap-2 rounded-md border border-[var(--sv-rule)] bg-card px-2.5">
+              <span className={rubricLabelClass}>Nr</span>
+              <span className="font-mono text-[0.8125rem] font-semibold text-slate-900">{order.number}</span>
+            </span>
+            {order.status === "anulowane" ? <OrderStatusPill status={order.status} /> : null}
             <button
               ref={closeRef}
               type="button"
@@ -343,24 +347,15 @@ export function ServiceOrderDrawer({
               </span>
             ) : null}
           </div>
+          {/* Karta serwisowa: każdy krok naprawy przybija pieczątkę z datą i tym, kto ją przybił. */}
+          <ServiceStampStrip stamps={stamps} size="card" cancelled={order.status === "anulowane"} className="pt-2" />
         </div>
 
         <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5 sm:px-6" {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}>
-          {!closed ? (
-            <StatusStepper
-              compact
-              label="Postęp naprawy"
-              steps={STEPS}
-              current={flowIndex(order.status)}
-              currentTitle={order.status === "czeka_na_czesc" ? "Czeka na część" : undefined}
-              currentTone={order.status === "czeka_na_czesc" ? "warn" : "brand"}
-            />
-          ) : null}
-
           {/* Powód kroku nad przyciskiem: „czeka na …” albo „część na stanie”, a pod nim co zrobić. */}
           {order.status === "czeka_na_czesc" && order.waitingPart ? (
             partArrived ? (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
                 <div className="text-sm font-semibold text-emerald-900">
                   Część na stanie: {waitingPartAvailable} szt. do wzięcia — wznów naprawę
                 </div>
@@ -370,7 +365,7 @@ export function ServiceOrderDrawer({
                 </div>
               </div>
             ) : (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
               <div className="text-sm text-amber-900">
                 Czeka na:{" "}
                 <b className="font-semibold">
@@ -408,7 +403,7 @@ export function ServiceOrderDrawer({
                 </div>
               ) : null}
               {secondary.length ? (
-                <div className={cn("grid gap-2", secondary.length > 1 && "grid-cols-2")}>
+                <div className={cn("grid gap-2", secondary.length > 1 && "sm:grid-cols-2")}>
                   {secondary.map((s) => (
                     <Button
                       key={s}
@@ -519,7 +514,7 @@ export function ServiceOrderDrawer({
             }
           >
             {parts.length ? (
-              <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200">
+              <ul className="-mx-3 divide-y divide-[var(--sv-rule)] border-y border-[var(--sv-rule)]">
                 {parts.map((p) => (
                   <li key={p.id} className="flex items-center gap-3 px-3 py-2.5">
                     <span className="w-14 flex-none text-right text-sm font-semibold tabular-nums text-slate-900">{p.quantity} szt.</span>
@@ -550,7 +545,7 @@ export function ServiceOrderDrawer({
 
             {taking ? (
               <form
-                className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4"
+                className="-mx-3 space-y-3 border-y border-[var(--sv-rule)] bg-[var(--sv-box)] p-3"
                 onSubmit={(e) => {
                   e.preventDefault();
                   if (!part?.twId) {
@@ -575,7 +570,7 @@ export function ServiceOrderDrawer({
               >
                 {bom.length ? (
                   <div>
-                    <span className="mb-1.5 block text-xs font-semibold text-slate-600">Z katalogu modelu</span>
+                    <span className={fieldLabelClass}>Z katalogu modelu</span>
                     <div className="flex flex-wrap gap-1.5">
                       {bom.map((b) => (
                         <button
@@ -608,7 +603,7 @@ export function ServiceOrderDrawer({
                     placeholder="Symbol albo nazwa części"
                   />
                   <div>
-                    <label htmlFor={`${formId}-qty`} className="mb-1.5 block text-xs font-semibold text-slate-600">
+                    <label htmlFor={`${formId}-qty`} className={fieldLabelClass}>
                       Ilość
                     </label>
                     <input
@@ -654,7 +649,7 @@ export function ServiceOrderDrawer({
             <div className="border-t border-slate-100 pt-5">
               {cancelling ? (
                 <form
-                  className="space-y-3 rounded-xl border border-red-200 bg-red-50 p-4"
+                  className="space-y-3 rounded-lg border border-red-200 bg-red-50 p-4"
                   onSubmit={(e) => {
                     e.preventDefault();
                     submit(() => actionMoveServiceOrder({ orderId: order.id, to: "anulowane", note: cancelNote }), () => setCancelling(false));

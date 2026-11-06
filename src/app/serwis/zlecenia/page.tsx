@@ -60,7 +60,6 @@ export default async function ZleceniaPage() {
     <div className={`${adminPageShellClass} touch-ui space-y-6`}>
       <PageHeader
         title="Zlecenia serwisowe"
-        description="Sprzęt klientów w naprawie — od przyjęcia do wydania."
       />
       <ServiceOverdueLoanersNotice />
       {error ? (

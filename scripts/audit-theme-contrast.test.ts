@@ -186,6 +186,34 @@ describe("kontrast motywów (globals.css)", () => {
     expect(differs).toEqual([]);
   });
 
+  // Świat Serwisu: te same pary na podmienionej palecie plus pas i rubryki karty.
+  const serwisLight = { ...light, ...decls(blocks(css, /\n\.serwis-world\s*\{/g)[0] ?? "") };
+  const serwisDark = { ...dark, ...decls(blocks(css, /html\[data-theme="dark"\] \.serwis-world\s*\{/g)[0] ?? "") };
+  const SERWIS_PAIRS: [string, string, string, number][] = [
+    ["pas: tekst / pas", "--sv-rail-ink", "--sv-rail", 4.5],
+    ["pas: tekst przygaszony / pas", "--sv-rail-muted", "--sv-rail", 4.5],
+    ["pas: aktywny widok", "--sv-rail-active-ink", "--sv-rail-active", 4.5],
+    ["pas: tekst / hover", "--sv-rail-ink", "--sv-rail-hover", 4.5],
+    ["pieczątka / karta", "--sv-stamp", "--card", 4.5],
+    ["pieczątka / puste pole", "--sv-stamp", "--sv-box", 4.5],
+    ["slate-500 / puste pole", c("slate-500"), "--sv-box", 4.5],
+    ["linia rubryki / karta", "--sv-rule", "--card", 1.3],
+  ];
+  const serwisFailing = (vars: Record<string, string>) =>
+    [...PAIRS, ...SERWIS_PAIRS]
+      .filter(([, fg, bg, min]) => ratio(vars, fg, bg) + 1e-9 < min)
+      .map(([label, fg, bg, min]) => `${label}: ${ratio(vars, fg, bg).toFixed(2)} < ${min}`);
+
+  it("serwis jasny: tylko znany dług poniżej progu", () => {
+    expect(Object.keys(serwisLight).length).toBeGreaterThan(Object.keys(light).length);
+    expect(serwisFailing(serwisLight).map((f) => f.split(":")[0]).sort()).toEqual([...LIGHT_DEBT].sort());
+  });
+
+  it("serwis ciemny: każda para spełnia WCAG AA", () => {
+    expect(serwisDark["--sv-rail"]).toBeDefined();
+    expect(serwisFailing(serwisDark)).toEqual([]);
+  });
+
   it("pomiar odróżnia zły token (kontrola)", () => {
     expect(failing({ ...dark, "--color-slate-500": "#3b434f" }).some((f) => f.startsWith("slate-500 / karta"))).toBe(true);
   });

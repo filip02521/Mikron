@@ -9,6 +9,9 @@ import { askConfirm } from "@/components/ui/ConfirmHost";
 import { actionAddServiceModelPart, actionRemoveServiceModelPart, actionSetServiceModelWarranty } from "@/app/actions/service-orders";
 import { SERVICE_WARRANTY_DEFAULT_MONTHS } from "@/lib/orders/service-warranty";
 import { pickerInputClass, ProductPicker, type PickedProduct } from "@/components/serwis/SubiektPickers";
+import { cn } from "@/lib/cn";
+import { polishPlural } from "@/lib/email/polish-plural";
+import { fieldLabelClass, rubricBoxClass, rubricHeadClass, rubricLabelClass } from "@/lib/ui/serwis-theme";
 
 export type CatalogModelPart = {
   modelTwId: number;
@@ -59,6 +62,14 @@ function WarrantySelect({
   );
 }
 
+/** Zdanie stanu pod tytułem: najpierw modele, które były w naprawie bez katalogu (podpowiedzi w „Dodaj do katalogu”). */
+function modelsStateSentence(withoutCatalog: number, inCatalog: number): string {
+  const parts: string[] = [];
+  if (withoutCatalog) parts.push(`${polishPlural(withoutCatalog, "model", "modele", "modeli")} bez katalogu`);
+  parts.push(`${polishPlural(inCatalog, "model", "modele", "modeli")} w katalogu`);
+  return parts.join(" · ");
+}
+
 export function ServiceModelsCatalog({
   parts,
   repaired,
@@ -75,7 +86,8 @@ export function ServiceModelsCatalog({
   const [model, setModel] = useState<PickedProduct | null>(null);
   const [part, setPart] = useState<PickedProduct | null>(null);
   const [qty, setQty] = useState("1");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setErrorState] = useState<{ message: string; at: "form" | "catalog" } | null>(null);
+  const setError = (message: string | null, at: "form" | "catalog" = "form") => setErrorState(message ? { message, at } : null);
   const [toast, setToast] = useState<string | null>(null);
   // Klucz pickerów: po zapisie część się czyści, model zostaje (zwykle dodaje się kilka części do jednego modelu).
   const [partKey, setPartKey] = useState(0);
@@ -105,7 +117,7 @@ export function ServiceModelsCatalog({
     start(async () => {
       const res = await actionSetServiceModelWarranty({ modelTwId, months });
       if (!res.ok) {
-        setError(res.message);
+        setError(res.message, after ? "form" : "catalog");
         return;
       }
       after?.();
@@ -121,108 +133,15 @@ export function ServiceModelsCatalog({
 
   return (
     <div className="space-y-6">
-      <form
-        id={formId}
-        className="space-y-4 rounded-xl border border-slate-200 bg-card p-4 shadow-sm sm:p-5"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!model?.twId || !part?.twId) {
-            setError(!model?.twId ? "Wybierz model z podpowiedzi Subiekta." : "Wybierz część z podpowiedzi Subiekta.");
-            return;
-          }
-          setError(null);
-          start(async () => {
-            const res = await actionAddServiceModelPart({ modelTwId: model.twId!, partTwId: part.twId!, defaultQty: Number(qty) || 1 });
-            if (!res.ok) {
-              setError(res.message);
-              return;
-            }
-            setPart(null);
-            setQty("1");
-            setPartKey((k) => k + 1);
-            done(res.message);
-          });
-        }}
-      >
-        <h2 className="font-display text-lg font-bold text-slate-900">Dodaj część do modelu</h2>
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_6rem_auto] lg:items-end">
-          <ProductPicker key={`m${modelKey}`} value={model} onChange={setModel} label="Model sprzętu" placeholder="Np. Forte 200" />
-          <ProductPicker key={`p${partKey}`} value={part} onChange={setPart} label="Część" placeholder="Symbol albo nazwa części" />
-          <div>
-            <label htmlFor={`${formId}-qty`} className="mb-1.5 block text-xs font-semibold text-slate-600">
-              Zwykle szt.
-            </label>
-            <input
-              id={`${formId}-qty`}
-              value={qty}
-              inputMode="numeric"
-              onChange={(e) => setQty(e.target.value.replace(/[^\d]/g, "").slice(0, 3))}
-              className={`${pickerInputClass} tabular-nums`}
-            />
-          </div>
-          <Button type="submit" disabled={pending}>
-            {pending ? "Zapisuję…" : "Dodaj do katalogu"}
-          </Button>
-        </div>
-        {withoutCatalog.length ? (
-          <div className="flex flex-wrap items-center gap-1.5 text-[0.8125rem]">
-            <span className="text-slate-600">Były w naprawie, bez katalogu:</span>
-            {withoutCatalog.map((r) => (
-              <button
-                key={r.twId}
-                type="button"
-                onClick={() => {
-                  setModel({ twId: r.twId, symbol: r.symbol, name: r.name });
-                  setModelKey((k) => k + 1);
-                }}
-                className="inline-flex min-h-11 items-center rounded-2xl border border-slate-200 bg-card px-3 py-1 text-left text-slate-700 transition-colors duration-150 hover:bg-slate-100"
-              >
-                {r.symbol ?? r.name} · {r.orders} zl.
-              </button>
-            ))}
-          </div>
-        ) : null}
-        {error ? (
-          <p role="alert" className="text-sm text-red-700">
-            {error}
-          </p>
-        ) : null}
-      </form>
+      <p className="font-display text-lg font-bold tracking-[-0.01em] text-slate-900" aria-live="polite">
+        {modelsStateSentence(withoutCatalog.length, models.length)}
+      </p>
 
-      <form
-        className="space-y-3 rounded-xl border border-slate-200 bg-card p-4 shadow-sm sm:p-5"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!warrantyModel?.twId) {
-            setError("Wybierz model z podpowiedzi Subiekta.");
-            return;
-          }
-          saveWarranty(warrantyModel.twId, warrantyMonths, () => {
-            setWarrantyModel(null);
-            setWarrantyModelKey((k) => k + 1);
-            setWarrantyMonths(SERVICE_WARRANTY_DEFAULT_MONTHS);
-          });
-        }}
-      >
-        <div>
-          <h2 className="font-display text-lg font-bold text-slate-900">Gwarancja modelu</h2>
-          <p className="text-[0.8125rem] text-slate-600">
-            Domyślnie {SERVICE_WARRANTY_DEFAULT_MONTHS} mies. od daty zakupu. Ustaw inny okres tylko dla modeli, które go mają.
-          </p>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
-          <ProductPicker key={`w${warrantyModelKey}`} value={warrantyModel} onChange={setWarrantyModel} label="Model sprzętu" placeholder="Np. Forte 200" />
-          <div>
-            <label htmlFor={`${formId}-warranty`} className="mb-1.5 block text-xs font-semibold text-slate-600">
-              Gwarancja
-            </label>
-            <WarrantySelect id={`${formId}-warranty`} value={warrantyMonths} disabled={pending} onChange={setWarrantyMonths} />
-          </div>
-          <Button type="submit" variant="secondary" disabled={pending}>
-            Zapisz gwarancję
-          </Button>
-        </div>
-      </form>
+      {error?.at === "catalog" ? (
+        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error.message}
+        </p>
+      ) : null}
 
       {models.length === 0 ? (
         <EmptyState
@@ -232,18 +151,18 @@ export function ServiceModelsCatalog({
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {models.map((m) => (
-            <section key={m.twId} aria-labelledby={`model-${m.twId}`} className="overflow-hidden rounded-xl border border-slate-200 bg-card shadow-sm">
-              <div className="border-b border-slate-100 px-4 py-3 sm:px-5">
+            <section key={m.twId} aria-labelledby={`model-${m.twId}`} className={cn(rubricBoxClass, "overflow-hidden")}>
+              <div className="border-b border-[var(--sv-rule)] px-3 py-2.5 sm:px-4">
                 <h2 id={`model-${m.twId}`} className="text-[0.9375rem] font-semibold text-slate-900">
                   {m.name}
                 </h2>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs text-slate-500">
                     <span className="font-mono">{m.symbol ?? "—"}</span> ·{" "}
-                    {m.parts.length ? `${m.parts.length} ${m.parts.length === 1 ? "część" : "części"}` : "bez części w katalogu"}
+                    {m.parts.length ? polishPlural(m.parts.length, "część", "części", "części") : "bez części w katalogu"}
                   </p>
-                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                    Gwarancja
+                  <label className="flex items-center gap-2">
+                    <span className={rubricLabelClass}>Gwarancja</span>
                     <WarrantySelect
                       id={`${formId}-w-${m.twId}`}
                       value={m.months}
@@ -253,9 +172,9 @@ export function ServiceModelsCatalog({
                   </label>
                 </div>
               </div>
-              <ul className="divide-y divide-slate-100">
+              <ul className="divide-y divide-[var(--sv-rule)]">
                 {m.parts.map((p) => (
-                  <li key={p.partTwId} className="flex items-center gap-3 px-4 py-2.5 sm:px-5">
+                  <li key={p.partTwId} className="flex items-center gap-3 px-3 py-2 sm:px-4">
                     <span className="w-12 flex-none text-right text-sm font-semibold tabular-nums text-slate-900">{p.defaultQty} szt.</span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm text-slate-900">{p.partName}</span>
@@ -275,7 +194,7 @@ export function ServiceModelsCatalog({
                         if (!ok) return;
                         start(async () => {
                           const res = await actionRemoveServiceModelPart({ modelTwId: m.twId, partTwId: p.partTwId });
-                          if (!res.ok) setError(res.message);
+                          if (!res.ok) setError(res.message, "catalog");
                           else done(res.message);
                         });
                       }}
@@ -289,6 +208,117 @@ export function ServiceModelsCatalog({
           ))}
         </div>
       )}
+
+      <section aria-labelledby={`${formId}-add`} className={cn(rubricBoxClass, "divide-y divide-[var(--sv-rule)]")}>
+        <div className={rubricHeadClass}>
+          <h2 id={`${formId}-add`} className={rubricLabelClass}>
+            Dodaj do katalogu
+          </h2>
+        </div>
+        <form
+          id={formId}
+          className="space-y-3 px-3 py-3 sm:px-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!model?.twId || !part?.twId) {
+              setError(!model?.twId ? "Wybierz model z podpowiedzi Subiekta." : "Wybierz część z podpowiedzi Subiekta.");
+              return;
+            }
+            setError(null);
+            start(async () => {
+              const res = await actionAddServiceModelPart({ modelTwId: model.twId!, partTwId: part.twId!, defaultQty: Number(qty) || 1 });
+              if (!res.ok) {
+                setError(res.message);
+                return;
+              }
+              setPart(null);
+              setQty("1");
+              setPartKey((k) => k + 1);
+              done(res.message);
+            });
+          }}
+        >
+          <h3 className="text-sm font-semibold text-slate-900">Część do modelu</h3>
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_6rem_auto] lg:items-end">
+            <ProductPicker key={`m${modelKey}`} value={model} onChange={setModel} label="Model sprzętu" placeholder="Np. Forte 200" />
+            <ProductPicker key={`p${partKey}`} value={part} onChange={setPart} label="Część" placeholder="Symbol albo nazwa części" />
+            <div>
+              <label htmlFor={`${formId}-qty`} className={fieldLabelClass}>
+                Zwykle szt.
+              </label>
+              <input
+                id={`${formId}-qty`}
+                value={qty}
+                inputMode="numeric"
+                onChange={(e) => setQty(e.target.value.replace(/[^\d]/g, "").slice(0, 3))}
+                className={`${pickerInputClass} tabular-nums`}
+              />
+            </div>
+            <Button type="submit" disabled={pending}>
+              {pending ? "Zapisuję…" : "Dodaj do katalogu"}
+            </Button>
+          </div>
+          {withoutCatalog.length ? (
+            <div className="flex flex-wrap items-center gap-1.5 text-[0.8125rem]">
+              <span className="text-slate-600">Były w naprawie, bez katalogu:</span>
+              {withoutCatalog.map((r) => (
+                <button
+                  key={r.twId}
+                  type="button"
+                  onClick={() => {
+                    setModel({ twId: r.twId, symbol: r.symbol, name: r.name });
+                    setModelKey((k) => k + 1);
+                  }}
+                  className="inline-flex min-h-11 items-center rounded-md border border-[var(--sv-rule)] bg-card px-3 py-1 text-left text-slate-700 transition-colors duration-150 hover:border-slate-400 hover:bg-[var(--sv-box)]"
+                >
+                  {r.symbol ?? r.name} · {r.orders} zl.
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {error?.at === "form" ? (
+            <p role="alert" className="text-sm text-red-700">
+              {error.message}
+            </p>
+          ) : null}
+        </form>
+
+        <form
+          className="space-y-3 px-3 py-3 sm:px-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!warrantyModel?.twId) {
+              setError("Wybierz model z podpowiedzi Subiekta.");
+              return;
+            }
+            saveWarranty(warrantyModel.twId, warrantyMonths, () => {
+              setWarrantyModel(null);
+              setWarrantyModelKey((k) => k + 1);
+              setWarrantyMonths(SERVICE_WARRANTY_DEFAULT_MONTHS);
+            });
+          }}
+        >
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900">Gwarancja modelu</h3>
+            <p className="text-[0.8125rem] text-slate-600">
+              Domyślnie {SERVICE_WARRANTY_DEFAULT_MONTHS} mies. od daty zakupu. Ustaw inny okres tylko dla modeli, które go mają.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+            <ProductPicker key={`w${warrantyModelKey}`} value={warrantyModel} onChange={setWarrantyModel} label="Model sprzętu" placeholder="Np. Forte 200" />
+            <div>
+              <label htmlFor={`${formId}-warranty`} className={fieldLabelClass}>
+                Gwarancja
+              </label>
+              <WarrantySelect id={`${formId}-warranty`} value={warrantyMonths} disabled={pending} onChange={setWarrantyMonths} />
+            </div>
+            <Button type="submit" variant="secondary" disabled={pending}>
+              Zapisz gwarancję
+            </Button>
+          </div>
+        </form>
+
+      </section>
       {toast ? <NoticeToast notice={toast} onDismiss={() => setToast(null)} /> : null}
     </div>
   );

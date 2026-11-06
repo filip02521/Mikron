@@ -4162,3 +4162,101 @@ html.ontime-scroll-locked main [class*="backdrop-blur"] {
     transition-delay: 0ms;
   }
 }
+
+/* ——— Świat Serwisu (karta serwisowa z pieczątkami) ———
+   Panel /serwis ma własny świat: fiolet atramentu pieczątki zamiast Petrolu i grunt bladego papieru
+   zabezpieczającego. Klasy zostają te same (`indigo-*`, `bg-primary`), zakres podmienia ich zmienne —
+   komponenty bazowe działają bez wariantów. Zasady: DESIGN-serwis.md; kontrast: audit-theme-contrast.test.ts. */
+.serwis-world {
+  --color-indigo-50: #f3f0fa;
+  --color-indigo-100: #e6e0f5;
+  --color-indigo-200: #cdc2ea;
+  --color-indigo-300: #ab9bd9;
+  --color-indigo-400: #8a74c7;
+  --color-indigo-500: #6f55b5;
+  --color-indigo-600: #5b3e9e;
+  --color-indigo-700: #4b3286;
+  --color-indigo-800: #3d296d;
+  --color-indigo-900: #2f2056;
+  --color-indigo-950: #1c1336;
+  --primary: #5b3e9e;
+  --primary-hover: #4b3286;
+  --primary-pressed: #3d296d;
+  --primary-muted: #f3f0fa;
+  --focus-ring: #5b3e9e;
+  --background: #e9efeb;
+  --shadow-brand: 0 4px 14px -6px rgba(91, 62, 158, 0.28);
+  /* Pas Serwisu (nawigacja) */
+  --sv-rail: #2b2147;
+  --sv-rail-ink: #f4f1fb;
+  --sv-rail-muted: #c9bfe8;
+  --sv-rail-line: #42356a;
+  --sv-rail-hover: #3a2d5f;
+  --sv-rail-active: #f4f1fb;
+  --sv-rail-active-ink: #2b2147;
+  --sv-rail-active-hover: #ffffff;
+  /* Rubryki karty: linia formularza, puste pole, atrament pieczątki */
+  --sv-rule: #c5d1c9;
+  --sv-box: #f4f8f5;
+  --sv-stamp: #5b3e9e;
+}
+
+@media screen {
+  html[data-theme="dark"] .serwis-world {
+    --color-indigo-50: #1e1932;
+    --color-indigo-100: #272042;
+    --color-indigo-200: #362c5c;
+    --color-indigo-300: #4a3c7e;
+    --color-indigo-400: #8571cc;
+    --color-indigo-500: #9a86df;
+    --color-indigo-600: #7357c9;
+    --color-indigo-700: #bcaef0;
+    --color-indigo-800: #cfc4f5;
+    --color-indigo-900: #e0d8f9;
+    --color-indigo-950: #f0ebfd;
+    --primary: #7357c9;
+    --primary-hover: #7c60d1;
+    --primary-pressed: #6a4fbf;
+    --primary-muted: #221c38;
+    --focus-ring: #9a86df;
+    --background: #0d1210;
+    --shadow-brand: 0 4px 14px -6px rgba(0, 0, 0, 0.5);
+    --sv-rail: #19142b;
+    --sv-rail-ink: #ece8f8;
+    --sv-rail-muted: #b3a8d6;
+    --sv-rail-line: #2c2448;
+    --sv-rail-hover: #272042;
+    --sv-rail-active: #ece8f8;
+    --sv-rail-active-ink: #19142b;
+    --sv-rail-active-hover: #f7f5fd;
+    --sv-rule: #2f3a34;
+    --sv-box: #121815;
+    --sv-stamp: #9a86df;
+  }
+}
+
+/* Pieczątka przybita teraz: krótkie „wbicie” (skala i obrót do ułożenia), bez ruchu przy ograniczeniu animacji. */
+@keyframes sv-stamp-in {
+  0% {
+    transform: scale(1.35) rotate(-14deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(0.94) rotate(-5deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(-7deg);
+    opacity: 1;
+  }
+}
+
+.sv-stamp-in {
+  animation: sv-stamp-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sv-stamp-in {
+    animation: none;
+  }
+}

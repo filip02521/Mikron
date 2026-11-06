@@ -18,8 +18,9 @@ import { addDays, toDateOnly } from "@/lib/orders/service-loaners";
 import { normalizePurchaseDate, warrantyMonthsFor, warrantyStatus, warrantyUntil } from "@/lib/orders/service-warranty";
 import { WarrantyPill } from "@/components/serwis/service-order-view";
 import { SerialHistory } from "@/components/serwis/SerialHistory";
+import { fieldLabelClass } from "@/lib/ui/serwis-theme";
 
-const labelClass = "mb-1.5 block text-xs font-semibold text-slate-600";
+const labelClass = fieldLabelClass;
 
 const CLIENT_MATCH_LABEL: Record<NonNullable<HelpdeskIntakeDraft["clientMatch"]>, string> = {
   nip: "po NIP",

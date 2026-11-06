@@ -121,11 +121,11 @@ export function orderEventTitle(e: ServiceOrderEvent): string {
     case "rw":
       return `RW ${e.note.replace(/^RW\s*/i, "")}`;
     case "invoice":
-      return e.note.startsWith("Bez faktury") ? e.note : `Faktura `;
+      return e.note.startsWith("Bez faktury") ? e.note : `Faktura ${e.note}`.trim();
     case "invoice_cleared":
-      return `Usunięto fakturę ()`;
+      return e.note ? `Usunięto fakturę (${e.note})` : "Usunięto fakturę";
     case "waiting_part":
-      return `Czeka na: `;
+      return e.note ? `Czeka na: ${e.note}` : "Czeka na część";
     case "note":
       return e.note || "Notatka";
   }

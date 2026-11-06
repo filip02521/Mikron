@@ -17,6 +17,7 @@ OnTime — wewnętrzny system dostaw i zakupów (dostawcy, zamówienia ZD/ZK, ma
 # Dokumentacja — przeczytaj, gdy zadanie dotyczy tematu
 
 - `DESIGN.md` — każda zmiana UI.
+- `DESIGN-serwis.md` — każda zmiana w `/serwis` (własny świat panelu serwisu: paleta, pas zamiast menu, rubryki i pieczątki; reszta jak w `DESIGN.md`).
 - `docs/integrations/subiekt.md`, `subiekt-errors.md` — wszystko, co woła Subiekt.
 - `docs/zamowienia-jeden-silnik.md` — logika zamówień do dostawców (Kreator, Braki, Automat).
 - `docs/database-local-postgres.md` — lokalna baza i migracje.

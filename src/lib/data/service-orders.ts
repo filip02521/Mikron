@@ -229,14 +229,14 @@ export async function fetchOrdersByHelpdeskIds(ids: number[]): Promise<Map<numbe
 }
 
 /** Zlecenia powiązane z egzemplarzem zamiennika (panel egzemplarza pokazuje, do czego jest wydany). */
-export async function fetchOrderNumbersByLoaner(): Promise<Map<string, string>> {
-  const res = await query<{ loaner_unit_id: string; number: string }>(
-    `SELECT DISTINCT ON (loaner_unit_id) loaner_unit_id, number
+export async function fetchOrderNumbersByLoaner(): Promise<Map<string, { id: string; number: string }>> {
+  const res = await query<{ loaner_unit_id: string; id: string; number: string }>(
+    `SELECT DISTINCT ON (loaner_unit_id) loaner_unit_id, id, number
        FROM service_orders
       WHERE loaner_unit_id IS NOT NULL AND status <> 'anulowane'
       ORDER BY loaner_unit_id, created_at DESC`
   );
-  return new Map(res.rows.map((r) => [r.loaner_unit_id, r.number]));
+  return new Map(res.rows.map((r) => [r.loaner_unit_id, { id: r.id, number: r.number }]));
 }
 
 async function inTx<T>(fn: (c: PoolClient) => Promise<T>): Promise<T> {

@@ -66,6 +66,7 @@ import { MonthlySummaryNotice } from "@/components/monthly-summary/MonthlySummar
 import { AuthSessionGuard } from "@/components/auth/AuthSessionGuard";
 import { ZdEstimateExternalSessionFloatingNotice } from "@/components/zakupy/ZdEstimateExternalSessionFloatingNotice";
 import { ConfirmHost } from "@/components/ui/ConfirmHost";
+import { ServiceShellBar } from "@/components/serwis/ServiceShellBar";
 
 function SalesGlobalPinnedStrip({
   attention,
@@ -256,6 +257,11 @@ export function AppShellClient({
         canAccessTeethPanel(role, assignedWorkspaces))
   );
   useDueDeliveryNotificationSafetyFlush(receiveNotificationFlushEnabled);
+  const inServis = pathname === "/serwis" || pathname.startsWith("/serwis/");
+  // Panele, okna i menu Serwisu idą portalem do <body> — świat musi sięgać i tam.
+  useLayoutEffect(() => {
+    document.body.classList.toggle("serwis-world", inServis);
+  }, [inServis]);
 
   if (isAuthScreen) {
     return <div className="min-h-dvh overflow-x-hidden">{children}</div>;
@@ -338,10 +344,21 @@ export function AppShellClient({
         className={cn(
           appShellClass,
           mobileChrome && salesMobileChromeRoot,
-          adminPanelPreview && adminPreviewDockShellVarsClass
+          adminPanelPreview && adminPreviewDockShellVarsClass,
+          // Serwis ma własny świat (DESIGN-serwis.md); konto serwisanta — pas u góry zamiast menu bocznego.
+          inServis && "serwis-world bg-background",
+          serwisLive && "[--app-sidebar-w:0px]"
         )}
       >
-        <div className="hidden md:block">
+        {serwisLive && role ? (
+          <ServiceShellBar
+            role={role}
+            userEmail={userEmail}
+            userAssignmentLabel={userAssignmentLabel}
+            navBadges={navBadges}
+          />
+        ) : null}
+        <div className={serwisLive ? "hidden" : "hidden md:block"}>
           <Suspense fallback={null}>
             <Sidebar
               role={role}
@@ -394,9 +411,6 @@ export function AppShellClient({
             userAssignmentLabel={userAssignmentLabel}
             procurementWorkspace={procurementWorkspace}
           />
-        ) : null}
-        {serwisLive ? (
-          <MobileOperationsHeader role={role} userEmail={userEmail} userAssignmentLabel={userAssignmentLabel} />
         ) : null}
         <AppShellMain
           mobileChrome={mobileChrome}

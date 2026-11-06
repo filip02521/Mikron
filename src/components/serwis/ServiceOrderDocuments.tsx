@@ -27,6 +27,7 @@ import {
   SERVICE_ORDER_TEXT_MAX,
   type ServiceOrder,
 } from "@/lib/orders/service-orders";
+import { fieldLabelClass, fieldLabelInlineClass } from "@/lib/ui/serwis-theme";
 
 type Submit = (fn: () => Promise<ServiceOrderActionResult>, after?: () => void) => void;
 
@@ -159,7 +160,7 @@ export function ServiceOrderDocuments({
                 submit(() => actionSetServiceOrderNoInvoice({ orderId: order.id, reason }), () => setNoInvoice(false));
               }}
             >
-              <label htmlFor={`${formId}-reason`} className="block text-xs font-semibold text-slate-600">
+              <label htmlFor={`${formId}-reason`} className={fieldLabelInlineClass}>
                 Dlaczego bez faktury
               </label>
               <input
@@ -205,7 +206,7 @@ export function ServiceOrderDocuments({
                 }}
               >
                 <div className="min-w-0 flex-1">
-                  <label htmlFor={`${formId}-fs`} className="mb-1.5 block text-xs font-semibold text-slate-600">
+                  <label htmlFor={`${formId}-fs`} className={fieldLabelClass}>
                     {order.clientKhId ? "Albo numer faktury" : "Numer faktury"}
                   </label>
                   <input
@@ -292,7 +293,7 @@ export function ServiceOrderDocuments({
               }}
             >
               <div className="min-w-0 flex-1">
-                <label htmlFor={`${formId}-rw`} className="mb-1.5 block text-xs font-semibold text-slate-600">
+                <label htmlFor={`${formId}-rw`} className={fieldLabelClass}>
                   Numer RW z Subiekta
                 </label>
                 <input

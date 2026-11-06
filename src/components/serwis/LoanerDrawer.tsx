@@ -11,6 +11,7 @@ import { polishPluralWord } from "@/lib/email/polish-plural";
 import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 import { sidePanelBackdropClass } from "@/lib/ui/surfaces";
 import { useAnimatedClose } from "@/lib/ui/use-animated-close";
+import { rubricBoxClass, rubricHeadClass, rubricLabelClass } from "@/lib/ui/serwis-theme";
 import {
   actionEndLoanerService,
   actionExtendLoaner,
@@ -79,6 +80,21 @@ function eventMeta(e: LoanerEvent, unit: LoanerUnitView): string {
   return parts.join(" · ");
 }
 
+/** Rubryka karty jak w karcie zlecenia (ServiceOrderDrawer → Section). */
+function Section({ title, children, className }: { title: React.ReactNode; children: React.ReactNode; className?: string }) {
+  return (
+    <section className={cn(rubricBoxClass, className)}>
+      <div className={rubricHeadClass}>
+        <h3 className={rubricLabelClass}>{title}</h3>
+      </div>
+      <div className="space-y-2.5 px-3 py-3">{children}</div>
+    </section>
+  );
+}
+
+const inputClass =
+  "h-11 w-full rounded-lg border border-slate-200 bg-card px-3 text-base focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:text-sm";
+
 function DaysRing({ days, planned }: { days: number; planned: number | null }) {
   const total = Math.max(planned ?? days, 1);
   const frac = Math.min(days / total, 1);
@@ -117,12 +133,12 @@ export function LoanerDrawer({
   onClose,
   onIssue,
   onDone,
-  orderNumber,
+  order,
 }: {
   unit: LoanerUnitView;
   today: Date;
-  /** Zlecenie serwisowe, do którego egzemplarz jest wydany. */
-  orderNumber?: string | null;
+  /** Zlecenie, do którego egzemplarz jest wydany — link otwiera jego kartę. */
+  order?: { id: string; number: string } | null;
   onClose: () => void;
   onIssue: () => void;
   onDone: (message: string) => void;
@@ -204,11 +220,14 @@ export function LoanerDrawer({
         className="panel-slide-enter touch-ui fixed inset-y-0 right-0 z-[60] flex w-full max-w-[29rem] flex-col border-l border-slate-200/80 bg-raised shadow-[var(--shadow-card-elevated)]"
         style={{ paddingTop: "env(safe-area-inset-top,0px)", paddingBottom: "env(safe-area-inset-bottom,0px)" }}
       >
-        <div className="flex flex-col gap-2.5 border-b border-slate-100 px-6 pb-4 pt-5">
+        <div className="flex flex-col gap-2.5 border-b border-[var(--sv-rule)] px-5 pb-4 pt-5 sm:px-6">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[0.8125rem] font-semibold text-slate-500">
-              {unit.code}
-              {unit.serialNo && !unit.code.includes(unit.serialNo) ? ` · SN ${unit.serialNo}` : ""}
+            <span className="inline-flex min-h-9 items-center gap-2 rounded-md border border-[var(--sv-rule)] bg-card px-2.5">
+              <span className={rubricLabelClass}>Nr</span>
+              <span className="font-mono text-[0.8125rem] font-semibold text-slate-900">
+                {unit.code}
+                {unit.serialNo && !unit.code.includes(unit.serialNo) ? ` · SN ${unit.serialNo}` : ""}
+              </span>
             </span>
             <StatePill state={unit.state} />
             <button
@@ -231,18 +250,22 @@ export function LoanerDrawer({
           </span>
         </div>
 
-        <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5" {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}>
-          {orderNumber ? (
+        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6" {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}>
+          {order ? (
             <p className="text-[0.8125rem] text-slate-600">
               Wydany do zlecenia{" "}
-              <Link href="/serwis/zlecenia" className="font-mono font-semibold text-indigo-700 underline underline-offset-2">
-                {orderNumber}
+              <Link
+                href={`/serwis/zlecenia?zlecenie=${encodeURIComponent(order.id)}`}
+                className="font-mono font-semibold text-indigo-700 underline underline-offset-2"
+              >
+                {order.number}
               </Link>
             </p>
           ) : null}
           {unit.status === "u_klienta" && unit.currentSince ? (
             <>
-              <div className="flex items-center gap-4 rounded-xl border border-slate-200 p-4">
+              <Section title="U klienta">
+              <div className="flex items-center gap-4">
                 <DaysRing days={unit.daysOut ?? 0} planned={planned} />
                 <div className="flex min-w-0 flex-col gap-1">
                   <span className="text-[0.9375rem] font-semibold text-slate-900">{unit.currentClientName}</span>
@@ -259,6 +282,7 @@ export function LoanerDrawer({
                   {unit.currentClientPhone ? <span className="font-mono text-[0.8125rem] text-slate-600">tel. {unit.currentClientPhone}</span> : null}
                 </div>
               </div>
+              </Section>
               {mode === null ? (
                 <div className="space-y-2">
                   <Button type="button" size="lg" className={cn("w-full", touchClass)} onClick={() => setMode("return")}>
@@ -283,7 +307,7 @@ export function LoanerDrawer({
             </>
           ) : (
             <>
-              <div className="rounded-xl border border-slate-200 p-4">
+              <Section title="Stan egzemplarza">
                 <div className="text-[0.9375rem] font-semibold text-slate-900">
                   {unit.state === "svc" ? "W przeglądzie u serwisu" : "Na półce, gotowy do wydania"}
                 </div>
@@ -294,7 +318,7 @@ export function LoanerDrawer({
                       ? `Ostatni zwrot: ${formatLong(unit.stints[unit.stints.length - 1]!.to ?? unit.createdAt)}`
                       : "Jeszcze nie był wydany."}
                 </div>
-              </div>
+              </Section>
               {mode === null ? (
                 <div className="space-y-2">
                   {unit.state === "free" ? (
@@ -331,7 +355,7 @@ export function LoanerDrawer({
 
           {mode === "return" || mode === "service_end" ? (
             <form
-              className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4"
+              className={rubricBoxClass}
               onSubmit={(e) => {
                 e.preventDefault();
                 submit(() =>
@@ -341,7 +365,10 @@ export function LoanerDrawer({
                 );
               }}
             >
-              <div className="text-sm font-semibold text-slate-900">{mode === "return" ? "Przyjęcie zwrotu" : "Koniec przeglądu"}</div>
+              <div className={rubricHeadClass}>
+                <h3 className={rubricLabelClass}>{mode === "return" ? "Przyjęcie zwrotu" : "Koniec przeglądu"}</h3>
+              </div>
+              <div className="space-y-3 px-3 py-3">
               <div role="group" aria-label="Stan techniczny" className="flex flex-wrap gap-1.5">
                 {LOANER_CONDITIONS.map((c) => (
                   <button
@@ -353,8 +380,8 @@ export function LoanerDrawer({
                       if (mode === "return") setNeedsService(c === "do przeglądu" || c === "uszkodzony");
                     }}
                     className={cn(
-                      "min-h-11 rounded-2xl border px-3.5 text-sm transition-colors duration-150",
-                      cond === c ? "border-indigo-600 bg-indigo-50 font-semibold text-indigo-900" : "border-slate-200 bg-card text-slate-600 hover:bg-slate-100"
+                      "min-h-11 rounded-md border px-3.5 text-sm transition-colors duration-150",
+                      cond === c ? "border-indigo-600 bg-indigo-50 font-semibold text-indigo-900 ring-1 ring-inset ring-indigo-600" : "border-[var(--sv-rule)] bg-card text-slate-700 hover:bg-[var(--sv-box)]"
                     )}
                   >
                     {c}
@@ -373,7 +400,7 @@ export function LoanerDrawer({
                 onChange={(e) => setNote(e.target.value)}
                 maxLength={300}
                 placeholder="Uwagi (opcjonalnie), np. brak kabla"
-                className="h-10 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                className={inputClass}
               />
               {error ? <p className="text-sm text-red-700">{error}</p> : null}
               <div className="grid grid-cols-2 gap-2">
@@ -384,27 +411,31 @@ export function LoanerDrawer({
                   {pending ? "Zapisuję…" : mode === "return" ? "Przyjmij zwrot" : "Zakończ przegląd"}
                 </Button>
               </div>
+              </div>
             </form>
           ) : null}
 
           {mode === "extend" ? (
             <form
-              className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4"
+              className={rubricBoxClass}
               onSubmit={(e) => {
                 e.preventDefault();
                 submit(() => actionExtendLoaner({ unitId: unit.id, plannedReturn: extendTo }));
               }}
             >
-              <label htmlFor="loaner-extend" className="block text-sm font-semibold text-slate-900">
-                Nowy termin zwrotu
-              </label>
+              <div className={rubricHeadClass}>
+                <label htmlFor="loaner-extend" className={rubricLabelClass}>
+                  Nowy termin zwrotu
+                </label>
+              </div>
+              <div className="space-y-3 px-3 py-3">
               <input
                 id="loaner-extend"
                 type="date"
                 value={extendTo}
                 min={toDateOnly(today)}
                 onChange={(e) => setExtendTo(e.target.value)}
-                className="h-10 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                className={inputClass}
               />
               {error ? <p className="text-sm text-red-700">{error}</p> : null}
               <div className="grid grid-cols-2 gap-2">
@@ -415,28 +446,33 @@ export function LoanerDrawer({
                   {pending ? "Zapisuję…" : "Zapisz termin"}
                 </Button>
               </div>
+              </div>
             </form>
           ) : null}
 
           {error && mode === null ? <p className="text-sm text-red-700">{error}</p> : null}
 
-          <div className="grid grid-cols-3 gap-2">
-            <div className="rounded-lg bg-slate-50 px-3 py-2.5">
+          <section className={rubricBoxClass}>
+          <div className={rubricHeadClass}>
+            <h3 className={rubricLabelClass}>Obłożenie</h3>
+          </div>
+          <div className="grid grid-cols-3 divide-x divide-[var(--sv-rule)]">
+            <div className="px-3 py-2.5">
               <b className="block text-lg font-semibold tabular-nums">{stats.issues}</b>
               <span className="text-xs text-slate-500">{polishPluralWord(stats.issues, "wydanie", "wydania", "wydań")}</span>
             </div>
-            <div className="rounded-lg bg-slate-50 px-3 py-2.5">
+            <div className="px-3 py-2.5">
               <b className="block text-lg font-semibold tabular-nums">{stats.avgDaysOut}</b>
               <span className="text-xs text-slate-500">śr. dni u klienta</span>
             </div>
-            <div className="rounded-lg bg-slate-50 px-3 py-2.5">
+            <div className="px-3 py-2.5">
               <b className="block text-lg font-semibold tabular-nums">{stats.utilizationPct}%</b>
               <span className="text-xs text-slate-500">czasu u klientów</span>
             </div>
           </div>
+          </section>
 
-          <div>
-            <p className="mb-2 text-[0.8125rem] font-semibold text-slate-600">Historia egzemplarza</p>
+          <Section title="Historia egzemplarza">
             <EventTimeline
               label="Historia egzemplarza"
               formatDate={formatLong}
@@ -448,13 +484,13 @@ export function LoanerDrawer({
                 tone: EVENT_TONE[e.type],
               }))}
             />
-          </div>
+          </Section>
           {unit.status !== "u_klienta" ? (
             // Na końcu panelu, z odstępem od kroków: wycofanie nie jest jednym z nich.
-            <div className="border-t border-slate-100 pt-5">
+            <div className="border-t border-[var(--sv-rule)] pt-5">
               {mode === "retire" ? (
                 <form
-                  className="space-y-3 rounded-xl border border-red-200 bg-red-50 p-4"
+                  className="space-y-3 rounded-lg border border-red-200 bg-red-50 p-4"
                   onSubmit={(e) => {
                     e.preventDefault();
                     submit(() => actionRetireLoaner({ unitId: unit.id, note }));
@@ -474,7 +510,7 @@ export function LoanerDrawer({
                     onChange={(e) => setNote(e.target.value)}
                     maxLength={300}
                     placeholder="Powód, np. zużyty, sprzedany klientowi"
-                    className="h-10 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    className={inputClass}
                   />
                   {error ? <p className="text-sm text-red-700">{error}</p> : null}
                   <div className="grid grid-cols-2 gap-2">
