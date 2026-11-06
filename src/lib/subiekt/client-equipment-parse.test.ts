@@ -4,6 +4,8 @@ import {
   hasSerialNotes,
   mergeClientEquipment,
   parseInvoiceSerialNotes,
+  parseSalesDocNumber,
+  rankEquipmentForTicket,
   type ClientEquipmentItem,
 } from "./client-equipment-parse";
 
@@ -88,5 +90,64 @@ describe("format numeru seryjnego (paragony mają w uwagach adres kupującego)",
   });
   it("kilka numerów rozdzielonych spacją w wierszu z numerem pozycji", () => {
     expect([...parseInvoiceSerialNotes("4. AB12345 CD67890").entries()]).toEqual([[4, ["AB12345", "CD67890"]]]);
+  });
+});
+
+describe("parseSalesDocNumber", () => {
+  it("z prefiksem i bez, spacje i wielkość liter", () => {
+    expect(parseSalesDocNumber("FS 978/M/11/2026")).toEqual({ kind: "fs", key: "978/M/11/2026", nr: 978 });
+    expect(parseSalesDocNumber(" fs978/m/11/2026 ")).toEqual({ kind: "fs", key: "978/M/11/2026", nr: 978 });
+    expect(parseSalesDocNumber("978/M/11/2026")).toEqual({ kind: null, key: "978/M/11/2026", nr: 978 });
+    expect(parseSalesDocNumber("PA 12/M/01/2025")?.kind).toBe("pa");
+    expect(parseSalesDocNumber("faktura z maja")).toBeNull();
+    expect(parseSalesDocNumber("")).toBeNull();
+  });
+});
+
+describe("rankEquipmentForTicket", () => {
+  const item = (name: string, invoiceNumber: string, invoiceId: number): ClientEquipmentItem => ({
+    twId: invoiceId,
+    symbol: null,
+    name,
+    serials: ["SN12345"],
+    invoiceId,
+    invoiceNumber,
+    invoiceDate: "2025-01-01",
+  });
+
+  it("faktura ze zgłoszenia pierwsza, potem nazwa, reszta w kolejności", () => {
+    const items = [item("Lampa Bluephase", "FS 1/M/01/2025", 1), item("Mikrosilnik Forte 200", "FS 2/M/01/2025", 2), item("Unit Sirona", "FS 3/M/01/2025", 3)];
+    const ranked = rankEquipmentForTicket(items, { invoice: "3/M/01/2025", product: "mikrosilnik forte" });
+    expect(ranked.map((r) => [r.invoiceId, r.hint])).toEqual([
+      [3, "invoice"],
+      [2, "product"],
+      [1, null],
+    ]);
+  });
+
+  it("bez wskazówek nie zmienia kolejności i nie dopasowuje krótkich słów", () => {
+    const items = [item("Lampa LED", "FS 1/M/01/2025", 1), item("Kątnica", "FS 2/M/01/2025", 2)];
+    expect(rankEquipmentForTicket(items, { invoice: "", product: "LED" }).map((r) => r.hint)).toEqual([null, null]);
+    expect(rankEquipmentForTicket(items, { invoice: "", product: "katnica nie dziala" })[0]!.invoiceId).toBe(2);
+  });
+
+  it("FS i PA o tym samym numerze to różne dokumenty", () => {
+    const items = [item("Lampa", "PA 5/M/01/2025", 1)];
+    expect(rankEquipmentForTicket(items, { invoice: "FS 5/M/01/2025", product: "" })[0]!.hint).toBeNull();
+  });
+});
+
+describe("rankEquipmentForTicket — numer seryjny", () => {
+  it("egzemplarz o SN ze zgłoszenia przed fakturą i nazwą, bez wielkości liter i spacji", () => {
+    const base = { symbol: null, invoiceDate: "2025-01-01" };
+    const items: ClientEquipmentItem[] = [
+      { ...base, twId: 1, name: "Mikrosilnik Forte", serials: ["AA111"], invoiceId: 1, invoiceNumber: "FS 1/M/01/2025" },
+      { ...base, twId: 2, name: "Mikrosilnik Forte", serials: ["BB222", "X99TEST01"], invoiceId: 2, invoiceNumber: "FS 2/M/01/2025" },
+    ];
+    const ranked = rankEquipmentForTicket(items, { invoice: "1/M/01/2025", product: "Forte", serial: "x99 test01" });
+    expect(ranked.map((r) => [r.invoiceId, r.hint])).toEqual([
+      [2, "serial"],
+      [1, "invoice"],
+    ]);
   });
 });

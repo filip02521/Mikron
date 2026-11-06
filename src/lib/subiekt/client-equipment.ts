@@ -9,6 +9,7 @@ import {
   equipmentFromInvoice,
   hasSerialNotes,
   mergeClientEquipment,
+  parseSalesDocNumber,
   type ClientEquipmentItem,
 } from "@/lib/subiekt/client-equipment-parse";
 
@@ -102,4 +103,25 @@ export async function fetchClientRecentInvoices(khId: number): Promise<ClientRec
     }))
     .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? "") || b.id - a.id)
     .slice(0, 30);
+}
+
+type DocNumberRow = { dok_Id: number; dok_NrPelny?: string | null; dok_OdbiorcaId?: number | null; dok_PlatnikId?: number | null };
+
+/**
+ * Faktura sprzedaży po numerze wpisanym przez klienta („FS 978/M/11/2026”, „978/M/11/2026”) i jej odbiorca.
+ * `numer` na liście FS filtruje po samym numerze kolejnym (wszystkie miesiące, sprawdzone na :5080), więc pełny
+ * numer porównujemy tutaj. Paragonów nie szukamy: idą zwykle na zbiorczego kontrahenta detalicznego, więc
+ * „klient z paragonu” byłby cudzym sprzętem. Tylko serwer.
+ */
+export async function findInvoiceBuyer(raw: string): Promise<{ number: string; khId: number } | null> {
+  const want = parseSalesDocNumber(raw);
+  if (!want || want.kind === "pa") return null;
+  const qs = subiektQueryString({ numer: want.nr, page: 1, pageSize: PAGE_SIZE });
+  const res = await subiektJson<{ data?: DocNumberRow[] }>(`${SUBIEKT_PATHS.documentsFs}${qs}`);
+  for (const d of res.data ?? []) {
+    if (parseSalesDocNumber(d.dok_NrPelny ?? "")?.key !== want.key) continue;
+    const khId = Math.trunc(Number(d.dok_OdbiorcaId || d.dok_PlatnikId));
+    if (Number.isSafeInteger(khId) && khId > 0) return { number: d.dok_NrPelny!.trim(), khId };
+  }
+  return null;
 }

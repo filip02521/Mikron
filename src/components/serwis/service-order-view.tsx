@@ -140,7 +140,8 @@ export function orderEventMeta(e: ServiceOrderEvent): string {
 }
 
 export function orderSearchText(o: ServiceOrder): string {
-  return `${o.number} ${o.clientName} ${o.deviceName} ${o.deviceSymbol ?? ""} ${o.serialNo ?? ""} ${o.rwNumber ?? ""}`.toLocaleLowerCase("pl-PL");
+  const helpdesk = o.helpdeskId ? `${o.helpdeskId} #${o.helpdeskId}` : "";
+  return `${o.number} ${o.clientName} ${o.deviceName} ${o.deviceSymbol ?? ""} ${o.serialNo ?? ""} ${o.rwNumber ?? ""} ${helpdesk}`.toLocaleLowerCase("pl-PL");
 }
 
 /** Status prośby do zakupów po polsku (lista części, „czeka na część” w zleceniu). */
