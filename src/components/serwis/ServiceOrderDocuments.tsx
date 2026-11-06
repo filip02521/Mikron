@@ -1,5 +1,6 @@
 "use client";
 
+import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
 import { useEffect, useId, useRef, useState } from "react";
 import { BrandLoader } from "@/components/ui/BrandLoader";
 import { Button } from "@/components/ui/Button";
@@ -27,6 +28,7 @@ import {
   SERVICE_ORDER_TEXT_MAX,
   type ServiceOrder,
 } from "@/lib/orders/service-orders";
+import { fieldLabelClass, fieldLabelInlineClass } from "@/lib/ui/serwis-theme";
 
 type Submit = (fn: () => Promise<ServiceOrderActionResult>, after?: () => void) => void;
 
@@ -114,6 +116,7 @@ export function ServiceOrderDocuments({
   const rwRef = useRef<HTMLInputElement>(null);
   const reasonRef = useRef<HTMLInputElement>(null);
   const closed = isClosedServiceOrder(order.status);
+  const { readOnly } = useAdminPanelPreview();
   const missing = missingServiceOrderDocs(order, parts);
   const lines = rwLines(parts);
   // Przyjęte na gwarancji: naprawa zwykle bez faktury — powód podpowiadamy, decyzja zostaje u serwisanta.
@@ -141,15 +144,19 @@ export function ServiceOrderDocuments({
               <span className="min-w-0 flex-1 text-sm text-slate-800">
                 {order.fsNumber ? <span className="font-mono">{order.fsNumber}</span> : <>Bez faktury: {order.noInvoiceReason}</>}
               </span>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={pending}
-                onClick={() => submit(() => actionClearServiceOrderInvoice({ orderId: order.id }))}
-              >
-                Zmień
-              </Button>
+              {readOnly ? null : (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={pending}
+                  onClick={() => submit(() => actionClearServiceOrderInvoice({ orderId: order.id }))}
+                >
+                  Zmień
+                </Button>
+              )}
             </div>
+          ) : readOnly ? (
+            <p className="text-sm text-slate-600">Bez numeru faktury.</p>
           ) : noInvoice ? (
             <form
               className="space-y-2"
@@ -159,7 +166,7 @@ export function ServiceOrderDocuments({
                 submit(() => actionSetServiceOrderNoInvoice({ orderId: order.id, reason }), () => setNoInvoice(false));
               }}
             >
-              <label htmlFor={`${formId}-reason`} className="block text-xs font-semibold text-slate-600">
+              <label htmlFor={`${formId}-reason`} className={fieldLabelInlineClass}>
                 Dlaczego bez faktury
               </label>
               <input
@@ -205,7 +212,7 @@ export function ServiceOrderDocuments({
                 }}
               >
                 <div className="min-w-0 flex-1">
-                  <label htmlFor={`${formId}-fs`} className="mb-1.5 block text-xs font-semibold text-slate-600">
+                  <label htmlFor={`${formId}-fs`} className={fieldLabelClass}>
                     {order.clientKhId ? "Albo numer faktury" : "Numer faktury"}
                   </label>
                   <input
@@ -282,7 +289,7 @@ export function ServiceOrderDocuments({
             <IconCopy size={18} aria-hidden />
             {copied ? "Skopiowano pozycje" : "Kopiuj pozycje (symbol, ilość)"}
           </Button>
-          {canSetServiceOrderRw(order.status) ? (
+          {canSetServiceOrderRw(order.status) && !readOnly ? (
             <form
               className="flex flex-wrap items-end gap-2"
               onSubmit={(e) => {
@@ -292,7 +299,7 @@ export function ServiceOrderDocuments({
               }}
             >
               <div className="min-w-0 flex-1">
-                <label htmlFor={`${formId}-rw`} className="mb-1.5 block text-xs font-semibold text-slate-600">
+                <label htmlFor={`${formId}-rw`} className={fieldLabelClass}>
                   Numer RW z Subiekta
                 </label>
                 <input

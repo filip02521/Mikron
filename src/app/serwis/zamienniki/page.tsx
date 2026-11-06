@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 export default async function ZamiennikiPage() {
   await requireServicePanel("read");
   let fleet: Awaited<ReturnType<typeof fetchLoanerFleet>> | null = null;
-  let orderByUnit: Record<string, string> = {};
+  let orderByUnit: Record<string, { id: string; number: string }> = {};
   let error: string | null = null;
   try {
     const [f, orders] = await Promise.all([fetchLoanerFleet(), fetchOrderNumbersByLoaner()]);

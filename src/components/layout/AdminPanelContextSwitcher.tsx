@@ -19,6 +19,7 @@ const CONTEXT_ICON: Record<AdminPanelContext, NavIconKey> = {
   zakupy: "dailyPanel",
   zakupy_zeby: "teeth",
   magazyn: "warehouse",
+  serwis: "verification",
   sales: "myOrders",
   sales_manager: "team",
 };

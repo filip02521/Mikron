@@ -6,6 +6,9 @@ import type { SessionUser } from "@/lib/auth";
 import {
   deleteServiceModelPart,
   fetchOrdersByHelpdeskIds,
+  fetchServiceOrdersByClient,
+  sendServiceOrderQuote,
+  type HelpdeskLinkedOrder,
   fetchServiceOrdersBySerial,
   setServiceModelWarranty,
   insertServiceOrder,
@@ -24,6 +27,12 @@ import {
   type ServiceActor,
 } from "@/lib/data/service-orders";
 import {
+  formatQuoteAmount,
+  parseQuoteAmount,
+  SERVICE_INBOUND_LABEL,
+  SERVICE_OUTBOUND_LABEL,
+  type ServiceInboundMethod,
+  type ServiceOutboundMethod,
   normalizeRwNumber,
   SERVICE_ORDER_STATUS_LABEL,
   SERVICE_ORDER_TEXT_MAX,
@@ -37,8 +46,23 @@ import { fetchClientEquipment, fetchClientRecentInvoices, findInvoiceBuyer, type
 import { reportServicePartShortage } from "@/lib/data/service-part-report";
 import type { ClientEquipmentItem } from "@/lib/subiekt/client-equipment-parse";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
-import { fetchHelpdeskTicket } from "@/lib/mikran-shop/helpdesk";
-import { isStaffEmail, nipDigits, parseHelpdeskNumber, splitProductSerial } from "@/lib/mikran-shop/helpdesk-parse";
+import {
+  fetchHelpdeskMessages,
+  fetchHelpdeskTicket,
+  helpdeskStatusId,
+  helpdeskWriteEnabled,
+  searchHelpdeskTickets,
+  setHelpdeskStatus,
+} from "@/lib/mikran-shop/helpdesk";
+import {
+  extractInvoiceNumber,
+  isStaffEmail,
+  nipDigits,
+  parseHelpdeskNumber,
+  splitProductSerial,
+  type HelpdeskMessage,
+  type HelpdeskTicket,
+} from "@/lib/mikran-shop/helpdesk-parse";
 import { searchSubiektCustomersCached } from "@/lib/subiekt/subiekt-runtime-cache";
 import { lookupSubiektKontrahentByKhId } from "@/lib/subiekt/lookup-kontrahent";
 import type { SubiektKontrahent } from "@/lib/subiekt/types";
@@ -48,6 +72,22 @@ export type ServiceOrderActionResult = { ok: true; message: string; orderId?: st
 const ORDERS_PATH = "/serwis/zlecenia";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STATUSES = Object.keys(SERVICE_ORDER_STATUS_LABEL) as ServiceOrderStatus[];
+const INBOUND = Object.keys(SERVICE_INBOUND_LABEL) as ServiceInboundMethod[];
+const OUTBOUND = Object.keys(SERVICE_OUTBOUND_LABEL) as ServiceOutboundMethod[];
+
+/**
+ * Status zgłoszenia w helpdesku po przyjęciu / wydaniu (tylko z MIKRAN_HELPDESK_WRITE=1, zawsze bez maila).
+ * Błąd helpdesku nie cofa zapisu w OnTime — wraca jako dopisek do komunikatu.
+ */
+async function syncHelpdeskStatus(helpdeskId: number, kind: "accepted" | "done", comment: string): Promise<string> {
+  if (!helpdeskWriteEnabled()) return "";
+  try {
+    await setHelpdeskStatus(helpdeskId, helpdeskStatusId(kind), comment);
+    return ` Zgłoszenie #${helpdeskId}: ${kind === "accepted" ? "przyjęte do realizacji" : "zakończone"}.`;
+  } catch {
+    return ` Statusu zgłoszenia #${helpdeskId} w helpdesku nie zmieniono — zmień go ręcznie.`;
+  }
+}
 
 function actorOf(user: SessionUser): ServiceActor {
   const name = user.email.split("@")[0] || user.email;
@@ -121,10 +161,18 @@ export async function actionCreateServiceOrder(input: {
   purchaseDoc?: string | null;
   /** Numer zgłoszenia z helpdesku mikran.pl, z którego przyjmujemy sprzęt. */
   helpdeskId?: number | null;
+  /** Jak sprzęt przyszedł i (przy odbiorze kurierem Mikranu) kiedy kurier ma go odebrać — YYYY-MM-DD. */
+  inboundMethod?: string | null;
+  inboundPickupDate?: string | null;
 }): Promise<ServiceOrderActionResult> {
   const user = await requireServicePanel("mutate");
   return run(async () => {
     const helpdeskId = twId(input.helpdeskId);
+    const inboundMethod = INBOUND.find((m) => m === input.inboundMethod) ?? null;
+    if (input.inboundMethod && !inboundMethod) throw new ServiceOrderStateError("Nieznany sposób dostarczenia sprzętu. Odśwież okno.");
+    const pickupRaw = text(input.inboundPickupDate, 10);
+    if (pickupRaw && !/^\d{4}-\d{2}-\d{2}$/.test(pickupRaw)) throw new ServiceOrderStateError("Data odbioru kurierem ma zły format.");
+    const inboundPickupDate = inboundMethod === "odbior_mikran" && pickupRaw ? toDateOnly(parseDateOnly(pickupRaw)) : null;
     const purchaseRaw = (input.purchaseDate ?? "").trim();
     const purchaseDate = normalizePurchaseDate(purchaseRaw, new Date());
     if (purchaseRaw && !purchaseDate) throw new ServiceOrderStateError("Data zakupu: wybierz datę z kalendarza, nie późniejszą niż dziś.");
@@ -156,22 +204,54 @@ export async function actionCreateServiceOrder(input: {
         purchaseDate,
         purchaseDoc: text(input.purchaseDoc, 60) || null,
         helpdeskId,
+        inboundMethod,
+        inboundPickupDate,
       },
       actorOf(user)
     );
-    return { message: `Przyjęto ${order.number}: ${deviceName} od ${clientName}.`, orderId: order.id };
+    const synced = helpdeskId ? await syncHelpdeskStatus(helpdeskId, "accepted", `Przyjęto sprzęt: ${order.number} (${deviceName}).`) : "";
+    return { message: `Przyjęto ${order.number}: ${deviceName} od ${clientName}.${synced}`, orderId: order.id };
   });
 }
 
-export async function actionMoveServiceOrder(input: { orderId: string; to: string; note?: string }): Promise<ServiceOrderActionResult> {
+export async function actionMoveServiceOrder(input: {
+  orderId: string;
+  to: string;
+  note?: string;
+  /** Przy „wydane”: sposób zwrotu (gls / inny_kurier / osobiscie), numer przesyłki, adres wysyłki. */
+  outbound?: { method: string; tracking?: string | null; address?: string | null } | null;
+}): Promise<ServiceOrderActionResult> {
   const user = await requireServicePanel("mutate");
   return run(async () => {
     const to = STATUSES.find((s) => s === input.to);
     if (!to) throw new ServiceOrderStateError("Nieznany status. Odśwież panel.");
     const note = text(input.note, 300);
     if (to === "anulowane" && !note) throw new ServiceOrderStateError("Wpisz powód anulowania (np. klient zrezygnował).");
-    const o = await moveServiceOrder({ orderId: uuid(input.orderId, "zlecenie"), to, note }, actorOf(user));
-    return { message: `${o.number}: ${SERVICE_ORDER_STATUS_LABEL[to]}.`, orderId: o.id };
+    let outbound: { method: ServiceOutboundMethod; tracking: string | null; address: string | null } | null = null;
+    if (to === "wydane" && input.outbound) {
+      const method = OUTBOUND.find((m) => m === input.outbound!.method);
+      if (!method) throw new ServiceOrderStateError("Wybierz, jak sprzęt wraca do klienta.");
+      outbound = { method, tracking: text(input.outbound.tracking, 60) || null, address: text(input.outbound.address, 300) || null };
+    }
+    const o = await moveServiceOrder({ orderId: uuid(input.orderId, "zlecenie"), to, note, outbound }, actorOf(user));
+    let synced = "";
+    if (to === "wydane" && o.helpdeskId) {
+      // Zgłoszenie bywa na kilka urządzeń — „zakończone” dopiero, gdy wydano sprzęt ze wszystkich jego zleceń.
+      const all = (await fetchOrdersByHelpdeskIds([o.helpdeskId])).get(o.helpdeskId) ?? [];
+      if (all.every((x) => x.status === "wydane")) synced = await syncHelpdeskStatus(o.helpdeskId, "done", `Wydano sprzęt: ${all.map((x) => x.number).join(", ")}.`);
+    }
+    return { message: `${o.number}: ${SERVICE_ORDER_STATUS_LABEL[to]}.${synced}`, orderId: o.id };
+  });
+}
+
+/** Wycena po diagnozie: kwota brutto i zakres; zlecenie czeka na decyzję klienta (decyzję zapisuje przejście statusu). */
+export async function actionSendServiceQuote(input: { orderId: string; amount: string; note?: string }): Promise<ServiceOrderActionResult> {
+  const user = await requireServicePanel("mutate");
+  return run(async () => {
+    const amount = parseQuoteAmount(String(input.amount ?? ""));
+    if (amount == null) throw new ServiceOrderStateError("Wpisz kwotę wyceny w złotych, np. 674,27.");
+    const o = await sendServiceOrderQuote({ orderId: uuid(input.orderId, "zlecenie"), amount, note: text(input.note, 1000) }, actorOf(user));
+    return { message: `${o.number}: wycena ${formatQuoteAmount(amount)} — czeka na decyzję klienta.`, orderId: o.id };
   });
 }
 
@@ -466,6 +546,8 @@ export type HelpdeskIntakeDraft = {
   clientMatch: "nip" | "faktura" | "email" | null;
   phone: string;
   deviceName: string;
+  /** Sposób dostawy ze zgłoszenia (1 klient wysyła, 2 odbiera Mikran) — podpowiedź „Jak sprzęt przyszedł”. */
+  deliveryId: number | null;
   /** Numer seryjny wydzielony z pola „Produkt” zgłoszenia („Turbina SN 4321”); pusty, gdy go nie było. */
   serial: string;
   fault: string;
@@ -473,8 +555,8 @@ export type HelpdeskIntakeDraft = {
   invoiceId: string;
   /** Faktura ze zgłoszenia znaleziona w Subiekcie (pełny numer); null — nie podano albo nie ma takiej. */
   invoiceFound: string | null;
-  /** Zgłoszenie ma już żywe zlecenie — przyjęcie drugiego jest zablokowane. */
-  existingOrder: { id: string; number: string } | null;
+  /** Zlecenia już założone z tego zgłoszenia (zgłoszenie bywa na kilka urządzeń) — ostrzeżenie, nie blokada. */
+  existingOrders: HelpdeskLinkedOrder[];
 };
 
 export type HelpdeskIntakeResult = { ok: true; draft: HelpdeskIntakeDraft } | { ok: false; message: string };
@@ -488,7 +570,7 @@ export async function actionServiceHelpdeskDraft(rawNumber: string | number): Pr
     const { mode, ticket } = await fetchHelpdeskTicket(id);
     if (mode === "off") return { ok: false, message: "Helpdesk mikran.pl nie jest podłączony (brak kluczy API). Przyjmij sprzęt ręcznie." };
     if (!ticket) return { ok: false, message: `Nie ma zgłoszenia #${id} w helpdesku. Sprawdź numer.` };
-    const existingOrder = (await fetchOrdersByHelpdeskIds([id])).get(id) ?? null;
+    const existingOrders = (await fetchOrdersByHelpdeskIds([id])).get(id) ?? [];
     const name = (ticket.company || ticket.name).slice(0, SERVICE_ORDER_TEXT_MAX.client);
     const product = splitProductSerial(ticket.product);
     const asClient = (k: SubiektKontrahent): HelpdeskIntakeDraft["client"] => ({
@@ -499,7 +581,9 @@ export async function actionServiceHelpdeskDraft(rawNumber: string | number): Pr
     let client: HelpdeskIntakeDraft["client"] = { khId: null, name, phone: null };
     let clientMatch: HelpdeskIntakeDraft["clientMatch"] = null;
     // Faktura ze zgłoszenia: potwierdza zakup i wskazuje kupującego, gdy NIP nie pasuje. Błąd Subiekta = brak trafienia.
-    const invoice = ticket.invoiceId ? await findInvoiceBuyer(ticket.invoiceId).catch(() => null) : null;
+    // Numer faktury bywa w polu produktu albo w opisie („faktura nr 1617/M/09/2025. Marathon…”).
+    const invoiceNo = extractInvoiceNumber(ticket.invoiceId, ticket.product, ticket.comment) || ticket.invoiceId.trim();
+    const invoice = invoiceNo ? await findInvoiceBuyer(invoiceNo).catch(() => null) : null;
     // Tylko jednoznaczne trafienia; po kolei: NIP, faktura, e-mail. Brak Subiekta — zostaje nazwa ze zgłoszenia.
     const nip = nipDigits(ticket.vat);
     if (nip) {
@@ -528,14 +612,102 @@ export async function actionServiceHelpdeskDraft(rawNumber: string | number): Pr
         phone: ticket.telephone.slice(0, SERVICE_ORDER_TEXT_MAX.phone),
         deviceName: product.name.slice(0, SERVICE_ORDER_TEXT_MAX.device),
         serial: product.serial.slice(0, SERVICE_ORDER_TEXT_MAX.serial),
+        deliveryId: ticket.deliveryId,
         fault: ticket.comment.slice(0, SERVICE_ORDER_TEXT_MAX.fault),
-        invoiceId: ticket.invoiceId,
+        invoiceId: invoiceNo,
         // Faktura innego klienta niż dopasowany po NIP nie jest jego zakupem — nie podświetlamy jej.
         invoiceFound: invoice && (clientMatch !== "nip" || invoice.khId === client.khId) ? invoice.number : null,
-        existingOrder,
+        existingOrders,
       },
     };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się pobrać zgłoszenia z helpdesku. Spróbuj za chwilę.") };
+  }
+}
+
+export type HelpdeskSearchResult = { ok: true; tickets: (HelpdeskTicket & { orders: HelpdeskLinkedOrder[] })[] } | { ok: false; message: string };
+
+/** Szukanie zgłoszenia przy przyjęciu: cały helpdesk (wszystkie statusy i osoby), z już założonymi zleceniami. */
+export async function actionServiceHelpdeskSearch(query: string): Promise<HelpdeskSearchResult> {
+  await requireServicePanel("read");
+  const q = text(query, 80);
+  if (q.length < 2) return { ok: true, tickets: [] };
+  try {
+    const { mode, tickets } = await searchHelpdeskTickets(q);
+    if (mode === "off") return { ok: false, message: "Helpdesk mikran.pl nie jest podłączony (brak kluczy API)." };
+    const linked = await fetchOrdersByHelpdeskIds(tickets.map((t) => t.id));
+    return { ok: true, tickets: tickets.map((t) => ({ ...t, orders: linked.get(t.id) ?? [] })) };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się przeszukać helpdesku. Spróbuj za chwilę.") };
+  }
+}
+
+export type HelpdeskThreadResult = { ok: true; messages: HelpdeskMessage[] } | { ok: false; message: string };
+
+/** Rozmowa z klientem w zgłoszeniu (tylko odczyt) — do karty zlecenia. */
+export async function actionServiceHelpdeskThread(helpdeskId: number): Promise<HelpdeskThreadResult> {
+  await requireServicePanel("read");
+  const id = twId(helpdeskId);
+  if (!id) return { ok: false, message: "Nieprawidłowy numer zgłoszenia." };
+  try {
+    const { mode, messages } = await fetchHelpdeskMessages(id);
+    if (mode === "off") return { ok: false, message: "Helpdesk mikran.pl nie jest podłączony (brak kluczy API)." };
+    return { ok: true, messages };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się pobrać rozmowy ze zgłoszenia. Spróbuj za chwilę.") };
+  }
+}
+
+export type RelatedCasesResult =
+  | {
+      ok: true;
+      /** Inne zlecenia tego klienta (kh_Id) i tego egzemplarza (numer seryjny), bez bieżącego. */
+      clientOrders: SerialHistoryItem[];
+      serialOrders: SerialHistoryItem[];
+      /** Inne zgłoszenia z helpdesku po numerze seryjnym i nazwie klienta, bez zgłoszenia tego zlecenia. */
+      tickets: HelpdeskTicket[];
+      helpdeskError: string | null;
+    }
+  | { ok: false; message: string };
+
+/** Powiązane sprawy w karcie zlecenia: duplikaty zgłoszeń, powroty tego samego sprzętu, inne naprawy klienta. */
+export async function actionServiceRelatedCases(input: {
+  orderId: string;
+  clientKhId: number | null;
+  clientName: string;
+  serialNo: string | null;
+  helpdeskId: number | null;
+}): Promise<RelatedCasesResult> {
+  await requireServicePanel("read");
+  const orderId = UUID_RE.test(String(input.orderId ?? "")) ? input.orderId : null;
+  if (!orderId) return { ok: false, message: "Nieprawidłowe zlecenie. Odśwież panel." };
+  try {
+    const serial = text(input.serialNo, SERVICE_ORDER_TEXT_MAX.serial);
+    const kh = twId(input.clientKhId);
+    const [clientOrders, serialOrders] = await Promise.all([
+      kh ? fetchServiceOrdersByClient(kh, orderId) : Promise.resolve([]),
+      serial ? fetchServiceOrdersBySerial(serial, orderId) : Promise.resolve([]),
+    ]);
+    let tickets: HelpdeskTicket[] = [];
+    let helpdeskError: string | null = null;
+    try {
+      const terms = [serial, text(input.clientName, 80)].filter((t) => t.length >= 4);
+      const found = await Promise.all(terms.map((t) => searchHelpdeskTickets(t)));
+      const seen = new Set<number>(input.helpdeskId ? [input.helpdeskId] : []);
+      for (const f of found) {
+        for (const t of f.tickets) {
+          if (seen.has(t.id)) continue;
+          seen.add(t.id);
+          tickets.push(t);
+        }
+      }
+      tickets = tickets.slice(0, 8);
+    } catch (e) {
+      helpdeskError = userFacingErrorText(e, "Helpdesk nie odpowiedział.");
+    }
+    // Powrót tego samego egzemplarza ważniejszy niż „inna naprawa klienta” — zlecenie z tym SN tylko w pierwszej grupie.
+    return { ok: true, clientOrders: clientOrders.filter((x) => !serialOrders.some((c) => c.id === x.id)), serialOrders, tickets, helpdeskError };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się wczytać powiązanych spraw.") };
   }
 }

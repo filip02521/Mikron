@@ -204,3 +204,52 @@ export function splitProductSerial(product: string): { name: string; serial: str
 export function isStaffEmail(email: string): boolean {
   return /@mikran\.(pl|com)$/i.test(email.trim());
 }
+
+/**
+ * Numer faktury ze zgłoszenia: pole „Nr faktury”, a gdy puste — z produktu albo opisu
+ * („faktura nr 1617/M/09/2025. Marathon multi 600”, „FV 434/M/11/2026”). Zwraca sam numer („1617/M/09/2025”).
+ */
+export function extractInvoiceNumber(...fields: string[]): string {
+  for (const f of fields) {
+    const m = f.match(/(?:\b(?:FS|FV|faktur[ay]?)\b\s*(?:nr\.?|numer)?\s*:?\s*)?(\d{1,7}\/[A-Z]{1,3}\/\d{2}\/\d{4})\b/i);
+    if (m) return m[1]!.toUpperCase();
+  }
+  return "";
+}
+
+export type HelpdeskMessage = {
+  id: number | null;
+  at: string;
+  author: string;
+  /** Wpis od pracownika (odpowiedź serwisu), nie od klienta. */
+  staff: boolean;
+  /** Komentarz ukryty — klient go nie widzi. */
+  hidden: boolean;
+  text: string;
+  status: string;
+};
+
+/** Wątek zgłoszenia z `/helpdesk/{id}/messages` (pola wiadomości jak w historii panelu sklepu), od najstarszej. */
+export function parseHelpdeskMessages(raw: unknown): HelpdeskMessage[] {
+  const list = raw && typeof raw === "object" ? (raw as { messages?: unknown; data?: unknown }).messages ?? (raw as { data?: unknown }).data : null;
+  if (!Array.isArray(list)) return [];
+  const out: HelpdeskMessage[] = [];
+  for (const m of list) {
+    if (!m || typeof m !== "object") continue;
+    const r = m as Record<string, unknown>;
+    const text = str(r, ["comment", "message", "text", "body"]);
+    if (!text) continue;
+    const userId = int(r, ["user_id"]);
+    out.push({
+      id: int(r, ["service_history_id", "history_id", "id"]),
+      at: str(r, ["date_added", "date", "created_at"]),
+      author: str(r, ["author", "user", "name", "firstname"]),
+      staff: userId != null && userId > 0,
+      // Tylko jawne pole „ukryty” — notify=0 znaczy „bez maila”, nie „niewidoczne dla klienta”.
+      hidden: /^(1|true)$/i.test(str(r, ["hidden", "is_hidden", "private"])),
+      text,
+      status: str(r, ["status", "service_status"]),
+    });
+  }
+  return out.sort((a, b) => a.at.localeCompare(b.at));
+}

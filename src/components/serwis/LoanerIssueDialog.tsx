@@ -8,6 +8,7 @@ import { actionIssueLoaner } from "@/app/actions/service-loaners";
 import { ClientPicker, type PickedClient as Client } from "@/components/serwis/SubiektPickers";
 import { addDays, LOANER_RETURN_PRESETS, toDateOnly } from "@/lib/orders/service-loaners";
 import { formatLong, type LoanerUnitView } from "@/components/serwis/LoanersBoard";
+import { fieldLabelClass } from "@/lib/ui/serwis-theme";
 
 export function LoanerIssueDialog({
   freeUnits,
@@ -77,7 +78,7 @@ export function LoanerIssueDialog({
         }}
       >
         <div>
-          <span className="mb-1.5 block text-xs font-semibold text-slate-600">Egzemplarz na stanie</span>
+          <span className={fieldLabelClass}>Egzemplarz na stanie</span>
           {freeUnits.length === 0 ? (
             <p className="text-sm text-slate-600">Wszystkie egzemplarze są wydane albo w przeglądzie.</p>
           ) : (
@@ -106,7 +107,7 @@ export function LoanerIssueDialog({
         <ClientPicker value={client} onChange={setClient} />
 
         <div>
-          <span className="mb-1.5 block text-xs font-semibold text-slate-600">Planowany zwrot</span>
+          <span className={fieldLabelClass}>Planowany zwrot</span>
           <div role="radiogroup" aria-label="Planowany zwrot" className="flex flex-wrap gap-2">
             {LOANER_RETURN_PRESETS.map((n) => (
               <button
@@ -127,7 +128,7 @@ export function LoanerIssueDialog({
         </div>
 
         <div>
-          <label htmlFor={`${formId}-note`} className="mb-1.5 block text-xs font-semibold text-slate-600">
+          <label htmlFor={`${formId}-note`} className={fieldLabelClass}>
             Uwagi (opcjonalnie)
           </label>
           <input

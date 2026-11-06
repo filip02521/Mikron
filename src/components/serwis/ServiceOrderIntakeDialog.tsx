@@ -13,13 +13,18 @@ import {
   type PickedProduct,
 } from "@/components/serwis/SubiektPickers";
 import { ClientEquipmentPicker } from "@/components/serwis/ClientEquipmentPicker";
-import { SERVICE_ORDER_TEXT_MAX } from "@/lib/orders/service-orders";
+import { SERVICE_INBOUND_LABEL, SERVICE_ORDER_TEXT_MAX, type ServiceInboundMethod } from "@/lib/orders/service-orders";
+import type { HelpdeskTicket } from "@/lib/mikran-shop/helpdesk-parse";
+import type { HelpdeskLinkedOrder } from "@/lib/data/service-orders";
+import { HelpdeskTicketPicker } from "@/components/serwis/HelpdeskTicketPicker";
+import { inboundFromDelivery } from "@/components/serwis/helpdesk-intake";
 import { addDays, toDateOnly } from "@/lib/orders/service-loaners";
 import { normalizePurchaseDate, warrantyMonthsFor, warrantyStatus, warrantyUntil } from "@/lib/orders/service-warranty";
 import { WarrantyPill } from "@/components/serwis/service-order-view";
 import { SerialHistory } from "@/components/serwis/SerialHistory";
+import { fieldLabelClass, fieldLabelInlineClass, rubricBoxClass } from "@/lib/ui/serwis-theme";
 
-const labelClass = "mb-1.5 block text-xs font-semibold text-slate-600";
+const labelClass = fieldLabelClass;
 
 const CLIENT_MATCH_LABEL: Record<NonNullable<HelpdeskIntakeDraft["clientMatch"]>, string> = {
   nip: "po NIP",
@@ -35,17 +40,22 @@ export function ServiceOrderIntakeDialog({
   warrantyMonths,
   helpdeskEnabled,
   initialHelpdeskId,
+  tickets,
+  linked,
 }: {
   onClose: () => void;
   onCreated: (message: string, orderId: string | undefined) => void;
-  /** Zgłoszenie ma już zlecenie — otwórz jego panel zamiast zakładać drugie. */
+  /** Ze zgłoszenia przyjęto już sprzęt — otwórz panel tamtego zlecenia. */
   onOpenOrder: (orderId: string) => void;
   /** Okresy gwarancji modeli różne od domyślnego (tw_Id → miesiące). */
   warrantyMonths: ReadonlyMap<number, number>;
-  /** Helpdesk mikran.pl podłączony (albo dane testowe) — pokaż pole numeru zgłoszenia. */
+  /** Helpdesk mikran.pl podłączony (albo dane testowe) — pokaż wybór zgłoszenia. */
   helpdeskEnabled: boolean;
   /** Przyjęcie z listy zgłoszeń — formularz wypełnia się od razu z tego zgłoszenia. */
   initialHelpdeskId?: number | null;
+  /** Otwarte zgłoszenia z tablicy (do wyboru bez szukania) i zlecenia już z nich przyjęte. */
+  tickets: readonly HelpdeskTicket[];
+  linked: Readonly<Record<number, readonly HelpdeskLinkedOrder[]>>;
 }) {
   const formId = useId();
   const [client, setClient] = useState<PickedClient | null>(null);
@@ -53,11 +63,14 @@ export function ServiceOrderIntakeDialog({
   const [phone, setPhone] = useState("");
   const [device, setDevice] = useState<PickedProduct | null>(null);
   const [deviceKey, setDeviceKey] = useState(0);
-  const [helpdeskInput, setHelpdeskInput] = useState(initialHelpdeskId ? String(initialHelpdeskId) : "");
   const [draft, setDraft] = useState<HelpdeskIntakeDraft | null>(null);
+  // Serwisant wybrał „Bez zgłoszenia” — lista zgłoszeń się zwija.
+  const [noTicket, setNoTicket] = useState(false);
   const [helpdeskError, setHelpdeskError] = useState<string | null>(null);
   const [loadingTicket, startTicket] = useTransition();
   const autoLoaded = useRef(false);
+  const [inbound, setInbound] = useState<ServiceInboundMethod | "">("");
+  const [pickupDate, setPickupDate] = useState("");
   const [serial, setSerial] = useState("");
   const [fault, setFault] = useState("");
   const [accessories, setAccessories] = useState("");
@@ -69,19 +82,20 @@ export function ServiceOrderIntakeDialog({
   const [pending, start] = useTransition();
   const today = new Date();
 
-  const loadTicket = (raw: string | number) => {
+  const loadTicket = (id: number, ticket: HelpdeskTicket | null) => {
     setHelpdeskError(null);
     startTicket(async () => {
-      const res = await actionServiceHelpdeskDraft(raw);
+      const res = await actionServiceHelpdeskDraft(id);
       if (!res.ok) {
         setHelpdeskError(res.message);
         return;
       }
       const d = res.draft;
       setDraft(d);
-      setHelpdeskInput(String(d.helpdeskId));
-      if (d.existingOrder) return;
-      // Pola z helpdesku nadpisują formularz — serwisant poprawia je przed zapisem.
+      setNoTicket(false);
+      // Sposób dostawy ze zgłoszenia (szkic, a gdy go nie ma — wiersz z listy); bez niego zostaje wybór serwisanta.
+      setInbound(inboundFromDelivery(d.deliveryId ?? ticket?.deliveryId) ?? "");
+      // Pola z helpdesku nadpisują formularz także przy kolejnym sprzęcie z tego zgłoszenia — serwisant poprawia je przed zapisem.
       setClient(d.client.name ? d.client : null);
       setClientKey((k) => k + 1);
       setPhone(d.phone || d.client.phone || "");
@@ -97,14 +111,15 @@ export function ServiceOrderIntakeDialog({
   useEffect(() => {
     if (!initialHelpdeskId || autoLoaded.current) return;
     autoLoaded.current = true;
-    loadTicket(initialHelpdeskId);
+    loadTicket(initialHelpdeskId, tickets.find((t) => t.id === initialHelpdeskId) ?? null);
     // Jedno wczytanie przy otwarciu z listy zgłoszeń; ref pilnuje podwójnego efektu w trybie Strict.
-  }, [initialHelpdeskId]);  
+  }, [initialHelpdeskId, tickets]);
 
   const purchase = normalizePurchaseDate(purchaseDate, today);
   const warranty = warrantyStatus(purchase ? warrantyUntil(purchase, warrantyMonthsFor(device?.twId ?? null, warrantyMonths)) : null, today);
   const missing = !client?.name ? "klienta" : !device?.name ? "sprzętu" : !fault.trim() ? "opisu usterki" : null;
-  const linked = draft && !draft.existingOrder ? draft.helpdeskId : null;
+  const helpdeskId = draft?.helpdeskId ?? null;
+  const accepted = draft?.existingOrders ?? [];
 
   return (
     <ModalShell
@@ -122,8 +137,14 @@ export function ServiceOrderIntakeDialog({
           <Button type="button" variant="secondary" onClick={onClose} disabled={pending}>
             Anuluj
           </Button>
-          <Button type="submit" form={formId} disabled={pending || !!draft?.existingOrder}>
-            {pending ? "Zapisuję…" : linked ? `Przyjmij ze zgłoszenia #${linked}` : "Przyjmij sprzęt"}
+          <Button type="submit" form={formId} disabled={pending}>
+            {pending
+              ? "Zapisuję…"
+              : helpdeskId
+                ? accepted.length
+                  ? `Przyjmij kolejny sprzęt ze zgłoszenia #${helpdeskId}`
+                  : `Przyjmij ze zgłoszenia #${helpdeskId}`
+                : "Przyjmij sprzęt"}
           </Button>
         </div>
       }
@@ -151,7 +172,9 @@ export function ServiceOrderIntakeDialog({
               dueDate: due || null,
               purchaseDate: purchaseDate || null,
               purchaseDoc,
-              helpdeskId: linked,
+              helpdeskId,
+              inboundMethod: inbound || null,
+              inboundPickupDate: inbound === "odbior_mikran" ? pickupDate || null : null,
             });
             if (!res.ok) setError(res.message);
             else onCreated(res.message, res.orderId);
@@ -160,59 +183,73 @@ export function ServiceOrderIntakeDialog({
       >
         {helpdeskEnabled ? (
           <div className="space-y-2">
-            <label htmlFor={`${formId}-hd`} className={labelClass}>
-              Zgłoszenie z helpdesku mikran.pl (opcjonalnie)
-            </label>
-            <div className="flex gap-2">
-              <input
-                id={`${formId}-hd`}
-                value={helpdeskInput}
-                inputMode="numeric"
-                maxLength={12}
-                placeholder="Numer zgłoszenia, np. 1234"
-                onChange={(e) => setHelpdeskInput(e.target.value)}
-                onKeyDown={(e) => {
-                  // Enter w tym polu wczytuje zgłoszenie, nie wysyła całego formularza.
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    if (helpdeskInput.trim()) loadTicket(helpdeskInput);
-                  }
-                }}
-                className={`${pickerInputClass} min-w-0 flex-1 font-mono`}
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={loadingTicket}
-                onClick={() => (helpdeskInput.trim() ? loadTicket(helpdeskInput) : setHelpdeskError("Wpisz numer zgłoszenia."))}
-              >
-                {loadingTicket ? "Pobieram…" : "Wypełnij ze zgłoszenia"}
-              </Button>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className={fieldLabelInlineClass}>Zgłoszenie z helpdesku mikran.pl (opcjonalnie)</span>
+              {!draft && !noTicket ? (
+                <Button type="button" size="sm" variant="secondary" onClick={() => setNoTicket(true)}>
+                  Bez zgłoszenia
+                </Button>
+              ) : null}
             </div>
+            {draft ? (
+              <div className={`${rubricBoxClass} space-y-2 px-3 py-2`}>
+                <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.8125rem] text-slate-600">
+                  {draft.test ? <Badge variant="warning">Dane testowe</Badge> : null}
+                  <span>
+                    Wypełniono ze zgłoszenia <span className="font-mono font-semibold text-slate-900">#{draft.helpdeskId}</span>.{" "}
+                    {draft.clientMatch
+                      ? `Klienta znaleziono w Subiekcie ${CLIENT_MATCH_LABEL[draft.clientMatch]}; niżej jego sprzęt z faktur — kliknij numer seryjny.`
+                      : "Klienta nie znaleziono w Subiekcie (NIP, faktura, e-mail) — wybierz go z podpowiedzi, a pokażemy jego sprzęt z faktur."}
+                    {draft.invoiceId && !draft.invoiceFound ? ` Faktury „${draft.invoiceId}” ze zgłoszenia nie ma w Subiekcie.` : ""}
+                  </span>
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" size="sm" variant="secondary" onClick={() => setDraft(null)}>
+                    Zmień zgłoszenie
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setDraft(null);
+                      setNoTicket(true);
+                    }}
+                  >
+                    Bez zgłoszenia
+                  </Button>
+                </div>
+              </div>
+            ) : noTicket ? (
+              <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.8125rem] text-slate-600">
+                <span>Przyjmujesz sprzęt bez zgłoszenia — wypełnij formularz niżej.</span>
+                <Button type="button" size="sm" variant="secondary" onClick={() => setNoTicket(false)}>
+                  Wybierz zgłoszenie
+                </Button>
+              </p>
+            ) : (
+              <HelpdeskTicketPicker inputId={`${formId}-hd`} tickets={tickets} linked={linked} autoFocus={!initialHelpdeskId} onPick={loadTicket} />
+            )}
             {helpdeskError ? (
               <p role="alert" className="text-[0.8125rem] text-red-700">
                 {helpdeskError}
               </p>
-            ) : draft?.existingOrder ? (
-              <div role="alert" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-amber-50 px-3 py-2 text-[0.8125rem] text-amber-900">
-                <span className="min-w-0 flex-1">
-                  Zgłoszenie #{draft.helpdeskId} ma już zlecenie {draft.existingOrder.number}.
-                </span>
-                <Button type="button" size="sm" variant="secondary" onClick={() => onOpenOrder(draft.existingOrder!.id)}>
-                  Otwórz {draft.existingOrder.number}
-                </Button>
+            ) : null}
+            {accepted.length ? (
+              <div role="status" className="space-y-2 rounded-lg bg-amber-50 px-3 py-2 text-[0.8125rem] text-amber-900">
+                <p>
+                  Z tego zgłoszenia przyjęto już:{" "}
+                  {accepted.map((o) => `${o.number} (${[o.deviceName, o.serialNo ? `SN ${o.serialNo}` : null].filter(Boolean).join(", ")})`).join("; ")}.
+                  {" "}Przyjmujesz kolejny sprzęt — sprawdź model i numer seryjny.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {accepted.map((o) => (
+                    <Button key={o.id} type="button" size="sm" variant="secondary" onClick={() => onOpenOrder(o.id)}>
+                      Otwórz {o.number}
+                    </Button>
+                  ))}
+                </div>
               </div>
-            ) : draft ? (
-              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.8125rem] text-slate-600">
-                {draft.test ? <Badge variant="warning">Dane testowe</Badge> : null}
-                <span>
-                  Wypełniono ze zgłoszenia #{draft.helpdeskId}.{" "}
-                  {draft.clientMatch
-                    ? `Klienta znaleziono w Subiekcie ${CLIENT_MATCH_LABEL[draft.clientMatch]}; niżej jego sprzęt z faktur — kliknij numer seryjny.`
-                    : "Klienta nie znaleziono w Subiekcie (NIP, faktura, e-mail) — wybierz go z podpowiedzi, a pokażemy jego sprzęt z faktur."}
-                  {draft.invoiceId && !draft.invoiceFound ? ` Faktury „${draft.invoiceId}” ze zgłoszenia nie ma w Subiekcie.` : ""}
-                </span>
-              </p>
             ) : null}
           </div>
         ) : null}
@@ -221,7 +258,7 @@ export function ServiceOrderIntakeDialog({
           <ClientPicker
             key={clientKey}
             value={client}
-            autoFocus={!initialHelpdeskId}
+            autoFocus={!initialHelpdeskId && !helpdeskEnabled}
             label="Klient"
             onChange={(c) => {
               setClient(c);
@@ -248,7 +285,7 @@ export function ServiceOrderIntakeDialog({
             key={client.khId}
             khId={client.khId}
             selected={device?.twId ? { twId: device.twId, serial: serial.trim() } : null}
-            ticket={draft && !draft.existingOrder ? { invoice: draft.invoiceFound ?? "", product: draft.deviceName, serial: draft.serial } : null}
+            ticket={draft ? { invoice: draft.invoiceFound ?? "", product: draft.deviceName, serial: draft.serial } : null}
             warrantyMonths={warrantyMonths}
             onPick={(e) => {
               setDevice({ twId: e.twId, symbol: e.symbol, name: e.name });
@@ -371,6 +408,43 @@ export function ServiceOrderIntakeDialog({
               className={pickerInputClass}
             />
           </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
+          <div>
+            <label htmlFor={`${formId}-inbound`} className={labelClass}>
+              Jak sprzęt przyszedł (opcjonalnie)
+            </label>
+            <select
+              id={`${formId}-inbound`}
+              value={inbound}
+              onChange={(e) => setInbound(e.target.value as ServiceInboundMethod | "")}
+              className={pickerInputClass}
+            >
+              <option value="">Nie wiadomo</option>
+              {(Object.keys(SERVICE_INBOUND_LABEL) as ServiceInboundMethod[]).map((m) => (
+                <option key={m} value={m}>
+                  {SERVICE_INBOUND_LABEL[m]}
+                </option>
+              ))}
+            </select>
+          </div>
+          {inbound === "odbior_mikran" ? (
+            <div>
+              <label htmlFor={`${formId}-pickup`} className={labelClass}>
+                Odbiór kurierem — dzień
+              </label>
+              <input
+                id={`${formId}-pickup`}
+                type="date"
+                value={pickupDate}
+                min="2000-01-01"
+                max={toDateOnly(addDays(today, 60))}
+                onChange={(e) => setPickupDate(e.target.value)}
+                className={pickerInputClass}
+              />
+            </div>
+          ) : null}
         </div>
 
         {error ? (

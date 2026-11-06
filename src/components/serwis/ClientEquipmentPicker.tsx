@@ -8,6 +8,7 @@ import { polishPlural } from "@/lib/email/polish-plural";
 import { actionServiceClientEquipment, type ClientEquipmentActionResult } from "@/app/actions/service-orders";
 import { rankEquipmentForTicket } from "@/lib/subiekt/client-equipment-parse";
 import { Badge } from "@/components/ui/Badge";
+import { rubricLabelClass } from "@/lib/ui/serwis-theme";
 import { WarrantyPill } from "@/components/serwis/service-order-view";
 import { warrantyMonthsFor, warrantyStatus, warrantyUntil } from "@/lib/orders/service-warranty";
 
@@ -109,7 +110,7 @@ export function ClientEquipmentPicker({
   return (
     <section aria-labelledby={`eq-${khId}`} className="space-y-2">
       <div className="flex items-baseline justify-between gap-2">
-        <h3 id={`eq-${khId}`} className="text-xs font-semibold text-slate-600">
+        <h3 id={`eq-${khId}`} className={rubricLabelClass}>
           Sprzęt klienta z faktur i paragonów ({result.items.length})
         </h3>
         <span className="text-xs text-slate-500">Kliknij numer seryjny</span>

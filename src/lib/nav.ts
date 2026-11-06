@@ -704,7 +704,6 @@ function operationsNavGroups(role: UserRole, badges: NavBadges): NavGroup[] {
   const groups: NavGroup[] = [
     { title: NAV_SECTION_TODAY, items: operationsTodayItems(badges) },
     { title: NAV_SECTION_ORDERING, items: operationsOrderingItems(role) },
-    serviceNavGroup(badges),
     { title: NAV_SECTION_TEAM, items: operationsTeamItems(badges) },
     {
       title: NAV_SECTION_SUPPLIERS,
@@ -772,7 +771,6 @@ function magazynNavGroups(badges: NavBadges): NavGroup[] {
         },
       ],
     },
-    serviceNavGroup(badges),
     {
       title: NAV_SECTION_TEAM,
       items: [
@@ -823,23 +821,20 @@ function magazynNavGroups(badges: NavBadges): NavGroup[] {
   return groups;
 }
 
-/**
- * Widoki serwisu jako pozycje menu (bez zakładek na stronach). Serwisant ma je jako główne pozycje, zakupy, admin
- * i magazyn — jako sekcję „Serwis” obok swojej pracy.
- */
-function serviceNavItems(badges: NavBadges, main: boolean): NavItem[] {
-  const tier: NavTier = main ? "primary" : "compact";
-  const mobileSlot: NavMobileSlot = main ? "primary" : "overflow";
+/** Widoki serwisu jako pozycje menu (bez zakładek na stronach) — tylko konto serwisanta i podgląd admina „Serwis”. */
+function serviceNavItems(badges: NavBadges): NavItem[] {
+  const tier: NavTier = "primary";
+  const mobileSlot: NavMobileSlot = "primary";
   return [
     {
       href: "/serwis/zlecenia",
-      label: main ? "Zlecenia" : "Zlecenia serwisowe",
+      label: "Zlecenia",
       mobileLabel: "Zlecenia",
       description: "Sprzęt klientów w naprawie",
       icon: "verification",
       tone: "sky",
       tier,
-      highlight: main,
+      highlight: true,
       mobileSlot,
     },
     {
@@ -878,12 +873,8 @@ function serviceNavItems(badges: NavBadges, main: boolean): NavItem[] {
 
 const NAV_SECTION_SERVICE = "Serwis";
 
-function serviceNavGroup(badges: NavBadges): NavGroup {
-  return { title: NAV_SECTION_SERVICE, items: serviceNavItems(badges, false), collapsible: true };
-}
-
 function serwisNavGroups(badges: NavBadges = {}): NavGroup[] {
-  return [{ title: NAV_SECTION_SERVICE, items: serviceNavItems(badges, true) }];
+  return [{ title: NAV_SECTION_SERVICE, items: serviceNavItems(badges) }];
 }
 
 export type NavAppContext = {

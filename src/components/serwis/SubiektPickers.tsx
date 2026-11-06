@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { actionSubiektSuggestClients, actionSubiektSuggestProducts } from "@/app/actions/subiekt";
+import { fieldLabelClass } from "@/lib/ui/serwis-theme";
 
 export const pickerInputClass =
   "h-11 w-full rounded-lg border border-slate-200 bg-card px-3 text-base focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:h-10 sm:text-sm";
@@ -54,7 +55,7 @@ export function ClientPicker({
 
   return (
     <div className="relative">
-      <label htmlFor={id} className="mb-1.5 block text-xs font-semibold text-slate-600">
+      <label htmlFor={id} className={fieldLabelClass}>
         {label}
       </label>
       <input
@@ -157,7 +158,7 @@ export function ProductPicker({
 
   return (
     <div className="relative">
-      <label htmlFor={id} className="mb-1.5 block text-xs font-semibold text-slate-600">
+      <label htmlFor={id} className={fieldLabelClass}>
         {label}
       </label>
       <input

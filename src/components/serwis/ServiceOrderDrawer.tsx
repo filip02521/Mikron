@@ -1,11 +1,14 @@
 "use client";
 
+import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { Button, buttonClass } from "@/components/ui/Button";
 import { IconChevronRight, IconCircleCheck, IconClock, IconPlus, IconPackageCheck, IconPhone, IconSearch, IconUndoLeft, IconX } from "@/components/icons/StrokeIcons";
 import { EventTimeline } from "@/components/ui/EventTimeline";
-import { StatusStepper } from "@/components/ui/StatusStepper";
+import { ServiceStampStrip } from "@/components/serwis/ServiceStampStrip";
+import { fieldLabelClass, fieldLabelInlineClass, rubricBoxClass, rubricHeadClass, rubricLabelClass } from "@/lib/ui/serwis-theme";
+import { serviceOrderStamps } from "@/lib/orders/service-order-board";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { cn } from "@/lib/cn";
 import { polishPluralWord } from "@/lib/email/polish-plural";
@@ -24,7 +27,12 @@ import {
 import { pickerInputClass, ProductPicker, type PickedProduct } from "@/components/serwis/SubiektPickers";
 import { ServiceOrderDocuments } from "@/components/serwis/ServiceOrderDocuments";
 import { ServiceOrderWaitForm } from "@/components/serwis/ServiceOrderWaitForm";
-import { SerialHistory } from "@/components/serwis/SerialHistory";
+import { ClientMessage, ServiceQuoteForm } from "@/components/serwis/ServiceQuoteForm";
+import { ServiceReleaseForm } from "@/components/serwis/ServiceReleaseForm";
+import { composeQuoteMessage, inboundFact, outboundFact, quoteFact } from "@/lib/orders/service-messages";
+import { quoteWaitingDays } from "@/lib/orders/service-order-board";
+import { ServiceOrderHelpdeskThread } from "@/components/serwis/ServiceOrderHelpdeskThread";
+import { ServiceRelatedCases } from "@/components/serwis/ServiceRelatedCases";
 import {
   daysSince,
   formatDateOnly,
@@ -41,16 +49,15 @@ import {
 } from "@/components/serwis/service-order-view";
 import {
   allowedNextStatuses,
-  flowIndex,
   isBackwardTransition,
   isClosedServiceOrder,
   isServiceOrderLate,
   missingServiceOrderDocs,
   primaryNextStatus,
+  formatQuoteAmount,
   rwLines,
-  SERVICE_ORDER_FLOW,
-  SERVICE_ORDER_STATUS_LABEL,
   SERVICE_ORDER_TEXT_MAX,
+  SERVICE_QUOTE_NUDGE_DAYS,
   serviceOrderPanelView,
   transitionHint,
   transitionLabel,
@@ -60,13 +67,13 @@ import {
   type ServiceOrderStatus,
 } from "@/lib/orders/service-orders";
 
-const STEPS = SERVICE_ORDER_FLOW.map((s) => ({ key: s, title: SERVICE_ORDER_STATUS_LABEL[s] }));
 
 /**
  * Serwisant pracuje na ekranie dotykowym (także laptop z ekranem dotykowym, który zgłasza mysz jako
  * główny wskaźnik) — dlatego 44 px stale, nie tylko przy `pointer: coarse` (DESIGN.md: pole dotyku min. 44 px).
  */
 const touchClass = "min-h-11";
+
 
 /** Ikona znaczenia ruchu: naprzód, wstrzymanie, cofnięcie — rozpoznawalne bez czytania etykiety. */
 function TransitionIcon({ to, from }: { to: ServiceOrderStatus; from: ServiceOrderStatus }) {
@@ -84,14 +91,15 @@ function TransitionIcon({ to, from }: { to: ServiceOrderStatus; from: ServiceOrd
   return <Icon size={18} aria-hidden className="shrink-0" />;
 }
 
+/** Rubryka karty serwisowej: etykieta krojem formularza na pasku z linią, treść pod nią (DESIGN-serwis.md). */
 function Section({ title, children, aside }: { title: string; children: React.ReactNode; aside?: React.ReactNode }) {
   return (
-    <section className="space-y-2.5">
-      <div className="flex items-baseline justify-between gap-2">
-        <h3 className="text-[0.8125rem] font-semibold text-slate-600">{title}</h3>
+    <section className={rubricBoxClass}>
+      <div className={rubricHeadClass}>
+        <h3 className={rubricLabelClass}>{title}</h3>
         {aside}
       </div>
-      {children}
+      <div className="space-y-2.5 px-3 py-3">{children}</div>
     </section>
   );
 }
@@ -139,6 +147,8 @@ export function ServiceOrderDrawer({
   const [qty, setQty] = useState("1");
   const [remember, setRemember] = useState(true);
   const [waitingForm, setWaitingForm] = useState(false);
+  const [quoteForm, setQuoteForm] = useState(false);
+  const [releaseForm, setReleaseForm] = useState(false);
   const [loanerPick, setLoanerPick] = useState("");
   useBodyScrollLock(true);
   useFocusTrap(panelRef, true);
@@ -171,6 +181,7 @@ export function ServiceOrderDrawer({
   };
 
   const closed = isClosedServiceOrder(order.status);
+  const stamps = serviceOrderStamps(order, events);
   const primary = primaryNextStatus(order.status);
   const secondary = allowedNextStatuses(order.status).filter((s) => s !== primary && s !== "anulowane");
   const canCancel = allowedNextStatuses(order.status).includes("anulowane");
@@ -182,7 +193,9 @@ export function ServiceOrderDrawer({
   const missing = missingServiceOrderDocs(order, parts);
   const primaryHint = primary ? transitionHint(primary, { missing, loanerCode: linked?.code ?? null }) : null;
   // Widok idzie za krokiem: przy przyjęciu zamiennik, w naprawie części, przy wydaniu dokumenty i telefon.
-  const view = serviceOrderPanelView(order.status);
+  // Podgląd admina „Serwis”: karta do odczytu, bez kroków, części i zapisu opisu.
+  const { readOnly } = useAdminPanelPreview();
+  const view = { ...serviceOrderPanelView(order.status), ...(readOnly ? { workNoteEditable: false } : {}) };
   const partArrived = waitingPartAvailable != null && waitingPartArrived(order, new Map([[order.waitingPart?.twId ?? 0, waitingPartAvailable]]));
   // Po zamknięciu jedyna praca to brakujące dokumenty — wtedy stoją na górze, historia naprawy pod nimi.
   const docsFirst = closed && (missing.invoice || missing.rw);
@@ -199,6 +212,18 @@ export function ServiceOrderDrawer({
     .sort((a, b) => b.at.localeCompare(a.at) || b.id - a.id)
     .map((e) => ({ id: e.id, at: e.at, title: orderEventTitle(e), meta: orderEventMeta(e) || undefined, tone: orderEventTone(e) }));
 
+  const awaitingClient = order.status === "czeka_na_akceptacje";
+  const facts = [
+    inboundFact(order.inbound),
+    awaitingClient ? null : quoteFact(order.quote),
+    closed ? outboundFact(order.outbound) : null,
+  ].filter((f): f is string => f != null);
+  const quoteDays = awaitingClient ? quoteWaitingDays(order.quote.sentAt, today) : null;
+  const quoteMessage =
+    order.quote.amount != null
+      ? composeQuoteMessage({ items: [{ deviceName: order.deviceName, serialNo: order.serialNo, scope: order.quote.note }], amount: order.quote.amount })
+      : null;
+
   const move = (to: ServiceOrderStatus, note = "") => submit(() => actionMoveServiceOrder({ orderId: order.id, to, note }));
 
   // Zamiennik: przy przyjęciu na górze panelu (wtedy się go wydaje), potem pod częściami.
@@ -210,17 +235,19 @@ export function ServiceOrderDrawer({
             <b className="font-mono font-semibold">{linked?.code ?? "egzemplarz zwrócony"}</b>
             {linked ? <span className="text-slate-500"> · {linked.twName}</span> : null}
           </span>
-          <Button
-            type="button"
-            variant="secondary"
-            className={cn("ml-auto", touchClass)}
-            disabled={pending}
-            onClick={() => submit(() => actionLinkServiceOrderLoaner({ orderId: order.id, unitId: null }))}
-          >
-            Odepnij
-          </Button>
+          {readOnly ? null : (
+            <Button
+              type="button"
+              variant="secondary"
+              className={cn("ml-auto", touchClass)}
+              disabled={pending}
+              onClick={() => submit(() => actionLinkServiceOrderLoaner({ orderId: order.id, unitId: null }))}
+            >
+              Odepnij
+            </Button>
+          )}
         </div>
-      ) : closed ? (
+      ) : closed || readOnly ? (
         <p className="text-[0.8125rem] text-slate-500">Bez zamiennika.</p>
       ) : linkable.length ? (
         <form
@@ -230,7 +257,7 @@ export function ServiceOrderDrawer({
             if (loanerPick) submit(() => actionLinkServiceOrderLoaner({ orderId: order.id, unitId: loanerPick }), () => setLoanerPick(""));
           }}
         >
-          <label htmlFor={`${formId}-loaner`} className="block text-xs font-semibold text-slate-600">
+          <label htmlFor={`${formId}-loaner`} className={fieldLabelInlineClass}>
             Egzemplarz wydany temu klientowi
           </label>
           <div className="flex flex-wrap gap-2">
@@ -295,8 +322,12 @@ export function ServiceOrderDrawer({
       >
         <div className="flex flex-col gap-2.5 border-b border-slate-100 px-5 pb-4 pt-5 sm:px-6">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[0.8125rem] font-semibold text-slate-500">{order.number}</span>
-            <OrderStatusPill status={order.status} />
+            {/* Numer karty w kratce formularza, jak „Nr” na karcie serwisowej. */}
+            <span className="inline-flex min-h-9 items-center gap-2 rounded-md border border-[var(--sv-rule)] bg-card px-2.5">
+              <span className={rubricLabelClass}>Nr</span>
+              <span className="font-mono text-[0.8125rem] font-semibold text-slate-900">{order.number}</span>
+            </span>
+            {order.status === "anulowane" ? <OrderStatusPill status={order.status} /> : null}
             <button
               ref={closeRef}
               type="button"
@@ -343,24 +374,17 @@ export function ServiceOrderDrawer({
               </span>
             ) : null}
           </div>
+          {/* Transport i wycena: każdy fakt raz — kwota czekającej wyceny stoi w rubryce nad krokami, nie tu. */}
+          {facts.length ? <p className="text-[0.8125rem] text-slate-600">{facts.join(" · ")}</p> : null}
+          {/* Karta serwisowa: każdy krok naprawy przybija pieczątkę z datą i tym, kto ją przybił. */}
+          <ServiceStampStrip stamps={stamps} size="card" cancelled={order.status === "anulowane"} className="pt-2" />
         </div>
 
         <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5 sm:px-6" {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}>
-          {!closed ? (
-            <StatusStepper
-              compact
-              label="Postęp naprawy"
-              steps={STEPS}
-              current={flowIndex(order.status)}
-              currentTitle={order.status === "czeka_na_czesc" ? "Czeka na część" : undefined}
-              currentTone={order.status === "czeka_na_czesc" ? "warn" : "brand"}
-            />
-          ) : null}
-
           {/* Powód kroku nad przyciskiem: „czeka na …” albo „część na stanie”, a pod nim co zrobić. */}
           {order.status === "czeka_na_czesc" && order.waitingPart ? (
             partArrived ? (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
                 <div className="text-sm font-semibold text-emerald-900">
                   Część na stanie: {waitingPartAvailable} szt. do wzięcia — wznów naprawę
                 </div>
@@ -370,7 +394,7 @@ export function ServiceOrderDrawer({
                 </div>
               </div>
             ) : (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
               <div className="text-sm text-amber-900">
                 Czeka na:{" "}
                 <b className="font-semibold">
@@ -388,17 +412,50 @@ export function ServiceOrderDrawer({
             )
           ) : null}
 
-          {!closed && (primary || secondary.length) ? (
+          {awaitingClient ? (
+            <Section title="Wycena dla klienta">
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span className="font-display text-lg font-bold tabular-nums text-slate-900">
+                  {order.quote.amount != null ? `${formatQuoteAmount(order.quote.amount)} brutto` : "bez kwoty"}
+                </span>
+                {order.quote.sentAt ? (
+                  <span
+                    className={cn(
+                      "text-[0.8125rem]",
+                      (quoteDays ?? 0) >= SERVICE_QUOTE_NUDGE_DAYS ? "font-semibold text-amber-800" : "text-slate-600"
+                    )}
+                  >
+                    zapisana {formatDay(order.quote.sentAt)} · {quoteDays} {polishPluralWord(quoteDays ?? 0, "dzień", "dni", "dni")} bez odpowiedzi
+                  </span>
+                ) : null}
+              </div>
+              {order.quote.note ? <p className="whitespace-pre-line text-sm text-slate-800">{order.quote.note}</p> : null}
+              <ClientMessage text={quoteMessage} label="Kopiuj wiadomość do klienta" disabledHint="Wycena bez kwoty — wróć do diagnozy i wpisz ją jeszcze raz." />
+            </Section>
+          ) : null}
+
+          {readOnly && !closed ? <p className="text-[0.8125rem] text-slate-600">Podgląd administratora — tylko odczyt. Zmiany zapisuje serwisant.</p> : null}
+
+          {!closed && !readOnly && (primary || secondary.length) ? (
             // Dwa poziomy do skanowania: duży krok naprzód, pod nim równe alternatywy z ikoną znaczenia.
             // Anulowanie jest osobno na dole panelu — nie stoi obok kroków naprawy.
             <div className="space-y-2">
-              {primary ? (
+              {primary === "wydane" && releaseForm ? (
+                <ServiceReleaseForm
+                  order={order}
+                  parts={parts}
+                  hint={primaryHint}
+                  pending={pending}
+                  submit={(fn) => submit(fn, () => setReleaseForm(false))}
+                  onCancel={() => setReleaseForm(false)}
+                />
+              ) : primary ? (
                 <div className="space-y-1.5">
                   <Button
                     type="button"
                     size="lg"
                     disabled={pending}
-                    onClick={() => move(primary)}
+                    onClick={() => (primary === "wydane" ? setReleaseForm(true) : move(primary))}
                     className={cn("w-full", touchClass)}
                   >
                     <TransitionIcon to={primary} from={order.status} />
@@ -408,14 +465,16 @@ export function ServiceOrderDrawer({
                 </div>
               ) : null}
               {secondary.length ? (
-                <div className={cn("grid gap-2", secondary.length > 1 && "grid-cols-2")}>
+                <div className={cn("grid gap-2", secondary.length > 1 && "sm:grid-cols-2")}>
                   {secondary.map((s) => (
                     <Button
                       key={s}
                       type="button"
                       variant="secondary"
                       disabled={pending}
-                      onClick={() => (s === "czeka_na_czesc" ? setWaitingForm(true) : move(s))}
+                      onClick={() =>
+                        s === "czeka_na_czesc" ? setWaitingForm(true) : s === "czeka_na_akceptacje" ? setQuoteForm(true) : move(s)
+                      }
                       className={cn("w-full", touchClass)}
                     >
                       <TransitionIcon to={s} from={order.status} />
@@ -440,6 +499,16 @@ export function ServiceOrderDrawer({
                 })
               }
               onCancel={() => setWaitingForm(false)}
+            />
+          ) : null}
+
+          {quoteForm && order.status === "diagnoza" ? (
+            <ServiceQuoteForm
+              order={order}
+              parts={parts}
+              pending={pending}
+              submit={(fn) => submit(fn, () => setQuoteForm(false))}
+              onCancel={() => setQuoteForm(false)}
             />
           ) : null}
 
@@ -470,7 +539,11 @@ export function ServiceOrderDrawer({
             {order.accessories ? <p className="text-[0.8125rem] text-slate-500">Przyjęte z: {order.accessories}</p> : null}
           </Section>
 
-          <SerialHistory serial={order.serialNo} excludeOrderId={order.id} onOpenOrder={onOpenOrder} canOpenOrder={canOpenOrder} />
+          {/* Rozmowa z klientem ze zgłoszenia — bez przełączania się do helpdesku. */}
+          {order.helpdeskId ? <ServiceOrderHelpdeskThread key={order.helpdeskId} helpdeskId={order.helpdeskId} /> : null}
+
+          {/* Ten sam egzemplarz, inne naprawy klienta, inne zgłoszenia (duplikaty) — zastępuje samą historię egzemplarza. */}
+          <ServiceRelatedCases order={order} canOpenOrder={canOpenOrder} onOpenOrder={onOpenOrder} />
 
           {view.workNoteLabel && (view.workNoteEditable || order.workNote) ? (
           <Section title={view.workNoteLabel}>
@@ -510,7 +583,7 @@ export function ServiceOrderDrawer({
           <Section
             title={`Części do zlecenia${parts.length ? ` (${lines.length})` : ""}`}
             aside={
-              !order.rwNumber && view.parts === "edit" && !taking ? (
+              !order.rwNumber && !readOnly && view.parts === "edit" && !taking ? (
                 <Button type="button" className={touchClass} variant="secondary" onClick={() => setTaking(true)}>
                   <IconPlus size={18} aria-hidden />
                   Pobierz część
@@ -519,7 +592,7 @@ export function ServiceOrderDrawer({
             }
           >
             {parts.length ? (
-              <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200">
+              <ul className="-mx-3 divide-y divide-[var(--sv-rule)] border-y border-[var(--sv-rule)]">
                 {parts.map((p) => (
                   <li key={p.id} className="flex items-center gap-3 px-3 py-2.5">
                     <span className="w-14 flex-none text-right text-sm font-semibold tabular-nums text-slate-900">{p.quantity} szt.</span>
@@ -530,7 +603,7 @@ export function ServiceOrderDrawer({
                         {p.takenByName ? ` · ${p.takenByName}` : ""}
                       </span>
                     </span>
-                    {!order.rwNumber ? (
+                    {!order.rwNumber && !readOnly ? (
                       <Button
                         type="button"
                         className={touchClass}
@@ -550,7 +623,7 @@ export function ServiceOrderDrawer({
 
             {taking ? (
               <form
-                className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4"
+                className="-mx-3 space-y-3 border-y border-[var(--sv-rule)] bg-[var(--sv-box)] p-3"
                 onSubmit={(e) => {
                   e.preventDefault();
                   if (!part?.twId) {
@@ -575,7 +648,7 @@ export function ServiceOrderDrawer({
               >
                 {bom.length ? (
                   <div>
-                    <span className="mb-1.5 block text-xs font-semibold text-slate-600">Z katalogu modelu</span>
+                    <span className={fieldLabelClass}>Z katalogu modelu</span>
                     <div className="flex flex-wrap gap-1.5">
                       {bom.map((b) => (
                         <button
@@ -608,7 +681,7 @@ export function ServiceOrderDrawer({
                     placeholder="Symbol albo nazwa części"
                   />
                   <div>
-                    <label htmlFor={`${formId}-qty`} className="mb-1.5 block text-xs font-semibold text-slate-600">
+                    <label htmlFor={`${formId}-qty`} className={fieldLabelClass}>
                       Ilość
                     </label>
                     <input
@@ -649,12 +722,12 @@ export function ServiceOrderDrawer({
             <EventTimeline label="Historia zlecenia" items={historyItems} />
           </Section>
 
-          {canCancel ? (
+          {canCancel && !readOnly ? (
             // Na końcu panelu, z odstępem od kroków naprawy: anulowanie nie jest jednym z kroków.
             <div className="border-t border-slate-100 pt-5">
               {cancelling ? (
                 <form
-                  className="space-y-3 rounded-xl border border-red-200 bg-red-50 p-4"
+                  className="space-y-3 rounded-lg border border-red-200 bg-red-50 p-4"
                   onSubmit={(e) => {
                     e.preventDefault();
                     submit(() => actionMoveServiceOrder({ orderId: order.id, to: "anulowane", note: cancelNote }), () => setCancelling(false));

@@ -28,6 +28,7 @@ export const ORDER_GROUP_LABEL: Record<ServiceOrderGroup, string> = {
 const STATUS_PILL: Record<ServiceOrderStatus, string> = {
   przyjete: "bg-slate-100 text-slate-700",
   diagnoza: "bg-indigo-50 text-indigo-800",
+  czeka_na_akceptacje: "bg-amber-50 text-amber-900",
   w_naprawie: "bg-indigo-50 text-indigo-800",
   czeka_na_czesc: "bg-amber-50 text-amber-900",
   gotowe: "bg-emerald-50 text-emerald-800",
@@ -70,6 +71,12 @@ export function formatDay(iso: string): string {
   return new Date(iso).toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit" });
 }
 
+/** Data chwili (ISO) w czasie lokalnym, „dd.mm.rrrr” — nie przez slice(0, 10), które bierze dzień w UTC (00:30 → wczoraj). */
+export function formatLocalDate(iso: string): string {
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
+}
+
 export function formatDateOnly(ymd: string): string {
   const [y, m, d] = ymd.split("-");
   return `${d}.${m}.${y}`;
@@ -94,6 +101,9 @@ const EVENT_TONE: Record<ServiceOrderEvent["type"], EventTimelineTone> = {
   invoice: "ok",
   invoice_cleared: "muted",
   waiting_part: "warn",
+  quote: "warn",
+  quote_decision: "brand",
+  shipment: "ok",
 };
 
 export function orderEventTone(e: ServiceOrderEvent): EventTimelineTone {
@@ -121,11 +131,17 @@ export function orderEventTitle(e: ServiceOrderEvent): string {
     case "rw":
       return `RW ${e.note.replace(/^RW\s*/i, "")}`;
     case "invoice":
-      return e.note.startsWith("Bez faktury") ? e.note : `Faktura `;
+      return e.note.startsWith("Bez faktury") ? e.note : `Faktura ${e.note}`.trim();
     case "invoice_cleared":
-      return `Usunięto fakturę ()`;
+      return e.note ? `Usunięto fakturę (${e.note})` : "Usunięto fakturę";
     case "waiting_part":
-      return `Czeka na: `;
+      return e.note ? `Czeka na: ${e.note}` : "Czeka na część";
+    case "quote":
+      return e.note ? `Wycena: ${e.note}` : "Wycena zapisana";
+    case "quote_decision":
+      return e.note || "Decyzja klienta";
+    case "shipment":
+      return e.note ? `Wydano: ${e.note}` : "Wydano klientowi";
     case "note":
       return e.note || "Notatka";
   }

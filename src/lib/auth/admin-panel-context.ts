@@ -7,6 +7,7 @@ export type AdminPanelContext =
   | "zakupy"
   | "zakupy_zeby"
   | "magazyn"
+  | "serwis"
   | "sales"
   | "sales_manager";
 
@@ -53,6 +54,7 @@ const VALID_CONTEXTS: AdminPanelContext[] = [
   "zakupy",
   "zakupy_zeby",
   "magazyn",
+  "serwis",
   "sales",
   "sales_manager",
 ];
@@ -83,6 +85,8 @@ export function homePathForAdminPanelContext(context: AdminPanelContext): string
       return "/zeby/kolejka";
     case "magazyn":
       return "/kolejka";
+    case "serwis":
+      return "/serwis/zlecenia";
     case "sales":
       return "/admin/wybor-handlowca";
     case "sales_manager":
@@ -100,6 +104,8 @@ export function labelForAdminPanelContext(context: AdminPanelContext): string {
       return "Zęby";
     case "magazyn":
       return "Magazyn";
+    case "serwis":
+      return "Serwis";
     case "sales":
       return "Handlowiec";
     case "sales_manager":
@@ -187,6 +193,11 @@ export const ADMIN_PANEL_CONTEXT_OPTIONS: {
     value: "magazyn",
     label: "Magazyn",
     title: "Kolejka przyjęcia i regał",
+  },
+  {
+    value: "serwis",
+    label: "Serwis",
+    title: "Podgląd panelu serwisu (tylko odczyt)",
   },
   {
     value: "sales_manager",

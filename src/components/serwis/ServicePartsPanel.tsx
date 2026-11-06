@@ -1,8 +1,8 @@
 "use client";
 
+import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { Kbd } from "@/components/ui/Kbd";
@@ -10,7 +10,8 @@ import { IconSearch } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { polishPlural } from "@/lib/email/polish-plural";
 import { formatPlDate } from "@/lib/display-labels";
-import { controlFocusClass } from "@/lib/ui/ontime-theme";
+import { rubricBoxClass, rubricLabelClass } from "@/lib/ui/serwis-theme";
+import { ServiceFilterBar } from "@/components/serwis/ServiceFilterBar";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { REQUEST_STATUS_LABEL } from "@/components/serwis/service-order-view";
 import { ServicePartReportDialog } from "@/components/serwis/ServicePartReportDialog";
@@ -77,10 +78,10 @@ function StockMeter({ row }: { row: ServicePartRow }) {
   const scale = Math.max(min ? min * 1.5 : 0, row.available, 1);
   const fill = Math.max(0, Math.min(1, row.available / scale));
   const tone =
-    row.state === "brak" ? "bg-red-500" : row.state === "ponizej_min" ? "bg-amber-500" : "bg-slate-400";
+    row.state === "brak" ? "bg-red-600" : row.state === "ponizej_min" ? "bg-amber-500" : "bg-slate-400";
   return (
-    <div className="flex min-w-[9rem] items-center gap-3">
-      <div className={cn("relative h-1.5 flex-1 rounded-full", min || row.state === "brak" ? "bg-slate-100" : "")} aria-hidden>
+    <div className="flex min-w-0 items-center gap-3 sm:min-w-[9rem]">
+      <div className={cn("relative hidden h-1.5 flex-1 rounded-full sm:block", min || row.state === "brak" ? "bg-[var(--sv-box)] ring-1 ring-inset ring-[var(--sv-rule)]" : "")} aria-hidden>
         {min || row.state === "brak" ? <div className={cn("h-full rounded-full", tone)} style={{ width: `${fill * 100}%` }} /> : null}
         {min ? (
           <div
@@ -120,51 +121,13 @@ function RequestPill({ req }: { req: ServicePartRequest }) {
   );
 }
 
-type Tile = { id: Exclude<Filter, "all">; label: string; count: number; hint: string; tone: string };
+type Tile = { id: Exclude<Filter, "all">; label: string; count: number; hint: string; dot: string };
 
-/** Kafle z licznikiem (DESIGN.md → Navigation): liczba to pierwsze, co serwis chce wiedzieć. */
-function FilterTiles({
-  tiles,
-  filter,
-  onChange,
-}: {
-  tiles: Tile[];
-  filter: Filter;
-  onChange: (f: Filter) => void;
-}) {
-  return (
-    <div role="group" aria-label="Filtr części" className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
-      {tiles.map((t) => {
-        const active = filter === t.id;
-        return (
-          <button
-            key={t.id}
-            type="button"
-            aria-pressed={active}
-            onClick={() => onChange(active ? "all" : t.id)}
-            className={cn(
-              "flex min-w-0 flex-col items-start rounded-lg border bg-card px-3 py-2.5 text-left shadow-sm transition-colors duration-150 sm:px-4 sm:py-3",
-              controlFocusClass,
-              active
-                ? "border-indigo-600 ring-1 ring-inset ring-indigo-600"
-                : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
-            )}
-          >
-            <span className="flex items-center gap-2">
-              <span className={cn("h-2 w-2 rounded-full", t.tone)} aria-hidden />
-              <span className="text-2xl font-semibold leading-none tabular-nums text-slate-900 sm:text-[1.75rem]">
-                {t.count}
-              </span>
-            </span>
-            <span className={cn("mt-1.5 text-sm font-semibold", active ? "text-indigo-800" : "text-slate-800")}>
-              {t.label}
-            </span>
-            <span className="mt-0.5 hidden w-full truncate text-[0.8125rem] text-slate-500 sm:block">{t.hint}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
+/** Zdanie stanu pod tytułem: najpierw to, co serwis ma zgłosić; nazwy jak w filtrach pod spodem. */
+function partsStateSentence(toRequest: number, requested: number): string {
+  const parts = [toRequest ? `${toRequest} do zgłoszenia` : "Nic do zgłoszenia"];
+  if (requested) parts.push(`${requested} zgłoszone`);
+  return parts.join(" · ");
 }
 
 export function ServicePartsPanel({
@@ -179,6 +142,7 @@ export function ServicePartsPanel({
   canReport: boolean;
 }) {
   const router = useRouter();
+  const { readOnly } = useAdminPanelPreview();
   const [refreshing, startRefresh] = useTransition();
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
@@ -220,28 +184,28 @@ export function ServicePartsPanel({
       label: "Do zgłoszenia",
       count: summary.toRequest,
       hint: "Mało lub brak, bez prośby",
-      tone: summary.toRequest > 0 ? "bg-amber-500" : "bg-slate-300",
+      dot: summary.toRequest > 0 ? "bg-amber-500" : "bg-slate-300",
     },
     {
       id: "missing",
       label: "Brak na stanie",
       count: summary.missing,
       hint: "0 do wzięcia",
-      tone: summary.missing > 0 ? "bg-red-500" : "bg-slate-300",
+      dot: summary.missing > 0 ? "bg-red-600" : "bg-slate-300",
     },
     {
       id: "below_min",
       label: "Poniżej minimum",
       count: summary.belowMin,
       hint: "Minimum z Kreatora ZD",
-      tone: summary.belowMin > 0 ? "bg-amber-500" : "bg-slate-300",
+      dot: summary.belowMin > 0 ? "bg-amber-500" : "bg-slate-300",
     },
     {
       id: "requested",
       label: "Zgłoszone",
       count: summary.requested,
       hint: "Prośba w toku",
-      tone: "bg-indigo-600",
+      dot: "bg-slate-400",
     },
   ];
 
@@ -249,10 +213,20 @@ export function ServicePartsPanel({
 
   return (
     <div className="space-y-5">
-      <FilterTiles tiles={tiles} filter={filter} onChange={setFilter} />
+      <div className="space-y-3">
+        <p className="font-display text-lg font-bold tracking-[-0.01em] text-slate-900" aria-live="polite">
+          {partsStateSentence(summary.toRequest, summary.requested)}
+        </p>
+        <ServiceFilterBar
+          label="Filtr części"
+          value={filter === "all" ? null : filter}
+          onChange={(f) => setFilter(f ?? "all")}
+          options={tiles}
+        />
+      </div>
 
-      <Card padding={false}>
-        <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:px-6">
+      <section aria-label="Części z Subiekta" className={cn(rubricBoxClass, "overflow-hidden")}>
+        <div className="flex flex-col gap-3 border-b border-[var(--sv-rule)] px-3 py-3 sm:flex-row sm:items-center sm:px-4">
           <label className="relative block w-full sm:max-w-xs">
             <span className="sr-only">Szukaj części</span>
             <IconSearch
@@ -266,7 +240,7 @@ export function ServicePartsPanel({
               placeholder="Szukaj: symbol, nazwa, grupa"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="h-11 w-full rounded-md border border-slate-200 bg-card pl-9 pr-10 text-base shadow-[var(--shadow-control)] transition-colors duration-150 hover:border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:h-10 sm:text-sm"
+              className="h-11 w-full rounded-md border border-slate-200 bg-card pl-9 pr-10 text-base shadow-[var(--shadow-control)] transition-colors duration-150 hover:border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:text-sm"
             />
             <span className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 sm:block">
               <Kbd>/</Kbd>
@@ -304,13 +278,13 @@ export function ServicePartsPanel({
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[44rem] border-collapse text-sm">
+            <table className="w-full border-collapse text-sm sm:min-w-[44rem]">
               <thead>
-                <tr className="bg-slate-50 text-left text-[0.8125rem] text-slate-500">
-                  <th className="px-5 py-2.5 font-medium sm:px-6">Część</th>
-                  <th className="px-4 py-2.5 font-medium">Dostępne</th>
-                  <th className="px-4 py-2.5 font-medium">Zgłoszenie</th>
-                  <th className="w-px px-5 py-2.5 max-sm:hidden sm:px-6">
+                <tr className="bg-[var(--sv-box)] text-left">
+                  <th className={cn(rubricLabelClass, "px-3 py-2.5 sm:px-4")}>Część</th>
+                  <th className={cn(rubricLabelClass, "px-4 py-2.5")}>Dostępne</th>
+                  <th className={cn(rubricLabelClass, "px-4 py-2.5")}>Zgłoszenie</th>
+                  <th className="w-px px-3 py-2.5 max-sm:hidden sm:px-4">
                     <span className="sr-only">Akcje</span>
                   </th>
                 </tr>
@@ -318,12 +292,12 @@ export function ServicePartsPanel({
               {groups.map(([group, list]) => {
                 const attention = list.filter((r) => r.state !== "ok").length;
                 return (
-                  <tbody key={group} className="border-t border-slate-200">
+                  <tbody key={group} className="border-t border-[var(--sv-rule)]">
                     <tr>
                       <th
                         colSpan={4}
                         scope="rowgroup"
-                        className="px-5 pb-1.5 pt-4 text-left text-[0.8125rem] font-semibold text-slate-600 sm:px-6"
+                        className="px-3 pb-1.5 pt-4 text-left text-[0.8125rem] font-semibold text-slate-700 sm:px-4"
                       >
                         {group}
                         <span className="ml-2 font-medium text-slate-500">
@@ -334,7 +308,7 @@ export function ServicePartsPanel({
                     </tr>
                     {list.map((r) => {
                       const report =
-                        r.state !== "ok" && r.requests.length === 0 && canReport ? (
+                        r.state !== "ok" && r.requests.length === 0 && canReport && !readOnly ? (
                           <Button variant="secondary" onClick={() => setReportPart(r)}>
                             Zgłoś brak
                           </Button>
@@ -342,9 +316,9 @@ export function ServicePartsPanel({
                       return (
                       <tr
                         key={r.twId}
-                        className="border-t border-slate-100 transition-colors duration-150 hover:bg-slate-50"
+                        className="border-t border-[var(--sv-rule)] transition-colors duration-150 hover:bg-[var(--sv-box)]"
                       >
-                        <td className="px-5 py-3 max-sm:max-w-[16rem] sm:px-6">
+                        <td className="px-3 py-3 max-sm:max-w-[16rem] sm:px-4">
                           <div className="font-semibold text-slate-900">{r.name}</div>
                           <div className="mt-0.5 font-mono text-xs text-slate-500">{r.symbol ?? "-"}</div>
                           {/* Na telefonie pod nazwą — kolumna akcji jest poza ekranem, tabela przewija się w bok. */}
@@ -367,7 +341,7 @@ export function ServicePartsPanel({
                             <span className="text-slate-400">-</span>
                           )}
                         </td>
-                        <td className="whitespace-nowrap px-5 py-3 text-right max-sm:hidden sm:px-6">{report}</td>
+                        <td className="whitespace-nowrap px-3 py-3 text-right max-sm:hidden sm:px-4">{report}</td>
                       </tr>
                       );
                     })}
@@ -377,7 +351,7 @@ export function ServicePartsPanel({
             </table>
           </div>
         )}
-      </Card>
+      </section>
 
       <ServicePartReportDialog
         key={reportPart?.twId ?? "none"}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
@@ -11,6 +12,7 @@ import { IconPackageCheck, IconPlus, IconSearch } from "@/components/icons/Strok
 import { cn } from "@/lib/cn";
 import { polishPlural, polishPluralWord } from "@/lib/email/polish-plural";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
+import { rubricBoxClass, rubricHeadClass, rubricLabelClass, serwisFilterActiveClass, serwisFilterIdleClass } from "@/lib/ui/serwis-theme";
 import {
   addDays,
   daysBetween,
@@ -37,10 +39,10 @@ export type LoanerUnitView = LoanerUnit & {
 };
 
 const STATE_DOT: Record<LoanerViewState, string> = {
-  free: "bg-emerald-500",
+  free: "bg-emerald-600",
   out: "bg-primary",
   warn: "bg-amber-500",
-  late: "bg-red-500",
+  late: "bg-red-600",
   svc: "bg-slate-300",
   retired: "bg-slate-200",
 };
@@ -114,8 +116,8 @@ function Timeline({
   return (
     <div ref={scrollRef} className="overflow-x-auto">
       <div className="grid min-w-[60rem] grid-cols-[15rem_minmax(45rem,1fr)] max-sm:min-w-[48rem] max-sm:grid-cols-[9.5rem_minmax(38rem,1fr)]">
-        <div className="sticky left-0 z-10 h-9 border-b border-r border-slate-100 bg-card" />
-        <div className="relative h-9 border-b border-slate-100">
+        <div className="sticky left-0 z-10 h-9 border-b border-r border-[var(--sv-rule)] bg-card" />
+        <div className="relative h-9 border-b border-[var(--sv-rule)]">
           {ticks.map((d) => (
             <span key={d.toISOString()} className="absolute top-2.5 -translate-x-1/2 whitespace-nowrap text-[0.6875rem] text-slate-500" style={{ left: `${pct(d)}%` }}>
               {formatShort(d.toISOString())}
@@ -128,7 +130,7 @@ function Timeline({
 
         {groups.map((g) => (
           <div key={g.twId} className="contents">
-            <div className="col-span-2 border-b border-slate-100 px-4 pb-1.5 pt-3.5 text-[0.8125rem] font-semibold text-slate-600">
+            <div className="col-span-2 border-b border-[var(--sv-rule)] px-4 pb-1.5 pt-3.5 text-[0.8125rem] font-semibold text-slate-700">
               <span className="sticky left-4">
                 {g.name} · {g.units.length}
               </span>
@@ -145,7 +147,7 @@ function Timeline({
                   <button
                     type="button"
                     onClick={() => onOpen(u.id)}
-                    className={cn("sticky left-0 z-10 flex h-[52px] min-w-0 items-center gap-2.5 border-b border-r border-slate-100 bg-card px-4 text-left transition-colors duration-150 group-hover:bg-slate-50", controlFocusClass)}
+                    className={cn("sticky left-0 z-10 flex h-[52px] min-w-0 items-center gap-2.5 border-b border-r border-[var(--sv-rule)] bg-card px-4 text-left transition-colors duration-150 group-hover:bg-[var(--sv-box)]", controlFocusClass)}
                   >
                     <span className={cn("h-2 w-2 flex-none rounded-full", STATE_DOT[u.state])} aria-hidden />
                     <span className="flex min-w-0 flex-col">
@@ -158,10 +160,10 @@ function Timeline({
                     tabIndex={-1}
                     aria-hidden
                     onClick={() => onOpen(u.id)}
-                    className="relative h-[52px] cursor-pointer border-b border-slate-100 transition-colors duration-150 group-hover:bg-slate-50"
+                    className="relative h-[52px] cursor-pointer border-b border-[var(--sv-rule)] transition-colors duration-150 group-hover:bg-[var(--sv-box)]"
                   >
                     {weekends.map((d) => (
-                      <div key={d.toISOString()} className="absolute inset-y-0 bg-slate-50" style={{ left: `${pct(d)}%`, width: `${100 / span}%` }} />
+                      <div key={d.toISOString()} className="absolute inset-y-0 bg-[var(--sv-box)]" style={{ left: `${pct(d)}%`, width: `${100 / span}%` }} />
                     ))}
                     {u.service.map((s) => (
                       <div
@@ -197,7 +199,7 @@ function Timeline({
                             className={cn(
                               "absolute top-3.5 flex h-6 items-center gap-1.5 overflow-hidden whitespace-nowrap rounded-md px-2 text-xs font-medium",
                               !live && "border border-slate-200 bg-slate-50 text-slate-500",
-                              live && u.state === "late" && "bg-red-500 text-white",
+                              live && u.state === "late" && "bg-red-600 text-white",
                               live && u.state === "warn" && "bg-amber-500 text-amber-950",
                               live && u.state === "out" && "bg-primary text-white"
                             )}
@@ -230,20 +232,20 @@ function LoanerList({ units, onOpen }: { units: LoanerUnitView[]; onOpen: (id: s
     <div className="overflow-x-auto">
       <table className="w-full min-w-[46rem] border-collapse text-sm">
         <thead>
-          <tr className="bg-slate-50 text-left text-[0.8125rem] text-slate-500">
-            <th className="px-5 py-2.5 font-medium">Egzemplarz</th>
-            <th className="px-4 py-2.5 font-medium">Model</th>
-            <th className="px-4 py-2.5 font-medium">Status</th>
-            <th className="px-4 py-2.5 font-medium">U kogo</th>
-            <th className="px-4 py-2.5 text-right font-medium">Dni</th>
-            <th className="px-5 py-2.5 font-medium">Zwrot</th>
+          <tr className="bg-[var(--sv-box)] text-left">
+            <th className={cn(rubricLabelClass, "px-4 py-2.5")}>Egzemplarz</th>
+            <th className={cn(rubricLabelClass, "px-4 py-2.5")}>Model</th>
+            <th className={cn(rubricLabelClass, "px-4 py-2.5")}>Status</th>
+            <th className={cn(rubricLabelClass, "px-4 py-2.5")}>U kogo</th>
+            <th className={cn(rubricLabelClass, "px-4 py-2.5 text-right")}>Dni</th>
+            <th className={cn(rubricLabelClass, "px-4 py-2.5")}>Zwrot</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((u) => (
-            <tr key={u.id} onClick={() => onOpen(u.id)} className="cursor-pointer border-t border-slate-100 transition-colors duration-150 hover:bg-slate-50">
-              <td className="px-5 py-3">
-                <button type="button" onClick={() => onOpen(u.id)} className={cn("font-mono text-[0.8125rem] font-semibold text-slate-900", controlFocusClass)}>
+            <tr key={u.id} onClick={() => onOpen(u.id)} className="cursor-pointer border-t border-[var(--sv-rule)] transition-colors duration-150 hover:bg-[var(--sv-box)]">
+              <td className="px-4 py-3">
+                <button type="button" onClick={() => onOpen(u.id)} className={cn("min-h-11 font-mono text-[0.8125rem] font-semibold text-indigo-800 underline underline-offset-2", controlFocusClass)}>
                   {u.code}
                 </button>
                 {u.serialNo ? <div className="text-xs text-slate-500">SN {u.serialNo}</div> : null}
@@ -254,7 +256,7 @@ function LoanerList({ units, onOpen }: { units: LoanerUnitView[]; onOpen: (id: s
               </td>
               <td className="px-4 py-3 text-slate-700">{u.currentClientName ?? "-"}</td>
               <td className="px-4 py-3 text-right font-mono tabular-nums">{u.daysOut ?? "-"}</td>
-              <td className="px-5 py-3 tabular-nums text-slate-600">{u.plannedReturn ? formatShort(parseDateOnly(u.plannedReturn).toISOString()) : "-"}</td>
+              <td className="px-4 py-3 tabular-nums text-slate-600">{u.plannedReturn ? formatShort(parseDateOnly(u.plannedReturn).toISOString()) : "-"}</td>
             </tr>
           ))}
         </tbody>
@@ -262,6 +264,20 @@ function LoanerList({ units, onOpen }: { units: LoanerUnitView[]; onOpen: (id: s
     </div>
   );
 }
+
+/** Zdanie stanu pod tytułem: najpierw zwroty, których trzeba dopilnować; nazwy jak w „Do zrobienia”. */
+function loanersStateSentence(late: number, dueSoon: number, out: number, free: number): string {
+  const parts: string[] = [];
+  if (late) parts.push(`${late} po terminie zwrotu`);
+  if (dueSoon) parts.push(`${dueSoon} do zwrotu w 3 dni`);
+  if (!parts.length) parts.push("Nic po terminie");
+  parts.push(`${out} u ${polishPluralWord(out, "klienta", "klientów", "klientów")}`);
+  parts.push(`${free} na stanie`);
+  return parts.join(" · ");
+}
+
+const todoChipClass =
+  "inline-flex min-h-11 max-w-full items-center gap-2 rounded-md border px-3 py-1 text-left text-[0.8125rem] transition-colors duration-150";
 
 /* ---------- Plansza ---------- */
 
@@ -273,7 +289,7 @@ export function LoanersBoard({
   units: LoanerUnit[];
   events: LoanerEvent[];
   /** Numer zlecenia serwisowego po id egzemplarza. */
-  orderByUnit?: Record<string, string>;
+  orderByUnit?: Record<string, { id: string; number: string }>;
 }) {
   const router = useRouter();
   const [, startRefresh] = useTransition();
@@ -283,6 +299,7 @@ export function LoanersBoard({
   const [openId, setOpenId] = useState<string | null>(null);
   const [issueFor, setIssueFor] = useState<string | null | undefined>(undefined);
   const [adding, setAdding] = useState(false);
+  const { readOnly } = useAdminPanelPreview();
   const [toast, setToast] = useState<string | null>(null);
   const [today] = useState(() => new Date());
   const searchRef = useRef<HTMLInputElement>(null);
@@ -364,12 +381,13 @@ export function LoanersBoard({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Numer, klient, model"
-            className="h-11 w-full rounded-lg border border-slate-200 bg-card pl-9 pr-10 text-base shadow-[var(--shadow-control)] transition-colors duration-150 hover:border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:h-10 sm:text-sm"
+            className="h-11 w-full rounded-lg border border-slate-200 bg-card pl-9 pr-10 text-base shadow-[var(--shadow-control)] transition-colors duration-150 hover:border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:text-sm"
           />
           <span className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 sm:block">
             <Kbd>/</Kbd>
           </span>
         </label>
+        {readOnly ? null : (
         <div className="flex w-full gap-2 sm:ml-auto sm:w-auto [&>*]:flex-1 sm:[&>*]:flex-none">
           <Button type="button" variant="secondary" onClick={() => setAdding(true)}>
             <IconPlus size={18} aria-hidden />
@@ -380,17 +398,23 @@ export function LoanersBoard({
             Wydaj zamiennik
           </Button>
         </div>
+        )}
       </div>
 
       {views.length === 0 ? (
         <EmptyState
           title="Brak sprzętu zastępczego"
           description="Dodaj pierwszy egzemplarz: wybierz towar z Subiekta i nadaj numer (ZAST-001 albo numer seryjny)."
-          action={<Button type="button" onClick={() => setAdding(true)}>Dodaj egzemplarz</Button>}
+          action={readOnly ? undefined : <Button type="button" onClick={() => setAdding(true)}>Dodaj egzemplarz</Button>}
         />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-[repeat(auto-fit,minmax(13.5rem,1fr))] sm:gap-3">
+          <p className="font-display text-lg font-bold tracking-[-0.01em] text-slate-900" aria-live="polite">
+            {loanersStateSentence(late.length, dueSoon.length, views.filter((u) => u.status === "u_klienta").length, freeUnits.length)}
+          </p>
+
+          {/* Karty modeli: treść (dostępność egzemplarzy), a dotknięcie zawęża tablicę do modelu. */}
+          <div role="group" aria-label="Filtr modelu" className="-mt-3 grid gap-2 sm:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] sm:gap-3">
             {allGroups.map((g) => {
               const free = g.units.filter((u) => u.state === "free").length;
               const out = g.units.filter((u) => ["out", "warn", "late"].includes(u.state)).length;
@@ -403,27 +427,30 @@ export function LoanersBoard({
                   aria-pressed={active}
                   onClick={() => setModel(active ? null : g.twId)}
                   className={cn(
-                    "flex min-w-0 flex-col gap-2 rounded-xl border bg-card px-3 py-3 text-left shadow-sm transition-colors duration-150 sm:gap-2.5 sm:px-4 sm:py-3.5",
+                    "flex min-w-0 flex-col rounded-lg border text-left transition-colors duration-150",
                     controlFocusClass,
-                    active ? "border-indigo-600 ring-1 ring-inset ring-indigo-600" : "border-slate-200 hover:border-slate-300"
+                    active ? serwisFilterActiveClass : cn(serwisFilterIdleClass, "bg-card")
                   )}
                 >
-                  <span className="flex items-baseline justify-between gap-2">
-                    <span className="min-w-0 font-semibold text-slate-900">{g.name}</span>
-                    <span className="hidden flex-none whitespace-nowrap font-mono text-[0.6875rem] text-slate-500 sm:inline">{g.units[0]?.twSymbol ?? ""}</span>
+                  <span className={cn(rubricHeadClass, "w-full flex-col items-start justify-center gap-0", active && "border-indigo-200")}>
+                    <span className="text-sm font-semibold text-slate-900">{g.name}</span>
+                    {g.units[0]?.twSymbol ? <span className="font-mono text-[0.6875rem] text-slate-500">{g.units[0].twSymbol}</span> : null}
                   </span>
-                  <span className="text-2xl font-semibold leading-none tabular-nums text-slate-900">
-                    {free}
-                    <span className="ml-1 font-sans text-[0.8125rem] font-medium tracking-normal text-slate-500">z {g.units.length} na stanie</span>
-                  </span>
-                  <span className="flex flex-wrap gap-1" aria-hidden>
-                    {g.units.map((u) => (
-                      <span key={u.id} className={cn("h-1.5 w-3.5 rounded-sm", STATE_DOT[u.state])} />
-                    ))}
-                  </span>
-                  <span className="text-xs text-slate-500">
-                    {out} u {polishPluralWord(out, "klienta", "klientów", "klientów")}
-                    {gl ? <span className="font-semibold text-red-700"> · {gl} po terminie</span> : null}
+                  <span className="flex flex-col gap-2 px-3 py-2.5">
+                    <span className="flex items-center justify-between gap-2 text-[0.8125rem] text-slate-600">
+                      <span>
+                        <b className="font-semibold tabular-nums text-slate-900">{free}</b> z {g.units.length} na stanie
+                      </span>
+                      <span className="flex flex-wrap justify-end gap-1" aria-hidden>
+                        {g.units.map((u) => (
+                          <span key={u.id} className={cn("h-1.5 w-3.5 rounded-sm", STATE_DOT[u.state])} />
+                        ))}
+                      </span>
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      {out} u {polishPluralWord(out, "klienta", "klientów", "klientów")}
+                      {gl ? <span className="font-semibold text-red-700"> · {gl} po terminie</span> : null}
+                    </span>
                   </span>
                 </button>
               );
@@ -431,37 +458,43 @@ export function LoanersBoard({
           </div>
 
           {late.length || dueSoon.length || warn.length ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="mr-1 text-[0.8125rem] font-semibold text-slate-600">Do zrobienia</span>
-              {late.map((u) => (
-                <button key={u.id} type="button" onClick={() => setOpenId(u.id)} className={cn("inline-flex min-h-11 max-w-full items-center gap-2 rounded-2xl border border-slate-200 bg-card px-3 py-1 text-left text-[0.8125rem] transition-colors duration-150 hover:bg-slate-50", controlFocusClass)}>
-                  <span className="h-2 w-2 flex-none rounded-full bg-red-500" aria-hidden />
-                  <b className="flex-none whitespace-nowrap font-mono font-semibold">{u.code}</b>
-                  {shortClient(u.currentClientName ?? "-")} · {polishPlural(daysBetween(parseDateOnly(u.plannedReturn!), today), "dzień", "dni", "dni")} po terminie
-                </button>
-              ))}
-              {dueSoon.map((u) => {
-                const left = daysBetween(today, parseDateOnly(u.plannedReturn!));
-                return (
-                  <button key={u.id} type="button" onClick={() => setOpenId(u.id)} className={cn("inline-flex min-h-11 max-w-full items-center gap-2 rounded-2xl border border-slate-200 bg-card px-3 py-1 text-left text-[0.8125rem] transition-colors duration-150 hover:bg-slate-50", controlFocusClass)}>
-                    <span className="h-2 w-2 flex-none rounded-full bg-primary" aria-hidden />
+            <section aria-labelledby="loaners-todo" className={rubricBoxClass}>
+              <div className={rubricHeadClass}>
+                <h2 id="loaners-todo" className={rubricLabelClass}>
+                  Do zrobienia
+                </h2>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 px-3 py-3">
+                {late.map((u) => (
+                  <button key={u.id} type="button" onClick={() => setOpenId(u.id)} className={cn(todoChipClass, "border-red-200 bg-red-50 text-red-900 hover:bg-red-100", controlFocusClass)}>
+                    <span className="h-2 w-2 flex-none rounded-full bg-red-600" aria-hidden />
                     <b className="flex-none whitespace-nowrap font-mono font-semibold">{u.code}</b>
-                    zwrot {left === 0 ? "dziś" : left === 1 ? "jutro" : `za ${left} dni`}
+                    {shortClient(u.currentClientName ?? "-")} · {polishPlural(daysBetween(parseDateOnly(u.plannedReturn!), today), "dzień", "dni", "dni")} po terminie
                   </button>
-                );
-              })}
-              {warn.length ? (
-                <span className="inline-flex h-8 items-center gap-2 rounded-full border border-slate-200 bg-card px-3 text-[0.8125rem]">
-                  <span className="h-2 w-2 flex-none rounded-full bg-amber-500" aria-hidden />
-                  {polishPlural(warn.length, "egzemplarz", "egzemplarze", "egzemplarzy")} ponad 14 dni
-                </span>
-              ) : null}
-            </div>
+                ))}
+                {dueSoon.map((u) => {
+                  const left = daysBetween(today, parseDateOnly(u.plannedReturn!));
+                  return (
+                    <button key={u.id} type="button" onClick={() => setOpenId(u.id)} className={cn(todoChipClass, "border-amber-200 bg-amber-50 text-amber-950 hover:bg-amber-100", controlFocusClass)}>
+                      <span className="h-2 w-2 flex-none rounded-full bg-amber-500" aria-hidden />
+                      <b className="flex-none whitespace-nowrap font-mono font-semibold">{u.code}</b>
+                      zwrot {left === 0 ? "dziś" : left === 1 ? "jutro" : `za ${left} dni`}
+                    </button>
+                  );
+                })}
+                {warn.length ? (
+                  <span className="inline-flex min-h-8 items-center gap-2 text-[0.8125rem] text-slate-600">
+                    <span className="h-2 w-2 flex-none rounded-full bg-amber-500" aria-hidden />
+                    {polishPlural(warn.length, "egzemplarz", "egzemplarze", "egzemplarzy")} ponad 14 dni u klienta
+                  </span>
+                ) : null}
+              </div>
+            </section>
           ) : null}
 
-          <section className="rounded-xl border border-slate-200 bg-card shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
-              <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5" role="group" aria-label="Widok">
+          <section aria-label="Obłożenie egzemplarzy" className={cn(rubricBoxClass, "overflow-hidden")}>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--sv-rule)] px-3 py-2">
+              <div className="inline-flex rounded-lg border border-[var(--sv-rule)] bg-[var(--sv-box)] p-0.5" role="group" aria-label="Widok">
                 {(["tl", "list"] as const).map((v) => (
                   <button
                     key={v}
@@ -469,7 +502,7 @@ export function LoanersBoard({
                     aria-pressed={view === v}
                     onClick={() => setView(v)}
                     className={cn(
-                      "h-8 rounded-md px-3 text-[0.8125rem] font-medium transition-colors duration-150",
+                      "min-h-11 rounded-md px-4 text-[0.8125rem] font-medium transition-colors duration-150",
                       controlFocusClass,
                       view === v ? "bg-segment-active text-slate-900 shadow-[var(--shadow-control)]" : "text-slate-500 hover:text-slate-800"
                     )}
@@ -481,7 +514,7 @@ export function LoanersBoard({
               <div className="flex flex-wrap gap-3.5 text-xs text-slate-500" aria-hidden>
                 <span className="inline-flex items-center gap-1.5"><i className="h-2 w-4 rounded-sm bg-primary" />u klienta</span>
                 <span className="inline-flex items-center gap-1.5"><i className="h-2 w-4 rounded-sm bg-amber-500" />ponad 14 dni</span>
-                <span className="inline-flex items-center gap-1.5"><i className="h-2 w-4 rounded-sm bg-red-500" />po terminie</span>
+                <span className="inline-flex items-center gap-1.5"><i className="h-2 w-4 rounded-sm bg-red-600" />po terminie</span>
                 <span className="inline-flex items-center gap-1.5"><i className="h-2 w-4 rounded-sm border border-dashed border-slate-300" />planowany zwrot</span>
                 <span className="inline-flex items-center gap-1.5"><i className="h-2 w-4 rounded-sm border border-slate-200 bg-slate-50" />wcześniej</span>
               </div>
@@ -504,7 +537,7 @@ export function LoanersBoard({
             <LoanerDrawer
               unit={openUnit}
               today={today}
-              orderNumber={orderByUnit[openUnit.id] ?? null}
+              order={orderByUnit[openUnit.id] ?? null}
               onClose={() => setOpenId(null)}
               onIssue={() => {
                 setOpenId(null);
