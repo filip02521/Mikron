@@ -42,11 +42,12 @@ export const DEPARTMENT_BOARD_QUESTIONS_FORM = {
   introBeforeLink: "Zamówienie towaru -",
   introLinkLabel: "Nowa prośba",
   expandHint: "Rozwiń",
-  imagesLabel: "Zdjęcia (opcjonalnie)",
+  imagesLabel: "Zdjęcia i pliki (opcjonalnie)",
   imagesHint:
-    "Do 3 zdjęć - wklej zrzut (Ctrl+V) albo wybierz plik (etykieta, opakowanie, Subiekt).",
-  imagesAdd: "Dodaj zdjęcie",
+    "Kliknij, przeciągnij albo wklej zrzut (Ctrl+V) · zdjęcia do 3, pliki PDF, Excel, Word, CSV do 5 (po 15 MB).",
+  imagesAdd: "Dodaj zdjęcia lub pliki",
   imagesAddMore: "Dodaj kolejne",
+  imagesDropHere: "Upuść, aby dołączyć do pytania",
   imagesCompressing: "Przetwarzanie zdjęć…",
   imagesTooMany: "Możesz dodać maksymalnie 3 zdjęcia.",
   imagesPasteAriaLabel: "Wklej zdjęcie ze schowka (Ctrl+V)",
@@ -60,15 +61,15 @@ export const DEPARTMENT_BOARD_QUESTIONS_FORM = {
 /** Formularz odpowiedzi w wątku (zakupy ↔ handlowiec). */
 export const DEPARTMENT_BOARD_REPLY_COMPOSER = {
   placeholder: "Treść wiadomości…",
-  placeholderWithImages: "Dodaj opis do zdjęcia (opcjonalnie)…",
-  attach: "Zdjęcie",
-  attachAriaLabel: "Dodaj zdjęcie do odpowiedzi",
-  hint: "Wklej zrzut (Ctrl+V) lub przeciągnij zdjęcie",
-  dropHere: "Upuść, aby dołączyć zdjęcie",
+  placeholderWithImages: "Dodaj opis do załączników (opcjonalnie)…",
+  attach: "Zdjęcie lub plik",
+  attachAriaLabel: "Dodaj zdjęcie lub plik (PDF, Excel, Word, CSV) do odpowiedzi",
+  hint: "Wklej zrzut (Ctrl+V) albo przeciągnij zdjęcie lub plik",
+  dropHere: "Upuść, aby dołączyć",
   compressing: "Przygotowuję zdjęcie…",
   send: "Wyślij",
   sending: "Wysyłanie…",
-  sendingImages: "Wysyłanie zdjęć…",
+  sendingImages: "Wysyłanie załączników…",
   shortcut: "Ctrl+Enter wysyła",
 };
 

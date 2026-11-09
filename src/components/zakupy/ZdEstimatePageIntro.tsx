@@ -40,6 +40,8 @@ export function ZdEstimatePageIntro({
   facts,
   /** Slot akcji (Zmień zakres, menu Dostawcy/Reguły). */
   actions,
+  /** Panel pod nagłówkiem na pełną szerokość (najważniejsze parametry zakresu). */
+  panel,
   hint,
   hintAriaLabel = "O kreatorze ZD",
   host = null,
@@ -51,6 +53,7 @@ export function ZdEstimatePageIntro({
   scopeLabel?: string | null;
   facts?: ReactNode;
   actions?: ReactNode;
+  panel?: ReactNode;
   hint?: string;
   hintAriaLabel?: string;
   host?: ZdEstimateHostStrip | null;
@@ -240,6 +243,7 @@ export function ZdEstimatePageIntro({
             {factsNode}
           </div>
         ) : null}
+        {panel ? <div className="min-w-0 pb-1">{panel}</div> : null}
       </div>
     </header>
   );

@@ -16,7 +16,7 @@ vi.mock("@/app/actions/department-board", () => ({
   actionGetBoardQuestionImageUrl: vi.fn().mockResolvedValue({ url: null }),
 }));
 
-import { actionMarkQuestionThreadSeen } from "@/app/actions/department-board";
+import { actionMarkQuestionThreadSeen, actionReplyToQuestion } from "@/app/actions/department-board";
 
 class MockIntersectionObserver implements IntersectionObserver {
   readonly root = null;
@@ -270,14 +270,29 @@ describe("QuestionThreadCard", () => {
     expect(screen.getByTitle("W wątku: zdjęcie")).toBeTruthy();
   });
 
-  it("formularz odpowiedzi ma przycisk zdjęcia; wysyłka zablokowana bez treści", () => {
+  it("formularz odpowiedzi ma przycisk zdjęcia lub pliku; wysyłka zablokowana bez treści", () => {
     render(<QuestionThreadCard question={testQuestion()} embedded defaultExpanded canReply />);
-    expect(screen.getByRole("button", { name: "Dodaj zdjęcie do odpowiedzi" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Dodaj zdjęcie lub plik/ })).toBeTruthy();
     const send = screen.getByRole("button", { name: "Wyślij" }) as HTMLButtonElement;
     expect(send.disabled).toBe(true);
     fireEvent.change(screen.getByLabelText("Doprecyzowanie"), {
       target: { value: "Jest na stanie" },
     });
     expect(send.disabled).toBe(false);
+  });
+
+  it("odpowiedź z plikiem PDF: plik na liście, trafia do akcji, wysyłka bez treści możliwa", async () => {
+    vi.mocked(actionReplyToQuestion).mockResolvedValue({ post: {} } as never);
+    const { container } = render(<QuestionThreadCard question={testQuestion()} embedded defaultExpanded canReply />);
+    const input = container.querySelector("input[type=file]") as HTMLInputElement;
+    const pdf = new File(["%PDF-1.7 oferta"], "oferta.pdf", { type: "application/pdf" });
+    fireEvent.change(input, { target: { files: [pdf] } });
+    expect(await screen.findByText("oferta.pdf")).toBeTruthy();
+    const send = screen.getByRole("button", { name: "Wyślij" }) as HTMLButtonElement;
+    expect(send.disabled).toBe(false);
+    fireEvent.click(send);
+    await waitFor(() => expect(actionReplyToQuestion).toHaveBeenCalled());
+    const args = vi.mocked(actionReplyToQuestion).mock.calls[0]!;
+    expect((args[4] as File[]).map((f) => f.name)).toEqual(["oferta.pdf"]);
   });
 });

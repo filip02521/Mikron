@@ -147,12 +147,14 @@ export async function logNormalHistory(
   userEmail: string
 ) {
   const supabase = createAdminClient();
-  await supabase.from("normal_order_history").insert({
+  const { error } = await supabase.from("normal_order_history").insert({
     supplier_id: supplierId,
     action,
     user_email: userEmail,
     next_date: dateToIso(nextDate),
   });
+  // Plan jest już zapisany — brak wpisu w historii nie cofa akcji, ale ma być widoczny w logach.
+  if (error) console.error("[normal_order_history] insert failed", supplierId, error.message);
   scheduleHistoryRetentionPurge();
 }
 
@@ -179,7 +181,7 @@ export async function markStandardOrdered(
     throw new Error("Nie udało się ustalić daty bieżącej.");
   }
 
-  await supabase.from("supplier_schedules").upsert(
+  const { error: scheduleError } = await supabase.from("supplier_schedules").upsert(
     {
       supplier_id: supplierId,
       order_date: orderDateKey,
@@ -188,6 +190,8 @@ export async function markStandardOrdered(
     },
     { onConflict: "supplier_id" }
   );
+  // Bez zapisanej daty zamówienia przeliczenie dałoby stary termin, a akcja zgłosiłaby sukces.
+  if (scheduleError) throw new Error(`Nie udało się zapisać zamówienia w planie: ${scheduleError.message}`);
 
   await recalcSupplierSchedule(supplierId);
 
@@ -234,7 +238,7 @@ export async function shiftSupplierOrder(
     throw new Error("Brak parametrów przesunięcia");
   }
 
-  await supabase.from("supplier_schedules").upsert(
+  const { error: shiftError } = await supabase.from("supplier_schedules").upsert(
     {
       supplier_id: supplierId,
       order_date: schedule?.order_date,
@@ -243,6 +247,7 @@ export async function shiftSupplierOrder(
     },
     { onConflict: "supplier_id" }
   );
+  if (shiftError) throw new Error(`Nie udało się przesunąć terminu: ${shiftError.message}`);
 
   await recalcSupplierSchedule(supplierId);
   const { data: updatedSchedule } = await supabase
