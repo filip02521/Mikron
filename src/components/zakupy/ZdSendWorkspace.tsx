@@ -539,7 +539,7 @@ export function ZdSendWorkspace({
     setConfirm(merged);
     setMailIssue(null);
     setSendStartedAt(Date.now());
-    setStep("mail", { status: "running", message: gmail ? `Wysyłam z ${gmail.email}…` : "Wysyłam…" });
+    setStep("mail", { status: "running", message: `Wysyłam z ${gmail.email}…` });
     showProgress();
     const res: SendZdToSupplierResult = live
       ? await actionSendZdToSupplier({
