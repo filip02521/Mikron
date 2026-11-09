@@ -27,12 +27,15 @@ import type { BoardQuestionProductDraft } from "@/lib/department-board/question-
 import { BoardQuestionProductField } from "@/components/department-board/BoardQuestionProductField";
 import {
   BoardQuestionImagesField,
-  type BoardQuestionImageDraft,
 } from "@/components/department-board/BoardQuestionImagesField";
-import { imageFilesFromClipboardData } from "@/lib/department-board/attachments";
+import { useBoardFileDrop } from "@/components/department-board/BoardAttachmentTray";
+import type { useBoardQuestionImages } from "@/components/department-board/useBoardQuestionImages";
+import { boardFilesFromClipboardData } from "@/lib/department-board/attachments";
 import { cn } from "@/lib/cn";
 import { floatingToastBottomClass } from "@/lib/ui/sales-mobile-chrome";
 import { brandLinkClass, salesTypography } from "@/lib/ui/ontime-theme";
+
+type BoardQuestionAttachments = ReturnType<typeof useBoardQuestionImages>;
 
 function QuestionFormIntro() {
   return (
@@ -49,9 +52,7 @@ function QuestionFormFields({
   title,
   body,
   product,
-  images,
-  imagesError,
-  imagesCompressing,
+  attachments,
   error,
   saving,
   tourDemo,
@@ -59,17 +60,14 @@ function QuestionFormFields({
   onTitleChange,
   onBodyChange,
   onProductChange,
-  onAddImages,
-  onRemoveImage,
   onSubmit,
   idPrefix,
 }: {
   title: string;
   body: string;
   product: BoardQuestionProductDraft;
-  images: BoardQuestionImageDraft[];
-  imagesError: string | null;
-  imagesCompressing: boolean;
+  /** Zdjęcia i pliki z `useBoardQuestionImages()` (wspólny stan z rodzicem — czyści się po wysłaniu). */
+  attachments: BoardQuestionAttachments;
   error: string | null;
   saving: boolean;
   tourDemo: boolean;
@@ -77,13 +75,17 @@ function QuestionFormFields({
   onTitleChange: (value: string) => void;
   onBodyChange: (value: string) => void;
   onProductChange: (patch: Partial<BoardQuestionProductDraft>) => void;
-  onAddImages: (files: FileList | File[]) => void | Promise<void>;
-  onRemoveImage: (key: string) => void;
   onSubmit: () => void | Promise<void>;
   idPrefix: string;
 }) {
   const bodyRef = useRef<HTMLTextAreaElement>(null);
-  const busy = saving || imagesCompressing;
+  // Kompresja zdjęcia nie blokuje pisania — tylko wysyłkę.
+  const busy = saving;
+  const preparing = attachments.compressing;
+  const { dragging, dropProps } = useBoardFileDrop({
+    disabled: tourDemo || busy,
+    onFiles: (files) => void attachments.addFiles(files),
+  });
   const missingTitle = !title.trim();
   const missingBody = !body.trim();
   const missingHint =
@@ -97,17 +99,18 @@ function QuestionFormFields({
 
   function handlePaste(event: ClipboardEvent) {
     if (tourDemo || busy) return;
-    const files = imageFilesFromClipboardData(event.clipboardData);
+    const files = boardFilesFromClipboardData(event.clipboardData);
     if (!files.length) return;
-    // Tylko obraz — zwykły tekst wkleja się normalnie w tytuł / treść.
+    // Tylko pliki (zrzut, skopiowany PDF) — zwykły tekst wkleja się normalnie w tytuł / treść.
     event.preventDefault();
-    void onAddImages(files);
+    void attachments.addFiles(files);
   }
 
   return (
     <div
       className={embedded ? boardQuestionsFormEmbeddedBodyClass : boardQuestionsFormBodyClass}
       onPaste={handlePaste}
+      {...dropProps}
     >
       <QuestionFormIntro />
 
@@ -153,11 +156,18 @@ function QuestionFormFields({
       </div>
 
       <BoardQuestionImagesField
-        images={images}
+        images={attachments.images}
+        docs={attachments.docs}
+        pendingImages={attachments.pendingImages}
+        issues={attachments.issues}
+        onDismissIssues={attachments.dismissIssues}
+        totalBytes={attachments.totalBytes}
         disabled={tourDemo || busy}
-        error={imagesError}
-        onAddFiles={onAddImages}
-        onRemove={onRemoveImage}
+        sending={saving}
+        dragging={dragging}
+        onAddFiles={attachments.addFiles}
+        onRemove={attachments.removeImage}
+        onRemoveDoc={attachments.removeDoc}
       />
 
       {error ? <p className="text-xs text-red-700">{error}</p> : null}
@@ -171,12 +181,12 @@ function QuestionFormFields({
         <Button
           size="sm"
           aria-describedby={missingHint ? `${idPrefix}-submit-hint` : undefined}
-          disabled={tourDemo || busy || Boolean(missingHint)}
+          disabled={tourDemo || busy || preparing || Boolean(missingHint)}
           onClick={() => void onSubmit()}
         >
           {tourDemo
             ? "Podgląd - bez wysyłki"
-            : imagesCompressing
+            : preparing
               ? DEPARTMENT_BOARD_QUESTIONS_FORM.imagesCompressing
               : saving
                 ? DEPARTMENT_BOARD_QUESTIONS_FORM.submitting
@@ -191,9 +201,7 @@ export function DepartmentBoardQuestionForm({
   title,
   body,
   product,
-  images,
-  imagesError,
-  imagesCompressing,
+  attachments,
   error,
   saving,
   tourDemo,
@@ -203,16 +211,13 @@ export function DepartmentBoardQuestionForm({
   onTitleChange,
   onBodyChange,
   onProductChange,
-  onAddImages,
-  onRemoveImage,
   onSubmit,
 }: {
   title: string;
   body: string;
   product: BoardQuestionProductDraft;
-  images: BoardQuestionImageDraft[];
-  imagesError: string | null;
-  imagesCompressing: boolean;
+  /** Zdjęcia i pliki z `useBoardQuestionImages()` (wspólny stan z rodzicem — czyści się po wysłaniu). */
+  attachments: BoardQuestionAttachments;
   error: string | null;
   saving: boolean;
   tourDemo: boolean;
@@ -223,8 +228,6 @@ export function DepartmentBoardQuestionForm({
   onTitleChange: (value: string) => void;
   onBodyChange: (value: string) => void;
   onProductChange: (patch: Partial<BoardQuestionProductDraft>) => void;
-  onAddImages: (files: FileList | File[]) => void | Promise<void>;
-  onRemoveImage: (key: string) => void;
   onSubmit: () => void | Promise<void>;
 }) {
   const [userExpanded, setUserExpanded] = useState<boolean | null>(null);
@@ -244,17 +247,13 @@ export function DepartmentBoardQuestionForm({
     title,
     body,
     product,
-    images,
-    imagesError,
-    imagesCompressing,
+    attachments,
     error,
     saving,
     tourDemo,
     onTitleChange,
     onBodyChange,
     onProductChange,
-    onAddImages,
-    onRemoveImage,
     onSubmit: () => submit(),
   };
 

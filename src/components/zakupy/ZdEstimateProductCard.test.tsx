@@ -2,7 +2,7 @@
  * @vitest-environment happy-dom
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 
 const historyMock = vi.hoisted(() => vi.fn());
 vi.mock("@/app/actions/zd-estimate", () => ({
@@ -25,6 +25,22 @@ const line = {
   pair: null,
   salesProfile: null,
 } as unknown as ManualZdEstimateLine;
+
+const recent = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+const movementHistory = {
+  sales: {
+    ok: true,
+    truncated: false,
+    rows: [
+      { rola: "fs", dokNr: "FS 7", date: recent(10), khId: 1, khSymbol: "LAB", khName: "Lab Ortho", pieces: 30 },
+      { rola: "pa", dokNr: "PA 1", date: recent(40), khId: 3306, khSymbol: "PARAGON", khName: "PARAGON", pieces: 2 },
+    ],
+  },
+  purchases: {
+    ok: true,
+    rows: [{ twId: 10, dokNr: "ZD 41/2026", date: recent(30), qty: 36, priceNet: 52.5, fzDate: recent(20), fzNr: "FZ 7/2026", fzCount: 1 }],
+  },
+};
 
 function renderCard(extra: Partial<Parameters<typeof ZdEstimateProductCard>[0]> = {}) {
   const props = {
@@ -49,7 +65,10 @@ function renderCard(extra: Partial<Parameters<typeof ZdEstimateProductCard>[0]> 
 }
 
 describe("ZdEstimateProductCard", () => {
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    window.localStorage.clear();
+  });
   beforeEach(() =>
     historyMock.mockResolvedValue({ sales: { ok: true, rows: [], truncated: false }, purchases: { ok: true, rows: [] } })
   );
@@ -157,6 +176,67 @@ describe("ZdEstimateProductCard", () => {
     expect(await screen.findByText(/Sprzedaż niedostępna: brak hosta/)).toBeTruthy();
     expect(screen.getByText(/Brak ZD z tym towarem/)).toBeTruthy();
     expect(screen.getByText(/Brak do celu/)).toBeTruthy();
+  });
+
+  it("sekcje zwijają się, pełny widok otwiera sekcję, Esc wraca do karty, a dopiero drugi Esc zamyka", async () => {
+    historyMock.mockResolvedValueOnce(movementHistory);
+    const p = renderCard();
+    fireEvent.click(screen.getByRole("button", { name: /Dlaczego tyle/ }));
+    expect(screen.queryByText(/Brak do celu/)).toBeNull();
+    expect(JSON.parse(window.localStorage.getItem("ontime.zdProductCard.collapsed")!)).toEqual({ why: true });
+    expect((await screen.findAllByText("Lab Ortho")).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getAllByRole("button", { name: "Pełny widok" })[0]!);
+    expect(screen.getByRole("button", { name: /Cała karta/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Dlaczego tyle/ })).toBeNull();
+    vi.useFakeTimers();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(p.onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /Dlaczego tyle/ })).toBeTruthy();
+    fireEvent.keyDown(window, { key: "Escape" });
+    vi.runAllTimers();
+    vi.useRealTimers();
+    expect(p.onClose).toHaveBeenCalledOnce();
+  });
+
+  it("ruch towaru: dostawa na plus, sprzedaż na minus, filtr rodzaju i zakres dat zawężają dziennik", async () => {
+    historyMock.mockResolvedValueOnce(movementHistory);
+    renderCard();
+    await screen.findByText("Przyjęto");
+    const movement = () => screen.getAllByRole("region", { name: "Ruch towaru" })[0]!;
+    // Dostawa 36 worków po 5 szt = +180 szt (Petrol), sprzedaż −30 szt.
+    expect(within(movement()).getAllByText("+180 szt").length).toBe(2);
+    expect(within(movement()).getByText("Lab Ortho")).toBeTruthy();
+    fireEvent.click(within(movement()).getByRole("button", { name: /^Sprzedaż \d/ }));
+    expect(within(movement()).queryByText("Lab Ortho")).toBeNull();
+    expect(within(movement()).getByText("Dostawa")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "własny" }));
+    fireEvent.change(screen.getByLabelText("Od"), { target: { value: "2026-09-10" } });
+    fireEvent.change(screen.getByLabelText("Do"), { target: { value: "2026-09-20" } });
+    expect(screen.getByText(/10\.09–20\.09\.2026/)).toBeTruthy();
+    expect(screen.getByText("Brak sprzedaży w wybranym okresie.")).toBeTruthy();
+  });
+
+  it("sprzedaż: kliknięty klient zawęża dokumenty, chip zdejmuje filtr", async () => {
+    historyMock.mockResolvedValueOnce(movementHistory);
+    renderCard();
+    const lab = await screen.findByRole("button", { name: /Lab Ortho/, pressed: false });
+    const docs = () => screen.getByRole("region", { name: "Dokumenty sprzedaży" });
+    expect(within(docs()).getByText("Paragon")).toBeTruthy();
+    fireEvent.click(lab);
+    expect(within(docs()).queryByText("Paragon")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Usuń filtr klienta Lab Ortho" }));
+    expect(within(docs()).getByText("Paragon")).toBeTruthy();
+  });
+
+  it("pełny widok: fokus na „Cała karta”, po Esc wraca na „Pełny widok” tej sekcji", async () => {
+    historyMock.mockResolvedValueOnce(movementHistory);
+    renderCard();
+    await screen.findByText("Przyjęto");
+    const sales = screen.getAllByRole("button", { name: "Pełny widok" })[1]!;
+    fireEvent.click(sales);
+    expect(document.activeElement?.textContent).toMatch(/Cała karta/);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(document.activeElement).toBe(screen.getAllByRole("button", { name: "Pełny widok" })[1]);
   });
 
   it("para: stan pokazany osobno dla sztuk i paczek, plus pokrycie pary", () => {

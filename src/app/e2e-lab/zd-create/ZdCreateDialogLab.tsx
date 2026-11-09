@@ -111,6 +111,7 @@ export function ZdCreateDialogLab({
   real?: { dokId: number; supplierName: string };
 }) {
   const [simulation, setSimulation] = useState<ZdSendSimulation>("ok");
+  const [labGmail, setLabGmail] = useState(true);
   const [scenario, setScenario] = useState<Scenario | null>("typical");
   const typical = scenario === "typical";
   const lines = scenario === "simple" ? LINES.slice(0, 2) : LINES;
@@ -153,14 +154,20 @@ export function ZdCreateDialogLab({
           >
             <option value="ok">wszystko się udaje</option>
             <option value="termin_error">błąd zapisu terminu (potem ponów)</option>
+            <option value="attach_slow">załącznik przygotowuje się długo (40 s)</option>
+            <option value="attach_error">Subiekt nie oddał wydruku ZD</option>
           </select>
+          <input type="checkbox" checked={labGmail} onChange={(e) => setLabGmail(e.target.checked)} className="ml-3" />
+          Gmail połączony (symulacja)
         </label>
       ) : null}
       {scenario?.startsWith("post_") ? (
         <ZdEstimatePostCreatePanel
-          key={`${scenario}-${simulation}`}
+          key={`${scenario}-${simulation}-${labGmail}`}
           previewOnly
           sendSimulation={simulation}
+          simulatedDocument={!real}
+          simulatedGmail={labGmail ? { configured: true, email: "zakupy@example.com", signature: "--\nDział zakupów" } : null}
           session={postSession(
             supplierId,
             scenario === "post_timeout" ? "timeout_recovery" : "created",

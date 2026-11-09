@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { actionFetchZdEstimateProductHistory, actionFetchZdProductOlderPurchases } from "@/app/actions/zd-estimate";
 import { ZdProductNote } from "@/components/zakupy/ZdProductNote";
 import {
@@ -11,11 +11,12 @@ import {
   onRequestPatternSummary,
 } from "@/lib/orders/zd-on-request-detect";
 import { warsawDateKeyDaysAgo } from "@/lib/time/warsaw";
-import { IconChevronLeft, IconChevronRight, IconX } from "@/components/icons/StrokeIcons";
+import { IconChevronDown, IconChevronLeft, IconChevronRight, IconLayoutPanel, IconX } from "@/components/icons/StrokeIcons";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ZdSalesProfileCardContent, type ZdSalesChartOrderMark } from "@/components/zakupy/ZdSalesSparkline";
 import {
+  ZdHistoryRangeBar,
   ZdProductMovementSection,
   ZdProductPurchasesSection,
   ZdProductSalesSections,
@@ -37,6 +38,8 @@ import { zdEstimateDaysOfCover } from "@/lib/orders/zd-estimate-sort";
 import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 import { sidePanelBackdropClass, sidePanelCloseButtonClass, sidePanelHeaderClass } from "@/lib/ui/surfaces";
 import { useAnimatedClose } from "@/lib/ui/use-animated-close";
+import { panelTypography } from "@/lib/ui/ontime-theme";
+import { resolveZdHistoryRange, type ZdHistoryRangeState } from "@/lib/orders/zd-product-range";
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -110,6 +113,85 @@ function isTypingTarget(el: EventTarget | null): boolean {
   return el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
 }
 
+type CardSectionId = "why" | "note" | "movement" | "sales" | "buy" | "profile" | "pair";
+const HISTORY_SECTIONS: Partial<Record<CardSectionId, string>> = { movement: "Ruch towaru", sales: "Sprzedaż", buy: "Nasze zakupy" };
+const PREF_WIDE = "ontime.zdProductCard.wide";
+const PREF_COLLAPSED = "ontime.zdProductCard.collapsed";
+
+/** Wygoda jednego użytkownika (szerokość, zwinięte sekcje): brak dostępu do pamięci przeglądarki niczego nie psuje. */
+function readPref<T>(key: string, fallback: T): T {
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw == null ? fallback : (JSON.parse(raw) as T);
+  } catch {
+    return fallback;
+  }
+}
+function writePref(key: string, value: unknown) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* tryb prywatny / zablokowane dane strony */
+  }
+}
+
+/** Sekcja karty: nagłówek zwija i rozwija, „Pełny widok” otwiera ją na całą szerokość panelu. */
+function CardSection({
+  id,
+  titleId,
+  title,
+  summary,
+  collapsed,
+  onToggle,
+  onFocus,
+  children,
+}: {
+  id: CardSectionId;
+  titleId: string;
+  title: string;
+  summary?: string | null;
+  collapsed: boolean;
+  onToggle: () => void;
+  onFocus?: () => void;
+  children: React.ReactNode;
+}) {
+  const bodyId = `${titleId}-body-${id}`;
+  return (
+    <section aria-labelledby={`${titleId}-h-${id}`}>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-expanded={!collapsed}
+          aria-controls={bodyId}
+          onClick={onToggle}
+          className="-mx-1.5 flex min-h-9 min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-md px-1.5 text-left transition-colors duration-150 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          <IconChevronDown size={15} open={!collapsed} className="shrink-0 text-slate-500" aria-hidden />
+          <h3 id={`${titleId}-h-${id}`} className={cn(panelTypography.sectionTitle, "shrink-0")}>
+            {title}
+          </h3>
+          {summary ? <span className="min-w-0 truncate text-xs tabular-nums text-slate-500">{summary}</span> : null}
+        </button>
+        {onFocus ? (
+          <button
+            type="button"
+            id={`${titleId}-full-${id}`}
+            onClick={onFocus}
+            className="inline-flex min-h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-indigo-700 transition-colors duration-150 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus max-sm:min-h-10"
+          >
+            Pełny widok
+          </button>
+        ) : null}
+      </div>
+      {!collapsed ? (
+        <div id={bodyId} className="mt-2">
+          {children}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 export type ZdEstimateProductCardActions = {
   onEditPackaging?: () => void;
   onEditMinStock?: () => void;
@@ -180,6 +262,40 @@ export function ZdEstimateProductCard({
   const pairKey = activePair ? { twinTwId: activePair.twinTwId, unitsPerPack: activePair.unitsPerPack } : null;
   const baseHistory = useProductHistory(line.tw_Id, pairKey);
   const { history, older, loadOlder } = useOlderPurchases(line.tw_Id, pairKey, baseHistory);
+  // Zakres historii (tylko widok): wspólny dla ruchu, sprzedaży i zakupów, zostaje przy ←/→ między towarami.
+  const [rangeState, setRangeState] = useState<ZdHistoryRangeState>({ preset: "12m" });
+  const range = useMemo(() => resolveZdHistoryRange(rangeState, salesWindow, warsawDateKeyDaysAgo(0)), [rangeState, salesWindow]);
+  const wantsOlder = range.from == null || range.from < warsawDateKeyDaysAgo(365);
+  useEffect(() => {
+    // Zakres sprzed 12 miesięcy nocnego odczytu ZD: zakupy dociągamy z kopii ZD sami, bez dodatkowego kliknięcia.
+    if (wantsOlder && history.status === "ok") loadOlder();
+  }, [wantsOlder, history.status, line.tw_Id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [wide, setWide] = useState(() => readPref(PREF_WIDE, false));
+  const [collapsed, setCollapsed] = useState<Partial<Record<CardSectionId, boolean>>>(() => readPref(PREF_COLLAPSED, {}));
+  const [focus, setFocus] = useState<CardSectionId | null>(null);
+  // Klawiatura: wejście w pełny widok stawia fokus na „Cała karta”, wyjście wraca na „Pełny widok” tej sekcji.
+  const backRef = useRef<HTMLButtonElement>(null);
+  const lastFocusRef = useRef<CardSectionId | null>(null);
+  useEffect(() => {
+    if (focus) {
+      lastFocusRef.current = focus;
+      backRef.current?.focus();
+    } else if (lastFocusRef.current) {
+      document.getElementById(`${titleId}-full-${lastFocusRef.current}`)?.focus();
+      lastFocusRef.current = null;
+    }
+  }, [focus, titleId]);
+  const toggleWide = () =>
+    setWide((v) => {
+      writePref(PREF_WIDE, !v);
+      return !v;
+    });
+  const toggleSection = (id: CardSectionId) =>
+    setCollapsed((cur) => {
+      const next = { ...cur, [id]: !cur[id] };
+      writePref(PREF_COLLAPSED, next);
+      return next;
+    });
   const packLabel = qty.packageLabel.trim() || "op.";
   const purchaseUnit = (r: ZdProductPurchaseRow): { label: string; piecesPerUnit: number | null } => {
     if (activePair && r.twId !== line.tw_Id) return { label: "szt", piecesPerUnit: null };
@@ -234,7 +350,9 @@ export function ZdEstimateProductCard({
       if (panel && e.target instanceof Node && e.target !== document.body && !panel.contains(e.target)) return;
       if (e.key === "Escape") {
         e.preventDefault();
-        requestClose();
+        // Z pełnego widoku sekcji Esc wraca do całej karty, dopiero potem ją zamyka.
+        if (focus) setFocus(null);
+        else requestClose();
         return;
       }
       if (isTypingTarget(e.target)) return;
@@ -266,7 +384,7 @@ export function ZdEstimateProductCard({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onPrev, onNext, requestClose, panelRef]);
+  }, [onPrev, onNext, requestClose, panelRef, focus]);
 
   const label = qty.packageLabel.trim() || "op.";
   const pallets = isPackagingPackagesMode(qty.documentUnitMode) && qty.orderMultiple >= 2 ? qty.orderMultiple : null;
@@ -295,6 +413,8 @@ export function ZdEstimateProductCard({
       : shownUnits !== qty.zdUnits
         ? `Na ZD: ${formatQty(shownUnits)} ${qty.hasPackaging && isPackagingPackagesMode(qty.documentUnitMode) ? `× ${label}` : "szt"} (wpisane ręcznie)`
         : (preview?.orderLine ?? `Na ZD: ${formatQty(shownUnits)} szt`);
+  const result = [...steps].reverse().find((s) => s.kind === "result" && s.unit);
+  const whySummary = result ? `= ${formatQty(result.value)} ${result.unit}` : null;
   const coverLine = [
     days == null ? "nie sprzedaje się w oknie" : days <= 0 ? "brak dostępnego towaru" : `starczy na ${formatQty(Math.round(days * 10) / 10)} d`,
     lead != null ? `dostawa ~${lead} d` : null,
@@ -320,7 +440,11 @@ export function ZdEstimateProductCard({
         ref={(el) => {
           panelRef.current = el;
         }}
-        className="panel-slide-enter fixed inset-y-0 right-0 z-[49] flex w-full max-w-xl flex-col border-l border-slate-200/80 bg-raised shadow-[var(--shadow-card-elevated)]"
+        className={cn(
+          "panel-slide-enter fixed inset-y-0 right-0 z-[49] flex w-full flex-col transition-[max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+          wide || focus ? "max-w-[min(100vw,72rem)]" : "max-w-xl",
+          " border-l border-slate-200/80 bg-raised shadow-[var(--shadow-card-elevated)]"
+        )}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -351,6 +475,16 @@ export function ZdEstimateProductCard({
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                onClick={toggleWide}
+                aria-pressed={wide}
+                title={wide ? "Węższy panel: jedna kolumna" : "Szerszy panel: decyzja obok historii"}
+                className="mr-1 hidden min-h-8 items-center gap-1.5 rounded-md border border-slate-200 bg-card px-2.5 text-xs font-medium text-slate-700 transition-colors duration-150 hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus lg:inline-flex"
+              >
+                <IconLayoutPanel size={14} aria-hidden />
+                {wide ? "Zwęź" : "Poszerz"}
+              </button>
               <span className="mr-1 text-xs tabular-nums text-slate-500" aria-live="polite">
                 {position.index + 1} / {position.total}
               </span>
@@ -385,111 +519,168 @@ export function ZdEstimateProductCard({
           </div>
         </header>
 
-        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5" {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}>
-          <section className="rounded-md border border-slate-200 bg-slate-50 px-3.5 py-3" aria-label="Decyzja">
-            <p className="text-sm font-semibold tabular-nums text-slate-900">{decision}</p>
-            <p className={cn("mt-0.5 text-xs", lead != null && days != null && days < lead ? "text-red-700" : "text-slate-600")}>
-              {coverLine}
-            </p>
-            {comparePieces != null && Math.round(comparePieces) !== piecesArrivingForZdUnitsFromQty(shownUnits, qty) ? (
-              <p className="mt-1 text-xs tabular-nums text-slate-600">
-                Strategia „jak dotąd”: {formatQty(comparePieces)} szt
-              </p>
-            ) : null}
-          </section>
-
-          {onRequestPattern?.likely && !status.onRequest && !status.excluded ? (
-            <section className="rounded-md border border-slate-200 bg-card px-3.5 py-3" aria-label="Podpowiedź: towar na prośbę">
-              <p className="text-sm font-medium text-slate-900">Wygląda na towar na prośbę</p>
-              <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{onRequestPatternSummary(onRequestPattern)}</p>
-              {actions.onMarkOnRequest ? (
-                <Button type="button" size="sm" variant="outline" className="mt-2 max-sm:min-h-10" disabled={!canMutate} onClick={actions.onMarkOnRequest}>
-                  Oznacz „tylko na prośbę”
-                </Button>
-              ) : null}
-            </section>
-          ) : onRequestPattern?.stockLike && !onRequestPattern.likely && status.onRequest ? (
-            <section className="rounded-md border border-slate-200 bg-card px-3.5 py-3" aria-label="Podpowiedź: sprzedaje się jak magazynowy">
-              <p className="text-sm font-medium text-slate-900">Oznaczony „na prośbę”, a sprzedaje się jak magazynowy</p>
-              <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
-                Kupuje go {onRequestPattern.customers} klientów w roku, dostaw nie bierze w całości jeden klient.
-              </p>
-              {actions.onClearOnRequest ? (
-                <Button type="button" size="sm" variant="ghost" className="mt-2 max-sm:min-h-10" disabled={!canMutate} onClick={actions.onClearOnRequest}>
-                  Zdejmij „na prośbę”
-                </Button>
-              ) : null}
-            </section>
-          ) : null}
-
-          <ZdProductNote
-            twId={line.tw_Id}
-            symbol={line.tw_Symbol ?? null}
-            name={line.tw_Nazwa ?? null}
-            canEdit={canMutate}
-            titleId={titleId}
-          />
-
-          <ZdProductPurchasesSection state={history} titleId={titleId} unitFor={purchaseUnit} older={older} onLoadOlder={loadOlder} />
-
-          <ZdProductMovementSection
-            state={history}
-            titleId={titleId}
-            unitFor={purchaseUnit}
-            salesWindow={salesWindow}
-            older={older}
-            onLoadOlder={loadOlder}
-          />
-
-          {line.salesProfile && line.salesProfile.windows.length > 0 ? (
-            <section aria-labelledby={`${titleId}-sales`}>
-              <h3 id={`${titleId}-sales`} className="text-xs font-semibold text-slate-600">
-                Sprzedaż i nasze ZD
-              </h3>
-              <div className="mt-1.5 text-xs leading-relaxed text-slate-800">
-                <ZdSalesProfileCardContent profile={line.salesProfile} orders={orderMarks} />
-              </div>
-            </section>
-          ) : null}
-
-          <ZdProductSalesSections state={history} titleId={titleId} />
-
-          {pairStockRows.length > 0 ? (
-            <section aria-labelledby={`${titleId}-stock`}>
-              <h3 id={`${titleId}-stock`} className="text-xs font-semibold text-slate-600">
-                Stan pary
-              </h3>
-              <dl className="mt-1.5 grid grid-cols-3 gap-px overflow-hidden rounded-md border border-slate-200 bg-slate-200 text-sm">
-                {pairStockRows.map(([label, value]) => (
-                  <div key={label} className="bg-card px-2.5 py-1.5">
-                    <dt className="text-xs text-slate-600">{label}</dt>
-                    <dd className="tabular-nums font-medium text-slate-900">{formatQty(Number(value) || 0)} szt</dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
-          ) : null}
-
-          <section aria-labelledby={`${titleId}-why`}>
-            <h3 id={`${titleId}-why`} className="text-xs font-semibold text-slate-600">
-              Dlaczego tyle
-            </h3>
-            <ol className="mt-1.5 divide-y divide-slate-100 rounded-md border border-slate-200">
-              {steps.map((s) => (
-                <li key={s.key} className="flex items-baseline justify-between gap-3 px-3 py-1.5 text-sm">
-                  <span className={cn(s.kind === "result" ? "font-medium text-slate-900" : "text-slate-700", s.kind === "note" && "italic")}>
-                    {s.kind === "minus" ? "− " : s.kind === "plus" ? "+ " : s.kind === "result" ? "= " : ""}
-                    {s.label}
-                  </span>
-                  {s.unit ? (
-                    <span className={cn("shrink-0 tabular-nums", s.kind === "result" ? "font-semibold text-slate-900" : "text-slate-700")}>
-                      {formatQty(s.value)} {s.unit}
-                    </span>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5" {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}>
+          {/* key={line.tw_Id} w sekcjach historii: filtry (klient, tydzień, rozwinięte listy) nie przechodzą na kolejny towar po ←/→. */}
+          {focus ? (
+            <div className="space-y-4">
+              <button
+                ref={backRef}
+                type="button"
+                onClick={() => setFocus(null)}
+                className="-ml-1.5 inline-flex min-h-8 items-center gap-1 rounded-md px-1.5 text-sm font-medium text-indigo-700 transition-colors duration-150 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              >
+                <IconChevronLeft size={15} aria-hidden /> Cała karta (Esc)
+              </button>
+              <h3 className={panelTypography.sectionTitle}>{HISTORY_SECTIONS[focus]}</h3>
+              <ZdHistoryRangeBar value={rangeState} onChange={setRangeState} range={range} salesWindow={salesWindow} />
+              {focus === "movement" ? (
+                <ZdProductMovementSection key={line.tw_Id} state={history} titleId={titleId} unitFor={purchaseUnit} range={range} expanded />
+              ) : focus === "sales" ? (
+                <ZdProductSalesSections key={line.tw_Id} state={history} titleId={titleId} range={range} expanded />
+              ) : (
+                <ZdProductPurchasesSection key={line.tw_Id} state={history} titleId={titleId} unitFor={purchaseUnit} range={range} older={older} onLoadOlder={loadOlder} expanded />
+              )}
+            </div>
+          ) : (
+            <div className={cn("space-y-6", wide && "lg:grid lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] lg:items-start lg:gap-8 lg:space-y-0")}>
+              <div className="min-w-0 space-y-5">
+                <section className="rounded-md border border-slate-200 bg-slate-50 px-3.5 py-3" aria-label="Decyzja">
+                  <p className="text-sm font-semibold tabular-nums text-slate-900">{decision}</p>
+                  <p className={cn("mt-0.5 text-xs", lead != null && days != null && days < lead ? "text-red-700" : "text-slate-600")}>
+                    {coverLine}
+                  </p>
+                  {comparePieces != null && Math.round(comparePieces) !== piecesArrivingForZdUnitsFromQty(shownUnits, qty) ? (
+                    <p className="mt-1 text-xs tabular-nums text-slate-600">Strategia „jak dotąd”: {formatQty(comparePieces)} szt</p>
                   ) : null}
-                </li>
-              ))}
-            </ol>
-          </section>
+                </section>
+
+                {onRequestPattern?.likely && !status.onRequest && !status.excluded ? (
+                  <section className="rounded-md border border-slate-200 bg-card px-3.5 py-3" aria-label="Podpowiedź: towar na prośbę">
+                    <p className="text-sm font-medium text-slate-900">Wygląda na towar na prośbę</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{onRequestPatternSummary(onRequestPattern)}</p>
+                    {actions.onMarkOnRequest ? (
+                      <Button type="button" size="sm" variant="outline" className="mt-2 max-sm:min-h-10" disabled={!canMutate} onClick={actions.onMarkOnRequest}>
+                        Oznacz „tylko na prośbę”
+                      </Button>
+                    ) : null}
+                  </section>
+                ) : onRequestPattern?.stockLike && !onRequestPattern.likely && status.onRequest ? (
+                  <section className="rounded-md border border-slate-200 bg-card px-3.5 py-3" aria-label="Podpowiedź: sprzedaje się jak magazynowy">
+                    <p className="text-sm font-medium text-slate-900">Oznaczony „na prośbę”, a sprzedaje się jak magazynowy</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                      Kupuje go {onRequestPattern.customers} klientów w roku, dostaw nie bierze w całości jeden klient.
+                    </p>
+                    {actions.onClearOnRequest ? (
+                      <Button type="button" size="sm" variant="ghost" className="mt-2 max-sm:min-h-10" disabled={!canMutate} onClick={actions.onClearOnRequest}>
+                        Zdejmij „na prośbę”
+                      </Button>
+                    ) : null}
+                  </section>
+                ) : null}
+
+                <CardSection
+                  id="why"
+                  titleId={titleId}
+                  title="Dlaczego tyle"
+                  summary={whySummary}
+                  collapsed={!!collapsed.why}
+                  onToggle={() => toggleSection("why")}
+                >
+                  <ol className="divide-y divide-slate-100 rounded-md border border-slate-200">
+                    {steps.map((s) => (
+                      <li key={s.key} className="flex items-baseline justify-between gap-3 px-3 py-1.5 text-sm">
+                        <span className={cn(s.kind === "result" ? "font-medium text-slate-900" : "text-slate-700", s.kind === "note" && "italic")}>
+                          {s.kind === "minus" ? "− " : s.kind === "plus" ? "+ " : s.kind === "result" ? "= " : ""}
+                          {s.label}
+                        </span>
+                        {s.unit ? (
+                          <span className={cn("shrink-0 tabular-nums", s.kind === "result" ? "font-semibold text-slate-900" : "text-slate-700")}>
+                            {formatQty(s.value)} {s.unit}
+                          </span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ol>
+                </CardSection>
+
+                {pairStockRows.length > 0 ? (
+                  <CardSection id="pair" titleId={titleId} title="Stan pary" collapsed={!!collapsed.pair} onToggle={() => toggleSection("pair")}>
+                    <dl className="grid grid-cols-3 gap-px overflow-hidden rounded-md border border-slate-200 bg-slate-200 text-sm">
+                      {pairStockRows.map(([label, value]) => (
+                        <div key={label} className="bg-card px-2.5 py-1.5">
+                          <dt className="text-xs text-slate-600">{label}</dt>
+                          <dd className="tabular-nums font-medium text-slate-900">{formatQty(Number(value) || 0)} szt</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </CardSection>
+                ) : null}
+
+                {line.salesProfile && line.salesProfile.windows.length > 0 ? (
+                  <CardSection
+                    id="profile"
+                    titleId={titleId}
+                    title="Sprzedaż i nasze ZD"
+                    summary="12 okien po 30 dni"
+                    collapsed={!!collapsed.profile}
+                    onToggle={() => toggleSection("profile")}
+                  >
+                    <div className="text-xs leading-relaxed text-slate-800">
+                      <ZdSalesProfileCardContent profile={line.salesProfile} orders={orderMarks} />
+                    </div>
+                  </CardSection>
+                ) : null}
+
+                <ZdProductNote
+                  twId={line.tw_Id}
+                  symbol={line.tw_Symbol ?? null}
+                  name={line.tw_Nazwa ?? null}
+                  canEdit={canMutate}
+                  titleId={titleId}
+                />
+              </div>
+
+              <div className="min-w-0 space-y-5">
+                <div className={cn("sticky -top-5 z-[2] -mx-5 border-b border-slate-100 bg-raised/95 px-5 py-2.5 backdrop-blur-sm", wide && "lg:mx-0 lg:px-0")}>
+                  <p className="mb-1.5 text-xs font-semibold text-slate-600">Historia towaru</p>
+                  <ZdHistoryRangeBar value={rangeState} onChange={setRangeState} range={range} salesWindow={salesWindow} />
+                </div>
+                <CardSection
+                  id="movement"
+                  titleId={titleId}
+                  title="Ruch towaru"
+                  summary="dostawy i rozchód"
+                  collapsed={!!collapsed.movement}
+                  onToggle={() => toggleSection("movement")}
+                  onFocus={() => setFocus("movement")}
+                >
+                  <ZdProductMovementSection key={line.tw_Id} state={history} titleId={titleId} unitFor={purchaseUnit} range={range} />
+                </CardSection>
+                <CardSection
+                  id="sales"
+                  titleId={titleId}
+                  title="Sprzedaż"
+                  summary="kto kupuje i dokumenty"
+                  collapsed={!!collapsed.sales}
+                  onToggle={() => toggleSection("sales")}
+                  onFocus={() => setFocus("sales")}
+                >
+                  <ZdProductSalesSections key={line.tw_Id} state={history} titleId={titleId} range={range} />
+                </CardSection>
+                <CardSection
+                  id="buy"
+                  titleId={titleId}
+                  title="Nasze zakupy"
+                  summary="ZD, faktury i ceny"
+                  collapsed={!!collapsed.buy}
+                  onToggle={() => toggleSection("buy")}
+                  onFocus={() => setFocus("buy")}
+                >
+                  <ZdProductPurchasesSection key={line.tw_Id} state={history} titleId={titleId} unitFor={purchaseUnit} range={range} older={older} onLoadOlder={loadOlder} />
+                </CardSection>
+              </div>
+            </div>
+          )}
         </div>
 
         <footer className="shrink-0 border-t border-slate-100 bg-card px-5 py-3">

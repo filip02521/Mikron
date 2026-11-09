@@ -152,7 +152,9 @@ import {
 } from "@/lib/orders/zd-estimate-post-create";
 import { applyZdAutoProposalEdits, buildZdCreateInputFromAutoProposal } from "@/lib/orders/zd-auto-proposal-create";
 import { isSupplierOrderOnDemand } from "@/lib/orders/supplier-on-demand";
-import { dateToIso, resolveSupplierInterval } from "@/lib/orders/dates";
+import { dateToIso, resolveSupplierInterval, type OrderInterval } from "@/lib/orders/dates";
+import { formatAutomatDay } from "@/lib/orders/zd-automat-daily";
+import { isZdPlanDueForMark } from "@/lib/orders/zd-schedule-mark";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import {
   buildDailyPanelUndoPayload,
@@ -315,6 +317,8 @@ export type ZdEstimateSupplierOption = {
   computedNextDate: string | null;
   /** Jak panel Dziś — nie wchodzi do kolejki planowej. */
   orderOnDemand: boolean;
+  /** Interwał zamówień z karty dostawcy (co ile zamawiamy); null = brak. */
+  orderInterval: OrderInterval | null;
 };
 
 export type ZdEstimateGroupOption = {
@@ -692,6 +696,7 @@ async function loadZdEstimateSupplierOptions(): Promise<
       additionalSubiektKhIds: aliasesBySupplier.get(s.id) ?? [],
       computedNextDate: s.schedule?.computed_next_date?.trim() || null,
       orderOnDemand: isSupplierOrderOnDemand(s),
+      orderInterval: resolveSupplierInterval(s.interval_raw, s.interval_weeks),
     };
   });
 }
@@ -4728,8 +4733,10 @@ export type ZdEstimateScheduleMarkContext =
   | {
       ok: true;
       canMark: boolean;
-      reason?: "on_demand" | "no_interval" | "already_today";
+      reason?: "on_demand" | "no_interval" | "already_today" | "future_plan";
       orderDate: string | null;
+      /** Kolejne planowe zamówienie (computed_next_date); null = brak planu. */
+      nextDate?: string | null;
       message: string;
     }
   | { ok: false; message: string };
@@ -4781,10 +4788,11 @@ export async function actionGetZdEstimateScheduleMarkContext(
   }
   const { data: schedule } = await supabase
     .from("supplier_schedules")
-    .select("order_date")
+    .select("order_date, computed_next_date")
     .eq("supplier_id", id)
     .maybeSingle();
   const orderDate = schedule?.order_date ?? null;
+  const nextDate = (schedule?.computed_next_date as string | null | undefined)?.slice(0, 10) || null;
   const today = dateToIso(todayInWarsaw());
   if (orderDate && today && orderDate === today) {
     return {
@@ -4792,13 +4800,26 @@ export async function actionGetZdEstimateScheduleMarkContext(
       canMark: false,
       reason: "already_today",
       orderDate,
+      nextDate,
       message: "Plan na dziś jest już oznaczony jako złożony.",
+    };
+  }
+  // Plan przesuwa tylko zamówienie z terminu: dziś albo zaległe. Przyszła data zostaje, nawet przy zamówieniu głównym.
+  if (today && !isZdPlanDueForMark(nextDate, today)) {
+    return {
+      ok: true,
+      canMark: false,
+      reason: "future_plan",
+      orderDate,
+      nextDate,
+      message: `Kolejne zamówienie zaplanowane na ${formatAutomatDay(nextDate!, today)} - data zostaje bez zmian`,
     };
   }
   return {
     ok: true,
     canMark: true,
     orderDate,
+    nextDate,
     message: "Można oznaczyć planowane zamówienie jako złożone.",
   };
 }
