@@ -25,7 +25,7 @@ OnTime — wewnętrzny system dostaw i zakupów (dostawcy, zamówienia ZD/ZK, ma
 
 # Szkice maili (Gmail MCP)
 
-- Zero załączników, chyba że użytkownik wprost poda plik do dołączenia.
+- Załączniki: dołączaj dokumenty potrzebne w sprawie, które sam przygotowałeś albo pobrałeś z Drive/Gmaila i przeczytałeś (faktura, packing list, tłumaczenie, deklaracje, oświadczenia, karty SDS, PDF zamówienia) — referencją do pliku lokalnego w `create_draft` (`sha256:<hash>:<ścieżka>`). Nic poza tym, w szczególności żadnych obrazków ze stopek.
 - Nie używaj `replyToMessageId`. Odpowiedź w wątku dokleja cytat oryginału z obrazkami z podpisów (`~WRD*.jpg`, `image00*.png`), z których Gmail robi puste załączniki. `update_draft` cytatu nie usuwa — serwer dokleja go z powrotem.
 - Zamiast tego nowy szkic z tematem `Re: <temat wątku>` i numerem zamówienia/sprawy w treści.
-- Przed oddaniem szkicu sprawdź `get_draft`: brak `attachments`.
+- Przed oddaniem szkicu sprawdź załączniki przez `get_draft` w trybie `RAW` (python `email` → nazwy, rozmiary, sha256 vs pliki lokalne). Tryby `FULL_CONTENT`/`PLAIN_TEXT` nie pokazują załączników nawet, gdy są (sprawdzone 09.11.2026).

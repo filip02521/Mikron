@@ -10,7 +10,7 @@ Sprawa: $ARGUMENTS
 
 Prowadzisz sprawę z osobą, która niedawno przejęła import — tłumacz kroki prosto i zawsze podawaj **termin**.
 
-Kto jest kim (osoby, adresy, przykłady spraw): `references/kontakty.local.md`, jeśli istnieje — plik lokalny, poza repo. Bez niego używaj ról z tego skilla i zapytaj użytkownika.
+Kto jest kim (osoby, adresy, stawki, przykłady spraw): dokument Google Drive „Claude – dane stałe i kontakty (Dział dostaw)” (szukaj po nazwie, czytaj przez Google Drive MCP). Bieżące sprawy: arkusz „Claude – sprawy w toku (Dział dostaw)”. Dokumenty do odpraw (deklaracje, poprzednie tłumaczenia): folder Drive „IMPORT - DOKUMENTY DO ODPRAW CELNYCH/<dostawca>”. Opcjonalnie lokalnie `references/kontakty.local.md` (poza repo). Bez tych źródeł używaj ról z tego skilla i zapytaj użytkownika. Danych osobowych nie wpisuj do plików skilla — repo jest publiczne.
 
 ## Zasada nadrzędna
 
@@ -47,6 +47,22 @@ Kod CN i stawka VAT trafiają do zgłoszenia celnego — odpowiada za nie Mikran
 - Faktura za usługę odprawy → do księgowości.
 - W OnTime oznacz odprawę jako wysłaną (migawka w historii).
 
+## Zlecenie u spedytora i dokumenty (wzór Fracht, lot z Tajwanu 11.2026)
+
+- Akceptacja oferty, kontakt do nadawcy, wartość do ubezpieczenia i komplet dokumentów do odprawy idą **w jednym mailu** do spedytora (faktura + packing list, tłumaczenie z kodami CN/VAT i wagami netto/brutto na kod, deklaracje producenta do urządzeń).
+- **Ubezpieczenie = wartość brutto** z faktury/proformy (finalna kwota do zapłaty). Przy kosztach z oferty: ubezpieczenie zwykle % od 110% wartości z minimum za polisę.
+- Każda dodatkowa pozycja SAD (kod CN) jest płatna — w akceptacji oferty potwierdź dopłatę za liczbę kodów.
+- Kolej z Azji nie przyjmuje części kodów (lista sankcyjna przewoźnika, np. 8479 89 97, 6914 10 00, 3926 90 97; 6903 90 90 jako „radioactive HS”) — wtedy lot albo morze.
+- Kartony mieszane bez wag na pozycję: wagi na kod szacuj proporcjonalnie do wartości i napisz to wprost w mailu; przy następnym zamówieniu poproś dostawcę o packing list z wagą netto na każdą pozycję.
+- Załączniki do szkicu dołączaj sam (referencja do pliku w `create_draft`) — patrz CLAUDE.md → Szkice maili. `get_draft` w trybie FULL/PLAIN nie pokazuje załączników; sprawdzaj je przez RAW.
+
+## Karty w OnTime z tłumaczenia (import „opisy z wcześniejszego maila”)
+
+- Parser (`src/lib/customs/customs-email-import.ts`) mapuje numery z tekstu na pozycje faktury w tej samej kolejności.
+- Do importu przygotuj **osobny tekst**: jedna linia na pozycję faktury — `<nr>. <opis PL bez przecinków>, <materiał>, kod CN XXXX XX XX, stawka VAT 23%`. Materiał pomiń, gdy niepewny.
+- Nie wklejaj maila do agencji (nazwy z faktury, ilości, USD, zakresy „6–10.”): parser wtedy nie widzi VAT, wstawia dane faktury do opisu i zgłasza konflikty zakresów (sprawdzone 09.11.2026 na fakturze 65-pozycyjnej: format importu 65/65, 0 błędów; format maila — VAT pusty na wszystkich pozycjach, 2 konflikty).
+- Kody sprawdź w `src/lib/customs/cn-nomenclature.json` (czy istnieją w CN bieżącego roku).
+
 ## Wyceny transportu
 
 Kogo pytać i co porównywać: `references/spedytorzy.md`.
@@ -57,7 +73,7 @@ Porównuj **all-in do Poznania z odprawą**: fracht, odprawa (ile kodów HS w ce
 Przed odprawą u znanego dostawcy przeczytaj PDF „Historia odpraw” w jego karcie w OnTime. Powtarzające się problemy:
 
 1. **Faktura spoza UE (zwłaszcza Chiny) przed wysyłką** — zażądaj faktury handlowej (nie proformy) z: krajem pochodzenia, Incoterms z miejscem (np. EXW <miasto>), wagą netto przy każdej pozycji, próbkami wycenionymi na co najmniej 1 USD (zero agencje odrzucają).
-2. **Mail agencji trafia do kogoś innego** — prośby DHL „T#…” chodzą do kilku skrzynek w firmie (poprzednia osoba od importu, finanse, biuro); niektórzy spedytorzy piszą tylko do finansów; awiza lotniskowe potrafią iść prosto do spedytora. Przy przesyłce w drodze zapytaj te osoby, zanim minie termin (lista: `references/kontakty.local.md`).
+2. **Mail agencji trafia do kogoś innego** — prośby DHL „T#…” chodzą do kilku skrzynek w firmie (poprzednia osoba od importu, finanse, biuro); niektórzy spedytorzy piszą tylko do finansów; awiza lotniskowe potrafią iść prosto do spedytora. Przy przesyłce w drodze zapytaj te osoby, zanim minie termin (lista osób: dokument „Claude – dane stałe i kontakty” na Drive).
 3. **Podwójna płatność DHL** — po przedpłacie przychodzi automatyczne żądanie ADCPL na tę samą kwotę albo jeden AWB ma dwa MRN. Porównaj kwotę i MRN z tym, co już zapłacono, zanim przekażesz do płatności.
 4. **Potwierdzenie przelewu** — agencje chcą potwierdzenia przelewu *zrealizowanego*, nie zleconego.
 5. **VAT 8% sprawdzany pozycja po pozycji** — nazwa na fakturze musi zgadzać się z nazwą w deklaracji zgodności.

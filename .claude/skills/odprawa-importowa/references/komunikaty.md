@@ -1,6 +1,6 @@
 # Komunikaty celne i od agencji — jak je czytać
 
-Źródło: korespondencja z agencjami celnymi 2024–2026. Gdy trafisz na nowy typ maila, dopisz go tutaj (bez danych osobowych — te idą do `kontakty.local.md`).
+Źródło: korespondencja z agencjami celnymi 2024–2026. Gdy trafisz na nowy typ maila, dopisz go tutaj (bez danych osobowych — te idą do dokumentu Drive „Claude – dane stałe i kontakty”).
 
 ## DHL Express — małe przesyłki lotnicze (AWB 10 cyfr)
 
@@ -14,7 +14,7 @@ Kolejność typowej sprawy:
    - Składowanie płatne **po 3 dniach kalendarzowych** liczonych od dnia przybycia na magazyn, wliczając ten dzień.
    - Brak dokumentów przez **10 dni** → zwrot do nadawcy.
    - Przychodzi też `[T#…] Automatyczna Odpowiedź` od `no-reply@dhl.com` — potwierdzenie, że odpowiedź dotarła. Nic nie rób.
-   - DHL wysyła je na adresy podane przez importera w upoważnieniu. Sprawdź, czy obecna osoba od importu jest na liście (`kontakty.local.md`). Zmiana adresów: formularz z maila DHL / dhlexpress.pl/slownik-importowy („Aktualizacja danych firmy”).
+   - DHL wysyła je na adresy podane przez importera w upoważnieniu. Sprawdź, czy obecna osoba od importu jest na liście (dokument Drive „Claude – dane stałe i kontakty”). Zmiana adresów: formularz z maila DHL / dhlexpress.pl/slownik-importowy („Aktualizacja danych firmy”).
 2. **`Powiadomienie o odebranym komunikacie ZCX91 / ZC429 / PW429 - dot. AWB <AWB> <MRN>`** od `plpozecs@dhl.com`
    - Automaty z systemu celnego (WinSADMS). Numer `26PL44302D00…` to numer zgłoszenia (MRN).
    - ZC429 przychodzi po zakończonej odprawie, z PDF/XML zgłoszenia — dokument do księgowości.

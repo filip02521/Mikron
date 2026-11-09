@@ -17,6 +17,20 @@ Gdy kod trafi na zatwierdzoną kartę, nie dopisuj go tutaj.
 | Wosk modelowy w płytkach (UK) | (w mailu brak kodu) | z deklaracją zgodności | odpowiedź do agencji (UK), 08.2026 | |
 | Scan body (kasety ze znacznikami do implantów) | (brak) | 8% z deklaracją | odpowiedź do DHL, 09.2026 | |
 
+## Akcesoria laboratoryjne z Tajwanu (tłumaczenie 11.2026, 65 pozycji) — propozycje do kart
+
+| Towar | Kod | VAT | Źródło | Uwaga |
+|---|---|---|---|---|
+| Narzędzia na trzpień do mikrosilnika: tarcze tnące, filce, gumki silikonowe, szczotki, wiertła diamentowe | 9018 49 10 | 23% | tłumaczenie 11.2026 | opis kodu: wiertła, frezy, tarcze i szczotki do wiertarek dentystycznych; w 06.2026 część z nich szła pod 9018 49 90 — jedna zasada na kartach |
+| Tarcze polerskie bawełniane do polerki, instrumenty do wosku, artykulatory, paralelometr, piny stalowe | 9018 49 90 | 23% | tłumaczenia 01/06/11.2026 | |
+| Suwmiarka cyfrowa / zegarowa | 9017 30 00 | 23% | tłumaczenie 06.2026 | |
+| Palnik gazowy ręczny (propan-butan) | 8468 10 00 | 23% | tłumaczenia 01/06/11.2026 | |
+| Lampa LED do polimeryzacji | 8539 49 00 | 23% | jw. | **⚠ kod formalnie = lampy UV/IR**; agencje przyjmowały, może zmienić |
+| Myjka ultradźwiękowa do protez | 8479 89 97 | 23% | jw. | deklaracja producenta „not a medical device” |
+| Porcelana: palety, piny, podstawki do napalania | 6914 10 00 | 23% | jw. | |
+| Pierścienie odlewnicze z tworzywa, stojaki | 3926 90 97 | 23% | jw. | silikonowe pierścienie (06.2026) — 8480 60 00 |
+| Tygle ceramiczne do odlewania | 6903 90 90 | 23% | tłumaczenie 11.2026 | **⚠ DO WERYFIKACJI (ISZTAR)** |
+
 ## Znane błędy w historii maili
 
 Sprawdzone w nomenklaturze CN 2026 (`src/lib/customs/cn-nomenclature.json`). Agencje odprawiły te przesyłki mimo błędu, więc obecność kodu w mailu niczego nie dowodzi.
