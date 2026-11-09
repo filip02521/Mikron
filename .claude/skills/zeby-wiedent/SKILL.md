@@ -1,54 +1,70 @@
 ---
 name: "zeby-wiedent"
-description: Rozbicie faktur Wiedent (Wytwórnia Zębów Sztucznych Wiedent, Łódź) za zęby akrylowe Estetic na przody i boki oraz przeliczenie sztuk na klapki do wpisania w fakturze zakupu. Użyj przy każdej fakturze FS-xxx/26 od Wiedent, przy pytaniu „co jest przodem a co bokiem”, „ile klapek”, „rozpisz zęby per linia”, oraz przy kontroli liczenia magazynu (ilość „6” i „8”).
-argument-hint: <zdjęcia/skan faktur Wiedent + liczby z magazynu, jeśli są>
+description: Rozbicie faktur Wiedent (Wytwórnia Zębów Sztucznych Wiedent, Łódź) za zęby akrylowe Estetic na klapki „6” (przód) i „8” (bok) do wpisania w fakturze zakupu. Użyj przy każdej fakturze FS-xxx/26 / FV nnnn od Wiedent, przy pytaniu „ile klapek”, „co mam wpisać na fakturę”, „co jest przodem a co bokiem”, oraz przy kontroli liczenia magazynu (ilość „6” i „8”).
+argument-hint: <faktury Wiedent (PDF z KSeF / zdjęcie + wklejka) + łączne klapki „6” i „8” z magazynu + nr ZD>
 ---
 
-# Zęby Wiedent: przody, boki, klapki
+# Zęby Wiedent: klapki do wpisania
 
 Faktury: $ARGUMENTS
 
 ## Fakty
 
 - Dostawca: Wytwórnia Zębów Sztucznych Wiedent Sp. J., Łódź, NIP 727-101-99-08. Produkt na fakturze zawsze „Zęby akrylowe Estetic <kolor>”, j.m. szt, cena 1,47 netto/ząb, VAT 8%.
-- Faktura nie mówi, która linia to przód, a która bok. Kolor (A1, A2, G2, R1, N3...) też nie.
+- Faktura nie mówi, która linia to przód, a która bok.
 - Klapka = jedna płytka zębów. Przód: 6 zębów. Bok: 8 zębów. Magazyn liczy klapki „6” i „8”.
-- Mikran wpisuje fakturę zakupu w klapkach, nie w zębach.
+- Mikran wpisuje fakturę zakupu w klapkach: „6” po 8,82 netto, „8” po 11,76 netto.
 
-## Reguła podziału (potwierdzona na FS-910/912/913 z 07-10-2026)
+## Co użytkownik przysyła (i czego NIE wymagać)
 
-Linia to **przód** gdy ilość jest wielokrotnością 108 (108, 216, 324, 432, 540, 648, 756...). Każda inna linia to **bok** (96, 112, 128, 192, 256, 288, 368, 384, 480...).
+1. Faktury Wiedent – najlepiej PDF z KSeF; może być zdjęcie + wklejka linii, byle z tabelą VAT do kontroli.
+2. Łączne klapki „6” i „8” z magazynu na CAŁĄ dostawę (np. z kartki: „6” 121×18=2178, „8” 165×12=1980).
+3. Nr ZD – do kontroli ceny za ząb.
 
-Dlaczego: przód pakowany po 18 klapek (108 zębów), bok po 12 klapek (96) plus luzy. Zweryfikowane na 15636 zębach: reguła dała dokładnie to, co magazyn policzył ręcznie (1134 klapek „6”, 1104 klapek „8”).
+NIE proś o liczenie magazynu per faktura ani per kolor – użytkownik przysyła faktury właśnie po to, żeby to rozpisać (decyzja Filipa 09.11.2026).
 
-Przeliczenie:
-- przód: klapki = ilość / 6, cena 8,82 netto (9,53 brutto)
-- bok: klapki = ilość / 8, cena 11,76 netto (12,70 brutto)
+## Dlaczego wystarczy suma z magazynu
+
+Każdy ząb kosztuje 1,47, więc faktura zgadza się co do grosza przy KAŻDYM podziale, w którym klapki „6” × 6 + klapki „8” × 8 = zęby z faktury. Podział między faktury nie zmienia kwot. Wystarczy więc:
+- suma klapek = magazyn,
+- per faktura: zęby z klapek = zęby z faktury.
 
 ## Procedura
 
-1. Spisz wszystkie linie każdej faktury: LP, kolor, ilość. Faktura może mieć więcej stron niż na zdjęciu. Sprawdź: suma ilości × 1,47 = wartość netto z tabeli VAT. Nie zgadza się = brakuje linii, poproś o resztę (podgląd e-Faktury z KSeF w WAPRO pokazuje wszystko).
-2. Wpisz linie do `scripts/klapki.py` (format poniżej) i uruchom. Skrypt dzieli, liczy klapki, wartości i sumy, sprawdza sumę netto.
-3. Jeśli magazyn podał liczby „6” i „8”: suma przód ÷ 6 i suma bok ÷ 8 muszą się zgadzać co do sztuki. Nie zgadzają się = linia niestandardowa, nie naginaj reguły, pokaż różnicę i linie, które mogą być obie (podzielne przez 24).
-4. Oddaj per faktura tabelę: LP, kolor przód/bok, klapki, cena netto, wartość netto, oraz podsumowanie klapek przód/bok. Bez słowa „garnitur”, użytkownik zna „klapki”.
+1. Spisz wszystkie linie każdej faktury (ilość + kolor). Kontrola: suma ilości × 1,47 = netto z tabeli VAT. Nie zgadza się = brakuje linii – poproś o resztę.
+2. Kontrola: klapki z magazynu „6”×6 + „8”×8 = suma zębów z faktur. Nie zgadza się = magazyn albo faktury niekompletne – zatrzymaj się i pokaż różnicę.
+3. Uruchom skrypt z `--mag` (i `--cena` z ZD, jeśli znana). Skrypt:
+   - dzieli linie regułą: wielokrotność 108 = „6”, podzielne przez 8 = „8”, podzielne tylko przez 6 (306, 186, 36, 18…) = „6” (nietypowe);
+   - różnicę z magazynem przesuwa grupami 24 zębów (4 klapki „6” ↔ 3 klapki „8”), najpierw na fakturę z nietypowymi liniami, potem na największą;
+   - drukuje per faktura klapki, netto, VAT, brutto i sprawdza netto = zęby × 1,47.
+4. Oddaj tabelę „co wpisać”: faktura, klapki „6” × 8,82, klapki „8” × 11,76, netto, VAT, brutto + suma. Napisz, na którą fakturę poszła różnica z magazynem (to umowne, kwot nie zmienia).
+5. Cena w ZD ≠ 1,47 za ząb → napisz wprost, że ZD trzeba poprawić (09.11.2026: zła cena w ZD dała 30 zł różnicy przy wpisie).
 
-## Format wejścia do skryptu
+## Uruchomienie
 
 ```
-FS-912/26
-216 A2
-128 A2
+python3 -I .claude/skills/zeby-wiedent/scripts/klapki.py --mag 2178 1980 --cena 1,47 plik.txt
+```
+
+Format pliku:
+
+```
+FV 1021
+480 G2
+768 G2
 ...
-FS-910/26
-216 R1
-108 R1
+FV 1024
+108 B2
 ```
 
-Uruchomienie: `python3 -I .claude/skills/zeby-wiedent/scripts/klapki.py plik.txt` albo wejście ze stdin. Opcjonalnie `--mag 1134 1104` (klapki „6” i „8” z magazynu) dla kontroli.
+## Historia reguły
+
+- FS-910/912/913 (07.10.2026): reguła 108 dała dokładnie liczenie magazynu (1134 / 1104).
+- FV 1021 + 1024 (09.11.2026): reguła dała 2074 / 2058, magazyn 2178 / 1980 – część linii 96/192/288… była przodem. Reguła jest tylko punktem startu; rozstrzyga liczenie magazynu.
 
 ## Pułapki
 
-- Ręczne sumy na fakturze bywają z literówką (FS-912: napisane 1755, faktyczne 1752). Ufaj skryptowi, nie długopisowi.
-- 216, 432, 648 dzielą się przez 8, ale są przodem (wielokrotność 108). 288, 384, 480 dzielą się przez 6, ale są bokiem. Reguła 108 ma pierwszeństwo nad samą podzielnością.
-- VAT licz od sumy faktury, nie per linia, inaczej grosze się rozjadą.
-- Nowa ilość spoza listy (np. 144, 240): zastosuj regułę 108, ale oznacz linię jako „do potwierdzenia” i sprawdź z liczeniem magazynu.
+- Ręczne sumy bywają z literówką (FS-912: napisane 1755, faktyczne 1752). Ufaj skryptowi.
+- VAT licz od sumy faktury, nie per linia.
+- Przy wpisie osobnych faktur nie wpisuj sumy z kartki magazynu na jedną fakturę – rozpisz wg tabeli.
+- Różnica kwoty przy wpisie przy zgodnych klapkach = zła cena za ząb w ZD albo cena brutto zamiast netto.
