@@ -117,4 +117,11 @@ describe("markStandardOrdered", () => {
       next_date: "2026-07-11",
     });
   });
+
+  it("błąd zapisu daty zamówienia przerywa akcję - bez przeliczenia i bez wpisu w historii", async () => {
+    scheduleUpsert.mockResolvedValueOnce({ error: { message: "permission denied" } });
+    await expect(markStandardOrdered("sup-1", "user@example.com")).rejects.toThrow(/permission denied/);
+    expect(recalcMock).not.toHaveBeenCalled();
+    expect(historyInsert).not.toHaveBeenCalled();
+  });
 });

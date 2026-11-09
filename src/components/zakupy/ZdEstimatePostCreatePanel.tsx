@@ -143,6 +143,7 @@ export function ZdEstimatePostCreatePanel({
   const [scheduleCanMark, setScheduleCanMark] = useState(false);
   /** Odpowiedź o planie dostawcy już jest — do tego czasu krok „rodzaj zamówienia” nie ma wiarygodnej podpowiedzi. */
   const [scheduleChecked, setScheduleChecked] = useState(false);
+  const [scheduleDue, setScheduleDue] = useState(true);
   const [undo, setUndo] = useState<{
     kind: "glowne" | "schedule";
     payload: DailyPanelUndoPayload;
@@ -330,6 +331,7 @@ export function ZdEstimatePostCreatePanel({
         return;
       }
       setScheduleCanMark(res.canMark);
+      setScheduleDue(res.due ?? true);
       setScheduleHint(res.message);
     })();
     return () => {
@@ -794,6 +796,7 @@ export function ZdEstimatePostCreatePanel({
               scheduleDone={session.scheduleDone}
               scheduleCanMark={scheduleCanMark}
               scheduleChecked={scheduleChecked}
+              scheduleDue={scheduleDue}
               scheduleHint={scheduleHint}
               previousSend={previousSend}
               manualContact={manualContact}

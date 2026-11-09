@@ -4733,10 +4733,12 @@ export type ZdEstimateScheduleMarkContext =
   | {
       ok: true;
       canMark: boolean;
-      reason?: "on_demand" | "no_interval" | "already_today" | "future_plan";
+      reason?: "on_demand" | "no_interval" | "already_today";
       orderDate: string | null;
       /** Kolejne planowe zamówienie (computed_next_date); null = brak planu. */
       nextDate?: string | null;
+      /** Plan wypada dziś albo jest zaległy — domyślnie zamówienie główne; przyszła data — domyślnie uzupełniające. */
+      due?: boolean;
       message: string;
     }
   | { ok: false; message: string };
@@ -4804,23 +4806,18 @@ export async function actionGetZdEstimateScheduleMarkContext(
       message: "Plan na dziś jest już oznaczony jako złożony.",
     };
   }
-  // Plan przesuwa tylko zamówienie z terminu: dziś albo zaległe. Przyszła data zostaje, nawet przy zamówieniu głównym.
-  if (today && !isZdPlanDueForMark(nextDate, today)) {
-    return {
-      ok: true,
-      canMark: false,
-      reason: "future_plan",
-      orderDate,
-      nextDate,
-      message: `Kolejne zamówienie zaplanowane na ${formatAutomatDay(nextDate!, today)} - data zostaje bez zmian`,
-    };
-  }
+  // Zamówienie główne przesuwa plan zawsze (także przed planowaną datą), uzupełniające nigdy — wybór jest w oknie wysyłki.
+  const due = !today || isZdPlanDueForMark(nextDate, today);
   return {
     ok: true,
     canMark: true,
     orderDate,
     nextDate,
-    message: "Można oznaczyć planowane zamówienie jako złożone.",
+    due,
+    message:
+      nextDate && today && !due
+        ? `Kolejne zamówienie zaplanowane na ${formatAutomatDay(nextDate, today)}`
+        : "Można oznaczyć planowane zamówienie jako złożone.",
   };
 }
 

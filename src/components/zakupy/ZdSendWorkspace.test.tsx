@@ -24,7 +24,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-function renderWorkspace(simulation: ZdSendSimulation, scheduleChecked = true) {
+function renderWorkspace(simulation: ZdSendSimulation, scheduleChecked = true, plan: { due: boolean; hint: string | null } = { due: true, hint: null }) {
   render(
     <ZdSendWorkspace
       dokId={1}
@@ -44,7 +44,8 @@ function renderWorkspace(simulation: ZdSendSimulation, scheduleChecked = true) {
       scheduleDone={false}
       scheduleCanMark
       scheduleChecked={scheduleChecked}
-      scheduleHint={null}
+      scheduleDue={plan.due}
+      scheduleHint={plan.hint}
       previousSend={null}
       manualContact={null}
       simulation={simulation}
@@ -90,12 +91,19 @@ describe("okno wysyłki ZD: czekanie na dokument", () => {
     expect(screen.getByRole("button", { name: /Wyślij i ustaw termin/ })).toHaveProperty("disabled", true);
   });
 
-  it("bez odpowiedzi o planie dostawcy wysyłka czeka - domyślne „poboczne” nie pominie planu po cichu", async () => {
+  it("bez odpowiedzi o planie dostawcy wysyłka czeka - domyślne „uzupełniające” nie pominie planu po cichu", async () => {
     renderWorkspace("ok", false);
     await act(async () => vi.advanceTimersByTime(4_000));
     expect(screen.getByText("Sprawdzam plan dostawcy…")).toBeTruthy();
     expect(screen.queryByRole("group", { name: "Rodzaj zamówienia" })).toBeNull();
     expect(screen.getByRole("button", { name: /Wyślij i ustaw termin/ })).toHaveProperty("disabled", true);
     expect(screen.getByRole("button", { name: "Wysłałem ręcznie" })).toHaveProperty("disabled", true);
+  });
+
+  it("plan w przyszłości: domyślnie uzupełniające (bez zmian), główne przesuwa termin od dziś", async () => {
+    renderWorkspace("ok", true, { due: false, hint: "Kolejne zamówienie zaplanowane na pt 13.11" });
+    expect(screen.getByText("Plan dostawcy zostaje bez zmian. Kolejne zamówienie zaplanowane na pt 13.11.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Główne" }));
+    expect(screen.getByText(/pt 13.11 - główne przesunie je i przeliczy kolejny termin od dziś/)).toBeTruthy();
   });
 });

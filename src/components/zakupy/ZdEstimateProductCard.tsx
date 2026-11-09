@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { actionFetchZdEstimateProductHistory, actionFetchZdProductOlderPurchases } from "@/app/actions/zd-estimate";
 import { ZdProductNote } from "@/components/zakupy/ZdProductNote";
 import {
@@ -269,7 +270,7 @@ export function ZdEstimateProductCard({
   useEffect(() => {
     // Zakres sprzed 12 miesięcy nocnego odczytu ZD: zakupy dociągamy z kopii ZD sami, bez dodatkowego kliknięcia.
     if (wantsOlder && history.status === "ok") loadOlder();
-  }, [wantsOlder, history.status, line.tw_Id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [wantsOlder, history.status, line.tw_Id, pairKey?.twinTwId]); // eslint-disable-line react-hooks/exhaustive-deps
   const [wide, setWide] = useState(() => readPref(PREF_WIDE, false));
   const [collapsed, setCollapsed] = useState<Partial<Record<CardSectionId, boolean>>>(() => readPref(PREF_COLLAPSED, {}));
   const [focus, setFocus] = useState<CardSectionId | null>(null);
@@ -423,7 +424,9 @@ export function ZdEstimateProductCard({
     .filter(Boolean)
     .join(" · ");
 
-  return (
+  // Portal do body na warstwie panelu bocznego (tło z-[58], panel z-[60]): w kontenerze strony (relative z-0) kartę
+  // przykrywał nagłówek i dolne menu telefonu. Okna z karty (opakowanie, minimum, wyklucz) mają tier „raised” (z-[61]) — nad nią.
+  return createPortal(
     <>
       <button
         ref={(el) => {
@@ -431,8 +434,7 @@ export function ZdEstimateProductCard({
         }}
         type="button"
         tabIndex={-1}
-        // Pod wszystkimi oknami (standard z-50): okna otwierane z karty (opakowanie, minimum) są nad nią.
-        className={cn(sidePanelBackdropClass, "z-[48]", "panel-slide-backdrop-enter")}
+        className={cn(sidePanelBackdropClass, "panel-slide-backdrop-enter")}
         aria-label="Zamknij kartę produktu"
         onClick={requestClose}
       />
@@ -441,7 +443,7 @@ export function ZdEstimateProductCard({
           panelRef.current = el;
         }}
         className={cn(
-          "panel-slide-enter fixed inset-y-0 right-0 z-[49] flex w-full flex-col transition-[max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+          "panel-slide-enter fixed inset-y-0 right-0 z-[60] flex w-full flex-col transition-[max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
           wide || focus ? "max-w-[min(100vw,72rem)]" : "max-w-xl",
           " border-l border-slate-200/80 bg-raised shadow-[var(--shadow-card-elevated)]"
         )}
@@ -716,6 +718,7 @@ export function ZdEstimateProductCard({
           </div>
         </footer>
       </aside>
-    </>
+    </>,
+    document.body
   );
 }

@@ -15,7 +15,7 @@ import { warsawDateKeyDaysAgo } from "@/lib/time/warsaw";
 import { MailPreview, type MailPreviewAttachment } from "@/components/mail/MailPreview";
 import { Button } from "@/components/ui/Button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { zdPlanStepDecision, type ZdOrderKind } from "@/lib/orders/zd-schedule-mark";
+import { zdDefaultOrderKind, zdPlanStepDecision, type ZdOrderKind } from "@/lib/orders/zd-schedule-mark";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { polishPluralWord } from "@/lib/email/polish-plural";
@@ -97,6 +97,7 @@ export function ZdSendWorkspace({
   scheduleDone,
   scheduleCanMark,
   scheduleChecked = true,
+  scheduleDue = true,
   scheduleHint,
   previousSend,
   manualContact,
@@ -124,8 +125,10 @@ export function ZdSendWorkspace({
   glowneDone: boolean;
   scheduleDone: boolean;
   scheduleCanMark: boolean;
-  /** false = odpowiedź o planie jeszcze nie przyszła: wysyłka czeka, żeby domyślne „poboczne” nie pominęło planu po cichu. */
+  /** false = odpowiedź o planie jeszcze nie przyszła: wysyłka czeka, żeby domyślne „uzupełniające” nie pominęło planu po cichu. */
   scheduleChecked?: boolean;
+  /** Plan wypada dziś albo jest zaległy — domyślnie główne; przyszły termin — domyślnie uzupełniające. */
+  scheduleDue?: boolean;
   scheduleHint: string | null;
   previousSend: SupplierOrderEmail | null;
   /** Kontakt i kopiowanie treści, gdy nie ma wysyłki z Gmaila. */
@@ -322,10 +325,9 @@ export function ZdSendWorkspace({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [sendStartedAt, setSendStartedAt] = useState(() => Date.now());
-  // Główne = zamówienie z planu (przesuwa termin, gdy plan wypadał dziś lub zaległy); poboczne = dodatkowe, plan bez zmian.
-  // Bez wyboru: główne, gdy plan jest do oznaczenia; inaczej poboczne.
+  // Główne zapisuje zamówienie w planie i przelicza kolejny termin od dziś; uzupełniające zostawia plan bez zmian.
   const [orderKindChoice, setOrderKindChoice] = useState<ZdOrderKind | null>(null);
-  const orderKind = orderKindChoice ?? (scheduleCanMark ? "main" : "side");
+  const orderKind = orderKindChoice ?? zdDefaultOrderKind({ scheduleCanMark, scheduleDue });
   const planHint = scheduleHint?.replace(/\.\s*$/, "") || null;
   const [mailIssue, setMailIssue] = useState<
     | { kind: "unknown"; emails: string[] }
@@ -498,7 +500,7 @@ export function ZdSendWorkspace({
   async function runPlan(): Promise<void> {
     const decision = zdPlanStepDecision({ orderKind, scheduleDone, scheduleCanMark });
     if (decision === "side_keeps_plan") {
-      setStep("plan", { status: "skipped", message: "Zamówienie poboczne - plan dostawcy bez zmian." });
+      setStep("plan", { status: "skipped", message: "Zamówienie uzupełniające - plan dostawcy bez zmian." });
       return;
     }
     if (decision === "already_done" || (decision === "cannot_mark" && live)) {
@@ -1131,16 +1133,18 @@ export function ZdSendWorkspace({
                         onChange={setOrderKindChoice}
                         disabled={steps.plan.status === "running" || steps.plan.status === "ok" || steps.plan.status === "skipped"}
                         options={[
-                          { value: "main", label: "Główne (z planu)" },
-                          { value: "side", label: "Poboczne (dodatkowe)" },
+                          { value: "main", label: "Główne" },
+                          { value: "side", label: "Uzupełniające" },
                         ]}
                       />
                       <span className="text-xs text-slate-600">
                         {orderKind === "side"
-                          ? `Plan dostawcy zostaje bez zmian.${planHint && !scheduleCanMark ? ` ${planHint}.` : ""}`
-                          : scheduleCanMark
-                            ? "Plan wypadał dziś albo jest zaległy: zapisze zamówienie i przeliczy kolejny termin z interwału."
-                            : `${planHint ?? "Ten dostawca nie ma planu do zapisania"}.`}
+                          ? `Plan dostawcy zostaje bez zmian.${planHint && !scheduleDue ? ` ${planHint}.` : ""}`
+                          : !scheduleCanMark
+                            ? `${planHint ?? "Ten dostawca nie ma planu do zapisania"}.`
+                            : scheduleDue
+                              ? "Zapisze zamówienie w planie dostawcy i przeliczy kolejny termin z interwału."
+                              : `${planHint ?? "Kolejne zamówienie jest dopiero zaplanowane"} - główne przesunie je i przeliczy kolejny termin od dziś.`}
                       </span>
                     </span>
                   )
