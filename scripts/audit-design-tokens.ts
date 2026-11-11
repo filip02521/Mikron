@@ -10,7 +10,7 @@
  * Uzasadniony wyjątek: komentarz `design-ok: <powód>` w tej samej linii albo do dwóch linii wyżej.
  * Szablony maili (`src/lib/email/`) piszą inline CSS dla klientów poczty — poza audytem.
  */
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { execFileSync } from "child_process";
 
 const KREATOR_FILE = /zd-estimate|ZdEstimate/i;
@@ -105,9 +105,11 @@ export function auditFile(path: string, src: string): string[] {
 }
 
 function main() {
-  const files = execFileSync("git", ["ls-files", "src"], { encoding: "utf8" })
+  // Stan z dysku, nie z indeksu: nowe pliki przed `git add` też są sprawdzane, a usunięte przed `git rm` pomijane.
+  const files = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "src"], { encoding: "utf8" })
     .split("\n")
-    .filter((f) => /\.(tsx?|css)$/.test(f) && !/\.test\.tsx?$/.test(f) && !EXCLUDED_DIRS.some((d) => f.startsWith(d)));
+    .filter((f) => /\.(tsx?|css)$/.test(f) && !/\.test\.tsx?$/.test(f) && !EXCLUDED_DIRS.some((d) => f.startsWith(d)))
+    .filter((f) => existsSync(f));
   const findings = files.flatMap((f) => auditFile(f, readFileSync(f, "utf8")));
   if (findings.length) {
     console.error(`audit-design-tokens: ${findings.length} naruszeń\n${findings.join("\n")}`);

@@ -86,3 +86,8 @@ export function stockWatchSignalStale(computedAt: string, now = Date.now()): boo
   const t = Date.parse(computedAt);
   return !Number.isFinite(t) || now - t > 36 * 3600 * 1000;
 }
+
+/** Czy jest co zamawiać wg analizy (pokazujemy wtedy „Przygotuj ZD”). */
+export function stockSignalHasWork(s: Pick<StockWatchSupplierSignal, "lineCount" | "criticalCount" | "beforeDeliveryCount">): boolean {
+  return s.lineCount > 0 || s.criticalCount > 0 || s.beforeDeliveryCount > 0;
+}

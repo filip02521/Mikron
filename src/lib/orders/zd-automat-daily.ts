@@ -257,7 +257,7 @@ export type ZdAutomatTodayOrder = {
   stage: ZdAutomatTodayStage;
 };
 
-const STAGE_RANK: Record<ZdAutomatTodayStage, number> = { unconfirmed: 0, review: 1, send: 2, sent: 3, rejected: 4 };
+export const STAGE_RANK: Record<ZdAutomatTodayStage, number> = { unconfirmed: 0, review: 1, send: 2, sent: 3, rejected: 4 };
 
 /** Ile kroków z trzech („Sprawdzenie”, „ZD w Subiekcie”, „Mail”) jest za zamówieniem. */
 export function zdAutomatTodayStageStep(stage: ZdAutomatTodayStage): number {
@@ -388,4 +388,18 @@ export function buildZdAutomatDailyStatus(
 
 function timeOf(iso: string): string {
   return new Date(iso).toLocaleTimeString("pl-PL", { timeZone: "Europe/Warsaw", hour: "2-digit", minute: "2-digit" });
+}
+
+/** Dostawca → dzień następnej propozycji (wtedy czekająca wygasa) — opis etapu w wierszu panelu dziennego. */
+export function zdAutomatExpiresBySupplier(data: ZdAutomatDailyData, nowIso: string): Record<string, string | null> {
+  const todayKey = warsawKeyFromIso(nowIso);
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Warsaw",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(nowIso));
+  const num = (type: string) => Number(parts.find((x) => x.type === type)?.value ?? 0);
+  const nightPassed = zdAutomatNightPassed(zdAutomatNightRunState(data.run, todayKey, num("hour") * 60 + num("minute")));
+  return Object.fromEntries(data.suppliers.map((s) => [s.id, zdAutomatSupplierView(s, { todayKey, nightPassed }).nextKey]));
 }

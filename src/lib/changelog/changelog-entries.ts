@@ -20,6 +20,19 @@ export type ChangelogEntry = {
 };
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ═══ 2026-11-10 — PANEL DZIENNY: JEDEN WIERSZ NA DOSTAWCĘ ═══
+  {
+    id: "2026-11-10-daily-supplier-list",
+    version: "2026-11-10",
+    date: "2026-11-10",
+    category: "improvement",
+    audience: "operations",
+    highlight: true,
+    title: "Panel dzienny: jeden wiersz na dostawcę",
+    description:
+      "Zakładka Dziś ma teraz jedną listę „Dostawcy na dziś”. Dostawca nie powtarza się już w sekcji automatu, zaległych i na dziś - ma jeden wiersz w grupie, która mówi, co zrobić: Do wysłania, Do zamówienia, Zamów wcześniej, Do przesunięcia albo Do sprawdzenia ręcznie. Przy nazwie widać, skąd się wziął (Automat, Harmonogram, Poza planem, Na żądanie), a przycisk w wierszu od razu robi właściwą rzecz: Sprawdź i wyślij, Przygotuj ZD, Przesuń albo Zamówione. Dostawcy z dawnego banera „Zamów dziś poza planem” są w grupie Zamów wcześniej, od najpilniejszych. Szczegóły i pozostałe akcje rozwija strzałka przy nazwie.",
+    link: { href: "/podsumowanie", label: "Otwórz panel dzienny" },
+  },
   // ═══ 2026-07-13 — URLOPY DZIAŁU + KATEGORIE ═══
   {
     id: "2026-07-13-staff-vacation-calendar",
