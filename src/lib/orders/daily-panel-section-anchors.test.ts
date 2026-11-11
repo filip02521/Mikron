@@ -25,3 +25,13 @@ describe("daily-panel-section-anchors", () => {
     );
   });
 });
+
+describe("kotwice grup listy dostawców", () => {
+  it("grupa z kolejki ma tę samą kotwicę co krok kolejki; grupa spoza kolejki — wg wzoru", async () => {
+    const { dailySupplierGroupAnchor } = await import("./daily-panel-section-anchors");
+    for (const group of ["send", "order", "early", "shift", "manual"] as const) {
+      expect(dailySupplierGroupAnchor(group)).toBe(DAILY_PANEL_QUEUE_SECTION[group]);
+    }
+    expect(dailySupplierGroupAnchor("done")).toBe("kolejka-dostawcy-done");
+  });
+});

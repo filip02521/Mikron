@@ -33,15 +33,6 @@ export function useDailyZdProposal(supplierId: string): DailyZdProposal | null {
   return useContext(DailyZdProposalsContext).get(supplierId) ?? null;
 }
 
-/** Propozycje dostawców, których nie ma w zaległych ani w dzisiejszym harmonogramie. */
-export function useDailyZdProposalsOutside(scheduledSupplierIds: readonly string[]): DailyZdProposal[] {
-  const map = useContext(DailyZdProposalsContext);
-  return useMemo(() => {
-    const scheduled = new Set(scheduledSupplierIds);
-    return [...map.values()].filter((p) => !scheduled.has(p.supplierId));
-  }, [map, scheduledSupplierIds]);
-}
-
 function formatWhen(iso: string): string {
   return new Date(iso).toLocaleString("pl-PL", {
     timeZone: "Europe/Warsaw",
@@ -54,16 +45,20 @@ function formatWhen(iso: string): string {
 
 const zl = (v: number) => `${Math.round(v).toLocaleString("pl-PL")} zł`;
 
-/** Kotwica bloku propozycji w wierszu — cel „Pokaż w kolejce” z sekcji Automat ZD. */
-export function dailyZdProposalAnchorId(supplierId: string): string {
-  return `zd-propozycja-${supplierId}`;
-}
-
 /**
  * Zamówienie automatu w wierszu dostawcy harmonogramu: co jest gotowe, „Sprawdź i wyślij”
  * (panel boczny: przeliczenie, korekta, ZD w Subiekcie, wysyłka) i „Odrzuć” z powodem.
  */
-export function DailyZdProposalNotice({ proposal, className }: { proposal: DailyZdProposal; className?: string }) {
+export function DailyZdProposalNotice({
+  proposal,
+  className,
+  hideReview = false,
+}: {
+  proposal: DailyZdProposal;
+  className?: string;
+  /** Wiersz ma już „Sprawdź i wyślij” jako swoją akcję — tu zostaje opis, ostrzeżenia i „Odrzuć”. */
+  hideReview?: boolean;
+}) {
   const router = useRouter();
   const [reviewing, setReviewing] = useState(false);
   const [rejecting, setRejecting] = useState(false);
@@ -106,26 +101,34 @@ export function DailyZdProposalNotice({ proposal, className }: { proposal: Daily
   return (
     <>
       <div
-        id={dailyZdProposalAnchorId(proposal.supplierId)}
         className={cn(
-          "flex scroll-mt-28 flex-col gap-2.5 rounded-md bg-indigo-50/70 px-3 py-2.5 transition-shadow duration-300 sm:flex-row sm:items-center sm:gap-3",
+          "flex flex-col gap-2.5 rounded-md bg-indigo-50/70 px-3 py-2.5 transition-shadow duration-300 sm:flex-row sm:items-center sm:gap-3",
           className
         )}
       >
         <div className="flex min-w-0 flex-1 items-start gap-2.5">
-          <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-card text-indigo-700 ring-1 ring-indigo-100" aria-hidden>
-            <IconPackageCheck size={15} strokeWidth={2.25} />
-          </span>
+          {hideReview ? null : (
+            <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-card text-indigo-700 ring-1 ring-indigo-100" aria-hidden>
+              <IconPackageCheck size={15} strokeWidth={2.25} />
+            </span>
+          )}
           <div className="min-w-0">
-            <p className="text-sm font-semibold leading-snug text-slate-900">Zamówienie gotowe do potwierdzenia</p>
-            {/* Liczby łamią się tylko na kropkach; skąd i kiedy — osobna, cichsza linia. */}
-            <p className="mt-0.5 text-xs leading-snug text-slate-600 tabular-nums">
-              <span className="whitespace-nowrap">
-                {proposal.lineCount} {polishPluralWord(proposal.lineCount, "pozycja", "pozycje", "pozycji")},
-              </span>{" "}
-              <span className="whitespace-nowrap">{formatQty(pieces)} szt,</span>{" "}
-              <span className="whitespace-nowrap">ok. {zl(proposal.valueNet)}</span>
-            </p>
+            {/* W rozwinięciu wiersza listy dostawców tytuł i liczby są już w wierszu — tu tylko to, czego tam nie ma. */}
+            {hideReview ? (
+              <p className="text-xs leading-snug text-slate-600 tabular-nums">{formatQty(pieces)} szt w zamówieniu</p>
+            ) : (
+              <>
+                <p className="text-sm font-semibold leading-snug text-slate-900">Zamówienie gotowe do potwierdzenia</p>
+                {/* Liczby łamią się tylko na kropkach; skąd i kiedy — osobna, cichsza linia. */}
+                <p className="mt-0.5 text-xs leading-snug text-slate-600 tabular-nums">
+                  <span className="whitespace-nowrap">
+                    {proposal.lineCount} {polishPluralWord(proposal.lineCount, "pozycja", "pozycje", "pozycji")},
+                  </span>{" "}
+                  <span className="whitespace-nowrap">{formatQty(pieces)} szt,</span>{" "}
+                  <span className="whitespace-nowrap">ok. {zl(proposal.valueNet)}</span>
+                </p>
+              </>
+            )}
             <p className="text-xs leading-snug text-slate-500">
               automat{cycle ? ` co ${cycle} ${polishPluralWord(cycle, "dzień", "dni", "dni")}` : ""} · {formatWhen(proposal.createdAt)}
             </p>
@@ -144,9 +147,11 @@ export function DailyZdProposalNotice({ proposal, className }: { proposal: Daily
             Odrzuć
           </button>
           {/* Obrysowany, nie pełny: na panelu jest jedna pełna akcja główna, a zamówień automatu bywa kilka. */}
-          <Button type="button" variant="outline" size="sm" className="min-h-10 font-semibold sm:min-h-8" onClick={() => setReviewing(true)}>
-            Sprawdź i wyślij
-          </Button>
+          {hideReview ? null : (
+            <Button type="button" variant="outline" size="sm" className="min-h-10 font-semibold sm:min-h-8" onClick={() => setReviewing(true)}>
+              Sprawdź i wyślij
+            </Button>
+          )}
         </div>
       </div>
 

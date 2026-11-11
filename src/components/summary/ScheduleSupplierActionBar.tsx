@@ -25,6 +25,30 @@ import {
   dailyPanelMarkOrderedToastTitle,
 } from "@/lib/orders/daily-panel-mark-ordered-copy";
 
+/** „Zamówione” i „Przesuń” dla dostawcy z terminem — te same wywołania w pasku akcji i w wierszu listy dostawców. */
+export function useScheduleSupplierActions(supplierId: string, supplierName: string, run: DailyPanelRunFn) {
+  const scope = { scope: supplierId };
+  const markOrdered = () =>
+    run(
+      () => actionMarkOrdered(supplierId),
+      dailyPanelMarkOrderedToastTitle(supplierName),
+      DAILY_PANEL_MARK_ORDERED_PENDING_OVERLAY,
+      scope
+    );
+  const shiftHandlers = {
+    onShiftWeeks: (w: number) =>
+      run(
+        () => actionShiftOrder(supplierId, w, null),
+        `Przesunięto o ${w} ${w === 1 ? "tydzień" : "tygodnie"}`,
+        `Przesuwanie o ${w} ${w === 1 ? "tydzień" : "tygodnie"}…`,
+        scope
+      ),
+    onShiftDate: (iso: string) =>
+      run(() => actionShiftOrder(supplierId, null, iso), "Ustawiono datę przesunięcia", "Zapisywanie nowej daty…", scope),
+  };
+  return { markOrdered, shiftHandlers };
+}
+
 /** Zamówione + Przesuń + menu Więcej — jeden segment wizualnie, osobne cele kliknięcia. */
 export function ScheduleSupplierActionBar({
   supplierId,
@@ -56,31 +80,7 @@ export function ScheduleSupplierActionBar({
   layout?: "inline" | "footer";
   tone?: UrgentCardTone;
 }) {
-  const scope = { scope: supplierId };
-  const markOrdered = () =>
-    run(
-      () => actionMarkOrdered(supplierId),
-      dailyPanelMarkOrderedToastTitle(supplierName),
-      DAILY_PANEL_MARK_ORDERED_PENDING_OVERLAY,
-      scope
-    );
-
-  const shiftHandlers = {
-    onShiftWeeks: (w: number) =>
-      run(
-        () => actionShiftOrder(supplierId, w, null),
-        `Przesunięto o ${w} ${w === 1 ? "tydzień" : "tygodnie"}`,
-        `Przesuwanie o ${w} ${w === 1 ? "tydzień" : "tygodnie"}…`,
-        scope
-      ),
-    onShiftDate: (iso: string) =>
-      run(
-        () => actionShiftOrder(supplierId, null, iso),
-        "Ustawiono datę przesunięcia",
-        "Zapisywanie nowej daty…",
-        scope
-      ),
-  };
+  const { markOrdered, shiftHandlers } = useScheduleSupplierActions(supplierId, supplierName, run);
 
   if (compact) {
     return (

@@ -599,10 +599,11 @@ Teraz:
 
 - **Lista automatu z dziś otwiera się od razu** (`zdProposalListFromToday`, `ZdAutoProposalSheet`): bez przeliczania
   i bez nowej propozycji. „Przelicz na aktualnych stanach” jest przyciskiem; lista z poprzedniego dnia przelicza się sama.
-- **Górny panel = zamówienia automatu na dziś** (`DailyZdAutomatOrders`, `zdAutomatTodayOrders`): zdanie „N zamówień
+- **Górny panel = zamówienia automatu na dziś** (do 10.11.2026; potem wiersze listy „Dostawcy na dziś”, patrz niżej) (`zdAutomatTodayOrders`): zdanie „N zamówień
   czeka na Ciebie · X z Y gotowe”, pod nim wiersz na zamówienie z etapem (sprawdzenie → ZD w Subiekcie → wysłane) i jedną
   akcją: „Sprawdź i wyślij” albo „Wyślij mail” (ZD jest, zamówienie nie poszło — panel otwiera się od razu na wysyłce).
-- **Karta kolejki u góry panelu** (`DailyPanelStatusBand`): krok „Automat ZD (N)” na początku kolejki (przewija do sekcji, kotwica `kolejka-automat-zd`), N w „w kolejce” i „automat X/Y” w postępie dnia (`withAutomatDayProgress`).
+- **Karta kolejki u góry panelu** (`DailyPanelStatusBand`): „automat X/Y” w postępie dnia (`withAutomatDayProgress`). Od 10.11.2026 kroki kolejki to grupy listy „Dostawcy na dziś” („Do wysłania (N)” przewija do grupy, kotwica `kolejka-dostawcy-send`).
+- **Od 10.11.2026 zamówienia automatu są wierszami listy „Dostawcy na dziś”** (`DailySupplierList`, model `buildDailySupplierRows`; plan: `docs/plans/panel-dzienny-lista-dostawcow.md`): grupa „Do wysłania”, akcja wiersza zamiast osobnej sekcji. Sekcja automatu pokazuje już tylko linię problemu (brak nocnego przebiegu, automat stoi) z linkiem do pulpitu; opis „Górny panel” powyżej jest historyczny.
 - **Etap „wysłane”** (§4.2, migracja `200_zd_auto_proposal_sent.sql`): mail z Gmaila OnTime widać w
   `supplier_order_emails`; „Wysłałem ręcznie” zapisuje `sent_at`/`sent_via = manual` na propozycji.
 

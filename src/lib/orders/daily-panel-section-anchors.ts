@@ -1,10 +1,13 @@
 /** Kotwice sekcji zakładki Dziś — wspólne dla nawigacji i scrolla. */
 export const DAILY_PANEL_QUEUE_SECTION = {
-  automat: "kolejka-automat-zd",
-  overdue: "kolejka-zalegle",
+  // Grupy listy „Dostawcy na dziś” (jeden wiersz na dostawcę) — zob. dailySupplierGroupAnchor.
+  send: "kolejka-dostawcy-send",
+  order: "kolejka-dostawcy-order",
+  early: "kolejka-dostawcy-early",
+  shift: "kolejka-dostawcy-shift",
+  manual: "kolejka-dostawcy-manual",
   stockOut: "kolejka-brak-na-stanie",
   prosby: "kolejka-prosby",
-  today: "kolejka-harmonogram-dzis",
 } as const;
 
 /** Prefiks kotwic torów próśb / braków (pełne id buduje procurementLaneAnchorId). */
@@ -55,4 +58,14 @@ export function formatDailyPanelSyncLabel(
   if (minutes < 60) return `sprawdzono ${minutes} min temu`;
 
   return "sprawdzono ponad godzinę temu";
+}
+
+/** Lista „Dostawcy na dziś” (jeden wiersz na dostawcę) i kotwice jej grup. */
+export const DAILY_SUPPLIER_LIST_ANCHOR = "kolejka-dostawcy";
+
+/** Kotwica grupy listy — te same id co kroki kolejki (`DAILY_PANEL_QUEUE_SECTION`); grupy spoza kolejki („done”) wg wzoru. */
+export function dailySupplierGroupAnchor(group: string): string {
+  return group in DAILY_PANEL_QUEUE_SECTION
+    ? DAILY_PANEL_QUEUE_SECTION[group as DailyPanelQueueSectionKey]
+    : `${DAILY_SUPPLIER_LIST_ANCHOR}-${group}`;
 }

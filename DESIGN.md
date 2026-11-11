@@ -479,6 +479,10 @@ Ustawienia jednego obiektu mają jedno okno i jedno miejsce stałe: kartę obiek
 
 Ekran przeglądu wielu obiektów (Automat ZD): na górze Status Panel ze zdaniem stanu i jedną akcją, która prowadzi do tego, co wymaga reakcji („Pokaż 2 do sprawdzenia” ustawia filtr tabeli). Pod nim jedna tabela, jeden wiersz na obiekt; ten sam obiekt nie pojawia się w drugiej tabeli. Szczegóły (pełne wskaźniki z trendem, akcje, przejście do karty) rozwijają się pod wierszem. Widok innego rodzaju (Klasy towarów) wybiera przełącznik segmentowy nad tabelą, bez liczników, które powtarzają filtry tabeli.
 
+### Lista pracy na dziś
+
+Lista obiektów, przy których trzeba dziś coś zrobić (Panel dzienny → „Dostawcy na dziś”, `DailySupplierList`): jeden wiersz na obiekt, także gdy trafił na listę z kilku źródeł. Grupy mówią, co zrobić („Do wysłania”, „Do zamówienia”…), nie skąd wiersz się wziął; źródło to odznaka przy nazwie i chip filtra nad listą. Wiersz ma jeden stan (najwyżej kilka słów z liczbą) i jedną akcję po prawej, w wariancie Outline — pełny Petrol zostaje dla akcji strony. Reszta (szczegóły, rzadsze akcje) rozwija się strzałką pod wierszem, w bloku `well`. Nazwa obiektu otwiera jego kartę i ma cichą kreskę (`decoration-slate-300`). Długa grupa pokazuje podgląd i „Pokaż wszystkie (N)”. Liczba z nagłówka listy nie powtarza się w chipie „Wszyscy N”. Na telefonie nazwa zajmuje całą szerokość, a stan i akcja stoją pod nią w jednej linii.
+
 ### Status Panel
 
 Karta stanu na górze ekranu pracy: zdanie stanu z liczbą („433 pozycje czekają na Twoją decyzję”, z poprawną odmianą liczebnika), jedno zdanie wyjaśnienia i jedna główna akcja po prawej. Na telefonie akcja schodzi pod tekst. Pas uwagi na całą szerokość (`PageAttentionStrip`) służy do pojedynczej sprawy wymagającej reakcji, w tonie `amber`.
