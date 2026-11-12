@@ -492,10 +492,8 @@ export function ZkWatchCard({
   const metaParts = splitZkWatchCardMetaSummary(cardMetaSummary);
   // „do zamówienia” i „pominięte” zostają w podpowiedzi i w oknie pozycji; wiersz pokazuje stan.
   const metaBadges = metaParts.filter((part) => part.tone !== "plain" && part.tone !== "detail");
-  const metaPlain = metaParts
-    .filter((part) => part.tone === "plain")
-    .map((part) => part.text)
-    .join(" · ");
+  // Pozostałe informacje („Prośba: bez otwartej”) też jako odznaki, szare: w polu nie ma luźnego tekstu.
+  const metaPlainParts = metaParts.filter((part) => part.tone === "plain").map((part) => part.text);
   // Jedna rodzina odznak w wierszu: rozmiar jak `Badge` (12 px, waga 500), bez własnej wysokości.
   const rowBadgeSizeClass = "h-auto px-1.5 py-0.5 text-xs font-medium";
   // Etykieta pola ma rozmiar Meta (13 px) jak wartości; odróżnia ją tylko kolor.
@@ -684,15 +682,17 @@ export function ZkWatchCard({
 
               {lineProgress || cardMetaSummary ? (
                 <>
-                  <dt className={rowFieldLabelClass}>Stan</dt>
+                  {/* „Pozycje”, nie „Stan”: każda liczba w tym polu liczy pozycje ZK. */}
+                  <dt className={rowFieldLabelClass}>Pozycje</dt>
                   <dd
-                    className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1"
+                    className="flex min-w-0 items-baseline gap-x-1.5"
                     title={cardMetaSummary ?? undefined}
                   >
                     {lineProgress ? (
                       <span
                         className={cn(
-                          "mr-1 shrink-0 tabular-nums",
+                          // Stała szerokość: odznaki zaczynają się w tym samym miejscu w każdym wierszu.
+                          "w-[7.75rem] shrink-0 tabular-nums",
                           allLinesDone ? "text-emerald-800" : "text-slate-700"
                         )}
                       >
@@ -700,6 +700,8 @@ export function ZkWatchCard({
                         {lineProgress[1]} z {lineProgress[2]} odhaczone
                       </span>
                     ) : null}
+                    {/* Odznaki zawijają się we własnej kolumnie, pod pierwszą odznaką, a nie pod postępem. */}
+                    <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-1">
                     {metaBadges.map((part) => (
                       <Badge
                         key={part.text}
@@ -708,7 +710,10 @@ export function ZkWatchCard({
                         {part.text}
                       </Badge>
                     ))}
-                    {metaPlain ? <span className="min-w-0 truncate">{metaPlain}</span> : null}
+                    {metaPlainParts.map((text) => (
+                      <Badge key={text}>{text}</Badge>
+                    ))}
+                    </span>
                   </dd>
                 </>
               ) : null}
