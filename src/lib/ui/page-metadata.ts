@@ -19,6 +19,7 @@ export const PAGE_TITLES = {
   prosba: "Nowa prośba",
   plan: "Harmonogram",
   zk: "ZK czekające",
+  zkZMaila: "Nowe ZK z maila",
   notatnik: "Notatnik",
   tablica: "Tablica",
   podsumowanie: "Panel dzienny",

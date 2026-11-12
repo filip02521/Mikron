@@ -309,6 +309,9 @@ export type SubiektCreateZdInput = {
   pozycje: SubiektCreateDocumentLineInput[];
 };
 
+/** Body POST /documents/zk/create — kontrahentId = odbiorca (kh_Id); bez cenaNetto cena z kartoteki. */
+export type SubiektCreateZkInput = SubiektCreateZdInput;
+
 /** dokument — GET /documents, /documents/zk, /documents/zd */
 export type SubiektDocument = {
   dok_Id: number;
