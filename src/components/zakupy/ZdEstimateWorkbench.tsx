@@ -35,7 +35,10 @@ import {
   actionClearZdEstimateOnRequestProducts,
   actionRestoreZdEstimateProduct,
   actionRestoreZdEstimateProducts,
-  actionRunZdEstimateManual,
+  actionStartZdEstimateRun,
+  actionCollectZdEstimateRun,
+  type ZdEstimateRunInput,
+  type ZdEstimateRunResult,
   actionPollZdEstimateRunProgress,
   actionFetchZdEstimatePendingIndividuals,
   actionFetchZdEstimateProsbaReservationOverlap,
@@ -386,6 +389,7 @@ import {
   shouldClearRunProgressOnMiss,
   type ZdEstimateRunProgressSnapshot,
 } from "@/lib/orders/zd-estimate-run-progress";
+import { awaitZdEstimateRunJob } from "@/lib/orders/zd-estimate-run-await";
 import {
   clearZdEstimateExternalSessionResumeQueryParam,
   isZdEstimateExternalSessionReturnNavigation,
@@ -4054,7 +4058,7 @@ export function ZdEstimateWorkbench({
         : selectedGroup?.grt_Nazwa ?? (groupQuery.trim() || null);
     startEstimate(async () => {
       try {
-      const res = await actionRunZdEstimateManual({
+      const runInput: ZdEstimateRunInput = {
         mode,
         ...(mode === "grupa" ? { grupaId } : { cechaId }),
         scopeLabel: scopeLabelForRun,
@@ -4078,7 +4082,15 @@ export function ZdEstimateWorkbench({
           columns,
           columnOrder,
         },
+      };
+      // Liczenie idzie na serwerze w tle; wynik odbieramy krótkimi zapytaniami (duże cechy > 1 min).
+      const awaited = await awaitZdEstimateRunJob<ZdEstimateRunResult>({
+        start: () => actionStartZdEstimateRun(runInput),
+        collect: actionCollectZdEstimateRun,
       });
+      const res: ZdEstimateRunResult = awaited.ok
+        ? awaited.result
+        : { ok: false, message: awaited.failure.message, feedback: { ...awaited.failure, tone: "error" } };
       if (estimateGen !== estimateGenRef.current) {
         // Serwer mógł już skasować poprzednią active i/lub utworzyć nową —
         // nie zostawiaj orphan DB ani tokenu wskazującego na skasowaną sesję.

@@ -142,6 +142,7 @@ import {
   type ZdEstimateBulkProductInput,
 } from "@/lib/orders/zd-estimate-bulk";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { isProcurementDraftReady } from "@/lib/orders/procurement-readiness";
 import { assessRequestCompleteness } from "@/lib/orders/request-completeness";
 import {
@@ -279,6 +280,12 @@ import {
   updateZdEstimateRunProgress,
   type ZdEstimateRunProgressPollResult,
 } from "@/lib/orders/zd-estimate-run-progress";
+import {
+  beginZdEstimateRunJob,
+  collectZdEstimateRunJob,
+  finishZdEstimateRunJob,
+  type ZdEstimateRunJobState,
+} from "@/lib/orders/zd-estimate-run-jobs";
 import { ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION } from "@/lib/orders/zd-estimate-external-session";
 import {
   fetchAllReservedZkRowsForTwId,
@@ -2538,6 +2545,41 @@ function progressPagesHint(
   const { pagesCommitted, totalPages } = poll.snapshot;
   if (!(pagesCommitted > 0) || !(totalPages > 0)) return null;
   return `(Ostatni postęp: strona ${pagesCommitted}/${totalPages}.)`;
+}
+
+/**
+ * „Policz listę” bez długiego żądania HTTP: akcja od razu oddaje `runId`, liczenie idzie po
+ * odpowiedzi (`after`), a wynik odbiera `actionCollectZdEstimateRun`. Duże cechy liczą się
+ * ponad minutę i jedno żądanie zrywało reverse proxy (504 przed końcem liczenia).
+ */
+export async function actionStartZdEstimateRun(
+  input: ZdEstimateRunInput
+): Promise<{ ok: true; runId: string } | { ok: false; message: string }> {
+  const user = await requireZdEstimateAdmin("read");
+  const runId = isValidZdEstimateRunProgressId(input.progressId) ? input.progressId.trim() : crypto.randomUUID();
+  if (!beginZdEstimateRunJob(runId, user.id)) {
+    return { ok: false, message: "To liczenie już trwa. Poczekaj na wynik albo policz listę ponownie." };
+  }
+  after(async () => {
+    let result: ZdEstimateRunResult;
+    try {
+      result = await actionRunZdEstimateManual({ ...input, progressId: runId });
+    } catch (e) {
+      console.error("[zd-estimate] liczenie w tle przerwane", e);
+      const feedback = feedbackFromException(e);
+      result = { ok: false, message: feedback.message, feedback };
+    }
+    finishZdEstimateRunJob(runId, user.id, result);
+  });
+  return { ok: true, runId };
+}
+
+export async function actionCollectZdEstimateRun(
+  runId: string
+): Promise<ZdEstimateRunJobState<ZdEstimateRunResult>> {
+  const user = await requireZdEstimateAdmin("read");
+  if (!isValidZdEstimateRunProgressId(runId)) return { state: "missing" };
+  return collectZdEstimateRunJob<ZdEstimateRunResult>(runId.trim(), user.id);
 }
 
 export async function actionPollZdEstimateRunProgress(

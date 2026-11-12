@@ -136,6 +136,8 @@ nssm start OnTime
 | Problem | Sprawdź |
 |---------|---------|
 | 502 Bad Gateway | Czy działa `npm run start` na 3000? |
+| 504 Gateway Time-out przed upływem 5 min | W działającym `nginx.conf` (np. `C:
+ginxconf`) brakuje `proxy_read_timeout 300s;` / `proxy_send_timeout 300s;` w `location /` — domyślne 60 s zrywa m.in. „Utwórz ZD” (zapis do 180 s). Po zmianie: `nginx -t`, `nginx -s reload`. Kreator „Policz listę” liczy w tle i nie zależy od tego limitu. |
 | Logowanie się resetuje | Zły `NEXT_PUBLIC_APP_URL` (np. nadal `:3000` albo IP zamiast nazwy) |
 | Strona tylko na serwerze | Zapora 80, DNS, brak hosts na innych PC |
 | Cron nie działa | Cron woła `http://127.0.0.1:3000` — OK, omija nginx |
