@@ -5,7 +5,6 @@ import { formatDateString } from "@/lib/orders/dates";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import { MY_ORDER_HISTORY_ESTIMATE_MIXED_ZD_GROUP_DETAIL, MY_ORDER_HISTORY_ESTIMATE_TITLE, MY_ORDER_HISTORY_ESTIMATE_ZD_PENDING_REPLACE_DETAIL } from "@/lib/orders/my-order-history-estimate-copy";
 import {
-  ZD_ETA_TIMING_SYNC_IN_PROGRESS,
   ZD_ETA_TIMING_TITLE_NO_MATCH,
   ZD_ETA_TIMING_TITLE_PENDING,
 } from "@/lib/orders/my-order-zd-eta-copy";
@@ -107,8 +106,8 @@ describe("my-order-delivery-timing-display", () => {
     const display = buildMyOrderDeliveryTimingDisplay(
       row({ timingLabel: "ok. 10.05.2026 (~5 dni rob.) · po terminie" })
     );
-    expect(display?.title).toBe(MY_ORDER_HISTORY_ESTIMATE_TITLE);
-    expect(display?.estimate).toBe("Brak informacji o planowanej dostawie");
+    expect(display?.title).toBe("Brak aktualnego terminu");
+    expect(display?.estimate).toBe("");
     expect(display?.tone).toBe("overdue");
     expect(display?.urgencyLabel).toBeNull();
   });
@@ -128,6 +127,18 @@ describe("my-order-delivery-timing-display", () => {
     expect(display?.urgencyLabel).toBeNull();
   });
 
+  it("bez terminu w ZD, ale z datą z historii: tytuł mówi, skąd jest data", () => {
+    const future = formatDateString(addDays(todayInWarsaw(), 5));
+    const display = buildMyOrderDeliveryTimingDisplay(
+      row({ timingLabel: `ok. ${future} (~5 dni rob.)`, zdEtaNoMatch: true })
+    );
+    expect(display?.title).toBe(MY_ORDER_HISTORY_ESTIMATE_TITLE);
+    expect(display?.estimate).not.toBe("");
+    expect(display?.detail).toBe(
+      "Dostawca nie podał terminu w zamówieniu (ZD), więc datę szacujemy z poprzednich dostaw."
+    );
+  });
+
   it("buduje blok oczekiwania na sync ZD", () => {
     const display = buildMyOrderDeliveryTimingDisplay(
       row({
@@ -136,8 +147,10 @@ describe("my-order-delivery-timing-display", () => {
         zdEtaPending: true,
       })
     );
-    expect(display?.title).toBe(ZD_ETA_TIMING_TITLE_PENDING);
-    expect(display?.detail).toContain(MY_ORDER_HISTORY_ESTIMATE_ZD_PENDING_REPLACE_DETAIL.slice(0, 20));
+    // Obok tytułu stoi data z historii, więc tytuł ją nazywa; o sprawdzaniu mówi druga linia.
+    expect(display?.title).toBe(MY_ORDER_HISTORY_ESTIMATE_TITLE);
+    expect(display?.estimate).toContain("22.12.2026");
+    expect(display?.detail).toBe(MY_ORDER_HISTORY_ESTIMATE_ZD_PENDING_REPLACE_DETAIL);
   });
 
   it("pending z przeterminowanym szacunkiem - brak informacji o dostawie", () => {
@@ -147,7 +160,9 @@ describe("my-order-delivery-timing-display", () => {
         zdEtaPending: true,
       })
     );
-    expect(display?.estimate).toBe("Brak informacji o planowanej dostawie");
+    // Tytuł i druga linia mówią wszystko; w miejscu daty nie stoi już zdanie „brak informacji”.
+    expect(display?.title).toBe(ZD_ETA_TIMING_TITLE_PENDING);
+    expect(display?.estimate).toBe("");
     expect(display?.detail).toContain("Termin z historii minął");
   });
 
@@ -159,7 +174,7 @@ describe("my-order-delivery-timing-display", () => {
       })
     );
     expect(display?.title).toBe(ZD_ETA_TIMING_TITLE_PENDING);
-    expect(display?.estimate).toContain(ZD_ETA_TIMING_SYNC_IN_PROGRESS.slice(0, 12));
+    expect(display?.estimate).toBe("");
     expect(shouldShowMyOrderExpandedDeliveryTiming(row({ timingLabel: null, zdEtaPending: true }), true)).toBe(
       true
     );
