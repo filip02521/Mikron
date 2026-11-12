@@ -44,7 +44,8 @@ const ZD_CREATE_OVERLAP_DEADLINE_MS = 100_000;
 const ZD_CREATE_OVERLAP_CACHE_MAX_AGE_MS = 15 * 60_000;
 const ZD_CREATE_KIT_STOCK_BUDGET_MS = 20_000;
 // @service-role-ok — autoryzacja requireZdEstimateAdmin() (operacje dostaw); service role z pełnym scope po warstwie aplikacji.
-import { requireZdEstimateAdmin } from "@/lib/auth";
+import { getSessionUser, requireZdEstimateAdmin } from "@/lib/auth";
+import { canAccessZdEstimate } from "@/lib/auth-roles";
 import {
   deleteZdEstimateExclusion,
   deleteZdEstimateExclusionsMany,
@@ -284,6 +285,8 @@ import {
   beginZdEstimateRunJob,
   collectZdEstimateRunJob,
   finishZdEstimateRunJob,
+  isZdEstimateRunJobSuperseded,
+  peekZdEstimateRunJobSummary,
   type ZdEstimateRunJobState,
 } from "@/lib/orders/zd-estimate-run-jobs";
 import { ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION } from "@/lib/orders/zd-estimate-external-session";
@@ -2379,7 +2382,13 @@ export async function actionRunZdEstimateManual(
     let uiSessionId: string | null = null;
     let uiSessionCreatedAt: string | null = null;
     let uiSessionRotated = false;
+    // Użytkownik zaczął już nowsze liczenie: ta lista nie może zastąpić jego aktywnej sesji
+    // (skasowałaby listę z nowszego liczenia, na której właśnie pracuje).
+    const superseded =
+      isValidZdEstimateRunProgressId(input.progressId) &&
+      isZdEstimateRunJobSuperseded(input.progressId.trim(), user.id);
     try {
+      if (superseded) throw new ZdEstimateRunSupersededSignal();
       const snapshot = buildZdEstimateUiSessionSnapshotFromPolicz({
         mode: scope.mode,
         grupaId: scope.mode === "grupa" ? scope.grupaId : null,
@@ -2422,7 +2431,9 @@ export async function actionRunZdEstimateManual(
         );
       }
     } catch (persistErr) {
-      console.warn("[zd-ui-session] persist after Policz threw", persistErr);
+      if (!(persistErr instanceof ZdEstimateRunSupersededSignal)) {
+        console.warn("[zd-ui-session] persist after Policz threw", persistErr);
+      }
     }
 
     if (progressId) completeZdEstimateRunProgress(progressId, user.id);
@@ -2486,7 +2497,7 @@ export async function actionRunZdEstimateManual(
           message:
             "Budowanie listy do zamówienia trwało zbyt długo (limit czasu API lub serwera).",
           hint: [
-            "Spróbuj ponownie albo zawęź zakres. Limit serwera / nginx to ok. 5 min.",
+            "Spróbuj ponownie albo zawęź zakres.",
             pagesHint,
           ]
             .filter(Boolean)
@@ -2554,7 +2565,7 @@ function progressPagesHint(
  */
 export async function actionStartZdEstimateRun(
   input: ZdEstimateRunInput
-): Promise<{ ok: true; runId: string } | { ok: false; message: string }> {
+): Promise<{ ok: true; runId: string; ownerUserId: string } | { ok: false; message: string }> {
   const user = await requireZdEstimateAdmin("read");
   const runId = isValidZdEstimateRunProgressId(input.progressId) ? input.progressId.trim() : crypto.randomUUID();
   if (!beginZdEstimateRunJob(runId, user.id)) {
@@ -2569,9 +2580,9 @@ export async function actionStartZdEstimateRun(
       const feedback = feedbackFromException(e);
       result = { ok: false, message: feedback.message, feedback };
     }
-    finishZdEstimateRunJob(runId, user.id, result);
+    finishZdEstimateRunJob(runId, user.id, result, zdEstimateRunOutcome(result));
   });
-  return { ok: true, runId };
+  return { ok: true, runId, ownerUserId: user.id };
 }
 
 export async function actionCollectZdEstimateRun(
@@ -2580,6 +2591,52 @@ export async function actionCollectZdEstimateRun(
   const user = await requireZdEstimateAdmin("read");
   if (!isValidZdEstimateRunProgressId(runId)) return { state: "missing" };
   return collectZdEstimateRunJob<ZdEstimateRunResult>(runId.trim(), user.id);
+}
+
+/** Pominięcie zapisu sesji przez liczenie zastąpione nowszym (nie błąd). */
+class ZdEstimateRunSupersededSignal extends Error {}
+
+/** Co wyszło z liczenia w tle — tyle potrzebuje zakładka poza Kreatorem (bez całej listy). */
+type ZdEstimateRunOutcome = { state: "ready"; sessionId: string } | { state: "failed"; message: string };
+
+function zdEstimateRunOutcome(result: ZdEstimateRunResult): ZdEstimateRunOutcome {
+  if (!result.ok) return { state: "failed", message: result.message };
+  const sessionId = result.uiSessionId?.trim();
+  // Lista policzona, ale bez zapisanej sesji nie ma jej skąd otworzyć po powrocie.
+  if (!sessionId) return { state: "failed", message: "Lista została policzona, ale nie udało się jej zapisać." };
+  return { state: "ready", sessionId };
+}
+
+export type ZdEstimateRunStatus =
+  | { state: "running"; pagesCommitted: number; totalPages: number }
+  | ZdEstimateRunOutcome
+  /** Serwer nie zna tego liczenia (restart usługi, wygasło). */
+  | { state: "missing" }
+  /** W tej karcie jest teraz zalogowane inne konto — to nie jego liczenie (bez komunikatu). */
+  | { state: "not_yours" }
+  /** Brak sesji albo chwilowo brak dostępu do Kreatora — zapytaj później, nic nie pokazuj. */
+  | { state: "unavailable" };
+
+/**
+ * Lekki status liczenia dla zakładki poza Kreatorem. Pytany co kilka sekund z dowolnego ekranu,
+ * więc brak sesji i brak dostępu są zwykłą odpowiedzią, a nie wyjątkiem.
+ */
+export async function actionGetZdEstimateRunStatus(runId: string, ownerUserId: string): Promise<ZdEstimateRunStatus> {
+  const user = await getSessionUser();
+  if (!user) return { state: "unavailable" };
+  if (ownerUserId !== user.id) return { state: "not_yours" };
+  if (!canAccessZdEstimate(user.role, user.assignedWorkspaces)) return { state: "unavailable" };
+  if (!isValidZdEstimateRunProgressId(runId)) return { state: "missing" };
+  const id = runId.trim();
+  const job = peekZdEstimateRunJobSummary<ZdEstimateRunOutcome>(id, user.id);
+  if (job.state === "missing") return job;
+  if (job.state === "done") return job.summary;
+  const progress = getZdEstimateRunProgressForOwner(id, user.id);
+  return {
+    state: "running",
+    pagesCommitted: progress.found ? progress.snapshot.pagesCommitted : 0,
+    totalPages: progress.found ? progress.snapshot.totalPages : 0,
+  };
 }
 
 export async function actionPollZdEstimateRunProgress(

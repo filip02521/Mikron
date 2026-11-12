@@ -17,7 +17,7 @@ function collectFrom(steps: Array<ZdEstimateRunJobState<number> | "throw">) {
 describe("awaitZdEstimateRunJob", () => {
   it("czeka na wynik i przeżywa pojedyncze zerwane odbiory", async () => {
     const out = await awaitZdEstimateRunJob<number>({
-      start: async () => ({ ok: true, runId: "r" }),
+      start: async () => ({ ok: true, runId: "r", ownerUserId: "u" }),
       collect: collectFrom([{ state: "running" }, "throw", { state: "running" }, { state: "done", result: 42 }]),
       sleep: noSleep,
     });
@@ -26,12 +26,12 @@ describe("awaitZdEstimateRunJob", () => {
 
   it("zadanie zniknęło z serwera → komunikat o przerwaniu", async () => {
     const out = await awaitZdEstimateRunJob<number>({
-      start: async () => ({ ok: true, runId: "r" }),
+      start: async () => ({ ok: true, runId: "r", ownerUserId: "u" }),
       collect: collectFrom([{ state: "running" }, { state: "missing" }]),
       sleep: noSleep,
     });
     expect(out.ok).toBe(false);
-    if (!out.ok) expect(out.failure.title).toBe("Liczenie zostało przerwane");
+    if (!out.ok) expect(out.failure?.title).toBe("Liczenie zostało przerwane");
   });
 
   it("start bez połączenia i seria zerwanych odbiorów → brak połączenia", async () => {
@@ -42,14 +42,14 @@ describe("awaitZdEstimateRunJob", () => {
       collect: collectFrom([{ state: "running" }]),
       sleep: noSleep,
     });
-    expect(startFailed.ok === false && startFailed.failure.code).toBe("network");
+    expect(startFailed.ok === false && startFailed.failure?.code).toBe("network");
 
     const collectFailed = await awaitZdEstimateRunJob<number>({
-      start: async () => ({ ok: true, runId: "r" }),
+      start: async () => ({ ok: true, runId: "r", ownerUserId: "u" }),
       collect: collectFrom(["throw"]),
       sleep: noSleep,
     });
-    expect(collectFailed.ok === false && collectFailed.failure.code).toBe("network");
+    expect(collectFailed.ok === false && collectFailed.failure?.code).toBe("network");
   });
 
   it("odmowa startu i limit czasu", async () => {
@@ -58,15 +58,33 @@ describe("awaitZdEstimateRunJob", () => {
       collect: collectFrom([{ state: "running" }]),
       sleep: noSleep,
     });
-    expect(refused.ok === false && refused.failure.message).toBe("To liczenie już trwa.");
+    expect(refused.ok === false && refused.failure?.message).toBe("To liczenie już trwa.");
 
     let t = 0;
     const timedOut = await awaitZdEstimateRunJob<number>({
-      start: async () => ({ ok: true, runId: "r" }),
+      start: async () => ({ ok: true, runId: "r", ownerUserId: "u" }),
       collect: collectFrom([{ state: "running" }]),
       sleep: noSleep,
       now: () => (t += 60_000),
     });
-    expect(timedOut.ok === false && timedOut.failure.code).toBe("timeout");
+    expect(timedOut.ok === false && timedOut.failure?.code).toBe("timeout");
+  });
+
+  it("zgłasza start i przestaje czekać, gdy czekający zniknął", async () => {
+    const startedIds: string[] = [];
+    let polls = 0;
+    const out = await awaitZdEstimateRunJob<number>({
+      start: async () => ({ ok: true, runId: "r", ownerUserId: "u" }),
+      collect: async () => {
+        polls += 1;
+        return { state: "running" };
+      },
+      onStarted: ({ runId }) => startedIds.push(runId),
+      isAbandoned: () => polls >= 2,
+      sleep: noSleep,
+    });
+    expect(startedIds).toEqual(["r"]);
+    expect(out).toEqual({ ok: false, failure: null });
+    expect(polls).toBe(2);
   });
 });
