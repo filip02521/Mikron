@@ -337,6 +337,38 @@ function filterLineStatusSummaryForPrimary(
   return filtered.length ? filtered.join(" · ") : null;
 }
 
+export type ZkWatchCardMetaTone = "action" | "progress" | "done" | "plain" | "detail";
+
+const CARD_META_TONE_RULES: Array<{ tone: ZkWatchCardMetaTone; test: RegExp }> = [
+  // Wymaga ruchu handlowca: brak prośby, nowe pozycje, przypomnienie, wybór zakresu.
+  { tone: "action", test: /(^\d+ bez prośby$|^\d+ now[ae]$|^\d+ częściowo$|^Wybierz pozycje|^Przypomnienie:|^Czeka na odbiór)/ },
+  { tone: "progress", test: /^\d+ w prośbie$/ },
+  // Zakres prośby („do zamówienia”, „pominięte”) — szczegół z okna pozycji, nie stan wiersza.
+  { tone: "detail", test: /(^\d+ do zamówienia$|^\d+ pominięte$)/ },
+  { tone: "done", test: /(^\d+ na regale$|^\d+ dostępne$|^Dostępne|^\d+ odebrane z regału$|^\d+ zakończone$)/ },
+];
+
+const CARD_META_TONE_ORDER: ZkWatchCardMetaTone[] = ["action", "progress", "done", "plain", "detail"];
+
+/**
+ * Rozbija zdanie z liczbami na fragmenty z tonem, żeby karta pokazała je jako odznaki stanu:
+ * najpierw to, co wymaga działania, potem to, co w toku, na końcu zakończone i tło.
+ */
+export function splitZkWatchCardMetaSummary(
+  summary: string | null
+): Array<{ text: string; tone: ZkWatchCardMetaTone }> {
+  if (!summary?.trim()) return [];
+  const parts = summary
+    .split(" · ")
+    .map((text) => text.trim())
+    .filter(Boolean)
+    .map((text) => ({
+      text,
+      tone: CARD_META_TONE_RULES.find((rule) => rule.test.test(text))?.tone ?? ("plain" as const),
+    }));
+  return CARD_META_TONE_ORDER.flatMap((tone) => parts.filter((part) => part.tone === tone));
+}
+
 export function buildZkWatchCardMetaSummary(parts: {
   prosbaScopeSummary: string | null;
   prosbaRowMeta: string | null;

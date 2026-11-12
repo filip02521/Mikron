@@ -21,6 +21,8 @@ export type MyOrderCollapsedRowZonesProps = {
   statusHint?: string | null;
   showStatusHint?: boolean;
   chips?: ReactNode;
+  /** Odznaka stanu — od sm pierwsza w wierszu znaczników, żeby nie zabierała szerokości nazwie. */
+  statusBadge?: ReactNode;
   patternHint?: ReactNode;
   /** Pod treścią (telefon: termin i liczba produktów). */
   footer?: ReactNode;
@@ -42,6 +44,7 @@ export function MyOrderCollapsedRowZones({
   statusHint,
   showStatusHint,
   chips,
+  statusBadge,
   patternHint,
   footer,
   searchQuery,
@@ -73,7 +76,7 @@ export function MyOrderCollapsedRowZones({
 
       {srOnlyHeadline ? <span className="sr-only">{srOnlyHeadline}</span> : null}
 
-      {/* Telefon: stan pod nazwą. Od sm stan stoi po prawej, w kolumnie terminu. */}
+      {/* Telefon: stan pod nazwą. Od sm stan otwiera wiersz znaczników na dole. */}
       {statusLine ? (
         <SearchHighlightText
           text={statusLine}
@@ -101,7 +104,18 @@ export function MyOrderCollapsedRowZones({
         />
       ) : null}
 
-      {chips ? <div className="mt-1.5 flex flex-wrap items-center gap-1.5">{chips}</div> : null}
+      {chips || statusBadge ? (
+        <div
+          className={cn(
+            "mt-1.5 flex-wrap items-center gap-1.5",
+            // Sama odznaka: na telefonie stan stoi już pod nazwą, więc wiersz znika.
+            chips ? "flex" : "hidden sm:flex"
+          )}
+        >
+          {statusBadge ? <span className="hidden min-w-0 max-w-full sm:block">{statusBadge}</span> : null}
+          {chips}
+        </div>
+      ) : null}
 
       {patternHint}
 

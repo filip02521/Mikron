@@ -1016,6 +1016,11 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
             searchQuery={searchQuery}
             displayLaneKind={displayLaneKind}
             showInlineLineCountBadge
+            statusBadge={
+              showCollapsedHeadline && headline ? (
+                <SearchHighlightText text={headline} searchQuery={searchQuery} className={headlineClass} />
+              ) : null
+            }
             chips={
               row.sourceZkNumber ||
               sharedRequestNote ||
@@ -1086,11 +1091,6 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
         {!expanded ? (
           <MyOrderRowMetaRail
             {...collapsedMetaRailProps}
-            statusBadge={
-              showCollapsedHeadline && headline ? (
-                <SearchHighlightText text={headline} searchQuery={searchQuery} className={headlineClass} />
-              ) : null
-            }
             className="hidden sm:flex"
           />
         ) : null}

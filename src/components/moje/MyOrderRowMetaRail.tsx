@@ -27,8 +27,6 @@ export type MyOrderRowMetaRailProps = {
   isStock?: boolean;
   /** Telefon: meta w jednym wierszu pod treścią, wyrównana do lewej. */
   inline?: boolean;
-  /** Odznaka stanu wiersza — pierwsza w prawej kolumnie (biurko). */
-  statusBadge?: React.ReactNode;
   className?: string;
 };
 
@@ -47,14 +45,12 @@ export function MyOrderRowMetaRail({
   isUrgent,
   isStock,
   inline = false,
-  statusBadge,
   className,
 }: MyOrderRowMetaRailProps) {
   const zdFulfillment = row.zdFulfillment ?? null;
   const plannedOrderDate = row.plannedOrderDate ?? null;
 
   const hasContent =
-    Boolean(statusBadge) ||
     showInformacjaTimingMeta ||
     zdFulfillment ||
     showEstimatedDeliveryMeta ||
@@ -84,7 +80,6 @@ export function MyOrderRowMetaRail({
         className
       )}
     >
-      {statusBadge}
       <div
         className={cn(
           "flex min-w-0 flex-wrap items-center gap-1.5 empty:hidden",
