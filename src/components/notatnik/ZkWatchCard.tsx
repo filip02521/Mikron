@@ -42,10 +42,12 @@ import {
   mojeQueueRowLayoutClass,
   mojeQueueRowMainClass,
 } from "@/lib/ui/moje-shipment-row-styles";
-import { salesTypography } from "@/lib/ui/ontime-theme";
+import { Badge } from "@/components/ui/Badge";
+import { panelTypography } from "@/lib/ui/ontime-theme";
 import {
   buildZkWatchCardMetaSummary,
   deriveZkWatchFollowUpDueBadge,
+  splitZkWatchCardMetaSummary,
   deriveZkWatchRowAttention,
   deriveZkWatchRowChrome,
   deriveZkWatchRowSecondaryMeta,
@@ -483,6 +485,21 @@ export function ZkWatchCard({
         ? `${watch.line_summary.trim().slice(0, 51)}…`
         : watch.line_summary.trim()
       : null);
+  // „Nazwa · 1/2” z podglądu: nazwa i postęp idą do osobnych elementów wiersza.
+  const productName = productPreview?.replace(/ · \d+\/\d+$/, "") ?? null;
+  const lineProgress = linesShort?.match(/^(\d+)\/(\d+)$/) ?? null;
+  const allLinesDone = Boolean(lineProgress && lineProgress[1] === lineProgress[2]);
+  const metaParts = splitZkWatchCardMetaSummary(cardMetaSummary);
+  // „do zamówienia” i „pominięte” zostają w podpowiedzi i w oknie pozycji; wiersz pokazuje stan.
+  const metaBadges = metaParts.filter((part) => part.tone !== "plain" && part.tone !== "detail");
+  const metaPlain = metaParts
+    .filter((part) => part.tone === "plain")
+    .map((part) => part.text)
+    .join(" · ");
+  // Jedna rodzina odznak w wierszu: rozmiar jak `Badge` (12 px, waga 500), bez własnej wysokości.
+  const rowBadgeSizeClass = "h-auto px-1.5 py-0.5 text-xs font-medium";
+  // Etykieta pola ma rozmiar Meta (13 px) jak wartości; odróżnia ją tylko kolor.
+  const rowFieldLabelClass = "text-slate-500";
   const linesMenuLabel =
     linesShort ??
     String(scopedLineViews.filter((line) => line.key !== "summary").length || lineViews.length || 1);
@@ -601,7 +618,10 @@ export function ZkWatchCard({
       <div
         className={cn(
           mojeQueueRowLayoutClass,
-          compact ? "px-2 py-1.5 sm:px-3" : "px-3 py-2"
+          // Akcje przy pierwszej linii wiersza, nie w połowie jego wysokości.
+          "sm:items-start",
+          // Więcej miejsca nad numerem niż pod ostatnim polem: numer otwiera nowy blok.
+          compact ? "px-3 pb-2.5 pt-3.5 sm:px-4" : "px-4 pb-3 pt-4"
         )}
       >
         <div
@@ -613,28 +633,17 @@ export function ZkWatchCard({
           aria-label={rowAriaLabel}
         >
           <div className="min-w-0 flex-1">
-            <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
-              <span
-                className={cn(
-                  "shrink-0 font-semibold tabular-nums text-slate-900",
-                  compact ? "text-xs" : salesTypography.rowTitle
-                )}
-              >
+            {/* Linia 1: tożsamość ZK i to, co w nim najpilniejsze. */}
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              <span className={cn("shrink-0 tabular-nums", panelTypography.rowTitle)}>
                 <SearchHighlightText text={displayNumber} searchQuery={searchQuery} />
-              </span>
-              <span
-                className={cn(
-                  "min-w-0 truncate font-medium text-slate-800",
-                  compact ? "text-xs" : salesTypography.rowTitle
-                )}
-              >
-                <SearchHighlightText text={watch.client_label} searchQuery={searchQuery} />
               </span>
               {primaryAttention ? (
                 <ZkWatchAttentionBadge
                   kind={primaryAttention.kind}
                   label={primaryAttention.label}
                   title={primaryAttention.title}
+                  className={rowBadgeSizeClass}
                 />
               ) : null}
               {followUpDueBadge ? (
@@ -642,75 +651,100 @@ export function ZkWatchCard({
                   kind={followUpDueBadge.kind}
                   label={followUpDueBadge.label}
                   title={followUpDueBadge.title}
+                  className={rowBadgeSizeClass}
                 />
               ) : null}
             </div>
 
-            {productPreview ? (
-              <p
-                className={cn("mt-0.5 truncate", salesTypography.rowMeta, "text-slate-600")}
-                title={
-                  hasTrackedScope && hiddenOutsideScope > 0
-                    ? `${productPreview} - w podglądzie widać wybrane pozycje; +${hiddenOutsideScope} poz. spoza zakresu`
-                    : productPreview
-                }
+            {/* Stałe pola pod numerem: ta sama informacja stoi w tym samym miejscu w każdym wierszu. */}
+            <dl className={cn("mt-1.5 grid grid-cols-[4.25rem_minmax(0,1fr)] items-baseline gap-x-2 gap-y-1", panelTypography.rowMeta)}>
+              <dt className={rowFieldLabelClass}>Klient</dt>
+              <dd
+                className="line-clamp-2 min-w-0 break-words text-slate-900"
+                title={watch.client_label}
               >
-                <SearchHighlightText text={productPreview} searchQuery={searchQuery} />
-              </p>
-            ) : null}
+                <SearchHighlightText text={watch.client_label} searchQuery={searchQuery} />
+              </dd>
 
-            {cardMetaSummary ? (
-              <p
-                className={cn("mt-0.5 truncate", salesTypography.rowMeta, "text-slate-500")}
-                title={cardMetaSummary}
-              >
-                {cardMetaSummary}
-              </p>
-            ) : null}
+              {productPreview ? (
+                <>
+                  <dt className={rowFieldLabelClass}>Towar</dt>
+                  <dd
+                    className="min-w-0 truncate text-slate-700"
+                    title={
+                      hasTrackedScope && hiddenOutsideScope > 0
+                        ? `${productName ?? productPreview} - w podglądzie widać wybrane pozycje; +${hiddenOutsideScope} poz. spoza zakresu`
+                        : (productName ?? productPreview)
+                    }
+                  >
+                    <SearchHighlightText text={productName ?? productPreview} searchQuery={searchQuery} />
+                  </dd>
+                </>
+              ) : null}
 
-            {notePreview ? (
-              <div className="mt-0.5 flex min-w-0 items-baseline gap-1.5">
-                {noteProsbaStatus !== "none" ? (
-                  <ZkCaseNoteProsbaChip
-                    status={noteProsbaStatus}
-                    pendingKind={noteProsbaPendingKind}
-                    variant="row"
-                  />
-                ) : null}
-                <button
-                  type="button"
-                  data-zk-row-action=""
-                  onClick={handleNoteClick}
-                  className={cn(
-                    "min-w-0 flex-1 truncate text-left",
-                    salesTypography.rowMeta,
-                    "text-slate-600 transition hover:text-indigo-900"
-                  )}
-                  title={noteProsbaCopy.description}
-                >
-                  {notePreview}
-                </button>
-              </div>
-            ) : canEditZkActions ? (
-              <button
-                type="button"
-                data-zk-row-action=""
-                onClick={handleNoteClick}
-                className={cn(
-                  "mt-0.5 block max-w-full truncate text-left",
-                  salesTypography.rowMeta,
-                  "rounded-md text-indigo-700/90 transition hover:bg-indigo-50/80 hover:text-indigo-900"
-                )}
-              >
-                Dodaj notatkę…
-              </button>
-            ) : null}
+              {lineProgress || cardMetaSummary ? (
+                <>
+                  <dt className={rowFieldLabelClass}>Stan</dt>
+                  <dd
+                    className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1"
+                    title={cardMetaSummary ?? undefined}
+                  >
+                    {lineProgress ? (
+                      <span
+                        className={cn(
+                          "mr-1 shrink-0 tabular-nums",
+                          allLinesDone ? "text-emerald-800" : "text-slate-700"
+                        )}
+                      >
+                        {/* To samo słowo co w oknie szczegółów („Odhaczone 1 z 2”). */}
+                        {lineProgress[1]} z {lineProgress[2]} odhaczone
+                      </span>
+                    ) : null}
+                    {metaBadges.map((part) => (
+                      <Badge
+                        key={part.text}
+                        variant={part.tone === "action" ? "warning" : part.tone === "done" ? "success" : "info"}
+                      >
+                        {part.text}
+                      </Badge>
+                    ))}
+                    {metaPlain ? <span className="min-w-0 truncate">{metaPlain}</span> : null}
+                  </dd>
+                </>
+              ) : null}
+
+              {notePreview ? (
+                <>
+                  <dt className={rowFieldLabelClass}>Notatka</dt>
+                  <dd className="flex min-w-0 items-baseline gap-1.5">
+                    {noteProsbaStatus !== "none" ? (
+                      <ZkCaseNoteProsbaChip
+                        status={noteProsbaStatus}
+                        pendingKind={noteProsbaPendingKind}
+                        variant="row"
+                        className={cn(rowBadgeSizeClass, "ring-0")}
+                      />
+                    ) : null}
+                    <button
+                      type="button"
+                      data-zk-row-action=""
+                      onClick={handleNoteClick}
+                      className="min-w-0 flex-1 truncate text-left text-slate-700 transition hover:text-indigo-900"
+                      title={noteProsbaCopy.description}
+                    >
+                      {notePreview}
+                    </button>
+                  </dd>
+                </>
+              ) : null}
+            </dl>
           </div>
         </div>
 
         <div
           className={cn(
             mojeQueueRowActionsClass,
+            "sm:self-start",
             (rowChrome.railKind || rowChrome.accentKind) &&
               zkWatchRowActionsMobileDividerClass
           )}
@@ -761,6 +795,7 @@ export function ZkWatchCard({
               hasLines={hasLines}
               linesLabel={linesMenuLabel}
               onOpenLines={() => openLinesModal(false)}
+              onAddNote={!notePreview && canEditZkActions ? () => openLinesModal(true) : undefined}
               onEditProsbaScope={
                 canEditZkActions && productLineCount > 0
                   ? () => onProsbaScopeRequested?.(watch.id)

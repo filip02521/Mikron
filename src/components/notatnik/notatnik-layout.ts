@@ -15,7 +15,8 @@ export const NOTATNIK_NOTES_WALL_CLASS = cn(
 export const NOTATNIK_NOTES_GRID_CLASS = "grid grid-cols-2 gap-x-3 gap-y-7 sm:gap-x-4 sm:gap-y-9";
 
 /** Lista ZK — ten sam wzorzec co /moje (divide-y, bez odstępów). */
-export const NOTATNIK_ZK_LIST_CLASS = mojeShipmentListClass;
+// Wiersz ZK ma kilka linijek, więc granica między ZK jest o stopień mocniejsza niż w /moje.
+export const NOTATNIK_ZK_LIST_CLASS = cn(mojeShipmentListClass, "divide-slate-200");
 
 /** Scroll listy ZK — pozwala wychodzić znacznikowi „gotowe do zamknięcia” poza krawędź. */
 export const NOTATNIK_ZK_LIST_SCROLL_CLASS = "overflow-x-visible";

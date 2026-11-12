@@ -20,7 +20,8 @@ const SWATCH_TONE: Partial<Record<ZkWatchRowColorLegendItemId, string>> = {
 function LegendSwatch({ id }: { id: ZkWatchRowColorLegendItemId }) {
   const tone = SWATCH_TONE[id];
   if (!tone) return null;
-  return <span className={cn("h-3 w-3 shrink-0 rounded-[3px] ring-1", tone)} aria-hidden />;
+  // Kropka, nie kwadrat z obwódką: kwadrat czytał się jak pole wyboru filtra.
+  return <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full ring-1", tone)} aria-hidden />;
 }
 
 function LegendItem({ item }: { item: ZkWatchRowColorLegendItem }) {
@@ -72,6 +73,7 @@ export function ZkWatchRowColorLegend({
       )}
       aria-label="Znaczenie kolorów wierszy ZK"
     >
+      <span>Kolory wierszy:</span>
       {items.map((item) => (
         <LegendItem key={item.id} item={item} />
       ))}

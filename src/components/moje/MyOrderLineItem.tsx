@@ -363,8 +363,9 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
           teethLineDelivered={line.teethLineDelivered}
           deliveredQuantity={line.deliveredQuantity}
           triggerSize="sm"
-          triggerVariant="ghost"
-          triggerClassName="text-[0.6875rem] font-medium text-indigo-700 hover:text-indigo-900"
+          triggerVariant="outline"
+          // Ten sam rozmiar i obrys co „Pobierz zamówienie” obok — dwa równorzędne przyciski.
+          triggerClassName="py-1 text-[0.6875rem] font-medium leading-normal shadow-sm"
         />
       ) : null}
       {line.teethOrderFileName ? (
@@ -391,6 +392,7 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
     </span>
   ) : null;
 
+  const hasTeethChips = Boolean(line.teethDetails && line.teethDetails.length > 0);
   const hasRightColumn = showActionInColumn;
   const useActionColumn = lineActionColumn && hasRightColumn;
 
@@ -402,6 +404,8 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
         compact && useActionColumn && showLinePickupAck && "bg-emerald-50/20",
         // Towar na magazynie: tło zamiast paska z boku (DESIGN.md → Shapes).
         !compact && emphasizeStock && (onStock || partial) && "rounded-md px-2",
+        // Rodzic zeruje padding boczny pozycji; kolorowe tło potrzebuje własnego marginesu wokół tekstu.
+        compact && emphasizeStock && (onStock || partial) && "-mx-2.5 rounded-md !px-2.5",
         emphasizeStock && onStock && "bg-emerald-50/60",
         emphasizeStock && partial && "bg-slate-50"
       )}
@@ -466,14 +470,17 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
             </div>
           </div>
 
-          {(detailParts.length > 0 || lineSideMeta) ? (
+          {(detailParts.length > 0 || lineSideMeta || hasTeethChips) ? (
             <div
               className={cn(
-                "mt-0.5 flex flex-wrap items-center gap-1.5",
+                "mt-1.5 flex flex-wrap items-center gap-1.5",
                 !compact && "pl-5"
               )}
             >
               {lineSideMeta}
+              {hasTeethChips ? (
+                <TeethGroupChips details={line.teethDetails!} variant="prosba" compact />
+              ) : null}
               {detailParts.length > 0 ? (
                 <p
                   className={cn(
@@ -485,12 +492,6 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
                   <SearchHighlightJoined parts={detailParts} searchQuery={searchQuery} />
                 </p>
               ) : null}
-            </div>
-          ) : null}
-
-          {line.teethDetails && line.teethDetails.length > 0 ? (
-            <div className={cn("mt-1.5", !compact && "pl-5")}>
-              <TeethGroupChips details={line.teethDetails} variant="prosba" compact />
             </div>
           ) : null}
 
@@ -537,7 +538,7 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
         </div>
 
         {inlineLineActionBar ? (
-          <div className="flex shrink-0 items-center gap-1.5 self-center">
+          <div className="flex shrink-0 items-center gap-1.5 self-start">
             {lineActionBar}
           </div>
         ) : null}
