@@ -1,5 +1,5 @@
 import { subiektFetch, subiektJson } from "@/lib/subiekt/client";
-import { resolveSubiektOrdersConfig } from "@/lib/subiekt/config";
+import { resolveSubiektOrdersConfig, resolveSubiektZkConfig } from "@/lib/subiekt/config";
 import {
   SubiektRequestError,
   SubiektTimeoutError,
@@ -10,6 +10,7 @@ import { subiektQueryString } from "@/lib/subiekt/query";
 import type { SubiektConfig } from "@/lib/subiekt/config";
 import type {
   SubiektCreateZdInput,
+  SubiektCreateZkInput,
   SubiektDocument,
   SubiektHealthData,
   SubiektKontrahent,
@@ -427,13 +428,16 @@ let issuerUsers: { at: number; key: string; users: SubiektUser[] } | null = null
  * uz_Id użytkownika Subiekta dla konta OnTime (po imieniu i nazwisku z e-maila) — trafia jako
  * `personelId` przy tworzeniu ZD, żeby „Wystawił” był osobą, która tworzy dokument. null = brak pewnego dopasowania.
  */
-export async function resolveSubiektIssuerId(email: string | null | undefined): Promise<number | null> {
-  const config = ordersConfigOrThrow();
+export async function resolveSubiektIssuerId(
+  email: string | null | undefined,
+  config: SubiektConfig = ordersConfigOrThrow(),
+  allowSurnameOnly = true
+): Promise<number | null> {
   if (!issuerUsers || issuerUsers.key !== config.baseUrl || Date.now() - issuerUsers.at > ISSUER_USERS_TTL_MS) {
     const res = await subiektJson<{ data?: SubiektUser[] }>(`/uzytkownicy${subiektQueryString({ pageSize: 200 })}`, {}, config);
     issuerUsers = { at: Date.now(), key: config.baseUrl, users: res.data ?? [] };
   }
-  return matchSubiektUserByEmail(email, issuerUsers.users)?.uz_Id ?? null;
+  return matchSubiektUserByEmail(email, issuerUsers.users, allowSurnameOnly)?.uz_Id ?? null;
 }
 
 /** Wydruk ZD przez Sferę trwa ~20 s na live. */
@@ -528,13 +532,46 @@ export async function setSubiektOrdersZdTermin(id: number, dateKey: string): Pro
 export async function createSubiektOrdersZd(
   body: SubiektCreateZdInput
 ): Promise<SubiektDocument> {
-  const base = ordersConfigOrThrow();
+  return createSubiektSferaDocument(SUBIEKT_PATHS.documentsZdCreate, body, ordersConfigOrThrow(), "ZD");
+}
+
+/** Host „ZK z maila” — tylko kopia testowa (`resolveSubiektZkConfig`). */
+export function zkHostConfigOrThrow(): SubiektConfig {
+  const resolved = resolveSubiektZkConfig();
+  if (!resolved.ok) throw new Error(resolved.message);
+  return resolved.config;
+}
+
+/** Tworzy ZK przez Sferę (`POST /documents/zk/create`) na hoście ZK. Brak dry-run: każde udane wywołanie zapisuje dokument. */
+export async function createSubiektZk(body: SubiektCreateZkInput): Promise<SubiektDocument> {
+  return createSubiektSferaDocument(SUBIEKT_PATHS.documentsZkCreate, body, zkHostConfigOrThrow(), "ZK");
+}
+
+/** Odczyt ZK z hosta, na którym powstało (weryfikacja po zapisie). */
+export async function getSubiektZkFromZkHost(id: number): Promise<SubiektDocument> {
+  return (await subiektGet<SubiektDocument>(SUBIEKT_PATHS.documentZk(id), zkHostConfigOrThrow())).data;
+}
+
+export async function searchSubiektZkHostProducts(params: SubiektListParams): Promise<SubiektProduct[]> {
+  return (await subiektList<SubiektProduct>(SUBIEKT_PATHS.products, params, zkHostConfigOrThrow())).data ?? [];
+}
+
+export async function searchSubiektZkHostClients(params: SubiektListParams): Promise<SubiektKontrahent[]> {
+  return (await subiektList<SubiektKontrahent>(SUBIEKT_PATHS.odbiorcy, params, zkHostConfigOrThrow())).data ?? [];
+}
+
+async function createSubiektSferaDocument(
+  path: string,
+  body: SubiektCreateZdInput,
+  base: SubiektConfig,
+  label: "ZD" | "ZK"
+): Promise<SubiektDocument> {
   const config: SubiektConfig = {
     ...base,
     timeoutMs: SUBIEKT_ORDERS_ZD_CREATE_TIMEOUT_MS,
   };
   const res = await subiektFetch(
-    SUBIEKT_PATHS.documentsZdCreate,
+    path,
     {
       method: "POST",
       body: JSON.stringify(body),
@@ -547,16 +584,16 @@ export async function createSubiektOrdersZd(
     throw new SubiektRequestError(res.status, text || res.statusText);
   }
   if (!text) {
-    throw new Error("Subiekt create ZD: pusta odpowiedź.");
+    throw new Error(`Subiekt create ${label}: pusta odpowiedź.`);
   }
   let parsed: SubiektSingleEnvelope<SubiektDocument>;
   try {
     parsed = JSON.parse(text) as SubiektSingleEnvelope<SubiektDocument>;
   } catch {
-    throw new SubiektRequestError(res.status, "Odpowiedź create ZD nie jest JSON");
+    throw new SubiektRequestError(res.status, `Odpowiedź create ${label} nie jest JSON`);
   }
   if (!parsed.data?.dok_Id) {
-    throw new Error("Subiekt create ZD: brak dok_Id w odpowiedzi.");
+    throw new Error(`Subiekt create ${label}: brak dok_Id w odpowiedzi.`);
   }
   return parsed.data;
 }
