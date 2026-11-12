@@ -65,6 +65,7 @@ import { ChangelogAutoOpen } from "@/components/changelog/ChangelogAutoOpen";
 import { MonthlySummaryNotice } from "@/components/monthly-summary/MonthlySummaryNotice";
 import { AuthSessionGuard } from "@/components/auth/AuthSessionGuard";
 import { ZdEstimateExternalSessionFloatingNotice } from "@/components/zakupy/ZdEstimateExternalSessionFloatingNotice";
+import { ZdEstimateRunFloatingNotice } from "@/components/zakupy/ZdEstimateRunFloatingNotice";
 import { ConfirmHost } from "@/components/ui/ConfirmHost";
 
 function SalesGlobalPinnedStrip({
@@ -515,6 +516,7 @@ export function AppShellClient({
           />
         ) : null}
         <ZdEstimateExternalSessionFloatingNotice />
+        <ZdEstimateRunFloatingNotice />
       </div>
       </ChangelogProvider>
       </SalesOnboardingGate>

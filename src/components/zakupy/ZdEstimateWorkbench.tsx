@@ -391,6 +391,13 @@ import {
 } from "@/lib/orders/zd-estimate-run-progress";
 import { awaitZdEstimateRunJob } from "@/lib/orders/zd-estimate-run-await";
 import {
+  dismissZdEstimateTrackedRun,
+  getZdEstimateRunTrackerSnapshot,
+  releaseZdEstimateRunOwnership,
+  settleZdEstimateRunInWizard,
+  trackZdEstimateRunStarted,
+} from "@/lib/client/zd-estimate-run-tracker";
+import {
   clearZdEstimateExternalSessionResumeQueryParam,
   isZdEstimateExternalSessionReturnNavigation,
   shouldShowZdEstimateSessionResumeLoading,
@@ -873,6 +880,15 @@ export function ZdEstimateWorkbench({
   const [rematting, startRemat] = useTransition();
   /** Unieważnia wynik „Policz”, gdy zakres zmieni się w trakcie requestu. */
   const estimateGenRef = useRef(0);
+  // Wyjście z Kreatora w trakcie liczenia: wynik odbiera zakładka poza Kreatorem (run tracker).
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      releaseZdEstimateRunOwnership();
+    };
+  }, []);
   /** Unieważnia spóźnione odpowiedzi fetch próśb (mount vs Policz). */
   const pendingFetchGenRef = useRef(0);
   /** Lokalny guard w ramach jednego mountu (sessionStorage chroni remount). */
@@ -4084,10 +4100,30 @@ export function ZdEstimateWorkbench({
         },
       };
       // Liczenie idzie na serwerze w tle; wynik odbieramy krótkimi zapytaniami (duże cechy > 1 min).
+      let trackedRunId: string | null = null;
       const awaited = await awaitZdEstimateRunJob<ZdEstimateRunResult>({
         start: () => actionStartZdEstimateRun(runInput),
         collect: actionCollectZdEstimateRun,
+        onStarted: ({ runId, ownerUserId }) => {
+          trackedRunId = runId;
+          trackZdEstimateRunStarted({
+            runId,
+            ownerUserId,
+            label: activeSupplierName?.trim() || scopeLabelForRun?.trim() || "",
+            supplierId: supplierId ?? null,
+            scopeMode: mode,
+            grupaId: mode === "grupa" ? (grupaId ?? null) : null,
+            cechaId: mode === "cecha" ? (cechaId ?? null) : null,
+            startedAtMs: Date.now(),
+          });
+          // Wyjście z Kreatora, zanim serwer potwierdził start — od razu oddaj wynik zakładce.
+          if (!mountedRef.current) releaseZdEstimateRunOwnership();
+        },
+        isAbandoned: () => !mountedRef.current,
       });
+      // Kreator zniknął z ekranu — liczenie trwa na serwerze, o wyniku powie zakładka poza Kreatorem.
+      if (!awaited.ok && awaited.failure === null) return;
+      if (trackedRunId) settleZdEstimateRunInWizard(trackedRunId);
       const res: ZdEstimateRunResult = awaited.ok
         ? awaited.result
         : { ok: false, message: awaited.failure.message, feedback: { ...awaited.failure, tone: "error" } };
@@ -4563,6 +4599,28 @@ export function ZdEstimateWorkbench({
 
   // Sesja zewnętrzna: restore, auto-replace (daily Przygotuj ZD) albo konflikt z autorun.
   useLayoutEffect(() => {
+    // Liczenie zaczęte wcześniej i śledzone poza Kreatorem (wyjście albo odświeżenie w trakcie).
+    const tracker = getZdEstimateRunTrackerSnapshot();
+    const awayRun = tracker.run && tracker.run.runId !== tracker.ownedRunId ? tracker.run : null;
+    if (awayRun?.state === "ready" && awayRun.sessionId) {
+      // Gotowa lista jest teraz jedyną zapisaną sesją — wejście do Kreatora dowolną drogą ją otwiera.
+      writeZdEstimateExternalSessionToken(
+        createZdEstimateExternalSessionToken({
+          sessionId: awayRun.sessionId,
+          schemaVersion: ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION,
+          supplierId: awayRun.supplierId,
+          scopeMode: awayRun.scopeMode,
+          grupaId: awayRun.grupaId,
+          cechaId: awayRun.cechaId,
+        })
+      );
+      dismissZdEstimateTrackedRun(awayRun.runId);
+    } else if (awayRun?.state === "running") {
+      // Wynik tego liczenia zastąpi poprzednią sesję na serwerze — nie otwieraj jej do edycji,
+      // bo jej zapis skasowałby potem gotową listę.
+      clearZdEstimateExternalSessionToken();
+    }
+
     // Token w localStorage → stan React (zewnętrzne źródło); setState w layoucie przed paint.
     // eslint-disable-next-line react-hooks/set-state-in-effect -- sync tokenu sesji UI
     syncExternalSessionTokenState();

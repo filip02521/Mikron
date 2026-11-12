@@ -20,6 +20,18 @@ export type ChangelogEntry = {
 };
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ═══ 2026-11-12 — KREATOR ZD: LICZENIE W TLE ═══
+  {
+    id: "2026-11-12-zd-estimate-background-run",
+    version: "2026-11-12",
+    date: "2026-11-12",
+    category: "improvement",
+    audience: "operations",
+    title: "Kreator ZD: duże listy liczą się w tle",
+    description:
+      "Liczenie listy dla dużych dostawców (np. Ivoclar) nie kończy się już błędem po minucie. Po kliknięciu „Policz listę” możesz przejść na inny ekran - przy prawej krawędzi zostaje zakładka „Liczę”, a gdy lista jest gotowa, rozwija się z przyciskiem „Otwórz listę”. Gotowa lista czeka, aż ją otworzysz albo odrzucisz.",
+    link: { href: "/zakupy/szacunek", label: "Otwórz Kreator ZD" },
+  },
   // ═══ 2026-11-10 — PANEL DZIENNY: JEDEN WIERSZ NA DOSTAWCĘ ═══
   {
     id: "2026-11-10-daily-supplier-list",
