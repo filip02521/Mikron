@@ -27,9 +27,12 @@ import { salesSearchPlaceholder } from "@/lib/sales/sales-search-ui";
 import { SALES_SEARCH_COPY } from "@/lib/sales/sales-page-ui-copy";
 import {
   mojeShipmentListClass,
-  mojeShipmentSectionShellClass,
 } from "@/lib/ui/moje-shipment-row-styles";
 import { brandLinkClass, salesTypography } from "@/lib/ui/ontime-theme";
+
+// Karta na tle strony, rodzeństwo karty listy: ten sam promień, obramowanie i cień co `Card`.
+const announcementsCardClass =
+  "overflow-hidden rounded-[var(--radius-panel)] border border-slate-200 bg-card shadow-[var(--shadow-card)]";
 
 function sortAnnouncementsForMoje(
   rows: DepartmentBoardThreadRow[],
@@ -111,7 +114,7 @@ function MojeAnnouncementCompactRow({
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
             {unread ? (
-              <span className="shrink-0 rounded bg-sky-100 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-sky-800">
+              <span className="shrink-0 rounded-md bg-indigo-100 px-1.5 py-0.5 text-[0.6875rem] font-medium text-indigo-800">
                 Nowe
               </span>
             ) : null}
@@ -249,7 +252,7 @@ export function MojeAnnouncementsSection({
   if (listAnnouncements.length === 0 && announcements.length > 0) {
     return (
       <div id={MOJE_ANNOUNCEMENTS_SECTION_ID} className="scroll-mt-24">
-        <div className={mojeShipmentSectionShellClass}>
+        <div className={announcementsCardClass}>
           <div className="flex w-full items-center gap-2.5 border-b border-slate-100 bg-slate-50/60 px-3 py-2.5 sm:px-4">
             <span className="min-w-0 flex-1">
               <span className={cn(salesTypography.blockTitle, "text-slate-900")}>
@@ -276,7 +279,7 @@ export function MojeAnnouncementsSection({
 
   return (
     <div id={MOJE_ANNOUNCEMENTS_SECTION_ID} className="scroll-mt-24">
-      <div className={mojeShipmentSectionShellClass}>
+      <div className={announcementsCardClass}>
         <button
           type="button"
           className="flex w-full items-center gap-2.5 border-b border-slate-100 bg-slate-50/60 px-3 py-2.5 text-left sm:px-4"

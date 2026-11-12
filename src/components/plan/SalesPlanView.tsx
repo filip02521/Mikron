@@ -223,7 +223,7 @@ function SalesSupplierRow({
             >
               {insight.name}
             </span>
-            <span className="shrink-0 rounded bg-slate-100/90 px-1 py-px text-[0.625rem] font-medium text-slate-500">
+            <span className="shrink-0 rounded-md bg-slate-100/90 px-1 py-px text-[0.625rem] font-medium text-slate-500">
               {locationLabel(insight.location)}
             </span>
           </div>

@@ -9,7 +9,7 @@ import type { MyOrderListKind } from "@/lib/orders/my-order-row-layout";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import { SearchHighlightText } from "@/components/moje/SearchHighlightText";
 import { cn } from "@/lib/cn";
-import { salesTypography } from "@/lib/ui/ontime-theme";
+import { panelTypography } from "@/lib/ui/ontime-theme";
 
 export type MyOrderCollapsedRowZonesProps = {
   row: MyOrderRow;
@@ -56,11 +56,11 @@ export function MyOrderCollapsedRowZones({
           text={title}
           searchQuery={searchQuery}
           // Telefon: nazwa produktu w 2 liniach zamiast ucięcia po kilku słowach.
-          className={cn("line-clamp-2 break-words sm:block sm:truncate", salesTypography.rowTitle)}
+          className={cn("line-clamp-2 break-words sm:block sm:truncate", panelTypography.rowTitle)}
         />
         {showInlineLineCountBadge && row.lineCount > 1 ? (
           <span
-            className="shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-[0.6875rem] font-semibold tabular-nums text-indigo-700"
+            className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-xs font-medium tabular-nums text-slate-700"
             title={`${myOrderCollapsedProductSummary(row, listKind)} w prośbie - rozwiń, aby zobaczyć`}
           >
             +{row.lineCount - 1}
@@ -73,20 +73,21 @@ export function MyOrderCollapsedRowZones({
 
       {srOnlyHeadline ? <span className="sr-only">{srOnlyHeadline}</span> : null}
 
-      {contextLine ? (
-        <SearchHighlightText
-          text={contextLine}
-          searchQuery={searchQuery}
-          className={cn("mt-0.5 truncate", salesTypography.rowMeta)}
-          as="p"
-        />
-      ) : null}
-
+      {/* Telefon: stan pod nazwą. Od sm stan stoi po prawej, w kolumnie terminu. */}
       {statusLine ? (
         <SearchHighlightText
           text={statusLine}
           searchQuery={searchQuery}
-          className={statusLineClassName}
+          className={cn("mt-1 sm:hidden", statusLineClassName)}
+          as="p"
+        />
+      ) : null}
+
+      {contextLine ? (
+        <SearchHighlightText
+          text={contextLine}
+          searchQuery={searchQuery}
+          className={cn("mt-1 truncate sm:mt-0.5", panelTypography.rowMeta)}
           as="p"
         />
       ) : null}
@@ -95,12 +96,12 @@ export function MyOrderCollapsedRowZones({
         <SearchHighlightText
           text={statusHint}
           searchQuery={searchQuery}
-          className={cn("mt-0.5 truncate text-slate-500", salesTypography.rowMeta)}
+          className={cn("mt-0.5 truncate", panelTypography.rowMeta)}
           as="p"
         />
       ) : null}
 
-      {chips ? <div className="mt-0.5 flex flex-wrap items-center gap-1.5">{chips}</div> : null}
+      {chips ? <div className="mt-1.5 flex flex-wrap items-center gap-1.5">{chips}</div> : null}
 
       {patternHint}
 

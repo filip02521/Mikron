@@ -30,13 +30,14 @@ import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Alert } from "@/components/ui/Alert";
 import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
-import { SectionListLabel } from "@/components/ui/SectionListLabel";
+import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
+import { cn } from "@/lib/cn";
+import { sectionTitleClass } from "@/lib/ui/ontime-theme";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
   IconClipboardList,
   MojeSectionIcon,
   type MojeSectionIconKind,
-  mojeSectionIconTileClass,
 } from "@/components/icons/StrokeIcons";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import type { MyOrderSectionPatternId } from "@/lib/orders/my-order-section-callout";
@@ -93,13 +94,16 @@ function MojeOrdersResultCount({
   );
 }
 
-import type { SectionListAccent } from "@/components/ui/SectionListLabel";
 import type { MyOrderSectionAccent } from "@/lib/orders/my-order-section-accent";
 import { BrandLoader } from "@/components/ui/BrandLoader";
 
-function toSectionListAccent(accent: MyOrderSectionAccent): SectionListAccent {
-  return accent;
-}
+const SECTION_ICON_TONE: Record<MyOrderSectionAccent, string> = {
+  emerald: "text-emerald-700",
+  indigo: "text-indigo-700",
+  violet: "text-indigo-700",
+  sky: "text-slate-500",
+  slate: "text-slate-500",
+};
 
 function MojeSectionListLabel({
   title,
@@ -114,19 +118,26 @@ function MojeSectionListLabel({
   accent: MyOrderSectionAccent;
   icon: MojeSectionIconKind;
 }) {
+  // Tytuł sekcji na tle strony (DESIGN.md → Section), licznik w Meta, opis w dymku „?”.
+  // Ikona bez kafla zostaje: po niej handlowiec rozpoznaje sekcje wymagające reakcji.
   return (
-    <SectionListLabel
-      id={mojeSectionHeadingDomId(icon)}
-      title={title}
-      hint={hint}
-      // Opis sekcji w dymku „?” — lista ma być krótka; nagłówek i ikona mówią, co to za sekcja.
-      hintMode="tooltip"
-      count={count}
-      accent={toSectionListAccent(accent)}
-      icon={<MojeSectionIcon kind={icon} size={17} />}
-      tileClassName={mojeSectionIconTileClass(icon)}
-      action={<MojeSectionHeaderSlot />}
-    />
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1">
+      <span className={cn("shrink-0", SECTION_ICON_TONE[accent])} aria-hidden>
+        <MojeSectionIcon kind={icon} size={18} />
+      </span>
+      <h2 id={mojeSectionHeadingDomId(icon)} className={cn(sectionTitleClass, "scroll-mt-24")}>
+        {title}
+      </h2>
+      {count !== undefined && count > 0 ? (
+        <span className="text-[0.8125rem] tabular-nums text-slate-500">{count}</span>
+      ) : null}
+      {hint ? (
+        <HelpHintBubble message={hint} tone="slate" size="md" ariaLabel="O tej sekcji" />
+      ) : null}
+      <span className="ml-auto flex shrink-0 items-center">
+        <MojeSectionHeaderSlot />
+      </span>
+    </div>
   );
 }
 
@@ -212,16 +223,16 @@ function MyOrderZamowieniaProgressSection({
   const copy = MY_ORDER_PROGRESS_SECTION_COPY[sectionId];
 
   return (
-    <MojeSectionShell sectionIcon={copy.icon}>
-      {showSectionLabel ? (
-        <MojeSectionListLabel
+    <MojeSectionShell
+      sectionIcon={copy.icon}
+      heading={showSectionLabel ? (<MojeSectionListLabel
           title={copy.title}
           hint={copy.hint}
           count={rows.length}
           icon={copy.icon}
           accent={copy.accent}
-        />
-      ) : null}
+        />) : null}
+    >
       <MyOrderSectionNoticeList
         callouts={sectionCallouts.callouts}
         singleHints={sectionCallouts.singleHints}
@@ -257,14 +268,16 @@ function MyOrderZamowieniaFlatSection({
   if (rows.length === 0) return null;
 
   return (
-    <MojeSectionShell sectionIcon="zamowienie">
-      <MojeSectionListLabel
+    <MojeSectionShell
+      sectionIcon="zamowienie"
+      heading={(<MojeSectionListLabel
         title="Czekamy na dostawę"
         hint={MY_ORDER_PROGRESS_SECTION_COPY.ordered_progress.hint}
         count={rows.length}
         icon="zamowienie"
         accent="slate"
-      />
+      />)}
+    >
       <MyOrderSectionNoticeList
         callouts={sectionCallouts.callouts}
         singleHints={sectionCallouts.singleHints}
@@ -656,6 +669,8 @@ function MojeOrdersViewContent({
         totalCount={shipmentCount}
         archiveMatchCount={archiveMatchCount}
         enableShortcut={!tourPreview}
+        // Pusta lista trzyma pasek w karcie; lista z sekcjami ma go na tle nad kartami.
+        bare={shipmentCount > 0}
         trailing={
           shipmentCount > 0 && !searchActive && !clientLinkFilterActive ? (
             <MojeOrdersResultCount shipmentCount={shipmentCount} lineCount={filteredLineCount} />
@@ -778,10 +793,9 @@ function MojeOrdersViewContent({
       {pageHeader}
       {announcementsPanel}
       {zdDeadlineAutoAck}
-      <Card padding={false}>
+      {/* Komunikaty listy (filtr klienta, stan Subiekta) w jednej karcie; znika, gdy pusta. */}
+      <div className="overflow-hidden rounded-[var(--radius-panel)] border border-slate-200 bg-card shadow-[var(--shadow-card)] empty:hidden">
         {clientKhBanner}
-
-        {!tourPreview && showSalesSync ? <MojeOrdersSyncStrip /> : null}
 
         {subiektAvailability ? (
           <SubiektStatusBar
@@ -790,34 +804,41 @@ function MojeOrdersViewContent({
             onStatusChange={onSubiektStatusChange}
           />
         ) : null}
+      </div>
 
+      {/* Pasek filtrów leży na tle, bezpośrednio nad kartami sekcji (DESIGN.md → Pasek filtrów).
+          Stan synchronizacji to cicha linia tuż nad nim, nie osobna karta. */}
+      <div className="space-y-1.5">
+        {!tourPreview && showSalesSync ? <MojeOrdersSyncStrip className="px-1 text-slate-500 sm:px-1 lg:px-1 [&>div]:text-slate-500" /> : null}
         {searchBar}
+      </div>
 
-        {searchActive && searchMatchCount === 0 && !archiveMatchCount ? (
-          <MojeOrdersSearchEmptyHint query={filterQuery} onClear={() => setSearchQuery("")} />
+      <div>
+        {searchActive && searchMatchCount === 0 ? (
+          <Card padding={false} className="overflow-hidden">
+            <MojeOrdersSearchEmptyHint
+              query={filterQuery}
+              onClear={() => setSearchQuery("")}
+              archiveOnly={archiveMatchCount > 0}
+            />
+          </Card>
         ) : null}
 
-        {searchActive && searchMatchCount === 0 && archiveMatchCount > 0 ? (
-          <MojeOrdersSearchEmptyHint
-            query={filterQuery}
-            onClear={() => setSearchQuery("")}
-            archiveOnly
-          />
-        ) : null}
-
-        {/* Sekcje w jednej karcie oddziela linia, nie własna ramka (DESIGN.md → bez karty w karcie). */}
-        <div className="divide-y divide-slate-200/80">
+        {/* Każda sekcja to osobna karta z tytułem na tle; między sekcjami 1.75rem. */}
+        <div className="space-y-7">
         {actionCount > 0 ? (
-          <div className="divide-y divide-slate-200/80">
+          <div className="space-y-7">
             {actionShelfCount > 0 ? (
-              <MojeSectionShell sectionIcon={MY_ORDER_ACTION_SECTION_COPY.icon}>
-                <MojeSectionListLabel
+              <MojeSectionShell
+      sectionIcon={MY_ORDER_ACTION_SECTION_COPY.icon}
+      heading={(<MojeSectionListLabel
                   title={MY_ORDER_ACTION_SECTION_COPY.title}
                   hint={MY_ORDER_ACTION_SECTION_COPY.hint}
                   count={actionShelfCount}
                   accent={MY_ORDER_ACTION_SECTION_COPY.accent}
                   icon={MY_ORDER_ACTION_SECTION_COPY.icon}
-                />
+                />)}
+    >
                 <MyOrderSectionNoticeList
                   callouts={actionShelfSectionCallouts.callouts}
                   singleHints={actionShelfSectionCallouts.singleHints}
@@ -833,14 +854,16 @@ function MojeOrdersViewContent({
               </MojeSectionShell>
             ) : null}
             {actionInformacje.length > 0 ? (
-              <MojeSectionShell sectionIcon={MY_ORDER_INFORMACJA_READY_SECTION_COPY.icon}>
-                <MojeSectionListLabel
+              <MojeSectionShell
+      sectionIcon={MY_ORDER_INFORMACJA_READY_SECTION_COPY.icon}
+      heading={(<MojeSectionListLabel
                   title={MY_ORDER_INFORMACJA_READY_SECTION_COPY.title}
                   hint={MY_ORDER_INFORMACJA_READY_SECTION_COPY.hint}
                   count={actionInformacje.length}
                   accent={MY_ORDER_INFORMACJA_READY_SECTION_COPY.accent}
                   icon={MY_ORDER_INFORMACJA_READY_SECTION_COPY.icon}
-                />
+                />)}
+    >
                 <MyOrderShipmentBlock
                   embedded
                   rows={actionInformacje}
@@ -851,14 +874,16 @@ function MojeOrdersViewContent({
               </MojeSectionShell>
             ) : null}
             {actionMixedCount > 0 ? (
-              <MojeSectionShell sectionIcon={MY_ORDER_MIXED_ACTION_SECTION_COPY.icon}>
-                <MojeSectionListLabel
+              <MojeSectionShell
+      sectionIcon={MY_ORDER_MIXED_ACTION_SECTION_COPY.icon}
+      heading={(<MojeSectionListLabel
                   title={MY_ORDER_MIXED_ACTION_SECTION_COPY.title}
                   hint={MY_ORDER_MIXED_ACTION_SECTION_COPY.hint}
                   count={actionMixedCount}
                   accent={MY_ORDER_MIXED_ACTION_SECTION_COPY.accent}
                   icon={MY_ORDER_MIXED_ACTION_SECTION_COPY.icon}
-                />
+                />)}
+    >
                 <MyOrderSectionNoticeList
                   callouts={actionMixedSectionCallouts.callouts}
                   singleHints={actionMixedSectionCallouts.singleHints}
@@ -874,14 +899,16 @@ function MojeOrdersViewContent({
               </MojeSectionShell>
             ) : null}
             {actionTeethCount > 0 ? (
-              <MojeSectionShell sectionIcon={MY_ORDER_TEETH_ACTION_SECTION_COPY.icon}>
-                <MojeSectionListLabel
+              <MojeSectionShell
+      sectionIcon={MY_ORDER_TEETH_ACTION_SECTION_COPY.icon}
+      heading={(<MojeSectionListLabel
                   title={MY_ORDER_TEETH_ACTION_SECTION_COPY.title}
                   hint={MY_ORDER_TEETH_ACTION_SECTION_COPY.hint}
                   count={actionTeethCount}
                   accent={MY_ORDER_TEETH_ACTION_SECTION_COPY.accent}
                   icon={MY_ORDER_TEETH_ACTION_SECTION_COPY.icon}
-                />
+                />)}
+    >
                 <MyOrderSectionNoticeList
                   callouts={actionTeethSectionCallouts.callouts}
                   singleHints={actionTeethSectionCallouts.singleHints}
@@ -897,14 +924,16 @@ function MojeOrdersViewContent({
               </MojeSectionShell>
             ) : null}
             {actionDismissCount > 0 ? (
-              <MojeSectionShell sectionIcon={MY_ORDER_DISMISS_SECTION_COPY.icon}>
-                <MojeSectionListLabel
+              <MojeSectionShell
+      sectionIcon={MY_ORDER_DISMISS_SECTION_COPY.icon}
+      heading={(<MojeSectionListLabel
                   title={MY_ORDER_DISMISS_SECTION_COPY.title}
                   hint={MY_ORDER_DISMISS_SECTION_COPY.hint}
                   count={actionDismissCount}
                   accent={MY_ORDER_DISMISS_SECTION_COPY.accent}
                   icon={MY_ORDER_DISMISS_SECTION_COPY.icon}
-                />
+                />)}
+    >
                 <MyOrderShipmentBlock
                   embedded
                   rows={actionDismissZamowienia}
@@ -939,14 +968,16 @@ function MojeOrdersViewContent({
         )}
 
         {informacjeListRows.length > 0 ? (
-          <MojeSectionShell sectionIcon={MY_ORDER_INFORMACJA_SECTION_COPY.icon}>
-            <MojeSectionListLabel
+          <MojeSectionShell
+      sectionIcon={MY_ORDER_INFORMACJA_SECTION_COPY.icon}
+      heading={(<MojeSectionListLabel
               title={MY_ORDER_INFORMACJA_SECTION_COPY.title}
               hint={MY_ORDER_INFORMACJA_SECTION_COPY.hint}
               count={informacjeListRows.length}
               icon={MY_ORDER_INFORMACJA_SECTION_COPY.icon}
               accent={MY_ORDER_INFORMACJA_SECTION_COPY.accent}
-            />
+            />)}
+    >
             <MyOrderSectionNoticeList
               callouts={informacjeSectionCallouts.callouts}
               singleHints={informacjeSectionCallouts.singleHints}
@@ -963,7 +994,7 @@ function MojeOrdersViewContent({
           </MojeSectionShell>
         ) : null}
         </div>
-      </Card>
+      </div>
 
       <MyOrderArchiveSection
         rowsRecent={archiwumRecentFiltered}
