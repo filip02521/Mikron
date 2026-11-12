@@ -54,6 +54,7 @@ import { MyOrderCollapsedRowZones } from "@/components/moje/MyOrderCollapsedRowZ
 import { MyOrderExpandedContextStrip } from "@/components/moje/MyOrderExpandedContextStrip";
 import { MyOrderExpandedDeliveryPanel } from "@/components/moje/MyOrderExpandedDeliveryPanel";
 import { MyOrderRowMetaRail } from "@/components/moje/MyOrderRowMetaRail";
+import { SearchHighlightText } from "@/components/moje/SearchHighlightText";
 import { myOrderExpandedMetaFields, myOrderExpandedOrderTypeLabel } from "@/lib/orders/my-order-sales-ui";
 import {
   buildMyOrderDeliveryTimingDisplay,
@@ -92,9 +93,7 @@ import {
   mojeShipmentBulkPickupFooterClass,
   mojeShipmentExpandedPanelClass,
   mojeShipmentExpandedRowShellClass,
-  mojeShipmentLinesHeaderClass,
   mojeShipmentLinesHeaderTitleClass,
-  mojeShipmentLinesShellClass,
   mojeShipmentRowClass,
   type MojeShipmentRowVisualTone,
 } from "@/lib/ui/moje-shipment-row-styles";
@@ -969,11 +968,12 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
       ) : null}
       <div
         className={cn(
-          "px-2 py-1.5 sm:px-3 sm:py-2",
+          // Lewa krawędź jak w nagłówku sekcji: strzałka pod kaflem ikony, nazwa pod tytułem sekcji.
+          "py-3 pl-1.5 pr-3 sm:px-4 sm:py-3.5",
           menuOnlyToolbar ? "flex items-start gap-1 sm:items-center sm:gap-2" : mojeQueueRowLayoutClass
         )}
       >
-        <div className={mojeQueueRowMainClass}>
+        <div className={cn(mojeQueueRowMainClass, "sm:gap-2.5")}>
         <button
           type="button"
           data-moje-row-toggle=""
@@ -1086,6 +1086,11 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
         {!expanded ? (
           <MyOrderRowMetaRail
             {...collapsedMetaRailProps}
+            statusBadge={
+              showCollapsedHeadline && headline ? (
+                <SearchHighlightText text={headline} searchQuery={searchQuery} className={headlineClass} />
+              ) : null
+            }
             className="hidden sm:flex"
           />
         ) : null}
@@ -1196,10 +1201,10 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
 
           {row.lineCount > 0 ? (
             <div className="space-y-1.5">
-            <div className={mojeShipmentLinesShellClass}>
+            <div className="border-t border-slate-100 [&>ul>li]:px-0">
               {/* Nagłówek „Produkt” nad jedną pozycją nic nie mówi — tylko przy liście. */}
               {row.lineCount > 1 ? (
-              <div className={mojeShipmentLinesHeaderClass}>
+              <div className="flex items-center justify-between gap-2 pb-1 pt-3">
                 <p className={mojeShipmentLinesHeaderTitleClass}>
                   {productSummaryRaw ?? "Produkty"}
                 </p>

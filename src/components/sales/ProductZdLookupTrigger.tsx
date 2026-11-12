@@ -50,7 +50,7 @@ export function ProductZdLookupTrigger({
     <>
       <div
         className={cn(
-          "overflow-hidden rounded-xl border border-indigo-200/80 bg-indigo-50/70 shadow-sm ",
+          "overflow-hidden rounded-lg border border-indigo-200/80 bg-indigo-50/70 shadow-sm ",
           className
         )}
       >
