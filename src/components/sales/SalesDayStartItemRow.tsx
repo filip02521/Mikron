@@ -134,7 +134,7 @@ export function SalesDayStartItemRow({
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <span
                 className={cn(
-                  "inline-flex rounded px-1.5 py-0.5 ring-1 ring-inset",
+                  "inline-flex rounded-md px-1.5 py-0.5 ring-1 ring-inset",
                   salesTypography.kindTag,
                   salesDayStartSourceTagClass(item.source)
                 )}

@@ -699,7 +699,7 @@ export function ZkWatchCard({
                 className={cn(
                   "mt-0.5 block max-w-full truncate text-left",
                   salesTypography.rowMeta,
-                  "rounded-sm text-indigo-700/90 transition hover:bg-indigo-50/80 hover:text-indigo-900"
+                  "rounded-md text-indigo-700/90 transition hover:bg-indigo-50/80 hover:text-indigo-900"
                 )}
               >
                 Dodaj notatkę…

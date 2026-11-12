@@ -197,9 +197,9 @@ export function ProsbaFormReadiness({
             {compactIcon}
             <span className="leading-snug">{view.headline}</span>
             {view.subline ? (
-              <span className="hidden text-slate-400 sm:inline">· {view.subline}</span>
+              <span className="hidden text-slate-500 sm:inline">· {view.subline}</span>
             ) : null}
-            <span className="ml-0.5 text-[0.6875rem] text-slate-400 group-open:hidden">· pokaż kroki</span>
+            <span className="ml-0.5 text-[0.6875rem] text-slate-500 group-open:hidden">· pokaż kroki</span>
           </summary>
 
           <div className="mt-1.5 pl-5">

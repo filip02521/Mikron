@@ -85,7 +85,7 @@ function CopyBadge({
             : `${title} - kliknij, aby skopiować`
       }
       className={cn(
-        "hit-target shrink-0 cursor-pointer rounded px-1 py-0.5 font-mono text-[0.6875rem] font-semibold transition-colors",
+        "hit-target shrink-0 cursor-pointer rounded-md px-1 py-0.5 font-mono text-[0.6875rem] font-semibold transition-colors",
         className,
         copied && "ring-2 ring-emerald-400",
         failed && "ring-2 ring-red-400"

@@ -76,7 +76,7 @@ export function MyOrderExpandedContextStrip({
           ) : null}
           {progressLabel ? (
             <span className="inline-flex items-baseline gap-0.5">
-              <span className="font-medium text-indigo-400">Magazyn</span>
+              <span className="font-medium text-slate-500">Magazyn</span>
               <SearchHighlightText
                 text={progressLabel}
                 searchQuery={searchQuery}
@@ -87,9 +87,9 @@ export function MyOrderExpandedContextStrip({
           {metaFields.map((f, i) => (
             <span key={f.label} className="inline-flex items-baseline gap-0.5">
               {(i > 0 || clientLabel || progressLabel || showStatusBadge) ? (
-                <span className="text-slate-300">·</span>
+                <span className="text-slate-400" aria-hidden>·</span>
               ) : null}
-              <span className="font-medium text-indigo-400">{f.label}</span>
+              <span className="font-medium text-slate-500">{f.label}</span>
               <SearchHighlightText
                 text={f.value}
                 searchQuery={searchQuery}
@@ -101,7 +101,7 @@ export function MyOrderExpandedContextStrip({
       ) : null}
 
       {expandedNotes ? (
-        <span className="inline-flex items-start gap-1 rounded bg-sky-50 px-1.5 py-1 text-[0.6875rem] leading-snug text-sky-700">
+        <span className="inline-flex items-start gap-1 rounded-md bg-sky-50 px-1.5 py-1 text-[0.6875rem] leading-snug text-sky-700">
           <svg viewBox="0 0 16 16" className="mt-0.5 size-3 shrink-0" fill="currentColor" aria-hidden>
             <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 3a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4Zm0 8a.875.875 0 1 1 0-1.75.875.875 0 0 1 0 1.75Z" />
           </svg>
