@@ -218,6 +218,24 @@ export function resolveSubiektPricesConfig(): SubiektOrdersConfigStatus {
   return resolveOrdersHostConfig("SUBIEKT_API_BASE_URL", "Cenniki", "host Subiekta");
 }
 
+/**
+ * Host „ZK z maila” (`SUBIEKT_API_ZK_BASE_URL`): wyszukiwanie klientów i towarów, create ZK, odczyt ZK.
+ * shortcut: tylko kopia testowa (:5082) — live (:5080) jest zablokowany w kodzie do czasu zgody na produkcję.
+ */
+export function resolveSubiektZkConfig(): SubiektOrdersConfigStatus {
+  const resolved = resolveOrdersHostConfig("SUBIEKT_API_ZK_BASE_URL", "ZK z maila", "host ZK");
+  if (resolved.ok && !isSubiektOrdersTestBaseUrl(resolved.config.baseUrl)) {
+    return {
+      ok: false,
+      reason: "not_allowed_port",
+      message: `ZK z maila działa na razie tylko na kopii testowej Subiekta (:${SUBIEKT_ORDERS_TEST_PORT}).`,
+      ordersBaseUrl: resolved.config.baseUrl,
+      liveBaseUrl: getSubiektConfig()?.baseUrl ?? null,
+    };
+  }
+  return resolved;
+}
+
 function resolveOrdersHostConfig(
   envVar: string,
   featureLabel: string,
