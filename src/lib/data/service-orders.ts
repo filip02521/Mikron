@@ -52,6 +52,7 @@ type OrderRow = {
   purchase_date: string | null;
   purchase_doc: string | null;
   warranty_until: string | null;
+  helpdesk_id: number | null;
   closed_at: Date | null;
   created_at: Date;
 };
@@ -82,7 +83,7 @@ const ORDER_COLS = `id, number, client_kh_id, client_name, client_phone, device_
   serial_no, fault, accessories, work_note, to_char(due_date, 'YYYY-MM-DD') AS due_date, status, loaner_unit_id,
   rw_number, rw_at, fs_id, fs_number, no_invoice_reason, waiting_part_tw_id, waiting_part_symbol, waiting_part_name,
   waiting_part_qty, waiting_since, to_char(purchase_date, 'YYYY-MM-DD') AS purchase_date, purchase_doc,
-  to_char(warranty_until, 'YYYY-MM-DD') AS warranty_until, closed_at, created_at`;
+  to_char(warranty_until, 'YYYY-MM-DD') AS warranty_until, helpdesk_id, closed_at, created_at`;
 
 function mapOrder(r: OrderRow): ServiceOrder {
   return {
@@ -119,6 +120,7 @@ function mapOrder(r: OrderRow): ServiceOrder {
     purchaseDate: r.purchase_date,
     purchaseDoc: r.purchase_doc,
     warrantyUntil: r.warranty_until,
+    helpdeskId: r.helpdesk_id != null ? Number(r.helpdesk_id) : null,
     closedAt: r.closed_at ? new Date(r.closed_at).toISOString() : null,
     createdAt: new Date(r.created_at).toISOString(),
   };
@@ -216,6 +218,16 @@ export async function fetchPendingRwQtyByTw(): Promise<Map<number, number>> {
   return new Map(res.rows.map((r) => [Number(r.part_tw_id), Number(r.qty)]));
 }
 
+/** Zgłoszenia helpdesku, które mają już żywe zlecenie: numer zgłoszenia → id i numer ZS. */
+export async function fetchOrdersByHelpdeskIds(ids: number[]): Promise<Map<number, { id: string; number: string }>> {
+  if (!ids.length) return new Map();
+  const res = await query<{ helpdesk_id: number; id: string; number: string }>(
+    `SELECT helpdesk_id, id, number FROM service_orders WHERE helpdesk_id = ANY($1::int[]) AND status <> 'anulowane'`,
+    [ids]
+  );
+  return new Map(res.rows.map((r) => [Number(r.helpdesk_id), { id: r.id, number: r.number }]));
+}
+
 /** Zlecenia powiązane z egzemplarzem zamiennika (panel egzemplarza pokazuje, do czego jest wydany). */
 export async function fetchOrderNumbersByLoaner(): Promise<Map<string, string>> {
   const res = await query<{ loaner_unit_id: string; number: string }>(
@@ -276,6 +288,7 @@ export type ServiceOrderIntake = {
   /** YYYY-MM-DD, już sprawdzona (normalizePurchaseDate); null — nieznana. */
   purchaseDate: string | null;
   purchaseDoc: string | null;
+  helpdeskId: number | null;
 };
 
 export async function insertServiceOrder(input: ServiceOrderIntake, actor: ServiceActor): Promise<ServiceOrder> {
@@ -286,6 +299,13 @@ export async function insertServiceOrder(input: ServiceOrderIntake, actor: Servi
     const prefix = `ZS/${String(now.getFullYear() % 100).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/`;
     const existing = await c.query<{ number: string }>(`SELECT number FROM service_orders WHERE number LIKE $1`, [`${prefix}%`]);
     const number = nextServiceOrderNumber(existing.rows.map((r) => r.number), now);
+    if (input.helpdeskId) {
+      const linked = await c.query<{ number: string }>(
+        `SELECT number FROM service_orders WHERE helpdesk_id = $1 AND status <> 'anulowane' LIMIT 1`,
+        [input.helpdeskId]
+      );
+      if (linked.rows[0]) throw new ServiceOrderStateError(`Zgłoszenie #${input.helpdeskId} ma już zlecenie ${linked.rows[0].number}. Otwórz je z listy.`);
+    }
     // Koniec gwarancji liczony tu, nie w przeglądarce: okres modelu z katalogu albo domyślny.
     let warranty: string | null = null;
     if (input.purchaseDate) {
@@ -296,8 +316,8 @@ export async function insertServiceOrder(input: ServiceOrderIntake, actor: Servi
     }
     const res = await c.query<OrderRow>(
       `INSERT INTO service_orders (number, client_kh_id, client_name, client_phone, device_tw_id, device_symbol, device_name,
-         serial_no, fault, accessories, due_date, created_by, purchase_date, purchase_doc, warranty_until)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+         serial_no, fault, accessories, due_date, created_by, purchase_date, purchase_doc, warranty_until, helpdesk_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
        RETURNING ${ORDER_COLS}`,
       [
         number,
@@ -315,10 +335,14 @@ export async function insertServiceOrder(input: ServiceOrderIntake, actor: Servi
         input.purchaseDate,
         input.purchaseDate ? input.purchaseDoc : null,
         warranty,
+        input.helpdeskId,
       ]
     );
     const order = mapOrder(res.rows[0]!);
-    await addEvent(c, order.id, "created", actor, { toStatus: "przyjete", note: input.fault });
+    await addEvent(c, order.id, "created", actor, {
+      toStatus: "przyjete",
+      note: input.helpdeskId ? `Ze zgłoszenia helpdesku #${input.helpdeskId}. ${input.fault}`.slice(0, 1000) : input.fault,
+    });
     return order;
   });
 }

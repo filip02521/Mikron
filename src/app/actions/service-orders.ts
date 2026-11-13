@@ -5,6 +5,7 @@ import { requireServicePanel } from "@/lib/auth";
 import type { SessionUser } from "@/lib/auth";
 import {
   deleteServiceModelPart,
+  fetchOrdersByHelpdeskIds,
   fetchServiceOrdersBySerial,
   setServiceModelWarranty,
   insertServiceOrder,
@@ -32,10 +33,15 @@ import {
 import { parseDateOnly, toDateOnly } from "@/lib/orders/service-loaners";
 import { normalizePurchaseDate, SERVICE_WARRANTY_MONTHS_MAX } from "@/lib/orders/service-warranty";
 import { verifySubiektProduct, type VerifiedSubiektProduct } from "@/lib/subiekt/product-verify";
-import { fetchClientEquipment, fetchClientRecentInvoices, type ClientRecentInvoice } from "@/lib/subiekt/client-equipment";
+import { fetchClientEquipment, fetchClientRecentInvoices, findInvoiceBuyer, type ClientRecentInvoice } from "@/lib/subiekt/client-equipment";
 import { reportServicePartShortage } from "@/lib/data/service-part-report";
 import type { ClientEquipmentItem } from "@/lib/subiekt/client-equipment-parse";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
+import { fetchHelpdeskTicket } from "@/lib/mikran-shop/helpdesk";
+import { isStaffEmail, nipDigits, parseHelpdeskNumber, splitProductSerial } from "@/lib/mikran-shop/helpdesk-parse";
+import { searchSubiektCustomersCached } from "@/lib/subiekt/subiekt-runtime-cache";
+import { lookupSubiektKontrahentByKhId } from "@/lib/subiekt/lookup-kontrahent";
+import type { SubiektKontrahent } from "@/lib/subiekt/types";
 
 export type ServiceOrderActionResult = { ok: true; message: string; orderId?: string } | { ok: false; message: string };
 
@@ -113,9 +119,12 @@ export async function actionCreateServiceOrder(input: {
   /** YYYY-MM-DD — z FS/PA na liście sprzętu klienta albo wpisana; podstawa gwarancji. */
   purchaseDate?: string | null;
   purchaseDoc?: string | null;
+  /** Numer zgłoszenia z helpdesku mikran.pl, z którego przyjmujemy sprzęt. */
+  helpdeskId?: number | null;
 }): Promise<ServiceOrderActionResult> {
   const user = await requireServicePanel("mutate");
   return run(async () => {
+    const helpdeskId = twId(input.helpdeskId);
     const purchaseRaw = (input.purchaseDate ?? "").trim();
     const purchaseDate = normalizePurchaseDate(purchaseRaw, new Date());
     if (purchaseRaw && !purchaseDate) throw new ServiceOrderStateError("Data zakupu: wybierz datę z kalendarza, nie późniejszą niż dziś.");
@@ -146,6 +155,7 @@ export async function actionCreateServiceOrder(input: {
         dueDate: dueDate(input.dueDate),
         purchaseDate,
         purchaseDoc: text(input.purchaseDoc, 60) || null,
+        helpdeskId,
       },
       actorOf(user)
     );
@@ -444,5 +454,88 @@ export async function actionServiceSerialHistory(input: { serial: string; exclud
     return { ok: true, items: await fetchServiceOrdersBySerial(serial, exclude) };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się sprawdzić historii egzemplarza.") };
+  }
+}
+
+export type HelpdeskIntakeDraft = {
+  helpdeskId: number;
+  test: boolean;
+  /** Klient z Subiekta (dopasowany jednoznacznie); bez dopasowania nazwa ze zgłoszenia bez kh_Id. */
+  client: { khId: number | null; name: string; phone: string | null };
+  /** Po czym znaleziono klienta w Subiekcie; null — nie znaleziono. */
+  clientMatch: "nip" | "faktura" | "email" | null;
+  phone: string;
+  deviceName: string;
+  /** Numer seryjny wydzielony z pola „Produkt” zgłoszenia („Turbina SN 4321”); pusty, gdy go nie było. */
+  serial: string;
+  fault: string;
+  /** Numer faktury tak, jak go podał klient — do podświetlenia sprzętu z tej faktury. */
+  invoiceId: string;
+  /** Faktura ze zgłoszenia znaleziona w Subiekcie (pełny numer); null — nie podano albo nie ma takiej. */
+  invoiceFound: string | null;
+  /** Zgłoszenie ma już żywe zlecenie — przyjęcie drugiego jest zablokowane. */
+  existingOrder: { id: string; number: string } | null;
+};
+
+export type HelpdeskIntakeResult = { ok: true; draft: HelpdeskIntakeDraft } | { ok: false; message: string };
+
+/** Zgłoszenie z helpdesku mikran.pl zamienione na szkic przyjęcia: klient po NIP, telefon, sprzęt, opis usterki. */
+export async function actionServiceHelpdeskDraft(rawNumber: string | number): Promise<HelpdeskIntakeResult> {
+  await requireServicePanel("read");
+  const id = typeof rawNumber === "number" ? twId(rawNumber) : parseHelpdeskNumber(String(rawNumber ?? ""));
+  if (!id) return { ok: false, message: "Wpisz numer zgłoszenia z helpdesku (same cyfry, np. 1234)." };
+  try {
+    const { mode, ticket } = await fetchHelpdeskTicket(id);
+    if (mode === "off") return { ok: false, message: "Helpdesk mikran.pl nie jest podłączony (brak kluczy API). Przyjmij sprzęt ręcznie." };
+    if (!ticket) return { ok: false, message: `Nie ma zgłoszenia #${id} w helpdesku. Sprawdź numer.` };
+    const existingOrder = (await fetchOrdersByHelpdeskIds([id])).get(id) ?? null;
+    const name = (ticket.company || ticket.name).slice(0, SERVICE_ORDER_TEXT_MAX.client);
+    const product = splitProductSerial(ticket.product);
+    const asClient = (k: SubiektKontrahent): HelpdeskIntakeDraft["client"] => ({
+      khId: k.kh_Id,
+      name: String(k.adr_NazwaPelna || k.adr_Nazwa || k.kh_Symbol || name).trim(),
+      phone: String(k.adr_Telefon || k.kh_Telefon || "").trim() || null,
+    });
+    let client: HelpdeskIntakeDraft["client"] = { khId: null, name, phone: null };
+    let clientMatch: HelpdeskIntakeDraft["clientMatch"] = null;
+    // Faktura ze zgłoszenia: potwierdza zakup i wskazuje kupującego, gdy NIP nie pasuje. Błąd Subiekta = brak trafienia.
+    const invoice = ticket.invoiceId ? await findInvoiceBuyer(ticket.invoiceId).catch(() => null) : null;
+    // Tylko jednoznaczne trafienia; po kolei: NIP, faktura, e-mail. Brak Subiekta — zostaje nazwa ze zgłoszenia.
+    const nip = nipDigits(ticket.vat);
+    if (nip) {
+      const found = await searchSubiektCustomersCached({ search: nip, pageSize: 5, page: 1, includeBlocked: true }).catch(() => null);
+      const hits = (found?.data ?? []).filter((k) => nipDigits(String(k.adr_NIP ?? "")) === nip);
+      if (hits.length === 1) [client, clientMatch] = [asClient(hits[0]!), "nip"];
+    }
+    if (!clientMatch && invoice) {
+      const k = await lookupSubiektKontrahentByKhId(invoice.khId).catch(() => null);
+      if (k) [client, clientMatch] = [asClient(k), "faktura"];
+    }
+    const email = ticket.email.trim().toLowerCase();
+    // Zgłoszenie założone przez serwis ma e-mail pracownika — po nim klienta nie szukamy.
+    if (!clientMatch && email && !isStaffEmail(email) && name.length >= 2) {
+      const found = await searchSubiektCustomersCached({ search: name.slice(0, 60), pageSize: 12, page: 1, includeBlocked: true }).catch(() => null);
+      const hits = (found?.data ?? []).filter((k) => String(k.kh_EMail ?? "").trim().toLowerCase() === email);
+      if (hits.length === 1) [client, clientMatch] = [asClient(hits[0]!), "email"];
+    }
+    return {
+      ok: true,
+      draft: {
+        helpdeskId: id,
+        test: ticket.test,
+        client,
+        clientMatch,
+        phone: ticket.telephone.slice(0, SERVICE_ORDER_TEXT_MAX.phone),
+        deviceName: product.name.slice(0, SERVICE_ORDER_TEXT_MAX.device),
+        serial: product.serial.slice(0, SERVICE_ORDER_TEXT_MAX.serial),
+        fault: ticket.comment.slice(0, SERVICE_ORDER_TEXT_MAX.fault),
+        invoiceId: ticket.invoiceId,
+        // Faktura innego klienta niż dopasowany po NIP nie jest jego zakupem — nie podświetlamy jej.
+        invoiceFound: invoice && (clientMatch !== "nip" || invoice.khId === client.khId) ? invoice.number : null,
+        existingOrder,
+      },
+    };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się pobrać zgłoszenia z helpdesku. Spróbuj za chwilę.") };
   }
 }

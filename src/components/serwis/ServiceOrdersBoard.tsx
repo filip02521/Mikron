@@ -13,6 +13,7 @@ import { polishPluralWord } from "@/lib/email/polish-plural";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
 import { ServiceOrderDrawer } from "@/components/serwis/ServiceOrderDrawer";
 import { ServiceOrderIntakeDialog } from "@/components/serwis/ServiceOrderIntakeDialog";
+import { HelpdeskTicketsSection, helpdeskSearchText, type HelpdeskBoardData } from "@/components/serwis/HelpdeskTicketsSection";
 import {
   daysSince,
   formatDateOnly,
@@ -127,6 +128,7 @@ export function ServiceOrdersBoard({
   modelParts,
   warrantyMonths: warrantyPairs,
   partAvailable: partAvailablePairs,
+  helpdesk,
 }: {
   orders: ServiceOrder[];
   parts: OrderPartView[];
@@ -137,6 +139,8 @@ export function ServiceOrdersBoard({
   warrantyMonths: [number, number][];
   /** Ile części, na które czekają zlecenia, jest do wzięcia: [tw_Id, szt.]; brak wpisu — Subiekt nie odpowiedział. */
   partAvailable: [number, number][];
+  /** Zgłoszenia helpdesku mikran.pl czekające na sprzęt. */
+  helpdesk: HelpdeskBoardData;
 }) {
   const warrantyMonths = useMemo(() => new Map(warrantyPairs), [warrantyPairs]);
   const partAvailable = useMemo(() => new Map(partAvailablePairs), [partAvailablePairs]);
@@ -152,6 +156,7 @@ export function ServiceOrdersBoard({
   const [filter, setFilter] = useState<ServiceOrderGroup | null>(null);
   const [showClosed, setShowClosed] = useState(false);
   const [intake, setIntake] = useState(false);
+  const [intakeHelpdeskId, setIntakeHelpdeskId] = useState<number | null>(null);
   const [openId, setOpenId] = useState<string | null>(() => params.get("zlecenie"));
   const [toast, setToast] = useState<string | null>(null);
   // Portal panelu tylko po stronie klienta (zlecenie może się otworzyć od razu z ?zlecenie=).
@@ -196,6 +201,7 @@ export function ServiceOrdersBoard({
         searchRef.current?.focus();
       } else if (e.key === "p" || e.key === "P") {
         e.preventDefault();
+        setIntakeHelpdeskId(null);
         setIntake(true);
       }
     };
@@ -206,6 +212,13 @@ export function ServiceOrdersBoard({
   const done = (message: string) => {
     setToast(message);
     startRefresh(() => router.refresh());
+  };
+
+  const searchWords = query.trim().toLocaleLowerCase("pl-PL").split(/\s+/).filter(Boolean);
+  const tickets = helpdesk.tickets.filter((t) => searchWords.every((w) => helpdeskSearchText(t).includes(w)));
+  const openIntake = (helpdeskId: number | null) => {
+    setIntakeHelpdeskId(helpdeskId);
+    setIntake(true);
   };
 
   const open = orders.find((o) => o.id === openId) ?? null;
@@ -229,17 +242,20 @@ export function ServiceOrdersBoard({
             <Kbd>/</Kbd>
           </span>
         </label>
-        <Button type="button" className="w-full sm:ml-auto sm:w-auto" onClick={() => setIntake(true)}>
+        <Button type="button" className="w-full sm:ml-auto sm:w-auto" onClick={() => openIntake(null)}>
           <IconPlus size={18} aria-hidden />
           Przyjmij sprzęt
         </Button>
       </div>
 
+      {/* Zgłoszenia nad kaflami: to sprzęt, który dopiero przyjdzie — kafle liczą tylko przyjęte zlecenia. */}
+      {!filter ? <HelpdeskTicketsSection data={helpdesk} tickets={tickets} onAccept={(id) => openIntake(id)} /> : null}
+
       {orders.length === 0 ? (
         <EmptyState
           title="Brak zleceń serwisowych"
           description="Przyjmij pierwszy sprzęt klienta: zlecenie dostanie numer ZS, a naprawę, części i RW poprowadzisz w jego panelu."
-          action={<Button onClick={() => setIntake(true)}>Przyjmij sprzęt</Button>}
+          action={<Button onClick={() => openIntake(null)}>Przyjmij sprzęt</Button>}
         />
       ) : (
         <>
@@ -343,6 +359,12 @@ export function ServiceOrdersBoard({
       {intake ? (
         <ServiceOrderIntakeDialog
           warrantyMonths={warrantyMonths}
+          helpdeskEnabled={helpdesk.mode !== "off"}
+          initialHelpdeskId={intakeHelpdeskId}
+          onOpenOrder={(id) => {
+            setIntake(false);
+            setOpenId(id);
+          }}
           onClose={() => setIntake(false)}
           onCreated={(message, orderId) => {
             setIntake(false);
