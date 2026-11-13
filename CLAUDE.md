@@ -25,7 +25,10 @@ OnTime — wewnętrzny system dostaw i zakupów (dostawcy, zamówienia ZD/ZK, ma
 
 # Szkice maili (Gmail MCP)
 
-- Zero załączników, chyba że użytkownik wprost poda plik do dołączenia.
+- Załączaj dokumenty, których dotyczy mail i które da się pobrać (faktura, packing list, deklaracja zgodności, potwierdzenie przelewu, plik zamówienia) — bez pytania. W podsumowaniu wypisz, co załączono i czego nie udało się załączyć.
+- Zero śmieciowych załączników: żadnych obrazków z podpisów ani pustych plików z cytowanego wątku (patrz niżej).
 - Nie używaj `replyToMessageId`. Odpowiedź w wątku dokleja cytat oryginału z obrazkami z podpisów (`~WRD*.jpg`, `image00*.png`), z których Gmail robi puste załączniki. `update_draft` cytatu nie usuwa — serwer dokleja go z powrotem.
 - Zamiast tego nowy szkic z tematem `Re: <temat wątku>` i numerem zamówienia/sprawy w treści.
-- Przed oddaniem szkicu sprawdź `get_draft`: brak `attachments`.
+- `update_draft` usuwa pliki ze szkicu — przy zmianie szkicu z załącznikami utwórz nowy z tymi samymi plikami i usuń stary.
+- Plik do załączenia musi leżeć w katalogu projektu albo w scratchpadzie — pobrany załącznik z `tool-results` najpierw tam skopiuj pod czytelną nazwą.
+- Przed oddaniem szkicu sprawdź `get_draft` w formacie `RAW` (zwykły widok nie pokazuje załączników szkicu): części `Content-Disposition: attachment` to tylko dokumenty dodane celowo.
