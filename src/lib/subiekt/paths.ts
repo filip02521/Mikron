@@ -18,6 +18,8 @@ export const SUBIEKT_PATHS = {
   document: (id: number | string) => `/documents/${id}`,
   documentsZk: "/documents/zk",
   documentZk: (id: number | string) => `/documents/zk/${id}`,
+  /** Utworzenie ZK przez Sferę (`kontrahentId`, `pozycje`, `uwagi`, `personelId`). */
+  documentsZkCreate: "/documents/zk/create",
   documentsZd: "/documents/zd",
   documentZd: (id: number | string) => `/documents/zd/${id}`,
   /** Utworzenie ZD przez Sferę — host ORDERS (live :5080 lub test :5082). */

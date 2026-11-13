@@ -82,7 +82,7 @@ export function MyOrderRowMetaRail({
     >
       <div
         className={cn(
-          "flex min-w-0 flex-wrap items-center gap-1.5",
+          "flex min-w-0 flex-wrap items-center gap-1.5 empty:hidden",
           inline ? "justify-start" : "justify-end"
         )}
       >

@@ -5,6 +5,7 @@ import {
   deriveZkWatchRowAttention,
   deriveZkWatchRowChrome,
   deriveZkWatchRowSecondaryMeta,
+  splitZkWatchCardMetaSummary,
   type ZkWatchRowAttentionInput,
 } from "./zk-watch-row-attention";
 
@@ -304,5 +305,29 @@ describe("buildZkWatchCardMetaSummary", () => {
         primaryAttention: null,
       })
     ).toBe("1 do zamówienia · 1 pominięte · 1 bez prośby");
+  });
+});
+
+describe("splitZkWatchCardMetaSummary", () => {
+  it("najpierw to, co wymaga działania, potem w toku, zakończone i tło", () => {
+    expect(
+      splitZkWatchCardMetaSummary(
+        "3 do zamówienia · 1 pominięte · 2 w prośbie · 1 bez prośby · 1 odebrane z regału"
+      )
+    ).toEqual([
+      { text: "1 bez prośby", tone: "action" },
+      { text: "2 w prośbie", tone: "progress" },
+      { text: "1 odebrane z regału", tone: "done" },
+      { text: "3 do zamówienia", tone: "detail" },
+      { text: "1 pominięte", tone: "detail" },
+    ]);
+  });
+
+  it("rozpoznaje pozostałe fragmenty i nie myli zdań z licznikami", () => {
+    const tones = (s: string) => splitZkWatchCardMetaSummary(s).map((p) => p.tone);
+    expect(tones("2 nowe · Czeka na odbiór (2) · Przypomnienie: jutro")).toEqual(["action", "action", "action"]);
+    expect(tones("1 na regale · 1 dostępne · 2 zakończone")).toEqual(["done", "done", "done"]);
+    expect(tones("Prośba: bez otwartej · Bez prośby - nic nie wybrane")).toEqual(["plain", "plain"]);
+    expect(splitZkWatchCardMetaSummary(null)).toEqual([]);
   });
 });

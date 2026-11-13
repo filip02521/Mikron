@@ -20,7 +20,12 @@ function fold(s: string): string {
  * Dopasowanie po imieniu i nazwisku z adresu (bez ogonków i wielkości liter); gdy imię się różni
  * („ola” / „Aleksandra”) — po samym nazwisku, ale tylko jednoznacznym. Brak pewności → null.
  */
-export function matchSubiektUserByEmail(email: string | null | undefined, users: readonly SubiektUser[]): SubiektUser | null {
+export function matchSubiektUserByEmail(
+  email: string | null | undefined,
+  users: readonly SubiektUser[],
+  /** false = tylko pełne imię i nazwisko (ZK z maila: lepiej operator Sfery niż inna osoba o tym nazwisku). */
+  allowSurnameOnly = true
+): SubiektUser | null {
   const local = String(email ?? "").split("@")[0] ?? "";
   const parts = fold(local.replace(/[._-]+/g, " ")).split(" ").filter(Boolean);
   if (parts.length < 2) return null;
@@ -29,7 +34,7 @@ export function matchSubiektUserByEmail(email: string | null | undefined, users:
   const named = users.map((u) => ({ u, first: fold(u.uz_Imie ?? ""), last: fold(u.uz_Nazwisko ?? "") }));
   const exact = named.filter((n) => n.first === first && n.last === last);
   if (exact.length === 1) return exact[0]!.u;
-  if (exact.length > 1) return null;
+  if (exact.length > 1 || !allowSurnameOnly) return null;
   const bySurname = named.filter((n) => n.last === last);
   return bySurname.length === 1 ? bySurname[0]!.u : null;
 }

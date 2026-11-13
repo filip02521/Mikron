@@ -5,7 +5,8 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "r
 import type { SalesZkWatch } from "@/types/database";
 import type { ZkWatchOrderHints, ZkLinkableOrder } from "@/lib/sales/zk-watch-order-link";
 import type { ZkWatchRefreshDiff } from "@/lib/sales/zk-watch-refresh-diff";
-import { groupZkWatchesByMonth, type ZkWatchMonthGroup } from "@/lib/sales/zk-watch-sort";
+import { type ZkWatchMonthGroup } from "@/lib/sales/zk-watch-sort";
+import { groupZkWatchesForList } from "@/lib/sales/zk-watch-todo-group";
 import {
   collapseAllZkMonthGroups,
   defaultCollapsedZkMonthKeys,
@@ -187,7 +188,10 @@ export function ZkWatchGroupedList({
   ) => void;
   onDeleted?: (watchId: string) => void;
 }) {
-  const groups = useMemo(() => groupZkWatchesByMonth(watches), [watches]);
+  const groups = useMemo(
+    () => groupZkWatchesForList(watches, zkHintsByWatchId, { archived }),
+    [watches, zkHintsByWatchId, archived]
+  );
   const groupsSignature = useMemo(() => zkWatchMonthGroupsSignature(groups), [groups]);
   const watchIds = useMemo(() => new Set(watches.map((watch) => watch.id)), [watches]);
 

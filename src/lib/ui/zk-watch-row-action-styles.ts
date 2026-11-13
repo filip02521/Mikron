@@ -5,7 +5,9 @@ import { buttonPrimaryClass, panelToolbarIconButtonClass, salesTypography } from
 export const zkWatchRowActionHeightClass = "h-8";
 
 /** Kontener akcji po prawej stronie wiersza ZK. */
-export const zkWatchRowActionBarClass = "flex items-center justify-end gap-1.5";
+// Stała szerokość od lg (najszerszy zestaw akcji ma 290 px): treść wierszy kończy się w jednej linii.
+// Poniżej lg pasek ma naturalną szerokość, bo tam każdy piksel treści jest ważniejszy niż równa krawędź.
+export const zkWatchRowActionBarClass = "flex items-center justify-end gap-1.5 lg:w-[18.5rem]";
 
 // hit-target: pole dotyku 44 px przy palcu bez zmiany wyglądu gęstego wiersza (DESIGN.md → Ikony).
 const zkWatchRowActionTextBaseClass = cn(

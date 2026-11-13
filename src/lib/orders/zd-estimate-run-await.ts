@@ -11,7 +11,9 @@ export type ZdEstimateRunAwaitFailure = {
 
 export type ZdEstimateRunAwaitOutcome<T> =
   | { ok: true; result: T }
-  | { ok: false; failure: ZdEstimateRunAwaitFailure };
+  | { ok: false; failure: ZdEstimateRunAwaitFailure }
+  /** Czekający zniknął (wyjście z Kreatora) — liczenie trwa dalej na serwerze, wynik odbierze ktoś inny. */
+  | { ok: false; failure: null };
 
 const POLL_INTERVAL_MS = 1_000;
 /** Zgodne z czasem życia zadania na serwerze (`ZD_ESTIMATE_RUN_JOB_RUNNING_TTL_MS`). */
@@ -22,8 +24,12 @@ const MAX_COLLECT_ERRORS_IN_ROW = 10;
 const RETRY_HINT = "Policz listę ponownie.";
 
 export async function awaitZdEstimateRunJob<T>(opts: {
-  start: () => Promise<{ ok: true; runId: string } | { ok: false; message: string }>;
+  start: () => Promise<{ ok: true; runId: string; ownerUserId: string } | { ok: false; message: string }>;
   collect: (runId: string) => Promise<ZdEstimateRunJobState<T>>;
+  /** Serwer przyjął liczenie. */
+  onStarted?: (started: { runId: string; ownerUserId: string }) => void;
+  /** true = przestań czekać (bez błędu). */
+  isAbandoned?: () => boolean;
   sleep?: (ms: number) => Promise<void>;
   now?: () => number;
 }): Promise<ZdEstimateRunAwaitOutcome<T>> {
@@ -49,10 +55,13 @@ export async function awaitZdEstimateRunJob<T>(opts: {
     };
   }
 
+  opts.onStarted?.({ runId: started.runId, ownerUserId: started.ownerUserId });
+
   const deadline = now() + MAX_WAIT_MS;
   let errorsInRow = 0;
   while (now() < deadline) {
     await sleep(POLL_INTERVAL_MS);
+    if (opts.isAbandoned?.()) return { ok: false, failure: null };
     let job: ZdEstimateRunJobState<T>;
     try {
       job = await opts.collect(started.runId);

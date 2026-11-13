@@ -32,7 +32,7 @@ export function splitExpandedDeliveryEstimate(
 }
 
 const panelShellClass =
-  "rounded-md border px-2.5 py-1.5";
+  "rounded-lg px-3 py-2.5";
 
 /**
  * Kompaktowy pasek terminu nad produktami:
@@ -67,10 +67,10 @@ export function MyOrderExpandedDeliveryTiming({
       className={cn(
         panelShellClass,
         isOverdue
-          ? "border-amber-200/70 bg-amber-50/45"
+          ? "bg-amber-50"
           : isZd
-            ? "border-indigo-200/55 bg-indigo-50/30"
-            : "border-slate-200/70 bg-slate-50/45",
+            ? "bg-indigo-50/60"
+            : "bg-slate-50",
         className
       )}
       aria-label={title}
@@ -122,7 +122,7 @@ export function MyOrderExpandedDeliveryTiming({
             {docPart ? (
               <span
                 className={cn(
-                  "max-w-[11rem] truncate rounded px-1.5 py-0.5 font-medium tabular-nums leading-none ring-1 ring-inset",
+                  "max-w-[11rem] truncate rounded-md px-1.5 py-0.5 font-medium tabular-nums leading-none ring-1 ring-inset",
                   salesTypography.rowMeta,
                   isOverdue
                     ? "bg-amber-100/70 text-amber-950 ring-amber-200/70"

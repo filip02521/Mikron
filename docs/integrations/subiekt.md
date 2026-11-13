@@ -41,6 +41,7 @@ Oczekiwana odpowiedź:
 |---------|----------|------|
 | `SUBIEKT_API_BASE_URL` | tak | Bazowy URL z `/api/v1`, np. `http://192.168.0.140:5080/api/v1` |
 | `SUBIEKT_API_ORDERS_BASE_URL` | tak dla szacunku | Host ORDERS: `:5080` live (aktualna baza) lub `:5082` test — **bez cichego fallbacku** |
+| `SUBIEKT_API_ZK_BASE_URL` | dla ZK z maila | Host ekranu `/zk/z-maila` (klienci, towary, create ZK). Kod przyjmuje tylko `:5082` (kopia testowa); `:5080` jest zablokowany do czasu zgody na produkcję |
 | `SUBIEKT_API_ORDERS_TIMEOUT_MS` | nie | Timeout szacunku/create (domyślnie `60000`) |
 | `SUBIEKT_API_AUTH_MODE` | nie | `none` gdy klucz wyłączony; inaczej `bearer`, `basic`, `api-key-header` |
 | `SUBIEKT_API_KEY` | zależnie | Token — tylko gdy włączony na serwerze Subiekta |
@@ -80,6 +81,7 @@ Wszystkie listy zwracają envelope:
 | GET | `/documents` | Dokumenty (filtry `typ`, `dataOd`, `dataDo`, …) |
 | GET | `/documents/zk` | Zamówienia od klientów (typ 16) |
 | GET | `/documents/zk/:id` | Jedno ZK |
+| POST | `/documents/zk/create` | Tworzy ZK (Sfera): `kontrahentId` (odbiorca), `pozycje[{towarId, ilosc, cenaNetto?}]`, `uwagi`, `personelId`; bez `cenaNetto` cena z kartoteki. W OnTime: `/zk/z-maila`, host `SUBIEKT_API_ZK_BASE_URL` |
 | GET | `/documents/fs` | Faktury sprzedaży (także `/documents/fs/:id`) |
 | GET | `/documents/zd` | Zamówienia do dostawców (typ 15) |
 | GET | `/documents/zd/:id` | Jedno ZD (pełne linie) |

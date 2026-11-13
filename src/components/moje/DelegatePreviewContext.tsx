@@ -84,16 +84,14 @@ export function DelegateModeBackground({
   }, []);
 
   return (
-    <>
+    // Etykieta w kolumnie treści (nie nad nią), żeby stała równo z kartami, które opisuje.
+    <div className={className}>
       {applied && label ? (
         <div className="delegate-preview-badge" role="status" aria-live="polite">
           Podgląd: {label}
         </div>
       ) : null}
-
-      <div className={className}>
-        {children}
-      </div>
-    </>
+      {children}
+    </div>
   );
 }

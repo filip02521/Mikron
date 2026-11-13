@@ -6,11 +6,7 @@ import { IconSearch } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { salesSearchPlaceholder } from "@/lib/sales/sales-search-ui";
 import { SALES_SEARCH_COPY } from "@/lib/sales/sales-page-ui-copy";
-import {
-  brandLinkSubtleClass,
-  salesChromeInsetClass,
-  salesTypography,
-} from "@/lib/ui/ontime-theme";
+import { brandLinkSubtleClass, salesTypography } from "@/lib/ui/ontime-theme";
 
 export function MojeOrdersSearchBar({
   value,
@@ -20,6 +16,7 @@ export function MojeOrdersSearchBar({
   archiveMatchCount = 0,
   enableShortcut = true,
   trailing,
+  bare = false,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -29,6 +26,8 @@ export function MojeOrdersSearchBar({
   enableShortcut?: boolean;
   /** Licznik wyników na końcu rzędu (DESIGN.md → Pasek filtrów). */
   trailing?: React.ReactNode;
+  /** Na tle strony, bez własnego tła i paddingu (lista z sekcjami jako osobnymi kartami). */
+  bare?: boolean;
 }) {
   const inputId = useId();
   const trimmed = value.trim();
@@ -56,7 +55,7 @@ export function MojeOrdersSearchBar({
   }, [enableShortcut, inputId]);
 
   return (
-    <div className={cn("border-b border-slate-100 bg-card py-2.5", salesChromeInsetClass)}>
+    <div className={bare ? undefined : "border-b border-slate-100 bg-card px-3 py-2.5 sm:px-4"}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
       <div className="relative min-w-0 flex-1">
         <label

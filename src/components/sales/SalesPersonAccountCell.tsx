@@ -38,7 +38,7 @@ export function SalesPersonAccountCell({
         Ma konto
       </Badge>
       <p className="text-xs text-slate-600">{row.linkedUserEmail}</p>
-      {created ? <p className="text-[0.6875rem] text-slate-400">Konto od: {created}</p> : null}
+      {created ? <p className="text-[0.6875rem] text-slate-500">Konto od: {created}</p> : null}
       {activity ? (
         <p className="text-[0.6875rem] text-slate-500">Ostatnia aktywność: {activity}</p>
       ) : signIn ? (
