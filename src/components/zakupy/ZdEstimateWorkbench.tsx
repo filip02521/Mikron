@@ -881,7 +881,20 @@ export function ZdEstimateWorkbench({
   launch?: ZdEstimateLaunchProps | null;
 }) {
   const uiPrefs = bootstrap.uiPrefs ?? ZD_ESTIMATE_UI_PREFS_DEFAULTS;
-  const [estimating, startEstimate] = useTransition();
+  // „Policz” celowo bez useTransition: trwające async transition w React 19 wstrzymuje każdą
+  // nawigację (Link też jest transition) do końca liczenia — z Kreatora nie dało się wyjść.
+  const [estimating, setEstimating] = useState(false);
+  const estimateRunsRef = useRef(0);
+  const startEstimate = useCallback((run: () => Promise<void>) => {
+    estimateRunsRef.current += 1;
+    setEstimating(true);
+    void run()
+      .catch((e: unknown) => console.error("[zd-estimate] Policz przerwane w przeglądarce", e))
+      .finally(() => {
+        estimateRunsRef.current -= 1;
+        if (estimateRunsRef.current === 0) setEstimating(false);
+      });
+  }, []);
   const [searching, startSearch] = useTransition();
   const [mutating, startMutate] = useTransition();
   const [rematting, startRemat] = useTransition();
