@@ -138,7 +138,8 @@ describe("etykiety przejść", () => {
     expect(transitionLabel("w_naprawie", "czeka_na_czesc")).toBe("Wznów naprawę");
     expect(transitionLabel("w_naprawie", "diagnoza")).toBe("Zacznij naprawę");
     expect(transitionLabel("gotowe", "w_naprawie")).toBe("Oznacz jako gotowe");
-    expect(transitionLabel("czeka_na_czesc", "w_naprawie")).toBe("Czeka na część");
+    expect(transitionLabel("czeka_na_czesc", "w_naprawie")).toBe("Wstrzymaj — czeka na część");
+    expect(transitionLabel("w_naprawie", "przyjete")).toBe("Pomiń diagnozę — naprawiaj");
     expect(transitionLabel("anulowane", "gotowe")).toBe("Anuluj zlecenie");
   });
 });

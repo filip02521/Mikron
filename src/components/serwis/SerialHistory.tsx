@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { actionServiceSerialHistory } from "@/app/actions/service-orders";
-import { formatDateOnly, OrderStatusPill } from "@/components/serwis/service-order-view";
+import { formatLocalDate, OrderStatusPill } from "@/components/serwis/service-order-view";
 import { serialKey, type SerialHistoryItem } from "@/lib/orders/service-orders";
 
 /** Pierwsze zdanie, przycięte — w historii wystarczy, co było nie tak i co zrobiono. */
@@ -64,7 +64,7 @@ export function SerialHistory({
             <>
               <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="font-mono text-xs font-semibold text-slate-700">{o.number}</span>
-                <span className="text-xs text-slate-600">{formatDateOnly(o.createdAt.slice(0, 10))}</span>
+                <span className="text-xs text-slate-600">{formatLocalDate(o.createdAt)}</span>
                 <OrderStatusPill status={o.status} />
               </span>
               <span className="block text-[0.8125rem] text-slate-800">{short(o.fault)}</span>

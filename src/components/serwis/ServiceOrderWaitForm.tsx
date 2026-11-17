@@ -8,6 +8,7 @@ import { pickerInputClass, ProductPicker, type PickedProduct } from "@/component
 import type { ModelPartView } from "@/components/serwis/service-order-view";
 import { SERVICE_PARTS_CECHA_NAME } from "@/lib/orders/service-parts";
 import type { ServiceOrder } from "@/lib/orders/service-orders";
+import { fieldLabelClass } from "@/lib/ui/serwis-theme";
 
 type Submit = (fn: () => Promise<ServiceOrderActionResult>, after?: () => void) => void;
 
@@ -89,7 +90,7 @@ export function ServiceOrderWaitForm({
           freeTextHint="Część spoza Subiekta — zapiszemy nazwę, bez zgłoszenia do zakupów."
         />
         <div>
-          <label htmlFor={`${formId}-qty`} className="mb-1.5 block text-xs font-semibold text-slate-600">
+          <label htmlFor={`${formId}-qty`} className={fieldLabelClass}>
             Ilość
           </label>
           <input

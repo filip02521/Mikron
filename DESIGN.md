@@ -240,6 +240,8 @@ Nowoczesność tutaj to spokój, nie efekt: jedna warstwa kart na tle, nagłówk
 
 Aplikacja ma motyw jasny i ciemny; każdy użytkownik wybiera Jasny, Ciemny albo Jak w systemie (Colors → „Motyw ciemny”). Nowe konto zaczyna od jasnego. Ciemne tło z gradientem marki występuje wyłącznie na ekranach logowania i nie jest motywem ciemnym. Tarcza marki (`BrandCardAccent`) pojawia się tylko w momentach marki: logowanie, strona 404, onboarding i puste stany pierwszego uruchomienia. Na ekranach pracy jej nie ma.
 
+Panel serwisu (`/serwis` i `/serwis/*`) ma własny świat, opisany w `DESIGN-serwis.md` i włączany klasą `.serwis-world`. Nadpisuje on tylko trzy rzeczy: paletę (fiolet atramentu pieczątki zamiast Petrolu w tych samych klasach `indigo-*` i `bg-primary`, grunt `--background`), szkielet (pas Serwisu u góry zamiast menu bocznego dla roli `serwis`) oraz słownik rubryk i pieczątek (w tym wersaliki etykiet rubryk). Wszystko inne w tym pliku obowiązuje w Serwisie bez zmian.
+
 ## Colors
 
 Szarości są chłodne (lekko w stronę niebieskiego), Petrol jest jedynym nasyconym kolorem, a zieleń, bursztyn i czerwień oznaczają wyłącznie stany.

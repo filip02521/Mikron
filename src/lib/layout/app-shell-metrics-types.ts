@@ -35,6 +35,8 @@ export type AppShellMetrics = {
     SalesBoardAttentionSnapshot["pinnedAnnouncements"][number],
     "id" | "title" | "body"
   >[];
+  /** Panel serwisu: helpdesk mikran.pl połączony logowaniem (kto i kiedy); null — brak połączenia. */
+  serviceHelpdesk?: { connectedAt: string; connectedByEmail: string | null } | null;
   /** Metryki z SSR załadowane — przed tym liczniki dźwięku tablicy nie są wiarygodne. */
   ready: boolean;
 };

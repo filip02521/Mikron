@@ -18,6 +18,12 @@ export type HelpdeskTicket = {
   quantity: number | null;
   /** Opis klienta: pole zgłoszenia albo pierwsza wiadomość wątku. */
   comment: string;
+  /**
+   * Usterka do przyjęcia: opis bez powitania i podpisu. Gdy zgłoszenie założył serwis (najstarsza wiadomość od
+   * pracownika), bierzemy pierwszą wiadomość klienta; bez niej zostaje tekst serwisu (`faultFrom: "serwis"`).
+   */
+  fault: string;
+  faultFrom: "klient" | "serwis";
   /** YYYY-MM-DD lub pełna data z API. */
   dateAdded: string;
   statusId: number | null;
@@ -95,6 +101,29 @@ function firstMessage(raw: Record<string, unknown>): string {
   return "";
 }
 
+/** Samo powitanie, najwyżej z imieniem („Hej Adam”, „Szanowni Państwo,”) — „Dzień dobry, lampa gaśnie” to już treść. */
+const GREETING = /^(?:witam|witajcie|dzie[nń]\s+dobry|hej|cze[sś][cć]|szanown\S*|hello|hi|dear|sveiki|dobr[yý]\s+den)(?:\s+\p{L}+){0,2}\s*[,!.]?$/iu;
+const CLOSING = /^(?:pozdrawiam|pozdrowienia|z\s+powa[zż]aniem|serdecznie\s+pozdrawiam|best\s+regards|kind\s+regards|regards|s\s+pozdravem|pagarbiai)\b/i;
+
+/** Treść wiadomości bez powitania („Witam,”, „Hej Adam”) i podpisu (od „Pozdrawiam” do końca); bez pustych wierszy. */
+export function cleanMessageText(text: string): string {
+  const lines = text.replace(/\r/g, "").split("\n").map((l) => l.trim());
+  const body = lines.filter(Boolean);
+  if (body.length > 1 && GREETING.test(body[0]!)) body.shift();
+  // Podpis tylko w ostatnich wierszach — „Pozdrawiam” w środku listu to jeszcze treść.
+  const close = body.findIndex((l, i) => i >= body.length - 4 && i > 0 && CLOSING.test(l));
+  if (close > 0) body.splice(close);
+  return body.join("\n");
+}
+
+function ticketFault(r: Record<string, unknown>, comment: string): Pick<HelpdeskTicket, "fault" | "faultFrom"> {
+  const msgs = parseHelpdeskMessages(r);
+  if (!msgs[0]?.staff) return { fault: cleanMessageText(comment), faultFrom: "klient" };
+  // „Dane zgłoszenia…” to kopia formularza sklepu (dane kontaktowe sklejone w jeden ciąg), nie opis usterki.
+  const client = msgs.find((m) => !m.staff && !m.auto && !/^\s*Dane zgłoszenia/i.test(m.text));
+  return client ? { fault: cleanMessageText(client.text), faultFrom: "klient" } : { fault: cleanMessageText(comment), faultFrom: "serwis" };
+}
+
 export function parseHelpdeskTicket(raw: unknown, test = false): HelpdeskTicket | null {
   if (!raw || typeof raw !== "object") return null;
   const r = (raw as Record<string, unknown>).data && typeof (raw as Record<string, unknown>).data === "object" && !Array.isArray((raw as Record<string, unknown>).data)
@@ -102,6 +131,7 @@ export function parseHelpdeskTicket(raw: unknown, test = false): HelpdeskTicket 
     : (raw as Record<string, unknown>);
   const id = int(r, ["service_id", "helpdesk_id", "id"]);
   if (!id || id <= 0) return null;
+  const comment = str(r, ["comment", "description"]) || firstMessage(r);
   return {
     id,
     name: str(r, ["name", "customer", "firstname"]),
@@ -112,7 +142,8 @@ export function parseHelpdeskTicket(raw: unknown, test = false): HelpdeskTicket 
     product: str(r, ["product"]),
     invoiceId: str(r, ["invoice_id", "invoice"]),
     quantity: int(r, ["quantity"]),
-    comment: str(r, ["comment", "description"]) || firstMessage(r),
+    comment,
+    ...ticketFault(r, comment),
     dateAdded: str(r, ["date_added", "created_at", "date"]),
     statusId: int(r, ["service_status_id", "status_id"]),
     status: str(r, ["status", "status_name", "service_status"]),
@@ -157,6 +188,8 @@ export const HELPDESK_TEST_TICKETS: HelpdeskTicket[] = [
     invoiceId: "",
     quantity: 1,
     comment: "TEST — zgłoszenie testowe, nie od klienta. Silnik nie rusza po włączeniu pedału.",
+    fault: "TEST — zgłoszenie testowe, nie od klienta. Silnik nie rusza po włączeniu pedału.",
+    faultFrom: "klient",
     dateAdded: "",
     statusId: 1,
     status: "Nowe zgłoszenie",
@@ -178,6 +211,8 @@ export const HELPDESK_TEST_TICKETS: HelpdeskTicket[] = [
     invoiceId: "",
     quantity: 1,
     comment: "TEST — zgłoszenie testowe, nie od klienta. Lampa gaśnie po 5 sekundach.",
+    fault: "TEST — zgłoszenie testowe, nie od klienta. Lampa gaśnie po 5 sekundach.",
+    faultFrom: "klient",
     dateAdded: "",
     statusId: 2,
     status: "Przyjęte do realizacji",
@@ -195,12 +230,137 @@ export const HELPDESK_TEST_TICKETS: HelpdeskTicket[] = [
  * Numer idzie do pola SN, nazwa — do sprzętu. Bez znacznika SN całość zostaje nazwą.
  */
 export function splitProductSerial(product: string): { name: string; serial: string } {
-  const m = product.match(/^(.*?)[\s,;&]*\bS\s*\/?\s*N\b\s*[:.#]?\s*([A-Za-z0-9][A-Za-z0-9/._-]{2,39})\s*$/i);
-  if (!m) return { name: product.trim(), serial: "" };
-  return { name: (m[1] ?? "").replace(/[\s,;&-]+$/, "").trim() || product.trim(), serial: m[2]! };
+  const m = product.match(/^(.*?)[\s,;&(-]*\bS\s*\/?\s*N\b(.*)$/i);
+  const serial = m ? serialsAfterMarker(m[2] ?? "")[0] : undefined;
+  if (!m || !serial) return { name: product.trim(), serial: "" };
+  return { name: (m[1] ?? "").replace(/[\s,;&(-]+$/, "").trim() || product.trim(), serial };
+}
+
+/** Słowo wyglądające na numer seryjny: z cyfrą, 4–40 znaków. */
+const SERIAL_WORD = /^[A-Za-z0-9][A-Za-z0-9/._-]{3,39}$/;
+
+/**
+ * Numery po znaczniku „SN”: lista po przecinkach, numer rozdzielony spacją („X2BTEST 054”, „A 1400001”) łączony;
+ * koniec na pierwszym słowie, które nie jest numerem („SN R219AB003 należy wymienić…” → [„R219AB003”]).
+ */
+function serialsAfterMarker(text: string): string[] {
+  const words = text.replace(/^\s*[:.#-]?\s*/, "").split(/[\s,;)]+/).filter(Boolean);
+  const out: string[] = [];
+  for (let i = 0; i < words.length; i++) {
+    let w = words[i]!.replace(/[.)]+$/, "");
+    const next = words[i + 1]?.replace(/[.)]+$/, "") ?? "";
+    if (/^[A-Za-z]$/.test(w) && /^\d{4,}$/.test(next)) {
+      w = `${w}${next}`;
+      i++;
+    } else if (/^\d{3}$/.test(next) && /[A-Za-z]/.test(w) && /\d/.test(w) && w.length >= 5) {
+      w = `${w}${next}`;
+      i++;
+    }
+    if (!SERIAL_WORD.test(w) || !/\d/.test(w)) break;
+    // Kolejny numer z listy ma co najmniej 5 znaków — „SN R1AB003, H400” to numer i model, nie dwa numery.
+    if (out.length && w.length < 5) break;
+    out.push(w);
+  }
+  return out;
+}
+
+const SERIAL_MARKER = /(?:\bS\s*\/\s*N\b|\bSN(?=[\s:.#,-]|$)|\bnr\.?\s*seryjn\w*|\bnumer\w*\s+seryjn\w*)/gi;
+
+/**
+ * Wszystkie numery seryjne ze zgłoszenia: najpierw z produktu, potem z opisu klienta albo serwisu
+ * („Przesyłam prostnicę SN R219AB003.”, „SN R1AB0001, R1AB0002”). Bez powtórzeń (wielkość liter i spacje bez znaczenia).
+ */
+export function extractTicketSerials(...texts: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const text of texts) {
+    for (const m of text.matchAll(SERIAL_MARKER)) {
+      for (const sn of serialsAfterMarker(text.slice(m.index! + m[0].length))) {
+        const key = sn.replace(/\s+/g, "").toUpperCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(sn);
+      }
+    }
+  }
+  return out;
+}
+
+/** Liczba sztuk z produktu („4 x strong 105L”, „2x prostnica”) — pole `quantity` w helpdesku zwykle jest puste. */
+export function productQuantity(product: string): number | null {
+  const m = product.match(/^\s*(\d{1,2})\s*(?:x|×|szt\.?)\s+\S/i);
+  const n = m ? Number(m[1]) : NaN;
+  return n >= 2 ? n : null;
 }
 
 /** Adres pracownika Mikranu: zgłoszenie założył serwis za klienta, więc e-mail nie wskazuje klienta. */
 export function isStaffEmail(email: string): boolean {
   return /@mikran\.(pl|com)$/i.test(email.trim());
+}
+
+/**
+ * Numer faktury ze zgłoszenia: pole „Nr faktury”, a gdy puste — z produktu albo opisu
+ * („faktura nr 1617/M/09/2025. Marathon multi 600”, „FV 434/M/11/2026”). Zwraca sam numer („1617/M/09/2025”).
+ */
+export function extractInvoiceNumber(...fields: string[]): string {
+  for (const f of fields) {
+    const m = f.match(/(?:\b(?:FS|FV|faktur[ay]?)\b\s*(?:nr\.?|numer)?\s*:?\s*)?(\d{1,7}\/[A-Z]{1,3}\/\d{2}\/\d{4})\b/i);
+    if (m) return m[1]!.toUpperCase();
+  }
+  return "";
+}
+
+/**
+ * Pole „faktura” ze zgłoszenia: klienci wpisują tam numer albo zwykły tekst („naprawa po gwarancji”, „nie pamiętam”).
+ * Numer — z pola, produktu albo opisu (pełny „1617/M/09/2025”) lub sam ciąg z cyfrą bez spacji („FV1617”, „1617/2025”).
+ * Tekst bez numeru wraca jako `note` — to wiadomość klienta, nie numer, którego trzeba szukać w Subiekcie.
+ */
+export function splitInvoiceField(field: string, ...otherFields: string[]): { invoice: string; note: string } {
+  const raw = field.trim();
+  const found = extractInvoiceNumber(raw, ...otherFields);
+  if (found) return { invoice: found, note: "" };
+  if (/^(?:F[SV]\.?\s*)?[A-Z0-9][A-Z0-9/._-]{2,29}$/i.test(raw) && /\d/.test(raw)) return { invoice: raw, note: "" };
+  return { invoice: "", note: raw.replace(/\s+/g, " ").slice(0, 120) };
+}
+
+export type HelpdeskMessage = {
+  id: number | null;
+  at: string;
+  author: string;
+  /** Wpis od pracownika (odpowiedź serwisu), nie od klienta. */
+  staff: boolean;
+  /** Komentarz ukryty — klient go nie widzi. */
+  hidden: boolean;
+  /** Autoodpowiedź helpdesku (szablon sklepu), nie wpis człowieka. */
+  auto: boolean;
+  text: string;
+  status: string;
+};
+
+/** Wątek zgłoszenia z `/helpdesk/{id}/messages` (pola wiadomości jak w historii panelu sklepu), od najstarszej. */
+export function parseHelpdeskMessages(raw: unknown): HelpdeskMessage[] {
+  const list = raw && typeof raw === "object" ? (raw as { messages?: unknown; data?: unknown }).messages ?? (raw as { data?: unknown }).data : null;
+  if (!Array.isArray(list)) return [];
+  const out: HelpdeskMessage[] = [];
+  for (const m of list) {
+    if (!m || typeof m !== "object") continue;
+    const r = m as Record<string, unknown>;
+    const text = str(r, ["comment", "message", "text", "body"]);
+    if (!text) continue;
+    const userId = int(r, ["user_id"]);
+    const staff = userId != null && userId > 0;
+    out.push({
+      id: int(r, ["service_history_id", "history_id", "id"]),
+      at: str(r, ["date_added", "date", "created_at"]),
+      // API sklepu: commented_name = podpis wpisu; bez niego pracownik albo klient zgłoszenia.
+      author: str(r, ["commented_name", "author", "user", "name", "firstname"]) || str(r, staff ? ["employee_name"] : ["customer_name"]),
+      staff,
+      // Tylko jawne pole „ukryty” — notify=0 znaczy „bez maila”, nie „niewidoczne dla klienta”.
+      hidden: /^(1|true)$/i.test(str(r, ["hidden", "is_hidden", "private"])),
+      auto: /^(1|true)$/i.test(str(r, ["auto"])),
+      text,
+      status: str(r, ["status", "service_status"]),
+    });
+  }
+  return out.sort((a, b) => a.at.localeCompare(b.at));
 }

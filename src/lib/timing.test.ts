@@ -4,8 +4,20 @@ import {
   createTimeoutAbort,
   isTimeBudgetExceeded,
   lockTtlSecondsForBudgetMs,
+  resultOrNullAfter,
   withTimeoutAbort,
 } from "./timing";
+
+describe("resultOrNullAfter", () => {
+  it("wynik na czas, null po limicie i przy błędzie", async () => {
+    expect(await resultOrNullAfter(Promise.resolve(7), 50)).toBe(7);
+    const slow = new Promise<number>((r) => setTimeout(() => r(1), 200));
+    const t0 = Date.now();
+    expect(await resultOrNullAfter(slow, 20)).toBeNull();
+    expect(Date.now() - t0).toBeLessThan(150);
+    expect(await resultOrNullAfter(Promise.reject(new Error("fetch failed")), 50)).toBeNull();
+  });
+});
 
 describe("lockTtlSecondsForBudgetMs", () => {
   it("dodaje zapas do budżetu", () => {

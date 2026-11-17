@@ -33,6 +33,18 @@ export async function withTimeoutAbort<T>(
 }
 
 /**
+ * Wynik opcjonalnej podpowiedzi albo null po `ms` (lub przy błędzie) — dla zapytań, bez których formularz działa.
+ * shortcut: samo żądanie biegnie dalej w tle (np. fetch do Subiekta bez sygnału); gdy wywołujący przyjmie AbortSignal, użyj withTimeoutAbort.
+ */
+export function resultOrNullAfter<T>(promise: Promise<T>, ms: number): Promise<T | null> {
+  let id: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<null>((resolve) => {
+    id = setTimeout(() => resolve(null), Math.max(1, Math.floor(ms)));
+  });
+  return Promise.race([promise.catch(() => null), timeout]).finally(() => clearTimeout(id));
+}
+
+/**
  * TTL locka joba (sekundy): budżet pracy + zapas,
  * żeby lock nie wygasł przed kooperatywnym soft-stopem.
  */
