@@ -196,15 +196,32 @@ export async function fetchHelpdeskMessages(id: number): Promise<{ mode: Helpdes
  */
 export async function setHelpdeskStatus(id: number, statusId: number, comment: string): Promise<boolean> {
   if (!(await helpdeskWriteEnabled())) return false;
-  const res = await fetch(`${mikranApiBase()}/api/v1/helpdesk/${id}/messages`, {
+  const res = await postHelpdeskMessage(id, { comment: comment.slice(0, 500), service_status_id: statusId, notify: false });
+  if (!res.ok) throw new Error(`Helpdesk mikran.pl nie zapisał statusu zgłoszenia #${id} (${res.status}).`);
+  return true;
+}
+
+/** Najdłuższa odpowiedź serwisanta do klienta wysyłana z OnTime. */
+export const HELPDESK_REPLY_MAX = 4000;
+
+/**
+ * Odpowiedź serwisanta w zgłoszeniu: wpis w historii, którą klient widzi na mikran.pl; `notify` — helpdesk wysyła mu
+ * też maila z treścią. Status zostaje bez zmian (`statusId` = obecny). Bez MIKRAN_HELPDESK_WRITE=1 rzuca błąd.
+ */
+export async function replyInHelpdesk(id: number, statusId: number, text: string, notify: boolean): Promise<void> {
+  if (!(await helpdeskWriteEnabled())) throw new Error("Odpowiadanie z OnTime jest wyłączone na tym serwerze (MIKRAN_HELPDESK_WRITE).");
+  const res = await postHelpdeskMessage(id, { comment: text.slice(0, HELPDESK_REPLY_MAX), service_status_id: statusId, notify });
+  if (!res.ok) throw new Error(`Helpdesk mikran.pl nie przyjął odpowiedzi w zgłoszeniu #${id} (${res.status}). Nic nie wysłano — spróbuj ponownie.`);
+}
+
+async function postHelpdeskMessage(id: number, body: { comment: string; service_status_id: number; notify: boolean }): Promise<Response> {
+  return fetch(`${mikranApiBase()}/api/v1/helpdesk/${id}/messages`, {
     method: "POST",
     headers: { Authorization: `Bearer ${await accessToken("helpdesk:read helpdesk:write")}`, "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ comment: comment.slice(0, 500), service_status_id: statusId, notify: false }),
+    body: JSON.stringify(body),
     signal: AbortSignal.timeout(TIMEOUT_MS),
     cache: "no-store",
   });
-  if (!res.ok) throw new Error(`Helpdesk mikran.pl nie zapisał statusu zgłoszenia #${id} (${res.status}).`);
-  return true;
 }
 
 /** Jedno zgłoszenie z wątkiem (opis klienta = pierwsza wiadomość). null — nie ma takiego numeru. */

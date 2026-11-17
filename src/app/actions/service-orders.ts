@@ -53,6 +53,8 @@ import {
   helpdeskWriteEnabled,
   searchHelpdeskTickets,
   setHelpdeskStatus,
+  replyInHelpdesk,
+  HELPDESK_REPLY_MAX,
 } from "@/lib/mikran-shop/helpdesk";
 import {
   splitInvoiceField,
@@ -676,7 +678,14 @@ export async function actionServiceHelpdeskSearch(query: string): Promise<Helpde
   }
 }
 
-export type HelpdeskThreadResult = { ok: true; messages: HelpdeskMessage[] } | { ok: false; message: string };
+export type HelpdeskThreadResult =
+  | {
+      ok: true;
+      messages: HelpdeskMessage[];
+      /** Czy z OnTime można odpowiedzieć (MIKRAN_HELPDESK_WRITE=1 i połączony helpdesk). */
+      canReply: boolean;
+    }
+  | { ok: false; message: string };
 
 /** Rozmowa z klientem w zgłoszeniu (tylko odczyt) — do karty zlecenia. */
 export async function actionServiceHelpdeskThread(helpdeskId: number): Promise<HelpdeskThreadResult> {
@@ -686,10 +695,40 @@ export async function actionServiceHelpdeskThread(helpdeskId: number): Promise<H
   try {
     const { mode, messages } = await fetchHelpdeskMessages(id);
     if (mode === "off") return { ok: false, message: "Helpdesk mikran.pl nie jest podłączony (brak kluczy API)." };
-    return { ok: true, messages };
+    return { ok: true, messages, canReply: await helpdeskWriteEnabled() };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się pobrać rozmowy ze zgłoszenia. Spróbuj za chwilę.") };
   }
+}
+
+/**
+ * Odpowiedź serwisanta w zgłoszeniu helpdesku: wpis widoczny dla klienta na mikran.pl, z mailem do niego albo bez
+ * (wybiera serwisant). Status zgłoszenia zostaje. Zwraca odświeżoną rozmowę.
+ */
+export type HelpdeskReplyResult =
+  /** `messages` null — odpowiedź poszła, ale rozmowy nie udało się odświeżyć (nie wysyłać drugi raz). */
+  | { ok: true; messages: HelpdeskMessage[] | null }
+  | { ok: false; message: string };
+
+export async function actionServiceHelpdeskReply(helpdeskId: number, message: string, notify: boolean): Promise<HelpdeskReplyResult> {
+  await requireServicePanel("mutate");
+  const id = twId(helpdeskId);
+  if (!id) return { ok: false, message: "Nieprawidłowy numer zgłoszenia." };
+  const body = text(message, HELPDESK_REPLY_MAX);
+  if (!body) return { ok: false, message: "Wpisz treść odpowiedzi." };
+  if (typeof notify !== "boolean") return { ok: false, message: "Wybierz, czy wysłać klientowi maila. Odśwież okno." };
+  try {
+    if (!(await helpdeskWriteEnabled())) return { ok: false, message: "Odpowiadanie z OnTime jest wyłączone na tym serwerze. Odpowiedz w panelu sklepu mikran.pl." };
+    const { ticket } = await fetchHelpdeskTicket(id);
+    if (!ticket) return { ok: false, message: `Nie znaleziono zgłoszenia #${id} w helpdesku mikran.pl.` };
+    if (ticket.statusId == null) return { ok: false, message: "Helpdesk nie podał statusu zgłoszenia — odpowiedz w panelu sklepu, żeby go nie zmienić." };
+    await replyInHelpdesk(id, ticket.statusId, body, notify);
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się wysłać odpowiedzi. Spróbuj za chwilę.") };
+  }
+  // Wysłane — błąd odświeżenia nie może wyglądać jak błąd wysyłki (serwisant wysłałby drugi raz).
+  const messages = await fetchHelpdeskMessages(id).then((r) => r.messages, () => null);
+  return { ok: true, messages };
 }
 
 export type RelatedCasesResult =
