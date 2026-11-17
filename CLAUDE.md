@@ -30,6 +30,17 @@ OnTime — wewnętrzny system dostaw i zakupów (dostawcy, zamówienia ZD/ZK, ma
 - Zapytanie: `title contains 'Dostawca'` albo `fullText contains 'numer'`, sortowanie `modifiedTime desc` (pole `name` nie działa).
 - Brak pliku na Dysku nie znaczy, że dokumentu nie ma — część faktur idzie na inne skrzynki.
 
+# Pliki Claude na Dysku — przeczytaj przed pracą z pocztą i dostawcami
+
+Dział dostaw ma na Dysku Google (folder „Dział dostaw – dane wspólne”) zestaw plików prowadzonych przez Claude. Szukaj ich po nazwie (`title contains 'Claude –'`), nie po zapamiętanym ID.
+
+- Przed szkicem maila, zleceniem odbioru, zapytaniem albo podpisaniem dokumentu przeczytaj „Claude – dane stałe i kontakty (Dział dostaw)”: reguły 0–11, wpis danego dostawcy lub spedytora, wzory. Plik jest długi (ok. 80 tys. znaków) — reguły czytaj w całości, resztę wyszukuj po nazwie firmy.
+- Sprawdź, czy sprawa ma wiersz w arkuszu „Claude – sprawy w toku (Dział dostaw)”.
+- Nowe ustalenia (kontakt, tryb zamawiania, zasada, stan sprawy) dopisz na koniec pracy do „Claude – zmiany do wprowadzenia (Dział dostaw)” — pod właściwy nagłówek, z datą i źródłem. Do pliku głównego i arkusza trafiają zbiorczo, dopiero na polecenie „wprowadź”.
+- SDS, cenniki, katalogi, deklaracje: najpierw arkusz „Claude – rejestr dokumentów (Dział dostaw)”.
+- Z reguł pliku najłatwiej pominąć: 3–5 ostatnich wysłanych maili tego samego typu jako wzór (reguła 0), sprawdzenie szkiców przed utworzeniem nowego, porównanie potwierdzenia zamówienia z PDF ZD przed akceptacją lub podpisem.
+- W podsumowaniu napisz, co z tych plików wykorzystano i co do nich dopisano.
+
 # Linki do maili (Gmail MCP)
 
 - Link do maila buduj z szesnastkowego ID wiadomości (pole `id`, np. `1a1c4b3676b29982`): `https://mail.google.com/mail/u/0/#all/<id>`.
