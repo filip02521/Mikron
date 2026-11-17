@@ -8,6 +8,8 @@ import {
   splitProductSerial,
   parseHelpdeskNumber,
   parseHelpdeskMessages,
+  extractTicketSerials,
+  productQuantity,
   parseHelpdeskTicket,
 } from "@/lib/mikran-shop/helpdesk-parse";
 
@@ -148,5 +150,39 @@ describe("parseHelpdeskMessages", () => {
   it("nieznany kształt → pusta lista", () => {
     expect(parseHelpdeskMessages(null)).toEqual([]);
     expect(parseHelpdeskMessages({ error: "x" })).toEqual([]);
+  });
+});
+
+// Kształty z prawdziwych zgłoszeń serwisu; numery wymyślone.
+describe("numery seryjne i liczba sztuk ze zgłoszenia", () => {
+  it("SN z opisu: po „SN”, „SN:”, „SN.”, lista po przecinkach, koniec na słowie", () => {
+    expect(extractTicketSerials("prostnica", "Przesyłam prostnicę SN X21TEST001. Należy wymienić: 4 x łożyska")).toEqual(["X21TEST001"]);
+    expect(extractTicketSerials("4 x strong 105L", "Kontrola po naprawie. SN X1TEST0001, X1TEST0002, X1TEST0003 pozdrawiam")).toEqual([
+      "X1TEST0001",
+      "X1TEST0002",
+      "X1TEST0003",
+    ]);
+    expect(extractTicketSerials("", "Lista napraw: SN: X2TEST0015 Mimo wymiany łożysk")).toEqual(["X2TEST0015"]);
+    expect(extractTicketSerials("", "prostnica alfa SN.X2BTEST 001 Odbieram")).toEqual(["X2BTEST001"]);
+    expect(extractTicketSerials("", "SN X1TEST0003, H400 do sprawdzenia")).toEqual(["X1TEST0003"]);
+  });
+
+  it("SN z produktu w nawiasie i ze spacją, bez powtórzeń z opisem; nazwa bez numeru", () => {
+    const product = "Forte 200 - prostnica (SN X2BTEST 054)";
+    expect(extractTicketSerials(product, "Przesyłam prostnice SN X2BTEST054 należy wymienić")).toEqual(["X2BTEST054"]);
+    expect(splitProductSerial(product)).toEqual({ name: "Forte 200 - prostnica", serial: "X2BTEST054" });
+    expect(splitProductSerial("Forte 100 - SN X21TEST007")).toEqual({ name: "Forte 100", serial: "X21TEST007" });
+  });
+
+  it("bez znacznika SN nic nie zgaduje (numer faktury, telefon, ilość)", () => {
+    expect(extractTicketSerials("Garnek Aqua", "FV 434/M/11/2026, tel. 600 100 200, 4 x łożysko")).toEqual([]);
+  });
+
+  it("liczba sztuk z produktu: „4 x …”, „2x …”, „3 szt. …”; jedna sztuka to null", () => {
+    expect(productQuantity("4 x strong 105L")).toBe(4);
+    expect(productQuantity("2x prostnica")).toBe(2);
+    expect(productQuantity("3 szt. kątnica")).toBe(3);
+    expect(productQuantity("1 x prostnica")).toBeNull();
+    expect(productQuantity("Forte 100 alfa III")).toBeNull();
   });
 });

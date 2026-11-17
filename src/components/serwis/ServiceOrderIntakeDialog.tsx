@@ -24,6 +24,7 @@ import { WarrantyPill } from "@/components/serwis/service-order-view";
 import { SerialHistory } from "@/components/serwis/SerialHistory";
 import { fieldLabelClass, fieldLabelInlineClass, rubricBoxClass } from "@/lib/ui/serwis-theme";
 import { IconAlertCircle, IconCircleCheck } from "@/components/icons/StrokeIcons";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 import { cn } from "@/lib/cn";
 
 const labelClass = fieldLabelClass;
@@ -212,6 +213,19 @@ export function ServiceOrderIntakeDialog({
                     Zgłoszenie <span className="font-mono font-semibold">#{draft.helpdeskId}</span> — dane wpisane niżej
                     {draft.test ? <Badge variant="warning" className="ml-2">Dane testowe</Badge> : null}
                   </DraftCheck>
+                  <DraftCheck ok={draft.serials.length > 0}>
+                    {draft.serials.length === 0
+                      ? "Zgłoszenie nie ma numeru seryjnego — odczytaj go z tabliczki"
+                      : draft.serials.length === 1
+                        ? `Numer seryjny ze zgłoszenia: ${draft.serials[0]}`
+                        : `${draft.serials.length} ${polishPluralWord(draft.serials.length, "numer seryjny", "numery seryjne", "numerów seryjnych")} w zgłoszeniu — wybierz przy polu „Numer seryjny”`}
+                  </DraftCheck>
+                  {draft.devices && draft.devices > 1 ? (
+                    <DraftCheck ok>
+                      Zgłoszenie obejmuje {draft.devices} {polishPluralWord(draft.devices, "urządzenie", "urządzenia", "urządzeń")} — każde przyjmij osobno
+                      {accepted.length ? ` (przyjęte: ${accepted.length})` : ""}
+                    </DraftCheck>
+                  ) : null}
                   <DraftCheck ok={Boolean(draft.clientMatch)}>
                     {draft.clientMatch
                       ? `Klient z Subiekta (${CLIENT_MATCH_LABEL[draft.clientMatch]}) — jego sprzęt z faktur jest niżej`
@@ -305,7 +319,7 @@ export function ServiceOrderIntakeDialog({
             key={client.khId}
             khId={client.khId}
             selected={device?.twId ? { twId: device.twId, serial: serial.trim() } : null}
-            ticket={draft ? { invoice: draft.invoiceFound ?? "", product: draft.deviceName, serial: draft.serial } : null}
+            ticket={draft ? { invoice: draft.invoiceFound ?? "", product: draft.deviceName, serial: serial.trim() || draft.serial, serials: draft.serials } : null}
             warrantyMonths={warrantyMonths}
             onPick={(e) => {
               setDevice({ twId: e.twId, symbol: e.symbol, name: e.name });
@@ -348,6 +362,35 @@ export function ServiceOrderIntakeDialog({
             />
           </div>
         </div>
+
+        {/* Numery ze zgłoszenia (produkt i opis): jedno dotknięcie wpisuje numer; przyjęte już z tego zgłoszenia są oznaczone. */}
+        {draft && draft.serials.length > 1 ? (
+          <div className="space-y-1.5">
+            <span className={fieldLabelInlineClass}>Numery seryjne ze zgłoszenia</span>
+            <div role="group" aria-label="Numery seryjne ze zgłoszenia" className="flex flex-wrap gap-1.5">
+              {draft.serials.map((sn) => {
+                const key = sn.replace(/\s+/g, "").toUpperCase();
+                const taken = accepted.find((o) => (o.serialNo ?? "").replace(/\s+/g, "").toUpperCase() === key);
+                const active = serial.replace(/\s+/g, "").toUpperCase() === key;
+                return (
+                  <button
+                    key={sn}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setSerial(sn)}
+                    className={cn(
+                      "inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 py-1 font-mono text-[0.8125rem] transition-colors duration-150",
+                      active ? "border-indigo-600 bg-indigo-50 font-semibold text-indigo-900" : "border-slate-200 bg-card text-slate-700 hover:bg-slate-100"
+                    )}
+                  >
+                    {sn}
+                    {taken ? <span className="font-sans text-xs font-normal text-slate-500">· przyjęty {taken.number}</span> : null}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
 
         <SerialHistory serial={serial} />
 

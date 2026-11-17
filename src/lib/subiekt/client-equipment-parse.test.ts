@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   equipmentFromInvoice,
+  equipmentAndRepairsFromInvoice,
   hasSerialNotes,
   mergeClientEquipment,
   parseInvoiceSerialNotes,
+  parseInvoiceSerialNotesFull,
   parseSalesDocNumber,
   rankEquipmentForTicket,
   type ClientEquipmentItem,
@@ -149,5 +151,78 @@ describe("rankEquipmentForTicket — numer seryjny", () => {
       [2, "serial"],
       [1, "invoice"],
     ]);
+  });
+});
+
+// Uwagi tak, jak wpisuje je większość handlowców: „SN …” bez numeru pozycji. Numery i nazwy wymyślone.
+describe("numery seryjne bez numeru pozycji", () => {
+  const line = (id: number, tw: number, cena: number, ilosc = 1) => ({ ob_Id: id, ob_TowId: tw, tw_Nazwa: `Towar TEST ${tw}`, ob_CenaNetto: cena, ob_Ilosc: ilosc });
+  const doc = (uwagi: string, lines: ReturnType<typeof line>[]) => ({ dok_Id: 1, dok_NrPelny: "FS 1/T/2026", dok_DataWyst: "2026-03-01", dok_Uwagi: uwagi, dok_Pozycja: lines });
+
+  it("odmiany zapisu: SN, SN:, S/N z literą osobno, małe litery, sklejone SN, krótki numer", () => {
+    const parse = (n: string) => parseInvoiceSerialNotesFull(n).loose;
+    expect(parse("SN X21TEST001")).toEqual(["X21TEST001"]);
+    expect(parse("SN: X21TEST002")).toEqual(["X21TEST002"]);
+    expect(parse("S/N: A 1404999")).toEqual(["A1404999"]);
+    expect(parse("sn 442999")).toEqual(["442999"]);
+    expect(parse("SNX21TEST003")).toEqual(["X21TEST003"]);
+    expect(parse("SN 9399")).toEqual(["9399"]);
+    expect(parse("SN X2BTEST 054")).toEqual(["X2BTEST054"]);
+    // Numer zaczynający się od „SN” i cyfry zostaje cały — „SN” to tu część numeru, nie prefiks.
+    expect(parse("SN11122")).toEqual(["SN11122"]);
+    // Adres i zwykła uwaga to nie numery.
+    expect(parse("Proszę o kontakt\nul. Testowa 53a")).toEqual([]);
+    expect(hasSerialNotes("SN X21TEST001")).toBe(true);
+    // Sam numer w wierszu (litery i cyfry) — tak; numer dokumentu, rok, słowo — nie.
+    expect(parse("X21TEST004")).toEqual(["X21TEST004"]);
+    expect(parse("t12xy028")).toEqual(["t12xy028"]);
+    expect(parse("FS 12/T/2026\n2026\nGwarancja")).toEqual([]);
+  });
+
+  it("numer bez pozycji trafia do najdroższej pozycji (sprzęt), nie do części ani wysyłki", () => {
+    const eq = equipmentFromInvoice(doc("SN X21TEST010", [line(1, 11, 112), line(2, 12, 3740), line(3, 13, 4)]));
+    expect(eq.map((e) => [e.twId, e.serials])).toEqual([[12, ["X21TEST010"]]]);
+  });
+
+  it("kilka numerów: najdroższe pozycje po kolei, najwyżej tyle numerów, ile sztuk", () => {
+    const eq = equipmentFromInvoice(doc("SN X1\nSN X21TEST021\nSN X21TEST022\nSN X21TEST023", [line(1, 21, 900, 2), line(2, 22, 700), line(3, 23, 5)]));
+    // „X1” (2 znaki) jest za krótki nawet w wierszu SN; trzy pozostałe: dwa do pozycji 1 (2 szt.), jeden do pozycji 2.
+    expect(eq.map((e) => [e.twId, e.serials]).sort()).toEqual([
+      [21, ["X21TEST021", "X21TEST022"]],
+      [22, ["X21TEST023"]],
+    ]);
+  });
+
+  it("zakres pozycji „Poz 1 - 3 SN …” — numer do najdroższej pozycji z zakresu", () => {
+    const eq = equipmentFromInvoice(
+      doc("Poz 1 - 3 SN X21TEST031\nPoz 4 - 5 SN X21TEST032", [line(1, 31, 200), line(2, 32, 5000), line(3, 33, 50), line(4, 34, 4200), line(5, 35, 80)])
+    );
+    expect(eq.map((e) => [e.twId, e.serials]).sort()).toEqual([
+      [32, ["X21TEST031"]],
+      [34, ["X21TEST032"]],
+    ]);
+  });
+
+  it("SN ze zgłoszenia ze spacją trafia na egzemplarz z faktury", () => {
+    const eq = equipmentFromInvoice(doc("SN X2BTEST054", [line(1, 41, 3000)]));
+    const ranked = rankEquipmentForTicket(eq, { invoice: "", product: "", serial: "x2btest 054" });
+    expect(ranked[0]!.hint).toBe("serial");
+  });
+
+  // Kształt z faktury za naprawę: SN urządzenia w uwagach, na pozycjach części serwisowe i usługa wysyłki.
+  it("faktura za naprawę (same części i usługi) to nie zakup — numer wraca jako naprawa", () => {
+    const parts = new Set([51, 52]);
+    const r = equipmentAndRepairsFromInvoice(
+      { ...doc("SNX21TEST050", [line(1, 51, 78), line(2, 52, 234), line(3, 53, 12)]), dok_NrPelny: "FS 9/M/11/2026", dok_DataWyst: "2026-11-12T00:00:00" },
+      (l) => !parts.has(Number(l.ob_TowId)) && l.ob_TowId !== 53
+    );
+    expect(r.items).toEqual([]);
+    expect(r.repairs).toEqual([{ serial: "X21TEST050", invoiceId: 1, invoiceNumber: "FS 9/M/11/2026", invoiceDate: "2026-11-12" }]);
+  });
+
+  it("faktura z urządzeniem i częściami: numer do urządzenia, choć część jest droższa", () => {
+    const r = equipmentAndRepairsFromInvoice(doc("SN X21TEST060", [line(1, 61, 900), line(2, 62, 3000)]), (l) => l.ob_TowId !== 62);
+    expect(r.items.map((e) => [e.twId, e.serials])).toEqual([[61, ["X21TEST060"]]]);
+    expect(r.repairs).toEqual([]);
   });
 });

@@ -44,7 +44,7 @@ import { normalizePurchaseDate, SERVICE_WARRANTY_MONTHS_MAX } from "@/lib/orders
 import { verifySubiektProduct, type VerifiedSubiektProduct } from "@/lib/subiekt/product-verify";
 import { fetchClientEquipment, fetchClientRecentInvoices, findInvoiceBuyer, type ClientRecentInvoice } from "@/lib/subiekt/client-equipment";
 import { reportServicePartShortage } from "@/lib/data/service-part-report";
-import type { ClientEquipmentItem } from "@/lib/subiekt/client-equipment-parse";
+import type { ClientEquipmentItem, InvoiceRepairRef } from "@/lib/subiekt/client-equipment-parse";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import {
   fetchHelpdeskMessages,
@@ -60,6 +60,8 @@ import {
   nipDigits,
   parseHelpdeskNumber,
   splitProductSerial,
+  extractTicketSerials,
+  productQuantity,
   type HelpdeskMessage,
   type HelpdeskTicket,
 } from "@/lib/mikran-shop/helpdesk-parse";
@@ -421,16 +423,18 @@ export async function actionSetServiceModelWarranty(input: { modelTwId: number; 
 }
 
 export type ClientEquipmentActionResult =
-  | { ok: true; items: ClientEquipmentItem[]; invoicesScanned: number; truncated: boolean }
+  | { ok: true; items: ClientEquipmentItem[]; invoicesScanned: number; truncated: boolean; repairs: InvoiceRepairRef[] }
   | { ok: false; message: string };
 
 /** Sprzęt kupiony przez klienta (pozycje FS i PA z numerami seryjnymi w uwagach) — do wyboru przy przyjęciu. */
-export async function actionServiceClientEquipment(khId: number): Promise<ClientEquipmentActionResult> {
+export async function actionServiceClientEquipment(khId: number, ticketSerials: string[] = []): Promise<ClientEquipmentActionResult> {
   await requireServicePanel("read");
   const id = twId(khId);
   if (!id) return { ok: false, message: "Wybierz klienta z podpowiedzi Subiekta." };
+  // Numery ze zgłoszenia: faktury z nimi w uwagach idą do szczegółów pierwsze (limit szczegółów nie zgubi zakupu).
+  const prefer = (Array.isArray(ticketSerials) ? ticketSerials : []).slice(0, 10).map((s) => text(s, SERVICE_ORDER_TEXT_MAX.serial)).filter(Boolean);
   try {
-    return { ok: true, ...(await fetchClientEquipment(id)) };
+    return { ok: true, ...(await fetchClientEquipment(id, prefer)) };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się pobrać faktur i paragonów klienta z Subiekta.") };
   }
@@ -551,8 +555,12 @@ export type HelpdeskIntakeDraft = {
   deviceName: string;
   /** Sposób dostawy ze zgłoszenia (1 klient wysyła, 2 odbiera Mikran) — podpowiedź „Jak sprzęt przyszedł”. */
   deliveryId: number | null;
-  /** Numer seryjny wydzielony z pola „Produkt” zgłoszenia („Turbina SN 4321”); pusty, gdy go nie było. */
+  /** Numer seryjny do wpisania: pierwszy ze zgłoszenia, którego nie ma jeszcze w zleceniu z tego zgłoszenia; pusty — brak. */
   serial: string;
+  /** Wszystkie numery seryjne ze zgłoszenia (produkt i opis) — zgłoszenie bywa na kilka urządzeń. */
+  serials: string[];
+  /** Ile urządzeń obejmuje zgłoszenie (pole ilości, „4 x …” w produkcie albo liczba numerów); null — jedno / nie wiadomo. */
+  devices: number | null;
   fault: string;
   /** Numer faktury tak, jak go podał klient — do podświetlenia sprzętu z tej faktury. */
   invoiceId: string;
@@ -576,6 +584,11 @@ export async function actionServiceHelpdeskDraft(rawNumber: string | number): Pr
     const existingOrders = (await fetchOrdersByHelpdeskIds([id])).get(id) ?? [];
     const name = (ticket.company || ticket.name).slice(0, SERVICE_ORDER_TEXT_MAX.client);
     const product = splitProductSerial(ticket.product);
+    // Numery z produktu i z opisu; do wpisania pierwszy, którego nie ma jeszcze w zleceniu z tego zgłoszenia.
+    const serials = extractTicketSerials(ticket.product, ticket.comment).map((s) => s.slice(0, SERVICE_ORDER_TEXT_MAX.serial));
+    const usedSerials = new Set(existingOrders.map((o) => (o.serialNo ?? "").replace(/\s+/g, "").toUpperCase()).filter(Boolean));
+    const nextSerial = serials.find((s) => !usedSerials.has(s.replace(/\s+/g, "").toUpperCase())) ?? "";
+    const devices = Math.max(ticket.quantity ?? 0, productQuantity(ticket.product) ?? 0, serials.length);
     const asClient = (k: SubiektKontrahent): HelpdeskIntakeDraft["client"] => ({
       khId: k.kh_Id,
       name: String(k.adr_NazwaPelna || k.adr_Nazwa || k.kh_Symbol || name).trim(),
@@ -617,8 +630,11 @@ export async function actionServiceHelpdeskDraft(rawNumber: string | number): Pr
         client,
         clientMatch,
         phone: ticket.telephone.slice(0, SERVICE_ORDER_TEXT_MAX.phone),
-        deviceName: product.name.slice(0, SERVICE_ORDER_TEXT_MAX.device),
-        serial: product.serial.slice(0, SERVICE_ORDER_TEXT_MAX.serial),
+        // „4 x strong 105L” → „strong 105L”: liczba sztuk idzie do `devices`, nie do nazwy sprzętu.
+        deviceName: product.name.replace(/^\s*\d{1,2}\s*(?:x|×|szt\.?)\s+/i, "").slice(0, SERVICE_ORDER_TEXT_MAX.device),
+        serial: nextSerial,
+        serials,
+        devices: devices >= 2 ? devices : null,
         deliveryId: ticket.deliveryId,
         fault: ticket.comment.slice(0, SERVICE_ORDER_TEXT_MAX.fault),
         invoiceId: invoiceNo,

@@ -195,9 +195,67 @@ export const HELPDESK_TEST_TICKETS: HelpdeskTicket[] = [
  * Numer idzie do pola SN, nazwa — do sprzętu. Bez znacznika SN całość zostaje nazwą.
  */
 export function splitProductSerial(product: string): { name: string; serial: string } {
-  const m = product.match(/^(.*?)[\s,;&]*\bS\s*\/?\s*N\b\s*[:.#]?\s*([A-Za-z0-9][A-Za-z0-9/._-]{2,39})\s*$/i);
-  if (!m) return { name: product.trim(), serial: "" };
-  return { name: (m[1] ?? "").replace(/[\s,;&-]+$/, "").trim() || product.trim(), serial: m[2]! };
+  const m = product.match(/^(.*?)[\s,;&(-]*\bS\s*\/?\s*N\b(.*)$/i);
+  const serial = m ? serialsAfterMarker(m[2] ?? "")[0] : undefined;
+  if (!m || !serial) return { name: product.trim(), serial: "" };
+  return { name: (m[1] ?? "").replace(/[\s,;&(-]+$/, "").trim() || product.trim(), serial };
+}
+
+/** Słowo wyglądające na numer seryjny: z cyfrą, 4–40 znaków. */
+const SERIAL_WORD = /^[A-Za-z0-9][A-Za-z0-9/._-]{3,39}$/;
+
+/**
+ * Numery po znaczniku „SN”: lista po przecinkach, numer rozdzielony spacją („X2BTEST 054”, „A 1400001”) łączony;
+ * koniec na pierwszym słowie, które nie jest numerem („SN R219AB003 należy wymienić…” → [„R219AB003”]).
+ */
+function serialsAfterMarker(text: string): string[] {
+  const words = text.replace(/^\s*[:.#-]?\s*/, "").split(/[\s,;)]+/).filter(Boolean);
+  const out: string[] = [];
+  for (let i = 0; i < words.length; i++) {
+    let w = words[i]!.replace(/[.)]+$/, "");
+    const next = words[i + 1]?.replace(/[.)]+$/, "") ?? "";
+    if (/^[A-Za-z]$/.test(w) && /^\d{4,}$/.test(next)) {
+      w = `${w}${next}`;
+      i++;
+    } else if (/^\d{3}$/.test(next) && /[A-Za-z]/.test(w) && /\d/.test(w) && w.length >= 5) {
+      w = `${w}${next}`;
+      i++;
+    }
+    if (!SERIAL_WORD.test(w) || !/\d/.test(w)) break;
+    // Kolejny numer z listy ma co najmniej 5 znaków — „SN R1AB003, H400” to numer i model, nie dwa numery.
+    if (out.length && w.length < 5) break;
+    out.push(w);
+  }
+  return out;
+}
+
+const SERIAL_MARKER = /(?:\bS\s*\/\s*N\b|\bSN(?=[\s:.#,-]|$)|\bnr\.?\s*seryjn\w*|\bnumer\w*\s+seryjn\w*)/gi;
+
+/**
+ * Wszystkie numery seryjne ze zgłoszenia: najpierw z produktu, potem z opisu klienta albo serwisu
+ * („Przesyłam prostnicę SN R219AB003.”, „SN R1AB0001, R1AB0002”). Bez powtórzeń (wielkość liter i spacje bez znaczenia).
+ */
+export function extractTicketSerials(...texts: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const text of texts) {
+    for (const m of text.matchAll(SERIAL_MARKER)) {
+      for (const sn of serialsAfterMarker(text.slice(m.index! + m[0].length))) {
+        const key = sn.replace(/\s+/g, "").toUpperCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(sn);
+      }
+    }
+  }
+  return out;
+}
+
+/** Liczba sztuk z produktu („4 x strong 105L”, „2x prostnica”) — pole `quantity` w helpdesku zwykle jest puste. */
+export function productQuantity(product: string): number | null {
+  const m = product.match(/^\s*(\d{1,2})\s*(?:x|×|szt\.?)\s+\S/i);
+  const n = m ? Number(m[1]) : NaN;
+  return n >= 2 ? n : null;
 }
 
 /** Adres pracownika Mikranu: zgłoszenie założył serwis za klienta, więc e-mail nie wskazuje klienta. */

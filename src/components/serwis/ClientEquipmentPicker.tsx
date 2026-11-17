@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { rubricLabelClass } from "@/lib/ui/serwis-theme";
 import { WarrantyPill } from "@/components/serwis/service-order-view";
 import { warrantyMonthsFor, warrantyStatus, warrantyUntil } from "@/lib/orders/service-warranty";
+import { IconCircleCheck, IconClock } from "@/components/icons/StrokeIcons";
 
 /** Wybrany egzemplarz z faktury albo paragonu: model, numer seryjny i dokument zakupu (podstawa gwarancji). */
 export type PickedEquipment = {
@@ -46,24 +47,44 @@ export function ClientEquipmentPicker({
   onPick: (e: PickedEquipment) => void;
   /** Okresy gwarancji modeli różne od domyślnego (tw_Id → miesiące). */
   warrantyMonths: ReadonlyMap<number, number>;
-  /** Przyjęcie ze zgłoszenia helpdesku: sprzęt z faktury i o nazwie ze zgłoszenia idzie na górę listy. */
-  ticket?: { invoice: string; product: string; serial: string } | null;
+  /**
+   * Przyjęcie ze zgłoszenia helpdesku: sprzęt z faktury, o numerze seryjnym (`serial` — ten w formularzu) i nazwie
+   * ze zgłoszenia idzie na górę listy; `serials` — wszystkie numery ze zgłoszenia (faktury z nimi czytane najpierw).
+   */
+  ticket?: { invoice: string; product: string; serial: string; serials?: string[] } | null;
 }) {
   const today = new Date();
   const [result, setResult] = useState<ClientEquipmentActionResult | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [showAll, setShowAll] = useState(false);
+  const [autoPicked, setAutoPicked] = useState<PickedEquipment | null>(null);
+  const ticketSerials = ticket?.serials ?? [];
+  const serialsKey = ticketSerials.join("|");
 
   useEffect(() => {
     let alive = true;
-    actionServiceClientEquipment(khId).then(
-      (res) => alive && setResult(res),
+    actionServiceClientEquipment(khId, serialsKey ? serialsKey.split("|") : []).then(
+      (res) => {
+        if (!alive) return;
+        setResult(res);
+        // Numer ze zgłoszenia jest na fakturze klienta: wpisujemy model, numer i zakup od razu (raz, gdy nic nie wybrano).
+        const wanted = ticket?.serial.replace(/\s+/g, "").toUpperCase();
+        if (!res.ok || !wanted || selected) return;
+        const hit = res.items.find((it) => it.serials.some((s) => s.replace(/\s+/g, "").toUpperCase() === wanted));
+        const sn = hit?.serials.find((s) => s.replace(/\s+/g, "").toUpperCase() === wanted);
+        if (!hit || !sn) return;
+        const pick = { twId: hit.twId, symbol: hit.symbol, name: hit.name, serial: sn, purchaseDate: hit.invoiceDate, purchaseDoc: hit.invoiceNumber };
+        setAutoPicked(pick);
+        onPick(pick);
+      },
       () => alive && setResult({ ok: false, message: "Nie udało się pobrać faktur i paragonów klienta z Subiekta." })
     );
     return () => {
       alive = false;
     };
-  }, [khId, attempt]);
+    // Tylko przy zmianie klienta albo ponownej próbie — wybór w formularzu nie pobiera faktur od nowa.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [khId, attempt, serialsKey]);
 
   if (!result) {
     return (
@@ -94,12 +115,29 @@ export function ClientEquipmentPicker({
     );
   }
 
+  // Numer ze zgłoszenia na fakturze za naprawę (same części i usługi): sprzęt był już u nas, ale to nie jego zakup.
+  const wantedSerial = ticket?.serial.replace(/\s+/g, "").toUpperCase() ?? "";
+  const repairs = wantedSerial ? result.repairs.filter((r) => r.serial.replace(/\s+/g, "").toUpperCase() === wantedSerial) : [];
+  const repairNote = repairs.length ? (
+    <p className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[0.8125rem] text-slate-800">
+      <IconClock size={16} aria-hidden className="mt-0.5 shrink-0 text-slate-500" />
+      <span>
+        SN <span className="font-mono">{repairs[0]!.serial}</span> był już u nas w naprawie:{" "}
+        {repairs.map((r) => `${r.invoiceNumber}${r.invoiceDate ? ` z ${formatDate(r.invoiceDate)}` : ""}`).join(", ")}. {repairs.length > 1 ? "To faktury" : "To faktura"} za
+        naprawę, nie zakup — datę zakupu wpisz ręcznie.
+      </span>
+    </p>
+  ) : null;
+
   if (result.items.length === 0) {
     return (
-      <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[0.8125rem] text-slate-600">
-        Brak sprzętu z numerem seryjnym w fakturach i paragonach klienta (
-        {polishPlural(result.invoicesScanned, "dokument", "dokumenty", "dokumentów")} z 10 lat). Wybierz model niżej.
-      </p>
+      <div className="space-y-2">
+        {repairNote}
+        <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[0.8125rem] text-slate-600">
+          Brak sprzętu z numerem seryjnym w fakturach i paragonach klienta (
+          {polishPlural(result.invoicesScanned, "dokument", "dokumenty", "dokumentów")} z 10 lat). Wybierz model niżej.
+        </p>
+      </div>
     );
   }
 
@@ -115,6 +153,16 @@ export function ClientEquipmentPicker({
         </h3>
         <span className="text-xs text-slate-500">Kliknij numer seryjny</span>
       </div>
+      {autoPicked ? (
+        <p className="flex items-start gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-[0.8125rem] text-emerald-900">
+          <IconCircleCheck size={16} aria-hidden className="mt-0.5 shrink-0 text-emerald-700" />
+          <span>
+            Zakup SN <span className="font-mono">{autoPicked.serial}</span> znaleziony: {autoPicked.purchaseDoc}
+            {autoPicked.purchaseDate ? ` z ${formatDate(autoPicked.purchaseDate)}` : ""} — model, numer i data zakupu wpisane.
+          </span>
+        </p>
+      ) : null}
+      {autoPicked ? null : repairNote}
       <ul className="space-y-2">
         {list.map((it) => (
           <li key={`${it.invoiceId}-${it.twId}`} className="rounded-xl border border-slate-200 bg-card px-3 py-2.5">
