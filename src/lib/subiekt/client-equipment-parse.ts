@@ -21,6 +21,8 @@ export type ClientEquipmentItem = {
   invoiceNumber: string;
   /** YYYY-MM-DD */
   invoiceDate: string | null;
+  /** Cena jednostkowa netto z faktury — odróżnia urządzenie od części do niego z tym samym SN. */
+  unitPrice?: number | null;
 };
 
 const NUMBERED = /^(\d{1,3})\s*[.)]\s*(.*)$/;
@@ -228,9 +230,40 @@ export function equipmentAndRepairsFromInvoice(
       invoiceId: doc.dok_Id,
       invoiceNumber,
       invoiceDate,
+      unitPrice: Number(line.ob_CenaNetto ?? line.ob_CenaBrutto) || null,
     });
   }
   return { items: out, repairs };
+}
+
+/**
+ * Ten sam numer seryjny przy różnych towarach (np. elektrozawór w grudniu, grzałka w październiku) to numer
+ * urządzenia, do którego klient kupował części — nie numer żadnego z nich. Takie wpisy idą do napraw, nie do
+ * listy sprzętu: lepiej nie podpowiedzieć zakupu niż wpisać część jako model z jej gwarancją. Numery jednej pozycji
+ * są tego samego rodzaju — gdy choć jeden jest numerem urządzenia, cała pozycja idzie do napraw (2 szt. części, 2 SN).
+ * Wyjątek: najwcześniejszy zakup, co najmniej 3× droższy od każdego innego towaru z tym numerem, to samo urządzenie
+ * (wytwornica 2195 zł, potem grzałka 366 zł i korek 203 zł do niej).
+ */
+export function splitSerialsOnSeveralProducts(items: readonly ClientEquipmentItem[]): {
+  items: ClientEquipmentItem[];
+  repairs: InvoiceRepairRef[];
+} {
+  const key = (sn: string) => sn.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const products = new Map<string, Set<number>>();
+  for (const it of items) for (const sn of it.serials) products.set(key(sn), (products.get(key(sn)) ?? new Set()).add(it.twId));
+  const withSerial = new Map<string, ClientEquipmentItem[]>();
+  for (const it of items) for (const sn of it.serials) withSerial.set(key(sn), [...(withSerial.get(key(sn)) ?? []), it]);
+  const price = (it: ClientEquipmentItem) => it.unitPrice ?? 0;
+  const isDevicePurchase = (it: ClientEquipmentItem, sn: string) => {
+    const others = (withSerial.get(key(sn)) ?? []).filter((o) => o.twId !== it.twId);
+    return others.every((o) => price(it) >= 3 * price(o) && price(o) > 0 && (it.invoiceDate ?? "") <= (o.invoiceDate ?? ""));
+  };
+  const forDevice = (it: ClientEquipmentItem) =>
+    it.serials.some((sn) => (products.get(key(sn))?.size ?? 0) > 1 && !isDevicePurchase(it, sn));
+  const repairs = items
+    .filter(forDevice)
+    .flatMap((it) => it.serials.map((serial) => ({ serial, invoiceId: it.invoiceId, invoiceNumber: it.invoiceNumber, invoiceDate: it.invoiceDate })));
+  return { items: items.filter((it) => !forDevice(it)), repairs };
 }
 
 /** `tw_Rodzaj` w Subiekcie: 2 = usługa (licencje, abonamenty z kluczem w uwagach) — to nie sprzęt do naprawy. */

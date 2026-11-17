@@ -32,7 +32,7 @@ vi.mock("@/lib/subiekt/api", () => ({
     dok_Id: id,
     dok_NrPelny: id === 2 ? "PA 1/M/11/2026" : `FS ${id}`,
     dok_DataWyst: "2026-11-01T00:00:00",
-    dok_Uwagi: "1. AB123456",
+    dok_Uwagi: `1. AB12345${id}`,
     dok_Pozycja: [{ ob_Id: 1, ob_TowId: 500 + id, tw_Symbol: `M${id}`, tw_Nazwa: `Model ${id}` }],
         }
   ),

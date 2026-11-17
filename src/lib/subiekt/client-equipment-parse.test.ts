@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   equipmentFromInvoice,
   equipmentAndRepairsFromInvoice,
+  splitSerialsOnSeveralProducts,
   hasSerialNotes,
   mergeClientEquipment,
   parseInvoiceSerialNotes,
@@ -223,6 +224,47 @@ describe("numery seryjne bez numeru pozycji", () => {
   it("faktura z urządzeniem i częściami: numer do urządzenia, choć część jest droższa", () => {
     const r = equipmentAndRepairsFromInvoice(doc("SN X21TEST060", [line(1, 61, 900), line(2, 62, 3000)]), (l) => l.ob_TowId !== 62);
     expect(r.items.map((e) => [e.twId, e.serials])).toEqual([[61, ["X21TEST060"]]]);
+    expect(r.repairs).toEqual([]);
+  });
+});
+
+describe("splitSerialsOnSeveralProducts", () => {
+  const item = (twId: number, serials: string[], invoiceNumber: string) => ({
+    twId, symbol: null, name: `Towar TEST ${twId}`, serials, invoiceId: twId, invoiceNumber, invoiceDate: "2025-12-22",
+  });
+
+  it("SN przy dwóch różnych towarach to urządzenie, do którego kupiono części — cała pozycja to naprawa", () => {
+    const r = splitSerialsOnSeveralProducts([item(1, ["X21TEST080", "X21TEST079"], "FS 1/T"), item(2, ["x21test 079"], "FS 2/T")]);
+    // „080” jest tylko raz, ale w tej samej pozycji co „079” (2 szt. części do dwóch urządzeń).
+    expect(r.items).toEqual([]);
+    expect(r.repairs.map((x) => [x.serial, x.invoiceNumber])).toEqual([
+      ["X21TEST080", "FS 1/T"],
+      ["X21TEST079", "FS 1/T"],
+      ["x21test 079", "FS 2/T"],
+    ]);
+  });
+
+  it("urządzenie kupione najpierw i dużo droższe zostaje sprzętem; części do niego z tym SN idą do napraw", () => {
+    const r = splitSerialsOnSeveralProducts([
+      { ...item(5, ["X21TEST153"], "FS 5/T"), invoiceDate: "2019-10-01", unitPrice: 2195 },
+      { ...item(6, ["X21TEST153"], "FS 6/T"), invoiceDate: "2024-09-01", unitPrice: 203 },
+      { ...item(7, ["X21TEST153"], "FS 7/T"), invoiceDate: "2025-09-01", unitPrice: 366 },
+    ]);
+    expect(r.items.map((i) => i.twId)).toEqual([5]);
+    expect(r.repairs.map((x) => x.invoiceNumber)).toEqual(["FS 6/T", "FS 7/T"]);
+  });
+
+  it("część droższa od drugiej, ale nie wyraźnie (poniżej 3×) — obie to naprawy", () => {
+    const r = splitSerialsOnSeveralProducts([
+      { ...item(8, ["X21TEST154"], "FS 8/T"), invoiceDate: "2025-10-20", unitPrice: 520 },
+      { ...item(9, ["X21TEST154"], "FS 9/T"), invoiceDate: "2025-12-22", unitPrice: 338 },
+    ]);
+    expect(r.items).toEqual([]);
+  });
+
+  it("ten sam towar z tym samym SN na dwóch fakturach (korekta) zostaje sprzętem", () => {
+    const r = splitSerialsOnSeveralProducts([item(1, ["X21TEST090"], "FS 1/T"), { ...item(1, ["X21TEST090"], "FS 3/T"), invoiceId: 3 }]);
+    expect(r.items).toHaveLength(2);
     expect(r.repairs).toEqual([]);
   });
 });

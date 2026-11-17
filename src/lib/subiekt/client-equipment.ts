@@ -9,6 +9,7 @@ import {
   dropServiceProducts,
   equipmentAndRepairsFromInvoice,
   SUBIEKT_PRODUCT_KIND_SERVICE,
+  splitSerialsOnSeveralProducts,
   hasSerialNotes,
   mergeClientEquipment,
   parseSalesDocNumber,
@@ -104,8 +105,9 @@ export async function fetchClientEquipment(khId: number, preferSerials: readonly
     return !parts.has(id) && kindByTwId.get(id) !== SUBIEKT_PRODUCT_KIND_SERVICE;
   };
   const found = docs.map((d) => equipmentAndRepairsFromInvoice({ ...d, dok_Uwagi: (d.dok_Uwagi as string | null | undefined) ?? null }, isDeviceLine));
-  const items = dropServiceProducts(mergeClientEquipment(found.flatMap((f) => f.items)), kindByTwId);
-  return { items, invoicesScanned: scanned, truncated, repairs: found.flatMap((f) => f.repairs) };
+  const split = splitSerialsOnSeveralProducts(dropServiceProducts(found.flatMap((f) => f.items), kindByTwId));
+  const items = mergeClientEquipment(split.items);
+  return { items, invoicesScanned: scanned, truncated, repairs: [...found.flatMap((f) => f.repairs), ...split.repairs] };
 }
 
 export type ClientRecentInvoice = { id: number; number: string; date: string | null; gross: number | null };
