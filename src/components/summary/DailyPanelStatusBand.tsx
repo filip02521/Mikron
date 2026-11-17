@@ -8,7 +8,12 @@ import { supplierVacationsHref } from "@/lib/supplier-hub";
 import { withAutomatDayProgress, type DailyDayProgress } from "@/lib/orders/daily-day-progress";
 import type { DailyPanelView } from "@/lib/orders/daily-panel-view";
 import { DailyDayProgressBar } from "@/components/summary/DailyDayProgressBar";
-import { DailyPanelQueueSteps } from "@/components/summary/DailyPanelQueueSteps";
+import {
+  DAILY_PANEL_QUEUE_STEP_LABEL,
+  DAILY_PANEL_QUEUE_STEP_ORDER,
+  DailyPanelQueueSteps,
+  type DailyPanelQueueStepKind,
+} from "@/components/summary/DailyPanelQueueSteps";
 import { DailyPanelShortcutsPopover } from "@/components/summary/DailyPanelShortcutsPopover";
 import { DailyPanelVacationNotice } from "@/components/summary/DailyPanelVacationNotice";
 import { cn } from "@/lib/cn";
@@ -20,6 +25,7 @@ import {
 } from "@/lib/ui/ontime-theme";
 import { IconChevronDown, IconClipboardPen } from "@/components/icons/StrokeIcons";
 import {
+  dailyPanelSectionHref,
   scrollToDailyPanelSection,
   type DailyPanelQueueSectionKey,
 } from "@/lib/orders/daily-panel-section-anchors";
@@ -74,12 +80,29 @@ function StatDivider() {
 
 function SupplementaryLinks({
   summary,
+  earlyCount,
+  onQueueNavigate,
   onOpenOnDemand,
 }: {
   summary: DailyInboxSummary;
+  /** Dostawcy poza planem, u których zapas nie wystarczy do planowego zamówienia (grupa listy). */
+  earlyCount: number;
+  onQueueNavigate?: (kind: DailyPanelQueueStepKind, event: React.MouseEvent<HTMLAnchorElement>) => void;
   onOpenOnDemand?: () => void;
 }) {
   const items: ReactNode[] = [];
+  if (earlyCount > 0) {
+    items.push(
+      <a
+        key="early"
+        href={dailyPanelSectionHref("early")}
+        onClick={onQueueNavigate ? (e) => onQueueNavigate("early", e) : undefined}
+        className={cn(panelTextLinkClass, "text-xs")}
+      >
+        Zamów wcześniej {earlyCount}
+      </a>
+    );
+  }
   // Plan tygodnia ma własną zakładkę „Tydzień N” tuż obok — bez powtórki tej samej liczby.
   if (summary.onDemandCount > 0 && onOpenOnDemand) {
     items.push(
@@ -132,14 +155,16 @@ function StatusBandBody({
   showVerification,
   verificationCount,
   urgentVacationCount,
-  automatToDo,
+  stepCounts,
+  onQueueNavigate,
   onOpenOnDemand,
 }: {
   view: DailyPanelView;
   summary: DailyInboxSummary;
   dayProgress: DailyDayProgress;
   dayProgressReady?: boolean;
-  automatToDo: number;
+  stepCounts: Record<DailyPanelQueueStepKind, number>;
+  onQueueNavigate?: (kind: DailyPanelQueueStepKind, event: React.MouseEvent<HTMLAnchorElement>) => void;
   queueTotal: number;
   /** Wliczone do „w kolejce” — pokazane osobno, żeby liczby się sumowały. */
   cancelledCount: number;
@@ -158,53 +183,14 @@ function StatusBandBody({
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
           {/* Z paskiem „Kolejka” liczniki sekcji są w krokach — tu tylko suma (bez powtórki). */}
-          {!showQueueSteps ? (
-            <>
-              {automatToDo > 0 ? (
-                <>
-                  <Stat
-                    value={automatToDo}
-                    label={unitLabel(automatToDo, "zamówienie automatu", "zamówienia automatu", "zamówień automatu")}
-                    sectionKey="automat"
-                  />
+          {!showQueueSteps
+            ? DAILY_PANEL_QUEUE_STEP_ORDER.filter((kind) => stepCounts[kind] > 0).map((kind) => (
+                <span key={kind} className="inline-flex items-center gap-2">
+                  <Stat value={stepCounts[kind]} label={DAILY_PANEL_QUEUE_STEP_LABEL[kind].toLowerCase()} sectionKey={kind} />
                   <StatDivider />
-                </>
-              ) : null}
-              <Stat
-                value={summary.overdueCount}
-                label={unitLabel(summary.overdueCount, "zaległe", "zaległe", "zaległych")}
-                sectionKey="overdue"
-              />
-              {summary.stockOutGroupCount > 0 ? (
-                <>
-                  <StatDivider />
-                  <Stat
-                    value={summary.stockOutGroupCount}
-                    label={unitLabel(
-                      summary.stockOutGroupCount,
-                      "brak stanu",
-                      "braki stanu",
-                      "braków stanu"
-                    )}
-                    sectionKey="stockOut"
-                  />
-                </>
-              ) : null}
-              <StatDivider />
-              <Stat
-                value={summary.forSomeoneGroupCount}
-                label={unitLabel(summary.forSomeoneGroupCount, "grupa próśb", "grupy próśb", "grup próśb")}
-                sectionKey="prosby"
-              />
-              <StatDivider />
-              <Stat
-                value={summary.todayCount}
-                label={unitLabel(summary.todayCount, "na dziś", "na dziś", "na dziś")}
-                sectionKey="today"
-              />
-              <StatDivider />
-            </>
-          ) : null}
+                </span>
+              ))
+            : null}
           {cancelledCount > 0 ? (
             <>
               <Stat
@@ -236,13 +222,7 @@ function StatusBandBody({
       </div>
 
       {showQueueSteps ? (
-        <DailyPanelQueueSteps
-          automatCount={automatToDo}
-          overdueCount={summary.overdueCount}
-          stockOutGroupCount={summary.stockOutGroupCount}
-          forSomeoneGroupCount={summary.forSomeoneGroupCount}
-          todayCount={summary.todayCount}
-        />
+        <DailyPanelQueueSteps counts={stepCounts} onNavigate={onQueueNavigate} />
       ) : null}
 
       <DailyDayProgressBar
@@ -252,7 +232,12 @@ function StatusBandBody({
       />
 
       {hasSupplementary ? (
-        <SupplementaryLinks summary={summary} onOpenOnDemand={onOpenOnDemand} />
+        <SupplementaryLinks
+          summary={summary}
+          earlyCount={stepCounts.early}
+          onQueueNavigate={onQueueNavigate}
+          onOpenOnDemand={onOpenOnDemand}
+        />
       ) : null}
 
       {urgentVacationCount > 0 ? (
@@ -277,6 +262,8 @@ export function DailyPanelStatusBand({
   urgentVacationCount = 0,
   cancelledCount = 0,
   automat = null,
+  supplierGroups,
+  onQueueNavigate,
   onOpenOnDemand,
 }: {
   view: DailyPanelView;
@@ -284,6 +271,10 @@ export function DailyPanelStatusBand({
   dayProgress: DailyDayProgress;
   /** Zamówienia automatu ZD na dziś: ile jest i ile domkniętych (wysłane albo odrzucone). */
   automat?: { done: number; total: number } | null;
+  /** Liczba wierszy w grupach listy „Dostawcy na dziś” (bez „Zrobione dziś”). */
+  supplierGroups: Record<"send" | "order" | "early" | "shift" | "manual", number>;
+  /** Przed skokiem z kroku kolejki do grupy listy. */
+  onQueueNavigate?: (kind: DailyPanelQueueStepKind, event: React.MouseEvent<HTMLAnchorElement>) => void;
   dayProgressReady?: boolean;
   verificationCount?: number;
   showVerification?: boolean;
@@ -296,25 +287,20 @@ export function DailyPanelStatusBand({
 
   if (view !== "dzis") return null;
 
-  const automatToDo = automat ? Math.max(0, automat.total - automat.done) : 0;
   const progress = withAutomatDayProgress(dayProgress, automat);
-  const queueTotal =
-    automatToDo +
-    summary.overdueCount +
-    summary.todayCount +
-    summary.forSomeoneGroupCount +
-    summary.stockOutGroupCount +
-    cancelledCount;
+  const stepCounts: Record<DailyPanelQueueStepKind, number> = {
+    ...supplierGroups,
+    stockOut: summary.stockOutGroupCount,
+    prosby: summary.forSomeoneGroupCount,
+  };
+  // Jeden dostawca = jedna pozycja kolejki, także gdy stoi w automacie i w harmonogramie naraz.
+  // „Zamów wcześniej” nie jest krokiem kolejki — stoi w „Poza kolejką”, obok „Na żądanie”.
+  const queueTotal = DAILY_PANEL_QUEUE_STEP_ORDER.reduce((n, kind) => n + stepCounts[kind], 0) + cancelledCount;
   const hasSupplementary =
+    supplierGroups.early > 0 ||
     (summary.onDemandCount > 0 && Boolean(onOpenOnDemand)) ||
     summary.hiddenScheduleCount > 0;
-  const activeSectionCount =
-    Number(automatToDo > 0) +
-    Number(summary.overdueCount > 0) +
-    Number(summary.stockOutGroupCount > 0) +
-    Number(summary.forSomeoneGroupCount > 0) +
-    Number(summary.todayCount > 0);
-  const showQueueSteps = activeSectionCount >= 2;
+  const showQueueSteps = DAILY_PANEL_QUEUE_STEP_ORDER.filter((kind) => stepCounts[kind] > 0).length >= 2;
 
   const progressHint =
     dayProgressReady && progress.combined.hasWork
@@ -353,7 +339,8 @@ export function DailyPanelStatusBand({
           view={view}
           summary={summary}
           dayProgress={progress}
-          automatToDo={automatToDo}
+          stepCounts={stepCounts}
+          onQueueNavigate={onQueueNavigate}
           dayProgressReady={dayProgressReady}
           queueTotal={queueTotal}
           cancelledCount={cancelledCount}

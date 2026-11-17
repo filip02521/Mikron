@@ -2,44 +2,32 @@
 
 import { FlowChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
-import { dailyPanelSectionHref } from "@/lib/orders/daily-panel-section-anchors";
-import {
-  panelQueueStepsShellClass,
-  panelTypography,
-} from "@/lib/ui/ontime-theme";
+import { dailyPanelSectionHref, type DailyPanelQueueSectionKey } from "@/lib/orders/daily-panel-section-anchors";
+import { panelQueueStepsShellClass, panelTypography } from "@/lib/ui/ontime-theme";
 
-/** Kolejność obsługi w zakładce Dziś (zgodna z DailyTodayView). */
-export type DailyPanelQueueStepKind = "automat" | "overdue" | "stockOut" | "prosby" | "today";
+/** Kolejność obsługi w zakładce Dziś: grupy listy dostawców, potem sygnały braku i prośby handlowców. */
+export type DailyPanelQueueStepKind = DailyPanelQueueSectionKey;
 
-const STEP_ORDER: DailyPanelQueueStepKind[] = [
-  "automat",
-  "overdue",
-  "stockOut",
-  "prosby",
-  "today",
-];
+/** Kolejka dnia. „Zamów wcześniej” to praca poza planem dnia — ma link w „Poza kolejką”, nie krok. */
+export const DAILY_PANEL_QUEUE_STEP_ORDER: DailyPanelQueueStepKind[] = ["send", "order", "shift", "manual", "stockOut", "prosby"];
 
-const STEP_META: Record<DailyPanelQueueStepKind, { label: string }> = {
-  automat: { label: "Automat ZD" },
-  overdue: { label: "Zaległe" },
-  stockOut: { label: "Brak na stanie" },
-  prosby: { label: "Prośby handlowców" },
-  today: { label: "Na dziś" },
+export const DAILY_PANEL_QUEUE_STEP_LABEL: Record<DailyPanelQueueStepKind, string> = {
+  send: "Do wysłania",
+  order: "Do zamówienia",
+  early: "Zamów wcześniej",
+  shift: "Do przesunięcia",
+  manual: "Ręcznie",
+  stockOut: "Brak na stanie",
+  prosby: "Prośby handlowców",
 };
 
-function QueueStepChip({
-  kind,
-  count,
-}: {
-  kind: DailyPanelQueueStepKind;
-  count: number;
-}) {
-  const { label } = STEP_META[kind];
-  const href = dailyPanelSectionHref(kind);
+type QueueNavigate = (kind: DailyPanelQueueStepKind, event: React.MouseEvent<HTMLAnchorElement>) => void;
 
+function QueueStepChip({ kind, count, onNavigate }: { kind: DailyPanelQueueStepKind; count: number; onNavigate?: QueueNavigate }) {
   return (
     <a
-      href={href}
+      href={dailyPanelSectionHref(kind)}
+      onClick={onNavigate ? (e) => onNavigate(kind, e) : undefined}
       className={cn(
         "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md border border-slate-200/80 bg-card px-2.5 py-2 text-slate-800 shadow-[var(--shadow-card)] transition-colors",
         "hover:border-slate-300/85 hover:bg-slate-50/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
@@ -48,57 +36,34 @@ function QueueStepChip({
       )}
     >
       <span className="truncate">
-        {label}
+        {DAILY_PANEL_QUEUE_STEP_LABEL[kind]}
         <span className="ml-1 font-semibold tabular-nums text-slate-600">({count})</span>
       </span>
     </a>
   );
 }
 
-/** Skrócona nawigacja po kolejce Dziś (automat ZD → zaległe → brak stanu → prośby → harmonogram). */
+/** Skrócona nawigacja po kolejce Dziś — krok prowadzi do grupy listy dostawców albo sekcji próśb. */
 export function DailyPanelQueueSteps({
-  automatCount = 0,
-  overdueCount,
-  stockOutGroupCount,
-  forSomeoneGroupCount,
-  todayCount,
+  counts,
+  onNavigate,
   className,
 }: {
-  overdueCount: number;
-  stockOutGroupCount: number;
-  forSomeoneGroupCount: number;
-  todayCount: number;
-  /** Zamówienia automatu ZD czekające dziś na sprawdzenie albo wysyłkę. */
-  automatCount?: number;
+  counts: Record<DailyPanelQueueStepKind, number>;
+  /** Przed skokiem do grupy (np. zdjęcie filtra źródła, który mógłby ją ukrywać — wtedy `preventDefault` i własne przewinięcie). */
+  onNavigate?: QueueNavigate;
   className?: string;
 }) {
-  const counts: Record<DailyPanelQueueStepKind, number> = {
-    automat: automatCount,
-    overdue: overdueCount,
-    stockOut: stockOutGroupCount,
-    prosby: forSomeoneGroupCount,
-    today: todayCount,
-  };
-
-  const steps = STEP_ORDER.filter((kind) => counts[kind] > 0).map((kind) => ({
-    kind,
-    count: counts[kind],
-  }));
-
+  const steps = DAILY_PANEL_QUEUE_STEP_ORDER.filter((kind) => counts[kind] > 0);
   if (steps.length < 2) return null;
 
   return (
-    <nav
-      aria-label="Kroki kolejki dnia"
-      className={cn(panelQueueStepsShellClass, className)}
-    >
-      <span className={cn("mr-0.5 font-medium text-slate-500", panelTypography.caption)}>
-        Kolejka
-      </span>
-      {steps.map((item, index) => (
-        <span key={item.kind} className="inline-flex shrink-0 items-center gap-2">
+    <nav aria-label="Kroki kolejki dnia" className={cn(panelQueueStepsShellClass, className)}>
+      <span className={cn("mr-0.5 font-medium text-slate-500", panelTypography.caption)}>Kolejka</span>
+      {steps.map((kind, index) => (
+        <span key={kind} className="inline-flex shrink-0 items-center gap-2">
           {index > 0 ? <FlowChevron className="text-slate-300" /> : null}
-          <QueueStepChip kind={item.kind} count={item.count} />
+          <QueueStepChip kind={kind} count={counts[kind]} onNavigate={onNavigate} />
         </span>
       ))}
     </nav>

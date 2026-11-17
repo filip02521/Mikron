@@ -219,7 +219,7 @@ export function ZkWatchFollowUpButton({
                     type="button"
                     disabled={saving}
                     onClick={() => void saveFollowUp()}
-                    className="rounded px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
+                    className="rounded-md px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
                   >
                     {saving ? "Zapis…" : "Zapisz"}
                   </button>
@@ -231,7 +231,7 @@ export function ZkWatchFollowUpButton({
                         setFollowUpDraft("");
                         void saveFollowUp("");
                       }}
-                      className="rounded px-2 py-1 text-xs text-slate-500 hover:bg-slate-900/5 disabled:opacity-50"
+                      className="rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-slate-900/5 disabled:opacity-50"
                     >
                       Wyczyść
                     </button>

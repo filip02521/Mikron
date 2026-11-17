@@ -30,8 +30,6 @@ export const ZD_ETA_TIMING_DETAIL_PENDING =
 export const ZD_ETA_TIMING_DETAIL_PENDING_WITH_ESTIMATE =
   "Termin z historii może zostać zastąpiony datą z dokumentu ZD u dostawcy.";
 
-export const ZD_ETA_TIMING_SYNC_IN_PROGRESS = "Trwa synchronizacja z Subiektem…";
-
 /** Nagłówek rozwiniętej karty — brak dopasowania. */
 export const ZD_ETA_TIMING_TITLE_NO_MATCH = "Brak terminu u dostawcy";
 

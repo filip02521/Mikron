@@ -60,57 +60,17 @@ export function MyOrderRequestProgressBar({
       aria-label="Postęp prośby"
       className={cn("px-0.5", className)}
     >
-      <ol className="flex items-start gap-0">
+      {/* Równe kolumny: kroki w stałych odstępach, podpis i data mieszczą się pod swoim krokiem. */}
+      <ol className="grid auto-cols-fr grid-flow-col items-start">
         {track.steps.map((step, index) => {
           const isLast = index === track.steps.length - 1;
           return (
-            <li key={step.id} className="flex min-w-0 flex-1 items-start">
-              <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                <span
-                  className={cn(
-                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[0.6875rem] font-semibold tabular-nums",
-                    step.state === "done" && palette.done,
-                    step.state === "current" && palette.current,
-                    step.state === "upcoming" && palette.upcoming,
-                    step.state === "cancelled" && palette.cancelled
-                  )}
-                  aria-current={step.state === "current" ? "step" : undefined}
-                >
-                  {step.state === "done" ? (
-                    <IconCheck size={12} strokeWidth={3} aria-hidden />
-                  ) : step.state === "cancelled" ? (
-                    <IconX size={12} strokeWidth={3} aria-hidden />
-                  ) : (
-                    index + 1
-                  )}
-                </span>
-                <span
-                  className={cn(
-                    "max-w-[5rem] text-center text-[0.6875rem] font-medium leading-tight sm:max-w-none",
-                    step.state === "current" && palette.labelCurrent,
-                    step.state === "done" && palette.labelDone,
-                    step.state === "upcoming" && palette.labelUpcoming,
-                    step.state === "cancelled" && palette.labelCancelled
-                  )}
-                >
-                  {step.label}
-                </span>
-                {step.date ? (
-                  <span
-                    className={cn(
-                      "text-[0.6875rem] tabular-nums leading-tight text-slate-500",
-                      step.state === "cancelled" && "text-red-700"
-                    )}
-                  >
-                    {step.date}
-                  </span>
-                ) : null}
-              </div>
+            <li key={step.id} className="relative flex min-w-0 flex-col items-center gap-1">
               {!isLast ? (
                 <span
                   aria-hidden
                   className={cn(
-                    "mt-2.5 h-px min-w-[0.3rem] flex-1",
+                    "absolute left-[calc(50%+0.875rem)] top-2.5 h-px w-[calc(100%-1.75rem)]",
                     step.state === "done"
                       ? palette.connectorDone
                       : step.state === "cancelled"
@@ -118,6 +78,45 @@ export function MyOrderRequestProgressBar({
                         : palette.connectorUpcoming
                   )}
                 />
+              ) : null}
+              <span
+                className={cn(
+                  "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[0.6875rem] font-semibold tabular-nums",
+                  step.state === "done" && palette.done,
+                  step.state === "current" && palette.current,
+                  step.state === "upcoming" && palette.upcoming,
+                  step.state === "cancelled" && palette.cancelled
+                )}
+                aria-current={step.state === "current" ? "step" : undefined}
+              >
+                {step.state === "done" ? (
+                  <IconCheck size={12} strokeWidth={3} aria-hidden />
+                ) : step.state === "cancelled" ? (
+                  <IconX size={12} strokeWidth={3} aria-hidden />
+                ) : (
+                  index + 1
+                )}
+              </span>
+              <span
+                className={cn(
+                  "max-w-full px-0.5 text-center text-[0.6875rem] font-medium leading-tight",
+                  step.state === "current" && palette.labelCurrent,
+                  step.state === "done" && palette.labelDone,
+                  step.state === "upcoming" && palette.labelUpcoming,
+                  step.state === "cancelled" && palette.labelCancelled
+                )}
+              >
+                {step.label}
+              </span>
+              {step.date ? (
+                <span
+                  className={cn(
+                    "text-[0.6875rem] tabular-nums leading-tight text-slate-500",
+                    step.state === "cancelled" && "text-red-700"
+                  )}
+                >
+                  {step.date}
+                </span>
               ) : null}
             </li>
           );

@@ -55,7 +55,7 @@ export function NoteFollowUpControl({
             disabled={saving}
             onChange={(e) => setEditDraft(e.target.value)}
             className={cn(
-              "rounded border border-slate-200/80 bg-card/90 px-1.5 py-0.5 text-[0.6875rem]",
+              "rounded-md border border-slate-200/80 bg-card/90 px-1.5 py-0.5 text-[0.6875rem]",
               controlFocusClass
             )}
           />
@@ -63,7 +63,7 @@ export function NoteFollowUpControl({
             type="button"
             disabled={saving}
             onClick={() => void commit(editDraft.trim() || null)}
-            className="rounded px-1 py-0.5 text-[0.6875rem] font-medium text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
+            className="rounded-md px-1 py-0.5 text-[0.6875rem] font-medium text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
           >
             OK
           </button>
@@ -72,7 +72,7 @@ export function NoteFollowUpControl({
               type="button"
               disabled={saving}
               onClick={() => void commit(null)}
-              className="rounded px-1 py-0.5 text-[0.6875rem] text-slate-500 hover:bg-slate-900/5 disabled:opacity-50"
+              className="rounded-md px-1 py-0.5 text-[0.6875rem] text-slate-500 hover:bg-slate-900/5 disabled:opacity-50"
             >
               Usuń
             </button>
@@ -81,7 +81,7 @@ export function NoteFollowUpControl({
             type="button"
             disabled={saving}
             onClick={() => setEditing(false)}
-            className="rounded px-1 py-0.5 text-[0.6875rem] text-slate-500 hover:bg-slate-900/5 disabled:opacity-50"
+            className="rounded-md px-1 py-0.5 text-[0.6875rem] text-slate-500 hover:bg-slate-900/5 disabled:opacity-50"
           >
             Anuluj
           </button>

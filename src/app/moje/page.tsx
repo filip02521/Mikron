@@ -193,7 +193,7 @@ export default async function MojePage({
           className={cn(
             buttonPrimaryClass,
             pageToolbarSizingClass,
-            "hidden rounded-md font-medium no-underline sm:inline-flex"
+            "hidden items-center justify-center rounded-md font-medium no-underline sm:inline-flex"
           )}
         >
           Zgłoś prośbę
@@ -244,7 +244,7 @@ export default async function MojePage({
         <div className="flex justify-end pb-1">
           <Link
             href="/ustawienia"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200/80 bg-card/60 px-3 py-1.5 text-xs font-medium text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-card hover:text-slate-700 hover:shadow"
+            className="inline-flex items-center gap-1.5 rounded-md border border-slate-200/80 bg-card/60 px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-card hover:text-slate-700"
           >
             <IconSettings size={14} className="shrink-0 text-slate-400" />
             Ustawienia

@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   BOARD_IMAGE_MAX_COUNT,
+  boardDocumentFileType,
+  boardFilesFromClipboardData,
+  boardFileTypeLabel,
+  formatBoardFileSize,
+  looksLikeBoardDocumentBytes,
+  validateBoardDocuments,
   boardImageStoragePrefix,
   boardSupplierFileType,
   isBoardImageAttachment,
@@ -149,3 +155,52 @@ describe("pliki od dostawcy na tablicy", () => {
   });
 });
 
+
+describe("pliki dołączane na Tablicy", () => {
+  it("dokumenty: PDF, Excel, Word, CSV tak; zdjęcia i inne typy nie", () => {
+    expect(boardDocumentFileType("oferta.PDF")).toEqual({ ext: "pdf", mime: "application/pdf" });
+    expect(boardDocumentFileType("cennik.xlsx")?.ext).toBe("xlsx");
+    expect(boardDocumentFileType("zdjecie.jpg")).toBeNull();
+    expect(boardDocumentFileType("skrypt.exe")).toBeNull();
+  });
+
+  it("walidacja: liczba, typ, pusty i za duży plik", () => {
+    expect(validateBoardDocuments([{ name: "a.pdf", size: 10 }])).toBeNull();
+    expect(validateBoardDocuments(Array.from({ length: 6 }, (_, i) => ({ name: `${i}.pdf`, size: 1 })))).toMatch(/najwyżej 5/);
+    expect(validateBoardDocuments([{ name: "a.zip", size: 10 }])).toMatch(/dozwolone/);
+    expect(validateBoardDocuments([{ name: "a.pdf", size: 0 }])).toMatch(/pusty/);
+    expect(validateBoardDocuments([{ name: "a.pdf", size: 16 * 1024 * 1024 }])).toMatch(/za duży/);
+    expect(validateBoardDocuments([{ name: "a.pdf", size: 8 * 1024 * 1024 }, { name: "b.pdf", size: 8 * 1024 * 1024 }])).toMatch(/razem przekraczają 15 MB/);
+  });
+
+  it("pierwsze bajty muszą pasować do rozszerzenia", () => {
+    const enc = (s: string) => new TextEncoder().encode(s);
+    expect(looksLikeBoardDocumentBytes(enc("%PDF-1.7"), "pdf")).toBe(true);
+    expect(looksLikeBoardDocumentBytes(enc("<html>"), "pdf")).toBe(false);
+    expect(looksLikeBoardDocumentBytes(new Uint8Array([0x50, 0x4b, 0x03, 0x04, 1]), "xlsx")).toBe(true);
+    expect(looksLikeBoardDocumentBytes(new Uint8Array([0xd0, 0xcf, 0x11, 0xe0, 1]), "xls")).toBe(true);
+    expect(looksLikeBoardDocumentBytes(enc("symbol;ilosc\nA;1"), "csv")).toBe(true);
+    expect(looksLikeBoardDocumentBytes(new Uint8Array([0x41, 0, 0x42, 0x43]), "csv")).toBe(false);
+  });
+});
+
+describe("schowek i opis plików na Tablicy", () => {
+  it("wklejenie: zrzut ekranu i skopiowany PDF; plik nieobsługiwany pominięty", () => {
+    const png = new File([new Uint8Array([1])], "image.png", { type: "image/png" });
+    const pdf = new File([new Uint8Array([1])], "oferta.pdf", { type: "application/pdf" });
+    const exe = new File([new Uint8Array([1])], "x.exe", { type: "application/octet-stream" });
+    const data = { items: [], files: [png, pdf, exe] } as unknown as DataTransfer;
+    const out = boardFilesFromClipboardData(data);
+    expect(out.map((f) => f.type)).toEqual(["image/png", "application/pdf"]);
+    expect(out[0]!.name).toMatch(/^zrzut-\d+\.png$/);
+    expect(boardFilesFromClipboardData(null)).toEqual([]);
+  });
+
+  it("etykieta typu i rozmiar", () => {
+    expect(boardFileTypeLabel("Cennik 2027.xlsx")).toBe("XLSX");
+    expect(boardFileTypeLabel("bez-rozszerzenia")).toBe("PLIK");
+    expect(formatBoardFileSize(1300 * 1024)).toBe("1,3 MB");
+    expect(formatBoardFileSize(200)).toBe("1 kB");
+    expect(formatBoardFileSize(null)).toBe("");
+  });
+});

@@ -9,7 +9,6 @@ import {
   salesCancelLineCustomQtyLabel,
 } from "@/lib/orders/sales-cancel";
 import { cn } from "@/lib/cn";
-import { salesTypography } from "@/lib/ui/ontime-theme";
 
 type HeadlineTone = "neutral" | "action" | "warning" | "dismiss" | "stock" | "info" | "informacja" | "success";
 
@@ -22,35 +21,24 @@ export function buildHeadlineClass(
   isStock: boolean,
   isInformacja: boolean,
 ): string {
+  // Jeden stan wiersza jako płaska odznaka (DESIGN.md → Chips): kolor tylko, gdy stan coś znaczy.
+  // Wiersze wymagające reakcji mają tło stanu, więc ich odznaka jest o stopień mocniejsza.
+  const tone = isAction
+    ? "bg-emerald-100 text-emerald-900"
+    : isDismiss
+      ? "bg-red-100 text-red-800"
+      : isInformacjaAck
+        ? "bg-indigo-100 text-indigo-900"
+        : isUrgent
+          ? "bg-amber-50 text-amber-900"
+          : isInformacja || headlineTone === "info"
+            ? "bg-indigo-50 text-indigo-800"
+            : "bg-slate-100 text-slate-700";
   return cn(
-    salesTypography.rowBody,
-    "truncate",
-    isAction && "text-emerald-800",
-    isInformacjaAck && "font-medium text-violet-900",
-    isDismiss && "font-semibold text-rose-950",
-    isUrgent && "text-amber-900",
-    isStock && "text-sky-900",
-    isInformacja &&
-      !isAction &&
-      !isInformacjaAck &&
-      !isUrgent &&
-      !isStock &&
-      !isDismiss &&
-      "font-medium text-violet-900",
-    headlineTone === "info" &&
-      !isAction &&
-      !isUrgent &&
-      !isStock &&
-      !isInformacja &&
-      !isDismiss &&
-      "text-indigo-800",
-    !isAction &&
-      !isUrgent &&
-      !isStock &&
-      headlineTone !== "info" &&
-      !isInformacja &&
-      !isDismiss &&
-      "text-slate-600",
+    "block w-fit max-w-full truncate rounded-md px-1.5 py-0.5 text-xs font-medium",
+    isStock && !isAction && !isDismiss && !isInformacjaAck && !isUrgent
+      ? "bg-slate-100 text-slate-700"
+      : tone,
   );
 }
 

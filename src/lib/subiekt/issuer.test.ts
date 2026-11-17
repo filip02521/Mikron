@@ -27,4 +27,11 @@ describe("matchSubiektUserByEmail", () => {
     expect(matchSubiektUserByEmail("biuro@mikran.com", users)).toBeNull();
     expect(matchSubiektUserByEmail(null, users)).toBeNull();
   });
+
+  it("bez dopasowania po samym nazwisku, gdy wyłączone", () => {
+    const users = [{ uz_Id: 7, uz_Imie: "Anna", uz_Nazwisko: "Wymyślona" }];
+    expect(matchSubiektUserByEmail("jan.wymyslona@example.test", users)?.uz_Id).toBe(7);
+    expect(matchSubiektUserByEmail("jan.wymyslona@example.test", users, false)).toBeNull();
+    expect(matchSubiektUserByEmail("anna.wymyslona@example.test", users, false)?.uz_Id).toBe(7);
+  });
 });

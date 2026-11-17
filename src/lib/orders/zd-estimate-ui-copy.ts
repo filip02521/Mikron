@@ -158,12 +158,12 @@ export function zdEstimateLaunchProgressFooter(
   pagesLabel?: string | null
 ): string {
   if (pagesLabel) {
-    return `${pagesLabel}. Lista pojawi się automatycznie - nie zamykaj tej karty.`;
+    return `${pagesLabel}. Lista pojawi się automatycznie. Możesz przejść na inny ekran - dam znać, gdy będzie gotowa.`;
   }
   if (elapsedMs >= 45_000) {
-    return "Wciąż czekam na Subiekta - duże zakresy (cechy) potrafią trwać kilka minut (limit ok. 5 min). Nie odświeżaj strony.";
+    return "Wciąż czekam na Subiekta - duże zakresy (cechy) potrafią trwać kilka minut. Możesz przejść na inny ekran - dam znać, gdy lista będzie gotowa.";
   }
-  return "Najdłużej trwa odczyt „Towary i stany” z Subiekta. Lista pojawi się automatycznie - nie zamykaj tej karty.";
+  return "Najdłużej trwa odczyt „Towary i stany” z Subiekta. Lista pojawi się automatycznie. Możesz przejść na inny ekran - dam znać, gdy będzie gotowa.";
 }
 
 export function zdEstimateLaunchProgressCompleteTitle(): string {

@@ -50,7 +50,7 @@ export function TeethOrderFileDownload({
         type="button"
         disabled={pending}
         onClick={handleDownload}
-        className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-emerald-200/90 bg-emerald-50 px-2.5 py-1 text-[0.6875rem] font-semibold text-emerald-800 shadow-sm transition-colors hover:border-emerald-300 hover:bg-emerald-50 disabled:opacity-50"
+        className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[0.6875rem] font-medium text-indigo-800 shadow-sm transition-colors hover:border-indigo-300 hover:bg-indigo-100 disabled:opacity-50"
         title={`Pobierz plik zamówienia: ${fileName}`}
       >
         {pending ? (

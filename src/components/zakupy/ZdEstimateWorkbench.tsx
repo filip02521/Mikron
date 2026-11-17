@@ -35,7 +35,10 @@ import {
   actionClearZdEstimateOnRequestProducts,
   actionRestoreZdEstimateProduct,
   actionRestoreZdEstimateProducts,
-  actionRunZdEstimateManual,
+  actionStartZdEstimateRun,
+  actionCollectZdEstimateRun,
+  type ZdEstimateRunInput,
+  type ZdEstimateRunResult,
   actionPollZdEstimateRunProgress,
   actionFetchZdEstimatePendingIndividuals,
   actionFetchZdEstimateProsbaReservationOverlap,
@@ -364,6 +367,7 @@ import { ZdEstimateSessionResumeProgressPanel } from "@/components/zakupy/ZdEsti
 import { ZdEstimateExternalSessionActiveChip } from "@/components/zakupy/ZdEstimateExternalSessionActiveChip";
 import { ZdEstimatePageIntro } from "@/components/zakupy/ZdEstimatePageIntro";
 import { ZdEstimatePrepScopeFacts } from "@/components/zakupy/ZdEstimatePrepScopeFacts";
+import { ZdEstimateKeyFactsPanel } from "@/components/zakupy/ZdEstimateKeyFactsPanel";
 import { ZdEstimatePrepForm } from "@/components/zakupy/ZdEstimatePrepForm";
 import { ZdEstimateScopeCatalogDialog } from "@/components/zakupy/ZdEstimateScopeCatalogDialog";
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
@@ -385,6 +389,14 @@ import {
   shouldClearRunProgressOnMiss,
   type ZdEstimateRunProgressSnapshot,
 } from "@/lib/orders/zd-estimate-run-progress";
+import { awaitZdEstimateRunJob } from "@/lib/orders/zd-estimate-run-await";
+import {
+  dismissZdEstimateTrackedRun,
+  getZdEstimateRunTrackerSnapshot,
+  releaseZdEstimateRunOwnership,
+  settleZdEstimateRunInWizard,
+  trackZdEstimateRunStarted,
+} from "@/lib/client/zd-estimate-run-tracker";
 import {
   clearZdEstimateExternalSessionResumeQueryParam,
   isZdEstimateExternalSessionReturnNavigation,
@@ -868,6 +880,15 @@ export function ZdEstimateWorkbench({
   const [rematting, startRemat] = useTransition();
   /** Unieważnia wynik „Policz”, gdy zakres zmieni się w trakcie requestu. */
   const estimateGenRef = useRef(0);
+  // Wyjście z Kreatora w trakcie liczenia: wynik odbiera zakładka poza Kreatorem (run tracker).
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      releaseZdEstimateRunOwnership();
+    };
+  }, []);
   /** Unieważnia spóźnione odpowiedzi fetch próśb (mount vs Policz). */
   const pendingFetchGenRef = useRef(0);
   /** Lokalny guard w ramach jednego mountu (sessionStorage chroni remount). */
@@ -1955,6 +1976,16 @@ export function ZdEstimateWorkbench({
         : raisedDniZapasu != null
           ? ZD_ESTIMATE_UI.dniZapasuStrategyRaisedNote(raisedDniZapasu)
           : ZD_ESTIMATE_UI.dniZapasuStrategyNote(policyTargetDays, cardDniZapasu);
+
+  // Zapas pokazywany w nagłówku: po Policz dni faktycznie użyte (strategia liczy co najmniej cykl + dostawę).
+  const shownDniZapasu =
+    policyTargetDays != null
+      ? String(
+          lines
+            ? Math.max(policyTargetDays, Math.round(Number(paramInfo?.dniZapasu) || 0))
+            : Math.max(policyTargetDays, raisedDniZapasu ?? 0)
+        )
+      : dniZapasu;
 
   const createKhResolution = useMemo(() => {
     if (!selectedSupplier) return null;
@@ -4043,7 +4074,7 @@ export function ZdEstimateWorkbench({
         : selectedGroup?.grt_Nazwa ?? (groupQuery.trim() || null);
     startEstimate(async () => {
       try {
-      const res = await actionRunZdEstimateManual({
+      const runInput: ZdEstimateRunInput = {
         mode,
         ...(mode === "grupa" ? { grupaId } : { cechaId }),
         scopeLabel: scopeLabelForRun,
@@ -4067,7 +4098,35 @@ export function ZdEstimateWorkbench({
           columns,
           columnOrder,
         },
+      };
+      // Liczenie idzie na serwerze w tle; wynik odbieramy krótkimi zapytaniami (duże cechy > 1 min).
+      let trackedRunId: string | null = null;
+      const awaited = await awaitZdEstimateRunJob<ZdEstimateRunResult>({
+        start: () => actionStartZdEstimateRun(runInput),
+        collect: actionCollectZdEstimateRun,
+        onStarted: ({ runId, ownerUserId }) => {
+          trackedRunId = runId;
+          trackZdEstimateRunStarted({
+            runId,
+            ownerUserId,
+            label: activeSupplierName?.trim() || scopeLabelForRun?.trim() || "",
+            supplierId: supplierId ?? null,
+            scopeMode: mode,
+            grupaId: mode === "grupa" ? (grupaId ?? null) : null,
+            cechaId: mode === "cecha" ? (cechaId ?? null) : null,
+            startedAtMs: Date.now(),
+          });
+          // Wyjście z Kreatora, zanim serwer potwierdził start — od razu oddaj wynik zakładce.
+          if (!mountedRef.current) releaseZdEstimateRunOwnership();
+        },
+        isAbandoned: () => !mountedRef.current,
       });
+      // Kreator zniknął z ekranu — liczenie trwa na serwerze, o wyniku powie zakładka poza Kreatorem.
+      if (!awaited.ok && awaited.failure === null) return;
+      if (trackedRunId) settleZdEstimateRunInWizard(trackedRunId);
+      const res: ZdEstimateRunResult = awaited.ok
+        ? awaited.result
+        : { ok: false, message: awaited.failure.message, feedback: { ...awaited.failure, tone: "error" } };
       if (estimateGen !== estimateGenRef.current) {
         // Serwer mógł już skasować poprzednią active i/lub utworzyć nową —
         // nie zostawiaj orphan DB ani tokenu wskazującego na skasowaną sesję.
@@ -4540,6 +4599,28 @@ export function ZdEstimateWorkbench({
 
   // Sesja zewnętrzna: restore, auto-replace (daily Przygotuj ZD) albo konflikt z autorun.
   useLayoutEffect(() => {
+    // Liczenie zaczęte wcześniej i śledzone poza Kreatorem (wyjście albo odświeżenie w trakcie).
+    const tracker = getZdEstimateRunTrackerSnapshot();
+    const awayRun = tracker.run && tracker.run.runId !== tracker.ownedRunId ? tracker.run : null;
+    if (awayRun?.state === "ready" && awayRun.sessionId) {
+      // Gotowa lista jest teraz jedyną zapisaną sesją — wejście do Kreatora dowolną drogą ją otwiera.
+      writeZdEstimateExternalSessionToken(
+        createZdEstimateExternalSessionToken({
+          sessionId: awayRun.sessionId,
+          schemaVersion: ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION,
+          supplierId: awayRun.supplierId,
+          scopeMode: awayRun.scopeMode,
+          grupaId: awayRun.grupaId,
+          cechaId: awayRun.cechaId,
+        })
+      );
+      dismissZdEstimateTrackedRun(awayRun.runId);
+    } else if (awayRun?.state === "running") {
+      // Wynik tego liczenia zastąpi poprzednią sesję na serwerze — nie otwieraj jej do edycji,
+      // bo jej zapis skasowałby potem gotową listę.
+      clearZdEstimateExternalSessionToken();
+    }
+
     // Token w localStorage → stan React (zewnętrzne źródło); setState w layoucie przed paint.
     // eslint-disable-next-line react-hooks/set-state-in-effect -- sync tokenu sesji UI
     syncExternalSessionTokenState();
@@ -6409,23 +6490,15 @@ export function ZdEstimateWorkbench({
           configured: bootstrap.configured,
         })}
         facts={
-          scopeSelected && scopeLabel ? (
+          // Karta przygotowania ma edytory zapasu i okna — wtedy krótki pasek; po Policz panel faktów pod nagłówkiem.
+          scopeSelected && scopeLabel && prepFormOpen ? (
             <ZdEstimatePrepScopeFacts
               variant="toolbar"
-              density={prepFormOpen && scopeSelected ? "short" : "full"}
+              density="short"
               scopeMode={scopeMode}
               scopeName={scopeLabel}
               stockLabel={policyTargetDays != null ? null : stockLabel}
-              dniZapasu={
-                policyTargetDays != null
-                  ? // Po Policz: dni faktycznie użyte (strategia liczy co najmniej cykl + dostawę).
-                    String(
-                      lines
-                        ? Math.max(policyTargetDays, Math.round(Number(paramInfo?.dniZapasu) || 0))
-                        : Math.max(policyTargetDays, raisedDniZapasu ?? 0)
-                    )
-                  : dniZapasu
-              }
+              dniZapasu={shownDniZapasu}
               supplierLabel={supplierLabel}
               dataOd={dataOd}
               dataDo={dataDo}
@@ -6434,6 +6507,46 @@ export function ZdEstimateWorkbench({
                   <ZdSupplierOrderPolicyChip policy={currentSupplierPolicy} onClick={() => setSupplierPolicyOpen(true)} />
                 ) : null
               }
+            />
+          ) : null
+        }
+        panel={
+          scopeSelected && scopeLabel && !prepFormOpen ? (
+            <ZdEstimateKeyFactsPanel
+              todayKey={bootstrap.todayKey}
+              scopeMode={scopeMode}
+              scopeName={scopeLabel}
+              supplierId={selectedSupplier?.id ?? null}
+              supplierLabel={supplierLabel}
+              policyChip={
+                selectedSupplier ? (
+                  <ZdSupplierOrderPolicyChip policy={currentSupplierPolicy} onClick={() => setSupplierPolicyOpen(true)} />
+                ) : null
+              }
+              computedNextDate={selectedSupplier?.computedNextDate ?? null}
+              orderOnDemand={selectedSupplier?.orderOnDemand === true}
+              interval={selectedSupplier?.orderInterval ?? null}
+              stockDays={Math.round(Number(shownDniZapasu)) || 0}
+              stockSub={
+                dniZapasuNote ??
+                (raisedDniZapasu != null && cardDniZapasu != null
+                  ? `podniesiony, karta: ${cardDniZapasu} d`
+                  : cardDniZapasu != null
+                    ? "z karty dostawcy"
+                    : null)
+              }
+              stockDaysMin={policyTargetDays}
+              onStockDaysChange={onDniZapasuChange}
+              // Strategia bez dni na karcie liczy na własnych dniach — pole zapasu niczego by nie zmieniło.
+              canEditStock={!busy && !(policyTargetDays != null && cardDniZapasu == null)}
+              listComputed={Boolean(lines)}
+              leadDays={
+                policzScopeInfo?.leadDays ??
+                policzScopeInfo?.horizon?.leadDays ??
+                (selectedSupplier ? (bootstrap.stockSignalBySupplierId?.[selectedSupplier.id]?.leadDays ?? null) : null)
+              }
+              dataOd={dataOd}
+              dataDo={dataDo}
             />
           ) : null
         }

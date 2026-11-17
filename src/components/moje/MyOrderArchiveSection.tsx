@@ -181,22 +181,7 @@ export function MyOrderArchiveSection({
               ) : null}
             </div>
           )}
-          {visibleRows.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-slate-100 px-4 py-2 text-[0.6875rem] text-slate-500" aria-label="Znaczenie kolorów w archiwum">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-3 w-1 shrink-0 rounded-full bg-emerald-300" aria-hidden />
-                <span>Zrealizowane</span>
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-3 w-1 shrink-0 rounded-full bg-red-300" aria-hidden />
-                <span>Anulowane / wycofane</span>
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-3 w-1 shrink-0 rounded-full bg-violet-300" aria-hidden />
-                <span>Informacyjne</span>
-              </span>
-            </div>
-          ) : null}
+          {/* Bez legendy kolorów: wiersze archiwum nie mają już pasków, stan niesie zdanie w wierszu. */}
           {hasMoreToLoad ? (
             <div className="flex items-center justify-center border-t border-slate-100 px-4 py-3">
               <Button

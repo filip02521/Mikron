@@ -14,7 +14,7 @@ import { parseZdEstimateLaunchQuery } from "@/lib/orders/zd-estimate-supplier-sc
 
 export const metadata: Metadata = pageMetadataFor("zdEstimate");
 export const dynamic = "force-dynamic";
-/** Ciężki estimate (duże cechy) + resolve Subiekta — align z nginx proxy_read_timeout 300s. */
+/** „Utwórz ZD” (zapis do 180 s) + resolve Subiekta — align z nginx proxy_read_timeout 300s. „Policz listę” liczy w tle (actionStartZdEstimateRun). */
 export const maxDuration = 300;
 
 export default async function ZdEstimatePage({

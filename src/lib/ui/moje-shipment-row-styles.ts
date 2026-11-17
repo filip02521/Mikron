@@ -31,10 +31,8 @@ export function mojeShipmentRowClass({
   isInformacjaAck,
   isCancelAck,
   isDismiss,
-  isUrgent,
   isStock,
   visualTone = "default",
-  deliveryBorderAccent,
   deliveryCollapsedBg,
 }: {
   expanded: boolean;
@@ -56,21 +54,21 @@ export function mojeShipmentRowClass({
     );
   }
 
-  // Po terminie (dawniej bursztynowy pasek z `deliveryUrgencyRowVisual`) zostaje wyróżnione tłem.
-  const isOverdue = isUrgent || deliveryBorderAccent === "border-l-amber-500";
+  // Tło stanu mają tylko wiersze, które czekają na reakcję handlowca. „Po terminie” pokazuje
+  // odznaka w wierszu — tło na większości listy przestawało cokolwiek znaczyć.
 
   return cn(
     "transition duration-150",
-    // Nagłówek rozwiniętego wiersza wyraźnie ciemniejszy niż zwinięte — tu zaczyna się otwarta prośba.
+    // Nagłówek rozwiniętego wiersza na tle „well” — tu zaczyna się otwarta prośba.
     expanded
-      ? "bg-slate-100/80"
+      ? "bg-slate-50"
       : isAction
         ? "bg-emerald-50/60 hover:bg-emerald-50"
         : isInformacjaAck
           ? "bg-indigo-50/60 hover:bg-indigo-50"
           : isDismiss
             ? "bg-red-50/45 hover:bg-red-50/80"
-            : isCancelAck || isOverdue
+            : isCancelAck
               ? "bg-amber-50/35 hover:bg-amber-50/70"
               : deliveryCollapsedBg
                 ? cn(deliveryCollapsedBg, "hover:brightness-[0.98]")
@@ -88,7 +86,7 @@ export const mojeShipmentExpandedRowShellClass = cn(
   "relative z-[1]",
   // Ramka na warstwie nad treścią (::after) — wewnętrzny cień na samym wierszu zasłaniał biały panel
   // szczegółów. Obwód w kolorze Linii Mocnej, bez cienia w karcie (DESIGN.md → Cichy cień).
-  "after:pointer-events-none after:absolute after:inset-0 after:content-[''] after:ring-1 after:ring-inset after:ring-slate-300"
+  "after:pointer-events-none after:absolute after:inset-0 after:content-[''] after:ring-1 after:ring-inset after:ring-slate-200"
 );
 
 export const mojeShipmentExpandedMetaShellClass =
@@ -96,7 +94,7 @@ export const mojeShipmentExpandedMetaShellClass =
 
 /** Szczegóły pod nagłówkiem wiersza: płaskie, oddzielone cienką linią — bez karty w karcie. */
 export const mojeShipmentExpandedPanelClass =
-  "space-y-2 border-t border-slate-200/70 bg-card px-3 py-3 sm:px-4 sm:py-3.5";
+  "space-y-4 border-t border-slate-200/70 bg-card px-3 py-4 sm:pb-5 sm:pl-[3.625rem] sm:pr-4";
 
 export const mojeShipmentExpandedInfoBlockClass =
   "space-y-1.5 px-3 py-2";

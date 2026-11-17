@@ -126,12 +126,17 @@ export function QuestionThreadCard({
   const [busy, setBusy] = useState(false);
   const {
     images: replyImages,
-    imagesError: replyImagesError,
-    compressing: replyCompressing,
+    issues: replyIssues,
+    dismissIssues: dismissReplyIssues,
+    pendingImages: replyPendingImages,
     addFiles: addReplyImages,
     removeImage: removeReplyImage,
     clearImages: clearReplyImages,
     imageFiles: replyImageFiles,
+    docs: replyDocs,
+    removeDoc: removeReplyDoc,
+    docFiles: replyDocFiles,
+    totalBytes: replyTotalBytes,
   } = useBoardQuestionImages();
   const [error, setError] = useState<string | null>(null);
   const expandedByUserRef = useRef(false);
@@ -242,7 +247,7 @@ export function QuestionThreadCard({
     setBusy(true);
     setError(null);
     try {
-      await actionReplyToQuestion(question.id, convertEmoticons(reply), replyImageFiles, supplierFiles);
+      await actionReplyToQuestion(question.id, convertEmoticons(reply), replyImageFiles, supplierFiles, replyDocFiles);
       setReply("");
       setSupplierFiles([]);
       clearReplyImages();
@@ -372,8 +377,9 @@ export function QuestionThreadCard({
       value={reply}
       onChange={setReply}
       images={replyImages}
-      imagesError={replyImagesError}
-      compressing={replyCompressing}
+      pendingImages={replyPendingImages}
+      issues={replyIssues}
+      onDismissIssues={dismissReplyIssues}
       onAddFiles={addReplyImages}
       onRemoveImage={removeReplyImage}
       busy={busy}
@@ -381,6 +387,9 @@ export function QuestionThreadCard({
       error={error}
       extraFiles={supplierFiles.map((f) => ({ key: supplierFileKey(f), name: f.filename }))}
       onRemoveExtraFile={(key) => setSupplierFiles((prev) => prev.filter((f) => supplierFileKey(f) !== key))}
+      docs={replyDocs}
+      onRemoveDoc={removeReplyDoc}
+      totalBytes={replyTotalBytes}
     />
   );
   const expandLabel = `Pytanie: ${question.title}`;

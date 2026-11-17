@@ -7,7 +7,8 @@ import {
   resolveMyOrderHistoryDeliveryEstimate,
 } from "@/lib/orders/delivery-date-meta-label";
 import {
-  MY_ORDER_HISTORY_ESTIMATE_BELOW_ZD_NO_MATCH_DETAIL,
+  MY_ORDER_HISTORY_ESTIMATE_ZD_NO_MATCH_DETAIL,
+  MY_ORDER_NO_CURRENT_ETA_TITLE,
   MY_ORDER_HISTORY_ESTIMATE_LOW_CONFIDENCE_DETAIL,
   MY_ORDER_HISTORY_ESTIMATE_MIXED_ZD_GROUP_DETAIL,
   MY_ORDER_HISTORY_ESTIMATE_OVERDUE_DETAIL,
@@ -19,7 +20,7 @@ import {
 import {
   ZD_ETA_MIXED_GROUP_PENDING_DETAIL,
   ZD_ETA_TIMING_DETAIL_PENDING,
-  ZD_ETA_TIMING_SYNC_IN_PROGRESS,
+  ZD_ETA_NO_MATCH_TITLE,
   ZD_ETA_TIMING_TITLE_NO_MATCH,
   ZD_ETA_TIMING_TITLE_PENDING,
 } from "@/lib/orders/my-order-zd-eta-copy";
@@ -178,7 +179,7 @@ export function buildMyOrderDeliveryTimingDisplay(
     if (historyEstimate?.display.overdue) {
       return {
         title: ZD_ETA_TIMING_TITLE_PENDING,
-        estimate: MY_ORDER_HISTORY_ESTIMATE_OVERDUE_LABEL,
+        estimate: "",
         detail: MY_ORDER_HISTORY_ESTIMATE_OVERDUE_ZD_PENDING_DETAIL,
         tone: "overdue",
         urgency: "overdue",
@@ -186,9 +187,10 @@ export function buildMyOrderDeliveryTimingDisplay(
       };
     }
     const statEstimate = raw ? parseMyOrderTimingLabel(raw).estimate : null;
+    // Tytuł opisuje to, co stoi obok: datę z historii albo samo sprawdzanie (bez drugiego zdania o tym samym).
     return {
-      title: ZD_ETA_TIMING_TITLE_PENDING,
-      estimate: statEstimate ?? ZD_ETA_TIMING_SYNC_IN_PROGRESS,
+      title: statEstimate ? MY_ORDER_HISTORY_ESTIMATE_TITLE : ZD_ETA_TIMING_TITLE_PENDING,
+      estimate: statEstimate ?? "",
       detail: statEstimate
         ? MY_ORDER_HISTORY_ESTIMATE_ZD_PENDING_REPLACE_DETAIL
         : ZD_ETA_TIMING_DETAIL_PENDING,
@@ -248,11 +250,12 @@ export function buildMyOrderDeliveryTimingDisplay(
         urgencyLabel: null,
       };
     }
+    // Data obok tytułu pochodzi z historii — tytuł musi to mówić, a nie „brak terminu”.
     return withUrgency(
       {
-        title: ZD_ETA_TIMING_TITLE_NO_MATCH,
-        estimate: historyEstimateText || ZD_ETA_TIMING_TITLE_NO_MATCH,
-        detail: MY_ORDER_HISTORY_ESTIMATE_BELOW_ZD_NO_MATCH_DETAIL,
+        title: historyEstimateText ? MY_ORDER_HISTORY_ESTIMATE_TITLE : ZD_ETA_TIMING_TITLE_NO_MATCH,
+        estimate: historyEstimateText,
+        detail: historyEstimateText ? MY_ORDER_HISTORY_ESTIMATE_ZD_NO_MATCH_DETAIL : ZD_ETA_NO_MATCH_TITLE,
         tone: "low-confidence",
       },
       row
@@ -263,8 +266,8 @@ export function buildMyOrderDeliveryTimingDisplay(
 
   if (overdue) {
     return {
-      title: MY_ORDER_HISTORY_ESTIMATE_TITLE,
-      estimate: MY_ORDER_HISTORY_ESTIMATE_OVERDUE_LABEL,
+      title: MY_ORDER_NO_CURRENT_ETA_TITLE,
+      estimate: "",
       detail: MY_ORDER_HISTORY_ESTIMATE_OVERDUE_DETAIL,
       tone: "overdue",
       urgency: "overdue",

@@ -12,6 +12,7 @@ import {
   stockWatchHorizonDays,
   stockWatchHorizonExtends,
   stockWatchPrepareZdUsesHorizon,
+  stockSignalHasWork,
   stockWatchSignalStale,
   type StockWatchSupplierSignal,
 } from "@/lib/stock-watch/signal";
@@ -60,10 +61,7 @@ export function supplierStockSignalRank(signal: StockWatchSupplierSignal | undef
   return signal.lineCount > 0 ? 2 : 1;
 }
 
-/** Czy jest co zamawiać wg analizy (pokazujemy wtedy „Przygotuj ZD”). */
-export function stockSignalHasWork(s: StockWatchSupplierSignal): boolean {
-  return s.lineCount > 0 || s.criticalCount > 0 || s.beforeDeliveryCount > 0;
-}
+export { stockSignalHasWork };
 
 /** Filtr panelu Braki na jednego dostawcę. */
 export function brakiSupplierHref(supplierId: string): string {

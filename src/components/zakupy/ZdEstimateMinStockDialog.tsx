@@ -140,6 +140,8 @@ function MinStockDialogForm({
       title={ZD_ESTIMATE_UI.minStockModalTitle}
       titleHint={ZD_ESTIMATE_UI.minStockModalHint}
       size="md"
+      // Jak opakowanie i wykluczenie: otwierane także z karty produktu (panel z-[60]) — musi być nad nią.
+      tier="raised"
       bodyClassName="space-y-4 px-5 py-5 sm:px-6"
       loadingMessage={pending ? "Zapisuję…" : null}
       disableBackdropClose={pending}
@@ -327,6 +329,7 @@ function MinStockDialogForm({
     </ModalShell>
       <ConfirmDialog
         open={confirmClearOpen}
+        tier="top"
         title="Wyczyścić minimum stanów?"
         message={`Minimum stanów dla ${line.tw_Symbol} zostanie usunięte. Przy kolejnym szacunku produkt będzie zamówiony tylko ze względu na sprzedaż i zapas.`}
         confirmLabel="Wyczyść"

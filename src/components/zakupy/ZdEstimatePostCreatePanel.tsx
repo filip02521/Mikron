@@ -96,6 +96,8 @@ export function ZdEstimatePostCreatePanel({
   onUndoMark,
   previewOnly = false,
   sendSimulation = null,
+  simulatedGmail = null,
+  simulatedDocument = false,
   embedded = false,
 }: {
   session: ZdPostCreateSession;
@@ -105,6 +107,10 @@ export function ZdEstimatePostCreatePanel({
   previewOnly?: boolean;
   /** Laboratorium: przebieg wysyłki na niby (tylko z previewOnly). */
   sendSimulation?: ZdSendSimulation | null;
+  /** Laboratorium: Gmail „połączony” bez prawdziwego konta (tylko z sendSimulation). */
+  simulatedGmail?: GmailStatus | null;
+  /** Laboratorium z fikcyjnym ZD: wydruk i pozycje na niby (tylko z sendSimulation). */
+  simulatedDocument?: boolean;
   /** Create nadal zablokowany — pokaż CTA w panelu (bez osobnego banera). */
   createLocked?: boolean;
   onDismiss: () => void;
@@ -129,11 +135,15 @@ export function ZdEstimatePostCreatePanel({
   const [tsvCopied, setTsvCopied] = useState(false);
   const [tsvError, setTsvError] = useState(false);
   const [dokCopied, setDokCopied] = useState(false);
-  const [gmail, setGmail] = useState<GmailStatus | null>(null);
+  const [gmailState, setGmail] = useState<GmailStatus | null>(null);
+  const gmail = simulatedGmail && sendSimulation ? simulatedGmail : gmailState;
   /** Wysyłka tego ZD z OnTime sprzed otwarcia panelu (np. przed odświeżeniem strony). */
   const [previousSend, setPreviousSend] = useState<SupplierOrderEmail | null>(null);
   const [scheduleHint, setScheduleHint] = useState<string | null>(null);
   const [scheduleCanMark, setScheduleCanMark] = useState(false);
+  /** Odpowiedź o planie dostawcy już jest — do tego czasu krok „rodzaj zamówienia” nie ma wiarygodnej podpowiedzi. */
+  const [scheduleChecked, setScheduleChecked] = useState(false);
+  const [scheduleDue, setScheduleDue] = useState(true);
   const [undo, setUndo] = useState<{
     kind: "glowne" | "schedule";
     payload: DailyPanelUndoPayload;
@@ -227,6 +237,7 @@ export function ZdEstimatePostCreatePanel({
   // Status Gmaila: przy otwarciu i po powrocie do karty (łączenie idzie w nowej karcie —
   // panel po utworzeniu ZD żyje tylko w pamięci strony i zniknąłby przy przejściu do Google).
   useEffect(() => {
+    if (simulatedGmail && sendSimulation) return;
     let cancelled = false;
     let lastAt = 0;
     const refresh = () => {
@@ -248,7 +259,7 @@ export function ZdEstimatePostCreatePanel({
       cancelled = true;
       window.removeEventListener("focus", refresh);
     };
-  }, []);
+  }, [simulatedGmail, sendSimulation]);
 
   useEffect(() => {
     const dokId = session.dokId;
@@ -308,6 +319,7 @@ export function ZdEstimatePostCreatePanel({
         session.supplierId
       );
       if (cancelled) return;
+      setScheduleChecked(true);
       if (!res.ok) {
         setScheduleCanMark(false);
         setScheduleHint(
@@ -319,6 +331,7 @@ export function ZdEstimatePostCreatePanel({
         return;
       }
       setScheduleCanMark(res.canMark);
+      setScheduleDue(res.due ?? true);
       setScheduleHint(res.message);
     })();
     return () => {
@@ -555,7 +568,8 @@ export function ZdEstimatePostCreatePanel({
         titleHint={ZD_ESTIMATE_UI.postCreateModalHint}
         titleHintAriaLabel="O panelu po utworzeniu ZD"
         titleId="zd-post-create-title"
-        size="full"
+        // Szerokie okno zamiast pełnego ekranu: dokument, wiadomość i kroki mieszczą się bez przewijania na biurku.
+        size="xl"
         tier="raised"
         bodyClassName="space-y-4 px-5 py-4 sm:px-6 sm:py-5"
         footer={
@@ -781,11 +795,14 @@ export function ZdEstimatePostCreatePanel({
               glowneDone={session.glowneDone}
               scheduleDone={session.scheduleDone}
               scheduleCanMark={scheduleCanMark}
+              scheduleChecked={scheduleChecked}
+              scheduleDue={scheduleDue}
               scheduleHint={scheduleHint}
               previousSend={previousSend}
               manualContact={manualContact}
               actionsSlot={sendActionsSlot}
               simulation={previewOnly ? sendSimulation : null}
+              simulatedDocument={previewOnly && simulatedDocument}
               onGlowneMarked={(r) => onGlowneMarked?.(r)}
               onScheduleMarked={() => {
                 onScheduleMarked?.();

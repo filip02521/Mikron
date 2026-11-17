@@ -33,6 +33,9 @@ import {
   looksLikeBoardImageBytes,
   validateBoardImageBatch,
   validateBoardImageFile,
+  boardDocumentFileType,
+  looksLikeBoardDocumentBytes,
+  validateBoardDocuments,
 } from "@/lib/department-board/attachments";
 import {
   normalizeBoardQuestionProductInput,
@@ -208,7 +211,9 @@ export async function actionCreateQuestion(
   title: string,
   body: string,
   product?: BoardQuestionProductInput | null,
-  images?: File[] | null
+  images?: File[] | null,
+  /** PDF, Excel, Word, CSV — dołączone bez kompresji. */
+  files?: File[] | null
 ) {
   const { userId, salesPersonId } = await assertSalesAccess();
   const trimmedTitle = trimTitle(title);
@@ -217,6 +222,7 @@ export async function actionCreateQuestion(
   if (!trimmedBody) throw new Error("Treść pytania nie może być pusta.");
 
   const imageFiles = validateBoardImages(images);
+  const docFiles = await readBoardDocuments(files);
 
   const productFields = normalizeBoardQuestionProductInput(product);
 
@@ -246,7 +252,7 @@ export async function actionCreateQuestion(
   let attachmentError: string | undefined;
   let attachmentsUploaded = 0;
 
-  if (imageFiles.length) {
+  if (imageFiles.length || docFiles.length) {
     const { hasSupabaseConfig } = await import("@/lib/supabase/admin");
     if (!hasSupabaseConfig()) {
       revalidateDepartmentBoard();
@@ -254,9 +260,11 @@ export async function actionCreateQuestion(
         thread,
         attachmentsUploaded: 0,
         attachmentError:
-          "Pytanie zapisano, ale brak konfiguracji Storage - zdjęcia nie zostały dodane.",
+          "Pytanie zapisano, ale brak konfiguracji przechowywania plików - załączniki nie zostały dodane.",
       };
     }
+  }
+  if (imageFiles.length) {
     const upload = await uploadBoardQuestionImages({
       supabase,
       threadId: thread.id,
@@ -267,6 +275,23 @@ export async function actionCreateQuestion(
     attachmentError = upload.error
       ? "Pytanie zapisano, ale nie udało się dodać zdjęć. Spróbuj ponownie w nowym pytaniu."
       : undefined;
+  }
+  if (docFiles.length) {
+    const stored = await storeBoardSupplierFiles({
+      supabase,
+      threadId: thread.id,
+      userId,
+      files: docFiles,
+      firstSortOrder: imageFiles.length,
+    });
+    if (stored.error) {
+      // Oba zapisy nieudane: komunikat o plikach nie może przykryć tego o zdjęciach.
+      attachmentError = attachmentError
+        ? "Pytanie zapisano, ale nie udało się dodać zdjęć ani plików. Dołącz je w odpowiedzi w tym wątku."
+        : "Pytanie zapisano, ale nie udało się dodać plików. Dołącz je w odpowiedzi w tym wątku.";
+    } else {
+      attachmentsUploaded += docFiles.length;
+    }
   }
 
   revalidateDepartmentBoard();
@@ -286,6 +311,23 @@ function validateBoardImages(images: File[] | null | undefined): File[] {
     if (fileError) throw new Error(fileError);
   }
   return imageFiles;
+}
+
+/** Dokumenty od użytkownika: typ, rozmiar i pierwsze bajty sprawdzone przed zapisem czegokolwiek. */
+async function readBoardDocuments(files: File[] | null | undefined): Promise<BoardSupplierFileData[]> {
+  const list = (files ?? []).filter(Boolean);
+  const error = validateBoardDocuments(list);
+  if (error) throw new Error(error);
+  return Promise.all(
+    list.map(async (file) => {
+      const type = boardDocumentFileType(file.name)!;
+      const data = Buffer.from(await file.arrayBuffer());
+      if (!looksLikeBoardDocumentBytes(data, type.ext)) {
+        throw new Error(`„${file.name}” nie wygląda na plik ${type.ext.toUpperCase()} - zapisz go ponownie i spróbuj jeszcze raz.`);
+      }
+      return { filename: file.name, data, ...type };
+    })
+  );
 }
 
 async function uploadBoardQuestionImages(input: {
@@ -370,7 +412,7 @@ async function uploadBoardQuestionImages(input: {
   }
 }
 
-/** Signed URL do podglądu zdjęcia z pytania (handlowiec / zakupy / admin). */
+/** Signed URL do podglądu zdjęcia albo pobrania pliku z wątku (handlowiec / zakupy / admin). */
 export async function actionGetBoardQuestionImageUrl(
   attachmentId: string
 ): Promise<{ url: string | null; error?: string }> {
@@ -393,10 +435,10 @@ export async function actionGetBoardQuestionImageUrl(
     .maybeSingle();
 
   if (error || !data?.storage_path) {
-    return { url: null, error: "Nie znaleziono zdjęcia." };
+    return { url: null, error: "Nie znaleziono załącznika." };
   }
   if (!isBoardImageStoragePath(data.storage_path, data.thread_id)) {
-    return { url: null, error: "Nieprawidłowa ścieżka zdjęcia." };
+    return { url: null, error: "Nieprawidłowa ścieżka załącznika." };
   }
 
   const { data: signed, error: signedError } = await supabase.storage
@@ -404,7 +446,7 @@ export async function actionGetBoardQuestionImageUrl(
     .createSignedUrl(data.storage_path, 3600);
 
   if (signedError || !signed?.signedUrl) {
-    return { url: null, error: "Nie udało się otworzyć zdjęcia." };
+    return { url: null, error: "Nie udało się otworzyć załącznika." };
   }
   return { url: signed.signedUrl };
 }
@@ -416,7 +458,9 @@ export async function actionReplyToQuestion(
   threadId: string,
   body: string,
   images?: File[] | null,
-  supplierFiles?: BoardSupplierFileRef[] | null
+  supplierFiles?: BoardSupplierFileRef[] | null,
+  /** PDF, Excel, Word, CSV od osoby odpowiadającej (obie strony). */
+  files?: File[] | null
 ) {
   const user = await getSessionUser();
   if (!user?.id) throw new Error("Zaloguj się ponownie.");
@@ -448,8 +492,9 @@ export async function actionReplyToQuestion(
   if (supplierRefs.length > BOARD_SUPPLIER_FILE_MAX_COUNT) {
     throw new Error(`Możesz dołączyć najwyżej ${BOARD_SUPPLIER_FILE_MAX_COUNT} plików od dostawcy.`);
   }
-  if (!trimmedBody && !imageFiles.length && !supplierRefs.length) {
-    throw new Error("Napisz wiadomość albo dodaj zdjęcie.");
+  const docFiles = await readBoardDocuments(files);
+  if (!trimmedBody && !imageFiles.length && !supplierRefs.length && !docFiles.length) {
+    throw new Error("Napisz wiadomość albo dodaj zdjęcie lub plik.");
   }
 
   const thread = await fetchThread(threadId);
@@ -483,7 +528,7 @@ export async function actionReplyToQuestion(
   if (postError) throw new Error(postError.message);
 
   let attachments: BoardThreadAttachmentRow[] = [];
-  if (imageFiles.length || supplierFileData.length) {
+  if (imageFiles.length || supplierFileData.length || docFiles.length) {
     const failReply = async (message: string): Promise<never> => {
       // Bez załączników odpowiedź jest niepełna — cofamy wpis (wiersze załączników kasują się z nim)
       // i pliki już zapisane w magazynie; szkic zostaje w formularzu.
@@ -523,6 +568,19 @@ export async function actionReplyToQuestion(
       });
       if (stored.error) {
         await failReply("Nie udało się zapisać plików od dostawcy. Spróbuj ponownie.");
+      }
+    }
+    if (docFiles.length) {
+      const stored = await storeBoardSupplierFiles({
+        supabase,
+        threadId,
+        userId: user.id,
+        postId: post.id,
+        files: docFiles,
+        firstSortOrder: imageFiles.length + supplierFileData.length,
+      });
+      if (stored.error) {
+        await failReply("Nie udało się zapisać plików. Spróbuj ponownie.");
       }
     }
     const { data: attachmentRows } = await supabase
@@ -579,7 +637,7 @@ export async function actionReplyToQuestion(
         questionBody: thread.body,
         productSymbol: thread.product_symbol,
         productName: thread.product_name,
-        replyBody: boardReplyEmailBody(trimmedBody, imageFiles.length, supplierFileData.length),
+        replyBody: boardReplyEmailBody(trimmedBody, imageFiles.length, supplierFileData.length, docFiles.length),
       });
       if (!result.emailSent) {
         console.warn(
@@ -605,7 +663,7 @@ export async function actionReplyToQuestion(
 }
 
 /** Mail nie niesie załączników — informujemy, że czekają w wątku. */
-function boardReplyEmailBody(body: string, imageCount: number, fileCount = 0): string {
+function boardReplyEmailBody(body: string, imageCount: number, fileCount = 0, ownFileCount = 0): string {
   const notes = [
     imageCount === 1
       ? "Dołączono zdjęcie - zobacz je w wątku na Tablicy."
@@ -616,6 +674,11 @@ function boardReplyEmailBody(body: string, imageCount: number, fileCount = 0): s
       ? "Dołączono plik od dostawcy - pobierzesz go z wątku na Tablicy."
       : fileCount > 1
         ? `Dołączono pliki od dostawcy (${fileCount}) - pobierzesz je z wątku na Tablicy.`
+        : null,
+    ownFileCount === 1
+      ? "Dołączono plik - pobierzesz go z wątku na Tablicy."
+      : ownFileCount > 1
+        ? `Dołączono pliki (${ownFileCount}) - pobierzesz je z wątku na Tablicy.`
         : null,
   ].filter(Boolean);
   if (!notes.length) return body;
@@ -660,11 +723,12 @@ async function loadBoardSupplierFiles(
   return loaded.flat();
 }
 
+/** Zapis plików (od dostawcy albo od użytkownika) w magazynie i w wątku; bez postId = pliki samego pytania. */
 async function storeBoardSupplierFiles(input: {
   supabase: ReturnType<typeof createAdminClient>;
   threadId: string;
   userId: string;
-  postId: string;
+  postId?: string;
   files: BoardSupplierFileData[];
   firstSortOrder: number;
 }): Promise<{ error?: string }> {
@@ -681,7 +745,7 @@ async function storeBoardSupplierFiles(input: {
       uploaded.push(storagePath);
       rows.push({
         thread_id: input.threadId,
-        post_id: input.postId,
+        ...(input.postId ? { post_id: input.postId } : {}),
         created_by: input.userId,
         storage_path: storagePath,
         file_name: file.filename.slice(0, 200),

@@ -39,9 +39,21 @@ describe("DepartmentBoardQuestionForm", () => {
     title: "Temat",
     body: "Treść pytania",
     product: { symbol: "", product: "", subiektTwId: null, mikranCode: "" },
-    images: [],
-    imagesError: null,
-    imagesCompressing: false,
+    attachments: {
+      images: [],
+      docs: [],
+      issues: [],
+      dismissIssues: vi.fn(),
+      pendingImages: 0,
+      compressing: false,
+      addFiles: vi.fn(),
+      removeImage: vi.fn(),
+      removeDoc: vi.fn(),
+      clearImages: vi.fn(),
+      imageFiles: [],
+      docFiles: [],
+      totalBytes: 0,
+    },
     error: null,
     saving: false,
     tourDemo: false,
@@ -50,8 +62,6 @@ describe("DepartmentBoardQuestionForm", () => {
     onTitleChange: vi.fn(),
     onBodyChange: vi.fn(),
     onProductChange: vi.fn(),
-    onAddImages: vi.fn(),
-    onRemoveImage: vi.fn(),
     onSubmit: vi.fn().mockResolvedValue(undefined),
   };
 
@@ -106,5 +116,19 @@ describe("DepartmentBoardQuestionForm", () => {
     cleanup();
     render(<DepartmentBoardQuestionForm {...baseProps} />);
     expect(screen.queryByText(/^Wpisz /)).toBeNull();
+  });
+
+  it("upuszczony PDF trafia do załączników; kompresja zdjęcia nie blokuje pisania, tylko wysyłkę", () => {
+    const addFiles = vi.fn();
+    const attachments = { ...baseProps.attachments, addFiles, compressing: true, pendingImages: 1 };
+    render(<DepartmentBoardQuestionForm {...baseProps} attachments={attachments} />);
+    const title = screen.getAllByLabelText(/Temat/)[0] as HTMLInputElement;
+    expect(title.disabled).toBe(false);
+    const send = screen.getAllByRole("button").find((b) => /Przetwarzanie zdjęć/.test(b.textContent ?? "")) as HTMLButtonElement;
+    expect(send.disabled).toBe(true);
+    const pdf = new File(["%PDF-1.7"], "oferta.pdf", { type: "application/pdf" });
+    const form = title.closest("div")!.parentElement!;
+    fireEvent.drop(form, { dataTransfer: { types: ["Files"], files: [pdf] } });
+    expect(addFiles).toHaveBeenCalledWith([pdf]);
   });
 });

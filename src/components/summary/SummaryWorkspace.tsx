@@ -29,7 +29,6 @@ const SupplierEditModal = dynamic(() =>
 import {
   countDailyPanelExceptions,
   countUrgentItemsWithVacation,
-  splitUrgentItems,
   summarizeDailyInbox,
 } from "@/lib/orders/procurement-daily-ui";
 import { useDailyDayProgress } from "@/hooks/useDailyDayProgress";
@@ -73,10 +72,18 @@ import type {
   StockWatchOffPlanSupplier,
   StockWatchSupplierSignal,
 } from "@/lib/stock-watch/data";
-import { StockWatchOffPlanBanner } from "@/components/stock-watch/StockWatchOffPlanBanner";
 import { DailyZdProposalsProvider, type DailyZdProposal } from "@/components/summary/DailyZdProposals";
 import { DailyZdAutomatSection } from "@/components/summary/DailyZdAutomatSection";
-import { warsawKeyFromIso, zdAutomatTodayOrders, type ZdAutomatDailyData } from "@/lib/orders/zd-automat-daily";
+import { DailySupplierList } from "@/components/summary/DailySupplierList";
+import { buildDailySupplierRows, countDailySupplierGroups } from "@/lib/orders/daily-supplier-rows";
+import { scrollToDailyPanelSection, type DailyPanelQueueSectionKey } from "@/lib/orders/daily-panel-section-anchors";
+import { useDailySupplierSourceFilter } from "@/hooks/useDailySupplierSourceFilter";
+import {
+  warsawKeyFromIso,
+  zdAutomatExpiresBySupplier,
+  zdAutomatTodayOrders,
+  type ZdAutomatDailyData,
+} from "@/lib/orders/zd-automat-daily";
 import {
   SupplierStockSignalsProvider,
   supplierStockSignalRank,
@@ -88,14 +95,17 @@ const ZdProductSettingsPalette = dynamic(
   { ssr: false }
 );
 
+/** Stała referencja dla pominiętego propsa — pusta tablica w domyślnej wartości unieważniałaby memo wierszy co render. */
+const NO_SUPPLIER_IDS: string[] = [];
+
 export function SummaryWorkspace({
   workspace: workspaceIn,
   stockSignalBySupplierId = {},
   offPlanSuppliers = [],
   autoProposals = [],
   zdAutomat = null,
+  zdTodaySupplierIds = NO_SUPPLIER_IDS,
   nowIso,
-  supplierCardsHref = "/zakupy/dostawcy",
   suppliers,
   supplierDirectory,
   salesPeople,
@@ -117,10 +127,10 @@ export function SummaryWorkspace({
   autoProposals?: DailyZdProposal[];
   /** Sekcja „Automat ZD” (dostawcy w automacie, ostatnie propozycje, nocny przebieg); null = brak sekcji. */
   zdAutomat?: ZdAutomatDailyData | null;
+  /** Dostawcy z ZD z Kreatora utworzonym albo powiązanym dziś — ich wiersz jest w „Zrobione dziś”. */
+  zdTodaySupplierIds?: string[];
   /** Czas z serwera dla sekcji Automat ZD — ten sam wynik na serwerze i w przeglądarce. */
   nowIso?: string;
-  /** Karty dostawców dla roli (admin / zakupy) — link „Ustawienia” w sekcji Automat ZD. */
-  supplierCardsHref?: string;
   suppliers: OrderFormSupplierOption[];
   supplierDirectory: SupplierDirectoryEntry[];
   salesPeople: { id: string; name: string; email: string }[];
@@ -228,36 +238,63 @@ export function SummaryWorkspace({
     return t.orders.length ? { done: t.done, total: t.orders.length } : null;
   }, [canPrepareZd, zdAutomat, nowIso]);
 
-  const { overdue: urgentOverdue, todayList: urgentToday } = useMemo(
-    () => splitUrgentItems(standardUrgentAll, workspace.todayDateKey),
-    [standardUrgentAll, workspace.todayDateKey]
+  // Jeden wiersz na dostawcę: harmonogram, automat, braki poza planem i na żądanie sklejone po dostawcy.
+  const supplierRows = useMemo(
+    () =>
+      buildDailySupplierRows({
+        todayDateKey: workspace.todayDateKey,
+        nowIso: nowIso ?? `${workspace.todayDateKey}T12:00:00`,
+        scheduled: standardUrgentAll,
+        automatOrders:
+          canPrepareZd && zdAutomat && nowIso
+            ? zdAutomatTodayOrders(zdAutomat.suppliers, warsawKeyFromIso(nowIso)).orders
+            : [],
+        pendingProposals: canPrepareZd ? autoProposals : [],
+        automatSupplierIds: new Set(zdAutomat?.suppliers.map((s) => s.id) ?? []),
+        vacationNowIds: new Set(Object.keys(workspace.suppliersOnVacationNow)),
+        signals: stockSignalBySupplierId,
+        offPlan: offPlanSuppliers,
+        onDemand: workspace.onDemandSuppliers,
+        requestGroups: workspace.forSomeoneLeft,
+        stockOutGroups: workspace.stockOutLeft,
+        zdTodaySupplierIds: new Set(zdTodaySupplierIds),
+        canPrepareZd,
+      }),
+    [workspace, nowIso, standardUrgentAll, canPrepareZd, zdAutomat, autoProposals, stockSignalBySupplierId, offPlanSuppliers, zdTodaySupplierIds]
+  );
+
+  const automatExpires = useMemo(
+    () => (canPrepareZd && zdAutomat && nowIso ? zdAutomatExpiresBySupplier(zdAutomat, nowIso) : {}),
+    [canPrepareZd, zdAutomat, nowIso]
   );
 
   const hasCancelled = workspace.salesCancelledNotices.length > 0;
   const hasForSomeone = workspace.forSomeoneLeft.length > 0;
   const hasStockOut = workspace.stockOutLeft.length > 0;
-  const hasUrgentSchedule = urgentOverdue.length > 0 || urgentToday.length > 0;
-  const hasTodayWork = hasForSomeone || hasStockOut || hasUrgentSchedule;
+  const supplierGroups = useMemo(() => countDailySupplierGroups(supplierRows), [supplierRows]);
+  const { source: supplierSource, setSource: setSupplierSource } = useDailySupplierSourceFilter();
+  const hasTodayWork = hasForSomeone || hasStockOut || supplierRows.length > 0;
+  // Krok kolejki kliknięty przy aktywnym filtrze źródła: przewiń dopiero, gdy filtr zszedł i grupa jest w DOM.
+  const pendingQueueScrollRef = useRef<DailyPanelQueueSectionKey | null>(null);
+  useEffect(() => {
+    const target = pendingQueueScrollRef.current;
+    if (supplierSource || !target) return;
+    pendingQueueScrollRef.current = null;
+    scrollToDailyPanelSection(target);
+  }, [supplierSource]);
 
+  // Ta sama liczba co „w kolejce” w paśmie stanu: jeden dostawca = jedna pozycja. „Zamów wcześniej” (poza planem
+  // dnia) i „Zrobione dziś” nie są kolejką — pierwsza ma link w „Poza kolejką”.
   const todayQueueCount =
-    inboxSummary.overdueCount +
-    inboxSummary.todayCount +
+    supplierGroups.send +
+    supplierGroups.order +
+    supplierGroups.shift +
+    supplierGroups.manual +
     inboxSummary.forSomeoneGroupCount +
     inboxSummary.stockOutGroupCount +
     (hasCancelled ? workspace.salesCancelledNotices.length : 0);
   const hideVerificationDup =
     panelView === "dzis" && verificationCount > 0;
-
-  const queueStepBySection = useMemo(() => {
-    let step = 0;
-    const next = () => ++step;
-    return {
-      overdue: urgentOverdue.length > 0 ? next() : undefined,
-      stockOut: hasStockOut ? next() : undefined,
-      prosby: hasForSomeone ? next() : undefined,
-      today: urgentToday.length > 0 ? next() : undefined,
-    };
-  }, [urgentOverdue.length, hasStockOut, hasForSomeone, urgentToday.length]);
 
   const openSupplier = useCallback((id: string) => setDrawerId(id), []);
 
@@ -375,18 +412,19 @@ export function SummaryWorkspace({
     });
   }, []);
 
-  const selectedCount = Object.values(selected).filter(Boolean).length;
 
-  const processBulk = () => {
+  /** `visibleIds` — zaznaczone wiersze, które lista faktycznie pokazuje z polem wyboru. */
+  const processBulk = (visibleIds: string[]) => {
+    const visible = new Set(visibleIds);
     const ids = standardUrgentAll
-      .filter((item) => selected[item.supplierId])
+      .filter((item) => selected[item.supplierId] && visible.has(item.supplierId))
       .map((item) => item.supplierId);
     if (!ids.length) return;
     run(
       () => actionBulkOrdered(ids),
       ids.length === 1
         ? dailyPanelMarkOrderedToastTitle(
-            standardUrgentAll.find((item) => selected[item.supplierId])?.supplierName
+            standardUrgentAll.find((item) => item.supplierId === ids[0])?.supplierName
           )
         : `Oznaczono jako zamówione (${ids.length} dostawców)`,
       ids.length === 1
@@ -501,6 +539,14 @@ export function SummaryWorkspace({
               urgentVacationCount={urgentVacationCount}
               cancelledCount={workspace.salesCancelledNotices.length}
               automat={automatToday}
+              supplierGroups={supplierGroups}
+              onQueueNavigate={(kind, event) => {
+                if (!supplierSource) return;
+                // Filtr źródła może ukrywać grupę kroku: zdejmij go, a przewinięcie zrobi efekt po wyrenderowaniu grupy.
+                event.preventDefault();
+                pendingQueueScrollRef.current = kind;
+                setSupplierSource(null);
+              }}
               onOpenOnDemand={() => setOnDemandOpen(true)}
             />
           </Card>
@@ -509,9 +555,6 @@ export function SummaryWorkspace({
         <PageAttentionGroup>
           <BoardQuestionsAttentionNotice edge="row" suppressPathHide />
           {canPrepareZd ? <SupplierMailBounceNotice edge="row" /> : null}
-          {panelView === "dzis" && offPlanSuppliers.length > 0 ? (
-            <StockWatchOffPlanBanner suppliers={offPlanSuppliers} canPrepareZd={canPrepareZd} />
-          ) : null}
           {panelView === "dzis" ? (
             <DailyPanelVerificationBanner
               count={verificationCount}
@@ -534,33 +577,47 @@ export function SummaryWorkspace({
             hasTodayWork={hasTodayWork}
             hasForSomeone={hasForSomeone}
             hasStockOut={hasStockOut}
-            urgentOverdue={urgentOverdue}
-            urgentToday={urgentToday}
-            standardUrgentAll={standardUrgentAll}
-            queueStepBySection={queueStepBySection}
-            selected={selected}
-            selectedCount={selectedCount}
             isScopePending={isScopePending}
-            isBulkPending={isBulkPending}
             statsBySupplierId={statsBySupplierId}
             supplierStatsMode={supplierStatsMode}
             suppliers={suppliers}
             salesPeople={salesPeople}
             run={run}
             onOpenSupplier={openSupplier}
-            onVacation={openVacationFor}
-            onEdit={(id) => openEditFor(id)}
-            onToggle={toggle}
-            onSelectAllInScope={selectUrgentScope}
-            onBulkOrdered={processBulk}
             onOpenWeek={() => setPanelView("tydzien")}
             highlightFresh={highlightFresh}
             notify={notify}
             etaUseP50={etaUseP50}
             etaQuantilesBySupplierId={etaQuantilesBySupplierId}
+            supplierList={
+              <DailySupplierList
+                rows={supplierRows}
+                supplierMeta={workspace.supplierMeta}
+                todayKey={workspace.todayDateKey}
+                automatExpiresBySupplier={automatExpires}
+                onOpenSupplier={openSupplier}
+                onVacation={openVacationFor}
+                onEdit={(id) => openEditFor(id)}
+                run={run}
+                isScopePending={isScopePending}
+                bulk={{
+                  selected,
+                  onToggle: toggle,
+                  onSelectAllInScope: selectUrgentScope,
+                  onBulkOrdered: processBulk,
+                  isBulkPending,
+                }}
+                source={supplierSource}
+                onSourceChange={(next) => {
+                  // Zaznaczenie nie przeżywa zmiany filtra — „Zamówione (N)” obejmuje tylko to, co widać.
+                  setSelected({});
+                  setSupplierSource(next);
+                }}
+              />
+            }
             automat={
               canPrepareZd && zdAutomat && zdAutomat.suppliers.length > 0 && nowIso ? (
-                <DailyZdAutomatSection data={zdAutomat} nowIso={nowIso} cardsHref={supplierCardsHref} />
+                <DailyZdAutomatSection data={zdAutomat} nowIso={nowIso} />
               ) : null
             }
           />

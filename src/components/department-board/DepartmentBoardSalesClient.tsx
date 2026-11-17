@@ -163,15 +163,8 @@ export function DepartmentBoardSalesClient({
   const [saving, setSaving] = useState(false);
   const [successToast, setSuccessToast] = useState(false);
   const [warningToast, setWarningToast] = useState<string | null>(null);
-  const {
-    images,
-    imagesError,
-    compressing: imagesCompressing,
-    addFiles,
-    removeImage,
-    clearImages,
-    imageFiles,
-  } = useBoardQuestionImages();
+  const questionAttachments = useBoardQuestionImages();
+  const { clearImages, imageFiles, docFiles } = questionAttachments;
 
   useEffect(() => {
     return () => {
@@ -232,7 +225,8 @@ export function DepartmentBoardSalesClient({
           subiektTwId: questionProduct.subiektTwId,
           mikranCode: questionProduct.mikranCode,
         },
-        imageFiles
+        imageFiles,
+        docFiles
       );
       setQuestionTitle("");
       setQuestionBody("");
@@ -334,9 +328,7 @@ export function DepartmentBoardSalesClient({
               title={questionTitle}
               body={questionBody}
               product={questionProduct}
-              images={images}
-              imagesError={imagesError}
-              imagesCompressing={imagesCompressing}
+              attachments={questionAttachments}
               error={questionFormError}
               saving={saving}
               tourDemo={tourDemo}
@@ -347,8 +339,6 @@ export function DepartmentBoardSalesClient({
               onProductChange={(patch) =>
                 setQuestionProduct((current) => ({ ...current, ...patch }))
               }
-              onAddImages={addFiles}
-              onRemoveImage={removeImage}
               onSubmit={() => submitQuestion()}
             />
           ) : null}

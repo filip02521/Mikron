@@ -1,32 +1,22 @@
 "use client";
 
-import { useRef, useState, type ClipboardEvent, type DragEvent } from "react";
+import { useRef, type ClipboardEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { changeWithEmoticons } from "@/lib/ui/emoticons";
 import { EmojiPicker } from "@/components/ui/EmojiPicker";
-import { IconCamera, IconPaperclip } from "@/components/icons/StrokeIcons";
-import {
-  BoardImageDraftThumbs,
-  type BoardQuestionImageDraft,
-} from "@/components/department-board/BoardQuestionImagesField";
+import { IconPaperclip } from "@/components/icons/StrokeIcons";
+import { BoardAttachmentTray, useBoardFileDrop } from "@/components/department-board/BoardAttachmentTray";
+import type { BoardQuestionImageDraft } from "@/components/department-board/BoardQuestionImagesField";
+import type { BoardDocumentDraft } from "@/components/department-board/useBoardQuestionImages";
 import { NOTATNIK_TEXTAREA_CLASS } from "@/components/notatnik/notatnik-layout";
-import {
-  BOARD_IMAGE_ACCEPT,
-  BOARD_IMAGE_MAX_COUNT,
-  imageFilesFromClipboardData,
-} from "@/lib/department-board/attachments";
+import { BOARD_FILE_ACCEPT, boardFilesFromClipboardData } from "@/lib/department-board/attachments";
 import { DEPARTMENT_BOARD_REPLY_COMPOSER as COPY } from "@/lib/department-board/copy";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
-import { BrandLoader } from "@/components/ui/BrandLoader";
-
-function dragHasFiles(event: DragEvent): boolean {
-  return Array.from(event.dataTransfer?.types ?? []).includes("Files");
-}
 
 /**
- * Odpowiedź w wątku Tablicy: tekst i/lub do 3 zdjęć.
- * Zdjęcie: przycisk, wklejenie ze schowka (Ctrl+V) albo przeciągnięcie pliku.
+ * Odpowiedź w wątku Tablicy: tekst i/lub do 3 zdjęć i do 5 plików (PDF, Excel, Word, CSV).
+ * Załącznik: przycisk, przeciągnięcie na całe pole odpowiedzi albo Ctrl+V (zrzut lub skopiowany plik).
  */
 export function BoardReplyComposer({
   id,
@@ -34,10 +24,14 @@ export function BoardReplyComposer({
   value,
   onChange,
   images,
-  imagesError,
-  compressing,
+  docs,
+  pendingImages = 0,
+  issues = [],
+  onDismissIssues,
   onAddFiles,
   onRemoveImage,
+  onRemoveDoc,
+  totalBytes,
   busy,
   onSubmit,
   error,
@@ -50,10 +44,14 @@ export function BoardReplyComposer({
   value: string;
   onChange: (value: string) => void;
   images: BoardQuestionImageDraft[];
-  imagesError: string | null;
-  compressing: boolean;
+  docs: BoardDocumentDraft[];
+  pendingImages?: number;
+  issues?: string[];
+  onDismissIssues?: () => void;
   onAddFiles: (files: FileList | File[]) => void | Promise<void>;
   onRemoveImage: (key: string) => void;
+  onRemoveDoc: (key: string) => void;
+  totalBytes: number;
   busy: boolean;
   onSubmit: () => void;
   error?: string | null;
@@ -64,61 +62,21 @@ export function BoardReplyComposer({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const dragDepth = useRef(0);
-  const [dragging, setDragging] = useState(false);
-
-  const canAddImage = images.length < BOARD_IMAGE_MAX_COUNT && !busy;
-  const canSubmit =
-    !busy && !compressing && (value.trim().length > 0 || images.length > 0 || extraFiles.length > 0);
+  const { dragging, dropProps } = useBoardFileDrop({ disabled: busy, onFiles: (files) => void onAddFiles(files) });
+  const hasAttachments = images.length + docs.length + extraFiles.length > 0;
+  const canSubmit = !busy && pendingImages === 0 && (value.trim().length > 0 || hasAttachments);
 
   function handlePaste(event: ClipboardEvent) {
-    const files = imageFilesFromClipboardData(event.clipboardData);
-    // Przy komplecie zdjęć hook i tak pokaże „maksymalnie 3” — nie ignorujemy po cichu.
+    const files = boardFilesFromClipboardData(event.clipboardData);
+    // Tylko pliki — zwykły tekst wkleja się normalnie; limity i powody pokazuje taca.
     if (!files.length || busy) return;
     event.preventDefault();
     void onAddFiles(files);
   }
 
-  function handleDragEnter(event: DragEvent) {
-    if (!dragHasFiles(event) || busy) return;
-    event.preventDefault();
-    dragDepth.current += 1;
-    setDragging(true);
-  }
-
-  function handleDragLeave(event: DragEvent) {
-    if (!dragHasFiles(event)) return;
-    dragDepth.current = Math.max(0, dragDepth.current - 1);
-    if (dragDepth.current === 0) setDragging(false);
-  }
-
-  function handleDrop(event: DragEvent) {
-    if (!dragHasFiles(event)) return;
-    event.preventDefault();
-    dragDepth.current = 0;
-    setDragging(false);
-    if (busy) return;
-    const files = Array.from(event.dataTransfer.files).filter((f) =>
-      f.type.toLowerCase().startsWith("image/")
-    );
-    if (files.length) void onAddFiles(files);
-  }
-
   return (
-    <div
-      className={cn("relative", className)}
-      onPaste={handlePaste}
-      onDragEnter={handleDragEnter}
-      onDragOver={(e) => {
-        if (dragHasFiles(e) && !busy) e.preventDefault();
-      }}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
-      <label
-        className={cn(salesTypography.rowMeta, "block font-medium text-indigo-700")}
-        htmlFor={id}
-      >
+    <div className={cn("relative", className)} onPaste={handlePaste} {...dropProps}>
+      <label className={cn(salesTypography.rowMeta, "block font-medium text-indigo-700")} htmlFor={id}>
         {label}
       </label>
 
@@ -136,52 +94,52 @@ export function BoardReplyComposer({
               onSubmit();
             }
           }}
-          placeholder={images.length ? COPY.placeholderWithImages : COPY.placeholder}
+          placeholder={hasAttachments ? COPY.placeholderWithImages : COPY.placeholder}
           className={cn(NOTATNIK_TEXTAREA_CLASS, "w-full text-sm")}
         />
         {dragging ? (
           <div
-            className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-md border-2 border-dashed border-indigo-400 bg-indigo-50/90 text-sm font-medium text-indigo-700"
+            className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-md border-2 border-dashed border-indigo-500 bg-indigo-50 text-sm font-medium text-indigo-800"
             aria-hidden
           >
-            <IconCamera size={16} className="mr-1.5" />
+            <IconPaperclip size={16} className="mr-1.5" />
             {COPY.dropHere}
           </div>
         ) : null}
       </div>
 
-      {images.length || compressing ? (
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <BoardImageDraftThumbs
-            images={images}
-            disabled={busy}
-            onRemove={onRemoveImage}
-            size="sm"
-          />
-          {compressing ? (
-            <span className="flex h-16 items-center gap-1.5 px-1 text-[0.6875rem] text-slate-500" role="status">
-              <BrandLoader size="sm" tile={false} />
-              {COPY.compressing}
-            </span>
-          ) : null}
-        </div>
-      ) : null}
+      <BoardAttachmentTray
+        images={images}
+        docs={docs}
+        pendingImages={pendingImages}
+        issues={issues}
+        onDismissIssues={onDismissIssues}
+        onRemoveImage={onRemoveImage}
+        onRemoveDoc={onRemoveDoc}
+        disabled={busy}
+        sending={busy}
+        totalBytes={totalBytes}
+        className="mt-2"
+      />
 
       {extraFiles.length ? (
         <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Pliki od dostawcy w odpowiedzi">
           {extraFiles.map((f) => (
             <li
               key={f.key}
-              className="inline-flex max-w-72 items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 py-1 pl-2 pr-1 text-xs text-slate-700"
+              className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 py-1 pl-2 pr-1 text-xs text-slate-700"
             >
-              <IconPaperclip size={12} className="shrink-0 text-slate-400" aria-hidden />
-              <span className="truncate">{f.name}</span>
+              <IconPaperclip size={12} className="shrink-0 text-slate-500" aria-hidden />
+              <span className="min-w-0 break-words">
+                <span className="text-slate-500">od dostawcy: </span>
+                {f.name}
+              </span>
               {onRemoveExtraFile ? (
                 <button
                   type="button"
                   disabled={busy}
                   onClick={() => onRemoveExtraFile(f.key)}
-                  className="rounded px-1 text-slate-400 transition-colors duration-200 hover:bg-slate-200 hover:text-slate-700"
+                  className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-slate-500 transition-colors duration-150 hover:bg-slate-200 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                   aria-label={`Usuń ${f.name} z odpowiedzi`}
                 >
                   ×
@@ -196,11 +154,11 @@ export function BoardReplyComposer({
         <input
           ref={inputRef}
           type="file"
-          accept={BOARD_IMAGE_ACCEPT}
+          accept={BOARD_FILE_ACCEPT}
           multiple
           className="sr-only"
           tabIndex={-1}
-          disabled={!canAddImage}
+          disabled={busy}
           onChange={(e) => {
             const list = e.target.files;
             if (list?.length) void onAddFiles(list);
@@ -211,33 +169,21 @@ export function BoardReplyComposer({
           type="button"
           size="sm"
           variant="secondary"
-          disabled={!canAddImage}
+          className="max-sm:min-h-10"
+          disabled={busy}
           aria-label={COPY.attachAriaLabel}
           onClick={() => inputRef.current?.click()}
         >
-          <IconCamera size={14} className="shrink-0" />
+          <IconPaperclip size={14} className="shrink-0" aria-hidden />
           {COPY.attach}
-          {images.length ? (
-            <span className="tabular-nums text-slate-500">
-              {images.length}/{BOARD_IMAGE_MAX_COUNT}
-            </span>
-          ) : null}
         </Button>
         <EmojiPicker textareaRef={textareaRef} value={value} onChange={onChange} disabled={busy} />
         <span className="hidden text-[0.6875rem] text-slate-500 sm:inline">{COPY.hint}</span>
-        <Button
-          type="button"
-          size="sm"
-          className="ml-auto"
-          disabled={!canSubmit}
-          title={COPY.shortcut}
-          onClick={onSubmit}
-        >
-          {busy ? (images.length ? COPY.sendingImages : COPY.sending) : COPY.send}
+        <Button type="button" size="sm" className="ml-auto max-sm:min-h-10" disabled={!canSubmit} title={COPY.shortcut} onClick={onSubmit}>
+          {busy ? (hasAttachments ? COPY.sendingImages : COPY.sending) : pendingImages > 0 ? COPY.compressing : COPY.send}
         </Button>
       </div>
 
-      {imagesError ? <p className="mt-1.5 text-xs text-amber-700">{imagesError}</p> : null}
       {error ? (
         <p className="mt-1.5 text-xs text-red-700" role="alert">
           {error}

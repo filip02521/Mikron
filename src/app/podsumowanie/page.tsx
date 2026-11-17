@@ -21,9 +21,9 @@ import {
 } from "@/lib/stock-watch/data";
 import { warsawNowParts } from "@/lib/time/warsaw";
 import { listPendingZdAutoProposals } from "@/lib/data/zd-auto-proposals";
+import { listSuppliersWithZdLinkedToday } from "@/lib/data/zd-today-suppliers";
 import type { DailyZdProposal } from "@/components/summary/DailyZdProposals";
 import { loadZdAutomatDaily } from "@/lib/data/zd-automat-daily";
-import { supplierHubContextForRole, supplierHubPaths } from "@/lib/supplier-hub";
 import type { ZdAutomatDailyData } from "@/lib/orders/zd-automat-daily";
 import {
   supplierSubiektScopeInfoFromRow,
@@ -72,10 +72,11 @@ export default async function PodsumowaniePage() {
   let stockSignalBySupplierId: Record<string, StockWatchSupplierSignal> = {};
   let autoProposals: DailyZdProposal[] = [];
   let zdAutomat: ZdAutomatDailyData | null = null;
+  let zdTodaySupplierIds: string[] = [];
   const nowIso = new Date().toISOString();
 
   try {
-    const [data, verification, scopeRows, offPlan, stockSignals, pendingProposals, automat] = await Promise.all([
+    const [data, verification, scopeRows, offPlan, stockSignals, pendingProposals, automat, zdToday] = await Promise.all([
       fetchSummaryWorkspace(),
       fetchVerificationOrders(),
       // Powiązania dostawca → grupa/cecha Subiekta; brak tabeli/błąd nie blokuje panelu.
@@ -92,7 +93,15 @@ export default async function PodsumowaniePage() {
             return null;
           })
         : Promise.resolve(null),
+      // Dostawcy z ZD z Kreatora dziś — wiersz listy przechodzi do „Zrobione dziś”; błąd nie blokuje panelu.
+      canPrepareZd
+        ? listSuppliersWithZdLinkedToday(warsawNowParts().dateKey).catch((e) => {
+            console.error("[panel dzienny] ZD z dziś", e);
+            return [];
+          })
+        : Promise.resolve([]),
     ]);
+    zdTodaySupplierIds = zdToday;
     autoProposals = pendingProposals;
     zdAutomat = automat;
     offPlanSuppliers = offPlan;
@@ -139,8 +148,8 @@ export default async function PodsumowaniePage() {
           offPlanSuppliers={offPlanSuppliers}
           autoProposals={autoProposals}
           zdAutomat={zdAutomat}
+          zdTodaySupplierIds={zdTodaySupplierIds}
           nowIso={nowIso}
-          supplierCardsHref={supplierHubPaths(supplierHubContextForRole(session?.role)).cards}
           suppliers={suppliers}
           supplierDirectory={supplierDirectory}
           salesPeople={salesPeople}

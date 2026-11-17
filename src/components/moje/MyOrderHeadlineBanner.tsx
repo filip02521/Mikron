@@ -67,7 +67,7 @@ export function MyOrderHeadlineBanner({
 }) {
   const s = toneStyles[tone];
   return (
-    <div className={cn("border-b border-slate-100 px-3 py-2", s.wrap)}>
+    <div className={cn("border-b border-slate-100 px-3 py-2 sm:px-4", s.wrap)}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className={cn("text-xs font-semibold leading-snug", s.title)}>{headline}</p>

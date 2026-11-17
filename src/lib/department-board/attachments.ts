@@ -188,3 +188,73 @@ export const DEPARTMENT_BOARD_ATTACHMENT_SELECT_LEGACY =
   "id, thread_id, created_by, storage_path, file_name, mime_type, byte_size, sort_order, created_at";
 
 export const DEPARTMENT_BOARD_ATTACHMENT_SELECT = `${DEPARTMENT_BOARD_ATTACHMENT_SELECT_LEGACY}, post_id`;
+
+// ─── Pliki dołączane przez użytkownika (pytanie handlowca, odpowiedź zakupów) ───
+
+/** Dokumenty (nie zdjęcia): te same typy co pliki od dostawcy, bez kompresji. */
+export const BOARD_DOCUMENT_EXTENSIONS = ["pdf", "xlsx", "xls", "docx", "doc", "csv"] as const;
+export const BOARD_DOCUMENT_ACCEPT = BOARD_DOCUMENT_EXTENSIONS.map((e) => `.${e}`).join(",");
+/** Jedno pole „Zdjęcia i pliki”: zdjęcia idą kompresją, dokumenty bez zmian. */
+export const BOARD_FILE_ACCEPT = `${BOARD_IMAGE_ACCEPT},${BOARD_DOCUMENT_ACCEPT}`;
+export const BOARD_DOCUMENT_MAX_COUNT = BOARD_SUPPLIER_FILE_MAX_COUNT;
+export const BOARD_DOCUMENT_MAX_BYTES = BOARD_SUPPLIER_FILE_MAX_BYTES;
+/** Wszystkie pliki jednej wiadomości razem — zostaje miejsce na zdjęcia pod limitem akcji serwera (20 MB). */
+export const BOARD_DOCUMENT_MAX_TOTAL_BYTES = 15 * 1024 * 1024;
+/** ponytail: proxy przed ontime.mikran.pl ucina żądania ~1 MB; po podniesieniu client_max_body_size — usuń ostrzeżenie. */
+export const BOARD_PROXY_SOFT_LIMIT_BYTES = 1024 * 1024;
+
+/** Dokument do dołączenia (PDF, Excel, Word, CSV) albo null — zdjęcie lub nieobsługiwany typ. */
+export function boardDocumentFileType(filename: string): { ext: string; mime: string } | null {
+  const t = boardSupplierFileType(filename);
+  return t && (BOARD_DOCUMENT_EXTENSIONS as readonly string[]).includes(t.ext) ? t : null;
+}
+
+/** Komunikat dla użytkownika albo null. Te same reguły w przeglądarce i w akcji serwera. */
+export function validateBoardDocuments(files: ReadonlyArray<{ name: string; size: number }>): string | null {
+  if (files.length > BOARD_DOCUMENT_MAX_COUNT) return `Możesz dołączyć najwyżej ${BOARD_DOCUMENT_MAX_COUNT} plików.`;
+  for (const f of files) {
+    if (!boardDocumentFileType(f.name)) return `„${f.name}”: dozwolone PDF, Excel, Word i CSV.`;
+    if (!(f.size > 0)) return `„${f.name}” jest pusty.`;
+    if (f.size > BOARD_DOCUMENT_MAX_BYTES) return `„${f.name}” jest za duży (max ${BOARD_DOCUMENT_MAX_BYTES / (1024 * 1024)} MB).`;
+  }
+  if (files.reduce((n, f) => n + f.size, 0) > BOARD_DOCUMENT_MAX_TOTAL_BYTES) {
+    return `Pliki razem przekraczają ${BOARD_DOCUMENT_MAX_TOTAL_BYTES / (1024 * 1024)} MB - wyślij część w kolejnej wiadomości.`;
+  }
+  return null;
+}
+
+/** Pierwsze bajty zgodne z rozszerzeniem (serwer): .pdf to PDF, .xlsx/.docx to ZIP, .xls/.doc to OLE, CSV to tekst. */
+export function looksLikeBoardDocumentBytes(bytes: Uint8Array | ArrayBuffer, ext: string): boolean {
+  const b = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  if (b.length < 4) return false;
+  const starts = (sig: number[]) => sig.every((v, i) => b[i] === v);
+  if (ext === "pdf") return starts([0x25, 0x50, 0x44, 0x46]);
+  if (ext === "xlsx" || ext === "docx") return starts([0x50, 0x4b, 0x03, 0x04]);
+  if (ext === "xls" || ext === "doc") return starts([0xd0, 0xcf, 0x11, 0xe0]);
+  if (ext === "csv") return !b.subarray(0, 4096).includes(0);
+  return false;
+}
+
+/**
+ * Wklejenie (Ctrl+V): zrzuty ekranu jak dotąd oraz pliki skopiowane w Eksploratorze (PDF, Excel…).
+ * Tekst nie jest przechwytywany — pusta lista, gdy w schowku nie ma plików.
+ */
+export function boardFilesFromClipboardData(data: DataTransfer | null | undefined): File[] {
+  if (!data) return [];
+  const images = imageFilesFromClipboardData(data);
+  const documents = Array.from(data.files ?? []).filter((f) => f.size > 0 && boardDocumentFileType(f.name));
+  return [...images, ...documents];
+}
+
+/** Krótka etykieta typu na kafelku pliku: „PDF”, „XLSX”, „DOCX”, „CSV”. */
+export function boardFileTypeLabel(fileName: string): string {
+  const ext = fileName.toLowerCase().split(".").pop() ?? "";
+  return ext && ext.length <= 4 ? ext.toUpperCase() : "PLIK";
+}
+
+/** „840 kB”, „1,3 MB” — rozmiar na kafelku i w podsumowaniu. */
+export function formatBoardFileSize(bytes: number | null | undefined): string {
+  if (!bytes || bytes <= 0) return "";
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toLocaleString("pl-PL", { maximumFractionDigits: 1 })} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} kB`;
+}

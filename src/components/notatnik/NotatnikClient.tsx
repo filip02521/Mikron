@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { buttonClass } from "@/components/ui/Button";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
 import { buildOnboardingNotepadDemo } from "@/lib/sales/sales-onboarding-demo-data";
@@ -1249,7 +1250,16 @@ export function NotatnikClient({
         }
         hintAriaLabel={isZkSurface ? "O stronie ZK" : "O notatniku"}
         description={pageDescription}
-        actions={<NotatnikGuide surface={isZkSurface ? "zk" : "notes"} />}
+        actions={
+          <>
+            {isZkSurface && !teamPreview && !readOnly ? (
+              <Link href="/zk/z-maila" className={buttonClass("secondary")}>
+                Nowe ZK z maila
+              </Link>
+            ) : null}
+            <NotatnikGuide surface={isZkSurface ? "zk" : "notes"} />
+          </>
+        }
       />
 
       {loadError ? (
