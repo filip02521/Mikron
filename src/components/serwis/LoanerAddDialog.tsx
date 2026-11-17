@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 import { actionAddLoanerUnit, actionSuggestLoanerCode } from "@/app/actions/service-loaners";
 import { actionSubiektSuggestProducts } from "@/app/actions/subiekt";
 import { LOANER_CONDITIONS } from "@/lib/orders/service-loaners";
+import { fieldLabelClass } from "@/lib/ui/serwis-theme";
 
 type Product = { twId: number; symbol: string | null; name: string };
 
@@ -101,7 +102,7 @@ export function LoanerAddDialog({ onClose, onDone }: { onClose: () => void; onDo
         }}
       >
         <div className="relative">
-          <label htmlFor={`${formId}-tw`} className="mb-1.5 block text-xs font-semibold text-slate-600">
+          <label htmlFor={`${formId}-tw`} className={fieldLabelClass}>
             Towar z Subiekta
           </label>
           <input
@@ -140,7 +141,7 @@ export function LoanerAddDialog({ onClose, onDone }: { onClose: () => void; onDo
         </div>
 
         <div>
-          <span className="mb-1.5 block text-xs font-semibold text-slate-600">Numer egzemplarza</span>
+          <span className={fieldLabelClass}>Numer egzemplarza</span>
           <div role="radiogroup" aria-label="Rodzaj numeru" className="mb-2 inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
             {[
               { v: false, l: "Własny numer" },
@@ -169,7 +170,7 @@ export function LoanerAddDialog({ onClose, onDone }: { onClose: () => void; onDo
         </div>
 
         <div>
-          <span className="mb-1.5 block text-xs font-semibold text-slate-600">Stan techniczny</span>
+          <span className={fieldLabelClass}>Stan techniczny</span>
           <div role="radiogroup" aria-label="Stan techniczny" className="flex flex-wrap gap-1.5">
             {LOANER_CONDITIONS.map((c) => (
               <button

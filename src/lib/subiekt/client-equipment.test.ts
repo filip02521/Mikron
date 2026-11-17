@@ -11,15 +11,32 @@ vi.mock("@/lib/subiekt/client", () => ({
     return { data: pages[base]?.[page - 1] ?? [] };
   }),
 }));
+vi.mock("@/lib/data/service-parts", () => ({
+  resolveServicePartsCecha: vi.fn(async () => ({ cechaId: 9, name: "Części serwisowe" })),
+  fetchServicePartTwIds: vi.fn(async () => [701]),
+}));
 vi.mock("@/lib/subiekt/api", () => ({
-  getSubiektDocument: vi.fn(async (id: number) => ({
+  getSubiektDocument: vi.fn(async (id: number) =>
+    id === 70
+      ? {
+          dok_Id: 70,
+          dok_NrPelny: "FS 70",
+          dok_DataWyst: "2026-11-12T00:00:00",
+          dok_Uwagi: "SN X21TEST070",
+          dok_Pozycja: [
+            { ob_Id: 1, ob_TowId: 701, tw_Nazwa: "Przewód TEST", ob_CenaNetto: 234 },
+            { ob_Id: 2, ob_TowId: 702, tw_Nazwa: "Wysyłka TEST", ob_CenaNetto: 12 },
+          ],
+        }
+      : {
     dok_Id: id,
     dok_NrPelny: id === 2 ? "PA 1/M/11/2026" : `FS ${id}`,
     dok_DataWyst: "2026-11-01T00:00:00",
-    dok_Uwagi: "1. AB123456",
+    dok_Uwagi: `1. AB12345${id}`,
     dok_Pozycja: [{ ob_Id: 1, ob_TowId: 500 + id, tw_Symbol: `M${id}`, tw_Nazwa: `Model ${id}` }],
-  })),
-  getSubiektProduct: vi.fn(async (id: number) => ({ tw_Id: id, tw_Rodzaj: 1 })),
+        }
+  ),
+  getSubiektProduct: vi.fn(async (id: number) => ({ tw_Id: id, tw_Rodzaj: id === 702 ? 2 : 1 })),
 }));
 
 import { fetchClientEquipment } from "./client-equipment";
@@ -49,5 +66,12 @@ describe("fetchClientEquipment", () => {
     const r = await fetchClientEquipment(7);
     expect(calls.filter((c) => c.startsWith("/documents/fs?")).length).toBe(3);
     expect(r.invoicesScanned).toBe(401);
+  });
+
+  it("faktura za naprawę (część z cechy + usługa) nie daje sprzętu, tylko wpis naprawy", async () => {
+    pages["/documents/fs"] = [[{ dok_Id: 70, dok_Uwagi: "SN X21TEST070" }]];
+    const r = await fetchClientEquipment(5);
+    expect(r.items).toEqual([]);
+    expect(r.repairs).toEqual([{ serial: "X21TEST070", invoiceId: 70, invoiceNumber: "FS 70", invoiceDate: "2026-11-12" }]);
   });
 });

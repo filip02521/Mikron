@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { actionSubiektSuggestClients, actionSubiektSuggestProducts } from "@/app/actions/subiekt";
+import { fieldLabelClass } from "@/lib/ui/serwis-theme";
 
 export const pickerInputClass =
   "h-11 w-full rounded-lg border border-slate-200 bg-card px-3 text-base focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:h-10 sm:text-sm";
@@ -26,6 +27,8 @@ export function ClientPicker({
   const [hint, setHint] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const seq = useRef(0);
+  // Lista podpowiedzi tylko pod palcem: wpis wstawiony ze zgłoszenia też szuka w Subiekcie, ale nie otwiera listy na formularzu.
+  const focused = useRef(false);
 
   useEffect(() => {
     const term = q.trim();
@@ -47,14 +50,14 @@ export function ClientPicker({
           phone: String(k.adr_Telefon || k.kh_Telefon || "").trim() || null,
         }))
       );
-      setOpen(true);
+      setOpen(focused.current);
     }, 250);
     return () => clearTimeout(t);
   }, [q, value]);
 
   return (
     <div className="relative">
-      <label htmlFor={id} className="mb-1.5 block text-xs font-semibold text-slate-600">
+      <label htmlFor={id} className={fieldLabelClass}>
         {label}
       </label>
       <input
@@ -68,8 +71,14 @@ export function ClientPicker({
           // Bez wyboru z listy zapisujemy nazwę wpisaną ręcznie (kh_Id pusty).
           onChange(e.target.value.trim() ? { khId: null, name: e.target.value.trim(), phone: null } : null);
         }}
-        onFocus={() => items.length && setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onFocus={() => {
+          focused.current = true;
+          if (items.length) setOpen(true);
+        }}
+        onBlur={() => {
+          focused.current = false;
+          setTimeout(() => setOpen(false), 150);
+        }}
         role="combobox"
         aria-expanded={open}
         aria-controls={`${id}-list`}
@@ -135,6 +144,8 @@ export function ProductPicker({
   const [hint, setHint] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const seq = useRef(0);
+  // Lista podpowiedzi tylko pod palcem: wpis wstawiony ze zgłoszenia też szuka w Subiekcie, ale nie otwiera listy na formularzu.
+  const focused = useRef(false);
 
   useEffect(() => {
     const term = q.trim();
@@ -150,14 +161,14 @@ export function ProductPicker({
       }
       setHint(res.items.length ? null : "Subiekt nie ma takiego towaru.");
       setItems(res.items.map((p) => ({ twId: p.tw_Id, symbol: p.tw_Symbol ?? null, name: String(p.tw_Nazwa ?? p.tw_Symbol ?? p.tw_Id) })));
-      setOpen(true);
+      setOpen(focused.current);
     }, 250);
     return () => clearTimeout(t);
   }, [q, value]);
 
   return (
     <div className="relative">
-      <label htmlFor={id} className="mb-1.5 block text-xs font-semibold text-slate-600">
+      <label htmlFor={id} className={fieldLabelClass}>
         {label}
       </label>
       <input
@@ -171,8 +182,14 @@ export function ProductPicker({
           setQ(v);
           onChange(allowFreeText && v.trim() ? { twId: null, symbol: null, name: v.trim() } : null);
         }}
-        onFocus={() => items.length && setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onFocus={() => {
+          focused.current = true;
+          if (items.length) setOpen(true);
+        }}
+        onBlur={() => {
+          focused.current = false;
+          setTimeout(() => setOpen(false), 150);
+        }}
         role="combobox"
         aria-expanded={open}
         aria-controls={`${id}-list`}

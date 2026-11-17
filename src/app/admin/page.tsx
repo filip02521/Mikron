@@ -9,6 +9,7 @@ import { AdminDataShortcuts } from "@/components/admin/AdminDataShortcuts";
 import { DeliveryStatsDiagnosticsPanel } from "@/components/admin/DeliveryStatsDiagnosticsPanel";
 import { SubiektLeadTimesPanel } from "@/components/admin/SubiektLeadTimesPanel";
 import { SubiektIntegrationPanel } from "@/components/admin/SubiektIntegrationPanel";
+import { MikranHelpdeskPanel, type MikranHelpdeskPanelProps } from "@/components/admin/MikranHelpdeskPanel";
 import { fetchDeliveryStatsDiagnostics } from "@/lib/data/delivery-stats-diagnostics";
 import { fetchInformacjaStockAutoEnabled } from "@/lib/data/informacja-stock-auto";
 import { buildCronMonitorSnapshot } from "@/lib/services/cron-monitor";
@@ -41,6 +42,18 @@ export default async function AdminPage() {
     subiektStatus = await actionGetSubiektStatus();
   } catch {
     /* brak sesji admin — nie powinno wystąpić na tej stronie */
+  }
+
+  const mikranHelpdesk: MikranHelpdeskPanelProps = {
+    connection: null,
+    secretMode: Boolean(process.env.MIKRAN_API_CLIENT_SECRET?.trim()),
+    canStore: Buffer.from(process.env.GOOGLE_OAUTH_TOKEN_KEY?.trim() ?? "", "base64").length === 32,
+  };
+  try {
+    const { getMikranConnection } = await import("@/lib/mikran-shop/connection");
+    mikranHelpdesk.connection = await getMikranConnection();
+  } catch {
+    /* brak migracji 214 — panel pokaże „Niepołączony” */
   }
 
   let deliveryStatsDiagnostics = null;
@@ -96,6 +109,7 @@ export default async function AdminPage() {
         initialBaseUrl={subiektStatus.baseUrl}
         initialAuthMode={subiektStatus.authMode}
       />
+      <MikranHelpdeskPanel {...mikranHelpdesk} />
       <DeliveryStatsDiagnosticsPanel initialData={deliveryStatsDiagnostics} />
       <SubiektLeadTimesPanel initialData={subiektLeadTimes} />
       <AdminToolsPanel />

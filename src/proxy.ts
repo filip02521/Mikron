@@ -69,6 +69,9 @@ const SALES_PREFIXES = ["/moje", "/plan", "/prosba", "/notatnik", "/zk", "/tabli
 
 const SALES_TEAM_PREFIXES = ["/zespol"];
 
+// Panel serwisu — tylko konto serwisanta i podgląd admina „Serwis” (canAccessPath przekierowuje resztę na ich start).
+const SERVICE_PREFIXES = ["/serwis"];
+
 function matchesPrefix(pathname: string, prefixes: string[]): boolean {
   return prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
@@ -166,7 +169,8 @@ export async function proxy(request: NextRequest) {
     matchesPrefix(pathname, TEETH_PREFIXES) ||
     matchesPrefix(pathname, ADMIN_PREFIXES) ||
     matchesPrefix(pathname, SALES_PREFIXES) ||
-    matchesPrefix(pathname, SALES_TEAM_PREFIXES);
+    matchesPrefix(pathname, SALES_TEAM_PREFIXES) ||
+    matchesPrefix(pathname, SERVICE_PREFIXES);
 
   if (!isProtected) {
     return sessionResponse;
