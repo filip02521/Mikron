@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   decodeHtmlEntities,
   extractInvoiceNumber,
+  splitInvoiceField,
   isClosedHelpdeskStatus,
   isStaffEmail,
   nipDigits,
@@ -184,5 +185,20 @@ describe("numery seryjne i liczba sztuk ze zgłoszenia", () => {
     expect(productQuantity("3 szt. kątnica")).toBe(3);
     expect(productQuantity("1 x prostnica")).toBeNull();
     expect(productQuantity("Forte 100 alfa III")).toBeNull();
+  });
+});
+
+describe("splitInvoiceField", () => {
+  it("numer faktury z pola, produktu albo opisu; krótki numer bez spacji też", () => {
+    expect(splitInvoiceField("3025/m/11/2024 ")).toEqual({ invoice: "3025/M/11/2024", note: "" });
+    expect(splitInvoiceField("", "Forte 100", "faktura nr 1617/M/09/2025")).toEqual({ invoice: "1617/M/09/2025", note: "" });
+    expect(splitInvoiceField("FV1617")).toEqual({ invoice: "FV1617", note: "" });
+  });
+
+  it("tekst zamiast numeru to wiadomość klienta, nie faktura do szukania", () => {
+    expect(splitInvoiceField("naprawa po gwarancji")).toEqual({ invoice: "", note: "naprawa po gwarancji" });
+    expect(splitInvoiceField("nie pamiętam")).toEqual({ invoice: "", note: "nie pamiętam" });
+    expect(splitInvoiceField("brak")).toEqual({ invoice: "", note: "brak" });
+    expect(splitInvoiceField("  ")).toEqual({ invoice: "", note: "" });
   });
 });

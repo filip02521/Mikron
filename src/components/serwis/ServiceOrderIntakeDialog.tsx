@@ -23,7 +23,7 @@ import { normalizePurchaseDate, warrantyMonthsFor, warrantyStatus, warrantyUntil
 import { WarrantyPill } from "@/components/serwis/service-order-view";
 import { SerialHistory } from "@/components/serwis/SerialHistory";
 import { fieldLabelClass, fieldLabelInlineClass, rubricBoxClass } from "@/lib/ui/serwis-theme";
-import { IconAlertCircle, IconCircleCheck } from "@/components/icons/StrokeIcons";
+import { IconAlertCircle, IconCircleCheck, IconMessageSquare } from "@/components/icons/StrokeIcons";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 import { cn } from "@/lib/cn";
 
@@ -235,6 +235,14 @@ export function ServiceOrderIntakeDialog({
                     <DraftCheck ok={Boolean(draft.invoiceFound)}>
                       {draft.invoiceFound ? `Faktura ${draft.invoiceFound} — zakup potwierdzony` : `Faktury „${draft.invoiceId}” nie ma w Subiekcie — data zakupu ręcznie`}
                     </DraftCheck>
+                  ) : null}
+                  {!draft.invoiceId && draft.invoiceNote ? (
+                    <li className="flex items-start gap-2 text-slate-700">
+                      <IconMessageSquare size={16} aria-hidden className="mt-0.5 shrink-0 text-slate-500" />
+                      <span className="min-w-0">
+                        Klient w polu faktury: „{draft.invoiceNote}” — bez numeru, datę zakupu wpisz ręcznie
+                      </span>
+                    </li>
                   ) : null}
                 </ul>
                 <div className="flex flex-wrap gap-2">

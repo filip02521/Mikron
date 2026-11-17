@@ -55,7 +55,7 @@ import {
   setHelpdeskStatus,
 } from "@/lib/mikran-shop/helpdesk";
 import {
-  extractInvoiceNumber,
+  splitInvoiceField,
   isStaffEmail,
   nipDigits,
   parseHelpdeskNumber,
@@ -571,6 +571,8 @@ export type HelpdeskIntakeDraft = {
   invoiceId: string;
   /** Faktura ze zgłoszenia znaleziona w Subiekcie (pełny numer); null — nie podano albo nie ma takiej. */
   invoiceFound: string | null;
+  /** Tekst z pola „faktura” zamiast numeru („naprawa po gwarancji”) — wiadomość klienta, nie numer do szukania. */
+  invoiceNote: string;
   /** Zlecenia już założone z tego zgłoszenia (zgłoszenie bywa na kilka urządzeń) — ostrzeżenie, nie blokada. */
   existingOrders: HelpdeskLinkedOrder[];
 };
@@ -603,7 +605,7 @@ export async function actionServiceHelpdeskDraft(rawNumber: string | number): Pr
     let clientMatch: HelpdeskIntakeDraft["clientMatch"] = null;
     // Faktura ze zgłoszenia: potwierdza zakup i wskazuje kupującego, gdy NIP nie pasuje. Błąd Subiekta = brak trafienia.
     // Numer faktury bywa w polu produktu albo w opisie („faktura nr 1617/M/09/2025. Marathon…”).
-    const invoiceNo = extractInvoiceNumber(ticket.invoiceId, ticket.product, ticket.comment) || ticket.invoiceId.trim();
+    const { invoice: invoiceNo, note: invoiceNote } = splitInvoiceField(ticket.invoiceId, ticket.product, ticket.comment);
     const nip = nipDigits(ticket.vat);
     const email = ticket.email.trim().toLowerCase();
     // Podpowiedzi z Subiekta są opcjonalne: naraz i najwyżej kilka sekund — niedostępny Subiekt (np. poza siecią biura)
@@ -643,6 +645,7 @@ export async function actionServiceHelpdeskDraft(rawNumber: string | number): Pr
         deliveryId: ticket.deliveryId,
         fault: ticket.comment.slice(0, SERVICE_ORDER_TEXT_MAX.fault),
         invoiceId: invoiceNo,
+        invoiceNote,
         // Faktura innego klienta niż dopasowany po NIP nie jest jego zakupem — nie podświetlamy jej.
         invoiceFound: invoice && (clientMatch !== "nip" || invoice.khId === client.khId) ? invoice.number : null,
         existingOrders,

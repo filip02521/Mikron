@@ -275,6 +275,19 @@ export function extractInvoiceNumber(...fields: string[]): string {
   return "";
 }
 
+/**
+ * Pole „faktura” ze zgłoszenia: klienci wpisują tam numer albo zwykły tekst („naprawa po gwarancji”, „nie pamiętam”).
+ * Numer — z pola, produktu albo opisu (pełny „1617/M/09/2025”) lub sam ciąg z cyfrą bez spacji („FV1617”, „1617/2025”).
+ * Tekst bez numeru wraca jako `note` — to wiadomość klienta, nie numer, którego trzeba szukać w Subiekcie.
+ */
+export function splitInvoiceField(field: string, ...otherFields: string[]): { invoice: string; note: string } {
+  const raw = field.trim();
+  const found = extractInvoiceNumber(raw, ...otherFields);
+  if (found) return { invoice: found, note: "" };
+  if (/^(?:F[SV]\.?\s*)?[A-Z0-9][A-Z0-9/._-]{2,29}$/i.test(raw) && /\d/.test(raw)) return { invoice: raw, note: "" };
+  return { invoice: "", note: raw.replace(/\s+/g, " ").slice(0, 120) };
+}
+
 export type HelpdeskMessage = {
   id: number | null;
   at: string;
