@@ -3,6 +3,7 @@ import {
   decodeHtmlEntities,
   extractInvoiceNumber,
   splitInvoiceField,
+  cleanMessageText,
   isClosedHelpdeskStatus,
   isStaffEmail,
   nipDigits,
@@ -200,5 +201,42 @@ describe("splitInvoiceField", () => {
     expect(splitInvoiceField("nie pamiętam")).toEqual({ invoice: "", note: "nie pamiętam" });
     expect(splitInvoiceField("brak")).toEqual({ invoice: "", note: "brak" });
     expect(splitInvoiceField("  ")).toEqual({ invoice: "", note: "" });
+  });
+});
+
+// Kształty z prawdziwych zgłoszeń; treść i podpisy wymyślone.
+describe("usterka ze zgłoszenia", () => {
+  it("bez powitania i podpisu, bez pustych wierszy", () => {
+    expect(cleanMessageText("Witam,\n\nSilnik nie rusza.\nIskrzy przy obrotach.\n\nPozdrawiam\nJan TEST")).toBe("Silnik nie rusza.\nIskrzy przy obrotach.");
+    expect(cleanMessageText("Hej Adam\nPrzesyłam prostnicę do naprawy.")).toBe("Przesyłam prostnicę do naprawy.");
+    expect(cleanMessageText("Dzień dobry, lampa gaśnie\nZ poważaniem\nGabinet TEST")).toBe("Dzień dobry, lampa gaśnie");
+  });
+
+  it("samo „Pozdrawiam” w środku długiego listu zostaje; jednowierszowy opis bez zmian", () => {
+    const long = "A\nPozdrawiam też kolegę\nB\nC\nD\nE\nF";
+    expect(cleanMessageText(long)).toBe(long);
+    expect(cleanMessageText("Luźne wrzeciono")).toBe("Luźne wrzeciono");
+  });
+
+  it("zgłoszenie założone przez serwis: usterka z pierwszej wiadomości klienta", () => {
+    const t = parseHelpdeskTicket({
+      service_id: 7,
+      comment: "Witam,\nDiagnoza: wymiana łożysk, koszt 300 zł.\nPozdrawiam\nSerwis TEST",
+      messages: [
+        { date_added: "2026-11-01 09:00", comment: "Witam,\nDiagnoza: wymiana łożysk, koszt 300 zł.\nPozdrawiam\nSerwis TEST", user_id: 28 },
+        { date_added: "2026-11-01 10:00", comment: "Dziękujemy", user_id: 28, auto: 1 },
+        { date_added: "2026-11-01 11:00", comment: "Dane zgłoszeniaZgłoszenie do serwisuGabinet TEST500 000 000", user_id: 0 },
+        { date_added: "2026-11-02 08:00", comment: "Dzień dobry\nProstnica grzeje się i hałasuje.", user_id: 0 },
+      ],
+    });
+    expect(t).toMatchObject({ fault: "Prostnica grzeje się i hałasuje.", faultFrom: "klient" });
+  });
+
+  it("bez wiadomości klienta zostaje tekst serwisu, oznaczony", () => {
+    const t = parseHelpdeskTicket({
+      service_id: 8,
+      messages: [{ date_added: "2026-11-01 09:00", comment: "Witam,\nWymiana przewodu.\nPozdrawiam\nSerwis TEST", user_id: 28 }],
+    });
+    expect(t).toMatchObject({ fault: "Wymiana przewodu.", faultFrom: "serwis" });
   });
 });

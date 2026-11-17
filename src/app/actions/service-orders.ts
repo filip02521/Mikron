@@ -567,6 +567,8 @@ export type HelpdeskIntakeDraft = {
   /** Ile urządzeń obejmuje zgłoszenie (pole ilości, „4 x …” w produkcie albo liczba numerów); null — jedno / nie wiadomo. */
   devices: number | null;
   fault: string;
+  /** `serwis` — w zgłoszeniu nie ma wiadomości klienta, usterka to tekst serwisu (do skrócenia przez serwisanta). */
+  faultFrom: "klient" | "serwis";
   /** Numer faktury tak, jak go podał klient — do podświetlenia sprzętu z tej faktury. */
   invoiceId: string;
   /** Faktura ze zgłoszenia znaleziona w Subiekcie (pełny numer); null — nie podano albo nie ma takiej. */
@@ -643,7 +645,8 @@ export async function actionServiceHelpdeskDraft(rawNumber: string | number): Pr
         serials,
         devices: devices >= 2 ? devices : null,
         deliveryId: ticket.deliveryId,
-        fault: ticket.comment.slice(0, SERVICE_ORDER_TEXT_MAX.fault),
+        fault: ticket.fault.slice(0, SERVICE_ORDER_TEXT_MAX.fault),
+        faultFrom: ticket.faultFrom,
         invoiceId: invoiceNo,
         invoiceNote,
         // Faktura innego klienta niż dopasowany po NIP nie jest jego zakupem — nie podświetlamy jej.

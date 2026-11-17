@@ -18,6 +18,12 @@ export type HelpdeskTicket = {
   quantity: number | null;
   /** Opis klienta: pole zgłoszenia albo pierwsza wiadomość wątku. */
   comment: string;
+  /**
+   * Usterka do przyjęcia: opis bez powitania i podpisu. Gdy zgłoszenie założył serwis (najstarsza wiadomość od
+   * pracownika), bierzemy pierwszą wiadomość klienta; bez niej zostaje tekst serwisu (`faultFrom: "serwis"`).
+   */
+  fault: string;
+  faultFrom: "klient" | "serwis";
   /** YYYY-MM-DD lub pełna data z API. */
   dateAdded: string;
   statusId: number | null;
@@ -95,6 +101,29 @@ function firstMessage(raw: Record<string, unknown>): string {
   return "";
 }
 
+/** Samo powitanie, najwyżej z imieniem („Hej Adam”, „Szanowni Państwo,”) — „Dzień dobry, lampa gaśnie” to już treść. */
+const GREETING = /^(?:witam|witajcie|dzie[nń]\s+dobry|hej|cze[sś][cć]|szanown\S*|hello|hi|dear|sveiki|dobr[yý]\s+den)(?:\s+\p{L}+){0,2}\s*[,!.]?$/iu;
+const CLOSING = /^(?:pozdrawiam|pozdrowienia|z\s+powa[zż]aniem|serdecznie\s+pozdrawiam|best\s+regards|kind\s+regards|regards|s\s+pozdravem|pagarbiai)\b/i;
+
+/** Treść wiadomości bez powitania („Witam,”, „Hej Adam”) i podpisu (od „Pozdrawiam” do końca); bez pustych wierszy. */
+export function cleanMessageText(text: string): string {
+  const lines = text.replace(/\r/g, "").split("\n").map((l) => l.trim());
+  const body = lines.filter(Boolean);
+  if (body.length > 1 && GREETING.test(body[0]!)) body.shift();
+  // Podpis tylko w ostatnich wierszach — „Pozdrawiam” w środku listu to jeszcze treść.
+  const close = body.findIndex((l, i) => i >= body.length - 4 && i > 0 && CLOSING.test(l));
+  if (close > 0) body.splice(close);
+  return body.join("\n");
+}
+
+function ticketFault(r: Record<string, unknown>, comment: string): Pick<HelpdeskTicket, "fault" | "faultFrom"> {
+  const msgs = parseHelpdeskMessages(r);
+  if (!msgs[0]?.staff) return { fault: cleanMessageText(comment), faultFrom: "klient" };
+  // „Dane zgłoszenia…” to kopia formularza sklepu (dane kontaktowe sklejone w jeden ciąg), nie opis usterki.
+  const client = msgs.find((m) => !m.staff && !m.auto && !/^\s*Dane zgłoszenia/i.test(m.text));
+  return client ? { fault: cleanMessageText(client.text), faultFrom: "klient" } : { fault: cleanMessageText(comment), faultFrom: "serwis" };
+}
+
 export function parseHelpdeskTicket(raw: unknown, test = false): HelpdeskTicket | null {
   if (!raw || typeof raw !== "object") return null;
   const r = (raw as Record<string, unknown>).data && typeof (raw as Record<string, unknown>).data === "object" && !Array.isArray((raw as Record<string, unknown>).data)
@@ -102,6 +131,7 @@ export function parseHelpdeskTicket(raw: unknown, test = false): HelpdeskTicket 
     : (raw as Record<string, unknown>);
   const id = int(r, ["service_id", "helpdesk_id", "id"]);
   if (!id || id <= 0) return null;
+  const comment = str(r, ["comment", "description"]) || firstMessage(r);
   return {
     id,
     name: str(r, ["name", "customer", "firstname"]),
@@ -112,7 +142,8 @@ export function parseHelpdeskTicket(raw: unknown, test = false): HelpdeskTicket 
     product: str(r, ["product"]),
     invoiceId: str(r, ["invoice_id", "invoice"]),
     quantity: int(r, ["quantity"]),
-    comment: str(r, ["comment", "description"]) || firstMessage(r),
+    comment,
+    ...ticketFault(r, comment),
     dateAdded: str(r, ["date_added", "created_at", "date"]),
     statusId: int(r, ["service_status_id", "status_id"]),
     status: str(r, ["status", "status_name", "service_status"]),
@@ -157,6 +188,8 @@ export const HELPDESK_TEST_TICKETS: HelpdeskTicket[] = [
     invoiceId: "",
     quantity: 1,
     comment: "TEST — zgłoszenie testowe, nie od klienta. Silnik nie rusza po włączeniu pedału.",
+    fault: "TEST — zgłoszenie testowe, nie od klienta. Silnik nie rusza po włączeniu pedału.",
+    faultFrom: "klient",
     dateAdded: "",
     statusId: 1,
     status: "Nowe zgłoszenie",
@@ -178,6 +211,8 @@ export const HELPDESK_TEST_TICKETS: HelpdeskTicket[] = [
     invoiceId: "",
     quantity: 1,
     comment: "TEST — zgłoszenie testowe, nie od klienta. Lampa gaśnie po 5 sekundach.",
+    fault: "TEST — zgłoszenie testowe, nie od klienta. Lampa gaśnie po 5 sekundach.",
+    faultFrom: "klient",
     dateAdded: "",
     statusId: 2,
     status: "Przyjęte do realizacji",

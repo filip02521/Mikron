@@ -440,14 +440,18 @@ export function ServiceOrderIntakeDialog({
           <label htmlFor={`${formId}-fault`} className={labelClass}>
             Usterka — co zgłasza klient
           </label>
+          {draft?.faultFrom === "serwis" && fault ? (
+            <p className="mb-1.5 text-xs text-slate-500">Z wiadomości serwisu w zgłoszeniu (klient nic nie napisał) — zostaw sam opis usterki.</p>
+          ) : null}
           <textarea
             id={`${formId}-fault`}
             value={fault}
-            rows={3}
+            // Rośnie z tekstem (opisy ze zgłoszeń mają do ~10 wierszy), dalej przewija się.
+            rows={Math.min(10, Math.max(4, fault.split("\n").reduce((n, l) => n + Math.max(1, Math.ceil(l.length / 60)), 0)))}
             maxLength={SERVICE_ORDER_TEXT_MAX.fault}
             onChange={(e) => setFault(e.target.value)}
             placeholder="Np. silnik nie rusza, iskrzy przy wyższych obrotach"
-            className="w-full rounded-lg border border-slate-200 bg-card px-3 py-2 text-base focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:text-sm"
+            className="w-full rounded-lg border border-slate-200 bg-card px-3 py-2 text-base leading-relaxed text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:text-[0.9375rem]"
           />
         </div>
 
