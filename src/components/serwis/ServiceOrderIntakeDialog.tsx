@@ -25,6 +25,7 @@ import { SerialHistory } from "@/components/serwis/SerialHistory";
 import { fieldLabelClass, fieldLabelInlineClass, rubricBoxClass } from "@/lib/ui/serwis-theme";
 import { IconAlertCircle, IconCircleCheck, IconMessageSquare } from "@/components/icons/StrokeIcons";
 import { polishPluralWord } from "@/lib/email/polish-plural";
+import { ServiceOrderHelpdeskThread } from "@/components/serwis/ServiceOrderHelpdeskThread";
 import { cn } from "@/lib/cn";
 
 const labelClass = fieldLabelClass;
@@ -246,6 +247,7 @@ export function ServiceOrderIntakeDialog({
                   ) : null}
                 </ul>
                 <div className="flex flex-wrap gap-2">
+                  {draft.test ? null : <ServiceOrderHelpdeskThread helpdeskId={draft.helpdeskId} compact />}
                   <Button type="button" size="sm" variant="secondary" onClick={() => setDraft(null)}>
                     Zmień zgłoszenie
                   </Button>
