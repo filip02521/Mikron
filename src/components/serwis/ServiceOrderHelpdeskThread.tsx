@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, useTransition } from "react";
+import { createContext, useEffect, useId, useRef, useState, useTransition } from "react";
 import { actionServiceHelpdeskReply, actionServiceHelpdeskThread } from "@/app/actions/service-orders";
 import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
 import { IconCircleCheck, IconMessageSquare } from "@/components/icons/StrokeIcons";
@@ -14,6 +14,12 @@ import { polishPluralWord } from "@/lib/email/polish-plural";
 import type { HelpdeskMessage } from "@/lib/mikran-shop/helpdesk-parse";
 import { formatHelpdeskWhen } from "@/lib/orders/service-related-cases";
 import { fieldLabelClass } from "@/lib/ui/serwis-theme";
+
+/**
+ * Czy z tego ekranu można odpowiadać w zgłoszeniu (ustawia tablica zleceń z serwera). Bez tego przyciski „Wyślij …
+ * w zgłoszeniu” się nie pokazują — zostaje kopiowanie tekstu, zamiast przycisku, który kończy się „wyłączone”.
+ */
+export const HelpdeskReplyContext = createContext(false);
 
 type ThreadState =
   | { kind: "loading" }
@@ -31,11 +37,19 @@ export function ServiceOrderHelpdeskThread({
   helpdeskId,
   className,
   compact = false,
+  label,
+  prefill,
+  variant = "secondary",
 }: {
   helpdeskId: number;
   className?: string;
   /** Krótki przycisk w rzędzie innych (okno przyjęcia); w karcie zlecenia — pełna szerokość z numerem. */
   compact?: boolean;
+  /** Własny napis przycisku (np. „Wyślij wycenę klientowi w zgłoszeniu #N”). */
+  label?: string;
+  /** Gotowy tekst do pola odpowiedzi (wycena, wydanie) — wpisywany, gdy pole jest puste; serwisant może go poprawić. */
+  prefill?: string | null;
+  variant?: "primary" | "secondary";
 }) {
   const [open, setOpen] = useState(false);
   // Niewysłana odpowiedź przeżywa zamknięcie okna — przypadkowe „Zamknij” nie kasuje pisanego tekstu.
@@ -44,13 +58,16 @@ export function ServiceOrderHelpdeskThread({
     <>
       <Button
         type="button"
-        variant="secondary"
+        variant={variant}
         size={compact ? "sm" : "md"}
         className={cn("gap-2", !compact && "min-h-11 w-full justify-start", className)}
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          if (prefill && !draft.trim()) setDraft(prefill);
+          setOpen(true);
+        }}
       >
         <IconMessageSquare size={16} aria-hidden className="shrink-0" />
-        {compact ? "Cała rozmowa" : `Rozmowa z klientem — zgłoszenie #${helpdeskId}`}
+        {label ?? (compact ? "Cała rozmowa" : `Rozmowa z klientem — zgłoszenie #${helpdeskId}`)}
         {draft.trim() ? <span className="text-xs font-normal text-slate-500">· szkic odpowiedzi</span> : null}
       </Button>
       {open ? <HelpdeskThreadDialog helpdeskId={helpdeskId} draft={draft} setDraft={setDraft} onClose={() => setOpen(false)} /> : null}
@@ -85,6 +102,14 @@ function HelpdeskThreadDialog({
       alive = false;
     };
   }, [helpdeskId, attempt]);
+
+  // Po wczytaniu stopka renderuje się od nowa i zabiera element z fokusem — fokus wraca do okna, nie zostaje na <body>
+  // (wtedy klawiatura i Escape trafiałyby do karty pod spodem). Bez wchodzenia w pole: na dotyku nie wyskakuje klawiatura.
+  useEffect(() => {
+    if (state.kind === "loading") return;
+    const panel = endRef.current?.closest<HTMLElement>('[role="dialog"]');
+    if (panel && !panel.contains(document.activeElement)) panel.focus();
+  }, [state.kind]);
 
   // Jak w czacie: otwiera się na najnowszej wiadomości, starsze wyżej.
   const messageCount = state.kind === "ok" ? state.messages.length : 0;

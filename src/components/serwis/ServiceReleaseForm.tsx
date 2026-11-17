@@ -1,12 +1,13 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useContext, useId, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { IconPackageCheck } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { actionMoveServiceOrder, type ServiceOrderActionResult } from "@/app/actions/service-orders";
 import { pickerInputClass } from "@/components/serwis/SubiektPickers";
 import { ClientMessage } from "@/components/serwis/ServiceQuoteForm";
+import { HelpdeskReplyContext } from "@/components/serwis/ServiceOrderHelpdeskThread";
 import type { OrderPartView } from "@/components/serwis/service-order-view";
 import { composeReleaseMessage } from "@/lib/orders/service-messages";
 import { SERVICE_OUTBOUND_LABEL, type ServiceOrder, type ServiceOutboundMethod } from "@/lib/orders/service-orders";
@@ -33,6 +34,7 @@ export function ServiceReleaseForm({
   submit: Submit;
   onCancel: () => void;
 }) {
+  const replyEnabled = useContext(HelpdeskReplyContext);
   const formId = useId();
   const [method, setMethod] = useState<ServiceOutboundMethod | null>(null);
   const [tracking, setTracking] = useState("");
@@ -127,7 +129,13 @@ export function ServiceReleaseForm({
         </Button>
       </div>
       <p className="text-[0.8125rem] text-slate-600">{method ? hint : "Wybierz, jak sprzęt wraca, żeby go wydać."}</p>
-      <ClientMessage text={message} label="Kopiuj wiadomość o wydaniu" />
+      <ClientMessage
+        text={message}
+        label="Kopiuj wiadomość o wydaniu"
+        sendLabel={`Wyślij klientowi w zgłoszeniu #${order.helpdeskId}`}
+        helpdeskId={order.helpdeskId}
+        hint={order.helpdeskId && replyEnabled ? "Wyślij przed albo po „Wydaj klientowi” — „Wyślij” otwiera rozmowę z tym tekstem, możesz go poprawić i wybrać, czy klient dostaje maila." : undefined}
+      />
     </form>
   );
 }

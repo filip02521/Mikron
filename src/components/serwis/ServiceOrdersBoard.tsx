@@ -18,6 +18,7 @@ import { ServiceOrderDrawer } from "@/components/serwis/ServiceOrderDrawer";
 import { ServiceOrderIntakeDialog } from "@/components/serwis/ServiceOrderIntakeDialog";
 import { HelpdeskTicketsSection, type HelpdeskBoardData } from "@/components/serwis/HelpdeskTicketsSection";
 import { countTicketsWithoutOrders, helpdeskSearchText } from "@/components/serwis/helpdesk-intake";
+import { HelpdeskReplyContext } from "@/components/serwis/ServiceOrderHelpdeskThread";
 import { ServiceStampStrip, stampSummary } from "@/components/serwis/ServiceStampStrip";
 import { ServiceFilterBar } from "@/components/serwis/ServiceFilterBar";
 import {
@@ -364,6 +365,7 @@ export function ServiceOrdersBoard({
   };
 
   return (
+    <HelpdeskReplyContext.Provider value={Boolean(helpdesk.canReply)}>
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2">
         <label className="relative block w-full min-w-0 sm:w-auto sm:max-w-sm sm:flex-1">
@@ -479,5 +481,6 @@ export function ServiceOrdersBoard({
         : null}
       {toast ? <NoticeToast notice={toast} onDismiss={() => setToast(null)} /> : null}
     </div>
+    </HelpdeskReplyContext.Provider>
   );
 }

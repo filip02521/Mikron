@@ -158,6 +158,8 @@ export function ServiceOrderDrawer({
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       if (e.target instanceof Element && e.target.closest('[role="dialog"]:not([data-order-drawer])')) return;
+      // Okno nad kartą (np. rozmowa z klientem) zamyka się samo — jedno Escape nie zamyka obu, nawet gdy fokus jest poza nim.
+      if (document.querySelector('[aria-modal="true"]:not([data-order-drawer])')) return;
       requestClose();
     };
     window.addEventListener("keydown", onKey);
@@ -461,7 +463,13 @@ export function ServiceOrderDrawer({
                 ) : null}
               </div>
               {order.quote.note ? <p className="whitespace-pre-line text-sm text-slate-800">{order.quote.note}</p> : null}
-              <ClientMessage text={quoteMessage} label="Kopiuj wiadomość do klienta" disabledHint="Wycena bez kwoty — wróć do diagnozy i wpisz ją jeszcze raz." />
+              <ClientMessage
+                text={quoteMessage}
+                label="Kopiuj wiadomość do klienta"
+                sendLabel={`Wyślij wycenę klientowi w zgłoszeniu #${order.helpdeskId}`}
+                helpdeskId={readOnly ? null : order.helpdeskId}
+                disabledHint="Wycena bez kwoty — wróć do diagnozy i wpisz ją jeszcze raz."
+              />
             </Section>
           ) : null}
 
@@ -555,6 +563,9 @@ export function ServiceOrderDrawer({
             )
           ) : null}
 
+          {/* Kontakt z klientem w jednym miejscu: telefon (gdy gotowe) i rozmowa ze zgłoszenia — czytanie i odpowiedź. */}
+          {order.helpdeskId ? <ServiceOrderHelpdeskThread key={order.helpdeskId} helpdeskId={order.helpdeskId} /> : null}
+
           {view.loanerFirst ? loanerSection : null}
 
           {error ? (
@@ -570,8 +581,6 @@ export function ServiceOrderDrawer({
             {order.accessories ? <p className="text-[0.8125rem] text-slate-500">Przyjęte z: {order.accessories}</p> : null}
           </Section>
 
-          {/* Rozmowa z klientem ze zgłoszenia — bez przełączania się do helpdesku. */}
-          {order.helpdeskId ? <ServiceOrderHelpdeskThread key={order.helpdeskId} helpdeskId={order.helpdeskId} /> : null}
 
           {/* Ten sam egzemplarz, inne naprawy klienta, inne zgłoszenia (duplikaty) — zastępuje samą historię egzemplarza. */}
           <ServiceRelatedCases order={order} canOpenOrder={canOpenOrder} onOpenOrder={onOpenOrder} />

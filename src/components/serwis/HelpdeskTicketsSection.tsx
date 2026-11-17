@@ -22,6 +22,8 @@ export type HelpdeskBoardData = {
   error: string | null;
   /** Połączenie z mikran.pl wygasło albo zostało cofnięte — pomoże tylko ponowne logowanie. */
   needsReconnect?: boolean;
+  /** Serwisant może odpowiadać klientowi z OnTime (MIKRAN_HELPDESK_WRITE=1 i połączony helpdesk). */
+  canReply?: boolean;
 };
 
 const CONNECT_HREF = "/api/mcp/connect";

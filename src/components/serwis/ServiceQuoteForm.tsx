@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useContext, useId, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { IconCopy } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
@@ -11,12 +11,36 @@ import type { OrderPartView } from "@/components/serwis/service-order-view";
 import { composeQuoteMessage, defaultQuoteScope } from "@/lib/orders/service-messages";
 import { formatQuoteAmount, parseQuoteAmount, type ServiceOrder } from "@/lib/orders/service-orders";
 import { fieldLabelClass } from "@/lib/ui/serwis-theme";
+import { HelpdeskReplyContext, ServiceOrderHelpdeskThread } from "@/components/serwis/ServiceOrderHelpdeskThread";
 
 type Submit = (fn: () => Promise<ServiceOrderActionResult>, after?: () => void) => void;
 
-/** Podgląd wiadomości i kopiowanie do schowka — OnTime nie pisze do helpdesku, serwisant wkleja tekst w zgłoszenie. */
-export function ClientMessage({ text, label, disabledHint }: { text: string | null; label: string; disabledHint?: string }) {
+/**
+ * Gotowa wiadomość do klienta (wycena, wydanie). Zlecenie ze zgłoszeniem: główny przycisk otwiera rozmowę z tym
+ * tekstem w polu odpowiedzi (serwisant poprawia go i wybiera, czy klient dostaje maila); kopiowanie zostaje obok.
+ * Bez zgłoszenia — tylko kopiowanie, do maila albo SMS-a.
+ */
+export function ClientMessage({
+  text,
+  label,
+  sendLabel,
+  disabledHint,
+  helpdeskId = null,
+  hint,
+}: {
+  text: string | null;
+  /** Napis przycisku kopiowania. */
+  label: string;
+  /** Napis przycisku wysyłki w zgłoszeniu (tylko z `helpdeskId`). */
+  sendLabel?: string;
+  disabledHint?: string;
+  helpdeskId?: number | null;
+  /** Zamiast domyślnego opisu pod przyciskami. */
+  hint?: string;
+}) {
   const [copied, setCopied] = useState<boolean | null>(null);
+  const replyEnabled = useContext(HelpdeskReplyContext);
+  const canSend = Boolean(replyEnabled && helpdeskId && text && sendLabel);
   return (
     <div className="space-y-2">
       {text ? (
@@ -24,22 +48,29 @@ export function ClientMessage({ text, label, disabledHint }: { text: string | nu
           {text}
         </pre>
       ) : null}
+      {/* Wysyłka obok głównego kroku zlecenia (wydaj, naprawiaj) — drugorzędna; kopiowanie najcichsze, gdy jest wysyłka. */}
+      {canSend ? <ServiceOrderHelpdeskThread helpdeskId={helpdeskId!} label={sendLabel} prefill={text} className="justify-center" /> : null}
       <Button
         type="button"
-        variant="secondary"
+        variant={canSend ? "ghost" : "secondary"}
         disabled={!text}
         className="min-h-11 w-full"
         onClick={() => text && copyTextToClipboard(text).then(setCopied)}
       >
         <IconCopy size={18} aria-hidden />
-        {copied ? "Skopiowano — wklej w zgłoszenie" : label}
+        {copied ? "Skopiowano" : label}
       </Button>
       <p className="text-[0.8125rem] text-slate-600" aria-live="polite">
         {copied === false
           ? "Nie udało się skopiować — zaznacz tekst wyżej i skopiuj ręcznie."
           : !text && disabledHint
             ? disabledHint
-            : "Do wklejenia w zgłoszenie w helpdesku — OnTime sam nic klientowi nie wysyła."}
+            : hint ??
+              (canSend
+                ? "„Wyślij” otwiera rozmowę z tym tekstem — przed wysłaniem możesz go poprawić i zdecydować, czy klient dostaje maila."
+                : helpdeskId
+                  ? `Wysyłanie z OnTime jest wyłączone — skopiuj tekst i wklej go w zgłoszeniu #${helpdeskId} w panelu sklepu.`
+                  : "Zlecenie bez zgłoszenia w helpdesku — skopiuj tekst i wyślij klientowi mailem albo SMS-em.")}
       </p>
     </div>
   );
@@ -59,6 +90,7 @@ export function ServiceQuoteForm({
   submit: Submit;
   onCancel: () => void;
 }) {
+  const replyEnabled = useContext(HelpdeskReplyContext);
   const formId = useId();
   const [amount, setAmount] = useState("");
   const [scope, setScope] = useState(() => defaultQuoteScope(order.workNote, parts));
@@ -118,7 +150,16 @@ export function ServiceQuoteForm({
         </Button>
       </div>
       <p className="text-[0.8125rem] text-slate-600">Zapis przenosi zlecenie do „Czeka na klienta” i liczy dni bez odpowiedzi.</p>
-      <ClientMessage text={message} label="Kopiuj wiadomość do klienta" disabledHint="Wpisz kwotę, a pod spodem pojawi się wiadomość do klienta." />
+      <ClientMessage
+        text={message}
+        label="Kopiuj wiadomość do klienta"
+        disabledHint="Wpisz kwotę, a pod spodem pojawi się wiadomość do klienta."
+        hint={
+          order.helpdeskId && replyEnabled
+            ? `Podgląd wiadomości. Po zapisie wyceny wyślesz ją klientowi w zgłoszeniu #${order.helpdeskId} — przycisk będzie w „Wycena dla klienta”.`
+            : undefined
+        }
+      />
     </form>
   );
 }

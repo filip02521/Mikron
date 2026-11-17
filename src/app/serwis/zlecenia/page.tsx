@@ -6,7 +6,7 @@ import {
   fetchServiceModelWarranties,
   fetchServiceOrderBoard,
 } from "@/lib/data/service-orders";
-import { fetchOpenServiceTickets, helpdeskMode } from "@/lib/mikran-shop/helpdesk";
+import { fetchOpenServiceTickets, helpdeskMode, helpdeskWriteEnabled } from "@/lib/mikran-shop/helpdesk";
 import { MikranAuthError } from "@/lib/mikran-shop/oauth";
 import type { HelpdeskBoardData } from "@/components/serwis/HelpdeskTicketsSection";
 import { fetchLoanerFleet } from "@/lib/data/service-loaners";
@@ -52,7 +52,7 @@ export default async function ZleceniaPage() {
     try {
       const { mode, tickets } = await fetchOpenServiceTickets();
       const linked = await fetchOrdersByHelpdeskIds(tickets.map((t) => t.id));
-      helpdesk = { mode, tickets, linked: Object.fromEntries(linked), error: null };
+      helpdesk = { mode, tickets, linked: Object.fromEntries(linked), error: null, canReply: await helpdeskWriteEnabled() };
     } catch (e) {
       helpdesk = {
         ...helpdesk,

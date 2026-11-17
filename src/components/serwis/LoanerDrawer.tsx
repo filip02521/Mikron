@@ -168,6 +168,8 @@ export function LoanerDrawer({
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       if (e.target instanceof Element && e.target.closest('[role="dialog"]:not([data-loaner-drawer])')) return;
+      // Okno nad szufladą zamyka się samo — jedno Escape nie zamyka obu, nawet gdy fokus jest poza nim.
+      if (document.querySelector('[aria-modal="true"]:not([data-loaner-drawer])')) return;
       requestClose();
     };
     window.addEventListener("keydown", onKey);
