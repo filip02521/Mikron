@@ -130,6 +130,21 @@ describe("parseHelpdeskMessages", () => {
     ]);
   });
 
+  it("autor jak w API sklepu (commented_name, potem pracownik / klient) i autoodpowiedź", () => {
+    const m = parseHelpdeskMessages({
+      messages: [
+        { service_history_id: 1, date_added: "2026-11-01 09:00:00", comment: "Silnik nie rusza", user_id: 0, commented_name: "", customer_name: "Gabinet TEST", auto: 0 },
+        { service_history_id: 2, date_added: "2026-11-01 09:01:00", comment: "Dziękujemy za zgłoszenie", user_id: 28, commented_name: "", employee_name: "Serwis TEST", auto: 1 },
+        { service_history_id: 3, date_added: "2026-11-02 10:00:00", comment: "Prosimy o wysyłkę", user_id: 28, commented_name: "Jan TEST", employee_name: "Serwis TEST", auto: 0 },
+      ],
+    });
+    expect(m.map((x) => [x.author, x.staff, x.auto])).toEqual([
+      ["Gabinet TEST", false, false],
+      ["Serwis TEST", true, true],
+      ["Jan TEST", true, false],
+    ]);
+  });
+
   it("nieznany kształt → pusta lista", () => {
     expect(parseHelpdeskMessages(null)).toEqual([]);
     expect(parseHelpdeskMessages({ error: "x" })).toEqual([]);

@@ -23,8 +23,21 @@ import { normalizePurchaseDate, warrantyMonthsFor, warrantyStatus, warrantyUntil
 import { WarrantyPill } from "@/components/serwis/service-order-view";
 import { SerialHistory } from "@/components/serwis/SerialHistory";
 import { fieldLabelClass, fieldLabelInlineClass, rubricBoxClass } from "@/lib/ui/serwis-theme";
+import { IconAlertCircle, IconCircleCheck } from "@/components/icons/StrokeIcons";
+import { cn } from "@/lib/cn";
 
 const labelClass = fieldLabelClass;
+
+/** Jedna pozycja listy „co przyszło ze zgłoszenia”: ptaszek albo uwaga z tym, co zrobić ręcznie. */
+function DraftCheck({ ok, children }: { ok: boolean; children: React.ReactNode }) {
+  const Icon = ok ? IconCircleCheck : IconAlertCircle;
+  return (
+    <li className={cn("flex items-start gap-2", ok ? "text-slate-700" : "text-amber-900")}>
+      <Icon size={16} aria-hidden className={cn("mt-0.5 shrink-0", ok ? "text-emerald-700" : "text-amber-700")} />
+      <span className="min-w-0">{children}</span>
+    </li>
+  );
+}
 
 const CLIENT_MATCH_LABEL: Record<NonNullable<HelpdeskIntakeDraft["clientMatch"]>, string> = {
   nip: "po NIP",
@@ -127,7 +140,7 @@ export function ServiceOrderIntakeDialog({
       className="touch-ui"
       onClose={onClose}
       title="Przyjmij sprzęt do serwisu"
-      description="Zlecenie dostanie numer ZS. Diagnozę, części i wydanie prowadzisz potem w panelu zlecenia."
+      description="Po zapisie zlecenie dostanie numer ZS i trafi na listę; dalsze kroki robisz w jego karcie."
       size="md"
       bodyClassName="space-y-5 px-5 py-4 sm:px-6 sm:py-5"
       loadingMessage={pending ? "Zakładam zlecenie…" : loadingTicket ? "Pobieram zgłoszenie z helpdesku mikran.pl…" : null}
@@ -193,16 +206,23 @@ export function ServiceOrderIntakeDialog({
             </div>
             {draft ? (
               <div className={`${rubricBoxClass} space-y-2 px-3 py-2`}>
-                <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.8125rem] text-slate-600">
-                  {draft.test ? <Badge variant="warning">Dane testowe</Badge> : null}
-                  <span>
-                    Wypełniono ze zgłoszenia <span className="font-mono font-semibold text-slate-900">#{draft.helpdeskId}</span>.{" "}
+                {/* Co przyszło ze zgłoszenia — lista do odhaczenia zamiast akapitu; ⚠ mówi, co uzupełnić ręcznie. */}
+                <ul className="space-y-1 text-[0.8125rem]">
+                  <DraftCheck ok>
+                    Zgłoszenie <span className="font-mono font-semibold">#{draft.helpdeskId}</span> — dane wpisane niżej
+                    {draft.test ? <Badge variant="warning" className="ml-2">Dane testowe</Badge> : null}
+                  </DraftCheck>
+                  <DraftCheck ok={Boolean(draft.clientMatch)}>
                     {draft.clientMatch
-                      ? `Klienta znaleziono w Subiekcie ${CLIENT_MATCH_LABEL[draft.clientMatch]}; niżej jego sprzęt z faktur — kliknij numer seryjny.`
-                      : "Klienta nie znaleziono w Subiekcie (NIP, faktura, e-mail) — wybierz go z podpowiedzi, a pokażemy jego sprzęt z faktur."}
-                    {draft.invoiceId && !draft.invoiceFound ? ` Faktury „${draft.invoiceId}” ze zgłoszenia nie ma w Subiekcie.` : ""}
-                  </span>
-                </p>
+                      ? `Klient z Subiekta (${CLIENT_MATCH_LABEL[draft.clientMatch]}) — jego sprzęt z faktur jest niżej`
+                      : "Klienta nie ma w Subiekcie — wybierz go z podpowiedzi w polu „Klient”"}
+                  </DraftCheck>
+                  {draft.invoiceId ? (
+                    <DraftCheck ok={Boolean(draft.invoiceFound)}>
+                      {draft.invoiceFound ? `Faktura ${draft.invoiceFound} — zakup potwierdzony` : `Faktury „${draft.invoiceId}” nie ma w Subiekcie — data zakupu ręcznie`}
+                    </DraftCheck>
+                  ) : null}
+                </ul>
                 <div className="flex flex-wrap gap-2">
                   <Button type="button" size="sm" variant="secondary" onClick={() => setDraft(null)}>
                     Zmień zgłoszenie

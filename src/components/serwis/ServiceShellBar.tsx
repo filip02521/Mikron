@@ -6,12 +6,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { AppBrandMark } from "@/components/ui/AppBrandMark";
 import { OverflowMenu, OverflowMenuItem } from "@/components/ui/OverflowMenu";
 import { NavIcon } from "@/components/icons/NavIcon";
-import { IconCheck, IconLogOut, IconMonitor, IconMoon, IconPlus, IconSettings, IconSun, IconUsers } from "@/components/icons/StrokeIcons";
+import { IconCheck, IconLink, IconLogOut, IconMonitor, IconMoon, IconPlus, IconSettings, IconSun, IconUsers } from "@/components/icons/StrokeIcons";
 import { chooseTheme, useThemePreference } from "@/components/layout/use-theme-preference";
 import { THEME_LABELS, THEME_ORDER } from "@/lib/auth/theme";
 import { cn } from "@/lib/cn";
 import { signOutToLogin } from "@/lib/auth/sign-out-client";
 import { isNavItemActive, navForRole, type NavBadges } from "@/lib/nav";
+import { useAppShellMetrics } from "@/components/layout/AppShellMetricsContext";
+import { formatWarsawDateTime } from "@/lib/time/warsaw";
 import type { UserRole } from "@/types/database";
 
 /** Kontrolka na ciemnym pasie: ten sam kształt co przycisk drugorzędny, kolory pasa. */
@@ -42,6 +44,10 @@ export function ServiceShellBar({
   const hrefs = items.map((i) => i.href);
   const theme = useThemePreference();
   const who = userAssignmentLabel || userEmail?.split("@")[0] || null;
+  const helpdesk = useAppShellMetrics().serviceHelpdesk ?? null;
+  const helpdeskTitle = helpdesk
+    ? `Helpdesk mikran.pl połączony${helpdesk.connectedByEmail ? ` przez ${helpdesk.connectedByEmail.split("@")[0]}` : ""}, ${formatWarsawDateTime(helpdesk.connectedAt)}`
+    : null;
 
   return (
     <header className="sticky top-0 z-30 shrink-0 bg-[var(--sv-rail)] pt-[env(safe-area-inset-top,0px)] text-[var(--sv-rail-ink)]">
@@ -90,13 +96,21 @@ export function ServiceShellBar({
           {readOnly ? null : (
           <Link
             href="/serwis/zlecenia?przyjmij=1"
-            className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--sv-rail-active)] px-3 text-sm font-medium text-[var(--sv-rail-active-ink)] transition-colors duration-150 hover:bg-[var(--sv-rail-active-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sv-rail-active)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--sv-rail)] sm:px-4"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md bg-[var(--sv-rail-active)] px-3 text-sm font-medium text-[var(--sv-rail-active-ink)] transition-colors duration-150 hover:bg-[var(--sv-rail-active-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sv-rail-active)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--sv-rail)] sm:px-4"
           >
             <IconPlus size={18} aria-hidden />
             <span className="hidden sm:inline">Przyjmij sprzęt</span>
             <span className="sr-only sm:hidden">Przyjmij sprzęt</span>
           </Link>
           )}
+          {helpdeskTitle ? (
+            // Stan, nie przycisk: łączenie jest w menu konta; kto i kiedy — w podpowiedzi.
+            <span title={helpdeskTitle} className="hidden items-center gap-1.5 text-xs text-[var(--sv-rail-muted)] md:inline-flex">
+              <span aria-hidden className="h-2 w-2 rounded-full bg-emerald-400" />
+              <span className="sr-only">{helpdeskTitle}</span>
+              <span aria-hidden>Helpdesk połączony</span>
+            </span>
+          ) : null}
           <OverflowMenu
             label="Konto"
             iconOnly
@@ -115,6 +129,15 @@ export function ServiceShellBar({
                 </OverflowMenuItem>
               );
             })}
+            {readOnly ? null : (
+              // Pełne przejście (nie router.push): trasa API przekierowuje na logowanie mikran.pl, potem wraca do zleceń.
+              <OverflowMenuItem onClick={() => window.location.assign(new URL("/api/mcp/connect", window.location.origin))}>
+                <span className="flex items-center gap-2">
+                  <IconLink size={16} />
+                  {helpdesk ? "Połącz helpdesk ponownie" : "Połącz helpdesk mikran.pl"}
+                </span>
+              </OverflowMenuItem>
+            )}
             <OverflowMenuItem onClick={() => router.push("/ustawienia")}>
               <span className="flex items-center gap-2">
                 <IconSettings size={16} />

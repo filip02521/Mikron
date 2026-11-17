@@ -30,7 +30,7 @@ import {
   type ModelPartView,
   type OrderPartView,
 } from "@/components/serwis/service-order-view";
-import { formatQuoteAmount, waitingPartArrived, type ServiceOrder, type ServiceOrderEvent } from "@/lib/orders/service-orders";
+import { formatQuoteAmount, missingServiceOrderDocs, waitingPartArrived, type ServiceOrder, type ServiceOrderEvent, type ServiceOrderPart } from "@/lib/orders/service-orders";
 import {
   SERVICE_BOARD_LANE_LABEL,
   SERVICE_BOARD_LANES,
@@ -94,39 +94,78 @@ function NowReasonPill({ reason, dueDate, quoteDays }: { reason: ServiceNowReaso
   );
 }
 
+/** Pigułka stanu w kolumnie „Stan” wiersza — ten sam kształt co powód „teraz”, kolor z tabeli Stany. */
+function StatePill({ tone, children }: { tone: "red" | "amber"; children: React.ReactNode }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-xs font-medium",
+        tone === "red" ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-900"
+      )}
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
+      {children}
+    </span>
+  );
+}
+
 function OrderRow({
   order,
   events,
-  partsCount,
+  parts,
   today,
   reason,
+  missingDocs,
   onOpen,
 }: {
   order: ServiceOrder;
   events: ServiceOrderEvent[];
-  partsCount: number;
+  parts: readonly Pick<ServiceOrderPart, "quantity">[];
   today: Date;
   reason: ServiceNowReason | null;
+  /** Grupa „Bez dokumentów”: czego brakuje (wiersz mówi to wprost zamiast daty zamknięcia). */
+  missingDocs: boolean;
   onOpen: () => void;
 }) {
   const stamps = useMemo(() => serviceOrderStamps(order, events), [order, events]);
   const days = daysSince(order.createdAt, today);
+  const daysText = `${days} ${polishPluralWord(days, "dzień", "dni", "dni")} w serwisie`;
+  const missing = missingDocs ? missingServiceOrderDocs(order, parts) : null;
+  const missingList = missing ? [missing.invoice ? "faktura" : null, missing.rw ? "RW" : null].filter(Boolean).join(", ") : "";
+  // Kolumna „Stan”: jeden fakt do przeczytania bez zdania; pod nim drobno termin, części albo data zamknięcia.
+  const state = reason ? (
+    <NowReasonPill reason={reason} dueDate={order.dueDate} quoteDays={quoteWaitingDays(order.quote.sentAt, today)} />
+  ) : missingList ? (
+    <StatePill tone="red">Brak: {missingList}</StatePill>
+  ) : order.status === "anulowane" ? (
+    <OrderStatusPill status="anulowane" />
+  ) : order.status === "czeka_na_akceptacje" ? (
+    <StatePill tone="amber">{order.quote.amount != null ? `Wycena ${formatQuoteAmount(order.quote.amount)}` : "Czeka na klienta"}</StatePill>
+  ) : order.closedAt ? (
+    <span className="text-[0.8125rem] text-slate-700">Wydane {formatLocalDate(order.closedAt).slice(0, 5)}</span>
+  ) : (
+    <span className="text-[0.8125rem] tabular-nums text-slate-700">{daysText}</span>
+  );
+  const detail = [
+    order.dueDate && !order.closedAt && reason !== "termin" ? `termin ${formatDateOnly(order.dueDate).slice(0, 5)}` : null,
+    order.closedAt && (missingList || order.status === "anulowane") ? `zamknięte ${formatLocalDate(order.closedAt).slice(0, 5)}` : null,
+    !order.closedAt && (reason || order.status === "czeka_na_akceptacje") ? daysText : null,
+    parts.length ? `${parts.length} ${polishPluralWord(parts.length, "część", "części", "części")}` : null,
+  ].filter(Boolean);
   return (
     <li>
       <button
         type="button"
         onClick={onOpen}
         className={cn(
-          "group flex w-full flex-col gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-[var(--sv-box)] md:flex-row md:items-center md:gap-5 md:px-5",
+          "group grid w-full grid-cols-1 gap-x-5 gap-y-2.5 px-4 py-3 text-left transition-colors duration-150 hover:bg-[var(--sv-box)] md:grid-cols-[minmax(0,1fr)_11rem_auto_auto] md:items-center md:px-5",
           controlFocusClass
         )}
       >
-        <span className="flex min-w-0 flex-1 flex-col gap-1">
-          <span className="flex flex-wrap items-baseline gap-x-2">
-            <span className="font-mono text-xs font-semibold text-slate-500">{order.number}</span>
-            <span className="text-[0.9375rem] font-semibold text-slate-900">{order.deviceName}</span>
-          </span>
-          <span className="text-[0.8125rem] text-slate-500">
+        <span className="min-w-0">
+          <span className="block font-mono text-xs font-semibold text-slate-500">{order.number}</span>
+          <span className="block text-[0.9375rem] font-semibold leading-snug text-slate-900">{order.deviceName}</span>
+          <span className="block text-[0.8125rem] leading-snug text-slate-600">
             {order.clientName}
             {order.serialNo ? (
               <>
@@ -134,27 +173,15 @@ function OrderRow({
                 <span className="whitespace-nowrap">SN {order.serialNo}</span>
               </>
             ) : null}
-            {partsCount ? ` · ${partsCount} ${polishPluralWord(partsCount, "część", "części", "części")}` : ""}
-          </span>
-          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            {reason ? <NowReasonPill reason={reason} dueDate={order.dueDate} quoteDays={quoteWaitingDays(order.quote.sentAt, today)} /> : null}
-            {order.status === "czeka_na_akceptacje" && order.quote.amount != null && reason !== "klient" ? (
-              <span className="whitespace-nowrap text-[0.8125rem] tabular-nums text-amber-900">wycena {formatQuoteAmount(order.quote.amount)}</span>
-            ) : null}
-            {order.status === "anulowane" ? <OrderStatusPill status="anulowane" /> : null}
-            <span className="whitespace-nowrap text-[0.8125rem] tabular-nums text-slate-500">
-              {order.closedAt
-                ? `zamknięte ${formatLocalDate(order.closedAt)}`
-                : `${days} ${polishPluralWord(days, "dzień", "dni", "dni")} w serwisie`}
-              {order.dueDate && !order.closedAt && reason !== "termin" ? ` · termin ${formatDateOnly(order.dueDate)}` : ""}
-            </span>
           </span>
         </span>
-        <span className="flex items-center gap-3">
-          <ServiceStampStrip stamps={stamps} cancelled={order.status === "anulowane"} />
-          <span className="sr-only">{stampSummary(stamps)}</span>
-          <IconChevronRight size={18} className="hidden text-slate-400 transition-transform duration-150 group-hover:translate-x-0.5 md:block" aria-hidden />
+        <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 md:flex-col md:items-start">
+          {state}
+          {detail.length ? <span className="text-xs tabular-nums text-slate-500">{detail.join(" · ")}</span> : null}
         </span>
+        <ServiceStampStrip stamps={stamps} cancelled={order.status === "anulowane"} />
+        <span className="sr-only">{stampSummary(stamps)}</span>
+        <IconChevronRight size={18} className="hidden text-slate-400 transition-transform duration-150 group-hover:translate-x-0.5 md:block" aria-hidden />
       </button>
     </li>
   );
@@ -323,9 +350,10 @@ export function ServiceOrdersBoard({
                 key={o.id}
                 order={o}
                 events={eventsByOrder.get(o.id) ?? []}
-                partsCount={partsByOrder.get(o.id)?.length ?? 0}
+                parts={partsByOrder.get(o.id) ?? []}
                 today={today}
                 reason={lane === "teraz" ? serviceOrderNowReason(o, ctxOf(o)) : null}
+                missingDocs={lane === "dokumenty"}
                 onOpen={() => setOpenId(o.id)}
               />
             ))}
@@ -362,11 +390,17 @@ export function ServiceOrdersBoard({
       </div>
 
       {orders.length === 0 && helpdesk.tickets.length === 0 ? (
-        <EmptyState
-          title="Brak zleceń serwisowych"
-          description="Przyjmij pierwszy sprzęt klienta: zlecenie dostanie numer ZS, a każdy krok naprawy przybije pieczątkę na jego karcie."
-          action={readOnly ? undefined : <Button onClick={() => openIntake(null)}>Przyjmij sprzęt</Button>}
-        />
+        <>
+          {/* Bez zleceń i bez połączenia — przycisk „Połącz z helpdeskiem” nie może zniknąć razem z listą. */}
+          {helpdesk.mode === "off" || helpdesk.error ? (
+            <HelpdeskTicketsSection data={helpdesk} tickets={[]} canConnect={!readOnly} />
+          ) : null}
+          <EmptyState
+            title="Brak zleceń serwisowych"
+            description="Przyjmij pierwszy sprzęt klienta: zlecenie dostanie numer ZS, a każdy krok naprawy przybije pieczątkę na jego karcie."
+            action={readOnly ? undefined : <Button onClick={() => openIntake(null)}>Przyjmij sprzęt</Button>}
+          />
+        </>
       ) : (
         <>
           <p className="font-display text-lg font-bold tracking-[-0.01em] text-slate-900" aria-live="polite">
@@ -390,7 +424,7 @@ export function ServiceOrdersBoard({
             <div className="space-y-5">
               {/* Najpierw to, co serwisant robi dziś (teraz, do wydania), potem sprzęt, który dopiero przyjdzie. */}
               {visibleLanes.filter((l) => l === "teraz" || l === "do_wydania").map(renderLane)}
-              {!filter ? <HelpdeskTicketsSection data={helpdesk} tickets={tickets} onAccept={readOnly ? undefined : (id) => openIntake(id)} /> : null}
+              {!filter ? <HelpdeskTicketsSection data={helpdesk} tickets={tickets} onAccept={readOnly ? undefined : (id) => openIntake(id)} canConnect={!readOnly} /> : null}
               {visibleLanes.filter((l) => l !== "teraz" && l !== "do_wydania").map(renderLane)}
             </div>
           )}

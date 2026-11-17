@@ -89,8 +89,8 @@ function ThreadBody({ state, onRetry }: { state: ThreadState | null; onRetry: ()
         <li key={m.id ?? `${m.at}-${i}`} className="py-2">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className={cn("text-[0.8125rem] font-semibold", m.staff ? "text-slate-600" : "text-slate-900")}>
-              {m.staff ? "Serwis" : "Klient"}
-              {m.author ? <span className="font-normal text-slate-600"> · {m.author}</span> : null}
+              {m.auto ? "Autoodpowiedź" : m.staff ? "Serwis" : "Klient"}
+              {m.author && !m.auto ? <span className="font-normal text-slate-600"> · {m.author}</span> : null}
             </span>
             {m.at ? <span className="text-xs tabular-nums text-slate-600">{formatHelpdeskWhen(m.at)}</span> : null}
             {m.hidden ? <Badge variant="warning">ukryty</Badge> : null}

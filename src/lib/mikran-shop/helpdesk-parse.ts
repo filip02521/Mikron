@@ -225,6 +225,8 @@ export type HelpdeskMessage = {
   staff: boolean;
   /** Komentarz ukryty — klient go nie widzi. */
   hidden: boolean;
+  /** Autoodpowiedź helpdesku (szablon sklepu), nie wpis człowieka. */
+  auto: boolean;
   text: string;
   status: string;
 };
@@ -240,13 +242,16 @@ export function parseHelpdeskMessages(raw: unknown): HelpdeskMessage[] {
     const text = str(r, ["comment", "message", "text", "body"]);
     if (!text) continue;
     const userId = int(r, ["user_id"]);
+    const staff = userId != null && userId > 0;
     out.push({
       id: int(r, ["service_history_id", "history_id", "id"]),
       at: str(r, ["date_added", "date", "created_at"]),
-      author: str(r, ["author", "user", "name", "firstname"]),
-      staff: userId != null && userId > 0,
+      // API sklepu: commented_name = podpis wpisu; bez niego pracownik albo klient zgłoszenia.
+      author: str(r, ["commented_name", "author", "user", "name", "firstname"]) || str(r, staff ? ["employee_name"] : ["customer_name"]),
+      staff,
       // Tylko jawne pole „ukryty” — notify=0 znaczy „bez maila”, nie „niewidoczne dla klienta”.
       hidden: /^(1|true)$/i.test(str(r, ["hidden", "is_hidden", "private"])),
+      auto: /^(1|true)$/i.test(str(r, ["auto"])),
       text,
       status: str(r, ["status", "service_status"]),
     });

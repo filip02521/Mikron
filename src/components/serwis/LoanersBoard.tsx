@@ -40,7 +40,8 @@ export type LoanerUnitView = LoanerUnit & {
 
 const STATE_DOT: Record<LoanerViewState, string> = {
   free: "bg-emerald-600",
-  out: "bg-primary",
+  // Stan, nie atrament: „u klienta” jest szary (DESIGN-serwis: fiolet to akcja i pieczątka); bursztyn i czerwień zostają dla uwagi.
+  out: "bg-slate-500",
   warn: "bg-amber-500",
   late: "bg-red-600",
   svc: "bg-slate-300",
@@ -201,7 +202,7 @@ function Timeline({
                               !live && "border border-slate-200 bg-slate-50 text-slate-500",
                               live && u.state === "late" && "bg-red-600 text-white",
                               live && u.state === "warn" && "bg-amber-500 text-amber-950",
-                              live && u.state === "out" && "bg-primary text-white"
+                              live && u.state === "out" && "bg-slate-600 text-white"
                             )}
                             style={{ left: `${left}%`, width: `${width}%` }}
                             title={`${s.clientName}: ${days} ${polishPluralWord(days, "dzień", "dni", "dni")}`}
@@ -512,7 +513,7 @@ export function LoanersBoard({
                 ))}
               </div>
               <div className="flex flex-wrap gap-3.5 text-xs text-slate-500" aria-hidden>
-                <span className="inline-flex items-center gap-1.5"><i className="h-2 w-4 rounded-sm bg-primary" />u klienta</span>
+                <span className="inline-flex items-center gap-1.5"><i className="h-2 w-4 rounded-sm bg-slate-600" />u klienta</span>
                 <span className="inline-flex items-center gap-1.5"><i className="h-2 w-4 rounded-sm bg-amber-500" />ponad 14 dni</span>
                 <span className="inline-flex items-center gap-1.5"><i className="h-2 w-4 rounded-sm bg-red-600" />po terminie</span>
                 <span className="inline-flex items-center gap-1.5"><i className="h-2 w-4 rounded-sm border border-dashed border-slate-300" />planowany zwrot</span>

@@ -64,12 +64,15 @@ import {
   type HelpdeskTicket,
 } from "@/lib/mikran-shop/helpdesk-parse";
 import { searchSubiektCustomersCached } from "@/lib/subiekt/subiekt-runtime-cache";
+import { resultOrNullAfter } from "@/lib/timing";
 import { lookupSubiektKontrahentByKhId } from "@/lib/subiekt/lookup-kontrahent";
 import type { SubiektKontrahent } from "@/lib/subiekt/types";
 
 export type ServiceOrderActionResult = { ok: true; message: string; orderId?: string } | { ok: false; message: string };
 
 const ORDERS_PATH = "/serwis/zlecenia";
+/** Limit na podpowiedź klienta z Subiekta przy przyjęciu ze zgłoszenia (Subiekt w LAN odpowiada w ułamku sekundy). */
+const SUBIEKT_HINT_MS = 4000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STATUSES = Object.keys(SERVICE_ORDER_STATUS_LABEL) as ServiceOrderStatus[];
 const INBOUND = Object.keys(SERVICE_INBOUND_LABEL) as ServiceInboundMethod[];
@@ -80,7 +83,7 @@ const OUTBOUND = Object.keys(SERVICE_OUTBOUND_LABEL) as ServiceOutboundMethod[];
  * Błąd helpdesku nie cofa zapisu w OnTime — wraca jako dopisek do komunikatu.
  */
 async function syncHelpdeskStatus(helpdeskId: number, kind: "accepted" | "done", comment: string): Promise<string> {
-  if (!helpdeskWriteEnabled()) return "";
+  if (!(await helpdeskWriteEnabled())) return "";
   try {
     await setHelpdeskStatus(helpdeskId, helpdeskStatusId(kind), comment);
     return ` Zgłoszenie #${helpdeskId}: ${kind === "accepted" ? "przyjęte do realizacji" : "zakończone"}.`;
@@ -583,24 +586,28 @@ export async function actionServiceHelpdeskDraft(rawNumber: string | number): Pr
     // Faktura ze zgłoszenia: potwierdza zakup i wskazuje kupującego, gdy NIP nie pasuje. Błąd Subiekta = brak trafienia.
     // Numer faktury bywa w polu produktu albo w opisie („faktura nr 1617/M/09/2025. Marathon…”).
     const invoiceNo = extractInvoiceNumber(ticket.invoiceId, ticket.product, ticket.comment) || ticket.invoiceId.trim();
-    const invoice = invoiceNo ? await findInvoiceBuyer(invoiceNo).catch(() => null) : null;
-    // Tylko jednoznaczne trafienia; po kolei: NIP, faktura, e-mail. Brak Subiekta — zostaje nazwa ze zgłoszenia.
     const nip = nipDigits(ticket.vat);
-    if (nip) {
-      const found = await searchSubiektCustomersCached({ search: nip, pageSize: 5, page: 1, includeBlocked: true }).catch(() => null);
-      const hits = (found?.data ?? []).filter((k) => nipDigits(String(k.adr_NIP ?? "")) === nip);
-      if (hits.length === 1) [client, clientMatch] = [asClient(hits[0]!), "nip"];
-    }
+    const email = ticket.email.trim().toLowerCase();
+    // Podpowiedzi z Subiekta są opcjonalne: naraz i najwyżej kilka sekund — niedostępny Subiekt (np. poza siecią biura)
+    // nie trzyma okna przyjęcia; zostaje nazwa ze zgłoszenia, a klienta serwisant wybiera ręcznie.
+    // Zgłoszenie założone przez serwis ma e-mail pracownika — po nim klienta nie szukamy.
+    const [invoice, byNip, byName] = await Promise.all([
+      invoiceNo ? resultOrNullAfter(findInvoiceBuyer(invoiceNo), SUBIEKT_HINT_MS) : null,
+      nip ? resultOrNullAfter(searchSubiektCustomersCached({ search: nip, pageSize: 5, page: 1, includeBlocked: true }), SUBIEKT_HINT_MS) : null,
+      email && !isStaffEmail(email) && name.length >= 2
+        ? resultOrNullAfter(searchSubiektCustomersCached({ search: name.slice(0, 60), pageSize: 12, page: 1, includeBlocked: true }), SUBIEKT_HINT_MS)
+        : null,
+    ]);
+    // Tylko jednoznaczne trafienia; po kolei: NIP, faktura, e-mail. Brak Subiekta — zostaje nazwa ze zgłoszenia.
+    const nipHits = nip ? (byNip?.data ?? []).filter((k) => nipDigits(String(k.adr_NIP ?? "")) === nip) : [];
+    if (nipHits.length === 1) [client, clientMatch] = [asClient(nipHits[0]!), "nip"];
     if (!clientMatch && invoice) {
-      const k = await lookupSubiektKontrahentByKhId(invoice.khId).catch(() => null);
+      const k = await resultOrNullAfter(lookupSubiektKontrahentByKhId(invoice.khId), SUBIEKT_HINT_MS);
       if (k) [client, clientMatch] = [asClient(k), "faktura"];
     }
-    const email = ticket.email.trim().toLowerCase();
-    // Zgłoszenie założone przez serwis ma e-mail pracownika — po nim klienta nie szukamy.
-    if (!clientMatch && email && !isStaffEmail(email) && name.length >= 2) {
-      const found = await searchSubiektCustomersCached({ search: name.slice(0, 60), pageSize: 12, page: 1, includeBlocked: true }).catch(() => null);
-      const hits = (found?.data ?? []).filter((k) => String(k.kh_EMail ?? "").trim().toLowerCase() === email);
-      if (hits.length === 1) [client, clientMatch] = [asClient(hits[0]!), "email"];
+    if (!clientMatch) {
+      const emailHits = (byName?.data ?? []).filter((k) => String(k.kh_EMail ?? "").trim().toLowerCase() === email);
+      if (emailHits.length === 1) [client, clientMatch] = [asClient(emailHits[0]!), "email"];
     }
     return {
       ok: true,

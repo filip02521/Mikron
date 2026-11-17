@@ -280,21 +280,21 @@ export function ServiceOrderDrawer({
             </Button>
           </div>
           <p className="text-[0.8125rem] text-slate-500">
-            Nie ma go na liście?{" "}
-            <Link href="/serwis/zamienniki" className="font-medium text-indigo-700 underline underline-offset-2">
-              Wydaj zamiennik na tablicy
+            Nie ma go na liście? Wydaj go w{" "}
+            <Link href="/serwis/zamienniki" className="inline-flex min-h-11 items-center font-medium text-indigo-700 underline underline-offset-2">
+              Zamiennikach
             </Link>
-            , a potem powiąż go tutaj.
+            , potem powiąż tutaj.
           </p>
         </form>
       ) : (
-        <p className="text-[0.8125rem] text-slate-500">
-          Żaden egzemplarz nie jest wydany.{" "}
-          <Link href="/serwis/zamienniki" className="font-medium text-indigo-700 underline underline-offset-2">
-            Wydaj zamiennik na tablicy
+        // Brak wydanego egzemplarza: jeden krok do zrobienia, przycisk na palec zamiast linku w zdaniu.
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <p className="min-w-0 flex-1 text-[0.8125rem] text-slate-600">Żaden zamiennik nie jest wydany.</p>
+          <Link href="/serwis/zamienniki" className={buttonClass("secondary", "md", touchClass)}>
+            Wydaj zamiennik
           </Link>
-          , a potem powiąż go tutaj.
-        </p>
+        </div>
       )}
     </Section>
   );
@@ -352,28 +352,58 @@ export function ServiceOrderDrawer({
               </>
             ) : null}
           </p>
-          <p className="text-[0.8125rem] text-slate-600">
-            <span className="font-semibold text-slate-900">{order.clientName}</span>
-            {order.clientPhone ? ` · tel. ${order.clientPhone}` : ""}
-            {closed && order.closedAt
-              ? ` · przyjęte ${formatDay(order.createdAt)} · ${order.status === "wydane" ? "wydane" : "anulowane"} ${formatDay(order.closedAt)} · w serwisie ${serviceDaysText}`
-              : ` · przyjęte ${formatDay(order.createdAt)} · w serwisie ${serviceDaysText}`}
-            {order.dueDate && !closed ? (
-              <span className={cn(late && "font-semibold text-red-700")}>
-                {` · ${late ? "termin minął" : "termin"} ${formatDateOnly(order.dueDate)}`}
-              </span>
+          {/* Fakty zlecenia w kratkach: każdy ze swoją etykietą zamiast jednego zdania z kropkami. */}
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 pt-1 text-[0.8125rem] sm:grid-cols-3">
+            <div className="col-span-2 min-w-0 sm:col-span-1">
+              <dt className={rubricLabelClass}>Klient</dt>
+              <dd className="font-semibold leading-snug text-slate-900">{order.clientName}</dd>
+            </div>
+            <div className="min-w-0">
+              <dt className={rubricLabelClass}>Telefon</dt>
+              <dd>
+                {order.clientPhone ? (
+                  <a href={`tel:${order.clientPhone.replace(/[^\d+]/g, "")}`} className="-my-3 inline-flex min-h-11 items-center font-medium text-indigo-700 underline underline-offset-2">
+                    {order.clientPhone}
+                  </a>
+                ) : (
+                  <span className="text-slate-500">brak</span>
+                )}
+              </dd>
+            </div>
+            <div className="min-w-0">
+              <dt className={rubricLabelClass}>Przyjęte</dt>
+              <dd className="tabular-nums text-slate-900">
+                {formatDay(order.createdAt)} <span className="text-slate-500">· {serviceDaysText}</span>
+              </dd>
+            </div>
+            {closed && order.closedAt ? (
+              <div className="min-w-0">
+                <dt className={rubricLabelClass}>{order.status === "wydane" ? "Wydane" : "Anulowane"}</dt>
+                <dd className="tabular-nums text-slate-900">{formatDay(order.closedAt)}</dd>
+              </div>
+            ) : order.dueDate ? (
+              <div className="min-w-0">
+                <dt className={rubricLabelClass}>Termin</dt>
+                <dd className={cn("tabular-nums", late ? "font-semibold text-red-700" : "text-slate-900")}>
+                  {formatDateOnly(order.dueDate)}
+                  {late ? " · minął" : ""}
+                </dd>
+              </div>
             ) : null}
-          </p>
-          {/* Gwarancja liczy się na dzień przyjęcia: sprzęt przyjęty na gwarancji naprawia się na gwarancji. */}
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <WarrantyPill status={warrantyStatus(order.warrantyUntil, new Date(order.createdAt))} />
-            {order.purchaseDate ? (
-              <span className="text-xs text-slate-500">
-                zakup {formatDateOnly(order.purchaseDate)}
-                {order.purchaseDoc ? ` · ${order.purchaseDoc}` : ""}
-              </span>
-            ) : null}
-          </div>
+            {/* Gwarancja liczy się na dzień przyjęcia: sprzęt przyjęty na gwarancji naprawia się na gwarancji. */}
+            <div className="col-span-2 min-w-0">
+              <dt className={rubricLabelClass}>Gwarancja</dt>
+              <dd className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <WarrantyPill status={warrantyStatus(order.warrantyUntil, new Date(order.createdAt))} />
+                {order.purchaseDate ? (
+                  <span className="text-xs text-slate-500">
+                    zakup {formatDateOnly(order.purchaseDate)}
+                    {order.purchaseDoc ? ` · ${order.purchaseDoc}` : ""}
+                  </span>
+                ) : null}
+              </dd>
+            </div>
+          </dl>
           {/* Transport i wycena: każdy fakt raz — kwota czekającej wyceny stoi w rubryce nad krokami, nie tu. */}
           {facts.length ? <p className="text-[0.8125rem] text-slate-600">{facts.join(" · ")}</p> : null}
           {/* Karta serwisowa: każdy krok naprawy przybija pieczątkę z datą i tym, kto ją przybił. */}

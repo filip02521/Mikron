@@ -112,11 +112,14 @@ export function transitionLabel(to: ServiceOrderStatus, from?: ServiceOrderStatu
       return "Zacznij diagnozę";
     case "w_naprawie":
       if (from === "czeka_na_akceptacje") return "Klient akceptuje — naprawiaj";
+      // Z przyjętych naprawa omija diagnozę — przycisk ma to powiedzieć, bo stoi obok „Zacznij diagnozę”.
+      if (from === "przyjete") return "Pomiń diagnozę — naprawiaj";
       return from === "czeka_na_czesc" ? "Wznów naprawę" : "Zacznij naprawę";
     case "czeka_na_akceptacje":
       return "Wpisz wycenę dla klienta";
     case "czeka_na_czesc":
-      return "Czeka na część";
+      // Przycisk, nie stan: czasownik mówi, co się stanie (naprawa staje do czasu części).
+      return "Wstrzymaj — czeka na część";
     case "gotowe":
       return from === "czeka_na_akceptacje" ? "Klient odmawia — zwrot bez naprawy" : "Oznacz jako gotowe";
     case "wydane":
