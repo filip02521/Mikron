@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
+import { assertAdminNotInReadOnlyPanelPreview } from "@/lib/auth/guard-admin-panel-preview";
 import { getAppUrl } from "@/lib/env/app-config";
 import {
   MIKRAN_OAUTH_COOKIE,
@@ -18,6 +19,12 @@ export async function GET() {
   const user = await getSessionUser();
   if (!user) return NextResponse.redirect(`${getAppUrl()}/login`);
   if (!canConnectMikran(user.role)) return new NextResponse("Helpdesk mikran.pl łączy serwisant albo administrator.", { status: 403 });
+  // Podgląd panelu przez admina jest tylko do odczytu — połączenie zapisuje wspólny token.
+  try {
+    await assertAdminNotInReadOnlyPanelPreview(user);
+  } catch (e) {
+    return new NextResponse((e as Error).message, { status: 403 });
+  }
 
   const state = randomBytes(24).toString("base64url");
   const { verifier, challenge } = pkcePair();

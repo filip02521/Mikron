@@ -173,6 +173,11 @@ export async function actionCreateServiceOrder(input: {
   const user = await requireServicePanel("mutate");
   return run(async () => {
     const helpdeskId = twId(input.helpdeskId);
+    // Numer przychodzi z przeglądarki: zlecenie (i status w helpdesku) tylko dla zgłoszenia, które istnieje.
+    if (helpdeskId) {
+      const found = await fetchHelpdeskTicket(helpdeskId).then((r) => r.mode === "off" || r.ticket !== null, () => false);
+      if (!found) throw new ServiceOrderStateError(`Nie znaleziono zgłoszenia #${helpdeskId} w helpdesku mikran.pl. Wybierz je jeszcze raz albo przyjmij sprzęt bez zgłoszenia.`);
+    }
     const inboundMethod = INBOUND.find((m) => m === input.inboundMethod) ?? null;
     if (input.inboundMethod && !inboundMethod) throw new ServiceOrderStateError("Nieznany sposób dostarczenia sprzętu. Odśwież okno.");
     const pickupRaw = text(input.inboundPickupDate, 10);

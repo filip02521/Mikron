@@ -4,9 +4,11 @@ import { NextRequest } from "next/server";
 const getSessionUser = vi.hoisted(() => vi.fn());
 const saveMikranConnection = vi.hoisted(() => vi.fn());
 const exchangeMikranCode = vi.hoisted(() => vi.fn());
+const assertAdminNotInReadOnlyPanelPreview = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/auth", () => ({ getSessionUser }));
 vi.mock("@/lib/mikran-shop/connection", () => ({ saveMikranConnection }));
+vi.mock("@/lib/auth/guard-admin-panel-preview", () => ({ assertAdminNotInReadOnlyPanelPreview }));
 vi.mock("@/lib/mikran-shop/oauth", async (orig) => ({ ...(await orig<typeof import("@/lib/mikran-shop/oauth")>()), exchangeMikranCode }));
 
 import { GET } from "./route";
@@ -29,6 +31,14 @@ describe("GET /api/mcp/auth_callback", () => {
     expect(exchangeMikranCode).toHaveBeenCalledWith("c-1", "ver-1");
     expect(saveMikranConnection).toHaveBeenCalledWith(expect.objectContaining({ refreshToken: "r" }), "u-admin");
     expect(res.headers.get("set-cookie")).toMatch(/ontime_mikran_oauth=;/);
+  });
+
+  it("admin w podglądzie innego panelu (tylko odczyt) → 403, nic nie zapisane", async () => {
+    assertAdminNotInReadOnlyPanelPreview.mockRejectedValueOnce(new Error("Podgląd panelu jest tylko do odczytu."));
+    const res = await GET(req("code=c-1&state=st-1"));
+    expect(res.status).toBe(403);
+    expect(exchangeMikranCode).not.toHaveBeenCalled();
+    expect(saveMikranConnection).not.toHaveBeenCalled();
   });
 
   it("bez sesji → logowanie OnTime, nic nie zapisane", async () => {

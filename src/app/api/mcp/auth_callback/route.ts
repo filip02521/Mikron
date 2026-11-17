@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/auth";
+import { assertAdminNotInReadOnlyPanelPreview } from "@/lib/auth/guard-admin-panel-preview";
 import { getAppUrl } from "@/lib/env/app-config";
 import { saveMikranConnection } from "@/lib/mikran-shop/connection";
 import {
@@ -31,6 +32,12 @@ export async function GET(request: NextRequest) {
   if (!user) return NextResponse.redirect(`${getAppUrl()}/login`);
   if (!canConnectMikran(user.role)) return problem("Helpdesk mikran.pl łączy serwisant albo administrator OnTime.", 403);
   const back = mikranReturnPath(user.role);
+  // Podgląd panelu przez admina jest tylko do odczytu — połączenie zapisuje wspólny token.
+  try {
+    await assertAdminNotInReadOnlyPanelPreview(user);
+  } catch (e) {
+    return problem((e as Error).message, 403, back);
+  }
 
   const params = request.nextUrl.searchParams;
   const cookie = readMikranOAuthCookie(request.cookies.get(MIKRAN_OAUTH_COOKIE)?.value, params.get("state"), user.id);
