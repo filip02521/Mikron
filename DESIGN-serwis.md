@@ -340,7 +340,7 @@ Stan na 6.11.2026, z kodu gałęzi `claude/serwis-redesign` i zrzutów `.impecca
 
 | Reguła | Gdzie | Uwagi |
 |---|---|---|
-| Motyw ciemny | cały świat | wartości są w `globals.css` i przechodzą test kontrastu, ale żaden ekran nie był oglądany w ciemnym; brak zrzutów |
+| Motyw ciemny | cały świat | oglądany 17.11.2026 (tablica, Części, Zamienniki, karta zlecenia): tekst w karcie i pigułki stanu ≥ 4.5:1; okna Zamienników i formularze kroków w ciemnym jeszcze bez zrzutów. Fokus pól i przycisków (`--color-focus`, `--brand-sky`) był Petrolem — od 17.11 w `.serwis-world` liczony z fioletu świata |
 | Grupy bez danych | „Do ruchu teraz”, „Do wydania” na tablicy; „ponad 14 dni”, „po terminie” i „u klienta” w Zamiennikach | widziane tylko puste (zero w filtrze); wiersz z odznaką powodu i pas z licznikiem „po terminie” nie były widziane z danymi |
 | Tabela Części przy 390px | `ServicePartsPanel` | nagłówek tabeli ucięty na telefonie |
 | Okna w starym układzie | `LoanerIssueDialog`, `LoanerAddDialog` | tylko etykiety pól przeszły na `fieldLabelClass`; bez rubryk; wybrany egzemplarz z obrysem `indigo-600` bez tła `indigo-50`; lista podpowiedzi w `LoanerAddDialog` ma `shadow-lg` i `z-[90]` |

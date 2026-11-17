@@ -96,7 +96,8 @@ export function LoanerIssueDialog({
                   )}
                 >
                   <span className="font-mono text-xs font-semibold text-slate-900">{u.code}</span>
-                  <span className="truncate text-xs text-slate-500">{u.twName}</span>
+                  {/* Model w całości (zawija się), bez wielokropka — po nim serwisant rozpoznaje egzemplarz. */}
+                  <span className="text-xs leading-snug text-slate-600">{u.twName}</span>
                   <span className="text-xs text-slate-500">stan {u.condition}</span>
                 </button>
               ))}
@@ -142,13 +143,18 @@ export function LoanerIssueDialog({
         </div>
 
         <div className="rounded-lg bg-slate-50 px-3.5 py-3 text-sm text-slate-700">
-          {unit ? (
+          {/* Podsumowanie przed zapisem: co, do kogo, do kiedy — a gdy czegoś brakuje, co wybrać. */}
+          {!unit ? (
+            "Wybierz egzemplarz."
+          ) : client?.name ? (
             <>
-              <b className="font-mono">{unit.code}</b> ({unit.twName}) trafi do <b>{client?.name || "…"}</b>. Zwrot do{" "}
-              <b>{formatLong(back.toISOString())}</b>. Licznik dni startuje dziś.
+              <b className="font-mono">{unit.code}</b> trafi do <b>{client.name}</b>. Zwrot do <b>{formatLong(back.toISOString())}</b> — licznik dni
+              startuje dziś.
             </>
           ) : (
-            "Wybierz egzemplarz."
+            <>
+              Wybierz klienta. Zwrot <b className="font-mono">{unit.code}</b> ustawi się na <b>{formatLong(back.toISOString())}</b>.
+            </>
           )}
         </div>
         {error ? <p className="text-sm text-red-700">{error}</p> : null}

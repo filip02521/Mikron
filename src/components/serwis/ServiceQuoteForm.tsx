@@ -87,6 +87,7 @@ export function ServiceQuoteForm({
           value={amount}
           inputMode="decimal"
           autoComplete="off"
+          placeholder="Np. 450 albo 674,27"
           autoFocus
           onChange={(e) => setAmount(e.target.value)}
           aria-invalid={amount !== "" && value == null}

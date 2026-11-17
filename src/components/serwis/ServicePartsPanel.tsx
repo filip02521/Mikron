@@ -73,31 +73,35 @@ function formatQty(n: number): string {
  * Skala sięga 1,5× minimum, żeby „tuż nad minimum” nie wyglądało jak pełny magazyn. Bez minimum pasek nie ma
  * z czym porównać (zawsze pełny) — zostaje sama liczba, a puste miejsce trzyma liczby w jednej kolumnie.
  */
+/** W grupie najpierw braki, potem poniżej minimum, potem reszta. */
+const PART_STATE_ORDER: Record<ServicePartRow["state"], number> = { brak: 0, ponizej_min: 1, ok: 2 };
+
+/** Kolumna „Dostępne”: liczba i jej opis w jednej linii; pasek tylko tam, gdzie jest minimum, do którego się porównuje. */
 function StockMeter({ row }: { row: ServicePartRow }) {
   const min = row.minStock && row.minStock > 0 ? row.minStock : null;
   const scale = Math.max(min ? min * 1.5 : 0, row.available, 1);
   const fill = Math.max(0, Math.min(1, row.available / scale));
-  const tone =
-    row.state === "brak" ? "bg-red-600" : row.state === "ponizej_min" ? "bg-amber-500" : "bg-slate-400";
+  const tone = row.state === "brak" ? "bg-red-600" : row.state === "ponizej_min" ? "bg-amber-500" : "bg-slate-400";
+  const caption = stockCaption(row);
   return (
-    <div className="flex min-w-0 items-center gap-3 sm:min-w-[9rem]">
-      <div className={cn("relative hidden h-1.5 flex-1 rounded-full sm:block", min || row.state === "brak" ? "bg-[var(--sv-box)] ring-1 ring-inset ring-[var(--sv-rule)]" : "")} aria-hidden>
-        {min || row.state === "brak" ? <div className={cn("h-full rounded-full", tone)} style={{ width: `${fill * 100}%` }} /> : null}
-        {min ? (
-          <div
-            className="absolute -top-0.5 -bottom-0.5 w-px bg-slate-500"
-            style={{ left: `${(min / scale) * 100}%` }}
-          />
-        ) : null}
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <div className="flex flex-wrap items-baseline gap-x-2">
+        <span
+          className={cn(
+            "text-sm font-semibold tabular-nums",
+            row.state === "brak" ? "text-red-700" : row.state === "ponizej_min" ? "text-amber-800" : "text-slate-900"
+          )}
+        >
+          {formatQty(row.available)}
+        </span>
+        {caption ? <span className="text-xs text-slate-500">{caption}</span> : null}
       </div>
-      <span
-        className={cn(
-          "w-8 text-right text-sm font-semibold tabular-nums",
-          row.state === "brak" ? "text-red-700" : row.state === "ponizej_min" ? "text-amber-800" : "text-slate-900"
-        )}
-      >
-        {formatQty(row.available)}
-      </span>
+      {min ? (
+        <div className="relative h-1.5 w-28 rounded-full bg-[var(--sv-box)] ring-1 ring-inset ring-[var(--sv-rule)]" aria-hidden>
+          <div className={cn("h-full rounded-full", tone)} style={{ width: `${fill * 100}%` }} />
+          <div className="absolute -bottom-0.5 -top-0.5 w-px bg-slate-500" style={{ left: `${(min / scale) * 100}%` }} />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -174,7 +178,11 @@ export function ServicePartsPanel({
       list.push(r);
       map.set(key, list);
     }
-    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0], "pl"));
+    // Najpierw to, co wymaga ruchu: grupy z większą liczbą części do uwagi, w grupie braki przed resztą.
+    // Kolejność zależy od stanu, nie od zgłoszenia — „Zgłoś brak” nie przesuwa wiersza.
+    const attention = (list: ServicePartRow[]) => list.filter((r) => r.state !== "ok").length;
+    for (const list of map.values()) list.sort((a, b) => PART_STATE_ORDER[a.state] - PART_STATE_ORDER[b.state] || a.name.localeCompare(b.name, "pl"));
+    return [...map.entries()].sort((a, b) => attention(b[1]) - attention(a[1]) || a[0].localeCompare(b[0], "pl"));
   }, [rows, filter, query]);
   const visibleCount = groups.reduce((n, [, list]) => n + list.length, 0);
 
@@ -326,9 +334,6 @@ export function ServicePartsPanel({
                         </td>
                         <td className="px-4 py-3">
                           <StockMeter row={r} />
-                          {stockCaption(r) ? (
-                            <div className="mt-1 text-xs text-slate-500">{stockCaption(r)}</div>
-                          ) : null}
                         </td>
                         <td className="px-4 py-3">
                           {r.requests.length > 0 ? (

@@ -166,16 +166,20 @@ function Timeline({
                     {weekends.map((d) => (
                       <div key={d.toISOString()} className="absolute inset-y-0 bg-[var(--sv-box)]" style={{ left: `${pct(d)}%`, width: `${100 / span}%` }} />
                     ))}
-                    {u.service.map((s) => (
-                      <div
-                        key={s.from}
-                        className="absolute top-3.5 flex h-6 items-center overflow-hidden rounded-md border border-slate-200 bg-slate-100 px-2 text-[0.6875rem] text-slate-500"
-                        style={{ left: `${pct(s.from)}%`, width: `${Math.max(pct(s.to ?? today) - pct(s.from), 1.5)}%` }}
-                        title="Przegląd"
-                      >
-                        serwis
-                      </div>
-                    ))}
+                    {u.service.map((s) => {
+                      const w = Math.max(pct(s.to ?? today) - pct(s.from), 1.5);
+                      return (
+                        <div
+                          key={s.from}
+                          className="absolute top-3.5 flex h-6 items-center overflow-hidden whitespace-nowrap rounded-md border border-slate-200 bg-slate-100 px-2 text-[0.6875rem] text-slate-500"
+                          style={{ left: `${pct(s.from)}%`, width: `${w}%` }}
+                          title="Przegląd w serwisie"
+                        >
+                          {/* Napis tylko gdy się mieści — ucięte „se” wygląda jak błąd; pełna nazwa w podpowiedzi. */}
+                          {w > 5 ? "przegląd" : ""}
+                        </div>
+                      );
+                    })}
                     {u.stints.map((s) => {
                       const live = !s.to;
                       const days = daysBetween(s.from, s.to ?? today);
@@ -208,7 +212,7 @@ function Timeline({
                             title={`${s.clientName}: ${days} ${polishPluralWord(days, "dzień", "dni", "dni")}`}
                           >
                             {width > 2.5 ? <span className="font-mono text-[0.6875rem] font-semibold">{days}d</span> : null}
-                            {width > 6 ? <span>{shortClient(s.clientName)}</span> : null}
+                            {width > 8 ? <span className="min-w-0 truncate">{shortClient(s.clientName)}</span> : null}
                           </div>
                         </div>
                       );

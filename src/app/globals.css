@@ -4184,6 +4184,11 @@ html.ontime-scroll-locked main [class*="backdrop-blur"] {
   --primary-pressed: #3d296d;
   --primary-muted: #f3f0fa;
   --focus-ring: #5b3e9e;
+  /* --color-focus z @theme liczy się na :root (Petrol) i dziedziczy gotową wartość — tu na nowo z fioletu świata
+     (w ciemnym też: ten sam element dostaje ciemne --focus-ring). */
+  --color-focus: var(--focus-ring);
+  /* Obrys fokusu pól, przycisków i przełącznika (input/select/textarea/button:focus-visible) — ten sam fiolet. */
+  --brand-sky: var(--focus-ring);
   --background: #e9efeb;
   --shadow-brand: 0 4px 14px -6px rgba(91, 62, 158, 0.28);
   /* Pas Serwisu (nawigacja) */

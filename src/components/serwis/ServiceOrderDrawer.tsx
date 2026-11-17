@@ -353,8 +353,9 @@ export function ServiceOrderDrawer({
             ) : null}
           </p>
           {/* Fakty zlecenia w kratkach: każdy ze swoją etykietą zamiast jednego zdania z kropkami. */}
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 pt-1 text-[0.8125rem] sm:grid-cols-3">
-            <div className="col-span-2 min-w-0 sm:col-span-1">
+          <dl className="grid grid-cols-3 gap-x-4 gap-y-2 pt-1 text-[0.8125rem]">
+            {/* Panel ma stałe 34rem — klient w pełnej linii, daty w rzędzie pod nim (nie wg szerokości ekranu). */}
+            <div className="col-span-3 min-w-0">
               <dt className={rubricLabelClass}>Klient</dt>
               <dd className="font-semibold leading-snug text-slate-900">{order.clientName}</dd>
             </div>
@@ -391,7 +392,7 @@ export function ServiceOrderDrawer({
               </div>
             ) : null}
             {/* Gwarancja liczy się na dzień przyjęcia: sprzęt przyjęty na gwarancji naprawia się na gwarancji. */}
-            <div className="col-span-2 min-w-0">
+            <div className="col-span-3 min-w-0">
               <dt className={rubricLabelClass}>Gwarancja</dt>
               <dd className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <WarrantyPill status={warrantyStatus(order.warrantyUntil, new Date(order.createdAt))} />
