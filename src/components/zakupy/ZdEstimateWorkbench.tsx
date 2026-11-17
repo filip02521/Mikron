@@ -37,6 +37,7 @@ import {
   actionRestoreZdEstimateProducts,
   actionStartZdEstimateRun,
   actionCollectZdEstimateRun,
+  actionGetZdEstimateRunStatus,
   type ZdEstimateRunInput,
   type ZdEstimateRunResult,
   actionPollZdEstimateRunProgress,
@@ -179,6 +180,8 @@ import {
   zdEstimateExternalSessionCancelConfirmLabel,
   zdEstimateExternalSessionCancelDialogCancelLabel,
   zdEstimateExternalSessionRestoredToastTitle,
+  zdEstimateRunReadyToastDescription,
+  zdEstimateRunReadyToastTitle,
   zdEstimateExternalSessionRestoredToastDescription,
   zdEstimateExternalSessionExpiredAlertTitle,
   zdEstimateExternalSessionExpiredAlertBody,
@@ -391,12 +394,16 @@ import {
 } from "@/lib/orders/zd-estimate-run-progress";
 import { awaitZdEstimateRunJob } from "@/lib/orders/zd-estimate-run-await";
 import {
+  claimZdEstimateRunInWizard,
   dismissZdEstimateTrackedRun,
   getZdEstimateRunTrackerSnapshot,
   releaseZdEstimateRunOwnership,
+  resolveZdEstimateTrackedRun,
   settleZdEstimateRunInWizard,
   trackZdEstimateRunStarted,
+  type ZdEstimateTrackedRun,
 } from "@/lib/client/zd-estimate-run-tracker";
+import { ZD_ESTIMATE_RUN_LOST_MESSAGE } from "@/lib/orders/zd-estimate-run-notice-copy";
 import {
   clearZdEstimateExternalSessionResumeQueryParam,
   isZdEstimateExternalSessionReturnNavigation,
@@ -1249,6 +1256,8 @@ export function ZdEstimateWorkbench({
     useState<ZdEstimateRunProgressSnapshot | null>(null);
   const runProgressPollRef = useRef<number | null>(null);
   const runProgressMissesRef = useRef(0);
+  /** Liczenie zaczęte przed wejściem do Kreatora (wyjście / odświeżenie w trakcie) — Kreator pokazuje jego postęp. */
+  const [reattachRun, setReattachRun] = useState<ZdEstimateTrackedRun | null>(null);
   const [assignHint, setAssignHint] = useState<string | null>(
     launch?.needsAssign ? launch.resolveMessage : null
   );
@@ -1310,9 +1319,11 @@ export function ZdEstimateWorkbench({
         }
       };
       void tick();
+      // Co 1 s: strony z Subiekta przychodzą co ~12 s, a akcje serwera idą z przeglądarki po kolei
+      // (częstsze pytanie tylko opóźnia kliknięcia użytkownika i odbiór wyniku).
       runProgressPollRef.current = window.setInterval(() => {
         void tick();
-      }, 400);
+      }, 1_000);
     },
     [stopRunProgressPoll]
   );
@@ -1633,6 +1644,9 @@ export function ZdEstimateWorkbench({
   const [sessionResumeStartedAtMs, setSessionResumeStartedAtMs] = useState(0);
   const sessionResumeRevealTimerRef = useRef<number | null>(null);
   const pendingRestoredToastRef = useRef<string | null>(null);
+  /** Następne odtworzenie sesji to lista policzona w tle (przejęte liczenie), nie powrót do starej. */
+  const restoreFromRunRef = useRef(false);
+  const [restoredToastTitle, setRestoredToastTitle] = useState(zdEstimateExternalSessionRestoredToastTitle);
   /** Blokuje formularz zakresu do czasu restore (także cichego refreshu z tokenem). */
   // Start zawsze false (jak SSR) — token z localStorage czyta useLayoutEffect
   // (restoreExternalSession) przed paint; inaczej hydracja się rozjeżdża.
@@ -3273,6 +3287,9 @@ export function ZdEstimateWorkbench({
 
   const restoreExternalSession = useCallback(
     async (token: NonNullable<ReturnType<typeof peekZdEstimateExternalSessionToken>>) => {
+      const fromRun = restoreFromRunRef.current;
+      restoreFromRunRef.current = false;
+      setRestoredToastTitle(fromRun ? zdEstimateRunReadyToastTitle : zdEstimateExternalSessionRestoredToastTitle);
       sessionResumeStartedAtMsRef.current = Date.now();
       setSessionResumeStartedAtMs(sessionResumeStartedAtMsRef.current);
       setSessionResumeReturningFromAway(
@@ -3371,10 +3388,11 @@ export function ZdEstimateWorkbench({
         return;
       }
 
-      pendingRestoredToastRef.current =
-        zdEstimateExternalSessionRestoredToastDescription({
-          updatedAt: payload.updatedAt ?? got.updatedAt,
-        });
+      pendingRestoredToastRef.current = fromRun
+        ? zdEstimateRunReadyToastDescription
+        : zdEstimateExternalSessionRestoredToastDescription({
+            updatedAt: payload.updatedAt ?? got.updatedAt,
+          });
       setExternalSessionPersistFailedAlert(false);
       finishSessionResumeReveal(true, { linesReady: true, restoreGen });
       } catch (e) {
@@ -4123,10 +4141,25 @@ export function ZdEstimateWorkbench({
       });
       // Kreator zniknął z ekranu — liczenie trwa na serwerze, o wyniku powie zakładka poza Kreatorem.
       if (!awaited.ok && awaited.failure === null) return;
+      // Serwer nie ma już wyniku (uśpiony komputer > 5 min po końcu albo restart): lista mogła się
+      // zapisać w sesji Kreatora — status zna zakładka („Otwórz listę” albo powód), nie zgadujemy tu.
+      if (!awaited.ok && awaited.failure?.code === "lost" && trackedRunId && estimateGen === estimateGenRef.current) {
+        releaseZdEstimateRunOwnership();
+        clearProgressBlocking();
+        return;
+      }
       if (trackedRunId) settleZdEstimateRunInWizard(trackedRunId);
       const res: ZdEstimateRunResult = awaited.ok
         ? awaited.result
-        : { ok: false, message: awaited.failure.message, feedback: { ...awaited.failure, tone: "error" } };
+        : {
+            ok: false,
+            message: awaited.failure.message,
+            feedback: {
+              ...awaited.failure,
+              code: awaited.failure.code === "lost" ? "unknown" : awaited.failure.code,
+              tone: "error",
+            },
+          };
       if (estimateGen !== estimateGenRef.current) {
         // Serwer mógł już skasować poprzednią active i/lub utworzyć nową —
         // nie zostawiaj orphan DB ani tokenu wskazującego na skasowaną sesję.
@@ -4619,10 +4652,20 @@ export function ZdEstimateWorkbench({
       // Wynik tego liczenia zastąpi poprzednią sesję na serwerze — nie otwieraj jej do edycji,
       // bo jej zapis skasowałby potem gotową listę.
       clearZdEstimateExternalSessionToken();
+      // Autorun („Przygotuj ZD”) liczy od nowa i zastąpi to liczenie — wtedy bez przejmowania.
+      if (!launch?.autorun) {
+        claimZdEstimateRunInWizard(awayRun.runId);
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- przejęcie liczenia przed pierwszym paint
+        setReattachRun(awayRun);
+        setLaunchStartedAtMs(awayRun.startedAtMs);
+        setLaunchForceComplete(false);
+        setLaunchReadyMessage(null);
+        setLaunchBlocking(true);
+      }
     }
 
     // Token w localStorage → stan React (zewnętrzne źródło); setState w layoucie przed paint.
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync tokenu sesji UI
+     
     syncExternalSessionTokenState();
 
     const token = peekZdEstimateExternalSessionToken();
@@ -4685,6 +4728,82 @@ export function ZdEstimateWorkbench({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const restoreExternalSessionRef = useRef(restoreExternalSession);
+  useEffect(() => {
+    restoreExternalSessionRef.current = restoreExternalSession;
+  });
+
+  // Powrót do Kreatora w trakcie liczenia: ten sam pasek postępu co przy „Policz listę” (czas od
+  // prawdziwego startu), a gotowa lista otwiera się sama. Błąd / utrata — powód pokaże zakładka.
+  useEffect(() => {
+    if (!reattachRun) return;
+    const run = reattachRun;
+    const gen = estimateGenRef.current;
+    let stopped = false;
+    let inFlight = false;
+    startRunProgressPoll(run.runId, gen);
+    let pollId = 0;
+    const finish = () => {
+      stopped = true;
+      window.clearInterval(pollId);
+      stopRunProgressPoll();
+      setLaunchBlocking(false);
+      setReattachRun(null);
+    };
+    const handBackToNotice = () => {
+      releaseZdEstimateRunOwnership();
+      finish();
+    };
+    const tick = async () => {
+      if (stopped || inFlight) return;
+      // W Kreatorze zaczęło się coś nowego (Policz, zmiana zakresu) — to liczenie wraca do zakładki.
+      if (gen !== estimateGenRef.current) return handBackToNotice();
+      inFlight = true;
+      try {
+        const status = await actionGetZdEstimateRunStatus(run.runId, run.ownerUserId);
+        if (stopped || status.state === "running" || status.state === "unavailable") return;
+        if (status.state === "ready") {
+          const token = createZdEstimateExternalSessionToken({
+            sessionId: status.sessionId,
+            schemaVersion: ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION,
+            supplierId: run.supplierId,
+            scopeMode: run.scopeMode,
+            grupaId: run.grupaId,
+            cechaId: run.cechaId,
+          });
+          writeZdEstimateExternalSessionToken(token);
+          settleZdEstimateRunInWizard(run.runId);
+          finish();
+          restoreFromRunRef.current = true;
+          void restoreExternalSessionRef.current(token).catch(() => {
+            /* błąd obsłużony w restoreExternalSession */
+          });
+          return;
+        }
+        if (status.state === "not_yours") {
+          dismissZdEstimateTrackedRun(run.runId);
+          return finish();
+        }
+        resolveZdEstimateTrackedRun(run.runId, {
+          state: "failed",
+          message: status.state === "failed" ? status.message : ZD_ESTIMATE_RUN_LOST_MESSAGE,
+        });
+        handBackToNotice();
+      } catch {
+        // Zerwane połączenie — zapytamy przy kolejnym tyknięciu.
+      } finally {
+        inFlight = false;
+      }
+    };
+    pollId = window.setInterval(() => void tick(), 1_500);
+    void tick();
+    return () => {
+      stopped = true;
+      window.clearInterval(pollId);
+      stopRunProgressPoll();
+    };
+  }, [reattachRun, startRunProgressPoll, stopRunProgressPoll]);
 
   const runPendingAutorunAfterSessionDiscard = useCallback(() => {
     const pending = externalSessionAutorunPendingRef.current;
@@ -6420,12 +6539,12 @@ export function ZdEstimateWorkbench({
         <div className="flex min-h-0 flex-1 flex-col">
         <ZdEstimateLaunchProgressPanel
           key={launchStartedAtMs}
-          supplierName={activeSupplierName}
+          supplierName={activeSupplierName ?? (reattachRun?.label || null)}
           scopeLabel={launchScopeLabel}
-          scopeMode={launchScopeMode}
+          scopeMode={reattachRun?.scopeMode ?? launchScopeMode}
           startedAtMs={launchStartedAtMs}
           scopeAlreadyResolved={
-            Boolean(launchScopeLabel) || launchHasRunnableScope(launch)
+            Boolean(reattachRun) || Boolean(launchScopeLabel) || launchHasRunnableScope(launch)
           }
           forceComplete={launchForceComplete}
           ordersIsLive={bootstrap.ordersIsLive}
@@ -6666,7 +6785,7 @@ export function ZdEstimateWorkbench({
       {externalSessionRestoredToast ? (
         <Toast
           tone="success"
-          title={zdEstimateExternalSessionRestoredToastTitle}
+          title={restoredToastTitle}
           description={externalSessionRestoredToast}
           durationMs={8000}
           onDismiss={() => setExternalSessionRestoredToast(null)}

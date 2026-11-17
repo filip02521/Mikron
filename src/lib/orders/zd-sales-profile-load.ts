@@ -43,12 +43,14 @@ async function latestEndDate(scope: ZdSalesProfileScope): Promise<string | null>
   return rows[0]?.end_date ?? null;
 }
 
+/** newer = profil nowszy od okna o najwyżej 14 dni (Kreator na dawnych datach). */
 async function scopeAge(
   scope: ZdSalesProfileScope,
   endDate: string
-): Promise<"fresh" | "usable" | "none"> {
+): Promise<"fresh" | "usable" | "newer" | "none"> {
   const latest = await latestEndDate(scope);
-  if (latest == null || latest > endDate) return "none";
+  if (latest == null) return "none";
+  if (latest > endDate) return latest <= shiftDateKey(endDate, USABLE_DAYS) ? "newer" : "none";
   if (latest >= shiftDateKey(endDate, -FRESH_DAYS)) return "fresh";
   return latest >= shiftDateKey(endDate, -USABLE_DAYS) ? "usable" : "none";
 }
@@ -184,6 +186,10 @@ export async function ensureZdSalesProfiles(input: {
         );
         return loadScopeProfiles(scope);
       }
+      // Okno sprzed kilku dni: nowszy profil klasyfikuje tak samo, a wyliczony i tak by się nie zapisał
+      // (starsze okno nie nadpisuje nowszego) — bez tego każde takie Policz liczyło 12 okien od nowa.
+      // shortcut: okno starsze o > 14 dni nadal liczy się od nowa przy każdym Policz; pamięć podręczna, gdy to częste.
+      if (age === "newer" && input.refresh === "background") return loadScopeProfiles(scope);
       return refreshScope(scope, input.endDate);
     })
   );

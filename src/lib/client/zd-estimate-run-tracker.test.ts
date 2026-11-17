@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   __resetZdEstimateRunTrackerForTests,
+  claimZdEstimateRunInWizard,
   dismissZdEstimateTrackedRun,
   getZdEstimateRunTrackerSnapshot,
   parseZdEstimateTrackedRun,
@@ -58,5 +59,19 @@ describe("zd-estimate-run-tracker", () => {
       message: "m",
       cechaId: 2738,
     });
+  });
+
+  it("powrót do Kreatora w trakcie liczenia przejmuje wpis; gotowego nie przejmuje", () => {
+    trackZdEstimateRunStarted(base);
+    releaseZdEstimateRunOwnership();
+    claimZdEstimateRunInWizard("r1");
+    expect(getZdEstimateRunTrackerSnapshot().ownedRunId).toBe("r1");
+    claimZdEstimateRunInWizard("inny");
+    expect(getZdEstimateRunTrackerSnapshot().ownedRunId).toBe("r1");
+
+    releaseZdEstimateRunOwnership();
+    resolveZdEstimateTrackedRun("r1", { state: "ready", sessionId: "s" });
+    claimZdEstimateRunInWizard("r1");
+    expect(getZdEstimateRunTrackerSnapshot().ownedRunId).toBeNull();
   });
 });

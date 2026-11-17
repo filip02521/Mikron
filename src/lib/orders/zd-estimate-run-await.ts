@@ -3,7 +3,11 @@ import type { ZdEstimateRunJobState } from "@/lib/orders/zd-estimate-run-jobs";
 /** Przeglądarka: start liczenia w tle + odbiór wyniku krótkimi zapytaniami (bez jednego długiego żądania). */
 
 export type ZdEstimateRunAwaitFailure = {
-  code: "timeout" | "network" | "unknown";
+  /**
+   * lost = serwer nie ma już wyniku: restart usługi albo gotowa lista nieodebrana przez 5 min
+   * (uśpiony komputer) — wtedy jest zapisana w sesji Kreatora, a status zna zakładka.
+   */
+  code: "timeout" | "network" | "lost" | "unknown";
   title: string;
   message: string;
   hint: string;
@@ -76,7 +80,7 @@ export async function awaitZdEstimateRunJob<T>(opts: {
       return {
         ok: false,
         failure: {
-          code: "unknown",
+          code: "lost",
           title: "Liczenie zostało przerwane",
           message: "Serwer OnTime przerwał liczenie listy (np. restart usługi), zanim oddał wynik.",
           hint: RETRY_HINT,

@@ -113,6 +113,14 @@ export function settleZdEstimateRunInWizard(runId: string): void {
   commit({ run: null, ownedRunId: null });
 }
 
+/** Powrót do Kreatora w trakcie liczenia — Kreator sam pokazuje postęp, zakładka się chowa. */
+export function claimZdEstimateRunInWizard(runId: string): void {
+  ensureLoaded();
+  if (snapshot.run?.runId === runId && snapshot.run.state === "running" && snapshot.ownedRunId !== runId) {
+    commit({ ...snapshot, ownedRunId: runId });
+  }
+}
+
 /** Kreator zniknął z ekranu w trakcie liczenia — status przejmuje zakładka. */
 export function releaseZdEstimateRunOwnership(): void {
   ensureLoaded();

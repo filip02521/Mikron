@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   fetchSubiektZdEstimateAll,
   SubiektZdEstimateFirstPageRejectedError,
+  SubiektZdEstimateStoppedError,
 } from "@/lib/subiekt/api";
 import { assertZdEstimateFilterEcho } from "@/lib/orders/zd-estimate-scope";
 
@@ -212,5 +213,73 @@ describe("fetchSubiektZdEstimateAll validateFirstPage", () => {
     expect(result.pagesFetched).toBe(1);
     // Bez pipeline „fala 4” poszłaby po 2..5; po empty na 2 nie powinno być 6+.
     expect(seenPages.some((p) => p >= 6)).toBe(false);
+  });
+});
+
+describe("fetchSubiektZdEstimateAll — strony z wyprzedzeniem i zatrzymanie", () => {
+  /** Strona z URL-a; `started` = kolejność wysłanych zapytań. */
+  function pagedApi(totalPages: number, started: number[], gate?: Promise<void>) {
+    pageMock.mockReset();
+    pageMock.mockImplementation(async (url: string) => {
+      const page = Number(/[?&]page=(\d+)/.exec(url)?.[1] ?? 1);
+      started.push(page);
+      if (page === 1 && gate) await gate;
+      return {
+        data: { parametry: { cechaId: 2738 }, pozycje: [{ tw_Id: page }] },
+        pagination: { totalPages, totalCount: totalPages },
+      };
+    });
+  }
+
+  it("drugi raz ten sam zakres: strony 2–5 idą, zanim strona 1 odpowie", async () => {
+    const first: number[] = [];
+    pagedApi(9, first);
+    await fetchSubiektZdEstimateAll({ cechaId: 2738, dniZapasu: 30 }, { concurrency: 4, pagesHintKey: "cecha:2738:t1" });
+    expect(first[0]).toBe(1);
+    expect(first.slice(1, 5)).not.toContain(1);
+
+    const second: number[] = [];
+    let release!: () => void;
+    pagedApi(9, second, new Promise<void>((r) => (release = r)));
+    const run = fetchSubiektZdEstimateAll(
+      { cechaId: 2738, dniZapasu: 30 },
+      { concurrency: 4, pagesHintKey: "cecha:2738:t1" }
+    );
+    await Promise.resolve();
+    expect([...second].sort()).toEqual([1, 2, 3, 4, 5]);
+    release();
+    const result = await run;
+    expect(result.pozycje.map((p) => p.tw_Id)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(second.filter((p) => p === 3)).toHaveLength(1);
+  });
+
+  it("bez klucza zakresu strona 1 idzie sama", async () => {
+    const started: number[] = [];
+    let release!: () => void;
+    pagedApi(3, started, new Promise<void>((r) => (release = r)));
+    const run = fetchSubiektZdEstimateAll({ cechaId: 2738, dniZapasu: 30 }, { concurrency: 4 });
+    await Promise.resolve();
+    expect(started).toEqual([1]);
+    release();
+    await run;
+  });
+
+  it("shouldStop przerywa branie kolejnych stron", async () => {
+    const started: number[] = [];
+    pagedApi(9, started);
+    let stop = false;
+    await expect(
+      fetchSubiektZdEstimateAll(
+        { cechaId: 2738, dniZapasu: 30 },
+        {
+          concurrency: 1,
+          onProgress: (p) => {
+            if (p.pagesCommitted >= 2) stop = true;
+          },
+          shouldStop: () => stop,
+        }
+      )
+    ).rejects.toBeInstanceOf(SubiektZdEstimateStoppedError);
+    expect(started).toEqual([1, 2]);
   });
 });
