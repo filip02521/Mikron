@@ -71,6 +71,8 @@ import type { ZdClassicCompare } from "@/lib/orders/zd-demand-policy";
 import { ZdAutoProposalBanner } from "@/components/zakupy/ZdAutoProposalBanner";
 import {
   policyForBoostPreset,
+  zdBoostAfterSavedLoad,
+  zdBoostAfterSessionRestore,
   ZD_BOOST_POWER_DEFAULT,
   type ZdBoostPowerPreset,
 } from "@/lib/orders/zd-estimate-boost-presets";
@@ -1435,6 +1437,16 @@ export function ZdEstimateWorkbench({
   const [linesBase, setLinesBase] = useState<ManualZdEstimateLine[] | null>(
     null
   );
+  /** Dla odczytu zapisanego podbicia po mount: czy lista już jest i z jakim podbiciem ją policzono. */
+  const boostListRef = useRef<{ hasList: boolean; applied: ZdBoostPowerPreset }>({
+    hasList: false,
+    applied: ZD_BOOST_POWER_DEFAULT,
+  });
+  /** Podbicie zapisane w ustawieniach (po odczycie) — przywrócona sesja nie nadpisuje go starszym. */
+  const savedBoostPresetRef = useRef<ZdBoostPowerPreset | null>(null);
+  useLayoutEffect(() => {
+    boostListRef.current = { hasList: Boolean(linesBase?.length), applied: appliedBoostPreset };
+  }, [linesBase, appliedBoostPreset]);
   /** Historia snapshotów z ostatniego Policz — live refresh musi ją przekazać. */
   const [historyByTwId, setHistoryByTwId] = useState<
     Map<number, { lastOrderedQty: number; linkedAt: string }>
@@ -2081,11 +2093,17 @@ export function ZdEstimateWorkbench({
         setErrorMessage(userFacingErrorTextFromMessage(res.message));
         return;
       }
+      savedBoostPresetRef.current = res.preset;
       setBoostPreset(res.preset);
-      setAppliedBoostPreset(res.preset);
-      // Przed pierwszym Policz trzymaj applied = zapisany (gentle default).
-      setAppliedBoostPolicy(policyForBoostPreset(res.preset));
-      setBoostNeedsRecount(false);
+      // Lista już jest (przywrócona sesja albo wynik w tle doszedł przed odczytem ustawienia):
+      // zostaje podbicie, z którym ją policzono — inaczej przeliczenia na kliencie wzięłyby inne,
+      // a baner „Przelicz” by zniknął.
+      const next = zdBoostAfterSavedLoad({ saved: res.preset, ...boostListRef.current });
+      if (next.applied) {
+        setAppliedBoostPreset(next.applied);
+        setAppliedBoostPolicy(policyForBoostPreset(next.applied));
+      }
+      setBoostNeedsRecount(next.needsRecount);
     });
     return () => {
       cancelled = true;
@@ -3269,18 +3287,21 @@ export function ZdEstimateWorkbench({
       setPurchasePriceNetByTwId(payload.purchasePriceNetByTwId ?? {});
       setHorizonNeedsRecount(false);
 
-      const restoredBoostNeedsRecount = payload.boostPreset
-        ? Boolean(payload.boostNeedsRecount) ||
-          (payload.appliedBoostPreset != null &&
-            payload.boostPreset !== payload.appliedBoostPreset)
-        : false;
+      // Podbicie to wspólne ustawienie: po odczycie liczy się zapisane, nie to z chwili pauzy sesji.
+      const restoredBoost = payload.boostPreset
+        ? zdBoostAfterSessionRestore({
+            saved: savedBoostPresetRef.current,
+            sessionForm: payload.boostPreset,
+            sessionApplied: payload.appliedBoostPreset,
+            sessionNeedsRecount: payload.boostNeedsRecount,
+          })
+        : null;
+      const restoredBoostNeedsRecount = restoredBoost?.needsRecount ?? false;
 
-      if (payload.boostPreset) {
-        setBoostPreset(payload.boostPreset);
-        const applied =
-          payload.appliedBoostPreset ?? payload.boostPreset;
-        setAppliedBoostPreset(applied);
-        setAppliedBoostPolicy(policyForBoostPreset(applied));
+      if (restoredBoost) {
+        setBoostPreset(restoredBoost.form);
+        setAppliedBoostPreset(restoredBoost.applied);
+        setAppliedBoostPolicy(policyForBoostPreset(restoredBoost.applied));
       }
 
       // Restore = snapshot roboczy, nie post-create / create-lock z bieżącego mountu.

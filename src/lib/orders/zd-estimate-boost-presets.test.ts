@@ -6,9 +6,12 @@ import {
   policyForBoostPreset,
   ZD_BOOST_POWER_DEFAULT,
   ZD_BOOST_POWER_PRESET_IDS,
+  zdBoostAfterSavedLoad,
+  zdBoostAfterSessionRestore,
 } from "./zd-estimate-boost-presets";
 import {
   computeSalesTrackedCel,
+  orderQtyFromCel,
   reconcileSalesTrackQtyMetaAfterHistory,
   ZD_SALES_TRACK,
 } from "./zd-estimate-sales-track";
@@ -320,5 +323,75 @@ describe("zd-estimate-boost-presets", () => {
       policy: policyForBoostPreset("standard"),
     });
     expect(withStdPolicy).toEqual(defaultReview);
+  });
+});
+
+describe("stopnie podbicia — kolejność i cięcia", () => {
+  const order = ["off", "gentle", "standard", "aggressive"] as const;
+  it("Wył. ≤ Delikatny ≤ Standard ≤ Agresywny; cięcia te same w każdym stopniu", () => {
+    for (const sales of [1, 4, 10, 30, 90, 300, 1200])
+      for (const coverDays of [0, 5, 15, 25, 30, 40, 60, 120])
+        for (const [dni, signal] of [[30, null], [14, null], [90, 30]] as const) {
+          const tempo = sales / 30;
+          const cover = Math.round(tempo * coverDays);
+          const runs = order.map((p) =>
+            computeSalesTrackedCel({
+              celZapasu: tempo * dni,
+              sprzedazOkres: sales,
+              sprzedazDziennie: tempo,
+              dostepne: cover,
+              otwarteZd: 0,
+              dniZapasu: dni,
+              dniOkresu: 30,
+              signalDniZapasu: signal,
+              policy: policyForBoostPreset(p),
+            })
+          );
+          const qty = runs.map((r) => orderQtyFromCel(r.celTracked, cover));
+          for (let i = 1; i < qty.length; i++) expect(qty[i]).toBeGreaterThanOrEqual(qty[i - 1]!);
+          const cuts = runs.map((r) => r.reasons.filter((x) => ["fat_cover", "low_sell_through", "dead_stock"].includes(x)).join());
+          expect(new Set(cuts).size).toBe(1);
+          // Wył. nie dokłada ponad bazę.
+          expect(qty[0]).toBeLessThanOrEqual(orderQtyFromCel(tempo * dni, cover));
+        }
+  });
+});
+
+describe("zapisane podbicie a lista już na ekranie", () => {
+  it("bez listy: lista liczy się z zapisanym", () => {
+    expect(zdBoostAfterSavedLoad({ saved: "aggressive", hasList: false, applied: "gentle" })).toEqual({
+      applied: "aggressive",
+      needsRecount: false,
+    });
+  });
+
+  it("lista przywrócona wcześniej: zostaje jej podbicie, inne zapisane = Przelicz", () => {
+    expect(zdBoostAfterSavedLoad({ saved: "aggressive", hasList: true, applied: "gentle" })).toEqual({
+      applied: null,
+      needsRecount: true,
+    });
+    expect(zdBoostAfterSavedLoad({ saved: "gentle", hasList: true, applied: "gentle" })).toEqual({
+      applied: null,
+      needsRecount: false,
+    });
+  });
+
+  it("sesja przywrócona po odczycie: przełącznik pokazuje zapisane, nie to z pauzy", () => {
+    expect(
+      zdBoostAfterSessionRestore({ saved: "off", sessionForm: "standard", sessionApplied: "standard", sessionNeedsRecount: false })
+    ).toEqual({ form: "off", applied: "standard", needsRecount: true });
+    // Zapisane = to, z którym liczono: stara flaga z sesji nie wraca.
+    expect(
+      zdBoostAfterSessionRestore({ saved: "gentle", sessionForm: "standard", sessionApplied: "gentle", sessionNeedsRecount: true })
+    ).toEqual({ form: "gentle", applied: "gentle", needsRecount: false });
+  });
+
+  it("sesja przywrócona przed odczytem: jak w sesji (odczyt poprawi później)", () => {
+    expect(
+      zdBoostAfterSessionRestore({ saved: null, sessionForm: "standard", sessionApplied: "gentle", sessionNeedsRecount: false })
+    ).toEqual({ form: "standard", applied: "gentle", needsRecount: true });
+    expect(
+      zdBoostAfterSessionRestore({ saved: null, sessionForm: "gentle", sessionApplied: undefined, sessionNeedsRecount: false })
+    ).toEqual({ form: "gentle", applied: "gentle", needsRecount: false });
   });
 });
