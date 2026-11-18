@@ -38,6 +38,7 @@ import type { ZkWatchRefreshDiff } from "@/lib/sales/zk-watch-refresh-diff";
 import {
   buildZkWatchLineViews,
   type ZkWatchLineView,
+  zkLineQuantityLabel,
 } from "@/lib/sales/zk-watch-lines";
 import type { ZkWatchOrderHints } from "@/lib/sales/zk-watch-order-link";
 import { salesTypography } from "@/lib/ui/ontime-theme";
@@ -539,7 +540,7 @@ export function ZkWatchRefreshPromptModal({
                     <p className={cn(salesTypography.rowTitle, "text-slate-900")}>{line.product}</p>
                     {(line.symbol || line.quantityLabel) && (
                       <p className={cn(salesTypography.rowMeta, "mt-0.5 text-slate-500")}>
-                        {[line.symbol, line.quantityLabel].filter(Boolean).join(" · ")}
+                        {[line.symbol, zkLineQuantityLabel(line, teethExemptTwIds)].filter(Boolean).join(" · ")}
                       </p>
                     )}
                     {stockDetail && (

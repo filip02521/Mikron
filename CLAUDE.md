@@ -13,6 +13,7 @@ OnTime — wewnętrzny system dostaw i zakupów (dostawcy, zamówienia ZD/ZK, ma
 - `npx tsc --noEmit`, `npm run lint`, `npm test` (Vitest) — zawsze przed oddaniem.
 - `npm run audit:design` — po zmianie UI; `npm run audit:db-access` i `npm run audit:server-action-redirect` — po zmianie akcji lub tras.
 - `npm run test:e2e` (Playwright) — przy zmianie przepływu ekranu.
+- Każdy ekran, okno i przycisk przed oddaniem czytaj oczami nowego użytkownika, który zna branżę, ale nie ten ekran. Z samego widoku ma wiedzieć, co przedstawia ekran, co jest klikalne i co zrobi każdy przycisk (etykieta mówi skutek: „Utwórz ZD”, nie „OK”). Bez zbędnego tekstu: gdy ekran potrzebuje akapitu instrukcji, popraw strukturę albo etykietę. Jeśli na któreś z tych pytań widok nie odpowiada, to błąd do poprawienia, nie uwaga do raportu.
 
 # Dokumentacja — przeczytaj, gdy zadanie dotyczy tematu
 

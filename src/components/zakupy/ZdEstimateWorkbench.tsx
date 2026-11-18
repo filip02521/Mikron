@@ -2590,7 +2590,8 @@ export function ZdEstimateWorkbench({
       sortDir,
       packagingLookup,
       individualExtraByTwId,
-      qtyOverrideMap,
+      // Sort po ilości wyliczonej: wpisana ręcznie nie przestawia wiersza (Tab → następny wiersz zostaje następnym).
+      null,
       extraOnlyTwIds,
       extrasPolicy,
       stockNeedReliefByTwId,
@@ -2605,7 +2606,6 @@ export function ZdEstimateWorkbench({
     sortDir,
     packagingLookup,
     individualExtraByTwId,
-    qtyOverrideMap,
     extraOnlyTwIds,
     extrasPolicy,
     stockNeedReliefByTwId,

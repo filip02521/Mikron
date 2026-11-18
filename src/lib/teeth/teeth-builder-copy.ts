@@ -3,6 +3,7 @@ import { TEETH_KIND_LABELS, teethProductLineLabel } from "@/lib/teeth/teeth-cata
 import type { TeethJawMode } from "@/lib/teeth/teeth-mould-shape-groups";
 import { productLineEncodesJawInMould } from "@/lib/teeth/teeth-mould-shape-groups";
 import { polishPluralWord } from "@/lib/email/polish-plural";
+import { plKlapka } from "@/lib/ui/polish-plurals";
 
 export const TEETH_SECTION_LABELS = TEETH_KIND_LABELS;
 export const TEETH_DUAL_KIND_LABELS = TEETH_KIND_LABELS;
@@ -46,36 +47,36 @@ export function teethBuilderEmptyListExample(
   productLine?: TeethProductLine | null,
 ): string {
   if (productLine === "wiedent_estetic" && kind === "anterior") {
-    return "Dodaj pierwszą pozycję - np. A2 · 32 × 4 szt.";
+    return "Dodaj pierwszą pozycję - np. A2 · 32 × 4 klapki";
   }
   if (productLine === "wiedent_classic" && kind === "anterior") {
-    return "Dodaj pierwszą pozycję - np. A2 · 402 × 4 szt.";
+    return "Dodaj pierwszą pozycję - np. A2 · 402 × 4 klapki";
   }
   if (productLine === "wiedent_almamiss" && kind === "anterior") {
-    return "Dodaj pierwszą pozycję - np. A2 · 210 × 4 szt.";
+    return "Dodaj pierwszą pozycję - np. A2 · 210 × 4 klapki";
   }
   if (productLine === "dentex_amberlux" && kind === "anterior") {
-    return "Dodaj pierwszą pozycję - np. A2 · 3 × 4 szt.";
+    return "Dodaj pierwszą pozycję - np. A2 · 3 × 4 klapki";
   }
   if (productLine === "major_super_lux" && kind === "anterior") {
-    return "Dodaj pierwszą pozycję - np. A2 · 50 × 4 szt.";
+    return "Dodaj pierwszą pozycję - np. A2 · 50 × 4 klapki";
   }
   if (productLine === "ivoclar_phonares_ii" && kind === "anterior") {
-    return "Dodaj pierwszą pozycję - np. A2 · S61 × 4 szt. (Soft) lub L50 (dolne).";
+    return "Dodaj pierwszą pozycję - np. A2 · S61 × 4 klapki (Soft) lub L50 (dolne).";
   }
   if (productLine === "ivoclar_phonares_ii" && kind === "posterior") {
-    return "Dodaj pierwszą pozycję - np. A2 · NU5 × 2 szt. (Typ, U=góra) lub LU5 (Lingual).";
+    return "Dodaj pierwszą pozycję - np. A2 · NU5 × 2 klapki (Typ, U=góra) lub LU5 (Lingual).";
   }
   if (productLine === "ivoclar_vivodent_dcl" && kind === "anterior") {
-    return "Dodaj pierwszą pozycję - np. A2 · A25 × 4 szt. (owalne) lub A7 (dolne).";
+    return "Dodaj pierwszą pozycję - np. A2 · A25 × 4 klapki (owalne) lub A7 (dolne).";
   }
   if (productLine === "ivoclar_orthotyp_dcl" && kind === "posterior") {
-    return "Dodaj pierwszą pozycję - np. A2 · N5U × 2 szt. (góra) lub N5L (dół) / LU5 (Lingual).";
+    return "Dodaj pierwszą pozycję - np. A2 · N5U × 2 klapki (góra) lub N5L (dół) / LU5 (Lingual).";
   }
   if (kind === "anterior") {
-    return "Dodaj pierwszą pozycję - np. A2 · S61 × 4 szt.";
+    return "Dodaj pierwszą pozycję - np. A2 · S61 × 4 klapki";
   }
-  return "Dodaj pierwszą pozycję - np. A2 · 60 · góra × 2 szt.";
+  return "Dodaj pierwszą pozycję - np. A2 · 60 · góra × 2 klapki";
 }
 
 export type TeethDualSectionStatus = { hasItems: boolean; complete: boolean };
@@ -205,11 +206,11 @@ export function teethDualCommitToastMessage(
   const details: string[] = [];
   for (const item of added) {
     const label = TEETH_DUAL_KIND_LABELS[item.kind].toLowerCase();
-    details.push(`Dodano ${label}: ${item.product} · ${item.quantity} szt.`);
+    details.push(`Dodano ${label}: ${item.product} · ${item.quantity} ${plKlapka(item.quantity)}`);
   }
   for (const item of updated) {
     const label = TEETH_DUAL_KIND_LABELS[item.kind].toLowerCase();
-    details.push(`Zaktualizowano ${label}: ${item.quantity} szt.`);
+    details.push(`Zaktualizowano ${label}: ${item.quantity} ${plKlapka(item.quantity)}`);
   }
   if (details.length === 0) return null;
 

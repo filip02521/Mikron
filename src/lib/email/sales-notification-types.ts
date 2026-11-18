@@ -8,6 +8,8 @@ export type SalesDeliveryNotificationItem = {
   orderedQty: number | null;
   deliveredQty: number | null;
   deliveryKind: "complete" | "partial";
+  /** Pozycja zębowa — ilości w klapkach, nie w szt. */
+  isTeeth?: boolean;
 };
 
 /** Jedna pozycja informacyjna (bez zamówienia u dostawcy). */

@@ -874,7 +874,7 @@ export const ZD_ESTIMATE_UI = {
   listStatusColumnHint:
     "Chipy statusu (para / prośba / skład / wykluczenie) - do 4 w rzędzie, potem +N. Szczegóły w podpowiedzi (hover).",
   doZdColumnHint:
-    "Ilość na dokumencie ZD. Przy paczkach: liczba opakowań (+ ile sztuk przyjdzie pod spodem). Pod ilością: % pewności podbicia - amber + OK = do weryfikacji (klik zaakceptuj w tej sesji; OK zostaje też przy nadpisaniu / zaokrągleniu opakowań). Definicja opakowania - kolumna Opak. obok.",
+    "Ilość na dokumencie ZD. Przy paczkach: liczba opakowań (+ ile sztuk przyjdzie pod spodem). Pod ilością: % pewności podbicia - amber + OK = do weryfikacji (klik zaakceptuj w tej sesji; OK zostaje też przy nadpisaniu / zaokrągleniu opakowań). Definicja opakowania - kolumna Opak. obok. Klawiatura: ↑/↓ zmienia ilość (Shift ×10, przy sztukach w opakowaniach o całe opakowanie), Tab lub Enter przechodzi do następnej pozycji, Shift+Tab wraca.",
   advancedZapasMinLabel: "Bufor minimum (szt.)",
   advancedZapasMinHint:
     "Dodatkowe sztuki doliczane do celu zapasu przed wyliczeniem Do ZD. Podnoszą „bezpieczny” poziom magazynu niezależnie od okna sprzedaży.",

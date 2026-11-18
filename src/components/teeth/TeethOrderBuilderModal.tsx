@@ -54,6 +54,7 @@ import { IconCamera } from "@/components/icons/StrokeIcons";
 import { TeethShortageWarningBanner } from "@/components/teeth/TeethShortageWarningBanner";
 import { useTeethShortageHits } from "@/components/layout/TeethShortagesContext";
 import { cn } from "@/lib/cn";
+import { plKlapka } from "@/lib/ui/polish-plurals";
 import { panelChoiceChipClass, panelChoiceChipIdleClass, panelChoiceChipSelectedClass } from "@/lib/ui/ontime-theme";
 import { askConfirm } from "@/components/ui/ConfirmHost";
 
@@ -388,7 +389,7 @@ function TeethDualKindOrderBuilderModal({
               </span>
               <span className="text-slate-300">·</span>
               <span>
-                Razem: <span className="text-indigo-700">{totalCount}</span> szt.
+                Razem: <span className="text-indigo-700">{totalCount}</span> {plKlapka(totalCount)}
               </span>
             </div>
           </div>
@@ -433,7 +434,7 @@ function TeethDualKindOrderBuilderModal({
               {TEETH_DUAL_KIND_LABELS[activeKind]}
             </p>
             <span className="text-[0.625rem] font-medium tabular-nums text-indigo-700">
-              {activeCount} szt. na liście
+              {activeCount} {plKlapka(activeCount)} na liście
             </span>
           </div>
 
@@ -539,7 +540,7 @@ function TeethDualKindToggle({
               {TEETH_DUAL_KIND_LABELS[kind]}
               {count > 0 ? (
                 <span className="ml-1.5 text-[0.6875rem] font-medium tabular-nums opacity-90">
-                  · {count} szt.
+                  · {count} {plKlapka(count)}
                 </span>
               ) : null}
               {needsAttention ? (
@@ -665,7 +666,7 @@ function TeethSingleKindOrderBuilderModal({
       group &&
       !(await askConfirm({
         title: "Usunąć pozycję?",
-        message: `${group.color || "?"} ${group.mould ?? ""} (${group.count} szt.)`,
+        message: `${group.color || "?"} ${group.mould ?? ""} (${group.count} ${plKlapka(group.count)})`,
         confirmLabel: "Usuń",
         danger: true,
       }))
@@ -786,7 +787,7 @@ function TeethSingleKindOrderBuilderModal({
                 <span className="text-slate-300">·</span>
               ) : null}
               <span>
-                Razem: <span className="text-indigo-700">{totalCount || 0}</span> szt.
+                Razem: <span className="text-indigo-700">{totalCount || 0}</span> {plKlapka(totalCount || 0)}
               </span>
             </div>
           </div>

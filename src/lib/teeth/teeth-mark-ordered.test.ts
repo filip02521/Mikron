@@ -275,6 +275,26 @@ describe("teethMarkOrderedConfirmMessage", () => {
     expect(msg).toMatch(/grupa dostawcy nie ma/);
   });
 
+  it("liczy zaznaczone pozycje jako klapki, nie zęby", () => {
+    const base = {
+      orderIds: ["a"],
+      withSpecIds: ["a"],
+      withoutSpecIds: [],
+      withoutFileIds: [],
+      withoutFileGroupCount: 0,
+      hasMissingSpec: false,
+      hasMissingFile: false,
+      canMarkAny: true,
+    };
+    expect(teethMarkOrderedConfirmMessage({ ...base, selectedPositionCount: 1 })).toBe(
+      "Czy na pewno chcesz oznaczyć 1 klapkę jako zamówione u dostawcy?",
+    );
+    expect(teethMarkOrderedConfirmMessage({ ...base, selectedPositionCount: 4 }, "Ivoclar")).toBe(
+      "Oznaczyć 4 klapki u dostawcy Ivoclar jako zamówione?",
+    );
+    expect(teethMarkOrderedConfirmMessage(base)).not.toMatch(/ząb|zęb|klap/);
+  });
+
   it("nie mówi o 0 grupach, gdy brakuje pliku a licznik grup jest pusty", () => {
     const msg = teethMarkOrderedConfirmMessage({
       orderIds: ["a", "b"],

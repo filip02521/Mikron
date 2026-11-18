@@ -222,7 +222,8 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
       id: "teeth-handover-ready",
       source: "teeth_handover",
       priority: PRIORITY.teeth_handover,
-      title: `Potwierdź odbiór zębów (${teethLineCount})`,
+      // Liczba pozycji, nie zębów — „(2)” czytało się jak dwa zęby.
+      title: `Potwierdź odbiór zębów (${teethLineCount} poz.)`,
       subtitle: "Doręczenie osobiste od magazynu - nie na regał",
       href: `/moje#${MOJE_TEETH_ACTION_SECTION_ID}`,
       scrollTarget: MOJE_TEETH_ACTION_SECTION_ID,
@@ -252,7 +253,7 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
       id: "mixed-pickup-ready",
       source: "mixed_pickup",
       priority: PRIORITY.mixed_pickup,
-      title: `Potwierdź odbiór zębów i towaru (${mixedLineCount})`,
+      title: `Potwierdź odbiór zębów i towaru (${mixedLineCount} poz.)`,
       subtitle: "Każdy typ potwierdzasz osobno - inny przepływ magazynowy",
       href: `/moje#${MOJE_MIXED_ACTION_SECTION_ID}`,
       scrollTarget: MOJE_MIXED_ACTION_SECTION_ID,

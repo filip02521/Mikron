@@ -353,7 +353,7 @@ export function TeethBuilderQuantityRow({
                 "w-11 border-x border-slate-200/90 bg-card py-1 text-center text-xs font-semibold tabular-nums",
                 controlFocusClass,
               )}
-              aria-label="Ilość sztuk tej pozycji"
+              aria-label="Liczba klapek tej pozycji"
             />
             <QuantityStepButton
               label="+"

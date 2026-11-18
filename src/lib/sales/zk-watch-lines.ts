@@ -1,6 +1,7 @@
 import type { SubiektDocument, SubiektDocumentLine } from "@/lib/subiekt/types";
 import type { SalesZkWatch } from "@/types/database";
 import { polishPluralWord } from "@/lib/email/polish-plural";
+import { plKlapka } from "@/lib/ui/polish-plurals";
 
 export type ZkWatchLineCheckStored = {
   key: string;
@@ -74,6 +75,25 @@ function formatLineQuantity(qty: number | null | undefined): string | null {
   const n = Number(qty);
   const label = n === Math.trunc(n) ? String(Math.trunc(n)) : String(n);
   return `${label} szt.`;
+}
+
+/**
+ * Ilość pozycji ZK do pokazania: towar z katalogu zębów w klapkach („2 klapki”),
+ * reszta jak w Subiekcie („2 szt.”).
+ */
+export function zkLineQuantityLabel(
+  line: Pick<ZkWatchLineView, "quantity" | "quantityLabel" | "subiektTwId">,
+  teethTwIds?: ReadonlySet<number> | null
+): string | null {
+  if (
+    line.quantity != null &&
+    Number.isInteger(line.quantity) &&
+    line.subiektTwId != null &&
+    teethTwIds?.has(line.subiektTwId)
+  ) {
+    return `${line.quantity} ${plKlapka(line.quantity)}`;
+  }
+  return line.quantityLabel;
 }
 
 function parseLineQuantity(qty: number | null | undefined): number | null {

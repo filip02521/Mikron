@@ -54,7 +54,7 @@ import {
   sendRequestNoteUpdateEmails,
 } from "@/lib/services/email";
 import type { IndividualRequestKind } from "@/types/database";
-import { INFORMACJA_NO_QUANTITY, quantityForRequestKind } from "@/lib/orders/individual";
+import { INFORMACJA_NO_QUANTITY, orderUnit, quantityForRequestKind } from "@/lib/orders/individual";
 import { isInformacjaWarehouseQueueOrder } from "@/lib/orders/informacja-warehouse-queue";
 import {
   isInformacjaStockAvailableForAutoArrive,
@@ -1807,20 +1807,22 @@ async function applyDeliveredQuantityUpdate(
     cancelled > 0 &&
     (activeOrdered === 0 || isNaN(activeOrdered));
 
+  const isTeeth = Boolean(order.is_teeth);
+  const piecesWord = isTeeth ? "klapek" : "sztuk";
   if (isCancelDispositionReceive) {
     if (isNaN(delivered) || delivered < 0) {
-      throw new Error("Podaj poprawną liczbę dostarczonych sztuk (0 lub więcej)");
+      throw new Error(`Podaj poprawną liczbę dostarczonych ${piecesWord} (0 lub więcej)`);
     }
     if (delivered > cancelled) {
-      throw new Error(`Nie można przyjąć więcej niż ${cancelled} szt. z rezygnacji`);
+      throw new Error(`Nie można przyjąć więcej niż ${cancelled} ${orderUnit(cancelled, isTeeth)} z rezygnacji`);
     }
   } else if (!isNaN(activeOrdered) && activeOrdered > 0) {
     if (isNaN(delivered) || delivered < 0) {
-      throw new Error("Podaj poprawną liczbę dostarczonych sztuk (0 lub więcej)");
+      throw new Error(`Podaj poprawną liczbę dostarczonych ${piecesWord} (0 lub więcej)`);
     }
     if (delivered > activeOrdered) {
       throw new Error(
-        `Nie można dostarczyć więcej niż aktywne zamówienie (${activeOrdered} szt.)`
+        `Nie można dostarczyć więcej niż aktywne zamówienie (${activeOrdered} ${orderUnit(activeOrdered, isTeeth)})`
       );
     }
   }

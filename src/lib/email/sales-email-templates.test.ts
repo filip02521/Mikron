@@ -31,6 +31,27 @@ describe("sales email templates", () => {
     expect(html).toContain("/moje");
   });
 
+  it("delivery template counts teeth in klapki", () => {
+    const { html } = renderDeliveryArrivedEmail({
+      recipientName: "Jan",
+      items: [
+        {
+          kind: "delivery",
+          supplierName: "D",
+          products: "Zęby akrylowe",
+          symbol: null,
+          clientName: null,
+          orderedQty: 4,
+          deliveredQty: 2,
+          deliveryKind: "partial",
+          isTeeth: true,
+        },
+      ],
+    });
+    expect(html).toContain("2 / 4 klapki - brakuje 2 klapek");
+    expect(html).not.toContain("szt.");
+  });
+
   it("informacja template explains request type", () => {
     const { html } = renderInformacjaArrivedEmail({
       recipientName: "Anna",

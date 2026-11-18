@@ -42,7 +42,7 @@ export function teethShortageAvailabilityMessage(
 }
 
 export const TEETH_SHORTAGE_BANNER_TITLE =
-  "Część wybranych zębów jest w braku u dostawcy";
+  "Część wybranych klapek jest w braku u dostawcy";
 
 /** Klasy badge dostępności — lista / modal handlowca. */
 export function teethShortageAvailabilityBadgeClass(

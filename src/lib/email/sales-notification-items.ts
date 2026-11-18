@@ -20,6 +20,7 @@ type OrderForEmail = Pick<
   | "status"
   | "procurement_cancel_note"
   | "sales_request_note"
+  | "is_teeth"
 > & {
   supplier?: { name?: string } | null;
 };
@@ -76,6 +77,7 @@ export function buildDeliveryNotificationItem(
     orderedQty,
     deliveredQty,
     deliveryKind,
+    isTeeth: Boolean(order.is_teeth),
   };
 }
 

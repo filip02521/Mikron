@@ -11,6 +11,7 @@ import { mojeLineCancelMenuTriggerClass } from "@/lib/ui/moje-shipment-row-style
 
 export function MyOrderLineCancelMenu({
   product,
+  isTeeth = false,
   listKind = "zamowienie",
   pending,
   showRemainderCancel,
@@ -27,6 +28,8 @@ export function MyOrderLineCancelMenu({
   className,
 }: {
   product: string;
+  /** Pozycja zębowa — etykiety w klapkach. */
+  isTeeth?: boolean;
   listKind?: "zamowienie" | "informacja";
   pending?: boolean;
   showRemainderCancel: boolean;
@@ -67,12 +70,12 @@ export function MyOrderLineCancelMenu({
           disabled={pending}
           onClick={() => onRunPartialCancel(partialDefaultQty)}
         >
-          {salesCancelLineRemainderLabel(partialDefaultQty)}
+          {salesCancelLineRemainderLabel(partialDefaultQty, isTeeth)}
         </OverflowMenuItem>
       ) : null}
       {showSupplierQuickCancel ? (
         <OverflowMenuItem danger disabled={pending} onClick={() => onRunPartialCancel(1)}>
-          {salesCancelQuickActionLabel()}
+          {salesCancelQuickActionLabel(isTeeth)}
         </OverflowMenuItem>
       ) : null}
       {showPartialQtyCancel ? (
