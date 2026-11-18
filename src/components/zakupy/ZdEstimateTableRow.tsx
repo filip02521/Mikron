@@ -38,6 +38,7 @@ import { ZdEstimateRowActions } from "@/components/zakupy/ZdEstimateRowActions";
 import { ZdSalesProfileCardContent, ZdSalesSparkline } from "@/components/zakupy/ZdSalesSparkline";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { Badge } from "@/components/ui/Badge";
+import { stockOutBadgeTitle, type ZdStockOutBadge } from "@/lib/orders/stock-out-signals";
 import { SERVICE_PARTS_CECHA_NAME } from "@/lib/orders/service-parts";
 import { cn } from "@/lib/cn";
 import { formatZdSalesProfileHint } from "@/lib/orders/zd-sales-profile";
@@ -266,6 +267,8 @@ export type ZdEstimateTableRowProps = {
   otherSupplierHint?: string | null;
   /** Wiszące prośby na ten towar przypisane innemu dostawcy — tylko podpowiedź. */
   prosbyElsewhere?: readonly ZdProsbaElsewhere[] | null;
+  /** Handlowcy zgłosili brak na stanie — odznaka; zgłoszenie zamknie się samo po ZD. */
+  stockOut?: ZdStockOutBadge | null;
   /** Cena netto za sztukę z ostatniego ZD (null = brak ceny). */
   unitPriceNet?: number | null;
   /** Klasa ABC/XYZ (kolumna „Klasa”); null = towar jeszcze niesklasyfikowany. */
@@ -325,6 +328,7 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
   onAcceptReview,
   otherSupplierHint,
   prosbyElsewhere,
+  stockOut = null,
   unitPriceNet,
   skuClass,
 }: ZdEstimateTableRowProps) {
@@ -482,6 +486,13 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
           {servicePart ? (
             <span title={`Cecha Subiekta „${SERVICE_PARTS_CECHA_NAME}”: zamawiane tylko po prośbie serwisu.`}>
               <Badge variant="info">serwis</Badge>
+            </span>
+          ) : null}
+          {stockOut ? (
+            <span title={stockOutBadgeTitle(stockOut)}>
+              <Badge variant="warning">
+                zgłoszony brak{stockOut.count > 1 ? ` ×${stockOut.count}` : ""}
+              </Badge>
             </span>
           ) : null}
           <ZdEstimateNameMetaStack

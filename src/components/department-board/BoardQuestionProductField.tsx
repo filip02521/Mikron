@@ -163,11 +163,19 @@ export function BoardQuestionProductField({
   onChange,
   disabled,
   idPrefix,
+  label = DEPARTMENT_BOARD_QUESTIONS_FORM.productLabel,
+  onRemoveRow,
+  autoFocus = false,
 }: {
   value: BoardQuestionProductDraft;
   onChange: (patch: Partial<BoardQuestionProductDraft>) => void;
   disabled?: boolean;
   idPrefix: string;
+  label?: string;
+  /** Kolejny produkt pytania: „Usuń” zabiera cały wiersz, nie tylko czyści pole. */
+  onRemoveRow?: () => void;
+  /** Świeżo dodany wiersz: kursor od razu w polu wyszukiwania. */
+  autoFocus?: boolean;
 }) {
   const fieldRef = useRef<HTMLDivElement>(null);
   const inputAnchorRef = useRef<HTMLDivElement>(null);
@@ -352,9 +360,24 @@ export function BoardQuestionProductField({
 
   return (
     <div ref={fieldRef} className="space-y-1.5">
-      <label htmlFor={inputId} className={boardQuestionsFieldLabelClass}>
-        {DEPARTMENT_BOARD_QUESTIONS_FORM.productLabel}
-      </label>
+      <div className="flex items-center justify-between gap-2">
+        <label htmlFor={inputId} className={boardQuestionsFieldLabelClass}>
+          {label}
+        </label>
+        {onRemoveRow && !showSelected ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 text-slate-600"
+            disabled={disabled}
+            onClick={onRemoveRow}
+            aria-label={`${DEPARTMENT_BOARD_QUESTIONS_FORM.productRemove}: ${label}`}
+          >
+            {DEPARTMENT_BOARD_QUESTIONS_FORM.productRemove}
+          </Button>
+        ) : null}
+      </div>
 
       {showSelected ? (
         <BoardQuestionProductSelectedCard
@@ -362,7 +385,7 @@ export function BoardQuestionProductField({
           linked={linked}
           disabled={disabled}
           onChangeProduct={editProduct}
-          onRemove={clearProduct}
+          onRemove={onRemoveRow ?? clearProduct}
         />
       ) : (
         <div
@@ -394,6 +417,7 @@ export function BoardQuestionProductField({
                 enabled && visibleStatus === "loading" ? "pr-10" : undefined
               )}
               autoComplete="off"
+              autoFocus={autoFocus}
               role="combobox"
               aria-expanded={typeaheadPanelVisible}
               aria-controls={typeaheadPanelVisible ? listboxId : undefined}

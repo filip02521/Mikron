@@ -23,7 +23,7 @@ describe("formatSalesPersonAccountStatus", () => {
         linkedUserLastSignInAt: "2026-06-15T08:00:00.000Z",
         linkedUserLastActivityAt: "2026-06-18T10:00:00.000Z",
       })
-    ).toBe("Aktyw. 18.06.2026");
+    ).toBe("Aktywność 18.06.2026");
   });
 
   it("pokazuje logowanie gdy brak innej aktywności", () => {
@@ -33,7 +33,7 @@ describe("formatSalesPersonAccountStatus", () => {
         linkedUserLastSignInAt: "2026-05-24T14:22:00.000Z",
         linkedUserLastActivityAt: "2026-05-24T14:22:00.000Z",
       })
-    ).toBe("Aktyw. 24.05.2026");
+    ).toBe("Aktywność 24.05.2026");
   });
 });
 

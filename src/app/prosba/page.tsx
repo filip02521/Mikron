@@ -123,6 +123,9 @@ export default async function ProsbaPage({
           scope
         );
         salesPeople = scoped.map((p) => ({ id: p.id, name: p.name }));
+        // Własna karta kierownika zawsze na liście „W czyim imieniu?” (z dopiskiem „(ja)”). Bez niej, gdy kierownik nie
+        // należy do swoich grup, lista pokazywała pierwszą osobę z zespołu, a prośba szła na kierownika.
+        if (own && !salesPeople.some((p) => p.id === own.id)) salesPeople = [{ id: own.id, name: own.name }, ...salesPeople];
 
         if (delegateId) {
           lockedSalesPerson = await resolvePreviewSalesPerson(delegateId, user);

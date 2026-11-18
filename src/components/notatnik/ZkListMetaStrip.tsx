@@ -125,9 +125,9 @@ function ZkListMetaActions({
         <button
           type="button"
           onClick={onOpenStatusGuide}
-          className={cn(brandLinkSubtleClass, "shrink-0 text-xs font-semibold whitespace-nowrap")}
+          className={cn(brandLinkSubtleClass, "shrink-0 text-xs font-semibold whitespace-nowrap underline decoration-indigo-300 underline-offset-2")}
         >
-          Statusy pozycji
+          Co znaczą statusy?
         </button>
       ) : null}
       {hasTrailing ? <div className="shrink-0">{trailing}</div> : null}

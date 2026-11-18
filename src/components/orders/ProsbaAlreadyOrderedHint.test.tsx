@@ -2,7 +2,7 @@
  * @vitest-environment happy-dom
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import {
   ProsbaAlreadyOrderedHint,
   ProsbaAvailabilityCard,
@@ -226,5 +226,50 @@ describe("ProsbaAvailabilityCard", () => {
     expect(card.textContent).toContain("Alpha Dental");
     expect(card.textContent).toMatch(/15\.03/);
     expect(screen.queryByLabelText("Dostawca pozycji")).toBeNull();
+  });
+});
+
+describe("ProsbaAvailabilityCard — zgłoś brak na stanie", () => {
+  it("pusta półka: przycisk, po kliknięciu osobne zgłoszenie i potwierdzenie bez zmiany prośby", async () => {
+    const onReport = vi.fn().mockResolvedValue({ ok: true });
+    render(<ProsbaAvailabilityCard line={line()} requestKind="zamowienie" info={undefined} onReportStockOut={onReport} />);
+    const btn = screen.getByRole("button", { name: "Zgłoś brak na stanie" });
+    expect(screen.getByText(/ta prośba się nie zmieni/)).toBeTruthy();
+    await act(async () => {
+      fireEvent.click(btn);
+      fireEvent.click(btn);
+    });
+    expect(onReport).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: "Zgłoś brak na stanie" })).toBeNull();
+    expect(screen.getByText(/Brak zgłoszony - zakupy zamówią/)).toBeTruthy();
+  });
+
+  it("już zgłoszony: stan zamiast błędu; inny błąd: komunikat i ponowna próba", async () => {
+    const already = vi.fn().mockResolvedValue({ ok: false, alreadyReported: true, message: "x" });
+    render(<ProsbaAvailabilityCard line={line()} requestKind="zamowienie" info={undefined} onReportStockOut={already} />);
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Zgłoś brak na stanie" })));
+    expect(screen.getByText("Ten brak jest już zgłoszony - zakupy go widzą.")).toBeTruthy();
+    cleanup();
+
+    const failing = vi.fn().mockResolvedValue({ ok: false, alreadyReported: false, message: "Brak połączenia" });
+    render(<ProsbaAvailabilityCard line={line()} requestKind="zamowienie" info={undefined} onReportStockOut={failing} />);
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Zgłoś brak na stanie" })));
+    expect(screen.getByText("Brak połączenia")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Spróbuj ponownie" })).toBeTruthy();
+  });
+
+  it("towar na półce albo bez obsługi zgłoszeń: brak przycisku", () => {
+    render(
+      <ProsbaAvailabilityCard line={line({ onHand: 5, available: 5 })} requestKind="zamowienie" info={undefined} onReportStockOut={vi.fn()} />
+    );
+    expect(screen.queryByRole("button", { name: "Zgłoś brak na stanie" })).toBeNull();
+    cleanup();
+    render(<ProsbaAvailabilityCard line={line()} requestKind="zamowienie" info={undefined} />);
+    expect(screen.queryByRole("button", { name: "Zgłoś brak na stanie" })).toBeNull();
+  });
+
+  it("tryb „Powiadom, gdy będzie”: pasek też jest, choć karta nie pokazuje stanu", () => {
+    render(<ProsbaAvailabilityCard line={line()} requestKind="informacja" info={undefined} onReportStockOut={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Zgłoś brak na stanie" })).toBeTruthy();
   });
 });
