@@ -5359,13 +5359,31 @@ export function ZdEstimateWorkbench({
     });
   };
 
+  // Karta zakresu rozwinięta nad listą: Kreator przewija się od góry. Przeglądarka pamięta scroll
+  // z formularza sprzed Policz (overflow wyłączony przy liście) i przywracała go — karta otwierała się
+  // przewinięta do „Przelicz listę”, z wyborem dostawcy poza ekranem.
+  // Tak samo nowa lista po Policz (telefon, gdzie Kreator przewija się też przy liście) — od góry.
+  const workbenchRootRef = useRef<HTMLDivElement>(null);
+  const prepOverList = Boolean(lines) && prepFormOpen;
+  const hasList = Boolean(lines);
+  useLayoutEffect(() => {
+    if ((prepOverList || hasList) && workbenchRootRef.current) workbenchRootRef.current.scrollTop = 0;
+  }, [prepOverList, hasList]);
+
+  // Stan karty zakresu sprzed „Zmień dostawcę” — Anuluj wraca do niego (lista nie zostaje pod rozwiniętą kartą).
+  const prepCollapsedBeforeRemapRef = useRef<boolean | null>(null);
+
   const beginChangeSupplierScope = () => {
+    prepCollapsedBeforeRemapRef.current = prepCollapsed;
     setPrepCollapsed(false);
     setScopeRemapActive(true);
   };
 
   const cancelChangeSupplierScope = () => {
     setScopeRemapActive(false);
+    const before = prepCollapsedBeforeRemapRef.current;
+    prepCollapsedBeforeRemapRef.current = null;
+    if (lines && before !== false) setPrepCollapsed(true);
   };
 
   const onBoostPresetChange = (next: ZdBoostPowerPreset) => {
@@ -6551,6 +6569,7 @@ export function ZdEstimateWorkbench({
   return (
     <ZdEstimateNoticeTrayProvider>
     <div
+      ref={workbenchRootRef}
       data-zd-estimate-phase={lines ? "list" : "prep"}
       className={cn(
         zdEstimateWorkbenchStackClass,
@@ -6564,11 +6583,17 @@ export function ZdEstimateWorkbench({
         // Bez listy: scroll całego formularza, jeśli nie mieści się w oknie.
         // Przy liście workbench NIE scrolluje — tabela ma własny scrollport
         // (#zd-estimate-table-scroll); overflow tu psuje sticky nagłówki.
+        // Wyjątek: karta zakresu rozwinięta nad listą („Zmień zakres”) — razem nie mieszczą się
+        // w oknie (`main` ma overflow:hidden), więc bez scrolla tabela zjeżdżała poza ekran,
+        // a przycisk „Przelicz listę” chował się pod paskiem akcji.
         !showLaunchProgress &&
           !showSessionResumeProgress &&
           !showQuietSessionRestore &&
-          !lines &&
+          (!lines || prepFormOpen) &&
           "overflow-y-auto overscroll-contain",
+        // Telefon: parametry i pasek akcji zajmują prawie cały ekran — bez scrolla Kreatora tabela
+        // miała wysokość jednego wiersza.
+        lines && "max-sm:overflow-y-auto max-sm:overscroll-contain",
         // Zjedz dolny py insetu (fill: py-2) — clearance docka jest końcem treści.
         showResultStickyActions &&
           !showLaunchProgress &&
@@ -7742,7 +7767,11 @@ export function ZdEstimateWorkbench({
       <div
         className={cn(
           "flex min-h-0 flex-col gap-1.5",
-          (Boolean(lines) || lastEstimateFailed) && "flex-1"
+          (Boolean(lines) || lastEstimateFailed) && "flex-1",
+          // Pod rozwiniętą kartą zakresu lista zostaje używalna: własna wysokość z przewijaniem tabeli,
+          // dojazd do niej scrollem Kreatora (inaczej flex ściskał ją do zera).
+          Boolean(lines) && prepFormOpen && "min-h-[min(36rem,80dvh)] shrink-0",
+          Boolean(lines) && "max-sm:min-h-[min(36rem,80dvh)] max-sm:shrink-0"
         )}
       >
       {!lines &&

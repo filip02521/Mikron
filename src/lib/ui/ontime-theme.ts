@@ -358,7 +358,9 @@ export const zdEstimatePageIntroClass = cn(
  */
 export const zdEstimatePageIntroRowClass = cn(
   "flex min-w-0 items-center gap-2 sm:gap-3",
-  zdEstimateChromeControlHeightClass
+  zdEstimateChromeControlHeightClass,
+  // Telefon: Zakres / Dostawcy / Reguły nie mieszczą się obok tytułu — drugi rząd zamiast uciętych przycisków.
+  "max-sm:h-auto max-sm:flex-wrap max-sm:gap-y-1.5"
 );
 
 /**
