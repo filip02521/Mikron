@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useLayoutEffect, useRef } from "react";
+import { installTouchKeyboardAssist } from "@/lib/ui/touch-keyboard";
 import { usePathname } from "next/navigation";
 import { LegacyProcurementRouteRedirect } from "@/components/layout/LegacyProcurementRouteRedirect";
 import { AdminPanelPreviewProvider } from "./AdminPanelPreviewContext";
@@ -263,6 +264,8 @@ export function AppShellClient({
   useLayoutEffect(() => {
     document.body.classList.toggle("serwis-world", inServis);
   }, [inServis]);
+  // Ekrany dotykowe z Windows (`.touch-ui`): pole, które dostało fokus po stuknięciu palcem, pokazuje klawiaturę samo.
+  useEffect(() => installTouchKeyboardAssist(), []);
 
   if (isAuthScreen) {
     return <div className="min-h-dvh overflow-x-hidden">{children}</div>;

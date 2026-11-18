@@ -45,9 +45,10 @@ export function ServiceShellBar({
   const theme = useThemePreference();
   const who = userAssignmentLabel || userEmail?.split("@")[0] || null;
   const helpdesk = useAppShellMetrics().serviceHelpdesk ?? null;
-  const helpdeskTitle = helpdesk
-    ? `Helpdesk mikran.pl połączony${helpdesk.connectedByEmail ? ` przez ${helpdesk.connectedByEmail.split("@")[0]}` : ""}, ${formatWarsawDateTime(helpdesk.connectedAt)}`
-    : null;
+  // Stan połączenia stoi przy akcji „Połącz” w menu konta; brak połączenia i błąd pokazuje tablica zleceń nad zgłoszeniami.
+  const helpdeskStatus = helpdesk
+    ? `Połączony${helpdesk.connectedByEmail ? ` · ${helpdesk.connectedByEmail.split("@")[0]}` : ""} · ${formatWarsawDateTime(helpdesk.connectedAt)}`
+    : "Niepołączony";
 
   return (
     <header className="sticky top-0 z-30 shrink-0 bg-[var(--sv-rail)] pt-[env(safe-area-inset-top,0px)] text-[var(--sv-rail-ink)]">
@@ -103,14 +104,6 @@ export function ServiceShellBar({
             <span className="sr-only sm:hidden">Przyjmij sprzęt</span>
           </Link>
           )}
-          {helpdeskTitle ? (
-            // Stan, nie przycisk: łączenie jest w menu konta; kto i kiedy — w podpowiedzi.
-            <span title={helpdeskTitle} className="hidden items-center gap-1.5 text-xs text-[var(--sv-rail-muted)] md:inline-flex">
-              <span aria-hidden className="h-2 w-2 rounded-full bg-emerald-400" />
-              <span className="sr-only">{helpdeskTitle}</span>
-              <span aria-hidden>Helpdesk połączony</span>
-            </span>
-          ) : null}
           <OverflowMenu
             label="Konto"
             iconOnly
@@ -132,9 +125,15 @@ export function ServiceShellBar({
             {readOnly ? null : (
               // Pełne przejście (nie router.push): trasa API przekierowuje na logowanie mikran.pl, potem wraca do zleceń.
               <OverflowMenuItem onClick={() => window.location.assign(new URL("/api/mcp/connect", window.location.origin))}>
-                <span className="flex items-center gap-2">
-                  <IconLink size={16} />
-                  {helpdesk ? "Połącz helpdesk ponownie" : "Połącz helpdesk mikran.pl"}
+                <span className="flex items-start gap-2">
+                  <IconLink size={16} className="mt-0.5 shrink-0" />
+                  <span className="flex flex-col">
+                    <span>{helpdesk ? "Połącz helpdesk ponownie" : "Połącz helpdesk mikran.pl"}</span>
+                    <span className="flex items-center gap-1.5 whitespace-nowrap text-xs text-slate-500">
+                      <span aria-hidden className={cn("h-2 w-2 shrink-0 rounded-full", helpdesk ? "bg-emerald-500" : "bg-slate-400")} />
+                      {helpdeskStatus}
+                    </span>
+                  </span>
                 </span>
               </OverflowMenuItem>
             )}

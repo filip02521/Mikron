@@ -323,6 +323,8 @@ export type SerialHistoryItem = {
   closedAt: string | null;
   fault: string;
   workNote: string;
+  /** Numer seryjny zlecenia — w karcie klienta łączy zlecenie z kupionym egzemplarzem. */
+  serialNo?: string | null;
 };
 
 /**
@@ -337,6 +339,30 @@ export function waitingPartArrived(
   if (order.status !== "czeka_na_czesc" || part?.twId == null) return false;
   const available = availableByTw.get(part.twId);
   return available != null && available >= part.qty;
+}
+
+/**
+ * Zlecenia, dla których część naprawdę czeka na półce: stan rozdzielony po kolei — najdłużej czekające pierwsze.
+ * Dwa zlecenia czekające na tę samą część nie widzą jednej dostarczonej sztuki jako „do wzięcia” jednocześnie.
+ * Zlecenie, któremu stanu nie starcza, nie blokuje kolejnego z mniejszą ilością.
+ */
+export function arrivedWaitingOrderIds(
+  orders: readonly Pick<ServiceOrder, "id" | "status" | "waitingPart">[],
+  availableByTw: ReadonlyMap<number, number>
+): Set<string> {
+  const waiting = orders
+    .filter((o) => o.status === "czeka_na_czesc" && o.waitingPart?.twId != null)
+    .sort((a, b) => (a.waitingPart!.since ?? "9999").localeCompare(b.waitingPart!.since ?? "9999") || a.id.localeCompare(b.id));
+  const left = new Map(availableByTw);
+  const out = new Set<string>();
+  for (const o of waiting) {
+    const tw = o.waitingPart!.twId!;
+    const available = left.get(tw);
+    if (available == null || available < o.waitingPart!.qty) continue;
+    left.set(tw, available - o.waitingPart!.qty);
+    out.add(o.id);
+  }
+  return out;
 }
 
 /**

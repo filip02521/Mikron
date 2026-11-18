@@ -55,3 +55,10 @@ describe("mergeServicePartsIntoOnRequests", () => {
     expect([...servicePartTwIdSet(merged)].sort()).toEqual([5, 8]);
   });
 });
+
+describe("serviceTwIdsOnRequestOnly", () => {
+  it("część z minimum > 0 schodzi z listy „tylko na prośbę”; minimum 0 i brak minimum zostają", async () => {
+    const { serviceTwIdsOnRequestOnly } = await import("./service-parts");
+    expect(serviceTwIdsOnRequestOnly([11, 22, 33], new Map([[22, 3], [33, 0]]))).toEqual([11, 33]);
+  });
+});

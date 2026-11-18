@@ -16,7 +16,12 @@ import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-
 import { sidePanelBackdropClass } from "@/lib/ui/surfaces";
 import { useAnimatedClose } from "@/lib/ui/use-animated-close";
 import { warrantyStatus } from "@/lib/orders/service-warranty";
+import { addDays, LOANER_RETURN_PRESETS, toDateOnly } from "@/lib/orders/service-loaners";
+import { SERVICE_PART_ACTIVE_REQUEST_STATUSES } from "@/lib/orders/service-parts-overview";
+import type { IndividualOrderStatus } from "@/types/database";
 import {
+  actionIssueServiceOrderLoaner,
+  actionReportServiceOrderWaitingPart,
   actionLinkServiceOrderLoaner,
   actionMoveServiceOrder,
   actionReturnServiceOrderPart,
@@ -43,6 +48,7 @@ import {
   orderEventMeta,
   orderEventTitle,
   orderEventTone,
+  type FreeLoaner,
   type LinkableLoaner,
   type ModelPartView,
   type OrderPartView,
@@ -61,7 +67,6 @@ import {
   serviceOrderPanelView,
   transitionHint,
   transitionLabel,
-  waitingPartArrived,
   type ServiceOrder,
   type ServiceOrderEvent,
   type ServiceOrderStatus,
@@ -109,8 +114,10 @@ export function ServiceOrderDrawer({
   parts,
   events,
   loaners,
+  freeLoaners,
   modelParts,
   waitingPartAvailable,
+  waitingPartArrived: waitingPartArrivedForOrder,
   today,
   onClose,
   onDone,
@@ -121,9 +128,13 @@ export function ServiceOrderDrawer({
   parts: OrderPartView[];
   events: ServiceOrderEvent[];
   loaners: LinkableLoaner[];
+  /** Egzemplarze na stanie — „Wydaj zamiennik” wydaje klientowi zlecenia i od razu wiąże. */
+  freeLoaners: FreeLoaner[];
   modelParts: ModelPartView[];
   /** Ile czekającej części jest do wzięcia (Subiekt); null — nie wiadomo. */
   waitingPartAvailable: number | null;
+  /** Część jest do wzięcia dla tego zlecenia (stan rozdzielony między czekające zlecenia — tablica). */
+  waitingPartArrived: boolean;
   today: Date;
   onClose: () => void;
   onDone: (message: string) => void;
@@ -150,6 +161,9 @@ export function ServiceOrderDrawer({
   const [quoteForm, setQuoteForm] = useState(false);
   const [releaseForm, setReleaseForm] = useState(false);
   const [loanerPick, setLoanerPick] = useState("");
+  const [issuing, setIssuing] = useState(false);
+  const [issueUnit, setIssueUnit] = useState<string | null>(null);
+  const [issueDays, setIssueDays] = useState<number>(14);
   useBodyScrollLock(true);
   useFocusTrap(panelRef, true);
 
@@ -198,7 +212,7 @@ export function ServiceOrderDrawer({
   // Podgląd admina „Serwis”: karta do odczytu, bez kroków, części i zapisu opisu.
   const { readOnly } = useAdminPanelPreview();
   const view = { ...serviceOrderPanelView(order.status), ...(readOnly ? { workNoteEditable: false } : {}) };
-  const partArrived = waitingPartAvailable != null && waitingPartArrived(order, new Map([[order.waitingPart?.twId ?? 0, waitingPartAvailable]]));
+  const partArrived = waitingPartArrivedForOrder;
   // Po zamknięciu jedyna praca to brakujące dokumenty — wtedy stoją na górze, historia naprawy pod nimi.
   const docsFirst = closed && (missing.invoice || missing.rw);
   const serviceDays = daysSince(order.createdAt, closed && order.closedAt ? new Date(order.closedAt) : today);
@@ -228,6 +242,84 @@ export function ServiceOrderDrawer({
 
   const move = (to: ServiceOrderStatus, note = "") => submit(() => actionMoveServiceOrder({ orderId: order.id, to, note }));
 
+  // Wydanie z puli bez wychodzenia z karty: klient ze zlecenia, egzemplarz i zwrot — jedna transakcja z powiązaniem.
+  const issueUnitView = freeLoaners.find((u) => u.id === (issueUnit ?? freeLoaners[0]?.id)) ?? null;
+  const issueBack = toDateOnly(addDays(today, issueDays));
+  const issueForm = freeLoaners.length ? (
+    <form
+      className="space-y-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!issueUnitView) return;
+        submit(() => actionIssueServiceOrderLoaner({ orderId: order.id, unitId: issueUnitView.id, plannedReturn: issueBack }), () => setIssuing(false));
+      }}
+    >
+      <div>
+        <span className={fieldLabelInlineClass}>Egzemplarz na stanie</span>
+        <div role="radiogroup" aria-label="Egzemplarz na stanie" className="mt-1.5 grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-2">
+          {freeLoaners.map((u) => (
+            <button
+              key={u.id}
+              type="button"
+              role="radio"
+              aria-checked={u.id === issueUnitView?.id}
+              onClick={() => setIssueUnit(u.id)}
+              className={cn(
+                "flex min-h-11 flex-col gap-0.5 rounded-lg border bg-card p-2.5 text-left transition-colors duration-150",
+                u.id === issueUnitView?.id ? "border-indigo-600 ring-1 ring-inset ring-indigo-600" : "border-slate-200 hover:border-slate-300"
+              )}
+            >
+              <span className="font-mono text-xs font-semibold text-slate-900">{u.code}</span>
+              <span className="text-xs leading-snug text-slate-600">{u.twName}</span>
+              <span className="text-xs text-slate-500">stan {u.condition}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <span className={fieldLabelInlineClass}>Planowany zwrot</span>
+        <div role="radiogroup" aria-label="Planowany zwrot" className="mt-1.5 flex flex-wrap gap-2">
+          {LOANER_RETURN_PRESETS.map((n) => (
+            <button
+              key={n}
+              type="button"
+              role="radio"
+              aria-checked={issueDays === n}
+              onClick={() => setIssueDays(n)}
+              className={cn(
+                "min-h-11 rounded-full border px-3 text-[0.8125rem] transition-colors duration-150",
+                issueDays === n ? "border-indigo-600 bg-indigo-50 font-semibold text-indigo-900" : "border-slate-200 bg-card text-slate-600 hover:bg-slate-100"
+              )}
+            >
+              {n} dni
+            </button>
+          ))}
+        </div>
+      </div>
+      {/* Skutek przed zapisem: co, komu, do kiedy i że wiąże się ze zleceniem. */}
+      <p className="rounded-lg bg-slate-50 px-3 py-2.5 text-[0.8125rem] text-slate-700">
+        <b className="font-mono">{issueUnitView?.code}</b> trafi do <b>{order.clientName}</b> na czas naprawy {order.number}, zwrot do{" "}
+        <b>{formatDateOnly(issueBack)}</b>. Egzemplarz od razu powiąże się z tym zleceniem.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" disabled={pending || !issueUnitView} className={touchClass}>
+          {issueUnitView ? `Wydaj ${issueUnitView.code}` : "Wydaj"}
+        </Button>
+        <Button type="button" variant="secondary" className={touchClass} disabled={pending} onClick={() => setIssuing(false)}>
+          Anuluj
+        </Button>
+      </div>
+    </form>
+  ) : (
+    <p className="text-[0.8125rem] text-slate-600">
+      Na stanie nie ma wolnego egzemplarza — wszystkie są wydane albo w przeglądzie. Sprawdź w{" "}
+      <Link href="/serwis/zamienniki" className="inline-flex min-h-11 items-center font-medium text-indigo-700 underline underline-offset-2">
+        Zamiennikach
+      </Link>
+      .
+    </p>
+  );
+
   // Zamiennik: przy przyjęciu na górze panelu (wtedy się go wydaje), potem pod częściami.
   const loanerSection = (
     <Section title="Zamiennik dla klienta">
@@ -251,6 +343,8 @@ export function ServiceOrderDrawer({
         </div>
       ) : closed || readOnly ? (
         <p className="text-[0.8125rem] text-slate-500">Bez zamiennika.</p>
+      ) : issuing ? (
+        issueForm
       ) : linkable.length ? (
         <form
           className="space-y-2"
@@ -281,21 +375,20 @@ export function ServiceOrderDrawer({
               Powiąż
             </Button>
           </div>
-          <p className="text-[0.8125rem] text-slate-500">
-            Nie ma go na liście? Wydaj go w{" "}
-            <Link href="/serwis/zamienniki" className="inline-flex min-h-11 items-center font-medium text-indigo-700 underline underline-offset-2">
-              Zamiennikach
-            </Link>
-            , potem powiąż tutaj.
-          </p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <p className="min-w-0 flex-1 text-[0.8125rem] text-slate-500">Nie ma go na liście?</p>
+            <Button type="button" variant="secondary" className={touchClass} onClick={() => setIssuing(true)}>
+              Wydaj z puli
+            </Button>
+          </div>
         </form>
       ) : (
         // Brak wydanego egzemplarza: jeden krok do zrobienia, przycisk na palec zamiast linku w zdaniu.
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <p className="min-w-0 flex-1 text-[0.8125rem] text-slate-600">Żaden zamiennik nie jest wydany.</p>
-          <Link href="/serwis/zamienniki" className={buttonClass("secondary", "md", touchClass)}>
+          <Button type="button" variant="secondary" className={touchClass} onClick={() => setIssuing(true)}>
             Wydaj zamiennik
-          </Link>
+          </Button>
         </div>
       )}
     </Section>
@@ -441,6 +534,18 @@ export function ServiceOrderDrawer({
                   ? `prośba do zakupów: ${REQUEST_STATUS_LABEL[order.waitingPart.requestStatus] ?? order.waitingPart.requestStatus}`
                   : "bez prośby do zakupów"}
               </div>
+              {/* Bez żywej prośby (nie zaznaczono, nie wyszło, zakupy anulowały, dostawa poszła gdzie indziej) nikt nie zamówi części. */}
+              {!readOnly && order.waitingPart.twId != null && !SERVICE_PART_ACTIVE_REQUEST_STATUSES.includes(order.waitingPart.requestStatus as IndividualOrderStatus) ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className={cn("mt-2", touchClass)}
+                  disabled={pending}
+                  onClick={() => submit(() => actionReportServiceOrderWaitingPart({ orderId: order.id }))}
+                >
+                  Zgłoś brak zakupom ({order.waitingPart.qty} szt.)
+                </Button>
+              ) : null}
             </div>
             )
           ) : null}
@@ -700,7 +805,7 @@ export function ServiceOrderDrawer({
                             setQty(String(b.defaultQty));
                           }}
                           className={cn(
-                            "inline-flex min-h-11 max-w-full items-center rounded-2xl border px-3.5 py-1.5 text-left text-sm transition-colors duration-150",
+                            "inline-flex min-h-11 max-w-full items-center rounded-md border px-3.5 py-1.5 text-left text-sm transition-colors duration-150",
                             part?.twId === b.partTwId
                               ? "border-indigo-600 bg-indigo-50 font-semibold text-indigo-900"
                               : "border-slate-200 bg-card text-slate-700 hover:bg-slate-100"
@@ -788,6 +893,10 @@ export function ServiceOrderDrawer({
                   {parts.length && !order.rwNumber ? (
                     <p className="text-[0.8125rem] text-slate-600">Pobrane części zostaną na liście „Do RW”, dopóki ich nie oddasz albo nie wpiszesz RW.</p>
                   ) : null}
+                  {/* Skutek przed zapisem: system sam anuluje niezamówione prośby o części do tego zlecenia. */}
+                  <p className="text-[0.8125rem] text-slate-600">
+                    Prośby do zakupów o części do tego zlecenia, których jeszcze nie zamówili, anulujemy razem z nim. Już zamówione zostają.
+                  </p>
                   <div className="grid grid-cols-2 gap-2">
                     <Button type="button" variant="secondary" onClick={() => setCancelling(false)} disabled={pending} className={touchClass}>
                       Wróć

@@ -23,6 +23,10 @@ export type ClientEquipmentItem = {
   invoiceDate: string | null;
   /** Cena jednostkowa netto z faktury — odróżnia urządzenie od części do niego z tym samym SN. */
   unitPrice?: number | null;
+  /** Sztuki bez numeru seryjnego na dokumencie (model rozpoznany jako urządzenie); brak — pozycja z numerami. */
+  quantity?: number;
+  /** Model nie jest jeszcze potwierdzony jako urządzenie (przyjęcie: do wyboru, ale nie wpisuje się sam). */
+  unconfirmed?: boolean;
 };
 
 const NUMBERED = /^(\d{1,3})\s*[.)]\s*(.*)$/;
@@ -63,10 +67,12 @@ function joinSplitSerials(parts: string[]): string[] {
 function serialTokens(text: string, explicit = false): string[] {
   const parts = joinSplitSerials(
     text
-      .split(/[,;]/)
+      // Apostrof bywa literówką zamiast średnika („T20R2X246' T20R2X278”) — numer nigdy go nie zawiera.
+      .split(/[,;']/)
       .map((p) => p.trim().replace(SERIAL_PREFIX, ""))
       .flatMap((p) => p.split(/\s+/))
-      .filter(Boolean)
+      // „sn 302 i 304/2023” — spójnik między numerami nie odrzuca wiersza.
+      .filter((p) => p && !/^(?:i|oraz)$/i.test(p))
   );
   const serials = parts.map((p) => asSerial(p, explicit));
   return serials.every((s): s is string => s != null) ? serials : [];
@@ -80,6 +86,13 @@ const SN_LINE = /^(?:s\s*\/\s*n|sn|nr\s+seryjny|numer\s+seryjny)(?:\s*[:.]\s*|\s
 const SN_GLUED = /^sn(?=[a-z][a-z0-9]*\d)([a-z0-9/._-]{4,40})$/i;
 /** Sam numer w wierszu bez „SN”: litery i cyfry (obie), 6–40 znaków, bez separatorów numerów dokumentów. */
 const BARE_SERIAL = /^(?=[A-Za-z0-9]*[A-Za-z])(?=[A-Za-z0-9]*\d)[A-Za-z0-9]{6,40}$/;
+/** „Poz 4”, „Poz. 4:”, „pozycja 4 SN…” — nagłówek pozycji; numery w tym samym albo w kolejnych wierszach. */
+const POS_LINE = /^poz(?:ycja|\.)?\s*(\d{1,3})\s*[:.)]?\s*(.*)$/i;
+/**
+ * Numer części zestawu z etykietą: „C.B:T20R2X178”, „H.P: H24R2X078”, „FOOT:T09R2X178”. Etykieta bez cyfr (do 12 znaków),
+ * numer z literą i cyfrą; dane firmy („NIP: PL…”, „tel.”, zamówienie, kupon, konto) nie są numerem.
+ */
+const LABELED_SN = /^(?!(?:nip|regon|tel|fax|zam|kupon|iban|konto|nr\s*konta|faktura|fv|wz|zk)\b)([a-ząćęłńóśźż][a-ząćęłńóśźż.\s/]{0,15}):\s*(.+)$/i;
 /** „Poz 1 - 5 SN X21TEST001” — numer zestawu z kilku pozycji. */
 const RANGE_LINE = /^\D{0,15}?\b(\d{1,3})\s*[-–]\s*(\d{1,3})\s+(?:s\s*\/\s*n|sn)(?:\s*[:.]\s*|\s+)(.+)$/i;
 
@@ -90,6 +103,8 @@ export type InvoiceSerialNotes = {
   ranges: { from: number; to: number; serials: string[] }[];
   /** Numery bez pozycji („SN …”) — przypisuje je `equipmentFromInvoice` po cenie pozycji. */
   loose: string[];
+  /** Numery z etykietą („lampa s/n: …”, „C.B: …”) — etykieta bywa nazwą produktu i wskazuje pozycję. */
+  labeled: { label: string; serials: string[] }[];
 };
 
 /** Uwagi FS → numery seryjne: po pozycji, z zakresu pozycji albo bez pozycji. */
@@ -97,6 +112,7 @@ export function parseInvoiceSerialNotesFull(notes: string | null | undefined): I
   const byPosition = new Map<number, string[]>();
   const ranges: InvoiceSerialNotes["ranges"] = [];
   const loose: string[] = [];
+  const labeled: InvoiceSerialNotes["labeled"] = [];
   let current: number | null = null;
   for (const raw of String(notes ?? "").split(/\r?\n/)) {
     const line = raw.trim();
@@ -110,7 +126,7 @@ export function parseInvoiceSerialNotesFull(notes: string | null | undefined): I
       current = null;
       continue;
     }
-    const m = NUMBERED.exec(line);
+    const m = NUMBERED.exec(line) ?? POS_LINE.exec(line);
     if (m) {
       current = Number(m[1]);
       if (current < 1) {
@@ -134,12 +150,22 @@ export function parseInvoiceSerialNotesFull(notes: string | null | undefined): I
     if (current == null) {
       const bare = line.split(/[\s,;]+/).filter(Boolean);
       if (bare.length && bare.every((t) => BARE_SERIAL.test(t))) loose.push(...bare);
+      else {
+        const lab = LABELED_SN.exec(line);
+        if (lab) {
+          const label = lab[1]!.trim();
+          const value = lab[2]!.trim();
+          // Etykieta z „s/n” mówi, że to numer — wtedy też krótki i z ukośnikiem („2021/555”); bez niej tylko litery z cyframi.
+          const tokens = /s\s*\/\s*n|\bsn\b/i.test(label) ? serialTokens(value, true) : BARE_SERIAL.test(value) ? [value] : [];
+          if (tokens.length) labeled.push({ label, serials: tokens });
+        }
+      }
       continue;
     }
     const tokens = serialTokens(line);
     if (tokens.length) byPosition.set(current, [...(byPosition.get(current) ?? []), ...tokens]);
   }
-  return { byPosition, ranges, loose };
+  return { byPosition, ranges, loose, labeled };
 }
 
 /** Uwagi FS → numery seryjne po numerze pozycji (1 = pierwsza pozycja); bez numerów „SN …” bez pozycji. */
@@ -150,7 +176,7 @@ export function parseInvoiceSerialNotes(notes: string | null | undefined): Map<n
 /** Czy uwagi wyglądają na numery seryjne — sito przed pobraniem szczegółów faktury. */
 export function hasSerialNotes(notes: string | null | undefined): boolean {
   const n = parseInvoiceSerialNotesFull(notes);
-  return n.byPosition.size > 0 || n.ranges.length > 0 || n.loose.length > 0;
+  return n.byPosition.size > 0 || n.ranges.length > 0 || n.loose.length > 0 || n.labeled.length > 0;
 }
 
 export type InvoiceLine = {
@@ -163,23 +189,6 @@ export type InvoiceLine = {
   ob_CenaBrutto?: number | null;
 };
 
-/**
- * Numery bez pozycji → pozycje faktury: sprzęt to najdroższa pozycja (części i wysyłka są tańsze), a pozycja
- * nie dostaje więcej numerów, niż ma sztuk; nadmiar trafia do najdroższej. `positions` — numery pozycji (1…).
- */
-function assignByPrice(lines: readonly InvoiceLine[], positions: number[], serials: string[], into: Map<number, string[]>) {
-  const price = (l: InvoiceLine) => Number(l.ob_CenaNetto ?? l.ob_CenaBrutto ?? 0) || 0;
-  const order = positions.filter((no) => lines[no - 1]).sort((a, b) => price(lines[b - 1]!) - price(lines[a - 1]!) || a - b);
-  if (!order.length) return;
-  const rest = [...serials];
-  for (const no of order) {
-    if (!rest.length) break;
-    const take = rest.splice(0, Math.max(1, Math.round(Number(lines[no - 1]!.ob_Ilosc ?? 1)) || 1));
-    into.set(no, [...(into.get(no) ?? []), ...take]);
-  }
-  if (rest.length) into.set(order[0]!, [...(into.get(order[0]!) ?? []), ...rest]);
-}
-
 export type InvoiceForEquipment = {
   dok_Id: number;
   dok_NrPelny?: string | null;
@@ -188,94 +197,20 @@ export type InvoiceForEquipment = {
   dok_Pozycja?: InvoiceLine[] | null;
 };
 
+/** Słowa etykiety, które mogą być nazwą produktu: min. 4 litery, bez „numer”, „seryjny” itp. */
+export function labelWords(label: string): string[] {
+  const skip = new Set(["numer", "seryjny", "serial", "nr", "sn"]);
+  return label
+    .toLocaleLowerCase("pl-PL")
+    .split(/[^a-ząćęłńóśźż]+/)
+    .filter((w) => w.length >= 4 && !skip.has(w));
+}
+
 /** Numer z uwag faktury bez pozycji-urządzenia: faktura za naprawę (same części i usługi), nie zakup. */
 export type InvoiceRepairRef = { serial: string; invoiceId: number; invoiceNumber: string; invoiceDate: string | null };
 
-/** Pozycje faktury z numerami seryjnymi. Numer spoza zakresu pozycji jest pomijany (literówka w uwagach). */
-export function equipmentFromInvoice(doc: InvoiceForEquipment, isDeviceLine?: (line: InvoiceLine) => boolean): ClientEquipmentItem[] {
-  return equipmentAndRepairsFromInvoice(doc, isDeviceLine).items;
-}
-
-/**
- * Jak `equipmentFromInvoice`, a numery bez pozycji („SN …”, „Poz 1 - 5 SN …”) trafiają tylko do pozycji, które są
- * urządzeniem (`isDeviceLine`: nie część serwisowa, nie usługa). Gdy takiej nie ma, to faktura za naprawę — numery
- * wracają w `repairs`, żeby część z naprawy nie udawała zakupionego sprzętu (zły model i gwarancja).
- */
-export function equipmentAndRepairsFromInvoice(
-  doc: InvoiceForEquipment,
-  isDeviceLine: (line: InvoiceLine) => boolean = () => true
-): { items: ClientEquipmentItem[]; repairs: InvoiceRepairRef[] } {
-  const notes = parseInvoiceSerialNotesFull(doc.dok_Uwagi);
-  const lines = [...(doc.dok_Pozycja ?? [])].sort((a, b) => Number(a.ob_Id ?? 0) - Number(b.ob_Id ?? 0));
-  const serials = new Map(notes.byPosition);
-  const devices = lines.map((_, i) => i + 1).filter((no) => isDeviceLine(lines[no - 1]!));
-  const unplaced: string[] = [];
-  const place = (positions: number[], sns: string[]) => (positions.length ? assignByPrice(lines, positions, sns, serials) : unplaced.push(...sns));
-  for (const r of notes.ranges) place(devices.filter((no) => no >= r.from && no <= r.to), r.serials);
-  if (notes.loose.length) place(devices, notes.loose);
-  const invoiceNumber = doc.dok_NrPelny?.trim() || `FS ${doc.dok_Id}`;
-  const invoiceDate = doc.dok_DataWyst ? String(doc.dok_DataWyst).slice(0, 10) : null;
-  const repairs = [...new Set(unplaced)].map((serial) => ({ serial, invoiceId: doc.dok_Id, invoiceNumber, invoiceDate }));
-  if (!serials.size) return { items: [], repairs };
-  const out: ClientEquipmentItem[] = [];
-  for (const [no, sns] of serials) {
-    const line = lines[no - 1];
-    const twId = Math.trunc(Number(line?.ob_TowId));
-    if (!line || !Number.isSafeInteger(twId) || twId <= 0) continue;
-    out.push({
-      twId,
-      symbol: line.tw_Symbol?.trim() || null,
-      name: line.tw_Nazwa?.trim() || line.tw_Symbol?.trim() || `Towar ${twId}`,
-      serials: [...new Set(sns)],
-      invoiceId: doc.dok_Id,
-      invoiceNumber,
-      invoiceDate,
-      unitPrice: Number(line.ob_CenaNetto ?? line.ob_CenaBrutto) || null,
-    });
-  }
-  return { items: out, repairs };
-}
-
-/**
- * Ten sam numer seryjny przy różnych towarach (np. elektrozawór w grudniu, grzałka w październiku) to numer
- * urządzenia, do którego klient kupował części — nie numer żadnego z nich. Takie wpisy idą do napraw, nie do
- * listy sprzętu: lepiej nie podpowiedzieć zakupu niż wpisać część jako model z jej gwarancją. Numery jednej pozycji
- * są tego samego rodzaju — gdy choć jeden jest numerem urządzenia, cała pozycja idzie do napraw (2 szt. części, 2 SN).
- * Wyjątek: najwcześniejszy zakup, co najmniej 3× droższy od każdego innego towaru z tym numerem, to samo urządzenie
- * (wytwornica 2195 zł, potem grzałka 366 zł i korek 203 zł do niej).
- */
-export function splitSerialsOnSeveralProducts(items: readonly ClientEquipmentItem[]): {
-  items: ClientEquipmentItem[];
-  repairs: InvoiceRepairRef[];
-} {
-  const key = (sn: string) => sn.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  const products = new Map<string, Set<number>>();
-  for (const it of items) for (const sn of it.serials) products.set(key(sn), (products.get(key(sn)) ?? new Set()).add(it.twId));
-  const withSerial = new Map<string, ClientEquipmentItem[]>();
-  for (const it of items) for (const sn of it.serials) withSerial.set(key(sn), [...(withSerial.get(key(sn)) ?? []), it]);
-  const price = (it: ClientEquipmentItem) => it.unitPrice ?? 0;
-  const isDevicePurchase = (it: ClientEquipmentItem, sn: string) => {
-    const others = (withSerial.get(key(sn)) ?? []).filter((o) => o.twId !== it.twId);
-    return others.every((o) => price(it) >= 3 * price(o) && price(o) > 0 && (it.invoiceDate ?? "") <= (o.invoiceDate ?? ""));
-  };
-  const forDevice = (it: ClientEquipmentItem) =>
-    it.serials.some((sn) => (products.get(key(sn))?.size ?? 0) > 1 && !isDevicePurchase(it, sn));
-  const repairs = items
-    .filter(forDevice)
-    .flatMap((it) => it.serials.map((serial) => ({ serial, invoiceId: it.invoiceId, invoiceNumber: it.invoiceNumber, invoiceDate: it.invoiceDate })));
-  return { items: items.filter((it) => !forDevice(it)), repairs };
-}
-
 /** `tw_Rodzaj` w Subiekcie: 2 = usługa (licencje, abonamenty z kluczem w uwagach) — to nie sprzęt do naprawy. */
 export const SUBIEKT_PRODUCT_KIND_SERVICE = 2;
-
-/** Bez usług; towar o nieznanym rodzaju (nie udało się sprawdzić) zostaje — lepiej pokazać za dużo niż zgubić sprzęt. */
-export function dropServiceProducts(
-  items: readonly ClientEquipmentItem[],
-  kindByTwId: ReadonlyMap<number, number | null>
-): ClientEquipmentItem[] {
-  return items.filter((i) => kindByTwId.get(i.twId) !== SUBIEKT_PRODUCT_KIND_SERVICE);
-}
 
 /**
  * Lista do wyboru: najnowsze zakupy najpierw; ten sam egzemplarz (towar + numer seryjny) z kilku faktur

@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  equipmentFromInvoice,
-  equipmentAndRepairsFromInvoice,
-  splitSerialsOnSeveralProducts,
   hasSerialNotes,
   mergeClientEquipment,
   parseInvoiceSerialNotes,
@@ -34,23 +31,6 @@ describe("parseInvoiceSerialNotes", () => {
   });
 });
 
-describe("equipmentFromInvoice", () => {
-  const lines = Array.from({ length: 12 }, (_, i) => ({ ob_Id: 100 + i, ob_TowId: 1000 + i, tw_Symbol: `S${i + 1}`, tw_Nazwa: `Towar ${i + 1}` }));
-  it("łączy numer z pozycją po kolejności ob_Id, nie po kolejności w odpowiedzi", () => {
-    const shuffled = [...lines].reverse();
-    const items = equipmentFromInvoice({ dok_Id: 5, dok_NrPelny: "FS 1/M/10/2026", dok_DataWyst: "2026-10-19T00:00:00", dok_Uwagi: NOTES, dok_Pozycja: shuffled });
-    expect(items.map((i) => [i.twId, i.symbol, i.serials.length])).toEqual([
-      [1000, "S1", 3],
-      [1006, "S7", 1],
-      [1011, "S12", 1],
-    ]);
-    expect(items[0]).toMatchObject({ invoiceNumber: "FS 1/M/10/2026", invoiceDate: "2026-10-19" });
-  });
-  it("numer pozycji spoza faktury jest pomijany", () => {
-    expect(equipmentFromInvoice({ dok_Id: 1, dok_Uwagi: "40. SN999", dok_Pozycja: lines })).toEqual([]);
-  });
-});
-
 describe("mergeClientEquipment", () => {
   const item = (invoiceId: number, date: string, serials: string[]): ClientEquipmentItem => ({
     twId: 7,
@@ -67,15 +47,6 @@ describe("mergeClientEquipment", () => {
       [2, ["ab1"]],
       [1, ["AB2"]],
     ]);
-  });
-});
-
-describe("dropServiceProducts", () => {
-  const it2 = (twId: number): ClientEquipmentItem => ({ twId, symbol: null, name: `T${twId}`, serials: ["SN1"], invoiceId: twId, invoiceNumber: "FS", invoiceDate: null });
-  it("usługa (licencja z kluczem) odpada, towar i nieznany rodzaj zostają", async () => {
-    const { dropServiceProducts } = await import("./client-equipment-parse");
-    const out = dropServiceProducts([it2(1), it2(2), it2(3)], new Map([[1, 1], [2, 2], [3, null]]));
-    expect(out.map((o) => o.twId)).toEqual([1, 3]);
   });
 });
 
@@ -157,9 +128,6 @@ describe("rankEquipmentForTicket — numer seryjny", () => {
 
 // Uwagi tak, jak wpisuje je większość handlowców: „SN …” bez numeru pozycji. Numery i nazwy wymyślone.
 describe("numery seryjne bez numeru pozycji", () => {
-  const line = (id: number, tw: number, cena: number, ilosc = 1) => ({ ob_Id: id, ob_TowId: tw, tw_Nazwa: `Towar TEST ${tw}`, ob_CenaNetto: cena, ob_Ilosc: ilosc });
-  const doc = (uwagi: string, lines: ReturnType<typeof line>[]) => ({ dok_Id: 1, dok_NrPelny: "FS 1/T/2026", dok_DataWyst: "2026-03-01", dok_Uwagi: uwagi, dok_Pozycja: lines });
-
   it("odmiany zapisu: SN, SN:, S/N z literą osobno, małe litery, sklejone SN, krótki numer", () => {
     const parse = (n: string) => parseInvoiceSerialNotesFull(n).loose;
     expect(parse("SN X21TEST001")).toEqual(["X21TEST001"]);
@@ -180,91 +148,31 @@ describe("numery seryjne bez numeru pozycji", () => {
     expect(parse("FS 12/T/2026\n2026\nGwarancja")).toEqual([]);
   });
 
-  it("numer bez pozycji trafia do najdroższej pozycji (sprzęt), nie do części ani wysyłki", () => {
-    const eq = equipmentFromInvoice(doc("SN X21TEST010", [line(1, 11, 112), line(2, 12, 3740), line(3, 13, 4)]));
-    expect(eq.map((e) => [e.twId, e.serials])).toEqual([[12, ["X21TEST010"]]]);
-  });
-
-  it("kilka numerów: najdroższe pozycje po kolei, najwyżej tyle numerów, ile sztuk", () => {
-    const eq = equipmentFromInvoice(doc("SN X1\nSN X21TEST021\nSN X21TEST022\nSN X21TEST023", [line(1, 21, 900, 2), line(2, 22, 700), line(3, 23, 5)]));
-    // „X1” (2 znaki) jest za krótki nawet w wierszu SN; trzy pozostałe: dwa do pozycji 1 (2 szt.), jeden do pozycji 2.
-    expect(eq.map((e) => [e.twId, e.serials]).sort()).toEqual([
-      [21, ["X21TEST021", "X21TEST022"]],
-      [22, ["X21TEST023"]],
-    ]);
-  });
-
-  it("zakres pozycji „Poz 1 - 3 SN …” — numer do najdroższej pozycji z zakresu", () => {
-    const eq = equipmentFromInvoice(
-      doc("Poz 1 - 3 SN X21TEST031\nPoz 4 - 5 SN X21TEST032", [line(1, 31, 200), line(2, 32, 5000), line(3, 33, 50), line(4, 34, 4200), line(5, 35, 80)])
-    );
-    expect(eq.map((e) => [e.twId, e.serials]).sort()).toEqual([
-      [32, ["X21TEST031"]],
-      [34, ["X21TEST032"]],
-    ]);
-  });
-
   it("SN ze zgłoszenia ze spacją trafia na egzemplarz z faktury", () => {
-    const eq = equipmentFromInvoice(doc("SN X2BTEST054", [line(1, 41, 3000)]));
+    const eq: ClientEquipmentItem[] = [{ twId: 41, symbol: null, name: "Towar TEST 41", serials: ["X2BTEST054"], invoiceId: 1, invoiceNumber: "FS 1/T/2026", invoiceDate: "2026-03-01" }];
     const ranked = rankEquipmentForTicket(eq, { invoice: "", product: "", serial: "x2btest 054" });
     expect(ranked[0]!.hint).toBe("serial");
   });
 
-  // Kształt z faktury za naprawę: SN urządzenia w uwagach, na pozycjach części serwisowe i usługa wysyłki.
-  it("faktura za naprawę (same części i usługi) to nie zakup — numer wraca jako naprawa", () => {
-    const parts = new Set([51, 52]);
-    const r = equipmentAndRepairsFromInvoice(
-      { ...doc("SNX21TEST050", [line(1, 51, 78), line(2, 52, 234), line(3, 53, 12)]), dok_NrPelny: "FS 9/M/11/2026", dok_DataWyst: "2026-11-12T00:00:00" },
-      (l) => !parts.has(Number(l.ob_TowId)) && l.ob_TowId !== 53
-    );
-    expect(r.items).toEqual([]);
-    expect(r.repairs).toEqual([{ serial: "X21TEST050", invoiceId: 1, invoiceNumber: "FS 9/M/11/2026", invoiceDate: "2026-11-12" }]);
-  });
-
-  it("faktura z urządzeniem i częściami: numer do urządzenia, choć część jest droższa", () => {
-    const r = equipmentAndRepairsFromInvoice(doc("SN X21TEST060", [line(1, 61, 900), line(2, 62, 3000)]), (l) => l.ob_TowId !== 62);
-    expect(r.items.map((e) => [e.twId, e.serials])).toEqual([[61, ["X21TEST060"]]]);
-    expect(r.repairs).toEqual([]);
-  });
 });
 
-describe("splitSerialsOnSeveralProducts", () => {
-  const item = (twId: number, serials: string[], invoiceNumber: string) => ({
-    twId, symbol: null, name: `Towar TEST ${twId}`, serials, invoiceId: twId, invoiceNumber, invoiceDate: "2025-12-22",
+describe("uwagi z produkcji, które psuły przypisanie (numery wymyślone, układ jak na fakturach 11.2026)", () => {
+  it("„Poz 4” w osobnym wierszu: numery z kolejnych wierszy idą do pozycji 4, „Poz 1” — do pozycji 1", () => {
+    const m = parseInvoiceSerialNotes("Jan Testowy\nul. Przykładowa 1\r\nPoz 4\r\nX20R2TEST119\r\nX24R2TEST019\r\nPoz 1 \r\nB1600001\r\nB1600002");
+    expect(m.get(4)).toEqual(["X20R2TEST119", "X24R2TEST019"]);
+    expect(m.get(1)).toEqual(["B1600001", "B1600002"]);
   });
 
-  it("SN przy dwóch różnych towarach to urządzenie, do którego kupiono części — cała pozycja to naprawa", () => {
-    const r = splitSerialsOnSeveralProducts([item(1, ["X21TEST080", "X21TEST079"], "FS 1/T"), item(2, ["x21test 079"], "FS 2/T")]);
-    // „080” jest tylko raz, ale w tej samej pozycji co „079” (2 szt. części do dwóch urządzeń).
-    expect(r.items).toEqual([]);
-    expect(r.repairs.map((x) => [x.serial, x.invoiceNumber])).toEqual([
-      ["X21TEST080", "FS 1/T"],
-      ["X21TEST079", "FS 1/T"],
-      ["x21test 079", "FS 2/T"],
-    ]);
+  it("numery części zestawu z etykietą (C.B, H.P, FOOT) są numerami; NIP i telefon nie", () => {
+    const n = parseInvoiceSerialNotesFull("12345 kupon 5%\r\nC.B:X20R2TEST178\r\nH.P: X24R2TEST078\r\nFOOT:X09R2TEST178\r\nNIP: PL1234567890\r\ntel: 600100200");
+    expect(n.labeled.flatMap((l) => l.serials)).toEqual(["X20R2TEST178", "X24R2TEST078", "X09R2TEST178"]);
   });
 
-  it("urządzenie kupione najpierw i dużo droższe zostaje sprzętem; części do niego z tym SN idą do napraw", () => {
-    const r = splitSerialsOnSeveralProducts([
-      { ...item(5, ["X21TEST153"], "FS 5/T"), invoiceDate: "2019-10-01", unitPrice: 2195 },
-      { ...item(6, ["X21TEST153"], "FS 6/T"), invoiceDate: "2024-09-01", unitPrice: 203 },
-      { ...item(7, ["X21TEST153"], "FS 7/T"), invoiceDate: "2025-09-01", unitPrice: 366 },
-    ]);
-    expect(r.items.map((i) => i.twId)).toEqual([5]);
-    expect(r.repairs.map((x) => x.invoiceNumber)).toEqual(["FS 6/T", "FS 7/T"]);
+  it("„sn 302 i 304/2023” — dwa numery, spójnik pominięty", () => {
+    expect(parseInvoiceSerialNotesFull("sn 302 i 304/2023").loose).toEqual(["302", "304/2023"]);
   });
 
-  it("część droższa od drugiej, ale nie wyraźnie (poniżej 3×) — obie to naprawy", () => {
-    const r = splitSerialsOnSeveralProducts([
-      { ...item(8, ["X21TEST154"], "FS 8/T"), invoiceDate: "2025-10-20", unitPrice: 520 },
-      { ...item(9, ["X21TEST154"], "FS 9/T"), invoiceDate: "2025-12-22", unitPrice: 338 },
-    ]);
-    expect(r.items).toEqual([]);
-  });
-
-  it("ten sam towar z tym samym SN na dwóch fakturach (korekta) zostaje sprzętem", () => {
-    const r = splitSerialsOnSeveralProducts([item(1, ["X21TEST090"], "FS 1/T"), { ...item(1, ["X21TEST090"], "FS 3/T"), invoiceId: 3 }]);
-    expect(r.items).toHaveLength(2);
-    expect(r.repairs).toEqual([]);
+  it("apostrof zamiast średnika nie odrzuca całego wiersza", () => {
+    expect(parseInvoiceSerialNotes("1. X20R2TEST246' X20R2TEST278; X20R2TEST238").get(1)).toEqual(["X20R2TEST246", "X20R2TEST278", "X20R2TEST238"]);
   });
 });

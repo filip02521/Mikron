@@ -2,6 +2,7 @@ import { SERVICE_WARRANTY_DEFAULT_MONTHS, warrantyUntil } from "@/lib/orders/ser
 import type { PoolClient } from "pg";
 import { servicePartRequestNote } from "@/lib/orders/service-part-report";
 import { query, withClient } from "@/lib/db/pool";
+import { issueLoanerUnitIn, LoanerStateError } from "@/lib/data/service-loaners";
 import {
   canMoveServiceOrder,
   canSetServiceOrderInvoice,
@@ -481,6 +482,12 @@ export async function sendServiceOrderQuote(
 }
 
 /** „Czeka na część”: status + która część (z Subiekta albo sama nazwa) i ile. Zgłoszenie do zakupów robi akcja. */
+/** Zlecenie z częścią, na którą czeka — do zgłoszenia braku z karty (dane z bazy, nie z przeglądarki). */
+export async function fetchServiceOrderForReport(orderId: string): Promise<ServiceOrder | null> {
+  const res = await query<OrderRow>(`SELECT ${ORDER_COLS} FROM service_orders WHERE id = $1`, [orderId]);
+  return res.rows[0] ? mapOrder(res.rows[0]) : null;
+}
+
 export async function waitForServicePart(
   input: { orderId: string; part: { twId: number | null; symbol: string | null; name: string }; qty: number; note: string },
   actor: ServiceActor
@@ -647,6 +654,45 @@ export async function linkServiceOrderLoaner(input: { orderId: string; unitId: s
   });
 }
 
+/**
+ * „Wydaj zamiennik” z karty zlecenia: egzemplarz z puli trafia do klienta zlecenia (dane ze zlecenia, nie z formularza)
+ * i od razu jest z nim powiązany — jedna transakcja, więc nie zostaje wydany bez powiązania.
+ */
+export async function issueLoanerForServiceOrder(
+  input: { orderId: string; unitId: string; plannedReturn: string },
+  actor: ServiceActor
+): Promise<{ order: ServiceOrder; code: string }> {
+  return inTx(async (c) => {
+    const o = await lockOrder(c, input.orderId);
+    if (isClosedServiceOrder(o.status)) throw new ServiceOrderStateError(`Zlecenie ${o.number} jest zamknięte — zamiennika się nie wydaje.`);
+    if (o.loanerUnitId) throw new ServiceOrderStateError(`${o.number} ma już powiązany zamiennik. Odepnij go, zanim wydasz inny.`);
+    let code: string;
+    let unitId: string;
+    try {
+      const u = await issueLoanerUnitIn(
+        c,
+        {
+          unitId: input.unitId,
+          khId: o.clientKhId,
+          clientName: o.clientName,
+          clientPhone: o.clientPhone,
+          plannedReturn: input.plannedReturn,
+          note: `na czas naprawy ${o.number}`,
+        },
+        actor
+      );
+      code = u.code;
+      unitId = u.id;
+    } catch (e) {
+      if (e instanceof LoanerStateError) throw new ServiceOrderStateError(e.message);
+      throw e;
+    }
+    await c.query(`UPDATE service_orders SET loaner_unit_id = $2, updated_at = now() WHERE id = $1`, [o.id, unitId]);
+    await addEvent(c, o.id, "loaner_linked", actor, { note: code });
+    return { order: { ...o, loanerUnitId: unitId }, code };
+  });
+}
+
 // --- Katalog części dla modelu (BOM) ---
 
 export type ServiceModelPart = {
@@ -785,17 +831,33 @@ export async function setServiceModelWarranty(input: ServiceModelWarranty, actor
   );
 }
 
-/** Modele, które były w naprawie (do podpowiedzi „bez katalogu” na stronie katalogu). */
-export async function fetchRepairedModels(): Promise<{ twId: number; symbol: string | null; name: string; orders: number }[]> {
-  const res = await query<{ device_tw_id: number; device_symbol: string | null; device_name: string; n: string | number }>(
-    `SELECT device_tw_id, MAX(device_symbol) AS device_symbol, MAX(device_name) AS device_name, COUNT(*) AS n
-       FROM service_orders
-      WHERE device_tw_id IS NOT NULL AND status <> 'anulowane'
-      GROUP BY device_tw_id
-      ORDER BY COUNT(*) DESC
-      LIMIT 12`
+/**
+ * Modele znane serwisowi jako sprzęt — do uzupełnienia w katalogu: były w naprawie (liczba zleceń bez anulowanych)
+ * albo serwisant potwierdził je jako urządzenie w „Sprzęt klienta” (migracja 215). Model z decyzją „Nie” odpada.
+ */
+export async function fetchKnownServiceModels(): Promise<{ twId: number; symbol: string | null; name: string; orders: number }[]> {
+  const res = await query<{ tw_id: number; symbol: string | null; name: string; n: string | number }>(
+    `SELECT tw_id, MAX(symbol) AS symbol, MAX(name) AS name, SUM(n) AS n
+       FROM (
+         SELECT device_tw_id AS tw_id, device_symbol AS symbol, device_name AS name, (status <> 'anulowane')::int AS n
+           FROM service_orders WHERE device_tw_id IS NOT NULL
+         UNION ALL
+         SELECT tw_id, symbol, name, 0 FROM service_device_models WHERE is_device
+       ) k
+      WHERE tw_id NOT IN (SELECT tw_id FROM service_device_models WHERE NOT is_device)
+      GROUP BY tw_id`
   );
-  return res.rows.map((r) => ({ twId: Number(r.device_tw_id), symbol: r.device_symbol, name: r.device_name, orders: Number(r.n) }));
+  return res.rows.map((r) => ({ twId: Number(r.tw_id), symbol: r.symbol, name: r.name, orders: Number(r.n) }));
+}
+
+/** Zmienia tylko ilość części w katalogu modelu (bez nadpisywania notatki i nazw). */
+export async function updateServiceModelPartQty(input: { modelTwId: number; partTwId: number; qty: number }): Promise<boolean> {
+  const res = await query(`UPDATE service_model_parts SET default_qty = $3 WHERE model_tw_id = $1 AND part_tw_id = $2`, [
+    input.modelTwId,
+    input.partTwId,
+    input.qty,
+  ]);
+  return (res.rowCount ?? 0) > 0;
 }
 
 /** Inne zlecenia tego samego klienta (kh_Id z Subiekta), najnowsze najpierw — powiązane sprawy w karcie zlecenia. */
@@ -810,8 +872,9 @@ export async function fetchServiceOrdersByClient(khId: number, excludeOrderId: s
     closed_at: Date | null;
     fault: string;
     work_note: string;
+    serial_no: string | null;
   }>(
-    `SELECT id, number, status, device_name, created_at, closed_at, fault, work_note
+    `SELECT id, number, status, device_name, created_at, closed_at, fault, work_note, serial_no
        FROM service_orders
       WHERE client_kh_id = $1 AND ($2::uuid IS NULL OR id <> $2::uuid)
       ORDER BY created_at DESC
@@ -827,5 +890,7 @@ export async function fetchServiceOrdersByClient(khId: number, excludeOrderId: s
     closedAt: r.closed_at ? new Date(r.closed_at).toISOString() : null,
     fault: r.fault,
     workNote: r.work_note,
+    serialNo: r.serial_no,
   }));
 }
+

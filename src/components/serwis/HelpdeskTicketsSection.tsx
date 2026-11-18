@@ -37,9 +37,9 @@ function ConnectLink({ label }: { label: string }) {
   );
 }
 
-export const DELIVERY_LABEL: Record<number, string> = { 1: "klient wysyła", 2: "odbiera Mikran" };
-/** Kolumna „Dostarczenie” w liście zgłoszeń — krótko, z ikoną (paczka od klienta / kurier Mikranu). */
-const DELIVERY_SHORT: Record<number, string> = { 1: "Wysyła klient", 2: "Odbiór Mikran" };
+/** Sposób dostarczenia ze zgłoszenia — te same słowa w kolumnie „Dostarczenie” i przy wyborze zgłoszenia w przyjęciu. */
+export const DELIVERY_LABEL: Record<number, string> = { 1: "Wysyła klient", 2: "Odbiór Mikran" };
+const DELIVERY_SHORT = DELIVERY_LABEL;
 /** Te same kolumny w nagłówku i w wierszach: na telefonie dwie (opis, akcja), od sm cztery. */
 const ROW_GRID = "grid gap-x-3 px-4 sm:grid-cols-[minmax(0,1fr)_8rem_9.5rem_6.5rem] sm:gap-x-5 sm:px-5";
 
@@ -153,7 +153,7 @@ export function HelpdeskTicketsSection({
                     {delivery}
                   </>
                 ) : (
-                  <span className="text-slate-500">nie podano</span>
+                  <span className="text-slate-500">Nie podano</span>
                 )}
               </span>
               {onAccept ? (

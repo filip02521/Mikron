@@ -28,7 +28,7 @@ export default async function SerwisPage() {
     <div className={`${adminPageShellClass} touch-ui space-y-6`}>
       <PageHeader
         title="Części serwisowe"
-        description="Zakupy zamawiają te części tylko po zgłoszeniu — brak zgłoś przyciskiem „Zgłoś brak”."
+        description="Część z minimum zakupy dokupią same przy najbliższym ZD. Bez minimum — zamawiane tylko po zgłoszeniu („Zgłoś brak”)."
       />
       <ServiceOverdueLoanersNotice />
       {error ? (

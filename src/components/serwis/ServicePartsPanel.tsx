@@ -15,7 +15,10 @@ import { ServiceFilterBar } from "@/components/serwis/ServiceFilterBar";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { REQUEST_STATUS_LABEL } from "@/components/serwis/service-order-view";
 import { ServicePartReportDialog } from "@/components/serwis/ServicePartReportDialog";
+import { ServicePartMinStockDialog } from "@/components/serwis/ServicePartMinStockDialog";
 import {
+  autoRestocks,
+  needsReport,
   summarizeServiceParts,
   type ServicePartRequest,
   type ServicePartRow,
@@ -27,7 +30,7 @@ type Filter = "all" | "to_request" | "missing" | "below_min" | "requested";
 function matchesFilter(row: ServicePartRow, filter: Filter): boolean {
   switch (filter) {
     case "to_request":
-      return row.state !== "ok" && row.requests.length === 0;
+      return needsReport(row);
     case "missing":
       return row.state === "brak";
     case "below_min":
@@ -111,6 +114,8 @@ function stockCaption(row: ServicePartRow): string {
   if (row.state === "brak") parts.push("brak na stanie");
   else if (row.state === "ponizej_min") parts.push("poniżej minimum");
   if (row.minStock) parts.push(`min. ${row.minStock}`);
+  // Z minimum zakupy dokupią same — serwisant nie musi zgłaszać; bez dostawcy minimum jeszcze nie działa.
+  if (row.minStock && row.state !== "ok" && row.requests.length === 0) parts.push(autoRestocks(row) ? "dokupią przy ZD" : "brak dostawcy — zgłoś");
   if (row.reserved) parts.push(`rez. ${formatQty(row.reserved)}`);
   if (row.takenWithoutRw) parts.push(`${formatQty(row.takenWithoutRw)} pobrane bez RW`);
   return parts.join(" · ");
@@ -152,6 +157,7 @@ export function ServicePartsPanel({
   const [query, setQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
   const [reportPart, setReportPart] = useState<ServicePartRow | null>(null);
+  const [minPart, setMinPart] = useState<ServicePartRow | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const summary = useMemo(() => summarizeServiceParts(rows), [rows]);
 
@@ -191,7 +197,7 @@ export function ServicePartsPanel({
       id: "to_request",
       label: "Do zgłoszenia",
       count: summary.toRequest,
-      hint: "Mało lub brak, bez prośby",
+      hint: "Brak, bez minimum i prośby",
       dot: summary.toRequest > 0 ? "bg-amber-500" : "bg-slate-300",
     },
     {
@@ -205,7 +211,7 @@ export function ServicePartsPanel({
       id: "below_min",
       label: "Poniżej minimum",
       count: summary.belowMin,
-      hint: "Minimum z Kreatora ZD",
+      hint: "Zakupy dokupią przy ZD",
       dot: summary.belowMin > 0 ? "bg-amber-500" : "bg-slate-300",
     },
     {
@@ -298,7 +304,9 @@ export function ServicePartsPanel({
                 </tr>
               </thead>
               {groups.map(([group, list]) => {
-                const attention = list.filter((r) => r.state !== "ok").length;
+                // Te same słowa co filtry nad tabelą — „Brak na stanie”, „Poniżej minimum”.
+                const missingHere = list.filter((r) => r.state === "brak").length;
+                const belowHere = list.filter((r) => r.state === "ponizej_min").length;
                 return (
                   <tbody key={group} className="border-t border-[var(--sv-rule)]">
                     <tr>
@@ -310,17 +318,25 @@ export function ServicePartsPanel({
                         {group}
                         <span className="ml-2 font-medium text-slate-500">
                           {polishPlural(list.length, "część", "części", "części")}
-                          {attention > 0 ? ` · ${attention} do uwagi` : ""}
+                          {missingHere > 0 ? ` · ${missingHere} brak na stanie` : ""}
+                          {belowHere > 0 ? ` · ${belowHere} poniżej minimum` : ""}
                         </span>
                       </th>
                     </tr>
                     {list.map((r) => {
-                      const report =
-                        r.state !== "ok" && r.requests.length === 0 && canReport && !readOnly ? (
-                          <Button variant="secondary" onClick={() => setReportPart(r)}>
-                            Zgłoś brak
+                      const canEdit = canReport && !readOnly;
+                      const actions = canEdit ? (
+                        <div className="flex flex-wrap gap-2 sm:flex-nowrap sm:justify-end">
+                          {r.state !== "ok" && r.requests.length === 0 ? (
+                            <Button variant="secondary" onClick={() => setReportPart(r)}>
+                              Zgłoś brak
+                            </Button>
+                          ) : null}
+                          <Button variant="secondary" onClick={() => setMinPart(r)}>
+                            {r.minStock ? `Minimum ${r.minStock} szt.` : "Ustaw minimum"}
                           </Button>
-                        ) : null;
+                        </div>
+                      ) : null;
                       return (
                       <tr
                         key={r.twId}
@@ -330,7 +346,7 @@ export function ServicePartsPanel({
                           <div className="font-semibold text-slate-900">{r.name}</div>
                           <div className="mt-0.5 font-mono text-xs text-slate-500">{r.symbol ?? "-"}</div>
                           {/* Na telefonie pod nazwą — kolumna akcji jest poza ekranem, tabela przewija się w bok. */}
-                          {report ? <div className="mt-2 sm:hidden">{report}</div> : null}
+                          {actions ? <div className="mt-2 sm:hidden">{actions}</div> : null}
                         </td>
                         <td className="px-4 py-3">
                           <StockMeter row={r} />
@@ -346,7 +362,7 @@ export function ServicePartsPanel({
                             <span className="text-slate-400">-</span>
                           )}
                         </td>
-                        <td className="whitespace-nowrap px-3 py-3 text-right max-sm:hidden sm:px-4">{report}</td>
+                        <td className="whitespace-nowrap px-3 py-3 text-right max-sm:hidden sm:px-4">{actions}</td>
                       </tr>
                       );
                     })}
@@ -364,6 +380,16 @@ export function ServicePartsPanel({
         onClose={() => setReportPart(null)}
         onReported={(message) => {
           setReportPart(null);
+          setToast(message);
+          startRefresh(() => router.refresh());
+        }}
+      />
+      <ServicePartMinStockDialog
+        key={minPart ? `min-${minPart.twId}` : "min-none"}
+        part={minPart}
+        onClose={() => setMinPart(null)}
+        onSaved={(message) => {
+          setMinPart(null);
           setToast(message);
           startRefresh(() => router.refresh());
         }}

@@ -456,6 +456,10 @@ export function LoanersBoard({
                       {out} u {polishPluralWord(out, "klienta", "klientów", "klientów")}
                       {gl ? <span className="font-semibold text-red-700"> · {gl} po terminie</span> : null}
                     </span>
+                    {/* Karta jest filtrem — mówi to wprost, bo z wyglądu to treść (dostępność egzemplarzy). */}
+                    <span className="text-xs font-medium text-indigo-700">
+                      {active ? "Pokazuję tylko ten model — stuknij, by pokazać wszystkie" : "Pokaż tylko ten model"}
+                    </span>
                   </span>
                 </button>
               );
