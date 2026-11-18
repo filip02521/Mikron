@@ -71,6 +71,8 @@ import type { ZdClassicCompare } from "@/lib/orders/zd-demand-policy";
 import { ZdAutoProposalBanner } from "@/components/zakupy/ZdAutoProposalBanner";
 import {
   policyForBoostPreset,
+  zdBoostAfterSavedLoad,
+  zdBoostAfterSessionRestore,
   ZD_BOOST_POWER_DEFAULT,
   type ZdBoostPowerPreset,
 } from "@/lib/orders/zd-estimate-boost-presets";
@@ -1435,6 +1437,16 @@ export function ZdEstimateWorkbench({
   const [linesBase, setLinesBase] = useState<ManualZdEstimateLine[] | null>(
     null
   );
+  /** Dla odczytu zapisanego podbicia po mount: czy lista już jest i z jakim podbiciem ją policzono. */
+  const boostListRef = useRef<{ hasList: boolean; applied: ZdBoostPowerPreset }>({
+    hasList: false,
+    applied: ZD_BOOST_POWER_DEFAULT,
+  });
+  /** Podbicie zapisane w ustawieniach (po odczycie) — przywrócona sesja nie nadpisuje go starszym. */
+  const savedBoostPresetRef = useRef<ZdBoostPowerPreset | null>(null);
+  useLayoutEffect(() => {
+    boostListRef.current = { hasList: Boolean(linesBase?.length), applied: appliedBoostPreset };
+  }, [linesBase, appliedBoostPreset]);
   /** Historia snapshotów z ostatniego Policz — live refresh musi ją przekazać. */
   const [historyByTwId, setHistoryByTwId] = useState<
     Map<number, { lastOrderedQty: number; linkedAt: string }>
@@ -1995,14 +2007,22 @@ export function ZdEstimateWorkbench({
   const cardDniZapasu = selectedSupplier?.dniZapasu ?? null;
   const raisedDniZapasu =
     cardDniZapasu != null && Math.round(Number(dniZapasu)) > cardDniZapasu ? Math.round(Number(dniZapasu)) : null;
+  // Strategia po Policz: cykl + dostawa dały więcej dni niż wpisane — pole niczego nie podniosło.
+  const strategyRunDni = lines ? Math.round(Number(paramInfo?.dniZapasu) || 0) : 0;
   const dniZapasuNote =
     policyTargetDays == null
       ? null
       : cardDniZapasu == null
         ? ZD_ESTIMATE_UI.dniZapasuStrategyNoCardNote(policyTargetDays)
         : raisedDniZapasu != null
-          ? ZD_ESTIMATE_UI.dniZapasuStrategyRaisedNote(raisedDniZapasu)
+          ? strategyRunDni > raisedDniZapasu
+            ? ZD_ESTIMATE_UI.dniZapasuStrategyLongerNote(strategyRunDni, raisedDniZapasu)
+            : ZD_ESTIMATE_UI.dniZapasuStrategyRaisedNote(raisedDniZapasu)
           : ZD_ESTIMATE_UI.dniZapasuStrategyNote(policyTargetDays, cardDniZapasu);
+  // Strategia: pole zmienia liczenie dopiero ponad kartę (i dni strategii) — mniej nic nie zmienia.
+  // Równe karcie zostaje dozwolone: cofa ręczne podniesienie.
+  const strategyStockDaysMin =
+    policyTargetDays == null ? null : cardDniZapasu != null ? Math.max(policyTargetDays, cardDniZapasu) : policyTargetDays;
 
   // Zapas pokazywany w nagłówku: po Policz dni faktycznie użyte (strategia liczy co najmniej cykl + dostawę).
   const shownDniZapasu =
@@ -2073,11 +2093,17 @@ export function ZdEstimateWorkbench({
         setErrorMessage(userFacingErrorTextFromMessage(res.message));
         return;
       }
+      savedBoostPresetRef.current = res.preset;
       setBoostPreset(res.preset);
-      setAppliedBoostPreset(res.preset);
-      // Przed pierwszym Policz trzymaj applied = zapisany (gentle default).
-      setAppliedBoostPolicy(policyForBoostPreset(res.preset));
-      setBoostNeedsRecount(false);
+      // Lista już jest (przywrócona sesja albo wynik w tle doszedł przed odczytem ustawienia):
+      // zostaje podbicie, z którym ją policzono — inaczej przeliczenia na kliencie wzięłyby inne,
+      // a baner „Przelicz” by zniknął.
+      const next = zdBoostAfterSavedLoad({ saved: res.preset, ...boostListRef.current });
+      if (next.applied) {
+        setAppliedBoostPreset(next.applied);
+        setAppliedBoostPolicy(policyForBoostPreset(next.applied));
+      }
+      setBoostNeedsRecount(next.needsRecount);
     });
     return () => {
       cancelled = true;
@@ -3261,18 +3287,21 @@ export function ZdEstimateWorkbench({
       setPurchasePriceNetByTwId(payload.purchasePriceNetByTwId ?? {});
       setHorizonNeedsRecount(false);
 
-      const restoredBoostNeedsRecount = payload.boostPreset
-        ? Boolean(payload.boostNeedsRecount) ||
-          (payload.appliedBoostPreset != null &&
-            payload.boostPreset !== payload.appliedBoostPreset)
-        : false;
+      // Podbicie to wspólne ustawienie: po odczycie liczy się zapisane, nie to z chwili pauzy sesji.
+      const restoredBoost = payload.boostPreset
+        ? zdBoostAfterSessionRestore({
+            saved: savedBoostPresetRef.current,
+            sessionForm: payload.boostPreset,
+            sessionApplied: payload.appliedBoostPreset,
+            sessionNeedsRecount: payload.boostNeedsRecount,
+          })
+        : null;
+      const restoredBoostNeedsRecount = restoredBoost?.needsRecount ?? false;
 
-      if (payload.boostPreset) {
-        setBoostPreset(payload.boostPreset);
-        const applied =
-          payload.appliedBoostPreset ?? payload.boostPreset;
-        setAppliedBoostPreset(applied);
-        setAppliedBoostPolicy(policyForBoostPreset(applied));
+      if (restoredBoost) {
+        setBoostPreset(restoredBoost.form);
+        setAppliedBoostPreset(restoredBoost.applied);
+        setAppliedBoostPolicy(policyForBoostPreset(restoredBoost.applied));
       }
 
       // Restore = snapshot roboczy, nie post-create / create-lock z bieżącego mountu.
@@ -6667,7 +6696,7 @@ export function ZdEstimateWorkbench({
                     ? "z karty dostawcy"
                     : null)
               }
-              stockDaysMin={policyTargetDays}
+              stockDaysMin={strategyStockDaysMin}
               onStockDaysChange={onDniZapasuChange}
               // Strategia bez dni na karcie liczy na własnych dniach — pole zapasu niczego by nie zmieniło.
               canEditStock={!busy && !(policyTargetDays != null && cardDniZapasu == null)}
@@ -7265,11 +7294,13 @@ export function ZdEstimateWorkbench({
               title={
                 policzScopeInfo.horizon.extendedByDays > 0
                   ? `Liczone z czasem dostawy: ${policzScopeInfo.horizon.horizonDays} dni zamiast ${policzScopeInfo.horizon.stockDays}`
-                  : "Czas dostawy uwzględniony - zapas z karty wystarcza"
+                  : raisedDniZapasu != null
+                    ? "Czas dostawy uwzględniony - wpisany zapas wystarcza"
+                    : "Czas dostawy uwzględniony - zapas z karty wystarcza"
               }
             >
               <p className="text-sm leading-snug">
-                {formatZdHorizonBreakdown(policzScopeInfo.horizon)}
+                {formatZdHorizonBreakdown(policzScopeInfo.horizon, { stockRaised: raisedDniZapasu != null })}
               </p>
               <Button
                 type="button"

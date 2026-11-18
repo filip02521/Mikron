@@ -77,7 +77,7 @@ describe("panel parametrów Kreatora ZD", () => {
     expect(screen.queryByText(/nie starczy/)).toBeNull();
   });
 
-  it("strategia automatu: zapas poniżej jej celu nie jest do wyboru, bo nic by nie zmienił", () => {
+  it("strategia automatu: zapas poniżej progu (cel strategii, karta) nie jest do wyboru, bo nic by nie zmienił", () => {
     const onChange = renderPanel({ stockDays: 90, stockDaysMin: 90 });
     fireEvent.click(screen.getByRole("button", { name: "Zmień" }));
     expect(screen.queryByRole("button", { name: "60 d" })).toBeNull();
@@ -85,7 +85,7 @@ describe("panel parametrów Kreatora ZD", () => {
     const input = screen.getByLabelText("Własna liczba dni");
     fireEvent.change(input, { target: { value: "45" } });
     fireEvent.click(screen.getByRole("button", { name: "Ustaw" }));
-    expect(screen.getByRole("alert").textContent).toMatch(/co najmniej 90 dni/);
+    expect(screen.getByRole("alert").textContent).toMatch(/mniej niż 90 dni nic nie zmieni/);
     expect(onChange).not.toHaveBeenCalled();
   });
 });

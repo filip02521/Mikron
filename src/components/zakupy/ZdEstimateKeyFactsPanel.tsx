@@ -55,7 +55,7 @@ function StockDaysEditor({
   onClose,
 }: {
   value: number;
-  /** Strategia automatu: mniej dni niż jej cel niczego nie zmienia. */
+  /** Strategia automatu: mniej dni niż jej cel i karta niczego nie zmienia (równe karcie cofa podniesienie). */
   minDays: number | null;
   /** Komórka blisko prawej krawędzi ekranu: edytor rozwija się w lewo. */
   alignRight: boolean;
@@ -77,7 +77,7 @@ function StockDaysEditor({
   const apply = (raw: string) => {
     const n = Math.round(Number(raw));
     if (!raw.trim() || !Number.isFinite(n) || n < 1 || n > 365) return setError("Podaj od 1 do 365 dni.");
-    if (minDays != null && n < minDays) return setError(`Strategia automatu liczy co najmniej ${minDays} dni - mniej nic nie zmieni.`);
+    if (minDays != null && n < minDays) return setError(`Przy strategii automatu mniej niż ${minDays} dni nic nie zmieni.`);
     onApply(n);
   };
   return (
@@ -191,7 +191,7 @@ export function ZdEstimateKeyFactsPanel({
   stockDays: number;
   /** Skąd zapas (karta, strategia, podniesiony ręcznie). */
   stockSub?: string | null;
-  /** Cel strategii automatu: zapas poniżej niego nie zmienia liczenia. */
+  /** Strategia automatu: zapas poniżej tylu dni (cel strategii, karta) nie zmienia liczenia. */
   stockDaysMin?: number | null;
   onStockDaysChange: (raw: string) => void;
   canEditStock: boolean;

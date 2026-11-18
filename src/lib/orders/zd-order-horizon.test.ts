@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   businessToCalendarDays,
+  formatZdHorizonBreakdown,
   resolveZdOrderHorizon,
   zdDeliveryRisk,
 } from "@/lib/orders/zd-order-horizon";
@@ -107,5 +108,23 @@ describe("zdDeliveryRisk", () => {
   it("starczy do kolejnej dostawy / brak sprzedaży", () => {
     expect(zdDeliveryRisk({ daysOfCoverWithIncoming: 30, horizon })).toBeNull();
     expect(zdDeliveryRisk({ daysOfCoverWithIncoming: null, horizon })).toBeNull();
+  });
+});
+
+describe("formatZdHorizonBreakdown — zapas wpisany ponad kartę", () => {
+  // Pole 90 d (karta 30): horyzont 5 + 20 d mieści się w zapasie — to nie „zapas z karty”.
+  const h = resolveZdOrderHorizon({
+    todayKey: MONDAY,
+    stockDays: 90,
+    onDemand: false,
+    nextOrderDate: "2026-10-26",
+    interval: { unit: "weeks" as const, value: 3 },
+    lead: { p50: 5, p90: 15, nOrders: 8 },
+  })!;
+
+  it("bez zmian ilości: domyślnie „Zapas z karty”, przy podniesionym polu „Wpisany zapas”", () => {
+    expect(h.extendedByDays).toBe(0);
+    expect(formatZdHorizonBreakdown(h)).toContain("Zapas z karty (90 d)");
+    expect(formatZdHorizonBreakdown(h, { stockRaised: true })).toContain("Wpisany zapas (90 d)");
   });
 });

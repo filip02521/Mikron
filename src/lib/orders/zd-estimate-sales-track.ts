@@ -389,20 +389,21 @@ export function computeSalesTrackedCel(input: {
   const boostsEnabled = input.stockoutApplied !== true;
   const sprzedazOkres = Math.max(0, asFinite(input.sprzedazOkres));
   const dniZapasu = Math.max(1, Math.round(asFinite(input.dniZapasu, 30)));
-  const dniOkresuEffective = resolveDniOkresuEffective(
-    input.dniOkresu,
-    dniZapasu
-  );
   // Podniesiony zapas: brak względem dłuższego celu jest już w ilości (cel − stan). Mierzony znowu
   // jako „cienkie pokrycie” / sell-through podbijałby go drugi raz — podbicia liczą się na dniach
   // zwykłego zamówienia. Cięcia zostają na dniach celu (nad celem i tak nic się nie zamawia).
   const signalDays = resolveSignalDniZapasu(input.signalDniZapasu, dniZapasu);
+  // Bez długości okna: okno sprzedaży idzie z dni zwykłego zamówienia (karta), nie z podniesionych.
+  const dniOkresuEffective = resolveDniOkresuEffective(
+    input.dniOkresu,
+    signalDays
+  );
   const celCoreSignal = celCore * (signalDays / dniZapasu);
   const sprzedazDziennie = resolveSprzedazDziennie({
     sprzedazOkres,
     sprzedazDziennie: input.sprzedazDziennie,
     dniOkresu: input.dniOkresu,
-    fallbackDniOkresu: dniZapasu,
+    fallbackDniOkresu: signalDays,
   });
   // Cover do sygnałów track (boost/cut): nie ujemne — dług rezerwacji
   // pokrywa już computeManualOrderQty; tu clamp unika podwójnego thin_cover.
