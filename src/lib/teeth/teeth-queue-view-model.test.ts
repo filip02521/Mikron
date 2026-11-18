@@ -95,8 +95,8 @@ describe("aggregateTeethSupplierOrder", () => {
       aggregateTeethSupplierOrder([item("a", [detail(1), detail(2)])]),
     );
     expect(text).toContain("Zamówienie zębów - Ivoclar");
-    expect(text).toContain("A2\tN5U\t-\tboczne\t2 szt.");
-    expect(text).toContain("Razem: 2 szt.");
+    expect(text).toContain("A2\tN5U\t-\tboczne\t2 klapki");
+    expect(text).toContain("Razem: 2 klapki");
   });
 });
 
@@ -131,9 +131,9 @@ describe("aggregateTeethSupplierOrderByLine", () => {
     expect(sections).toHaveLength(2);
     expect(sections.map((s) => s.total)).toEqual([2, 1]);
     const text = formatTeethAggregateSectionsForClipboard("Ivoclar", sections);
-    expect(text).toContain(`${sections[0]!.label} (2 szt.)`);
-    expect(text).toContain(`${sections[1]!.label} (1 szt.)`);
-    expect(text).toContain("Razem: 3 szt.");
+    expect(text).toContain(`${sections[0]!.label} (2 klapki)`);
+    expect(text).toContain(`${sections[1]!.label} (1 klapka)`);
+    expect(text).toContain("Razem: 3 klapki");
   });
 });
 

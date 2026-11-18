@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { plCoTydzien, plPozycja, plProsba, plWiersz, plZaznaczonaPozycja, plDzienRoboczy } from "@/lib/ui/polish-plurals";
+import { plCoTydzien, plKlapka, plKlapkeBiernik, plPozycja, plProsba, plWiersz, plZaznaczonaPozycja, plDzienRoboczy } from "@/lib/ui/polish-plurals";
 
 describe("polish-plurals", () => {
   it("odmienia pozycja", () => {
@@ -9,6 +9,17 @@ describe("polish-plurals", () => {
     expect(plPozycja(5)).toBe("pozycji");
     expect(plPozycja(12)).toBe("pozycji");
     expect(plPozycja(22)).toBe("pozycje");
+  });
+
+  it("odmienia klapka (mianownik i biernik)", () => {
+    expect(plKlapka(1)).toBe("klapka");
+    expect(plKlapka(2)).toBe("klapki");
+    expect(plKlapka(5)).toBe("klapek");
+    expect(plKlapka(12)).toBe("klapek");
+    expect(plKlapka(24)).toBe("klapki");
+    expect(plKlapkeBiernik(1)).toBe("klapkę");
+    expect(plKlapkeBiernik(4)).toBe("klapki");
+    expect(plKlapkeBiernik(0)).toBe("klapek");
   });
 
   it("odmienia zaznaczona pozycja", () => {

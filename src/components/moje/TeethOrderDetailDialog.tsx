@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Button } from "@/components/ui/Button";
 import { IconTooth } from "@/components/icons/StrokeIcons";
+import { plKlapka } from "@/lib/ui/polish-plurals";
 import {
   groupTeethDetails,
   formatTeethGroupLabel,
@@ -204,7 +205,7 @@ export function TeethOrderDetailDialog({
 
           {totalRemaining > 0 ? (
             <p className="text-xs leading-relaxed text-slate-500">
-              Brakuje jeszcze {totalRemaining} {totalRemaining === 1 ? "sztuki" : "szt."} - reszta czeka u dostawcy.
+              U dostawcy czeka jeszcze {totalRemaining} {plKlapka(totalRemaining)}.
               Magazynier przyjmie je w kolejnej dostawie, a status zaktualizuje się automatycznie.
             </p>
           ) : (

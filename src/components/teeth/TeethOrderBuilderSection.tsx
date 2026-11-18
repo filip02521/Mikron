@@ -1,5 +1,6 @@
 "use client";
 
+import { plKlapka } from "@/lib/ui/polish-plurals";
 import {
   forwardRef,
   useCallback,
@@ -198,7 +199,7 @@ export const TeethOrderBuilderSection = forwardRef<
       group &&
       !(await askConfirm({
         title: "Usunąć pozycję?",
-        message: `${group.color || "?"} ${group.mould ?? ""} (${group.count} szt.)`,
+        message: `${group.color || "?"} ${group.mould ?? ""} (${group.count} ${plKlapka(group.count)})`,
         confirmLabel: "Usuń",
         danger: true,
       }))
@@ -330,7 +331,7 @@ export const TeethOrderBuilderSection = forwardRef<
     <div className="space-y-2.5 rounded-lg ring-1 ring-indigo-100/80 bg-card p-3">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-xs font-semibold text-slate-800">{sectionLabel}</h3>
-        <span className="text-[0.625rem] font-medium tabular-nums text-indigo-700">{totalCount} szt.</span>
+        <span className="text-[0.625rem] font-medium tabular-nums text-indigo-700">{totalCount} {plKlapka(totalCount)}</span>
       </div>
       {content}
     </div>

@@ -12,6 +12,7 @@ import {
 import { teethReceiveGroupKey } from "@/lib/teeth/teeth-receive-picker";
 import type { SalesCancelPhase } from "@/lib/orders/sales-cancel";
 import { cn } from "@/lib/cn";
+import { plKlapkeBiernik } from "@/lib/ui/polish-plurals";
 
 type CancelGroupEntry = {
   color: string;
@@ -68,7 +69,7 @@ export function TeethPartialCancelDialog({
     <ModalShell
       open={open}
       onClose={onCancel}
-      title="Ile zębów wycofać?"
+      title="Ile klapek wycofać?"
       titleId="teeth-partial-cancel-title"
       role="alertdialog"
       size="md"
@@ -108,15 +109,15 @@ export function TeethPartialCancelDialog({
               onConfirm(entries);
             }}
           >
-            {totalCancel > 0 ? `Wycofaj ${totalCancel} szt.` : "Wycofaj"}
+            {totalCancel > 0 ? `Wycofaj ${totalCancel} ${plKlapkeBiernik(totalCancel)}` : "Wycofaj"}
           </Button>
         </div>
       }
     >
       <p className="text-sm leading-relaxed text-slate-600">
-        „{product}” - {phaseLabel}. Przy każdej grupie ustaw, ile sztuk wycofać.
+        „{product}” - {phaseLabel}. Przy każdej grupie ustaw, ile klapek wycofać.
         {totalDelivered > 0
-          ? " Sztuk, które magazyn już przyjął, nie da się tu wycofać."
+          ? " Klapek, które magazyn już przyjął, nie da się tu wycofać."
           : ""}
       </p>
 
