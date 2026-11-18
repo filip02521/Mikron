@@ -1,8 +1,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render } from "@testing-library/react";
 import { ZdEstimateCoverCell } from "./ZdEstimateTableRow";
 import { ZdEstimateDoZdCell } from "./ZdEstimateDoZdCell";
 import { computeZdPackOrderQty, formatZdPackCompactLabel } from "@/lib/orders/zd-estimate-packaging";
@@ -68,17 +68,17 @@ describe("Do ZD: znacznik pełnych palet", () => {
 describe("ZdEstimateDoZdCell — porównanie ze strategią „jak dotąd”", () => {
   afterEach(() => cleanup());
 
-  it("inna ilość → „dotąd N” z przekreśloną liczbą; ta sama albo brak porównania → nic", () => {
+  it("inna ilość → porównanie tylko w dymku komórki (bez dopisku pod liczbą); ta sama albo brak → nic", () => {
     const qty = computeZdPackOrderQty(10, 1, "op.");
     const a = render(<ZdEstimateDoZdCell qty={qty} comparePieces={14} />);
-    expect(a.container.querySelector(".zd-est-dozd-compare")?.textContent).toBe("dotąd 14 szt");
-    expect(a.container.querySelector(".zd-est-dozd-compare s")?.textContent).toBe("14");
+    expect(a.container.textContent).not.toContain("dotąd");
+    expect(a.container.querySelector(".zd-est-dozd")?.getAttribute("title")).toContain("Stara strategia: 14 szt (teraz 10 szt)");
     cleanup();
     const b = render(<ZdEstimateDoZdCell qty={qty} comparePieces={qty.piecesArriving} />);
-    expect(b.container.querySelector(".zd-est-dozd-compare")).toBeNull();
+    expect(b.container.querySelector(".zd-est-dozd")?.getAttribute("title") ?? "").not.toContain("Stara strategia");
     cleanup();
     const c = render(<ZdEstimateDoZdCell qty={qty} />);
-    expect(c.container.querySelector(".zd-est-dozd-compare")).toBeNull();
+    expect(c.container.querySelector(".zd-est-dozd")?.getAttribute("title") ?? "").not.toContain("Stara strategia");
   });
 });
 
@@ -89,6 +89,24 @@ describe("ZdEstimateDoZdCell — porównanie w sztukach przy zmianie opakowania"
     // „jak dotąd” 120 szt; po Policz ustawione opakowanie 12 szt → 10 op. = 120 szt
     const qty = computeZdPackOrderQty(120, 12, "op.", "packages");
     const r = render(<ZdEstimateDoZdCell qty={qty} comparePieces={120} />);
-    expect(r.container.querySelector(".zd-est-dozd-compare")).toBeNull();
+    expect(r.container.querySelector(".zd-est-dozd")?.getAttribute("title") ?? "").not.toContain("Stara strategia");
+  });
+});
+
+describe("ZdEstimateDoZdCell — pozycja do sprawdzenia", () => {
+  afterEach(() => cleanup());
+
+  it("jeden sygnał: przycisk „Akceptuj” (procent w dymku), a po akceptacji nic pod liczbą", () => {
+    const qty = computeZdPackOrderQty(10, 1, "op.");
+    const onAccept = vi.fn();
+    const r = render(<ZdEstimateDoZdCell qty={qty} confidence={0.82} qtyReview onAccept={onAccept} />);
+    const btn = r.getByRole("button", { name: /Zaakceptuj weryfikację: 82%/ });
+    expect(btn.textContent).toBe("Akceptuj");
+    expect(r.container.querySelector(".zd-est-dozd-hint-row")?.textContent).not.toMatch(/%/);
+    fireEvent.click(btn);
+    expect(onAccept).toHaveBeenCalledTimes(1);
+    cleanup();
+    const done = render(<ZdEstimateDoZdCell qty={qty} confidence={0.82} qtyReview accepted onAccept={onAccept} />);
+    expect(done.queryByRole("button", { name: /Zaakceptuj/ })).toBeNull();
   });
 });

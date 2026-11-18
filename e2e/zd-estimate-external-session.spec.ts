@@ -47,9 +47,9 @@ test.describe("ZD estimate — sesja zewnętrzna (E2E lab)", () => {
     await page.getByTestId("zd-external-session-leave").click();
     await page.getByTestId("zd-external-session-floating-notice-host").hover();
     await expect(
-      page.getByRole("button", { name: "Zamknij sesję" })
+      page.getByRole("button", { name: "Wyczyść listę" })
     ).toBeVisible();
-    await page.getByRole("button", { name: "Zamknij sesję" }).click();
+    await page.getByRole("button", { name: "Wyczyść listę" }).click();
     await expect(
       page.getByTestId("zd-external-session-floating-notice-host")
     ).toHaveCount(0);

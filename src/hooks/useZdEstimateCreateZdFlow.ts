@@ -13,7 +13,7 @@ import type {
 } from "@/lib/orders/zd-estimate-post-create";
 
 /**
- * Przepływ tworzenia ZD: okno Create / Powiąż ZD, zamrożony preview przy submit,
+ * Przepływ tworzenia ZD: okno Create / Powiąż gotowe ZD, zamrożony preview przy submit,
  * blokada po utworzeniu (także timeout), panel post-create i wiek listy.
  */
 export function useZdEstimateCreateZdFlow() {
@@ -46,7 +46,7 @@ export function useZdEstimateCreateZdFlow() {
   );
   /**
    * Freeze z timeout create — przeżywa dismiss panelu, aż do link / unlock / Policz.
-   * Bez tego „Powiąż ZD” po zamknięciu panelu traci submit freeze + durable consume.
+   * Bez tego „Powiąż gotowe ZD” po zamknięciu panelu traci submit freeze + durable consume.
    */
   const timeoutRecoveryFreezeRef = useRef<ZdPostCreateMarkFreeze | null>(null);
   /** Mirror ref → state, żeby dialog nie czytał ref podczas renderu. */

@@ -783,12 +783,12 @@ export function ZdEstimatePrepForm({
               <input
                 type="checkbox"
                 className="size-4 accent-indigo-600"
-                aria-label="Do kolejnej dostawy - uwzględnij czas dostawy i harmonogram"
+                aria-label="Zapas do kolejnej dostawy - uwzględnij czas dostawy i harmonogram"
                 checked={leadTimeHorizon}
                 disabled={paramsDisabled}
                 onChange={(e) => onLeadTimeHorizonChange(e.target.checked)}
               />
-              Do kolejnej dostawy
+              Zapas do kolejnej dostawy
             </label>
           </div>
 
@@ -811,7 +811,7 @@ export function ZdEstimatePrepForm({
                 disabled={paramsDisabled}
                 onChange={(e) => onSalesSmoothingChange(e.target.checked)}
               />
-              Wygładź skoki
+              Pomiń jednorazowe skoki
             </label>
           </div>
 

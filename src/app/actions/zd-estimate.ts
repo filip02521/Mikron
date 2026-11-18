@@ -3594,7 +3594,7 @@ export type ZdEstimateSearchZdResult =
   | { ok: true; documents: ZdEstimateLinkCandidate[] }
   | { ok: false; message: string };
 
-/** Ostatnie ZD z hosta ORDERS — do dialogu „Powiąż ZD”. */
+/** Ostatnie ZD z hosta ORDERS — do dialogu „Powiąż gotowe ZD”. */
 export async function actionSearchZdForEstimateLink(input?: {
   search?: string | null;
   days?: number;
@@ -3696,7 +3696,7 @@ export async function actionLinkZdEstimateSnapshot(input: {
   if (!khRes.ok) {
     return {
       ok: false,
-      message: `Powiąż ZD wymaga dostawcy z workbencha: ${khRes.message}`,
+      message: `Powiąż gotowe ZD wymaga dostawcy z workbencha: ${khRes.message}`,
     };
   }
 
@@ -4784,7 +4784,7 @@ export async function actionCreateZdFromEstimate(input: {
         lineCount: createLines.length,
         snapshotOk: false,
         snapshotMessage:
-          "ZD utworzone, ale nie udało się odczytać pozycji do historii - użyj „Powiąż ZD”.",
+          "ZD utworzone, ale nie udało się odczytać pozycji do historii - użyj „Powiąż gotowe ZD”.",
       });
     }
 
@@ -4835,7 +4835,7 @@ export async function actionCreateZdFromEstimate(input: {
         snapshotMessage:
           snapErr instanceof Error
             ? `ZD utworzone (${dokNrPelny}), snapshot nie zapisany: ${snapErr.message}`
-            : `ZD utworzone (${dokNrPelny}), snapshot nie zapisany - użyj „Powiąż ZD”.`,
+            : `ZD utworzone (${dokNrPelny}), snapshot nie zapisany - użyj „Powiąż gotowe ZD”.`,
       });
     }
   } catch (e) {
@@ -4855,7 +4855,7 @@ export async function actionCreateZdFromEstimate(input: {
       snapshotMessage:
         e instanceof Error
           ? `ZD utworzone (dok_Id ${dokId}), odczyt/snapshot: ${e.message}`
-          : `ZD utworzone (dok_Id ${dokId}) - użyj „Powiąż ZD”.`,
+          : `ZD utworzone (dok_Id ${dokId}) - użyj „Powiąż gotowe ZD”.`,
     });
   }
 }
@@ -6253,7 +6253,7 @@ export async function actionGetZdEstimateUiSession(input: {
       .delete()
       .eq("id", sessionId)
       .eq("owner_user_id", user.id);
-    return { ok: false, message: "Sesja wygasła.", reason: "expired" };
+    return { ok: false, message: "Zapamiętana lista wygasła - policz ją od nowa.", reason: "expired" };
   }
 
   return {

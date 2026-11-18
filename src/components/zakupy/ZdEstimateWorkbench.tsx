@@ -1625,6 +1625,23 @@ export function ZdEstimateWorkbench({
   const [cancelExternalSessionOpen, setCancelExternalSessionOpen] =
     useState(false);
   const cancelExternalSessionSessionIdRef = useRef<string | null>(null);
+  // Pasek „Utwórz ZD” wisi nad listą (absolute) — miejsce pod ostatnim wierszem liczymy z jego realnej
+  // wysokości (dwa rzędy z „Lista zapamiętana” / komunikatem), a nie ze stałej, która zasłaniała ostatni wiersz.
+  const [stickyBarHeight, setStickyBarHeight] = useState<number | null>(null);
+  const stickyBarObserverRef = useRef<ResizeObserver | null>(null);
+  const stickyBarRef = useCallback((el: HTMLDivElement | null) => {
+    stickyBarObserverRef.current?.disconnect();
+    stickyBarObserverRef.current = null;
+    if (!el) return;
+    // Od md pasek stoi 0,75 rem nad dołem; na telefonie wisi nad menu i ma własną stałą rezerwę (klasa).
+    const update = () =>
+      setStickyBarHeight(window.matchMedia("(min-width: 768px)").matches ? el.offsetHeight : null);
+    update();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    stickyBarObserverRef.current = ro;
+  }, []);
   const externalSessionIdRef = useRef<string | null>(null);
   const externalSessionRestoreGenRef = useRef(0);
   const externalSessionPersistTimerRef = useRef<number | null>(null);
@@ -7113,7 +7130,7 @@ export function ZdEstimateWorkbench({
             : <>
                 Z tej listy utworzono już {createDoneDokNr}.{" "}
                 {!createUnlockedAfterDone
-                  ? "Przelicz listę, użyj „Powiąż ZD” albo odblokuj świadomie."
+                  ? "Przelicz listę, użyj „Powiąż gotowe ZD” albo odblokuj świadomie."
                   : createZdGate.ok
                     ? "Możesz utworzyć kolejne ZD - uważaj na duplikaty w Subiekcie."
                     : createZdGateCaption ?? createZdGate.reason}
@@ -7826,9 +7843,10 @@ export function ZdEstimateWorkbench({
               listSearchActive ? segmentFilteredLines.length : undefined
             }
             statusNote={
+              // Liczba pozycji „Do ZD” jest w stopce (z sztukami i wartością) — tu tylko to, czego tam nie widać.
               meta?.truncated
                 ? zdEstimateTruncatedListStatusNote()
-                : visibleLines.length > 0 || orderableLines.length > 0
+                : hiddenOrderableCount > 0
                   ? formatZdEstimateOrderableStatusNote({
                       orderable: orderableLines.length,
                       hiddenOrderable: hiddenOrderableCount,
@@ -8125,9 +8143,9 @@ export function ZdEstimateWorkbench({
                         <th
                           className="zd-estimate-pack-col"
                           scope="col"
-                          title="Definicja opakowania: ile sztuk = 1 jednostka na ZD (paczka) albo wielokrotność dobicia. Osobno od Dost. / Sprzed. / Cel."
+                          title="Definicja opakowania: ile sztuk = 1 jednostka na ZD (paczka) albo wielokrotność dobicia. Osobno od kolumn Na stanie / Sprzedaż / Cel."
                         >
-                          Opak.
+                          Paczka
                         </th>
                       ) : null}
                       <ZdEstimateSortableTh
@@ -8198,7 +8216,7 @@ export function ZdEstimateWorkbench({
                                 )}
                                 title="Dostępne w sztukach (stan − rezerwacje); rezerwacje pod liczbą - klik pokazuje ZK. Przy SKU paczki z pary - jednostki karty (op.)."
                               >
-                                Dost.
+                                Na stanie
                               </th>
                             );
                           case "sales":
@@ -8219,7 +8237,7 @@ export function ZdEstimateWorkbench({
                                     className="zd-est-metric-th__icon zd-est-metric-th__icon--sales"
                                   />
                                   <span className="zd-est-metric-th__label">
-                                    Sprzed.
+                                    Sprzedaż
                                   </span>
                                 </span>
                               </th>
@@ -8519,10 +8537,13 @@ export function ZdEstimateWorkbench({
                 ? zdEstimateStickyClearanceTallClass
                 : zdEstimateStickyClearanceClass
             }
+            // + odstęp docku od dołu (0,75 rem na desktopie) i oddech nad ostatnim wierszem.
+            style={stickyBarHeight != null ? { minHeight: stickyBarHeight + 20 } : undefined}
           />
 
           <div className={zdEstimateStickyDockClass}>
             <div
+              ref={stickyBarRef}
               id={ZD_ESTIMATE_STICKY_ACTIONS_ID}
               className={cn(zdEstimateStickyBarClass, "flex-col gap-1.5")}
             >
@@ -8561,11 +8582,11 @@ export function ZdEstimateWorkbench({
                   disabled={!orderableLines.length || !settingsTrusted}
                   title={
                     settingsTrusted
-                      ? "Kopiuje kolumnę Do ZD (jednostki dokumentu) z uwzględnieniem opakowań"
+                      ? "Kopiuje symbole i ilości Do ZD (z opakowaniami) - wklej do Excela albo do Subiekta"
                       : ZD_BOM_UI.copyNeedsSettings
                   }
                 >
-                  {copyOk ? "Skopiowano" : "Kopiuj TSV"}
+                  {copyOk ? "Skopiowano" : "Kopiuj do Excela"}
                 </Button>
                 <Button
                   type="button"
@@ -8584,11 +8605,11 @@ export function ZdEstimateWorkbench({
                         : "Gdy ZD powstało poza OnTime - zapisz powiązanie w historii"
                   }
                 >
-                  Powiąż ZD
+                  Powiąż gotowe ZD
                 </Button>
                 {orderSummary.count > 0 ? (
                   <span
-                    className="ml-1 inline-flex min-w-0 items-center gap-1 whitespace-nowrap border-l border-slate-200 pl-2.5 text-[12px] tabular-nums text-slate-600"
+                    className="ml-1 inline-flex min-w-0 flex-wrap items-center gap-1 border-l border-slate-200 pl-2.5 text-[12px] tabular-nums text-slate-600 sm:flex-nowrap sm:whitespace-nowrap"
                     title="Suma pozycji „Do ZD” z Twoimi zmianami ilości; wartość = sztuki po dostawie × ostatnia cena z ZD (netto)"
                     role="status"
                   >
@@ -8630,7 +8651,7 @@ export function ZdEstimateWorkbench({
                         className="ml-1 border-l border-slate-200 pl-2 text-slate-500"
                         title="Ta sama lista policzona strategią „jak dotąd” (bez Twoich zmian ilości)"
                       >
-                        jak dotąd {classicCompareSummary.lineCount} poz. · {classicCompareSummary.pieces.toLocaleString("pl-PL")} szt
+                        stara strategia: {classicCompareSummary.lineCount} poz. · {classicCompareSummary.pieces.toLocaleString("pl-PL")} szt
                         {classicCompareSummary.value > 0 ? ` · ok. ${Math.round(classicCompareSummary.value).toLocaleString("pl-PL")} zł` : ""}
                       </span>
                     ) : null}

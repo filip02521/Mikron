@@ -1,5 +1,5 @@
 /**
- * Sesja podsumowania po Utwórz / Powiąż ZD w kreatorze.
+ * Sesja podsumowania po Utwórz / Powiąż gotowe ZD w kreatorze.
  * Snapshot linii przed bumpem otwarteZd — TSV i Link nie zależą od pustej listy Do ZD.
  */
 

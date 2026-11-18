@@ -180,7 +180,7 @@ function SupplierDetail({
     notes.push({
       tone: p.beforeDeliveryCount > 0 ? "danger" : "warning",
       text: p.horizonExtends
-        ? `Zapas ${p.dniZapasu} d nie wystarczy do kolejnej dostawy (${horizonDays ?? 0} d) — w Kreatorze zaznacz „Do kolejnej dostawy”.`
+        ? `Zapas ${p.dniZapasu} d nie wystarczy do kolejnej dostawy (${horizonDays ?? 0} d) — w Kreatorze zaznacz „Zapas do kolejnej dostawy”.`
         : "Zapas z karty wystarcza do kolejnej dostawy — zamów dziś, nie czekaj na termin z planu.",
     });
   }
@@ -218,7 +218,7 @@ function SupplierDetail({
             <Link
               href={buildZdEstimateLaunchHref(row.supplierId, { leadTimeHorizon: true })}
               className={secondaryLinkClass}
-              title="Otwiera Kreator z zaznaczoną opcją „Do kolejnej dostawy” — możesz ją odznaczyć"
+              title="Otwiera Kreator z zaznaczoną opcją „Zapas do kolejnej dostawy” — możesz ją odznaczyć"
             >
               ZD do kolejnej dostawy
             </Link>
