@@ -14,6 +14,7 @@ import {
   zdSplitCounts,
   zdSplitDraftFrom,
   zdSplitRangeSelect,
+  zdSharedScopeAddableSuppliers,
   zdSplitShortName,
   zdSplitShortNames,
   zdSplitVisible,
@@ -182,5 +183,38 @@ describe("zd-shared-scope-split", () => {
     expect(
       zdSplitShortNames(["Dentsply Sirona Polska Sp. z o.o.", "Dentsply Sirona Deutschland GmbH", "Komet"])
     ).toEqual(["Dentsply Sirona Polska Sp. z o.o.", "Dentsply Sirona Deutschland GmbH", "Komet"]);
+  });
+});
+
+describe("zdSharedScopeAddableSuppliers", () => {
+  const C = "cccccccc-0000-0000-0000-000000000003";
+  const all = [
+    { id: C, name: "Motyl tarcze" },
+    { id: A, name: "MOTYL-Pro (frezy)" },
+    { id: B, name: "Żeta" },
+  ];
+
+  it("pomija dostawców, którzy już mają zakres, i sortuje po polsku", () => {
+    expect(zdSharedScopeAddableSuppliers(all, [A])).toEqual([
+      { id: C, name: "Motyl tarcze" },
+      { id: B, name: "Żeta" },
+    ]);
+  });
+
+  it("pusta lista, gdy wszyscy mają zakres", () => {
+    expect(zdSharedScopeAddableSuppliers(all, [A, B, C])).toEqual([]);
+  });
+
+  it("pomija karty bez nazwy i powtórzone id, przycina nazwę", () => {
+    expect(
+      zdSharedScopeAddableSuppliers(
+        [
+          { id: A, name: "  Alfa  " },
+          { id: A, name: "Alfa kopia" },
+          { id: B, name: "   " },
+        ],
+        []
+      )
+    ).toEqual([{ id: A, name: "Alfa" }]);
   });
 });
