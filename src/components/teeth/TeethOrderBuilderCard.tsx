@@ -107,13 +107,15 @@ export function TeethOrderBuilderCard({
       <>
         {counts.anterior > 0 ? (
           <>
-            <span className="font-semibold tabular-nums">{counts.anterior}</span> przednich
+            <span className="font-semibold tabular-nums">{counts.anterior}</span>{" "}
+            {polishPluralWord(counts.anterior, "klapka przednia", "klapki przednie", "klapek przednich")}
           </>
         ) : null}
         {counts.anterior > 0 && counts.posterior > 0 ? " · " : null}
         {counts.posterior > 0 ? (
           <>
-            <span className="font-semibold tabular-nums">{counts.posterior}</span> bocznych
+            <span className="font-semibold tabular-nums">{counts.posterior}</span>{" "}
+            {polishPluralWord(counts.posterior, "klapka boczna", "klapki boczne", "klapek bocznych")}
           </>
         ) : null}
         .
@@ -121,7 +123,7 @@ export function TeethOrderBuilderCard({
     ) : (
       <>
         Razem <span className="font-semibold tabular-nums">{total}</span>{" "}
-        {polishPluralWord(total, "sztuka", "sztuki", "sztuk")}.
+        {polishPluralWord(total, "klapka", "klapki", "klapek")}.
       </>
     )
   ) : hasList ? (

@@ -68,7 +68,7 @@ export function TeethPanelOrderSpec({
       <div className={cn(teethPanelIncompleteShellClass, "px-2.5 py-2", className)} role="status">
         <p className={teethPanelIncompleteTitleClass}>Lista niekompletna</p>
         <p className={teethPanelIncompleteDetailClass}>
-          Brakuje koloru, fasonu, szczęki lub typu przy co najmniej jednej sztuce.
+          Brakuje koloru, fasonu, szczęki lub typu przy co najmniej jednej klapce.
         </p>
         <TeethPanelSpecList
           details={lines}
