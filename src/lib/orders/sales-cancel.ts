@@ -3,6 +3,7 @@ import {
   getDeliveryProgress,
   getOrderFulfillmentProgress,
   isInformacjaRequest,
+  orderUnitGenitive,
   parseOrderQuantity,
   type DeliveryProgress,
   type OrderFulfillmentProgress,
@@ -10,6 +11,7 @@ import {
 import type { IndividualOrder, IndividualOrderStatus } from "@/types/database";
 import { undoWindowLongLabel } from "@/lib/orders/daily-panel-undo";
 import { polishPlural } from "@/lib/email/polish-plural";
+import { plKlapka } from "@/lib/ui/polish-plurals";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export type SalesCancelPhase = "before_order" | "in_transit" | "on_stock";
@@ -60,7 +62,7 @@ export function deliveredQtyRaw(order: IndividualOrder): string {
 }
 
 export function deliveryProgressFor(order: IndividualOrder): DeliveryProgress {
-  return getDeliveryProgress(order.quantity, deliveredQtyRaw(order));
+  return getDeliveryProgress(order.quantity, deliveredQtyRaw(order), Boolean(order.is_teeth));
 }
 
 export function fulfillmentProgressFor(order: IndividualOrder): OrderFulfillmentProgress {
@@ -68,7 +70,8 @@ export function fulfillmentProgressFor(order: IndividualOrder): OrderFulfillment
   return getOrderFulfillmentProgress(
     order.quantity,
     deliveredQtyRaw(order),
-    cancelled > 0 ? String(cancelled) : order.sales_cancelled_quantity
+    cancelled > 0 ? String(cancelled) : order.sales_cancelled_quantity,
+    Boolean(order.is_teeth)
   );
 }
 
@@ -165,15 +168,24 @@ export function showSalesCancelSupplierQuickAction(order: IndividualOrder): bool
 }
 
 /** Skrót rezygnacji z tego, czego jeszcze brakuje u dostawcy (np. 2 z 5 szt.). */
-export function salesCancelLineRemainderLabel(remainder?: number): string {
+export function salesCancelLineRemainderLabel(remainder?: number, isTeeth = false): string {
   const n = remainder != null ? Math.max(1, Math.trunc(remainder)) : 0;
+  if (isTeeth) {
+    if (n === 1) return "Zrezygnuj z brakującej 1 klapki";
+    return n > 1 ? `Zrezygnuj z brakujących ${n} klapek` : "Zrezygnuj z brakujących klapek";
+  }
   if (n === 1) return "Zrezygnuj z brakującej 1 szt.";
   return n > 1 ? `Zrezygnuj z brakujących ${n} szt.` : "Zrezygnuj z brakujących sztuk";
 }
 
 /** Opis dla czytników ekranu — rezygnacja z reszty u dostawcy. */
-export function salesCancelLineRemainderAriaLabel(remainder: number): string {
+export function salesCancelLineRemainderAriaLabel(remainder: number, isTeeth = false): string {
   const n = Math.max(1, Math.trunc(remainder));
+  if (isTeeth) {
+    return n > 1
+      ? `Zrezygnuj z brakujących u dostawcy: ${n} ${plKlapka(n)}`
+      : "Zrezygnuj z brakującej klapki u dostawcy";
+  }
   return n > 1
     ? `Zrezygnuj z brakujących u dostawcy: ${polishPlural(n, "sztuka", "sztuki", "sztuk")}`
     : "Zrezygnuj z brakującej sztuki u dostawcy";
@@ -185,8 +197,8 @@ export function salesCancelLineCustomQtyLabel(): string {
 }
 
 /** Ostatnia szt. u dostawcy po częściowej dostawie — rezygnacja z reszty. */
-export function salesCancelQuickActionLabel(): string {
-  return salesCancelLineRemainderLabel(1);
+export function salesCancelQuickActionLabel(isTeeth = false): string {
+  return salesCancelLineRemainderLabel(1, isTeeth);
 }
 
 export type SalesCancelQuantityPlan = {
@@ -705,12 +717,12 @@ export function salesCancelSuccessToast(lineCount = 1): string {
 export function salesCancelArchiveDetail(
   phase: SalesCancelPhase,
   activityLabel: string | null,
-  partial?: { cancelledQty: number; orderedQty: number } | null
+  partial?: { cancelledQty: number; orderedQty: number; isTeeth?: boolean } | null
 ): { statusTitle: string; statusDetail: string } {
   const when = activityLabel ? `Wycofano ${activityLabel}.` : "Wycofano.";
   const partialNote =
     partial && partial.cancelledQty > 0 && partial.cancelledQty < partial.orderedQty
-      ? ` Rezygnacja z ${partial.cancelledQty} z ${partial.orderedQty} szt.`
+      ? ` Rezygnacja z ${partial.cancelledQty} z ${partial.orderedQty} ${orderUnitGenitive(partial.orderedQty, partial.isTeeth)}`
       : "";
 
   switch (phase) {

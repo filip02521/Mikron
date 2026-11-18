@@ -13,7 +13,13 @@ import {
 } from "@/lib/orders/sales-client-match";
 import { orderExplicitlyLinkedToZkWatch } from "@/lib/orders/zk-prosba-source";
 import { isZkWatchArchived } from "@/lib/data/sales-notepad-shared";
-import { getDeliveryProgress, INFORMACJA_NO_QUANTITY, parseOrderQuantity } from "@/lib/orders/individual";
+import {
+  getDeliveryProgress,
+  INFORMACJA_NO_QUANTITY,
+  orderUnit,
+  parseOrderQuantity,
+} from "@/lib/orders/individual";
+import { zkLineQuantityLabel } from "@/lib/sales/zk-watch-lines";
 import {
   activeOrderQuantity,
   hasActiveSupplierFulfillment,
@@ -342,7 +348,7 @@ export function totalDeliveredQtyForZkLineFromOrders(
   for (const order of orders) {
     if (!isPhysicalDeliveryOrder(order)) continue;
     if (!productMatchesZkLine(order, line)) continue;
-    const progress = getDeliveryProgress(order.quantity, order.delivered_quantity);
+    const progress = getDeliveryProgress(order.quantity, order.delivered_quantity, Boolean(order.is_teeth));
     total += progress.delivered;
   }
   return total;
@@ -416,10 +422,13 @@ export function buildZkLineProsbaQuantityMeta(
   watch: Pick<
     SalesZkWatch,
     "line_checks" | "id" | "zk_number" | "sales_person_id" | "client_kh_id" | "client_label"
-  >
+  >,
+  teethTwIds?: ReadonlySet<number> | null
 ): ZkLineProsbaQuantityMeta | null {
   const zkQty = line.quantity;
-  const zkLabel = line.quantityLabel;
+  const zkLabel = zkLineQuantityLabel(line, teethTwIds);
+  const isTeeth = line.subiektTwId != null && Boolean(teethTwIds?.has(line.subiektTwId));
+  const u = (n: number) => orderUnit(n, isTeeth);
   if (!zkLabel) return null;
 
   const relevant = orders.filter((order) => isOrderRelevantToZkWatch(order, watch as SalesZkWatch));
@@ -429,10 +438,10 @@ export function buildZkLineProsbaQuantityMeta(
   if (orderedQty > 0 && zkQty != null && orderedQty < zkQty) {
     const stockGap = zkQty - orderedQty;
     return {
-      displayLabel: `${zkLabel} · w prośbie ${orderedQty} szt. · ${stockGap} szt. ze stanu`,
+      displayLabel: `${zkLabel} · w prośbie ${orderedQty} ${u(orderedQty)} · ${stockGap} ${u(stockGap)} ze stanu`,
       title:
-        `W ZK jest ${zkQty} szt., w prośbie zamówiono ${orderedQty} szt.` +
-        ` Pozostałe ${stockGap} szt. powinny być już na stanie magazynowym.` +
+        `W ZK jest ${zkQty} ${u(zkQty)}, w prośbie zamówiono ${orderedQty} ${u(orderedQty)}.` +
+        ` Pozostałe (${stockGap} ${u(stockGap)}) powinny być już na stanie magazynowym.` +
         " Przy odbiorze z regału licz się na ilość z prośby, nie na pełną ilość ZK.",
     };
   }
@@ -440,7 +449,7 @@ export function buildZkLineProsbaQuantityMeta(
   if (fromStockScope && orderedQty === 0 && zkQty != null) {
     return {
       displayLabel: `${zkLabel} · ze stanu magazynowego`,
-      title: `W ZK jest ${zkQty} szt. - pozycja oznaczona jako dostępna na stanie, bez prośby o zamówienie.`,
+      title: `W ZK jest ${zkQty} ${u(zkQty)} - pozycja oznaczona jako dostępna na stanie, bez prośby o zamówienie.`,
     };
   }
 

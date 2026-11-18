@@ -60,7 +60,8 @@ export function HistoriaIndividualTable({
               o.quantity,
               o.delivered_quantity && o.delivered_quantity !== "-"
                 ? o.delivered_quantity
-                : "0"
+                : "0",
+              Boolean(o.is_teeth)
             );
             const procurementNote = normalizeProcurementCancelNote(o.procurement_cancel_note);
             const canCancel = canOperateOrders && canOperationsCancelIndividualOrder(o);

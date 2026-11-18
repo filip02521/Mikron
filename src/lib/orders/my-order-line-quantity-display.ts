@@ -1,7 +1,8 @@
 import { groupTeethDetails } from "@/lib/teeth/teeth-catalog";
 import type { MyOrderLine } from "@/lib/orders/my-order-presenter";
 
-const ALL_ON_STOCK_PROGRESS = /^wszystkie \d+ szt\.?$/;
+// Jednostka: „szt.” albo klapki (zęby) — patrz orderUnit().
+const ALL_ON_STOCK_PROGRESS = /^wszystkie \d+ (?:szt\.?|klap(?:ka|ki|ek))$/;
 const WAREHOUSE_PROGRESS = /^\d+\s*z\s*\d+/i;
 
 /** Adnotacja o częściowym wycofaniu z quantityLabel, np. „(z 6 · 3 wycofane)”. */
@@ -16,12 +17,13 @@ function allOnStockProgressMatchesQuantity(
   progressLabel: string,
   quantityLabel: string
 ): boolean {
-  const match = progressLabel.trim().match(/^wszystkie (\d+) szt\.?$/);
+  const match = progressLabel.trim().match(/^wszystkie (\d+) (szt\.?|klap(?:ka|ki|ek))$/);
   if (!match) return false;
   const n = match[1];
+  const unit = match[2] === "szt" ? "szt." : match[2];
   return (
-    quantityLabel.trim() === `${n} szt.` ||
-    quantityLabel.trim().startsWith(`${n} szt. `)
+    quantityLabel.trim() === `${n} ${unit}` ||
+    quantityLabel.trim().startsWith(`${n} ${unit} `)
   );
 }
 

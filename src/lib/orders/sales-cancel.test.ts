@@ -108,6 +108,8 @@ describe("sales-cancel", () => {
     expect(salesCancelLineRemainderLabel()).toBe("Zrezygnuj z brakujących sztuk");
     expect(salesCancelLineRemainderLabel(3)).toBe("Zrezygnuj z brakujących 3 szt.");
     expect(salesCancelLineRemainderLabel(1)).toBe("Zrezygnuj z brakującej 1 szt.");
+    expect(salesCancelLineRemainderLabel(3, true)).toBe("Zrezygnuj z brakujących 3 klapek");
+    expect(salesCancelLineRemainderLabel(1, true)).toBe("Zrezygnuj z brakującej 1 klapki");
   });
 
   it("salesCancelLineRemainderAriaLabel - liczba sztuk dla czytników", () => {

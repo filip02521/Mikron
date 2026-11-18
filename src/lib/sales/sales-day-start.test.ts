@@ -76,7 +76,7 @@ describe("buildSalesDayStartSnapshot", () => {
 
     const teethItems = snapshot.items.filter((i) => i.source === "teeth_handover");
     expect(teethItems).toHaveLength(1);
-    expect(teethItems[0]?.title).toBe("Potwierdź odbiór zębów (2)");
+    expect(teethItems[0]?.title).toBe("Potwierdź odbiór zębów (2 poz.)");
     expect(teethItems[0]?.scrollTarget).toBe("moje-section-teeth");
     expect(teethItems[0]?.href).toBe("/moje#moje-section-teeth");
     expect(snapshotActionWeight(snapshot)).toBe(2);
@@ -100,7 +100,7 @@ describe("buildSalesDayStartSnapshot", () => {
 
     const mixedItems = snapshot.items.filter((i) => i.source === "mixed_pickup");
     expect(mixedItems).toHaveLength(1);
-    expect(mixedItems[0]?.title).toBe("Potwierdź odbiór zębów i towaru (2)");
+    expect(mixedItems[0]?.title).toBe("Potwierdź odbiór zębów i towaru (2 poz.)");
     expect(mixedItems[0]?.scrollTarget).toBe("moje-section-mixed-pickup");
     expect(mixedItems[0]?.href).toBe("/moje#moje-section-mixed-pickup");
   });

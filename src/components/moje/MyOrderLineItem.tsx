@@ -305,6 +305,7 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
   const lineCancelMenu = showCancelActions ? (
     <MyOrderLineCancelMenu
       product={line.product}
+      isTeeth={Boolean(line.isTeeth)}
       listKind={listKind}
       pending={pending}
       showRemainderCancel={showRemainderCancel}

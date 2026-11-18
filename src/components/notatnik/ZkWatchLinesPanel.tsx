@@ -18,7 +18,9 @@ import {
   formatZkLinesProgress,
   summarizeZkWatchLines,
   type ZkWatchLineView,
+  zkLineQuantityLabel,
 } from "@/lib/sales/zk-watch-lines";
+import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
 import {
   canToggleZkWatchLineCheckbox,
   isZkWatchLineCheckboxChecked,
@@ -156,6 +158,7 @@ export function ZkWatchLinesPanel({
   showSummary?: boolean;
   onSaved?: (watch: SalesZkWatch) => void;
 }) {
+  const teethTwIds = useTeethExemptTwIds();
   const watchSyncKey = `${watch.id}\0${JSON.stringify(watch.line_checks ?? null)}`;
   const [appliedWatchSyncKey, setAppliedWatchSyncKey] = useState(watchSyncKey);
   const [views, setViews] = useState<ZkWatchLineView[]>(() => buildZkWatchLineViews(watch));
@@ -514,10 +517,10 @@ export function ZkWatchLinesPanel({
           shelfMarked: line.shelf_marked,
           completedManually: line.completed_manually,
         });
-        const prosbaQtyMeta = buildZkLineProsbaQuantityMeta(line, linkableOrders, watch);
+        const prosbaQtyMeta = buildZkLineProsbaQuantityMeta(line, linkableOrders, watch, teethTwIds);
         const metaLineParts = prosbaQtyMeta
           ? [line.symbol, prosbaQtyMeta.displayLabel].filter(Boolean)
-          : [line.symbol, line.quantityLabel].filter(Boolean);
+          : [line.symbol, zkLineQuantityLabel(line, teethTwIds)].filter(Boolean);
         const metaLineTitle = prosbaQtyMeta?.title;
         const lineToggleable =
           canEdit && !saving && canToggleZkWatchLineCheckbox(uiState);
