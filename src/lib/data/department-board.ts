@@ -14,6 +14,7 @@ import {
   type UnseenBoardAnswer,
 } from "@/lib/department-board/attention";
 import { listSupplierInquiries, threadIdsAwaitingSupplier } from "@/lib/department-board/supplier-inquiry-db";
+import { fetchBoardQuestionExtraProducts } from "@/lib/department-board/question-products-db";
 import { sortAnnouncements, sortClosedQuestions, sortQuestions } from "@/lib/department-board/sort";
 import type { DepartmentBoardThread } from "@/types/database";
 import {
@@ -182,7 +183,10 @@ export async function fetchDepartmentBoardQuestions(): Promise<DepartmentBoardQu
     }
   }
 
-  const inquiriesByThread = await listSupplierInquiries(allIds);
+  const [inquiriesByThread, extraProductsByThread] = await Promise.all([
+    listSupplierInquiries(allIds),
+    fetchBoardQuestionExtraProducts(allIds),
+  ]);
 
   const postsByThread = new Map<string, DepartmentBoardPostRow[]>();
   for (const post of posts) {
@@ -198,6 +202,7 @@ export async function fetchDepartmentBoardQuestions(): Promise<DepartmentBoardQu
         posts: postsByThread.get(row.id) ?? [],
         attachments: attachmentsByThread.get(row.id) ?? [],
         supplierInquiries: inquiriesByThread.get(row.id) ?? [],
+        extraProducts: extraProductsByThread.get(row.id) ?? [],
       }))
     );
 
@@ -209,6 +214,7 @@ export async function fetchDepartmentBoardQuestions(): Promise<DepartmentBoardQu
         posts: postsByThread.get(row.id) ?? [],
         attachments: attachmentsByThread.get(row.id) ?? [],
         supplierInquiries: inquiriesByThread.get(row.id) ?? [],
+        extraProducts: extraProductsByThread.get(row.id) ?? [],
       }))
     ),
   };

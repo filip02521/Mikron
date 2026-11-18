@@ -84,6 +84,8 @@ export type ZdPostCreateSession = {
   markFreeze: ZdPostCreateMarkFreeze;
   bumped: ZdPostCreateBumpedLine[];
   composedUwagi: string | null;
+  /** Zgłoszenia „brak na stanie” zamknięte przy Create (towar trafił do tego ZD). */
+  stockOutClosedCount?: number;
   glowneDone: boolean;
   glowneMarkedIds: string[];
   scheduleDone: boolean;
@@ -535,6 +537,7 @@ export function buildZdPostCreateSessionFromCreate(input: {
   markFreeze?: ZdPostCreateMarkFreeze | null;
   bumped?: readonly ZdPostCreateBumpedLine[] | null;
   composedUwagi?: string | null;
+  stockOutClosedCount?: number;
   createdAtMs?: number;
 }): ZdPostCreateSession {
   const snapped = snapLinesFromCreatePreview(
@@ -560,6 +563,7 @@ export function buildZdPostCreateSessionFromCreate(input: {
     markFreeze: input.markFreeze ?? emptyZdPostCreateMarkFreeze(),
     bumped: [...(input.bumped ?? [])],
     composedUwagi: input.composedUwagi?.trim() || null,
+    stockOutClosedCount: Math.max(0, Math.trunc(Number(input.stockOutClosedCount) || 0)),
     glowneDone: false,
     glowneMarkedIds: [],
     scheduleDone: false,

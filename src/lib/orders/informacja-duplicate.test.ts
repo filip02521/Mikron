@@ -236,4 +236,10 @@ describe("informacja-duplicate", () => {
       })
     ).toContain("SYM-1 - Implant");
   });
+
+  it("brak na stanie: komunikat mówi, że zakupy już go widzą (nie odsyła do listy, której handlowiec nie ma)", () => {
+    const msg = formatInformacjaDuplicateMessage({ symbol: "SYM-1", product: "Implant", informacja_stock_out_reorder: true });
+    expect(msg).toContain("Brak na stanie „SYM-1 - Implant” jest już zgłoszony");
+    expect(msg).not.toContain("na liście");
+  });
 });

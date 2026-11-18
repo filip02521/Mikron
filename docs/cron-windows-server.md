@@ -19,7 +19,7 @@ Opcjonalnie: `INFORMACJA_STOCK_AUTO_ENABLED=1` w `.env.local`, aby włączyć au
 |--------------|----------|----------------------------------------|------|
 | `morning` | `/api/cron/morning` | **06:00** | Panel dzienny, kolejka realizacji, retencja |
 | `process-deliveries` | `/api/cron/process-deliveries` | **08:00–18:00 co godz.** | Zapasowe domknięcie dostaw z kolejki |
-| `informacja-stock-sync` | `/api/cron/informacja-stock-sync` | **08:00–18:00 co godz.** | Auto-powiadomienia „Powiadom, gdy będzie na magazynie” |
+| `informacja-stock-sync` | `/api/cron/informacja-stock-sync` | **08:00–18:00 co godz.** | Auto-powiadomienia „Powiadom, gdy będzie na magazynie”; potem zamyka zgłoszenia „brak na stanie”, których towar jest na otwartym ZD wystawionym od dnia zgłoszenia (`src/lib/orders/stock-out-signals-db.ts`; ZD z Kreatora zamyka je od razu przy Create) |
 | `zd-eta-sync` | `/api/cron/zd-eta-sync` | **08:00–18:00 co 2 h** | Backup sync terminów ZD na prośbach |
 | `catalog-zd-sync` | `/api/cron/catalog-zd-sync` | **codziennie 02:00–04:40 co 20 min** | Indeks ZD + import katalogu (noc) |
 | `stock-watch` | `/api/cron/stock-watch` | **codziennie 05:30–06:30 co 20 min** | Braki i zamówienia: ceny z ZD + lista „Do ZD” silnikiem Kreatora per dostawca (panel `/zakupy/braki`) |

@@ -124,10 +124,15 @@ export function informacjaDuplicateProductLabel(
 }
 
 export function formatInformacjaDuplicateMessage(
-  existing: InformacjaDuplicateProductInput & InformacjaDuplicateClientInput,
+  existing: InformacjaDuplicateProductInput &
+    InformacjaDuplicateClientInput & { informacja_stock_out_reorder?: boolean | null },
   options?: { inBatch?: boolean }
 ): string {
   const productLabel = informacjaDuplicateProductLabel(existing);
+  // Braki na stanie nie stoją w „Moje zamówienia” — „jest już na liście” odsyłałoby handlowca donikąd.
+  if (existing.informacja_stock_out_reorder && !options?.inBatch) {
+    return `Brak na stanie „${productLabel}” jest już zgłoszony - zakupy go widzą i zamówią przy najbliższym zamówieniu. Drugie zgłoszenie nie jest potrzebne.`;
+  }
   const clientName = normalizeSalesClientName(existing.clientName);
   const clientPart = clientName ? ` dla klienta „${clientName}”` : "";
   const scope = options?.inBatch ? " w tej samej prośbie" : " już na liście";
@@ -180,4 +185,9 @@ export function assertNoInformacjaDuplicatesInList(
       informacja_stock_out_reorder: false,
     });
   }
+}
+
+/** Odpowiedź serwera na drugie zgłoszenie tego samego braku — UI pokazuje to jako stan, nie błąd. */
+export function isStockOutAlreadyReportedMessage(message: string): boolean {
+  return message.startsWith("Brak na stanie „") && message.includes("jest już zgłoszony");
 }

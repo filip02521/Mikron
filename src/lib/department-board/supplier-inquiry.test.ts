@@ -54,6 +54,27 @@ describe("buildSupplierInquiryDraft", () => {
   });
 });
 
+describe("buildSupplierInquiryDraft — kilka produktów", () => {
+  it("PL: lista wszystkich produktów, liczba w temacie", () => {
+    const d = buildSupplierInquiryDraft({
+      product,
+      extraProducts: [
+        { product_name: "Wiertło", product_symbol: "A-1", mikran_code: null },
+        { product_name: null, product_symbol: null, mikran_code: "896" },
+      ],
+      english: false,
+    });
+    expect(d.subject).toBe("Zapytanie o 3 produkty: Frez Diadur Micro (302801) i kolejne [OnTime #3f2a9c1e]");
+    expect(d.body).toContain("zapytaniem o produkty:\n- Frez Diadur Micro (302801)\n- Wiertło (A-1)\n- 896\n");
+  });
+
+  it("EN: lista i liczba", () => {
+    const d = buildSupplierInquiryDraft({ product, extraProducts: [{ product_name: "Drill" }], english: true });
+    expect(d.subject.startsWith("Inquiry about 2 products: Frez Diadur Micro (302801) and more")).toBe(true);
+    expect(d.body).toContain("following products:\n- Frez Diadur Micro (302801)\n- Drill\n");
+  });
+});
+
 describe("supplierInquiryRef", () => {
   it("8 znaków id bez myślników", () => {
     expect(supplierInquiryRef("ab-cd-ef-12-34-56")).toBe("[OnTime #abcdef12]");

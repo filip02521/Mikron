@@ -273,7 +273,7 @@ export default async function MojePage({
         pageTitle={isTeamPreview ? `Prośby: ${salesPersonName}` : isDelegatePreview ? `Zastępujesz: ${salesPersonName}` : "Moje zamówienia"}
         pageDescription={
           isTeamPreview
-            ? "Podgląd próśb wybranego handlowca - statusy i odbiór."
+            ? undefined
             : isDelegatePreview
               ? "Tryb zastępstwa - potwierdzenie odbioru i zamknięcie ZK aktywne. Edycja i anulowanie są wyłączone."
               : undefined

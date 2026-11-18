@@ -887,9 +887,9 @@ export function ZkWatchSection({
                   <button
                     type="button"
                     onClick={() => setStatusGuideOpen(true)}
-                    className={cn(brandLinkSubtleClass, "text-xs font-semibold")}
+                    className={cn(brandLinkSubtleClass, "text-xs font-semibold underline decoration-indigo-300 underline-offset-2")}
                   >
-                    Statusy pozycji
+                    Co znaczą statusy?
                   </button>
                   <SalesKeyboardShortcutsStrip
                     items={[...ZK_KEYBOARD_HINTS]}

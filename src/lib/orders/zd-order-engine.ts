@@ -6,6 +6,8 @@
  * Moduł serwerowy (DB + Subiekt ORDERS). Bez autoryzacji — caller sprawdza uprawnienia.
  */
 
+import { stockOutBadgesByTwId, type ZdStockOutBadge } from "@/lib/orders/stock-out-signals";
+import { loadActiveStockOutSignals } from "@/lib/orders/stock-out-signals-db";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { fetchZdEstimateExclusions, type ZdEstimateExclusionRow } from "@/lib/data/zd-estimate-exclusions";
 import { type ZdEstimateOnRequestRow } from "@/lib/data/zd-estimate-on-request";
@@ -470,6 +472,8 @@ export type ZdOrderEngineOutput = {
   otherSupplierHintByTwId: Record<number, string>;
   /** tw → wiszące prośby na ten towar przypisane innemu dostawcy (podpowiedź). */
   prosbyElsewhereByTwId: Record<number, ZdProsbaElsewhere[]>;
+  /** tw → aktywne zgłoszenia „brak na stanie” od handlowców (odznaka w wierszu). */
+  stockOutByTwId: Record<number, ZdStockOutBadge>;
   /** Prośby tego dostawcy w Weryfikacji — poza Kreatorem do uzupełnienia; null = nie udało się policzyć. */
   incompleteProsbyCount: number | null;
   fetch: { pagesFetched: number; totalCountApi: number; truncated: boolean };
@@ -1473,6 +1477,10 @@ export async function runZdOrderEngine(
   // przypisane innemu dostawcy, prośby tego dostawcy czekające na uzupełnienie.
   const otherSupplierHintByTwId: Record<number, string> = {};
   const prosbyElsewhereByTwId: Record<number, ZdProsbaElsewhere[]> = {};
+  // Zgłoszenia braku nie mają dostawcy w kluczu — po towarze, niezależnie od dostawcy.
+  const stockOutByTwId: Record<number, ZdStockOutBadge> = stockOutBadgesByTwId(
+    await loadActiveStockOutSignals({ twIds: result.pozycje.map((p) => p.tw_Id) }).catch(() => [])
+  );
   let incompleteProsbyCount: number | null = null;
   if (input.supplierId) {
     const supplierId = input.supplierId;
@@ -1612,6 +1620,7 @@ export async function runZdOrderEngine(
     assignedElsewhere,
     otherSupplierHintByTwId,
     prosbyElsewhereByTwId,
+    stockOutByTwId,
     incompleteProsbyCount,
     fetch: {
       pagesFetched: fetched.pagesFetched,

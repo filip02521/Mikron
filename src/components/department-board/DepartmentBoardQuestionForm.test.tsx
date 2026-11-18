@@ -22,7 +22,11 @@ vi.mock("@/components/department-board/BoardQuestionZdHint", () => ({
 
 /** Stub pola produktu — bez łańcucha importów Subiekt/Supabase (EnvironmentTeardownError na CI). */
 vi.mock("@/components/department-board/BoardQuestionProductField", () => ({
-  BoardQuestionProductField: () => <div data-testid="question-product-field-stub" />,
+  BoardQuestionProductField: ({ label, onRemoveRow }: { label?: string; onRemoveRow?: () => void }) => (
+    <div data-testid="question-product-field-stub" data-removable={onRemoveRow ? "yes" : "no"}>
+      {label}
+    </div>
+  ),
 }));
 
 vi.mock("@/app/actions/subiekt", () => ({
@@ -38,7 +42,7 @@ describe("DepartmentBoardQuestionForm", () => {
   const baseProps = {
     title: "Temat",
     body: "Treść pytania",
-    product: { symbol: "", product: "", subiektTwId: null, mikranCode: "" },
+    products: [{ key: "p1", draft: { symbol: "", product: "", subiektTwId: null, mikranCode: "" } }],
     attachments: {
       images: [],
       docs: [],
@@ -62,6 +66,8 @@ describe("DepartmentBoardQuestionForm", () => {
     onTitleChange: vi.fn(),
     onBodyChange: vi.fn(),
     onProductChange: vi.fn(),
+    onAddProduct: vi.fn(),
+    onRemoveProduct: vi.fn(),
     onSubmit: vi.fn().mockResolvedValue(undefined),
   };
 
@@ -130,5 +136,37 @@ describe("DepartmentBoardQuestionForm", () => {
     const form = title.closest("div")!.parentElement!;
     fireEvent.drop(form, { dataTransfer: { types: ["Files"], files: [pdf] } });
     expect(addFiles).toHaveBeenCalledWith([pdf]);
+  });
+
+  it("kolejny produkt: przycisk dopiero, gdy wiersz ma produkt; numeracja i usuwanie od drugiego", () => {
+    const filled = { symbol: "A-1", product: "Wiertło", subiektTwId: 5, mikranCode: "" };
+    const empty = { symbol: "", product: "", subiektTwId: null, mikranCode: "" };
+    render(<DepartmentBoardQuestionForm {...baseProps} />);
+    expect(screen.queryAllByRole("button", { name: /Dodaj kolejny produkt/ })).toHaveLength(0);
+    expect(screen.getAllByTestId("question-product-field-stub")[0].textContent).toBe("Produkt (opcjonalnie)");
+    cleanup();
+
+    const onAddProduct = vi.fn();
+    render(
+      <DepartmentBoardQuestionForm {...baseProps} products={[{ key: "p1", draft: filled }]} onAddProduct={onAddProduct} />
+    );
+    fireEvent.click(screen.getAllByRole("button", { name: /Dodaj kolejny produkt/ })[0]);
+    expect(onAddProduct).toHaveBeenCalledTimes(1);
+    cleanup();
+
+    render(
+      <DepartmentBoardQuestionForm
+        {...baseProps}
+        products={[
+          { key: "p1", draft: filled },
+          { key: "p2", draft: empty },
+        ]}
+      />
+    );
+    const stubs = screen.getAllByTestId("question-product-field-stub").slice(0, 2);
+    expect(stubs.map((s) => s.textContent)).toEqual(["Produkt 1", "Produkt 2"]);
+    expect(stubs.map((s) => s.dataset.removable)).toEqual(["no", "yes"]);
+    // Pusty drugi wiersz: najpierw go wypełnij, potem kolejny.
+    expect(screen.queryAllByRole("button", { name: /Dodaj kolejny produkt/ })).toHaveLength(0);
   });
 });

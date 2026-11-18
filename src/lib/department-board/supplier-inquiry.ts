@@ -5,6 +5,8 @@
 
 import type { DepartmentBoardThreadRow } from "@/lib/data/department-board-shared";
 import { businessDaysSince } from "@/lib/suppliers/awaiting-supplier";
+import { polishPluralWord } from "@/lib/email/polish-plural";
+import type { BoardQuestionProductFields } from "@/lib/department-board/question-product";
 
 /**
  * Zapytanie wysłane z wątku (tabela supplier_inquiry_emails). Trafia też do handlowców —
@@ -43,8 +45,8 @@ export function supplierInquiryRef(threadId: string): string {
 }
 
 function productLines(product: SupplierInquiryProduct, english: boolean): { label: string; lines: string[] } {
-  const name = product.product_name?.trim() || product.title.trim();
   const symbol = product.product_symbol?.trim() || product.mikran_code?.trim() || "";
+  const name = product.product_name?.trim() || product.title.trim() || symbol;
   const lines = [name];
   if (symbol && !name.includes(symbol)) lines.push(`${english ? "Product code" : "Symbol / nr katalogowy"}: ${symbol}`);
   return { label: symbol && !name.includes(symbol) ? `${name} (${symbol})` : name, lines };
@@ -56,11 +58,23 @@ function productLines(product: SupplierInquiryProduct, english: boolean): { labe
  */
 export function buildSupplierInquiryDraft(input: {
   product: SupplierInquiryProduct;
+  /** Produkty 2…n pytania — mail pyta o wszystkie naraz. */
+  extraProducts?: readonly Partial<BoardQuestionProductFields>[];
   english: boolean;
   signature?: string;
 }): { subject: string; body: string } {
   const { english } = input;
-  const { label, lines } = productLines(input.product, english);
+  const first = productLines(input.product, english);
+  const extras = (input.extraProducts ?? [])
+    .map((p) => productLines(
+        { id: input.product.id, title: "", product_name: null, product_symbol: null, mikran_code: null, ...p },
+        english
+      ).label)
+    .filter(Boolean);
+  const count = extras.length + 1;
+  const many = count > 1;
+  const { label } = first;
+  const lines = many ? [first.label, ...extras].map((l) => `- ${l}`) : first.lines;
   const ref = supplierInquiryRef(input.product.id);
   const signature = input.signature?.trim();
 
@@ -68,7 +82,7 @@ export function buildSupplierInquiryDraft(input: {
     ? [
         "Hello,",
         "",
-        "could you please send me information about the following product:",
+        `could you please send me information about the following ${many ? "products" : "product"}:`,
         ...lines,
         "",
         "I would like to know:",
@@ -82,7 +96,7 @@ export function buildSupplierInquiryDraft(input: {
     : [
         "Dzień dobry,",
         "",
-        "zwracam się z zapytaniem o produkt:",
+        `zwracam się z zapytaniem o ${many ? "produkty" : "produkt"}:`,
         ...lines,
         "",
         "Proszę o:",
@@ -100,7 +114,11 @@ export function buildSupplierInquiryDraft(input: {
   if (signature) body.push(signature);
 
   return {
-    subject: `${english ? "Product inquiry" : "Zapytanie o produkt"}: ${label} ${ref}`,
+    subject: many
+      ? english
+        ? `Inquiry about ${count} products: ${label} and more ${ref}`
+        : `Zapytanie o ${count} ${polishPluralWord(count, "produkt", "produkty", "produktów")}: ${label} i kolejne ${ref}`
+      : `${english ? "Product inquiry" : "Zapytanie o produkt"}: ${label} ${ref}`,
     body: body.join("\n"),
   };
 }

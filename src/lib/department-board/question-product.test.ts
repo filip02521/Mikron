@@ -8,7 +8,11 @@ import {
   boardQuestionProductMetaLines,
   boardQuestionProductSearchText,
   emptyBoardQuestionProductDraft,
+  BOARD_QUESTION_MAX_PRODUCTS,
   normalizeBoardQuestionProductInput,
+  normalizeBoardQuestionProductList,
+  initialBoardQuestionProductRows,
+  newBoardQuestionProductRow,
 } from "./question-product";
 
 describe("question-product", () => {
@@ -97,5 +101,33 @@ describe("question-product", () => {
         mikran_code: "001",
       })
     ).toEqual(["Symbol: SYM", "Kod Mikran: 001", "Powiązano z Subiektem"]);
+  });
+
+  it("lista produktów: pomija puste i powtórzone, trzyma kolejność", () => {
+    const list = normalizeBoardQuestionProductList([
+      { symbol: "A-1", productName: "Wiertło" },
+      { symbol: "", productName: "  " },
+      { subiektTwId: 7, productName: "Frez" },
+      { symbol: "a-1", productName: "wiertło" },
+      { subiektTwId: 7, productName: "Inna nazwa tego samego" },
+      { mikranCode: "896" },
+    ]);
+    expect(list.map((p) => p.product_name ?? p.mikran_code)).toEqual(["Wiertło", "Frez", "896"]);
+  });
+
+  it("lista produktów: pojedynczy obiekt i null", () => {
+    expect(normalizeBoardQuestionProductList({ symbol: "S" })).toHaveLength(1);
+    expect(normalizeBoardQuestionProductList(null)).toEqual([]);
+  });
+
+  it("lista produktów: przycina do limitu", () => {
+    const many = Array.from({ length: BOARD_QUESTION_MAX_PRODUCTS + 3 }, (_, i) => ({ symbol: `S${i}` }));
+    expect(normalizeBoardQuestionProductList(many)).toHaveLength(BOARD_QUESTION_MAX_PRODUCTS);
+  });
+
+  it("pierwszy wiersz formularza ma ten sam klucz przy każdym renderze (serwer = przeglądarka)", () => {
+    newBoardQuestionProductRow();
+    expect(initialBoardQuestionProductRows()[0].key).toBe(initialBoardQuestionProductRows()[0].key);
+    expect(newBoardQuestionProductRow().key).not.toBe(initialBoardQuestionProductRows()[0].key);
   });
 });

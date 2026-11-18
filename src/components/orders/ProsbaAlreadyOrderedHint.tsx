@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { IconCircleCheck } from "@/components/icons/StrokeIcons";
+import {
+  prosbaLineOffersStockOutReport,
+  type ProsbaStockOutReportResult,
+} from "@/lib/orders/prosba-stock-out-report";
 import { Button } from "@/components/ui/Button";
 import type { ProductLineDraft } from "@/components/orders/request-product-lines";
 import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
@@ -225,6 +230,7 @@ export function ProsbaAvailabilityCard({
   focusNotifyOnMount = false,
   onNotifyFocused,
   supplierTiming = null,
+  onReportStockOut,
   className,
 }: {
   line: ProductLineDraft;
@@ -238,6 +244,8 @@ export function ProsbaAvailabilityCard({
   onNotifyFocused?: () => void;
   /** Meta dostawcy tej pozycji — w tej samej sekcji co dostępność. */
   supplierTiming?: ProsbaLineSupplierTimingProps | null;
+  /** Prośba handlowca: przy pustej półce osobny sygnał „brak na stanie” dla zakupów. */
+  onReportStockOut?: () => Promise<ProsbaStockOutReportResult>;
   className?: string;
 }) {
   const teethExemptTwIds = useTeethExemptTwIds();
@@ -287,7 +295,12 @@ export function ProsbaAvailabilityCard({
     onNotifyFocused?.();
   }, [focusNotifyOnMount, canNotify, onNotifyFocused]);
 
-  if (!showAvailability && !timing) return null;
+  const stockOutStrip =
+    onReportStockOut && prosbaLineOffersStockOutReport(line) ? (
+      <ProsbaStockOutReportStrip key={line.subiektTwId ?? "none"} onReport={onReportStockOut} />
+    ) : null;
+
+  if (!showAvailability && !timing && !stockOutStrip) return null;
 
   const title = showAvailability
     ? useInc
@@ -372,7 +385,12 @@ export function ProsbaAvailabilityCard({
         aria-live="polite"
         className={cn("border-t border-slate-200/80 pt-2.5", className)}
       >
-        {header}
+        {timing ? header : null}
+        {stockOutStrip ? (
+          <div className={cn("overflow-hidden rounded-md border border-slate-200/90", timing && "mt-2")}>
+            {stockOutStrip}
+          </div>
+        ) : null}
       </section>
     );
   }
@@ -484,7 +502,80 @@ export function ProsbaAvailabilityCard({
             ) : null}
           </div>
         ) : null}
+        {stockOutStrip}
       </div>
     </section>
+  );
+}
+
+type StockOutReportState =
+  | { kind: "idle" }
+  | { kind: "sending" }
+  | { kind: "done" }
+  | { kind: "already" }
+  | { kind: "error"; message: string };
+
+/**
+ * Pasek w karcie „Dostępność”: jedno kliknięcie zgłasza zakupom pustą półkę.
+ * Zgłoszenie idzie osobno — prośba, którą handlowiec składa, zostaje bez zmian.
+ */
+export function ProsbaStockOutReportStrip({
+  onReport,
+}: {
+  onReport: () => Promise<ProsbaStockOutReportResult>;
+}) {
+  const [state, setState] = useState<StockOutReportState>({ kind: "idle" });
+  // Stan z useState zmienia się dopiero po renderze — dwa kliknięcia w jednym takcie wysłałyby dwa zgłoszenia.
+  const sendingRef = useRef(false);
+
+  async function report() {
+    if (sendingRef.current) return;
+    sendingRef.current = true;
+    setState({ kind: "sending" });
+    try {
+      const result = await onReport();
+      if (result.ok) setState({ kind: "done" });
+      else if (result.alreadyReported) setState({ kind: "already" });
+      else setState({ kind: "error", message: result.message });
+    } finally {
+      sendingRef.current = false;
+    }
+  }
+
+  if (state.kind === "done" || state.kind === "already") {
+    return (
+      <p
+        role="status"
+        className="flex items-start gap-2 border-t border-slate-200/80 bg-emerald-50/50 px-2.5 py-2 text-[0.75rem] leading-snug text-emerald-900 sm:px-3"
+      >
+        <IconCircleCheck size={15} className="mt-px shrink-0 text-emerald-700" aria-hidden />
+        <span>
+          {state.kind === "done"
+            ? "Brak zgłoszony - zakupy zamówią przy najbliższym zamówieniu. Prośbę możesz wysłać dalej."
+            : "Ten brak jest już zgłoszony - zakupy go widzą."}
+        </span>
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2 border-t border-slate-200/80 bg-amber-50/40 px-2.5 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-3">
+      <div className="min-w-0 text-[0.75rem] leading-snug">
+        <p className="text-slate-700">
+          Zakupy uzupełnią stan przy najbliższym zamówieniu. Zgłoszenie idzie osobno - ta prośba się nie zmieni.
+        </p>
+        {state.kind === "error" ? <p className="mt-1 text-red-700">{state.message}</p> : null}
+      </div>
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        className="min-h-9 shrink-0"
+        disabled={state.kind === "sending"}
+        onClick={() => void report()}
+      >
+        {state.kind === "sending" ? "Zgłaszam…" : state.kind === "error" ? "Spróbuj ponownie" : "Zgłoś brak na stanie"}
+      </Button>
+    </div>
   );
 }

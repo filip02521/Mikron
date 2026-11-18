@@ -7,7 +7,8 @@ import { EmojiPicker } from "@/components/ui/EmojiPicker";
 import { changeWithEmoticons } from "@/lib/ui/emoticons";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
-import { IconChevronDown, IconClipboardPen } from "@/components/icons/StrokeIcons";
+import { NewFeatureCallout } from "@/components/ui/NewFeatureCallout";
+import { IconChevronDown, IconClipboardPen, IconPlus } from "@/components/icons/StrokeIcons";
 import { NOTATNIK_INPUT_CLASS, NOTATNIK_TEXTAREA_CLASS } from "@/components/notatnik/notatnik-layout";
 import { DEPARTMENT_BOARD_QUESTIONS_FORM } from "@/lib/department-board/copy";
 import { boardQuestionFabClass } from "@/lib/department-board/department-board-thread-styles";
@@ -23,7 +24,11 @@ import {
   boardQuestionsFormHeaderClass,
   boardQuestionsFormShellClass,
 } from "@/lib/department-board/department-board-questions-ui";
-import type { BoardQuestionProductDraft } from "@/lib/department-board/question-product";
+import {
+  canAddBoardQuestionProduct,
+  type BoardQuestionProductDraft,
+  type BoardQuestionProductRow,
+} from "@/lib/department-board/question-product";
 import { BoardQuestionProductField } from "@/components/department-board/BoardQuestionProductField";
 import {
   BoardQuestionImagesField,
@@ -51,7 +56,7 @@ function QuestionFormIntro() {
 function QuestionFormFields({
   title,
   body,
-  product,
+  products,
   attachments,
   error,
   saving,
@@ -60,12 +65,14 @@ function QuestionFormFields({
   onTitleChange,
   onBodyChange,
   onProductChange,
+  onAddProduct,
+  onRemoveProduct,
   onSubmit,
   idPrefix,
 }: {
   title: string;
   body: string;
-  product: BoardQuestionProductDraft;
+  products: BoardQuestionProductRow[];
   /** Zdjęcia i pliki z `useBoardQuestionImages()` (wspólny stan z rodzicem — czyści się po wysłaniu). */
   attachments: BoardQuestionAttachments;
   error: string | null;
@@ -74,7 +81,9 @@ function QuestionFormFields({
   embedded?: boolean;
   onTitleChange: (value: string) => void;
   onBodyChange: (value: string) => void;
-  onProductChange: (patch: Partial<BoardQuestionProductDraft>) => void;
+  onProductChange: (key: string, patch: Partial<BoardQuestionProductDraft>) => void;
+  onAddProduct: () => void;
+  onRemoveProduct: (key: string) => void;
   onSubmit: () => void | Promise<void>;
   idPrefix: string;
 }) {
@@ -129,14 +138,49 @@ function QuestionFormFields({
         />
       </div>
 
-      <BoardQuestionProductField
-        value={product}
-        onChange={onProductChange}
-        disabled={tourDemo || busy}
-        idPrefix={idPrefix}
-      />
-
-      {!tourDemo ? <BoardQuestionZdHint product={product} /> : null}
+      <div className="space-y-3">
+        {products.map((row, index) => (
+          <div key={row.key} className="space-y-1.5">
+            <BoardQuestionProductField
+              value={row.draft}
+              onChange={(patch) => onProductChange(row.key, patch)}
+              disabled={tourDemo || busy}
+              idPrefix={`${idPrefix}-${row.key}`}
+              label={
+                products.length > 1
+                  ? DEPARTMENT_BOARD_QUESTIONS_FORM.productNumbered(index + 1)
+                  : DEPARTMENT_BOARD_QUESTIONS_FORM.productLabel
+              }
+              onRemoveRow={index > 0 ? () => onRemoveProduct(row.key) : undefined}
+              autoFocus={index > 0}
+            />
+            {!tourDemo ? <BoardQuestionZdHint product={row.draft} /> : null}
+          </div>
+        ))}
+        {canAddBoardQuestionProduct(products) ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-8"
+            disabled={tourDemo || busy}
+            onClick={onAddProduct}
+          >
+            <IconPlus size={14} aria-hidden />
+            {DEPARTMENT_BOARD_QUESTIONS_FORM.productAddAnother}
+          </Button>
+        ) : null}
+        {!tourDemo && products.length === 1 ? (
+          <NewFeatureCallout
+            id="board-question-many-products-v1"
+            title="Kilka produktów w jednym pytaniu"
+            until="2026-12-31"
+          >
+            Wybierz pierwszy produkt - pod nim pojawi się „Dodaj kolejny produkt” (do 10). Zakupy zobaczą
+            wszystkie w jednym wątku.
+          </NewFeatureCallout>
+        ) : null}
+      </div>
 
       <div>
         <label htmlFor={`${idPrefix}-body`} className={boardQuestionsFieldLabelClass}>
@@ -200,7 +244,7 @@ function QuestionFormFields({
 export function DepartmentBoardQuestionForm({
   title,
   body,
-  product,
+  products,
   attachments,
   error,
   saving,
@@ -211,11 +255,13 @@ export function DepartmentBoardQuestionForm({
   onTitleChange,
   onBodyChange,
   onProductChange,
+  onAddProduct,
+  onRemoveProduct,
   onSubmit,
 }: {
   title: string;
   body: string;
-  product: BoardQuestionProductDraft;
+  products: BoardQuestionProductRow[];
   /** Zdjęcia i pliki z `useBoardQuestionImages()` (wspólny stan z rodzicem — czyści się po wysłaniu). */
   attachments: BoardQuestionAttachments;
   error: string | null;
@@ -227,7 +273,9 @@ export function DepartmentBoardQuestionForm({
   embedded?: boolean;
   onTitleChange: (value: string) => void;
   onBodyChange: (value: string) => void;
-  onProductChange: (patch: Partial<BoardQuestionProductDraft>) => void;
+  onProductChange: (key: string, patch: Partial<BoardQuestionProductDraft>) => void;
+  onAddProduct: () => void;
+  onRemoveProduct: (key: string) => void;
   onSubmit: () => void | Promise<void>;
 }) {
   const [userExpanded, setUserExpanded] = useState<boolean | null>(null);
@@ -246,7 +294,7 @@ export function DepartmentBoardQuestionForm({
   const fieldsProps = {
     title,
     body,
-    product,
+    products,
     attachments,
     error,
     saving,
@@ -254,6 +302,8 @@ export function DepartmentBoardQuestionForm({
     onTitleChange,
     onBodyChange,
     onProductChange,
+    onAddProduct,
+    onRemoveProduct,
     onSubmit: () => submit(),
   };
 
