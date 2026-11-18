@@ -2,6 +2,8 @@
  * Części serwisowe: towary z cechą Subiekta „Części serwisowe”.
  * W szacunku ZD zachowują się jak „tylko na prośbę” — zakupy zamawiają je dopiero,
  * gdy ktoś (serwisant) złoży prośbę. Źródłem prawdy jest cecha w Subiekcie, nie lista w OnTime.
+ * Wyjątek: część z minimum (`zd_estimate_min_stock`, ustawia je serwisant na Częściach albo zakupy w Kreatorze)
+ * silnik ZD dobija do minimum sam — minimum − dostępne − otwarte ZD.
  */
 
 export const SERVICE_PARTS_CECHA_NAME = "Części serwisowe";
@@ -65,6 +67,14 @@ export function mergeServicePartsIntoOnRequests<
     out.push(makeRow(id));
   }
   return out;
+}
+
+/** Części z cechą, które zostają „tylko na prośbę”: bez minimum (minimum > 0 = zamawia silnik ZD). */
+export function serviceTwIdsOnRequestOnly(
+  serviceTwIds: readonly number[],
+  minStockByTwId: ReadonlyMap<number, number>
+): number[] {
+  return serviceTwIds.filter((id) => !((minStockByTwId.get(Math.trunc(Number(id))) ?? 0) > 0));
 }
 
 export function servicePartTwIdSet(

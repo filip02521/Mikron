@@ -70,7 +70,8 @@ export function ClientEquipmentPicker({
         // Numer ze zgłoszenia jest na fakturze klienta: wpisujemy model, numer i zakup od razu (raz, gdy nic nie wybrano).
         const wanted = ticket?.serial.replace(/\s+/g, "").toUpperCase();
         if (!res.ok || !wanted || selected) return;
-        const hit = res.items.find((it) => it.serials.some((s) => s.replace(/\s+/g, "").toUpperCase() === wanted));
+        // Tylko pewny sprzęt wpisuje się sam; model jeszcze niepotwierdzony serwisant wybiera ręcznie (ma sprzęt w ręku).
+        const hit = res.items.find((it) => !it.unconfirmed && it.serials.some((s) => s.replace(/\s+/g, "").toUpperCase() === wanted));
         const sn = hit?.serials.find((s) => s.replace(/\s+/g, "").toUpperCase() === wanted);
         if (!hit || !sn) return;
         const pick = { twId: hit.twId, symbol: hit.symbol, name: hit.name, serial: sn, purchaseDate: hit.invoiceDate, purchaseDoc: hit.invoiceNumber };
@@ -147,11 +148,11 @@ export function ClientEquipmentPicker({
   const list = showAll ? ranked : ranked.slice(0, Math.max(VISIBLE, hinted));
   return (
     <section aria-labelledby={`eq-${khId}`} className="space-y-2">
-      <div className="flex items-baseline justify-between gap-2">
+      <div>
         <h3 id={`eq-${khId}`} className={rubricLabelClass}>
           Sprzęt klienta z faktur i paragonów ({result.items.length})
         </h3>
-        <span className="text-xs text-slate-500">Kliknij numer seryjny</span>
+        <p className="text-[0.8125rem] text-slate-600">Stuknij numer seryjny — wpisze model, numer i datę zakupu z faktury.</p>
       </div>
       {autoPicked ? (
         <p className="flex items-start gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-[0.8125rem] text-emerald-900">
@@ -174,6 +175,8 @@ export function ClientEquipmentPicker({
               <span className="font-mono">{it.symbol ?? "—"}</span> · {it.invoiceNumber}
               {it.invoiceDate ? ` · ${formatDate(it.invoiceDate)}` : ""}
             </div>
+            {/* Model jeszcze niepotwierdzony jako sprzęt nie wpisuje się sam; przyjęcie go potwierdzi (zlecenie = sprzęt). */}
+            {it.unconfirmed ? <div className="text-xs text-slate-600">Pierwszy raz w serwisie — przyjęcie zapisze ten model jako sprzęt.</div> : null}
             <WarrantyPill
               className="mt-1.5"
               status={warrantyStatus(it.invoiceDate ? warrantyUntil(it.invoiceDate, warrantyMonthsFor(it.twId, warrantyMonths)) : null, today)}
@@ -190,7 +193,7 @@ export function ClientEquipmentPicker({
                       onPick({ twId: it.twId, symbol: it.symbol, name: it.name, serial: sn, purchaseDate: it.invoiceDate, purchaseDoc: it.invoiceNumber })
                     }
                     className={cn(
-                      "inline-flex min-h-11 max-w-full items-center rounded-full border px-3 py-1 font-mono text-[0.8125rem] transition-colors duration-150",
+                      "inline-flex min-h-11 max-w-full items-center rounded-md border px-3 py-1 font-mono text-[0.8125rem] transition-colors duration-150",
                       active ? "border-indigo-600 bg-indigo-50 font-semibold text-indigo-900" : "border-slate-200 bg-card text-slate-700 hover:bg-slate-100"
                     )}
                   >

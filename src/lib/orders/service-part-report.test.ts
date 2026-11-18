@@ -41,3 +41,19 @@ describe("pickServicePartSupplier", () => {
     expect(pickServicePartSupplier({ pinned: null, lastZd: { ...last, isActive: false } })).toBeNull();
   });
 });
+
+describe("pickServicePartSuppliers", () => {
+  it("przypięty aktywny wygrywa, inaczej ostatni z historii; nieaktywny i brak — bez dostawcy", async () => {
+    const { pickServicePartSuppliers } = await import("./service-part-report");
+    const c = (id: string, isActive = true) => ({ supplierId: id, supplierName: id.toUpperCase(), isActive });
+    const out = pickServicePartSuppliers(
+      new Map([[1, c("pin")], [2, c("old-pin", false)]]),
+      new Map([[1, c("hist")], [2, c("hist2")], [3, c("dead", false)]]),
+      [1, 2, 3, 4]
+    );
+    expect([...out].map(([id, p]) => [id, p.supplierId, p.source])).toEqual([
+      [1, "pin", "kreator"],
+      [2, "hist2", "historia"],
+    ]);
+  });
+});

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Kbd } from "@/components/ui/Kbd";
 import { NoticeToast } from "@/components/ui/NoticeToast";
-import { IconChevronRight, IconPlus, IconSearch } from "@/components/icons/StrokeIcons";
+import { IconBuilding, IconChevronRight, IconPlus, IconSearch } from "@/components/icons/StrokeIcons";
 import { useAppRole } from "@/components/layout/AppRoleContext";
 import { cn } from "@/lib/cn";
 import { polishPluralWord } from "@/lib/email/polish-plural";
@@ -16,6 +16,8 @@ import { isSerwis } from "@/lib/auth-roles";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
 import { ServiceOrderDrawer } from "@/components/serwis/ServiceOrderDrawer";
 import { ServiceOrderIntakeDialog } from "@/components/serwis/ServiceOrderIntakeDialog";
+import { ClientEquipmentLookup } from "@/components/serwis/ClientEquipmentLookup";
+import type { PickedClient } from "@/components/serwis/SubiektPickers";
 import { HelpdeskTicketsSection, type HelpdeskBoardData } from "@/components/serwis/HelpdeskTicketsSection";
 import { countTicketsWithoutOrders, helpdeskSearchText } from "@/components/serwis/helpdesk-intake";
 import { HelpdeskReplyContext } from "@/components/serwis/ServiceOrderHelpdeskThread";
@@ -27,11 +29,12 @@ import {
   formatLocalDate,
   OrderStatusPill,
   orderSearchText,
+  type FreeLoaner,
   type LinkableLoaner,
   type ModelPartView,
   type OrderPartView,
 } from "@/components/serwis/service-order-view";
-import { formatQuoteAmount, missingServiceOrderDocs, waitingPartArrived, type ServiceOrder, type ServiceOrderEvent, type ServiceOrderPart } from "@/lib/orders/service-orders";
+import { arrivedWaitingOrderIds, formatQuoteAmount, missingServiceOrderDocs, type ServiceOrder, type ServiceOrderEvent, type ServiceOrderPart } from "@/lib/orders/service-orders";
 import {
   SERVICE_BOARD_LANE_LABEL,
   SERVICE_BOARD_LANES,
@@ -193,6 +196,7 @@ export function ServiceOrdersBoard({
   parts,
   events,
   loaners,
+  freeLoaners,
   modelParts,
   warrantyMonths: warrantyPairs,
   partAvailable: partAvailablePairs,
@@ -202,6 +206,8 @@ export function ServiceOrdersBoard({
   parts: OrderPartView[];
   events: ServiceOrderEvent[];
   loaners: LinkableLoaner[];
+  /** Egzemplarze na stanie — „Wydaj zamiennik” w karcie zlecenia. */
+  freeLoaners: FreeLoaner[];
   modelParts: ModelPartView[];
   /** Okresy gwarancji modeli różne od domyślnego: [tw_Id, miesiące]. */
   warrantyMonths: [number, number][];
@@ -228,6 +234,9 @@ export function ServiceOrdersBoard({
   const [intakeHelpdeskId, setIntakeHelpdeskId] = useState<number | null>(null);
   const [openId, setOpenId] = useState<string | null>(() => params.get("zlecenie"));
   const [toast, setToast] = useState<string | null>(null);
+  // „Sprzęt klienta”: panel i ostatnio sprawdzany klient (zostaje po zamknięciu — wracasz do niego w tej samej rozmowie).
+  const [lookup, setLookup] = useState(false);
+  const [lookupClient, setLookupClient] = useState<PickedClient | null>(null);
   // Portal panelu tylko po stronie klienta (zlecenie może się otworzyć od razu z ?zlecenie=).
   const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
   const today = useMemo(() => new Date(), []);
@@ -259,9 +268,11 @@ export function ServiceOrdersBoard({
     return m;
   }, [events]);
 
+  // Jedna dostarczona sztuka „wznawia” tylko jedno zlecenie — stan rozdzielony od najdłużej czekającego.
+  const arrivedIds = useMemo(() => arrivedWaitingOrderIds(orders, partAvailable), [orders, partAvailable]);
   const ctxOf = useMemo(
-    () => (o: ServiceOrder) => ({ arrived: waitingPartArrived(o, partAvailable), today }),
-    [partAvailable, today]
+    () => (o: ServiceOrder) => ({ arrived: arrivedIds.has(o.id), today }),
+    [arrivedIds, today]
   );
 
   const lanes = useMemo(() => {
@@ -290,10 +301,13 @@ export function ServiceOrdersBoard({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const typing = (e.target as HTMLElement | null)?.closest("input, textarea, select, [contenteditable=true]");
-      if (typing || e.metaKey || e.ctrlKey || e.altKey || openId || intake) return;
+      if (typing || e.metaKey || e.ctrlKey || e.altKey || openId || intake || lookup) return;
       if (e.key === "/") {
         e.preventDefault();
         searchRef.current?.focus();
+      } else if (e.key === "k" || e.key === "K") {
+        e.preventDefault();
+        setLookup(true);
       } else if (e.key === "p" || e.key === "P") {
         e.preventDefault();
         setIntakeHelpdeskId(null);
@@ -302,7 +316,7 @@ export function ServiceOrdersBoard({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [openId, intake]);
+  }, [openId, intake, lookup]);
 
   const done = (message: string) => {
     setToast(message);
@@ -383,6 +397,10 @@ export function ServiceOrdersBoard({
             <Kbd>/</Kbd>
           </span>
         </label>
+        <Button type="button" variant="secondary" className="w-full sm:w-auto" onClick={() => setLookup(true)} title="Skrót: K">
+          <IconBuilding size={18} aria-hidden />
+          Sprzęt klienta
+        </Button>
         {intakeInBar || readOnly ? null : (
           <Button type="button" className="w-full sm:ml-auto sm:w-auto" onClick={() => openIntake(null)}>
             <IconPlus size={18} aria-hidden />
@@ -454,6 +472,24 @@ export function ServiceOrdersBoard({
         />
       ) : null}
 
+      {mounted && lookup
+        ? createPortal(
+            <ClientEquipmentLookup
+              client={lookupClient}
+              onClientChange={setLookupClient}
+              warrantyMonths={warrantyMonths}
+              today={today}
+              onClose={() => setLookup(false)}
+              // Zlecenie z karty klienta: karta się zamyka, zlecenie otwiera; klient zostaje do ponownego otwarcia.
+              onOpenOrder={(id) => {
+                setLookup(false);
+                setOpenId(id);
+              }}
+              canOpenOrder={(id) => orders.some((o) => o.id === id)}
+            />,
+            document.body
+          )
+        : null}
       {mounted && open
         ? createPortal(
             <ServiceOrderDrawer
@@ -463,8 +499,10 @@ export function ServiceOrdersBoard({
               events={eventsByOrder.get(open.id) ?? []}
               // Egzemplarz powiązany z innym zleceniem nie jest do wyboru (serwer też tego pilnuje).
               loaners={loaners.filter((l) => !orders.some((o) => o.id !== open.id && o.loanerUnitId === l.id))}
+              freeLoaners={freeLoaners}
               modelParts={modelParts}
               waitingPartAvailable={open.waitingPart?.twId != null ? partAvailable.get(open.waitingPart.twId) ?? null : null}
+              waitingPartArrived={arrivedIds.has(open.id)}
               // Tablica ma zlecenia otwarte i niedawno zamknięte — starsze z historii egzemplarza są tylko do przeczytania.
               canOpenOrder={(id) => orders.some((o) => o.id === id)}
               onOpenOrder={setOpenId}

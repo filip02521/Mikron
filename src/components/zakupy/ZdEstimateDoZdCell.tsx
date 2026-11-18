@@ -25,6 +25,32 @@ import type { SalesTrackReason } from "@/lib/orders/zd-estimate-sales-track";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 import { cn } from "@/lib/cn";
 
+const QTY_INPUT_SELECTOR = "input.zd-est-dozd-input:not(:disabled)";
+export const ZD_QTY_KEYS_HINT = "↑/↓ zmienia ilość (Shift ×10) · Tab lub Enter: następna pozycja";
+
+/**
+ * ↑/↓ o krok; poza wielokrotnością kroku najpierw dociąga do najbliższej w tym kierunku.
+ * `times` (Shift = 10) mnoży liczbę kroków, nie sam krok — 22 ↓×10 daje 12, nie 20.
+ */
+export function zdQtyArrowNext(current: number, dir: 1 | -1, step: number, times = 1): number {
+  const s = Math.max(1, Math.trunc(step));
+  const snapped = dir > 0 ? Math.floor(current / s) * s + s : Math.ceil(current / s) * s - s;
+  return Math.max(0, snapped + dir * (times - 1) * s);
+}
+
+/** Tab / Enter: fokus na polu „Do ZD” następnego (dir 1) lub poprzedniego (-1) wiersza tabeli. */
+export function focusAdjacentZdQtyInput(from: HTMLElement, dir: 1 | -1): boolean {
+  const scope = from.closest("tbody") ?? from.closest("table");
+  if (!scope) return false;
+  const inputs = Array.from(scope.querySelectorAll<HTMLInputElement>(QTY_INPUT_SELECTOR));
+  const next = inputs[inputs.indexOf(from as HTMLInputElement) + dir];
+  if (!next) return false;
+  next.focus();
+  next.select();
+  next.scrollIntoView({ block: "nearest" });
+  return true;
+}
+
 /**
  * Komórka „Do ZD” — decyzja + kompaktowa meta (pewność / roundup / przywróć).
  * Roundup / przywróć mają priorytet nad whisperem (pewność wtedy tylko w title).
@@ -158,11 +184,12 @@ export function ZdEstimateDoZdCell({
             : !packagesMode && overridePieces != null
               ? `${formatQty(overridePieces)} szt`
               : null,
-          "Puste/Enter przywraca.",
+          "Puste pole przywraca.",
         ]
           .filter(Boolean)
           .join(". ")
       : baseHint || "Nadpisz ilość Do ZD przed utworzeniem dokumentu",
+    onOverrideChange ? ZD_QTY_KEYS_HINT : null,
     roundupFull ? `↑ ${roundupFull}` : null,
     orderMultipleWarn,
     qty.hasPackaging ? overrideHint : null,
@@ -363,9 +390,28 @@ export function ZdEstimateDoZdCell({
           !overridden && displayUnits <= 0 && "zd-est-dozd-input--idle",
           orderMultipleWarn && "zd-est-dozd-input--order-mult-warn"
         )}
-        onFocus={() => {
+        onFocus={(e) => {
           setFocused(true);
           setDraft(String(displayUnits));
+          e.currentTarget.select(); // wpisana liczba zastępuje starą
+        }}
+        onKeyDown={(e) => {
+          if (e.altKey || e.ctrlKey || e.metaKey) return;
+          if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+            e.preventDefault();
+            const parsed = Number(draft.trim());
+            const current = draft.trim() !== "" && Number.isFinite(parsed) ? Math.max(0, Math.trunc(parsed)) : displayUnits;
+            // Sztuki przy opakowaniu: krok = całe opakowanie (inaczej od razu „co N?”).
+            const step = qty.hasPackaging && !packagesMode ? qty.unitsPerPackage : 1;
+            const units = zdQtyArrowNext(current, e.key === "ArrowUp" ? 1 : -1, step, e.shiftKey ? 10 : 1);
+            setDraft(String(units));
+            onOverrideChange(units === qty.zdUnits ? null : units);
+            return;
+          }
+          if (e.key === "Tab" || e.key === "Enter") {
+            if (focusAdjacentZdQtyInput(e.currentTarget, e.shiftKey ? -1 : 1)) e.preventDefault();
+            else if (e.key === "Enter") e.currentTarget.blur();
+          }
         }}
         onChange={(e) => {
           const raw = e.target.value;

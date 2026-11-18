@@ -94,6 +94,8 @@ export function ServiceOrderIntakeDialog({
   const [purchaseDate, setPurchaseDate] = useState("");
   const [purchaseDoc, setPurchaseDoc] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Z jakiego zgłoszenia (i dla jakiego klienta) wpisano sprzęt i usterkę — ostrzeżenie, gdy serwisant zmieni klienta.
+  const [prefill, setPrefill] = useState<{ helpdeskId: number; client: string } | null>(null);
   const [pending, start] = useTransition();
   const today = new Date();
 
@@ -107,6 +109,7 @@ export function ServiceOrderIntakeDialog({
       }
       const d = res.draft;
       setDraft(d);
+      setPrefill({ helpdeskId: d.helpdeskId, client: d.client.name });
       setNoTicket(false);
       // Sposób dostawy ze zgłoszenia (szkic, a gdy go nie ma — wiersz z listy); bez niego zostaje wybór serwisanta.
       setInbound(inboundFromDelivery(d.deliveryId ?? ticket?.deliveryId) ?? "");
@@ -132,7 +135,15 @@ export function ServiceOrderIntakeDialog({
 
   const purchase = normalizePurchaseDate(purchaseDate, today);
   const warranty = warrantyStatus(purchase ? warrantyUntil(purchase, warrantyMonthsFor(device?.twId ?? null, warrantyMonths)) : null, today);
-  const missing = !client?.name ? "klienta" : !device?.name ? "sprzętu" : !fault.trim() ? "opisu usterki" : null;
+  // Wszystko, czego brakuje, naraz — serwisant widzi w stopce całą listę, nie po jednym polu na kliknięcie.
+  const missingFields = [
+    !client?.name ? { key: "client", label: "klient" } : null,
+    !device?.name ? { key: "device", label: "sprzęt" } : null,
+    !fault.trim() ? { key: "fault", label: "opis usterki" } : null,
+  ].filter((m): m is { key: string; label: string } => m !== null);
+  const missing = missingFields.length ? missingFields.map((m) => m.label).join(", ") : null;
+  const formRef = useRef<HTMLFormElement>(null);
+  const [triedSave, setTriedSave] = useState(false);
   const helpdeskId = draft?.helpdeskId ?? null;
   const accepted = draft?.existingOrders ?? [];
 
@@ -148,7 +159,14 @@ export function ServiceOrderIntakeDialog({
       loadingMessage={pending ? "Zakładam zlecenie…" : loadingTicket ? "Pobieram zgłoszenie z helpdesku mikran.pl…" : null}
       footer={
         <div className="flex w-full flex-wrap items-center justify-end gap-2">
-          {missing ? <span className="mr-auto text-[0.8125rem] text-slate-500">Brakuje {missing}.</span> : null}
+          {/* Błąd zapisu i braki w stopce: przy przewiniętym formularzu komunikat na dole treści byłby poza ekranem. */}
+          {error || (missing && triedSave) ? (
+            <span role="alert" className="w-full min-w-0 text-[0.8125rem] font-medium text-red-700">
+              {error ?? `Nie zapisano — uzupełnij: ${missing}.`}
+            </span>
+          ) : missing ? (
+            <span className="w-full text-[0.8125rem] text-slate-600">Do uzupełnienia: {missing}.</span>
+          ) : null}
           <Button type="button" variant="secondary" onClick={onClose} disabled={pending}>
             Anuluj
           </Button>
@@ -166,11 +184,15 @@ export function ServiceOrderIntakeDialog({
     >
       <form
         id={formId}
+        ref={formRef}
         className="space-y-5"
         onSubmit={(e) => {
           e.preventDefault();
-          if (missing) {
-            setError(`Uzupełnij: ${missing}.`);
+          if (missingFields.length) {
+            setTriedSave(true);
+            setError(null);
+            // Kursor w pierwszym brakującym polu — formularz sam przewija się do niego.
+            formRef.current?.querySelector<HTMLElement>(`[data-field="${missingFields[0]!.key}"] :is(input, textarea)`)?.focus();
             return;
           }
           setError(null);
@@ -229,7 +251,7 @@ export function ServiceOrderIntakeDialog({
                   ) : null}
                   <DraftCheck ok={Boolean(draft.clientMatch)}>
                     {draft.clientMatch
-                      ? `Klient z Subiekta (${CLIENT_MATCH_LABEL[draft.clientMatch]}) — jego sprzęt z faktur jest niżej`
+                      ? `Klient z Subiekta (${CLIENT_MATCH_LABEL[draft.clientMatch]})`
                       : "Klienta nie ma w Subiekcie — wybierz go z podpowiedzi w polu „Klient”"}
                   </DraftCheck>
                   {draft.invoiceId ? (
@@ -260,13 +282,13 @@ export function ServiceOrderIntakeDialog({
                       setNoTicket(true);
                     }}
                   >
-                    Bez zgłoszenia
+                    Odepnij zgłoszenie
                   </Button>
                 </div>
               </div>
             ) : noTicket ? (
               <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.8125rem] text-slate-600">
-                <span>Przyjmujesz sprzęt bez zgłoszenia — wypełnij formularz niżej.</span>
+                <span>Bez zgłoszenia — karta zlecenia nie będzie miała rozmowy z klientem z helpdesku.</span>
                 <Button type="button" size="sm" variant="secondary" onClick={() => setNoTicket(false)}>
                   Wybierz zgłoszenie
                 </Button>
@@ -298,13 +320,21 @@ export function ServiceOrderIntakeDialog({
           </div>
         ) : null}
 
-        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_13.5rem]" data-field="client">
           <ClientPicker
             key={clientKey}
             value={client}
             autoFocus={!initialHelpdeskId && !helpdeskEnabled}
             label="Klient"
             onChange={(c) => {
+              // Sprzęt wybrany z faktury poprzedniego klienta nie należy do nowego — zakup, model i numer znikają.
+              if (purchaseDoc && c?.khId !== client?.khId) {
+                setDevice(null);
+                setDeviceKey((k) => k + 1);
+                setSerial("");
+                setPurchaseDate("");
+                setPurchaseDoc(null);
+              }
               setClient(c);
               if (c?.phone && !phone) setPhone(c.phone);
             }}
@@ -324,6 +354,31 @@ export function ServiceOrderIntakeDialog({
           </div>
         </div>
 
+        {prefill && client?.name && client.name !== prefill.client && (device?.name || fault.trim()) ? (
+          <div role="status" className="space-y-2 rounded-lg bg-amber-50 px-3 py-2 text-[0.8125rem] text-amber-900">
+            <p>
+              Telefon, sprzęt i usterka są ze zgłoszenia #{prefill.helpdeskId} klienta {prefill.client}. Sprawdź, czy dotyczą tego klienta.
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                setDevice(null);
+                setDeviceKey((k) => k + 1);
+                setSerial("");
+                setFault("");
+                setPhone(client.phone ?? "");
+                setPurchaseDate("");
+                setPurchaseDoc(null);
+                setPrefill(null);
+              }}
+            >
+              Wyczyść telefon, sprzęt i usterkę
+            </Button>
+          </div>
+        ) : null}
+
         {client?.khId ? (
           <ClientEquipmentPicker
             key={client.khId}
@@ -342,7 +397,7 @@ export function ServiceOrderIntakeDialog({
           />
         ) : null}
 
-        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_13.5rem]" data-field="device">
           <ProductPicker
             key={deviceKey}
             value={device}
@@ -357,11 +412,11 @@ export function ServiceOrderIntakeDialog({
             label="Sprzęt (model z Subiekta)"
             placeholder="Np. Forte 200, mikrosilnik"
             allowFreeText
-            freeTextHint="Sprzęt spoza kartoteki — zapiszemy samą nazwę, bez katalogu części dla modelu."
+            freeTextHint="Bez wyboru zapiszemy samą nazwę — bez katalogu części i gwarancji modelu."
           />
           <div>
             <label htmlFor={`${formId}-serial`} className={labelClass}>
-              Numer seryjny
+              Numer seryjny (opcjonalnie)
             </label>
             <input
               id={`${formId}-serial`}
@@ -389,7 +444,7 @@ export function ServiceOrderIntakeDialog({
                     aria-pressed={active}
                     onClick={() => setSerial(sn)}
                     className={cn(
-                      "inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 py-1 font-mono text-[0.8125rem] transition-colors duration-150",
+                      "inline-flex min-h-11 items-center gap-1.5 rounded-md border px-3 py-1 font-mono text-[0.8125rem] transition-colors duration-150",
                       active ? "border-indigo-600 bg-indigo-50 font-semibold text-indigo-900" : "border-slate-200 bg-card text-slate-700 hover:bg-slate-100"
                     )}
                   >
@@ -404,7 +459,7 @@ export function ServiceOrderIntakeDialog({
 
         <SerialHistory serial={serial} />
 
-        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_13.5rem]">
           <div className="flex min-w-0 flex-col justify-end gap-1">
             <span className={labelClass}>Gwarancja</span>
             <div className="flex min-h-11 flex-wrap items-center gap-x-2 gap-y-1">
@@ -420,7 +475,7 @@ export function ServiceOrderIntakeDialog({
           </div>
           <div>
             <label htmlFor={`${formId}-purchase`} className={labelClass}>
-              Data zakupu
+              Data zakupu (opcjonalnie)
             </label>
             <input
               id={`${formId}-purchase`}
@@ -438,7 +493,7 @@ export function ServiceOrderIntakeDialog({
           </div>
         </div>
 
-        <div>
+        <div data-field="fault">
           <label htmlFor={`${formId}-fault`} className={labelClass}>
             Usterka — co zgłasza klient
           </label>
@@ -457,7 +512,7 @@ export function ServiceOrderIntakeDialog({
           />
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_13.5rem]">
           <div>
             <label htmlFor={`${formId}-acc`} className={labelClass}>
               Przyjęte akcesoria (opcjonalnie)
@@ -473,7 +528,7 @@ export function ServiceOrderIntakeDialog({
           </div>
           <div>
             <label htmlFor={`${formId}-due`} className={labelClass}>
-              Termin dla klienta (opcjonalnie)
+              Termin (opcjonalnie)
             </label>
             <input
               id={`${formId}-due`}
@@ -487,10 +542,10 @@ export function ServiceOrderIntakeDialog({
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_13.5rem]">
           <div>
             <label htmlFor={`${formId}-inbound`} className={labelClass}>
-              Jak sprzęt przyszedł (opcjonalnie)
+              Dostarczenie (opcjonalnie)
             </label>
             <select
               id={`${formId}-inbound`}
@@ -524,11 +579,6 @@ export function ServiceOrderIntakeDialog({
           ) : null}
         </div>
 
-        {error ? (
-          <p role="alert" className="text-sm text-red-700">
-            {error}
-          </p>
-        ) : null}
       </form>
     </ModalShell>
   );

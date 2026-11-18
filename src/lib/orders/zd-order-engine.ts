@@ -11,7 +11,7 @@ import { loadActiveStockOutSignals } from "@/lib/orders/stock-out-signals-db";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { fetchZdEstimateExclusions, type ZdEstimateExclusionRow } from "@/lib/data/zd-estimate-exclusions";
 import { type ZdEstimateOnRequestRow } from "@/lib/data/zd-estimate-on-request";
-import { fetchZdEstimateOnRequestsWithServiceParts } from "@/lib/data/service-parts";
+import { fetchServiceMinStockTwIdsForSupplier, fetchZdEstimateOnRequestsWithServiceParts } from "@/lib/data/service-parts";
 import {
   buildBakeExcludedTwIds,
   buildExtraOnlyTwIds,
@@ -942,8 +942,16 @@ export async function runZdOrderEngine(
     pendingIndividuals = [];
   }
 
+  // Części serwisowe z minimum ustawionym przez serwis: dociągane do listy swojego dostawcy jak prośby
+  // (nie leżą w zakresach dostawców); błąd odczytu nie zrywa Policz — lista bez nich, jak przed zmianą.
+  const serviceMinTwIds = supplierIdForIndividuals
+    ? await fetchServiceMinStockTwIdsForSupplier(supplierIdForIndividuals, minStockByTwIdOwn).catch((e: unknown) => {
+        console.warn("[zd-order-engine] minimum części serwisowych", e);
+        return [] as number[];
+      })
+    : [];
   const idsToFetch = [
-    ...new Set([...partnerIdsToFetch, ...bomIdsToFetch, ...individualTwIdsToFetch]),
+    ...new Set([...partnerIdsToFetch, ...bomIdsToFetch, ...individualTwIdsToFetch, ...serviceMinTwIds]),
   ];
 
   touchProgress({ phase: "enrich" });

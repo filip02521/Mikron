@@ -15,6 +15,10 @@ vi.mock("@/lib/data/service-parts", () => ({
   resolveServicePartsCecha: vi.fn(async () => ({ cechaId: 9, name: "Części serwisowe" })),
   fetchServicePartTwIds: vi.fn(async () => [701]),
 }));
+vi.mock("@/lib/data/service-equipment-decisions", () => ({
+  fetchDeviceModelDecisions: vi.fn(async () => new Map([[501, true]])),
+  fetchSerialAssignments: vi.fn(async () => new Map()),
+}));
 vi.mock("@/lib/subiekt/api", () => ({
   getSubiektDocument: vi.fn(async (id: number) =>
     id === 70
@@ -61,10 +65,11 @@ describe("fetchClientEquipment", () => {
     expect(r).toMatchObject({ invoicesScanned: 2, truncated: false });
   });
 
-  it("strony do pierwszej krótszej niż 200 — nie ufa totalPages", async () => {
-    pages["/documents/fs"] = [full(1000), full(2000), [{ dok_Id: 3, dok_Uwagi: null }]];
+  it("strony do pierwszej krótszej niż 200 — nie ufa totalPages; strona pobrana naraz za krótką się nie liczy", async () => {
+    pages["/documents/fs"] = [full(1000), full(2000), [{ dok_Id: 3, dok_Uwagi: null }], full(4000)];
     const r = await fetchClientEquipment(7);
-    expect(calls.filter((c) => c.startsWith("/documents/fs?")).length).toBe(3);
+    // Strona 1 sama, potem 2–4 naraz (klient-hurtownia ma 10 stron).
+    expect(calls.filter((c) => c.startsWith("/documents/fs?")).length).toBe(4);
     expect(r.invoicesScanned).toBe(401);
   });
 
@@ -72,6 +77,8 @@ describe("fetchClientEquipment", () => {
     pages["/documents/fs"] = [[{ dok_Id: 70, dok_Uwagi: "SN X21TEST070" }]];
     const r = await fetchClientEquipment(5);
     expect(r.items).toEqual([]);
-    expect(r.repairs).toEqual([{ serial: "X21TEST070", invoiceId: 70, invoiceNumber: "FS 70", invoiceDate: "2026-11-12" }]);
+    expect(r.repairs).toEqual([
+      { serial: "X21TEST070", invoiceId: 70, invoiceNumber: "FS 70", invoiceDate: "2026-11-12", lineNames: ["Przewód TEST", "Wysyłka TEST"] },
+    ]);
   });
 });

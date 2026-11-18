@@ -14,6 +14,8 @@ export type OrderPartView = ServiceOrderPart & { orderId: string };
 
 /** Egzemplarz zamiennika, który można powiązać ze zleceniem (jest u klienta). */
 export type LinkableLoaner = { id: string; code: string; twName: string; clientName: string | null; khId: number | null };
+/** Egzemplarz na stanie — do wydania z karty zlecenia. */
+export type FreeLoaner = { id: string; code: string; twName: string; condition: string };
 
 export type ModelPartView = { modelTwId: number; partTwId: number; partSymbol: string | null; partName: string; defaultQty: number };
 

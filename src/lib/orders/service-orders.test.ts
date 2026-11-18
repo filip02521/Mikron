@@ -186,3 +186,21 @@ describe("waitingPartArrived", () => {
     expect(waitingPartArrived({ ...waiting(7, 1), status: "w_naprawie" }, new Map([[7, 5]]))).toBe(false);
   });
 });
+
+describe("arrivedWaitingOrderIds", () => {
+  const w = (id: string, tw: number, qty: number, since: string | null) =>
+    ({ id, status: "czeka_na_czesc" as const, waitingPart: { twId: tw, symbol: null, name: "x", qty, since, requestStatus: null } });
+  it("jedna sztuka na półce wznawia tylko najdłużej czekające zlecenie", async () => {
+    const { arrivedWaitingOrderIds } = await import("./service-orders");
+    const out = arrivedWaitingOrderIds([w("b", 7, 1, "2026-11-10T08:00:00Z"), w("a", 7, 1, "2026-11-02T08:00:00Z")], new Map([[7, 1]]));
+    expect([...out]).toEqual(["a"]);
+  });
+  it("zlecenie z większą potrzebą nie blokuje mniejszego; bez stanu w mapie — nic", async () => {
+    const { arrivedWaitingOrderIds } = await import("./service-orders");
+    const out = arrivedWaitingOrderIds(
+      [w("big", 7, 5, "2026-11-01T08:00:00Z"), w("small", 7, 2, "2026-11-03T08:00:00Z"), w("other", 9, 1, "2026-11-01T08:00:00Z")],
+      new Map([[7, 3]])
+    );
+    expect([...out]).toEqual(["small"]);
+  });
+});

@@ -2,7 +2,9 @@
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { IconAlertCircle, IconPencil } from "@/components/icons/StrokeIcons";
+import { IconAlertCircle, IconChevronDown, IconPencil } from "@/components/icons/StrokeIcons";
+import { createPersistedFlagStore } from "@/lib/client/persisted-flag-store";
+import { usePersistedFlag } from "@/lib/client/use-persisted-flag";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
@@ -17,6 +19,9 @@ import {
 } from "@/lib/orders/zd-estimate-key-facts";
 import { zdEstimateScopeKindLabel } from "@/lib/orders/zd-estimate-ui-copy";
 import { panelChoiceChipClass, panelChoiceChipIdleClass, panelChoiceChipSelectedClass } from "@/lib/ui/ontime-theme";
+
+/** Zwinięty panel parametrów — wybór zostaje w tej przeglądarce. */
+const keyFactsCollapsedStore = createPersistedFlagStore("ontime:zd-key-facts-collapsed");
 
 const plShort = (key: string) => `${key.slice(8, 10)}.${key.slice(5, 7)}`;
 const dayWord = (n: number) => (n === 1 ? "dzień" : "dni");
@@ -212,9 +217,43 @@ export function ZdEstimateKeyFactsPanel({
     setEditing(false);
     if (n !== stockDays) onStockDaysChange(String(n));
   };
+  const collapsed = usePersistedFlag(keyFactsCollapsedStore);
+  const toggleCollapsed = () => {
+    setEditing(false);
+    keyFactsCollapsedStore.setValue(!collapsed);
+  };
+  const summary = [
+    next?.kind === "planned"
+      ? `kolejne ${next.label}${next.days < 0 ? " (zaległe)" : next.days === 0 ? " (dziś)" : ""}`
+      : next?.kind === "on_demand"
+        ? "na żądanie"
+        : null,
+    !orderOnDemand && intervalText ? intervalText : null,
+    `zapas ${stockDays} ${dayWord(stockDays)}`,
+    leadDays != null ? `dostawa ~${leadDays} ${dayWord(leadDays)}` : null,
+    `sprzedaż ${plShort(dataOd)}–${plShort(dataDo)}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <section aria-label="Najważniejsze parametry zamówienia" className="mt-1.5">
+      {collapsed ? (
+        <button
+          type="button"
+          aria-expanded={false}
+          onClick={toggleCollapsed}
+          title="Pokaż parametry zamówienia"
+          className="flex w-full items-center gap-2 rounded-lg bg-slate-50 px-4 py-2 text-left text-sm transition-colors duration-150 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          <span className="shrink-0 font-semibold text-slate-900">{scopeName}</span>
+          <span className="min-w-0 flex-1 truncate tabular-nums text-slate-600">{summary}</span>
+          <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-indigo-700">
+            Pokaż parametry
+            <IconChevronDown size={14} aria-hidden />
+          </span>
+        </button>
+      ) : (
       <div className="flex flex-wrap gap-y-1 rounded-lg bg-slate-50 px-1 py-1">
         <Fact
           label={zdEstimateScopeKindLabel(scopeMode)}
@@ -306,7 +345,20 @@ export function ZdEstimateKeyFactsPanel({
             {plShort(dataOd)}–{plShort(dataDo)}
           </span>
         </Fact>
+
+        <button
+          type="button"
+          aria-expanded
+          aria-label="Zwiń parametry zamówienia"
+          title="Zwiń parametry do jednej linii"
+          onClick={toggleCollapsed}
+          className="inline-flex min-h-8 shrink-0 items-center gap-1 self-start rounded-md px-2 text-xs font-medium text-slate-500 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus max-sm:min-h-10"
+        >
+          Zwiń
+          <IconChevronDown size={14} className="rotate-180" aria-hidden />
+        </button>
       </div>
+      )}
 
       {coverage?.short ? (
         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">
