@@ -77,6 +77,8 @@ describe("fetchClientEquipment", () => {
     pages["/documents/fs"] = [[{ dok_Id: 70, dok_Uwagi: "SN X21TEST070" }]];
     const r = await fetchClientEquipment(5);
     expect(r.items).toEqual([]);
-    expect(r.repairs).toEqual([{ serial: "X21TEST070", invoiceId: 70, invoiceNumber: "FS 70", invoiceDate: "2026-11-12" }]);
+    expect(r.repairs).toEqual([
+      { serial: "X21TEST070", invoiceId: 70, invoiceNumber: "FS 70", invoiceDate: "2026-11-12", lineNames: ["Przewód TEST", "Wysyłka TEST"] },
+    ]);
   });
 });

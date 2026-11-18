@@ -60,14 +60,27 @@ describe("buildClientEquipmentCard", () => {
       [item({})],
       [],
       [
-        { serial: "X20R2TEST001", invoiceId: 50, invoiceNumber: "FS 50", invoiceDate: "2026-06-01" },
-        { serial: "OBCY12345", invoiceId: 51, invoiceNumber: "FS 51", invoiceDate: "2026-07-01" },
-        { serial: "OBCY12345", invoiceId: 51, invoiceNumber: "FS 51", invoiceDate: "2026-07-01" },
+        { serial: "X20R2TEST001", invoiceId: 50, invoiceNumber: "FS 50", invoiceDate: "2026-06-01", lineNames: [] },
+        { serial: "OBCY12345", invoiceId: 51, invoiceNumber: "FS 51", invoiceDate: "2026-07-01", lineNames: ["Naprawa parownicy"] },
+        { serial: "OBCY12345", invoiceId: 51, invoiceNumber: "FS 51", invoiceDate: "2026-07-01", lineNames: ["Naprawa parownicy"] },
       ],
       new Map(),
       today
     );
     expect(card.repairsElsewhere.map((r) => r.serial)).toEqual(["OBCY12345"]);
+    expect(card.repairsElsewhere[0]!.lineNames).toEqual(["Naprawa parownicy"]);
+    expect(card.repairsElsewhere[0]!.deviceName).toBeNull();
+  });
+
+  it("naprawa z numerem, który ma zlecenie w OnTime, dostaje nazwę sprzętu z tego zlecenia", () => {
+    const card = buildClientEquipmentCard(
+      [],
+      [order({ serialNo: "OBCY-12345", deviceName: "Parownica Beta" })],
+      [{ serial: "OBCY12345", invoiceId: 51, invoiceNumber: "FS 51", invoiceDate: "2026-07-01", lineNames: ["Elektrozawór"] }],
+      new Map(),
+      today
+    );
+    expect(card.repairsElsewhere[0]!.deviceName).toBe("Parownica Beta");
   });
 });
 

@@ -91,6 +91,12 @@ describe("classifyInvoiceEquipment — pewne tylko to, co wynika z dokumentu i d
     expect(r.trusted).toEqual([]);
     expect(r.pending).toEqual([]);
     expect(r.repairs.map((x) => x.serial)).toEqual(["X21TEST070"]);
+    expect(r.repairs[0]!.lineNames).toEqual(["SZCZOTKA", "USLUGA"]);
+  });
+
+  it("numery licencji („Dot. licencji nr”) to nie sprzęt w naprawie", () => {
+    const r = classifyInvoiceEquipment(doc("Dot. licencji nr:\r\n1. LIC-0000-TEST\r\n2. LIC-0001-TEST", [line(1, 1, "ABONAMENT", 80)]), inputs({}));
+    expect(r).toEqual({ trusted: [], pending: [], repairs: [] });
   });
 
   it("decyzja „do żadnej pozycji” usuwa numer; model nieznany bez numeru nigdy nie jest sprzętem", () => {

@@ -89,6 +89,10 @@ export function classifyInvoiceEquipment(doc: InvoiceForEquipment, inputs: Trust
   const lines = [...(doc.dok_Pozycja ?? [])].sort((a, b) => Number(a.ob_Id ?? 0) - Number(b.ob_Id ?? 0));
   const invoiceNumber = doc.dok_NrPelny?.trim() || `FS ${doc.dok_Id}`;
   const invoiceDate = doc.dok_DataWyst ? String(doc.dok_DataWyst).slice(0, 10) : null;
+  // „Dot. licencji nr: 1. … 2. …” — numery to klucze licencji (abonament), nie sprzęt w naprawie.
+  const licenseKeys = /licencj/i.test(String(doc.dok_Uwagi ?? ""));
+  // Nazwy pozycji faktury za naprawę („Naprawa Renfert Power Steamer”, „Elektrozawór do parownicy STAR”) — po nich widać sprzęt.
+  const lineNames = [...new Set(lines.map((l) => l.tw_Nazwa?.trim() || l.tw_Symbol?.trim() || "").filter(Boolean))].slice(0, 3);
   // Pozycja, która może być urządzeniem: przechodzi sito i nikt nie powiedział „to nie sprzęt”.
   const candidate = (no: number) => {
     const l = lines[no - 1];
@@ -135,7 +139,7 @@ export function classifyInvoiceEquipment(doc: InvoiceForEquipment, inputs: Trust
     const misplaced = claim.explicit && direct.length === 0;
     const options = direct.length ? direct : allCandidates;
     if (!options.length) {
-      for (const sn of open) repairs.push({ serial: sn, invoiceId: doc.dok_Id, invoiceNumber, invoiceDate });
+      if (!licenseKeys) for (const sn of open) repairs.push({ serial: sn, invoiceId: doc.dok_Id, invoiceNumber, invoiceDate, lineNames });
       continue;
     }
     for (const no of options) contested.add(no);

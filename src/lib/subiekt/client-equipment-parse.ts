@@ -207,7 +207,8 @@ export function labelWords(label: string): string[] {
 }
 
 /** Numer z uwag faktury bez pozycji-urządzenia: faktura za naprawę (same części i usługi), nie zakup. */
-export type InvoiceRepairRef = { serial: string; invoiceId: number; invoiceNumber: string; invoiceDate: string | null };
+/** Numer z faktury za naprawę (same części i usługi). `lineNames` — pozycje tej faktury: po nich serwisant pozna sprzęt. */
+export type InvoiceRepairRef = { serial: string; invoiceId: number; invoiceNumber: string; invoiceDate: string | null; lineNames: string[] };
 
 /** `tw_Rodzaj` w Subiekcie: 2 = usługa (licencje, abonamenty z kluczem w uwagach) — to nie sprzęt do naprawy. */
 export const SUBIEKT_PRODUCT_KIND_SERVICE = 2;

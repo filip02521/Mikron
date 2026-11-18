@@ -5,13 +5,16 @@ import { warrantyMonthsFor, warrantyStatus, warrantyUntil, type WarrantyStatus }
 /** Kupiony sprzęt na karcie klienta: stan gwarancji i zlecenia serwisowe tego egzemplarza (po numerze seryjnym). */
 export type CardDevice = ClientEquipmentItem & { warranty: WarrantyStatus; orders: SerialHistoryItem[] };
 
+/** Naprawa bez zakupu na liście; `deviceName` — sprzęt ze zlecenia OnTime z tym numerem, gdy takie jest. */
+export type CardRepair = InvoiceRepairRef & { deviceName: string | null };
+
 export type ClientEquipmentCardView = {
   /** Na gwarancji — najpierw kończące się najwcześniej (to o nie klient zwykle pyta). */
   active: CardDevice[];
   /** Po gwarancji i bez daty zakupu — najnowsze zakupy najpierw. */
   other: CardDevice[];
   /** Numery z faktur za naprawę, których nie ma wśród kupionego sprzętu (sprzęt kupiony gdzie indziej albo dawno). */
-  repairsElsewhere: InvoiceRepairRef[];
+  repairsElsewhere: CardRepair[];
 };
 
 const norm = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -53,11 +56,13 @@ export function buildClientEquipmentCard(
   const other = devices.filter((d) => d.warranty.state !== "active");
   const owned = new Set(items.flatMap((i) => i.serials.map(norm)));
   const seen = new Set<string>();
-  const repairsElsewhere = repairs.filter((r) => {
-    const k = norm(r.serial);
-    if (owned.has(k) || seen.has(`${k}|${r.invoiceId}`)) return false;
-    seen.add(`${k}|${r.invoiceId}`);
-    return true;
-  });
+  const repairsElsewhere = repairs
+    .filter((r) => {
+      const k = norm(r.serial);
+      if (owned.has(k) || seen.has(`${k}|${r.invoiceId}`)) return false;
+      seen.add(`${k}|${r.invoiceId}`);
+      return true;
+    })
+    .map((r) => ({ ...r, deviceName: ordersBySerial.get(norm(r.serial))?.[0]?.deviceName ?? null }));
   return { active, other, repairsElsewhere };
 }

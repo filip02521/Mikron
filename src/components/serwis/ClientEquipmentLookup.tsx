@@ -753,8 +753,19 @@ export function ClientEquipmentLookup({
                 <Rubric title="Naprawiane u nas, zakupu brak na liście" count={card.repairsElsewhere.length}>
                   {card.repairsElsewhere.map((r) => (
                     <li key={`${r.invoiceId}-${r.serial}`} className="px-3 py-2.5 text-[0.8125rem] text-slate-600">
-                      SN <span className="font-mono text-slate-900">{r.serial}</span> · {r.invoiceNumber}
-                      {r.invoiceDate ? ` z ${formatDateOnly(r.invoiceDate)}` : ""}
+                      {/* Sprzęt: ze zlecenia OnTime z tym numerem; inaczej serwisant poznaje go po pozycjach faktury za naprawę. */}
+                      {r.deviceName ? (
+                        <span className="block text-sm font-semibold text-slate-900">{r.deviceName}</span>
+                      ) : r.lineNames.length ? (
+                        <span className="block text-sm text-slate-900">
+                          <span className="text-slate-500">Na fakturze: </span>
+                          {r.lineNames.join("; ")}
+                        </span>
+                      ) : null}
+                      <span className="mt-0.5 block">
+                        SN <span className="break-all font-mono text-slate-900">{r.serial}</span> · {r.invoiceNumber}
+                        {r.invoiceDate ? ` z ${formatDateOnly(r.invoiceDate)}` : ""}
+                      </span>
                     </li>
                   ))}
                 </Rubric>
