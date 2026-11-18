@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  zkLineQuantityLabel,
   allZkWatchLinesArrived,
   buildZkWatchLineViews,
   formatZkLinesPreview,
@@ -257,5 +258,16 @@ describe("zk-watch-lines", () => {
       })
     );
     expect(formatZkLinesPreview(views)).toBe("Bonding · 1/2");
+  });
+});
+
+describe("zkLineQuantityLabel", () => {
+  const line = { quantity: 2, quantityLabel: "2 szt.", subiektTwId: 501 };
+  it("towar z katalogu zębów pokazuje klapki", () => {
+    expect(zkLineQuantityLabel(line, new Set([501]))).toBe("2 klapki");
+  });
+  it("inny towar zostaje w szt.", () => {
+    expect(zkLineQuantityLabel(line, new Set([7]))).toBe("2 szt.");
+    expect(zkLineQuantityLabel(line, null)).toBe("2 szt.");
   });
 });

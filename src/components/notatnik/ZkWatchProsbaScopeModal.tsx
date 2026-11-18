@@ -46,7 +46,7 @@ import {
   zkProsbaScopeStockFetchFailed,
 } from "@/lib/orders/prosba-stock-check";
 import { formatZkWatchDisplayNumber } from "@/lib/sales/notepad-format";
-import { buildZkWatchLineViews, parseZkWatchLineChecks } from "@/lib/sales/zk-watch-lines";
+import { buildZkWatchLineViews, parseZkWatchLineChecks, zkLineQuantityLabel } from "@/lib/sales/zk-watch-lines";
 import {
   deriveZkProsbaScopeAutoProsbaGate,
   getZkWatchProsbaScopeLineKeys,
@@ -677,7 +677,9 @@ export function ZkWatchProsbaScopeModal({
                         </span>
                         <span className="ml-7 flex shrink-0 items-center gap-2.5 sm:ml-auto">
                           {line.quantityLabel ? (
-                            <span className="text-[0.8125rem] tabular-nums text-slate-700">{line.quantityLabel}</span>
+                            <span className="text-[0.8125rem] tabular-nums text-slate-700">
+                              {zkLineQuantityLabel(line, teethExemptTwIds)}
+                            </span>
                           ) : null}
                           {awaitingData ? null : (
                             <Badge variant={availability.tone} className="gap-1 whitespace-nowrap py-1">

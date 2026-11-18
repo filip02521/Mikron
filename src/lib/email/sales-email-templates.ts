@@ -1,5 +1,6 @@
 import { PROCUREMENT_TEAM_LABEL_GENITIVE, PROCUREMENT_TEAM_LABEL_TITLE } from "@/lib/orders/procurement-copy";
 import { getAppUrl } from "@/lib/env/app-config";
+import { orderUnit, orderUnitGenitive } from "@/lib/orders/individual";
 import { salesBoardQuestionHref } from "@/lib/data/department-board-shared";
 import { escapeHtml } from "@/lib/security/escape-html";
 import type {
@@ -41,15 +42,22 @@ function truncateSubjectPart(text: string, max = SUBJECT_SUPPLIER_MAX): string {
 
 function quantityLabel(
   ordered: number | null,
-  delivered: number | null
+  delivered: number | null,
+  isTeeth = false
 ): string | null {
+  const unit = (n: number) => orderUnit(n, isTeeth);
   if (ordered != null && delivered != null) {
     const remaining = Math.max(0, ordered - delivered);
-    if (remaining === 0) return `${delivered} / ${ordered} szt. - komplet`;
-    return `${delivered} / ${ordered} szt. - brakuje ${remaining} szt.`;
+    if (remaining === 0) return `${delivered} / ${ordered} ${unit(ordered)} - komplet`;
+    // „brakuje 2 klapek / 1 klapki” — dopełniacz
+    return `${delivered} / ${ordered} ${unit(ordered)} - brakuje ${remaining} ${orderUnitGenitive(remaining, isTeeth)}`;
   }
-  if (delivered != null && delivered > 0) return `${delivered} szt. dostarczono`;
-  if (ordered != null) return `Zamówiono: ${ordered} szt.`;
+  if (delivered != null && delivered > 0) {
+    return isTeeth
+      ? `Dostarczono: ${delivered} ${unit(delivered)}`
+      : `${delivered} szt. dostarczono`;
+  }
+  if (ordered != null) return `Zamówiono: ${ordered} ${unit(ordered)}`;
   return null;
 }
 
@@ -88,7 +96,7 @@ function renderDeliveryItem(
   if (item.clientName) rows.push(emailDataRow("Klient", item.clientName));
   rows.push(emailDataRow("Produkt", item.products));
   if (item.symbol) rows.push(emailDataRow("Symbol", item.symbol));
-  const qty = quantityLabel(item.orderedQty, item.deliveredQty);
+  const qty = quantityLabel(item.orderedQty, item.deliveredQty, item.isTeeth);
   if (qty) rows.push(emailDataRow("Ilość", qty));
   rows.push(
     emailDataRow(

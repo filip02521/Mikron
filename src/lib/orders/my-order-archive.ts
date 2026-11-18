@@ -80,7 +80,7 @@ function archivedStatusCopy(orders: IndividualOrder[]): {
     const cancelled = effectiveSalesCancelledQuantity(rep);
     const partial =
       ordered != null && cancelled > 0 && cancelled < ordered
-        ? { cancelledQty: cancelled, orderedQty: ordered }
+        ? { cancelledQty: cancelled, orderedQty: ordered, isTeeth: Boolean(rep.is_teeth) }
         : null;
     const detail = salesCancelArchiveDetail(phase, activityLabel, partial);
     return { ...detail, activityLabel };
