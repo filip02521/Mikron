@@ -1974,6 +1974,25 @@ select:disabled,
   background-color: var(--color-indigo-300) !important;
 }
 
+/* Wiersz z fokusem w polu Do ZD (strzałki / Tab) — widać, w której linii jesteś. Po zaznaczeniu, żeby wygrać z jego tłem. */
+.data-table.zd-estimate-table tbody tr:has(.zd-est-dozd-input:focus) td {
+  background-color: color-mix(in srgb, var(--color-indigo-100) 60%, var(--card)) !important;
+  box-shadow:
+    inset 0 1px 0 var(--color-indigo-400),
+    inset 0 -1px 0 var(--color-indigo-400);
+}
+
+.data-table.zd-estimate-table tbody tr:has(.zd-est-dozd-input:focus) td:first-child {
+  box-shadow:
+    inset 4px 0 0 var(--color-indigo-600),
+    inset 0 1px 0 var(--color-indigo-400),
+    inset 0 -1px 0 var(--color-indigo-400);
+}
+
+.data-table.zd-estimate-table tbody tr:has(.zd-est-dozd-input:focus) td.zd-estimate-dozd-col {
+  background-color: var(--color-indigo-200) !important;
+}
+
 .data-table.zd-estimate-table th.zd-estimate-status-col,
 .data-table.zd-estimate-table td.zd-estimate-status-col {
   width: 18%;
