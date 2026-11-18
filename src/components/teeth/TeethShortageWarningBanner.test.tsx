@@ -30,7 +30,7 @@ const hit = (overrides: Partial<TeethShortageMatchHit> = {}): TeethShortageMatch
 describe("TeethShortageWarningBanner", () => {
   it("renders undated shortage message without blocking copy", () => {
     render(<TeethShortageWarningBanner hits={[hit()]} />);
-    expect(screen.getByText(/Część wybranych zębów jest w braku/i)).toBeTruthy();
+    expect(screen.getByText(/Część wybranych klapek jest w braku/i)).toBeTruthy();
     expect(screen.getByText(/termin dostępności nieustalony/i)).toBeTruthy();
     expect(screen.getByText(/Możesz wysłać prośbę mimo braku/i)).toBeTruthy();
   });

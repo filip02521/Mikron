@@ -19,6 +19,7 @@ import type {
   TeethKind,
 } from "./teeth-catalog-types";
 import { isCrossLineDualKindPair } from "./teeth-cross-line-pairs";
+import { plKlapka } from "@/lib/ui/polish-plurals";
 
 export type { TeethManufacturer, TeethProductLine, TeethJaw, TeethKind };
 export { parseTeethJaw, parseTeethKind } from "./teeth-catalog-types";
@@ -426,7 +427,7 @@ export function formatTeethGroupLabel(
   const spec = parts.length > 0 ? parts.join(" · ") : "-";
   if (!includeCount) return spec;
   const n = Math.max(1, group.count);
-  return `${spec} × ${n} szt.`;
+  return `${spec} × ${n} ${plKlapka(n)}`;
 }
 
 /** Rozwiązuje katalog z pól pozycji zamówienia / prośby. */

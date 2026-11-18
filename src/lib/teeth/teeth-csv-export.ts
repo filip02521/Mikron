@@ -2,6 +2,7 @@ import {
   TEETH_KIND_LABELS,
 } from "@/lib/teeth/teeth-catalog";
 import { jawRequiredForKind, resolveTeethJaw } from "@/lib/teeth/teeth-mould-shape-groups";
+import { plKlapka } from "@/lib/ui/polish-plurals";
 import type { TeethSupplierBatchSummary } from "@/lib/teeth/teeth-panel-aggregate";
 
 const JAW_LABELS: Record<string, string> = { upper: "Góra", lower: "Dół" };
@@ -18,7 +19,7 @@ function csvEscape(value: string): string {
  * Format: linia produktowa, kolor, fason, szczęka, typ, sztuki
  */
 export function teethBatchSummaryToCsv(summary: TeethSupplierBatchSummary): string {
-  const header = ["Linia produktowa", "Kolor", "Fason", "Szczęka", "Typ", "Szt."];
+  const header = ["Linia produktowa", "Kolor", "Fason", "Szczęka", "Typ", "Klapki"];
   const rows: string[] = [header.map(csvEscape).join(",")];
 
   for (const block of summary.byProductLine) {
@@ -48,7 +49,7 @@ export function teethBatchSummaryToCsv(summary: TeethSupplierBatchSummary): stri
   }
 
   rows.push("");
-  rows.push(csvEscape(`Razem: ${summary.totalPieces} szt. · ${summary.orderCount} próśb`));
+  rows.push(csvEscape(`Razem: ${summary.totalPieces} ${plKlapka(summary.totalPieces)} · ${summary.orderCount} próśb`));
 
   if (summary.ordersMissingSpec > 0) {
     rows.push(csvEscape(`Brak specyfikacji: ${summary.ordersMissingSpec} próśb`));
@@ -62,7 +63,7 @@ export function teethBatchSummaryToCsv(summary: TeethSupplierBatchSummary): stri
  * Format: handlowiec, produkt, symbol, kolor, fason, szczęka, typ, szt.
  */
 export function teethOrderSpecsToCsv(summary: TeethSupplierBatchSummary): string {
-  const header = ["Handlowiec", "Produkt", "Symbol", "Kolor", "Fason", "Szczęka", "Typ", "Szt."];
+  const header = ["Handlowiec", "Produkt", "Symbol", "Kolor", "Fason", "Szczęka", "Typ", "Klapki"];
   const rows: string[] = [header.map(csvEscape).join(",")];
 
   for (const order of summary.byOrder) {

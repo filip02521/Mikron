@@ -294,7 +294,7 @@ function KindSectionHeader({ label, hasJaw }: { label: string; hasJaw: boolean }
         <th className="py-0.5 px-1 font-medium">Kolor</th>
         <th className="py-0.5 px-1 font-medium">Fason</th>
         {hasJaw ? <th className="py-0.5 px-1 font-medium">Szczęka</th> : null}
-        <th className="py-0.5 px-1 text-right font-medium">Szt.</th>
+        <th className="py-0.5 px-1 text-right font-medium">Klapki</th>
       </tr>
     </>
   );

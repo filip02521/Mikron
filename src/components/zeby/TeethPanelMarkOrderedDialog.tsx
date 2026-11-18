@@ -9,14 +9,10 @@ import {
 } from "@/lib/teeth/teeth-mark-ordered";
 import { TEETH_MARK_ORDERED_LABEL } from "@/components/zeby/teeth-panel-copy";
 import { cn } from "@/lib/cn";
-import { polishPluralWord } from "@/lib/email/polish-plural";
+import { plKlapka, plKlapkeBiernik } from "@/lib/ui/polish-plurals";
 import type { TeethMarkPlan, TeethMarkScope } from "@/lib/teeth/teeth-queue-view-model";
 
 const PLAN_PREVIEW_LIMIT = 8;
-
-function zebow(n: number): string {
-  return polishPluralWord(n, "ząb", "zęby", "zębów");
-}
 
 function MarkPlanPreview({ plan, scope }: { plan: TeethMarkPlan; scope: TeethMarkScope }) {
   const partial = scope === "selection" && plan.leftInQueue > 0;
@@ -34,13 +30,13 @@ function MarkPlanPreview({ plan, scope }: { plan: TeethMarkPlan; scope: TeethMar
       >
         {partial ? (
           <>
-            Tylko zaznaczone: {plan.markCount} {zebow(plan.markCount)}. Pozostałe {plan.leftInQueue}{" "}
-            {zebow(plan.leftInQueue)} u tego dostawcy zostaną w kolejce.
+            Tylko zaznaczone: {plan.markCount} {plKlapka(plan.markCount)}. W kolejce u tego dostawcy zostaje{" "}
+            {plan.leftInQueue} {plKlapka(plan.leftInQueue)}.
           </>
         ) : scope === "all" ? (
-          <>Wszystkie niezamówione zęby z kompletnych próśb u dostawcy - {plan.markCount} {zebow(plan.markCount)}.</>
+          <>Wszystkie niezamówione klapki z kompletnych próśb u dostawcy: {plan.markCount} {plKlapka(plan.markCount)}.</>
         ) : (
-          <>Zaznaczone zęby - {plan.markCount} {zebow(plan.markCount)}.</>
+          <>Zaznaczone: {plan.markCount} {plKlapka(plan.markCount)}.</>
         )}
       </p>
       <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 text-xs">
@@ -60,7 +56,8 @@ function MarkPlanPreview({ plan, scope }: { plan: TeethMarkPlan; scope: TeethMar
               )}
             >
               {row.marking < row.open ? `${row.marking} z ${row.open}` : `${row.marking}`}{" "}
-              {zebow(row.marking < row.open ? row.open : row.marking)}
+              {/* „1 z 3 klapek” — po „z” dopełniacz liczby mnogiej */}
+              {row.marking < row.open ? "klapek" : plKlapka(row.marking)}
             </span>
           </li>
         ))}
@@ -123,7 +120,7 @@ export function TeethPanelMarkOrderedDialog({
               disabled={pending}
             >
               {plan && plan.markCount > 0
-                ? `Oznacz ${plan.markCount} ${zebow(plan.markCount)}`
+                ? `Oznacz ${plan.markCount} ${plKlapkeBiernik(plan.markCount)}`
                 : teethMarkOrderedConfirmLabel(analysis)}
             </Button>
           ) : null}

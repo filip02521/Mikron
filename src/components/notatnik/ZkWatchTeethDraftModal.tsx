@@ -31,6 +31,7 @@ import { manufacturerForProductLine } from "@/lib/teeth/teeth-catalog";
 import { TEETH_KIND_LABELS, type TeethKind, type TeethLineDetail } from "@/lib/teeth/teeth-catalog";
 import { resolveTeethCatalogProduct } from "@/lib/teeth/teeth-dual-kind";
 import type { SalesZkWatch } from "@/types/database";
+import { plKlapka } from "@/lib/ui/polish-plurals";
 
 function registryFromProductInfo(
   info: ReturnType<typeof useTeethProductInfo>
@@ -144,7 +145,7 @@ export function ZkWatchTeethDraftModal({
 
     if (details.length !== expectedQuantity) {
       setError(
-        `Lista musi mieć dokładnie ${expectedQuantity} szt. (ilość z ZK).`
+        `Lista musi mieć dokładnie ${expectedQuantity} ${plKlapka(expectedQuantity)} (ilość z ZK).`
       );
       return;
     }
@@ -345,7 +346,7 @@ export function ZkWatchTeethDraftModal({
                         {c.view.product}
                       </p>
                       <p className={cn(salesTypography.rowMeta, "mt-0.5 text-slate-600")}>
-                        {c.view.quantity != null ? `${c.view.quantity} szt.` : "-"}
+                        {c.view.quantity != null ? `${c.view.quantity} ${plKlapka(c.view.quantity)}` : "-"}
                         {kind ? ` · ${TEETH_KIND_LABELS[kind]}` : " · brak typu"}
                         {ready ? " · lista gotowa" : " · szkic niepełny"}
                       </p>

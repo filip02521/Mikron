@@ -5,7 +5,7 @@ import { cn } from "@/lib/cn";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { plPozycja, plProsba } from "@/lib/ui/polish-plurals";
+import { plKlapkeBiernik, plProsba } from "@/lib/ui/polish-plurals";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 import { TeethPanelEmpty } from "@/components/zeby/TeethPanelSection";
 import { TeethQueueSupplierCard } from "@/components/zeby/TeethQueueSupplierCard";
@@ -289,7 +289,7 @@ export function TeethPanelKolejkaView({
           <div aria-hidden className="h-20" />
           <div
             role="region"
-            aria-label="Zaznaczone zęby"
+            aria-label="Zaznaczone klapki"
             className={cn(
               "fixed inset-x-3 z-30 mx-auto max-w-3xl",
               // Telefon: nad dolną nawigacją i paskiem podglądu admina.
@@ -302,7 +302,7 @@ export function TeethPanelKolejkaView({
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-slate-900 tabular-nums">
                   Zaznaczono {selectedPositionCount}{" "}
-                  {polishPluralWord(selectedPositionCount, "ząb", "zęby", "zębów")}
+                  {plKlapkeBiernik(selectedPositionCount)}
                   <span className="font-normal text-slate-600">
                     {" "}
                     z {selectedOrderCount} {selectedOrderCount === 1 ? "prośby" : "próśb"}
@@ -342,7 +342,7 @@ export function TeethPanelKolejkaView({
                   title={
                     selectionMissingFiles.length > 0
                       ? "Wgraj plik zamówienia u każdego zaznaczonego dostawcy"
-                      : `Oznacz ${selectedPositionCount} ${plPozycja(selectedPositionCount)} jako zamówione`
+                      : `Oznacz ${selectedPositionCount} ${plKlapkeBiernik(selectedPositionCount)} jako zamówione`
                   }
                 >
                   <IconTruck size={15} />
