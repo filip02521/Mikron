@@ -6,7 +6,7 @@ import { reportServicePartShortage } from "@/lib/data/service-part-report";
 import { parseServicePartReport, type ServicePartReportInput } from "@/lib/orders/service-part-report";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { fetchServicePartTwIds, resolveServicePartsCecha } from "@/lib/data/service-parts";
-import { upsertZdEstimateMinStock } from "@/lib/data/zd-estimate-min-stock";
+import { fetchZdEstimateMinStockOne, upsertZdEstimateMinStock } from "@/lib/data/zd-estimate-min-stock";
 import { getSubiektProduct } from "@/lib/subiekt/api";
 
 /** Najwyższe minimum, które serwisant może ustawić na Częściach (wyżej — w Kreatorze ZD). */
@@ -34,6 +34,9 @@ export async function actionReportServicePartShortage(
  * (minimum − dostępne − otwarte ZD), bez prośby. 0 = bez minimum — część wraca do „tylko po zgłoszeniu”.
  * Tylko towar z cechą „Części serwisowe”; nazwa i grupa z Subiekta, nie z przeglądarki.
  */
+/** Notatka minimum zapisanego z panelu serwisu — po niej poznajemy, czyje jest minimum. */
+const SERVICE_MIN_NOTE_PREFIX = "Serwis:";
+
 export async function actionSetServicePartMinStock(input: { twId: number; minStock: number }): Promise<ServicePartReportResult> {
   const user = await requireServicePanel("mutate");
   const twId = Math.trunc(Number(input.twId));
@@ -47,6 +50,14 @@ export async function actionSetServicePartMinStock(input: { twId: number; minSto
     if (!cecha || !(await fetchServicePartTwIds(cecha.cechaId)).includes(twId)) {
       return { ok: false, message: "To nie jest część serwisowa — minimum ustawiają zakupy w Kreatorze ZD." };
     }
+    // Minimum ustawione przez zakupy (notatka bez „Serwis:”) zostaje ich — serwis go nie nadpisuje ani nie kasuje.
+    const existing = await fetchZdEstimateMinStockOne(twId);
+    if (existing && !existing.note.startsWith(SERVICE_MIN_NOTE_PREFIX)) {
+      return {
+        ok: false,
+        message: `Minimum ${existing.minStockSzt} szt. ustawiły zakupy — zmienić je mogą zakupy w Kreatorze ZD.`,
+      };
+    }
     const p = await getSubiektProduct(twId);
     const name = p.tw_Nazwa?.trim() || p.tw_Symbol?.trim() || `Towar ${twId}`;
     await upsertZdEstimateMinStock({
@@ -56,7 +67,7 @@ export async function actionSetServicePartMinStock(input: { twId: number; minSto
       grtId: p.tw_IdGrupa ?? null,
       grtNazwa: p.grt_Nazwa ?? null,
       minStockSzt: min,
-      note: `Serwis: ${user.email.split("@")[0]}`,
+      note: `${SERVICE_MIN_NOTE_PREFIX} ${user.email.split("@")[0]}`,
       createdBy: user.id === "dev" ? null : user.id,
     });
     revalidatePath("/serwis");

@@ -312,7 +312,7 @@ Pozycje widoków jak w Layout. Aktywny widok: pole `--sv-rail-active` z tekstem 
 
 ### Tabele Serwisu
 
-Części i lista zamienników: nagłówek na `--sv-box` z Rubric Label, linie wierszy `--sv-rule`, hover `--sv-box`, cały wiersz otwiera obiekt (kursor wskazujący). Poza tym zasady Data Table z `DESIGN.md`. Na Częściach kolumna akcji: „Zgłoś brak” (gdy brak/poniżej minimum i bez prośby) i „Ustaw minimum” / „Minimum N szt.” — okno z polem ilości i zdaniem skutku przed zapisem („Przy najbliższym ZD u {dostawca} zakupy dokupią do N szt.…”; bez znanego dostawcy — że minimum zadziała dopiero po przypięciu dostawcy). Minimum to `zd_estimate_min_stock` (to samo „Minimum stanów” co w Kreatorze ZD); część z minimum i znanym dostawcą nie jest „do zgłoszenia”, w podpisie stanu „dokupią przy ZD”, bez dostawcy „brak dostawcy — zgłoś”. Na telefonie przyciski pod nazwą części.
+Części i lista zamienników: nagłówek na `--sv-box` z Rubric Label, linie wierszy `--sv-rule`, hover `--sv-box`, cały wiersz otwiera obiekt (kursor wskazujący). Poza tym zasady Data Table z `DESIGN.md`. Na Częściach kolumna akcji: „Zgłoś brak” (gdy brak/poniżej minimum i bez prośby) i „Ustaw minimum” / „Minimum N szt.” — okno z polem ilości i zdaniem skutku przed zapisem („Przy najbliższym ZD u {dostawca} zakupy dokupią do N szt.…”; bez znanego dostawcy — że minimum zadziała dopiero po przypięciu dostawcy). Minimum to `zd_estimate_min_stock` (to samo „Minimum stanów” co w Kreatorze ZD); minimum ustawione przez zakupy serwis widzi, ale go nie zmienia ani nie kasuje (zapis odmawia z komunikatem); część z minimum i znanym dostawcą nie jest „do zgłoszenia”, w podpisie stanu „dokupią przy ZD”, bez dostawcy „brak dostawcy — zgłoś”. Na telefonie przyciski pod nazwą części.
 
 ### Ruch
 
