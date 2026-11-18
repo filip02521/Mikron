@@ -1451,6 +1451,12 @@ export function zdEstimateExternalSessionRestoredToastDescription(input: {
 export const zdEstimateExternalSessionRestoredToastTitle =
   "Sesja wznowiona";
 
+/** Kreator przejął liczenie w tle (powrót w trakcie) i otworzył gotową listę. */
+export const zdEstimateRunReadyToastTitle = "Lista do ZD gotowa";
+
+export const zdEstimateRunReadyToastDescription =
+  "Policzona w tle przed chwilą - możesz od razu pracować.";
+
 export const zdEstimateExternalSessionExpiredAlertTitle =
   "Poprzednia sesja wygasła";
 

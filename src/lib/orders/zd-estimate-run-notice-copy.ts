@@ -16,6 +16,10 @@ export type ZdEstimateRunNoticeCopy = {
 export const ZD_ESTIMATE_RUN_LOST_MESSAGE =
   "Serwer OnTime przerwał liczenie (np. restart usługi), zanim lista była gotowa.";
 
+/** Liczenie zastąpione nowszym (np. „Policz listę” w innej karcie) — jego lista nie jest zapisana. */
+export const ZD_ESTIMATE_RUN_SUPERSEDED_MESSAGE =
+  "W międzyczasie zaczęło się nowsze liczenie listy, więc tej nie zapisano. Nowsza lista jest w Kreatorze.";
+
 export function zdEstimateRunNoticeCopy(input: {
   state: "running" | "ready" | "failed";
   label: string;

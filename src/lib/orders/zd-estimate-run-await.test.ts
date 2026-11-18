@@ -32,6 +32,8 @@ describe("awaitZdEstimateRunJob", () => {
     });
     expect(out.ok).toBe(false);
     if (!out.ok) expect(out.failure?.title).toBe("Liczenie zostało przerwane");
+    // Kreator oddaje wtedy status zakładce (lista mogła się zapisać przed wygaśnięciem wyniku).
+    expect(out.ok === false && out.failure?.code).toBe("lost");
   });
 
   it("start bez połączenia i seria zerwanych odbiorów → brak połączenia", async () => {

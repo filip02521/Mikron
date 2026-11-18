@@ -616,6 +616,21 @@ export class SubiektZdEstimateFirstPageRejectedError extends Error {
   }
 }
 
+/** Pobieranie przerwane przez `shouldStop` (liczenie zastąpione nowszym) — nie błąd Subiekta. */
+export class SubiektZdEstimateStoppedError extends Error {
+  constructor() {
+    super("Zaczęło się nowsze liczenie listy — to przerwano.");
+    this.name = "SubiektZdEstimateStoppedError";
+  }
+}
+
+/** Liczba stron ostatniego pobrania zakresu (proces OnTime, jak magazyn postępu). */
+function zdEstimatePagesHints(): Map<string, number> {
+  const g = globalThis as typeof globalThis & { __ontimeZdEstimatePagesHints?: Map<string, number> };
+  g.__ontimeZdEstimatePagesHints ??= new Map();
+  return g.__ontimeZdEstimatePagesHints;
+}
+
 export type SubiektZdEstimateAllProgress = {
   pagesCommitted: number;
   totalPages: number;
@@ -636,6 +651,19 @@ export async function fetchSubiektZdEstimateAll(
     }) => { ok: true } | { ok: false; title: string; message: string };
     /** Po page 1 i po każdym kolejnym commit (kolejność stron). */
     onProgress?: (p: SubiektZdEstimateAllProgress) => void;
+    /**
+     * Strony naraz po stronie 1 — nadpisuje domyślne (2 przy dużych zakresach).
+     * Lista, na którą ktoś czeka, bierze 4: Subiekt liczy cały zakres przy każdej stronie (~11 s),
+     * a 4–12 stron naraz trwa tyle samo co jedna (pomiar Ivoclar 17.11.2026).
+     */
+    concurrency?: number;
+    /**
+     * Zakres listy (np. `cecha:2738`): liczba stron z poprzedniego pobrania w tym procesie. Strony 2…
+     * idą wtedy razem ze stroną 1 (do `concurrency` sztuk), zamiast czekać ~11 s na jej wynik.
+     */
+    pagesHintKey?: string;
+    /** true = przestań brać kolejne strony (liczenie zastąpione nowszym) — rzuca SubiektZdEstimateStoppedError. */
+    shouldStop?: () => boolean;
   }
 ): Promise<{
   parametry: SubiektZdEstimateData["parametry"];
@@ -651,12 +679,22 @@ export async function fetchSubiektZdEstimateAll(
   const maxPages = Math.max(1, params.maxPages ?? ZD_ESTIMATE_MAX_PAGES);
   const tylkoBraki = params.tylkoBraki ?? false;
 
-  const first = await fetchSubiektZdEstimatePageWithRetry({
-    ...params,
-    tylkoBraki,
-    page: 1,
-    pageSize,
-  });
+  const fetchPage = (page: number) =>
+    fetchSubiektZdEstimatePageWithRetry({ ...params, tylkoBraki, page, pageSize });
+  const hintKey = options?.pagesHintKey ? `${options.pagesHintKey}|${tylkoBraki}|${pageSize}` : null;
+  const expectedPages = hintKey ? zdEstimatePagesHints().get(hintKey) ?? 0 : 0;
+  const aheadCount = options?.concurrency
+    ? Math.max(0, Math.min(Math.min(expectedPages, maxPages) - 1, Math.trunc(options.concurrency)))
+    : 0;
+  const ahead = new Map<number, ReturnType<typeof fetchPage>>();
+  for (let p = 2; p <= 1 + aheadCount; p += 1) {
+    const pending = fetchPage(p);
+    // Gdy strona 1 odrzuci filtr, nikt na tę stronę nie czeka — bez unhandled rejection.
+    pending.catch(() => undefined);
+    ahead.set(p, pending);
+  }
+
+  const first = await fetchPage(1);
 
   const data = first.data;
   if (!data || !Array.isArray(data.pozycje)) {
@@ -666,6 +704,7 @@ export async function fetchSubiektZdEstimateAll(
   const pozycje: SubiektZdEstimateLine[] = [...data.pozycje];
   const totalPages = Math.max(1, first.pagination?.totalPages ?? 1);
   const totalCountApi = first.pagination?.totalCount ?? pozycje.length;
+  if (hintKey) zdEstimatePagesHints().set(hintKey, totalPages);
 
   if (options?.validateFirstPage) {
     const gate = options.validateFirstPage({
@@ -698,28 +737,34 @@ export async function fetchSubiektZdEstimateAll(
   if (pagesToFetch > 1) {
     // Pipeline z limitem współbieżności: commitujemy strony po kolei.
     // Po pierwszej pustej nie claimujemy kolejnych (mniej zbędnego I/O niż fala „wszystkie naraz”).
-    const concurrency =
-      totalCountApi > ZD_ESTIMATE_LARGE_TOTAL_COUNT
-        ? Math.min(2, ZD_ESTIMATE_PAGE_FETCH_CONCURRENCY)
-        : ZD_ESTIMATE_PAGE_FETCH_CONCURRENCY;
+    const concurrency = Math.max(
+      1,
+      Math.trunc(
+        options?.concurrency ??
+          (totalCountApi > ZD_ESTIMATE_LARGE_TOTAL_COUNT
+            ? Math.min(2, ZD_ESTIMATE_PAGE_FETCH_CONCURRENCY)
+            : ZD_ESTIMATE_PAGE_FETCH_CONCURRENCY)
+      )
+    );
     let nextClaim = 2;
     let nextCommit = 2;
     let haltClaim = false;
+    let stopRequested = false;
     const buffer = new Map<number, SubiektZdEstimateLine[] | null | undefined>();
 
     const workers = Array.from({ length: concurrency }, async () => {
       while (true) {
         if (haltClaim) return;
+        if (options?.shouldStop?.()) {
+          stopRequested = true;
+          haltClaim = true;
+          return;
+        }
         const page = nextClaim;
         if (page > pagesToFetch) return;
         nextClaim += 1;
 
-        const next = await fetchSubiektZdEstimatePageWithRetry({
-          ...params,
-          tylkoBraki,
-          page,
-          pageSize,
-        });
+        const next = await (ahead.get(page) ?? fetchPage(page));
         buffer.set(page, next.data?.pozycje);
 
         while (buffer.has(nextCommit)) {
@@ -739,6 +784,7 @@ export async function fetchSubiektZdEstimateAll(
     });
 
     await Promise.all(workers);
+    if (stopRequested) throw new SubiektZdEstimateStoppedError();
   }
 
   return {

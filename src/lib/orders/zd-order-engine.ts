@@ -57,6 +57,7 @@ import {
 import {
   buildManualZdEstimateResult,
   ZD_ESTIMATE_MISSING_SKU_FETCH_CONCURRENCY,
+  ZD_ESTIMATE_PAGE_FETCH_CONCURRENCY,
   type ManualZdEstimateResult,
 } from "@/lib/orders/zd-estimate-manual";
 import { mapPool } from "@/lib/async/map-pool";
@@ -444,6 +445,8 @@ export type ZdOrderEngineInput = {
    */
   compareClassic?: boolean;
   onProgress?: (patch: ZdOrderEngineProgressPatch) => void;
+  /** true = przestań pobierać strony z Subiekta (Kreator: liczenie zastąpione nowszym). */
+  shouldStop?: () => boolean;
 };
 
 export type { ZdSalesSmoothingSummary };
@@ -587,6 +590,10 @@ export async function runZdOrderEngine(
       tylkoBraki: false,
     },
     {
+      // Duże zakresy też po 4 strony — profil sprzedaży (12 okien w tle) zostaje przy 2.
+      concurrency: ZD_ESTIMATE_PAGE_FETCH_CONCURRENCY,
+      pagesHintKey: `${scope.mode}:${(scope.mode === "cecha" ? scope.cechaId : scope.grupaId) ?? 0}`,
+      shouldStop: input.shouldStop,
       validateFirstPage: ({ parametry }) =>
         assertZdEstimateFilterEcho({
           mode: scope.mode,
@@ -652,6 +659,9 @@ export async function runZdOrderEngine(
         tylkoBraki: false,
       },
       {
+        concurrency: ZD_ESTIMATE_PAGE_FETCH_CONCURRENCY,
+        pagesHintKey: `${extra.mode}:${extraId}`,
+        shouldStop: input.shouldStop,
         validateFirstPage: ({ parametry }) =>
           assertZdEstimateFilterEcho({
             mode: extra.mode,

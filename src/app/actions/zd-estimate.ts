@@ -235,6 +235,7 @@ import {
   searchSubiektProductCechy,
   searchSubiektProductGroups,
   SubiektZdEstimateFirstPageRejectedError,
+  SubiektZdEstimateStoppedError,
 } from "@/lib/subiekt/api";
 import {
   getSubiektConfigSummary,
@@ -289,6 +290,7 @@ import {
   peekZdEstimateRunJobSummary,
   type ZdEstimateRunJobState,
 } from "@/lib/orders/zd-estimate-run-jobs";
+import { ZD_ESTIMATE_RUN_SUPERSEDED_MESSAGE } from "@/lib/orders/zd-estimate-run-notice-copy";
 import { ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION } from "@/lib/orders/zd-estimate-external-session";
 import {
   fetchAllReservedZkRowsForTwId,
@@ -2293,7 +2295,14 @@ export async function actionRunZdEstimateManual(
       salesProfileRefresh: "background" as const,
     };
     // Strategia testowa: „jak dotąd” liczone z tego samego pobrania (porównanie w tabeli).
-    const engine = await runZdOrderEngine({ ...engineInput, compareClassic: true, onProgress: touchProgress });
+    const liveRunId = progressId;
+    const engine = await runZdOrderEngine({
+      ...engineInput,
+      compareClassic: true,
+      onProgress: touchProgress,
+      // Nowsze „Policz listę” tego użytkownika — nie obciążaj Subiekta liczeniem, którego nikt nie zapisze.
+      shouldStop: liveRunId ? () => isZdEstimateRunJobSuperseded(liveRunId, user.id) : undefined,
+    });
     if (!engine.ok) {
       failProgress(engine.feedback.message);
       return {
@@ -2476,6 +2485,14 @@ export async function actionRunZdEstimateManual(
     };
   } catch (e) {
     const pagesHint = progressPagesHint(progressId, user.id);
+    if (e instanceof SubiektZdEstimateStoppedError) {
+      failProgress(ZD_ESTIMATE_RUN_SUPERSEDED_MESSAGE);
+      const feedback = getSubiektFeedback("empty_query", {
+        title: "Liczenie zastąpione nowszym",
+        message: ZD_ESTIMATE_RUN_SUPERSEDED_MESSAGE,
+      });
+      return { ok: false, message: feedback.message, feedback };
+    }
     if (e instanceof SubiektZdEstimateFirstPageRejectedError) {
       failProgress(e.message);
       const feedback = getSubiektFeedback("empty_query", {
@@ -2580,7 +2597,15 @@ export async function actionStartZdEstimateRun(
       const feedback = feedbackFromException(e);
       result = { ok: false, message: feedback.message, feedback };
     }
-    finishZdEstimateRunJob(runId, user.id, result, zdEstimateRunOutcome(result));
+    // Zastąpione nowszym liczeniem (przerwane albo bez zapisu listy) — to nie błąd (zakładka w innej karcie).
+    const supersededUnsaved =
+      (!result.ok || !result.uiSessionId?.trim()) && isZdEstimateRunJobSuperseded(runId, user.id);
+    finishZdEstimateRunJob(
+      runId,
+      user.id,
+      result,
+      supersededUnsaved ? { state: "failed", message: ZD_ESTIMATE_RUN_SUPERSEDED_MESSAGE } : zdEstimateRunOutcome(result)
+    );
   });
   return { ok: true, runId, ownerUserId: user.id };
 }
