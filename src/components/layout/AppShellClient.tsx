@@ -25,6 +25,7 @@ import {
   TeethUpdatesProvider,
 } from "@/components/zeby/TeethUpdatesContext";
 import { PageNoticeStack } from "@/components/ui/PageNoticeStack";
+import { FloatingNoticePill } from "@/components/layout/FloatingNoticePill";
 import { OperationsBoardQuestionsNotice } from "@/components/operations/OperationsBoardQuestionsNotice";
 import { SalesOnboardingGate } from "@/components/sales/SalesOnboardingGate";
 import { AppRoleProvider } from "@/components/layout/AppRoleContext";
@@ -156,6 +157,9 @@ function AppShellMain({
 }) {
   const coachPadding = useSalesCoachPaddingClass();
   const { noticesRef, contentRef } = useAlignNoticesToPageColumn();
+  // Kreator ZD: pasy powiadomień zjadały wysokość tabeli — tu zwinięte w przesuwaną pastylkę.
+  const pathname = usePathname();
+  const floatingNotices = pathname === "/zakupy/szacunek" || pathname.startsWith("/zakupy/szacunek/");
 
   return (
     <main
@@ -173,8 +177,9 @@ function AppShellMain({
     >
       <div className={cn(appMainInsetClass, "relative z-[1]")}>
         <div ref={noticesRef} className="mx-auto w-full">
-          {topNotices}
+          {floatingNotices ? null : topNotices}
         </div>
+        {floatingNotices && topNotices ? <FloatingNoticePill>{topNotices}</FloatingNoticePill> : null}
         <SalesOnboardingTourBanner />
         <div ref={contentRef} className="contents">
           <SalesOnboardingContentGuard>{children}</SalesOnboardingContentGuard>
