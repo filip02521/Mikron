@@ -151,6 +151,26 @@ export function zdSplitShortNames(names: readonly string[]): string[] {
 }
 
 /**
+ * Dostawcy, których można dopisać do wspólnego zakresu: bez tych, którzy już go mają,
+ * alfabetycznie. Pusta nazwa (karta bez nazwy) nie trafia na listę wyboru.
+ */
+export function zdSharedScopeAddableSuppliers(
+  suppliers: readonly { id: string; name: string }[],
+  scopeSupplierIds: readonly string[]
+): { id: string; name: string }[] {
+  const taken = new Set(scopeSupplierIds);
+  const seen = new Set<string>();
+  const out: { id: string; name: string }[] = [];
+  for (const s of suppliers) {
+    const name = (s.name ?? "").trim();
+    if (!s.id || !name || taken.has(s.id) || seen.has(s.id)) continue;
+    seen.add(s.id);
+    out.push({ id: s.id, name });
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name, "pl"));
+}
+
+/**
  * Zaznaczenie zakresu Shift+klik: wiersze między kotwicą a celem (w kolejności
  * widocznej listy) dostają stan celu. Kotwica spoza listy = tylko cel.
  */
