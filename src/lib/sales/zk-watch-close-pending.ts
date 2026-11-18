@@ -1,4 +1,4 @@
-import { isInformacjaRequest } from "@/lib/orders/individual";
+import { isInformacjaRequest, orderUnit, parseOrderQuantity } from "@/lib/orders/individual";
 import { orderExplicitlyLinkedToZkWatch } from "@/lib/orders/zk-prosba-source";
 import { isSalesCancelNoticePending } from "@/lib/orders/sales-cancel";
 import {
@@ -88,6 +88,10 @@ function formatOrderQuantityLabel(order: ZkLinkableOrder): string {
   if (isInformacjaRequest(asIndividualOrder(order))) return "-";
   const qty = order.quantity?.trim();
   if (!qty || qty === "-") return "-";
+  if (order.is_teeth) {
+    const n = parseOrderQuantity(qty);
+    if (n != null) return `${n} ${orderUnit(n, true)}`;
+  }
   return qty.includes("szt") ? qty : `${qty} szt.`;
 }
 

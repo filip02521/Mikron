@@ -109,7 +109,7 @@ export function buildOverflowMenuProps({
     canCancel: row.lineCount > 1 ? Boolean(showSalesCancelLink) : soleOverflowFull,
     cancelLabel: row.lineCount > 1 ? cancelOverflowLabel : soleOverflowCancelLabel,
     canPartialCancelQuick: soleOverflowQuick,
-    partialCancelQuickLabel: soleLine ? salesCancelQuickActionLabel() : undefined,
+    partialCancelQuickLabel: soleLine ? salesCancelQuickActionLabel(Boolean(soleLine.isTeeth)) : undefined,
     onPartialCancelQuick:
       soleLine && soleOverflowQuick
         ? () => openPartialCancel(soleLine, 1)
@@ -117,7 +117,7 @@ export function buildOverflowMenuProps({
     canPartialCancelRemainder: soleOverflowRemainder,
     partialCancelRemainderLabel:
       soleLine?.defaultSalesCancelQuantity != null
-        ? salesCancelLineRemainderLabel(soleLine.defaultSalesCancelQuantity)
+        ? salesCancelLineRemainderLabel(soleLine.defaultSalesCancelQuantity, Boolean(soleLine.isTeeth))
         : undefined,
     onPartialCancelRemainder:
       soleLine && soleOverflowRemainder

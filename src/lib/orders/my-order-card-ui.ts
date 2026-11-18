@@ -115,7 +115,7 @@ export function shouldShowCollapsedProductSummary(
 
 export function progressLabelInSubline(row: MyOrderRow): boolean {
   const s = row.subline ?? "";
-  return s.includes("Magazyn") || /\d+\s*z\s*\d+/.test(s) || s.includes("szt.");
+  return s.includes("Magazyn") || /\d+\s*z\s*\d+/.test(s) || s.includes("szt.") || /\bklap(?:ka|ki|ek)\b/.test(s);
 }
 
 /** Usuwa pola metadanych powielone w subline wiersza. */

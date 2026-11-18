@@ -385,7 +385,8 @@ export function ReceiveQueueTable({
     const target = receiveQueueTargetQuantity(order);
     return getDeliveryProgress(
       target != null ? String(target) : order.quantity,
-      value
+      value,
+      Boolean(order.is_teeth)
     );
   };
 

@@ -257,7 +257,7 @@ function buildPreviewEntry(
   order: ZkLinkableOrder,
   openIds: Set<string>
 ): ZkWatchProsbaPreviewEntry {
-  const progress = getDeliveryProgress(order.quantity, order.delivered_quantity);
+  const progress = getDeliveryProgress(order.quantity, order.delivered_quantity, Boolean(order.is_teeth));
   const progressLabel =
     order.request_kind === "informacja"
       ? null

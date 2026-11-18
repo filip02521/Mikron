@@ -1,5 +1,6 @@
 "use client";
 
+import { orderUnit } from "@/lib/orders/individual";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { useMemo, useState } from "react";
 import { actionSetProcurementCancelDisposition } from "@/app/actions/admin";
@@ -88,7 +89,9 @@ function DispositionLineRow({
             <p className="mt-0.5 text-[0.6875rem] text-slate-500">
               {line.symbol && line.symbol !== "-" ? line.symbol : null}
               {line.symbol && line.symbol !== "-" && qtyLabel ? " · " : null}
-              {qtyLabel ? `${qtyLabel} szt.` : null}
+              {qtyLabel
+                ? `${qtyLabel} ${line.isTeeth ? orderUnit(parseInt(qtyLabel, 10) || 0, true) : "szt."}`
+                : null}
             </p>
           ) : null}
         </div>
