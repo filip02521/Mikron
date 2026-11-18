@@ -165,30 +165,32 @@ export async function insertLoanerUnit(
   });
 }
 
-export async function issueLoanerUnit(
-  input: { unitId: string; khId: number | null; clientName: string; clientPhone: string | null; plannedReturn: string; note: string },
-  actor: LoanerActor
-): Promise<LoanerUnit> {
-  return inTx(async (c) => {
-    const u = await lockUnit(c, input.unitId);
-    if (u.status !== "na_stanie") {
-      throw new LoanerStateError(`${u.code} nie jest na stanie${u.currentClientName ? ` (jest u: ${u.currentClientName})` : ""}.`);
-    }
-    await c.query(
-      `UPDATE service_loaner_units
-          SET status = 'u_klienta', current_kh_id = $2, current_client_name = $3, current_client_phone = $4,
-              current_since = now(), planned_return = $5, updated_at = now()
-        WHERE id = $1`,
-      [u.id, input.khId, input.clientName, input.clientPhone, input.plannedReturn]
-    );
-    await addEvent(c, u.id, "issued", actor, {
-      khId: input.khId,
-      clientName: input.clientName,
-      plannedReturn: input.plannedReturn,
-      note: input.note,
-    });
-    return { ...u, status: "u_klienta", currentClientName: input.clientName };
+type IssueInput = { unitId: string; khId: number | null; clientName: string; clientPhone: string | null; plannedReturn: string; note: string };
+
+export async function issueLoanerUnit(input: IssueInput, actor: LoanerActor): Promise<LoanerUnit> {
+  return inTx((c) => issueLoanerUnitIn(c, input, actor));
+}
+
+/** Wydanie w transakcji wołającego — karta zlecenia wydaje i od razu wiąże egzemplarz ze zleceniem. */
+export async function issueLoanerUnitIn(c: PoolClient, input: IssueInput, actor: LoanerActor): Promise<LoanerUnit> {
+  const u = await lockUnit(c, input.unitId);
+  if (u.status !== "na_stanie") {
+    throw new LoanerStateError(`${u.code} nie jest na stanie${u.currentClientName ? ` (jest u: ${u.currentClientName})` : ""}.`);
+  }
+  await c.query(
+    `UPDATE service_loaner_units
+        SET status = 'u_klienta', current_kh_id = $2, current_client_name = $3, current_client_phone = $4,
+            current_since = now(), planned_return = $5, updated_at = now()
+      WHERE id = $1`,
+    [u.id, input.khId, input.clientName, input.clientPhone, input.plannedReturn]
+  );
+  await addEvent(c, u.id, "issued", actor, {
+    khId: input.khId,
+    clientName: input.clientName,
+    plannedReturn: input.plannedReturn,
+    note: input.note,
   });
+  return { ...u, status: "u_klienta", currentClientName: input.clientName };
 }
 
 export async function returnLoanerUnit(

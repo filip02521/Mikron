@@ -1737,7 +1737,9 @@ export async function markInformacjaArrived(
 
 export async function cancelIndividualOrder(
   orderId: string,
-  procurementCancelNote?: string | null
+  procurementCancelNote?: string | null,
+  /** `notify: false` — bez maila do zgłaszającego (anulowanie po jego własnej decyzji, np. anulowane zlecenie serwisu). */
+  opts?: { notify?: boolean }
 ): Promise<ProcurementCancelEmailResult> {
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -1757,6 +1759,7 @@ export async function cancelIndividualOrder(
     );
   }
   scheduleHistoryRetentionPurge();
+  if (opts?.notify === false) return { emailSent: 0 };
   return notifyProcurementCancelForOrders([orderId]);
 }
 

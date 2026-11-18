@@ -6,7 +6,9 @@ import type { SessionUser } from "@/lib/auth";
 import {
   deleteServiceModelPart,
   fetchOrdersByHelpdeskIds,
+  fetchServiceOrderForReport,
   fetchServiceOrdersByClient,
+  issueLoanerForServiceOrder,
   sendServiceOrderQuote,
   type HelpdeskLinkedOrder,
   fetchServiceOrdersBySerial,
@@ -23,6 +25,7 @@ import {
   waitForServicePart,
   takeServiceOrderPart,
   updateServiceOrderWorkNote,
+  updateServiceModelPartQty,
   upsertServiceModelPart,
   type ServiceActor,
 } from "@/lib/data/service-orders";
@@ -42,8 +45,21 @@ import {
 import { parseDateOnly, toDateOnly } from "@/lib/orders/service-loaners";
 import { normalizePurchaseDate, SERVICE_WARRANTY_MONTHS_MAX } from "@/lib/orders/service-warranty";
 import { verifySubiektProduct, type VerifiedSubiektProduct } from "@/lib/subiekt/product-verify";
-import { fetchClientEquipment, fetchClientRecentInvoices, findInvoiceBuyer, type ClientRecentInvoice } from "@/lib/subiekt/client-equipment";
-import { reportServicePartShortage } from "@/lib/data/service-part-report";
+import {
+  fetchClientEquipment,
+  fetchClientEquipmentCard,
+  fetchClientRecentInvoices,
+  fetchPendingQueueWindow,
+  type PendingQueueWindow,
+  findInvoiceBuyer,
+  type ClientEquipmentCard,
+  type ClientRecentInvoice,
+} from "@/lib/subiekt/client-equipment";
+import { saveDeviceModelDecision, saveSerialAssignment } from "@/lib/data/service-equipment-decisions";
+import { fetchWaitingPartsAvailable } from "@/lib/data/service-waiting-parts";
+import { serialKey } from "@/lib/subiekt/client-equipment-trust";
+import { getSubiektDocument } from "@/lib/subiekt/api";
+import { cancelUnorderedServiceOrderRequests, reportServicePartShortage } from "@/lib/data/service-part-report";
 import type { ClientEquipmentItem, InvoiceRepairRef } from "@/lib/subiekt/client-equipment-parse";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import {
@@ -252,7 +268,18 @@ export async function actionMoveServiceOrder(input: {
       const all = (await fetchOrdersByHelpdeskIds([o.helpdeskId])).get(o.helpdeskId) ?? [];
       if (all.every((x) => x.status === "wydane")) synced = await syncHelpdeskStatus(o.helpdeskId, "done", `Wydano sprzęt: ${all.map((x) => x.number).join(", ")}.`);
     }
-    return { message: `${o.number}: ${SERVICE_ORDER_STATUS_LABEL[to]}.${synced}`, orderId: o.id };
+    let requests = "";
+    if (to === "anulowane") {
+      // Niezamówione prośby o części do anulowanego zlecenia — anulowane; błąd nie cofa anulowania zlecenia.
+      try {
+        const r = await cancelUnorderedServiceOrderRequests(o.number);
+        if (r.cancelled.length) requests += ` Anulowano prośby do zakupów: ${r.cancelled.join(", ")}.`;
+        if (r.kept.length) requests += ` Zostają u zakupów (już zamówione): ${r.kept.map((k) => k.product).join(", ")}.`;
+      } catch (e) {
+        requests = ` Nie udało się anulować próśb o części: ${userFacingErrorText(e, "błąd zapisu")}.`;
+      }
+    }
+    return { message: `${o.number}: ${SERVICE_ORDER_STATUS_LABEL[to]}.${synced}${requests}`, orderId: o.id };
   });
 }
 
@@ -356,6 +383,27 @@ export async function actionLinkServiceOrderLoaner(input: { orderId: string; uni
   );
 }
 
+/** „Wydaj zamiennik” z karty zlecenia: egzemplarz z puli dla klienta zlecenia, od razu powiązany. Zwrot: od jutra do roku. */
+export async function actionIssueServiceOrderLoaner(input: { orderId: string; unitId: string; plannedReturn: string }): Promise<ServiceOrderActionResult> {
+  const user = await requireServicePanel("mutate");
+  return run(
+    async () => {
+      const back = text(input.plannedReturn, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(back) || toDateOnly(parseDateOnly(back)) !== back) throw new ServiceOrderStateError("Wybierz termin zwrotu.");
+      const today = new Date();
+      const min = toDateOnly(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1));
+      const max = toDateOnly(new Date(today.getFullYear() + 1, today.getMonth(), today.getDate()));
+      if (back < min || back > max) throw new ServiceOrderStateError("Zwrot zamiennika: od jutra do roku od dziś.");
+      const { order, code } = await issueLoanerForServiceOrder(
+        { orderId: uuid(input.orderId, "zlecenie"), unitId: uuid(input.unitId, "egzemplarz"), plannedReturn: back },
+        actorOf(user)
+      );
+      return { message: `${order.number}: wydano ${code} dla ${order.clientName}.`, orderId: order.id };
+    },
+    [ORDERS_PATH, "/serwis/zamienniki"]
+  );
+}
+
 export async function actionAddServiceModelPart(input: {
   modelTwId: number;
   partTwId: number;
@@ -410,6 +458,24 @@ export async function actionRemoveServiceModelPart(input: { modelTwId: number; p
   );
 }
 
+/** Ilość części zwykle pobierana do naprawy modelu (podpowiedź w karcie zlecenia). */
+export async function actionSetServiceModelPartQty(input: { modelTwId: number; partTwId: number; qty: number }): Promise<ServiceOrderActionResult> {
+  await requireServicePanel("mutate");
+  return run(
+    async () => {
+      const modelId = twId(input.modelTwId);
+      const partId = twId(input.partTwId);
+      if (!modelId || !partId) throw new ServiceOrderStateError("Nieprawidłowa pozycja katalogu. Odśwież stronę.");
+      const qty = Number(input.qty);
+      if (!Number.isInteger(qty) || qty <= 0 || qty > 999) throw new ServiceOrderStateError("Ilość: liczba całkowita od 1 do 999.");
+      const updated = await updateServiceModelPartQty({ modelTwId: modelId, partTwId: partId, qty });
+      if (!updated) throw new ServiceOrderStateError("Tej części już nie ma w katalogu. Odśwież stronę.");
+      return { message: `Zapisano: ${qty} szt. do naprawy.` };
+    },
+    [ORDERS_PATH, "/serwis/modele"]
+  );
+}
+
 /** Okres gwarancji modelu (miesiące); okres domyślny przywraca model do domyślnego. */
 export async function actionSetServiceModelWarranty(input: { modelTwId: number; months: number }): Promise<ServiceOrderActionResult> {
   const user = await requireServicePanel("mutate");
@@ -447,6 +513,88 @@ export async function actionServiceClientEquipment(khId: number, ticketSerials: 
   }
 }
 
+export type ClientCardActionResult =
+  | (ClientEquipmentCard & {
+      ok: true;
+      /** Zlecenia serwisowe klienta w OnTime, najnowsze najpierw; null — baza nie odpowiedziała (sprzęt i tak jest). */
+      orders: SerialHistoryItem[] | null;
+    })
+  | { ok: false; message: string };
+
+/** Karta klienta „Sprzęt klienta”: cały kupiony sprzęt (z SN i bez) z faktur i paragonów oraz jego zlecenia serwisowe. */
+export async function actionServiceClientCard(khId: number): Promise<ClientCardActionResult> {
+  await requireServicePanel("read");
+  const id = twId(khId);
+  if (!id) return { ok: false, message: "Wybierz klienta z podpowiedzi Subiekta." };
+  const orders = await fetchServiceOrdersByClient(id, null, 50).catch(() => null);
+  try {
+    return { ok: true, ...(await fetchClientEquipmentCard(id)), orders };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się pobrać faktur i paragonów klienta z Subiekta.") };
+  }
+}
+
+export type PendingQueueActionResult = ({ ok: true } & PendingQueueWindow) | { ok: false; message: string };
+
+/** Tydzień faktur i paragonów (wszyscy klienci) do `to` włącznie — kolejka pytań „Do potwierdzenia”. */
+const QUEUE_DAYS = 7;
+
+/** Kolejka pytań ze wszystkich klientów: tydzień kończący się `to` (domyślnie dziś). */
+export async function actionServicePendingQueue(input: { to?: string | null } = {}): Promise<PendingQueueActionResult> {
+  await requireServicePanel("read");
+  const today = toDateOnly(new Date());
+  const raw = text(input.to, 10);
+  const to = /^\d{4}-\d{2}-\d{2}$/.test(raw) && raw <= today && raw >= "2016-01-01" ? raw : today;
+  try {
+    return { ok: true, ...(await fetchPendingQueueWindow(to, QUEUE_DAYS)) };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się pobrać faktur z Subiekta.") };
+  }
+}
+
+/** „Czy ten model to urządzenie?” z karty klienta — decyzja dla wszystkich klientów. Nazwa i symbol z Subiekta. */
+export async function actionDecideServiceDeviceModel(input: { twId: number; isDevice: boolean }): Promise<ServiceOrderActionResult> {
+  const user = await requireServicePanel("mutate");
+  return run(async () => {
+    const id = twId(input.twId);
+    if (!id || typeof input.isDevice !== "boolean") throw new ServiceOrderStateError("Wybierz model z karty klienta.");
+    const model = await verifiedProduct(id, "Subiekt nie zna tego modelu.");
+    await saveDeviceModelDecision({ ...model, isDevice: input.isDevice }, actorOf(user).id);
+    return { message: `${model.name}: ${input.isDevice ? "urządzenie" : "nie jest urządzeniem"} — zapisane dla wszystkich klientów.` };
+  }, []);
+}
+
+/**
+ * „Do którego sprzętu należy numer?” z karty klienta. Serwer sprawdza dokument w Subiekcie: numer musi być w jego
+ * uwagach, a wskazany towar na jego pozycjach. `twId` null — numer nie należy do żadnej pozycji.
+ */
+export async function actionAssignServiceSerial(input: { docId: number; serials: string[]; twId: number | null }): Promise<ServiceOrderActionResult> {
+  const user = await requireServicePanel("mutate");
+  return run(async () => {
+    const docId = twId(input.docId);
+    const serials = [...new Set((Array.isArray(input.serials) ? input.serials : []).slice(0, 20).map((s) => text(s, SERVICE_ORDER_TEXT_MAX.serial)))];
+    const target = input.twId == null ? null : twId(input.twId);
+    if (!docId || !serials.length || serials.some((s) => serialKey(s).length < 3) || (input.twId != null && !target)) {
+      throw new ServiceOrderStateError("Wybierz numer i sprzęt z karty klienta.");
+    }
+    let doc: Awaited<ReturnType<typeof getSubiektDocument>>;
+    try {
+      doc = await getSubiektDocument(docId);
+    } catch {
+      throw new ServiceOrderStateError("Nie udało się odczytać dokumentu z Subiektu. Spróbuj za chwilę.");
+    }
+    const notes = serialKey(String(doc.dok_Uwagi ?? ""));
+    const missing = serials.find((s) => !notes.includes(serialKey(s)));
+    if (missing) throw new ServiceOrderStateError(`Numeru ${missing} nie ma w uwagach dokumentu.`);
+    const line = target == null ? null : (doc.dok_Pozycja ?? []).find((l) => Math.trunc(Number(l.ob_TowId)) === target);
+    if (target != null && !line) throw new ServiceOrderStateError("Tego towaru nie ma na dokumencie.");
+    const model = line ? { twId: target!, symbol: line.tw_Symbol?.trim() || null, name: line.tw_Nazwa?.trim() || line.tw_Symbol?.trim() || `Towar ${target}` } : null;
+    for (const serial of serials) await saveSerialAssignment({ docId, serial, serialKey: serialKey(serial), model }, actorOf(user).id);
+    const list = serials.join(", ");
+    return { message: model ? `SN ${list} → ${model.name}.` : `SN ${list} — ${serials.length > 1 ? "nie należą" : "nie należy"} do żadnej pozycji.` };
+  }, []);
+}
+
 export async function actionWaitForServicePart(input: {
   orderId: string;
   partTwId?: number | null;
@@ -480,7 +628,7 @@ export async function actionWaitForServicePart(input: {
         } else {
           // Czekanie jest już zapisane; nieudane zgłoszenie tylko to mówi (można zgłosić z ekranu części).
           try {
-            const res = await reportServicePartShortage({ twId: part.twId, quantity: qty, note: order.number }, user);
+            const res = await reportServicePartShortage({ twId: part.twId, quantity: qty, note: order.number }, user, { symbol: part.symbol, name: part.name });
             reported = res.ok ? ` ${res.message}` : ` Nie zgłoszono zakupom: ${res.message}`;
           } catch (e) {
             reported = ` Nie zgłoszono zakupom: ${userFacingErrorText(e, "błąd zapisu prośby")}.`;
@@ -491,6 +639,39 @@ export async function actionWaitForServicePart(input: {
     },
     [ORDERS_PATH, "/serwis"]
   );
+}
+
+/**
+ * „Zgłoś brak zakupom” z karty czekającego zlecenia, gdy prośby nie ma (nie zaznaczono, nie udało się, zakupy ją
+ * anulowały). Część i ilość z zapisanego czekania; ponowne kliknięcie nie dubluje aktywnej prośby.
+ */
+export async function actionReportServiceOrderWaitingPart(input: { orderId: string }): Promise<ServiceOrderActionResult> {
+  const user = await requireServicePanel("mutate");
+  return run(
+    async () => {
+      const order = await fetchServiceOrderForReport(uuid(input.orderId, "zlecenie"));
+      if (!order) throw new ServiceOrderStateError("Nie ma takiego zlecenia. Odśwież listę.");
+      const part = order.waitingPart;
+      if (order.status !== "czeka_na_czesc" || !part) throw new ServiceOrderStateError(`${order.number} nie czeka na część.`);
+      if (part.twId == null) throw new ServiceOrderStateError("Część spoza Subiekta — zakupy nie przyjmą prośby bez towaru. Wybierz część z Subiektu.");
+      const res = await reportServicePartShortage({ twId: part.twId, quantity: part.qty, note: order.number }, user, {
+        symbol: part.symbol,
+        name: part.name,
+      });
+      if (!res.ok) throw new ServiceOrderStateError(res.message);
+      return { message: `${order.number}: ${res.message}`, orderId: order.id };
+    },
+    [ORDERS_PATH, "/serwis"]
+  );
+}
+
+/** Ile części jest do wzięcia (stan − rezerwacje − pobrane bez RW) — formularz „czeka na część”. null = nie wiadomo. */
+export async function actionServicePartAvailable(partTwId: number): Promise<number | null> {
+  await requireServicePanel("read");
+  const id = twId(partTwId);
+  if (!id) return null;
+  const map = await fetchWaitingPartsAvailable([id]).catch(() => new Map<number, number>());
+  return map.get(id) ?? null;
 }
 
 export async function actionSetServiceOrderInvoice(input: { orderId: string; fsId?: number | null; fsNumber: string }): Promise<ServiceOrderActionResult> {

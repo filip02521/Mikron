@@ -217,9 +217,18 @@ export function ProductPicker({
           ))}
         </ul>
       ) : null}
-      {hint ? <p className="mt-1 text-xs text-slate-500">{hint}</p> : null}
+      {/* Wolny tekst (np. nazwa ze zgłoszenia): jedno zdanie — czy Subiekt ma podpowiedzi i co będzie bez wyboru. */}
       {allowFreeText && value && value.twId == null && value.name && freeTextHint ? (
-        <p className="mt-1 text-xs text-slate-500">{freeTextHint}</p>
+        <p className="mt-1 text-xs text-slate-600">
+          {items.length
+            ? `To jeszcze nie towar z Subiekta — stuknij pole i wybierz z podpowiedzi (${items.length}).`
+            : hint
+              ? `Subiekt nie zna tej nazwy — skróć ją (np. sam model) i wybierz z podpowiedzi.`
+              : null}{" "}
+          {freeTextHint}
+        </p>
+      ) : hint ? (
+        <p className="mt-1 text-xs text-slate-500">{hint}</p>
       ) : null}
     </div>
   );

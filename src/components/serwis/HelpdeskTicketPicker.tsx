@@ -16,7 +16,18 @@ import { linkedOrderLine, matchHelpdeskTickets } from "@/components/serwis/helpd
 
 type Linked = Readonly<Record<number, readonly HelpdeskLinkedOrder[]>>;
 
-function TicketRow({ ticket: t, orders, onPick }: { ticket: HelpdeskTicket; orders: readonly HelpdeskLinkedOrder[]; onPick: () => void }) {
+/** `showStatus` tylko w wynikach z całego helpdesku — na liście otwartych każde ma ten sam status. */
+function TicketRow({
+  ticket: t,
+  orders,
+  onPick,
+  showStatus = false,
+}: {
+  ticket: HelpdeskTicket;
+  orders: readonly HelpdeskLinkedOrder[];
+  onPick: () => void;
+  showStatus?: boolean;
+}) {
   const who = t.company || t.name || t.email;
   return (
     <li>
@@ -31,7 +42,7 @@ function TicketRow({ ticket: t, orders, onPick }: { ticket: HelpdeskTicket; orde
             <span className="text-sm font-semibold text-slate-900">{t.product || "Sprzęt bez nazwy"}</span>
           </span>
           <span className="text-[0.8125rem] text-slate-500">
-            {[who, t.status, t.deliveryId ? DELIVERY_LABEL[t.deliveryId] : null].filter(Boolean).join(" · ")}
+            {[who, showStatus ? t.status : null, t.deliveryId ? DELIVERY_LABEL[t.deliveryId] : null].filter(Boolean).join(" · ")}
           </span>
           {orders.length ? <span className="text-[0.8125rem] text-amber-900">Przyjęto już: {orders.map(linkedOrderLine).join("; ")}</span> : null}
         </span>
@@ -153,7 +164,7 @@ export function HelpdeskTicketPicker({
             </p>
             <ul className="divide-y divide-[var(--sv-rule)]">
               {shownRemote.map((t) => (
-                <TicketRow key={t.id} ticket={t} orders={t.orders} onPick={() => onPick(t.id, t)} />
+                <TicketRow key={t.id} ticket={t} orders={t.orders} showStatus onPick={() => onPick(t.id, t)} />
               ))}
             </ul>
           </div>

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildServicePartRows,
   servicePartStockState,
+  needsReport,
   summarizeServiceParts,
 } from "./service-parts-overview";
 
@@ -35,14 +36,24 @@ describe("buildServicePartRows", () => {
     ]);
   });
 
-  it("counts parts still to request", () => {
+  it("counts parts still to request — poniżej minimum dokupi silnik ZD, więc nie do zgłoszenia", () => {
     expect(summarizeServiceParts(rows)).toEqual({
       total: 3,
       missing: 1,
       belowMin: 1,
       requested: 1,
-      toRequest: 1,
+      toRequest: 0,
     });
+  });
+
+  it("needsReport: brak bez minimum i bez prośby — tak; z minimum albo z prośbą — nie", () => {
+    const base = { state: "brak" as const, requests: [], minStock: null };
+    expect(needsReport(base)).toBe(true);
+    expect(needsReport({ ...base, minStock: 2 })).toBe(false);
+    // Minimum bez dostawcy (nikt jeszcze tej części nie zamawiał) — silnik nie wie u kogo, trzeba zgłosić.
+    expect(needsReport({ ...base, minStock: 2, supplierName: null })).toBe(true);
+    expect(needsReport({ ...base, requests: [{ status: "Nowe" as const, quantity: "1", createdAt: "" }] })).toBe(false);
+    expect(needsReport({ ...base, state: "ok" as const })).toBe(false);
   });
 });
 

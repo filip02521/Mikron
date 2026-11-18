@@ -22,13 +22,17 @@ export type ServicePartRow = {
   state: ServicePartStockState;
   /** Aktywne prośby (Nowe / Weryfikacja / Zamówione) — tylko one odblokowują towar w ZD. */
   requests: ServicePartRequest[];
+  /** Dostawca, u którego zakupy dokupią do minimum (przypięty albo ostatni z historii ZD); null — nie wiadomo u kogo. */
+  supplierName?: string | null;
 };
 
-/** Statusy prośby, przy których towar jest „zgłoszony” (jeszcze nie przyjęty ani anulowany). */
+/** Statusy prośby, przy których towar jest „zgłoszony” (jeszcze nie przyjęty w całości ani anulowany). */
 export const SERVICE_PART_ACTIVE_REQUEST_STATUSES: readonly IndividualOrderStatus[] = [
   "Nowe",
   "Weryfikacja",
   "Zamowione",
+  // Część sztuk dotarła, reszta wciąż zamówiona — prośba żyje, część nie jest „do zgłoszenia” drugi raz.
+  "Czesciowo_zrealizowane",
 ];
 
 function finite(n: unknown): number {
@@ -62,6 +66,7 @@ export function buildServicePartRows(input: {
   minStockByTwId: ReadonlyMap<number, number>;
   requestsByTwId: ReadonlyMap<number, ServicePartRequest[]>;
   takenWithoutRwByTwId?: ReadonlyMap<number, number>;
+  supplierNameByTwId?: ReadonlyMap<number, string>;
 }): ServicePartRow[] {
   const seen = new Set<number>();
   const rows: ServicePartRow[] = [];
@@ -86,6 +91,8 @@ export function buildServicePartRows(input: {
       minStock,
       state: servicePartStockState(available, minStock),
       requests: input.requestsByTwId.get(twId) ?? [],
+      // Bez mapy dostawców pole zostaje puste („nie sprawdzano”), a nie null („nie ma dostawcy”).
+      ...(input.supplierNameByTwId ? { supplierName: input.supplierNameByTwId.get(twId) ?? null } : {}),
     });
   }
   const rank: Record<ServicePartStockState, number> = { brak: 0, ponizej_min: 1, ok: 2 };
@@ -99,9 +106,19 @@ export type ServicePartsSummary = {
   missing: number;
   belowMin: number;
   requested: number;
-  /** Bez stanu lub poniżej minimum i bez aktywnej prośby — do zgłoszenia. */
+  /** Bez stanu, bez minimum i bez aktywnej prośby — do zgłoszenia (część z minimum dokupi silnik ZD). */
   toRequest: number;
 };
+
+/** Minimum zamawia silnik ZD sam — o ile wiadomo, u kogo (`supplierName` null = nie wiadomo; brak pola = nie sprawdzano). */
+export function autoRestocks(r: Pick<ServicePartRow, "minStock" | "supplierName">): boolean {
+  return (r.minStock ?? 0) > 0 && r.supplierName !== null;
+}
+
+/** Brak albo mało, nikt nie prosił i silnik sam nie dokupi — bez zgłoszenia nikt tej części nie zamówi. */
+export function needsReport(r: Pick<ServicePartRow, "state" | "requests" | "minStock" | "supplierName">): boolean {
+  return r.state !== "ok" && r.requests.length === 0 && !autoRestocks(r);
+}
 
 export function summarizeServiceParts(rows: readonly ServicePartRow[]): ServicePartsSummary {
   let missing = 0;
@@ -112,7 +129,7 @@ export function summarizeServiceParts(rows: readonly ServicePartRow[]): ServiceP
     if (r.state === "brak") missing += 1;
     if (r.state === "ponizej_min") belowMin += 1;
     if (r.requests.length > 0) requested += 1;
-    else if (r.state !== "ok") toRequest += 1;
+    else if (needsReport(r)) toRequest += 1;
   }
   return { total: rows.length, missing, belowMin, requested, toRequest };
 }

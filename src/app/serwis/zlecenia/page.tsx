@@ -79,6 +79,9 @@ export default async function ZleceniaPage() {
           loaners={data.loaners
             .filter((u) => u.status === "u_klienta")
             .map((u) => ({ id: u.id, code: u.code, twName: u.twName, clientName: u.currentClientName, khId: u.currentKhId }))}
+          freeLoaners={data.loaners
+            .filter((u) => u.status === "na_stanie")
+            .map((u) => ({ id: u.id, code: u.code, twName: u.twName, condition: u.condition }))}
           modelParts={data.modelParts.map((m) => ({
             modelTwId: m.modelTwId,
             partTwId: m.partTwId,
