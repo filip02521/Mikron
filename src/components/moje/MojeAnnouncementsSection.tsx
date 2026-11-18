@@ -159,14 +159,11 @@ export function MojeAnnouncementsSection({
   readAnnouncementIds,
   focusAnnouncementId = null,
   tourDemo = false,
-  shellPinnedAnnouncementIds = [],
 }: {
   announcements: DepartmentBoardAnnouncementsSlice["announcements"];
   readAnnouncementIds: string[];
   focusAnnouncementId?: string | null;
   tourDemo?: boolean;
-  /** Ogłoszenia już widoczne w pasku AppShell — ukryte z listy (chyba że focus/szukaj). */
-  shellPinnedAnnouncementIds?: string[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -189,12 +186,28 @@ export function MojeAnnouncementsSection({
     () => window.matchMedia("(min-width: 640px)").matches,
     () => true
   );
-  const autoSectionExpanded = Boolean(focusAnnouncementId) || (initialUnread > 0 && isDesktop);
+  // Raz otwarta sama (nowe ogłoszenie albo link „Czytaj”) sekcja zostaje otwarta: odczyt ostatniego nowego ogłoszenia
+  // i zamknięcie wskazanego zmieniają dane z serwera, a sekcja zwijała się wtedy spod palca.
+  const [keptOpenByUnread, setKeptOpenByUnread] = useState(initialUnread > 0);
+  if (initialUnread > 0 && !keptOpenByUnread) setKeptOpenByUnread(true);
+  const [keptOpenByFocus, setKeptOpenByFocus] = useState(Boolean(focusAnnouncementId));
+  if (focusAnnouncementId && !keptOpenByFocus) setKeptOpenByFocus(true);
+  const autoSectionExpanded = keptOpenByFocus || (keptOpenByUnread && isDesktop);
   const [hashExpand] = useState(() => hashRequestsAnnouncementsExpand());
   const [userSectionExpanded, setUserSectionExpanded] = useState<boolean | null>(null);
   const sectionExpanded = userSectionExpanded ?? (autoSectionExpanded || hashExpand);
   const [userOpenRowId, setUserOpenRowId] = useState<string | null>(null);
   const [dismissedFocusId, setDismissedFocusId] = useState<string | null>(null);
+  // Nowy link „Czytaj” (inne ?ogloszenie=) wygrywa z wierszem otwartym wcześniej na tej samej stronie.
+  const [seenFocusId, setSeenFocusId] = useState(focusAnnouncementId);
+  if (focusAnnouncementId !== seenFocusId) {
+    setSeenFocusId(focusAnnouncementId);
+    if (focusAnnouncementId) {
+      setUserOpenRowId(null);
+      setDismissedFocusId(null);
+      setUserSectionExpanded(null);
+    }
+  }
   const effectiveFocusId =
     focusAnnouncementId && focusAnnouncementId !== dismissedFocusId
       ? focusAnnouncementId
@@ -213,17 +226,14 @@ export function MojeAnnouncementsSection({
     router.replace(qs ? `/moje?${qs}` : "/moje", { scroll: false });
   };
 
-  const shellPinnedIds = useMemo(
-    () => new Set(shellPinnedAnnouncementIds),
-    [shellPinnedAnnouncementIds]
-  );
-
   const searchNeedle = search.trim();
-  const listAnnouncements = useMemo(() => {
-    if (searchNeedle || effectiveFocusId) return announcements;
-    if (shellPinnedIds.size === 0) return announcements;
-    return announcements.filter((row) => !shellPinnedIds.has(row.id));
-  }, [announcements, effectiveFocusId, searchNeedle, shellPinnedIds]);
+  // Wszystkie aktywne ogłoszenia, przypięte też (na /moje pas „Przypięte” jest ukryty — to lista je pokazuje).
+  const listAnnouncements = announcements;
+
+  // Kolejność z chwili wejścia na stronę: przeczytane ogłoszenie nie zjeżdża spod palca do „przeczytanych”.
+  const [initialOrder] = useState(() =>
+    sortAnnouncementsForMoje(announcements, new Set(readAnnouncementIds)).map((row) => row.id)
+  );
 
   const unreadCount = useMemo(
     () => listAnnouncements.filter((a) => !readIds.has(a.id)).length,
@@ -235,10 +245,16 @@ export function MojeAnnouncementsSection({
     [listAnnouncements, search]
   );
 
-  const sorted = useMemo(
-    () => sortAnnouncementsForMoje(filtered, readIds),
-    [filtered, readIds]
-  );
+  const sorted = useMemo(() => {
+    const rank = new Map(initialOrder.map((id, i) => [id, i]));
+    // Ogłoszenia, które doszły po wejściu (odświeżenie), idą na górę w zwykłym porządku.
+    const fresh = sortAnnouncementsForMoje(
+      filtered.filter((row) => !rank.has(row.id)),
+      readIds
+    );
+    const known = filtered.filter((row) => rank.has(row.id)).sort((a, b) => rank.get(a.id)! - rank.get(b.id)!);
+    return [...fresh, ...known];
+  }, [filtered, readIds, initialOrder]);
 
   useDeepLinkScrollOnce(
     effectiveFocusId && !focusAnnouncementMissing
@@ -248,26 +264,7 @@ export function MojeAnnouncementsSection({
     180
   );
 
-  if (listAnnouncements.length === 0 && announcements.length === 0) return null;
-  if (listAnnouncements.length === 0 && announcements.length > 0) {
-    return (
-      <div id={MOJE_ANNOUNCEMENTS_SECTION_ID} className="scroll-mt-24">
-        <div className={announcementsCardClass}>
-          <div className="flex w-full items-center gap-2.5 border-b border-slate-100 bg-slate-50/60 px-3 py-2.5 sm:px-4">
-            <span className="min-w-0 flex-1">
-              <span className={cn(salesTypography.blockTitle, "text-slate-900")}>
-                {DEPARTMENT_BOARD_ANNOUNCEMENTS_EXPLAINER.title}
-              </span>
-              <span className={cn(salesTypography.sectionHint, "ml-1.5")}>
-                · przypięte u góry strony
-              </span>
-            </span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  if (announcements.length === 0) return null;
   function markReadLocally(id: string) {
     setOptimisticReadIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
   }

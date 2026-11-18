@@ -17,7 +17,8 @@ describe("salesTeamPageCopy", () => {
     expect(copy.description).toContain("Użytkownicy");
   });
 
-  it("kierownik bez scope - komunikat o adminie", () => {
+  // Prośbę o przypisanie grup mówi baner w layoucie /zespol — opis strony jej nie powtarza (każdy fakt raz).
+  it("kierownik bez scope - opis strony bez powtórzenia banera o adminie", () => {
     const copy = salesTeamPageCopy(
       {
         isAdmin: false,
@@ -28,7 +29,8 @@ describe("salesTeamPageCopy", () => {
       },
       "overview"
     );
-    expect(copy.description).toContain("administratora");
+    expect(copy.description).not.toContain("administratora");
+    expect(copy.description).toContain("Twoich grup");
   });
 
   it("kierownik ze scope - bez obietnicy tworzenia grup", () => {

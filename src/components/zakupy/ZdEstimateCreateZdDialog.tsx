@@ -154,6 +154,7 @@ export function ZdEstimateCreateZdDialog({
     teethServiceCount?: number;
     includedServiceOrderIds?: string[];
     acceptedCatalogOrderIds?: string[];
+    stockOutClosedCount?: number;
   }) => void;
   onError: (
     message: string,
@@ -466,6 +467,7 @@ export function ZdEstimateCreateZdDialog({
         teethServiceCount: res.teethServiceCount,
         includedServiceOrderIds: res.includedServiceOrderIds,
         acceptedCatalogOrderIds: res.acceptedCatalogOrderIds,
+        stockOutClosedCount: res.stockOutClosedCount,
       });
     });
   };

@@ -48,8 +48,9 @@ import { actionCreateQuestion } from "@/app/actions/department-board";
 import { convertEmoticons } from "@/lib/ui/emoticons";
 import { useBoardQuestionImages } from "@/components/department-board/useBoardQuestionImages";
 import {
-  emptyBoardQuestionProductDraft,
-  type BoardQuestionProductDraft,
+  initialBoardQuestionProductRows,
+  newBoardQuestionProductRow,
+  type BoardQuestionProductRow,
 } from "@/lib/department-board/question-product";
 import { useDeepLinkScrollOnce } from "@/hooks/use-deep-link-scroll-once";
 import { useDepartmentBoardSalesQuestionUrl } from "@/hooks/use-department-board-sales-question-url";
@@ -156,8 +157,8 @@ export function DepartmentBoardSalesClient({
   const focusQuestionMissing = Boolean(focusQuestionId && !focusedQuestion);
   const [questionTitle, setQuestionTitle] = useState("");
   const [questionBody, setQuestionBody] = useState("");
-  const [questionProduct, setQuestionProduct] = useState<BoardQuestionProductDraft>(
-    emptyBoardQuestionProductDraft()
+  const [questionProducts, setQuestionProducts] = useState<BoardQuestionProductRow[]>(
+    initialBoardQuestionProductRows
   );
   const [questionFormError, setQuestionFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -219,18 +220,18 @@ export function DepartmentBoardSalesClient({
       const result = await actionCreateQuestion(
         questionTitle,
         convertEmoticons(questionBody),
-        {
-          symbol: questionProduct.symbol,
-          productName: questionProduct.product,
-          subiektTwId: questionProduct.subiektTwId,
-          mikranCode: questionProduct.mikranCode,
-        },
+        questionProducts.map(({ draft }) => ({
+          symbol: draft.symbol,
+          productName: draft.product,
+          subiektTwId: draft.subiektTwId,
+          mikranCode: draft.mikranCode,
+        })),
         imageFiles,
         docFiles
       );
       setQuestionTitle("");
       setQuestionBody("");
-      setQuestionProduct(emptyBoardQuestionProductDraft());
+      setQuestionProducts(initialBoardQuestionProductRows());
       clearImages();
       const nextFilter = currentSalesPersonId ? "mine" : "all";
       setQuestionFilter(nextFilter);
@@ -327,7 +328,7 @@ export function DepartmentBoardSalesClient({
               embedded
               title={questionTitle}
               body={questionBody}
-              product={questionProduct}
+              products={questionProducts}
               attachments={questionAttachments}
               error={questionFormError}
               saving={saving}
@@ -336,9 +337,13 @@ export function DepartmentBoardSalesClient({
               hasQuestions={board.questions.length > 0}
               onTitleChange={setQuestionTitle}
               onBodyChange={setQuestionBody}
-              onProductChange={(patch) =>
-                setQuestionProduct((current) => ({ ...current, ...patch }))
+              onProductChange={(key, patch) =>
+                setQuestionProducts((rows) =>
+                  rows.map((row) => (row.key === key ? { ...row, draft: { ...row.draft, ...patch } } : row))
+                )
               }
+              onAddProduct={() => setQuestionProducts((rows) => [...rows, newBoardQuestionProductRow()])}
+              onRemoveProduct={(key) => setQuestionProducts((rows) => rows.filter((row) => row.key !== key))}
               onSubmit={() => submitQuestion()}
             />
           ) : null}

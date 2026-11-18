@@ -142,7 +142,7 @@ export function ManagerPreviewBanner({
       ) : scope !== "prosba" ? (
         <Link href={`/prosba?dla=${salesPersonId}`}>
           <Button size="sm" variant="secondary" className={salesTouchTargetClass}>
-            Prośba w jego imieniu
+            Zgłoś prośbę w imieniu handlowca
           </Button>
         </Link>
       ) : null}

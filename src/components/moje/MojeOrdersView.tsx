@@ -321,7 +321,8 @@ function MojeOrdersViewContent({
   syncSearchUrl = true,
   tourPreview = false,
   showSalesSync = false,
-  dayStartContext = null,
+  // Dawniej źródło przypiętych ogłoszeń ukrywanych z listy; lista pokazuje teraz wszystkie (pas na /moje ukryty).
+  dayStartContext: _dayStartContext = null,
   boardAnnouncements = null,
   boardAnnouncementsError = null,
   focusAnnouncementId = null,
@@ -552,12 +553,6 @@ function MojeOrdersViewContent({
   );
   const dayStartActionCount = inbox?.count ?? needsActionTotal;
 
-  const shellPinnedAnnouncementIds = useMemo(
-    () =>
-      dayStartContext?.boardAttention?.pinnedAnnouncements.map((row) => row.id) ?? [],
-    [dayStartContext]
-  );
-
   const announcementsPanel = boardAnnouncementsError ? (
     <Alert tone="error">{boardAnnouncementsError}</Alert>
   ) : boardAnnouncements && boardAnnouncements.announcements.length > 0 ? (
@@ -566,7 +561,6 @@ function MojeOrdersViewContent({
         readAnnouncementIds={boardAnnouncements.readAnnouncementIds}
         focusAnnouncementId={effectiveFocusAnnouncementId}
         tourDemo={tourPreview}
-        shellPinnedAnnouncementIds={shellPinnedAnnouncementIds}
       />
     ) : null;
 

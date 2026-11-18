@@ -107,6 +107,7 @@ import {
 } from "@/lib/orders/zd-estimate-scope-coverage";
 import type { ZdEstimateExclusionRow } from "@/lib/data/zd-estimate-exclusions";
 import type { ZdProsbaElsewhere } from "@/lib/data/zd-scope-order";
+import type { ZdStockOutBadge } from "@/lib/orders/stock-out-signals";
 import type { ZdEstimateOnRequestRow } from "@/lib/data/zd-estimate-on-request";
 import { isServicePartOnRequestRow } from "@/lib/orders/service-parts";
 import type { ZdEstimatePackagingRow } from "@/lib/data/zd-estimate-packaging";
@@ -1190,6 +1191,8 @@ export function ZdEstimateWorkbench({
     otherSupplierHintByTwId: Record<number, string>;
     /** tw → wiszące prośby na ten towar u innego dostawcy. */
     prosbyElsewhereByTwId?: Record<number, ZdProsbaElsewhere[]>;
+    /** tw → zgłoszenia „brak na stanie” od handlowców. */
+    stockOutByTwId?: Record<number, ZdStockOutBadge>;
     /** Prośby dostawcy w Weryfikacji (poza Kreatorem); null = nie policzono. */
     incompleteProsbyCount?: number | null;
     /** Rozbicie horyzontu, gdy Policz liczył z czasem dostawy. */
@@ -4285,6 +4288,7 @@ export function ZdEstimateWorkbench({
           assignedElsewhere: res.assignedElsewhere ?? [],
           otherSupplierHintByTwId: res.otherSupplierHintByTwId ?? {},
           prosbyElsewhereByTwId: res.prosbyElsewhereByTwId ?? {},
+          stockOutByTwId: res.stockOutByTwId ?? {},
           incompleteProsbyCount: res.incompleteProsbyCount ?? null,
           horizon: res.horizon ?? null,
           leadDays: res.leadDays ?? null,
@@ -8390,6 +8394,7 @@ export function ZdEstimateWorkbench({
                           onAcceptReview={handleRowAcceptReview}
                           otherSupplierHint={policzScopeInfo?.otherSupplierHintByTwId[l.tw_Id] ?? null}
                           prosbyElsewhere={policzScopeInfo?.prosbyElsewhereByTwId?.[l.tw_Id] ?? null}
+                          stockOut={policzScopeInfo?.stockOutByTwId?.[l.tw_Id] ?? null}
                           unitPriceNet={effectiveUnitPriceByTwId[l.tw_Id] ?? null}
                           skuClass={skuClassByTwId.get(l.tw_Id) ?? null}
                         />
@@ -9441,6 +9446,7 @@ export function ZdEstimateWorkbench({
             omittedServiceCount,
             includedServiceOrderIds,
             acceptedCatalogOrderIds,
+            stockOutClosedCount,
           }) => {
             void endExternalSession();
             const previewSnap =
@@ -9490,6 +9496,7 @@ export function ZdEstimateWorkbench({
                 markFreeze: freezeFinal,
                 bumped,
                 composedUwagi,
+                stockOutClosedCount,
               })
             );
             rememberConsumedOrderIds(freezeFinal.consumedOrderIds);

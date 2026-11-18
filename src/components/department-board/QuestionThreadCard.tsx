@@ -199,6 +199,7 @@ export function QuestionThreadCard({
     hasProduct && question.product_symbol?.trim() && !question.title.includes(question.product_symbol.trim())
       ? question.product_symbol.trim()
       : null;
+  const extraProductCount = hasProduct ? (question.extraProducts?.length ?? 0) : 0;
 
   let procurementReplyIndex = 0;
 
@@ -441,6 +442,11 @@ export function QuestionThreadCard({
                     {productSymbolHint}
                   </span>
                 ) : null}
+                {extraProductCount > 0 ? (
+                  <span className="shrink-0 text-[0.6875rem] font-medium text-slate-500">
+                    +{extraProductCount} {polishPluralWord(extraProductCount, "produkt", "produkty", "produktów")}
+                  </span>
+                ) : null}
                 {threadPhotoCount > 0 ? (
                   <span className="inline-flex shrink-0 items-center gap-1 text-[0.6875rem] font-medium text-slate-500" title={`W wątku: ${photoLabel(threadPhotoCount)}`}>
                     <IconCamera size={12} className="shrink-0" aria-hidden />
@@ -525,7 +531,7 @@ export function QuestionThreadCard({
         <div className={boardQuestionExpandedShellClass}>
         {hasProduct ? (
           <BoardQuestionProductContext
-            product={question}
+            products={[question, ...(question.extraProducts ?? [])]}
             showQuickProsba={audience === "sales"}
             threadId={question.id}
           />

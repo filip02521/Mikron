@@ -43,9 +43,9 @@ export function formatSalesPersonAccountStatus(
 ): string {
   if (!row.linkedUserEmail) return "Brak konta";
   const activity = formatAccountDate(row.linkedUserLastActivityAt);
-  if (activity) return `Aktyw. ${activity}`;
+  if (activity) return `Aktywność ${activity}`;
   if (row.linkedUserLastSignInAt) {
-    return `Log. ${formatAccountDate(row.linkedUserLastSignInAt) ?? "-"}`;
+    return `Logowanie ${formatAccountDate(row.linkedUserLastSignInAt) ?? "-"}`;
   }
   return "Brak aktywności";
 }

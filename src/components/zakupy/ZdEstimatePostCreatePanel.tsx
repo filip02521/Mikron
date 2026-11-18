@@ -65,11 +65,16 @@ import {
   controlFocusClass,
 } from "@/lib/ui/ontime-theme";
 import { BrandLoader } from "@/components/ui/BrandLoader";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 /**
  * Panel po utworzeniu bez okna — w panelu bocznym propozycji ZD (tytuł, treść i stopka w miejscu).
  * Te same właściwości co ModalShell, żeby podmiana była jedną linią.
  */
+function stockOutClosedLabel(n: number): string {
+  return `Zamknięto ${n} ${polishPluralWord(n, "zgłoszenie", "zgłoszenia", "zgłoszeń")} braku na stanie od handlowców`;
+}
+
 function InlineShell({ title, titleId, footer, children }: React.ComponentProps<typeof ModalShell>) {
   return (
     <section aria-labelledby={titleId} className="space-y-4">
@@ -833,6 +838,7 @@ export function ZdEstimatePostCreatePanel({
         ) : null}
 
         {session.bumped.length > 0 ||
+        (session.stockOutClosedCount ?? 0) > 0 ||
         session.markFreeze.omittedServiceCount > 0 ||
         session.markFreeze.teethServiceCount > 0 ? (
           <ul className="space-y-1 text-xs leading-relaxed">
@@ -847,6 +853,12 @@ export function ZdEstimatePostCreatePanel({
                   </span>
                 ))}
                 .
+              </li>
+            ) : null}
+            {(session.stockOutClosedCount ?? 0) > 0 ? (
+              <li className="text-emerald-800">
+                {stockOutClosedLabel(session.stockOutClosedCount ?? 0)} - znikają z panelu dziennego, nie trzeba ich
+                odklikiwać.
               </li>
             ) : null}
             {session.markFreeze.omittedServiceCount > 0 ? (

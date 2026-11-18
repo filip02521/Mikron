@@ -67,6 +67,8 @@ export function NotatnikTabBar({
     notes: notesCount,
     archive: archiveCount,
   };
+  // Jedna zakładka (np. bez archiwum) to nie wybór — pasek nic by nie przełączał, a wyglądałby jak nawigacja.
+  if (tabs.length <= 1) return null;
   const activeMeta =
     value === "archive" && archiveScope !== "all"
       ? ARCHIVE_TAB_META[archiveScope]

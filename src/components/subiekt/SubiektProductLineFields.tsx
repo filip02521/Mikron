@@ -1136,7 +1136,7 @@ export function SubiektProductLineFields({
       </div>
 
       <Field
-        label="Mikran"
+        label="Kod Mikran"
         className={cn(
           "w-full shrink-0",
           compactControls ? "sm:w-[5.75rem]" : "sm:w-[6.75rem]"

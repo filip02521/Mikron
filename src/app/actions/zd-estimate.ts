@@ -120,6 +120,7 @@ import { bomRowsToRefs } from "@/lib/orders/zd-estimate-bom";
 import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
 import { fetchSuppliersWithSchedules } from "@/lib/data/queries";
 import { processIndividualFromSummary, markStandardOrdered } from "@/lib/services/orders";
+import { closeStockOutSignalsForCreatedZd } from "@/lib/orders/stock-out-signals-db";
 import {
   defaultZdCreateUwagi,
   buildZdCreateApiBody,
@@ -437,6 +438,8 @@ export type ZdEstimateRunResult =
       otherSupplierHintByTwId?: Record<number, string>;
       /** tw → wiszące prośby na ten towar u innego dostawcy (podpowiedź). */
       prosbyElsewhereByTwId?: Record<number, import("@/lib/data/zd-scope-order").ZdProsbaElsewhere[]>;
+      /** tw → aktywne zgłoszenia „brak na stanie” od handlowców. */
+      stockOutByTwId?: Record<number, import("@/lib/orders/stock-out-signals").ZdStockOutBadge>;
       /** Prośby dostawcy w Weryfikacji (poza Kreatorem); null = nie policzono. */
       incompleteProsbyCount?: number | null;
       /** Rozbicie horyzontu, gdy opcja czasu dostawy była zaznaczona. */
@@ -2461,6 +2464,7 @@ export async function actionRunZdEstimateManual(
       assignedElsewhere: engine.assignedElsewhere,
       otherSupplierHintByTwId: engine.otherSupplierHintByTwId,
       prosbyElsewhereByTwId: engine.prosbyElsewhereByTwId,
+      stockOutByTwId: engine.stockOutByTwId,
       incompleteProsbyCount: engine.incompleteProsbyCount,
       horizon: appliedHorizon,
       leadDays,
@@ -4049,6 +4053,8 @@ export type ZdEstimateCreateZdResult =
       includedServiceOrderIds?: string[];
       /** Catalog IDs zaakceptowane przez serwer (Nowe + extras). */
       acceptedCatalogOrderIds?: string[];
+      /** Zgłoszenia „brak na stanie” na towary z tego ZD — zamknięte automatycznie. */
+      stockOutClosedCount?: number;
     }
   | {
       ok: false;
@@ -4597,8 +4603,20 @@ export async function actionCreateZdFromEstimate(input: {
     });
   };
 
-  const withCreate = <T extends Record<string, unknown>>(base: T) => ({
+  // ZD już jest w Subiekcie: zgłoszenia braku na te towary zamykamy od razu (błąd nie psuje wyniku Create).
+  const withCreate = async <T extends Record<string, unknown>>(base: T) => ({
     ...base,
+    stockOutClosedCount: (
+      await closeStockOutSignalsForCreatedZd({
+        twIds: createLines.map((l) => l.twId),
+        dokNr: typeof base.dokNrPelny === "string" ? base.dokNrPelny : `ZD/${dokId}`,
+        supplierId: input.supplierId,
+        actorEmail: user.email,
+      }).catch((e) => {
+        console.warn("[zd-estimate:create] zamknięcie zgłoszeń braku", e);
+        return [];
+      })
+    ).length,
     createdLines: createLines.map((l) => ({ twId: l.twId, ilosc: l.ilosc })),
     bumped: coveredLines.bumped,
     composedUwagi: composedUwagi.uwagi,

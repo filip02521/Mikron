@@ -434,7 +434,8 @@ export function AppShellClient({
               </PageNoticeStack>
             ) : salesLive ? (
               <PageNoticeStack>
-                {salesBoardAttention ? (
+                {/* Na /moje przypięte ogłoszenia stoją na górze listy „Ogłoszenia od zakupów” — pas by je powtarzał. */}
+                {salesBoardAttention && pathname !== "/moje" ? (
                   <Suspense fallback={null}>
                     <SalesGlobalPinnedStrip attention={salesBoardAttention} />
                   </Suspense>

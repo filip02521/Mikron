@@ -28,7 +28,7 @@ export function DepartmentBoardPinnedStrip({
           <span className="text-slate-500">Przypięte:</span>{" "}
           <span className="font-medium text-slate-900">{title}</span>
           {extra > 0 ? (
-            <span className="font-normal text-slate-500">{` (+${extra})`}</span>
+            <span className="font-normal text-slate-500">{` · i jeszcze ${extra}`}</span>
           ) : null}
         </span>
       }

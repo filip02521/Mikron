@@ -82,6 +82,7 @@ import {
   useTeethLinesStatus,
 } from "@/components/teeth/TeethWizardProgress";
 import type { TeethLineDetail } from "@/lib/teeth/teeth-catalog";
+import type { ProsbaStockOutReportResult } from "@/lib/orders/prosba-stock-out-report";
 
 export function RequestProductLinesEditor({
   lines,
@@ -124,6 +125,7 @@ export function RequestProductLinesEditor({
   alreadyOrderedForSalesPersonId = null,
   alreadyOrderedForOther = false,
   onRequestKindChange,
+  onReportStockOut,
   supplierScheduleById = {},
   plannedOrderWeekDays = [],
   suppliersOnVacationNow = {},
@@ -222,6 +224,8 @@ export function RequestProductLinesEditor({
    * (informacja ↔ zamówienie). Formularz ustawia ścieżkę „Powiadom, gdy będzie na magazynie”.
    */
   onRequestKindChange?: (kind: IndividualRequestKind) => void;
+  /** Prośba handlowca: „Zgłoś brak na stanie” w karcie Dostępność przy pustej półce. */
+  onReportStockOut?: (line: ProductLineDraft) => Promise<ProsbaStockOutReportResult>;
 }) {
   const canRemove = lines.length > minLines;
   const prosba = appearance === "prosba";
@@ -713,6 +717,7 @@ export function RequestProductLinesEditor({
                     : undefined
                 }
                 forOther={alreadyOrderedForOther}
+                onReportStockOut={onReportStockOut ? () => onReportStockOut(line) : undefined}
                 focusNotifyOnMount={refocusNotifyLineId === line.id}
                 onNotifyFocused={() => setRefocusNotifyLineId(null)}
                 supplierTiming={

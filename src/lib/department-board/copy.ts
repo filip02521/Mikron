@@ -31,6 +31,9 @@ export const DEPARTMENT_BOARD_QUESTIONS_FORM = {
   productRemove: "Usuń",
   productChange: "Zmień",
   productContextLabel: "Produkt",
+  productsContextLabel: "Produkty",
+  productAddAnother: "Dodaj kolejny produkt",
+  productNumbered: (n: number) => `Produkt ${n}`,
   productSearchLoading: "Szukam…",
   submit: "Wyślij",
   submitting: "Wysyłanie…",
@@ -54,6 +57,8 @@ export const DEPARTMENT_BOARD_QUESTIONS_FORM = {
   quickProsbaHint:
     "Pytanie na Tablicy nie zamawia towaru. Żeby go zamówić, złóż prośbę.",
   quickProsbaCta: "Szybka prośba",
+  quickProsbaHintMany:
+    "Pytanie na Tablicy nie zamawia towaru. Żeby zamówić któryś z produktów, złóż prośbę przy nim.",
   quickProsbaPrefillNotice:
     "Uzupełniono produkt z pytania na Tablicy. Podaj ilość i dokończ prośbę.",
 };

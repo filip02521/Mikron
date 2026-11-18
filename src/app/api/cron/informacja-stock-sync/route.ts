@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authorizeCronRequest } from "@/lib/services/cron-auth";
 import { recordCronRun } from "@/lib/services/cron-run-log";
 import { runInformacjaStockAutoArrive } from "@/lib/services/informacja-stock-sync";
+import { sweepStockOutSignalsAgainstSubiektZd } from "@/lib/orders/stock-out-signals-db";
 import { isEmailConfigured } from "@/lib/env/email-config";
 import { isProductionRuntime } from "@/lib/env/app-config";
 import { isWarsawWorkHours } from "@/lib/time/warsaw";
@@ -36,6 +37,10 @@ export async function GET(request: NextRequest) {
       lockedBy: "cron-informacja-stock-sync",
       revalidate: true,
     });
+    // Zgłoszenia „brak na stanie”: towar już na ZD (z Kreatora albo prosto z Subiekta) → zamknięte bez klikania.
+    const stockOut = await sweepStockOutSignalsAgainstSubiektZd("cron@ontime")
+      .then((r) => ({ closed: r.closed.length, checked: r.checkedSignals, zd: r.checkedZd, skipped: r.skipped ?? null }))
+      .catch((e) => ({ error: e instanceof Error ? e.message : "error" }));
 
     if (result.skipped) {
       await recordCronSkipped(
@@ -61,6 +66,7 @@ export async function GET(request: NextRequest) {
         success: true,
         skipped: true,
         reason: result.skipReason,
+        stockOut,
       });
     }
 
@@ -76,6 +82,7 @@ export async function GET(request: NextRequest) {
       timedOut: result.timedOut ?? false,
       subiektOffline: result.subiektOffline ?? false,
       emailNotConfigured: emailNotConfigured || undefined,
+      stockOut,
     };
     if (result.emailError) detail.emailError = result.emailError;
 

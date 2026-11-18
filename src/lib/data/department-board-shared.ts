@@ -1,5 +1,6 @@
 /** Typy i hrefy tablicy działu — bezpieczne dla klienta (bez Supabase). */
 
+import type { BoardQuestionProductFields } from "@/lib/department-board/question-product";
 import { salesMojeAnnouncementHref } from "@/lib/department-board/moje-announcements-ui";
 import type { BoardSupplierInquiry } from "@/lib/department-board/supplier-inquiry";
 import type {
@@ -33,6 +34,8 @@ export type DepartmentBoardQuestion = DepartmentBoardThreadRow & {
   attachments: DepartmentBoardThreadAttachment[];
   /** Maile „Zapytaj dostawcę” z tego wątku, najnowsze pierwsze (migracja 174). */
   supplierInquiries?: BoardSupplierInquiry[];
+  /** Produkty 2…n pytania (migracja 216); pierwszy jest w kolumnach wątku. */
+  extraProducts?: BoardQuestionProductFields[];
 };
 
 export type DepartmentBoardData = {

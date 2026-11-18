@@ -40,7 +40,7 @@ function TeamAttentionStat({
 }) {
   const styles = TEAM_STAT_TONES[tone];
   return (
-    <div className={cn("rounded-md px-2.5 py-2", value > 0 ? styles.bg : "bg-slate-50/80")}>
+    <div className={cn("flex flex-col justify-between rounded-md px-2.5 py-2", value > 0 ? styles.bg : "bg-slate-50/80")}>
       <dt className={salesTypography.statLabel}>{label}</dt>
       <dd className={cn(salesTypography.statValue, "tabular-nums")}>
         {value > 0 ? (
@@ -171,6 +171,7 @@ function SalesPersonCard({
         </div>
       </div>
       <div className="space-y-3 px-4 py-3">
+        {/* Kafle w rzędzie równej wysokości, liczba na dole — dłuższa etykieta (2 linie) nie rozjeżdża wartości. */}
         <dl className="grid grid-cols-2 gap-2">
           <TeamAttentionStat
             label="Termin ZD minął"
@@ -191,10 +192,10 @@ function SalesPersonCard({
             tone="slate"
           />
           <div className={cn(
-            "rounded-md px-2.5 py-2",
+            "flex flex-col justify-between rounded-md px-2.5 py-2",
             row.pendingZkCount > 0 ? "bg-amber-50/80" : "bg-slate-50/80"
           )}>
-            <dt className={salesTypography.statLabel}>Czeka na towar</dt>
+            <dt className={salesTypography.statLabel}>ZK na towar</dt>
             <dd className={cn(salesTypography.statValue, "tabular-nums")}>
               {row.pendingZkCount > 0 ? (
                 <Link
@@ -209,10 +210,10 @@ function SalesPersonCard({
             </dd>
           </div>
           <div className={cn(
-            "rounded-md px-2.5 py-2",
+            "flex flex-col justify-between rounded-md px-2.5 py-2",
             row.followUpDueZkCount > 0 ? "bg-violet-50/80" : "bg-slate-50/80"
           )}>
-            <dt className={salesTypography.statLabel}>Przyp. ZK</dt>
+            <dt className={salesTypography.statLabel}>Przypomnienia ZK</dt>
             <dd className={cn(salesTypography.statValue, "tabular-nums")}>
               {row.followUpDueZkCount > 0 ? (
                 <Link
@@ -227,10 +228,10 @@ function SalesPersonCard({
             </dd>
           </div>
           <div className={cn(
-            "rounded-md px-2.5 py-2",
+            "flex flex-col justify-between rounded-md px-2.5 py-2",
             row.followUpDueNotesCount > 0 ? "bg-indigo-50/80" : "bg-slate-50/80"
           )}>
-            <dt className={salesTypography.statLabel}>Przyp. not.</dt>
+            <dt className={salesTypography.statLabel}>Przypomnienia notatek</dt>
             <dd className={cn(salesTypography.statValue, "tabular-nums")}>
               {row.followUpDueNotesCount > 0 ? (
                 <Link
@@ -327,7 +328,7 @@ export function SalesTeamOverview({
                 <IconMail size={16} />
               </span>
               <div className="min-w-0">
-                <p className="text-xs font-medium text-amber-900">ZK czekają na towar</p>
+                <p className="text-xs font-medium text-amber-900">ZK na towar</p>
                 <p className="text-lg font-semibold tabular-nums text-amber-800">{totalPending}</p>
               </div>
             </div>

@@ -330,7 +330,7 @@ export function SalesAdminClient({
                 <th>Grupa</th>
                 <th>E-mail</th>
                 <th>Konto w systemie</th>
-                <th className="text-center">Zamówienia</th>
+                <th className="text-center" title="Prośby złożone przez handlowca (w historii)">Prośby</th>
                 <th />
               </tr>
             </thead>
@@ -345,9 +345,10 @@ export function SalesAdminClient({
                       <span className="text-slate-400">-</span>
                     )}
                   </td>
-                  <td className="text-slate-700">{p.email || "-"}</td>
+                  {/* Długi adres łamie się w kolumnie — akcje wiersza mieszczą się bez przewijania w bok przy 1280 px. */}
+                  <td className="max-w-[12rem] break-all text-slate-700">{p.email || "-"}</td>
                   <td>
-                    <SalesPersonAccountCell row={p} />
+                    <SalesPersonAccountCell row={p} rowEmail={p.email} />
                   </td>
                   <td className="text-center tabular-nums text-slate-600">
                     {p.orderCount > 0 ? p.orderCount : "-"}
@@ -416,7 +417,7 @@ export function SalesAdminClient({
                             onClick={() => setDeleteTarget(p)}
                           >
                             {p.orderCount > 0
-                              ? "Usuń - są zamówienia w historii"
+                              ? "Usuń - są prośby w historii"
                               : p.linkedUserId
                                 ? "Usuń - najpierw usuń konto"
                                 : "Usuń"}
@@ -595,7 +596,7 @@ export function SalesAdminClient({
         message={
           deleteTarget
             ? deleteTarget.orderCount > 0
-              ? `„${deleteTarget.name}" ma ${deleteTarget.orderCount} zamówień - nie można usunąć.`
+              ? `„${deleteTarget.name}" ma ${deleteTarget.orderCount} ${polishPluralWord(deleteTarget.orderCount, "prośbę", "prośby", "próśb")} w historii - nie można usunąć.`
               : deleteTarget.linkedUserEmail
                 ? `„${deleteTarget.name}" ma powiązane konto (${deleteTarget.linkedUserEmail}). Najpierw usuń lub zmień użytkownika.`
                 : `Czy na pewno usunąć „${deleteTarget.name}"? Tej operacji nie można cofnąć.`

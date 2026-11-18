@@ -9,6 +9,7 @@ export function departmentBoardQuestionSearchHaystack(question: DepartmentBoardQ
     question.title,
     question.body,
     boardQuestionProductSearchText(question),
+    ...(question.extraProducts ?? []).map(boardQuestionProductSearchText),
     questionAuthorLabel(question.sales_person, question.author),
     ...question.posts.map((post) => post.body),
   ];

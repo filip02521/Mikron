@@ -141,3 +141,52 @@ export function normalizeBoardQuestionProductInput(
 
   return { product_symbol, product_name, subiekt_tw_id, mikran_code };
 }
+
+/** Ile produktów może mieć jedno pytanie na Tablicy (pierwszy w kolumnach wątku, reszta osobno). */
+export const BOARD_QUESTION_MAX_PRODUCTS = 10;
+
+function boardQuestionProductKey(fields: BoardQuestionProductFields): string {
+  if (fields.subiekt_tw_id) return `tw:${fields.subiekt_tw_id}`;
+  return [fields.product_symbol, fields.mikran_code, fields.product_name]
+    .map((part) => part?.trim().toLowerCase() ?? "")
+    .join("|");
+}
+
+/** Pomija puste i powtórzone pozycje, zachowuje kolejność z formularza. */
+export function normalizeBoardQuestionProductList(
+  input?: BoardQuestionProductInput | BoardQuestionProductInput[] | null
+): BoardQuestionProductFields[] {
+  const items = Array.isArray(input) ? input : input ? [input] : [];
+  const seen = new Set<string>();
+  const out: BoardQuestionProductFields[] = [];
+  for (const item of items) {
+    const fields = normalizeBoardQuestionProductInput(item);
+    if (!fields) continue;
+    const key = boardQuestionProductKey(fields);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(fields);
+    if (out.length >= BOARD_QUESTION_MAX_PRODUCTS) break;
+  }
+  return out;
+}
+
+/** Wiersz produktu w formularzu pytania — klucz trzyma stan pola przy usuwaniu wcześniejszych wierszy. */
+export type BoardQuestionProductRow = { key: string; draft: BoardQuestionProductDraft };
+
+/** Pierwszy wiersz ma stały klucz — od niego zależy id pola, a serwer i przeglądarka muszą dać to samo. */
+export function initialBoardQuestionProductRows(): BoardQuestionProductRow[] {
+  return [{ key: "p0", draft: emptyBoardQuestionProductDraft() }];
+}
+
+let boardQuestionProductRowSeq = 0;
+/** Kolejne wiersze dodawane w przeglądarce (po kliknięciu) — licznik nie trafia do HTML z serwera. */
+export function newBoardQuestionProductRow(): BoardQuestionProductRow {
+  boardQuestionProductRowSeq += 1;
+  return { key: `p${boardQuestionProductRowSeq}`, draft: emptyBoardQuestionProductDraft() };
+}
+
+/** „Dodaj kolejny produkt” dopiero, gdy każdy wiersz coś ma i jest miejsce. */
+export function canAddBoardQuestionProduct(rows: readonly BoardQuestionProductRow[]): boolean {
+  return rows.length < BOARD_QUESTION_MAX_PRODUCTS && rows.every((row) => boardQuestionDraftHasProduct(row.draft));
+}

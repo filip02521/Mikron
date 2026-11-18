@@ -5,10 +5,6 @@ import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
 import { HelpBlock } from "@/components/ui/HelpBlock";
 import { cn } from "@/lib/cn";
 import { pageToolbarSizingClass, pageToolbarSurfaceClass } from "@/lib/ui/ontime-theme";
-import {
-  INFORMACJA_FLOW_DIRECT,
-  INFORMACJA_FLOW_STOCK_OUT,
-} from "@/lib/orders/informacja-flow-copy";
 
 /** Krótka pomoc — spójna z MojeOrdersHelp (popover zamiast dużego bloku). */
 export function ProsbaFormHelp({
@@ -51,11 +47,13 @@ export function ProsbaFormHelp({
             zamówienie, status śledzisz w „Moje zamówienia”.
           </li>
           <li>
-            <strong className="font-medium text-slate-800">Informacja o towarze</strong> - wariant{" "}
-            <span className="font-medium">{INFORMACJA_FLOW_DIRECT.label}</span> (e-mail + wpis u
-            Ciebie) albo{" "}
-            <span className="font-medium">{INFORMACJA_FLOW_STOCK_OUT.label}</span> (tylko sygnał dla
-            zakupów).
+            <strong className="font-medium text-slate-800">Powiadom, gdy będzie</strong> - dostaniesz
+            e-mail, gdy towar pojawi się na magazynie.
+          </li>
+          <li>
+            <strong className="font-medium text-slate-800">Brak na stanie</strong> - to nie rodzaj
+            prośby. Wybierz towar: gdy w karcie „Dostępność” na półce nie ma nic wolnego, kliknij „Zgłoś
+            brak na stanie”. Zakupy dostaną osobny sygnał, a prośba się nie zmieni.
           </li>
         </ul>
       </HelpBlock>
