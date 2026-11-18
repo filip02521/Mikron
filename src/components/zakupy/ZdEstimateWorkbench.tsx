@@ -1995,14 +1995,22 @@ export function ZdEstimateWorkbench({
   const cardDniZapasu = selectedSupplier?.dniZapasu ?? null;
   const raisedDniZapasu =
     cardDniZapasu != null && Math.round(Number(dniZapasu)) > cardDniZapasu ? Math.round(Number(dniZapasu)) : null;
+  // Strategia po Policz: cykl + dostawa dały więcej dni niż wpisane — pole niczego nie podniosło.
+  const strategyRunDni = lines ? Math.round(Number(paramInfo?.dniZapasu) || 0) : 0;
   const dniZapasuNote =
     policyTargetDays == null
       ? null
       : cardDniZapasu == null
         ? ZD_ESTIMATE_UI.dniZapasuStrategyNoCardNote(policyTargetDays)
         : raisedDniZapasu != null
-          ? ZD_ESTIMATE_UI.dniZapasuStrategyRaisedNote(raisedDniZapasu)
+          ? strategyRunDni > raisedDniZapasu
+            ? ZD_ESTIMATE_UI.dniZapasuStrategyLongerNote(strategyRunDni, raisedDniZapasu)
+            : ZD_ESTIMATE_UI.dniZapasuStrategyRaisedNote(raisedDniZapasu)
           : ZD_ESTIMATE_UI.dniZapasuStrategyNote(policyTargetDays, cardDniZapasu);
+  // Strategia: pole zmienia liczenie dopiero ponad kartę (i dni strategii) — mniej nic nie zmienia.
+  // Równe karcie zostaje dozwolone: cofa ręczne podniesienie.
+  const strategyStockDaysMin =
+    policyTargetDays == null ? null : cardDniZapasu != null ? Math.max(policyTargetDays, cardDniZapasu) : policyTargetDays;
 
   // Zapas pokazywany w nagłówku: po Policz dni faktycznie użyte (strategia liczy co najmniej cykl + dostawę).
   const shownDniZapasu =
@@ -6667,7 +6675,7 @@ export function ZdEstimateWorkbench({
                     ? "z karty dostawcy"
                     : null)
               }
-              stockDaysMin={policyTargetDays}
+              stockDaysMin={strategyStockDaysMin}
               onStockDaysChange={onDniZapasuChange}
               // Strategia bez dni na karcie liczy na własnych dniach — pole zapasu niczego by nie zmieniło.
               canEditStock={!busy && !(policyTargetDays != null && cardDniZapasu == null)}
@@ -7265,11 +7273,13 @@ export function ZdEstimateWorkbench({
               title={
                 policzScopeInfo.horizon.extendedByDays > 0
                   ? `Liczone z czasem dostawy: ${policzScopeInfo.horizon.horizonDays} dni zamiast ${policzScopeInfo.horizon.stockDays}`
-                  : "Czas dostawy uwzględniony - zapas z karty wystarcza"
+                  : raisedDniZapasu != null
+                    ? "Czas dostawy uwzględniony - wpisany zapas wystarcza"
+                    : "Czas dostawy uwzględniony - zapas z karty wystarcza"
               }
             >
               <p className="text-sm leading-snug">
-                {formatZdHorizonBreakdown(policzScopeInfo.horizon)}
+                {formatZdHorizonBreakdown(policzScopeInfo.horizon, { stockRaised: raisedDniZapasu != null })}
               </p>
               <Button
                 type="button"

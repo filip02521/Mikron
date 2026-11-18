@@ -27,6 +27,7 @@ import {
   reconcileSalesTrackQtyMetaAfterHistory,
   resolveSprzedazDziennie,
   type SalesTrackReason,
+  resolveSignalDniZapasu,
 } from "@/lib/orders/zd-estimate-sales-track";
 import { applyZdEstimateHistoryCuts } from "@/lib/orders/zd-estimate-history-track";
 import type { ZdSalesProfileLineMeta } from "@/lib/orders/zd-sales-profile";
@@ -356,7 +357,7 @@ export function mapZdEstimateLineToManual(
       sprzedazOkres,
       sprzedazDziennie: sprzedazDziennieRaw,
       dniOkresu,
-      fallbackDniOkresu: dniZapasu,
+      fallbackDniOkresu: resolveSignalDniZapasu(options?.signalDniZapasu, dniZapasu),
     });
     const histAdj = applyZdEstimateHistoryCuts({
       celTracked,

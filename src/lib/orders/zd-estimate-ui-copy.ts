@@ -883,9 +883,14 @@ export const ZD_ESTIMATE_UI = {
   advancedDniZapasuHint:
     "Na ile dni zamawiamy: cel = tempo sprzedaży z okna „Data od / do” × dni zapasu. Zmiana dni nie przesuwa okna — więcej dni to to samo tempo na dłużej.",
   dniZapasuStrategyNote: (strategyDays: number, cardDays: number) =>
-    `Strategia automatu liczy cel na min. ${strategyDays} dni. Wpisz więcej niż ${cardDays} (karta), żeby zamówić na dłużej.`,
+    cardDays >= strategyDays
+      ? `Strategia automatu liczy cel na min. ${strategyDays} dni. Wpisz więcej niż ${cardDays} (karta), żeby zamówić na dłużej.`
+      : `Strategia automatu liczy cel na min. ${strategyDays} dni. Wpisz więcej niż ${strategyDays}, żeby zamówić na dłużej.`,
   dniZapasuStrategyRaisedNote: (days: number) =>
     `Zamówienie na ${days} dni zamiast dni strategii automatu (tylko ten bieg, automat bez zmian).`,
+  /** Po Policz: cykl + dostawa strategii dały więcej dni niż wpisane w polu. */
+  dniZapasuStrategyLongerNote: (runDays: number, enteredDays: number) =>
+    `Strategia liczy cel na ${runDays} dni (cykl + dostawa) - więcej niż wpisane ${enteredDays}, więc pole nic nie zmieniło.`,
   dniZapasuStrategyNoCardNote: (strategyDays: number) =>
     `Strategia automatu liczy cel na własnych dniach (min. ${strategyDays}); karta bez liczby dni, więc pole ich nie zmienia.`,
   advancedDataOdHint:
