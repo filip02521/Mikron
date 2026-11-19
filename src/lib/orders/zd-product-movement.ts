@@ -196,5 +196,5 @@ export function zdMovementRangeFrom(
 export function zdMovementWindowLabel(salesWindow: { dataOd: string; dataDo: string } | null | undefined): string {
   if (!salesWindow?.dataOd || !salesWindow?.dataDo) return "ostatni miesiąc";
   const days = Math.round((Date.parse(salesWindow.dataDo.slice(0, 10)) - Date.parse(salesWindow.dataOd.slice(0, 10))) / 86_400_000) + 1;
-  return days >= ZD_MOVEMENT_MIN_DAYS ? `okno zapasu (${days} d)` : "ostatni miesiąc";
+  return days >= ZD_MOVEMENT_MIN_DAYS ? `jak w wyliczeniu (${days} dni)` : "ostatni miesiąc";
 }

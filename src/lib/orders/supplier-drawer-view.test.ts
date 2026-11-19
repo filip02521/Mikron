@@ -4,8 +4,8 @@ import { formatSupplierMinOrder, supplierDueInfo } from "@/lib/orders/supplier-d
 describe("supplierDueInfo", () => {
   const today = "2026-10-01";
   it("rozpoznaje zaległe, dziś, jutro i dalsze terminy", () => {
-    expect(supplierDueInfo("2026-09-29", today)).toEqual({ tone: "overdue", relative: "zaległe 2 dni" });
-    expect(supplierDueInfo("2026-09-30", today)).toEqual({ tone: "overdue", relative: "zaległe 1 dzień" });
+    expect(supplierDueInfo("2026-09-29", today)).toEqual({ tone: "overdue", relative: "termin minął 2 dni temu" });
+    expect(supplierDueInfo("2026-09-30", today)).toEqual({ tone: "overdue", relative: "termin minął 1 dzień temu" });
     expect(supplierDueInfo("2026-10-01", today)).toEqual({ tone: "today", relative: "dziś" });
     expect(supplierDueInfo("2026-10-02", today)).toEqual({ tone: "soon", relative: "jutro" });
     expect(supplierDueInfo("2026-10-04", today)).toEqual({ tone: "soon", relative: "za 3 dni" });

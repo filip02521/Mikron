@@ -132,13 +132,22 @@ export function explainZdOrderQty(input: {
     const celBase = Number(line.celZapasuTracked ?? line.celZapasu) || 0;
     const celSubiekt = Number(line.celZapasu) || 0;
     // Korekta za sprzedażą / historią zmienia cel — bez tego kroku „Cel” różni się od Subiekta bez powodu.
-    if (line.celZapasuTracked != null && Math.abs(celBase - celSubiekt) >= 0.05) {
+    // Korekta celu jako działanie (cel z historii ± korekta = cel zapasu) — wcześniej była kursywą nad celem i czytała się jak przypis.
+    const celAdjusted = line.celZapasuTracked != null && Math.abs(celBase - celSubiekt) >= 0.05;
+    if (celAdjusted) {
       steps.push({
         key: "cel_subiekt",
-        label: `Cel przed korektą za sprzedażą (${celBase > celSubiekt ? "podbity" : "obniżony"} o ${formatQty(Math.abs(celBase - celSubiekt))} szt)`,
+        label: "Cel z historii sprzedaży",
         value: Math.round(celSubiekt * 100) / 100,
         unit: "szt",
-        kind: "note",
+        kind: "base",
+      });
+      steps.push({
+        key: "cel_adjust",
+        label: "Korekta do bieżącego tempa sprzedaży",
+        value: Math.round(Math.abs(celBase - celSubiekt) * 100) / 100,
+        unit: "szt",
+        kind: celBase > celSubiekt ? "plus" : "minus",
       });
     }
     const cel = Math.max(celBase, minStock);
@@ -148,12 +157,12 @@ export function explainZdOrderQty(input: {
       // 2 miejsca: przy 30,04 − 30 „Brak 1” musi wynikać z widocznych liczb.
       value: Math.round(cel * 100) / 100,
       unit: "szt",
-      kind: "base",
+      kind: celAdjusted && minStock <= celBase ? "result" : "base",
     });
     const stock = pair ? pair.coverSzt : Number(line.dostepne) || 0;
     steps.push({
       key: "stock",
-      label: pair ? "Pokrycie pary (stan + otwarte ZD, w sztukach)" : "Dostępne (stan − rezerwacje)",
+      label: pair ? "Mamy już: stan sztuk i opakowań + zamówione ZD" : "Na stanie (bez rezerwacji)",
       value: stock,
       unit: "szt",
       kind: "minus",
@@ -199,14 +208,18 @@ export function explainZdOrderQty(input: {
       kind: diff > 0 ? "plus" : "minus",
     });
   }
-  steps.push({ key: "need", label: "Potrzeba", value: qty.piecesNeeded, unit: "szt", kind: "result" });
+  // „Potrzeba” tylko, gdy coś ją zmieniło (prośby, korekta) — ten sam wynik drugi raz pod „Brak do celu” nic nie mówił.
+  const prev = steps[steps.length - 1];
+  if (!(prev?.kind === "result" && prev.unit === "szt" && prev.value === qty.piecesNeeded)) {
+    steps.push({ key: "need", label: "Do zamówienia", value: qty.piecesNeeded, unit: "szt", kind: "result" });
+  }
 
   const label = qty.packageLabel.trim() || "op.";
   if (qty.hasPackaging && isPackagingPackagesMode(qty.documentUnitMode)) {
     const packs = qty.packsBeforeOrderMultiple ?? qty.zdUnits;
     steps.push({
       key: "packs",
-      label: `Pełne opakowania (1 ${label} = ${qty.unitsPerPackage} szt)`,
+      label: `Zaokrąglone do pełnych opakowań (1 ${label} = ${qty.unitsPerPackage} szt)`,
       value: packs,
       unit: label,
       kind: "result",

@@ -112,7 +112,8 @@ function SupplementaryLinks({
         className={cn(panelTextLinkClass, "text-xs")}
         onClick={onOpenOnDemand}
       >
-        Na żądanie {summary.onDemandCount}
+        {/* „Wszyscy” — filtr listy niżej też nazywa się „Na żądanie”, ale liczy tylko dzisiejsze wiersze. */}
+        Wszyscy na żądanie {summary.onDemandCount}
       </button>
     );
   }
@@ -123,7 +124,7 @@ function SupplementaryLinks({
         href="/podsumowanie?view=wyjatki#poza-harmonogramem"
         className={cn(panelTypography.caption, "font-medium text-slate-600 hover:text-slate-900 hover:underline")}
       >
-        Poza harm. {summary.hiddenScheduleCount}
+        Poza harmonogramem {summary.hiddenScheduleCount}
       </Link>
     );
   }
@@ -178,51 +179,71 @@ function StatusBandBody({
   const hubContext = useSupplierHubContext();
   const vacationsHref = supplierVacationsHref(hubContext);
 
+  const hasLeadRow = !showQueueSteps || cancelledCount > 0;
+  const bandActions = (
+    <div className="flex shrink-0 items-center gap-2">
+      {showVerification && verificationCount > 0 ? (
+        <Link
+          href="/weryfikacja"
+          className="inline-flex min-h-9 items-center gap-1 rounded-md bg-amber-100 px-2.5 py-1 text-[0.625rem] font-semibold text-amber-950 hover:bg-amber-200/90 sm:min-h-0 sm:px-2 sm:py-0.5"
+        >
+          <IconClipboardPen size={12} strokeWidth={2.25} aria-hidden />
+          <span className="tabular-nums">{verificationCount}</span>
+          weryfikacja
+        </Link>
+      ) : null}
+      <DailyPanelShortcutsPopover view={view} />
+    </div>
+  );
+
   return (
     <>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
-          {/* Z paskiem „Kolejka” liczniki sekcji są w krokach — tu tylko suma (bez powtórki). */}
-          {!showQueueSteps
-            ? DAILY_PANEL_QUEUE_STEP_ORDER.filter((kind) => stepCounts[kind] > 0).map((kind) => (
-                <span key={kind} className="inline-flex items-center gap-2">
-                  <Stat value={stepCounts[kind]} label={DAILY_PANEL_QUEUE_STEP_LABEL[kind].toLowerCase()} sectionKey={kind} />
-                  <StatDivider />
-                </span>
-              ))
-            : null}
-          {cancelledCount > 0 ? (
-            <>
-              <Stat
-                value={cancelledCount}
-                label={unitLabel(cancelledCount, "anulowanie", "anulowania", "anulowań")}
-              />
-              <StatDivider />
-            </>
-          ) : null}
-          <span className="inline-flex items-baseline gap-1">
-            <span className="text-sm font-semibold tabular-nums text-slate-900">{queueTotal}</span>
-            <span className={panelTypography.caption}>w kolejce</span>
-          </span>
-        </div>
+      {hasLeadRow ? (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+            {/* Z paskiem „Kolejka” liczniki sekcji są w krokach — tu tylko suma (bez powtórki). */}
+            {!showQueueSteps
+              ? DAILY_PANEL_QUEUE_STEP_ORDER.filter((kind) => stepCounts[kind] > 0).map((kind) => (
+                  <span key={kind} className="inline-flex items-center gap-2">
+                    <Stat value={stepCounts[kind]} label={DAILY_PANEL_QUEUE_STEP_LABEL[kind].toLowerCase()} sectionKey={kind} />
+                    <StatDivider />
+                  </span>
+                ))
+              : null}
+            {cancelledCount > 0 ? (
+              <>
+                <Stat
+                  value={cancelledCount}
+                  label={unitLabel(cancelledCount, "anulowanie", "anulowania", "anulowań")}
+                />
+                {!showQueueSteps ? <StatDivider /> : null}
+              </>
+            ) : null}
+            {/* Z paskiem kroków suma stoi już w zakładce „Dziś” — druga taka sama liczba tylko myli. */}
+            {!showQueueSteps ? (
+              <span className="inline-flex items-baseline gap-1">
+                <span className="text-sm font-semibold tabular-nums text-slate-900">{queueTotal}</span>
+                <span className={panelTypography.caption}>w kolejce</span>
+              </span>
+            ) : null}
+          </div>
 
-        <div className="flex shrink-0 items-center gap-2">
-          {showVerification && verificationCount > 0 ? (
-            <Link
-              href="/weryfikacja"
-              className="inline-flex min-h-9 items-center gap-1 rounded-md bg-amber-100 px-2.5 py-1 text-[0.625rem] font-semibold text-amber-950 hover:bg-amber-200/90 sm:min-h-0 sm:px-2 sm:py-0.5"
-            >
-              <IconClipboardPen size={12} strokeWidth={2.25} aria-hidden />
-              <span className="tabular-nums">{verificationCount}</span>
-              weryfikacja
-            </Link>
-          ) : null}
-          <DailyPanelShortcutsPopover view={view} />
+          {bandActions}
         </div>
-      </div>
+      ) : null}
 
       {showQueueSteps ? (
-        <DailyPanelQueueSteps counts={stepCounts} onNavigate={onQueueNavigate} />
+        hasLeadRow ? (
+          <DailyPanelQueueSteps counts={stepCounts} onNavigate={onQueueNavigate} />
+        ) : (
+          // Bez wiersza liczników przyciski stoją obok kroków — pusty wiersz z samym „Skróty” marnował miejsce.
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <div className="min-w-0 flex-1">
+              <DailyPanelQueueSteps counts={stepCounts} onNavigate={onQueueNavigate} />
+            </div>
+            {bandActions}
+          </div>
+        )
       ) : null}
 
       <DailyDayProgressBar
@@ -319,9 +340,8 @@ export function DailyPanelStatusBand({
         onClick={() => setMobileOpen((open) => !open)}
       >
         <span className={cn("min-w-0 leading-snug text-slate-700", panelTypography.chrome)}>
+          {/* Bez sumy — ta sama liczba stoi tuż wyżej w zakładce „Dziś”. */}
           <span className="font-semibold text-slate-900">Kolejka dnia</span>
-          {": "}
-          <span className="tabular-nums font-semibold text-slate-900">{queueTotal}</span>
           {progressHint}
           {showVerification && verificationCount > 0 ? (
             <span className="text-amber-900"> · {verificationCount} weryf.</span>

@@ -150,7 +150,7 @@ describe("DailySupplierList", () => {
     expect(onOpenSupplier).toHaveBeenCalledWith("a");
     expect(within(item).getByText("Harmonogram")).toBeTruthy();
     expect(within(item).queryByText("Poza planem")).toBeNull();
-    expect(within(item).getByText("zaległy 3 dni")).toBeTruthy();
+    expect(within(item).getByText("termin minął 3 dni temu")).toBeTruthy();
     expect(within(item).getByText("5 pilnych · 42 poz.")).toBeTruthy();
   });
 
@@ -242,7 +242,7 @@ describe("DailySupplierList — szybka akcja", () => {
 
   it("Zamówione woła akcję dla tego dostawcy", () => {
     const { run } = renderList([row("a", "Alfa Dental", "manual", { action: { kind: "ordered" } })]);
-    fireEvent.click(screen.getByRole("button", { name: "Zamówione" }));
+    fireEvent.click(screen.getByRole("button", { name: "Oznacz jako zamówione" }));
     expect(run).toHaveBeenCalledTimes(1);
     expect(markOrdered).toHaveBeenCalledWith("a");
   });
@@ -294,7 +294,7 @@ describe("DailySupplierList — rozwinięcie i zbiorcze Zamówione", () => {
     expect(screen.getByRole("button", { name: "Zwiń szczegóły: Alfa Dental" }).getAttribute("aria-expanded")).toBe("true");
     const bar = screen.getByRole("group", { name: "Akcje harmonogramu - Alfa Dental" });
     // „Zamówione” jest już akcją wiersza — w szczegółach nie ma drugiego.
-    expect(screen.getAllByRole("button", { name: "Zamówione" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Oznacz jako zamówione" })).toHaveLength(1);
     expect(within(bar).getByRole("button", { name: /Przesuń/ })).toBeTruthy();
     expect(within(bar).getByRole("button", { name: "Więcej akcji" })).toBeTruthy();
     expect(screen.getByText(/Ostatnie zamówienie przed urlopem \(plan: 10\.11\)/)).toBeTruthy();
@@ -381,10 +381,10 @@ describe("DailySupplierList — rozwinięcie i zbiorcze Zamówione", () => {
       </SupplierStockSignalsProvider>
     );
     expect(screen.getAllByRole("listitem").map((li) => within(li).getAllByRole("button")[1]?.textContent)).toEqual(["Alfa Dental", "Beta Frez"]);
-    fireEvent.click(screen.getByRole("button", { name: "Zamówione (2)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Oznacz jako zamówione (2)" }));
     expect(onBulkOrdered).not.toHaveBeenCalled();
     expect(screen.getByText(/1 z 2 ma pilne pozycje Do ZD w analizie Braki/)).toBeTruthy();
-    fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Zamówione (2)" }));
+    fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Tak, zamówione (2)" }));
     expect(onBulkOrdered).toHaveBeenCalledWith(["a", "b"]);
   });
 });
@@ -458,11 +458,11 @@ describe("DailySupplierList — poprawki po przeglądzie", () => {
     renderList([
       row("a", "Alfa Dental", "manual", { action: { kind: "ordered" }, schedule: sched("a", "Alfa Dental"), signal: signal({ lineCount: 4, criticalCount: 2 }), signalStale: true }),
     ]);
-    fireEvent.click(screen.getByRole("button", { name: "Zamówione" }));
+    fireEvent.click(screen.getByRole("button", { name: "Oznacz jako zamówione" }));
     expect(markOrdered).not.toHaveBeenCalled();
     const dialog = screen.getByRole("alertdialog");
     expect(within(dialog).getByText(/2 pilne pozycje Do ZD w analizie Braki/)).toBeTruthy();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Zamówione" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Tak, zamówione" }));
     expect(markOrdered).toHaveBeenCalledWith("a");
   });
 
@@ -472,7 +472,7 @@ describe("DailySupplierList — poprawki po przeglądzie", () => {
       row("a", "Alfa Dental", "order", { action: { kind: "prepareZd", horizon: false }, schedule: sched("a", "Alfa Dental"), signal: signal({ lineCount: 4, criticalCount: 1 }) }),
     ]);
     fireEvent.click(screen.getByRole("button", { name: "Rozwiń szczegóły: Alfa Dental" }));
-    fireEvent.click(within(screen.getByRole("group", { name: "Akcje harmonogramu - Alfa Dental" })).getByRole("button", { name: "Zamówione" }));
+    fireEvent.click(within(screen.getByRole("group", { name: "Akcje harmonogramu - Alfa Dental" })).getByRole("button", { name: "Oznacz jako zamówione" }));
     expect(markOrdered).not.toHaveBeenCalled();
     expect(screen.getByRole("alertdialog")).toBeTruthy();
   });
@@ -534,10 +534,10 @@ describe("DailySupplierList — nagłówek bez szumu", () => {
     const rows = [row("b", "Beta Frez", "manual", { schedule: sched("b", "Beta Frez") })];
     renderList(rows, undefined, {});
     expect(screen.getByRole("checkbox", { name: "Zaznacz wszystkie" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Zamówione \(/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Oznacz jako zamówione \(/ })).toBeNull();
     cleanup();
     renderList(rows, undefined, { selected: { b: true } });
-    expect(screen.getByRole("button", { name: "Zamówione (1)" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Oznacz jako zamówione (1)" })).toBeTruthy();
   });
 });
 
@@ -552,7 +552,7 @@ describe("DailySupplierList — poprawki po audycie kodu", () => {
       undefined,
       { selected: { a: true, b: true }, onBulkOrdered }
     );
-    fireEvent.click(screen.getByRole("button", { name: "Zamówione (1)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Oznacz jako zamówione (1)" }));
     expect(onBulkOrdered).toHaveBeenCalledWith(["b"]);
   });
 
@@ -562,7 +562,7 @@ describe("DailySupplierList — poprawki po audycie kodu", () => {
       row("a", "Alfa Dental", "order", { action: { kind: "ordered" }, zdToday: true, schedule: sched("a", "Alfa Dental"), signal: signal({ lineCount: 4, criticalCount: 2 }) }),
     ]);
     expect(screen.getByText("ZD z dziś")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Zamówione" }));
+    fireEvent.click(screen.getByRole("button", { name: "Oznacz jako zamówione" }));
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(markOrdered).toHaveBeenCalledWith("a");
   });

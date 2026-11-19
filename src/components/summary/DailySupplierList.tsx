@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { cn } from "@/lib/cn";
 import { polishPluralWord } from "@/lib/email/polish-plural";
+import { DAILY_PANEL_MARK_ORDERED_LABEL, dailyPanelMarkOrderedConfirmLabel } from "@/lib/orders/daily-panel-mark-ordered-copy";
 import {
   DAILY_SUPPLIER_GROUP_LABEL,
   DAILY_SUPPLIER_GROUP_ORDER,
@@ -178,7 +179,7 @@ export function DailySupplierList({
             className="h-11 sm:h-7"
             onClick={() => (selectedCount > 1 || selectedWithUrgent > 0 ? setBulkConfirmOpen(true) : bulk.onBulkOrdered(selectedIds))}
           >
-            Zamówione ({selectedCount})
+            {DAILY_PANEL_MARK_ORDERED_LABEL} ({selectedCount})
           </Button>
         ) : null}
       </div>
@@ -204,7 +205,7 @@ export function DailySupplierList({
           ]
             .filter(Boolean)
             .join(" ")}
-          confirmLabel={`Zamówione (${selectedCount})`}
+          confirmLabel={`${dailyPanelMarkOrderedConfirmLabel()} (${selectedCount})`}
           pending={bulk.isBulkPending}
           onCancel={() => setBulkConfirmOpen(false)}
           onConfirm={() => {

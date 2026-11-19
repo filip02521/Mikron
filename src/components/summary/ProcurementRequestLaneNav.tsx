@@ -70,16 +70,10 @@ export function ProcurementRequestLaneNav({
       aria-label={PROCUREMENT_REQUEST_LANE_COPY.navLabel}
     >
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <div className="flex min-w-0 items-baseline gap-2">
-          <p className="text-[0.625rem] font-semibold text-slate-400">
-            {PROCUREMENT_REQUEST_LANE_COPY.navLabel}
-          </p>
-          {visible.length > 0 ? (
-            <p className="truncate text-[0.625rem] font-medium text-slate-400/90">
-              skocz do sekcji
-            </p>
-          ) : null}
-        </div>
+        {/* Etykieta sama mówi, co robią chipy — bez dopisku „skocz do sekcji”. */}
+        <p className="min-w-0 text-[0.625rem] font-semibold text-slate-500">
+          {visible.length > 0 ? PROCUREMENT_REQUEST_LANE_COPY.navLabel : "Tory próśb"}
+        </p>
         {onManageClick ? (
           <button
             type="button"

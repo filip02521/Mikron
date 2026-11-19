@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  defaultVacationLastOrderDate,
   validateVacationFormInput,
   validateVacationOverlap,
 } from "./vacation-form-validation";
@@ -83,5 +84,26 @@ describe("validateVacationOverlap", () => {
       ]
     );
     expect(error).toBeNull();
+  });
+});
+
+describe("defaultVacationLastOrderDate", () => {
+  it("urlop od poniedziałku → piątek przed nim", () => {
+    expect(defaultVacationLastOrderDate("2026-12-21")).toBe("2026-12-18");
+  });
+  it("pomija święto: urlop od 7.01 → 5.01 (6.01 Trzech Króli)", () => {
+    expect(defaultVacationLastOrderDate("2027-01-07")).toBe("2027-01-05");
+  });
+  it("podpowiedź przechodzi walidację (przed startem urlopu)", () => {
+    const last = defaultVacationLastOrderDate("2026-12-21")!;
+    expect(
+      validateVacationFormInput(
+        { supplier_id: "s1", start_date: "2026-12-21", end_date: "2027-01-06", last_order_date: last, active: true },
+        "2026-11-19"
+      ).error
+    ).toBeNull();
+  });
+  it("pusta albo zła data → null", () => {
+    expect(defaultVacationLastOrderDate("")).toBeNull();
   });
 });

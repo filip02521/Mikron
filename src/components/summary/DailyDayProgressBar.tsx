@@ -77,7 +77,7 @@ export function DailyDayProgressBar({
           </span>
         )}
         <span className={cn("hidden min-w-0 truncate sm:inline", panelTypography.caption)}>
-          {automat ? `automat ${automat.done}/${automat.total} · ` : null}harm. {urgent.done}/{urgent.total} · prośby {forSomeone.done}/{forSomeone.total}
+          zrobione: {automat ? `automat ${automat.done}/${automat.total} · ` : null}harmonogram {urgent.done}/{urgent.total} · prośby {forSomeone.done}/{forSomeone.total}
         </span>
       </div>
     );

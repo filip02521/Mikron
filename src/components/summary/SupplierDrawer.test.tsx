@@ -54,7 +54,7 @@ describe("SupplierDrawer - tryb podglądu (okno po utworzeniu ZD)", () => {
     render(<SupplierDrawer mode="preview" supplier={supplier} onClose={() => {}} />);
     expect(screen.getByRole("dialog", { name: "Ivoclar Vivadent - EXCEL" })).toBeTruthy();
     expect(screen.getByText(/500/)).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Zamówione/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /zamówione/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /Urlop/ })).toBeNull();
     const dailyLink = screen.getByRole("link", { name: /Otwórz w panelu dziennym/ });
     expect(dailyLink.getAttribute("href")).toBe(
@@ -133,8 +133,10 @@ describe("SupplierDrawer - stan magazynu z analizy Braki", () => {
     // Pilne są w szerokim liczniku „przed dostawą” — pokazujemy tylko kolejne.
     expect(text).toContain("1 kolejny skończy się przed dostawą");
     expect(text).not.toContain("3 towary skończą się");
-    expect(text).toContain("Najpilniej IV-123 (< 1 dzień)");
-    expect(text).toContain("Dostawa ok. 9 dni · kolejne zamówienie 10.09 (za 7 dni)");
+    expect(text).toMatch(/Najpilniej: IV-123 - .+ \(< 1 dzień\)/);
+    expect(text).toContain("Dostawa ok. 9 dni");
+    // Data kolejnego zamówienia z analizy przeczyła terminowi w nagłówku — szuflada jej nie pokazuje.
+    expect(text).not.toContain("kolejne zamówienie");
     expect(text).not.toContain("nieaktualna");
     expect(screen.getByRole("link", { name: "Pokaż w Braki" }).getAttribute("href")).toBe(
       `/zakupy/braki?dostawca=${supplier.id}`
@@ -142,7 +144,7 @@ describe("SupplierDrawer - stan magazynu z analizy Braki", () => {
     const zd = screen.getByRole("link", { name: /Przygotuj ZD/ });
     expect(zd.querySelector("button")).toBeNull();
     expect(zd.className).toContain("bg-indigo-600");
-    expect(screen.getByRole("button", { name: /Zamówione/ }).className).not.toContain("bg-indigo-600");
+    expect(screen.getByRole("button", { name: /zamówione/i }).className).not.toContain("bg-indigo-600");
   });
 
   it("nieaktualna analiza bez pozycji nie twierdzi, że stan wystarcza", () => {

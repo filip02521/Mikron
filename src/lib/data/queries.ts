@@ -8,6 +8,7 @@ import { mapRowToOrderFormSupplier, mapRowsToOrderFormSuppliers } from "@/lib/or
 import { buildSummaryWorkspace } from "@/lib/orders/summary-workspace";
 import {
   buildSuppliersOnVacationNow,
+  buildSuppliersPlannedVacation,
   type VacationCalendarRow,
 } from "@/lib/orders/procurement-supplier-vacation";
 import {
@@ -538,6 +539,7 @@ export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }
     formSuppliers,
     teethLaneIndex,
     onVacationNow,
+    plannedVacation,
     flagDefinitions,
     laneOrderRaw,
     salesCancelledOrders,
@@ -553,6 +555,7 @@ export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }
     fetchSuppliersForRequestForms(),
     fetchTeethSupplierLaneIndex(),
     fetchSuppliersOnVacationNow(),
+    fetchSuppliersPlannedVacation(),
     fetchProcurementFlagDefinitions(),
     fetchProcurementLaneOrderRaw(),
     salesPersonId
@@ -596,6 +599,7 @@ export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }
     workspace: {
       ...workspace,
       suppliersOnVacationNow: onVacationNow,
+      suppliersPlannedVacation: plannedVacation,
       procurementFlagDefinitions,
       procurementLaneOrder: laneOrderRaw,
     },
@@ -677,6 +681,24 @@ export async function fetchSuppliersOnVacationNow(
     (data ?? []) as VacationCalendarRow[],
     todayKey
   );
+}
+
+/** Najbliższy zaplanowany aktywny urlop (start po dziś) — karta dostawcy w panelu dziennym. */
+export async function fetchSuppliersPlannedVacation(
+  todayKey: string = todayDateKeyInWarsaw()
+): Promise<Record<string, { startDate: string; endDate: string }>> {
+  if (!hasSupabaseConfig()) return {};
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("vacations")
+    .select("supplier_id, start_date, end_date, active")
+    .eq("active", true)
+    .gt("start_date", todayKey);
+  if (error) {
+    console.error("fetchSuppliersPlannedVacation:", error.message);
+    return {};
+  }
+  return buildSuppliersPlannedVacation((data ?? []) as VacationCalendarRow[], todayKey);
 }
 
 /** Definicje flag zakupów — aktywne i nieaktywne (sort_order). */

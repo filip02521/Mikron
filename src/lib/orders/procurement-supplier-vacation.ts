@@ -47,6 +47,26 @@ export function buildSuppliersOnVacationNow(
   return out;
 }
 
+/**
+ * Najbliższy zaplanowany (jeszcze nierozpoczęty) aktywny urlop na dostawcę — karta dostawcy pokazuje go
+ * od razu po zapisie, a nie dopiero w dniu startu.
+ */
+export function buildSuppliersPlannedVacation(
+  rows: VacationCalendarRow[],
+  todayKey: string
+): Record<string, SupplierOnVacationWindow> {
+  const out: Record<string, SupplierOnVacationWindow> = {};
+  for (const row of rows) {
+    if (!row.active || !row.supplier_id || !row.start_date || !row.end_date) continue;
+    if (row.start_date <= todayKey) continue;
+    const prev = out[row.supplier_id];
+    if (!prev || row.start_date < prev.startDate) {
+      out[row.supplier_id] = { startDate: row.start_date, endDate: row.end_date };
+    }
+  }
+  return out;
+}
+
 export function groupMatchesSupplierVacationFilter(
   supplierId: string,
   onVacation: Record<string, SupplierOnVacationWindow>

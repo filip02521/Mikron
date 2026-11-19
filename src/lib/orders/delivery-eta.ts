@@ -546,7 +546,7 @@ export function buildSupplierDrawerLeadTime(
     return {
       kind: "empty",
       title,
-      detail: "Brak osobnych średnich dla zamówień głównych / pobocznych.",
+      detail: "Brak osobnych średnich dla zamówień głównych / uzupełniających.",
     };
   }
 

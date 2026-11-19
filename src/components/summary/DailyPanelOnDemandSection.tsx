@@ -52,10 +52,10 @@ export function DailyPanelOnDemandSection({
   return (
     <section className={dailyPanelQueueShellClass()}>
       <DailyPanelSubsectionBar
-        title="W razie potrzeby"
+        title="Na żądanie"
         tone="default"
         count={suppliers.length}
-        countUnit={{ one: "dostawca", few: "dostawców", many: "dostawców" }}
+        countUnit={{ one: "dostawca", few: "dostawcy", many: "dostawców" }}
         compact
         action={
           onOpenFullList ? (

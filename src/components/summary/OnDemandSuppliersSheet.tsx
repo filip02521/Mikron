@@ -69,7 +69,7 @@ export function OnDemandSuppliersSheet({
                 id="on-demand-sheet-title"
                 className="text-lg font-semibold text-slate-900"
               >
-                W razie potrzeby
+                Na żądanie
               </h2>
               <p className="mt-1 text-sm leading-relaxed text-slate-500">
                 Dostawcy bez stałego terminu w harmonogramie - zamów, gdy coś jest

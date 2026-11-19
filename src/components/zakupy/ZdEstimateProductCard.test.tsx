@@ -209,7 +209,7 @@ describe("ZdEstimateProductCard", () => {
     fireEvent.click(within(movement()).getByRole("button", { name: /^Sprzedaż \d/ }));
     expect(within(movement()).queryByText("Lab Ortho")).toBeNull();
     expect(within(movement()).getByText("Dostawa")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "własny" }));
+    fireEvent.click(screen.getByRole("button", { name: "własny zakres" }));
     fireEvent.change(screen.getByLabelText("Od"), { target: { value: "2026-09-10" } });
     fireEvent.change(screen.getByLabelText("Do"), { target: { value: "2026-09-20" } });
     expect(screen.getByText(/10\.09–20\.09\.2026/)).toBeTruthy();
@@ -246,9 +246,12 @@ describe("ZdEstimateProductCard", () => {
         pair: { role: "pack", unitsPerPack: 5, pieceDostepne: 7, packDostepne: 3, coverSzt: 72, partnerMissing: false },
       } as unknown as ManualZdEstimateLine,
     });
-    expect(screen.getByText("Dostępne - sztuki")).toBeTruthy();
-    expect(screen.getByText("Dostępne - worek (×5)")).toBeTruthy();
+    // Trzy składniki „Mamy już” (7 + 15 + 50 = 72) — sama suma stoi w „Dlaczego tyle”, nie drugi raz tutaj.
+    expect(screen.getByText("Na stanie - sztuki")).toBeTruthy();
+    expect(screen.getByText("Na stanie - worek (×5)")).toBeTruthy();
     expect(screen.getByText("15 szt")).toBeTruthy();
-    expect(screen.getByText("Pokrycie pary (z ZD)")).toBeTruthy();
+    expect(screen.getByText("Zamówione ZD")).toBeTruthy();
+    expect(screen.getByText("50 szt")).toBeTruthy();
+    expect(screen.queryByText("Pokrycie pary (z ZD)")).toBeNull();
   });
 });

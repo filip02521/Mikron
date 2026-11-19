@@ -43,6 +43,8 @@ export function ShiftMenu({
   /** Nadpisanie klasy przycisku gdy grouped (np. footer shift segment). */
   segmentClassName,
   className,
+  /** Napis na przycisku — w szufladzie „Przesuń termin”, w ciasnych wierszach samo „Przesuń”. */
+  label = "Przesuń",
 }: {
   disabled?: boolean;
   onShiftWeeks: (weeks: number) => void;
@@ -52,6 +54,7 @@ export function ShiftMenu({
   fill?: boolean;
   segmentClassName?: string;
   className?: string;
+  label?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
@@ -267,7 +270,7 @@ export function ShiftMenu({
         )}
       >
         <span className="inline-flex items-center justify-center gap-1">
-          Przesuń
+          {label}
           <IconChevronDown size={14} open={open} />
         </span>
       </Button>

@@ -10,7 +10,7 @@ import {
 
 describe("daily-panel-mark-ordered-copy", () => {
   it("exposes stable action labels", () => {
-    expect(DAILY_PANEL_MARK_ORDERED_LABEL).toBe("Zamówione");
+    expect(DAILY_PANEL_MARK_ORDERED_LABEL).toBe("Oznacz jako zamówione");
     expect(DAILY_PANEL_MARK_ORDERED_PENDING).toBe("Zapisywanie…");
     expect(dailyPanelMarkOrderedConfirmTitle()).toBe("Oznaczyć jako zamówione?");
     expect(dailyPanelMarkOrderedConfirmLabel()).toBe("Tak, zamówione");

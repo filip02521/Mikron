@@ -266,7 +266,7 @@ function ProcurementRequestFlagEditModalForm({
           ) : null}
           {activeDefs.length === 0 && !keepingInactive ? (
             <p className="text-xs text-slate-500">
-              Brak aktywnych flag - dodaj je w „Zarządzaj”.
+              Brak aktywnych flag - dodaj je w „Zarządzaj flagami”.
             </p>
           ) : (
             <div className="flex flex-wrap gap-1.5">

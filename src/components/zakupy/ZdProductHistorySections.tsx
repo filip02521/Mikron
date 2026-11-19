@@ -75,6 +75,14 @@ const ROLE_LABEL: Record<ZdProductSaleRow["rola"], string> = {
   zw: "Zwrot",
 };
 
+/** Filtry rodzaju dokumentu — pełne słowa zamiast skrótów Subiekta (FS, PA). */
+const ROLE_CHIP_LABEL: Record<ZdProductSaleRow["rola"], string> = {
+  fs: "Faktury",
+  pa: "Paragony",
+  wzNiepowiazane: "WZ bez faktury",
+  zw: "Zwroty",
+};
+
 /** „FS 2066/M/10/2026” już niesie rodzaj; „Zwrot” albo numer bez symbolu dostaje etykietę rodzaju przed numerem. */
 function saleDocLabel(rola: ZdProductSaleRow["rola"], dokNr: string): string {
   const role = ROLE_LABEL[rola];
@@ -127,7 +135,7 @@ const PRESET_LABEL: Record<Exclude<ZdHistoryPreset, "window">, string> = {
   "6m": "6 mies.",
   "12m": "12 mies.",
   all: "cała historia",
-  custom: "własny",
+  custom: "własny zakres",
 };
 
 /**
@@ -455,7 +463,7 @@ export function ZdProductSalesSections({
                   onClick={() => setRole(activeRole === k ? null : k)}
                   className={cn(chipClass, activeRole === k ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass)}
                 >
-                  {k === "zw" ? "Zwroty" : ROLE_LABEL[k]} <span className="tabular-nums text-slate-500">{roleCounts[k]}</span>
+                  {ROLE_CHIP_LABEL[k]} <span className="tabular-nums text-slate-500">{roleCounts[k]}</span>
                 </button>
               ))}
             {customerName ? (
