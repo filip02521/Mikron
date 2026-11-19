@@ -134,7 +134,7 @@ export function ZdEstimateLinkZdDialog({
     <ModalShell
       open
       onClose={onClose}
-      title="Powiąż ZD"
+      title="Powiąż gotowe ZD"
       titleHint={
         titleHint?.trim() ||
         "Gdy ZD powstało poza OnTime (lub po timeout create) - zapisz snapshot. „Utwórz ZD” robi to automatycznie."

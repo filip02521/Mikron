@@ -1,7 +1,6 @@
 "use client";
 
 import { useId, useState } from "react";
-import { IconCheck } from "@/components/icons/StrokeIcons";
 import { polishPlural } from "@/lib/email/polish-plural";
 import { formatQty } from "@/lib/orders/zd-estimate-manual";
 import {
@@ -248,22 +247,15 @@ export function ZdEstimateDoZdCell({
 
   // Pewność widoczna tylko, gdy wymaga weryfikacji — „ok” / zaakceptowana są w podpowiedzi
   // (wcześniej chip pod każdą liczbą podwajał wysokość wiersza).
-  const confidenceWhisper =
-    confidenceUi.hasSignal && hintKind === "confidence" && confidenceUi.needsReview ? (
+  // Jeden sygnał „do sprawdzenia”: bursztynowy przycisk „Akceptuj” (procent pewności i powód w dymku);
+  // bez możliwości akceptacji — kropka i „sprawdź”.
+  const reviewChip =
+    confidenceUi.hasSignal && confidenceUi.needsReview ? (
       <span
-        className={cn(
-          "zd-est-dozd-confidence",
-          confidenceUi.tone === "review" && "zd-est-dozd-confidence--review",
-          confidenceUi.tone === "accepted" &&
-            "zd-est-dozd-confidence--accepted",
-          confidenceUi.tone === "ok" && "zd-est-dozd-confidence--ok"
-        )}
+        className="zd-est-dozd-confidence zd-est-dozd-confidence--review"
         title={confidenceUi.title || undefined}
       >
-        <span className="zd-est-dozd-confidence__pct tabular-nums">
-          {confidenceUi.pct}%
-        </span>
-        {confidenceUi.needsReview && onAccept ? (
+        {onAccept ? (
           <button
             type="button"
             className="zd-est-dozd-confidence__accept"
@@ -271,35 +263,20 @@ export function ZdEstimateDoZdCell({
             title={confidenceUi.title || undefined}
             aria-label={confidenceUi.acceptAriaLabel}
           >
-            <IconCheck size={10} strokeWidth={3} aria-hidden />
+            Akceptuj
           </button>
-        ) : confidenceUi.needsReview ? (
-          <span className="zd-est-dozd-confidence__dot" aria-hidden />
-        ) : null}
+        ) : (
+          <>
+            <span className="zd-est-dozd-confidence__dot" aria-hidden />
+            <span className="zd-est-dozd-confidence__pct">sprawdź</span>
+          </>
+        )}
       </span>
     ) : null;
+  const confidenceWhisper = hintKind === "confidence" ? reviewChip : null;
 
   /** Gdy override/roundup zajmuje linię — kompakt % + OK (pełny whisper w title). */
-  const reviewAcceptAside =
-    confidenceUi.needsReview && onAccept && hintKind !== "confidence" ? (
-      <span
-        className="zd-est-dozd-confidence zd-est-dozd-confidence--review"
-        title={confidenceUi.title || undefined}
-      >
-        <span className="zd-est-dozd-confidence__pct tabular-nums">
-          {confidenceUi.pct}%
-        </span>
-        <button
-          type="button"
-          className="zd-est-dozd-confidence__accept"
-          onClick={onAccept}
-          title={confidenceUi.title || undefined}
-          aria-label={confidenceUi.acceptAriaLabel}
-        >
-          <IconCheck size={10} strokeWidth={3} aria-hidden />
-        </button>
-      </span>
-    ) : null;
+  const reviewAcceptAside = hintKind !== "confidence" ? reviewChip : null;
 
   const primaryHint =
     hintKind === "override" && onOverrideChange ? (
@@ -313,12 +290,6 @@ export function ZdEstimateDoZdCell({
         <span aria-hidden>↩</span>
         <span className="tabular-nums">{qty.zdUnits}</span>
       </button>
-    ) : hintKind === "roundup" && roundupInfo != null ? (
-      <span className="zd-est-dozd-hint" title={roundupFull ?? undefined}>
-        {roundupInfo.packsBefore != null && roundupInfo.packsAfter != null
-          ? `↑ ${roundupInfo.packsBefore}→${roundupInfo.packsAfter}`
-          : `↑ +${roundupInfo.extra}`}
-      </span>
     ) : hintKind === "confidence" ? (
       confidenceWhisper
     ) : hintKind === "pieces" ? (
@@ -345,20 +316,16 @@ export function ZdEstimateDoZdCell({
     ) : null;
 
   const currentPieces = piecesArrivingForZdUnitsFromQty(displayUnits, qty);
-  const compareChip =
-    comparePieces != null && Math.round(comparePieces) !== currentPieces ? (
-      <span
-        className="zd-est-dozd-compare"
-        title={`Strategia „jak dotąd”: ${formatQty(comparePieces)} szt (teraz ${formatQty(currentPieces)} szt)`}
-      >
-        dotąd <s>{formatQty(comparePieces)}</s> szt
-      </span>
-    ) : null;
+  // Porównanie ze starą strategią i zaokrąglenie do opakowania są w dymku pola — w komórce jeden sygnał.
+  const compareTitle =
+    comparePieces != null && Math.round(comparePieces) !== currentPieces
+      ? `Stara strategia: ${formatQty(comparePieces)} szt (teraz ${formatQty(currentPieces)} szt)`
+      : null;
+  const cellTitle = [fullTitle, compareTitle].filter(Boolean).join(" · ");
 
   const hintLine =
-    primaryHint || reviewAcceptAside || palletChip || compareChip ? (
+    primaryHint || reviewAcceptAside || palletChip ? (
       <span className="zd-est-dozd-hint-row">
-        {compareChip}
         {palletChip}
         {primaryHint}
         {reviewAcceptAside}
@@ -374,7 +341,7 @@ export function ZdEstimateDoZdCell({
         inputMode="numeric"
         value={focused ? draft : String(displayUnits)}
         disabled={overrideDisabled}
-        title={fullTitle}
+        title={cellTitle}
         aria-invalid={orderMultipleWarn ? true : undefined}
         aria-describedby={[orderMultipleWarn ? warnId : null, unitLabel ? unitId : null].filter(Boolean).join(" ") || undefined}
         aria-label={[
@@ -456,7 +423,7 @@ export function ZdEstimateDoZdCell({
   );
 
   return (
-    <span className="zd-est-dozd" title={fullTitle || undefined}>
+    <span className="zd-est-dozd" title={cellTitle || undefined}>
       {valueRow}
       {hintLine}
       {orderMultipleWarn && !editingBlank ? (

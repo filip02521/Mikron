@@ -59,13 +59,9 @@ import {
 } from "./zd-estimate-ui-copy";
 
 describe("zd-estimate-ui-copy", () => {
-  it("badge LIVE vs test", () => {
-    expect(zdEstimateHostBadgeLabel({ isLive: true, port: 5080 })).toBe(
-      "LIVE :5080"
-    );
-    expect(zdEstimateHostBadgeLabel({ isLive: false, port: 5082 })).toBe(
-      "Test :5082"
-    );
+  it("plakietka mówi, który Subiekt — bez portu serwera", () => {
+    expect(zdEstimateHostBadgeLabel({ isLive: true, port: 5080 })).toBe("Subiekt na żywo");
+    expect(zdEstimateHostBadgeLabel({ isLive: false, port: 5082 })).toBe("Subiekt testowy");
   });
 
   it("page hint bez host_kind i bez etykiety LIVE (status jest w intro)", () => {
@@ -205,7 +201,7 @@ describe("zd-estimate-ui-copy", () => {
         doZamowieniaCount: 3,
         isLive: true,
       })
-    ).not.toMatch(/Powiąż ZD/);
+    ).not.toMatch(/Powiąż gotowe ZD/);
   });
 
   it("prep / launch / recount copy", () => {
@@ -271,7 +267,7 @@ describe("zd-estimate-ui-copy", () => {
     ).toBe("ZD utworzone");
     expect(
       zdEstimateCreateProgressCompleteHint({ snapshotOk: false })
-    ).toMatch(/Powiąż ZD/);
+    ).toMatch(/Powiąż gotowe ZD/);
     expect(
       zdEstimateCreateProgressCompleteHint({ snapshotOk: true })
     ).toMatch(/zamykam/);
@@ -429,10 +425,8 @@ describe("zd-estimate-ui-copy", () => {
   });
 
   it("suppliers menu unmapped badge / aria", () => {
-    expect(zdEstimateSuppliersUnmappedBadge(2)).toBe("2 bez mapowania");
-    expect(zdEstimateSuppliersUnmappedBadge(2, { compact: true })).toBe(
-      "2 bez map."
-    );
+    expect(zdEstimateSuppliersUnmappedBadge(2)).toBe("2 dostawców z dziś bez zakresu towarów");
+    expect(zdEstimateSuppliersUnmappedBadge(2, { compact: true })).toBe("2 bez zakresu");
     expect(zdEstimateSuppliersMenuAriaLabel(0)).toMatch(
       /przypisanie zakresu|historia powiązań/i
     );

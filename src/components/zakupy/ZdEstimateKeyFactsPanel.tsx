@@ -224,7 +224,11 @@ export function ZdEstimateKeyFactsPanel({
   };
   const summary = [
     next?.kind === "planned"
-      ? `kolejne ${next.label}${next.days < 0 ? " (zaległe)" : next.days === 0 ? " (dziś)" : ""}`
+      ? next.days < 0
+        ? `zamówienie zaległe od ${next.label}`
+        : next.days === 0
+          ? "zamówienie dziś"
+          : `kolejne zamówienie ${next.label}`
       : next?.kind === "on_demand"
         ? "na żądanie"
         : null,

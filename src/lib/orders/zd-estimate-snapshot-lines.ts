@@ -1,5 +1,5 @@
 /**
- * Budowa linii snapshotu ZD ze szacunku — wspólne dla „Powiąż ZD” i create.
+ * Budowa linii snapshotu ZD ze szacunku — wspólne dla „Powiąż gotowe ZD” i create.
  * qty w snapshotcie = sztuki (ob_Ilosc × opakowanie/para).
  */
 
@@ -142,7 +142,7 @@ export function twIdHasSnapshotPackagingSource(
 
 /**
  * Pozycje do ZD bez opakowania / pary — historia zapisze 1:1 (sztuki).
- * Używane w preflight UI przed Create / Powiąż ZD.
+ * Używane w preflight UI przed Create / Powiąż gotowe ZD.
  */
 export function collectImplicitPieceSnapshotLines(
   lines: readonly { twId: number; symbol: string; nazwa: string }[],
@@ -290,7 +290,7 @@ export function confirmedEstimateTwIdsFromLineMeta(
 }
 
 /**
- * Potwierdzone tw_Id do snapshotu przy Powiąż ZD.
+ * Potwierdzone tw_Id do snapshotu przy Powiąż gotowe ZD.
  * orderableTwIds (z preview „Do ZD”) musi być podzbiorem lineMeta — inaczej odrzucone.
  */
 export function resolveConfirmedEstimateTwIdsForLink(input: {
