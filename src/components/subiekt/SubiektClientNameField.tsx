@@ -37,12 +37,21 @@ export function SubiektClientNameField({
   inputId,
   autoFocus,
   prosba = false,
+  onPick,
+  hint,
+  unavailableHint,
 }: {
   /** Formularz /prosba — bez powtarzania komunikatu o niedostępnym Subiekcie. */
   prosba?: boolean;
   value: string;
   clientKhId?: number | null;
   onChange: (patch: { clientName: string; clientKhId: number | null }) => void;
+  /** Pełna kartoteka po wyborze z listy — gdy formularz wypełnia więcej pól niż nazwę. */
+  onPick?: (kontrahent: SubiektKontrahent) => void;
+  /** Podpowiedź pod polem zamiast domyślnej (gdy pole tylko szuka, a dane wpisuje się niżej). */
+  hint?: string;
+  /** Dopisek do komunikatu o niedostępnym Subiekcie — co zrobić dalej w tym formularzu. */
+  unavailableHint?: string;
   disabled?: boolean;
   maxLength: number;
   placeholder?: string;
@@ -145,13 +154,14 @@ export function SubiektClientNameField({
         clientName: normalizeSalesClientName(label) ?? label.slice(0, maxLength),
         clientKhId: Number.isFinite(kh) && kh > 0 ? kh : null,
       });
+      onPick?.(k);
       setOpen(false);
       setItems([]);
       setFeedback(null);
       setHighlightedIndex(0);
       setStatus("idle");
     },
-    [onChange, maxLength]
+    [onChange, onPick, maxLength]
   );
 
   const handleKeyDown = useCallback(
@@ -283,15 +293,20 @@ export function SubiektClientNameField({
         ) : null}
       </div>
 
-      {enabled ? (
+      {showFeedbackBelow ? null : enabled ? (
         <p className="text-xs text-slate-500">
-          Wpisz min. {MIN_CLIENT_SEARCH_LENGTH} znaki, aby wyszukać w Subiekcie - lub wpisz dowolną
-          nazwę ręcznie.
+          {hint ?? (
+            <>
+              Wpisz min. {MIN_CLIENT_SEARCH_LENGTH} znaki, aby wyszukać w Subiekcie - lub wpisz dowolną
+              nazwę ręcznie.
+            </>
+          )}
         </p>
       ) : configFeedback ? (
         <p className="text-xs text-slate-500">
           {/* /prosba: komunikat o Subiekcie jest raz, nad pozycjami. */}
           {prosba ? "Wpisz nazwę klienta ręcznie." : configFeedback.message}
+          {unavailableHint ? ` ${unavailableHint}` : null}
         </p>
       ) : null}
 

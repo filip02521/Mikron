@@ -177,10 +177,11 @@ describe("navForRole admin dostawcy", () => {
 });
 
 describe("navForRole struktura zakupów", () => {
-  it("od pracy dziennej do konfiguracji: Dziś → Zamawianie → Zespół → Dostawcy → Import i logistyka", () => {
+  it("od pracy dziennej do konfiguracji: Dziś → Zamawianie → Serwis → Zespół → Dostawcy → Import i logistyka", () => {
     expect(navForRole("zakupy").map((g) => g.title)).toEqual([
       NAV_SECTION_TODAY,
       NAV_SECTION_ORDERING,
+      "Serwis",
       NAV_SECTION_TEAM,
       NAV_SECTION_SUPPLIERS,
       NAV_SECTION_LOGISTICS,
@@ -189,6 +190,7 @@ describe("navForRole struktura zakupów", () => {
     expect(navForRole("admin").map((g) => g.title)).toEqual([
       NAV_SECTION_TODAY,
       NAV_SECTION_ORDERING,
+      "Serwis",
       NAV_SECTION_TEAM,
       NAV_SECTION_SUPPLIERS,
       NAV_SECTION_LOGISTICS,
@@ -483,10 +485,11 @@ describe("navForRole zakupy_zeby", () => {
 });
 
 describe("navForRole magazyn", () => {
-  it("ma sekcje Dziś, Zespół, Archiwum i Kurierzy (jak operacje)", () => {
+  it("ma sekcje Dziś, Serwis, Zespół, Archiwum i Kurierzy (jak operacje)", () => {
     const groups = navForRole("magazyn");
     expect(groups.map((g) => g.title)).toEqual([
       NAV_SECTION_TODAY,
+      "Serwis",
       "Zespół",
       NAV_SECTION_TOOLS,
       NAV_SECTION_CARRIERS,
@@ -494,10 +497,11 @@ describe("navForRole magazyn", () => {
     ]);
   });
 
-  it("sekcje Archiwum i Kurierzy są zwijane", () => {
+  it("sekcje Serwis, Archiwum i Kurierzy są zwijane", () => {
     const groups = navForRole("magazyn");
     const collapsibleSections = groups.filter((g) => g.collapsible);
     expect(collapsibleSections.map((g) => g.title)).toEqual([
+      "Serwis",
       NAV_SECTION_TOOLS,
       NAV_SECTION_CARRIERS,
       NAV_SECTION_SYSTEM,
@@ -522,12 +526,11 @@ describe("navForRole magazyn", () => {
     ]);
   });
 
-  it("sekcja Dziś ma Przyjęcie i Plan dostaw", () => {
+  it("sekcja Dziś ma Przyjęcie i Plan dostaw, serwis ma własną sekcję", () => {
     const today = navForRole("magazyn").find((g) => g.title === NAV_SECTION_TODAY);
-    expect(today?.items.map((item) => item.href)).toEqual([
-      "/kolejka",
-      "/dostawy",
-    ]);
+    expect(today?.items.map((item) => item.href)).toEqual(["/kolejka", "/dostawy"]);
+    const service = navForRole("magazyn").find((g) => g.title === "Serwis");
+    expect(service?.items.map((item) => item.href)).toEqual(["/serwis/zlecenia", "/serwis", "/serwis/zamienniki", "/serwis/modele"]);
   });
 
   it("sekcja Zespół ma Notatki i Urlopy", () => {
@@ -648,5 +651,40 @@ describe("licznik Asystenta", () => {
     expect(asystent({ rolReports: 2 })?.badge).toBe(2);
     expect(asystent({ supplierMail: 4 })?.badge).toBe(4);
     expect(asystent({})?.badge).toBeUndefined();
+  });
+});
+
+describe("menu serwisanta", () => {
+  const items = navForRole("serwis").flatMap((g) => g.items);
+  const hrefs = items.map((i) => i.href);
+
+  it("ma cztery zakładki serwisu, licznik zaległych zamienników przy sprzęcie zastępczym", () => {
+    expect(hrefs).toEqual(["/serwis/zlecenia", "/serwis", "/serwis/zamienniki", "/serwis/modele"]);
+    const withBadge = navForRole("serwis", { serviceOverdueLoaners: 3 }).flatMap((g) => g.items);
+    expect(withBadge.find((i) => i.href === "/serwis/zamienniki")?.badge).toBe(3);
+    expect(withBadge.find((i) => i.href === "/serwis/zlecenia")?.badge).toBeUndefined();
+  });
+
+  it("każda pozycja świeci tylko na swojej zakładce", () => {
+    for (const [pathname, active] of [
+      ["/serwis/zlecenia", "/serwis/zlecenia"],
+      ["/serwis", "/serwis"],
+      ["/serwis/zamienniki", "/serwis/zamienniki"],
+      ["/serwis/modele", "/serwis/modele"],
+    ] as const) {
+      expect(hrefs.filter((h) => isNavItemActive(pathname, h, hrefs))).toEqual([active]);
+    }
+  });
+
+  it("zakupy, admin i magazyn mają te same cztery widoki w sekcji Serwis, z licznikiem przy zamiennikach", () => {
+    for (const role of ["admin", "zakupy", "magazyn"] as const) {
+      const groups = navForRole(role, { serviceOverdueLoaners: 2 });
+      const service = groups.find((g) => g.title === "Serwis");
+      expect(service?.items.map((i) => i.href)).toEqual(hrefs);
+      expect(service?.items.find((i) => i.href === "/serwis/zamienniki")?.badge).toBe(2);
+      // Żadna inna sekcja nie prowadzi do serwisu — jedno wejście na widok.
+      const elsewhere = groups.filter((g) => g !== service).flatMap((g) => g.items).filter((i) => i.href.startsWith("/serwis"));
+      expect(elsewhere).toEqual([]);
+    }
   });
 });

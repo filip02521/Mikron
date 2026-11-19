@@ -7,6 +7,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   magazyn: "Dział dostaw",
   sales: "Handlowiec",
   sales_manager: "Kierownictwo",
+  serwis: "Serwis",
 };
 
 export const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
@@ -16,8 +17,24 @@ export const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
   { value: "magazyn", label: ROLE_LABELS.magazyn },
   { value: "sales", label: ROLE_LABELS.sales },
   { value: "sales_manager", label: ROLE_LABELS.sales_manager },
+  { value: "serwis", label: ROLE_LABELS.serwis },
 ];
 
+/** Nazwa pola z kartą handlowca w formularzu konta — zależy od roli. */
+export function salesPersonFieldLabel(role: UserRole): string {
+  if (role === "serwis") return "Karta serwisanta (grupa Serwis)";
+  if (role === "sales_manager") return "Karta handlowca kierownika";
+  return "Powiązany handlowiec";
+}
+
+/** Komunikat, gdy rola wymaga karty, a nie wybrano żadnej. */
+export function missingSalesPersonError(role: UserRole): string {
+  return role === "serwis"
+    ? "Dla serwisanta wybierz kartę z grupy Serwis (zakładka Handlowcy)."
+    : "Dla handlowca wybierz powiązaną osobę z listy handlowców.";
+}
+
 export function roleRequiresSalesPerson(role: UserRole): boolean {
-  return role === "sales" || role === "sales_manager";
+  // Serwisant składa prośby o części jak handlowiec — na własną kartę w grupie Serwis.
+  return role === "sales" || role === "sales_manager" || role === "serwis";
 }

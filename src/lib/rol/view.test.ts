@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
 import type { RolInvoiceView, RolLineView } from "./data";
 import { ROL_CONFLICT_REASON } from "./constants";
-import { recentRolPeriods, rolBatchBlockers, rolBatchSummary, rolLineQty, rolPeriodLabel } from "./view";
+import {
+  recentRolPeriods,
+  rolBatchBlockers,
+  rolBatchSummary,
+  rolLineQty,
+  rolMonthEn,
+  rolMonthPl,
+  rolPeriodLabel,
+  rolPeriodYear,
+} from "./view";
 
 const line = (p: Partial<RolLineView>): RolLineView => ({
   id: 1,
@@ -32,6 +41,14 @@ const inv = (p: Partial<RolInvoiceView>): RolInvoiceView => ({
 describe("miesiące", () => {
   it("etykieta i lista ostatnich miesięcy przez przełom roku", () => {
     expect(rolPeriodLabel("2026-09-01")).toBe("wrzesień 2026");
+    expect(rolPeriodLabel("2026-09-01", "2026-09-30")).toBe("wrzesień 2026");
+    expect(rolPeriodLabel("2026-11-02", "2026-11-08")).toBe("2–8 listopada 2026");
+    expect(rolPeriodLabel("2026-10-26", "2026-11-08")).toBe("26 października – 8 listopada 2026");
+    expect(rolMonthPl("2026-12-28", "2027-01-03")).toBe("28 grudnia – 3 stycznia");
+    expect(rolMonthEn("2026-11-02", "2026-11-08")).toBe("2-8 November");
+    expect(rolMonthEn("2026-10-26", "2026-11-01")).toBe("26 October-1 November");
+    expect(rolMonthEn("2026-09-01", "2026-09-30")).toBe("September");
+    expect(rolPeriodYear("2026-12-28", "2027-01-03")).toBe("2027");
     expect(recentRolPeriods("2026-02-10", 3)).toEqual(["2026-01-01", "2025-12-01", "2025-11-01"]);
   });
 });

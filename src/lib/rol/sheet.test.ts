@@ -61,6 +61,9 @@ describe("nazwy plików", () => {
     expect(rolSheetFileName({ fileLabel: "Przykładowa", discountPct: 25, period: "2026-09-01" })).toBe(
       "ROL Przykładowa -25% September 2026.xlsx"
     );
+    expect(rolSheetFileName({ fileLabel: "Przykładowa", discountPct: 25, period: "2026-11-02", periodEnd: "2026-11-08" })).toBe(
+      "ROL Przykładowa -25% 2-8 November 2026.xlsx"
+    );
     expect(rolFsPdfFileName("FS 3417/M/09/2026", "Przykładowa")).toBe("3417 Przykładowa.pdf");
     expect(rolFsPdfFileName("FS 207/M/09/2026", "Wzorcowa")).toBe("207 Wzorcowa.pdf");
   });

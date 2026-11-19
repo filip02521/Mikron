@@ -66,7 +66,7 @@ async function underLock<T>(store: RolSendStore, batchId: string, fn: () => Prom
 /** Krok 1: ZD w Subiekcie (albo istniejąca) + weryfikacja pozycji po zapisie. */
 export async function ensureRolZd(
   ctx: {
-    batch: Pick<RolBatchView, "id" | "period" | "invoices" | "lines" | "zdDokId" | "zdNr">;
+    batch: Pick<RolBatchView, "id" | "period" | "periodEnd" | "invoices" | "lines" | "zdDokId" | "zdNr">;
     programLabel: string;
     missingPdf: readonly string[];
     ivoclarKhId: number;
@@ -84,7 +84,7 @@ export async function ensureRolZd(
     let doc = ctx.batch.zdDokId ? { dokId: ctx.batch.zdDokId, nr: ctx.batch.zdNr ?? `ZD/${ctx.batch.zdDokId}` } : null;
     let created = false;
     if (!doc) {
-      const uwagi = rolZdUwagi(ctx.programLabel, ctx.batch.period);
+      const uwagi = rolZdUwagi(ctx.programLabel, ctx.batch.period, ctx.batch.periodEnd);
       doc = await zd.findExisting({ khId: ctx.ivoclarKhId, uwagi, dateKey: ctx.todayKey });
       if (!doc) {
         doc = await zd.create({

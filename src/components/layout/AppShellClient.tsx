@@ -50,7 +50,7 @@ import { isAuthLayoutPath } from "@/lib/auth/auth-layout-paths";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
 import type { UserRole, Workspace } from "@/types/database";
 import type { FontScale } from "@/lib/auth/font-scale";
-import { canAccessOperations, canAccessTeethPanel, canAccessWarehouse, isSalesAccount } from "@/lib/auth-roles";
+import { canAccessOperations, canAccessTeethPanel, canAccessWarehouse, isSalesAccount, isSerwis } from "@/lib/auth-roles";
 import { MobileOperationsNav } from "./MobileOperationsNav";
 import { MobileOperationsHeader } from "./MobileOperationsHeader";
 import { useAppShellMetrics } from "./AppShellMetricsContext";
@@ -274,8 +274,10 @@ export function AppShellClient({
     !!(role && inTeethWorkspace && canAccessTeethPanel(role, assignedWorkspaces)) && !salesLive;
   const magazynLive =
     !!(role && inMagazynWorkspace && canAccessWarehouse(role, assignedWorkspaces)) && !salesLive && !operationsLive && !teethLive;
+  // Konto serwisanta: tylko panel serwisu, dolna nawigacja z jego czterema widokami.
+  const serwisLive = !!(role && isSerwis(role)) && !salesLive;
   const teethInitialVersion = teethPanelVersion;
-  const mobileChrome = salesLive || operationsLive || teethLive || magazynLive;
+  const mobileChrome = salesLive || operationsLive || teethLive || magazynLive || serwisLive;
 
   const salesInboxEnabled =
     salesLive && !salesOnboardingActive && !adminPanelPreview && metricsReady;
@@ -393,6 +395,9 @@ export function AppShellClient({
             procurementWorkspace={procurementWorkspace}
           />
         ) : null}
+        {serwisLive ? (
+          <MobileOperationsHeader role={role} userEmail={userEmail} userAssignmentLabel={userAssignmentLabel} />
+        ) : null}
         <AppShellMain
           mobileChrome={mobileChrome}
           uniformBackground={uniformBackground}
@@ -493,6 +498,17 @@ export function AppShellClient({
             realRole={realRole}
             procurementWorkspace={procurementWorkspace}
             canSwitchProcurementWorkspace={canSwitchProcurementWorkspace}
+            assignedWorkspaces={assignedWorkspaces}
+            adminModules={adminModules}
+            navBadges={navBadges}
+          />
+        ) : null}
+        {serwisLive && role ? (
+          <MobileOperationsNav
+            role={role}
+            realRole={realRole}
+            procurementWorkspace={null}
+            canSwitchProcurementWorkspace={false}
             assignedWorkspaces={assignedWorkspaces}
             adminModules={adminModules}
             navBadges={navBadges}

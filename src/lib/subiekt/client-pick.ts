@@ -1,7 +1,24 @@
 import { formatSubiektKontrahentLabel } from "@/lib/subiekt/match-supplier";
+import { expandSupplierSearchQueries } from "@/lib/subiekt/supplier-search-tokens";
 import type { SubiektKontrahent } from "@/lib/subiekt/types";
 
 export const MIN_CLIENT_SEARCH_LENGTH = 2;
+
+/**
+ * Frazy do szukania klienta w Subiekcie. API szuka podciągu, a NIP w kartotekach bywa zapisany
+ * cyframi, z myślnikami (3-3-2-2 lub 3-2-2-3) albo z prefiksem kraju — dla NIP-u pytamy o każdy zapis.
+ */
+export function clientSearchPhrases(query: string): string[] {
+  const q = query.trim();
+  const nip = /^(?:[A-Z]{2}[\s-]*)?([\d\s-]*\d)$/i.exec(q);
+  const digits = nip?.[1].replace(/\D/g, "") ?? "";
+  if (digits.length === 10) return nipSearchVariants(digits);
+  return digits.length >= MIN_CLIENT_SEARCH_LENGTH ? [digits] : expandSupplierSearchQueries(q);
+}
+
+function nipSearchVariants(d: string): string[] {
+  return [d, `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6, 8)}-${d.slice(8)}`, `${d.slice(0, 3)}-${d.slice(3, 5)}-${d.slice(5, 7)}-${d.slice(7)}`];
+}
 
 /** Po wyborze z listy (kh_Id) nie szukamy ponownie — pełna etykieta często nie trafia w API. */
 export function shouldRunSubiektClientSearch(

@@ -50,6 +50,7 @@ describe("ZD do Ivoclara", () => {
 
   it("opis bez roku", () => {
     expect(rolZdUwagi("Przykładowa", "2026-09-01")).toBe("ROL Przykładowa wrzesień");
+    expect(rolZdUwagi("Przykładowa", "2026-11-02", "2026-11-08")).toBe("ROL Przykładowa 2–8 listopada");
   });
 
   it("weryfikacja ZD: dokładnie te pozycje i ilości co lista", () => {
@@ -125,5 +126,18 @@ describe("walidacja okna maila", () => {
     expect(parseRolMailInput({ ...ok, cc: "zly" })).toMatchObject({ ok: false, error: expect.stringMatching(/zly/) });
     expect(parseRolMailInput({ ...ok, subject: "  " })).toMatchObject({ ok: false });
     expect(parseRolMailInput({ ...ok, body: "" })).toMatchObject({ ok: false });
+  });
+});
+
+describe("rolMailDraft — raport tygodniowy", () => {
+  it("blok z zakresem dni zamiast miesiąca", () => {
+    const d = rolMailDraft({
+      program: { label: "Przykładowa", discountPct: 25, addressLines: [], nip: "", toEmails: [], ccEmails: [] },
+      period: "2026-11-02",
+      periodEnd: "2026-11-08",
+      defaults: { toEmails: ["zamowienia@example.com"], ccEmails: [], subject: "New Order" },
+      signature: "",
+    });
+    expect(d.body).toContain("ROL Przykładowa 2-8 November -25%");
   });
 });

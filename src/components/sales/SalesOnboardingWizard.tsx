@@ -220,7 +220,7 @@ export function SalesOnboardingWizard() {
         <span
           key={s.id}
           className={cn(
-            "h-1.5 rounded-full transition-all duration-300",
+            "h-1.5 rounded-full transition-[width,background-color] duration-300",
             i === stepIndex ? "w-5 bg-indigo-600" : i < stepIndex ? "w-1.5 bg-indigo-300" : "w-1.5 bg-slate-200"
           )}
         />
@@ -253,7 +253,7 @@ export function SalesOnboardingWizard() {
   if (isWelcomeStep) {
     return (
       <div
-        className="fixed inset-0 z-[100] flex items-end justify-center bg-scrim/50 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+        className="fixed inset-0 z-[100] flex items-end justify-center bg-scrim/50 p-0 sm:items-center sm:p-4"
         role="dialog"
         aria-modal="true"
         aria-labelledby="sales-onboarding-title"

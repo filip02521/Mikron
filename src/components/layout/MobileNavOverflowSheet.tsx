@@ -124,7 +124,7 @@ export function MobileNavOverflowSheet({
             <button
               ref={backdropRef}
               type="button"
-              className="modal-backdrop-enter absolute inset-0 bg-scrim/30 backdrop-blur-[1px]"
+              className="modal-backdrop-enter absolute inset-0 bg-scrim/30"
               aria-label="Zamknij menu"
               onClick={() => close()}
             />

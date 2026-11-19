@@ -1,9 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  IconAlertCircle,
+  IconCheck,
+  IconChevronDown,
+  IconClipboardList,
+  IconHelpCircle,
+  IconTruck,
+} from "@/components/icons/StrokeIcons";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { actionUpdateZkWatchProsbaScope } from "@/app/actions/sales-notepad";
+import { actionAttachZkLinesToIncoming } from "@/app/actions/zk-attach-incoming";
+import { selectZkLinesToAttachIncoming } from "@/lib/sales/zk-attach-incoming";
+import type { ZkWatchLineCoverage } from "@/lib/sales/zk-watch-order-link";
+import type { ZkAttachIncomingNote } from "@/lib/sales/zk-watch-auto-prosba-copy";
+import { Badge } from "@/components/ui/Badge";
+import { BrandLoader } from "@/components/ui/BrandLoader";
+import { warsawTodayDateKey } from "@/lib/warehouse/delivery-receipts-shared";
 import { Button } from "@/components/ui/Button";
+import {
+  assessZkLineAvailability,
+  countZkLineAvailability,
+  type ZkLineAvailability,
+  type ZkLineAvailabilityKind,
+} from "@/lib/sales/zk-line-availability";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { useProsbaLineStockBatchFetch } from "@/hooks/useProsbaLineStockBatchFetch";
 import { useProsbaAlreadyOrdered } from "@/hooks/useProsbaAlreadyOrdered";
@@ -19,9 +40,6 @@ import {
   assessProsbaLineStock,
   buildZkProsbaScopeInitialOrderMarked,
   collectZkProsbaScopeLineTwIds,
-  deriveZkProsbaScopeSuggestedOrderKeys,
-  formatZkProsbaAutoMarkedHint,
-  formatZkProsbaScopeLineBadge,
   formatZkProsbaScopeLineStockDetail,
   zkProsbaScopeAllLinesSufficient,
   zkProsbaScopeLineKeysToOrder,
@@ -41,17 +59,22 @@ import {
 } from "@/lib/sales/zk-watch-teeth-draft";
 import { MAX_BATCH_ORDER_LINES } from "@/lib/security/text-limits";
 import { plPozycja } from "@/lib/ui/polish-plurals";
-import { polishPluralWord } from "@/lib/email/polish-plural";
-import { salesTypography } from "@/lib/ui/ontime-theme";
 import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
 import type { SalesZkWatch } from "@/types/database";
-import { IconClipboardList } from "@/components/icons/StrokeIcons";
 import {
   ZK_PROSBA_MODAL_BODY_CLASS,
   ZkProsbaModalCallout,
 } from "@/components/notatnik/ZkProsbaModalCallout";
 
-function useZkProsbaScopeSelection(watch: SalesZkWatch, open: boolean) {
+/**
+ * `requestCoveredKeys` — pozycje z prośbą powiązaną z tym ZK: zostają w zakresie (czekają na towar),
+ * ale nie są zaznaczone, bo zaznaczenie znaczy „zamów teraz” i dałoby drugą prośbę.
+ */
+function useZkProsbaScopeSelection(
+  watch: SalesZkWatch,
+  open: boolean,
+  requestCoveredKeys: ReadonlySet<string>
+) {
   const teethExemptTwIds = useTeethExemptTwIds();
   const lineViews = useMemo(() => buildZkWatchLineViews(watch), [watch]);
   const productLines = useMemo(
@@ -117,7 +140,7 @@ function useZkProsbaScopeSelection(watch: SalesZkWatch, open: boolean) {
         stockExemptTwIds: teethExemptTwIds,
       });
       queueMicrotask(() => {
-        setOrderMarked(new Set(keys));
+        setOrderMarked(new Set(keys.filter((key) => !requestCoveredKeys.has(key))));
         setScopeInitDone(true);
       });
       return;
@@ -133,11 +156,12 @@ function useZkProsbaScopeSelection(watch: SalesZkWatch, open: boolean) {
       existingScope,
       needsProsbaByKey,
       stockExemptTwIds: teethExemptTwIds,
-    }).filter((key) => !coveredKeys.has(key));
+    }).filter((key) => !coveredKeys.has(key) && !requestCoveredKeys.has(key));
     queueMicrotask(() => setOrderMarked(new Set(keys)));
   }, [
     incomingLoading,
     coveredKeys,
+    requestCoveredKeys,
     open,
     existingScope,
     needsProsbaByKey,
@@ -188,10 +212,36 @@ function zkLinesCoveredByIncoming(
   return out;
 }
 
+/** Kolejność i kolory stanów w pasku dostępności (nagłówek okna i wiersze). */
+const AVAILABILITY_SEGMENTS: { kind: ZkLineAvailabilityKind; label: string; fill: string }[] = [
+  { kind: "stock", label: "Na stanie", fill: "bg-emerald-600" },
+  { kind: "transit", label: "W drodze", fill: "bg-indigo-600" },
+  {
+    kind: "ordered",
+    label: "Już zamówione",
+    fill: "bg-[repeating-linear-gradient(135deg,var(--color-indigo-600)_0_3px,var(--color-indigo-100)_3px_6px)]",
+  },
+  { kind: "need", label: "Brak lub niepewne", fill: "bg-amber-500" },
+  { kind: "unknown", label: "Bez danych", fill: "bg-slate-300" },
+];
+
+/** Ikona przy krótkim stanie w wierszu — kolor i kształt czytane bez czytania słowa. */
+const CHIP_ICON: Record<ZkLineAvailabilityKind, typeof IconCheck> = {
+  stock: IconCheck,
+  transit: IconTruck,
+  ordered: IconClipboardList,
+  need: IconAlertCircle,
+  unknown: IconHelpCircle,
+};
+
 export type ZkProsbaScopeSavedMeta = {
   autoProsba: boolean;
   selectedScopeCount: number;
   stockByTwId: Record<number, import("@/lib/orders/prosba-stock-check").ProsbaLineStockSnapshot>;
+  /** Pozycje podpięte pod towar w drodze (zamiast prośby do zakupów). */
+  attachNote?: ZkAttachIncomingNote;
+  /** Klucze tych pozycji — auto-prośba nie może ich wziąć, zanim lista próśb się odświeży. */
+  attachedKeys?: string[];
 };
 
 export function ZkWatchProsbaScopeModal({
@@ -202,6 +252,7 @@ export function ZkWatchProsbaScopeModal({
   tourPreview = false,
   delegatePreview = false,
   teethRegistry,
+  lineCoverageByKey,
   onClose,
   onSaved,
 }: {
@@ -213,10 +264,21 @@ export function ZkWatchProsbaScopeModal({
   tourPreview?: boolean;
   delegatePreview?: boolean;
   teethRegistry?: TeethDraftRegistryLookup;
+  /** Pokrycie pozycji prośbami powiązanymi z tym ZK (podpowiedzi notatnika). */
+  lineCoverageByKey?: Record<string, ZkWatchLineCoverage>;
   onClose: () => void;
   onSaved: (watch: SalesZkWatch, meta: ZkProsbaScopeSavedMeta) => void;
 }) {
   const teethExemptTwIds = useTeethExemptTwIds();
+  const requestCoveredKeys = useMemo(
+    () =>
+      new Set(
+        Object.entries(lineCoverageByKey ?? {})
+          .filter(([, coverage]) => coverage !== "uncovered")
+          .map(([key]) => key)
+      ),
+    [lineCoverageByKey]
+  );
   const {
     productLines,
     orderMarked,
@@ -228,8 +290,7 @@ export function ZkWatchProsbaScopeModal({
     hasExistingScope,
     incomingByTwId,
     incomingLoading,
-    coveredKeys,
-  } = useZkProsbaScopeSelection(watch, open);
+  } = useZkProsbaScopeSelection(watch, open, requestCoveredKeys);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoProsba, setAutoProsba] = useState(false);
@@ -246,13 +307,92 @@ export function ZkWatchProsbaScopeModal({
     (stockFetchTimedOut || zkProsbaScopeStockFetchFailed(productLines, rawStockByTwId));
   const awaitingAutoMark =
     (stockLoading || incomingLoading) && !hasExistingScope && !stockFetchTimedOut;
-  const autoMarkedCount =
-    !stockLoading && !hasExistingScope
-      ? deriveZkProsbaScopeSuggestedOrderKeys(productLines, stockByTwId, teethExemptTwIds).filter(
-          (key) => !coveredKeys.has(key)
-        ).length
-      : 0;
-  const coveredUnmarkedCount = [...coveredKeys].filter((key) => !orderMarked.has(key)).length;
+  // Niezaznaczone pozycje pokryte ZD z terminem i znanym dostawcą — po zapisie trafią do Moje
+  // jako zamówione (serwer liczy pokrycie jeszcze raz i może któreś odrzucić).
+  const attachCandidates = useMemo(
+    () =>
+      !canOfferAutoProsba || awaitingAutoMark || incomingLoading
+        ? []
+        : selectZkLinesToAttachIncoming({
+            lines: productLines,
+            stockByTwId,
+            incomingByTwId,
+            excludeKeys: new Set([...orderMarked, ...requestCoveredKeys]),
+            stockExemptTwIds: teethExemptTwIds,
+            requireSupplier: true,
+          }),
+    [canOfferAutoProsba, awaitingAutoMark, incomingLoading, productLines, stockByTwId, incomingByTwId, orderMarked, requestCoveredKeys, teethExemptTwIds]
+  );
+  const attachByKey = new Map(attachCandidates.map((c) => [c.key, c]));
+  const awaitingData = stockLoading || incomingLoading;
+  const availabilityByKey = useMemo(
+    () =>
+      new Map<string, ZkLineAvailability>(
+        productLines.map((line) => {
+          const twId = line.subiektTwId;
+          return [
+            line.key,
+            assessZkLineAvailability({
+              quantity: line.quantity,
+              stock: twId != null ? stockByTwId[twId] : undefined,
+              info: twId != null ? incomingByTwId[twId] : undefined,
+              stockExempt: twId != null && teethExemptTwIds.has(twId),
+              zkCoverage: lineCoverageByKey?.[line.key],
+            }),
+          ];
+        })
+      ),
+    [productLines, stockByTwId, incomingByTwId, teethExemptTwIds, lineCoverageByKey]
+  );
+  const availabilityCounts = countZkLineAvailability([...availabilityByKey.values()]);
+  const availabilityBarLabel = AVAILABILITY_SEGMENTS.filter((seg) => availabilityCounts[seg.kind] > 0)
+    .map((seg) => `${seg.label}: ${availabilityCounts[seg.kind]}`)
+    .join(", ");
+  // Najpierw to, co wymaga decyzji; w grupie kolejność z ZK, więc zaznaczenie nie przesuwa wierszy.
+  const lineGroups = [
+    {
+      id: "decide",
+      // Przed danymi z Subiekta nic nie wiemy — jedna lista bez obietnicy „do decyzji”.
+      title: awaitingData ? "Pozycje z ZK" : "Do decyzji",
+      hint: awaitingData ? "" : "brak albo niepewne",
+      lines: productLines.filter((line) => {
+        const kind = availabilityByKey.get(line.key)?.kind;
+        return awaitingData || kind === "need" || kind === "unknown";
+      }),
+    },
+    {
+      id: "covered",
+      title: "Nie trzeba zamawiać",
+      hint: "na stanie, w drodze, już zamówione",
+      lines: awaitingData
+        ? []
+        : productLines.filter((line) => {
+            const kind = availabilityByKey.get(line.key)?.kind;
+            return kind === "stock" || kind === "transit" || kind === "ordered";
+          }),
+    },
+  ].filter((group) => group.lines.length > 0);
+  const todayKey = warsawTodayDateKey();
+  const [openDocsKeys, setOpenDocsKeys] = useState<Set<string>>(() => new Set());
+  function toggleDocs(key: string) {
+    setOpenDocsKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+  const attachCount = attachCandidates.length;
+  // Nic do zamówienia, bo każda pozycja jest na stanie albo pójdzie pod dostawę w drodze.
+  const allLinesHandledWithoutOrder =
+    attachCount > 0 &&
+    !stockLoading &&
+    (attachCount === productLines.length ||
+      zkProsbaScopeAllLinesSufficient(
+        productLines.filter((line) => !attachByKey.has(line.key)),
+        stockByTwId,
+        teethExemptTwIds
+      ));
 
   function toggleLine(key: string) {
     setOrderMarked((prev) => {
@@ -268,12 +408,33 @@ export function ZkWatchProsbaScopeModal({
     setSaving(true);
     setError(null);
     const keysToOrder = zkProsbaScopeLineKeysToOrder(productLines, orderMarked);
+    // Pozycja podpinana pod dostawę też czeka na towar — w zakresie, inaczej ZK wyglądałoby
+    // na gotowe do zamknięcia. Prośba „już zamówione” pokrywa ją, więc auto-prośba jej nie zdubluje.
+    const scopeKeys = zkProsbaScopeLineKeysToOrder(productLines, [
+      ...keysToOrder,
+      ...attachCandidates.map((c) => c.key),
+      ...requestCoveredKeys,
+    ]);
     try {
-      const { watch: updated } = await actionUpdateZkWatchProsbaScope(watch.id, keysToOrder);
+      const { watch: updated } = await actionUpdateZkWatchProsbaScope(watch.id, scopeKeys);
+      let attachNote: ZkAttachIncomingNote | undefined;
+      let attachedKeys: string[] = [];
+      if (attachCount > 0) {
+        const res = await actionAttachZkLinesToIncoming(
+          watch.id,
+          attachCandidates.map((c) => c.key)
+        );
+        attachNote = res.ok
+          ? { attached: res.attached, notAttached: Math.max(0, attachCount - res.attached) }
+          : { attached: 0, error: res.error };
+        if (res.ok) attachedKeys = res.attachedKeys;
+      }
       onSaved(updated, {
         autoProsba: autoProsbaActive && canOfferAutoProsba,
         selectedScopeCount: keysToOrder.length,
         stockByTwId: { ...stockByTwId },
+        attachNote,
+        attachedKeys,
       });
       setAutoProsba(false);
       onClose();
@@ -320,27 +481,25 @@ export function ZkWatchProsbaScopeModal({
       open={open}
       onClose={handleClose}
       disableBackdropClose={required}
-      size="md"
+      size="lg"
       title={`${displayNumber} - co zamawiamy?`}
       description={watch.client_label}
       bodyClassName={ZK_PROSBA_MODAL_BODY_CLASS}
       footer={
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 text-xs text-slate-500">
+          <p className="text-[0.8125rem] text-slate-600">
             {orderCount > 0 ? (
-              <>
-                <span className="inline-flex size-5 items-center justify-center rounded-full bg-indigo-100 text-[0.625rem] font-semibold text-indigo-700">
-                  {orderCount}
-                </span>
-                <span className="font-medium text-slate-700">
-                  {orderCount} {plPozycja(orderCount)} do zamówienia
-                </span>
-              </>
+              <span className="font-medium text-slate-900">
+                {orderCount} {plPozycja(orderCount)} do prośby
+              </span>
             ) : (
-              <span className="text-slate-500">Brak pozycji do zamówienia</span>
+              "Bez prośby"
             )}
-          </div>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            {attachCount > 0 ? (
+              <span className="text-indigo-800"> · {attachCount} podepniemy pod ZD</span>
+            ) : null}
+          </p>
+          <div className="flex flex-col-reverse gap-2 sm:shrink-0 sm:flex-row sm:justify-end">
             {required ? (
               <Button type="button" variant="ghost" size="sm" onClick={handleClose} disabled={saving}>
                 Skonfiguruj później
@@ -367,34 +526,49 @@ export function ZkWatchProsbaScopeModal({
                   : autoProsbaActive && orderCount > 0
                     ? `Zapisz i utwórz prośbę (${orderCount})`
                     : orderCount === 0
-                      ? "Zapisz - bez prośby"
+                      ? attachCount > 0
+                        ? `Zapisz i podepnij (${attachCount})`
+                        : "Zapisz - bez prośby"
                       : `Zapisz (${orderCount})`}
             </Button>
           </div>
         </div>
       }
     >
-      <div className="overflow-hidden rounded-lg border border-indigo-200/60 bg-indigo-50/80 px-3.5 py-2.5">
-        <div className="flex items-start gap-2.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-indigo-100/80 text-indigo-700">
-            <IconClipboardList size={16} strokeWidth={2} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-indigo-950">Zaznacz pozycje do zamówienia</p>
-            <p className="mt-0.5 text-xs leading-relaxed text-indigo-900/70">
-              Zaznaczone trafią do prośby u zakupów. Odznacz towar na stanie w Subiekcie
-              (uwzględniamy rezerwacje z tego ZK). Status &bdquo;na magazynie&rdquo; pojawi się po
-              dostawie z prośby.
+      {awaitingData ? (
+        <div role="status" className="flex items-center gap-3 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-700">
+          <BrandLoader size="sm" tile={false} />
+          <span>Sprawdzam stan i dostawy w drodze - zwykle 1-3 s.</span>
+        </div>
+      ) : (
+        <section aria-label="Dostępność pozycji" className="space-y-2">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-sm font-medium leading-snug text-slate-800">
+              {availabilityCounts.need > 0
+                ? `${availabilityCounts.need} do decyzji`
+                : "Nic nie trzeba zamawiać"}
+            </p>
+            <p className="text-xs text-slate-500">
+              z {totalLines} pozycji · Subiekt na żywo
             </p>
           </div>
-        </div>
-      </div>
-
-      {stockLoading ? (
-        <ZkProsbaModalCallout tone="sky" icon="spinner" role="status">
-          <span className="font-medium">Sprawdzam stan magazynowy w Subiekcie…</span>
-        </ZkProsbaModalCallout>
-      ) : null}
+          <div
+            role="img"
+            aria-label={availabilityBarLabel}
+            className="flex h-1.5 gap-0.5 overflow-hidden rounded-full bg-slate-100"
+          >
+            {AVAILABILITY_SEGMENTS.map((seg) =>
+              availabilityCounts[seg.kind] > 0 ? (
+                <span
+                  key={seg.kind}
+                  className={seg.fill}
+                  style={{ width: `${(availabilityCounts[seg.kind] / totalLines) * 100}%` }}
+                />
+              ) : null
+            )}
+          </div>
+        </section>
+      )}
 
       {stockFetchTimedOut ? (
         <ZkProsbaModalCallout tone="amber" role="status">
@@ -409,148 +583,192 @@ export function ZkWatchProsbaScopeModal({
         </ZkProsbaModalCallout>
       ) : null}
 
-      {!awaitingAutoMark && coveredUnmarkedCount > 0 ? (
-        <ZkProsbaModalCallout tone="info" role="status">
-          {coveredUnmarkedCount === 1
-            ? "1 pozycja jest już w drodze od dostawcy (ZD z terminem) - nie zaznaczono jej do zamówienia."
-            : `${coveredUnmarkedCount} ${plPozycja(coveredUnmarkedCount)} ${polishPluralWord(coveredUnmarkedCount, "jest", "są", "jest")} już w drodze od dostawcy (ZD z terminem) - nie zaznaczono ich do zamówienia.`}
-        </ZkProsbaModalCallout>
-      ) : null}
+      <div
+        className={cn(
+          "overflow-hidden rounded-lg border border-slate-200/80 bg-card",
+          awaitingAutoMark && "pointer-events-none opacity-60"
+        )}
+        aria-busy={awaitingAutoMark || undefined}
+      >
+        {lineGroups.map((group, groupIndex) => (
+          <section key={group.id} aria-label={group.title}>
+            <h3
+              className={cn(
+                "flex items-baseline justify-between gap-3 bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700",
+                groupIndex > 0 && "border-t border-slate-200/80"
+              )}
+            >
+              {group.title}
+              <span className="hidden font-normal text-slate-500 sm:inline">{group.hint}</span>
+            </h3>
+            <ul className="divide-y divide-slate-100">
+              {group.lines.map((line) => {
+                const markedForOrder = orderMarked.has(line.key);
+                const twId = line.subiektTwId;
+                const snap = twId ? stockByTwId[twId] : undefined;
+                const sufficient =
+                  twId != null &&
+                  snap != null &&
+                  assessProsbaLineStock({ requestedQty: line.quantity, stock: snap }) === "sufficient";
+                const rawSnap = twId ? rawStockByTwId[twId] : undefined;
+                const availability = availabilityByKey.get(line.key)!;
+                const attach = attachByKey.get(line.key);
+                const stockDetail = formatZkProsbaScopeLineStockDetail({
+                  sufficient,
+                  available: snap?.available ?? null,
+                  hasStockData: snap != null,
+                  onHand: snap?.onHand ?? null,
+                  zkLineQty: line.quantity,
+                  rawReserved: rawSnap?.reserved ?? null,
+                });
+                const note = attach
+                  ? `Po zapisie podepniemy pod ${attach.doc.dokNr} jako zamówione, bez prośby do zakupów.`
+                  : availability.kind === "transit"
+                    ? (availability.note ?? "Pokryje to dostawa z ZD z terminem - nie trzeba zamawiać.")
+                    : availability.note;
+                // Zaznaczone do prośby, choć towar już jest (półka, dostawa, własna prośba).
+                const duplicateWarning =
+                  markedForOrder && availability.kind === "ordered"
+                    ? "Masz już prośbę na ten towar - druga byłaby dublem."
+                    : markedForOrder && (availability.kind === "stock" || availability.kind === "transit")
+                      ? "Już pokryte - zamawiaj tylko, jeśli klient potrzebuje więcej."
+                      : null;
+                const open = openDocsKeys.has(line.key);
+                const ChipIcon = CHIP_ICON[availability.kind];
 
-      {!stockLoading && autoMarkedCount > 0 && !noneMarkedForOrder ? (
-        <ZkProsbaModalCallout tone="info">
-          {formatZkProsbaAutoMarkedHint(autoMarkedCount)}
-        </ZkProsbaModalCallout>
-      ) : null}
-
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between px-0.5">
-          <span className={salesTypography.sectionLabel}>Pozycje z ZK</span>
-          <span className="text-[0.6875rem] font-medium text-slate-500">
-            {totalLines} {plPozycja(totalLines)}
-          </span>
-        </div>
-        <ul
-          className={cn(
-            "divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200/80 bg-card",
-            awaitingAutoMark && "pointer-events-none opacity-60"
-          )}
-          aria-busy={awaitingAutoMark || undefined}
-        >
-          {productLines.map((line) => {
-            const markedForOrder = orderMarked.has(line.key);
-            const twId = line.subiektTwId;
-            const snap = twId ? stockByTwId[twId] : undefined;
-            const sufficient =
-              twId != null &&
-              snap != null &&
-              assessProsbaLineStock({ requestedQty: line.quantity, stock: snap }) === "sufficient";
-            const rawSnap = twId ? rawStockByTwId[twId] : undefined;
-            const incomingInfo = twId != null ? incomingByTwId[twId] : undefined;
-            const cover = sufficient ? null : zkLineIncomingCover(incomingInfo?.incoming, line.quantity);
-            // Pokryte pewną dostawą (ZD z terminem w przód) i nie zaznaczone — jak „na stanie”.
-            const coveredByIncoming = Boolean(cover?.covered && cover.certain && !markedForOrder);
-            const ownOpen = (incomingInfo?.own.length ?? 0) > 0;
-            const incomingDetail = ownOpen
-              ? "Masz już otwartą prośbę na ten towar - druga byłaby dublem."
-              : cover
-                ? cover.covered
-                  ? cover.certain
-                    ? `W drodze: ${cover.doc ? `${cover.doc.dokNr} · termin ${shortDayLabel(cover.doc.deadline)} · ` : ""}wolne dla tego ZK ${formatPieces(cover.freeForLine)} - nie trzeba zamawiać.`
-                    : `W drodze wolne ${formatPieces(cover.freeForLine)}, ale bez pewnego terminu ZD - zapytaj zakupy albo zamów.`
-                  : `W drodze ${formatPieces(incomingInfo!.incoming!.incoming)}, ale czekają na to inne zamówienia klientów.`
-                : null;
-            const stockBadgeLabel = coveredByIncoming && cover
-              ? cover.doc?.deadline
-                ? `W drodze · do ${shortDayLabel(cover.doc.deadline)}`
-                : "W drodze"
-              : formatZkProsbaScopeLineBadge({
-              sufficient,
-              markedForOrder,
-              available: snap?.available ?? null,
-              hasStockData: snap != null,
-            });
-            const stockDetail = formatZkProsbaScopeLineStockDetail({
-              sufficient,
-              available: snap?.available ?? null,
-              hasStockData: snap != null,
-              onHand: snap?.onHand ?? null,
-              zkLineQty: line.quantity,
-              rawReserved: rawSnap?.reserved ?? null,
-            });
-
-            return (
-              <li key={line.key}>
-                <label
-                  className={cn(
-                    "flex cursor-pointer items-start gap-3 px-3.5 py-3 transition-colors duration-150",
-                    (sufficient || coveredByIncoming) && !markedForOrder
-                      ? "bg-emerald-50/40 hover:bg-emerald-50/60"
-                      : "bg-amber-50/40 hover:bg-amber-50/60"
-                  )}
-                >
-                  <input
-                    type="checkbox"
-                    checked={markedForOrder}
-                    disabled={saving || awaitingAutoMark}
-                    onChange={() => toggleLine(line.key)}
-                    aria-label={
-                      markedForOrder
-                        ? `${line.product} - do zamówienia, odznacz aby pominąć`
-                        : `${line.product} - pominięte, zaznacz aby zamówić`
-                    }
-                    className="mt-0.5 size-4 shrink-0 rounded-md border-slate-300 text-indigo-700 transition-colors focus:ring-2 focus:ring-indigo-500/40 focus:ring-offset-0"
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className={cn(salesTypography.rowTitle, "block text-slate-900")}>
-                      {line.product}
-                      {twId != null && teethExemptTwIds.has(twId) ? (
-                        <span className="ml-1.5 inline-flex rounded-md bg-violet-50 px-1.5 py-0.5 text-[0.625rem] font-medium text-violet-800 ring-1 ring-inset ring-violet-200/70">
-                          Zęby
-                        </span>
-                      ) : null}
-                    </span>
-                    {(line.symbol || line.quantityLabel) && (
-                      <span className={cn(salesTypography.rowMeta, "mt-0.5 block text-slate-500")}>
-                        {[line.symbol, line.quantityLabel].filter(Boolean).join(" · ")}
-                      </span>
-                    )}
-                    {stockDetail && (
-                      <span className="mt-0.5 block text-xs leading-snug text-slate-500">
-                        {stockDetail}
-                      </span>
-                    )}
-                    {incomingDetail ? (
-                      <span
+                return (
+                  <li key={line.key} className={markedForOrder ? "bg-indigo-50" : undefined}>
+                    <div className="flex items-start gap-1 pr-1.5">
+                      <label
                         className={cn(
-                          "mt-0.5 block text-xs leading-snug",
-                          ownOpen ? "font-medium text-amber-900" : coveredByIncoming ? "text-emerald-900" : "text-slate-600"
+                          "flex min-w-0 flex-1 cursor-pointer flex-wrap items-center gap-x-3 gap-y-1.5 py-2.5 pl-3.5 transition-colors duration-150 motion-reduce:transition-none",
+                          !markedForOrder && "hover:bg-slate-50"
                         )}
                       >
-                        {incomingDetail}
-                      </span>
+                        <input
+                          type="checkbox"
+                          checked={markedForOrder}
+                          disabled={saving || awaitingAutoMark}
+                          onChange={() => toggleLine(line.key)}
+                          aria-label={
+                            markedForOrder
+                              ? `${line.product} - do zamówienia, odznacz aby pominąć`
+                              : `${line.product} - pominięte, zaznacz aby zamówić`
+                          }
+                          className="size-4 shrink-0 rounded-md border-slate-300 text-indigo-700 transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-0"
+                        />
+                        <span className="min-w-0 flex-[1_1_12rem]">
+                          <span className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900">
+                            {line.product}
+                            {twId != null && teethExemptTwIds.has(twId) ? (
+                              <Badge variant="info" className="ml-1.5 align-middle">
+                                Zęby
+                              </Badge>
+                            ) : null}
+                          </span>
+                          {line.symbol ? (
+                            <span className="block font-mono text-[0.6875rem] text-slate-500">{line.symbol}</span>
+                          ) : null}
+                          {duplicateWarning ? (
+                            <span className="mt-0.5 block text-xs leading-snug text-amber-900">
+                              {duplicateWarning}
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="ml-7 flex shrink-0 items-center gap-2.5 sm:ml-auto">
+                          {line.quantityLabel ? (
+                            <span className="text-[0.8125rem] tabular-nums text-slate-700">{line.quantityLabel}</span>
+                          ) : null}
+                          {awaitingData ? null : (
+                            <Badge variant={availability.tone} className="gap-1 whitespace-nowrap py-1">
+                              <ChipIcon size={13} strokeWidth={2.2} aria-hidden />
+                              {availability.chip}
+                            </Badge>
+                          )}
+                        </span>
+                      </label>
+                      <button
+                        type="button"
+                        aria-expanded={open}
+                        aria-label={`${open ? "Ukryj" : "Pokaż"} szczegóły: ${line.product}`}
+                        onClick={() => toggleDocs(line.key)}
+                        className="mt-1.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                      >
+                        <IconChevronDown
+                          size={16}
+                          className={cn("transition-transform duration-200 motion-reduce:transition-none", open && "rotate-180")}
+                          aria-hidden
+                        />
+                      </button>
+                    </div>
+                    {open ? (
+                      <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 px-3.5 pb-3 pl-[2.625rem] text-xs leading-snug">
+                        {stockDetail ? (
+                          <>
+                            <dt className="text-slate-500">Magazyn</dt>
+                            <dd className="text-slate-700">{stockDetail}</dd>
+                          </>
+                        ) : null}
+                        {availability.incomingFact ? (
+                          <>
+                            <dt className="text-slate-500">W drodze</dt>
+                            <dd className="text-slate-700">{availability.incomingFact}</dd>
+                          </>
+                        ) : null}
+                        {availability.docs.map((doc) => (
+                          <Fragment key={doc.dokNr}>
+                            <dt className="font-mono text-slate-500">{doc.dokNr}</dt>
+                            <dd className={doc.deadline && doc.deadline < todayKey ? "text-amber-900" : "text-slate-700"}>
+                              {doc.deadline
+                                ? doc.deadline < todayKey
+                                  ? `termin minął ${shortDayLabel(doc.deadline)}`
+                                  : `termin ${shortDayLabel(doc.deadline)}`
+                                : "bez terminu"}
+                              {doc.qty != null ? ` · ${formatPieces(doc.qty)}` : ""}
+                            </dd>
+                          </Fragment>
+                        ))}
+                        {availability.otherZkWaiting > 0 ? (
+                          <>
+                            <dt className="text-slate-500">Inne ZK</dt>
+                            <dd className="text-slate-700">czekają na {formatPieces(availability.otherZkWaiting)}</dd>
+                          </>
+                        ) : null}
+                        {availability.requestFact ? (
+                          <>
+                            <dt className="text-slate-500">Twoja prośba</dt>
+                            <dd className="text-slate-700">{availability.requestFact}</dd>
+                          </>
+                        ) : null}
+                        {note ? (
+                          <dd
+                            className={cn(
+                              "col-span-2",
+                              // Ostrzeżenie (brak, prośba spoza ZK) bursztynem; informacja o pokryciu Petrolem.
+                              !attach && (availability.kind === "need" || (availability.kind === "transit" && availability.note))
+                                ? "text-amber-900"
+                                : "text-indigo-800"
+                            )}
+                          >
+                            {note}
+                          </dd>
+                        ) : null}
+                      </dl>
                     ) : null}
-                  </span>
-                  <span
-                    className={cn(
-                      salesTypography.kindTag,
-                      "shrink-0 rounded-md px-2 py-0.5 leading-none",
-                      (sufficient || coveredByIncoming) && !markedForOrder
-                        ? "bg-emerald-100 text-emerald-950 ring-1 ring-emerald-200/80"
-                        : "bg-amber-100 text-amber-950 ring-1 ring-amber-200/80"
-                    )}
-                  >
-                    {stockBadgeLabel}
-                  </span>
-                </label>
-              </li>
-            );
-          })}
-        </ul>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ))}
       </div>
 
       {noneMarkedForOrder && !stockLoading ? (
-        allLinesSufficient ? (
+        allLinesHandledWithoutOrder ? (
+          <ZkProsbaModalCallout tone="emerald">
+            Nic nie trzeba zamawiać - pozycje są na stanie albo podepniemy je pod dostawę w drodze.
+          </ZkProsbaModalCallout>
+        ) : allLinesSufficient ? (
           <ZkProsbaModalCallout tone="emerald">
             Wszystkie pozycje są na stanie i zarezerwowane w tym ZK - zapisz, jeśli nic nie trzeba
             zamawiać u dostawcy.

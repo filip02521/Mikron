@@ -4,9 +4,14 @@ import {
   assignFsToPrograms,
   buildBatchDraft,
   ivoclarCatalogNo,
+  lastShortRange,
   previousMonthPeriod,
-  programActiveInPeriod,
+  programsForRange,
+  rolMonthRange,
   rolPeriodRange,
+  rolRangeKind,
+  rolRangesForMonthScan,
+  shortRangesInMonth,
   ROL_CONFLICT_REASON,
   scanRolPeriod,
   type RolProgramScope,
@@ -14,8 +19,8 @@ import {
 } from "./scan";
 
 // Dane zmyślone: kartoteki 101/102 = klient A, 201 = klient B, 900 = ktoś spoza ROL.
-const A: RolProgramScope = { id: "prog-a", khIds: [101, 102], activeFrom: "2026-01-01", activeTo: null };
-const B: RolProgramScope = { id: "prog-b", khIds: [201], activeFrom: "2026-01-01", activeTo: null };
+const A: RolProgramScope = { id: "prog-a", khIds: [101, 102], active: true, reportFrequency: "month" };
+const B: RolProgramScope = { id: "prog-b", khIds: [201], active: true, reportFrequency: "month" };
 const IVOCLAR = new Set([1, 2, 3]);
 
 function fs(id: number, date: string, kh: { p?: number; o?: number }, lines: Array<[number, number, string?]> = []): SubiektDocument {
@@ -60,8 +65,9 @@ function deps(input: {
   };
 }
 
-const run = (d: RolScanDeps, programs = [A, B]) =>
-  scanRolPeriod(d, { period: "2026-09-01", todayKey: "2026-10-02", programs });
+const SEPT = rolMonthRange("2026-09-01");
+const run = (d: RolScanDeps, programs = [A, B], extra: Partial<Parameters<typeof scanRolPeriod>[1]> = {}) =>
+  scanRolPeriod(d, { range: SEPT, todayKey: "2026-10-02", programs, ...extra });
 
 describe("okres", () => {
   it("poprzedni miesiąc i zakres dat", () => {
@@ -71,10 +77,52 @@ describe("okres", () => {
     expect(rolPeriodRange("2028-02-01").dataDo).toBe("2028-02-29");
   });
 
-  it("program aktywny tylko w swoim okresie", () => {
-    expect(programActiveInPeriod({ activeFrom: "2026-09-15", activeTo: null }, "2026-09-01")).toBe(true);
-    expect(programActiveInPeriod({ activeFrom: "2026-10-01", activeTo: null }, "2026-09-01")).toBe(false);
-    expect(programActiveInPeriod({ activeFrom: "2026-01-01", activeTo: "2026-08-31" }, "2026-09-01")).toBe(false);
+  it("rodzaj okresu: miesiąc, tydzień, dwa tygodnie", () => {
+    expect(rolRangeKind(SEPT)).toBe("month");
+    expect(rolRangeKind({ start: "2026-10-26", end: "2026-11-01" })).toBe("week");
+    expect(rolRangeKind({ start: "2026-10-12", end: "2026-10-25" })).toBe("2weeks");
+    expect(rolRangeKind({ start: "2026-09-01", end: "2026-09-29" })).toBeNull();
+  });
+
+  it("ostatni zakończony tydzień i blok dwutygodniowy (stała kotwica, poniedziałki)", () => {
+    // 2026-11-04 to środa; 2026-11-02 poniedziałek.
+    expect(lastShortRange("week", "2026-11-04")).toEqual({ start: "2026-10-26", end: "2026-11-01" });
+    expect(lastShortRange("week", "2026-11-02")).toEqual({ start: "2026-10-26", end: "2026-11-01" });
+    expect(lastShortRange("week", "2026-11-01")).toEqual({ start: "2026-10-19", end: "2026-10-25" });
+    expect(lastShortRange("2weeks", "2026-11-04")).toEqual({ start: "2026-10-12", end: "2026-10-25" });
+    expect(lastShortRange("2weeks", "2026-11-09")).toEqual({ start: "2026-10-26", end: "2026-11-08" });
+    // Przełom roku: tydzień od poniedziałku 28.12.
+    expect(lastShortRange("week", "2027-01-05")).toEqual({ start: "2026-12-28", end: "2027-01-03" });
+  });
+
+  it("krótkie okresy miesiąca: tylko zakończone i zaczynające się w tym miesiącu", () => {
+    expect(shortRangesInMonth("week", "2026-10-01", "2026-11-04").map((r) => r.start)).toEqual([
+      "2026-10-05",
+      "2026-10-12",
+      "2026-10-19",
+      "2026-10-26",
+    ]);
+    expect(shortRangesInMonth("week", "2026-11-01", "2026-11-04")).toEqual([]);
+    expect(shortRangesInMonth("2weeks", "2026-10-01", "2026-11-04").map((r) => r.start)).toEqual(["2026-10-12"]);
+  });
+
+  it("raport dotyczy aktywnych; krótki okres — tylko klientów z tą częstotliwością", () => {
+    const weekly = { ...A, reportFrequency: "week" as const };
+    const off = { ...B, active: false };
+    expect(programsForRange([weekly, off], SEPT)).toEqual([weekly]);
+    expect(programsForRange([weekly, B], { start: "2026-10-26", end: "2026-11-01" })).toEqual([weekly]);
+  });
+
+  it("„Sprawdź ponownie”: krótkie okresy przed miesiącem, miesiąc dopiero po jego końcu", () => {
+    const weekly = [{ active: true, reportFrequency: "week" as const }];
+    expect(rolRangesForMonthScan("2026-10-01", "2026-11-04", [{ active: true, reportFrequency: "month" }])).toEqual([
+      rolMonthRange("2026-10-01"),
+    ]);
+    const oct = rolRangesForMonthScan("2026-10-01", "2026-11-04", weekly);
+    expect(oct.at(-1)).toEqual(rolMonthRange("2026-10-01"));
+    expect(oct).toHaveLength(5);
+    expect(rolRangesForMonthScan("2026-11-01", "2026-11-04", weekly)).toEqual([]);
+    expect(rolRangesForMonthScan("2026-11-01", "2026-11-10", weekly)).toEqual([{ start: "2026-11-02", end: "2026-11-08" }]);
   });
 
   it("numer katalogowy Ivoclar to 6 cyfr", () => {
@@ -149,10 +197,22 @@ describe("scanRolPeriod", () => {
     expect(b!.lines.map((l) => [l.fsDokId, l.qtyFs])).toEqual([[12, 7]]);
   });
 
-  it("program nieaktywny w miesiącu nie dostaje paczki", async () => {
+  it("klient nieaktywny nie dostaje paczki", async () => {
     const d = deps({ fsPages: [[fs(10, "2026-09-02", { p: 101 }, [[1, 2]])]] });
-    const res = await run(d, [{ ...A, activeFrom: "2026-10-01" }, B]);
+    const res = await run(d, [{ ...A, active: false }, B]);
     expect(res.drafts.map((x) => x.programId)).toEqual(["prog-b"]);
+  });
+
+  it("FS, którą klient ma już w innym zgłoszeniu, nie wraca do raportu (miesięczny = reszta)", async () => {
+    const d = deps({
+      fsPages: [[fs(10, "2026-09-02", { p: 101 }, [[1, 2]]), fs(11, "2026-09-20", { p: 101 }, [[2, 1]]), fs(12, "2026-09-03", { p: 201 }, [[1, 7]])]],
+    });
+    const res = await run(d, [A, B], { claimed: new Map([["prog-a", new Set([10])], ["prog-b", new Set([10])]]) });
+    const [a, b] = res.drafts;
+    expect(a!.invoices.map((i) => i.fsDokId)).toEqual([11]);
+    expect(b!.invoices.map((i) => i.fsDokId)).toEqual([12]);
+    // Szczegółów zgłoszonej FS skan nie pobiera.
+    expect(res.fsChecked).toBe(3);
   });
 
   it("pusty zakres Ivoclar to błąd, nie „brak zakupów”", async () => {
@@ -162,7 +222,7 @@ describe("scanRolPeriod", () => {
 });
 
 describe("korekty KFS", () => {
-  const base = { programId: "prog-a", period: "2026-09-01", isIvoclar: (tw: number) => IVOCLAR.has(tw) };
+  const base = { programId: "prog-a", range: SEPT, isIvoclar: (tw: number) => IVOCLAR.has(tw) };
   const header = (id: number, date: string) => ({ id, nr: `FS ${id}`, date, platnikId: 101, odbiorcaId: null });
   const kfs = (id: number, date: string, corrected: number | null, lines: Array<[number, number]>) => ({
     ...header(id, date),

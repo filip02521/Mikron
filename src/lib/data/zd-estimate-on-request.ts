@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchAllRows } from "@/lib/data/fetch-all-rows";
+import type { ServicePartsOrigin } from "@/lib/orders/service-parts";
 
 export type ZdEstimateOnRequestRow = {
   subiektTwId: number;
@@ -11,6 +12,8 @@ export type ZdEstimateOnRequestRow = {
   createdAt: string;
   updatedAt: string;
   createdBy: string | null;
+  /** Wiersz z cechy Subiekta „Części serwisowe” (nie z tabeli) — nie da się go usunąć z listy. */
+  origin?: ServicePartsOrigin;
 };
 
 type DbRow = {

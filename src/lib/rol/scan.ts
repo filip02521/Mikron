@@ -6,7 +6,7 @@
 import { createHash } from "node:crypto";
 import { mapPool } from "@/lib/async/map-pool";
 import type { SubiektDocument, SubiektListEnvelope, SubiektListParams } from "@/lib/subiekt/types";
-import { ROL_CONFLICT_REASON } from "./constants";
+import { ROL_CONFLICT_REASON, type RolFrequency } from "./constants";
 
 /** dok_Typ faktury korygującej sprzedaż (jak w `subiekt-sales-corrections.ts`). */
 const DOC_TYPE_KFS = 6;
@@ -14,12 +14,16 @@ const DOC_TYPE_KFS = 6;
 const PAGE_SIZE = 200;
 
 export { ROL_CONFLICT_REASON };
+export type { RolFrequency };
+
+/** Okres raportu: daty wystawienia FS od–do (`YYYY-MM-DD`, włącznie). */
+export type RolRange = { start: string; end: string };
 
 export type RolProgramScope = {
   id: string;
   khIds: readonly number[];
-  activeFrom: string;
-  activeTo: string | null;
+  active: boolean;
+  reportFrequency: RolFrequency;
 };
 
 export type RolFsHeader = {
@@ -67,8 +71,8 @@ export type RolBatchDraft = {
 };
 
 export type RolScanResult = {
-  period: string;
-  /** Wszystkie FS z miesiąca, które skan przejrzał. */
+  range: RolRange;
+  /** Wszystkie FS z okresu, które skan przejrzał. */
   fsChecked: number;
   drafts: RolBatchDraft[];
 };
@@ -92,10 +96,56 @@ export function isRolPeriod(value: string): boolean {
   return /^\d{4}-(0[1-9]|1[0-2])-01$/.test(value);
 }
 
-/** Program obowiązuje, gdy jego okres aktywności zachodzi na zgłaszany miesiąc. */
-export function programActiveInPeriod(program: Pick<RolProgramScope, "activeFrom" | "activeTo">, period: string): boolean {
+export function rolMonthRange(period: string): RolRange {
   const { dataOd, dataDo } = rolPeriodRange(period);
-  return program.activeFrom <= dataDo && (program.activeTo === null || program.activeTo >= dataOd);
+  return { start: dataOd, end: dataDo };
+}
+
+const DAY_MS = 86_400_000;
+// Same daty bez strefy: liczymy w UTC od północy UTC, więc toISOString nie przesuwa dnia.
+const dayNumber = (key: string) => Date.parse(`${key}T00:00:00Z`) / DAY_MS;
+const dayKey = (n: number) => new Date(n * DAY_MS).toISOString().slice(0, 10);
+/** Poniedziałek, od którego liczą się bloki dwutygodniowe (stała kotwica — bloki się nie przesuwają). */
+const BIWEEK_ANCHOR = dayNumber("2026-01-05");
+
+/** Rodzaj okresu: cały miesiąc, tydzień albo dwa tygodnie; inny zakres → null. */
+export function rolRangeKind(r: RolRange): RolFrequency | null {
+  if (r.start.endsWith("-01") && rolMonthRange(r.start).end === r.end) return "month";
+  const days = dayNumber(r.end) - dayNumber(r.start) + 1;
+  return days === 7 ? "week" : days === 14 ? "2weeks" : null;
+}
+
+/** Krótki okres (tydzień / 2 tygodnie), w którym leży dzień `key`. */
+function shortRangeOf(freq: Exclude<RolFrequency, "month">, key: string): RolRange {
+  const d = dayNumber(key);
+  // 1970-01-01 to czwartek: (d + 3) % 7 = dni od poniedziałku.
+  const start =
+    freq === "week" ? d - ((d + 3) % 7) : BIWEEK_ANCHOR + Math.floor((d - BIWEEK_ANCHOR) / 14) * 14;
+  return { start: dayKey(start), end: dayKey(start + (freq === "week" ? 6 : 13)) };
+}
+
+/** Ostatni zakończony krótki okres przed `todayKey` (np. w poniedziałek: miniony tydzień). */
+export function lastShortRange(freq: Exclude<RolFrequency, "month">, todayKey: string): RolRange {
+  return shortRangeOf(freq, dayKey(dayNumber(shortRangeOf(freq, todayKey).start) - 1));
+}
+
+/** Zakończone przed `todayKey` krótkie okresy, które zaczynają się w miesiącu `period`. */
+export function shortRangesInMonth(freq: Exclude<RolFrequency, "month">, period: string, todayKey: string): RolRange[] {
+  const month = rolMonthRange(period);
+  const out: RolRange[] = [];
+  for (let r = shortRangeOf(freq, month.start); r.start <= month.end && r.end < todayKey; r = shortRangeOf(freq, dayKey(dayNumber(r.end) + 1))) {
+    if (r.start >= month.start) out.push(r);
+  }
+  return out;
+}
+
+/** Klienci, których dotyczy raport za okres: aktywni; krótki okres tylko z tą częstotliwością. */
+export function programsForRange<P extends Pick<RolProgramScope, "active" | "reportFrequency">>(
+  programs: readonly P[],
+  range: RolRange
+): P[] {
+  const kind = rolRangeKind(range);
+  return programs.filter((p) => p.active && (kind === "month" || p.reportFrequency === kind));
 }
 
 /** Numer katalogowy Ivoclar = 6-cyfrowy symbol towaru (wzór arkusza z 09.2026); inaczej brak. */
@@ -164,17 +214,17 @@ function hashDraft(invoices: readonly RolDraftInvoice[], lines: readonly RolDraf
 
 /**
  * Paczka jednego klienta: pozycje Ivoclar z jego FS, minus KFS.
- * KFS ze wskazaną FS odejmuje się od tej FS; bez wskazania — tylko KFS z tego miesiąca,
+ * KFS ze wskazaną FS odejmuje się od tej FS; bez wskazania — tylko KFS z tego okresu,
  * od najpóźniejszych FS z tym towarem. Odjęcie nigdy nie schodzi poniżej zera.
  */
 export function buildBatchDraft(input: {
   programId: string;
-  period: string;
+  range: RolRange;
   fs: ReadonlyArray<{ header: RolFsHeader; lines: readonly RolDocLine[]; conflict?: boolean }>;
   kfs: readonly RolKfs[];
   isIvoclar: (twId: number) => boolean;
 }): RolBatchDraft {
-  const { dataOd, dataDo } = rolPeriodRange(input.period);
+  const { start: dataOd, end: dataDo } = input.range;
   const sorted = [...input.fs].sort(
     (a, b) => String(a.header.date).localeCompare(String(b.header.date)) || a.header.id - b.header.id
   );
@@ -272,21 +322,32 @@ async function listAllPages(
 }
 
 /**
- * Skan miesiąca `period` dla programów aktywnych w tym miesiącu. KFS czytamy do `todayKey`,
- * bo korekty do FS z miesiąca bywają wystawiane później.
+ * Skan okresu `range` dla klientów, których ten raport dotyczy (`programsForRange`). KFS czytamy
+ * do `todayKey`, bo korekty bywają wystawiane później. FS, którą klient ma już w innym swoim raporcie
+ * (`claimed`), pomijamy — każda FS idzie do Ivoclara raz, w najwcześniejszym raporcie.
  */
 export async function scanRolPeriod(
   deps: RolScanDeps,
-  input: { period: string; todayKey: string; programs: readonly RolProgramScope[] }
+  input: {
+    range: RolRange;
+    todayKey: string;
+    programs: readonly RolProgramScope[];
+    claimed?: ReadonlyMap<string, ReadonlySet<number>>;
+  }
 ): Promise<RolScanResult> {
-  if (!isRolPeriod(input.period)) throw new Error("Nieprawidłowy miesiąc zgłoszenia.");
-  const programs = input.programs.filter((p) => programActiveInPeriod(p, input.period));
-  const { dataOd, dataDo } = rolPeriodRange(input.period);
+  if (!rolRangeKind(input.range)) throw new Error("Nieprawidłowy okres zgłoszenia.");
+  const programs = programsForRange(input.programs, input.range);
+  const { start: dataOd, end: dataDo } = input.range;
+  const free = (programId: string, fs: RolFsHeader) => !input.claimed?.get(programId)?.has(fs.id);
 
   const [fsDocs, ivoclar] = await Promise.all([listAllPages(deps.listFs, { dataOd, dataDo }), deps.loadIvoclarTwIds()]);
   if (ivoclar.size === 0) throw new Error("Pusty zakres towarów Ivoclar — skan nie rozpozna pozycji.");
   const headers = fsDocs.map(fsHeaderFromDocument).filter((h): h is RolFsHeader => h !== null);
-  const { byProgram, conflicts } = assignFsToPrograms(headers, programs);
+  const assigned = assignFsToPrograms(headers, programs);
+  const byProgram = new Map([...assigned.byProgram].map(([id, list]) => [id, list.filter((fs) => free(id, fs))]));
+  const conflicts = assigned.conflicts
+    .map((c) => ({ ...c, programIds: c.programIds.filter((id) => free(id, c.fs)) }))
+    .filter((c) => c.programIds.length > 0);
 
   const matched = [...new Map([...byProgram.values(), ...conflicts.map((c) => [c.fs])].flat().map((h) => [h.id, h])).values()];
   const details = await mapPool(matched, 3, async (h) => [h.id, docLinesFromDocument(await deps.getFs(h.id))] as const);
@@ -305,7 +366,7 @@ export async function scanRolPeriod(
   const drafts = programs.map((p) =>
     buildBatchDraft({
       programId: p.id,
-      period: input.period,
+      range: input.range,
       fs: [
         ...(byProgram.get(p.id) ?? []).map((header) => ({ header, lines: linesByFs.get(header.id) ?? [] })),
         ...conflicts
@@ -316,5 +377,22 @@ export async function scanRolPeriod(
       isIvoclar: (tw) => ivoclar.has(tw),
     })
   );
-  return { period: input.period, fsChecked: headers.length, drafts };
+  return { range: input.range, fsChecked: headers.length, drafts };
+}
+
+/**
+ * „Sprawdź ponownie” dla miesiąca: zakończone krótkie okresy (częstotliwości, które mają aktywni klienci),
+ * potem cały miesiąc — tylko gdy już minął, bo raport miesięczny za trwający miesiąc zabrałby FS
+ * raportom tygodniowym. Krótsze pierwsze, jak w cronie.
+ */
+export function rolRangesForMonthScan(
+  period: string,
+  todayKey: string,
+  programs: ReadonlyArray<Pick<RolProgramScope, "active" | "reportFrequency">>
+): RolRange[] {
+  const short = (["week", "2weeks"] as const)
+    .filter((f) => programs.some((p) => p.active && p.reportFrequency === f))
+    .flatMap((f) => shortRangesInMonth(f, period, todayKey));
+  const month = rolMonthRange(period);
+  return month.end < todayKey ? [...short, month] : short;
 }

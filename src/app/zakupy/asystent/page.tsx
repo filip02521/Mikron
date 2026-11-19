@@ -32,7 +32,7 @@ import { ocCheckHref, OcCheckList } from "@/components/zakupy/oc-check/OcCheckLi
 import { OcCheckImportForm } from "@/components/zakupy/oc-check/OcCheckImportForm";
 import { SupplierMailWorkspace } from "@/components/zakupy/supplier-mail/SupplierMailWorkspace";
 import { RolWorkspace } from "@/components/zakupy/rol/RolWorkspace";
-import { loadRolBatches, loadRolPrograms, type RolBatchView, type RolProgram } from "@/lib/rol/data";
+import { countRolNeedsAction, loadRolBatches, loadRolPrograms, type RolBatchView, type RolProgram } from "@/lib/rol/data";
 import { recentRolPeriods, rolNeedsAction } from "@/lib/rol/view";
 import { warsawNowParts } from "@/lib/time/warsaw";
 
@@ -141,12 +141,14 @@ export default async function AsystentPage({
   ]);
   const mailTodo = mail ? countNeedsAction(mail, user.id) : 0;
 
-  // Zgłoszenia ROL: domyślnie poprzedni miesiąc (ten, który zgłaszamy teraz).
-  const rolPeriods = recentRolPeriods(warsawNowParts().dateKey);
-  const rolPeriod = typeof params.miesiac === "string" && rolPeriods.includes(params.miesiac) ? params.miesiac : rolPeriods[0]!;
+  // Zgłoszenia ROL: domyślnie poprzedni miesiąc (ten, który zgłaszamy teraz); bieżący na liście dla raportów tygodniowych.
+  const todayKey = warsawNowParts().dateKey;
+  const previousPeriods = recentRolPeriods(todayKey);
+  const rolPeriods = [`${todayKey.slice(0, 8)}01`, ...previousPeriods];
+  const rolPeriod = typeof params.miesiac === "string" && rolPeriods.includes(params.miesiac) ? params.miesiac : previousPeriods[0]!;
   const rol = await loadRolSection(rolPeriod);
-  // Licznik zakładki to zawsze bieżące zgłoszenie (poprzedni miesiąc), nie przeglądany miesiąc.
-  const rolToReview = rolPeriod === rolPeriods[0] ? rol.toReview : (await loadRolSection(rolPeriods[0]!)).toReview;
+  // Licznik zakładki to zawsze bieżące zgłoszenia (od poprzedniego miesiąca), nie przeglądany miesiąc.
+  const rolToReview = hasDatabaseConfig() ? await countRolNeedsAction(todayKey).catch(() => rol.toReview) : 0;
   const sections: { id: Section; href: string; count: number }[] = [
     { id: "poczta", href: "/zakupy/asystent", count: mailTodo },
     {

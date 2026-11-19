@@ -29,6 +29,7 @@ const line = (twId: number, qtyFs: number): RolLineView => ({
 const batch = (p: { zdDokId?: number | null; zdNr?: string | null } = {}) => ({
   id: "b1",
   period: "2026-09-01",
+  periodEnd: "2026-09-30",
   invoices: [inv],
   lines: [line(1, 2), line(2, 3)],
   zdDokId: p.zdDokId ?? null,

@@ -1,3 +1,4 @@
+import { canAccessPath } from "@/lib/auth-roles";
 import { describe, expect, it } from "vitest";
 import {
   canSwitchProcurementWorkspace,
@@ -24,6 +25,19 @@ describe("procurement-workspace", () => {
     expect(defaultProcurementWorkspace("zakupy_zeby")).toBe("zeby");
     expect(homePathForUser("zakupy_zeby", "zeby")).toBe("/zeby/kolejka");
     expect(homePathForProcurementWorkspace("dostawy")).toBe("/podsumowanie");
+  });
+
+  it("bez obszaru pracy prowadzi na start roli, który ta rola może otworzyć", () => {
+    expect(homePathForUser("serwis", null)).toBe("/serwis/zlecenia");
+    expect(homePathForUser("sales", null)).toBe("/moje");
+    expect(homePathForUser("sales_manager", null)).toBe("/moje");
+    expect(homePathForUser("magazyn", null)).toBe("/kolejka");
+    expect(homePathForUser("zakupy_zeby", null)).toBe("/zeby/kolejka");
+    expect(homePathForUser("zakupy", null)).toBe("/podsumowanie");
+    expect(homePathForUser("admin", null)).toBe("/podsumowanie");
+    for (const role of ["serwis", "sales", "sales_manager", "magazyn", "zakupy_zeby", "zakupy", "admin"] as const) {
+      expect(canAccessPath(role, homePathForUser(role, null))).toBe(true);
+    }
   });
 
   it("resolveProcurementWorkspace honoruje cookie gdy dozwolone", () => {

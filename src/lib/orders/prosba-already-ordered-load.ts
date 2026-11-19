@@ -309,8 +309,8 @@ async function loadIncomingDocs(
   twIds: readonly number[],
   packaging: Map<number, Packaging>
 ): Promise<Map<number, ProsbaIncomingZdDoc[]>> {
-  const res = await query<{ subiekt_tw_id: number; dok_id: number }>(
-    `SELECT l.subiekt_tw_id, z.dok_id
+  const res = await query<{ subiekt_tw_id: number; dok_id: number; supplier_id: string }>(
+    `SELECT l.subiekt_tw_id, z.dok_id, l.supplier_id
        FROM product_supplier_links l
        JOIN LATERAL (
          (SELECT zi.dok_id
@@ -333,6 +333,11 @@ async function loadIncomingDocs(
     [twIds, ZD_DOCS_PER_SUPPLIER, ZD_DOCS_MAX_AGE_DAYS]
   );
   const docIds = [...new Set(res.rows.map((r) => Number(r.dok_id)))];
+  // Dokument pochodzi z indeksu ZD jednego dostawcy — ten dostawca dostanie podpiętą prośbę.
+  const supplierByDokId = new Map<number, string>();
+  for (const r of res.rows) {
+    if (!supplierByDokId.has(Number(r.dok_id))) supplierByDokId.set(Number(r.dok_id), r.supplier_id);
+  }
   const docs = await mapLimit(docIds, SUBIEKT_CONCURRENCY, (id) =>
     getSubiektZdDocumentCached(id).catch(() => null)
   );
@@ -354,6 +359,8 @@ async function loadIncomingDocs(
         issued: doc.dok_DataWyst ? String(doc.dok_DataWyst).slice(0, 10) : null,
         deadline: parseZdFulfillmentDeadline(doc),
         qty: zdDocumentUnitsToPieces(docUnits, pack?.unitsPerPackage, pack?.mode),
+        dokId: doc.dok_Id,
+        supplierId: supplierByDokId.get(Number(doc.dok_Id)) ?? null,
       });
       byTw.set(twId, list);
     }

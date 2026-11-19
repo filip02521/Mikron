@@ -14,7 +14,14 @@ export type VacationNote =
   | "PRZESUNIETE_PO"
   | "PRZYSPIESZONE_PRZED"
   | "OSTATNIE_ZAMOWIENIE";
-export type UserRole = "admin" | "zakupy" | "zakupy_zeby" | "magazyn" | "sales" | "sales_manager";
+export type UserRole =
+  | "admin"
+  | "zakupy"
+  | "zakupy_zeby"
+  | "magazyn"
+  | "sales"
+  | "sales_manager"
+  | "serwis";
 
 /** Obszary robocze przypisywane użytkownikom przez admina. */
 export type Workspace = "dostawy" | "zeby" | "magazyn";
@@ -140,6 +147,8 @@ export interface IndividualOrder {
   ordered_at: string | null;
   /** „Już zamówione” w panelu — towar zamówiony wcześniej; poza statystykami czasu dostaw. */
   already_ordered?: boolean;
+  /** Podpięte automatycznie pod ZD w drodze z notatnika ZK (migracja 207). */
+  zd_auto_attached_at?: string | null;
   /** Wspólne ID pozycji z jednego formularza / jednego zapisu. */
   submission_group_id?: string | null;
   /** Wspólne ID pozycji zamówionych jedną akcją w panelu dziennym. */

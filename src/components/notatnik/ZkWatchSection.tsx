@@ -43,7 +43,9 @@ import {
   mapZkQuantityConfirmLabelForAuto,
   mapZkQuantityConfirmMessageForAuto,
   formatAutoProsbaStockConfirmSummary,
+  appendZkAttachIncomingNote,
   type AutoProsbaToastPayload,
+  type ZkAttachIncomingNote,
 } from "@/lib/sales/zk-watch-auto-prosba-copy";
 import { actionAutoCreateProsbaFromZkWatch } from "@/app/actions/sales-notepad";
 import {
@@ -201,6 +203,9 @@ export function ZkWatchSection({
   const pendingLinesRef = useRef<ProductLineDraft[]>([]);
   const pendingWatchRef = useRef<SalesZkWatch | null>(null);
   const pendingScopeCountRef = useRef(0);
+  const pendingAttachNoteRef = useRef<ZkAttachIncomingNote | null>(null);
+  // Pozycje podpięte przed chwilą pod dostawę — lista próśb w pamięci jeszcze ich nie zna.
+  const attachedKeysRef = useRef<{ watchId: string; keys: ReadonlySet<string> } | null>(null);
   const pendingStockRef = useRef<Record<number, import("@/lib/orders/prosba-stock-check").ProsbaLineStockSnapshot>>(
     {}
   );
@@ -258,7 +263,10 @@ export function ZkWatchSection({
   }
 
   function emitProsbaToast(toast: AutoProsbaToastPayload) {
-    onProsbaToast?.(toast);
+    // Wynik podpięcia pod dostawę w drodze trafia do pierwszego komunikatu po zapisie zakresu.
+    const attachNote = pendingAttachNoteRef.current;
+    pendingAttachNoteRef.current = null;
+    onProsbaToast?.(attachNote ? appendZkAttachIncomingNote(toast, attachNote) : toast);
   }
 
   function mojeHrefForWatch(watch: SalesZkWatch): string {
@@ -412,7 +420,11 @@ export function ZkWatchSection({
     }
   ) {
     if (autoProsbaSubmitting || confirmOpen) return;
-    const hints = resolveWatchHints(watch);
+    const attached = attachedKeysRef.current?.watchId === watch.id ? attachedKeysRef.current.keys : null;
+    const freshHints = resolveWatchHints(watch);
+    const hints = attached
+      ? { ...freshHints, uncoveredLineKeys: freshHints.uncoveredLineKeys.filter((key) => !attached.has(key)) }
+      : freshHints;
     const built = buildClientAutoProsbaLines({
       watch,
       hints,
@@ -914,6 +926,7 @@ export function ZkWatchSection({
           tourPreview={tourPreview}
           delegatePreview={delegatePreview}
           teethRegistry={teethRegistry}
+          lineCoverageByKey={zkHintsByWatchId?.get(prosbaScopeWatch.id)?.lineCoverageByKey}
           onClose={() => {
             setScopeDismissed({ watchId: prosbaScopeWatch.id, nonce: prosbaScopeOpenNonce });
             // Okno zakresu zasłaniało listę — po zamknięciu pokaż, gdzie jest to ZK.
@@ -923,6 +936,10 @@ export function ZkWatchSection({
             setScopeDismissed(null);
             onProsbaScopeConfigured?.(prosbaScopeWatch.id);
             onWatchRefreshed?.(updated, undefined, { skipRouterRefresh: true });
+            pendingAttachNoteRef.current = meta.attachNote ?? null;
+            attachedKeysRef.current = meta.attachedKeys?.length
+              ? { watchId: prosbaScopeWatch.id, keys: new Set(meta.attachedKeys) }
+              : null;
             beginAutoProsbaAfterScope(updated, meta);
           }}
         />

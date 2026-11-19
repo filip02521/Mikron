@@ -260,6 +260,8 @@ export type SubiektKontrahent = {
   adr_Kod?: string | null;
   adr_Poczta?: string | null;
   adr_Ulica?: string | null;
+  /** Ulica z numerem (adr_Ulica to sama nazwa ulicy). */
+  adr_Adres?: string | null;
   /** Id państwa z kartoteki adresu (sl_Panstwo) — opcjonalne; do raportów preferuj ISO. */
   adr_IdPanstwo?: number | null;
   /** Nazwa państwa z JOIN na sl_Panstwo. */

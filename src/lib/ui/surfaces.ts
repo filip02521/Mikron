@@ -11,13 +11,13 @@ export const surface = {
   control: "rounded-md",
 } as const;
 
-/** Pełnoekranowy backdrop modala. Wymaga `useBodyScrollLock(open)` — sam nie blokuje scrolla `<main>`. */
+/** Pełnoekranowy backdrop modala, bez rozmycia (blur pełnego ekranu kosztuje ~5× czasu kompozycji klatki). Wymaga `useBodyScrollLock(open)` — sam nie blokuje scrolla `<main>`. */
 export const modalBackdropClass =
-  "fixed inset-0 cursor-pointer bg-scrim/45 backdrop-blur-sm";
+  "fixed inset-0 cursor-pointer bg-scrim/45";
 
-/** Backdrop dla panelu bocznego (drawer/sheet) — ciemniejszy, z blur. Panel renderuj portalem do `document.body`. */
+/** Backdrop dla panelu bocznego (drawer/sheet) — bez rozmycia, jak `modalBackdropClass`. Panel renderuj portalem do `document.body`. */
 export const sidePanelBackdropClass =
-  "fixed inset-0 z-[58] cursor-pointer bg-scrim/40 backdrop-blur-sm";
+  "fixed inset-0 z-[58] cursor-pointer bg-scrim/40";
 
 /** Powłoka panelu bocznego — spójna border, shadow, rounded-left. Warstwa ze skali DESIGN.md, nad dolnym paskiem telefonu. */
 export const sidePanelShellClass =

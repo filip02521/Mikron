@@ -28,6 +28,11 @@ const ROLE_HELP: { role: UserRole; description: string }[] = [
     description:
       "Jak handlowiec plus zespół - przypisz grupy (Sklep/Biuro), żeby widział tylko swoich ludzi.",
   },
+  {
+    role: "serwis",
+    description:
+      "Tylko panel serwisu: zlecenia, części serwisowe, sprzęt zastępczy i katalog modeli. Wymaga karty w grupie Serwis - na nią trafiają zgłoszenia braków części.",
+  },
 ];
 
 /** Zwijany opis ról — spójny z panelem narzędzi administracyjnych. */

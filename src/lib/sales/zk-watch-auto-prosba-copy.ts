@@ -31,6 +31,9 @@ export function formatAddedPozycjeCount(count: number): string {
 }
 
 export function formatZkScopeSavedToast(orderCount: number): string {
+  if (orderCount <= 0) {
+    return "Zapisano zakres - nic do zamówienia.";
+  }
   if (orderCount === 1) {
     return "Zapisano zakres - 1 pozycja do zamówienia.";
   }
@@ -382,4 +385,40 @@ export function formatAutoProsbaStockConfirmSummary(count: number): string {
   const mod100 = n % 100;
   const few = mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14);
   return `${n} ${plPozycja(n)} w prośbie ${few ? "mają" : "ma"} wystarczający stan`;
+}
+
+/** Wynik podpięcia pozycji ZK pod towar w drodze — dopisany do komunikatu po zapisie zakresu. */
+export type ZkAttachIncomingNote = {
+  attached: number;
+  /** Pozycje, które okno obiecało podpiąć, a serwer odrzucił (np. termin ZD zniknął). */
+  notAttached?: number;
+  error?: string | null;
+};
+
+export function appendZkAttachIncomingNote(
+  toast: AutoProsbaToastPayload,
+  note: ZkAttachIncomingNote
+): AutoProsbaToastPayload {
+  if (note.error) {
+    return {
+      ...toast,
+      tone: toast.tone === "error" ? "error" : "warning",
+      message: `${toast.message} Nie podpięto pozycji pod dostawę w drodze: ${note.error}`,
+    };
+  }
+  const n = note.attached;
+  const missed = note.notAttached ?? 0;
+  if (n <= 0 && missed <= 0) return toast;
+  const parts = [toast.message];
+  if (n > 0) {
+    parts.push(
+      `${n} ${polishPluralWord(n, "pozycję", "pozycje", "pozycji")} podpięto pod dostawę w drodze - w Moje ${polishPluralWord(n, "jest", "są", "jest")} jako zamówione.`
+    );
+  }
+  if (missed > 0) {
+    parts.push(
+      `${missed} ${polishPluralWord(missed, "pozycji", "pozycji", "pozycji")} nie udało się podpiąć (dostawa zmieniła się w Subiekcie) - zaznacz je do prośby w karcie ZK.`
+    );
+  }
+  return { ...toast, tone: missed > 0 && toast.tone === "success" ? "warning" : toast.tone, message: parts.join(" ") };
 }

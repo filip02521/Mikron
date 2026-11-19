@@ -7,7 +7,7 @@ import { after } from "next/server";
 import { requireOperations } from "@/lib/auth";
 import { hasDatabaseConfig } from "@/lib/db/pool";
 import { getEmailSignature, getGmailConnection, sendGmailAsUser } from "@/lib/google/gmail-connections";
-import { approveRolBatch, loadRolBatchById, reopenRolBatch, runRolScan, saveRolProgram, setRolInvoice, setRolLine } from "@/lib/rol/data";
+import { approveRolBatch, loadRolBatchById, loadRolPrograms, reopenRolBatch, runRolScan, saveRolProgram, setRolInvoice, setRolLine } from "@/lib/rol/data";
 import { buildRolBatchFiles } from "@/lib/rol/files";
 import { ensureRolZd, sendRolMail } from "@/lib/rol/send";
 import { loadIvoclarKhId, loadRolMailDefaults, rolSendStore, rolZdApi, sha256 } from "@/lib/rol/send-io";
@@ -17,7 +17,7 @@ import { resolveSubiektIssuerId } from "@/lib/subiekt/api";
 import { fetchMissingRolPdfs, resetFailedRolPdfs } from "@/lib/rol/pdfs";
 import { parseRolProgramInput, type RolProgramInput } from "@/lib/rol/program";
 import { parseRolCatalogNo, parseRolQtyOverride } from "@/lib/rol/review";
-import { isRolPeriod } from "@/lib/rol/scan";
+import { isRolPeriod, rolRangesForMonthScan } from "@/lib/rol/scan";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { warsawNowParts } from "@/lib/time/warsaw";
 
@@ -64,11 +64,20 @@ export async function actionScanRolMonth(period: string): Promise<Result<{ fsChe
     if (!hasDatabaseConfig()) return { ok: false, error: "Brak konfiguracji bazy danych." };
     if (!isRolPeriod(period)) return { ok: false, error: "Nieprawidłowy miesiąc." };
     const todayKey = warsawNowParts().dateKey;
-    if (period > todayKey) return { ok: false, error: "Ten miesiąc jeszcze się nie zaczął." };
-    const res = await runRolScan({ period, todayKey });
+    const ranges = rolRangesForMonthScan(period, todayKey, await loadRolPrograms());
+    if (!ranges.length) {
+      return { ok: false, error: "Ten miesiąc jeszcze trwa — raport miesięczny sprawdzisz po jego końcu, tygodniowe po każdym tygodniu." };
+    }
+    let fsChecked = 0;
+    let changed = 0;
+    for (const range of ranges) {
+      const res = await runRolScan({ range, todayKey });
+      fsChecked += res.fsChecked;
+      changed += res.changed;
+    }
     fetchPdfsInBackground();
     revalidatePath(ASYSTENT_PATH);
-    return { ok: true, fsChecked: res.fsChecked, changed: res.changed };
+    return { ok: true, fsChecked, changed };
   } catch (e) {
     return { ok: false, error: userFacingErrorText(e, "Nie udało się sprawdzić FS w Subiekcie. Spróbuj ponownie.") };
   }
@@ -202,7 +211,7 @@ export async function actionRolPrepareMail(batchId: string): Promise<Result<{ pr
       getEmailSignature(user.id).catch(() => ""),
     ]);
     if (!found || !files) return { ok: false, error: "Nie znaleziono zgłoszenia — odśwież stronę." };
-    const draft = rolMailDraft({ program: found.program, period: found.batch.period, defaults, signature });
+    const draft = rolMailDraft({ program: found.program, period: found.batch.period, periodEnd: found.batch.periodEnd, defaults, signature });
     return {
       ok: true,
       preview: {
@@ -212,7 +221,7 @@ export async function actionRolPrepareMail(batchId: string): Promise<Result<{ pr
         missingPdf: files.missingPdf,
         zd: {
           nr: found.batch.zdNr,
-          uwagi: rolZdUwagi(found.program.label, found.batch.period),
+          uwagi: rolZdUwagi(found.program.label, found.batch.period, found.batch.periodEnd),
           lines: rolSheetRows(found.batch),
         },
       },

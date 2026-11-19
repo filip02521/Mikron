@@ -1,5 +1,5 @@
 import type { UserRole, Workspace } from "@/types/database";
-import { isAdmin } from "@/lib/auth-roles";
+import { homePathForRole, isAdmin } from "@/lib/auth-roles";
 
 /** Obszar roboczy przypisany do konta (z profiles.assigned_workspaces). */
 export type ProcurementFunction = Workspace;
@@ -80,8 +80,9 @@ export function homePathForUser(
   workspace: ProcurementWorkspace | null
 ): string {
   if (workspace) return homePathForProcurementWorkspace(workspace);
-  if (role === "zakupy_zeby") return "/zeby/kolejka";
-  return role === "magazyn" ? "/kolejka" : "/podsumowanie";
+  // Bez obszaru pracy: start roli. Wcześniej każda inna rola dostawała /podsumowanie, którego serwis
+  // i handlowiec nie mogą otworzyć — przekierowanie z zabronionej strony krążyło w kółko.
+  return homePathForRole(role);
 }
 
 export function labelForProcurementWorkspace(workspace: ProcurementWorkspace): string {

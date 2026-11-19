@@ -7,6 +7,7 @@ import type { SessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import {
   canAccessOperations,
+  canAccessServicePanel,
   canAccessTeethPanel,
   canAccessWarehouse,
   isAdmin,
@@ -105,6 +106,18 @@ export async function fetchAppShellMetrics(
       };
       operationsDailyPanelVersion = metrics.version;
       operationsPinnedAnnouncements = pinnedAnnouncements;
+    } catch {
+      /* badge opcjonalny */
+    }
+  }
+
+  if (role && canAccessServicePanel(role, workspaces)) {
+    try {
+      const [{ countOverdueLoaners }, { warsawNowParts }] = await Promise.all([
+        import("@/lib/data/service-loaners"),
+        import("@/lib/time/warsaw"),
+      ]);
+      navBadges = { ...navBadges, serviceOverdueLoaners: await countOverdueLoaners(warsawNowParts().dateKey) };
     } catch {
       /* badge opcjonalny */
     }

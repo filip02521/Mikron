@@ -49,6 +49,8 @@ export type ZdProductSalesSummary = {
   retailPieces: number;
   activeMonths: number;
   top: ZdProductCustomer[];
+  /** Wszyscy klienci, od największego (pełna lista w karcie). */
+  allCustomers: ZdProductCustomer[];
   largest: { pieces: number; share: number; name: string; date: string; dokNr: string } | null;
   /** Jedno zdanie do decyzji (na stan / na prośbę). */
   verdict: string;
@@ -69,7 +71,11 @@ export function formatDatePlKey(key: string | null): string {
   return `${key.slice(8, 10)}.${key.slice(5, 7)}.${key.slice(0, 4)}`;
 }
 
-export function summarizeZdProductSales(rows: readonly ZdProductSaleRow[]): ZdProductSalesSummary {
+export function summarizeZdProductSales(
+  rows: readonly ZdProductSaleRow[],
+  /** Długość okresu w miesiącach do zdania oceny (domyślnie 12 = cała sprzedaż z Subiekta). */
+  periodMonths = 12
+): ZdProductSalesSummary {
   const byCustomer = new Map<string, ZdProductCustomer>();
   const months = new Set<string>();
   let pieces = 0;
@@ -111,13 +117,13 @@ export function summarizeZdProductSales(rows: readonly ZdProductSaleRow[]): ZdPr
 
   const top = all[0];
   let verdict: string;
-  if (docs === 0) verdict = "Brak sprzedaży w ostatnich 12 miesiącach.";
+  if (docs === 0) verdict = periodMonths === 12 ? "Brak sprzedaży w ostatnich 12 miesiącach." : "Brak sprzedaży w wybranym okresie.";
   else if (customers <= 2 && top && top.key !== RETAIL_SYMBOL && top.share >= 0.7)
     verdict = `Kupuje głównie ${top.name} (${pct(top.share)}) - kandydat na zamawianie na prośbę.`;
   else if (largest && largest.share >= 0.5)
-    verdict = `Jedna sprzedaż to ${pct(largest.share)} roku (${fmt(largest.pieces)} szt, ${largest.name}, ${formatDatePlKey(largest.date)}).`;
+    verdict = `Jedna sprzedaż to ${pct(largest.share)} ${periodMonths === 12 ? "roku" : "okresu"} (${fmt(largest.pieces)} szt, ${largest.name}, ${formatDatePlKey(largest.date)}).`;
   else
-    verdict = `Sprzedaż rozproszona: ${customers} ${customers === 1 ? "klient" : "klientów"}${retailPieces > 0 ? " + paragony" : ""}, ${months.size} z 12 miesięcy.`;
+    verdict = `Sprzedaż rozproszona: ${customers} ${customers === 1 ? "klient" : "klientów"}${retailPieces > 0 ? " + paragony" : ""}, ${months.size} z ${periodMonths} ${periodMonths === 1 ? "miesiąca" : "miesięcy"}.`;
 
   return {
     pieces: net,
@@ -126,6 +132,7 @@ export function summarizeZdProductSales(rows: readonly ZdProductSaleRow[]): ZdPr
     retailPieces,
     activeMonths: months.size,
     top: all.slice(0, 5),
+    allCustomers: all,
     largest,
     verdict,
   };

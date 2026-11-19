@@ -106,6 +106,7 @@ export function roleBadgeClass(role: string): string {
     magazyn: "border-emerald-200/80 bg-emerald-50/90 text-emerald-800",
     sales: "border-indigo-200/80 bg-indigo-50/90 text-indigo-800",
     sales_manager: "border-indigo-200/70 bg-indigo-50/80 text-indigo-800",
+    serwis: "border-sky-200/80 bg-sky-50/90 text-sky-800",
   };
   return [
     "inline-flex max-w-full items-center rounded-md border px-2.5 py-1 text-[0.625rem] font-semibold leading-tight",
@@ -419,7 +420,7 @@ export const zdEstimateToolbarSearchClass = cn(
  * Jedna belka filtrów/szukania nad TableScroll.
  */
 export const zdEstimateListBandClass = cn(
-  "z-10 w-full min-w-0 shrink-0 border-b border-slate-200/70 bg-slate-50/90 backdrop-blur-md",
+  "z-10 w-full min-w-0 shrink-0 border-b border-slate-200/70 bg-slate-50/90 backdrop-blur-sm",
   zdEstimateChromeInsetXClass,
   zdEstimateChromeInsetYClass
 );
@@ -451,7 +452,7 @@ export const zdEstimateStickyDockClass =
 
 /** Pasek Create / Policz — absolute w docku; py dopasowane do h-9. */
 export const zdEstimateStickyBarClass = cn(
-  "pointer-events-auto absolute bottom-0 left-0 right-0 flex min-w-0 border border-slate-200/85 bg-card/95 backdrop-blur-md",
+  "pointer-events-auto absolute bottom-0 left-0 right-0 flex min-w-0 border border-slate-200/85 bg-card/95 backdrop-blur-sm",
   zdEstimateRadiusSurfaceClass,
   zdEstimateShadowDockClass,
   zdEstimateChromeInsetXClass,
@@ -1032,7 +1033,7 @@ export const panelToolbarIconButtonClass =
  * i aktywny bulk (selection). Sticky poza TableScroll (z-10 < sticky CTA z-30).
  */
 export const zdEstimateListToolsShellClass = cn(
-  "sticky top-0 z-10 w-full min-w-0 border p-3 backdrop-blur-md sm:p-3.5",
+  "sticky top-0 z-10 w-full min-w-0 border p-3 backdrop-blur-sm sm:p-3.5",
   zdEstimateRadiusSurfaceClass,
   zdEstimateShadowControlClass
 );

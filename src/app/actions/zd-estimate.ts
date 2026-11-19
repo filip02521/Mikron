@@ -58,11 +58,12 @@ import {
   deleteZdEstimateOnRequest,
   deleteZdEstimateOnRequestsMany,
   fetchZdEstimateOnRequest,
-  fetchZdEstimateOnRequests,
   updateZdEstimateOnRequestNote,
   upsertZdEstimateOnRequest,
   type ZdEstimateOnRequestRow,
 } from "@/lib/data/zd-estimate-on-request";
+import { fetchZdEstimateOnRequestsWithServiceParts } from "@/lib/data/service-parts";
+import { SERVICE_PARTS_CECHA_NAME, servicePartTwIdSet } from "@/lib/orders/service-parts";
 import {
   onRequestIdsToClearForExcludedTw,
   onRequestIdsToClearForTw,
@@ -151,7 +152,9 @@ import {
 } from "@/lib/orders/zd-estimate-post-create";
 import { applyZdAutoProposalEdits, buildZdCreateInputFromAutoProposal } from "@/lib/orders/zd-auto-proposal-create";
 import { isSupplierOrderOnDemand } from "@/lib/orders/supplier-on-demand";
-import { dateToIso, resolveSupplierInterval } from "@/lib/orders/dates";
+import { dateToIso, resolveSupplierInterval, type OrderInterval } from "@/lib/orders/dates";
+import { formatAutomatDay } from "@/lib/orders/zd-automat-daily";
+import { isZdPlanDueForMark } from "@/lib/orders/zd-schedule-mark";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import {
   buildDailyPanelUndoPayload,
@@ -314,6 +317,8 @@ export type ZdEstimateSupplierOption = {
   computedNextDate: string | null;
   /** Jak panel Dziś — nie wchodzi do kolejki planowej. */
   orderOnDemand: boolean;
+  /** Interwał zamówień z karty dostawcy (co ile zamawiamy); null = brak. */
+  orderInterval: OrderInterval | null;
 };
 
 export type ZdEstimateGroupOption = {
@@ -691,6 +696,7 @@ async function loadZdEstimateSupplierOptions(): Promise<
       additionalSubiektKhIds: aliasesBySupplier.get(s.id) ?? [],
       computedNextDate: s.schedule?.computed_next_date?.trim() || null,
       orderOnDemand: isSupplierOrderOnDemand(s),
+      orderInterval: resolveSupplierInterval(s.interval_raw, s.interval_weeks),
     };
   });
 }
@@ -796,7 +802,7 @@ export async function actionZdEstimateBootstrap(): Promise<{
     fetchZdEstimateExclusions()
       .then((value) => ({ ok: true as const, value }))
       .catch((e: unknown) => ({ ok: false as const, error: e })),
-    fetchZdEstimateOnRequests()
+    fetchZdEstimateOnRequestsWithServiceParts()
       .then((value) => ({ ok: true as const, value }))
       .catch((e: unknown) => ({ ok: false as const, error: e })),
     fetchZdEstimatePackaging()
@@ -2678,6 +2684,9 @@ export async function actionUpdateZdEstimateExclusionNote(input: {
   }
 }
 
+/** Usunięcie z listy nic nie da: o trybie decyduje cecha w Subiekcie. */
+const SERVICE_PART_CLEAR_MESSAGE = `Ten towar ma w Subiekcie cechę „${SERVICE_PARTS_CECHA_NAME}”, więc zamawiasz go tylko po prośbie. Żeby liczyć go normalnie, zdejmij cechę w Subiekcie.`;
+
 export type ZdEstimateOnRequestActionResult =
   | { ok: true; onRequests: ZdEstimateOnRequestRow[] }
   | { ok: false; message: string };
@@ -2737,7 +2746,7 @@ function excludedPackOnRequestMessage(packSymbol: string | null): string {
 export async function actionListZdEstimateOnRequests(): Promise<ZdEstimateOnRequestActionResult> {
   await requireZdEstimateAdmin("read");
   try {
-    const onRequests = await fetchZdEstimateOnRequests();
+    const onRequests = await fetchZdEstimateOnRequestsWithServiceParts();
     return { ok: true, onRequests };
   } catch (e) {
     return {
@@ -2774,7 +2783,7 @@ export async function actionMarkZdEstimateOnRequest(input: {
     } catch {
       /* ignore */
     }
-    const onRequests = await fetchZdEstimateOnRequests();
+    const onRequests = await fetchZdEstimateOnRequestsWithServiceParts();
     return { ok: true, onRequests };
   } catch (e) {
     return {
@@ -2790,8 +2799,13 @@ export async function actionClearZdEstimateOnRequest(
 ): Promise<ZdEstimateOnRequestActionResult> {
   await requireZdEstimateAdmin("mutate");
   try {
+    // Najpierw odmowa dla części serwisowej — inaczej skasowalibyśmy jej ręczny wpis z notatką.
+    const before = await fetchZdEstimateOnRequestsWithServiceParts();
+    if (servicePartTwIdSet(before).has(Math.trunc(subiektTwId))) {
+      return { ok: false, message: SERVICE_PART_CLEAR_MESSAGE };
+    }
     await clearOnRequestRowsForTwIds([subiektTwId]);
-    const onRequests = await fetchZdEstimateOnRequests();
+    const onRequests = await fetchZdEstimateOnRequestsWithServiceParts();
     return { ok: true, onRequests };
   } catch (e) {
     return {
@@ -2812,7 +2826,7 @@ export async function actionUpdateZdEstimateOnRequestNote(input: {
       subiektTwId: input.subiektTwId,
       note: input.note,
     });
-    const onRequests = await fetchZdEstimateOnRequests();
+    const onRequests = await fetchZdEstimateOnRequestsWithServiceParts();
     return { ok: true, onRequests };
   } catch (e) {
     return {
@@ -2906,7 +2920,7 @@ export async function actionMarkZdEstimateOnRequestProducts(input: {
   }
 
   try {
-    const onRequests = await fetchZdEstimateOnRequests();
+    const onRequests = await fetchZdEstimateOnRequestsWithServiceParts();
     return { ok: true, onRequests, succeededTwIds, failed, truncated };
   } catch (e) {
     return {
@@ -2929,13 +2943,17 @@ export async function actionClearZdEstimateOnRequestProducts(
   const truncated = normalized.truncated;
 
   try {
-    await clearOnRequestRowsForTwIds(ids);
-    const onRequests = await fetchZdEstimateOnRequests();
+    // Części serwisowe pomijamy przed kasowaniem, żeby nie stracić ich ręcznych wpisów.
+    const serviceIds = servicePartTwIdSet(await fetchZdEstimateOnRequestsWithServiceParts());
+    await clearOnRequestRowsForTwIds(ids.filter((id) => !serviceIds.has(id)));
+    const onRequests = await fetchZdEstimateOnRequestsWithServiceParts();
     return {
       ok: true,
       onRequests,
-      succeededTwIds: ids,
-      failed: [],
+      succeededTwIds: ids.filter((id) => !serviceIds.has(id)),
+      failed: ids
+        .filter((id) => serviceIds.has(id))
+        .map((subiektTwId) => ({ subiektTwId, error: SERVICE_PART_CLEAR_MESSAGE })),
       truncated,
     };
   } catch (e) {
@@ -4717,6 +4735,10 @@ export type ZdEstimateScheduleMarkContext =
       canMark: boolean;
       reason?: "on_demand" | "no_interval" | "already_today";
       orderDate: string | null;
+      /** Kolejne planowe zamówienie (computed_next_date); null = brak planu. */
+      nextDate?: string | null;
+      /** Plan wypada dziś albo jest zaległy — domyślnie zamówienie główne; przyszła data — domyślnie uzupełniające. */
+      due?: boolean;
       message: string;
     }
   | { ok: false; message: string };
@@ -4768,10 +4790,11 @@ export async function actionGetZdEstimateScheduleMarkContext(
   }
   const { data: schedule } = await supabase
     .from("supplier_schedules")
-    .select("order_date")
+    .select("order_date, computed_next_date")
     .eq("supplier_id", id)
     .maybeSingle();
   const orderDate = schedule?.order_date ?? null;
+  const nextDate = (schedule?.computed_next_date as string | null | undefined)?.slice(0, 10) || null;
   const today = dateToIso(todayInWarsaw());
   if (orderDate && today && orderDate === today) {
     return {
@@ -4779,14 +4802,22 @@ export async function actionGetZdEstimateScheduleMarkContext(
       canMark: false,
       reason: "already_today",
       orderDate,
+      nextDate,
       message: "Plan na dziś jest już oznaczony jako złożony.",
     };
   }
+  // Zamówienie główne przesuwa plan zawsze (także przed planowaną datą), uzupełniające nigdy — wybór jest w oknie wysyłki.
+  const due = !today || isZdPlanDueForMark(nextDate, today);
   return {
     ok: true,
     canMark: true,
     orderDate,
-    message: "Można oznaczyć planowane zamówienie jako złożone.",
+    nextDate,
+    due,
+    message:
+      nextDate && today && !due
+        ? `Kolejne zamówienie zaplanowane na ${formatAutomatDay(nextDate, today)}`
+        : "Można oznaczyć planowane zamówienie jako złożone.",
   };
 }
 

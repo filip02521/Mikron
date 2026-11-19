@@ -91,7 +91,8 @@ export function resolveNoticeCopy(input: {
   message?: string;
 }): NoticeCopy {
   if (input.title?.trim()) {
-    const body = (input.description ?? input.text)?.trim();
+    // `message` też jest treścią — bez tego toast z tytułem gubił opis (np. prośby z notatnika).
+    const body = (input.description ?? input.text ?? input.message)?.trim();
     return {
       title: input.title.trim(),
       description: body || undefined,

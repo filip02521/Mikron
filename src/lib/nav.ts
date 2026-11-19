@@ -215,6 +215,7 @@ export type NavBadges = {
   salesTablica?: number;
   operationsNotatki?: number;
   departmentBoardQuestions?: number;
+  serviceOverdueLoaners?: number;
   /** Tablica spraw (Asystent): moje Do zrobienia + moja półka „Do przejrzenia”. */
   supplierMail?: number;
   /** Odprawy: prośby DHL bez odpowiedzi + sprawy innych agencji / spedytorów czekające na nas. */
@@ -703,6 +704,7 @@ function operationsNavGroups(role: UserRole, badges: NavBadges): NavGroup[] {
   const groups: NavGroup[] = [
     { title: NAV_SECTION_TODAY, items: operationsTodayItems(badges) },
     { title: NAV_SECTION_ORDERING, items: operationsOrderingItems(role) },
+    serviceNavGroup(badges),
     { title: NAV_SECTION_TEAM, items: operationsTeamItems(badges) },
     {
       title: NAV_SECTION_SUPPLIERS,
@@ -770,6 +772,7 @@ function magazynNavGroups(badges: NavBadges): NavGroup[] {
         },
       ],
     },
+    serviceNavGroup(badges),
     {
       title: NAV_SECTION_TEAM,
       items: [
@@ -818,6 +821,69 @@ function magazynNavGroups(badges: NavBadges): NavGroup[] {
   ];
 
   return groups;
+}
+
+/**
+ * Widoki serwisu jako pozycje menu (bez zakładek na stronach). Serwisant ma je jako główne pozycje, zakupy, admin
+ * i magazyn — jako sekcję „Serwis” obok swojej pracy.
+ */
+function serviceNavItems(badges: NavBadges, main: boolean): NavItem[] {
+  const tier: NavTier = main ? "primary" : "compact";
+  const mobileSlot: NavMobileSlot = main ? "primary" : "overflow";
+  return [
+    {
+      href: "/serwis/zlecenia",
+      label: main ? "Zlecenia" : "Zlecenia serwisowe",
+      mobileLabel: "Zlecenia",
+      description: "Sprzęt klientów w naprawie",
+      icon: "verification",
+      tone: "sky",
+      tier,
+      highlight: main,
+      mobileSlot,
+    },
+    {
+      href: "/serwis",
+      label: "Części serwisowe",
+      mobileLabel: "Części",
+      description: "Stany części i zgłoszone braki",
+      icon: "warehouse",
+      tone: "sky",
+      tier,
+      mobileSlot,
+    },
+    {
+      href: "/serwis/zamienniki",
+      label: "Sprzęt zastępczy",
+      mobileLabel: "Zamienniki",
+      description: "Kto ma który egzemplarz i od ilu dni",
+      icon: "truck",
+      tone: "sky",
+      tier,
+      badge: badges.serviceOverdueLoaners,
+      mobileSlot,
+    },
+    {
+      href: "/serwis/modele",
+      label: "Katalog modeli",
+      mobileLabel: "Modele",
+      description: "Części do naprawy danego modelu",
+      icon: "catalog",
+      tone: "sky",
+      tier,
+      mobileSlot,
+    },
+  ];
+}
+
+const NAV_SECTION_SERVICE = "Serwis";
+
+function serviceNavGroup(badges: NavBadges): NavGroup {
+  return { title: NAV_SECTION_SERVICE, items: serviceNavItems(badges, false), collapsible: true };
+}
+
+function serwisNavGroups(badges: NavBadges = {}): NavGroup[] {
+  return [{ title: NAV_SECTION_SERVICE, items: serviceNavItems(badges, true) }];
 }
 
 export type NavAppContext = {
@@ -895,6 +961,10 @@ export function navForRole(
 
   if (role === "magazyn") {
     return magazynNavGroups(badges);
+  }
+
+  if (role === "serwis") {
+    return serwisNavGroups(badges);
   }
 
   const dailyItems: NavItem[] = [
@@ -1074,6 +1144,10 @@ export function pageTitle(pathname: string): string {
   if (pathname.startsWith("/zakupy/braki")) return "Braki i zamówienia";
   if (pathname.startsWith("/zakupy/cenniki")) return "Cenniki";
   if (pathname.startsWith("/zakupy/automat")) return "Automat ZD";
+  if (pathname.startsWith("/serwis/zamienniki")) return "Sprzęt zastępczy";
+  if (pathname.startsWith("/serwis/zlecenia")) return "Zlecenia serwisowe";
+  if (pathname.startsWith("/serwis/modele")) return "Katalog części modeli";
+  if (pathname === "/serwis" || pathname.startsWith("/serwis/")) return "Części serwisowe";
   if (pathname.startsWith("/zakupy/asystent")) return "Asystent";
   if (pathname.startsWith("/zakupy/raporty-ivoclar")) return "Raporty Ivoclar (przeniesione)";
   if (pathname === "/urlopy" || pathname.startsWith("/urlopy/")) {

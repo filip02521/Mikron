@@ -18,7 +18,16 @@ import { rolApproveError, rolAssignedElsewhereReason, rolInvoiceAfterRescan, rol
 import type { RolProgramValues } from "./program";
 import { ROL_ASSIGNED_HERE_REASON } from "./constants";
 import { ROL_NEEDS_ACTION_STATUSES } from "./view";
-import { previousMonthPeriod, ROL_CONFLICT_REASON, scanRolPeriod, type RolBatchDraft, type RolScanResult } from "./scan";
+import {
+  previousMonthPeriod,
+  ROL_CONFLICT_REASON,
+  rolMonthRange,
+  scanRolPeriod,
+  type RolBatchDraft,
+  type RolFrequency,
+  type RolRange,
+  type RolScanResult,
+} from "./scan";
 
 export type RolProgram = RolProgramValues & { id: string; sendMode: "review" | "auto" };
 
@@ -52,6 +61,8 @@ export type RolBatchView = {
   id: string;
   programId: string;
   period: string;
+  /** Ostatni dzień okresu raportu (miesiąc albo tydzień / dwa tygodnie). */
+  periodEnd: string;
   status: RolBatchStatus;
   scannedAt: string;
   fsCheckedCount: number;
@@ -77,8 +88,8 @@ type ProgramRow = {
   to_emails: string[];
   cc_emails: string[];
   send_mode: "review" | "auto";
-  active_from: string;
-  active_to: string | null;
+  active: boolean;
+  report_frequency: RolFrequency;
 };
 
 const toProgram = (r: ProgramRow): RolProgram => ({
@@ -92,14 +103,13 @@ const toProgram = (r: ProgramRow): RolProgram => ({
   toEmails: r.to_emails,
   ccEmails: r.cc_emails,
   sendMode: r.send_mode,
-  activeFrom: r.active_from,
-  activeTo: r.active_to,
+  active: r.active,
+  reportFrequency: r.report_frequency,
 });
 
 export async function loadRolPrograms(): Promise<RolProgram[]> {
   const res = await query<ProgramRow>(
-    `SELECT id, label, file_label, kh_ids, discount_pct::text, address_lines, nip, to_emails, cc_emails, send_mode,
-            to_char(active_from, 'YYYY-MM-DD') AS active_from, to_char(active_to, 'YYYY-MM-DD') AS active_to
+    `SELECT id, label, file_label, kh_ids, discount_pct::text, address_lines, nip, to_emails, cc_emails, send_mode, active, report_frequency
        FROM rol_programs ORDER BY label`
   );
   return res.rows.map(toProgram);
@@ -115,14 +125,14 @@ export async function saveRolProgram(v: RolProgramValues, userId: string): Promi
     v.nip,
     v.toEmails,
     v.ccEmails,
-    v.activeFrom,
-    v.activeTo,
+    v.active,
+    v.reportFrequency,
     userId,
   ];
   if (v.id) {
     const res = await query<{ id: string }>(
       `UPDATE rol_programs SET label = $1, file_label = $2, kh_ids = $3, discount_pct = $4, address_lines = $5, nip = $6,
-              to_emails = $7, cc_emails = $8, active_from = $9, active_to = $10, updated_by = $11, updated_at = now()
+              to_emails = $7, cc_emails = $8, active = $9, report_frequency = $10, updated_by = $11, updated_at = now()
         WHERE id = $12 RETURNING id`,
       [...params, v.id]
     );
@@ -131,19 +141,20 @@ export async function saveRolProgram(v: RolProgramValues, userId: string): Promi
   }
   const res = await query<{ id: string }>(
     `INSERT INTO rol_programs (label, file_label, kh_ids, discount_pct, address_lines, nip, to_emails, cc_emails,
-                               active_from, active_to, updated_by)
+                               active, report_frequency, updated_by)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
     params
   );
   return res.rows[0]!.id;
 }
 
-/** Paczki miesiąca z FS i pozycjami. */
+/** Paczki z FS i pozycjami, których okres zaczyna się w miesiącu `period` (`YYYY-MM-01`). */
 export async function loadRolBatches(period: string): Promise<RolBatchView[]> {
   const batches = await query<{
     id: string;
     program_id: string;
     period: string;
+    period_end: string;
     status: RolBatchStatus;
     scanned_at: string;
     fs_checked_count: number;
@@ -153,10 +164,10 @@ export async function loadRolBatches(period: string): Promise<RolBatchView[]> {
     zd_dok_id: number | null;
     zd_nr: string | null;
   }>(
-    `SELECT id, program_id, to_char(period, 'YYYY-MM-DD') AS period, status, scanned_at::text, fs_checked_count,
-            change_note, late_fs_count, reviewed_at::text, zd_dok_id, zd_nr
-       FROM rol_batches WHERE period = $1::date`,
-    [period]
+    `SELECT id, program_id, to_char(period, 'YYYY-MM-DD') AS period, to_char(period_end, 'YYYY-MM-DD') AS period_end,
+            status, scanned_at::text, fs_checked_count, change_note, late_fs_count, reviewed_at::text, zd_dok_id, zd_nr
+       FROM rol_batches WHERE period BETWEEN $1::date AND $2::date ORDER BY period, period_end`,
+    [period, rolMonthRange(period).end]
   );
   if (!batches.rows.length) return [];
   const ids = batches.rows.map((b) => b.id);
@@ -204,6 +215,7 @@ export async function loadRolBatches(period: string): Promise<RolBatchView[]> {
     id: b.id,
     programId: b.program_id,
     period: b.period,
+    periodEnd: b.period_end,
     status: b.status,
     scannedAt: b.scanned_at,
     fsCheckedCount: b.fs_checked_count,
@@ -243,10 +255,13 @@ export async function loadRolBatches(period: string): Promise<RolBatchView[]> {
   }));
 }
 
-/** Licznik w menu: paczki bieżącego zgłoszenia (poprzedni miesiąc), które czekają na przegląd albo wysyłkę. */
+/**
+ * Licznik w menu: paczki bieżących zgłoszeń (od poprzedniego miesiąca, z tygodniowymi tego miesiąca),
+ * które czekają na przegląd albo wysyłkę.
+ */
 export async function countRolNeedsAction(todayKey: string): Promise<number> {
   const res = await query<{ n: string }>(
-    `SELECT count(*)::text AS n FROM rol_batches WHERE period = $1::date AND status = ANY($2::text[])`,
+    `SELECT count(*)::text AS n FROM rol_batches WHERE period >= $1::date AND status = ANY($2::text[])`,
     [previousMonthPeriod(todayKey), [...ROL_NEEDS_ACTION_STATUSES]]
   );
   return Number(res.rows[0]?.n ?? 0);
@@ -260,7 +275,7 @@ export async function loadRolBatchById(batchId: string): Promise<{ batch: RolBat
   );
   const row = res.rows[0];
   if (!row) return null;
-  const [batches, programs] = await Promise.all([loadRolBatches(row.period), loadRolPrograms()]);
+  const [batches, programs] = await Promise.all([loadRolBatches(`${row.period.slice(0, 8)}01`), loadRolPrograms()]);
   const batch = batches.find((b) => b.id === batchId);
   const program = programs.find((p) => p.id === row.program_id);
   return batch && program ? { batch, program } : null;
@@ -344,8 +359,9 @@ export async function saveRolScan(result: RolScanResult): Promise<{ changed: num
       await db.query("BEGIN");
       try {
         const existing = await db.query<{ id: string; status: RolBatchStatus; content_hash: string }>(
-          `SELECT id, status, content_hash FROM rol_batches WHERE program_id = $1 AND period = $2::date FOR UPDATE`,
-          [draft.programId, result.period]
+          `SELECT id, status, content_hash FROM rol_batches
+            WHERE program_id = $1 AND period = $2::date AND period_end = $3::date FOR UPDATE`,
+          [draft.programId, result.range.start, result.range.end]
         );
         const row = existing.rows[0] ?? null;
         const fsIds = row
@@ -369,12 +385,10 @@ export async function saveRolScan(result: RolScanResult): Promise<{ changed: num
             : (
                 // Równoległy skan (cron i „Sprawdź ponownie”) mógł już utworzyć paczkę — wtedy bierzemy jej id.
                 await db.query<{ id: string }>(
-                  `INSERT INTO rol_batches (program_id, period) VALUES ($1, $2::date)
-                   ON CONFLICT (program_id, period) DO UPDATE SET program_id = EXCLUDED.program_id RETURNING id`,
-                  [
-                  draft.programId,
-                  result.period,
-                ])
+                  `INSERT INTO rol_batches (program_id, period, period_end) VALUES ($1, $2::date, $3::date)
+                   ON CONFLICT (program_id, period, period_end) DO UPDATE SET program_id = EXCLUDED.program_id RETURNING id`,
+                  [draft.programId, result.range.start, result.range.end]
+                )
               ).rows[0]!.id;
           await db.query(
             `UPDATE rol_batches SET status = $2, scanned_at = now(), fs_checked_count = $3, content_hash = $4, change_note = $5,
@@ -396,9 +410,27 @@ export async function saveRolScan(result: RolScanResult): Promise<{ changed: num
   return { changed };
 }
 
-/** Skan miesiąca w Subiekcie (host ORDERS) i zapis paczek. */
-export async function runRolScan(input: { period: string; todayKey: string }): Promise<{ fsChecked: number; programs: number; changed: number }> {
-  const programs = await loadRolPrograms();
+/**
+ * FS, które klient ma już w innym raporcie zachodzącym na `range` (FS wchodzi do raportu po dacie
+ * wystawienia, więc inne okresy jej nie zawierają). Skan ich nie bierze — FS idzie do Ivoclara raz.
+ */
+async function loadClaimedFs(range: RolRange): Promise<Map<string, Set<number>>> {
+  const res = await query<{ program_id: string; fs_dok_id: number }>(
+    `SELECT b.program_id, i.fs_dok_id FROM rol_batch_invoices i JOIN rol_batches b ON b.id = i.batch_id
+      WHERE b.period <= $2::date AND b.period_end >= $1::date AND NOT (b.period = $1::date AND b.period_end = $2::date)`,
+    [range.start, range.end]
+  );
+  const out = new Map<string, Set<number>>();
+  for (const r of res.rows) {
+    if (!out.has(r.program_id)) out.set(r.program_id, new Set());
+    out.get(r.program_id)!.add(Number(r.fs_dok_id));
+  }
+  return out;
+}
+
+/** Skan okresu w Subiekcie (host ORDERS) i zapis paczek. */
+export async function runRolScan(input: { range: RolRange; todayKey: string }): Promise<{ fsChecked: number; programs: number; changed: number }> {
+  const [programs, claimed] = await Promise.all([loadRolPrograms(), loadClaimedFs(input.range)]);
   if (!programs.length) return { fsChecked: 0, programs: 0, changed: 0 };
   const result = await scanRolPeriod(
     {
@@ -408,7 +440,7 @@ export async function runRolScan(input: { period: string; todayKey: string }): P
       getDocument: getSubiektDocument,
       loadIvoclarTwIds,
     },
-    { period: input.period, todayKey: input.todayKey, programs }
+    { range: input.range, todayKey: input.todayKey, programs, claimed }
   );
   const { changed } = await saveRolScan(result);
   return { fsChecked: result.fsChecked, programs: result.drafts.length, changed };
@@ -416,7 +448,7 @@ export async function runRolScan(input: { period: string; todayKey: string }): P
 
 // --- Przegląd (plasterek 3): zmiany tylko w stanie „wykryte”, pod blokadą wiersza paczki. ---
 
-type LockedBatch = { id: string; program_id: string; period: string; status: RolBatchStatus };
+type LockedBatch = { id: string; program_id: string; period: string; period_end: string; status: RolBatchStatus };
 
 async function inTransaction<T>(fn: (db: PoolClient) => Promise<T>): Promise<T> {
   return withClient(async (db) => {
@@ -434,7 +466,8 @@ async function inTransaction<T>(fn: (db: PoolClient) => Promise<T>): Promise<T> 
 
 async function lockBatch(db: PoolClient, batchId: string): Promise<LockedBatch> {
   const res = await db.query<LockedBatch>(
-    `SELECT id, program_id, to_char(period, 'YYYY-MM-DD') AS period, status FROM rol_batches WHERE id = $1 FOR UPDATE`,
+    `SELECT id, program_id, to_char(period, 'YYYY-MM-DD') AS period, to_char(period_end, 'YYYY-MM-DD') AS period_end, status
+       FROM rol_batches WHERE id = $1 FOR UPDATE`,
     [batchId]
   );
   const row = res.rows[0];
@@ -494,8 +527,8 @@ export async function setRolInvoice(input: {
       const label = await db.query<{ label: string }>(`SELECT label FROM rol_programs WHERE id = $1`, [batch.program_id]);
       const others = await db.query<{ id: string; status: RolBatchStatus }>(
         `SELECT b.id, b.status FROM rol_batches b JOIN rol_batch_invoices i ON i.batch_id = b.id
-          WHERE b.period = $1::date AND b.id <> $2 AND i.fs_dok_id = $3 FOR UPDATE OF b`,
-        [batch.period, batch.id, input.fsDokId]
+          WHERE b.period <= $4::date AND b.period_end >= $1::date AND b.id <> $2 AND i.fs_dok_id = $3 FOR UPDATE OF b`,
+        [batch.period, batch.id, input.fsDokId, batch.period_end]
       );
       if (others.rows.some((o) => o.status !== "wykryte")) {
         throw new Error("Drugi klient ma już zatwierdzoną listę z tą FS — najpierw kliknij u niego „Edytuj listę”.");

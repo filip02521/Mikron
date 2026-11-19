@@ -367,7 +367,7 @@ Strona nigdy nie przewija się w poziomie, także przy 375px. Tabela ma min. 640
 
 ## Elevation & Depth
 
-Głębia jest warstwowa i cicha. Na szarym `canvas` leżą białe karty z obramowaniem `line` i najlżejszym cieniem: kartę odróżnia od tła linia, nie cień. Wyraźny cień mają tylko elementy, które pływają nad treścią (okno, panel boczny, menu rozwijane, lista podpowiedzi, sticky pasek). Sticky chrome ma półprzezroczyste tło karty z `backdrop-blur-sm`, żeby przewijana treść była widoczna pod spodem.
+Głębia jest warstwowa i cicha. Na szarym `canvas` leżą białe karty z obramowaniem `line` i najlżejszym cieniem: kartę odróżnia od tła linia, nie cień. Wyraźny cień mają tylko elementy, które pływają nad treścią (okno, panel boczny, menu rozwijane, lista podpowiedzi, sticky pasek). Sticky chrome ma półprzezroczyste tło karty z `backdrop-blur-sm`, żeby przewijana treść była widoczna pod spodem. Rozmycie tła ma tylko sticky chrome i zawsze `backdrop-blur-sm`: tło pod oknem i panelem (`bg-scrim/N`), nakładki ładowania i elementy pływające mają pełne tło bez rozmycia, bo blur dużej powierzchni pod animacją liczy się od nowa w każdej klatce i na słabszych komputerach tnie otwieranie okien.
 
 ### Shadow Vocabulary
 
@@ -398,6 +398,8 @@ Komponenty bazowe są w `src/components/ui/`. Zanim napiszesz własny przycisk, 
 ### Buttons
 
 - **Kształt:** 6px. Rozmiary `sm` (12px tekstu), `md` (14px, domyślny), `lg` (16px). Na telefonie przyciski w `PageHeader` mają min. 44px wysokości.
+- **Ekran dotykowy (`.touch-ui`):** moduł obsługiwany palcem przy każdej szerokości (panel serwisu: strony, panele boczne, okna) ma klasę `touch-ui` na korzeniu strony, panelu i `ModalShell` — każdy przycisk, pole i lista ma wtedy min. 44px wysokości. W tym zakresie nie dawaj kontrolkom `min-h-*` poniżej `min-h-11` (klasa wygrywa z zakresem). Ikona bez tekstu: `h-11 w-11`.
+- **Kroki sprawy (np. statusy zlecenia):** jeden duży przycisk główny na całą szerokość (krok naprzód, ikona znaczenia, pod nim zdanie o skutku, gdy system robi coś sam), pod nim równe przyciski drugorzędne z ikoną (wstrzymanie, cofnięcie „Wróć do: …”). Anulowanie nie stoi obok kroków — osobno na końcu panelu.
 - **Primary:** pełny Petrol, biały tekst, cień kontrolki. Hover `bg-primary-hover`, wciśnięcie `bg-primary-pressed` i lekkie zmniejszenie (`scale 0.97`, 75 ms; wyłączone przy `prefers-reduced-motion`). Etykieta to czasownik, najlepiej z liczbą („Zapisz 421 cen”). Jeden na ekran.
 - **Secondary:** tło `bg-card`, obramowanie `line`, tekst `slate-700`; hover tło `slate-50` i obramowanie `slate-300`.
 - **Outline:** tło `petrol-mist`, obramowanie `indigo-200`, tekst `indigo-800`. Dla akcji drugiego rzędu, która ma zostać zauważona obok głównej.

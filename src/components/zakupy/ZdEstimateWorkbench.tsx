@@ -102,6 +102,7 @@ import {
 import type { ZdEstimateExclusionRow } from "@/lib/data/zd-estimate-exclusions";
 import type { ZdProsbaElsewhere } from "@/lib/data/zd-scope-order";
 import type { ZdEstimateOnRequestRow } from "@/lib/data/zd-estimate-on-request";
+import { isServicePartOnRequestRow } from "@/lib/orders/service-parts";
 import type { ZdEstimatePackagingRow } from "@/lib/data/zd-estimate-packaging";
 import type { ZdEstimateMinStockRow } from "@/lib/data/zd-estimate-min-stock";
 import type { ZdProductPairRow } from "@/lib/data/zd-product-pairs";
@@ -363,6 +364,7 @@ import { ZdEstimateSessionResumeProgressPanel } from "@/components/zakupy/ZdEsti
 import { ZdEstimateExternalSessionActiveChip } from "@/components/zakupy/ZdEstimateExternalSessionActiveChip";
 import { ZdEstimatePageIntro } from "@/components/zakupy/ZdEstimatePageIntro";
 import { ZdEstimatePrepScopeFacts } from "@/components/zakupy/ZdEstimatePrepScopeFacts";
+import { ZdEstimateKeyFactsPanel } from "@/components/zakupy/ZdEstimateKeyFactsPanel";
 import { ZdEstimatePrepForm } from "@/components/zakupy/ZdEstimatePrepForm";
 import { ZdEstimateScopeCatalogDialog } from "@/components/zakupy/ZdEstimateScopeCatalogDialog";
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
@@ -1514,6 +1516,10 @@ export function ZdEstimateWorkbench({
     pairUnitsByPackTwId,
     packagingLookup,
   } = rulesState;
+  const servicePartTwIds = useMemo(
+    () => onRequestTwIdSet(onRequests.filter(isServicePartOnRequestRow), productPairs),
+    [onRequests, productPairs]
+  );
   // Restore sesji i ponowne wczytanie reguł są asynchroniczne — czytaj reguły
   // z ostatniego renderu, nie z closure.
   const latestRulesRef = useRef<ZdEstimateRestoreRules>(rulesState);
@@ -1950,6 +1956,16 @@ export function ZdEstimateWorkbench({
         : raisedDniZapasu != null
           ? ZD_ESTIMATE_UI.dniZapasuStrategyRaisedNote(raisedDniZapasu)
           : ZD_ESTIMATE_UI.dniZapasuStrategyNote(policyTargetDays, cardDniZapasu);
+
+  // Zapas pokazywany w nagłówku: po Policz dni faktycznie użyte (strategia liczy co najmniej cykl + dostawę).
+  const shownDniZapasu =
+    policyTargetDays != null
+      ? String(
+          lines
+            ? Math.max(policyTargetDays, Math.round(Number(paramInfo?.dniZapasu) || 0))
+            : Math.max(policyTargetDays, raisedDniZapasu ?? 0)
+        )
+      : dniZapasu;
 
   const createKhResolution = useMemo(() => {
     if (!selectedSupplier) return null;
@@ -6404,23 +6420,15 @@ export function ZdEstimateWorkbench({
           configured: bootstrap.configured,
         })}
         facts={
-          scopeSelected && scopeLabel ? (
+          // Karta przygotowania ma edytory zapasu i okna — wtedy krótki pasek; po Policz panel faktów pod nagłówkiem.
+          scopeSelected && scopeLabel && prepFormOpen ? (
             <ZdEstimatePrepScopeFacts
               variant="toolbar"
-              density={prepFormOpen && scopeSelected ? "short" : "full"}
+              density="short"
               scopeMode={scopeMode}
               scopeName={scopeLabel}
               stockLabel={policyTargetDays != null ? null : stockLabel}
-              dniZapasu={
-                policyTargetDays != null
-                  ? // Po Policz: dni faktycznie użyte (strategia liczy co najmniej cykl + dostawę).
-                    String(
-                      lines
-                        ? Math.max(policyTargetDays, Math.round(Number(paramInfo?.dniZapasu) || 0))
-                        : Math.max(policyTargetDays, raisedDniZapasu ?? 0)
-                    )
-                  : dniZapasu
-              }
+              dniZapasu={shownDniZapasu}
               supplierLabel={supplierLabel}
               dataOd={dataOd}
               dataDo={dataDo}
@@ -6429,6 +6437,46 @@ export function ZdEstimateWorkbench({
                   <ZdSupplierOrderPolicyChip policy={currentSupplierPolicy} onClick={() => setSupplierPolicyOpen(true)} />
                 ) : null
               }
+            />
+          ) : null
+        }
+        panel={
+          scopeSelected && scopeLabel && !prepFormOpen ? (
+            <ZdEstimateKeyFactsPanel
+              todayKey={bootstrap.todayKey}
+              scopeMode={scopeMode}
+              scopeName={scopeLabel}
+              supplierId={selectedSupplier?.id ?? null}
+              supplierLabel={supplierLabel}
+              policyChip={
+                selectedSupplier ? (
+                  <ZdSupplierOrderPolicyChip policy={currentSupplierPolicy} onClick={() => setSupplierPolicyOpen(true)} />
+                ) : null
+              }
+              computedNextDate={selectedSupplier?.computedNextDate ?? null}
+              orderOnDemand={selectedSupplier?.orderOnDemand === true}
+              interval={selectedSupplier?.orderInterval ?? null}
+              stockDays={Math.round(Number(shownDniZapasu)) || 0}
+              stockSub={
+                dniZapasuNote ??
+                (raisedDniZapasu != null && cardDniZapasu != null
+                  ? `podniesiony, karta: ${cardDniZapasu} d`
+                  : cardDniZapasu != null
+                    ? "z karty dostawcy"
+                    : null)
+              }
+              stockDaysMin={policyTargetDays}
+              onStockDaysChange={onDniZapasuChange}
+              // Strategia bez dni na karcie liczy na własnych dniach — pole zapasu niczego by nie zmieniło.
+              canEditStock={!busy && !(policyTargetDays != null && cardDniZapasu == null)}
+              listComputed={Boolean(lines)}
+              leadDays={
+                policzScopeInfo?.leadDays ??
+                policzScopeInfo?.horizon?.leadDays ??
+                (selectedSupplier ? (bootstrap.stockSignalBySupplierId?.[selectedSupplier.id]?.leadDays ?? null) : null)
+              }
+              dataOd={dataOd}
+              dataDo={dataDo}
             />
           ) : null
         }
@@ -8056,6 +8104,10 @@ export function ZdEstimateWorkbench({
                             exclusionsTrusted && dbExcludedIds.has(l.tw_Id)
                           }
                           dbOnRequest={dbOnRequest}
+                          servicePart={
+                            onRequestTrusted &&
+                            servicePartTwIds.has(onRequestCanonicalId)
+                          }
                           softOnRequest={
                             dbOnRequest &&
                             orderExcludedTwIds.has(onRequestCanonicalId) &&

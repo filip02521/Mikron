@@ -37,6 +37,12 @@ describe("notice-content", () => {
     });
   });
 
+  it("resolveNoticeCopy - jawny tytuł z treścią w message", () => {
+    expect(
+      resolveNoticeCopy({ title: "Zakres zapisany", message: "1 pozycję podpięto pod dostawę." }),
+    ).toEqual({ title: "Zakres zapisany", description: "1 pozycję podpięto pod dostawę." });
+  });
+
   it("resolveFormMessage", () => {
     expect(
       resolveFormMessage({

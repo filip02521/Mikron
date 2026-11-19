@@ -246,4 +246,35 @@ describe("pozycje z ZK — własne ZK nie zabiera dostawy samemu sobie", () => {
     expect(zkLineIncomingCover(incoming({ incoming: 20, available: 0, zkWaiting: 30 }), 5, "2026-10-12")).toMatchObject({ covered: false });
     expect(zkLineIncomingCover(null, 5)).toBeNull();
   });
+
+  it("zkLineIncomingCover: pewne tylko, gdy ZD z terminem przywiozą brakującą ilość", () => {
+    // 51 w drodze: 1 szt. z terminem, 50 bez terminu; półka 0, cudzych ZK brak, ZK chce 10.
+    const mixed = incoming({
+      incoming: 51,
+      available: 0,
+      zkWaiting: 10,
+      docs: [
+        { dokNr: "A", issued: null, deadline: "2026-10-20", qty: 1 },
+        { dokNr: "B", issued: null, deadline: null, qty: 50 },
+      ],
+    });
+    expect(zkLineIncomingCover(mixed, 10, "2026-10-12")).toMatchObject({ covered: true, certain: false });
+    // Dwa ZD z terminem razem wystarczają — pozycję pokryje dopiero ten późniejszy.
+    const two = incoming({
+      incoming: 12,
+      available: 0,
+      zkWaiting: 10,
+      docs: [
+        { dokNr: "A", issued: null, deadline: "2026-10-20", qty: 4 },
+        { dokNr: "C", issued: null, deadline: "2026-10-28", qty: 8 },
+      ],
+    });
+    expect(zkLineIncomingCover(two, 10, "2026-10-12")).toMatchObject({ certain: true, doc: { dokNr: "C" } });
+    // Cudze ZK czekają na 6 z tych 12 — dla naszych 10 nie starczy.
+    const taken = { ...two, zkWaiting: 16, freeIncoming: computeFreeIncoming({ incoming: 12, available: 0, zkWaiting: 16 }) };
+    expect(zkLineIncomingCover(taken, 10, "2026-10-12")).toMatchObject({ certain: false });
+    // ZD z terminem, ale bez ilości — nic nie obiecuje.
+    const noQty = incoming({ incoming: 20, available: 0, zkWaiting: 5, docs: [{ dokNr: "D", issued: null, deadline: "2026-10-20", qty: null }] });
+    expect(zkLineIncomingCover(noQty, 5, "2026-10-12")).toMatchObject({ certain: false });
+  });
 });

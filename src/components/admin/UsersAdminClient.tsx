@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useMemo, useState, useTransition, useCallback, useEffect, useRef } from "react";
 import type { AppUserRow } from "@/lib/data/users";
 import type { UserRole, Workspace } from "@/types/database";
-import { ROLE_LABELS, ROLE_OPTIONS, roleRequiresSalesPerson } from "@/lib/users/labels";
+import { ROLE_LABELS, ROLE_OPTIONS, roleRequiresSalesPerson, salesPersonFieldLabel } from "@/lib/users/labels";
 import { PROCUREMENT_WORKSPACE_OPTIONS } from "@/lib/auth/procurement-workspace";
 import {
   actionCreateAppUser,
@@ -591,8 +591,12 @@ export function UsersAdminClient({
 
                   {roleRequiresSalesPerson(accessModalEdit.role) ? (
                     <Field
-                      label="Powiązany handlowiec"
-                      hint="Jedna osoba handlowa może być przypięta tylko do jednego konta."
+                      label={salesPersonFieldLabel(accessModalEdit.role)}
+                      hint={
+                        accessModalEdit.role === "serwis"
+                          ? "Karta z grupy Serwis: na nią trafiają zgłoszenia braków części. Jedna karta - jedno konto."
+                          : "Jedna osoba handlowa może być przypięta tylko do jednego konta."
+                      }
                     >
                       <Select
                         value={accessModalEdit.salesPersonId}
@@ -1084,10 +1088,11 @@ export function UsersAdminClient({
               </Field>
               {roleRequiresSalesPerson(createForm.role) ? (
                 <Field
-                  label={
-                    createForm.role === "sales_manager"
-                      ? "Karta handlowca kierownika"
-                      : "Powiązany handlowiec"
+                  label={salesPersonFieldLabel(createForm.role)}
+                  hint={
+                    createForm.role === "serwis"
+                      ? "Karta z grupy Serwis: na nią trafiają zgłoszenia braków części."
+                      : undefined
                   }
                 >
                   <Select
@@ -1113,7 +1118,7 @@ export function UsersAdminClient({
               )}
               <div className="space-y-3 sm:col-span-2">
                 <p className="text-xs leading-relaxed text-slate-500">
-                  Handlowiec musi mieć kartę w{" "}
+                  Handlowiec i serwisant muszą mieć kartę w{" "}
                   <Link href="/admin/handlowcy" className={brandLinkClass}>
                     zakładce Handlowcy
                   </Link>

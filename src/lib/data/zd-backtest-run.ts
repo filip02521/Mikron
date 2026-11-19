@@ -15,7 +15,7 @@ import { SUBIEKT_PATHS } from "@/lib/subiekt/paths";
 import { subiektQueryString } from "@/lib/subiekt/query";
 import { listZdEstimateSupplierScopesFor } from "@/lib/data/zd-estimate-supplier-scopes";
 import { fetchZdEstimateExclusions } from "@/lib/data/zd-estimate-exclusions";
-import { fetchZdEstimateOnRequests } from "@/lib/data/zd-estimate-on-request";
+import { fetchZdEstimateOnRequestsWithServiceParts } from "@/lib/data/service-parts";
 import { fetchTeethProductTwIdSet } from "@/lib/data/teeth-products";
 import { mergeZdEstimateExcludedTwIds } from "@/lib/orders/zd-estimate-name-exclude";
 import { onRequestTwIdSet } from "@/lib/orders/zd-estimate-on-request";
@@ -399,7 +399,7 @@ export async function loadZdBacktestData(
   // nie są zamawiane na stan — nie symulujemy ich i nie liczymy ich zerowego stanu jako braku.
   const [exclusions, onRequests, teeth, pairsAll, minStockRows, boostPreset] = await Promise.all([
     fetchZdEstimateExclusions(),
-    fetchZdEstimateOnRequests(),
+    fetchZdEstimateOnRequestsWithServiceParts(),
     fetchTeethProductTwIdSet().catch(() => new Set<number>()),
     query<{ pack_tw_id: number; piece_tw_id: number }>(`SELECT pack_tw_id, piece_tw_id FROM zd_product_pairs`).then((r) =>
       r.rows.map((x) => ({ packTwId: Number(x.pack_tw_id), pieceTwId: Number(x.piece_tw_id) }))

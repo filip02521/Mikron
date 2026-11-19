@@ -313,7 +313,7 @@ const NoteCard = memo(function NoteCard({
             isDragging,
             editing: active,
           }),
-          "transition-all duration-200 ease-out",
+          "transition-[color,background-color,border-color,box-shadow,opacity] duration-200 ease-out",
           active ? "pb-3" : "pb-1"
         )}
       >
