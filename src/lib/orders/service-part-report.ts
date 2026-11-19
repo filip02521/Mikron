@@ -44,6 +44,20 @@ export function pickServicePartSupplier(input: {
   return null;
 }
 
+/** Dostawca dla wielu części naraz — ta sama reguła co `pickServicePartSupplier` (przypięty, inaczej ostatni z historii ZD). */
+export function pickServicePartSuppliers(
+  pinned: ReadonlyMap<number, ServicePartSupplierCandidate>,
+  lastZd: ReadonlyMap<number, ServicePartSupplierCandidate>,
+  twIds: readonly number[]
+): Map<number, ServicePartSupplierPick> {
+  const out = new Map<number, ServicePartSupplierPick>();
+  for (const id of twIds) {
+    const pick = pickServicePartSupplier({ pinned: pinned.get(id) ?? null, lastZd: lastZd.get(id) ?? null });
+    if (pick) out.set(id, pick);
+  }
+  return out;
+}
+
 /** Treść uwagi prośby: zakupy od razu widzą, że to serwis, i do czego część jest potrzebna. */
 export function servicePartRequestNote(note: string): string {
   return note ? `Zgłoszenie serwisu: ${note}` : "Zgłoszenie serwisu";

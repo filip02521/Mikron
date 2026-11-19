@@ -20,6 +20,43 @@ export type ChangelogEntry = {
 };
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ═══ 2026-11-12 — ZK CZEKAJĄCE: DO ZROBIENIA NA GÓRZE ═══
+  {
+    id: "2026-11-12-zk-todo-group",
+    version: "2026-11-12",
+    date: "2026-11-12",
+    category: "improvement",
+    audience: "sales",
+    title: "ZK czekające: najpierw to, co do zrobienia",
+    description:
+      "Lista ZK zaczyna się teraz od grupy „Do zrobienia”: pozycje bez prośby, towar do odbioru z regału, potwierdzona dostępność, przypomnienia po terminie i sprawy do zamknięcia. Pozostałe ZK są pod spodem, po miesiącach. Każdy ZK ma te same pola w tym samym miejscu - Klient, Towar, Stan i Notatka - a kolor odznaki w polu Stan mówi, czy coś wymaga Twojego ruchu. Notatkę do ZK bez notatki dodasz z menu z trzema kropkami.",
+    link: { href: "/zk", label: "Otwórz ZK czekające" },
+  },
+  // ═══ 2026-11-12 — KREATOR ZD: LICZENIE W TLE ═══
+  {
+    id: "2026-11-12-zd-estimate-background-run",
+    version: "2026-11-12",
+    date: "2026-11-12",
+    category: "improvement",
+    audience: "operations",
+    title: "Kreator ZD: duże listy liczą się w tle",
+    description:
+      "Liczenie listy dla dużych dostawców (np. Ivoclar) nie kończy się już błędem po minucie. Po kliknięciu „Policz listę” możesz przejść na inny ekran - przy prawej krawędzi zostaje zakładka „Liczę”, a gdy lista jest gotowa, rozwija się z przyciskiem „Otwórz listę”. Gotowa lista czeka, aż ją otworzysz albo odrzucisz.",
+    link: { href: "/zakupy/szacunek", label: "Otwórz Kreator ZD" },
+  },
+  // ═══ 2026-11-10 — PANEL DZIENNY: JEDEN WIERSZ NA DOSTAWCĘ ═══
+  {
+    id: "2026-11-10-daily-supplier-list",
+    version: "2026-11-10",
+    date: "2026-11-10",
+    category: "improvement",
+    audience: "operations",
+    highlight: true,
+    title: "Panel dzienny: jeden wiersz na dostawcę",
+    description:
+      "Zakładka Dziś ma teraz jedną listę „Dostawcy na dziś”. Dostawca nie powtarza się już w sekcji automatu, zaległych i na dziś - ma jeden wiersz w grupie, która mówi, co zrobić: Do wysłania, Do zamówienia, Zamów wcześniej, Do przesunięcia albo Do sprawdzenia ręcznie. Przy nazwie widać, skąd się wziął (Automat, Harmonogram, Poza planem, Na żądanie), a przycisk w wierszu od razu robi właściwą rzecz: Sprawdź i wyślij, Przygotuj ZD, Przesuń albo Zamówione. Dostawcy z dawnego banera „Zamów dziś poza planem” są w grupie Zamów wcześniej, od najpilniejszych. Szczegóły i pozostałe akcje rozwija strzałka przy nazwie.",
+    link: { href: "/podsumowanie", label: "Otwórz panel dzienny" },
+  },
   // ═══ 2026-07-13 — URLOPY DZIAŁU + KATEGORIE ═══
   {
     id: "2026-07-13-staff-vacation-calendar",

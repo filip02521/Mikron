@@ -165,8 +165,11 @@ function plDate(key: string): string {
   return y && m && d ? `${d}.${m}` : key;
 }
 
-/** Opis horyzontu po polsku — Kreator (komunikat) i panel Braki. */
-export function formatZdHorizonBreakdown(h: ZdOrderHorizon): string {
+/**
+ * Opis horyzontu po polsku — Kreator (komunikat) i panel Braki.
+ * `stockRaised`: dni w polu wpisane ponad kartę — wtedy to nie „zapas z karty”.
+ */
+export function formatZdHorizonBreakdown(h: ZdOrderHorizon, opts?: { stockRaised?: boolean }): string {
   const lead =
     h.leadSource === "default"
       ? `dostawa ~${h.leadDays} d (brak historii dostaw - założenie)`
@@ -180,6 +183,6 @@ export function formatZdHorizonBreakdown(h: ZdOrderHorizon): string {
   const result =
     h.extendedByDays > 0
       ? `Cel liczony na ${h.horizonDays} dni (${h.nextOrderDays} + ${h.leadDays}) zamiast ${h.stockDays} - zamówienie wystarczy do kolejnej dostawy.`
-      : `Zapas z karty (${h.stockDays} d) pokrywa czas do kolejnej dostawy - ilości bez zmian.`;
+      : `${opts?.stockRaised ? "Wpisany zapas" : "Zapas z karty"} (${h.stockDays} d) pokrywa czas do kolejnej dostawy - ilości bez zmian.`;
   return `${next}; ${lead}. ${result}`;
 }

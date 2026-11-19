@@ -20,6 +20,11 @@ vi.mock("@/lib/data/zd-estimate-exclusions", async (orig) => ({
     calls.deleteExclusion.push(tw);
   }),
 }));
+// Minimum stanów (części serwisowe z minimum schodzą z „na prośbę”) — tu bez minimum, jak przed tą zmianą.
+vi.mock("@/lib/data/zd-estimate-min-stock", async (orig) => ({
+  ...(await orig<typeof import("@/lib/data/zd-estimate-min-stock")>()),
+  fetchZdEstimateMinStock: vi.fn(async () => []),
+}));
 vi.mock("@/lib/data/zd-estimate-on-request", async (orig) => ({
   ...(await orig<typeof import("@/lib/data/zd-estimate-on-request")>()),
   upsertZdEstimateOnRequest: vi.fn(async (i: { subiektTwId: number }) => {

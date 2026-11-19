@@ -111,7 +111,8 @@ export async function fetchAppShellMetrics(
     }
   }
 
-  if (role && canAccessServicePanel(role, workspaces)) {
+  let serviceHelpdesk: AppShellMetrics["serviceHelpdesk"] = null;
+  if (role && canAccessServicePanel(role)) {
     try {
       const [{ countOverdueLoaners }, { warsawNowParts }] = await Promise.all([
         import("@/lib/data/service-loaners"),
@@ -120,6 +121,13 @@ export async function fetchAppShellMetrics(
       navBadges = { ...navBadges, serviceOverdueLoaners: await countOverdueLoaners(warsawNowParts().dateKey) };
     } catch {
       /* badge opcjonalny */
+    }
+    try {
+      const { getMikranConnection } = await import("@/lib/mikran-shop/connection");
+      const c = await getMikranConnection();
+      serviceHelpdesk = c ? { connectedAt: c.connectedAt, connectedByEmail: c.connectedByEmail } : null;
+    } catch {
+      /* brak migracji 214 — pas serwisu nie pokaże stanu połączenia */
     }
   }
 
@@ -278,6 +286,7 @@ export async function fetchAppShellMetrics(
     salesBoardAttention,
     salesInboxSnapshot,
     operationsPinnedAnnouncements,
+    serviceHelpdesk,
     ready: true,
   };
 }

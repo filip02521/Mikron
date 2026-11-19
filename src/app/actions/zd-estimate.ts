@@ -44,7 +44,8 @@ const ZD_CREATE_OVERLAP_DEADLINE_MS = 100_000;
 const ZD_CREATE_OVERLAP_CACHE_MAX_AGE_MS = 15 * 60_000;
 const ZD_CREATE_KIT_STOCK_BUDGET_MS = 20_000;
 // @service-role-ok — autoryzacja requireZdEstimateAdmin() (operacje dostaw); service role z pełnym scope po warstwie aplikacji.
-import { requireZdEstimateAdmin } from "@/lib/auth";
+import { getSessionUser, requireZdEstimateAdmin } from "@/lib/auth";
+import { canAccessZdEstimate } from "@/lib/auth-roles";
 import {
   deleteZdEstimateExclusion,
   deleteZdEstimateExclusionsMany,
@@ -119,6 +120,7 @@ import { bomRowsToRefs } from "@/lib/orders/zd-estimate-bom";
 import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
 import { fetchSuppliersWithSchedules } from "@/lib/data/queries";
 import { processIndividualFromSummary, markStandardOrdered } from "@/lib/services/orders";
+import { closeStockOutSignalsForCreatedZd } from "@/lib/orders/stock-out-signals-db";
 import {
   defaultZdCreateUwagi,
   buildZdCreateApiBody,
@@ -142,6 +144,7 @@ import {
   type ZdEstimateBulkProductInput,
 } from "@/lib/orders/zd-estimate-bulk";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { isProcurementDraftReady } from "@/lib/orders/procurement-readiness";
 import { assessRequestCompleteness } from "@/lib/orders/request-completeness";
 import {
@@ -233,6 +236,7 @@ import {
   searchSubiektProductCechy,
   searchSubiektProductGroups,
   SubiektZdEstimateFirstPageRejectedError,
+  SubiektZdEstimateStoppedError,
 } from "@/lib/subiekt/api";
 import {
   getSubiektConfigSummary,
@@ -279,6 +283,15 @@ import {
   updateZdEstimateRunProgress,
   type ZdEstimateRunProgressPollResult,
 } from "@/lib/orders/zd-estimate-run-progress";
+import {
+  beginZdEstimateRunJob,
+  collectZdEstimateRunJob,
+  finishZdEstimateRunJob,
+  isZdEstimateRunJobSuperseded,
+  peekZdEstimateRunJobSummary,
+  type ZdEstimateRunJobState,
+} from "@/lib/orders/zd-estimate-run-jobs";
+import { ZD_ESTIMATE_RUN_SUPERSEDED_MESSAGE } from "@/lib/orders/zd-estimate-run-notice-copy";
 import { ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION } from "@/lib/orders/zd-estimate-external-session";
 import {
   fetchAllReservedZkRowsForTwId,
@@ -425,6 +438,8 @@ export type ZdEstimateRunResult =
       otherSupplierHintByTwId?: Record<number, string>;
       /** tw → wiszące prośby na ten towar u innego dostawcy (podpowiedź). */
       prosbyElsewhereByTwId?: Record<number, import("@/lib/data/zd-scope-order").ZdProsbaElsewhere[]>;
+      /** tw → aktywne zgłoszenia „brak na stanie” od handlowców. */
+      stockOutByTwId?: Record<number, import("@/lib/orders/stock-out-signals").ZdStockOutBadge>;
       /** Prośby dostawcy w Weryfikacji (poza Kreatorem); null = nie policzono. */
       incompleteProsbyCount?: number | null;
       /** Rozbicie horyzontu, gdy opcja czasu dostawy była zaznaczona. */
@@ -2283,7 +2298,14 @@ export async function actionRunZdEstimateManual(
       salesProfileRefresh: "background" as const,
     };
     // Strategia testowa: „jak dotąd” liczone z tego samego pobrania (porównanie w tabeli).
-    const engine = await runZdOrderEngine({ ...engineInput, compareClassic: true, onProgress: touchProgress });
+    const liveRunId = progressId;
+    const engine = await runZdOrderEngine({
+      ...engineInput,
+      compareClassic: true,
+      onProgress: touchProgress,
+      // Nowsze „Policz listę” tego użytkownika — nie obciążaj Subiekta liczeniem, którego nikt nie zapisze.
+      shouldStop: liveRunId ? () => isZdEstimateRunJobSuperseded(liveRunId, user.id) : undefined,
+    });
     if (!engine.ok) {
       failProgress(engine.feedback.message);
       return {
@@ -2372,7 +2394,13 @@ export async function actionRunZdEstimateManual(
     let uiSessionId: string | null = null;
     let uiSessionCreatedAt: string | null = null;
     let uiSessionRotated = false;
+    // Użytkownik zaczął już nowsze liczenie: ta lista nie może zastąpić jego aktywnej sesji
+    // (skasowałaby listę z nowszego liczenia, na której właśnie pracuje).
+    const superseded =
+      isValidZdEstimateRunProgressId(input.progressId) &&
+      isZdEstimateRunJobSuperseded(input.progressId.trim(), user.id);
     try {
+      if (superseded) throw new ZdEstimateRunSupersededSignal();
       const snapshot = buildZdEstimateUiSessionSnapshotFromPolicz({
         mode: scope.mode,
         grupaId: scope.mode === "grupa" ? scope.grupaId : null,
@@ -2415,7 +2443,9 @@ export async function actionRunZdEstimateManual(
         );
       }
     } catch (persistErr) {
-      console.warn("[zd-ui-session] persist after Policz threw", persistErr);
+      if (!(persistErr instanceof ZdEstimateRunSupersededSignal)) {
+        console.warn("[zd-ui-session] persist after Policz threw", persistErr);
+      }
     }
 
     if (progressId) completeZdEstimateRunProgress(progressId, user.id);
@@ -2434,6 +2464,7 @@ export async function actionRunZdEstimateManual(
       assignedElsewhere: engine.assignedElsewhere,
       otherSupplierHintByTwId: engine.otherSupplierHintByTwId,
       prosbyElsewhereByTwId: engine.prosbyElsewhereByTwId,
+      stockOutByTwId: engine.stockOutByTwId,
       incompleteProsbyCount: engine.incompleteProsbyCount,
       horizon: appliedHorizon,
       leadDays,
@@ -2458,6 +2489,14 @@ export async function actionRunZdEstimateManual(
     };
   } catch (e) {
     const pagesHint = progressPagesHint(progressId, user.id);
+    if (e instanceof SubiektZdEstimateStoppedError) {
+      failProgress(ZD_ESTIMATE_RUN_SUPERSEDED_MESSAGE);
+      const feedback = getSubiektFeedback("empty_query", {
+        title: "Liczenie zastąpione nowszym",
+        message: ZD_ESTIMATE_RUN_SUPERSEDED_MESSAGE,
+      });
+      return { ok: false, message: feedback.message, feedback };
+    }
     if (e instanceof SubiektZdEstimateFirstPageRejectedError) {
       failProgress(e.message);
       const feedback = getSubiektFeedback("empty_query", {
@@ -2479,7 +2518,7 @@ export async function actionRunZdEstimateManual(
           message:
             "Budowanie listy do zamówienia trwało zbyt długo (limit czasu API lub serwera).",
           hint: [
-            "Spróbuj ponownie albo zawęź zakres. Limit serwera / nginx to ok. 5 min.",
+            "Spróbuj ponownie albo zawęź zakres.",
             pagesHint,
           ]
             .filter(Boolean)
@@ -2538,6 +2577,95 @@ function progressPagesHint(
   const { pagesCommitted, totalPages } = poll.snapshot;
   if (!(pagesCommitted > 0) || !(totalPages > 0)) return null;
   return `(Ostatni postęp: strona ${pagesCommitted}/${totalPages}.)`;
+}
+
+/**
+ * „Policz listę” bez długiego żądania HTTP: akcja od razu oddaje `runId`, liczenie idzie po
+ * odpowiedzi (`after`), a wynik odbiera `actionCollectZdEstimateRun`. Duże cechy liczą się
+ * ponad minutę i jedno żądanie zrywało reverse proxy (504 przed końcem liczenia).
+ */
+export async function actionStartZdEstimateRun(
+  input: ZdEstimateRunInput
+): Promise<{ ok: true; runId: string; ownerUserId: string } | { ok: false; message: string }> {
+  const user = await requireZdEstimateAdmin("read");
+  const runId = isValidZdEstimateRunProgressId(input.progressId) ? input.progressId.trim() : crypto.randomUUID();
+  if (!beginZdEstimateRunJob(runId, user.id)) {
+    return { ok: false, message: "To liczenie już trwa. Poczekaj na wynik albo policz listę ponownie." };
+  }
+  after(async () => {
+    let result: ZdEstimateRunResult;
+    try {
+      result = await actionRunZdEstimateManual({ ...input, progressId: runId });
+    } catch (e) {
+      console.error("[zd-estimate] liczenie w tle przerwane", e);
+      const feedback = feedbackFromException(e);
+      result = { ok: false, message: feedback.message, feedback };
+    }
+    // Zastąpione nowszym liczeniem (przerwane albo bez zapisu listy) — to nie błąd (zakładka w innej karcie).
+    const supersededUnsaved =
+      (!result.ok || !result.uiSessionId?.trim()) && isZdEstimateRunJobSuperseded(runId, user.id);
+    finishZdEstimateRunJob(
+      runId,
+      user.id,
+      result,
+      supersededUnsaved ? { state: "failed", message: ZD_ESTIMATE_RUN_SUPERSEDED_MESSAGE } : zdEstimateRunOutcome(result)
+    );
+  });
+  return { ok: true, runId, ownerUserId: user.id };
+}
+
+export async function actionCollectZdEstimateRun(
+  runId: string
+): Promise<ZdEstimateRunJobState<ZdEstimateRunResult>> {
+  const user = await requireZdEstimateAdmin("read");
+  if (!isValidZdEstimateRunProgressId(runId)) return { state: "missing" };
+  return collectZdEstimateRunJob<ZdEstimateRunResult>(runId.trim(), user.id);
+}
+
+/** Pominięcie zapisu sesji przez liczenie zastąpione nowszym (nie błąd). */
+class ZdEstimateRunSupersededSignal extends Error {}
+
+/** Co wyszło z liczenia w tle — tyle potrzebuje zakładka poza Kreatorem (bez całej listy). */
+type ZdEstimateRunOutcome = { state: "ready"; sessionId: string } | { state: "failed"; message: string };
+
+function zdEstimateRunOutcome(result: ZdEstimateRunResult): ZdEstimateRunOutcome {
+  if (!result.ok) return { state: "failed", message: result.message };
+  const sessionId = result.uiSessionId?.trim();
+  // Lista policzona, ale bez zapisanej sesji nie ma jej skąd otworzyć po powrocie.
+  if (!sessionId) return { state: "failed", message: "Lista została policzona, ale nie udało się jej zapisać." };
+  return { state: "ready", sessionId };
+}
+
+export type ZdEstimateRunStatus =
+  | { state: "running"; pagesCommitted: number; totalPages: number }
+  | ZdEstimateRunOutcome
+  /** Serwer nie zna tego liczenia (restart usługi, wygasło). */
+  | { state: "missing" }
+  /** W tej karcie jest teraz zalogowane inne konto — to nie jego liczenie (bez komunikatu). */
+  | { state: "not_yours" }
+  /** Brak sesji albo chwilowo brak dostępu do Kreatora — zapytaj później, nic nie pokazuj. */
+  | { state: "unavailable" };
+
+/**
+ * Lekki status liczenia dla zakładki poza Kreatorem. Pytany co kilka sekund z dowolnego ekranu,
+ * więc brak sesji i brak dostępu są zwykłą odpowiedzią, a nie wyjątkiem.
+ */
+export async function actionGetZdEstimateRunStatus(runId: string, ownerUserId: string): Promise<ZdEstimateRunStatus> {
+  const user = await getSessionUser();
+  if (!user) return { state: "unavailable" };
+  if (ownerUserId !== user.id) return { state: "not_yours" };
+  if (!canAccessZdEstimate(user.role, user.assignedWorkspaces)) return { state: "unavailable" };
+  if (!isValidZdEstimateRunProgressId(runId)) return { state: "missing" };
+  const id = runId.trim();
+  const job = peekZdEstimateRunJobSummary<ZdEstimateRunOutcome>(id, user.id);
+  if (job.state === "missing") return job;
+  if (job.state === "done") return job.summary;
+  const progress = getZdEstimateRunProgressForOwner(id, user.id);
+  return {
+    state: "running",
+    pagesCommitted: progress.found ? progress.snapshot.pagesCommitted : 0,
+    totalPages: progress.found ? progress.snapshot.totalPages : 0,
+  };
 }
 
 export async function actionPollZdEstimateRunProgress(
@@ -3466,7 +3594,7 @@ export type ZdEstimateSearchZdResult =
   | { ok: true; documents: ZdEstimateLinkCandidate[] }
   | { ok: false; message: string };
 
-/** Ostatnie ZD z hosta ORDERS — do dialogu „Powiąż ZD”. */
+/** Ostatnie ZD z hosta ORDERS — do dialogu „Powiąż gotowe ZD”. */
 export async function actionSearchZdForEstimateLink(input?: {
   search?: string | null;
   days?: number;
@@ -3568,7 +3696,7 @@ export async function actionLinkZdEstimateSnapshot(input: {
   if (!khRes.ok) {
     return {
       ok: false,
-      message: `Powiąż ZD wymaga dostawcy z workbencha: ${khRes.message}`,
+      message: `Powiąż gotowe ZD wymaga dostawcy z workbencha: ${khRes.message}`,
     };
   }
 
@@ -3925,6 +4053,8 @@ export type ZdEstimateCreateZdResult =
       includedServiceOrderIds?: string[];
       /** Catalog IDs zaakceptowane przez serwer (Nowe + extras). */
       acceptedCatalogOrderIds?: string[];
+      /** Zgłoszenia „brak na stanie” na towary z tego ZD — zamknięte automatycznie. */
+      stockOutClosedCount?: number;
     }
   | {
       ok: false;
@@ -4473,8 +4603,20 @@ export async function actionCreateZdFromEstimate(input: {
     });
   };
 
-  const withCreate = <T extends Record<string, unknown>>(base: T) => ({
+  // ZD już jest w Subiekcie: zgłoszenia braku na te towary zamykamy od razu (błąd nie psuje wyniku Create).
+  const withCreate = async <T extends Record<string, unknown>>(base: T) => ({
     ...base,
+    stockOutClosedCount: (
+      await closeStockOutSignalsForCreatedZd({
+        twIds: createLines.map((l) => l.twId),
+        dokNr: typeof base.dokNrPelny === "string" ? base.dokNrPelny : `ZD/${dokId}`,
+        supplierId: input.supplierId,
+        actorEmail: user.email,
+      }).catch((e) => {
+        console.warn("[zd-estimate:create] zamknięcie zgłoszeń braku", e);
+        return [];
+      })
+    ).length,
     createdLines: createLines.map((l) => ({ twId: l.twId, ilosc: l.ilosc })),
     bumped: coveredLines.bumped,
     composedUwagi: composedUwagi.uwagi,
@@ -4642,7 +4784,7 @@ export async function actionCreateZdFromEstimate(input: {
         lineCount: createLines.length,
         snapshotOk: false,
         snapshotMessage:
-          "ZD utworzone, ale nie udało się odczytać pozycji do historii - użyj „Powiąż ZD”.",
+          "ZD utworzone, ale nie udało się odczytać pozycji do historii - użyj „Powiąż gotowe ZD”.",
       });
     }
 
@@ -4693,7 +4835,7 @@ export async function actionCreateZdFromEstimate(input: {
         snapshotMessage:
           snapErr instanceof Error
             ? `ZD utworzone (${dokNrPelny}), snapshot nie zapisany: ${snapErr.message}`
-            : `ZD utworzone (${dokNrPelny}), snapshot nie zapisany - użyj „Powiąż ZD”.`,
+            : `ZD utworzone (${dokNrPelny}), snapshot nie zapisany - użyj „Powiąż gotowe ZD”.`,
       });
     }
   } catch (e) {
@@ -4713,7 +4855,7 @@ export async function actionCreateZdFromEstimate(input: {
       snapshotMessage:
         e instanceof Error
           ? `ZD utworzone (dok_Id ${dokId}), odczyt/snapshot: ${e.message}`
-          : `ZD utworzone (dok_Id ${dokId}) - użyj „Powiąż ZD”.`,
+          : `ZD utworzone (dok_Id ${dokId}) - użyj „Powiąż gotowe ZD”.`,
     });
   }
 }
@@ -6111,7 +6253,7 @@ export async function actionGetZdEstimateUiSession(input: {
       .delete()
       .eq("id", sessionId)
       .eq("owner_user_id", user.id);
-    return { ok: false, message: "Sesja wygasła.", reason: "expired" };
+    return { ok: false, message: "Zapamiętana lista wygasła - policz ją od nowa.", reason: "expired" };
   }
 
   return {

@@ -35,7 +35,11 @@ import {
   actionClearZdEstimateOnRequestProducts,
   actionRestoreZdEstimateProduct,
   actionRestoreZdEstimateProducts,
-  actionRunZdEstimateManual,
+  actionStartZdEstimateRun,
+  actionCollectZdEstimateRun,
+  actionGetZdEstimateRunStatus,
+  type ZdEstimateRunInput,
+  type ZdEstimateRunResult,
   actionPollZdEstimateRunProgress,
   actionFetchZdEstimatePendingIndividuals,
   actionFetchZdEstimateProsbaReservationOverlap,
@@ -67,6 +71,8 @@ import type { ZdClassicCompare } from "@/lib/orders/zd-demand-policy";
 import { ZdAutoProposalBanner } from "@/components/zakupy/ZdAutoProposalBanner";
 import {
   policyForBoostPreset,
+  zdBoostAfterSavedLoad,
+  zdBoostAfterSessionRestore,
   ZD_BOOST_POWER_DEFAULT,
   type ZdBoostPowerPreset,
 } from "@/lib/orders/zd-estimate-boost-presets";
@@ -101,6 +107,7 @@ import {
 } from "@/lib/orders/zd-estimate-scope-coverage";
 import type { ZdEstimateExclusionRow } from "@/lib/data/zd-estimate-exclusions";
 import type { ZdProsbaElsewhere } from "@/lib/data/zd-scope-order";
+import type { ZdStockOutBadge } from "@/lib/orders/stock-out-signals";
 import type { ZdEstimateOnRequestRow } from "@/lib/data/zd-estimate-on-request";
 import { isServicePartOnRequestRow } from "@/lib/orders/service-parts";
 import type { ZdEstimatePackagingRow } from "@/lib/data/zd-estimate-packaging";
@@ -176,6 +183,8 @@ import {
   zdEstimateExternalSessionCancelConfirmLabel,
   zdEstimateExternalSessionCancelDialogCancelLabel,
   zdEstimateExternalSessionRestoredToastTitle,
+  zdEstimateRunReadyToastDescription,
+  zdEstimateRunReadyToastTitle,
   zdEstimateExternalSessionRestoredToastDescription,
   zdEstimateExternalSessionExpiredAlertTitle,
   zdEstimateExternalSessionExpiredAlertBody,
@@ -386,6 +395,18 @@ import {
   shouldClearRunProgressOnMiss,
   type ZdEstimateRunProgressSnapshot,
 } from "@/lib/orders/zd-estimate-run-progress";
+import { awaitZdEstimateRunJob } from "@/lib/orders/zd-estimate-run-await";
+import {
+  claimZdEstimateRunInWizard,
+  dismissZdEstimateTrackedRun,
+  getZdEstimateRunTrackerSnapshot,
+  releaseZdEstimateRunOwnership,
+  resolveZdEstimateTrackedRun,
+  settleZdEstimateRunInWizard,
+  trackZdEstimateRunStarted,
+  type ZdEstimateTrackedRun,
+} from "@/lib/client/zd-estimate-run-tracker";
+import { ZD_ESTIMATE_RUN_LOST_MESSAGE } from "@/lib/orders/zd-estimate-run-notice-copy";
 import {
   clearZdEstimateExternalSessionResumeQueryParam,
   isZdEstimateExternalSessionReturnNavigation,
@@ -863,12 +884,34 @@ export function ZdEstimateWorkbench({
   launch?: ZdEstimateLaunchProps | null;
 }) {
   const uiPrefs = bootstrap.uiPrefs ?? ZD_ESTIMATE_UI_PREFS_DEFAULTS;
-  const [estimating, startEstimate] = useTransition();
+  // „Policz” celowo bez useTransition: trwające async transition w React 19 wstrzymuje każdą
+  // nawigację (Link też jest transition) do końca liczenia — z Kreatora nie dało się wyjść.
+  const [estimating, setEstimating] = useState(false);
+  const estimateRunsRef = useRef(0);
+  const startEstimate = useCallback((run: () => Promise<void>) => {
+    estimateRunsRef.current += 1;
+    setEstimating(true);
+    void run()
+      .catch((e: unknown) => console.error("[zd-estimate] Policz przerwane w przeglądarce", e))
+      .finally(() => {
+        estimateRunsRef.current -= 1;
+        if (estimateRunsRef.current === 0) setEstimating(false);
+      });
+  }, []);
   const [searching, startSearch] = useTransition();
   const [mutating, startMutate] = useTransition();
   const [rematting, startRemat] = useTransition();
   /** Unieważnia wynik „Policz”, gdy zakres zmieni się w trakcie requestu. */
   const estimateGenRef = useRef(0);
+  // Wyjście z Kreatora w trakcie liczenia: wynik odbiera zakładka poza Kreatorem (run tracker).
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      releaseZdEstimateRunOwnership();
+    };
+  }, []);
   /** Unieważnia spóźnione odpowiedzi fetch próśb (mount vs Policz). */
   const pendingFetchGenRef = useRef(0);
   /** Lokalny guard w ramach jednego mountu (sessionStorage chroni remount). */
@@ -1148,6 +1191,8 @@ export function ZdEstimateWorkbench({
     otherSupplierHintByTwId: Record<number, string>;
     /** tw → wiszące prośby na ten towar u innego dostawcy. */
     prosbyElsewhereByTwId?: Record<number, ZdProsbaElsewhere[]>;
+    /** tw → zgłoszenia „brak na stanie” od handlowców. */
+    stockOutByTwId?: Record<number, ZdStockOutBadge>;
     /** Prośby dostawcy w Weryfikacji (poza Kreatorem); null = nie policzono. */
     incompleteProsbyCount?: number | null;
     /** Rozbicie horyzontu, gdy Policz liczył z czasem dostawy. */
@@ -1229,6 +1274,8 @@ export function ZdEstimateWorkbench({
     useState<ZdEstimateRunProgressSnapshot | null>(null);
   const runProgressPollRef = useRef<number | null>(null);
   const runProgressMissesRef = useRef(0);
+  /** Liczenie zaczęte przed wejściem do Kreatora (wyjście / odświeżenie w trakcie) — Kreator pokazuje jego postęp. */
+  const [reattachRun, setReattachRun] = useState<ZdEstimateTrackedRun | null>(null);
   const [assignHint, setAssignHint] = useState<string | null>(
     launch?.needsAssign ? launch.resolveMessage : null
   );
@@ -1290,9 +1337,11 @@ export function ZdEstimateWorkbench({
         }
       };
       void tick();
+      // Co 1 s: strony z Subiekta przychodzą co ~12 s, a akcje serwera idą z przeglądarki po kolei
+      // (częstsze pytanie tylko opóźnia kliknięcia użytkownika i odbiór wyniku).
       runProgressPollRef.current = window.setInterval(() => {
         void tick();
-      }, 400);
+      }, 1_000);
     },
     [stopRunProgressPoll]
   );
@@ -1391,6 +1440,16 @@ export function ZdEstimateWorkbench({
   const [linesBase, setLinesBase] = useState<ManualZdEstimateLine[] | null>(
     null
   );
+  /** Dla odczytu zapisanego podbicia po mount: czy lista już jest i z jakim podbiciem ją policzono. */
+  const boostListRef = useRef<{ hasList: boolean; applied: ZdBoostPowerPreset }>({
+    hasList: false,
+    applied: ZD_BOOST_POWER_DEFAULT,
+  });
+  /** Podbicie zapisane w ustawieniach (po odczycie) — przywrócona sesja nie nadpisuje go starszym. */
+  const savedBoostPresetRef = useRef<ZdBoostPowerPreset | null>(null);
+  useLayoutEffect(() => {
+    boostListRef.current = { hasList: Boolean(linesBase?.length), applied: appliedBoostPreset };
+  }, [linesBase, appliedBoostPreset]);
   /** Historia snapshotów z ostatniego Policz — live refresh musi ją przekazać. */
   const [historyByTwId, setHistoryByTwId] = useState<
     Map<number, { lastOrderedQty: number; linkedAt: string }>
@@ -1566,6 +1625,23 @@ export function ZdEstimateWorkbench({
   const [cancelExternalSessionOpen, setCancelExternalSessionOpen] =
     useState(false);
   const cancelExternalSessionSessionIdRef = useRef<string | null>(null);
+  // Pasek „Utwórz ZD” wisi nad listą (absolute) — miejsce pod ostatnim wierszem liczymy z jego realnej
+  // wysokości (dwa rzędy z „Lista zapamiętana” / komunikatem), a nie ze stałej, która zasłaniała ostatni wiersz.
+  const [stickyBarHeight, setStickyBarHeight] = useState<number | null>(null);
+  const stickyBarObserverRef = useRef<ResizeObserver | null>(null);
+  const stickyBarRef = useCallback((el: HTMLDivElement | null) => {
+    stickyBarObserverRef.current?.disconnect();
+    stickyBarObserverRef.current = null;
+    if (!el) return;
+    // Od md pasek stoi 0,75 rem nad dołem; na telefonie wisi nad menu i ma własną stałą rezerwę (klasa).
+    const update = () =>
+      setStickyBarHeight(window.matchMedia("(min-width: 768px)").matches ? el.offsetHeight : null);
+    update();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    stickyBarObserverRef.current = ro;
+  }, []);
   const externalSessionIdRef = useRef<string | null>(null);
   const externalSessionRestoreGenRef = useRef(0);
   const externalSessionPersistTimerRef = useRef<number | null>(null);
@@ -1613,6 +1689,9 @@ export function ZdEstimateWorkbench({
   const [sessionResumeStartedAtMs, setSessionResumeStartedAtMs] = useState(0);
   const sessionResumeRevealTimerRef = useRef<number | null>(null);
   const pendingRestoredToastRef = useRef<string | null>(null);
+  /** Następne odtworzenie sesji to lista policzona w tle (przejęte liczenie), nie powrót do starej. */
+  const restoreFromRunRef = useRef(false);
+  const [restoredToastTitle, setRestoredToastTitle] = useState(zdEstimateExternalSessionRestoredToastTitle);
   /** Blokuje formularz zakresu do czasu restore (także cichego refreshu z tokenem). */
   // Start zawsze false (jak SSR) — token z localStorage czyta useLayoutEffect
   // (restoreExternalSession) przed paint; inaczej hydracja się rozjeżdża.
@@ -1948,14 +2027,22 @@ export function ZdEstimateWorkbench({
   const cardDniZapasu = selectedSupplier?.dniZapasu ?? null;
   const raisedDniZapasu =
     cardDniZapasu != null && Math.round(Number(dniZapasu)) > cardDniZapasu ? Math.round(Number(dniZapasu)) : null;
+  // Strategia po Policz: cykl + dostawa dały więcej dni niż wpisane — pole niczego nie podniosło.
+  const strategyRunDni = lines ? Math.round(Number(paramInfo?.dniZapasu) || 0) : 0;
   const dniZapasuNote =
     policyTargetDays == null
       ? null
       : cardDniZapasu == null
         ? ZD_ESTIMATE_UI.dniZapasuStrategyNoCardNote(policyTargetDays)
         : raisedDniZapasu != null
-          ? ZD_ESTIMATE_UI.dniZapasuStrategyRaisedNote(raisedDniZapasu)
+          ? strategyRunDni > raisedDniZapasu
+            ? ZD_ESTIMATE_UI.dniZapasuStrategyLongerNote(strategyRunDni, raisedDniZapasu)
+            : ZD_ESTIMATE_UI.dniZapasuStrategyRaisedNote(raisedDniZapasu)
           : ZD_ESTIMATE_UI.dniZapasuStrategyNote(policyTargetDays, cardDniZapasu);
+  // Strategia: pole zmienia liczenie dopiero ponad kartę (i dni strategii) — mniej nic nie zmienia.
+  // Równe karcie zostaje dozwolone: cofa ręczne podniesienie.
+  const strategyStockDaysMin =
+    policyTargetDays == null ? null : cardDniZapasu != null ? Math.max(policyTargetDays, cardDniZapasu) : policyTargetDays;
 
   // Zapas pokazywany w nagłówku: po Policz dni faktycznie użyte (strategia liczy co najmniej cykl + dostawę).
   const shownDniZapasu =
@@ -2026,11 +2113,17 @@ export function ZdEstimateWorkbench({
         setErrorMessage(userFacingErrorTextFromMessage(res.message));
         return;
       }
+      savedBoostPresetRef.current = res.preset;
       setBoostPreset(res.preset);
-      setAppliedBoostPreset(res.preset);
-      // Przed pierwszym Policz trzymaj applied = zapisany (gentle default).
-      setAppliedBoostPolicy(policyForBoostPreset(res.preset));
-      setBoostNeedsRecount(false);
+      // Lista już jest (przywrócona sesja albo wynik w tle doszedł przed odczytem ustawienia):
+      // zostaje podbicie, z którym ją policzono — inaczej przeliczenia na kliencie wzięłyby inne,
+      // a baner „Przelicz” by zniknął.
+      const next = zdBoostAfterSavedLoad({ saved: res.preset, ...boostListRef.current });
+      if (next.applied) {
+        setAppliedBoostPreset(next.applied);
+        setAppliedBoostPolicy(policyForBoostPreset(next.applied));
+      }
+      setBoostNeedsRecount(next.needsRecount);
     });
     return () => {
       cancelled = true;
@@ -2517,7 +2610,8 @@ export function ZdEstimateWorkbench({
       sortDir,
       packagingLookup,
       individualExtraByTwId,
-      qtyOverrideMap,
+      // Sort po ilości wyliczonej: wpisana ręcznie nie przestawia wiersza (Tab → następny wiersz zostaje następnym).
+      null,
       extraOnlyTwIds,
       extrasPolicy,
       stockNeedReliefByTwId,
@@ -2532,7 +2626,6 @@ export function ZdEstimateWorkbench({
     sortDir,
     packagingLookup,
     individualExtraByTwId,
-    qtyOverrideMap,
     extraOnlyTwIds,
     extrasPolicy,
     stockNeedReliefByTwId,
@@ -3214,18 +3307,21 @@ export function ZdEstimateWorkbench({
       setPurchasePriceNetByTwId(payload.purchasePriceNetByTwId ?? {});
       setHorizonNeedsRecount(false);
 
-      const restoredBoostNeedsRecount = payload.boostPreset
-        ? Boolean(payload.boostNeedsRecount) ||
-          (payload.appliedBoostPreset != null &&
-            payload.boostPreset !== payload.appliedBoostPreset)
-        : false;
+      // Podbicie to wspólne ustawienie: po odczycie liczy się zapisane, nie to z chwili pauzy sesji.
+      const restoredBoost = payload.boostPreset
+        ? zdBoostAfterSessionRestore({
+            saved: savedBoostPresetRef.current,
+            sessionForm: payload.boostPreset,
+            sessionApplied: payload.appliedBoostPreset,
+            sessionNeedsRecount: payload.boostNeedsRecount,
+          })
+        : null;
+      const restoredBoostNeedsRecount = restoredBoost?.needsRecount ?? false;
 
-      if (payload.boostPreset) {
-        setBoostPreset(payload.boostPreset);
-        const applied =
-          payload.appliedBoostPreset ?? payload.boostPreset;
-        setAppliedBoostPreset(applied);
-        setAppliedBoostPolicy(policyForBoostPreset(applied));
+      if (restoredBoost) {
+        setBoostPreset(restoredBoost.form);
+        setAppliedBoostPreset(restoredBoost.applied);
+        setAppliedBoostPolicy(policyForBoostPreset(restoredBoost.applied));
       }
 
       // Restore = snapshot roboczy, nie post-create / create-lock z bieżącego mountu.
@@ -3253,6 +3349,9 @@ export function ZdEstimateWorkbench({
 
   const restoreExternalSession = useCallback(
     async (token: NonNullable<ReturnType<typeof peekZdEstimateExternalSessionToken>>) => {
+      const fromRun = restoreFromRunRef.current;
+      restoreFromRunRef.current = false;
+      setRestoredToastTitle(fromRun ? zdEstimateRunReadyToastTitle : zdEstimateExternalSessionRestoredToastTitle);
       sessionResumeStartedAtMsRef.current = Date.now();
       setSessionResumeStartedAtMs(sessionResumeStartedAtMsRef.current);
       setSessionResumeReturningFromAway(
@@ -3351,10 +3450,11 @@ export function ZdEstimateWorkbench({
         return;
       }
 
-      pendingRestoredToastRef.current =
-        zdEstimateExternalSessionRestoredToastDescription({
-          updatedAt: payload.updatedAt ?? got.updatedAt,
-        });
+      pendingRestoredToastRef.current = fromRun
+        ? zdEstimateRunReadyToastDescription
+        : zdEstimateExternalSessionRestoredToastDescription({
+            updatedAt: payload.updatedAt ?? got.updatedAt,
+          });
       setExternalSessionPersistFailedAlert(false);
       finishSessionResumeReveal(true, { linesReady: true, restoreGen });
       } catch (e) {
@@ -4054,7 +4154,7 @@ export function ZdEstimateWorkbench({
         : selectedGroup?.grt_Nazwa ?? (groupQuery.trim() || null);
     startEstimate(async () => {
       try {
-      const res = await actionRunZdEstimateManual({
+      const runInput: ZdEstimateRunInput = {
         mode,
         ...(mode === "grupa" ? { grupaId } : { cechaId }),
         scopeLabel: scopeLabelForRun,
@@ -4078,7 +4178,50 @@ export function ZdEstimateWorkbench({
           columns,
           columnOrder,
         },
+      };
+      // Liczenie idzie na serwerze w tle; wynik odbieramy krótkimi zapytaniami (duże cechy > 1 min).
+      let trackedRunId: string | null = null;
+      const awaited = await awaitZdEstimateRunJob<ZdEstimateRunResult>({
+        start: () => actionStartZdEstimateRun(runInput),
+        collect: actionCollectZdEstimateRun,
+        onStarted: ({ runId, ownerUserId }) => {
+          trackedRunId = runId;
+          trackZdEstimateRunStarted({
+            runId,
+            ownerUserId,
+            label: activeSupplierName?.trim() || scopeLabelForRun?.trim() || "",
+            supplierId: supplierId ?? null,
+            scopeMode: mode,
+            grupaId: mode === "grupa" ? (grupaId ?? null) : null,
+            cechaId: mode === "cecha" ? (cechaId ?? null) : null,
+            startedAtMs: Date.now(),
+          });
+          // Wyjście z Kreatora, zanim serwer potwierdził start — od razu oddaj wynik zakładce.
+          if (!mountedRef.current) releaseZdEstimateRunOwnership();
+        },
+        isAbandoned: () => !mountedRef.current,
       });
+      // Kreator zniknął z ekranu — liczenie trwa na serwerze, o wyniku powie zakładka poza Kreatorem.
+      if (!awaited.ok && awaited.failure === null) return;
+      // Serwer nie ma już wyniku (uśpiony komputer > 5 min po końcu albo restart): lista mogła się
+      // zapisać w sesji Kreatora — status zna zakładka („Otwórz listę” albo powód), nie zgadujemy tu.
+      if (!awaited.ok && awaited.failure?.code === "lost" && trackedRunId && estimateGen === estimateGenRef.current) {
+        releaseZdEstimateRunOwnership();
+        clearProgressBlocking();
+        return;
+      }
+      if (trackedRunId) settleZdEstimateRunInWizard(trackedRunId);
+      const res: ZdEstimateRunResult = awaited.ok
+        ? awaited.result
+        : {
+            ok: false,
+            message: awaited.failure.message,
+            feedback: {
+              ...awaited.failure,
+              code: awaited.failure.code === "lost" ? "unknown" : awaited.failure.code,
+              tone: "error",
+            },
+          };
       if (estimateGen !== estimateGenRef.current) {
         // Serwer mógł już skasować poprzednią active i/lub utworzyć nową —
         // nie zostawiaj orphan DB ani tokenu wskazującego na skasowaną sesję.
@@ -4162,6 +4305,7 @@ export function ZdEstimateWorkbench({
           assignedElsewhere: res.assignedElsewhere ?? [],
           otherSupplierHintByTwId: res.otherSupplierHintByTwId ?? {},
           prosbyElsewhereByTwId: res.prosbyElsewhereByTwId ?? {},
+          stockOutByTwId: res.stockOutByTwId ?? {},
           incompleteProsbyCount: res.incompleteProsbyCount ?? null,
           horizon: res.horizon ?? null,
           leadDays: res.leadDays ?? null,
@@ -4551,8 +4695,40 @@ export function ZdEstimateWorkbench({
 
   // Sesja zewnętrzna: restore, auto-replace (daily Przygotuj ZD) albo konflikt z autorun.
   useLayoutEffect(() => {
+    // Liczenie zaczęte wcześniej i śledzone poza Kreatorem (wyjście albo odświeżenie w trakcie).
+    const tracker = getZdEstimateRunTrackerSnapshot();
+    const awayRun = tracker.run && tracker.run.runId !== tracker.ownedRunId ? tracker.run : null;
+    if (awayRun?.state === "ready" && awayRun.sessionId) {
+      // Gotowa lista jest teraz jedyną zapisaną sesją — wejście do Kreatora dowolną drogą ją otwiera.
+      writeZdEstimateExternalSessionToken(
+        createZdEstimateExternalSessionToken({
+          sessionId: awayRun.sessionId,
+          schemaVersion: ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION,
+          supplierId: awayRun.supplierId,
+          scopeMode: awayRun.scopeMode,
+          grupaId: awayRun.grupaId,
+          cechaId: awayRun.cechaId,
+        })
+      );
+      dismissZdEstimateTrackedRun(awayRun.runId);
+    } else if (awayRun?.state === "running") {
+      // Wynik tego liczenia zastąpi poprzednią sesję na serwerze — nie otwieraj jej do edycji,
+      // bo jej zapis skasowałby potem gotową listę.
+      clearZdEstimateExternalSessionToken();
+      // Autorun („Przygotuj ZD”) liczy od nowa i zastąpi to liczenie — wtedy bez przejmowania.
+      if (!launch?.autorun) {
+        claimZdEstimateRunInWizard(awayRun.runId);
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- przejęcie liczenia przed pierwszym paint
+        setReattachRun(awayRun);
+        setLaunchStartedAtMs(awayRun.startedAtMs);
+        setLaunchForceComplete(false);
+        setLaunchReadyMessage(null);
+        setLaunchBlocking(true);
+      }
+    }
+
     // Token w localStorage → stan React (zewnętrzne źródło); setState w layoucie przed paint.
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync tokenu sesji UI
+     
     syncExternalSessionTokenState();
 
     const token = peekZdEstimateExternalSessionToken();
@@ -4615,6 +4791,82 @@ export function ZdEstimateWorkbench({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const restoreExternalSessionRef = useRef(restoreExternalSession);
+  useEffect(() => {
+    restoreExternalSessionRef.current = restoreExternalSession;
+  });
+
+  // Powrót do Kreatora w trakcie liczenia: ten sam pasek postępu co przy „Policz listę” (czas od
+  // prawdziwego startu), a gotowa lista otwiera się sama. Błąd / utrata — powód pokaże zakładka.
+  useEffect(() => {
+    if (!reattachRun) return;
+    const run = reattachRun;
+    const gen = estimateGenRef.current;
+    let stopped = false;
+    let inFlight = false;
+    startRunProgressPoll(run.runId, gen);
+    let pollId = 0;
+    const finish = () => {
+      stopped = true;
+      window.clearInterval(pollId);
+      stopRunProgressPoll();
+      setLaunchBlocking(false);
+      setReattachRun(null);
+    };
+    const handBackToNotice = () => {
+      releaseZdEstimateRunOwnership();
+      finish();
+    };
+    const tick = async () => {
+      if (stopped || inFlight) return;
+      // W Kreatorze zaczęło się coś nowego (Policz, zmiana zakresu) — to liczenie wraca do zakładki.
+      if (gen !== estimateGenRef.current) return handBackToNotice();
+      inFlight = true;
+      try {
+        const status = await actionGetZdEstimateRunStatus(run.runId, run.ownerUserId);
+        if (stopped || status.state === "running" || status.state === "unavailable") return;
+        if (status.state === "ready") {
+          const token = createZdEstimateExternalSessionToken({
+            sessionId: status.sessionId,
+            schemaVersion: ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION,
+            supplierId: run.supplierId,
+            scopeMode: run.scopeMode,
+            grupaId: run.grupaId,
+            cechaId: run.cechaId,
+          });
+          writeZdEstimateExternalSessionToken(token);
+          settleZdEstimateRunInWizard(run.runId);
+          finish();
+          restoreFromRunRef.current = true;
+          void restoreExternalSessionRef.current(token).catch(() => {
+            /* błąd obsłużony w restoreExternalSession */
+          });
+          return;
+        }
+        if (status.state === "not_yours") {
+          dismissZdEstimateTrackedRun(run.runId);
+          return finish();
+        }
+        resolveZdEstimateTrackedRun(run.runId, {
+          state: "failed",
+          message: status.state === "failed" ? status.message : ZD_ESTIMATE_RUN_LOST_MESSAGE,
+        });
+        handBackToNotice();
+      } catch {
+        // Zerwane połączenie — zapytamy przy kolejnym tyknięciu.
+      } finally {
+        inFlight = false;
+      }
+    };
+    pollId = window.setInterval(() => void tick(), 1_500);
+    void tick();
+    return () => {
+      stopped = true;
+      window.clearInterval(pollId);
+      stopRunProgressPoll();
+    };
+  }, [reattachRun, startRunProgressPoll, stopRunProgressPoll]);
 
   const runPendingAutorunAfterSessionDiscard = useCallback(() => {
     const pending = externalSessionAutorunPendingRef.current;
@@ -6350,12 +6602,12 @@ export function ZdEstimateWorkbench({
         <div className="flex min-h-0 flex-1 flex-col">
         <ZdEstimateLaunchProgressPanel
           key={launchStartedAtMs}
-          supplierName={activeSupplierName}
+          supplierName={activeSupplierName ?? (reattachRun?.label || null)}
           scopeLabel={launchScopeLabel}
-          scopeMode={launchScopeMode}
+          scopeMode={reattachRun?.scopeMode ?? launchScopeMode}
           startedAtMs={launchStartedAtMs}
           scopeAlreadyResolved={
-            Boolean(launchScopeLabel) || launchHasRunnableScope(launch)
+            Boolean(reattachRun) || Boolean(launchScopeLabel) || launchHasRunnableScope(launch)
           }
           forceComplete={launchForceComplete}
           ordersIsLive={bootstrap.ordersIsLive}
@@ -6465,7 +6717,7 @@ export function ZdEstimateWorkbench({
                     ? "z karty dostawcy"
                     : null)
               }
-              stockDaysMin={policyTargetDays}
+              stockDaysMin={strategyStockDaysMin}
               onStockDaysChange={onDniZapasuChange}
               // Strategia bez dni na karcie liczy na własnych dniach — pole zapasu niczego by nie zmieniło.
               canEditStock={!busy && !(policyTargetDays != null && cardDniZapasu == null)}
@@ -6596,7 +6848,7 @@ export function ZdEstimateWorkbench({
       {externalSessionRestoredToast ? (
         <Toast
           tone="success"
-          title={zdEstimateExternalSessionRestoredToastTitle}
+          title={restoredToastTitle}
           description={externalSessionRestoredToast}
           durationMs={8000}
           onDismiss={() => setExternalSessionRestoredToast(null)}
@@ -6878,7 +7130,7 @@ export function ZdEstimateWorkbench({
             : <>
                 Z tej listy utworzono już {createDoneDokNr}.{" "}
                 {!createUnlockedAfterDone
-                  ? "Przelicz listę, użyj „Powiąż ZD” albo odblokuj świadomie."
+                  ? "Przelicz listę, użyj „Powiąż gotowe ZD” albo odblokuj świadomie."
                   : createZdGate.ok
                     ? "Możesz utworzyć kolejne ZD - uważaj na duplikaty w Subiekcie."
                     : createZdGateCaption ?? createZdGate.reason}
@@ -7063,11 +7315,13 @@ export function ZdEstimateWorkbench({
               title={
                 policzScopeInfo.horizon.extendedByDays > 0
                   ? `Liczone z czasem dostawy: ${policzScopeInfo.horizon.horizonDays} dni zamiast ${policzScopeInfo.horizon.stockDays}`
-                  : "Czas dostawy uwzględniony - zapas z karty wystarcza"
+                  : raisedDniZapasu != null
+                    ? "Czas dostawy uwzględniony - wpisany zapas wystarcza"
+                    : "Czas dostawy uwzględniony - zapas z karty wystarcza"
               }
             >
               <p className="text-sm leading-snug">
-                {formatZdHorizonBreakdown(policzScopeInfo.horizon)}
+                {formatZdHorizonBreakdown(policzScopeInfo.horizon, { stockRaised: raisedDniZapasu != null })}
               </p>
               <Button
                 type="button"
@@ -7589,9 +7843,10 @@ export function ZdEstimateWorkbench({
               listSearchActive ? segmentFilteredLines.length : undefined
             }
             statusNote={
+              // Liczba pozycji „Do ZD” jest w stopce (z sztukami i wartością) — tu tylko to, czego tam nie widać.
               meta?.truncated
                 ? zdEstimateTruncatedListStatusNote()
-                : visibleLines.length > 0 || orderableLines.length > 0
+                : hiddenOrderableCount > 0
                   ? formatZdEstimateOrderableStatusNote({
                       orderable: orderableLines.length,
                       hiddenOrderable: hiddenOrderableCount,
@@ -7888,9 +8143,9 @@ export function ZdEstimateWorkbench({
                         <th
                           className="zd-estimate-pack-col"
                           scope="col"
-                          title="Definicja opakowania: ile sztuk = 1 jednostka na ZD (paczka) albo wielokrotność dobicia. Osobno od Dost. / Sprzed. / Cel."
+                          title="Definicja opakowania: ile sztuk = 1 jednostka na ZD (paczka) albo wielokrotność dobicia. Osobno od kolumn Na stanie / Sprzedaż / Cel."
                         >
-                          Opak.
+                          Paczka
                         </th>
                       ) : null}
                       <ZdEstimateSortableTh
@@ -7961,7 +8216,7 @@ export function ZdEstimateWorkbench({
                                 )}
                                 title="Dostępne w sztukach (stan − rezerwacje); rezerwacje pod liczbą - klik pokazuje ZK. Przy SKU paczki z pary - jednostki karty (op.)."
                               >
-                                Dost.
+                                Na stanie
                               </th>
                             );
                           case "sales":
@@ -7982,7 +8237,7 @@ export function ZdEstimateWorkbench({
                                     className="zd-est-metric-th__icon zd-est-metric-th__icon--sales"
                                   />
                                   <span className="zd-est-metric-th__label">
-                                    Sprzed.
+                                    Sprzedaż
                                   </span>
                                 </span>
                               </th>
@@ -8157,6 +8412,7 @@ export function ZdEstimateWorkbench({
                           onAcceptReview={handleRowAcceptReview}
                           otherSupplierHint={policzScopeInfo?.otherSupplierHintByTwId[l.tw_Id] ?? null}
                           prosbyElsewhere={policzScopeInfo?.prosbyElsewhereByTwId?.[l.tw_Id] ?? null}
+                          stockOut={policzScopeInfo?.stockOutByTwId?.[l.tw_Id] ?? null}
                           unitPriceNet={effectiveUnitPriceByTwId[l.tw_Id] ?? null}
                           skuClass={skuClassByTwId.get(l.tw_Id) ?? null}
                         />
@@ -8281,10 +8537,13 @@ export function ZdEstimateWorkbench({
                 ? zdEstimateStickyClearanceTallClass
                 : zdEstimateStickyClearanceClass
             }
+            // + odstęp docku od dołu (0,75 rem na desktopie) i oddech nad ostatnim wierszem.
+            style={stickyBarHeight != null ? { minHeight: stickyBarHeight + 20 } : undefined}
           />
 
           <div className={zdEstimateStickyDockClass}>
             <div
+              ref={stickyBarRef}
               id={ZD_ESTIMATE_STICKY_ACTIONS_ID}
               className={cn(zdEstimateStickyBarClass, "flex-col gap-1.5")}
             >
@@ -8323,11 +8582,11 @@ export function ZdEstimateWorkbench({
                   disabled={!orderableLines.length || !settingsTrusted}
                   title={
                     settingsTrusted
-                      ? "Kopiuje kolumnę Do ZD (jednostki dokumentu) z uwzględnieniem opakowań"
+                      ? "Kopiuje symbole i ilości Do ZD (z opakowaniami) - wklej do Excela albo do Subiekta"
                       : ZD_BOM_UI.copyNeedsSettings
                   }
                 >
-                  {copyOk ? "Skopiowano" : "Kopiuj TSV"}
+                  {copyOk ? "Skopiowano" : "Kopiuj do Excela"}
                 </Button>
                 <Button
                   type="button"
@@ -8346,11 +8605,11 @@ export function ZdEstimateWorkbench({
                         : "Gdy ZD powstało poza OnTime - zapisz powiązanie w historii"
                   }
                 >
-                  Powiąż ZD
+                  Powiąż gotowe ZD
                 </Button>
                 {orderSummary.count > 0 ? (
                   <span
-                    className="ml-1 inline-flex min-w-0 items-center gap-1 whitespace-nowrap border-l border-slate-200 pl-2.5 text-[12px] tabular-nums text-slate-600"
+                    className="ml-1 inline-flex min-w-0 flex-wrap items-center gap-1 border-l border-slate-200 pl-2.5 text-[12px] tabular-nums text-slate-600 sm:flex-nowrap sm:whitespace-nowrap"
                     title="Suma pozycji „Do ZD” z Twoimi zmianami ilości; wartość = sztuki po dostawie × ostatnia cena z ZD (netto)"
                     role="status"
                   >
@@ -8392,7 +8651,7 @@ export function ZdEstimateWorkbench({
                         className="ml-1 border-l border-slate-200 pl-2 text-slate-500"
                         title="Ta sama lista policzona strategią „jak dotąd” (bez Twoich zmian ilości)"
                       >
-                        jak dotąd {classicCompareSummary.lineCount} poz. · {classicCompareSummary.pieces.toLocaleString("pl-PL")} szt
+                        stara strategia: {classicCompareSummary.lineCount} poz. · {classicCompareSummary.pieces.toLocaleString("pl-PL")} szt
                         {classicCompareSummary.value > 0 ? ` · ok. ${Math.round(classicCompareSummary.value).toLocaleString("pl-PL")} zł` : ""}
                       </span>
                     ) : null}
@@ -9208,6 +9467,7 @@ export function ZdEstimateWorkbench({
             omittedServiceCount,
             includedServiceOrderIds,
             acceptedCatalogOrderIds,
+            stockOutClosedCount,
           }) => {
             void endExternalSession();
             const previewSnap =
@@ -9257,6 +9517,7 @@ export function ZdEstimateWorkbench({
                 markFreeze: freezeFinal,
                 bumped,
                 composedUwagi,
+                stockOutClosedCount,
               })
             );
             rememberConsumedOrderIds(freezeFinal.consumedOrderIds);

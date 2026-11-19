@@ -13,8 +13,6 @@ vi.mock("@/app/actions/zd-estimate", () => ({
 
 import {
   DailyZdProposalNotice,
-  DailyZdProposalsProvider,
-  useDailyZdProposalsOutside,
   type DailyZdProposal,
 } from "./DailyZdProposals";
 
@@ -48,25 +46,21 @@ const proposal = (supplierId: string, supplierName: string): DailyZdProposal => 
   createOutcomeNote: null,
 });
 
-function Outside({ scheduled }: { scheduled: string[] }) {
-  const list = useDailyZdProposalsOutside(scheduled);
-  return <p data-testid="outside">{list.map((p) => p.supplierName).join(",")}</p>;
-}
-
 afterEach(cleanup);
 
 describe("DailyZdProposals", () => {
-  it("poza harmonogramem są tylko propozycje dostawców bez terminu dziś / zaległego", () => {
-    render(
-      <DailyZdProposalsProvider proposals={[proposal("s1", "Polkard"), proposal("s2", "Inny")]}>
-        <Outside scheduled={["s1"]} />
-      </DailyZdProposalsProvider>
-    );
-    expect(screen.getByTestId("outside").textContent).toBe("Inny");
+  it("w rozwinięciu wiersza listy dostawców: bez powtórki liczb i bez drugiego Sprawdź i wyślij, Odrzuć zostaje", () => {
+    render(<DailyZdProposalNotice proposal={proposal("s1", "Alfa Dental")} hideReview />);
+    expect(screen.queryByText("Zamówienie gotowe do potwierdzenia")).toBeNull();
+    expect(screen.queryByText(/ok\. 210 zł/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Sprawdź i wyślij" })).toBeNull();
+    expect(screen.getByText("205 szt w zamówieniu")).toBeTruthy();
+    expect(screen.getByText(/automat co 3 dni/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Odrzuć" })).toBeTruthy();
   });
 
   it("blok w wierszu: liczby propozycji, cykl automatu i obie akcje", () => {
-    render(<DailyZdProposalNotice proposal={proposal("s1", "Polkard")} />);
+    render(<DailyZdProposalNotice proposal={proposal("s1", "Alfa Dental")} />);
     expect(screen.getByText("Zamówienie gotowe do potwierdzenia")).toBeTruthy();
     expect(screen.getByText("2 pozycje,")).toBeTruthy();
     expect(screen.getByText("205 szt,")).toBeTruthy();
@@ -79,7 +73,7 @@ describe("DailyZdProposals", () => {
   });
 
   it("bezpieczniki automatu widać w wierszu", () => {
-    const p = proposal("s1", "Polkard");
+    const p = proposal("s1", "Alfa Dental");
     p.flags = ["order_value_jump"];
     p.lines[0] = { ...p.lines[0]!, flags: ["peak"] };
     render(<DailyZdProposalNotice proposal={p} />);
@@ -87,7 +81,7 @@ describe("DailyZdProposals", () => {
   });
 
   it("prośby handlowców widać w wierszu: pozycje, sztuki i usługi poza listą", () => {
-    const p = proposal("s1", "Polkard");
+    const p = proposal("s1", "Alfa Dental");
     p.lines[0] = { ...p.lines[0]!, prosbaPieces: 12 };
     p.lines[1] = { ...p.lines[1]!, prosbaPieces: 3 };
     p.serviceOrderIds = ["o-1", "o-2"];
@@ -96,7 +90,7 @@ describe("DailyZdProposals", () => {
   });
 
   it("bez próśb wiersz nie ma dopisku", () => {
-    render(<DailyZdProposalNotice proposal={proposal("s1", "Polkard")} />);
+    render(<DailyZdProposalNotice proposal={proposal("s1", "Alfa Dental")} />);
     expect(screen.queryByText(/na prośbę/)).toBeNull();
   });
 });

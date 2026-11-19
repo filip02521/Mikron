@@ -36,6 +36,8 @@ export type SalesCancelledNoticeLine = Omit<
 > & {
   /** Czy ta pozycja wymaga decyzji stan / zwrot (nie dotyczy wycofania przed zamówieniem). */
   needsDisposition: boolean;
+  /** Pozycja zębowa — ilość w klapkach. */
+  isTeeth?: boolean;
 };
 
 export function procurementSalesCancelPhaseLabel(phase: SalesCancelPhase): string {
@@ -134,6 +136,7 @@ export function buildSalesCancelledNotices(
         void _omitFlagNote;
         return {
           ...salesLine,
+          isTeeth: Boolean(item.is_teeth),
           needsDisposition:
             itemPhase !== null && salesCancelPhaseNeedsDisposition(itemPhase),
         };

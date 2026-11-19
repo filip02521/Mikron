@@ -23,13 +23,16 @@ export function useMojeSectionHeaderSlot(): HTMLElement | null {
   return useContext(HeaderSlotContext)?.el ?? null;
 }
 
-/** Sekcja listy /moje w karcie listy (bez własnej ramki) — cel scrollu i podświetlenia Start dnia. */
+/** Sekcja listy /moje: tytuł na tle i własna karta z wierszami — cel scrollu i podświetlenia Start dnia. */
 export function MojeSectionShell({
   sectionIcon,
+  heading,
   children,
   className,
 }: {
   sectionIcon: MojeSectionIconKind;
+  /** Tytuł sekcji — leży na tle strony, nad kartą z wierszami. */
+  heading?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -37,13 +40,16 @@ export function MojeSectionShell({
   const slot = useMemo(() => ({ el, setEl }), [el]);
   return (
     <HeaderSlotContext.Provider value={slot}>
-      <div
+      <section
         id={mojeSectionDomId(sectionIcon)}
-        className={cn("scroll-mt-24 bg-card", className)}
+        className={cn("scroll-mt-24 space-y-2.5", className)}
         aria-labelledby={mojeSectionHeadingDomId(sectionIcon)}
       >
-        {children}
-      </div>
+        {heading}
+        <div className="overflow-hidden rounded-[var(--radius-panel)] border border-slate-200 bg-card shadow-[var(--shadow-card)]">
+          {children}
+        </div>
+      </section>
     </HeaderSlotContext.Provider>
   );
 }

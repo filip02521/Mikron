@@ -21,6 +21,7 @@ import { floatingZdSessionRailClass } from "@/lib/ui/sales-mobile-chrome";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
 import { Button } from "@/components/ui/Button";
 import { IconClipboardList } from "@/components/icons/StrokeIcons";
+import { useZdEstimateTrackedRunAway } from "@/components/zakupy/ZdEstimateRunFloatingNotice";
 
 const WIZARD_PATH_PREFIX = "/zakupy/szacunek";
 const COLLAPSED_W = "3rem";
@@ -231,7 +232,9 @@ export function ZdEstimateExternalSessionFloatingNotice({
   const onWizard = pathname.startsWith(WIZARD_PATH_PREFIX);
   const onE2eLab = pathname.startsWith("/e2e-lab");
   // Na /e2e-lab tylko harness z forceEnabled — unikamy podwójnego raila (AppShell + lab).
-  const enabled = forceEnabled ?? (!onWizard && !onE2eLab);
+  // Liczenie w tle ma własną zakładkę w tym samym miejscu — nowa lista i tak zastąpi tę sesję.
+  const runNoticeShown = useZdEstimateTrackedRunAway() != null;
+  const enabled = forceEnabled ?? (!onWizard && !onE2eLab && !runNoticeShown);
   const startAwayIfPaused = forceEnabled ? false : true;
   const hydrated = useClientHydrated();
 

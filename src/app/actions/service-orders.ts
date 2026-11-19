@@ -5,6 +5,12 @@ import { requireServicePanel } from "@/lib/auth";
 import type { SessionUser } from "@/lib/auth";
 import {
   deleteServiceModelPart,
+  fetchOrdersByHelpdeskIds,
+  fetchServiceOrderForReport,
+  fetchServiceOrdersByClient,
+  issueLoanerForServiceOrder,
+  sendServiceOrderQuote,
+  type HelpdeskLinkedOrder,
   fetchServiceOrdersBySerial,
   setServiceModelWarranty,
   insertServiceOrder,
@@ -19,10 +25,17 @@ import {
   waitForServicePart,
   takeServiceOrderPart,
   updateServiceOrderWorkNote,
+  updateServiceModelPartQty,
   upsertServiceModelPart,
   type ServiceActor,
 } from "@/lib/data/service-orders";
 import {
+  formatQuoteAmount,
+  parseQuoteAmount,
+  SERVICE_INBOUND_LABEL,
+  SERVICE_OUTBOUND_LABEL,
+  type ServiceInboundMethod,
+  type ServiceOutboundMethod,
   normalizeRwNumber,
   SERVICE_ORDER_STATUS_LABEL,
   SERVICE_ORDER_TEXT_MAX,
@@ -32,16 +45,72 @@ import {
 import { parseDateOnly, toDateOnly } from "@/lib/orders/service-loaners";
 import { normalizePurchaseDate, SERVICE_WARRANTY_MONTHS_MAX } from "@/lib/orders/service-warranty";
 import { verifySubiektProduct, type VerifiedSubiektProduct } from "@/lib/subiekt/product-verify";
-import { fetchClientEquipment, fetchClientRecentInvoices, type ClientRecentInvoice } from "@/lib/subiekt/client-equipment";
-import { reportServicePartShortage } from "@/lib/data/service-part-report";
-import type { ClientEquipmentItem } from "@/lib/subiekt/client-equipment-parse";
+import {
+  fetchClientEquipment,
+  fetchClientEquipmentCard,
+  fetchClientRecentInvoices,
+  fetchPendingQueueWindow,
+  type PendingQueueWindow,
+  findInvoiceBuyer,
+  type ClientEquipmentCard,
+  type ClientRecentInvoice,
+} from "@/lib/subiekt/client-equipment";
+import { saveDeviceModelDecision, saveSerialAssignment } from "@/lib/data/service-equipment-decisions";
+import { fetchWaitingPartsAvailable } from "@/lib/data/service-waiting-parts";
+import { serialKey } from "@/lib/subiekt/client-equipment-trust";
+import { getSubiektDocument } from "@/lib/subiekt/api";
+import { cancelUnorderedServiceOrderRequests, reportServicePartShortage } from "@/lib/data/service-part-report";
+import type { ClientEquipmentItem, InvoiceRepairRef } from "@/lib/subiekt/client-equipment-parse";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
+import {
+  fetchHelpdeskMessages,
+  fetchHelpdeskTicket,
+  helpdeskStatusId,
+  helpdeskWriteEnabled,
+  searchHelpdeskTickets,
+  setHelpdeskStatus,
+  replyInHelpdesk,
+  HELPDESK_REPLY_MAX,
+} from "@/lib/mikran-shop/helpdesk";
+import {
+  splitInvoiceField,
+  isStaffEmail,
+  nipDigits,
+  parseHelpdeskNumber,
+  splitProductSerial,
+  extractTicketSerials,
+  productQuantity,
+  type HelpdeskMessage,
+  type HelpdeskTicket,
+} from "@/lib/mikran-shop/helpdesk-parse";
+import { searchSubiektCustomersCached } from "@/lib/subiekt/subiekt-runtime-cache";
+import { resultOrNullAfter } from "@/lib/timing";
+import { lookupSubiektKontrahentByKhId } from "@/lib/subiekt/lookup-kontrahent";
+import type { SubiektKontrahent } from "@/lib/subiekt/types";
 
 export type ServiceOrderActionResult = { ok: true; message: string; orderId?: string } | { ok: false; message: string };
 
 const ORDERS_PATH = "/serwis/zlecenia";
+/** Limit na podpowiedź klienta z Subiekta przy przyjęciu ze zgłoszenia (Subiekt w LAN odpowiada w ułamku sekundy). */
+const SUBIEKT_HINT_MS = 4000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STATUSES = Object.keys(SERVICE_ORDER_STATUS_LABEL) as ServiceOrderStatus[];
+const INBOUND = Object.keys(SERVICE_INBOUND_LABEL) as ServiceInboundMethod[];
+const OUTBOUND = Object.keys(SERVICE_OUTBOUND_LABEL) as ServiceOutboundMethod[];
+
+/**
+ * Status zgłoszenia w helpdesku po przyjęciu / wydaniu (tylko z MIKRAN_HELPDESK_WRITE=1, zawsze bez maila).
+ * Błąd helpdesku nie cofa zapisu w OnTime — wraca jako dopisek do komunikatu.
+ */
+async function syncHelpdeskStatus(helpdeskId: number, kind: "accepted" | "done", comment: string): Promise<string> {
+  if (!(await helpdeskWriteEnabled())) return "";
+  try {
+    await setHelpdeskStatus(helpdeskId, helpdeskStatusId(kind), comment);
+    return ` Zgłoszenie #${helpdeskId}: ${kind === "accepted" ? "przyjęte do realizacji" : "zakończone"}.`;
+  } catch {
+    return ` Statusu zgłoszenia #${helpdeskId} w helpdesku nie zmieniono — zmień go ręcznie.`;
+  }
+}
 
 function actorOf(user: SessionUser): ServiceActor {
   const name = user.email.split("@")[0] || user.email;
@@ -113,9 +182,25 @@ export async function actionCreateServiceOrder(input: {
   /** YYYY-MM-DD — z FS/PA na liście sprzętu klienta albo wpisana; podstawa gwarancji. */
   purchaseDate?: string | null;
   purchaseDoc?: string | null;
+  /** Numer zgłoszenia z helpdesku mikran.pl, z którego przyjmujemy sprzęt. */
+  helpdeskId?: number | null;
+  /** Jak sprzęt przyszedł i (przy odbiorze kurierem Mikranu) kiedy kurier ma go odebrać — YYYY-MM-DD. */
+  inboundMethod?: string | null;
+  inboundPickupDate?: string | null;
 }): Promise<ServiceOrderActionResult> {
   const user = await requireServicePanel("mutate");
   return run(async () => {
+    const helpdeskId = twId(input.helpdeskId);
+    // Numer przychodzi z przeglądarki: zlecenie (i status w helpdesku) tylko dla zgłoszenia, które istnieje.
+    if (helpdeskId) {
+      const found = await fetchHelpdeskTicket(helpdeskId).then((r) => r.mode === "off" || r.ticket !== null, () => false);
+      if (!found) throw new ServiceOrderStateError(`Nie znaleziono zgłoszenia #${helpdeskId} w helpdesku mikran.pl. Wybierz je jeszcze raz albo przyjmij sprzęt bez zgłoszenia.`);
+    }
+    const inboundMethod = INBOUND.find((m) => m === input.inboundMethod) ?? null;
+    if (input.inboundMethod && !inboundMethod) throw new ServiceOrderStateError("Nieznany sposób dostarczenia sprzętu. Odśwież okno.");
+    const pickupRaw = text(input.inboundPickupDate, 10);
+    if (pickupRaw && !/^\d{4}-\d{2}-\d{2}$/.test(pickupRaw)) throw new ServiceOrderStateError("Data odbioru kurierem ma zły format.");
+    const inboundPickupDate = inboundMethod === "odbior_mikran" && pickupRaw ? toDateOnly(parseDateOnly(pickupRaw)) : null;
     const purchaseRaw = (input.purchaseDate ?? "").trim();
     const purchaseDate = normalizePurchaseDate(purchaseRaw, new Date());
     if (purchaseRaw && !purchaseDate) throw new ServiceOrderStateError("Data zakupu: wybierz datę z kalendarza, nie późniejszą niż dziś.");
@@ -146,22 +231,66 @@ export async function actionCreateServiceOrder(input: {
         dueDate: dueDate(input.dueDate),
         purchaseDate,
         purchaseDoc: text(input.purchaseDoc, 60) || null,
+        helpdeskId,
+        inboundMethod,
+        inboundPickupDate,
       },
       actorOf(user)
     );
-    return { message: `Przyjęto ${order.number}: ${deviceName} od ${clientName}.`, orderId: order.id };
+    const synced = helpdeskId ? await syncHelpdeskStatus(helpdeskId, "accepted", `Przyjęto sprzęt: ${order.number} (${deviceName}).`) : "";
+    return { message: `Przyjęto ${order.number}: ${deviceName} od ${clientName}.${synced}`, orderId: order.id };
   });
 }
 
-export async function actionMoveServiceOrder(input: { orderId: string; to: string; note?: string }): Promise<ServiceOrderActionResult> {
+export async function actionMoveServiceOrder(input: {
+  orderId: string;
+  to: string;
+  note?: string;
+  /** Przy „wydane”: sposób zwrotu (gls / inny_kurier / osobiscie), numer przesyłki, adres wysyłki. */
+  outbound?: { method: string; tracking?: string | null; address?: string | null } | null;
+}): Promise<ServiceOrderActionResult> {
   const user = await requireServicePanel("mutate");
   return run(async () => {
     const to = STATUSES.find((s) => s === input.to);
     if (!to) throw new ServiceOrderStateError("Nieznany status. Odśwież panel.");
     const note = text(input.note, 300);
     if (to === "anulowane" && !note) throw new ServiceOrderStateError("Wpisz powód anulowania (np. klient zrezygnował).");
-    const o = await moveServiceOrder({ orderId: uuid(input.orderId, "zlecenie"), to, note }, actorOf(user));
-    return { message: `${o.number}: ${SERVICE_ORDER_STATUS_LABEL[to]}.`, orderId: o.id };
+    let outbound: { method: ServiceOutboundMethod; tracking: string | null; address: string | null } | null = null;
+    if (to === "wydane" && input.outbound) {
+      const method = OUTBOUND.find((m) => m === input.outbound!.method);
+      if (!method) throw new ServiceOrderStateError("Wybierz, jak sprzęt wraca do klienta.");
+      outbound = { method, tracking: text(input.outbound.tracking, 60) || null, address: text(input.outbound.address, 300) || null };
+    }
+    const o = await moveServiceOrder({ orderId: uuid(input.orderId, "zlecenie"), to, note, outbound }, actorOf(user));
+    let synced = "";
+    if (to === "wydane" && o.helpdeskId) {
+      // Zgłoszenie bywa na kilka urządzeń — „zakończone” dopiero, gdy wydano sprzęt ze wszystkich jego zleceń.
+      const all = (await fetchOrdersByHelpdeskIds([o.helpdeskId])).get(o.helpdeskId) ?? [];
+      if (all.every((x) => x.status === "wydane")) synced = await syncHelpdeskStatus(o.helpdeskId, "done", `Wydano sprzęt: ${all.map((x) => x.number).join(", ")}.`);
+    }
+    let requests = "";
+    if (to === "anulowane") {
+      // Niezamówione prośby o części do anulowanego zlecenia — anulowane; błąd nie cofa anulowania zlecenia.
+      try {
+        const r = await cancelUnorderedServiceOrderRequests(o.number);
+        if (r.cancelled.length) requests += ` Anulowano prośby do zakupów: ${r.cancelled.join(", ")}.`;
+        if (r.kept.length) requests += ` Zostają u zakupów (już zamówione): ${r.kept.map((k) => k.product).join(", ")}.`;
+      } catch (e) {
+        requests = ` Nie udało się anulować próśb o części: ${userFacingErrorText(e, "błąd zapisu")}.`;
+      }
+    }
+    return { message: `${o.number}: ${SERVICE_ORDER_STATUS_LABEL[to]}.${synced}${requests}`, orderId: o.id };
+  });
+}
+
+/** Wycena po diagnozie: kwota brutto i zakres; zlecenie czeka na decyzję klienta (decyzję zapisuje przejście statusu). */
+export async function actionSendServiceQuote(input: { orderId: string; amount: string; note?: string }): Promise<ServiceOrderActionResult> {
+  const user = await requireServicePanel("mutate");
+  return run(async () => {
+    const amount = parseQuoteAmount(String(input.amount ?? ""));
+    if (amount == null) throw new ServiceOrderStateError("Wpisz kwotę wyceny w złotych, np. 674,27.");
+    const o = await sendServiceOrderQuote({ orderId: uuid(input.orderId, "zlecenie"), amount, note: text(input.note, 1000) }, actorOf(user));
+    return { message: `${o.number}: wycena ${formatQuoteAmount(amount)} — czeka na decyzję klienta.`, orderId: o.id };
   });
 }
 
@@ -254,6 +383,27 @@ export async function actionLinkServiceOrderLoaner(input: { orderId: string; uni
   );
 }
 
+/** „Wydaj zamiennik” z karty zlecenia: egzemplarz z puli dla klienta zlecenia, od razu powiązany. Zwrot: od jutra do roku. */
+export async function actionIssueServiceOrderLoaner(input: { orderId: string; unitId: string; plannedReturn: string }): Promise<ServiceOrderActionResult> {
+  const user = await requireServicePanel("mutate");
+  return run(
+    async () => {
+      const back = text(input.plannedReturn, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(back) || toDateOnly(parseDateOnly(back)) !== back) throw new ServiceOrderStateError("Wybierz termin zwrotu.");
+      const today = new Date();
+      const min = toDateOnly(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1));
+      const max = toDateOnly(new Date(today.getFullYear() + 1, today.getMonth(), today.getDate()));
+      if (back < min || back > max) throw new ServiceOrderStateError("Zwrot zamiennika: od jutra do roku od dziś.");
+      const { order, code } = await issueLoanerForServiceOrder(
+        { orderId: uuid(input.orderId, "zlecenie"), unitId: uuid(input.unitId, "egzemplarz"), plannedReturn: back },
+        actorOf(user)
+      );
+      return { message: `${order.number}: wydano ${code} dla ${order.clientName}.`, orderId: order.id };
+    },
+    [ORDERS_PATH, "/serwis/zamienniki"]
+  );
+}
+
 export async function actionAddServiceModelPart(input: {
   modelTwId: number;
   partTwId: number;
@@ -308,6 +458,24 @@ export async function actionRemoveServiceModelPart(input: { modelTwId: number; p
   );
 }
 
+/** Ilość części zwykle pobierana do naprawy modelu (podpowiedź w karcie zlecenia). */
+export async function actionSetServiceModelPartQty(input: { modelTwId: number; partTwId: number; qty: number }): Promise<ServiceOrderActionResult> {
+  await requireServicePanel("mutate");
+  return run(
+    async () => {
+      const modelId = twId(input.modelTwId);
+      const partId = twId(input.partTwId);
+      if (!modelId || !partId) throw new ServiceOrderStateError("Nieprawidłowa pozycja katalogu. Odśwież stronę.");
+      const qty = Number(input.qty);
+      if (!Number.isInteger(qty) || qty <= 0 || qty > 999) throw new ServiceOrderStateError("Ilość: liczba całkowita od 1 do 999.");
+      const updated = await updateServiceModelPartQty({ modelTwId: modelId, partTwId: partId, qty });
+      if (!updated) throw new ServiceOrderStateError("Tej części już nie ma w katalogu. Odśwież stronę.");
+      return { message: `Zapisano: ${qty} szt. do naprawy.` };
+    },
+    [ORDERS_PATH, "/serwis/modele"]
+  );
+}
+
 /** Okres gwarancji modelu (miesiące); okres domyślny przywraca model do domyślnego. */
 export async function actionSetServiceModelWarranty(input: { modelTwId: number; months: number }): Promise<ServiceOrderActionResult> {
   const user = await requireServicePanel("mutate");
@@ -328,19 +496,103 @@ export async function actionSetServiceModelWarranty(input: { modelTwId: number; 
 }
 
 export type ClientEquipmentActionResult =
-  | { ok: true; items: ClientEquipmentItem[]; invoicesScanned: number; truncated: boolean }
+  | { ok: true; items: ClientEquipmentItem[]; invoicesScanned: number; truncated: boolean; repairs: InvoiceRepairRef[] }
   | { ok: false; message: string };
 
 /** Sprzęt kupiony przez klienta (pozycje FS i PA z numerami seryjnymi w uwagach) — do wyboru przy przyjęciu. */
-export async function actionServiceClientEquipment(khId: number): Promise<ClientEquipmentActionResult> {
+export async function actionServiceClientEquipment(khId: number, ticketSerials: string[] = []): Promise<ClientEquipmentActionResult> {
   await requireServicePanel("read");
   const id = twId(khId);
   if (!id) return { ok: false, message: "Wybierz klienta z podpowiedzi Subiekta." };
+  // Numery ze zgłoszenia: faktury z nimi w uwagach idą do szczegółów pierwsze (limit szczegółów nie zgubi zakupu).
+  const prefer = (Array.isArray(ticketSerials) ? ticketSerials : []).slice(0, 10).map((s) => text(s, SERVICE_ORDER_TEXT_MAX.serial)).filter(Boolean);
   try {
-    return { ok: true, ...(await fetchClientEquipment(id)) };
+    return { ok: true, ...(await fetchClientEquipment(id, prefer)) };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się pobrać faktur i paragonów klienta z Subiekta.") };
   }
+}
+
+export type ClientCardActionResult =
+  | (ClientEquipmentCard & {
+      ok: true;
+      /** Zlecenia serwisowe klienta w OnTime, najnowsze najpierw; null — baza nie odpowiedziała (sprzęt i tak jest). */
+      orders: SerialHistoryItem[] | null;
+    })
+  | { ok: false; message: string };
+
+/** Karta klienta „Sprzęt klienta”: cały kupiony sprzęt (z SN i bez) z faktur i paragonów oraz jego zlecenia serwisowe. */
+export async function actionServiceClientCard(khId: number): Promise<ClientCardActionResult> {
+  await requireServicePanel("read");
+  const id = twId(khId);
+  if (!id) return { ok: false, message: "Wybierz klienta z podpowiedzi Subiekta." };
+  const orders = await fetchServiceOrdersByClient(id, null, 50).catch(() => null);
+  try {
+    return { ok: true, ...(await fetchClientEquipmentCard(id)), orders };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się pobrać faktur i paragonów klienta z Subiekta.") };
+  }
+}
+
+export type PendingQueueActionResult = ({ ok: true } & PendingQueueWindow) | { ok: false; message: string };
+
+/** Tydzień faktur i paragonów (wszyscy klienci) do `to` włącznie — kolejka pytań „Do potwierdzenia”. */
+const QUEUE_DAYS = 7;
+
+/** Kolejka pytań ze wszystkich klientów: tydzień kończący się `to` (domyślnie dziś). */
+export async function actionServicePendingQueue(input: { to?: string | null } = {}): Promise<PendingQueueActionResult> {
+  await requireServicePanel("read");
+  const today = toDateOnly(new Date());
+  const raw = text(input.to, 10);
+  const to = /^\d{4}-\d{2}-\d{2}$/.test(raw) && raw <= today && raw >= "2016-01-01" ? raw : today;
+  try {
+    return { ok: true, ...(await fetchPendingQueueWindow(to, QUEUE_DAYS)) };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się pobrać faktur z Subiekta.") };
+  }
+}
+
+/** „Czy ten model to urządzenie?” z karty klienta — decyzja dla wszystkich klientów. Nazwa i symbol z Subiekta. */
+export async function actionDecideServiceDeviceModel(input: { twId: number; isDevice: boolean }): Promise<ServiceOrderActionResult> {
+  const user = await requireServicePanel("mutate");
+  return run(async () => {
+    const id = twId(input.twId);
+    if (!id || typeof input.isDevice !== "boolean") throw new ServiceOrderStateError("Wybierz model z karty klienta.");
+    const model = await verifiedProduct(id, "Subiekt nie zna tego modelu.");
+    await saveDeviceModelDecision({ ...model, isDevice: input.isDevice }, actorOf(user).id);
+    return { message: `${model.name}: ${input.isDevice ? "urządzenie" : "nie jest urządzeniem"} — zapisane dla wszystkich klientów.` };
+  }, []);
+}
+
+/**
+ * „Do którego sprzętu należy numer?” z karty klienta. Serwer sprawdza dokument w Subiekcie: numer musi być w jego
+ * uwagach, a wskazany towar na jego pozycjach. `twId` null — numer nie należy do żadnej pozycji.
+ */
+export async function actionAssignServiceSerial(input: { docId: number; serials: string[]; twId: number | null }): Promise<ServiceOrderActionResult> {
+  const user = await requireServicePanel("mutate");
+  return run(async () => {
+    const docId = twId(input.docId);
+    const serials = [...new Set((Array.isArray(input.serials) ? input.serials : []).slice(0, 20).map((s) => text(s, SERVICE_ORDER_TEXT_MAX.serial)))];
+    const target = input.twId == null ? null : twId(input.twId);
+    if (!docId || !serials.length || serials.some((s) => serialKey(s).length < 3) || (input.twId != null && !target)) {
+      throw new ServiceOrderStateError("Wybierz numer i sprzęt z karty klienta.");
+    }
+    let doc: Awaited<ReturnType<typeof getSubiektDocument>>;
+    try {
+      doc = await getSubiektDocument(docId);
+    } catch {
+      throw new ServiceOrderStateError("Nie udało się odczytać dokumentu z Subiektu. Spróbuj za chwilę.");
+    }
+    const notes = serialKey(String(doc.dok_Uwagi ?? ""));
+    const missing = serials.find((s) => !notes.includes(serialKey(s)));
+    if (missing) throw new ServiceOrderStateError(`Numeru ${missing} nie ma w uwagach dokumentu.`);
+    const line = target == null ? null : (doc.dok_Pozycja ?? []).find((l) => Math.trunc(Number(l.ob_TowId)) === target);
+    if (target != null && !line) throw new ServiceOrderStateError("Tego towaru nie ma na dokumencie.");
+    const model = line ? { twId: target!, symbol: line.tw_Symbol?.trim() || null, name: line.tw_Nazwa?.trim() || line.tw_Symbol?.trim() || `Towar ${target}` } : null;
+    for (const serial of serials) await saveSerialAssignment({ docId, serial, serialKey: serialKey(serial), model }, actorOf(user).id);
+    const list = serials.join(", ");
+    return { message: model ? `SN ${list} → ${model.name}.` : `SN ${list} — ${serials.length > 1 ? "nie należą" : "nie należy"} do żadnej pozycji.` };
+  }, []);
 }
 
 export async function actionWaitForServicePart(input: {
@@ -376,7 +628,7 @@ export async function actionWaitForServicePart(input: {
         } else {
           // Czekanie jest już zapisane; nieudane zgłoszenie tylko to mówi (można zgłosić z ekranu części).
           try {
-            const res = await reportServicePartShortage({ twId: part.twId, quantity: qty, note: order.number }, user);
+            const res = await reportServicePartShortage({ twId: part.twId, quantity: qty, note: order.number }, user, { symbol: part.symbol, name: part.name });
             reported = res.ok ? ` ${res.message}` : ` Nie zgłoszono zakupom: ${res.message}`;
           } catch (e) {
             reported = ` Nie zgłoszono zakupom: ${userFacingErrorText(e, "błąd zapisu prośby")}.`;
@@ -387,6 +639,39 @@ export async function actionWaitForServicePart(input: {
     },
     [ORDERS_PATH, "/serwis"]
   );
+}
+
+/**
+ * „Zgłoś brak zakupom” z karty czekającego zlecenia, gdy prośby nie ma (nie zaznaczono, nie udało się, zakupy ją
+ * anulowały). Część i ilość z zapisanego czekania; ponowne kliknięcie nie dubluje aktywnej prośby.
+ */
+export async function actionReportServiceOrderWaitingPart(input: { orderId: string }): Promise<ServiceOrderActionResult> {
+  const user = await requireServicePanel("mutate");
+  return run(
+    async () => {
+      const order = await fetchServiceOrderForReport(uuid(input.orderId, "zlecenie"));
+      if (!order) throw new ServiceOrderStateError("Nie ma takiego zlecenia. Odśwież listę.");
+      const part = order.waitingPart;
+      if (order.status !== "czeka_na_czesc" || !part) throw new ServiceOrderStateError(`${order.number} nie czeka na część.`);
+      if (part.twId == null) throw new ServiceOrderStateError("Część spoza Subiekta — zakupy nie przyjmą prośby bez towaru. Wybierz część z Subiektu.");
+      const res = await reportServicePartShortage({ twId: part.twId, quantity: part.qty, note: order.number }, user, {
+        symbol: part.symbol,
+        name: part.name,
+      });
+      if (!res.ok) throw new ServiceOrderStateError(res.message);
+      return { message: `${order.number}: ${res.message}`, orderId: order.id };
+    },
+    [ORDERS_PATH, "/serwis"]
+  );
+}
+
+/** Ile części jest do wzięcia (stan − rezerwacje − pobrane bez RW) — formularz „czeka na część”. null = nie wiadomo. */
+export async function actionServicePartAvailable(partTwId: number): Promise<number | null> {
+  await requireServicePanel("read");
+  const id = twId(partTwId);
+  if (!id) return null;
+  const map = await fetchWaitingPartsAvailable([id]).catch(() => new Map<number, number>());
+  return map.get(id) ?? null;
 }
 
 export async function actionSetServiceOrderInvoice(input: { orderId: string; fsId?: number | null; fsNumber: string }): Promise<ServiceOrderActionResult> {
@@ -444,5 +729,239 @@ export async function actionServiceSerialHistory(input: { serial: string; exclud
     return { ok: true, items: await fetchServiceOrdersBySerial(serial, exclude) };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się sprawdzić historii egzemplarza.") };
+  }
+}
+
+export type HelpdeskIntakeDraft = {
+  helpdeskId: number;
+  test: boolean;
+  /** Klient z Subiekta (dopasowany jednoznacznie); bez dopasowania nazwa ze zgłoszenia bez kh_Id. */
+  client: { khId: number | null; name: string; phone: string | null };
+  /** Po czym znaleziono klienta w Subiekcie; null — nie znaleziono. */
+  clientMatch: "nip" | "faktura" | "email" | null;
+  phone: string;
+  deviceName: string;
+  /** Sposób dostawy ze zgłoszenia (1 klient wysyła, 2 odbiera Mikran) — podpowiedź „Jak sprzęt przyszedł”. */
+  deliveryId: number | null;
+  /** Numer seryjny do wpisania: pierwszy ze zgłoszenia, którego nie ma jeszcze w zleceniu z tego zgłoszenia; pusty — brak. */
+  serial: string;
+  /** Wszystkie numery seryjne ze zgłoszenia (produkt i opis) — zgłoszenie bywa na kilka urządzeń. */
+  serials: string[];
+  /** Ile urządzeń obejmuje zgłoszenie (pole ilości, „4 x …” w produkcie albo liczba numerów); null — jedno / nie wiadomo. */
+  devices: number | null;
+  fault: string;
+  /** `serwis` — w zgłoszeniu nie ma wiadomości klienta, usterka to tekst serwisu (do skrócenia przez serwisanta). */
+  faultFrom: "klient" | "serwis";
+  /** Numer faktury tak, jak go podał klient — do podświetlenia sprzętu z tej faktury. */
+  invoiceId: string;
+  /** Faktura ze zgłoszenia znaleziona w Subiekcie (pełny numer); null — nie podano albo nie ma takiej. */
+  invoiceFound: string | null;
+  /** Tekst z pola „faktura” zamiast numeru („naprawa po gwarancji”) — wiadomość klienta, nie numer do szukania. */
+  invoiceNote: string;
+  /** Zlecenia już założone z tego zgłoszenia (zgłoszenie bywa na kilka urządzeń) — ostrzeżenie, nie blokada. */
+  existingOrders: HelpdeskLinkedOrder[];
+};
+
+export type HelpdeskIntakeResult = { ok: true; draft: HelpdeskIntakeDraft } | { ok: false; message: string };
+
+/** Zgłoszenie z helpdesku mikran.pl zamienione na szkic przyjęcia: klient po NIP, telefon, sprzęt, opis usterki. */
+export async function actionServiceHelpdeskDraft(rawNumber: string | number): Promise<HelpdeskIntakeResult> {
+  await requireServicePanel("read");
+  const id = typeof rawNumber === "number" ? twId(rawNumber) : parseHelpdeskNumber(String(rawNumber ?? ""));
+  if (!id) return { ok: false, message: "Wpisz numer zgłoszenia z helpdesku (same cyfry, np. 1234)." };
+  try {
+    const { mode, ticket } = await fetchHelpdeskTicket(id);
+    if (mode === "off") return { ok: false, message: "Helpdesk mikran.pl nie jest podłączony (brak kluczy API). Przyjmij sprzęt ręcznie." };
+    if (!ticket) return { ok: false, message: `Nie ma zgłoszenia #${id} w helpdesku. Sprawdź numer.` };
+    const existingOrders = (await fetchOrdersByHelpdeskIds([id])).get(id) ?? [];
+    const name = (ticket.company || ticket.name).slice(0, SERVICE_ORDER_TEXT_MAX.client);
+    const product = splitProductSerial(ticket.product);
+    // Numery z produktu i z opisu; do wpisania pierwszy, którego nie ma jeszcze w zleceniu z tego zgłoszenia.
+    const serials = extractTicketSerials(ticket.product, ticket.comment).map((s) => s.slice(0, SERVICE_ORDER_TEXT_MAX.serial));
+    const usedSerials = new Set(existingOrders.map((o) => (o.serialNo ?? "").replace(/\s+/g, "").toUpperCase()).filter(Boolean));
+    const nextSerial = serials.find((s) => !usedSerials.has(s.replace(/\s+/g, "").toUpperCase())) ?? "";
+    const devices = Math.max(ticket.quantity ?? 0, productQuantity(ticket.product) ?? 0, serials.length);
+    const asClient = (k: SubiektKontrahent): HelpdeskIntakeDraft["client"] => ({
+      khId: k.kh_Id,
+      name: String(k.adr_NazwaPelna || k.adr_Nazwa || k.kh_Symbol || name).trim(),
+      phone: String(k.adr_Telefon || k.kh_Telefon || "").trim() || null,
+    });
+    let client: HelpdeskIntakeDraft["client"] = { khId: null, name, phone: null };
+    let clientMatch: HelpdeskIntakeDraft["clientMatch"] = null;
+    // Faktura ze zgłoszenia: potwierdza zakup i wskazuje kupującego, gdy NIP nie pasuje. Błąd Subiekta = brak trafienia.
+    // Numer faktury bywa w polu produktu albo w opisie („faktura nr 1617/M/09/2025. Marathon…”).
+    const { invoice: invoiceNo, note: invoiceNote } = splitInvoiceField(ticket.invoiceId, ticket.product, ticket.comment);
+    const nip = nipDigits(ticket.vat);
+    const email = ticket.email.trim().toLowerCase();
+    // Podpowiedzi z Subiekta są opcjonalne: naraz i najwyżej kilka sekund — niedostępny Subiekt (np. poza siecią biura)
+    // nie trzyma okna przyjęcia; zostaje nazwa ze zgłoszenia, a klienta serwisant wybiera ręcznie.
+    // Zgłoszenie założone przez serwis ma e-mail pracownika — po nim klienta nie szukamy.
+    const [invoice, byNip, byName] = await Promise.all([
+      invoiceNo ? resultOrNullAfter(findInvoiceBuyer(invoiceNo), SUBIEKT_HINT_MS) : null,
+      nip ? resultOrNullAfter(searchSubiektCustomersCached({ search: nip, pageSize: 5, page: 1, includeBlocked: true }), SUBIEKT_HINT_MS) : null,
+      email && !isStaffEmail(email) && name.length >= 2
+        ? resultOrNullAfter(searchSubiektCustomersCached({ search: name.slice(0, 60), pageSize: 12, page: 1, includeBlocked: true }), SUBIEKT_HINT_MS)
+        : null,
+    ]);
+    // Tylko jednoznaczne trafienia; po kolei: NIP, faktura, e-mail. Brak Subiekta — zostaje nazwa ze zgłoszenia.
+    const nipHits = nip ? (byNip?.data ?? []).filter((k) => nipDigits(String(k.adr_NIP ?? "")) === nip) : [];
+    if (nipHits.length === 1) [client, clientMatch] = [asClient(nipHits[0]!), "nip"];
+    if (!clientMatch && invoice) {
+      const k = await resultOrNullAfter(lookupSubiektKontrahentByKhId(invoice.khId), SUBIEKT_HINT_MS);
+      if (k) [client, clientMatch] = [asClient(k), "faktura"];
+    }
+    if (!clientMatch) {
+      const emailHits = (byName?.data ?? []).filter((k) => String(k.kh_EMail ?? "").trim().toLowerCase() === email);
+      if (emailHits.length === 1) [client, clientMatch] = [asClient(emailHits[0]!), "email"];
+    }
+    return {
+      ok: true,
+      draft: {
+        helpdeskId: id,
+        test: ticket.test,
+        client,
+        clientMatch,
+        phone: ticket.telephone.slice(0, SERVICE_ORDER_TEXT_MAX.phone),
+        // „4 x strong 105L” → „strong 105L”: liczba sztuk idzie do `devices`, nie do nazwy sprzętu.
+        deviceName: product.name.replace(/^\s*\d{1,2}\s*(?:x|×|szt\.?)\s+/i, "").slice(0, SERVICE_ORDER_TEXT_MAX.device),
+        serial: nextSerial,
+        serials,
+        devices: devices >= 2 ? devices : null,
+        deliveryId: ticket.deliveryId,
+        fault: ticket.fault.slice(0, SERVICE_ORDER_TEXT_MAX.fault),
+        faultFrom: ticket.faultFrom,
+        invoiceId: invoiceNo,
+        invoiceNote,
+        // Faktura innego klienta niż dopasowany po NIP nie jest jego zakupem — nie podświetlamy jej.
+        invoiceFound: invoice && (clientMatch !== "nip" || invoice.khId === client.khId) ? invoice.number : null,
+        existingOrders,
+      },
+    };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się pobrać zgłoszenia z helpdesku. Spróbuj za chwilę.") };
+  }
+}
+
+export type HelpdeskSearchResult = { ok: true; tickets: (HelpdeskTicket & { orders: HelpdeskLinkedOrder[] })[] } | { ok: false; message: string };
+
+/** Szukanie zgłoszenia przy przyjęciu: cały helpdesk (wszystkie statusy i osoby), z już założonymi zleceniami. */
+export async function actionServiceHelpdeskSearch(query: string): Promise<HelpdeskSearchResult> {
+  await requireServicePanel("read");
+  const q = text(query, 80);
+  if (q.length < 2) return { ok: true, tickets: [] };
+  try {
+    const { mode, tickets } = await searchHelpdeskTickets(q);
+    if (mode === "off") return { ok: false, message: "Helpdesk mikran.pl nie jest podłączony (brak kluczy API)." };
+    const linked = await fetchOrdersByHelpdeskIds(tickets.map((t) => t.id));
+    return { ok: true, tickets: tickets.map((t) => ({ ...t, orders: linked.get(t.id) ?? [] })) };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się przeszukać helpdesku. Spróbuj za chwilę.") };
+  }
+}
+
+export type HelpdeskThreadResult =
+  | {
+      ok: true;
+      messages: HelpdeskMessage[];
+      /** Czy z OnTime można odpowiedzieć (MIKRAN_HELPDESK_WRITE=1 i połączony helpdesk). */
+      canReply: boolean;
+    }
+  | { ok: false; message: string };
+
+/** Rozmowa z klientem w zgłoszeniu (tylko odczyt) — do karty zlecenia. */
+export async function actionServiceHelpdeskThread(helpdeskId: number): Promise<HelpdeskThreadResult> {
+  await requireServicePanel("read");
+  const id = twId(helpdeskId);
+  if (!id) return { ok: false, message: "Nieprawidłowy numer zgłoszenia." };
+  try {
+    const { mode, messages } = await fetchHelpdeskMessages(id);
+    if (mode === "off") return { ok: false, message: "Helpdesk mikran.pl nie jest podłączony (brak kluczy API)." };
+    return { ok: true, messages, canReply: await helpdeskWriteEnabled() };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się pobrać rozmowy ze zgłoszenia. Spróbuj za chwilę.") };
+  }
+}
+
+/**
+ * Odpowiedź serwisanta w zgłoszeniu helpdesku: wpis widoczny dla klienta na mikran.pl, z mailem do niego albo bez
+ * (wybiera serwisant). Status zgłoszenia zostaje. Zwraca odświeżoną rozmowę.
+ */
+export type HelpdeskReplyResult =
+  /** `messages` null — odpowiedź poszła, ale rozmowy nie udało się odświeżyć (nie wysyłać drugi raz). */
+  | { ok: true; messages: HelpdeskMessage[] | null }
+  | { ok: false; message: string };
+
+export async function actionServiceHelpdeskReply(helpdeskId: number, message: string, notify: boolean): Promise<HelpdeskReplyResult> {
+  await requireServicePanel("mutate");
+  const id = twId(helpdeskId);
+  if (!id) return { ok: false, message: "Nieprawidłowy numer zgłoszenia." };
+  const body = text(message, HELPDESK_REPLY_MAX);
+  if (!body) return { ok: false, message: "Wpisz treść odpowiedzi." };
+  if (typeof notify !== "boolean") return { ok: false, message: "Wybierz, czy wysłać klientowi maila. Odśwież okno." };
+  try {
+    if (!(await helpdeskWriteEnabled())) return { ok: false, message: "Odpowiadanie z OnTime jest wyłączone na tym serwerze. Odpowiedz w panelu sklepu mikran.pl." };
+    const { ticket } = await fetchHelpdeskTicket(id);
+    if (!ticket) return { ok: false, message: `Nie znaleziono zgłoszenia #${id} w helpdesku mikran.pl.` };
+    if (ticket.statusId == null) return { ok: false, message: "Helpdesk nie podał statusu zgłoszenia — odpowiedz w panelu sklepu, żeby go nie zmienić." };
+    await replyInHelpdesk(id, ticket.statusId, body, notify);
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się wysłać odpowiedzi. Spróbuj za chwilę.") };
+  }
+  // Wysłane — błąd odświeżenia nie może wyglądać jak błąd wysyłki (serwisant wysłałby drugi raz).
+  const messages = await fetchHelpdeskMessages(id).then((r) => r.messages, () => null);
+  return { ok: true, messages };
+}
+
+export type RelatedCasesResult =
+  | {
+      ok: true;
+      /** Inne zlecenia tego klienta (kh_Id) i tego egzemplarza (numer seryjny), bez bieżącego. */
+      clientOrders: SerialHistoryItem[];
+      serialOrders: SerialHistoryItem[];
+      /** Inne zgłoszenia z helpdesku po numerze seryjnym i nazwie klienta, bez zgłoszenia tego zlecenia. */
+      tickets: HelpdeskTicket[];
+      helpdeskError: string | null;
+    }
+  | { ok: false; message: string };
+
+/** Powiązane sprawy w karcie zlecenia: duplikaty zgłoszeń, powroty tego samego sprzętu, inne naprawy klienta. */
+export async function actionServiceRelatedCases(input: {
+  orderId: string;
+  clientKhId: number | null;
+  clientName: string;
+  serialNo: string | null;
+  helpdeskId: number | null;
+}): Promise<RelatedCasesResult> {
+  await requireServicePanel("read");
+  const orderId = UUID_RE.test(String(input.orderId ?? "")) ? input.orderId : null;
+  if (!orderId) return { ok: false, message: "Nieprawidłowe zlecenie. Odśwież panel." };
+  try {
+    const serial = text(input.serialNo, SERVICE_ORDER_TEXT_MAX.serial);
+    const kh = twId(input.clientKhId);
+    const [clientOrders, serialOrders] = await Promise.all([
+      kh ? fetchServiceOrdersByClient(kh, orderId) : Promise.resolve([]),
+      serial ? fetchServiceOrdersBySerial(serial, orderId) : Promise.resolve([]),
+    ]);
+    let tickets: HelpdeskTicket[] = [];
+    let helpdeskError: string | null = null;
+    try {
+      const terms = [serial, text(input.clientName, 80)].filter((t) => t.length >= 4);
+      const found = await Promise.all(terms.map((t) => searchHelpdeskTickets(t)));
+      const seen = new Set<number>(input.helpdeskId ? [input.helpdeskId] : []);
+      for (const f of found) {
+        for (const t of f.tickets) {
+          if (seen.has(t.id)) continue;
+          seen.add(t.id);
+          tickets.push(t);
+        }
+      }
+      tickets = tickets.slice(0, 8);
+    } catch (e) {
+      helpdeskError = userFacingErrorText(e, "Helpdesk nie odpowiedział.");
+    }
+    // Powrót tego samego egzemplarza ważniejszy niż „inna naprawa klienta” — zlecenie z tym SN tylko w pierwszej grupie.
+    return { ok: true, clientOrders: clientOrders.filter((x) => !serialOrders.some((c) => c.id === x.id)), serialOrders, tickets, helpdeskError };
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się wczytać powiązanych spraw.") };
   }
 }

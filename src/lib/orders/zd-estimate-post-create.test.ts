@@ -104,6 +104,22 @@ describe("zd-estimate-post-create", () => {
     expect(postCreateOrderableTwIds(s)).toEqual([10]);
   });
 
+  it("fromCreate: liczba zamkniętych zgłoszeń braku trafia do sesji (domyślnie 0)", () => {
+    const base = {
+      supplierId: "s1",
+      supplierName: "Dostawca",
+      fromDaily: false,
+      dokId: 9,
+      dokNrPelny: "ZD/1",
+      lineCount: 1,
+      snapshotOk: true,
+      previewLines: [],
+      createdAtMs: 1,
+    };
+    expect(buildZdPostCreateSessionFromCreate({ ...base, stockOutClosedCount: 2 }).stockOutClosedCount).toBe(2);
+    expect(buildZdPostCreateSessionFromCreate(base).stockOutClosedCount).toBe(0);
+  });
+
   it("fromTimeout + patch candidates", () => {
     let s = buildZdPostCreateSessionFromTimeout({
       supplierId: "s1",

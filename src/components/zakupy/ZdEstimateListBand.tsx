@@ -191,7 +191,7 @@ export function ZdEstimateListBand({
   selectedCount: number;
   onSelectAllVisible: () => void;
   disabled?: boolean;
-  /** Opcja „Do kolejnej dostawy” — przełączenie od razu przelicza listę. */
+  /** Opcja „Zapas do kolejnej dostawy” — przełączenie od razu przelicza listę. */
   leadTimeHorizon?: boolean;
   onLeadTimeHorizonToggle?: (next: boolean) => void;
   salesSmoothing?: boolean;
@@ -316,12 +316,12 @@ export function ZdEstimateListBand({
               <input
                 type="checkbox"
                 className="size-3.5 accent-indigo-600"
-                aria-label="Do kolejnej dostawy - uwzględnij czas dostawy i harmonogram"
+                aria-label="Zapas do kolejnej dostawy - uwzględnij czas dostawy i harmonogram"
                 checked={Boolean(leadTimeHorizon)}
                 disabled={disabled}
                 onChange={(e) => onLeadTimeHorizonToggle(e.target.checked)}
               />
-              <span className="hidden lg:inline">Do kolejnej dostawy</span>
+              <span className="hidden lg:inline">Zapas do kolejnej dostawy</span>
               <span className="lg:hidden">Do dostawy</span>
             </label>
           ) : null}
@@ -344,8 +344,8 @@ export function ZdEstimateListBand({
                 disabled={disabled}
                 onChange={(e) => onSalesSmoothingToggle(e.target.checked)}
               />
-              <span className="hidden lg:inline">Wygładź skoki</span>
-              <span className="lg:hidden">Wygładź</span>
+              <span className="hidden lg:inline">Pomiń jednorazowe skoki</span>
+              <span className="lg:hidden">Bez skoków</span>
             </label>
           ) : null}
           <div className="relative min-w-0 flex-1 sm:min-w-[7.5rem] sm:max-w-[16rem]">

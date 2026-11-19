@@ -1,5 +1,5 @@
 import { subiektFetch, subiektJson } from "@/lib/subiekt/client";
-import { resolveSubiektOrdersConfig } from "@/lib/subiekt/config";
+import { resolveSubiektOrdersConfig, resolveSubiektZkConfig } from "@/lib/subiekt/config";
 import {
   SubiektRequestError,
   SubiektTimeoutError,
@@ -10,6 +10,7 @@ import { subiektQueryString } from "@/lib/subiekt/query";
 import type { SubiektConfig } from "@/lib/subiekt/config";
 import type {
   SubiektCreateZdInput,
+  SubiektCreateZkInput,
   SubiektDocument,
   SubiektHealthData,
   SubiektKontrahent,
@@ -427,13 +428,16 @@ let issuerUsers: { at: number; key: string; users: SubiektUser[] } | null = null
  * uz_Id użytkownika Subiekta dla konta OnTime (po imieniu i nazwisku z e-maila) — trafia jako
  * `personelId` przy tworzeniu ZD, żeby „Wystawił” był osobą, która tworzy dokument. null = brak pewnego dopasowania.
  */
-export async function resolveSubiektIssuerId(email: string | null | undefined): Promise<number | null> {
-  const config = ordersConfigOrThrow();
+export async function resolveSubiektIssuerId(
+  email: string | null | undefined,
+  config: SubiektConfig = ordersConfigOrThrow(),
+  allowSurnameOnly = true
+): Promise<number | null> {
   if (!issuerUsers || issuerUsers.key !== config.baseUrl || Date.now() - issuerUsers.at > ISSUER_USERS_TTL_MS) {
     const res = await subiektJson<{ data?: SubiektUser[] }>(`/uzytkownicy${subiektQueryString({ pageSize: 200 })}`, {}, config);
     issuerUsers = { at: Date.now(), key: config.baseUrl, users: res.data ?? [] };
   }
-  return matchSubiektUserByEmail(email, issuerUsers.users)?.uz_Id ?? null;
+  return matchSubiektUserByEmail(email, issuerUsers.users, allowSurnameOnly)?.uz_Id ?? null;
 }
 
 /** Wydruk ZD przez Sferę trwa ~20 s na live. */
@@ -528,13 +532,46 @@ export async function setSubiektOrdersZdTermin(id: number, dateKey: string): Pro
 export async function createSubiektOrdersZd(
   body: SubiektCreateZdInput
 ): Promise<SubiektDocument> {
-  const base = ordersConfigOrThrow();
+  return createSubiektSferaDocument(SUBIEKT_PATHS.documentsZdCreate, body, ordersConfigOrThrow(), "ZD");
+}
+
+/** Host „ZK z maila” — tylko kopia testowa (`resolveSubiektZkConfig`). */
+export function zkHostConfigOrThrow(): SubiektConfig {
+  const resolved = resolveSubiektZkConfig();
+  if (!resolved.ok) throw new Error(resolved.message);
+  return resolved.config;
+}
+
+/** Tworzy ZK przez Sferę (`POST /documents/zk/create`) na hoście ZK. Brak dry-run: każde udane wywołanie zapisuje dokument. */
+export async function createSubiektZk(body: SubiektCreateZkInput): Promise<SubiektDocument> {
+  return createSubiektSferaDocument(SUBIEKT_PATHS.documentsZkCreate, body, zkHostConfigOrThrow(), "ZK");
+}
+
+/** Odczyt ZK z hosta, na którym powstało (weryfikacja po zapisie). */
+export async function getSubiektZkFromZkHost(id: number): Promise<SubiektDocument> {
+  return (await subiektGet<SubiektDocument>(SUBIEKT_PATHS.documentZk(id), zkHostConfigOrThrow())).data;
+}
+
+export async function searchSubiektZkHostProducts(params: SubiektListParams): Promise<SubiektProduct[]> {
+  return (await subiektList<SubiektProduct>(SUBIEKT_PATHS.products, params, zkHostConfigOrThrow())).data ?? [];
+}
+
+export async function searchSubiektZkHostClients(params: SubiektListParams): Promise<SubiektKontrahent[]> {
+  return (await subiektList<SubiektKontrahent>(SUBIEKT_PATHS.odbiorcy, params, zkHostConfigOrThrow())).data ?? [];
+}
+
+async function createSubiektSferaDocument(
+  path: string,
+  body: SubiektCreateZdInput,
+  base: SubiektConfig,
+  label: "ZD" | "ZK"
+): Promise<SubiektDocument> {
   const config: SubiektConfig = {
     ...base,
     timeoutMs: SUBIEKT_ORDERS_ZD_CREATE_TIMEOUT_MS,
   };
   const res = await subiektFetch(
-    SUBIEKT_PATHS.documentsZdCreate,
+    path,
     {
       method: "POST",
       body: JSON.stringify(body),
@@ -547,16 +584,16 @@ export async function createSubiektOrdersZd(
     throw new SubiektRequestError(res.status, text || res.statusText);
   }
   if (!text) {
-    throw new Error("Subiekt create ZD: pusta odpowiedź.");
+    throw new Error(`Subiekt create ${label}: pusta odpowiedź.`);
   }
   let parsed: SubiektSingleEnvelope<SubiektDocument>;
   try {
     parsed = JSON.parse(text) as SubiektSingleEnvelope<SubiektDocument>;
   } catch {
-    throw new SubiektRequestError(res.status, "Odpowiedź create ZD nie jest JSON");
+    throw new SubiektRequestError(res.status, `Odpowiedź create ${label} nie jest JSON`);
   }
   if (!parsed.data?.dok_Id) {
-    throw new Error("Subiekt create ZD: brak dok_Id w odpowiedzi.");
+    throw new Error(`Subiekt create ${label}: brak dok_Id w odpowiedzi.`);
   }
   return parsed.data;
 }
@@ -579,6 +616,21 @@ export class SubiektZdEstimateFirstPageRejectedError extends Error {
   }
 }
 
+/** Pobieranie przerwane przez `shouldStop` (liczenie zastąpione nowszym) — nie błąd Subiekta. */
+export class SubiektZdEstimateStoppedError extends Error {
+  constructor() {
+    super("Zaczęło się nowsze liczenie listy — to przerwano.");
+    this.name = "SubiektZdEstimateStoppedError";
+  }
+}
+
+/** Liczba stron ostatniego pobrania zakresu (proces OnTime, jak magazyn postępu). */
+function zdEstimatePagesHints(): Map<string, number> {
+  const g = globalThis as typeof globalThis & { __ontimeZdEstimatePagesHints?: Map<string, number> };
+  g.__ontimeZdEstimatePagesHints ??= new Map();
+  return g.__ontimeZdEstimatePagesHints;
+}
+
 export type SubiektZdEstimateAllProgress = {
   pagesCommitted: number;
   totalPages: number;
@@ -599,6 +651,19 @@ export async function fetchSubiektZdEstimateAll(
     }) => { ok: true } | { ok: false; title: string; message: string };
     /** Po page 1 i po każdym kolejnym commit (kolejność stron). */
     onProgress?: (p: SubiektZdEstimateAllProgress) => void;
+    /**
+     * Strony naraz po stronie 1 — nadpisuje domyślne (2 przy dużych zakresach).
+     * Lista, na którą ktoś czeka, bierze 4: Subiekt liczy cały zakres przy każdej stronie (~11 s),
+     * a 4–12 stron naraz trwa tyle samo co jedna (pomiar Ivoclar 17.11.2026).
+     */
+    concurrency?: number;
+    /**
+     * Zakres listy (np. `cecha:2738`): liczba stron z poprzedniego pobrania w tym procesie. Strony 2…
+     * idą wtedy razem ze stroną 1 (do `concurrency` sztuk), zamiast czekać ~11 s na jej wynik.
+     */
+    pagesHintKey?: string;
+    /** true = przestań brać kolejne strony (liczenie zastąpione nowszym) — rzuca SubiektZdEstimateStoppedError. */
+    shouldStop?: () => boolean;
   }
 ): Promise<{
   parametry: SubiektZdEstimateData["parametry"];
@@ -614,12 +679,22 @@ export async function fetchSubiektZdEstimateAll(
   const maxPages = Math.max(1, params.maxPages ?? ZD_ESTIMATE_MAX_PAGES);
   const tylkoBraki = params.tylkoBraki ?? false;
 
-  const first = await fetchSubiektZdEstimatePageWithRetry({
-    ...params,
-    tylkoBraki,
-    page: 1,
-    pageSize,
-  });
+  const fetchPage = (page: number) =>
+    fetchSubiektZdEstimatePageWithRetry({ ...params, tylkoBraki, page, pageSize });
+  const hintKey = options?.pagesHintKey ? `${options.pagesHintKey}|${tylkoBraki}|${pageSize}` : null;
+  const expectedPages = hintKey ? zdEstimatePagesHints().get(hintKey) ?? 0 : 0;
+  const aheadCount = options?.concurrency
+    ? Math.max(0, Math.min(Math.min(expectedPages, maxPages) - 1, Math.trunc(options.concurrency)))
+    : 0;
+  const ahead = new Map<number, ReturnType<typeof fetchPage>>();
+  for (let p = 2; p <= 1 + aheadCount; p += 1) {
+    const pending = fetchPage(p);
+    // Gdy strona 1 odrzuci filtr, nikt na tę stronę nie czeka — bez unhandled rejection.
+    pending.catch(() => undefined);
+    ahead.set(p, pending);
+  }
+
+  const first = await fetchPage(1);
 
   const data = first.data;
   if (!data || !Array.isArray(data.pozycje)) {
@@ -629,6 +704,7 @@ export async function fetchSubiektZdEstimateAll(
   const pozycje: SubiektZdEstimateLine[] = [...data.pozycje];
   const totalPages = Math.max(1, first.pagination?.totalPages ?? 1);
   const totalCountApi = first.pagination?.totalCount ?? pozycje.length;
+  if (hintKey) zdEstimatePagesHints().set(hintKey, totalPages);
 
   if (options?.validateFirstPage) {
     const gate = options.validateFirstPage({
@@ -661,28 +737,34 @@ export async function fetchSubiektZdEstimateAll(
   if (pagesToFetch > 1) {
     // Pipeline z limitem współbieżności: commitujemy strony po kolei.
     // Po pierwszej pustej nie claimujemy kolejnych (mniej zbędnego I/O niż fala „wszystkie naraz”).
-    const concurrency =
-      totalCountApi > ZD_ESTIMATE_LARGE_TOTAL_COUNT
-        ? Math.min(2, ZD_ESTIMATE_PAGE_FETCH_CONCURRENCY)
-        : ZD_ESTIMATE_PAGE_FETCH_CONCURRENCY;
+    const concurrency = Math.max(
+      1,
+      Math.trunc(
+        options?.concurrency ??
+          (totalCountApi > ZD_ESTIMATE_LARGE_TOTAL_COUNT
+            ? Math.min(2, ZD_ESTIMATE_PAGE_FETCH_CONCURRENCY)
+            : ZD_ESTIMATE_PAGE_FETCH_CONCURRENCY)
+      )
+    );
     let nextClaim = 2;
     let nextCommit = 2;
     let haltClaim = false;
+    let stopRequested = false;
     const buffer = new Map<number, SubiektZdEstimateLine[] | null | undefined>();
 
     const workers = Array.from({ length: concurrency }, async () => {
       while (true) {
         if (haltClaim) return;
+        if (options?.shouldStop?.()) {
+          stopRequested = true;
+          haltClaim = true;
+          return;
+        }
         const page = nextClaim;
         if (page > pagesToFetch) return;
         nextClaim += 1;
 
-        const next = await fetchSubiektZdEstimatePageWithRetry({
-          ...params,
-          tylkoBraki,
-          page,
-          pageSize,
-        });
+        const next = await (ahead.get(page) ?? fetchPage(page));
         buffer.set(page, next.data?.pozycje);
 
         while (buffer.has(nextCommit)) {
@@ -702,6 +784,7 @@ export async function fetchSubiektZdEstimateAll(
     });
 
     await Promise.all(workers);
+    if (stopRequested) throw new SubiektZdEstimateStoppedError();
   }
 
   return {

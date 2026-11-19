@@ -8,6 +8,7 @@ import { actionIssueLoaner } from "@/app/actions/service-loaners";
 import { ClientPicker, type PickedClient as Client } from "@/components/serwis/SubiektPickers";
 import { addDays, LOANER_RETURN_PRESETS, toDateOnly } from "@/lib/orders/service-loaners";
 import { formatLong, type LoanerUnitView } from "@/components/serwis/LoanersBoard";
+import { fieldLabelClass } from "@/lib/ui/serwis-theme";
 
 export function LoanerIssueDialog({
   freeUnits,
@@ -77,7 +78,7 @@ export function LoanerIssueDialog({
         }}
       >
         <div>
-          <span className="mb-1.5 block text-xs font-semibold text-slate-600">Egzemplarz na stanie</span>
+          <span className={fieldLabelClass}>Egzemplarz na stanie</span>
           {freeUnits.length === 0 ? (
             <p className="text-sm text-slate-600">Wszystkie egzemplarze są wydane albo w przeglądzie.</p>
           ) : (
@@ -95,7 +96,8 @@ export function LoanerIssueDialog({
                   )}
                 >
                   <span className="font-mono text-xs font-semibold text-slate-900">{u.code}</span>
-                  <span className="truncate text-xs text-slate-500">{u.twName}</span>
+                  {/* Model w całości (zawija się), bez wielokropka — po nim serwisant rozpoznaje egzemplarz. */}
+                  <span className="text-xs leading-snug text-slate-600">{u.twName}</span>
                   <span className="text-xs text-slate-500">stan {u.condition}</span>
                 </button>
               ))}
@@ -106,7 +108,7 @@ export function LoanerIssueDialog({
         <ClientPicker value={client} onChange={setClient} />
 
         <div>
-          <span className="mb-1.5 block text-xs font-semibold text-slate-600">Planowany zwrot</span>
+          <span className={fieldLabelClass}>Planowany zwrot</span>
           <div role="radiogroup" aria-label="Planowany zwrot" className="flex flex-wrap gap-2">
             {LOANER_RETURN_PRESETS.map((n) => (
               <button
@@ -127,7 +129,7 @@ export function LoanerIssueDialog({
         </div>
 
         <div>
-          <label htmlFor={`${formId}-note`} className="mb-1.5 block text-xs font-semibold text-slate-600">
+          <label htmlFor={`${formId}-note`} className={fieldLabelClass}>
             Uwagi (opcjonalnie)
           </label>
           <input
@@ -141,13 +143,18 @@ export function LoanerIssueDialog({
         </div>
 
         <div className="rounded-lg bg-slate-50 px-3.5 py-3 text-sm text-slate-700">
-          {unit ? (
+          {/* Podsumowanie przed zapisem: co, do kogo, do kiedy — a gdy czegoś brakuje, co wybrać. */}
+          {!unit ? (
+            "Wybierz egzemplarz."
+          ) : client?.name ? (
             <>
-              <b className="font-mono">{unit.code}</b> ({unit.twName}) trafi do <b>{client?.name || "…"}</b>. Zwrot do{" "}
-              <b>{formatLong(back.toISOString())}</b>. Licznik dni startuje dziś.
+              <b className="font-mono">{unit.code}</b> trafi do <b>{client.name}</b>. Zwrot do <b>{formatLong(back.toISOString())}</b> — licznik dni
+              startuje dziś.
             </>
           ) : (
-            "Wybierz egzemplarz."
+            <>
+              Wybierz klienta. Zwrot <b className="font-mono">{unit.code}</b> ustawi się na <b>{formatLong(back.toISOString())}</b>.
+            </>
           )}
         </div>
         {error ? <p className="text-sm text-red-700">{error}</p> : null}

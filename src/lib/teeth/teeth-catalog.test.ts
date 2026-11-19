@@ -198,7 +198,7 @@ describe("teeth-catalog", () => {
           kind: "anterior",
           count: 4,
         }),
-      ).toBe("A2 · S61 · przednie × 4 szt.");
+      ).toBe("A2 · S61 · przednie × 4 klapki");
     });
 
     it("formatTeethGroupLabel omits redundant jaw when mould has U/L", () => {
@@ -210,7 +210,7 @@ describe("teeth-catalog", () => {
           kind: "posterior",
           count: 2,
         }),
-      ).toBe("A2 · N5U · boczne × 2 szt.");
+      ).toBe("A2 · N5U · boczne × 2 klapki");
     });
 
     it("formatTeethGroupLabel renders Major Super Lux posterior example", () => {
@@ -222,7 +222,7 @@ describe("teeth-catalog", () => {
           kind: "posterior",
           count: 4,
         }),
-      ).toBe("A2 · 56 · góra · boczne × 4 szt.");
+      ).toBe("A2 · 56 · góra · boczne × 4 klapki");
     });
 
     it("isTeethGroupComplete validates group spec", () => {

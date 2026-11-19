@@ -18,7 +18,7 @@ export type ZkWatchRowColorLegendItem = {
 export const ZK_WATCH_ROW_COLOR_LEGEND_ITEMS: ZkWatchRowColorLegendItem[] = [
   {
     id: "regal",
-    label: "Regal",
+    label: "Regał",
     title: "Fiolet - odbiór w Moje",
     detail: "Towar czeka na odbiór z regału - potwierdź w Moje zamówienia",
     core: true,

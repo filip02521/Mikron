@@ -621,6 +621,23 @@ export function ZdEstimateSupplierScopesModal({
     persistScope({ supplierId, scopeId, mode: sg.mode, id: sg.id, label: sg.name });
   };
 
+  /** „Dodaj dostawcę” we wspólnym zakresie: ta sama grupa lub cecha dla kolejnego dostawcy. */
+  const addSupplierToShared = async (sh: ZdSharedScope, supplierId: string) => {
+    const name = supplierLabel(suppliers, supplierId);
+    const scopeName = sh.label || `#${sh.scopeId}`;
+    const first = (scopesBySupplier.get(supplierId) ?? []).length === 0;
+    const ok = await askConfirm({
+      title: `Dodać dostawcę ${name} do ${sh.mode === "cecha" ? "cechy" : "grupy"} „${scopeName}”?`,
+      message: `${
+        first ? "To będzie jego pierwszy zakres" : "Dostanie ją jako kolejny zakres"
+      }. Zobaczy towary bez przypisania - te przypisane innym dostawcom zostają u nich. Zmiana obowiązuje cały dział.`,
+      confirmLabel: "Dodaj",
+    });
+    if (!ok) return false;
+    persistScope({ supplierId, mode: sh.mode, id: sh.scopeId, label: sh.label });
+    return true;
+  };
+
   const saveDraft = (draft: ScopeDraft, scopeId: string | undefined, onDone: () => void) => {
     const supplierId = draft.supplierId.trim();
     if (!supplierId) {
@@ -930,6 +947,8 @@ export function ZdEstimateSupplierScopesModal({
                   onError={onError}
                   onDirtyChange={setSplitDirty}
                   onSaved={reloadOrder}
+                  onAddSupplier={(supplierId) => addSupplierToShared(activeShared, supplierId)}
+                  addSupplierDisabled={pending}
                 />
               ) : (
                 <div className="px-6 py-16 text-center" role="status">

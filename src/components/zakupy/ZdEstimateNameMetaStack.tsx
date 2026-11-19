@@ -75,7 +75,7 @@ function statusKindLabel(
 ): string {
   if (kind === "excluded") return "Wykl.";
   if (kind === "name_auto_exclude") return "Auto";
-  if (kind === "session_include") return "Sesja";
+  if (kind === "session_include") return "Ręcznie";
   if (kind === "soft_on_request") return "Na prośbę";
   if (kind === "lifted_extra_only") return "Z prośby";
   return "Status";
@@ -89,7 +89,7 @@ function statusMeta(
   if (kind === "name_auto_exclude" && nameHit) {
     return formatZdNameAutoExcludeLabel(nameHit.reason);
   }
-  if (kind === "session_include") return "włącz";
+  if (kind === "session_include") return "tylko ta lista";
   if (kind === "soft_on_request") return undefined;
   if (kind === "lifted_extra_only") return "w Do ZD";
   return undefined;

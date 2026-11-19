@@ -1,9 +1,10 @@
 "use client";
 
-import { useId, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { ModalShell } from "@/components/ui/ModalShell";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { actionCreateServiceOrder } from "@/app/actions/service-orders";
+import { actionCreateServiceOrder, actionServiceHelpdeskDraft, type HelpdeskIntakeDraft } from "@/app/actions/service-orders";
 import {
   ClientPicker,
   pickerInputClass,
@@ -12,30 +13,79 @@ import {
   type PickedProduct,
 } from "@/components/serwis/SubiektPickers";
 import { ClientEquipmentPicker } from "@/components/serwis/ClientEquipmentPicker";
-import { SERVICE_ORDER_TEXT_MAX } from "@/lib/orders/service-orders";
+import { SERVICE_INBOUND_LABEL, SERVICE_ORDER_TEXT_MAX, type ServiceInboundMethod } from "@/lib/orders/service-orders";
+import type { HelpdeskTicket } from "@/lib/mikran-shop/helpdesk-parse";
+import type { HelpdeskLinkedOrder } from "@/lib/data/service-orders";
+import { HelpdeskTicketPicker } from "@/components/serwis/HelpdeskTicketPicker";
+import { inboundFromDelivery } from "@/components/serwis/helpdesk-intake";
 import { addDays, toDateOnly } from "@/lib/orders/service-loaners";
 import { normalizePurchaseDate, warrantyMonthsFor, warrantyStatus, warrantyUntil } from "@/lib/orders/service-warranty";
 import { WarrantyPill } from "@/components/serwis/service-order-view";
 import { SerialHistory } from "@/components/serwis/SerialHistory";
+import { fieldLabelClass, fieldLabelInlineClass, rubricBoxClass } from "@/lib/ui/serwis-theme";
+import { IconAlertCircle, IconCircleCheck, IconMessageSquare } from "@/components/icons/StrokeIcons";
+import { polishPluralWord } from "@/lib/email/polish-plural";
+import { ServiceOrderHelpdeskThread } from "@/components/serwis/ServiceOrderHelpdeskThread";
+import { cn } from "@/lib/cn";
 
-const labelClass = "mb-1.5 block text-xs font-semibold text-slate-600";
+const labelClass = fieldLabelClass;
+
+/** Jedna pozycja listy „co przyszło ze zgłoszenia”: ptaszek albo uwaga z tym, co zrobić ręcznie. */
+function DraftCheck({ ok, children }: { ok: boolean; children: React.ReactNode }) {
+  const Icon = ok ? IconCircleCheck : IconAlertCircle;
+  return (
+    <li className={cn("flex items-start gap-2", ok ? "text-slate-700" : "text-amber-900")}>
+      <Icon size={16} aria-hidden className={cn("mt-0.5 shrink-0", ok ? "text-emerald-700" : "text-amber-700")} />
+      <span className="min-w-0">{children}</span>
+    </li>
+  );
+}
+
+const CLIENT_MATCH_LABEL: Record<NonNullable<HelpdeskIntakeDraft["clientMatch"]>, string> = {
+  nip: "po NIP",
+  faktura: "po fakturze ze zgłoszenia",
+  email: "po e-mailu",
+};
 
 /** Przyjęcie sprzętu klienta: kto, co, co mu dolega. Reszta (diagnoza, części) dzieje się w panelu zlecenia. */
 export function ServiceOrderIntakeDialog({
   onClose,
   onCreated,
+  onOpenOrder,
   warrantyMonths,
+  helpdeskEnabled,
+  initialHelpdeskId,
+  tickets,
+  linked,
 }: {
   onClose: () => void;
   onCreated: (message: string, orderId: string | undefined) => void;
+  /** Ze zgłoszenia przyjęto już sprzęt — otwórz panel tamtego zlecenia. */
+  onOpenOrder: (orderId: string) => void;
   /** Okresy gwarancji modeli różne od domyślnego (tw_Id → miesiące). */
   warrantyMonths: ReadonlyMap<number, number>;
+  /** Helpdesk mikran.pl podłączony (albo dane testowe) — pokaż wybór zgłoszenia. */
+  helpdeskEnabled: boolean;
+  /** Przyjęcie z listy zgłoszeń — formularz wypełnia się od razu z tego zgłoszenia. */
+  initialHelpdeskId?: number | null;
+  /** Otwarte zgłoszenia z tablicy (do wyboru bez szukania) i zlecenia już z nich przyjęte. */
+  tickets: readonly HelpdeskTicket[];
+  linked: Readonly<Record<number, readonly HelpdeskLinkedOrder[]>>;
 }) {
   const formId = useId();
   const [client, setClient] = useState<PickedClient | null>(null);
+  const [clientKey, setClientKey] = useState(0);
   const [phone, setPhone] = useState("");
   const [device, setDevice] = useState<PickedProduct | null>(null);
   const [deviceKey, setDeviceKey] = useState(0);
+  const [draft, setDraft] = useState<HelpdeskIntakeDraft | null>(null);
+  // Serwisant wybrał „Bez zgłoszenia” — lista zgłoszeń się zwija.
+  const [noTicket, setNoTicket] = useState(false);
+  const [helpdeskError, setHelpdeskError] = useState<string | null>(null);
+  const [loadingTicket, startTicket] = useTransition();
+  const autoLoaded = useRef(false);
+  const [inbound, setInbound] = useState<ServiceInboundMethod | "">("");
+  const [pickupDate, setPickupDate] = useState("");
   const [serial, setSerial] = useState("");
   const [fault, setFault] = useState("");
   const [accessories, setAccessories] = useState("");
@@ -44,12 +94,58 @@ export function ServiceOrderIntakeDialog({
   const [purchaseDate, setPurchaseDate] = useState("");
   const [purchaseDoc, setPurchaseDoc] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Z jakiego zgłoszenia (i dla jakiego klienta) wpisano sprzęt i usterkę — ostrzeżenie, gdy serwisant zmieni klienta.
+  const [prefill, setPrefill] = useState<{ helpdeskId: number; client: string } | null>(null);
   const [pending, start] = useTransition();
   const today = new Date();
 
+  const loadTicket = (id: number, ticket: HelpdeskTicket | null) => {
+    setHelpdeskError(null);
+    startTicket(async () => {
+      const res = await actionServiceHelpdeskDraft(id);
+      if (!res.ok) {
+        setHelpdeskError(res.message);
+        return;
+      }
+      const d = res.draft;
+      setDraft(d);
+      setPrefill({ helpdeskId: d.helpdeskId, client: d.client.name });
+      setNoTicket(false);
+      // Sposób dostawy ze zgłoszenia (szkic, a gdy go nie ma — wiersz z listy); bez niego zostaje wybór serwisanta.
+      setInbound(inboundFromDelivery(d.deliveryId ?? ticket?.deliveryId) ?? "");
+      // Pola z helpdesku nadpisują formularz także przy kolejnym sprzęcie z tego zgłoszenia — serwisant poprawia je przed zapisem.
+      setClient(d.client.name ? d.client : null);
+      setClientKey((k) => k + 1);
+      setPhone(d.phone || d.client.phone || "");
+      setDevice(d.deviceName ? { twId: null, symbol: null, name: d.deviceName } : null);
+      setDeviceKey((k) => k + 1);
+      setSerial(d.serial);
+      setPurchaseDate("");
+      setPurchaseDoc(null);
+      setFault(d.fault);
+    });
+  };
+
+  useEffect(() => {
+    if (!initialHelpdeskId || autoLoaded.current) return;
+    autoLoaded.current = true;
+    loadTicket(initialHelpdeskId, tickets.find((t) => t.id === initialHelpdeskId) ?? null);
+    // Jedno wczytanie przy otwarciu z listy zgłoszeń; ref pilnuje podwójnego efektu w trybie Strict.
+  }, [initialHelpdeskId, tickets]);
+
   const purchase = normalizePurchaseDate(purchaseDate, today);
   const warranty = warrantyStatus(purchase ? warrantyUntil(purchase, warrantyMonthsFor(device?.twId ?? null, warrantyMonths)) : null, today);
-  const missing = !client?.name ? "klienta" : !device?.name ? "sprzętu" : !fault.trim() ? "opisu usterki" : null;
+  // Wszystko, czego brakuje, naraz — serwisant widzi w stopce całą listę, nie po jednym polu na kliknięcie.
+  const missingFields = [
+    !client?.name ? { key: "client", label: "klient" } : null,
+    !device?.name ? { key: "device", label: "sprzęt" } : null,
+    !fault.trim() ? { key: "fault", label: "opis usterki" } : null,
+  ].filter((m): m is { key: string; label: string } => m !== null);
+  const missing = missingFields.length ? missingFields.map((m) => m.label).join(", ") : null;
+  const formRef = useRef<HTMLFormElement>(null);
+  const [triedSave, setTriedSave] = useState(false);
+  const helpdeskId = draft?.helpdeskId ?? null;
+  const accepted = draft?.existingOrders ?? [];
 
   return (
     <ModalShell
@@ -57,29 +153,46 @@ export function ServiceOrderIntakeDialog({
       className="touch-ui"
       onClose={onClose}
       title="Przyjmij sprzęt do serwisu"
-      description="Zlecenie dostanie numer ZS. Diagnozę, części i wydanie prowadzisz potem w panelu zlecenia."
+      description="Po zapisie zlecenie dostanie numer ZS i trafi na listę; dalsze kroki robisz w jego karcie."
       size="md"
       bodyClassName="space-y-5 px-5 py-4 sm:px-6 sm:py-5"
-      loadingMessage={pending ? "Zakładam zlecenie…" : null}
+      loadingMessage={pending ? "Zakładam zlecenie…" : loadingTicket ? "Pobieram zgłoszenie z helpdesku mikran.pl…" : null}
       footer={
         <div className="flex w-full flex-wrap items-center justify-end gap-2">
-          {missing ? <span className="mr-auto text-[0.8125rem] text-slate-500">Brakuje {missing}.</span> : null}
+          {/* Błąd zapisu i braki w stopce: przy przewiniętym formularzu komunikat na dole treści byłby poza ekranem. */}
+          {error || (missing && triedSave) ? (
+            <span role="alert" className="w-full min-w-0 text-[0.8125rem] font-medium text-red-700">
+              {error ?? `Nie zapisano — uzupełnij: ${missing}.`}
+            </span>
+          ) : missing ? (
+            <span className="w-full text-[0.8125rem] text-slate-600">Do uzupełnienia: {missing}.</span>
+          ) : null}
           <Button type="button" variant="secondary" onClick={onClose} disabled={pending}>
             Anuluj
           </Button>
           <Button type="submit" form={formId} disabled={pending}>
-            {pending ? "Zapisuję…" : "Przyjmij sprzęt"}
+            {pending
+              ? "Zapisuję…"
+              : helpdeskId
+                ? accepted.length
+                  ? `Przyjmij kolejny sprzęt ze zgłoszenia #${helpdeskId}`
+                  : `Przyjmij ze zgłoszenia #${helpdeskId}`
+                : "Przyjmij sprzęt"}
           </Button>
         </div>
       }
     >
       <form
         id={formId}
+        ref={formRef}
         className="space-y-5"
         onSubmit={(e) => {
           e.preventDefault();
-          if (missing) {
-            setError(`Uzupełnij: ${missing}.`);
+          if (missingFields.length) {
+            setTriedSave(true);
+            setError(null);
+            // Kursor w pierwszym brakującym polu — formularz sam przewija się do niego.
+            formRef.current?.querySelector<HTMLElement>(`[data-field="${missingFields[0]!.key}"] :is(input, textarea)`)?.focus();
             return;
           }
           setError(null);
@@ -96,18 +209,132 @@ export function ServiceOrderIntakeDialog({
               dueDate: due || null,
               purchaseDate: purchaseDate || null,
               purchaseDoc,
+              helpdeskId,
+              inboundMethod: inbound || null,
+              inboundPickupDate: inbound === "odbior_mikran" ? pickupDate || null : null,
             });
             if (!res.ok) setError(res.message);
             else onCreated(res.message, res.orderId);
           });
         }}
       >
-        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
+        {helpdeskEnabled ? (
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className={fieldLabelInlineClass}>Zgłoszenie z helpdesku mikran.pl (opcjonalnie)</span>
+              {!draft && !noTicket ? (
+                <Button type="button" size="sm" variant="secondary" onClick={() => setNoTicket(true)}>
+                  Bez zgłoszenia
+                </Button>
+              ) : null}
+            </div>
+            {draft ? (
+              <div className={`${rubricBoxClass} space-y-2 px-3 py-2`}>
+                {/* Co przyszło ze zgłoszenia — lista do odhaczenia zamiast akapitu; ⚠ mówi, co uzupełnić ręcznie. */}
+                <ul className="space-y-1 text-[0.8125rem]">
+                  <DraftCheck ok>
+                    Zgłoszenie <span className="font-mono font-semibold">#{draft.helpdeskId}</span> — dane wpisane niżej
+                    {draft.test ? <Badge variant="warning" className="ml-2">Dane testowe</Badge> : null}
+                  </DraftCheck>
+                  <DraftCheck ok={draft.serials.length > 0}>
+                    {draft.serials.length === 0
+                      ? "Zgłoszenie nie ma numeru seryjnego — odczytaj go z tabliczki"
+                      : draft.serials.length === 1
+                        ? `Numer seryjny ze zgłoszenia: ${draft.serials[0]}`
+                        : `${draft.serials.length} ${polishPluralWord(draft.serials.length, "numer seryjny", "numery seryjne", "numerów seryjnych")} w zgłoszeniu — wybierz przy polu „Numer seryjny”`}
+                  </DraftCheck>
+                  {draft.devices && draft.devices > 1 ? (
+                    <DraftCheck ok>
+                      Zgłoszenie obejmuje {draft.devices} {polishPluralWord(draft.devices, "urządzenie", "urządzenia", "urządzeń")} — każde przyjmij osobno
+                      {accepted.length ? ` (przyjęte: ${accepted.length})` : ""}
+                    </DraftCheck>
+                  ) : null}
+                  <DraftCheck ok={Boolean(draft.clientMatch)}>
+                    {draft.clientMatch
+                      ? `Klient z Subiekta (${CLIENT_MATCH_LABEL[draft.clientMatch]})`
+                      : "Klienta nie ma w Subiekcie — wybierz go z podpowiedzi w polu „Klient”"}
+                  </DraftCheck>
+                  {draft.invoiceId ? (
+                    <DraftCheck ok={Boolean(draft.invoiceFound)}>
+                      {draft.invoiceFound ? `Faktura ${draft.invoiceFound} — zakup potwierdzony` : `Faktury „${draft.invoiceId}” nie ma w Subiekcie — data zakupu ręcznie`}
+                    </DraftCheck>
+                  ) : null}
+                  {!draft.invoiceId && draft.invoiceNote ? (
+                    <li className="flex items-start gap-2 text-slate-700">
+                      <IconMessageSquare size={16} aria-hidden className="mt-0.5 shrink-0 text-slate-500" />
+                      <span className="min-w-0">
+                        Klient w polu faktury: „{draft.invoiceNote}” — bez numeru, datę zakupu wpisz ręcznie
+                      </span>
+                    </li>
+                  ) : null}
+                </ul>
+                <div className="flex flex-wrap gap-2">
+                  {draft.test ? null : <ServiceOrderHelpdeskThread helpdeskId={draft.helpdeskId} compact />}
+                  <Button type="button" size="sm" variant="secondary" onClick={() => setDraft(null)}>
+                    Zmień zgłoszenie
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setDraft(null);
+                      setNoTicket(true);
+                    }}
+                  >
+                    Odepnij zgłoszenie
+                  </Button>
+                </div>
+              </div>
+            ) : noTicket ? (
+              <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.8125rem] text-slate-600">
+                <span>Bez zgłoszenia — karta zlecenia nie będzie miała rozmowy z klientem z helpdesku.</span>
+                <Button type="button" size="sm" variant="secondary" onClick={() => setNoTicket(false)}>
+                  Wybierz zgłoszenie
+                </Button>
+              </p>
+            ) : (
+              <HelpdeskTicketPicker inputId={`${formId}-hd`} tickets={tickets} linked={linked} autoFocus={!initialHelpdeskId} onPick={loadTicket} />
+            )}
+            {helpdeskError ? (
+              <p role="alert" className="text-[0.8125rem] text-red-700">
+                {helpdeskError}
+              </p>
+            ) : null}
+            {accepted.length ? (
+              <div role="status" className="space-y-2 rounded-lg bg-amber-50 px-3 py-2 text-[0.8125rem] text-amber-900">
+                <p>
+                  Z tego zgłoszenia przyjęto już:{" "}
+                  {accepted.map((o) => `${o.number} (${[o.deviceName, o.serialNo ? `SN ${o.serialNo}` : null].filter(Boolean).join(", ")})`).join("; ")}.
+                  {" "}Przyjmujesz kolejny sprzęt — sprawdź model i numer seryjny.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {accepted.map((o) => (
+                    <Button key={o.id} type="button" size="sm" variant="secondary" onClick={() => onOpenOrder(o.id)}>
+                      Otwórz {o.number}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_13.5rem]" data-field="client">
           <ClientPicker
+            key={clientKey}
             value={client}
-            autoFocus
+            autoFocus={!initialHelpdeskId && !helpdeskEnabled}
             label="Klient"
             onChange={(c) => {
+              // Sprzęt wybrany z faktury poprzedniego klienta nie należy do nowego — zakup, model i numer znikają.
+              if (purchaseDoc && c?.khId !== client?.khId) {
+                setDevice(null);
+                setDeviceKey((k) => k + 1);
+                setSerial("");
+                setPurchaseDate("");
+                setPurchaseDoc(null);
+              }
               setClient(c);
               if (c?.phone && !phone) setPhone(c.phone);
             }}
@@ -127,11 +354,37 @@ export function ServiceOrderIntakeDialog({
           </div>
         </div>
 
+        {prefill && client?.name && client.name !== prefill.client && (device?.name || fault.trim()) ? (
+          <div role="status" className="space-y-2 rounded-lg bg-amber-50 px-3 py-2 text-[0.8125rem] text-amber-900">
+            <p>
+              Telefon, sprzęt i usterka są ze zgłoszenia #{prefill.helpdeskId} klienta {prefill.client}. Sprawdź, czy dotyczą tego klienta.
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                setDevice(null);
+                setDeviceKey((k) => k + 1);
+                setSerial("");
+                setFault("");
+                setPhone(client.phone ?? "");
+                setPurchaseDate("");
+                setPurchaseDoc(null);
+                setPrefill(null);
+              }}
+            >
+              Wyczyść telefon, sprzęt i usterkę
+            </Button>
+          </div>
+        ) : null}
+
         {client?.khId ? (
           <ClientEquipmentPicker
             key={client.khId}
             khId={client.khId}
             selected={device?.twId ? { twId: device.twId, serial: serial.trim() } : null}
+            ticket={draft ? { invoice: draft.invoiceFound ?? "", product: draft.deviceName, serial: serial.trim() || draft.serial, serials: draft.serials } : null}
             warrantyMonths={warrantyMonths}
             onPick={(e) => {
               setDevice({ twId: e.twId, symbol: e.symbol, name: e.name });
@@ -144,7 +397,7 @@ export function ServiceOrderIntakeDialog({
           />
         ) : null}
 
-        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_13.5rem]" data-field="device">
           <ProductPicker
             key={deviceKey}
             value={device}
@@ -159,11 +412,11 @@ export function ServiceOrderIntakeDialog({
             label="Sprzęt (model z Subiekta)"
             placeholder="Np. Forte 200, mikrosilnik"
             allowFreeText
-            freeTextHint="Sprzęt spoza kartoteki — zapiszemy samą nazwę, bez katalogu części dla modelu."
+            freeTextHint="Bez wyboru zapiszemy samą nazwę — bez katalogu części i gwarancji modelu."
           />
           <div>
             <label htmlFor={`${formId}-serial`} className={labelClass}>
-              Numer seryjny
+              Numer seryjny (opcjonalnie)
             </label>
             <input
               id={`${formId}-serial`}
@@ -175,9 +428,38 @@ export function ServiceOrderIntakeDialog({
           </div>
         </div>
 
+        {/* Numery ze zgłoszenia (produkt i opis): jedno dotknięcie wpisuje numer; przyjęte już z tego zgłoszenia są oznaczone. */}
+        {draft && draft.serials.length > 1 ? (
+          <div className="space-y-1.5">
+            <span className={fieldLabelInlineClass}>Numery seryjne ze zgłoszenia</span>
+            <div role="group" aria-label="Numery seryjne ze zgłoszenia" className="flex flex-wrap gap-1.5">
+              {draft.serials.map((sn) => {
+                const key = sn.replace(/\s+/g, "").toUpperCase();
+                const taken = accepted.find((o) => (o.serialNo ?? "").replace(/\s+/g, "").toUpperCase() === key);
+                const active = serial.replace(/\s+/g, "").toUpperCase() === key;
+                return (
+                  <button
+                    key={sn}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setSerial(sn)}
+                    className={cn(
+                      "inline-flex min-h-11 items-center gap-1.5 rounded-md border px-3 py-1 font-mono text-[0.8125rem] transition-colors duration-150",
+                      active ? "border-indigo-600 bg-indigo-50 font-semibold text-indigo-900" : "border-slate-200 bg-card text-slate-700 hover:bg-slate-100"
+                    )}
+                  >
+                    {sn}
+                    {taken ? <span className="font-sans text-xs font-normal text-slate-500">· przyjęty {taken.number}</span> : null}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
         <SerialHistory serial={serial} />
 
-        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_13.5rem]">
           <div className="flex min-w-0 flex-col justify-end gap-1">
             <span className={labelClass}>Gwarancja</span>
             <div className="flex min-h-11 flex-wrap items-center gap-x-2 gap-y-1">
@@ -193,7 +475,7 @@ export function ServiceOrderIntakeDialog({
           </div>
           <div>
             <label htmlFor={`${formId}-purchase`} className={labelClass}>
-              Data zakupu
+              Data zakupu (opcjonalnie)
             </label>
             <input
               id={`${formId}-purchase`}
@@ -211,22 +493,26 @@ export function ServiceOrderIntakeDialog({
           </div>
         </div>
 
-        <div>
+        <div data-field="fault">
           <label htmlFor={`${formId}-fault`} className={labelClass}>
             Usterka — co zgłasza klient
           </label>
+          {draft?.faultFrom === "serwis" && fault ? (
+            <p className="mb-1.5 text-xs text-slate-500">Z wiadomości serwisu w zgłoszeniu (klient nic nie napisał) — zostaw sam opis usterki.</p>
+          ) : null}
           <textarea
             id={`${formId}-fault`}
             value={fault}
-            rows={3}
+            // Rośnie z tekstem (opisy ze zgłoszeń mają do ~10 wierszy), dalej przewija się.
+            rows={Math.min(10, Math.max(4, fault.split("\n").reduce((n, l) => n + Math.max(1, Math.ceil(l.length / 60)), 0)))}
             maxLength={SERVICE_ORDER_TEXT_MAX.fault}
             onChange={(e) => setFault(e.target.value)}
             placeholder="Np. silnik nie rusza, iskrzy przy wyższych obrotach"
-            className="w-full rounded-lg border border-slate-200 bg-card px-3 py-2 text-base focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:text-sm"
+            className="w-full rounded-lg border border-slate-200 bg-card px-3 py-2 text-base leading-relaxed text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:text-[0.9375rem]"
           />
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_13.5rem]">
           <div>
             <label htmlFor={`${formId}-acc`} className={labelClass}>
               Przyjęte akcesoria (opcjonalnie)
@@ -242,7 +528,7 @@ export function ServiceOrderIntakeDialog({
           </div>
           <div>
             <label htmlFor={`${formId}-due`} className={labelClass}>
-              Termin dla klienta (opcjonalnie)
+              Termin (opcjonalnie)
             </label>
             <input
               id={`${formId}-due`}
@@ -256,11 +542,43 @@ export function ServiceOrderIntakeDialog({
           </div>
         </div>
 
-        {error ? (
-          <p role="alert" className="text-sm text-red-700">
-            {error}
-          </p>
-        ) : null}
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_13.5rem]">
+          <div>
+            <label htmlFor={`${formId}-inbound`} className={labelClass}>
+              Dostarczenie (opcjonalnie)
+            </label>
+            <select
+              id={`${formId}-inbound`}
+              value={inbound}
+              onChange={(e) => setInbound(e.target.value as ServiceInboundMethod | "")}
+              className={pickerInputClass}
+            >
+              <option value="">Nie wiadomo</option>
+              {(Object.keys(SERVICE_INBOUND_LABEL) as ServiceInboundMethod[]).map((m) => (
+                <option key={m} value={m}>
+                  {SERVICE_INBOUND_LABEL[m]}
+                </option>
+              ))}
+            </select>
+          </div>
+          {inbound === "odbior_mikran" ? (
+            <div>
+              <label htmlFor={`${formId}-pickup`} className={labelClass}>
+                Odbiór kurierem — dzień
+              </label>
+              <input
+                id={`${formId}-pickup`}
+                type="date"
+                value={pickupDate}
+                min="2000-01-01"
+                max={toDateOnly(addDays(today, 60))}
+                onChange={(e) => setPickupDate(e.target.value)}
+                className={pickerInputClass}
+              />
+            </div>
+          ) : null}
+        </div>
+
       </form>
     </ModalShell>
   );

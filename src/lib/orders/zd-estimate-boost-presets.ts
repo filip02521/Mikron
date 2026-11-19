@@ -181,3 +181,34 @@ export function serializeZdBoostPowerPresetSetting(
 ): { preset: ZdBoostPowerPreset } {
   return { preset: normalizeZdBoostPowerPreset(preset) };
 }
+
+/**
+ * Odczyt zapisanego podbicia po otwarciu Kreatora. Bez listy: lista liczy się z zapisanym.
+ * Z listą (przywrócona sesja, wynik w tle doszedł wcześniej): zostaje podbicie, z którym ją
+ * policzono (`applied: null` = bez zmian), a różnica z zapisanym = „Przelicz”.
+ */
+export function zdBoostAfterSavedLoad(input: {
+  saved: ZdBoostPowerPreset;
+  hasList: boolean;
+  applied: ZdBoostPowerPreset;
+}): { applied: ZdBoostPowerPreset | null; needsRecount: boolean } {
+  if (!input.hasList) return { applied: input.saved, needsRecount: false };
+  return { applied: null, needsRecount: input.saved !== input.applied };
+}
+
+/**
+ * Przywrócenie sesji z listą. Podbicie to wspólne ustawienie: gdy już je odczytano (`saved`),
+ * przełącznik pokazuje zapisane, nie to z chwili pauzy. Lista zostaje przy podbiciu, z którym ją
+ * policzono; inne zapisane = „Przelicz”.
+ */
+export function zdBoostAfterSessionRestore(input: {
+  saved: ZdBoostPowerPreset | null;
+  sessionForm: ZdBoostPowerPreset;
+  sessionApplied: ZdBoostPowerPreset | null | undefined;
+  sessionNeedsRecount: boolean | null | undefined;
+}): { form: ZdBoostPowerPreset; applied: ZdBoostPowerPreset; needsRecount: boolean } {
+  const form = input.saved ?? input.sessionForm;
+  const applied = input.sessionApplied ?? input.sessionForm;
+  const staleFlag = input.saved == null && Boolean(input.sessionNeedsRecount);
+  return { form, applied, needsRecount: staleFlag || form !== applied };
+}

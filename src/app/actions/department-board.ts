@@ -38,9 +38,10 @@ import {
   validateBoardDocuments,
 } from "@/lib/department-board/attachments";
 import {
-  normalizeBoardQuestionProductInput,
+  normalizeBoardQuestionProductList,
   type BoardQuestionProductInput,
 } from "@/lib/department-board/question-product";
+import { insertBoardQuestionExtraProducts } from "@/lib/department-board/question-products-db";
 
 function revalidateDepartmentBoard() {
   revalidatePath("/tablica");
@@ -210,7 +211,8 @@ export async function actionMarkQuestionThreadSeen(threadId: string) {
 export async function actionCreateQuestion(
   title: string,
   body: string,
-  product?: BoardQuestionProductInput | null,
+  /** Jeden produkt albo lista (pierwszy trafia do kolumn wątku, reszta do department_board_thread_products). */
+  product?: BoardQuestionProductInput | BoardQuestionProductInput[] | null,
   images?: File[] | null,
   /** PDF, Excel, Word, CSV — dołączone bez kompresji. */
   files?: File[] | null
@@ -224,7 +226,7 @@ export async function actionCreateQuestion(
   const imageFiles = validateBoardImages(images);
   const docFiles = await readBoardDocuments(files);
 
-  const productFields = normalizeBoardQuestionProductInput(product);
+  const [productFields = null, ...extraProducts] = normalizeBoardQuestionProductList(product);
 
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -249,6 +251,16 @@ export async function actionCreateQuestion(
   if (error) throw new Error(error.message);
   const thread = data as unknown as DepartmentBoardThreadRow;
 
+  let productWarning: string | undefined;
+  if (extraProducts.length) {
+    try {
+      await insertBoardQuestionExtraProducts(thread.id, extraProducts);
+    } catch (e) {
+      console.error("[tablica] extra products", e instanceof Error ? e.message.replace(/\n|\r/g, "") : "unknown");
+      productWarning = `Pytanie zapisano z pierwszym produktem, ale ${extraProducts.length === 1 ? "drugiego nie udało się dodać" : "kolejnych nie udało się dodać"} - dopisz je w odpowiedzi w tym wątku.`;
+    }
+  }
+
   let attachmentError: string | undefined;
   let attachmentsUploaded = 0;
 
@@ -259,8 +271,10 @@ export async function actionCreateQuestion(
       return {
         thread,
         attachmentsUploaded: 0,
-        attachmentError:
-          "Pytanie zapisano, ale brak konfiguracji przechowywania plików - załączniki nie zostały dodane.",
+        attachmentError: joinWarnings(
+          productWarning,
+          "Pytanie zapisano, ale brak konfiguracji przechowywania plików - załączniki nie zostały dodane."
+        ),
       };
     }
   }
@@ -298,8 +312,12 @@ export async function actionCreateQuestion(
   return {
     thread,
     attachmentsUploaded,
-    attachmentError,
+    attachmentError: joinWarnings(productWarning, attachmentError),
   };
+}
+
+function joinWarnings(...parts: (string | undefined)[]): string | undefined {
+  return parts.filter(Boolean).join(" ") || undefined;
 }
 
 function validateBoardImages(images: File[] | null | undefined): File[] {

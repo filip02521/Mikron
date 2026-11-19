@@ -32,6 +32,7 @@ import {
 import { suggestAnswerFromSupplierReply } from "@/lib/department-board/supplier-reply-ai";
 import { isCustomsAiConfigured, userFacingCustomsAiError } from "@/lib/customs/customs-ai";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
+import { fetchBoardQuestionExtraProducts } from "@/lib/department-board/question-products-db";
 
 type InquiryThread = SupplierInquiryProduct & { subiekt_tw_id: number | null; archived_at: string | null };
 
@@ -66,19 +67,21 @@ export async function actionPrepareSupplierInquiry(threadId: string): Promise<Su
   const thread = await loadQuestionThread(threadId);
   if (!thread) return { ok: false, message: "Nie znaleziono pytania." };
   const configured = Boolean(getGmailOAuthConfig());
-  const [conn, signature, options, inquiries] = await Promise.all([
+  const [conn, signature, options, inquiries, extraProductsByThread] = await Promise.all([
     configured ? getGmailConnection(user.id) : Promise.resolve(null),
     configured ? getEmailSignature(user.id) : Promise.resolve(""),
     loadInquirySupplierOptions(thread.subiekt_tw_id),
     listSupplierInquiries([thread.id]),
+    fetchBoardQuestionExtraProducts([thread.id]),
   ]);
+  const extraProducts = extraProductsByThread.get(thread.id) ?? [];
   return {
     ok: true,
     gmail: { configured, email: conn?.email ?? null },
     ...options,
     productFromTitle: !thread.product_name?.trim() && !thread.product_symbol?.trim() && !thread.mikran_code?.trim(),
-    draftPl: buildSupplierInquiryDraft({ product: thread, english: false, signature }),
-    draftEn: buildSupplierInquiryDraft({ product: thread, english: true, signature }),
+    draftPl: buildSupplierInquiryDraft({ product: thread, extraProducts, english: false, signature }),
+    draftEn: buildSupplierInquiryDraft({ product: thread, extraProducts, english: true, signature }),
     pending: pendingSupplierInquiry(inquiries.get(thread.id)),
   };
 }
@@ -246,15 +249,18 @@ export async function actionSuggestBoardAnswerFromSupplier(input: {
   }
   if (!source) return { ok: false, message: "Nie znaleziono tej odpowiedzi dostawcy - odśwież wątek." };
   try {
-    const { rows } = await query<{ body: string }>(
-      `SELECT body FROM public.department_board_threads WHERE id = $1`,
-      [thread.id]
-    );
+    const [{ rows }, extraProductsByThread] = await Promise.all([
+      query<{ body: string }>(`SELECT body FROM public.department_board_threads WHERE id = $1`, [thread.id]),
+      fetchBoardQuestionExtraProducts([thread.id]),
+    ]);
+    const productLabels = [thread, ...(extraProductsByThread.get(thread.id) ?? [])]
+      .map((p) => [p.product_name, p.product_symbol || p.mikran_code].filter(Boolean).join(" · "))
+      .filter(Boolean);
     const answer = await suggestAnswerFromSupplierReply(
       {
         title: thread.title,
         question: rows[0]?.body ?? "",
-        product: [thread.product_name, thread.product_symbol || thread.mikran_code].filter(Boolean).join(" · ") || null,
+        product: productLabels.join("; ") || null,
         supplierName: source.supplierName,
         replyText: source.reply.text ?? source.reply.snippet,
         attachments: source.reply.attachments,

@@ -97,7 +97,8 @@ export function PageAttentionStrip({
       </div>
       {actions ? (
         // ml-auto: zawinięte pod tekst akcje zostają po prawej, nie lądują przy ikonie.
-        <div className="ml-auto flex shrink-0 flex-wrap items-center gap-1.5">{actions}</div>
+        // max-w-full: na telefonie przyciski zawijają się w pasku, zamiast wychodzić za ekran.
+        <div className="ml-auto flex max-w-full shrink-0 flex-wrap items-center gap-1.5">{actions}</div>
       ) : null}
     </div>
   );

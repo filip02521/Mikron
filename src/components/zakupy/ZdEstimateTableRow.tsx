@@ -38,6 +38,7 @@ import { ZdEstimateRowActions } from "@/components/zakupy/ZdEstimateRowActions";
 import { ZdSalesProfileCardContent, ZdSalesSparkline } from "@/components/zakupy/ZdSalesSparkline";
 import { HoverCard } from "@/components/ui/HoverCard";
 import { Badge } from "@/components/ui/Badge";
+import { stockOutBadgeTitle, type ZdStockOutBadge } from "@/lib/orders/stock-out-signals";
 import { SERVICE_PARTS_CECHA_NAME } from "@/lib/orders/service-parts";
 import { cn } from "@/lib/cn";
 import { formatZdSalesProfileHint } from "@/lib/orders/zd-sales-profile";
@@ -266,6 +267,8 @@ export type ZdEstimateTableRowProps = {
   otherSupplierHint?: string | null;
   /** Wiszące prośby na ten towar przypisane innemu dostawcy — tylko podpowiedź. */
   prosbyElsewhere?: readonly ZdProsbaElsewhere[] | null;
+  /** Handlowcy zgłosili brak na stanie — odznaka; zgłoszenie zamknie się samo po ZD. */
+  stockOut?: ZdStockOutBadge | null;
   /** Cena netto za sztukę z ostatniego ZD (null = brak ceny). */
   unitPriceNet?: number | null;
   /** Klasa ABC/XYZ (kolumna „Klasa”); null = towar jeszcze niesklasyfikowany. */
@@ -325,6 +328,7 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
   onAcceptReview,
   otherSupplierHint,
   prosbyElsewhere,
+  stockOut = null,
   unitPriceNet,
   skuClass,
 }: ZdEstimateTableRowProps) {
@@ -364,14 +368,15 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
       heldExtraQty: l.salesTrackHeldExtraQty,
       allowedExtraQty: l.salesTrackAllowedExtraQty,
     }) ?? undefined;
+  // Korekta celu za tempem sprzedaży — słowo mówi, w którą stronę (powody i pewność w dymku).
   const salesTrackSubline =
     l.salesTrackDelta > 1e-9 ? (
       <span className="zd-est-unit tabular-nums text-slate-500">
-        +{formatQty(l.salesTrackDelta)} szt
+        podbity +{formatQty(l.salesTrackDelta)}
       </span>
     ) : l.salesTrackDelta < -1e-9 ? (
       <span className="zd-est-unit tabular-nums text-amber-800/80">
-        −{formatQty(Math.abs(l.salesTrackDelta))} szt
+        obniżony −{formatQty(Math.abs(l.salesTrackDelta))}
       </span>
     ) : null;
   const metricPackUnits =
@@ -482,6 +487,13 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
           {servicePart ? (
             <span title={`Cecha Subiekta „${SERVICE_PARTS_CECHA_NAME}”: zamawiane tylko po prośbie serwisu.`}>
               <Badge variant="info">serwis</Badge>
+            </span>
+          ) : null}
+          {stockOut ? (
+            <span title={stockOutBadgeTitle(stockOut)}>
+              <Badge variant="warning">
+                zgłoszony brak{stockOut.count > 1 ? ` ×${stockOut.count}` : ""}
+              </Badge>
             </span>
           ) : null}
           <ZdEstimateNameMetaStack
@@ -797,23 +809,23 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
                 <ZdEstimateQtyValue
                   value={l.otwarteZd}
                   tier="c"
+                  // Jednostka dokumentu ZD: opakowania w trybie paczek, inaczej sztuki (jak w „Do ZD”).
                   unit={
-                    qty.hasPackaging &&
-                    !isPackagingPackagesMode(qty.documentUnitMode)
-                      ? "szt"
-                      : "jdok"
+                    qty.hasPackaging && isPackagingPackagesMode(qty.documentUnitMode)
+                      ? "op"
+                      : "szt"
                   }
                   zeroAsDash
                   title={
                     qty.hasPackaging &&
                     l.otwarteZd > 0 &&
                     isPackagingPackagesMode(qty.documentUnitMode)
-                      ? `${formatQty(l.otwarteZd)} j.dok. = ${formatQty(l.otwarteZd * qty.unitsPerPackage)} szt (przeliczenie z kolumny Opak.)`
+                      ? `${formatQty(l.otwarteZd)} op. = ${formatQty(l.otwarteZd * qty.unitsPerPackage)} szt (przeliczenie z kolumny Paczka)`
                       : qty.hasPackaging &&
                           l.otwarteZd > 0 &&
                           !isPackagingPackagesMode(qty.documentUnitMode)
                         ? `${formatQty(l.otwarteZd)} szt (otwarte ZD)`
-                        : `${formatQty(l.otwarteZd)} j.dok. (otwarte ZD)`
+                        : `${formatQty(l.otwarteZd)} szt (otwarte ZD)`
                   }
                   subline={
                     l.staleOpenZd && l.staleOpenZd.units > 0

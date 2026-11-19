@@ -31,6 +31,11 @@ vi.mock("@/lib/data/zd-estimate-on-request", async (orig) => ({
 }));
 // Podmieniona tylko baza: rozpoznanie cechy i scalanie listy (fetchZdEstimateOnRequestsWithServiceParts)
 // działają naprawdę — cecha 2858 = „Części serwisowe”, mają ją towary 30 i 50.
+// Minimum stanów (części serwisowe z minimum schodzą z „na prośbę”) — tu bez minimum, jak przed tą zmianą.
+vi.mock("@/lib/data/zd-estimate-min-stock", async (orig) => ({
+  ...(await orig<typeof import("@/lib/data/zd-estimate-min-stock")>()),
+  fetchZdEstimateMinStock: vi.fn(async () => []),
+}));
 vi.mock("@/lib/db/pool", async (orig) => ({
   ...(await orig<typeof import("@/lib/db/pool")>()),
   hasDatabaseConfig: () => true,

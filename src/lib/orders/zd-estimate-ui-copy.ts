@@ -103,9 +103,9 @@ export function zdEstimateSuppliersUnmappedBadge(
   opts?: { compact?: boolean }
 ): string {
   if (opts?.compact) {
-    return `${count} bez map.`;
+    return `${count} bez zakresu`;
   }
-  return `${count} bez mapowania`;
+  return `${count} dostawców z dziś bez zakresu towarów`;
 }
 
 export function zdEstimateSuppliersMenuAriaLabel(unmappedCount: number): string {
@@ -158,12 +158,12 @@ export function zdEstimateLaunchProgressFooter(
   pagesLabel?: string | null
 ): string {
   if (pagesLabel) {
-    return `${pagesLabel}. Lista pojawi się automatycznie - nie zamykaj tej karty.`;
+    return `${pagesLabel}. Lista pojawi się automatycznie. Możesz przejść na inny ekran - dam znać, gdy będzie gotowa.`;
   }
   if (elapsedMs >= 45_000) {
-    return "Wciąż czekam na Subiekta - duże zakresy (cechy) potrafią trwać kilka minut (limit ok. 5 min). Nie odświeżaj strony.";
+    return "Wciąż czekam na Subiekta - duże zakresy (cechy) potrafią trwać kilka minut. Możesz przejść na inny ekran - dam znać, gdy lista będzie gotowa.";
   }
-  return "Najdłużej trwa odczyt „Towary i stany” z Subiekta. Lista pojawi się automatycznie - nie zamykaj tej karty.";
+  return "Najdłużej trwa odczyt „Towary i stany” z Subiekta. Lista pojawi się automatycznie. Możesz przejść na inny ekran - dam znać, gdy będzie gotowa.";
 }
 
 export function zdEstimateLaunchProgressCompleteTitle(): string {
@@ -189,7 +189,7 @@ export function zdEstimateCreateProgressCompleteHint(input: {
   snapshotOk: boolean | null;
 }): string {
   if (input.snapshotOk === false) {
-    return "Dokument utworzony - historia nie zapisana (użyj „Powiąż ZD”).";
+    return "Dokument utworzony - historia nie zapisana (użyj „Powiąż gotowe ZD”).";
   }
   return "Zapisuję wynik i zamykam okno…";
 }
@@ -199,7 +199,7 @@ export function zdEstimateCreateProgressAriaLabel(): string {
 }
 
 export function zdEstimateCreateProgressSnapshotFailedHint(): string {
-  return "Historia nie zapisana - użyj „Powiąż ZD”";
+  return "Historia nie zapisana - użyj „Powiąż gotowe ZD”";
 }
 
 export function zdEstimateCreateProgressFooterBusy(): string {
@@ -589,11 +589,8 @@ export function zdEstimateHostBadgeLabel(input: {
   isLive: boolean;
   port: number | null;
 }): string {
-  const port = input.port != null && input.port > 0 ? input.port : null;
-  if (input.isLive) {
-    return port != null ? `LIVE :${port}` : "LIVE";
-  }
-  return port != null ? `Test :${port}` : "Test";
+  // Port serwera nic nie mówi zakupom — plakietka mówi tylko, na którym Subiekcie pracujesz.
+  return input.isLive ? "Subiekt na żywo" : "Subiekt testowy";
 }
 
 /** Jedna krótka belka statusu — bez powtórzeń w hintach kart. */
@@ -674,7 +671,7 @@ export function zdEstimateLaunchReadyToastTitle(): string {
 }
 
 /**
- * Treść toastu — wynik + jedna linia co dalej (bez wykładu o Powiąż ZD).
+ * Treść toastu — wynik + jedna linia co dalej (bez wykładu o Powiąż gotowe ZD).
  * Odmiana: 1 pozycja / 2–4 pozycje / 5+ pozycji.
  */
 export function zdEstimateLaunchReadyToastDescription(input: {
@@ -874,7 +871,7 @@ export const ZD_ESTIMATE_UI = {
   listStatusColumnHint:
     "Chipy statusu (para / prośba / skład / wykluczenie) - do 4 w rzędzie, potem +N. Szczegóły w podpowiedzi (hover).",
   doZdColumnHint:
-    "Ilość na dokumencie ZD. Przy paczkach: liczba opakowań (+ ile sztuk przyjdzie pod spodem). Pod ilością: % pewności podbicia - amber + OK = do weryfikacji (klik zaakceptuj w tej sesji; OK zostaje też przy nadpisaniu / zaokrągleniu opakowań). Definicja opakowania - kolumna Opak. obok.",
+    "Ilość na dokumencie ZD. Przy paczkach: liczba opakowań (+ ile sztuk przyjdzie pod spodem). Pod ilością: % pewności podbicia - amber + OK = do weryfikacji (klik zaakceptuj w tej sesji; OK zostaje też przy nadpisaniu / zaokrągleniu opakowań). Definicja opakowania - kolumna Opak. obok. Klawiatura: ↑/↓ zmienia ilość (Shift ×10, przy sztukach w opakowaniach o całe opakowanie), Tab lub Enter przechodzi do następnej pozycji, Shift+Tab wraca.",
   advancedZapasMinLabel: "Bufor minimum (szt.)",
   advancedZapasMinHint:
     "Dodatkowe sztuki doliczane do celu zapasu przed wyliczeniem Do ZD. Podnoszą „bezpieczny” poziom magazynu niezależnie od okna sprzedaży.",
@@ -883,9 +880,14 @@ export const ZD_ESTIMATE_UI = {
   advancedDniZapasuHint:
     "Na ile dni zamawiamy: cel = tempo sprzedaży z okna „Data od / do” × dni zapasu. Zmiana dni nie przesuwa okna — więcej dni to to samo tempo na dłużej.",
   dniZapasuStrategyNote: (strategyDays: number, cardDays: number) =>
-    `Strategia automatu liczy cel na min. ${strategyDays} dni. Wpisz więcej niż ${cardDays} (karta), żeby zamówić na dłużej.`,
+    cardDays >= strategyDays
+      ? `Strategia automatu liczy cel na min. ${strategyDays} dni. Wpisz więcej niż ${cardDays} (karta), żeby zamówić na dłużej.`
+      : `Strategia automatu liczy cel na min. ${strategyDays} dni. Wpisz więcej niż ${strategyDays}, żeby zamówić na dłużej.`,
   dniZapasuStrategyRaisedNote: (days: number) =>
     `Zamówienie na ${days} dni zamiast dni strategii automatu (tylko ten bieg, automat bez zmian).`,
+  /** Po Policz: cykl + dostawa strategii dały więcej dni niż wpisane w polu. */
+  dniZapasuStrategyLongerNote: (runDays: number, enteredDays: number) =>
+    `Strategia liczy cel na ${runDays} dni (cykl + dostawa) - więcej niż wpisane ${enteredDays}, więc pole nic nie zmieniło.`,
   dniZapasuStrategyNoCardNote: (strategyDays: number) =>
     `Strategia automatu liczy cel na własnych dniach (min. ${strategyDays}); karta bez liczby dni, więc pole ich nie zmienia.`,
   advancedDataOdHint:
@@ -1176,7 +1178,7 @@ export const ZD_ESTIMATE_UI = {
     "Ostatnie tworzenie ZD mogło się udać w Subiekcie mimo timeoutu. Sprawdź dokument, powiąż historię, przelicz listę albo odblokuj świadomie - unikaj duplikatu.",
   postCreateTimeoutUnlockConfirmTitle: "Odblokować tworzenie ZD po timeout?",
   postCreateTimeoutUnlockConfirmMessage:
-    "Dokument mógł już powstać w Subiekcie. Najpierw sprawdź listę ZD / użyj „Powiąż ZD”. Odblokowanie Create pozwoli wysłać kolejne ZD i łatwo zrobić duplikat.",
+    "Dokument mógł już powstać w Subiekcie. Najpierw sprawdź listę ZD / użyj „Powiąż gotowe ZD”. Odblokowanie Create pozwoli wysłać kolejne ZD i łatwo zrobić duplikat.",
   postCreateTimeoutUnlockConfirmLabel: "Sprawdziłem Subiekt - odblokuj",
   postCreateUnlockCta: "Odblokuj tworzenie ZD",
   postCreateMailComposeCta: "Edytuj i wyślij…",
@@ -1363,7 +1365,7 @@ export function formatPostCreateCandidatesHint(n: number): string | null {
   return `Znaleziono ${count} świeżych ZD u kontrahenta - wybierz właściwy przy powiązaniu.`;
 }
 
-/** Preflight przed Create / Powiąż ZD — pozycje bez jawnego opakowania / pary. */
+/** Preflight przed Create / Powiąż gotowe ZD — pozycje bez jawnego opakowania / pary. */
 export type ImplicitPieceSnapshotNotice = {
   count: number;
   countLabel: string;
@@ -1425,16 +1427,15 @@ export function zdEstimateExternalSessionFloatingCountdown(input: {
 export const zdEstimateExternalSessionFloatingHint =
   "Po powrocie wczytamy listę i Twoje zmiany - bez ponownego liczenia.";
 
-export const zdEstimateExternalSessionFloatingCompactLabel = "Sesja";
+export const zdEstimateExternalSessionFloatingCompactLabel = "Lista ZD";
 
 export const zdEstimateExternalSessionReturnCtaLabel = "Wróć do kreatora";
 
-export const zdEstimateExternalSessionCloseCtaLabel = "Zamknij sesję";
+export const zdEstimateExternalSessionCloseCtaLabel = "Wyczyść listę";
 
-export const zdEstimateExternalSessionCancelButtonLabel =
-  "Anuluj sesję kreatora";
+export const zdEstimateExternalSessionCancelButtonLabel = "Wyczyść listę";
 
-export const zdEstimateExternalSessionActiveStatusTitle = "Sesja aktywna";
+export const zdEstimateExternalSessionActiveStatusTitle = "Lista zapamiętana";
 
 export const zdEstimateExternalSessionActiveStatusBody =
   "Na tym ekranie nie wygasa. Po wyjściu z kreatora masz 3 min na powrót.";
@@ -1444,12 +1445,18 @@ export function zdEstimateExternalSessionRestoredToastDescription(input: {
 }): string {
   const when = input.updatedAt ? formatWarsawDateTime(input.updatedAt) : null;
   return when
-    ? `Przywrócono listę i zmiany z ${when}. To nie było ponowne liczenie - możesz od razu kontynuować.`
-    : "Przywrócono zapisaną listę i zmiany. To nie było ponowne liczenie - możesz od razu kontynuować.";
+    ? `Lista i Twoje zmiany z ${when} - bez ponownego liczenia, możesz od razu kontynuować.`
+    : "Zapamiętana lista i Twoje zmiany - bez ponownego liczenia, możesz od razu kontynuować.";
 }
 
 export const zdEstimateExternalSessionRestoredToastTitle =
-  "Sesja wznowiona";
+  "Wczytano zapamiętaną listę";
+
+/** Kreator przejął liczenie w tle (powrót w trakcie) i otworzył gotową listę. */
+export const zdEstimateRunReadyToastTitle = "Lista do ZD gotowa";
+
+export const zdEstimateRunReadyToastDescription =
+  "Policzona w tle przed chwilą - możesz od razu pracować.";
 
 export const zdEstimateExternalSessionExpiredAlertTitle =
   "Poprzednia sesja wygasła";
@@ -1493,11 +1500,10 @@ export const zdEstimateExternalSessionScopeChangeConfirmLabel =
 export const zdEstimateExternalSessionScopeChangeCancelLabel =
   "Zostań przy obecnej sesji";
 
-export const zdEstimateExternalSessionCancelConfirmTitle =
-  "Anulować sesję kreatora ZD?";
+export const zdEstimateExternalSessionCancelConfirmTitle = "Wyczyścić listę kreatora?";
 
 export const zdEstimateExternalSessionCancelConfirmMessage =
-  "Zamkniesz bieżącą sesję kreatora. Nie będziesz mógł wrócić do przywróconego snapshotu po nawigacji.";
+  "Lista i Twoje zmiany ilości znikną - żeby zamówić, policzysz ją od nowa.";
 
-export const zdEstimateExternalSessionCancelConfirmLabel = "Anuluj sesję";
-export const zdEstimateExternalSessionCancelDialogCancelLabel = "Zostań";
+export const zdEstimateExternalSessionCancelConfirmLabel = "Wyczyść listę";
+export const zdEstimateExternalSessionCancelDialogCancelLabel = "Zostaw listę";

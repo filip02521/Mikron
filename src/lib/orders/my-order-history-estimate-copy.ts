@@ -4,6 +4,9 @@ export const MY_ORDER_HISTORY_ESTIMATE_CAPTION = "Z historii";
 
 export const MY_ORDER_HISTORY_ESTIMATE_TITLE = "Termin z historii dostaw";
 
+/** Tytuł bloku, gdy szacunek z historii minął i nie ma czym go zastąpić. */
+export const MY_ORDER_NO_CURRENT_ETA_TITLE = "Brak aktualnego terminu";
+
 export function formatMyOrderHistoryEstimateLineLabel(
   detail: string,
   options?: { lowConfidence?: boolean }
@@ -24,8 +27,8 @@ export const MY_ORDER_HISTORY_ESTIMATE_OVERDUE_ZD_PENDING_DETAIL =
 export const MY_ORDER_HISTORY_ESTIMATE_OVERDUE_ZD_NO_MATCH_DETAIL =
   "W dokumencie ZD u dostawcy nie ma terminu, a termin z historii już minął.";
 
-export const MY_ORDER_HISTORY_ESTIMATE_BELOW_ZD_NO_MATCH_DETAIL =
-  "Sprawdziliśmy dokumenty ZD u dostawcy - brak terminu realizacji dla tej pozycji. Poniżej termin z historii dostaw.";
+export const MY_ORDER_HISTORY_ESTIMATE_ZD_NO_MATCH_DETAIL =
+  "Dostawca nie podał terminu w zamówieniu (ZD), więc datę szacujemy z poprzednich dostaw.";
 
 export const MY_ORDER_HISTORY_ESTIMATE_OVERDUE_DETAIL =
   "Termin z historii minął - nie mamy aktualnej daty planowanej dostawy u dostawcy.";
@@ -34,7 +37,7 @@ export const MY_ORDER_HISTORY_ESTIMATE_ZD_NO_MATCH_OVERDUE_TOOLTIP =
   "Brak terminu w ZD u dostawcy - termin z historii już minął.";
 
 export const MY_ORDER_HISTORY_ESTIMATE_ZD_NO_MATCH_TOOLTIP =
-  "Brak terminu w ZD u dostawcy - poniżej termin z historii dostaw.";
+  "Brak terminu w ZD u dostawcy - pokazujemy termin z historii dostaw.";
 
 export const MY_ORDER_HISTORY_ESTIMATE_ZD_PENDING_OVERDUE_TOOLTIP =
   "Termin z historii minął - trwa sprawdzanie terminu w ZD u dostawcy.";
@@ -43,7 +46,7 @@ export const MY_ORDER_HISTORY_ESTIMATE_ZD_PENDING_TOOLTIP =
   "Termin z historii dostaw - trwa sprawdzanie terminu w ZD u dostawcy.";
 
 export const MY_ORDER_HISTORY_ESTIMATE_ZD_PENDING_REPLACE_DETAIL =
-  "Termin z historii może zostać zastąpiony datą z dokumentu ZD u dostawcy.";
+  "Sprawdzamy jeszcze termin w zamówieniu do dostawcy (ZD). Jeśli go znajdziemy, zastąpi tę datę.";
 
 export const MY_ORDER_NO_HISTORY_ESTIMATE_YET_SUBLINE =
   "Termin ustalimy na podstawie historii dostaw";

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { checkboxBrandClass } from "@/lib/ui/ontime-theme";
 import { formatPlDate, vacationNoteLabel } from "@/lib/display-labels";
 import { warsawTodayDateKey } from "@/lib/warehouse/delivery-receipts-shared";
-import { plProsba } from "@/lib/ui/polish-plurals";
+import { plKlapka, plProsba } from "@/lib/ui/polish-plurals";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 import {
   IconCalendar,
@@ -166,7 +166,7 @@ export function TeethQueueSupplierCard({
             <p className="mt-0.5 text-xs text-slate-500">
               {items.length > 0 ? (
                 <>
-                  {items.length} {plProsba(items.length)} · {openTeeth} {polishPluralWord(openTeeth, "ząb", "zęby", "zębów")} do zamówienia
+                  {items.length} {plProsba(items.length)} · {openTeeth} {plKlapka(openTeeth)} do zamówienia
                 </>
               ) : (
                 "Brak próśb handlowców"
@@ -258,8 +258,8 @@ export function TeethQueueSupplierCard({
                     : readyCount === 0
                       ? "Żadna prośba nie ma kompletnej listy"
                       : partialSelection
-                        ? "Oznacz tylko zaznaczone zęby - reszta zostanie w kolejce"
-                        : "Oznacz wszystkie zęby z kompletnych próśb u tego dostawcy"
+                        ? "Oznacz tylko zaznaczone klapki - reszta zostanie w kolejce"
+                        : "Oznacz wszystkie klapki z kompletnych próśb u tego dostawcy"
                 }
               >
                 <IconTruck size={15} />
@@ -274,12 +274,12 @@ export function TeethQueueSupplierCard({
               ) : partialSelection ? (
                 <p className="mt-1 text-[0.6875rem] text-slate-600">
                   Tylko zaznaczone - {openTeeth - selectedTeethCount}{" "}
-                  {polishPluralWord(openTeeth - selectedTeethCount, "ząb zostanie", "zęby zostaną", "zębów zostanie")} w
+                  {polishPluralWord(openTeeth - selectedTeethCount, "klapka zostanie", "klapki zostaną", "klapek zostanie")} w
                   kolejce.
                 </p>
               ) : selectedTeethCount === 0 ? (
                 <p className="mt-1 text-[0.6875rem] text-slate-500">
-                  Chcesz tylko część? Zaznacz zęby poniżej.
+                  Chcesz tylko część? Zaznacz klapki poniżej.
                 </p>
               ) : null}
             </Step>
@@ -379,7 +379,7 @@ export function TeethQueueSupplierCard({
                       <>
                         {section.items.length} {plProsba(section.items.length)}
                         {sectionTeeth > 0
-                          ? ` · ${sectionTeeth} ${polishPluralWord(sectionTeeth, "ząb", "zęby", "zębów")}`
+                          ? ` · ${sectionTeeth} ${plKlapka(sectionTeeth)}`
                           : null}
                       </>
                     }

@@ -8,7 +8,7 @@ import {
 } from "@/lib/orders/zd-estimate-ui-copy";
 
 /**
- * Preflight przy potwierdzeniu Create / Powiąż ZD — nie w trakcie przeglądania listy.
+ * Preflight przy potwierdzeniu Create / Powiąż gotowe ZD — nie w trakcie przeglądania listy.
  * Ostrzeżenie + chipy + CTA do poprawy jednostek przed snapshotem.
  */
 export function ZdEstimateImplicitPieceNotice({

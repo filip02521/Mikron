@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useLayoutEffect, useRef } from "react";
+import { installTouchKeyboardAssist } from "@/lib/ui/touch-keyboard";
 import { usePathname } from "next/navigation";
 import { LegacyProcurementRouteRedirect } from "@/components/layout/LegacyProcurementRouteRedirect";
 import { AdminPanelPreviewProvider } from "./AdminPanelPreviewContext";
@@ -25,6 +26,7 @@ import {
   TeethUpdatesProvider,
 } from "@/components/zeby/TeethUpdatesContext";
 import { PageNoticeStack } from "@/components/ui/PageNoticeStack";
+import { FloatingNoticePill } from "@/components/layout/FloatingNoticePill";
 import { OperationsBoardQuestionsNotice } from "@/components/operations/OperationsBoardQuestionsNotice";
 import { SalesOnboardingGate } from "@/components/sales/SalesOnboardingGate";
 import { AppRoleProvider } from "@/components/layout/AppRoleContext";
@@ -65,7 +67,9 @@ import { ChangelogAutoOpen } from "@/components/changelog/ChangelogAutoOpen";
 import { MonthlySummaryNotice } from "@/components/monthly-summary/MonthlySummaryNotice";
 import { AuthSessionGuard } from "@/components/auth/AuthSessionGuard";
 import { ZdEstimateExternalSessionFloatingNotice } from "@/components/zakupy/ZdEstimateExternalSessionFloatingNotice";
+import { ZdEstimateRunFloatingNotice } from "@/components/zakupy/ZdEstimateRunFloatingNotice";
 import { ConfirmHost } from "@/components/ui/ConfirmHost";
+import { ServiceShellBar } from "@/components/serwis/ServiceShellBar";
 
 function SalesGlobalPinnedStrip({
   attention,
@@ -154,6 +158,9 @@ function AppShellMain({
 }) {
   const coachPadding = useSalesCoachPaddingClass();
   const { noticesRef, contentRef } = useAlignNoticesToPageColumn();
+  // Kreator ZD: pasy powiadomień zjadały wysokość tabeli — tu zwinięte w przesuwaną pastylkę.
+  const pathname = usePathname();
+  const floatingNotices = pathname === "/zakupy/szacunek" || pathname.startsWith("/zakupy/szacunek/");
 
   return (
     <main
@@ -171,8 +178,9 @@ function AppShellMain({
     >
       <div className={cn(appMainInsetClass, "relative z-[1]")}>
         <div ref={noticesRef} className="mx-auto w-full">
-          {topNotices}
+          {floatingNotices ? null : topNotices}
         </div>
+        {floatingNotices && topNotices ? <FloatingNoticePill>{topNotices}</FloatingNoticePill> : null}
         <SalesOnboardingTourBanner />
         <div ref={contentRef} className="contents">
           <SalesOnboardingContentGuard>{children}</SalesOnboardingContentGuard>
@@ -256,6 +264,13 @@ export function AppShellClient({
         canAccessTeethPanel(role, assignedWorkspaces))
   );
   useDueDeliveryNotificationSafetyFlush(receiveNotificationFlushEnabled);
+  const inServis = pathname === "/serwis" || pathname.startsWith("/serwis/");
+  // Panele, okna i menu Serwisu idą portalem do <body> — świat musi sięgać i tam.
+  useLayoutEffect(() => {
+    document.body.classList.toggle("serwis-world", inServis);
+  }, [inServis]);
+  // Ekrany dotykowe z Windows (`.touch-ui`): pole, które dostało fokus po stuknięciu palcem, pokazuje klawiaturę samo.
+  useEffect(() => installTouchKeyboardAssist(), []);
 
   if (isAuthScreen) {
     return <div className="min-h-dvh overflow-x-hidden">{children}</div>;
@@ -338,10 +353,21 @@ export function AppShellClient({
         className={cn(
           appShellClass,
           mobileChrome && salesMobileChromeRoot,
-          adminPanelPreview && adminPreviewDockShellVarsClass
+          adminPanelPreview && adminPreviewDockShellVarsClass,
+          // Serwis ma własny świat (DESIGN-serwis.md); konto serwisanta — pas u góry zamiast menu bocznego.
+          inServis && "serwis-world bg-background",
+          serwisLive && "[--app-sidebar-w:0px]"
         )}
       >
-        <div className="hidden md:block">
+        {serwisLive && role ? (
+          <ServiceShellBar
+            role={role}
+            userEmail={userEmail}
+            userAssignmentLabel={userAssignmentLabel}
+            navBadges={navBadges}
+          />
+        ) : null}
+        <div className={serwisLive ? "hidden" : "hidden md:block"}>
           <Suspense fallback={null}>
             <Sidebar
               role={role}
@@ -395,9 +421,6 @@ export function AppShellClient({
             procurementWorkspace={procurementWorkspace}
           />
         ) : null}
-        {serwisLive ? (
-          <MobileOperationsHeader role={role} userEmail={userEmail} userAssignmentLabel={userAssignmentLabel} />
-        ) : null}
         <AppShellMain
           mobileChrome={mobileChrome}
           uniformBackground={uniformBackground}
@@ -419,7 +442,8 @@ export function AppShellClient({
               </PageNoticeStack>
             ) : salesLive ? (
               <PageNoticeStack>
-                {salesBoardAttention ? (
+                {/* Na /moje przypięte ogłoszenia stoją na górze listy „Ogłoszenia od zakupów” — pas by je powtarzał. */}
+                {salesBoardAttention && pathname !== "/moje" ? (
                   <Suspense fallback={null}>
                     <SalesGlobalPinnedStrip attention={salesBoardAttention} />
                   </Suspense>
@@ -515,6 +539,7 @@ export function AppShellClient({
           />
         ) : null}
         <ZdEstimateExternalSessionFloatingNotice />
+        <ZdEstimateRunFloatingNotice />
       </div>
       </ChangelogProvider>
       </SalesOnboardingGate>

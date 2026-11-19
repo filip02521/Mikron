@@ -6,6 +6,7 @@
  */
 
 import type { TeethQueueItem } from "@/lib/data/teeth-queue-shared";
+import { plKlapka } from "@/lib/ui/polish-plurals";
 import {
   TEETH_KIND_LABELS,
   TEETH_PRODUCT_LINES,
@@ -188,7 +189,7 @@ export function formatTeethAggregateForClipboard(
       l.mould?.trim() || "-",
       teethJawLabel(l.jaw, l.kind, l.mould) ?? "-",
       teethKindLabel(l.kind) ?? "-",
-      `${l.quantity} szt.`,
+      `${l.quantity} ${plKlapka(l.quantity)}`,
     ];
     return cols.join("\t");
   });
@@ -196,7 +197,7 @@ export function formatTeethAggregateForClipboard(
     `Zamówienie zębów - ${supplierName}`,
     ["Kolor", "Fason", "Szczęka", "Typ", "Ilość"].join("\t"),
     ...rows,
-    `Razem: ${total} szt.`,
+    `Razem: ${total} ${plKlapka(total)}`,
   ].join("\n");
 }
 
@@ -282,16 +283,16 @@ export function formatTeethAggregateSectionsForClipboard(
         l.mould?.trim() || "-",
         teethJawLabel(l.jaw, l.kind, l.mould) ?? "-",
         teethKindLabel(l.kind) ?? "-",
-        `${l.quantity} szt.`,
+        `${l.quantity} ${plKlapka(l.quantity)}`,
       ].join("\t"),
     );
-    return [`${s.label} (${s.total} szt.)`, ...rows].join("\n");
+    return [`${s.label} (${s.total} ${plKlapka(s.total)})`, ...rows].join("\n");
   });
   return [
     `Zamówienie zębów - ${supplierName}`,
     ["Kolor", "Fason", "Szczęka", "Typ", "Ilość"].join("\t"),
     ...blocks.flatMap((b, i) => (i === 0 ? [b] : ["", b])),
-    `Razem: ${total} szt.`,
+    `Razem: ${total} ${plKlapka(total)}`,
   ].join("\n");
 }
 
@@ -303,16 +304,16 @@ export type TeethMarkPlanRow = {
   who: string;
   context: string | null;
   lineLabel: string;
-  /** Ile zębów tej prośby zostanie oznaczonych. */
+  /** Ile klapek (pozycji listy) tej prośby zostanie oznaczonych. */
   marking: number;
-  /** Ile zębów tej prośby jest jeszcze niezamówionych (przed oznaczeniem). */
+  /** Ile klapek tej prośby jest jeszcze niezamówionych (przed oznaczeniem). */
   open: number;
 };
 
 export type TeethMarkPlan = {
   rows: TeethMarkPlanRow[];
   markCount: number;
-  /** Niezamówione zęby u tych samych dostawców, które NIE zostaną oznaczone. */
+  /** Niezamówione klapki u tych samych dostawców, które NIE zostaną oznaczone. */
   leftInQueue: number;
 };
 

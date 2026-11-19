@@ -1,5 +1,20 @@
 import type { IndividualOrderStatus, IndividualRequestKind } from "@/types/database";
 import { formatContactHref } from "@/lib/orders/supplier-contact";
+import { plKlapka } from "@/lib/ui/polish-plurals";
+
+/**
+ * Jednostka ilości pozycji: zęby tylko w całych klapkach (1 klapka / 2 klapki / 5 klapek),
+ * reszta towaru w sztukach.
+ */
+export function orderUnit(count: number, isTeeth?: boolean | null): string {
+  return isTeeth ? plKlapka(count) : "szt.";
+}
+
+/** Po „z” (dopełniacz): „2 z 5 szt.”, „0 z 1 klapki”, „2 z 3 klapek”. */
+export function orderUnitGenitive(count: number, isTeeth?: boolean | null): string {
+  if (!isTeeth) return "szt.";
+  return Math.abs(Math.trunc(count)) === 1 ? "klapki" : "klapek";
+}
 
 export function isInformacjaRequest(order: {
   request_kind?: IndividualRequestKind | null;
@@ -41,11 +56,14 @@ export type DeliveryProgress = {
   remaining: number | null;
   fractionLabel: string;
   hasNumericQty: boolean;
+  /** Pozycja zębowa — ilość w klapkach. */
+  isTeeth: boolean;
 };
 
 export function getDeliveryProgress(
   orderedQuantity: string,
-  deliveredQuantity: string
+  deliveredQuantity: string,
+  isTeeth = false
 ): DeliveryProgress {
   const ordered = parseOrderQuantity(orderedQuantity);
   const deliveredRaw = parseInt(deliveredQuantity, 10);
@@ -59,6 +77,7 @@ export function getDeliveryProgress(
       remaining: null,
       fractionLabel: delivered > 0 ? `${delivered} dost.` : "-",
       hasNumericQty: false,
+      isTeeth,
     };
   }
 
@@ -67,8 +86,9 @@ export function getDeliveryProgress(
     ordered,
     delivered,
     remaining,
-    fractionLabel: `${delivered}/${ordered} szt.`,
+    fractionLabel: `${delivered}/${ordered} ${orderUnit(ordered, isTeeth)}`,
     hasNumericQty: true,
+    isTeeth,
   };
 }
 
@@ -84,9 +104,10 @@ export type OrderFulfillmentProgress = DeliveryProgress & {
 export function getOrderFulfillmentProgress(
   orderedQuantity: string,
   deliveredQuantity: string,
-  cancelledQuantity?: string | null
+  cancelledQuantity?: string | null,
+  isTeeth = false
 ): OrderFulfillmentProgress {
-  const base = getDeliveryProgress(orderedQuantity, deliveredQuantity);
+  const base = getDeliveryProgress(orderedQuantity, deliveredQuantity, isTeeth);
   const cancelledRaw = parseOrderQuantity(cancelledQuantity ?? "");
   const cancelled = cancelledRaw ?? 0;
 
@@ -105,9 +126,9 @@ export function getOrderFulfillmentProgress(
   let fractionLabel = base.fractionLabel;
   if (cancelled > 0) {
     if (base.delivered > 0) {
-      fractionLabel = `${base.delivered} na magazynie · ${cancelled} wycofane z ${base.ordered} szt.`;
+      fractionLabel = `${base.delivered} na magazynie · ${cancelled} wycofane z ${base.ordered} ${orderUnitGenitive(base.ordered, isTeeth)}`;
     } else {
-      fractionLabel = `${activeOrdered} z ${base.ordered} szt. · ${cancelled} wycofane`;
+      fractionLabel = `${activeOrdered} z ${base.ordered} ${orderUnitGenitive(base.ordered, isTeeth)} · ${cancelled} wycofane`;
     }
   }
 

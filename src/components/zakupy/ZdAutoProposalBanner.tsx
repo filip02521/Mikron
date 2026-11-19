@@ -36,6 +36,13 @@ function zl(v: number): string {
   return `${Math.round(v).toLocaleString("pl-PL")} zł`;
 }
 
+/** Stara propozycja (od 2 dni) mówi o swoim wieku — ilości liczone na danych sprzed tylu dni. */
+export function proposalAgeSuffix(createdAt: string, now: number = Date.now()): string {
+  const days = Math.floor((now - Date.parse(createdAt)) / 86_400_000);
+  if (!Number.isFinite(days) || days < 2) return "";
+  return ` (sprzed ${days} ${polishPluralWord(days, "dnia", "dni", "dni")})`;
+}
+
 const STATUS_LABEL: Record<ZdAutoProposal["status"], string> = {
   pending: "czeka",
   accepted: "zaakceptowana",
@@ -163,7 +170,7 @@ export function ZdAutoProposalBanner({
         title={
           inDailyPanel
             ? `Zamówienie ${supplierName} do potwierdzenia`
-            : `${waiting ? "Propozycja ZD" : "Ostatnia propozycja ZD"} z ${formatDateTimePl(latest.createdAt)}`
+            : `${waiting ? "Propozycja ZD" : "Ostatnia propozycja ZD"} z ${formatDateTimePl(latest.createdAt)}${proposalAgeSuffix(latest.createdAt)}`
         }
         hint={
           error && !rejecting ? (
@@ -192,13 +199,19 @@ export function ZdAutoProposalBanner({
           <>
             {/* Panel dzienny: przeliczenie i podgląd są w oknie akceptacji. */}
             {!inDailyPanel ? (
-              <button type="button" className={quietActionClass} onClick={buildNow} disabled={building}>
-                {building ? "Liczę…" : "Przelicz"}
+              <button
+                type="button"
+                className={quietActionClass}
+                onClick={buildNow}
+                disabled={building}
+                title="Automat policzy propozycję od nowa na dzisiejszych danych"
+              >
+                {building ? "Liczę…" : "Przelicz propozycję"}
               </button>
             ) : null}
             {waiting ? (
               <button type="button" className={quietActionClass} onClick={() => setRejecting(true)}>
-                Odrzuć
+                Odrzuć propozycję
               </button>
             ) : null}
             {inDailyPanel ? (

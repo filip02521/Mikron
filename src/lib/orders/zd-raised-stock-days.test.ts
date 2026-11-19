@@ -4,6 +4,7 @@ import { buildManualZdEstimateResult, mapZdEstimateLineToManual } from "./zd-est
 import { computeSalesTrackedCel } from "./zd-estimate-sales-track";
 import { zdEstimateRefreshDays } from "./zd-estimate-live-refresh";
 import { applyZdEstimatePairs } from "./zd-estimate-pairs";
+import { ZD_ESTIMATE_UI } from "./zd-estimate-ui-copy";
 import type { SubiektZdEstimateLine } from "@/lib/subiekt/types";
 
 // Ręcznie podniesiony zapas (np. większe zamówienie na koniec roku): cel na więcej dni, korekty jak przy zwykłym.
@@ -208,5 +209,48 @@ describe("strategia: pojedyncze towary bez „skok vs ostatnie ZD” także w pr
     expect(classic.pozycje[0]!.salesTrackReasons).toContain("sales_spike");
     expect(strat.pozycje[0]!.salesTrackReasons).not.toContain("sales_spike");
     expect(zdEstimateRefreshDays({ dniZapasu: 21, dniOkresu: 30, bezSkokuZd: true }, "30").historySpikeCut).toBe(false);
+  });
+});
+
+describe("bez długości okna sprzedaży: okno z dni karty, nie z podniesionych", () => {
+  it("track: wynik jak przy oknie 30 dni", () => {
+    for (const cover of [0, 10, 40]) {
+      const withWindow = computeSalesTrackedCel({ ...trackInput(90, cover, 30), sprzedazDziennie: 0 });
+      const noWindow = computeSalesTrackedCel({ ...trackInput(90, cover, 30), sprzedazDziennie: 0, dniOkresu: null });
+      expect(noWindow.celTracked).toBeCloseTo(withWindow.celTracked, 6);
+      expect(noWindow.reasons).toEqual(withWindow.reasons);
+    }
+  });
+
+  it("para: cel na 90 dni = tempo z okna karty × 90 (nie sprzedaż okna × 1)", () => {
+    // Paczka 100 szt, 3 paczki w 30 d (10 szt/d), stan 0.
+    const lines = () =>
+      [
+        { tw_Id: 10, tw_Symbol: "PACK", tw_Nazwa: "PACK", tw_IdGrupa: null, grt_Nazwa: "-", tw_Stan: 0, tw_StanRez: 0, dostepne: 0, sprzedazOkres: 3 },
+        { tw_Id: 20, tw_Symbol: "PC", tw_Nazwa: "PC", tw_IdGrupa: null, grt_Nazwa: "-", tw_Stan: 0, tw_StanRez: 0, dostepne: 0, sprzedazOkres: 0 },
+      ].map((l) => ({
+        wzNiepowiazaneOkres: 0, sprzedazDziennie: 0, celZapasu: 0, celZapasuTracked: 0, salesTrackDelta: 0, salesTrackReasons: [],
+        salesTrackConfidence: 0, salesTrackQtyReview: false, salesTrackHeldExtraQty: 0, salesTrackAllowedExtraQty: 0,
+        otwarteZkBezRez: 0, otwarteZkZarezerwowane: 0, otwarteZd: 0, doZamowieniaApi: 0, doZamowieniaReczne: 0, wkladZk: 0, ...l,
+      }));
+    const pair = { packTwId: 10, pieceTwId: 20, unitsPerPack: 100 };
+    const opts = { dniZapasu: 90, signalDniZapasu: 30, salesTrack: false };
+    const withWindow = applyZdEstimatePairs(lines(), [pair], { ...opts, dniOkresu: 30 }).find((l) => l.tw_Id === 10)!;
+    const noWindow = applyZdEstimatePairs(lines(), [pair], { ...opts, dniOkresu: null }).find((l) => l.tw_Id === 10)!;
+    expect(noWindow.doZamowieniaReczne).toBe(withWindow.doZamowieniaReczne);
+  });
+});
+
+describe("opisy pola Zapas przy strategii", () => {
+  it("karta krótsza niż dni strategii: próg to dni strategii, nie karta", () => {
+    expect(ZD_ESTIMATE_UI.dniZapasuStrategyNote(21, 30)).toContain("więcej niż 30 (karta)");
+    expect(ZD_ESTIMATE_UI.dniZapasuStrategyNote(21, 14)).toContain("więcej niż 21");
+    expect(ZD_ESTIMATE_UI.dniZapasuStrategyNote(21, 14)).not.toContain("karta");
+  });
+
+  it("cykl + dostawa dłuższe niż wpisane: komunikat zamiast „zamówienie na N dni”", () => {
+    expect(ZD_ESTIMATE_UI.dniZapasuStrategyLongerNote(40, 35)).toBe(
+      "Strategia liczy cel na 40 dni (cykl + dostawa) - więcej niż wpisane 35, więc pole nic nie zmieniło."
+    );
   });
 });

@@ -1,6 +1,6 @@
 import { fetchPendingRwQtyByTw } from "@/lib/data/service-orders";
 import { query } from "@/lib/db/pool";
-import { resolveServicePartsCecha } from "@/lib/data/service-parts";
+import { fetchServicePartSuppliers, fetchSuppliersWithScope, resolveServicePartsCecha } from "@/lib/data/service-parts";
 import { fetchZdEstimateMinStock } from "@/lib/data/zd-estimate-min-stock";
 import { searchSubiektOrdersProducts } from "@/lib/subiekt/api";
 import type { SubiektProduct } from "@/lib/subiekt/types";
@@ -72,12 +72,22 @@ export async function loadServicePartsOverview(): Promise<ServicePartsOverview> 
     fetchZdEstimateMinStock(),
   ]);
   const twIds = products.map((p) => Math.trunc(Number(p.tw_Id))).filter((id) => id > 0);
-  const [requestsByTwId, takenWithoutRwByTwId] = await Promise.all([fetchActiveRequestsByTwId(twIds), fetchPendingRwQtyByTw()]);
+  const [requestsByTwId, takenWithoutRwByTwId, suppliers] = await Promise.all([
+    fetchActiveRequestsByTwId(twIds),
+    fetchPendingRwQtyByTw(),
+    // Dostawca tylko podpowiada w oknie minimum — jego brak nie może zablokować ekranu.
+    fetchServicePartSuppliers(twIds).catch(() => new Map()),
+  ]);
+  // Silnik ZD liczy tylko dostawców z zakresem w Kreatorze — dostawca bez zakresu nie dokupi minimum.
+  const withScope = await fetchSuppliersWithScope([...new Set([...suppliers.values()].map((s) => s.supplierId))]).catch(() => new Set<string>());
+  const supplierNameByTwId = new Map(
+    [...suppliers].filter(([, s]) => withScope.has(s.supplierId)).map(([id, s]) => [id, s.supplierName] as [number, string])
+  );
   const minStockByTwId = new Map(minStock.map((m) => [m.subiektTwId, m.minStockSzt]));
   return {
     kind: "ok",
     cechaName: cecha.name,
-    rows: buildServicePartRows({ products, minStockByTwId, requestsByTwId, takenWithoutRwByTwId }),
+    rows: buildServicePartRows({ products, minStockByTwId, requestsByTwId, takenWithoutRwByTwId, supplierNameByTwId }),
     readAt: new Date().toISOString(),
   };
 }

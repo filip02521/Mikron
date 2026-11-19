@@ -1,5 +1,5 @@
 import type { IndividualOrderTeethDetail } from "@/types/database";
-import { plPozycja } from "@/lib/ui/polish-plurals";
+import { plKlapkeBiernik, plPozycja } from "@/lib/ui/polish-plurals";
 import { orderHasTeethSpec } from "@/lib/teeth/teeth-panel-filters";
 import type { TeethPanelReadinessContext } from "@/lib/teeth/teeth-panel-order-readiness";
 
@@ -123,6 +123,11 @@ export function teethMarkOrderedConfirmMessage(
   supplierName?: string | null
 ): string {
   const ready = analysis.selectedPositionCount ?? analysis.withSpecIds.length;
+  // Z planem liczymy klapki (pozycje listy); bez planu — prośby (pozycje zamówienia).
+  const readyLabel =
+    analysis.selectedPositionCount != null
+      ? `${ready} ${plKlapkeBiernik(ready)}`
+      : `${ready} ${plPozycja(ready)}`;
   const skippedOrders = analysis.withoutSpecIds.length;
   const skippedFileGroups = analysis.hasMissingFile
     ? Math.max(1, analysis.withoutFileGroupCount)
@@ -151,10 +156,8 @@ export function teethMarkOrderedConfirmMessage(
 
   const prefix =
     supplierName != null
-      ? `Oznaczyć ${ready} ${plPozycja(ready)} u dostawcy ${supplierName} jako zamówione?`
-      : ready === 1
-        ? "Czy na pewno chcesz oznaczyć 1 ząb jako zamówiony u dostawcy?"
-        : `Czy na pewno chcesz oznaczyć ${ready} ${plPozycja(ready)} jako zamówione u dostawcy?`;
+      ? `Oznaczyć ${readyLabel} u dostawcy ${supplierName} jako zamówione?`
+      : `Czy na pewno chcesz oznaczyć ${readyLabel} jako zamówione u dostawcy?`;
 
   const notes: string[] = [];
   if (analysis.hasMissingSpec) {

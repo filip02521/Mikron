@@ -93,7 +93,7 @@ export function TeethPanelSpecList({
               <th className={compact ? "py-0.5 pr-2" : "py-1 pr-2"}>Fason</th>
               <th className={compact ? "py-0.5 pr-2" : "py-1 pr-2"}>Szczęka</th>
               <th className={compact ? "py-0.5 pr-2" : "py-1 pr-2"}>Typ</th>
-              <th className={cn("text-right tabular-nums", compact ? "py-0.5" : "py-1")}>Szt.</th>
+              <th className={cn("text-right tabular-nums", compact ? "py-0.5" : "py-1")}>Klapki</th>
             </tr>
           </thead>
           <tbody>

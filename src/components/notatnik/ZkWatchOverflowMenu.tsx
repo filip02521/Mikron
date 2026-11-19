@@ -10,6 +10,7 @@ export function ZkWatchOverflowMenu({
   hasLines,
   linesLabel,
   onOpenLines,
+  onAddNote,
   onEditProsbaScope,
   onRefresh,
   refreshDisabled,
@@ -28,6 +29,8 @@ export function ZkWatchOverflowMenu({
   hasLines: boolean;
   linesLabel: string;
   onOpenLines: () => void;
+  /** Tylko gdy ZK nie ma jeszcze notatki — istniejącą edytuje się klikiem w wierszu. */
+  onAddNote?: () => void;
   onEditProsbaScope?: () => void;
   onRefresh?: () => void;
   refreshDisabled?: boolean;
@@ -74,6 +77,11 @@ export function ZkWatchOverflowMenu({
           {hasLines ? (
             <OverflowMenuItem disabled={disabled} onClick={onOpenLines}>
               Lista towaru ({linesLabel})
+            </OverflowMenuItem>
+          ) : null}
+          {onAddNote ? (
+            <OverflowMenuItem disabled={disabled} onClick={onAddNote}>
+              Dodaj notatkę
             </OverflowMenuItem>
           ) : null}
           {onEditProsbaScope ? (

@@ -24,6 +24,7 @@ import {
   reconcileSalesTrackQtyMetaAfterHistory,
   resolveSprzedazDziennie,
   type SalesTrackReason,
+  resolveSignalDniZapasu,
 } from "@/lib/orders/zd-estimate-sales-track";
 import { clearSalesTrackQtyReviewMeta } from "@/lib/orders/zd-estimate-post-create";
 import { zdDocumentUnitsToPieces } from "@/lib/orders/zd-estimate-units";
@@ -643,7 +644,8 @@ export function rematerializeSoloAfterBom(
       sprzedazOkres,
       sprzedazDziennie: 0,
       dniOkresu,
-      fallbackDniOkresu: dniZapasu,
+      // Bez długości okna: okno z dni zwykłego zamówienia (karta), nie z podniesionych.
+      fallbackDniOkresu: resolveSignalDniZapasu(options.signalDniZapasu, dniZapasu),
     });
     const celBase = tempo * dniZapasu + zapasMin;
 

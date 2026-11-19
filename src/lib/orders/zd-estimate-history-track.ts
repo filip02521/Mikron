@@ -167,13 +167,14 @@ export function applySalesSpikeCut(
   const sprzedazOkres = Math.max(0, input.sprzedazOkres);
   const celBase = Math.max(0, input.celBase);
   const celIn = Math.max(0, input.celTracked);
-  const windowDays = resolveWindowDays({
-    dniOkresu: input.dniOkresu,
-    dniZapasu: input.dniZapasu,
-  });
   // Skok = tempo z okna zawyżone względem ostatniego ZD: ta sama decyzja co przy zwykłym zamówieniu,
   // także przy dłuższym biegu (cięcie skaluje wtedy cały, dłuższy cel).
   const refDays = resolveSignalDniZapasu(input.lastOrderDniZapasu, input.dniZapasu);
+  // Bez długości okna: okno z dni zwykłego zamówienia (karta), nie z podniesionych.
+  const windowDays = resolveWindowDays({
+    dniOkresu: input.dniOkresu,
+    dniZapasu: refDays,
+  });
   const expectedWindowSales = expectedSalesFromLastOrder({
     lastOrderedQty: ordered,
     dniZapasu: refDays,

@@ -170,7 +170,7 @@ function DayColumn({
               <li
                 key={`${day.dateKey}-${item.supplierId}-${item.scheduleId}`}
                 className={cn(
-                  "truncate rounded px-1.5 py-1 text-[0.6875rem] leading-snug",
+                  "truncate rounded-md px-1.5 py-1 text-[0.6875rem] leading-snug",
                   mine
                     ? "bg-indigo-50 font-medium text-indigo-950"
                     : "bg-slate-50 text-slate-700",

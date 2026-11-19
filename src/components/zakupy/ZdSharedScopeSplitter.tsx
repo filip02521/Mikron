@@ -21,6 +21,7 @@ import {
   zdSplitChanged,
   zdSplitCounts,
   zdSplitRangeSelect,
+  zdSharedScopeAddableSuppliers,
   zdSplitShortName,
   zdSplitShortNames,
   zdSplitValue,
@@ -39,6 +40,7 @@ import { cn } from "@/lib/cn";
 import { formatPlDate } from "@/lib/display-labels";
 import { zdEstimatePlCountWord as plWord } from "@/lib/orders/zd-estimate-ui-copy";
 import { BrandLoader } from "@/components/ui/BrandLoader";
+import { ZdSharedScopeAddSupplier } from "@/components/zakupy/ZdSharedScopeAddSupplier";
 
 const PAGE = 300;
 /** Powyżej tylu dostawców wybór w wierszu jest listą — przyciski przestają się mieścić. */
@@ -251,12 +253,17 @@ export function ZdSharedScopeSplitter({
   onError,
   onDirtyChange,
   onSaved,
+  onAddSupplier,
+  addSupplierDisabled = false,
 }: {
   scope: ZdSharedScope;
   suppliers: readonly ZdEstimateSupplierOption[];
   onError: (message: string) => void;
   onDirtyChange: (changedCount: number) => void;
   onSaved: () => void;
+  /** Dopisuje zakres kolejnemu dostawcy; `true` = potwierdzone. Bez tego przycisku nie ma. */
+  onAddSupplier?: (supplierId: string) => Promise<boolean>;
+  addSupplierDisabled?: boolean;
 }) {
   const searchId = useId();
   const searchRef = useRef<HTMLInputElement>(null);
@@ -334,6 +341,10 @@ export function ZdSharedScopeSplitter({
       swatch: SUPPLIER_SWATCHES[i % SUPPLIER_SWATCHES.length],
     }));
   }, [scope.supplierIds, suppliers]);
+  const addable = useMemo(
+    () => zdSharedScopeAddableSuppliers(suppliers, scope.supplierIds),
+    [suppliers, scope.supplierIds]
+  );
   const impactLabel = (value: string) => (value === "" ? "bez przypisania" : nameOf(value));
   const nameOf = (id: string) =>
     options.find((o) => o.id === id)?.name ?? suppliers.find((s) => s.id === id)?.name ?? "inny dostawca";
@@ -562,6 +573,14 @@ export function ZdSharedScopeSplitter({
               >
                 Uzupełnij wg historii ZD ({historyFill})
               </Button>
+            ) : null}
+            {onAddSupplier ? (
+              <ZdSharedScopeAddSupplier
+                mode={scope.mode}
+                candidates={addable}
+                disabled={busy || addSupplierDisabled}
+                onAdd={onAddSupplier}
+              />
             ) : null}
           </div>
         </div>

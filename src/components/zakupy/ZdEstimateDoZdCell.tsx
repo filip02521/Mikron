@@ -1,7 +1,6 @@
 "use client";
 
 import { useId, useState } from "react";
-import { IconCheck } from "@/components/icons/StrokeIcons";
 import { polishPlural } from "@/lib/email/polish-plural";
 import { formatQty } from "@/lib/orders/zd-estimate-manual";
 import {
@@ -24,6 +23,32 @@ import {
 import type { SalesTrackReason } from "@/lib/orders/zd-estimate-sales-track";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 import { cn } from "@/lib/cn";
+
+const QTY_INPUT_SELECTOR = "input.zd-est-dozd-input:not(:disabled)";
+export const ZD_QTY_KEYS_HINT = "↑/↓ zmienia ilość (Shift ×10) · Tab lub Enter: następna pozycja";
+
+/**
+ * ↑/↓ o krok; poza wielokrotnością kroku najpierw dociąga do najbliższej w tym kierunku.
+ * `times` (Shift = 10) mnoży liczbę kroków, nie sam krok — 22 ↓×10 daje 12, nie 20.
+ */
+export function zdQtyArrowNext(current: number, dir: 1 | -1, step: number, times = 1): number {
+  const s = Math.max(1, Math.trunc(step));
+  const snapped = dir > 0 ? Math.floor(current / s) * s + s : Math.ceil(current / s) * s - s;
+  return Math.max(0, snapped + dir * (times - 1) * s);
+}
+
+/** Tab / Enter: fokus na polu „Do ZD” następnego (dir 1) lub poprzedniego (-1) wiersza tabeli. */
+export function focusAdjacentZdQtyInput(from: HTMLElement, dir: 1 | -1): boolean {
+  const scope = from.closest("tbody") ?? from.closest("table");
+  if (!scope) return false;
+  const inputs = Array.from(scope.querySelectorAll<HTMLInputElement>(QTY_INPUT_SELECTOR));
+  const next = inputs[inputs.indexOf(from as HTMLInputElement) + dir];
+  if (!next) return false;
+  next.focus();
+  next.select();
+  next.scrollIntoView({ block: "nearest" });
+  return true;
+}
 
 /**
  * Komórka „Do ZD” — decyzja + kompaktowa meta (pewność / roundup / przywróć).
@@ -158,11 +183,12 @@ export function ZdEstimateDoZdCell({
             : !packagesMode && overridePieces != null
               ? `${formatQty(overridePieces)} szt`
               : null,
-          "Puste/Enter przywraca.",
+          "Puste pole przywraca.",
         ]
           .filter(Boolean)
           .join(". ")
       : baseHint || "Nadpisz ilość Do ZD przed utworzeniem dokumentu",
+    onOverrideChange ? ZD_QTY_KEYS_HINT : null,
     roundupFull ? `↑ ${roundupFull}` : null,
     orderMultipleWarn,
     qty.hasPackaging ? overrideHint : null,
@@ -221,22 +247,15 @@ export function ZdEstimateDoZdCell({
 
   // Pewność widoczna tylko, gdy wymaga weryfikacji — „ok” / zaakceptowana są w podpowiedzi
   // (wcześniej chip pod każdą liczbą podwajał wysokość wiersza).
-  const confidenceWhisper =
-    confidenceUi.hasSignal && hintKind === "confidence" && confidenceUi.needsReview ? (
+  // Jeden sygnał „do sprawdzenia”: bursztynowy przycisk „Akceptuj” (procent pewności i powód w dymku);
+  // bez możliwości akceptacji — kropka i „sprawdź”.
+  const reviewChip =
+    confidenceUi.hasSignal && confidenceUi.needsReview ? (
       <span
-        className={cn(
-          "zd-est-dozd-confidence",
-          confidenceUi.tone === "review" && "zd-est-dozd-confidence--review",
-          confidenceUi.tone === "accepted" &&
-            "zd-est-dozd-confidence--accepted",
-          confidenceUi.tone === "ok" && "zd-est-dozd-confidence--ok"
-        )}
+        className="zd-est-dozd-confidence zd-est-dozd-confidence--review"
         title={confidenceUi.title || undefined}
       >
-        <span className="zd-est-dozd-confidence__pct tabular-nums">
-          {confidenceUi.pct}%
-        </span>
-        {confidenceUi.needsReview && onAccept ? (
+        {onAccept ? (
           <button
             type="button"
             className="zd-est-dozd-confidence__accept"
@@ -244,35 +263,20 @@ export function ZdEstimateDoZdCell({
             title={confidenceUi.title || undefined}
             aria-label={confidenceUi.acceptAriaLabel}
           >
-            <IconCheck size={10} strokeWidth={3} aria-hidden />
+            Akceptuj
           </button>
-        ) : confidenceUi.needsReview ? (
-          <span className="zd-est-dozd-confidence__dot" aria-hidden />
-        ) : null}
+        ) : (
+          <>
+            <span className="zd-est-dozd-confidence__dot" aria-hidden />
+            <span className="zd-est-dozd-confidence__pct">sprawdź</span>
+          </>
+        )}
       </span>
     ) : null;
+  const confidenceWhisper = hintKind === "confidence" ? reviewChip : null;
 
   /** Gdy override/roundup zajmuje linię — kompakt % + OK (pełny whisper w title). */
-  const reviewAcceptAside =
-    confidenceUi.needsReview && onAccept && hintKind !== "confidence" ? (
-      <span
-        className="zd-est-dozd-confidence zd-est-dozd-confidence--review"
-        title={confidenceUi.title || undefined}
-      >
-        <span className="zd-est-dozd-confidence__pct tabular-nums">
-          {confidenceUi.pct}%
-        </span>
-        <button
-          type="button"
-          className="zd-est-dozd-confidence__accept"
-          onClick={onAccept}
-          title={confidenceUi.title || undefined}
-          aria-label={confidenceUi.acceptAriaLabel}
-        >
-          <IconCheck size={10} strokeWidth={3} aria-hidden />
-        </button>
-      </span>
-    ) : null;
+  const reviewAcceptAside = hintKind !== "confidence" ? reviewChip : null;
 
   const primaryHint =
     hintKind === "override" && onOverrideChange ? (
@@ -286,12 +290,6 @@ export function ZdEstimateDoZdCell({
         <span aria-hidden>↩</span>
         <span className="tabular-nums">{qty.zdUnits}</span>
       </button>
-    ) : hintKind === "roundup" && roundupInfo != null ? (
-      <span className="zd-est-dozd-hint" title={roundupFull ?? undefined}>
-        {roundupInfo.packsBefore != null && roundupInfo.packsAfter != null
-          ? `↑ ${roundupInfo.packsBefore}→${roundupInfo.packsAfter}`
-          : `↑ +${roundupInfo.extra}`}
-      </span>
     ) : hintKind === "confidence" ? (
       confidenceWhisper
     ) : hintKind === "pieces" ? (
@@ -318,20 +316,16 @@ export function ZdEstimateDoZdCell({
     ) : null;
 
   const currentPieces = piecesArrivingForZdUnitsFromQty(displayUnits, qty);
-  const compareChip =
-    comparePieces != null && Math.round(comparePieces) !== currentPieces ? (
-      <span
-        className="zd-est-dozd-compare"
-        title={`Strategia „jak dotąd”: ${formatQty(comparePieces)} szt (teraz ${formatQty(currentPieces)} szt)`}
-      >
-        dotąd <s>{formatQty(comparePieces)}</s> szt
-      </span>
-    ) : null;
+  // Porównanie ze starą strategią i zaokrąglenie do opakowania są w dymku pola — w komórce jeden sygnał.
+  const compareTitle =
+    comparePieces != null && Math.round(comparePieces) !== currentPieces
+      ? `Stara strategia: ${formatQty(comparePieces)} szt (teraz ${formatQty(currentPieces)} szt)`
+      : null;
+  const cellTitle = [fullTitle, compareTitle].filter(Boolean).join(" · ");
 
   const hintLine =
-    primaryHint || reviewAcceptAside || palletChip || compareChip ? (
+    primaryHint || reviewAcceptAside || palletChip ? (
       <span className="zd-est-dozd-hint-row">
-        {compareChip}
         {palletChip}
         {primaryHint}
         {reviewAcceptAside}
@@ -347,7 +341,7 @@ export function ZdEstimateDoZdCell({
         inputMode="numeric"
         value={focused ? draft : String(displayUnits)}
         disabled={overrideDisabled}
-        title={fullTitle}
+        title={cellTitle}
         aria-invalid={orderMultipleWarn ? true : undefined}
         aria-describedby={[orderMultipleWarn ? warnId : null, unitLabel ? unitId : null].filter(Boolean).join(" ") || undefined}
         aria-label={[
@@ -363,9 +357,28 @@ export function ZdEstimateDoZdCell({
           !overridden && displayUnits <= 0 && "zd-est-dozd-input--idle",
           orderMultipleWarn && "zd-est-dozd-input--order-mult-warn"
         )}
-        onFocus={() => {
+        onFocus={(e) => {
           setFocused(true);
           setDraft(String(displayUnits));
+          e.currentTarget.select(); // wpisana liczba zastępuje starą
+        }}
+        onKeyDown={(e) => {
+          if (e.altKey || e.ctrlKey || e.metaKey) return;
+          if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+            e.preventDefault();
+            const parsed = Number(draft.trim());
+            const current = draft.trim() !== "" && Number.isFinite(parsed) ? Math.max(0, Math.trunc(parsed)) : displayUnits;
+            // Sztuki przy opakowaniu: krok = całe opakowanie (inaczej od razu „co N?”).
+            const step = qty.hasPackaging && !packagesMode ? qty.unitsPerPackage : 1;
+            const units = zdQtyArrowNext(current, e.key === "ArrowUp" ? 1 : -1, step, e.shiftKey ? 10 : 1);
+            setDraft(String(units));
+            onOverrideChange(units === qty.zdUnits ? null : units);
+            return;
+          }
+          if (e.key === "Tab" || e.key === "Enter") {
+            if (focusAdjacentZdQtyInput(e.currentTarget, e.shiftKey ? -1 : 1)) e.preventDefault();
+            else if (e.key === "Enter") e.currentTarget.blur();
+          }
         }}
         onChange={(e) => {
           const raw = e.target.value;
@@ -410,7 +423,7 @@ export function ZdEstimateDoZdCell({
   );
 
   return (
-    <span className="zd-est-dozd" title={fullTitle || undefined}>
+    <span className="zd-est-dozd" title={cellTitle || undefined}>
       {valueRow}
       {hintLine}
       {orderMultipleWarn && !editingBlank ? (

@@ -192,7 +192,7 @@ export function TeethVerificationAddRow({
           </select>
         </label>
         <label className="flex flex-col gap-0.5">
-          <span className="text-[0.6875rem] font-semibold text-slate-600">Szt.</span>
+          <span className="text-[0.6875rem] font-semibold text-slate-600">Klapki</span>
           <input
             type="number"
             min={1}

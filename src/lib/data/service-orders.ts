@@ -2,9 +2,15 @@ import { SERVICE_WARRANTY_DEFAULT_MONTHS, warrantyUntil } from "@/lib/orders/ser
 import type { PoolClient } from "pg";
 import { servicePartRequestNote } from "@/lib/orders/service-part-report";
 import { query, withClient } from "@/lib/db/pool";
+import { issueLoanerUnitIn, LoanerStateError } from "@/lib/data/service-loaners";
 import {
   canMoveServiceOrder,
   canSetServiceOrderInvoice,
+  formatQuoteAmount,
+  SERVICE_OUTBOUND_LABEL,
+  type ServiceInboundMethod,
+  type ServiceOutboundMethod,
+  type ServiceQuoteDecision,
   canSetServiceOrderRw,
   isClosedServiceOrder,
   nextServiceOrderNumber,
@@ -52,6 +58,17 @@ type OrderRow = {
   purchase_date: string | null;
   purchase_doc: string | null;
   warranty_until: string | null;
+  helpdesk_id: number | null;
+  quote_amount: string | number | null;
+  quote_note: string;
+  quote_sent_at: Date | null;
+  quote_decision: ServiceQuoteDecision | null;
+  quote_decided_at: Date | null;
+  inbound_method: ServiceInboundMethod | null;
+  inbound_pickup_date: string | null;
+  outbound_method: ServiceOutboundMethod | null;
+  outbound_tracking: string | null;
+  outbound_address: string | null;
   closed_at: Date | null;
   created_at: Date;
 };
@@ -82,7 +99,10 @@ const ORDER_COLS = `id, number, client_kh_id, client_name, client_phone, device_
   serial_no, fault, accessories, work_note, to_char(due_date, 'YYYY-MM-DD') AS due_date, status, loaner_unit_id,
   rw_number, rw_at, fs_id, fs_number, no_invoice_reason, waiting_part_tw_id, waiting_part_symbol, waiting_part_name,
   waiting_part_qty, waiting_since, to_char(purchase_date, 'YYYY-MM-DD') AS purchase_date, purchase_doc,
-  to_char(warranty_until, 'YYYY-MM-DD') AS warranty_until, closed_at, created_at`;
+  to_char(warranty_until, 'YYYY-MM-DD') AS warranty_until, helpdesk_id,
+  quote_amount, quote_note, quote_sent_at, quote_decision, quote_decided_at,
+  inbound_method, to_char(inbound_pickup_date, 'YYYY-MM-DD') AS inbound_pickup_date, outbound_method, outbound_tracking, outbound_address,
+  closed_at, created_at`;
 
 function mapOrder(r: OrderRow): ServiceOrder {
   return {
@@ -119,6 +139,16 @@ function mapOrder(r: OrderRow): ServiceOrder {
     purchaseDate: r.purchase_date,
     purchaseDoc: r.purchase_doc,
     warrantyUntil: r.warranty_until,
+    helpdeskId: r.helpdesk_id != null ? Number(r.helpdesk_id) : null,
+    quote: {
+      amount: r.quote_amount != null ? Number(r.quote_amount) : null,
+      note: r.quote_note ?? "",
+      sentAt: r.quote_sent_at ? new Date(r.quote_sent_at).toISOString() : null,
+      decision: r.quote_decision,
+      decidedAt: r.quote_decided_at ? new Date(r.quote_decided_at).toISOString() : null,
+    },
+    inbound: { method: r.inbound_method, pickupDate: r.inbound_pickup_date },
+    outbound: { method: r.outbound_method, tracking: r.outbound_tracking, address: r.outbound_address },
     closedAt: r.closed_at ? new Date(r.closed_at).toISOString() : null,
     createdAt: new Date(r.created_at).toISOString(),
   };
@@ -216,15 +246,33 @@ export async function fetchPendingRwQtyByTw(): Promise<Map<number, number>> {
   return new Map(res.rows.map((r) => [Number(r.part_tw_id), Number(r.qty)]));
 }
 
+export type HelpdeskLinkedOrder = { id: string; number: string; deviceName: string; serialNo: string | null; status: ServiceOrderStatus };
+
+/** Zlecenia założone z danych zgłoszeń (bez anulowanych): numer zgłoszenia → jego zlecenia (jedno zgłoszenie bywa na kilka urządzeń). */
+export async function fetchOrdersByHelpdeskIds(ids: number[]): Promise<Map<number, HelpdeskLinkedOrder[]>> {
+  if (!ids.length) return new Map();
+  const res = await query<{ helpdesk_id: number; id: string; number: string; device_name: string; serial_no: string | null; status: ServiceOrderStatus }>(
+    `SELECT helpdesk_id, id, number, device_name, serial_no, status FROM service_orders
+      WHERE helpdesk_id = ANY($1::int[]) AND status <> 'anulowane' ORDER BY created_at`,
+    [ids]
+  );
+  const out = new Map<number, HelpdeskLinkedOrder[]>();
+  for (const r of res.rows) {
+    const k = Number(r.helpdesk_id);
+    out.set(k, [...(out.get(k) ?? []), { id: r.id, number: r.number, deviceName: r.device_name, serialNo: r.serial_no, status: r.status }]);
+  }
+  return out;
+}
+
 /** Zlecenia powiązane z egzemplarzem zamiennika (panel egzemplarza pokazuje, do czego jest wydany). */
-export async function fetchOrderNumbersByLoaner(): Promise<Map<string, string>> {
-  const res = await query<{ loaner_unit_id: string; number: string }>(
-    `SELECT DISTINCT ON (loaner_unit_id) loaner_unit_id, number
+export async function fetchOrderNumbersByLoaner(): Promise<Map<string, { id: string; number: string }>> {
+  const res = await query<{ loaner_unit_id: string; id: string; number: string }>(
+    `SELECT DISTINCT ON (loaner_unit_id) loaner_unit_id, id, number
        FROM service_orders
       WHERE loaner_unit_id IS NOT NULL AND status <> 'anulowane'
       ORDER BY loaner_unit_id, created_at DESC`
   );
-  return new Map(res.rows.map((r) => [r.loaner_unit_id, r.number]));
+  return new Map(res.rows.map((r) => [r.loaner_unit_id, { id: r.id, number: r.number }]));
 }
 
 async function inTx<T>(fn: (c: PoolClient) => Promise<T>): Promise<T> {
@@ -276,6 +324,9 @@ export type ServiceOrderIntake = {
   /** YYYY-MM-DD, już sprawdzona (normalizePurchaseDate); null — nieznana. */
   purchaseDate: string | null;
   purchaseDoc: string | null;
+  helpdeskId: number | null;
+  inboundMethod: ServiceInboundMethod | null;
+  inboundPickupDate: string | null;
 };
 
 export async function insertServiceOrder(input: ServiceOrderIntake, actor: ServiceActor): Promise<ServiceOrder> {
@@ -296,8 +347,9 @@ export async function insertServiceOrder(input: ServiceOrderIntake, actor: Servi
     }
     const res = await c.query<OrderRow>(
       `INSERT INTO service_orders (number, client_kh_id, client_name, client_phone, device_tw_id, device_symbol, device_name,
-         serial_no, fault, accessories, due_date, created_by, purchase_date, purchase_doc, warranty_until)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+         serial_no, fault, accessories, due_date, created_by, purchase_date, purchase_doc, warranty_until, helpdesk_id,
+         inbound_method, inbound_pickup_date)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
        RETURNING ${ORDER_COLS}`,
       [
         number,
@@ -315,16 +367,28 @@ export async function insertServiceOrder(input: ServiceOrderIntake, actor: Servi
         input.purchaseDate,
         input.purchaseDate ? input.purchaseDoc : null,
         warranty,
+        input.helpdeskId,
+        input.inboundMethod,
+        input.inboundPickupDate,
       ]
     );
     const order = mapOrder(res.rows[0]!);
-    await addEvent(c, order.id, "created", actor, { toStatus: "przyjete", note: input.fault });
+    await addEvent(c, order.id, "created", actor, {
+      toStatus: "przyjete",
+      note: input.helpdeskId ? `Ze zgłoszenia helpdesku #${input.helpdeskId}. ${input.fault}`.slice(0, 1000) : input.fault,
+    });
     return order;
   });
 }
 
 export async function moveServiceOrder(
-  input: { orderId: string; to: ServiceOrderStatus; note: string },
+  input: {
+    orderId: string;
+    to: ServiceOrderStatus;
+    note: string;
+    /** Przy „wydane”: jak sprzęt wraca do klienta (zapis w zleceniu i w historii). */
+    outbound?: { method: ServiceOutboundMethod; tracking: string | null; address: string | null } | null;
+  },
   actor: ServiceActor
 ): Promise<ServiceOrder> {
   return inTx(async (c) => {
@@ -338,6 +402,34 @@ export async function moveServiceOrder(
     if (input.to === "czeka_na_czesc") {
       throw new ServiceOrderStateError("Wybierz, na jaką część czeka zlecenie.");
     }
+    if (input.to === "czeka_na_akceptacje") {
+      throw new ServiceOrderStateError("Wpisz kwotę wyceny — zlecenie poczeka na decyzję klienta.");
+    }
+    // Wyjście z „czeka na decyzję klienta” do naprawy albo do wydania to decyzja klienta — zapisana w zleceniu.
+    const decision: ServiceQuoteDecision | null =
+      o.status === "czeka_na_akceptacje" ? (input.to === "w_naprawie" ? "accepted" : input.to === "gotowe" ? "rejected" : null) : null;
+    // Powrót z wyceny do diagnozy wycofuje wycenę — nowa kwota przyjdzie z kolejnym zapisem wyceny.
+    const quoteWithdrawn = o.status === "czeka_na_akceptacje" && input.to === "diagnoza";
+    if (quoteWithdrawn) {
+      await c.query(
+        `UPDATE service_orders SET quote_amount = NULL, quote_note = '', quote_sent_at = NULL, quote_decision = NULL, quote_decided_at = NULL WHERE id = $1`,
+        [o.id]
+      );
+      await addEvent(c, o.id, "quote_decision", actor, { note: "Wycena wycofana — powrót do diagnozy" });
+    }
+    if (decision) {
+      await c.query(`UPDATE service_orders SET quote_decision = $2, quote_decided_at = now() WHERE id = $1`, [o.id, decision]);
+      await addEvent(c, o.id, "quote_decision", actor, { note: decision === "accepted" ? "Klient akceptuje wycenę" : "Klient odmawia — zwrot bez naprawy" });
+    }
+    if (input.to === "wydane" && input.outbound) {
+      await c.query(
+        `UPDATE service_orders SET outbound_method = $2, outbound_tracking = $3, outbound_address = $4 WHERE id = $1`,
+        [o.id, input.outbound.method, input.outbound.tracking, input.outbound.address]
+      );
+      await addEvent(c, o.id, "shipment", actor, {
+        note: [SERVICE_OUTBOUND_LABEL[input.outbound.method], input.outbound.tracking, input.outbound.address].filter(Boolean).join(" · "),
+      });
+    }
     const closing = isClosedServiceOrder(input.to);
     // Wyjście z „czeka na część” kończy czekanie — część zostaje w historii (zdarzenie waiting_part).
     await c.query(
@@ -349,11 +441,53 @@ export async function moveServiceOrder(
       [o.id, input.to, closing]
     );
     await addEvent(c, o.id, "status", actor, { fromStatus: o.status, toStatus: input.to, note: input.note });
-    return { ...o, status: input.to, waitingPart: null };
+    return {
+      ...o,
+      status: input.to,
+      waitingPart: null,
+      quote: quoteWithdrawn
+        ? { amount: null, note: "", sentAt: null, decision: null, decidedAt: null }
+        : decision
+          ? { ...o.quote, decision, decidedAt: new Date().toISOString() }
+          : o.quote,
+      outbound: input.to === "wydane" && input.outbound ? { ...input.outbound } : o.outbound,
+    };
+  });
+}
+
+/** Wycena po diagnozie: kwota brutto i zakres → status „czeka na decyzję klienta” (wiadomość do klienta idzie helpdeskiem). */
+export async function sendServiceOrderQuote(
+  input: { orderId: string; amount: number; note: string },
+  actor: ServiceActor
+): Promise<ServiceOrder> {
+  return inTx(async (c) => {
+    const o = await lockOrder(c, input.orderId);
+    if (!canMoveServiceOrder(o.status, "czeka_na_akceptacje")) {
+      throw new ServiceOrderStateError(
+        `Zlecenie ${o.number} ma status „${SERVICE_ORDER_STATUS_LABEL[o.status]}” — wycenę wysyła się po diagnozie. Odśwież panel.`
+      );
+    }
+    await c.query(
+      `UPDATE service_orders
+          SET status = 'czeka_na_akceptacje', updated_at = now(), quote_amount = $2, quote_note = $3, quote_sent_at = now(),
+              quote_decision = NULL, quote_decided_at = NULL
+        WHERE id = $1`,
+      [o.id, input.amount, input.note]
+    );
+    await addEvent(c, o.id, "status", actor, { fromStatus: o.status, toStatus: "czeka_na_akceptacje" });
+    await addEvent(c, o.id, "quote", actor, { note: [formatQuoteAmount(input.amount), input.note].filter(Boolean).join(" — ").slice(0, 1000) });
+    const now = new Date().toISOString();
+    return { ...o, status: "czeka_na_akceptacje", quote: { amount: input.amount, note: input.note, sentAt: now, decision: null, decidedAt: null } };
   });
 }
 
 /** „Czeka na część”: status + która część (z Subiekta albo sama nazwa) i ile. Zgłoszenie do zakupów robi akcja. */
+/** Zlecenie z częścią, na którą czeka — do zgłoszenia braku z karty (dane z bazy, nie z przeglądarki). */
+export async function fetchServiceOrderForReport(orderId: string): Promise<ServiceOrder | null> {
+  const res = await query<OrderRow>(`SELECT ${ORDER_COLS} FROM service_orders WHERE id = $1`, [orderId]);
+  return res.rows[0] ? mapOrder(res.rows[0]) : null;
+}
+
 export async function waitForServicePart(
   input: { orderId: string; part: { twId: number | null; symbol: string | null; name: string }; qty: number; note: string },
   actor: ServiceActor
@@ -520,6 +654,45 @@ export async function linkServiceOrderLoaner(input: { orderId: string; unitId: s
   });
 }
 
+/**
+ * „Wydaj zamiennik” z karty zlecenia: egzemplarz z puli trafia do klienta zlecenia (dane ze zlecenia, nie z formularza)
+ * i od razu jest z nim powiązany — jedna transakcja, więc nie zostaje wydany bez powiązania.
+ */
+export async function issueLoanerForServiceOrder(
+  input: { orderId: string; unitId: string; plannedReturn: string },
+  actor: ServiceActor
+): Promise<{ order: ServiceOrder; code: string }> {
+  return inTx(async (c) => {
+    const o = await lockOrder(c, input.orderId);
+    if (isClosedServiceOrder(o.status)) throw new ServiceOrderStateError(`Zlecenie ${o.number} jest zamknięte — zamiennika się nie wydaje.`);
+    if (o.loanerUnitId) throw new ServiceOrderStateError(`${o.number} ma już powiązany zamiennik. Odepnij go, zanim wydasz inny.`);
+    let code: string;
+    let unitId: string;
+    try {
+      const u = await issueLoanerUnitIn(
+        c,
+        {
+          unitId: input.unitId,
+          khId: o.clientKhId,
+          clientName: o.clientName,
+          clientPhone: o.clientPhone,
+          plannedReturn: input.plannedReturn,
+          note: `na czas naprawy ${o.number}`,
+        },
+        actor
+      );
+      code = u.code;
+      unitId = u.id;
+    } catch (e) {
+      if (e instanceof LoanerStateError) throw new ServiceOrderStateError(e.message);
+      throw e;
+    }
+    await c.query(`UPDATE service_orders SET loaner_unit_id = $2, updated_at = now() WHERE id = $1`, [o.id, unitId]);
+    await addEvent(c, o.id, "loaner_linked", actor, { note: code });
+    return { order: { ...o, loanerUnitId: unitId }, code };
+  });
+}
+
 // --- Katalog części dla modelu (BOM) ---
 
 export type ServiceModelPart = {
@@ -658,15 +831,66 @@ export async function setServiceModelWarranty(input: ServiceModelWarranty, actor
   );
 }
 
-/** Modele, które były w naprawie (do podpowiedzi „bez katalogu” na stronie katalogu). */
-export async function fetchRepairedModels(): Promise<{ twId: number; symbol: string | null; name: string; orders: number }[]> {
-  const res = await query<{ device_tw_id: number; device_symbol: string | null; device_name: string; n: string | number }>(
-    `SELECT device_tw_id, MAX(device_symbol) AS device_symbol, MAX(device_name) AS device_name, COUNT(*) AS n
-       FROM service_orders
-      WHERE device_tw_id IS NOT NULL AND status <> 'anulowane'
-      GROUP BY device_tw_id
-      ORDER BY COUNT(*) DESC
-      LIMIT 12`
+/**
+ * Modele znane serwisowi jako sprzęt — do uzupełnienia w katalogu: były w naprawie (liczba zleceń bez anulowanych)
+ * albo serwisant potwierdził je jako urządzenie w „Sprzęt klienta” (migracja 215). Model z decyzją „Nie” odpada.
+ */
+export async function fetchKnownServiceModels(): Promise<{ twId: number; symbol: string | null; name: string; orders: number }[]> {
+  const res = await query<{ tw_id: number; symbol: string | null; name: string; n: string | number }>(
+    `SELECT tw_id, MAX(symbol) AS symbol, MAX(name) AS name, SUM(n) AS n
+       FROM (
+         SELECT device_tw_id AS tw_id, device_symbol AS symbol, device_name AS name, (status <> 'anulowane')::int AS n
+           FROM service_orders WHERE device_tw_id IS NOT NULL
+         UNION ALL
+         SELECT tw_id, symbol, name, 0 FROM service_device_models WHERE is_device
+       ) k
+      WHERE tw_id NOT IN (SELECT tw_id FROM service_device_models WHERE NOT is_device)
+      GROUP BY tw_id`
   );
-  return res.rows.map((r) => ({ twId: Number(r.device_tw_id), symbol: r.device_symbol, name: r.device_name, orders: Number(r.n) }));
+  return res.rows.map((r) => ({ twId: Number(r.tw_id), symbol: r.symbol, name: r.name, orders: Number(r.n) }));
 }
+
+/** Zmienia tylko ilość części w katalogu modelu (bez nadpisywania notatki i nazw). */
+export async function updateServiceModelPartQty(input: { modelTwId: number; partTwId: number; qty: number }): Promise<boolean> {
+  const res = await query(`UPDATE service_model_parts SET default_qty = $3 WHERE model_tw_id = $1 AND part_tw_id = $2`, [
+    input.modelTwId,
+    input.partTwId,
+    input.qty,
+  ]);
+  return (res.rowCount ?? 0) > 0;
+}
+
+/** Inne zlecenia tego samego klienta (kh_Id z Subiekta), najnowsze najpierw — powiązane sprawy w karcie zlecenia. */
+export async function fetchServiceOrdersByClient(khId: number, excludeOrderId: string | null, limit = 8): Promise<SerialHistoryItem[]> {
+  if (!Number.isSafeInteger(khId) || khId <= 0) return [];
+  const res = await query<{
+    id: string;
+    number: string;
+    status: ServiceOrderStatus;
+    device_name: string;
+    created_at: Date;
+    closed_at: Date | null;
+    fault: string;
+    work_note: string;
+    serial_no: string | null;
+  }>(
+    `SELECT id, number, status, device_name, created_at, closed_at, fault, work_note, serial_no
+       FROM service_orders
+      WHERE client_kh_id = $1 AND ($2::uuid IS NULL OR id <> $2::uuid)
+      ORDER BY created_at DESC
+      LIMIT $3`,
+    [khId, excludeOrderId, limit]
+  );
+  return res.rows.map((r) => ({
+    id: r.id,
+    number: r.number,
+    status: r.status,
+    deviceName: r.device_name,
+    createdAt: new Date(r.created_at).toISOString(),
+    closedAt: r.closed_at ? new Date(r.closed_at).toISOString() : null,
+    fault: r.fault,
+    workNote: r.work_note,
+    serialNo: r.serial_no,
+  }));
+}
+

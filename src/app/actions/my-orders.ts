@@ -401,7 +401,7 @@ export async function actionSalesCancelTeethGroups(
   }
 
   if (totalCancelQty < 1) {
-    throw new Error("Wybierz co najmniej 1 szt. do wycofania.");
+    throw new Error("Wybierz co najmniej 1 klapkę do wycofania.");
   }
 
   const orderedQty = parseOrderQuantity(order.quantity);

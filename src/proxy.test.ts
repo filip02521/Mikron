@@ -144,3 +144,38 @@ describe("proxy mail center module access", () => {
   });
 });
 
+
+describe("proxy panel serwisu", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRefreshSupabaseSession.mockResolvedValue({ response: stubSessionResponse(), user: { id: "u1" } });
+    mockHasMailCenterModuleForUserId.mockResolvedValue(false);
+  });
+
+  const profile = (role: string, assigned_workspaces: string[] = []) =>
+    mockFetchProfileByUserId.mockResolvedValue({ id: "u1", role, assigned_workspaces, must_change_password: false });
+
+  it("wpuszcza serwisanta, resztę przekierowuje na jej start", async () => {
+    profile("serwis");
+    expect((await proxy(new NextRequest("https://example.com/serwis/zlecenia"))).headers.get("location")).toBeNull();
+    for (const [role, ws, home] of [
+      ["zakupy", [], "/podsumowanie"],
+      ["magazyn", [], "/kolejka"],
+      ["zakupy", ["dostawy", "magazyn"], "/podsumowanie"],
+      ["admin", [], "/admin"],
+    ] as const) {
+      profile(role, [...ws]);
+      const res = await proxy(new NextRequest("https://example.com/serwis/modele"));
+      expect(new URL(res.headers.get("location") ?? "x:").pathname, `${role} ${ws.join(",")}`).not.toMatch(/^\/serwis/);
+      if (role !== "admin") expect(new URL(res.headers.get("location")!).pathname).toBe(home);
+    }
+  });
+
+  it("admin w podglądzie „Serwis” wchodzi do panelu, a inne moduły wracają do zleceń", async () => {
+    profile("admin");
+    const inside = new NextRequest("https://example.com/serwis/zamienniki", { headers: { cookie: "ontime_admin_panel=serwis" } });
+    expect((await proxy(inside)).headers.get("location")).toBeNull();
+    const outside = new NextRequest("https://example.com/kolejka", { headers: { cookie: "ontime_admin_panel=serwis" } });
+    expect(new URL((await proxy(outside)).headers.get("location")!).pathname).toBe("/serwis/zlecenia");
+  });
+});

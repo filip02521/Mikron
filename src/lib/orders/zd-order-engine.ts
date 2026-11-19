@@ -6,10 +6,12 @@
  * Moduł serwerowy (DB + Subiekt ORDERS). Bez autoryzacji — caller sprawdza uprawnienia.
  */
 
+import { stockOutBadgesByTwId, type ZdStockOutBadge } from "@/lib/orders/stock-out-signals";
+import { loadActiveStockOutSignals } from "@/lib/orders/stock-out-signals-db";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { fetchZdEstimateExclusions, type ZdEstimateExclusionRow } from "@/lib/data/zd-estimate-exclusions";
 import { type ZdEstimateOnRequestRow } from "@/lib/data/zd-estimate-on-request";
-import { fetchZdEstimateOnRequestsWithServiceParts } from "@/lib/data/service-parts";
+import { fetchServiceMinStockTwIdsForSupplier, fetchZdEstimateOnRequestsWithServiceParts } from "@/lib/data/service-parts";
 import {
   buildBakeExcludedTwIds,
   buildExtraOnlyTwIds,
@@ -57,6 +59,7 @@ import {
 import {
   buildManualZdEstimateResult,
   ZD_ESTIMATE_MISSING_SKU_FETCH_CONCURRENCY,
+  ZD_ESTIMATE_PAGE_FETCH_CONCURRENCY,
   type ManualZdEstimateResult,
 } from "@/lib/orders/zd-estimate-manual";
 import { mapPool } from "@/lib/async/map-pool";
@@ -444,6 +447,8 @@ export type ZdOrderEngineInput = {
    */
   compareClassic?: boolean;
   onProgress?: (patch: ZdOrderEngineProgressPatch) => void;
+  /** true = przestań pobierać strony z Subiekta (Kreator: liczenie zastąpione nowszym). */
+  shouldStop?: () => boolean;
 };
 
 export type { ZdSalesSmoothingSummary };
@@ -467,6 +472,8 @@ export type ZdOrderEngineOutput = {
   otherSupplierHintByTwId: Record<number, string>;
   /** tw → wiszące prośby na ten towar przypisane innemu dostawcy (podpowiedź). */
   prosbyElsewhereByTwId: Record<number, ZdProsbaElsewhere[]>;
+  /** tw → aktywne zgłoszenia „brak na stanie” od handlowców (odznaka w wierszu). */
+  stockOutByTwId: Record<number, ZdStockOutBadge>;
   /** Prośby tego dostawcy w Weryfikacji — poza Kreatorem do uzupełnienia; null = nie udało się policzyć. */
   incompleteProsbyCount: number | null;
   fetch: { pagesFetched: number; totalCountApi: number; truncated: boolean };
@@ -587,6 +594,10 @@ export async function runZdOrderEngine(
       tylkoBraki: false,
     },
     {
+      // Duże zakresy też po 4 strony — profil sprzedaży (12 okien w tle) zostaje przy 2.
+      concurrency: ZD_ESTIMATE_PAGE_FETCH_CONCURRENCY,
+      pagesHintKey: `${scope.mode}:${(scope.mode === "cecha" ? scope.cechaId : scope.grupaId) ?? 0}`,
+      shouldStop: input.shouldStop,
       validateFirstPage: ({ parametry }) =>
         assertZdEstimateFilterEcho({
           mode: scope.mode,
@@ -652,6 +663,9 @@ export async function runZdOrderEngine(
         tylkoBraki: false,
       },
       {
+        concurrency: ZD_ESTIMATE_PAGE_FETCH_CONCURRENCY,
+        pagesHintKey: `${extra.mode}:${extraId}`,
+        shouldStop: input.shouldStop,
         validateFirstPage: ({ parametry }) =>
           assertZdEstimateFilterEcho({
             mode: extra.mode,
@@ -928,8 +942,16 @@ export async function runZdOrderEngine(
     pendingIndividuals = [];
   }
 
+  // Części serwisowe z minimum ustawionym przez serwis: dociągane do listy swojego dostawcy jak prośby
+  // (nie leżą w zakresach dostawców); błąd odczytu nie zrywa Policz — lista bez nich, jak przed zmianą.
+  const serviceMinTwIds = supplierIdForIndividuals
+    ? await fetchServiceMinStockTwIdsForSupplier(supplierIdForIndividuals, minStockByTwIdOwn).catch((e: unknown) => {
+        console.warn("[zd-order-engine] minimum części serwisowych", e);
+        return [] as number[];
+      })
+    : [];
   const idsToFetch = [
-    ...new Set([...partnerIdsToFetch, ...bomIdsToFetch, ...individualTwIdsToFetch]),
+    ...new Set([...partnerIdsToFetch, ...bomIdsToFetch, ...individualTwIdsToFetch, ...serviceMinTwIds]),
   ];
 
   touchProgress({ phase: "enrich" });
@@ -1455,6 +1477,10 @@ export async function runZdOrderEngine(
   // przypisane innemu dostawcy, prośby tego dostawcy czekające na uzupełnienie.
   const otherSupplierHintByTwId: Record<number, string> = {};
   const prosbyElsewhereByTwId: Record<number, ZdProsbaElsewhere[]> = {};
+  // Zgłoszenia braku nie mają dostawcy w kluczu — po towarze, niezależnie od dostawcy.
+  const stockOutByTwId: Record<number, ZdStockOutBadge> = stockOutBadgesByTwId(
+    await loadActiveStockOutSignals({ twIds: result.pozycje.map((p) => p.tw_Id) }).catch(() => [])
+  );
   let incompleteProsbyCount: number | null = null;
   if (input.supplierId) {
     const supplierId = input.supplierId;
@@ -1594,6 +1620,7 @@ export async function runZdOrderEngine(
     assignedElsewhere,
     otherSupplierHintByTwId,
     prosbyElsewhereByTwId,
+    stockOutByTwId,
     incompleteProsbyCount,
     fetch: {
       pagesFetched: fetched.pagesFetched,

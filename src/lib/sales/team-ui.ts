@@ -48,8 +48,8 @@ export function salesTeamPageCopy(
     if (!ctx.hasTeamScope) {
       return {
         title: "Podgląd zespołu",
-        description:
-          "Poproś administratora o przypisanie grup (np. Sklep, Biuro) do Twojego konta.",
+        // Brak grup mówi baner nad nagłówkiem — opis nie powtarza tej samej prośby.
+        description: "Prośby, ZK i notatki handlowców z Twoich grup.",
       };
     }
     return {

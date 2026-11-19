@@ -16,7 +16,11 @@ import type { FormMessage, TransientNotice } from "@/lib/ui/notice-content";
 import { Field, Select } from "@/components/ui/Field";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
 import { ProsbaSupplierLeadTimeMeta } from "@/components/orders/ProsbaSupplierLeadTimeMeta";
-import { RequestKindToggle } from "@/components/orders/RequestKindToggle";
+import { SalesRequestChoiceToggle } from "@/components/orders/RequestKindToggle";
+import { NewFeatureCallout } from "@/components/ui/NewFeatureCallout";
+import { isStockOutAlreadyReportedMessage } from "@/lib/orders/informacja-duplicate";
+import type { ProsbaStockOutReportResult } from "@/lib/orders/prosba-stock-out-report";
+import type { ProductLineDraft } from "@/components/orders/request-product-lines";
 import type { DeliveryStats, IndividualRequestKind } from "@/types/database";
 import type { SupplierScheduleSnapshot } from "@/lib/orders/my-order-presenter";
 import type { WeekDayPlan } from "@/lib/orders/summary-workspace";
@@ -836,6 +840,41 @@ export function OrderFormClient({
       );
     },
     [setGroups]
+  );
+
+  /** Karta „Dostępność”: osobny sygnał braku na stanie — nie rusza składanej prośby. */
+  const reportStockOut = useCallback(
+    async (line: ProductLineDraft): Promise<ProsbaStockOutReportResult> => {
+      try {
+        await unwrapActionResult(
+          actionAddIndividualOrders({
+            entries: [
+              {
+                supplierId: line.supplierId?.trim() || undefined,
+                salesPersonId: lockedId,
+                symbol: line.symbol,
+                mikranCode: line.mikranCode,
+                product: line.product,
+                requestKind: "informacja",
+                subiektTwId: line.subiektTwId,
+                onHand: line.onHand,
+                reserved: line.reserved,
+                available: line.available,
+                stockSource: line.stockSource,
+                source: line.source,
+                informacjaQueueViaDailyPanel: false,
+                informacjaStockOutReorder: true,
+              },
+            ],
+          })
+        );
+        return { ok: true };
+      } catch (e) {
+        const message = userFacingErrorText(e, "Nie udało się zgłosić braku - spróbuj ponownie.");
+        return { ok: false, alreadyReported: isStockOutAlreadyReportedMessage(message), message };
+      }
+    },
+    [lockedId]
   );
 
   const performSubmit = (
@@ -1750,28 +1789,16 @@ export function OrderFormClient({
                     >
                       {PROSBA_FORM_SECTION_COPY.requestKind.title}
                     </h2>
-                    <RequestKindToggle
-                      value={requestKind}
+                    <SalesRequestChoiceToggle
+                      value={requestKind === "zamowienie" ? "zamowienie" : "powiadom"}
                       disabled={pending || tourDemo}
-                      onChange={(kind) => {
-                        setRequestKind(kind);
-                        if (kind === "informacja") {
-                          setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
-                        } else {
-                          setInformacjaPath("direct");
-                        }
+                      onChange={(choice) => {
+                        // Brak na stanie nie jest rodzajem prośby — zgłasza się go z karty „Dostępność” przy pozycji.
+                        setRequestKind(choice === "zamowienie" ? "zamowienie" : "informacja");
+                        setInformacjaPath("direct");
                       }}
                     />
                   </section>
-
-                  {requestKind === "informacja" ? (
-                    <ProsbaFormInformacjaSection
-                      plain
-                      path={informacjaPath}
-                      onChange={setInformacjaPath}
-                      disabled={pending || tourDemo}
-                    />
-                  ) : null}
 
                   <ProsbaFormProductsSection
                     plain
@@ -1800,6 +1827,17 @@ export function OrderFormClient({
                         />
                       ) : (
                         <>
+                          {tourDemo ? null : (
+                            <NewFeatureCallout
+                              id="prosba-stock-out-strip-v1"
+                              title="Brak na stanie zgłosisz przy towarze"
+                              until="2026-12-31"
+                              arrow="bottom"
+                            >
+                              Wybierz towar. Gdy w karcie „Dostępność” nie ma nic wolnego, kliknij „Zgłoś brak na
+                              stanie” - zakupy dostaną sygnał, a ta prośba się nie zmieni.
+                            </NewFeatureCallout>
+                          )}
                           <RequestProductLinesEditor
                             lines={group}
                             onChange={(lines) => {
@@ -1812,6 +1850,7 @@ export function OrderFormClient({
                             alreadyOrderedCheck={!tourDemo}
                             alreadyOrderedForSalesPersonId={lockedId || null}
                             alreadyOrderedForOther={submitForOther}
+                            onReportStockOut={tourDemo ? undefined : reportStockOut}
                             onRequestKindChange={(kind) => {
                               clearFormNotice();
                               setRequestKind(kind);

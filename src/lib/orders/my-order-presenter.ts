@@ -40,6 +40,8 @@ import {
   formatOrderQuantityLabel,
   getDeliveryProgress,
   isInformacjaRequest,
+  orderUnit,
+  orderUnitGenitive,
   type DeliveryProgress,
 } from "@/lib/orders/individual";
 import { isInformacjaQueueViaDailyPanel } from "@/lib/orders/informacja-via-daily-panel";
@@ -508,7 +510,8 @@ function aggregateProgressLabel(orders: IndividualOrder[]): string | null {
       order.quantity,
       order.delivered_quantity && order.delivered_quantity !== "-"
         ? order.delivered_quantity
-        : "0"
+        : "0",
+      Boolean(order.is_teeth)
     );
     if (!progress.hasNumericQty || progress.ordered == null) continue;
     numericLines++;
@@ -522,19 +525,22 @@ function aggregateProgressLabel(orders: IndividualOrder[]): string | null {
       orders[0].quantity,
       orders[0].delivered_quantity && orders[0].delivered_quantity !== "-"
         ? orders[0].delivered_quantity
-        : "0"
+        : "0",
+      Boolean(orders[0].is_teeth)
     ));
   }
 
+  // Sumę liczymy w klapkach tylko, gdy cała grupa to zęby.
+  const teeth = orders.every((o) => o.is_teeth);
   const status = orders[0].status;
   if (status === "Zrealizowane" && delivered >= ordered) {
     return numericLines > 1
-      ? `Wszystkie ${ordered} szt. (${numericLines} prod.)`
-      : `Wszystkie ${ordered} szt. na magazynie`;
+      ? `Wszystkie ${ordered} ${orderUnit(ordered, teeth)} (${numericLines} prod.)`
+      : `Wszystkie ${ordered} ${orderUnit(ordered, teeth)} na magazynie`;
   }
   return numericLines > 1
-    ? `${delivered}/${ordered} szt. · ${numericLines} prod.`
-    : `${delivered} z ${ordered} szt. na magazynie`;
+    ? `${delivered}/${ordered} ${orderUnit(ordered, teeth)} · ${numericLines} prod.`
+    : `${delivered} z ${ordered} ${orderUnitGenitive(ordered, teeth)} na magazynie`;
 }
 
 function groupProductSummary(lines: MyOrderLine[]): string {
@@ -597,26 +603,28 @@ function salesProgressLabel(
   }
   const q = progress.ordered;
   const d = progress.delivered;
+  const unit = orderUnit(q, progress.isTeeth);
+  const ofUnit = orderUnitGenitive(q, progress.isTeeth);
 
   if (status === "Weryfikacja") {
-    return progress.hasNumericQty ? `Prośba: ${q} szt.` : null;
+    return progress.hasNumericQty ? `Prośba: ${q} ${unit}` : null;
   }
   if (status === "Nowe") {
-    return progress.hasNumericQty ? `Prośba: ${q} szt.` : null;
+    return progress.hasNumericQty ? `Prośba: ${q} ${unit}` : null;
   }
   if (status === "Zamowione" && d === 0) {
-    return `0 z ${q} szt.`;
+    return `0 z ${q} ${ofUnit}`;
   }
   if (status === "Czesciowo_zrealizowane") {
-    return `${d} z ${q} szt.`;
+    return `${d} z ${q} ${ofUnit}`;
   }
   if (status === "Zrealizowane") {
-    return `wszystkie ${q} szt.`;
+    return `wszystkie ${q} ${unit}`;
   }
   if (d > 0) {
-    return `${d} z ${q} szt.`;
+    return `${d} z ${q} ${ofUnit}`;
   }
-  return `0 z ${q} szt.`;
+  return `0 z ${q} ${ofUnit}`;
 }
 
 function teethHandoverStatusDetail(
@@ -631,11 +639,11 @@ function teethHandoverStatusDetail(
   if (order.status === "Czesciowo_zrealizowane") {
     const remaining =
       progress.remaining != null && progress.remaining > 0
-        ? ` Reszta (${progress.remaining} szt.) czeka u dostawcy.`
+        ? ` Reszta (${progress.remaining} ${orderUnit(progress.remaining, true)}) czeka u dostawcy.`
         : "";
-    return `Magazyn przyjął ${d} z ${q} szt.${remaining} Odbiór osobisty - potwierdź, gdy otrzymasz od magazynu.`;
+    return `Magazyn przyjął ${d} z ${q} ${orderUnitGenitive(q, true)}.${remaining} Odbiór osobisty - potwierdź, gdy otrzymasz od magazynu.`;
   }
-  return `Magazyn przyjął ${d} z ${q} szt. Odbierz osobiście - nie trafia na regał. Potwierdź odbiór po doręczeniu.`;
+  return `Magazyn przyjął ${d} z ${q} ${orderUnitGenitive(q, true)}. Odbierz osobiście - nie trafia na regał. Potwierdź odbiór po doręczeniu.`;
 }
 
 function presentInformacja(
@@ -848,8 +856,8 @@ function presentZamowienie(
     quantityLabel:
       progress.hasNumericQty && displayQty != null
         ? progress.cancelled > 0 && progress.ordered != null
-          ? `${displayQty} szt. (z ${progress.ordered} · ${progress.cancelled} wycofane)`
-          : `${displayQty} szt.`
+          ? `${displayQty} ${orderUnit(displayQty, progress.isTeeth)} (z ${progress.ordered} · ${progress.cancelled} wycofane)`
+          : `${displayQty} ${orderUnit(displayQty, progress.isTeeth)}`
         : formatOrderQuantityLabel(order.quantity, order.request_kind),
     progressLabel:
       salesProgressLabel(order.status, progress) ??
@@ -858,7 +866,7 @@ function presentZamowienie(
         : order.delivered_quantity && order.delivered_quantity !== "-"
           ? order.delivered_quantity
           : progress.hasNumericQty && displayQty != null
-            ? `${displayQty} szt. zamówione`
+            ? `${displayQty} ${orderUnit(displayQty, progress.isTeeth)} zamówione`
             : null),
     rowColor: SUMMARY_COLORS.historyNew,
     isTeeth: Boolean(order.is_teeth),

@@ -240,6 +240,8 @@ Nowoczesność tutaj to spokój, nie efekt: jedna warstwa kart na tle, nagłówk
 
 Aplikacja ma motyw jasny i ciemny; każdy użytkownik wybiera Jasny, Ciemny albo Jak w systemie (Colors → „Motyw ciemny”). Nowe konto zaczyna od jasnego. Ciemne tło z gradientem marki występuje wyłącznie na ekranach logowania i nie jest motywem ciemnym. Tarcza marki (`BrandCardAccent`) pojawia się tylko w momentach marki: logowanie, strona 404, onboarding i puste stany pierwszego uruchomienia. Na ekranach pracy jej nie ma.
 
+Panel serwisu (`/serwis` i `/serwis/*`) ma własny świat, opisany w `DESIGN-serwis.md` i włączany klasą `.serwis-world`. Nadpisuje on tylko trzy rzeczy: paletę (fiolet atramentu pieczątki zamiast Petrolu w tych samych klasach `indigo-*` i `bg-primary`, grunt `--background`), szkielet (pas Serwisu u góry zamiast menu bocznego dla roli `serwis`) oraz słownik rubryk i pieczątek (w tym wersaliki etykiet rubryk). Wszystko inne w tym pliku obowiązuje w Serwisie bez zmian.
+
 ## Colors
 
 Szarości są chłodne (lekko w stronę niebieskiego), Petrol jest jedynym nasyconym kolorem, a zieleń, bursztyn i czerwień oznaczają wyłącznie stany.
@@ -398,7 +400,7 @@ Komponenty bazowe są w `src/components/ui/`. Zanim napiszesz własny przycisk, 
 ### Buttons
 
 - **Kształt:** 6px. Rozmiary `sm` (12px tekstu), `md` (14px, domyślny), `lg` (16px). Na telefonie przyciski w `PageHeader` mają min. 44px wysokości.
-- **Ekran dotykowy (`.touch-ui`):** moduł obsługiwany palcem przy każdej szerokości (panel serwisu: strony, panele boczne, okna) ma klasę `touch-ui` na korzeniu strony, panelu i `ModalShell` — każdy przycisk, pole i lista ma wtedy min. 44px wysokości. W tym zakresie nie dawaj kontrolkom `min-h-*` poniżej `min-h-11` (klasa wygrywa z zakresem). Ikona bez tekstu: `h-11 w-11`.
+- **Ekran dotykowy (`.touch-ui`):** moduł obsługiwany palcem przy każdej szerokości (panel serwisu: strony, panele boczne, okna) ma klasę `touch-ui` na korzeniu strony, panelu i `ModalShell` — każdy przycisk, pole i lista ma wtedy min. 44px wysokości. W tym zakresie nie dawaj kontrolkom `min-h-*` poniżej `min-h-11` (klasa wygrywa z zakresem). Ikona bez tekstu: `h-11 w-11`. Klawiatura ekranowa (Windows z dotykiem, Chrome/Edge): pole w `.touch-ui`, które dostaje fokus po stuknięciu palcem lub piórem — także samo, z `autoFocus` w otwartym oknie — pokazuje klawiaturę dotykową i przewija się nad nią (`installTouchKeyboardAssist`, `src/lib/ui/touch-keyboard.ts`); po wyjściu z pól klawiatura się chowa. Mysz i fizyczna klawiatura bez zmian; bez VirtualKeyboard API (Firefox, Safari) robi to system.
 - **Kroki sprawy (np. statusy zlecenia):** jeden duży przycisk główny na całą szerokość (krok naprzód, ikona znaczenia, pod nim zdanie o skutku, gdy system robi coś sam), pod nim równe przyciski drugorzędne z ikoną (wstrzymanie, cofnięcie „Wróć do: …”). Anulowanie nie stoi obok kroków — osobno na końcu panelu.
 - **Primary:** pełny Petrol, biały tekst, cień kontrolki. Hover `bg-primary-hover`, wciśnięcie `bg-primary-pressed` i lekkie zmniejszenie (`scale 0.97`, 75 ms; wyłączone przy `prefers-reduced-motion`). Etykieta to czasownik, najlepiej z liczbą („Zapisz 421 cen”). Jeden na ekran.
 - **Secondary:** tło `bg-card`, obramowanie `line`, tekst `slate-700`; hover tło `slate-50` i obramowanie `slate-300`.
@@ -478,6 +480,10 @@ Ustawienia jednego obiektu mają jedno okno i jedno miejsce stałe: kartę obiek
 ### Pulpit
 
 Ekran przeglądu wielu obiektów (Automat ZD): na górze Status Panel ze zdaniem stanu i jedną akcją, która prowadzi do tego, co wymaga reakcji („Pokaż 2 do sprawdzenia” ustawia filtr tabeli). Pod nim jedna tabela, jeden wiersz na obiekt; ten sam obiekt nie pojawia się w drugiej tabeli. Szczegóły (pełne wskaźniki z trendem, akcje, przejście do karty) rozwijają się pod wierszem. Widok innego rodzaju (Klasy towarów) wybiera przełącznik segmentowy nad tabelą, bez liczników, które powtarzają filtry tabeli.
+
+### Lista pracy na dziś
+
+Lista obiektów, przy których trzeba dziś coś zrobić (Panel dzienny → „Dostawcy na dziś”, `DailySupplierList`): jeden wiersz na obiekt, także gdy trafił na listę z kilku źródeł. Grupy mówią, co zrobić („Do wysłania”, „Do zamówienia”…), nie skąd wiersz się wziął; źródło to odznaka przy nazwie i chip filtra nad listą. Wiersz ma jeden stan (najwyżej kilka słów z liczbą) i jedną akcję po prawej, w wariancie Outline — pełny Petrol zostaje dla akcji strony. Reszta (szczegóły, rzadsze akcje) rozwija się strzałką pod wierszem, w bloku `well`. Nazwa obiektu otwiera jego kartę i ma cichą kreskę (`decoration-slate-300`). Długa grupa pokazuje podgląd i „Pokaż wszystkie (N)”. Liczba z nagłówka listy nie powtarza się w chipie „Wszyscy N”. Na telefonie nazwa zajmuje całą szerokość, a stan i akcja stoją pod nią w jednej linii.
 
 ### Status Panel
 

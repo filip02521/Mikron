@@ -62,7 +62,8 @@ Bazowy cel z Subiekta to sprzedaż w oknie ÷ dni okna × dni zapasu, więc jedn
 albo sprzedaż pod klienta trafia w cel i Kreator dokupuje na stan. Ten sam endpoint
 `/orders/zd/estimate` zwraca sprzedaż dla dowolnego okna, więc profil to 12 okien po 30 dni
 (`zd_sales_profiles`, migracja 164). Nocny przebieg odświeża go, gdy ma ponad 3 dni; Kreator
-używa profilu do 14 dni od razu i odświeża go w tle (liczy synchronicznie tylko, gdy brak).
+używa profilu do 14 dni od razu i odświeża go w tle (liczy synchronicznie tylko, gdy brak). Na dawnych
+datach (koniec okna wcześniej niż profil, najwyżej o 14 dni) Kreator bierze profil z bazy bez liczenia.
 Zapis: upsert + usunięcie towarów spoza zakresu, jedno liczenie zakresu naraz, profil starszego
 okna nie nadpisuje nowszego.
 

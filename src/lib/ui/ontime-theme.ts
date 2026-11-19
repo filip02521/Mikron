@@ -356,10 +356,9 @@ export const zdEstimatePageIntroClass = cn(
  * Główny rząd top bara — tożsamość + (xl) fakty + akcje.
  * Bez wrap: fakty poniżej xl są w osobnym rzędzie w PageIntro.
  */
-export const zdEstimatePageIntroRowClass = cn(
-  "flex min-w-0 items-center gap-2 sm:gap-3",
-  zdEstimateChromeControlHeightClass
-);
+// Telefon: przyciski (Zakres, Dostawcy, Reguły) schodzą pod tytuł zamiast wychodzić za ekran.
+export const zdEstimatePageIntroRowClass =
+  "flex min-h-8 min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 sm:h-8 sm:flex-nowrap sm:gap-3";
 
 /**
  * CTA tekstowe w chrome (top bar / belka) — zawsze h-8.
@@ -387,10 +386,9 @@ export const zdEstimateToolbarMenuClass = cn(
 );
 
 /** Grupa akcji po prawej w top barze. */
-export const zdEstimateToolbarActionsClusterClass = cn(
-  "flex shrink-0 items-center gap-1 sm:gap-1.5",
-  zdEstimateChromeControlHeightClass
-);
+// Telefon: przyciski zawijają się w kolejny rząd zamiast wychodzić za ekran.
+export const zdEstimateToolbarActionsClusterClass =
+  "flex max-w-full shrink-0 flex-wrap items-center gap-1 sm:h-8 sm:flex-nowrap sm:gap-1.5";
 
 /** LIVE / host badge w top barze — odznaka statusu h-6 z kropką, wyśrodkowana w slocie h-8. */
 export const zdEstimateHostBadgeClass =

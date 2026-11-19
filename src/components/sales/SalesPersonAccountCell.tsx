@@ -10,7 +10,10 @@ function formatAccountDate(iso: string | null | undefined): string | null {
 /** Kolumna „Konto w systemie” — rozdziela utworzenie konta, aktywność i logowanie. */
 export function SalesPersonAccountCell({
   row,
+  rowEmail,
 }: {
+  /** E-mail z kolumny obok — gdy login jest ten sam, nie powtarzamy go (każdy fakt raz, węższa tabela). */
+  rowEmail?: string | null;
   row: Pick<
     SalesPersonAdminRow,
     | "linkedUserEmail"
@@ -37,8 +40,10 @@ export function SalesPersonAccountCell({
       <Badge variant="success" className="text-[0.625rem]">
         Ma konto
       </Badge>
-      <p className="text-xs text-slate-600">{row.linkedUserEmail}</p>
-      {created ? <p className="text-[0.6875rem] text-slate-400">Konto od: {created}</p> : null}
+      {rowEmail && rowEmail.trim().toLowerCase() === row.linkedUserEmail.trim().toLowerCase() ? null : (
+        <p className="text-xs text-slate-600">Login: {row.linkedUserEmail}</p>
+      )}
+      {created ? <p className="text-[0.6875rem] text-slate-500">Konto od: {created}</p> : null}
       {activity ? (
         <p className="text-[0.6875rem] text-slate-500">Ostatnia aktywność: {activity}</p>
       ) : signIn ? (

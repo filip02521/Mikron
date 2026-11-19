@@ -229,11 +229,14 @@ export function IconCalendarRange(props: StrokeIconProps) {
 }
 
 /** Magazyn / regał */
+/** Magazyn / przyjęcie towaru — ułożone kartony (dawny regał w małym rozmiarze wyglądał jak znak pisma). */
 export function IconWarehouse(props: StrokeIconProps) {
   return (
     <Svg {...props}>
-      <path d="M3 9h18M3 15h18M7 9v10M12 9v10M17 9v10" />
-      <path d="M5 7h4v2H5zM10 7h4v2h-4zM15 7h4v2h-4z" />
+      <rect x="2.5" y="12.5" width="9" height="8" rx="1" />
+      <rect x="12.5" y="12.5" width="9" height="8" rx="1" />
+      <rect x="7.5" y="3.5" width="9" height="8" rx="1" />
+      <path d="M7 12.5v2.5M17 12.5v2.5M12 3.5V6" />
     </Svg>
   );
 }
