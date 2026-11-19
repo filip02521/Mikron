@@ -75,8 +75,8 @@ export type NavGroup = {
 export const NAV_SECTION_TODAY = "Dziś";
 /** Zakupy / admin: przygotowanie i złożenie zamówień (Kreator ZD, grupowe, historia). */
 export const NAV_SECTION_ORDERING = "Zamawianie";
-/** Zakupy / admin: import i logistyka (odprawy, magazyn zewnętrzny, kurierzy). */
-export const NAV_SECTION_LOGISTICS = "Import i logistyka";
+/** Zakupy / admin: dostawcy, przyjęcie i import (karty, poczta, cenniki, magazyny, odprawy, kurierzy). */
+export const NAV_SECTION_SUPPLIERS_IMPORT = "Dostawcy i import";
 /** Admin: ludzie i dostęp (hub, konta, handlowcy, grupy, zgłoszenia). */
 export const NAV_SECTION_ADMIN = "Administracja";
 export const NAV_SECTION_TEAM = "Zespół";
@@ -357,10 +357,15 @@ export function teethNavGroups(badges: NavBadges = {}): NavGroup[] {
   return groups;
 }
 
-function operationsTodayItems(
-  badges: Pick<NavBadges, "nowe" | "weryfikacja" | "realizacja">
+/**
+ * „Codziennie”: to, co dział otwiera prawie każdego dnia (wejścia z produkcji, XI 2026: panel 443, Kreator 298,
+ * tablica 73, notatki 33, weryfikacja 25 na 30 dni). Przyjęcie towaru to praca magazynu — jest w „Dostawcy i import”.
+ */
+function operationsDailyItems(
+  role: UserRole,
+  badges: Pick<NavBadges, "nowe" | "weryfikacja" | "operationsNotatki" | "departmentBoardQuestions">
 ): NavItem[] {
-  return [
+  const items: NavItem[] = [
     {
       href: "/podsumowanie",
       label: "Panel dzienny",
@@ -372,6 +377,31 @@ function operationsTodayItems(
       highlight: true,
       mobileSlot: "primary",
       badge: badges.nowe,
+    },
+  ];
+  if (role === "admin" || role === "zakupy") {
+    items.push({
+      href: "/zakupy/szacunek",
+      label: "Kreator ZD",
+      mobileLabel: "Kreator",
+      description: "Lista do zamówienia z grupy",
+      icon: "zdCreator",
+      tone: "violet",
+      tier: "primary",
+      mobileSlot: "overflow",
+    });
+  }
+  items.push(
+    {
+      href: DEPARTMENT_BOARD_PROCUREMENT_PATH,
+      label: "Tablica",
+      mobileLabel: "Tablica",
+      description: "Ogłoszenia i pytania handlowców",
+      icon: "board",
+      tone: "indigo",
+      tier: "primary",
+      mobileSlot: "primary",
+      badge: badges.departmentBoardQuestions,
     },
     {
       href: "/weryfikacja",
@@ -385,33 +415,49 @@ function operationsTodayItems(
       badge: badges.weryfikacja,
     },
     {
-      href: "/kolejka",
-      label: "Przyjęcie towaru",
-      mobileLabel: "Magazyn",
-      description: "Przyjęcie i dziennik dostaw",
-      icon: "warehouse",
-      tone: "emerald",
-      tier: "primary",
-      mobileSlot: "primary",
-      badge: badges.realizacja,
-    },
-  ];
-}
-
-/** Zamawianie: Kreator ZD, braki i automat (admin + zakupy), formularz grupowy i archiwum zamówień. */
-function operationsOrderingItems(role: UserRole): NavItem[] {
-  const items: NavItem[] = [];
-  if (role === "admin" || role === "zakupy") {
-    items.push({
-      href: "/zakupy/szacunek",
-      label: "Kreator ZD",
-      mobileLabel: "Kreator",
-      description: "Lista do zamówienia z grupy",
-      icon: "zdCreator",
-      tone: "violet",
+      href: OPERATIONS_NOTATKI_PATH,
+      label: "Notatki",
+      mobileLabel: "Notatki",
+      description: "Notatki zespołu zakupów",
+      icon: "notepad",
+      tone: "indigo",
       tier: "primary",
       mobileSlot: "overflow",
-    });
+      badge: badges.operationsNotatki,
+    }
+  );
+  return items;
+}
+
+/** Przyjęcie towaru — praca magazynu; zakupy zaglądają tu rzadko, więc stoi w „Dostawcy i import”. */
+const receivingNavItem = (badges: Pick<NavBadges, "realizacja">): NavItem => ({
+  href: "/kolejka",
+  label: "Przyjęcie towaru",
+  mobileLabel: "Magazyn",
+  description: "Przyjęcie i dziennik dostaw",
+  icon: "warehouse",
+  tone: "emerald",
+  tier: "compact",
+  // Dolny pasek na telefonie bez zmian (Panel, Tablica, Weryfikacja, Magazyn) — mobileSlot nie zależy od grupy.
+  mobileSlot: "primary",
+  badge: badges.realizacja,
+});
+
+/** Zamawianie: historia, braki i automat (admin + zakupy) i formularz grupowy — Kreator ZD jest w „Codziennie”. */
+function operationsOrderingItems(role: UserRole): NavItem[] {
+  const items: NavItem[] = [
+    {
+      href: "/historia",
+      label: "Historia zamówień",
+      mobileLabel: "Historia",
+      description: "Archiwum zamówień",
+      icon: "history",
+      tone: "slate",
+      tier: "compact",
+      mobileSlot: "overflow",
+    },
+  ];
+  if (role === "admin" || role === "zakupy") {
     items.push({
       href: "/zakupy/braki",
       label: "Braki i zamówienia",
@@ -432,58 +478,22 @@ function operationsOrderingItems(role: UserRole): NavItem[] {
       mobileSlot: "overflow",
     });
   }
-  items.push(
-    {
-      href: "/zamowienia/nowe",
-      label: "Zamówienie grupowe",
-      mobileLabel: "Grupowe",
-      description: "Formularz zbiorczy",
-      icon: "groupOrder",
-      tone: "slate",
-      tier: "compact",
-      mobileSlot: "overflow",
-    },
-    {
-      href: "/historia",
-      label: "Historia zamówień",
-      mobileLabel: "Historia",
-      description: "Archiwum zamówień",
-      icon: "history",
-      tone: "slate",
-      tier: "compact",
-      mobileSlot: "overflow",
-    }
-  );
+  items.push({
+    href: "/zamowienia/nowe",
+    label: "Zamówienie grupowe",
+    mobileLabel: "Grupowe",
+    description: "Formularz zbiorczy",
+    icon: "groupOrder",
+    tone: "slate",
+    tier: "compact",
+    mobileSlot: "overflow",
+  });
   return items;
 }
 
-function operationsTeamItems(badges: {
-  operationsNotatki?: number;
-  departmentBoardQuestions?: number;
-}): NavItem[] {
+/** Zespół (zwinięty): urlopy działu i — na początku miesiąca — podsumowanie; tablica i notatki są w „Codziennie”. */
+function operationsTeamItems(): NavItem[] {
   return [
-    {
-      href: DEPARTMENT_BOARD_PROCUREMENT_PATH,
-      label: "Tablica",
-      mobileLabel: "Tablica",
-      description: "Ogłoszenia i pytania handlowców",
-      icon: "board",
-      tone: "indigo",
-      tier: "primary",
-      mobileSlot: "primary",
-      badge: badges.departmentBoardQuestions,
-    },
-    {
-      href: OPERATIONS_NOTATKI_PATH,
-      label: "Notatki",
-      mobileLabel: "Notatki",
-      description: "Notatki zespołu zakupów",
-      icon: "notepad",
-      tone: "indigo",
-      tier: "primary",
-      mobileSlot: "overflow",
-      badge: badges.operationsNotatki,
-    },
     {
       href: "/urlopy",
       label: "Urlopy działu",
@@ -696,24 +706,25 @@ function adminCatalogMailItems(): NavItem[] {
 }
 
 /**
- * Menu zakupów i admina — od codziennej pracy do konfiguracji:
- * Dziś → Zamawianie → Zespół → Dostawcy → Import i logistyka → (admin) Administracja → Katalog i poczta.
- * Codzienne sekcje stałe, rzadziej używane — zwijane.
+ * Menu zakupów i admina — kolejność z wejść na produkcji (XI 2026), od codziennej pracy do konfiguracji:
+ * Codziennie → Zamawianie → Dostawcy i import → Zespół (zwinięty) → (admin) Administracja → Katalog i poczta.
+ * „Codziennie” i „Zamawianie” stałe, reszta zwijana.
  */
 function operationsNavGroups(role: UserRole, badges: NavBadges): NavGroup[] {
   const groups: NavGroup[] = [
-    { title: NAV_SECTION_TODAY, items: operationsTodayItems(badges) },
+    { title: NAV_SECTION_DAILY, items: operationsDailyItems(role, badges) },
     { title: NAV_SECTION_ORDERING, items: operationsOrderingItems(role) },
-    { title: NAV_SECTION_TEAM, items: operationsTeamItems(badges) },
     {
-      title: NAV_SECTION_SUPPLIERS,
-      items: supplierHubItemsForRole(role, badges),
+      // Jeden temat: wszystko o dostawcy i o tym, jak towar do nas trafia (dawniej „Dostawcy” + „Import i logistyka”).
+      title: NAV_SECTION_SUPPLIERS_IMPORT,
+      items: [...supplierHubItemsForRole(role, badges), receivingNavItem(badges), ...logisticsItems(badges)],
       collapsible: true,
     },
     {
-      title: NAV_SECTION_LOGISTICS,
-      items: logisticsItems(badges),
+      title: NAV_SECTION_TEAM,
+      items: operationsTeamItems(),
       collapsible: true,
+      defaultCollapsed: true,
     },
   ];
 
