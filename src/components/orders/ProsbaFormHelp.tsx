@@ -52,8 +52,8 @@ export function ProsbaFormHelp({
           </li>
           <li>
             <strong className="font-medium text-slate-800">Brak na stanie</strong> - to nie rodzaj
-            prośby. Wybierz towar: gdy w karcie „Dostępność” na półce nie ma nic wolnego, kliknij „Zgłoś
-            brak na stanie”. Zakupy dostaną osobny sygnał, a prośba się nie zmieni.
+            prośby. Gdy po wybraniu towaru karta „Dostępność” pokazuje brak na stanie, kliknij „Zgłoś
+            brak na stanie” - zakupy uzupełnią stan magazynu dla wszystkich klientów, a ta prośba się nie zmieni.
           </li>
         </ul>
       </HelpBlock>

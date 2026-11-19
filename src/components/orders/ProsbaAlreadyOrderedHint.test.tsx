@@ -240,11 +240,21 @@ describe("ProsbaAvailabilityCard", () => {
 });
 
 describe("ProsbaAvailabilityCard — zgłoś brak na stanie", () => {
+  it("plakietka „Nowość” znika po 31.12.2026", () => {
+    vi.setSystemTime(new Date("2027-01-02T10:00:00+01:00"));
+    render(<ProsbaAvailabilityCard line={line()} requestKind="zamowienie" info={undefined} onReportStockOut={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Zgłoś brak na stanie" })).toBeTruthy();
+    expect(screen.queryByText("Nowość")).toBeNull();
+  });
+
   it("pusta półka: przycisk, po kliknięciu osobne zgłoszenie i potwierdzenie bez zmiany prośby", async () => {
     const onReport = vi.fn().mockResolvedValue({ ok: true });
     render(<ProsbaAvailabilityCard line={line()} requestKind="zamowienie" info={undefined} onReportStockOut={onReport} />);
     const btn = screen.getByRole("button", { name: "Zgłoś brak na stanie" });
-    expect(screen.getByText(/ta prośba się nie zmieni/)).toBeTruthy();
+    // Zdanie mówi, po co klikać, a „Nowość” stoi przy przycisku (ogłoszenie nad pustym formularzem usunięte).
+    expect(screen.getByText(/Brakuje też dla innych klientów\?/)).toBeTruthy();
+    expect(screen.getByText(/Zakupy uzupełnią stan magazynu.*Ta prośba zostaje bez zmian/)).toBeTruthy();
+    expect(screen.getByText("Nowość")).toBeTruthy();
     await act(async () => {
       fireEvent.click(btn);
       fireEvent.click(btn);

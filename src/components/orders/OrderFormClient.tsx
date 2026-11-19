@@ -17,7 +17,6 @@ import { Field, Select } from "@/components/ui/Field";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
 import { ProsbaSupplierLeadTimeMeta } from "@/components/orders/ProsbaSupplierLeadTimeMeta";
 import { SalesRequestChoiceToggle } from "@/components/orders/RequestKindToggle";
-import { NewFeatureCallout } from "@/components/ui/NewFeatureCallout";
 import { isStockOutAlreadyReportedMessage } from "@/lib/orders/informacja-duplicate";
 import type { ProsbaStockOutReportResult } from "@/lib/orders/prosba-stock-out-report";
 import type { ProductLineDraft } from "@/components/orders/request-product-lines";
@@ -1827,17 +1826,8 @@ export function OrderFormClient({
                         />
                       ) : (
                         <>
-                          {tourDemo ? null : (
-                            <NewFeatureCallout
-                              id="prosba-stock-out-strip-v1"
-                              title="Brak na stanie zgłosisz przy towarze"
-                              until="2026-12-31"
-                              arrow="bottom"
-                            >
-                              Wybierz towar. Gdy w karcie „Dostępność” nie ma nic wolnego, kliknij „Zgłoś brak na
-                              stanie” - zakupy dostaną sygnał, a ta prośba się nie zmieni.
-                            </NewFeatureCallout>
-                          )}
+                          {/* „Nowość: zgłoś brak na stanie” jest na samym przycisku w karcie Dostępność (ProsbaStockOutReportStrip) —
+                              ogłoszenie nad pustym polem opisywało przycisk, którego jeszcze nie było widać. */}
                           <RequestProductLinesEditor
                             lines={group}
                             onChange={(lines) => {
