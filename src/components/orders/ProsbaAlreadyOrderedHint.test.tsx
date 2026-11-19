@@ -133,6 +133,16 @@ describe("ProsbaAvailabilityCard", () => {
     expect(screen.getByRole("button", { name: "Tylko powiadom, gdy dotrze" })).toBeTruthy();
   });
 
+  it("„Wolne z dostawy” wyjaśnia się po kliknięciu (nie tylko dymkiem po najechaniu)", () => {
+    render(
+      <ProsbaAvailabilityCard line={line()} requestKind="zamowienie" info={freeFuture} onSwitchToNotify={() => {}} />
+    );
+    const card = screen.getByRole("region", { name: "Dostępność towaru" });
+    expect(card.querySelector("[title]")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Co znaczy „Wolne z dostawy”" }));
+    expect(screen.getByText(/nie zabierają czekające ZK/)).toBeTruthy();
+  });
+
   it("wystarczy z półki wygrywa nad dostawą", () => {
     render(
       <ProsbaAvailabilityCard

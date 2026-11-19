@@ -13,6 +13,7 @@ import { buildProsbaLineStockStatusView } from "@/lib/orders/prosba-line-stock-u
 import { stockSnapshotFromLineDraft } from "@/lib/orders/prosba-stock-check";
 import type { IndividualRequestKind } from "@/types/database";
 import { cn } from "@/lib/cn";
+import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
 import {
   buildProsbaAlreadyOrderedView,
   formatPieces,
@@ -182,7 +183,6 @@ function AvailabilityStat({
 }) {
   return (
     <div
-      title={hint}
       className={cn(
         "-m-px flex min-w-0 flex-col items-center justify-center border border-slate-200/90 px-1.5 py-1.5 text-center sm:px-2 sm:py-2",
         emphasis ? "bg-indigo-50/70" : "bg-card",
@@ -191,11 +191,13 @@ function AvailabilityStat({
     >
       <dt
         className={cn(
-          "order-2 mt-1 text-[0.625rem] font-medium leading-none",
+          "order-2 mt-1 inline-flex items-center gap-0.5 text-[0.625rem] font-medium leading-none",
           emphasis ? "text-indigo-800" : "text-slate-500"
         )}
       >
         {label}
+        {/* Wyjaśnienie na klik (też na dotyku) — sam title nie działał, a kafelki zbierały martwe kliknięcia. */}
+        {hint ? <HelpHintBubble message={hint} ariaLabel={`Co znaczy „${label}”`} className="-my-1" /> : null}
       </dt>
       <dd
         className={cn(

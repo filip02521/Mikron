@@ -80,21 +80,56 @@ function toneStyles(tone: ProsbaFormReadinessView["tone"]) {
   }
 }
 
+/**
+ * Pole, do którego przenosi krok: pierwsze puste w tym samym oknie (albo na stronie).
+ * Handlowcy klikali „Produkt” w liście kroków i nic się nie działo (martwe kliknięcia w PostHogu, XI 2026).
+ */
+export function focusProsbaStepField(from: HTMLElement, field: "product" | "quantity"): boolean {
+  const scope: ParentNode = from.closest("[role=dialog]") ?? document;
+  const inputs = [...scope.querySelectorAll<HTMLInputElement>(`input[data-prosba-field="${field}"]`)].filter(
+    (el) => !el.disabled && !el.readOnly
+  );
+  const target = inputs.find((el) => !el.value.trim()) ?? inputs[0];
+  if (!target) return false;
+  target.scrollIntoView({ block: "center", behavior: "smooth" });
+  target.focus({ preventScroll: true });
+  return true;
+}
+
 function ReadinessStepRow({ step }: { step: ProsbaReadinessStep }) {
-  return (
-    <li className="flex gap-2.5">
+  const body = (
+    <>
       <StepIcon state={step.state} />
-      <div className="min-w-0 flex-1 pt-0.5">
-        <p
+      {/* span zamiast div/p — wiersz bywa wnętrzem <button>, który przyjmuje tylko treść liniową. */}
+      <span className="block min-w-0 flex-1 pt-0.5">
+        <span
           className={cn(
-            "text-sm font-medium leading-tight",
+            "block text-sm font-medium leading-tight",
             step.state === "action" ? "text-amber-950" : "text-slate-800"
           )}
         >
           {step.label}
-        </p>
-        <p className="mt-0.5 text-xs leading-snug text-slate-500">{step.detail}</p>
-      </div>
+        </span>
+        <span className="mt-0.5 block text-xs leading-snug text-slate-500">{step.detail}</span>
+      </span>
+    </>
+  );
+  // Kroki do uzupełnienia w tym formularzu (produkt, ilość) przenoszą do pola; dostawca i ścieżka dzieją się same.
+  const field = step.id === "product" || step.id === "quantity" ? step.id : null;
+  if (!field || (step.state !== "empty" && step.state !== "action")) {
+    return <li className="flex gap-2.5">{body}</li>;
+  }
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={(event) => focusProsbaStepField(event.currentTarget, field)}
+        className="-mx-1.5 flex w-[calc(100%+0.75rem)] cursor-pointer gap-2.5 rounded-md px-1.5 py-1 text-left transition-colors hover:bg-slate-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        aria-label={`${step.label}: ${step.detail} - przejdź do pola`}
+      >
+        {body}
+        <IconChevronRight size={14} className="mt-1.5 shrink-0 text-slate-400" aria-hidden />
+      </button>
     </li>
   );
 }
