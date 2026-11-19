@@ -449,9 +449,9 @@ export function formatZkWatchLineStatusSummaryFromCounts(
   }
   if (counts.uncovered > 0) {
     const n = counts.uncovered;
-    // „bez prośby” (jak chip „Brak prośby”) — „do zamówienia” to już zakres
-    // z formatZkWatchProsbaScopeSummary; oba stoją w jednym wierszu karty.
-    parts.push(`${n} bez prośby`);
+    // „do prośby” — to samo słowo co odznaka pozycji i filtr w liście towaru. „Bez prośby” znaczy
+    // gdzie indziej „prośba niepotrzebna”; „do zamówienia” to zakres z formatZkWatchProsbaScopeSummary.
+    parts.push(`${n} do prośby`);
   }
   if (counts.partial > 0) {
     const n = counts.partial;
@@ -716,9 +716,8 @@ export function formatZkWatchLineCheckboxPreview(
   });
   const first = firstUnchecked ?? trackable[0];
   if (!first) return `${checked}/${total}`;
-  const name =
-    first.product.length > 42 ? `${first.product.slice(0, 41).trim()}…` : first.product;
-  return `${name} · ${checked}/${total}`;
+  // Bez ucinania: karta zawija nazwę do dwóch linii (line-clamp-2).
+  return `${first.product} · ${checked}/${total}`;
 }
 
 export function zkWatchLineCheckboxAriaLabel(input: {

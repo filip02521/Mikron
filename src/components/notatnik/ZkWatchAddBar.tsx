@@ -125,6 +125,12 @@ export function ZkWatchAddBar({
           <ul className="mt-2 space-y-1.5">
             {candidates.map((candidate) => {
               const issued = formatIssuedAt(candidate.issuedAt);
+              const realized = candidate.statusLabel === "Zrealizowane";
+              const meta = [
+                issued ? `Wystawiono ${issued}` : null,
+                candidate.lineSummary,
+                candidate.origNumber ? `nr oryg. ${candidate.origNumber}` : null,
+              ].filter(Boolean);
               return (
                 <li key={candidate.subiektDokId}>
                   <button
@@ -137,11 +143,17 @@ export function ZkWatchAddBar({
                       {candidate.zkNumber.replace(/^ZK\s*/i, "")}
                     </span>
                     <span className="text-xs text-slate-600">{candidate.clientLabel}</span>
-                    {candidate.lineSummary || issued ? (
+                    {meta.length || candidate.statusLabel ? (
                       <span className="mt-0.5 text-[0.6875rem] text-slate-500">
-                        {[issued ? `Wystawiono ${issued}` : null, candidate.lineSummary]
-                          .filter(Boolean)
-                          .join(" · ")}
+                        {meta.join(" · ")}
+                        {candidate.statusLabel ? (
+                          <>
+                            {meta.length ? " · " : null}
+                            <span className={realized ? "font-semibold text-amber-800" : undefined}>
+                              {realized ? "Zrealizowane w Subiekcie" : candidate.statusLabel}
+                            </span>
+                          </>
+                        ) : null}
                       </span>
                     ) : null}
                   </button>

@@ -171,8 +171,9 @@ export function ZkWatchLinesModal({
       open={open}
       onClose={onClose}
       size="lg"
-      title={watch.client_label}
-      description={displayNumber}
+      // Numer ZK jako tytuł — jak na karcie i w oknach „co zamawiamy?” i „listy zębów”; klient pod spodem.
+      title={displayNumber}
+      description={watch.client_label}
       className="max-h-[min(calc(100dvh-1rem),840px)]"
       bodyClassName="flex min-h-0 flex-1 flex-col p-0"
       footer={
@@ -259,7 +260,8 @@ export function ZkWatchLinesModal({
               archived={archived}
               newLineKeys={newLineKeys}
               onRequestProsba={
-                !readOnly && !tourPreview && !archived
+                // Zrealizowane w Subiekcie: karta nie ma przycisku prośby, więc i podgląd go nie pokazuje.
+                !readOnly && !tourPreview && !archived && subiektStatus !== "Zrealizowane"
                   ? () => {
                       onClose();
                       // Ta sama akcja co przycisk na karcie (zęby, stan, prefill).

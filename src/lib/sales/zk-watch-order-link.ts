@@ -579,7 +579,18 @@ export function filterZkWatchesByClientQuery(
 ): SalesZkWatch[] {
   const q = normalizeMyOrderSearchText(query);
   if (!q) return watches;
-  return watches.filter((w) => matchesSearchWords([w.client_label, w.zk_number, w.line_summary], q));
+  // Wszystkie pozycje ZK (nazwa i symbol), nie tylko skrót „pierwszy towar · +N poz.” — pole obiecuje szukanie po produkcie.
+  return watches.filter((w) =>
+    matchesSearchWords(
+      [
+        w.client_label,
+        w.zk_number,
+        w.line_summary,
+        ...buildZkWatchLineViews(w).flatMap((line) => [line.product, line.symbol]),
+      ],
+      q
+    )
+  );
 }
 
 export function computeZkWatchLineCoverage(

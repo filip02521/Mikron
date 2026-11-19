@@ -654,10 +654,31 @@ describe("filterZkWatchesByClientQuery", () => {
 
   it("filtruje po skrócie produktu", () => {
     const rows = [
-      watch({ id: "a", client_label: "Alfa", zk_number: "ZK/1", line_summary: "Implant tytan" }),
-      watch({ id: "b", client_label: "Beta", zk_number: "ZK/2", line_summary: "Śruba" }),
+      // Bez pozycji z Subiekta — wtedy liczy się sam skrót (domyślny fixture ma linię „Implant X”).
+      watch({ id: "a", client_label: "Alfa", zk_number: "ZK/1", line_summary: "Implant tytan", subiekt_snapshot: null }),
+      watch({ id: "b", client_label: "Beta", zk_number: "ZK/2", line_summary: "Śruba", subiekt_snapshot: null }),
     ];
     expect(filterZkWatchesByClientQuery(rows, "implant").map((r) => r.id)).toEqual(["a"]);
+  });
+
+  it("znajduje ZK po dalszej pozycji (nie tylko pierwszej ze skrótu) i po symbolu", () => {
+    const rows = [
+      watch({
+        id: "a",
+        client_label: "Alfa",
+        zk_number: "ZK/1",
+        line_summary: "Worki strunowe · +2 poz.",
+        subiekt_snapshot: {
+          dok_Pozycja: [
+            { ob_Id: 1, tw_Nazwa: "Worki strunowe", tw_Symbol: "WORKI", ob_Ilosc: 1 },
+            { ob_Id: 2, tw_Nazwa: "Frez z czarnym paskiem", tw_Symbol: "F2", ob_Ilosc: 1 },
+          ],
+        } as never,
+      }),
+      watch({ id: "b", client_label: "Beta", zk_number: "ZK/2", line_summary: "Śruba" }),
+    ];
+    expect(filterZkWatchesByClientQuery(rows, "frez").map((r) => r.id)).toEqual(["a"]);
+    expect(filterZkWatchesByClientQuery(rows, "f2").map((r) => r.id)).toEqual(["a"]);
   });
 });
 

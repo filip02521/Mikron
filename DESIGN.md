@@ -388,7 +388,7 @@ Formy są prostokątne, lekko zaokrąglone, a promień rośnie z wielkością el
 
 - 6px (`rounded-md`, `--radius`): przyciski, pola, odznaki, segmenty, alerty.
 - 8px (`rounded-lg`, `--radius-lg`): bloki zagnieżdżone w karcie, okna loadingu, chrome Kreatora.
-- 10px (`rounded-[var(--radius-panel)]`): karty paneli (`Card`, `surfaceCardClass`).
+- 10px (`rounded-[var(--radius-panel)]`): karty paneli (`Card`, `surfaceCardClass`) i okna (`ModalShell`, `modalPanelClass`). Tło warstwy wewnątrz karty bez `overflow-hidden` (pasek narzędzi, pierwszy i ostatni wiersz) bierze ten sam promień, inaczej jego kwadratowe rogi zasłaniają rogi karty.
 - Pełne zaokrąglenie: tylko liczniki w menu i paski postępu.
 
 Element wewnątrz karty nigdy nie ma większego promienia niż karta. Obramowania są jednopikselowe w tonach `line`. Kolorowego paska z boku karty, wiersza ani alertu nie stosujemy: stan pokazuje tło, odznaka albo ikona.

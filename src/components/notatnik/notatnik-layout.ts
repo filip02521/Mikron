@@ -22,7 +22,12 @@ export const NOTATNIK_ZK_LIST_CLASS = cn(mojeShipmentListClass, "divide-slate-20
 export const NOTATNIK_ZK_LIST_SCROLL_CLASS = "overflow-x-visible";
 
 /** Lista ZK w karcie strony — bez własnej ramki i cienia (DESIGN.md → bez karty w karcie). */
-export const NOTATNIK_ZK_LIST_SECTION_CLASS = "overflow-visible bg-card";
+// Bez overflow-hidden (menu i dymki w wierszach nie mogą się ucinać), więc tło sekcji, paska wyszukiwania
+// i ostatniego wiersza samo bierze zaokrąglenie karty — inaczej kwadratowe rogi zasłaniają jej rogi.
+export const NOTATNIK_ZK_LIST_SECTION_CLASS = cn(
+  "overflow-visible rounded-[var(--radius-panel)] bg-card",
+  "[&>:last-child>ul:last-child>li:last-child>article>div:first-child]:rounded-b-[var(--radius-panel)]"
+);
 
 export const NOTATNIK_ZK_ACTIONS_CLASS =
   "grid grid-cols-2 gap-1.5 border-t border-slate-100 pt-2 sm:grid-cols-3";

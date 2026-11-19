@@ -728,7 +728,7 @@ export function ZkWatchSection({
 
   const listBody =
     watches.length === 0 ? (
-      <SalesSectionEmptyHint message="Brak zamówień klienta czekających na towar." />
+      <SalesSectionEmptyHint message="Brak ZK na liście - wpisz numer ZK z Subiekta w polu wyżej i dodaj." />
     ) : filteredWatches.length === 0 ? (
       <SalesListFilterEmptyHint
         query={listFilter.trim()}
@@ -820,7 +820,7 @@ export function ZkWatchSection({
 
       {embedded ? (
         <section className={NOTATNIK_ZK_LIST_SECTION_CLASS} aria-label={ZK_PAGE_SECTION_COPY.listTitle}>
-          <div className="border-b border-slate-100 bg-slate-50/40">
+          <div className="rounded-t-[var(--radius-panel)] border-b border-slate-100 bg-slate-50/40">
             <div className={cn(salesChromeInsetClass, "space-y-2.5 py-2.5")}>
               {!readOnly && !delegatePreview && !tourPreview && addPanelOpen ? (
                 <ZkWatchAddInlineStrip

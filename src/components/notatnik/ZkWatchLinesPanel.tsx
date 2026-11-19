@@ -36,6 +36,7 @@ import {
 import {
   countZkWatchLinesOutsideTrackedScope,
   filterZkWatchProductLineViewsForScope,
+  productLineViews,
   hasZkWatchTrackedProsbaScope,
 } from "@/lib/sales/zk-watch-prosba-scope";
 import type { ZkLinkableOrder, ZkWatchLineCoverage } from "@/lib/sales/zk-watch-order-link";
@@ -457,7 +458,8 @@ export function ZkWatchLinesPanel({
   }
 
   const filterChips: { id: LineFilter; label: string; count: number }[] = [
-    { id: "all", label: "Wszystkie", count: checkboxSummary.total || summary.total },
+    // Tyle, ile pokazuje filtr „Wszystkie” (z pominiętymi) — licznik pozycji do odhaczenia był mniejszy niż lista.
+    { id: "all", label: "Wszystkie", count: productLineViews(displayViews).length || summary.total },
     ...(newLineVisibleCount > 0
       ? [{ id: "new" as const, label: "Nowe", count: newLineVisibleCount }]
       : []),
