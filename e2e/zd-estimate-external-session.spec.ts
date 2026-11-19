@@ -45,11 +45,12 @@ test.describe("ZD estimate — sesja zewnętrzna (E2E lab)", () => {
 
     await page.getByTestId("zd-external-session-seed").click();
     await page.getByTestId("zd-external-session-leave").click();
-    await page.getByTestId("zd-external-session-floating-notice-host").hover();
-    await expect(
-      page.getByRole("button", { name: "Wyczyść listę" })
-    ).toBeVisible();
-    await page.getByRole("button", { name: "Wyczyść listę" }).click();
+    const floatingNotice = page.getByTestId("zd-external-session-floating-notice-host");
+    await floatingNotice.hover();
+    // Ten sam napis ma przycisk „Wyczyść listę” w labie — szukamy tylko w pływającym okienku.
+    const clearInNotice = floatingNotice.getByRole("button", { name: "Wyczyść listę" });
+    await expect(clearInNotice).toBeVisible();
+    await clearInNotice.click();
     await expect(
       page.getByTestId("zd-external-session-floating-notice-host")
     ).toHaveCount(0);
