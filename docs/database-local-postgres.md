@@ -29,12 +29,12 @@ npm run dev
 
 ## Produkcja Windows
 
-1. Zainstaluj PostgreSQL 16 (EDB), usługa `postgresql-x64-16`
+1. Zainstaluj PostgreSQL 18 (EDB), usługa `postgresql-x64-18`
 2. Ustaw hasła w `installer/setup-postgres-roles.sql` i uruchom jako `postgres`
 3. `npm run db:migrate` z `DATABASE_URL` migratora
 4. Uzupełnij `.env` (nie `.env.local`):
    - `DATABASE_URL`, `SESSION_SECRET`, `STORAGE_ROOT`, `STORAGE_SIGNING_SECRET`
-5. Katalogi: `D:\OnTime\storage\{teeth-ocr,teeth-orders,department-board}`, `D:\OnTime\backups`
+5. Katalogi: `D:\OnTime\storage\{teeth-ocr,teeth-orders,department-board}`, `backups/` (w katalogu projektu)
 6. Backup: `.\installer\install-postgres-backup-task.ps1`
 
 ## Cutover A→B

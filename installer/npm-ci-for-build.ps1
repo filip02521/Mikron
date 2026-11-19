@@ -8,9 +8,9 @@ function Stop-ServiceForNodeInstall {
   )
 
   $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
-  if ($svc -and $svc.Status -eq "Running") {
-    Write-Host "  Zatrzymuje $ServiceName przed npm ci (zwalnia next-swc)..."
-    Stop-Service -Name $ServiceName -Force
+  if ($svc -and $svc.Status -ne "Stopped") {
+    Write-Host "  Zatrzymuje $ServiceName przed npm ci (status: $($svc.Status))..."
+    try { Stop-Service -Name $ServiceName -Force -ErrorAction Stop } catch {}
     Start-Sleep -Seconds 3
   }
 

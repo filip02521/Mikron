@@ -4,7 +4,7 @@
 param(
   [string]$TaskName = "OnTime-Postgres-Backup",
   [string]$BackupAt = "04:30",
-  [string]$BackupDir = "D:\OnTime\backups",
+  [string]$BackupDir = "",
   [string]$DbName = "ontime",
   [switch]$Uninstall
 )
@@ -15,6 +15,11 @@ $ErrorActionPreference = "Stop"
 $scriptPath = Join-Path $PSScriptRoot "backup-postgres.ps1"
 if (-not (Test-Path $scriptPath)) {
   throw "Brak $scriptPath"
+}
+
+$projectRoot = Split-Path -Parent $PSScriptRoot
+if (-not $BackupDir) {
+  $BackupDir = Join-Path $projectRoot "backups"
 }
 
 if ($Uninstall) {
