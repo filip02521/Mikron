@@ -29,6 +29,15 @@ function baseInput(
 }
 
 describe("deriveZkWatchRowAttention", () => {
+  it("zrealizowane w Subiekcie, świeżo dodane - Do zamknięcia zamiast Nowe ZK", () => {
+    const input = baseInput({ isNewlyAdded: true, readyToClose: true, subiektRealized: true });
+    expect(deriveZkWatchRowAttention(input)).toMatchObject({
+      kind: "ready_to_close",
+      title: "ZK zrealizowane w Subiekcie - możesz zamknąć sprawę",
+    });
+    expect(deriveZkWatchRowSecondaryMeta(input)).not.toContain("Nowe ZK");
+  });
+
   it("archived - brak badge'a", () => {
     expect(
       deriveZkWatchRowAttention(
@@ -272,6 +281,17 @@ describe("buildZkWatchCardMetaSummary", () => {
     expect(summary).not.toMatch(/2 na regale/);
   });
 
+  it("Bez prośby w zakresie - bez drugiego chipa o prośbie", () => {
+    const summary = buildZkWatchCardMetaSummary({
+      prosbaScopeSummary: "Bez prośby - nic nie wybrane",
+      prosbaRowMeta: "Prośba: ze stanu magazynowego",
+      lineStatusSummary: null,
+      secondaryMeta: [],
+      primaryAttention: null,
+    });
+    expect(summary).toBe("Bez prośby - nic nie wybrane");
+  });
+
   it("prosba covered + line summary", () => {
     const summary = buildZkWatchCardMetaSummary({
       prosbaScopeSummary: null,
@@ -287,11 +307,11 @@ describe("buildZkWatchCardMetaSummary", () => {
     const summary = buildZkWatchCardMetaSummary({
       prosbaScopeSummary: "Wybierz pozycje do zamówienia",
       prosbaRowMeta: null,
-      lineStatusSummary: "1 bez prośby",
+      lineStatusSummary: "1 do prośby",
       secondaryMeta: [],
       primaryAttention: null,
     });
-    expect(summary).toBe("Wybierz pozycje do zamówienia · 1 bez prośby");
+    expect(summary).toBe("Wybierz pozycje do zamówienia · 1 do prośby");
     expect(summary).not.toMatch(/Prośba:/);
   });
 
@@ -300,11 +320,11 @@ describe("buildZkWatchCardMetaSummary", () => {
       buildZkWatchCardMetaSummary({
         prosbaScopeSummary: "1 do zamówienia · 1 pominięte",
         prosbaRowMeta: null,
-        lineStatusSummary: "1 bez prośby · 1 pominięte",
+        lineStatusSummary: "1 do prośby · 1 pominięte",
         secondaryMeta: [],
         primaryAttention: null,
       })
-    ).toBe("1 do zamówienia · 1 pominięte · 1 bez prośby");
+    ).toBe("1 do zamówienia · 1 pominięte · 1 do prośby");
   });
 });
 
@@ -312,10 +332,10 @@ describe("splitZkWatchCardMetaSummary", () => {
   it("najpierw to, co wymaga działania, potem w toku, zakończone i tło", () => {
     expect(
       splitZkWatchCardMetaSummary(
-        "3 do zamówienia · 1 pominięte · 2 w prośbie · 1 bez prośby · 1 odebrane z regału"
+        "3 do zamówienia · 1 pominięte · 2 w prośbie · 1 do prośby · 1 odebrane z regału"
       )
     ).toEqual([
-      { text: "1 bez prośby", tone: "action" },
+      { text: "1 do prośby", tone: "action" },
       { text: "2 w prośbie", tone: "progress" },
       { text: "1 odebrane z regału", tone: "done" },
       { text: "3 do zamówienia", tone: "detail" },

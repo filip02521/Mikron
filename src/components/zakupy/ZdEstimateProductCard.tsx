@@ -255,9 +255,13 @@ export function ZdEstimateProductCard({
   // Para: stan obu stron osobno (w tabeli jest tylko pokrycie pary).
   const pairStockRows: Array<[string, number]> = activePair
     ? [
-        ["Dostępne - sztuki", activePair.pieceDostepne],
-        [`Dostępne - ${qty.packageLabel.trim() || "op."} (×${activePair.unitsPerPack})`, activePair.packDostepne * activePair.unitsPerPack],
-        ["Pokrycie pary (z ZD)", activePair.coverSzt],
+        // Trzy składniki, które razem dają „Mamy już” w „Dlaczego tyle” — bez powtarzania samej sumy.
+        ["Na stanie - sztuki", activePair.pieceDostepne],
+        [`Na stanie - ${qty.packageLabel.trim() || "op."} (×${activePair.unitsPerPack})`, activePair.packDostepne * activePair.unitsPerPack],
+        [
+          "Zamówione ZD",
+          Math.max(0, activePair.coverSzt - activePair.pieceDostepne - activePair.packDostepne * activePair.unitsPerPack),
+        ],
       ]
     : [];
   const pairKey = activePair ? { twinTwId: activePair.twinTwId, unitsPerPack: activePair.unitsPerPack } : null;
@@ -417,8 +421,13 @@ export function ZdEstimateProductCard({
   const result = [...steps].reverse().find((s) => s.kind === "result" && s.unit);
   const whySummary = result ? `= ${formatQty(result.value)} ${result.unit}` : null;
   const coverLine = [
-    days == null ? "nie sprzedaje się w oknie" : days <= 0 ? "brak dostępnego towaru" : `starczy na ${formatQty(Math.round(days * 10) / 10)} d`,
-    lead != null ? `dostawa ~${lead} d` : null,
+    // Pełne słowa zamiast „d” — i jasno, że chodzi o obecny zapas (przed tym ZD).
+    days == null
+      ? "nie sprzedaje się w oknie zapasu"
+      : days <= 0
+        ? "brak towaru na stanie"
+        : `obecny zapas na ~${formatQty(Math.round(days))} ${Math.round(days) === 1 ? "dzień" : "dni"}`,
+    lead != null ? `dostawa trwa ~${lead} ${lead === 1 ? "dzień" : "dni"}` : null,
     lead != null && days != null && days < lead ? "zabraknie przed dostawą" : null,
   ]
     .filter(Boolean)
@@ -462,7 +471,11 @@ export function ZdEstimateProductCard({
                 {line.tw_Nazwa}
               </h2>
               <p className="mt-2 flex flex-wrap gap-1.5">
-                {pair ? <Badge variant="info">para: 1 {label} = {pair.unitsPerPack} szt</Badge> : null}
+                {pair ? (
+                  <Badge variant="info">
+                    sztuki + {label}: 1 {label} = {pair.unitsPerPack} szt
+                  </Badge>
+                ) : null}
                 {!pair && qty.hasPackaging ? (
                   <Badge variant="info">
                     {isPackagingPackagesMode(qty.documentUnitMode)
@@ -552,7 +565,7 @@ export function ZdEstimateProductCard({
                     {coverLine}
                   </p>
                   {comparePieces != null && Math.round(comparePieces) !== piecesArrivingForZdUnitsFromQty(shownUnits, qty) ? (
-                    <p className="mt-1 text-xs tabular-nums text-slate-600">Strategia „jak dotąd”: {formatQty(comparePieces)} szt</p>
+                    <p className="mt-1 text-xs tabular-nums text-slate-600">Dotychczasowym sposobem wyszłoby {formatQty(comparePieces)} szt</p>
                   ) : null}
                 </section>
 
@@ -606,7 +619,7 @@ export function ZdEstimateProductCard({
                 </CardSection>
 
                 {pairStockRows.length > 0 ? (
-                  <CardSection id="pair" titleId={titleId} title="Stan pary" collapsed={!!collapsed.pair} onToggle={() => toggleSection("pair")}>
+                  <CardSection id="pair" titleId={titleId} title="Stan: sztuki i opakowania" collapsed={!!collapsed.pair} onToggle={() => toggleSection("pair")}>
                     <dl className="grid grid-cols-3 gap-px overflow-hidden rounded-md border border-slate-200 bg-slate-200 text-sm">
                       {pairStockRows.map(([label, value]) => (
                         <div key={label} className="bg-card px-2.5 py-1.5">
@@ -623,7 +636,6 @@ export function ZdEstimateProductCard({
                     id="profile"
                     titleId={titleId}
                     title="Sprzedaż i nasze ZD"
-                    summary="12 okien po 30 dni"
                     collapsed={!!collapsed.profile}
                     onToggle={() => toggleSection("profile")}
                   >
@@ -686,6 +698,8 @@ export function ZdEstimateProductCard({
         </div>
 
         <footer className="shrink-0 border-t border-slate-100 bg-card px-5 py-3">
+          {/* Podpis mówi, że to ustawienia towaru na stałe, a nie zmiana ilości na tym ZD. */}
+          <p className="mb-2 text-xs text-slate-600">Ustawienia tego towaru - zostają przy kolejnych wyliczeniach</p>
           <div className="flex flex-wrap gap-2">
             {actions.onEditPackaging ? (
               <Button type="button" size="sm" variant="secondary" disabled={!canMutate} onClick={actions.onEditPackaging}>
@@ -711,7 +725,7 @@ export function ZdEstimateProductCard({
                 Przywróć do ZD
               </Button>
             ) : !status.excluded && actions.onExclude ? (
-              <Button type="button" size="sm" variant="ghost" disabled={!canMutate} onClick={actions.onExclude}>
+              <Button type="button" size="sm" variant="secondary" className="text-red-700" disabled={!canMutate} onClick={actions.onExclude}>
                 Wyklucz
               </Button>
             ) : null}

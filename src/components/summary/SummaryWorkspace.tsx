@@ -662,6 +662,9 @@ export function SummaryWorkspace({
         vacationWindow={
           drawerId ? workspace.suppliersOnVacationNow[drawerId] ?? null : null
         }
+        plannedVacation={
+          drawerId ? workspace.suppliersPlannedVacation?.[drawerId] ?? null : null
+        }
         teethLane={drawerId ? teethLaneBySupplierId[drawerId] ?? null : null}
         subiektScope={drawerId ? subiektScopeBySupplierId[drawerId] ?? null : null}
         deliveryStats={drawerId ? statsBySupplierId[drawerId] ?? null : null}
@@ -695,7 +698,6 @@ export function SummaryWorkspace({
           supplierName={vacationModalName}
           onClose={() => setVacationModalSupplierId(null)}
           onSaved={(msg) => appendFlash(msg)}
-          onError={(msg) => notify(msg, "error")}
         />
       ) : null}
 

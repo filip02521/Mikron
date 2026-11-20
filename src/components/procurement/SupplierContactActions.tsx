@@ -6,6 +6,7 @@ import { copyTextToClipboard } from "@/lib/ui/copy-text-to-clipboard";
 import { OrderMethodBadge } from "@/components/targets/OrderMethodBadge";
 import { cn } from "@/lib/cn";
 import { panelContactLinkClass } from "@/lib/ui/ontime-theme";
+import { IconCopy } from "@/components/icons/StrokeIcons";
 
 function normalizeEmailForCopy(raw: string): string {
   return raw.replace(/^mailto:/i, "").trim();
@@ -32,8 +33,6 @@ export function SupplierContactActions({
     ui.email ??
     (ui.contactLink?.kind === "mailto" ? ui.contactLink.label : null);
   const emailToCopy = rawEmail ? normalizeEmailForCopy(rawEmail) : "";
-  const canCopyEmail = Boolean(emailToCopy);
-  const copyMailFromBadge = ui.methodKind === "mail" && canCopyEmail;
 
   const copyText = async (text: string) => {
     if (!text) return;
@@ -127,26 +126,25 @@ export function SupplierContactActions({
 
   return (
     <div className={cn("flex flex-wrap items-center gap-x-2 gap-y-1", className)}>
-      <OrderMethodBadge
-        notes={notes}
-        onClick={copyMailFromBadge ? copyEmail : undefined}
-        title={copyMailFromBadge ? mailCopyTitle : undefined}
-        pressedLabel={copyMailFromBadge ? copyFeedbackLabel : null}
-      />
+      {/* Plakietka mówi tylko, jak zamawiamy — kopiowanie ma własny, widoczny przycisk (wcześniej klikalna plakietka wyglądała jak etykieta). */}
+      <OrderMethodBadge notes={notes} />
       {ui.contactLink?.kind === "mailto" && emailToCopy ? (
-        <button
-          type="button"
-          onClick={copyEmail}
-          className={cn(
-            panelContactLinkClass,
-            "cursor-pointer rounded-md px-0.5 text-left",
-            "hover:bg-sky-50/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
-            copied && "text-emerald-700"
-          )}
-          title={mailCopyTitle}
-        >
-          {copyFeedbackLabel ?? emailToCopy}
-        </button>
+        <>
+          <span className="select-all break-all text-sm text-slate-800">{emailToCopy}</span>
+          <button
+            type="button"
+            onClick={copyEmail}
+            aria-label={`Kopiuj adres ${emailToCopy}`}
+            className={cn(
+              "inline-flex min-h-8 items-center gap-1 rounded-md border border-slate-200 bg-card px-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+              copied && "text-emerald-700",
+              copyFailed && "text-red-700"
+            )}
+          >
+            <IconCopy size={13} aria-hidden />
+            {copyFeedbackLabel ?? "Kopiuj"}
+          </button>
+        </>
       ) : ui.contactLink ? (
         <a
           href={ui.contactLink.href}

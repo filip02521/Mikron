@@ -7,6 +7,7 @@ import {
   type SupplierDrawerLeadTimePart,
 } from "@/lib/orders/delivery-eta";
 import type { DeliveryStats, StatsMode } from "@/types/database";
+import { orderTypeLabel } from "@/lib/display-labels";
 
 /**
  * Subtelna karta średniego czasu dostawy w podglądzie dostawcy.
@@ -58,25 +59,18 @@ export function SupplierDrawerLeadTime({
               {model.primary.unitLabel}
             </span>
           </p>
-          <p className="mt-0.5 text-xs text-slate-500">
-            {model.sampleLabel}
-            <span className="text-slate-300"> · </span>
-            tryb {model.modeLabel}
-          </p>
+          {/* Bez „tryb łącznie” — ustawienie statystyk z karty dostawcy, nic nie mówiło przy decyzji. */}
+          <p className="mt-0.5 text-xs text-slate-500">{model.sampleLabel}</p>
         </div>
       ) : null}
 
       {model.kind === "split" ? (
         <div className="mt-1.5 space-y-1.5">
           <div className="grid grid-cols-2 gap-2">
-            <SplitStat label="Główne" part={model.main} />
-            <SplitStat label="Poboczne" part={model.side} />
+            {/* Nazwy jak w reszcie aplikacji (orderTypeLabel); liczby dostaw stoją w każdej kolumnie — suma pod spodem wliczała też dostawy bez typu i się nie zgadzała. */}
+            <SplitStat label={orderTypeLabel("Glowne")} part={model.main} />
+            <SplitStat label={orderTypeLabel("Poboczne")} part={model.side} />
           </div>
-          <p className="text-xs text-slate-500">
-            {model.sampleLabel}
-            <span className="text-slate-300"> · </span>
-            tryb {model.modeLabel}
-          </p>
         </div>
       ) : null}
     </section>

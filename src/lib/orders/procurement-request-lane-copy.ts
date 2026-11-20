@@ -12,8 +12,8 @@ export const PROCUREMENT_REQUEST_LANE_COPY = {
   doWyjasnienia: "Do wyjaśnienia",
   wstrzymane: "Wstrzymane",
   inneFlagi: "Inne flagi",
-  navLabel: "Tory",
-  manageFlags: "Zarządzaj",
+  navLabel: "Przejdź do toru",
+  manageFlags: "Zarządzaj flagami",
   /** Skrót w menu — ustawia flagę; tor układa się sam. */
   setFlag: "Flaga:",
   clearFlag: "Wyczyść flagę",

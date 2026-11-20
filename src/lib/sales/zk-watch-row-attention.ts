@@ -24,6 +24,8 @@ export type ZkWatchRowAttentionInput = {
   hasNewZkLines: boolean;
   isNewlyAdded: boolean;
   readyToClose: boolean;
+  /** ZK ma w Subiekcie status „Zrealizowane” — wtedy readyToClose też jest true, zmienia się tylko opis. */
+  subiektRealized?: boolean;
   hiddenOutsideScope: number;
 };
 
@@ -130,7 +132,8 @@ function attentionForKind(
         title: "Nowe pozycje w ZK od ostatniego odświeżenia",
       };
     case "newly_added":
-      if (input.archived || !input.isNewlyAdded) return null;
+      // Świeżo dodane, ale już zrealizowane: ważniejsze, że sprawę można zamknąć.
+      if (input.archived || !input.isNewlyAdded || input.subiektRealized) return null;
       return {
         kind,
         label: "Nowe ZK",
@@ -148,7 +151,9 @@ function attentionForKind(
       return {
         kind,
         label: "Do zamknięcia",
-        title: "Wszystkie pozycje odhaczone - możesz zamknąć sprawę ZK",
+        title: input.subiektRealized
+          ? "ZK zrealizowane w Subiekcie - możesz zamknąć sprawę"
+          : "Wszystkie pozycje odhaczone - możesz zamknąć sprawę ZK",
       };
     case "scope_overflow":
       if (input.archived || input.hiddenOutsideScope <= 0) return null;
@@ -215,7 +220,7 @@ export function deriveZkWatchRowSecondaryMeta(input: ZkWatchRowAttentionInput): 
   if (input.hasNewZkLines) {
     candidates.push({ kind: "new_lines", fragment: "Nowe pozycje" });
   }
-  if (input.isNewlyAdded) {
+  if (input.isNewlyAdded && !input.subiektRealized) {
     candidates.push({ kind: "newly_added", fragment: "Nowe ZK" });
   }
   if (
@@ -341,7 +346,7 @@ export type ZkWatchCardMetaTone = "action" | "progress" | "done" | "plain" | "de
 
 const CARD_META_TONE_RULES: Array<{ tone: ZkWatchCardMetaTone; test: RegExp }> = [
   // Wymaga ruchu handlowca: brak prośby, nowe pozycje, przypomnienie, wybór zakresu.
-  { tone: "action", test: /(^\d+ bez prośby$|^\d+ now[ae]$|^\d+ częściowo$|^Wybierz pozycje|^Przypomnienie:|^Czeka na odbiór)/ },
+  { tone: "action", test: /(^\d+ do prośby$|^\d+ now[ae]$|^\d+ częściowo$|^Wybierz pozycje|^Przypomnienie:|^Czeka na odbiór)/ },
   { tone: "progress", test: /^\d+ w prośbie$/ },
   // Zakres prośby („do zamówienia”, „pominięte”) — szczegół z okna pozycji, nie stan wiersza.
   { tone: "detail", test: /(^\d+ do zamówienia$|^\d+ pominięte$)/ },
@@ -381,9 +386,11 @@ export function buildZkWatchCardMetaSummary(parts: {
     parts.primaryAttention
   );
 
+  // „Bez prośby - nic nie wybrane” już mówi, że prośby nie ma — drugi chip („Prośba: ze stanu…”) to powtórka.
+  const scopeSaysNoProsba = parts.prosbaScopeSummary?.startsWith("Bez prośby") ?? false;
   const segments = [
     parts.prosbaScopeSummary,
-    parts.prosbaRowMeta,
+    scopeSaysNoProsba ? null : parts.prosbaRowMeta,
     lineSummary,
     ...parts.secondaryMeta,
   ].filter((segment): segment is string => Boolean(segment?.trim()));

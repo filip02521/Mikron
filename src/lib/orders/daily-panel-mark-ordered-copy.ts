@@ -1,7 +1,7 @@
 import { undoWindowLongLabel } from "@/lib/orders/daily-panel-undo";
 
-/** Etykieta przycisku / skrótu — status po złożeniu zamówienia u dostawcy. */
-export const DAILY_PANEL_MARK_ORDERED_LABEL = "Zamówione";
+/** Etykieta przycisku / skrótu — mówi skutek (sam „Zamówione” czytało się jak stan, nie akcja). */
+export const DAILY_PANEL_MARK_ORDERED_LABEL = "Oznacz jako zamówione";
 
 export const DAILY_PANEL_MARK_ORDERED_PENDING = "Zapisywanie…";
 

@@ -86,7 +86,7 @@ export function ZkWatchOverflowMenu({
           ) : null}
           {onEditProsbaScope ? (
             <OverflowMenuItem disabled={disabled} onClick={onEditProsbaScope}>
-              Zakres prośby
+              Co zamawiamy
             </OverflowMenuItem>
           ) : null}
           {!readOnly && onRefresh ? (

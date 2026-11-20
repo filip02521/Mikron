@@ -124,3 +124,39 @@ describe("explainZdOrderQty — prośby z wolnego towaru", () => {
     expect(byKey(s)).toMatchObject({ extra: 2, prosba_supply: 2, need: 0 });
   });
 });
+
+describe("explainZdOrderQty — czytelny rachunek celu", () => {
+  it("korekta celu jako działanie: cel z historii + korekta = cel zapasu", () => {
+    // Subiekt 258,3 → śledzony 277,3 (podbity o 19); dostępne 179 → brak 99 → 1 op. po 100.
+    const qty = computeZdPackOrderQty(99, 100, "op.", "packages", null);
+    const s = explainZdOrderQty({
+      line: line({ celZapasu: 258.3, celZapasuTracked: 277.3, dostepne: 179 }),
+      qty,
+      openZdPieces: 0,
+      extraPieces: 0,
+      extraOnly: false,
+      extrasPolicy: "sum",
+    });
+    expect(s.slice(0, 3)).toMatchObject([
+      { key: "cel_subiekt", value: 258.3, kind: "base" },
+      { key: "cel_adjust", value: 19, kind: "plus" },
+      { key: "cel", value: 277.3, kind: "result" },
+    ]);
+    // „Do zamówienia” = „Brak do celu” → nie powtarzamy tej samej liczby.
+    expect(s.some((x) => x.key === "need")).toBe(false);
+    expect(byKey(s)).toMatchObject({ short: 99, packs: 1 });
+  });
+
+  it("„Do zamówienia” zostaje, gdy prośby zmieniają wynik", () => {
+    const qty = computeZdPackOrderQty(120, 5, "worek", "packages", null);
+    const s = explainZdOrderQty({
+      line: line({ celZapasu: 100, celZapasuTracked: 100, dostepne: 20 }),
+      qty,
+      openZdPieces: 0,
+      extraPieces: 40,
+      extraOnly: false,
+      extrasPolicy: "sum",
+    });
+    expect(byKey(s)).toMatchObject({ short: 80, extra: 40, need: 120 });
+  });
+});

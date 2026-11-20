@@ -1048,6 +1048,8 @@ export function SubiektProductLineFields({
           >
             <SubiektInputShell loading={productInputLoading}>
               <Input
+                // Krok „Produkt” z listy „pokaż kroki” przenosi tu kursor (ProsbaFormReadiness).
+                data-prosba-field="product"
                 disabled={disabled}
                 placeholder={
                   isInformacja
@@ -1226,6 +1228,7 @@ export function SubiektProductLineFields({
             placeholder={isTeethOrderLine ? "-" : undefined}
             inputMode="numeric"
             aria-label="Ilość sztuk"
+            data-prosba-field="quantity"
             value={
               isTeethOrderLine
                 ? teethQuantityFromList > 0

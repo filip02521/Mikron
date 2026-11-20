@@ -35,8 +35,9 @@ export const sidePanelHeaderClass =
 export const sidePanelContentClass =
   "flex-1 overflow-y-auto px-5 py-5";
 
+// 10px jak karta (DESIGN.md → Kształty: promień rośnie z wielkością elementu).
 export const modalPanelClass =
-  "relative flex flex-col overflow-hidden rounded-md border border-slate-200/80 bg-raised shadow-[var(--shadow-card-elevated)] ring-1 ring-slate-900/5";
+  "relative flex flex-col overflow-hidden rounded-[var(--radius-panel)] border border-slate-200/80 bg-raised shadow-[var(--shadow-card-elevated)] ring-1 ring-slate-900/5";
 
 /** Prawy panel z tabelą — szerokość jak ModalShell xl / karty dostawców. */
 export const sideSheetWidePanelClass =

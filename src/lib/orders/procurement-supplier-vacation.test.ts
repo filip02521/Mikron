@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildSuppliersOnVacationNow,
+  buildSuppliersPlannedVacation,
   groupMatchesSupplierVacationFilter,
   isSupplierOnVacationNow,
 } from "./procurement-supplier-vacation";
@@ -134,5 +135,30 @@ describe("formatSupplierVacationRangeCompact", () => {
         endDate: "2026-08-15",
       })
     ).toBe("1.08-15.08");
+  });
+});
+
+describe("buildSuppliersPlannedVacation", () => {
+  const today = "2026-11-19";
+  const row = (supplier_id: string, start_date: string, end_date: string, active = true) => ({
+    supplier_id,
+    start_date,
+    end_date,
+    active,
+  });
+
+  it("bierze najbliższy przyszły aktywny urlop, pomija trwający, nieaktywny i od dziś", () => {
+    expect(
+      buildSuppliersPlannedVacation(
+        [
+          row("a", "2027-02-01", "2027-02-10"),
+          row("a", "2026-12-21", "2027-01-06"),
+          row("b", "2026-11-10", "2026-11-30"),
+          row("c", "2026-12-01", "2026-12-05", false),
+          row("d", today, "2026-11-25"),
+        ],
+        today
+      )
+    ).toEqual({ a: { startDate: "2026-12-21", endDate: "2027-01-06" } });
   });
 });

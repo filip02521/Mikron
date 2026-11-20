@@ -118,6 +118,16 @@ export function IconAvailability(props: StrokeIconProps) {
   );
 }
 
+/** Zablokowane — funkcja w przygotowaniu */
+export function IconLock(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 018 0v4" />
+    </Svg>
+  );
+}
+
 /** W toku / oczekiwanie */
 export function IconClock(props: StrokeIconProps) {
   return (

@@ -96,11 +96,15 @@ export function DailyPanelActionsBar({
             <button
               type="button"
               onClick={onOpenProductSettings}
-              className={dailyToolbarIconButtonClass}
+              // Sama ikona paczki nie mówiła, co robi — od lg z nazwą, węższe ekrany zostają przy ikonie (jest też w menu ⋮).
+              className={cn(dailyToolbarIconButtonClass, "lg:w-auto lg:gap-1.5 lg:px-3 lg:text-sm lg:font-medium")}
               aria-label="Ustawienia towaru (⌘K)"
               title="Ustawienia towaru - opakowanie, na prośbę, minimum, notatka (⌘K / Ctrl+K)"
             >
               <IconPackage size={17} aria-hidden />
+              <span className="hidden lg:inline" aria-hidden>
+                Ustawienia towaru
+              </span>
             </button>
           ) : null}
           <PanelDailyHelp density="toolbar" />
@@ -119,7 +123,7 @@ export function DailyPanelActionsBar({
             </OverflowMenuItem>
             {onOpenOnDemand && summary.onDemandCount > 0 ? (
               <OverflowMenuItem onClick={onOpenOnDemand}>
-                Na żądanie ({summary.onDemandCount})
+                Wszyscy na żądanie ({summary.onDemandCount})
               </OverflowMenuItem>
             ) : null}
 

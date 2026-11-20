@@ -96,7 +96,7 @@ export function NewFeatureCallout({
   );
 }
 
-function isPastUntil(until: string | undefined): boolean {
+export function isPastUntil(until: string | undefined): boolean {
   if (!until) return false;
   // Porównanie dat kalendarzowych (RRRR-MM-DD) — strefa nie przesuwa ostatniego dnia.
   const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Warsaw" });

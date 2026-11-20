@@ -23,7 +23,7 @@ export const PROCUREMENT_REQUEST_FLAG_COPY = {
   filterNone: "Bez flagi",
   filterVacation: "Urlop",
   filterBarLabel: "Filtr",
-  manageFlags: "Zarządzaj",
+  manageFlags: "Zarządzaj flagami",
   manageModalTitle: "Flagi zakupów",
   manageModalHint:
     "Kolejność flag (↑↓) ustawia kolejność torów flag i która flaga wygrywa w grupie mieszanej. Tory systemowe (Do zamówienia, Urlop…) przestawiasz strzałkami na nagłówku toru.",

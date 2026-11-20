@@ -3,6 +3,7 @@ import type { SubiektDocument } from "@/lib/subiekt/types";
 import { formatDateString } from "@/lib/orders/dates";
 import {
   buildZkLineSummary,
+  buildZkOrigNote,
   extractZkSerial,
   isFullZkNumberQuery,
   isLikelySubiektDocumentId,
@@ -11,6 +12,7 @@ import {
   parseSubiektDocDate,
   parseZkNumberSortParts,
   resolveZkClientLabel,
+  zkDocumentStatusLabel,
   zkNumbersEquivalent,
 } from "@/lib/subiekt/zk-document";
 
@@ -49,6 +51,10 @@ export type ZkSearchCandidate = {
   clientLabel: string;
   issuedAt: string | null;
   lineSummary: string | null;
+  /** Numer oryginalny z Subiekta (np. numer zamówienia klienta) — bez podpisu nic nie mówi. */
+  origNumber: string | null;
+  /** „Oferta” / „Aktywne” / „Zrealizowane”. */
+  statusLabel: string | null;
 };
 
 export type ZkQueryValidation =
@@ -215,7 +221,10 @@ export function toZkSearchCandidate(doc: SubiektDocument): ZkSearchCandidate {
     zkNumber: doc.dok_NrPelny?.trim() || `ZK #${subiektDokId}`,
     clientLabel: resolveZkClientLabel(doc),
     issuedAt: parseSubiektDocDate(doc.dok_DataWyst),
-    lineSummary: buildZkLineSummary(doc),
+    // Bez pozycji buildZkLineSummary zwraca numer oryginalny albo status — te idą do własnych pól.
+    lineSummary: doc.dok_Pozycja?.length ? buildZkLineSummary(doc) : null,
+    origNumber: buildZkOrigNote(doc),
+    statusLabel: zkDocumentStatusLabel(doc.dok_Status ?? null),
   };
 }
 

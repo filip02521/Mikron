@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { IconCircleCheck } from "@/components/icons/StrokeIcons";
+import { IconCircleCheck, IconWarehouse } from "@/components/icons/StrokeIcons";
 import {
   prosbaLineOffersStockOutReport,
   type ProsbaStockOutReportResult,
@@ -13,6 +13,12 @@ import { buildProsbaLineStockStatusView } from "@/lib/orders/prosba-line-stock-u
 import { stockSnapshotFromLineDraft } from "@/lib/orders/prosba-stock-check";
 import type { IndividualRequestKind } from "@/types/database";
 import { cn } from "@/lib/cn";
+import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
+import { Badge } from "@/components/ui/Badge";
+import { isPastUntil } from "@/components/ui/NewFeatureCallout";
+
+/** Do kiedy przycisk „Zgłoś brak na stanie” ma plakietkę „Nowość” (wcześniej osobne ogłoszenie nad formularzem). */
+const STOCK_OUT_NEW_UNTIL = "2026-12-31";
 import {
   buildProsbaAlreadyOrderedView,
   formatPieces,
@@ -182,7 +188,6 @@ function AvailabilityStat({
 }) {
   return (
     <div
-      title={hint}
       className={cn(
         "-m-px flex min-w-0 flex-col items-center justify-center border border-slate-200/90 px-1.5 py-1.5 text-center sm:px-2 sm:py-2",
         emphasis ? "bg-indigo-50/70" : "bg-card",
@@ -191,11 +196,13 @@ function AvailabilityStat({
     >
       <dt
         className={cn(
-          "order-2 mt-1 text-[0.625rem] font-medium leading-none",
+          "order-2 mt-1 inline-flex items-center gap-0.5 text-[0.625rem] font-medium leading-none",
           emphasis ? "text-indigo-800" : "text-slate-500"
         )}
       >
         {label}
+        {/* Wyjaśnienie na klik (też na dotyku) — sam title nie działał, a kafelki zbierały martwe kliknięcia. */}
+        {hint ? <HelpHintBubble message={hint} ariaLabel={`Co znaczy „${label}”`} className="-my-1" /> : null}
       </dt>
       <dd
         className={cn(
@@ -546,9 +553,12 @@ export function ProsbaStockOutReportStrip({
     return (
       <p
         role="status"
-        className="flex items-start gap-2 border-t border-slate-200/80 bg-emerald-50/50 px-2.5 py-2 text-[0.75rem] leading-snug text-emerald-900 sm:px-3"
+        className="flex items-center gap-2.5 border-t border-emerald-200/70 bg-emerald-50/60 px-2.5 py-2.5 text-xs leading-snug text-emerald-900 sm:px-3"
       >
-        <IconCircleCheck size={15} className="mt-px shrink-0 text-emerald-700" aria-hidden />
+        {/* Ten sam układ co pasek przed zgłoszeniem: ikona w kółku i zdanie. */}
+        <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700" aria-hidden>
+          <IconCircleCheck size={15} />
+        </span>
         <span>
           {state.kind === "done"
             ? "Brak zgłoszony - zakupy zamówią przy najbliższym zamówieniu. Prośbę możesz wysłać dalej."
@@ -558,19 +568,37 @@ export function ProsbaStockOutReportStrip({
     );
   }
 
+  // Trzy warstwy: pytanie (z „Nowość”) mówi, kiedy klikać, zdanie pod nim — co się stanie, przycisk — akcja.
+  // Wcześniej plakietka siedziała w środku zdania, a całość czytała się jak jeden długi przypis.
   return (
-    <div className="flex flex-col gap-2 border-t border-slate-200/80 bg-amber-50/40 px-2.5 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-3">
-      <div className="min-w-0 text-[0.75rem] leading-snug">
-        <p className="text-slate-700">
-          Zakupy uzupełnią stan przy najbliższym zamówieniu. Zgłoszenie idzie osobno - ta prośba się nie zmieni.
-        </p>
-        {state.kind === "error" ? <p className="mt-1 text-red-700">{state.message}</p> : null}
+    <div className="flex flex-col gap-2.5 border-t border-amber-200/70 bg-amber-50/60 px-2.5 py-2.5 sm:flex-row sm:items-center sm:gap-4 sm:px-3">
+      <div className="flex min-w-0 flex-1 items-start gap-2.5">
+        <span
+          className="mt-px inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-800"
+          aria-hidden
+        >
+          <IconWarehouse size={15} strokeWidth={2} />
+        </span>
+        <div className="min-w-0">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.8125rem] font-semibold leading-snug text-slate-900">
+            Brakuje też dla innych klientów?
+            {!isPastUntil(STOCK_OUT_NEW_UNTIL) ? (
+              <Badge variant="info" className="bg-card ring-1 ring-indigo-200">
+                Nowość
+              </Badge>
+            ) : null}
+          </p>
+          <p className="mt-0.5 text-pretty text-xs leading-snug text-slate-600">
+            Zakupy uzupełnią stan magazynu przy najbliższym zamówieniu. Ta prośba zostaje bez zmian.
+          </p>
+          {state.kind === "error" ? <p className="mt-1 text-xs text-red-700">{state.message}</p> : null}
+        </div>
       </div>
       <Button
         type="button"
         size="sm"
         variant="secondary"
-        className="min-h-9 shrink-0"
+        className="min-h-9 shrink-0 max-sm:w-full"
         disabled={state.kind === "sending"}
         onClick={() => void report()}
       >

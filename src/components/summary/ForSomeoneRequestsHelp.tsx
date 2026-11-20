@@ -145,7 +145,7 @@ export function ForSomeoneRequestsSectionHelp() {
           <li>
             Prośby są w torach: <strong className="font-medium text-slate-800">Do rozdzielenia</strong>{" "}
             (jeszcze nieprzeczytane), potem <strong className="font-medium text-slate-800">osobny tor
-            na każdą flagę</strong> (kolor z Zarządzaj), potem{" "}
+            na każdą flagę</strong> (kolor z „Zarządzaj flagami”), potem{" "}
             <strong className="font-medium text-slate-800">Do zamówienia</strong>, Magazyn→info, Urlop.
           </li>
           <li>
@@ -159,7 +159,7 @@ export function ForSomeoneRequestsSectionHelp() {
             <strong className="font-medium text-slate-800">Tor ustawia się po fladze</strong> - nie
             przesuwasz ręcznie. Menu „Więcej → Flaga: …”, chip albo edytor flagi zapisuje oznaczenie;
             prośba od razu pojawia się w <em>osobnym torze tej flagi</em> (kolor tła = kolor flagi
-            z Zarządzaj).
+            z „Zarządzaj flagami”).
           </li>
           <li>
             <strong className="font-medium text-slate-800">Wyczyść flagę</strong> wraca do reguł
@@ -196,7 +196,7 @@ export function ForSomeoneRequestsSectionHelp() {
             dostawcy albo w wierszu. Zakres dat w tooltipie - to nie jest flaga zakupów.
           </li>
           <li>
-            Kolorowe chipy flag - oznaczenia zakupów. Kolejność <strong className="font-medium text-slate-800">wszystkich torów</strong> (także Do zamówienia / Urlop): strzałki ↑↓ na nagłówku toru albo w „Zarządzaj” dla flag. Handlowiec flag nie widzi.
+            Kolorowe chipy flag - oznaczenia zakupów. Kolejność <strong className="font-medium text-slate-800">wszystkich torów</strong> (także Do zamówienia / Urlop): strzałki ↑↓ na nagłówku toru albo w „Zarządzaj flagami”. Handlowiec flag nie widzi.
           </li>
           <li className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
             Przy produkcie: <ProductSourceBadge fromSubiekt size={12} className="size-5" /> - z

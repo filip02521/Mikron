@@ -88,7 +88,7 @@ describe("zdMovementRangeFrom", () => {
     expect(zdMovementRangeFrom("3m", null, today)).toBe("2026-07-30");
     expect(zdMovementRangeFrom("12m", null, today)).toBe("2025-10-28");
     expect(zdMovementRangeFrom("all", null, today)).toBeNull();
-    expect(zdMovementWindowLabel({ dataOd: "2026-09-29", dataDo: "2026-10-28" })).toBe("okno zapasu (30 d)");
+    expect(zdMovementWindowLabel({ dataOd: "2026-09-29", dataDo: "2026-10-28" })).toBe("jak w wyliczeniu (30 dni)");
     expect(zdMovementWindowLabel({ dataOd: "2026-10-15", dataDo: "2026-10-28" })).toBe("ostatni miesiąc");
   });
 });

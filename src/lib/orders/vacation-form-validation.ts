@@ -1,4 +1,4 @@
-import { parseDateOnly } from "./dates";
+import { formatDateString, isBusinessDay, parseDateOnly } from "./dates";
 import {
   parseVacationPeriodRow,
   vacationRangesOverlap,
@@ -24,6 +24,20 @@ type VacationOverlapRow = {
   end_date: string;
   last_order_date: string;
 };
+
+/**
+ * Podpowiedź „ostatniego zamówienia przed urlopem”: dzień roboczy przed startem urlopu
+ * (bez weekendów i polskich świąt). Dostawca zwykle podaje własny termin — pole zostaje do poprawy.
+ */
+export function defaultVacationLastOrderDate(startDate: string): string | null {
+  const start = parseDateOnly(startDate);
+  if (!start) return null;
+  const day = new Date(start);
+  do {
+    day.setDate(day.getDate() - 1);
+  } while (!isBusinessDay(day));
+  return formatDateString(day);
+}
 
 /** Walidacja dat urlopu przed zapisem lub podglądem. */
 export function validateVacationFormInput(

@@ -29,7 +29,7 @@ export function salesHistoriaHeaderHint(months: number, previewCount: number): s
 
 export const SALES_SEARCH_COPY = {
   moje: "Szukaj po produkcie, dostawcy, kliencie, symbolu lub kodzie PLU",
-  zkList: "Klient, numer ZK lub produkt na Twojej liście",
+  zkList: "Klient, nr ZK lub towar",
   planSupplier: "Wpisz fragment nazwy dostawcy",
   planProcurementSupplier: "Nazwa dostawcy w harmonogramie zakupów",
   boardQuestions: "Temat, treść, autor lub fragment odpowiedzi",

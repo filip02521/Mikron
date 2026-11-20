@@ -47,9 +47,9 @@ export function DailyZdAutomatSection({
   }).length;
   const nightProblem =
     night.kind === "missing"
-      ? `dziś bez nocnego przebiegu${night.lastRunDate ? ` (ostatni ${formatAutomatDay(night.lastRunDate, todayKey)})` : ""}`
+      ? `w nocy nie przeliczył zamówień${night.lastRunDate ? ` (ostatnio ${formatAutomatDay(night.lastRunDate, todayKey)})` : ""}`
       : night.kind === "done" && night.failed
-        ? "nocny przebieg z błędem"
+        ? "nocne przeliczenie zamówień z błędem"
         : null;
   const problems = [
     nightProblem,

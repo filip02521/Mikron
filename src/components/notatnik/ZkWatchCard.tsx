@@ -6,7 +6,7 @@ import { useMemo, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { actionRefreshZkWatchFromSubiekt, actionRestoreZkWatch, actionDeleteArchivedZkWatch } from "@/app/actions/sales-notepad";
 import { ActionLoadingOverlay, actionLoadingVirtualItemScopeClass } from "@/components/ui/ActionLoadingOverlay";
 import { cn } from "@/lib/cn";
-import { formatZkWatchDisplayNumber } from "@/lib/sales/notepad-format";
+import { formatZkWatchDisplayNumber, zkWatchStatusLabel } from "@/lib/sales/notepad-format";
 import { isFollowUpDue, buildMojeClientLink, formatFollowUpLabel } from "@/lib/sales/notepad-follow-up";
 import {
   prosbaHrefFromZkWatch,
@@ -37,11 +37,7 @@ import {
 } from "@/lib/sales/zk-watch-line-ui-state";
 import type { ZkWatchRefreshDiff } from "@/lib/sales/zk-watch-refresh-diff";
 import type { SalesZkWatch } from "@/types/database";
-import {
-  mojeQueueRowActionsClass,
-  mojeQueueRowLayoutClass,
-  mojeQueueRowMainClass,
-} from "@/lib/ui/moje-shipment-row-styles";
+import { mojeQueueRowActionsClass } from "@/lib/ui/moje-shipment-row-styles";
 import { Badge } from "@/components/ui/Badge";
 import { panelTypography } from "@/lib/ui/ontime-theme";
 import {
@@ -69,6 +65,7 @@ import {
   filterZkWatchProductLineViewsForScope,
   formatZkWatchProsbaScopeSummary,
   hasZkWatchTrackedProsbaScope,
+  productLineViews,
 } from "@/lib/sales/zk-watch-prosba-scope";
 import { zkWatchLineViewToProsbaScopeLine } from "@/lib/orders/prosba-stock-check";
 import { useZkProsbaLineKeysStockFilter } from "@/hooks/useZkProsbaLineKeysStockFilter";
@@ -211,7 +208,8 @@ export function ZkWatchCard({
     lineViews: scopedLineViews,
     ...checkboxContext,
   });
-  const readyToClose = !archived && allLinesChecked;
+  const subiektRealized = zkWatchStatusLabel(watch) === "Zrealizowane";
+  const readyToClose = !archived && (allLinesChecked || subiektRealized);
   const regalWaitingCount = orderHints?.regalWaitingLineKeys?.length ?? 0;
   const hasRegalWaiting = regalWaitingCount > 0;
   const hasInformacjaReady = (orderHints?.informacjaReadyLineKeys?.length ?? 0) > 0;
@@ -395,6 +393,7 @@ export function ZkWatchCard({
     hasNewZkLines,
     isNewlyAdded,
     readyToClose,
+    subiektRealized,
     hiddenOutsideScope,
   };
   const primaryAttention = deriveZkWatchRowAttention(attentionInput);
@@ -414,7 +413,17 @@ export function ZkWatchCard({
   const prosbaActionCount = uncoveredLineKeys.length;
 
   function handleProsbaClick(event: MouseEvent<HTMLAnchorElement>) {
-    if (teethDraftsIncomplete) {
+    // Także przed ustaleniem zakresu: bez list zębów formularz i tak nie przyjmie pozycji,
+    // więc klik prowadzi najpierw do wyboru zębów (kolor, wzór, rozmiar).
+    const teethMissing =
+      teethDraftsIncomplete ||
+      (teethRegistry != null &&
+        (prosbaCardAction.kind === "new_prosba" || prosbaCardAction.kind === "supplement") &&
+        !zkWatchTeethDraftsReady(watch, teethRegistry, {
+          lineKeys: prosbaPrefillOptions?.lineKeys,
+          requestKind: "zamowienie",
+        }));
+    if (teethMissing) {
       event.preventDefault();
       onTeethDraftRequested?.(watch.id);
       return;
@@ -478,8 +487,16 @@ export function ZkWatchCard({
       : prosbaInTokuHref;
 
   const displayNumber = formatZkWatchDisplayNumber(watch.zk_number);
+  // Bez podglądu checklisty (np. nic nie idzie do prośby): nazwa i liczba z pozycji towaru,
+  // nie z line_summary — tamto liczy też koszty dostawy i pakowanie.
+  const productOnlyLines = productLineViews(lineViews);
   const productPreview =
     linesPreview ??
+    (productOnlyLines.length
+      ? productOnlyLines.length === 1
+        ? productOnlyLines[0]!.product
+        : `${productOnlyLines[0]!.product} · +${productOnlyLines.length - 1} poz.`
+      : null) ??
     (watch.line_summary?.trim()
       ? watch.line_summary.trim().length > 52
         ? `${watch.line_summary.trim().slice(0, 51)}…`
@@ -489,7 +506,10 @@ export function ZkWatchCard({
   const productName = productPreview?.replace(/ · \d+\/\d+$/, "") ?? null;
   const lineProgress = linesShort?.match(/^(\d+)\/(\d+)$/) ?? null;
   const allLinesDone = Boolean(lineProgress && lineProgress[1] === lineProgress[2]);
-  const metaParts = splitZkWatchCardMetaSummary(cardMetaSummary);
+  // Zrealizowane w Subiekcie: „3 do prośby” nie jest już zadaniem — zostaje tylko „Do zamknięcia”.
+  const metaParts = splitZkWatchCardMetaSummary(cardMetaSummary).filter(
+    (part) => !(subiektRealized && part.tone === "action")
+  );
   // „do zamówienia” i „pominięte” zostają w podpowiedzi i w oknie pozycji; wiersz pokazuje stan.
   const metaBadges = metaParts.filter((part) => part.tone !== "plain" && part.tone !== "detail");
   // Pozostałe informacje („Prośba: bez otwartej”) też jako odznaki, szare: w polu nie ma luźnego tekstu.
@@ -510,7 +530,8 @@ export function ZkWatchCard({
     `${displayNumber} ${watch.client_label}`,
     primaryAttention?.label,
     followUpDueBadge?.label,
-    cardMetaSummary,
+    // To samo, co widać w polu „Pozycje” (bez odfiltrowanych chipów).
+    metaParts.map((part) => part.text).join(" · ") || null,
     "pokaż szczegóły ZK",
   ]
     .filter(Boolean)
@@ -613,26 +634,25 @@ export function ZkWatchCard({
         <ActionLoadingOverlay message="Tworzę prośbę…" variant="section" />
       ) : null}
       <div className="min-w-0 flex-1">
+      {/* Od sm siatka: linia 1 = numer ZK (lewo) i przyciski (prawo), pod nimi pola na całą szerokość.
+          Wcześniej przyciski miały własną kolumnę na całą wysokość i zabierały polom połowę miejsca.
+          Na telefonie kolejność DOM: numer, pola, przyciski na dole. */}
       <div
         className={cn(
-          mojeQueueRowLayoutClass,
-          // Akcje przy pierwszej linii wiersza, nie w połowie jego wysokości.
-          "sm:items-start",
+          "flex cursor-pointer flex-col gap-2 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-x-3 sm:gap-y-1.5",
           // Więcej miejsca nad numerem niż pod ostatnim polem: numer otwiera nowy blok.
           compact ? "px-3 pb-2.5 pt-3.5 sm:px-4" : "px-4 pb-3 pt-4"
         )}
+        onClick={handleRowClick}
       >
-        <div
-          className={cn(mojeQueueRowMainClass, "min-w-0 flex-1 cursor-pointer")}
-          role="button"
-          tabIndex={0}
-          onClick={handleRowClick}
-          onKeyDown={handleRowKeyDown}
-          aria-label={rowAriaLabel}
-        >
-          <div className="min-w-0 flex-1">
-            {/* Linia 1: tożsamość ZK i to, co w nim najpilniejsze. */}
-            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            {/* Linia 1: tożsamość ZK i to, co w nim najpilniejsze. min-h-8 = wysokość przycisków obok. */}
+            <div
+              className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:col-start-1 sm:row-start-1 sm:min-h-8"
+              role="button"
+              tabIndex={0}
+              onKeyDown={handleRowKeyDown}
+              aria-label={rowAriaLabel}
+            >
               <span className={cn("shrink-0 tabular-nums", panelTypography.rowTitle)}>
                 <SearchHighlightText text={displayNumber} searchQuery={searchQuery} />
               </span>
@@ -655,7 +675,7 @@ export function ZkWatchCard({
             </div>
 
             {/* Stałe pola pod numerem: ta sama informacja stoi w tym samym miejscu w każdym wierszu. */}
-            <dl className={cn("mt-1.5 grid grid-cols-[4.25rem_minmax(0,1fr)] items-baseline gap-x-2 gap-y-1", panelTypography.rowMeta)}>
+            <dl className={cn("grid grid-cols-[4.25rem_minmax(0,1fr)] items-baseline gap-x-2 gap-y-1 sm:col-span-2 sm:row-start-2", panelTypography.rowMeta)}>
               <dt className={rowFieldLabelClass}>Klient</dt>
               <dd
                 className="line-clamp-2 min-w-0 break-words text-slate-900"
@@ -668,7 +688,7 @@ export function ZkWatchCard({
                 <>
                   <dt className={rowFieldLabelClass}>Towar</dt>
                   <dd
-                    className="min-w-0 truncate text-slate-700"
+                    className="line-clamp-2 min-w-0 break-words text-slate-700"
                     title={
                       hasTrackedScope && hiddenOutsideScope > 0
                         ? `${productName ?? productPreview} - w podglądzie widać wybrane pozycje; +${hiddenOutsideScope} poz. spoza zakresu`
@@ -743,13 +763,11 @@ export function ZkWatchCard({
                 </>
               ) : null}
             </dl>
-          </div>
-        </div>
 
         <div
           className={cn(
             mojeQueueRowActionsClass,
-            "sm:self-start",
+            "cursor-auto sm:col-start-2 sm:row-start-1 sm:self-start",
             (rowChrome.railKind || rowChrome.accentKind) &&
               zkWatchRowActionsMobileDividerClass
           )}
@@ -761,6 +779,8 @@ export function ZkWatchCard({
             onFocusCapture={() => setProsbaStockArmed(true)}
             onMouseDown={() => setProsbaStockArmed(true)}
           >
+            {/* Zrealizowane w Subiekcie: towar wydany, prośba nie ma sensu — karta pokazuje „Do zamknięcia”. */}
+            {subiektRealized && !archived ? null : (
             <ZkWatchProsbaActions
               archived={archived}
               pending={pending}
@@ -778,6 +798,7 @@ export function ZkWatchCard({
               onTeethDraftRequested={() => onTeethDraftRequested?.(watch.id)}
               ctaWatchId={watch.id}
             />
+            )}
 
             {!archived ? (
               <ZkWatchFollowUpButton

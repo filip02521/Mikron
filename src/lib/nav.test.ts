@@ -19,7 +19,7 @@ import {
   NAV_SECTION_INFO,
   NAV_SECTION_CARRIERS,
   NAV_SECTION_ORDERING,
-  NAV_SECTION_LOGISTICS,
+  NAV_SECTION_SUPPLIERS_IMPORT,
   NAV_SECTION_ADMIN,
   navForAppContext,
   teethNavGroups,
@@ -132,10 +132,18 @@ describe("pageTitle", () => {
 });
 
 describe("navForRole admin dostawcy", () => {
-  it("wskazuje admin ścieżki w sekcji Dostawcy", () => {
+  it("wskazuje admin ścieżki w sekcji Dostawcy i import", () => {
     const groups = navForRole("admin");
-    const suppliers = groups.find((g) => g.title === NAV_SECTION_SUPPLIERS);
-    expect(suppliers?.items.map((i) => i.href)).toEqual(["/admin/dostawcy", "/zakupy/cenniki", "/zakupy/asystent"]);
+    const suppliers = groups.find((g) => g.title === NAV_SECTION_SUPPLIERS_IMPORT);
+    expect(suppliers?.items.map((i) => i.href)).toEqual([
+      "/admin/dostawcy",
+      "/zakupy/cenniki",
+      "/zakupy/asystent",
+      "/kolejka",
+      "/zakupy/odprawy",
+      "/zakupy/gadki",
+      "/kurierzy",
+    ]);
   });
 
   it("admin: ludzie i dostęp (z licznikiem zgłoszeń) osobno od katalogu i poczty", () => {
@@ -177,34 +185,32 @@ describe("navForRole admin dostawcy", () => {
 });
 
 describe("navForRole struktura zakupów", () => {
-  it("od pracy dziennej do konfiguracji: Dziś → Zamawianie → Zespół → Dostawcy → Import i logistyka", () => {
+  it("od pracy dziennej do konfiguracji: Codziennie → Zamawianie → Dostawcy i import → Zespół", () => {
     expect(navForRole("zakupy").map((g) => g.title)).toEqual([
-      NAV_SECTION_TODAY,
+      NAV_SECTION_DAILY,
       NAV_SECTION_ORDERING,
+      NAV_SECTION_SUPPLIERS_IMPORT,
       NAV_SECTION_TEAM,
-      NAV_SECTION_SUPPLIERS,
-      NAV_SECTION_LOGISTICS,
       NAV_SECTION_ADMIN_TOOLS,
     ]);
     expect(navForRole("admin").map((g) => g.title)).toEqual([
-      NAV_SECTION_TODAY,
+      NAV_SECTION_DAILY,
       NAV_SECTION_ORDERING,
+      NAV_SECTION_SUPPLIERS_IMPORT,
       NAV_SECTION_TEAM,
-      NAV_SECTION_SUPPLIERS,
-      NAV_SECTION_LOGISTICS,
       NAV_SECTION_ADMIN,
       NAV_SECTION_ADMIN_TOOLS,
     ]);
   });
 
-  it("codzienne sekcje stałe, od Dostawców zwijane; katalog i poczta domyślnie zwinięte", () => {
+  it("Codziennie i Zamawianie stałe, reszta zwijana; Zespół oraz katalog i poczta domyślnie zwinięte", () => {
     const groups = navForRole("admin");
     expect(groups.filter((g) => !g.collapsible).map((g) => g.title)).toEqual([
-      NAV_SECTION_TODAY,
+      NAV_SECTION_DAILY,
       NAV_SECTION_ORDERING,
-      NAV_SECTION_TEAM,
     ]);
     expect(groups.filter((g) => g.defaultCollapsed).map((g) => g.title)).toEqual([
+      NAV_SECTION_TEAM,
       NAV_SECTION_ADMIN_TOOLS,
     ]);
   });
@@ -228,51 +234,52 @@ describe("navForRole struktura zakupów", () => {
   it("mobile primary zawiera panel, weryfikację, magazyn i tablicę", () => {
     const groups = navForRole("zakupy");
     const labels = navMobilePrimaryItems(groups).map((item) => item.label);
+    // Te same cztery pozycje co przed przebudową menu — kolejność idzie za grupami na komputerze.
     expect(labels).toEqual([
       "Panel dzienny",
+      "Tablica",
       "Weryfikacja",
       "Przyjęcie towaru",
-      "Tablica",
     ]);
   });
 
-  it("sekcja Dziś ma rozróżnialne tony semantyczne", () => {
-    const today = navForRole("zakupy").find((g) => g.title === NAV_SECTION_TODAY);
-    expect(today?.items.map((item) => [item.label, item.tone])).toEqual([
+  it("Codziennie: to, co dział otwiera prawie każdego dnia, w kolejności użycia", () => {
+    const daily = navForRole("zakupy").find((g) => g.title === NAV_SECTION_DAILY);
+    expect(daily?.items.map((item) => [item.label, item.tone])).toEqual([
       ["Panel dzienny", "indigo"],
+      ["Kreator ZD", "violet"],
+      ["Tablica", "indigo"],
       ["Weryfikacja", "amber"],
-      ["Przyjęcie towaru", "emerald"],
+      ["Notatki", "indigo"],
     ]);
   });
 
-  it("admin i zakupy - Kreator ZD na czele Zamawiania, z własną ikoną", () => {
+  it("admin i zakupy - Kreator ZD w Codziennie (z własną ikoną), Zamawianie od historii", () => {
     for (const role of ["admin", "zakupy"] as const) {
-      const ordering = navForRole(role).find((g) => g.title === NAV_SECTION_ORDERING);
+      const groups = navForRole(role);
+      const kreator = groups.find((g) => g.title === NAV_SECTION_DAILY)?.items[1];
+      expect(kreator?.href).toBe("/zakupy/szacunek");
+      expect(kreator?.tier).toBe("primary");
+      expect(kreator?.icon).toBe("zdCreator");
+      const ordering = groups.find((g) => g.title === NAV_SECTION_ORDERING);
       expect(ordering?.items.map((item) => item.href)).toEqual([
-        "/zakupy/szacunek",
+        "/historia",
         "/zakupy/braki",
         "/zakupy/automat",
         "/zamowienia/nowe",
-        "/historia",
       ]);
-      const kreator = ordering?.items[0];
-      expect(kreator?.tier).toBe("primary");
-      expect(kreator?.icon).toBe("zdCreator");
-      expect(kreator?.icon).not.toBe(ordering?.items[1]?.icon);
       expect(ordering?.items[1]?.icon).toBe("stockWatch");
       expect(ordering?.items.some((i) => i.href === "/zakupy/raporty-ivoclar")).toBe(false);
     }
   });
 
-  it("Dostawcy - jedno wejście do hubu kart (terminy i urlopy to zakładki), cenniki i poczta; logistyka osobno", () => {
-    const suppliers = navForRole("zakupy").find((g) => g.title === NAV_SECTION_SUPPLIERS);
-    expect(suppliers?.items.map((i) => i.href)).toEqual([
-      "/zakupy/dostawcy",
-      "/zakupy/cenniki",
-      "/zakupy/asystent",
-    ]);
-    const logistics = navForRole("zakupy").find((g) => g.title === NAV_SECTION_LOGISTICS);
-    expect(logistics?.items.map((i) => [i.href, i.icon])).toEqual([
+  it("Dostawcy i import - jedno wejście do hubu kart, cenniki, poczta, potem przyjęcie i logistyka", () => {
+    const section = navForRole("zakupy").find((g) => g.title === NAV_SECTION_SUPPLIERS_IMPORT);
+    expect(section?.items.map((i) => [i.href, i.icon])).toEqual([
+      ["/zakupy/dostawcy", "suppliers"],
+      ["/zakupy/cenniki", "catalog"],
+      ["/zakupy/asystent", "mail"],
+      ["/kolejka", "warehouse"],
       ["/zakupy/odprawy", "customs"],
       ["/zakupy/gadki", "magazynGadki"],
       ["/kurierzy", "phone"],
@@ -439,9 +446,9 @@ describe("navForAppContext", () => {
       procurementWorkspace: "dostawy",
     });
     expect(groups[0]?.items[0]?.href).toBe("/podsumowanie");
-    const ordering = groups.find((g) => g.title === NAV_SECTION_ORDERING);
-    expect(ordering?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(true);
-    expect(ordering?.items.some((i) => i.href === "/zakupy/raporty-ivoclar")).toBe(false);
+    const hrefs = groups.flatMap((g) => g.items.map((i) => i.href));
+    expect(groups[0]?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(true);
+    expect(hrefs.includes("/zakupy/raporty-ivoclar")).toBe(false);
   });
 });
 
@@ -461,13 +468,13 @@ describe("navForRole zakupy_zeby", () => {
     expect(allHrefs.some((href) => href.startsWith("/zeby"))).toBe(false);
   });
 
-  it("zakupy i admin mają Magazyn Gądki (logistyka) i Kreator ZD (zamawianie); zęby/magazyn - bez obu", () => {
+  it("zakupy i admin mają Magazyn Gądki (dostawcy i import) i Kreator ZD (codziennie); zęby/magazyn - bez obu", () => {
     for (const role of ["admin", "zakupy"] as const) {
       const groups = navForRole(role);
-      const logistics = groups.find((g) => g.title === NAV_SECTION_LOGISTICS);
-      expect(logistics?.items.some((i) => i.href === "/zakupy/gadki")).toBe(true);
-      const ordering = groups.find((g) => g.title === NAV_SECTION_ORDERING);
-      expect(ordering?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(true);
+      const suppliersImport = groups.find((g) => g.title === NAV_SECTION_SUPPLIERS_IMPORT);
+      expect(suppliersImport?.items.some((i) => i.href === "/zakupy/gadki")).toBe(true);
+      const daily = groups.find((g) => g.title === NAV_SECTION_DAILY);
+      expect(daily?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(true);
       const hrefs = groups.flatMap((g) => g.items.map((i) => i.href));
       expect(hrefs.includes("/zakupy/raporty-ivoclar")).toBe(false);
     }

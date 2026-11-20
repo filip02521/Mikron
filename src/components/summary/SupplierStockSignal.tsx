@@ -161,19 +161,13 @@ export function stockSignalHorizonTitle(s: StockWatchSupplierSignal): string {
 
 const linkClass = "font-semibold text-indigo-700 underline-offset-2 hover:text-indigo-900 hover:underline";
 
-/** „Dostawa ok. 9 dni · kolejne zamówienie 21.10 (za 9 dni)” / „… · zamówienie na żądanie”. */
-export function stockSignalScheduleLine(s: StockWatchSupplierSignal, onDemand: boolean): string | null {
-  const parts: string[] = [];
-  if (s.leadDays != null) {
-    parts.push(`Dostawa ok. ${s.leadDays} ${polishPluralWord(s.leadDays, "dzień", "dni", "dni")}`);
-  }
-  if (onDemand) parts.push("zamówienie na żądanie");
-  else if (s.nextOrderDate) {
-    const days = daysFromToday(s.nextOrderDate);
-    const when = days != null ? ` (${formatDaysAhead(days)})` : "";
-    parts.push(`kolejne zamówienie ${formatRunOutDate(s.nextOrderDate)}${when}`);
-  }
-  return parts.length ? parts.join(" · ") : null;
+/**
+ * „Dostawa ok. 9 dni” — kontekst do „skończy się przed dostawą”. Bez daty kolejnego zamówienia:
+ * nagłówek szuflady pokazuje termin z harmonogramu, a data z analizy bywa starsza i mu przeczyła.
+ */
+export function stockSignalScheduleLine(s: StockWatchSupplierSignal): string | null {
+  if (s.leadDays == null) return null;
+  return `Dostawa ok. ${s.leadDays} ${polishPluralWord(s.leadDays, "dzień", "dni", "dni")}`;
 }
 
 /**
@@ -182,11 +176,9 @@ export function stockSignalScheduleLine(s: StockWatchSupplierSignal, onDemand: b
  */
 export function SupplierStockSummary({
   supplierId,
-  onDemand,
   className,
 }: {
   supplierId: string;
-  onDemand: boolean;
   className?: string;
 }) {
   const { signals } = useContext(SupplierStockSignalsContext);
@@ -194,7 +186,7 @@ export function SupplierStockSummary({
   if (!s) return null;
   const stale = stockWatchSignalStale(s.computedAt);
   const urgent = stockSignalMostUrgent(s);
-  const schedule = stockSignalScheduleLine(s, onDemand);
+  const schedule = stockSignalScheduleLine(s);
 
   return (
     <section
@@ -221,8 +213,9 @@ export function SupplierStockSummary({
             <p className="mt-0.5 text-red-700">{stockSignalBeforeDeliveryRest(s)}</p>
           ) : null}
           {urgent ? (
-            <p className="mt-0.5 truncate text-slate-600" title={urgent.full}>
-              Najpilniej {urgent.label} ({urgent.cover})
+            // Pełna nazwa towaru (może zawinąć się do 2 linii) — sam symbol nic nie mówił.
+            <p className="mt-0.5 line-clamp-2 text-slate-600" title={urgent.full}>
+              Najpilniej: {urgent.full} ({urgent.cover})
             </p>
           ) : null}
         </>

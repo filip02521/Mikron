@@ -182,6 +182,8 @@ export type SummaryWorkspaceData = SummaryView & {
    * Klucz = supplierId — niezależnie od kompletności supplierMeta.
    */
   suppliersOnVacationNow: Record<string, SupplierOnVacationWindow>;
+  /** Najbliższy zaplanowany (przyszły) aktywny urlop — karta dostawcy w panelu dziennym. */
+  suppliersPlannedVacation?: Record<string, SupplierOnVacationWindow>;
   /** Definicje flag (wszystkie — aktywne i nieaktywne) — panel dzienny / manage. */
   procurementFlagDefinitions: ProcurementFlagDefinition[];
   /** Zapisana kolejność torów (app_settings); null = domyślna. */

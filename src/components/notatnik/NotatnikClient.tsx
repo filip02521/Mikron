@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { buttonClass } from "@/components/ui/Button";
+import { IconLock } from "@/components/icons/StrokeIcons";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
 import { buildOnboardingNotepadDemo } from "@/lib/sales/sales-onboarding-demo-data";
@@ -1253,9 +1254,17 @@ export function NotatnikClient({
         actions={
           <>
             {isZkSurface && !teamPreview && !readOnly ? (
-              <Link href="/zk/z-maila" className={buttonClass("secondary")}>
+              // Zablokowane, dopóki import ZK z maila jest w przygotowaniu — kłódka mówi to bez dymka.
+              // shortcut: strona /zk/z-maila nadal działa pod bezpośrednim adresem; odblokuj tu, gdy będzie gotowa.
+              <span
+                role="button"
+                aria-disabled="true"
+                title="Nowe ZK z maila - w przygotowaniu, jeszcze niedostępne"
+                className={buttonClass("secondary", "md", "cursor-not-allowed opacity-60 hover:border-[var(--card-border)] hover:bg-[var(--card)] hover:text-slate-700 active:scale-100")}
+              >
+                <IconLock size={15} />
                 Nowe ZK z maila
-              </Link>
+              </span>
             ) : null}
             <NotatnikGuide surface={isZkSurface ? "zk" : "notes"} />
           </>

@@ -54,14 +54,14 @@ export function ZkWatchLinesMetaSection({
           <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
             {clientContact.phone ? (
               <MetaFact label="Telefon">
-                <a href={normalizePhoneHref(clientContact.phone)} className={brandLinkSubtleClass}>
+                <a href={normalizePhoneHref(clientContact.phone)} className={cn(brandLinkSubtleClass, "underline decoration-indigo-300 underline-offset-2")}>
                   {clientContact.phone}
                 </a>
               </MetaFact>
             ) : null}
             {clientContact.email ? (
               <MetaFact label="E-mail">
-                <a href={`mailto:${clientContact.email}`} className={brandLinkSubtleClass}>
+                <a href={`mailto:${clientContact.email}`} className={cn(brandLinkSubtleClass, "underline decoration-indigo-300 underline-offset-2")}>
                   {clientContact.email}
                 </a>
               </MetaFact>

@@ -388,7 +388,7 @@ Formy są prostokątne, lekko zaokrąglone, a promień rośnie z wielkością el
 
 - 6px (`rounded-md`, `--radius`): przyciski, pola, odznaki, segmenty, alerty.
 - 8px (`rounded-lg`, `--radius-lg`): bloki zagnieżdżone w karcie, okna loadingu, chrome Kreatora.
-- 10px (`rounded-[var(--radius-panel)]`): karty paneli (`Card`, `surfaceCardClass`).
+- 10px (`rounded-[var(--radius-panel)]`): karty paneli (`Card`, `surfaceCardClass`) i okna (`ModalShell`, `modalPanelClass`). Tło warstwy wewnątrz karty bez `overflow-hidden` (pasek narzędzi, pierwszy i ostatni wiersz) bierze ten sam promień, inaczej jego kwadratowe rogi zasłaniają rogi karty.
 - Pełne zaokrąglenie: tylko liczniki w menu i paski postępu.
 
 Element wewnątrz karty nigdy nie ma większego promienia niż karta. Obramowania są jednopikselowe w tonach `line`. Kolorowego paska z boku karty, wiersza ani alertu nie stosujemy: stan pokazuje tło, odznaka albo ikona.
@@ -451,7 +451,7 @@ Pełny Petrol nigdy nie oznacza „wybrane”: należy do głównej akcji i licz
 - **Zakładki strony (`SectionTabNav`):** rząd linków na linii `line`, bez tła i bez ramki. Zakładka: Body Dense 500, `slate-600`, hover `slate-900`; wybrana `slate-900` z podkreśleniem 2px `indigo-600` przykrywającym linię. Licznik obok etykiety jako odznaka Tiny `slate-100`. Na telefonie rząd przewija się w poziomie.
 - **Kafle z licznikiem (`QueuePanelToolbar`):** zamiast zakładek, gdy widoki przełączają się w miejscu, a liczba jest pierwszym, co użytkownik chce wiedzieć (Przyjęcie towaru: Przyjęcie / Dziennik / Regał). Siatka 3 kolumn, kafel biały z ramką `line`; liczba 1.75rem 600, nazwa Body Dense 600, pod nią jedna linia Meta (od `sm`). Wybrany kafel: ramka i obrys 1px `indigo-600`, nazwa `indigo-800`. Bez kafla ikony. Semantyka zakładek (`role="tablist"`, strzałki) zostaje.
 - **Strona z zakładkami to jedna pozycja menu.** Hub z własnymi zakładkami (Karty dostawców: karty, terminy zamówień, urlopy, nieaktywni) ma w menu jedno wejście, podświetlone na każdej zakładce (`isSupplierHubPath` w `supplier-hub.ts`). Zakładki nie wracają do menu jako osobne pozycje.
-- **Grupa menu to jeden temat pracy**, nie jeden ekran: „Zamawianie” to tworzenie i przegląd ZD, „Dostawcy” to wszystko o dostawcy (karty, cenniki, poczta dostawców). Nowa funkcja trafia do istniejącej strony (zakładka, sekcja, rozwinięcie wiersza), zanim dostanie własną pozycję menu.
+- **Grupa menu to jeden temat pracy**, nie jeden ekran: „Zamawianie” to tworzenie i przegląd ZD, „Dostawcy i import” to wszystko o dostawcy i o tym, jak towar do nas trafia (karty, cenniki, poczta dostawców, przyjęcie, odprawy). Wyjątek: „Codziennie” zbiera kilka ekranów, które dział otwiera prawie każdego dnia (kolejność z wejść na produkcji), żeby nie trzeba było ich szukać w grupach tematycznych. Nowa funkcja trafia do istniejącej strony (zakładka, sekcja, rozwinięcie wiersza), zanim dostanie własną pozycję menu.
 
 ### Data Table
 

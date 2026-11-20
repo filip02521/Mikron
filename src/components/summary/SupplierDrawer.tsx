@@ -15,7 +15,7 @@ import type { SupplierSummaryMeta } from "@/lib/orders/summary-workspace";
 import { SupplierContactActions } from "@/components/procurement/SupplierContactActions";
 import {
   formatPlDate,
-  formatStockPeriod,
+  formatStockPeriodCompact,
   formatSupplierInterval,
   locationLabel,
   vacationNoteLabel,
@@ -115,6 +115,7 @@ const supplierHistoryCache = new Map<
 export function SupplierDrawer({
   supplier,
   vacationWindow = null,
+  plannedVacation = null,
   teethLane,
   subiektScope = null,
   deliveryStats,
@@ -131,6 +132,8 @@ export function SupplierDrawer({
   supplier: SupplierSummaryMeta | null;
   /** Aktywne okno urlopu obejmujące dziś (kalendarz) — z datami. */
   vacationWindow?: SupplierOnVacationWindow | null;
+  /** Najbliższy zaplanowany urlop (start po dziś) — widać go od razu po zapisie. */
+  plannedVacation?: SupplierOnVacationWindow | null;
   teethLane?: TeethSupplierLaneSnapshot | null;
   /** Powiązanie z grupą albo cechą Subiekta (null = brak mapowania). */
   subiektScope?: SupplierSubiektScopeInfo | null;
@@ -358,6 +361,14 @@ export function SupplierDrawer({
                   >
                     Urlop {formatSupplierVacationRangeCompact(vacationWindow)}
                   </Chip>
+                ) : plannedVacation ? (
+                  <Chip
+                    tone="neutral"
+                    icon={<IconSun size={12} />}
+                    title={`Zaplanowany urlop ${formatSupplierVacationRangeTitle(plannedVacation)}`}
+                  >
+                    Urlop {formatSupplierVacationRangeCompact(plannedVacation)}
+                  </Chip>
                 ) : null}
                 {supplier.vacation_note ? (
                   <Chip tone="neutral" icon={<IconCalendar size={12} />}>
@@ -398,7 +409,11 @@ export function SupplierDrawer({
           >
             <div className="min-w-0">
               <p className="text-[0.6875rem] font-medium opacity-75">
-                {supplier.order_on_demand ? "Zamówienie na żądanie" : "Następne zamówienie"}
+                {supplier.order_on_demand
+                  ? "Zamówienie na żądanie"
+                  : due.tone === "overdue"
+                    ? "Zamówienie po terminie"
+                    : "Następne zamówienie"}
               </p>
               <p className="mt-0.5 text-base font-semibold tabular-nums">
                 {supplier.computed_next_date ? formatPlDate(supplier.computed_next_date) : "-"}
@@ -419,7 +434,6 @@ export function SupplierDrawer({
 
           <SupplierStockSummary
             supplierId={supplier.id}
-            onDemand={supplier.order_on_demand}
             className="mt-3"
           />
 
@@ -470,6 +484,7 @@ export function SupplierDrawer({
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               <ShiftMenu
+                label="Przesuń termin"
                 disabled={rowPending}
                 onShiftWeeks={(w) =>
                   run?.(
@@ -488,13 +503,14 @@ export function SupplierDrawer({
                   )
                 }
               />
-              <Button variant="ghost" size="sm" disabled={rowPending} onClick={onVacation}>
+              {/* Ramka jak „Przesuń termin” — bez niej przyciski wyglądały jak zwykły tekst. */}
+              <Button variant="secondary" size="sm" disabled={rowPending} onClick={onVacation}>
                 <IconSun size={14} className="shrink-0" />
-                Urlop
+                Urlop dostawcy
               </Button>
-              <Button variant="ghost" size="sm" disabled={rowPending} onClick={onEdit}>
+              <Button variant="secondary" size="sm" disabled={rowPending} onClick={onEdit}>
                 <IconPencil size={14} className="shrink-0" />
-                Edytuj dane
+                Edytuj dane dostawcy
               </Button>
             </div>
             </>
@@ -555,12 +571,8 @@ export function SupplierDrawer({
             }
           >
             <dl className="divide-y divide-slate-100 rounded-lg border border-slate-200/70">
+              {/* Następny termin stoi w nagłówku szuflady — tu tylko to, z czego wynika. */}
               <Row label="Ostatnie zamówienie" value={formatPlDate(supplier.order_date)} />
-              <Row
-                label="Następne zamówienie"
-                value={supplier.computed_next_date ? formatPlDate(supplier.computed_next_date) : "-"}
-                strong
-              />
               {supplier.shift_date ? (
                 <Row label="Ręczne przesunięcie" value={formatPlDate(supplier.shift_date)} />
               ) : null}
@@ -572,7 +584,7 @@ export function SupplierDrawer({
                     : formatSupplierInterval(supplier.interval_raw, supplier.interval_weeks)
                 }
               />
-              <Row label="Zapas" value={formatStockPeriod(supplier.stock_raw, supplier.stock)} />
+              <Row label="Zapas" value={formatStockPeriodCompact(supplier.stock_raw, supplier.stock)} />
             </dl>
             <SupplierDrawerLeadTime
               className="mt-2.5"
@@ -604,24 +616,25 @@ export function SupplierDrawer({
 
           <DrawerSection
             title="Powiązania z Subiektem"
-            hint="Od tego zależy auto-dostawca i zakres „Przygotuj ZD”"
+            hint="Do kogo trafia ZD w Subiekcie i które towary liczy „Przygotuj ZD”"
             icon={<IconLink size={14} />}
           >
+            {/* Bez kh_Id / ctw_Id — numery z bazy Subiekta są w karcie dostawcy, tu nic nie mówiły. */}
             <div className="divide-y divide-slate-100 rounded-lg border border-slate-200/70">
               <LinkRow
                 ok={supplier.subiekt_kh_id != null}
                 label="Kontrahent"
                 value={
-                  supplier.subiekt_kh_id != null ? `powiązany · kh_Id ${supplier.subiekt_kh_id}` : "brak powiązania"
+                  supplier.subiekt_kh_id != null ? "powiązany" : "brak powiązania"
                 }
                 hint={
                   supplier.subiekt_kh_id != null
-                    ? "Auto-dostawca na ZD trafia poprawnie."
-                    : "Auto-dostawca na ZD może nie trafić."
+                    ? "ZD z OnTime trafia do tego kontrahenta."
+                    : "ZD może trafić do Subiekta bez dostawcy - powiąż kontrahenta w karcie."
                 }
                 action={
                   <Link href={cardsHref} className={sectionLinkClass}>
-                    {supplier.subiekt_kh_id != null ? "Zmień" : "Powiąż"}
+                    {supplier.subiekt_kh_id != null ? "Zmień w karcie" : "Powiąż w karcie"}
                   </Link>
                 }
               />
@@ -630,7 +643,7 @@ export function SupplierDrawer({
                 label={subiektScope ? (subiektScope.mode === "cecha" ? "Cecha towarów" : "Grupa towarów") : "Grupa / cecha"}
                 value={
                   subiektScope
-                    ? `${subiektScope.label || "bez nazwy"} · ${subiektScope.mode === "cecha" ? "ctw_Id" : "grt_Id"} ${subiektScope.id}${
+                    ? `${subiektScope.label || "bez nazwy"}${
                         subiektScope.extraLabels?.length
                           ? ` + ${subiektScope.extraLabels.join(", ")}`
                           : ""
@@ -670,7 +683,7 @@ export function SupplierDrawer({
                         {h.action}
                         {h.next_date ? (
                           <span className="font-normal text-slate-500">
-                            {" "}→ następne {formatPlDate(h.next_date)}
+                            {" "}→ następny termin {formatPlDate(h.next_date)}
                           </span>
                         ) : null}
                       </p>

@@ -26,8 +26,8 @@ export const ZK_WATCH_ROW_COLOR_LEGEND_ITEMS: ZkWatchRowColorLegendItem[] = [
   {
     id: "ready_to_close",
     label: "Do zamknięcia",
-    title: "Zielony rail",
-    detail: "Wszystkie pozycje odhaczone - możesz zamknąć sprawę ZK",
+    title: "Zielony pasek",
+    detail: "Wszystkie pozycje odhaczone albo ZK zrealizowane w Subiekcie - możesz zamknąć sprawę",
     core: true,
   },
   {

@@ -492,9 +492,9 @@ export function ZkWatchProsbaScopeModal({
               <span className="font-medium text-slate-900">
                 {orderCount} {plPozycja(orderCount)} do prośby
               </span>
-            ) : (
+            ) : attachCount > 0 ? (
               "Bez prośby"
-            )}
+            ) : null}
             {attachCount > 0 ? (
               <span className="text-indigo-800"> · {attachCount} podepniemy pod ZD</span>
             ) : null}
@@ -502,7 +502,7 @@ export function ZkWatchProsbaScopeModal({
           <div className="flex flex-col-reverse gap-2 sm:shrink-0 sm:flex-row sm:justify-end">
             {required ? (
               <Button type="button" variant="ghost" size="sm" onClick={handleClose} disabled={saving}>
-                Skonfiguruj później
+                Zdecyduję później
               </Button>
             ) : (
               <Button type="button" variant="ghost" size="sm" onClick={handleClose} disabled={saving}>
@@ -529,7 +529,7 @@ export function ZkWatchProsbaScopeModal({
                       ? attachCount > 0
                         ? `Zapisz i podepnij (${attachCount})`
                         : "Zapisz - bez prośby"
-                      : `Zapisz (${orderCount})`}
+                      : `Zapisz wybór (${orderCount})`}
             </Button>
           </div>
         </div>

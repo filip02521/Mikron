@@ -19,7 +19,11 @@ import { ShiftMenu } from "@/components/summary/ShiftMenu";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import type { useZdAutomatOrderSheet } from "@/components/summary/useZdAutomatOrderSheet";
 import { buildZdEstimateLaunchHref } from "@/lib/orders/zd-estimate-supplier-scope";
-import { DAILY_PANEL_MARK_ORDERED_LABEL, DAILY_PANEL_MARK_ORDERED_PENDING } from "@/lib/orders/daily-panel-mark-ordered-copy";
+import {
+  DAILY_PANEL_MARK_ORDERED_LABEL,
+  DAILY_PANEL_MARK_ORDERED_PENDING,
+  dailyPanelMarkOrderedConfirmLabel,
+} from "@/lib/orders/daily-panel-mark-ordered-copy";
 import {
   IconAlertCircle,
   IconCalendar,
@@ -94,7 +98,7 @@ type ConfirmOrdered = (markOrdered: () => void) => void;
 
 export type DailySupplierAutomatControls = Pick<ReturnType<typeof useZdAutomatOrderSheet>, "start" | "startProposal" | "loadingId" | "error">;
 
-const actionButtonClass = "min-h-11 font-semibold sm:min-h-8";
+const actionButtonClass = "min-h-11 whitespace-nowrap font-semibold sm:min-h-8";
 
 /** Jedna szybka akcja wiersza — wynika z grupy (model), nie z miejsca na ekranie. */
 function RowAction({
@@ -312,7 +316,7 @@ export function DailySupplierRow({
     <li
       className={cn(
         // Telefon: nazwa na całą szerokość, pod nią stan i akcja w jednej linii (wiersz o ~1/3 niższy niż ze stosem).
-        "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_auto_9.5rem] sm:px-4 lg:px-5",
+        "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_auto_11.5rem] sm:px-4 lg:px-5",
         pending && "opacity-60"
       )}
       aria-busy={pending}
@@ -366,7 +370,7 @@ export function DailySupplierRow({
             ) : null}
             {row.overdueDays > 0 ? (
               <span className="tabular-nums text-amber-800">
-                zaległy {row.overdueDays} {polishPluralWord(row.overdueDays, "dzień", "dni", "dni")}
+                termin minął {row.overdueDays} {polishPluralWord(row.overdueDays, "dzień", "dni", "dni")} temu
               </span>
             ) : row.schedule ? (
               <span>termin dziś</span>
@@ -440,7 +444,7 @@ export function DailySupplierRow({
           open
           title={`Oznaczyć „${row.supplierName}” jako zamówione?`}
           message={`Ten dostawca ma ${stockSignalUrgentLabel(urgentCount)} ${polishPluralWord(urgentCount, "pozycję", "pozycje", "pozycji")} Do ZD w analizie Braki - upewnij się, że ZD jest przygotowane w Subiekcie. Po potwierdzeniu masz 10 sekund na cofnięcie.`}
-          confirmLabel="Zamówione"
+          confirmLabel={dailyPanelMarkOrderedConfirmLabel()}
           onCancel={() => setOrderedToConfirm(null)}
           onConfirm={() => {
             const go = orderedToConfirm;

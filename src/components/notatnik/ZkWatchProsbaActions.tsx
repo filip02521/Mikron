@@ -29,11 +29,11 @@ function InformacjaLink({
         }
         onClick(event);
       }}
-      title="Utwórz prośbę informacyjną o dostępność (bez zamówienia u dostawcy)"
+      title="Prośba informacyjna: zakupy sprawdzą, kiedy towar będzie - bez zamawiania u dostawcy"
       className={zkWatchRowActionSecondaryClass}
       aria-disabled={pending || undefined}
     >
-      Informacja
+      Kiedy będzie?
     </Link>
   );
 }
