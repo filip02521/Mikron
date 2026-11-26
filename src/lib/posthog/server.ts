@@ -22,9 +22,10 @@ export function captureServerException(
   properties: Record<string, unknown>,
   distinctId?: string
 ): void {
-  getClient()?.captureException(error, distinctId ?? SERVER_DISTINCT_ID, {
-    ...properties,
-    ...(distinctId ? {} : { $process_person_profile: false }),
+  getClient()?.captureException(error, {
+    distinctId: distinctId ?? SERVER_DISTINCT_ID,
+    properties,
+    ...(distinctId ? {} : { options: { process_person_profile: false } }),
   });
 }
 
@@ -32,6 +33,7 @@ export function captureServerEvent(event: string, properties: Record<string, unk
   getClient()?.capture({
     distinctId: SERVER_DISTINCT_ID,
     event,
-    properties: { ...properties, $process_person_profile: false },
+    properties,
+    options: { process_person_profile: false },
   });
 }
